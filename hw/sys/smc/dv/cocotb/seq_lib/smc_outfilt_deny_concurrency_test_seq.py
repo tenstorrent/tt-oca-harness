@@ -408,13 +408,14 @@ class smc_outfilt_deny_concurrency_test_seq(SmcCsrSeq):
         writes1, _r = output_responder_counts()
         assert writes1 == writes0, f"flood advanced write_count {writes0}->{writes1}"
         peak = self._peak
+        assert peak >= 2, f"S4 peak outstanding (AW - B) {peak}: the denials never overlapped"
         self._mark_step("S4")
         self._log_chk(
             "CHK-OUT-DENY-FLOOD",
             f"{_FLOOD} denied writes over 0x{_FLOOD_RANGE[0]:x}..0x{_FLOOD_RANGE[1]:x} under "
             f"b_ready_delay {_B_HOLD_CYCLES}: {codes.count(RESP_DECERR)} DECERR, {_FLOOD} "
             f"sentinels kept, write_count+0, peak (AW - B handshakes) on jtag_axi {peak} "
-            f"(printed)",
+            f"(at least 2)",
         )
 
         # S5

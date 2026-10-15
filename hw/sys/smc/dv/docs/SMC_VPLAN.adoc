@@ -541,15 +541,57 @@ exactly one OKAY response and no late duplicate.
 values at a 10 / 12 / 6 ns clock triple.
 |`smc_clk_relation_regxbar_test` |The hang-detector threshold and AVS_CFG_0 hold written values at
 each single-axis clock relation of the run.
+|`smc_clk_relation_regxbar_slowest_periph_test` |The hang-detector threshold and AVS_CFG_0 hold
+written values at each single-axis clock relation of the run, in the slowest_periph cell (clk_ref_i
+/ clk_smc_i / clk_periph_i = 8 / 12 / 10 ns).
+|`smc_clk_relation_regxbar_ref8_test` |The hang-detector threshold and AVS_CFG_0 hold written values
+at each single-axis clock relation of the run, in the ref8 cell (clk_ref_i / clk_smc_i /
+clk_periph_i = 8 / 1.25 / 5 ns).
+|`smc_clk_relation_regxbar_periph3_test` |The hang-detector threshold and AVS_CFG_0 hold written
+values at each single-axis clock relation of the run, in the periph3 cell (clk_ref_i / clk_smc_i /
+clk_periph_i = 10 / 1.25 / 3 ns).
+|`smc_clk_relation_regxbar_periph_slower_test` |The hang-detector threshold and AVS_CFG_0 hold
+written values at each single-axis clock relation of the run, in the periph_slower cell (clk_ref_i /
+clk_smc_i / clk_periph_i = 8 / 1.25 / 10 ns).
+|`smc_clk_relation_regxbar_smc_equal_test` |The hang-detector threshold and AVS_CFG_0 hold written
+values at each single-axis clock relation of the run, in the smc_equal cell (clk_ref_i / clk_smc_i /
+clk_periph_i = 10 / 10 / 10 ns).
+|`smc_clk_relation_regxbar_smc_slower_test` |The hang-detector threshold and AVS_CFG_0 hold written
+values at each single-axis clock relation of the run, in the smc_slower cell (clk_ref_i / clk_smc_i
+/ clk_periph_i = 10 / 12 / 8 ns).
 |`smc_octs_clk_rate_test` |The OCTS counter advances at the clk_smc_i rate in every clock cell and
 restarts from its preset on a START after the preset is latched.
+|`smc_octs_clk_rate_periph3_test` |The OCTS counter advances at the clk_smc_i rate in every clock
+cell and restarts from its preset on a START after the preset is latched, in the periph3 cell
+(clk_ref_i / clk_smc_i / clk_periph_i = 10 / 1.25 / 3 ns).
+|`smc_octs_clk_rate_ref8_test` |The OCTS counter advances at the clk_smc_i rate in every clock cell
+and restarts from its preset on a START after the preset is latched, in the ref8 cell (clk_ref_i /
+clk_smc_i / clk_periph_i = 8 / 1.25 / 5 ns).
+|`smc_octs_clk_rate_smc_fast_test` |The OCTS counter advances at the clk_smc_i rate in every clock
+cell and restarts from its preset on a START after the preset is latched, in the smc_fast cell
+(clk_ref_i / clk_smc_i / clk_periph_i = 10 / 1 / 5 ns).
+|`smc_octs_clk_rate_smc_equal_test` |The OCTS counter advances at the clk_smc_i rate in every clock
+cell and restarts from its preset on a START after the preset is latched, in the smc_equal cell
+(clk_ref_i / clk_smc_i / clk_periph_i = 10 / 10 / 5 ns).
+|`smc_octs_clk_rate_smc_slower_test` |The OCTS counter advances at the clk_smc_i rate in every clock
+cell and restarts from its preset on a START after the preset is latched, in the smc_slower cell
+(clk_ref_i / clk_smc_i / clk_periph_i = 10 / 12 / 5 ns).
 |`smc_periph_cg_window_extent_test` |With one peripheral clock-gate enable set, that window answers
 SLVERR with the error pattern while the other windows stay
 reachable.
 |`smc_periph_floor_roundtrip_test` |AVS_CFG_0 round-trips a written value through the AVSBus bridge
 at peripheral clock periods of 10, 5 and 3 ns.
+|`smc_periph_floor_roundtrip_periph5_test` |AVS_CFG_0 round-trips a written value through the AVSBus
+bridge at peripheral clock periods of 10, 5 and 3 ns, in the periph5 cell (clk_ref_i / clk_smc_i /
+clk_periph_i = 10 / 1.25 / 5 ns).
+|`smc_periph_floor_roundtrip_periph3_test` |AVS_CFG_0 round-trips a written value through the AVSBus
+bridge at peripheral clock periods of 10, 5 and 3 ns, in the periph3 cell (clk_ref_i / clk_smc_i /
+clk_periph_i = 10 / 1.25 / 3 ns).
 |`smc_ref_reset_cycles_test` |The cold-reset release hold and assertion de-glitch are counted in
 clk_ref_i cycles at two reference periods.
+|`smc_ref_reset_cycles_ref4_test` |The cold-reset release hold and assertion de-glitch are counted
+in clk_ref_i cycles at two reference periods, in the ref4 cell (clk_ref_i / clk_smc_i / clk_periph_i
+= 4 / 1.25 / 5 ns).
 |===
 
 ==== CPU
@@ -666,6 +708,16 @@ clk_ref_i cycles at two reference periods.
 |`smc_efuse_map_locks_register_test` |LOCKS sets by write-one and each slot locks its field.
 |`smc_efuse_map_reset_persistence_test` |Shadow words and locks survive warm reset, not cold.
 |`smc_efuse_map_sense_image_test` |Sensed image words match the loaded file on every path.
+|`smc_efuse_map_sense_image_unique_test` |Sensed image words match the loaded file on every path, in
+the unique eFuse image.
+|`smc_efuse_map_sense_image_random_test` |Sensed image words match the loaded file on every path, in
+the random eFuse image.
+|`smc_efuse_map_sense_image_walking_test` |Sensed image words match the loaded file on every path,
+in the walking eFuse image.
+|`smc_efuse_map_sense_image_ones_test` |Sensed image words match the loaded file on every path, in
+the ones eFuse image.
+|`smc_efuse_map_sense_image_zero_test` |Sensed image words match the loaded file on every path, in
+the zero eFuse image.
 |`smc_efuse_map_sep_write_test` |Unlocked SEP_IN map writes read back and reach the shadow port.
 |`smc_efuse_sense_sequence_test` |Sense request, 256 strobes and hand-over follow the interface.
 |===
@@ -2879,11 +2931,14 @@ receiver flush.
 * Threshold kept (`telemetry_receiver.rdl`, `CTRL`): with `BUFFER_THRESHOLD` 3 written together with
   `TELEMETRY_TX_FLUSH` and `afready_i` low `CTRL` reads exactly 0x3100, and exactly 0x3000 after
   `afready_i` rises and the hardware clears the request.
-* Path separation (`architecture.adoc`, Reset and Flush): with two messages queued (probe ids 0x0B
-  and 0x0C) a transmitter flush leaves `BUFFER_EMPTY` 0 and `TELEMETRY_PROBE_ID` 0x0B; one pop then is
-  read and its `STATUS` and `TELEMETRY_PROBE_ID` are printed, not compared, and a message is sent
-  again so the queue is non-empty; a receiver
-  flush with `afready_i` low then empties the queue while `afvalid_o` stays 0 for 64 cycles.
+* Path separation (`architecture.adoc`, Reset and Flush): the two messages (probe ids 0x0B and
+  0x0C) are sent eight idle cycles apart, as the other telemetry tests send them (sent back to back
+  the second message did not enter the queue; the documents do not state a spacing), and with
+  `BUFFER_THRESHOLD` 1 the `INTR_STATUS.BUFFER_THRESHOLD` bit shows that both are queued
+  (`telemetry_receiver.rdl`); a transmitter flush then leaves `BUFFER_EMPTY` 0 and
+  `TELEMETRY_PROBE_ID` 0x0B, and after one pop `BUFFER_EMPTY` is still 0 with `TELEMETRY_PROBE_ID`
+  0x0C, so neither queued message was dropped; a receiver flush with `afready_i` low then empties
+  the queue while `afvalid_o` stays 0 for 64 cycles.
 
 *Test Procedure*:
 
@@ -2900,8 +2955,9 @@ receiver flush.
   print the rise count.
 . Drive `afready_i` low, write `CTRL` 0x3100, wait for `afvalid_o` 1 and read back 0x3100, drive
   `afready_i` high, wait for `afvalid_o` 0 and read back 0x3000.
-. Clear `CTRL`, drive `afready_i` low, send messages with probe ids 0x0B and 0x0C, poll
-  `BUFFER_EMPTY` to 0, write `TELEMETRY_TX_FLUSH`, release `afready_i` after `afvalid_o` rises, wait
+. Write `BUFFER_THRESHOLD` 1 and clear `INTR_STATUS`, drive `afready_i` low, send messages with
+  probe ids 0x0B and 0x0C eight idle cycles apart, poll `BUFFER_EMPTY` to 0 and `INTR_STATUS.BUFFER_THRESHOLD` to 1, clear
+  it, write `TELEMETRY_TX_FLUSH`, release `afready_i` after `afvalid_o` rises, wait
   for it to fall, read `CTRL` requiring 0, require `BUFFER_EMPTY` 0 and probe id 0x0B, pop once, print `STATUS` and the probe id, send a message with probe id 0x0C again and poll
   `BUFFER_EMPTY` to 0; with `afready_i` low write `TELEMETRY_RX_FLUSH`, poll `BUFFER_EMPTY` to 1, and require `afvalid_o` to
   have stayed 0 for 64 samples with no rise.
@@ -2923,8 +2979,8 @@ receiver flush.
 |`CHK-TELEMETRY-TX-FLUSH-THRESHOLD-KEPT` |`CTRL` reads 0x3100 while the request is pending and
   exactly 0x3000 after the hardware clears it
 |`CHK-TELEMETRY-FLUSH-PATH-SEPARATION` |A transmitter flush leaves both queued messages
-  (`BUFFER_EMPTY` 0, `TELEMETRY_PROBE_ID` 0x0B; the `STATUS` and probe id after one pop are printed
-  without comparing them) and a receiver flush empties the queue without a
+  (`BUFFER_EMPTY` 0 with `TELEMETRY_PROBE_ID` 0x0B, and after one pop `BUFFER_EMPTY` 0 with
+  `TELEMETRY_PROBE_ID` 0x0C) and a receiver flush empties the queue without a
   rise of `afvalid_o` over 64 samples
 |`CHK-NONVAC` |Ordered fence SETUP_DONE < READY_HIGH_DONE < LONG_HOLD_DONE < REWRITE_DONE <
   THRESHOLD_KEPT < PATHS_SEPARATED: step stamps S1 to S6 strictly increasing and the five checker
@@ -6962,7 +7018,8 @@ outside the range is OKAY with 0x0123_4567_89AB_CDEF, raises the read count by o
 `allow_ns` 1 entry and the 4-beat write refused after the `allow_burst` 0 entry does not select it
 are each DECERR with their sentinels kept, the write count held and no SYS_OUT AW or W valid
 |`CHK-OUT-DENY-FLOOD` |All forty denied writes are answered DECERR with their forty sentinels kept
-and the SYS_OUT write count unchanged; the peak of outstanding writes is printed and not compared
+and the SYS_OUT write count unchanged; the peak of outstanding writes (AW minus B handshakes) is
+at least 2
 |`CHK-OUT-DENY-ADMIT-SIMULTANEOUS` |The denied JTAG write at 0x0200_8800 is DECERR with its sentinel
 kept while the DMA job completes (`DONE_0` rises above its baseline within the poll bound) and the
 8-byte payload lands at 0x0200_A000
@@ -13187,9 +13244,281 @@ returning its own expected word in issue order, with no response lost or duplica
 `all`.
 
 '''''
+[[sec-412-smc_clk_relation_regxbar_slowest_periph_test]]
+===== 412 `smc_clk_relation_regxbar_slowest_periph_test`
 
-[[sec-412-smc_octs_clk_rate_test]]
-===== 412 `smc_octs_clk_rate_test`
+*Source Module*: `smc_clk_relation_regxbar_slowest_periph_test`
+
+*BFM / Model*: as `smc_clk_relation_regxbar_test`; the module fixes the clock cell;
+`+smc_cell=slowest_periph` in the testlist entry names the same cell.
+
+*Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at each single-axis clock
+relation of the run, in the slowest_periph cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 8 / 12
+/ 10 ns).
+
+*Test Coverage*:
+
+* The `smc_clk_relation_regxbar_test` procedure runs at the slowest_periph cell (`clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` = 8 / 12 / 10 ns), so a scheduled run reaches this cell; its checks are
+those of the `smc_clk_relation_regxbar_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_clk_relation_regxbar_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RELATION-BACKPRESSURE` |slowest_periph cell: the ten outstanding accesses complete OKAY
+within 50 us, the sampler sees eight AR, eight R and two B handshakes and no further R or B beat in
+the 256-cycle quiet window, and each read returns its own expected word in issue order with the
+issued ID.
+|`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
+reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
+words; the cell name and measured periods are printed.
+|`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
+SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
+cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
+each after its term.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-CLK-RELATION-BACKPRESSURE`, `CHK-CLK-RELATION-ROUNDTRIP`, `CHK-NONVAC`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-413-smc_clk_relation_regxbar_ref8_test]]
+===== 413 `smc_clk_relation_regxbar_ref8_test`
+
+*Source Module*: `smc_clk_relation_regxbar_ref8_test`
+
+*BFM / Model*: as `smc_clk_relation_regxbar_test`; the module fixes the clock cell; `+smc_cell=ref8`
+in the testlist entry names the same cell.
+
+*Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at each single-axis clock
+relation of the run, in the ref8 cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 8 / 1.25 / 5
+ns).
+
+*Test Coverage*:
+
+* The `smc_clk_relation_regxbar_test` procedure runs at the ref8 cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 8 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks are those of the
+`smc_clk_relation_regxbar_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_clk_relation_regxbar_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
+reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
+words; the cell name and measured periods are printed.
+|`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
+SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
+cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
+each after its term.
+|`CHK-REGXBAR-PERIODS` |periph3 and ref8 cells: the threshold reads 0xA5A5A after the write and
+0x1000 after the restore, as in the default cell; the measured periods are printed.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-CLK-RELATION-ROUNDTRIP`, `CHK-NONVAC`, `CHK-REGXBAR-PERIODS`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-414-smc_clk_relation_regxbar_periph3_test]]
+===== 414 `smc_clk_relation_regxbar_periph3_test`
+
+*Source Module*: `smc_clk_relation_regxbar_periph3_test`
+
+*BFM / Model*: as `smc_clk_relation_regxbar_test`; the module fixes the clock cell;
+`+smc_cell=periph3` in the testlist entry names the same cell.
+
+*Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at each single-axis clock
+relation of the run, in the periph3 cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 / 1.25 / 3
+ns).
+
+*Test Coverage*:
+
+* The `smc_clk_relation_regxbar_test` procedure runs at the periph3 cell (`clk_ref_i` / `clk_smc_i`
+/ `clk_periph_i` = 10 / 1.25 / 3 ns), so a scheduled run reaches this cell; its checks are those of
+the `smc_clk_relation_regxbar_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_clk_relation_regxbar_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
+reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
+words; the cell name and measured periods are printed.
+|`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
+SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
+cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
+each after its term.
+|`CHK-REGXBAR-PERIODS` |periph3 and ref8 cells: the threshold reads 0xA5A5A after the write and
+0x1000 after the restore, as in the default cell; the measured periods are printed.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-CLK-RELATION-ROUNDTRIP`, `CHK-NONVAC`, `CHK-REGXBAR-PERIODS`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-415-smc_clk_relation_regxbar_periph_slower_test]]
+===== 415 `smc_clk_relation_regxbar_periph_slower_test`
+
+*Source Module*: `smc_clk_relation_regxbar_periph_slower_test`
+
+*BFM / Model*: as `smc_clk_relation_regxbar_test`; the module fixes the clock cell;
+`+smc_cell=periph_slower` in the testlist entry names the same cell.
+
+*Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at each single-axis clock
+relation of the run, in the periph_slower cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 8 /
+1.25 / 10 ns).
+
+*Test Coverage*:
+
+* The `smc_clk_relation_regxbar_test` procedure runs at the periph_slower cell (`clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` = 8 / 1.25 / 10 ns), so a scheduled run reaches this cell; its checks
+are those of the `smc_clk_relation_regxbar_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_clk_relation_regxbar_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
+reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
+words; the cell name and measured periods are printed.
+|`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
+SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
+cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
+each after its term.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-CLK-RELATION-ROUNDTRIP`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their
+compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-416-smc_clk_relation_regxbar_smc_equal_test]]
+===== 416 `smc_clk_relation_regxbar_smc_equal_test`
+
+*Source Module*: `smc_clk_relation_regxbar_smc_equal_test`
+
+*BFM / Model*: as `smc_clk_relation_regxbar_test`; the module fixes the clock cell;
+`+smc_cell=smc_equal` in the testlist entry names the same cell.
+
+*Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at each single-axis clock
+relation of the run, in the smc_equal cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 / 10 /
+10 ns).
+
+*Test Coverage*:
+
+* The `smc_clk_relation_regxbar_test` procedure runs at the smc_equal cell (`clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` = 10 / 10 / 10 ns), so a scheduled run reaches this cell; its checks
+are those of the `smc_clk_relation_regxbar_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_clk_relation_regxbar_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
+reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
+words; the cell name and measured periods are printed.
+|`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
+SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
+cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
+each after its term.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-CLK-RELATION-ROUNDTRIP`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their
+compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-417-smc_clk_relation_regxbar_smc_slower_test]]
+===== 417 `smc_clk_relation_regxbar_smc_slower_test`
+
+*Source Module*: `smc_clk_relation_regxbar_smc_slower_test`
+
+*BFM / Model*: as `smc_clk_relation_regxbar_test`; the module fixes the clock cell;
+`+smc_cell=smc_slower` in the testlist entry names the same cell.
+
+*Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at each single-axis clock
+relation of the run, in the smc_slower cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 / 12 /
+8 ns).
+
+*Test Coverage*:
+
+* The `smc_clk_relation_regxbar_test` procedure runs at the smc_slower cell (`clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` = 10 / 12 / 8 ns), so a scheduled run reaches this cell; its checks are
+those of the `smc_clk_relation_regxbar_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_clk_relation_regxbar_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
+reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
+words; the cell name and measured periods are printed.
+|`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
+SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
+cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
+each after its term.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-CLK-RELATION-ROUNDTRIP`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their
+compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-418-smc_octs_clk_rate_test]]
+===== 418 `smc_octs_clk_rate_test`
 
 *Source Module*: `smc_octs_clk_rate_test`
 
@@ -13283,9 +13612,252 @@ period changed, the delta stays within the `clk_smc_i` interval). In every cell 
 in: `all`.
 
 '''''
+[[sec-419-smc_octs_clk_rate_periph3_test]]
+===== 419 `smc_octs_clk_rate_periph3_test`
 
-[[sec-413-smc_periph_cg_window_extent_test]]
-===== 413 `smc_periph_cg_window_extent_test`
+*Source Module*: `smc_octs_clk_rate_periph3_test`
+
+*BFM / Model*: as `smc_octs_clk_rate_test`; the module fixes the clock cell; `+smc_cell=periph3` in
+the testlist entry names the same cell.
+
+*Objective*: The OCTS counter advances at the clk_smc_i rate in every clock cell and restarts from
+its preset on a START after the preset is latched, in the periph3 cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1.25 / 3 ns).
+
+*Test Coverage*:
+
+* The `smc_octs_clk_rate_test` procedure runs at the periph3 cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1.25 / 3 ns), so a scheduled run reaches this cell; its checks are those of
+the `smc_octs_clk_rate_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_octs_clk_rate_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms FIRST_START_RUNNING, COUNT_PAIR_0, WINDOW_EDGES_COUNTED,
+COUNT_PAIR_1, CELL_REWINDOW, PRESET_WRITTEN, THIRD_START and RELOAD_SAMPLE occur in order with
+strictly increasing stamps, and the rate line prints after CELL_REWINDOW and before the reload line,
+which prints after RELOAD_SAMPLE.
+|`CHK-OCTS-RATE-OTHER-CLOCKS` |In this cell the `TIMER_COUNT` delta of each of the two windows lies
+within the `clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity, and the reference and
+peripheral edge counts of the window lie outside it; the periods are printed.
+|`CHK-OCTS-START-RELOAD` |After the third `TIMER_START` write the first count sample is at least the
+preset and at most the preset plus the `clk_smc_i` edges since the write plus the granularity,
+`STATUS.RUNNING` reads 1, and the following window delta lies within the `clk_smc_i` interval.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 32-read `RUNNING` poll,
+4000-edge window, 100 us input clock edge) and that expiry raises an assertion; the line is a
+record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-OCTS-RATE-OTHER-CLOCKS`, `CHK-OCTS-START-RELOAD`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-420-smc_octs_clk_rate_ref8_test]]
+===== 420 `smc_octs_clk_rate_ref8_test`
+
+*Source Module*: `smc_octs_clk_rate_ref8_test`
+
+*BFM / Model*: as `smc_octs_clk_rate_test`; the module fixes the clock cell; `+smc_cell=ref8` in the
+testlist entry names the same cell.
+
+*Objective*: The OCTS counter advances at the clk_smc_i rate in every clock cell and restarts from
+its preset on a START after the preset is latched, in the ref8 cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 8 / 1.25 / 5 ns).
+
+*Test Coverage*:
+
+* The `smc_octs_clk_rate_test` procedure runs at the ref8 cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 8 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks are those of the
+`smc_octs_clk_rate_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_octs_clk_rate_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms FIRST_START_RUNNING, COUNT_PAIR_0, WINDOW_EDGES_COUNTED,
+COUNT_PAIR_1, CELL_REWINDOW, PRESET_WRITTEN, THIRD_START and RELOAD_SAMPLE occur in order with
+strictly increasing stamps, and the rate line prints after CELL_REWINDOW and before the reload line,
+which prints after RELOAD_SAMPLE.
+|`CHK-OCTS-RATE-OTHER-CLOCKS` |In this cell the `TIMER_COUNT` delta of each of the two windows lies
+within the `clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity, and the reference and
+peripheral edge counts of the window lie outside it; the periods are printed.
+|`CHK-OCTS-START-RELOAD` |After the third `TIMER_START` write the first count sample is at least the
+preset and at most the preset plus the `clk_smc_i` edges since the write plus the granularity,
+`STATUS.RUNNING` reads 1, and the following window delta lies within the `clk_smc_i` interval.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 32-read `RUNNING` poll,
+4000-edge window, 100 us input clock edge) and that expiry raises an assertion; the line is a
+record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-OCTS-RATE-OTHER-CLOCKS`, `CHK-OCTS-START-RELOAD`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-421-smc_octs_clk_rate_smc_fast_test]]
+===== 421 `smc_octs_clk_rate_smc_fast_test`
+
+*Source Module*: `smc_octs_clk_rate_smc_fast_test`
+
+*BFM / Model*: as `smc_octs_clk_rate_test`; the module fixes the clock cell; `+smc_cell=smc_fast` in
+the testlist entry names the same cell.
+
+*Objective*: The OCTS counter advances at the clk_smc_i rate in every clock cell and restarts from
+its preset on a START after the preset is latched, in the smc_fast cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1 / 5 ns).
+
+*Test Coverage*:
+
+* The `smc_octs_clk_rate_test` procedure runs at the smc_fast cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1 / 5 ns), so a scheduled run reaches this cell; its checks are those of the
+`smc_octs_clk_rate_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_octs_clk_rate_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms FIRST_START_RUNNING, COUNT_PAIR_0, WINDOW_EDGES_COUNTED,
+COUNT_PAIR_1, CELL_REWINDOW, PRESET_WRITTEN, THIRD_START and RELOAD_SAMPLE occur in order with
+strictly increasing stamps, and the rate line prints after CELL_REWINDOW and before the reload line,
+which prints after RELOAD_SAMPLE.
+|`CHK-OCTS-RATE-SMC-PERIOD` |In this cell the `TIMER_COUNT` delta of each of the two windows lies
+within the `clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity; an input clock whose
+period equals the `clk_smc_i` period has its edge count printed, the others lie outside the
+interval; the periods are printed.
+|`CHK-OCTS-START-RELOAD` |After the third `TIMER_START` write the first count sample is at least the
+preset and at most the preset plus the `clk_smc_i` edges since the write plus the granularity,
+`STATUS.RUNNING` reads 1, and the following window delta lies within the `clk_smc_i` interval.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 32-read `RUNNING` poll,
+4000-edge window, 100 us input clock edge) and that expiry raises an assertion; the line is a
+record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-OCTS-RATE-SMC-PERIOD`, `CHK-OCTS-START-RELOAD`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-422-smc_octs_clk_rate_smc_equal_test]]
+===== 422 `smc_octs_clk_rate_smc_equal_test`
+
+*Source Module*: `smc_octs_clk_rate_smc_equal_test`
+
+*BFM / Model*: as `smc_octs_clk_rate_test`; the module fixes the clock cell; `+smc_cell=smc_equal`
+in the testlist entry names the same cell.
+
+*Objective*: The OCTS counter advances at the clk_smc_i rate in every clock cell and restarts from
+its preset on a START after the preset is latched, in the smc_equal cell (`clk_ref_i` / `clk_smc_i`
+/ `clk_periph_i` = 10 / 10 / 5 ns).
+
+*Test Coverage*:
+
+* The `smc_octs_clk_rate_test` procedure runs at the smc_equal cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 10 / 5 ns), so a scheduled run reaches this cell; its checks are those of the
+`smc_octs_clk_rate_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_octs_clk_rate_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms FIRST_START_RUNNING, COUNT_PAIR_0, WINDOW_EDGES_COUNTED,
+COUNT_PAIR_1, CELL_REWINDOW, PRESET_WRITTEN, THIRD_START and RELOAD_SAMPLE occur in order with
+strictly increasing stamps, and the rate line prints after CELL_REWINDOW and before the reload line,
+which prints after RELOAD_SAMPLE.
+|`CHK-OCTS-RATE-SMC-PERIOD` |In this cell the `TIMER_COUNT` delta of each of the two windows lies
+within the `clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity; an input clock whose
+period equals the `clk_smc_i` period has its edge count printed, the others lie outside the
+interval; the periods are printed.
+|`CHK-OCTS-START-RELOAD` |After the third `TIMER_START` write the first count sample is at least the
+preset and at most the preset plus the `clk_smc_i` edges since the write plus the granularity,
+`STATUS.RUNNING` reads 1, and the following window delta lies within the `clk_smc_i` interval.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 32-read `RUNNING` poll,
+4000-edge window, 100 us input clock edge) and that expiry raises an assertion; the line is a
+record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-OCTS-RATE-SMC-PERIOD`, `CHK-OCTS-START-RELOAD`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-423-smc_octs_clk_rate_smc_slower_test]]
+===== 423 `smc_octs_clk_rate_smc_slower_test`
+
+*Source Module*: `smc_octs_clk_rate_smc_slower_test`
+
+*BFM / Model*: as `smc_octs_clk_rate_test`; the module fixes the clock cell; `+smc_cell=smc_slower`
+in the testlist entry names the same cell.
+
+*Objective*: The OCTS counter advances at the clk_smc_i rate in every clock cell and restarts from
+its preset on a START after the preset is latched, in the smc_slower cell (`clk_ref_i` / `clk_smc_i`
+/ `clk_periph_i` = 10 / 12 / 5 ns).
+
+*Test Coverage*:
+
+* The `smc_octs_clk_rate_test` procedure runs at the smc_slower cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 12 / 5 ns), so a scheduled run reaches this cell; its checks are those of the
+`smc_octs_clk_rate_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_octs_clk_rate_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms FIRST_START_RUNNING, COUNT_PAIR_0, WINDOW_EDGES_COUNTED,
+COUNT_PAIR_1, CELL_REWINDOW, PRESET_WRITTEN, THIRD_START and RELOAD_SAMPLE occur in order with
+strictly increasing stamps, and the rate line prints after CELL_REWINDOW and before the reload line,
+which prints after RELOAD_SAMPLE.
+|`CHK-OCTS-RATE-SMC-PERIOD` |In this cell the `TIMER_COUNT` delta of each of the two windows lies
+within the `clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity; an input clock whose
+period equals the `clk_smc_i` period has its edge count printed, the others lie outside the
+interval; the periods are printed.
+|`CHK-OCTS-START-RELOAD` |After the third `TIMER_START` write the first count sample is at least the
+preset and at most the preset plus the `clk_smc_i` edges since the write plus the granularity,
+`STATUS.RUNNING` reads 1, and the following window delta lies within the `clk_smc_i` interval.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 32-read `RUNNING` poll,
+4000-edge window, 100 us input clock edge) and that expiry raises an assertion; the line is a
+record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-OCTS-RATE-SMC-PERIOD`, `CHK-OCTS-START-RELOAD`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-424-smc_periph_cg_window_extent_test]]
+===== 424 `smc_periph_cg_window_extent_test`
 
 *Source Module*: `smc_periph_cg_window_extent_test`
 
@@ -13369,8 +13941,8 @@ AVSBus pad activity. Enrolled in: `all`.
 
 '''''
 
-[[sec-414-smc_periph_floor_roundtrip_test]]
-===== 414 `smc_periph_floor_roundtrip_test`
+[[sec-425-smc_periph_floor_roundtrip_test]]
+===== 425 `smc_periph_floor_roundtrip_test`
 
 *Source Module*: `smc_periph_floor_roundtrip_test`
 
@@ -13431,9 +14003,95 @@ that expiry raises an assertion; the line is a record, not a compare.
 `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end; the checker is the same for the periph10,
 periph5 and periph3 cells. Enrolled in: `all`.
 '''''
+[[sec-426-smc_periph_floor_roundtrip_periph5_test]]
+===== 426 `smc_periph_floor_roundtrip_periph5_test`
 
-[[sec-415-smc_ref_reset_cycles_test]]
-===== 415 `smc_ref_reset_cycles_test`
+*Source Module*: `smc_periph_floor_roundtrip_periph5_test`
+
+*BFM / Model*: as `smc_periph_floor_roundtrip_test`; the module fixes the clock cell;
+`+smc_cell=periph5` in the testlist entry names the same cell.
+
+*Objective*: AVS_CFG_0 round-trips a written value through the AVSBus bridge at peripheral clock
+periods of 10, 5 and 3 ns, in the periph5 cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 /
+1.25 / 5 ns).
+
+*Test Coverage*:
+
+* The `smc_periph_floor_roundtrip_test` procedure runs at the periph5 cell (`clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` = 10 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks
+are those of the `smc_periph_floor_roundtrip_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_periph_floor_roundtrip_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms CELL_PERIODS_MEASURED, AVS_CFG_0_SAVED, AVS_CFG_0_WRITTEN,
+AVS_CFG_0_READ_BACK and AVS_CFG_0_RESTORED occur in order with strictly increasing stamps and the
+checker line prints after the restore.
+|`CHK-PERIPH-FLOOR-ROUNDTRIP` |In the run's peripheral cell (periods measured as the cell's)
+`AVS_CFG_0` reads back the written word with `MAX_RETRIES` 0x2A and `RESYNC_INTERVAL` equal to its
+pre-write value, every response OKAY, and the restore write reads back the saved word.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 100 us input clock edge) and
+that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-PERIPH-FLOOR-ROUNDTRIP`, `CHK-TIMEOUT-PATHS` hold after their
+compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-427-smc_periph_floor_roundtrip_periph3_test]]
+===== 427 `smc_periph_floor_roundtrip_periph3_test`
+
+*Source Module*: `smc_periph_floor_roundtrip_periph3_test`
+
+*BFM / Model*: as `smc_periph_floor_roundtrip_test`; the module fixes the clock cell;
+`+smc_cell=periph3` in the testlist entry names the same cell.
+
+*Objective*: AVS_CFG_0 round-trips a written value through the AVSBus bridge at peripheral clock
+periods of 10, 5 and 3 ns, in the periph3 cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 /
+1.25 / 3 ns).
+
+*Test Coverage*:
+
+* The `smc_periph_floor_roundtrip_test` procedure runs at the periph3 cell (`clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` = 10 / 1.25 / 3 ns), so a scheduled run reaches this cell; its checks
+are those of the `smc_periph_floor_roundtrip_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_periph_floor_roundtrip_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms CELL_PERIODS_MEASURED, AVS_CFG_0_SAVED, AVS_CFG_0_WRITTEN,
+AVS_CFG_0_READ_BACK and AVS_CFG_0_RESTORED occur in order with strictly increasing stamps and the
+checker line prints after the restore.
+|`CHK-PERIPH-FLOOR-ROUNDTRIP` |In the run's peripheral cell (periods measured as the cell's)
+`AVS_CFG_0` reads back the written word with `MAX_RETRIES` 0x2A and `RESYNC_INTERVAL` equal to its
+pre-write value, every response OKAY, and the restore write reads back the saved word.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 100 us input clock edge) and
+that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-PERIPH-FLOOR-ROUNDTRIP`, `CHK-TIMEOUT-PATHS` hold after their
+compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-428-smc_ref_reset_cycles_test]]
+===== 428 `smc_ref_reset_cycles_test`
 
 *Source Module*: `smc_ref_reset_cycles_test`
 
@@ -13509,6 +14167,53 @@ between the ref10 and ref4 runs is not compared inside one run; each run compare
 conditions above. Enrolled in: `all`.
 
 '''''
+[[sec-429-smc_ref_reset_cycles_ref4_test]]
+===== 429 `smc_ref_reset_cycles_ref4_test`
+
+*Source Module*: `smc_ref_reset_cycles_ref4_test`
+
+*BFM / Model*: as `smc_ref_reset_cycles_test`; the module fixes the clock cell; `+smc_cell=ref4` in
+the testlist entry names the same cell.
+
+*Objective*: The cold-reset release hold and assertion de-glitch are counted in clk_ref_i cycles at
+two reference periods, in the ref4 cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 4 / 1.25 / 5
+ns).
+
+*Test Coverage*:
+
+* The `smc_ref_reset_cycles_test` procedure runs at the ref4 cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 4 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks are those of the
+`smc_ref_reset_cycles_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_ref_reset_cycles_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms BRINGUP_DONE, COLD_LOW_64, RELEASE_COUNTED, GLITCH_31_IGNORED,
+PULSE_32_ASSERTED and CHAIN_RELEASED occur in order with strictly increasing stamps and the two
+checker lines print in order, each after its step.
+|`CHK-REF-RESET-DEGLITCH` |A 31-cycle low pulse on `rst_cold_ni` leaves `rst_primary_ref_clk_no`
+high at every sample and a 32-cycle pulse drives it to 0; the cycle count of the assertion is
+printed without a compare, the specification not stating the value.
+|`CHK-REF-RESET-RELEASE-CYCLES` |The release-to-high count in `clk_ref_i` cycles is at least 255
+after the 64-cycle cold-reset low, and `rst_primary_ref_clk_no` still reads 1 after the reset chain
+release; the exact count is printed without a compare, the specification not stating the value.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (600 `clk_ref_i` cycles for the release count, the
+assertion count and each chain release, and the glitch-hold sample count) and that expiry raises an
+assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-REF-RESET-DEGLITCH`, `CHK-REF-RESET-RELEASE-CYCLES`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
 
 
 
@@ -14067,8 +14772,8 @@ Drive `smc_occp_sanity_secure_error_test_seq`. Each checker below is a named com
 *Pass Criteria*: `CHK-OCCP-SECURE-ERROR-RECOVERY` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-416-smc_beu_csr_access_test]]
-===== 416 `smc_beu_csr_access_test`
+[[sec-430-smc_beu_csr_access_test]]
+===== 430 `smc_beu_csr_access_test`
 
 *Source Module*: `smc_beu_csr_access_test`
 
@@ -14167,8 +14872,8 @@ overlap of at least two outstanding accesses, DECERR after each group, `REGION_S
 
 '''''
 
-[[sec-417-smc_beu_register_test]]
-===== 417 `smc_beu_register_test`
+[[sec-431-smc_beu_register_test]]
+===== 431 `smc_beu_register_test`
 
 *Source Module*: `smc_beu_register_test`
 
@@ -14250,8 +14955,8 @@ PHYS_ADDR reset reads are recorded without comparison.
 
 '''''
 
-[[sec-418-smc_clint_register_test]]
-===== 418 `smc_clint_register_test`
+[[sec-432-smc_clint_register_test]]
+===== 432 `smc_clint_register_test`
 
 *Source Module*: `smc_clint_register_test`
 
@@ -14330,8 +15035,8 @@ reflected-offset figures are recorded without comparison.
 
 '''''
 
-[[sec-419-smc_cpu_boot_regs_read_test]]
-===== 419 `smc_cpu_boot_regs_read_test`
+[[sec-433-smc_cpu_boot_regs_read_test]]
+===== 433 `smc_cpu_boot_regs_read_test`
 
 *Source Module*: `smc_cpu_boot_regs_read_test`
 
@@ -14418,8 +15123,8 @@ response other than OKAY or EXOKAY, the burst data are recorded without comparis
 
 '''''
 
-[[sec-420-smc_cpu_boot_release_sequence_test]]
-===== 420 `smc_cpu_boot_release_sequence_test`
+[[sec-434-smc_cpu_boot_release_sequence_test]]
+===== 434 `smc_cpu_boot_release_sequence_test`
 
 *Source Module*: `smc_cpu_boot_release_sequence_test`
 
@@ -14518,8 +15223,8 @@ the isolate delay are recorded without comparison. The run requires `+smc_hold_e
 
 '''''
 
-[[sec-421-smc_cpu_ctrl_access_rules_test]]
-===== 421 `smc_cpu_ctrl_access_rules_test`
+[[sec-435-smc_cpu_ctrl_access_rules_test]]
+===== 435 `smc_cpu_ctrl_access_rules_test`
 
 *Source Module*: `smc_cpu_ctrl_access_rules_test`
 
@@ -14595,8 +15300,8 @@ read-back and the AxPROT responses are recorded without comparison.
 
 '''''
 
-[[sec-422-smc_cpu_ctrl_dummy_rom_test]]
-===== 422 `smc_cpu_ctrl_dummy_rom_test`
+[[sec-436-smc_cpu_ctrl_dummy_rom_test]]
+===== 436 `smc_cpu_ctrl_dummy_rom_test`
 
 *Source Module*: `smc_cpu_ctrl_dummy_rom_test`
 
@@ -14650,8 +15355,8 @@ restored, and all accesses answered OKAY.
 
 '''''
 
-[[sec-423-smc_cpu_ctrl_mutex_all_test]]
-===== 423 `smc_cpu_ctrl_mutex_all_test`
+[[sec-437-smc_cpu_ctrl_mutex_all_test]]
+===== 437 `smc_cpu_ctrl_mutex_all_test`
 
 *Source Module*: `smc_cpu_ctrl_mutex_all_test`
 
@@ -14721,8 +15426,8 @@ grouped and stalled reads keep their order, and every mutex ends free.
 
 '''''
 
-[[sec-424-smc_cpu_ctrl_scratch_all_test]]
-===== 424 `smc_cpu_ctrl_scratch_all_test`
+[[sec-438-smc_cpu_ctrl_scratch_all_test]]
+===== 438 `smc_cpu_ctrl_scratch_all_test`
 
 *Source Module*: `smc_cpu_ctrl_scratch_all_test`
 
@@ -14780,8 +15485,8 @@ patterns read back in both orders, only the written entry changes during the wal
 patterns are exact and every entry is restored.
 '''''
 
-[[sec-425-smc_cpu_ctrl_sema_test]]
-===== 425 `smc_cpu_ctrl_sema_test`
+[[sec-439-smc_cpu_ctrl_sema_test]]
+===== 439 `smc_cpu_ctrl_sema_test`
 
 *Source Module*: `smc_cpu_ctrl_sema_test`
 
@@ -14855,8 +15560,8 @@ over-maximum and upper-bit results are recorded without comparison.
 
 '''''
 
-[[sec-426-smc_cpu_ctrl_wb_pc_test]]
-===== 426 `smc_cpu_ctrl_wb_pc_test`
+[[sec-440-smc_cpu_ctrl_wb_pc_test]]
+===== 440 `smc_cpu_ctrl_wb_pc_test`
 
 *Source Module*: `smc_cpu_ctrl_wb_pc_test`
 
@@ -14906,8 +15611,8 @@ recorded without comparison.
 
 '''''
 
-[[sec-427-smc_cpu_ctrl_wdt_regs_test]]
-===== 427 `smc_cpu_ctrl_wdt_regs_test`
+[[sec-441-smc_cpu_ctrl_wdt_regs_test]]
+===== 441 `smc_cpu_ctrl_wdt_regs_test`
 
 *Source Module*: `smc_cpu_ctrl_wdt_regs_test`
 
@@ -14964,8 +15669,8 @@ writes. The immediate pulse read-back and the TEST_CTRL value are recorded witho
 
 '''''
 
-[[sec-428-smc_ext_window_aperture_test]]
-===== 428 `smc_ext_window_aperture_test`
+[[sec-442-smc_ext_window_aperture_test]]
+===== 442 `smc_ext_window_aperture_test`
 
 *Source Module*: `smc_ext_window_aperture_test`
 
@@ -15053,8 +15758,8 @@ terminator response and data are recorded without comparison.
 
 '''''
 
-[[sec-429-smc_flr_isolation_sources_test]]
-===== 429 `smc_flr_isolation_sources_test`
+[[sec-443-smc_flr_isolation_sources_test]]
+===== 443 `smc_flr_isolation_sources_test`
 
 *Source Module*: `smc_flr_isolation_sources_test`
 
@@ -15149,8 +15854,8 @@ without comparison.
 
 '''''
 
-[[sec-430-smc_plic_register_test]]
-===== 430 `smc_plic_register_test`
+[[sec-444-smc_plic_register_test]]
+===== 444 `smc_plic_register_test`
 
 *Source Module*: `smc_plic_register_test`
 
@@ -15235,8 +15940,8 @@ PRIORITY and THRESHOLD and the pending content are recorded without comparison.
 
 '''''
 
-[[sec-431-smc_spm_aperture_region_size_test]]
-===== 431 `smc_spm_aperture_region_size_test`
+[[sec-445-smc_spm_aperture_region_size_test]]
+===== 445 `smc_spm_aperture_region_size_test`
 
 *Source Module*: `smc_spm_aperture_region_size_test`
 
@@ -16300,8 +17005,8 @@ Drive `smc_dfd_trace_writeout_phase_test_seq`. Each checker below is a named com
 *Pass Criteria*: `CHK-DST-PHASE-ACTIONS`, `CHK-DST-PHASE-FLUSH`, `CHK-DST-PHASE-WRITEOUT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-432-smc_dfd_csr_field_access_test]]
-===== 432 `smc_dfd_csr_field_access_test`
+[[sec-446-smc_dfd_csr_field_access_test]]
+===== 446 `smc_dfd_csr_field_access_test`
 
 *Source Module*: `smc_dfd_csr_field_access_test`
 
@@ -16396,8 +17101,8 @@ sequence assert holds. Enrolled in: `all`.
 
 '''''
 
-[[sec-433-smc_dfx_aperture_extent_test]]
-===== 433 `smc_dfx_aperture_extent_test`
+[[sec-447-smc_dfx_aperture_extent_test]]
+===== 447 `smc_dfx_aperture_extent_test`
 
 *Source Module*: `smc_dfx_aperture_extent_test`
 
@@ -16486,8 +17191,8 @@ compares OKAY, 0x0 (`memory_map.adoc`); `CHK-NONVAC` and
 
 '''''
 
-[[sec-434-smc_dfx_debug_bus_mux_storage_test]]
-===== 434 `smc_dfx_debug_bus_mux_storage_test`
+[[sec-448-smc_dfx_debug_bus_mux_storage_test]]
+===== 448 `smc_dfx_debug_bus_mux_storage_test`
 
 *Source Module*: `smc_dfx_debug_bus_mux_storage_test`
 
@@ -16566,8 +17271,8 @@ on expiry with the last observed access
 
 '''''
 
-[[sec-435-smc_dfx_debug_ctrl_noeffect_gate_test]]
-===== 435 `smc_dfx_debug_ctrl_noeffect_gate_test`
+[[sec-449-smc_dfx_debug_ctrl_noeffect_gate_test]]
+===== 449 `smc_dfx_debug_ctrl_noeffect_gate_test`
 
 *Source Module*: `smc_dfx_debug_ctrl_noeffect_gate_test`
 
@@ -16664,8 +17369,8 @@ measured leg; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence asser
 
 '''''
 
-[[sec-436-smc_dfx_debug_ctrl_storage_test]]
-===== 436 `smc_dfx_debug_ctrl_storage_test`
+[[sec-450-smc_dfx_debug_ctrl_storage_test]]
+===== 450 `smc_dfx_debug_ctrl_storage_test`
 
 *Source Module*: `smc_dfx_debug_ctrl_storage_test`
 
@@ -16742,8 +17447,8 @@ once its accesses completed, the readbacks printed (the specification does not s
 
 '''''
 
-[[sec-437-smc_dfx_status_smu_pulse_reset_test]]
-===== 437 `smc_dfx_status_smu_pulse_reset_test`
+[[sec-451-smc_dfx_status_smu_pulse_reset_test]]
+===== 451 `smc_dfx_status_smu_pulse_reset_test`
 
 *Source Module*: `smc_dfx_status_smu_pulse_reset_test`
 
@@ -16859,8 +17564,8 @@ holds. Enrolled in: `all`.
 
 '''''
 
-[[sec-438-smc_jtag_dm_sbcs_haltsum_test]]
-===== 438 `smc_jtag_dm_sbcs_haltsum_test`
+[[sec-452-smc_jtag_dm_sbcs_haltsum_test]]
+===== 452 `smc_jtag_dm_sbcs_haltsum_test`
 
 *Source Module*: `smc_jtag_dm_sbcs_haltsum_test`
 
@@ -17658,8 +18363,8 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 *Pass Criteria*: `CHK-EFUSE-IMG-IMAGE`, `CHK-EFUSE-IMG-LOCKS-SET-ONLY`, `CHK-EFUSE-IMG-RESENSE`, `CHK-EFUSE-IMG-SCOREBOARD`, `CHK-EFUSE-IMG-SENSE`, `CHK-EFUSE-IMG-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-439-smc_efuse_bank_ctrl_window_test]]
-===== 439 `smc_efuse_bank_ctrl_window_test`
+[[sec-453-smc_efuse_bank_ctrl_window_test]]
+===== 453 `smc_efuse_bank_ctrl_window_test`
 
 *Source Module*: `smc_efuse_bank_ctrl_window_test`
 
@@ -17755,8 +18460,8 @@ inside its bound. The re-sense delay is recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-440-smc_efuse_fuse_reset_gate_test]]
-===== 440 `smc_efuse_fuse_reset_gate_test`
+[[sec-454-smc_efuse_fuse_reset_gate_test]]
+===== 454 `smc_efuse_fuse_reset_gate_test`
 
 *Source Module*: `smc_efuse_fuse_reset_gate_test`
 
@@ -17854,8 +18559,8 @@ only. Enrolled in: `all`.
 
 '''''
 
-[[sec-441-smc_efuse_map_concurrency_test]]
-===== 441 `smc_efuse_map_concurrency_test`
+[[sec-455-smc_efuse_map_concurrency_test]]
+===== 455 `smc_efuse_map_concurrency_test`
 
 *Source Module*: `smc_efuse_map_concurrency_test`
 
@@ -17947,8 +18652,8 @@ the accepted depth are recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-442-smc_efuse_map_layout_decode_test]]
-===== 442 `smc_efuse_map_layout_decode_test`
+[[sec-456-smc_efuse_map_layout_decode_test]]
+===== 456 `smc_efuse_map_layout_decode_test`
 
 *Source Module*: `smc_efuse_map_layout_decode_test`
 
@@ -18052,8 +18757,8 @@ the past-extent range are not asserted. Enrolled in: `all`.
 
 '''''
 
-[[sec-443-smc_efuse_map_lock_field_enforce_test]]
-===== 443 `smc_efuse_map_lock_field_enforce_test`
+[[sec-457-smc_efuse_map_lock_field_enforce_test]]
+===== 457 `smc_efuse_map_lock_field_enforce_test`
 
 *Source Module*: `smc_efuse_map_lock_field_enforce_test`
 
@@ -18149,8 +18854,8 @@ not asserted. Enrolled in: `all`.
 
 '''''
 
-[[sec-444-smc_efuse_map_locks_register_test]]
-===== 444 `smc_efuse_map_locks_register_test`
+[[sec-458-smc_efuse_map_locks_register_test]]
+===== 458 `smc_efuse_map_locks_register_test`
 
 *Source Module*: `smc_efuse_map_locks_register_test`
 
@@ -18248,8 +18953,8 @@ asserted. Enrolled in: `all`.
 
 '''''
 
-[[sec-445-smc_efuse_map_reset_persistence_test]]
-===== 445 `smc_efuse_map_reset_persistence_test`
+[[sec-459-smc_efuse_map_reset_persistence_test]]
+===== 459 `smc_efuse_map_reset_persistence_test`
 
 *Source Module*: `smc_efuse_map_reset_persistence_test`
 
@@ -18358,8 +19063,8 @@ outcome are recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-446-smc_efuse_map_sense_image_test]]
-===== 446 `smc_efuse_map_sense_image_test`
+[[sec-460-smc_efuse_map_sense_image_test]]
+===== 460 `smc_efuse_map_sense_image_test`
 
 *Source Module*: `smc_efuse_map_sense_image_test`
 
@@ -18448,9 +19153,259 @@ read and the `shadow_regs` port equal the image, and sense done rises once and n
 Enrolled in: `all`.
 
 '''''
+[[sec-461-smc_efuse_map_sense_image_unique_test]]
+===== 461 `smc_efuse_map_sense_image_unique_test`
 
-[[sec-447-smc_efuse_map_sep_write_test]]
-===== 447 `smc_efuse_map_sep_write_test`
+*Source Module*: `smc_efuse_map_sense_image_unique_test`
+
+*BFM / Model*: as `smc_efuse_map_sense_image_test`; the module fixes the image kind;
+`+smc_efuse_image=unique` and `+smc_efuse_hex` in the testlist entry name the image and its file.
+
+*Objective*: Sensed image words match the loaded file on every path, in the unique eFuse image.
+
+*Test Coverage*:
+
+* The `smc_efuse_map_sense_image_test` procedure runs at the unique eFuse image, so a scheduled run
+reaches this cell; its checks are those of the `smc_efuse_map_sense_image_test` card with this
+cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_efuse_map_sense_image_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
+reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
+release.
+|`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
+edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+captured on that rise equal the image.
+|`CHK-EMAP-SENSE-UNIQUE` |For the unique image every SEP_IN read of a non-read-locked word equals
+the image word with words 0 and 255 included, and all 256 probe words equal the image again after
+the sweep.
+|`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
+that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
+without a compare.
+|`CHK-NONVAC` |The ordered fence (image name, first done, sense image, done once, shadow output)
+with increasing time stamps and each checker line printed after its step completed.
+|`CHK-TIMEOUT-PATHS` |Every reset wait, sense wait, window wait and SEP_IN read is bounded and fails
+with an assertion on expiry; the bounds and last samples are logged.
+|===
+
+*Pass Criteria*: `CHK-EMAP-SENSE-DONE-ONCE`, `CHK-EMAP-SENSE-FIRST-DONE`, `CHK-EMAP-SENSE-UNIQUE`,
+`CHK-EMAP-SHADOW-OUT-SENSED`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled
+in: `all`, `hosted`.
+
+'''''
+
+[[sec-462-smc_efuse_map_sense_image_random_test]]
+===== 462 `smc_efuse_map_sense_image_random_test`
+
+*Source Module*: `smc_efuse_map_sense_image_random_test`
+
+*BFM / Model*: as `smc_efuse_map_sense_image_test`; the module fixes the image kind;
+`+smc_efuse_image=random` and `+smc_efuse_hex` in the testlist entry name the image and its file.
+
+*Objective*: Sensed image words match the loaded file on every path, in the random eFuse image.
+
+*Test Coverage*:
+
+* The `smc_efuse_map_sense_image_test` procedure runs at the random eFuse image, so a scheduled run
+reaches this cell; its checks are those of the `smc_efuse_map_sense_image_test` card with this
+cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_efuse_map_sense_image_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
+reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
+release.
+|`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
+edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+captured on that rise equal the image.
+|`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
+image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+sweep.
+|`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
+that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
+without a compare.
+|`CHK-NONVAC` |The ordered fence (image name, first done, sense image, done once, shadow output)
+with increasing time stamps and each checker line printed after its step completed.
+|`CHK-TIMEOUT-PATHS` |Every reset wait, sense wait, window wait and SEP_IN read is bounded and fails
+with an assertion on expiry; the bounds and last samples are logged.
+|===
+
+*Pass Criteria*: `CHK-EMAP-SENSE-DONE-ONCE`, `CHK-EMAP-SENSE-FIRST-DONE`, `CHK-EMAP-SENSE-PATTERNS`,
+`CHK-EMAP-SHADOW-OUT-SENSED`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled
+in: `all`, `hosted`.
+
+'''''
+
+[[sec-463-smc_efuse_map_sense_image_walking_test]]
+===== 463 `smc_efuse_map_sense_image_walking_test`
+
+*Source Module*: `smc_efuse_map_sense_image_walking_test`
+
+*BFM / Model*: as `smc_efuse_map_sense_image_test`; the module fixes the image kind;
+`+smc_efuse_image=walking` and `+smc_efuse_hex` in the testlist entry name the image and its file.
+
+*Objective*: Sensed image words match the loaded file on every path, in the walking eFuse image.
+
+*Test Coverage*:
+
+* The `smc_efuse_map_sense_image_test` procedure runs at the walking eFuse image, so a scheduled run
+reaches this cell; its checks are those of the `smc_efuse_map_sense_image_test` card with this
+cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_efuse_map_sense_image_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
+reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
+release.
+|`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
+edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+captured on that rise equal the image.
+|`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
+image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+sweep.
+|`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
+that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
+without a compare.
+|`CHK-NONVAC` |The ordered fence (image name, first done, sense image, done once, shadow output)
+with increasing time stamps and each checker line printed after its step completed.
+|`CHK-TIMEOUT-PATHS` |Every reset wait, sense wait, window wait and SEP_IN read is bounded and fails
+with an assertion on expiry; the bounds and last samples are logged.
+|===
+
+*Pass Criteria*: `CHK-EMAP-SENSE-DONE-ONCE`, `CHK-EMAP-SENSE-FIRST-DONE`, `CHK-EMAP-SENSE-PATTERNS`,
+`CHK-EMAP-SHADOW-OUT-SENSED`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled
+in: `all`, `hosted`.
+
+'''''
+
+[[sec-464-smc_efuse_map_sense_image_ones_test]]
+===== 464 `smc_efuse_map_sense_image_ones_test`
+
+*Source Module*: `smc_efuse_map_sense_image_ones_test`
+
+*BFM / Model*: as `smc_efuse_map_sense_image_test`; the module fixes the image kind;
+`+smc_efuse_image=ones` and `+smc_efuse_hex` in the testlist entry name the image and its file.
+
+*Objective*: Sensed image words match the loaded file on every path, in the ones eFuse image.
+
+*Test Coverage*:
+
+* The `smc_efuse_map_sense_image_test` procedure runs at the ones eFuse image, so a scheduled run
+reaches this cell; its checks are those of the `smc_efuse_map_sense_image_test` card with this
+cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_efuse_map_sense_image_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
+reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
+release.
+|`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
+edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+captured on that rise equal the image.
+|`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
+image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+sweep.
+|`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
+that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
+without a compare.
+|`CHK-NONVAC` |The ordered fence (image name, first done, sense image, done once, shadow output)
+with increasing time stamps and each checker line printed after its step completed.
+|`CHK-TIMEOUT-PATHS` |Every reset wait, sense wait, window wait and SEP_IN read is bounded and fails
+with an assertion on expiry; the bounds and last samples are logged.
+|===
+
+*Pass Criteria*: `CHK-EMAP-SENSE-DONE-ONCE`, `CHK-EMAP-SENSE-FIRST-DONE`, `CHK-EMAP-SENSE-PATTERNS`,
+`CHK-EMAP-SHADOW-OUT-SENSED`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled
+in: `all`, `hosted`.
+
+'''''
+
+[[sec-465-smc_efuse_map_sense_image_zero_test]]
+===== 465 `smc_efuse_map_sense_image_zero_test`
+
+*Source Module*: `smc_efuse_map_sense_image_zero_test`
+
+*BFM / Model*: as `smc_efuse_map_sense_image_test`; the module fixes the image kind;
+`+smc_efuse_image=zero` and `+smc_efuse_hex` in the testlist entry name the image and its file.
+
+*Objective*: Sensed image words match the loaded file on every path, in the zero eFuse image.
+
+*Test Coverage*:
+
+* The `smc_efuse_map_sense_image_test` procedure runs at the zero eFuse image, so a scheduled run
+reaches this cell; its checks are those of the `smc_efuse_map_sense_image_test` card with this
+cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_efuse_map_sense_image_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
+reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
+release.
+|`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
+edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+captured on that rise equal the image.
+|`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
+image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+sweep.
+|`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
+that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
+without a compare.
+|`CHK-NONVAC` |The ordered fence (image name, first done, sense image, done once, shadow output)
+with increasing time stamps and each checker line printed after its step completed.
+|`CHK-TIMEOUT-PATHS` |Every reset wait, sense wait, window wait and SEP_IN read is bounded and fails
+with an assertion on expiry; the bounds and last samples are logged.
+|===
+
+*Pass Criteria*: `CHK-EMAP-SENSE-DONE-ONCE`, `CHK-EMAP-SENSE-FIRST-DONE`, `CHK-EMAP-SENSE-PATTERNS`,
+`CHK-EMAP-SHADOW-OUT-SENSED`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled
+in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-466-smc_efuse_map_sep_write_test]]
+===== 466 `smc_efuse_map_sep_write_test`
 
 *Source Module*: `smc_efuse_map_sep_write_test`
 
@@ -18544,8 +19499,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-448-smc_efuse_sense_sequence_test]]
-===== 448 `smc_efuse_sense_sequence_test`
+[[sec-467-smc_efuse_sense_sequence_test]]
+===== 467 `smc_efuse_sense_sequence_test`
 
 *Source Module*: `smc_efuse_sense_sequence_test`
 
@@ -19079,8 +20034,8 @@ Drive `smc_gpio_pad_input_readback_test_seq` on the SEP_IN AXI sequencer. Per wr
 
 '''''
 
-[[sec-449-smc_gpio_data_ctrl_enable_fields_test]]
-===== 449 `smc_gpio_data_ctrl_enable_fields_test`
+[[sec-468-smc_gpio_data_ctrl_enable_fields_test]]
+===== 468 `smc_gpio_data_ctrl_enable_fields_test`
 
 *Source Module*: `smc_gpio_data_ctrl_enable_fields_test`
 
@@ -19143,8 +20098,8 @@ values in both write orders. Enrolled in: `all`.
 
 '''''
 
-[[sec-450-smc_gpio_data_ctrl_ro_status_test]]
-===== 450 `smc_gpio_data_ctrl_ro_status_test`
+[[sec-469-smc_gpio_data_ctrl_ro_status_test]]
+===== 469 `smc_gpio_data_ctrl_ro_status_test`
 
 *Source Module*: `smc_gpio_data_ctrl_ro_status_test`
 
@@ -19227,8 +20182,8 @@ recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-451-smc_gpio_data_ctrl_rw_values_test]]
-===== 451 `smc_gpio_data_ctrl_rw_values_test`
+[[sec-470-smc_gpio_data_ctrl_rw_values_test]]
+===== 470 `smc_gpio_data_ctrl_rw_values_test`
 
 *Source Module*: `smc_gpio_data_ctrl_rw_values_test`
 
@@ -19304,8 +20259,8 @@ register returns to its reset value after each phase. Enrolled in: `all`.
 
 '''''
 
-[[sec-452-smc_gpio_ext_extra_decode_test]]
-===== 452 `smc_gpio_ext_extra_decode_test`
+[[sec-471-smc_gpio_ext_extra_decode_test]]
+===== 471 `smc_gpio_ext_extra_decode_test`
 
 *Source Module*: `smc_gpio_ext_extra_decode_test`
 
@@ -19384,8 +20339,8 @@ read data returned with DECERR is recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-453-smc_gpio_filter_reg_fields_test]]
-===== 453 `smc_gpio_filter_reg_fields_test`
+[[sec-472-smc_gpio_filter_reg_fields_test]]
+===== 472 `smc_gpio_filter_reg_fields_test`
 
 *Source Module*: `smc_gpio_filter_reg_fields_test`
 
@@ -19450,8 +20405,8 @@ set and clear of the two enable bits reads back exactly, and the register ends a
 
 '''''
 
-[[sec-454-smc_gpio_intf_decode_map_test]]
-===== 454 `smc_gpio_intf_decode_map_test`
+[[sec-473-smc_gpio_intf_decode_map_test]]
+===== 473 `smc_gpio_intf_decode_map_test`
 
 *Source Module*: `smc_gpio_intf_decode_map_test`
 
@@ -19535,8 +20490,8 @@ addresses. Enrolled in: `all`.
 
 '''''
 
-[[sec-455-smc_gpio_intf_reset_writeback_test]]
-===== 455 `smc_gpio_intf_reset_writeback_test`
+[[sec-474-smc_gpio_intf_reset_writeback_test]]
+===== 474 `smc_gpio_intf_reset_writeback_test`
 
 *Source Module*: `smc_gpio_intf_reset_writeback_test`
 
@@ -19590,8 +20545,8 @@ registers after the write-back. Enrolled in: `all`.
 
 '''''
 
-[[sec-456-smc_gpio_irq_or_test]]
-===== 456 `smc_gpio_irq_or_test`
+[[sec-475-smc_gpio_irq_or_test]]
+===== 475 `smc_gpio_irq_or_test`
 
 *Source Module*: `smc_gpio_irq_or_test`
 
@@ -19666,9 +20621,9 @@ within 64 cycles, holds it for 16 cycles with `[28]` low, and releases it when t
 |`CHK-OR-HOLD-UNTIL-ALL-CLEAR` |Each line stays 1 while any contributing wrap is asserted and drops
 within 64 cycles only after the last contributor clears, with the other line unaffected, in the
 clearing order 4, 32, 31, 60.
-|`CHK-OR-IDLE` |With every wrap's `interrupt_enable` clear and the pads low, both lines and the raw
-vector read 0 on all 64 cycles, after positive controls on wraps 4 and 60 set and released the
-lines.
+|`CHK-OR-IDLE` |With every wrap's `interrupt_enable` clear, a pad driven high on wrap 4 and then
+on wrap 60 leaves its line 0 for 32 cycles each, and with the pads low both lines and the raw vector
+read 0 on all 64 cycles, after positive controls on wraps 4 and 60 set and released the lines.
 |`CHK-OR-EDGE-PULSE` |A rising-edge interrupt on wrap 4 and on wrap 60 pulses the OR line exactly
 once with a width equal to the raw bit's width, never wider, and the line is 0 afterwards; the
 width in cycles is printed without comparing it to an absolute value.
@@ -19682,8 +20637,8 @@ within the 64-cycle bounds. The absolute edge pulse width is recorded only. Enro
 
 '''''
 
-[[sec-457-smc_gpio_rst_primary_test]]
-===== 457 `smc_gpio_rst_primary_test`
+[[sec-476-smc_gpio_rst_primary_test]]
+===== 476 `smc_gpio_rst_primary_test`
 
 *Source Module*: `smc_gpio_rst_primary_test`
 
@@ -19701,7 +20656,8 @@ instance 60; no firmware image
 *Test Coverage*:
 
 * The interface and control registers are reset asynchronously by `rst_primary_ni`, so a cold reset
-  returns `DATA_CTRL` (including `interrupt_enable`) and `DATA_CTRL_ENABLE` to 0 and a level
+  returns `DATA_CTRL` (including `interrupt_enable`) and `DATA_CTRL_ENABLE` (written 0x31 and read
+  back before the reset) to 0 and a level
   interrupt that was asserted drops and stays low with the pad still high and the register not
   re-programmed (`hw/ip/gpio/doc/architecture.adoc`, Reset and Strap Capture;
   `hw/ip/gpio/regs/gpio_intf.rdl`, reg `DATA_CTRL`, `interrupt_enable` reset 0). The reset is driven
@@ -20084,8 +21040,8 @@ Drive `smc_temp_interrupt_test_seq`. Each checker below is a named compare the D
 
 '''''
 
-[[sec-458-smc_ext_irq_hold_release_test]]
-===== 458 `smc_ext_irq_hold_release_test`
+[[sec-477-smc_ext_irq_hold_release_test]]
+===== 477 `smc_ext_irq_hold_release_test`
 
 *Source Module*: `smc_ext_irq_hold_release_test`
 
@@ -20151,8 +21107,8 @@ access, the scratch read, is issued and answers OKAY. Enrolled in: `all`.
 
 '''''
 
-[[sec-459-smc_ext_irq_low_bits_test]]
-===== 459 `smc_ext_irq_low_bits_test`
+[[sec-478-smc_ext_irq_low_bits_test]]
+===== 478 `smc_ext_irq_low_bits_test`
 
 *Source Module*: `smc_ext_irq_low_bits_test`
 
@@ -20221,8 +21177,8 @@ access is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-460-smc_ext_irq_pulse_sampling_test]]
-===== 460 `smc_ext_irq_pulse_sampling_test`
+[[sec-479-smc_ext_irq_pulse_sampling_test]]
+===== 479 `smc_ext_irq_pulse_sampling_test`
 
 *Source Module*: `smc_ext_irq_pulse_sampling_test`
 
@@ -20293,8 +21249,8 @@ complete and at least one SEP_IN access is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-461-smc_hang_data_timeout_window_test]]
-===== 461 `smc_hang_data_timeout_window_test`
+[[sec-480-smc_hang_data_timeout_window_test]]
+===== 480 `smc_hang_data_timeout_window_test`
 
 *Source Module*: `smc_hang_data_timeout_window_test`
 
@@ -20384,8 +21340,8 @@ complete and at least 60 SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-462-smc_hang_irq_or_matrix_test]]
-===== 462 `smc_hang_irq_or_matrix_test`
+[[sec-481-smc_hang_irq_or_matrix_test]]
+===== 481 `smc_hang_irq_or_matrix_test`
 
 *Source Module*: `smc_hang_irq_or_matrix_test`
 
@@ -20456,8 +21412,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-463-smc_hang_sep_drop_controls_test]]
-===== 463 `smc_hang_sep_drop_controls_test`
+[[sec-482-smc_hang_sep_drop_controls_test]]
+===== 482 `smc_hang_sep_drop_controls_test`
 
 *Source Module*: `smc_hang_sep_drop_controls_test`
 
@@ -20552,8 +21508,8 @@ phases complete and at least 11 SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-464-smc_hang_sep_threshold_test]]
-===== 464 `smc_hang_sep_threshold_test`
+[[sec-483-smc_hang_sep_threshold_test]]
+===== 483 `smc_hang_sep_threshold_test`
 
 *Source Module*: `smc_hang_sep_threshold_test`
 
@@ -20644,8 +21600,8 @@ accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-465-smc_hang_sep_timeout_window_test]]
-===== 465 `smc_hang_sep_timeout_window_test`
+[[sec-484-smc_hang_sep_timeout_window_test]]
+===== 484 `smc_hang_sep_timeout_window_test`
 
 *Source Module*: `smc_hang_sep_timeout_window_test`
 
@@ -20737,8 +21693,8 @@ are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-466-smc_hang_sys_timeout_window_test]]
-===== 466 `smc_hang_sys_timeout_window_test`
+[[sec-485-smc_hang_sys_timeout_window_test]]
+===== 485 `smc_hang_sys_timeout_window_test`
 
 *Source Module*: `smc_hang_sys_timeout_window_test`
 
@@ -20829,8 +21785,8 @@ complete and at least 19 SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-467-smc_irq_csr_readback_test]]
-===== 467 `smc_irq_csr_readback_test`
+[[sec-486-smc_irq_csr_readback_test]]
+===== 486 `smc_irq_csr_readback_test`
 
 *Source Module*: `smc_irq_csr_readback_test`
 
@@ -20903,8 +21859,8 @@ appear in order; `CHK-TIMEOUT-PATHS` only logs the bounded waits. Seven phases c
 80 SEP_IN accesses are issued. Enrolled in: `all`.
 '''''
 
-[[sec-468-smc_irq_reserved_idle_zero_test]]
-===== 468 `smc_irq_reserved_idle_zero_test`
+[[sec-487-smc_irq_reserved_idle_zero_test]]
+===== 487 `smc_irq_reserved_idle_zero_test`
 
 *Source Module*: `smc_irq_reserved_idle_zero_test`
 
@@ -20964,8 +21920,8 @@ complete and at least one SEP_IN access is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-469-smc_irq_vector_assembly_test]]
-===== 469 `smc_irq_vector_assembly_test`
+[[sec-488-smc_irq_vector_assembly_test]]
+===== 488 `smc_irq_vector_assembly_test`
 
 *Source Module*: `smc_irq_vector_assembly_test`
 
@@ -21053,8 +22009,8 @@ waits. At least 27 SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-470-smc_mbx_inbound_irq_vector_test]]
-===== 470 `smc_mbx_inbound_irq_vector_test`
+[[sec-489-smc_mbx_inbound_irq_vector_test]]
+===== 489 `smc_mbx_inbound_irq_vector_test`
 
 *Source Module*: `smc_mbx_inbound_irq_vector_test`
 
@@ -21119,8 +22075,8 @@ SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-471-smc_ndm_irq_or_test]]
-===== 471 `smc_ndm_irq_or_test`
+[[sec-490-smc_ndm_irq_or_test]]
+===== 490 `smc_ndm_irq_or_test`
 
 *Source Module*: `smc_ndm_irq_or_test`
 
@@ -21186,8 +22142,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-472-smc_sep_mbx_irq_vector_test]]
-===== 472 `smc_sep_mbx_irq_vector_test`
+[[sec-491-smc_sep_mbx_irq_vector_test]]
+===== 491 `smc_sep_mbx_irq_vector_test`
 
 *Source Module*: `smc_sep_mbx_irq_vector_test`
 
@@ -21257,8 +22213,8 @@ access is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-473-smc_sep_wdt_irq_level_test]]
-===== 473 `smc_sep_wdt_irq_level_test`
+[[sec-492-smc_sep_wdt_irq_level_test]]
+===== 492 `smc_sep_wdt_irq_level_test`
 
 *Source Module*: `smc_sep_wdt_irq_level_test`
 
@@ -21327,8 +22283,8 @@ is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-474-smc_sync_irq_isolation_test]]
-===== 474 `smc_sync_irq_isolation_test`
+[[sec-493-smc_sync_irq_isolation_test]]
+===== 493 `smc_sync_irq_isolation_test`
 
 *Source Module*: `smc_sync_irq_isolation_test`
 
@@ -22081,8 +23037,8 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 
 '''''
 
-[[sec-475-smc_i2c_clock_gate_response_test]]
-===== 475 `smc_i2c_clock_gate_response_test`
+[[sec-494-smc_i2c_clock_gate_response_test]]
+===== 494 `smc_i2c_clock_gate_response_test`
 
 *Source Module*: `smc_i2c_clock_gate_response_test`
 
@@ -22177,8 +23133,8 @@ gating; `CHK-I2C-GATE-GAP-OBS`, `CHK-I2C-GATE-IRQ-OBS` (gated levels) and
 
 '''''
 
-[[sec-476-smc_i2c_ctrl_intr_w1c_test]]
-===== 476 `smc_i2c_ctrl_intr_w1c_test`
+[[sec-495-smc_i2c_ctrl_intr_w1c_test]]
+===== 495 `smc_i2c_ctrl_intr_w1c_test`
 
 *Source Module*: `smc_i2c_ctrl_intr_w1c_test`
 
@@ -22270,8 +23226,8 @@ assert holds; `CHK-CMDC-RS-OBS` records the counts without an expected value. En
 
 '''''
 
-[[sec-477-smc_i2c_ctrl_nack_modes_test]]
-===== 477 `smc_i2c_ctrl_nack_modes_test`
+[[sec-496-smc_i2c_ctrl_nack_modes_test]]
+===== 496 `smc_i2c_ctrl_nack_modes_test`
 
 *Source Module*: `smc_i2c_ctrl_nack_modes_test`
 
@@ -22379,8 +23335,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-478-smc_i2c_ctrl_role_gate_test]]
-===== 478 `smc_i2c_ctrl_role_gate_test`
+[[sec-497-smc_i2c_ctrl_role_gate_test]]
+===== 497 `smc_i2c_ctrl_role_gate_test`
 
 *Source Module*: `smc_i2c_ctrl_role_gate_test`
 
@@ -22469,8 +23425,8 @@ in: `all`.
 
 '''''
 
-[[sec-479-smc_i2c_ctrl_wire_frames_test]]
-===== 479 `smc_i2c_ctrl_wire_frames_test`
+[[sec-498-smc_i2c_ctrl_wire_frames_test]]
+===== 498 `smc_i2c_ctrl_wire_frames_test`
 
 *Source Module*: `smc_i2c_ctrl_wire_frames_test`
 
@@ -22565,8 +23521,8 @@ fails with the last observed state; the line lists each bound and last state.
 
 '''''
 
-[[sec-480-smc_i2c_ctrl_xinst_events_test]]
-===== 480 `smc_i2c_ctrl_xinst_events_test`
+[[sec-499-smc_i2c_ctrl_xinst_events_test]]
+===== 499 `smc_i2c_ctrl_xinst_events_test`
 
 *Source Module*: `smc_i2c_ctrl_xinst_events_test`
 
@@ -22661,8 +23617,8 @@ measurements only. Enrolled in: `all`.
 
 '''''
 
-[[sec-481-smc_i2c_fmtrst_repro_test]]
-===== 481 `smc_i2c_fmtrst_repro_test`
+[[sec-500-smc_i2c_fmtrst_repro_test]]
+===== 500 `smc_i2c_fmtrst_repro_test`
 
 *Source Module*: `smc_i2c_fmtrst_repro_test`
 
@@ -22749,8 +23705,8 @@ measurements only and carry no pass or fail from their values. Enrolled in: `all
 
 '''''
 
-[[sec-482-smc_i2c_intr_output_path_test]]
-===== 482 `smc_i2c_intr_output_path_test`
+[[sec-501-smc_i2c_intr_output_path_test]]
+===== 501 `smc_i2c_intr_output_path_test`
 
 *Source Module*: `smc_i2c_intr_output_path_test`
 
@@ -22859,8 +23815,8 @@ only, the last also requiring the CPU bit to rise and fall within its bound. Enr
 
 '''''
 
-[[sec-483-smc_i2c_intr_test_state_test]]
-===== 483 `smc_i2c_intr_test_state_test`
+[[sec-502-smc_i2c_intr_test_state_test]]
+===== 502 `smc_i2c_intr_test_state_test`
 
 *Source Module*: `smc_i2c_intr_test_state_test`
 
@@ -22952,8 +23908,8 @@ lines have been printed.
 
 '''''
 
-[[sec-484-smc_i2c_pad_override_test]]
-===== 484 `smc_i2c_pad_override_test`
+[[sec-503-smc_i2c_pad_override_test]]
+===== 503 `smc_i2c_pad_override_test`
 
 *Source Module*: `smc_i2c_pad_override_test`
 
@@ -23034,8 +23990,8 @@ probes and the disabled-leg pull probes match the compares above; the pad levels
 
 '''''
 
-[[sec-485-smc_i2c_reg_access_class_test]]
-===== 485 `smc_i2c_reg_access_class_test`
+[[sec-504-smc_i2c_reg_access_class_test]]
+===== 504 `smc_i2c_reg_access_class_test`
 
 *Source Module*: `smc_i2c_reg_access_class_test`
 
@@ -23134,7 +24090,8 @@ previous word, for n = 0, 1, 2.
 only, instance n reads it under the mask and the other two read the word they held before, for the
 three families and n = 0, 1, 2.
 |`CHK-I2C-CTRL-NO-ENGINE` |With each `I2C_CTRL` field set `CTRL.ENABLEHOST` and `ENABLETARGET` read
-0 and `STATUS` reads 0x33C; the enable probes are measured and printed without comparing.
+0, `STATUS` reads 0x33C, and the core's `host_enable` and `target_enable` probes read 0
+(`i2c_ctrl.rdl`: the field does not enable the I2C core).
 |`CHK-NONVAC` |The fence prints S1 to S11 in order with increasing time stamps, each checker line
 printed after its step.
 |===
@@ -23148,8 +24105,8 @@ only. Enrolled in: `all`.
 
 '''''
 
-[[sec-486-smc_i2c_target_addr_gate_test]]
-===== 486 `smc_i2c_target_addr_gate_test`
+[[sec-505-smc_i2c_target_addr_gate_test]]
+===== 505 `smc_i2c_target_addr_gate_test`
 
 *Source Module*: `smc_i2c_target_addr_gate_test`
 
@@ -23258,8 +24215,8 @@ fails with the last observed state; the line lists each bound and last state.
 
 '''''
 
-[[sec-487-smc_i2c_target_bus_symbol_test]]
-===== 487 `smc_i2c_target_bus_symbol_test`
+[[sec-506-smc_i2c_target_bus_symbol_test]]
+===== 506 `smc_i2c_target_bus_symbol_test`
 
 *Source Module*: `smc_i2c_target_bus_symbol_test`
 
@@ -23372,8 +24329,8 @@ measurements only. Enrolled in: `all`.
 
 '''''
 
-[[sec-488-smc_i2c_target_event_flags_test]]
-===== 488 `smc_i2c_target_event_flags_test`
+[[sec-507-smc_i2c_target_event_flags_test]]
+===== 507 `smc_i2c_target_event_flags_test`
 
 *Source Module*: `smc_i2c_target_event_flags_test`
 
@@ -23442,8 +24399,8 @@ holds; `CHK-I2C-TGT-FLAG-DISABLE-RETAIN-OBS` records measurements only. Enrolled
 
 '''''
 
-[[sec-489-smc_i2c_target_instance_pair_test]]
-===== 489 `smc_i2c_target_instance_pair_test`
+[[sec-508-smc_i2c_target_instance_pair_test]]
+===== 508 `smc_i2c_target_instance_pair_test`
 
 *Source Module*: `smc_i2c_target_instance_pair_test`
 
@@ -23568,8 +24525,8 @@ checkers record measurements only; `CHK-TIMEOUT-PATHS` lists the bounded waits. 
 
 '''''
 
-[[sec-490-smc_i2c_target_tx_read_test]]
-===== 490 `smc_i2c_target_tx_read_test`
+[[sec-509-smc_i2c_target_tx_read_test]]
+===== 509 `smc_i2c_target_tx_read_test`
 
 *Source Module*: `smc_i2c_target_tx_read_test`
 
@@ -23684,8 +24641,8 @@ and `CHK-I2C-TGT-TX-SW-RACE-LOG` record measurements only. Enrolled in: `all`.
 
 '''''
 
-[[sec-491-smc_i2c_window_decode_test]]
-===== 491 `smc_i2c_window_decode_test`
+[[sec-510-smc_i2c_window_decode_test]]
+===== 510 `smc_i2c_window_decode_test`
 
 *Source Module*: `smc_i2c_window_decode_test`
 
@@ -23791,8 +24748,8 @@ and every sequence assert holds; `CHK-I2C-RESERVED-OBS` and the printed legs of
 
 '''''
 
-[[sec-492-smc_smbus_alert_instance_isolation_test]]
-===== 492 `smc_smbus_alert_instance_isolation_test`
+[[sec-511-smc_smbus_alert_instance_isolation_test]]
+===== 511 `smc_smbus_alert_instance_isolation_test`
 
 *Source Module*: `smc_smbus_alert_instance_isolation_test`
 
@@ -23855,8 +24812,8 @@ cleared instance's `INTR_STATE.SMBALERT` reading records a measurement only. Enr
 
 '''''
 
-[[sec-493-smc_smbus_alert_irq_route_test]]
-===== 493 `smc_smbus_alert_irq_route_test`
+[[sec-512-smc_smbus_alert_irq_route_test]]
+===== 512 `smc_smbus_alert_irq_route_test`
 
 *Source Module*: `smc_smbus_alert_irq_route_test`
 
@@ -23930,8 +24887,8 @@ assert holds; `CHK-IRQ-LATENCY-LOG` records measurements only. Enrolled in: `all
 
 '''''
 
-[[sec-494-smc_smbus_alert_self_clear_test]]
-===== 494 `smc_smbus_alert_self_clear_test`
+[[sec-513-smc_smbus_alert_self_clear_test]]
+===== 513 `smc_smbus_alert_self_clear_test`
 
 *Source Module*: `smc_smbus_alert_self_clear_test`
 
@@ -23996,8 +24953,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-495-smc_smbus_pmbus_linear11_read_test]]
-===== 495 `smc_smbus_pmbus_linear11_read_test`
+[[sec-514-smc_smbus_pmbus_linear11_read_test]]
+===== 514 `smc_smbus_pmbus_linear11_read_test`
 
 *Source Module*: `smc_smbus_pmbus_linear11_read_test`
 
@@ -24113,8 +25070,8 @@ Drive `smc_i3c_to_fabric_test_seq`. Each checker below is a named compare the DU
 *Pass Criteria*: `CHK-I3C-CLOCK-GATE-RW`, `CHK-I3C0-HC-CONTROL-BUS-ENABLE`, `CHK-I3C0-HCI-VERSION` hold after their compares. The four external pull-low steps are driven with the core enabled and their pad levels and resolvability are recorded, not claimed: no positive control exists for the DUT-drive nets in this bench, and resolvability cannot fail on the two-state simulator the `hosted` run uses. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-496-smc_i3c_clock_gate_window_test]]
-===== 496 `smc_i3c_clock_gate_window_test`
+[[sec-515-smc_i3c_clock_gate_window_test]]
+===== 515 `smc_i3c_clock_gate_window_test`
 
 *Source Module*: `smc_i3c_clock_gate_window_test`
 
@@ -24232,8 +25189,8 @@ end. Enrolled in: `all`; also listed in `fabric.toml`
 (tags `ci`, `fabric`).
 '''''
 
-[[sec-497-smc_i3c_csr_sweep_core_test]]
-===== 497 `smc_i3c_csr_sweep_core_test`
+[[sec-516-smc_i3c_csr_sweep_core_test]]
+===== 516 `smc_i3c_csr_sweep_core_test`
 
 *Source Module*: `smc_i3c_csr_sweep_core_test`
 
@@ -24335,8 +25292,8 @@ unknown value under a two-state simulator. Enrolled in: `all`; also listed in `f
 
 '''''
 
-[[sec-498-smc_i3c_csr_sweep_ext_test]]
-===== 498 `smc_i3c_csr_sweep_ext_test`
+[[sec-517-smc_i3c_csr_sweep_ext_test]]
+===== 517 `smc_i3c_csr_sweep_ext_test`
 
 *Source Module*: `smc_i3c_csr_sweep_ext_test`
 
@@ -24728,8 +25685,8 @@ Drive `smc_mailbox_multi_instance_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-MAILBOX-CHANNEL-VECTOR` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-499-smc_mailbox_access_error_test]]
-===== 499 `smc_mailbox_access_error_test`
+[[sec-518-smc_mailbox_access_error_test]]
+===== 518 `smc_mailbox_access_error_test`
 
 *Source Module*: `smc_mailbox_access_error_test`
 
@@ -24872,8 +25829,8 @@ part of the claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-500-smc_mailbox_flush_status_test]]
-===== 500 `smc_mailbox_flush_status_test`
+[[sec-519-smc_mailbox_flush_status_test]]
+===== 519 `smc_mailbox_flush_status_test`
 
 *Source Module*: `smc_mailbox_flush_status_test`
 
@@ -25018,8 +25975,8 @@ part of the claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-501-smc_mailbox_irq_ack_output_test]]
-===== 501 `smc_mailbox_irq_ack_output_test`
+[[sec-520-smc_mailbox_irq_ack_output_test]]
+===== 520 `smc_mailbox_irq_ack_output_test`
 
 *Source Module*: `smc_mailbox_irq_ack_output_test`
 
@@ -25186,8 +26143,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-502-smc_mailbox_pair_datapath_test]]
-===== 502 `smc_mailbox_pair_datapath_test`
+[[sec-521-smc_mailbox_pair_datapath_test]]
+===== 521 `smc_mailbox_pair_datapath_test`
 
 *Source Module*: `smc_mailbox_pair_datapath_test`
 
@@ -25310,8 +26267,8 @@ the claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-503-smc_mailbox_register_map_reset_test]]
-===== 503 `smc_mailbox_register_map_reset_test`
+[[sec-522-smc_mailbox_register_map_reset_test]]
+===== 522 `smc_mailbox_register_map_reset_test`
 
 *Source Module*: `smc_mailbox_register_map_reset_test`
 
@@ -25472,8 +26429,8 @@ claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-504-smc_mailbox_threshold_irqs_test]]
-===== 504 `smc_mailbox_threshold_irqs_test`
+[[sec-523-smc_mailbox_threshold_irqs_test]]
+===== 523 `smc_mailbox_threshold_irqs_test`
 
 *Source Module*: `smc_mailbox_threshold_irqs_test`
 
@@ -26006,8 +26963,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-505-smc_uart_fifo_control_depth_test]]
-===== 505 `smc_uart_fifo_control_depth_test`
+[[sec-524-smc_uart_fifo_control_depth_test]]
+===== 524 `smc_uart_fifo_control_depth_test`
 
 *Source Module*: `smc_uart_fifo_control_depth_test`
 
@@ -26144,8 +27101,8 @@ in: `all`.
 
 '''''
 
-[[sec-506-smc_uart_irq_thre_identify_test]]
-===== 506 `smc_uart_irq_thre_identify_test`
+[[sec-525-smc_uart_irq_thre_identify_test]]
+===== 525 `smc_uart_irq_thre_identify_test`
 
 *Source Module*: `smc_uart_irq_thre_identify_test`
 
@@ -26266,8 +27223,8 @@ claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-507-smc_uart_log_engine_reg_map_test]]
-===== 507 `smc_uart_log_engine_reg_map_test`
+[[sec-526-smc_uart_log_engine_reg_map_test]]
+===== 526 `smc_uart_log_engine_reg_map_test`
 
 *Source Module*: `smc_uart_log_engine_reg_map_test`
 
@@ -26395,8 +27352,8 @@ bench. The `INTR_TEST` response and data, and partial-strobe writes, are not par
 
 '''''
 
-[[sec-508-smc_uart_reg_reset_rw_test]]
-===== 508 `smc_uart_reg_reset_rw_test`
+[[sec-527-smc_uart_reg_reset_rw_test]]
+===== 527 `smc_uart_reg_reset_rw_test`
 
 *Source Module*: `smc_uart_reg_reset_rw_test`
 

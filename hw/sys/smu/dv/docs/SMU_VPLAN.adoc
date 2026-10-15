@@ -2842,7 +2842,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 |===
 |Checker |Description
 |`CHK-CTN-RESET-CLEARS-REGS` |CT_SRC[0], CTP[0].CONFIG and CTP[0].STRETCH_MULT read their programmed values before the cold reset and their RDL reset value 0 after it
-|`CHK-CTP-RESET-MID-REQUEST` |bit 1 of the request output is low within 16 `clk_smu_i` edges of the reset assertion and stays low, and CTP[1].STATUS reads 0, from the request-out and held-acknowledge states
+|`CHK-CTP-RESET-MID-REQUEST` |bit 1 of the request output is low within 16 `clk_smu_i` edges of the reset assertion and stays low, and CTP[1].STATUS reads 0 (only `ACK_IN` while the acknowledge is still held) and 0 after its release, from the request-out and held-acknowledge states
 |`CHK-CLKSTOP-RESET-LOW` |`dtp_stop_clks_o` is 0 on every sample while the DTP reset is asserted with the clock-stop request held and at the release
 |`CHK-TIMEOUT-PATHS` |none of the bounded JTAG2AXI, reset, request and clock-stop waits expires
 |===

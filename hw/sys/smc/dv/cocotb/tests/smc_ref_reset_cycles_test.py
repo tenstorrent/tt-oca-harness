@@ -33,13 +33,14 @@ class smc_ref_reset_cycles_test(smc_base_test):
         "CHK-REF-RESET-RELEASE-CYCLES",
         "CHK-TIMEOUT-PATHS",
     )
+    CELL = "ref10"
     min_evidence = 4
 
     auto_protocol_vip = False
 
     def build_phase(self) -> None:
         super().build_phase()
-        cell = cocotb.plusargs.get("smc_cell", "ref10")
+        cell = cocotb.plusargs.get("smc_cell", self.CELL)
         assert cell in REF_PERIODS_NS, f"+smc_cell={cell} is not one of {sorted(REF_PERIODS_NS)}"
         self.cfg.ref_clk_period_ns = REF_PERIODS_NS[cell]
         self.cfg.smc_clk_period_ns = SMC_CLK_PERIOD_NS

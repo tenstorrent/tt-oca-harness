@@ -36,6 +36,11 @@ CFG_IN_FLIGHT = _RX_ENABLE | _IF_ENABLE | _IRQ_ENABLE | (1 << _TYPE_BP)
 # Registers read zero after the reset under the mask that drops the pad return and the
 # hardware LSIO request status.
 _RESET_READ_MASK = ~(_PAD2CORE | _LSIO_ENABLE) & 0xFFFF_FFFF
+_ENABLE_USE_REG = (
+    gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_bm")
+    | gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_bm")
+    | gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_RX_bm")
+)
 
 STEP_ORDER = ("IRQ_ASSERTED", "RESET_LEVEL", "RESET_EDGE", "RESET_ACCESS", "RESTORE")
 CHK_ORDER = (
@@ -299,6 +304,11 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             await self.finish_item(item)
             outcome["done"] = True
 
+        await self.csr_write("ACCESS_ENABLE_PRIME", DATA_CTRL_ENABLE, _ENABLE_USE_REG)
+        primed = await self.csr_read("ACCESS_ENABLE_PRIME_RB", DATA_CTRL_ENABLE)
+        assert primed & _ENABLE_USE_REG == _ENABLE_USE_REG, (
+            f"DATA_CTRL_ENABLE reads 0x{primed:08x} after writing 0x{_ENABLE_USE_REG:08x}"
+        )
         await self._assert_pin()
         for _ in range(latency - AXI_LAUNCH_LEAD_CYCLES):
             await RisingEdge(dut.clk_smc_i)
@@ -357,7 +367,8 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             f"{latency - AXI_LAUNCH_LEAD_CYCLES} cycles after the rst_cold_ni assert "
             f"(L={latency}) was issued {issued} cycles after the launch, "
             f"rst_primary_smc_clk_no fell {fall} cycles after the launch and the "
-            f"write completed {done_at} cycles after the launch; "
+            f"write completed {done_at} cycles after the launch; DATA_CTRL_ENABLE read "
+            f"0x{primed:08x} before the reset; "
             f"completion kind (measured): {kind} "
             f"(0 OKAY, 2 SLVERR, 3 DECERR); bound {AXI_BOUND_CYCLES} cycles (SEP_IN driver "
             f"bound {driver_bound_ns} ns); effective reset rose {rise} cycles after the "

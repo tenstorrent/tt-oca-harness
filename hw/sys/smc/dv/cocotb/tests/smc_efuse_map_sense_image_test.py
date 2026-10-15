@@ -158,10 +158,11 @@ class smc_efuse_map_sense_image_test(smc_base_test):
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
+    KIND = "default"
     min_evidence = 5
 
     def build_phase(self) -> None:
-        self.kind = str(cocotb.plusargs.get("smc_efuse_image", "default"))
+        self.kind = str(cocotb.plusargs.get("smc_efuse_image", self.KIND))
         assert self.kind == "default" or self.kind in _KINDS, (
             f"+smc_efuse_image={self.kind} is not one of {_KINDS}"
         )

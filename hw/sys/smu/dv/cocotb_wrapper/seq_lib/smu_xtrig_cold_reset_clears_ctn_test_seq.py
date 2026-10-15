@@ -59,6 +59,7 @@ CONFIG_RESETS = (
     cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__RESET_reset"),
 )
 STRETCH_MULT_RESET = cross_trigger_u32("CROSS_TRIGGER_PORT__STRETCH_MULT__STRETCH_MULT_reset")
+ACK_IN_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__STATUS__ACK_IN_bm")
 STATUS_RESETS = (
     cross_trigger_u32("CROSS_TRIGGER_PORT__STATUS__BUSY_reset"),
     cross_trigger_u32("CROSS_TRIGGER_PORT__STATUS__REQ_OUT_reset"),
@@ -421,7 +422,12 @@ class smu_xtrig_cold_reset_clears_ctn_test_seq:
         if ack_held:
             held = await self._rd32(status_addr, f"{leg} CTP1 STATUS ack held")
             self._cell(f"{leg}.CTP[1].STATUS ack held", status_addr, f"value=0x{held:08x}")
-            self._log(f"CHK-CTP-RESET-MID-REQUEST: ack_held_status=0x{held:x}")
+            self.sb.expect_eq(
+                f"{leg} CTP1 STATUS with the acknowledge still held",
+                held,
+                sum(STATUS_RESETS) | ACK_IN_BM,
+                evidence="CHK-CTP-RESET-MID-REQUEST",
+            )
             dut.tb_xtrig_ctp_ack_in_din.value = 0
             await ClockCycles(dut.clk_smu_i, ACK_RELEASE_SETTLE)
             self._ok(

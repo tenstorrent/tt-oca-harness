@@ -2705,7 +2705,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-CTP-RESET-MID-REQUEST",
             "CHK-CTP-RESET-MID-REQUEST",
             "xtrig_ctp_req_out_dout_o[1] is low within 16 clk_smu of the reset and stays low, "
-            "CTP[1].STATUS reads 0, from REQ_ASSERTED and WAIT_ACK_DEASSERT",
+            "CTP[1].STATUS reads 0 (only ACK_IN while the acknowledge is still held), from "
+            "REQ_ASSERTED and WAIT_ACK_DEASSERT",
         ),
         (
             "CHK-CLKSTOP-RESET-LOW",

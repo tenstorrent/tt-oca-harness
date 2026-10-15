@@ -33,6 +33,7 @@ _TYPE_RISING = 2 << _TYPE_BP
 LINE_BOUND = 64
 HOLD_CYCLES = 16
 IDLE_CYCLES = 64
+GATE_CYCLES = 32
 PULSE_QUIET_CYCLES = 32
 
 STEP_ORDER = ("BASELINE", "LOWER", "UPPER", "HOLD", "IDLE", "EDGE_PULSE", "RESTORE")
@@ -268,6 +269,18 @@ class smc_gpio_irq_or_test_seq(SmcCsrSeq):
                 lambda: hex(self._sample(dut)[1]),
             )
             await self._program(wrap, _TYPE_LEVEL_HIGH, False)
+        for wrap in (4, 60):
+            line = LOWER_LINE if wrap in LOWER else UPPER_LINE
+            self._drive(dut, wrap, 1)
+            for i in range(GATE_CYCLES):
+                per = self._sample(dut)[1]
+                assert self._bit(per, line) == 0, (
+                    f"wrap {wrap} pad high with interrupt_enable clear: line [{line}] rose at "
+                    f"cycle {i} ({hex(per)})"
+                )
+                await ClockCycles(dut.clk_smc_i, 1)
+            self._drive(dut, wrap, 0)
+            await ClockCycles(dut.clk_smc_i, HOLD_CYCLES)
         for i in range(IDLE_CYCLES):
             raw, per = self._sample(dut)
             assert raw == 0, f"idle cycle {i}: tb_gpio_interrupt=0x{raw:x}"
@@ -275,8 +288,9 @@ class smc_gpio_irq_or_test_seq(SmcCsrSeq):
             await ClockCycles(dut.clk_smc_i, 1)
         self._mark("IDLE")
         return (
-            f"interrupt_enable clear on wraps {WRAPS}, pads low, [29:28]=0 and raw vector 0 for "
-            f"{IDLE_CYCLES} cycles after positive controls on wraps 4 and 60 set and released"
+            f"interrupt_enable clear on wraps {WRAPS}: pads 4 and 60 driven high for {GATE_CYCLES} "
+            f"cycles each left their line 0; then pads low, [29:28]=0 and raw vector 0 for "
+            f"{IDLE_CYCLES} cycles, after positive controls on wraps 4 and 60 set and released"
         )
 
     async def _pulse(self, wrap: int) -> tuple[int, int, int]:

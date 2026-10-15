@@ -634,13 +634,17 @@ class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
                 target = self._sample("tb_i2c_target_enable") >> n & 1
                 assert ctrl & ROLE_BITS == 0, f"CTRL[{n}] reads 0x{ctrl:08x} with {label} set"
                 assert status == STATUS_RESET, f"STATUS[{n}] reads 0x{status:08x} with {label} set"
+                assert host == 0 and target == 0, (
+                    f"I2C_CTRL[{n}] {label} set: host_enable={host} target_enable={target}; "
+                    f"i2c_ctrl.rdl says the field does not enable the I2C core"
+                )
                 probes.append(f"{n}/{label}:host={host},target={target}")
             await self.csr_write(f"I2C_CTRL{n}_RESTORE", _wrap_ctrl(n), 0)
         self._mark("S11")
         self._chk(
             "CHK-I2C-CTRL-NO-ENGINE",
             "with each I2C_CTRL field set on instances 0,1,2 CTRL role bits read 0 and STATUS "
-            "reads 0x%03x; tb_i2c_host_enable/target_enable sampled (observed only): %s",
+            "reads 0x%03x; tb_i2c_host_enable/target_enable read 0 on every field: %s",
             STATUS_RESET,
             " ".join(probes),
         )

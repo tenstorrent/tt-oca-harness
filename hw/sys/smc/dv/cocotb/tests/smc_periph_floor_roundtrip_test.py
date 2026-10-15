@@ -29,13 +29,14 @@ class smc_periph_floor_roundtrip_test(smc_base_test):
         "CHK-PERIPH-FLOOR-ROUNDTRIP",
         "CHK-TIMEOUT-PATHS",
     )
+    CELL = "periph5"
     min_evidence = 3
 
     auto_protocol_vip = False
 
     def build_phase(self) -> None:
         super().build_phase()
-        cell = cocotb.plusargs.get("smc_cell", "periph5")
+        cell = cocotb.plusargs.get("smc_cell", self.CELL)
         assert cell in PERIPH_PERIODS_NS, (
             f"+smc_cell={cell} is not one of {sorted(PERIPH_PERIODS_NS)}"
         )

@@ -37,13 +37,14 @@ class smc_octs_clk_rate_test(smc_base_test):
         "CHK-OCTS-START-RELOAD",
         "CHK-TIMEOUT-PATHS",
     )
+    CELL = "default"
     min_evidence = 4
 
     auto_protocol_vip = False
 
     def build_phase(self) -> None:
         super().build_phase()
-        cell = cocotb.plusargs.get("smc_cell", "default")
+        cell = cocotb.plusargs.get("smc_cell", self.CELL)
         assert cell in CELLS, f"+smc_cell={cell} is not one of {sorted(CELLS)}"
         self.cell = cell
         periods, rate_id = CELLS[cell]

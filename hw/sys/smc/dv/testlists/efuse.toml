@@ -261,7 +261,7 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_efuse_map_sense_image_zero_test"
-module = "smc_efuse_map_sense_image_test"
+module = "smc_efuse_map_sense_image_zero_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "efuse"]
@@ -270,7 +270,7 @@ args = ["+smc_efuse_image=zero", "+smc_efuse_hex=smc_efuse_map_sense_image_zero_
 
 [[tests]]
 name = "smc_efuse_map_sense_image_ones_test"
-module = "smc_efuse_map_sense_image_test"
+module = "smc_efuse_map_sense_image_ones_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "efuse"]
@@ -279,7 +279,7 @@ args = ["+smc_efuse_image=ones", "+smc_efuse_hex=smc_efuse_map_sense_image_ones_
 
 [[tests]]
 name = "smc_efuse_map_sense_image_walking_test"
-module = "smc_efuse_map_sense_image_test"
+module = "smc_efuse_map_sense_image_walking_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "efuse"]
@@ -288,7 +288,7 @@ args = ["+smc_efuse_image=walking", "+smc_efuse_hex=smc_efuse_map_sense_image_wa
 
 [[tests]]
 name = "smc_efuse_map_sense_image_random_test"
-module = "smc_efuse_map_sense_image_test"
+module = "smc_efuse_map_sense_image_random_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "efuse"]
@@ -297,7 +297,7 @@ args = ["+smc_efuse_image=random", "+smc_efuse_hex=smc_efuse_map_sense_image_ran
 
 [[tests]]
 name = "smc_efuse_map_sense_image_unique_test"
-module = "smc_efuse_map_sense_image_test"
+module = "smc_efuse_map_sense_image_unique_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "efuse"]

@@ -41,13 +41,14 @@ class smc_clk_relation_regxbar_test(smc_base_test):
         "CHK-REGXBAR-RESET-RT",
         "CHK-TIMEOUT-PATHS",
     )
+    CELL = "default"
     min_evidence = 3
 
     auto_protocol_vip = False
 
     def build_phase(self) -> None:
         super().build_phase()
-        cell = cocotb.plusargs.get("smc_cell", "default")
+        cell = cocotb.plusargs.get("smc_cell", self.CELL)
         assert cell in CELLS, f"+smc_cell={cell} is not one of {sorted(CELLS)}"
         self.cell = cell
         periods, extra = CELLS[cell]
