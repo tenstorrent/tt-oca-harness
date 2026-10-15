@@ -11,9 +11,10 @@ Contracts (spec text, not RTL):
 * ``CFG.endian_swap`` = 1 adds each multi-byte value written to ``MSG_FIFO`` in
   big-endian byte order; a one-byte write is not affected
   (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc:120-123).
-* ``CFG.digest_swap`` = 1 puts each DIGEST register value in big-endian byte order
-  and does not change the register order; DIGEST_0 holds the first 4 bytes of the
-  digest (hmac.adoc:116-117).
+* ``CFG.digest_swap`` = 1 converts the byte order of each DIGEST register value and
+  does not change the register order; DIGEST_0 holds the first 4 bytes of the
+  digest (hmac.adoc:116-117). The register text does not state the byte order of a
+  DIGEST value at ``digest_swap`` = 0, so the leaf does not pin it.
 * ``CMD.hash_stop`` sets ``hmac_done`` after the current block (hmac.adoc:142).
   DIGEST_0 to DIGEST_15 and ``MSG_LENGTH_LOWER``/``MSG_LENGTH_UPPER`` are the context
   to save, and software writes them while the engine is idle; ``CMD.hash_continue``
@@ -33,13 +34,22 @@ Contracts (spec text, not RTL):
 The golden is the software SHA-2 model (env/sep_hmac_golden.py ``sha2_bytes``). The
 message bytes of a swap cell are the AXI write lanes in write order; a multi-byte
 write adds its lanes in order at ``endian_swap`` = 0 and in reverse order at 1.
-DIGEST word n is the big-endian read of digest bytes 4n..4n+3 at ``digest_swap`` = 0
-and its 32-bit byte swap at 1.
+The golden grades what the register text states: DIGEST word n holds digest bytes
+4n..4n+3, with one byte order for every word read at one ``digest_swap`` value. A
+readback matches the golden when every word is the big-endian read of its four bytes
+("be"), or every word is the little-endian read ("le"). The order that matches is
+logged and must be the same for every readback of the seed at the same
+``digest_swap`` value; ``CHK-HMAC-DSWAP-REL`` grades that the two values give
+byte-swapped words. Which order belongs to ``digest_swap`` = 0 is logged only
+(``OBS-HMAC-DIGEST-ORDER``).
 
 Checkers:
   CHK-HMAC-SWAP       per (endian_swap, digest_swap, digest size) cell: DIGEST == golden
+                      in one byte order, the same order as every readback of the seed
+                      at that digest_swap value
   CHK-HMAC-DSWAP-REL  word n at digest_swap 1 == bswap32(word n at digest_swap 0)
-  CHK-HMAC-CTX        split, stop, save, restore, continue == single pass == golden
+  CHK-HMAC-CTX        split, stop, save, restore, continue == single pass (DUT against
+                      DUT, word for word) and == golden in the byte order of the seed
   CHK-HMAC-STOP       after hash_stop: hmac_done reads 1 and STATUS.hmac_idle reads 1
   CHK-HMAC-SHAOFF     sha_en 1 -> 0 after a finished hash: every DIGEST word reads 0
   CHK-HMAC-DONE-LINE  at a graded completion with the enable set: state 1, bit 17 rises
@@ -119,10 +129,25 @@ def _bswap32(w: int) -> int:
 
 
 def _digest_words(digest: bytes, sha: int, dswap: int) -> list[int]:
+    """Big-endian reads of digest bytes 4n..4n+3, byte-swapped when ``dswap`` is 1."""
     words = [
         int.from_bytes(digest[4 * i : 4 * i + 4], "big") for i in range(HMAC_DIGEST_WORDS[sha])
     ]
     return [_bswap32(w) for w in words] if dswap else words
+
+
+def _order_of(got: list[int], digest: bytes, sha: int) -> str | None:
+    """Return "be" or "le" when every DIGEST word holds its four digest bytes in that order.
+
+    hmac.adoc:117 states that DIGEST_0 holds the first 4 bytes of the digest; no register text
+    states the byte order inside a word, so both reads are candidates.
+    """
+    be = _digest_words(digest, sha, 0)
+    if list(got) == be:
+        return "be"
+    if list(got) == [_bswap32(w) for w in be]:
+        return "le"
+    return None
 
 
 def _msg_bytes(writes: list[tuple[int, int]], endian: int) -> bytes:
@@ -299,6 +324,8 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         self.plan = draw_plan(seed)
         self._event = 0
         self._win = False
+        # The DIGEST byte order seen first at each digest_swap value; later readbacks match it.
+        self._dorder: dict[int, str] = {}
         self._log_plan()
 
         # One watcher of vector bit 17 for the whole run; its clock count is the time base.
@@ -322,7 +349,22 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
 
         self._window(False)
         await self.vec.stop()
+        self.chk.obs(
+            "HMAC-DIGEST-ORDER",
+            dswap0=self._dorder.get(0, "-"),
+            dswap1=self._dorder.get(1, "-"),
+        )
         self.chk.finish()
+
+    def _order(
+        self, got: list[int], digest: bytes, sha: int, dswap: int
+    ) -> tuple[str | None, bool]:
+        """The byte order of ``got`` and whether it equals the order of the seed at ``dswap``."""
+        order = _order_of(got, digest, sha)
+        if order is None:
+            return None, False
+        first = self._dorder.setdefault(dswap, order)
+        return order, order == first
 
     # ---------------------------------------------------------------- plumbing
 
@@ -504,7 +546,8 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         regs: dict[tuple[int, int], list[int]] = {}
         last: tuple[int, list[int], int, int] | None = None
         for endian in (0, 1):
-            golden0 = _digest_words(sha2_bytes(_msg_bytes(writes, endian), sha), sha, 0)
+            gold_bytes = sha2_bytes(_msg_bytes(writes, endian), sha)
+            golden0 = _digest_words(gold_bytes, sha, 0)
             for dswap in sp.dswap_order[endian]:
                 await self._reset_hmac()
                 self._window(True)
@@ -518,11 +561,10 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
                     last = None
                     continue
                 got = await self._read_digest(n)
-                exp = [_bswap32(w) for w in golden0] if dswap else golden0
-                bad = [i for i in range(n) if got[i] != exp[i]]
+                order, same = self._order(got, gold_bytes, sha, dswap)
                 self.chk.ok(
                     "HMAC-SWAP",
-                    not bad,
+                    order is not None and same,
                     endian=endian,
                     dswap=dswap,
                     sha=sha,
@@ -530,14 +572,15 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
                     w32=counts[32],
                     w16=counts[16],
                     w8=counts[8],
-                    digest_eq_golden=int(not bad),
-                    first_bad=bad[0] if bad else "-",
+                    digest_eq_golden=int(order is not None),
+                    order=order or "none",
+                    order_of_seed=self._dorder.get(dswap, "-"),
                     got0=f"0x{got[0]:08x}",
-                    exp0=f"0x{exp[0]:08x}",
+                    be0=f"0x{golden0[0]:08x}",
                     bound=OUTER_POLL_CLK,
                 )
                 regs[(endian, dswap)] = got
-                last = (cfg, exp, t_cell, dswap)
+                last = (cfg, got, t_cell, dswap)
             if (endian, 0) in regs and (endian, 1) in regs:
                 w0, w1 = regs[(endian, 0)], regs[(endian, 1)]
                 self.chk.ctrl(
@@ -565,7 +608,10 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             await self._sha_off(sha, *last)
 
     async def _sha_off(self, sha: int, cfg: int, exp: list[int], t_cell: int, dswap: int) -> None:
-        """sha_en 1 -> 0 after the finished hash of the last swap cell clears every DIGEST word."""
+        """sha_en 1 -> 0 after the finished hash of the last swap cell clears every DIGEST word.
+
+        ``exp`` is the DIGEST readback of that cell, which CHK-HMAC-SWAP graded.
+        """
         n = HMAC_DIGEST_WORDS[sha]
         before = await self._read_digest(n)
         self.chk.ctrl(
@@ -598,7 +644,8 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
     async def _trip(self, trip: TripPlan) -> None:
         sha, n = trip.sha, HMAC_DIGEST_WORDS[trip.sha]
         cfg = build_cfg(hmac_en=False, sha_bits=sha)
-        golden = _digest_words(sha2_bytes(trip.message, sha), sha, 0)
+        gold_bytes = sha2_bytes(trip.message, sha)
+        golden = _digest_words(gold_bytes, sha, 0)
         tag = f"ctx-sha{sha}-{trip.kind}-p{len(trip.parts)}"
         split = ",".join(str(len(p)) for p in trip.parts)
 
@@ -612,7 +659,14 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             tag=tag + "-single",
         )
         single = await self._read_digest(n)
-        self.chk.ctrl("HMAC-CTX-SINGLE", single == golden, tag=tag, t_single=t_single)
+        single_order = _order_of(single, gold_bytes, sha)
+        self.chk.ctrl(
+            "HMAC-CTX-SINGLE",
+            single_order is not None,
+            tag=tag,
+            t_single=t_single,
+            order=single_order or "none",
+        )
         bound = STOP_BOUND_X * max(t_single, 1)
 
         # Split run: stop, save, restore, continue, window open.
@@ -687,21 +741,28 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             await self._wr(HMAC_CFG, cfg)
 
         got = await self._read_digest(n)
-        bad = [k for k in range(n) if got[k] != single[k] or got[k] != golden[k]]
+        # DUT against DUT: the restored run and the single pass, both read at
+        # digest_swap = 0, word for word. The golden part grades the bytes of each
+        # word in the byte order of the seed.
+        bad = [k for k in range(n) if got[k] != single[k]]
+        order, same = self._order(got, gold_bytes, sha, 0)
         self.chk.ok(
             "HMAC-CTX",
-            not bad,
+            not bad and order is not None and same,
             sha=sha,
             kind=trip.kind,
             parts=len(trip.parts),
             split=split,
             interleave=trip.interleave,
             len=len(trip.message),
-            digest_eq_single_pass=int(got == single),
-            digest_eq_golden=int(got == golden),
+            digest_eq_single_pass=int(not bad),
+            digest_eq_golden=int(order is not None),
+            order=order or "none",
+            order_of_seed=self._dorder.get(0, "-"),
             first_bad=bad[0] if bad else "-",
             got0=f"0x{got[0]:08x}",
-            exp0=f"0x{golden[0]:08x}",
+            single0=f"0x{single[0]:08x}",
+            be0=f"0x{golden[0]:08x}",
         )
 
     async def _unrelated(
@@ -721,8 +782,15 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             _process, owner="HMAC-CTX", bound=OUTER_POLL_CLK, tag=f"{tag}-unrel{part}"
         )
         got = await self._read_digest(n)
-        exp = _digest_words(sha2_bytes(trip.unrelated, trip.sha), trip.sha, 0)
-        self.chk.ctrl("HMAC-CTX-UNRELATED", got == exp, tag=tag, part=part, len=len(trip.unrelated))
+        order = _order_of(got, sha2_bytes(trip.unrelated, trip.sha), trip.sha)
+        self.chk.ctrl(
+            "HMAC-CTX-UNRELATED",
+            order is not None,
+            tag=tag,
+            part=part,
+            len=len(trip.unrelated),
+            order=order or "none",
+        )
         self.chk.obs("HMAC-CTX-CHANGED", tag=tag, part=part, changed=int(got != saved[:n]))
         # The unrelated stream ends with its own sha_en clear (context-switch step 6).
         await self._wr(HMAC_CFG, cfg & ~HMAC_CFG_SHA_EN)

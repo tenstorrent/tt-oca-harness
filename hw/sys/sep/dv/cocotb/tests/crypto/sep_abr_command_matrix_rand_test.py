@@ -173,8 +173,9 @@ OPEN_SV_REJECT_TCID = 151
 OPEN_KEM_MODIFIED_TCID = 96
 
 # Outer limits of the bounded waits (environment choice, logged as bound=).
-# The VALID limit equals the open ABR KAT helpers: 40000 polls of 200 clocks.
-VALID_POLLS = 40_000
+# The VALID limit is 8000 polls of 200 clocks: about 15 times the longest
+# command of a clean run, so a command that never completes fails in minutes.
+VALID_POLLS = 8_000
 VALID_GAP = 200
 READY_POLLS = 4_000
 READY_GAP = 20

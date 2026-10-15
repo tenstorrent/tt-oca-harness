@@ -20,16 +20,20 @@ SHA2_None; ``INTR_STATE``:44 ``hmac_err`` RW1C; ``ERR_CODE``:171) and
 :329-331 Key_None blocks a keyed start and does not block ``hmac_en`` = 0).
 
 Checkers:
-  CHK-HMAC-BLOCK    a blocked start sets ``hmac_err``, keeps ``hmac_done`` 0, leaves DIGEST at
-                    D_prev (read under the restored ``CFG`` of the last completed hash) and
-                    makes ``ERR_CODE`` non-zero
+  CHK-HMAC-BLOCK    a blocked start sets ``hmac_err`` and makes ``ERR_CODE`` non-zero (both
+                    read before any message write); the message and ``hash_process`` that
+                    complete a legal hash within t_clean then give no ``hmac_done`` for
+                    3 x t_clean, and DIGEST stays at D_prev (read under the restored ``CFG``
+                    of the last completed hash)
   CHK-HMAC-RECOVER  after the write-one clear ``hmac_err`` reads 0, and a legal HMAC hash
                     returns its golden, which differs from D_prev
 
 Controls: ``CTRL-HMAC-NOBLOCK`` (each legal class raises no error, sets ``hmac_done`` and
 returns its golden), ``CTRL-HMAC-DPREV`` (D_prev equals the golden of the last completed hash
 and is non-zero), ``CTRL-HMAC-REF`` (the reference hash returns its golden). Log-only:
-``OBS-HMAC-ERRCODE`` (the value; the specification does not list the codes) and
+``OBS-HMAC-ERRCODE`` (the value; the specification does not list the codes),
+``OBS-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
+start; the register text does not state them) and
 ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text does not state its value after a
 blocked start).
 """
@@ -352,6 +356,29 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         for b in msg[whole:]:
             await self._wr(HMAC_MSG_FIFO, b, length=1)
 
+    async def _write_msg_logged(self, msg: bytes) -> int:
+        """Write ``msg`` as ``_write_msg`` does; return the count of non-OKAY write responses.
+
+        The register text does not state the response of a message write after a blocked
+        start, so the count is logged only.
+        """
+        refused = 0
+        whole = len(msg) - len(msg) % 4
+        beats = [(int.from_bytes(msg[i : i + 4], "little"), 4) for i in range(0, whole, 4)]
+        beats += [(b, 1) for b in msg[whole:]]
+        for data, length in beats:
+            seq = SepAxiAccessSeq(
+                "hmac_wr",
+                op=SepAxiOp.WRITE,
+                addr=HMAC_MSG_FIFO,
+                wdata=data,
+                length=length,
+                size={4: 2, 1: 0}[length],
+            )
+            await self.start_seq(seq)
+            refused += int(not seq.resp_ok)
+        return refused
+
     async def _write_key_row(self, row: int) -> None:
         for i, word in enumerate(_row_words(row)):
             assert i < HMAC_NUM_PUBLIC_KEY
@@ -423,14 +450,25 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         t0 = self._now_clk()
         hold = 3 * self.t_clean
         await ClockCycles(cocotb.top.clk_i, hold)
+        # "Signalled": the error state and code, read before any message write so that
+        # only the start can have set them.
         intr = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
         status = await self._rd(HMAC_STATUS)
         err_code = await self._rd(HMAC_ERR_CODE)
+        # "Blocked": the stimulus of a legal hash (message, then hash_process), which
+        # sets hmac_done within t_clean in CTRL-HMAC-REF and CTRL-HMAC-NOBLOCK. A started
+        # engine sets hmac_done in the hold and changes DIGEST; a blocked one does neither.
+        rec = step.recovery
+        assert rec is not None
+        refused = await self._write_msg_logged(rec.msg)
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+        await ClockCycles(cocotb.top.clk_i, hold)
+        intr_proc = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
         window_clk = self._now_clk() - t0
         await self._wr(HMAC_CFG, last.cfg())
         digest = await self._read_digest(last.sha)
         err = int(bool(intr & HMAC_INTR_ERR))
-        done = int(bool(intr & HMAC_INTR_DONE))
+        done = int(bool((intr | intr_proc) & HMAC_INTR_DONE))
         unchanged = int(digest == d_prev)
         self.chk.ok(
             "HMAC-BLOCK",
@@ -445,11 +483,14 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             d_prev=f"0x{d_prev[0]:08x}",
             digest0=f"0x{digest[0]:08x}",
             err_code_nonzero=int(err_code != 0),
+            msg_len=len(rec.msg),
+            process_written=1,
             window_clk=window_clk,
             hold=hold,
             t_clean=self.t_clean,
         )
         self.chk.obs("HMAC-ERRCODE", **{"class": step.name}, err_code=f"0x{err_code:x}")
+        self.chk.obs("HMAC-BLOCKED-MSG-RESP", **{"class": step.name}, refused=refused)
         self.chk.obs(
             "HMAC-IDLE",
             **{"class": step.name},
@@ -461,8 +502,6 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_ERR)
         intr2 = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
         close_graded_window(self.logger)
-        rec = step.recovery
-        assert rec is not None
         t_rec, rdigest = await self._run_hash(rec, bound=self.hash_bound)
         err_cleared = int(not (intr2 & HMAC_INTR_ERR))
         self.chk.ok(

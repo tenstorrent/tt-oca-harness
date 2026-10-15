@@ -49,8 +49,9 @@ Checkers:
                        and both new AUX pairs land. Control: before the reset
                        the AUX register differs from its reset value and the
                        update error reads 1.
-  CHK-ALERT-MALFORMED  per block: bit 32 reads 0 before, rises during the
-                       malformed pair, reads 0 after the release.
+  CHK-ALERT-MALFORMED  per block: bit 32 stays 0 over a quiet window before,
+                       rises during the malformed pair, reads 0 after the
+                       release and stays 0 over a quiet window after it.
 The AES AUX pairs and every KMAC result are logged (``OBS-SHADOW-AUX``,
 ``OBS-SHADOW-KMAC``) and not graded; the ALERT_TEST write of each block is the
 timing reference ``OBS-ALERT-REF``.
@@ -703,7 +704,11 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 self.chk.ok("ALERT-MALFORMED", False, block=blk, index=idx, reason="no_reference")
                 continue
             self.chk.obs("ALERT-REF", block=blk, clk=c, alert_test_bit=bit)
-            await RisingEdge(dut.clk_i)
+            # Quiet window before the inject: bit 32 stays 0 for WINDOW_FACTOR x c clocks
+            # with no stimulus, so a rise in the inject window comes from the inject.
+            mq = self.vec.mark()
+            await ClockCycles(dut.clk_i, WINDOW_FACTOR * c)
+            quiet_pre = self.vec.high_clocks_since(mq, "alert")
             pre = self._bit32()
 
             open_graded_window(TEST, self.logger)
@@ -719,17 +724,24 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             dut.crypto_alert_inject_i.value = 0
             await ClockCycles(dut.clk_i, WINDOW_FACTOR * c)
             post = self._bit32()
+            # Quiet window after the release: bit 32 stays 0 for WINDOW_FACTOR x c clocks.
+            mp = self.vec.mark()
+            await ClockCycles(dut.clk_i, WINDOW_FACTOR * c)
+            quiet_post = self.vec.high_clocks_since(mp, "alert")
             close_graded_window(self.logger)
             raised = int(raise_clk is not None)
             self.chk.ok(
                 "ALERT-MALFORMED",
-                pre == 0 and raised == 1 and post == 0,
+                pre == 0 and quiet_pre == 0 and raised == 1 and post == 0 and quiet_post == 0,
                 block=blk,
                 index=idx,
                 wire=val,
                 pre=pre,
+                quiet_pre_high_clk=quiet_pre,
                 raised=raised,
                 post=post,
+                quiet_post_high_clk=quiet_post,
+                quiet_clk=WINDOW_FACTOR * c,
                 raise_clk=raise_clk,
                 ref_clk=c,
             )

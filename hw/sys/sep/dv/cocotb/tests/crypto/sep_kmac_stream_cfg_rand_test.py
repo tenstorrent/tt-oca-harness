@@ -35,7 +35,11 @@ Checkers:
                       idle=1, absorb=0, squeeze=0, kmac_done=0. Control: the
                       following start reaches absorb in a wait of the same length.
   CHK-KMAC-DONE-LINE  vector bit 20 reads 0 at the process write, kmac_done
-                      reads 1 and bit 20 rises.
+                      reads 1 and bit 20 rises; the rise is at or after the start
+                      of the last read that showed the hash not complete
+                      (``STATUS.sha3_squeeze`` = 0 or ``kmac_done`` = 0), and
+                      within the rise bound after the read that shows
+                      ``kmac_done`` = 1.
   CHK-KMAC-REGWEN     CFG_REGWEN 1 in the idle window, 0 in absorb; a double
                       write of CFG_SHADOWED in absorb leaves it at C. Control:
                       the idle write reads back C.
@@ -73,7 +77,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
-from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
+from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_kmac_golden import sha3, shake
@@ -283,6 +287,26 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
                 return True, value, elapsed
             if elapsed > bound:
                 return False, value, elapsed
+            await ClockCycles(cocotb.top.clk_i, 4)
+
+    async def _poll_marked(
+        self, addr: int, mask: int, want: int, t0: int, bound: int
+    ) -> tuple[bool, int, BitMark | None]:
+        """``_poll`` that also returns the vector-watch mark taken before the last miss read.
+
+        A read that does not match was sampled after its mark, so an event that the read
+        shows as not yet done cannot have happened before that mark.
+        """
+        last_miss = None
+        while True:
+            m = self.vec.mark()
+            value = await self._rd(addr)
+            elapsed = self._now_clk() - t0
+            if (value & mask) == want:
+                return True, value, last_miss
+            last_miss = m
+            if elapsed > bound:
+                return False, value, last_miss
             await ClockCycles(cocotb.top.clk_i, 4)
 
     async def _wait_probe(self, sig, level: int, bound: int) -> None:
@@ -518,25 +542,39 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         vec_before = self.vec.level("kmac_done")
         t1 = self._now_clk()
         await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
-        seen, status, sq_clk = await self._poll(KMAC_STATUS, _SQUEEZE, _SQUEEZE, t1, _OUTER_CLK)
+        seen, status, sq_miss = await self._poll_marked(
+            KMAC_STATUS, _SQUEEZE, _SQUEEZE, t1, _OUTER_CLK
+        )
         ctrl_process_squeeze = int(seen)
         state_seen = False
         rise_clk = None
+        lower, lower_src = mark, "process"
+        if sq_miss is not None:
+            lower, lower_src = sq_miss, "squeeze0"
         if seen:
-            state_seen, intr, _ = await self._poll(KMAC_INTR_STATE, _DONE, _DONE, t1, _OUTER_CLK)
+            state_seen, intr, done_miss = await self._poll_marked(
+                KMAC_INTR_STATE, _DONE, _DONE, t1, _OUTER_CLK
+            )
+            if done_miss is not None:
+                lower, lower_src = done_miss, "done0"
             if state_seen:
                 try:
                     rise_clk = await self.vec.wait_rise(mark, window, "kmac_done")
                 except BitWatchTimeout:
                     rise_clk = None
+        in_order = rise_clk is not None and rise_clk >= lower.clk
         self.chk.ok(
             "KMAC-DONE-LINE",
-            vec_before == 0 and state_seen and rise_clk is not None,
+            vec_before == 0 and state_seen and in_order,
             **tag,
             enable=1,
             state=int(state_seen),
             vec20_before=vec_before,
             vec20=int(rise_clk is not None),
+            rise_clk=rise_clk if rise_clk is not None else "none",
+            lower_clk=lower.clk,
+            lower_src=lower_src,
+            process_clk=mark.clk,
             rise_bound=window,
             **({} if seen else {"reason": "timeout", "bound": _OUTER_CLK}),
         )

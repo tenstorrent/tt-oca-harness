@@ -35,7 +35,11 @@ Checkers:
                        the two programs, each DMEM result equals the operator
                        golden, and each reset shows 0x04 then 0x00 on the probe.
   CHK-OTBN-DONE-LINE   vector bit 29 equals ``done`` AND ``INTR_ENABLE.done`` at
-                       every sample of the done-line leg.
+                       every sample of the done-line leg. With the enable set,
+                       the first rise after the ``CMD`` write is at or after the
+                       start of the last ``INTR_STATE`` read that showed
+                       ``done`` = 0, and at the latest 64 clocks after the
+                       reads that show ``done`` = 1 and ``STATUS`` IDLE.
   CHK-OTBN-CMD-IGNORE  an unrecognised ``CMD`` at IDLE starts nothing for
                        4 x t_cmd; a ``CMD`` write at 0x01 leaves ``STATUS`` 0x01.
   CHK-OTBN-BUSYWR      ``CTRL.software_errs_fatal`` written at 0x01 reads 0;
@@ -60,7 +64,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
-from env.sep_bit_watch import SepBitWatch
+from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_edge_timer import SepEdgeTimer
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -221,6 +225,22 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 return False, vals, self._clk() - start
             if gap:
                 await ClockCycles(cocotb.top.clk_i, gap)
+
+    async def _poll_done_marked(self, bound: int) -> tuple[bool, BitMark | None]:
+        """Read INTR_STATE until ``done`` reads 1; return (seen, mark before the last 0 read).
+
+        A read that shows ``done`` = 0 was sampled after its mark, so with the enable set
+        the line cannot have risen before that mark.
+        """
+        start = self._clk()
+        last0 = None
+        while True:
+            m = self.irq.mark()
+            if await self._rd(A_INTR_STATE, M_DONE):
+                return True, last0
+            last0 = m
+            if self._clk() - start > bound:
+                return False, last0
 
     async def _wait_idle(self, bound: int, *, gap: int = 0) -> tuple[bool, list[int], int]:
         return await self._poll_status(lambda s: s == ST_IDLE, bound, gap=gap)
@@ -514,6 +534,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             await self._stage_compute(otbn_compute_prog(p.op))
             mark = self.irq.mark()
             await self._wr(A_CMD, CMD_EXECUTE)
+            last0 = None
+            if en:
+                _, last0 = await self._poll_done_marked(bound)
             ok, vals, _ = await self._wait_idle(bound)
             done = await self._rd(A_INTR_STATE, M_DONE)
             if not ok or done != 1:
@@ -573,7 +596,12 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                     pre_vec29=vec0,
                 )
             else:
-                rose = int(self.irq.rises_since(mark, "done") > 0)
+                try:
+                    rise_clk = await self.irq.wait_rise(mark, _LINE_BOUND_CLK, "done")
+                except BitWatchTimeout:
+                    rise_clk = None
+                rose = int(rise_clk is not None)
+                in_order = int(rose == 1 and last0 is not None and rise_clk >= last0.clk)
                 vec_en = self._line()
                 await self._wr(A_INTR_STATE, M_DONE)
                 st_clr = await self._rd(A_INTR_STATE, M_DONE)
@@ -583,6 +611,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                     and vec0 == 0
                     and st1 == 0
                     and rose == 1
+                    and in_order == 1
                     and vec_en == 1
                     and st_clr == 0
                     and vec_clr == 0
@@ -595,6 +624,10 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                     enable=1,
                     state=done,
                     vec29_rose=rose,
+                    rise_clk=rise_clk if rise_clk is not None else "none",
+                    last_done0_clk=last0.clk if last0 is not None else "none",
+                    cmd_clk=mark.clk,
+                    rise_after_done0=in_order,
                     vec29=vec_en,
                     then_w1c_state=st_clr,
                     w1c_vec29=vec_clr,

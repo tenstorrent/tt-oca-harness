@@ -38,16 +38,20 @@ Checkers:
   CHK-HMAC-WIPE          after a write of w to ``WIPE_SECRET`` every DIGEST word reads w, and
                          the next HMAC with no ``KEY`` write hashes with an all-w key
 
-The write that fills the FIFO is not the last write the engine takes: the engine stages a
-write beyond the FIFO before it stops the bus. So the measurement run of each stalled leg
-counts the writes that complete with the stall held (N), and the graded run holds write N+1.
+The measurement run of each stalled leg counts the writes until a ``STATUS`` read after each
+write shows ``fifo_full`` = 1 (N). The graded run posts N writes, reads ``fifo_full`` = 1 and
+holds write N+1, the first write into a FIFO that reads full: the register text states that
+data written to the FIFO whilst it is full is back-pressured (``hmac.adoc``:159). The
+measurement run then issues up to ``PROBE_EXTRA_MAX`` more writes with the stall held and
+logs how many complete; that count is not graded.
 
 Controls: ``CTRL-HMAC-STALL-FULL`` (a stalled leg reads ``fifo_full`` = 1),
 ``CTRL-HMAC-BP-CLEAN`` (a beat into a FIFO that is not full completes), ``CTRL-HMAC-LENGTHS``
 (every length cell ran), ``CTRL-HMAC-FE-DEPTH`` (the not-full leg writes fewer words than the
 depth at full), ``CTRL-HMAC-WIPE-PRE`` (DIGEST before the wipe equals the golden and differs
 from w). Log-only: ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text gives only its
-reset value), ``OBS-HMAC-STALL-N`` (the write counts of the measurement run).
+reset value), ``OBS-HMAC-STALL-N`` (N and the count of writes that the measurement run
+completes with the stall held).
 """
 
 from __future__ import annotations
@@ -126,7 +130,7 @@ DONE_BOUND = 200_000
 DRAIN_BOUND = 50_000
 RESET_BOUND = 2_000
 CLEAN_BOUND = 2_000  # clocks for one beat into a FIFO that is not full
-PROBE_EXTRA_MAX = 8
+PROBE_EXTRA_MAX = 8  # log-only writes after fifo_full reads 1 in the measurement run
 
 
 def legal_key_bits(sha: int) -> list[int]:
@@ -566,7 +570,10 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         self.ran_lengths.add((c.h.sha, c.length))
 
     async def _probe_n(self, leg: StallLeg) -> int | None:
-        """Measurement run: the count of writes that complete while the drain stall is held."""
+        """Measurement run: N, the count of writes until ``STATUS`` reads ``fifo_full`` = 1.
+
+        The writes that complete after that read with the stall held are logged only.
+        """
         dut = self.dut
         await self._reset_hmac()
         await self._setup_stalled(leg.h)
@@ -599,7 +606,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             "HMAC-STALL-N",
             mode=leg.mode,
             n_full=n_full,
-            n=count,
+            completed_with_stall=count,
+            answered_after_full=count - n_full,
             t_wr=t_wr,
             held=int(pending is not None),
         )
@@ -611,7 +619,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
                 )
             take_handshake(pending[1])
         await self._reset_hmac()
-        return count
+        return n_full
 
     async def _setup_stalled(self, h: Hash) -> None:
         await self._wr(
@@ -668,7 +676,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         st = await self._status("stalled")
         self.chk.ctrl("HMAC-STALL-FULL", st["full"] == 1, mode=leg.mode, writes=n, run="leg")
 
-        # Held beat: no other access may go on the host path during the hold.
+        # Held beat: write N+1, the first write after STATUS reads fifo_full = 1. No other
+        # access may go on the host path during the hold.
         hold = 16 * t_clean
         task, seq, cap, t0 = await self._held_write(*ch[n])
         await ClockCycles(dut.clk_i, hold)
@@ -696,6 +705,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             no_resp and seq.resp_ok,
             mode=leg.mode,
             full=st["full"],
+            beat=n + 1,
             no_resp_clk=hold if no_resp else resp_clk,
             hold_clk=hold,
             resp_clk=resp_clk,

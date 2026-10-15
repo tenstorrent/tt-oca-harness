@@ -30,7 +30,10 @@ Checkers:
   CHK-KMAC-SWSEED          six seeds -> absorb in bound; SHA3-256 == golden.
   CHK-KMAC-MODE-LOCK       reset mode 0; a late write changes only the readback;
                            with EDN locked, the late write to sw leaves the
-                           start in EDN mode (absorb and SHA3-256 == golden).
+                           module in EDN mode: after the hash, ``CMD.entropy_req``
+                           gives >= 1 acknowledge on ``crypto_edn_ack_o[1]``
+                           (kmac.adoc ``CFG_SHADOWED``:142, ``CMD``:199), and
+                           the same window with no command gives none.
   CHK-KMAC-TIMER           kmac_err, ERR_CODE != 0, no acknowledge; error time
                            T < 2T per prescaler and P > 0 per wait timer.
   CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
@@ -495,6 +498,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             await self._reset_kmac()
             self._open()
             reset_mode = (await self.kmac.read(KMAC_CFG) & CFG_MODE_MASK) >> CFG_MODE_LSB
+            req_m, ack_m = self.w_req.mark(), self.w_ack.mark()
             await self.kmac.program(entropy_mode=locked, keyed=False)
             late = self.plan.late_sw if locked == "sw" else "sw"
             await self.kmac.write_cfg(
@@ -508,6 +512,9 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
                 late_write=late,
                 readback=readback,
             )
+            if locked == "edn":
+                # The initial EDN reseed after entropy_ready sets the request window.
+                t_reseed = await self._measure_t_reseed(req_m, ack_m)
             regs_ok = reset_mode == ENTROPY_MODE["idle"] and readback == ENTROPY_MODE[late]
             if locked == "sw":
                 self.chk.ok("KMAC-MODE-LOCK", regs_ok, **fields, part="readback")
@@ -540,7 +547,22 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
                     continue
                 status, digest = await self._sha3_hash(self.msg)
                 golden = _le_words(sha3(self.msg, 256))
-                behaviour_ok = status == "ok" and digest == golden
+                hash_ok = status == "ok" and digest == golden
+                # Mode observable: CMD.entropy_req reseeds from EDN only in EDN mode
+                # (kmac.adoc:199). Control: the same window with no command, after the
+                # hash and with the module idle, gives no acknowledge.
+                window = max(WIN_MULT * (t_reseed or BOUND_CLK // WIN_MULT), WIN_FLOOR)
+                ctrl_m = self.w_ack.mark()
+                await self._wait_clocks(window)
+                ctrl_acks = self.w_ack.high_clocks_since(ctrl_m)
+                self.chk.ctrl(
+                    "KMAC-MODE-LOCK", ctrl_acks == 0, ctrl_acks=ctrl_acks, window_clk=window
+                )
+                req_ack_m = self.w_ack.mark()
+                await self.kmac.cmd(CMD_ENTROPY_REQ)
+                await self._wait_clocks(window)
+                acks = self.w_ack.high_clocks_since(req_ack_m)
+                behaviour_ok = hash_ok and acks >= 1 and ctrl_acks == 0
                 self.chk.ok(
                     "KMAC-MODE-LOCK",
                     regs_ok and behaviour_ok,
@@ -548,6 +570,10 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
                     absorb=1,
                     stage=status,
                     digest_eq_golden=int(digest == golden),
+                    entropy_req_acks=acks,
+                    ctrl_acks=ctrl_acks,
+                    window_clk=window,
+                    t_reseed_clk=t_reseed,
                     behaviour="locked" if behaviour_ok else "late_write_taken",
                 )
             self._close()
