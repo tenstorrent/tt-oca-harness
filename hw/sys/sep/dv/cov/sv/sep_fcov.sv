@@ -18594,8 +18594,8 @@ module sep_fcov (
     logic dr_v;  // stored DOWNSAMPLE_RATE 0 rate 0, 1 rate 1, 2 rate 2 to 15, 3 rate 1023
     logic [1:0] sc;
     logic sc_v;  // 0 OUTPUT_COUNT reaches 8, 1 falls to 0, 2 stays 0 with whitening off
-    logic [3:0] fo;
-    logic fo_v;  // FIFO occupancy and pointer event
+    logic [3:0] fifo_occ;
+    logic fifo_occ_v;  // FIFO occupancy and pointer event
     logic [1:0] fc;
     logic fc_v;  // {FIFO_CTRL.ENABLE, ENTROPY_CHURN_ENABLE}
     logic ca_v;  // push with churn on after 32 pushes since the churn enable
@@ -18631,7 +18631,7 @@ module sep_fcov (
       bins output_count_falls_to_0 = {2'd1};
       bins output_count_0_whitening_off = {2'd2};
     }
-    cp_fifo_occupancy: coverpoint s.fo iff (s.fo_v) {
+    cp_fifo_occupancy: coverpoint s.fifo_occ iff (s.fifo_occ_v) {
       bins level_0 = {4'd0};
       bins level_1 = {4'd1};
       bins level_32 = {4'd2};
@@ -18976,8 +18976,8 @@ module sep_fcov (
         e.sc_v = 1'b1;
       end
       4: begin
-        e.fo   = v;
-        e.fo_v = 1'b1;
+        e.fifo_occ   = v;
+        e.fifo_occ_v = 1'b1;
       end
       5: begin
         e.fc   = v[1:0];

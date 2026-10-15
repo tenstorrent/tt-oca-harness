@@ -333,7 +333,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         seed = self.random_seed()
         plan = draw_plan(seed)
         self.chk = SepChkLog(self, TEST, seed)
-        self.dorder = SepDigestOrder()
+        self.digest_order = SepDigestOrder()
         self.logger.info(
             "PLAN seed=%d cells=[%s] stalled=[%s] fe_full=%s fe_notfull=%s wipe=%s/w=0x%08x/"
             "len1=%d/len2=%d",
@@ -408,7 +408,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._reset_hmac()
         close_graded_window(self.logger)
         await self._narrow_write_leg()
-        self.chk.obs("HMAC-DIGEST-ORDER", **self.dorder.fields())
+        self.chk.obs("HMAC-DIGEST-ORDER", **self.digest_order.fields())
         self.chk.finish()
 
     async def _narrow_write_leg(self) -> None:
@@ -454,7 +454,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
                 break
             await ClockCycles(self.dut.clk_i, 10)
         got = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)] if done else []
-        match = bool(got) and self.dorder.match(got, golden)[0]
+        match = bool(got) and self.digest_order.match(got, golden)[0]
         self.chk.ok(
             "HMAC-NARROW-WRITE",
             done and not refused and match,
@@ -464,7 +464,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             refused_lane_width_resp=",".join(refused) or "-",
             digest_eq_golden=int(match),
             digest0=f"0x{got[0]:08x}" if got else "none",
-            golden0=f"0x{self.dorder.expected(golden)[0]:08x}",
+            golden0=f"0x{self.digest_order.expected(golden)[0]:08x}",
             **({} if done else {"reason": "timeout", "bound": DONE_BOUND}),
         )
         await self._reset_hmac()
@@ -614,7 +614,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
 
     def _grade_msg(self, h: Hash, msg: bytes, mode: str, digest: list[int]) -> None:
         golden = golden_digest(h.sha, h.hmac_en, KEY_ROWS[h.key_row], h.key_bits, msg)
-        ok, _ = self.dorder.match(digest, golden)
+        ok, _ = self.digest_order.match(digest, golden)
         self.chk.ok(
             "HMAC-MSG",
             ok,
@@ -625,7 +625,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             key_bits=h.key_bits,
             **{"digest==golden": int(ok)},
             digest0=f"0x{digest[0]:08x}",
-            golden0=f"0x{self.dorder.expected(golden)[0]:08x}",
+            golden0=f"0x{self.digest_order.expected(golden)[0]:08x}",
         )
 
     async def _drain(self, bound: int, owner: str) -> int:
@@ -839,7 +839,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         golden = golden_digest(
             leg.h.sha, leg.h.hmac_en, KEY_ROWS[leg.h.key_row], leg.h.key_bits, leg.msg
         )
-        no_loss, _ = self.dorder.match(digest, golden)
+        no_loss, _ = self.digest_order.match(digest, golden)
         accepted_ok = all(r == "OKAY" for r in accepted)
         self.chk.ok(
             "HMAC-BACKPRESSURE-HOLD",
@@ -925,7 +925,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         d1 = await self._finish(h.sha, "HMAC-WIPE")
         self._grade_msg(h, leg.msg1, "burst", d1)
         g1 = golden_digest(h.sha, True, KEY_ROWS[h.key_row], h.key_bits, leg.msg1)
-        d1_ok, _ = self.dorder.match(d1, g1)
+        d1_ok, _ = self.digest_order.match(d1, g1)
         self.chk.ctrl(
             "HMAC-WIPE-PRE",
             d1_ok and leg.w not in d1,
@@ -947,7 +947,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._write_msg(chunks(leg.msg2, "burst"), "burst", 0, 8, "run")
         d2 = await self._finish(h.sha, "HMAC-WIPE")
         g2 = golden_digest(h.sha, True, [leg.w] * 32, h.key_bits, leg.msg2)
-        key_ok, _ = self.dorder.match(d2, g2)
+        key_ok, _ = self.digest_order.match(d2, g2)
         self.chk.ok(
             "HMAC-WIPE",
             digest_all_w and key_ok,

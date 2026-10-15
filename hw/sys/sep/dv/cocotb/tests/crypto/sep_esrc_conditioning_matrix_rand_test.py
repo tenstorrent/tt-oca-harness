@@ -667,13 +667,13 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         busy_ok, _, _ = await self._poll(
             ESRC_SHA256_STATUS, "SHA256_STATUS", "BUSY", lambda v: v == 0, busy_cap
         )
-        passt = SepEsrcShaTap(self.rd).start()
+        pass_tap = SepEsrcShaTap(self.rd).start()
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
         p_ok, _, _, out_reads = await self._poll_biw(PASSTHRU_BIW_MIN, cap)
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
-        await passt.stop()
+        await pass_tap.stop()
         close_graded_window(self.logger)
 
         fifo_level = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
@@ -711,14 +711,14 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             white.saw8
             and white.zero_after_8
             and white.out_max == DIGEST_WORDS
-            and passt.out_max == 0
-            and passt.clocks > 0,
+            and pass_tap.out_max == 0
+            and pass_tap.clocks > 0,
             out_count_max=white.out_max,
             out_count_end=white.out_last,
             returned_to_0=white.zero_after_8,
             biw_words=biw,
-            bypass_out_count_max=passt.out_max,
-            bypass_clocks=passt.clocks,
+            bypass_out_count_max=pass_tap.out_max,
+            bypass_clocks=pass_tap.clocks,
         )
 
     async def _poll_biw(self, minimum: int, bound: int):

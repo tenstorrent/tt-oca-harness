@@ -284,7 +284,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
-        self.dorder = SepDigestOrder()
+        self.digest_order = SepDigestOrder()
         self.km = SepKmMailbox(self)
         self.hmac = SepHmac(self)
         self.aes = SepAes(self)
@@ -309,7 +309,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         g_ka_ecb = aes_encrypt_words("ecb", ka, _le_words(AES_PT))
         h_two = await self._hmac_try(256, 256)
         a_two = await self._aes_sideload_block()
-        h_two_ok, _ = self.dorder.match(h_two, g_kh[256])
+        h_two_ok, _ = self.digest_order.match(h_two, g_kh[256])
         self.chk.ok(
             "KEYSEL-TWO",
             rc_h == 0 and rc_a == 0 and h_two_ok and a_two == g_ka_ecb,
@@ -329,7 +329,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             self.chk.ok("KEYSEL-HMAC-MISMATCH", line.pop("_ok"), **line)
 
         await self._aes_legs(ka)
-        self.chk.obs("HMAC-DIGEST-ORDER", **self.dorder.fields())
+        self.chk.obs("HMAC-DIGEST-ORDER", **self.digest_order.fields())
         close_graded_window(self.logger)
 
         await self.km.check_outbound_empty("EOT")
@@ -407,7 +407,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             out[sha] = d
             g_decoy = hmac_golden(_sw_key_bytes(decoy[:8]), self.plan.msg, sha)
             assert g_decoy != g_kh[sha], "decoy golden equals the delivered-key golden"
-            hit, _ = self.dorder.match(d, g_kh[sha])
+            hit, _ = self.digest_order.match(d, g_kh[sha])
             self.chk.ok(
                 "KEYSEL-HMAC-MATCH",
                 hit,
@@ -422,7 +422,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         sha, keylen = MATCHED_CTRL
         d = await self._hmac_try(sha, keylen)
         out[sha] = d
-        hit, _ = self.dorder.match(d, g_kh[sha])
+        hit, _ = self.digest_order.match(d, g_kh[sha])
         self.chk.ctrl(
             "KEYSEL-256",
             hit,
@@ -458,7 +458,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             ok = not reason and repeat and err == 0
             if keylen == 128:
                 g = hmac_golden(top128, self.plan.msg, sha)
-                hit = bool(runs) and self.dorder.match(runs[0], g)[0]
+                hit = bool(runs) and self.digest_order.match(runs[0], g)[0]
                 line["digest==golden_kh128"] = int(hit)
                 ok = ok and hit
             else:
