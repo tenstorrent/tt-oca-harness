@@ -118,7 +118,13 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import cocotb
 from cocotb.triggers import Edge, First, ReadOnly, RisingEdge
 
-from .ocah_spi_types import OcahSpiOpcode, command_format, opcode_name
+from .ocah_spi_types import (
+    LANE_OPCODES,
+    OcahSpiOpcode,
+    command_format,
+    lanes_to_bytes,
+    opcode_name,
+)
 
 __all__ = ["OcahSpiMonitor", "OcahSpiMonitorError"]
 
@@ -345,25 +351,43 @@ class OcahSpiMonitor:
 
     async def _monitor_loop(self) -> None:
         """Main async loop — grade the idle bus, then observe one transaction."""
+        settled = False
         while self._running:
             try:
-                await self._watch_idle()
+                await self._watch_idle(settled)
                 if not self._running:
                     break
                 await self._observe_transaction()
+                # It returns in the read-only phase of the chip-select rise.
+                settled = True
             except Exception as exc:  # noqa: BLE001
                 self.log.error("%s: exception while observing: %s", self.name, exc)
                 if self._error is None:
                     self._error = exc
 
-    async def _watch_idle(self) -> None:
-        """Return when chip-select falls; grade every SCK move while it is high."""
+    async def _watch_idle(self, settled: bool) -> None:
+        """Return when chip-select falls; grade every SCK move while it is high.
+
+        ``settled`` tells that the caller is already in the read-only phase of
+        the chip-select rise. The data lane output enables are graded at the
+        start of every idle period, then on every change.
+        """
         if _level(self._cs_n) == 0:
             await RisingEdge(self._cs_n)
+            settled = False
         triggers = [Edge(self._cs_n), Edge(self._sclk)]
         if self._sd_oe is not None:
             triggers.append(Edge(self._sd_oe))
+        if not settled:
+            await ReadOnly()
         oe_prev = _vector(self._sd_oe)
+        if self._sd_oe is not None and _level(self._cs_n) == 1 and oe_prev:
+            self._violate(
+                [],
+                "oe_idle",
+                f"data lane output enable {_fmt_vec(oe_prev)} with chip-select high "
+                f"at {_sim_time_ns()} ns",
+            )
         self._sck_idle_seen = _level(self._sclk)
         while True:
             await First(*triggers)
@@ -501,7 +525,7 @@ class OcahSpiMonitor:
             )
         end_ns = _sim_time_ns()
 
-        txn = self._decode(mosi_bits, miso_bits, start_ns, end_ns)
+        txn = self._decode(mosi_bits, miso_bits, start_ns, end_ns, beats)
         txn.update(cpol=cpol, cpha=cpha, wire_errors=tuple(errors), beats=tuple(beats))
         self._history.append(txn)
         if len(self._history) > self._max_history:
@@ -569,7 +593,7 @@ class OcahSpiMonitor:
                 self._violate(
                     errors, "oe_lanes", f"data lane output enable {_fmt_vec(oe)} at {now} ns"
                 )
-            elif out is None or _has_xz(self._sd_out, oe):
+            elif oe and _has_xz(self._sd_out, oe):
                 self._violate(errors, "xz", f"a driven data lane is X/Z at {now} ns")
         for handle, what in ((self._cs_oe, "chip-select"), (self._sck_oe, "clock")):
             if handle is not None and _level(handle) != 1:
@@ -607,8 +631,15 @@ class OcahSpiMonitor:
         miso_bits: List[int],
         start_ns,
         end_ns,
+        beats: Optional[List[Tuple[Optional[int], Optional[int], Optional[int]]]] = None,
     ) -> Dict[str, Any]:
-        """Convert raw bit lists into a structured transaction record."""
+        """Convert raw bit lists into a structured transaction record.
+
+        A dual or quad command (``LANE_OPCODES``) seen through the four-lane
+        taps takes its address and data from the lanes of each phase, at the
+        widths of its command format; ``data_mosi`` and ``data_miso`` then
+        hold those bytes.
+        """
         mosi_bytes = _bits_to_bytes(mosi_bits)
         miso_bytes = _bits_to_bytes(miso_bits)
 
@@ -635,12 +666,17 @@ class OcahSpiMonitor:
         if fmt is not None and fmt.response:
             input_clocks = min(input_clocks, fmt.input_clocks(self._addr_bytes))
 
+        data_mosi = mosi_bytes[data_start:] if opcode in _MOSI_COMMANDS else b""
+        data_miso = miso_bytes[data_start:] if opcode in _MISO_COMMANDS else b""
+        if complete and opcode in LANE_OPCODES and beats and fmt is not None:
+            has_addr, addr, data_mosi, data_miso = self._decode_lanes(fmt, beats)
+
         return {
             "opcode": opcode,
             "addr": addr,
             "has_addr": has_addr,
-            "data_mosi": mosi_bytes[data_start:] if opcode in _MOSI_COMMANDS else b"",
-            "data_miso": miso_bytes[data_start:] if opcode in _MISO_COMMANDS else b"",
+            "data_mosi": data_mosi,
+            "data_miso": data_miso,
             "bit_count": len(mosi_bits),
             "input_bits": input_bits,
             "input_clocks": input_clocks,
@@ -648,6 +684,26 @@ class OcahSpiMonitor:
             "start_ns": start_ns,
             "end_ns": end_ns,
         }
+
+    def _decode_lanes(self, fmt, beats) -> Tuple[bool, int, bytes, bytes]:
+        """Address and data of a dual or quad command from the lanes of each phase."""
+
+        def phase(start: int, stop: Optional[int], field: int, lanes: int) -> bytes:
+            shift = 1 if field == 2 and lanes == 1 else 0
+            values = [((beat[field] or 0) >> shift) for beat in beats[start:stop]]
+            return bytes(lanes_to_bytes(values, lanes)[0])
+
+        addr_clocks = (8 * self._addr_bytes) // fmt.addr_lanes if fmt.addr_lanes else 0
+        addr_bytes = phase(8, 8 + addr_clocks, 0, fmt.addr_lanes or 1) if addr_clocks else b""
+        addr = int.from_bytes(addr_bytes, "big") if addr_bytes else 0
+        if fmt.response:
+            return (
+                bool(addr_clocks),
+                addr,
+                b"",
+                phase(fmt.input_clocks(self._addr_bytes), None, 2, fmt.data_lanes),
+            )
+        return bool(addr_clocks), addr, phase(8 + addr_clocks, None, 0, fmt.data_lanes), b""
 
 
 # ---------------------------------------------------------------------------

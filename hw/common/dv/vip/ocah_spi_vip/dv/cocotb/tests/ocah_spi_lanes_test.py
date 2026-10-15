@@ -7,11 +7,13 @@ with QUAD PAGE PROGRAM (single-lane command and address, four-lane payload),
 then reads it back with READ, DUAL OUTPUT READ, QUAD OUTPUT READ, DUAL I/O
 READ and QUAD I/O READ:
 
-* ``CHK-SPI-LANE-PROGRAM``: the device record holds the payload, and the
-  monitor's four-lane decode of the payload phase equals it.
+* ``CHK-SPI-LANE-PROGRAM``: the device record holds the payload, the
+  monitor's four-lane decode of the payload phase equals it, and the monitor
+  record carries the address and the payload.
 * ``CHK-SPI-LANE-READ``: every read returns the payload to the controller, the
   device record's ``data_out`` equals it, and the monitor's lane decode of the
-  response phase equals it, each at the command's lane width.
+  response phase equals it, each at the command's lane width; the monitor
+  record carries the address and the response.
 * ``CHK-SPI-LANE-JEDEC``: READ JEDEC ID answers on lane 1 in standard mode.
 * ``CHK-SPI-LANE-REFUSE``: a quad program ending one nibble into a payload byte is refused as
   ``partial_byte``, a quad I/O read ending in its four-lane address as
@@ -19,8 +21,11 @@ READ and QUAD I/O READ:
   the latch are unchanged.
 * ``CHK-SPI-LANE-OE``: the legal frames give no output-enable violation; a
   single-lane frame that enables lane 1 gives exactly ``oe_lanes``, a lane
-  enable raised with chip select high gives exactly ``oe_idle``, and a frame
-  with the chip-select enable low gives ``oe_ctrl``; ``stop()`` then raises.
+  enable raised with chip select high gives exactly ``oe_idle``, a lane
+  enable still on when chip select rises gives exactly ``oe_idle``, and a
+  frame with the chip-select enable low gives ``oe_ctrl``; ``stop()`` then
+  raises. A single-lane ``transfer()`` on the four-lane link turns its lane
+  enable off before chip select rises, so it adds no violation.
 
 The checker replays the accepted frames (``CHK-SPI-READ-DATA``,
 ``CHK-SPI-FRAME-SHAPE``, ``CHK-SPI-MEM-GOLDEN``) and ``CHK-SPI-LEDGER``
@@ -116,11 +121,20 @@ async def ocah_spi_lanes_test(dut) -> None:
         ]
     )
     pp_rec = flash.get_transactions()[rec_mark]
-    pp_wire = phase_bytes(frames_since(mark)[0]["beats"], 32, 4, 0)
+    pp_frame = frames_since(mark)[0]
+    pp_wire = phase_bytes(pp_frame["beats"], 32, 4, 0)
     checker.expect_equal(
         "CHK-SPI-LANE-PROGRAM",
-        (pp_rec["ok"], pp_rec["reason"], pp_rec["data_in"], pp_wire, flash.write_enabled),
-        (True, "", payload, payload, False),
+        (
+            pp_rec["ok"],
+            pp_rec["reason"],
+            pp_rec["data_in"],
+            pp_wire,
+            flash.write_enabled,
+            pp_frame["addr"],
+            pp_frame["data_mosi"],
+        ),
+        (True, "", payload, payload, False, addr, payload),
         context=f"QUAD PAGE PROGRAM addr=0x{addr:06x} len={length}",
     )
 
@@ -131,13 +145,12 @@ async def ocah_spi_lanes_test(dut) -> None:
         rec_mark = len(flash.get_transactions())
         host = (await bfm.lane_frame(read_segments(opcode, addr, length)))[0]
         rec = flash.get_transactions()[rec_mark]
-        wire = phase_bytes(
-            frames_since(mark)[0]["beats"], fmt.input_clocks(ADDR_BYTES), fmt.data_lanes, 2
-        )
+        frame = frames_since(mark)[0]
+        wire = phase_bytes(frame["beats"], fmt.input_clocks(ADDR_BYTES), fmt.data_lanes, 2)
         checker.expect_equal(
             "CHK-SPI-LANE-READ",
-            (rec["ok"], host, rec["data_out"], wire),
-            (True, payload, payload, payload),
+            (rec["ok"], host, rec["data_out"], wire, frame["addr"], frame["data_miso"]),
+            (True, payload, payload, payload, addr, payload),
             context=(
                 f"{OcahSpiOpcode(opcode).name} addr_lanes={fmt.addr_lanes} "
                 f"dummy={fmt.dummy_clocks} data_lanes={fmt.data_lanes} len={length}"
@@ -179,6 +192,9 @@ async def ocah_spi_lanes_test(dut) -> None:
     )
     await bfm.lane_frame([(1, "tx", bytes([OcahSpiOpcode.WRITE_DISABLE]))])
 
+    # A single-lane transfer() on the four-lane link releases its lane enable.
+    await bfm.transfer(OcahSpiOpcode.READ_SR1, rx_len=1)
+
     # Output-enable violations, one per leg.
     legal_errors = monitor.get_wire_errors()
     legs = []
@@ -199,6 +215,16 @@ async def ocah_spi_lanes_test(dut) -> None:
     dut.spi4_sd_oe.value = 0
     await bfm.drive(hold_ns=2 * half)
     legs.append(("oe_with_cs_high", [e.split(":")[0] for e in monitor.get_wire_errors()[before:]]))
+
+    before = len(monitor.get_wire_errors())
+    await bfm.drive(cs_n=0)
+    dut.spi4_sd_oe.value = 0b0001
+    await bfm.drive(sclk=1)
+    await bfm.drive(sclk=0)
+    await bfm.drive(cs_n=1, hold_ns=2 * half)
+    dut.spi4_sd_oe.value = 0
+    await bfm.drive(hold_ns=2 * half)
+    legs.append(("oe_on_at_cs_rise", [e.split(":")[0] for e in monitor.get_wire_errors()[before:]]))
 
     before = len(monitor.get_wire_errors())
     dut.spi4_cs_oe.value = 0
@@ -225,6 +251,7 @@ async def ocah_spi_lanes_test(dut) -> None:
             [
                 ("lane1_in_x1", ["oe_lanes"]),
                 ("oe_with_cs_high", ["oe_idle"]),
+                ("oe_on_at_cs_rise", ["oe_idle"]),
                 ("cs_oe_low", ["oe_ctrl"]),
             ],
             True,
