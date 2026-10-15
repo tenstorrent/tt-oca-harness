@@ -946,7 +946,7 @@ seed-dependent bin. The SPI and DMA area writes the mark as the status
 |<<sep-fcov-p2-crypto-entropy,Crypto and entropy>> |`cp_detune_lane`, `cp_window_class`, `x_gen_latch`, `cp_alert_threshold`, `cp_active_sinks`, `x_op_protocol` (the re-arm and single-step cells), `cp_verify_outcome` (the reason-class bins)
 |<<sep-fcov-p2-fabric-remap,Fabric and remap>> |`cp_smc_cfg_class_dir`, `sil_out_on_smc_route`, `sil_smc_outside_aperture` (the above-top bin)
 |<<sep-fcov-p2-mailbox-irq-pic,Mailbox, IRQ, PIC>> |`cp_winner`, `cp_nmi_target` (the trampoline-copy bins), `x_case_taken` (cases b to d), `cp_vec_unchanged` (cases b and c), `cp_level_val` (the encodings 2 to 13), `x_level_class_order` (the interior cells), `cp_thresh_val` (the values 1, 6, 9 and other), `x_op_offset`
-|<<sep-fcov-p2-spi-dma,SPI and DMA>> |`cp_len` (bins `b64` to `b4096`), `cp_irq_x_enable`, `cp_len_x_kind`, `cp_csaat_x_dir`, `cp_clkdiv_x_speed`, `cp_mode8`, `cp_mode_x_dir`, `cp_clkdiv_class`, `cp_csn_class`, `cp_cpha_edge`, `cp_stall_x_speed`, `cp_clear_form`, `cp_mode_x_width`, `cp_mode_x_chunkcount`, `cp_wrap_independence`, `cp_abort_phase`, `cp_inrange_pos_x_side`, `cp_msg_len_class`
+|<<sep-fcov-p2-spi-dma,SPI and DMA>> |`cp_len` (bins `b64` to `b4096`), `cp_irq_x_enable`, `cp_len_x_kind`, `cp_csaat_x_dir`, `cp_clkdiv_x_speed`, `cp_mode8`, `cp_mode_x_dir`, `cp_clkdiv_class`, `cp_csn_class`, `cp_cpha_edge`, `x_width_dir_test` (the `pad_timing_cfg` cells), `cp_clear_form`, `cp_mode_x_width`, `cp_mode_x_chunkcount`, `cp_wrap_independence`, `cp_abort_phase`, `cp_inrange_pos_x_side`, `cp_msg_len_class`
 |<<sep-fcov-p2-mem-boot-reset,Memory, boot, reset>> |`cp_rst_release_sync`, `cp_aon_release_sync`, `cp_otf_reset_x_path`, `cp_independence_pair`
 |<<sep-fcov-p2-efuse-lifecycle,eFuse, lifecycle>> |Every coverpoint of `sep_efuse_field_value_cg`, `sep_lc_feat_ctrl_profile_cg`, `sep_lc_feature_bit_semantics_cg`, `sep_dtp_gating_ladder_cg`, `sep_lc_sigint_failclosed_cg`, `sep_lc_illegal_transition_cg`, `sep_efuse_lock_policy_cg`, `sep_lc_demotion_cg` and `sep_lc_demote_lock_cg`; `x_ch_kind_copy` and `x_ch_retry` of `sep_token_fault_cg`; `cp_match_phase`, `x_verdict_out` (the Match and Mismatch cells) and `x_state_demote_forced` of `sep_sec_dis_activation_cg`; `cp_stops_sense` (the two phase bins) and `x_state_strap_feat` of `sep_sec_dis_robustness_cg`; `cp_state`, `x_state_class_op` and `cp_gate_independent_of_feat` of `sep_efuse_jtag_policy_cg`
 |<<sep-fcov-p2-key-manager,Key Manager>> |`cp_csr_isr_winner`, `cp_if_parity`, `cp_otp_read_through`, `cp_km_size_vs_width`, `cp_ex_mode_x_target`, `cp_smp_count_good`, `cp_fr_unrec_code`, `cp_fr_isr_disposition`, `cp_transfer_integrity`
@@ -1682,6 +1682,10 @@ bin.
 * An extension leg that runs in the testlist entry of an open test writes the
 code of its own Phase 3 entry for its leg only. The steps of the open test run
 with the window closed.
+* The SPI lane and output-enable groups (<<sep-fcov-spi-lane>>) are the one
+exception to the next rule: they sample a record that the leaf writes after its
+check passed, and the owner code of the record is the test dimension of
+`sep_spi_lane_data_cg`.
 * The gate is not a bin dimension, a checker verdict or a scoreboard count. A bin
 still samples a DUT signal, and the gate only enables the sample.
 * The Phase 1 groups do not read the gate and keep their own sampling.
@@ -1699,7 +1703,7 @@ does not use the `in_reset` gate of Phase 1. The graded window still applies.
 |<<sep-fcov-p2-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |`sep_pic_reg_map_cg`, `sep_pic_source_map_cg`, `sep_pic_enable_priority_cg`, `sep_pic_gateway_cg`, `sep_pic_delivery_cg`, `sep_pic_no_delivery_cg`, `sep_pic_fabric_isolation_cg`, `sep_cpu_nonpic_irq_cg`, `sep_nmi_vector_cfg_cg`, `sep_nmi_concurrency_cg`, `sep_fault_source_report_cg`, `sep_fault_source_ack_cg`, `sep_mbox_transfer_cg`, `sep_mbox_qualification_cg`, `sep_cpu_ctrl_timeout_inert_cg`, `sep_mbox_irq_line_cg`, `sep_mbox_fifo_model_cg`, `sep_mbox_reset_cg`, `sep_pic_alert_cg`, `sep_dma_host_fault_cg`
 |<<sep-fcov-p2-spi-dma,SPI and DMA>>
-|`sep_spi_command_segment_cg`, `sep_spi_seg_rand_cg`, `sep_spi_illegal_access_cg`, `sep_spi_pad_interface_cg`, `sep_spi_pad_rand_cg`, `sep_spi_fifo_status_cg`, `sep_spi_fifo_rand_cg`, `sep_spi_interrupt_cg`, `sep_spi_misc_rand_cg`, `sep_spi_error_status_cg`, `sep_periph_reset_state_cg`, `sep_spi_dma_use_case_cg`, `sep_dma_transfer_cg`, `sep_dma_xfer_rand_cg`, `sep_dma_endpoint_cg`, `sep_dma_completion_cg`, `sep_dma_range_config_cg`, `sep_dma_hash_cg`, `sep_dma_config_fault_cg`, `sep_dma_error_terminal_cg`, `sep_dma_zero_cg`, `sep_dma_containment_cg`
+|`sep_spi_command_segment_cg`, `sep_spi_seg_rand_cg`, `sep_spi_illegal_access_cg`, `sep_spi_pad_interface_cg`, `sep_spi_pad_rand_cg`, `sep_spi_fifo_status_cg`, `sep_spi_fifo_rand_cg`, `sep_spi_interrupt_cg`, `sep_spi_misc_rand_cg`, `sep_spi_error_status_cg`, `sep_periph_reset_state_cg`, `sep_spi_dma_use_case_cg`, `sep_dma_transfer_cg`, `sep_dma_xfer_rand_cg`, `sep_dma_endpoint_cg`, `sep_dma_completion_cg`, `sep_dma_range_config_cg`, `sep_dma_hash_cg`, `sep_dma_config_fault_cg`, `sep_dma_error_terminal_cg`, `sep_dma_zero_cg`, `sep_dma_containment_cg`, `sep_spi_lane_data_cg`, `sep_spi_lane_opcode_cg`, `sep_spi_lane_oe_win_cg`, `sep_spi_lane_trigger_cg`, `sep_spi_lane_abort_chain_cg`
 |<<sep-fcov-p2-mem-boot-reset,Memory, boot, reset>>
 |`sep_reset_source_cg`, `sep_clk_domain_cg`, `sep_boot_milestone_cg`, `sep_static_tieoff_cg`, `sep_mem_aperture_cg`, `sep_reset_sw_ctrl_cg`, `sep_aperture_reserved_access_cg`, `sep_wdt_config_bark_cg`, `sep_wdt_wakeup_timer_cg`, `sep_wdt_escalation_fault_cg`, `sep_cpu_ctrl_reg_cg`, `sep_scratch_reg_access_cg`, `sep_reset_scope_retention_cg`, `sep_crypto_reset_cg`, `sep_debug_trace_cg`, `sep_documented_absence_cg`, `sep_cpu_ecc_irq_cg`, `sep_fabric_dedicated_port_cg`, `sep_periph_reset_state_cg`, `sep_dma_containment_cg`, `sep_fault_source_ack_cg`, `sep_cpu_ctrl_timeout_inert_cg`
 |<<sep-fcov-p2-efuse-lifecycle,eFuse, lifecycle>>
@@ -3493,7 +3497,9 @@ This section names the dense groups of the SPI host and the secure DMA. A bin
 of a Phase 1 group that is in `sep_fcov.sv` is marked existing. A coverpoint
 shows that an owning test drives its scenario. Bins come from the
 specification and the register description only. Every coverpoint samples DUT
-signals. No coverpoint reads log text or a scoreboard count. The groups are VCS
+signals, except the SPI lane and output-enable groups (<<sep-fcov-spi-lane>>),
+which sample a record that the leaf writes after its check passed. No
+coverpoint reads log text or a scoreboard count. The groups are VCS
 covergroups in `hw/sys/sep/dv/cov/sv/sep_fcov.sv` (`ifndef VERILATOR`).
 Verilator compiles no covergroup, so only a VCS run scores them. Feature
 checkers stay in the tests: a bin is an interface event and not a golden
@@ -3735,14 +3741,14 @@ they add or reuse.
 
 *Class*: executable.
 
-*Tool*: VCS. *Crosses*: `cp_txwm`, `cp_rxwm` and `cp_stall_x_speed`. *Illegal bins*: none. The owning test runs every graded TX and RX watermark class on every run, so `cp_txwm` and `cp_rxwm` are not seed-dependent. It draws one `SPEED` per seed for the stall legs, so `cp_stall_x_speed` is graded on a merge of regressions.
+*Tool*: VCS. *Crosses*: `cp_txwm`, `cp_rxwm` and `cp_stall_x_speed`. *Illegal bins*: none. The owning test runs every graded TX and RX watermark class on every run, so `cp_txwm` and `cp_rxwm` are not seed-dependent. It runs the stall legs at each `SPEED` on every seed, so `cp_stall_x_speed` fills on every run.
 
 [cols="2,4,4,3,1,2",options="header"]
 |===
 |Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
 |`cp_txwm` |`above_depth` (`TXWM` stays 1) = 1 bin. The classes `one`, `mid` and `at_depth` x crossing are graded by the open tests `sep_spi_ot_host_csr_irq_rand_test` and `sep_spi_ot_dma_tx_test`; the owning test runs them as controls (`OBS-SPI-WM`), so they are not bins. `zero` x crossing is not a bin |`wr_ev`, `spi_host.reg2hw.control.tx_watermark.q`, `spi_host.tx_wm`, `spi_host.tx_qd`. The class comes from `TX_WATERMARK` against the latched depth. The crossing comes from the edges of `tx_wm` |`sep_spi_fifo_stall_watermark_rand_test` |executable |`spi_controller.adoc`, `CONTROL.TX_WATERMARK`, `STATUS.TXWM`
 |`cp_rxwm` |Class {`zero`, `one`, `mid`} x crossing {`into`, `out`}, less `zero` x `out` = 5 bins. `zero` x `out` is not a bin (<<sep-fcov-spi-dma-not-graded>>) |`wr_ev`, `spi_host.reg2hw.control.rx_watermark.q`, `spi_host.rx_wm`, `spi_host.rx_qd`. The class comes from `RX_WATERMARK`. The crossing comes from the edges of `rx_wm`: `into` is a rising edge, and `out` is a falling edge at an `RXDATA` read. CHK-SPI-WM grades `RXWM` = 0 at `RXQD` equal to the watermark minus 1 in the drain of the `one` and `mid` classes. Equality is not graded |`sep_spi_fifo_stall_watermark_rand_test` |executable |`spi_controller.adoc`, `CONTROL.RX_WATERMARK`, `STATUS.RXWM`
-|`cp_stall_x_speed` |{`tx_stall`, `rx_stall`} x `SPEED` {0, 1, 2} = 6 cells |`spi_host.tx_stall`, `spi_host.rx_stall`, latched `COMMAND.SPEED`. Rising edge of the stall flag with the `SPEED` of the active segment |`sep_spi_fifo_stall_watermark_rand_test` |executable, seed-dependent |`spi_controller.adoc`, `STATUS.TXSTALL`, `STATUS.RXSTALL`, `COMMAND.SPEED`
+|`cp_stall_x_speed` |{`tx_stall`, `rx_stall`} x `SPEED` {0, 1, 2} = 6 cells |`spi_host.tx_stall`, `spi_host.rx_stall`, latched `COMMAND.SPEED`. Rising edge of the stall flag with the `SPEED` of the active segment |`sep_spi_fifo_stall_watermark_rand_test` |executable |`spi_controller.adoc`, `STATUS.TXSTALL`, `STATUS.RXSTALL`, `COMMAND.SPEED`
 |===
 
 ====== `sep_spi_interrupt_cg`
@@ -3967,6 +3973,79 @@ they add or reuse.
 |`cp_lock_ctx` |`idle` (`STATUS.ERROR` clear and `STATUS.BUSY` clear), `after_error` (`STATUS.ERROR` set). A refused write of the coverpoints above |`wr_ev`, `dma_core.reg2hw.range_regwen.q`, `dma_core.reg2hw.status.error.q`, `dma_busy_i`. At the register write |`sep_dma_irq_error_lock_rand_test` |executable |`secure_dma.adoc`, `RANGE_REGWEN`, `STATUS.ERROR`
 |===
 
+[[sep-fcov-spi-lane]]
+===== SPI lane and output-enable groups
+
+These groups record a check that passed, not a DUT signal. The lane decode of a frame needs the scoreboard (`hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py`) and the per-window output-enable rules need the leaf's window bookkeeping, so no sampler-side gate can tell a correct frame from a wrong one. After a data, output-enable, trigger, abort or chain check passes, the leaf writes one record into the `sep_fcov` variables `spi_ln_owner` (its own owner code), `spi_ln_kind`, `spi_ln_width`, `spi_ln_dir`, `spi_ln_opcode`, `spi_ln_oe_win`, `spi_ln_abort` and `spi_ln_chain` through the `u_sep_fcov` handle and adds 1 to `spi_ln_seq` (`spi_lane_fcov` in `hw/sys/sep/dv/cocotb/env/sep_spi_lane_responder.py`). `sep_fcov.sv` samples every group once on the first `clk_i` edge that sees a new `spi_ln_seq`; the leaf waits two clocks before the next record. A record is written only after its check passed, so a failing frame fills no bin. The variables drive nothing and touch no DUT net. Each group samples only for the owner codes of its owning tests (the gate column), and the record kind selects the group. These groups are not gated on `in_reset`: the cold-reset and `rst_ni` records come after the graded window. On Verilator `spi_lane_fcov` writes nothing. A firmware leaf (`sep_spi_ot_dma_rx_test`, `sep_spi_ot_flash_cmd_rand_test`, `sep_spi_ot_dma_tx_test`) writes its records after the cocotb checks and the firmware PASS lines it reads from the console have passed.
+
+Kind codes: 1 data frame, 2 lane opcode, 3 output-enable window, 4 trigger cell, 5 abort, 6 chain. Width: `COMMAND.SPEED` of the graded segment, 0 x1, 1 x2, 2 x4. Direction: 0 TX, 1 RX. New owner codes (`tb/sep_fcov_owner_codes.svh`): 417 `sep_spi_ot_dma_rx_test`, 418 `sep_spi_pad_oe_rules_test`, 419 `sep_spi_ot_flash_cmd_rand_test`, 420 `sep_spi_ot_dma_tx_test`.
+
+====== `sep_spi_lane_data_cg`
+
+*Class*: executable.
+
+*Tool*: VCS. *Crosses*: `x_width_dir_test` (`cp_width` x `cp_dir` x `cp_test`). *Illegal bins*: none. *Ignore bins* of `x_width_dir_test`: `dma_handshake_tx` and `ot_dma_rx_tx` (those leaves grade read data only), `ot_dma_tx_x2` and `ot_flash_cmd_x2_tx` (the flash model has no dual program command) and `ot_dma_tx_rx` (that leaf grades program data only); 42 cells less 11 leave 31. `sep_spi_pad_timing_cfg_rand_test` draws one width per mode cell, two cells per seed, so its cells are graded on a merge of regressions. Every other owner runs each width it supports on every seed. `sep_spi_ot_flash_cmd_rand_test` records x1 TX (the 0x02 program that CHK-SPI-SB-TX grades), x1 RX (the primary READ 0x03 that CHK-SPI-SB-RX grades), x2 and x4 RX and x4 TX.
+
+[cols="2,4,4,3,1,2",options="header"]
+|===
+|Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
+|`cp_test` |`pad_speed_dir_matrix`, `pad_timing_cfg`, `fifo_stall_watermark`, `dma_handshake`, `ot_dma_rx`, `ot_flash_cmd`, `ot_dma_tx` |`spi_ln_owner` mapped to a test index (`spi_ln_test`); record kind 1. A record of any other owner maps to index 7, which is no bin |`sep_spi_pad_speed_dir_matrix_test`, `sep_spi_pad_timing_cfg_rand_test`, `sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_dma_handshake_rand_test`, `sep_spi_ot_dma_rx_test`, `sep_spi_ot_flash_cmd_rand_test`, `sep_spi_ot_dma_tx_test` |executable |`doc/integrator/src/smu-sep.adoc`, "SEP SPI Host Pin Assignment"
+|`cp_width` |`x1`, `x2`, `x4` |`spi_ln_width`; record kind 1 |Same |executable |`spi.adoc`, Features; `spi_controller.adoc`, `COMMAND.SPEED`
+|`cp_dir` |`tx`, `rx` |`spi_ln_dir`; record kind 1 |Same |executable |`spi_controller.adoc`, `COMMAND.DIRECTION`
+|`x_width_dir_test` |`cp_width` x `cp_dir` x `cp_test`; `ignore_bins` `dma_handshake_tx`, `ot_dma_rx_tx`, `ot_dma_tx_x2`, `ot_dma_tx_rx`, `ot_flash_cmd_x2_tx`; 31 cells |A record after CHK-SPI-SB-FRAME, CHK-SPI-SB-TX or CHK-SPI-SB-RX (and, in the firmware leaves, the firmware data check) of the frame passed |Same; each cell names its own test |executable, seed-dependent (the `pad_timing_cfg` cells) |OpenTitan SPI_HOST theory of operation, "Input and Output Byte Ordering"
+|===
+
+====== `sep_spi_lane_opcode_cg`
+
+*Class*: executable.
+
+*Tool*: VCS. *Crosses*: none. *Illegal bins*: none.
+
+[cols="2,4,4,3,1,2",options="header"]
+|===
+|Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
+|`cp_lane_opcode` |`dual_output_read` (0x3B), `quad_output_read` (0x6B), `dual_io_read` (0xBB), `quad_io_read` (0xEB), `quad_page_program` (0x32) |`spi_ln_opcode`; record kind 2 with owner `sep_spi_ot_flash_cmd_rand_test`, written after CHK-SPI-SB-RX or CHK-SPI-SB-TX of the command and the firmware CHK-SPI-LANE-READ or CHK-SPI-LANE-PROGRAM line (CHK-SPI-LANE-FW) passed |`sep_spi_ot_flash_cmd_rand_test` |executable |`spi.adoc`, Features; `hw/common/dv/vip/ocah_spi_vip/README.md` (flash commands of the model)
+|===
+
+====== `sep_spi_lane_oe_win_cg`
+
+*Class*: executable.
+
+*Tool*: VCS. *Crosses*: none. *Illegal bins*: none. The record of each window is written at the end of the graded window, after its check passed.
+
+[cols="2,4,4,3,1,2",options="header"]
+|===
+|Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
+|`cp_oe_window` |`cold_reset` (CHK-SPI-OE-RESET), `output_en_off` (CHK-SPI-OE-OFF), `cs_high` (CHK-SPI-OE-CS-HIGH), `cs_low` (CHK-SPI-OE-CS-LOW) |`spi_ln_oe_win`; record kind 3 with owner `sep_spi_pad_oe_rules_test` |`sep_spi_pad_oe_rules_test` |executable |`doc/integrator/src/smu-sep.adoc`, "SEP SPI Host Pin Assignment"; `spi_controller.adoc`, `CONTROL.OUTPUT_EN`
+|===
+
+====== `sep_spi_lane_trigger_cg`
+
+*Class*: executable.
+
+*Tool*: VCS. *Crosses*: none. *Illegal bins*: none.
+
+[cols="2,4,4,3,1,2",options="header"]
+|===
+|Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
+|`cp_rxqd_eq_rx_watermark` |`rxqd_eq_rx_watermark` |Record kind 4 with owner `sep_spi_dma_handshake_rand_test`, written after CHK-HS-TRIG-EQ passed |`sep_spi_dma_handshake_rand_test` |executable |`spi.adoc`, DMA Trigger
+|===
+
+====== `sep_spi_lane_abort_chain_cg`
+
+*Class*: executable.
+
+*Tool*: VCS. *Crosses*: `x_abort_width` (`cp_abort_kind` x `cp_abort_width`, 6 cells). *Illegal bins*: none. The abort bins sample only for the owner of each kind: `sw_rst` for `sep_spi_fifo_stall_watermark_rand_test` and `rst_ni` for `sep_spi_cold_reset_values_rand_test`. The chain bins sample only for `sep_spi_pad_speed_dir_matrix_test`.
+
+[cols="2,4,4,3,1,2",options="header"]
+|===
+|Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
+|`cp_abort_kind` |`sw_rst`, `rst_ni` |`spi_ln_abort`; record kind 5, written after CHK-SPI-SWRST-ABORT (`sw_rst`) or the mid-segment CHK-SPI-COLDRST, CHK-SPI-OE-RESET and CHK-SPI-SB-FRAME (`rst_ni`) passed |`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_cold_reset_values_rand_test` |executable |`spi_controller.adoc`, `CONTROL.SW_RST`; `reset_controller.adoc`, SEP Reset Controller
+|`cp_abort_width` |`x1`, `x2`, `x4` |`spi_ln_width` of the aborted segment; record kind 5 |Same |executable |`spi_controller.adoc`, `COMMAND.SPEED`
+|`x_abort_width` |`cp_abort_kind` x `cp_abort_width`; 6 cells |Record kind 5 |Same |executable |Same
+|`cp_chain_width` |`same_width`, `width_changes` |`spi_ln_chain`; record kind 6, written after CHK-SPI-CHAIN and CHK-SPI-SB-FRAME of the chain passed |`sep_spi_pad_speed_dir_matrix_test` |executable |`spi_controller.adoc`, `COMMAND.CSAAT`; `spi.adoc`, Features
+|===
+
 ===== Randomized-value groups
 
 The `_rand_cg` groups below record values that a test draws from its seed.
@@ -3996,11 +4075,13 @@ records it or the reason it has none.
 |Leaf |Factor the seed picks |Bin, or why none
 |`sep_spi_pad_speed_dir_matrix_test` |Order of the 16 cells |None: every seed walks all 10 legal and 6 illegal cells (5 illegal cells graded, 1 control)
 |`sep_spi_pad_speed_dir_matrix_test` |`LEN` class and `CLKDIV` class of each cell, values inside a class, chain shape, long dummy choice |`sep_spi_seg_rand_cg.cp_len_x_kind`, `cp_csaat_x_dir`, `cp_clkdiv_x_speed`, graded on a merge of regressions. The long dummy segment runs on a seed that draws it (weight 1 in 4)
-|`sep_spi_pad_speed_dir_matrix_test` |Responder stream, TX words |None: data inside a fixed contract
+|`sep_spi_pad_speed_dir_matrix_test` |Responder stream, TX words |None: data inside a fixed contract. Every width and direction runs on every seed (`sep_spi_lane_data_cg`)
 |`sep_spi_pad_timing_cfg_rand_test` |The two mode cells (the second at the other `CPOL` and `CPHA` value) and their order |`sep_spi_pad_rand_cg.cp_mode8`, `cp_mode_x_dir` and `cp_cpha_edge`, graded on a merge of regressions. `cp_idle_level` fills on every run
 |`sep_spi_pad_timing_cfg_rand_test` |`CLKDIV`, `CSNLEAD`, `CSNTRAIL` and `CSNIDLE` values, weighted toward 0 and 15 |`sep_spi_pad_rand_cg.cp_clkdiv_class`, `cp_csn_class`, graded on a merge of regressions
 |`sep_spi_fifo_stall_watermark_rand_test` |Mid RX watermark value, RX watermark order |`sep_spi_fifo_rand_cg.cp_rxwm`. Every watermark class runs on every run
-|`sep_spi_fifo_stall_watermark_rand_test` |`SPEED` of the stall legs |`sep_spi_fifo_rand_cg.cp_stall_x_speed`, graded on a merge of regressions
+|`sep_spi_fifo_stall_watermark_rand_test` |Order of the three widths |None: every width runs on every seed, so `sep_spi_fifo_rand_cg.cp_stall_x_speed` and the `fifo_stall_watermark` cells of `sep_spi_lane_data_cg` fill on every run
+|`sep_spi_fifo_stall_watermark_rand_test` |Abort direction and sck point, data lengths, event watermarks |None: values inside a fixed contract. `sep_spi_lane_abort_chain_cg.x_abort_width` (`sw_rst`) fills on every run
+|`sep_spi_pad_timing_cfg_rand_test` |Lane width of each mode cell |`sep_spi_lane_data_cg.x_width_dir_test` (the `pad_timing_cfg` cells), graded on a merge of regressions
 |`sep_spi_fifo_stall_watermark_rand_test` |TX arrival gap, Rx read gap and burst, payload, TX control watermark |None: timing and data values, and a control watermark that is logged only. The stall entry and exit are bins in `cp_stall`
 |`sep_spi_ot_host_csr_irq_rand_test` |`EVENT_ENABLE` value of each true state, line walk order, `INTR_ENABLE` of the state reads, state order |`sep_spi_misc_rand_cg.cp_event_src_x_en_x_cond`, `cp_intr_en_x_state`. The two L1 passes and the line walk fill every cell on every run
 |`sep_spi_ot_host_csr_irq_rand_test` |Clear mask, command kind of the accumulation and of the write of 0 |`sep_spi_misc_rand_cg.cp_clear_form`, graded on a merge of regressions: the `w0_on_set` cells of the command kinds depend on the drawn kind. The SPI clean state, the single kinds and the write of 0 fill the other cells on every run
@@ -4012,6 +4093,8 @@ records it or the reason it has none.
 |`sep_spi_ot_host_csr_irq_rand_test` |FIFO content, n |None: values inside a fixed contract
 |`sep_spi_cold_reset_values_rand_test` |`rst_ni` point inside a segment |`sep_spi_misc_rand_cg.cp_rst_entry_midseg`
 |`sep_spi_cold_reset_values_rand_test` |Armed non-reset values, extra TX words |None: values inside a fixed contract
+|`sep_spi_cold_reset_values_rand_test` |Order of the three mid-segment widths, clean Tx bytes |None: every width runs on every seed; `sep_spi_lane_abort_chain_cg.x_abort_width` (`rst_ni`) fills on every run
+|`sep_spi_pad_oe_rules_test` |Frame orders, lengths, TX data, CONFIGOPTS, reset point |None: every window runs on every seed (`sep_spi_lane_oe_win_cg`)
 |`sep_dma_transfer_matrix_rand_test` |Width encoding and chunk count of each mode cell, cell order, chunk size |`sep_dma_xfer_rand_cg.cp_mode_x_width`, `cp_mode_x_chunkcount`, `cp_wrap_independence`, graded on a merge of regressions. Every width encoding runs on every seed, so `sep_dma_transfer_cg.cp_alignment_baseline` fills on every run
 |`sep_dma_transfer_matrix_rand_test` |Middle total of the geometry leg, chunk and count of its drawn transfers |`sep_dma_rand_cg.cp_len` bins `b64` to `b4096`, graded on a merge of regressions. `b4` and `b16384` run on every seed
 |`sep_dma_transfer_matrix_rand_test` |Algorithm order, message lengths, split (2 to 4 equal chunks of one transfer), swap value of a drawn message, algorithm, length and swap value of the long message |`sep_dma_hash_cg.cp_msg_len_class`, graded on a merge of regressions. `sep_dma_copy_hash_cg.cp_hash_opcode` (`sha512`) and `sep_dma_hash_cg.cp_digest_swap_x_word` fill on every run: every algorithm runs, and the published vectors run at both swap values
@@ -4024,6 +4107,7 @@ records it or the reason it has none.
 |`sep_dma_abort_recovery_rand_test` |Offsets, data |None: values inside a fixed contract
 |`sep_spi_dma_handshake_rand_test` |Chunk, count, mask upper bits, stop count |None: the upper mask bits drive tied-low inputs. The chunk and count are values
 |`sep_spi_dma_handshake_rand_test` |`CLKDIV`, `RX_WATERMARK` |None: values inside a fixed contract
+|`sep_spi_dma_handshake_rand_test` |`W_eq`, lane-read order, x2 and x4 opcodes, addresses, data |None: the trigger cell and one read per width run on every seed (`sep_spi_lane_trigger_cg`, the `dma_handshake` cells of `sep_spi_lane_data_cg`). The opcode choice is not a bin
 |===
 
 ===== Reachability notes
@@ -4035,7 +4119,7 @@ records it or the reason it has none.
 |`sep_dma_xfer_rand_cg.cp_abort_phase` |The owning test runs a mid-chunk abort on every seed and draws the class of a second abort. It repeats a run until the beat count at the ABORT write, read on `dma_axi_req_probe_o`, lies in the class of the run. The three drawn classes close on a merge of regressions
 |`sep_spi_seg_rand_cg.cp_len_x_kind` (`max` x `dummy`) |`LEN` = 0xFFFFF at `CLKDIV` 0 takes 2,097,152 core clocks. The owning test draws it with a weight of 1 in 4, so one regression of four seeds leaves the cell empty with a probability of about 32 % ((3/4)^4). The cell closes on a merge of regressions
 |Coverpoints marked `parked: needs ...` |The bins need a value that the register description does not state. The coverpoint scores nothing
-|Rx bit content at the pad (not a bin) |The TB drives one response lane and the specification does not state which line carries the Rx bit, so no test grades the Rx content. No coverage bin depends on it
+|Rx bit content at the pad |`doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment") names the lanes, and the TB drives all four response lanes with `+sep_spi_four_lane`. The tests grade the Rx content byte for byte, and `sep_spi_lane_data_cg` records each graded width and direction (<<sep-fcov-spi-lane>>)
 |===
 
 [[sep-fcov-spi-dma-dropped]]
@@ -4048,7 +4132,9 @@ Each group of this section has at least one coverpoint with an owning test: `sep
 `sep_spi_dma_use_case_cg`, `sep_dma_transfer_cg`, `sep_dma_xfer_rand_cg`,
 `sep_dma_endpoint_cg`, `sep_dma_completion_cg`, `sep_dma_range_config_cg`,
 `sep_dma_hash_cg`, `sep_dma_config_fault_cg`, `sep_dma_error_terminal_cg`,
-`sep_dma_zero_cg` and `sep_dma_containment_cg`.
+`sep_dma_zero_cg`, `sep_dma_containment_cg`, `sep_spi_lane_data_cg`,
+`sep_spi_lane_opcode_cg`, `sep_spi_lane_oe_win_cg`, `sep_spi_lane_trigger_cg` and
+`sep_spi_lane_abort_chain_cg`.
 
 The bins and cells below belong to those groups and are not in the plan,
 because no owning test hits them.
@@ -4059,7 +4145,7 @@ because no owning test hits them.
 |`sep_spi_command_segment_cg` |Segment role axis (opcode and address as separate roles; see <<sep-fcov-spi-dma-holes>>).
 |`sep_spi_seg_rand_cg` |Length class `max` x data kind in `cp_len_x_kind` (a 1 MiB data segment is not driven).
 |`sep_spi_illegal_access_cg` |`TXDATA` write and `RXDATA` read while `SPIEN` = 0 (2 cells). `SPIEN` cleared mid-segment (1).
-|`sep_spi_pad_interface_cg` |`CLKDIV` 0xFFFF class and its x `SPEED` cells. Sampling mode x `bidirectional` for the 7 modes other than 000. `CSNIDLE` x spacing x `CSAAT` cells with `CSAAT` = 1 or single-command spacing (9 of 12). `OUTPUT_EN` x line group x active cells with `OUTPUT_EN` = 0. The pad enable vector at idle against `OUTPUT_EN` (the specification names no member or polarity, and the open interrupt test grades the `OUTPUT_EN` read-back). Sd output and input enable x segment class (16). Direction turnaround (2).
+|`sep_spi_pad_interface_cg` |`CLKDIV` 0xFFFF class and its x `SPEED` cells. Sampling mode x `bidirectional` for the 7 modes other than 000. `CSNIDLE` x spacing x `CSAAT` cells with `CSAAT` = 1 or single-command spacing (9 of 12). `OUTPUT_EN` x line group x active cells with `OUTPUT_EN` = 0, the pad enable vector at idle against `OUTPUT_EN`, and Sd output enable x segment class: `sep_spi_lane_oe_win_cg` records the output-enable windows that `sep_spi_pad_oe_rules_test` grades, and `sep_spi_pad_speed_dir_matrix_test` grades the pattern per segment (CHK-SPI-OE-SEG) except for x1 RX-only and dummy segments, which have no stated pattern and which it logs (`OBS-SPI-OE-X1RX`, `OBS-SPI-OE-DUMMY`). Sd input enable (the pad input enable is outside SEP). Direction turnaround (2).
 |`sep_spi_fifo_status_cg` |RX back-to-back drain form (3 cells). Partial final word (its packing depends on the byte order, which the specification leaves open). RX threshold at depth (`RX_WATERMARK` cannot exceed the depth).
 |`sep_spi_interrupt_cg` |Externally driven interrupt (hole). `INTR_TEST` with the real condition present (4 cells). `INTR_ENABLE` reserved bits 31:2. The reserved-bit read-back of `INTR_ENABLE` (the register description states no read value).
 |`sep_periph_reset_state_cg` |SPI reset values after an idle reset and the non-zero and safe-idle bins (left to the reset tests). DMA reset values, non-zero values and fail-secure defaults (left to the reset groups). `SW_RST` domains CDC FIFOs and shift register (hole). `SW_RST` entry condition `block idle`. `SW_RST` released with a non-empty FIFO (3): the test waits for both FIFOs to be empty.
@@ -4088,6 +4174,7 @@ that touches them in a test is logged and is not scored.
 |`sep_spi_fifo_rand_cg` |`cp_rxwm` cell `zero` x `out` |At `RX_WATERMARK` 0 the out crossing is at `RXQD` equal to the watermark, where `CONTROL.RX_WATERMARK` (the depth "reaches" the watermark) and `STATUS.RXWM` (the depth "exceeds" it) differ (`spi_controller.adoc`).
 |`sep_spi_fifo_status_cg` |`cp_depth_counter` cells {`TXQD`, `RXQD`} x `ACTIVE` = 1 x {`one`, `mid`} |While `ACTIVE` = 1, `RXQD` may be an underestimate and `TXQD` may be an overestimate (`spi_controller.adoc`, `STATUS.RXQD`, `STATUS.TXQD`), so no value is stated. The owning tests compare `TXQD` and `RXQD` only with `ACTIVE` = 0, and the stall checks grade the `zero` and `max` cells.
 |`sep_spi_interrupt_cg` |`cp_intr_test` bin `event_release` (write 0 to `INTR_TEST` bit 1) |The release of a forced `SPI_EVENT` is not stated (`spi_controller.adoc`, `INTR_TEST`).
+|`sep_spi_lane_data_cg` |`x_width_dir_test` cell `ot_flash_cmd` x `x2` x `tx` (`ignore_bins ot_flash_cmd_x2_tx`) |The flash model has no dual program command (`hw/common/dv/vip/ocah_spi_vip/README.md`, command table: the only lane program is 0x32), so `sep_spi_ot_flash_cmd_rand_test` has no x2 TX data to grade. x2 TX data is graded in the raw-segment tests (`test_contracts/spi_dma.adoc`, entry 4.20).
 |`sep_spi_misc_rand_cg` |`cp_masked_kind` (a kind injected with its `ERROR_ENABLE` bit clear) |The register description does not state whether a masked error sets its status bit or `INTR_STATE.ERROR` (`spi_controller.adoc`, `ERROR_ENABLE`, `ERROR_STATUS`).
 |`sep_spi_error_status_cg` |`cp_csid_out_of_range` bin `csid_one` (CSID = 1) |`spi_host.hjson` (`ERROR_ENABLE.CSIDINVAL`) raises the error when CSID exceeds NumCS, and CSID = 1 does not exceed NumCS = 1, while the CSID field text selects `cio_csb_o[CSID]` and `sep_io` has one chip select (`spi.adoc`, Features). The owning test logs the cell as `OBS-SPI-CSID1 LOG`.
 |`sep_spi_error_status_cg` |`cp_csid_out_of_range` bin `csid_max` (CSID = 0xFFFF_FFFF) |The open test `sep_spi_ot_host_csr_irq_rand_test` drives the value with the graded window closed (<<sep-fcov-graded-window>>), and the owning leg draws v from 2 to 0xFFFF_FFFE.
@@ -6508,7 +6595,7 @@ do not depend on these paths, except where the disposition says so.
 [cols="2,3,2,3",options="header"]
 |===
 |Path as stated |Evidence |Disposition |Reason and effect
-|Response lanes `spi_sd_i[3:0]` as a TB input (the responder drives all four lines) |`sep_tb_signal_list.svh` has one bit `spi_miso_i`. `tb_top.sv` drives `{2'b00, spi_miso_i, 1'b0}`: only `sd[1]` carries data |Permanent hole for the Rx bit content |The specification does not state which line carries the Rx bit. The tests grade the Rx word count at every speed and no Rx content. No coverage bin depends on it
+|Response lanes `spi_sd_i[3:0]` as a TB input (the responder drives all four lines) |`sep_tb_signal_list.svh` declares `spi_sd_i` with four bits. With `+sep_spi_four_lane`, `tb_top.sv` drives all four response lanes from `spi_sd_i`; otherwise it drives `{2'b00, spi_miso_i, 1'b0}`. `spi_sd_rsp_o[3:0]` taps the lanes the DUT receives |Resolved (approved top-port drive and tap, `SEP_TB_ARCH.adoc`, SPI host pads) |The SPI lane tests grade the Rx content at x1, x2 and x4. `sep_spi_lane_data_cg` records it (<<sep-fcov-spi-lane>>)
 |Beat fields (`AxLEN`, `AxSIZE`, ID, `AxADDR`, data) of the DMA at `sep_sram_req_o` |`sep.sv` and `sep_pkg.sv`: the struct has `req`, `addr`, `wdata`, `strb`, `atop`, `wenable`. It has no length, size or master identity, and the CPU shares this port |Added tap (`dma_axi_req_probe_o`). The sampler and the cocotb monitor read `u_dut.u_sep.dma_axi_req` |CHK-DMA-BEAT and CHK-DMA-ADDR of `sep_dma_transfer_matrix_rand_test` read the DMA master AXI request on the tap
 |DMA `STATUS.DONE`, `CHUNK_DONE`, `ERROR`, `ABORTED`, `SHA2_DIGEST_VALID` as TB flat probes |`sep_tb_signal_list.svh` and `tb_top.sv` give `dma_busy_probe_o` only |Added tap (`dma_status_probe_o`) |CHK-DMA-CHUNKRISE and CHK-DMA-DONE-ORDER of `sep_dma_transfer_matrix_rand_test` read the tap to grade the `CHUNK_DONE` rise count and the order of `DONE` against the last B response
 |Handshake inputs 1 to 10 as a stimulus |`sep.sv` ties `lsio_trigger[$bits(lsio_trigger)-1:1]` to 0. `dma.adoc`, OCAH Modifications, states that only input 0 is connected |Permanent hole |No stimulus raises them
@@ -6522,7 +6609,7 @@ The paths below resolve and the specification is silent on their meaning.
 [cols="2,4,3",options="header"]
 |===
 |Item |State |Effect
-|Lane that carries the Rx bit |`spi.adoc` and `port_table.adoc` name no lane. `STATUS.BYTEORDER` gives the byte packing of a word and not the lane |Rx data content at the pad is not graded
+|Byte order inside a word |`spi_controller.adoc` gives `STATUS.BYTEORDER` as a read-only field with reset 0x0; the OpenTitan SPI_HOST theory of operation gives `ByteOrder = 1` as the default. The lane map is stated in `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment") |The tests grade lane data with `ByteOrder = 1` as the golden; no bin depends on the byte order
 |===
 
 [[sep-fcov-p2-unresolved-mem-boot-reset]]

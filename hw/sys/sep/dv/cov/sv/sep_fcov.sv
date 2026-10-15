@@ -7390,12 +7390,14 @@ module sep_fcov (
     cp_dir: coverpoint dir iff (v) {bins tx = {1'b0}; bins rx = {1'b1};}
     // The DMA handshake and OT DMA RX legs grade read data only. The OT DMA
     // TX leg programs at x1 and x4 (no dual program command) and grades no
-    // read data.
+    // read data. The OT flash command leg has no dual program command either.
     x_width_dir_test: cross cp_width, cp_dir, cp_test iff (v) {
       ignore_bins dma_handshake_tx = binsof (cp_test.dma_handshake) && binsof (cp_dir.tx);
       ignore_bins ot_dma_rx_tx = binsof (cp_test.ot_dma_rx) && binsof (cp_dir.tx);
       ignore_bins ot_dma_tx_x2 = binsof (cp_test.ot_dma_tx) && binsof (cp_width.x2);
       ignore_bins ot_dma_tx_rx = binsof (cp_test.ot_dma_tx) && binsof (cp_dir.rx);
+      ignore_bins ot_flash_cmd_x2_tx =
+          binsof (cp_test.ot_flash_cmd) && binsof (cp_width.x2) && binsof (cp_dir.tx);
     }
   endgroup
 

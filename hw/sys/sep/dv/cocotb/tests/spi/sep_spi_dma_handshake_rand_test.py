@@ -660,6 +660,8 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         cfg = self.cfg_
         await self._cold_reset("lanes")
         open_graded_window(TEST, self.logger)
+        # The rst_ni pulse clears the SPI host configuration (SPIEN, CONFIGOPTS).
+        await self._spi_config(cfg.wm)
         for lanes in cfg.lane_order:
             opcode, addr, data = cfg.lane_reads[lanes]
             delivered = await self._lane_read(lanes, opcode, addr, len(data))

@@ -21,11 +21,11 @@ https://opentitan.org/book/hw/ip/spi_host/doc/theory_of_operation.html):
   received lands in RXDATA[7:0] (ByteOrder 1). At the end of a TX segment the
   unused bytes of its last TXDATA word are dropped, and each RX segment starts
   word-aligned in RXDATA.
-* Data lane output enables per segment: x1 TX, x1 bidirectional and x1 RX
-  drive lane 0 (0b0001, standard mode: SD[0] is always an output); x2 TX
-  drives lanes 1:0 (0b0011); x4 TX drives lanes 3:0 (0b1111); x2 and x4 RX
-  drive no lane (a lane the host receives on is not driven); a dummy segment
-  drives no lane (neither side transmits).
+* Data lane output enables per segment: x1 TX and x1 bidirectional drive
+  lane 0 (0b0001); x2 TX drives lanes 1:0 (0b0011); x4 TX drives lanes 3:0
+  (0b1111); x2 and x4 RX drive no lane (a lane the host receives on is not
+  driven). The spec states no pattern for an x1 RX-only or a dummy segment;
+  the leaf logs them as OBS-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
 
 The leaf walks the 10 legal SPEED x DIRECTION cells as single segments, a dummy
 segment between FIFO reads, CSAAT chains that change speed or direction, the
@@ -69,8 +69,8 @@ Checks:
   bytes. Control: x1, x2 and x4 are each graded in both directions.
 * CHK-SPI-OE-SEG: in each graded frame, the data lane output enables at every
   sample edge of a segment equal the pattern of that segment. Control: every
-  pattern row (x1 TX, x1 RX, x1 bidirectional, x2 TX, x2 RX, x4 TX, x4 RX,
-  dummy) is graded.
+  pattern row (x1 TX, x1 bidirectional, x2 TX, x2 RX, x4 TX, x4 RX) is
+  graded. x1 RX-only and dummy segments are logged as OBS lines.
 * CHK-SPI-ILLEGAL: each of the 5 graded illegal cells sets ERROR_STATUS to
   CMDINVAL only, and a legal control command after the SPI clean state reads
   ERROR_STATUS 0. SPEED 3 with DIRECTION 2 runs as the control
@@ -158,8 +158,9 @@ CLKDIV_CLASSES = {"zero": (0, 0), "small": (1, 3), "mid": (4, 7)}
 LONG_DUMMY_LEN = 0xFFFFF
 LONG_DUMMY_CYCLES = LONG_DUMMY_LEN + 1
 
-# Output-enable pattern rows the leaf must grade.
-OE_ROWS = ("x1_tx", "x1_rx", "x1_bidir", "x2_tx", "x2_rx", "x4_tx", "x4_rx", "dummy")
+# Output-enable pattern rows the leaf must grade. The x1 RX-only and dummy rows
+# have no stated pattern; the leaf logs them as OBS-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
+OE_ROWS = ("x1_tx", "x1_bidir", "x2_tx", "x2_rx", "x4_tx", "x4_rx")
 
 # Bounds. Each expiry fails the check that the wait feeds.
 SERVICE_READS = 50_000
@@ -183,12 +184,12 @@ def sck_expect(speed: int, direction: int, len_field: int) -> int:
     return (len_field + 1) * 8 // LANES[speed]
 
 
-def oe_expect(speed: int, direction: int) -> int:
-    """The stated data lane output-enable pattern of one segment."""
+def oe_expect(speed: int, direction: int) -> int | None:
+    """The stated data lane output-enable pattern of one segment, or None if none is stated."""
     if direction == DIR_DUMMY:
-        return 0b0000
+        return None
     if speed == 0:
-        return 0b0001
+        return None if direction == DIR_RX else 0b0001
     if direction == DIR_RX:
         return 0b0000
     if speed == 2:
@@ -537,8 +538,13 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             pos += seg.clocks
             exp_oe = oe_expect(seg.speed, seg.direction)
             seen = {b[1] for b in seg_beats}
-            oe_rows.append(f"{i}:{seg.oe_row}:{_fmt_oe(seen)}/exp{exp_oe:04b}")
-            oe_ok = oe_ok and seen == {exp_oe}
+            if exp_oe is None:
+                obs = "OBS-SPI-OE-DUMMY" if seg.direction == DIR_DUMMY else "OBS-SPI-OE-X1RX"
+                self.logger.info("%s seed=%s %s seg=%d oe=%s", obs, seed, label, i, _fmt_oe(seen))
+                oe_rows.append(f"{i}:{seg.oe_row}:{_fmt_oe(seen)}/obs")
+            else:
+                oe_rows.append(f"{i}:{seg.oe_row}:{_fmt_oe(seen)}/exp{exp_oe:04b}")
+                oe_ok = oe_ok and seen == {exp_oe}
             if seg.direction == DIR_DUMMY:
                 continue
             if seg.is_tx:

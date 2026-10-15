@@ -79,10 +79,10 @@ Checks:
     - device-model self-check (no SEP feature credit): the model took no payload
       from the WEL-clear PAGE PROGRAM, and its stored array at addr is still 0xFF.
   cocotb lane checks:
-    CHK-SPI-SB-TX / CHK-SPI-SB-RX : the scoreboard compares the 0x32 payload and
-                           each lane read with the seeded bytes, the monitor's
-                           wire decode at the command's lane width, and the
-                           flash record.
+    CHK-SPI-SB-TX / CHK-SPI-SB-RX : the scoreboard compares the 0x32 payload,
+                           each lane read and the x1 primary READ (0x03) with
+                           the seeded bytes, the monitor's wire decode at the
+                           command's lane width, and the flash record.
     CHK-SPI-LANE-FW      : the firmware console holds exactly one PASS line per
                            lane entry, with its opcode, width and word count.
 
@@ -392,6 +392,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             if cfg is not None:
                 sb.expect_tx(cfg.addr, cfg.pp_bytes(), label="primary program")
                 sb.expect_tx(cfg.neigh_addr, cfg.neigh_bytes(), label="neighbour program")
+                # The first 0x03 record in device order is the primary READ that
+                # follows the primary program; it returns the programmed words.
+                sb.expect_rx(0x03, cfg.pp_bytes(), label="primary read width=x1")
                 for entry in cfg.lanes:
                     label = f"lane op=0x{entry.opcode:02x} width=x{entry.lanes}"
                     if entry.is_program:
@@ -410,6 +413,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             sb.finish()
             # FCOV records only after every lane check above passed.
             await spi_lane_fcov(_TEST, "data", lanes=1, rx=False)
+            await spi_lane_fcov(_TEST, "data", lanes=1, rx=True)
             for entry in cfg.lanes:
                 await spi_lane_fcov(_TEST, "opcode", lanes=entry.lanes, opcode=entry.opcode)
                 await spi_lane_fcov(_TEST, "data", lanes=entry.lanes, rx=not entry.is_program)

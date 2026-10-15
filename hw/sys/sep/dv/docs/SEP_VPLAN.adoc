@@ -416,7 +416,7 @@ they leave out; the checker table of each linked entry is the full set.
 |Mailbox → PIC |<<sep_mailbox_plic_test,`sep_mailbox_plic_test`>> |all, cpu |`sep_mailbox_pic_cg`, `sep_mailbox_channel_cg` |The checker table of each entry named. |YES
 |EL2 boot + ROM fetch / LSU |<<sep_hello_world_test,`sep_hello_world_test`>>, <<sep_cpu_trace_diag_test,`sep_cpu_trace_diag_test`>>, <<sep_boot_rom_smoke_test,`sep_boot_rom_smoke_test`>>, <<sep_boot_rom_lsu_read_test,`sep_boot_rom_lsu_read_test`>>, <<sep_rom_sanity_test,`sep_rom_sanity_test`>> |all, cpu |`sep_cpu_boot_cg`, `sep_boot_rom_cg` |The checker table of each entry named. |YES
 |PIC source map |<<sep_pic_irq_source_map_delivery_test,`sep_pic_irq_source_map_delivery_test`>> |all, cpu |`sep_mailbox_pic_cg` |The checker table of each entry named. |YES
-|DMA copy + inline SHA-256 + LSIO |<<sep_dma_hash_test,`sep_dma_hash_test`>>, <<sep_dma_cpu_contention_test,`sep_dma_cpu_contention_test`>>, <<sep_spi_ot_dma_rx_test,`sep_spi_ot_dma_rx_test`>>, <<sep_spi_ot_dma_tx_test,`sep_spi_ot_dma_tx_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_spi_flash_cg`, `sep_spi_host_rand_cg`, `sep_dma_rand_cg` |The checker table of each entry named. |YES
+|DMA copy + inline SHA-256 + LSIO |<<sep_dma_hash_test,`sep_dma_hash_test`>>, <<sep_dma_cpu_contention_test,`sep_dma_cpu_contention_test`>>, <<sep_spi_ot_dma_rx_test,`sep_spi_ot_dma_rx_test`>>, <<sep_spi_ot_dma_tx_test,`sep_spi_ot_dma_tx_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_spi_flash_cg`, `sep_spi_host_rand_cg`, `sep_dma_rand_cg`, `sep_spi_lane_data_cg` |The checker table of each entry named. |YES
 |DMA address modes × width |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |The checker table of each entry named. |YES
 |DMA host-path command integrity |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 41; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source. |YES
 |DMA zero fill |<<sep_dma_zero_fill_rand_test,`sep_dma_zero_fill_rand_test`>>, <<sep_dma_zero_fill_continuation_test,`sep_dma_zero_fill_continuation_test`>>, <<sep_dma_zero_test,`sep_dma_zero_test`>> |all, cpu_stub, cpu |`sep_dma_zero_cg` |The checker table of each entry named. |YES
@@ -443,7 +443,7 @@ they leave out; the checker table of each linked entry is the full set.
 |Lifecycle demote |<<sep_lcc_demote_feat_ctrl_matrix_test,`sep_lcc_demote_feat_ctrl_matrix_test`>> |all, cpu_stub |`sep_lc_demote_cg` |The checker table of each entry named. |YES
 |RMA token match → LC update |<<sep_efuse_rma_token_rand_test,`sep_efuse_rma_token_rand_test`>> |all, cpu_stub |None |The checker table of each entry named. |YES
 |LC_STATE next state (shadow write-1-to-set) |<<sep_lcc_lc_state_w1s,`sep_lcc_lc_state_w1s_prod_test`>>, <<sep_lcc_lc_state_w1s,`sep_lcc_lc_state_w1s_prod_demote_test`>>, <<sep_lcc_lc_state_w1s,`sep_lcc_lc_state_w1s_rma_sip_test`>>, <<sep_lcc_lc_state_w1s,`sep_lcc_lc_state_w1s_rma_chiplet_test`>>, <<sep_lcc_lc_state_w1s,`sep_lcc_lc_state_w1s_prod_end_test`>>, <<sep_lcc_lc_state_w1s,`sep_lcc_lc_state_w1s_prod_end_rma_test`>>, <<sep_lcc_lc_state_w1s,`sep_lcc_lc_state_w1s_transient_test`>> |all, cpu_stub |`sep_lc_transition_cg`, `sep_lc_state_cg`, `sep_feat_ctrl_cg` |Seven leaves on one module, one sensed starting state each. The other writer of `LC_STATE`: the frontdoor shadow write, which the stitch walk (OTP program + re-sense) never exercises. |YES
-|SPI-OT flash command set |<<sep_spi_ot_flash_cmd_rand_test,`sep_spi_ot_flash_cmd_rand_test`>> |all, cpu |`sep_spi_flash_cg` |JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_jedec_smoke_test` is the reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the `DMA copy + inline SHA-256 + LSIO` row and is not re-credited here. |YES
+|SPI-OT flash command set |<<sep_spi_ot_flash_cmd_rand_test,`sep_spi_ot_flash_cmd_rand_test`>> |all, cpu |`sep_spi_flash_cg`, `sep_spi_lane_opcode_cg`, `sep_spi_lane_data_cg` |JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The dual and quad commands 0x3B, 0x6B, 0xBB, 0xEB and 0x32 run on the flash model bound to four lanes, with their data graded on the wire, in the flash record and in firmware. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_jedec_smoke_test` is the reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the `DMA copy + inline SHA-256 + LSIO` row and is not re-credited here. |YES
 |WDT bark → NMI, pet, lock |<<sep_nmi_sanity_test,`sep_nmi_sanity_test`>>, <<sep_reset_wdt_sanity_test,`sep_reset_wdt_sanity_test`>>, <<sep_wdt_aon_timer_internals_test,`sep_wdt_aon_timer_internals_test`>> |all, cpu, cpu_stub |`sep_wdt_bark_cg`, `sep_crypto_isolate_cg` |The checker table of each entry named. |YES
 |Per-IP `SW_RESET_N` isolation |<<sep_crypto_per_ip_reset_isolation_test,`sep_crypto_per_ip_reset_isolation_test`>> |all, cpu_stub |`sep_crypto_isolate_cg` |Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. A software reset of OTBN, AES, or KMAC cancels only that engine's EDN endpoints: its outstanding `edn_req` drops with no `edn_ack`, and a sibling client is still granted afterwards. The cancel precedes the engine's gated reset by at least one cycle, a word the endpoint held is never acknowledged to any client afterwards, and a KMAC reset stepped across one URND acknowledge period keeps the KMAC endpoint's `edn_ack` and `edn_bus` at 0 while URND completes its own beat. Drain-before-reset is claimed for the HMAC, KMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row. |YES for the claimed part; the evidence cell names the rest
 |Scratch bank reset domains (warm vs cold) |<<sep_warm_cold_reset_scratch_test,`sep_warm_cold_reset_scratch_test`>> |all, cpu_stub |`sep_scratch_reset_cg` |The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. |YES
@@ -1178,7 +1178,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, CPU FW
-|Proves the hardware handshake between the SPI host and the secure DMA engine.
+|Proves the hardware handshake between the SPI host and the secure DMA engine, and that a seeded flash pattern read at x1, x2 and x4 reaches SRAM unchanged, graded on the lanes and in SRAM.
 |<<sep_dma_cpu_contention_test,`sep_dma_cpu_contention_test`>>
 |1
 |cpu, +skip_fuse_sense
@@ -1188,12 +1188,12 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, CPU FW
-|Drives SRAM through the secure DMA into the OpenTitan SPI host transmit FIFO and on to the flash BFM, then reads the flash back and compares against the cocotb-seeded random source data.
+|Drives SRAM through the secure DMA into the OpenTitan SPI host transmit FIFO and on to the flash BFM at x1 (0x02) and x4 (0x32), grades each program payload on the lanes, then reads the flash back and compares against the cocotb-seeded random source data. Also proves that `ERROR_STATUS.OVERFLOW` is clear at TXFULL and set by the next write.
 |<<sep_spi_ot_flash_cmd_rand_test,`sep_spi_ot_flash_cmd_rand_test`>>
 |2
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, CPU FW
-|JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery.
+|JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. A lane leg runs the dual and quad reads 0x3B, 0x6B, 0xBB and 0xEB and the quad page program 0x32, graded on the lanes, in the flash record and in firmware. The primary page program and its READ are graded the same way at x1.
 |<<sep_dma_basic_test,`sep_dma_basic_test`>>
 |2
 |cpu, +skip_fuse_sense
@@ -1202,18 +1202,18 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |<<sep_spi_pad_speed_dir_matrix_test,`sep_spi_pad_speed_dir_matrix_test`>>
 |3
 |no_cpu, +skip_fuse_sense
-|ocah_axi_vip, ocah_spi_vip, SPI pad ports (approved)
-|Proves that every legal speed and direction cell gives the stated number of sck cycles, that chained segments hold chip select low, and that the five illegal cells other than SPEED 3 with DIRECTION 2 raise CMDINVAL.
+|ocah_axi_vip, ocah_spi_vip, SPI pad ports, lane and output-enable taps (approved)
+|Proves that every legal speed and direction cell gives the stated number of sck cycles, lane data at x1, x2 and x4 in both directions and the stated data lane output enables per segment (an x1 RX-only or a dummy segment has no stated pattern and is logged only), that chained segments hold chip select low and carry each segment's data at its own width, and that the five illegal cells other than SPEED 3 with DIRECTION 2 raise CMDINVAL.
 |<<sep_spi_pad_timing_cfg_rand_test,`sep_spi_pad_timing_cfg_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
-|ocah_axi_vip, ocah_spi_vip, SPI pad ports (approved)
-|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because `spi_controller.adoc` (CONFIGOPTS) gives that cell a shift edge that differs from the general CPHA text; the CPHA=1 edge closes on a merge of regressions. The FULLCYC sampling point is not graded.
+|ocah_axi_vip, ocah_spi_vip, SPI pad ports, lane and output-enable taps (approved)
+|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. Each cell runs at a drawn lane width, and its Tx and Rx data are graded byte for byte on the lanes. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because `spi_controller.adoc` (CONFIGOPTS) gives that cell a shift edge that differs from the general CPHA text; the CPHA=1 edge closes on a merge of regressions. The FULLCYC sampling point is not graded.
 |<<sep_spi_fifo_stall_watermark_rand_test,`sep_spi_fifo_stall_watermark_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
-|ocah_axi_vip, SPI pad ports (approved)
-|Proves that TXSTALL and RXSTALL pause sck, that the watermark flags follow the occupancy at watermark 0, above the depth and on the RX axis as RXQD rises and falls, and that the full flags, the RXQD step per read and the command queue follow the words moved.
+|ocah_axi_vip, ocah_spi_vip, SPI pad ports, lane and output-enable taps (approved)
+|Proves, at x1, x2 and x4 on every seed, that TXSTALL and RXSTALL pause sck, that the watermark flags follow the occupancy at watermark 0, above the depth and on the RX axis as RXQD rises and falls, and that the full flags, the RXQD step per read and the command queue follow the words moved. Also proves at each width the Tx and Rx data of every frame, INTR_STATE.SPI_EVENT for the watermark events, and no data lane driven after a SW_RST abort.
 |<<sep_spi_ot_host_csr_irq_rand_test_leg,`sep_spi_ot_host_csr_irq_rand_test`>> (extension)
 |3
 |no_cpu, +skip_fuse_sense
@@ -1222,8 +1222,18 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |<<sep_spi_cold_reset_values_rand_test,`sep_spi_cold_reset_values_rand_test`>>
 |3
 |no_cpu, real fuse sense (VCS only)
-|ocah_axi_vip, `spi_cs_n_o` and `dbg_sep_reset_n_o` (approved)
-|Proves that rst_ni returns every readable SPI register except STATUS to its reset value from armed non-reset values with the host idle, and returns the six armed registers other than CSID and ERROR_STATUS to their reset values in the middle of a segment.
+|ocah_axi_vip, ocah_spi_vip, `spi_cs_n_o`, `dbg_sep_reset_n_o` and the output-enable taps (approved)
+|Proves that rst_ni returns every readable SPI register except STATUS to its reset value from armed non-reset values with the host idle, and returns the six armed registers other than CSID and ERROR_STATUS to their reset values in the middle of a segment at x1, x2 and x4, that no SPI pad is driven in the reset window, and that a clean Tx command after the reset puts its bytes on the lanes.
+|<<sep_spi_pad_oe_rules_test,`sep_spi_pad_oe_rules_test`>>
+|3
+|no_cpu, real fuse sense
+|ocah_axi_vip, `spi_cs_oe_o`, `spi_sck_oe_o`, `spi_sd_oe_o`, `spi_cs_n_o` and `dbg_sep_reset_n_o` (approved)
+|Proves that no SPI pad is driven in the cold-reset window (graded on VCS) or while CONTROL.OUTPUT_EN is 0 with a command running, that a data lane is driven only while chip select is low, and that the chip-select and clock output enables are on while chip select is low.
+|<<sep-spi-lane-coverage,SPI lane data and output-enable coverage statement>>
+|3
+|-
+|-
+|States what the SPI tests grade at x1, x2 and x4 at the SEP boundary, and names the open items: the byte order inside a word, the FIFO depths, SPI.DATA[7:4], SPI.DQS and the DQS loopback, the FULLCYC sampling point and exact CSNLEAD and CSNTRAIL values, and code coverage.
 |<<sep_dma_transfer_matrix_rand_test,`sep_dma_transfer_matrix_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
@@ -1258,7 +1268,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense
 |ocah_axi_vip, ocah_spi_vip, `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`, `spi_tx_qd_probe_o`, `sep_internal_interrupts_probe_o` (approved)
-|Proves that the DMA moves no word while mask bit 0 is clear, keeps GO set, raises no CHUNK_DONE, and stops when firmware clears GO. The RX word order check is Blocked: the specification does not name the Rx line.
+|Proves that the DMA moves the RX words of n chunks in order, moves no word while mask bit 0 is clear, keeps GO set, raises no CHUNK_DONE, and stops when firmware clears GO. Also proves that the trigger rises at RXQD equal to RX_WATERMARK and that flash reads at x1, x2 and x4 deliver the flash bytes.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_ot_host_csr_irq_rand_test>> covers the SPI host CSR and interrupt surface. It is graded there so each test has one owning bucket.
@@ -1931,8 +1941,8 @@ another test.
 |3.13 to 3.24
 |Mailbox lines, FIFOs, errors, filter types and reset; PIC registers, priority, gateway cells, source map and external inputs; bridge fault latches and the fault-versus-clear race; timeout registers; NMI vector; timer and software interrupt tie-offs.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|4.7 to 4.15
-|SPI pad, FIFO, interrupt, error, strobe and reset contracts (one entry extends an open SPI test); DMA address modes, geometry, interrupt gate, range lock, abort, inline hash and SPI handshake.
+|4.7 to 4.20
+|SPI pad, lane data at x1, x2 and x4, output-enable, FIFO, interrupt, error, strobe and reset contracts (one entry extends an open SPI test), and the SPI lane coverage statement; DMA address modes, geometry, interrupt gate, range lock, abort, inline hash and SPI handshake.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset, WDT, clock>>
 |5.13 to 5.29
 |Reset release, cold and CPU-only reset, software reset and isolation, JTAG and scan overrides, reset vector and run request, `SECURE_TM`, scratch and CPU control registers, watchdog, wakeup timer and reference counter, memory apertures and ECC, CPU demux, debug master, ISA and PMP.
@@ -2201,6 +2211,9 @@ the entry adds. A row marked "parked" names a parked test
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |RANDCFG + RAND-REP
 |`sep_spi_cold_reset_values_rand_test`
+|<<sep-vplan-phase3-spi-dma,SPI and DMA>>
+|RAND-REP
+|`sep_spi_pad_oe_rules_test`
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |RAND-REP
 |`sep_dma_transfer_matrix_rand_test`
@@ -2898,9 +2911,9 @@ the test does.
 |What is the rule for a misaligned register access (`sep_cpu_ctrl.adoc`)?
 |Graded leg: Hole cells (`sep_fabric_row_response_matrix_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|SPI pad struct members
-|Which members do `sep_io_spi_req_t` and `sep_io_spi_rsp_t` have, which lane carries which bit, and which member of `sep_io_spi_req_o` is the output enable of each line, with which polarity (`port_table.adoc`)?
-|Graded leg: Cycle counts and word counts (`sep_spi_pad_speed_dir_matrix_test`, `sep_spi_pad_timing_cfg_rand_test`). The Rx bit content and the FULLCYC sampling point are not graded, because no line is stated to carry the Rx bit. The output enable is not graded, because no member is stated to carry it. CHK-HS-DATA of `sep_spi_dma_handshake_rand_test` is blocked: the specification does not name that line
+|SPI byte order inside a word
+|Which byte of a TXDATA word goes on the wire first, and where does the first received byte land in RXDATA? `spi_controller.adoc` (STATUS.BYTEORDER) gives a read-only field with reset 0x0, the OpenTitan SPI_HOST theory of operation ("Input and Output Byte Ordering") gives `ByteOrder = 1` as the default, and the wrapper sets no override.
+|Graded leg: Lane data at x1, x2 and x4 against `ByteOrder = 1` (the SPI tests of <<sep-spi-lane-coverage>>). The lane map, the bit order and the output enables come from `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment") and are graded. A `STATUS.BYTEORDER` readback is never the golden. The FULLCYC sampling point is not graded
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI ALERT_TEST
 |Where does SPI ALERT_TEST go (`spi_controller.adoc`, ALERT_TEST)?
@@ -3371,7 +3384,7 @@ feature, and the note says how the test treats the blocked leg.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI RX watermark meaning
 |Does RXWM mean "reaches" or "exceeds" the threshold (`spi_controller.adoc`, CONTROL, STATUS, EVENT_ENABLE)?
-|Effect: Equality is never driven (`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_ot_host_csr_irq_rand_test`). `sep_spi_dma_handshake_rand_test` keeps C/4 at or below RX_WATERMARK
+|Effect: STATUS.RXWM at equality is never graded (`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_ot_host_csr_irq_rand_test`). `sep_spi_dma_handshake_rand_test` keeps C/4 at or below RX_WATERMARK in its DMA runs, and grades the DMA trigger at RXQD equal to RX_WATERMARK, where `spi.adoc` (DMA Trigger) states `RXQD >= RX_WATERMARK` (CHK-HS-TRIG-EQ)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |Partial strobe merge
 |What is the merge rule for a partial strobe inside a half (`spi.adoc`, Features)?
