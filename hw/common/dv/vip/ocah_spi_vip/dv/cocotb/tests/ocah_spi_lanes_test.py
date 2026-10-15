@@ -234,8 +234,8 @@ async def ocah_spi_lanes_test(dut) -> None:
     dut.spi4_sd_oe.value = 0b0001
     await bfm.drive(sclk=1)
     await bfm.drive(sclk=0)
-    await bfm.drive(cs_n=1)
     dut.spi4_sd_oe.value = 0
+    await bfm.drive(cs_n=1)
     dut.spi4_cs_oe.value = 1
     await bfm.drive(hold_ns=3 * half)
     legs.append(("cs_oe_low", [e.split(":")[0] for e in monitor.get_wire_errors()[before:]]))
