@@ -887,6 +887,7 @@ bit and releases the pad.
 START, delivering the bytes through `RDATA` in wire order, unchanged by `SMBUS_CTRL.SMBSUS` written
 mid-transfer and by a clear `I2C_CONTROLLER_MODE_EN`.
 |`smc_i2c_wire_timing_test` |I2C0 controller SCL, SDA, START, STOP and bus-free timing on the pads changes between TIMING0-TIMING4 programming sets by exactly the programmed difference, with the minimum set a completed transfer.
+|`smc_i2c_dual_concurrent_transfer_test` |Two I2C controllers, instances 0 and 1, run write transfers at the same time on separate pad pairs, each pad pair carries only its own instance's bytes with the programmed timing difference, and the register windows, FIFO levels, `CMD_COMPLETE` and NACK state stay per instance.
 |===
 
 ==== I3C
@@ -25514,6 +25515,9 @@ step.
 *Pass Criteria*: `CHK-PMBUS-WORD-BYTES`, `CHK-PMBUS-NEG-WORD-BYTES`, `CHK-SUS-DURING-XFER`,
 `CHK-SCL-SDA-FIELD-INVARIANT`, `CHK-TIMEOUT-PATHS` and `CHK-NONVAC` hold after their compares and
 every sequence assert holds; `CHK-PMBUS-DECODE-LOG` records measurements only. Enrolled in: `all`.
+
+'''''
+
 [[sec-534-smc_i2c_wire_timing_test]]
 ===== 534 `smc_i2c_wire_timing_test`
 
@@ -25626,6 +25630,133 @@ state.
 `CHK-I2C-WIRE-MEASURED-ONLY` and `CHK-I2C-WIRE-DATA-SETUP-DELTA` record measurements only. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
+
+[[sec-535-smc_i2c_dual_concurrent_transfer_test]]
+===== 535 `smc_i2c_dual_concurrent_transfer_test`
+
+*Source Module*: `smc_i2c_dual_concurrent_transfer_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` (0x50) and `SmcI2cBusMonitor` on `tb_i2c0_scl` / `tb_i2c0_sda`
+(`tb_i2c0_scl_ext_low`, `tb_i2c0_sda_ext_low`) and `SmcI2cEepromSlave` (0x2A) and
+`SmcI2cBusMonitor` on `tb_i2c1_scl` / `tb_i2c1_sda` (`tb_i2c1_scl_ext_low`,
+`tb_i2c1_sda_ext_low`), with `+smc_i2c_shared_bus` not passed and `+smc_i2c1_pads` passed, which
+makes the bench drive the resolved open-drain value onto pads 41 and 42; `tb_i2c1_scl` and
+`tb_i2c1_sda` are read from the padring outputs of those pads (`core2pad_en_o` and `core2pad_o`),
+that is after the `I2C_CTRL[1].I2C_EN` pad-function select; a clock-sampled recorder in the
+sequence that reads all four pad nets on every `clk_periph_i` rising edge and keeps each edge as a
+cycle count; ocah_axi_vip (AXI) on SEP_IN writing and reading `TIMING0` to `TIMING4`, `FDATA`,
+`STATUS`, `HOST_FIFO_STATUS`, `INTR_STATE`, `CONTROLLER_EVENTS`, `CTRL`, `OVRD`, `FIFO_CTRL` and
+`TARGET_ID` of I2C0 and I2C1 at the generated map's instance stride, `I2C_CTRL` of each instance
+and `CLOCK_GATE_CONTROL`; the GPIO `DATA_CTRL.LSIO_SELECT` of the I2C1 pads; `clk_periph_i` (the
+clock `clk_i` of the I2C cores is gated from) and `clk_smc_i`
+
+*Objective*: Two I2C controllers, instances 0 and 1, run write transfers at the same time on separate pad pairs, each pad pair carries only its own instance's bytes with the programmed timing difference, and the register windows, FIFO levels, `CMD_COMPLETE` and NACK state stay per instance.
+
+*Test Coverage*:
+
+* With `I2C_CTRL[1].I2C_EN` clear a write on instance 0 shows its START on the instance-0 pads,
+  and a write queued on instance 1 with its host enabled gives no edge on the instance-1 padring
+  outputs over a bounded window; with `I2C_EN` set the instance-1 write shows its START on the
+  instance-1 pads and no further edge on the instance-0 pads. The pad level with `I2C_EN` clear is
+  not compared.
+* One register written in the instance-1 window reads back there while the same register of the
+  instance-0 window keeps its value, and the reverse.
+* Instance 0 runs a write of an address byte, a pointer byte and four data bytes and instance 1,
+  programmed with `THIGH` and `TLOW` four times those of instance 0, a write of an address byte, a
+  pointer byte and two data bytes; the instance-1 START falls after the instance-0 START and
+  before the instance-0 STOP. Each pad pair shows START, the address byte with write, the data in
+  push order, an acknowledge per byte and a STOP, and only its own bytes.
+* The SCL high and low phases of the two instances differ by the programmed difference of `THIGH`
+  and `TLOW` on every phase both transfers have, measured while both run. The overlap and the
+  absolute phases are printed as measured.
+* `HOST_FIFO_STATUS.FMTLVL` of an instance rises with its pushes while the other instance's
+  levels stay, in both orders; both format levels return to 0 with `STATUS.FMTEMPTY` and
+  `STATUS.HOSTIDLE` set. The levels are printed as measured.
+* `INTR_STATE.CMD_COMPLETE` of each instance is set after its STOP and a write of 1 to one
+  instance leaves the other instance's bit set. Each pad pair counts one STOP.
+* An address on instance 1 that no target acknowledges sets `CONTROLLER_EVENTS.NACK` and
+  `INTR_STATE.CONTROLLER_HALT` on instance 1 only while instance 0 completes its write; writing 1
+  to the instance-1 NACK event clears both.
+
+*Test Procedure*:
+
+[arabic]
+. Ungate the I2C clock, enable I2C0 as a controller, start a target and a monitor on each pad
+  pair, start the recorder, program the same five timing registers on both instances and clear
+  `I2C_CTRL[1]`. Enable the instance-0 host, push a write and wait for its STOP. Require one START
+  on the instance-0 pads. With `I2C_CTRL[1].I2C_EN` still clear, enable the instance-1 host, push a
+  write and require no edge on the instance-1 padring outputs for 4000 `clk_periph_i` cycles. Set
+  `I2C_CTRL[1].I2C_EN`, require a START on the instance-1 pads within 4000 cycles, with no LSIO select
+  made; wait for the STOP, require an unchanged instance-0 edge count, then select the I2C1 pads
+  for LSIO for the later steps.
+. Read `TARGET_ID` of both instances, write a distinct value to instance 1, read both, write a
+  different value to instance 0 and read both.
+. Program instance 0 with the base timing set and instance 1 with the same set and `THIGH` and
+  `TLOW` multiplied by 4, and read every register back.
+. With both hosts disabled and the FIFOs reset, read `HOST_FIFO_STATUS` of both instances, push
+  the instance-0 write words and read both, push the instance-1 write words and read both. Enable
+  the instance-0 host, then two cycles later the instance-1 host, and poll `HOST_FIFO_STATUS` of
+  both until both pad pairs show a START.
+. Wait, bounded, until both instances show `STATUS.HOSTIDLE`, `STATUS.FMTEMPTY`,
+  `INTR_STATE.CMD_COMPLETE` and one more STOP on their pad pairs. Read `STATUS`,
+  `HOST_FIFO_STATUS` and `INTR_STATE` of both, write 1 to `CMD_COMPLETE` of instance 0 and read
+  both, write 1 to `CMD_COMPLETE` of instance 1 and read both.
+. Push a normal write on instance 0 and a write to an address nobody answers on instance 1, wait
+  for instance 0 to complete and for the instance-1 NACK event, read `CONTROLLER_EVENTS` and
+  `INTR_STATE` of both, write 1 to the instance-1 NACK event and read both again.
+. Reduce the overlapped-transfer pad edges of each instance to bytes, acknowledges and SCL phases and compare the
+  phase differences with the programmed `THIGH` and `TLOW` differences.
+. Compare and print the checker lines in order, then the ordered-fence line and the bounded waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-DUAL-PAD-ROUTE` |On the padring outputs of the instance pads, with `I2C_EN[1]` clear and
+an instance-1 write queued and its host enabled there is no edge on the instance-1 pads over the
+bounded window while the instance-0 write gives one START on the instance-0 pads; with `I2C_EN[1]`
+set the instance-1 write gives one START on the instance-1 pads and no edge on the instance-0
+pads. An edge on the clear pair, a START that does not follow `I2C_EN` alone within the window,
+or an X fails it.
+|`CHK-I2C-DUAL-REG-WINDOW` |A value written in one instance window reads back there and the other
+window keeps its value, in both directions, at the generated-map addresses; a changed other
+window, a differing readback or an X fails it.
+|`CHK-I2C-DUAL-WIRE-ORDER` |Each pad pair shows START, the address byte with write, the data in
+push order, an acknowledge per byte and a STOP, with only its own bytes, and the instance-1 START
+lies between the instance-0 START and STOP with a nonzero overlap printed; a missing, reordered or
+foreign byte, no overlap or a timeout fails it.
+|`CHK-I2C-DUAL-LIVENESS` |Both transfers reach `CMD_COMPLETE`, and the NACKed instance reports its
+event, within the bench bound; the elapsed cycles and the bound are printed, and an instance that
+does neither within the bound fails it.
+|`CHK-I2C-DUAL-TIMING-DIFF` |The difference in measured SCL high and low time, instance 1 minus
+instance 0, equals the difference in `THIGH` and `TLOW` exactly on every common phase, both
+running; any other difference or a programmed difference of 0 fails it.
+|`CHK-I2C-DUAL-FIFO-LEVELS` |`FMTLVL` of an instance rises with its pushes while the other
+instance's `FMTLVL` and both `RXLVL` stay, and both `FMTLVL` return to 0 with `FMTEMPTY` and
+`HOSTIDLE` set and `FMTFULL` clear; a moved level of the idle instance, a nonzero final level or
+a missing flag fails it, and the levels are printed.
+|`CHK-I2C-DUAL-CMD-COMPLETE` |`INTR_STATE.CMD_COMPLETE` of each instance is 1 after its STOP and 0
+after a write of 1 to it, and the other instance's bit survives the clear; a bit not set, still
+set after the clear or cleared by the other write fails it.
+|`CHK-I2C-DUAL-STOP-COUNT` |The bus monitor of each pad pair counts exactly 1 STOP in the
+overlapped transfers; any other count fails it.
+|`CHK-I2C-DUAL-NACK-ISOLATION` |The unanswered address sets `CONTROLLER_EVENTS.NACK` and
+`INTR_STATE.CONTROLLER_HALT` on instance 1 only, instance 0 completes with `CMD_COMPLETE` and no
+event, and writing 1 to the instance-1 NACK event clears both; a flag on instance 0, a flag not
+set on instance 1 or one that stays set fails it.
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow them in order; a missing or misordered term fails it.
+|`CHK-TIMEOUT-PATHS` |The transfer wait, the START wait, the NACK wait, the pad release wait, the
+LSIO ready poll and the AXI access are bounded and fail on expiry with the last register and
+recorder state.
+|===
+
+*Pass Criteria*: `CHK-I2C-DUAL-PAD-ROUTE`, `CHK-I2C-DUAL-REG-WINDOW`, `CHK-I2C-DUAL-WIRE-ORDER`,
+`CHK-I2C-DUAL-LIVENESS`, `CHK-I2C-DUAL-TIMING-DIFF`, `CHK-I2C-DUAL-FIFO-LEVELS`,
+`CHK-I2C-DUAL-CMD-COMPLETE`, `CHK-I2C-DUAL-STOP-COUNT`, `CHK-I2C-DUAL-NACK-ISOLATION`,
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 

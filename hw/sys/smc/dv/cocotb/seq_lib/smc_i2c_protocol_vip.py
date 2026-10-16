@@ -6,6 +6,7 @@ Open-drain pad model on ``tb_top.sv``:
 
 * ``tb_i2c0_sda`` / ``tb_i2c0_scl`` — resolved bus (read)
 * ``tb_i2c0_sda_ext_low`` / ``tb_i2c0_scl_ext_low`` — cocotb ``1`` pulls low
+* ``tb_i2c1_*`` — the same four nets for instance 1, selected by the ``instance`` argument
 
 Edge waits on the combinational open-drain nets miss updates under Verilator,
 so this VIP samples levels and bit-bangs with timers; the same bus proofs then
@@ -26,18 +27,19 @@ _SDA_LOW: dict[int, set[int]] = {}
 _SCL_LOW: dict[int, set[int]] = {}
 
 
-def _pads():
+def _pads(instance: int = 0):
     dut = cocotb.top
     # Prefer clk_smc_i (typically 2x periph) for VIP sampling. Do not use
     # `obj or fallback` — cocotb HierarchyObject is not bool-castable.
     sample_clk = getattr(dut, "clk_smc_i", None)
     if sample_clk is None:
         sample_clk = dut.clk_periph_i
+    prefix = f"tb_i2c{instance}"
     return (
-        dut.tb_i2c0_sda,
-        dut.tb_i2c0_sda_ext_low,
-        dut.tb_i2c0_scl,
-        dut.tb_i2c0_scl_ext_low,
+        getattr(dut, f"{prefix}_sda"),
+        getattr(dut, f"{prefix}_sda_ext_low"),
+        getattr(dut, f"{prefix}_scl"),
+        getattr(dut, f"{prefix}_scl_ext_low"),
         sample_clk,
     )
 
@@ -53,7 +55,7 @@ def _set_ext_low(handle, drivers: dict[int, set[int]], owner: int, pull_low: boo
 
 
 class SmcI2cEepromSlave:
-    """Clocked I2C EEPROM slave (1-byte address pointer) on ``tb_i2c0_*``."""
+    """Clocked I2C EEPROM slave (1-byte address pointer) on ``tb_i2c<instance>_*``."""
 
     def __init__(
         self,
@@ -62,12 +64,13 @@ class SmcI2cEepromSlave:
         size: int = 256,
         addr_bytes: int = 1,
         name: str = "smc_i2c0_eeprom",
+        instance: int = 0,
     ) -> None:
         _ = addr_bytes
         self.addr = addr & 0x7F
         self.mem = bytearray(size)
         self.log = logging.getLogger(name)
-        sda, sda_ext, scl, scl_ext, clk = _pads()
+        sda, sda_ext, scl, scl_ext, clk = _pads(instance)
         self._sda = sda
         self._sda_ext = sda_ext
         self._scl = scl
@@ -343,10 +346,10 @@ class SmcI2cNackSlave:
 class SmcI2cBusMonitor:
     """Passive START/STOP observer (never ACKs)."""
 
-    def __init__(self, name: str = "smc_i2c0_monitor") -> None:
+    def __init__(self, name: str = "smc_i2c0_monitor", instance: int = 0) -> None:
         self.log = logging.getLogger(name)
         self.transactions: list[dict] = []
-        sda, sda_ext, scl, scl_ext, clk = _pads()
+        sda, sda_ext, scl, scl_ext, clk = _pads(instance)
         self._sda = sda
         self._scl = scl
         self._clk = clk

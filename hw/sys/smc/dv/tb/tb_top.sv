@@ -696,6 +696,22 @@ module smc_uvm_top
     assign tb_i2c0_sda = !(tb_i2c0_sda_dut_low || tb_i2c0_sda_ext_low ||
                            (tb_i2c_shared_bus && (tb_i2c1_sda_dut_low ||
                                                   tb_i2c2_sda_dut_low)));
+    // Instance 1 resolves on its own pad pair from the padring outputs, i.e.
+    // after the I2C_EN pad-function select: core2pad_en_o is active-high and
+    // the data is 0 while the pad drives low. +smc_i2c1_pads drives the
+    // resolved value onto pads 41/42; without it those pads stay un-driven.
+    logic tb_i2c1_pads;
+    logic tb_i2c1_scl_pad_low;
+    logic tb_i2c1_sda_pad_low;
+    initial begin
+        tb_i2c1_pads = $test$plusargs("smc_i2c1_pads");
+    end
+    assign tb_i2c1_scl_pad_low = u_dut.u_smc.core2pad_en_o[I2c1SclPad] &&
+                                 !u_dut.u_smc.core2pad_o[I2c1SclPad];
+    assign tb_i2c1_sda_pad_low = u_dut.u_smc.core2pad_en_o[I2c1SdaPad] &&
+                                 !u_dut.u_smc.core2pad_o[I2c1SdaPad];
+    assign tb_i2c1_scl = !(tb_i2c1_scl_pad_low || tb_i2c1_scl_ext_low);
+    assign tb_i2c1_sda = !(tb_i2c1_sda_pad_low || tb_i2c1_sda_ext_low);
     // SMBus sideband open-drain resolve: wrap *_no is 0 while that controller
     // asserts the open-drain line.
     logic tb_i2c0_smbalert_dut_low;
@@ -810,6 +826,12 @@ module smc_uvm_top
         tb_pad_drive_val[I2c0SclPad] = tb_i2c0_scl;
         tb_pad_drive_en[I2c0SdaPad]  = 1'b1;
         tb_pad_drive_val[I2c0SdaPad] = tb_i2c0_sda;
+        if (!tb_i2c_shared_bus && tb_i2c1_pads) begin
+            tb_pad_drive_en[I2c1SclPad]  = 1'b1;
+            tb_pad_drive_val[I2c1SclPad] = tb_i2c1_scl;
+            tb_pad_drive_en[I2c1SdaPad]  = 1'b1;
+            tb_pad_drive_val[I2c1SdaPad] = tb_i2c1_sda;
+        end
         if (tb_i2c_shared_bus) begin
             tb_pad_drive_en[I2c1SclPad]  = 1'b1;
             tb_pad_drive_val[I2c1SclPad] = tb_i2c0_scl;
@@ -3477,6 +3499,8 @@ module smc_uvm_top
     assign tb_test_en_i        = 1'b0;
     assign tb_i2c0_scl_ext_low = 1'b0;
     assign tb_i2c0_sda_ext_low = 1'b0;
+    assign tb_i2c1_scl_ext_low = 1'b0;
+    assign tb_i2c1_sda_ext_low = 1'b0;
     assign tb_i3c0_scl_ext_low = 1'b0;
     assign tb_i3c0_sda_ext_low = 1'b0;
     assign tb_cpu_jtag_tck     = 1'b0;
