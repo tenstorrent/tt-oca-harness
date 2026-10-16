@@ -20,7 +20,7 @@ for the port rows, `doc/integrator/src/smu.adoc` for the parameter defaults,
 interrupt count and the system AXI input ID width, and the generated
 `reset_unit` register header for `SS_CONFIG`. The SMN struct widths, the
 crossbar-side ID width of the two ID-width converters and the SEP-side ID
-width have no specification in this tree and are not compared.
+width have no specified value and are not compared.
 
 The two "idle value" compares read an output after bring-up and compare it
 with the value the specification gives for that state: `ss_config_o` presents
