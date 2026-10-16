@@ -3178,6 +3178,7 @@ def run_flow(
         # result.json records the site file beside the overlay, so a result is attributable
         # to every config layer that produced it.
         setattr(args, "_site_layer", registries.site.label)
+        setattr(args, "_site_uvm_library", registries.site.uvm_library)
     # Before the tool probes and the first stage, so every subprocess environment, env
     # snapshot, and in-process tool runner inherits the overlay's [env].
     overlay_env = activate_adopter_overlay_env(flow.raw)
@@ -3343,7 +3344,11 @@ def run_flow(
             "overlay_env=" + " ".join(f"{name}={value}" for name, value in overlay_env.items()),
         )
     if not args.dry_run:
-        fetch_build_libraries(flow, root, sim_cfg, tool, console)
+        library = fetch_build_libraries(
+            flow, root, sim_cfg, tool, console, site=getattr(args, "_site_uvm_library", None)
+        )
+        if library is not None:
+            setattr(args, "_uvm_library", library.record(root))
     args._ui_leaf_mode = "compact" if scheduler else "full"
     for kind in ("skipped_excluded", "skipped_unimplemented"):
         names = list(getattr(args, f"_{kind}", []) or [])

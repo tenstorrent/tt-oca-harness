@@ -102,7 +102,7 @@ from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatal
 from .paths import repo_path, repo_rel
 from .site import ToolLaunch, launch_argv, launch_env, tool_launch
 from .ui import Console
-from .uvm_library import fetch_uvm_library, uvm_library_src
+from .uvm_library import UvmLibrary, fetch_uvm_library, resolve_uvm_library
 from .waves import (
     build_wave_metadata,
     format_time_ps,
@@ -2789,29 +2789,33 @@ def _vcs_compiles_uvm_source(flow: Flow, vcs_cfg: dict[str, Any]) -> bool:
 
 
 def fetch_build_libraries(
-    flow: Flow, root: Path, sim_cfg: dict[str, Any], tool: str, console: Console
-) -> None:
-    """Fetch the source libraries the flow's build compiles, before any stage runs."""
-    build = build_cfg(flow, sim_cfg)
-    if tool == "vcs" and _vcs_compiles_uvm_source(flow, build_vcs_cfg(build)):
-        fetch_uvm_library(root, build, str(flow.path), say=lambda text: console.event("uvm", text))
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    tool: str,
+    console: Console,
+    *,
+    site: dict[str, str] | None = None,
+) -> UvmLibrary | None:
+    """Fetch the source libraries the flow's build compiles, before any stage runs.
 
-
-def _uvm_library_fingerprint(uvm_src: Path) -> list[str]:
-    """One digest over the content of every file in the UVM source tree.
-
-    The tree compiles outside the filelist, so neither the filelist text nor the bender
-    source digest sees an edit to it. Paths enter relative to the tree, so the digest is the
-    same wherever the tree sits.
+    ``site`` is the site file's ``[uvm_library]`` table. Returns the UVM library the build
+    compiles, or None when it compiles none; a library that differs from its pin is reported.
     """
-    files = sorted(path for path in uvm_src.rglob("*") if path.is_file())
-    digest = hashlib.sha256()
-    for path in files:
-        digest.update(path.relative_to(uvm_src).as_posix().encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
-    return [f"uvm_library={len(files)}:{digest.hexdigest()[:16]}"]
+    build = build_cfg(flow, sim_cfg)
+    if tool != "vcs" or not _vcs_compiles_uvm_source(flow, build_vcs_cfg(build)):
+        return None
+    library = fetch_uvm_library(
+        root, build, str(flow.path), site=site, say=lambda text: console.event("uvm", text)
+    )
+    if library.unpinned:
+        console.event(
+            "warning",
+            f"{library.source}={library.src.parent} holds a UVM src tree with SHA-256 "
+            f"{library.tree_sha256}; [build.uvm_library].tree_sha256 pins {library.pin}",
+            force=True,
+        )
+    return library
 
 
 def _vcs_uvm_dpi_args(uvm_src: Path) -> list[str]:
@@ -2918,9 +2922,18 @@ def _vcs_resolve_build(
     top = str(build.get("top_module", ""))
     if not top:
         raise ConfigError(f"{flow.path}: [build].top_module is required")
-    uvm_src = None
+    uvm: UvmLibrary | None = None
     if _vcs_compiles_uvm_source(flow, vcs_cfg):
-        uvm_src = uvm_library_src(root, build, str(flow.path), present=not args.dry_run)
+        # The tree compiles outside the filelist, so its digest enters the build fingerprint;
+        # a sim leaf handed the model fingerprints nothing and skips the read.
+        uvm = resolve_uvm_library(
+            root,
+            build,
+            str(flow.path),
+            site=getattr(args, "_site_uvm_library", None),
+            present=not args.dry_run,
+            verify=model_dir is None,
+        )
     filelist = repo_path(root, str(build.get("filelist", "")))
     # Uniform build-tree convention `build/<framework>/<tool>/`: the configured work_dir carries
     # the framework segment (e.g. build/uvm), the runner appends the tool — mirroring how the
@@ -2970,7 +2983,7 @@ def _vcs_resolve_build(
                 *cache_key_extra(options),
                 *_target_fingerprint_extra(target_name, compile_target),
                 *_bender_sources_fingerprint(root, build),
-                *(_uvm_library_fingerprint(uvm_src) if uvm_src else []),
+                *([f"uvm_library={uvm.tree_sha256[:16]}"] if uvm and uvm.tree_sha256 else []),
                 f"waves={wave_format}",
                 f"cov={bool(args.cov)}",
                 *coverage_compile_args,
@@ -2997,7 +3010,7 @@ def _vcs_resolve_build(
         "target_name": target_name,
         "compile_target": compile_target,
         "vcs_cfg": vcs_cfg,
-        "uvm_src": uvm_src,
+        "uvm_src": uvm.src if uvm else None,
         "top": top,
         "filelist": filelist,
         "build_dir": build_dir,
