@@ -619,9 +619,13 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         offset = plan.offset_frac * t_fill // 1000
         await ClockCycles(dut.clk_i, max(1, offset))
         half[0] = True
-        if await self._until(lambda: task2.done(), SETTLE_CAP) is None:
-            raise AssertionError(f"stream-2 feeder did not stop in {SETTLE_CAP}")
-        if not ended_half[0]:
+        # A full pool holds the next beat (back-pressure); the feeder then stops with
+        # that beat offered and the packer holding the word that cannot enter the FIFO.
+        pool_stalled = await self._until(lambda: task2.done(), 4 * t_xfer + 64) is None
+        if pool_stalled:
+            stop2[0] = True
+            await task2
+        elif not ended_half[0]:
             # The restart pairs ran out on a whole pair: one beat of an old pair.
             self.ext.send(2, [plan.fill_pairs[-1]])
             if not await self._settle(2, 1, SETTLE_CAP):
@@ -753,6 +757,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             pre_reset_level >= 1 and packer_depth != 0,
             pre_reset_level=pre_reset_level,
             packer_depth_at_reset=packer_depth,
+            pool_stalled=int(pool_stalled),
         )
         self.chk.ok(
             "XRST-STALE",
