@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Three initiators toward the outbound port under randomized target delays.
+"""CPU LSU and Secure DMA toward the outbound port under randomized target delays.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``. RANDCFG.
 
@@ -8,13 +8,16 @@ Contract (``hw/sys/sep/doc/fabric.adoc``, "Fabric Topology", "Transaction
 Routing", "Filtering and Protection"; ``hw/sys/sep/doc/cpu.adoc``, LSU master
 and AxPROT table; ``hw/sys/sep/doc/dma.adoc``, master path; the issue text for
 concurrent initiators toward a stalling outbound target): the CPU LSU (the TB
-master on ``s_axi``), the Secure DMA (programmed over that master) and the SMN
-inbound master (``m_axi``, through the inbound filter) each issue to one
-outbound window, singly and at the same time, while the responder
+master on ``s_axi``) and the Secure DMA (programmed over that master) each
+issue to one outbound window, singly and at the same time, while the responder
 (``tb/sep_outbound_mbx.sv``) stalls AW, W and AR READY and holds B and R VALID
-from a seeded stream.
+from a seeded stream. The SMN inbound master (``m_axi``, through the inbound
+filter) issues toward the same window alongside them; it has no route to the
+outbound port, so its accesses are the stimulus of one no-path check and never
+contend at the port.
 
-Each initiator owns a slot of the outbound page, so a PR-OUT request is
+The LSU, the DMA and the SMN inbound master each own a slot of the outbound
+page, so a PR-OUT request is
 attributed to its initiator by address; the responder answers in request
 order, so a PR-OUT-RSP beat is attributed to the initiator of the request it
 answers by order. The responder returns ``{~a, a}`` as read data
@@ -1054,4 +1057,4 @@ class sep_outbound_contention_rand_test(sep_base_test):
             f"idle_clocks={IDLE_CLOCKS} max_latency_ns={self.max_lat:.1f} "
             f"dma_polls_max={self.tr.dma_polls_max}",
         )
-        self.logger.info("RESULT %s seed=%d PASS", TEST, seed)
+        self.result_pass(TEST, seed, len(CHECKS))

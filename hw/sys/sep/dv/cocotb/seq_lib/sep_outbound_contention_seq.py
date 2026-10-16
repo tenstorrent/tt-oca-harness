@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Three initiators toward the outbound port, and the accounting of what leaves it.
+"""The outbound-port initiators, and the accounting of what leaves the port.
 
-The CPU LSU is the TB master on the LSU splice (``s_axi``), the Secure DMA is
-programmed over that master, and the SMN inbound port is the TB master on
-``m_axi``. Each initiator owns one slot of one 4 KiB page of the outbound
+The CPU LSU is the TB master on the LSU splice (``s_axi``) and the Secure DMA
+is programmed over that master; the SMN inbound port is the TB master on
+``m_axi``, whose accesses toward the window answer DECERR without reaching the
+port. Each of the three owns one slot of one 4 KiB page of the outbound
 window, so a request seen at the outbound port (tap PR-OUT) is attributed to
 its initiator by address. The responder (``tb/sep_outbound_mbx.sv``) answers
 write bursts and reads in request order, so a response seen at the port (tap

@@ -8,10 +8,12 @@ Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 Contract (``hw/sys/sep/doc/fabric.adoc``, "Fabric Topology", "Transaction
 Routing", "Filtering and Protection"; the issue text for the local crossbar and
 outbound mux/filter outstanding limits under a held outbound target): the CPU
-LSU (the TB master on ``s_axi``), the Secure DMA (programmed over that master)
-and the SMN inbound master (``m_axi``) issue to one outbound window while the
-responder (``tb/sep_outbound_mbx.sv``) delays AW, W and AR READY, delays or
-holds B and R VALID, and is then released.
+LSU (the TB master on ``s_axi``) and the Secure DMA (programmed over that
+master) issue to one outbound window while the responder
+(``tb/sep_outbound_mbx.sv``) delays AW, W and AR READY, delays or holds B and R
+VALID, and is then released. The SMN inbound master (``m_axi``) issues toward
+the same window alongside them; it has no route to the outbound port, so its
+accesses are the stimulus of one no-path check and never contend at the port.
 
 Stimulus only through the two TB masters, the DMA CSRs and the responder top
 ports (``smn_outbound_resp_hold_i``, ``smn_outbound_ready_stall_i``); the PR-OUT
@@ -1075,4 +1077,4 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             f"waits={waits} txn_bound_ns={self.tr.timeout_ns} window_clocks={WINDOW} "
             f"idle_clocks={IDLE_CLOCKS}",
         )
-        self.logger.info("RESULT %s seed=%d PASS", TEST, seed)
+        self.result_pass(TEST, seed, len(CHECKS))
