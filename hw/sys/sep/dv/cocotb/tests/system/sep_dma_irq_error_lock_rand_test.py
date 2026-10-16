@@ -38,7 +38,8 @@ STATUS register" (OpenTitan DMA
 ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:39``); "Status
 completion and error bits are write-one-to-clear" (``dma.adoc:131-132``).
 INTR_STATE is read once after that write: DMA_ERROR reads 0 and
-source 11 is low. Its control is INTR_STATE.DMA_ERROR = 1 before the write.
+source 11 is low. Its control is INTR_STATE.DMA_ERROR = 1 and source 11 high
+just before the write.
 Two release trials, each from a cold reset with INTR_ENABLE all set, apply the
 same rule to the completion events: after DONE of the single-chunk copy, and
 after the first (non-final) CHUNK_DONE of the multi-chunk copy, the leaf reads
@@ -82,10 +83,13 @@ ADDR_HI rule for the SEP DMA route: whether the copy ends with DONE or ERROR in
 a bounded number of STATUS reads, the destination footprint at DST_ADDR_LO (the
 destination words and its guards, read when the copy ends and again after the
 recovery writes), STATUS.ERROR and ERROR_CODE are logged (``OBS-DMA-HI-ADDR``).
-Controls, else CTRL-MISSING: the same copy with both ADDR_HI at 0 completes and
-the destination equals the source; after each non-zero trial, with no reset, a
-write of 1 to STATUS.ERROR and a clean state precede a legal copy that must
-complete with the destination equal to the source.
+After each non-zero trial, with no reset, a write of 1 to STATUS.ERROR and a
+clean state precede a legal copy; whether it completes with the destination
+equal to the source is also logged (``OBS-DMA-HI-ADDR``), not graded: no
+document states how the non-zero ADDR_HI copy ends, and every trial starts
+from a cold reset, so no later trial needs the recovery. Control, else
+CTRL-MISSING: the same copy with both ADDR_HI at 0 completes and the
+destination equals the source.
 
 Leg L5, tied-off address spaces: "Selecting the tied-off CTN or SYS address
 space does not complete." (``hw/sys/sep/doc/dma.adoc:70``); "the other address
@@ -97,17 +101,18 @@ destination, both ADDR_HI 0) with SRC_ASID 0x9, SRC_ASID 0xA, DST_ASID 0x9 or
 DST_ASID 0xA and 0x7 on the other side. No STATUS read of the window shows
 DONE. The window is ``done_bound`` STATUS reads of the copy size; its control
 is the same copy with both ASID 0x7 from a cold reset, which must show DONE
-inside the same window and copy the source. Recovery with no reset is a
-control, not a graded value: CONTROL.ABORT, a bounded wait for
-STATUS.ABORTED ("To abort an active operation, request ``CONTROL.ABORT`` and
-wait for ``STATUS.ABORTED`` before reusing its buffers or configuration.",
-``doc/programmer/src/sep-programming.adoc:778-779``), the DMA clean state,
-ADDR_SPACE_ID 0x77 and the same copy, which completes with the destination
-equal to the source, else CTRL-MISSING. No sentence states that a tied-off
-start drains to ABORTED or that the engine then completes. STATUS.ERROR,
-ERROR_CODE, and STATUS.ABORTED and STATUS.BUSY after the ABORT of each trial
-are logged (``OBS-DMA-ASID-TIEOFF``): no document states which ERROR_CODE
-bit, if any, a tied-off address space sets.
+inside the same window and copy the source. After each trial, with no reset,
+the leaf writes CONTROL.ABORT, reads STATUS up to 200 times for ABORTED,
+writes the DMA clean state and ADDR_SPACE_ID 0x77 and runs the same copy.
+STATUS.ABORTED and STATUS.BUSY after the ABORT and whether that copy completes
+with the source data are logged (``OBS-DMA-ASID-TIEOFF``), not graded: "To
+abort an active operation, request ``CONTROL.ABORT`` and wait for
+``STATUS.ABORTED`` before reusing its buffers or configuration."
+(``doc/programmer/src/sep-programming.adoc:778-779``) does not state that a
+tied-off start sets ABORTED or that the DMA then accepts a new copy, and every
+trial starts from a cold reset. STATUS.ERROR and ERROR_CODE of each trial are
+also logged: no document states which ERROR_CODE bit, if any, a tied-off
+address space sets.
 
 Randomization (``SepSeededRng`` from the run seed): the INTR_ENABLE values and
 the trial order of L1, the copy sizes and the multi-chunk shape, the L2 sizes,
@@ -129,7 +134,8 @@ Checkers:
                     recovery copy; the encoding-2 hash control completes.
   CHK-DMA-INTR-RELEASE per L2 kind: after the write of 1 to STATUS.ERROR,
                     INTR_STATE.DMA_ERROR reads 0 and source 11 is low. Control:
-                    INTR_STATE.DMA_ERROR read 1 before the write. Per release
+                    INTR_STATE.DMA_ERROR reads 1 and source 11 is high just
+                    before the write. Per release
                     trial (event=done, event=chunk): after the write of 1 to
                     STATUS.DONE (STATUS.CHUNK_DONE), INTR_STATE.DMA_DONE
                     (DMA_CHUNK_DONE) reads 0 and source 9 (10) is low. Control:
@@ -155,10 +161,7 @@ Checkers:
                     OBS-DMA-LOCK-READBACK only.
   CHK-DMA-ASID-TIEOFF per L5 trial (side, ASID 0x9 or 0xA): no DONE in the
                     window. Controls: the ASID 0x7 copy shows DONE inside the
-                    same window and copies the source; after the trial,
-                    ABORTED reads 1 after CONTROL.ABORT and the ASID 0x7
-                    recovery copy completes with the source data; else
-                    CTRL-MISSING.
+                    same window and copies the source, else CTRL-MISSING.
 """
 
 from __future__ import annotations
@@ -254,7 +257,7 @@ RELEASE_EVENTS = {
 # L5: tied-off address spaces, SOC_ADDR 0xa and SYS_ADDR 0x9 (dma.hjson, ADDR_SPACE_ID).
 ASID_OT = 0x7
 ASID_TIEOFF = (("src", 0x9), ("src", 0xA), ("dst", 0x9), ("dst", 0xA))
-ABORT_POLL_BOUND = 200  # STATUS reads in a wait for ABORTED
+ABORT_POLL_BOUND = 200  # STATUS reads in the logged wait for ABORTED (L5, not graded)
 
 
 def _word(b: int) -> int:
@@ -561,6 +564,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         istate = await ops.rd(INTR_STATE)
         await ClockCycles(cocotb.top.clk_i, 8)
         src11 = int(self.irq.any_high_since(m, "src11"))
+        # Control of CHK-DMA-INTR-RELEASE: the line is high just before the write.
+        src11_pre = self.irq.level("src11")
         # Recovery with no reset: write 1 to STATUS.ERROR alone.
         await ops.wr(STATUS, ST_ERROR)
         st_c = await ops.read_status()
@@ -594,7 +599,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             all(f.ok for f in (fc_err, fc_code, fc_int, fc_errc, fc_codec))
             and src11 == 1
             and rec_ok,
-            (istate, istate_c, src11_c),
+            (istate, istate_c, src11_c, src11_pre),
         )
 
     async def _l2_control(self, kind: str) -> int:
@@ -640,15 +645,16 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             if not ok:
                 self._fail("CHK-DMA-SIZE-ERR", line)
             self._pass("CHK-DMA-SIZE-ERR", line)
-        for (_, _, (pre, post, src11_c)), k in zip(results, L2_KINDS):
+        for (_, _, (pre, post, src11_c, src11_pre)), k in zip(results, L2_KINDS):
             pre_bit = int(bool(pre & INTR_ERROR))
             post_bit = int(bool(post & INTR_ERROR))
             line = (
                 f"kind={k} intr_dma_error_after_w1c={post_bit} src11_after_w1c={src11_c} "
-                f"control_intr_dma_error_before_w1c={pre_bit} intr_state_before=0x{pre:x} "
+                f"control_intr_dma_error_before_w1c={pre_bit} "
+                f"control_src11_before_w1c={src11_pre} intr_state_before=0x{pre:x} "
                 f"intr_state_after=0x{post:x}"
             )
-            if pre_bit != 1:
+            if (pre_bit, src11_pre) != (1, 1):
                 self._ctrl_missing(f"CHK-DMA-INTR-RELEASE control: {line}")
             if (post_bit, src11_c) != (0, 0):
                 self._fail("CHK-DMA-INTR-RELEASE", line)
@@ -780,7 +786,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         )
         return ok
 
-    async def _l4_side(self, side: str) -> tuple[str, bool]:
+    async def _l4_side(self, side: str) -> None:
         c = self.cfg_t
         ops = self.ops
         hi = c.addr_hi[side]
@@ -808,6 +814,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             st.fmt(),
         )
         # Recovery with no reset: write 1 to STATUS.ERROR, then a clean state.
+        # Every trial starts from a cold reset, so the recovery copy is logged
+        # only: no document states how the non-zero ADDR_HI copy ends.
         await ops.wr(STATUS, ST_ERROR)
         await ops.clean_state()
         await ops.wr(CONTROL, control_word())
@@ -835,23 +843,26 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         rst, rended, _, rec = await self._hi_copy(0, 0)
         mism, guard_bad = self._hi_image_ok(rec)
         rec_ok = rended and rst.done and not rst.error and mism == 0 and guard_bad == 0
-        line = (
-            f"side={side} addr_hi=0x{hi:08x} lo_dst=0x{c.dst:08x} size={c.hi_size} "
-            f"recovery_done={int(rec_ok)} recovery_mismatch={mism} "
-            f"recovery_guard_bad={guard_bad}"
+        self.logger.info(
+            "OBS-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x lo_dst=0x%08x size=%d "
+            "recovery_done=%d recovery_mismatch=%d recovery_guard_bad=%d",
+            c.seed,
+            side,
+            hi,
+            c.dst,
+            c.hi_size,
+            int(rec_ok),
+            mism,
+            guard_bad,
         )
-        self.logger.info("CTL-DMA-HI-ADDR-RECOVERY LOG seed=%d %s", c.seed, line)
-        return line, bool(rec_ok)
 
     async def _leg_l4(self) -> None:
-        """L4 has no graded value: each copy is logged and its controls must hold."""
-        results = [await self._l4_side(s) for s in HI_SIDES]
+        """L4 has no graded value: each copy is logged; the ADDR_HI=0 control must hold."""
+        for s in HI_SIDES:
+            await self._l4_side(s)
         ctl = await self._l4_control()
         if not ctl:
             self._ctrl_missing("L4 control: the ADDR_HI=0 copy failed")
-        for line, ok in results:
-            if not ok:
-                self._ctrl_missing(f"L4 recovery control: {line}")
 
     # ---- L3 ------------------------------------------------------------------
     async def _wr_log(self, addr: int, value: int) -> int:
@@ -966,7 +977,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             valid = (await ops.rd(RANGE_VALID) & VALID_MASK) >> _VALID_LSB
             # The RANGE_REGWEN value after the lock is not graded. The field text
             # says the register "is set to kMultiBitBool4False" (0x9,
-            # dma.hjson:338-339, secure_dma.rdl:158-159), and the access type
+            # dma.hjson:338-339; secure_dma.rdl:142-143 enum, :148-149 desc), and the access type
             # rw0c (dma.hjson:330) / wzc (secure_dma.rdl:146) clears each bit
             # written 0, which gives 0x0 for the write of 0x9 over 0x6.
             self.logger.info(
@@ -1085,8 +1096,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         )
         return ok, ctl_done_at, window
 
-    async def _l5_trial(self, side: str, asid: int) -> tuple[str, bool, bool]:
-        """One L5 trial; returns (PASS line, no DONE in the window, recovery control held)."""
+    async def _l5_trial(self, side: str, asid: int) -> tuple[str, bool]:
+        """One L5 trial; returns (PASS line, no DONE in the window)."""
         c = self.cfg_t
         ops = self.ops
         word = asid_word(asid, ASID_OT) if side == "src" else asid_word(ASID_OT, asid)
@@ -1095,7 +1106,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         st, tie_done_at, err_reads, window = await self._l5_copy(word)
         ecode = await ops.rd(ERROR_CODE)
-        # Recovery with no reset: ABORT, a bounded wait for ABORTED, the clean state.
+        # Recovery with no reset, logged only: ABORT, a bounded wait for ABORTED,
+        # the clean state and an ASID 0x7 copy. sep-programming.adoc:778-779
+        # tells software to wait for ABORTED after an ABORT, but no sentence
+        # states that a tied-off start sets ABORTED or that the DMA then
+        # accepts a new copy. Every trial starts from a cold reset.
         await ops.abort()
         ab = None
         for _ in range(ABORT_POLL_BOUND):
@@ -1108,9 +1123,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         rst, rec_done_at, _, _ = await self._l5_copy(ASID_SEP)
         rec_mism = await self._l5_image()
         close_graded_window(self.logger)
+        rec_ok = rec_done_at is not None and not rst.error and rec_mism == 0
         self.logger.info(
             "OBS-DMA-ASID-TIEOFF seed=%d side=%s asid=0x%x error_reads=%d error_code=0x%x "
-            "aborted_after_abort=%d busy_after_abort=%d last[%s] after_abort[%s]",
+            "aborted_after_abort=%d busy_after_abort=%d abort_reads_bound=%d "
+            "recovery_done=%d recovery_mismatch=%d last[%s] after_abort[%s]",
             c.seed,
             side,
             asid,
@@ -1118,16 +1135,17 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             ecode,
             ab.aborted,
             ab.busy,
+            ABORT_POLL_BOUND,
+            int(rec_ok),
+            rec_mism,
             st.fmt(),
             ab.fmt(),
         )
-        rec_ok = rec_done_at is not None and not rst.error and rec_mism == 0
         line = (
             f"side={side} asid=0x{asid:x} asid_word=0x{word:02x} done_read={tie_done_at} "
-            f"window={window} @@CTRL@@ recovery_aborted={ab.aborted} "
-            f"recovery_done={int(rec_ok)} recovery_mismatch={rec_mism}"
+            f"window={window} @@CTRL@@"
         )
-        return line, tie_done_at is None, bool(ab.aborted) and rec_ok
+        return line, tie_done_at is None
 
     async def _leg_l5(self) -> None:
         ctl_ok, ctl_done_at, ctl_window = await self._l5_control()
@@ -1137,14 +1155,12 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 f"window={ctl_window}"
             )
         for side, asid in ASID_TIEOFF:
-            line, no_done, rec_ctrl_ok = await self._l5_trial(side, asid)
+            line, no_done = await self._l5_trial(side, asid)
             line = line.replace(
                 "@@CTRL@@", f"control_done_read={ctl_done_at}/{ctl_window} control_ok={ctl_ok}"
             )
             if not no_done:
                 self._fail("CHK-DMA-ASID-TIEOFF", line)
-            if not rec_ctrl_ok:
-                self._ctrl_missing(f"CHK-DMA-ASID-TIEOFF recovery control: {line}")
             self._pass("CHK-DMA-ASID-TIEOFF", line)
 
     # ---- scenario ----------------------------------------------------------

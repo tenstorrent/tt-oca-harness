@@ -72,13 +72,21 @@ Checkers:
                    a count). TXFULL/TXEMPTY and RXFULL/RXEMPTY
                    are never set together in any STATUS read; each of the four
                    flags is set in at least one read (control).
-  CHK-SPI-CMDQD    CMDQD moves after each COMMAND accepted while the head
-                   segment waits for TX data (the step size is logged as
-                   OBS-SPI-CMDQD-STEP: no sentence states it); after one
-                   TXDATA word releases the head, every
+  CHK-SPI-CMDQD    COMMANDs are accepted while the head segment waits for
+                   TX data; after one TXDATA word releases the head, every
                    queued command shows one chip-select-low window and the
                    queue empties. Control: the head is held (ACTIVE=1,
-                   TXSTALL=1) and at least one COMMAND is accepted.
+                   TXSTALL=1) and at least one COMMAND is accepted. Whether
+                   and by how much CMDQD changes after each accepted COMMAND
+                   is logged as OBS-SPI-CMDQD-STEP, not graded: the texts
+                   conflict. CMDQD "Indicates how many unread 32-bit words
+                   are currently in the command segment queue."
+                   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:318-319``)
+                   and counts "unprocessed segments [...] in the FIFO"
+                   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:394``),
+                   but a descriptor can wait "in the Command Clock Domain
+                   Crossing" (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/programmers_guide.md:143``),
+                   where CMDQD need not count it.
   CHK-SPI-EVENT-WM INTR_STATE.SPI_EVENT (Status type: the OR of the levels of
                    the sources EVENT_ENABLE selects) after a segment moves a
                    watermark: TX side, TX_WATERMARK k with n >= k words queued
@@ -1185,14 +1193,24 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             await self.ops.wr(COMMAND, command_word(0, speed=0, direction=DIR_DUMMY))
             t_acc = self.pads.now()
             accepted += 1
-            st2 = await self._poll(
-                lambda s, p=prev: s.cmdqd != p, 20_000, f"CMDQD moves from {prev}", chk
-            )
-            # No sentence states the size of the CMDQD step per accepted COMMAND
-            # (a descriptor can wait in the command clock domain crossing,
-            # programmers_guide.md:143), so the step is logged.
+            # The CMDQD change per accepted COMMAND is logged, not graded. The
+            # texts conflict: CMDQD counts "unread 32-bit words [...] in the
+            # command segment queue" (spi_host.hjson:318-319) and "unprocessed
+            # segments [...] in the FIFO" (theory_of_operation.md:394), but a
+            # descriptor can wait "in the Command Clock Domain Crossing"
+            # (programmers_guide.md:143), where CMDQD need not count it. The
+            # 20000-clock read loop only bounds the wait for the log line.
+            step_end = self.pads.now() + 20_000
+            while True:
+                st2 = await self.ops.read_status()
+                if st2.cmdqd != prev or self.pads.now() > step_end:
+                    break
             self.logger.info(
-                "OBS-SPI-CMDQD-STEP seed=%d prev=%d after=%d", self.seed, prev, st2.cmdqd
+                "OBS-SPI-CMDQD-STEP seed=%d prev=%d after=%d moved=%d",
+                self.seed,
+                prev,
+                st2.cmdqd,
+                int(st2.cmdqd != prev),
             )
             prev = st2.cmdqd
             trail.append(f"cmdqd={st2.cmdqd} ready={st2.ready}")
