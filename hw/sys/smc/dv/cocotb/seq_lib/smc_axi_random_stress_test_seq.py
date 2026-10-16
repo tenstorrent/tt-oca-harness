@@ -80,7 +80,6 @@ SPM = {p: SPM0 + PIDX[p] * WINDOW for p in PORTS}
 OUT0 = 0x0200_0000
 OUT = {p: OUT0 + PIDX[p] * WINDOW for p in PORTS}
 OUT_LIMIT = OUT0 + 3 * WINDOW
-PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
 
 STEPS = tuple(f"S{n}" for n in range(1, 13))
 CHECKERS = (
@@ -96,7 +95,6 @@ CHECKERS = (
     ("CHK-RAND-RESP-ERRORS-OBS", "S11"),
     ("CHK-RAND-RESP-COMBINED", "S11"),
 )
-EXPECTED_ACCESSES = None
 
 FIXED, INCR, WRAP = 0, 1, 2
 S7_ARENA, S7_ARENA_SIZE = 0xC000, 0x400
@@ -138,6 +136,16 @@ class _Golden:
 
 def _hex(data: bytes) -> str:
     return data[::-1].hex()
+
+
+class _StressItem(SmcSysAxiItem):
+    """SmcSysAxiItem carrying the port it goes to, the observe flag and the want of a read."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+        self.port: str | None = None
+        self.observe: bool = False
+        self.want: bytes | None = None
 
 
 class smc_axi_random_stress_test_seq(SmcCsrSeq):
@@ -217,14 +225,13 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
     def _mk(self, port, op, addr, *, size=8, beats=1, burst=INCR, data=None, rng=None, **attrs):
         """Build one access. `data` is bytes for a write; with `rng` a payload by address."""
         self._n_item += 1
-        item = SmcSysAxiItem(f"{port.lower()}_{self._step}_{self._n_item}")
+        item = _StressItem(f"{port.lower()}_{self._step}_{self._n_item}")
         item.op = op
         item.addr = addr
         item.length = size
         item.beats = beats
         item.burst = burst
         item.observe = bool(attrs.pop("observe", False))
-        item.want = None
         item.port = port
         if op is SmcSysAxiOp.WRITE:
             if data is None:
@@ -678,8 +685,8 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             "48 write-then-read pairs completed within the guard with defined data, every read "
             "answered OKAY after an OKAY write returned the word of its own address and no port's "
             "pairs all dropped out of the compare; response codes "
-            "per knob value printed, not asserted (LINKED-ISSUE SF-033, SF-034; AxUSER carriage at "
-            "the island not observable, SF-012): " + " | ".join(notes)
+            "per knob value are printed and not graded, and AxUSER carriage at the island is not "
+            "observable: " + " | ".join(notes)
         )
 
     async def _s4(self) -> str:
@@ -738,8 +745,8 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         return (
             "all 21 lock-leg accesses completed within the guard; on every port the ordinary "
             "write-then-read after the exclusive read and after the exclusive write answered OKAY "
-            "and returned the fresh word just written; exclusive responses observe-only "
-            "(LINKED-ISSUE SF-011): " + "; ".join(notes)
+            "and returned the fresh word just written; exclusive responses "
+            "are printed and not graded: " + "; ".join(notes)
         )
 
     async def _s5(self) -> str:
@@ -789,9 +796,9 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             f"on JTAG all 8 writes and 8 reads reached the responder at their own OUT2 address "
             f"with awcache and arcache equal to the driven AxCACHE [{' '.join(rows)}], the written "
             f"word at the address, awuser 0x{aw_users[0]:X} on all 8 writes and aruser "
-            f"0x{ar_users[0]:X} on all 8 reads whatever AxUSER was driven (numeric source ID not "
-            f"asserted, LINKED-ISSUE SF-012); SYS_IN and SEP_IN observed only (LINKED-ISSUE "
-            f"SF-035): " + " | ".join(other)
+            f"0x{ar_users[0]:X} on all 8 reads whatever AxUSER was driven (the numeric source ID is "
+            f"not graded); SYS_IN and SEP_IN are observed only, their codes printed and not "
+            f"graded: " + " | ".join(other)
         )
 
     async def _s5_other(self, rng: random.Random, port: str, k: int) -> str:
@@ -1047,8 +1054,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 f"AxPROT[1]=0: {len(lo)} accesses, {sum(1 for i in lo if i.resp_code == DECERR)} DECERR"
             )
         cocotb.log.info(
-            "OBS-SHAPE-PROT: step 7 DECERR by AxPROT[1], observe-only, not asserted "
-            "(LINKED-ISSUE SF-032): %s",
+            "OBS-SHAPE-PROT: step 7 DECERR by AxPROT[1], observed and not graded: %s",
             "; ".join(parts),
         )
 
@@ -1130,7 +1136,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 f"{PORT_NAME[p]} {timing[p].summary()} b/r stalls {stalls[p]['b']}/{stalls[p]['r']}"
                 for p in PORTS
             )
-            + "; DUT-side stalls printed, not asserted (LINKED-ISSUE SF-015, SF-021): "
+            + "; DUT-side stalls are printed and not graded: "
             + "; ".join(
                 f"{PORT_NAME[p]} aw={stalls[p]['aw']} w={stalls[p]['w']} ar={stalls[p]['ar']}"
                 for p in PORTS
@@ -1141,8 +1147,8 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             "for depths 4, 8, 9, 16, 24 (61 accesses per port), for the AxID set {1, 2} on all three "
             "ports and under the manager stall profiles with the b and r stall counters "
             "above 0 on every port; every access completed within the guard; response order "
-            "printed, not asserted (LINKED-ISSUE SF-037), accesses beyond the limits answered "
-            "(LINKED-ISSUE SF-015): " + " | ".join(notes)
+            "is printed and not graded, and accesses beyond the configured limits are answered "
+            "rather than refused: " + " | ".join(notes)
         )
 
     def _outside_items(self, rng, port: str, n: int):
@@ -1227,12 +1233,12 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             "words match the requests, every OKAY read word equals the responder word of its own "
             "address, the responder write and read counters and the OUT2 AW/AR handshakes advanced "
             "by exactly the JTAG accesses issued to OUT2 in each group, local SYS_IN and SEP_IN "
-            "traffic returned its own words; response order printed, not asserted (LINKED-ISSUE "
-            "SF-037; depth beyond what the fabric admits, SF-039): " + " | ".join(deep)
+            "traffic returned its own words; response order is printed and not graded, as is the "
+            "depth beyond what the fabric admits: " + " | ".join(deep)
         ), (
             "all 16 SYS_IN and SEP_IN accesses at OUT0 and OUT1 presented while the JTAG depth-8 "
             "group was outstanding completed within the guard at their own port; response codes "
-            "and counter deltas printed, nothing asserted on them (LINKED-ISSUE SF-035); the "
+            "and counter deltas printed, nothing graded on them; the "
             "concurrent JTAG group still returned its own words and IDs: " + " | ".join(others)
         )
 
@@ -1286,7 +1292,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             "B count and returned words match the requests, every OKAY read word equals the "
             "responder word of its address, the AW and AR address sets at the responder equal the "
             "sets issued and the responder counters advanced by 24 per profile; response order "
-            "printed, not asserted (LINKED-ISSUE SF-037, SF-041): " + " | ".join(notes)
+            "under each profile is printed and not graded: " + " | ".join(notes)
         )
 
     def _inject(self, item, code: int) -> None:
@@ -1378,7 +1384,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             f"with its own ID, the responder monitor counted exactly the injected codes on the "
             f"wire, and each ordinary write-then-read after an injection answered OKAY and returned "
             f"the word written; the code at the inbound port is printed next to the injected one, "
-            f"not asserted (LINKED-ISSUE SF-038); {out_b['JTAG']}"
+            f"not graded; {out_b['JTAG']}"
         )
         # (c) delay, ready stall and reorder with injected errors while local traffic is outstanding.
         items = self._out_items(rng, "JTAG", 12, 12, allow_error=True)
@@ -1411,7 +1417,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             f"injected third [{' '.join(pairs_c)}] on the JTAG group of 24 at OUT2, all 24 SYS_IN "
             f"and SEP_IN accesses answered OKAY within the guard at their own port with the golden "
             f"word of their own address, every JTAG access completed at the JTAG port with its own "
-            f"ID (code and order printed, not asserted, LINKED-ISSUE SF-037, SF-038, SF-041) and "
+            f"ID (code and order are printed and not graded) and "
             f"every OKAY JTAG read word equals the responder word of its address: "
             + "; ".join(out_c.values())
         )
@@ -1484,7 +1490,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             f"{', '.join(floors['S7'])}; {self._cmp_bytes['S6'] + self._cmp_bytes['S7']} bytes "
             f"compared), recovery write-then-reads returned the fresh "
             f"word; responses of FIXED, WRAP, narrow register and AxLOCK 1 accesses printed "
-            f"(LINKED-ISSUE SF-036, SF-003, SF-007): {self._shape_text()}; " + " | ".join(notes6),
+            f"are printed and not graded: {self._shape_text()}; " + " | ".join(notes6),
         )
 
         self._step = "S8"

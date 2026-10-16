@@ -10279,7 +10279,7 @@ expires.
 `CHK-TIMEOUT-PATHS` are all printed; every base-register read answers OKAY with one value across
 the three ports and two bases (the declared reset where there is one), the ROM words match across
 ports, the SPM patterns round-trip across bases and ports, the DMA and zeroer patterns survive the
-last-register reads, and at least 105 accesses are issued. Enrolled in: `all`, `fabric`.
+last-register reads, and at least 105 accesses are issued. Enrolled in: `all`, `hosted`.
 
 '''''
 
