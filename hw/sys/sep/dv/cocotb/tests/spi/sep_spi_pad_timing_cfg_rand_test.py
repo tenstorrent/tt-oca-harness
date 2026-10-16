@@ -59,12 +59,21 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
 * CHK-SPI-RATIO: period_a*(b+1) equals period_b*(a+1).
 * CHK-SPI-CSN: lead and trail of each graded transaction are at least
   (CSNLEAD+1) and (CSNTRAIL+1) times (CLKDIV+1) clocks, and the chip-select-high
-  gap at least (CSNIDLE+1) times (CLKDIV+1): the OpenTitan spi_host theory of
-  operation states all three as minimum bounds that FSM delays may exceed. The chip-select and clock
-  output enables in the frames and the gap are CHK-SPI-CTRL-OE.
-  Control: the idle minimum is above g0 of the control pair.
-  ``OBS-SPI-CSN-EXACT`` logs the lead and trail excess over each minimum
-  (not graded: the register text does not say whether the values are exact).
+  gap at least (CSNIDLE+1) times (CLKDIV+1). The register text gives the + 1
+  value: CSNLEAD "Indicates the number of half sck cycles, CSNLEAD+1, to leave
+  between the falling edge of cs_n and the first edge of sck", CSNTRAIL
+  "Indicates the number of half sck cycles, CSNTRAIL+1, to leave between last
+  edge of sck and the rising edge of cs_n", CSNIDLE "the minimum number of sck
+  half-cycles to hold cs_n high between commands"
+  (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc:161-172``,
+  CONFIGOPTS). The OpenTitan theory of operation states the three as minimum
+  bounds: "These settings are all minimum bounds, and delays in the FSM
+  implementation may create more margin in each of these timing constraints."
+  (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:287``). So the minimum is
+  graded, and ``OBS-SPI-CSN-EXACT`` logs the lead and trail excess over each
+  minimum. The chip-select and clock output enables in the frames and the gap
+  are CHK-SPI-CTRL-OE. Control: the idle minimum is above g0 of the control
+  pair.
 * CHK-SPI-FULLCYC: at x1, x2 and x4 (drawn order, drawn CPOL and CLKDIV 1 to
   15), first at CPHA 0 and then at CPHA 1, an Rx segment from a late responder
   (each beat one core clock after its sample edge) reads the seeded bytes with
@@ -73,8 +82,9 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   (CONFIGOPTS.FULLCYC): "Rather than sampling the SD bus a half cycle after
   shifting out data, the data is sampled a full cycle after shifting data out.
   ... If CPHA = 1, data is shifted and sampled with the trailing edge, also
-  separated by a full cycle." The OpenTitan spi_host theory of operation (SPI
-  modes) states the CPHA 1 sample edge: "if ``CPHA = 1`` data is always
+  separated by a full cycle." The OpenTitan spi_host theory of operation
+  (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:42``) states the CPHA 1
+  sample edge: "if ``CPHA = 1`` data is always
   asserted on the leading edge of ``SCK`` and sampled on the trailing edge of
   ``SCK``." At CPHA 1 the late change of beat k is one clock after trailing
   edge k; both a sample at the next leading edge and one at the next trailing
@@ -95,7 +105,8 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   ``OBS-SPI-CPHA`` and is not graded: the FULLCYC register text says that at
   CPHA = 1 "data is shifted and sampled with the trailing edge", and the
   theory of operation says that at CPHA = 1 data is asserted on the leading
-  edge and that FULLCYC "has no effect on any of the signals transmitted". The second cell inverts the CPHA of the first, so each seed has
+  edge (``theory_of_operation.md:42``) and that FULLCYC "has no effect on any
+  of the signals transmitted" (``theory_of_operation.md:298``). The second cell inverts the CPHA of the first, so each seed has
   one CPHA=0 cell that is graded.
 * CHK-SPI-SB-FRAME (``env/sep_spi_scoreboard.py``, one scoreboard per cell):
   every Tx and Rx frame of the cell (control pairs, graded pair, ratio leg) at
@@ -506,7 +517,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         )
 
         # Raise CSNIDLE above the control gap. Chip select stays high for at
-        # least CSNIDLE+1 half sck cycles (spi_host theory of operation).
+        # least CSNIDLE+1 half sck cycles (spi_host theory_of_operation.md:272).
         idle = c.idle
         if (idle + 1) * half <= g0:
             fits = [v for v in range(CSNIDLE_MAX + 1) if (v + 1) * half > g0]
@@ -604,7 +615,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         )
 
         # CSNLEAD, CSNTRAIL and CSNIDLE are minimum bounds; FSM delays may add
-        # margin (spi_host theory of operation, chip-select timing).
+        # margin (spi_host theory_of_operation.md:287).
         exp_lead = (c.lead + 1) * half
         exp_trail = (c.trail + 1) * half
         gap = w2.start - w1.end
@@ -633,7 +644,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         if ok:
             self.logger.info("CHK-SPI-CSN PASS %s", line)
             # CSNLEAD, CSNTRAIL and CSNIDLE are minimum bounds that FSM delays
-            # may exceed (spi_host theory of operation); the excess is logged.
+            # may exceed (spi_host theory_of_operation.md:287); the excess is logged.
             self.logger.info(
                 "OBS-SPI-CSN-EXACT seed=%d mode=%s clkdiv=%d half=%d lead_excess=%d,%d "
                 "trail_excess=%d,%d idle_gap=%d csnidle_plus_one=%d width=x%d",
@@ -673,9 +684,10 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         self.logger.info("CHK-SPI-RATIO PASS %s", line)
 
         # Data edge. At CPHA 1 with FULLCYC 1 the OpenTitan texts give two Tx
-        # edges (FULLCYC register text: shifted with the trailing edge; theory
-        # of operation: asserted on the leading edge, FULLCYC changes no
-        # transmitted signal), so that cell is logged and not graded.
+        # edges (FULLCYC register text: shifted with the trailing edge;
+        # theory_of_operation.md:42 and :298: asserted on the leading edge,
+        # FULLCYC changes no transmitted signal), so that cell is logged and
+        # not graded.
         if c.cpha == 1 and c.fullcyc == 1:
             self.logger.info(
                 "OBS-SPI-CPHA seed=%d cpha=1 fullcyc=1 graded=0 ambiguous=1 mode=%s width=x%d",

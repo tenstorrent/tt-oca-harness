@@ -7015,11 +7015,12 @@ module sep_fcov (
     }
     cp_hash_width_fault: coverpoint hw iff (hw_v) {bins enc0 = {1'b0}; bins enc1 = {1'b1};}
     // {side 0 SRC_ADDR_HI 1 DST_ADDR_HI, a write address landed in the LO
-    // destination}, scored at the first DONE or ERROR rise after the GO.
+    // destination}, scored at the first DONE or ERROR rise after the GO. No
+    // document states the destination footprint, so a LO write is not scored.
     cp_addr_hi_nonzero: coverpoint ah iff (ah_v) {
       bins src_hi_no_lo_write = {2'b0_0};
       bins dst_hi_no_lo_write = {2'b1_0};
-      illegal_bins lo_write = {2'b0_1, 2'b1_1};
+      ignore_bins lo_write = {2'b0_1, 2'b1_1};
     }
   endgroup
 

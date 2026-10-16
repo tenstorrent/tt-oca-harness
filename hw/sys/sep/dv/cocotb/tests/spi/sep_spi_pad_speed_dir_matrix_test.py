@@ -6,7 +6,8 @@ Contract (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/s
 COMMAND and ERROR_STATUS; ``hw/sys/sep/doc/spi.adoc``, Features;
 ``doc/integrator/src/smu-sep.adoc``, "SEP SPI Host Pin Assignment"; OpenTitan
 SPI_HOST theory of operation,
-https://opentitan.org/book/hw/ip/spi_host/doc/theory_of_operation.html):
+``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md``,
+short name ``ToO`` below):
 
 * SPEED 0, 1 and 2 move LEN+1 bytes on 1, 2 and 4 data lines at one bit per
   line per sck cycle, so a data segment takes (LEN+1)*8/lanes sck cycles. A
@@ -15,12 +16,29 @@ https://opentitan.org/book/hw/ip/spi_host/doc/theory_of_operation.html):
   chain has its own speed, direction and length.
 * SPEED 3, and DIRECTION 3 at SPEED 1 or 2, set ERROR_STATUS.CMDINVAL.
 * Lane n is ``sd[n]``. An x1 segment sends on ``sd[0]`` and receives on
-  ``sd[1]``; an x2 or x4 segment moves one pair or nibble per sck cycle with
-  its least significant bit on ``sd[0]``. The most significant bits of a byte
-  go first. The first byte on the wire is TXDATA[7:0] and the first byte
-  received lands in RXDATA[7:0] (ByteOrder 1). At the end of a TX segment the
-  unused bytes of its last TXDATA word are dropped, and each RX segment starts
-  word-aligned in RXDATA.
+  ``sd[1]`` ("the host transmits data on `SD[0]`, and always receives data on
+  `SD[1]`", ``ToO:138``); an x2 or x4 segment moves one pair or nibble per sck
+  cycle with its least significant bit on ``sd[0]`` ("the least significant
+  bit in any instantaneous pair or nibble is transmitted or received on
+  `SD[0]`", ``ToO:422``). The most significant bits of a byte go first
+  ("*within a given byte*, the most significant bits are transmitted and
+  received first.", ``ToO:421``). The first byte on the wire is TXDATA[7:0]
+  and the first byte received lands in RXDATA[7:0] (ByteOrder 1: "By default
+  (`ByteOrder = 1`, for Little-Endian processors), the LSB of `TXDATA` (i.e
+  bits 7 though 0) is transmitted first", ``ToO:416``; "the first byte
+  received is always packed into either the most- or least-significant byte
+  read from the `RXDATA` memory window", ``ToO:539``; STATUS.BYTEORDER is
+  "The value of the ByteOrder parameter",
+  ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:124``;
+  the ``ByteOrder`` parameter default is 1,
+  ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:76-84``,
+  and the SEP SPI host is the unmodified OpenTitan IP,
+  ``doc/trm/src/revision.adoc:191``).
+  At the end of a TX segment the unused bytes of its last TXDATA word are
+  dropped ("unused bytes from the latest TX FIFO word are simply ignored at
+  the end of a segment.", ``ToO:484``), and each RX segment starts
+  word-aligned in RXDATA ("The first byte for each read segment is always
+  word-aligned in the RXFIFO", ``ToO:736``).
 * Data lane output enables per segment, on the lanes the segment uses: x1 TX
   and x1 bidirectional drive lane 0 and not lane 1 (lanes 1:0 = 0b01); x2 TX
   drives lanes 1:0; x4 TX drives lanes 3:0; x2 RX drives neither of lanes 1:0
@@ -51,8 +69,9 @@ Checks:
   same count. Source for a LEN+1 that is not a multiple of 4: "For RX (or
   Bidirectional) segments, if the last few bytes received do not fill an
   entire DATA word, the partial word will be zero-padded and inserted into the
-  RX FIFO once the segment is completed." (OpenTitan SPI_HOST
-  ``theory_of_operation.md:485``, tt-opentitan d1ce369). The pad byte position
+  RX FIFO once the segment is completed."
+  (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:485``).
+  The pad byte position
   depends on ByteOrder and is not graded here. Control: every Tx-only and
   dummy cell starts with RXEMPTY=1 and leaves RXQD at 0.
 * CHK-SPI-DUMMY: a dummy segment leaves TXQD and RXQD unchanged and runs LEN+1

@@ -65,8 +65,8 @@ Checkers:
                   write. These bits also drive dedicated PIC sources.";
                   ``hw/sys/sep/doc/interrupts.adoc:231-232`` source 42 "DMA
                   host-path integrity/bus fault";
-                  ``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:310-315``
-                  STATUS.ERROR ``onwrite = woclr``. Control: the next cell
+                  ``hw/sys/sep/doc/dma.adoc:131-132`` "Status completion and
+                  error bits are write-one-to-clear". Control: the next cell
                   (``cell=host_only`` of CHK-DMA-CLR) writes 1 to
                   DMA_BUS_ERR_CLEAR and needs host_path_err = 0 and source 42
                   low (``sep_cpu_ctrl.adoc:60`` "Writing 1 emits a single-cycle

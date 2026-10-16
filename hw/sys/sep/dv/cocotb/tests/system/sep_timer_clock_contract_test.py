@@ -41,13 +41,14 @@ watchdog register interface uses ``clk_i``, with clock-domain crossings to the
 timer core." (``hw/sys/sep/doc/clk_rst.adoc:25-26``) and "a dedicated watchdog
 clock input (``clk_wdt_i``) ... for the always-on timer domain"
 (``hw/sys/sep/doc/watchdog.adoc:23``). The OpenTitan ``aon_timer`` README
-(tt-opentitan d1ce369) gives the count unit: "Once the timer is enabled, it
-increments on every tick of the AON clock." (``README.md:52``, the watchdog);
-"Once the timer is enabled, it increments on every tick of the AON clock,
-divided by a pre-scaler. The number of cycles per tick is one more than the
-12-bit WKUP_CTRL.prescaler field." (``README.md:31-32``, the wakeup timer);
+gives the count unit: "Once the timer is enabled, it increments on every tick
+of the AON clock." (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:52``, the
+watchdog); "Once the timer is enabled, it increments on every tick of the AON
+clock, divided by a pre-scaler. The number of cycles per tick is one more than
+the 12-bit WKUP_CTRL.prescaler field."
+(``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:31-32``, the wakeup timer);
 "there is a "bark" on every AON clock tick when the count is at least
-WDOG_BARK_THOLD" (``README.md:55``). So:
+WDOG_BARK_THOLD" (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:55``). So:
 
 * CHK-WDT-RATE. In each watchdog run (``pause_in_sleep`` = 0), over the passes
   after the count leaves its start value, ``|dcount - E_wdt| <= A``, where
@@ -59,14 +60,17 @@ WDOG_BARK_THOLD" (``README.md:55``). So:
   the bark are at least ``WDOG_BARK_THOLD - A``, and the periods to the status
   read of the pass before it are below ``WDOG_BARK_THOLD + A``. The count start
   is measured from the DUT: for each count read, its ``clk_wdt_i`` edge index
-  minus the count read.
+  minus the count read. Control: at least one status read before the bark
+  (``bark_pass`` >= 1), else CTRL-MISSING, because the late bound needs that
+  read.
 * CHK-WKUP-TIME. In each wakeup run, ``|dcount x (p + 1) - E_wdt| <= p + A``
   (``p``: the prescaler; ``p`` covers the tick phase at the two reads).
 
 Each of these windows also requires ``dcount x (p + 1) > 2 x bound``, so a count
 at half or twice the stated rate is outside the bound. Control: CTL-WDT-ENABLE
 (with ``WDOG_CTRL.enable`` = 0 the count does not move; "When set to 1, the
-watchdog timer will count.", ``aon_timer`` ``registers.md:157``).
+watchdog timer will count.",
+``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/data/aon_timer.hjson:261``).
 Environment choices (logged): the edge allowance ``a`` of leg R, the count
 allowance ``A`` of legs T and W, the clock period ``P_w`` of ``clk_wdt_i``, poll
 bounds and wait lengths.
@@ -701,8 +705,13 @@ class sep_timer_clock_contract_test(sep_base_test):
                 f"CHK-WDT-BARK-TIME FAIL: seed={seed} run={tag} no count read above 0"
             )
         k = r["bark_pass"]
+        if k < 1:
+            raise AssertionError(
+                f"CTRL-MISSING CHK-WDT-BARK-TIME: seed={seed} run={tag} bark_pass={k}: "
+                "no status read before the bark, so the late bound has no pass to grade"
+            )
         seen = self._edges("clk_wdt_i", t0, passes[k]["t"]) - max(starts)
-        before = self._edges("clk_wdt_i", t0, passes[k - 1]["t"]) - min(starts) if k else 0
+        before = self._edges("clk_wdt_i", t0, passes[k - 1]["t"]) - min(starts)
         line = (
             f"seed={seed} run={tag} bark_thold={bx} periods_at_bark_seen={seen} "
             f"periods_at_pass_before={before} start_spread={max(starts) - min(starts)} "

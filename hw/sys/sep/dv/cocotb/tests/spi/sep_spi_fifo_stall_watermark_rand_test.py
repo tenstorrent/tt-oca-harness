@@ -15,13 +15,18 @@ STATUS (at the first width), graded by CHK-SPI-DEPTH-TX and CHK-SPI-DEPTH-RX,
 and size the stimulus.
 
 Depth sources: the SEP SPI host is the unmodified OpenTitan IP
-(``doc/programmer/src/sep-programming.adoc:783``), built with the default
-parameters of ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:93-107``
-("The size of the Tx FIFO (in words)" 72, "The size of the Rx FIFO (in words)"
-64, "The size of the Cmd FIFO (one segment descriptor per entry)" 4), and the
-OpenTitan SPI_HOST theory of operation
-(``theory_of_operation.md``,
-https://opentitan.org/book/hw/ip/spi_host/doc/theory_of_operation.html).
+(``doc/trm/src/revision.adoc:191``; "The SEP SPI host is the unmodified
+OpenTitan SPI Host.", ``doc/programmer/src/sep-programming.adoc:784``). The
+OpenTitan SPI_HOST features give the FIFO sizes: "288 bytes for TX data, 256
+bytes for RX data"
+(``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/README.md:26``), that is
+72 TX words and 64 RX words, the ``TxDepth`` and ``RxDepth`` parameters of
+``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:93-107``
+("The size of the Tx FIFO (in words)", "The size of the Rx FIFO (in words)").
+The command queue size is the ``CmdDepth`` parameter of the same file ("The
+size of the Cmd FIFO (one segment descriptor per entry)", 4). The OpenTitan
+SPI_HOST theory of operation is
+``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md``.
 
 Data. The lane responder (``env/sep_spi_lane_responder.py``, plusarg
 ``+sep_spi_four_lane``) drives seeded bytes on the response lanes in every Rx
@@ -107,18 +112,24 @@ Checkers:
   CHK-SPI-DEPTH-TX With no COMMAND (ACTIVE=0), STATUS.TXFULL reads 1 after 73
                    TXDATA writes: "the fifo is observed as having an effective
                    depth of N+1 where N is the parameterized depth"
-                   (theory_of_operation.md:684-685), N = TxDepth = 72.
+                   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:684-685``),
+                   N = TxDepth = 72 ("288 bytes for TX data",
+                   ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/README.md:26``).
                    Control: TXFULL reads 0 after 72 writes, else CTRL-MISSING.
   CHK-SPI-DEPTH-RX An idle Rx segment of 64 words with no RXDATA read leaves
                    STATUS.RXFULL = 1 ("When high, indicates that the receive
                    fifo is full.", spi_host.hjson:288) and RXQD = 64 ("how
                    many unread 32-bit words are currently in the RX FIFO",
-                   spi_host.hjson:324-325), RxDepth = 64. Control: the 63-word
+                   spi_host.hjson:324-325), RxDepth = 64 ("256 bytes for RX
+                   data",
+                   ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/README.md:26``).
+                   Control: the 63-word
                    segment of the same search reads RXFULL = 0 and RXQD = 63,
                    else CTRL-MISSING.
   CHK-SPI-DEPTH-CMD Every STATUS read of the CHK-SPI-CMDQD leg shows CMDQD <= 4
                    ("how many unread 32-bit words are currently in the command
-                   segment queue", spi_host.hjson:318-319), CmdDepth = 4.
+                   segment queue", spi_host.hjson:318-319), CmdDepth = 4
+                   (spi_host.hjson, parameter CmdDepth).
                    Upper bound only: no source ties READY = 0 to a full queue
                    or says whether the held head segment counts in CMDQD.
                    Control: the CHK-SPI-CMDQD controls (a held head and at
@@ -232,9 +243,10 @@ TX_OE_MASK = {1: 0b0001, 2: 0b0011, 4: 0b1111}
 TX_OE_LANES = {1: 0b0011, 2: 0b0011, 4: 0b1111}
 # The watermark event leg: at most this many TX words queued.
 EVENT_TX_WORDS_MAX = 8
-# Stated FIFO and queue depths: TxDepth 72, RxDepth 64, CmdDepth 4
+# Stated FIFO and queue depths: TxDepth 72 and RxDepth 64 words ("288 bytes for
+# TX data, 256 bytes for RX data", spi_host/README.md:26), CmdDepth 4
 # (spi_host.hjson:93-107). Software sees TxDepth + 1 TX words before TXFULL
-# (OpenTitan SPI_HOST theory_of_operation.md:684-685).
+# (spi_host/doc/theory_of_operation.md:684-685).
 TX_DEPTH_WORDS = 72
 TX_ACCEPT_WORDS = TX_DEPTH_WORDS + 1
 RX_DEPTH_WORDS = 64
@@ -1287,7 +1299,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             if self.pads.now() > deadline:
                 self._fail(chk, f"extra segment not done, words={words} ({st.fmt()})")
         # No sentence states how many words the RX path holds past RXFULL
-        # (theory_of_operation.md:780 names "the RX FIFO plus any intervening
+        # (spi_host/doc/theory_of_operation.md:780 names "the RX FIFO plus any intervening
         # buffers", with no count), so the count is logged. A returned extra
         # word is compared with the data of its segment.
         self.logger.info(

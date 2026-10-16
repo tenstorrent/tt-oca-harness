@@ -75,6 +75,10 @@ Multi-chunk start contract (CHK-DMA-GO-CHUNKS): "A start is a write of
 `CONTROL` with `GO=1` and `INITIAL_TRANSFER=0`" (``sep-programming.adoc:743-745``);
 STATUS.CHUNK_DONE: "Transfer of a single chunk is complete. Only raised for
 multi-chunk memory-to-memory transfers" (``secure_dma.rdl:327-328``).
+DONE = 0 at those stops: "**Transfer Completion:** An interrupt is raised when
+the entire data transfer (as defined by `TOTAL_DATA_SIZE`) is complete."
+(``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:34``),
+and "Since interrupts are implemented as status bits" (same file, line 39).
 The leaf writes one GO per stop it reads; the GO count is stimulus and is not
 graded.
   CHK-DMA-RANGE-OK    per Leg C cell: the copy completes with ERROR=0 and the

@@ -68,8 +68,9 @@ The checks above run first, with the graded FCOV window closed. Four legs follow
 that grade only the cells the checks above do not grade, against
 ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc``,
 ``hw/sys/sep/doc/spi.adoc`` (Features), ``hw/sys/sep/doc/interrupts.adoc`` and
-the OpenTitan SPI_HOST theory of operation (``theory_of_operation.md``,
-https://opentitan.org/book/hw/ip/spi_host/doc/theory_of_operation.html)
+the OpenTitan SPI_HOST theory of operation
+(``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md``,
+cited below as ``theory_of_operation.md``)
 (PIC source 14 is ``sep_internal_interrupts_probe_o`` index 13). The legs start
 from the SPI clean state with CONTROL SPIEN=1 OUTPUT_EN=1, CONFIGOPTS CLKDIV 1
 and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.

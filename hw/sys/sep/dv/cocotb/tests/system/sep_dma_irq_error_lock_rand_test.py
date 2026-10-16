@@ -21,7 +21,7 @@ multi-chunk memory-to-memory transfers" (``secure_dma.rdl:327-328``); "Chunk
 completion applies to multi-chunk transfers without hardware handshake; it is
 not a per-trigger interrupt in handshake mode" (``dma.adoc:129-131``); "Since interrupts are implemented as status bits, they are cleared
 by writing a '1' to the corresponding bit in the STATUS register" (OpenTitan
-DMA ``programmers_guide.md:39``). So every STATUS read of the single-chunk copy
+DMA ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:39``). So every STATUS read of the single-chunk copy
 gives CHUNK_DONE = 0, INTR_STATE.DMA_CHUNK_DONE reads 0 at the end of the trial
 and source 10 stays low.
 
@@ -34,7 +34,8 @@ legal copy completes with the destination equal to the source. Control:
 SHA-256 at encoding 2 completes with ERROR clear. The same write of 1 to
 STATUS.ERROR releases the interrupt: "Since interrupts are implemented as
 status bits, they are cleared by writing a '1' to the corresponding bit in the
-STATUS register" (OpenTitan DMA ``programmers_guide.md:39``); "Status
+STATUS register" (OpenTitan DMA
+``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:39``); "Status
 completion and error bits are write-one-to-clear" (``dma.adoc:131-132``).
 INTR_STATE is read once after that write: DMA_ERROR reads 0 and
 source 11 is low. Its control is INTR_STATE.DMA_ERROR = 1 before the write.
@@ -55,11 +56,11 @@ Leg L4, non-zero ADDR_HI (``dma.adoc``, SEP secure DMA integration: the DMA
 master interface has 32-bit addresses and ASID 0x7 is its only route). A copy
 from the SRAM source to the SRAM destination with the SEP ASID, legal LO
 addresses and a drawn non-zero SRC_ADDR_HI, then the same copy with a drawn
-non-zero DST_ADDR_HI, must move no data to the 32-bit LO destination: every
-word of the destination and its guards reads back the sentinel. The copy must
-also end with DONE or ERROR in a bounded number of STATUS reads. STATUS.ERROR
-and ERROR_CODE are logged (``OBS-DMA-HI-ADDR``) and not graded, because no
-document defines the ADDR_HI rule for the SEP DMA route. Control: the same copy
+non-zero DST_ADDR_HI, must end with DONE or ERROR in a bounded number of
+STATUS reads. The destination footprint at DST_ADDR_LO (the destination words
+and its guards, read when the copy ends and again after the recovery writes),
+STATUS.ERROR and ERROR_CODE are logged (``OBS-DMA-HI-ADDR``) and not graded,
+because no document defines the ADDR_HI rule for the SEP DMA route. Control: the same copy
 with both ADDR_HI at 0 completes and the destination equals the source. After
 each non-zero trial, with no reset, a write of 1 to STATUS.ERROR and a clean
 state precede a legal copy that must complete with the destination equal to the
@@ -87,13 +88,20 @@ Checkers:
                     INTR_STATE.DMA_ERROR read 1 before the write.
   CHK-DMA-LOCK      per L3 lock write and unlock attempt, in both contexts:
                     RANGE_REGWEN reads 0x9, BASE and LIMIT read the values
-                    written before the lock and RANGE_VALID reads 1. Every
+                    written before the lock and RANGE_VALID reads 1. Source
+                    of 0x9: "Once this register is set to
+                    kMultiBitBool4False, it can only be set to
+                    kMultiBitBool4True through a reset event."
+                    (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:338-339``),
+                    with the MultiBitBool4 encoding "True = 6; False = 9;"
+                    (``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:158-159``).
+                    Every
                     new value differs from the locked one, so a write that
                     lands changes the read-back.
-  CHK-DMA-HI-ADDR   per L4 side (SRC_ADDR_HI, DST_ADDR_HI): the destination
-                    footprint at DST_ADDR_LO keeps the sentinel, the copy ends,
-                    and the recovery copy completes; the ADDR_HI=0 control
-                    completes with the source data.
+  CHK-DMA-HI-ADDR   per L4 side (SRC_ADDR_HI, DST_ADDR_HI): the copy ends and
+                    the recovery copy completes; the ADDR_HI=0 control
+                    completes with the source data. The footprint at
+                    DST_ADDR_LO is OBS-DMA-HI-ADDR only.
 """
 
 from __future__ import annotations
@@ -657,18 +665,33 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         # sentinel refill: a write beat that lands after the first read is seen.
         late = await self.mem.read(c.dst - c.guard, len(foot))
         moved_late = sum(1 for w in late if w != sent)
+        # No document states where a non-zero ADDR_HI copy writes, so the
+        # footprint at DST_ADDR_LO is logged and not graded.
+        self.logger.info(
+            "OBS-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x footprint_words=%d "
+            "footprint_changed=%d footprint_changed_late=%d sentinel=0x%08x "
+            "changed=%s changed_late=%s",
+            c.seed,
+            side,
+            hi,
+            len(foot),
+            moved,
+            moved_late,
+            sent,
+            ",".join(f"{i}:0x{w:08x}" for i, w in enumerate(foot) if w != sent) or "-",
+            ",".join(f"{i}:0x{w:08x}" for i, w in enumerate(late) if w != sent) or "-",
+        )
         await self._sentinel_dst()
         rst, rended, _, rec = await self._hi_copy(0, 0)
         mism, guard_bad = self._hi_image_ok(rec)
         rec_ok = rended and rst.done and not rst.error and mism == 0 and guard_bad == 0
         line = (
             f"side={side} addr_hi=0x{hi:08x} lo_dst=0x{c.dst:08x} size={c.hi_size} "
-            f"ended={int(ended)} done={st.done} footprint_words={len(foot)} "
-            f"footprint_changed={moved} footprint_changed_late={moved_late} "
+            f"ended={int(ended)} done={st.done} "
             f"recovery_done={int(rec_ok)} @@CTRL@@ "
             f"recovery_mismatch={mism} recovery_guard_bad={guard_bad}"
         )
-        return line, ended and moved == 0 and moved_late == 0 and rec_ok
+        return line, ended and rec_ok
 
     async def _leg_l4(self) -> None:
         results = [await self._l4_side(s) for s in HI_SIDES]
@@ -766,6 +789,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 f"valid={valid}/1 new=0x{nb:08x}/0x{nl:08x}/0 "
                 f"write_resp={resp_rw}/{'/'.join(map(str, resps))} control_pre_lock_landed=1"
             )
+            # Locked RANGE_REGWEN is kMultiBitBool4False until a reset
+            # (dma.hjson:338-339); False encodes as 9 (secure_dma.rdl:158-159).
             if regwen != REGWEN_FALSE or base != pre[0] or limit != pre[1] or valid != 1:
                 self._fail("CHK-DMA-LOCK", line)
             self._pass("CHK-DMA-LOCK", line)
