@@ -754,6 +754,34 @@ checks grade the live timeout/reset observations and CSR responses.
 Post-warm timeout and watchdog CSR values are observations only; explicit
 watchdog configuration and timeout programming establish the next baseline.
 
+The fabric-register gate scenario reads eight pairs of `smc_tb_if.cg_clk_active`
+and `cg_bus_active` taps bound to the filter, remapper and output-fabric activity
+signals in `u_smc_base`. These are enable/activity observations, not measurements
+of gated-clock edges. A scenario-local negedge watcher acknowledges each epoch
+before stimulus, records cold-to-active transitions and requires post-traffic
+closure without reusing the initially closed sample. Idle, close and reopen
+waits have fixed bounds. One-hot mapping also checks the mask of domains ever
+observed closed in the epoch, armed before the enable write. Exact closure
+latency, its dependence on the programmed hysteresis, and maximum-hysteresis
+behavior are observations, not timing contracts.
+
+The required-only `fabric_reg` feature subscribes to passive SEP_IN traffic.
+Its model covers five full-width register words: the last inbound/outbound
+filter START and the last alias START and M-mode/Xvisor ATTRS. It predicts
+OKAY for reads and writes, keeps error responses in the comparison, and updates
+shadow only for OKAY writes. Read data is compared on defined RDL fields,
+including ATTRS.valid. The passive monitor does not retain data X/Z masks;
+the scenario's SEP_IN memory-read helper checks X/Z on the full read word
+from the active master result. Filter START/END rounding follows
+`filter_ctrl.rdl` within the fixed eight-byte granule; CONFIG and END writes
+are outside this feature's contract. The scenario reaches the rounding branch
+only with values already rounded and does not exercise error responses or
+reset-epoch recovery after shadow changes. The model restores RDL defaults
+when its reset epoch changes. `start_pass()` only rearms the model-negative
+selection; it does not seed expected data from a DUT read. Unsupported access
+shapes stop a required feature. Other writers and reset with outstanding
+catalogued traffic are not supported.
+
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
 subscribes to the SEP_IN monitor stream, rebuilds a shadow of the

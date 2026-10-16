@@ -32138,6 +32138,105 @@ The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
 
 '''''
 
+[[sec-smc_fabric_reg_clock_gate_test]]
+====== `smc_fabric_reg_clock_gate_test`
+
+*Source Module*: `smc_fabric_reg_clock_gate_test` (SV-UVM only)
+
+*Objective*: Check enable-to-domain mapping and traffic-bearing CSR wake through
+the filter/remapper register clock gates, independently of datapath wake.
+
+*Test Coverage*: Six enables control eight observed domains while idle.
+Five register domains each receive a write and a read starting with the gate
+closed. Disabled controls, bounded closure with H programmed to 8 and 0,
+register data, response and restore are graded. Closure latency and its
+dependence on H are observed, not graded. Maximum hysteresis is observed only.
+
+*BFM / Model*: Existing SEP_IN AXI master and passive monitor; scenario-local
+activity watcher; required `fabric_reg` reference model and scoreboard.
+The model predicts from completed monitor traffic, not sequence readbacks.
+Every catalogued full-width single-beat read/write predicts OKAY, including
+error observations. Only OKAY full-strobe writes update shadow.
+
+*Expectation Sources*: `smc_base_config.rdl` CLOCK_GATE_CONTROL field descriptions;
+`hw/sys/smc/doc/clk_rst.adoc` activity-based gate and bus-wake descriptions and
+`smc-clock-distribution.svg` domain inventory. The address-remapper register
+enable is interpreted to cover all three remapper register domains.
+`filter_ctrl.rdl` defines START/END granule writeback; `alias_remap.rdl` and
+`output_remap.rdl` define writable fields and reset values. Addresses, masks
+and defaults come from generated collateral. RTL hierarchy is used for binding,
+not as the expected result.
+
+*Test Procedure*: Require disabled fabric gates, output remapping present,
+inactive alias regions and unlocked/disabled last filter entries with the
+8-byte granule and reset END. Read and verify the five catalogued reset words.
+Check all-active disabled state, preload nominal hysteresis with enables clear,
+then arm an epoch before each enable write and check both the final closed-domain
+map and every domain observed closed during that epoch.
+Enable all six controls and require all eight domains closed.
+
+Visit five words in seeded order. Before each pattern write/read, arm an epoch
+and observe the target closed; require actual busy and active samples and
+bounded post-traffic closure. Check pattern and reset restore readbacks.
+Exercise zero hysteresis on the outbound filter register port; log maximum
+hysteresis without grading its closure. Restore and read CLOCK_GATE_CONTROL.
+Drain passive comparisons before checking exact per-pass accounting.
+
+*Checkers*:
+
+[cols="1,2",options="header"]
+|===
+|Checker |Description
+|`CHK-REG-CG-CONFIG` |Configuration and reset-baseline prerequisites and gate restore readback
+|`CHK-REG-CG-OFF` |Disabled gates remain active and reopen within the test bound
+|`CHK-REG-CG-MAP` |Final state and all sampled closures in each enable epoch match its domain group
+|`CHK-REG-CG-CLOSE` |Bounded idle closure; no sampled busy domain has an inactive clock enable
+|`CHK-REG-CG-WAKE` |Each cold pattern request produces observed busy and active samples
+|`CHK-REG-CG-DATA` |Pattern and reset restore readbacks match defined register fields
+|`CHK-REG-CG-SCOPE` |Resolved taps and bounded idle
+|`CHK-REG-CG-SCOREBOARD` |27 new comparisons per pass with no new mismatch
+|`CHK-SB-FABRIC-REG` |Catalogued accesses return OKAY; reads also match model data under RDL masks
+|`CHK-NONVAC` |Eight domains observed closed, five observed waking, ten cold epochs; 39 CSR and 40 memory accesses
+|`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP`, `CHK-MEM-RESP` |Bring-up and normal responses
+|===
+
+*Known Limitations*: Enable/activity taps do not check gated-clock edges,
+sub-cycle glitches, scan/test override or reset during traffic. Datapath domains
+are tested only while idle. The feature covers five sequential full-width,
+full-strobe words with SEP_IN as the only writer. Filter CONFIG/END writes and
+other access shapes stop the required feature rather than invent expectations.
+Rejected-write shadow behavior and real error responses have no stimulus in
+this scenario. Filter granule prerequisites restrict the scenario to 8 bytes.
+The rounding branch is reached only with non-discriminating values: START=0
+and END=7 already equal their rounded values. Reset-epoch recovery after
+shadow changes is not exercised. These model branches are not independently
+validated by this scenario.
+The passive monitor does not retain data X/Z masks, so the feature does not
+independently grade read-data X/Z. The scenario's full-width SEP_IN read helper
+checks the active master result for missing data/mask beats and unknown bits.
+Closure/reopen bounds are test completion limits, not exact timing guarantees.
+Using the same closure bound at H=8 and H=0 does not prove that the programmed
+hysteresis affects the latency; a gate ignoring H could satisfy this check.
+`OBS-BLOCKED CHK-REG-CG-STICKY` asks whether maximum hysteresis must hold the
+gate open; its closure result contributes no functional verdict.
+No functional covergroup or coverage-closure claim is added.
+
+*Pass Criteria*: Required records pass, no mismatch or unpaired item, exactly
+27 passive comparisons per pass (17 reads and 10 writes).
+Used alone, `+SMC_FABRIC_REG_CG_SEQUENCE_NEGATIVE` changes one CONFIG, OFF, MAP,
+CLOSE, WAKE, DATA and SCOPE expectation per pass: seven failures per pass,
+112 for sixteen passes, with no `fabric_reg` mismatch. The SCOPE negative
+changes only the bounded-idle verdict after the outbound-filter cold pattern
+write, not the closure wait or its control flow.
+`+SMC_FABRIC_REG_SCOREBOARD_NEGATIVE` corrupts the first outbound-filter START
+read prediction after its first write per pass: one mismatch and one scenario
+scoreboard failure per pass plus the final feature failure, 33 for sixteen
+passes. Neither control changes DUT stimulus. Prerequisites, response checks,
+NONVAC and watcher startup/stop are outside the negatives.
+Enrolled only in `cg_uvm_extended`, outside `all`, `hosted` and scheduled tiers.
+
+'''''
+
 [[sec-smc_wdt_second_stage_reset_test]]
 ====== `smc_wdt_second_stage_reset_test`
 
@@ -33344,6 +33443,7 @@ to make; its *Closes when* cell names the ruling that closes it.
 [cols="2,1,3,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
+|`smc_fabric_reg_clock_gate_test` |`cg_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_core_awake_gate_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
