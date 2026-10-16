@@ -619,12 +619,16 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         offset = plan.offset_frac * t_fill // 1000
         await ClockCycles(dut.clk_i, max(1, offset))
         half[0] = True
-        # A full pool holds the next beat (back-pressure); the feeder then stops with
-        # that beat offered and the packer holding the word that cannot enter the FIFO.
+        # A full pool back-pressures the first beat of a pair. Stop the feeder with
+        # that beat offered and pop one word: the beat enters, one beat of a pair.
         pool_stalled = await self._until(lambda: task2.done(), 4 * t_xfer + 64) is None
         if pool_stalled:
             stop2[0] = True
             await task2
+            base = self.trace.ext_xfers[2]
+            await self.pool.access(POOL_POP)
+            if await self._until(lambda: self.trace.ext_xfers[2] > base, SETTLE_CAP) is None:
+                raise AssertionError(f"held beat not taken after a pop in {SETTLE_CAP}")
         elif not ended_half[0]:
             # The restart pairs ran out on a whole pair: one beat of an old pair.
             self.ext.send(2, [plan.fill_pairs[-1]])
