@@ -5028,19 +5028,25 @@ copies; the register-boundary results of the no-data commands are measured.
   `CONFIG.ENABLED_ND`). `DONE_0` must differ from its pre-command value within 3000 reads, all 16
   destination bytes must keep their 0xEE poison and no AR or AW handshake may occur between the
   submit and the `DONE_0` change. Over the whole leaf the AR and AW counts must equal those of the
-  two copy legs, so no handshake occurs outside the copies.
+  three copy legs, so no handshake occurs outside the copies.
 * The `NEXT_ID_0` value the submit returned, `DONE_0` before and after, `STATUS_0[9:0]` before and
   after and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command are measured,
-  not compared.
-* Zero-length transfers are rejected (`dma.adoc`, Stream and Register Ownership; `dma_ctrl.rdl`,
-  `LENGTH`): a linear command (`NUM_REPETITIONS_LO` 1) and a 2D command (`NUM_REPETITIONS_LO` 4,
-  source stride 0x30, destination stride 0x28) with `LENGTH` 0 must leave 16 and 136 destination
+  not compared, until tenstorrent/tt-oca-harness#2455 is resolved: that issue tracks the open
+  disagreement between `dma.adoc` and `dma_ctrl.rdl` on what `NEXT_ID_0` returns when no command
+  is set up.
+* Zero-length transfers are rejected (`dma.adoc`, Stream and Register Ownership, the DMA register
+  storage table): a linear command (`NUM_REPETITIONS_LO` 1) and a 2D command (`NUM_REPETITIONS_LO`
+  4, source stride 0x30, destination stride 0x28) with `LENGTH` 0 must leave 16 and 136 destination
   bytes at 0xEE and produce no AR or AW handshake through the end of a 3000-read `DONE_0` poll.
   Whether `DONE_0` changed, `STATUS_0[9:0]`, the returned `NEXT_ID_0` and the bit 322 pulse count
-  of both commands are measured, not compared.
-* Positive control: the leg-a descriptor with `ENABLED_ND` set and `LENGTH_LO` 16 is a copy
-  (`dma.adoc`, Linear and Two-Dimensional Copies): the destination equals the source after `DONE_0`
-  differs, with at least one AR and one AW handshake, so the no-data compares can fail on a copy.
+  of both commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved.
+* Positive control (`dma.adoc`, Linear and Two-Dimensional Copies): the same descriptor with
+  `ENABLED_ND` set and `LENGTH_LO` 16 copies. A 2D copy with `NUM_REPETITIONS_LO` 4 and the strides
+  0x30 and 0x28 of the zero-length 2D command writes its four source rows over the 136-byte
+  destination span, the 72 bytes between rows staying 0xEE, with at least four AR and four AW
+  handshakes; a linear copy of one row equals its source with at least one AR and one AW
+  handshake. Every destination byte the no-data compares require to stay 0xEE is therefore shown
+  writable by a command of this leaf.
 * A 32-bit read of `NEXT_ID_0` at 0x48 launches exactly one command: `DONE_0` holds its new value on
   six further reads. A 64-bit read at 0x48 launches one command as well and counts the same AR and
   AW handshakes (`dma.adoc`, Stream and Register Ownership; `dma_ctrl.rdl`, `NEXT_ID_0`).
@@ -5063,15 +5069,18 @@ copies; the register-boundary results of the no-data commands are measured.
   destination readings.
 . Preload 0xEE over the 136-byte destination span, program `LENGTH` 0 with four repetitions and
   strides 0x30 and 0x28, and repeat the readings of step 3.
-. Re-poison the destination, program the leg-a descriptor with `ENABLED_ND` set, submit with a
-  32-bit read of `NEXT_ID_0`, poll `DONE_0` until it differs, read `DONE_0` six more times, wait for
-  `tb_dma_busy` low and the following rise, then read the destination and take the counts and
-  the bit 322 pulses.
+. Preload 0xEE over the 136-byte destination span, program the step-4 descriptor with
+  `ENABLED_ND` set and `LENGTH_LO` 16 (four rows, strides 0x30 and 0x28), submit with a 32-bit
+  read of `NEXT_ID_0`, poll `DONE_0` until it differs, read `DONE_0` six more times, wait for
+  `tb_dma_busy` low and read the 136-byte span. Then re-poison 16 bytes, program the leg-a
+  descriptor with `ENABLED_ND` set and one repetition, submit with a 32-bit read of `NEXT_ID_0`,
+  poll `DONE_0` until it differs, read `DONE_0` six more times, wait for `tb_dma_busy` low and the
+  following rise, then read the destination and take the counts and the bit 322 pulses.
 . Re-poison the destination, program the same descriptor, submit with a 64-bit read at 0x48, poll
   `DONE_0`, read it six more times and read the destination.
 . Wait two `clk_smc_i` cycles after step 6, require the step stamps to strictly increase and the
   step order to hold, and require the AR and AW counts accumulated since step 1 over the whole leaf
-  to equal the sums of the two copy legs' counts, so any extra handshake fails; record the
+  to equal the sums of the three copy legs' counts, so any extra handshake fails; record the
   non-vacuity checker.
 
 *Checkers*:
@@ -5084,13 +5093,17 @@ copies; the register-boundary results of the no-data commands are measured.
 |`CHK-DMA-ND-CLEAR-DONE-ADVANCES` |`DONE_0` differs from its pre-command value within 3000 reads
   after the `ENABLED_ND`-cleared command
 |`CHK-DMA-ND-CLEAR-MEASURED` |The returned `NEXT_ID_0`, `DONE_0`, `STATUS_0[9:0]` and bit 322 pulse
-  readings of the `ENABLED_ND`-cleared command are measured and printed without comparing them
+  readings of the `ENABLED_ND`-cleared command are measured and printed without comparing them,
+  until tenstorrent/tt-oca-harness#2455 is resolved
 |`CHK-DMA-ZEROLEN-NO-DATA` |The linear and the 2D zero-length commands leave their 16 and 136
   destination bytes at 0xEE with no AR or AW handshake through the end of the poll
 |`CHK-DMA-ZEROLEN-MEASURED` |The returned `NEXT_ID_0`, `DONE_0` change, `STATUS_0[9:0]` and bit 322
-  pulse readings of both zero-length commands are measured and printed without comparing them
-|`CHK-DMA-COPY-CONTROL` |The `ENABLED_ND`-set copy of 16 bytes equals its source after `DONE_0`
-  differs, with at least one AR and one AW handshake
+  pulse readings of both zero-length commands are measured and printed without comparing them,
+  until tenstorrent/tt-oca-harness#2455 is resolved
+|`CHK-DMA-COPY-CONTROL` |The `ENABLED_ND`-set 2D copy of four 16-byte rows at strides 0x30 and
+  0x28 writes its source rows over the 136-byte destination span with the bytes between rows still
+  0xEE, after `DONE_0` differs, with at least four AR and four AW handshakes; the linear copy of 16
+  bytes equals its source after `DONE_0` differs, with at least one AR and one AW handshake
 |`CHK-DMA-SUBMIT-32BIT` |The 32-bit read of `NEXT_ID_0` launches one command: `DONE_0` changes and
   holds on six further reads and the destination equals the source
 |`CHK-DMA-SUBMIT-64BIT` |The 64-bit read at 0x48 launches one command: the destination equals the
@@ -5098,14 +5111,16 @@ copies; the register-boundary results of the no-data commands are measured.
 |`CHK-DMA-IRQ-PULSE-COPY` |The valid copy gives exactly one bit 322 pulse, one `clk_smc_i` cycle
   wide, ending low one rise after `tb_dma_busy` reads low
 |`CHK-NONVAC` |The seven step stamps are strictly increasing in step order and the AR and AW counts
-  accumulated since setup equal the sums of the two copy legs' counts; any extra handshake fails
+  accumulated since setup equal the sums of the three copy legs' counts; any extra handshake fails
 |===
 
 *Pass Criteria*: all ten checkers hold and every sequence assert holds: the `ENABLED_ND`-cleared
 command retires its ID and both zero-length commands leave the destination at 0xEE with no bus
-traffic, the valid copy moves its 16 bytes through both a 32-bit and a 64-bit submit with equal
-handshake counts, and the copy raises one one-cycle interrupt pulse. The register-boundary
-results of the no-data commands are measured, not compared. Enrolled in: `all`, `hosted`.
+traffic, the 2D copy writes the 136-byte span the zero-length 2D compare covers, the linear copy
+moves its 16 bytes through both a 32-bit and a 64-bit submit with equal handshake counts, and the
+linear copy raises one one-cycle interrupt pulse. The register-boundary results of the no-data
+commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved. Enrolled
+in: `all`, `dma`.
 
 ==== FABRIC
 
@@ -27684,14 +27699,18 @@ zero-capacity rule name, for region sizes other than the one `smc_log_engine_tra
   `LOG_CTRL`).
 * Capacity clamp: `LOG_REGION_SIZE` 135, 143, 144 and 271 on slots 0, 1 and 15; `LOG_LEN` at the
   capacity (8, 8, 8 and 16 bytes) or below delivers 8 bytes, and `LOG_LEN` of capacity + 8 and the
-  largest length the field holds each deliver exactly the capacity (`architecture.adoc` "Memory
-  Slots and Lengths"; `log_engine.rdl` `LOG_REGION_SIZE`).
+  largest multiple of eight the field holds (0xFFF8) each deliver exactly the capacity
+  (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl` `LOG_REGION_SIZE`).
 * The slot start of the unaligned sizes is measured, not compared; the compare is that every
-  delivered message is made of consecutive window offsets.
+  delivered message is made of consecutive window offsets. The window byte names its offset only
+  below 0x100 (above it the byte is the offset XOR 0xA5, so a start off by 0x100 fails), so the
+  leaf also requires every delivered message of these sizes to end at or below offset 0x100; the
+  sizes and slots chosen keep them there (size 271, slot 15 ends exactly at 0x100).
 * Zero capacity: `LOG_REGION_SIZE` 127, `LOG_LEN` 8 on slots 0, 1 and 15 clears within 64 reads
   with no byte at `RBR`; the delivering legs of the same leaf are the positive control.
-* `LOG_LEN` 9 and 7 at 0x200 is a measured leg: the count and values of the delivered bytes and
-  the clear are printed, measured, not compared.
+* `LOG_LEN` 9 and 7 at 0x200 is a measured leg: the count and values of the delivered bytes are
+  printed, measured, not compared; the hardware clear of `LOG_LEN` within 64 reads is compared, as
+  in every other leg.
 
 *Test Procedure*:
 
@@ -27708,7 +27727,7 @@ zero-capacity rule name, for region sizes other than the one `smc_log_engine_tra
   `CHK-LOGENG-REGION-SLOT-START-MID`, `CHK-LOGENG-REGION-RESUBMIT` and
   `CHK-LOGENG-REGION-BYTE-ORDER`.
 . For `LOG_REGION_SIZE` 135, 143, 144 and 271 and slots 0, 1 and 15 write `LOG_LEN` 8, capacity +
-  8 and the largest length, each after the previous message cleared and the receiver idled
+  8 and 0xFFF8, each after the previous message cleared and the receiver idled
   (`LSR.TEMT` 1 and `LSR.DR` 0 on 32 consecutive polls); record every delivered message; stamp S4
   and print `CHK-LOGENG-REGION-UNALIGNED-CAPACITY`, `CHK-LOGENG-REGION-UNALIGNED-BELOW-CAP` and
   the measured `CHK-LOGENG-REGION-UNALIGNED-START-MEASURED`.
@@ -27736,17 +27755,18 @@ zero-capacity rule name, for region sizes other than the one `smc_log_engine_tra
 |`CHK-LOGENG-REGION-RESUBMIT` |Slot 0 at 0x200 delivers the same 32 bytes a second time after
   `LOG_LEN` 0x20 is written again and `LOG_LEN` reads 0 afterwards
 |`CHK-LOGENG-REGION-UNALIGNED-CAPACITY` |For sizes 135, 143, 144 and 271 a `LOG_LEN` of capacity + 8
-  and of the largest length each deliver exactly the capacity and nothing beyond on slots 0, 1 and
-  15, and `LOG_LEN` reads 0 afterwards
+  and of 0xFFF8, the largest multiple of eight the field holds, each deliver exactly the capacity
+  and nothing beyond on slots 0, 1 and 15, and `LOG_LEN` reads 0 afterwards
 |`CHK-LOGENG-REGION-UNALIGNED-BELOW-CAP` |`LOG_LEN` 8 delivers exactly 8 bytes at each of the four
   unaligned sizes on slots 0, 1 and 15
 |`CHK-LOGENG-REGION-UNALIGNED-START-MEASURED` |The first fetched window offset of the slot 1 and 15
   messages is printed, measured, not compared; every delivered message is consecutive window
-  offsets and none is empty
+  offsets ending at or below offset 0x100 and none is empty
 |`CHK-LOGENG-REGION-ZERO-CAPACITY` |At size 127 `LOG_LEN` 8 on slots 0, 1 and 15 reads 0 within 64
   reads, no byte reaches `RBR` and `INTR_STATUS` bits 0 and 4 read 0
 |`CHK-LOGENG-REGION-LEN-NOT-MULT8-MEASURED` |`LOG_LEN` 9 and 7 at 0x200: the delivered count and
-  values and the clear are printed, measured, not compared
+  values are printed, measured, not compared; the hardware clear of `LOG_LEN` within 64 reads is
+  compared
 |`CHK-NONVAC` |Steps S1 to S7 ran in order with strictly increasing simulation-time stamps and the
   nine checker lines printed in order, each after its own step
 |===
@@ -27782,12 +27802,15 @@ skips zero lengths, and `LOG_LEN` holds the submitted value until hardware clear
 * Zero lengths: entries 0 and 11 written with `LOG_LEN` 0 beside four pending entries deliver no
   byte and read 0 (`architecture.adoc` "Memory Slots and Lengths": only a nonzero length makes a
   slot pending).
-* Hold and clear: `LOG_CTRL` reads taken during the first wave return the submitted 16 or 0, never
-  a count, and every entry reads 0 within 64 reads after its message arrived; the clear poll does
-  not wait on `LSR.TEMT` (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl`
-  `LOG_CTRL`).
-* A second wave: two entries written at the first byte read from `RBR` deliver their messages once
-  each, after the message in flight completed.
+* Hold and clear: `LOG_CTRL` reads taken right after the first wave's writes return the submitted
+  16 or 0, never a count; in every wave the `LOG_CTRL` element of the slot whose message is
+  arriving, read after its fourth byte left `RBR`, still reads 16 (the engine is paced one
+  character at a time, so a remaining-byte counter reads at most 12 there); and every entry reads 0
+  within 64 reads after its message arrived; the clear poll does not wait on `LSR.TEMT`
+  (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl` `LOG_CTRL`).
+* A second wave: at the first byte read from `RBR` the `LOG_CTRL` element of that byte's slot is
+  read and must still hold 16, so its message is in flight at the engine; two entries written then
+  deliver their messages once each, after the message in flight completed.
 * The service order of the slots is measured, not compared.
 
 *Test Procedure*:
@@ -27799,14 +27822,17 @@ skips zero lengths, and `LOG_LEN` holds the submitted value until hardware clear
   the 0x100 tagged bytes and read them back; set `CTRL.EN`; stamp S1.
 . Wave A: write `LOG_LEN` 0 to entries 0 and 11 and 16 to entries 1, 4, 9 and 14 back to back; read
   those four `LOG_CTRL` elements once; read 64 bytes from `RBR` through `LSR.DR` polls (400 reads
-  per byte); apply the idle rule (`LSR.TEMT` 1 and `LSR.DR` 0 on 32 consecutive polls); read each
+  per byte), reading the `LOG_CTRL` element of the first message's slot after its fourth byte;
+  apply the idle rule (`LSR.TEMT` 1 and `LSR.DR` 0 on 32 consecutive polls); read each
   `LOG_CTRL` until 0 within 64 reads; read `INTR_STATUS`; stamp S2 and print
   `CHK-LOGENG-RR-ZERO-SKIPPED`, `CHK-LOGENG-LEN-ZERO-NOT-PENDING` and
   `CHK-LOGENG-LEN-HOLD-SUBMITTED`.
-. Wave B: write `LOG_LEN` 16 to all 16 entries back to back; read 256 bytes; apply the idle rule;
-  poll all 16 entries to 0; read `INTR_STATUS`; stamp S3 and print `CHK-LOGENG-RR-EXACTLY-ONCE`.
-. Wave C: write `LOG_LEN` 16 to entries 3, 6 and 12; at the first byte read from `RBR` write 16 to
-  entries 2 and 13; read 80 bytes; apply the idle rule; poll the five entries to 0; read
+. Wave B: write `LOG_LEN` 16 to all 16 entries back to back; read 256 bytes with the same
+  mid-message `LOG_CTRL` read; apply the idle rule; poll all 16 entries to 0; read `INTR_STATUS`;
+  stamp S3 and print `CHK-LOGENG-RR-EXACTLY-ONCE`.
+. Wave C: write `LOG_LEN` 16 to entries 3, 6 and 12; at the first byte read from `RBR` read the
+  `LOG_CTRL` element of that byte's slot, then write 16 to entries 2 and 13; read 80 bytes with
+  the same mid-message `LOG_CTRL` read; apply the idle rule; poll the five entries to 0; read
   `INTR_STATUS`; stamp S4 and print `CHK-LOGENG-RR-IN-FLIGHT`, `CHK-LOGENG-RR-ATOMIC`,
   `CHK-LOGENG-LEN-HWCLEAR` and the measured `CHK-LOGENG-RR-ORDER-MEASURED`.
 . Clear `CTRL.EN`, `LOG_WRITE_ADDR`, `LOG_REGION_SIZE` and `LOG_REGION_ADDR`, restore the UART,
@@ -27823,15 +27849,18 @@ skips zero lengths, and `LOG_LEN` holds the submitted value until hardware clear
 |`CHK-LOGENG-RR-EXACTLY-ONCE` |With all 16 entries pending the stream is 256 bytes holding each
   slot's message exactly once and no byte follows the last under the idle rule
 |`CHK-LOGENG-LEN-HWCLEAR` |Every entry written 16 in the three waves reads 0 within 64 `LOG_CTRL`
-  reads after its message and no zero write reaches a pending entry
+  reads after its message, the mid-message read of each wave returned 16, and no zero write reaches
+  a pending entry
 |`CHK-LOGENG-RR-ZERO-SKIPPED` |In wave A no byte tagged outside slots 1, 4, 9 and 14 arrives and the
   entries never written read 0 afterwards
 |`CHK-LOGENG-LEN-ZERO-NOT-PENDING` |Entries 0 and 11, written 0 before wave A, deliver no byte and
   read 0
-|`CHK-LOGENG-RR-IN-FLIGHT` |In wave C the first message completes its 16 bytes before any other
-  and entries 2 and 13 each deliver once, starting at stream position 16 or later
-|`CHK-LOGENG-LEN-HOLD-SUBMITTED` |The wave A `LOG_CTRL` reads return 16 or 0, never a count, and at
-  least one returns 16
+|`CHK-LOGENG-RR-IN-FLIGHT` |In wave C the `LOG_CTRL` element of the first message's slot still reads
+  16 at the first byte, before entries 2 and 13 are written, that message completes its 16 bytes
+  before any other, and entries 2 and 13 each deliver once, starting at stream position 16 or later
+|`CHK-LOGENG-LEN-HOLD-SUBMITTED` |The wave A `LOG_CTRL` reads right after the writes return 16 or 0,
+  never a count, at least one returns 16, and the element of the slot whose message is arriving
+  reads 16 after the fourth byte left `RBR`, where a remaining-byte counter reads at most 12
 |`CHK-LOGENG-RR-ORDER-MEASURED` |The service order of the slots in each wave is printed, measured, not
   compared
 |`CHK-NONVAC` |Steps S1 to S5 ran in order with strictly increasing simulation-time stamps and the

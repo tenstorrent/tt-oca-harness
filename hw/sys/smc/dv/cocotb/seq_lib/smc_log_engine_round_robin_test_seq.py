@@ -19,9 +19,13 @@ byte names the slot and the position it came from. Legs:
 * wave B: 16 on all sixteen slots;
 * wave C: 16 on slots 3, 6 and 12, then 16 on slots 2 and 13 at the first byte read from RBR.
 
-The service order is measured, not compared. An idle receiver is TEMT = 1 and DR = 0 on a run
-of consecutive LSR polls longer than a character time. A pending length is never written back
-to 0.
+In every wave the LOG_CTRL element of the slot whose message is arriving is read after its
+fourth byte left RBR and must still read 16: the engine is paced one character at a time, so a
+remaining-byte counter would read at most 12 there. In wave C the same element is read before
+the late writes, at the first byte, so the late writes land while that message is in flight at
+the engine. The service order is measured, not compared. An idle receiver is TEMT = 1 and DR = 0
+on a run of consecutive LSR polls longer than a character time. A pending length is never
+written back to 0.
 """
 
 from __future__ import annotations
@@ -71,6 +75,8 @@ _WAVE_C_SLOTS = _WAVE_C_FIRST + _WAVE_C_LATE
 _RX_POLLS_PER_BYTE = 400
 # Reads of one LOG_CTRL element allowed before its hardware clear is declared absent.
 _HWCLR_POLLS = 64
+# Bytes of the first message read out of RBR before its slot's LOG_CTRL is read mid-message.
+_MID_BYTE = 4
 # Consecutive polls with TEMT = 1 and DR = 0 that make the receiver idle; a character takes far
 # fewer reads than this to arrive.
 _IDLE_POLLS = 32
@@ -126,6 +132,8 @@ class smc_log_engine_round_robin_test_seq(SmcCsrSeq):
         self.wave_a_zero_reads: dict[int, int] = {}
         self.late_start: dict[int, int] = {}
         self.first_message_slot = -1
+        self.mid_reads: dict[str, tuple[int, int]] = {}
+        self.in_flight_read: tuple[int, int] = (-1, -1)
 
     # -- fence -----------------------------------------------------------
 
@@ -195,7 +203,21 @@ class smc_log_engine_round_robin_test_seq(SmcCsrSeq):
             self.pending.add(slot)
         await self.csr_write(f"LOG_LEN_{label}_S{slot}", self.elements[slot].addr, length)
 
+    async def _read_serving(self, label: str, first_byte: int) -> tuple[int, int]:
+        """LOG_CTRL.LOG_LEN of the slot whose message `first_byte` opened; must still hold 16."""
+        slot = first_byte >> 4
+        value = (
+            await self.csr_read(f"LOG_CTRL_{label}_S{slot}", self.elements[slot].addr)
+        ) & LOG_LEN
+        assert value == _MSG_LEN, (
+            f"[{label}]: LOG_CTRL[{slot}] reads {value} while its {_MSG_LEN}-byte message is "
+            f"arriving; the submitted length must hold until the message completes"
+        )
+        return slot, value
+
     async def _drain_count(self, label: str, expected: int, on_first=None) -> list[int]:
+        """Read `expected` bytes; after byte `_MID_BYTE` of the first message read its slot's
+        LOG_CTRL and require 16."""
         lsr = uart_reg(WRAP, "LSR")
         rbr = uart_reg(WRAP, "RBR")
         received: list[int] = []
@@ -209,7 +231,9 @@ class smc_log_engine_round_robin_test_seq(SmcCsrSeq):
                 byte = await self.csr_read(f"RBR_{label}", rbr)
                 received.append(byte & RBR_DATA)
                 if len(received) == 1 and on_first is not None:
-                    await on_first()
+                    await on_first(received[0])
+                if len(received) == _MID_BYTE:
+                    self.mid_reads[label] = await self._read_serving(f"{label}_MID", received[0])
                 if len(received) == expected:
                     return received
         raise AssertionError(
@@ -325,12 +349,16 @@ class smc_log_engine_round_robin_test_seq(SmcCsrSeq):
         early = [self.hold_reads[s] for s in _WAVE_A_SLOTS]
         assert all(v in (0, _MSG_LEN) for v in early), f"LOG_LEN reads during wave A {early}"
         assert _MSG_LEN in early, f"no LOG_CTRL read during wave A returned {_MSG_LEN}: {early}"
+        mid_slot, mid_value = self.mid_reads["A"]
+        assert mid_value == _MSG_LEN, f"mid-message LOG_CTRL[{mid_slot}] read {mid_value}"
         self._chk(
             "S2",
             "CHK-LOGENG-LEN-HOLD-SUBMITTED",
-            f"LOG_CTRL reads of entries {list(_WAVE_A_SLOTS)} during wave A returned {early}, "
-            f"each {_MSG_LEN} or 0 and {early.count(_MSG_LEN)} of them {_MSG_LEN}; after the "
-            f"wave each read 0 in {[self.clear_polls['A'][s] for s in _WAVE_A_SLOTS]} read(s)",
+            f"LOG_CTRL reads of entries {list(_WAVE_A_SLOTS)} right after the writes returned "
+            f"{early}, each {_MSG_LEN} or 0 and {early.count(_MSG_LEN)} of them {_MSG_LEN}; "
+            f"LOG_CTRL[{mid_slot}] read {mid_value} after byte {_MID_BYTE} of its message left "
+            f"RBR (a remaining-byte counter reads at most {_MSG_LEN - _MID_BYTE} there); after "
+            f"the wave each read 0 in {[self.clear_polls['A'][s] for s in _WAVE_A_SLOTS]} read(s)",
         )
 
     async def _s3(self) -> None:
@@ -352,7 +380,8 @@ class smc_log_engine_round_robin_test_seq(SmcCsrSeq):
         )
 
     async def _s4(self) -> None:
-        async def second_wave() -> None:
+        async def second_wave(first_byte: int) -> None:
+            self.in_flight_read = await self._read_serving("C_FIRST", first_byte)
             for slot in _WAVE_C_LATE:
                 await self._write_len("C", slot, _MSG_LEN)
 
@@ -374,13 +403,19 @@ class smc_log_engine_round_robin_test_seq(SmcCsrSeq):
             f"slots {list(_WAVE_C_LATE)} started at stream positions {starts}"
         )
         self.first_message_slot = first_slot
+        flight_slot, flight_value = self.in_flight_read
+        assert (flight_slot, flight_value) == (first_slot, _MSG_LEN), (
+            f"LOG_CTRL[{flight_slot}] read {flight_value} before the late writes; the first "
+            f"message is slot {first_slot}"
+        )
         self._chk(
             "S4",
             "CHK-LOGENG-RR-IN-FLIGHT",
             f"wave C: the first message is slot {first_slot}, stream bytes 0 to {_MSG_LEN - 1} "
-            f"all tagged slot {first_slot}; slots {list(_WAVE_C_LATE)}, written at the first "
-            f"byte read, each delivered once and started at stream positions {starts}, "
-            f"none before {_MSG_LEN}",
+            f"all tagged slot {first_slot}; LOG_CTRL[{flight_slot}] read {flight_value} at the "
+            f"first byte, before the late writes, so that message was in flight at the engine; "
+            f"slots {list(_WAVE_C_LATE)}, written then, each delivered once and started at "
+            f"stream positions {starts}, none before {_MSG_LEN}",
         )
         decoded = {k: len(v) for k, v in self.orders.items()}
         self._chk(
@@ -392,12 +427,14 @@ class smc_log_engine_round_robin_test_seq(SmcCsrSeq):
             f"read 0 after each wave",
         )
         cleared = {w: sorted(self.clear_polls[w].items()) for w in sorted(self.clear_polls)}
+        mid = {w: self.mid_reads[w] for w in sorted(self.mid_reads)}
         self._chk(
             "S4",
             "CHK-LOGENG-LEN-HWCLEAR",
             f"every entry written {_MSG_LEN} in waves A, B and C read LOG_LEN 0 within "
             f"{_HWCLR_POLLS} LOG_CTRL reads after its message arrived (slot, reads): {cleared}; "
-            f"no zero write reached a pending entry and the clear poll never read LSR",
+            f"mid-message reads after byte {_MID_BYTE} (slot, value) per wave: {mid}, each "
+            f"{_MSG_LEN}; no zero write reached a pending entry and the clear poll never read LSR",
         )
         self._chk(
             "S4",

@@ -11,17 +11,22 @@ truncated to a multiple of eight for any other size, a clamp of a longer `LOG_LE
 capacity, and completion of a zero-capacity slot without a transfer. "Arbitration and Data
 Transfer" fixes the byte order: increasing address, least significant byte first in each word.
 
-The window holds `f(a)` at window offset `a`, so a byte names the offset it was fetched from.
-Legs:
+The window holds `f(a)` at window offset `a`: the offset itself below 0x100 and the offset XOR
+0xA5 from 0x100 on, so a byte names the offset it was fetched from and a start off by 0x100
+fails. Above 0x100 consecutive offsets do not carry consecutive bytes, so the consecutive-offset
+compare of the unaligned legs holds only for messages that end at or below offset 0x100; the
+sizes and slots of those legs keep every message there (size 271, slot 15 ends exactly at 0x100)
+and the leaf asserts the bound on each delivered message. Legs:
 
 * size 0x80, slots 0 to 15, 8 bytes each: the delivered bytes are `f(8*i + j)`;
 * size 0x200, slots 0, 7, 15 and a second delivery on slot 0;
-* sizes 135, 143, 144 and 271: lengths 8, capacity + 8 and the largest length the field holds
-  deliver exactly the capacity (or 8); the slot start of the unaligned sizes is measured, and
-  only the contiguity of the delivered offsets is compared;
+* sizes 135, 143, 144 and 271: lengths 8, capacity + 8 and the largest multiple of eight the
+  field holds (0xFFF8) deliver exactly the capacity (or 8); the slot start of the unaligned
+  sizes is measured, and only the contiguity of the delivered offsets is compared;
 * size 127: the capacity is 0, so the length clears and no byte arrives; the delivering legs of
   this leaf are the positive control on the same wiring;
-* lengths 9 and 7 at size 0x200: the delivered bytes are measured, not compared.
+* lengths 9 and 7 at size 0x200: the delivered count and bytes are measured, not compared; the
+  hardware clear of LOG_LEN is compared as in every other leg.
 
 An idle receiver is TEMT = 1 and DR = 0 on a run of consecutive LSR polls longer than a
 character time. A pending length is never written back to 0: each is replaced only by the next
@@ -73,7 +78,11 @@ _UNALIGNED_SLOTS = (0, 1, 15)
 _MIN_LEN = 8
 _MID_LEN = 0x20
 _NOT_MULT8_LENS = (9, 7)
+# The largest multiple of eight LOG_LEN[15:0] holds: 0xFFF8.
 _MAX_LEN = LOG_LEN & ~0x7
+# Window offset the unaligned-size messages must end at or below: the tag names the offset only
+# there (see the module docstring).
+_TAG_IS_OFFSET_END = 0x100
 
 # Polls of LSR allowed per expected byte; expiry is a failure.
 _RX_POLLS_PER_BYTE = 400
@@ -324,6 +333,11 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
                         f"size {size} slot {slot} LOG_LEN 0x{length:x}: delivered {_hex(got)}, "
                         f"not consecutive window offsets"
                     )
+                    assert got[0] + len(got) <= _TAG_IS_OFFSET_END, (
+                        f"size {size} slot {slot} LOG_LEN 0x{length:x}: message of {len(got)} "
+                        f"bytes from offset {got[0]} ends past 0x{_TAG_IS_OFFSET_END:x}, where "
+                        f"the window tag no longer names the offset"
+                    )
         for size, slot, length, want_count, got, status in capacity_rows:
             assert len(got) == want_count, (
                 f"size {size} slot {slot} LOG_LEN 0x{length:x}: delivered {len(got)} bytes, "
@@ -334,8 +348,8 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
         self._chk(
             "S4",
             "CHK-LOGENG-REGION-UNALIGNED-CAPACITY",
-            "LOG_LEN = capacity + 8 and 0x%x delivered exactly the capacity and LOG_LEN read 0 "
-            "afterwards: %s; INTR_STATUS read 0"
+            "LOG_LEN = capacity + 8 and 0x%x (the largest multiple of eight the field holds) "
+            "delivered exactly the capacity and LOG_LEN read 0 afterwards: %s; INTR_STATUS read 0"
             % (
                 _MAX_LEN,
                 "; ".join(
@@ -364,7 +378,7 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
                 f"size {s} slot {sl} len 0x{ln:x} start={g[0]}" for s, sl, ln, _, g, _ in start_rows
             )
             + f"; compared: all {len(below_rows) + len(capacity_rows)} delivered messages are "
-            "consecutive window offsets",
+            f"consecutive window offsets ending at or below offset 0x{_TAG_IS_OFFSET_END:x}",
         )
 
     async def _s5(self) -> None:
@@ -398,7 +412,12 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
                 f"{polls} intr_status=0x{status:x}"
             )
         self._mark("S6")
-        self._chk("S6", "CHK-LOGENG-REGION-LEN-NOT-MULT8-MEASURED", "measured " + "; ".join(rows))
+        self._chk(
+            "S6",
+            "CHK-LOGENG-REGION-LEN-NOT-MULT8-MEASURED",
+            "measured (count and bytes not compared; the LOG_LEN clear is compared) "
+            + "; ".join(rows),
+        )
 
     async def _s7(self) -> None:
         await self.csr_write("LE_OFF_FINAL", engine_reg(WRAP, "CTRL"), 0)

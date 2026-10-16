@@ -6,8 +6,14 @@ Specs hw/sys/smc/doc/dma.adoc, vendor idma dma_ctrl.rdl.
 
 Sources and destinations sit in the SYS_OUT responder memory and are preloaded and read back
 through its backdoor. Every SYS_OUT AR and AW handshake and bit 322 of tb_cpu_interrupts is
-sampled on each clk_smc_i rise. The valid copy of leg c is the positive control of the
-no-data compares.
+sampled on each clk_smc_i rise. The valid copies of step 5 are the positive control of the
+no-data compares: a four-row 2D copy with the strides of the zero-length 2D command writes the
+whole 136-byte destination span, and a linear 16-byte copy writes its first row.
+
+The NEXT_ID_0 value a submit returns, DONE_0 before and after a no-data command and the bit 322
+pulse count are measured, not compared: tenstorrent/tt-oca-harness#2455 tracks the open
+disagreement between dma.adoc and dma_ctrl.rdl on what NEXT_ID_0 returns when no command is set
+up, and those legs stay measured until it is resolved.
 """
 
 from __future__ import annotations
@@ -206,13 +212,17 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
                 f"want 0x{POISON:02x}"
             )
 
-    def _expect_copy(self, label: str, got: bytes) -> None:
-        want = b"".join(data for _, data in self._source_image(1))
+    def _expect_copy(self, label: str, got: bytes, rows: int) -> None:
+        """`rows` source rows at DST_BASE + n * DST_STRIDE; the bytes between them keep POISON."""
+        span = (rows - 1) * DST_STRIDE + LENGTH
+        want = bytearray([POISON]) * span
+        for n, (_, data) in enumerate(self._source_image(rows)):
+            want[n * DST_STRIDE : n * DST_STRIDE + LENGTH] = data
         assert len(got) == len(want), f"{label}: read {len(got)} bytes, want {len(want)}"
         for idx, (a, b) in enumerate(zip(got, want)):
             assert a == b, (
                 f"{label}: destination byte 0x{DST_BASE + idx:x} (offset {idx}) is 0x{a:02x}, "
-                f"source byte is 0x{b:02x}"
+                f"want 0x{b:02x} ({rows} row(s) of {LENGTH} at stride 0x{DST_STRIDE:x})"
             )
 
     async def _program(self, leg: _Leg, config: int, length: int, reps: int) -> None:
@@ -339,7 +349,8 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         self._mark("S2")
         measured = (
             f"measured {self._fmt(leg)} bit{IRQ_BIT} {irq}; "
-            f"relation of NEXT_ID_0 to DONE_0 and the pulse count are not compared"
+            f"relation of NEXT_ID_0 to DONE_0 and the pulse count are not compared "
+            f"(tenstorrent/tt-oca-harness#2455)"
         )
         assert leg.changed, (
             f"ND_CLEAR: DONE_0 still {leg.done_before} after {POLL_LIMIT} reads "
@@ -355,7 +366,7 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
                 f"CONFIG 0 command retired (DONE_0 {leg.done_before} -> {leg.done_after}); "
                 f"all {LENGTH} destination bytes are 0x{POISON:02x} and the window from the "
                 f"submit to the DONE_0 change holds AR {len(leg.ar)} AW {len(leg.aw)}; "
-                f"positive control: the valid copy of leg c moves data",
+                f"positive control: the valid copies of step 5 move data",
             ),
             (
                 "CHK-DMA-ND-CLEAR-DONE-ADVANCES",
@@ -393,7 +404,8 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         measured = (
             f"measured linear {self._fmt(lin)} bit{IRQ_BIT} pulses {len(lin.widths)} "
             f"widths {lin.widths} cycles; "
-            f"2d {self._fmt(leg)} bit{IRQ_BIT} {irq}; post-conditions are not compared"
+            f"2d {self._fmt(leg)} bit{IRQ_BIT} {irq}; post-conditions are not compared "
+            f"(tenstorrent/tt-oca-harness#2455)"
         )
         return [
             ("CHK-DMA-ZEROLEN-MEASURED", measured),
@@ -406,11 +418,11 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
             ),
         ]
 
-    async def _copy_leg(self, name: str, length_bytes: int) -> _Leg:
+    async def _copy_leg(self, name: str, length_bytes: int, rows: int = 1) -> _Leg:
         leg = self.legs[name] = _Leg(name)
-        self._seed_source(1)
-        self._poison(LENGTH)
-        await self._program(leg, DMA_CONFIG_ENABLED_ND, LENGTH, 1)
+        self._seed_source(rows)
+        self._poison((rows - 1) * DST_STRIDE + LENGTH)
+        await self._program(leg, DMA_CONFIG_ENABLED_ND, LENGTH, rows)
         await self._submit(leg, length_bytes)
         await self._poll(leg)
         await self._further_reads(leg)
@@ -418,13 +430,21 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
 
     async def _s5(self) -> list[tuple[str, str]]:
         s = self.sampler
+        twod = await self._copy_leg("COPY2D", 4, ROWS_2D)
+        await self._wait_busy_low(twod)
+        twod.data = self._dst(SPAN_2D)
         leg = await self._copy_leg("COPY32", 4)
         await self._wait_busy_low(leg)
         leg.data = self._dst(LENGTH)
         irq = self._irq_window(leg)
         self._mark("S5")
+        self._copy_leg_checks(twod)
+        self._expect_copy("COPY2D", twod.data, ROWS_2D)
+        assert len(twod.ar) >= ROWS_2D and len(twod.aw) >= ROWS_2D, (
+            f"COPY2D: AR {len(twod.ar)} AW {len(twod.aw)} handshakes for {ROWS_2D} rows"
+        )
         self._copy_leg_checks(leg)
-        self._expect_copy("COPY32", leg.data)
+        self._expect_copy("COPY32", leg.data, 1)
         assert len(leg.ar) >= 1 and len(leg.aw) >= 1, (
             f"COPY32: AR {len(leg.ar)} AW {len(leg.aw)} handshakes for a {LENGTH}-byte copy"
         )
@@ -433,8 +453,13 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         return [
             (
                 "CHK-DMA-COPY-CONTROL",
-                f"CONFIG ENABLED_ND set, LENGTH {LENGTH}: destination equals source after DONE_0 "
-                f"{leg.done_before} -> {leg.done_after} in {leg.reads} reads; AR {len(leg.ar)} "
+                f"CONFIG ENABLED_ND set, LENGTH {LENGTH}: the {ROWS_2D}-row copy with strides "
+                f"0x{SRC_STRIDE:x}/0x{DST_STRIDE:x} wrote its {ROWS_2D} source rows over the "
+                f"{SPAN_2D}-byte destination span with the {SPAN_2D - ROWS_2D * LENGTH} bytes "
+                f"between rows still 0x{POISON:02x}, DONE_0 {twod.done_before} -> "
+                f"{twod.done_after} in {twod.reads} reads, AR {len(twod.ar)} AW {len(twod.aw)} "
+                f"(each at least {ROWS_2D}); the linear copy equals its source after DONE_0 "
+                f"{leg.done_before} -> {leg.done_after} in {leg.reads} reads, AR {len(leg.ar)} "
                 f"AW {len(leg.aw)} (each at least 1)",
             ),
             (
@@ -456,7 +481,7 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         self._mark("S6")
         ref = self.legs["COPY32"]
         self._copy_leg_checks(leg)
-        self._expect_copy("COPY64", leg.data)
+        self._expect_copy("COPY64", leg.data, 1)
         assert (len(leg.ar), len(leg.aw)) == (len(ref.ar), len(ref.aw)), (
             f"COPY64: AR {len(leg.ar)} AW {len(leg.aw)}, the 32-bit copy counted "
             f"AR {len(ref.ar)} AW {len(ref.aw)}"
@@ -496,16 +521,16 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         stamps = [ps for _, ps in self.steps]
         assert all(b > a for a, b in zip(stamps, stamps[1:])), f"stamps not increasing {stamps}"
         s = self.sampler
-        copies = [self.legs["COPY32"], self.legs["COPY64"]]
+        copies = [self.legs["COPY2D"], self.legs["COPY32"], self.legs["COPY64"]]
         want_ar = sum(len(leg.ar) for leg in copies)
         want_aw = sum(len(leg.aw) for leg in copies)
         assert (len(s.ar), len(s.aw)) == (want_ar, want_aw), (
-            f"leaf-wide handshakes AR {len(s.ar)} AW {len(s.aw)}, the two copies account for "
+            f"leaf-wide handshakes AR {len(s.ar)} AW {len(s.aw)}, the three copies account for "
             f"AR {want_ar} AW {want_aw}"
         )
         cocotb.log.info(
             "CHK-NONVAC: ordered fence checker lines in step order, step stamps strictly "
-            "increasing, each line after its own compare; leaf-wide AR %d AW %d equal the two "
+            "increasing, each line after its own compare; leaf-wide AR %d AW %d equal the three "
             "copies' AR %d AW %d; checker lines %s; stamps %s",
             len(s.ar),
             len(s.aw),
