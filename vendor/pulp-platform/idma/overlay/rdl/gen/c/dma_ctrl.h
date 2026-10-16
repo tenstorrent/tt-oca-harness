@@ -14,7 +14,7 @@ extern "C" {
 #include <assert.h>
 
 // reg - dma_ctrl::CONFIG
-// Write-address decoupling. 0: the write address of each burst is held until the first read data beat of the matching read burst returns. 1: write addresses are issued without waiting for read data.
+// Write-address decoupling. 0: the write address of each burst is held until the first data beat of that burst is ready to be written. 1: write addresses are issued without waiting for write data.
 #define DMA_CTRL__CONFIG__DECOUPLE_AW_bm 0x1
 #define DMA_CTRL__CONFIG__DECOUPLE_AW_bp 0
 #define DMA_CTRL__CONFIG__DECOUPLE_AW_bw 1
@@ -51,7 +51,7 @@ extern "C" {
 #define DMA_CTRL__CONFIG__ENABLED_ND_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Write-address decoupling. 0: the write address of each burst is held until the first read data beat of the matching read burst returns. 1: write addresses are issued without waiting for read data.
+        // Write-address decoupling. 0: the write address of each burst is held until the first data beat of that burst is ready to be written. 1: write addresses are issued without waiting for write data.
         uint32_t DECOUPLE_AW :1;
         // Read/write decoupling. 0: read and write bursts are formed in lockstep, one write burst per read burst. 1: read and write bursts are formed and issued independently; this mode can deadlock.
         uint32_t DECOUPLE_RW :1;

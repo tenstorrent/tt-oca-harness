@@ -10,9 +10,11 @@ their own payload. Nine 128-row 2D transfers then run into a SYS_OUT responder
 holding READY low on the read side, the write side and both -- coupled,
 decoupled, and with DECOUPLE_AW -- with the stall counted at the boundary and
 every row compared. Two rows that cross a 4 KB page on one side only follow,
-then an unaligned row, a descriptor queued behind a stalled transfer, and
-writes to the read-triggered NEXT_ID registers.
-CONFIG is restored to its reset and read back.
+each checked for one AW per write burst on SYS_OUT, then an unaligned row, a
+descriptor queued behind a stalled transfer, and writes to the read-triggered
+NEXT_ID registers. The two page-split rows then run again with DECOUPLE_RW set,
+with a coupled split between them; each must put exactly one AW per write burst
+on SYS_OUT. CONFIG is restored to its reset and read back.
 """
 
 from __future__ import annotations
@@ -27,10 +29,10 @@ from smc_base_test import smc_base_test
 # sequence that silently stopped issuing accesses. CSR accesses only; the row
 # seeding and the readbacks go through the JTAG agent.
 #
-# Eighteen descriptors, at least 16 SEP_IN AXI accesses each: the CONFIG write,
+# Twenty-one descriptors, at least 16 SEP_IN AXI accesses each: the CONFIG write,
 # twelve descriptor writes, the NEXT_ID read that submits it, and at least one
 # DONE poll.
-DMA_DECOUPLE_RW_MIN_CSR_ACCESSES = 18 * 16
+DMA_DECOUPLE_RW_MIN_CSR_ACCESSES = 21 * 16
 
 
 @pyuvm.test()
@@ -39,12 +41,13 @@ class smc_dma_decouple_rw_test(smc_base_test):
 
     required_evidence = (
         "CHK-DMA-DECOUPLE-RW",
+        "CHK-DMA-DECOUPLE-RW-PAGE-SPLIT",
         "CHK-DMA-LEGALIZER-BACKPRESSURE",
         "CHK-DMA-PAGE-SPLIT",
         "CHK-DMA-QUEUED-DESCRIPTORS",
         "CHK-DMA-UNALIGNED-QUEUED",
     )
-    min_evidence = 5
+    min_evidence = 6
 
     auto_protocol_vip = False
 

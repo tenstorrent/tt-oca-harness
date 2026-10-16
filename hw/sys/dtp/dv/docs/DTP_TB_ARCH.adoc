@@ -529,10 +529,37 @@ CAPS comparison,
 `DTP_J2A_BUS_REQ_NEGATIVE` corrupts the address each `CHK-J2A-BUS-REQ` record
 expects,
 `DTP_J2A_ORPHAN_NEGATIVE` flips bit 0 of the value each `CHK-J2A-ORPHAN-*`
-record expects, and
+record expects,
+`DTP_J2A_REFUSED_NEGATIVE` and `DTP_J2A_UPDATE_EDGE_NEGATIVE` flip bit 0 of the
+value each `CHK-J2A-REFUSED` and `CHK-J2A-UPDATE-EDGE` record expects,
+`DTP_J2A_REFUSED_NO_STALL` and `DTP_J2A_UPDATE_EDGE_EARLY`, each a bridge mask
+(1 `smc_axi`, 2 `smc_otp`, 4 `sep_otp`), mutate the stimulus on the bridges
+they select: the first stalls no channel behind the long-stall scenario's
+first refused-operation step, so its SINGLE_OP write completes at once and
+nothing behind it is refused, and the second leaves Pause-DR without waiting
+for the state machine, so the second SINGLE_OP's Update-DR lands before the
+held write's response is taken and the bridge refuses it,
+`DTP_J2A_SERIES_IMAGE_NEGATIVE` flips bit 0 of the expected image byte at the
+last series beat's address in the random-operation scenarios,
+`DTP_J2A_SERIES_ADDR_NEGATIVE` expects each of their series programmings to
+end one stride further,
+`DTP_J2A_SERIES_STATUS_BIT_NEGATIVE` expects a status bit of 1 from each of
+their with-status series beats,
+`DTP_J2A_GATE_SERIES_NEGATIVE` leaves the bridge enabled across the gated
+SERIES_CTRL scan of the write security-gating scenarios, and
 `DTP_J2A_STATUS_BIT_NEGATIVE` leaves the with-status fault beat unarmed while
 its expectation stands; a run with any of them set must fail. The same
 knob names are environment variables in cocotb and plusargs in SV-UVM.
+
+Two knobs add legs that are off by default and run with the checks of a
+default run: `DTP_J2A_VISIBLE_RESPONSE_RESET` adds the visible-response legs to
+`dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test` (VPLAN 4.31), a
+system reset zero to six TCK edges after a SLVERR response's handshake, and
+`DTP_J2A_FLUSH_EDGE_READ` adds the flush-edge and fill legs to
+`dtp_jtag2axi_series_corner_all_bridges_test` (VPLAN 4.36), a SERIES_CTRL(READ)
+landing on the edge where the bridge takes a series read queued under the
+previous programming. As with the other knobs, they are environment variables
+in cocotb and plusargs in SV-UVM.
 
 === Coverage Strategy
 
@@ -560,7 +587,7 @@ and CSR RTL selected by the subsystem source graph.
 The SV-UVM realization runs through the same native runner: `dtp_sim_cfg.toml`
 declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut dtp --framework uvm` selects
-it on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm-1.2`). Every
+it on VCS (the `native` profile's `uvm` framework, UVM 1800.2-2020). Every
 scenario carries both implementations in its testlist `module` binding map,
 so any group runs unchanged under either framework.
 
@@ -574,11 +601,11 @@ and `run_test()`.
 The Integrator Guide's Project Defines chapter
 (`doc/integrator/src/defines.adoc`) lists the preprocessor defines DTP
 compiles use, including `UVM`. `UVM` is the only source of the harness block:
-the simulator's `-ntb_opts` option selects which UVM library is compiled but
-does not set the name. The runner compiles `uvm-1.2` unless the sim config
-selects another library with `[build.vcs]` `uvm_lib`. `uvm-1.2` is the floor,
-because the vendored OpenTitan assertion macros do not compile against older
-libraries.
+compiling the UVM library does not set the name. The runner compiles the
+Accellera library from source unless the sim config selects a
+simulator-supplied one with `[build.vcs]` `uvm_lib`. `uvm-1.2` is the floor
+for that selection, because the vendored OpenTitan assertion macros do not
+compile against older libraries.
 
 The class library mirrors the cocotb
 conventions under `uvm/` with identical basenames, one class per file:
