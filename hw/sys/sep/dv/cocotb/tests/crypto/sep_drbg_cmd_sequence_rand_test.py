@@ -99,9 +99,15 @@ Checkers:
   CHK-EDN-BOOT-CMD  before any write, ``BOOT_INS_CMD`` reads 0x901 and
                  ``BOOT_GEN_CMD`` 0xFFF003; decoded with the header layout, acmd
                  0x1 and 0x3, clen 0 in both, glen 0xFFF.
-  CHK-EDN-STS    ``SW_CMD_STS.CMD_STS`` = 0 (SUCCESS) at the ``CMD_ACK`` of the
-                 first EDN instantiate. Control: a reserved acmd through
-                 ``SW_CMD_REQ`` reads ``CMD_STS`` = 1 (INVALID_ACMD) at its ack.
+  CTRL-EDN-STS   a reserved acmd through ``SW_CMD_REQ`` reads ``CMD_STS`` = 1
+                 (INVALID_ACMD, csrng.hjson:413-416) at its ack, so the non-zero
+                 ack of ``CHK-EDN-ACK-ERR`` is the stated code. ``CMD_STS`` at the
+                 ack of the first EDN instantiate is logged only
+                 (``OBS-EDN-STS``): the success code is stated only for the
+                 sequence with ``AUTO_REQ_MODE`` = true
+                 (``doc/programmer/src/sep-programming.adoc:457-462``), and this
+                 leg enables EDN with ``AUTO_REQ_MODE`` = false and the endpoints
+                 in reset.
   CHK-EDN-ACK-ERR  after that reserved acmd acks with a non-zero ``CMD_STS``,
                  EDN ``RECOV_ALERT_STS.CSRNG_ACK_ERR`` reads 1: "This bit is set
                  when the CSRNG returns an acknowledgement where the status
@@ -146,8 +152,14 @@ Checkers:
                  ``CMD_STS`` other than 4 and bit 15 at 0.
   CHK-CSRNG-RESEED-HDR  after a Reseed word (acmd 0x2, clen 0, flag0 0x9, the
                  header that EDN ``RESEED_CMD`` also takes, edn.adoc:225-230)
-                 the next Generate acks with ``CMD_STS`` other than 4 and bit 15
-                 at 0. Control: the Generate before the Reseed was refused.
+                 the counter restarts ("counts the number of generate commands
+                 between reseed or instantiate commands", csrng.adoc:141-142), so
+                 the next Generate (glen 1) succeeds: it acks with ``CMD_STS`` = 0
+                 ("If the command is successful, the ``csrng_rsp_sts`` signal will
+                 indicate the value 0 (``SUCCESS``)", theory_of_operation.md:287;
+                 "Request completed successfully.", csrng.hjson:406-410), bit 15
+                 reads 0, and ``GENBITS`` gives four words (GEN1_WORDS). Control:
+                 the Generate before the Reseed was refused.
   CHK-CSRNG-GENBITS-GATE  with a Generate pending, ``CTRL.SW_APP_ENABLE`` set
                  to a value other than 6: four ``GENBITS`` reads return 0.
                  Control: ``GENBITS`` is first drained (read while
@@ -263,9 +275,13 @@ STS_INVALID_ACMD = 1
 STS_RESEED_CNT_EXCEEDED = 4
 # EDN RECOV_ALERT_STS.CSRNG_ACK_ERR after an ack with a non-zero status (edn.hjson:542).
 EXP_ACK_ERR = 1
-# EDN boot command reset values (edn.adoc BOOT_INS_CMD, BOOT_GEN_CMD).
-BOOT_INS_RESET = 0x901
-BOOT_GEN_RESET = 0xFFF003
+# EDN boot command reset values (edn.rdl BOOT_INS_CMD, BOOT_GEN_CMD).
+BOOT_INS_RESET = EDN.reset("BOOT_INS_CMD")
+BOOT_GEN_RESET = EDN.reset("BOOT_GEN_CMD")
+# GENBITS reads for one Generate with glen 1: glen 1 "returns 1 * 128 bits of entropy"
+# (theory_of_operation.md:185) and GENBITS "must be read four times for each request
+# made" (csrng.hjson:471-472).
+GEN1_WORDS = 4
 
 
 def cmd_word(acmd: int, *, clen: int = 0, flag0: int = MUBI_FALSE, glen: int = 0) -> int:
@@ -375,7 +391,6 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         "CHK-EDN-INVSEQ",
         "CHK-CSRNG-SW",
         "CHK-EDN-BOOT-CMD",
-        "CHK-EDN-STS",
         "CHK-EDN-ACK-ERR",
         "CHK-CSRNG-CTRL-MUBI",
         "CHK-EDN-CTRL-MUBI",
@@ -614,14 +629,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         )
         if reason:
             self.chk.ok("EDN-INVSEQ", False, reason=f"no_first_command:{reason}")
-            self.chk.ok("EDN-STS", False, reason=f"no_first_command:{reason}")
             return
         await self._edn_invseq(t_cmd)
         await self._edn_sts(t_cmd)
 
     async def _edn_sts(self, t_cmd: int) -> None:
-        """CHK-EDN-STS: the first instantiate reported SUCCESS (0). Control: a
-        reserved acmd through the same port reads INVALID_ACMD (1) at its ack.
+        """CTRL-EDN-STS: a reserved acmd through the port reads INVALID_ACMD (1) at
+        its ack. OBS-EDN-STS: the code of the first instantiate (no sentence states
+        it for ``AUTO_REQ_MODE`` = false with the endpoints in reset).
 
         CHK-EDN-ACK-ERR: that non-zero ack sets ``CSRNG_ACK_ERR``. Control: the bit
         reads 0 after a write of 0, before the command."""
@@ -674,13 +689,12 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         if reason:
             ctrl["reason"] = reason
         self.chk.ctrl("EDN-STS", bad_sts == STS_INVALID_ACMD, **ctrl)
-        first = self._edn_first_sts
-        self.chk.ok(
+        self.chk.obs(
             "EDN-STS",
-            first == STS_SUCCESS,
-            cmd_sts=first,
+            cmd_sts=self._edn_first_sts,
             word=f"0x{CMD_INSTANTIATE:x}",
-            ctrl_cmd_sts=ctrl["cmd_sts"],
+            auto_req_mode="false",
+            reason="success_stated_only_with_auto_req_mode_true",
         )
 
     async def _edn_invseq(self, t_cmd: int) -> None:
@@ -1059,6 +1073,10 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             hdr["reseed_cmd_sts"] = sts
             step = "gen_after_reseed"
             sts, recov, words = await self._sw_generate(FIRST_CAP)
+            # Words still pending after the ack count to the same request.
+            while words < GEN1_WORDS and await r._rd(CSRNG_GENBITS_VLD) & GB_VLD:
+                await r._rd(CSRNG_GENBITS)
+                words += 1
             hdr.update(
                 {"cmd_sts": sts, "alert15": int(bool(recov & CS_RESEED_CNT)), "words": words}
             )
@@ -1116,9 +1134,12 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         self.chk.ok(
             "CSRNG-RESEED-HDR",
             not reason
-            and hdr.get("cmd_sts", STS_RESEED_CNT_EXCEEDED) != STS_RESEED_CNT_EXCEEDED
-            and hdr.get("alert15") == 0,
+            and hdr.get("cmd_sts") == STS_SUCCESS
+            and hdr.get("alert15") == 0
+            and hdr.get("words") == GEN1_WORDS,
             **hdr,
+            expected_sts=STS_SUCCESS,
+            expected_words=GEN1_WORDS,
         )
         words = gate.get("genbits", [])
         self.chk.ok(

@@ -2393,7 +2393,7 @@ alert, autotune and FIFO flags. `ESRC_RDL` (`GENERATOR_<n>_HEALTH_STATUS`,
 |`cp_auto_fifo_words` |FIFO {RESEED_CMD, GENERATE_CMD} x word count {1, 13}. 4 bins |`edn_err`, `csr_lsu` (`EDN_RESEED_CMD`, `EDN_GENERATE_CMD`) |`sep_drbg_fatal_err_inject_rand_test` |executable. Stimulus: Walk
 |`cp_boot_cmd_reset` |A read before any EDN write since the TRNG reset of `BOOT_INS_CMD` = 0x901 and of `BOOT_GEN_CMD` = 0xFFF003. 2 bins |`csr_lsu` (EDN block read data) |`sep_drbg_cmd_sequence_rand_test` |executable. Stimulus: Defined
 |`cp_ctrl_field_alert` |`RECOV_ALERT_STS` set request {bit 0 `EDN_ENABLE`, 1 `BOOT_REQ_MODE`, 2 `AUTO_REQ_MODE`, 3 `CMD_FIFO_RST`}. 4 bins |`edn_recov` (`hw2reg.recov_alert_sts.*`) |`sep_drbg_cmd_sequence_rand_test` |executable. Stimulus: Walk
-|`cp_sw_cmd_sts` |`SW_CMD_STS.CMD_STS` at the rise of the software `CMD_ACK`: 0 SUCCESS, 1 INVALID_ACMD. 2 bins |`edn_swcmd` (`hw2reg.sw_cmd_sts.cmd_sts`, `cmd_ack`) |`sep_drbg_cmd_sequence_rand_test` |executable. Stimulus: Defined
+|`cp_sw_cmd_sts` |`SW_CMD_STS.CMD_STS` at the rise of the software `CMD_ACK`: 1 INVALID_ACMD, 1 bin. Code 0 SUCCESS is `ignore_bins`: the text states it only for a sequence with AUTO_REQ_MODE set, and the owner leg runs with it clear, so the code is logged (`OBS-EDN-STS`) |`edn_swcmd` (`hw2reg.sw_cmd_sts.cmd_sts`, `cmd_ack`) |`sep_drbg_cmd_sequence_rand_test` |executable. Stimulus: Defined
 |`cp_csrng_ack_err` |`RECOV_ALERT_STS.CSRNG_ACK_ERR` set request, from a CSRNG acknowledge with a non-zero status (`edn.hjson:542-543`; the owner sends a reserved acmd, acknowledged with INVALID_ACMD). 1 bin |`edn_recov` (`hw2reg.recov_alert_sts.csrng_ack_err`) |`sep_drbg_cmd_sequence_rand_test` |executable. Stimulus: Defined
 |===
 

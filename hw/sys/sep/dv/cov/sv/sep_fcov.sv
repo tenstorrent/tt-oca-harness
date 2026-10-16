@@ -19632,7 +19632,10 @@ module sep_fcov (
       bins auto_req_mode_field = {2'd2};
       bins cmd_fifo_rst_field = {2'd3};
     }
-    cp_sw_cmd_sts: coverpoint s.es iff (s.es_v) {bins success = {1'b0}; bins invalid_acmd = {1'b1};}
+    // SUCCESS is logged only (stated only with AUTO_REQ_MODE set): not scored.
+    cp_sw_cmd_sts: coverpoint s.es iff (s.es_v) {
+      ignore_bins success = {1'b0}; bins invalid_acmd = {1'b1};
+    }
     cp_csrng_ack_err: coverpoint s.ae_v iff (s.ae_v) {bins set_by_error_ack = {1'b1};}
   endgroup
 

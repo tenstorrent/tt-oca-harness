@@ -678,7 +678,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             await self._aes_wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "nokey_idle_after_clear")
             base = await self.aes._rd(AES_STATUS)
             for i, w in enumerate(_le_words(AES_PT)):
-                await self.aes._wr(AES_DATA_IN_0 + 4 * i, w)
+                await self.aes._wr(sym(f"AES_DATA_IN_{i}__REG_ADDR"), w)
             t0 = self.vec.clk
             while self.vec.clk - t0 <= window:
                 samples.append(await self.aes._rd(AES_STATUS))

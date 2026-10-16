@@ -24,7 +24,15 @@ value, so they are masked. Mode and command codes come from
 The 20 cells are mode {SHAKE, cSHAKE} x strength {128, 224, 256, 384, 512} x
 ``en_unsupported_modestrength`` {0, 1}, with ``kmac_en`` = 0 in EDN entropy
 mode, plus SHA3 strength 128 with ``en_unsupported_modestrength`` = 0 (not in
-the list of lines 784-785). The 8 supported cells and SHA3-256 are controls and
+the list of lines 784-785). For that cell
+``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/theory_of_operation.md``:787
+says "However, the KMAC HWIP proceeds the hashing operation as other combinations
+does not cause any malfunctions inside the IP.", and the TT RDL text of
+``en_unsupported_modestrength``
+(``vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl``:212-218, kmac.adoc
+lines 112-118) says "If not set, KMAC won't propagate the SW command (CmdStart)
+to the rest of the blocks (AppIntf, KMAC Core, SHA3)." The TT RDL text rules for the SEP build, so the cell is graded
+as blocked. The 8 supported cells and SHA3-256 are controls and
 are not graded here. Each blocked start is followed by ``CMD.err_processed``, a
 write-one clear of ``kmac_err`` and a legal SHA3-256 hash of a drawn message.
 

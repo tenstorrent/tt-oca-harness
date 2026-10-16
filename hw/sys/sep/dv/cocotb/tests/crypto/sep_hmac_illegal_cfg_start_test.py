@@ -47,9 +47,13 @@ returns its golden), ``CTRL-HMAC-DPREV`` (D_prev equals the golden of the last c
 and is non-zero), ``CTRL-HMAC-REF`` (the reference hash and the worst-case hash return their
 goldens), ``CTRL-HMAC-ERRCODE-RESET`` (``ERR_CODE`` reads its reset value 0x0,
 hmac.adoc:171, after the engine reset and before any start, so a healthy DUT reads a value
-other than 0x6 there). Log-only:
-``OBS-HMAC-ERRCODE-BEFORE`` (``ERR_CODE`` just before each blocked start; no text states the
-value after a legal hash or a write-one clear of ``hmac_err``),
+other than 0x6 there), ``CTRL-HMAC-ERRCODE-CLR`` (before each blocked class the engine is
+reset and ``ERR_CODE`` reads its reset value 0x0, hmac.adoc:171; no text states a clear of
+``ERR_CODE`` by a write, a legal hash or the write-one clear of ``hmac_err``, so the reset is
+the only stated way back to 0x0; the last hash then runs again so that D_prev holds its
+golden) and ``CTRL-HMAC-ERRCODE-BEFORE`` (``ERR_CODE`` just before each blocked start is not
+0x6, so the 0x6 of ``CHK-HMAC-ERRCODE`` comes from that start; the exact value after the
+legal hash is not stated and is logged). Log-only:
 ``OBS-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
 start; the register text does not state them) and
 ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text does not state its value after a
@@ -522,6 +526,22 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         )
 
     async def _blocked_class(self, step: ClassStep, last: Hash) -> Hash:
+        # ERR_CODE back to its reset value 0x0 (hmac.adoc:171) before the class: a reset
+        # is the only stated way. The last hash then runs again so D_prev holds its golden.
+        await self._reset_hmac(cocotb.top)
+        err_code_clr = await self._rd(HMAC_ERR_CODE)
+        self.chk.ctrl(
+            "HMAC-ERRCODE-CLR",
+            err_code_clr == EXP_ERR_CODE_RESET,
+            **{"class": step.name},
+            err_code=f"0x{err_code_clr:x}",
+            expected=f"0x{EXP_ERR_CODE_RESET:x}",
+        )
+        t_last, _ = await self._run_hash(last, bound=self.hash_bound)
+        if t_last is None:
+            raise AssertionError(
+                f"HMAC hash before class {step.name} timed out (bound={self.hash_bound} clocks)"
+            )
         nwords = HMAC_DIGEST_WORDS[last.sha]
         d_prev = await self._read_digest(last.sha)
         self.chk.ctrl(
@@ -534,8 +554,12 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         )
 
         err_code_before = await self._rd(HMAC_ERR_CODE)
-        self.chk.obs(
-            "HMAC-ERRCODE-BEFORE", **{"class": step.name}, err_code=f"0x{err_code_before:x}"
+        self.chk.ctrl(
+            "HMAC-ERRCODE-BEFORE",
+            err_code_before != EXP_ERR_INVALID_CFG,
+            **{"class": step.name},
+            err_code=f"0x{err_code_before:x}",
+            not_expected=f"0x{EXP_ERR_INVALID_CFG:x}",
         )
         # Error injection: a start with the blocked digest_size, key_length and hmac_en.
         open_graded_window(TEST, self.logger)

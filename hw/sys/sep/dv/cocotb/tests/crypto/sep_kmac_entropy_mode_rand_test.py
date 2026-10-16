@@ -69,7 +69,7 @@ observed absorb, the seed count and ``kmac_err`` as ``OBS`` lines. No text
 gives an error for a start before the seeds: error 0x09 (theory_of_operation.md
 :729) applies only when the masking feature is enabled, no SEP text states that
 build value, and the seed count itself differs between ``kmac.hjson``
-``ENTROPY_SEED`` (6 writes, :856) and theory_of_operation.md:705 (9 writes).
+``ENTROPY_SEED`` (6 writes, :857) and theory_of_operation.md:705 (9 writes).
 
 Observables: KMAC register readback over the CPU-LSU master,
 ``crypto_edn_req_o[1]`` and ``crypto_edn_ack_o[1]`` (client 1 is KMAC,
@@ -140,8 +140,8 @@ HASH_CNT_MASK = KMAC.field_mask("ENTROPY_REFRESH_HASH_CNT", "hash_cnt")
 ERR_CODE_MASK = KMAC.field_mask("ERR_CODE", "err_code")
 PERIOD_PRESCALER_LSB = KMAC.field_lsb("ENTROPY_PERIOD", "prescaler")
 PERIOD_WAIT_LSB = KMAC.field_lsb("ENTROPY_PERIOD", "wait_timer")
-# kmac.adoc ERR_CODE:343-344: reset value 0; the error code is in bits 31:24.
-EXP_ERR_CODE_RESET = 0x0
+# kmac.adoc ERR_CODE:343-344: the RDL reset value; the error code is in bits 31:24.
+EXP_ERR_CODE_RESET = KMAC.reset32("ERR_CODE")
 ERR_CODE_LSB = 24
 ERR_CODE_DEBUG_MASK = 0x00FF_FFFF
 # theory_of_operation.md:724 WaitTimerExpired.

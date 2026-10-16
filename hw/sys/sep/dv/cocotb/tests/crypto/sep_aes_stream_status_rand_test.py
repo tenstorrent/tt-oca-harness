@@ -59,7 +59,7 @@ Checkers:
                       "only continues once the previous output data has been
                       read"). After output 0 is read, INPUT_READY reads 1
                       inside a window of the same length
-                      (programmers_guide.md:53: INPUT_READY becomes 1 when the
+                      (programmers_guide.md:56: INPUT_READY becomes 1 when the
                       unit loads the block "and start operation"; :66), and
                       the three outputs equal their goldens. Control: the
                       STALL = 1 read before block 2 is written shows
@@ -137,7 +137,7 @@ OV_BOUND_FACTOR = 64  # bounded OUTPUT_VALID wait = 64 x t_blk
 START_WINDOW_FACTOR = 20  # 20 x t_blk (test parameter)
 IR_WINDOW_FACTOR = 8  # held and load windows of the INPUT_READY leg = 8 x t_blk (test parameter)
 EXP_HELD_IR = 0  # INPUT_READY with block 2 written and not loaded (aes.rdl STATUS.INPUT_READY)
-EXP_LOADED_IR = 1  # INPUT_READY once the block is loaded (programmers_guide.md:53)
+EXP_LOADED_IR = 1  # INPUT_READY once the block is loaded (programmers_guide.md:56)
 
 
 def _le_words(data: bytes) -> list[int]:
