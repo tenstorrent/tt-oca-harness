@@ -6,12 +6,13 @@ Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+sep_outbound_depth=64``. DIRECTED with seed-drawn delays.
 
 Contract (``hw/sys/sep/doc/fabric.adoc``, "Fabric Topology", "Transaction
-Routing", "Filtering and Protection"; the issue text for the local crossbar and
-outbound mux/filter outstanding limits under a held outbound target): the CPU
-LSU (the TB master on ``s_axi``) and the Secure DMA (programmed over that
-master) issue to one outbound window while the responder
-(``tb/sep_outbound_mbx.sv``) delays AW, W and AR READY, delays or holds B and R
-VALID, and is then released. The SMN inbound master (``m_axi``) issues toward
+Routing", "Filtering and Protection"; ``hw/sys/sep/doc/cpu.adoc``, LSU master
+and AxPROT table; ``hw/sys/sep/doc/dma.adoc``, master path): the CPU LSU (the
+TB master on ``s_axi``) and the Secure DMA (programmed over that master) issue
+to one outbound window while the responder (``tb/sep_outbound_mbx.sv``) delays
+AW, W and AR READY, delays or holds B and R VALID, and is then released; the
+local crossbar stops accepting at its outstanding limit and every request
+completes after the release. The SMN inbound master (``m_axi``) issues toward
 the same window alongside them; it has no route to the outbound port, so its
 accesses are the stimulus of one no-path check and never contend at the port.
 
@@ -23,8 +24,9 @@ pending B responses and reads, which the leaf requires to be at least the
 requests it issues in one hold, so every finite stop it grades at the port is
 the DUT's, not the responder's. The LSU master stops at the same count whether
 or not the port accepts, so the outbound chain limit is not separable from the
-crossbar limit at the pins: CHK-CHAIN-HELD grades the held request at that
-stop and CHK-CHAIN-LIMIT the finite stop and the drain, both tagged SF-003.
+crossbar limit at the pins: the three-initiator hold at that stop is reported
+as OBS-CHAIN-HELD and the finite stop and the drain of the chain are graded by
+CHK-CHAIN-LIMIT.
 
 The SMN inbound master has no route to the outbound port:
 ``hw/sys/sep/doc/fabric.adoc`` (Routing) states that the peripheral crossbar
@@ -33,20 +35,19 @@ outbound window lies above it. Every access that master issues, in every phase,
 is stimulus of the one no-path check CHK-SYSIF-NO-OUTBOUND-PATH; no other
 checker counts it.
 
-Open findings are printed as measured and never compared: the limit counts
-(SF-002, SF-003), the completion latency (SF-004), the response during a hold
-(SF-005), the delay range (SF-006) and the acceptance point of a request the
-filters answer themselves (SF-015).
+Printed as measured and never compared: the limit counts, the completion
+latency, the response during a hold, the delay range, and the acceptance
+point of a request the filters answer themselves.
 
-Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison):
+Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
+``CHK-<NAME> PASS`` once every comparison of that checker is done):
   CHK-DELAYS        zero-delay baseline, one-channel and all-channel delays.
   CHK-HOLD-DRAIN    requests accepted in a hold, no response in it, drain.
   CHK-XBAR-LIMITS   master-side and slave-side crossbar limit counts, drain.
   CHK-XBAR-HELD     a request at the crossbar limit is held, then completes.
-  CHK-CHAIN-HELD    a request at the outbound chain limit is held, then completes.
   CHK-XBAR-POSTDRAIN fresh transactions after the saturation drains.
-  CHK-CHAIN-LIMIT   finite outbound acceptance of writes and reads, drain.
-  CHK-BOTH-LIMITS   both limits in one hold, one release, drain.
+  CHK-CHAIN-LIMIT   finite outbound acceptance of writes and reads, drain;
+                    the writes-and-reads hold under both limits drains.
   CHK-SAT-B-COUNT, CHK-SAT-R-COUNT
                     exactly one B per accepted write, the beats of each
                     accepted read, and none after the idle window.
@@ -66,19 +67,21 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
-from env.sep_fabric_tap import SepFabricTap
-from env.sep_filter_model import FilterEntry
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import SEP_CPU_CTRL, sym
-from seq_lib.sep_dma_ops import _D, DmaTimeout
-from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_outbound_contention_seq import (
+    DMA_DST,
+    DMA_PROT,
+    DMA_SRC,
+    DMA_USER,
+    IDLE_CLOCKS,
     INITS,
+    LSU_PROT,
+    RESP_DECERR,
     RESP_OKAY,
+    SYS_PROT,
     DmaJob,
-    Layout,
-    OutboundTraffic,
+    OutboundLeaf,
     PinWatch,
     ResponderDelay,
     Txn,
@@ -89,31 +92,18 @@ from seq_lib.sep_outbound_stall_seq import CH_MASK, Meter, RespCtl, altered_requ
 
 TEST = "sep_outbound_stall_saturation_test"
 
-SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
-PAGE = SMU_BASE + 0x0002_0000
-SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
-DMA_DST = SRAM_BASE + 0x0003_0000
-DMA_SRC = DMA_DST + 0x100
-ASID_RESET = _D.reset32("ADDR_SPACE_ID")
-OUT_ENTRY = 4
-IN_ENTRY = 0
-LSU_PROT = 0b001
-SYS_PROT = 0b000
-# Expected PR-OUT attributes of the Secure DMA master: AxUSER 0 (hw/sys/sep/doc/fabric.adoc,
-# the DMA master leaves AxUSER at zero) and AxPROT 0b001 (hw/sys/sep/doc/cpu.adoc AxPROT
-# table and hw/sys/sep/doc/dma.adoc, master path).
-DMA_PROT = 0b001
-DMA_USER = 0
 DEPTH_PLUSARG = "sep_outbound_depth"
 WINDOW = 256
-IDLE_CLOCKS = 256
-ONE_RELEASE_POLLS = 12
-ONE_RELEASE_WAIT = 48
 LSU_ISSUE = 20
 DMA_WORDS = 16
+# One response beat per channel leaves per release, so the releases of a held
+# session are bounded by the responses it can have queued.
+ONE_RELEASE_POLLS = LSU_ISSUE + DMA_WORDS
+ONE_RELEASE_WAIT = 48
 MAX_ID = 7
-EXPECTED_LIMIT = 4
-RESP_DECERR = 3
+# The MaxTrans parameter of the SEP crossbar instance (hw/sys/sep/rtl/sep.sv);
+# printed beside the measured count, never compared.
+RTL_MAX_TRANS = 4
 # SMN inbound accesses of the baseline, channel, all-channel and hold phases.
 SYSIF_ISSUE_FLOOR = 13
 
@@ -135,10 +125,8 @@ CHECKS = (
     "CHK-HOLD-DRAIN",
     "CHK-XBAR-LIMITS",
     "CHK-XBAR-HELD",
-    "CHK-CHAIN-HELD",
     "CHK-XBAR-POSTDRAIN",
     "CHK-CHAIN-LIMIT",
-    "CHK-BOTH-LIMITS",
     "CHK-SAT-B-COUNT",
     "CHK-SAT-R-COUNT",
     "CHK-SYSIF-NO-OUTBOUND-PATH",
@@ -174,96 +162,14 @@ class _Cfg:
 
 
 @pyuvm.test()
-class sep_outbound_stall_saturation_test(sep_base_test):
+class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
     """Delays, hold-then-release and limit saturation toward the outbound port."""
 
     required_evidence = CHECKS
 
-    # ---- log helpers ---------------------------------------------------------
-    def _emit(self, chk: str, line: str) -> None:
-        self.logger.info("%s: %s", chk, line)
-        self.logger.info("%s PASS: compared as stated seed=%d", chk, self.c.seed)
-
-    def _obs_row(self, chk: str, line: str) -> None:
-        self.logger.info("OBS-%s: %s", chk[4:], line)
-
-    def _fail(self, chk: str, line: str) -> None:
-        msg = f"{chk} FAIL seed={self.c.seed} {line} last_port_state={self._port_state()}"
-        self.logger.error(msg)
-        raise AssertionError(msg)
-
-    def _fence(self, term: str) -> None:
-        self.fence_seen.append(term)
-        self.logger.info(
-            "CHK-NONVAC: fence=%s index=%d seed=%d", term, len(self.fence_seen), self.c.seed
-        )
-
-    def _port_state(self) -> str:
-        def n(tap, ch):
-            return sum(1 for b in tap.beats if b.ch == ch)
-
-        return (
-            f"PR-OUT aw={n(self.out, 'aw')} w={n(self.out, 'w')} ar={n(self.out, 'ar')} "
-            f"PR-OUT-RSP b={n(self.rsp, 'b')} r={n(self.rsp, 'r')}"
-        )
-
-    def _wait_bound(self, kind: str, bound: str) -> None:
-        if kind in self.waits_logged:
-            return
-        self.waits_logged.add(kind)
-        self.logger.info(
-            "CHK-TIMEOUT-PATHS: wait=%s bound=%s on_expiry=fail_with_initiator_txn_and_last_port_state "
-            "last_port_state=%s",
-            kind,
-            bound,
-            self._port_state(),
-        )
-
     @staticmethod
     def _now_ps() -> int:
         return int(get_sim_time("ps"))
-
-    # ---- set-up --------------------------------------------------------------------
-    async def _program_filters(self) -> None:
-        c = self.c
-        self.ibank = SepFilterBank(self, "in")
-        self.obank = SepFilterBank(self, "out")
-        await self.obank.program(
-            OUT_ENTRY,
-            FilterEntry(
-                start=PAGE,
-                end=PAGE + 0xFFF,
-                enabled=True,
-                read_allowed=True,
-                write_allowed=True,
-                allow_ns=False,
-                allow_burst=True,
-                src_id=0,
-            ),
-        )
-        await self.ibank.program(
-            IN_ENTRY,
-            FilterEntry(
-                start=PAGE,
-                end=PAGE + 0xFFF,
-                enabled=True,
-                read_allowed=True,
-                write_allowed=True,
-                allow_ns=False,
-                allow_burst=True,
-                src_id=c.sys_user,
-            ),
-        )
-        await self.tr.dma.program_range(0x0, 0xFFFF_FFFF, valid=True)
-        await self.tr.dma.wr(_D.addr("ADDR_SPACE_ID"), ASID_RESET)
-        self.logger.info(
-            "SETUP outbound_entry=%d inbound_entry=%d page=0x%x lsu_user=%d sysif_user=%d",
-            OUT_ENTRY,
-            IN_ENTRY,
-            PAGE,
-            c.lsu_user,
-            c.sys_user,
-        )
 
     # ---- stimulus builders -------------------------------------------------------------
     def _txn(self, init: str, op: str, axi_id: int) -> Txn:
@@ -314,33 +220,21 @@ class sep_outbound_stall_saturation_test(sep_base_test):
 
     async def _dma_start(self, job: DmaJob) -> None:
         await self.tr.dma_prepare(job)
-        job.t0_ps = self._now_ps()
-        await self.tr.dma.go()
+        await self.tr.dma_go(job)
 
-    async def _dma_finish(self, job: DmaJob) -> None:
-        total = 4 * job.words
-        self._wait_bound("dma_done", f"status_polls={self.tr.dma.done_bound(total)}")
-        try:
-            res = await self.tr.dma.run_to_done(total, tag=f" {job.name}")
-        except DmaTimeout as exc:
-            raise AssertionError(
-                f"TIMEOUT initiator=dma txn={job.name} {job.op} words={job.words} "
-                f"bound_polls={self.tr.dma.done_bound(total)} "
-                f"last_port_state={self._port_state()} detail={exc}"
-            ) from exc
-        job.t1_ps = self._now_ps()
-        job.status_done = res.status.done
-        job.status_error = res.status.error
+    async def _dma_finish(self, job: DmaJob, chk: str) -> None:
+        """Wait for DONE, clear it and take the copied words; grades the job for ``chk``."""
+        self._wait_bound("dma_done", f"status_polls={self.tr.dma.done_bound(4 * job.words)}")
+        await self.tr.dma_wait(job)
         await self.tr.dma_finish(job)
-        job.done = True
         if job.status_done != 1 or job.status_error != 0 or job.done_after_clear != 0:
             self._fail(
-                "CHK-DELAYS",
+                chk,
                 f"job={job.name} done={job.status_done} status_err={job.status_error} "
                 f"done_after_clear={job.done_after_clear}",
             )
         if not job.write and job.got != job.expected_words():
-            self._fail("CHK-DELAYS", f"wrong_target job={job.name}")
+            self._fail(chk, f"wrong_target job={job.name}")
 
     def _check_txn(self, t: Txn, chk: str) -> None:
         if t.init == "sysif":
@@ -363,7 +257,9 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         self.sys_checked.add(t.name)
 
     # ---- one transaction on a quiet path --------------------------------------------------
-    async def _lone(self, init: str, op: str, *, chan: str = "none", delay: int = 0, lead: int = 0):
+    async def _lone(
+        self, init: str, op: str, chk: str, *, chan: str = "none", delay: int = 0, lead: int = 0
+    ):
         """One access of one initiator; the stall or hold of ``chan`` is raised at its start."""
         meter = Meter(self)
         self._wait_bound("txn", f"axi_timeout_ns={self.tr.timeout_ns}")
@@ -389,17 +285,16 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         if init == "dma":
             ri = len(self.rsp.beats)
             arm()
-            job.t0_ps = self._now_ps()
-            await self.tr.dma.go()
-            await self._dma_finish(job)
+            await self.tr.dma_go(job)
+            await self._dma_finish(job, chk)
             beats = [b for b in self.rsp.beats[ri:] if b.ch == ("b" if job.write else "r")]
             if not beats:
-                self._fail("CHK-DELAYS", f"dma response never seen at PR-OUT-RSP chan={chan}")
+                self._fail(chk, f"dma response never seen at PR-OUT-RSP chan={chan}")
             lat = (beats[-1].t_ps - job.t0_ps) / 1000.0
         else:
             arm()
             await self._run_t(t)
-            self._check_txn(t, "CHK-DELAYS")
+            self._check_txn(t, chk)
             lat = t.latency_ns
         if rel is not None:
             await rel
@@ -412,7 +307,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         )
 
     def _delays_line(self, chan, delay, init, op, lat, base, done, reached) -> None:
-        emit = self._obs_row if init == "sysif" and not reached else self._emit
+        emit = self._obs_row if init == "sysif" and not reached else self._line
         emit(
             "CHK-DELAYS",
             f"chan={chan} delay_cycles={delay} init={init} latency_ns={lat:.1f} "
@@ -420,27 +315,29 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         )
 
     async def _s2_baseline(self) -> None:
+        chk = "CHK-DELAYS"
         for init in INITS:
             for op in ("wr", "rd"):
-                r = await self._lone(init, op)
+                r = await self._lone(init, op, chk)
                 if init != "sysif" and (r.resp != RESP_OKAY or not r.reached):
-                    self._fail("CHK-DELAYS", f"baseline init={init} op={op} resp={r.resp}")
+                    self._fail(chk, f"baseline init={init} op={op} resp={r.resp}")
                 self.base[(init, op)] = r.lat
                 self._delays_line("none", 0, init, op, r.lat, r.lat, 1, r.reached)
         self._fence("BASELINE")
 
     async def _s3_channels(self) -> None:
+        chk = "CHK-DELAYS"
         period = self.cfg.sys_clk_period_ns
         for chan, op in (("aw", "wr"), ("w", "wr"), ("ar", "rd"), ("b", "wr"), ("r", "rd")):
             for init in INITS:
                 d = self.rng.randrange(1, self.c.delay_max + 1)
                 base = self.base[(init, op)]
                 lead = math.ceil(base / period)
-                r = await self._lone(init, op, chan=chan, delay=d, lead=lead)
+                r = await self._lone(init, op, chk, chan=chan, delay=d, lead=lead)
                 grade = init != "sysif" or r.reached
                 if grade and r.lat - base < d * period:
                     self._fail(
-                        "CHK-DELAYS",
+                        chk,
                         f"chan={chan} init={init} delay_cycles={d} latency_ns={r.lat:.1f} "
                         f"baseline_ns={base:.1f} period_ns={period}: the delay never reached the path",
                     )
@@ -453,6 +350,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
 
     async def _s4_all(self) -> None:
         c = self.c
+        chk = "CHK-DELAYS"
         self._wait_bound("txn", f"axi_timeout_ns={self.tr.timeout_ns}")
         delay = ResponderDelay(SepSeededRng(c.seed ^ 0x5EED5), c.p_stall, c.p_hold, c.hold_max)
         lsu = [self._txn("lsu", op, 1 + k) for k, op in enumerate(("wr", "wr", "rd", "rd"))]
@@ -462,7 +360,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         async def dma_seq() -> None:
             for j in jobs:
                 await self._dma_start(j)
-                await self._dma_finish(j)
+                await self._dma_finish(j, chk)
 
         meter = Meter(self)
         delay.start()
@@ -479,10 +377,10 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         snap = meter.read()
         reach = {i: snap["port"][i]["aw"] + snap["port"][i]["ar"] > 0 for i in INITS}
         for t in lsu + sysif:
-            self._check_txn(t, "CHK-DELAYS")
+            self._check_txn(t, chk)
         for init, items in (("lsu", lsu), ("sysif", sysif)):
             if any(not t.done for t in items):
-                self._fail("CHK-DELAYS", f"chan=all init={init} transaction without response")
+                self._fail(chk, f"chan=all init={init} transaction without response")
             self._delays_line(
                 "all",
                 sum(delay.stall_clocks) + delay.hold_clocks,
@@ -504,6 +402,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             reach["dma"],
         )
         self.logger.info("DELAYS %s", delay.describe())
+        self._pass(chk)
         self._fence("ALL_DELAYED")
 
     # ---- hold sessions ---------------------------------------------------------------------
@@ -579,7 +478,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
                 fails.append(str(exc))
         if s.job is not None and not fails:
             try:
-                await self._dma_finish(s.job)
+                await self._dma_finish(s.job, chk)
             except AssertionError as exc:
                 fails.append(str(exc))
         graded = [t for t in s.txns if t.init != "sysif"]
@@ -618,76 +517,74 @@ class sep_outbound_stall_saturation_test(sep_base_test):
 
     # ---- S5 ------------------------------------------------------------------------------------
     async def _s5_hold_drain(self) -> None:
+        chk = "CHK-HOLD-DRAIN"
         for name, kw, want in (
             ("hold_writes", {"lsu_w": 1, "sys_w": 1, "dma": ("wr", 1)}, 2),
             ("hold_reads", {"lsu_r": 1, "sys_r": 1, "dma": ("rd", 1)}, 2),
         ):
             s = await self._open(name, **kw)
-            snap = await self._window(s, "CHK-HOLD-DRAIN")
+            snap = await self._window(s, chk)
             acc = snap["port_aw"] + snap["port_ar"]
             resp = (
                 snap["port_b"] + snap["port_r"] + snap["mst"]["lsu"]["b"] + snap["mst"]["lsu"]["r"]
             )
             if resp:
-                self._fail("CHK-HOLD-DRAIN", f"session={name} responses_in_hold={resp}")
+                self._fail(chk, f"session={name} responses_in_hold={resp}")
             if acc != want:
                 self._fail(
-                    "CHK-HOLD-DRAIN",
+                    chk,
                     f"session={name} accepted_in_hold={acc} want={want} per_init="
                     f"{ {i: snap['port'][i] for i in INITS} }",
                 )
             sys_resp = snap["mst"]["sysif"]["b"] + snap["mst"]["sysif"]["r"]
             self.logger.info(
                 "OBS-HOLD-SYSIF: session=%s sysif_decerr_in_hold=%d no_outbound_path=1 "
-                "LINKED-ISSUE SF-005 (observation only)",
+                "(the DECERR of the inbound path is not held by the responder)",
                 name,
                 sys_resp,
             )
-            done, total, to_last = await self._drain(s, "CHK-HOLD-DRAIN")
-            self._emit(
-                "CHK-HOLD-DRAIN",
+            done, total, to_last = await self._drain(s, chk)
+            self._line(
+                chk,
                 f"accepted_in_hold={acc} responses_in_hold={resp} "
                 f"responses_after_release={done}/{total} release_to_last_ns={to_last:.1f} "
                 f"session={name}",
             )
+        self._pass(chk)
         self._fence("HOLD_RELEASED")
 
     # ---- S6, S7 --------------------------------------------------------------------------------
-    def _lim_note(self, what: str, n: int, sf: str) -> None:
-        tag = (
-            "matches_expected"
-            if n == EXPECTED_LIMIT
-            else f"expected={EXPECTED_LIMIT} LINKED-ISSUE {sf}"
-        )
-        self.logger.info("OBS-LIMIT: %s measured=%d %s", what, n, tag)
-
     async def _s6_mst(self) -> None:
+        chk = "CHK-XBAR-LIMITS"
         res = {}
         for op, kw in (("wr", {"lsu_w": LSU_ISSUE}), ("rd", {"lsu_r": LSU_ISSUE})):
             s = await self._open(f"mst_{op}", **kw)
-            snap = await self._window(s, "CHK-XBAR-LIMITS")
+            snap = await self._window(s, chk)
             m = snap["mst"]["lsu"]
             acc, stall = (m["aw"], m["aw_stall"]) if op == "wr" else (m["ar"], m["ar_stall"])
             if stall == 0 or acc >= LSU_ISSUE:
                 self._fail(
-                    "CHK-XBAR-LIMITS",
+                    chk,
                     f"session={s.name} no finite stop: accepted={acc} issued={LSU_ISSUE} "
                     f"stall_cycles={stall}",
                 )
-            self._lim_note(f"mst_{op}_accepted_before_stall", acc, "SF-002")
             self.logger.info(
-                "OBS-LIMIT: mst_%s stall_cycles=%d port_accepted=%d",
+                "OBS-LIMIT: mst_%s_accepted_before_stall=%d rtl_max_trans=%d stall_cycles=%d "
+                "port_accepted=%d (the count is printed, not compared)",
                 op,
+                acc,
+                RTL_MAX_TRANS,
                 stall,
                 snap["port_aw"] + snap["port_ar"],
             )
             res[op] = acc
-            self.drain_acc.append(await self._drain(s, "CHK-XBAR-LIMITS"))
+            self.drain_acc.append(await self._drain(s, chk))
         self.mst_n = res["wr"]
         self.mst_n_rd = res["rd"]
         self._fence("MST_LIMIT")
 
     async def _s7_slv(self) -> None:
+        chk = "CHK-XBAR-LIMITS"
         res = {}
         slv_lsu = max(1, self.mst_n // 2)
         for name, kw in (
@@ -695,14 +592,11 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             ("slv_from_3", {"lsu_w": slv_lsu, "dma": ("wr", DMA_WORDS), "sys_w": slv_lsu}),
         ):
             s = await self._open(name, **kw)
-            snap = await self._window(s, "CHK-XBAR-LIMITS")
+            snap = await self._window(s, chk)
             acc = snap["port_aw"]
             demand = slv_lsu + DMA_WORDS
             if acc >= demand:
-                self._fail(
-                    "CHK-XBAR-LIMITS",
-                    f"session={name} no finite stop: accepted={acc} demand={demand}",
-                )
+                self._fail(chk, f"session={name} no finite stop: accepted={acc} demand={demand}")
             sys_n = snap["mst"]["sysif"]["aw"]
             self.logger.info(
                 "OBS-SYSIF-REACH: session=%s sysif_port_accepted=%d sysif_master_aw=%d reached=0 "
@@ -712,40 +606,53 @@ class sep_outbound_stall_saturation_test(sep_base_test):
                 sys_n,
             )
             self.logger.info(
-                "OBS-LIMIT: %s issuers_total_accepted_at_port=%d per_init=%s (lsu+dma total, not "
-                "a slave-port limit; MaxSlvTrans not evaluated) LINKED-ISSUE SF-002",
+                "OBS-LIMIT: %s issuers_total_accepted_at_port=%d per_init=%s rtl_max_trans=%d "
+                "(the LSU and DMA total at the port; the slave-port limit itself is not "
+                "measured)",
                 name,
                 acc,
                 {i: snap["port"][i]["aw"] for i in INITS},
+                RTL_MAX_TRANS,
             )
             res[name] = acc
-            self.drain_acc.append(await self._drain(s, "CHK-XBAR-LIMITS"))
+            self.drain_acc.append(await self._drain(s, chk))
         done = sum(d[0] for d in self.drain_acc)
         total = sum(d[1] for d in self.drain_acc)
         self._emit(
-            "CHK-XBAR-LIMITS",
-            f"mst_limit_expected={EXPECTED_LIMIT} mst_accepted_before_stall={self.mst_n} "
-            f"slv_limit_expected={EXPECTED_LIMIT} slv_accepted_from_2={res['slv_from_2']} "
+            chk,
+            f"mst_accepted_before_stall={self.mst_n} slv_accepted_from_2={res['slv_from_2']} "
             f"slv_accepted_from_3={res['slv_from_3']} drained={done}/{total} deadlock=0",
         )
         self._fence("SLV_LIMIT")
 
     # ---- S8 ------------------------------------------------------------------------------------
-    async def _pulse_until(self, ok_fn) -> int:
-        """Release responses a few at a time until ``ok_fn`` holds; returns the pulses used."""
+    async def _release_until(self, ok_fn) -> tuple[int, int]:
+        """Release one beat per channel at a time until ``ok_fn`` holds.
+
+        Returns (releases used, response beats that left), (0, beats) when the
+        bound ran out.
+        """
         self._wait_bound(
-            "one_release", f"pulses={ONE_RELEASE_POLLS} wait_clocks={ONE_RELEASE_WAIT} each"
+            "one_release", f"releases={ONE_RELEASE_POLLS} wait_clocks={ONE_RELEASE_WAIT} each"
         )
+        beats = 0
         for k in range(1, ONE_RELEASE_POLLS + 1):
-            got = await self.ctl.pulse_hold_low(self.rsp)
+            got = await self.ctl.release_one(self.rsp)
+            beats += got
             await ClockCycles(self.dut_clk, ONE_RELEASE_WAIT)
             if ok_fn():
-                return k
+                return k, beats
             if not got:
-                self.logger.info("OBS-RELEASE: pulse=%d no response beat appeared", k)
-        return 0
+                self.logger.info("OBS-RELEASE: release=%d no response beat left", k)
+        return 0, beats
 
-    async def _held(self, chk: str, name: str, *, lsu_w=0, dma_words=0, sys_w=0) -> None:
+    async def _held(self, name: str, *, lsu_w=0, dma_words=0, sys_w=0, graded: bool) -> None:
+        """One hold at the crossbar limit with one extra request per initiator.
+
+        Graded for CHK-XBAR-HELD; the three-initiator session is reported as
+        OBS-CHAIN-HELD, since its stop is the same crossbar stop.
+        """
+        chk = "CHK-XBAR-HELD"
         kw = {"lsu_w": lsu_w, "sys_w": sys_w}
         if dma_words:
             kw["dma"] = ("wr", dma_words)
@@ -765,86 +672,82 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             if stall == 0 or now["mst"]["lsu"]["aw"] != before["mst"]["lsu"]["aw"]:
                 self._fail(
                     chk,
-                    f"init=lsu stall_cycles={stall} accepted_before={before['mst']['lsu']['aw']} "
+                    f"session={name} init=lsu stall_cycles={stall} "
+                    f"accepted_before={before['mst']['lsu']['aw']} "
                     f"accepted_now={now['mst']['lsu']['aw']}: the extra request met no limit",
                 )
-            pulses = await self._pulse_until(
+            rel = await self._release_until(
                 lambda: s.meter.read()["mst"]["lsu"]["aw"] > before["mst"]["lsu"]["aw"]
             )
-            rows.append(("lsu", stall, pulses, extra))
+            rows.append(("lsu", stall, rel, extra))
         if dma_words:
             pend = dma_words - before["port"]["dma"]["aw"]
             if pend <= 0:
                 self._fail(
                     chk,
-                    f"init=dma accepted={before['port']['dma']['aw']} of {dma_words}: no limit reached",
+                    f"session={name} init=dma accepted={before['port']['dma']['aw']} of "
+                    f"{dma_words}: no limit reached",
                 )
             base_aw = s.meter.read()["port"]["dma"]["aw"]
-            pulses = await self._pulse_until(lambda: s.meter.read()["port"]["dma"]["aw"] > base_aw)
-            rows.append(("dma", "n/a", pulses, None))
+            rel = await self._release_until(lambda: s.meter.read()["port"]["dma"]["aw"] > base_aw)
+            rows.append(("dma", "n/a", rel, None))
         if sys_w:
             extra = self._launch(s, "sysif", "wr", 1)
             await ClockCycles(self.dut_clk, WINDOW)
             now = s.meter.read()
             stall = now["mst"]["sysif"]["aw_stall"] - before["mst"]["sysif"]["aw_stall"]
-            rows.append(("sysif", stall, -1, extra))
+            rows.append(("sysif", stall, (-1, 0), extra))
         done, total, _ = await self._drain(s, chk)
-        completed = {}
-        for init, stall, pulses, extra in rows:
+        for init, stall, (releases, beats), extra in rows:
             if init == "sysif":
                 self.logger.info(
                     "OBS-SYSIF-REACH: session=%s reached=0 no_outbound_path=1 (observation only)",
                     name,
                 )
-                acc = "na"
                 comp = int(all(t.done for t in extra))
-            elif init == "dma":
-                if pulses == 0:
-                    self._fail(chk, "init=dma held request never accepted after the releases")
-                acc = f"{pulses}pulses"
-                comp = int(s.job.done)
+                note = " reached=0 no_outbound_path=1 not_graded=observation_only"
             else:
-                if pulses == 0:
-                    self._fail(chk, "init=lsu held request never accepted after the releases")
-                acc = f"{pulses}pulses"
-                comp = int(all(t.done for t in extra))
-            if not comp:
-                self._fail(chk, f"init={init} held request never completed")
-            completed[init] = comp
-            emit = self._emit if init == "lsu" else self._obs_row
-            emit(
-                chk,
-                f"init={init} stall_cycles={stall} earlier_altered={alt_before} "
-                f"accepted_after_release={acc} completed={comp} session={name} "
-                f"drained={done}/{total}"
-                + (
+                if releases == 0:
+                    self._fail(
+                        chk,
+                        f"session={name} init={init} held request never accepted after "
+                        f"{ONE_RELEASE_POLLS} releases released_beats={beats}",
+                    )
+                comp = int(s.job.done) if init == "dma" else int(all(t.done for t in extra))
+                note = (
                     " stall_src=not_observable_at_a_pin not_graded=observation_only"
                     if init == "dma"
-                    else (
-                        " reached=0 no_outbound_path=1 not_graded=observation_only"
-                        if init == "sysif"
-                        else ""
-                    )
-                ),
+                    else ""
+                )
+            if not comp:
+                self._fail(chk, f"session={name} init={init} held request never completed")
+            emit = self._line if graded and init == "lsu" else self._obs_row
+            emit(
+                chk if graded else "CHAIN-HELD",
+                f"init={init} stall_cycles={stall} earlier_altered={alt_before} "
+                f"releases_to_admit={releases} released_beats={beats} completed={comp} "
+                f"session={name} drained={done}/{total}{note}",
             )
-        if chk == "CHK-CHAIN-HELD":
-            self.logger.info(
-                "OBS-CHAIN-HELD: port_accepted_writes=%d responder_wr_limit=%d "
-                "chain_stop_cause=not_separable_from_xbar LINKED-ISSUE SF-003 (observation only)",
-                before["port_aw"],
-                self.c.depth,
+        if not graded:
+            self._obs_row(
+                "CHAIN-HELD",
+                f"session={name} port_accepted_writes={before['port_aw']} "
+                f"responder_wr_limit={self.c.depth} (the chain stop is the crossbar stop; "
+                "the chain limit is not separable at the pins)",
             )
 
     async def _s8_held(self) -> None:
         n = max(1, self.mst_n)
-        await self._held("CHK-XBAR-HELD", "xbar_held_lsu", lsu_w=n)
-        await self._held("CHK-XBAR-HELD", "xbar_held_dma", dma_words=DMA_WORDS)
-        await self._held("CHK-XBAR-HELD", "xbar_held_sysif", sys_w=n)
-        await self._held("CHK-CHAIN-HELD", "chain_held", lsu_w=n, dma_words=DMA_WORDS, sys_w=n)
+        await self._held("xbar_held_lsu", lsu_w=n, graded=True)
+        await self._held("xbar_held_dma", dma_words=DMA_WORDS, graded=True)
+        await self._held("xbar_held_sysif", sys_w=n, graded=True)
+        await self._held("chain_held", lsu_w=n, dma_words=DMA_WORDS, sys_w=n, graded=False)
+        self._pass("CHK-XBAR-HELD")
         self._fence("LIMIT_HELD")
 
     # ---- S9, S10 -------------------------------------------------------------------------------
     async def _s9_chain(self) -> None:
+        chk = "CHK-CHAIN-LIMIT"
         acc = {}
         done = total = 0
         demand = LSU_ISSUE + DMA_WORDS
@@ -853,35 +756,35 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             ("read", {"lsu_r": LSU_ISSUE, "dma": ("rd", DMA_WORDS), "sys_r": LSU_ISSUE}),
         ):
             s = await self._open(f"chain_{op}", **kw)
-            snap = await self._window(s, "CHK-CHAIN-LIMIT")
+            snap = await self._window(s, chk)
             n = snap["port_aw"] if op == "write" else snap["port_ar"]
             if n >= demand:
                 self._fail(
-                    "CHK-CHAIN-LIMIT",
+                    chk,
                     f"session={s.name} chain_accepted_{op}={n} >= {op} demand {demand} "
                     f"(lsu {LSU_ISSUE} + dma {DMA_WORDS}): no finite stop",
                 )
             acc[op] = n
             self.logger.info(
-                "OBS-CHAIN-LIMIT: %s_accepted=%d per_init=%s LINKED-ISSUE SF-003",
+                "OBS-CHAIN-LIMIT: %s_accepted=%d per_init=%s (the count is printed, not compared)",
                 op,
                 n,
                 {i: snap["port"][i] for i in INITS},
             )
-            d, t, _ = await self._drain(s, "CHK-CHAIN-LIMIT")
+            d, t, _ = await self._drain(s, chk)
             done += d
             total += t
-        self._emit(
-            "CHK-CHAIN-LIMIT",
+        self._line(
+            chk,
             f"chain_accepted_write={acc['write']} chain_accepted_read={acc['read']} "
             f"demand={demand} drained={done}/{total} deadlock=0 "
             f"responder_wr_limit={self.c.depth} responder_rd_limit={self.c.depth} "
-            "responder_limit_reached=0 chain_stop_cause=not_separable_from_xbar "
-            "LINKED-ISSUE=SF-003",
+            "responder_limit_reached=0 chain_stop_cause=not_separable_from_xbar",
         )
         self._fence("CHAIN_LIMIT")
 
     async def _s10_both(self) -> None:
+        chk = "CHK-CHAIN-LIMIT"
         s = await self._open(
             "both",
             lsu_w=LSU_ISSUE,
@@ -890,48 +793,51 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             sys_r=LSU_ISSUE,
             dma=("wr", DMA_WORDS),
         )
-        snap = await self._window(s, "CHK-BOTH-LIMITS")
+        snap = await self._window(s, chk)
         m = snap["mst"]["lsu"]
         xbar = int(m["aw_stall"] > 0 or m["ar_stall"] > 0)
         if not xbar:
-            self._fail("CHK-BOTH-LIMITS", "crossbar limit not reached in the hold")
-        done, total, to_last = await self._drain(s, "CHK-BOTH-LIMITS")
-        self._emit(
-            "CHK-BOTH-LIMITS",
+            self._fail(chk, "session=both crossbar limit not reached in the hold")
+        done, total, to_last = await self._drain(s, chk)
+        self._obs_row(
+            "BOTH-LIMITS",
             f"xbar_reached={xbar} chain_reached=not_separable_from_xbar port_aw={snap['port_aw']} "
             f"port_ar={snap['port_ar']} responder_wr_limit={self.c.depth} "
-            f"responder_rd_limit={self.c.depth} LINKED-ISSUE=SF-003 drained={done}/{total} "
-            f"release_to_last_ns={to_last:.1f} deadlock=0",
+            f"responder_rd_limit={self.c.depth} drained={done}/{total} "
+            f"release_to_last_ns={to_last:.1f} deadlock=0 (the crossbar stall and the drain "
+            "are graded by CHK-CHAIN-LIMIT; the chain limit is not separable at the pins)",
         )
+        self._pass(chk)
         self._fence("BOTH_LIMITS")
 
     # ---- S11 -----------------------------------------------------------------------------------
     async def _s11_post(self) -> None:
+        chk = "CHK-XBAR-POSTDRAIN"
         resp = {}
         lats = []
         for init in INITS:
             for op in ("wr", "rd"):
-                r = await self._lone(init, op)
+                r = await self._lone(init, op, chk)
                 key = f"{init}_{'w' if op == 'wr' else 'r'}"
                 if init == "sysif":
                     self._obs_row(
-                        "CHK-XBAR-POSTDRAIN",
-                        f"{key}={r.resp} reached={int(r.reached)} no_outbound_path=1",
+                        chk, f"{key}={r.resp} reached={int(r.reached)} no_outbound_path=1"
                     )
                     continue
                 if r.resp != RESP_OKAY:
-                    self._fail("CHK-XBAR-POSTDRAIN", f"init={init} op={op} resp={r.resp}")
+                    self._fail(chk, f"init={init} op={op} resp={r.resp}")
                 resp[key] = r.resp
                 lats.append(r.lat)
         base = max(self.base.values())
         self._emit(
-            "CHK-XBAR-POSTDRAIN",
+            chk,
             " ".join(f"{k}={v}" for k, v in resp.items())
             + f" latency_ns={max(lats):.1f} baseline_ns={base:.1f}",
         )
         self._fence("POST_DRAIN")
 
     async def _final_accounting(self) -> None:
+        bchk, rchk = "CHK-SAT-B-COUNT", "CHK-SAT-R-COUNT"
         self.ctl.clear()
         idle = (self.rsp.mark(), self.pin_s.mark(), self.pin_m.mark())
         await ClockCycles(self.dut_clk, IDLE_CLOCKS)
@@ -941,51 +847,48 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         extra_b = sum(1 for b in rsp_idle if b.ch == "b") + ps["b"] + pm["b"]
         extra_r = sum(1 for b in rsp_idle if b.ch == "r") + ps["r"] + pm["r"]
 
+        self._check_pin_xz(bchk, rchk)
         whole = port_view(self.layout, self.out.beats[self.m0[0] :], self.rsp.beats[self.m0[1] :])
         ws, wm = self.pin_s.since(self.m0[2]), self.pin_m.since(self.m0[3])
         iss = {k: len(v) for k, v in self.issued_all.items()}
         if whole.unknown:
-            self._fail("CHK-SAT-B-COUNT", f"x_or_z_beats={whole.unknown}")
+            self._fail(bchk, f"x_or_z_beats={whole.unknown}")
         lsu_aw, lsu_ar = whole.n_req("lsu", "wr"), whole.n_req("lsu", "rd")
         dma_aw, dma_ar = whole.n_req("dma", "wr"), whole.n_req("dma", "rd")
         sys_aw, sys_ar = whole.n_req("sysif", "wr"), whole.n_req("sysif", "rd")
         if (lsu_aw, lsu_ar) != (iss.get(("lsu", "wr"), 0), iss.get(("lsu", "rd"), 0)):
-            self._fail(
-                "CHK-SAT-B-COUNT", f"lsu requests at PR-OUT {lsu_aw}/{lsu_ar} != issued {iss}"
-            )
+            self._fail(bchk, f"lsu requests at PR-OUT {lsu_aw}/{lsu_ar} != issued {iss}")
         if (dma_aw, dma_ar) != (iss.get(("dma", "wr"), 0), iss.get(("dma", "rd"), 0)):
-            self._fail(
-                "CHK-SAT-B-COUNT", f"dma requests at PR-OUT {dma_aw}/{dma_ar} != issued {iss}"
-            )
+            self._fail(bchk, f"dma requests at PR-OUT {dma_aw}/{dma_ar} != issued {iss}")
         if ws["b"] != lsu_aw or whole.b_by_init["lsu"] != lsu_aw:
-            self._fail("CHK-SAT-B-COUNT", f"lsu_aw={lsu_aw} lsu_b={ws['b']}")
+            self._fail(bchk, f"lsu_aw={lsu_aw} lsu_b={ws['b']}")
         if whole.b_by_init["dma"] != dma_aw:
-            self._fail("CHK-SAT-B-COUNT", f"dma_aw={dma_aw} dma_b={whole.b_by_init['dma']}")
+            self._fail(bchk, f"dma_aw={dma_aw} dma_b={whole.b_by_init['dma']}")
         if whole.b_total != len([r for r in whole.reqs if r.kind == "wr"]):
-            self._fail("CHK-SAT-B-COUNT", f"port_b={whole.b_total}")
+            self._fail(bchk, f"port_b={whole.b_total}")
         if extra_b:
-            self._fail("CHK-SAT-B-COUNT", f"extra_b_after_idle={extra_b}")
+            self._fail(bchk, f"extra_b_after_idle={extra_b}")
         self._emit(
-            "CHK-SAT-B-COUNT",
+            bchk,
             f"lsu_aw={lsu_aw} lsu_b={ws['b']} dma_aw={dma_aw} dma_b={whole.b_by_init['dma']} "
             f"extra_b_after_idle={extra_b}",
         )
         if ws["r"] != whole.r_beats_by_init["lsu"] or ws["r"] != lsu_ar:
-            self._fail("CHK-SAT-R-COUNT", f"lsu_ar={lsu_ar} lsu_r={ws['r']}")
+            self._fail(rchk, f"lsu_ar={lsu_ar} lsu_r={ws['r']}")
         if whole.r_beats_by_init["dma"] != dma_ar:
-            self._fail("CHK-SAT-R-COUNT", f"dma_ar={dma_ar} dma_r={whole.r_beats_by_init['dma']}")
+            self._fail(rchk, f"dma_ar={dma_ar} dma_r={whole.r_beats_by_init['dma']}")
         if ws["rlast"] != lsu_ar:
-            self._fail("CHK-SAT-R-COUNT", f"rlast={ws['rlast']} reads={lsu_ar}")
+            self._fail(rchk, f"rlast={ws['rlast']} reads={lsu_ar}")
         if (
             whole.rlast_ok["lsu"] != lsu_ar
             or whole.rlast_ok["dma"] != dma_ar
             or whole.r_total != lsu_ar + dma_ar
         ):
-            self._fail("CHK-SAT-R-COUNT", f"rlast_ok_port={whole.rlast_ok} r_total={whole.r_total}")
+            self._fail(rchk, f"rlast_ok_port={whole.rlast_ok} r_total={whole.r_total}")
         if extra_r:
-            self._fail("CHK-SAT-R-COUNT", f"extra_r_after_idle={extra_r}")
+            self._fail(rchk, f"extra_r_after_idle={extra_r}")
         self._emit(
-            "CHK-SAT-R-COUNT",
+            rchk,
             f"lsu_ar={lsu_ar} lsu_r={ws['r']} dma_ar={dma_ar} dma_r={whole.r_beats_by_init['dma']} "
             f"extra_r_after_idle={extra_r}",
         )
@@ -1018,9 +921,6 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         seed = self.random_seed()
         self.c = c = _Cfg(seed)
         self.rng = SepSeededRng(seed ^ 0x0C0FFEE)
-        self.dut_clk = cocotb.top.clk_i
-        self.fence_seen: list[str] = []
-        self.waits_logged: set[str] = set()
         self.n_made = self.n_jobs = 0
         self.sys_checked: set[str] = set()
         self.cur = None
@@ -1038,15 +938,8 @@ class sep_outbound_stall_saturation_test(sep_base_test):
 
         await self.bring_up_no_cpu()
         self.suppress_host_axi_transaction_info()
-        self.out = SepFabricTap("PR-OUT").start()
-        self.rsp = SepFabricTap("PR-OUT-RSP").start()
-        self.pin_s = PinWatch("s_axi").start()
-        self.pin_m = PinWatch("m_axi").start()
-        self.layout = Layout(PAGE)
-        self.tr = OutboundTraffic(self, self.layout, self._port_state)
         self.ctl = RespCtl()
-        await self._program_filters()
-        cocotb.top.smn_outbound_rd_addr_data_i.value = 1
+        await self.bench_start()
         await ClockCycles(self.dut_clk, 4)
         self.m0 = (self.out.mark(), self.rsp.mark(), self.pin_s.mark(), self.pin_m.mark())
         self._fence("BRINGUP_DONE")
@@ -1063,18 +956,12 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         await self._s11_post()
         await self._final_accounting()
 
-        cocotb.top.smn_outbound_rd_addr_data_i.value = 0
-        self.pin_s.stop()
-        self.pin_m.stop()
-        await self.out.stop()
-        await self.rsp.stop()
-        if self.fence_seen != list(FENCE):
-            self._fail("CHK-NONVAC", f"fence order {self.fence_seen}")
-        self._emit("CHK-NONVAC", "fence=" + "<".join(self.fence_seen) + f" terms={len(FENCE)}")
+        await self.bench_stop()
+        self._check_fence(FENCE)
         waits = "{" + ",".join(sorted(self.waits_logged)) + "}"
         self._emit(
             "CHK-TIMEOUT-PATHS",
             f"waits={waits} txn_bound_ns={self.tr.timeout_ns} window_clocks={WINDOW} "
-            f"idle_clocks={IDLE_CLOCKS}",
+            f"idle_clocks={IDLE_CLOCKS} dma_polls_max={self.tr.dma_polls_max}",
         )
         self.result_pass(TEST, seed, len(CHECKS))

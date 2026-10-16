@@ -27,12 +27,15 @@
 //
 // Response control (an error inject on smn_outbound_axi_resp_i, both inputs 0
 // by default, which answers OKAY at once):
-//   * resp_hold_i=1 holds B VALID and R VALID low. AW, W and AR are still
-//     accepted, so a request reaches the port and waits for its response. The
-//     held responses go out in order when the input falls. A firmware console
-//     store waits too, so a CPU leaf does not raise it.
+//   * resp_hold_i=1 keeps the responder from raising B VALID or R VALID. A
+//     VALID already high stays high until its handshake, so the hold gates the
+//     next response, never one on offer. AW, W and AR are still accepted, so a
+//     request reaches the port and waits for its response. The held responses
+//     go out in order when the input falls. A firmware console store waits
+//     too, so a CPU leaf does not raise it.
 //   * rd_slverr_i, sampled at the AR handshake, makes every R beat of that
-//     read answer SLVERR (data 0).
+//     read answer SLVERR; the beats carry the read data of the run ({~a, a}
+//     under rd_addr_data_i, else 0).
 //
 // Request-side control (both inputs 0 by default, which accepts at once and
 // returns zero read data):
@@ -137,6 +140,8 @@ module sep_outbound_mbx
   logic [Pw:0]    ar_cnt_q;
   logic [Aw-1:0]  r_addr_q;
   logic [7:0]     r_sent_q;
+  // A B or R VALID raised and not yet accepted; it stays up through a hold.
+  logic           b_valid_q, r_valid_q;
   logic           magic_seen_q;
   logic           stray_seen_q;
   logic [Aw-1:0]  stray_addr_q;
@@ -185,19 +190,22 @@ module sep_outbound_mbx
   wburst_t    r_cur;
   always_comb r_cur = '{addr: r_addr_q, size: r_head.size, burst: r_head.burst, id: '0};
 
+  // The response fields are 0 while nothing is queued, so they are never X.
+  wire b_queued = (b_cnt_q != '0);
+  wire r_queued = (ar_cnt_q != '0);
   always_comb begin
     resp_o          = '0;
     resp_o.aw_ready = aw_ready_w;
     resp_o.w_ready  = w_known && (b_cnt_q < wr_limit) && !ready_stall_i[1];
-    resp_o.b_valid  = (b_cnt_q != '0) && !resp_hold_i;
-    resp_o.b.id     = b_fifo[b_rd_q];
+    resp_o.b_valid  = b_valid_q || (b_queued && !resp_hold_i);
+    resp_o.b.id     = b_queued ? b_fifo[b_rd_q] : '0;
     resp_o.b.resp   = 2'b00;  // OKAY
     resp_o.ar_ready = (ar_cnt_q < rd_limit) && !ready_stall_i[2];
-    resp_o.r_valid  = (ar_cnt_q != '0) && !resp_hold_i;
-    resp_o.r.id     = r_head.id;
+    resp_o.r_valid  = r_valid_q || (r_queued && !resp_hold_i);
+    resp_o.r.id     = r_queued ? r_head.id : '0;
     resp_o.r.data   = rd_addr_data_i ? {~r_word_lo, r_word_lo} : '0;
-    resp_o.r.resp   = r_head.err ? 2'b10 : 2'b00;  // SLVERR under rd_slverr_i, else OKAY
-    resp_o.r.last   = r_last;
+    resp_o.r.resp   = (r_queued && r_head.err) ? 2'b10 : 2'b00;  // SLVERR under rd_slverr_i
+    resp_o.r.last   = r_queued && r_last;
   end
 
   // Log the first 40 STDOUT writes, so a console decode miss shows in the log.
@@ -218,6 +226,8 @@ module sep_outbound_mbx
       ar_cnt_q        <= '0;
       r_addr_q        <= '0;
       r_sent_q        <= '0;
+      b_valid_q       <= 1'b0;
+      r_valid_q       <= 1'b0;
       magic_seen_q    <= 1'b0;
       stray_seen_q    <= 1'b0;
       stray_addr_q    <= '0;
@@ -228,6 +238,8 @@ module sep_outbound_mbx
       dbg_cnt         <= 0;
     end else begin
       fw_char_valid_o <= 1'b0;  // 1-cycle pulse by default
+      b_valid_q       <= resp_o.b_valid && !req_i.b_ready;
+      r_valid_q       <= resp_o.r_valid && !req_i.r_ready;
 
       // AW FIFO.
       if (aw_push) begin

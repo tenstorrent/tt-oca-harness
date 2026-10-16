@@ -11,8 +11,8 @@ request to its initiator by address (``Layout``).
 
 Contents:
 
-* ``RespCtl``: drive of the hold and the READY stall mask, and the one-at-a-time
-  response release.
+* ``RespCtl``: drive of the hold and the READY stall mask, and the release of
+  one response beat per channel.
 * ``Meter``: the counts of one window at the master pins and at the port.
 * ``altered_requests``: PR-OUT requests that differ from what was issued.
 """
@@ -50,21 +50,19 @@ class RespCtl:
         await ClockCycles(self.dut.clk_i, cycles)
         self.clear()
 
-    async def pulse_hold_low(self, rsp_tap, *, bound_cycles: int = 8) -> int:
-        """Lower the hold for 1, 2, ... clocks until a response beat appears; raise it again.
+    async def release_one(self, rsp_tap, *, bound_cycles: int = 8) -> int:
+        """Lower the hold for one clock, so each response channel may raise one VALID.
 
-        Returns the beats seen at the response tap, 0 when none came inside the bound.
+        A VALID once raised stays up until its handshake, so at most one B and
+        one R beat leave per call. Returns the beats seen at the response tap
+        within ``bound_cycles`` of the pulse.
         """
         base = len(rsp_tap.beats)
-        for width in range(1, bound_cycles + 1):
-            self.hold(False)
-            await ClockCycles(self.dut.clk_i, width)
-            self.hold(True)
-            await ClockCycles(self.dut.clk_i, 2)
-            seen = len(rsp_tap.beats) - base
-            if seen:
-                return seen
-        return 0
+        self.hold(False)
+        await ClockCycles(self.dut.clk_i, 1)
+        self.hold(True)
+        await ClockCycles(self.dut.clk_i, bound_cycles)
+        return len(rsp_tap.beats) - base
 
 
 class Meter:

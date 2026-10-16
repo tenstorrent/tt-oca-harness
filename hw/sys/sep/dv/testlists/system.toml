@@ -790,18 +790,18 @@ name = "sep_outbound_contention_rand_test"
 module = "system.sep_outbound_contention_rand_test"
 seed = 1
 reseed = 4
-timeout_sec = 3600
+timeout_sec = 1800
 tags = ["outbound", "fabric", "dma", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_outbound_depth=64"]
 
 [[tests]]
 # Outbound target stall and hold-then-release from the LSU, Secure DMA and SMN inbound master, with the local crossbar and outbound chain outstanding limits reached under a held target: finite stop, held request completes, drain without deadlock, B and R accounting.
 name = "sep_outbound_stall_saturation_test"
 module = "system.sep_outbound_stall_saturation_test"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 1800
 tags = ["outbound", "fabric", "dma", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"

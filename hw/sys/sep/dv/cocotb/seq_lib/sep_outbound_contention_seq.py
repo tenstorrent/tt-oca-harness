@@ -17,12 +17,16 @@ Contents:
   address (the responder returns ``{~a, a}`` when ``smn_outbound_rd_addr_data_i``
   is 1).
 * ``Txn``, ``DmaJob``: one TB-master access and one Secure DMA copy.
-* ``PinWatch``: every AW/B/AR/R handshake on the pins of one TB master.
+* ``PinWatch``: every AW/B/AR/R handshake on the pins of one TB master, sampled
+  in the read-only phase of each clock; an X or Z field on a handshake is
+  recorded for the leaf to fail on.
 * ``ResponderDelay``: the per-cycle drive of the responder READY stall mask and
   of ``smn_outbound_resp_hold_i`` from a seeded stream.
-* ``port_view``, ``id_overlap``: the attribution and the outbound-ID sweep over
-  the two taps.
+* ``port_view``, ``id_overlap``, ``max_outstanding``: the attribution, the
+  LSU/DMA overlap sweep and the outstanding-depth sweep over the two taps.
 * ``OutboundTraffic``: runs transactions and DMA jobs on the three initiators.
+* ``OutboundLeaf``: the window, filter programming, taps and log helpers that
+  the two outbound leaves share.
 """
 
 from __future__ import annotations
@@ -30,18 +34,43 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.sep_fabric_tap import SepFabricTap
+from env.sep_filter_model import FilterEntry
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import SEP_CPU_CTRL, sym
 
-from seq_lib.sep_dma_ops import ST_DONE, STATUS, DmaTimeout, SepDmaOps, SepMemWords
+from seq_lib.sep_dma_ops import _D, ST_DONE, STATUS, DmaTimeout, SepDmaOps, SepMemWords
+from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 
 INITS = ("lsu", "dma", "sysif")
 SLOT_BYTES = 0x400
 RESP_OKAY = 0
+RESP_DECERR = 3
 BURST_INCR = 1
 AXSIZE_8B = 3
 AXSIZE_4B = 2
+# The outbound window of both leaves: one page above the SMU global base, with
+# outbound filter entry 4 opening it to the LSU and the DMA and inbound filter
+# entry 0 opening it to the SMN inbound master. The DMA stages its words in
+# SEP SRAM.
+SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
+PAGE = SMU_BASE + 0x0002_0000
+SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
+DMA_DST = SRAM_BASE + 0x0003_0000
+DMA_SRC = DMA_DST + 0x100
+ASID_RESET = _D.reset32("ADDR_SPACE_ID")
+OUT_ENTRY = 4
+IN_ENTRY = 0
+# AxPROT of the LSU (hw/sys/sep/doc/cpu.adoc, AxPROT table) and of the SMN
+# inbound master; the Secure DMA master leaves AxUSER at zero and issues
+# AxPROT 0b001 (hw/sys/sep/doc/fabric.adoc, hw/sys/sep/doc/dma.adoc, master path).
+LSU_PROT = 0b001
+SYS_PROT = 0b000
+DMA_PROT = 0b001
+DMA_USER = 0
+IDLE_CLOCKS = 256
 # The bus carrying each initiator's own accesses, and the lowest AXI ID the
 # outbound traffic of that bus uses. s_axi ID 0 is the CSR traffic of the DMA
 # programming, so outbound LSU traffic starts at 1.
@@ -158,15 +187,22 @@ def _bit(sig) -> bool:
         return False
 
 
-def _int(sig) -> int:
+def _int(sig) -> int | None:
+    """The integer value of a signal, ``None`` for an X or Z."""
     try:
         return int(sig.value)
     except ValueError:
-        return -1
+        return None
 
 
 class PinWatch:
-    """Every AW, B, AR and R handshake on the pins of one TB master."""
+    """Every AW, B, AR and R handshake on the pins of one TB master.
+
+    Samples in the read-only phase after each rising edge, as the fabric taps
+    do. A handshake whose id, resp, data or last is X or Z is recorded in
+    ``xz`` with its fields as ``None``; the leaf fails on ``xz`` at its
+    accounting.
+    """
 
     NAMES = (
         "awvalid",
@@ -192,10 +228,11 @@ class PinWatch:
     def __init__(self, bus: str) -> None:
         self.bus = bus
         self.cycles = 0
-        self.aw: list[tuple[int, int, int]] = []  # (cycle, id, addr)
-        self.b: list[tuple[int, int, int]] = []  # (cycle, id, resp)
-        self.ar: list[tuple[int, int, int]] = []
-        self.r: list[tuple[int, int, int, int, int]] = []  # (cycle, id, resp, data, last)
+        self.aw: list[tuple] = []  # (cycle, id, addr)
+        self.b: list[tuple] = []  # (cycle, id, resp)
+        self.ar: list[tuple] = []
+        self.r: list[tuple] = []  # (cycle, id, resp, data, last)
+        self.xz: list[str] = []
         self.aw_stall = 0
         self.ar_stall = 0
         self._task = None
@@ -209,28 +246,35 @@ class PinWatch:
             self._task.cancel()
             self._task = None
 
+    def _take(self, ch: str, rec: list, fields: tuple) -> None:
+        if any(v is None for v in fields):
+            self.xz.append(f"bus={self.bus} ch={ch} cycle={self.cycles} fields={fields}")
+        rec.append((self.cycles, *fields))
+
     async def _run(self) -> None:
         dut = cocotb.top
         s = {n: getattr(dut, f"{self.bus}_{n}") for n in self.NAMES}
         while True:
             await RisingEdge(dut.clk_i)
+            await ReadOnly()
             self.cycles += 1
-            c = self.cycles
             if _bit(s["awvalid"]):
                 if _bit(s["awready"]):
-                    self.aw.append((c, _int(s["awid"]), _int(s["awaddr"])))
+                    self._take("aw", self.aw, (_int(s["awid"]), _int(s["awaddr"])))
                 else:
                     self.aw_stall += 1
             if _bit(s["arvalid"]):
                 if _bit(s["arready"]):
-                    self.ar.append((c, _int(s["arid"]), _int(s["araddr"])))
+                    self._take("ar", self.ar, (_int(s["arid"]), _int(s["araddr"])))
                 else:
                     self.ar_stall += 1
             if _bit(s["bvalid"]) and _bit(s["bready"]):
-                self.b.append((c, _int(s["bid"]), _int(s["bresp"])))
+                self._take("b", self.b, (_int(s["bid"]), _int(s["bresp"])))
             if _bit(s["rvalid"]) and _bit(s["rready"]):
-                self.r.append(
-                    (c, _int(s["rid"]), _int(s["rresp"]), _int(s["rdata"]), _int(s["rlast"]))
+                self._take(
+                    "r",
+                    self.r,
+                    (_int(s["rid"]), _int(s["rresp"]), _int(s["rdata"]), _int(s["rlast"])),
                 )
 
     def mark(self) -> tuple[int, int, int, int]:
@@ -239,10 +283,14 @@ class PinWatch:
     def since(self, mark: tuple[int, int, int, int]) -> dict:
         """The handshakes after ``mark`` on IDs at or above this bus's outbound floor."""
         lo = MIN_ID[self.bus]
-        aw = [x for x in self.aw[mark[0] :] if x[1] >= lo]
-        b = [x for x in self.b[mark[1] :] if x[1] >= lo]
-        ar = [x for x in self.ar[mark[2] :] if x[1] >= lo]
-        r = [x for x in self.r[mark[3] :] if x[1] >= lo]
+
+        def known(x):
+            return x[1] is not None and x[1] >= lo
+
+        aw = [x for x in self.aw[mark[0] :] if known(x)]
+        b = [x for x in self.b[mark[1] :] if known(x)]
+        ar = [x for x in self.ar[mark[2] :] if known(x)]
+        r = [x for x in self.r[mark[3] :] if known(x)]
         return {
             "aw": len(aw),
             "b": len(b),
@@ -293,7 +341,10 @@ class ResponderDelay:
 
     ``p_stall`` is the percent chance per clock that AW, W and AR READY of the
     responder are low. The hold starts with ``p_hold`` percent chance per clock
-    and lasts 1 to ``hold_max`` clocks; B and R VALID stay low while it is up.
+    and lasts 1 to ``hold_max`` clocks; the responder raises no new B or R
+    VALID while it is up. ``hold_for`` keeps the hold up for a bounded run of
+    clocks regardless of the draw, so requests issued in that run are
+    outstanding at the port together.
     """
 
     def __init__(
@@ -305,7 +356,11 @@ class ResponderDelay:
         self.hold_max = hold_max
         self.hold_clocks = 0
         self.stall_clocks = [0, 0, 0]
+        self.forced_left = 0
         self._task = None
+
+    def hold_for(self, clocks: int) -> None:
+        self.forced_left = max(self.forced_left, clocks)
 
     def describe(self) -> str:
         return (
@@ -334,7 +389,10 @@ class ResponderDelay:
                 if p and self.rng.randrange(100) < p:
                     mask |= 1 << bit
                     self.stall_clocks[bit] += 1
-            if left:
+            if self.forced_left:
+                self.forced_left -= 1
+                hold = 1
+            elif left:
                 left -= 1
                 hold = 1
             elif self.p_hold and self.rng.randrange(100) < self.p_hold:
@@ -478,8 +536,12 @@ def port_view(layout: Layout, out_beats, rsp_beats) -> PortView:
 
 
 def id_overlap(view: PortView) -> tuple[int, int, dict[str, set[int]]]:
-    """(overlapping pairs from different initiators, those with one ID, ID sets)."""
-    reqs = [r for r in view.reqs if r.init is not None]
+    """(LSU/DMA request pairs outstanding at the port at once, those sharing an ID, ID sets).
+
+    A request is outstanding from its acceptance at PR-OUT to its last
+    response beat at PR-OUT-RSP.
+    """
+    reqs = [r for r in view.reqs if r.init in ("lsu", "dma")]
     pairs = collisions = 0
     for i, a in enumerate(reqs):
         for b in reqs[i + 1 :]:
@@ -490,9 +552,23 @@ def id_overlap(view: PortView) -> tuple[int, int, dict[str, set[int]]]:
                 if a.id == b.id:
                     collisions += 1
     ids: dict[str, set[int]] = {i: set() for i in INITS}
-    for r in reqs:
-        ids[r.init].add(r.id)
+    for r in view.reqs:
+        if r.init is not None:
+            ids[r.init].add(r.id)
     return pairs, collisions, ids
+
+
+def max_outstanding(reqs: list[Req]) -> int:
+    """The most of ``reqs`` outstanding at the port at one time."""
+    events = sorted(
+        [(r.t_ps, 1) for r in reqs]
+        + [(r.t_done_ps, -1) for r in reqs if r.t_done_ps != float("inf")]
+    )
+    live = peak = 0
+    for _, d in events:
+        live += d
+        peak = max(peak, live)
+    return peak
 
 
 class OutboundTraffic:
@@ -577,13 +653,16 @@ class OutboundTraffic:
         total = 4 * job.words
         await self.dma.program_transfer(src=src, dst=dst, total=total, chunk=total)
 
-    async def dma_run(self, job: DmaJob, *, delay: int = 0) -> DmaJob:
-        """GO after ``delay`` clocks, wait for DONE, then (reads) take the copied words."""
+    async def dma_go(self, job: DmaJob, *, delay: int = 0) -> None:
+        """GO after ``delay`` clocks; the job's clock starts at the GO write."""
         if delay:
             await ClockCycles(cocotb.top.clk_i, delay)
-        total = 4 * job.words
         job.t0_ps = self._now_ps()
         await self.dma.go()
+
+    async def dma_wait(self, job: DmaJob) -> DmaJob:
+        """Wait for DONE within the size-scaled poll bound; fails with the last port state."""
+        total = 4 * job.words
         try:
             res = await self.dma.run_to_done(total, tag=f" {job.name}")
         except DmaTimeout as exc:
@@ -598,6 +677,11 @@ class OutboundTraffic:
         self.dma_polls_max = max(self.dma_polls_max, res.polls)
         job.done = True
         return job
+
+    async def dma_run(self, job: DmaJob, *, delay: int = 0) -> DmaJob:
+        """GO after ``delay`` clocks and wait for DONE."""
+        await self.dma_go(job, delay=delay)
+        return await self.dma_wait(job)
 
     async def dma_finish(self, job: DmaJob) -> None:
         """Clear DONE with the RW1C write and read it back; (reads) read the copied words."""
@@ -622,3 +706,133 @@ async def run_all(coros) -> None:
         await t
     if failures:
         raise failures[0]
+
+
+class OutboundLeaf:
+    """What the two outbound leaves share: the bench, the window and the log lines.
+
+    Mixed into a ``sep_base_test`` leaf. ``bench_start`` opens the taps, the
+    pin watches, the layout and the traffic runner and programs the filters;
+    ``bench_stop`` closes them. A graded checker prints its ``CHK-<NAME>:``
+    line after its comparison and one ``CHK-<NAME> PASS`` line once every
+    comparison it serves is done, so a run never carries a PASS and a FAIL of
+    one checker.
+    """
+
+    async def bench_start(self) -> None:
+        self.dut_clk = cocotb.top.clk_i
+        self.fence_seen: list[str] = []
+        self.waits_logged: set[str] = set()
+        self.out = SepFabricTap("PR-OUT").start()
+        self.rsp = SepFabricTap("PR-OUT-RSP").start()
+        self.pin_s = PinWatch("s_axi").start()
+        self.pin_m = PinWatch("m_axi").start()
+        self.layout = Layout(PAGE)
+        self.tr = OutboundTraffic(self, self.layout, self._port_state)
+        await self._program_filters()
+        cocotb.top.smn_outbound_rd_addr_data_i.value = 1
+
+    async def bench_stop(self) -> None:
+        cocotb.top.smn_outbound_rd_addr_data_i.value = 0
+        self.pin_s.stop()
+        self.pin_m.stop()
+        await self.out.stop()
+        await self.rsp.stop()
+
+    async def _program_filters(self) -> None:
+        c = self.c
+        self.ibank = SepFilterBank(self, "in")
+        self.obank = SepFilterBank(self, "out")
+        await self.obank.program(
+            OUT_ENTRY,
+            FilterEntry(
+                start=PAGE,
+                end=PAGE + 0xFFF,
+                enabled=True,
+                read_allowed=True,
+                write_allowed=True,
+                allow_ns=False,
+                allow_burst=True,
+                src_id=0,
+            ),
+        )
+        await self.ibank.program(
+            IN_ENTRY,
+            FilterEntry(
+                start=PAGE,
+                end=PAGE + 0xFFF,
+                enabled=True,
+                read_allowed=True,
+                write_allowed=True,
+                allow_ns=False,
+                allow_burst=True,
+                src_id=c.sys_user,
+            ),
+        )
+        await self.tr.dma.program_range(0x0, 0xFFFF_FFFF, valid=True)
+        await self.tr.dma.wr(_D.addr("ADDR_SPACE_ID"), ASID_RESET)
+        self.logger.info(
+            "SETUP outbound_entry=%d inbound_entry=%d page=0x%x lsu_user=%d sysif_user=%d",
+            OUT_ENTRY,
+            IN_ENTRY,
+            PAGE,
+            c.lsu_user,
+            c.sys_user,
+        )
+
+    # ---- log lines ----------------------------------------------------------------
+    def _line(self, chk: str, line: str) -> None:
+        self.logger.info("%s: %s", chk, line)
+
+    def _pass(self, chk: str) -> None:
+        self.logger.info("%s PASS: compared as stated seed=%d", chk, self.c.seed)
+
+    def _emit(self, chk: str, line: str) -> None:
+        self._line(chk, line)
+        self._pass(chk)
+
+    def _obs_row(self, tag: str, line: str) -> None:
+        self.logger.info("OBS-%s: %s", tag.removeprefix("CHK-"), line)
+
+    def _fail(self, chk: str, line: str) -> None:
+        msg = f"{chk} FAIL seed={self.c.seed} {line} last_port_state={self._port_state()}"
+        self.logger.error(msg)
+        raise AssertionError(msg)
+
+    def _fence(self, term: str) -> None:
+        self.fence_seen.append(term)
+        self.logger.info(
+            "CHK-NONVAC: fence=%s index=%d seed=%d", term, len(self.fence_seen), self.c.seed
+        )
+
+    def _port_state(self) -> str:
+        def n(tap, ch):
+            return sum(1 for b in tap.beats if b.ch == ch)
+
+        return (
+            f"PR-OUT aw={n(self.out, 'aw')} w={n(self.out, 'w')} ar={n(self.out, 'ar')} "
+            f"PR-OUT-RSP b={n(self.rsp, 'b')} r={n(self.rsp, 'r')}"
+        )
+
+    def _wait_bound(self, kind: str, bound: str) -> None:
+        if kind in self.waits_logged:
+            return
+        self.waits_logged.add(kind)
+        self.logger.info(
+            "CHK-TIMEOUT-PATHS: wait=%s bound=%s on_expiry=fail_with_initiator_txn_and_last_port_state "
+            "last_port_state=%s",
+            kind,
+            bound,
+            self._port_state(),
+        )
+
+    def _check_pin_xz(self, b_chk: str, r_chk: str) -> None:
+        """Fail on any X or Z field a pin watch recorded on a handshake."""
+        for pw in (self.pin_s, self.pin_m):
+            for entry in pw.xz:
+                self._fail(r_chk if " ch=r " in entry or " ch=ar " in entry else b_chk, entry)
+
+    def _check_fence(self, fence: tuple) -> None:
+        if self.fence_seen != list(fence):
+            self._fail("CHK-NONVAC", f"fence order {self.fence_seen}")
+        self._emit("CHK-NONVAC", "fence=" + "<".join(self.fence_seen) + f" terms={len(fence)}")

@@ -124,10 +124,10 @@
 // pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
 `SEP_TB_IN(logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0], sep_ext_interrupts_i)
 // Outbound responder response control (tb/sep_outbound_mbx.sv), default 0.
-// smn_outbound_resp_hold_i=1 holds every B and R response of the responder;
-// the requests are still accepted. smn_outbound_rd_slverr_i=1 at the AR
-// handshake makes every R beat of that read answer SLVERR. Error inject,
-// docs/SEP_TB_ARCH.adoc.
+// smn_outbound_resp_hold_i=1 keeps the responder from raising a B or R
+// response; one already on offer completes, and the requests are still
+// accepted. smn_outbound_rd_slverr_i=1 at the AR handshake makes every R beat
+// of that read answer SLVERR. Error inject, docs/SEP_TB_ARCH.adoc.
 `SEP_TB_IN(logic, smn_outbound_resp_hold_i)
 `SEP_TB_IN(logic, smn_outbound_rd_slverr_i)
 // Outbound responder request-side control (tb/sep_outbound_mbx.sv), default 0.
