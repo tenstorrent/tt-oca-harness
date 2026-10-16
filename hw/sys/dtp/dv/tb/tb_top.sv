@@ -1577,6 +1577,96 @@ module tb_top
   assign jtag_stap_extra0_tdi       = u_stap_extra0_ds_if.tdo;
   assign jtag_stap_extra0_ds_en     = u_scan_if.stap_extra0_ds_en;
 
+  // JTAG2AXI response holds (dtp_tb_if j2a_b_hold, j2a_r_hold), registered
+  // on the system clock so the VALID the bridge sees changes only on a
+  // rising edge. Each bridge's B and R channel passes through a queue
+  // between its responder and the bridge. While the queue is empty and its
+  // hold bit clear, the channel is wired straight through. Otherwise the
+  // queue takes the responder's responses while it has room, and shows the
+  // bridge its oldest one only while the hold bit is clear. Channel 2t is
+  // bridge t's B channel and 2t + 1 its R channel, in the bridge order of
+  // sys_rst_on_ar_arm; the B payload is {id, resp, user} and the R payload
+  // {id, data, resp, last, user} at the responder interface's widths.
+  localparam int unsigned J2aHoldDepth = 4;
+  localparam int unsigned J2aHoldChannels = 6;
+  localparam int unsigned J2aHoldWidth = 99;
+  logic [J2aHoldChannels-1:0] j2a_hold_en;
+  logic [J2aHoldChannels-1:0] j2a_hold_d;
+  logic [J2aHoldChannels-1:0] j2a_hold_rsp_valid;
+  logic [J2aHoldChannels-1:0] j2a_hold_rsp_ready;
+  logic [J2aHoldChannels-1:0] j2a_hold_dut_valid;
+  logic [J2aHoldChannels-1:0] j2a_hold_dut_ready;
+  logic [J2aHoldChannels-1:0][J2aHoldWidth-1:0] j2a_hold_rsp_data;
+  logic [J2aHoldChannels-1:0][J2aHoldWidth-1:0] j2a_hold_dut_data;
+  for (genvar c = 0; c < J2aHoldChannels; c++) begin : g_j2a_rsp_hold
+    logic [J2aHoldDepth-1:0][J2aHoldWidth-1:0] queue;
+    logic [$clog2(J2aHoldDepth+1)-1:0] count;
+    logic [$clog2(J2aHoldDepth)-1:0] rd_ptr;
+    logic [$clog2(J2aHoldDepth)-1:0] wr_ptr;
+    logic through;
+    logic push;
+    logic pop;
+    assign j2a_hold_d[c] = (c % 2 == 0) ? u_tb_if.j2a_b_hold[c/2] : u_tb_if.j2a_r_hold[c/2];
+    assign through = (count == '0) && !j2a_hold_en[c];
+    assign j2a_hold_dut_valid[c] =
+        through ? j2a_hold_rsp_valid[c] : ((count != '0) && !j2a_hold_en[c]);
+    assign j2a_hold_dut_data[c] = through ? j2a_hold_rsp_data[c] : queue[rd_ptr];
+    assign j2a_hold_rsp_ready[c] =
+        through ? j2a_hold_dut_ready[c] : (count < ($clog2(J2aHoldDepth+1))'(J2aHoldDepth));
+    assign push = !through && j2a_hold_rsp_valid[c] && j2a_hold_rsp_ready[c];
+    assign pop = !through && j2a_hold_dut_valid[c] && j2a_hold_dut_ready[c];
+    always_ff @(posedge clk_i or negedge rst_n_i) begin
+      if (!rst_n_i) begin
+        count  <= '0;
+        rd_ptr <= '0;
+        wr_ptr <= '0;
+      end else begin
+        if (push) begin
+          queue[wr_ptr] <= j2a_hold_rsp_data[c];
+          wr_ptr <= wr_ptr + 1'b1;
+        end
+        if (pop) rd_ptr <= rd_ptr + 1'b1;
+        count <= count + ($clog2(J2aHoldDepth+1))'(push) - ($clog2(J2aHoldDepth+1))'(pop);
+      end
+    end
+    // The VALID the bridge sees falls only after its handshake, whatever the
+    // hold bit does: a hold set while a response is shown fails here.
+    `OCAH_SVA_ASSERT(DTP_J2A_HOLD_VALID_HELD,
+                     (j2a_hold_dut_valid[c] && !j2a_hold_dut_ready[c]) |=> j2a_hold_dut_valid[c],
+                     clk_i, !rst_n_i)
+  end
+  always_ff @(posedge clk_i or negedge pwr_on_rst_ni) begin
+    if (!pwr_on_rst_ni) j2a_hold_en <= '0;
+    else j2a_hold_en <= j2a_hold_d;
+  end
+  assign u_tb_if.smc_axi_b_held = g_j2a_rsp_hold[0].count;
+  assign u_tb_if.smc_axi_r_held = g_j2a_rsp_hold[1].count;
+  assign u_tb_if.smc_otp_b_held = g_j2a_rsp_hold[2].count;
+  assign u_tb_if.smc_otp_r_held = g_j2a_rsp_hold[3].count;
+  assign u_tb_if.sep_otp_b_held = g_j2a_rsp_hold[4].count;
+  assign u_tb_if.sep_otp_r_held = g_j2a_rsp_hold[5].count;
+  assign j2a_hold_rsp_valid = {u_sep_otp_slave_if.rvalid, u_sep_otp_slave_if.bvalid,
+                               u_smc_otp_slave_if.rvalid, u_smc_otp_slave_if.bvalid,
+                               u_smc_axi_slave_if.rvalid, u_smc_axi_slave_if.bvalid};
+  assign j2a_hold_dut_ready = {sep_otp_axil_rready, sep_otp_axil_bready,
+                               smc_otp_axil_rready, smc_otp_axil_bready,
+                               m_axi_rready, m_axi_bready};
+  assign j2a_hold_rsp_data[0] = J2aHoldWidth'({u_smc_axi_slave_if.bid, u_smc_axi_slave_if.bresp,
+                                               u_smc_axi_slave_if.buser});
+  assign j2a_hold_rsp_data[1] = {u_smc_axi_slave_if.rid, u_smc_axi_slave_if.rdata,
+                                 u_smc_axi_slave_if.rresp, u_smc_axi_slave_if.rlast,
+                                 u_smc_axi_slave_if.ruser};
+  assign j2a_hold_rsp_data[2] = J2aHoldWidth'({u_smc_otp_slave_if.bid, u_smc_otp_slave_if.bresp,
+                                               u_smc_otp_slave_if.buser});
+  assign j2a_hold_rsp_data[3] = {u_smc_otp_slave_if.rid, u_smc_otp_slave_if.rdata,
+                                 u_smc_otp_slave_if.rresp, u_smc_otp_slave_if.rlast,
+                                 u_smc_otp_slave_if.ruser};
+  assign j2a_hold_rsp_data[4] = J2aHoldWidth'({u_sep_otp_slave_if.bid, u_sep_otp_slave_if.bresp,
+                                               u_sep_otp_slave_if.buser});
+  assign j2a_hold_rsp_data[5] = {u_sep_otp_slave_if.rid, u_sep_otp_slave_if.rdata,
+                                 u_sep_otp_slave_if.rresp, u_sep_otp_slave_if.rlast,
+                                 u_sep_otp_slave_if.ruser};
+
   // SMC OTP AXI-Lite responder: the shared ocah_axi_vip responder (SV-UVM
   // slave agent or cocotb RAM) answers JTAG2AXI OTP traffic. The slave
   // interface carries the connection: the TB wires only the master-driven
@@ -1600,7 +1690,7 @@ module tb_top
   assign u_smc_otp_slave_if.wlast    = 1'b1;
   assign u_smc_otp_slave_if.wuser    = '0;
   assign u_smc_otp_slave_if.wvalid   = smc_otp_axil_wvalid;
-  assign u_smc_otp_slave_if.bready   = smc_otp_axil_bready;
+  assign u_smc_otp_slave_if.bready   = j2a_hold_rsp_ready[2];
   assign u_smc_otp_slave_if.araddr   = 64'(smc_otp_axil_araddr);
   assign u_smc_otp_slave_if.arprot   = smc_otp_axil_arprot;
   assign u_smc_otp_slave_if.arvalid  = smc_otp_axil_arvalid;
@@ -1613,17 +1703,17 @@ module tb_top
   assign u_smc_otp_slave_if.arqos    = '0;
   assign u_smc_otp_slave_if.arregion = '0;
   assign u_smc_otp_slave_if.aruser   = '0;
-  assign u_smc_otp_slave_if.rready   = smc_otp_axil_rready;
+  assign u_smc_otp_slave_if.rready   = j2a_hold_rsp_ready[3];
 
   // Responder-side signals: agent driver -> DUT response inputs.
   assign smc_otp_axil_awready = u_smc_otp_slave_if.awready;
   assign smc_otp_axil_wready  = u_smc_otp_slave_if.wready;
-  assign smc_otp_axil_bresp   = u_smc_otp_slave_if.bresp;
-  assign smc_otp_axil_bvalid  = u_smc_otp_slave_if.bvalid;
+  assign smc_otp_axil_bresp   = j2a_hold_dut_data[2][17:16];
+  assign smc_otp_axil_bvalid  = j2a_hold_dut_valid[2];
   assign smc_otp_axil_arready = u_smc_otp_slave_if.arready;
-  assign smc_otp_axil_rdata   = u_smc_otp_slave_if.rdata[31:0];
-  assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
-  assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
+  assign smc_otp_axil_rdata   = j2a_hold_dut_data[3][50:19];
+  assign smc_otp_axil_rresp   = j2a_hold_dut_data[3][18:17];
+  assign smc_otp_axil_rvalid  = j2a_hold_dut_valid[3];
 
   // SEP OTP AXI-Lite responder: the shared ocah_axi_vip responder
   // (same pattern as the SMC OTP port) answers JTAG2AXI SEP OTP traffic.
@@ -1644,7 +1734,7 @@ module tb_top
   assign u_sep_otp_slave_if.wlast    = 1'b1;
   assign u_sep_otp_slave_if.wuser    = '0;
   assign u_sep_otp_slave_if.wvalid   = sep_otp_axil_wvalid;
-  assign u_sep_otp_slave_if.bready   = sep_otp_axil_bready;
+  assign u_sep_otp_slave_if.bready   = j2a_hold_rsp_ready[4];
   assign u_sep_otp_slave_if.araddr   = 64'(sep_otp_axil_araddr);
   assign u_sep_otp_slave_if.arprot   = sep_otp_axil_arprot;
   assign u_sep_otp_slave_if.arvalid  = sep_otp_axil_arvalid;
@@ -1657,17 +1747,17 @@ module tb_top
   assign u_sep_otp_slave_if.arqos    = '0;
   assign u_sep_otp_slave_if.arregion = '0;
   assign u_sep_otp_slave_if.aruser   = '0;
-  assign u_sep_otp_slave_if.rready   = sep_otp_axil_rready;
+  assign u_sep_otp_slave_if.rready   = j2a_hold_rsp_ready[5];
 
   // Responder-side signals: agent driver -> DUT response inputs.
   assign sep_otp_axil_awready = u_sep_otp_slave_if.awready;
   assign sep_otp_axil_wready  = u_sep_otp_slave_if.wready;
-  assign sep_otp_axil_bresp   = u_sep_otp_slave_if.bresp;
-  assign sep_otp_axil_bvalid  = u_sep_otp_slave_if.bvalid;
+  assign sep_otp_axil_bresp   = j2a_hold_dut_data[4][17:16];
+  assign sep_otp_axil_bvalid  = j2a_hold_dut_valid[4];
   assign sep_otp_axil_arready = u_sep_otp_slave_if.arready;
-  assign sep_otp_axil_rdata   = u_sep_otp_slave_if.rdata[31:0];
-  assign sep_otp_axil_rresp   = u_sep_otp_slave_if.rresp;
-  assign sep_otp_axil_rvalid  = u_sep_otp_slave_if.rvalid;
+  assign sep_otp_axil_rdata   = j2a_hold_dut_data[5][50:19];
+  assign sep_otp_axil_rresp   = j2a_hold_dut_data[5][18:17];
+  assign sep_otp_axil_rvalid  = j2a_hold_dut_valid[5];
 
   // SMC fabric AXI4 responder: the shared ocah_axi_vip responder (same
   // pattern as the SMC OTP port) answers JTAG2AXI fabric traffic. The
@@ -1693,7 +1783,7 @@ module tb_top
   assign u_smc_axi_slave_if.wlast    = m_axi_wlast;
   assign u_smc_axi_slave_if.wuser    = 16'(m_axi_wuser);
   assign u_smc_axi_slave_if.wvalid   = m_axi_wvalid;
-  assign u_smc_axi_slave_if.bready   = m_axi_bready;
+  assign u_smc_axi_slave_if.bready   = j2a_hold_rsp_ready[0];
   assign u_smc_axi_slave_if.arid     = 16'(m_axi_arid);
   assign u_smc_axi_slave_if.araddr   = 64'(m_axi_araddr);
   assign u_smc_axi_slave_if.arlen    = m_axi_arlen;
@@ -1706,22 +1796,22 @@ module tb_top
   assign u_smc_axi_slave_if.arregion = m_axi_arregion;
   assign u_smc_axi_slave_if.aruser   = 16'(m_axi_aruser);
   assign u_smc_axi_slave_if.arvalid  = m_axi_arvalid;
-  assign u_smc_axi_slave_if.rready   = m_axi_rready;
+  assign u_smc_axi_slave_if.rready   = j2a_hold_rsp_ready[1];
 
   // Responder-side signals: agent driver -> DUT response inputs.
   assign m_axi_awready = u_smc_axi_slave_if.awready;
   assign m_axi_wready  = u_smc_axi_slave_if.wready;
-  assign m_axi_bid     = u_smc_axi_slave_if.bid[1:0];
-  assign m_axi_bresp   = u_smc_axi_slave_if.bresp;
-  assign m_axi_buser   = u_smc_axi_slave_if.buser[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
-  assign m_axi_bvalid  = u_smc_axi_slave_if.bvalid;
+  assign m_axi_bid     = j2a_hold_dut_data[0][19:18];
+  assign m_axi_bresp   = j2a_hold_dut_data[0][17:16];
+  assign m_axi_buser   = j2a_hold_dut_data[0][dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
+  assign m_axi_bvalid  = j2a_hold_dut_valid[0];
   assign m_axi_arready = u_smc_axi_slave_if.arready;
-  assign m_axi_rid     = u_smc_axi_slave_if.rid[1:0];
-  assign m_axi_rdata   = u_smc_axi_slave_if.rdata;
-  assign m_axi_rresp   = u_smc_axi_slave_if.rresp;
-  assign m_axi_rlast   = u_smc_axi_slave_if.rlast && m_axi_rvalid;
-  assign m_axi_ruser   = u_smc_axi_slave_if.ruser[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
-  assign m_axi_rvalid  = u_smc_axi_slave_if.rvalid;
+  assign m_axi_rid     = j2a_hold_dut_data[1][84:83];
+  assign m_axi_rdata   = j2a_hold_dut_data[1][82:19];
+  assign m_axi_rresp   = j2a_hold_dut_data[1][18:17];
+  assign m_axi_rlast   = j2a_hold_dut_data[1][16] && m_axi_rvalid;
+  assign m_axi_ruser   = j2a_hold_dut_data[1][dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
+  assign m_axi_rvalid  = j2a_hold_dut_valid[1];
 
   // Shared-VIP passive monitor interfaces at the default geometry (the
   // SV-UVM layer sees one `virtual ocah_axi_if` type and masks in its cfg;
@@ -1951,16 +2041,19 @@ module tb_top
   assign u_tb_if.smc_axi_fsm_read_path  = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_dv_state_flags.read_path_o;
   assign u_tb_if.smc_axi_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_op_pending_tclk;
   assign u_tb_if.smc_axi_cdc_clear_seen = smc_axi_cdc_clear_seen;
+  assign u_tb_if.smc_axi_fsm_beat_done = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_dv_state_flags.beat_done_o;
   assign u_tb_if.smc_otp_fsm_idle       = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_dv_state_flags.idle_o;
   assign u_tb_if.smc_otp_fsm_write_path = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_dv_state_flags.write_path_o;
   assign u_tb_if.smc_otp_fsm_read_path  = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_dv_state_flags.read_path_o;
   assign u_tb_if.smc_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_op_pending_tclk;
   assign u_tb_if.smc_otp_cdc_clear_seen = smc_otp_cdc_clear_seen;
+  assign u_tb_if.smc_otp_fsm_beat_done = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_dv_state_flags.beat_done_o;
   assign u_tb_if.sep_otp_fsm_idle       = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_dv_state_flags.idle_o;
   assign u_tb_if.sep_otp_fsm_write_path = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_dv_state_flags.write_path_o;
   assign u_tb_if.sep_otp_fsm_read_path  = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_dv_state_flags.read_path_o;
   assign u_tb_if.sep_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk;
   assign u_tb_if.sep_otp_cdc_clear_seen = sep_otp_cdc_clear_seen;
+  assign u_tb_if.sep_otp_fsm_beat_done = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_dv_state_flags.beat_done_o;
 
   // Phase of the CDC clear sequences, read from the smc_axi bridge's AW
   // crossing, whose reset controller clocks half_a with TCK and half_b with

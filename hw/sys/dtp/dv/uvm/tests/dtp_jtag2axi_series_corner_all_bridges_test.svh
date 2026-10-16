@@ -41,6 +41,7 @@ class dtp_jtag2axi_series_corner_all_bridges_test extends dtp_jtag2axi_robustnes
     ids.push_back("CHK-AXI-RADDR");
     ids.push_back("CHK-AXI-RDATA");
     ids.push_back("CHK-AXI-WMEM");
+    ids.push_back("CHK-AXI-NOACT");
     ids.push_back(DtpJ2aErrRdataCheckId);
     ids.push_back(DtpJ2aCdcClearCheckId);
     ids.push_back(DtpJ2aAbortFsmCheckId);
