@@ -129,6 +129,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_uart_pad_mux_enable_test"
+module = "smc_uart_pad_mux_enable_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_uart_log_engine_error_boundary_test"
 module = "smc_uart_log_engine_error_boundary_test"
 seed = 1
