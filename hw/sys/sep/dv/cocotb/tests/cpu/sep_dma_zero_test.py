@@ -23,6 +23,7 @@ from pathlib import Path
 
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
@@ -65,15 +66,25 @@ class sep_dma_zero_test(sep_base_test):
         # Override the boot scoreboard's expected banner here (after its own
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
-        await self.boot_firmware(
-            self.sb,
-            _ITCM_HEX,
-            _DTCM_HEX,
-            rst_vec=_ICCM_BASE >> 1,
-            max_run_cycles=_MAX_RUN_CYCLES,
-            no_boot_cycles=_NO_BOOT_CYCLES,
-            progress_every=_PROGRESS_EVERY,
-        )
+
+        async def _open_window() -> None:
+            # The CPU is released; every fill the firmware runs from here is
+            # the graded stimulus of this leaf.
+            open_graded_window("sep_dma_zero_test", self.logger)
+
+        try:
+            await self.boot_firmware(
+                self.sb,
+                _ITCM_HEX,
+                _DTCM_HEX,
+                rst_vec=_ICCM_BASE >> 1,
+                max_run_cycles=_MAX_RUN_CYCLES,
+                no_boot_cycles=_NO_BOOT_CYCLES,
+                progress_every=_PROGRESS_EVERY,
+                after_bring_up_hook=_open_window,
+            )
+        finally:
+            close_graded_window(self.logger)
         console = self.sb.console_text()
         for needle, chk, what in _CHECKS:
             assert any(ln.startswith(needle) for ln in console.splitlines()), (

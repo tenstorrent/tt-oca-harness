@@ -63,7 +63,7 @@ class smc_fw_uart_log_engine_disable_during_xfer_test(smc_base_test):
         seq = smc_fw_log_engine_test_seq(
             "fw_uart_log_engine_disable_during_xfer_seq",
             tag="LOG-ENGINE-DISABLE",
-            # PASS landed 497 us after release in the reference run (~990 polls at a
+            # The image reaches PASS about 500 us after release (~990 polls at a
             # 5 ns clk_smc_i); 10_000 is ~10x that.
             poll_iterations=10_000,
             spm_pattern=SPM_PATTERN,

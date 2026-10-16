@@ -121,7 +121,7 @@ class smc_fw_uart_log_engine_boundary_backpressure_test(smc_base_test):
         seq = _boundary_backpressure_seq(
             "fw_uart_log_engine_boundary_backpressure_seq",
             tag="LOG-ENGINE-BOUNDARY",
-            # PASS landed 334 us after release in the reference run (~670 polls at a
+            # The image reaches PASS about 330 us after release (~670 polls at a
             # 5 ns clk_smc_i); 7000 is ~10x that.
             poll_iterations=7_000,
             spm_pattern=SPM_PATTERN,

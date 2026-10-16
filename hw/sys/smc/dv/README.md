@@ -107,8 +107,8 @@ python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
 ### Nightly `all` group
 
 The nightly command for the `all` group (every test the VPLAN grades:
-`hosted` + `fw` + `sanity`; `testlists/all.toml` defines the set), one
-fresh seed per leaf:
+`hosted` + `fw` + the MMIO isolate-flush pair; `testlists/all.toml` defines
+the set), one fresh seed per leaf:
 
 ```bash
 # No --stage: builds the filelist, the firmware images and the model, then
@@ -116,10 +116,9 @@ fresh seed per leaf:
 python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress --sim-jobs 6
 ```
 
-`all` includes the `fw` leaves, the `sanity` dual-target leaves and the
-MMIO isolate-flush leaves, so a picolibc-enabled RISC-V GCC (or
-`scripts/docker-run.sh`) must be available: the
-`c_compile` stage builds the images with it (see
+`all` includes the `fw` leaves and the MMIO isolate-flush leaves, so a
+picolibc-enabled RISC-V GCC (or `scripts/docker-run.sh`) must be available:
+the `c_compile` stage builds the images with it (see
 [Prerequisites](#prerequisites)), in the toolchain container when
 `RISCV_TOOLCHAIN` is unset. To build the images ahead of the run:
 
@@ -138,7 +137,7 @@ container or rootfs is needed.
 Hosted GitHub nightly and weekly (`.github/workflows/regress.yml`) run
 `--items hosted` with one seed per leaf (`reseed: 1`) instead, because those
 runners have no RISC-V toolchain. `hosted` is `all` without the leaves that
-need the firmware toolchain: the `fw` leaves, the dual-target leaves, and
+need the firmware toolchain: the `fw` leaves plus
 `smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test`.
 `testlists/holdout.toml` defines the non-ROM leaves outside `all`;
 `testlists/smc_rom.toml` defines the ROM/OCCP cases selected through
@@ -240,8 +239,8 @@ only the exclusion files in this tree, and the runner merges only the
 databases this tree's leaves produce.
 
 ```bash
-# Coverage merge accepts one elaboration. `hosted` and `fw` build the default
-# model. `--target` over `all` would run the three `sanity` leaves on that model.
+# Coverage merge accepts one elaboration: `hosted` and `fw` build the default
+# model.
 python3 tools/dv/run_dv.py --dut smc --items hosted fw --tool vcs --regress --cov
 
 # SMC_DUAL is a separate pass and collects no coverage.
@@ -257,10 +256,10 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate (`sim.yml`): `smc_canonical_smoke_test`, `smc_cold_reset_test`, `smc_register_sanity_test` |
-| `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `sanity`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `sanity` elaborates a second build target the coverage merge cannot combine with `default` |
+| `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ the MMIO isolate-flush pair from `cpu`; `expected_count` is the membership gate. The coverage set is `hosted fw` |
 | `hosted` | toolchain-free class, single-instance model; the nightly and weekly tiers (one seed) |
 | `fw` | firmware class: the CPU-boot leaves whose image `c_compile` builds |
-| `sanity` | SMC_DUAL class: the three `target = "dual"` leaves enrolled in `all`, each loading a ROM or firmware image |
+| `sanity` | SMC_DUAL class: the three `target = "dual"` bring-up leaves, each loading a ROM or firmware image; held out of `all`, which elaborates one target per run, and of the coverage merge, which cannot combine the `dual` elaboration with `default` |
 | `axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` | feature subsets of `all` for a local run of one area |
 | `occp_rom` | every BL0/SMC ROM case except `smc_occp_ring_buffer_stress_test`, left out for runtime; includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
 | `occp_boot`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |

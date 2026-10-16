@@ -743,6 +743,17 @@ The command completes before DEST_ADDR/SIZE are restored. The scratch word
 is left zero through SEP_IN so the ingress-only SPM model sees its final state;
 no other initiator may use that word during the pass.
 
+The second-stage watchdog scenario samples `smc_tb_if.clk_smc` at negedges.
+Its first/second-timeout taps mirror the existing live `tb_wdt_*` signals;
+`wdt_timeout_core` mirrors the cluster's per-core timeout vector. The watcher
+records the selected first timeout, second timeout and WDT/warm reset edges
+while rejecting unknown signals or primary reset. CSR service stops before
+the reset window; the scenario resumes accesses only after warm/fuse release.
+No watchdog CSR scoreboard feature is required by this scenario; sequence
+checks grade the live timeout/reset observations and CSR responses.
+Post-warm timeout and watchdog CSR values are observations only; explicit
+watchdog configuration and timeout programming establish the next baseline.
+
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
 subscribes to the SEP_IN monitor stream, rebuilds a shadow of the

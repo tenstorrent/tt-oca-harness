@@ -17,10 +17,10 @@ that consumes it, which a mis-wired parameter fails.
 
 The bench binds CFG.SEP_SEC_DISABLE_TOKEN to the SHA-256 of the all-zero
 32-byte token in place of the metal digest, and the token the SEP eFuse
-controller carries is compared against that digest, computed here. No
-specification in this tree states the packed layout of the build
-configuration struct, so `CFG` is compared only as a whole between the
-wrapper and `smu`; each parameter is proven where an instance consumes it.
+controller carries is compared against that digest, computed here. The
+packed layout of the build configuration struct is unspecified, so `CFG` is
+compared only as a whole between the wrapper and `smu`; each parameter is
+proven where an instance consumes it.
 """
 
 from __future__ import annotations

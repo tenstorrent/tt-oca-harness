@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""CPU/OCCP OSS-safe master-BFM VIP helpers."""
+"""CPU/OCCP master-BFM VIP helpers."""
 
 from __future__ import annotations
 

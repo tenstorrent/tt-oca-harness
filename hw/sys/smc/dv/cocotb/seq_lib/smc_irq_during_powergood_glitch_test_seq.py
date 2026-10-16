@@ -136,7 +136,7 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
                 if not raw.is_resolvable:
                     # An interrupt line to the CPU going X/Z is a defect, not a
                     # don't-care, so it is reported as a failure rather than
-                    # resolved arbitrarily by int() ([X-AWARE-CHECK]).
+                    # resolved arbitrarily by int().
                     self._watch_unresolvable.append(f"{probe} unresolvable ({raw}) at {now}ns")
                     continue
                 if int(raw) != 0:

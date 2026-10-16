@@ -583,7 +583,8 @@ tests = [
 
 [[groups]]
 name = "hosted"
-# The toolchain-free class of `all`: `all` minus the fw and sanity classes.
+# The toolchain-free class of `all`: `all` minus the fw class and the
+# mmio-wedge pair.
 # Nightly and weekly schedule this group on the hosted runners, which have no
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
