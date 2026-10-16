@@ -56,16 +56,15 @@ Checkers:
   CHK-PF-CONSEC   two bursts of T - 2 stuck windows with a clean gap: the peak
                   of ANY_FAIL_COUNT of each burst is at least T - 2, no alert
                   at any poll up to LAT_WINDOWS windows of words after the
-                  second burst, and the count reads 0 within two clean windows.
-                  A burst of n x W stuck words holds a zero run above
-                  REPETITION_LIMIT = 200 for its last n x W - 200 > (n - 1) x W
-                  words, so at least n windows fail in it, whatever its offset
-                  to the window wraps. Control: T + 1 trips.
+                  second burst, and the count clears by the wrap 2W words after
+                  the break words (below). A burst of n x W stuck words holds a
+                  zero run above REPETITION_LIMIT = 200 for its last
+                  n x W - 200 > (n - 1) x W words, so at least n windows fail
+                  in it, whatever its offset to the window wraps. Control: T + 1 trips.
   CHK-PF-DISABLE  T = 0, ten stuck windows: no alert at any poll up to
                   LAT_WINDOWS windows of words after the burst, ANY_FAIL_COUNT
-                  peak > 8, and after the burst ANY_FAIL_COUNT reads 0 within
-                  two clean windows (``ALERT_SUMMARY_FAIL_COUNTS``: it clears
-                  after an accepted passing window).
+                  peak > 8, and after the burst the count clears by the wrap 2W
+                  words after the break words (below).
                   Control: T = 3 trips with the same pattern.
   CHK-PF-HALT     after a trip, BUSY = 0 and a drain: LEVEL stays 0 and
                   ``esrc_compress_vld_o`` is silent for H = t_ref. Control: the
@@ -79,6 +78,14 @@ Checkers:
                   (``SepEsrcCleanStart.run_live``), and BOOT_PHASE_DONE and
                   LEVEL then show that the reset alone ended AlertHang.
                   Control: both bits read 1 before the clear and the reset.
+Count clear of CHK-PF-CONSEC and CHK-PF-DISABLE: ANY_FAIL_COUNT clears after an
+accepted passing window (``entropy_source.adoc:71``). The window that holds the
+break words ends at most W words after them and the next window holds clean
+noise only, so the count is 0 from the wrap 2W words after the break words. A
+read of the count must read 0, and every read issued more than 2W words after
+the break words must read 0 (``zero_word``, ``last_nonzero_word``). The word
+count is taken at the issue of the read, so the read latency is not in the
+bound. A DUT that keeps the count one more clean window fails.
 Exact burst of n failing windows: ANY_FAIL_COUNT reads 0, then stuck0 from
 the next strobe and back-to-back reads of ANY_FAIL_COUNT. ANY_FAIL_COUNT counts
 one failing window at each window wrap (``architecture.adoc:136``), so the
@@ -116,7 +123,11 @@ from env.sep_esrc_pattern_noise import (
     balanced_lanes,
     describe,
 )
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_esrc_af_clear_bound,
+)
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_trial_wait import TrialTimeout, poll_until
 from sep_base_test import sep_base_test
@@ -183,6 +194,10 @@ TAIL_DIV = 8
 # window T: window T, the window in which the design acts, and two windows of
 # slack. A wait bound only; the trip latency is logged, not graded.
 LAT_WINDOWS = 4
+# ANY_FAIL_COUNT clears at the latest at the wrap CLEAR_WINDOWS windows of words
+# after the last failing word: the rest of the window that holds it, then one
+# clean window (entropy_source.adoc:71: it clears after an accepted passing window).
+CLEAR_WINDOWS = 2
 
 STUCK0 = [Stuck(0)] * NUM_LANES
 STUCK1 = [Stuck(1)] * NUM_LANES
@@ -537,11 +552,18 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
     async def _burst_and_settle(self, segs, win: int, split: int | None = None) -> dict:
         """Run ``segs`` while polling, then poll for LAT_WINDOWS windows of words.
 
-        ANY_FAIL_COUNT must read 0 within two windows of words after the last
-        segment (``zero``). ALERT and PF are polled to LAT_WINDOWS windows of words
-        after the last segment, the alert bound of the trip legs. With ``split``
-        the peak of ANY_FAIL_COUNT is kept apart for the polls before segment
-        ``split`` has ended (burst 1) and for the polls after (burst 2).
+        The last segment ends with the break words, the last failing words. The
+        window that holds them ends at most W words later, and the next window
+        holds clean noise only, so ANY_FAIL_COUNT clears at the latest at the wrap
+        2W words after the last segment (``ALERT_SUMMARY_FAIL_COUNTS``: it clears
+        after an accepted passing window). ``zero``: a read of ANY_FAIL_COUNT reads
+        0, and no read issued more than CLEAR_WINDOWS x W words after the last
+        segment reads a non-zero count. The word count is taken at the issue of the
+        read, so the read latency is outside the bound. ALERT and PF are polled to
+        LAT_WINDOWS windows of words after the last segment, the alert bound of the
+        trip legs. With ``split`` the peak of ANY_FAIL_COUNT is kept apart for the
+        polls before segment ``split`` has ended (burst 1) and for the polls after
+        (burst 2). The FCOV sampler gets the same bound (``set_esrc_af_clear_bound``).
         """
         self.noise.byte_check(True)
         c0, mm0 = self.noise.byte_control()
@@ -568,19 +590,30 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             await task
         except EsrcStrobeTimeout as exc:
             timeout = f"timeout:strobes bound={exc.bound}"
-        bound = self._word_bound(2 * win, win)
+        bound = CLEAR_WINDOWS * win
         look = LAT_WINDOWS * win
         look_bound = self._word_bound(look, win)
         m = self.noise.mark()
+        set_esrc_af_clear_bound(bound, self.logger)
         t0 = self._now()
         after = None
+        zero_word = None
+        nonzero_word = None
         while timeout is None and self._now() - t0 <= look_bound:
-            a, f, cnt = await self._poll_triple()
-            track(a, f, cnt)
-            if after != 0 and self._now() - t0 <= bound:
+            sm = await self._rd(ESRC_MAIN_SM_STATUS)
+            st = await self._rd(ESRC_INTR_STATUS)
+            issued = self.noise.words_since(m)
+            cnt = (await self._rd(ESRC_ALERT_SUMMARY_FAIL_COUNTS)) & M_ANY
+            track((sm & M_ALERT) != 0, (st & M_PF) != 0, cnt)
+            if cnt == 0 and zero_word is None:
+                zero_word = issued
+            if cnt != 0:
+                nonzero_word = issued
+            if after is None and issued > bound:
                 after = cnt
             if self.noise.words_since(m) >= look:
                 break
+        set_esrc_af_clear_bound(0, self.logger)
         watch = self.noise.words_since(m)
         if timeout is None and watch < look:
             timeout = f"timeout:strobes bound={look_bound}"
@@ -594,7 +627,14 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             "peaks": peaks if split is not None else None,
             "watch_words": watch,
             "after": after,
-            "zero": after == 0 and timeout is None,
+            "zero": (
+                timeout is None
+                and after == 0
+                and zero_word is not None
+                and (nonzero_word is None or nonzero_word <= bound)
+            ),
+            "zero_word": zero_word,
+            "nonzero_word": nonzero_word,
             "polls": polls,
             "bound": bound,
             "timeout": timeout,
@@ -1041,15 +1081,26 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             "win": win,
             "after": r["after"],
             "zero": r["zero"],
-            "bound": r["bound"],
             "watch_words": r["watch_words"],
+            **self._clear_fields(r, win),
         }
         if r["timeout"]:
             self.disable_result["reason"] = r["timeout"]
-        elif not r["zero"]:
-            self.disable_result["reason"] = "timeout:count_zero"
 
     # --- grading -----------------------------------------------------------------------
+    @staticmethod
+    def _clear_fields(r: dict, win: int | None) -> dict:
+        """The count-clear evidence of ``_burst_and_settle``, and its reason if it failed."""
+        fields = {
+            "zero_word": r.get("zero_word"),
+            "last_nonzero_word": r.get("nonzero_word"),
+            "expect_last_nonzero_word_max": CLEAR_WINDOWS * win if win else None,
+        }
+        if r.get("timeout") or r.get("zero", True):
+            return fields
+        fields["reason"] = "timeout:count_zero" if r.get("zero_word") is None else "late:count_zero"
+        return fields
+
     def _grade_block(self, blk: _Block) -> None:
         tripped = bool(blk.trip_alert) and all(blk.trip_alert)
         nt = blk.notrip or {}
@@ -1106,13 +1157,14 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             "expect_watch_words_min": LAT_WINDOWS * blk.win,
             "ctrl_single_burst_alert": int(tripped),
         }
+        clear = self._clear_fields(cs, blk.win)
+        fields.update({k: v for k, v in clear.items() if k != "reason"})
         if blk.start_timeout:
             fields["reason"] = blk.start_timeout
         elif cs.get("timeout"):
             fields["reason"] = cs["timeout"]
-        elif not cs.get("zero"):
-            fields["reason"] = "timeout:count_zero"
-            fields["bound"] = cs.get("bound")
+        elif "reason" in clear:
+            fields["reason"] = clear["reason"]
         counted = peaks is not None and all(pk >= blk.thr - 2 for pk in peaks)
         if not fields.get("reason") and not counted:
             fields["reason"] = "burst_not_counted"
@@ -1128,8 +1180,6 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         d = self.disable_result or {}
         self.chk.ctrl("PF-DISABLE", ctrl_ok, ctrl_thr3_alert=int(ctrl_ok))
         extra = {"reason": d["reason"]} if d.get("reason") else {}
-        if d.get("reason") == "timeout:count_zero":
-            extra["bound"] = d.get("bound")
         self.chk.ok(
             "PF-DISABLE",
             not d.get("reason")
@@ -1145,6 +1195,9 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             pf=d.get("pf"),
             any_fail=d.get("peak"),
             any_fail_after=d.get("after"),
+            zero_word=d.get("zero_word"),
+            last_nonzero_word=d.get("last_nonzero_word"),
+            expect_last_nonzero_word_max=d.get("expect_last_nonzero_word_max"),
             watch_words=d.get("watch_words"),
             expect_watch_words_min=LAT_WINDOWS * d["win"] if d.get("win") else None,
             ctrl_thr3_alert=int(ctrl_ok),

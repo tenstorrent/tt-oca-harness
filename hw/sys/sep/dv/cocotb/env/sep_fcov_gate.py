@@ -134,6 +134,48 @@ def set_abr_reject_class(reason_class: int, log=None) -> bool:
     return True
 
 
+def _set_bound(var: str, value: int, tag: str, log=None) -> bool:
+    if value < 0:
+        raise ValueError(f"{var} {value} is negative")
+    if _gate_handle() is None:
+        return False
+    fcov = cocotb.top.u_sep_fcov
+    if not hasattr(fcov, var):
+        raise AttributeError(f"u_sep_fcov has no {var} variable (cov/sv/sep_fcov.sv)")
+    getattr(fcov, var).value = value
+    if log is not None:
+        log.info("%s %d", tag, value)
+    return True
+
+
+def set_esrc_af_clear_bound(strobes: int, log=None) -> bool:
+    """Write ``u_sep_fcov.esrc_af_clear_bound`` (strobes, or 0 for none).
+
+    The persistent-alert leaf writes its count-clear bound (2W strobes of
+    ``esrc_decor_valid_o``) after the last failing word of a burst and 0 when its
+    polls end. ``cp_any_fail`` "falls to 0" samples only a fall of
+    ``ANY_FAIL_COUNT`` to 0 at most that many strobes after the write, the bound
+    the leaf grades (docs/SEP_FCOV.adoc). Same rules as ``graded_owner``: a no-op
+    that returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    return _set_bound("esrc_af_clear_bound", strobes, "FCOV-ESRC-AF-CLEAR-BOUND", log)
+
+
+def set_alert_rise_bound(clocks: int, log=None) -> bool:
+    """Write ``u_sep_fcov.alert_rise_bound`` (clk_i clocks, or 0 for none).
+
+    The shadow-update leaf writes the rise bound of a malformed-alert trial
+    (WINDOW_FACTOR x the ``ALERT_TEST`` delay c of the block) together with the
+    inject and 0 when the rise wait ends. ``x_alert_source`` samples only a rise of
+    vector bit 32 fewer than that many clocks after the first clock that sees the
+    write, the bound the leaf grades (docs/SEP_FCOV.adoc). Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    return _set_bound("alert_rise_bound", clocks, "FCOV-ALERT-RISE-BOUND", log)
+
+
 def close_graded_window(log=None) -> bool:
     """Write 0 (no window open). Returns True when written."""
     gate = _gate_handle()

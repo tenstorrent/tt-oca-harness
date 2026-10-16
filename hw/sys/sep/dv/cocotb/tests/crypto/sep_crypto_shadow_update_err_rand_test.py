@@ -50,8 +50,12 @@ Checkers:
                        the AUX register differs from its reset value and the
                        update error reads 1.
   CHK-ALERT-MALFORMED  per block: bit 32 stays 0 over a quiet window before,
-                       rises during the malformed pair, reads 0 after the
+                       rises during the malformed pair on a clock 1 to
+                       4 x c - 1 after the inject (c: the ALERT_TEST delay of
+                       the block in the same trial), reads 0 after the
                        release and stays 0 over a quiet window after it.
+                       The FCOV sampler fills ``x_alert_source`` only inside
+                       the same rise window (``alert_rise_bound``).
 The AES AUX pairs and every KMAC result are logged (``OBS-SHADOW-AUX``,
 ``OBS-SHADOW-KMAC``) and not graded; the ALERT_TEST write of each block is the
 timing reference ``OBS-ALERT-REF``.
@@ -68,7 +72,7 @@ from env.sep_aes_golden import aes_encrypt_words
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import AES_KEY_ROWS, SP800_38A_PT_BLOCK1
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_alert_rise_bound
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_trial_wait import TrialTimeout, wait_until
@@ -712,15 +716,19 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             pre = self._bit32()
 
             open_graded_window(TEST, self.logger)
+            rise_bound = WINDOW_FACTOR * c
             m2 = self.vec.mark()
+            # The FCOV sampler takes the same rise window (sep_fcov_gate.set_alert_rise_bound).
+            set_alert_rise_bound(rise_bound)
             dut.crypto_alert_inject_idx_i.value = idx
             dut.crypto_alert_inject_val_i.value = val
             dut.crypto_alert_inject_i.value = 1
             raise_clk = None
             try:
-                raise_clk = await self.vec.wait_rise(m2, WINDOW_FACTOR * c, "alert") - m2.clk
+                raise_clk = await self.vec.wait_rise(m2, rise_bound, "alert") - m2.clk
             except BitWatchTimeout:
                 raise_clk = None
+            set_alert_rise_bound(0)
             dut.crypto_alert_inject_i.value = 0
             await ClockCycles(dut.clk_i, WINDOW_FACTOR * c)
             post = self._bit32()
@@ -729,7 +737,8 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             await ClockCycles(dut.clk_i, WINDOW_FACTOR * c)
             quiet_post = self.vec.high_clocks_since(mp, "alert")
             close_graded_window(self.logger)
-            raised = int(raise_clk is not None)
+            # The rise counts only on a clock 1 to rise_bound - 1 after the mark.
+            raised = int(raise_clk is not None and 1 <= raise_clk < rise_bound)
             self.chk.ok(
                 "ALERT-MALFORMED",
                 pre == 0 and quiet_pre == 0 and raised == 1 and post == 0 and quiet_post == 0,
@@ -743,6 +752,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 quiet_post_high_clk=quiet_post,
                 quiet_clk=WINDOW_FACTOR * c,
                 raise_clk=raise_clk,
+                expect_raise_clk_lt=rise_bound,
                 ref_clk=c,
             )
         dut.crypto_alert_inject_idx_i.value = 0

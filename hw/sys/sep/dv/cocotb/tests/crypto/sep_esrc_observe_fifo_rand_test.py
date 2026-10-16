@@ -43,9 +43,12 @@ Checkers:
                     Control: the overflow bit reads 0 before the leg and 1 after
                     the drain, before the write-one.
   CHK-OBS-LOCK      locked at 1: L + 2 words delivered, last two noise words equal the
-                    lane value, FLUSH lowers LEVEL; locked at 0: LEVEL stays 0.
+                    lane value; a FLUSH with old words of z and words of 1 - z buffered
+                    lowers LEVEL, and every word popped after it equals the word of
+                    1 - z (no kept word); locked at 0: LEVEL stays 0.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
-                    both LEVELs read 0 after 256 strobes (entropy_source.adoc:792,
+                    both LEVELs read 0 after a hold of 256 strobes and at least 4 x
+                    the measured first-word time of each FIFO (entropy_source.adoc:792,
                     :828: ``RAW_ENABLE`` enables the capture).
                     Control: both fields and both LEVELs read 0 before the hold.
 Logged only: ``OBS-BLOCKED CHK-OBS-MAIN`` (no stated rule that observe capture leaves
@@ -117,6 +120,9 @@ UNGATED_WAIT_FACTOR = 4
 MAIN_WORDS = 256
 # Strobes of the capture-off leg: eight observe words of 32 samples.
 OFF_STROBES = 8 * 32
+# The capture-off hold also spans this many first-word times of each FIFO, measured
+# in the ungated trials of the same seed (test parameter).
+OFF_WORD_FACTOR = 4
 DRAW_TRIES = 16
 FIFO_DEPTH_MAX = 64  # bound of a drain loop: the RDL LEVEL field holds at most 64 words
 ALL_ONES = 0xFFFF_FFFF
@@ -247,6 +253,10 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _EsrcRegs(self)
         self.p: int | None = None
+        # Measured time of the first observe word of each FIFO (clk_i): BIW from the
+        # clean ungated trial, noise from the failing ungated trial.
+        self.t_biw_word: int | None = None
+        self.t_noise_word: int | None = None
         self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self._release_stuck()
         self.noise = SepEsrcPatternNoise(logger=self.logger)
@@ -372,6 +382,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         ok, _, t_clean = await self._poll_level("biw", lambda v: v > 0, cap)
         # The wait of the failing trial is at least one strobe period.
         t_wait = max(t_clean, self._period())
+        self.t_biw_word = t_wait if ok else None
         self.chk.ctrl("OBS-UNGATED-CLEAN", ok, t_clean_clk=t_clean, t_used_clk=t_wait, bound=cap)
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, 0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
@@ -389,6 +400,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
         bound = self._bound("noise_first", 2 * OBS_WORD_CAP * 20)
         ok, _, clocks = await self._poll_level("noise", lambda v: v > 0, bound)
+        self.t_noise_word = clocks if ok else None
         if ok:
             self._learn("noise_first", clocks)
         wait = UNGATED_WAIT_FACTOR * t_clean
@@ -618,7 +630,9 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
     # --- capture-off leg ---------------------------------------------------------------
     async def _off_leg(self) -> None:
         """CHK-OBS-OFF: with both RAW_ENABLE fields 0 and the module running after the boot
-        phase, neither observe FIFO takes a word over OFF_STROBES strobes."""
+        phase, neither observe FIFO takes a word over the hold: OFF_STROBES strobes and at
+        least OFF_WORD_FACTOR x the measured first-word time of each FIFO, so the hold
+        spans several observe words of each FIFO."""
         await self._setup()
         raw = {fifo: await self._read_raw(fifo) for fifo in FIFOS}
         before = {fifo: await self._level(fifo) for fifo in FIFOS}
@@ -630,23 +644,40 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             noise_level_before=before["noise"],
             biw_level_before=before["biw"],
         )
+        words = {"noise": self.t_noise_word, "biw": self.t_biw_word}
+        hold = max([OFF_WORD_FACTOR * t for t in words.values() if t] + [0])
         open_graded_window(TEST, self.logger)
+        t0 = self._now()
         bound = 2 * (OFF_STROBES + 1) * self._period()
         reason = ""
+        if None in words.values():
+            reason = "no_word_time"
         try:
             await self.noise.wait_words(OFF_STROBES, bound)
         except EsrcStrobeTimeout:
             reason = f"timeout:strobes bound={bound}"
+        rest = hold - (self._now() - t0)
+        if rest > 0:
+            await ClockCycles(cocotb.top.clk_i, rest)
+        held = self._now() - t0
         after = {fifo: await self._level(fifo) for fifo in FIFOS}
         close_graded_window(self.logger)
         fields = {
             "noise_level": after["noise"],
             "biw_level": after["biw"],
             "strobes": OFF_STROBES,
+            "hold_clk": held,
+            "expect_hold_clk_min": hold,
+            "t_noise_word_clk": words["noise"] if words["noise"] else "none",
+            "t_biw_word_clk": words["biw"] if words["biw"] else "none",
         }
         if reason:
             fields["reason"] = reason
-        self.chk.ok("OBS-OFF", not reason and after["noise"] == 0 and after["biw"] == 0, **fields)
+        self.chk.ok(
+            "OBS-OFF",
+            not reason and held >= hold and after["noise"] == 0 and after["biw"] == 0,
+            **fields,
+        )
 
     async def _clocks_for_words(self, words: int, cap: int) -> int | None:
         dut = cocotb.top
@@ -720,16 +751,44 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                     break
                 words.append(await self._pop(fifo))
         flush_after: int | str = "n/a"
+        flush_fields: dict = {}
         value_ok = True
         flush_ok = True
         if fifo == "noise":
             last = words[-LOCK_EXTRA_POPS:]
             value_ok = len(last) == LOCK_EXTRA_POPS and all(w == _word(z) for w in last)
-            okf, _, _ = await self._poll_level(fifo, lambda x: x >= LOCK_FLUSH_WORDS, pop_bound)
+            # FLUSH under the lock (entropy_source.adoc:827: it discards the buffered
+            # words). LOCK_FLUSH_WORDS words of z are buffered, then the lane changes to
+            # 1 - z and FLUSH_NEW_WORDS more words are captured, so the FIFO holds old
+            # words of z and words of the new value at the FLUSH. Every word popped after
+            # the FLUSH completed after it, so it holds new samples only (the lane leg
+            # grades the same: words 2 on of a change hold the new value); a word of z or
+            # a mixed word popped after the FLUSH is a word the FLUSH kept.
+            okz, _, _ = await self._poll_level(fifo, lambda x: x >= LOCK_FLUSH_WORDS, pop_bound)
+            self._drive(0, 1 - z)
+            lc = await self._level(fifo)
+            okc, _, _ = await self._poll_level(fifo, lambda x: x >= lc + FLUSH_NEW_WORDS, pop_bound)
+            okf = okz and okc
             before = await self._level(fifo)
             await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0, flush=1))
             flush_after = await self._level(fifo)
-            flush_ok = okf and flush_after < before
+            okn, m, _ = await self._poll_level(fifo, lambda x: x >= FLUSH_NEW_WORDS, pop_bound)
+            post = [await self._pop(fifo) for _ in range(m)] if okn else []
+            new, old = _word(1 - z), _word(z)
+            olds = sum(1 for w in post if w == old)
+            not_new = sum(1 for w in post if w != new)
+            flush_ok = (
+                okf and okn and flush_after < before and bool(post) and olds == 0 and not_new == 0
+            )
+            flush_fields = {
+                "noise_flush_level_before": before,
+                "flush_old_words_after": olds,
+                "flush_not_new_words": not_new,
+                "flush_words": len(post),
+                "flush_expect": f"0x{new:08x}",
+            }
+            if not (okf and okn):
+                flush_fields["flush_reason"] = f"timeout:level bound={pop_bound}"
         close_graded_window(self.logger)
         fields = {
             "fifo": fifo,
@@ -738,6 +797,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             "post_lock_pops": len(words),
             "expect_pops": level_at_lock + LOCK_EXTRA_POPS,
             "noise_flush_level_after": flush_after,
+            **flush_fields,
             "capture_clk": t_cap if t_cap is not None else "none",
             "wait_clk": pop_bound,
         }

@@ -224,7 +224,9 @@ def draw_plan(seed: int) -> Plan:
         # writes 0x7 with the bit of the stream cleared; the pop leg of stream 2
         # writes pop_sel after it.
         held = pop_sel if i == 2 else (SEL_MASK & ~bit)
-    a = _draw_sel(rng, avoid=(SEL_RESET,))
+    # a differs from the value held at the lock leg, so the pre-lock write changes
+    # the select and CTRL-SEL-LOCK can fail.
+    a = _draw_sel(rng, avoid=(SEL_RESET, held))
     b = _draw_sel(rng, avoid=(a,))
     idle_gap = rng.randrange(0, 33)
     return Plan(seed, tuple(order), hold, streams, a, b, idle_gap)
@@ -509,6 +511,23 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         if n is None or self.trace.ext_xfers[stream] - base < target:
             return None
         return n
+
+    async def _settle_pending(self, pend_base: int, bound: int) -> bool:
+        """After a pop: True when both beats of the pair offered at counter value
+        ``pend_base`` have completed at port 2. False when a beat stays pending (tvalid 1,
+        tready 0) for H clocks counted from the call, or at ``bound``."""
+        h = self.plan.hold
+        t0 = self.trace.clk
+
+        def done() -> bool:
+            return self.trace.ext_xfers[2] - pend_base >= 2
+
+        def stalled() -> bool:
+            since = self.trace.clk - t0
+            return since >= h and self.trace.stall[2] >= since
+
+        await self._until(lambda: done() or stalled(), bound)
+        return done()
 
     async def _status_settled(self) -> tuple[int, int]:
         """STATUS after the pool path is quiet (``POOL_QUIET`` clocks with no stream-2
@@ -922,7 +941,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _pop_leg(self, sp: StreamPlan) -> None:
         """CHK-POOL-DATA: each pop answers OKAY with the next pair in order, and the
-        settled fifo_level equals the model level min(32, completed pairs - pops)."""
+        settled fifo_level equals the model level min(32, completed pairs - pops). A pair
+        left pending at level 32 completes after the next pop; a beat still pending H
+        clocks after that pop response fails (``reason=timeout:pending_feed``)."""
         h = self.plan.hold
         await self._trng_reset()
         got = await self._sel(sp.pop_sel)
@@ -971,13 +992,17 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
                 resp, data = await self._pop()
                 want = (sent[pops] << 32) | sent[pops]
                 pops += 1
-                if pend_base is not None:
-                    left = 2 - (self.trace.ext_xfers[2] - pend_base)
-                    if left <= 0 or await self._settle_pairs(2, left, SETTLE_CAP) is not None:
-                        completed += 1
-                        pend_base = None
                 ok = resp == RESP_OKAY and data == want
                 fields.update(pop=pops, resp=resp, data=f"0x{data:016x}", expect=f"0x{want:016x}")
+                if pend_base is not None:
+                    # The pop makes room, so the pending pair must complete: a beat still
+                    # pending H clocks after the pop response is a stall and fails.
+                    if await self._settle_pending(pend_base, SETTLE_CAP):
+                        completed += 1
+                        pend_base = None
+                    else:
+                        ok = False
+                        fields["reason"] = f"timeout:pending_feed hold={h}"
             lvl, _ = await self._status_settled()
             expect = min(POOL_DEPTH, completed - pops)
             fields.update(level_after=lvl, expect_level=expect, pending=int(pend_base is not None))
@@ -1025,11 +1050,19 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _lock_leg(self) -> None:
         """CHK-SEL-LOCK: after the lock write of 1, a write of 0 leaves it at 1, a
-        select write leaves the old value, and a TRNG reset leaves the lock at 1."""
+        select write leaves the old value, and a TRNG reset leaves the lock at 1.
+        Control: the pre-lock write of a lands and a differs from the value held
+        before it (the plan draws a away from that value)."""
         plan = self.plan
+        held = await self.reg._rd(SEL_ADDR) & SEL_MASK
         open_graded_window(TEST, self.logger)
         pre = await self._sel(plan.a)
-        self.chk.ctrl("SEL-LOCK", pre == plan.a, pre_lock_sel=f"0x{pre:x}")
+        self.chk.ctrl(
+            "SEL-LOCK",
+            pre == plan.a and held != plan.a,
+            held_sel=f"0x{held:x}",
+            pre_lock_sel=f"0x{pre:x}",
+        )
         await self._clocks(plan.idle_gap)
         lock1 = await self._lock(LOCK_MASK)
         lock0 = await self._lock(0)

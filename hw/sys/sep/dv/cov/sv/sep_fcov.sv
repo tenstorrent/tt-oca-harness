@@ -15573,6 +15573,18 @@ module sep_fcov (
   // graded_owner. It selects a bin of a DUT outcome and drives nothing.
   int unsigned abr_reject_class = 0;
 
+  // Outcome bounds that the owning leaf grades, written by the leaf through the
+  // u_sep_fcov handle under the rules of graded_owner. 0 means none. They gate
+  // a sample, they are never a bin value, and they drive nothing.
+  // alert_rise_bound (clk_i edges): sep_crypto_shadow_update_err_rand_test
+  // writes WINDOW_FACTOR x c of the block with the malformed-alert inject and 0
+  // when its rise wait ends (x_alert_source).
+  int unsigned alert_rise_bound = 0;
+  // esrc_af_clear_bound (strobes of esrc_decor_valid_i):
+  // sep_esrc_persistent_alert_rand_test writes 2W after the last failing word
+  // of a burst and 0 when its polls end (cp_any_fail falls to 0).
+  int unsigned esrc_af_clear_bound = 0;
+
   // Encodings that the existing localparams do not hold. HMAC Key_None
   // (CFG.key_length), AES MODE AES_NONE and PRNG_RESEED_RATE values
   // (CTRL_SHADOWED), KMAC CMD.cmd values, OTBN CMD values and STATUS codes:
@@ -17739,12 +17751,16 @@ module sep_fcov (
     end
   end
 
-  // x_alert_source (1.34): a malformed pair (alert_p equal to alert_n, both
-  // known) on a receiver of a block that is out of reset samples the block
-  // when vector bit 32 rises on the same clock (the receiver integrity fail
-  // reaches bit 32 with no register). Otherwise a malformed clock with bit 32
-  // low on the previous clock arms the block, and a rise of bit 32 within
-  // CyAlertBound clocks of the last malformed clock samples the armed block.
+  // x_alert_source (1.34): the leaf writes alert_rise_bound with the inject;
+  // cy_al_k counts the clk_i edges from the first edge that sees it (k = 0 on
+  // that edge, the first edge that sees the inject). A malformed pair
+  // (alert_p equal to alert_n, both known) on a receiver of a block that is out
+  // of reset samples the block when vector bit 32 rises on the same clock (the
+  // receiver integrity fail reaches bit 32 with no register). Otherwise a
+  // malformed clock with bit 32 low on the previous clock arms the block, and a
+  // rise of bit 32 samples the armed block. Either way the rise must come at
+  // 1 <= k < alert_rise_bound: the rise_clk window that CHK-ALERT-MALFORMED
+  // grades (a rise seen at k = 0 was high before the inject reached the pair).
   function automatic int unsigned cy_al_blk(input int unsigned i);
     if (i == 0) return 0;
     return (i + 1) / 2;
@@ -17759,9 +17775,12 @@ module sep_fcov (
     endcase
   endfunction
   logic [5:0] cy_al_arm = '0;
-  int unsigned cy_al_cnt[6] = '{default: 0};
+  int unsigned cy_al_k = 0;
   always @(posedge clk_i) begin
     logic [5:0] mal;
+    logic in_win;
+    in_win = (alert_rise_bound != 0) && (cy_al_k >= 1) && (cy_al_k < alert_rise_bound);
+    cy_al_k <= (alert_rise_bound == 0) ? 0 : cy_al_k + 1;
     mal = '0;
     for (int i = 0; i < 11; i++) begin
       if (((alert_tx_i[i].alert_p === 1'b1) && (alert_tx_i[i].alert_n === 1'b1)) ||
@@ -17772,9 +17791,9 @@ module sep_fcov (
     for (int b = 0; b < 6; b++) begin
       int unsigned d;
       d = cy_al_dom(b);
-      if (!cy_own_shadow || !cy_ip[d] || !cy_ip_q[d]) begin
+      if (!cy_own_shadow || !cy_ip[d] || !cy_ip_q[d] || (alert_rise_bound == 0)) begin
         cy_al_arm[b] <= 1'b0;
-      end else if ((cy_al_arm[b] || mal[b]) && cy_vec_rise[32]) begin
+      end else if ((cy_al_arm[b] || mal[b]) && cy_vec_rise[32] && in_win) begin
         cy_alert_t e;
         e      = '0;
         e.as   = 3'(b);
@@ -17783,10 +17802,6 @@ module sep_fcov (
         cy_al_arm[b] <= 1'b0;
       end else if (mal[b] && (cy_al_arm[b] || !cy_vec_q[32])) begin
         cy_al_arm[b] <= 1'b1;
-        cy_al_cnt[b] <= 0;
-      end else if (cy_al_arm[b]) begin
-        if (cy_al_cnt[b] >= CyAlertBound) cy_al_arm[b] <= 1'b0;
-        cy_al_cnt[b] <= cy_al_cnt[b] + 1;
       end
     end
   end
@@ -20060,11 +20075,15 @@ module sep_fcov (
   logic [15:0] cz_af_peak = '0;
   logic cz_af_alert = 1'b0;
   logic cz_af_men = 1'b0;  // MODULE_ENABLE stayed 1 since the burst start
-  longint unsigned cz_af_t_inc = 0;
   longint unsigned cz_af_t_start = 0;
   logic [15:0] cz_af_prev_peak = '0;
   longint unsigned cz_af_prev_end = 0;
   logic cz_af_prev_v = 1'b0;
+  logic cz_afc_on = 1'b0;  // esrc_af_clear_bound seen non-zero
+  // Strobes up to the clock before the first clock that saw it; the strobe of
+  // the last clock (cz_strobe) is added on both ends, so the count matches the
+  // word count of the leaf at its write.
+  longint unsigned cz_afc_t0 = 0;
   logic cz_sm_alert_q = 1'b0;
   logic cz_hang = 1'b0;  // AlertHang entered, no exit yet
   logic cz_hg_arm = 1'b0;  // entry: waiting for the halt hold
@@ -20176,7 +20195,15 @@ module sep_fcov (
 
     // cp_any_fail and the "no entry" cells of cp_alert_hang (1.42). A burst
     // runs from an ANY_FAIL_COUNT rise from 0 to its fall to 0 with
-    // MODULE_ENABLE 1 throughout.
+    // MODULE_ENABLE 1 throughout. "Falls to 0" samples a fall at most
+    // esrc_af_clear_bound strobes after the first clock that saw the bound, the
+    // count-clear bound that the leaf writes after the last failing word.
+    if (esrc_af_clear_bound == 0) begin
+      cz_afc_on <= 1'b0;
+    end else if (!cz_afc_on) begin
+      cz_afc_on <= 1'b1;
+      cz_afc_t0 <= cz_strobes + longint'(cz_strobe);
+    end
     if (!cy_own_espa || !cz_es_on || $isunknown(cz_any_fail)) begin
       cz_af_peak    <= '0;
       cz_af_alert   <= 1'b0;
@@ -20186,7 +20213,6 @@ module sep_fcov (
       if (cz_any_fail > cz_af_q) begin
         if (cz_thr != 16'd0) cz_falt(3, (cz_any_fail < cz_thr) ? 6'd0 : 6'd1);
         else if ((cz_any_fail > 16'd8) && (cz_af_q <= 16'd8)) cz_falt(3, 6'd2);
-        cz_af_t_inc <= cz_strobes;
         if (cz_af_q == 16'h0) begin
           cz_af_peak    <= cz_any_fail;
           cz_af_alert   <= 1'b0;
@@ -20199,7 +20225,10 @@ module sep_fcov (
       if (sm_alert && !cz_sm_alert_q) cz_af_alert <= 1'b1;
       if (!cz_men) cz_af_men <= 1'b0;
       if ((cz_any_fail == 16'h0) && (cz_af_q != 16'h0) && cz_af_men && cz_men && cz_wsize_ok) begin
-        if ((cz_strobes - cz_af_t_inc) <= 3 * longint'(cz_wsize)) cz_falt(3, 6'd3);
+        if (cz_afc_on &&
+            ((cz_strobes + longint'(cz_strobe) - cz_afc_t0) <= longint'(esrc_af_clear_bound))) begin
+          cz_falt(3, 6'd3);
+        end
         if (!cz_af_alert) begin
           if (cz_thr != 16'd0) begin
             if (cz_af_prev_v && ((cz_af_t_start - cz_af_prev_end) <= 5 * longint'(cz_wsize)) &&

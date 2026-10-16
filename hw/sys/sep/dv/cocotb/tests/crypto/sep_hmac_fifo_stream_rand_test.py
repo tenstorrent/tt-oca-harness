@@ -65,8 +65,9 @@ DIGEST byte order: the register text settles the register order (DIGEST_0 holds 
 ``digest_swap`` = 0. Every digest-to-golden compare of the leaf accepts the big-endian or the
 little-endian read of each word, with one order for every readback of the seed
 (``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order is logged as
-``OBS-HMAC-DIGEST-ORDER``. The all-w DIGEST read of CHK-HMAC-WIPE compares register words with
-the written register value w and does not depend on the digest byte order.
+``OBS-HMAC-DIGEST-ORDER``. The wipe writes w into every digest word, so the all-w DIGEST read
+of CHK-HMAC-WIPE expects w in the order of the seed: w for the big-endian read, w with its
+four bytes reversed for the little-endian read (``digest_words`` of the bytes of w).
 
 Controls: ``CTRL-HMAC-STALL-FULL`` (a stalled leg reads ``fifo_full`` = 1),
 ``CTRL-HMAC-BP-CLEAN`` (a beat into a FIFO that is not full completes), ``CTRL-HMAC-LENGTHS``
@@ -112,13 +113,13 @@ from seq_lib.sep_hmac_seq import (
     SepHmac,
     build_cfg,
 )
-from seq_lib.sep_sw_reset_seq import SepSwReset
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_RESET_DEFAULT, SepSwReset
 
 TEST = "sep_hmac_fifo_stream_rand_test"
 
-# SW_RESET_N baseline: every engine released except the Key Manager (bit 0)
-# (hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc).
-SW_RESET_BASELINE = 0x7E
+# SW_RESET_N baseline: the RDL reset value, every engine released except the Key
+# Manager (bit 0) (hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc).
+SW_RESET_BASELINE = SW_RESET_N_RESET_DEFAULT
 
 HMAC_WIPE_SECRET = HMAC.addr("WIPE_SECRET")
 RESP_OKAY = 0  # AXI BRESP OKAY
@@ -987,18 +988,22 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         self._grade_msg(h, leg.msg1, "burst", d1)
         g1 = golden_digest(h.sha, True, KEY_ROWS[h.key_row], h.key_bits, leg.msg1)
         d1_ok, _ = self.digest_order.match(d1, g1)
+        # hmac.hjson:420-425: the value overwrites the secret key and the digest; a 64-bit
+        # word of SHA-384/512 holds the 32-bit value twice, so every digest word holds w.
+        # A DIGEST word reads it in the order of the seed, fixed by the d1 compare above.
+        w_read = self.digest_order.expected(leg.w.to_bytes(4, "big") * n_words)
         self.chk.ctrl(
             "HMAC-WIPE-PRE",
-            d1_ok and leg.w not in d1,
+            d1_ok and self.digest_order.order is not None and w_read[0] not in d1,
             w=f"0x{leg.w:08x}",
+            expect_word=f"0x{w_read[0]:08x}",
+            dswap0=self.digest_order.order or "-",
             digest_eq_golden=int(d1_ok),
         )
 
-        # hmac.hjson:420-425: the value overwrites the secret key and the digest; a 64-bit
-        # word of SHA-384/512 holds the 32-bit value twice, so every DIGEST word reads w.
         await self._wr(HMAC_WIPE_SECRET, leg.w)
         after = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)]
-        digest_all_w = all(x == leg.w for x in after)
+        digest_all_w = self.digest_order.order is not None and after == w_read
 
         # The next HMAC writes CFG and no KEY word, so it hashes with a key of all-w words.
         await self._wr(
@@ -1015,6 +1020,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             sha=h.sha,
             klen=h.key_bits,
             w=f"0x{leg.w:08x}",
+            expect_word=f"0x{w_read[0]:08x}",
+            dswap0=self.digest_order.order or "-",
             words=n_words,
             digest_all_w=int(digest_all_w),
             **{"key_half_digest==golden_key_w": int(key_ok)},
