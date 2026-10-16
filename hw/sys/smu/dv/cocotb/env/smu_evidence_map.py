@@ -904,25 +904,28 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-LC-SYSDIS-SEP-DBG-IGNORED-RMA-SIP",
             "CHK-LC-SYSDIS-SEP-DBG-IGNORED-RMA-SIP",
             "lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals "
-            "64'hFFFF_FFFF_FFFF_FFFF with bit 0 set although the image holds SYS_DIS bit 0 "
-            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done wait and "
-            "a value differing from the 64'h0 reset value",
+            "64'hFFFF_FFFF_FFFF_FFFF with bit 0 set although SYS_DIS bit 0 is set in the word "
+            "the DUT holds, read back over the SEP debug module's system bus and equal to the "
+            "image vector (SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done "
+            "wait and a value differing from the 64'h0 reset value",
         ),
         (
             "CHK-LC-SYSDIS-CHIPLET-DBG-IGNORED-RMA-SIP",
             "CHK-LC-SYSDIS-CHIPLET-DBG-IGNORED-RMA-SIP",
             "lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals "
-            "64'hFFFF_FFFF_FFFF_FFFF with bit 1 set although the image holds SYS_DIS bit 1 "
-            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done wait and "
-            "a value differing from the 64'h0 reset value",
+            "64'hFFFF_FFFF_FFFF_FFFF with bit 1 set although SYS_DIS bit 1 is set in the word "
+            "the DUT holds, read back over the SEP debug module's system bus and equal to the "
+            "image vector (SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done "
+            "wait and a value differing from the 64'h0 reset value",
         ),
         (
             "CHK-LC-SYSDIS-SIP-DBG-IGNORED-RMA-SIP",
             "CHK-LC-SYSDIS-SIP-DBG-IGNORED-RMA-SIP",
             "lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals "
-            "64'hFFFF_FFFF_FFFF_FFFF with bit 24 set although the image holds SYS_DIS bit 24 "
-            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done wait and "
-            "a value differing from the 64'h0 reset value",
+            "64'hFFFF_FFFF_FFFF_FFFF with bit 24 set although SYS_DIS bit 24 is set in the word "
+            "the DUT holds, read back over the SEP debug module's system bus and equal to the "
+            "image vector (SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done "
+            "wait and a value differing from the 64'h0 reset value",
         ),
         (
             "CHK-LC-STAP-SEP-OPEN-RMA-SIP-SYS-DIS",
@@ -969,8 +972,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-NONVAC",
             "CHK-NONVAC",
-            "ordered step fence from the image load to the fabric control leg, stamped PASS two "
-            "clk_smu_i cycles after it",
+            "ordered step fence from the image load to the SYS_DIS read-back and compare, "
+            "stamped PASS two clk_smu_i cycles after it",
         ),
         (
             "CHK-TIMEOUT-PATHS",

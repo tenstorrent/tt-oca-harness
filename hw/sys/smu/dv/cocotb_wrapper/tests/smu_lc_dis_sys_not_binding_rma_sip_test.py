@@ -19,7 +19,8 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_lc_dis_sys_not_binding_rma_sip_test(smu_base_test):
-    """SYS_DIS bits 0, 1 and 24 in RMA_SIP leave the fabric, STAPs and SIBs open."""
+    """SYS_DIS bits 0, 1 and 24, read back from the DUT over the SEP debug module's system bus,
+    leave the fabric, STAPs and SIBs open in RMA_SIP."""
 
     use_shared_env = True
 

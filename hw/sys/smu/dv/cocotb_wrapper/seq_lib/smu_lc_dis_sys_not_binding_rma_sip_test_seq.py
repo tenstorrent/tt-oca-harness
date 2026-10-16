@@ -5,21 +5,28 @@
 Spec: hw/sys/sep/doc/lifecycle_controller.adoc ("Disable vector bit table", "Disable vector
 applicability", "Per-LC-state feature control profile", "DTP access cases", "DTP path feature
 gates"), hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl (SIP_DIS, SYS_DIS),
-hw/sys/dtp/doc/jtag.adoc (SMC fabric bridge), hw/ip/jtag/jtag_stap/doc/architecture.adoc
-(selected STAP) and hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc (iJTAG SIBs).
+hw/sys/sep/doc/otp_fuse_controller.adoc ("Shadow Register and JTAG Access Control": SYS_DIS is
+readable; in RMA_SIP the JTAG port reaches only the eFuse MMR token block, so the read-back goes
+over the SEP debug module's system bus), hw/sys/dtp/doc/jtag.adoc (SMC fabric bridge),
+hw/ip/jtag/jtag_stap/doc/architecture.adoc (selected STAP) and
+hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc (iJTAG SIBs).
 
 The RMA_SIP eFuse shadow image named by ``+sep_shadow_reg_preload`` sets SYS_DIS bits 0, 1 and 24
 with SIP_DIS clear and is the only stimulus besides the JTAG accesses. The steps run in this order:
 
-S1, setup: the image is the leaf's own and ``sep_fuse_sense_done_o`` rises within its bound.
-S2, witness and feature control: ``lc_state_o`` is the RMA_SIP word and ``lcc_feat_ctrl_o`` has
-    every bit set although the image holds the three SYS_DIS bits.
-S3, SEP debug STAP: its host TMS follows the PTAP TMS and its TDO enable asserts.
-S4, DFT secure SIB: opens, captures 1 and its bench cell joins the loop.
-S5, SMC debug STAP: the same as S3.
-S6, I/O STAP: the same as S3.
-S7, DFD SIB: opens, captures 1 and its bench cell joins the loop.
-S8, fabric: an SMC fabric SINGLE_OP read and write launch AR, AW and B.
+S1, setup: the image is the leaf's own and ``sep_fuse_sense_done_o`` rises within its bound; the
+    flag is the bench's ``+skip_fuse_sense`` substitute, a recorded precondition and not graded.
+S2, SEP debug STAP: its host TMS follows the PTAP TMS and its TDO enable asserts.
+S3, DFT secure SIB: opens, captures 1 and its bench cell joins the loop.
+S4, SMC debug STAP: the same as S2.
+S5, I/O STAP: the same as S2.
+S6, DFD SIB: opens, captures 1 and its bench cell joins the loop.
+S7, fabric: an SMC fabric SINGLE_OP read and write launch AR, AW and B.
+S8, read-back, witness and feature control: the SEP STAP is selected over the PTAP 3DCR with the
+    configuration held, the debug module comes out of reset and its system bus reads the two
+    SYS_DIS words the DUT holds; then ``lc_state_o`` is the RMA_SIP word and ``lcc_feat_ctrl_o``
+    has every bit set although the DUT-held SYS_DIS word, equal to the image's, has the three
+    bits. The held selection survives Test-Logic-Reset, so this leg runs last.
 Every bounded wait reports its bound, the cycles it used and the last observed state.
 """
 
@@ -32,6 +39,31 @@ from cocotb.triggers import RisingEdge
 
 from seq_lib.smu_addr_map import c_header_u32
 from seq_lib.smu_dtp_scan_chain_boundary_seq import ijtag_chain, ijtag_shift, ijtag_word
+from seq_lib.smu_dtp_sep_dm_dmi_test_seq import (
+    DMCONTROL_ADDR,
+    DMCONTROL_DMACTIVE,
+    DMI_OP_READ,
+    DMI_OP_WRITE,
+    DMSTATUS_ADDR,
+    DMSTATUS_VERSION_SPEC_0_13,
+    SEP_TAP_IR_DMI,
+    network_ir_scan,
+)
+from seq_lib.smu_dtp_sep_dm_sba_test_seq import (
+    SBA_POLLS,
+    SBADDRESS0_ADDR,
+    SBCS_ADDR,
+    SBCS_SBACCESS_32,
+    SBCS_SBBUSY,
+    SBCS_SBBUSYERROR,
+    SBCS_SBERROR_MASK,
+    SBCS_SBERROR_SHIFT,
+    SBCS_SBERROR_W1C,
+    SBCS_SBREADONADDR,
+    SBDATA0_ADDR,
+    smu_dtp_sep_dm_sba_test_seq,
+)
+from seq_lib.smu_jtag_helpers import DTP_IR_TAP_3DCR
 from seq_lib.smu_lc_dis_sys_chiplet_dbg_test_dev_test_seq import (
     IJTAG_CONTROL_FLUSH_CAPTURE,
     IJTAG_CONTROL_FLUSH_OPEN,
@@ -76,6 +108,13 @@ SIP_DIS_OFFSET = c_header_u32(
 SYS_DIS_OFFSET = c_header_u32(
     _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR"
 ) - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
+#: hw/sys/sep/regs/gen/c/sep_addr.h: the SYS_DIS shadow register on the SEP map, read as two
+#: 32-bit words, low word first, over the debug module's system bus (RISC-V Debug Specification
+#: 0.13, "System Bus Access"). hw/sys/sep/doc/otp_fuse_controller.adoc, "Shadow Register and
+#: JTAG Access Control": SYS_DIS is SW readable and the image sets no read-lock; the SEP OTP JTAG
+#: bridge is closed to it in RMA_SIP, so the system bus is the read-back path.
+SYS_DIS_ADDR = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR")
+SYS_DIS_WORD_BYTES = 4
 
 SPEC = ExportSpec(
     state="RMA_SIP_0",
@@ -113,6 +152,53 @@ class smu_lc_dis_sys_not_binding_rma_sip_test_seq(smu_lc_dis_sys_chiplet_dbg_tes
     def __init__(self, test) -> None:
         super().__init__(test)
         self.spec = SPEC
+
+    async def _sba_read32(self, sba, addr: int, label: str) -> int:
+        """One 32-bit system-bus read; the sbcs poll is a recorded bounded wait."""
+        jtag = self.jtag
+        await sba._dmi(
+            jtag,
+            SBCS_ADDR,
+            SBCS_SBACCESS_32 | SBCS_SBREADONADDR | SBCS_SBERROR_W1C,
+            DMI_OP_WRITE,
+        )
+        await sba._dmi(jtag, SBADDRESS0_ADDR, addr, DMI_OP_WRITE)
+        last = "no sbcs read"
+        for poll in range(1, SBA_POLLS + 1):
+            sbcs = await sba._dmi(jtag, SBCS_ADDR, 0, DMI_OP_READ)
+            last = f"sbcs=0x{sbcs:08x}"
+            if sbcs & SBCS_SBBUSY:
+                continue
+            sberror = (sbcs >> SBCS_SBERROR_SHIFT) & SBCS_SBERROR_MASK
+            if sberror or (sbcs & SBCS_SBBUSYERROR):
+                raise AssertionError(f"system-bus read 0x{addr:08x}: {last} sberror={sberror}")
+            self._record(label, SBA_POLLS, poll, "polls", last)
+            break
+        else:
+            self._record(label, SBA_POLLS, SBA_POLLS, "polls", last, expired=True)
+        return await sba._dmi(jtag, SBDATA0_ADDR, 0, DMI_OP_READ)
+
+    async def _sys_dis_read_back(self) -> tuple[int, int]:
+        """(SYS_DIS word the DUT holds, dmstatus.version): the SEP STAP selected over the PTAP
+        3DCR with the configuration held, the debug module active, two system-bus reads of the
+        SYS_DIS shadow register. The held selection outlives Test-Logic-Reset
+        (hw/ip/jtag/jtag_stap/doc/architecture.adoc, Config-Hold), so no STAP scan follows."""
+        await self._tlr()
+        sba = smu_dtp_sep_dm_sba_test_seq(self.test)
+        await sba._select_sep_stap(self.jtag)
+        ir_value, ir_width = network_ir_scan(DTP_IR_TAP_3DCR, SEP_TAP_IR_DMI)
+        await self.jtag.shift_ir(ir_value, width=ir_width, back_to_rti=True)
+        await sba._dmi(self.jtag, DMCONTROL_ADDR, DMCONTROL_DMACTIVE, DMI_OP_WRITE)
+        version = (await sba._dmi(self.jtag, DMSTATUS_ADDR, 0, DMI_OP_READ)) & 0xF
+        low = await self._sba_read32(sba, SYS_DIS_ADDR, "sba_sys_dis_low")
+        high = await self._sba_read32(sba, SYS_DIS_ADDR + SYS_DIS_WORD_BYTES, "sba_sys_dis_high")
+        word = ((high & 0xFFFF_FFFF) << 32) | (low & 0xFFFF_FFFF)
+        self._log(
+            f"CELL sys_dis_read_back @0x{SYS_DIS_ADDR:08x} low=0x{low:08x} high=0x{high:08x} "
+            f"word=0x{word:016x} dmstatus.version={version} "
+            f"(want_version={DMSTATUS_VERSION_SPEC_0_13}, measured and logged only)"
+        )
+        return word, version
 
     def _check_open(self, chk: str, who: str, obs: dict) -> None:
         self._check(
@@ -163,37 +249,6 @@ class smu_lc_dis_sys_not_binding_rma_sip_test_seq(smu_lc_dis_sys_chiplet_dbg_tes
         sys_dis_image = _image_vector(SYS_DIS_OFFSET)
         sip_dis_image = _image_vector(SIP_DIS_OFFSET)
 
-        await self._mark("WITNESS: lc_state_o, then sample lcc_feat_ctrl_o")
-        await RisingEdge(self.dut.clk_smu_i)
-        word = self._rd("lcc_feat_ctrl_o")
-        lc_state = self._rd("lc_state_o")
-        done = self._rd("sep_fuse_sense_done_o")
-        for who, (chk, bit) in DIS_BITS.items():
-            self._check(
-                chk,
-                f"{who} SYS_DIS bit {bit}: lcc_feat_ctrl_o=0x{word:016x} bit={(word >> bit) & 1} "
-                f"want=0x{FEAT_CTRL_RMA_SIP_SYS_DIS:016x} reset=0x{FEAT_CTRL_RESET:016x} "
-                f"lc_state_o=0x{lc_state:02x} want=0x{SPEC.lc_word:02x} sense_done={done} "
-                f"image SYS_DIS=0x{sys_dis_image:016x} bit_set={(sys_dis_image >> bit) & 1} "
-                f"image SIP_DIS=0x{sip_dis_image:016x}",
-                (
-                    word,
-                    (word >> bit) & 1,
-                    lc_state,
-                    word != FEAT_CTRL_RESET,
-                    sys_dis_image,
-                    sip_dis_image,
-                ),
-                (
-                    FEAT_CTRL_RMA_SIP_SYS_DIS,
-                    1,
-                    SPEC.lc_word,
-                    True,
-                    SYS_DIS_VECTOR,
-                    SIP_DIS_VECTOR,
-                ),
-            )
-
         await self._mark("SEP debug STAP selected over the PTAP while the PTAP TMS toggles")
         self._check_open(
             "CHK-LC-STAP-SEP-OPEN-RMA-SIP-SYS-DIS",
@@ -236,8 +291,49 @@ class smu_lc_dis_sys_not_binding_rma_sip_test_seq(smu_lc_dis_sys_chiplet_dbg_tes
             (LAUNCHED_AR_AW_B, LANE_ENABLED, LANE_ENABLED),
         )
 
+        await self._mark(
+            "READ-BACK: SYS_DIS over the SEP debug module's system bus, then lc_state_o and "
+            "lcc_feat_ctrl_o"
+        )
+        sys_dis_dut, _ = await self._sys_dis_read_back()
+        await RisingEdge(self.dut.clk_smu_i)
+        word = self._rd("lcc_feat_ctrl_o")
+        lc_state = self._rd("lc_state_o")
+        done = self._rd("sep_fuse_sense_done_o")
+        for who, (chk, bit) in DIS_BITS.items():
+            self._check(
+                chk,
+                f"{who} SYS_DIS bit {bit}: lcc_feat_ctrl_o=0x{word:016x} bit={(word >> bit) & 1} "
+                f"want=0x{FEAT_CTRL_RMA_SIP_SYS_DIS:016x} reset=0x{FEAT_CTRL_RESET:016x} "
+                f"lc_state_o=0x{lc_state:02x} want=0x{SPEC.lc_word:02x} sense_done={done} "
+                f"DUT SYS_DIS=0x{sys_dis_dut:016x} bit_set={(sys_dis_dut >> bit) & 1} "
+                f"image SYS_DIS=0x{sys_dis_image:016x} image SIP_DIS=0x{sip_dis_image:016x}",
+                (
+                    word,
+                    (word >> bit) & 1,
+                    lc_state,
+                    word != FEAT_CTRL_RESET,
+                    sys_dis_dut,
+                    (sys_dis_dut >> bit) & 1,
+                    sys_dis_image,
+                    sip_dis_image,
+                ),
+                (
+                    FEAT_CTRL_RMA_SIP_SYS_DIS,
+                    1,
+                    SPEC.lc_word,
+                    True,
+                    SYS_DIS_VECTOR,
+                    1,
+                    SYS_DIS_VECTOR,
+                    SIP_DIS_VECTOR,
+                ),
+            )
+
         labels = [
             "sense_done",
+            "sba_sys_dis_low",
+            "sba_sys_dis_high",
             "stap_window_sep",
             "ijtag_window_secure_open_1",
             "ijtag_window_secure_open_2",
