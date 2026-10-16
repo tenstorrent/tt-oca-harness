@@ -45,8 +45,15 @@ Checks:
 
 * CHK-SPI-CELL: per legal cell, the sck count of the one chip-select-low window
   equals the stated count, and ERROR_STATUS reads 0 after the segment.
-* CHK-SPI-RXCNT: for DIRECTION 1 and 3 with LEN+1 a multiple of 4, the RXDATA
-  words read and RXQD agree and equal (LEN+1)/4. Control: every Tx-only and
+* CHK-SPI-RXCNT: for DIRECTION 1 and 3, the RXDATA words read (in the segment
+  plus drained after it) equal ceil((LEN+1)/4), the words drained equal RXQD
+  at the segment end, and the words read in the segment plus RXQD equal the
+  same count. Source for a LEN+1 that is not a multiple of 4: "For RX (or
+  Bidirectional) segments, if the last few bytes received do not fill an
+  entire DATA word, the partial word will be zero-padded and inserted into the
+  RX FIFO once the segment is completed." (OpenTitan SPI_HOST
+  ``theory_of_operation.md:485``, tt-opentitan d1ce369). The pad byte position
+  depends on ByteOrder and is not graded here. Control: every Tx-only and
   dummy cell starts with RXEMPTY=1 and leaves RXQD at 0.
 * CHK-SPI-DUMMY: a dummy segment leaves TXQD and RXQD unchanged and runs LEN+1
   sck cycles. Control: both
@@ -713,8 +720,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             )
             await self._sw_rst()
 
-        graded = [r for r in rx_rows if (r[0].len_field + 1) % 4 == 0]
-        dirs = {r[0].direction for r in graded}
+        dirs = {r[0].direction for r in rx_rows}
         if DIR_RX not in dirs or DIR_BIDIR not in dirs or not nonrx_rxqd:
             raise AssertionError(
                 f"CTRL-MISSING seed={seed} CHK-SPI-RXCNT: graded Rx directions {sorted(dirs)}, "
@@ -727,11 +733,11 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 f"seed={seed} speed={seg.speed} dir={seg.direction} bytes={nbytes} "
                 f"words={words} rxqd={rxqd} in_segment={in_seg} drained={drained}"
             )
-            if nbytes % 4:
-                self.logger.info("OBS-SPI-RXCNT %s graded=0", row)
-                continue
-            exp = nbytes // 4
-            line = f"{row} expect={exp} control_nonrx_rxqd={max(nonrx_rxqd)}"
+            exp = (nbytes + 3) // 4
+            line = (
+                f"{row} expect={exp} partial_word={int(bool(nbytes % 4))} "
+                f"control_nonrx_rxqd={max(nonrx_rxqd)}"
+            )
             if drained != rxqd or words != exp or in_seg + rxqd != exp:
                 raise AssertionError(f"CHK-SPI-RXCNT FAIL {line}")
             self.logger.info("CHK-SPI-RXCNT PASS %s", line)

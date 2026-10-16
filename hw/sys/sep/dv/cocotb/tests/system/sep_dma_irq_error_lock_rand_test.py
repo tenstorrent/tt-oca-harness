@@ -4,8 +4,7 @@
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense with a PROD image
 and zero disable vectors, because the leaf pulses ``rst_ni``. Every trial
-starts from a cold reset, because the register description states no write
-that releases INTR_STATE. All four legs run on every simulator.
+starts from a cold reset. All four legs run on every simulator.
 
 Leg L1, enable gate (``secure_dma.adoc``, INTR_STATE, INTR_ENABLE;
 ``interrupts.adoc``, SEP CPU Interrupt Vector Map). Six trials: a single-chunk
@@ -14,10 +13,17 @@ INTR_ENABLE value that clears the bit of the event and one that sets it (the
 twin). ``sep_internal_interrupts_probe_o`` indices 8, 9 and 10 (PIC sources 9,
 10 and 11) are sampled on every clock from the GO write to a bounded wait after
 DONE (or ERROR). Model: the line of source n is the matching event AND the
-matching INTR_ENABLE bit. The cited text does not say whether a single-chunk
-copy raises DMA_CHUNK_DONE, so that line is logged (``OBS-DMA-IRQ-SINGLE``) and
-graded only with the bit clear; for the zero-size event sources 9 and 10 are
-logged when enabled and graded 0 when disabled.
+matching INTR_ENABLE bit; a single-chunk copy raises no chunk event, so its
+source 10 is 0 with either value of INTR_ENABLE.DMA_CHUNK_DONE. For the
+zero-size event sources 9 and 10 are logged when enabled and graded 0 when
+disabled. Single-chunk contract: STATUS.CHUNK_DONE is "Only raised for
+multi-chunk memory-to-memory transfers" (``secure_dma.rdl:327-328``); "Chunk
+completion applies to multi-chunk transfers without hardware handshake; it is
+not a per-trigger interrupt in handshake mode" (``dma.adoc:129-131``); "Since interrupts are implemented as status bits, they are cleared
+by writing a '1' to the corresponding bit in the STATUS register" (OpenTitan
+DMA ``programmers_guide.md:39``). So every STATUS read of the single-chunk copy
+gives CHUNK_DONE = 0, INTR_STATE.DMA_CHUNK_DONE reads 0 at the end of the trial
+and source 10 stays low.
 
 Leg L2, SIZE_ERROR (``secure_dma.adoc``, ERROR_CODE, STATUS, INTR_STATE;
 ``dma.hjson``, ERROR_CODE). TOTAL_DATA_SIZE 0, CHUNK_DATA_SIZE 0, both 0, and
@@ -25,7 +31,13 @@ SHA-256 at TRANSFER_WIDTH encodings 0 and 1 each set STATUS.ERROR,
 ERROR_CODE.SIZE_ERROR and INTR_STATE.DMA_ERROR and assert PIC source 11. After
 a write of 1 to STATUS.ERROR, with no reset, ERROR and ERROR_CODE read 0 and a
 legal copy completes with the destination equal to the source. Control:
-SHA-256 at encoding 2 completes with ERROR clear.
+SHA-256 at encoding 2 completes with ERROR clear. The same write of 1 to
+STATUS.ERROR releases the interrupt: "Since interrupts are implemented as
+status bits, they are cleared by writing a '1' to the corresponding bit in the
+STATUS register" (OpenTitan DMA ``programmers_guide.md:39``); "Status
+completion and error bits are write-one-to-clear" (``dma.adoc:131-132``).
+INTR_STATE is read once after that write: DMA_ERROR reads 0 and
+source 11 is low. Its control is INTR_STATE.DMA_ERROR = 1 before the write.
 
 Leg L3, range lock (``sep-programming.adoc``, zero fill procedure: write MuBi4
 False 0x9 to RANGE_REGWEN to fix the enabled memory range until reset;
@@ -64,8 +76,15 @@ every simulator.
 Checkers:
   CHK-DMA-IRQ       per L1 trial: the three lines against the gate model, with
                     the twin of the same event in the same seed.
+  CHK-DMA-IRQ-SINGLE per single-chunk L1 trial: no STATUS read shows
+                    CHUNK_DONE, INTR_STATE.DMA_CHUNK_DONE reads 0 and source 10
+                    stays low. Control: the multi-chunk trial with
+                    DMA_CHUNK_DONE enabled shows source 10 high.
   CHK-DMA-SIZE-ERR  per L2 kind: the error response, its clear and the
                     recovery copy; the encoding-2 hash control completes.
+  CHK-DMA-INTR-RELEASE per L2 kind: after the write of 1 to STATUS.ERROR,
+                    INTR_STATE.DMA_ERROR reads 0 and source 11 is low. Control:
+                    INTR_STATE.DMA_ERROR read 1 before the write.
   CHK-DMA-LOCK      per L3 lock write and unlock attempt, in both contexts:
                     RANGE_REGWEN reads 0x9, BASE and LIMIT read the values
                     written before the lock and RANGE_VALID reads 1. Every
@@ -97,6 +116,7 @@ from seq_lib.sep_dma_ops import (
     CONTROL,
     ERROR_CODE,
     ERROR_CODE_MASK,
+    INTR_CHUNK_DONE,
     INTR_ENABLE,
     INTR_ERROR,
     INTR_STATE,
@@ -170,7 +190,7 @@ def irq_model(event: str, en: int) -> tuple[int | None, int | None, int | None]:
     """Expected (src9, src10, src11); None is a logged, ungraded line."""
     d, c, e = ((en >> EVENT_BIT[k]) & 1 for k in EVENTS)
     if event == "done":
-        return d, (None if c else 0), 0
+        return d, 0, 0
     if event == "chunk":
         return d, c, 0
     return (None if d else 0), (None if c else 0), e
@@ -257,7 +277,14 @@ class _Cfg:
 class sep_dma_irq_error_lock_rand_test(sep_base_test):
     """DMA interrupt enable gate, size errors with recovery, range lock."""
 
-    required_evidence = ("CHK-DMA-IRQ", "CHK-DMA-SIZE-ERR", "CHK-DMA-LOCK", "CHK-DMA-HI-ADDR")
+    required_evidence = (
+        "CHK-DMA-IRQ",
+        "CHK-DMA-IRQ-SINGLE",
+        "CHK-DMA-SIZE-ERR",
+        "CHK-DMA-INTR-RELEASE",
+        "CHK-DMA-LOCK",
+        "CHK-DMA-HI-ADDR",
+    )
 
     # ---- helpers -----------------------------------------------------------
     def _pass(self, chk: str, line: str) -> None:
@@ -300,7 +327,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         return st, False
 
     # ---- L1 ------------------------------------------------------------------
-    async def _l1_trial(self, event: str, en: int) -> tuple[int, int, int]:
+    async def _l1_trial(self, event: str, en: int) -> tuple[tuple[int, int, int], int, int]:
+        """One L1 trial; returns (lines, INTR_STATE, STATUS reads with CHUNK_DONE)."""
         c = self.cfg_t
         ops = self.ops
         await self._cold_reset()
@@ -326,6 +354,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 self.logger.error(msg)
                 raise DmaTimeout(msg)
             go_writes = 1
+            chunk_reads = int(st.chunk_done)
         else:
             res = await ops.run_to_done(
                 total,
@@ -335,6 +364,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 tag=f" L1 {event}",
             )
             st, go_writes = res.status, res.go_writes
+            chunk_reads = sum(s.chunk_done for s in res.statuses)
             if not st.done:
                 self._fail(
                     "CHK-DMA-IRQ",
@@ -359,20 +389,21 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             ecode,
             st.fmt(),
         )
-        return lines
+        return lines, istate, chunk_reads
 
     async def _leg_l1(self) -> None:
         c = self.cfg_t
         got: dict[tuple[str, int], tuple[int, int, int]] = {}
+        single: dict[int, tuple[int, int]] = {}
         for event, en in c.trials:
-            got[(event, en)] = await self._l1_trial(event, en)
+            got[(event, en)], istate, chunk_reads = await self._l1_trial(event, en)
+            if event == "done":
+                single[en] = (istate, chunk_reads)
         for event, en in c.trials:
             twin_en = next(v for e, v in c.trials if e == event and v != en)
             a, b, z = got[(event, en)]
             twin = got[(event, twin_en)]
             exp = irq_model(event, en)
-            if event == "done":
-                self.logger.info("OBS-DMA-IRQ-SINGLE seed=%d intr_en=0x%x src10=%d", c.seed, en, b)
             line = (
                 f"intr_en=0x{en:x} event={event} src9={a} src10={b} src11={z} "
                 f"expect={'/'.join(_bits(x) for x in exp)} twin={'/'.join(map(str, twin))}"
@@ -381,9 +412,37 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             if bad:
                 self._fail("CHK-DMA-IRQ", line)
             self._pass("CHK-DMA-IRQ", line)
+        self._grade_single(got, single)
+
+    def _grade_single(
+        self,
+        got: dict[tuple[str, int], tuple[int, int, int]],
+        single: dict[int, tuple[int, int]],
+    ) -> None:
+        """Single-chunk copy: no CHUNK_DONE in STATUS or INTR_STATE, source 10 low."""
+        c = self.cfg_t
+        bit = 1 << EVENT_BIT["chunk"]
+        mc_en = next(v for e, v in c.trials if e == "chunk" and v & bit)
+        mc_src10 = got[("chunk", mc_en)][1]
+        if mc_src10 != 1:
+            self._ctrl_missing(
+                f"CHK-DMA-IRQ-SINGLE control: multi-chunk trial intr_en=0x{mc_en:x} "
+                f"src10={mc_src10}, expected 1"
+            )
+        for en, (istate, chunk_reads) in single.items():
+            src10 = got[("done", en)][1]
+            intr_chunk = int(bool(istate & INTR_CHUNK_DONE))
+            line = (
+                f"intr_en=0x{en:x} chunk_en={int(bool(en & bit))} status_chunk_done_reads="
+                f"{chunk_reads} intr_chunk_done={intr_chunk} src10={src10} "
+                f"intr_state=0x{istate:x} control_mc_src10={mc_src10}"
+            )
+            if (chunk_reads, intr_chunk, src10) != (0, 0, 0):
+                self._fail("CHK-DMA-IRQ-SINGLE", line)
+            self._pass("CHK-DMA-IRQ-SINGLE", line)
 
     # ---- L2 ------------------------------------------------------------------
-    async def _l2_kind(self, kind: str) -> tuple[str, bool]:
+    async def _l2_kind(self, kind: str) -> tuple[str, bool, tuple[int, int, int]]:
         c = self.cfg_t
         ops = self.ops
         size = c.l2_size[kind]
@@ -417,6 +476,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         await ops.wr(STATUS, ST_ERROR)
         st_c = await ops.read_status()
         ecode_c = await ops.rd(ERROR_CODE)
+        istate_c = await ops.rd(INTR_STATE)
+        src11_c = self.irq.level("src11")
         await ops.clean_state()
         await ops.wr(CONTROL, control_word())
         await self._sentinel_dst()
@@ -444,6 +505,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             all(f.ok for f in (fc_err, fc_code, fc_int, fc_errc, fc_codec))
             and src11 == 1
             and rec_ok,
+            (istate, istate_c, src11_c),
         )
 
     async def _l2_control(self, kind: str) -> int:
@@ -483,12 +545,25 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                     f"CHK-DMA-SIZE-ERR control: SHA-256 at width encoding 2 and size "
                     f"{self.cfg_t.l2_size[k]} (kind={k}) failed"
                 )
-        for (line, ok), k in zip(results, L2_KINDS):
+        for (line, ok, _), k in zip(results, L2_KINDS):
             k_ctl = ctl[k] if k in ctl else int(all(ctl.values()))
             line = line.replace("@@CTRL@@", f"control_width_ok={k_ctl}")
             if not ok:
                 self._fail("CHK-DMA-SIZE-ERR", line)
             self._pass("CHK-DMA-SIZE-ERR", line)
+        for (_, _, (pre, post, src11_c)), k in zip(results, L2_KINDS):
+            pre_bit = int(bool(pre & INTR_ERROR))
+            post_bit = int(bool(post & INTR_ERROR))
+            line = (
+                f"kind={k} intr_dma_error_after_w1c={post_bit} src11_after_w1c={src11_c} "
+                f"control_intr_dma_error_before_w1c={pre_bit} intr_state_before=0x{pre:x} "
+                f"intr_state_after=0x{post:x}"
+            )
+            if pre_bit != 1:
+                self._ctrl_missing(f"CHK-DMA-INTR-RELEASE control: {line}")
+            if (post_bit, src11_c) != (0, 0):
+                self._fail("CHK-DMA-INTR-RELEASE", line)
+            self._pass("CHK-DMA-INTR-RELEASE", line)
 
     # ---- L4 ------------------------------------------------------------------
     async def _hi_copy(self, src_hi: int, dst_hi: int):

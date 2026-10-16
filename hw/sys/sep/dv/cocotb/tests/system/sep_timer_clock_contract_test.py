@@ -35,17 +35,47 @@ this order, over the CPU-LSU master on ``s_axi``:
 ``aon_timer.adoc`` is
 ``vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc``.
 Expected values come from the register description (generated register
-metadata) and the written values, never from a DUT read. The count unit of
-``WDOG_COUNT`` is not stated, so the watchdog and wakeup checks grade count
-relations only. Environment choices (logged): the edge allowance ``a`` of leg R,
-the count allowance ``A`` of legs T and W, the clock period ``P_w`` of
-``clk_wdt_i``, poll bounds and wait lengths.
+metadata), the written values and the timer text below, never from a DUT read.
+The timer core runs on ``clk_wdt_i``: "``clk_wdt_i`` | Watchdog timer clock. The
+watchdog register interface uses ``clk_i``, with clock-domain crossings to the
+timer core." (``hw/sys/sep/doc/clk_rst.adoc:25-26``) and "a dedicated watchdog
+clock input (``clk_wdt_i``) ... for the always-on timer domain"
+(``hw/sys/sep/doc/watchdog.adoc:23``). The OpenTitan ``aon_timer`` README
+(tt-opentitan d1ce369) gives the count unit: "Once the timer is enabled, it
+increments on every tick of the AON clock." (``README.md:52``, the watchdog);
+"Once the timer is enabled, it increments on every tick of the AON clock,
+divided by a pre-scaler. The number of cycles per tick is one more than the
+12-bit WKUP_CTRL.prescaler field." (``README.md:31-32``, the wakeup timer);
+"there is a "bark" on every AON clock tick when the count is at least
+WDOG_BARK_THOLD" (``README.md:55``). So:
+
+* CHK-WDT-RATE. In each watchdog run (``pause_in_sleep`` = 0), over the passes
+  after the count leaves its start value, ``|dcount - E_wdt| <= A``, where
+  ``dcount`` is the difference of the first and last count reads and ``E_wdt``
+  the ``clk_wdt_i`` edges between them. ``A`` bounds the variation of the
+  count-copy lag, so the bound holds for every healthy DUT by construction.
+* CHK-WDT-BARK-TIME. In the runs that start from a count of 0, the
+  ``clk_wdt_i`` periods from the count start to the status read that first shows
+  the bark are at least ``WDOG_BARK_THOLD - A``, and the periods to the status
+  read of the pass before it are below ``WDOG_BARK_THOLD + A``. The count start
+  is measured from the DUT: for each count read, its ``clk_wdt_i`` edge index
+  minus the count read.
+* CHK-WKUP-TIME. In each wakeup run, ``|dcount x (p + 1) - E_wdt| <= p + A``
+  (``p``: the prescaler; ``p`` covers the tick phase at the two reads).
+
+Each of these windows also requires ``dcount x (p + 1) > 2 x bound``, so a count
+at half or twice the stated rate is outside the bound. Control: CTL-WDT-ENABLE
+(with ``WDOG_CTRL.enable`` = 0 the count does not move; "When set to 1, the
+watchdog timer will count.", ``aon_timer`` ``registers.md:157``).
+Environment choices (logged): the edge allowance ``a`` of leg R, the count
+allowance ``A`` of legs T and W, the clock period ``P_w`` of ``clk_wdt_i``, poll
+bounds and wait lengths.
 
 Checkers: CHK-REFCNT-RATE, CHK-REFCNT-PHASE, CHK-REFCNT-WRITE,
 CHK-REFCNT-RESET, CHK-WDT-ORDER, CHK-WDT-THOLD-MONO, CHK-WDT-MAX,
 CHK-WDT-INTRTEST, CHK-WDT-ALERT-ACCESS, CHK-WKUP-WIDE, CHK-WKUP-LATER,
 CHK-WDT-SHAPE, CHK-WDT-COHERENT, CHK-REGWEN-STICKY, CHK-REGWEN-HOLD,
-CHK-REGWEN-COLD. Controls (not counted): CTL-WDT-ENABLE, CTL-WDT-THOLD,
+CHK-REGWEN-COLD, CHK-WDT-RATE, CHK-WDT-BARK-TIME, CHK-WKUP-TIME. Controls (not counted): CTL-WDT-ENABLE, CTL-WDT-THOLD,
 CTL-WDT-PAUSE, CTL-WKUP-SMALL, CTL-WKUP-CAUSE, CTL-REGWEN-LOCKED.
 
 The graded window (owner code of this test) opens at leg R and closes for the
@@ -258,6 +288,9 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-REGWEN-STICKY",
         "CHK-REGWEN-HOLD",
         "CHK-REGWEN-COLD",
+        "CHK-WDT-RATE",
+        "CHK-WDT-BARK-TIME",
+        "CHK-WKUP-TIME",
     )
 
     # -- primitives -----------------------------------------------------------
@@ -548,7 +581,10 @@ class sep_timer_clock_contract_test(sep_base_test):
             bite = take_handshake(task)
             assert bite is not None, f"{chk} FAIL: no AR handshake seen for the INTR_STATE read"
             cnt = await self._rd(WDOG_COUNT)
-            passes.append({"bark": int(bool(st & BARK_BIT)), "bite": bite, "count": cnt, "t": t_st})
+            t_c = self._now()
+            passes.append(
+                {"bark": int(bool(st & BARK_BIT)), "bite": bite, "count": cnt, "t": t_st, "tc": t_c}
+            )
             if passes[-1]["bark"] and bite and cnt >= dx:
                 break
             if self.pins.count["clk_i"] - start > limit:
@@ -620,6 +656,64 @@ class sep_timer_clock_contract_test(sep_base_test):
             f"threshold gap of the leg minus A ({min_gap} - {COUNT_ALLOW})"
         )
 
+    def _grade_rate(self, run: dict, c_start: int, p: int, chk: str, tag: str) -> str:
+        """Count rate against ``clk_wdt_i`` edges, one count per (p + 1) periods.
+
+        Only the passes whose count read is above ``c_start`` are used, so the
+        enable crossing before the count leaves its start value is not in the
+        window. Returns the graded fields.
+        """
+        seed = self.tcfg.seed
+        per = p + 1
+        bound = p + COUNT_ALLOW
+        started = [x for x in run["passes"] if x["count"] > c_start]
+        if len(started) < 2:
+            raise AssertionError(
+                f"{chk} FAIL: seed={seed} run={tag} {len(started)} count reads above the "
+                f"start value 0x{c_start:x}, need 2"
+            )
+        first, last = started[0], started[-1]
+        dcount = last["count"] - first["count"]
+        e = self._edges("clk_wdt_i", first["tc"], last["tc"])
+        diff = abs(dcount * per - e)
+        line = (
+            f"seed={seed} run={tag} p={p} dcount={dcount} E_wdt={e} abs_diff={diff} "
+            f"bound={bound} reads={len(started)}"
+        )
+        if dcount * per <= 2 * bound:
+            raise AssertionError(
+                f"{chk} FAIL: window too short (dcount x (p+1) <= 2 x bound): {line}"
+            )
+        if diff > bound:
+            raise AssertionError(f"{chk} FAIL: {line}")
+        return line
+
+    def _grade_bark_time(self, run: dict, r: dict, bx: int, tag: str) -> str:
+        """Bark time from a count of 0, in ``clk_wdt_i`` periods. Returns the fields."""
+        seed = self.tcfg.seed
+        t0 = run["t_en"]
+        passes = run["passes"]
+        starts = [
+            self._edges("clk_wdt_i", t0, x["tc"]) - x["count"] for x in passes if x["count"] > 0
+        ]
+        if not starts:
+            raise AssertionError(
+                f"CHK-WDT-BARK-TIME FAIL: seed={seed} run={tag} no count read above 0"
+            )
+        k = r["bark_pass"]
+        seen = self._edges("clk_wdt_i", t0, passes[k]["t"]) - max(starts)
+        before = self._edges("clk_wdt_i", t0, passes[k - 1]["t"]) - min(starts) if k else 0
+        line = (
+            f"seed={seed} run={tag} bark_thold={bx} periods_at_bark_seen={seen} "
+            f"periods_at_pass_before={before} start_spread={max(starts) - min(starts)} "
+            f"allowance={COUNT_ALLOW} bark_pass={k}"
+        )
+        if seen < bx - COUNT_ALLOW:
+            raise AssertionError(f"CHK-WDT-BARK-TIME FAIL: bark early: {line}")
+        if before >= bx + COUNT_ALLOW:
+            raise AssertionError(f"CHK-WDT-BARK-TIME FAIL: bark late: {line}")
+        return line
+
     async def _leg_t(self) -> None:
         cfg = self.tcfg
         dut = cocotb.top
@@ -645,11 +739,8 @@ class sep_timer_clock_contract_test(sep_base_test):
             rb["bite_pass"],
             rb["late"],
         )
-        ps = base["passes"]
         self.logger.info(
-            "OBS-WDT-RATE: dcount=%d E_wdt=%d",
-            ps[-1]["count"] - ps[0]["count"],
-            self._edges("clk_wdt_i", ps[0]["t"], ps[-1]["t"]),
+            "CHK-WDT-RATE PASS: %s", self._grade_rate(base, 0, 0, "CHK-WDT-RATE", "base")
         )
 
         # Larger bark threshold.
@@ -678,15 +769,18 @@ class sep_timer_clock_contract_test(sep_base_test):
         assert c2 >= b2 - COUNT_ALLOW and c2 > c1, f"CHK-WDT-THOLD-MONO FAIL: {line}"
         self.logger.info("CHK-WDT-THOLD-MONO PASS: %s", line)
         self.logger.info(
-            "OBS-WDT-BARK-TIME: base_ps=%d larger_ps=%d",
-            rb["t_bark"] - base["t_en"],
-            rl["t_bark"] - larger["t_en"],
+            "CHK-WDT-RATE PASS: %s", self._grade_rate(larger, 0, 0, "CHK-WDT-RATE", "larger")
         )
+        for run, r, bx, tag in ((base, rb, b, "base"), (larger, rl, b2, "larger")):
+            self.logger.info("CHK-WDT-BARK-TIME PASS: %s", self._grade_bark_time(run, r, bx, tag))
 
         # Thresholds near 2^32.
         mx = await self._wdt_run(bm, dm, bm - 32, "CHK-WDT-MAX")
         self._precondition(mx, min_gap, "max")
         rm = self._grade_order(mx, bm, dm, bm - 32, "CHK-WDT-MAX", "max")
+        self.logger.info(
+            "CHK-WDT-RATE PASS: %s", self._grade_rate(mx, bm - 32, 0, "CHK-WDT-RATE", "max")
+        )
         assert min(p["count"] for p in mx["passes"]) >= bm - 32
         self.logger.info(
             "CHK-WDT-MAX PASS: b=0x%x d=0x%x count_at_bark=0x%x count_at_bite=0x%x early=0",
@@ -798,13 +892,15 @@ class sep_timer_clock_contract_test(sep_base_test):
 
     # -- leg W ------------------------------------------------------------------
 
-    async def _wkup_count(self) -> int:
+    async def _wkup_count(self) -> tuple[int, int]:
+        """One coherent 64-bit wakeup count read. Returns (value, time of the low-word read)."""
         for _ in range(4):
             hi = await self._rd(WKUP_COUNT_HI)
             lo = await self._rd(WKUP_COUNT_LO)
+            t_lo = self._now()
             hi2 = await self._rd(WKUP_COUNT_HI)
             if hi == hi2:
-                return (hi << 32) | lo
+                return (hi << 32) | lo, t_lo
         raise AssertionError("wakeup count high word changed on four read sets")
 
     async def _wkup_run(self, p: int, order: str, thr: int, pre: int, tag: str) -> dict:
@@ -837,8 +933,8 @@ class sep_timer_clock_contract_test(sep_base_test):
         while True:
             st = await self._rd(INTR_STATE)
             t_st = self._now()
-            cnt = await self._wkup_count()
-            passes.append({"st": int(bool(st & WKUP_BIT)), "count": cnt, "t": t_st})
+            cnt, t_c = await self._wkup_count()
+            passes.append({"st": int(bool(st & WKUP_BIT)), "count": cnt, "t": t_st, "tc": t_c})
             assert cnt >= prev, f"{tag}: wakeup count fell 0x{prev:x} -> 0x{cnt:x}"
             prev = cnt
             if passes[-1]["st"]:
@@ -911,6 +1007,10 @@ class sep_timer_clock_contract_test(sep_base_test):
                 run = await self._wkup_run(p, order, thr, pre, f"run{k}")
                 self._precondition(run, min_gap, f"wkup p={p} run{k}")
                 late = self._grade_wide(run, thr, pre, f"p={p} run{k}")
+                self.logger.info(
+                    "CHK-WKUP-TIME PASS: %s",
+                    self._grade_rate(run, pre, p, "CHK-WKUP-TIME", f"wkup_run{k}"),
+                )
                 assert run["status_before"] == 0
                 self.logger.info(
                     "CHK-WKUP-WIDE PASS: p=%d run=%d class=CROSS32 thr=0x%x_%08x preload=0x%x_%08x "
@@ -931,7 +1031,6 @@ class sep_timer_clock_contract_test(sep_base_test):
                 runs.append(run)
                 await self._wkup_stop()
             n1, n2 = runs[0]["n"], runs[1]["n"]
-            self.logger.info("OBS-WKUP-TIME: p=%d t1=%d t2=%d", p, runs[0]["t"], runs[1]["t"])
             line = f"p={p} r={r} n1=0x{n1:x} n2=0x{n2:x} allowance={COUNT_ALLOW} status_between=0"
             assert n2 >= thr2 - COUNT_ALLOW and n2 > n1, f"CHK-WKUP-LATER FAIL: {line}"
             self.logger.info("CHK-WKUP-LATER PASS: %s", line)

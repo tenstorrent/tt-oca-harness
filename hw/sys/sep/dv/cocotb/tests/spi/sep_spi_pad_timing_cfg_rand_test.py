@@ -24,7 +24,8 @@ and b. A test-side sampler (``env/sep_spi_pad_sampler.py``) reads
 ``spi_sck_o``, ``spi_cs_n_o`` and ``spi_mosi_o`` (lane 0) on each core clock.
 The lane responder (``env/sep_spi_lane_responder.py``, plusarg
 ``+sep_spi_four_lane``) drives seeded bytes on the response lanes in each Rx
-segment, in the mode of the cell. The shared SPI monitor
+segment, in the mode of the cell. ``_LateResponder`` of this file gives the same
+responder late beats at CPHA 1 also, for CHK-SPI-FULLCYC. The shared SPI monitor
 (``env/sep_spi_wire_monitor.py``) grades the same pads in the mode of each
 cell: SCK at CPOL at every chip-select edge and while chip select is high, a
 driven lane never changing on a sample edge or between a sample edge and the
@@ -42,32 +43,59 @@ has its changes by construction.
 Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
 
 * CHK-SPI-IDLE-LEVEL: sck sits at CPOL in every chip-select-high window of the
-  graded pair that starts after the first transaction ends (the clock output
-  enable there is logged with ``OBS-SPI-CTRL-OE``; no source states it). Control: sck
+  graded pair that starts after the first transaction ends. Control: sck
   toggles in the chip-select-low windows of the same pair.
+* CHK-SPI-CTRL-OE: with CONTROL.OUTPUT_EN = 1, ``spi_cs_oe_o`` = 1 and
+  ``spi_sck_oe_o`` = 1 on every sampled clock of the two chip-select-low
+  windows of the graded pair and of every chip-select-high window after the
+  first of them (gap and the windows that follow). Source
+  ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:222-224``
+  (CONTROL.OUTPUT_EN): "Enable the SPI host output buffers for the sck, csb,
+  and sd lines." Control: before the bring-up CONTROL write sets OUTPUT_EN,
+  both enables read 0 (``doc/integrator/src/smu-sep.adoc:275-276``: the host
+  "drives no pad until software sets its ``CONTROL.OUTPUT_EN``"), else
+  CTRL-MISSING.
 * CHK-SPI-PERIOD: every sck period of the graded pair is 2*(CLKDIV+1) clocks.
 * CHK-SPI-RATIO: period_a*(b+1) equals period_b*(a+1).
 * CHK-SPI-CSN: lead and trail of each graded transaction are at least
   (CSNLEAD+1) and (CSNTRAIL+1) times (CLKDIV+1) clocks, and the chip-select-high
   gap at least (CSNIDLE+1) times (CLKDIV+1): the OpenTitan spi_host theory of
   operation states all three as minimum bounds that FSM delays may exceed. The chip-select and clock
-  output enables in the frames and the gap are logged (``OBS-SPI-CTRL-OE``).
+  output enables in the frames and the gap are CHK-SPI-CTRL-OE.
   Control: the idle minimum is above g0 of the control pair.
   ``OBS-SPI-CSN-EXACT`` logs the lead and trail excess over each minimum
   (not graded: the register text does not say whether the values are exact).
-* CHK-SPI-FULLCYC: at x1, x2 and x4 (drawn order, CPHA 0, drawn CPOL and
-  CLKDIV 1 to 15) an Rx segment from a late responder (each beat one core
-  clock after its sample edge) reads the seeded bytes with FULLCYC = 1: the
-  host samples a full cycle after its shift edge (CONFIGOPTS.FULLCYC).
-  Control: the same frame with FULLCYC = 0 reads every beat one beat late
-  (``late_sample_edge_bytes``), else CTRL-MISSING. The wire monitor is stopped
-  for this leg (it samples at the sample edge); RXDATA is the graded side.
+* CHK-SPI-FULLCYC: at x1, x2 and x4 (drawn order, drawn CPOL and CLKDIV 1 to
+  15), first at CPHA 0 and then at CPHA 1, an Rx segment from a late responder
+  (each beat one core clock after its sample edge) reads the seeded bytes with
+  FULLCYC = 1: the host samples a full cycle after its shift edge. Source
+  ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:373-380``
+  (CONFIGOPTS.FULLCYC): "Rather than sampling the SD bus a half cycle after
+  shifting out data, the data is sampled a full cycle after shifting data out.
+  ... If CPHA = 1, data is shifted and sampled with the trailing edge, also
+  separated by a full cycle." The OpenTitan spi_host theory of operation (SPI
+  modes) states the CPHA 1 sample edge: "if ``CPHA = 1`` data is always
+  asserted on the leading edge of ``SCK`` and sampled on the trailing edge of
+  ``SCK``." At CPHA 1 the late change of beat k is one clock after trailing
+  edge k; both a sample at the next leading edge and one at the next trailing
+  edge lie after that change and not after the change of beat k+1 (CLKDIV 1
+  or more), so the graded bytes do not depend on which of the two points the
+  host uses. Control: the same frame with FULLCYC = 0 reads every beat one
+  beat late (``late_sample_edge_bytes``: beat k reads beat k-1, beat 0 reads
+  the lane level 0 before the first late change), else CTRL-MISSING; the
+  FULLCYC = 0 sample point is the sample edge (``spi_host.hjson:374-375``,
+  "sampling the SD bus a half cycle after shifting out data"). The wire
+  monitor is stopped for this leg (it samples at the sample edge); RXDATA is
+  the graded side.
 * CHK-SPI-CPHA: at CLKDIV 1 or more every Tx data change after the first bit
   lies in the half sck period that starts at the stated edge. A change counts
   only with the lane 0 output enable on; a ``spi_mosi_o`` change in the graded
   Tx window with the enable off fails, since it does not reach the pad.
-  Control: at least two counted changes. The cell CPHA=1 with FULLCYC=1 logs ``OBS-SPI-CPHA`` and is
-  not graded. The second cell inverts the CPHA of the first, so each seed has
+  Control: at least two counted changes. The cell CPHA=1 with FULLCYC=1 logs
+  ``OBS-SPI-CPHA`` and is not graded: the FULLCYC register text says that at
+  CPHA = 1 "data is shifted and sampled with the trailing edge", and the
+  theory of operation says that at CPHA = 1 data is asserted on the leading
+  edge and that FULLCYC "has no effect on any of the signals transmitted". The second cell inverts the CPHA of the first, so each seed has
   one CPHA=0 cell that is graded.
 * CHK-SPI-SB-FRAME (``env/sep_spi_scoreboard.py``, one scoreboard per cell):
   every Tx and Rx frame of the cell (control pairs, graded pair, ratio leg) at
@@ -101,7 +129,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import FallingEdge, RisingEdge
+from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
@@ -153,6 +181,10 @@ CSNIDLE_MAX = (1 << SPI_CONTROLLER.field_width("CONFIGOPTS", "csnidle")) - 1
 # each cell (CHK-SPI-CELL-FRAMES fails).
 RX_EXTRA_BYTES = 0
 EXTRA_TX_FRAMES = 0
+# (spi_cs_oe_o, spi_sck_oe_o) with CONTROL.OUTPUT_EN = 1 (CHK-SPI-CTRL-OE), and
+# before the first CONTROL write that sets it (the control).
+EXP_CTRL_OE = (1, 1)
+EXP_PRE_ENABLE_OE = (0, 0)
 
 # Bounds. Each expiry fails the check that the wait feeds.
 QUEUE_POLLS = 64
@@ -187,6 +219,36 @@ class Cell:
         )
 
 
+def _val(sig) -> int | None:
+    v = sig.value
+    return int(v) if v.is_resolvable else None
+
+
+def _oe_violations(wins: list, now: int) -> tuple[int, int, int]:
+    """(sampled clocks, cs_oe clocks not at EXP_CTRL_OE, sck_oe clocks not at EXP_CTRL_OE)."""
+    n = cs_bad = sck_bad = 0
+    for w in wins:
+        clks = (w.end if w.end is not None else now + 1) - w.start
+        n += clks
+        cs_bad += w.cs_oe_off if EXP_CTRL_OE[0] else clks - w.cs_oe_off
+        sck_bad += w.sck_oe_off if EXP_CTRL_OE[1] else clks - w.sck_oe_off
+    return n, cs_bad, sck_bad
+
+
+class _LateResponder(SepSpiLaneResponder):
+    """The lane responder with late beats at CPHA 0 and CPHA 1.
+
+    The base late path puts beat ``k`` one core clock after sample edge ``k``
+    for either CPHA (the sample edge is the trailing edge at CPHA 1); this
+    class only accepts ``set_late(True)`` at CPHA 1 too. At CPHA 1 no beat is
+    driven at the chip-select fall, so the lanes hold 0 until one clock after
+    the first trailing edge.
+    """
+
+    def set_late(self, late: bool) -> None:
+        self._late = bool(late)
+
+
 def _draw_edge(rng: SepSeededRng, top: int) -> int:
     """0 to top, weighted toward 0 and top."""
     roll = rng.randrange(4)
@@ -212,6 +274,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         "CHK-SPI-CELL-FRAMES",
         "CHK-SPI-RX-WORDS",
         "CHK-SPI-FULLCYC",
+        "CHK-SPI-CTRL-OE",
     )
 
     def _plan(self, seed: int) -> list[Cell]:
@@ -480,23 +543,33 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         levels = set().union(*(h.sck_levels for h in highs)) if highs else set()
         toggles = (w1.toggles, w2.toggles)
 
-        sck_oe_off = sum(h.sck_oe_off for h in highs)
         line = (
             f"seed={seed} mode={c.mode} width=x{w} cpol={c.cpol} level={sorted(levels)} "
-            f"windows={len(highs)} control_toggles={min(toggles)} sck_oe_off={sck_oe_off}"
+            f"windows={len(highs)} control_toggles={min(toggles)}"
         )
         if min(toggles) < 1:
             raise AssertionError(f"CTRL-MISSING CHK-SPI-IDLE-LEVEL {line}")
         if len(highs) < 2 or levels != {c.cpol}:
             raise AssertionError(f"CHK-SPI-IDLE-LEVEL FAIL {line}")
-        # No source states the sck output enable while chip select is high.
-        self.logger.info(
-            "OBS-SPI-CTRL-OE seed=%d mode=%s where=cs_high sck_oe_off_clks=%d width=x%d",
-            seed,
-            c.mode,
-            sck_oe_off,
-            w,
+        # CONTROL.OUTPUT_EN = 1 enables the sck, csb and sd output buffers, so
+        # both enables are 1 with chip select low and high.
+        now = pads.now()
+        n_low, cs_low_bad, sck_low_bad = _oe_violations([w1, w2], now)
+        n_high, cs_high_bad, sck_high_bad = _oe_violations(highs, now)
+        line_oe = (
+            f"seed={seed} mode={c.mode} width=x{w} expect_cs_oe={EXP_CTRL_OE[0]} "
+            f"expect_sck_oe={EXP_CTRL_OE[1]} cs_low_clks={n_low} cs_high_clks={n_high} "
+            f"high_windows={len(highs)} cs_oe_bad_low={cs_low_bad} "
+            f"sck_oe_bad_low={sck_low_bad} cs_oe_bad_high={cs_high_bad} "
+            f"sck_oe_bad_high={sck_high_bad} pre_enable_cs_oe={self.pre_oe[0]} "
+            f"pre_enable_sck_oe={self.pre_oe[1]}"
         )
+        if not n_low or not n_high:
+            raise AssertionError(f"CTRL-MISSING CHK-SPI-CTRL-OE {line_oe}")
+        if cs_low_bad or sck_low_bad or cs_high_bad or sck_high_bad:
+            raise AssertionError(f"CHK-SPI-CTRL-OE FAIL {line_oe}")
+        self.logger.info("CHK-SPI-CTRL-OE PASS %s", line_oe)
+        self.ran.add("CHK-SPI-CTRL-OE")
         self.logger.info(
             "CHK-SPI-IDLE-LEVEL PASS seed=%d cpol=%d level=%d windows=%d control_toggles=%d "
             "mode=%s width=x%d",
@@ -561,8 +634,6 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             self.logger.info("CHK-SPI-CSN PASS %s", line)
             # CSNLEAD, CSNTRAIL and CSNIDLE are minimum bounds that FSM delays
             # may exceed (spi_host theory of operation); the excess is logged.
-            # No source states the chip-select and clock enables in these
-            # windows; they are logged, not graded.
             self.logger.info(
                 "OBS-SPI-CSN-EXACT seed=%d mode=%s clkdiv=%d half=%d lead_excess=%d,%d "
                 "trail_excess=%d,%d idle_gap=%d csnidle_plus_one=%d width=x%d",
@@ -576,14 +647,6 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
                 w2.trail - exp_trail,
                 gap,
                 (idle + 1) * half,
-                w,
-            )
-            self.logger.info(
-                "OBS-SPI-CTRL-OE seed=%d mode=%s where=frames_and_gap cs_sck_oe_off_clks=%d "
-                "width=x%d",
-                seed,
-                c.mode,
-                oe_off,
                 w,
             )
         else:
@@ -609,7 +672,10 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             )
         self.logger.info("CHK-SPI-RATIO PASS %s", line)
 
-        # Data edge.
+        # Data edge. At CPHA 1 with FULLCYC 1 the OpenTitan texts give two Tx
+        # edges (FULLCYC register text: shifted with the trailing edge; theory
+        # of operation: asserted on the leading edge, FULLCYC changes no
+        # transmitted signal), so that cell is logged and not graded.
         if c.cpha == 1 and c.fullcyc == 1:
             self.logger.info(
                 "OBS-SPI-CPHA seed=%d cpha=1 fullcyc=1 graded=0 ambiguous=1 mode=%s width=x%d",
@@ -678,10 +744,12 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         await spi_lane_fcov(TEST, "data", lanes=w, rx=True)
 
     # ---- FULLCYC sampling point -------------------------------------------
-    async def _fullcyc_rx(self, cpol: int, clkdiv: int, fullcyc: int, data: bytes, w: int):
+    async def _fullcyc_rx(
+        self, cpol: int, cpha: int, clkdiv: int, fullcyc: int, data: bytes, w: int
+    ):
         """One Rx segment of ``data`` from the late responder; return the RXDATA bytes."""
         ops, pads = self.ops, self.pads
-        cfg = configopts_word(clkdiv=clkdiv, fullcyc=fullcyc, cpha=0, cpol=cpol)
+        cfg = configopts_word(clkdiv=clkdiv, fullcyc=fullcyc, cpha=cpha, cpol=cpol)
         await ops.write_configopts(cfg)
         pads.set_idle_level(cpol)
         self.rsp.load([(w, "rx", data)])
@@ -691,18 +759,51 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         words = await ops.drain_rx()
         if len(words) != (len(data) + 3) // 4:
             raise AssertionError(
-                f"CHK-SPI-FULLCYC FAIL seed={self.seed} width=x{w} fullcyc={fullcyc} "
+                f"CHK-SPI-FULLCYC FAIL seed={self.seed} width=x{w} cpha={cpha} fullcyc={fullcyc} "
                 f"rx_bytes={len(data)} words={len(words)}"
             )
         return unpack_rx_words(words, len(data))
 
+    async def _fullcyc_cell(self, w: int, cpha: int) -> None:
+        """One CHK-SPI-FULLCYC frame pair at width ``w`` and ``cpha``, late responder."""
+        seed, rng = self.seed, self.rng
+        cpol = rng.randrange(2)
+        clkdiv = rng.randrange(1, CLKDIV_DRAW_MAX + 1)
+        data = bytearray(self._rx_data(w))
+        # Beat 0 is 0..01 on the lanes, so the late read differs from
+        # the seeded bytes by construction.
+        top = ((1 << w) - 1) << (8 - w)
+        data[0] = (data[0] & ~top & 0xFF) | (1 << (8 - w))
+        data = bytes(data)
+        late = late_sample_edge_bytes(data, w)
+        graded_first = rng.randrange(2)
+        self.rsp.set_mode(cpol, cpha)
+        self.rsp.set_late(True)
+        got: dict[int, bytes] = {}
+        for fullcyc in (1, 0) if graded_first else (0, 1):
+            if fullcyc:
+                open_graded_window(TEST, self.logger)
+            got[fullcyc] = await self._fullcyc_rx(cpol, cpha, clkdiv, fullcyc, data, w)
+            close_graded_window(self.logger)
+        self.rsp.set_late(False)
+        line = (
+            f"seed={seed} width=x{w} cpol={cpol} cpha={cpha} clkdiv={clkdiv} "
+            f"rx_bytes={len(data)} expected={data.hex()} fullcyc1={got[1].hex()} "
+            f"fullcyc0={got[0].hex()} late_expected={late.hex()}"
+        )
+        if got[0] != late:
+            raise AssertionError(f"CTRL-MISSING CHK-SPI-FULLCYC {line}")
+        if got[1] != data:
+            raise AssertionError(f"CHK-SPI-FULLCYC FAIL {line}")
+        self.logger.info("CHK-SPI-FULLCYC PASS %s", line)
+
     async def _fullcyc_leg(self) -> None:
-        """CHK-SPI-FULLCYC at x1, x2 and x4, CPHA 0, with a late responder.
+        """CHK-SPI-FULLCYC at x1, x2 and x4, CPHA 0 then CPHA 1, with a late responder.
 
         The responder puts each beat one core clock after its sample edge. A
         host that samples a full cycle after its shift edge (FULLCYC = 1)
         reads the seeded bytes; with FULLCYC = 0 it reads each beat one beat
-        late (control).
+        late (control). The CPHA 1 draws follow every CPHA 0 draw.
         """
         seed, rng = self.seed, self.rng
         widths = list(WIDTHS)
@@ -712,36 +813,12 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         await self.wire.monitor.stop()
         try:
             for w in widths:
-                cpol = rng.randrange(2)
-                clkdiv = rng.randrange(1, CLKDIV_DRAW_MAX + 1)
-                data = bytearray(self._rx_data(w))
-                # Beat 0 is 0..01 on the lanes, so the late read differs from
-                # the seeded bytes by construction.
-                top = ((1 << w) - 1) << (8 - w)
-                data[0] = (data[0] & ~top & 0xFF) | (1 << (8 - w))
-                data = bytes(data)
-                late = late_sample_edge_bytes(data, w)
-                graded_first = rng.randrange(2)
-                self.rsp.set_mode(cpol, 0)
-                self.rsp.set_late(True)
-                got: dict[int, bytes] = {}
-                for fullcyc in (1, 0) if graded_first else (0, 1):
-                    if fullcyc:
-                        open_graded_window(TEST, self.logger)
-                    got[fullcyc] = await self._fullcyc_rx(cpol, clkdiv, fullcyc, data, w)
-                    close_graded_window(self.logger)
-                self.rsp.set_late(False)
-                line = (
-                    f"seed={seed} width=x{w} cpol={cpol} cpha=0 clkdiv={clkdiv} "
-                    f"rx_bytes={len(data)} expected={data.hex()} fullcyc1={got[1].hex()} "
-                    f"fullcyc0={got[0].hex()} late_expected={late.hex()}"
-                )
-                if got[0] != late:
-                    raise AssertionError(f"CTRL-MISSING CHK-SPI-FULLCYC {line}")
-                if got[1] != data:
-                    raise AssertionError(f"CHK-SPI-FULLCYC FAIL {line}")
-                self.logger.info("CHK-SPI-FULLCYC PASS %s", line)
+                await self._fullcyc_cell(w, 0)
                 await spi_lane_fcov(TEST, "fullcyc", lanes=w, rx=True)
+            widths1 = list(WIDTHS)
+            rng.shuffle(widths1)
+            for w in widths1:
+                await self._fullcyc_cell(w, 1)
             self.ran.add("CHK-SPI-FULLCYC")
             err = field_compare(await self._err_status(), 0, ERR_STATUS_MASK)
             if not err.ok:
@@ -767,11 +844,23 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             # command-format oe_data check does not apply to it.
             self.wire.monitor.set_raw_frames(True)
             await self.wire.start()
-            self.rsp = await SepSpiLaneResponder(cocotb.top).start()
+            self.rsp = await _LateResponder(cocotb.top).start()
             self.pads = SepSpiPadSampler()
             self.pads.start()
             self.ops = SepSpiHostOps(self, clock=self.pads.now)
 
+            # Control of CHK-SPI-CTRL-OE: no pad enable before OUTPUT_EN is set.
+            dut = cocotb.top
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            self.pre_oe = (_val(dut.spi_cs_oe_o), _val(dut.spi_sck_oe_o))
+            await RisingEdge(dut.clk_i)
+            if self.pre_oe != EXP_PRE_ENABLE_OE:
+                raise AssertionError(
+                    f"CTRL-MISSING CHK-SPI-CTRL-OE seed={self.seed} before OUTPUT_EN: "
+                    f"cs_oe={self.pre_oe[0]} sck_oe={self.pre_oe[1]} "
+                    f"expect={EXP_PRE_ENABLE_OE}"
+                )
             ctrl = (CTRL_RESET & ~CTRL_SW_RST) | CTRL_SPIEN | CTRL_OUTPUT_EN
             await self.ops.wr(CONTROL, ctrl)
             await self.ops.wr(CSID, 0)

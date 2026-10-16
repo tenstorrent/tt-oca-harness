@@ -61,6 +61,22 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       hardware fall, no STATUS write in the window.
   CHK-DMA-DONE-ORDER  per Leg A and Leg B transfer: B count equals AW count,
                       and no DONE rise comes before the last B handshake.
+  CHK-DMA-GO-CHUNKS   per Leg A and Leg B transfer of n >= 2 chunks: exactly
+                      n-1 STATUS reads show CHUNK_DONE=1, BUSY=0, DONE=0, and
+                      at the start of each later GO write the AW and W counts
+                      equal the transactions of the chunks before it. Control:
+                      the Leg B single-chunk transfers show no such read.
+
+Multi-chunk start contract (CHK-DMA-GO-CHUNKS): "A start is a write of
+`CONTROL.GO` while `STATUS.BUSY` is clear: the first chunk of a transfer, with
+`INITIAL_TRANSFER` set, or a later chunk, with `GO` alone" (``dma.adoc:79-81``);
+"For a transfer in several chunks without hardware handshake, wait for
+`STATUS.CHUNK_DONE` after each chunk and start the next one by writing
+`CONTROL` with `GO=1` and `INITIAL_TRANSFER=0`" (``sep-programming.adoc:743-745``);
+STATUS.CHUNK_DONE: "Transfer of a single chunk is complete. Only raised for
+multi-chunk memory-to-memory transfers" (``secure_dma.rdl:327-328``).
+The leaf writes one GO per stop it reads; the GO count is stimulus and is not
+graded.
   CHK-DMA-RANGE-OK    per Leg C cell: the copy completes with ERROR=0 and the
                       data copied. Control: the same copy with the wide range.
   CHK-DMA-HASH        per graded Leg D run: digest words equal the hashlib
@@ -559,6 +575,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         "CHK-DMA-CHUNKDONE",
         "CHK-DMA-CHUNKRISE",
         "CHK-DMA-DONE-ORDER",
+        "CHK-DMA-GO-CHUNKS",
         "CHK-DMA-RANGE-OK",
         "CHK-DMA-HASH",
         "CHK-DMA-HASH-VALID",
@@ -720,6 +737,39 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             f"bresp_nonzero={bad_resp} {tag}",
         )
 
+    def _check_go_chunks(self, rec: XferRecord, x: DmaXfer, tag: str) -> int:
+        """Stops between chunks and destination progress at each later GO.
+
+        Returns the number of STATUS reads with CHUNK_DONE=1, BUSY=0, DONE=0.
+        Graded only for n >= 2 chunks; a single-chunk caller uses the count as
+        the control.
+        """
+        n = x.n_chunks
+        stops = sum(1 for s in rec.statuses if s.chunk_done and not s.busy and not s.done)
+        if n < 2:
+            return stops
+        gos = [
+            c0
+            for c0, _, addr, data in self.ops.writes
+            if addr == CONTROL and data & GO_MASK and rec.clk0 <= c0 < rec.clk1
+        ]
+        progress = []
+        bad = 0
+        for k, c0 in enumerate(gos[1:], start=1):
+            want = sum(1 for i in range(x.n_txn) if x.chunk_of(i) < k)
+            aw = sum(1 for b in rec.ev.aw if b.clk < c0)
+            wb = sum(1 for b in rec.ev.w if b.clk < c0)
+            progress.append(f"{k}:{aw}/{wb}/{want}")
+            if aw != want or wb != want:
+                bad += 1
+        self._pass(
+            "CHK-DMA-GO-CHUNKS",
+            stops == n - 1 and bad == 0,
+            f"n={n} stop_reads={stops} expect_stops={n - 1} progress_bad={bad} "
+            f"aw/w/expect_at_go={','.join(progress) or '-'} {tag}",
+        )
+        return stops
+
     async def _read_regs(self) -> tuple[DmaStatus, int, int]:
         st = await self.ops.read_status()
         err = await self.ops.rd(ERROR_CODE)
@@ -785,6 +835,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self._check_beats(cd, rec)
             self._check_chunkrise(rec, cd.n, tag)
             self._check_done_order(rec, x.total, tag)
+            self._check_go_chunks(rec, x, tag)
             await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
 
     def _check_beats(self, cd: CellDraw, rec: XferRecord) -> None:
@@ -912,6 +963,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         multi_chunk_polls = 0
         multi_irq_rises = 0
         ctrl_go_busy_seen = False
+        single_stops: list[int] = []
         for i, c in enumerate(plan.b_xfers):
             x = c.x
             n = x.n_chunks
@@ -980,6 +1032,14 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 multi_irq_rises += rec.irq_rises
             self._check_chunkrise(rec, n, tag)
             self._check_done_order(rec, x.total, tag)
+            stops = self._check_go_chunks(rec, x, tag)
+            if n == 1:
+                single_stops.append(stops)
+        if not single_stops or any(single_stops):
+            self._ctrl_missing(
+                "CHK-DMA-GO-CHUNKS",
+                f"single-chunk stop reads={single_stops}, expected one 0 per transfer",
+            )
         if not ctrl_go_busy_seen:
             self._ctrl_missing(
                 "CHK-DMA-GEOM", "no CONTROL read returned GO=1 at BUSY=1 on a total >= 1024"

@@ -11,8 +11,17 @@ INTR_STATE and EVENT_ENABLE registers of
 Every seed runs the legs below once at each lane width x1, x2 and x4
 (COMMAND.SPEED 0, 1, 2), in a seeded order. The TX watermark leg has no
 segment and runs once. The TX and RX FIFO depths are found at run time from
-STATUS (at the first width) and size the stimulus only; no depth is compared
-with a value.
+STATUS (at the first width), graded by CHK-SPI-DEPTH-TX and CHK-SPI-DEPTH-RX,
+and size the stimulus.
+
+Depth sources: the SEP SPI host is the unmodified OpenTitan IP
+(``doc/programmer/src/sep-programming.adoc:783``), built with the default
+parameters of ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:93-107``
+("The size of the Tx FIFO (in words)" 72, "The size of the Rx FIFO (in words)"
+64, "The size of the Cmd FIFO (one segment descriptor per entry)" 4), and the
+OpenTitan SPI_HOST theory of operation
+(``theory_of_operation.md``,
+https://opentitan.org/book/hw/ip/spi_host/doc/theory_of_operation.html).
 
 Data. The lane responder (``env/sep_spi_lane_responder.py``, plusarg
 ``+sep_spi_four_lane``) drives seeded bytes on the response lanes in every Rx
@@ -53,8 +62,9 @@ Checkers:
                    set with ACTIVE=1 during a Tx segment of twice the TX depth
                    in words, and that segment ends with every sck cycle. An Rx
                    segment of exactly the RX depth sets RXFULL; one more 4-byte
-                   segment does not raise RXQD above the depth and the drain
-                   reads depth plus 1 words. TXFULL/TXEMPTY and RXFULL/RXEMPTY
+                   segment does not raise RXQD above the depth; the drain
+                   count after it is logged (OBS-SPI-RX-EXTRA: no source states
+                   a count). TXFULL/TXEMPTY and RXFULL/RXEMPTY
                    are never set together in any STATUS read; each of the four
                    flags is set in at least one read (control).
   CHK-SPI-CMDQD    CMDQD rises by 1 per COMMAND accepted while the head segment
@@ -81,11 +91,38 @@ Checkers:
                    the last pad sample before the SW_RST write shows chip
                    select low and ``spi_sd_oe_o`` equal to the lane mask of the
                    Tx segment (0001 at x1, 0011 at x2, 1111 at x4), and the
-                   window has fewer sck cycles than the segment. ``spi_cs_oe_o`` and
-                   ``spi_sck_oe_o`` after the abort have no golden and are
-                   logged with OBS-SPI-SWRST-CTRL-OE. One clean frame (Tx
-                   then Rx, CSAAT) at the same width follows and is graded by
-                   CHK-SPI-SB-FRAME.
+                   window has fewer sck cycles than the segment. With
+                   CONTROL.OUTPUT_EN = 1, ``spi_cs_oe_o`` = ``spi_sck_oe_o``
+                   = 1 after the SW_RST release: SW_RST "Clears the internal
+                   state (not registers)" (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:213``), so OUTPUT_EN
+                   stays set, and OUTPUT_EN reads "Enable the SPI host output
+                   buffers for the sck, csb, and sd lines."
+                   (spi_host.hjson:222). Control: one pad sample before the
+                   first CONTROL write that sets OUTPUT_EN reads cs_oe =
+                   sck_oe = 0 (``doc/integrator/src/smu-sep.adoc:275-276``:
+                   the host "drives no pad until software sets its
+                   ``CONTROL.OUTPUT_EN``"), else CTRL-MISSING. One clean
+                   frame (Tx then Rx, CSAAT) at the same width follows and is
+                   graded by CHK-SPI-SB-FRAME.
+  CHK-SPI-DEPTH-TX With no COMMAND (ACTIVE=0), STATUS.TXFULL reads 1 after 73
+                   TXDATA writes: "the fifo is observed as having an effective
+                   depth of N+1 where N is the parameterized depth"
+                   (theory_of_operation.md:684-685), N = TxDepth = 72.
+                   Control: TXFULL reads 0 after 72 writes, else CTRL-MISSING.
+  CHK-SPI-DEPTH-RX An idle Rx segment of 64 words with no RXDATA read leaves
+                   STATUS.RXFULL = 1 ("When high, indicates that the receive
+                   fifo is full.", spi_host.hjson:288) and RXQD = 64 ("how
+                   many unread 32-bit words are currently in the RX FIFO",
+                   spi_host.hjson:324-325), RxDepth = 64. Control: the 63-word
+                   segment of the same search reads RXFULL = 0 and RXQD = 63,
+                   else CTRL-MISSING.
+  CHK-SPI-DEPTH-CMD Every STATUS read of the CHK-SPI-CMDQD leg shows CMDQD <= 4
+                   ("how many unread 32-bit words are currently in the command
+                   segment queue", spi_host.hjson:318-319), CmdDepth = 4.
+                   Upper bound only: no source ties READY = 0 to a full queue
+                   or says whether the held head segment counts in CMDQD.
+                   Control: the CHK-SPI-CMDQD controls (a held head and at
+                   least one accepted COMMAND, CMDQD +1 per COMMAND).
   CHK-SPI-SB-FRAME Every frame of the width, as above (one scoreboard per width).
   CHK-SPI-LANE-DATA One line per width with ``width=`` and the Tx and Rx frame
                    and byte counts, after CHK-SPI-SB-FRAME of the width passed.
@@ -98,7 +135,8 @@ Every CHK line of a per-width leg carries ``width=x1|x2|x4``; the TX
 watermark leg has no segment and no width.
 
 Not graded: TXQD and RXQD at idle (logged with OBS-SPI-QD), TXQD and RXQD while
-ACTIVE=1, RXWM at RXQD equal to RX_WATERMARK, RX_WATERMARK 0x7F against the
+ACTIVE=1, CMDQD reaching 4 and the head-segment count of CMDQD (logged on the
+CMDQD line), RXWM at RXQD equal to RX_WATERMARK, RX_WATERMARK 0x7F against the
 reset value, overflow and underflow.
 
 Run mode: no_cpu (target ``lsu_stub_all_live``), ``+skip_fuse_sense``,
@@ -194,6 +232,13 @@ TX_OE_MASK = {1: 0b0001, 2: 0b0011, 4: 0b1111}
 TX_OE_LANES = {1: 0b0011, 2: 0b0011, 4: 0b1111}
 # The watermark event leg: at most this many TX words queued.
 EVENT_TX_WORDS_MAX = 8
+# Stated FIFO and queue depths: TxDepth 72, RxDepth 64, CmdDepth 4
+# (spi_host.hjson:93-107). Software sees TxDepth + 1 TX words before TXFULL
+# (OpenTitan SPI_HOST theory_of_operation.md:684-685).
+TX_DEPTH_WORDS = 72
+TX_ACCEPT_WORDS = TX_DEPTH_WORDS + 1
+RX_DEPTH_WORDS = 64
+CMD_DEPTH = 4
 
 
 class _CtrlMissing(AssertionError):
@@ -232,6 +277,9 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         "CHK-SPI-CMDQD",
         "CHK-SPI-EVENT-WM",
         "CHK-SPI-SWRST-ABORT",
+        "CHK-SPI-DEPTH-TX",
+        "CHK-SPI-DEPTH-RX",
+        "CHK-SPI-DEPTH-CMD",
         "CHK-SPI-SB-FRAME",
         "CHK-SPI-LANE-DATA",
         "CHK-SPI-SESSION-FRAMES",
@@ -529,6 +577,12 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             await self.rsp.stop()
 
     async def _run(self) -> None:
+        # Control for the SW_RST cs/sck output enables: one pad sample before the
+        # first CONTROL write that sets OUTPUT_EN.
+        await ClockCycles(cocotb.top.clk_i, 1)
+        await ReadOnly()
+        self.pre_en_oe = (_val(cocotb.top.spi_cs_oe_o), _val(cocotb.top.spi_sck_oe_o))
+        await ClockCycles(cocotb.top.clk_i, 1)
         # Step 2: harness reset state, then the leaf configuration.
         self.ctrl = CTRL_SPIEN | CTRL_OUTPUT_EN | (0 << TX_WM_LSB) | (0x7F << RX_WM_LSB)
         await self.ops.wr(CONTROL, self.ctrl)
@@ -587,8 +641,11 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
     async def _find_tx_depth(self) -> int:
         """Write TXDATA with no COMMAND until a STATUS read shows TXFULL=1."""
         written = 0
+        full_before = None  # TXFULL of the read after TX_DEPTH_WORDS writes
         for _ in range(QD_MAX + 2):
             st = await self.ops.read_status()
+            if written == TX_DEPTH_WORDS:
+                full_before = st.txfull
             if st.txfull:
                 break
             if st.active:
@@ -600,6 +657,15 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self.logger.info(
             "DRAW seed=%d tx_depth=%d (words written before TXFULL=1)", self.seed, written
         )
+        line = (
+            f"written={written} expect={TX_ACCEPT_WORDS} txfull=1 active=0 "
+            f"control_txfull_after_{TX_DEPTH_WORDS}={full_before}"
+        )
+        if written != TX_ACCEPT_WORDS:
+            self._fail("CHK-SPI-DEPTH-TX", line)
+        if full_before != 0:
+            self._ctrl_missing("CHK-SPI-DEPTH-TX", line)
+        self.logger.info("CHK-SPI-DEPTH-TX PASS seed=%d %s", self.seed, line)
         await self._sw_rst()
         if written < 3:
             self._fail("CHK-SPI-WM", f"TX depth {written} leaves no mid watermark in 2..depth-1")
@@ -691,10 +757,13 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         """First idle Rx segment length r (from max(1, s-1) up) whose read shows RXFULL=1."""
         self._gate(False)
         r = max(1, s - 1)
+        below = None  # STATUS after the RX_DEPTH_WORDS - 1 word segment
         while True:
             await self._clean()
             pending = await self._rx_segment(r, self.speed, "CHK-SPI-QD")
             st = await self.ops.read_status()
+            if r == RX_DEPTH_WORDS - 1:
+                below = st
             if st.rxfull:
                 break
             self._obs_qd(st, f"rx_depth_search r={r} rxfull=0")
@@ -704,6 +773,17 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             r += 1
         self._obs_qd(st, f"rx_depth_search r={r} rxfull=1")
         self.logger.info("DRAW seed=%d rx_depth=%d (search start %d)", self.seed, r, max(1, s - 1))
+        line = (
+            f"width={self._w} words={r} expect_words={RX_DEPTH_WORDS} rxfull={st.rxfull} "
+            f"rxqd={st.rxqd} expect_rxqd={RX_DEPTH_WORDS} active={st.active} "
+            f"control_rxfull_at_{RX_DEPTH_WORDS - 1}={below.rxfull if below else None} "
+            f"control_rxqd_at_{RX_DEPTH_WORDS - 1}={below.rxqd if below else None}"
+        )
+        if r != RX_DEPTH_WORDS or st.rxqd != RX_DEPTH_WORDS or st.active:
+            self._fail("CHK-SPI-DEPTH-RX", line)
+        if below is None or below.rxfull or below.rxqd != RX_DEPTH_WORDS - 1:
+            self._ctrl_missing("CHK-SPI-DEPTH-RX", line)
+        self.logger.info("CHK-SPI-DEPTH-RX PASS seed=%d %s", self.seed, line)
         self._rx_expect(pending, await self._drain_words(), leg=f"rx_depth_search_r{r}")
         await self._sw_rst()
         if r < 4:
@@ -1025,6 +1105,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         chk = "CHK-SPI-CMDQD"
         await self._clean()
         self._gate(True)
+        n0 = len(self.ops.status_log)
         mark0 = self.pads.mark()
         # An 8-byte Tx head with one word queued: the core sends that word and
         # holds the segment in TXSTALL with ACTIVE=1 until one more word arrives.
@@ -1089,6 +1170,15 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             1 + accepted,
             c0,
         )
+        reads = self.ops.status_log[n0:]
+        top = max(s.cmdqd for s in reads)
+        line = (
+            f"width={self._w} status_reads={len(reads)} max_cmdqd={top} bound={CMD_DEPTH} "
+            f"control_accepted={accepted} control_cmdqd_held={held} control_c0={c0}"
+        )
+        if top > CMD_DEPTH:
+            self._fail("CHK-SPI-DEPTH-CMD", line)
+        self.logger.info("CHK-SPI-DEPTH-CMD PASS seed=%d %s", self.seed, line)
         await self._sw_rst()
 
     # ---- step 14 -------------------------------------------------------
@@ -1196,10 +1286,20 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                 break
             if self.pads.now() > deadline:
                 self._fail(chk, f"extra segment not done, words={words} ({st.fmt()})")
-        if words != r + 1:
-            self._fail(chk, f"words_after_extra={words}/{r + 1}")
+        # No sentence states how many words the RX path holds past RXFULL
+        # (theory_of_operation.md:780 names "the RX FIFO plus any intervening
+        # buffers", with no count), so the count is logged. A returned extra
+        # word is compared with the data of its segment.
+        self.logger.info(
+            "OBS-SPI-RX-EXTRA seed=%d width=%s words_after_extra=%d rx_depth=%d",
+            self.seed,
+            self._w,
+            words,
+            r,
+        )
         self._rx_expect(first, got[:r], leg="rx_full_idle")
-        self._rx_expect(extra, got[r:], leg="rx_full_idle_extra")
+        if words == r + 1:
+            self._rx_expect(extra, got[r:], leg="rx_full_idle_extra")
         await self._sw_rst()
         return {
             "rxfull_at_R": 1,
@@ -1364,15 +1464,13 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             f"pre_sd_oe={_bin4(pre_sd_oe)} expect_pre_sd_oe={pre_exp_oe:04b} "
             f"sd_oe={sd_oe} expect_sd_oe={exp_sd_oe} cs_n={cs_n} "
             f"pre_active={pre.active} pre_txqd={pre.txqd} pre_rxqd={pre.rxqd} "
-            f"pre_cmdqd={pre.cmdqd} txqd={st.txqd} rxqd={st.rxqd} cmdqd={st.cmdqd}"
+            f"pre_cmdqd={pre.cmdqd} txqd={st.txqd} rxqd={st.rxqd} cmdqd={st.cmdqd} "
+            f"output_en={int(bool(self.ctrl & CTRL_OUTPUT_EN))} cs_oe={cs_oe} sck_oe={sck_oe} "
+            f"expect_cs_oe=1 expect_sck_oe=1 control_pre_enable_cs_oe={self.pre_en_oe[0]} "
+            f"control_pre_enable_sck_oe={self.pre_en_oe[1]}"
         )
-        self.logger.info(
-            "OBS-SPI-SWRST-CTRL-OE seed=%d width=%s dir=tx cs_oe=%s sck_oe=%s",
-            self.seed,
-            self._w,
-            cs_oe,
-            sck_oe,
-        )
+        if not self.ctrl & CTRL_OUTPUT_EN or self.pre_en_oe != (0, 0):
+            self._ctrl_missing(chk, line)
         pre_used = TX_OE_LANES[lanes]
         pre_ok = isinstance(pre_sd_oe, int) and (pre_sd_oe & pre_used) == pre_exp_oe
         if not cs_low or pre_cs_n != 0 or not pre_ok or cycles >= total:
@@ -1380,6 +1478,8 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         if not pre.active or not pre.txqd or not pre.rxqd or not pre.cmdqd:
             self._ctrl_missing(chk, line)
         if sd_oe != exp_sd_oe or cs_n != 1 or st.txqd or st.rxqd or st.cmdqd:
+            self._fail(chk, line)
+        if cs_oe != 1 or sck_oe != 1:
             self._fail(chk, line)
         self.logger.info("%s PASS seed=%d %s", chk, self.seed, line)
         await spi_lane_fcov(TEST, "abort", lanes=lanes, abort=0)
@@ -1415,7 +1515,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self._gate(True)
         self.logger.info(
             "%s PASS seed=%d width=%s idle=1 rxqd_step_ok=1 txfull_active=1 txfull_cycles=%d/%d "
-            "rxfull_at_R=1 rxqd_after_extra=%d max=%d words_after_extra=%d/%d pairs_both_set=0 "
+            "rxfull_at_R=1 rxqd_after_extra=%d max=%d words_after_extra_obs=%d pairs_both_set=0 "
             "seen_txfull=1 seen_txempty=1 seen_rxfull=1 seen_rxempty=1 rxqd_steps=%d "
             "txfull_txqd=%d extra_ended=%s status_reads=%d",
             chk,
@@ -1426,7 +1526,6 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             qd["rxqd_after_extra"],
             self.rx_depth,
             qd["words_after_extra"],
-            self.rx_depth + 1,
             qd["rxqd_steps"],
             qd["txfull_txqd"],
             qd["ended"],
