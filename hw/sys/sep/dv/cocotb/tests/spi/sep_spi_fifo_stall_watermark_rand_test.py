@@ -72,8 +72,10 @@ Checkers:
                    a count). TXFULL/TXEMPTY and RXFULL/RXEMPTY
                    are never set together in any STATUS read; each of the four
                    flags is set in at least one read (control).
-  CHK-SPI-CMDQD    CMDQD rises by 1 per COMMAND accepted while the head segment
-                   waits for TX data; after one TXDATA word releases it, every
+  CHK-SPI-CMDQD    CMDQD moves after each COMMAND accepted while the head
+                   segment waits for TX data (the step size is logged as
+                   OBS-SPI-CMDQD-STEP: no sentence states it); after one
+                   TXDATA word releases the head, every
                    queued command shows one chip-select-low window and the
                    queue empties. Control: the head is held (ACTIVE=1,
                    TXSTALL=1) and at least one COMMAND is accepted.
@@ -141,12 +143,14 @@ Checkers:
                    SEP host is the unmodified IP, ``doc/trm/src/revision.adoc:191``).
                    A host that accepts a fifth command shows CMDQD 5 and
                    fails. Controls: one STATUS read after an accepted COMMAND
-                   shows READY=1 and CMDQD below 4 (the READY return time is
-                   logged and is inside the 20000-clock window), and the fill
-                   ends because READY stays 0, not at the write cap; else
-                   CTRL-MISSING.
+                   shows READY=1 and CMDQD below 4, the largest READY return
+                   time after an accepted COMMAND (logged) is below the
+                   20000-clock window, and the fill ends because READY stays
+                   0, not at the write cap; else CTRL-MISSING. The fill grades
+                   no CMDQD step per COMMAND.
   OBS-SPI-CMDQD-FULL The CMDQD at which READY stays 0, the head count c0 and
-                   the READY trail are logged, not graded. "The register
+                   the READY trail, with the CMDQD before and after each fill
+                   COMMAND, are logged, not graded. "The register
                    STATUS.READY indicates that there is room in the command
                    FIFO." (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:620``),
                    but "the core will immediately deassert STATUS.READY"
@@ -157,7 +161,9 @@ Checkers:
                    The texts give no single point at which READY stays 0, so
                    "CMDQD reaches 4 with the queue full" is not graded. No
                    sentence says whether the held head segment counts in
-                   CMDQD.
+                   CMDQD, or that CMDQD rises by 1 per COMMAND accepted near
+                   the full point (a descriptor can wait "in the Command Clock
+                   Domain Crossing", programmers_guide.md:143).
   CHK-SPI-SB-FRAME Every frame of the width, as above (one scoreboard per width).
   CHK-SPI-LANE-DATA One line per width with ``width=`` and the Tx and Rx frame
                    and byte counts, after CHK-SPI-SB-FRAME of the width passed.
@@ -1182,14 +1188,18 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             st2 = await self._poll(
                 lambda s, p=prev: s.cmdqd != p, 20_000, f"CMDQD moves from {prev}", chk
             )
-            if st2.cmdqd != prev + 1:
-                self._fail(chk, f"CMDQD {prev} -> {st2.cmdqd} after one accepted COMMAND")
+            # No sentence states the size of the CMDQD step per accepted COMMAND
+            # (a descriptor can wait in the command clock domain crossing,
+            # programmers_guide.md:143), so the step is logged.
+            self.logger.info(
+                "OBS-SPI-CMDQD-STEP seed=%d prev=%d after=%d", self.seed, prev, st2.cmdqd
+            )
             prev = st2.cmdqd
             trail.append(f"cmdqd={st2.cmdqd} ready={st2.ready}")
         self.logger.info("CMDQD seed=%d n=%d %s", self.seed, self.n_cmds, " ".join(trail))
         if accepted == 0:
             self._ctrl_missing(chk, "no COMMAND accepted behind the held head")
-        full_st, lat_max = await self._cmdq_fill(chk, prev, accepted, t_acc, ctrl_reads, trail)
+        full_st, lat_max = await self._cmdq_fill(prev, accepted, t_acc, ctrl_reads, trail)
         accepted = full_st[1]
         held = full_st[0].cmdqd
         ready = full_st[0].ready
@@ -1246,7 +1256,6 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
 
     async def _cmdq_fill(
         self,
-        chk: str,
         prev: int,
         accepted: int,
         t_acc: int,
@@ -1281,21 +1290,31 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             await self.ops.wr(COMMAND, command_word(0, speed=0, direction=DIR_DUMMY))
             t_acc = self.pads.now()
             accepted += 1
-            st2 = await self._poll(
-                lambda s, p=prev: s.cmdqd != p, 20_000, f"CMDQD moves from {prev}", chk
-            )
-            if st2.cmdqd != prev + 1:
-                self._fail(chk, f"CMDQD {prev} -> {st2.cmdqd} after one accepted COMMAND")
+            # The CMDQD step of a fill COMMAND is logged in the trail, not
+            # graded: no sentence states the step near the full point, and a
+            # descriptor can wait in the command clock domain crossing
+            # (vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/programmers_guide.md:143).
+            step_end = self.pads.now() + 20_000
+            while True:
+                st2 = await self.ops.read_status()
+                if st2.cmdqd != prev or self.pads.now() > step_end:
+                    break
             if st2.cmdqd > CMD_DEPTH:
                 self._fail(
                     dchk, f"width={self._w} cmdqd={st2.cmdqd} bound={CMD_DEPTH} queued={accepted}"
                 )
+            trail.append(f"fill_cmdqd={prev}->{st2.cmdqd} ready={st2.ready}")
             prev = st2.cmdqd
-            trail.append(f"fill_cmdqd={st2.cmdqd} ready={st2.ready}")
         trail.append(f"full@cmdqd={st.cmdqd} ready=0 win={CMDQ_FULL_WIN}")
         if not ctrl_reads:
             self._ctrl_missing(
                 dchk, f"no READY=1 read with CMDQD below {CMD_DEPTH} after an accepted COMMAND"
+            )
+        if lat_max >= CMDQ_FULL_WIN:
+            self._ctrl_missing(
+                dchk,
+                f"READY returns {lat_max} clocks after an accepted COMMAND, "
+                f"not below the {CMDQ_FULL_WIN}-clock fill window",
             )
         return (st, accepted), lat_max
 

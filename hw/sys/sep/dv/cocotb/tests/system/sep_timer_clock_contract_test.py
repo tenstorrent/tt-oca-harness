@@ -110,9 +110,11 @@ edges in (t0, t1].
   software is expected to periodically reset the count" (``<aon>/README.md:57``).
   A pet at a count below ``WDOG_BARK_THOLD - 31`` gives a bark status of 0 on
   every status read up to one issued ``WDOG_BARK_THOLD + A + 1`` periods after
-  the enable read-back, where an unpetted run barks (CHK-WDT-BARK-TIME). Control
-  CTL-WDT-PET-BARK: the same run barks later, at a count of at least
-  ``WDOG_BARK_THOLD - A``.
+  the enable read-back, where an unpetted run barks (CHK-WDT-BARK-TIME).
+  Controls: every count read of the hold window is below
+  ``WDOG_BARK_THOLD - A``, so the petted count stays clear of the threshold
+  (CTRL-MISSING otherwise); CTL-WDT-PET-BARK: the same run barks later, at a
+  count of at least ``WDOG_BARK_THOLD - A``.
 * CHK-WDT-THOLD-ZERO. "If the timer is enabled, there is a "bark" on every AON
   clock tick when the count is at least WDOG_BARK_THOLD." (``<aon>/README.md:55``).
   With ``WDOG_BARK_THOLD`` = 0 the bark status is 1 at the status read issued
@@ -136,7 +138,11 @@ edges in (t0, t1].
   The steps after the enable and the restart writes against the write landing
   are logged only (the landing bracket is wider than one period of difference).
 * CHK-WKUP-THOLD-ZERO. "Each time the pre-scaler completes when the count is at
-  or above the threshold, two outputs become high" (``<aon>/README.md:35``). With
+  or above the threshold, two outputs become high" (``<aon>/README.md:35``); "The
+  wakeup signal (`wkup_req_o`) stays high until software explicitly acknowledges
+  it by software writing 0 to WKUP_CAUSE" (``<aon>/README.md:41``) and
+  WKUP_CAUSE.cause is "AON timer requested wakeup, write 0 to clear."
+  (``<aon>/data/aon_timer.hjson:350-351``). With
   threshold 0, the ``wkup_timer_expired`` status and ``WKUP_CAUSE`` read 0 at
   reads done at most 4096 periods after the enable write, and 1 at reads issued
   ``A`` periods after the count reads 1. Control CTL-WKUP-THOLD-ZERO: those early
@@ -1633,10 +1639,11 @@ class sep_timer_clock_contract_test(sep_base_test):
             if self._edges("clk_wdt_i", t_en_rb, s_st) >= hold_end:
                 break
             _late("the hold window did not close")
-        assert max_cnt < pb - a, (
-            f"CHK-WDT-PET-HOLD FAIL: seed={seed} count 0x{max_cnt:x} reached pb - A in the "
-            f"hold window (pb={pb})"
-        )
+        if max_cnt >= pb - a:
+            raise AssertionError(
+                f"CTRL-MISSING CHK-WDT-PET-HOLD: seed={seed} count 0x{max_cnt:x} reached "
+                f"pb - A in the hold window (pb={pb}, A={a})"
+            )
         self.logger.info(
             "CHK-WDT-PET-HOLD PASS: seed=%d bark_thold=%d pet_at_count=%d status_reads=%d "
             "bark=0 hold_end_periods=%d max_count=%d",

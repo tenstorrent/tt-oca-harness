@@ -94,14 +94,17 @@ destination, both ADDR_HI 0) with SRC_ASID 0x9, SRC_ASID 0xA, DST_ASID 0x9 or
 DST_ASID 0xA and 0x7 on the other side. No STATUS read of the window shows
 DONE. The window is ``done_bound`` STATUS reads of the copy size; its control
 is the same copy with both ASID 0x7 from a cold reset, which must show DONE
-inside the same window and copy the source. Recovery with no reset:
-CONTROL.ABORT, a bounded wait for STATUS.ABORTED ("To abort an active
-operation, request ``CONTROL.ABORT`` and wait for ``STATUS.ABORTED`` before
-reusing its buffers or configuration.", ``doc/programmer/src/sep-programming.adoc:778-779``),
-the DMA clean state, ADDR_SPACE_ID 0x77 and the same copy, which must complete
-with the destination equal to the source. STATUS.ERROR, ERROR_CODE and
-STATUS.ABORTED of each trial are logged (``OBS-DMA-ASID-TIEOFF``): no document
-states which ERROR_CODE bit, if any, a tied-off address space sets.
+inside the same window and copy the source. Recovery with no reset is a
+control, not a graded value: CONTROL.ABORT, a bounded wait for
+STATUS.ABORTED ("To abort an active operation, request ``CONTROL.ABORT`` and
+wait for ``STATUS.ABORTED`` before reusing its buffers or configuration.",
+``doc/programmer/src/sep-programming.adoc:778-779``), the DMA clean state,
+ADDR_SPACE_ID 0x77 and the same copy, which completes with the destination
+equal to the source, else CTRL-MISSING. No sentence states that a tied-off
+start drains to ABORTED or that the engine then completes. STATUS.ERROR,
+ERROR_CODE, and STATUS.ABORTED and STATUS.BUSY after the ABORT of each trial
+are logged (``OBS-DMA-ASID-TIEOFF``): no document states which ERROR_CODE
+bit, if any, a tied-off address space sets.
 
 Randomization (``SepSeededRng`` from the run seed): the INTR_ENABLE values and
 the trial order of L1, the copy sizes and the multi-chunk shape, the L2 sizes,
@@ -150,9 +153,11 @@ Checkers:
                     completes with the source data. The footprint at
                     DST_ADDR_LO is OBS-DMA-HI-ADDR only.
   CHK-DMA-ASID-TIEOFF per L5 trial (side, ASID 0x9 or 0xA): no DONE in the
-                    window, then the recovery copy completes with the source
-                    data. Control: the ASID 0x7 copy shows DONE inside the
-                    same window and copies the source.
+                    window. Controls: the ASID 0x7 copy shows DONE inside the
+                    same window and copies the source; after the trial,
+                    ABORTED reads 1 after CONTROL.ABORT and the ASID 0x7
+                    recovery copy completes with the source data; else
+                    CTRL-MISSING.
 """
 
 from __future__ import annotations
@@ -1063,7 +1068,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         )
         return ok, ctl_done_at, window
 
-    async def _l5_trial(self, side: str, asid: int) -> tuple[str, bool]:
+    async def _l5_trial(self, side: str, asid: int) -> tuple[str, bool, bool]:
+        """One L5 trial; returns (PASS line, no DONE in the window, recovery control held)."""
         c = self.cfg_t
         ops = self.ops
         word = asid_word(asid, ASID_OT) if side == "src" else asid_word(ASID_OT, asid)
@@ -1101,9 +1107,10 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         rec_ok = rec_done_at is not None and not rst.error and rec_mism == 0
         line = (
             f"side={side} asid=0x{asid:x} asid_word=0x{word:02x} done_read={tie_done_at} "
-            f"window={window} recovery_done={int(rec_ok)} recovery_mismatch={rec_mism} @@CTRL@@"
+            f"window={window} @@CTRL@@ recovery_aborted={ab.aborted} "
+            f"recovery_done={int(rec_ok)} recovery_mismatch={rec_mism}"
         )
-        return line, tie_done_at is None and rec_ok
+        return line, tie_done_at is None, bool(ab.aborted) and rec_ok
 
     async def _leg_l5(self) -> None:
         ctl_ok, ctl_done_at, ctl_window = await self._l5_control()
@@ -1113,12 +1120,14 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 f"window={ctl_window}"
             )
         for side, asid in ASID_TIEOFF:
-            line, no_done_rec_ok = await self._l5_trial(side, asid)
+            line, no_done, rec_ctrl_ok = await self._l5_trial(side, asid)
             line = line.replace(
                 "@@CTRL@@", f"control_done_read={ctl_done_at}/{ctl_window} control_ok={ctl_ok}"
             )
-            if not no_done_rec_ok:
+            if not no_done:
                 self._fail("CHK-DMA-ASID-TIEOFF", line)
+            if not rec_ctrl_ok:
+                self._ctrl_missing(f"CHK-DMA-ASID-TIEOFF recovery control: {line}")
             self._pass("CHK-DMA-ASID-TIEOFF", line)
 
     # ---- scenario ----------------------------------------------------------

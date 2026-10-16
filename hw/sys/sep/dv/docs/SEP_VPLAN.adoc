@@ -2885,7 +2885,7 @@ the test does.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA invalid address-space IDs
 |Which ASID values are invalid (`secure_dma.adoc`, ADDR_SPACE_ID)? `dma.hjson` gives the encodings OT_ADDR 0x7, SOC_ADDR 0xa and SYS_ADDR 0x9 and does not state the invalid set. `dma.adoc:70` and `sep-programming.adoc:716-717` state that the tied-off address spaces do not complete; no document states which ERROR_CODE bit, if any, they set.
-|Graded leg: Reset value 0x77 (`sep_cpu_reset_retention_test`). A start with SRC_ASID or DST_ASID 0x9 or 0xa does not complete and an ABORT recovers the engine (`sep_dma_irq_error_lock_rand_test`, CHK-DMA-ASID-TIEOFF); ERROR_CODE is logged (`OBS-DMA-ASID-TIEOFF`)
+|Graded leg: Reset value 0x77 (`sep_cpu_reset_retention_test`). A start with SRC_ASID or DST_ASID 0x9 or 0xa does not complete (`sep_dma_irq_error_lock_rand_test`, CHK-DMA-ASID-TIEOFF); the ABORT recovery after it is a control; ERROR_CODE, and STATUS.ABORTED and BUSY after the ABORT, are logged (`OBS-DMA-ASID-TIEOFF`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA INTR_STATE release
 |How does a forced DMA interrupt release (`secure_dma.adoc`, INTR_STATE, INTR_TEST)? `secure_dma.adoc` and `secure_dma.rdl` give INTR_STATE as read-only and `dma.hjson` types the interrupts "status". A write of 1 to the matching STATUS bit releases a status interrupt that the hardware set ("Since interrupts are implemented as status bits, they are cleared by writing a '1' to the corresponding bit in the STATUS register", OpenTitan DMA `vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:39`; `dma.adoc:131-132`); no write that releases a bit forced by `INTR_TEST` is stated.
