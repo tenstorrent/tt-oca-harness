@@ -364,6 +364,7 @@ one-line intent.
 |`smu_smc_gpio_access_filter_test` |wrapper |The GPIO pad access filter admits an access over the external AXI input only when its AxPROT equals the stored requirement once the matching filter is enabled, and admits AxPROT 0 and 7 while both filters are disabled.
 |`smu_smc_gpio_spi_pad_ownership_test` |wrapper |With the SMU holding the SEP, GPIO pads 0-3, 8 and 9 follow the SEP SPI host and ignore DATA_CTRL until `lsio_disable` is set, and pads 4-7, 10 and 54 are not driven by the SPI host and answer to the register only once `lsio_disable` is set.
 |`smu_sep_external_irq_pins_test` |wrapper |Each of the 212 external SEP interrupt pins, driven one at a time, raises the PIC pending bit of its own source 44 to 255 and the matching core request-port bit, and clears them when it returns low.
+|`smu_sep_wdt_bite_to_smc_reset_test` |wrapper |A SEP watchdog bite programmed over the SEP debug system bus drops the SMC watchdog-term and warm resets while the primary and cold resets stay released and the request holds, and the cool-reset pin then drops the request and releases every net.
 |===
 
 [[smu-test-procedures]]
@@ -7369,6 +7370,67 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-172-smu_sep_wdt_bite_to_smc_reset_test]]
+===== 172 `smu_sep_wdt_bite_to_smc_reset_test`
+
+*Source Module*: `smu_sep_wdt_bite_to_smc_reset_test` (`cocotb_wrapper/tests/`; the sequence `smu_sep_wdt_bite_to_smc_reset_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the `ocah_jtag_vip` primary TAP and the SEP debug STAP system bus (the debug-module bring-up of `smu_dtp_sep_dm_dmi_test` and the system-bus accessors of `smu_dtp_sep_dm_sba_test`), writing the SEP watchdog registers `SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD`, `_WDOG_BITE_THOLD`, `_WDOG_COUNT` and `_WDOG_CTRL` named in `hw/sys/sep/regs/gen/c/sep_addr.h` through `seq_lib.smu_addr_map`; the bench input `tb_cool_reset_pin` (`tb/tb_wrapper_top.sv`, deposited by the leaf; high asserts the cool reset); the read pins `tb_smc_wdt_second_timeout`, `tb_ss_warm_reset_n`, `obs_sep_rst_n_o`, `rst_primary_smc_clk_n_o` and `rst_cold_n_o`, and the clocks `clk_smu_i` and `clk_ref_i`; read-only probes from the `smu` instance, never forced: `sep_wdt_timer_rst_req` (the bite request), `u_smc.rst_wdt_smc_clk_no` (the watchdog-term output of `smc_reset_sync`) and `u_smc.rst_warm_smc_clk_n` (the warm output net); eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload` through `+sep_shadow_reg_preload` with `+skip_fuse_sense` and the default SMC shadow preload; run mode `sep_rtl`, `elaboration` firmware mode, `+expected_sep=1`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images
+
+*Objective*: a SEP watchdog bite raises the bite request, which drops the SMC watchdog-term and warm resets while the SMC primary and cold resets stay released and the request holds; the cool-reset pin then asserts the primary reset, which clears the request, and releasing the pin returns every net to released with the request low.
+
+*Test Coverage*:
+
+* Request: the watchdog second stage raises `wdt_timer_rst_req_o` (`hw/sys/sep/doc/watchdog.adoc`, "Bark Interrupt and Bite Reset"). The request reads 0 at the baseline sample before `WDOG_CTRL` is written and 1 within a bounded wait after the enable write, and falls to 0 only once the primary reset asserted (`CHK-SEP-WDT-SMC-REQ`); the bite cycles are measured and logged only.
+* Assertion: the watchdog reset is `rst_ext_wdt_ni AND NOT smc_wdt_second_timeout_i` and the warm reset is `rst_primary_n AND rst_wdt_n AND fuse_reset_ni`, each output of `smc_reset_sync` asserting asynchronously (`hw/sys/smc/doc/clk_rst.adoc`, reset equations and "Reset synchronization domains"). After the request first reads 1 the watchdog-term net and the warm net each read 0 within their bounded waits (`CHK-SEP-WDT-SMC-ASSERT`); the cycles from the request to each fall are measured and logged only.
+* Terms: both nets read 1 at the baseline and 0 at the settled sample, with the request 1 and the SMC watchdog second timeout 0, since the SMC watchdog is never armed (`CHK-SEP-WDT-SMC-TERM-WARM`).
+* Primary and cold: the primary reset is the AND of the stable cold reset, the de-glitched cool-reset pin and the FLR cool reset, and carries no watchdog term (`clk_rst.adoc`), so `rst_primary_smc_clk_n_o` and `rst_cold_n_o` read 1 at every sample of a hold window that began after the request and both nets changed (`CHK-SEP-WDT-SMC-PRIMARY-COLD`). The primary reset reads 0 later in the leaf, so the net is shown to fall when its source asserts.
+* Hold: `wdt_rst_ni` resets only the EL2 core and warm scratch, and the watchdog and its request are reset by `rst_ni` (`hw/sys/sep/doc/reset_controller.adoc`, lines 50-52 and 61-68), so the request reads 1 at every hold sample while both nets read 0 (`CHK-SEP-WDT-SMC-HOLD`); the request reads 0 later, so a low request is observable.
+* Release: with the cool-reset pin held above its 32-cycle de-glitcher (`clk_rst.adoc`) the primary reset reads 0 and the request falls; after the pin is released the primary, watchdog-term and warm nets each read 1 within their bounded waits (`CHK-SEP-WDT-SMC-RELEASE`). The release order and cycles are measured and logged only.
+* Order: the warm reset includes the watchdog reset term (`clk_rst.adoc`), so from the request's first 1 sample to the end of the release no sample has the warm net 1 while the watchdog-term net is 0 and no sample is skipped; the watchdog-term net reads 0 for many samples, so the check can fail (`CHK-SEP-WDT-SMC-ORDER`).
+* Convergence: in a closing window after the release the request stays 0 and every reset net reads 1, and the request rose exactly once from the baseline; the request read 1 at the settled and hold samples, so the 0 is not a reset value (`CHK-SEP-WDT-SMC-CONVERGE`).
+* Warm vector: `SS_WARM_RESET_N` resets to 0xFFFFFFFF (`hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl`, read through the generated `reset_unit.h`), so `tb_ss_warm_reset_n` reads 0xFFFFFFFF at the baseline (`CHK-SEP-WDT-SMC-WARMVEC`). Its level during and after the bite and `obs_sep_rst_n_o` before, during and after the hold window are measured and logged only.
+* Measured and logged only: the request rise cycles after the enable write, the cycles from the request to each net assertion, the primary assertion and request fall cycles, the release order and cycles, the warm vector and `obs_sep_rst_n_o` levels; the thresholds, the window lengths, the pin hold and every wait bound are bench constants.
+* Out of scope: the SMC watchdog second-timeout path, the SEP CPU response to the bite, per-subsystem warm-reset fan-out values, the fuse reset timing and the cold reset.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the SEP debug module with the TEST_DEV image and enable the system bus.
+. Sample the baseline: the request, the two SMC nets, the primary and cold resets, the warm vector and `obs_sep_rst_n_o`.
+. Write the bark and bite thresholds and the count over the SEP system bus, then the watchdog enable last.
+. Wait for the request to read 1, then for the watchdog-term net and the warm net each to read 0.
+. Take a settled sample of the request, the two nets and the second timeout.
+. Sample every `clk_smu_i` cycle of a hold window and compare the primary, cold, request and net levels.
+. Drive `tb_cool_reset_pin` high for a fixed count of `clk_ref_i` cycles and wait for the primary reset to read 0.
+. Wait for the request to read 0.
+. Drive the pin low and wait for the primary, watchdog-term and warm nets each to read 1.
+. Evaluate the ordering of the warm and watchdog-term nets over every sample since the request rose.
+. Sample every cycle of a closing window and compare the levels and the request rise count.
+. Stamp PASS two `clk_smu_i` cycles later; check every wait finished inside its bound with its last state, the number of wait sites of each kind, and the order of the steps.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-WDT-SMC-REQ` |the SEP watchdog request reads 0 before the enable write and 1 within the bounded wait after it, and falls to 0 only once the SMC primary reset asserted; bite cycles are measured and logged only
+|`CHK-SEP-WDT-SMC-ASSERT` |after the request first reads 1 the SMC watchdog-term net and the warm net each read 0 within their bounded waits; the cycles to each fall are measured and logged only
+|`CHK-SEP-WDT-SMC-TERM-WARM` |watchdog-term and warm nets read 1 at the baseline and 0 at the settled sample after the bite, with the request 1 and the SMC watchdog second timeout 0
+|`CHK-SEP-WDT-SMC-PRIMARY-COLD` |the SMC primary reset and the stable cold reset read 1 at every sample of the hold window that began after the request and both nets changed
+|`CHK-SEP-WDT-SMC-HOLD` |while the watchdog-term and warm nets read 0 the request reads 1 at every sample of the hold window
+|`CHK-SEP-WDT-SMC-RELEASE` |the held cool-reset pin drives the primary reset to 0 and the request to 0; after the pin is released primary, watchdog-term and warm nets each read 1; the order and cycles are measured and logged only
+|`CHK-SEP-WDT-SMC-ORDER` |from the request's first 1 sample to the end of the release no sample has the warm net 1 while the watchdog-term net is 0, with no sampling gap
+|`CHK-SEP-WDT-SMC-CONVERGE` |in the closing window the request stays 0 and every reset net 1, and the request rose exactly once from the baseline
+|`CHK-SEP-WDT-SMC-WARMVEC` |the per-subsystem warm vector reads 0xFFFFFFFF at the baseline; its level during and after the bite and the SEP reset level are measured and logged only
+|`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11<S12; the PASS stamp is two clk_smu_i cycles after S11
+|`CHK-TIMEOUT-PATHS` |eight bounded waits in five kinds (request rise 1, assert 2, primary assert 1, request fall 1, release 3), none expired, with the last state recorded
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7538,6 +7600,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_ic_reset_ss_domain_matrix_test` |F3 |smc_under_smu, hosted |`IC_RESET_SS_COLD_OVRD`, `IC_RESET_SS_WARM_OVRD`, `IC_RESET_SS_EXCL`
 |`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, hosted |`BSR_EXTEST_TDO_MATCH`
 |`smu_sep_external_irq_pins_test` |F3 |hosted |`CHK-SEP-EXTIRQ-RISE`
+|`smu_sep_wdt_bite_to_smc_reset_test` |F1 |hosted |`CHK-SEP-WDT-SMC-ASSERT`, `CHK-SEP-WDT-SMC-HOLD`, `CHK-SEP-WDT-SMC-RELEASE`
 |===
 
 [[smu-out-and-wrapper]]

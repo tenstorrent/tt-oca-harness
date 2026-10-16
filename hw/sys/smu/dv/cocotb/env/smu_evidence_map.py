@@ -930,6 +930,76 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the last state recorded",
         ),
     ],
+    "smu_sep_wdt_bite_to_smc_reset_test": [
+        (
+            "CHK-SEP-WDT-SMC-REQ",
+            "CHK-SEP-WDT-SMC-REQ",
+            "the SEP watchdog request reads 0 before the enable write and 1 within the bounded "
+            "wait after it, and falls to 0 only once the SMC primary reset asserted; bite cycles "
+            "are measured and logged only",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-ASSERT",
+            "CHK-SEP-WDT-SMC-ASSERT",
+            "after the request first reads 1 the SMC watchdog-term net and the warm net each read "
+            "0 within their bounded waits; the cycles to each fall are measured and logged only",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-TERM-WARM",
+            "CHK-SEP-WDT-SMC-TERM-WARM",
+            "watchdog-term and warm nets read 1 at the baseline and 0 at the settled sample after "
+            "the bite, with the request 1 and the SMC watchdog second timeout 0",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-PRIMARY-COLD",
+            "CHK-SEP-WDT-SMC-PRIMARY-COLD",
+            "the SMC primary reset and the stable cold reset read 1 at every sample of the hold "
+            "window that began after the request and both nets changed",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-HOLD",
+            "CHK-SEP-WDT-SMC-HOLD",
+            "while the watchdog-term and warm nets read 0 the request reads 1 at every sample of "
+            "the hold window",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-RELEASE",
+            "CHK-SEP-WDT-SMC-RELEASE",
+            "the held cool-reset pin drives the primary reset to 0 and the request to 0; after "
+            "the pin is released primary, watchdog-term and warm nets each read 1; the order and "
+            "cycles are measured and logged only",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-ORDER",
+            "CHK-SEP-WDT-SMC-ORDER",
+            "from the request's first 1 sample to the end of the release no sample has the warm "
+            "net 1 while the watchdog-term net is 0, with no sampling gap",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-CONVERGE",
+            "CHK-SEP-WDT-SMC-CONVERGE",
+            "in the closing window the request stays 0 and every reset net 1, and the request "
+            "rose exactly once from the baseline",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-WARMVEC",
+            "CHK-SEP-WDT-SMC-WARMVEC",
+            "the per-subsystem warm vector reads 0xFFFFFFFF at the baseline; its level during and "
+            "after the bite and the SEP reset level are measured and logged only",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11<S12; "
+            "the PASS stamp is two clk_smu_i cycles after S11",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "eight bounded waits in five kinds (request rise 1, assert 2, primary assert 1, "
+            "request fall 1, release 3), none expired, with the last state recorded",
+        ),
+    ],
     "smu_sep_sba_peripheral_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",
