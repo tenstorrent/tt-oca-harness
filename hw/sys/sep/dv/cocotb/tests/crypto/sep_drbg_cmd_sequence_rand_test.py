@@ -158,8 +158,12 @@ Checkers:
                  ("If the command is successful, the ``csrng_rsp_sts`` signal will
                  indicate the value 0 (``SUCCESS``)", theory_of_operation.md:287;
                  "Request completed successfully.", csrng.hjson:406-410), bit 15
-                 reads 0, and ``GENBITS`` gives four words (GEN1_WORDS). Control:
-                 the Generate before the Reseed was refused.
+                 reads 0, and ``GENBITS`` gives four words (GEN1_WORDS; GENBITS
+                 "must be read four times for each request made",
+                 csrng.hjson:475-476): the leg counts ``GENBITS`` reads while
+                 ``GENBITS_VLD`` = 1, up to one read past four. Control: the
+                 Generate before the Reseed was refused, and ``GENBITS`` was
+                 drained until ``GENBITS_VLD`` read 0 before the Reseed.
   CHK-CSRNG-GENBITS-GATE  with a Generate pending, ``CTRL.SW_APP_ENABLE`` set
                  to a value other than 6: four ``GENBITS`` reads return 0.
                  Control: ``GENBITS`` is first drained (read while
@@ -280,7 +284,7 @@ BOOT_INS_RESET = EDN.reset("BOOT_INS_CMD")
 BOOT_GEN_RESET = EDN.reset("BOOT_GEN_CMD")
 # GENBITS reads for one Generate with glen 1: glen 1 "returns 1 * 128 bits of entropy"
 # (theory_of_operation.md:185) and GENBITS "must be read four times for each request
-# made" (csrng.hjson:471-472).
+# made" (csrng.hjson:475-476).
 GEN1_WORDS = 4
 
 
@@ -1067,14 +1071,27 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             lim["words"] = [g[2] for g in gens]
             self.chk.obs("CSRNG-RESEED-IDX", k=k, refused_index=lim["refused_index"])
             lim["cleared_by_write0"] = await self._clear_bit(CS_RESEED_CNT)
+            # The earlier Generates leave words in GENBITS (_sw_generate stops at the
+            # ack), so drain GENBITS until GENBITS_VLD reads 0 before the Reseed: the
+            # words counted below then come only from the Generate after the Reseed.
+            hdr_drain_max = 4 * len(gens)
+            hdr_drained = 0
+            hdr_left = await r._rd(CSRNG_GENBITS_VLD) & GB_VLD
+            while hdr_left and hdr_drained < hdr_drain_max:
+                await r._rd(CSRNG_GENBITS)
+                hdr_drained += 1
+                hdr_left = await r._rd(CSRNG_GENBITS_VLD) & GB_VLD
+            hdr.update({"pre_drained": hdr_drained, "pre_vld": hdr_left})
             # Reseed with the stated header, then one Generate.
             step = "reseed"
             _, sts = await self._sw_cmd(cmd_word(ACMD_RESEED), FIRST_CAP, step)
             hdr["reseed_cmd_sts"] = sts
             step = "gen_after_reseed"
             sts, recov, words = await self._sw_generate(FIRST_CAP)
-            # Words still pending after the ack count to the same request.
-            while words < GEN1_WORDS and await r._rd(CSRNG_GENBITS_VLD) & GB_VLD:
+            # Words still pending after the ack count to the same request. The bound is
+            # one read past GEN1_WORDS, so an extra word from the DUT shows as a count of
+            # GEN1_WORDS + 1.
+            while words <= GEN1_WORDS and await r._rd(CSRNG_GENBITS_VLD) & GB_VLD:
                 await r._rd(CSRNG_GENBITS)
                 words += 1
             hdr.update(
@@ -1129,7 +1146,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         )
         self.chk.ok("CSRNG-RESEED-LIMIT", lim_ok, **lim)
         self.chk.ctrl(
-            "CSRNG-RESEED-HDR", refused is not None, refused_index=lim.get("refused_index")
+            "CSRNG-RESEED-HDR",
+            refused is not None and hdr.get("pre_vld") == 0,
+            refused_index=lim.get("refused_index"),
+            pre_drained=hdr.get("pre_drained"),
+            pre_vld=hdr.get("pre_vld"),
         )
         self.chk.ok(
             "CSRNG-RESEED-HDR",
