@@ -54,7 +54,13 @@ False 0x9 to RANGE_REGWEN to fix the enabled memory range until reset;
 lock after a size error, each from a cold reset: write BASE, LIMIT and
 RANGE_VALID=1, read them back with RANGE_REGWEN (control: the writes landed and
 RANGE_REGWEN reads True 0x6), write 0x9 to RANGE_REGWEN, then the unlock
-attempts 0x6, 0xF, 0x9 and 0x0 in a drawn order. After the lock write and after
+attempts 0x6, 0xF, 0x9 and 0x0 in a drawn order. In the after-error context a
+second control sits between the size error and the lock write: the leaf writes
+drawn new BASE and LIMIT values and reads them back with RANGE_REGWEN and
+STATUS. The writes land, RANGE_REGWEN reads 0x6 and STATUS.ERROR reads 1, else
+CTRL-MISSING, so a DUT that blocks the range writes after an error for a
+reason other than the lock fails the control. These values are the pre-lock
+values of that context. After the lock write and after
 each attempt the leaf writes new BASE and LIMIT values and RANGE_VALID=0 and
 reads all four registers back. The RANGE_REGWEN read-back is logged
 (``OBS-DMA-LOCK-READBACK``) and not graded: the field text says the register is
@@ -102,15 +108,25 @@ DST_ASID 0xA and 0x7 on the other side. No STATUS read of the window shows
 DONE. The window is ``done_bound`` STATUS reads of the copy size; its control
 is the same copy with both ASID 0x7 from a cold reset, which must show DONE
 inside the same window and copy the source. After each trial, with no reset,
-the leaf writes CONTROL.ABORT, reads STATUS up to 200 times for ABORTED,
-writes the DMA clean state and ADDR_SPACE_ID 0x77 and runs the same copy.
-STATUS.ABORTED and STATUS.BUSY after the ABORT and whether that copy completes
-with the source data are logged (``OBS-DMA-ASID-TIEOFF``), not graded: "To
-abort an active operation, request ``CONTROL.ABORT`` and wait for
-``STATUS.ABORTED`` before reusing its buffers or configuration."
-(``doc/programmer/src/sep-programming.adoc:778-779``) does not state that a
-tied-off start sets ABORTED or that the DMA then accepts a new copy, and every
-trial starts from a cold reset. STATUS.ERROR and ERROR_CODE of each trial are
+the leaf writes CONTROL.ABORT and reads STATUS up to 200 times: a read shows
+ABORTED=1. Sources: CONTROL.ABORT "Aborts the DMA operation if this bit is
+set. Sets the corresponding bit in the status register once abort operation
+is complete."
+(``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:527-528``);
+"Software can terminate an ongoing DMA transfer at any point by writing to the
+``abort`` bit [...] The STATUS indicates via the ``aborted`` bit that the DMA
+operation was aborted and the DMA stopped its operation."
+(``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:43-45``).
+The tied-off start does not complete (``hw/sys/sep/doc/dma.adoc:70``), so the
+ABORT hits an ongoing operation. The bound of 200 reads comes from a control
+in the same leg, from a cold reset: the ASID 0x7 copy of MAX_BYTES, with
+STATUS read once after GO (BUSY=1, DONE=0, ABORTED=0), then CONTROL.ABORT; a
+read inside the same bound shows ABORTED=1 and no read shows DONE, else
+CTRL-MISSING. Then the leaf writes the DMA clean state and ADDR_SPACE_ID 0x77
+and runs the same copy. Whether that copy completes with the source data is
+logged (``OBS-DMA-ASID-TIEOFF``), not graded: no text states that the DMA
+accepts a new copy after the abort, and every trial starts from a cold reset.
+STATUS.BUSY after the ABORT, STATUS.ERROR and ERROR_CODE of each trial are
 also logged: no document states which ERROR_CODE bit, if any, a tied-off
 address space sets.
 
@@ -119,7 +135,8 @@ the trial order of L1, the copy sizes and the multi-chunk shape, the L2 sizes,
 the buffer placement and the guards, the sentinel byte and the source words,
 and for L3 the outside case, the region sizes and order, the outside distance,
 the range values and the unlock-attempt orders, and for L4 the copy size and
-the two ADDR_HI values. The release trials reuse the L1 copy shapes; L5 reuses
+the two ADDR_HI values, and the BASE and LIMIT values written after the size
+error. The release trials reuse the L1 copy shapes; L5 reuses
 the L4 copy size and the L1 buffers. Every value is drawn before the first
 stimulus, on every simulator.
 
@@ -157,11 +174,18 @@ Checkers:
                     registers. Every new value differs from the locked one, so
                     a write that lands changes the read-back. Control: before
                     the lock the writes landed and RANGE_REGWEN read its reset
-                    value 0x6. The RANGE_REGWEN read-back after the lock is
-                    OBS-DMA-LOCK-READBACK only.
+                    value 0x6; after the size error and before the lock,
+                    new BASE and LIMIT writes landed, RANGE_REGWEN read 0x6
+                    and STATUS.ERROR read 1. The RANGE_REGWEN read-back after
+                    the lock is OBS-DMA-LOCK-READBACK only.
   CHK-DMA-ASID-TIEOFF per L5 trial (side, ASID 0x9 or 0xA): no DONE in the
                     window. Controls: the ASID 0x7 copy shows DONE inside the
                     same window and copies the source, else CTRL-MISSING.
+  CHK-DMA-TIEOFF-ABORT per L5 trial: after CONTROL.ABORT of the tied-off
+                    start, a STATUS read inside ABORT_POLL_BOUND shows
+                    ABORTED=1. Control: the ABORT of the ASID 0x7 copy, BUSY
+                    and not DONE before it, shows ABORTED=1 inside the same
+                    bound and DONE in no read, else CTRL-MISSING.
 """
 
 from __future__ import annotations
@@ -257,7 +281,7 @@ RELEASE_EVENTS = {
 # L5: tied-off address spaces, SOC_ADDR 0xa and SYS_ADDR 0x9 (dma.hjson, ADDR_SPACE_ID).
 ASID_OT = 0x7
 ASID_TIEOFF = (("src", 0x9), ("src", 0xA), ("dst", 0x9), ("dst", 0xA))
-ABORT_POLL_BOUND = 200  # STATUS reads in the logged wait for ABORTED (L5, not graded)
+ABORT_POLL_BOUND = 200  # STATUS reads in the wait for ABORTED (L5); its control meets it
 
 
 def _word(b: int) -> int:
@@ -322,6 +346,12 @@ class _Cfg:
         # L4.
         self.hi_size = 4 * rng.randrange(4, MAX_BYTES // 4 + 1)
         self.addr_hi = {s: rng.randrange(1, ADDR_HI_ALL + 1) for s in HI_SIDES}
+        # L3 after_error: BASE and LIMIT written after the size error, before the
+        # lock. Each differs from the pre-error pair and from every later attempt.
+        taken = [(SRAM_BASE, SRAM_LIMIT)] + self.lock_vals[6:]
+        self.post_err = self._range_pair(rng)
+        while any(self.post_err[0] == b or self.post_err[1] == lim for b, lim in taken):
+            self.post_err = self._range_pair(rng)
 
     def _place(self, rng, size: int) -> tuple[int, int]:
         span = size + 2 * self.guard
@@ -352,6 +382,7 @@ class _Cfg:
             + ";".join(f"{c}:" + ",".join(f"0x{v:x}" for v in o) for c, o in self.orders.items())
             + f" l4_size={self.hi_size} "
             + " ".join(f"l4_{s}_hi=0x{self.addr_hi[s]:08x}" for s in HI_SIDES)
+            + f" post_err=0x{self.post_err[0]:08x}/0x{self.post_err[1]:08x}"
         )
 
 
@@ -367,6 +398,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         "CHK-DMA-LOCK",
         "CHK-DMA-RANGE-OUT",
         "CHK-DMA-ASID-TIEOFF",
+        "CHK-DMA-TIEOFF-ABORT",
     )
 
     # ---- helpers -----------------------------------------------------------
@@ -1040,6 +1072,32 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         self.logger.info("CTL-DMA-LOCK seed=%d %s", c.seed, ctl)
         if (base, limit, regwen, valid, err_seen) != (pre[0], pre[1], REGWEN_TRUE, 1, 1):
             self._ctrl_missing(f"CHK-DMA-LOCK control before the lock: {ctl}")
+        if ctx == "after_error":
+            # In the error state, before the lock, range writes land: so a DUT
+            # that refuses them after an error for another reason fails here,
+            # not in the graded attempts.
+            pre = c.post_err
+            await ops.wr(RANGE_BASE, pre[0])
+            await ops.wr(RANGE_LIMIT, pre[1])
+            pe_base = await ops.rd(RANGE_BASE)
+            pe_limit = await ops.rd(RANGE_LIMIT)
+            pe_valid = (await ops.rd(RANGE_VALID) & VALID_MASK) >> _VALID_LSB
+            pe_regwen = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> _REGWEN_LSB
+            pe_st = await ops.read_status()
+            pe = (
+                f"ctx={ctx} post_error base=0x{pe_base:08x}/0x{pre[0]:08x} "
+                f"limit=0x{pe_limit:08x}/0x{pre[1]:08x} valid={pe_valid}/1 "
+                f"regwen=0x{pe_regwen:x}/0x{REGWEN_TRUE:x} error={pe_st.error}/1 {pe_st.fmt()}"
+            )
+            self.logger.info("CTL-DMA-LOCK seed=%d %s", c.seed, pe)
+            if (pe_base, pe_limit, pe_valid, pe_regwen, pe_st.error) != (
+                pre[0],
+                pre[1],
+                1,
+                REGWEN_TRUE,
+                1,
+            ):
+                self._ctrl_missing(f"CHK-DMA-LOCK control after the error: {pe}")
         await self._lock_attempts(ctx, pre)
         close_graded_window(self.logger)
 
@@ -1096,8 +1154,51 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         )
         return ok, ctl_done_at, window
 
-    async def _l5_trial(self, side: str, asid: int) -> tuple[str, bool]:
-        """One L5 trial; returns (PASS line, no DONE in the window)."""
+    async def _wait_aborted(self) -> tuple[DmaStatus, int | None, int]:
+        """Read STATUS up to ABORT_POLL_BOUND times for ABORTED.
+
+        Returns (last STATUS, index of the first read with ABORTED or None,
+        STATUS reads with DONE).
+        """
+        ab, ab_at, done_reads = None, None, 0
+        for i in range(1, ABORT_POLL_BOUND + 1):
+            ab = await self.ops.read_status()
+            done_reads += ab.done
+            if ab.aborted:
+                ab_at = i
+                break
+        return ab, ab_at, done_reads
+
+    async def _l5_abort_control(self) -> tuple[int, int | None]:
+        """ABORT of an ASID 0x7 copy in flight; returns (ok, ABORTED read index)."""
+        c = self.cfg_t
+        ops = self.ops
+        await self._cold_reset()
+        await self._base_config(MAX_BYTES // 4)
+        await ops.program_transfer(src=c.src, dst=c.dst, total=MAX_BYTES, chunk=MAX_BYTES)
+        await ops.go(opcode=OP_COPY, initial=1)
+        pre = await ops.read_status()
+        await ops.abort()
+        ab, ab_at, done_reads = await self._wait_aborted()
+        mid = int(pre.busy == 1 and pre.done == 0 and pre.aborted == 0)
+        ok = int(mid and ab_at is not None and done_reads == 0)
+        self.logger.info(
+            "CTL-DMA-TIEOFF-ABORT seed=%d size=%d control_ok=%d mid_transfer=%d "
+            "aborted_read=%s bound=%d done_reads=%d before_abort[%s] last[%s]",
+            c.seed,
+            MAX_BYTES,
+            ok,
+            mid,
+            ab_at,
+            ABORT_POLL_BOUND,
+            done_reads,
+            pre.fmt(),
+            ab.fmt(),
+        )
+        return ok, ab_at
+
+    async def _l5_trial(self, side: str, asid: int) -> tuple[str, bool, int | None]:
+        """One L5 trial; returns (PASS line, no DONE in the window, ABORTED read index)."""
         c = self.cfg_t
         ops = self.ops
         word = asid_word(asid, ASID_OT) if side == "src" else asid_word(ASID_OT, asid)
@@ -1106,17 +1207,13 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         st, tie_done_at, err_reads, window = await self._l5_copy(word)
         ecode = await ops.rd(ERROR_CODE)
-        # Recovery with no reset, logged only: ABORT, a bounded wait for ABORTED,
-        # the clean state and an ASID 0x7 copy. sep-programming.adoc:778-779
-        # tells software to wait for ABORTED after an ABORT, but no sentence
-        # states that a tied-off start sets ABORTED or that the DMA then
-        # accepts a new copy. Every trial starts from a cold reset.
+        # The tied-off start does not complete (dma.adoc:70), so the ABORT hits an
+        # ongoing operation and sets STATUS.ABORTED once complete
+        # (dma.hjson:527-528; programmers_guide.md:43-45): graded in _leg_l5.
         await ops.abort()
-        ab = None
-        for _ in range(ABORT_POLL_BOUND):
-            ab = await ops.read_status()
-            if ab.aborted:
-                break
+        ab, ab_at, _ = await self._wait_aborted()
+        # Recovery with no reset, logged only: no text states that the DMA
+        # accepts a new copy after the abort. Every trial starts from a cold reset.
         await ops.clean_state()
         await ops.wr(CONTROL, control_word())
         await self._sentinel_dst()
@@ -1126,14 +1223,14 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         rec_ok = rec_done_at is not None and not rst.error and rec_mism == 0
         self.logger.info(
             "OBS-DMA-ASID-TIEOFF seed=%d side=%s asid=0x%x error_reads=%d error_code=0x%x "
-            "aborted_after_abort=%d busy_after_abort=%d abort_reads_bound=%d "
+            "aborted_read=%s busy_after_abort=%d abort_reads_bound=%d "
             "recovery_done=%d recovery_mismatch=%d last[%s] after_abort[%s]",
             c.seed,
             side,
             asid,
             err_reads,
             ecode,
-            ab.aborted,
+            ab_at,
             ab.busy,
             ABORT_POLL_BOUND,
             int(rec_ok),
@@ -1145,7 +1242,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"side={side} asid=0x{asid:x} asid_word=0x{word:02x} done_read={tie_done_at} "
             f"window={window} @@CTRL@@"
         )
-        return line, tie_done_at is None
+        return line, tie_done_at is None, ab_at
 
     async def _leg_l5(self) -> None:
         ctl_ok, ctl_done_at, ctl_window = await self._l5_control()
@@ -1154,14 +1251,27 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 f"CHK-DMA-ASID-TIEOFF control: the ASID 0x7 copy done_read={ctl_done_at} "
                 f"window={ctl_window}"
             )
+        ab_ok, ab_ctl_at = await self._l5_abort_control()
+        if not ab_ok:
+            self._ctrl_missing(
+                f"CHK-DMA-TIEOFF-ABORT control: the ABORT of the ASID 0x7 copy "
+                f"aborted_read={ab_ctl_at} bound={ABORT_POLL_BOUND}"
+            )
         for side, asid in ASID_TIEOFF:
-            line, no_done = await self._l5_trial(side, asid)
+            line, no_done, ab_at = await self._l5_trial(side, asid)
             line = line.replace(
                 "@@CTRL@@", f"control_done_read={ctl_done_at}/{ctl_window} control_ok={ctl_ok}"
             )
             if not no_done:
                 self._fail("CHK-DMA-ASID-TIEOFF", line)
             self._pass("CHK-DMA-ASID-TIEOFF", line)
+            ab_line = (
+                f"side={side} asid=0x{asid:x} aborted_read={ab_at} bound={ABORT_POLL_BOUND} "
+                f"control_aborted_read={ab_ctl_at}/{ABORT_POLL_BOUND} control_ok={ab_ok}"
+            )
+            if ab_at is None:
+                self._fail("CHK-DMA-TIEOFF-ABORT", ab_line)
+            self._pass("CHK-DMA-TIEOFF-ABORT", ab_line)
 
     # ---- scenario ----------------------------------------------------------
     async def run_scenario(self) -> None:
@@ -1172,7 +1282,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             "PLAN seed=%d L1 6 trials, L2 5 kinds + width-2 control + DONE and CHUNK_DONE "
             "release, L3 outside copy + zero-fill control + lock from idle and after an error "
             "with 4 unlock attempts each, L4 2 ADDR_HI sides (logged) + ADDR_HI=0 control, L5 4 "
-            "tied-off ASID starts + ASID 0x7 control; every trial from a cold reset",
+            "tied-off ASID starts + ASID 0x7 control + ABORT control; every trial from a cold reset",
             seed,
         )
         self.logger.info("DRAW %s", c.draw_line())
