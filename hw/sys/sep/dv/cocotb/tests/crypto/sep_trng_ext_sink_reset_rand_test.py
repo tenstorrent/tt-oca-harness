@@ -43,10 +43,10 @@ Checkers:
   CHK-XRST-CLIENT  before the reset each word a client accepts and each OTBN RND
                    word is a sent word; the AES and KMAC results equal the goldens.
   CHK-XRST-OTBN    per client: the request pending in the clear stays 1 with no
-                   acknowledge while the driver holds a stream-1 beat (tvalid = 1),
+                   acknowledge while the driver offers stream-1 words (tvalid = 1),
                    and both vectors read no X/Z there; after the release it is
                    acknowledged with words sent after the clear; no client accepts
-                   a word buffered in the adapter before the set-up clear; the
+                   a word offered before the set-up clear; the
                    results equal the goldens. Controls: the same client was
                    acknowledged in the pre-reset leg, the held beat shows on at
                    least one clock of the clear, and at least one stale word is
@@ -755,7 +755,8 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         # Set-up clear with stale words in the adapter: a first TRNG reset empties the
         # adapter, then STALE_WORDS beats go to the staging FIFO while the clients are
         # idle; a word that no client takes stays buffered until the set-up clear. No
-        # client may accept one of them after the rise of the probe.
+        # client may accept a word offered before the set-up clear (B or an earlier
+        # word of S) after the rise of the probe.
         await self._trng_reset()
         stale: set[int] = set()
         self.trace.begin()
@@ -767,6 +768,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, STALE_SETTLE)
         await self._silence(1)
         self.sent_s |= stale
+        before_setup = set(self.sent_s)
         await self._trng_reset()
         setup_rows = self.trace.end()
         s_trial: set[int] = set()
@@ -815,15 +817,14 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             _bit(rows_pre[-1].creq, bit) != 1 if rows_pre else True
         )
         # The source's own reset with the sink reset drops a beat still held from
-        # before the rise; one post-clear word Q then stays offered (tvalid = 1)
-        # across the clear, so the gated acknowledge faces a word the adapter could
-        # deliver.
+        # before the rise. From then on the Q feeder keeps one post-clear word offered
+        # (tvalid = 1) and offers the next one as soon as a word is taken, so an
+        # adapter that accepts and delivers in the clear faces a stream of words, not a
+        # single one; a gated adapter holds the first word for the whole clear.
         q: set[int] = set()
         if self.ext.pending(1):
             await self.ext.source_reset(1)
-        w = self._next_word()
-        q.add(w)
-        self.ext.send(1, [w])
+        self._start_feeder(1, q)
         await self._until(
             lambda: (
                 bool(self.trace.rows)
@@ -838,7 +839,6 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         await self._wait_probe(0, "trng reset fall")
         await RisingEdge(dut.clk_i)
         close_graded_window(self.logger)
-        self._start_feeder(1, q)
         t_end = None
         for _ in range(OP_CAP):
             if task.done():
@@ -847,9 +847,10 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             await RisingEdge(dut.clk_i)
         rows = self.trace.end()
         await self._stop_feeders()
-        # Stale words: buffered = stale beats that reached the adapter minus stale
-        # words a client took before the set-up clear; served = stale words any
-        # client accepts from the rise of the set-up clear to the end of the trial.
+        # Stale words: buffered = B beats that reached the adapter minus B words a
+        # client took before the set-up clear; served = words offered before the
+        # set-up clear (B and the rest of S) that any client accepts from the rise of
+        # the set-up clear to the end of the trial.
         rise = next((k for k, r in enumerate(setup_rows) if r.ta == 1), len(setup_rows))
         before_rise = setup_rows[:rise]
         stale_in = sum(1 for r in xfers(before_rise, 1) if _word(r.ed, 1) in stale)
@@ -857,7 +858,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         stale_buffered = stale_in - sum(1 for w in taken if w in stale)
         later = setup_rows[rise:] + rows
         stale_served = sum(
-            1 for c in range(len(CLIENTS)) for w in acked(later, c) if w in stale
+            1 for c in range(len(CLIENTS)) for w in acked(later, c) if w in before_setup
         )  # fmt: skip
         if served:
             self.chk.obs("XRST-SERVED", client=client, attempt=attempt, done=int(t_end is not None))

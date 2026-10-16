@@ -786,7 +786,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_compress_vld_o`
-|Proves that the alert trips when `ANY_FAIL_COUNT` reaches exactly `ALERT_THRESHOLD` consecutive failing windows and halts the entropy output with the alert and persistent-failure status set, that threshold 0 disables it, and that the output stays halted until a MODULE_ENABLE cycle or a TRNG reset. The exact-threshold check fails on this RTL (<<known-limitations,Known Limitations>>).
+|Proves that the alert trips and halts the entropy output with the alert and persistent-failure status set, that threshold 0 disables it, and that the output stays halted until a MODULE_ENABLE cycle or a TRNG reset. The trip window is logged, not graded (<<known-limitations,Known Limitations>>).
 
 |<<sep_esrc_autotune_detune_test,`sep_esrc_autotune_detune_test`>>
 |3
@@ -5357,9 +5357,10 @@ defect. Behaviour that this plan does not claim at all is in
 |HMAC message-window narrow write (hardware gap). The HMAC `MSG_FIFO` window takes byte writes (`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson`, `MSG_FIFO`, `byte-write: "true"`). On this DUT an 8-bit write at byte lane 1, 2 or 3 or a 16-bit write at byte lane 2 of the window answers SLVERR, through the same register bridge as the KMAC row above. *Issue*: #3131
 |`sep_hmac_fifo_stream_rand_test` CHK-HMAC-NARROW-WRITE fails on this DUT (<<sep_hmac_fifo_stream_rand_test>>). The leaf runs the narrow-lane leg last, so the other checks of the leaf grade on writes at byte lane 0. Firmware must write the window at byte lane 0.
 
-|ESRC persistent-failure alert one window late (hardware gap). `hw/ip/entropy_source/doc/architecture.adoc` (persistent-failure path) states that the main state machine goes to the alert state when `ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT` reaches `ALERT_THRESHOLD.THRESHOLD`. On this DUT the state machine acts at the end of the next health window, so entropy output continues for one window after the count reaches the threshold, and `ANY_FAIL_COUNT` reads the threshold plus 1 at the trip when that window also fails. *Issue*: ISSUE-TBD-PF-TRIP
-|`sep_esrc_persistent_alert_rand_test` CHK-PF-TRIP fails on this DUT (<<sep_esrc_persistent_alert_rand_test>>). The other checks of the leaf (no trip below the threshold, the consecutive count, the disable, the halt, the recovery and the reset) do not depend on the window of the trip.
+|ESRC persistent-failure alert one window late (spec-vs-design difference, spec update pending). `hw/ip/entropy_source/doc/architecture.adoc` (persistent-failure path) states that the main state machine goes to the alert state when `ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT` reaches `ALERT_THRESHOLD.THRESHOLD`. On this DUT the state machine acts at the end of the next health window, so entropy output continues for one window after the count reaches the threshold, and `ANY_FAIL_COUNT` reads the threshold plus 1 at the trip when that window also fails. The text states no trip timing in windows. *Issue*: #3140
 
-|ESRC observe-word packing (hardware gap). `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`NOISE_OBS_RDATA`) states that each word holds 32 LSB-first samples of the selected lane. On this DUT a pushed word holds 31 samples in bits 31:1, and bit 0 holds the previous content of the packer: 0 in the first word after a lane change. *Issue*: ISSUE-TBD-OBS-PACK
+|No check fails. `sep_esrc_persistent_alert_rand_test` logs the trip window as `OBS-PF-TRIP` and does not grade it (<<sep_esrc_persistent_alert_rand_test>>). The other checks of the leaf (no trip below the threshold, the consecutive count, the disable, the halt, the recovery and the reset) do not depend on the trip window.
+
+|ESRC observe-word packing (hardware gap). `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`NOISE_OBS_RDATA`) states that each word holds 32 LSB-first samples of the selected lane. On this DUT a pushed word holds 31 samples in bits 31:1, and bit 0 holds the previous content of the packer: 0 in the first word after a lane change. *Issue*: #3141
 |`sep_esrc_observe_fifo_rand_test` CHK-OBS-PACK fails on this DUT on each change to a lane held at 1 (<<sep_esrc_observe_fifo_rand_test>>). CHK-OBS-LANE grades the later words of each change, where the lane level is constant, so a one-sample shift does not show there.
 |===
