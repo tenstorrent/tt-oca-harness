@@ -113791,3 +113791,402 @@ CHECKSUM: "2659862932 751751605"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_series_rsp_fifo
 ANNOTATION: "VC_COV_UNR"
 Condition 2 "803322985" "(wvalid_i & wready_o) 1 -1" (2 "10")
+CHECKSUM: "818071675 3828155932"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Condition 9 "594013796" "(ctrl_flush_pulse_tclk && (axi_state_q_tclk != AXI_IDLE) && current_tx_is_series_read_tclk && ((!current_is_series_data_with_error_status_op_tclk))) 1 -1" (2 "1011")
+ANNOTATION: "VC_COV_UNR"
+Condition 75 "2303033675" "((axi_state_q_tclk == AXI_UPDATE_STATUS) && current_incr_series_addr_tclk && ((!current_tx_is_from_single_buffer_tclk))) 1 -1" (3 "110")
+ANNOTATION: "VC_COV_UNR"
+Condition 83 "2481371926" "(current_tx_is_from_single_buffer_tclk && ((!current_tx_is_series_read_tclk))) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 83 "2481371926" "(current_tx_is_from_single_buffer_tclk && ((!current_tx_is_series_read_tclk))) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 84 "3420037644" "(current_incr_series_addr_tclk && ((!current_tx_is_from_single_buffer_tclk)) && ((axi_state_q_tclk == AXI_UPDATE_STATUS) || ((axi_state_q_tclk == AXI_WAIT_BRESP) && src_resp.b_valid && src_req.b_ready) || ((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last))) 1 -1" (2 "101")
+CHECKSUM: "818071675 2682701681"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
+Fsm sticky_axi_status_tclk_d "1006391718"
+ANNOTATION: "VC_COV_UNR"
+State CaptureStatusBusyOrFull "3"
+CHECKSUM: "818071675 1009589673"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk [1] "logic series_reads_in_flight_tclk[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk [1] "logic series_reads_in_flight_tclk[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk [2] "logic series_reads_in_flight_tclk[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk [2] "logic series_reads_in_flight_tclk[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk_d [1] "logic series_reads_in_flight_tclk_d[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk_d [1] "logic series_reads_in_flight_tclk_d[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk_d [2] "logic series_reads_in_flight_tclk_d[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk_d [2] "logic series_reads_in_flight_tclk_d[2:0]"
+CHECKSUM: "3232507766 3107074185"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_write_fork
+ANNOTATION: "VC_COV_UNR"
+Condition 4 "2724835038" "(valid_i && (oup_ready == all_ones)) 1 -1" (1 "01")
+CHECKSUM: "1763342380 751751605"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_series_request_fifo
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "803322985" "(wvalid_i & wready_o) 1 -1" (2 "10")
+CHECKSUM: "1763342380 751751605"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_series_rsp_fifo
+ANNOTATION: "VC_COV_UNR"
+Condition 3 "1324655787" "(rvalid_o & rready_i & ((~gen_normal_fifo.under_rst))) 1 -1" (3 "110")
+CHECKSUM: "818071675 243862099"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Branch 16 "1709732032" "axi_state_q_tclk" (3) "axi_state_q_tclk AXI_IDLE ,0,1,0,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 16 "1709732032" "axi_state_q_tclk" (5) "axi_state_q_tclk AXI_IDLE ,0,0,-,-,1,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
+CHECKSUM: "3232507766 3107074185"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_write_fork
+ANNOTATION: "VC_COV_UNR"
+Condition 4 "2724835038" "(valid_i && (oup_ready == all_ones)) 1 -1" (1 "01")
+CHECKSUM: "1763342380 751751605"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_series_request_fifo
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "803322985" "(wvalid_i & wready_o) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 3 "1324655787" "(rvalid_o & rready_i & ((~gen_normal_fifo.under_rst))) 1 -1" (3 "110")
+CHECKSUM: "1763342380 751751605"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_series_rsp_fifo
+ANNOTATION: "VC_COV_UNR"
+Condition 3 "1324655787" "(rvalid_o & rready_i & ((~gen_normal_fifo.under_rst))) 1 -1" (3 "110")
+CHECKSUM: "818071675 3246283817"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk [1] "logic series_reads_in_flight_tclk[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk [1] "logic series_reads_in_flight_tclk[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk_d [1] "logic series_reads_in_flight_tclk_d[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk_d [1] "logic series_reads_in_flight_tclk_d[1:0]"
+CHECKSUM: "818071675 1025068329"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Block 215 "2791700581" "axi_state_d_tclk = AXI_IDLE;"
+CHECKSUM: "818071675 2682701681"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
+Fsm sticky_axi_status_tclk_d "1006391718"
+ANNOTATION: "VC_COV_UNR"
+State CaptureStatusBusyOrFull "3"
+CHECKSUM: "818071675 1710099946"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Condition 9 "594013796" "(ctrl_flush_pulse_tclk && (axi_state_q_tclk != AXI_IDLE) && current_tx_is_series_read_tclk && ((!current_is_series_data_with_error_status_op_tclk))) 1 -1" (2 "1011")
+ANNOTATION: "VC_COV_UNR"
+Condition 22 "2072724897" "(single_tx_op_tclk == JtagOpRead) 1 -1" (1 "0")
+ANNOTATION: "VC_COV_UNR"
+Condition 75 "2303033675" "((axi_state_q_tclk == AXI_UPDATE_STATUS) && current_incr_series_addr_tclk && ((!current_tx_is_from_single_buffer_tclk))) 1 -1" (3 "110")
+ANNOTATION: "VC_COV_UNR"
+Condition 83 "2481371926" "(current_tx_is_from_single_buffer_tclk && ((!current_tx_is_series_read_tclk))) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 83 "2481371926" "(current_tx_is_from_single_buffer_tclk && ((!current_tx_is_series_read_tclk))) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 84 "3420037644" "(current_incr_series_addr_tclk && ((!current_tx_is_from_single_buffer_tclk)) && ((axi_state_q_tclk == AXI_UPDATE_STATUS) || ((axi_state_q_tclk == AXI_WAIT_BRESP) && src_resp.b_valid && src_req.b_ready) || ((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last))) 1 -1" (2 "101")
+CHECKSUM: "818071675 2413920344"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Block 215 "2791700581" "axi_state_d_tclk = AXI_IDLE;"
+CHECKSUM: "2814949817 436810260"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_aw_ft_reg.i_fifo
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_q [1] "logic status_cnt_q[1:0]"
+CHECKSUM: "2814949817 3216470661"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_w_ft_reg.i_fifo
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_q [1] "logic status_cnt_q[1:0]"
+CHECKSUM: "2814949817 833109464"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_ar_ft_reg.i_fifo
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_q [1] "logic status_cnt_q[1:0]"
+CHECKSUM: "2697825409 1307102318"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+CHECKSUM: "2697825409 1307102318"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+CHECKSUM: "2697825409 1307102318"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+CHECKSUM: "2697825409 1307102318"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+CHECKSUM: "2697825409 1307102318"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+CHECKSUM: "818071675 1710099946"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Condition 9 "594013796" "(ctrl_flush_pulse_tclk && (axi_state_q_tclk != AXI_IDLE) && current_tx_is_series_read_tclk && ((!current_is_series_data_with_error_status_op_tclk))) 1 -1" (2 "1011")
+ANNOTATION: "VC_COV_UNR"
+Condition 22 "2072724897" "(single_tx_op_tclk == JtagOpRead) 1 -1" (1 "0")
+ANNOTATION: "VC_COV_UNR"
+Condition 75 "2303033675" "((axi_state_q_tclk == AXI_UPDATE_STATUS) && current_incr_series_addr_tclk && ((!current_tx_is_from_single_buffer_tclk))) 1 -1" (3 "110")
+ANNOTATION: "VC_COV_UNR"
+Condition 83 "2481371926" "(current_tx_is_from_single_buffer_tclk && ((!current_tx_is_series_read_tclk))) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 83 "2481371926" "(current_tx_is_from_single_buffer_tclk && ((!current_tx_is_series_read_tclk))) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 84 "3420037644" "(current_incr_series_addr_tclk && ((!current_tx_is_from_single_buffer_tclk)) && ((axi_state_q_tclk == AXI_UPDATE_STATUS) || ((axi_state_q_tclk == AXI_WAIT_BRESP) && src_resp.b_valid && src_req.b_ready) || ((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last))) 1 -1" (2 "101")
+CHECKSUM: "818071675 1593867146"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk [1] "logic series_reads_in_flight_tclk[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk [1] "logic series_reads_in_flight_tclk[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk [2] "logic series_reads_in_flight_tclk[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk [2] "logic series_reads_in_flight_tclk[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk_d [1] "logic series_reads_in_flight_tclk_d[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk_d [1] "logic series_reads_in_flight_tclk_d[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 series_reads_in_flight_tclk_d [2] "logic series_reads_in_flight_tclk_d[2:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 series_reads_in_flight_tclk_d [2] "logic series_reads_in_flight_tclk_d[2:0]"
+CHECKSUM: "2814949817 1109548800"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_aw_ft_reg.i_fifo
+ANNOTATION: "VC_COV_UNR"
+Condition 6 "443396747" "(FALL_THROUGH && (status_cnt_q == 2'b0) && push_i) 1 -1" (1 "-01")
+CHECKSUM: "2814949817 1109548800"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_w_ft_reg.i_fifo
+ANNOTATION: "VC_COV_UNR"
+Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (1 "0111")
+ANNOTATION: "VC_COV_UNR"
+Condition 6 "443396747" "(FALL_THROUGH && (status_cnt_q == 2'b0) && push_i) 1 -1" (1 "-01")
+CHECKSUM: "2814949817 1109548800"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_ar_ft_reg.i_fifo
+ANNOTATION: "VC_COV_UNR"
+Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (1 "0111")
+ANNOTATION: "VC_COV_UNR"
+Condition 6 "443396747" "(FALL_THROUGH && (status_cnt_q == 2'b0) && push_i) 1 -1" (1 "-01")
+CHECKSUM: "3232507766 3107074185"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_write_fork
+ANNOTATION: "VC_COV_UNR"
+Condition 4 "2724835038" "(valid_i && (oup_ready == all_ones)) 1 -1" (1 "01")
+CHECKSUM: "1763342380 751751605"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_series_request_fifo
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "803322985" "(wvalid_i & wready_o) 1 -1" (2 "10")
+CHECKSUM: "1763342380 751751605"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_series_rsp_fifo
+ANNOTATION: "VC_COV_UNR"
+Condition 3 "1324655787" "(rvalid_o & rready_i & ((~gen_normal_fifo.under_rst))) 1 -1" (3 "110")
+CHECKSUM: "2697825409 521200875"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
+CHECKSUM: "2697825409 521200875"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
+CHECKSUM: "2697825409 521200875"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
+CHECKSUM: "2697825409 521200875"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
+CHECKSUM: "2697825409 521200875"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
+CHECKSUM: "818071675 2711039709"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
+ANNOTATION: "VC_COV_UNR"
+Branch 16 "1709732032" "axi_state_q_tclk" (3) "axi_state_q_tclk AXI_IDLE ,0,1,0,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 16 "1709732032" "axi_state_q_tclk" (5) "axi_state_q_tclk AXI_IDLE ,0,0,-,-,1,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
+CHECKSUM: "2697825409 1271450499"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
+CHECKSUM: "2697825409 1271450499"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
+CHECKSUM: "2697825409 1271450499"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
+CHECKSUM: "2697825409 1271450499"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
+CHECKSUM: "2697825409 1271450499"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
+CHECKSUM: "2697825409 659400750"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
+CHECKSUM: "2697825409 659400750"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
+CHECKSUM: "2697825409 659400750"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
+CHECKSUM: "2697825409 659400750"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
+CHECKSUM: "2697825409 659400750"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
+CHECKSUM: "818071675 2682701681"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
+Fsm sticky_axi_status_tclk_d "1006391718"
+ANNOTATION: "VC_COV_UNR"
+State CaptureStatusBusyOrFull "3"
+CHECKSUM: "1514731760 2374750744"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_src
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].cache [1] "logic data_d[0].cache[3:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].burst [0] "logic data_d[0].burst[1:0]"
+CHECKSUM: "1514731760 553713021"
+INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_src
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].last "logic data_d[0].last"
