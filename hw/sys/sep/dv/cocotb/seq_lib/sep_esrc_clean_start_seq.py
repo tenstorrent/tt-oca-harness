@@ -34,6 +34,23 @@ logs the strobes from the release to the ``DECORRELATOR_CTRL`` write as
 ``pre_clean_strobes`` and raises if there are more than
 ``MAX_PRE_CLEAN_STROBES``.
 
+``run_live`` is the same start with no ``CTRL`` write, for a leaf that grades
+the state the IP reaches from its reset configuration: right after a TRNG reset
+release, with ``MODULE_ENABLE`` at its reset value 1, it writes
+``DECORRELATOR_CTRL.BYPASS`` = 0xFFF, the clean limits of the reset window
+W0 (``HEALTH_TEST_WINDOW_SIZE`` reset value, 2048) and the extra register writes,
+and it does not write ``HEALTH_TEST_WINDOW_SIZE``. The lane patterns change at
+the next strobe, so every word stays whole. The health-test window counter runs
+from the release, and ``run_live`` raises if more than ``MAX_PRE_CLEAN_STROBES``
+strobes came from the release to the end of its last write, so the first window
+holds at most that many words of the reset configuration. Each such word
+changes a per-lane one count by at most one and a run by at most one word: a
+``balanced`` window of W0 words (whole 64-word periods) stays at least
+3W0/64 = 96 one counts inside the APT limits, and a run stays below 45 + 16
+words, under the clean ``REPETITION_LIMIT`` and, before that write, under the
+reset limit 25 (at most 16 words since the release), so the first window
+passes.
+
 It is separate from ``SepEsrcConfigSeq`` (``sep_esrc_bringup_seq.py``), which
 ``bring_up_entropy`` uses with its own noise and limits; the two share no state.
 
@@ -121,6 +138,8 @@ RESET_STROBE_CLK = PERIOD
 _BOOT_DONE = ENTROPY_SOURCE.fields("MAIN_SM_STATUS")["BOOT_PHASE_DONE"]["bm"]
 _SIZE_MAX = ENTROPY_SOURCE.fields("HEALTH_TEST_WINDOW_SIZE")["SIZE"]["bm"]
 _PROB_MAX = ENTROPY_SOURCE.fields("MARKOV_TEST_PROB_THRESHOLDS")["PROB_01_THRESHOLD"]["bm"]
+# HEALTH_TEST_WINDOW_SIZE.SIZE reset value (entropy_source.adoc, 0x800).
+RESET_WINDOW = ENTROPY_SOURCE.reset("HEALTH_TEST_WINDOW_SIZE") & _SIZE_MAX
 
 
 @dataclass(frozen=True)
@@ -204,22 +223,55 @@ class SepEsrcCleanStart(SepAxiRegDriver):
                 "ESRC-CLEAN-START: the noise driver is not running; start it before the "
                 "TRNG reset release"
             )
-        lim = self.limits
         await self._wr(ESRC_CTRL, self._ctrl(0))
+        pre = self._pre_check(release_mark)
+        lim = await self._clean_writes(window=True)
+        await self._wr(ESRC_CTRL, self._ctrl(1))
+        self._log("ESRC-CLEAN-START", pre)
+        return lim
+
+    async def run_live(self, *, release_mark: int) -> CleanLimits:
+        """The clean start with no ``CTRL`` write (module docstring). Logs ``ESRC-LIVE-START``.
+
+        The window must be the reset window W0. Raises if the noise driver is not
+        running, or if more than ``MAX_PRE_CLEAN_STROBES`` strobes came from
+        ``release_mark`` to the end of the last write.
+        """
+        if self.limits.window != RESET_WINDOW:
+            raise ValueError(
+                f"run_live needs the reset window {RESET_WINDOW}, not {self.limits.window}"
+            )
+        if not self.noise.running:
+            raise AssertionError(
+                "ESRC-LIVE-START: the noise driver is not running; start it before the "
+                "TRNG reset release"
+            )
+        lim = await self._clean_writes(window=False, immediate=False)
+        pre = self._pre_check(release_mark)
+        self._log("ESRC-LIVE-START", pre)
+        return lim
+
+    def _pre_check(self, release_mark: int | None) -> int | None:
         pre = None if release_mark is None else self.noise.words_since(release_mark)
         if pre is not None and pre > MAX_PRE_CLEAN_STROBES:
             raise AssertionError(
                 f"ESRC-CLEAN-START: pre_clean_strobes={pre} after the TRNG reset release, "
                 f"more than {MAX_PRE_CLEAN_STROBES}"
             )
+        return pre
+
+    async def _clean_writes(self, *, window: bool, immediate: bool = True) -> CleanLimits:
+        """Every clean-start write except ``CTRL``; ``window`` adds the window size."""
+        lim = self.limits
         decor = {"BYPASS": BYPASS_ALL}
         if self.sample_clk_div is not None:
             decor["SAMPLE_CLK_DIV"] = self.sample_clk_div
         await self._wr(ESRC_DECORRELATOR_CTRL, ENTROPY_SOURCE.value("DECORRELATOR_CTRL", **decor))
-        await self._wr(
-            ESRC_HEALTH_TEST_WINDOW_SIZE,
-            ENTROPY_SOURCE.value("HEALTH_TEST_WINDOW_SIZE", SIZE=lim.window),
-        )
+        if window:
+            await self._wr(
+                ESRC_HEALTH_TEST_WINDOW_SIZE,
+                ENTROPY_SOURCE.value("HEALTH_TEST_WINDOW_SIZE", SIZE=lim.window),
+            )
         await self._wr(
             ESRC_APT_PROPORTION_1BIT,
             ENTROPY_SOURCE.value("APT_PROPORTION_1BIT", LIMIT=lim.apt_1bit),
@@ -241,17 +293,19 @@ class SepEsrcCleanStart(SepAxiRegDriver):
         await self._wr(ESRC_HEALTH_TEST_CTRL, ENTROPY_SOURCE.value("HEALTH_TEST_CTRL", **ht))
         for addr, data in self.extra_writes:
             await self._wr(addr, data)
-        self.noise.set_lanes(self.balanced, immediate=True)
-        await self._wr(ESRC_CTRL, self._ctrl(1))
+        self.noise.set_lanes(self.balanced, immediate=immediate)
+        return lim
+
+    def _log(self, tag: str, pre: int | None) -> None:
         self.log.info(
-            "ESRC-CLEAN-START %s bypass=0x%03x extra_writes=%d pre_clean_strobes=%s %s",
-            lim.describe(),
+            "%s %s bypass=0x%03x extra_writes=%d pre_clean_strobes=%s %s",
+            tag,
+            self.limits.describe(),
             BYPASS_ALL,
             len(self.extra_writes),
             "n/a" if pre is None else pre,
             describe(self.balanced),
         )
-        return lim
 
 
 class SepEsrcLeafSetup:

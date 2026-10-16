@@ -786,7 +786,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_compress_vld_o`
-|Proves that exactly T failing windows trip the alert, that T - 1 do not, that a following clean window does not cancel the trip, that the alert halts the entropy output with the alert and persistent-failure status set, that threshold 0 disables it, and that the output stays halted until a MODULE_ENABLE cycle or a TRNG reset. The trip latency is logged, not graded (<<known-limitations,Known Limitations>>).
+|Proves that exactly T failing windows trip the alert, that T - 1 do not, that a following clean window does not cancel the trip, that the alert halts the entropy output with the alert and persistent-failure status set, that threshold 0 disables it, and that the output stays halted until a MODULE_ENABLE cycle or a TRNG reset (the reset exit with no CTRL write after the reset). The trip latency is logged, not graded (<<known-limitations,Known Limitations>>).
 
 |<<sep_esrc_autotune_detune_test,`sep_esrc_autotune_detune_test`>>
 |3
@@ -3335,7 +3335,7 @@ feature, and the note says how the test treats the blocked leg.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |A write to the full HMAC message FIFO back-pressures the interconnect, and the data is not lost.
 |Which write after `STATUS.fifo_full` reads 1 is held. A byte packer sits in front of the FIFO, and the register text does not state how many writes it takes after `fifo_full` reads 1. HMAC: state which write is held. Source: `vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc` (`STATUS`); `vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson` (`STATUS.fifo_full`).
-|`sep_hmac_fifo_stream_rand_test` logs the held beat (`OBS-BLOCKED CHK-HMAC-BACKPRESSURE`, `OBS-HMAC-BP-HOLD-BEAT`) and grades a hold within 16 beats with no lost data (CHK-HMAC-BACKPRESSURE-HOLD)
+|`sep_hmac_fifo_stream_rand_test` logs the held beat (`OBS-BLOCKED CHK-HMAC-BACKPRESSURE`, `OBS-HMAC-BP-HOLD-BEAT`) and grades a hold with no lost data (CHK-HMAC-BACKPRESSURE-HOLD). The leg stops after 16 beats; 16 is a termination bound of the leg, not a spec value, and a DUT that holds no beat by then fails
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |`CFG.digest_swap` = 1 converts the byte order of each DIGEST word and keeps the register order.
 |The byte order inside a DIGEST word at `digest_swap` = 0. The register text states the swap and that DIGEST_0 holds the first 4 bytes, and no in-word order at the reset value. HMAC: state the byte order of a DIGEST word at `digest_swap` = 0. Source: `vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc` (`CFG`).

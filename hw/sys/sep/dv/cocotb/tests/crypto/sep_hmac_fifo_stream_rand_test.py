@@ -32,8 +32,9 @@ Checkers:
                          reports a depth above a full sample of the seed
   CHK-HMAC-BACKPRESSURE-HOLD
                          with the drain stall held and ``fifo_full`` read 1, one of the next
-                         ``BP_BEAT_BOUND`` beats gets no write response for 16 times the clean
-                         write latency; after the release every beat completes OKAY and the
+                         ``BP_BEAT_BOUND`` beats (a termination bound of the leg, not a spec
+                         value) gets no write response for 16 times the clean write
+                         latency; after the release every beat completes OKAY and the
                          digest equals the golden of the whole message
   CHK-HMAC-MSG           the digest equals the software golden of the whole message
   CHK-HMAC-FIFOEMPTY     ``INTR_STATE.fifo_empty`` reads 1 after a full FIFO drains and 0 for a
@@ -54,9 +55,10 @@ issues the next beats one at a time until one is held. The register text states 
 written to the FIFO whilst it is full is back-pressured (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:159), but a byte packer
 sits in front of the FIFO and the text does not state which write is held. The index of the
 held beat is therefore log-only (``OBS-BLOCKED CHK-HMAC-BACKPRESSURE`` and
-``OBS-HMAC-BP-HOLD-BEAT``); the graded part is a hold within ``BP_BEAT_BOUND`` beats and no
-lost data. The measurement run issues up to ``PROBE_EXTRA_MAX`` more writes with the stall
-held and logs how many complete; that count is not graded.
+``OBS-HMAC-BP-HOLD-BEAT``); the graded part is a hold before the termination bound of the
+leg, ``BP_BEAT_BOUND`` beats (a bound that ends the leg, not a spec value), and no lost
+data. The measurement run issues up to ``PROBE_EXTRA_MAX`` more writes with the stall held
+and logs how many complete; that count is not graded.
 
 DIGEST byte order: the register text settles the register order (DIGEST_0 holds digest bytes
 0..3) and the ``digest_swap`` swap (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117), not the byte order of a word at
@@ -164,8 +166,11 @@ PROBE_EXTRA_MAX = 8  # log-only writes after fifo_full reads 1 in the measuremen
 NARROW_WRITES = ((1, 1), (2, 1), (3, 1), (2, 2), (1, 1), (3, 1), (2, 2), (3, 1))
 NARROW_VALUES = (0xA1, 0xB2, 0xC3, 0xE5D4, 0xF6, 0x17, 0x3928, 0x4A)
 AXSIZE = {1: 0, 2: 1, 4: 2}
-# Most beats issued after fifo_full reads 1 before one must be held. The register text gives
-# no packer capacity, so this is a generous fixed bound, logged as bound=.
+# Termination bound of the hold window: the leg issues at most this many beats after
+# fifo_full reads 1, then stops. It is not a spec value. The register text states that a write
+# to a full FIFO is back-pressured and gives no packer capacity, so which beat is held is the
+# blocked spec question of CHK-HMAC-BACKPRESSURE. A DUT that holds no beat within the bound,
+# or that loses data, fails CHK-HMAC-BACKPRESSURE-HOLD. Logged as bound=.
 BP_BEAT_BOUND = 16
 
 
@@ -832,7 +837,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         # time. A beat with no write response for `hold` clocks is the held beat. The byte
         # packer in front of the FIFO can accept beats after fifo_full reads 1, and the register
         # text (hmac.adoc:159) does not state how many, so the index of the held beat is
-        # log-only; the graded part is that a beat is held within BP_BEAT_BOUND beats. No other
+        # log-only; the graded part is that a beat is held before the termination bound
+        # BP_BEAT_BOUND (not a spec value). No other
         # access goes on the host path during a hold.
         hold = 16 * t_clean
         accepted: list[str] = []

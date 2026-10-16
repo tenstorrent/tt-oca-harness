@@ -603,6 +603,9 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             while self.ext.pending(2) and not stop2[0]:
                 await RisingEdge(dut.clk_i)
 
+        # The graded window opens before the half-pair beat: that beat is a pool-stream
+        # transfer with the clear window low (the before-clear transfer of the pool leg).
+        open_graded_window(TEST, self.logger)
         base2 = self.trace.ext_xfers[2]
         task2 = cocotb.start_soon(feed_pairs())
         pre_reset_level = pool_level(await self.pool.status())
@@ -634,7 +637,6 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             self.ext.send(1, [w])
 
         rise_task = cocotb.start_soon(at_rise())
-        open_graded_window(TEST, self.logger)
         await self.swrst.park("trng")
         await rise_task
         # Step 6: one pool STATUS read issued and answered inside the clear.

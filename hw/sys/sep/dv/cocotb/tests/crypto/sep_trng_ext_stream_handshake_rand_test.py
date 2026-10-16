@@ -570,7 +570,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _transfer_leg(self, sp: StreamPlan) -> None:
         """CHK-EXT-XFER: every beat that completes at the external port appears at the
-        post-mux probe in order and value; each accepted word has edn_fips = 1."""
+        post-mux probe in order and value; each accepted word has edn_fips = 1. On stream
+        2 the empty pool takes every beat with no stall."""
         i = sp.stream
         dut = cocotb.top
         open_graded_window(TEST, self.logger)
@@ -591,9 +592,16 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         else:
             fips = [r.pfips for r in rows if r.pack == 1]
         self.xfer_seen[i] = len(ext)
+        # Stream 2: the even count of 8 to 64 beats fits the empty 32-entry pool, so the
+        # pool takes every beat and the feed never stalls.
+        all_taken = i != 2 or (done and len(ext) == len(sp.xfer_words))
         self.chk.ok(
             "EXT-XFER",
-            len(ext) >= 1 and ext == post and len(fips) >= 1 and all(f == 1 for f in fips),
+            len(ext) >= 1
+            and ext == post
+            and len(fips) >= 1
+            and all(f == 1 for f in fips)
+            and all_taken,
             stream=i,
             beats=len(sp.xfer_words),
             xfers=len(ext),
@@ -862,8 +870,16 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             rows = self.trace.end()
             w = _word(rows[0].idata, i) if rows else None
             changes = sum(1 for r in rows if _word(r.idata, i) != w)
-            held_ok = bool(rows) and all(
-                _bit(r.iv, i) == 1 and _bit(r.ir, i) == 0 and _word(r.idata, i) == w for r in rows
+            # An X or Z endpoint word reads None and fails the hold: None never matches.
+            if w is None:
+                reason = "unknown:endpoint_tdata"
+            held_ok = (
+                w is not None
+                and bool(rows)
+                and all(
+                    _bit(r.iv, i) == 1 and _bit(r.ir, i) == 0 and _word(r.idata, i) == w
+                    for r in rows
+                )
             )
         # Reselect the internal source for the stream; a consumer is active.
         resel = SEL_MASK & ~sp.bit
@@ -875,7 +891,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         rows = self.trace.end()
         close_graded_window(self.logger)
         post = post_xfers(rows, i)
-        first_ok = bool(post) and post[0] == w
+        first_ok = bool(post) and w is not None and post[0] is not None and post[0] == w
+        if not reason and post and post[0] is None:
+            reason = "unknown:post_mux_tdata"
         need = 1 if i == 1 else 2
         self.chk.ctrl("SEL-HOLD", len(post) >= need, stream=i, ctrl_drain_beats=len(post))
         fields = {

@@ -20264,7 +20264,8 @@ module sep_fcov (
         wa = cz_wc_alert || (cz_w1 && (cz_w1_a == ENTROPY_SOURCE_MAIN_SM_STATUS_REG_ADDR) &&
             ((cz_w1_d & CzAlertMask) != 32'h0));
         wp = (cz_wc_pf && !cz_ist[4]) || (cz_w1 && (cz_w1_a == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR) &&
-            cz_w1_d[16] && cz_aw_ist[4] && !cz_ist[4]);
+            ((cz_w1_d & 32'(ENTROPY_SOURCE_INTR_STATUS_PERSISTENT_FAILURE_MASK)) != 32'h0) &&
+            cz_aw_ist[4] && !cz_ist[4]);
         cz_wc_alert <= wa;
         cz_wc_pf    <= wp;
         if (wa && wp && !cz_wc_arm) begin
@@ -20286,6 +20287,7 @@ module sep_fcov (
         cz_wc_arm <= 1'b0;
       end
       if (cz_men_fall) begin
+        cz_ex_rst    <= 1'b0;
         cz_ex_men    <= cz_hang && cy_own_espa;
         cz_ex_men_up <= 1'b0;
         cz_hang      <= 1'b0;
@@ -20300,11 +20302,11 @@ module sep_fcov (
           cz_ex_men <= 1'b0;
         end
       end
-      // Exit by TRNG reset: the first OKAY read of MAIN_SM_STATUS after the
-      // reset shows ALERT 0, with PERSISTENT_FAILURE 0.
-      if (cz_ex_rst && rd_ev && (ar_addr_q == ENTROPY_SOURCE_MAIN_SM_STATUS_REG_ADDR) &&
-          cy_rd_known) begin
-        if (((rd_data & CzAlertMask) == 32'h0) && !cz_ist[4] && cy_own_espa) cz_falt(4, 6'd6);
+      // Exit by TRNG reset: after the reset, with MODULE_ENABLE at its reset
+      // value 1 and no MODULE_ENABLE fall, BOOT_PHASE_DONE rises (the main
+      // state machine runs the startup test again) with PERSISTENT_FAILURE 0.
+      if (cz_ex_rst && cz_men && cz_boot && !cz_boot_q) begin
+        if (!cz_ist[4] && cy_own_espa) cz_falt(4, 6'd6);
         cz_ex_rst <= 1'b0;
       end
     end
@@ -20619,8 +20621,10 @@ module sep_fcov (
       if (cz_ist_rise[7] && !cz_itst_rec[7]) cz_cond(10, 4'b0000);
       if (cz_ist_rise[6] && !cz_itst_rec[6]) cz_cond(10, 4'b0010);
       if (cz_w1 && (cz_w1_a == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR)) begin
-        if (cz_w1_d[28] && cz_aw_ist[7] && !cz_ist[7]) cz_cond(10, 4'b0001);
-        if (cz_w1_d[24] && cz_aw_ist[6] && !cz_ist[6]) cz_cond(10, 4'b0011);
+        if (((cz_w1_d & 32'(ENTROPY_SOURCE_INTR_STATUS_NOISE_OBS_OVERFLOW_MASK)) != 32'h0) &&
+            cz_aw_ist[7] && !cz_ist[7]) cz_cond(10, 4'b0001);
+        if (((cz_w1_d & 32'(ENTROPY_SOURCE_INTR_STATUS_BIW_OBS_OVERFLOW_MASK)) != 32'h0) &&
+            cz_aw_ist[6] && !cz_ist[6]) cz_cond(10, 4'b0011);
       end
     end
   end

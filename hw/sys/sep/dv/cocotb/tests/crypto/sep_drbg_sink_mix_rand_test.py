@@ -38,7 +38,13 @@ rate across seeds only; no check depends on it.
 Checkers:
   CHK-MIX-SINK    every sink of the set reaches its count and completes, its tail
                   operation completes, and its probe shows words. Control
-                  ``CTRL-MIX-OVERLAP``: every pair of busy windows overlaps.
+                  ``CTRL-MIX-OVERLAP``: every pair of busy windows (first request
+                  to last completion) holds a common clock. It restates the
+                  construction below and holds whenever CHK-MIX-SINK passes; it
+                  does not show that two request probes are high on one clock.
+                  The leaf logs those clocks (``OBS-MIX-REQ-CONCURRENT``: the
+                  clocks with two or more request probes high, and per pair the
+                  clocks with both high) and does not grade them.
 
 Overlap by construction: in the overlapped run each unit runs its drawn operation
 and then waits at a barrier. The barrier opens on the first clock on which the
@@ -309,6 +315,11 @@ class _Acc:
         self.axis_neq = [0, 0, 0]
         self.axis_valid = [0, 0, 0]
         self.xz = 0
+        # Request probe of each sink at the current clock; clocks with two or more
+        # request probes high, in total and per pair of sinks (SINKS order).
+        self.req_now: dict[str, int | None] = {}
+        self.multi_req = 0
+        self.pair_req: dict[tuple[str, str], int] = {}
 
     def start(self) -> "_Acc":
         self.life.start(self._run())
@@ -319,6 +330,7 @@ class _Acc:
 
     def _seen(self, sink: str, req: int | None, ack: int | None) -> None:
         st = self.stat[sink]
+        self.req_now[sink] = req
         if req is None or ack is None:
             self.xz += 1
             return
@@ -369,6 +381,11 @@ class _Acc:
             for s, i in CLIENT_BIT.items():
                 self._seen(s, _bit(creq, i), _bit(cack, i))
             self._seen("pool", _known(d.pool_edn_req_o), _known(d.pool_edn_ack_o))
+            high = [s for s in SINKS if self.req_now.get(s) == 1]
+            if len(high) >= 2:
+                self.multi_req += 1
+                for pair in combinations(high, 2):
+                    self.pair_req[pair] = self.pair_req.get(pair, 0) + 1
             if not self.ext:
                 continue
             # X or Z on a graded probe counts into ``xz`` and reads None, and None is
@@ -692,6 +709,12 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             if None not in (sa.first_req, sa.last_ack, sb.first_req, sb.last_ack):
                 ov = min(sa.last_ack, sb.last_ack) - max(sa.first_req, sb.first_req)
             self.chk.ctrl("MIX-OVERLAP", ov > 0, pair=f"{a},{b}", overlap_clk=max(ov, 0))
+        # Log-only: clocks of the overlapped run with two or more request probes high.
+        pairs = {}
+        for a, b in combinations(plan.sinks, 2):
+            key = (a, b) if SINKS.index(a) < SINKS.index(b) else (b, a)
+            pairs[f"both_req_{key[0]}_{key[1]}"] = self.acc.pair_req.get(key, 0)
+        self.chk.obs("MIX-REQ-CONCURRENT", clocks_2plus=self.acc.multi_req, **pairs)
         for s in plan.sinks:
             unit = "otbn" if s.startswith("otbn") else s
             res = results.get(unit, {})
