@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Field-aware CSR catalog for OSS-safe SMC register tests.
+"""Field-aware CSR catalog for SMC register tests.
 
 Both halves of every default compare are symbol-sourced from the generated
 PeakRDL output ([ADDRESS-FROM-AUTHORITATIVE-MAP]): the address from
