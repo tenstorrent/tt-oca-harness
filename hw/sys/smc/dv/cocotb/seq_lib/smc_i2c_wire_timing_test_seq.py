@@ -793,7 +793,9 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
             f"{self._delta('bus_free', 'A4')} equals delta(T_BUF)={d['A4']['t_buf']}; absolute "
             f"bus free measured A={a['bus_free']} A4={self.meas['A4']['bus_free']} against "
             f"programmed T_BUF A={s['A']['t_buf']} A4={s['A4']['t_buf']}; "
-            f"defect candidate (below programmed T_BUF, not compared): {self._bus_free_below()}",
+            f"measured bus free below the programmed T_BUF, printed and not compared (i2c.rdl "
+            f"states T_BUF as the time between a STOP and START condition): "
+            f"{self._bus_free_below()}",
         )
 
         self._chk("CHK-I2C-WIRE-MIN-SET-RUN", min_text)

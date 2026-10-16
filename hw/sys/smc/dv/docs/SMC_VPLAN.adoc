@@ -25748,8 +25748,9 @@ that were changed.
   `TLOW` minus `THD_DAT` of each set, with no expectation.
 * With `TSU_STA`, `THD_STA` and `TSU_STO` each raised (set A3) the repeated-START setup and hold
   and the STOP setup change by the programmed differences; with only `T_BUF` raised (set A4) the
-  bus-free time between a STOP and the next START changes by the programmed difference. A bus-free
-  time below the programmed `T_BUF` is printed.
+  bus-free time between a STOP and the next START changes by the programmed difference. The
+  measured bus-free time of each set is printed next to its programmed `T_BUF`, which `i2c.rdl`
+  states as the time between a STOP and START condition; a value below it is printed, not compared.
 * Raising `T_R` and `T_F`, and the hold of the first START, are measured and printed with no
   expectation. Full-rate Standard-mode SCL is not run.
 * With `THIGH` and `TLOW` at 2 and every other field at 1 a transfer of START, address write and
@@ -25808,8 +25809,9 @@ other delta fails it.
 |`CHK-I2C-WIRE-STOP-SETUP-DELTA` |The change in STOP setup (SCL rise to SDA rise), A3 minus A,
 equals the change in `TSU_STO`; any other delta fails it.
 |`CHK-I2C-WIRE-BUS-FREE-DELTA` |The change in time from the SDA rise of the STOP of X to the SDA
-fall of the START of Y, A4 minus A, equals the change in `T_BUF`; any other delta fails it, and a
-value below the programmed `T_BUF` is printed.
+fall of the START of Y, A4 minus A, equals the change in `T_BUF`; any other delta fails it. The
+measured bus-free time of each set is printed next to its programmed `T_BUF` (the time between a
+STOP and START condition per `i2c.rdl`); a value below it is printed, not compared.
 |`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 2 and the other fields at 1 transfer Y
 shows a START, an acknowledged address, one STOP, `HOSTIDLE` and `CMD_COMPLETE`; a missing START
 or acknowledge, another STOP count or either flag clear fails it.
