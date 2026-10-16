@@ -129,10 +129,35 @@ Checkers:
                    Control: the 63-word
                    segment of the same search reads RXFULL = 0 and RXQD = 63,
                    else CTRL-MISSING.
-  OBS-SPI-CMDQD-MAX The largest CMDQD of the CHK-SPI-CMDQD leg is logged. The
-                   leg queues at most four commands behind the held head, so
-                   it cannot show the CmdDepth = 4 bound (spi_host.hjson,
-                   parameter CmdDepth) fail.
+  CHK-SPI-CMDQD-DEPTH After the CHK-SPI-CMDQD commands, the same leg writes
+                   more COMMANDs behind the held head, each after a STATUS
+                   read with READY=1, until READY stays 0 for 20000 core
+                   clocks. CMDQD reads 4 or less in every STATUS read of the
+                   leg: CMDQD "Indicates how many unread 32-bit words are
+                   currently in the command segment queue."
+                   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:318-319``),
+                   and CmdDepth "The size of the Cmd FIFO (one segment
+                   descriptor per entry)" is 4 (spi_host.hjson:103-106; the
+                   SEP host is the unmodified IP, ``doc/trm/src/revision.adoc:191``).
+                   A host that accepts a fifth command shows CMDQD 5 and
+                   fails. Controls: one STATUS read after an accepted COMMAND
+                   shows READY=1 and CMDQD below 4 (the READY return time is
+                   logged and is inside the 20000-clock window), and the fill
+                   ends because READY stays 0, not at the write cap; else
+                   CTRL-MISSING.
+  OBS-SPI-CMDQD-FULL The CMDQD at which READY stays 0, the head count c0 and
+                   the READY trail are logged, not graded. "The register
+                   STATUS.READY indicates that there is room in the command
+                   FIFO." (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:620``),
+                   but "the core will immediately deassert STATUS.READY"
+                   once a command is issued (theory_of_operation.md:373), and
+                   "the SPI_HOST has room to queue up exactly one additional
+                   segment descriptor" while a segment runs
+                   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/programmers_guide.md:143-144``).
+                   The texts give no single point at which READY stays 0, so
+                   "CMDQD reaches 4 with the queue full" is not graded. No
+                   sentence says whether the held head segment counts in
+                   CMDQD.
   CHK-SPI-SB-FRAME Every frame of the width, as above (one scoreboard per width).
   CHK-SPI-LANE-DATA One line per width with ``width=`` and the Tx and Rx frame
                    and byte counts, after CHK-SPI-SB-FRAME of the width passed.
@@ -145,8 +170,8 @@ Every CHK line of a per-width leg carries ``width=x1|x2|x4``; the TX
 watermark leg has no segment and no width.
 
 Not graded: TXQD and RXQD at idle (logged with OBS-SPI-QD), TXQD and RXQD while
-ACTIVE=1, CMDQD reaching 4 and the head-segment count of CMDQD (logged on the
-CMDQD line), RXWM at RXQD equal to RX_WATERMARK, RX_WATERMARK 0x7F against the
+ACTIVE=1, the CMDQD at which READY stays 0 and the head-segment count of CMDQD
+(logged with OBS-SPI-CMDQD-FULL), RXWM at RXQD equal to RX_WATERMARK, RX_WATERMARK 0x7F against the
 reset value, overflow and underflow.
 
 Run mode: no_cpu (target ``lsu_stub_all_live``), ``+skip_fuse_sense``,
@@ -250,6 +275,12 @@ TX_DEPTH_WORDS = 72
 TX_ACCEPT_WORDS = TX_DEPTH_WORDS + 1
 RX_DEPTH_WORDS = 64
 CMD_DEPTH = 4
+# The command queue fill: READY must stay 0 for this many core clocks to end
+# the fill (a test parameter; the fill control measures the READY return time
+# after an accepted COMMAND below the bound). The fill writes at most one
+# COMMAND more than the 4-bit CMDQD field counts.
+CMDQ_FULL_WIN = 20_000
+CMDQ_FILL_CAP = (_R.field_mask("STATUS", "cmdqd") >> _R.field_lsb("STATUS", "cmdqd")) + 1
 
 
 class _CtrlMissing(AssertionError):
@@ -286,6 +317,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         "CHK-SPI-WM",
         "CHK-SPI-QD",
         "CHK-SPI-CMDQD",
+        "CHK-SPI-CMDQD-DEPTH",
         "CHK-SPI-EVENT-WM",
         "CHK-SPI-SWRST-ABORT",
         "CHK-SPI-DEPTH-TX",
@@ -1133,12 +1165,19 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         prev = c0
         accepted = 0
         trail = [f"c0={c0}"]
+        # Control reads of CHK-SPI-CMDQD-DEPTH: (CMDQD, clocks from the last
+        # accepted COMMAND write) of each READY=1 read below the bound.
+        ctrl_reads: list[tuple[int, int]] = []
+        t_acc = self.pads.now()
         for _ in range(self.n_cmds):
             st = await self.ops.read_status()
             if not st.ready:
                 trail.append(f"ready=0@cmdqd={st.cmdqd}")
                 break
+            if accepted and st.cmdqd < CMD_DEPTH:
+                ctrl_reads.append((st.cmdqd, self.pads.now() - t_acc))
             await self.ops.wr(COMMAND, command_word(0, speed=0, direction=DIR_DUMMY))
+            t_acc = self.pads.now()
             accepted += 1
             st2 = await self._poll(
                 lambda s, p=prev: s.cmdqd != p, 20_000, f"CMDQD moves from {prev}", chk
@@ -1150,8 +1189,10 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self.logger.info("CMDQD seed=%d n=%d %s", self.seed, self.n_cmds, " ".join(trail))
         if accepted == 0:
             self._ctrl_missing(chk, "no COMMAND accepted behind the held head")
-        held = prev
-        ready = st2.ready
+        full_st, lat_max = await self._cmdq_fill(chk, prev, accepted, t_acc, ctrl_reads, trail)
+        accepted = full_st[1]
+        held = full_st[0].cmdqd
+        ready = full_st[0].ready
 
         # Step 13: release the queue.
         await self.ops.push_tx(head[1])
@@ -1182,14 +1223,81 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         )
         reads = self.ops.status_log[n0:]
         top = max(s.cmdqd for s in reads)
+        dchk = "CHK-SPI-CMDQD-DEPTH"
         line = (
             f"width={self._w} status_reads={len(reads)} max_cmdqd={top} bound={CMD_DEPTH} "
-            f"control_accepted={accepted} control_cmdqd_held={held} control_c0={c0}"
+            f"queued={accepted} full_win={CMDQ_FULL_WIN} control_below={len(ctrl_reads)} "
+            f"control_cmdqd={ctrl_reads[0][0]} control_ready_clks_max={lat_max}"
         )
-        # The leg queues at most four commands, so the CmdDepth bound cannot
-        # fail here: the maximum is logged.
-        self.logger.info("OBS-SPI-CMDQD-MAX seed=%d %s", self.seed, line)
+        if top > CMD_DEPTH:
+            self._fail(dchk, line)
+        self.logger.info("%s PASS seed=%d %s", dchk, self.seed, line)
+        await spi_lane_fcov(TEST, "cmdq", lanes=LANES[self.speed])
+        self.logger.info(
+            "OBS-SPI-CMDQD-FULL seed=%d width=%s full_cmdqd=%d c0=%d queued=%d trail=%s",
+            self.seed,
+            self._w,
+            held,
+            c0,
+            accepted,
+            " ".join(trail),
+        )
         await self._sw_rst()
+
+    async def _cmdq_fill(
+        self,
+        chk: str,
+        prev: int,
+        accepted: int,
+        t_acc: int,
+        ctrl_reads: list[tuple[int, int]],
+        trail: list[str],
+    ) -> tuple[tuple[SpiStatus, int], int]:
+        """Fill the command queue behind the held head (CHK-SPI-CMDQD-DEPTH).
+
+        Writes COMMANDs, each after a STATUS read with READY=1, until READY
+        stays 0 for CMDQ_FULL_WIN clocks. ``t_acc`` is the clock of the last
+        accepted COMMAND write. Adds to ``ctrl_reads`` each READY=1 read with
+        CMDQD below CMD_DEPTH and the clocks from the accepted write to it.
+        Returns ((the READY=0 read, the accepted count), the largest READY
+        return time).
+        """
+        dchk = "CHK-SPI-CMDQD-DEPTH"
+        lat_max = max((lat for _, lat in ctrl_reads), default=0)
+        while True:
+            deadline = self.pads.now() + CMDQ_FULL_WIN
+            while True:
+                st = await self.ops.read_status()
+                if st.ready or self.pads.now() > deadline:
+                    break
+            if not st.ready:
+                break
+            lat = self.pads.now() - t_acc
+            lat_max = max(lat_max, lat)
+            if st.cmdqd < CMD_DEPTH:
+                ctrl_reads.append((st.cmdqd, lat))
+            if accepted >= CMDQ_FILL_CAP:
+                self._ctrl_missing(dchk, f"READY=1 after {accepted} accepted COMMANDs ({st.fmt()})")
+            await self.ops.wr(COMMAND, command_word(0, speed=0, direction=DIR_DUMMY))
+            t_acc = self.pads.now()
+            accepted += 1
+            st2 = await self._poll(
+                lambda s, p=prev: s.cmdqd != p, 20_000, f"CMDQD moves from {prev}", chk
+            )
+            if st2.cmdqd != prev + 1:
+                self._fail(chk, f"CMDQD {prev} -> {st2.cmdqd} after one accepted COMMAND")
+            if st2.cmdqd > CMD_DEPTH:
+                self._fail(
+                    dchk, f"width={self._w} cmdqd={st2.cmdqd} bound={CMD_DEPTH} queued={accepted}"
+                )
+            prev = st2.cmdqd
+            trail.append(f"fill_cmdqd={st2.cmdqd} ready={st2.ready}")
+        trail.append(f"full@cmdqd={st.cmdqd} ready=0 win={CMDQ_FULL_WIN}")
+        if not ctrl_reads:
+            self._ctrl_missing(
+                dchk, f"no READY=1 read with CMDQD below {CMD_DEPTH} after an accepted COMMAND"
+            )
+        return (st, accepted), lat_max
 
     # ---- step 14 -------------------------------------------------------
     async def _tx_full_active_leg(self) -> dict:

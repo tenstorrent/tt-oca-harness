@@ -50,6 +50,13 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
   CHK-DMA-GEOM        per Leg B transfer: DONE=1, BUSY=0, GO=0, ERROR=0,
                       destination equals source, guards intact. Control: a
                       CONTROL read with GO=1 while ``dma_busy_probe_o`` is 1.
+  CHK-DMA-CFG-REGWEN  Leg B totals of 1024 bytes or more: a CFG_REGWEN read
+                      that runs entirely at ``dma_busy_probe_o`` = 1 shows
+                      REGWEN = kMultiBitBool4False (0x9), and the read after
+                      DONE=1 BUSY=0, entirely at ``dma_busy_probe_o`` = 0,
+                      shows kMultiBitBool4True (0x6). Each read is the control
+                      of the other. A long transfer with no read at BUSY=1
+                      fails as CTRL-MISSING.
   CHK-DMA-DONE-CLR    Leg B totals of 1024 bytes or more after the first: a
                       STATUS read with BUSY=1 shows DONE=0. Control: DONE=1 on
                       the read just before GO.
@@ -81,6 +88,15 @@ the entire data transfer (as defined by `TOTAL_DATA_SIZE`) is complete."
 and "Since interrupts are implemented as status bits" (same file, line 39).
 The leaf writes one GO per stop it reads; the GO count is stimulus and is not
 graded.
+
+CFG_REGWEN contract (CHK-DMA-CFG-REGWEN): "In the idle state, this register is
+set to kMultiBitBool4True. When the DMA is performing an operation, i.e. the
+DMA is busy, this register is set to kMultiBitBool4False."
+(``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:352-353``), with
+the encoding "True = 6; False = 9;"
+(``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:158-159``).
+The CONTROL read with GO=1 at BUSY=1 is the control of CHK-DMA-GEOM only; the
+GO value during a transfer is not graded.
   CHK-DMA-RANGE-OK    per Leg C cell: the copy completes with ERROR=0 and the
                       data copied. Control: the same copy with the wide range.
   CHK-DMA-HASH        per graded Leg D run: digest words equal the hashlib
@@ -124,6 +140,7 @@ from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_dma_ops import (
+    CFG_REGWEN,
     CONTROL,
     DST_ADDR_HI,
     ERROR_CODE,
@@ -134,6 +151,7 @@ from seq_lib.sep_dma_ops import (
     OP_SHA256,
     OP_SHA384,
     OP_SHA512,
+    SECURE_DMA,
     SRC_ADDR_HI,
     ST_BUSY,
     ST_CHUNK_DONE,
@@ -164,6 +182,11 @@ VALID_POLL_BOUND = 200
 CTRL_READ_TRIES = 8
 # A total of this size or more lets a frontdoor read land while the engine runs.
 LONG_TOTAL = 1024
+# CFG_REGWEN.REGWEN values (secure_dma.rdl:158-159, MultiBitBool4): False while
+# the DMA is busy, True at idle (dma.hjson:352-353).
+CFG_REGWEN_BUSY = 0x9
+CFG_REGWEN_IDLE = 0x6
+CFG_REGWEN_MASK = SECURE_DMA.field_mask("CFG_REGWEN", "regwen")
 
 # The order in which step 4 writes the transfer registers is drawn from these.
 XFER_ORDER_REGS = (
@@ -575,6 +598,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         "CHK-DMA-BEAT",
         "CHK-DMA-ADDR",
         "CHK-DMA-GEOM",
+        "CHK-DMA-CFG-REGWEN",
         "CHK-DMA-DONE-CLR",
         "CHK-DMA-CHUNKDONE",
         "CHK-DMA-CHUNKRISE",
@@ -916,21 +940,52 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         )
 
     # ---- Leg B ------------------------------------------------------------
+    async def _check_cfg_regwen(self, regwen_busy: int | None, tag: str) -> int:
+        """CHK-DMA-CFG-REGWEN for one long Leg B transfer; returns 1 when graded.
+
+        ``regwen_busy`` is the REGWEN field of a read that ran entirely at
+        ``dma_busy_probe_o`` = 1 (None: no such read, not graded). The idle read
+        runs after DONE=1 BUSY=0 and must run entirely at ``dma_busy_probe_o`` = 0.
+        """
+        if regwen_busy is None:
+            self.logger.info("LEGB %s CFG_REGWEN no read landed at BUSY=1; not graded", tag)
+            return 0
+        m = self.busy.mark()
+        v = await self.ops.rd(CFG_REGWEN)
+        idle_through = int(self.busy.level() == 0 and not self.busy.rise_clks_since(m))
+        regwen_idle = v & CFG_REGWEN_MASK
+        line = (
+            f"busy_regwen=0x{regwen_busy:x} busy_expect=0x{CFG_REGWEN_BUSY:x} "
+            f"idle_regwen=0x{regwen_idle:x} idle_expect=0x{CFG_REGWEN_IDLE:x} "
+            f"busy_through_read=1 idle_through_read={idle_through} {tag}"
+        )
+        if not idle_through:
+            self._ctrl_missing("CHK-DMA-CFG-REGWEN", f"idle read not at BUSY=0: {line}")
+        self._pass(
+            "CHK-DMA-CFG-REGWEN",
+            regwen_busy == CFG_REGWEN_BUSY and regwen_idle == CFG_REGWEN_IDLE,
+            line,
+        )
+        return 1
+
     async def _poll_b(
         self, total: int, m_busy, want_ctrl: bool, tag: str
-    ) -> tuple[DmaStatus, int, list[tuple[DmaStatus, int]], int | None]:
+    ) -> tuple[DmaStatus, int, list[tuple[DmaStatus, int]], int | None, int | None]:
         """Steps 9 and 10: poll to DONE=1 BUSY=0 after a BUSY rise, with the re-GO rule.
 
         Returns the last STATUS, the GO-write count, every (STATUS, probe level)
-        read, and the GO bit of a CONTROL read that ran entirely at BUSY=1
-        (None when no such read landed).
+        read, the GO bit of a CONTROL read that ran entirely at BUSY=1, and the
+        CFG_REGWEN value of a read that ran entirely at BUSY=1 (None when no such
+        read landed).
         """
         ops = self.ops
         bound = ops.done_bound(poll_size(total))
         go_writes = 1
         reads: list[tuple[DmaStatus, int]] = []
         ctrl_go: int | None = None
+        regwen_busy: int | None = None
         tries = 0
+        regwen_tries = 0
         for _ in range(bound):
             if want_ctrl and ctrl_go != 1 and tries < CTRL_READ_TRIES and self.busy.level() == 1:
                 m = self.busy.mark()
@@ -941,12 +996,24 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                     self.logger.info(
                         "LEGB %s CONTROL=0x%08x go=%d busy_through_read=1", tag, v, ctrl_go
                     )
+            if (
+                want_ctrl
+                and regwen_busy is None
+                and regwen_tries < CTRL_READ_TRIES
+                and self.busy.level() == 1
+            ):
+                m = self.busy.mark()
+                v = await ops.rd(CFG_REGWEN)
+                regwen_tries += 1
+                if self.busy.level() == 1 and not self.busy.fall_clks_since(m):
+                    regwen_busy = v & CFG_REGWEN_MASK
+                    self.logger.info("LEGB %s CFG_REGWEN=0x%08x busy_through_read=1", tag, v)
             st = await ops.read_status()
             reads.append((st, int(self.busy.level() or 0)))
             if st.done and not st.busy and self.busy.rose_since(m_busy):
-                return st, go_writes, reads, ctrl_go
+                return st, go_writes, reads, ctrl_go, regwen_busy
             if st.error or st.aborted:
-                return st, go_writes, reads, ctrl_go
+                return st, go_writes, reads, ctrl_go, regwen_busy
             if st.chunk_done and not st.done and not st.busy:
                 m = self.busy.mark()
                 value = (ops.last_control & ~control_word(initial=1)) | GO_MASK
@@ -967,6 +1034,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         multi_chunk_polls = 0
         multi_irq_rises = 0
         ctrl_go_busy_seen = False
+        regwen_graded = 0
         single_stops: list[int] = []
         for i, c in enumerate(plan.b_xfers):
             x = c.x
@@ -982,7 +1050,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 self.logger.info("LEGB %s pre-GO %s", tag, pre.fmt())
             m_tap, m_irq, m_busy = self.tap.mark(), self.irq.mark(), self.busy.mark()
             await ops.go(opcode=OP_COPY, initial=1)
-            st, go_writes, reads, ctrl_go = await self._poll_b(
+            st, go_writes, reads, ctrl_go, regwen_busy = await self._poll_b(
                 x.total, m_busy, x.total >= LONG_TOTAL, tag
             )
             rec = self._record(m_tap, m_irq, go_writes, [s for s, _ in reads])
@@ -998,6 +1066,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 busy_trace,
             )
             st2, err, ctl = await self._read_regs()
+            if x.total >= LONG_TOTAL:
+                regwen_graded += await self._check_cfg_regwen(regwen_busy, tag)
             got = await self.mem.read(c.dst_region, c.dst_region_words)
             exp = c.expected_dst()
             mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
@@ -1047,6 +1117,10 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         if not ctrl_go_busy_seen:
             self._ctrl_missing(
                 "CHK-DMA-GEOM", "no CONTROL read returned GO=1 at BUSY=1 on a total >= 1024"
+            )
+        if regwen_graded == 0:
+            self._ctrl_missing(
+                "CHK-DMA-CFG-REGWEN", "no total >= 1024 had a CFG_REGWEN read at BUSY=1"
             )
         if multi_chunk_polls == 0 and multi_irq_rises == 0:
             self._ctrl_missing(

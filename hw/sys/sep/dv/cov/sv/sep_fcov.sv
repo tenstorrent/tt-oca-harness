@@ -2064,6 +2064,14 @@ module sep_fcov (
   // DMA master AR and AW handshakes after the alias remap (dma_req_i).
   wire dm_ar = !in_reset && (dma_req_i.ar_valid === 1'b1) && (dma_resp_i.ar_ready === 1'b1);
   wire dm_aw = !in_reset && (dma_req_i.aw_valid === 1'b1) && (dma_resp_i.aw_ready === 1'b1);
+  // Interrupt clear write of source 0 on the DMA host port (CLEAR_INTR_BUS
+  // bit 0 = 1): a DMA master AW to INTR_SRC_ADDR_0 with CLEAR_INTR_SRC bit 0 set.
+  wire dma_intr_clr_aw = dm_aw && (dma_reg2hw_i.clear_intr_src.q[0] === 1'b1) &&
+      (dma_reg2hw_i.clear_intr_bus.q[0] === 1'b1) &&
+      (dma_req_i.aw.addr == dma_reg2hw_i.intr_src_addr[0].q);
+  // CFG_REGWEN read response with the busy probe at that clock.
+  wire [4:0] dma_cfg_rw = {d_busy, rd_data[3:0]};
+  wire dma_cfg_rw_rd = rd_ev && (ar_addr_q == SECURE_DMA_CFG_REGWEN_REG_ADDR);
 
   // --- Secure DMA: register decode ---------------------------------------
   wire        dw_ctrl = wr_ev && hit4(aw_addr_q, w_strb_q, DmaControl);
@@ -3686,6 +3694,16 @@ module sep_fcov (
       bins sha512 = {DmaOpSha512};
     }
     // verilog_format: on
+    // CFG_REGWEN read with the DMA busy and idle (dma.hjson CFG_REGWEN;
+    // MultiBitBool4, secure_dma.rdl). Samples only in the window of its owner.
+    cp_cfg_regwen: coverpoint dma_cfg_rw iff (dma_cfg_rw_rd && own_dma_matrix) {
+      bins busy_false = {5'b1_1001}; bins idle_true = {5'b0_0110};
+    }
+    // Interrupt clear write of source 0 on the DMA host port, in the window of
+    // its owner.
+    cp_intr_clear: coverpoint dma_intr_clr_aw iff (own_spi_dma_hs) {
+      bins clear_wr_host = {1'b1};
+    }
   endgroup
 
   covergroup sep_dma_completion_route_cg with function sample (logic irq_route, logic handshake);
@@ -7135,6 +7153,41 @@ module sep_fcov (
     }
   endgroup
 
+  // Range scope of a copy, the write-one-to-clear release of the completion
+  // interrupts and the tied-off address spaces (owner
+  // sep_dma_irq_error_lock_rand_test).
+  covergroup sep_dma_release_scope_cg with function sample (
+      logic [1:0] ro, logic ro_v, logic rl, logic rl_v, logic [1:0] ta, logic ta_v
+  );
+    option.per_instance = 1;
+    option.name = "sep_dma_release_scope_cg";
+    // {side (0 source, 1 destination), direction (0 below BASE, 1 above
+    // LIMIT)} of an initial copy GO, RANGE_VALID set, whose region on that
+    // side lies wholly outside the range and whose other region lies inside
+    // it. Scored at the DONE rise with ERROR_CODE 0.
+    cp_out_of_range: coverpoint ro iff (ro_v) {
+      bins src_below = {2'b00};
+      bins src_above = {2'b01};
+      bins dst_below = {2'b10};
+      bins dst_above = {2'b11};
+    }
+    // A write of 1 to STATUS.DONE (0), or to STATUS.CHUNK_DONE with DONE=0
+    // (1), while the INTR_STATE bit and its PIC line are 1; scored at the
+    // next INTR_STATE read if the bit and the line are 0.
+    cp_status_w1c_release: coverpoint rl iff (rl_v) {
+      bins done_release = {1'b0}; bins chunk_release_non_final = {1'b1};
+    }
+    // {side (0 source, 1 destination), ASID (0 SYS_ADDR 0x9, 1 SOC_ADDR
+    // 0xa)} of an initial copy GO with 0x7 on the other side; scored at the
+    // next CONTROL.ABORT write if no DONE rose since the GO.
+    cp_asid_tieoff_no_done: coverpoint ta iff (ta_v) {
+      bins src_sys_0x9 = {2'b00};
+      bins src_soc_0xa = {2'b01};
+      bins dst_sys_0x9 = {2'b10};
+      bins dst_soc_0xa = {2'b11};
+    }
+  endgroup
+
   sep_spi_command_segment_cg u_sep_spi_command_segment_cg = new();
   sep_spi_seg_rand_cg        u_sep_spi_seg_rand_cg        = new();
   sep_spi_illegal_access_cg  u_sep_spi_illegal_access_cg  = new();
@@ -7156,6 +7209,7 @@ module sep_fcov (
   sep_dma_error_terminal_cg  u_sep_dma_error_terminal_cg  = new();
   sep_dma_zero_cg            u_sep_dma_zero_cg            = new();
   sep_dma_containment_cg     u_sep_dma_containment_cg     = new();
+  sep_dma_release_scope_cg   u_sep_dma_release_scope_cg   = new();
 
   // cp_cont_outcome and cp_tcm_outcome of sep_dma_zero_cg. A continuation is
   // a GO with INITIAL_TRANSFER 0 while the last initial GO carried OPCODE
@@ -7270,6 +7324,78 @@ module sep_fcov (
         u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, {dh_dst_q, dh_wrote_q || dh_aw},
                                          1'b1);
         dh_on_q <= 1'b0;
+      end
+    end
+  end
+
+  // sep_dma_release_scope_cg. Each GO is decoded at its issue clock, because
+  // a short copy can end before the B of the CONTROL write.
+  // cp_out_of_range: {outside, above} of a region [a, a + n) against
+  // BASE..LIMIT.
+  function automatic logic [1:0] ros_out(input logic [31:0] a, input logic [31:0] n,
+                                         input logic [31:0] b, input logic [31:0] l);
+    if ((a + n - 32'd1) < b) return 2'b10;
+    if (a > l) return 2'b11;
+    return 2'b00;
+  endfunction
+  wire [31:0] ros_n = dma_reg2hw_i.total_data_size.q;
+  wire [1:0] ros_so = ros_out(dma_reg2hw_i.src_addr_lo.q, ros_n, d_base_now, d_limit_now);
+  wire [1:0] ros_do = ros_out(dma_reg2hw_i.dst_addr_lo.q, ros_n, d_base_now, d_limit_now);
+  logic ros_on_q, ros_side_q, ros_dir_q, ros_done_q;
+  // cp_status_w1c_release.
+  wire rlw_ist_done = (dma_reg2hw_i.intr_state.dma_done.q === 1'b1);
+  wire rlw_ist_chunk = (dma_reg2hw_i.intr_state.dma_chunk_done.q === 1'b1);
+  wire rlw_w1_done = di_status && ((di_status_d & SECURE_DMA_STATUS_DONE_MASK) != 32'h0);
+  wire rlw_w1_chunk = di_status && ((di_status_d & SECURE_DMA_STATUS_CHUNK_DONE_MASK) != 32'h0);
+  logic rlw_on_q, rlw_chunk_q;
+  // cp_asid_tieoff_no_done.
+  wire [3:0] tie_s = dma_reg2hw_i.addr_space_id.src_asid.q;
+  wire [3:0] tie_d = dma_reg2hw_i.addr_space_id.dst_asid.q;
+  wire tie_tied_s = (tie_s == 4'h9) || (tie_s == 4'hA);
+  wire tie_tied_d = (tie_d == 4'h9) || (tie_d == 4'hA);
+  wire tie_abort = di_ctrl && ((di_ctrl_d & SECURE_DMA_CONTROL_ABORT_MASK) != 32'h0);
+  logic tie_on_q, tie_done_q;
+  logic [1:0] tie_cell_q;
+  always_ff @(posedge clk_i) begin
+    ros_done_q <= d_done;
+    if (in_reset) begin
+      ros_on_q <= 1'b0;
+      rlw_on_q <= 1'b0;
+      tie_on_q <= 1'b0;
+    end else begin
+      if (di_go && di_init) begin
+        ros_on_q   <= own_dma_irq && (di_op == DmaOpCopy) && d_valid_now &&
+            (ros_so[1] != ros_do[1]);
+        ros_side_q <= ros_do[1];
+        ros_dir_q  <= ros_do[1] ? ros_do[0] : ros_so[0];
+      end else if (ros_on_q && d_done && !ros_done_q) begin
+        if (d_no_err)
+          u_sep_dma_release_scope_cg.sample({ros_side_q, ros_dir_q}, 1'b1, 1'b0, 1'b0, 2'd0, 1'b0);
+        ros_on_q <= 1'b0;
+      end
+      if (own_dma_irq && rlw_w1_done && rlw_ist_done && irq_d_done) begin
+        rlw_on_q    <= 1'b1;
+        rlw_chunk_q <= 1'b0;
+      end else if (own_dma_irq && rlw_w1_chunk && !d_done && rlw_ist_chunk && irq_d_chunk) begin
+        rlw_on_q    <= 1'b1;
+        rlw_chunk_q <= 1'b1;
+      end else if (rlw_on_q && dr_ist) begin
+        if (rlw_chunk_q ? (!rlw_ist_chunk && !irq_d_chunk) : (!rlw_ist_done && !irq_d_done))
+          u_sep_dma_release_scope_cg.sample(2'd0, 1'b0, rlw_chunk_q, 1'b1, 2'd0, 1'b0);
+        rlw_on_q <= 1'b0;
+      end
+      if (di_go && di_init) begin
+        tie_on_q   <= own_dma_irq && (di_op == DmaOpCopy) &&
+            ((tie_tied_s && (tie_d == 4'h7)) || (tie_tied_d && (tie_s == 4'h7)));
+        tie_cell_q <= tie_tied_d ? {1'b1, tie_d == 4'hA} : {1'b0, tie_s == 4'hA};
+        tie_done_q <= 1'b0;
+      end else if (tie_on_q) begin
+        if (d_done) tie_done_q <= 1'b1;
+        if (tie_abort) begin
+          if (!tie_done_q && !d_done)
+            u_sep_dma_release_scope_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, tie_cell_q, 1'b1);
+          tie_on_q <= 1'b0;
+        end
       end
     end
   end
@@ -7711,8 +7837,8 @@ module sep_fcov (
   // output-enable groups). VCS only.
   //
   // SOURCE. A leaf writes one record into the spi_ln_* variables through
-  // the u_sep_fcov handle after a graded data, OE, trigger, abort or chain
-  // check passes, and then adds 1 to spi_ln_seq
+  // the u_sep_fcov handle after a graded data, OE, trigger, abort, chain,
+  // FULLCYC or command queue check passes, and then adds 1 to spi_ln_seq
   // (cocotb/env/sep_spi_lane_responder.py, spi_lane_fcov). The block below
   // samples the record once on the first clock that sees a new spi_ln_seq.
   // The leaf waits two clocks before the next record. These variables drive
@@ -7722,8 +7848,9 @@ module sep_fcov (
   // record carries the code of the test that graded it (spi_ln_owner).
   // =====================================================================
   int unsigned spi_ln_owner = FcovOwnNone;  // owner code of the test that graded the record
-  // 1 data frame, 2 lane opcode, 3 OE window, 4 trigger cell, 5 abort, 6 chain.
-  bit [2:0] spi_ln_kind = 3'd0;
+  // 1 data frame, 2 lane opcode, 3 OE window, 4 trigger cell, 5 abort, 6 chain,
+  // 7 FULLCYC, 8 command queue fill.
+  bit [3:0] spi_ln_kind = 4'd0;
   bit [1:0] spi_ln_width = 2'd0;  // COMMAND.SPEED of the graded segment: 0 x1, 1 x2, 2 x4
   bit spi_ln_dir = 1'b0;  // 0 TX, 1 RX
   bit [7:0] spi_ln_opcode = 8'h00;  // flash command byte (kind 2)
@@ -7733,13 +7860,14 @@ module sep_fcov (
   int unsigned spi_ln_seq = 0;  // sample strobe: the leaf adds 1 per record
   int unsigned spi_ln_seq_q = 0;
 
-  localparam bit [2:0] SpiLnData = 3'd1;
-  localparam bit [2:0] SpiLnOpcode = 3'd2;
-  localparam bit [2:0] SpiLnOeWin = 3'd3;
-  localparam bit [2:0] SpiLnTrigger = 3'd4;
-  localparam bit [2:0] SpiLnAbort = 3'd5;
-  localparam bit [2:0] SpiLnChain = 3'd6;
-  localparam bit [2:0] SpiLnFullcyc = 3'd7;
+  localparam bit [3:0] SpiLnData = 4'd1;
+  localparam bit [3:0] SpiLnOpcode = 4'd2;
+  localparam bit [3:0] SpiLnOeWin = 4'd3;
+  localparam bit [3:0] SpiLnTrigger = 4'd4;
+  localparam bit [3:0] SpiLnAbort = 4'd5;
+  localparam bit [3:0] SpiLnChain = 4'd6;
+  localparam bit [3:0] SpiLnFullcyc = 4'd7;
+  localparam bit [3:0] SpiLnCmdq = 4'd8;
 
   // Test index of a data record: 0 pad speed/direction matrix, 1 pad timing,
   // 2 FIFO stall/watermark, 3 DMA handshake, 4 OT DMA RX, 5 OT flash command,
@@ -7849,12 +7977,23 @@ module sep_fcov (
     }
   endgroup
 
+  // Lane width of the held head segment of a command queue fill whose
+  // CHK-SPI-CMDQD-DEPTH passed (FIFO stall/watermark leaf).
+  covergroup sep_spi_lane_cmdq_cg with function sample (logic [1:0] width, logic v);
+    option.per_instance = 1;
+    option.name = "sep_spi_lane_cmdq_cg";
+    cp_cmdq_fill_width: coverpoint width iff (v) {
+      bins x1 = {2'd0}; bins x2 = {2'd1}; bins x4 = {2'd2};
+    }
+  endgroup
+
   sep_spi_lane_data_cg        u_sep_spi_lane_data_cg        = new();
   sep_spi_lane_opcode_cg      u_sep_spi_lane_opcode_cg      = new();
   sep_spi_lane_oe_win_cg      u_sep_spi_lane_oe_win_cg      = new();
   sep_spi_lane_trigger_cg     u_sep_spi_lane_trigger_cg     = new();
   sep_spi_lane_abort_chain_cg u_sep_spi_lane_abort_chain_cg = new();
   sep_spi_lane_fullcyc_cg     u_sep_spi_lane_fullcyc_cg     = new();
+  sep_spi_lane_cmdq_cg        u_sep_spi_lane_cmdq_cg        = new();
 
   wire [2:0] spi_ln_t = spi_ln_test(spi_ln_owner);
   // Owner gate of each group.
@@ -7871,6 +8010,8 @@ module sep_fcov (
       (spi_ln_owner == FcovOwnSepSpiPadSpeedDirMatrixTest);
   wire spi_ln_fullcyc_v = (spi_ln_kind == SpiLnFullcyc) &&
       (spi_ln_owner == FcovOwnSepSpiPadTimingCfgRandTest);
+  wire spi_ln_cmdq_v = (spi_ln_kind == SpiLnCmdq) &&
+      (spi_ln_owner == FcovOwnSepSpiFifoStallWatermarkRandTest);
 
   // Not gated on reset: the cold reset and rst_ni records come after the
   // graded window.
@@ -7884,6 +8025,7 @@ module sep_fcov (
       u_sep_spi_lane_abort_chain_cg.sample(spi_ln_abort, spi_ln_width, spi_ln_abort_v, spi_ln_chain,
                                            spi_ln_chain_v);
       u_sep_spi_lane_fullcyc_cg.sample(spi_ln_width, spi_ln_fullcyc_v);
+      u_sep_spi_lane_cmdq_cg.sample(spi_ln_width, spi_ln_cmdq_v);
     end
   end
 
@@ -11239,6 +11381,8 @@ module sep_fcov (
   localparam logic [31:0] MrWkThHi = WDT_TIMER_WKUP_THOLD_HI_REG_ADDR;
   localparam logic [31:0] MrWkThLo = WDT_TIMER_WKUP_THOLD_LO_REG_ADDR;
   localparam logic [31:0] MrWkCntLo = WDT_TIMER_WKUP_COUNT_LO_REG_ADDR;
+  localparam logic [31:0] MrWkCntHi = WDT_TIMER_WKUP_COUNT_HI_REG_ADDR;
+  localparam logic [31:0] MrWkCause = WDT_TIMER_WKUP_CAUSE_REG_ADDR;
   localparam logic [31:0] MrWdRegwen = WDT_TIMER_WDOG_REGWEN_REG_ADDR;
   localparam logic [31:0] MrWdCtrl = WDT_TIMER_WDOG_CTRL_REG_ADDR;
   localparam logic [31:0] MrWdBark = WDT_TIMER_WDOG_BARK_THOLD_REG_ADDR;
@@ -11598,6 +11742,10 @@ module sep_fcov (
     logic ax_v;  // 0 WDOG_CTRL, 1 WDOG_COUNT
     logic [1:0] to;
     logic to_v;  // 0 bark first, 1 later bark, 2 near 2^32, 3 bite without bark
+    logic [1:0] ls;
+    logic ls_v;  // 0 WDOG_CTRL ignored, 1 WDOG_COUNT landed, 2 WKUP_* landed (regwen 0)
+    logic [2:0] tr;
+    logic tr_v;  // 0 pet restart, 1 pet holds bark, 2 thold 0, 3 bark <= count, 4 bite <= count
   } mr_wdt_t;
 
   covergroup sep_wdt_config_bark_cg with function sample (mr_wdt_t s);
@@ -11643,11 +11791,26 @@ module sep_fcov (
       bins near_2_32_bark_and_bite = {2'd2};
       illegal_bins bite_without_bark = {2'd3};
     }
+    // With WDOG_REGWEN.regwen known 0: a WDOG_CTRL write is ignored, and
+    // writes to WDOG_COUNT and WKUP_THOLD_HI land.
+    cp_lock_scope: coverpoint s.ls iff (s.ls_v) {
+      bins ctrl_ignored = {2'd0}; bins count_lands = {2'd1}; bins wkup_lands = {2'd2};
+    }
+    // The pet (a write of 0 to WDOG_COUNT) and the threshold rules.
+    cp_thold_rule: coverpoint s.tr iff (s.tr_v) {
+      bins pet_restart = {3'd0};
+      bins pet_holds_bark = {3'd1};
+      bins thold0_bark = {3'd2};
+      bins bark_at_or_below = {3'd3};
+      bins bite_at_or_below = {3'd4};
+    }
   endgroup
 
   typedef struct packed {
     logic [2:0] wp;
     logic wp_v;  // 0..3 prescaler class, 4 HI first, 5 LO first, 6 expired
+    logic [1:0] we;
+    logic we_v;  // 0 presc 4095 step, 1 thold 0 expired, 2 restart step, 3 split-read carry
   } mr_wkup_t;
 
   covergroup sep_wdt_wakeup_timer_cg with function sample (mr_wkup_t s);
@@ -11661,6 +11824,14 @@ module sep_fcov (
       bins split_lo_first = {3'd5};
       bins expired_crossing = {3'd6};
       ignore_bins presc_4095 = {3'd3};
+    }
+    // Prescaler 4095 count step, threshold 0 expiry, prescaler restart and
+    // the split read across the low-word carry.
+    cp_wkup_edge: coverpoint s.we iff (s.we_v) {
+      bins presc_max_step = {2'd0};
+      bins thold0_expired = {2'd1};
+      bins presc_restart = {2'd2};
+      bins split_read_carry = {2'd3};
     }
   endgroup
 
@@ -13298,6 +13469,28 @@ module sep_fcov (
   logic [1:0] mr_wk_seen = '0;  // {LO written, HI written} since WKUP_CTRL
   logic mr_wk_first = 1'b0;  // 1 LO written first
   logic mr_wk_exp = 1'b0;
+  // Lock scope: one pending write per cell, made with regwen known 0.
+  logic mr_lc_pend = 1'b0;  // WDOG_CTRL write
+  logic [1:0] mr_lc_old = '0;  // WDOG_CTRL fields at the last read before that write
+  logic mr_lcnt_pend = 1'b0;  // WDOG_COUNT write
+  logic [31:0] mr_lcnt_w = '0;
+  logic mr_lwk_pend = 1'b0;  // WKUP_THOLD_HI write
+  logic [31:0] mr_lwk_w = '0;
+  // Thresholds and pet.
+  logic mr_pet = 1'b0;  // WDOG_COUNT written 0 while enabled
+  logic [31:0] mr_pet_from = '0;  // count read before the pet
+  longint unsigned mr_en_t = 0;  // mr_wtick at the last enabling WDOG_CTRL write
+  logic mr_bk_low = 1'b0;  // bark write at or below the last count read, bark low
+  logic mr_bt_low = 1'b0;  // bite write at or below the last count read, bite low
+  // Wakeup edge cells.
+  logic [11:0] mr_wk_p = '0;  // prescaler of the last WKUP_CTRL write
+  logic mr_wk_en = 1'b0;  // enable of the last WKUP_CTRL write
+  logic mr_wk_rst = 1'b0;  // the last WKUP_CTRL write restarted a running timer
+  logic [63:0] mr_wk_th = '0;  // threshold from the last writes of both halves
+  logic [31:0] mr_wk_lo_q = '0;
+  logic mr_wk_lo_ok = 1'b0;
+  logic [31:0] mr_wk_hi_rd = '0;
+  logic [1:0] mr_wk_split = '0;  // 1 after a HI read, 2 after a HI then a LO read
   logic mr_bs_bad_q = 1'b0;
   wire mr_wd_wr = mr_wl32;
   wire [31:0] mr_wd_wa = aw_addr_q;
@@ -13318,17 +13511,47 @@ module sep_fcov (
       mr_wk_exp     <= 1'b0;
       mr_wk_seen    <= '0;
       mr_wk_pre     <= 1'b0;
+      mr_lc_pend    <= 1'b0;
+      mr_lcnt_pend  <= 1'b0;
+      mr_lwk_pend   <= 1'b0;
+      mr_pet        <= 1'b0;
+      mr_bk_low     <= 1'b0;
+      mr_bt_low     <= 1'b0;
+      mr_wk_en      <= 1'b0;
+      mr_wk_rst     <= 1'b0;
+      mr_wk_lo_ok   <= 1'b0;
+      mr_wk_split   <= '0;
+      mr_wk_th      <= '0;
     end else begin
       if (mr_rst_rise) mr_lk_cold <= mr_own_tmr;
       // Writes.
       if (mr_wd_wr && in_blk(mr_wd_wa, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)) begin
         case (mr_wd_wa)
           MrWdCtrl: begin
-            mr_wd_en    <= wr_data[0];
-            mr_wd_en_ok <= 1'b1;
-            mr_wd_pair  <= 1'b0;
+            // A write with regwen known 0 does not change WDOG_CTRL (aon_timer.hjson
+            // regwen).
+            if (!mr_rw_ok || mr_rw) begin
+              mr_wd_en    <= wr_data[0];
+              mr_wd_en_ok <= 1'b1;
+              if (wr_data[0] && !(mr_wd_en_ok && mr_wd_en)) mr_en_t <= mr_wtick;
+              if (!wr_data[0]) mr_pet <= 1'b0;
+            end else begin
+              mr_lc_pend <= mr_own_tmr && (wr_data[1:0] != mr_lc_old);
+            end
+            mr_wd_pair <= 1'b0;
           end
-          MrWdCount: mr_wd_pair <= 1'b0;
+          MrWdCount: begin
+            mr_wd_pair <= 1'b0;
+            if (mr_rw_ok && !mr_rw) begin
+              mr_lcnt_w    <= wr_data;
+              mr_lcnt_pend <= mr_own_tmr;
+            end
+            if ((wr_data == 32'h0) && mr_wd_en_ok && mr_wd_en && mr_wd_cnt_ok &&
+                (mr_wd_cnt >= 32'd32)) begin
+              mr_pet      <= mr_own_tmr;
+              mr_pet_from <= mr_wd_cnt;
+            end
+          end
           MrWdBark: begin
             mr_bt_pend    <= 1'b1;
             mr_bt_w       <= wr_data;
@@ -13344,9 +13567,15 @@ module sep_fcov (
             if (!mr_rw_ok || mr_rw) begin
               mr_wd_bark    <= wr_data;
               mr_wd_bark_ok <= 1'b1;
+              mr_bk_low     <= mr_own_tmr && mr_wd_en && mr_wd_cnt_ok && (wr_data <= mr_wd_cnt) &&
+                  !mr_bark;
             end
           end
-          MrWdBite: mr_wd_bite <= wr_data;
+          MrWdBite: begin
+            mr_wd_bite <= wr_data;
+            mr_bt_low  <= mr_own_tmr && mr_wd_en && mr_wd_cnt_ok && (wr_data <= mr_wd_cnt) &&
+                !mr_bite;
+          end
           MrWdRegwen: begin
             if (!wr_data[0]) begin
               mr_rw      <= 1'b0;
@@ -13370,7 +13599,11 @@ module sep_fcov (
             end
           end
           MrWkCtrl: begin
-            mr_wk_exp <= 1'b0;
+            mr_wk_exp   <= 1'b0;
+            mr_wk_rst   <= wr_data[0] && mr_wk_en && (wr_data[12:1] == mr_wk_p);
+            mr_wk_p     <= wr_data[12:1];
+            mr_wk_en    <= wr_data[0];
+            mr_wk_lo_ok <= 1'b0;
             if (wr_data[0] && mr_own_tmr && (mr_wk_hi != 0) && mr_wk_pre) begin
               mr_wkup_t e;
               logic [11:0] p;
@@ -13389,14 +13622,23 @@ module sep_fcov (
           end
           MrWkThHi: begin
             mr_wk_hi <= wr_data;
+            mr_wk_th[63:32] <= wr_data;
+            if (mr_rw_ok && !mr_rw) begin
+              mr_lwk_w    <= wr_data;
+              mr_lwk_pend <= mr_own_tmr;
+            end
             if (mr_wk_seen == 2'b00) mr_wk_first <= 1'b0;
             mr_wk_seen[0] <= 1'b1;
           end
           MrWkThLo: begin
+            mr_wk_th[31:0] <= wr_data;
             if (mr_wk_seen == 2'b00) mr_wk_first <= 1'b1;
             mr_wk_seen[1] <= 1'b1;
           end
-          MrWkCntLo: mr_wk_pre <= (wr_data == 32'hFFFF_FFF0);
+          MrWkCntLo: begin
+            mr_wk_pre   <= (wr_data == 32'hFFFF_FFF0);
+            mr_wk_lo_ok <= 1'b0;
+          end
           default: ;
         endcase
       end
@@ -13405,6 +13647,17 @@ module sep_fcov (
         mr_wd_prev_rd <= mr_wd_ra;
         case (mr_wd_ra)
           MrWdCtrl: begin
+            // cp_lock_scope: the WDOG_CTRL fields of the read before a locked
+            // write are unchanged.
+            if (mr_lc_pend && (rd_data[1:0] == mr_lc_old) && mr_own_tmr) begin
+              mr_wdt_t e;
+              e      = '0;
+              e.ls   = 2'd0;
+              e.ls_v = 1'b1;
+              u_sep_wdt_config_bark_cg.sample(e);
+            end
+            mr_lc_pend  <= 1'b0;
+            mr_lc_old   <= rd_data[1:0];
             mr_wd_en    <= rd_data[0];
             mr_wd_en_ok <= 1'b1;
             if (mr_wd_prev_rd == MrWdCount) mr_ax_ctrl <= 1'b1;
@@ -13477,6 +13730,22 @@ module sep_fcov (
                 u_sep_wdt_config_bark_cg.sample(e);
               end
             end
+            // cp_lock_scope count cell, and the pet restart.
+            if (mr_lcnt_pend && (rd_data == mr_lcnt_w) && mr_own_tmr) begin
+              mr_wdt_t e;
+              e      = '0;
+              e.ls   = 2'd1;
+              e.ls_v = 1'b1;
+              u_sep_wdt_config_bark_cg.sample(e);
+              mr_lcnt_pend <= 1'b0;
+            end
+            if (mr_pet && !mr_wd_pair && (rd_data < mr_pet_from) && mr_own_tmr) begin
+              mr_wdt_t e;
+              e      = '0;
+              e.tr   = 3'd0;
+              e.tr_v = 1'b1;
+              u_sep_wdt_config_bark_cg.sample(e);
+            end
             mr_ax_ctrl   <= 1'b0;
             mr_wd_cnt    <= rd_data;
             mr_wd_cnt_ok <= 1'b1;
@@ -13506,6 +13775,30 @@ module sep_fcov (
             mr_bs_f0  <= 1'b0;
             mr_bs_f1  <= 1'b0;
             mr_bs_clr <= 1'b0;
+            // cp_thold_rule: the pet holds the bark, threshold 0 and a bark
+            // threshold at or below the count.
+            if (mr_own_tmr && mr_wd_en_ok && mr_wd_en && mr_wd_bark_ok) begin
+              mr_wdt_t t;
+              t      = '0;
+              t.tr_v = 1'b1;
+              // Bark 0 after a pet, with the ticks since the enable past the
+              // bark threshold plus 5.
+              if (mr_pet && !rd_data[MrWdBarkBit] &&
+                  (mr_wtick - mr_en_t >= 64'(mr_wd_bark) + 64'd5)) begin
+                t.tr = 3'd1;
+                u_sep_wdt_config_bark_cg.sample(t);
+                mr_pet <= 1'b0;
+              end
+              if (rd_data[MrWdBarkBit] && (mr_wd_bark == 32'h0) && !mr_bs_forced) begin
+                t.tr = 3'd2;
+                u_sep_wdt_config_bark_cg.sample(t);
+              end
+              if (rd_data[MrWdBarkBit] && mr_bk_low && !mr_bs_forced) begin
+                t.tr = 3'd3;
+                u_sep_wdt_config_bark_cg.sample(t);
+                mr_bk_low <= 1'b0;
+              end
+            end
             if (rd_data[0] && mr_wk_exp && (mr_wk_hi != 0) && mr_own_tmr) begin
               mr_wkup_t w;
               w         = '0;
@@ -13515,7 +13808,55 @@ module sep_fcov (
               mr_wk_exp <= 1'b0;
             end
           end
-          MrWkThHi: mr_wk_hi <= rd_data;
+          // cp_wkup_edge.
+          MrWkCntLo: begin
+            if (mr_own_tmr && mr_wk_en && (mr_wk_p == 12'hFFF) && mr_wk_lo_ok &&
+                (rd_data != mr_wk_lo_q)) begin
+              mr_wkup_t w;
+              w      = '0;
+              w.we   = mr_wk_rst ? 2'd2 : 2'd0;
+              w.we_v = 1'b1;
+              u_sep_wdt_wakeup_timer_cg.sample(w);
+              mr_wk_rst <= 1'b0;
+            end
+            mr_wk_lo_q  <= rd_data;
+            mr_wk_lo_ok <= 1'b1;
+            mr_wk_split <= (mr_wk_split == 2'd1) ? 2'd2 : 2'd0;
+          end
+          MrWkCntHi: begin
+            if (mr_own_tmr && mr_wk_en && (mr_wk_p == 12'h0) && (mr_wk_split == 2'd2) &&
+                (rd_data == mr_wk_hi_rd + 32'd1)) begin
+              mr_wkup_t w;
+              w      = '0;
+              w.we   = 2'd3;
+              w.we_v = 1'b1;
+              u_sep_wdt_wakeup_timer_cg.sample(w);
+            end
+            mr_wk_hi_rd <= rd_data;
+            mr_wk_split <= 2'd1;
+          end
+          MrWkCause: begin
+            if (mr_own_tmr && mr_wk_en && (mr_wk_p == 12'hFFF) && (mr_wk_th == 64'h0) &&
+                rd_data[0]) begin
+              mr_wkup_t w;
+              w      = '0;
+              w.we   = 2'd1;
+              w.we_v = 1'b1;
+              u_sep_wdt_wakeup_timer_cg.sample(w);
+            end
+          end
+          MrWkThHi: begin
+            mr_wk_hi <= rd_data;
+            // cp_lock_scope wakeup cell.
+            if (mr_lwk_pend && (rd_data == mr_lwk_w) && mr_own_tmr) begin
+              mr_wdt_t e;
+              e      = '0;
+              e.ls   = 2'd2;
+              e.ls_v = 1'b1;
+              u_sep_wdt_config_bark_cg.sample(e);
+              mr_lwk_pend <= 1'b0;
+            end
+          end
           default: ;
         endcase
       end
@@ -13561,6 +13902,14 @@ module sep_fcov (
         e.to = 2'd3;
         u_sep_wdt_config_bark_cg.sample(e);
       end
+      // cp_thold_rule: a bite threshold written at or below the count.
+      if (mr_bt_low && mr_bark) begin
+        e.to_v = 1'b0;
+        e.tr   = 3'd4;
+        e.tr_v = 1'b1;
+        u_sep_wdt_config_bark_cg.sample(e);
+      end
+      mr_bt_low  <= 1'b0;
       mr_to_near <= 1'b0;
     end
     // cp_adapt_stage: a stage handshake of a 32-bit LSU access to the
