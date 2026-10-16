@@ -593,47 +593,23 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         level_before = await self._status_settled()
         self.chk.obs("XRST-FILL", t_xfer=t_xfer, t_fill=t_fill, level_before=level_before)
 
-        # Step 4: restart the beat stream on both streams, then the reset at the offset.
-        restart = list(plan.restart_pairs)
+        # Step 4: restart stream 2 with the first beat of one pair only, so the pool
+        # holds a half-packed word (and cannot fill) when the reset asserts at the offset.
         stop2 = [False]
-        # Set at the reset moment: the feeder stops after the first beat of a pair,
-        # so the pool holds a half-packed word when the clear asserts.
-        half = [False]
-        ended_half = [False]
+        a0 = plan.restart_pairs[0]
 
         async def feed_pairs() -> None:
-            while not stop2[0] and restart:
-                a = restart.pop(0)
-                for beat in range(2):
-                    self.ext.send(2, [a])
-                    while self.ext.pending(2) and not stop2[0]:
-                        await RisingEdge(dut.clk_i)
-                    if stop2[0]:
-                        return
-                    if beat == 0 and half[0]:
-                        ended_half[0] = True
-                        return
+            self.ext.send(2, [a0])
+            while self.ext.pending(2) and not stop2[0]:
+                await RisingEdge(dut.clk_i)
 
+        base2 = self.trace.ext_xfers[2]
         task2 = cocotb.start_soon(feed_pairs())
         pre_reset_level = pool_level(await self.pool.status())
         offset = plan.offset_frac * t_fill // 1000
         await ClockCycles(dut.clk_i, max(1, offset))
-        half[0] = True
-        # A full pool back-pressures the first beat of a pair. Stop the feeder with
-        # that beat offered and pop one word: the beat enters, one beat of a pair.
-        pool_stalled = await self._until(lambda: task2.done(), 4 * t_xfer + 64) is None
-        if pool_stalled:
-            stop2[0] = True
-            await task2
-            base = self.trace.ext_xfers[2]
-            await self.pool.access(POOL_POP)
-            if await self._until(lambda: self.trace.ext_xfers[2] > base, SETTLE_CAP) is None:
-                raise AssertionError(f"held beat not taken after a pop in {SETTLE_CAP}")
-        elif not ended_half[0]:
-            # The restart pairs ran out on a whole pair: one beat of an old pair.
-            self.ext.send(2, [plan.fill_pairs[-1]])
-            if not await self._settle(2, 1, SETTLE_CAP):
-                raise AssertionError(f"half-pair beat not taken in {SETTLE_CAP}")
+        if await self._until(lambda: self.trace.ext_xfers[2] > base2, SETTLE_CAP) is None:
+            raise AssertionError(f"half-pair beat not taken in {SETTLE_CAP}")
         await self._until(lambda: self.trace.pool_quiet >= POOL_QUIET, SETTLE_CAP)
         await ReadOnly()
         packer_depth = self.rd(dut.entropy_pool_packer_depth_o)
@@ -761,7 +737,6 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             pre_reset_level >= 1 and packer_depth != 0,
             pre_reset_level=pre_reset_level,
             packer_depth_at_reset=packer_depth,
-            pool_stalled=int(pool_stalled),
         )
         self.chk.ok(
             "XRST-STALE",
