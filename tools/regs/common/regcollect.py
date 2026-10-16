@@ -48,8 +48,7 @@ class RegInstInfo:
     address: int
 
 
-# Field identity and access properties every instance of a type must agree on;
-# reset may differ per instance.
+# Field identity, access properties and reset every instance of a type must agree on.
 FIELD_ACCESS_PROPS = (
     "name",
     "high",
@@ -60,6 +59,7 @@ FIELD_ACCESS_PROPS = (
     "onread",
     "singlepulse",
     "volatile",
+    "reset",
 )
 
 
@@ -111,8 +111,8 @@ def def_name(node, shorten_names: bool) -> str:
 class FieldCollector(RDLListener):
     """Collect per-type field layouts and per-instance shapes under a target addrmap.
 
-    Subclasses may override enter_* methods for text emission; call super() first
-    so collection stays consistent.
+    Subclasses may override enter_* and exit_* methods for text emission; call
+    super() first so collection stays consistent.
     """
 
     def __init__(self, root, target_addr_map, shorten_names):
