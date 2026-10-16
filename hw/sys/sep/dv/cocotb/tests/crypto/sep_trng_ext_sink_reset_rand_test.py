@@ -39,7 +39,9 @@ Checkers:
   CHK-XRST-RESUME  the first transfer of each active stream after the clear comes
                    within 16 x t_xfer + 64 clocks, with no internal set-up.
   CHK-XRST-STALE   after the release fifo_level = M and the M pops return the new
-                   pairs in order. Control: pre_reset_level at least 1.
+                   pairs in order. Controls: pre_reset_level at least 1, and the
+                   pool packer holds a half-packed word (one beat of a pair) when
+                   the reset asserts.
   CHK-XRST-CLIENT  before the reset each word a client accepts and each OTBN RND
                    word is a sent word; the AES and KMAC results equal the goldens.
   CHK-XRST-OTBN    per client: the request pending in the clear stays 1 with no
@@ -594,21 +596,40 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         # Step 4: restart the beat stream on both streams, then the reset at the offset.
         restart = list(plan.restart_pairs)
         stop2 = [False]
+        # Set at the reset moment: the feeder stops after the first beat of a pair,
+        # so the pool holds a half-packed word when the clear asserts.
+        half = [False]
+        ended_half = [False]
 
         async def feed_pairs() -> None:
             while not stop2[0] and restart:
                 a = restart.pop(0)
-                for _ in range(2):
+                for beat in range(2):
                     self.ext.send(2, [a])
                     while self.ext.pending(2) and not stop2[0]:
                         await RisingEdge(dut.clk_i)
                     if stop2[0]:
+                        return
+                    if beat == 0 and half[0]:
+                        ended_half[0] = True
                         return
 
         task2 = cocotb.start_soon(feed_pairs())
         pre_reset_level = pool_level(await self.pool.status())
         offset = plan.offset_frac * t_fill // 1000
         await ClockCycles(dut.clk_i, max(1, offset))
+        half[0] = True
+        if await self._until(lambda: task2.done(), SETTLE_CAP) is None:
+            raise AssertionError(f"stream-2 feeder did not stop in {SETTLE_CAP}")
+        if not ended_half[0]:
+            # The restart pairs ran out on a whole pair: one beat of an old pair.
+            self.ext.send(2, [plan.fill_pairs[-1]])
+            if not await self._settle(2, 1, SETTLE_CAP):
+                raise AssertionError(f"half-pair beat not taken in {SETTLE_CAP}")
+        await self._until(lambda: self.trace.pool_quiet >= POOL_QUIET, SETTLE_CAP)
+        await ReadOnly()
+        packer_depth = self.rd(dut.entropy_pool_packer_depth_o)
+        await RisingEdge(dut.clk_i)
         new = list(plan.new_pairs)
         new_s: set[int] = set()
 
@@ -727,7 +748,12 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         expect = [(a << 32) | a for a in plan.new_pairs]
         old = {(a << 32) | a for a in plan.fill_pairs + plan.restart_pairs}
         stale = sum(1 for p in pops if p in old)
-        self.chk.ctrl("XRST-STALE", pre_reset_level >= 1, pre_reset_level=pre_reset_level)
+        self.chk.ctrl(
+            "XRST-STALE",
+            pre_reset_level >= 1 and packer_depth != 0,
+            pre_reset_level=pre_reset_level,
+            packer_depth_at_reset=packer_depth,
+        )
         self.chk.ok(
             "XRST-STALE",
             done and level_after == plan.m_new and pops == expect and bad_resp == 0,

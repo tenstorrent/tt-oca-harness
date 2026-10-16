@@ -137,7 +137,7 @@ def hmac_or_sha_words(
 
 
 # --- DIGEST byte order at digest_swap = 0 ------------------------------------
-# ``hmac.adoc``:116-117 (``CFG.digest_swap``) and ``hmac.hjson``:468-469 settle the
+# ``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117 (``CFG.digest_swap``) and ``hmac.hjson``:468-469 settle the
 # register order (DIGEST_0 holds digest bytes 0..3) and that ``digest_swap`` = 1
 # converts the byte order of each word. The text does not state the byte order of a
 # DIGEST word at ``digest_swap`` = 0. A readback therefore equals its golden when every

@@ -51,7 +51,7 @@ Checkers:
 The measurement run of each stalled leg counts the writes until a ``STATUS`` read after each
 write shows ``fifo_full`` = 1 (N). The graded run posts N writes, reads ``fifo_full`` = 1 and
 issues the next beats one at a time until one is held. The register text states that data
-written to the FIFO whilst it is full is back-pressured (``hmac.adoc``:159), but a byte packer
+written to the FIFO whilst it is full is back-pressured (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:159), but a byte packer
 sits in front of the FIFO and the text does not state which write is held. The index of the
 held beat is therefore log-only (``OBS-BLOCKED CHK-HMAC-BACKPRESSURE`` and
 ``OBS-HMAC-BP-HOLD-BEAT``); the graded part is a hold within ``BP_BEAT_BOUND`` beats and no
@@ -59,7 +59,7 @@ lost data. The measurement run issues up to ``PROBE_EXTRA_MAX`` more writes with
 held and logs how many complete; that count is not graded.
 
 DIGEST byte order: the register text settles the register order (DIGEST_0 holds digest bytes
-0..3) and the ``digest_swap`` swap (``hmac.adoc``:116-117), not the byte order of a word at
+0..3) and the ``digest_swap`` swap (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117), not the byte order of a word at
 ``digest_swap`` = 0. Every digest-to-golden compare of the leaf accepts the big-endian or the
 little-endian read of each word, with one order for every readback of the seed
 (``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order is logged as

@@ -54,7 +54,7 @@ The digest of a mismatched length above 128 bits has no stated value; its
 comparisons are logged as ``OBS-KEYSEL-MISMATCH``.
 
 DIGEST byte order: the register text settles the register order (DIGEST_0 holds
-digest bytes 0..3) and the ``digest_swap`` swap (``hmac.adoc``:116-117), not the
+digest bytes 0..3) and the ``digest_swap`` swap (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117), not the
 byte order of a word at ``digest_swap`` = 0. Every HMAC golden compare accepts the
 big-endian or the little-endian read of each word, with one order for every
 readback of the seed (``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order is

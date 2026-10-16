@@ -675,6 +675,9 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             polls += 1
             if status & _SQUEEZE and await self._read_state(len(golden)) == golden:
                 clk = self._now_clk() - t0
+                # The run has completed once STATE shows block 2; grade the
+                # STATUS read taken after that, not the poll read before it.
+                post = await self._rd(KMAC_STATUS)
                 self.chk.ok(
                     "KMAC-RUN",
                     True,
@@ -686,14 +689,15 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
                 )
                 self.chk.ok(
                     "KMAC-SEQ",
-                    True,
+                    _bits(post, _SQUEEZE) == 1,
                     **tag,
                     cmd="run",
-                    idle=_bits(status, _IDLE),
-                    absorb=_bits(status, _ABSORB),
-                    squeeze=1,
+                    idle=_bits(post, _IDLE),
+                    absorb=_bits(post, _ABSORB),
+                    squeeze=_bits(post, _SQUEEZE),
+                    poll_squeeze=_bits(status, _SQUEEZE),
                 )
-                return True
+                return _bits(post, _SQUEEZE) == 1
             if self._now_clk() - t0 > _OUTER_CLK:
                 break
             await ClockCycles(cocotb.top.clk_i, 4)

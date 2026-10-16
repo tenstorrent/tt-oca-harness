@@ -586,7 +586,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |Thirteen cells across SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256 and KMAC-128/256 spanning all five key lengths.
 |<<sep_crypto_edn_multisink_arbitration_test,`sep_crypto_edn_multisink_arbitration_test`>>
 |2
-|no_cpu, +skip_fuse_sense
+|no_cpu, +skip_fuse_sense, +esrc_noise_force
 |ocah_axi_vip, entropy golden
 |Two crypto sinks draw EDN entropy concurrently and both complete correctly: each AES fork block matches its golden bit-exact and the KMAC digest matches its own, while both are shown to have taken real post-adapter EDN beats inside the contention window. An AES-alone baseline in which KMAC takes zero beats is the control that keeps the both-beats check from passing vacuously.
 |<<sep_crypto_edn_round_robin_grant_test,`sep_crypto_edn_round_robin_grant_test`>>
