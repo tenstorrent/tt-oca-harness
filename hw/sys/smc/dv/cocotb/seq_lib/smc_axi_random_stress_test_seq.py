@@ -232,7 +232,12 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
     @staticmethod
     def _span(item) -> tuple[int, int]:
         size, total, addr = item.length, item.transfer_bytes, item.addr
-        if item.burst == FIXED:
+        if item.burst == FIXED and size < 8:
+            # The BFM advances its strobe lanes on FIXED bursts, so a narrow FIXED
+            # burst touches every lane of its container word.
+            lo = addr & ~7
+            hi = lo + 8
+        elif item.burst == FIXED:
             lo = addr - addr % size
             hi = lo + size
         elif item.burst == WRAP:
