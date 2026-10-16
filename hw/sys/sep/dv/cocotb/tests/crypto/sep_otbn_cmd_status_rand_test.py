@@ -118,8 +118,11 @@ Checkers:
 Controls: ``CTRL-OTBN-BUSYWR`` (the idle write reads back 1),
 ``CTRL-OTBN-DONE-LINE`` (enable-set ``INTR_TEST`` cell), ``CTRL-OTBN-CMD-IGNORE``
 (a recognised command of the same seed sets ``done``), ``CTRL-OTBN-INITDONE``
-(the probe does not read 0x04 before the reset pulse, so the 0x04 comes from the
-reset), ``CTRL-OTBN-SWERR-FATAL`` (the same program with
+(after the power-on wipe ``STATUS`` reads 0x00 and the probe holds 0x00 up to the
+clock before the gated reset falls, so the 0x04 comes from the reset pulse; "After
+reset (init), OTBN performs a secure wipe of the internal state and then becomes
+idle." ToO:98; "If OTBN is idle, the STATUS register is set to IDLE." ToO:104,
+0x00 per ``otbn.hjson`` :536), ``CTRL-OTBN-SWERR-FATAL`` (the same program with
 ``software_errs_fatal`` = 0 ends at 0x00), ``CTRL-OTBN-SWERR-RECOV`` (each
 compute run of the command leg ends with ``ERR_BITS`` = 0),
 ``CTRL-OTBN-LOCKED-HOLD`` (a recognised command at IDLE starts an operation),
@@ -445,15 +448,28 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self.rst_t = SepEdgeTimer(dut.otbn_gated_rst_n_probe_o, name="otbn_gated_rst_n").start()
         self.idle_bound = _OUTER_CLK
 
-        # Steps 3-4: reset, wipe then IDLE; the done bit of the wipe is logged only.
+        # Steps 3-4: the power-on wipe ends at IDLE (ToO:98), then reset, wipe then IDLE;
+        # the done bit of the wipe is logged only.
+        pre_idle, pre_vals, _ = await self._wait_idle(self.idle_bound, gap=4)
+        t_pre = _now_ps()
         pre_status = self.rd(dut.otbn_status_probe_o, mask=M_STATUS)
         init_arc_ok, init_arc = await self._reset_otbn("initial")
         self.chk.ok("OTBN-INITDONE", init_arc_ok, seed=seed, reset_arc=init_arc)
+        # The probe holds IDLE from the read before the pulse up to the clock before the
+        # gated reset falls, so the 0x04 after the release is caused by the pulse.
+        pre_falls = self.rst_t.falls(t_pre, bit=0)
+        t_fall = pre_falls[0] if pre_falls else None
+        pre_moves = None if t_fall is None else len(self.status_t.since(t_pre, until_ps=t_fall - 1))
+        at_fall = None if t_fall is None else self.status_t.value_at(t_fall - 1)
         self.chk.ctrl(
             "OTBN-INITDONE",
-            pre_status != ST_SEC_WIPE_INT,
+            pre_idle and pre_status == ST_IDLE and pre_moves == 0 and at_fall == ST_IDLE,
             seed=seed,
+            pre_idle=int(pre_idle),
             status_before_reset=f"0x{pre_status:02x}",
+            pre_polled=_runs(pre_vals),
+            moves_to_fall="none" if pre_moves is None else pre_moves,
+            status_at_fall="none" if at_fall is None else f"0x{at_fall:02x}",
         )
         # No sentence states INTR_STATE.done after the post-reset wipe.
         init_done = await self._rd(A_INTR_STATE, M_DONE)

@@ -148,9 +148,12 @@ Checkers:
                  header that EDN ``RESEED_CMD`` also takes, edn.adoc:225-230)
                  the next Generate acks with ``CMD_STS`` other than 4 and bit 15
                  at 0. Control: the Generate before the Reseed was refused.
-  CHK-CSRNG-GENBITS-GATE  with a Generate pending (``GENBITS_VLD`` = 1, the
-                 control), ``CTRL.SW_APP_ENABLE`` set to a value other than 6:
-                 four ``GENBITS`` reads return 0.
+  CHK-CSRNG-GENBITS-GATE  with a Generate pending, ``CTRL.SW_APP_ENABLE`` set
+                 to a value other than 6: four ``GENBITS`` reads return 0.
+                 Control: ``GENBITS`` is first drained (read while
+                 ``GENBITS_VLD`` = 1, at most four reads per earlier Generate)
+                 until ``GENBITS_VLD`` reads 0, and it reads 1 only after the
+                 leg's own Generate.
 The unstated effects are logged only (``OBS-EDN-*``, ``OBS-CSRNG-*``). The
 ``CMD_STS`` of the CSRNG instantiate stays an observation (``OBS-CSRNG-STS``): no
 sentence states that a first instantiate on the software instance succeeds.
@@ -1059,11 +1062,32 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             hdr.update(
                 {"cmd_sts": sts, "alert15": int(bool(recov & CS_RESEED_CNT)), "words": words}
             )
-            # GENBITS gate: a Generate with data pending, then SW_APP_ENABLE not True.
+            # GENBITS gate. The earlier Generates leave words in GENBITS, so drain it
+            # first: GENBITS_VLD "is set when genbits are available" and GENBITS "must
+            # be read four times for each request made" (csrng.hjson). Each Generate of
+            # this leg asks for one block, so at most four words per Generate remain.
             step = "gate"
+            drain_max = 4 * (len(gens) + 1)
+            drained = 0
+            left = await r._rd(CSRNG_GENBITS_VLD) & GB_VLD
+            while left and drained < drain_max:
+                await r._rd(CSRNG_GENBITS)
+                drained += 1
+                left = await r._rd(CSRNG_GENBITS_VLD) & GB_VLD
+            gate.update({"drained": drained, "vld_after_drain": left})
+            # Then this leg's own Generate, with data pending, then SW_APP_ENABLE not True.
             await self._sw_cmd(CMD_GENERATE_1, FIRST_CAP, step, wait_ack=False)
-            _, vld = await self._wait(CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, "gate_vld")
-            self.chk.ctrl("CSRNG-GENBITS-GATE", bool(vld & GB_VLD), genbits_vld=vld & GB_VLD)
+            try:
+                _, vld = await self._wait(CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, "gate_vld")
+            except TrialTimeout:
+                vld = 0
+            self.chk.ctrl(
+                "CSRNG-GENBITS-GATE",
+                not left and bool(vld & GB_VLD),
+                drained=drained,
+                vld_after_drain=left,
+                genbits_vld=vld & GB_VLD,
+            )
             await r._wr(
                 CSRNG_CTRL, CSRNG.value("CTRL", ENABLE=MUBI_TRUE, SW_APP_ENABLE=plan.gen_off)
             )
