@@ -874,6 +874,62 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "every external-aperture and TRNG-window access returns a system-bus error",
         ),
     ],
+    "smu_sep_external_irq_pins_test": [
+        (
+            "CHK-SEP-EXTIRQ-WIDTH",
+            "CHK-SEP-EXTIRQ-WIDTH",
+            "precondition: the external band is 212 lanes and every pin reads low before the first "
+            "drive; earns no feature credit",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-RISE",
+            "CHK-SEP-EXTIRQ-RISE",
+            "for every lane the pending bit of source 44+i reads 0 before the pin is driven and 1 "
+            "within the bounded wait; the pin-to-pending cycles are measured and logged only",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-ONEHOT",
+            "CHK-SEP-EXTIRQ-ONEHOT",
+            "with only lane i high the external-band pending bitmap is the one-hot value at "
+            "source 44+i",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-CORE-PORT",
+            "CHK-SEP-EXTIRQ-CORE-PORT",
+            "the core external-request port bit of source 44+i equals the pending bit, both 1, "
+            "and the port's external band is the same one-hot value",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-FALL",
+            "CHK-SEP-EXTIRQ-FALL",
+            "after lane i returns low its pending bit reads 0 within the bounded wait with no "
+            "gateway or clear register written; the fall cycles are measured and logged only",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-ZERO",
+            "CHK-SEP-EXTIRQ-ZERO",
+            "after lane i showed 1 and every lane is low the external-band pending bitmap is "
+            "all-zero",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-WALK",
+            "CHK-SEP-EXTIRQ-WALK",
+            "lanes 0 to W-1 are visited once each in ascending order with at most one lane high "
+            "and W unchanged",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8; "
+            "the PASS stamp is two clk_smu_i cycles after S7",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "bounded pending-rise and pending-fall waits, 212 sites each, none expired, with "
+            "the last state recorded",
+        ),
+    ],
     "smu_sep_sba_peripheral_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",

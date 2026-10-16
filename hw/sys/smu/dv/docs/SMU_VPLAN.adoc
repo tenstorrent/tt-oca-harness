@@ -363,6 +363,7 @@ one-line intent.
 |`smu_sep_stap_hold_reset_test` |wrapper |A deselected SEP debug STAP parks its host TMS at its TMS-Hold value and adds only its SIB bit to the scan string, and its 3DCR resets on TRST and, unless Config-Hold is set, on Test-Logic-Reset.
 |`smu_smc_gpio_access_filter_test` |wrapper |The GPIO pad access filter admits an access over the external AXI input only when its AxPROT equals the stored requirement once the matching filter is enabled, and admits AxPROT 0 and 7 while both filters are disabled.
 |`smu_smc_gpio_spi_pad_ownership_test` |wrapper |With the SMU holding the SEP, GPIO pads 0-3, 8 and 9 follow the SEP SPI host and ignore DATA_CTRL until `lsio_disable` is set, and pads 4-7, 10 and 54 are not driven by the SPI host and answer to the register only once `lsio_disable` is set.
+|`smu_sep_external_irq_pins_test` |wrapper |Each of the 212 external SEP interrupt pins, driven one at a time, raises the PIC pending bit of its own source 44 to 255 and the matching core request-port bit, and clears them when it returns low.
 |===
 
 [[smu-test-procedures]]
@@ -7318,6 +7319,56 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-171-smu_sep_external_irq_pins_test]]
+===== 171 `smu_sep_external_irq_pins_test`
+
+*Source Module*: `smu_sep_external_irq_pins_test` (`cocotb_wrapper/tests/`; the sequence `smu_sep_external_irq_pins_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the bench wire `tb_sep_ext_interrupts`, connected to the wrapper input `sep_ext_interrupts_i` (`tb/tb_wrapper_top.sv`; idle `'0`) and deposited by the leaf one lane at a time; read-only probes from the `smu` instance, never forced, of the PIC per-source pending vector `gen_sep.u_sep.u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst.extintsrc_req_gw` (bit N is source N, the value `meip` returns) and the core external-request port `gen_sep.u_sep.u_sep_cpu.extintsrc_req_i` (vector bit N is source N + 1); sampled on `obs_sep_clk_o`, with the step stamps on `clk_smu_i`; `elaboration` firmware mode under the `sep_rtl` run mode; `+expected_sep=1`, `+skip_fuse_sense` with the default SMC and SEP shadow preloads, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; no JTAG master, no firmware and no PIC register access
+
+*Objective*: with the PIC gateways at their reset configuration, each external SEP interrupt pin raises the pending bit of its own source and the core request-port bit of that source and no other external source, and returns both to 0 when the pin returns low.
+
+*Test Coverage*:
+
+* The external band is PIC slots 44 to 255, so 212 lanes; lane i is source 44 + i (`hw/sys/sep/doc/interrupts.adoc`, "SEP CPU Interrupt Vector Map"), which is bit i + 43 of the vector driven to the core ("Sources and Routing": bit i of the vector is source i + 1). The lane count is a precondition observation (`CHK-SEP-EXTIRQ-WIDTH`) and earns no feature credit; the all-low baseline is logged only.
+* Pending: source N is bit N % 32 of `meip[N / 32]` (`interrupts.adoc`, "Software Handling"; `hw/sys/sep/regs/blocks/el2_pic/el2_pic.rdl`, MEIP `intpend`). For every lane in ascending order the pending bit reads 0 before the pin is driven and 1 within a bounded wait after it (`CHK-SEP-EXTIRQ-RISE`); the external-band bitmap is then the one-hot value at the lane (`CHK-SEP-EXTIRQ-ONEHOT`) and the core request-port bit equals the pending bit, with the port's external band the same one-hot value (`CHK-SEP-EXTIRQ-CORE-PORT`).
+* Release: the gateway reset configuration is polarity 0 and level type (`el2_pic.rdl`, MEIGWCTRL), so with the pin low and no gateway or clear register written the pending bit reads 0 within a bounded wait (`CHK-SEP-EXTIRQ-FALL`) and the external band is all-zero (`CHK-SEP-EXTIRQ-ZERO`); the same lane read 1 earlier in the leaf.
+* Walk: lanes 0 to 211 are visited once each in ascending order with at most one pin high (`CHK-SEP-EXTIRQ-WALK`).
+* Measured and logged only: the pin-to-pending cycles of every lane and the pending-to-zero cycles of every lane, in `obs_sep_clk_o` cycles; the pending-wait bounds are bench constants.
+* Out of scope: the internal sources 1 to 43, the PIC enable, priority and threshold registers, edge-type gateways and the core's interrupt response.
+
+*Test Procedure*:
+
+[arabic]
+. After bring-up, require every pin low and read the lane count, the pending vector and the core request port.
+. Log the lane count and the all-low baseline.
+. For each lane in ascending order, sample its pending bit, drive the pin high and wait for the pending bit to read 1.
+. With the lane high, compare the external-band pending bitmap and the core request-port bit and band.
+. Drive the lane low and wait for the pending bit to read 0.
+. Compare the external-band pending bitmap all-zero.
+. After the last lane, compare the walk accounting.
+. Stamp PASS two `clk_smu_i` cycles later; check every wait finished inside its bound with its last state, the number of wait sites of each kind, and the order of the steps.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-EXTIRQ-WIDTH` |precondition: the external band is 212 lanes and every pin reads low before the first drive; earns no feature credit
+|`CHK-SEP-EXTIRQ-RISE` |for every lane the pending bit of source 44+i reads 0 before the pin is driven and 1 within the bounded wait; the pin-to-pending cycles are measured and logged only
+|`CHK-SEP-EXTIRQ-ONEHOT` |with only lane i high the external-band pending bitmap is the one-hot value at source 44+i
+|`CHK-SEP-EXTIRQ-CORE-PORT` |the core external-request port bit of source 44+i equals the pending bit, both 1, and the port's external band is the same one-hot value
+|`CHK-SEP-EXTIRQ-FALL` |after lane i returns low its pending bit reads 0 within the bounded wait with no gateway or clear register written; the fall cycles are measured and logged only
+|`CHK-SEP-EXTIRQ-ZERO` |after lane i showed 1 and every lane is low the external-band pending bitmap is all-zero
+|`CHK-SEP-EXTIRQ-WALK` |lanes 0 to W-1 are visited once each in ascending order with at most one lane high and W unchanged
+|`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8; the PASS stamp is two clk_smu_i cycles after S7
+|`CHK-TIMEOUT-PATHS` |bounded pending-rise and pending-fall waits, 212 sites each, none expired, with the last state recorded
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7486,6 +7537,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_xtrig_ctm_illegal_phase_test` |F6 |dtp_under_smu, hosted |`XT_ILLEGAL_PHASE`
 |`smu_ic_reset_ss_domain_matrix_test` |F3 |smc_under_smu, hosted |`IC_RESET_SS_COLD_OVRD`, `IC_RESET_SS_WARM_OVRD`, `IC_RESET_SS_EXCL`
 |`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, hosted |`BSR_EXTEST_TDO_MATCH`
+|`smu_sep_external_irq_pins_test` |F3 |hosted |`CHK-SEP-EXTIRQ-RISE`
 |===
 
 [[smu-out-and-wrapper]]
