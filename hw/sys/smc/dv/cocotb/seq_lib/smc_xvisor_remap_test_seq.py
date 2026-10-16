@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_XVISOR_REMAP full sweep (TC_SMC_P1CG_20).
+"""SMC_XVISOR_REMAP full sweep.
 
 The generated map declares an 8-entry hypervisor remap table
 (SMC_XVISOR_REMAP_0..7, ATTRS-only per entry), a sibling of the ALIAS_REMAP and

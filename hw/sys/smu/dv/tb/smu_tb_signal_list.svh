@@ -157,7 +157,7 @@
 // dropped it", which look identical from the firmware's side.
 `SMU_TB_OUT(logic [31:0], sep_xbar_in_aw_count_o)
 // AWUSER of the last crossbar->SEP write. The SEP inbound filter matches
-// src_id/group_id out of this field (axi_filter_wrap.sv:159), so a window
+// src_id/group_id out of this field (axi_filter_wrap.sv), so a window
 // that looks correctly programmed still drops traffic whose user field
 // carries a different source id.
 `SMU_TB_OUT(logic [11:0], sep_xbar_in_aw_user_o)

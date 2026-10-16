@@ -32,7 +32,7 @@ def _mailbox_irq_level(dut) -> int:
     The aggregate is a DUT interrupt output that is long out of reset by the
     time these helpers run, so X/Z here is a defect, not a don't-care: fail with
     a diagnostic on every leg instead of letting ``int()`` raise or resolve it
-    arbitrarily ([X-AWARE-CHECK]).
+    arbitrarily.
     """
     raw = dut.tb_mailbox_irq_any.value
     assert raw.is_resolvable, f"tb_mailbox_irq_any is not resolvable (X/Z): {raw}"

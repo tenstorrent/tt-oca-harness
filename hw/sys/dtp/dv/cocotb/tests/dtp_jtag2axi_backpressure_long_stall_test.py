@@ -27,4 +27,6 @@ class dtp_jtag2axi_backpressure_long_stall_test(dtp_jtag2axi_robustness_base_tes
         "CHK-J2A-STALL-FSM",
         "CHK-J2A-STALL-BUSY",
         "CHK-J2A-STALL-HOLD",
+        "CHK-J2A-REFUSED",
+        "CHK-J2A-UPDATE-EDGE",
     )

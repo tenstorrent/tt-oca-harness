@@ -180,7 +180,7 @@ def _read_probe(dut, signal_name: str) -> int:
     These probes are registered/combinational DUT observables that are out of
     reset by the time any control runs, so X/Z is a defect rather than a
     don't-care: fail with a diagnostic instead of letting ``int()`` resolve it
-    arbitrarily (``[X-AWARE-CHECK]``).
+    arbitrarily.
     """
     raw = getattr(dut, signal_name).value
     assert raw.is_resolvable, f"{signal_name} is not resolvable (X/Z): {raw}"

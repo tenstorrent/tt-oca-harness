@@ -53,7 +53,7 @@ class smc_fw_i2c_sanity_test(smc_base_test):
         seq = smc_fw_i2c_pair_test_seq(
             "fw_i2c_sanity_seq",
             tag="I2C-SANITY",
-            # PASS landed 0.80 ms after release in the reference run (~1600 polls at a
+            # The image reaches PASS about 0.8 ms after release (~1600 polls at a
             # 5 ns clk_smc_i); 16_000 is ~10x that.
             poll_iterations=16_000,
             floors=(

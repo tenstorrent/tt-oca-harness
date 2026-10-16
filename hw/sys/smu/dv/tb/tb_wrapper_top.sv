@@ -949,7 +949,7 @@ module smu_wrapper_uvm_top
     end
   end
   // The crossbar gives ext_out no address rule -- it is the catch-all for
-  // whatever the SEP/SMC aperture rules do not claim (smu_axi_xbar.sv:90) --
+  // whatever the SEP/SMC aperture rules do not claim (smu_axi_xbar.sv) --
   // so the apertures are what decide whether an outbound firmware mailbox
   // write leaves the SMU or is swallowed back into sep_in.
   always_ff @(posedge clk_smu or negedge rst_cold_ni) begin

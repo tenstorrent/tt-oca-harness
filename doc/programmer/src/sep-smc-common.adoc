@@ -25,8 +25,20 @@ until programmed, so local resources are reached at their local alias addresses
 (SMC `0xC000_0000`) until then. Program the range, offset and AxCACHE of each
 region before relying on its translation or cacheability.
 
-The SMC output fabric has separate Machine-mode and Xvisor remap regions,
-selected by the address window a request targets rather than by its privilege.
+Filters decide what an SMC outbound request may reach partly from its source
+ID. The SMC output fabric's M-mode and Xvisor remap regions translate requests
+to their windows and replace that source ID: `MMODE` for another processor's
+machine-mode firmware, `OTHERS` for its hypervisor and guests. Any other
+request keeps the SMC source ID. This lets SMC firmware reach resources of an
+integrated processor, such as an application processor (AP), as that
+processor's software would. The address window selects the source ID, not the
+privilege mode of the issuing hart. The TRM describes the
+ifdef::backend-html5[]
+xref:ocah-docs:smc:fabric.adoc#smc-fabric-privilege-controlled-remapping[SMC output remapping].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/fabric.html#smc-fabric-privilege-controlled-remapping[SMC output remapping].
+endif::backend-pdf[]
 A region with `REGION_ATTRS.valid` clear passes accesses through unchanged; set
 `valid` once its offset is programmed to remap through it.
 
@@ -37,6 +49,83 @@ AxUSER source ID with `OTHERS`, and the secure DMA drives `OTHERS` as well. The
 outbound filter checks the source ID after remapping, so configure it to keep
 `OTHERS` traffic away from M-mode assets, and restrict the STEE remapper to
 STEE access in the inbound filter.
+
+[[smc-xvisor-remap-example]]
+==== Example: SMC Access to Hypervisor Memory
+
+A hypervisor shares a buffer with SMC firmware, for example to receive
+telemetry. The filter in front of that memory admits the hypervisor's source
+ID, `OTHERS`, but not the SMC's, so a direct SMC write to the buffer is
+blocked. SMC firmware maps the buffer into one region of the Xvisor window
+instead, and its writes then reach the buffer as `OTHERS` traffic.
+
+Each of the eight Xvisor regions covers 1 MiB of the window at `0xC180_0000`.
+A request to region `i` keeps its low 20 bits and takes bits [55:20] from that
+region's offset, so the target must be 1 MiB-aligned; a larger buffer takes
+consecutive regions.
+
+.Xvisor remap example C definitions.
+[source,sourceCode,c]
+----
+// Xvisor output remap register and window addresses.
+// In SMC-local address space.
+#define SMC_XVISOR_REMAP_ATTRS(i) (0xC0014000 + (i) * 0x8)
+#define SMC_XVISOR_WINDOW_BASE    0xC1800000
+#define SMC_REMAP_REGION_SIZE     0x100000
+
+// Output remap register constants.
+#define REMAP_ATTRS_VALID (1ULL << 63)
+----
+
+.Xvisor remap example C configuration and usage.
+[source,sourceCode,c]
+----
+// Map the 1 MiB-aligned system address `target` into Xvisor region `i`
+// and return the SMC address that reaches it.
+uintptr_t smc_xvisor_map(uint8_t i, uint64_t target) {
+
+    // Program the offset and set `valid` in one 64-bit write.
+    write64(SMC_XVISOR_REMAP_ATTRS(i), target | REMAP_ATTRS_VALID);
+
+    // Make sure the write has committed before accesses through the region.
+    asm volatile("fence" ::: "memory");
+
+    return SMC_XVISOR_WINDOW_BASE + i * SMC_REMAP_REGION_SIZE;
+}
+
+// Remove the mapping of Xvisor region `i`.
+void smc_xvisor_unmap(uint8_t i) {
+
+    // Make sure accesses through the region have completed.
+    asm volatile("fence" ::: "memory");
+
+    write64(SMC_XVISOR_REMAP_ATTRS(i), 0);
+    asm volatile("fence" ::: "memory");
+}
+
+// Post a status word to the hypervisor's buffer at 0x20_0040_0000.
+void smc_post_status(uint32_t status) {
+    volatile uint32_t *buf = (volatile uint32_t *)smc_xvisor_map(0, 0x2000400000);
+
+    // Leaves the SMC as a write to 0x20_0040_0000 with source ID `OTHERS`.
+    buf[0] = status;
+
+    smc_xvisor_unmap(0);
+}
+----
+
+The write keeps the AxPROT the SMC hart issued, NS included; only the address
+and the source ID change. The SMC outbound filter passes it unless an entry
+denies `OTHERS` traffic to the target. The M-mode window works the same way,
+with its regions at `0xC0013000`, its window at `0xC100_0000` and source ID
+`MMODE`.
+
+[WARNING]
+====
+The Xvisor window replaces the source ID of every request to it, including
+requests to a region with `valid` clear, which leave untranslated. Access a
+region only while it is mapped.
+====
 
 [[sep-smc-axi-filters]]
 === AXI Inbound/Outbound Filters

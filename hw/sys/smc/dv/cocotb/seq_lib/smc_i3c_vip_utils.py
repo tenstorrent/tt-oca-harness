@@ -67,8 +67,7 @@ def _pad_level(dut, sig_name: str, step: str) -> int:
     """Resolve an I3C0 net to 0/1, FAILING when it is X/Z in the checked window.
 
     ``int(sig.value)`` on an unresolved net either raises or resolves
-    arbitrarily; either way an X would hide a real defect rather than report it
-    ([X-AWARE-CHECK]).
+    arbitrarily; either way an X would hide a real defect rather than report it.
     """
     value = getattr(dut, sig_name).value
     assert value.is_resolvable, (

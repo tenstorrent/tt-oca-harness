@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""I2C multi-instance CSR precheck (TC_SMC_P1CG_02).
+"""I2C multi-instance CSR precheck.
 
 The generated map declares three controllers (I2C_0/1/2) plus a top-level
 I2C_CTRL block. Two legs, both scoreboard-compared:
