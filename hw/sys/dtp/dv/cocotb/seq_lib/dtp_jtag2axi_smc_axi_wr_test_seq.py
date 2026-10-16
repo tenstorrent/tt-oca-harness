@@ -274,6 +274,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         await self.reset_tap()
         rng = self.rng("random_write_ops")
         image: dict[int, int] = {}
+        self.log_step(1, "Run seeded SINGLE_OP writes into a byte image")
         for idx in range(1, self.random_count + 1):
             size = rng.choice([0, 1, 2, 3])
             offset = rng.randrange(0, AXI_BEAT_BYTES >> size) << size
@@ -303,6 +304,8 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             self.image_write("smc_axi", image, addr, data, wstrb=wstrb, size=size)
             self.operation_count += 1
         self.check_memory_image("smc_axi", image, context="random_write")
+        self.log_step(2, "Run seeded series programmings into the same byte image")
+        await self.run_random_series("smc_axi", image, self.rng("random_series_ops"))
 
     async def run_write_security_gating(self) -> None:
         self.log_banner("SMC_AXI_SINGLE_OP Write Security Gating")
@@ -337,6 +340,17 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             data=data ^ 0xA5A5,
             read=False,
             context="gate.queued_drop",
+        )
+        self.log_step(5, "Gate a SMC fabric SERIES_CTRL programming")
+        await self.gate_series_ctrl(
+            "smc_axi", self.rng("smc_axi_gate_series_ctrl"), context="gate.series_ctrl"
+        )
+        self.status = await self.verify_target_recovery(
+            "smc_axi",
+            addr=addr + 0x180,
+            data=data ^ 0x5A5A,
+            read=False,
+            context="gate.series_ctrl",
         )
         writes = self.port_history("smc_axi").count(read=False) - writes_start
         self.emit_nonvacuity(
