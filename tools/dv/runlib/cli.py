@@ -140,6 +140,7 @@ from .site import (
 )
 from .stages import (
     cocotb_python_paths,
+    fetch_build_libraries,
     item_artifact_dir,
     mark_target_built,
     request_stage_cancellation,
@@ -3341,6 +3342,8 @@ def run_flow(
             "config",
             "overlay_env=" + " ".join(f"{name}={value}" for name, value in overlay_env.items()),
         )
+    if not args.dry_run:
+        fetch_build_libraries(flow, root, sim_cfg, tool, console)
     args._ui_leaf_mode = "compact" if scheduler else "full"
     for kind in ("skipped_excluded", "skipped_unimplemented"):
         names = list(getattr(args, f"_{kind}", []) or [])

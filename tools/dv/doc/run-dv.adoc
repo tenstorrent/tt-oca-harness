@@ -510,9 +510,17 @@ formal configuration (`<name>_formal_cfg.toml`).
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
 maintainer flow whose tool allowlist is VCS only; it carries
 `license = "required-commercial"`, so `--list` marks it `(licensed)` and the
-launcher says so when the simulator is absent. The UVM library comes from the
-simulator via `-ntb_opts uvm-1.2` (`[build.vcs].uvm_lib` selects another),
-tests are selected with `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
+launcher says so when the simulator is absent. The UVM library is the
+Accellera 1800.2-2020 release that the profile's
+`[frameworks.uvm.build.uvm_library]` pins by URL and SHA-256. The launcher
+fetches it into `local/uvm/` before the first stage, on the submitting host
+for a cluster run, and later runs reuse that copy; a dry run fetches nothing.
+`OCAH_UVM_HOME` names a UVM home to compile instead, for hosts that cannot
+reach the archive. The build compiles its `uvm_pkg.sv` ahead of every user
+source and links its DPI layer. A sim config's `[build.vcs].uvm_lib` selects
+a simulator-supplied library through `-ntb_opts` instead (uvm-1.2 or later;
+VCS's bare `uvm` is uvm-1.1). Tests are selected with
+`+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
 the `uvm-log` parse policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium
 and Questa are not in the allowlist. The reference consumer is the
 DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter
@@ -1905,7 +1913,7 @@ stage's configured `kind` chooses its backend implementation. The shared
 `hdl_compile`, `sim`) that dispatch per (tool, framework) at run time: for
 cocotb, `hdl_compile` builds the simulator model and `sim` launches the cocotb
 test; for SV-UVM on VCS, `hdl_compile` runs the folded two-step build —
-analyze (vlogan, with the simulator-owned UVM library precompiled first) then
+analyze (vlogan, with the UVM library precompiled first) then
 elaborate to the reusable `simv` — and `sim` is one `simv` invocation per
 test/seed (`+UVM_TESTNAME`). There is no separate `elaborate` stage in the
 shared graph; the elaborate sub-step logs alongside the `hdl_compile` log as

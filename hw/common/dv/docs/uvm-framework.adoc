@@ -32,9 +32,11 @@ flow:
   contract: the simulator allowlist, the folded analyze+elaborate
   build, the bare `UVM` define, assertions enabled, and `SIMULATION` kept
   on. DUT configs declare only their own sources and incdirs.
-* *Simulator-owned UVM library.* The UVM base-class library comes from the
-  simulator installation; the analyze stage compiles it before any user
-  source. It is not included in the repository.
+* *Fetched UVM library.* The UVM base-class library is the Accellera
+  1800.2-2020 reference implementation, compiled from source. The runner
+  fetches the release archive the profile pins into `local/uvm/` on first
+  use, and `OCAH_UVM_HOME` names a local copy instead; the analyze stage
+  compiles it before any user source. It is not included in the repository.
 * *One testbench top, one core.* The same `tb_top.sv` compiles as a
   framework-neutral core (interface instances, DUT, adapters) whose
   instances both frameworks consume; the `UVM` define adds only the harness
