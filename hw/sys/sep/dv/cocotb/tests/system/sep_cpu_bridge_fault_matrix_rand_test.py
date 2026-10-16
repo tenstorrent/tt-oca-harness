@@ -384,8 +384,8 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             + " ".join(f"{b}:{RESP_NAME.get(r, r)}" for b, r, _ in reads)
         )
         fcs = [
-            field_compare(p, 0, PERIPH_MASK),
-            field_compare(d, 0, DMA_MASK),
+            field_compare(p, SEP_CPU_CTRL.reset32("PERIPH_BUS_ERR_STATUS"), PERIPH_MASK),
+            field_compare(d, SEP_CPU_CTRL.reset32("DMA_BUS_ERR_STATUS"), DMA_MASK),
             field_compare(p2, 0, PERIPH_MASK),
             field_compare(d2, 0, DMA_MASK),
         ]
