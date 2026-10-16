@@ -22,6 +22,8 @@ class dtp_jtag2axi_smc_axi_random_ops_test(dtp_base_test):
         "CHK-AXI-STREAM-MIN",
         "CHK-J2A-BUS-REQ",
         "CHK-J2A-MEM-IMAGE",
+        "CHK-J2A-SERIES-ADDR",
+        "CHK-J2A-STATUS-BIT",
     )
     axi_checker_stream_minimums = {"smc_axi": 2}
 
