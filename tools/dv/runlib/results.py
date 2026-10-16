@@ -130,6 +130,12 @@ def _site_layer_label(args: Any | None) -> str | None:
     return str(label) if label else None
 
 
+def _uvm_library_record(args: Any | None) -> dict[str, str] | None:
+    """The UVM library the run compiled (recorded on args by run_flow), or None."""
+    record = getattr(args, "_uvm_library", None) if args is not None else None
+    return dict(record) if record else None
+
+
 def cli_overrides(args: Any | None) -> dict[str, Any]:
     if args is None:
         return {}
@@ -911,6 +917,9 @@ def regression_payload(
     site = _site_layer_label(args)
     if site:
         payload["site"] = site
+    uvm_library = _uvm_library_record(args)
+    if uvm_library:
+        payload["uvm_library"] = uvm_library
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:
@@ -982,6 +991,9 @@ def result_payload(
     site = _site_layer_label(args)
     if site:
         payload["site"] = site
+    uvm_library = _uvm_library_record(args)
+    if uvm_library:
+        payload["uvm_library"] = uvm_library
     selection: dict[str, Any] = {
         key: list(getattr(args, f"_{key}", []) or []) if args is not None else []
         for key in ("skipped_unimplemented", "skipped_excluded")

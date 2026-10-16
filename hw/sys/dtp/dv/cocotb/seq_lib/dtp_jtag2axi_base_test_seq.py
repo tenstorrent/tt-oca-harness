@@ -67,6 +67,10 @@ NONVAC_CHECK_ID = "CHK-AXI-NONVAC"
 TAP_STATE_CHECK_ID = "CHK-TAP-STATE"
 STATUS_BIT_NEGATIVE_KNOB = "DTP_J2A_STATUS_BIT_NEGATIVE"
 BUS_REQ_NEGATIVE_KNOB = "DTP_J2A_BUS_REQ_NEGATIVE"
+SERIES_IMAGE_NEGATIVE_KNOB = "DTP_J2A_SERIES_IMAGE_NEGATIVE"
+SERIES_ADDR_NEGATIVE_KNOB = "DTP_J2A_SERIES_ADDR_NEGATIVE"
+SERIES_STATUS_BIT_NEGATIVE_KNOB = "DTP_J2A_SERIES_STATUS_BIT_NEGATIVE"
+GATE_SERIES_NEGATIVE_KNOB = "DTP_J2A_GATE_SERIES_NEGATIVE"
 # System cycles a launched bridge transaction has to complete on its port.
 PORT_COMPLETION_CYCLES = 200
 # The SINGLE_OP fields a capture returns from the bridge's update latch; the
@@ -79,6 +83,8 @@ SERIES_STATUS_INCREMENTS = (1, 0, 1, 1)
 # TCK cycles for a bridge's state machine to return to idle after a response,
 # and for a released bridge to put a queued request on the bus.
 QUEUE_DROP_TCK = 32
+# Bits of the seeded marker a SERIES_DATA length measurement shifts.
+SERIES_LEN_MARKER_BITS = 16
 
 
 @dataclass(frozen=True)
@@ -1538,6 +1544,102 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             raise AssertionError(f"{NOACT_CHECK_ID} FAIL: {context} target={target}")
         self.check_target_word(target, addr, words[0], size=size, context=f"{context}.slot")
 
+    async def gate_series_ctrl(self, target: str, rng: random.Random, *, context: str) -> None:
+        """A SERIES_CTRL programming under ``target``'s lifecycle disable latches nothing.
+
+        An enabled SERIES_CTRL(WRITE) programming with the reset bit sets a
+        seeded address and size, which its capture must hold. The gated scan
+        programs a READ or WRITE whose address and size both differ. While
+        the bridge is gated, and before any other SERIES_CTRL scan, the
+        SERIES_DATA register must keep the length of the first programming's
+        size; a capture while gated and one after the release must hold its
+        address and size (CHK-J2A-GATE-TDR). No request reaches the port from
+        the gated scan to the release (CHK-AXI-NOACT).
+        ``DTP_J2A_GATE_SERIES_NEGATIVE=1`` leaves the bridge enabled across the
+        gated scan, so the run must fail.
+        """
+        cfg = self.target_cfg(target)
+        sizes = range(cfg.data_size + 1)
+        ref_addr = self.random_upper_addr(target, rng) | self.random_target_aligned_addr(
+            target, rng
+        )
+        ref_size = rng.choice(sizes)
+        gated_op = rng.choice((DtpJtag2AxiOp.READ, DtpJtag2AxiOp.WRITE))
+        beats = 1 << (cfg.addr_width - cfg.data_size)
+        gated_addr = ref_addr ^ (rng.randrange(1, beats) << cfg.data_size)
+        gated_size = rng.choice([s for s in sizes if s != ref_size])
+        gated_depth = rng.randint(0, cfg.rd_pl_depth)
+        self.log.info(
+            "%s %s reference addr=0x%x size=%d; gated %s addr=0x%x size=%d pl_depth=%d",
+            context,
+            target,
+            ref_addr,
+            ref_size,
+            gated_op.name,
+            gated_addr,
+            gated_size,
+            gated_depth,
+        )
+        await self.jtag2axi_series_ctrl(
+            DtpJtag2AxiOp.WRITE, ref_addr, size=ref_size, reset=1, target=target
+        )
+        captures = {"reference": await self.read_series_ctrl(size=ref_size, target=target)}
+        if OcahKnobs.is_set(GATE_SERIES_NEGATIVE_KNOB):
+            self.log.warning("NEGATIVE VALIDATION: the bridge stays enabled across the gated scan")
+        else:
+            await self.disable_debug_bits(cfg.dbg_disable_bit)
+        before = await self.target_activity_counts(target)
+        await self.jtag2axi_series_ctrl(
+            gated_op, gated_addr, pipeline_depth=gated_depth, size=gated_size, target=target
+        )
+        length = await self.series_data_scan_length(target, rng)
+        captures["gated_capture"] = await self.read_series_ctrl(size=ref_size, target=target)
+        await self.enable_all_debug()
+        captures["post_release_capture"] = await self.read_series_ctrl(size=ref_size, target=target)
+        await self.wait_sys_cycles(8)
+        after = await self.target_activity_counts(target)
+        expected = {"addr": self.masked_addr(target, ref_addr), "size": ref_size}
+        fields = [
+            ("request_differs", gated_addr != ref_addr and gated_size != ref_size, True),
+            ("gated_series_data_len", length, 8 * self.size_bytes(ref_size)),
+        ]
+        for label, (_, addr, _, size, _) in captures.items():
+            observed = {"addr": addr, "size": size}
+            fields += [(f"{label}.{name}", observed[name], expected[name]) for name in expected]
+        idle = self.axi_scoreboard.expect_no_activity(
+            before=before,
+            after=after,
+            context=(
+                f"{context} target={target} source=tb_pulse_counters window=gated_scans+release"
+            ),
+        )
+        self._record_target_fields(target, GATE_TDR_CHECK_ID, fields, context=context)
+        if not idle:
+            raise AssertionError(f"{NOACT_CHECK_ID} FAIL: {context} target={target}")
+
+    async def series_data_scan_length(self, target: str, rng: random.Random) -> int:
+        """The Shift-DR length of ``target``'s SERIES_DATA_NO_INCR register, by a marker flush.
+
+        A seeded marker, its first and last bits set, follows as many zeros as
+        the longest series-data register holds. TDO returns the captured
+        register and then TDI delayed by the register's length, so the
+        marker's offset past those zeros is that length; -1 when no offset up
+        to the longest register matches. The scan ends in Update-DR.
+        """
+        cfg = self.target_cfg(target)
+        longest = 8 * cfg.beat_bytes + 1
+        marker = rng.getrandbits(SERIES_LEN_MARKER_BITS) | 1 | 1 << (SERIES_LEN_MARKER_BITS - 1)
+        await self.load_ir(cfg.series_data_no_incr_instr, back_to_rti=True)
+        item = await self.shift_dr(
+            marker << longest, 2 * longest + SERIES_LEN_MARKER_BITS, back_to_rti=True
+        )
+        mask = (1 << SERIES_LEN_MARKER_BITS) - 1
+        length = next(
+            (n for n in range(longest + 1) if (item.result >> (longest + n)) & mask == marker), -1
+        )
+        self.log.info("%s SERIES_DATA marker=0x%04x length=%d", target, marker, length)
+        return length
+
     # --- errored-beat evidence ------------------------------------------------
     def check_error_rdata(
         self,
@@ -1825,6 +1927,140 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             self.log_iteration(idx, beats, "series no-incr read addr=0x%x obs=0x%x", addr, obs)
             self.check_bridge_rdata(target, obs, expected, context=f"{context}.rdata#{idx}")
         return await self.check_series_end(target, addr, size=size, context=context)
+
+    async def run_random_series(
+        self, target: str, image: dict[int, int], rng: random.Random
+    ) -> None:
+        """Seeded SERIES_CTRL(WRITE) programmings on ``target`` whose beats land in ``image``.
+
+        Each programming draws a size other than the previous one's and four
+        to six beats, each an INCR, NO_INCR or WITH_ERROR_STATUS shift of
+        seeded data; a WITH_ERROR_STATUS shift carries a seeded increment bit.
+        On the AXI4 fabric port a series starts at a seeded size-aligned byte
+        offset inside the beat; an OTP beat below the bus width never
+        increments, so the stream keeps every OTP address word-aligned. A
+        beat completes before the next shift, so none queues. The SERIES_CTRL
+        capture after each programming holds the address past the last
+        incrementing beat and an OKAY status, and CHK-J2A-MEM-IMAGE judges the
+        image after the last programming. ``DTP_J2A_SERIES_IMAGE_NEGATIVE=1``
+        flips bit 0 of the image byte at the last beat's address, and
+        ``DTP_J2A_SERIES_ADDR_NEGATIVE=1`` expects each programming's address
+        one stride further, so either run must fail.
+        """
+        cfg = self.target_cfg(target)
+        subword = cfg.bus_type == 0
+        addr_negative = OcahKnobs.is_set(SERIES_ADDR_NEGATIVE_KNOB)
+        if addr_negative:
+            self.log.warning("NEGATIVE VALIDATION: the series end addresses will be corrupted")
+        if OcahKnobs.is_set(SERIES_STATUS_BIT_NEGATIVE_KNOB):
+            self.log.warning("NEGATIVE VALIDATION: the series status bits will be corrupted")
+        programmings = max(2, min(self.random_count, 4))
+        size = -1
+        last = 0
+        for prog in range(1, programmings + 1):
+            size = rng.choice([s for s in range(cfg.data_size + 1) if s != size])
+            stride = self.size_bytes(size)
+            incr_ok = subword or size == cfg.data_size
+            instrs = [cfg.series_data_no_incr_instr, cfg.series_data_with_status_instr]
+            if incr_ok:
+                instrs.append(cfg.series_data_incr_instr)
+            beats = rng.randint(4, 6)
+            offset = rng.randrange(cfg.beat_bytes >> size) << size if subword else 0
+            span = -(-(offset + beats * stride) // cfg.beat_bytes) * cfg.beat_bytes
+            base = self.random_series_base(target, rng, span=span, straddle=True) + offset
+            self.log_iteration(
+                prog, programmings, "series write base=0x%014x size=%d beats=%d", base, size, beats
+            )
+            await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size, target=target)
+            addr = base
+            for beat in range(beats):
+                instr = rng.choice(instrs)
+                increment = instr == cfg.series_data_incr_instr or (
+                    instr == cfg.series_data_with_status_instr
+                    and incr_ok
+                    and bool(rng.getrandbits(1))
+                )
+                data = rng.getrandbits(8 * stride)
+                context = f"random_series#{prog}.{beat}"
+                self.snapshot_target_word(target, image, addr, size)
+                await self.random_series_beat(
+                    target, instr, data, addr=addr, size=size, increment=increment, context=context
+                )
+                self.image_write(target, image, addr, data, wstrb=self.full_wstrb(size), size=size)
+                last = addr
+                addr += stride if increment else 0
+                self.operation_count += 1
+            self.status = await self.check_series_end(
+                target,
+                addr + (stride if addr_negative else 0),
+                size=size,
+                context=f"random_series#{prog}",
+            )
+        if OcahKnobs.is_set(SERIES_IMAGE_NEGATIVE_KNOB):
+            self.log.warning("NEGATIVE VALIDATION: the series byte image will be corrupted")
+            image[self.target_slot(target, last)] ^= 0x1
+        self.check_memory_image(target, image, context="random_series")
+
+    async def random_series_beat(
+        self,
+        target: str,
+        instr: DtpJtagInstr,
+        data: int,
+        *,
+        addr: int,
+        size: int,
+        increment: bool,
+        context: str,
+    ) -> None:
+        """One series write beat shifted through ``instr``, judged once the port completes it.
+
+        The beat's strobes are armed for CHK-AXI-STRB, the ledger judges the
+        request (CHK-J2A-BUS-REQ), and the subordinate must hold ``data`` at
+        ``addr`` (CHK-AXI-WMEM). A WITH_ERROR_STATUS shift returns the status
+        bit of the last WITH_ERROR_STATUS or SINGLE_OP operation, every one of
+        them OKAY here, so the bit is 0 (CHK-J2A-STATUS-BIT).
+        ``DTP_J2A_SERIES_STATUS_BIT_NEGATIVE=1`` expects 1, so the run must
+        fail.
+        """
+        self.log.info(
+            "%s %s addr=0x%014x data=0x%x increment=%d", context, instr.name, addr, data, increment
+        )
+        cfg = self.target_cfg(target)
+        lane = addr % cfg.beat_bytes
+        wstrb = self.full_wstrb(size) << lane
+        self.scoreboard_arm_strobes(target, wstrb, addr, context=context)
+        if instr != cfg.series_data_with_status_instr:
+            await self.series_write_beat(
+                target, data, addr=addr, size=size, increment=increment, context=context
+            )
+            return
+        completed = self.port_history(target).count(read=False)
+        before = await self.target_activity_counts(target)
+        _, status_bit = await self.series_data_with_status(
+            data, size=size, increment=int(increment), target=target, back_to_rti=True
+        )
+        self.log.info("%s status_bit=%d", context, status_bit)
+        await self.wait_for_target_activity(
+            target, before=before, read=False, context=f"{context}.axi"
+        )
+        await self.require_port_completion(target, read=False, above=completed, context=context)
+        await self.expect_bus_request(
+            target,
+            read=False,
+            addr=addr,
+            size=size,
+            context=context,
+            data=data << (8 * lane),
+            wstrb=wstrb,
+        )
+        self.check_target_word(target, addr, data, size=size, context=f"{context}.mem")
+        self.check_equal(
+            self.axi_scoreboard,
+            STATUS_BIT_CHECK_ID,
+            status_bit,
+            int(OcahKnobs.is_set(SERIES_STATUS_BIT_NEGATIVE_KNOB)),
+            context=f"{context}.status_bit target={target} addr=0x{addr:x}",
+        )
 
     # --- WITH_ERROR_STATUS streams ---------------------------------------------
     def plan_series_status(self, target: str, rng: random.Random) -> DtpSeriesStatusPlan:

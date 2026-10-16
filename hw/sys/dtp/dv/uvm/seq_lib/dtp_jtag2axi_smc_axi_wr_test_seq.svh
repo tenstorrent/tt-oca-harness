@@ -12,7 +12,8 @@
 //   series_write_no_incr          fixed-address series data stream
 //   series_write_incr_with_error  WITH_ERROR_STATUS mode, per-beat increment,
 //                                 one armed fault beat
-//   random_ops                    randomized single writes
+//   random_ops                    randomized single writes, then seeded
+//                                 series programmings
 //   write_security_gating         smc_jtag2axi disable gates the bridge
 //
 // Each scenario is organized as reset/setup, stimulus, observe/check,
@@ -216,6 +217,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
   task run_random_ops(dtp_j2a_target_t t);
     bit [7:0] image[bit [63:0]];
     `uvm_info(get_type_name(), "SMC_AXI_SINGLE_OP Randomized Writes", UVM_LOW)
+    log_step("1", "Run seeded SINGLE_OP writes into a byte image");
     for (int unsigned idx = 1; idx <= random_count; idx++) begin
       int unsigned size = $urandom_range(3);
       bit [63:0] offset = 64'($urandom_range((t.beat_bytes >> size) - 1) << size);
@@ -233,6 +235,8 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
       operation_count++;
     end
     check_memory_image(t, image, "random_write");
+    log_step("2", "Run seeded series programmings into the same byte image");
+    run_random_series(t, image);
   endtask
 
   task body();
@@ -258,8 +262,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
                     "unknown write-side JTAG2AXI scenario %s", scenario))
     endcase
     enable_all_debug();
-    // CHK-AXI-NONVAC: the pass ran an operation and moved a responder burst;
-    // +DTP_RANDOM_COUNT=1 leaves random_ops one operation per pass.
+    // CHK-AXI-NONVAC: the pass ran an operation and moved a responder burst.
     emit_nonvacuity_evidence(t, operation_count >= 1, $sformatf(
                              "scenario=%s operations=%0d min_ops=1", scenario, operation_count));
     `uvm_info(get_type_name(),

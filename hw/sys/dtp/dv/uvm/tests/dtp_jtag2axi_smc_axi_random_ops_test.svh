@@ -4,7 +4,8 @@
 // dtp_jtag2axi_smc_axi_random_ops_test — the `random_ops` SMC fabric
 // JTAG2AXI scenario: seeded random single writes across sizes, addresses,
 // payloads, and strobes, every write intent-armed for the shared AXI
-// scoreboard.
+// scoreboard, then seeded series write programmings whose INCR, NO_INCR and
+// WITH_ERROR_STATUS beats land in the same byte image.
 
 class dtp_jtag2axi_smc_axi_random_ops_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_axi_random_ops_test)
@@ -24,7 +25,9 @@ class dtp_jtag2axi_smc_axi_random_ops_test extends dtp_base_test;
                             "CHK-AXI-COMPLETION",
                             "CHK-AXI-NONVAC",
                             "CHK-J2A-BUS-REQ",
-                            "CHK-J2A-MEM-IMAGE"
+                            "CHK-J2A-MEM-IMAGE",
+                            "CHK-J2A-SERIES-ADDR",
+                            "CHK-J2A-STATUS-BIT"
                         });
   endfunction
 
