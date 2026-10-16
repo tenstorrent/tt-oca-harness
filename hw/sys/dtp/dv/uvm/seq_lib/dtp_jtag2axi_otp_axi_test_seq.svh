@@ -13,7 +13,8 @@
 //   series_write_no_incr          fixed-address series data stream
 //   series_write_incr_with_error  WITH_ERROR_STATUS mode, per-beat increment,
 //                                 one armed fault beat
-//   random_ops                    randomized single writes at the bus width
+//   random_ops                    randomized single writes at the bus width,
+//                                 then seeded series programmings
 //   write_security_gating         the port's disable gates the bridge
 //   single_write_read             one write plus readback of the same slot
 //   series_write_read_incr        incrementing series write leg then per-beat
@@ -159,6 +160,7 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
     int unsigned size = t.default_size;
     bit [7:0] image[bit [63:0]];
     `uvm_info(get_type_name(), $sformatf("%s SINGLE_OP Randomized Writes", t.name), UVM_LOW)
+    log_step("1", "Run seeded SINGLE_OP writes into a byte image");
     for (int unsigned idx = 1; idx <= random_count; idx++) begin
       bit [63:0] upper = random_upper_addr(t);
       bit [63:0] addr = upper | random_target_aligned_addr(t, size);
@@ -175,6 +177,8 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
       operation_count++;
     end
     check_memory_image(t, image, "random_write");
+    log_step("2", "Run seeded series programmings into the same byte image");
+    run_random_series(t, image);
   endtask
 
   // -- read_random_ops: randomized single reads of preloaded data ----------
@@ -248,7 +252,7 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
     endcase
     enable_all_debug();
     // CHK-AXI-NONVAC: the pass ran an operation and moved a responder burst;
-    // +DTP_RANDOM_COUNT=1 leaves the random scenarios one operation per pass.
+    // +DTP_RANDOM_COUNT=1 leaves read_random_ops one operation per pass.
     emit_nonvacuity_evidence(
         t, operation_count >= 1, $sformatf(
         "scenario=%s target=%s operations=%0d min_ops=1", scenario, t.name, operation_count));
