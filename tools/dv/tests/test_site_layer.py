@@ -171,6 +171,31 @@ class SiteFileValidationTest(SiteCase):
     def test_argv_is_validated_as_a_template(self) -> None:
         self.rejects('[simulators.sby]\nargv = ["{binary}", "{nope}"]\n', "nope")
 
+    def test_uvm_library_takes_exactly_one_route(self) -> None:
+        self.rejects('[uvm_library]\nrev = "x"\n', "[uvm_library]", "unsupported key(s): rev")
+        self.rejects("[uvm_library]\n", "sets exactly one of: archive, home, url")
+        self.rejects(
+            '[uvm_library]\nurl = "https://mirror/uvm.gz"\nhome = "uvm"\n', "exactly one of"
+        )
+        self.rejects('[uvm_library]\nurl = ""\n', "url must be a non-empty string")
+
+    def test_uvm_library_paths_resolve_against_the_site_file_and_must_exist(self) -> None:
+        self.rejects('[uvm_library]\narchive = "uvm/release.gz"\n', "archive does not exist")
+        self.rejects('[uvm_library]\nhome = "uvm/home"\n', "home does not exist")
+        archive = self.write("uvm/release.gz", "archive\n")
+        (self.tmp / "uvm" / "home").mkdir()
+        self.assertEqual(
+            self.load('[uvm_library]\narchive = "uvm/release.gz"\n').uvm_library,
+            {"archive": str(archive.resolve())},
+        )
+        self.assertEqual(
+            self.load('[uvm_library]\nhome = "uvm/home"\n').uvm_library,
+            {"home": str((self.tmp / "uvm" / "home").resolve())},
+        )
+        mirror = self.load('[uvm_library]\nurl = "https://mirror.example/uvm.gz"\n')
+        self.assertEqual(mirror.uvm_library, {"url": "https://mirror.example/uvm.gz"})
+        self.assertEqual(self.load("schema_version = 1\n").uvm_library, {})
+
     def test_dut_entry_keys_and_target(self) -> None:
         self.rejects('[duts.dtp]\nroot = "x"\n', "unsupported key(s): root")
         self.rejects(
@@ -337,6 +362,8 @@ class MergeTest(SiteCase):
             [duts.smc]
             sim_cfg = "smc_sim_cfg.toml"
             tools = ["vcs"]
+            [uvm_library]
+            url = "https://mirror.example/uvm.gz"
             """
         )
         summary = site_summary(layer, {"vcs", "verilator"})
@@ -345,6 +372,7 @@ class MergeTest(SiteCase):
         self.assertIn("fvtool(added)", summary)
         self.assertIn("dtp(formal_cfg)", summary)
         self.assertIn("smc(sim_cfg, tools)", summary)
+        self.assertIn("uvm_library(url)", summary)
 
 
 class ToolLaunchTest(SiteCase):
@@ -889,6 +917,11 @@ class ResultRecordingTest(SiteCase):
     def test_no_site_means_no_key(self) -> None:
         self.assertNotIn("site", self.payload(Namespace()))
         self.assertNotIn("site", self.payload(None))
+
+    def test_compiled_uvm_library_recorded_when_resolved(self) -> None:
+        record = {"source": "site", "home": "/opt/uvm", "tree_sha256": "0" * 64}
+        self.assertEqual(self.payload(Namespace(_uvm_library=record))["uvm_library"], record)
+        self.assertNotIn("uvm_library", self.payload(Namespace()))
 
 
 class ExampleFileTest(SiteCase):

@@ -18,6 +18,8 @@ interface smc_tb_if;
   realtime smc_clk_period_ns    = 1.25;
   realtime periph_clk_period_ns = 5.0;
   logic clk_smc;
+  // Activity/enable observations, not measurements of gated-clock edges.
+  logic [7:0] cg_clk_active, cg_bus_active;
 
   // Driven by the TB (bring-up and reset scenarios owned by the test).
   // Initial values match the cocotb bring-up at time zero: power-good and

@@ -403,6 +403,7 @@ BUILD_KEYS = {
     "sources",
     "source_lists",
     "exclude_files",
+    "uvm_library",
     "options",
     "verilator",
     "xcelium",
