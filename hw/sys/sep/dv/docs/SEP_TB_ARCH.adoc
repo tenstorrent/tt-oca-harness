@@ -1052,7 +1052,7 @@ make -C hw/sys/sep/dv/cocotb/tests/km_fw rom_main
 The SV-UVM realization runs through the same native runner: `sep_sim_cfg.toml`
 declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut sep --framework uvm` selects it
-on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
+on VCS (the `native` profile's `uvm` framework, UVM 1800.2-2020). Scenarios
 carry both implementations in their testlist `module` binding map
 (`module = { cocotb = "<module>", uvm = "<name>" }`); group selections skip
 those without a `uvm` entry, and naming one errors. The framework

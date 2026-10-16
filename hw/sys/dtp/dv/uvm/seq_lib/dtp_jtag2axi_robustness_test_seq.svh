@@ -86,6 +86,8 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // series streams in a disjoint window.
   localparam bit [63:0] RobustBase = 64'h3800;
   localparam bit [63:0] SeriesBase = 64'h5000;
+  // The series-corner size and mid-beat legs: a second set of such windows.
+  localparam bit [63:0] SeriesSizesBase = 64'h6000;
 
   function new(string name = "dtp_jtag2axi_robustness_test_seq");
     super.new(name);
@@ -175,6 +177,10 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // Reset-abort stimulus: the READY stall outlasts everything and is released
   // after the reset, so the write sits on the bus throughout the reset pulse.
   localparam int unsigned AbortHoldCycles = 100000;
+  // TCK cycles the READY stall behind a held SINGLE_OP lasts at least, so it
+  // outlasts the scans of the refused-operation and Update-DR steps at every
+  // TCK to system clock ratio until the step releases it.
+  localparam int unsigned HeldSingleTck = 10000;
   // TCK cycles for the bridge FSM to leave IDLE after the SINGLE_OP
   // Update-DR, and to return to IDLE after the reset.
   localparam int unsigned AbortMidFlightTck = 64;
@@ -279,7 +285,559 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       write_target_single_and_check(t, boundary_addr, boundary_data, op_status, size, full_wstrb(
                                     size), $sformatf("long_stall.boundary.%s", t.name));
       status = op_status;
+      if (!pass_runs(order[i])) continue;
+      for (int unsigned r = 0; r < 2; r++) begin
+        refused_behind_write(t, RefuseSlotBase + RefuseSlots * order[i] + 3 * r, bit'(r));
+      end
+      refused_behind_read(t, RefuseSlotBase + RefuseSlots * order[i] + 3);
+      refused_read_in_flight(t, RefuseSlotBase + RefuseSlots * order[i] + 5);
+      for (int unsigned f = 0; f < 2; f++) begin
+        update_on_series_pop(t, RefuseSlotBase + RefuseSlots * order[i] + 3 * f, bit'(f));
+      end
     end
+  endtask
+
+  // Refused-operation steps of the long-stall scenario: each bridge takes six
+  // 0x400 slots from its own base, clear of the scenario's other operations.
+  localparam int unsigned RefuseSlotBase = 20;
+  localparam int unsigned RefuseSlots = 6;
+  localparam string DtpJ2aRefusedCheckId = "CHK-J2A-REFUSED";
+  localparam string DtpJ2aUpdateEdgeCheckId = "CHK-J2A-UPDATE-EDGE";
+
+  // Record one CHK-J2A-UPDATE-EDGE judgement on the selected bridge;
+  // +DTP_J2A_UPDATE_EDGE_NEGATIVE flips bit 0 of `expected`, so the run must
+  // fail.
+  protected function bit record_update_edge_check(string name, bit [63:0] observed,
+                                                  bit [63:0] expected, string context_s);
+    if (test_cfg != null && test_cfg.j2a_update_edge_negative) expected ^= 64'd1;
+    return record_abort_check(DtpJ2aUpdateEdgeCheckId, name, observed, expected, context_s);
+  endfunction
+
+  // Load the SINGLE_OP instruction of `t` and shift `op` in as one raw TMS
+  // walk that stops with the TAP in Exit1-DR, or with `to_pause` in
+  // Pause-DR. TCK stays idle in Exit1-DR; in Pause-DR it may run with TMS
+  // low. No intent is armed. The DUT's Shift-DR episode closes only once the
+  // TAP leaves Exit1-DR, so the scan length is checked for Pause-DR alone.
+  protected task scan_single_to(dtp_j2a_target_t t, dtp_j2a_op_e op, bit [63:0] addr,
+                                bit [63:0] data, bit [7:0] wstrb, int unsigned size, bit to_pause);
+    bit dr[];
+    bit tms[];
+    bit tdi[];
+    int unsigned len;
+    dtp_j2a_pack_single_op(t, op, addr, data, wstrb, size, dr);
+    len = dr.size();
+    load_ir(IrWidth'(t.single_op_instr));
+    // Select-DR, Capture-DR, Shift-DR, the image LSB first with its last bit
+    // moving to Exit1-DR, then Pause-DR.
+    tms = new[len + 3 + int'(to_pause)];
+    tdi = new[len + 3 + int'(to_pause)];
+    tms[0] = 1'b1;
+    foreach (dr[i]) begin
+      tms[3+i] = (i == len - 1);
+      tdi[3+i] = dr[i];
+    end
+    raw_walk(tms, tdi);
+    check_state(to_pause ? PAUSE_DR : EXIT1_DR, "jtag2axi_scan_chk",
+                "SINGLE_OP held before Update-DR");
+    if (to_pause)
+      check_last_scan_length(1'b0, len, $sformatf("%s single_op held in Pause-DR", t.name));
+    note_scan(1'b0, len);
+  endtask
+
+  // Step 9: a SINGLE_OP write whose Update-DR lands on the TCK edge where the
+  // bridge takes a queued series beat out of idle. A SINGLE_OP write waits on
+  // AW and W, and a series write beat queues behind it. A second SINGLE_OP
+  // write waits in Pause-DR while the stall is released. TCK steps in
+  // Pause-DR until the state machine takes the held write's response on the
+  // next edge; that edge leaves Pause-DR, so the second write's Update-DR
+  // lands on the third edge, where the state machine leaves idle for the
+  // queued beat. The second write is accepted, and the beat and the second
+  // write each complete once with their own response: the responder answers
+  // the beat with SLVERR when `series_fails`, else the second write
+  // (CHK-J2A-UPDATE-EDGE).
+  protected task update_on_series_pop(dtp_j2a_target_t t, int unsigned slot, bit series_fails);
+    string context_s = $sformatf("long_stall.update_on_pop.%s.%s", t.name,
+                                 series_fails ? string'("series") : string'("single"));
+    int unsigned size = t.default_size;
+    bit [7:0] wstrb = full_wstrb(size);
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] held_addr = robust_addr(t, slot);
+    bit [63:0] series_addr = robust_addr(t, slot + 1);
+    bit [63:0] single_addr = robust_addr(t, slot + 2);
+    bit [63:0] held_word = rand_nonzero_data(t);
+    bit [63:0] beat_word = random_distinct_word(t, {held_word});
+    bit [63:0] single_word = random_distinct_word(t, {held_word, beat_word});
+    bit [63:0] failing_addr = series_fails ? series_addr : single_addr;
+    bit [63:0] failing_before = read_target_mem_int(t, failing_addr, size);
+    int unsigned writes0 = port.count(1'b0);
+    int unsigned reads0 = port.count(1'b1);
+    int unsigned waited = 0;
+    dtp_j2a_status_e st;
+    bit [63:0] rdata;
+    log_step("9", $sformatf(
+             "%s: a SINGLE_OP Update-DR on the edge that takes a queued series beat (%s fails)",
+             t.name,
+             series_fails ? string'("series beat") : string'("SINGLE_OP")
+             ));
+    arm_target_error(t, failing_addr, OCAH_AXI_RESP_SLVERR, .for_read(1'b0), .for_write(1'b1));
+    hold_single(t, 1'b0, held_addr, held_word, context_s);
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    series_ctrl_op(t, DTP_J2A_OP_WRITE, series_addr, size);
+    series_data_no_incr(t, beat_word, size);
+    // The second write completes on the bus, so its intent is armed.
+    axi_cfg.arm_expected_write(single_addr & bit_mask(t.addr_width), single_word & bit_mask(
+                               t.data_width), wstrb);
+    scan_single_to(t, DTP_J2A_OP_WRITE, single_addr, single_word, wstrb, size, 1'b1);
+    clear_target_backpressure(t);
+    // +DTP_J2A_UPDATE_EDGE_EARLY, a stimulus mutation and a bridge mask,
+    // leaves Pause-DR without waiting, so the second write's Update-DR lands
+    // before the held write's response is taken and the bridge refuses it.
+    step_until_beat_done(t, mutated(test_cfg.j2a_update_edge_early_mask, t) ? 0 : AbortSettleTck,
+                         waited);
+    step(1'b1);
+    step(1'b1);
+    step(1'b0);
+    void'(record_update_edge_check(
+        {
+          context_s, ".aligned"
+        },
+        64'(bridge_fsm_on_path(
+            t, 1'b0
+        ) && bridge_op_pending(
+            t
+        )),
+        64'd1,
+        $sformatf(
+            "queued beat taken and SINGLE_OP accepted on the Update-DR edge, pause_tck=%0d", waited)
+    ));
+    complete_with_tck(t, 1'b0, writes0 + 2, {context_s, ".drain"});
+    settle_bridge(t);
+    void'(record_update_edge_check(
+        {
+          context_s, ".writes"
+        },
+        64'(port.count(
+            1'b0
+        ) - writes0),
+        64'd3,
+        "port writes: the held write, the queued beat and the second SINGLE_OP"
+    ));
+    void'(record_update_edge_check(
+        {context_s, ".reads"}, 64'(port.count(1'b1) - reads0), 64'd0, "port reads during the step"
+    ));
+    check_target_memory(t, held_addr, held_word, size, {context_s, ".held"});
+    check_target_memory(t, series_addr, series_fails ? failing_before : beat_word, size, {
+                        context_s, ".beat"});
+    check_target_memory(t, single_addr, series_fails ? single_word : failing_before, size, {
+                        context_s, ".single"});
+    load_ir(IrWidth'(t.single_op_instr));
+    poll_single(t, st, rdata, {context_s, ".single_status"}, AbortRecoveryPolls);
+    void'(record_update_edge_check(
+        {
+          context_s, ".single_status"
+        },
+        64'(st),
+        64'(series_fails ? DTP_J2A_SUCCESS : DTP_J2A_SLVERR),
+        "SINGLE_OP after the second write"
+    ));
+    check_series_addr(t, series_addr, size, {context_s, ".series"}, st);
+    void'(record_update_edge_check(
+        {
+          context_s, ".series_status"
+        },
+        64'(st),
+        64'(series_fails ? DTP_J2A_SLVERR : DTP_J2A_SUCCESS),
+        "SERIES_CTRL after the queued beat"
+    ));
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+  endtask
+
+  // Step TCK with TMS low until the state machine of `t` takes a response on
+  // the next edge, bounded by `limit`; `waited` counts the edges stepped.
+  protected task step_until_beat_done(dtp_j2a_target_t t, int unsigned limit,
+                                      output int unsigned waited);
+    for (waited = 0; waited < limit; waited++) begin
+      if (fsm_beat_done(t)) break;
+      step(1'b0);
+    end
+  endtask
+
+  // The response the state machine of `t` takes on the next TCK edge.
+  protected function bit fsm_beat_done(dtp_j2a_target_t t);
+    case (target_index(
+        t
+    ))
+      0: return tb_vif.smc_axi_fsm_beat_done;
+      1: return tb_vif.smc_otp_fsm_beat_done;
+      default: return tb_vif.sep_otp_fsm_beat_done;
+    endcase
+  endfunction
+
+  // Record one CHK-J2A-REFUSED judgement on the selected bridge;
+  // +DTP_J2A_REFUSED_NEGATIVE flips bit 0 of `expected`, so the run must fail.
+  protected function bit record_refused_check(string name, bit [63:0] observed, bit [63:0] expected,
+                                              string context_s);
+    if (test_cfg != null && test_cfg.j2a_refused_negative) expected ^= 64'd1;
+    return record_abort_check(DtpJ2aRefusedCheckId, name, observed, expected, context_s);
+  endfunction
+
+  // CHK-J2A-REFUSED: the port of `t` completed exactly `exp_writes` writes
+  // and `exp_reads` reads since the `writes0`/`reads0` baselines.
+  protected function void record_landings(
+      dtp_j2a_target_t t, string context_s, int unsigned writes0, int unsigned exp_writes,
+      int unsigned reads0, int unsigned exp_reads, string detail);
+    dtp_axi_port_history port = port_history(t.name);
+    void'(record_refused_check(
+        {
+          context_s, ".writes"
+        },
+        64'(port.count(
+            1'b0
+        ) - writes0),
+        64'(exp_writes),
+        {
+          "port completions since the step: ", detail
+        }
+    ));
+    void'(record_refused_check(
+        {
+          context_s, ".reads"
+        },
+        64'(port.count(
+            1'b1
+        ) - reads0),
+        64'(exp_reads),
+        {
+          "port completions since the step: ", detail
+        }
+    ));
+  endfunction
+
+  // The bridge index of `t` in targets[], which is the dtp_tb_if bit order.
+  protected function int unsigned target_index(dtp_j2a_target_t t);
+    for (int unsigned i = 0; i < NumTargets; i++) if (targets[i].name == t.name) return i;
+    `uvm_fatal(get_type_name(), {"unknown JTAG2AXI bridge ", t.name})
+    return 0;
+  endfunction
+
+  // Set or clear the dtp_tb_if hold of the R (`is_read`) or B channel of
+  // `t`. The write lands on a falling system clock edge, clear of the edges
+  // the hold queue and the bridge sample.
+  protected task hold_response(dtp_j2a_target_t t, bit is_read, bit held);
+    int unsigned idx = target_index(t);
+    @(negedge tb_vif.clk);
+    if (is_read) tb_vif.j2a_r_hold[idx] <= held;
+    else tb_vif.j2a_b_hold[idx] <= held;
+  endtask
+
+  // Capture SERIES_CTRL with a NOP image: the status and address. The capture
+  // may read BUSY_OR_FULL, so no completion bound judges it.
+  protected task series_ctrl_capture(dtp_j2a_target_t t, int unsigned size,
+                                     output dtp_j2a_status_e st, output bit [63:0] addr);
+    dtp_jtag2axi_series_ctrl_seq ctrl = dtp_jtag2axi_series_ctrl_seq::type_id::create(
+        "series_ctrl_capture"
+    );
+    bit sr_reset;
+    int unsigned sr_pl, sr_size;
+    ctrl.target = t;
+    ctrl.op     = DTP_J2A_OP_NOP;
+    ctrl.addr   = '0;
+    ctrl.size   = size;
+    run_jtag_op(ctrl);
+    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SERIES_CTRL capture");
+    note_tdr_access(series_ctrl_len(t), $sformatf("%s series_ctrl capture", t.name));
+    dtp_j2a_unpack_series_ctrl(t, ctrl.captured, sr_reset, addr, sr_pl, sr_size, st);
+    `uvm_info(get_type_name(), $sformatf("%s SERIES_CTRL addr=0x%0h status=%s", t.name, addr,
+                                         st.name()), UVM_MEDIUM)
+  endtask
+
+  // Step TCK in Run-Test/Idle until the port of `t` completes a transaction
+  // of one direction beyond `completed`, bounded (CHK-AXI-COMPLETION). A
+  // request queued behind another leaves the bridge only once its state
+  // machine, which runs on TCK, has taken the earlier response.
+  protected task complete_with_tck(dtp_j2a_target_t t, bit is_read, int unsigned completed,
+                                   string context_s);
+    dtp_axi_port_history port = port_history(t.name);
+    for (int unsigned i = 0; i < AbortSettleTck && port.count(is_read) <= completed; i++)
+      step(1'b0);
+    void'(axi_evidence.expect_true(
+        "CHK-AXI-COMPLETION",
+        port.count(
+            is_read
+        ) > completed,
+        $sformatf(
+            "%s target=%s tck_cycles=%0d", context_s, t.name, AbortSettleTck)
+    ));
+  endtask
+
+  // Step TCK in Run-Test/Idle until the bridge is idle with nothing pending,
+  // bounded.
+  protected task settle_bridge(dtp_j2a_target_t t);
+    for (int unsigned i = 0; i < AbortSettleTck; i++) begin
+      if (bridge_fsm_idle(t) && !bridge_op_pending(t)) break;
+      step(1'b0);
+    end
+  endtask
+
+  // Step TCK until the bench holds a response of `t` for the R (`is_read`)
+  // or B channel with the bridge waiting on it, bounded.
+  protected task step_until_held(dtp_j2a_target_t t, bit is_read);
+    for (int unsigned i = 0; i < AbortMidFlightTck; i++) begin
+      if (held_responses(t, is_read) > 0 && bridge_fsm_on_path(t, is_read)) break;
+      step(1'b0);
+    end
+  endtask
+
+  // Issue a SINGLE_OP the responder holds on AR, or on AW and W, until
+  // released; the bridge waits on it with the request on the bus before the
+  // caller goes on (CHK-J2A-REFUSED). Without `stall` the responder holds
+  // nothing and that judgement fails.
+  protected task hold_single(dtp_j2a_target_t t, bit is_read, bit [63:0] addr, bit [63:0] word,
+                             string context_s, bit stall = 1'b1);
+    int unsigned size = t.default_size;
+    int unsigned hold = HeldSingleTck * tck_sys_ratio();
+    int unsigned aw0, w0, ar0;
+    bit idle, on_bus;
+    if (hold < AbortHoldCycles) hold = AbortHoldCycles;
+    if (stall && is_read) configure_target_backpressure(t, '{"ar"}, hold);
+    else if (stall) configure_target_backpressure(t, '{"aw", "w"}, hold);
+    sample_stall(t, aw0, w0, ar0);
+    if (is_read) begin
+      write_target_mem_int(t, addr, word, size);
+      issue_single(t, DTP_J2A_OP_READ, addr, '0, '0, size, .use_default_size(1'b0));
+    end else begin
+      issue_single(t, DTP_J2A_OP_WRITE, addr, word, full_wstrb(size), size,
+                   .use_default_size(1'b0));
+    end
+    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, idle);
+    wait_held_on_bus(t, is_read ? "ar" : "aw", is_read ? ar0 : aw0, AbortMidFlightTck, on_bus);
+    void'(record_refused_check(
+        {
+          context_s, ".held"
+        },
+        64'(!idle && on_bus),
+        64'd1,
+        $sformatf(
+            "idle=%0d %s_held=%0d", idle, is_read ? "ar" : "aw", on_bus)
+    ));
+  endtask
+
+  // Step 6: operations refused while a SINGLE_OP write waits on AW and W. A
+  // SINGLE_OP READ (`refused_read`) or WRITE is refused: SINGLE_OP reads
+  // BUSY_OR_FULL. A
+  // series write at pipeline depth 0 queues one beat behind the held write;
+  // a second beat and two WITH_ERROR_STATUS beats are refused, and the second
+  // of those captures the failed bit. After the release the held write and
+  // the queued beat each complete once, SINGLE_OP reads the held write's
+  // OKAY, and SERIES_CTRL reads BUSY_OR_FULL until a SERIES_CTRL with reset
+  // set clears it.
+  protected task refused_behind_write(dtp_j2a_target_t t, int unsigned slot, bit refused_read);
+    string context_s = $sformatf("long_stall.refused_write.%s.%s", t.name,
+                                 refused_read ? string'("read") : string'("write"));
+    int unsigned size = t.default_size;
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] held_addr = robust_addr(t, slot);
+    bit [63:0] refused_addr = robust_addr(t, slot + 1);
+    bit [63:0] series_addr = robust_addr(t, slot + 2);
+    bit [63:0] held_word = rand_nonzero_data(t);
+    bit [63:0] words[$];
+    bit [63:0] refused_before = read_target_mem_int(t, refused_addr, size);
+    int unsigned writes0 = port.count(1'b0);
+    int unsigned reads0 = port.count(1'b1);
+    dtp_j2a_status_e st;
+    bit [63:0] rdata, addr_seen, unused;
+    bit failed;
+    while (words.size() < 4) begin
+      bit [63:0] avoid[$] = words;
+      avoid.push_back(held_word);
+      words.push_back(random_distinct_word(t, avoid));
+    end
+    log_step("6", $sformatf("%s: operations refused behind a held SINGLE_OP write", t.name));
+    // +DTP_J2A_REFUSED_NO_STALL, a stimulus mutation and a bridge mask, stalls
+    // no channel, so the write completes at once and nothing behind it is
+    // refused.
+    hold_single(t, 1'b0, held_addr, held_word, context_s, !mutated(
+                test_cfg.j2a_refused_no_stall_mask, t));
+    // The refused operation never reaches the bus, so it arms no intent.
+    if (refused_read)
+      issue_single(t, DTP_J2A_OP_READ, refused_addr, '0, '0, size, .use_default_size(1'b0),
+                   .arm_intent(1'b0));
+    else
+      issue_single(t, DTP_J2A_OP_WRITE, refused_addr, words[3], full_wstrb(size), size,
+                   .use_default_size(1'b0), .arm_intent(1'b0));
+    single_status_once(t, st, rdata);
+    void'(record_refused_check(
+        {
+          context_s, ".single_op_status"
+        },
+        64'(st),
+        64'(DTP_J2A_BUSY_OR_FULL),
+        $sformatf(
+            "refused %s at 0x%0h", refused_read ? string'("read") : string'("write"), refused_addr)
+    ));
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    series_ctrl_op(t, DTP_J2A_OP_WRITE, series_addr, size);
+    series_data_no_incr(t, words[0], size);
+    series_data_no_incr(t, words[1], size);
+    series_data_with_status(t, words[2], size, 1'b0, unused, failed);
+    series_data_with_status(t, words[3], size, 1'b0, unused, failed);
+    void'(record_refused_check(
+        {
+          context_s, ".with_status_bit"
+        },
+        64'(failed),
+        64'd1,
+        "WITH_ERROR_STATUS capture after a refused WITH_ERROR_STATUS beat"
+    ));
+    series_ctrl_capture(t, size, st, addr_seen);
+    void'(record_refused_check(
+        {
+          context_s, ".series_status_full"
+        },
+        64'(st),
+        64'(DTP_J2A_BUSY_OR_FULL),
+        "SERIES_CTRL with beats refused behind the held write"
+    ));
+    clear_target_backpressure(t);
+    complete_with_tck(t, 1'b0, writes0 + 1, {context_s, ".drain"});
+    settle_bridge(t);
+    record_landings(t, context_s, writes0, 2, reads0, 0, "the held write and the queued beat");
+    check_target_memory(t, held_addr, held_word, size, {context_s, ".held"});
+    check_target_memory(t, series_addr, words[0], size, {context_s, ".queued_beat"});
+    void'(record_refused_check(
+        {
+          context_s, ".refused_slot"
+        },
+        read_target_mem_int(
+            t, refused_addr, size
+        ),
+        refused_before,
+        $sformatf(
+            "refused SINGLE_OP slot 0x%0h unchanged", refused_addr)
+    ));
+    // The status capture shifts the SINGLE_OP register under the instruction
+    // already loaded, and the series scans left another one selected.
+    load_ir(IrWidth'(t.single_op_instr));
+    poll_single(t, st, rdata, {context_s, ".single_op_after"}, AbortRecoveryPolls);
+    void'(record_refused_check(
+        {
+          context_s, ".single_op_after"
+        },
+        64'(st),
+        64'(DTP_J2A_SUCCESS),
+        "after the held write completed"
+    ));
+    series_ctrl_capture(t, size, st, addr_seen);
+    void'(record_refused_check(
+        {
+          context_s, ".series_status_held"
+        },
+        64'(st),
+        64'(DTP_J2A_BUSY_OR_FULL),
+        $sformatf(
+            "SERIES_CTRL after the queued beat completed, addr=0x%0h", addr_seen)
+    ));
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    check_series_addr(t, series_addr, size, {context_s, ".cleared"}, st);
+    void'(record_refused_check(
+        {
+          context_s, ".series_status_cleared"
+        },
+        64'(st),
+        64'(DTP_J2A_SUCCESS),
+        "SERIES_CTRL after SERIES_CTRL.reset"
+    ));
+  endtask
+
+  // Step 7: a series read refused while a SINGLE_OP read waits on AR. A READ
+  // programming at pipeline depth 0 queues one plain read behind the held
+  // read, and a second scan is refused. After the release the held read
+  // returns its word, exactly one series read completes, and the next scan
+  // captures that read's word.
+  protected task refused_behind_read(dtp_j2a_target_t t, int unsigned slot);
+    string context_s = $sformatf("long_stall.refused_read.%s", t.name);
+    int unsigned size = t.default_size;
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] held_addr = robust_addr(t, slot);
+    bit [63:0] series_addr = robust_addr(t, slot + 1);
+    bit [63:0] held_word = rand_nonzero_data(t);
+    bit [63:0] series_word = random_distinct_word(t, {held_word});
+    int unsigned writes0 = port.count(1'b0);
+    int unsigned reads0 = port.count(1'b1);
+    dtp_j2a_status_e st;
+    bit [63:0] rdata, raw;
+    log_step("7", $sformatf("%s: a series read refused behind a held SINGLE_OP read", t.name));
+    hold_single(t, 1'b1, held_addr, held_word, context_s);
+    write_target_mem_int(t, series_addr, series_word, size);
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    series_ctrl_op(t, DTP_J2A_OP_READ, series_addr, size);
+    series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+    series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+    clear_target_backpressure(t);
+    complete_with_tck(t, 1'b1, reads0 + 1, {context_s, ".drain"});
+    settle_bridge(t);
+    load_ir(IrWidth'(t.single_op_instr));
+    poll_single(t, st, rdata, {context_s, ".single_op_after"}, AbortRecoveryPolls);
+    void'(record_refused_check(
+        {
+          context_s, ".single_op_after"
+        },
+        64'(st),
+        64'(DTP_J2A_SUCCESS),
+        "after the held read completed"
+    ));
+    check_returned_rdata(t, rdata & bit_mask(t.data_width), held_word, {context_s, ".held"});
+    series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+    check_returned_rdata(t, raw & data_mask(dtp_j2a_axsize(t, size)), series_word, {
+                         context_s, ".queued_read"});
+    record_landings(t, context_s, writes0, 0, reads0, 2, "the held read and the queued read");
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+  endtask
+
+  // Step 8: a series read scan whose Update-DR lands while the programming's
+  // read waits on R. The R channel is held after the read's AR, and the next
+  // scan's Update-DR issues no read: exactly one read completes once R is
+  // released, and the scan after it captures that read's word.
+  protected task refused_read_in_flight(dtp_j2a_target_t t, int unsigned slot);
+    string context_s = $sformatf("long_stall.read_in_flight.%s", t.name);
+    int unsigned size = t.default_size;
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] addr = robust_addr(t, slot);
+    bit [63:0] word = rand_nonzero_data(t);
+    int unsigned writes0 = port.count(1'b0);
+    int unsigned reads0 = port.count(1'b1);
+    int unsigned aw0, w0, ar0;
+    bit [63:0] raw;
+    bit idle;
+    log_step("8", $sformatf("%s: a series read scan while the read waits on R", t.name));
+    write_target_mem_int(t, addr, word, size);
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    series_ctrl_op(t, DTP_J2A_OP_READ, addr, size);
+    hold_response(t, 1'b1, 1'b1);
+    sample_activity(t, aw0, w0, ar0);
+    series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+    wait_for_target_activity(t, aw0, w0, ar0, 1'b1, {context_s, ".ar"});
+    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, idle);
+    void'(record_refused_check(
+        {
+          context_s, ".waiting"
+        },
+        64'(bridge_fsm_on_path(
+            t, 1'b1
+        ) && (port.count(
+            1'b1
+        ) == reads0)),
+        64'd1,
+        "the bridge waits on the read with R held"
+    ));
+    series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+    hold_response(t, 1'b1, 1'b0);
+    complete_with_tck(t, 1'b1, reads0, {context_s, ".drain"});
+    settle_bridge(t);
+    series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+    check_returned_rdata(t, raw & data_mask(dtp_j2a_axsize(t, size)), word, {context_s, ".rdata"});
+    record_landings(t, context_s, writes0, 0, reads0, 1, "the programming's one read");
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
   endtask
 
   // SINGLE_OP captures within which the status leaves BUSY_OR_FULL after the
@@ -556,6 +1114,130 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     operation_count++;
   endtask
 
+  // The response-reset legs: a SINGLE_OP write, a SINGLE_OP read and a
+  // series read per bridge, 0x80 apart in slot 0, their recovery accesses
+  // 0x40 above. The system reset lands 0 to 6 TCK edges after the
+  // response's handshake at the port: the response reaches the bridge's CDC
+  // destination after three and its state machine after five.
+  localparam int unsigned VisibleArms = 3;
+  localparam int unsigned VisibleResetTck = 7;
+
+  // System reset `edges` TCK edges after a SLVERR response's handshake at
+  // the port. The bench holds the response (dtp_tb_if j2a_b_hold or
+  // j2a_r_hold) until the bridge waits on it, releases it with TCK idle,
+  // waits for its handshake, steps `edges` TCK edges, and pulses the system
+  // reset with TCK idle; for the series read SERIES_CTRL is the selected
+  // register meanwhile. The reset lands before or after the bridge's state
+  // machine takes the response, so the bridge reports either that SLVERR or
+  // the DECERR of a discarded operation, and never OKAY
+  // (CHK-J2A-ABORT-RECOVERY); a recovery access then completes. `ok` is 1
+  // when the status was one of those two.
+  protected task visible_response_reset(dtp_j2a_target_t t, int unsigned arm, int unsigned edges,
+                                        string context_s, output bit ok);
+    int unsigned size = t.default_size;
+    bit is_read = (arm != 0);
+    bit is_series = (arm == 2);
+    bit [63:0] addr = robust_addr(t, 0) + 64'h80 * arm;
+    bit [63:0] word = rand_nonzero_data(t);
+    bit [63:0] errored = random_distinct_word(t, {word});
+    int unsigned completed = port_history(t.name).count(is_read);
+    dtp_j2a_status_e st;
+    bit [63:0] rdata, addr_seen;
+    bit idle, done;
+    `uvm_info(get_type_name(), $sformatf(
+                                   "%s: system reset %0d TCK edges after the response handshake",
+                                   context_s, edges), UVM_LOW)
+    if (is_read) write_target_mem_int(t, addr, word, size);
+    arm_target_error(t, addr, OCAH_AXI_RESP_SLVERR, .for_read(is_read), .for_write(!is_read),
+                     .arm_expected(1'b1), .err_rdata(errored));
+    hold_response(t, is_read, 1'b1);
+    if (is_series) begin
+      bit [63:0] raw;
+      series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+      series_ctrl_op(t, DTP_J2A_OP_READ, addr, size);
+      series_data_shift(t, t.series_data_incr_instr, '0, size, -1, raw);
+    end else if (is_read) begin
+      issue_single(t, DTP_J2A_OP_READ, addr);
+    end else begin
+      issue_single(t, DTP_J2A_OP_WRITE, addr, word, full_wstrb(size));
+    end
+    step_until_held(t, is_read);
+    if (is_series) load_ir(IrWidth'(t.series_ctrl_instr));
+    void'(record_abort_check(
+        DtpJ2aAbortMidFlightCheckId,
+        {
+          context_s, ".mid_flight"
+        },
+        64'(held_responses(
+            t, is_read
+        ) == 1 && bridge_fsm_on_path(
+            t, is_read
+        )),
+        64'd1,
+        "response held with the bridge waiting on it"
+    ));
+    hold_response(t, is_read, 1'b0);
+    wait_port_count(t, is_read, completed, done);
+    if (!done) record_wait_timeout(t, PortWaitCycles, {context_s, ".handshake"});
+    repeat (edges) step(1'b0);
+    clear_cdc_clear_seen();
+    pulse_system_reset(1);
+    wait_bridge_fsm(t, 1'b1, AbortSettleTck, idle);
+    repeat (AbortCdcClearTck) step(1'b0);
+    void'(record_abort_check(
+        DtpJ2aAbortFsmCheckId, {context_s, ".fsm_idle"}, 64'(idle), 64'd1, "after the reset"
+    ));
+    void'(record_cdc_clear(t, {context_s, ".cdc_clear"}, "tck-side isolate-and-clear"));
+    if (is_series) begin
+      series_ctrl_capture(t, size, st, addr_seen);
+    end else begin
+      load_ir(IrWidth'(t.single_op_instr));
+      poll_single(t, st, rdata, {context_s, ".recovery"}, AbortRecoveryPolls);
+      if (is_read)
+        `uvm_info(get_type_name(), $sformatf(
+                  "%s: data field 0x%0h", context_s, rdata & bit_mask(t.data_width)), UVM_LOW)
+    end
+    ok = record_abort_check(
+        DtpJ2aAbortRecoveryCheckId,
+        {
+          context_s, ".status"
+        },
+        64'(st inside {DTP_J2A_SLVERR, DTP_J2A_DECERR}),
+        64'd1,
+        $sformatf(
+            "status=%s edges=%0d: the subordinate's SLVERR or the DECERR of a discarded operation",
+            st.name(),
+            edges)
+    );
+    if (is_series) series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    recover_target(t, addr + 64'h40, random_distinct_word(t, {word, errored}), is_read, context_s,
+                   status);
+    operation_count++;
+  endtask
+
+  // A system reset at each TCK offset after a response handshake, on every
+  // bridge and arm; each pass takes the offset at its loop index plus the
+  // scenario seed, so the passes walk every offset on every bridge and arm.
+  protected task run_visible_response_resets(string label);
+    string arms[VisibleArms] = '{"write", "read", "series_read"};
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      dtp_j2a_target_t t = select_target(i);
+      for (int unsigned arm = 0; arm < VisibleArms; arm++) begin
+        int unsigned edges = (scenario_seed + VisibleArms * i + arm) % VisibleResetTck;
+        bit ok;
+        `uvm_info(get_type_name(), $sformatf(
+                  "[%0d/%0d] target=%s %s: system reset %0d TCK edges after the response",
+                  VisibleArms * i + arm + 1,
+                  NumTargets * VisibleArms,
+                  t.name,
+                  arms[arm],
+                  edges
+                  ), UVM_LOW)
+        visible_response_reset(t, arm, edges, $sformatf("%s.%s.%s", label, t.name, arms[arm]), ok);
+      end
+    end
+  endtask
+
   protected task run_read_response_abort(string label, int unsigned addr_offset);
     for (int unsigned i = 0; i < NumTargets; i++) begin
       bit recovered;
@@ -579,10 +1261,13 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // CDC's synchronizer, returns the state machine to idle on the third with
   // no request pushed into the crossing. SINGLE_OP then reads DECERR, with a
   // zero data field for a read. `recovered` is 1 when the discard was
-  // reported and the recovery access ran.
-  protected task reset_abort_address_phase(dtp_j2a_target_t t, bit is_read,
-                                           int unsigned reset_cycles, int unsigned addr_idx,
-                                           string context_s, output bit recovered);
+  // reported and the recovery access ran. With `before_update` the TAP holds
+  // Exit1-DR instead, one TCK edge earlier: the bridge latches the operation
+  // on the second edge after the pulse, the clear holds the state machine in
+  // idle on the third, and the clear's abort drops the latched operation.
+  protected task reset_abort_address_phase(
+      dtp_j2a_target_t t, bit is_read, int unsigned reset_cycles, int unsigned addr_idx,
+      string context_s, output bit recovered, input bit before_update = 1'b0);
     int unsigned size = t.default_size;
     bit [63:0] addr = robust_addr(t, addr_idx);
     bit [63:0] word = rand_nonzero_data(t) & data_mask(size);
@@ -590,21 +1275,26 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     bit [63:0] prior_word;
     int unsigned aw0, w0, ar0;
     int unsigned aw1, w1, ar1;
-    bit on_path, pending, quiet;
+    bit on_path, idle, pending, quiet;
     dtp_j2a_status_e st;
     bit [63:0] rdata;
     if (is_read) write_target_mem_int(t, addr, word, size);
     prior_word = read_target_mem_int(t, addr, size);
-    scan_single_to_update_dr(t, is_read ? DTP_J2A_OP_READ : DTP_J2A_OP_WRITE, addr,
-                             is_read ? '0 : word, is_read ? '0 : full_wstrb(size), size);
+    if (before_update)
+      scan_single_to(t, is_read ? DTP_J2A_OP_READ : DTP_J2A_OP_WRITE, addr, is_read ? '0 : word,
+                     is_read ? '0 : full_wstrb(size), size, 1'b0);
+    else
+      scan_single_to_update_dr(t, is_read ? DTP_J2A_OP_READ : DTP_J2A_OP_WRITE, addr,
+                               is_read ? '0 : word, is_read ? '0 : full_wstrb(size), size);
     clear_cdc_clear_seen();
     pulse_system_reset(reset_cycles);
     // The reset clears the port's request counters: quiet means no request
     // counted since the pulse.
     sample_activity(t, aw0, w0, ar0);
-    step(1'b0);
+    step(before_update);
     step(1'b0);
     on_path = bridge_fsm_on_path(t, is_read);
+    idle = bridge_fsm_idle(t);
     pending = bridge_op_pending(t);
     sample_activity(t, aw1, w1, ar1);
     quiet = (aw1 == aw0) && (w1 == w0) && (ar1 == ar0);
@@ -613,14 +1303,16 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
         {
           context_s, ".mid_flight"
         },
-        64'(on_path && pending && quiet),
+        64'((before_update ? idle : on_path) && pending && quiet),
         64'd1,
         $sformatf(
-            "%s_path=%0d pending=%0d port_quiet=%0d in the address state",
+            "%s_path=%0d idle=%0d pending=%0d port_quiet=%0d %s",
             direction,
             on_path,
+            idle,
             pending,
-            quiet)
+            quiet,
+            before_update ? string'("latched with the state machine idle") : string'("in the address state"))
     ));
     step(1'b0);
     void'(record_abort_check(
@@ -634,7 +1326,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
             t
         )),
         64'd1,
-        "one TCK edge after the address state"
+        before_update ? string'("one TCK edge after the latch") : string'("one TCK edge after the address state")
     ));
     void'(record_cdc_clear(t, {context_s, ".cdc_clear"}, "tck-side isolate-and-clear"));
     repeat (AbortCdcClearTck) step(1'b0);
@@ -693,13 +1385,31 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     operation_count++;
   endtask
 
+  // Whether a once-per-run leg runs on targets[idx] in this pass, among the
+  // `n` bridges from targets[first]: all of them in the first pass, none
+  // later.
+  protected function bit pass_runs(int unsigned idx, int unsigned n = NumTargets,
+                                   int unsigned first = 0);
+    return (loop_index == 0) && (idx >= first) && (idx < first + n);
+  endfunction
+
+  // Whether the stimulus-mutation bridge mask `mask` (1 smc_axi, 2 smc_otp,
+  // 4 sep_otp) selects `t`.
+  protected function bit mutated(int unsigned mask, dtp_j2a_target_t t);
+    return mask[target_index(t)];
+  endfunction
+
+  // With `per_pass`, the legs of the bridge pass_runs selects alone.
   protected task run_address_phase_aborts(string label, int unsigned reset_cycles_hi,
-                                          int unsigned addr_offset);
+                                          int unsigned addr_offset, bit before_update = 1'b0,
+                                          bit per_pass = 1'b0);
     for (int unsigned leg = 0; leg < 2 * NumTargets; leg++) begin
-      dtp_j2a_target_t t = select_target(leg / 2);
+      dtp_j2a_target_t t;
       bit is_read = bit'(leg % 2);
       string direction = is_read ? "read" : "write";
       bit recovered;
+      if (per_pass && !pass_runs(leg / 2)) continue;
+      t = select_target(leg / 2);
       `uvm_info(get_type_name(), $sformatf(
                 "[%0d/%0d] target=%s %s: system reset with the %s in its address state",
                 leg + 1,
@@ -710,7 +1420,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                 ), UVM_LOW)
       reset_abort_address_phase(t, is_read, $urandom_range(reset_cycles_hi, 1),
                                 leg + 1 + addr_offset, $sformatf(
-                                "%s.%s.%s", label, t.name, direction), recovered);
+                                "%s.%s.%s", label, t.name, direction), recovered, before_update);
     end
   endtask
 
@@ -718,20 +1428,40 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // reset discards the series operation, so SERIES_CTRL reads DECERR and
   // keeps the held beat's address, since the beat never completed. After
   // SERIES_CTRL.reset a beat programmed at that address lands. `recovered`
-  // is 1 when the discard was reported and the follow-on beat ran.
+  // is 1 when the discard was reported and the follow-on beat ran. With
+  // `prior_error` an incrementing beat answered SLVERR comes first, without
+  // SERIES_CTRL.reset after it: the status already holds SLVERR, which the
+  // reset keeps (PTAP document, system reset), and the held beat is the next
+  // one.
   protected task reset_abort_series(int unsigned idx, int unsigned addr_idx,
                                     int unsigned reset_cycles, string context_s,
-                                    output bit recovered);
+                                    output bit recovered, input bit prior_error = 1'b0);
     dtp_j2a_target_t t = select_target(idx);
     int unsigned size = t.default_size;
     bit [63:0] addr = robust_addr(t, addr_idx);
     bit [63:0] data = rand_data(t) & data_mask(size);
-    bit [63:0] prior_word = read_target_mem_int(t, addr, size);
+    bit [63:0] prior_word;
     int unsigned aw0, w0, ar0;
     bit idle, on_bus;
     dtp_j2a_status_e st;
+    dtp_j2a_status_e expected = DTP_J2A_DECERR;
     series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
     series_ctrl_op(t, DTP_J2A_OP_WRITE, addr, size);
+    if (prior_error) begin
+      bit [63:0] failed_before = read_target_mem_int(t, addr, size);
+      int unsigned completed = port_history(t.name).count(1'b0);
+      bit done;
+      expected = DTP_J2A_SLVERR;
+      arm_target_error(t, addr, OCAH_AXI_RESP_SLVERR, .for_read(1'b0), .for_write(1'b1));
+      series_data_incr(t, data ^ 64'h5A, size);
+      wait_port_count(t, 1'b0, completed, done);
+      if (!done) record_wait_timeout(t, PortWaitCycles, {context_s, ".prior_error"});
+      check_target_memory(t, addr, failed_before, size, {context_s, ".prior_error"});
+      addr += t.beat_bytes;
+      check_series_addr(t, addr, size, {context_s, ".prior_error"}, st);
+      check_status(t, {context_s, ".prior_error"}, st, expected);
+    end
+    prior_word = read_target_mem_int(t, addr, size);
     configure_target_backpressure(t, '{"w"}, AbortHoldCycles);
     sample_stall(t, aw0, w0, ar0);
     series_data_incr(t, data, size);
@@ -769,7 +1499,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     ));
     check_series_addr(t, addr, size, {context_s, ".kept"}, st);
     recovered = record_abort_check(DtpJ2aAbortRecoveryCheckId, {context_s, ".series_status"},
-                                   64'(st), 64'(DTP_J2A_DECERR),
+                                   64'(st), 64'(expected),
                                    $sformatf("SERIES_CTRL status=%s after the series reset",
                                              st.name()));
     status = st;
@@ -785,9 +1515,11 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   endtask
 
   protected task run_series_abort(string label, int unsigned reset_cycles_hi,
-                                  int unsigned addr_offset);
+                                  int unsigned addr_offset, bit prior_error = 1'b0,
+                                  bit per_pass = 1'b0);
     for (int unsigned i = 0; i < NumTargets; i++) begin
       bit recovered;
+      if (per_pass && !pass_runs(i)) continue;
       `uvm_info(get_type_name(), $sformatf(
                 "[%0d/%0d] target=%s %s: system reset while a series beat is held",
                 i + 1,
@@ -796,7 +1528,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                 label
                 ), UVM_LOW)
       reset_abort_series(i, i + 1 + addr_offset, $urandom_range(reset_cycles_hi, 1), $sformatf(
-                         "%s.%s", label, targets[i].name), recovered);
+                         "%s.%s", label, targets[i].name), recovered, prior_error);
     end
   endtask
 
@@ -928,6 +1660,9 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // queued and follow-on requests; the recovery accesses take the slots
   // after the last.
   localparam int unsigned OrphanSlotStride = 3;
+  // The stacked-orphan legs: three slots per direction from this one, writes
+  // first, clear of the scenario's other legs.
+  localparam int unsigned StackedSlot = 40;
 
   // When the responder releases a request held across a TCK-side clear:
   // while the TAP still holds the bridge's TCK side in reset; once the clear
@@ -1308,34 +2043,46 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     end
   endtask
 
-  // A seeded beat of slot `slot`'s 0x400 window, with seeded address bits
-  // above the responder window.
-  protected function bit [63:0] queued_addr(dtp_j2a_target_t t, int unsigned slot);
+  // A seeded address and transfer size in slot `slot`'s 0x400 window, drawn
+  // as the entry sweep draws them: a seeded beat with seeded address bits
+  // above the responder window, and on an AXI4 port a seeded byte offset
+  // inside the beat with a seeded size the offset is aligned to, on an
+  // AXI-Lite port the beat with a seeded size up to it.
+  protected function void queued_addr(dtp_j2a_target_t t, int unsigned slot, output bit [63:0] addr,
+                                      output int unsigned size);
     bit [63:0] beat = 64'($urandom_range(32'h400 / t.beat_bytes - 1) * t.beat_bytes);
-    return (RobustBase + 64'(slot) * 64'h400 + beat) | random_upper_addr(t);
+    int unsigned offset = (t.bus_type == 1'b0) ? $urandom_range(t.beat_bytes - 1) : 0;
+    int unsigned sizes[$];
+    for (int unsigned s = 0; s <= t.default_size; s++) begin
+      if (offset % size_bytes(s) == 0) sizes.push_back(s);
+    end
+    addr = ((RobustBase + 64'(slot) * 64'h400 + beat) | random_upper_addr(t)) + 64'(offset);
+    size = sizes[$urandom_range(sizes.size() - 1)];
   endfunction
 
-  // Issue a SINGLE_OP of the new session behind the held request. A read of
-  // a slot holding `word` is answered OKAY, and a write of `word` with the
-  // leg's error, so neither response matches the held request's. `expected`
-  // is the status the queued request reports; `ok` is 1 when
-  // CHK-J2A-ORPHAN-ORDER saw the bridge waiting on it while the held request
-  // still stalls.
-  protected task queue_behind(orphan_leg_t leg, bit [63:0] addr, bit [63:0] word,
+  // Issue a SINGLE_OP of `size` at `addr` of the new session behind the
+  // held request. A read of a beat holding `word` is answered OKAY, and a
+  // write of `word` with the leg's error, so neither response matches the
+  // held request's; the request carries its data and strobes on the lanes
+  // `addr` selects. `expected` is the status the queued request reports;
+  // `ok` is 1 when CHK-J2A-ORPHAN-ORDER saw the bridge waiting on it while
+  // the held request still stalls.
+  protected task queue_behind(orphan_leg_t leg, bit [63:0] addr, int unsigned size, bit [63:0] word,
                               output dtp_j2a_status_e expected, output bit ok);
     dtp_j2a_target_t t = leg.t;
-    int unsigned size = t.default_size;
+    int unsigned lane = int'(addr % t.beat_bytes);
     int unsigned aw0, w0, ar0, aw1, w1, ar1;
     bit idle, still_held;
     sample_stall(t, aw0, w0, ar0);
     if (leg.is_read) begin
       expected = DTP_J2A_SUCCESS;
-      write_target_mem_int(t, addr, word, size);
-      issue_single(t, DTP_J2A_OP_READ, addr);
+      write_target_mem_int(t, addr - 64'(lane), word, t.default_size);
+      issue_single(t, DTP_J2A_OP_READ, addr, '0, '0, size, .use_default_size(1'b0));
     end else begin
       expected = dtp_j2a_axi_resp_to_status(leg.resp);
       arm_target_error(t, addr, leg.resp, .for_read(1'b0), .for_write(1'b1));
-      issue_single(t, DTP_J2A_OP_WRITE, addr, word, full_wstrb(size));
+      issue_single(t, DTP_J2A_OP_WRITE, addr, (word << (8 * lane)) & bit_mask(t.data_width),
+                   8'(full_wstrb(size) << lane), size, .use_default_size(1'b0));
     end
     wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, idle);
     repeat (OrphanQueueTck) step(1'b0);
@@ -1539,9 +2286,10 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     drain_tap_reset(leg, completed, step_ok);
     ok &= step_ok;
     if (leg.drain == DTP_J2A_DRAIN_QUEUED) begin
-      last_addr = queued_addr(t, leg.slot + 1);
+      int unsigned last_size;
+      queued_addr(t, leg.slot + 1, last_addr, last_size);
       last_word = random_distinct_word(t, {word});
-      queue_behind(leg, last_addr, last_word, last_status, step_ok);
+      queue_behind(leg, last_addr, last_size, last_word, last_status, step_ok);
       ok &= step_ok;
     end
     if (leg.drain inside {DTP_J2A_DRAIN_AFTER_CLEAR, DTP_J2A_DRAIN_QUEUED})
@@ -1550,6 +2298,168 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     ok &= step_ok;
     orphan_follow_on(leg, {word, last_word}, completed + leg_landings(leg), step_ok);
     ok &= step_ok;
+    operation_count++;
+  endtask
+
+  // Responses the bench's hold queue keeps for the R (`is_read`) or B
+  // channel of `t`.
+  protected function int unsigned held_responses(dtp_j2a_target_t t, bit is_read);
+    case (target_index(
+        t
+    ))
+      0: return is_read ? tb_vif.smc_axi_r_held : tb_vif.smc_axi_b_held;
+      1: return is_read ? tb_vif.smc_otp_r_held : tb_vif.smc_otp_b_held;
+      default: return is_read ? tb_vif.sep_otp_r_held : tb_vif.sep_otp_b_held;
+    endcase
+  endfunction
+
+  // Two TAP resets, each with a request of its session accepted on the bus
+  // and its response held, then a third request, so the AXI side holds three
+  // requests, its limit, two of them orphans of earlier sessions. One TAP
+  // reset is TRST and the other a TMS walk, the write leg taking the TMS walk
+  // first and the read leg TRST first. The bench holds the direction's
+  // responses (dtp_tb_if j2a_b_hold or j2a_r_hold), so
+  // the responder accepts every request. It answers the two earlier requests
+  // with seeded SLVERR or DECERR codes, a read with a seeded errored-beat
+  // word, and the third with OKAY. Once the responses are released the two
+  // orphans drain on the AXI side in order, the third request is the newest
+  // completion and reports its own OKAY and, for a read, its slot's word,
+  // and of the writes only the third lands. `ok` is 1 when every judgement
+  // matched.
+  protected task tap_reset_stacked(dtp_j2a_target_t t, bit is_read, int unsigned slot,
+                                   output bit ok);
+    string context_s = $sformatf("tap_reset.%s.%s.stacked", t.name, is_read ? string'("read") : string'("write"));
+    int unsigned size = t.default_size;
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] addrs[3];
+    bit [63:0] words[$];
+    bit [63:0] priors[$];
+    ocah_axi_resp_e resps[2];
+    int unsigned completed = port.count(is_read);
+    dtp_j2a_status_e st;
+    bit [63:0] rdata;
+    ocah_axi_item newest;
+    bit done;
+    ok = 1'b1;
+    foreach (addrs[k]) addrs[k] = robust_addr(t, slot + k);
+    repeat (3) words.push_back(random_distinct_word(t, words));
+    repeat (3) begin
+      bit [63:0] avoid[$] = words;
+      foreach (priors[k]) avoid.push_back(priors[k]);
+      priors.push_back(random_distinct_word(t, avoid));
+    end
+    foreach (addrs[k]) write_target_mem_int(t, addrs[k], priors[k], size);
+    foreach (resps[k]) resps[k] = $urandom_range(1) ? OCAH_AXI_RESP_SLVERR : OCAH_AXI_RESP_DECERR;
+    `uvm_info(get_type_name(), $sformatf("%s errors=%s,%s", context_s, resps[0].name(),
+                                         resps[1].name()), UVM_LOW)
+    hold_response(t, is_read, 1'b1);
+    for (int unsigned k = 0; k < 3; k++) begin
+      bit via_trst;
+      if (k < 2)
+        arm_target_error(t, addrs[k], resps[k], .for_read(is_read), .for_write(!is_read),
+                         .arm_expected(1'b1), .err_rdata(words[k]));
+      if (is_read) issue_single(t, DTP_J2A_OP_READ, addrs[k]);
+      else issue_single(t, DTP_J2A_OP_WRITE, addrs[k], words[k], full_wstrb(size));
+      for (int unsigned i = 0; i < AbortMidFlightTck && held_responses(t, is_read) <= k; i++)
+      step(1'b0);
+      ok &= record_abort_check(
+          DtpJ2aAbortMidFlightCheckId,
+          $sformatf(
+              "%s.held%0d", context_s, k
+          ),
+          64'(held_responses(
+              t, is_read
+          ) == k + 1 && !bridge_fsm_idle(
+              t
+          )),
+          64'd1,
+          $sformatf(
+              "held_responses=%0d with the bridge waiting", held_responses(t, is_read))
+      );
+      if (k == 2) break;
+      via_trst = bit'((k + is_read) % 2);
+      clear_cdc_clear_seen();
+      enter_tap_reset(via_trst, $urandom_range(OrphanTrstHoldMax, 1));
+      leave_tap_reset(via_trst, $urandom_range(OrphanClearTckMax, OrphanClearTckMin));
+      ok &= record_cdc_clear(
+          t,
+          $sformatf(
+              "%s.cdc_clear%0d", context_s, k
+          ),
+          $sformatf(
+              "tck-side isolate-and-clear after TAP reset %0d (%s)",
+              k,
+              via_trst ? string'("trst") : string'("tms_walk"))
+      );
+    end
+    hold_response(t, is_read, 1'b0);
+    wait_port_count(t, is_read, completed + 2, done);
+    settle_bridge(t);
+    ok &= record_orphan_check(
+        DtpJ2aOrphanDrainCheckId,
+        {
+          context_s, ".landings"
+        },
+        64'(port.count(
+            is_read
+        ) - completed),
+        64'd3,
+        "port completions of the direction after the release"
+    );
+    void'(port.last(is_read, newest));
+    ok &= record_orphan_check(
+        DtpJ2aOrphanOrderCheckId,
+        {
+          context_s, ".last_address"
+        },
+        (newest != null) ? newest.address : '0,
+        addrs[2] & bit_mask(
+            t.addr_width
+        ),
+        "address of the newest completion of the direction"
+    );
+    if (!is_read) begin
+      for (int unsigned k = 0; k < 3; k++)
+      ok &= record_orphan_check(
+          DtpJ2aOrphanDrainCheckId,
+          $sformatf(
+              "%s.slot%0d", context_s, k
+          ),
+          read_target_mem_int(
+              t, addrs[k], size
+          ),
+          (k == 2) ? words[k] : priors[k],
+          $sformatf(
+              "addr=0x%0h", addrs[k])
+      );
+    end
+    // A TAP reset loads IDCODE, and the status capture shifts the SINGLE_OP
+    // register under the instruction already loaded.
+    load_ir(t.single_op_instr);
+    poll_single(t, st, rdata, {context_s, ".drained"}, AbortRecoveryPolls);
+    ok &= record_orphan_check(
+        DtpJ2aOrphanDiscardCheckId,
+        {
+          context_s, ".status"
+        },
+        64'(st),
+        64'(DTP_J2A_SUCCESS),
+        $sformatf(
+            "status=%s max_captures=%0d", st.name(), AbortRecoveryPolls)
+    );
+    if (is_read)
+      ok &= record_orphan_check(
+          DtpJ2aOrphanDiscardCheckId,
+          {
+            context_s, ".rdata"
+          },
+          rdata & bit_mask(
+              t.data_width
+          ),
+          priors[2],
+          $sformatf(
+              "addr=0x%0h", addrs[2])
+      );
     operation_count++;
   endtask
 
@@ -1600,6 +2510,15 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                   )
                   ), UVM_LOW)
         tap_reset_orphan(leg, ok);
+      end
+    end
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      dtp_j2a_target_t t;
+      if (!pass_runs(i)) continue;
+      t = select_target(i);
+      for (int unsigned is_read = 0; is_read < 2; is_read++) begin
+        bit ok;
+        tap_reset_stacked(t, bit'(is_read), StackedSlot + 4 * is_read, ok);
       end
     end
     for (int unsigned i = 0; i < NumTargets; i++) begin
@@ -1733,6 +2652,124 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     status = sstatus;
   endtask
 
+  // Aligned base of one size or mid-beat leg's window.
+  protected function bit [63:0] series_sizes_base(int unsigned idx, int unsigned leg);
+    return SeriesSizesBase + (idx + 1) * 64'h400 + leg * 64'h100;
+  endfunction
+
+  // Series at size fields other than the bus width on an AXI-Lite bridge: a
+  // fixed-address write series at size field 1 (halfword), at a word address,
+  // since the OTP ports take word addresses; an incrementing one at size
+  // field 3, wider than the 32-bit bus and so carried as full 4-byte beats,
+  // the effective size E = min(size, data_size) of the PTAP document; then a
+  // WITH_ERROR_STATUS incrementing write series at size field 3. Each series
+  // is read back through SERIES_CTRL(READ), every beat of an incrementing
+  // one and the last word of the fixed one, and SERIES_CTRL captures the
+  // address after the series with status OKAY.
+  protected task series_corner_sizes(int unsigned idx, int unsigned beats);
+    dtp_j2a_target_t t = select_target(idx);
+    int unsigned sizes[3] = '{1, 3, 3};
+    for (int unsigned leg = 0; leg < 3; leg++) begin
+      int unsigned size = sizes[leg];
+      bit incr = (leg != 0);
+      bit with_status = (leg == 2);
+      string label = $sformatf("series_corner.size%0d%s.%s", size, with_status ? string'("_status") : string'(""),
+                               t.name);
+      int unsigned eff = dtp_j2a_axsize(t, size);
+      int unsigned step_bytes = incr ? size_bytes(eff) : 0;
+      bit [63:0] base = series_sizes_base(idx, leg);
+      bit [63:0] end_addr = base + beats * step_bytes;
+      bit [63:0] words[$];
+      dtp_j2a_status_e sstatus;
+      repeat (beats) words.push_back(rand_data(t) & data_mask(eff));
+      series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+      series_ctrl_op(t, DTP_J2A_OP_WRITE, base, size);
+      foreach (words[beat]) begin
+        bit [63:0] addr = base + beat * step_bytes;
+        string ctx = $sformatf("%s.write#%0d", label, beat);
+        if (with_status) begin
+          int unsigned completed = port_history(t.name).count(1'b0);
+          bit [63:0] unused;
+          bit status_bit;
+          bit done;
+          series_data_with_status(t, words[beat], size, incr, unused, status_bit);
+          wait_port_count(t, 1'b0, completed, done);
+          if (!done) record_wait_timeout(t, PortWaitCycles, ctx);
+          check_target_memory(t, addr, words[beat], eff, {ctx, ".mem"});
+        end else begin
+          series_write_beat(t, words[beat], addr, size, incr, ctx);
+        end
+        operation_count++;
+      end
+      check_series_addr(t, end_addr, size, {label, ".write"}, sstatus);
+      check_status(t, {label, ".write"}, sstatus, DTP_J2A_SUCCESS);
+      foreach (words[beat]) begin
+        bit [63:0] observed;
+        if (!incr && beat + 1 < beats) continue;
+        series_read_beat(t, base + beat * step_bytes, size, incr, $sformatf(
+                         "%s.read#%0d", label, beat), observed);
+        check_returned_rdata(t, observed, words[beat], $sformatf("%s.rdata#%0d", label, beat));
+        operation_count++;
+      end
+      check_series_addr(t, end_addr, size, {label, ".read"}, sstatus);
+      check_status(t, {label, ".read"}, sstatus, DTP_J2A_SUCCESS);
+      status = sstatus;
+    end
+  endtask
+
+  // SERIES_CTRL captured while an incrementing beat waits for its response.
+  // The bench holds the beat's B, then a read beat's R (dtp_tb_if j2a_b_hold,
+  // j2a_r_hold), with the bridge waiting on it, and loads and captures
+  // SERIES_CTRL: the address is the one the beat targets, since the series
+  // address advances when the beat completes (PTAP document). Once the
+  // response is released, SERIES_CTRL captures the next address, and the
+  // read's word reaches the next scan.
+  protected task series_corner_mid_beat(int unsigned idx);
+    dtp_j2a_target_t t = select_target(idx);
+    int unsigned size = t.default_size;
+    for (int unsigned is_read = 0; is_read < 2; is_read++) begin
+      string label = $sformatf("series_corner.mid_beat.%s.%s", is_read ? string'("read") : string'("write"), t.name);
+      bit [63:0] addr = series_sizes_base(idx, 3) + 64'h80 * is_read;
+      bit [63:0] word = rand_nonzero_data(t);
+      int unsigned completed = port_history(t.name).count(bit'(is_read));
+      dtp_j2a_status_e sstatus;
+      bit [63:0] raw;
+      bit done;
+      series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+      if (is_read) write_target_mem_int(t, addr, word, size);
+      series_ctrl_op(t, is_read ? DTP_J2A_OP_READ : DTP_J2A_OP_WRITE, addr, size);
+      hold_response(t, bit'(is_read), 1'b1);
+      series_data_incr(t, is_read ? '0 : word, size);
+      step_until_held(t, bit'(is_read));
+      `uvm_info(get_type_name(), $sformatf(
+                "%s: held=%0d on_path=%0d",
+                label,
+                held_responses(
+                    t, bit'(is_read)
+                ),
+                bridge_fsm_on_path(
+                    t, bit'(is_read)
+                )
+                ), UVM_LOW)
+      check_series_addr(t, addr, size, {label, ".held"}, sstatus);
+      check_status(t, {label, ".held"}, sstatus, DTP_J2A_SUCCESS);
+      hold_response(t, bit'(is_read), 1'b0);
+      wait_port_count(t, bit'(is_read), completed, done);
+      if (!done) record_wait_timeout(t, PortWaitCycles, {label, ".drain"});
+      settle_bridge(t);
+      if (is_read) begin
+        series_data_shift(t, t.series_data_incr_instr, '0, size, -1, raw);
+        check_returned_rdata(t, raw & data_mask(size), word, {label, ".rdata"});
+      end else begin
+        check_target_memory(t, addr, word, size, {label, ".mem"});
+      end
+      check_series_addr(t, addr + t.beat_bytes, size, {label, ".released"}, sstatus);
+      check_status(t, {label, ".released"}, sstatus, DTP_J2A_SUCCESS);
+      status = sstatus;
+      operation_count++;
+    end
+  endtask
+
   // One faulted beat sets the series status, which holds across the clean
   // beats after it until SERIES_CTRL.reset starts a fresh series.
   protected task series_corner_sticky_status(int unsigned idx, int unsigned beats);
@@ -1829,9 +2866,207 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     // Seeded per-pass beat count, above the two beats a progression needs.
     int unsigned beats = $urandom_range(6, 3);
     `uvm_info(get_type_name(), $sformatf("Series corner: %0d beats per series", beats), UVM_LOW)
-    for (int unsigned i = 0; i < NumTargets; i++) series_corner_progressions(i, beats);
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      series_corner_progressions(i, beats);
+      if (targets[i].bus_type && pass_runs(i, 2, 1)) series_corner_sizes(i, beats);
+      if (pass_runs(i)) series_corner_mid_beat(i);
+    end
     for (int unsigned i = 0; i < NumTargets; i++) series_corner_sticky_status(i, beats);
     series_corner_interleaved(beats);
+    if (test_cfg != null && test_cfg.j2a_flush_edge_read) begin
+      for (int unsigned i = 0; i < NumTargets; i++) series_flush_fill(i);
+      for (int unsigned i = 0; i < NumTargets; i++) begin
+        series_flush_edge_read(i, bit'((scenario_seed + i + 1) % 2));
+      end
+    end
+  endtask
+
+  // Load `instr` and shift the `len`-bit `value` in as one raw TMS walk that
+  // stops with the TAP in Pause-DR, where TCK may run with TMS low. No intent
+  // is armed.
+  protected task scan_dr_to_pause(dtp_j2a_target_t t, dtp_jtag_instr_e instr, bit [63:0] value,
+                                  int unsigned len, string what);
+    bit tms[];
+    bit tdi[];
+    load_ir(IrWidth'(instr));
+    tms = new[len + 4];
+    tdi = new[len + 4];
+    tms[0] = 1'b1;
+    for (int unsigned i = 0; i < len; i++) begin
+      tms[3+i] = (i == len - 1);
+      tdi[3+i] = value[i];
+    end
+    raw_walk(tms, tdi);
+    check_state(PAUSE_DR, "jtag2axi_scan_chk", {what, " held in Pause-DR"});
+    check_last_scan_length(1'b0, len, $sformatf("%s %s held in Pause-DR", t.name, what));
+    note_scan(1'b0, len);
+  endtask
+
+  // Exit2-DR, Update-DR, Run-Test/Idle: the scan's Update-DR acts on the
+  // third edge.
+  protected task leave_pause_dr();
+    step(1'b1);
+    step(1'b1);
+    step(1'b0);
+  endtask
+
+  // Queue a read of A behind a SINGLE_OP write whose B is held, then land a
+  // READ SERIES_CTRL of B at pipeline depth `depth` on the edge where the
+  // state machine leaves idle for that read, or one edge later with `late`.
+  // The write waits for its held B (dtp_tb_if j2a_b_hold), and a READ
+  // programming at pipeline depth 0 queues the read of A with R held
+  // (j2a_r_hold). The second programming waits in Pause-DR while the B is
+  // released, and TCK steps in Pause-DR until the state machine is about to
+  // take the write's response; the scan leaves Pause-DR on that edge, so its
+  // Update-DR lands two edges later. R stays held.
+  protected task flush_edge_program(dtp_j2a_target_t t, bit [63:0] held_addr, bit [63:0] held_word,
+                                    bit [63:0] a_addr, bit [63:0] b_addr, int unsigned depth,
+                                    bit late, string context_s);
+    int unsigned size = t.default_size;
+    int unsigned writes0 = port_history(t.name).count(1'b0);
+    int unsigned waited = 0;
+    bit done;
+    bit [63:0] raw;
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    hold_response(t, 1'b0, 1'b1);
+    issue_single(t, DTP_J2A_OP_WRITE, held_addr, held_word, full_wstrb(size));
+    step_until_held(t, 1'b0);
+    series_ctrl_op(t, DTP_J2A_OP_READ, a_addr, size);
+    hold_response(t, 1'b1, 1'b1);
+    series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+    scan_dr_to_pause(t, t.series_ctrl_instr, dtp_j2a_pack_series_ctrl(
+                     t, DTP_J2A_OP_READ, b_addr, depth, size, 1'b0), series_ctrl_len(t),
+                     "series_ctrl");
+    hold_response(t, 1'b0, 1'b0);
+    wait_port_count(t, 1'b0, writes0, done);
+    if (!done) record_wait_timeout(t, PortWaitCycles, {context_s, ".write"});
+    step_until_beat_done(t, AbortMidFlightTck, waited);
+    if (late) step(1'b0);
+    leave_pause_dr();
+    `uvm_info(get_type_name(),
+              $sformatf("%s: write response taken %0d TCK edges after its handshake; read path=%0d",
+                        context_s, waited + 1, bridge_fsm_on_path(t, 1'b1)), UVM_LOW)
+  endtask
+
+  // The pop-edge programming at the bridge's read pipeline depth D, whose
+  // D + 1 reads fill the series response FIFO. The second programming is a
+  // READ of B at pipeline depth D landing on the pop edge, with R still held
+  // on the read of A. Its D + 1 issue scans queue the reads of B behind the
+  // read of A; their captures are not judged, since the first D return the
+  // pipeline's pending marker. SERIES_CTRL is then selected, R released, and
+  // TCK steps until the port has completed the read of A and the D + 1 reads
+  // of B. A response to a read issued under the previous programming never
+  // enters the new programming's response FIFO, so the FIFO's D + 1 entries
+  // hold the reads of B: SERIES_CTRL reads OKAY at B, and D + 1 readback
+  // scans each return B's word (CHK-AXI-RDATA).
+  protected task series_flush_fill(int unsigned idx);
+    dtp_j2a_target_t t = select_target(idx);
+    string context_s = $sformatf("series_corner.flush_fill.%s", t.name);
+    int unsigned size = t.default_size;
+    int unsigned depth = t.rd_pl_depth;
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] base = series_sizes_base(idx, 3) + 64'hC0;
+    bit [63:0] held_addr = base;
+    bit [63:0] a_addr = base + 64'h10;
+    bit [63:0] b_addr = base + 64'h20;
+    bit [63:0] held_word = rand_nonzero_data(t);
+    bit [63:0] a_word = random_distinct_word(t, {held_word});
+    bit [63:0] b_word = random_distinct_word(t, {held_word, a_word});
+    int unsigned reads0 = port.count(1'b1);
+    bit [63:0] raw;
+    dtp_j2a_status_e sstatus;
+    write_target_mem_int(t, a_addr, a_word, size);
+    write_target_mem_int(t, b_addr, b_word, size);
+    `uvm_info(get_type_name(),
+              $sformatf("%s: pipeline depth %0d; A=0x%0h holds 0x%0h, B=0x%0h holds 0x%0h",
+                        context_s, depth, a_addr, a_word, b_addr, b_word), UVM_LOW)
+    flush_edge_program(t, held_addr, held_word, a_addr, b_addr, depth, 1'b0, context_s);
+    repeat (depth + 1) series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+    load_ir(IrWidth'(t.series_ctrl_instr));
+    hold_response(t, 1'b1, 1'b0);
+    complete_with_tck(t, 1'b1, reads0 + depth + 1, {context_s, ".reads"});
+    for (int unsigned i = 0; i < AbortSettleTck; i++) begin
+      if (bridge_fsm_idle(t)) break;
+      step(1'b0);
+    end
+    `uvm_info(get_type_name(),
+              $sformatf(
+                  "%s: port reads=%0d, state machine idle=%0d read path=%0d before any readback",
+                  context_s, port.count(1'b1) - reads0, bridge_fsm_idle(t), bridge_fsm_on_path(
+                  t, 1'b1)), UVM_LOW)
+    check_series_addr(t, b_addr, size, {context_s, ".full"}, sstatus);
+    check_status(t, {context_s, ".full.status"}, sstatus, DTP_J2A_SUCCESS);
+    for (int unsigned k = 0; k <= depth; k++) begin
+      series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+      check_returned_rdata(t, raw & data_mask(size), b_word, $sformatf(
+                           "%s.readback%0d", context_s, k));
+    end
+    check_series_addr(t, b_addr, size, {context_s, ".status"}, sstatus);
+    check_status(t, {context_s, ".status"}, sstatus, DTP_J2A_SUCCESS);
+    status = sstatus;
+    operation_count++;
+  endtask
+
+  // A READ SERIES_CTRL whose Update-DR lands as the bridge takes a queued
+  // series read. A SINGLE_OP write waits for its held B (dtp_tb_if
+  // j2a_b_hold), and a READ programming at pipeline depth 0 queues a read of
+  // slot A behind it with R held (j2a_r_hold). A second READ programming of
+  // slot B waits in Pause-DR while the B is released; TCK steps in Pause-DR
+  // until the state machine is about to take the write's response, and the
+  // scan leaves Pause-DR on that edge, or one edge later with `late`, so its
+  // Update-DR lands on the edge where the state machine leaves idle for the
+  // read of A, or the edge after. Both reach the bus. The new programming's
+  // issue scan waits in Pause-DR while R is released and TCK steps until the
+  // state machine is back in idle, then issues the read of B. Once that read
+  // completes, SERIES_CTRL reads OKAY, and the readback scan returns B's word,
+  // since a response to a read issued under the previous programming never
+  // enters the new programming's response queue (CHK-AXI-RDATA).
+  protected task series_flush_edge_read(int unsigned idx, bit late);
+    dtp_j2a_target_t t = select_target(idx);
+    string edge_s = late ? string'("late") : string'("pop");
+    string context_s = $sformatf("series_corner.flush_edge.%s.%s", edge_s, t.name);
+    int unsigned size = t.default_size;
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] base = series_sizes_base(idx, 3) + 64'h40;
+    bit [63:0] held_addr = base;
+    bit [63:0] a_addr = base + 64'h10;
+    bit [63:0] b_addr = base + 64'h20;
+    bit [63:0] held_word = rand_nonzero_data(t);
+    bit [63:0] a_word = random_distinct_word(t, {held_word});
+    bit [63:0] b_word = random_distinct_word(t, {held_word, a_word});
+    int unsigned reads0 = port.count(1'b1);
+    bit a_landed = 1'b0;
+    bit [63:0] raw;
+    dtp_j2a_status_e sstatus;
+    write_target_mem_int(t, a_addr, a_word, size);
+    write_target_mem_int(t, b_addr, b_word, size);
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "%s: second programming's Update-DR on the %s edge; A=0x%0h holds 0x%0h, B=0x%0h holds 0x%0h",
+            context_s, edge_s, a_addr, a_word, b_addr, b_word), UVM_LOW)
+    flush_edge_program(t, held_addr, held_word, a_addr, b_addr, 0, late, context_s);
+    scan_dr_to_pause(t, t.series_data_no_incr_instr, '0, 8 * size_bytes(dtp_j2a_axsize(t, size)),
+                     "series_data");
+    hold_response(t, 1'b1, 1'b0);
+    for (int unsigned i = 0; i < AbortSettleTck; i++) begin
+      a_landed = port.count(1'b1) > reads0;
+      if (a_landed && bridge_fsm_idle(t)) break;
+      step(1'b0);
+    end
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "%s: read of A landed=%0d, state machine idle=%0d before the issue scan's Update-DR",
+            context_s, a_landed, bridge_fsm_idle(t)), UVM_LOW)
+    leave_pause_dr();
+    complete_with_tck(t, 1'b1, reads0 + a_landed, {context_s, ".read_b"});
+    check_series_addr(t, b_addr, size, {context_s, ".status"}, sstatus);
+    check_status(t, {context_s, ".status"}, sstatus, DTP_J2A_SUCCESS);
+    status = sstatus;
+    series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+    check_returned_rdata(t, raw & data_mask(size), b_word, {context_s, ".readback"});
+    operation_count++;
   endtask
 
   // --- CDC FIFO entry sweep -------------------------------------------------
@@ -1961,11 +3196,28 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     end
   endfunction
 
+  // A SERIES_DATA_INCR scan on every bridge after the TAP reset and before
+  // any SERIES_CTRL programming: the bridge has no series mode, so no
+  // request reaches its port (CHK-AXI-NOACT).
+  protected task series_data_before_ctrl();
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      dtp_j2a_target_t t = select_target(i);
+      int unsigned aw0, w0, ar0, aw1, w1, ar1;
+      sample_activity(t, aw0, w0, ar0);
+      series_data_incr(t, 64'($urandom_range(255)), 0);
+      repeat (QueueDropTck) step(1'b0);
+      sample_activity(t, aw1, w1, ar1);
+      expect_no_activity_evidence(t, aw0, w0, ar0, aw1, w1, ar1, $sformatf(
+                                  "cdc_fifo_entry_sweep.%s.series_before_ctrl", t.name));
+    end
+  endtask
+
   protected task run_cdc_fifo_entry_sweep();
     ocah_axi_resp_e write_plan[], read_plan[];
     dtp_j2a_status_e st;
     bit [63:0] rdata;
     reset_to_rti();
+    series_data_before_ctrl();
     for (int unsigned i = 0; i < NumTargets; i++) begin
       dtp_j2a_target_t t = select_target(i);
       int unsigned slots = cdc_fifo_slots(t);
@@ -1985,6 +3237,13 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                 write_plan,
                 read_plan
                 ), UVM_LOW)
+      // With slots - 2 reads ahead of the sweep's 2 * slots + 2, the R FIFO
+      // takes 3 * slots beats, so its write pointer stands at slots, half its
+      // range, when the TAP reset returns the read pointer to zero.
+      for (int unsigned extra = 0; extra + 2 < slots; extra++) begin
+        sweep_read(t, OCAH_AXI_RESP_OKAY, $sformatf(
+                   "cdc_fifo_entry_sweep.%s.lead%0d.read", t.name, extra));
+      end
       for (int unsigned push = 0; push < pushes; push++) begin
         string context_s = $sformatf("cdc_fifo_entry_sweep.%s.%0d", t.name, push);
         sweep_write(t, write_plan[push], {context_s, ".write"});
@@ -2047,7 +3306,11 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       "cdc_clear_abort_narrow_reset_mid_xaction": begin
         run_reset_abort("narrow_reset", "aw", 1, 64'h2222, 8, 1'b1);
         run_read_response_abort("narrow_reset_read", 12);
+        if (test_cfg != null && test_cfg.j2a_visible_response_reset)
+          run_visible_response_resets("visible_response");
         run_address_phase_aborts("address_phase", 3, 27);
+        run_address_phase_aborts("latched_idle", 3, 33, 1'b1, 1'b1);
+        run_series_abort("narrow_reset_series", 1, 47, 1'b1, 1'b1);
         run_tap_reset_orphans();
       end
       "cdc_clear_abort_back_to_back_reset": run_back_to_back_reset();
