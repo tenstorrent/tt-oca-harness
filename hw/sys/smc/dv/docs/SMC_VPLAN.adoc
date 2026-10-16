@@ -942,6 +942,7 @@ reset, access type and write-one-to-clear behaviour in each instance.
 |`smc_uart_log_engine_error_boundary_test` |Run log-engine CSR R/W depth as the error/boundary checker.
 |`smc_log_engine_abort_test` |A log-engine transfer on all four wrapper instances halted part-way by clearing CTRL.EN, then a shorter entry re-triggered and delivered in full.
 |`smc_log_engine_transfer_test` |A real log-engine transfer on all four wrapper instances: four logs fetched from the SPM log region and written to the wrapper UART in loopback, read back byte for byte.
+|`smc_log_engine_region_size_test` |Wrapper 0 log-engine slot start, capacity clamp, zero-capacity completion and LOG_LEN resubmission over region sizes 0x80, 0x200, 135, 143, 144, 271 and 127.
 |`smc_uart_log_engine_field_sweep_test` |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
 |`smc_uart_loopback_test` |AXI-program UART0 THR and capture the byte on pad12 TX.
@@ -27653,6 +27654,106 @@ is observed and is not part of the claim. Enrolled in: `all`, `hosted`.
 
 '''''
 
+[[sec-530-smc_log_engine_region_size_test]]
+===== 530 `smc_log_engine_region_size_test`
+
+*Source Module*: `smc_log_engine_region_size_test`
+
+*BFM / Model*: SEP_IN AXI sequencer writing and reading the SPM log window (tagged bytes, read
+back), the wrapper 0 log-engine registers `LOG_REGION_SIZE`, `LOG_REGION_ADDR`, `LOG_WRITE_ADDR`,
+`LOG_CTRL[i].LOG_LEN`, `CTRL.EN` and `INTR_STATUS`, the wrapper 0 UART `THR`, `RBR`, `LSR` and
+`MCR.LOOP`, and `CTRL.UART_EN`; the engine writes `THR` and the bytes return through the same
+UART's receiver, so no pad carries them
+
+*Objective*: Wrapper 0 delivers the bytes the slot-start formula, the capacity clamp and the
+zero-capacity rule name, for region sizes other than the one `smc_log_engine_transfer_test` uses.
+
+*Test Coverage*:
+
+* Slot start at the minimum size: `LOG_REGION_SIZE` 0x80, `LOG_LEN` 8 on each of the 16 slots, the
+  delivered bytes equal the window bytes at `LOG_REGION_ADDR + (LOG_REGION_SIZE / 16) * i`
+  (`log_engine/doc/architecture.adoc` "Memory Slots and Lengths").
+* Slot start at a mid size: `LOG_REGION_SIZE` 0x200, slots 0, 7 and 15 with `LOG_LEN` 0x20; the
+  window bytes differ above offset 0x100 so a start off by 0x100 fails.
+* Byte order: every compared message arrives at `RBR` in increasing address order, least
+  significant byte first in each fetched word, exactly `LOG_LEN` bytes and none beyond
+  (`architecture.adoc` "Arbitration and Data Transfer").
+* Resubmission: slot 0 at 0x200 takes `LOG_LEN` 0x20 a second time after hardware cleared it and
+  delivers the same 32 bytes (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl`
+  `LOG_CTRL`).
+* Capacity clamp: `LOG_REGION_SIZE` 135, 143, 144 and 271 on slots 0, 1 and 15; `LOG_LEN` at the
+  capacity (8, 8, 8 and 16 bytes) or below delivers 8 bytes, and `LOG_LEN` of capacity + 8 and the
+  largest length the field holds each deliver exactly the capacity (`architecture.adoc` "Memory
+  Slots and Lengths"; `log_engine.rdl` `LOG_REGION_SIZE`).
+* The slot start of the unaligned sizes is measured, not compared; the compare is that every
+  delivered message is made of consecutive window offsets.
+* Zero capacity: `LOG_REGION_SIZE` 127, `LOG_LEN` 8 on slots 0, 1 and 15 clears within 64 reads
+  with no byte at `RBR`; the delivering legs of the same leaf are the positive control.
+* `LOG_LEN` 9 and 7 at 0x200 is a measured leg: the count and values of the delivered bytes and
+  the clear are printed, measured, not compared.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense; arm the wrapper 0 UART (`CTRL.UART_EN` 1, 8N1, divisor 1, `MCR.LOOP`, FIFO
+  enable, `IER` 0); disable the engine, clear `INTR_STATUS`, `INTR_ENABLE` 0, `LOG_WRITE_ADDR` =
+  the `THR` address, `LOG_REGION_ADDR` = the SPM log window base; write 0x200 tagged bytes and read
+  them back; set `CTRL.EN`; stamp S1.
+. `LOG_REGION_SIZE` 0x80; for slots 0 to 15 in turn write `LOG_LEN` 8, drain `RBR` through `LSR.DR`
+  polls until the receiver is idle, read `LOG_CTRL[i]` until 0 within 64 reads, read
+  `INTR_STATUS`; stamp S2 and print `CHK-LOGENG-REGION-SLOT-START-MIN`.
+. `LOG_REGION_SIZE` 0x200; for slots 0, 7 and 15 write `LOG_LEN` 0x20 and drain 32 bytes; write
+  slot 0 again and drain the second delivery; stamp S3 and print
+  `CHK-LOGENG-REGION-SLOT-START-MID`, `CHK-LOGENG-REGION-RESUBMIT` and
+  `CHK-LOGENG-REGION-BYTE-ORDER`.
+. For `LOG_REGION_SIZE` 135, 143, 144 and 271 and slots 0, 1 and 15 write `LOG_LEN` 8, capacity +
+  8 and the largest length, each after the previous message cleared and the receiver idled
+  (`LSR.TEMT` 1 and `LSR.DR` 0 on 32 consecutive polls); record every delivered message; stamp S4
+  and print `CHK-LOGENG-REGION-UNALIGNED-CAPACITY`, `CHK-LOGENG-REGION-UNALIGNED-BELOW-CAP` and
+  the measured `CHK-LOGENG-REGION-UNALIGNED-START-MEASURED`.
+. `LOG_REGION_SIZE` 127; for slots 0, 1 and 15 write `LOG_LEN` 8, apply the idle rule, read
+  `LOG_CTRL` until 0 within 64 reads, read `LSR` and `INTR_STATUS`; stamp S5 and print
+  `CHK-LOGENG-REGION-ZERO-CAPACITY`.
+. `LOG_REGION_SIZE` 0x200, slot 0, `LOG_LEN` 9 then 7, each followed by the idle rule and the
+  clear poll; stamp S6 and print the measured `CHK-LOGENG-REGION-LEN-NOT-MULT8-MEASURED`.
+. Clear `CTRL.EN`, `LOG_WRITE_ADDR`, `LOG_REGION_SIZE` and `LOG_REGION_ADDR`, restore the UART,
+  wait two `clk_smc_i` cycles, stamp S7, check the ordered fence and print `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOGENG-REGION-SLOT-START-MIN` |At `LOG_REGION_SIZE` 0x80 each of the 16 slots delivers the 8
+  window bytes at offset 8 * i and `INTR_STATUS` bits 0 and 4 read 0; a wrong first byte, a wrong
+  count or a clear that never comes fails
+|`CHK-LOGENG-REGION-SLOT-START-MID` |At 0x200 slots 0, 7 and 15 deliver the 32 window bytes at offset
+  0x20 * i, first bytes 0x00, 0xE0 and 0x45; a start off by any multiple of 8 fails
+|`CHK-LOGENG-REGION-BYTE-ORDER` |Every compared message arrives in increasing address order with
+  exactly `LOG_LEN` bytes and `LSR.DR` reads 0 after them; reversed or reordered bytes, a wrong
+  count or a trailing byte fails
+|`CHK-LOGENG-REGION-RESUBMIT` |Slot 0 at 0x200 delivers the same 32 bytes a second time after
+  `LOG_LEN` 0x20 is written again and `LOG_LEN` reads 0 afterwards
+|`CHK-LOGENG-REGION-UNALIGNED-CAPACITY` |For sizes 135, 143, 144 and 271 a `LOG_LEN` of capacity + 8
+  and of the largest length each deliver exactly the capacity and nothing beyond on slots 0, 1 and
+  15, and `LOG_LEN` reads 0 afterwards
+|`CHK-LOGENG-REGION-UNALIGNED-BELOW-CAP` |`LOG_LEN` 8 delivers exactly 8 bytes at each of the four
+  unaligned sizes on slots 0, 1 and 15
+|`CHK-LOGENG-REGION-UNALIGNED-START-MEASURED` |The first fetched window offset of the slot 1 and 15
+  messages is printed, measured, not compared; every delivered message is consecutive window
+  offsets and none is empty
+|`CHK-LOGENG-REGION-ZERO-CAPACITY` |At size 127 `LOG_LEN` 8 on slots 0, 1 and 15 reads 0 within 64
+  reads, no byte reaches `RBR` and `INTR_STATUS` bits 0 and 4 read 0
+|`CHK-LOGENG-REGION-LEN-NOT-MULT8-MEASURED` |`LOG_LEN` 9 and 7 at 0x200: the delivered count and
+  values and the clear are printed, measured, not compared
+|`CHK-NONVAC` |Steps S1 to S7 ran in order with strictly increasing simulation-time stamps and the
+  nine checker lines printed in order, each after its own step
+|===
+
+*Pass Criteria*: all checkers hold after their compares; the measured legs are observed and are
+not part of the claim. Enrolled in: `all`, `hosted`.
+
+'''''
 
 
 ==== OCCP

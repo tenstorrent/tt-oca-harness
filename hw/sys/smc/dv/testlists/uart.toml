@@ -173,6 +173,14 @@ tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_log_engine_region_size_test"
+module = "smc_log_engine_region_size_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_log_engine_abort_test"
 module = "smc_log_engine_abort_test"
 seed = 1
