@@ -366,6 +366,7 @@ one-line intent.
 |`smu_sep_external_irq_pins_test` |wrapper |Each of the 212 external SEP interrupt pins, driven one at a time, raises the PIC pending bit of its own source 44 to 255 and the matching core request-port bit, and clears them when it returns low.
 |`smu_sep_wdt_bite_to_smc_reset_test` |wrapper |A SEP watchdog bite programmed over the SEP debug system bus drops the SMC watchdog-term and warm resets while the primary and cold resets stay released and the request holds, and the cool-reset pin then drops the request and releases every net.
 |`smu_xtrig_ctm_self_loop_test` |wrapper |A CT_SRC mask that selects its own wire-OR CTP lane makes one external assertion re-trigger the lane request output, writing the mask to 0 ends it, and with the mask 0 the assertion produces no request-output rise.
+|`smu_sep_rma_token_match_test` |wrapper |With the SEP eFuse image holding the RMA digests of two known tokens, each token written over the SEP debug system bus and started with its own `TOKEN_EOP` bit reads match on its own lane and a token one bit off reads mismatch, a lane reads idle until started, and the two result registers do not affect each other.
 |===
 
 [[smu-test-procedures]]
@@ -7485,6 +7486,61 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-174-smu_sep_rma_token_match_test]]
+===== 174 `smu_sep_rma_token_match_test`
+
+*Source Module*: `smu_sep_rma_token_match_test` (`cocotb_wrapper/tests/`; the sequence `smu_sep_rma_token_match_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the `ocah_jtag_vip` primary TAP and the SEP debug STAP system bus (the debug-module bring-up of `smu_dtp_sep_dm_dmi_test` and the system-bus accessors of `smu_dtp_sep_dm_sba_test`), reaching the registers named in `hw/sys/sep/regs/gen/c/sep_addr.h` through `seq_lib.smu_addr_map`: `SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(i)`, `SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_BASE_ADDR(i)`, `SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR`, `SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR`, `SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR`, `SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR` and `SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR` (first and last word), with the `TOKEN_EOP` start bits and the result mask from the generated `efuse_mmr.h`; the read pin `sep_fuse_sense_done_o` and the clock `clk_smu_i` (`tb/tb_wrapper_top.sv`); the eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev_rma_tokens.preload` (a copy of `sep_efuse_shadow_lc_test_dev.preload` whose `RMA_SIP_TOKEN_DIGEST` and `RMA_CHIPLET_TOKEN_DIGEST` words hold the SHA-256 of two distinct known 256-bit tokens, the message being the 32-byte big-endian token and bits [31:0] of the digest sitting in the lowest word) through `+sep_shadow_reg_preload` with `+skip_fuse_sense` and the default SMC shadow preload; run mode `sep_rtl`, `elaboration` firmware mode, `+expected_sep=1`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; no probe, force or deposit
+
+*Objective*: with the SEP eFuse image holding the RMA digests of two known tokens, each eight-word token written over the SEP debug system bus and started with its own `TOKEN_EOP` bit reads match (0x15) on its own lane when it equals the fused token and mismatch (0x2a) when one bit off, a lane reads idle (0x00) until started, and the two result registers do not affect each other.
+
+*Test Coverage*:
+
+* Submission: index 0 of an input array holds `token[31:0]`, a write of 1 to `TOKEN_EOP` bit 0 starts the SIP lane and bit 8 the chiplet lane, and writing the words alone does not launch a comparison (`hw/sys/sep/doc/token_processing.adoc`, "Token Submission"; `hw/ip/efuse/regs/efuse_mmr.rdl`, `TOKEN_EOP`). Both result registers read 0x00 with eight SIP words written and no `TOKEN_EOP`, and the chiplet result reads 0x00 while the SIP result holds its match (`CHK-SEP-RMA-IDLE`); `TOKEN_EOP` 0x1 gives a SIP result with the chiplet result still 0x00 and `TOKEN_EOP` 0x100 gives a chiplet result with the SIP result keeping 0x15 (`CHK-SEP-RMA-START`).
+* Results: the encodings are idle 0x00, match 0x15 and mismatch 0x2a, the six-bit `TOKEN_MATCH_STATUS` field (`token_processing.adoc`, "Token result encodings"; `efuse_mmr.rdl`, `TOKEN_MATCH`). The SIP token reads 0x15 (`CHK-SEP-RMA-SIP-MATCH`), the chiplet token one bit off reads 0x2a (`CHK-SEP-RMA-CHIP-MISMATCH`) and the correct chiplet token reads 0x15 (`CHK-SEP-RMA-CHIP-MATCH`); the matches are the positive controls of the mismatch and the idle reads are the controls of the matches.
+* Independence: the SIP result still reads 0x15 after the chiplet lane changed from idle to mismatch to match (`CHK-SEP-RMA-INDEP`; `efuse_mmr.rdl`, `RMA_SIP_TOKEN_MATCH` and `RMA_CHIPLET_TOKEN_MATCH`).
+* Settling: in each of the three started legs the result leaves 0x00 within a bounded poll count; the polls used are logged and no cycle count is compared (`CHK-SEP-RMA-SETTLE`).
+* Precondition: `sep_fuse_sense_done_o` reads 1 before the first token write (RMA results stay idle until fuse sensing completes, `token_processing.adoc`) and the first and last word of `RMA_SIP_TOKEN_DIGEST` (`sep_efuse_map.rdl`, a 256-bit field) read back as the image words; these are bench image values, so the row is a precondition observation and earns no feature credit (`CHK-SEP-RMA-PRECOND`).
+* Measured and logged only: `TOKEN_MATCH_FAULT` after the last leg, the polls used per leg and the system-bus access count; only the presence of the fault log is compared (`CHK-SEP-RMA-FAULT-LOG`). The token values, the poll bound and the preload image words are bench constants.
+* Out of scope: the error encoding 0x3f, the security-disable token, a start written while a hash is in flight, the half before fuse sensing completes, reset retention of the digest and lifecycle transitions on a match.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the SEP debug module with the RMA token image and enable the system bus.
+. Read `sep_fuse_sense_done_o` and the first and last word of `RMA_SIP_TOKEN_DIGEST`.
+. Write the eight SIP token words and read the SIP result before any `TOKEN_EOP` write.
+. Write `TOKEN_EOP` 0x1 and poll the SIP result, within a bound, until it leaves 0x00.
+. Read the chiplet result while the SIP result holds its match.
+. Write the eight chiplet words of the token with bit 0 flipped, write `TOKEN_EOP` 0x100 and poll the chiplet result, within a bound, until it leaves 0x00.
+. Write the eight chiplet words of the correct token, write `TOKEN_EOP` 0x100 and poll the chiplet result, within a bound, until it leaves 0x00.
+. Re-read the SIP result.
+. Read `TOKEN_MATCH_FAULT` and log it.
+. Stamp PASS two `clk_smu_i` cycles later; check every poll finished inside its bound with its last value, the number of poll sites of each kind and the order of the steps.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-RMA-PRECOND` |sep_fuse_sense_done_o reads 1 before the first token write and the first and last word of the RMA SIP digest read back as laid out in the image; precondition observation, no feature credit
+|`CHK-SEP-RMA-IDLE` |the SIP result reads 0x00 with eight words written and no TOKEN_EOP, and the chiplet result reads 0x00 while the SIP result holds its match
+|`CHK-SEP-RMA-START` |TOKEN_EOP 0x1 gives a SIP result while the chiplet result stays 0x00, and TOKEN_EOP 0x100 gives a chiplet result while the SIP result keeps 0x15
+|`CHK-SEP-RMA-SIP-MATCH` |after the eight words of the SIP token and TOKEN_EOP 0x1 the SIP result reads 0x15, having read 0x00 before TOKEN_EOP
+|`CHK-SEP-RMA-CHIP-MISMATCH` |the chiplet token one bit off, written and started, reads 0x2a, having read 0x00 before
+|`CHK-SEP-RMA-CHIP-MATCH` |the correct chiplet token written and started reads 0x15, having read 0x2a in the leg before
+|`CHK-SEP-RMA-INDEP` |the SIP result reads 0x15 again after the chiplet mismatch and match legs while the chiplet result changed
+|`CHK-SEP-RMA-SETTLE` |in each of the three started legs the result leaves 0x00 within the bounded poll count; the polls used are logged and no cycle count is compared
+|`CHK-SEP-RMA-FAULT-LOG` |TOKEN_MATCH_FAULT is read once after the last leg and its value is measured and logged only; only the presence of the log is compared
+|`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10; the PASS stamp is two clk_smu_i cycles after S9
+|`CHK-TIMEOUT-PATHS` |three bounded result polls, one each for the SIP match, the chiplet mismatch and the chiplet match, none expired, with the poll bound, polls used and last value recorded
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7656,6 +7712,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_sep_external_irq_pins_test` |F3 |hosted |`CHK-SEP-EXTIRQ-RISE`
 |`smu_sep_wdt_bite_to_smc_reset_test` |F1 |hosted |`CHK-SEP-WDT-SMC-ASSERT`, `CHK-SEP-WDT-SMC-HOLD`, `CHK-SEP-WDT-SMC-RELEASE`
 |`smu_xtrig_ctm_self_loop_test` |F6 |hosted |`CHK-XT-SELFLOOP-RETRIGGER`, `CHK-XT-SELFLOOP-ALIVE`, `CHK-XT-SELFLOOP-STOP`
+|`smu_sep_rma_token_match_test` |F3 |hosted |`CHK-SEP-RMA-SIP-MATCH`, `CHK-SEP-RMA-CHIP-MISMATCH`, `CHK-SEP-RMA-CHIP-MATCH`, `CHK-SEP-RMA-INDEP`
 |===
 
 [[smu-out-and-wrapper]]

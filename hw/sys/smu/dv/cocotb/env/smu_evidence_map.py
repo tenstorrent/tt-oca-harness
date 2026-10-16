@@ -1052,6 +1052,75 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "pulse end, and every JTAG2AXI poll, none expired, with the last state recorded",
         ),
     ],
+    "smu_sep_rma_token_match_test": [
+        (
+            "CHK-SEP-RMA-PRECOND",
+            "CHK-SEP-RMA-PRECOND",
+            "sep_fuse_sense_done_o reads 1 before the first token write and the first and last "
+            "word of the RMA SIP digest read back as laid out in the image; precondition "
+            "observation, no feature credit",
+        ),
+        (
+            "CHK-SEP-RMA-IDLE",
+            "CHK-SEP-RMA-IDLE",
+            "the SIP result reads 0x00 with eight words written and no TOKEN_EOP, and the chiplet "
+            "result reads 0x00 while the SIP result holds its match",
+        ),
+        (
+            "CHK-SEP-RMA-START",
+            "CHK-SEP-RMA-START",
+            "TOKEN_EOP 0x1 gives a SIP result while the chiplet result stays 0x00, and TOKEN_EOP "
+            "0x100 gives a chiplet result while the SIP result keeps 0x15",
+        ),
+        (
+            "CHK-SEP-RMA-SIP-MATCH",
+            "CHK-SEP-RMA-SIP-MATCH",
+            "after the eight words of the SIP token and TOKEN_EOP 0x1 the SIP result reads 0x15, "
+            "having read 0x00 before TOKEN_EOP",
+        ),
+        (
+            "CHK-SEP-RMA-CHIP-MISMATCH",
+            "CHK-SEP-RMA-CHIP-MISMATCH",
+            "the chiplet token one bit off, written and started, reads 0x2a, having read 0x00 "
+            "before",
+        ),
+        (
+            "CHK-SEP-RMA-CHIP-MATCH",
+            "CHK-SEP-RMA-CHIP-MATCH",
+            "the correct chiplet token written and started reads 0x15, having read 0x2a in the "
+            "leg before",
+        ),
+        (
+            "CHK-SEP-RMA-INDEP",
+            "CHK-SEP-RMA-INDEP",
+            "the SIP result reads 0x15 again after the chiplet mismatch and match legs while the "
+            "chiplet result changed",
+        ),
+        (
+            "CHK-SEP-RMA-SETTLE",
+            "CHK-SEP-RMA-SETTLE",
+            "in each of the three started legs the result leaves 0x00 within the bounded poll "
+            "count; the polls used are logged and no cycle count is compared",
+        ),
+        (
+            "CHK-SEP-RMA-FAULT-LOG",
+            "CHK-SEP-RMA-FAULT-LOG",
+            "TOKEN_MATCH_FAULT is read once after the last leg and its value is measured and "
+            "logged only; only the presence of the log is compared",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10; the PASS stamp is two "
+            "clk_smu_i cycles after S9",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "three bounded result polls, one each for the SIP match, the chiplet mismatch and the "
+            "chiplet match, none expired, with the poll bound, polls used and last value recorded",
+        ),
+    ],
     "smu_sep_sba_peripheral_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",
