@@ -141,7 +141,7 @@ module sep_outbound_mbx
   logic [Aw-1:0]  r_addr_q;
   logic [7:0]     r_sent_q;
   // A B or R VALID raised and not yet accepted; it stays up through a hold.
-  logic           b_valid_q, r_valid_q;
+  logic b_valid_q, r_valid_q;
   logic           magic_seen_q;
   logic           stray_seen_q;
   logic [Aw-1:0]  stray_addr_q;
