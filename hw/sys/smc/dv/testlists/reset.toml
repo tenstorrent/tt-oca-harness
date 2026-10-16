@@ -265,6 +265,22 @@ tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_cool_reset_pin_flr_overlap_test"
+module = "smc_cool_reset_pin_flr_overlap_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cool_reset_recovery_test"
+module = "smc_cool_reset_recovery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_ndm_process_extra_bits_test"
 module = "smc_ndm_process_extra_bits_test"
 seed = 1

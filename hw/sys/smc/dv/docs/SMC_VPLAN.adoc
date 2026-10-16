@@ -463,6 +463,8 @@ bases, and the last register of five units answers over SEP_IN at `LOCAL_BASE`.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
 |`smc_cool_reset_zero_delay_test` |FLR cool reset with the pre-reset delay at 0: no cool while the hold counter is 0, cool inside the synchroniser allowance once it is not.
 |`smc_cool_reset_deglitch_window_test` |A pin low below 32 reference-clock samples is rejected, a high sample restarts the count, the release does not depend on the low duration, and pin segments inside the FLR hold neither shorten nor extend it.
+|`smc_cool_reset_pin_flr_overlap_test` |The FLR cool-reset fall and low duration follow the two programmed counts, the pin alone asserts primary reset without touching the cool-reset output or the cold resets, and a pin low inside the pre-reset count, outlasting the hold or released early combines with the FLR hold without changing its duration.
+|`smc_cool_reset_recovery_test` |After the pin collides with the FLR cool-reset hold the primary resets release and the warm reset follows, the cold resets stay deasserted, `SS_CONFIG` and `SS_COLD_RESET_N` return to their reset values while the isolation and FLR counter registers retain theirs, and `ISOLATE_REQ_SMC_REG` sets on the FLR edge, holds through the reset, clears on a write and sets with a zero hold count.
 |`smc_cool_reset_x_cold_reset_test` |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
 |`smc_cpu_reset_pulse_test` |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode.
 |`smc_cpu_reset_source_test` |SW core0 level reset; no Force drain / no FLR isolate_req_o.
@@ -676,6 +678,7 @@ in clk_ref_i cycles at two reference periods, in the ref4 cell (clk_ref_i / clk_
 |`smc_dfx_debug_ctrl_storage_test` |Every `DEBUG_CTRL` field stored and read back exactly.
 |`smc_dfx_status_smu_pulse_reset_test` |`STATUS_SMU` abort bits alone, pulsed and through resets.
 |`smc_jtag_dm_sbcs_haltsum_test` |`sbcs` capabilities fixed under writes and `haltsum` idle at 0.
+|`smc_jtag_dm_halt_progbuf_test` |A halted hart runs a program-buffer store through the Debug Module and the stored word reads back in `CPU_CTRL.SCRATCH[0]`.
 |===
 
 ==== EFUSE
@@ -11659,6 +11662,111 @@ the leaf issues at least nine SEP_IN accesses. Enrolled in: `all`.
 
 '''''
 
+[[sec-529-smc_cool_reset_pin_flr_overlap_test]]
+===== 529 `smc_cool_reset_pin_flr_overlap_test`
+
+*Source Module*: `smc_cool_reset_pin_flr_overlap_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN programming and reading `ISOLATE_REQ_FLR_COUNTER_VALUE`, `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` and `ISOLATE_REQ_SMC_REG`; the pin `rst_cool_ni` driven on `clk_ref_i` edges; the FLR request `tb_cfg_flr_pf_active` (`cfg_flr_pf_active_i`); the isolate-request pad held low through `tb_gpio_ext_drive_en` and `tb_gpio_ext_drive_value`; probes `rst_primary_smc_clk_no`, `rst_primary_ref_clk_no`, `tb_rst_cool_from_flr` (the FLR cool-reset output), `rst_cold_n_o`, `rst_cold_stable_ref_clk_no` and `tb_rst_warm_smc_clk_n`, each sampled on every `clk_ref_i` edge or, for the warm reset, on `clk_smc_i`; `tb_skip_mem_repair_o`; `clk_ref_i`, `clk_smc_i`
+
+*Objective*: The FLR cool-reset fall and low duration move by exactly the difference of the programmed counts, the pin alone asserts primary reset while the cool-reset output and the cold resets stay deasserted, and a pin low inside the pre-reset count, outlasting the hold or released early combines with the FLR hold without changing its duration.
+
+*Test Coverage*:
+
+* FLR alone with pre-reset count 0x20 and hold 0x60, then with 0x50 and 0xA0: the fall offset from the FLR edge differs by exactly the pre-reset count difference and the low duration by exactly the hold difference.
+* The cool-reset output is low from its fall to its rise in every FLR run and high at every other sample, including the pin-alone window.
+* FLR alone asserts primary reset after the FLR edge and releases it after the cool-reset rise.
+* A 48-cycle low on `rst_cool_ni` asserts primary reset no earlier than 32 cycles after the first low, with the cool-reset output high and both cold resets deasserted at every sample.
+* A pin low 8 cycles after the FLR edge, held past the end of the pre-reset count, asserts primary reset before the cool-reset fall, which keeps its FLR-alone offset.
+* A pin low inside the hold and kept low 56 cycles past its end keeps primary reset asserted until the pin release and releases at the pin-alone offset from it.
+* A pin low for 40 cycles inside the hold keeps primary reset asserted until the cool-reset rise and releases at the FLR-alone offset from it.
+* The cool-reset low duration of the three overlap runs equals the FLR-alone duration.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, hold the isolate-request pad low, write the pre-reset count 0x20 and hold 0x60, read them back, allow 64 reference-clock cycles for the counts to cross into the reference domain, and require both primary resets and the cool-reset output released.
+. Pulse `cfg_flr_pf_active_i`, wait for the cool-reset output to fall and rise and both primary resets to release, wait for the warm reset and clear the latched request; program 0x50 and 0xA0, read them back, wait 64 cycles and run the FLR sequence alone again.
+. Drive `rst_cool_ni` low for 48 reference-clock cycles, then high, and wait for primary reset to assert and release; sample every probe on every cycle.
+. Pulse `cfg_flr_pf_active_i`, drive the pin low 8 cycles later and high 4 cycles after the cool-reset fall; wait for the cool-reset rise, the primary release and the warm reset.
+. Pulse `cfg_flr_pf_active_i`, drive the pin low 4 cycles after the cool-reset fall and high 56 cycles after the cool-reset rise; wait for the primary release and the warm reset.
+. Pulse `cfg_flr_pf_active_i`, drive the pin low 4 cycles after the cool-reset fall and high 40 cycles later; wait for the cool-reset rise, the primary release and the warm reset.
+. Print each checker after its compare, stamp the ordered fence two reference-clock cycles after the last step, and print the bounded waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-COOLRST-BP-LEVEL` |The cool-reset output is low at every sample from its fall to its rise in the five FLR runs and high at every other sample, including the pin-alone window; a sample low outside the FLR hold, a sample not low inside it or an X sample fails it
+|`CHK-COOLRST-COLD-STABLE` |`rst_cold_n_o` and `rst_cold_stable_ref_clk_no` read deasserted at every sample of the pin-alone window and of the pre-count and hold overlap windows, with primary reset asserted in the pin-alone window as the positive control; an asserted cold output, a missing primary assertion or an X sample fails it
+|`CHK-COOLRST-COLLISION-HOLD` |With the pin outlasting the FLR hold primary reset stays asserted at every sample until the pin release, after the cool-reset rise, and releases at the same offset from the pin release as in the pin-alone run; a released sample, a differing offset or a timeout fails it
+|`CHK-COOLRST-COLLISION-PRE` |With the pin low inside the pre-reset count primary reset asserts before the cool-reset fall, the fall keeps the FLR-alone offset from the FLR edge, and release follows both sources inside the bench bound of 256 reference-clock cycles; a late assertion, a differing offset, a release past the bound or a timeout fails it
+|`CHK-COOLRST-FLR-ALONE-PRIMARY` |In the FLR-alone runs primary reset asserts after the FLR edge and no later than the cool-reset fall, stays asserted until the cool-reset rise and releases at the first released sample at or after it; the release offset from the rise is kept as the baseline of the early-release run; a late or missing assertion, a released sample in the hold, a first release before the cool-reset rise or a timeout fails it
+|`CHK-COOLRST-FLR-HOLD-COUNT` |The cool-reset low duration of the second count pair minus the first equals the programmed hold difference exactly in reference-clock cycles, and the durations are printed as measured; a differing delta or a timeout fails it
+|`CHK-COOLRST-FLR-PRE-COUNT` |The counters read back as written and the cool-reset fall offset from the FLR edge of the second pair minus the first equals the programmed pre-reset difference exactly; a differing delta, a readback mismatch or a timeout fails it
+|`CHK-COOLRST-HOLD-INVARIANT` |The cool-reset low duration of the three overlap runs equals the FLR-alone duration exactly, and all four durations are printed; a differing duration fails it
+|`CHK-COOLRST-PIN-ALONE-PRIMARY` |After a 48-cycle low primary reset asserts no earlier than 32 cycles after the first low with the cool-reset output high at every sample, and releases after the pin release; the offsets are printed as measured; an earlier assertion, a low cool-reset sample, a release before the pin or a timeout fails it
+|`CHK-COOLRST-PIN-EARLY-RELEASE` |With the pin released at least 16 cycles before the hold ends primary reset stays asserted until the cool-reset rise and releases at the same offset from it as in the FLR-alone run; a released sample before the rise or a differing offset fails it
+|`CHK-NONVAC` |The ordered fence holds: steps S1 to S5 in order with strictly increasing simulation-time stamps and the ten checker lines printed in order after the last step
+|`CHK-TIMEOUT-PATHS` |Every bounded wait (assertion 128, release 512, cool-reset fall 208, cool-reset rise 288 reference-clock cycles, warm reset 50000 `clk_smc_i` cycles, latch clear 64 polls) is named with its bound and raises AssertionError with the last sampled levels on expiry
+|===
+
+*Pass Criteria*: `CHK-COOLRST-BP-LEVEL`, `CHK-COOLRST-COLD-STABLE`, `CHK-COOLRST-COLLISION-HOLD`, `CHK-COOLRST-COLLISION-PRE`, `CHK-COOLRST-FLR-ALONE-PRIMARY`, `CHK-COOLRST-FLR-HOLD-COUNT`, `CHK-COOLRST-FLR-PRE-COUNT`, `CHK-COOLRST-HOLD-INVARIANT`, `CHK-COOLRST-PIN-ALONE-PRIMARY`, `CHK-COOLRST-PIN-EARLY-RELEASE`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares; offsets from an edge to a probe are measured and only the deltas, equalities and orderings above are compared. Enrolled in: `all`, `hosted`, `reset`.
+
+'''''
+[[sec-530-smc_cool_reset_recovery_test]]
+===== 530 `smc_cool_reset_recovery_test`
+
+*Source Module*: `smc_cool_reset_recovery_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN reading and writing `SS_CONFIG`, `SS_COLD_RESET_N`, `ISOLATE_REQ_SMCEN_REG`, `ISOLATE_REQ_SMC_REG`, `ISOLATE_REQ_VIS`, `ISOLATE_REQ_FLR_COUNTER_VALUE`, `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, `I2C TIMING0` of instance 0, `CPU_CTRL.SCRATCH[0]` and `CPU_CTRL.RESET_VECTOR[0]` at the addresses of the generated address map (`smc_addr`, `reset_unit_u32`, `cpu_ctrl_u32`); the pin `rst_cool_ni` driven on `clk_ref_i` edges; the FLR request `tb_cfg_flr_pf_active` (`cfg_flr_pf_active_i`); the isolate-request pad held low through `tb_gpio_ext_drive_en` and `tb_gpio_ext_drive_value`; probes `rst_primary_smc_clk_no`, `rst_primary_ref_clk_no`, `tb_rst_warm_smc_clk_n`, `rst_cold_n_o`, `rst_cold_stable_ref_clk_no`, `tb_rst_cool_from_flr` (the FLR cool-reset output) and `tb_isolate_req_o`, each sampled on every `clk_ref_i` edge; `tb_skip_mem_repair_o`; `clk_ref_i`, `clk_smc_i`
+
+*Objective*: After the `rst_cool_ni` pin collides with the FLR cool-reset hold, both primary resets release after the last source ends, the warm reset follows the primary reset, the cold resets never assert, the reset-unit registers split into those the primary reset clears and those the cold reset retains, `ISOLATE_REQ_VIS` reads its reset levels, and the FLR isolation latch sets, holds, clears and sets again with a zero hold count.
+
+*Test Coverage*:
+
+* `SS_CONFIG` and `SS_COLD_RESET_N` read back nonzero patterns, `ISOLATE_REQ_SMCEN_REG` and both FLR counters read back their programmed values, and the I2C timing, scratch and reset-vector words are read before the collision.
+* The pin goes low 4 cycles after the cool-reset fall and high 56 cycles after its rise, so it is low for at least 32 cycles inside the hold and ends after it; primary reset is asserted at every sample until the pin release.
+* The warm reset is asserted at every sample at which `rst_primary_smc_clk_no` is asserted and releases no earlier than it.
+* `rst_cold_n_o` and `rst_cold_stable_ref_clk_no` are deasserted at every sample of the collision window, with primary reset asserted in the same window as the positive control.
+* After recovery `SS_CONFIG` and `SS_COLD_RESET_N` read their reset value 0 while `ISOLATE_REQ_SMCEN_REG` and both FLR counters read the programmed values.
+* `ISOLATE_REQ_VIS.cool_reset_n_i` and `cool_reset_n_o` read their reset value 1 with `rst_cool_ni` and the cool-reset output high; the pin bit, the I2C timing field, `CPU_CTRL.SCRATCH[0]` and `CPU_CTRL.RESET_VECTOR[0]` are printed as measured.
+* `ISOLATE_REQ_SMC_REG` reads 0 before the FLR edge, 1 after it and 1 after the cool reset ended, then 0 after a write of 0xFFFFFFFF with byte strobe 0x1.
+* With the hold counter at 0 an FLR edge sets the latch while no reset output asserts in a 384-cycle window.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, hold the isolate-request pad low, write the pre-reset count 0x100 and hold 0x80, allow 64 reference-clock cycles for the counts to cross into the reference domain, write and read back `SS_CONFIG` (0xA5A5A5A5), `SS_COLD_RESET_N` (0x5A5A5A5A), `ISOLATE_REQ_SMCEN_REG` (0xFFFFFFFF), the I2C0 `TIMING0` THIGH field and `CPU_CTRL.SCRATCH[0]`, read both counters and `CPU_CTRL.RESET_VECTOR[0]`, and require the resets released.
+. Read `ISOLATE_REQ_SMC_REG`, pulse `cfg_flr_pf_active_i` and poll the latch until it reads 1 before the cool reset starts; wait for the cool-reset output to fall, drive `rst_cool_ni` low 4 cycles later, wait for the cool-reset rise, drive the pin high 56 cycles after it, and sample every probe each cycle until both primary resets release and the warm reset releases.
+. Read `SS_CONFIG`, `SS_COLD_RESET_N`, `ISOLATE_REQ_VIS`, `ISOLATE_REQ_SMCEN_REG`, both counters, `ISOLATE_REQ_SMC_REG`, the I2C0 `TIMING0`, `CPU_CTRL.SCRATCH[0]` and `CPU_CTRL.RESET_VECTOR[0]`.
+. Read the latch, write `ISOLATE_REQ_SMC_REG` with 0xFFFFFFFF and byte strobe 0x1, and read it back.
+. Write `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` = 0 and allow 64 cycles; read the latch, pulse `cfg_flr_pf_active_i`, watch every reset output for 384 reference-clock cycles, read the latch, clear it and restore the hold counter to 0x80.
+. Print each checker after its compare, stamp the ordered fence two reference-clock cycles after the last step, and print the bounded waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-COOLRST-COLD-STAYS` |`rst_cold_n_o` and `rst_cold_stable_ref_clk_no` read deasserted at every sample of the collision window, with both primary outputs asserted at some samples of it as the positive control; an asserted cold output, a missing primary assertion or an X sample fails it
+|`CHK-COOLRST-CSR-RECOVERY` |The pre-collision readbacks match the written values, `SS_CONFIG` and `SS_COLD_RESET_N` read 0 after recovery, and `ISOLATE_REQ_SMCEN_REG` and both FLR counters read the programmed values; a readback mismatch, a nonzero primary-reset register, a changed retained register or an X read fails it
+|`CHK-COOLRST-ISOLATE-VIS` |After recovery with `rst_cool_ni` and the cool-reset output high, `ISOLATE_REQ_VIS` bits 4 and 8 read 1, equal to their reset value, and bit 0 is printed as measured; a 0 in either bit, a failed read or an X read fails it
+|`CHK-COOLRST-LATCH-CLEAR` |With the latch reading 1, a write of 0xFFFFFFFF with byte strobe 0x1 leaves it reading 0, and both words are printed; a latch reading 0 before the write or 1 after it fails it
+|`CHK-COOLRST-LATCH-HOLD0` |With the hold counter at 0 the latch reads 0 before the FLR edge and 1 after it, every sample of the 384-cycle window has both primary outputs and the cool-reset output released, and the latch clears and the hold counter restores; a latch reading 1 before or 0 after the edge, a reset assertion in the window or a failed restore fails it
+|`CHK-COOLRST-LATCH-SET-HOLD` |The latch reads 0 before the FLR edge, 1 after it and 1 after the cool reset ended with every reset output released; a latch reading 1 before the edge, 0 after the edge or 0 after the cool reset fails it
+|`CHK-COOLRST-OTHER-CSR-MEASURED` |The I2C0 `TIMING0` and `CPU_CTRL.SCRATCH[0]` words before and after the cool reset are printed as measured and compared with nothing; a missing line fails it
+|`CHK-COOLRST-PRIMARY-RELEASE` |Both primary outputs assert after the FLR edge, stay asserted at every sample until the pin release, and release after both sources end; the release offsets are printed as measured; a missing assertion, a released sample inside the collision, a release before the pin or a timeout fails it
+|`CHK-COOLRST-RESET-VECTOR` |`CPU_CTRL.RESET_VECTOR[0]` read before the collision and after recovery is printed next to the reset vector 0xC0040000 as measured and compared with nothing; a missing line or a failed read fails it
+|`CHK-COOLRST-WARM-FOLLOWS` |`tb_rst_warm_smc_clk_n` is low at every sample at which `rst_primary_smc_clk_no` is low, asserts with it and releases no earlier than it; a released warm sample while primary is asserted, an early warm release or a timeout fails it
+|`CHK-NONVAC` |The ordered fence holds: steps S1 to S5 in order with strictly increasing simulation-time stamps and the ten checker lines printed in order after the last step
+|`CHK-TIMEOUT-PATHS` |Every bounded wait (cool-reset fall 384, cool-reset rise 256, primary release 512, warm release 50000 reference-clock cycles, latch set 64 polls, zero-hold watch 384 reference-clock cycles) is named with its bound and raises AssertionError with the last sampled levels on expiry
+|===
+
+*Pass Criteria*: `CHK-COOLRST-COLD-STAYS`, `CHK-COOLRST-CSR-RECOVERY`, `CHK-COOLRST-ISOLATE-VIS`, `CHK-COOLRST-LATCH-CLEAR`, `CHK-COOLRST-LATCH-HOLD0`, `CHK-COOLRST-LATCH-SET-HOLD`, `CHK-COOLRST-PRIMARY-RELEASE`, `CHK-COOLRST-WARM-FOLLOWS`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares, and `CHK-COOLRST-OTHER-CSR-MEASURED` and `CHK-COOLRST-RESET-VECTOR` print their measured values; release offsets are measured and only the levels, orderings and register words above are compared. Enrolled in: `all`, `hosted`, `reset`.
+
+'''''
 
 
 ==== CLOCK
@@ -17689,6 +17797,123 @@ bounded and fail on expiry with the last readback
 `CHK-HALTSUM-WRITE-IGNORED` hold after their compares with `sbversion` 1, `sbasize` 56, `sbaccess`
 01111 and both halt summaries 0; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert
 holds. Enrolled in: `all`.
+[[sec-531-smc_jtag_dm_halt_progbuf_test]]
+===== 531 `smc_jtag_dm_halt_progbuf_test`
+
+*Source Module*: `smc_jtag_dm_halt_progbuf_test`
+
+*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
+`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs; DMI
+addresses `data0`..`data3` 0x04..0x07, `dmcontrol` 0x10, `dmstatus` 0x11, `abstractcs` 0x16,
+`command` 0x17, `progbuf0`..`progbuf15` 0x20..0x2F and `haltsum0` 0x40, with `dtmcs` giving
+`abits` and the idle count; ocah_axi_vip (AXI) on SEP_IN reading and writing `CPU_CTRL.RESET_CTRL`
+(8 bytes, `debug_reset_n` at bit 24) and `CPU_CTRL.SCRATCH[0]` (8 bytes, address from the generated
+address map accessor `smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0)`, the local
+alias a hart store uses); hart 0 running from its reset vector; `clk_smc_i`
+
+*Objective*: A halted hart runs a program-buffer store through the Debug Module and the stored word
+reads back in `CPU_CTRL.SCRATCH[0]`.
+
+*Test Coverage*:
+
+* `CPU_CTRL.RESET_CTRL` `debug_reset_n` reads 0 before the release (a 2-state zero reset value: the
+  read is printed with the word LINKED-ISSUE; the release is the paired positive control).
+* After the release and `dmcontrol.dmactive` = 1, `dmstatus` reads `version` 2 and `impebreak` 1,
+  `abstractcs` reads `progbufsize` 16 and `datacount` 4, `dmcontrol.hartsello` written 3 reads back
+  3 and a nonzero `hartselhi` reads back 0.
+* Positive control: before `haltreq` hart 0 runs (`allrunning` 1, `anyhalted` 0); after `haltreq`
+  within sixteen polls `dmstatus` has `allhalted` 1 and `anyrunning` 0, and `haltsum0` bits 3:0 read
+  0b0001. `dpc` is not compared.
+* With `hartsello` = 1 the other hart still runs (`allrunning` 1, `anyhalted` 0).
+* `data0`..`data3` read back four distinct patterns; an Access Register write of `x8` (64-bit) and
+  `x9` followed by an Access Register read of `x8` returns the pattern in `data0` and `data1`, with
+  `abstractcs.busy` 0 and `cmderr` 0 after each command.
+* `progbuf0`..`progbuf15` read back sixteen distinct words. `progbuf0` is then set to `sw x8, 0(x9)`
+  (0x0084A023) and the Access Register command with `transfer` 0 and `postexec` 1 runs the program
+  buffer with no explicit `ebreak`: `busy` returns to 0 and `cmderr` reads 0, so the implicit
+  `ebreak` returned the hart to the Debug ROM. The other fifteen words are `addi x0, x0, k`.
+* `CPU_CTRL.SCRATCH[0]` reads a sentinel before the run and the low 32 bits of `x8` after it; the
+  sentinel differs from that value and from the register reset value 0, so only the hart store can
+  change it.
+
+*Test Procedure*:
+
+[arabic]
+. Read `CPU_CTRL.RESET_CTRL` over AXI-Lite and take `debug_reset_n` (bit 24), which holds the Debug
+  Module in reset; require 0 and print the word.
+. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64 `clk_smc_i` cycles, read it back and
+  require bit 24 set. Create the TAP, reset it with `tb_cpu_jtag_reset` while TCK steps, read
+  IDCODE, activate the Debug Module (`dmactive` plus a bounded wait on `dmstatus`), read `dtmcs`
+  for `abits` and the idle count, then read `dmstatus` (require `version` 2, `impebreak` 1) and
+  `abstractcs` (require `progbufsize` 16, `datacount` 4). Write `dmcontrol` with `hartsello` 3 and
+  require it to read back 3, write a nonzero `hartselhi` and require it to read back 0, then write
+  `dmcontrol` with `dmactive` only.
+. Read `dmstatus` and require `allrunning` 1 and `anyhalted` 0.
+. Write `dmcontrol.haltreq`, poll `dmstatus` until `allhalted` is 1 (sixteen reads at most), clear
+  `haltreq`, read `dmstatus` and `haltsum0`; require `allhalted` 1, `anyrunning` 0 and `haltsum0`
+  bits 3:0 equal to 0b0001.
+. Select `hartsello` 1, read `dmstatus` and require `allrunning` 1 and `anyhalted` 0; restore
+  `hartsello` 0.
+. Write `data0`..`data3` with four distinct patterns and read all four back. Write `x8` (64-bit
+  pattern) and `x9` (the `CPU_CTRL.SCRATCH[0]` address) with Access Register commands, clear
+  `data0` and `data1`, read `x8` back with an Access Register command and require the pattern in
+  `data0` and `data1`; each command waits for `busy` 0 (sixteen reads at most) and requires
+  `cmderr` 0.
+. Write `progbuf0`..`progbuf15` with sixteen distinct words and read all sixteen back, then write
+  `progbuf0` with 0x0084A023. Write the sentinel to `CPU_CTRL.SCRATCH[0]` over AXI-Lite and read
+  it back.
+. Write `command` with `transfer` 0 and `postexec` 1, read `abstractcs` until `busy` is 0 (sixteen
+  reads at most) and require `cmderr` 0.
+. Read `CPU_CTRL.SCRATCH[0]` over AXI-Lite and require the low 32 bits of the `x8` pattern.
+. Write `dmcontrol.resumereq`, poll `dmstatus` until `allresumeack` and `allrunning` are 1
+  (sixteen reads at most), clear `resumereq`, wait two `clk_smc_i` cycles.
+. Require the steps in order with increasing stamps and each checker line after its step, print the
+  ordered-fence line and the bounded waits (DMI busy retries, four at most; `dmactive` wait, `halt`
+  wait, `busy` wait and `resume` wait, sixteen reads each).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DM-ACT-RESET-HELD` |`debug_reset_n` reads 0 before the release, LINKED-ISSUE (2-state zero
+reset value); a nonzero read or a failed read fails it
+|`CHK-DM-ACT-DMSTATUS` |After the release and `dmactive` = 1, `dmstatus.version` reads 2 and
+`impebreak` reads 1; any other value, a stalled scan or a busy response beyond the retry bound fails
+it
+|`CHK-DM-CAP-READBACK` |`abstractcs.progbufsize` reads 16 and `datacount` 4, `hartsello` written 3
+reads back 3 and a nonzero `hartselhi` reads back 0; any difference fails it
+|`CHK-DM-HART-HALT` |Before `haltreq` `dmstatus` has `allrunning` 1 and `anyhalted` 0, within the
+bound after it `allhalted` 1 and `anyrunning` 0; a failed control, a missing halt or a timeout fails
+it
+|`CHK-DM-HALTSUM0` |With hart 0 halted `haltsum0` bits 3:0 read 0b0001; bit 0 clear or any of bits
+3:1 set fails it
+|`CHK-DM-OTHER-HART-RUNS` |With `hartsello` 1 `dmstatus` has `allrunning` 1 and `anyhalted` 0 while
+hart 0 is halted; a halted or absent hart fails it
+|`CHK-DM-GPR-DATA` |`data0`..`data3` read back the four patterns and the 64-bit `x8` read returns
+the written pattern with `busy` 0 and `cmderr` 0 after each command; any difference or a nonzero
+`cmderr` fails it
+|`CHK-DM-PROGBUF-REGS` |`progbuf0`..`progbuf15` read back the sixteen distinct words written; any
+difference fails it
+|`CHK-DM-PROGBUF-STORE` |`CPU_CTRL.SCRATCH[0]` reads the sentinel before the program buffer runs and
+the low 32 bits of `x8` after it; any other value fails it
+|`CHK-DM-PROGBUF-IMPEBREAK` |With no explicit `ebreak` `abstractcs.busy` returns to 0 within the
+bound and `cmderr` reads 0 after the `postexec` command; busy at the bound or a nonzero `cmderr`
+fails it
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow their steps; a missing or misordered term fails it
+|`CHK-TIMEOUT-PATHS` |The DMI busy retries (four at most) and the sixteen-read `dmactive`, halt,
+busy and resume waits are bounded and fail on expiry with the last `dmstatus`, `abstractcs` and DMI
+response
+|===
+
+
+*Pass Criteria*: `CHK-DM-ACT-RESET-HELD`, `CHK-DM-ACT-DMSTATUS`, `CHK-DM-CAP-READBACK`,
+`CHK-DM-HART-HALT`, `CHK-DM-HALTSUM0`, `CHK-DM-OTHER-HART-RUNS`, `CHK-DM-GPR-DATA`,
+`CHK-DM-PROGBUF-REGS`, `CHK-DM-PROGBUF-STORE` and `CHK-DM-PROGBUF-IMPEBREAK` hold after their
+compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in:
+`all`, `hosted`, `jtag`.
+
 '''''
 
 
