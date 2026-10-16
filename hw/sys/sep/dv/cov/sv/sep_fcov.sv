@@ -7035,7 +7035,9 @@ module sep_fcov (
     // {side 0 SRC_ADDR_HI 1 DST_ADDR_HI, a write address landed in the LO
     // destination}, scored at the first DONE or ERROR rise after the GO. No
     // document states the destination footprint, so a LO write is not scored.
+    // The owner leg logs this cell only (no document states the outcome).
     cp_addr_hi_nonzero: coverpoint ah iff (ah_v) {
+      option.weight = 0;
       bins src_hi_no_lo_write = {2'b0_0};
       bins dst_hi_no_lo_write = {2'b1_0};
       ignore_bins lo_write = {2'b0_1, 2'b1_1};

@@ -26,11 +26,13 @@ over the CPU-LSU splice (no CPU) and runs four legs on SEP SRAM
   transfer, and one long message. The digest golden comes from Python
   ``hashlib``; the leaf never takes an expected value from the DUT.
 
-DIGEST_SWAP (``secure_dma.adoc``, CONTROL.DIGEST_SWAP): with DIGEST_SWAP=1 each
-digest register holds its four digest bytes in big-endian byte order, so the
-little-endian bytes of word i are digest bytes 4i to 4i+3 and SHA2_DIGEST_0
-holds the first four bytes. With DIGEST_SWAP=0 each word is the byte reversal
-of that value at the same position.
+DIGEST_SWAP: "If 1 the value in each digest output register is converted to
+big-endian byte order. This setting does not affect the order of the digest
+output registers, SHA2_DIGEST_0 still contains the first 4 bytes of the
+digest." (``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:228-229``).
+Read over the little-endian bus, byte lane j (bits 8j+7:8j) of SHA2_DIGEST_i
+holds digest byte 4i+j with DIGEST_SWAP=1, and digest byte 4i+3-j with
+DIGEST_SWAP=0 (the SHA-2 digest is a byte string whose first byte is byte 0).
 
 Probes: register and SRAM frontdoor over ``s_axi``; ``dma_busy_probe_o``;
 bit 9 of ``sep_internal_interrupts_probe_o`` (PIC source 10, DMA chunk done);

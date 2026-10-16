@@ -55,7 +55,10 @@ RANGE_VALID=1, read them back with RANGE_REGWEN (control: the writes landed and
 RANGE_REGWEN reads True 0x6), write 0x9 to RANGE_REGWEN, then the unlock
 attempts 0x6, 0xF, 0x9 and 0x0 in a drawn order. After the lock write and after
 each attempt the leaf writes new BASE and LIMIT values and RANGE_VALID=0 and
-reads all four registers back. An outside-range copy runs first, from a cold
+reads all four registers back. The RANGE_REGWEN read-back is logged
+(``OBS-DMA-LOCK-READBACK``) and not graded: the field text says the register is
+set to kMultiBitBool4False (0x9), and its access type rw0c / wzc gives 0x0 for
+a write of 0x9 over 0x6. An outside-range copy runs first, from a cold
 reset: a copy (OPCODE 0, both ASID 0x7) whose source or destination region lies
 wholly outside BASE..LIMIT, with RANGE_VALID=1, ends with DONE=1, ERROR=0,
 ERROR_CODE.SRC_ADDR_ERROR=0 and DST_ADDR_ERROR=0, and the destination reads back
@@ -74,15 +77,15 @@ Leg L4, non-zero ADDR_HI (``dma.adoc``, SEP secure DMA integration: the DMA
 master interface has 32-bit addresses and ASID 0x7 is its only route). A copy
 from the SRAM source to the SRAM destination with the SEP ASID, legal LO
 addresses and a drawn non-zero SRC_ADDR_HI, then the same copy with a drawn
-non-zero DST_ADDR_HI, must end with DONE or ERROR in a bounded number of
-STATUS reads. The destination footprint at DST_ADDR_LO (the destination words
-and its guards, read when the copy ends and again after the recovery writes),
-STATUS.ERROR and ERROR_CODE are logged (``OBS-DMA-HI-ADDR``) and not graded,
-because no document defines the ADDR_HI rule for the SEP DMA route. Control: the same copy
-with both ADDR_HI at 0 completes and the destination equals the source. After
-each non-zero trial, with no reset, a write of 1 to STATUS.ERROR and a clean
-state precede a legal copy that must complete with the destination equal to the
-source.
+non-zero DST_ADDR_HI. L4 has no graded value, because no document defines the
+ADDR_HI rule for the SEP DMA route: whether the copy ends with DONE or ERROR in
+a bounded number of STATUS reads, the destination footprint at DST_ADDR_LO (the
+destination words and its guards, read when the copy ends and again after the
+recovery writes), STATUS.ERROR and ERROR_CODE are logged (``OBS-DMA-HI-ADDR``).
+Controls, else CTRL-MISSING: the same copy with both ADDR_HI at 0 completes and
+the destination equals the source; after each non-zero trial, with no reset, a
+write of 1 to STATUS.ERROR and a clean state precede a legal copy that must
+complete with the destination equal to the source.
 
 Leg L5, tied-off address spaces: "Selecting the tied-off CTN or SYS address
 space does not complete." (``hw/sys/sep/doc/dma.adoc:70``); "the other address
@@ -137,21 +140,19 @@ Checkers:
                     outside region ends with ERROR=1 and DST_ADDR_ERROR=1 and
                     leaves the region unchanged.
   CHK-DMA-LOCK      per L3 lock write and unlock attempt, in both contexts:
-                    RANGE_REGWEN reads 0x9, BASE and LIMIT read the values
-                    written before the lock and RANGE_VALID reads 1. Source
-                    of 0x9: "Once this register is set to
+                    BASE and LIMIT read the values written before the lock
+                    and RANGE_VALID reads 1. Source: "Used by firmware to lock
+                    the DMA enabled memory range configuration registers from
+                    further modification. Once this register is set to
                     kMultiBitBool4False, it can only be set to
                     kMultiBitBool4True through a reset event."
                     (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:338-339``),
-                    with the MultiBitBool4 encoding "True = 6; False = 9;"
-                    (``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:158-159``).
-                    Every
-                    new value differs from the locked one, so a write that
-                    lands changes the read-back.
-  CHK-DMA-HI-ADDR   per L4 side (SRC_ADDR_HI, DST_ADDR_HI): the copy ends and
-                    the recovery copy completes; the ADDR_HI=0 control
-                    completes with the source data. The footprint at
-                    DST_ADDR_LO is OBS-DMA-HI-ADDR only.
+                    so no unlock attempt before a reset re-opens the range
+                    registers. Every new value differs from the locked one, so
+                    a write that lands changes the read-back. Control: before
+                    the lock the writes landed and RANGE_REGWEN read its reset
+                    value 0x6. The RANGE_REGWEN read-back after the lock is
+                    OBS-DMA-LOCK-READBACK only.
   CHK-DMA-ASID-TIEOFF per L5 trial (side, ASID 0x9 or 0xA): no DONE in the
                     window. Controls: the ASID 0x7 copy shows DONE inside the
                     same window and copies the source; after the trial,
@@ -361,7 +362,6 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         "CHK-DMA-SIZE-ERR",
         "CHK-DMA-INTR-RELEASE",
         "CHK-DMA-LOCK",
-        "CHK-DMA-HI-ADDR",
         "CHK-DMA-RANGE-OUT",
         "CHK-DMA-ASID-TIEOFF",
     )
@@ -786,20 +786,20 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         hi = c.addr_hi[side]
         await self._cold_reset()
         await self._base_config(c.hi_size // 4)
-        # Graded: the non-zero ADDR_HI copy (sep_dma_config_fault_cg.cp_addr_hi_nonzero).
-        open_graded_window(TEST, self.logger)
+        # Not graded: no document states how a non-zero ADDR_HI copy ends.
         st, ended, ecode, foot = await self._hi_copy(
             hi if side == "src" else 0, hi if side == "dst" else 0
         )
-        close_graded_window(self.logger)
         sent = _word(c.sentinel)
         moved = sum(1 for w in foot if w != sent)
         self.logger.info(
-            "OBS-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x error=%d done=%d src_err=%d "
-            "dst_err=%d error_code=0x%x %s",
+            "OBS-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x ended=%d status_reads_bound=%d "
+            "error=%d done=%d src_err=%d dst_err=%d error_code=0x%x %s",
             c.seed,
             side,
             hi,
+            int(ended),
+            self.ops.done_bound(c.hi_size),
             st.error,
             st.done,
             int(bool(ecode & SRC_ERR_MASK)),
@@ -837,22 +837,21 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         rec_ok = rended and rst.done and not rst.error and mism == 0 and guard_bad == 0
         line = (
             f"side={side} addr_hi=0x{hi:08x} lo_dst=0x{c.dst:08x} size={c.hi_size} "
-            f"ended={int(ended)} done={st.done} "
-            f"recovery_done={int(rec_ok)} @@CTRL@@ "
-            f"recovery_mismatch={mism} recovery_guard_bad={guard_bad}"
+            f"recovery_done={int(rec_ok)} recovery_mismatch={mism} "
+            f"recovery_guard_bad={guard_bad}"
         )
-        return line, ended and rec_ok
+        self.logger.info("CTL-DMA-HI-ADDR-RECOVERY LOG seed=%d %s", c.seed, line)
+        return line, bool(rec_ok)
 
     async def _leg_l4(self) -> None:
+        """L4 has no graded value: each copy is logged and its controls must hold."""
         results = [await self._l4_side(s) for s in HI_SIDES]
         ctl = await self._l4_control()
         if not ctl:
-            self._ctrl_missing("CHK-DMA-HI-ADDR control: the ADDR_HI=0 copy failed")
+            self._ctrl_missing("L4 control: the ADDR_HI=0 copy failed")
         for line, ok in results:
-            line = line.replace("@@CTRL@@", f"control_ok={ctl}")
             if not ok:
-                self._fail("CHK-DMA-HI-ADDR", line)
-            self._pass("CHK-DMA-HI-ADDR", line)
+                self._ctrl_missing(f"L4 recovery control: {line}")
 
     # ---- L3 ------------------------------------------------------------------
     async def _wr_log(self, addr: int, value: int) -> int:
@@ -965,15 +964,33 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             base = await ops.rd(RANGE_BASE)
             limit = await ops.rd(RANGE_LIMIT)
             valid = (await ops.rd(RANGE_VALID) & VALID_MASK) >> _VALID_LSB
+            # The RANGE_REGWEN value after the lock is not graded. The field text
+            # says the register "is set to kMultiBitBool4False" (0x9,
+            # dma.hjson:338-339, secure_dma.rdl:158-159), and the access type
+            # rw0c (dma.hjson:330) / wzc (secure_dma.rdl:146) clears each bit
+            # written 0, which gives 0x0 for the write of 0x9 over 0x6.
+            self.logger.info(
+                "OBS-DMA-LOCK-READBACK seed=%d ctx=%s attempt=%s regwen=0x%x written=0x%x "
+                'desc="set to kMultiBitBool4False" desc_value=0x%x '
+                'access="rw0c/wzc" access_value_of_lock_write=0x%x',
+                c.seed,
+                ctx,
+                name,
+                regwen,
+                regwen_val,
+                REGWEN_FALSE,
+                REGWEN_TRUE & REGWEN_FALSE,
+            )
             line = (
-                f"ctx={ctx} attempt={name} regwen=0x{regwen:x}/0x{REGWEN_FALSE:x} "
+                f"ctx={ctx} attempt={name} "
                 f"base=0x{base:08x}/0x{pre[0]:08x} limit=0x{limit:08x}/0x{pre[1]:08x} "
                 f"valid={valid}/1 new=0x{nb:08x}/0x{nl:08x}/0 "
                 f"write_resp={resp_rw}/{'/'.join(map(str, resps))} control_pre_lock_landed=1"
             )
-            # Locked RANGE_REGWEN is kMultiBitBool4False until a reset
-            # (dma.hjson:338-339); False encodes as 9 (secure_dma.rdl:158-159).
-            if regwen != REGWEN_FALSE or base != pre[0] or limit != pre[1] or valid != 1:
+            # The lock keeps the range registers "from further modification", and
+            # only a reset unlocks it (dma.hjson:338-339): no write after the lock
+            # lands, whatever the later RANGE_REGWEN writes are.
+            if base != pre[0] or limit != pre[1] or valid != 1:
                 self._fail("CHK-DMA-LOCK", line)
             self._pass("CHK-DMA-LOCK", line)
 
@@ -1138,7 +1155,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         self.logger.info(
             "PLAN seed=%d L1 6 trials, L2 5 kinds + width-2 control + DONE and CHUNK_DONE "
             "release, L3 outside copy + zero-fill control + lock from idle and after an error "
-            "with 4 unlock attempts each, L4 2 ADDR_HI sides + ADDR_HI=0 control, L5 4 "
+            "with 4 unlock attempts each, L4 2 ADDR_HI sides (logged) + ADDR_HI=0 control, L5 4 "
             "tied-off ASID starts + ASID 0x7 control; every trial from a cold reset",
             seed,
         )

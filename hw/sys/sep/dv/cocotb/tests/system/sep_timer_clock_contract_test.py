@@ -1061,7 +1061,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         for name in names:
             addr, val = regs[name]
             await self._wr(addr, val)
-            await self._poll_eq(name, addr, val, M32, "CHK-WKUP-WIDE")
+            await self._poll_eq(name, addr, val, AON[name][1], "CHK-WKUP-WIDE")
         await self._wr(INTR_STATE, WKUP_BIT)
         st0 = await self._poll_eq("INTR_STATE", INTR_STATE, 0, WKUP_BIT, "CHK-WKUP-WIDE")
         await self._wr(WKUP_CTRL, ctrl | WKUP_EN)
@@ -1287,7 +1287,7 @@ class sep_timer_clock_contract_test(sep_base_test):
 
         # Coherent count reads.
         await self._wr(WDOG_COUNT, 0)
-        await self._poll_eq("WDOG_COUNT", WDOG_COUNT, 0, M32, "CHK-WDT-COHERENT")
+        await self._poll_eq("WDOG_COUNT", WDOG_COUNT, 0, AON["WDOG_COUNT"][1], "CHK-WDT-COHERENT")
         await self._wr(WDOG_CTRL, WDOG_EN)
         gaps = iter(cfg.read_gaps)
         segs: list[list[int]] = [[], []]
@@ -1304,7 +1304,9 @@ class sep_timer_clock_contract_test(sep_base_test):
                     ("WDOG_BARK_THOLD", cfg.coh_bark),
                     ("WDOG_BITE_THOLD", cfg.coh_bite),
                 ):
-                    got = await self._poll_eq(name, AON[name][0], val, M32, "CHK-WDT-COHERENT")
+                    got = await self._poll_eq(
+                        name, AON[name][0], val, AON[name][1], "CHK-WDT-COHERENT"
+                    )
                     self.logger.info(
                         "CTL-WDT-THOLD: reg=%s lane=%s pattern=0x%08x readback=0x%08x "
                         "timer=enabled",
@@ -1315,7 +1317,9 @@ class sep_timer_clock_contract_test(sep_base_test):
                     )
         await self._wr(WDOG_CTRL, 0)
         await self._wr(WDOG_COUNT, 0x1000)
-        await self._poll_eq("WDOG_COUNT", WDOG_COUNT, 0x1000, M32, "CHK-WDT-COHERENT")
+        await self._poll_eq(
+            "WDOG_COUNT", WDOG_COUNT, 0x1000, AON["WDOG_COUNT"][1], "CHK-WDT-COHERENT"
+        )
         await self._wr(WDOG_CTRL, WDOG_EN)
         for _ in range(32):
             await ClockCycles(cocotb.top.clk_i, next(gaps) + 1)
@@ -1435,10 +1439,10 @@ class sep_timer_clock_contract_test(sep_base_test):
         landed = []
         wk = (
             ("WKUP_CTRL", WKUP_CTRL, cfg.scope_presc_flip, WKUP_CTRL_FIELDS),
-            ("WKUP_COUNT_HI", WKUP_COUNT_HI, cfg.scope_wk_flip[0], M32),
-            ("WKUP_COUNT_LO", WKUP_COUNT_LO, cfg.scope_wk_flip[1], M32),
-            ("WKUP_THOLD_HI", WKUP_THOLD_HI, cfg.scope_wk_flip[2], M32),
-            ("WKUP_THOLD_LO", WKUP_THOLD_LO, cfg.scope_wk_flip[3], M32),
+            ("WKUP_COUNT_HI", WKUP_COUNT_HI, cfg.scope_wk_flip[0], AON["WKUP_COUNT_HI"][1]),
+            ("WKUP_COUNT_LO", WKUP_COUNT_LO, cfg.scope_wk_flip[1], AON["WKUP_COUNT_LO"][1]),
+            ("WKUP_THOLD_HI", WKUP_THOLD_HI, cfg.scope_wk_flip[2], AON["WKUP_THOLD_HI"][1]),
+            ("WKUP_THOLD_LO", WKUP_THOLD_LO, cfg.scope_wk_flip[3], AON["WKUP_THOLD_LO"][1]),
         )
         for name, addr, flip, mask in wk:
             old = await self._rd(addr)
@@ -1455,11 +1459,11 @@ class sep_timer_clock_contract_test(sep_base_test):
         old = await self._rd(WDOG_COUNT)
         new = old ^ cfg.scope_count_flip
         await self._wr(WDOG_COUNT, new)
-        await self._poll_eq("WDOG_COUNT", WDOG_COUNT, new, M32, chk)
+        await self._poll_eq("WDOG_COUNT", WDOG_COUNT, new, AON["WDOG_COUNT"][1], chk)
         landed.append(f"WDOG_COUNT=0x{old:x}->0x{new:x}")
         for name, val in (("WKUP_THOLD_HI", cfg.xh), ("WKUP_THOLD_LO", cfg.xl)):
             await self._wr(AON[name][0], val)
-            await self._poll_eq(name, AON[name][0], val, M32, chk)
+            await self._poll_eq(name, AON[name][0], val, AON[name][1], chk)
         self.logger.info(
             "%s PASS: seed=%d regwen=0 WDOG_CTRL=0x%x write=0x%x unchanged=1 landed=%s",
             chk,
@@ -1475,7 +1479,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         assert r0 & REGWEN_FIELD, f"CHK-REGWEN-STICKY FAIL: regwen reads 0x{r0:x} before the clear"
         for name, val in zip(THOLD_REGS, (cfg.xb, cfg.xd, cfg.xh, cfg.xl)):
             await self._wr(AON[name][0], val)
-            await self._poll_eq(name, AON[name][0], val, M32, "CHK-REGWEN-HOLD")
+            await self._poll_eq(name, AON[name][0], val, AON[name][1], "CHK-REGWEN-HOLD")
         await self._wr(WDOG_REGWEN, 0)
         await self._poll_eq("WDOG_REGWEN", WDOG_REGWEN, 0, REGWEN_FIELD, "CHK-REGWEN-STICKY")
         await self._wr(WDOG_REGWEN, 1)
@@ -1555,7 +1559,11 @@ class sep_timer_clock_contract_test(sep_base_test):
             assert fc.ok, f"CHK-REGWEN-COLD FAIL: reg={name} after the cold reset {fc.fields()}"
         await self._wr(WDOG_BARK_THOLD, cfg.cold_bark)
         await self._poll_eq(
-            "WDOG_BARK_THOLD", WDOG_BARK_THOLD, cfg.cold_bark, M32, "CHK-REGWEN-COLD"
+            "WDOG_BARK_THOLD",
+            WDOG_BARK_THOLD,
+            cfg.cold_bark,
+            AON["WDOG_BARK_THOLD"][1],
+            "CHK-REGWEN-COLD",
         )
         self.logger.info(
             "CHK-REGWEN-COLD PASS: regwen=%d bark=%d bite=%d wkup_hi=%d wkup_lo=%d write_lands=1 "
@@ -1743,7 +1751,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             thr = c_read - off
             name = "WDOG_BARK_THOLD" if ev == "bark" else "WDOG_BITE_THOLD"
             await self._wr(addr, thr)
-            await self._poll_eq(name, addr, thr, M32, "CHK-WDT-THOLD-BELOW")
+            await self._poll_eq(name, addr, thr, AON[name][1], "CHK-WDT-THOLD-BELOW")
             await ClockCycles(dut.clk_wdt_i, 1 + a)
             if ev == "bark":
                 st1 = await self._rd(INTR_STATE)
@@ -1826,7 +1834,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self._poll_eq("WKUP_CTRL", WKUP_CTRL, ctrl, WKUP_CTRL_FIELDS, "CHK-WKUP-PRESC-MAX")
         for name in ("WKUP_THOLD_HI", "WKUP_THOLD_LO", "WKUP_COUNT_LO", "WKUP_COUNT_HI"):
             await self._wr(AON[name][0], 0)
-            await self._poll_eq(name, AON[name][0], 0, M32, "CHK-WKUP-PRESC-MAX")
+            await self._poll_eq(name, AON[name][0], 0, AON[name][1], "CHK-WKUP-PRESC-MAX")
         await self._wr(INTR_STATE, WKUP_BIT)
         await self._poll_eq("INTR_STATE", INTR_STATE, 0, WKUP_BIT, "CHK-WKUP-THOLD-ZERO")
         await self._wr(WKUP_CAUSE, 0)
@@ -1965,7 +1973,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             ("WKUP_COUNT_HI", pre >> 32),
         ):
             await self._wr(AON[name][0], val)
-            await self._poll_eq(name, AON[name][0], val, M32, chk)
+            await self._poll_eq(name, AON[name][0], val, AON[name][1], chk)
         t_en = self._now()
         await self._wr(WKUP_CTRL, WKUP_EN)
         await self._poll_eq("WKUP_CTRL", WKUP_CTRL, WKUP_EN, WKUP_CTRL_FIELDS, chk)

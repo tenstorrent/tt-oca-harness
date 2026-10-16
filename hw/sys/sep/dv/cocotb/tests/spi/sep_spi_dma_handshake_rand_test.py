@@ -35,8 +35,9 @@ handshake run keeps GO set:
 * handshake run, mask bit 0 set: the poll for the last word of chunk n sets
   t_fill, the window length of every later run (never an expected value);
 * masked run, mask bit 0 clear; the leaf drains the words after the check;
-* stop run: n_stop chunks move, firmware clears GO, more Rx data arrives; the
-  leaf drains the words after the check;
+* stop run: n_stop chunks move; with GO still 1, a second Rx segment of W+1
+  words after the trigger fell moves the next chunk; firmware clears GO, more
+  Rx data arrives; the leaf drains the words after the check;
 * interrupt-clear run, mask bit 0 set, CLEAR_INTR_SRC bit 0 = 1 and
   CLEAR_INTR_BUS bit 0 = 1, INTR_SRC_ADDR_0 a SEP SRAM word outside the
   destination, INTR_SRC_WR_VAL_0 a drawn word that differs from the word the
@@ -60,9 +61,22 @@ Checkers:
                   firmware clear), and still reads 1 once the destination holds
                   TOTAL_DATA_SIZE bytes and after a further wait as long as
                   t_fill (handshake run). STATUS.DONE at the total is logged.
-  CHK-HS-STOP     after the GO clear the words after the moved chunks keep their
-                  sentinel while the trigger probe is high, and the moved chunks
-                  keep the words read before the clear.
+  CHK-HS-STOP     re-trigger leg, GO=1: after the trigger fell, a second Rx
+                  segment raises it again and the engine moves at least one more
+                  chunk; the moved chunks equal the RX stream (the first segment,
+                  then the second, each from flash address 0) and the words after
+                  them keep their sentinel. "In response to the assertion of an
+                  enabled bit of the `lsio_trigger_i` input, the DMA controller
+                  will proceed to transfer an entire chunk of data from the
+                  source to the destination." and "Whilst the `lsio_trigger_i`
+                  input is not asserted, the DMA controller will remain in its
+                  Idle state awaiting instruction to proceed with the next chunk
+                  of the transfer." (``vendor/lowRISC/opentitan/upstream/hw/ip/
+                  dma/doc/theory_of_operation.md:461,463``). Controls: the
+                  trigger probe reads low before the second segment and rises in
+                  it. Stop leg: after the GO clear the words after the moved
+                  chunks keep their sentinel while the trigger probe is high,
+                  and the moved chunks keep the words read before the clear.
   CHK-HS-NOCHUNK  STATUS.CHUNK_DONE reads 0 at every poll of the handshake run,
                   and with INTR_ENABLE.DMA_CHUNK_DONE=1 PIC source 10 (bit 9 of
                   ``sep_internal_interrupts_probe_o``) stays low at every clock
@@ -111,10 +125,12 @@ Checkers:
                   becomes set".
 
 Controls: RX depth above W+1; mask=1 run fills the destination; trigger high in
-each "never" window; 1 <= n_moved < chunks_total; the normal-mode copy reads
-GO=0 at DONE and shows CHUNK_DONE in a poll or a rise of PIC source 10 (bit 9
-of ``sep_internal_interrupts_probe_o``). A missing control logs CTRL-MISSING and
-fails the leaf.
+each "never" window; 1 <= n_moved, and the chunks moved before the GO clear are
+fewer than chunks_total; the normal-mode copy reads GO=0 at DONE, shows
+CHUNK_DONE in a poll, and shows a rise of PIC source 10 (bit 9 of
+``sep_internal_interrupts_probe_o``), so a dead or mis-bound bit-9 tap fails
+the control of the line leg of CHK-HS-NOCHUNK. A missing control logs
+CTRL-MISSING and fails the leaf.
 
 Probes: ``spi_lsio_trigger_probe_o``, ``dma_busy_probe_o``, ``spi_tx_qd_probe_o``
 (logged), ``dma_axi_req_probe_o`` (handshake and interrupt-clear runs), ``dbg_sep_reset_n_o``, ``sep_internal_interrupts_probe_o`` bit 9, the
@@ -315,7 +331,8 @@ class _Cfg:
 
     @property
     def chunks_total_stop(self) -> int:
-        return self.n_stop + -(-self.extra_bytes // self.chunk) + 1
+        # Room for the first segment, the re-trigger segment and one unmoved chunk.
+        return self.n_stop + 2 * -(-self.extra_bytes // self.chunk) + 1
 
     def flash_bytes(self) -> bytes:
         return b"".join(w.to_bytes(4, "little") for w in self.flash_words)
@@ -537,6 +554,27 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
     async def _wait_clocks(self, until: int) -> None:
         if until > self.tw.clk:
             await ClockCycles(cocotb.top.clk_i, until - self.tw.clk)
+
+    async def _stable_image(self, n_words: int, t_fill: int, what: str) -> list[int]:
+        """Destination words once two reads ``t_fill`` clocks apart are equal."""
+        img1 = await self.mem.read(HS_DST, n_words)
+        for _ in range(STABLE_READS):
+            await self._wait_clocks(self.tw.clk + t_fill)
+            img2 = await self.mem.read(HS_DST, n_words)
+            if img2 == img1:
+                return img1
+            img1 = img2
+        self._ctrl_missing(
+            "CHK-HS-STOP", f"{what}: destination not stable after {STABLE_READS} reads"
+        )
+        raise AssertionError  # unreachable: _ctrl_missing raises
+
+    def _filled(self, img: list[int], n_chunks: int) -> list[bool]:
+        """Per chunk of ``img``: True when no word of the chunk holds the sentinel."""
+        cw = self.cfg_.cw
+        return [
+            all(w != self.sentinel for w in img[c * cw : (c + 1) * cw]) for c in range(n_chunks)
+        ]
 
     # ---- runs --------------------------------------------------------------
     async def _clear_run(
@@ -1052,19 +1090,8 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             mask=cfg.mask_on, total=n_tot * cfg.chunk, dst_words=tot_words, rx_bytes=rx_stop
         )
         await self.spi.wait_segment_done(self.pads, pad_mark, bound_clks=cfg.seg_clks(rx_stop))
-        img1 = await self.mem.read(HS_DST, tot_words)
-        for _ in range(STABLE_READS):
-            await self._wait_clocks(self.tw.clk + t_fill)
-            img2 = await self.mem.read(HS_DST, tot_words)
-            if img2 == img1:
-                break
-            img1 = img2
-        else:
-            self._ctrl_missing("CHK-HS-STOP", f"destination not stable after {STABLE_READS} reads")
-        filled = [
-            all(w != self.sentinel for w in img1[c * cfg.cw : (c + 1) * cfg.cw])
-            for c in range(n_tot)
-        ]
+        img1 = await self._stable_image(tot_words, t_fill, "first segment")
+        filled = self._filled(img1, n_tot)
         n_moved = sum(filled)
         self.logger.info(
             "STOP-PRE LOG seed=%d n_moved=%d chunks_total=%d filled=%s",
@@ -1072,6 +1099,38 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             n_moved,
             n_tot,
             "".join(str(int(f)) for f in filled),
+        )
+        # Re-trigger leg, GO still 1: the DMA drained RXQD below RX_WATERMARK, so
+        # the trigger is low; a second segment of W+1 words raises it again and
+        # the engine moves the next chunk (OpenTitan DMA theory of operation:
+        # an assertion of an enabled trigger moves an entire chunk; while it is
+        # not asserted the engine waits for the next chunk).
+        # Stream of the RX FIFO: the first segment, then the second segment;
+        # each segment is a READ at flash address 0.
+        stream = cfg.flash_words[: rx_stop // 4] + cfg.flash_words[: cfg.extra_bytes // 4]
+        re_low_before = int(self.tw.level() == 0)
+        m_re = self.trig.mark()
+        mark_re = await self._spi_sequence(cfg.extra_bytes)
+        await self.spi.wait_segment_done(
+            self.pads, mark_re, bound_clks=cfg.seg_clks(cfg.extra_bytes)
+        )
+        img_re = await self._stable_image(tot_words, t_fill, "re-trigger segment")
+        re_rises = self.trig.rises_since(m_re)
+        filled_re = self._filled(img_re, n_tot)
+        n_re = sum(filled_re)
+        re_words = n_re * cfg.cw
+        re_data = int(
+            img_re[:re_words] == stream[:re_words]
+            and all(w == self.sentinel for w in img_re[re_words:])
+        )
+        self.logger.info(
+            "STOP-RETRIG LOG seed=%d n_moved_retrigger=%d filled=%s trigger_low_before=%d "
+            "trigger_rises=%d",
+            cfg.seed,
+            n_re,
+            "".join(str(int(f)) for f in filled_re),
+            re_low_before,
+            re_rises,
         )
         # Step 9: GO clear, more Rx data.
         # Control: GO still reads 1 before the clear, so the stop is caused by
@@ -1085,35 +1144,46 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         await self._wait_clocks(t_clr + t_fill)
         trig_high = self.trig.high_clocks_since(m_trig)
         img3 = await self.mem.read(HS_DST, tot_words)
-        after = img3[n_moved * cfg.cw :]
+        after = img3[re_words:]
         after_kept = int(all(w == self.sentinel for w in after))
-        moved_kept = int(img3[: n_moved * cfg.cw] == img1[: n_moved * cfg.cw])
+        moved_kept = int(img3[:re_words] == img_re[:re_words])
         self._probe_log("stop")
         close_graded_window(self.logger)
         line = (
-            f"n_stop={cfg.n_stop} n_moved={n_moved} chunks_total={n_tot} "
+            f"n_stop={cfg.n_stop} n_moved={n_moved} n_moved_retrigger={n_re} "
+            f"chunks_total={n_tot} re_data_match={re_data} "
+            f"control_re_trigger_low_before={re_low_before} "
+            f"control_re_trigger_rises={re_rises} "
             f"dest_after_clear_sentinel={after_kept} trigger_high_clk={trig_high} "
             f"window_clks={t_fill} go_before_clear={go_before} "
             f"control_after_clear=0x{stop_ctrl:08x} "
             f"moved_unchanged={moved_kept}"
         )
-        if n_moved < 1 or n_moved >= n_tot or trig_high < 1 or not go_before:
+        if n_moved < 1 or n_re >= n_tot or trig_high < 1 or not go_before:
             self._ctrl_missing("CHK-HS-STOP", line)
+        if not re_low_before or re_rises < 1:
+            self._ctrl_missing("CHK-HS-STOP", line)
+        # With GO=1 the trigger that rises again moves the next chunk.
+        if n_re <= n_moved or not re_data:
+            self._fail("CHK-HS-STOP", line)
         if not (after_kept and moved_kept):
             self._fail("CHK-HS-STOP", line)
         self._pass("CHK-HS-STOP", line)
-        # The words the DMA left in the RX FIFO (rest of the first frame, then
-        # the second frame) go out through RXDATA.
-        moved = img3[: n_moved * cfg.cw]
-        left1 = max(0, rx_stop // 4 - len(moved))
+        # The words the DMA left in the RX FIFO (rest of the first two frames,
+        # then the third frame) go out through RXDATA.
+        moved = img3[:re_words]
+        held = rx_stop // 4 + cfg.extra_bytes // 4
         rest = await self._drain_words(
-            left1 + cfg.extra_bytes // 4, mark_more, "stop run after the GO clear"
+            held - len(moved) + cfg.extra_bytes // 4, mark_more, "stop run after the GO clear"
+        )
+        got = moved + rest
+        f1, f2 = rx_stop // 4, held
+        self._expect_rx(FLASH_READ, 1, words_bytes(got[:f1]), want=rx_stop, label="stop_first")
+        self._expect_rx(
+            FLASH_READ, 1, words_bytes(got[f1:f2]), want=cfg.extra_bytes, label="stop_retrigger"
         )
         self._expect_rx(
-            FLASH_READ, 1, words_bytes(moved + rest[:left1]), want=rx_stop, label="stop_first"
-        )
-        self._expect_rx(
-            FLASH_READ, 1, words_bytes(rest[left1:]), want=cfg.extra_bytes, label="stop_more"
+            FLASH_READ, 1, words_bytes(got[f2:]), want=cfg.extra_bytes, label="stop_more"
         )
 
         # Interrupt-clear run: the handshake copy with the source 0 clear write.
@@ -1165,7 +1235,9 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             f"control_normal_polls={len(statuses)} control_chunk_irq_rises={irq_rises} "
             f"control_normal_polls_with_chunk_done={nm_chunk_polls}"
         )
-        if nm_chunk_polls < 1 and irq_rises < 1:
+        # The poll leg and the line leg each need their own control: a dead or
+        # mis-bound bit-9 tap reads 0 here.
+        if nm_chunk_polls < 1 or irq_rises < 1:
             self._ctrl_missing("CHK-HS-NOCHUNK", line)
         if hs_chunk_polls or hs_irq_rises or hs_irq_high:
             self._fail("CHK-HS-NOCHUNK", line)
