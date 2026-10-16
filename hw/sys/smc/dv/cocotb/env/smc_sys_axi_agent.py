@@ -263,6 +263,10 @@ class SmcSysAxiDriver(uvm_driver):
         stay valid while the subordinate is still answering earlier ones.
         """
         members = self._members(item)
+        assert len(members) == 1 or not any(m.capture_resp_id for m in members), (
+            f"{self.bus_name}: the response-ID capture samples the first completing beat on the "
+            f"port, so a capturing access cannot share a group of {len(members)}"
+        )
         captures = [self._start_id_capture(member) for member in members]
         events = [self._start_transfer(member) for member in members]
         for member, event, capture in zip(members, events, captures):

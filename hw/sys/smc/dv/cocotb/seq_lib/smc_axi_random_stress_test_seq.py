@@ -153,7 +153,11 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         self._n_item = 0
         self._step_accesses: Counter = Counter()
         self._codes: dict[str, Counter] = {p: Counter() for p in PORTS}
-        self._compared_bytes = 0
+        # Per (step, port): reads issued at KNOWN bytes and those that answered OKAY and
+        # compared; per step: the bytes compared.
+        self._cmp_issued: Counter = Counter()
+        self._cmp_done: Counter = Counter()
+        self._cmp_bytes: Counter = Counter()
         self._out_next = {p: 0x1000 for p in PORTS}
         self._shape = Counter()
         self._shape_rows: list = []
@@ -281,24 +285,42 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             else:
                 golden.unknown(*self._span(item))
             return
-        if code != 0 or item.observe:
+        if item.observe:
+            return
+        if out:
+            known = 0 if item.want is None else total
+        else:
+            known = sum(1 for i in range(total) if item.addr + i in golden.byte)
+        if not known:
+            return
+        self._cmp_issued[(self._step, port)] += 1
+        if code != 0:
             return
         got = item.rdata.to_bytes(total, "little")
         if out:
-            if item.want is not None:
-                assert got == item.want, (
-                    f"{self._step} {PORT_NAME[port]} read @0x{item.addr:x} returned {_hex(got)}, "
-                    f"the responder word of that address is {_hex(item.want)}"
-                )
-                self._compared_bytes += total
-            return
-        bad = golden.mismatches(item.addr, got)
-        assert not bad, (
-            f"{self._step} {PORT_NAME[port]} read @0x{item.addr:x} size {item.length} beats "
-            f"{item.beats}: byte @0x{bad[0][0]:x} returned 0x{bad[0][2]:02x}, golden of that "
-            f"address 0x{bad[0][1]:02x} ({len(bad)} bytes differ)"
+            assert got == item.want, (
+                f"{self._step} {PORT_NAME[port]} read @0x{item.addr:x} returned {_hex(got)}, "
+                f"the responder word of that address is {_hex(item.want)}"
+            )
+        else:
+            bad = golden.mismatches(item.addr, got)
+            assert not bad, (
+                f"{self._step} {PORT_NAME[port]} read @0x{item.addr:x} size {item.length} beats "
+                f"{item.beats}: byte @0x{bad[0][0]:x} returned 0x{bad[0][2]:02x}, golden of that "
+                f"address 0x{bad[0][1]:02x} ({len(bad)} bytes differ)"
+            )
+        self._cmp_done[(self._step, port)] += 1
+        self._cmp_bytes[self._step] += known
+
+    def _compare_floor(self, step: str, port: str, *, every: bool = False) -> str:
+        """The reads `step` issued at KNOWN bytes on `port` compared: not none, or all with `every`."""
+        issued = self._cmp_issued[(step, port)]
+        done = self._cmp_done[(step, port)]
+        assert issued and (done == issued if every else done), (
+            f"{step} {PORT_NAME[port]}: {done} of {issued} reads issued at KNOWN bytes compared"
+            + (", every one must" if every else ", the compare is vacuous")
         )
-        self._compared_bytes += sum(1 for i in range(total) if item.addr + i in golden.byte)
+        return f"{PORT_NAME[port]} {done}/{issued}"
 
     def _beat_check(self, port: str, item, events) -> None:
         """Beat count of a serialized access: one B beat, or AxLEN+1 R beats ending in RLAST."""
@@ -636,14 +658,16 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                     odd_reg.append(k)
             bad = [f"k{k}:{RESP_NAMES[w]}/{RESP_NAMES[r]}" for k, w, r in rows if (w, r) != (0, 0)]
             okay = sum(1 for _, w, r in rows if (w, r) == (0, 0))
+            self._compare_floor("S3", port)
             notes.append(
                 f"{PORT_NAME[port]} {okay} of 16 pairs OKAY/OKAY, non-OKAY [{' '.join(bad) or 'none'}] "
                 f"(AxCACHE k, AxQOS {qos}, AxREGION {region}, AxUSER "
                 f"{[hex(u) for u in user]}; {len(odd_reg)} pairs at registers)"
             )
         return (
-            "48 write-then-read pairs completed within the guard with defined data and every read "
-            "answered OKAY after an OKAY write returned the word of its own address; response codes "
+            "48 write-then-read pairs completed within the guard with defined data, every read "
+            "answered OKAY after an OKAY write returned the word of its own address and no port's "
+            "pairs all dropped out of the compare; response codes "
             "per knob value printed, not asserted (LINKED-ISSUE SF-033, SF-034; AxUSER carriage at "
             "the island not observable, SF-012): " + " | ".join(notes)
         )
@@ -1397,12 +1421,18 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         await self._s7()
         self._mark_step("S7")
         self._log_shape_rows()
+        floors = {
+            "S6": [self._compare_floor("S6", p, every=True) for p in PORTS],
+            "S7": [self._compare_floor("S7", p) for p in PORTS],
+        }
         self._log_chk(
             "CHK-RAND-SHAPE-BY-ADDR",
             f"all {self._step_accesses['S6']} + {self._step_accesses['S7']} accesses of steps 6 and "
             f"7 completed within the guard with defined data, each beat count equals AxLEN+1, every "
-            f"OKAY read at a KNOWN byte returned the golden byte of its own address "
-            f"({self._compared_bytes} bytes compared), recovery write-then-reads returned the fresh "
+            f"OKAY read at a KNOWN byte returned the golden byte of its own address (reads at KNOWN "
+            f"bytes compared/issued: step 6 {', '.join(floors['S6'])}, step 7 "
+            f"{', '.join(floors['S7'])}; {self._cmp_bytes['S6'] + self._cmp_bytes['S7']} bytes "
+            f"compared), recovery write-then-reads returned the fresh "
             f"word; responses of FIXED, WRAP, narrow register and AxLOCK 1 accesses printed "
             f"(LINKED-ISSUE SF-036, SF-003, SF-007): {self._shape_text()}; " + " | ".join(notes6),
         )

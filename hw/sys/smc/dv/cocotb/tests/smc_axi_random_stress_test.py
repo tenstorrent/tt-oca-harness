@@ -14,19 +14,19 @@ class smc_axi_random_stress_test(smc_base_test):
     """Random attributes, shapes, depths and SYS_OUT responder faults, golden by address."""
 
     required_evidence = (
-        "CHK-RAND-ID-ECHO",
+        "CHK-NONVAC",
         "CHK-RAND-ATTR-OWN-WORD",
-        "CHK-RAND-LOCK-OBS",
-        "CHK-RAND-OUT-SIDEBAND",
-        "CHK-RAND-SHAPE-BY-ADDR",
+        "CHK-RAND-ID-ECHO",
         "CHK-RAND-LOCAL-DEEP",
+        "CHK-RAND-LOCK-OBS",
         "CHK-RAND-OUT-DEEP",
         "CHK-RAND-OUT-OTHER-PORTS-OBS",
-        "CHK-RAND-RESP-TIMING",
-        "CHK-RAND-RESP-ERRORS-OBS",
+        "CHK-RAND-OUT-SIDEBAND",
         "CHK-RAND-RESP-COMBINED",
+        "CHK-RAND-RESP-ERRORS-OBS",
+        "CHK-RAND-RESP-TIMING",
+        "CHK-RAND-SHAPE-BY-ADDR",
         "CHK-TIMEOUT-PATHS",
-        "CHK-NONVAC",
     )
     min_evidence = 13
 
