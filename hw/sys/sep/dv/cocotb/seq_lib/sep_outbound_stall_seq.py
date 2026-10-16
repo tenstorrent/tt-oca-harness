@@ -86,15 +86,19 @@ class Meter:
         for init, pw, mark in (("lsu", b.pin_s, self.s0), ("sysif", b.pin_m, self.m0)):
             lo, hi = lay.span(init)
             floor = MIN_ID[pw.bus]
-            aw = [x for x in pw.aw[mark[0] :] if x[1] >= floor and lo <= x[2] < hi]
-            ar = [x for x in pw.ar[mark[2] :] if x[1] >= floor and lo <= x[2] < hi]
+
+            def known(x, floor=floor):
+                return all(v is not None for v in x[1:]) and x[1] >= floor
+
+            aw = [x for x in pw.aw[mark[0] :] if known(x) and lo <= x[2] < hi]
+            ar = [x for x in pw.ar[mark[2] :] if known(x) and lo <= x[2] < hi]
             res["mst"][init] = {
                 "aw": len(aw),
                 "ar": len(ar),
                 "aw_stall": pw.aw_stall - self.stall0[init][0],
                 "ar_stall": pw.ar_stall - self.stall0[init][1],
-                "b": sum(1 for x in pw.b[mark[1] :] if x[1] >= floor),
-                "r": sum(1 for x in pw.r[mark[3] :] if x[1] >= floor),
+                "b": sum(1 for x in pw.b[mark[1] :] if known(x)),
+                "r": sum(1 for x in pw.r[mark[3] :] if known(x)),
             }
         out = b.out.beats[self.out0 :]
         for init in INITS:

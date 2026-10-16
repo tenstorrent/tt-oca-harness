@@ -47,6 +47,7 @@ from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 INITS = ("lsu", "dma", "sysif")
 SLOT_BYTES = 0x400
 RESP_OKAY = 0
+RESP_SLVERR = 2
 RESP_DECERR = 3
 BURST_INCR = 1
 AXSIZE_8B = 3

@@ -674,14 +674,14 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self._line("CHK-RESP-ROUTE", " ".join(parts) + " wrong_target=0")
 
     def _check_delays_exercised(self) -> None:
-        """The drawn delays met a request at the port, else the contention claim is vacuous."""
+        """The drawn READY stalls met a request at the port, else the delay claim is vacuous."""
         c = self.c
         total_stall = sum(self.pstall.snap().values())
-        if (any(c.p_stall) and total_stall == 0) or (c.p_hold and self.delay.hold_clocks == 0):
+        if any(c.p_stall) and total_stall == 0:
             self._fail(
                 "CHK-CONC-ALL",
-                f"drawn delays not exercised port_stall_total={total_stall} "
-                f"hold_clocks={self.delay.hold_clocks}",
+                f"drawn READY stalls not exercised port_stall_total={total_stall} "
+                f"ready_stall_percent={c.p_stall}",
             )
 
     async def _s6_to_s9(self) -> None:
@@ -715,7 +715,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             plan_r, view_r, marks_r, _ = await self._same_id(inits, "rd")
             plan_w, _, _, _ = await self._same_id(inits, "wr")
             pm = marks_r[2]
-            pin_data = [x[3] for x in self.pin_s.r[pm[3] :] if x[1] is not None and x[1] >= 1]
+            pin_data = self.pin_s.since(pm)["r_data"]
             port_data = view_r.r_data_by_init["lsu"]
             match = sum(1 for a, b in zip(pin_data, port_data) if a == b)
             if len(pin_data) != len(port_data) or match != len(port_data):

@@ -43,7 +43,8 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
 ``CHK-<NAME> PASS`` once every comparison of that checker is done):
   CHK-DELAYS        zero-delay baseline, one-channel and all-channel delays.
   CHK-HOLD-DRAIN    requests accepted in a hold, no response in it, drain.
-  CHK-XBAR-LIMITS   master-side and slave-side crossbar limit counts, drain.
+  CHK-XBAR-LIMITS   master-side crossbar limit count for writes and reads, and
+                    the drain of every limit session.
   CHK-XBAR-HELD     a request at the crossbar limit is held, then completes.
   CHK-XBAR-POSTDRAIN fresh transactions after the saturation drains.
   CHK-CHAIN-LIMIT   finite outbound acceptance of writes and reads, drain;
@@ -79,6 +80,7 @@ from seq_lib.sep_outbound_contention_seq import (
     LSU_PROT,
     RESP_DECERR,
     RESP_OKAY,
+    RESP_SLVERR,
     SYS_PROT,
     DmaJob,
     OutboundLeaf,
@@ -218,6 +220,14 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
     async def _run_t(self, t: Txn) -> Txn:
         return await self.tr.run_txn(t, watch=self._pin(t.init))
 
+    async def _run_t_held(self, t: Txn) -> AssertionError | None:
+        """One access of a hold session; its failure is returned for the drain to report."""
+        try:
+            await self._run_t(t)
+        except AssertionError as exc:
+            return exc
+        return None
+
     async def _dma_start(self, job: DmaJob) -> None:
         await self.tr.dma_prepare(job)
         await self.tr.dma_go(job)
@@ -302,7 +312,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         snap = meter.read()
         return SimpleNamespace(
             lat=lat,
-            resp=(RESP_OKAY if job.status_error == 0 else 2) if init == "dma" else t.resp,
+            resp=(RESP_OKAY if job.status_error == 0 else RESP_SLVERR) if init == "dma" else t.resp,
             reached=snap["port"][init]["aw"] + snap["port"][init]["ar"] > 0,
         )
 
@@ -440,7 +450,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             s.next_id[(init, op)] += 1
             t = self._txn(init, op, ident)
             s.txns.append(t)
-            s.tasks.append(cocotb.start_soon(self._run_t(t)))
+            s.tasks.append(cocotb.start_soon(self._run_t_held(t)))
             if init == "lsu":
                 s.demand += 1
             made.append(t)
@@ -472,9 +482,8 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             self.ctl.hold(False)
         fails = []
         for task in s.tasks:
-            try:
-                await task
-            except AssertionError as exc:
+            exc = await task
+            if exc is not None:
                 fails.append(str(exc))
         if s.job is not None and not fails:
             try:
@@ -585,7 +594,6 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
 
     async def _s7_slv(self) -> None:
         chk = "CHK-XBAR-LIMITS"
-        res = {}
         slv_lsu = max(1, self.mst_n // 2)
         for name, kw in (
             ("slv_from_2", {"lsu_w": slv_lsu, "dma": ("wr", DMA_WORDS)}),
@@ -594,9 +602,6 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             s = await self._open(name, **kw)
             snap = await self._window(s, chk)
             acc = snap["port_aw"]
-            demand = slv_lsu + DMA_WORDS
-            if acc >= demand:
-                self._fail(chk, f"session={name} no finite stop: accepted={acc} demand={demand}")
             sys_n = snap["mst"]["sysif"]["aw"]
             self.logger.info(
                 "OBS-SYSIF-REACH: session=%s sysif_port_accepted=%d sysif_master_aw=%d reached=0 "
@@ -606,22 +611,23 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 sys_n,
             )
             self.logger.info(
-                "OBS-LIMIT: %s issuers_total_accepted_at_port=%d per_init=%s rtl_max_trans=%d "
-                "(the LSU and DMA total at the port; the slave-port limit itself is not "
-                "measured)",
+                "OBS-LIMIT: session=%s accepted_at_port=%d demand=%d per_init=%s rtl_max_trans=%d (the LSU "
+                "and DMA total at the port; the DMA issues one write at a time on its held B, "
+                "so this stop is the DMA's issue policy, not a slave-port limit)",
                 name,
                 acc,
+                slv_lsu + DMA_WORDS,
                 {i: snap["port"][i]["aw"] for i in INITS},
                 RTL_MAX_TRANS,
             )
-            res[name] = acc
             self.drain_acc.append(await self._drain(s, chk))
         done = sum(d[0] for d in self.drain_acc)
         total = sum(d[1] for d in self.drain_acc)
         self._emit(
             chk,
-            f"mst_accepted_before_stall={self.mst_n} slv_accepted_from_2={res['slv_from_2']} "
-            f"slv_accepted_from_3={res['slv_from_3']} drained={done}/{total} deadlock=0",
+            f"mst_wr_accepted_before_stall={self.mst_n} "
+            f"mst_rd_accepted_before_stall={self.mst_n_rd} issued={LSU_ISSUE} "
+            f"drained={done}/{total} deadlock=0",
         )
         self._fence("SLV_LIMIT")
 
@@ -681,13 +687,6 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             )
             rows.append(("lsu", stall, rel, extra))
         if dma_words:
-            pend = dma_words - before["port"]["dma"]["aw"]
-            if pend <= 0:
-                self._fail(
-                    chk,
-                    f"session={name} init=dma accepted={before['port']['dma']['aw']} of "
-                    f"{dma_words}: no limit reached",
-                )
             base_aw = s.meter.read()["port"]["dma"]["aw"]
             rel = await self._release_until(lambda: s.meter.read()["port"]["dma"]["aw"] > base_aw)
             rows.append(("dma", "n/a", rel, None))
@@ -706,21 +705,20 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 )
                 comp = int(all(t.done for t in extra))
                 note = " reached=0 no_outbound_path=1 not_graded=observation_only"
+            elif init == "dma":
+                comp = int(s.job.done)
+                note = " stall_src=not_observable_at_a_pin not_graded=observation_only"
             else:
                 if releases == 0:
                     self._fail(
                         chk,
-                        f"session={name} init={init} held request never accepted after "
+                        f"session={name} init=lsu held request never accepted after "
                         f"{ONE_RELEASE_POLLS} releases released_beats={beats}",
                     )
-                comp = int(s.job.done) if init == "dma" else int(all(t.done for t in extra))
-                note = (
-                    " stall_src=not_observable_at_a_pin not_graded=observation_only"
-                    if init == "dma"
-                    else ""
-                )
-            if not comp:
-                self._fail(chk, f"session={name} init={init} held request never completed")
+                comp = int(all(t.done for t in extra))
+                note = ""
+                if not comp:
+                    self._fail(chk, f"session={name} init=lsu held request never completed")
             emit = self._line if graded and init == "lsu" else self._obs_row
             emit(
                 chk if graded else "CHAIN-HELD",

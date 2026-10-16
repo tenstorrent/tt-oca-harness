@@ -540,7 +540,7 @@ Exceptions (a closed set):
   not forced. Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST,
   CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
   (CHK-STALL-REAL, CHK-TO-INERT).
-  Test-added request-side hooks, both 0 by default: `smn_outbound_ready_stall_i`
+  Request-side hooks, both 0 by default: `smn_outbound_ready_stall_i`
   (3 bits) holds AW READY (bit 0), W READY (bit 1) and AR READY (bit 2) of the
   responder low while the bit is high, and `smn_outbound_rd_addr_data_i`
   returns `{~a, a}` on every R beat, `a` being the low 32 bits of the
