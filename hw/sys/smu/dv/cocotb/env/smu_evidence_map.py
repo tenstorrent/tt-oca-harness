@@ -3061,6 +3061,71 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "bounded J2A and pad waits with last state",
         ),
     ],
+    "smu_smc_warm_reset_register_retention_test": [
+        (
+            "CHK-WARM-RET-SSCFG",
+            "CHK-WARM-RET-SSCFG",
+            "SS_CONFIG reads its non-zero pattern before and after the CORE0 watchdog "
+            "warm reset; the reset value 0 differs",
+        ),
+        (
+            "CHK-WARM-RET-SSCOLD",
+            "CHK-WARM-RET-SSCOLD",
+            "SS_COLD_RESET_N reads its non-zero pattern before and after the warm "
+            "reset; the reset value 0 differs",
+        ),
+        (
+            "CHK-WARM-RET-ISO",
+            "CHK-WARM-RET-ISO",
+            "ISOLATE_REQ_REG and ISOLATE_REQ_FLR_COUNTER_VALUE each read their non-zero "
+            "value before and after the warm reset; the reset value 0 differs",
+        ),
+        (
+            "CHK-WARM-RET-WDT-RETURN",
+            "CHK-WARM-RET-WDT-RETURN",
+            "CORE0 CMP reads the armed value and CTRL the WDOGRSTEN, WDOGENALWAYS and "
+            "WDOGZEROCMP bits before the event; after it CMP reads 0x1000 and CTRL "
+            "reads 0",
+        ),
+        (
+            "CHK-WARM-RET-EVENT",
+            "CHK-WARM-RET-EVENT",
+            "after arming, the second timeout reads 1 and the warm reset probe reads 0 "
+            "within their bounded waits, with both at idle just before arming",
+        ),
+        (
+            "CHK-WARM-RET-PRIMARY-STAY",
+            "CHK-WARM-RET-PRIMARY-STAY",
+            "rst_primary_smc_clk_n_o and rst_cold_n_o read 1 at every clk_smu_i sample "
+            "from S2 to S10 with no sampling gap, while the warm reset reads 0 inside "
+            "the window",
+        ),
+        (
+            "CHK-WARM-RET-MEASURED",
+            "CHK-WARM-RET-MEASURED",
+            "SS_WARM_RESET_N, one CPU_CTRL SCRATCH word and one SCRATCH_COLD_WARM word "
+            "are measured and logged only, before and after; none is compared",
+        ),
+        (
+            "CHK-WARM-RET-RELEASE",
+            "CHK-WARM-RET-RELEASE",
+            "the warm reset return and the second timeout return waits each log their "
+            "release cycle or expiry with the last state; no compare depends on the "
+            "outcome",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S7<S8<S9<S10<S11; the PASS "
+            "stamp is two clk_smu_i cycles after S10",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "four bounded waits in two kinds (event 2, release 2), no event wait "
+            "expired, release expiries recorded with the last state",
+        ),
+    ],
 }
 
 

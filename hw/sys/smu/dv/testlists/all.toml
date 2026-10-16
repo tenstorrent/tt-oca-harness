@@ -3642,8 +3642,9 @@ tests = [
   "smu_sep_wdt_bite_to_smc_reset_test",
   "smu_xtrig_ctm_self_loop_test",
   "smu_sep_rma_token_match_test",
+  "smu_smc_warm_reset_register_retention_test",
 ]
-expected_count = 132
+expected_count = 133
 
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
@@ -3821,8 +3822,9 @@ tests = [
   "smu_sep_wdt_bite_to_smc_reset_test",
   "smu_xtrig_ctm_self_loop_test",
   "smu_sep_rma_token_match_test",
+  "smu_smc_warm_reset_register_retention_test",
 ]
-expected_count = 168
+expected_count = 169
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -4592,4 +4594,29 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   # The image carries RMA digests of known tokens.
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev_rma_tokens.preload",
+]
+
+# The CORE0 watchdog warm reset: reset-unit and isolation registers keep their values and the
+# CORE0 watchdog compare and control registers return to reset; over JTAG2AXI, no firmware.
+[[tests]]
+name = "smu_smc_warm_reset_register_retention_test"
+module = "smu_smc_warm_reset_register_retention_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["depth", "smc", "wdt", "reset", "retention"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a register value, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
