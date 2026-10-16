@@ -886,6 +886,7 @@ bit and releases the pad.
 |`smc_smbus_pmbus_linear11_read_test` |The I2C0 controller reads a two-byte word with a repeated
 START, delivering the bytes through `RDATA` in wire order, unchanged by `SMBUS_CTRL.SMBSUS` written
 mid-transfer and by a clear `I2C_CONTROLLER_MODE_EN`.
+|`smc_i2c_wire_timing_test` |I2C0 controller SCL, SDA, START, STOP and bus-free timing on the pads changes between TIMING0-TIMING4 programming sets by exactly the programmed difference, with the minimum set a completed transfer.
 |===
 
 ==== I3C
@@ -17819,7 +17820,7 @@ reads back in `CPU_CTRL.SCRATCH[0]`.
 *Test Coverage*:
 
 * `CPU_CTRL.RESET_CTRL` `debug_reset_n` reads 0 before the release (a 2-state zero reset value: the
-  read is printed with the word LINKED-ISSUE; the release is the paired positive control).
+  read is printed and not compared; the release is the paired positive control).
 * After the release and `dmcontrol.dmactive` = 1, `dmstatus` reads `version` 2 and `impebreak` 1,
   `abstractcs` reads `progbufsize` 16 and `datacount` 4, `dmcontrol.hartsello` written 3 reads back
   3 and a nonzero `hartselhi` reads back 0.
@@ -17878,7 +17879,7 @@ reads back in `CPU_CTRL.SCRATCH[0]`.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DM-ACT-RESET-HELD` |`debug_reset_n` reads 0 before the release, LINKED-ISSUE (2-state zero
+|`CHK-DM-ACT-RESET-HELD` |`debug_reset_n` reads 0 before the release, printed and not compared (a two-state zero
 reset value); a nonzero read or a failed read fails it
 |`CHK-DM-ACT-DMSTATUS` |After the release and `dmactive` = 1, `dmstatus.version` reads 2 and
 `impebreak` reads 1; any other value, a stalled scan or a busy response beyond the retry bound fails
@@ -17946,7 +17947,7 @@ and the SEP_IN AXI driver sees the same words.
   reads back its written pattern as the positive control.
 * Two 32-bit system bus writes at distinct scratchpad word addresses end with `sbbusy` 0 and
   `sberror` 0 and `sbaddress0` reads back each address; `sbaddress1` is printed with the word
-  LINKED-ISSUE (a 2-state zero value).
+  printed and not compared (a two-state zero value).
 * System bus reads with `sbreadonaddr` of both words return the two distinct patterns.
 * Width-specific writes at 8, 16, 32 and 64 bits into four distinct doublewords with a known
   background read back at the same width, and the 64-bit read of the doubleword equals the
@@ -17997,7 +17998,7 @@ and the SEP_IN AXI driver sees the same words.
 of 0xFFFFFFFF and `data0` reads back its pattern; a nonzero read or a failed control fails it
 |`CHK-DM-SBA-WRITE` |After each 32-bit system bus write `sbbusy` reads 0 within the bound and
 `sberror` 0 and `sbaddress0` reads back the written address, `sbaddress1` is printed as
-LINKED-ISSUE; a busy bit at the bound, a nonzero `sberror` or an address difference fails it
+printed and not compared; a busy bit at the bound, a nonzero `sberror` or an address difference fails it
 |`CHK-DM-SBA-READ` |A system bus read of each written word returns its own pattern with `sbbusy` 0
 and `sberror` 0; a different word, an aliased word or a nonzero `sberror` fails it
 |`CHK-DM-SBA-WIDTHS` |Each of the 8-, 16-, 32- and 64-bit writes reads back its pattern at its width
@@ -25513,6 +25514,118 @@ step.
 *Pass Criteria*: `CHK-PMBUS-WORD-BYTES`, `CHK-PMBUS-NEG-WORD-BYTES`, `CHK-SUS-DURING-XFER`,
 `CHK-SCL-SDA-FIELD-INVARIANT`, `CHK-TIMEOUT-PATHS` and `CHK-NONVAC` hold after their compares and
 every sequence assert holds; `CHK-PMBUS-DECODE-LOG` records measurements only. Enrolled in: `all`.
+[[sec-534-smc_i2c_wire_timing_test]]
+===== 534 `smc_i2c_wire_timing_test`
+
+*Source Module*: `smc_i2c_wire_timing_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` (0x50) on `tb_i2c0_scl` / `tb_i2c0_sda`; a clock-sampled measurer
+in the sequence that reads both pad nets on every `clk_periph_i` rising edge and keeps each edge
+as a cycle count; ocah_axi_vip (AXI) on SEP_IN writing and reading `TIMING0` to `TIMING4`,
+`FDATA`, `STATUS`, `HOST_FIFO_STATUS`, `RDATA`, `INTR_STATE`, `CTRL`, `OVRD`, `FIFO_CTRL` and
+`CONTROLLER_EVENTS` of I2C0, the I2C0 wrapper control register and `CLOCK_GATE_CONTROL`;
+`clk_periph_i` (the clock `clk_i` of the I2C core is gated from) and `clk_smc_i`; the peripheral
+clock period is read from the environment configuration
+
+*Objective*: The difference in the I2C0 controller's SCL, SDA, START, STOP and bus-free timing on
+the pads between two programming sets equals the difference in the `TIMING0` to `TIMING4` counts
+that were changed.
+
+*Test Coverage*:
+
+* All ten `TIMING0` to `TIMING4` fields read back the distinct nonzero value written at their
+  width, and a halfword-strobed rewrite of one field leaves its neighbour unchanged; the reset
+  readback is logged only (a stuck-at-zero reset cannot be told apart on a 2-state bench).
+* Set A is the Fast-mode-plus minimums of UM10204 Table 11 in `clk_i` cycles (`THD_DAT` at 1);
+  set B scales `THIGH`, `TLOW`, `TSU_DAT` and `THD_DAT` by 4 and set C by 10; the SCL high, low
+  and period differences between B or C and A equal the programmed differences on every clock
+  pulse of a write, repeated-START read and STOP transfer.
+* The SDA hold after an SCL fall of the bits the controller transmits, and the hold after the SCL
+  fall of the bit it not-acknowledges, change with `THD_DAT` by the programmed difference. The SDA
+  setup before the SCL rise of those bits is measured and printed next to `TSU_DAT` and
+  `TLOW` minus `THD_DAT` of each set, with no expectation.
+* With `TSU_STA`, `THD_STA` and `TSU_STO` each raised (set A3) the repeated-START setup and hold
+  and the STOP setup change by the programmed differences; with only `T_BUF` raised (set A4) the
+  bus-free time between a STOP and the next START changes by the programmed difference. A bus-free
+  time below the programmed `T_BUF` is printed.
+* Raising `T_R` and `T_F`, and the hold of the first START, are measured and printed with no
+  expectation. Full-rate Standard-mode SCL is not run.
+* With `THIGH` and `TLOW` at 2 and every other field at 1 a transfer of START, address write and
+  STOP completes with one acknowledge and one STOP.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a controller with the EEPROM target on the pads, read `TIMING0` to `TIMING4`
+  before any write, write every field with a distinct value at its width and read the five
+  registers back, then rewrite each low and each high field with a halfword strobe and read back
+  the register.
+. Program set A. Queue transfer X (START, address write, one byte, repeated START, address read,
+  one byte with the controller not-acknowledging, STOP) and transfer Y (START, address write,
+  STOP) behind it, wait for the second STOP on the pads and `STATUS.HOSTIDLE`, and require the
+  byte read and the target's START, STOP and acknowledge counts. Reduce the pad edges to the
+  intervals under test.
+. Program set B and repeat.
+. Program set C and repeat.
+. Program set A2 (`T_R` and `T_F` raised by 6) and repeat.
+. Program set A3 (`TSU_STA`, `THD_STA` and `TSU_STO` raised by 8) and repeat, then program set A4
+  (only `T_BUF` raised by 8) and repeat.
+. Program the minimum set, clear `INTR_STATE`, run transfer Y alone and require the START, the
+  acknowledge, exactly one STOP, `STATUS.HOSTIDLE` and `INTR_STATE.CMD_COMPLETE`.
+. Compare the deltas against set A in order, print the checker lines, the ordered-fence line and
+  the bounded waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-WIRE-TIMING-FIELDS` |Each of the ten fields reads back its distinct written value and a
+rewrite of one field leaves its neighbour unchanged; a differing readback fails it, and the reset
+leg is printed only.
+|`CHK-I2C-WIRE-SCL-HIGH-DELTA` |The change in measured SCL high time on every clock pulse, B minus A
+and C minus A, equals the change in `THIGH` exactly in cycles; any other delta fails it.
+|`CHK-I2C-WIRE-SCL-LOW-DELTA` |The change in measured SCL low time on every low phase between clock
+pulses, B minus A and C minus A, equals the change in `TLOW` exactly; any other delta fails it.
+|`CHK-I2C-WIRE-SCL-PERIOD-DELTA` |The change in measured SCL period, B minus A and C minus A, equals
+the change in `THIGH` plus `TLOW` with `T_R` and `T_F` equal in all three sets; any other delta
+fails it.
+|`CHK-I2C-WIRE-MEASURED-ONLY` |Measured only: the period change with `T_R` and `T_F` raised, the
+first-START hold in A and A3 and the STOP-to-next-START time are printed; nothing is compared.
+|`CHK-I2C-WIRE-DATA-SETUP-DELTA` |Measured only: the SDA setup before the SCL rise of the
+transmitted bits in sets A, B and C is printed with the programmed `TSU_DAT` and `TLOW` minus
+`THD_DAT`; nothing is compared and only a missing line or edge fails it.
+|`CHK-I2C-WIRE-DATA-HOLD-DELTA` |The change in SDA hold after the SCL fall of each transmitted bit,
+B minus A and C minus A, equals the change in `THD_DAT`; any other delta fails it.
+|`CHK-I2C-WIRE-NACK-HOLD-DELTA` |With SDA high in the controller's not-acknowledge pulse, the change
+in SDA hold after that pulse's SCL fall, B minus A and C minus A, equals the change in `THD_DAT`;
+a low SDA or any other delta fails it.
+|`CHK-I2C-WIRE-RSTART-DELTA` |The change in repeated-START setup (SCL rise to SDA fall) and hold
+(SDA fall to the next SCL fall), A3 minus A, equals the change in `TSU_STA` and `THD_STA`; any
+other delta fails it.
+|`CHK-I2C-WIRE-STOP-SETUP-DELTA` |The change in STOP setup (SCL rise to SDA rise), A3 minus A,
+equals the change in `TSU_STO`; any other delta fails it.
+|`CHK-I2C-WIRE-BUS-FREE-DELTA` |The change in time from the SDA rise of the STOP of X to the SDA
+fall of the START of Y, A4 minus A, equals the change in `T_BUF`; any other delta fails it, and a
+value below the programmed `T_BUF` is printed.
+|`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 2 and the other fields at 1 transfer Y
+shows a START, an acknowledged address, one STOP, `HOSTIDLE` and `CMD_COMPLETE`; a missing START
+or acknowledge, another STOP count or either flag clear fails it.
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow them in order; a missing or misordered term fails it.
+|`CHK-TIMEOUT-PATHS` |The wait for the STOP edges, the `HOSTIDLE` poll, the LSIO ready poll and the
+AXI access are bounded and fail on expiry with the last `STATUS`, `HOST_FIFO_STATUS` and measurer
+state.
+|===
+
+*Pass Criteria*: `CHK-I2C-WIRE-TIMING-FIELDS`, `CHK-I2C-WIRE-SCL-HIGH-DELTA`,
+`CHK-I2C-WIRE-SCL-LOW-DELTA`, `CHK-I2C-WIRE-SCL-PERIOD-DELTA`,
+`CHK-I2C-WIRE-DATA-HOLD-DELTA`, `CHK-I2C-WIRE-NACK-HOLD-DELTA`, `CHK-I2C-WIRE-RSTART-DELTA`,
+`CHK-I2C-WIRE-STOP-SETUP-DELTA`, `CHK-I2C-WIRE-BUS-FREE-DELTA`, `CHK-I2C-WIRE-MIN-SET-RUN`,
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds;
+`CHK-I2C-WIRE-MEASURED-ONLY` and `CHK-I2C-WIRE-DATA-SETUP-DELTA` record measurements only. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
 
 '''''
 

@@ -287,7 +287,7 @@ class smc_jtag_dm_sba_scratchpad_test_seq(SmcCsrSeq):
             "S3",
             f"32-bit writes 0x{PATTERN_A:08X}@0x{WORD_A:08X} and 0x{PATTERN_B:08X}@0x{WORD_B:08X} "
             f"each ended sbbusy=0 sberror=0 (last sbcs=0x{sbcs_w:08X}); sbaddress0 read back "
-            f"0x{addr0_a:08X} and 0x{addr0_b:08X}; LINKED-ISSUE 2-state zero: "
+            f"0x{addr0_a:08X} and 0x{addr0_b:08X}; two-state zero reset value, not compared: "
             f"sbaddress1=0x{addr1:08X} observed",
         )
 

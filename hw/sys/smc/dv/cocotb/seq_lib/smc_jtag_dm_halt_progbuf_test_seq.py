@@ -246,7 +246,7 @@ class smc_jtag_dm_halt_progbuf_test_seq(SmcCsrSeq):
         )
         self._chk(
             "CHK-DM-ACT-RESET-HELD",
-            f"LINKED-ISSUE 2-state zero reset value: RESET_CTRL=0x{reset_before:X} "
+            f"two-state zero reset value, not compared: RESET_CTRL=0x{reset_before:X} "
             f"debug_reset_n={int(bool(reset_before & DEBUG_RESET_N))} before the release",
         )
 

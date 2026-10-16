@@ -645,3 +645,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
+[[tests]]
+name = "smc_i2c_wire_timing_test"
+module = "smc_i2c_wire_timing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
