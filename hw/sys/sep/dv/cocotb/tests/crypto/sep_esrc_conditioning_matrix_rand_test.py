@@ -681,6 +681,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
         await pass_tap.stop()
+        # The tap task ends in ReadOnly; a gate write needs the next time step.
+        await NextTimeStep()
         close_graded_window(self.logger)
 
         fifo_level = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")

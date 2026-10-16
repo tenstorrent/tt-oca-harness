@@ -61,7 +61,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_aes_golden import aes_encrypt_words
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import AES_KEY_ROWS, KMAC_SAMPLE_KEY_ROW
@@ -654,6 +654,9 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         if not read.done():
             await read
         seq = read.result()
+        # The probe wait ends in ReadOnly and the waits above may not leave it; a
+        # gate write needs the next time step.
+        await NextTimeStep()
         close_graded_window(self.logger)
         # Step 8: the rest of the M new pairs; stream 1 offers new words too.
         self.ext.send(2, [new[0]])
@@ -979,6 +982,9 @@ class _UrndPacer:
             await ReadOnly()
             if self.test.rd(dut.crypto_edn_ack_o, allow_unknown=True) >> 3 & 1:
                 self.outstanding = False
+        # ``_stop_feeders`` resumes when this task ends; leave ReadOnly so the caller
+        # may write the FCOV gate.
+        await NextTimeStep()
 
     def start(self):
         return self.stop_flag, cocotb.start_soon(self._run())

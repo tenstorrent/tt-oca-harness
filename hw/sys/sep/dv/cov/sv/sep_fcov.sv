@@ -16303,10 +16303,23 @@ module sep_fcov (
   logic cy_a_kclr_qq = 1'b0;
   logic [3:0] cy_a_we_rec = '0;  // ctrl_we in the last four clocks
   logic cy_aux_regwen_q = 1'b1;
-  // Commit (ctrl_we) and update error (ctrl_err_update) seen since the AW
-  // handshake of the last LSU write to CTRL_SHADOWED.
-  logic cy_a_we_seen = 1'b0;
+  // Update error (ctrl_err_update) and commit seen
+  // since the AW handshake of the last LSU write to CTRL_SHADOWED.
   logic cy_a_eu_seen = 1'b0;
+  logic cy_a_cm_seen = 1'b0;
+  // Shadow phase of CTRL_SHADOWED. Each granted write toggles it: the first
+  // write of a pair stages the value, the second commits it or raises an
+  // update error. An AES reset or a CTRL_SHADOWED read clears it. From the
+  // read address handshake to the read response the phase is unknown; a
+  // granted write in that interval keeps it unknown until the next read
+  // returns. No commit is reported while the phase is unknown.
+  logic cy_a_ph = 1'b0;
+  logic cy_a_ph_known = 1'b1;
+  logic cy_a_ph_rd = 1'b0;  // a CTRL_SHADOWED read is in flight
+  logic cy_a_ph_rdwe = 1'b0;  // a granted write came while that read was in flight
+  // Commit of CTRL_SHADOWED: the granted second write of a pair with no
+  // update error.
+  wire cy_a_cm = cy_a_we && cy_a_ph && cy_a_ph_known && !cy_a_eu;
   always @(posedge clk_i) begin
     if (!cy_ip[2]) begin
       cy_a_stall <= 1'b0;
@@ -16324,11 +16337,32 @@ module sep_fcov (
     cy_a_we_rec     <= {cy_a_we_rec[2:0], cy_a_we};
     cy_aux_regwen_q <= cy_t(aes_aux_regwen_i);
     if (aw_hs && (lsu_aw_addr_i == AES_CTRL_SHADOWED_REG_ADDR)) begin
-      cy_a_we_seen <= 1'b0;
       cy_a_eu_seen <= 1'b0;
+      cy_a_cm_seen <= 1'b0;
     end else begin
-      if (cy_a_we) cy_a_we_seen <= 1'b1;
       if (cy_a_eu) cy_a_eu_seen <= 1'b1;
+      if (cy_a_cm) cy_a_cm_seen <= 1'b1;
+    end
+    if (!cy_ip[2]) begin
+      cy_a_ph       <= 1'b0;
+      cy_a_ph_known <= 1'b1;
+      cy_a_ph_rd    <= 1'b0;
+      cy_a_ph_rdwe  <= 1'b0;
+    end else begin
+      if (cy_a_we) cy_a_ph <= !cy_a_ph;
+      if (ar_hs && (lsu_ar_addr_i == AES_CTRL_SHADOWED_REG_ADDR)) begin
+        cy_a_ph_known <= 1'b0;
+        cy_a_ph_rd    <= 1'b1;
+        cy_a_ph_rdwe  <= cy_a_we;
+      end else if (cy_a_ph_rd && r_hs) begin
+        cy_a_ph_rd <= 1'b0;
+        if (rd_ev && (ar_addr_q == AES_CTRL_SHADOWED_REG_ADDR) && !cy_a_ph_rdwe && !cy_a_we) begin
+          cy_a_ph       <= 1'b0;
+          cy_a_ph_known <= 1'b1;
+        end
+      end else if (cy_a_ph_rd && cy_a_we) begin
+        cy_a_ph_rdwe <= 1'b1;
+      end
     end
   end
   wire cy_a_aw = aw_hs && (blk_of(lsu_aw_addr_i) == BLK_AES);  // an LSU write to AES starts
@@ -17412,7 +17446,9 @@ module sep_fcov (
 
     // x_aes_invalid_map (1.31 KEY_LEN, OPERATION, MODE; 1.33
     // PRNG_RESEED_RATE): the committing write of a pair and the stored value.
-    if (cy_a_ctrl_wr && cy_a_we_seen) begin
+    // The staging write also gets ctrl_we, so the commit (cy_a_cm) selects
+    // the write.
+    if (cy_a_ctrl_wr && cy_a_cm_seen) begin
       logic [5:0] v[4];
       logic ok[4];
       v[0] = 6'((wr_data & AES_CTRL_SHADOWED_KEY_LEN_MASK) >> AES_CTRL_SHADOWED_KEY_LEN_SHIFT);
@@ -17437,8 +17473,10 @@ module sep_fcov (
       cy_rr_on <= 1'b0;
       cy_ct_on <= 1'b0;
     end else begin
-      // A run starts at each commit; the stored rate is sampled at its
-      // 129th OUTPUT_VALID rise.
+      // A run starts at each granted CTRL_SHADOWED write. Both writes of a
+      // pair are granted, so the last run starts at the commit. The stored
+      // rate is sampled one clock later and graded at the 129th OUTPUT_VALID
+      // rise of the run.
       if (cy_a_we) begin
         cy_rr_on   <= 1'b1;
         cy_rr_take <= 1'b1;
@@ -17580,13 +17618,13 @@ module sep_fcov (
           logic legal;
           d = wr_data & AesCtrlFields;
           legal = cy_aes_ctrl_legal(d) && cy_aes_ctrl_legal(cy_sp_prev);
-          second = cy_a_we_seen || cy_a_eu_seen || (known && phase);
+          second = cy_a_cm_seen || cy_a_eu_seen || (known && phase);
           if (second && cy_sp_have && cy_own_shadow && cy_a_idle_q) begin
-            if ((d == cy_sp_prev) && cy_a_we_seen) begin
+            if ((d == cy_sp_prev) && cy_a_cm_seen) begin
               pend = 2'd1;
             end else if ((d != cy_sp_prev) && legal) begin
               if (cy_a_eu_seen) pend = 2'd2;
-              else if (known && phase && !cy_a_we_seen) cy_afl(0, 2'd2);
+              else if (known && phase && !cy_a_cm_seen) cy_afl(0, 2'd2);
             end
           end
           if (!second) begin
@@ -20044,7 +20082,16 @@ module sep_fcov (
   logic [1:0] cz_au_burst = '0;
   longint unsigned cz_au_last_tog = 0;
   logic cz_au_any_tog = 1'b0;
-  logic [11:0] cz_au_ill[4] = '{default: '0};
+  // A lane status rises from 0 at this clock; the tune FSM of the lane
+  // toggles its detune on that rise. History of the last two clocks.
+  logic [11:0] cz_au_rise_now;
+  always_comb begin
+    for (int j = 0; j < 12; j++) begin
+      cz_au_rise_now[j] = (cz_gst[j] != 8'h00) && (cz_gst_q[j] == 8'h00) &&
+          !$isunknown(cz_gst[j]);
+    end
+  end
+  logic [11:0] cz_au_rise[2] = '{default: '0};
   // cp_fifo_integrity.
   logic cz_par_q = 1'b0;
   logic cz_ptr_q = 1'b0;
@@ -20242,14 +20289,14 @@ module sep_fcov (
     // on: AUTOTUNE_FAIL is set and the detune bit of the lane toggled. A
     // burst is a group of toggles of the lane; a gap of CzTuneGap strobes
     // with no toggle ends it. Illegal: with autotune on, the detune bit of a
-    // lane whose status stays 0 for four clocks after the toggle changes.
+    // lane changes with no rise of that lane's status just before. The lane
+    // status is a failure pulse, so it can be 0 again at the toggle.
     if (!cy_own_estune || !cz_es_on) begin
       cz_au_off   <= '0;
       cz_au_on    <= '0;
       cz_au_tog   <= '0;
       cz_au_burst <= '0;
       cz_au_any_tog <= 1'b0;
-      cz_au_ill   <= '{default: '0};
     end else begin
       logic [11:0] tog;
       tog = '0;
@@ -20294,13 +20341,18 @@ module sep_fcov (
           cz_au_burst <= cz_au_burst + 2'd1;
         end
       end
-      // Illegal: a toggle of a lane with status 0 that stays 0 for four clocks.
-      cz_au_ill[0] <= (cz_atune && cz_atune_q) ? tog : '0;
-      for (int k = 1; k < 4; k++) cz_au_ill[k] <= cz_au_ill[k-1];
-      for (int j = 0; j < 12; j++) begin
-        if (cz_au_ill[3][j] && (cz_gst[j] == 8'h00) && (cz_gst_q[j] == 8'h00)) cz_falt(5, 6'd7);
+      // Illegal: with autotune on, a toggle of a lane with no rise of that
+      // lane's status at this clock or the two clocks before it.
+      if (cz_atune && cz_atune_q) begin
+        for (int j = 0; j < 12; j++) begin
+          if (tog[j] && !cz_au_rise_now[j] && !cz_au_rise[0][j] && !cz_au_rise[1][j]) begin
+            cz_falt(5, 6'd7);
+          end
+        end
       end
     end
+    cz_au_rise[0] <= cz_au_rise_now;
+    cz_au_rise[1] <= cz_au_rise[0];
 
     // cp_fifo_flags. Overflow (1.46): FIFO_OVERFLOW rises after an overflow
     // push with no INTR_TEST write. Proper-subset clear (1.40): a write of 1

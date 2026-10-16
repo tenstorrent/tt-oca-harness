@@ -22,6 +22,9 @@ round) and the external Key Manager run (the external stream driver
 ``env/sep_ext_trng_stream.py`` on stream 0). A per-clock accumulator of this leaf
 reads the sink request and completion probes, the post-mux probes, the internal
 DRBG endpoint tap and the external port taps after each falling edge.
+After the graded external run the leaf writes bit 0 clear while the internal endpoint
+of stream 0 holds tvalid, so the held external beat transfers with ready high and no
+beat that the sampler sees is withdrawn before handshake.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first stimulus):
 the sink set (all six sinks with weight 1/2, else the Key Manager sampler plus 2 to
@@ -762,7 +765,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         sel = await self.reg._rd(SEL_ADDR)
         self.acc.reset(ext=True)
         open_graded_window(TEST, self.logger)
-        run = await self._km_with_beats(pattern=plan.gap_pattern)
+        run = await self._km_with_beats(pattern=plan.gap_pattern, drop_held=False)
         close_graded_window(self.logger)
         a = self.acc
         order_ok = None not in a.ext_beats and None not in a.km_beats and a.ext_beats == a.km_beats
@@ -820,8 +823,42 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             and a.axis_neq[1] == 0 and a.axis_neq[2] == 0 and a.xz == 0,
             **fields,
         )  # fmt: skip
+        await self._select_internal()
         await self.ext.stop()
         await self._end_run()
+
+    async def _select_internal(self) -> None:
+        """Write ``EXT_TRNG_SRC_SEL`` = 0x0 while the internal endpoint of stream 0 holds
+        tvalid 1, so that no beat that the sampler sees is withdrawn before handshake.
+
+        The source of a stalled beat holds it (``hw/sys/sep/doc/trng.adoc``, random-data
+        stream contract), and the Key Manager sampler flags a drop of ``TVALID`` while
+        ``TREADY`` is low as a withdrawal (``hw/ip/key_manager/doc/architecture.adoc``,
+        DRBG Sampler). An unselected internal endpoint is backpressured and retains its
+        queued word, and an unselected external input receives ready high (``trng.adoc``,
+        Source Selection). After this write the held external beat transfers and is
+        discarded, and the sampler sees the held internal word, so ``tvalid`` at the
+        sampler stays 1 across the switch. The external run is graded before this step.
+        """
+        dut = cocotb.top
+        self.acc.ext = False
+
+        def int_valid() -> bool:
+            return _bit(_known(dut.drbg_int_tvalid_o), 0) == 1
+
+        if await self._until(int_valid, SETTLE_CAP) is None:
+            raise AssertionError(
+                f"internal endpoint 0 shows no tvalid within {SETTLE_CAP} clocks; "
+                "the select cannot return to it without a withdrawal"
+            )
+        await self.reg._wr(SEL_ADDR, 0x0)
+        sel = await self.reg._rd(SEL_ADDR) & SEP_CPU_CTRL.field_mask("EXT_TRNG_SRC_SEL", "sel")
+        if sel & 0x1:
+            raise AssertionError(f"EXT_TRNG_SRC_SEL reads 0x{sel:x} after a write of 0x0")
+        left = await self._until(lambda: self.ext.pending(0) == 0, BRIDGE_DEPTH * 4)
+        if left is None:
+            raise AssertionError("external port 0 keeps a beat with bit 0 clear")
+        self.logger.info("EXT-RELEASE sel=0x%x held_beat_clk=%d", sel, left)
 
     async def _select_external(self) -> dict:
         """Write ``EXT_TRNG_SRC_SEL`` = 0x1 while external port 0 holds tvalid 1 on every clock.
@@ -885,9 +922,13 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         self._gi += 1
         return g
 
-    async def _km_with_beats(self, *, pattern: str) -> dict:
+    async def _km_with_beats(self, *, pattern: str, drop_held: bool = True) -> dict:
         """One Key Manager generate while the driver offers unique beats on stream 0,
-        one at a time, holding each until tready, until the operation ends."""
+        one at a time, holding each until tready, until the operation ends.
+
+        With ``drop_held`` a beat still held at the end is dropped by a source reset;
+        use it only while bit 0 is clear (the port is unselected, ready high). With
+        bit 0 set the held beat stays on the port for ``_select_internal``."""
         dut = cocotb.top
 
         async def op() -> str:
@@ -924,7 +965,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
                     continue
             await RisingEdge(dut.clk_i)
         await ClockCycles(dut.clk_i, 4)
-        if self.ext.pending(0):
+        if drop_held and self.ext.pending(0):
             await self.ext.source_reset(0)
         reason = task.result()
         if exhausted:
