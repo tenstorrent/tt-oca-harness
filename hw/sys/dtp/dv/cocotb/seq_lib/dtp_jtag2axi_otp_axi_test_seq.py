@@ -190,6 +190,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
         image: dict[int, int] = {}
+        self.log_step(1, "Run seeded SINGLE_OP writes into a byte image")
         for idx in range(1, self.random_count + 1):
             addr = self.random_upper_addr(self.target, rng) | self.random_target_aligned_addr(
                 self.target, rng
@@ -219,6 +220,10 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             self.status = status
             self.operation_count += 1
         self.check_memory_image(self.target, image, context="random_write")
+        self.log_step(2, "Run seeded series programmings into the same byte image")
+        await self.run_random_series(
+            self.target, image, self.rng(f"{self.target}.random_series_ops")
+        )
 
     async def run_write_security_gating(self) -> None:
         self.log_banner(f"{self.target} Write Security Gating")
@@ -278,6 +283,17 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             data=data ^ 0xA5A5,
             read=False,
             context="gate.queued_drop",
+        )
+        self.log_step(5, "Gate a %s SERIES_CTRL programming", self.target)
+        await self.gate_series_ctrl(
+            self.target, self.rng(f"{self.target}_gate_series_ctrl"), context="gate.series_ctrl"
+        )
+        self.status = await self.verify_target_recovery(
+            self.target,
+            addr=addr + 0x180,
+            data=data ^ 0x5A5A,
+            read=False,
+            context="gate.series_ctrl",
         )
         writes = self.port_history(self.target).count(read=False) - writes_start
         self.emit_nonvacuity(

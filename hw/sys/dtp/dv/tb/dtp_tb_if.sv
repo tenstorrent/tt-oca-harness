@@ -37,6 +37,25 @@ interface dtp_tb_if;
   logic [2:0] sys_rst_on_ar_arm    = '0;
   logic [3:0] sys_rst_on_ar_cycles = 4'd1;
 
+  // JTAG2AXI response holds (driven by the sequences): while bit t of
+  // j2a_b_hold or j2a_r_hold is set (bridge order as sys_rst_on_ar_arm),
+  // tb_top takes bridge t's write or read responses from its responder into
+  // a four-entry queue and shows the bridge none of them; once the bit
+  // clears, the bridge takes them in order. The responder sees each
+  // response accepted, so it takes the next request while earlier responses
+  // wait. A hold is set only while its channel carries no response, so no
+  // VALID the bridge sees falls before its handshake; tb_top asserts this
+  // (DTP_J2A_HOLD_VALID_HELD).
+  logic [2:0] j2a_b_hold = '0;
+  logic [2:0] j2a_r_hold = '0;
+  // Responses each bridge's B and R queue holds (driven by tb_top).
+  logic [2:0] smc_axi_b_held;
+  logic [2:0] smc_axi_r_held;
+  logic [2:0] smc_otp_b_held;
+  logic [2:0] smc_otp_r_held;
+  logic [2:0] sep_otp_b_held;
+  logic [2:0] sep_otp_r_held;
+
   // The system reset the DUT and the AXI responders see (driven by tb_top):
   // sys_rst_n with the read-armed pulse.
   logic rst_n;
@@ -193,23 +212,27 @@ interface dtp_tb_if;
   // scenarios, decoded by tb_top from each bridge's TCK-domain AXI state
   // machine by state name: idle; on the write path (address, data, or
   // response wait); on the read path (address or data wait). Beside them the
-  // single-op pending flag, and a sticky flag set once the bridge's CDC has
-  // run its TCK-side isolate-and-clear; cdc_clear_seen_clear = 1 clears the
-  // sticky flags.
+  // single-op pending flag, the response the state machine takes on the
+  // next TCK edge (beat_done), and a sticky flag set once the bridge's CDC
+  // has run its TCK-side isolate-and-clear; cdc_clear_seen_clear = 1 clears
+  // the sticky flags.
   logic smc_axi_fsm_idle;
   logic smc_axi_fsm_write_path;
   logic smc_axi_fsm_read_path;
   logic smc_axi_op_pending;
+  logic smc_axi_fsm_beat_done;
   logic smc_axi_cdc_clear_seen;
   logic smc_otp_fsm_idle;
   logic smc_otp_fsm_write_path;
   logic smc_otp_fsm_read_path;
   logic smc_otp_op_pending;
+  logic smc_otp_fsm_beat_done;
   logic smc_otp_cdc_clear_seen;
   logic sep_otp_fsm_idle;
   logic sep_otp_fsm_write_path;
   logic sep_otp_fsm_read_path;
   logic sep_otp_op_pending;
+  logic sep_otp_fsm_beat_done;
   logic sep_otp_cdc_clear_seen;
   logic cdc_clear_seen_clear = 1'b0;
 
