@@ -16,7 +16,7 @@ class smc_i2c_wire_timing_test(smc_base_test):
     required_evidence = (
         "CHK-I2C-WIRE-BUS-FREE-DELTA",
         "CHK-I2C-WIRE-DATA-HOLD-DELTA",
-        "CHK-I2C-WIRE-DATA-SETUP-DELTA",
+        "CHK-I2C-WIRE-DATA-SETUP-MEASURED",
         "CHK-I2C-WIRE-MEASURED-ONLY",
         "CHK-I2C-WIRE-MIN-SET-RUN",
         "CHK-I2C-WIRE-NACK-HOLD-DELTA",

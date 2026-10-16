@@ -8,10 +8,14 @@ routes an instance to its pads), hw/ip/i2c/regs/i2c_wrap.rdl (instance i at offs
 hw/ip/i2c/doc/index.adoc (single clock `clk_i`).
 
 Instance 0 runs on `tb_i2c0_scl` / `tb_i2c0_sda` and instance 1 on `tb_i2c1_scl` / `tb_i2c1_sda`,
-each with its own EEPROM target and bus monitor. A clock-sampled recorder timestamps every pad
-edge of both pairs in `clk_periph_i` cycles, the clock `clk_i` is gated from. The sources state
-no fixed pad-path latency and no completion time: absolute durations and the overlap are printed
-as measured, and only the difference between the two instances' programmed timing is compared.
+each with its own EEPROM target and bus monitor. The bench resolves the instance-1 pair onto
+pads 41 and 42 only under `+smc_i2c1_pads`, which the testlist entry passes; `tb_i2c1_*` read the
+padring outputs, so they follow `I2C_CTRL[1].I2C_EN` alone, before any GPIO LSIO select. A
+clock-sampled recorder timestamps every pad edge of both pairs in `clk_periph_i` cycles, the
+clock `clk_i` is gated from. The sources state no fixed pad-path latency and no completion time:
+absolute durations and the overlap are printed as measured, and only the difference between the
+two instances' programmed timing is compared, on the SCL pulses both instances drive while both
+are transferring.
 """
 
 from __future__ import annotations
@@ -48,6 +52,7 @@ from .smc_i2c_master_target_test_seq import (
 )
 from .smc_i2c_protocol_vip import SmcI2cBusMonitor, SmcI2cEepromSlave
 from .smc_i2c_target_smbus_test_seq import _pack_target_id
+from .smc_i2c_wire_timing_test_seq import FM_PLUS_NS, THD_DAT_MIN, _cycles_up
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
@@ -72,19 +77,7 @@ WINDOW_VALUES = {
     1: _pack_target_id(0x35, 0x7F, 0x36, 0x7F),
 }
 
-#: Fast-mode-plus minimums of UM10204 Table 11, in ns, and the smallest nonzero THD_DAT.
-FM_PLUS_NS = {
-    "thigh": 260,
-    "tlow": 500,
-    "t_r": 120,
-    "t_f": 120,
-    "tsu_sta": 260,
-    "thd_sta": 260,
-    "tsu_dat": 50,
-    "tsu_sto": 260,
-    "t_buf": 500,
-}
-THD_DAT_MIN = 1
+#: Instance 1 runs FM_PLUS_NS (the wire-timing leaf's set A) with THIGH and TLOW scaled.
 SLOW_FACTOR = 4
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
@@ -140,11 +133,6 @@ def _reg(register: str, idx: int) -> int:
 
 def _wrap(idx: int) -> int:
     return smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", idx)
-
-
-def _cycles_up(ns: int, period_ps: int) -> int:
-    """Whole clock cycles that cover `ns`, never fewer."""
-    return -(-ns * 1000 // period_ps)
 
 
 def _timing_words(prog: dict[str, int]) -> tuple[int, int, int, int, int]:
@@ -269,6 +257,8 @@ def decode_write(label: str, events: list[tuple[int, str, int]], n_bytes: int) -
         "edges": len(events),
         "high": {n: falls[n] - rises[n - 1] for n in range(1, pulses + 1)},
         "low": {n: rises[n] - falls[n] for n in range(1, pulses)},
+        "rises": rises,
+        "falls": falls,
     }
 
 
@@ -776,14 +766,34 @@ class smc_i2c_dual_concurrent_transfer_test_seq(SmcCsrSeq):
             "(harness limit, not a specification value)"
         )
 
+    @staticmethod
+    def _phase_span(wire: dict, phase: str, n: int) -> tuple[int, int]:
+        """First and last edge cycle of SCL pulse `n`'s high phase or of low phase `n`."""
+        if phase == "high":
+            return wire["rises"][n - 1], wire["falls"][n]
+        return wire["falls"][n], wire["rises"][n]
+
     def _chk_timing_diff(self) -> str:
         wire = self.d["wire"]
+        # Only phases that both instances drive while both are transferring: from the
+        # instance-1 START to the instance-0 STOP.
+        lo, hi = wire[1]["start"], wire[0]["stop"]
+        assert lo < hi, f"no overlap: instance-1 START {lo} instance-0 STOP {hi}"
         parts = []
         for phase, field in (("high", "thigh"), ("low", "tlow")):
             exp = self.sets[1][field] - self.sets[0][field]
             assert exp != 0, f"programmed {field} delta is 0"
-            keys = sorted(set(wire[0][phase]) & set(wire[1][phase]))
-            assert keys, f"no common {phase} samples"
+            common = sorted(set(wire[0][phase]) & set(wire[1][phase]))
+            keys = [
+                n
+                for n in common
+                if all(
+                    lo <= self._phase_span(wire[i], phase, n)[0]
+                    and self._phase_span(wire[i], phase, n)[1] <= hi
+                    for i in INSTANCES
+                )
+            ]
+            assert keys, f"no common {phase} phase inside the overlap window {lo}..{hi}"
             bad = [
                 f"{phase}[{n}] measured {wire[1][phase][n] - wire[0][phase][n]}"
                 for n in keys
@@ -792,8 +802,8 @@ class smc_i2c_dual_concurrent_transfer_test_seq(SmcCsrSeq):
             assert not bad, f"{len(bad)} of {len(keys)} {phase} deltas differ from {exp}: {bad[:8]}"
             parts.append(
                 f"delta(SCL {phase}) instance 1 minus instance 0 = {exp} equals "
-                f"delta({field.upper()}) "
-                f"on {len(keys)} phases"
+                f"delta({field.upper()}) on {len(keys)} phases inside the overlap window "
+                f"{lo}..{hi} ({len(common)} phase indices in common)"
             )
         absolutes = "; ".join(
             f"i2c{i}: high {min(wire[i]['high'].values())}..{max(wire[i]['high'].values())} "

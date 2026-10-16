@@ -6,7 +6,8 @@ Open-drain pad model on ``tb_top.sv``:
 
 * ``tb_i2c0_sda`` / ``tb_i2c0_scl`` — resolved bus (read)
 * ``tb_i2c0_sda_ext_low`` / ``tb_i2c0_scl_ext_low`` — cocotb ``1`` pulls low
-* ``tb_i2c1_*`` — the same four nets for instance 1, selected by the ``instance`` argument
+* ``tb_i2c1_*`` — the same four nets for instance 1, selected by the ``instance``
+  argument of ``SmcI2cEepromSlave`` and ``SmcI2cBusMonitor``
 
 Edge waits on the combinational open-drain nets miss updates under Verilator,
 so this VIP samples levels and bit-bangs with timers; the same bus proofs then

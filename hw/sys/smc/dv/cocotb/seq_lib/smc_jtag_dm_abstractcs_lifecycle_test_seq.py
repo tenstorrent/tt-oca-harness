@@ -553,13 +553,15 @@ class smc_jtag_dm_abstractcs_lifecycle_test_seq(SmcCsrSeq):
         self._emit_checkers()
         self._assert_fence()
         cocotb.log.info(
-            "CHK-TIMEOUT-PATHS: 6 bounded waits: dmi_busy_retry=%d enforced-by=%s "
-            "fail-on-expiry=SmcJtagTapError last=%s; dm_active_poll=%d fail-on-expiry="
-            "AssertionError last=dmstatus; halt_wait=%d fail-on-expiry=AssertionError "
-            "last=dmstatus; idle_wait=%d fail-on-expiry=AssertionError last=abstractcs; "
-            "loop_wait=%d fail-on-expiry=AssertionError last=abstractcs; "
-            "busy_observe=%d fail-on-expiry=AssertionError last=abstractcs; "
-            "busy_write_wait=%d fail-on-expiry=AssertionError last=abstractcs",
+            "CHK-TIMEOUT-PATHS: 7 bounded waits: dmi_busy_retry=%d enforced-by=%s "
+            "fail-on-expiry=SmcJtagTapError last=%s; dm_active_poll=%d dmstatus reads "
+            "fail-on-expiry=AssertionError last=dmstatus; halt_wait=%d dmstatus reads "
+            "fail-on-expiry=AssertionError last=dmstatus; idle_wait=%d abstractcs reads, used by "
+            "every command (the GPR writes and reads, the rejected-command legs, replace_wait and "
+            "store_wait) and every cmderr clear, fail-on-expiry=AssertionError last=abstractcs; "
+            "loop_wait=%d abstractcs reads fail-on-expiry=AssertionError last=abstractcs; "
+            "busy_observe=%d abstractcs reads fail-on-expiry=AssertionError last=abstractcs; "
+            "busy_write_wait=%d abstractcs reads fail-on-expiry=AssertionError last=abstractcs",
             VIP_DMI_BUSY_RETRIES,
             VIP_FILE,
             self._state(),

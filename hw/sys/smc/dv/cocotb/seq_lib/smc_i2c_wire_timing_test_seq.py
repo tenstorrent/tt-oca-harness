@@ -10,8 +10,8 @@ write of one byte, a repeated START, a read of one byte that the controller not-
 and a STOP. Transfer Y, queued behind X so that the gap between them is the controller's own, is
 a START, an address write and a STOP. A clock-sampled measurer on `tb_i2c0_scl` and
 `tb_i2c0_sda` timestamps every pad edge in `clk_periph_i` cycles, the clock `clk_i` is gated
-from. Only differences between programming sets are compared, because the sources state no fixed
-pad-path latency: absolute values are printed as measured.
+from. The sources state no pad-path latency. Only differences between programming sets are
+compared; absolute values are printed as measured.
 
 * Set A: the Fast-mode-plus minimums of UM10204 Table 11 converted to whole cycles upward.
 * Set B: set A with THIGH, TLOW, TSU_DAT and THD_DAT scaled by 4.
@@ -139,7 +139,7 @@ CHK_BY_STEP = {
     "CHK-I2C-WIRE-SCL-LOW-DELTA": "S4",
     "CHK-I2C-WIRE-SCL-PERIOD-DELTA": "S4",
     "CHK-I2C-WIRE-MEASURED-ONLY": "S6",
-    "CHK-I2C-WIRE-DATA-SETUP-DELTA": "S4",
+    "CHK-I2C-WIRE-DATA-SETUP-MEASURED": "S4",
     "CHK-I2C-WIRE-DATA-HOLD-DELTA": "S4",
     "CHK-I2C-WIRE-NACK-HOLD-DELTA": "S4",
     "CHK-I2C-WIRE-RSTART-DELTA": "S6",
@@ -717,7 +717,7 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
                 f"TLOW-THD_DAT={s[tag]['tlow'] - s[tag]['thd_dat']}"
             )
         self._chk(
-            "CHK-I2C-WIRE-DATA-SETUP-DELTA",
+            "CHK-I2C-WIRE-DATA-SETUP-MEASURED",
             "measured only, nothing compared: SDA setup before the SCL rising edge of a "
             "transmitted data bit in cycles, " + "; ".join(setup_parts),
         )

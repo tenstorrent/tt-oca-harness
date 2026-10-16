@@ -24,6 +24,7 @@ from .smc_cool_reset_deglitch_window_test_seq import (
     _ISO_BOUND,
     _RECOVERY_SMC,
     _RELEASE_BOUND,
+    DEGLITCH_SAMPLES,
     OUTPUTS,
     smc_cool_reset_deglitch_window_test_seq,
 )
@@ -32,8 +33,6 @@ from .smc_isolate_pin_utils import await_skip_mem_repair, drive_isolate_pin
 FLR_DELAY = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR")
 FLR_HOLD = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
 
-# Consecutive low samples the pin de-glitcher needs.
-DEGLITCH_SAMPLES = 32
 PIN_ALONE_LOW = 48
 PIN_PAST_HOLD = 56
 PIN_IN_HOLD_LOW = 40
@@ -339,23 +338,28 @@ class smc_cool_reset_pin_flr_overlap_test_seq(smc_cool_reset_deglitch_window_tes
         # CHK-COOLRST-COLLISION-PRE
         pre_off = flr3["fall"] - flr3["set"]
         assert pre_off == off2, f"fall offset {pre_off} with the pin, {off2} FLR alone"
-        end3 = max(flr3["rise"], pin3_high)
+        # The pin ends PIN_AFTER_FALL cycles after the cool fall, so the cool rise is the later
+        # source and the FLR-alone release offset from the rise is the exact expectation.
+        assert pin3_high < flr3["rise"], (
+            f"pin released at {pin3_high} after the rise {flr3['rise']}"
+        )
+        pre_rel = {o: flr3["release"][o] - flr3["rise"] for o in OUTPUTS}
         for o in OUTPUTS:
             assert flr3["assert"][o] < flr3["fall"], (
                 f"{o}: primary asserted at {flr3['assert'][o]}, not before the cool fall "
                 f"{flr3['fall']}"
             )
-            after = flr3["release"][o] - end3
-            assert 0 <= after <= _BENCH_RELEASE_BOUND, f"{o}: release {after} cycles after sources"
+            assert pre_rel[o] == alone["S1B"][o], (
+                f"{o}: release {pre_rel[o]} cycles after the cool rise, {alone['S1B'][o]} FLR alone"
+            )
         self._chk(
             "CHK-COOLRST-COLLISION-PRE",
             f"pin low at tick {pin3_low} ({pin3_low - flr3['set']} after the FLR edge) to "
             f"{pin3_high}: primary reset asserted smc={flr3['assert']['smc']} "
             f"ref={flr3['assert']['ref']} before the cool fall at {flr3['fall']}; fall offset "
-            f"{pre_off} equals the FLR-alone {off2} (delta 0); released smc="
-            f"{flr3['release']['smc'] - end3} ref={flr3['release']['ref'] - end3} cycles after "
-            f"both sources ended, inside the bench bound of {_BENCH_RELEASE_BOUND} reference-clock "
-            f"cycles",
+            f"{pre_off} equals the FLR-alone {off2} (delta 0); released smc={pre_rel['smc']} "
+            f"ref={pre_rel['ref']} cycles after the cool rise, the later source, equal to the "
+            f"FLR-alone smc={alone['S1B']['smc']} ref={alone['S1B']['ref']} (delta 0)",
         )
 
         # CHK-COOLRST-COLLISION-HOLD
