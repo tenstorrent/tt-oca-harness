@@ -611,7 +611,9 @@ module smu_wrapper_uvm_top
   // The window closes eight SEP clocks after the last held override clears:
   // the two-flop release of sep_reset_n or of a per-IP override takes two, the
   // |=> sample one and the re-arm after the reset release one, and the rest is
-  // margin. The pool instance keeps its checks.
+  // margin. The pool instance keeps its checks. A run that ends inside the
+  // window fails: smu_sim_cfg.toml lists the final-block line below among its
+  // hard-fail patterns.
   wire [3:0] crypto_edn_jtag_rst_held = {
     (u_dut.u_smu.jtag_sep_reset_ctrl.ovrd.sep_reset_n_ovrd === 1'b1) &&
     (u_dut.u_smu.jtag_sep_reset_ctrl.val.sep_reset_n_val === 1'b0),
@@ -722,7 +724,10 @@ module smu_wrapper_uvm_top
   end
 
   final begin
-    if (crypto_edn_window_open) $display("[tb] crypto EDN request-hold window still open at end");
+    if (crypto_edn_window_open) begin
+      $display("[tb] crypto EDN request-hold window still open at end: sep/otbn/kmac/aes=%b",
+               crypto_edn_jtag_rst_held);
+    end
   end
 `endif
 `endif
