@@ -118,7 +118,11 @@ is complete."
 operation was aborted and the DMA stopped its operation."
 (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:43-45``).
 The tied-off start does not complete (``hw/sys/sep/doc/dma.adoc:70``), so the
-ABORT hits an ongoing operation. The bound of 200 reads comes from a control
+ABORT hits an ongoing operation. Control: one STATUS read just before the
+ABORT shows BUSY=1, DONE=0 and ABORTED=0 ("DMA operation is active if this bit
+is set.", ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:615``),
+else CTRL-MISSING, so a DUT that ignores the tied-off GO and sets ABORTED on an
+idle ABORT fails. The bound of 200 reads comes from a control
 in the same leg, from a cold reset: the ASID 0x7 copy of MAX_BYTES, with
 STATUS read once after GO (BUSY=1, DONE=0, ABORTED=0), then CONTROL.ABORT; a
 read inside the same bound shows ABORTED=1 and no read shows DONE, else
@@ -183,9 +187,11 @@ Checkers:
                     same window and copies the source, else CTRL-MISSING.
   CHK-DMA-TIEOFF-ABORT per L5 trial: after CONTROL.ABORT of the tied-off
                     start, a STATUS read inside ABORT_POLL_BOUND shows
-                    ABORTED=1. Control: the ABORT of the ASID 0x7 copy, BUSY
-                    and not DONE before it, shows ABORTED=1 inside the same
-                    bound and DONE in no read, else CTRL-MISSING.
+                    ABORTED=1. Controls: a STATUS read just before the ABORT
+                    of the tied-off start shows BUSY=1, DONE=0 and ABORTED=0;
+                    the ABORT of the ASID 0x7 copy, BUSY and not DONE before
+                    it, shows ABORTED=1 inside the same bound and DONE in no
+                    read; else CTRL-MISSING.
 """
 
 from __future__ import annotations
@@ -1197,8 +1203,12 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         )
         return ok, ab_at
 
-    async def _l5_trial(self, side: str, asid: int) -> tuple[str, bool, int | None]:
-        """One L5 trial; returns (PASS line, no DONE in the window, ABORTED read index)."""
+    async def _l5_trial(self, side: str, asid: int) -> tuple[str, bool, int | None, int, DmaStatus]:
+        """One L5 trial.
+
+        Returns (PASS line, no DONE in the window, ABORTED read index, 1 if the
+        STATUS read just before the ABORT shows the start active, that STATUS).
+        """
         c = self.cfg_t
         ops = self.ops
         word = asid_word(asid, ASID_OT) if side == "src" else asid_word(ASID_OT, asid)
@@ -1210,6 +1220,9 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         # The tied-off start does not complete (dma.adoc:70), so the ABORT hits an
         # ongoing operation and sets STATUS.ABORTED once complete
         # (dma.hjson:527-528; programmers_guide.md:43-45): graded in _leg_l5.
+        # BUSY=1 just before the ABORT shows the start is active (dma.hjson:615).
+        tie_pre = await ops.read_status()
+        tie_active = int(tie_pre.busy == 1 and tie_pre.done == 0 and tie_pre.aborted == 0)
         await ops.abort()
         ab, ab_at, _ = await self._wait_aborted()
         # Recovery with no reset, logged only: no text states that the DMA
@@ -1242,7 +1255,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"side={side} asid=0x{asid:x} asid_word=0x{word:02x} done_read={tie_done_at} "
             f"window={window} @@CTRL@@"
         )
-        return line, tie_done_at is None, ab_at
+        return line, tie_done_at is None, ab_at, tie_active, tie_pre
 
     async def _leg_l5(self) -> None:
         ctl_ok, ctl_done_at, ctl_window = await self._l5_control()
@@ -1258,7 +1271,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 f"aborted_read={ab_ctl_at} bound={ABORT_POLL_BOUND}"
             )
         for side, asid in ASID_TIEOFF:
-            line, no_done, ab_at = await self._l5_trial(side, asid)
+            line, no_done, ab_at, tie_active, tie_pre = await self._l5_trial(side, asid)
             line = line.replace(
                 "@@CTRL@@", f"control_done_read={ctl_done_at}/{ctl_window} control_ok={ctl_ok}"
             )
@@ -1266,9 +1279,15 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 self._fail("CHK-DMA-ASID-TIEOFF", line)
             self._pass("CHK-DMA-ASID-TIEOFF", line)
             ab_line = (
-                f"side={side} asid=0x{asid:x} aborted_read={ab_at} bound={ABORT_POLL_BOUND} "
+                f"side={side} asid=0x{asid:x} busy_before_abort={tie_pre.busy} "
+                f"aborted_read={ab_at} bound={ABORT_POLL_BOUND} "
                 f"control_aborted_read={ab_ctl_at}/{ABORT_POLL_BOUND} control_ok={ab_ok}"
             )
+            if not tie_active:
+                self._ctrl_missing(
+                    f"CHK-DMA-TIEOFF-ABORT control: the tied-off start is not active "
+                    f"before the ABORT {ab_line} before_abort[{tie_pre.fmt()}]"
+                )
             if ab_at is None:
                 self._fail("CHK-DMA-TIEOFF-ABORT", ab_line)
             self._pass("CHK-DMA-TIEOFF-ABORT", ab_line)
