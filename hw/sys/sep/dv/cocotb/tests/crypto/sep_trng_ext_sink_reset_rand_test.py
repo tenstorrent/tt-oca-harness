@@ -371,6 +371,10 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         self.ext = SepExtTrngStream(dut, logger=self.logger).start(streams=(1, 2))
         self._wi = 0
         self.sent_s: set[int] = set()
+        # Every word offered on stream 1 before a set-up clear: S, the new pairs of
+        # the pool leg and the post-clear words Q of earlier trials.
+        self.offered: set[int] = set()
+        self.offered_q: list[set[int]] = []
         self._feeders: list = []
         self.ack_before: dict[str, int] = {}
         try:
@@ -621,6 +625,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             self.ext.send(2, [new[0]])
             w = self._next_word()
             new_s.add(w)
+            self.offered.add(w)
             self.ext.send(1, [w])
 
         rise_task = cocotb.start_soon(at_rise())
@@ -652,6 +657,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         for _ in range(3):
             w = self._next_word()
             new_s.add(w)
+            self.offered.add(w)
             self.ext.send(1, [w])
         done = await self._settle(2, 2 * plan.m_new - 1, SETTLE_CAP)
         rows = self.trace.end()
@@ -768,7 +774,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, STALE_SETTLE)
         await self._silence(1)
         self.sent_s |= stale
-        before_setup = set(self.sent_s)
+        before_setup = self.sent_s | self.offered | set().union(*self.offered_q)
         await self._trng_reset()
         setup_rows = self.trace.end()
         s_trial: set[int] = set()
@@ -825,6 +831,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         if self.ext.pending(1):
             await self.ext.source_reset(1)
         self._start_feeder(1, q)
+        self.offered_q.append(q)
         await self._until(
             lambda: (
                 bool(self.trace.rows)

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """An HMAC start with an illegal configuration is blocked and signalled; the engine recovers.
 
-RAND-REP, ``no_cpu``. The leaf drives the HMAC engine over the CPU-LSU master and walks ten
+RAND-REP, ``no_cpu``. The leaf drives the HMAC engine over the CPU-LSU master and walks eleven
 start classes in a drawn order on every seed:
 
     blocked  B1 Key_None/SHA2_256, B2 Key_None/SHA2_384, B3 Key_None/SHA2_512 (hmac_en = 1)
@@ -10,13 +10,16 @@ start classes in a drawn order on every seed:
              B5 an invalid multi-bit key_length on SHA2_256 (hmac_en = 1)
              B6 digest_size all-zero (hmac_en = 0)
              B7 an invalid multi-bit digest_size (hmac_en = 0)
+             B8 digest_size all-zero or invalid multi-bit, with a drawn key length of
+                Key_128..Key_512 that is legal for every digest size (hmac_en = 1)
     legal    L1 hmac_en = 0 with Key_None on a drawn digest size
              L2 Key_1024/SHA2_384, L3 Key_1024/SHA2_512 (hmac_en = 1)
 
 Spec: ``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc`` (``CFG``:106
 "starting is blocked and an error is signalled to SW", :110 invalid digest_size maps to
 SHA2_None; ``INTR_STATE``:44 ``hmac_err`` RW1C; ``ERR_CODE``:171) and
-``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson`` (:272 SHA2_None blocks a start;
+``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson`` (:272 SHA2_None blocks a
+start of HMAC or SHA-2, so with ``hmac_en`` = 0 or 1;
 :329-331 Key_None blocks a keyed start and does not block ``hmac_en`` = 0).
 
 Checkers:
@@ -96,6 +99,9 @@ KEY_NONE = 0x20
 DIGEST_ZERO = 0x0
 INVALID_DIGEST = (0b011, 0b101, 0b110, 0b111)
 INVALID_KEYLEN = tuple(v for v in range(32) if 2 <= bin(v).count("1") <= 5)
+# Key lengths that are legal on every digest size (hmac.hjson:291 "up to 512-bit for SHA-2
+# 256"), so a B8 start can be blocked only by its SHA2_None digest_size.
+B8_KEY_BITS = (128, 256, 384, 512)
 SW_RESET_BASELINE = 0x7E
 INTR_FIELDS = HMAC_INTR_DONE | HMAC_INTR_ERR | HMAC.field_mask("INTR_STATE", "fifo_empty")
 CFG_LSB = {f: HMAC.field_lsb("CFG", f) for f in ("hmac_en", "sha_en", "digest_size", "key_length")}
@@ -232,11 +238,13 @@ def _legal_keys(sha: int) -> list[int]:
 def draw_plan(seed: int) -> Plan:
     """The whole plan of a seed, in a fixed draw order. No simulator access."""
     rng = SepSeededRng(seed)
-    names = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "L1", "L2", "L3"]
+    names = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "L1", "L2", "L3"]
     rng.shuffle(names)
     l1_sha = rng.choice([256, 384, 512])
     bad_digest = rng.choice(list(INVALID_DIGEST))
     bad_keylen = rng.choice(list(INVALID_KEYLEN))
+    b8_digest = rng.choice([DIGEST_ZERO, *INVALID_DIGEST])
+    b8_key = HMAC_KEY_LENGTH[rng.choice(list(B8_KEY_BITS))]
     reference = _draw_hash(rng, 256, 0, None)
     plan = Plan(seed, reference)
     last = reference
@@ -261,6 +269,7 @@ def draw_plan(seed: int) -> Plan:
                 "B5": (HMAC_DIGEST_SIZE[256], bad_keylen, 1),
                 "B6": (DIGEST_ZERO, KEY_NONE, 0),
                 "B7": (bad_digest, KEY_NONE, 0),
+                "B8": (b8_digest, b8_key, 1),
             }[name]
             row = rng.randrange(len(KEY_ROWS)) if hmac_en else None
             rsha = rng.choice([256, 384, 512])

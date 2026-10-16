@@ -20,7 +20,7 @@ Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 Key Manager and every crypto engine are held. The noise model drives
 ``balanced`` on all 12 lanes from before the first TRNG reset release; a burst
 drives ``stuck0`` on all lanes for whole windows (W strobes of
-``esrc_decor_valid_o``), then one break word (all lanes 1 for one strobe), then
+``esrc_decor_valid_o``), then the four break words (``BREAK``), then
 ``balanced`` again. Every ESRC start is a clean start of the window W.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
@@ -36,12 +36,12 @@ Checkers:
                   below), then clean noise. ALERT reads 1 within LAT_WINDOWS
                   windows of words from the start of window T (a wait bound,
                   not a graded latency), PF reads 1, and the peak of
-                  ANY_FAIL_COUNT is T. Control: ALERT = PF = 0 and
+                  ANY_FAIL_COUNT is at least T. Control: ALERT = PF = 0 and
                   ANY_FAIL_COUNT = 0 before the burst.
   CHK-PF-TRIP-HOLD   every trip: at a read after the clean window that follows
                   window T has ended, ALERT = PF = 1, and ANY_FAIL_COUNT never
                   read above T. Control: the clean noise ran for at least
-                  W + W/8 words after the break word.
+                  W + W/8 words after the break words.
   OBS-PF-TRIP-LATENCY  every trip: T, ANY_FAIL_COUNT at the first poll with
                   ALERT = 1, and the word and window of that poll relative to
                   the end of window T. Logged, not graded: no text states the
@@ -68,12 +68,18 @@ Exact burst of n failing windows: ANY_FAIL_COUNT reads 0, then stuck0 from
 the next strobe and back-to-back reads of ANY_FAIL_COUNT. ANY_FAIL_COUNT counts
 one failing window at each window wrap (``architecture.adoc:136``), so the
 first read of n - 1 comes just after the wrap that starts window n (word o).
-Stuck0 stays until word o + W - W/8, then one break word and balanced. Window n
-holds at least 7W/8 >= 224 stuck words, a zero run above REPETITION_LIMIT = 200
-inside the window alone, so it fails. The break word reaches the health test
-W/8 >= 32 words before the next wrap, so the next window holds clean noise
-only and passes. The checks grade the peak of ANY_FAIL_COUNT as exactly n, so
-a misplaced switch fails a check and never passes one. Vector bit 15 of
+Stuck0 stays until word o + W - W/8, then the break words and balanced. Window
+n holds at least 7W/8 >= 224 stuck words, a zero run above REPETITION_LIMIT =
+200 inside the window alone, so it fails. The break words end every
+stream-bit zero run W/8 - 4 >= 28 words before the next wrap, so the next
+window holds clean noise only and no health test fails in it. The leaf logs
+the sum of the ``*_TOTAL_FAILS`` counters after the wrap that ends window n
+minus the sum at that wrap (``test_fails_after_window_n``), the DUT record
+that the later windows hold no failure. Before the consecutive leg and before
+the first trip of a block, a leg that left ALERT, PF or ANY_FAIL_COUNT set is
+followed by a restart (``OBS-PF-LEG-RESTART``). CHK-PF-TRIP-HOLD and
+CHK-PF-NOTRIP grade the peak of ANY_FAIL_COUNT as exactly n, so a misplaced
+switch fails a check and never passes one. Vector bit 15 of
 ``sep_internal_interrupts_probe_o`` is logged as ``OBS-PIC16``.
 """
 
@@ -120,6 +126,10 @@ from seq_lib.sep_esrc_clean_start_seq import (
 TEST = "sep_esrc_persistent_alert_rand_test"
 
 ESRC_SHA256_STATUS = sym("ENTROPY_SOURCE_SHA256_STATUS_REG_ADDR")
+TOTAL_ADDRS = tuple(
+    sym(f"ENTROPY_SOURCE_{name}_TOTAL_FAILS_REG_ADDR")
+    for name in ("REPCNT", "APT_HI", "APT_LO", "MARKOV_HI", "MARKOV_LO")
+)
 
 BASELINE_PARK = ("otbn", "aes", "hmac", "kmac", "abr")
 T_DRAWN = (4, 5, 7)
@@ -160,6 +170,18 @@ LAT_WINDOWS = 4
 
 STUCK0 = [Stuck(0)] * NUM_LANES
 STUCK1 = [Stuck(1)] * NUM_LANES
+# The break words that end a stuck0 burst. The BIW stage computes y = a*b + c in
+# GF(2^8) over three sets of four lanes (architecture.adoc:115). All lanes at 1
+# give 0xFF*0xFF + 0xFF, which leaves some stream bits at 0, so one break word
+# does not end every stream-bit run. Then one word per set with that set at 1
+# and the other two at 0: in the word of the addend set every stream byte reads
+# 0xFF, whichever set is the addend, so every stream-bit zero run ends inside the
+# break.
+SETS = 3
+BREAK = [STUCK1] + [
+    [Stuck(1) if lane // (NUM_LANES // SETS) == k else Stuck(0) for lane in range(NUM_LANES)]
+    for k in range(SETS)
+]
 
 
 @dataclass(frozen=True)
@@ -444,22 +466,44 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.noise.set_lanes(list(self.plan.balanced))
 
     def _burst_segs(self, windows: int, win: int, tail_words: int = 0) -> list[tuple[list, int]]:
-        segs = [(STUCK0, windows * win), (STUCK1, 1)]
+        segs = [(STUCK0, windows * win)] + [(word, 1) for word in BREAK]
         if tail_words:
             segs.append((list(self.plan.balanced), tail_words))
         return segs
 
     async def _to_clean(self) -> None:
-        """One break word, then balanced. With no strobe the break word is skipped."""
-        self.noise.set_lanes(STUCK1)
-        m = self.noise.mark()
-        t0 = self._now()
+        """The break words, then balanced. With no strobe a break word is skipped."""
         bound = self._clocks(2)
-        while self.noise.words_since(m) < 1 and self._now() - t0 <= bound:
-            await RisingEdge(cocotb.top.clk_i)
-        if self.noise.words_since(m) < 1:
-            self.chk.obs("PF-BREAK", strobes=0, bound=bound)
+        for word in BREAK:
+            self.noise.set_lanes(word)
+            m = self.noise.mark()
+            t0 = self._now()
+            while self.noise.words_since(m) < 1 and self._now() - t0 <= bound:
+                await RisingEdge(cocotb.top.clk_i)
+            if self.noise.words_since(m) < 1:
+                self.chk.obs("PF-BREAK", strobes=0, bound=bound)
         self.noise.set_lanes(list(self.plan.balanced))
+
+    async def _fail_totals(self) -> int:
+        """Sum of the five per-test failure counters (``*_TOTAL_FAILS``)."""
+        total = 0
+        for addr in TOTAL_ADDRS:
+            total += await self._rd(addr)
+        return total
+
+    async def _ensure_clean(self, thr: int, win: int, leg: str) -> None:
+        """Restart the ESRC if the previous leg left ALERT, PF or ANY_FAIL_COUNT set.
+
+        A failing leg then cannot change the start state of the next leg. Raises
+        ``TrialTimeout`` from the start sequence.
+        """
+        a, f, cnt = await self._poll_triple()
+        if a or f or cnt:
+            self.chk.obs("PF-LEG-RESTART", thr=thr, leg=leg, alert=int(a), pf=int(f), any_fail=cnt)
+            close_graded_window(self.logger)
+            await self._start_seq(thr, win)
+            await self._drain()
+            open_graded_window(TEST, self.logger)
 
     async def _poll_triple(self) -> tuple[int, int, int]:
         sm = await self._rd(ESRC_MAIN_SM_STATUS)
@@ -575,6 +619,9 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 a, f, cnt = await self._poll_triple()
                 w = poll_word()
                 track(a, f, cnt)
+                if cnt >= target and "totals_at_n" not in res:
+                    res["totals_at_n"] = await self._fail_totals()
+                    res["count_at_n"] = cnt
                 if a and "alert_word" not in res:
                     res.update(alert_word=w, alert_count=cnt)
                 if w >= end and (not trip or res["alert_any"]):
@@ -588,6 +635,10 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 res["bound_words"] = last - o
         a, f, cnt = await self._poll_triple()
         track(a, f, cnt)
+        if "totals_at_n" in res:
+            # Health-test failures that the DUT recorded after the wrap that ends
+            # window n: 0 when the windows after window n hold clean noise only.
+            res["test_fails_after_window_n"] = await self._fail_totals() - res["totals_at_n"]
         res.update(
             o=o,
             alert_final=int(a),
@@ -616,13 +667,13 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         )
         self.chk.ok(
             "PF-TRIP-COUNT",
-            r["reason"] is None and r["peak"] == thr and r["alert_any"] and r["pf_final"],
+            r["reason"] is None and r["peak"] >= thr and r["alert_any"] and r["pf_final"],
             **reason,
             thr=thr,
             win=win,
             failing_windows=thr,
             any_fail_peak=r["peak"],
-            expect_any_fail_peak=thr,
+            expect_any_fail_peak_min=thr,
             alert=r["alert_any"],
             pf=r["pf_final"],
             wrap_obs=r.get("wrap_obs"),
@@ -648,7 +699,9 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             alert_after_clean=r["alert_final"],
             pf_after_clean=r["pf_final"],
             any_fail_peak=r["peak"],
+            expect_any_fail_peak=thr,
             any_fail_final=r["count_final"],
+            test_fails_after_window_t=r.get("test_fails_after_window_n"),
         )
         lat = {}
         if o is not None and "alert_word" in r:
@@ -723,23 +776,32 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         blk.notrip = await self._exact_burst(win, thr - 1, trip=False)
         n = thr - 2
         g = plan.gap[thr]
-        segs = self._burst_segs(n, win, tail_words=g * win - 1) + self._burst_segs(n, win)
-        blk.consec = await self._burst_and_settle(segs, win)
+        segs = self._burst_segs(n, win, tail_words=g * win - len(BREAK)) + self._burst_segs(n, win)
+        try:
+            await self._ensure_clean(thr, win, "consec")
+            blk.consec = await self._burst_and_settle(segs, win)
+        except TrialTimeout as exc:
+            blk.consec = {"timeout": f"timeout:{exc.what} bound={exc.bound}"}
         close_graded_window(self.logger)
 
         alerts: list[int] = []
         first = True
         for kind in plan.trips[thr]:
-            if not first:
-                try:
+            try:
+                if first:
+                    await self._ensure_clean(thr, win, "trip")
+                    close_graded_window(self.logger)
+                else:
                     await self._start_seq(thr, win)
-                except TrialTimeout as exc:
-                    self.trip_graded = False
-                    res = self._trip_start_timeout(thr, kind, exc)
-                    alerts.append(res["alert"])
-                    self.trip_results.setdefault(thr, res)
-                    continue
-                await self._drain()
+                    await self._drain()
+            except TrialTimeout as exc:
+                close_graded_window(self.logger)
+                self.trip_graded = False
+                res = self._trip_start_timeout(thr, kind, exc)
+                alerts.append(res["alert"])
+                self.trip_results.setdefault(thr, res)
+                first = False
+                continue
             self.trip_graded = False
             try:
                 if kind == "E":
@@ -970,6 +1032,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             "any_fail_peak": nt.get("peak"),
             "expect_any_fail_peak": blk.thr - 1,
             "any_fail_after": nt.get("count_final"),
+            "test_fails_after_window_n": nt.get("test_fails_after_window_n"),
             "wrap_obs": nt.get("wrap_obs"),
         }
         if blk.start_timeout:

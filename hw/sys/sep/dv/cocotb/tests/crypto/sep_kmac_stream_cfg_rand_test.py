@@ -38,8 +38,8 @@ Checkers:
                       reads 1 and bit 20 rises; the rise is at or after the start
                       of the last read that showed the hash not complete
                       (``STATUS.sha3_squeeze`` = 0 or ``kmac_done`` = 0), and
-                      within the rise bound after the read that shows
-                      ``kmac_done`` = 1.
+                      at most the rise bound (``_IDLE_MULT`` x t_start) after
+                      the mark of the ``CMD.process`` write.
   CHK-KMAC-REGWEN     CFG_REGWEN 1 in the idle window, 0 in absorb; a double
                       write of CFG_SHADOWED in absorb leaves it at C. Control:
                       the idle write reads back C.
@@ -571,7 +571,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
                     rise_clk = await self.vec.wait_rise(mark, window, "kmac_done")
                 except BitWatchTimeout:
                     rise_clk = None
-        in_order = rise_clk is not None and rise_clk >= lower.clk
+        in_order = rise_clk is not None and lower.clk <= rise_clk <= mark.clk + window
         self.chk.ok(
             "KMAC-DONE-LINE",
             vec_before == 0 and state_seen and in_order,

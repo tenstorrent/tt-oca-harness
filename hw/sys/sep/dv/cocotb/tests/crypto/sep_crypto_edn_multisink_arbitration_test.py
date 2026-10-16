@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AES and KMAC contend at the crypto-EDN arbiter, and both compute correctly on routed DRBG words.
 
-OCAH provenance: ``sep_drbg_real_sink_multi_rand_test`` checks simultaneous
-delivery to multiple real entropy sinks.
-
 AES (crypto_edn[0]) and KMAC (crypto_edn[1]) both pull
 the shared crypto-EDN leg (drbg_axis_edn_adapter -> u_axis_edn_crypto_s3c_scan round-robin
 arbiter, sep_crypto.sv) concurrently off ONE verified DRBG stream: TWO real
@@ -168,7 +165,7 @@ from seq_lib.sep_otbn_seq import (
     OTBN_STATUS_IDLE,
     SepOtbn,
 )
-from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SW_RESET_N_RESET_DEFAULT, SepSwReset
 
 # AES SW-key path: arbitrary key (the test exercises the entropy datapath + the
 # arbiter, not a key contract -- same as `sep_drbg_real_sink_multi_km_aes_test`).
@@ -272,7 +269,6 @@ _CFG_ORDER = ("hmac", "aes", "otbn", "kmac")
 _PAIRS = (("hmac", "aes"), ("hmac", "kmac"), ("hmac", "otbn"), ("aes", "otbn"), ("kmac", "otbn"))
 # Non-zero AXI ID per task on the CPU-LSU master.
 _AXI_ID = {"hmac": 1, "aes": 2, "kmac": 3, "otbn": 4, "bystander": 5}
-_SW_RESET_BASELINE = 0x7E
 # Clocks between two polls of a task, and between two bystander reads (the
 # read interval I that the leaf chooses and logs).
 _POLL_GAP_CLK = 8
@@ -842,7 +838,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         # Do not park OTBN/HMAC via SW_RESET_N. Holding a crypto engine in
         # reset while the crypto-EDN adapter is live wedges the AES masking reseed
         # (AES sits idle, no OUTPUT_VALID). OTBN/HMAC are
-        # left released (SW_RESET_N reset 0x7E): OTBN does a one-shot post-reset
+        # left released (the SW_RESET_N reset value): OTBN does a one-shot post-reset
         # secure wipe then goes idle, and HMAC is not a crypto-EDN client, so AES +
         # KMAC are the sustained clients contending the arbiter (the standalone
         # AES recipe likewise leaves all crypto released and drives AES on entropy).
@@ -1109,7 +1105,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         outside = [e for e in _ENGINES if e not in g.members and e != "hmac"]
         for eng in outside:
             await self._wait_edn_req_low(eng)
-        value = _SW_RESET_BASELINE
+        value = SW_RESET_N_RESET_DEFAULT
         for eng in outside:
             value &= ~(1 << SW_RESET_N_BIT[eng])
         self.leg_swrst.value = value

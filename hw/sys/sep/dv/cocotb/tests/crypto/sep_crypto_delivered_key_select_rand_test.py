@@ -41,8 +41,9 @@ Checkers:
                             digests and no hmac_err; key_length 128 gives the
                             golden of the top 128 bits of K_h. Control: the
                             Key_None leg shows hmac_err = 1.
-  CHK-KEYSEL-HMAC-NONE      Key_None with a valid delivered key sets hmac_err
-                            and leaves DIGEST at d_prev.
+  CHK-KEYSEL-HMAC-NONE      with a valid delivered key, hmac_err reads 0 after
+                            the Key_None CFG write; hash_start then sets
+                            hmac_err and leaves DIGEST at d_prev.
   CHK-KEYSEL-AES-SW         sideload = 0 encrypts with K_s, no pulse on vector
                             bit 32 (Crypto alert, source 33) and both AES alert
                             status bits 0. Controls: an AES ALERT_TEST write
@@ -484,6 +485,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         cfg = build_cfg(hmac_en=False, sha_bits=sha) | HMAC.field_mask("CFG", "hmac_en")
         assert cfg & HMAC.field_mask("CFG", "key_length") == 0, "Key_None field not 0"
         err = -1
+        pre_err = -1
         unchanged = 0
         reason = ""
         try:
@@ -495,6 +497,8 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             await self.hmac._wr(HMAC_INTR_STATE, HMAC_INTR_ERR)
             await self.hmac._wr(HMAC.addr("CFG"), cfg)
             d_prev = await self._read_digest(sha)
+            # hmac_err reads 0 after the Key_None CFG write, so only hash_start can set it.
+            pre_err = int(bool(await self.hmac._rd(HMAC_INTR_STATE) & HMAC_INTR_ERR))
             await self.hmac._wr(HMAC_CMD, HMAC_CMD_HASH_START)
             await self._poll_hmac(
                 HMAC_INTR_STATE, HMAC_INTR_ERR, HMAC_INTR_ERR, WAIT_LIMIT, "hmac_err"
@@ -505,10 +509,15 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         except TrialTimeout as exc:
             err = 0
             reason = f"timeout:{exc.what} bound={exc.bound}"
-        fields = {"sha": sha, "err": err, "digest_unchanged": unchanged}
+        fields = {
+            "sha": sha,
+            "err_before_start": pre_err,
+            "err": err,
+            "digest_unchanged": unchanged,
+        }
         if reason:
             fields["reason"] = reason
-        self.chk.ok("KEYSEL-HMAC-NONE", err == 1 and unchanged == 1, **fields)
+        self.chk.ok("KEYSEL-HMAC-NONE", pre_err == 0 and err == 1 and unchanged == 1, **fields)
         return err
 
     # --- AES -----------------------------------------------------------------------
