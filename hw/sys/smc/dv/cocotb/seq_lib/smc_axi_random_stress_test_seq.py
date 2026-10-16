@@ -99,6 +99,8 @@ CHECKERS = (
 EXPECTED_ACCESSES = None
 
 FIXED, INCR, WRAP = 0, 1, 2
+S7_ARENA, S7_ARENA_SIZE = 0xC000, 0x400
+S7_COMPARE_READS = 2
 BURST_NAME = {FIXED: "FIXED", INCR: "INCR", WRAP: "WRAP"}
 
 
@@ -914,7 +916,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         return notes
 
     def _s7_access(self, rng: random.Random, port: str, used: list[tuple[int, int]]):
-        arena, size = SPM[port] + 0xC000, 0x400
+        arena, size = SPM[port] + S7_ARENA, S7_ARENA_SIZE
         known = self.golden[port].known_units(arena, arena + size, 8)
         for _ in range(200):
             at_reg = rng.random() < 0.3
@@ -968,14 +970,47 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             return self._mk(port, op, addr, size=n, beats=beats, burst=burst, rng=rng, **attrs)
         raise AssertionError(f"S7 {port}: no disjoint access found")
 
+    def _s7_compares(self, port: str, item) -> bool:
+        """A read of step 7 that will compare: not observed, AxPROT[1] clear, KNOWN span."""
+        return (
+            item.op is SmcSysAxiOp.READ
+            and not item.observe
+            and not item.prot & 2
+            and self.golden[port].known(item.addr, item.transfer_bytes)
+        )
+
+    async def _s7_known_reads(self, rng: random.Random, port: str, need: int) -> list:
+        """`need` full-width reads of KNOWN arena words, after one aligned write when none is."""
+        arena = SPM[port] + S7_ARENA
+        items = []
+        units = self.golden[port].known_units(arena, arena + S7_ARENA_SIZE, 8)
+        if need > 0 and not units:
+            wr = self._mk(
+                port, SmcSysAxiOp.WRITE, arena, rng=rng, axi_id=rng.randrange(ID_SPACE[port])
+            )
+            await self._one(port, wr)
+            items.append(wr)
+            units = [arena]
+        for k in range(need):
+            rd = self._mk(
+                port, SmcSysAxiOp.READ, units[k % len(units)], axi_id=rng.randrange(ID_SPACE[port])
+            )
+            await self._one(port, rd)
+            items.append(rd)
+        return items
+
     async def _s7_port(self, port: str) -> None:
         rng = self._rng(f"7:{port}")
+        compares = 0
         for _ in range(10):
             used: list[tuple[int, int]] = []
             items = [self._s7_access(rng, port, used) for _ in range(4)]
+            compares += sum(1 for item in items if self._s7_compares(port, item))
             await self._groups({port: items})
             for item in items:
                 self._shape[(item.length, BURST_NAME[item.burst], item.beats)] += 1
+        for item in await self._s7_known_reads(rng, port, S7_COMPARE_READS - compares):
+            self._shape[(item.length, BURST_NAME[item.burst], item.beats)] += 1
 
     async def _s7(self) -> None:
         tasks = [cocotb.start_soon(self._s7_port(p)) for p in PORTS]

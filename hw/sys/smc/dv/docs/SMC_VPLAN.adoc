@@ -10323,7 +10323,9 @@ port with its own ID and, where answered OKAY, returning the word of its own add
   Flow).
 * Shapes: AxSIZE 1 to 8 at SPM words and registers, INCR bursts of 2, 16, 256 and drawn lengths,
   FIXED and WRAP bursts and narrow register bursts, then a mixed stream of 40 accesses per port
-  with every attribute, size, burst, length, direction and target drawn and up to 4 outstanding;
+  with every attribute, size, burst, length, direction and target drawn and up to 4 outstanding,
+  followed by the full-width reads of KNOWN words (after one aligned write when the stream left
+  none) that bring the stream's compare reads to two when the drawn ones fall short;
   every OKAY read at a KNOWN byte returns the golden byte of that address, each beat count equals
   AxLEN+1 (`fabric.adoc`, Interfaces / AXI Interface Widths and Topology).
 * Local concurrency: groups of depth 4, 8, 9, 16 and 24 per port, the AxID set {1, 2} on all three
