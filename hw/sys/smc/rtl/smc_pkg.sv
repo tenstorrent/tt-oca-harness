@@ -212,6 +212,8 @@ package smc_pkg;
   localparam int unsigned NumChunksAliasRemapCarrySelectAdder = 5;  // 56-12+1 = 45, 45/5 = 9.
 
   typedef struct packed {
+    logic no_write_hit;
+    logic no_read_hit;
     logic [2:0] aw_remap_hit_debug;
     logic [2:0] ar_remap_hit_debug;
   } remap_debug_t;

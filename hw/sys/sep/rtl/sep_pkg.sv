@@ -492,6 +492,8 @@ SEP_ROM_MUX_NUM_PORTS
   localparam logic [3:0] OthersSourceId = 4'b0000;
 
   typedef struct packed {
+    logic no_write_hit;
+    logic no_read_hit;
     logic [$clog2(NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS)-1:0] aw_remap_hit_debug;
     logic [$clog2(NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS)-1:0] ar_remap_hit_debug;
   } remap_debug_t;
