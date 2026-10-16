@@ -24,9 +24,15 @@ or not the port accepts, so the outbound chain limit is not separable from the
 crossbar limit at the pins: CHK-CHAIN-HELD grades the held request at that
 stop and CHK-CHAIN-LIMIT the finite stop and the drain, both tagged SF-003.
 
+The SMN inbound master has no route to the outbound port:
+``hw/sys/sep/doc/fabric.adoc`` (Routing) states that the peripheral crossbar
+answers any inbound address at or above ``0x4000_0000`` with DECERR, and the
+outbound window lies above it. Every access that master issues, in every phase,
+is stimulus of the one no-path check CHK-SYSIF-NO-OUTBOUND-PATH; no other
+checker counts it.
+
 Open findings are printed as measured and never compared: the limit counts
-(SF-002, SF-003), the System Interface reachability of the outbound port
-(SF-009), the completion latency (SF-004), the response during a hold
+(SF-002, SF-003), the completion latency (SF-004), the response during a hold
 (SF-005), the delay range (SF-006) and the acceptance point of a request the
 filters answer themselves (SF-015).
 
@@ -42,6 +48,9 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison):
   CHK-SAT-B-COUNT, CHK-SAT-R-COUNT
                     exactly one B per accepted write, the beats of each
                     accepted read, and none after the idle window.
+  CHK-SYSIF-NO-OUTBOUND-PATH
+                    every access of the SMN inbound master answers DECERR with
+                    one B or its R beats, and none reaches PR-OUT.
   CHK-NONVAC        the ordered fence of the phases.
   CHK-TIMEOUT-PATHS the bound of each wait.
 """
@@ -102,6 +111,9 @@ LSU_ISSUE = 20
 DMA_WORDS = 16
 MAX_ID = 7
 EXPECTED_LIMIT = 4
+RESP_DECERR = 3
+# SMN inbound accesses of the baseline, channel, all-channel and hold phases.
+SYSIF_ISSUE_FLOOR = 13
 
 FENCE = (
     "BRINGUP_DONE",
@@ -127,6 +139,7 @@ CHECKS = (
     "CHK-BOTH-LIMITS",
     "CHK-SAT-B-COUNT",
     "CHK-SAT-R-COUNT",
+    "CHK-SYSIF-NO-OUTBOUND-PATH",
     "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
@@ -328,14 +341,24 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             self._fail("CHK-DELAYS", f"wrong_target job={job.name}")
 
     def _check_txn(self, t: Txn, chk: str) -> None:
+        if t.init == "sysif":
+            self._check_sysif_txn(t)
+            return
         if not t.done:
             self._fail(chk, f"txn={t.name} not complete")
-        if t.init != "lsu":
-            return
         if t.resp != RESP_OKAY:
             self._fail(chk, f"txn={t.name} resp={t.resp} not OKAY")
         if t.op == "rd" and tuple(t.words) != t.expected_words():
             self._fail(chk, f"wrong_target txn={t.name} addr=0x{t.addr:x}")
+
+    def _check_sysif_txn(self, t: Txn) -> None:
+        """One SMN inbound access: answered DECERR, counted once."""
+        chk = "CHK-SYSIF-NO-OUTBOUND-PATH"
+        if not t.done:
+            self._fail(chk, f"txn={t.name} not complete")
+        if t.resp != RESP_DECERR:
+            self._fail(chk, f"txn={t.name} resp={t.resp} not DECERR")
+        self.sys_checked.add(t.name)
 
     # ---- one transaction on a quiet path --------------------------------------------------
     async def _lone(self, init: str, op: str, *, chan: str = "none", delay: int = 0, lead: int = 0):
@@ -398,16 +421,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         for init in INITS:
             for op in ("wr", "rd"):
                 r = await self._lone(init, op)
-                if init == "sysif":
-                    self.sys_reached = self.sys_reached or r.reached
-                    if not r.reached:
-                        self.logger.info(
-                            "OBS-SYSIF-REACH: op=%s resp=%d reached=0 LINKED-ISSUE SF-009 "
-                            "(observation only)",
-                            op,
-                            r.resp,
-                        )
-                elif r.resp != RESP_OKAY or not r.reached:
+                if init != "sysif" and (r.resp != RESP_OKAY or not r.reached):
                     self._fail("CHK-DELAYS", f"baseline init={init} op={op} resp={r.resp}")
                 self.base[(init, op)] = r.lat
                 self._delays_line("none", 0, init, op, r.lat, r.lat, 1, r.reached)
@@ -430,7 +444,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
                     )
                 if not grade:
                     self.logger.info(
-                        "OBS-SYSIF-DELAY: chan=%s init=sysif reached=0 LINKED-ISSUE SF-009", chan
+                        "OBS-SYSIF-DELAY: chan=%s init=sysif reached=0 no_outbound_path=1", chan
                     )
                 self._delays_line(chan, d, init, op, r.lat, base, 1, r.reached)
         self._fence("CHANNEL_DELAYS")
@@ -462,7 +476,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             delay.stop()
         snap = meter.read()
         reach = {i: snap["port"][i]["aw"] + snap["port"][i]["ar"] > 0 for i in INITS}
-        for t in lsu:
+        for t in lsu + sysif:
             self._check_txn(t, "CHK-DELAYS")
         for init, items in (("lsu", lsu), ("sysif", sysif)):
             if any(not t.done for t in items):
@@ -547,7 +561,11 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         return b
 
     async def _drain(self, s, chk: str, *, release: bool = True):
-        """Single release of the hold; every transaction of the session must complete."""
+        """Single release of the hold; every transaction of the session must complete.
+
+        The drained count covers the LSU and DMA transactions; the SMN inbound ones
+        are checked by CHK-SYSIF-NO-OUTBOUND-PATH.
+        """
         t_rel = self._now_ps()
         if release:
             self.ctl.hold(False)
@@ -562,8 +580,9 @@ class sep_outbound_stall_saturation_test(sep_base_test):
                 await self._dma_finish(s.job)
             except AssertionError as exc:
                 fails.append(str(exc))
-        total = len(s.txns) + (1 if s.job is not None else 0)
-        done = sum(1 for t in s.txns if t.done) + (1 if s.job is not None and s.job.done else 0)
+        graded = [t for t in s.txns if t.init != "sysif"]
+        total = len(graded) + (1 if s.job is not None else 0)
+        done = sum(1 for t in graded if t.done) + (1 if s.job is not None and s.job.done else 0)
         if fails or done != total:
             self._fail(
                 chk,
@@ -580,17 +599,18 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         return {"lsu": (self.c.lsu_user, LSU_PROT), "dma": (DMA_USER, DMA_PROT)}
 
     def _check_session_requests(self, s, chk: str) -> None:
-        alt, miss = altered_requests(
-            self.layout, self.out.beats[s.meter.out0 :], s.issued, self._expect_attr()
+        beats = self.out.beats[s.meter.out0 :]
+        reached = sum(
+            1
+            for b in beats
+            if b.ch in ("aw", "ar") and self.layout.owner(b.fields.get("addr")) == "sysif"
         )
-        reached_sys = any(
-            self.layout.owner(b.fields.get("addr")) == "sysif"
-            for b in self.out.beats[s.meter.out0 :]
-            if b.ch in ("aw", "ar")
-        )
-        sys_missing = sum(len(v) for (i, _), v in s.issued.items() if i == "sysif")
-        if not reached_sys:
-            miss -= sys_missing
+        if reached:
+            self._fail(
+                "CHK-SYSIF-NO-OUTBOUND-PATH", f"session={s.name} sysif requests at PR-OUT={reached}"
+            )
+        issued = {k: v for k, v in s.issued.items() if k[0] != "sysif"}
+        alt, miss = altered_requests(self.layout, beats, issued, self._expect_attr())
         if alt or miss:
             self._fail(chk, f"session={s.name} altered={alt} lost={miss} at PR-OUT")
 
@@ -616,8 +636,8 @@ class sep_outbound_stall_saturation_test(sep_base_test):
                 )
             sys_resp = snap["mst"]["sysif"]["b"] + snap["mst"]["sysif"]["r"]
             self.logger.info(
-                "OBS-HOLD-SYSIF: session=%s sysif_responses_in_hold=%d reached=0 "
-                "LINKED-ISSUE SF-009 SF-005 (observation only)",
+                "OBS-HOLD-SYSIF: session=%s sysif_decerr_in_hold=%d no_outbound_path=1 "
+                "LINKED-ISSUE SF-005 (observation only)",
                 name,
                 sys_resp,
             )
@@ -684,7 +704,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             sys_n = snap["mst"]["sysif"]["aw"]
             self.logger.info(
                 "OBS-SYSIF-REACH: session=%s sysif_port_accepted=%d sysif_master_aw=%d reached=0 "
-                "LINKED-ISSUE SF-009 (observation only)",
+                "no_outbound_path=1 (observation only)",
                 name,
                 snap["port"]["sysif"]["aw"],
                 sys_n,
@@ -771,7 +791,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         for init, stall, pulses, extra in rows:
             if init == "sysif":
                 self.logger.info(
-                    "OBS-SYSIF-REACH: session=%s reached=0 LINKED-ISSUE SF-009 (observation only)",
+                    "OBS-SYSIF-REACH: session=%s reached=0 no_outbound_path=1 (observation only)",
                     name,
                 )
                 acc = "na"
@@ -799,7 +819,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
                     " stall_src=not_observable_at_a_pin not_graded=observation_only"
                     if init == "dma"
                     else (
-                        " reached=0 not_graded=observation_only LINKED-ISSUE SF-009"
+                        " reached=0 no_outbound_path=1 not_graded=observation_only"
                         if init == "sysif"
                         else ""
                     )
@@ -890,9 +910,16 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         for init in INITS:
             for op in ("wr", "rd"):
                 r = await self._lone(init, op)
-                if init != "sysif" and r.resp != RESP_OKAY:
+                key = f"{init}_{'w' if op == 'wr' else 'r'}"
+                if init == "sysif":
+                    self._obs_row(
+                        "CHK-XBAR-POSTDRAIN",
+                        f"{key}={r.resp} reached={int(r.reached)} no_outbound_path=1",
+                    )
+                    continue
+                if r.resp != RESP_OKAY:
                     self._fail("CHK-XBAR-POSTDRAIN", f"init={init} op={op} resp={r.resp}")
-                resp[f"{init}_{'w' if op == 'wr' else 'r'}"] = r.resp
+                resp[key] = r.resp
                 lats.append(r.lat)
         base = max(self.base.values())
         self._emit(
@@ -932,36 +959,21 @@ class sep_outbound_stall_saturation_test(sep_base_test):
             self._fail("CHK-SAT-B-COUNT", f"lsu_aw={lsu_aw} lsu_b={ws['b']}")
         if whole.b_by_init["dma"] != dma_aw:
             self._fail("CHK-SAT-B-COUNT", f"dma_aw={dma_aw} dma_b={whole.b_by_init['dma']}")
-        sys_issued_w = iss.get(("sysif", "wr"), 0)
-        if wm["b"] != sys_issued_w:
-            self._fail("CHK-SAT-B-COUNT", f"sysif_issued={sys_issued_w} sysif_b={wm['b']}")
         if whole.b_total != len([r for r in whole.reqs if r.kind == "wr"]):
             self._fail("CHK-SAT-B-COUNT", f"port_b={whole.b_total}")
         if extra_b:
             self._fail("CHK-SAT-B-COUNT", f"extra_b_after_idle={extra_b}")
-        if sys_aw + sys_ar:
-            self.logger.info("OBS-SYSIF-REACH: reached=1 aw=%d ar=%d", sys_aw, sys_ar)
-        else:
-            self.logger.info(
-                "OBS-SAT-B-COUNT: sysif_writes_answered_without_port_request=%d "
-                "LINKED-ISSUE SF-009 SF-015",
-                sys_issued_w,
-            )
         self._emit(
             "CHK-SAT-B-COUNT",
             f"lsu_aw={lsu_aw} lsu_b={ws['b']} dma_aw={dma_aw} dma_b={whole.b_by_init['dma']} "
-            f"sysif_aw={sys_aw} sysif_b={wm['b']} extra_b_after_idle={extra_b}",
+            f"extra_b_after_idle={extra_b}",
         )
         if ws["r"] != whole.r_beats_by_init["lsu"] or ws["r"] != lsu_ar:
             self._fail("CHK-SAT-R-COUNT", f"lsu_ar={lsu_ar} lsu_r={ws['r']}")
         if whole.r_beats_by_init["dma"] != dma_ar:
             self._fail("CHK-SAT-R-COUNT", f"dma_ar={dma_ar} dma_r={whole.r_beats_by_init['dma']}")
-        sys_issued_r = iss.get(("sysif", "rd"), 0)
-        if wm["r"] != sys_issued_r:
-            self._fail("CHK-SAT-R-COUNT", f"sysif_issued={sys_issued_r} sysif_r={wm['r']}")
-        rlast = ws["rlast"] + wm["rlast"]
-        if rlast != lsu_ar + sys_issued_r:
-            self._fail("CHK-SAT-R-COUNT", f"rlast={rlast} reads={lsu_ar + sys_issued_r}")
+        if ws["rlast"] != lsu_ar:
+            self._fail("CHK-SAT-R-COUNT", f"rlast={ws['rlast']} reads={lsu_ar}")
         if (
             whole.rlast_ok["lsu"] != lsu_ar
             or whole.rlast_ok["dma"] != dma_ar
@@ -973,7 +985,30 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         self._emit(
             "CHK-SAT-R-COUNT",
             f"lsu_ar={lsu_ar} lsu_r={ws['r']} dma_ar={dma_ar} dma_r={whole.r_beats_by_init['dma']} "
-            f"sysif_ar={sys_ar} sysif_r={wm['r']} extra_r_after_idle={extra_r}",
+            f"extra_r_after_idle={extra_r}",
+        )
+
+        chk = "CHK-SYSIF-NO-OUTBOUND-PATH"
+        sys_w, sys_r = iss.get(("sysif", "wr"), 0), iss.get(("sysif", "rd"), 0)
+        sys_issued = sys_w + sys_r
+        if sys_aw + sys_ar:
+            self._fail(chk, f"sysif requests at PR-OUT aw={sys_aw} ar={sys_ar}")
+        if sys_issued < SYSIF_ISSUE_FLOOR or len(self.sys_checked) != sys_issued:
+            self._fail(
+                chk,
+                f"issued={sys_issued} floor={SYSIF_ISSUE_FLOOR} decerr={len(self.sys_checked)}",
+            )
+        if wm["b"] != sys_w or wm["r"] != sys_r or wm["rlast"] != sys_r:
+            self._fail(
+                chk,
+                f"sysif_b={wm['b']} writes={sys_w} sysif_r={wm['r']} rlast={wm['rlast']} "
+                f"reads={sys_r}",
+            )
+        self._emit(
+            chk,
+            f"issued={sys_issued} floor={SYSIF_ISSUE_FLOOR} decerr={len(self.sys_checked)} "
+            f"reached_pr_out={sys_aw + sys_ar} b_at_master={wm['b']} writes={sys_w} "
+            f"r_at_master={wm['r']} rlast={wm['rlast']} reads={sys_r}",
         )
 
     # ---- scenario --------------------------------------------------------------------------------
@@ -985,7 +1020,7 @@ class sep_outbound_stall_saturation_test(sep_base_test):
         self.fence_seen: list[str] = []
         self.waits_logged: set[str] = set()
         self.n_made = self.n_jobs = 0
-        self.sys_reached = False
+        self.sys_checked: set[str] = set()
         self.cur = None
         self.base: dict = {}
         self.issued_all: dict = {}

@@ -23,18 +23,27 @@ address. The seed draws the delay profile, the AxUSER of the LSU and of the
 System Interface, the transaction counts, the start offsets, the read and
 write mix and the burst length.
 
-Open findings are printed as measured and never compared: System Interface
-reachability of the outbound port (SF-009), the AxLEN seen at the port
-(SF-014), the System Interface AxUSER and AxPROT (SF-010, SF-011), the order
-of same-ID write responses (SF-007), the completion latency (SF-004), the
-outbound ID encoding (SF-008) and the acceptance point of a request the filters
-answer themselves (SF-015).
+The SMN inbound master has no route to the outbound port:
+``hw/sys/sep/doc/fabric.adoc`` (Routing) states that the peripheral crossbar
+answers any inbound address at or above ``0x4000_0000`` with DECERR, and the
+outbound window lies above it. Every access that master issues, in every phase,
+is stimulus of the one no-path check CHK-SYSIF-NO-OUTBOUND-PATH; no other
+checker counts it.
+
+Open findings are printed as measured and never compared: the order of same-ID
+write responses (SF-007), the completion latency (SF-004), the outbound ID
+encoding (SF-008) and the acceptance point of a request the filters answer
+themselves (SF-015).
 
 Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison):
-  CHK-LSU-PATH, CHK-DMA-PATH, CHK-SYSIF-SINGLE, CHK-SYSIF-BURST
-                    each initiator alone: one request per access at PR-OUT,
-                    AxLEN 0 for a single beat, one B or ARLEN+1 R beats with
-                    RLAST on the last, DMA STATUS DONE then cleared.
+  CHK-LSU-PATH, CHK-DMA-PATH
+                    the LSU and the DMA alone: one request per access at
+                    PR-OUT, AxLEN 0 for a single beat, one B or ARLEN+1 R
+                    beats with RLAST on the last, DMA STATUS DONE then cleared.
+  CHK-SYSIF-NO-OUTBOUND-PATH
+                    every single and burst access of the SMN inbound master
+                    answers DECERR with one B or its R beats, RLAST on the
+                    last, and none reaches PR-OUT.
   CHK-CONC-ALL      every transaction of every initiator completes in the
                     write, read, mixed and pair phases.
   CHK-ID-ORDER      same-ID reads come back in the PR-OUT-RSP order.
@@ -111,8 +120,7 @@ FENCE = (
 CHECKS = (
     "CHK-LSU-PATH",
     "CHK-DMA-PATH",
-    "CHK-SYSIF-SINGLE",
-    "CHK-SYSIF-BURST",
+    "CHK-SYSIF-NO-OUTBOUND-PATH",
     "CHK-CONC-ALL",
     "CHK-ID-ORDER",
     "CHK-B-COUNT",
@@ -185,6 +193,9 @@ class sep_outbound_contention_rand_test(sep_base_test):
     def _emit(self, chk: str, line: str) -> None:
         self.logger.info("%s: %s", chk, line)
         self.logger.info("%s PASS: compared as stated seed=%d", chk, self.c.seed)
+
+    def _obs_row(self, tag: str, line: str) -> None:
+        self.logger.info("OBS-%s: %s", tag, line)
 
     def _fail(self, chk: str, line: str) -> None:
         msg = f"{chk} FAIL seed={self.c.seed} {line} last_port_state={self._port_state()}"
@@ -394,8 +405,12 @@ class sep_outbound_contention_rand_test(sep_base_test):
         return view, marks
 
     # ---- accounting ---------------------------------------------------------------------
-    def _account(self, name: str, plan: dict, view, marks, *, grade_sys: bool) -> dict:
-        """Exact comparison of one phase; returns the counts it graded."""
+    def _account(self, name: str, plan: dict, view, marks) -> dict:
+        """Exact comparison of one phase; returns the counts it graded.
+
+        The SMN inbound accesses of the phase are graded here by their no-path
+        form only: DECERR at the master, nothing at PR-OUT.
+        """
         pins = {"lsu": self.pin_s.since(marks[2]), "sysif": self.pin_m.since(marks[3])}
         st: dict = {}
         if view.unknown:
@@ -438,33 +453,37 @@ class sep_outbound_contention_rand_test(sep_base_test):
                         f"phase={name} init=lsu non_okay txn={bad[0].name} resp={bad[0].resp}",
                     )
             else:
+                chk = "CHK-SYSIF-NO-OUTBOUND-PATH"
                 ctx = f"phase={name} init=sysif"
                 if s["aw"] + s["ar"]:
-                    self._fail(
-                        "CHK-ACCOUNT", f"{ctx} request reached PR-OUT (SF-009 answered: no path)"
-                    )
+                    self._fail(chk, f"{ctx} request reached PR-OUT aw={s['aw']} ar={s['ar']}")
                 notdec = [t for t in txns if t.resp != RESP_DECERR]
                 if notdec:
                     self._fail(
-                        "CHK-ACCOUNT",
+                        chk,
                         f"{ctx} answered {len(txns) - len(notdec)} of {len(txns)} with DECERR; "
                         f"first other txn={notdec[0].name} resp={notdec[0].resp}",
                     )
                 if s["b_master"] != len(wr):
-                    self._fail("CHK-ACCOUNT", f"{ctx} B at master {s['b_master']} != {len(wr)}")
-                if s["r_master"] != s["r_master_beats"] or s["rlast"] != len(rd):
+                    self._fail(chk, f"{ctx} B at master {s['b_master']} != {len(wr)}")
+                beats = sum(t.beats for t in rd)
+                if s["r_master"] != beats or s["rlast"] != len(rd):
                     self._fail(
-                        "CHK-ACCOUNT",
-                        f"{ctx} R beats {s['r_master']}/{s['r_master_beats']} rlast {s['rlast']}",
+                        chk, f"{ctx} R beats {s['r_master']}/{beats} rlast {s['rlast']}/{len(rd)}"
                     )
                 short = [t for t in rd if len(t.words) != t.beats]
                 if short:
                     self._fail(
-                        "CHK-ACCOUNT",
+                        chk,
                         f"{ctx} read txn={short[0].name} returned {len(short[0].words)} beats "
                         f"for {short[0].beats}",
                     )
-            if init == "sysif" and not grade_sys:
+                n = self.sys_neg
+                n["issued"] += len(txns)
+                n["decerr"] += len(txns) - len(notdec)
+                n["writes"] += len(wr)
+                n["reads"] += len(rd)
+                n["beats"] += beats
                 continue
             ctx = f"phase={name} init={init}"
             if view.addrs(init, "wr") != sorted(t.addr for t in acc_wr):
@@ -594,7 +613,7 @@ class sep_outbound_contention_rand_test(sep_base_test):
             + [self._txn("lsu", "rd") for _ in range(c.n_single)]
         }
         view, marks = await self._run_phase("lsu_alone", plan, serial=True)
-        st = self._account("lsu_alone", plan, view, marks, grade_sys=False)
+        st = self._account("lsu_alone", plan, view, marks)
         self._tally(st)
         s = st["lsu"]
         self._emit(
@@ -611,7 +630,7 @@ class sep_outbound_contention_rand_test(sep_base_test):
             job = self._job(write)
             plan = {"dma": [job]}
             view, marks = await self._run_phase("dma_alone", plan, serial=True, spread=0)
-            st = self._account("dma_alone", plan, view, marks, grade_sys=False)
+            st = self._account("dma_alone", plan, view, marks)
             self._tally(st)
             rows.append((job, st["dma"]))
         (wj, ws), (rj, rs) = rows
@@ -634,25 +653,14 @@ class sep_outbound_contention_rand_test(sep_base_test):
             + [self._txn("sysif", "rd") for _ in range(c.n_sys_single)]
         }
         view, marks = await self._run_phase("sysif_alone", plan, serial=True)
-        reached = int(view.n_req("sysif", "wr") + view.n_req("sysif", "rd") > 0)
-        st = self._account("sysif_alone", plan, view, marks, grade_sys=False)
+        st = self._account("sysif_alone", plan, view, marks)
         self._tally(st)
         s = st["sysif"]
-        resp = _setfmt(t.resp for t in plan["sysif"])
-        if not reached:
-            self.logger.info(
-                "OBS-SYSIF-REACH: reached=0 inbound_filter_resp=%s port_unattributed=%d "
-                "LINKED-ISSUE SF-009 (observation only)",
-                resp,
-                view.unattributed,
-            )
-        else:
-            self.logger.info("OBS-SYSIF-REACH: reached=1 resp=%s", resp)
-        self._emit(
-            "CHK-SYSIF-SINGLE",
-            f"wr_aw={s['aw']} wr_b={s['b_master']} rd_ar={s['ar']} rd_r={s['r_master']} "
-            f"rlast={s['rlast']} reached={reached} resp={resp} issued={len(plan['sysif'])} "
-            "LINKED-ISSUE=SF-009",
+        self._obs_row(
+            "SYSIF-SINGLE",
+            f"wr_issued={s['wr']} b={s['b_master']} rd_issued={s['rd']} r={s['r_master']} "
+            f"rlast={s['rlast']} resp={_setfmt(t.resp for t in plan['sysif'])} "
+            f"reached_pr_out={s['aw'] + s['ar']} port_unattributed={view.unattributed}",
         )
         self._fence("SYSIF_SINGLES")
 
@@ -668,42 +676,24 @@ class sep_outbound_contention_rand_test(sep_base_test):
         ]
         plan = {"sysif": wr + rd}
         view, marks = await self._run_phase("sysif_bursts", plan, serial=True)
-        by_addr = {r.addr: r for r in view.reqs if r.init == "sysif"}
-        awlen_seen = [by_addr[t.addr].length if t.addr in by_addr else None for t in wr]
-        arlen_seen = [by_addr[t.addr].length if t.addr in by_addr else None for t in rd]
-        wr_len = [t.beats - 1 for t in wr]
-        rd_len = [t.beats - 1 for t in rd]
         rlast_pos = []
         for t in rd:
             flags = [x[4] for x in self.pin_m.r if t.c0 < x[0] <= t.c1]
             rlast_pos.append(flags.index(1) if 1 in flags else -1)
             if len(flags) != t.beats or flags != [0] * (t.beats - 1) + [1]:
                 self._fail(
-                    "CHK-SYSIF-BURST",
+                    "CHK-SYSIF-NO-OUTBOUND-PATH",
                     f"read burst txn={t.name} beats={t.beats} rlast_flags={_listfmt(flags)}",
                 )
-        st = self._account("sysif_bursts", plan, view, marks, grade_sys=self.sys_reached)
+        st = self._account("sysif_bursts", plan, view, marks)
         self._tally(st)
         s = st["sysif"]
-        self.burst_tot["aw"] = s["aw"]
-        self.burst_tot["b_master"] = s["b_master"]
-        self.burst_tot["r_master"] = s["r_master"]
-        if awlen_seen != wr_len or arlen_seen != rd_len:
-            self.logger.info(
-                "OBS-SYSIF-AXLEN: issued_aw=%s seen_aw=%s issued_ar=%s seen_ar=%s "
-                "LINKED-ISSUE SF-014 (observation only)",
-                _listfmt(wr_len),
-                _listfmt(awlen_seen),
-                _listfmt(rd_len),
-                _listfmt(arlen_seen),
-            )
-        self._emit(
-            "CHK-SYSIF-BURST",
-            f"wr_len={_listfmt(wr_len)} w_beats={s['w']} b={s['b_master']} "
-            f"rd_len={_listfmt(rd_len)} r_beats={s['r_master']} rlast_pos={_listfmt(rlast_pos)} "
-            f"awlen_seen={_listfmt(awlen_seen)} arlen_seen={_listfmt(arlen_seen)} "
-            f"reached={int(self.sys_reached)} resp={_setfmt(t.resp for t in wr + rd)} "
-            "LINKED-ISSUE=SF-009",
+        self._obs_row(
+            "SYSIF-BURST",
+            f"wr_len={_listfmt(t.beats - 1 for t in wr)} b={s['b_master']} "
+            f"rd_len={_listfmt(t.beats - 1 for t in rd)} r_beats={s['r_master']} "
+            f"rlast_pos={_listfmt(rlast_pos)} resp={_setfmt(t.resp for t in wr + rd)} "
+            f"reached_pr_out={s['aw'] + s['ar']}",
         )
         self._fence("SYSIF_BURSTS")
 
@@ -724,7 +714,7 @@ class sep_outbound_contention_rand_test(sep_base_test):
         self._emit(
             "CHK-CONC-ALL",
             f"phase={phase} lsu_done={done('lsu')} dma_done={done('dma')} "
-            f"sysif_done={done('sysif')} max_latency_ns={st['max_latency_ns']:.1f} "
+            f"sysif_done_decerr={done('sysif')} max_latency_ns={st['max_latency_ns']:.1f} "
             f"timeout_ns={self.tr.timeout_ns} {self._stall_str()}{extra}",
         )
         self.max_lat = max(self.max_lat, st["max_latency_ns"])
@@ -732,7 +722,7 @@ class sep_outbound_contention_rand_test(sep_base_test):
     async def _conc(self, phase: str, kind: str, inits=INITS, extra: str = ""):
         plan = self._plan(kind, inits)
         view, marks = await self._run_phase(f"conc_{phase}", plan)
-        st = self._account(f"conc_{phase}", plan, view, marks, grade_sys=self.sys_reached)
+        st = self._account(f"conc_{phase}", plan, view, marks)
         self._tally(st)
         self._conc_line(phase, plan, st, extra)
         return plan, st
@@ -749,8 +739,8 @@ class sep_outbound_contention_rand_test(sep_base_test):
                 bn, bd = sw[init]["b_master"], sw[init]["acc_wr"] + sw[init]["self_wr"]
                 rn = sr[init]["r_master"]
                 rd = sr[init]["r_port"] + sr[init]["self_rd_beats"]
-                if init == "sysif" and not self.sys_reached:
-                    parts.append(f"b_to_{init}=n/a r_to_{init}=n/a reached=0")
+                if init == "sysif":
+                    parts.append(f"b_to_{init}=n/a r_to_{init}=n/a no_outbound_path=1")
                     continue
             wrong += abs(bn - bd) + abs(rn - rd)
             parts.append(f"b_to_{init}={bn}/{bd} r_to_{init}={rn}/{rd}")
@@ -774,23 +764,20 @@ class sep_outbound_contention_rand_test(sep_base_test):
         c = self.c
         plan = {i: [self._txn(i, op, axi_id=c.same_id) for _ in range(c.same_id_n)] for i in inits}
         view, marks = await self._run_phase(f"same_id_{op}", plan, spread=0)
-        st = self._account(f"same_id_{op}", plan, view, marks, grade_sys=self.sys_reached)
+        st = self._account(f"same_id_{op}", plan, view, marks)
         self._tally(st)
         return plan, view, marks, st
 
     async def _s10_id_order(self) -> None:
         c = self.c
-        cases = [("lsu",), ("sysif",), ("lsu", "sysif")]
-        for inits in cases:
+        for inits in (("lsu",), ("lsu", "sysif")):
             plan_r, view_r, marks_r, st_r = await self._same_id(inits, "rd")
             plan_w, view_w, marks_w, st_w = await self._same_id(inits, "wr")
             seq_ok = seq_n = 0
             distinct = set()
             conf = 0
-            graded = True
             for init in inits:
-                if init == "sysif" and not self.sys_reached:
-                    graded = False
+                if init == "sysif":
                     continue
                 pins = self.pin_s if init == "lsu" else self.pin_m
                 pm = marks_r[2] if init == "lsu" else marks_r[3]
@@ -819,16 +806,12 @@ class sep_outbound_contention_rand_test(sep_base_test):
                 self._fail("CHK-ID-ORDER", f"id={c.same_id} cross_initiator_confusions={conf}")
             wn = wd = 0
             for init in inits:
-                if init == "sysif" and not self.sys_reached:
+                if init == "sysif":
                     continue
                 order = sorted(plan_w[init], key=lambda t: (t.c1, plan_w[init].index(t)))
                 wd += len(order)
                 wn += sum(1 for i, t in enumerate(order) if plan_w[init][i] is t)
-            tag = ""
-            if len(distinct) < 2:
-                tag += " reads_distinct_words_below_2=LINKED-ISSUE"
-            if not graded:
-                tag += " sysif_reached=0 LINKED-ISSUE SF-009"
+            tag = " reads_distinct_words_below_2=LINKED-ISSUE" if len(distinct) < 2 else ""
             self.logger.info(
                 "OBS-ID-ORDER: id=%d writes_completion_index=%s LINKED-ISSUE SF-007%s",
                 c.same_id,
@@ -839,8 +822,9 @@ class sep_outbound_contention_rand_test(sep_base_test):
             )
             self._emit(
                 "CHK-ID-ORDER",
-                f"id={c.same_id} reads_in_order={seq_ok}/{seq_n} writes_in_order={wn}/{wd} "
-                f"distinct_r_words={len(distinct)} cross_initiator_confusions={conf}",
+                f"id={c.same_id} inits={'+'.join(inits)} reads_in_order={seq_ok}/{seq_n} "
+                f"writes_in_order={wn}/{wd} distinct_r_words={len(distinct)} "
+                f"cross_initiator_confusions={conf}",
             )
         self._fence("ID_ORDER")
 
@@ -899,23 +883,10 @@ class sep_outbound_contention_rand_test(sep_base_test):
             self._fail("CHK-ATTR-USER", f"crossings={cross_u}")
         if cross_p:
             self._fail("CHK-ATTR-PROT", f"crossings={cross_p}")
-        if self.sys_reached and any(u != c.sys_user for u in seen_u["sysif"]):
-            self.logger.info(
-                "OBS-SYSIF-USER: issued=%d seen=%s LINKED-ISSUE SF-010 (observation only)",
-                c.sys_user,
-                _setfmt(seen_u["sysif"]),
-            )
-        if self.sys_reached and any(p != SYS_PROT for p in seen_p["sysif"]):
-            self.logger.info(
-                "OBS-SYSIF-PROT: issued=0b%03b seen=%s LINKED-ISSUE SF-011 (observation only)",
-                SYS_PROT,
-                "{" + ",".join(f"0b{p:03b}" for p in sorted(set(seen_p["sysif"]))) + "}",
-            )
         self._emit(
             "CHK-ATTR-USER",
             f"lsu_user_issued={c.lsu_user} lsu_user_seen={_setfmt(seen_u['lsu'])} "
-            f"dma_user_seen={_setfmt(seen_u['dma'])} sysif_user_issued={c.sys_user} "
-            f"sysif_user_seen={_setfmt(seen_u['sysif'])} crossings={cross_u}",
+            f"dma_user_seen={_setfmt(seen_u['dma'])} crossings={cross_u}",
         )
 
         def pf(vals):
@@ -928,8 +899,7 @@ class sep_outbound_contention_rand_test(sep_base_test):
         self._emit(
             "CHK-ATTR-PROT",
             f"lsu_awprot={pf(lsu_aw)} lsu_arprot={pf(lsu_ar)} dma_awprot={pf(dma_aw)} "
-            f"dma_arprot={pf(dma_ar)} sysif_prot_issued=0b{SYS_PROT:03b} "
-            f"sysif_prot_seen={pf(seen_p['sysif'])} crossings={cross_p}",
+            f"dma_arprot={pf(dma_ar)} crossings={cross_p}",
         )
         pairs, collisions, ids = id_overlap(whole)
         shared = [
@@ -948,7 +918,7 @@ class sep_outbound_contention_rand_test(sep_base_test):
         self._emit(
             "CHK-ATTR-ID-DISTINCT",
             f"outstanding_pairs={pairs} id_collisions={collisions} lsu_ids={_setfmt(ids['lsu'])} "
-            f"dma_ids={_setfmt(ids['dma'])} sysif_ids={_setfmt(ids['sysif'])}",
+            f"dma_ids={_setfmt(ids['dma'])}",
         )
 
         # exactly-once B and R over the whole run
@@ -956,53 +926,60 @@ class sep_outbound_contention_rand_test(sep_base_test):
         t = self.tot
         lsu_aw, lsu_ar_n = whole.n_req("lsu", "wr"), whole.n_req("lsu", "rd")
         dma_aw_n, dma_ar_n = whole.n_req("dma", "wr"), whole.n_req("dma", "rd")
-        sys_aw, sys_ar_n = whole.n_req("sysif", "wr"), whole.n_req("sysif", "rd")
-        self_wr = t["sysif"].get("self_wr", 0)
         if whole_s["b"] != lsu_aw or whole.b_by_init["lsu"] != lsu_aw:
             self._fail("CHK-B-COUNT", f"lsu_aw={lsu_aw} lsu_b={whole_s['b']}")
         if whole.b_by_init["dma"] != dma_aw_n:
             self._fail("CHK-B-COUNT", f"dma_aw={dma_aw_n} dma_b={whole.b_by_init['dma']}")
-        if whole_m["b"] != sys_aw + self_wr or whole.b_by_init["sysif"] != sys_aw:
-            self._fail(
-                "CHK-B-COUNT",
-                f"sysif_aw={sys_aw} sysif_b={whole_m['b']} self_answered={self_wr}",
-            )
         if whole.b_total != len([r for r in whole.reqs if r.kind == "wr"]):
             self._fail("CHK-B-COUNT", f"port_b={whole.b_total}")
         if extra_b:
             self._fail("CHK-B-COUNT", f"extra_b_after_idle={extra_b}")
-        if self_wr:
-            self.logger.info(
-                "OBS-B-COUNT: sysif_writes_answered_without_port_request=%d LINKED-ISSUE SF-015",
-                self_wr,
-            )
         self._emit(
             "CHK-B-COUNT",
             f"lsu_aw={lsu_aw} lsu_b={whole_s['b']} dma_aw={dma_aw_n} "
-            f"dma_b={whole.b_by_init['dma']} sysif_aw={sys_aw} sysif_b={whole_m['b']} "
-            f"burst_aw={self.burst_tot.get('aw', 0)} burst_b={self.burst_tot.get('b_master', 0)} "
-            f"extra_b_after_idle={extra_b}",
+            f"dma_b={whole.b_by_init['dma']} extra_b_after_idle={extra_b}",
         )
-        reads_issued = t["lsu"].get("rd", 0) + t["sysif"].get("rd", 0)
+        reads_issued = t["lsu"].get("rd", 0)
         if whole_s["r"] != whole.r_beats_by_init["lsu"] or whole.r_beats_by_init["lsu"] != sum(
             (r.length or 0) + 1 for r in whole.reqs if r.init == "lsu" and r.kind == "rd"
         ):
             self._fail("CHK-R-COUNT", f"lsu_ar={lsu_ar_n} lsu_r={whole_s['r']}")
         if whole.r_beats_by_init["dma"] != dma_ar_n:
             self._fail("CHK-R-COUNT", f"dma_ar={dma_ar_n} dma_r={whole.r_beats_by_init['dma']}")
-        if whole_m["r"] != whole.r_beats_by_init["sysif"] + t["sysif"].get("self_rd_beats", 0):
-            self._fail("CHK-R-COUNT", f"sysif_ar={sys_ar_n} sysif_r={whole_m['r']}")
-        rlast_ok = whole_s["rlast"] + whole_m["rlast"]
-        if rlast_ok != reads_issued:
-            self._fail("CHK-R-COUNT", f"rlast_ok={rlast_ok} reads={reads_issued}")
+        if whole_s["rlast"] != reads_issued:
+            self._fail("CHK-R-COUNT", f"rlast_ok={whole_s['rlast']} reads={reads_issued}")
         if extra_r:
             self._fail("CHK-R-COUNT", f"extra_r_after_idle={extra_r}")
         self._emit(
             "CHK-R-COUNT",
             f"lsu_ar={lsu_ar_n} lsu_r={whole_s['r']} dma_ar={dma_ar_n} "
-            f"dma_r={whole.r_beats_by_init['dma']} sysif_ar={sys_ar_n} sysif_r={whole_m['r']} "
-            f"burst_beats={self.burst_tot.get('r_master', 0)} rlast_ok={rlast_ok} "
+            f"dma_r={whole.r_beats_by_init['dma']} rlast_ok={whole_s['rlast']} "
             f"extra_r_after_idle={extra_r}",
+        )
+
+        chk = "CHK-SYSIF-NO-OUTBOUND-PATH"
+        n = self.sys_neg
+        floor = 2 * c.n_sys_single + 2 * c.n_bursts
+        reached = whole.n_req("sysif", "wr") + whole.n_req("sysif", "rd")
+        if reached:
+            self._fail(chk, f"sysif requests at PR-OUT={reached}")
+        if n["issued"] < floor or n["decerr"] != n["issued"]:
+            self._fail(chk, f"issued={n['issued']} floor={floor} decerr={n['decerr']}")
+        if (
+            whole_m["b"] != n["writes"]
+            or whole_m["r"] != n["beats"]
+            or whole_m["rlast"] != n["reads"]
+        ):
+            self._fail(
+                chk,
+                f"sysif_b={whole_m['b']} writes={n['writes']} sysif_r={whole_m['r']} "
+                f"beats={n['beats']} rlast={whole_m['rlast']} reads={n['reads']}",
+            )
+        self._emit(
+            chk,
+            f"issued={n['issued']} floor={floor} decerr={n['decerr']} reached_pr_out={reached} "
+            f"b_at_master={whole_m['b']} writes={n['writes']} r_at_master={whole_m['r']} "
+            f"beats={n['beats']} rlast={whole_m['rlast']} reads={n['reads']}",
         )
         self._fence("ATTR_AND_IDLE")
 
@@ -1016,8 +993,7 @@ class sep_outbound_contention_rand_test(sep_base_test):
         self.waits_logged: set[str] = set()
         self.n_made = self.n_jobs = 0
         self.max_lat = 0.0
-        self.sys_reached = False
-        self.burst_tot: dict = {}
+        self.sys_neg = {"issued": 0, "decerr": 0, "writes": 0, "reads": 0, "beats": 0}
         self.tot = {i: {} for i in INITS}
         self.logger.info("SEED seed=%d", seed)
         for line in c.draw_lines():
