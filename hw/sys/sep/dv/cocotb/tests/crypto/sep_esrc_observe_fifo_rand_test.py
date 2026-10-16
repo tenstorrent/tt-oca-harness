@@ -767,6 +767,8 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         if wait:
             await ClockCycles(cocotb.top.clk_i, wait)
         level = await self._level(fifo)
+        # Keep the window open two clocks past the STATUS read so the FCOV sampler sees it.
+        await ClockCycles(cocotb.top.clk_i, 2)
         close_graded_window(self.logger)
         self.chk.ctrl(
             "OBS-LOCK",
