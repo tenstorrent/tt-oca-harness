@@ -17,12 +17,16 @@ Whitening; ``hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc``):
     the maximum and ``APT_PROPORTION_LO`` the minimum one count per lane
     (entropy_source.adoc:254, :275, :276, :326, :336).
   * The generator status is RW1C (entropy_source.adoc:423).
+  * ``HEALTH_TEST_STATUS`` latches the failures of the 32-bit stream tester; bit 3
+    is APT high or low (entropy_source.adoc:27). ``APT_PROPORTION_LO`` = 0
+    disables the low-side test (entropy_source.adoc:336).
   * A constant-zero 32-bit stream fails the low APT and the low Markov tests:
     ``HEALTH_TEST_STATUS`` bits 3 and 5, ``APT_LO_TOTAL_FAILS``,
     ``MARKOV_LO_TOTAL_FAILS`` and ``INTR_STATUS.HEALTH_TEST_FAILED``
-    (entropy_source.adoc:68, :70, :148). A constant word with a lane at 1 fails
-    the 32-bit APT high test: bit 3 and ``APT_HI_TOTAL_FAILS``
-    (entropy_source.adoc:67, :326).
+    (entropy_source.adoc:68, :70, :148). With the low side disabled, a constant
+    word with a lane at 1 fails the 32-bit APT high test: bit 3. It also makes
+    ``APT_HI_TOTAL_FAILS`` non-zero (entropy_source.adoc:67, :326); which tester
+    instances that counter counts is not stated.
   * With whitening on, 16 input words give 8 digest words
     (architecture.adoc:142; entropy_source.adoc:104).
 
@@ -72,9 +76,12 @@ Checkers:
                    12 generators.
   CHK-HT-TOP-ZERO  constant zero: HEALTH_TEST_STATUS bits 3 and 5, non-zero
                    APT_LO and MARKOV_LO totals, INTR_STATUS.HEALTH_TEST_FAILED.
-  CHK-HT-TOP-ONE   constant ones, compressor in use, whitening off:
-                   HEALTH_TEST_STATUS bit 3 and a non-zero APT_HI_TOTAL_FAILS;
-                   control: APT_HI_TOTAL_FAILS reads 0 after the constant-zero leg.
+  CHK-HT-TOP-ONE   constant ones, compressor in use, whitening off,
+                   APT_PROPORTION_LO = 0: HEALTH_TEST_STATUS bit 3 (the 32-bit
+                   tester, high side only) and a non-zero APT_HI_TOTAL_FAILS (any
+                   instance); controls: APT_PROPORTION_LO reads back 0,
+                   APT_LO_TOTAL_FAILS does not change over the ones windows, and
+                   APT_HI_TOTAL_FAILS reads 0 after the constant-zero leg.
 """
 
 from __future__ import annotations
@@ -173,6 +180,7 @@ M_FIFO_LEVEL = _fbm("FIFO_STATUS", "LEVEL")
 M_REP_COUNT = _fbm("REPETITION_TEST_COUNT", "REPETITION_COUNT")
 M_GEN = ENTROPY_SOURCE.mask("GENERATOR_0_HEALTH_STATUS")
 M_HT_STATUS = ENTROPY_SOURCE.mask("HEALTH_TEST_STATUS")
+M_APT_LO = _fbm("APT_PROPORTION_LO", "LIMIT")
 M_TOTAL = _fbm("REPCNT_TOTAL_FAILS", "FAIL_COUNT")
 M_HT_ENABLE = _fbm("HEALTH_TEST_CTRL", "ENABLE")
 P_HT_ENABLE = _fbp("HEALTH_TEST_CTRL", "ENABLE")
@@ -815,12 +823,25 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         a0 = (await self._rd(A_TOTALS["APT_HI_TOTAL_FAILS"])) & M_TOTAL
         self.chk.ctrl("HT-TOP-ONE", s0 == 0 and a0 == 0, status=f"0x{s0:02x}", apt_hi_total=a0)
         await self._write_reset_limits()
+        # entropy_source.adoc:336: zero disables the low-side test, so bit 3 of
+        # HEALTH_TEST_STATUS can come only from the 32-bit high side.
+        await self._wr(A_APT_LO, ENTROPY_SOURCE.value("APT_PROPORTION_LO", LIMIT=0))
+        apt_lo = (await self._rd(A_APT_LO)) & M_APT_LO
+        lo0 = (await self._rd(A_TOTALS["APT_LO_TOTAL_FAILS"])) & M_TOTAL
         await self._drain()
         open_graded_window(TEST, self.logger)
         await self._pattern_window([Stuck(1)] * NUM_LANES, 3 * w, w)
         s1 = (await self._rd(A_HT_STATUS)) & M_HT_STATUS
         a1 = (await self._rd(A_TOTALS["APT_HI_TOTAL_FAILS"])) & M_TOTAL
+        lo1 = (await self._rd(A_TOTALS["APT_LO_TOTAL_FAILS"])) & M_TOTAL
         close_graded_window(self.logger)
+        self.chk.ctrl(
+            "HT-TOP-ONE-LO-OFF",
+            apt_lo == 0 and lo1 == lo0,
+            apt_lo_limit=apt_lo,
+            apt_lo_total_before=lo0,
+            apt_lo_total=lo1,
+        )
         # Precondition: four FIFO words written after the stuck windows are one
         # constant non-zero word.
         await self._drain()
@@ -857,4 +878,6 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             apt_hi_total=a1,
             ctrl_before=f"0x{s0:02x}",
             ctrl_zero_leg_apt_hi=apt_hi_zero if apt_hi_zero is not None else "na",
+            ctrl_apt_lo_limit=apt_lo,
+            ctrl_apt_lo_total=f"{lo0}_{lo1}",
         )
