@@ -365,6 +365,7 @@ one-line intent.
 |`smu_smc_gpio_spi_pad_ownership_test` |wrapper |With the SMU holding the SEP, GPIO pads 0-3, 8 and 9 follow the SEP SPI host and ignore DATA_CTRL until `lsio_disable` is set, and pads 4-7, 10 and 54 are not driven by the SPI host and answer to the register only once `lsio_disable` is set.
 |`smu_sep_external_irq_pins_test` |wrapper |Each of the 212 external SEP interrupt pins, driven one at a time, raises the PIC pending bit of its own source 44 to 255 and the matching core request-port bit, and clears them when it returns low.
 |`smu_sep_wdt_bite_to_smc_reset_test` |wrapper |A SEP watchdog bite programmed over the SEP debug system bus drops the SMC watchdog-term and warm resets while the primary and cold resets stay released and the request holds, and the cool-reset pin then drops the request and releases every net.
+|`smu_xtrig_ctm_self_loop_test` |wrapper |A CT_SRC mask that selects its own wire-OR CTP lane makes one external assertion re-trigger the lane request output, writing the mask to 0 ends it, and with the mask 0 the assertion produces no request-output rise.
 |===
 
 [[smu-test-procedures]]
@@ -7431,6 +7432,59 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-173-smu_xtrig_ctm_self_loop_test]]
+===== 173 `smu_xtrig_ctm_self_loop_test`
+
+*Source Module*: `smu_xtrig_ctm_self_loop_test` (`cocotb_wrapper/tests/`; the sequence `smu_xtrig_ctm_self_loop_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the `ocah_jtag_vip` primary TAP and the SMC JTAG2AXI bridge to the DTP CSR window (`tb_smc_jtag2axi_security_disable` read as open), reaching CONFIG, STATUS and STRETCH_MULT of CTP lane 3 and `CT_SRC[3].CONFIG_0` at the addresses of the generated cross-trigger headers (`cross_trigger_network_addr.h`, `cross_trigger_port_addr.h`, `cross_trigger_matrix_addr.h`) read through `seq_lib.smu_boundary_regs`; the bench pin `tb_xtrig_ctp_wire_ext_assert[3]` (`tb/tb_wrapper_top.sv`, deposited by the leaf for 2 `clk_smu_i` cycles and then released to the board pull), the read pins `tb_xtrig_ctp_wire_pull[3]`, `tb_xtrig_ctp_wire_group[3]`, `tb_xtrig_ctp_req_out_dout_en[3]`, `tb_xtrig_ctp_req_out_din[3]` and `tb_xtrig_ctp_ct_dst[3]`, and the clock `clk_smu_i`; no new probe (`tb_xtrig_ctp_ct_dst` is a read-only bench tap of the port's ct_dst output) and no firmware; run mode `sep_rtl`, `elaboration` firmware mode, `+expected_sep=1`, `+skip_fuse_sense` with the default SMC and SEP shadow preloads, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images
+
+*Objective*: a CT_SRC mask that selects its own wire-OR CTP lane makes one external assertion re-trigger the lane request output, and writing the mask to 0 ends the re-triggering; with the mask 0 the same assertion reaches the port without any request-output rise.
+
+*Test Coverage*:
+
+* Control: `CT_SRC[n].CONFIG_0.CT_DST_SELECT` all-zero disables that output (`hw/ip/cross_trigger/cross_trigger_matrix/regs/cross_trigger_matrix.rdl`), so with the mask 0 one external assertion makes `ct_dst[3]` rise once and `req_out_dout_en[3]` has zero rises over a fixed 32-cycle window (`CHK-XT-SELFLOOP-CONTROL`). The `ct_dst` rise is the positive control; its latency is measured and logged only.
+* Read-back: `CT_DST_SELECT` is software read-write, so `CT_SRC[3].CONFIG_0` reads back the written 1<<3 and 0, and CONFIG reads back the written RESET bit and 0 (`cross_trigger_matrix.rdl`, `cross_trigger_port.rdl`); every register write of the leaf is read back (`CHK-XT-SELFLOOP-READBACK`). The restore writes follow non-zero read-backs, so a value left at reset cannot pass.
+* Re-trigger: a wire-OR port receives the falling edge it drives and a mask selecting its own lane forwards it again (`hw/ip/cross_trigger/cross_trigger_network/doc/architecture.adoc`, wire-OR echo; `cross_trigger_matrix/doc/architecture.adoc`, "CTM routing stages"). The first request-output pulse is STRETCH_MULT+1 = 1 `clk_smu_i` cycle wide (`cross_trigger_port.rdl` STRETCH_MULT; `cross_trigger_port/doc/architecture.adoc`, "Pulse Stretcher Operation") and a second rise follows after that pulse ended within a bounded wait of 48 cycles from the assertion; the first-pulse width and the gap are logged (`CHK-XT-SELFLOOP-RETRIGGER`). If the lane does not re-trigger, the leaf fails.
+* Liveness: a request-output rise occurs in the last 32 cycles of a fixed 128-cycle window that starts at the first rise (`CHK-XT-SELFLOOP-ALIVE`); the total rise count is measured and logged only.
+* Stop: a background sampler reads the request output on every `clk_smu_i` edge from the first assertion of the re-trigger leg until the mask-clear write is issued, and a rise occurs in the last 12 samples before the issue, so the loop is running when the mask is cleared. After the mask is written 0 and read back 0 and the last pulse has ended within a bounded wait of 16 cycles, the request output has zero rises over a 64-cycle quiet window; the loop rises are the positive control (`CHK-XT-SELFLOOP-STOP`).
+* Measured and logged only: the S2 reads of CONFIG, STRETCH_MULT and `CT_SRC[3].CONFIG_0`, the total rise count of the loop window, the STATUS BUSY, REQ_OUT and ACK_OUT sample, and the request-output rises over 64 cycles after CONFIG.RESET is written on the running loop; only the presence of the logged values is compared (`CHK-XT-SELFLOOP-MEASURED`). The lane index, the assertion width, the window lengths and every wait bound are bench constants.
+* Out of scope: a loop guard or a bound on the loop length (not claimed), other lanes, point-to-point mode and the internal cross-trigger lanes.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for reset done, require the external assertions idle and every wire at its board pull, bring up the TAP, read IDCODE and require the JTAG2AXI gate open.
+. Read CONFIG, STRETCH_MULT and `CT_SRC[3].CONFIG_0` of lane 3 and log them.
+. With the mask 0, assert the shared wire of lane 3 for 2 cycles, wait for `ct_dst[3]` to rise within its bound, then sample 32 cycles and count the rises of `ct_dst[3]` and `req_out_dout_en[3]`.
+. Write `CT_SRC[3].CONFIG_0` = 1<<3 and read it back.
+. Assert the wire again, sample every cycle, and wait within the bound for a second request-output rise; record the first-pulse width and the gap.
+. Continue the sampling to 128 cycles from the first rise, count the rises, take the rises of the last 32 cycles and read STATUS of lane 3 once.
+. Write `CT_SRC[3].CONFIG_0` = 0 and read it back.
+. Wait within the bound for the request output to be low, then sample a 64-cycle quiet window and count the rises.
+. Rewrite the mask with read-back, assert the wire again, write CONFIG.RESET on lane 3 with read-back, sample 64 cycles and log the rises.
+. Write CONFIG and `CT_SRC[3].CONFIG_0` back to 0, reading each back.
+. Stamp PASS two `clk_smu_i` cycles later; check every wait finished inside its bound with its last state, the number of wait sites of each kind and the number of JTAG2AXI accesses, and the order of the steps.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-XT-SELFLOOP-READBACK` |every CT_SRC[n].CONFIG_0 and CONFIG write of the leaf reads back as written, the mask 1<<n and RESET set included, and the restore writes read 0
+|`CHK-XT-SELFLOOP-CONTROL` |with the mask 0 one external assertion makes ct_dst[n] rise once and the lane request-output enable has zero rises over the window
+|`CHK-XT-SELFLOOP-RETRIGGER` |with the mask 1<<n the first request-output pulse is STRETCH_MULT+1 = 1 clk_smu_i cycle wide and a second rise follows within the bounded wait; width and gap are logged
+|`CHK-XT-SELFLOOP-ALIVE` |a request-output rise occurs in the last sub-window of the fixed loop window; the total rise count is measured and logged only
+|`CHK-XT-SELFLOOP-STOP` |the request output is sampled every cycle from the first loop rise to the S7 write issue and rises within the last 12 cycles before it; the mask written 0 reads back 0, the last pulse ends within the bounded wait and the quiet window has zero rises
+|`CHK-XT-SELFLOOP-MEASURED` |the S2 precondition reads, the total rise count, the STATUS sample and the rises after CONFIG.RESET are measured and logged only; only their presence is compared
+|`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11; the PASS stamp is two clk_smu_i cycles after S10
+|`CHK-TIMEOUT-PATHS` |three bounded waits, one each for the ct_dst rise, the second rise and the last pulse end, and every JTAG2AXI poll, none expired, with the last state recorded
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7601,6 +7655,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, hosted |`BSR_EXTEST_TDO_MATCH`
 |`smu_sep_external_irq_pins_test` |F3 |hosted |`CHK-SEP-EXTIRQ-RISE`
 |`smu_sep_wdt_bite_to_smc_reset_test` |F1 |hosted |`CHK-SEP-WDT-SMC-ASSERT`, `CHK-SEP-WDT-SMC-HOLD`, `CHK-SEP-WDT-SMC-RELEASE`
+|`smu_xtrig_ctm_self_loop_test` |F6 |hosted |`CHK-XT-SELFLOOP-RETRIGGER`, `CHK-XT-SELFLOOP-ALIVE`, `CHK-XT-SELFLOOP-STOP`
 |===
 
 [[smu-out-and-wrapper]]

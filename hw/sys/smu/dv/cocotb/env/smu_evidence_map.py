@@ -1000,6 +1000,58 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "request fall 1, release 3), none expired, with the last state recorded",
         ),
     ],
+    "smu_xtrig_ctm_self_loop_test": [
+        (
+            "CHK-XT-SELFLOOP-READBACK",
+            "CHK-XT-SELFLOOP-READBACK",
+            "every CT_SRC[n].CONFIG_0 and CONFIG write of the leaf reads back as written, the "
+            "mask 1<<n and RESET set included, and the restore writes read 0",
+        ),
+        (
+            "CHK-XT-SELFLOOP-CONTROL",
+            "CHK-XT-SELFLOOP-CONTROL",
+            "with the mask 0 one external assertion makes ct_dst[n] rise once and the lane "
+            "request-output enable has zero rises over the window",
+        ),
+        (
+            "CHK-XT-SELFLOOP-RETRIGGER",
+            "CHK-XT-SELFLOOP-RETRIGGER",
+            "with the mask 1<<n the first request-output pulse is STRETCH_MULT+1 = 1 clk_smu_i "
+            "cycle wide and a second rise follows within the bounded wait; width and gap are "
+            "logged",
+        ),
+        (
+            "CHK-XT-SELFLOOP-ALIVE",
+            "CHK-XT-SELFLOOP-ALIVE",
+            "a request-output rise occurs in the last sub-window of the fixed loop window; the "
+            "total rise count is measured and logged only",
+        ),
+        (
+            "CHK-XT-SELFLOOP-STOP",
+            "CHK-XT-SELFLOOP-STOP",
+            "the request output is sampled every cycle from the first loop rise to the S7 write "
+            "issue and rises within the last 12 cycles before it; the mask written 0 reads back "
+            "0, the last pulse ends within the bounded wait and the quiet window has zero rises",
+        ),
+        (
+            "CHK-XT-SELFLOOP-MEASURED",
+            "CHK-XT-SELFLOOP-MEASURED",
+            "the S2 precondition reads, the total rise count, the STATUS sample and the rises "
+            "after CONFIG.RESET are measured and logged only; only their presence is compared",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11; "
+            "the PASS stamp is two clk_smu_i cycles after S10",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "three bounded waits, one each for the ct_dst rise, the second rise and the last "
+            "pulse end, and every JTAG2AXI poll, none expired, with the last state recorded",
+        ),
+    ],
     "smu_sep_sba_peripheral_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",
