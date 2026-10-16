@@ -95,6 +95,19 @@ first failing window ends at word 1 or later and the wrap that ends failing
 window n - 1 comes after word (n - 2) x W: CHK-PF-TRIP-COUNT, CHK-PF-TRIP-HOLD
 and CHK-PF-NOTRIP fail with ``reason=early:count_<n - 1>`` when o <= (n - 2) x W
 (``wrap_obs`` = [word of the read before, o], ``expect_wrap_word_gt``).
+Every stuck word extends the zero run of every lane, so the run is above
+REPETITION_LIMIT = 200 from word 201 (``entropy_source.adoc`` REPETITION_LIMIT:
+the test fails above the limit; ``architecture.adoc:124``). The window that holds
+word 201 fails and ends at or before word 200 + W; each later stuck window fails
+too (its run stays above the limit, and its lanes hold 0 ones, under the APT low
+limit W/4). So the wrap that ends failing window n - 1 comes at or before word
+(n - 1) x W + 200, and a read issued more than one word after it reads n - 1.
+The three checks fail with ``reason=late:count_<n - 1>`` when the last read that
+read below n - 1 was issued after word (n - 1) x W + 201 (``last_below_issue``,
+``expect_last_below_issue_max``). The word is taken at the issue of the read, so
+the read latency is outside the bound. A DUT that drops one failing window
+reads n - 1 one wrap later and fails this bound when the first failing window
+ends after word 201.
 Stuck0 stays until word o + W - W/8, then the break words and balanced. Window
 n holds at least 7W/8 >= 224 stuck words, a zero run above REPETITION_LIMIT =
 200 inside the window alone, so it fails. The break words end every
@@ -149,6 +162,7 @@ from seq_lib.sep_esrc_bringup_seq import (
     ESRC_MAIN_SM_STATUS,
 )
 from seq_lib.sep_esrc_clean_start_seq import (
+    CLEAN_REPETITION_LIMIT,
     LATENCY_FACTOR,
     RESET_WINDOW,
     SepEsrcCleanStart,
@@ -672,6 +686,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
 
         track(a0, f0, cnt0)
         o_prev = 0
+        issue_prev = 0
         o = None
         if cnt0 != 0:
             res["reason"] = "count_not_zero_before"
@@ -679,6 +694,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             bound = self._word_bound(target * win, win)
             t0 = self._now()
             while self._now() - t0 <= bound:
+                issue = poll_word()
                 cnt = (await self._rd(ESRC_ALERT_SUMMARY_FAIL_COUNTS)) & M_ANY
                 w = poll_word()
                 track(False, False, cnt)
@@ -686,6 +702,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                     o = w
                     break
                 o_prev = w
+                issue_prev = issue
             if o is None:
                 res["reason"] = f"timeout:count_{target - 1}"
                 res["bound"] = bound
@@ -693,9 +710,20 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             # n - 1 failing windows need more than (n - 2) x W stuck words (module
             # docstring), so a read of n - 1 at or before that word is an early count.
             early_max = (target - 2) * win
-            res.update(wrap_obs=[o_prev, o], expect_wrap_word_gt=early_max)
+            # Failing window n - 1 ends at or before word (n - 1) x W + REPETITION_LIMIT
+            # (module docstring), so a read issued more than one word after it that
+            # still reads below n - 1 is a late count.
+            late_max = (target - 1) * win + CLEAN_REPETITION_LIMIT + 1
+            res.update(
+                wrap_obs=[o_prev, o],
+                expect_wrap_word_gt=early_max,
+                last_below_issue=issue_prev,
+                expect_last_below_issue_max=late_max,
+            )
             if o <= early_max:
                 res["reason"] = f"early:count_{target - 1}"
+            elif issue_prev > late_max:
+                res["reason"] = f"late:count_{target - 1}"
             stop = o + win - win // TAIL_DIV
             bound = self._word_bound(win, win)
             t0 = self._now()
@@ -775,6 +803,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             pf=r["pf_final"],
             wrap_obs=r.get("wrap_obs"),
             expect_wrap_word_gt=r.get("expect_wrap_word_gt"),
+            last_below_issue=r.get("last_below_issue"),
+            expect_last_below_issue_max=r.get("expect_last_below_issue_max"),
             alert_bound_windows=LAT_WINDOWS,
         )
         o = r["o"]
@@ -1134,6 +1164,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             "test_fails_after_window_n": nt.get("test_fails_after_window_n"),
             "wrap_obs": nt.get("wrap_obs"),
             "expect_wrap_word_gt": nt.get("expect_wrap_word_gt"),
+            "last_below_issue": nt.get("last_below_issue"),
+            "expect_last_below_issue_max": nt.get("expect_last_below_issue_max"),
             "watch_words": nt.get("watch_words"),
             "expect_watch_words_min": LAT_WINDOWS * blk.win,
         }
