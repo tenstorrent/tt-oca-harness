@@ -311,6 +311,7 @@ single-byte writes.
 |`smc_dma_completion_status_test` |DONE_0 and STATUS_0 report reset, idle, no-data and held; the busy indication is measured.
 |`smc_dma_csr_config_test` |DMA descriptor registers and CONFIG hold, keep and alias their values.
 |`smc_dma_field_widths_test` |DMA fields drop bits above their effective widths and keep bits 55:32.
+|`smc_dma_invalid_descriptor_test` |ENABLED_ND-cleared and zero-length DMA commands move no data against a valid copy; their registers are measured.
 |`smc_dma_linear_copy_test` |Linear DMA copies match byte for byte across offsets and sizes.
 |`smc_zeroer_busy_outstanding_test` |Zeroer stays busy to the last B; over 32 bursts; AW/W in order.
 |`smc_zeroer_irq_test` |Zeroer completion pulse comes once, after the last B, only with INT_EN.
@@ -4996,6 +4997,112 @@ leave exactly the requested bytes zero, the egress job raises one pulse, the den
 untouched, every zeroer job ends with `STATUS` 0 and the DMA copy to the SRAM matches. The
 unmapped-target and denied-target response fields and the unmapped DMA copy results are reported
 only. Enrolled in: `all`, `dma`.
+
+'''''
+
+[[sec-528-smc_dma_invalid_descriptor_test]]
+===== 528 `smc_dma_invalid_descriptor_test`
+
+*Source Module*: `smc_dma_invalid_descriptor_test`
+
+*BFM / Model*: SEP_IN AXI sequencer (`env.sys_axi_agent`, no protocol VIP) for the DMA registers;
+the TB SYS_OUT output-fabric responder memory (`cfg.sys_out_mem`) preloaded and read back through
+its backdoor; TB input pin `tb_top.tb_output_axi_resp_hold` driven 0; passive probes
+`tb_output_axi_arvalid`, `tb_output_axi_arready`, `tb_output_axi_araddr`,
+`tb_output_axi_awvalid`, `tb_output_axi_awready`, `tb_output_axi_awaddr`, `tb_dma_busy` and bit 322
+of `tb_cpu_interrupts` sampled at every `clk_smc_i` rise; DMA registers `DONE_0`, `STATUS_0`,
+`NEXT_ID_0`, `CONFIG`, `NUM_REPETITIONS`, `SRC_ADDRESS`, `DST_ADDRESS`, `LENGTH`, `SRC_STRIDE`,
+`DST_STRIDE`
+
+*Objective*: A command with `CONFIG.ENABLED_ND` cleared and a zero-length command move no data and
+issue no AR or AW handshake, while the same descriptor with `ENABLED_ND` set and a nonzero length
+copies; the register-boundary results of the no-data commands are measured.
+
+*Test Coverage*:
+
+* Clearing `CONFIG.ENABLED_ND` forces a zero-repetition command that moves no data and still retires
+  its transfer ID (`dma.adoc`, Linear and Two-Dimensional Copies; `dma_ctrl.rdl`,
+  `CONFIG.ENABLED_ND`). `DONE_0` must differ from its pre-command value within 3000 reads, all 16
+  destination bytes must keep their 0xEE poison and no AR or AW handshake may occur between the
+  submit and the `DONE_0` change. Over the whole leaf the AR and AW counts must equal those of the
+  two copy legs, so no handshake occurs outside the copies.
+* The `NEXT_ID_0` value the submit returned, `DONE_0` before and after, `STATUS_0[9:0]` before and
+  after and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command are measured,
+  not compared.
+* Zero-length transfers are rejected (`dma.adoc`, Stream and Register Ownership; `dma_ctrl.rdl`,
+  `LENGTH`): a linear command (`NUM_REPETITIONS_LO` 1) and a 2D command (`NUM_REPETITIONS_LO` 4,
+  source stride 0x30, destination stride 0x28) with `LENGTH` 0 must leave 16 and 136 destination
+  bytes at 0xEE and produce no AR or AW handshake through the end of a 3000-read `DONE_0` poll.
+  Whether `DONE_0` changed, `STATUS_0[9:0]`, the returned `NEXT_ID_0` and the bit 322 pulse count
+  of both commands are measured, not compared.
+* Positive control: the leg-a descriptor with `ENABLED_ND` set and `LENGTH_LO` 16 is a copy
+  (`dma.adoc`, Linear and Two-Dimensional Copies): the destination equals the source after `DONE_0`
+  differs, with at least one AR and one AW handshake, so the no-data compares can fail on a copy.
+* A 32-bit read of `NEXT_ID_0` at 0x48 launches exactly one command: `DONE_0` holds its new value on
+  six further reads. A 64-bit read at 0x48 launches one command as well and counts the same AR and
+  AW handshakes (`dma.adoc`, Stream and Register Ownership; `dma_ctrl.rdl`, `NEXT_ID_0`).
+* The DMA interrupt is a one-cycle pulse on a falling edge of combined busy, raw CPU vector bit 322
+  (`dma.adoc`, Submission and Completion): the valid copy gives exactly one pulse, one `clk_smc_i`
+  cycle wide, up to one rise after `tb_dma_busy` reads low.
+
+*Test Procedure*:
+
+[arabic]
+. Require the nine `tb_top` probes to exist, release the R and B hold, program the inbound and
+  outbound filter windows to pass all, start the sampler of AR and AW handshakes, bit 322 and
+  `tb_dma_busy`, read `DONE_0` and wait two `clk_smc_i` cycles.
+. Write a 16-byte source pattern and 16 bytes of 0xEE at the destination, program `CONFIG` 0, the
+  addresses, `LENGTH_LO` 16, nonzero strides and one repetition, read `DONE_0` and `STATUS_0`, read
+  `NEXT_ID_0` (32-bit) to submit, poll `DONE_0` until it differs (3000 reads), read `STATUS_0`,
+  take the handshake counts and bit 322 pulses, and read the destination.
+. Re-poison the destination, program `ENABLED_ND` set with `LENGTH` 0 and one repetition, submit,
+  poll `DONE_0` for 3000 reads or until it differs, and take the status, handshake, pulse and
+  destination readings.
+. Preload 0xEE over the 136-byte destination span, program `LENGTH` 0 with four repetitions and
+  strides 0x30 and 0x28, and repeat the readings of step 3.
+. Re-poison the destination, program the leg-a descriptor with `ENABLED_ND` set, submit with a
+  32-bit read of `NEXT_ID_0`, poll `DONE_0` until it differs, read `DONE_0` six more times, wait for
+  `tb_dma_busy` low and the following rise, then read the destination and take the counts and
+  the bit 322 pulses.
+. Re-poison the destination, program the same descriptor, submit with a 64-bit read at 0x48, poll
+  `DONE_0`, read it six more times and read the destination.
+. Wait two `clk_smc_i` cycles after step 6, require the step stamps to strictly increase and the
+  step order to hold, and require the AR and AW counts accumulated since step 1 over the whole leaf
+  to equal the sums of the two copy legs' counts, so any extra handshake fails; record the
+  non-vacuity checker.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DMA-ND-CLEAR-NO-DATA` |After the `ENABLED_ND`-cleared command retires, all 16 destination
+  bytes read 0xEE and no AR or AW handshake occurs between the submit and the `DONE_0` change
+|`CHK-DMA-ND-CLEAR-DONE-ADVANCES` |`DONE_0` differs from its pre-command value within 3000 reads
+  after the `ENABLED_ND`-cleared command
+|`CHK-DMA-ND-CLEAR-MEASURED` |The returned `NEXT_ID_0`, `DONE_0`, `STATUS_0[9:0]` and bit 322 pulse
+  readings of the `ENABLED_ND`-cleared command are measured and printed without comparing them
+|`CHK-DMA-ZEROLEN-NO-DATA` |The linear and the 2D zero-length commands leave their 16 and 136
+  destination bytes at 0xEE with no AR or AW handshake through the end of the poll
+|`CHK-DMA-ZEROLEN-MEASURED` |The returned `NEXT_ID_0`, `DONE_0` change, `STATUS_0[9:0]` and bit 322
+  pulse readings of both zero-length commands are measured and printed without comparing them
+|`CHK-DMA-COPY-CONTROL` |The `ENABLED_ND`-set copy of 16 bytes equals its source after `DONE_0`
+  differs, with at least one AR and one AW handshake
+|`CHK-DMA-SUBMIT-32BIT` |The 32-bit read of `NEXT_ID_0` launches one command: `DONE_0` changes and
+  holds on six further reads and the destination equals the source
+|`CHK-DMA-SUBMIT-64BIT` |The 64-bit read at 0x48 launches one command: the destination equals the
+  source, `DONE_0` changes and holds, and the AR and AW counts equal those of the 32-bit copy
+|`CHK-DMA-IRQ-PULSE-COPY` |The valid copy gives exactly one bit 322 pulse, one `clk_smc_i` cycle
+  wide, ending low one rise after `tb_dma_busy` reads low
+|`CHK-NONVAC` |The seven step stamps are strictly increasing in step order and the AR and AW counts
+  accumulated since setup equal the sums of the two copy legs' counts; any extra handshake fails
+|===
+
+*Pass Criteria*: all ten checkers hold and every sequence assert holds: the `ENABLED_ND`-cleared
+command retires its ID and both zero-length commands leave the destination at 0xEE with no bus
+traffic, the valid copy moves its 16 bytes through both a 32-bit and a 64-bit submit with equal
+handshake counts, and the copy raises one one-cycle interrupt pulse. The register-boundary
+results of the no-data commands are measured, not compared. Enrolled in: `all`, `hosted`.
 
 ==== FABRIC
 
@@ -27461,6 +27568,8 @@ delta bits and the `IER` bits above 4 are recorded and are not part of the claim
 `all`.
 
 '''''
+
+
 
 
 ==== OCCP
