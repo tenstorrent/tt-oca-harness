@@ -553,9 +553,12 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         hi = c.addr_hi[side]
         await self._cold_reset()
         await self._base_config(c.hi_size // 4)
+        # Graded: the non-zero ADDR_HI copy (sep_dma_config_fault_cg.cp_addr_hi_nonzero).
+        open_graded_window(TEST, self.logger)
         st, ended, ecode, foot = await self._hi_copy(
             hi if side == "src" else 0, hi if side == "dst" else 0
         )
+        close_graded_window(self.logger)
         sent = _word(c.sentinel)
         moved = sum(1 for w in foot if w != sent)
         self.logger.info(

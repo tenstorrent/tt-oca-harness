@@ -54,6 +54,8 @@ localparam int unsigned FcovOwnSepSpiOtDmaRxTest = 417;
 localparam int unsigned FcovOwnSepSpiPadOeRulesTest = 418;
 localparam int unsigned FcovOwnSepSpiOtFlashCmdRandTest = 419;
 localparam int unsigned FcovOwnSepSpiOtDmaTxTest = 420;
+localparam int unsigned FcovOwnSepDmaZeroFillContinuationTest = 421;
+localparam int unsigned FcovOwnSepDmaZeroTest = 422;
 
 // Memory, boot, reset, WDT and clock. SepTcmDmaApertureEccTest also owns
 // sep_fabric_dedicated_port_cg.cp_tcm_dma_dir_range.

@@ -87,6 +87,7 @@ legal cells a named `all`-group test already walks.
 |Lifecycle |`sep_lc_state_cg`, `sep_feat_ctrl_cg`, `sep_sec_dis_boot_cg`
 |Mailbox / PIC |`sep_mailbox_pic_cg`, `sep_mailbox_channel_cg`
 |WDT |`sep_wdt_bark_cg`
+|CPU store bus error |`sep_store_bus_error_cg`
 |Warm / cold scratch |`sep_scratch_reset_cg`
 |eFuse program / lock |`sep_efuse_program_lock_cg`
 |Lifecycle transition |`sep_lc_transition_cg`
@@ -876,6 +877,26 @@ threshold with the watchdog disabled. A run whose WDT never barks leaves these
 cells empty. Bite, wakeup cause, and
 `REGWEN` lock are Phase 2.
 
+==== `sep_store_bus_error_cg`
+
+*Description*: A CPU store that ends with a bus error reaches the store-bus-error NMI.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|`cp_store_err_nmi` |A CPU LSU store whose B response is SLVERR, and one whose B response is DECERR, each followed by a taken NMI whose `mcause` holds the store-bus-error cause 0xF000_0000 = 2 bins
+|===
+
+The sampler reads the store response on the CPU LSU AXI port and the NMI take
+and `mcause` in the core's trap unit. A cell needs the NMI within an
+environment-chosen window after the error response, with the watchdog bark
+interrupt (the other NMI source) low at the take, and `mcause` is read one
+clock after the take. Spec: the VeeR EL2 Programmer's Reference Manual, linked
+from `hw/sys/sep/doc/cpu.adoc` (non-maskable interrupt `mcause` values);
+`hw/sys/sep/doc/entropy_pool.adoc` (a write ends with SLVERR). An OKAY store
+raises no NMI; that absence is graded by CHK-STORE-OK-QUIET and is not a bin,
+because a cell for it would fill on every OKAY store of every leaf.
+
 ==== `sep_scratch_reset_cg`
 
 *Description*: Warm scratch clears on warm reset; cold scratch retains.
@@ -1063,6 +1084,7 @@ human. Other members may fill a group in passing.
 |`sep_mailbox_channel_cg` |`sep_mailbox_plic_test` (it runs one channel at a time, all eight)
 |`sep_wdt_bark_cg` |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test` (threshold, bark and NMI). `sep_wdt_aon_timer_internals_test` writes the threshold but never lets the watchdog bark, so it does not fill `cp_thold`
 |`sep_scratch_reset_cg` |`sep_warm_cold_reset_scratch_test`
+|`sep_store_bus_error_cg` |`sep_reset_wdt_sanity_test` (its DECERR and SLVERR stores, CHK-STORE-ERR-NMI)
 |===
 
 Per-test detail is in <<sep-dv-verification-plan,SEP_VPLAN>>.
@@ -1091,7 +1113,7 @@ the reason.
 |`sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`, `sep_irq_ip_to_aggregator_test`, `sep_irq_simultaneous_fanin_no_alias_test`, `sep_efuse_token_match_fault_pic_test`, `sep_efuse_set_only_monotonicity_test`, `sep_efuse_digest_latch_fault_test`, `sep_locked_field_access_irq_path_test`, `sep_efuse_secure_tm_write_lock_test`, `sep_efuse_km_public_id_test` |Phase 2: FIPS lock, alerts, the 42-source map, token faults, set-only walks, lock refusals and the KM OTP readout are named Phase 2 groups
 |`sep_periph_bus_err_misaligned_test`, `sep_km_rom_write_err_test`, `sep_km_otp_shim_unreachable_test`, `sep_km_vrom_decerr_test`, `sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test`, `sep_unmapped_access_policy_test` |Error paths (Phase 2 `sep_aperture_reserved_access_cg` and the KM error groups)
 |`sep_sram_burst_type_test` |FIXED and WRAP bursts: the data bins score single-beat transactions only, by the pairing rule in <<sep-fcov-collection>>, and no Phase 2 group names burst type
-|`sep_fabric_outbound_remap_filter_walk_test`, `sep_fabric_inbound_filter_window_walk_test`, `sep_fabric_local_alias_offset_walk_test`, `sep_fabric_remap_filter_csr_bank_test`, `sep_fabric_output_remap_datapath_proxy_test`, `sep_fabric_local_alias_datapath_test` |Fill the bank cells of `cp_block`. The per-entry winner walk is Phase 2 (`sep_filter_match_cg`, `sep_remap_alias_cg`, `sep_remap_output_offset_cg`)
+|`sep_fabric_outbound_remap_filter_walk_test`, `sep_fabric_inbound_filter_window_walk_test`, `sep_fabric_local_alias_offset_walk_test`, `sep_fabric_remap_filter_csr_bank_test`, `sep_fabric_output_remap_datapath_proxy_test`, `sep_fabric_local_alias_datapath_test` |Fill the bank cells of `cp_block`. The per-entry winner walk is Phase 2 (`sep_filter_match_cg`, `sep_remap_alias_cg`, `sep_remap_output_offset_cg`). The remap-hit debug lane `ext_debug_bus_o[207:192]` that `sep_fabric_local_alias_datapath_test` reads (CHK-DBG-AR) has no bin: no document gives its field positions, so the check compares two lane values and names no field a bin could hold
 |`sep_km_key_policy_vault_test`, `sep_km_crc_pcpi_kat_test`, `sep_km_kpv_scrambler_test` |The behaviour is on the KM CPU bus, which the sampler does not see (Phase 2 `sep_km_kpv_slot_cg`)
 |`sep_reg_bit_bash_rand_test`, `sep_clock_gate_control_test` |Not meaningful: per-register bins restate the RDL that the sweep checks, and the RTL does not consume `CLOCK_GATE_CTRL`. Both fill `sep_axi_decode_cg` in passing
 |`sep_drbg_axil_adapter_port_arbitration_test` |Not meaningful: it drives a TB-owned adapter instance outside the DUT
@@ -1498,7 +1520,7 @@ own contract has no Phase 1 bin is listed under <<sep-fcov-owners>>.
 |Fabric and remap |`sep_axi_decode_cg`, `sep_inbound_filter_allow_cg`
 |Mailbox, IRQ, PIC |`sep_mailbox_pic_cg`, `sep_mbox_rand_cg`, `sep_spi_flash_cg`, `sep_spi_host_rand_cg`
 |SPI and DMA |`sep_dma_copy_hash_cg`, `sep_spi_flash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg`
-|Memory, boot, reset, WDT, clock |`sep_sram_access_cg`, `sep_boot_rom_cg`, `sep_wdt_bark_cg`, `sep_scratch_reset_cg`
+|Memory, boot, reset, WDT, clock |`sep_sram_access_cg`, `sep_boot_rom_cg`, `sep_wdt_bark_cg`, `sep_store_bus_error_cg`, `sep_scratch_reset_cg`
 |eFuse, lifecycle, SEC_DIS, locked-field |`sep_efuse_program_lock_cg`, `sep_efuse_fail_closed_cg`, `sep_lc_transition_cg`, `sep_feat_ctrl_cg`, `sep_sec_dis_boot_cg`, `sep_lc_demote_cg`
 |Key Manager vault |`sep_km_generate_cg`, `sep_km_command_sideload_cg`, `sep_km_host_cmd_cg`, `sep_km_wipe_cg`, `sep_km_sw_reset_cg`, `sep_crypto_isolate_cg`, `sep_mailbox_pic_cg`
 |===
@@ -2545,6 +2567,7 @@ Reach values (<<sep-fcov-parked>>). "executable": the owner fills every bin as w
 |`cp_smc_cfg_class_dir` |Configuration A (0x4000_0000/0x0100_0000) x class {`first_word`, `last_word`} x direction, and configuration B (0x9000_0000/0x0100_0000) x class {`first_word`, `last_word`} x direction. 8 cells, all with stimulus. Seed-dependent (rule 6): the owner draws one configuration per seed, so the cells of a configuration fill only on the seeds that draw it, and the coverpoint is graded on a merge. The word above the top has no bin here: the owner requires no `smc_req` handshake for it, and `sil_smc_outside_aperture` holds it. (`sep_cpu_ctrl.adoc`, `SMC_FUSE_SENSE_STATUS`; `fabric.adoc`, Fabric Topology) |- |`smc_aperture`; `smc_req` handshake; `lsu_req` address |`sep_fabric_smc_route_test` |executable
 |`cp_smc_readiness` |`request_after_fuse_sense_done`: an `smc_req` handshake while `smc_fuse_sense_done_i` is 1. (`sep_cpu_ctrl.adoc`, `SMC_FUSE_SENSE_STATUS`) |- |`smc_fuse_done`; `smc_req` |`sep_fabric_smc_route_test` |executable
 |`cp_out_attr` |Route {`smu`, `ap`, `stee`} x `prot[1]` {0, 1}, with AxPROT equal to the issued value; route {`ap`, `stee`} with AxUSER 0 while the LSU drives a non-zero AxUSER; route {`smu`} with AxUSER equal to the issued non-zero value; DMA initiator on {`smu`} with AxUSER 0. (`fabric.adoc`, Transaction Routing) |- |`out_req` prot, user; `lsu_req` prot; `dma_req` for the DMA cells |`sep_fabric_outbound_route_attr_test`, `sep_fabric_dma_endpoint_matrix_test` |executable
+|`cp_out_hibit` |{`ap` with output address bit 55 set, `stee` with bit 55 clear} x `prot[1]` {0, 1} x {read, write} = 8 bins, each with AxPROT equal to the issued value: bit 55 of the output address carries no security attribute. The `stee` cells are the control. (`fabric.adoc`, Transaction Routing) |- |`out_req` address bit 55 and prot; `lsu_req` prot |`sep_fabric_outbound_route_attr_test` (CHK-OUT-HIBIT) |executable
 |===
 
 ===== `sep_remap_output_offset_cg`
@@ -2572,7 +2595,8 @@ Reach values (<<sep-fcov-parked>>). "executable": the owner fills every bin as w
 |`cp_cacheable_override_dir` |On a hit: `cacheable` 0xF over an incoming AxCACHE of 0x0, and `cacheable` 0x0 over an incoming AxCACHE of 0xF, each x direction. On a miss: the incoming AxCACHE is kept x direction. 6 cells. The field is 4 bits wide and replaces all four AxCACHE bits. (`alias_remap.adoc`, `region_attrs`) |- |`alias_remap` cacheable; AxCACHE at the alias remap input and output (`alias_out`) |`sep_fabric_alias_remap_attr_rand_test` |executable
 |`cp_valid_gate` |`valid` 0 x direction, with the address and AxCACHE unchanged; `valid` 0 with `cacheable` non-zero. 3 cells. (`fabric.adoc`, Address Remapping; `alias_remap.adoc`, `region_attrs`) |- |`alias_remap` valid, cacheable; `alias_out` input and output cache and address |`sep_fabric_alias_remap_attr_rand_test` |executable. The `cacheable` cell also needs `valid_clear_cacheable_f`
 |`cp_offset_expansion` |`offset` carries into bit 32 x validity {`valid`, `invalid`} x direction. 4 cells. (`alias_remap.adoc`, `region_attrs`) |- |`alias_remap` offset; `alias_out` address |`sep_fabric_alias_remap_attr_rand_test` |executable
-|`cp_local_alias_twin` |Class {`scratch`, `aes_word`, `sys_csr`, `spi_word`, `esrc_word`, `sram_start`, `sram_end`} x form {`direct`, `alias`}, and the DMA class `ext_top` x form {`alias`}. The `alias` form needs the `lsu_req_raw` address in 0xD000_0000-0xFFFF_FFFF and the `lsu_req` address equal to 0x1000_0000 plus the offset. The DMA alias cells (source or destination alias to SRAM, destination alias to ext top) take the form from `dma_req_raw` (an address in 0xD000_0000-0xFFFF_FFFF) and the translated address from `dma_req`. (`fabric.adoc`, Fabric Topology; `memory_map.adoc`, Memory Map; `sep_cpu_ctrl.adoc`, `SEP_LOCAL_BASE_ADDR`) |- |`lsu_req_raw`, `lsu_req`, `dma_req_raw`, `dma_req`, `local_base` |`sep_cpu_lsu_alias_window_twin_test` (LSU classes), `sep_fabric_dma_endpoint_matrix_test` (DMA cells) |executable. The LSU cells also need `alias_all_classes`
+|`cp_local_alias_twin` |Class {`scratch`, `aes_word`, `sys_csr`, `spi_word`, `esrc_word`, `sram_start`, `sram_end`} x form {`direct`, `alias`}, and the DMA class `ext_top` x form {`alias`}. The `alias` form needs the `lsu_req_raw` address at or above `SEP_LOCAL_BASE_ADDR` (reset 0xD000_0000) and the `lsu_req` address equal to 0x1000_0000 plus the offset from that base. The DMA alias cells (source or destination alias to SRAM, destination alias to ext top) take the form from `dma_req_raw` (an address in the same window) and the translated address from `dma_req`. (`fabric.adoc`, Fabric Topology; `memory_map.adoc`, Memory Map; `sep_cpu_ctrl.adoc`, `SEP_LOCAL_BASE_ADDR`) |- |`lsu_req_raw`, `lsu_req`, `dma_req_raw`, `dma_req`, `local_base` |`sep_cpu_lsu_alias_window_twin_test` (LSU classes), `sep_fabric_dma_endpoint_matrix_test` (DMA cells) |executable. The LSU cells also need `alias_all_classes`
+|`cp_local_alias_moved` |{`scratch_alias_rd`, `scratch_alias_wr`, `spi_word_alias_rd`}: an `alias`-form CPU LSU access, as `cp_local_alias_twin` defines it, while `SEP_LOCAL_BASE_ADDR` holds a value other than its reset value, so the window follows the programmed base. (`sep_cpu_ctrl.adoc`, `SEP_LOCAL_BASE_ADDR`; `memory_map.adoc`, Memory Map) |- |`lsu_req_raw`, `lsu_req`, `local_base` |`sep_cpu_lsu_alias_window_twin_test` (its moved-base leg, CHK-TWIN-MOVED) |executable
 |===
 
 ===== `sep_filter_match_cg`
@@ -2765,7 +2789,7 @@ No owning test of this section grades the bins below. Each row states why.
 |`sep_fabric_outbound_route_cg` |Two outbound initiators in flight |The spec states no concurrency or forward-progress rule for two outbound initiators.
 |`sep_fabric_outbound_route_cg` |AxUSER of the CPU master beat on the SMC or outbound port |The value of `SepSourceId` is not stated.
 |`sep_fabric_inbound_aperture_cg` |Key Manager window burst; burst length classes; burst starts on past-extent words and reserved rows |`sep_fabric_deadspace_decode_test` grades bursts into the Key Manager window and every crypto window. The spec states the rule whatever the length and address, so length is a value only. A past-extent or reserved-row start answers DECERR to a single beat as well, so the burst rule cannot show there.
-|`sep_remap_output_offset_cg` |Offset high bits {zero, bit 32, bit 55}; low-bit pass-through with offset bits [18:0] non-zero; seams; out-of-region class |The offset is a seeded draw. `sep_fabric_outbound_remap_filter_walk_test` grades the low-bit pass-through with a random offset, and the open walk tests grade the seams and the entry walk.
+|`sep_remap_output_offset_cg` |Offset high bits {zero, bit 32}; low-bit pass-through with offset bits [18:0] non-zero; seams; out-of-region class |The offset is a seeded draw. Bit 55 is a bin of `sep_fabric_outbound_route_cg.cp_out_hibit`: `sep_fabric_outbound_route_attr_test` sets it on every seed. `sep_fabric_outbound_remap_filter_walk_test` grades the low-bit pass-through with a random offset, and the open walk tests grade the seams and the entry walk.
 |`sep_remap_alias_cg` |Entry index; degenerate, inverted and overlapping entries; offset overflow past bit 55; reserved low bits; low-bit preservation; same-page consistency |The rejection list of `sep_fabric_alias_remap_attr_rand_test` excludes them.
 |`sep_filter_match_cg` |`group_id` no-effect cells |The specification states that a transaction with group ID 0 matches whatever the field holds, and every transaction of this bench carries group ID 0, so no check can fail.
 |`sep_filter_match_cg` |Cross-channel divergent verdict with both requests in flight |The owner sends the read and the write one after the other.
@@ -3927,6 +3951,7 @@ they add or reuse.
 |Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
 |`cp_size_zero_kind` |`total_zero`, `chunk_zero`, `both_zero` (scores only if `ERROR_CODE.SIZE_ERROR` rises) |Latched `TOTAL_DATA_SIZE` and `CHUNK_DATA_SIZE`, `dma_core.u_secure_dma_reg.error_code_size_error_qs`. At GO and at the `SIZE_ERROR` rise |`sep_dma_irq_error_lock_rand_test` |executable |`secure_dma.adoc`, `ERROR_CODE.SIZE_ERROR`
 |`cp_hash_width_fault` |`enc0`, `enc1` with hashing on (encoding 2 is the 4-byte value, `dma.hjson`; encoding 3 is graded by the open test `sep_dma_basic_test`), each raising `SIZE_ERROR` |Latched `CONTROL.opcode`, `TRANSFER_WIDTH`, `dma_core.u_secure_dma_reg.error_code_size_error_qs`. At GO and at the `SIZE_ERROR` rise |`sep_dma_irq_error_lock_rand_test` |executable |`secure_dma.adoc`, `TRANSFER_WIDTH`, `ERROR_CODE.SIZE_ERROR`; `dma.hjson`, `TRANSFER_WIDTH`
+|`cp_addr_hi_nonzero` |`src_hi_no_lo_write`, `dst_hi_no_lo_write`: an initial copy GO with exactly one of `SRC_ADDR_HI` and `DST_ADDR_HI` non-zero that ends with DONE or ERROR and no DMA write address in `DST_ADDR_LO` to `DST_ADDR_LO` + `TOTAL_DATA_SIZE`. Illegal: a write address in that window (`lo_write`). `ERROR` and `ERROR_CODE` are not an axis: no document states them for this case |`SRC_ADDR_HI`, `DST_ADDR_HI`, `DST_ADDR_LO` and `TOTAL_DATA_SIZE` at GO, the DMA write address before the DMA window remap, `STATUS.DONE` and `STATUS.ERROR`. From the AW of the `CONTROL` write that sets GO with `STATUS.BUSY` low (the copy can end before that write's B) to the first DONE or ERROR rise |`sep_dma_irq_error_lock_rand_test` (leg L4, CHK-DMA-HI-ADDR) |executable |`dma.adoc`, SEP secure DMA integration (the DMA master interface has 32-bit addresses)
 |===
 
 ====== `sep_dma_error_terminal_cg`
@@ -3947,7 +3972,7 @@ they add or reuse.
 
 *Class*: executable.
 
-*Tool*: VCS. *Crosses*: `x_mode_width`. *Illegal bins*: none.
+*Tool*: VCS. *Crosses*: `x_mode_width`. *Illegal bins*: `cp_cont_outcome.write_outside_range`.
 
 [cols="2,4,4,3,1,2",options="header"]
 |===
@@ -3956,6 +3981,8 @@ they add or reuse.
 |`cp_width` |`w1`, `w2`, `w4` |Latched `TRANSFER_WIDTH`. Same sample point |`sep_dma_zero_fill_rand_test` |executable |`dma.adoc`, Zero Fill; `secure_dma.adoc`, `TRANSFER_WIDTH`
 |`x_mode_width` |`cp_dst_mode` x `cp_width`; 9 cells |Same sample point |`sep_dma_zero_fill_rand_test` |executable |`dma.adoc`, Zero Fill
 |`cp_outcome` |`done`, `window_error` (`DST_ADDR_ERROR`), `opcode_error` (handshake mode), `aborted` |`dma_core.reg2hw.status.done.q`, `dma_core.reg2hw.status.error.q`, `dma_err_code_i`, `dma_aborted_i`. The first rise of `DONE`, `ERROR` or `ABORTED` after a `GO` write with `OPCODE` 4 and `INITIAL_TRANSFER` 1 |`sep_dma_zero_fill_rand_test` |executable |`dma.adoc`, Zero Fill; `secure_dma.adoc`, `STATUS`, `ERROR_CODE`
+|`cp_cont_outcome` |`no_write_past_limit` (handshake off, range unlocked: no write outside `ENABLED_MEMORY_RANGE_BASE` to `ENABLED_MEMORY_RANGE_LIMIT`), `handshake_opcode_error` (`HARDWARE_HANDSHAKE_ENABLE` set at the continuation: `ERROR_CODE` is `OPCODE_ERROR` alone), `locked_dst_addr_error` (range locked by `RANGE_REGWEN`: `ERROR_CODE` is `DST_ADDR_ERROR` alone). Illegal: a write outside the range, or an end that matches no cell (`write_outside_range`) |`CONTROL` write decode, `RANGE_REGWEN`, the range registers, the DMA write address before the DMA window remap, `STATUS.DONE`, `STATUS.ERROR`, `dma_err_code_i`. From a `GO` write with `INITIAL_TRANSFER` 0 after a zero-fill start to the first `DONE` or `ERROR` rise |`sep_dma_zero_fill_continuation_test` (CHK-DMA-ZERO-CONT-LIMIT, -HS, -LOCK) |executable |`dma.adoc`, Configuration Taken at Each Start; Zero Fill
+|`cp_tcm_outcome` |`dccm_done`, `iccm_done` (4-byte fill into the TCM ends with `DONE`), `iccm_w2_bus_error` (2-byte fill into ICCM ends with `ERROR_CODE.BUS_ERROR`) |`DST_ADDR_LO` and `TRANSFER_WIDTH` at the initial `GO` of a zero fill, `STATUS.DONE`, `STATUS.ERROR`, `dma_err_code_i`. The first `DONE` or `ERROR` rise after that `GO` |`sep_dma_zero_test` (CHK-ZERO-DCCM, CHK-ZERO-ICCM, CHK-ZERO-TCM-NARROW) |executable |`dma.adoc`, Zero Fill (ICCM and DCCM take only whole 32-bit words)
 |===
 
 ====== `sep_dma_containment_cg`
@@ -4553,6 +4580,7 @@ the group: the test writes unique non-zero random values.
 |`cp_never_isolated_port` |port {external TRNG window (the read completes with any response except SLVERR with data 0x1501_A7ED), Key Manager mailbox (OKAY), lifecycle block (OKAY), entropy pool `STATUS` (OKAY)} x any approved isolate-complete bit high (HMAC, KMAC, Adams Bridge, TRNG paths) = 4 cells. Spec: `doc/reset_controller.adoc`, Isolation and Reset Sequencing; `regs/memory_map.adoc` (row External TRNG) |A refusal of the isolated kind (SLVERR with data 0x1501_A7ED) on these ports. An isolate-complete bit that belongs to none of the table sets |LSU bus response and read data, the approved isolate-complete probes |`sep_sw_reset_isolation_matrix_test` |executable
 |`cp_pulse_vs_sequence` |pulse class {`wdt_rst_ni`, `dbg_rstb_i`} x position against the `SW_RESET_N` assert sequence of the domain D of an overlap run (`ip_rst_n[D]`, started by a write that clears the field of D; a pulse while the HMAC hold keeps `ip_rst_n[3]` low is not a cell) {falls shortly before the write (an environment-chosen band); falls between the write and the `ip_rst_n` fall; falls while `ip_rst_n` = 0 or shortly after its fall (the same band)} = 6 cells. The domain of the sequence is a bench draw from {OTBN, AES, KMAC, Adams Bridge} and is not a bin axis. A `dbg_rstb_i` cell records the stimulus position only; the VPLAN check CHK-OVL takes credit for a `dbg_rstb_i` run only when CHK-DBG-SYNC passes in the same leaf. Spec: `doc/reset_controller.adoc`, Isolation and Reset Sequencing |The sequence is lost: the `ip_rst_n` fall does not follow within an environment timeout |`wdt_rst_ni`, `dbg_rstb_i`, `ip_rst_n[6:1]`, the LSU write data of `SW_RESET_N`, the isolate-complete probes of the KMAC and Adams Bridge paths, the OTBN and AES bits of `SEP_CORE.sep_crypto_isolated` (added tap) |`sep_cpu_reset_retention_test` |executable
 |`cp_ovrd_no_iso` |domain {OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge} x override with value 0 asserted while the software bit of the domain is 1: the isolate-complete bits of the domain stay 0 from the override edge to its release = 6 bins. The software assert of each domain (the control step of the owner) raises the isolate-complete bits. It is the control of CHK-OVR-SKIP-ISO and is not a bin. Spec: `doc/reset_controller.adoc`, Isolation and Reset Sequencing; `doc/clk_rst.adoc`, Reset Architecture |an isolate-complete bit rises under an override alone |the isolate-complete probes (HMAC, KMAC, Adams Bridge, TRNG approved; OTBN and AES added taps), `jtag_sep_reset_ctrl_drive.ovrd` (the `tb_top.sv` net after the pin-or-TDR mux), the LSU write data of `SW_RESET_N` |`sep_ip_reset_override_matrix_test` |executable
+|`cp_tap_reset_sense_done` |route {`jtag_trst_ni` reset, Test-Logic-Reset entry with `jtag_trst_ni` high} x `sep_fuse_sense_done_o` stays 1 = 2 bins. A cell samples a TAP reset of the owner that starts with real fuse sense (no `+skip_fuse_sense`) and the port at 1. The span is the `jtag_trst_ni` low pulse, or the Test-Logic-Reset entry, and an environment-chosen window after it; a cold reset in the span drops the span. Spec: `doc/reset_controller.adoc`, SEP Reset Controller (`jtag_trst_ni` resets the EL2 JTAG TAP); `doc/clk_rst.adoc`, table SEP reset boundaries (the cold reset resets the OTP controller) |`sep_fuse_sense_done_o` reads other than 1 in the span |`jtag_trst_ni`, `jtag_tck_i`, `jtag_tms_i` (the TAP state tracker), `sep_fuse_sense_done_o` |`sep_cpu_reset_entry_test`, entry `sep_cpu_reset_entry_test_real_sense` (CHK-TRST-SCOPE) |executable. The `+skip_fuse_sense` entry forces the port and fills no cell. The PTAP TRST leg of `sep_ip_reset_override_matrix_test` (CHK-OVR-TRST) runs with the graded window closed and fills no cell
 |===
 
 [[sep-fcov-p2-crypto-reset]]
@@ -4705,8 +4733,8 @@ owner reaches them.
 |Primary clock state, ratio class, stopped-domain class, `entropy_rosc_sample_clk_i`, the `clk_wdt_i` phase quartile at the completion of a watchdog-window access
 |No owning test. The `entropy_rosc_sample_clk_i` cell belongs to the crypto and entropy groups. A leaf sets only the issue time of a watchdog-window access, and the specification states no relation between the issue time and the `clk_i` edge that completes a `clk_wdt_i` crossing, so no stimulus places that edge in a chosen quartile.
 |`sep_boot_milestone_cg`
-|Outbound SMC access safety cells, BL0 strap read ordering, OTBN verifier load, BL1 transfer stage, the milestone list (BL0 firmware is out of scope), the `SEP_FUSE_SENSE_STATUS` = 0 cell, the halt cells (`mpc_reset_run_req_i` = 0) of the run request, the `lc_state_o` value after sense, the stability of `sep_fuse_sense_done_o` after its rise, `cp_sense_surface` (the `sep_fuse_sense_done_o` port before and after sense, and `SEP_FUSE_SENSE_STATUS` at 1)
-|No owning test, or out of scope. The rise of the port and the first `SEP_FUSE_SENSE_STATUS` read are graded by `sep_efuse_sense_test` and `sep_efuse_image_test` (open); `sep_boot_release_terms_test` reads them as controls and logs its status polls as `OBS-SENSE-POLL`. The specification does not state that the port stays high after the rise, so no bin grades it. The port table gives "run/halt selection after reset" and no value-to-action map, so the halt cells have no stated result. The port table gives `lc_state_o` as differentially encoded and states no layout.
+|Outbound SMC access safety cells, BL0 strap read ordering, OTBN verifier load, BL1 transfer stage, the milestone list (BL0 firmware is out of scope), the `SEP_FUSE_SENSE_STATUS` = 0 cell, the halt cells (`mpc_reset_run_req_i` = 0) of the run request, the `lc_state_o` value after sense, the stability of `sep_fuse_sense_done_o` after its rise outside a TAP reset, `cp_sense_surface` (the `sep_fuse_sense_done_o` port before and after sense, and `SEP_FUSE_SENSE_STATUS` at 1)
+|No owning test, or out of scope. The rise of the port and the first `SEP_FUSE_SENSE_STATUS` read are graded by `sep_efuse_sense_test` and `sep_efuse_image_test` (open); `sep_boot_release_terms_test` reads them as controls and logs its status polls as `OBS-SENSE-POLL`. Across a TAP reset the port is graded by `sep_reset_scope_retention_cg.cp_tap_reset_sense_done`. Outside a TAP reset no bin grades it: `sep_ip_reset_override_matrix_test` grades the port across the `sep_reset_n` override and the PTAP TRST as VPLAN checks (CHK-OVR-SENSE, CHK-OVR-TRST) with no bin. The port table gives "run/halt selection after reset" and no value-to-action map, so the halt cells have no stated result. The port table gives `lc_state_o` as differentially encoded and states no layout.
 |`sep_mem_aperture_cg`
 |Classes "past the end" and "reserved window", ROM x double, the TCM access sizes, interface concurrency, the TCM response phase, the exclusivity of the ICCM and DCCM clock enables (`cp_tcm_req_exclusive`), the SRAM first and last word of `cp_mem_x_class`, the SRAM sizes of `cp_access_size`, the 32-bit ROM first and last word loads of `cp_mem_x_class`, ROM x word of `cp_access_size`
 |No owning test. `sep_boot_rom_lsu_read_test` (open) grades 32-bit ROM loads of the base and top words; `sep_boot_rom_aperture_sweep_test` runs them as controls. The TCM macro response type has no valid field, and the specification gives no latency, so the TCM response phase cannot be sampled. The specification states no rule that an access of one TCM leaves the other clock enable low. The SRAM first and last word and the SRAM sizes are graded by `sep_sram_datapath_breadth_test` and `sep_sram_smoke_test` (open); `sep_sram_axi_shape_matrix_test` reaches them only in its control `CTL-SRAM-REACH`.
@@ -4774,7 +4802,7 @@ owner reaches them.
 |The `rst_ni` edges of the bring-up reset and of the control pass of `sep_cold_reset_phase_test` (`cp_source_edge`, `cp_rst_release_sync`)
 |The control pass releases at a fixed phase after a `clk_i` edge and is the control of CHK-RST-SYNC. The bring-up reset falls before the leaf opens its graded window.
 |`sep_reset_scope_retention_cg`
-|The reset events of `cp_reset_class` that no check of the owner grades: the `SW_RESET_N` writes of the calibration and arming steps of `sep_cpu_reset_retention_test`; the control of step 4, the set-up write that clears the field of d1 in the pulse leg and the `rst_ni` control of `sep_ip_reset_override_matrix_test`; the recovery reset of a watchdog-run baseline (`OBS-WDT-BITE-HOLD`) of `sep_timer_clock_contract_test`
+|The reset events of `cp_reset_class` that no check of the owner grades: the `SW_RESET_N` writes of the calibration and arming steps of `sep_cpu_reset_retention_test`; the control of step 4, the set-up write that clears the field of d1 in the pulse leg, the `rst_ni` control and the `sep_reset_n` override shift of the PTAP TRST leg of `sep_ip_reset_override_matrix_test`; the recovery reset of a watchdog-run baseline (`OBS-WDT-BITE-HOLD`) of `sep_timer_clock_contract_test`
 |Each event places stimulus, restores a state or is logged only. The owner runs it with the graded window closed.
 |`sep_boot_milestone_cg`
 |The (OKAY, 1) read of `cp_presense_window` for a word with no SLVERR answer before it in the same boot
