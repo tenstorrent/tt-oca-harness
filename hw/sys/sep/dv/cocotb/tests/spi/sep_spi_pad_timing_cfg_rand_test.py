@@ -65,7 +65,7 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   "Indicates the number of half sck cycles, CSNTRAIL+1, to leave between last
   edge of sck and the rising edge of cs_n", CSNIDLE "the minimum number of sck
   half-cycles to hold cs_n high between commands"
-  (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc:161-172``,
+  (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc:165-175``,
   CONFIGOPTS). The OpenTitan theory of operation states the three as minimum
   bounds: "These settings are all minimum bounds, and delays in the FSM
   implementation may create more margin in each of these timing constraints."

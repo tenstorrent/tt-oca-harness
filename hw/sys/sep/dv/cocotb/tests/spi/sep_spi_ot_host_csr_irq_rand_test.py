@@ -35,11 +35,15 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   INTR_TEST.SPI_EVENT sets it
                   (vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/
                   spi_controller.rdl:45 "Write 1 to force
-                  !!INTR_STATE.spi_event to 1."). INTR_ENABLE raises
-                  and drops sep_internal_interrupts[13] (PIC source 14) for
-                  both sources. The SPI_EVENT value after INTR_TEST is written
-                  back to 0 has no stated value and is logged as
-                  OBS-SPI-EVENT-RELEASE.
+                  !!INTR_STATE.spi_event to 1."). With EVENT_ENABLE = 0, a
+                  write of 0 to INTR_TEST returns SPI_EVENT to 0 and drops the
+                  line: SPI_EVENT is a "Level-sensitive status of the
+                  conditions selected by EVENT_ENABLE ... not a latched error
+                  event" (hw/sys/sep/doc/spi.adoc:84-86) and "follows the level
+                  of the events selected by EVENT_ENABLE"
+                  (doc/programmer/src/sep-programming.adoc:792-793).
+                  INTR_ENABLE raises and drops sep_internal_interrupts[13]
+                  (PIC source 14) for both sources.
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (COMMAND
                   SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
@@ -515,10 +519,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         #   interrupt line, never the state bit, so the whole leg runs with the
         #   enable clear and the latch is still required to set.
         #
-        #   SPI_EVENT is Status-type. INTR_STATE.SPI_EVENT is read-only, and a
-        #   write of 1 to INTR_TEST.SPI_EVENT forces it to 1. No source states
-        #   its value after INTR_TEST is written back to 0, so the leg logs that
-        #   read (OBS-SPI-EVENT-RELEASE) and grades only the force.
+        #   SPI_EVENT is Status-type. INTR_STATE.SPI_EVENT is read-only, a
+        #   write of 1 to INTR_TEST.SPI_EVENT forces it to 1, and with
+        #   EVENT_ENABLE = 0 it follows the selected event level back to 0 once
+        #   INTR_TEST is written back to 0 (spi.adoc:84-86,
+        #   sep-programming.adoc:792-793).
         #
         # The wrapper ORs the two core lines onto one SEP interrupt. That OR
         # is sampled on sep_internal_interrupts[13].
@@ -556,7 +561,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.poll_internal_irq(_SPI_AGG, 0)
         await self.spi.wr(INTR_ENABLE, 0)
 
-        # SPI_EVENT: Status-type, read-only, set by the INTR_TEST force.
+        # SPI_EVENT: Status-type, read-only, follows the INTR_TEST force level.
         await self.spi.wr(INTR_TEST, INTR_SPI_EVENT)
         st = await self.spi.rd(INTR_STATE)
         assert st & INTR_SPI_EVENT, (
@@ -567,21 +572,18 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.poll_internal_irq(_SPI_AGG, 1)
         await self.spi.wr(INTR_TEST, 0)
         st = await self.spi.rd(INTR_STATE)
-        self.logger.info(
-            "OBS-SPI-EVENT-RELEASE seed=%d intr_state=0x%08x spi_event=%d "
-            "reason=no source states INTR_STATE.SPI_EVENT after INTR_TEST is written back to 0",
-            self.random_seed(),
-            st,
-            int(bool(st & INTR_SPI_EVENT)),
+        assert not (st & INTR_SPI_EVENT), (
+            f"CHK-INTR SPI_EVENT: releasing INTR_TEST left the status bit set "
+            f"(0x{st:08x}) -- with EVENT_ENABLE = 0 the status follows the event level"
         )
-        await self.spi.wr(INTR_ENABLE, 0)
         await self.poll_internal_irq(_SPI_AGG, 0)
+        await self.spi.wr(INTR_ENABLE, 0)
         self.logger.info(
             "CHK-INTR PASS: INTR_STATE.ERROR latches on INTR_TEST with INTR_ENABLE "
             "clear and aggregator [%d] held off, holds across an INTR_TEST release, "
             "raises the aggregator only after INTR_ENABLE, and clears both on W1C; "
-            "INTR_TEST forces INTR_STATE.SPI_EVENT to 1, and INTR_ENABLE gates its "
-            "aggregator line on and off",
+            "INTR_TEST forces INTR_STATE.SPI_EVENT to 1 and its release returns it to 0 "
+            "with EVENT_ENABLE = 0, and INTR_ENABLE gates its aggregator line on and off",
             _SPI_AGG,
         )
 
