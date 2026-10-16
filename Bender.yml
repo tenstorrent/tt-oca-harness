@@ -29,6 +29,17 @@ vendor_package:
       - "hw/ip/kmac/doc/kmac-block-diagram.svg"
       - "hw/ip/otbn/doc/otbn_blockarch.svg"
       - "hw/ip/dma/doc/block_diagram.svg"
+      # OpenTitan IP documentation that SEP DV cites as the specification of
+      # the OpenTitan IPs it verifies.
+      - "hw/ip/spi_host/README.md"
+      - "hw/ip/spi_host/doc/theory_of_operation.md"
+      - "hw/ip/spi_host/doc/programmers_guide.md"
+      - "hw/ip/dma/README.md"
+      - "hw/ip/dma/doc/theory_of_operation.md"
+      - "hw/ip/dma/doc/programmers_guide.md"
+      - "hw/ip/aon_timer/README.md"
+      - "hw/ip/aon_timer/doc/theory_of_operation.md"
+      - "hw/ip/aon_timer/doc/programmers_guide.md"
       - "hw/ip/prim/rtl"
       - "hw/ip/prim_generic/rtl"
       - "hw/ip/prim_generic/lint"
