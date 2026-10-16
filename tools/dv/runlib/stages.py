@@ -2806,7 +2806,12 @@ def fetch_build_libraries(
     if tool != "vcs" or not _vcs_compiles_uvm_source(flow, build_vcs_cfg(build)):
         return None
     library = fetch_uvm_library(
-        root, build, str(flow.path), site=site, say=lambda text: console.event("uvm", text)
+        root,
+        build,
+        str(flow.path),
+        site=site,
+        say=lambda text: console.event("uvm", text),
+        warn=lambda text: console.event("warning", text, force=True),
     )
     if library.unpinned:
         console.event(

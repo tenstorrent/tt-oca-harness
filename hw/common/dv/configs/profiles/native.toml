@@ -113,7 +113,8 @@ kind = "coverage_report"
 # `uvm_library` pins by `sha256`, which the runner fetches into local/uvm/ on first use. A site
 # file's [uvm_library] delivers the same archive from a mirror or a local copy, or names an
 # installed UVM home, and OCAH_UVM_HOME names a home for one shell; `tree_sha256` pins the
-# unpacked src/ tree, so each of them is checked against the same release. The VCS analyze stage
+# unpacked src/ tree, so each of them is checked against the same release, and an archive
+# whose `sha256` differs is used with a warning when it unpacks to that tree. The VCS analyze stage
 # precompiles its uvm_pkg.sv before analyzing user sources, and the elaboration links its DPI
 # layer. `[build.vcs].uvm_lib` selects a simulator-supplied library instead.
 [frameworks.uvm]

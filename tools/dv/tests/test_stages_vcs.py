@@ -231,6 +231,22 @@ class VcsUvmLibrary(unittest.TestCase):
                 stages.fetch_build_libraries(flow, REPO_ROOT, sim_cfg, tool, mock.Mock())
                 self.assertEqual(fetch.call_count, calls)
 
+    def test_coordinator_reports_a_repacked_archive_as_a_warning(self):
+        flow = fixture_flow(REPO_ROOT, "uvm", "vcs", {})
+        sim_cfg = {
+            "build": {"uvm_library": {"url": "u", "sha256": "0" * 64, "tree_sha256": "0" * 64}}
+        }
+        console = mock.Mock()
+        with mock.patch.object(stages, "fetch_uvm_library") as fetch:
+            fetch.return_value.unpinned = False
+            stages.fetch_build_libraries(flow, REPO_ROOT, sim_cfg, "vcs", console)
+            fetch.call_args.kwargs["warn"]("repacked")
+            fetch.call_args.kwargs["say"]("fetching")
+        self.assertEqual(
+            console.event.call_args_list,
+            [mock.call("warning", "repacked", force=True), mock.call("uvm", "fetching")],
+        )
+
     def uvm_home(self, text: str) -> Path:
         home = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, home, ignore_errors=True)

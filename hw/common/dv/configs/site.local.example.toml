@@ -65,7 +65,8 @@ argv = ["{binary}", "-batch", "{script}", "{args}", "{formal_args}"]
 # Where the pinned UVM library comes from on hosts that cannot reach its archive, one key:
 # a mirror `url` or a local `archive` of the release archive the profile pins, unpacked
 # into local/uvm/ when the cache lacks it, or an installed UVM `home`. The profile's
-# `sha256` checks an archive and its `tree_sha256` checks a home; neither changes here.
+# `tree_sha256` checks either, and its `sha256` flags an archive that differs from the
+# pinned file; neither changes here.
 # Relative paths resolve against this file's directory and must exist.
 # [uvm_library]
 # archive = "uvm/1800.2-2020.3.2 Release.gz"

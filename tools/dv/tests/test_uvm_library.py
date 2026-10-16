@@ -67,6 +67,7 @@ class UvmLibraryCase(unittest.TestCase):
         self.root = self.tmp / "checkout"
         self.root.mkdir()
         self.messages: list[str] = []
+        self.warnings: list[str] = []
         self.release_tree = uvm_tree_sha256(write_home(self.tmp / "reference", RELEASE) / "src")
 
     def archive(self, members: dict[str, str] = RELEASE, name: str = "release.gz") -> Path:
@@ -93,7 +94,14 @@ class UvmLibraryCase(unittest.TestCase):
         return {"uvm_library": table}
 
     def fetch(self, build: dict, site: dict | None = None) -> uvm_library.UvmLibrary:
-        return fetch_uvm_library(self.root, build, "fixture", site=site, say=self.messages.append)
+        return fetch_uvm_library(
+            self.root,
+            build,
+            "fixture",
+            site=site,
+            say=self.messages.append,
+            warn=self.warnings.append,
+        )
 
     def cache(self, build: dict) -> Path:
         return self.root / "local" / "uvm" / str(build["uvm_library"]["sha256"])[:16]
@@ -118,16 +126,30 @@ class FetchUvmLibrary(UvmLibraryCase):
         self.assertEqual(self.fetch(build), first)
         self.assertEqual(len(self.messages), 1)
 
-    def test_an_archive_digest_mismatch_leaves_no_cache_entry(self):
+    def test_a_repack_of_the_pinned_tree_is_used_with_a_warning(self):
         build = self.pin(sha256="0" * 64)
-        with self.assertRaisesRegex(ConfigError, "has SHA-256"):
+        library = self.fetch(build)
+        self.assertEqual((library.source, library.tree_sha256), ("archive", self.release_tree))
+        self.assertEqual(library.src, self.cache(build) / "src")
+        self.assertEqual(len(self.warnings), 1)
+        self.assertIn("not the pinned " + "0" * 64, self.warnings[0])
+        self.assertIn("unpacks to the pinned src tree", self.warnings[0])
+
+    def test_an_archive_that_matches_neither_digest_leaves_no_cache_entry(self):
+        build = self.pin(sha256="0" * 64, tree_sha256="1" * 64)
+        with self.assertRaisesRegex(
+            ConfigError, "unpacks to a src tree .* the archive has SHA-256 .* where sha256 pins"
+        ):
             self.fetch(build)
         self.assertEqual(list((self.root / "local" / "uvm").iterdir()), [])
+        self.assertEqual(self.warnings, [])
 
     def test_a_tree_digest_mismatch_leaves_no_cache_entry(self):
         build = self.pin(tree_sha256="0" * 64)
-        with self.assertRaisesRegex(ConfigError, f"unpacks to a src tree .* {self.release_tree}"):
+        with self.assertRaises(ConfigError) as ctx:
             self.fetch(build)
+        self.assertRegex(str(ctx.exception), f"unpacks to a src tree .* {self.release_tree}")
+        self.assertNotIn("the archive has SHA-256", str(ctx.exception))
         self.assertEqual(list((self.root / "local" / "uvm").iterdir()), [])
 
     def test_an_edited_cache_entry_is_refused(self):
@@ -194,7 +216,7 @@ class SiteUvmLibrary(UvmLibraryCase):
     def test_a_site_archive_of_another_release_is_refused(self):
         build = self.pin(url=UNREACHABLE)
         other = self.archive({**RELEASE, "1800.2-2020.3.2/src/extra.sv": "// x\n"}, "other.gz")
-        with self.assertRaisesRegex(ConfigError, f"{other.as_uri()} has SHA-256"):
+        with self.assertRaisesRegex(ConfigError, f"{other.as_uri()} unpacks to a src tree"):
             self.fetch(build, {"archive": str(other)})
 
     def test_a_site_home_is_checked_against_the_tree_pin(self):

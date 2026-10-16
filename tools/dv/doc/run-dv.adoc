@@ -513,20 +513,23 @@ maintainer flow whose tool allowlist is VCS only; it carries
 launcher says so when the simulator is absent. The UVM library is the
 Accellera 1800.2-2020 release that the profile's
 `[frameworks.uvm.build.uvm_library]` pins by URL and SHA-256, with
-`tree_sha256` pinning the `src/` tree the archive unpacks to. The launcher
-fetches it into `local/uvm/` before the first stage, on the submitting host
-for a cluster run, and later runs reuse that copy; a dry run fetches nothing.
-On a host that cannot reach the archive, the site layer's `[uvm_library]`
-fetches the same archive from a mirror or a local copy, or names an installed
-UVM home (<<runner-site-layer>>), and `OCAH_UVM_HOME` names a home for one
-shell, ahead of the site layer. Every build checks the tree it compiles
-against `tree_sha256`: a cache entry or a site home that differs is an error,
-and an `OCAH_UVM_HOME` home that differs compiles with a warning. The
-run-level `result.json` records the compiled library under `uvm_library`:
-its `source` (`archive`, `site`, or `OCAH_UVM_HOME`), its `home`, and its
-`tree_sha256`. The build compiles its `uvm_pkg.sv` ahead of every user
-source and links its DPI layer. A sim config's `[build.vcs].uvm_lib` selects
-a simulator-supplied library through `-ntb_opts` instead (uvm-1.2 or later;
+`tree_sha256` pinning the `src/` tree the archive unpacks to. The tree is what
+identifies the library: an archive whose SHA-256 differs from the pin, such as
+a repack of the same release, is used with a warning when it unpacks to the
+pinned tree, and is refused otherwise. The launcher fetches it into
+`local/uvm/` before the first stage, on the submitting host for a cluster run,
+and later runs reuse that copy; a dry run fetches nothing. On a host that
+cannot reach the archive, the site layer's `[uvm_library]` fetches the same
+archive from a mirror or a local copy, or names an installed UVM home
+(<<runner-site-layer>>), and `OCAH_UVM_HOME` names a home for one shell, ahead
+of the site layer. Every build checks the tree it compiles against
+`tree_sha256`: a cache entry or a site home that differs is an error, and an
+`OCAH_UVM_HOME` home that differs compiles with a warning. The run-level
+`result.json` records the compiled library under `uvm_library`: its `source`
+(`archive`, `site`, or `OCAH_UVM_HOME`), its `home`, and its `tree_sha256`.
+The build compiles its `uvm_pkg.sv` ahead of every user source and links its
+DPI layer. A sim config's `[build.vcs].uvm_lib` selects a simulator-supplied
+library through `-ntb_opts` instead (uvm-1.2 or later;
 VCS's bare `uvm` is uvm-1.1). Tests are selected with
 `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
 the `uvm-log` parse policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium
@@ -1226,8 +1229,8 @@ config-owned drop, and applies to every target. A formal view is unaffected.
 `home = "path"`
 |replaces
 |Where the pinned UVM library comes from on this host. `url` is a mirror and
-`archive` a local copy of the release archive, each checked against the pin's
-`sha256` and unpacked into `local/uvm/` when the cache lacks it; `home` is an
+`archive` a local copy of the release archive, each unpacked into `local/uvm/`
+when the cache lacks it and checked like the pinned archive; `home` is an
 installed UVM home, checked against the pin's `tree_sha256` on every build.
 The pin itself stays with the profile, so a site changes where the library
 comes from, never which release it is. A relative path resolves against the

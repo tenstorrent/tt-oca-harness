@@ -4,8 +4,10 @@
 """The UVM library an SV-UVM build compiles from source.
 
 ``[build.uvm_library]`` pins a release archive by ``url`` and ``sha256``, and the ``src`` tree
-the archive unpacks to by ``tree_sha256``. The coordinator fetches the archive once into
-``local/uvm/<digest>/`` before the first stage, and later runs reuse that copy. Build stages,
+the archive unpacks to by ``tree_sha256``, which identifies the library: an archive whose
+``sha256`` differs, such as a repack of the same release, is used with a warning when its
+tree matches. The coordinator fetches the archive once into ``local/uvm/<digest>/`` before the
+first stage, and later runs reuse that copy. Build stages,
 farm workers among them, only read it. A site file's ``[uvm_library]`` table delivers the same
 archive from a mirror ``url`` or a local ``archive``, or names an installed UVM ``home``, and
 ``OCAH_UVM_HOME`` names a home for one shell, ahead of the site file. Every tree a build
@@ -176,47 +178,62 @@ def fetch_uvm_library(
     *,
     site: Mapping[str, str] | None = None,
     say: Callable[[str], None] = print,
+    warn: Callable[[str], None] | None = None,
 ) -> UvmLibrary:
     """Fill the pinned archive's cache entry when the build compiles it and it is absent.
 
     The archive comes from the site's ``archive`` or mirror ``url`` when it names one, else
-    from the pinned ``url``; it must match ``sha256`` and unpack to ``tree_sha256``. It unpacks
-    into a temporary directory beside the cache entry and is renamed into place, so a
-    concurrent fetch in the same checkout never sees a partial tree. Returns the resolved
-    library, verified.
+    from the pinned ``url``, and must unpack to ``tree_sha256``; an archive whose ``sha256``
+    differs is reported through ``warn`` (``say`` when None) and used. It unpacks into a
+    temporary directory beside the cache entry and is renamed into place, so a concurrent
+    fetch in the same checkout never sees a partial tree. Returns the resolved library,
+    verified.
     """
     site = site or {}
     pin = _pin(build, where)
     home, source = _locate(root, pin, site)
     if source == "archive" and not (home / "src" / "uvm_pkg.sv").is_file():
         url = Path(site["archive"]).as_uri() if site.get("archive") else site.get("url") or pin.url
-        _fetch_into(home, pin, url, where, say)
+        _fetch_into(home, pin, url, where, say, warn or say)
     return resolve_uvm_library(root, build, where, site=site)
 
 
-def _fetch_into(home: Path, pin: UvmPin, url: str, where: str, say: Callable[[str], None]) -> None:
+def _fetch_into(
+    home: Path,
+    pin: UvmPin,
+    url: str,
+    where: str,
+    say: Callable[[str], None],
+    warn: Callable[[str], None],
+) -> None:
     say(f"fetching the UVM library from {url}")
     home.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=home.parent, prefix=".fetch-") as tmp:
         archive = Path(tmp) / "archive"
         digest = _download(url, archive, where)
-        if digest != pin.sha256:
-            raise ConfigError(
-                f"{where}: {url} has SHA-256 {digest}; [build.uvm_library] pins {pin.sha256}"
-            )
+        repacked = (
+            f"; the archive has SHA-256 {digest} where sha256 pins {pin.sha256}"
+            if digest != pin.sha256
+            else ""
+        )
         unpacked = Path(tmp) / "unpacked"
         unpacked.mkdir()
         try:
             with tarfile.open(archive) as tar:
                 tar.extractall(unpacked, filter="data")
         except (tarfile.TarError, OSError) as exc:
-            raise ConfigError(f"{where}: cannot unpack {url}: {exc}") from exc
+            raise ConfigError(f"{where}: cannot unpack {url}: {exc}{repacked}") from exc
         candidate = _home_in(unpacked, url, where)
         tree = uvm_tree_sha256(candidate / "src")
         if tree != pin.tree_sha256:
             raise ConfigError(
                 f"{where}: {url} unpacks to a src tree with SHA-256 {tree}; "
-                f"[build.uvm_library].tree_sha256 pins {pin.tree_sha256}"
+                f"[build.uvm_library].tree_sha256 pins {pin.tree_sha256}{repacked}"
+            )
+        if repacked:
+            warn(
+                f"{url} has SHA-256 {digest}, not the pinned {pin.sha256}, and unpacks to the "
+                "pinned src tree, so the library compiles from it"
             )
         try:
             candidate.rename(home)
