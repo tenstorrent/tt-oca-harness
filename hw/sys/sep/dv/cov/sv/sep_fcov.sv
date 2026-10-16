@@ -20126,8 +20126,7 @@ module sep_fcov (
   logic [11:0] cz_au_rise_now;
   always_comb begin
     for (int j = 0; j < 12; j++) begin
-      cz_au_rise_now[j] = (cz_gst[j] != 8'h00) && (cz_gst_q[j] == 8'h00) &&
-          !$isunknown(cz_gst[j]);
+      cz_au_rise_now[j] = (cz_gst[j] != 8'h00) && (cz_gst_q[j] == 8'h00) && !$isunknown(cz_gst[j]);
     end
   end
   logic [11:0] cz_au_rise[2] = '{default: '0};
@@ -20664,9 +20663,11 @@ module sep_fcov (
       if (cz_ist_rise[6] && !cz_itst_rec[6]) cz_cond(10, 4'b0010);
       if (cz_w1 && (cz_w1_a == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR)) begin
         if (((cz_w1_d & 32'(ENTROPY_SOURCE_INTR_STATUS_NOISE_OBS_OVERFLOW_MASK)) != 32'h0) &&
-            cz_aw_ist[7] && !cz_ist[7]) cz_cond(10, 4'b0001);
+            cz_aw_ist[7] && !cz_ist[7])
+          cz_cond(10, 4'b0001);
         if (((cz_w1_d & 32'(ENTROPY_SOURCE_INTR_STATUS_BIW_OBS_OVERFLOW_MASK)) != 32'h0) &&
-            cz_aw_ist[6] && !cz_ist[6]) cz_cond(10, 4'b0011);
+            cz_aw_ist[6] && !cz_ist[6])
+          cz_cond(10, 4'b0011);
       end
     end
   end
