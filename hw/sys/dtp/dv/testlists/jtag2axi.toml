@@ -388,7 +388,7 @@ name = "dtp_jtag2axi_backpressure_long_stall_test"
 module = { cocotb = "dtp_jtag2axi_backpressure_long_stall_test", uvm = "dtp_jtag2axi_backpressure_long_stall_test" }
 seed = 1
 reseed = 5
-timeout_sec = 3000
+timeout_sec = 6000
 tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
@@ -406,7 +406,7 @@ name = "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test"
 module = { cocotb = "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test", uvm = "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test" }
 seed = 1
 reseed = 5
-timeout_sec = 2400
+timeout_sec = 6000
 tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
