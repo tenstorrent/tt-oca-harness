@@ -454,6 +454,8 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "sep_ext_interrupts_i", 0)
         self._set_if_exists(dut, "smn_outbound_resp_hold_i", 0)
         self._set_if_exists(dut, "smn_outbound_rd_slverr_i", 0)
+        self._set_if_exists(dut, "smn_outbound_ready_stall_i", 0)
+        self._set_if_exists(dut, "smn_outbound_rd_addr_data_i", 0)
         # DFT pins in functional mode, DMI enables off, the core TAP pins on the
         # tb_top registers, and the TCM and ROM bit-flip injects idle
         # (docs/SEP_TB_ARCH.adoc).

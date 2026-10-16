@@ -272,7 +272,7 @@ Observation probe groups:
    `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`,
    `sep_cpu_demux_unmapped_fetch_test`.
    Its replies (monitor PR-OUT-RSP): B (`resp`, `id`) and R (`resp`, `id`,
-   `last`) on `smn_outbound_axi_resp_i`, with READY from the request net.
+   `last`, `data`) on `smn_outbound_axi_resp_i`, with READY from the request net.
    Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST),
    `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-STALL-REAL).
 ** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, same fields. Owners:
@@ -539,6 +539,17 @@ Exceptions (a closed set):
   not forced. Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST,
   CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
   (CHK-STALL-REAL, CHK-TO-INERT).
+  Test-added request-side hooks, both 0 by default: `smn_outbound_ready_stall_i`
+  (3 bits) holds AW READY (bit 0), W READY (bit 1) and AR READY (bit 2) of the
+  responder low while the bit is high, and `smn_outbound_rd_addr_data_i`
+  returns `{~a, a}` on every R beat, `a` being the low 32 bits of the
+  8-byte-aligned beat address. With both at 0 the responder behaves as
+  above. `+sep_outbound_depth=<n>` (1 to 64) sets the responder's queued
+  write bursts, pending B responses and queued reads each to `n`; without it
+  they are 16, 16 and 1. Owners: `sep_outbound_contention_rand_test`
+  (CHK-LSU-PATH, CHK-ID-ORDER, CHK-RESP-ROUTE),
+  `sep_outbound_stall_saturation_test` (CHK-DELAYS, CHK-HOLD-DRAIN,
+  CHK-CHAIN-LIMIT; the plusarg).
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
   AXI interconnect (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`,
