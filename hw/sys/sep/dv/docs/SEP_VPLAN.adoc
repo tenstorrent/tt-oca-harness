@@ -1440,7 +1440,13 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |cpu
 |CPU firmware, CPU trace port, architectural instruction table
-|Proves that the core executes M, C, Zba, Zbb and Zbc instructions and that Zbs is illegal (Zbe is enabled but not executed: the specification gives no Zbe encodings), that the 16 PMP address entries do not alias, that `mrac` grants no permission, and that the trace port matches `minstret`. Extends the open ROM and trace tests with those cells only.
+|Proves that the core executes M, C, Zba, Zbb and Zbc instructions and that Zbs is illegal, that the 16 PMP address entries do not alias, that `mrac` grants no permission, and that the trace port matches `minstret`. Extends the open ROM and trace tests with those cells only. Zbe execution is graded by `sep_cpu_zbe_exec_test`.
+
+|<<sep_cpu_zbe_exec_test,`sep_cpu_zbe_exec_test`>>
+|3
+|cpu
+|CPU firmware, CPU trace port, instruction model
+|Proves that the core executes the Zbe instructions `bext` (bit extract), `bdep` (bit deposit), `pack` and `packh` and that each result equals the result function of the draft Bitmanip specification v0.93. Extends the open ROM and trace tests with those cells only.
 |===
 
 [[sep-vplan-summary-6]]
@@ -2281,6 +2287,9 @@ the entry adds. A row marked "parked" names a parked test
 |RAND-REP
 |`sep_cpu_isa_pmp_csr_test`
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|RAND-REP
+|`sep_cpu_zbe_exec_test`
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |RANDCFG
 |`sep_efuse_window_decode_reset_test`
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
@@ -3058,9 +3067,9 @@ the test does.
 |Does an ECC error on a DMA-initiated TCM read drive `ext_debug_bus_o[367:364]`, and what response code does a corrected single-bit DMA read return? (`hw/sys/sep/doc/cpu.adoc`.)
 |`sep_tcm_dma_aperture_ecc_test` grades corrected data and a non-OKAY response, and logs the debug-bus value
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
-|Zbe, Zbf, Zbp and Zbr encodings
-|Which encodings do Zbe, Zbf, Zbp and Zbr use? (`hw/sys/sep/doc/cpu.adoc` names the extensions and gives no encodings.)
-|`sep_cpu_isa_pmp_csr_test` does not execute Zbe and does not drive the Zbf, Zbp or Zbr traps
+|Zbf, Zbp and Zbr encodings
+|Which encodings do Zbf, Zbp and Zbr use? (`hw/sys/sep/doc/cpu.adoc` names the extensions and gives no encodings. The Zbe encodings and result functions come from the draft, unratified "RISC-V Bitmanip Extension" specification v0.93 (January 2021), the approved source for Zbe; `sep_cpu_zbe_exec_test` grades Zbe.)
+|`sep_cpu_isa_pmp_csr_test` does not drive the Zbf, Zbp or Zbr traps
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Watchdog count unit
 |Does `WDOG_COUNT` advance by one per `clk_wdt_i` period? The specification names `clk_wdt_i` as the timer clock and states no unit. Source: `hw/sys/sep/doc/watchdog.adoc`; `vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc` (`WDOG_COUNT`).

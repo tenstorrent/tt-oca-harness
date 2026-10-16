@@ -76,3 +76,4 @@ localparam int unsigned FcovOwnSepTcmEccCpuTrapTest = 526;
 localparam int unsigned FcovOwnSepCpuDemuxUnmappedFetchTest = 527;
 localparam int unsigned FcovOwnSepDebugMasterTargetMatrixTest = 528;
 localparam int unsigned FcovOwnSepCpuIsaPmpCsrTest = 529;
+localparam int unsigned FcovOwnSepCpuZbeExecTest = 530;

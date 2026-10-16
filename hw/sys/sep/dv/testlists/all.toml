@@ -62,7 +62,7 @@ tests = ["sep_axi_smoke_test"]
 #   (memory.toml), as its run mode states. It needs the TCM controller of the
 #   full CPU, which the CPU stub does not have.
 name = "all"
-expected_count = 189
+expected_count = 190
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -253,6 +253,7 @@ tests = [
     "sep_cpu_demux_unmapped_fetch_test",
     "sep_tcm_ecc_cpu_trap_test",
     "sep_cpu_isa_pmp_csr_test",
+    "sep_cpu_zbe_exec_test",
 ]
 
 [[groups]]
@@ -294,6 +295,7 @@ tests = [
     "sep_cpu_demux_unmapped_fetch_test",
     "sep_tcm_ecc_cpu_trap_test",
     "sep_cpu_isa_pmp_csr_test",
+    "sep_cpu_zbe_exec_test",
 ]
 
 [[groups]]
@@ -735,7 +737,7 @@ tests = [
 # entries, sep_tcm_dma_aperture_ecc_test and
 # sep_debug_master_target_matrix_test_sba).
 name = "phase3_memory_boot_reset"
-expected_count = 23
+expected_count = 24
 tests = [
     "sep_boot_release_terms_test",
     "sep_boot_release_terms_test_smc_hold",
@@ -760,6 +762,7 @@ tests = [
     "sep_cpu_demux_unmapped_fetch_test",
     "sep_tcm_ecc_cpu_trap_test",
     "sep_cpu_isa_pmp_csr_test",
+    "sep_cpu_zbe_exec_test",
 ]
 
 [[groups]]
