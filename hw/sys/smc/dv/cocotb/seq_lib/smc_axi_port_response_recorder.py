@@ -23,14 +23,23 @@ def _sample(dut, name: str) -> int:
     return int(sig.value)
 
 
+def _sample_or_none(dut, name: str) -> int | None:
+    value = getattr(dut, name).value
+    return int(value) if value.is_resolvable else None
+
+
 @dataclass(frozen=True)
 class PortResponse:
-    """One accepted B beat (``chan`` "b") or R beat (``chan`` "r") of a port."""
+    """One accepted B beat (``chan`` "b") or R beat (``chan`` "r") of a port.
+
+    ``data`` is None on an R beat whose RDATA is unresolvable; a read that is
+    only observed may return X and the consumer decides whether that matters.
+    """
 
     chan: str
     ident: int
     resp: int
-    data: int
+    data: int | None
     last: int
     time_ps: int
 
@@ -73,7 +82,7 @@ class SmcAxiPortResponseRecorder:
                         "r",
                         _sample(dut, f"{p}_rid"),
                         _sample(dut, f"{p}_rresp"),
-                        _sample(dut, f"{p}_rdata"),
+                        _sample_or_none(dut, f"{p}_rdata"),
                         _sample(dut, f"{p}_rlast"),
                         now,
                     )

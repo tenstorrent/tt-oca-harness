@@ -268,15 +268,20 @@ class SmcSysAxiDriver(uvm_driver):
             f"port, so a capturing access cannot share a group of {len(members)}"
         )
         captures = [self._start_id_capture(member) for member in members]
-        events = [self._start_transfer(member) for member in members]
-        for member, event, capture in zip(members, events, captures):
-            await self._collect_transfer(member, event)
-            if capture is not None:
-                captured = await capture.finish()
-                if member.op is SmcSysAxiOp.READ:
-                    member.rid = captured
-                else:
-                    member.bid = captured
+        try:
+            events = [self._start_transfer(member) for member in members]
+            for member, event, capture in zip(members, events, captures):
+                await self._collect_transfer(member, event)
+                if capture is not None:
+                    captured = await capture.finish()
+                    if member.op is SmcSysAxiOp.READ:
+                        member.rid = captured
+                    else:
+                        member.bid = captured
+        finally:
+            for capture in captures:
+                if capture is not None:
+                    capture.cancel()
 
     def _start_id_capture(self, item: SmcSysAxiItem):
         if not item.capture_resp_id:

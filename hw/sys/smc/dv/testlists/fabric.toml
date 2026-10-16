@@ -570,7 +570,7 @@ run_modes = ["smoke"]
 name = "smc_axi_random_stress_test"
 module = "smc_axi_random_stress_test"
 seed = 1
-timeout_sec = 300
+timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 

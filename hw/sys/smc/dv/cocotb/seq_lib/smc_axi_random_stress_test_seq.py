@@ -164,7 +164,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         self.mem = None
 
     # ------------------------------------------------------------------ plumbing
-    def _rng(self, tag: int) -> random.Random:
+    def _rng(self, tag: int | str) -> random.Random:
         return random.Random(f"{self.seed}:{tag}")
 
     def _mark_step(self, step_id: str) -> None:
@@ -234,17 +234,18 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         return item
 
     @staticmethod
-    def _span(item) -> tuple[int, int]:
-        size, total, addr = item.length, item.transfer_bytes, item.addr
-        if item.burst == FIXED and size < 8:
+    def _span(addr: int, size: int, beats: int, burst: int) -> tuple[int, int]:
+        """Word-aligned byte range an access of that shape can touch."""
+        total = size * beats
+        if burst == FIXED and size < 8:
             # The BFM advances its strobe lanes on FIXED bursts, so a narrow FIXED
             # burst touches every lane of its container word.
             lo = addr & ~7
             hi = lo + 8
-        elif item.burst == FIXED:
+        elif burst == FIXED:
             lo = addr - addr % size
             hi = lo + size
-        elif item.burst == WRAP:
+        elif burst == WRAP:
             lo = addr - addr % total
             hi = lo + total
         else:
@@ -283,7 +284,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             if clean:
                 golden.put(item.addr, data)
             else:
-                golden.unknown(*self._span(item))
+                golden.unknown(*self._span(item.addr, item.length, item.beats, item.burst))
             return
         if item.observe:
             return
@@ -341,6 +342,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
     async def _one(self, port: str, item):
         """One access alone on its port. Returns the response events seen at the port."""
         mark = self.rec[port].mark()
+        self._prime(port, item)
         await _OneShot(item, f"{item.get_name()}_os").start(self._sequencer(port))
         events = self.rec[port].since(mark)
         self._settle(port, item)
@@ -427,11 +429,17 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 pending[i.axi_id].append((i, want))
         for e in r_ev:
             hit = None
-            for k, (i, want) in enumerate(pending[e.ident]):
-                lane = (e.data >> (8 * (i.addr % 8))) & ((1 << (8 * i.length)) - 1)
-                if lane == want:
-                    hit = k
-                    break
+            if e.data is None:
+                assert free[e.ident] > 0, (
+                    f"{tag}: {PREFIX[port]}_rdata is X/Z on an R beat of ID {e.ident} and every "
+                    f"read of that ID compares its data"
+                )
+            else:
+                for k, (i, want) in enumerate(pending[e.ident]):
+                    lane = (e.data >> (8 * (i.addr % 8))) & ((1 << (8 * i.length)) - 1)
+                    if lane == want:
+                        hit = k
+                        break
             if hit is not None:
                 pending[e.ident].pop(hit)
             else:
@@ -750,7 +758,6 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             )
             mark = self.sampler.mark()
             rd = self._mk("JTAG", SmcSysAxiOp.READ, addr, **attrs)
-            rd.want = wr.wdata.to_bytes(8, "little")
             await self._one("JTAG", rd)
             ar = [e for e in self.sampler.since(mark, "ar") if e.addr == addr]
             assert len(ar) == 1 and ar[0].cache == caches[k], (
@@ -767,32 +774,15 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         assert len(set(aw_users)) == 1, f"S5 awuser differs between JTAG writes: {aw_users}"
         assert len(set(ar_users)) == 1, f"S5 aruser differs between JTAG reads: {ar_users}"
         other = []
-        for port in ("SYS", "SEP"):
-            for k in range(2):
-                addr = OUT[port] + 8 * k
-                cache, user = rng.randrange(16), rng.randrange(4096)
-                attrs = {
-                    "axi_cache": cache,
-                    "axi_user": user,
-                    "axi_id": rng.randrange(64),
-                    "allow_error": True,
-                    "observe": True,
-                }
-                mark = self.sampler.mark()
-                wr = self._mk(port, SmcSysAxiOp.WRITE, addr, rng=rng, **attrs)
-                await self._one(port, wr)
-                aw = [e for e in self.sampler.since(mark, "aw") if e.addr == addr]
-                mark = self.sampler.mark()
-                rd = self._mk(port, SmcSysAxiOp.READ, addr, **attrs)
-                await self._one(port, rd)
-                ar = [e for e in self.sampler.since(mark, "ar") if e.addr == addr]
-                other.append(
-                    f"{PORT_NAME[port]} k{k} cache 0x{cache:X} user 0x{user:03X}: write "
-                    f"{RESP_NAMES[wr.resp_code]} aw_seen={len(aw)}"
-                    f"{'' if not aw else f' awcache 0x{aw[0].cache:X} awuser 0x{aw[0].user:X}'}, "
-                    f"read {RESP_NAMES[rd.resp_code]} ar_seen={len(ar)}"
-                    f"{'' if not ar else f' arcache 0x{ar[0].cache:X} aruser 0x{ar[0].user:X}'}"
-                )
+        monitor = self.env.axi_monitor
+        saved_decerr = set(monitor.expected_decerr_addrs)
+        try:
+            for port in ("SYS", "SEP"):
+                for k in range(2):
+                    other.append(await self._s5_other(rng, port, k))
+        finally:
+            monitor.expected_decerr_addrs.clear()
+            monitor.expected_decerr_addrs.update(saved_decerr)
         return (
             f"on JTAG all 8 writes and 8 reads reached the responder at their own OUT2 address "
             f"with awcache and arcache equal to the driven AxCACHE [{' '.join(rows)}], the written "
@@ -800,6 +790,34 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             f"0x{ar_users[0]:X} on all 8 reads whatever AxUSER was driven (numeric source ID not "
             f"asserted, LINKED-ISSUE SF-012); SYS_IN and SEP_IN observed only (LINKED-ISSUE "
             f"SF-035): " + " | ".join(other)
+        )
+
+    async def _s5_other(self, rng: random.Random, port: str, k: int) -> str:
+        """One observed write and read of SYS_IN or SEP_IN at word `k` of its OUT window."""
+        addr = OUT[port] + 8 * k
+        cache, user = rng.randrange(16), rng.randrange(4096)
+        attrs = {
+            "axi_cache": cache,
+            "axi_user": user,
+            "axi_id": rng.randrange(64),
+            "allow_error": True,
+            "observe": True,
+        }
+        self.env.axi_monitor.expected_decerr_addrs.add(addr)
+        mark = self.sampler.mark()
+        wr = self._mk(port, SmcSysAxiOp.WRITE, addr, rng=rng, **attrs)
+        await self._one(port, wr)
+        aw = [e for e in self.sampler.since(mark, "aw") if e.addr == addr]
+        mark = self.sampler.mark()
+        rd = self._mk(port, SmcSysAxiOp.READ, addr, **attrs)
+        await self._one(port, rd)
+        ar = [e for e in self.sampler.since(mark, "ar") if e.addr == addr]
+        return (
+            f"{PORT_NAME[port]} k{k} cache 0x{cache:X} user 0x{user:03X}: write "
+            f"{RESP_NAMES[wr.resp_code]} aw_seen={len(aw)}"
+            f"{'' if not aw else f' awcache 0x{aw[0].cache:X} awuser 0x{aw[0].user:X}'}, "
+            f"read {RESP_NAMES[rd.resp_code]} ar_seen={len(ar)}"
+            f"{'' if not ar else f' arcache 0x{ar[0].cache:X} aruser 0x{ar[0].user:X}'}"
         )
 
     async def _s6_port(self, rng: random.Random, port: str) -> list[str]:
@@ -897,7 +915,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
 
     def _s7_access(self, rng: random.Random, port: str, used: list[tuple[int, int]]):
         arena, size = SPM[port] + 0xC000, 0x400
-        golden = self.golden[port]
+        known = self.golden[port].known_units(arena, arena + size, 8)
         for _ in range(200):
             at_reg = rng.random() < 0.3
             is_write = rng.random() < 0.5
@@ -918,8 +936,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 addr = base + n * rng.randrange(span // n)
                 beats = min(beats, (base + span - addr) // n)
             elif burst == INCR:
-                known = [] if is_write else golden.known_units(arena, arena + size, 8)
-                if known and rng.random() < 0.7:
+                if known and not is_write and rng.random() < 0.7:
                     addr = rng.choice(known) + n * rng.randrange(8 // n)
                 else:
                     addr = arena + n * rng.randrange(size // n)
@@ -931,8 +948,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 addr = (
                     arena + container * rng.randrange(size // container) + n * rng.randrange(beats)
                 )
-            probe = self._mk(port, SmcSysAxiOp.READ, addr, size=n, beats=beats, burst=burst)
-            lo, hi = self._span(probe)
+            lo, hi = self._span(addr, n, beats, burst)
             if any(lo < old_hi and old_lo < hi for old_lo, old_hi in used):
                 continue
             used.append((lo, hi))
@@ -953,7 +969,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         raise AssertionError(f"S7 {port}: no disjoint access found")
 
     async def _s7_port(self, port: str) -> None:
-        rng = random.Random(f"{self.seed}:7:{port}")
+        rng = self._rng(f"7:{port}")
         for _ in range(10):
             used: list[tuple[int, int]] = []
             items = [self._s7_access(rng, port, used) for _ in range(4)]
@@ -1225,7 +1241,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             assert sorted(e.addr for e in seen if e.chan == "ar") == issued_r, (
                 f"S10 {label}: AR addresses at the responder differ from the reads issued"
             )
-            assert (w1 - w0) + (r1 - r0) == 24 and (w1 - w0, r1 - r0) == (12, 12), (
+            assert (w1 - w0, r1 - r0) == (12, 12), (
                 f"S10 {label}: responder counters advanced {w1 - w0} writes {r1 - r0} reads, "
                 f"issued 12/12"
             )
@@ -1302,7 +1318,6 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 wr = self._mk("JTAG", SmcSysAxiOp.WRITE, addr, rng=rng, axi_id=ident)
                 await self._one("JTAG", wr)
                 rd = self._mk("JTAG", SmcSysAxiOp.READ, addr, axi_id=ident)
-                rd.want = wr.wdata.to_bytes(8, "little")
                 await self._one("JTAG", rd)
                 assert wr.resp_code == 0 and rd.resp_code == 0 and rd.rdata == wr.wdata, (
                     f"S11 {label} round {rnd}: ordinary write {wr.resp_code} read {rd.resp_code} "
