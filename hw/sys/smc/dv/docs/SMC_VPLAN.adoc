@@ -32140,6 +32140,90 @@ The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
 
 '''''
 
+[[sec-smc_wdt_second_stage_reset_test]]
+====== `smc_wdt_second_stage_reset_test`
+
+*Source Module*: `smc_wdt_second_stage_reset_test` (SV-UVM only)
+
+*Objective*: Check that servicing the selected core's second-stage watchdog
+postpones expiry, stopping service allows expiry, and servicing another core
+does not postpone the selected core's timeout and warm-reset recovery.
+
+*BFM / Model*: SEP_IN `ocah_axi_vip`; bounded sequence checks against live
+per-core and aggregate timeout taps, WDT reset, warm reset and primary reset.
+The scenario uses the shared WDT base helpers, not a watchdog CSR model.
+
+*Test Coverage*: All four cores rotate by pass. The timeout is programmed to
+0x1800, distinct from reset. Correct-core service spans two configured
+intervals; wrong-core pulses end before the expected reset window. Two warm
+resets occur per pass. No CSR access overlaps reset. Post-warm CSR values are
+observed without grading; watchdogs are explicitly configured idle and the
+timeout is reprogrammed before the next leg and restored at the end.
+
+*Expectation Sources*: `cpu_ctrl.rdl` defines WDT_TIMEOUT as the second-stage
+cycle count and the four singlepulse WDT_TIMEOUT_RESET controls. `wdt.rdl`
+defines rst-enable, always-count, compare and register reset values.
+`hw/sys/smc/doc/clk_rst.adoc`, Primary and Warm Reset, defines second timeout
+as a watchdog/warm-reset source and distinguishes it from primary reset.
+Addresses, masks and core count come from the existing generated collateral
+and SMC types. Timing allowances below are bench measurement bounds, not new
+software-visible register semantics.
+
+*Test Procedure*: Require all cores released and WDTs in reset state. Save and
+program WDT_TIMEOUT. Before each arm, read back COUNT=0 and CMP=0x800,
+distinct from CMP reset, while counting is disabled. These are configuration
+prerequisites, not a precise first-stage timing check. Start the bounded
+watcher before enabling the selected WDT and service it periodically. Require no expiry
+during service, then stop CSR traffic and observe expiry and recovery. Re-arm
+and service a different core, requiring expiry at the unserviced deadline.
+Check reset scope. After each recovery, log timeout and watchdog CSR values
+without requiring retention or reset values, then explicitly configure and
+verify idle CTRL, COUNT and CMP readbacks on every core. Reprogram the timeout
+before the wrong-core leg; restore the timeout and check exact CSR-access
+accounting.
+
+*Checkers*:
+
+[cols="1,2",options="header"]
+|===
+|Checker |Description
+|`CHK-WDT-STAGE2-CONFIG` |Explicitly programmed, rebaselined and restored CSR states match
+|`CHK-WDT-STAGE2-FIRST` |The selected first timeout precedes second timeout and stays asserted until it
+|`CHK-WDT-STAGE2-SERVICE` |Service duration, gaps and wrong-core pulse completion meet the stimulus bounds
+|`CHK-WDT-STAGE2-HELD` |No second timeout or reset occurs during correct-core service
+|`CHK-WDT-STAGE2-EXPIRES` |Second timeout falls within the configured interval and sampling allowance
+|`CHK-WDT-STAGE2-WRONG-CORE` |A different core is serviced and cannot defer selected-core expiry
+|`CHK-WDT-STAGE2-RECOVERY` |WDT/warm reset assert and release within bounds; fuse/warm readiness precedes further CSR access
+|`CHK-WDT-STAGE2-SCOPE` |No primary reset, unknown observable or initially isolated core; timeout taps are idle and resets released after explicit rebaseline
+|`CHK-NONVAC` |Two warm-reset assertions are observed and CSR accesses equal 139 fixed accesses plus all service writes
+|`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP` |Bring-up and frontdoor responses complete
+|===
+
+*Known Limitations*: CPU execution and interrupt delivery are outside this
+scenario. No core is held in software reset. Timeout taps are sampled on SMC
+clock negedges; sub-cycle transitions are not graded. The unserviced timing
+allowance is two cycles; the serviced allowance is two cycles after the last
+write response. Recovery bounds of 4096 assertion and 16384 release cycles are
+conservative bench limits, not latency guarantees. No CSR remains outstanding
+across reset. The scenario does not validate a general watchdog reference model.
+`CHK-WDT-STAGE2-TIMEOUT-RETAINED` is blocked by the undocumented CPU_CTRL
+WDT_TIMEOUT retention across warm reset. `CHK-WDT-STAGE2-WDT-RESET` is blocked
+by the undocumented watchdog CSR reset values after warm reset. Both are
+logged as observations, excluded from the verdict, and replaced by explicit
+configuration before subsequent stimulus.
+Idle timeout taps after explicit rebaseline are a prerequisite for the next
+measurement, not a claim about automatic warm-reset state clearing.
+
+*Pass Criteria*: Every required checker passes. Used alone,
+`+SMC_WDT_STAGE2_SEQUENCE_NEGATIVE` changes five expectations per pass:
+configured timeout, HELD, serviced EXPIRES, serviced RECOVERY and WRONG-CORE
+expiry. It must produce five failures per pass without UVM_FATAL. Other
+checks establish stimulus/observation validity and remain unchanged; invalid
+conditions record failure and stop the run. Enrolled on demand in
+`wdt_uvm_extended`, not the scheduled hosted tiers.
+
+'''''
+
 [[sec-smc_lock_pipelined_write_test]]
 ====== `smc_lock_pipelined_write_test`
 
@@ -33262,6 +33346,7 @@ to make, and waits on a ruling.
 [cols="2,1,3,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
+|`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_core_awake_gate_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_regblock_sparse_strobe_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
