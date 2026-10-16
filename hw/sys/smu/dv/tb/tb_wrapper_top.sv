@@ -595,29 +595,11 @@ module smu_wrapper_uvm_top
   end
 
 `ifndef UVM
-  // A JTAG IC_RESET override asserts crypto engine resets without raising any
-  // endpoint cancel, so an engine's EDN request drops ungranted while the EDN
-  // adapter, which stays in the SEP POR reset domain, keeps running. The SEP-wide
-  // sep_reset_n override asserts every engine reset asynchronously, and a per-IP
-  // override asserts its engine reset two clk_i edges after the TCK-domain bit
-  // changes. An attempt of a request-hold check that is already in flight when
-  // the override lands has to end, so the window uses $assertkill, which
-  // $assertoff does not do. The arbiter checks are off on any cause and re-arm
-  // once the last cause has cleared. The endpoint check of an engine is off only
-  // while that engine's reset is held (endpoint 0 AES, 1 KMAC, 2 and 3 OTBN), or
-  // on a sep_reset_n override, which holds all four, and re-arms once its own
-  // causes have cleared whatever the other causes do. The window opens on the
-  // SMU-side override because it names only the JTAG cause; the SEP-side gated
-  // engine resets also fall under power-on and isolation sequencing, which the
-  // checks must keep covering. Every re-arm comes eight SEP clocks after its
-  // cause clears: the two-flop release of sep_reset_n or of a per-IP override
-  // takes two, the |=> sample one and the re-arm after the reset release one,
-  // and the rest is margin. A cause may clear with the SEP clock stopped, so the
-  // margin is also eight clk_smu_i edges once the SEP clock has not risen for
-  // that long; while it runs, only the SEP count ends the margin. The pool
-  // instance keeps its checks. A run that ends inside the window fails:
-  // smu_sim_cfg.toml lists the final-block line below among its hard-fail
-  // patterns.
+  // The JTAG IC_RESET override asserts the crypto engine resets with no endpoint
+  // cancel: the sep_reset_n override asynchronously, a per-IP override two clk_i
+  // edges after its TCK-domain bit changes. A request-hold attempt in flight at
+  // that edge has to end, hence $assertkill. SMU_DEFERRED_DISPOSITION.adoc
+  // records the scope.
   wire [3:0] crypto_edn_jtag_rst_held = {
     (u_dut.u_smu.jtag_sep_reset_ctrl.ovrd.sep_reset_n_ovrd === 1'b1) &&
     (u_dut.u_smu.jtag_sep_reset_ctrl.val.sep_reset_n_val === 1'b0),
@@ -628,12 +610,11 @@ module smu_wrapper_uvm_top
     (u_dut.u_smu.jtag_sep_reset_ctrl.ovrd.aes_jtag_rst_n_ovrd === 1'b1) &&
     (u_dut.u_smu.jtag_sep_reset_ctrl.val.aes_jtag_rst_n_val === 1'b0)
   };
-  wire crypto_edn_unisolated_rst = |crypto_edn_jtag_rst_held;
 
   // Bit 4 holds the arbiter pair off on any cause; bits 3:0 hold the endpoint
   // checks off, each on its own engine's cause or on sep_reset_n.
   wire [4:0] crypto_edn_check_held_off = {
-    crypto_edn_unisolated_rst,
+    |crypto_edn_jtag_rst_held,
     crypto_edn_jtag_rst_held[2] | crypto_edn_jtag_rst_held[3],
     crypto_edn_jtag_rst_held[2] | crypto_edn_jtag_rst_held[3],
     crypto_edn_jtag_rst_held[1] | crypto_edn_jtag_rst_held[3],
@@ -645,7 +626,7 @@ module smu_wrapper_uvm_top
   int unsigned crypto_edn_smu_clks = 0;
   int unsigned crypto_edn_sep_stall_clks = 0;
   time         crypto_edn_sep_clk_rose_at = 0;
-  always @(posedge u_dut.u_smu.gen_sep.u_sep.clk_i) begin
+  always @(posedge clk_smu) begin
     crypto_edn_sep_clks++;
     crypto_edn_sep_stall_clks = 0;
     crypto_edn_sep_clk_rose_at = $time;
@@ -716,7 +697,7 @@ module smu_wrapper_uvm_top
 
   initial begin : crypto_edn_request_hold_window
     forever begin
-      wait (crypto_edn_unisolated_rst === 1'b1);
+      wait (crypto_edn_check_held_off[4] === 1'b1);
       crypto_edn_window_open = 1'b1;
       crypto_edn_arbiter_checks(1'b0);
       $display({"[tb] crypto EDN request-hold window open at %0t: ",
