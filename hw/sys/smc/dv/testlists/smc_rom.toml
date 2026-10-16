@@ -393,8 +393,11 @@ timeout_sec = 7200
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_unsupported_status_id_test", mode = "occp_rom_only" }
+# The injected status id is only observable when reporting is enabled: with the strap set the ROM
+# answers OCCP_UNSUPPORTED_STATUS to every status command, injected or not.
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_unsupported_status_id_test.rom.hex",
     "+occp_case=smc_occp_unsupported_status_id_test",
