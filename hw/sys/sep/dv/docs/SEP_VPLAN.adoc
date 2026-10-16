@@ -5366,4 +5366,7 @@ defect. Behaviour that this plan does not claim at all is in
 
 |ESRC observe-word packing (hardware gap). `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`NOISE_OBS_RDATA`) states that each word holds 32 LSB-first samples of the selected lane. On this DUT a pushed word holds 31 samples in bits 31:1, and bit 0 holds the previous content of the packer: 0 in the first word after a lane change. *Issue*: #3141
 |`sep_esrc_observe_fifo_rand_test` CHK-OBS-PACK fails on this DUT on each change to a lane held at 1 (<<sep_esrc_observe_fifo_rand_test>>). CHK-OBS-LANE grades the later words of each change, where the lane level is constant, so a one-sample shift does not show there.
+
+|OTBN OTP scramble-key handshake (hardware gap). `vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sync_reqack.sv` (the request synchronizer of the OTBN OTP-key port) states that the destination does not send an acknowledge without a request. On this DUT the SEP mock OTP-key responder (`hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv`) holds the acknowledge one clock after the request falls, once per SEC_WIPE_DMEM or SEC_WIPE_IMEM command. *Issue*: #3156
+|`sep_otbn_cmd_status_rand_test` fails on VCS on the synchronizer assertions `SyncReqAckAckNeedsReq` and `SyncReqAckHoldReq`; its checkers pass (<<sep_otbn_cmd_status_rand_test>>). Verilator compiles these assertions out.
 |===

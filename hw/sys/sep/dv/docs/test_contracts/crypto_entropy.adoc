@@ -3002,6 +3002,10 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Scope limit*: This test grades the command and status sequence, the done line, `INSN_CNT` and the busy-write rule of `CTRL`. The following are not claimed. The `ERR_BITS` value after an ignored `CMD` or `CTRL` write is logged and not graded. A `done` from the initial wipe after reset is logged only. The way into LOCKED, the LOCKED hold and the unlock are not stated (see <<sep-vplan-phase3-blocked,Blocked features>>). The clear of `ERR_BITS` by a write is stated (`otbn.hjson`), but the text states no way to set a non-zero `ERR_BITS` other than the Key Manager `KEY_INVALID` path, so no check grades it (see <<sep-vplan-phase3-blocked,Blocked features>>); the leaf reads `ERR_BITS` only to expect 0 after a command and to log it after an ignored write. The ADD, XOR and AND results belong to `sep_otbn_compute_rand_test`, the `INTR_TEST` walk of the done line with the enable set belongs to `sep_pic_irq_source_map_delivery_test`, and the line gate of the other sources belongs to the extension leg of `sep_irq_ip_to_aggregator_test`.
 
+*Known limitation*: On VCS this leaf fails on each SEC_WIPE_DMEM and SEC_WIPE_IMEM command, with no failing checker. The SEP mock OTP scramble-key responder (`hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv`) holds `ack` one clock after `req` falls, and the vendored request synchronizer of OTBN asserts that an acknowledge needs a request (`vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sync_reqack.sv`, `SyncReqAckAckNeedsReq` and `SyncReqAckHoldReq`). Verilator compiles these assertions out, so the leaf passes there.
+
+*Issue*: #3156
+
 '''''
 
 [[sep_abr_command_matrix_rand_test]]

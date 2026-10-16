@@ -18819,7 +18819,7 @@ module sep_fcov (
     logic hi;
     logic hi_v;  // stream whose internal endpoint holds its word
     logic [1:0] pp;
-    logic pp_v;  // 0 DATA read at level 2..31, 1 at level 32, 2 feed at level 32
+    logic pp_v;  // 0 DATA read at level 2..31, 1 at level 32, 2 feed that fills to 32
     logic ei;
     logic ei_v;  // 0 rise, 1 fall of ext_trng_irq_i followed by vector bit 16
     logic [1:0] tu;
@@ -18859,7 +18859,7 @@ module sep_fcov (
     cp_ext_stall: coverpoint s.es iff (s.es_v) {bins crypto = {1'b0}; bins pool = {1'b1};}
     cp_hold_internal: coverpoint s.hi iff (s.hi_v) {bins crypto = {1'b0}; bins pool = {1'b1};}
     cp_pool_pop: coverpoint s.pp iff (s.pp_v) {
-      bins pop_level_2_to_31 = {2'd0}; bins pop_level_32 = {2'd1}; bins feed_level_32 = {2'd2};
+      bins pop_level_2_to_31 = {2'd0}; bins pop_level_32 = {2'd1}; bins feed_fills_32 = {2'd2};
     }
     cp_ext_irq: coverpoint s.ei iff (s.ei_v) {bins rise = {1'b0}; bins fall = {1'b1};}
     cp_ext_tuser: coverpoint s.tu iff (s.tu_v) {
@@ -21435,13 +21435,14 @@ module sep_fcov (
     end
 
     // cp_pool_pop: an OKAY DATA read at a pool level of 2 to 31 or 32 at
-    // the AR handshake; a pool feed (native EDN acknowledge) at level 32.
+    // the AR handshake; the pool feed (native EDN acknowledge) at level 31,
+    // which fills the pool to 32.
     if (cy_own_xhs) begin
       if (rd_ev && (ar_addr_q == ENTROPY_POOL_DATA_REG_ADDR) && !$isunknown(cz_pool_ar)) begin
         if ((cz_pool_ar >= 6'd2) && (cz_pool_ar <= 6'd31)) cz_dlv(6, 3'd0);
         if (cz_pool_ar == 6'd32) cz_dlv(6, 3'd1);
       end
-      if ((pool_edn_ack_i === 1'b1) && (pool_level_i == 6'd32)) cz_dlv(6, 3'd2);
+      if ((pool_edn_ack_i === 1'b1) && (pool_level_i == 6'd31)) cz_dlv(6, 3'd2);
     end
 
     // cp_ext_irq: vector bit 16 follows a rise or fall of ext_trng_irq_i
