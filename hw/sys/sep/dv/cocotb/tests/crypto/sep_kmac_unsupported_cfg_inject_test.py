@@ -9,21 +9,36 @@ hashing starts. ``CFG_SHADOWED.en_unsupported_modestrength`` (lines 112-118):
 with the bit clear KMAC does not propagate ``CMD.start`` to the SHA3 engine;
 with the bit set it moves forward. ``CMD.err_processed`` (lines 195-197) lets
 the state machine return to its reset state. ``ERR_CODE`` (lines 343-345) is 0
-at reset and holds the cause after ``kmac_err``; the register text states no
-value after an error, so the code is logged only and its reset value 0 is graded. Mode and command codes come from
+at reset; "Bits 31:24 contain the error code ... and bits 23:0 contain additional
+debug information." (line 344). The code values come from
+``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/theory_of_operation.md``:
+"0x06 | UnexpectedModeStrength | SHA3 mode and Keccak Strength combination is not
+expected." (line 726) and "The KMAC HWIP assumes the combinations of two to be
+**SHA3-224**, **SHA3-256**, **SHA3-384**, **SHA3-512**, **SHAKE-128**,
+**SHAKE-256**, **cSHAKE-128**, and **cSHAKE-256**. If the combination of the
+`mode` and `kstrength` does not fall into above, the module reports the
+`UnexpectedModeStrength` error." (lines 784-785). No text gives bits 23:0 a
+value, so they are masked. Mode and command codes come from
 ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson``.
 
 The 20 cells are mode {SHAKE, cSHAKE} x strength {128, 224, 256, 384, 512} x
 ``en_unsupported_modestrength`` {0, 1}, with ``kmac_en`` = 0 in EDN entropy
-mode. The 8 supported cells are controls and are not graded here. Each blocked
-start is followed by ``CMD.err_processed``, a write-one clear of ``kmac_err``
-and a legal SHA3-256 hash of a drawn message.
+mode, plus SHA3 strength 128 with ``en_unsupported_modestrength`` = 0 (not in
+the list of lines 784-785). The 8 supported cells and SHA3-256 are controls and
+are not graded here. Each blocked start is followed by ``CMD.err_processed``, a
+write-one clear of ``kmac_err`` and a legal SHA3-256 hash of a drawn message.
 
 Checkers:
   CHK-KMAC-UNSUP     en bit 0, unsupported strength: after CMD.start kmac_err=1,
                      sha3_idle=1, sha3_absorb=0 and kmac_done=0;
                      STATUS still idle and not absorbing after a hold of t_clean.
-                     kmac_err and ERR_CODE read 0 before the start.
+                     kmac_err and ERR_CODE read 0 before the start. The SHA3-128
+                     cell is graded the same way.
+  CHK-KMAC-ERRCODE   en bit 0, every unsupported cell (SHAKE/cSHAKE 224, 384,
+                     512 and SHA3-128): ERR_CODE[31:24] = 0x06 on the read after
+                     kmac_err sets and again after the hold, with kmac_err still
+                     set. The control is the 0 read before the start
+                     (CHK-KMAC-UNSUP ``pre_code``, reset value at line 343).
   CHK-KMAC-UNSUP-EN  en bit 1, unsupported strength: STATUS.sha3_absorb=1 after
                      CMD.start. kmac_err is logged only.
   CHK-KMAC-ERRPROC   after err_processed and the W1C: kmac_err=0, sha3_idle=1;
@@ -31,9 +46,10 @@ Checkers:
                      still reads 0.
 
 Controls and observations: ``CTRL-KMAC-UNSUP`` per supported cell (no
-kmac_err, absorb reached; its start time sets t_clean). ``OBS-KMAC-ERRCODE``
-logs each error code. ``OBS-KMAC-UNSUP-EN-ERR`` logs kmac_err of the enabled
-group.
+kmac_err, absorb reached; its start time sets t_clean). ``CTRL-KMAC-UNSUP-SHA3``
+(SHA3-256 with the en bit 0 reaches absorb with no kmac_err; its start time
+joins t_clean before the SHA3-128 cell). ``OBS-KMAC-UNSUP-EN-ERR`` logs
+kmac_err of the enabled group.
 
 Time bounds: t_clean is the longest clean start time of the supported group,
 measured from the ``CMD.start`` write to the read that shows absorb. The
@@ -43,7 +59,8 @@ log the measured clocks.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense
 +esrc_noise_force``. RAND-REP: the seed draws the three cell orders and the
-recovery messages; the 20 cells are the same on every seed.
+recovery messages; the 21 cells are the same on every seed. The SHA3 control and
+the SHA3-128 cell run after the blocked group.
 """
 
 from __future__ import annotations
@@ -101,6 +118,12 @@ _SUPPORTED = tuple((m, s, e) for m in _XOF_MODES for s in _LEGAL_STRENGTHS for e
 _BLOCKED = tuple((m, s) for m in _XOF_MODES for s in _UNSUP_STRENGTHS)
 _MSG_MAX_BYTES = 100
 _RECOVER_STRENGTH = 256
+# theory_of_operation.md:784-785: SHA3-128 is not a listed combination.
+_SHA3_UNSUP = ("sha3", 128)
+_SHA3_CTRL = ("sha3", 256)
+# theory_of_operation.md:726 UnexpectedModeStrength; kmac.adoc:344 code in bits 31:24.
+EXP_ERR_UNEXPECTED_MODE_STRENGTH = 0x06
+_ERR_CODE_LSB = 24
 _RECOVER_DIGEST_WORDS = _RECOVER_STRENGTH // 32
 
 # Bound multiples and the outer limit of the clean-time measurements.
@@ -115,6 +138,7 @@ class Plan:
     blocked: tuple[tuple[str, int], ...]
     enabled: tuple[tuple[str, int], ...]
     messages: tuple[bytes, ...]
+    sha3_msg: bytes
 
 
 def _draw_message(rng: SepSeededRng, nbytes: int) -> bytes:
@@ -137,7 +161,8 @@ def draw_plan(seed: int) -> Plan:
     enabled = list(_BLOCKED)
     rng.shuffle(enabled)
     messages = tuple(_draw_message(rng, rng.randrange(0, _MSG_MAX_BYTES + 1)) for _ in blocked)
-    return Plan(tuple(supported), tuple(blocked), tuple(enabled), messages)
+    sha3_msg = _draw_message(rng, rng.randrange(0, _MSG_MAX_BYTES + 1))
+    return Plan(tuple(supported), tuple(blocked), tuple(enabled), messages, sha3_msg)
 
 
 def _cfg_word(mode: str, strength: int, en_unsup: int) -> int:
@@ -151,11 +176,21 @@ def _bits(v: int, m: int) -> int:
     return int(bool(v & m))
 
 
+def _code(v: int) -> int:
+    """ERR_CODE[31:24], the error code (kmac.adoc:344)."""
+    return (v >> _ERR_CODE_LSB) & 0xFF
+
+
 @pyuvm.test()
 class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
     """Unsupported SHAKE/cSHAKE strengths raise kmac_err and stay idle; err_processed recovers."""
 
-    required_evidence = ("CHK-KMAC-UNSUP", "CHK-KMAC-UNSUP-EN", "CHK-KMAC-ERRPROC")
+    required_evidence = (
+        "CHK-KMAC-UNSUP",
+        "CHK-KMAC-UNSUP-EN",
+        "CHK-KMAC-ERRPROC",
+        "CHK-KMAC-ERRCODE",
+    )
 
     # --- clocks and register access -----------------------------------------
     def _now_clk(self) -> int:
@@ -246,6 +281,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
 
         t_clean = await self._supported_group(seed, plan)
         blocked_absorb = await self._blocked_group(seed, plan, t_clean)
+        await self._sha3_cell(seed, plan, t_clean)
         await self._enabled_group(seed, plan, t_clean, blocked_absorb)
 
         self._graded = False
@@ -294,68 +330,107 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         bound = _ERR_BOUND_MULT * t_clean
         absorb_of: dict[tuple[str, int], int] = {}
         for (mode, strength), msg in zip(plan.blocked, plan.messages):
-            cell = dict(seed=seed, mode=mode, kstrength=strength, en_unsup=0)
-            pre_intr, pre_code = await self._arm_cell(mode, strength, 0)
-            t0 = self._now_clk()
-            await self._wr(KMAC_CMD, KMAC_CMD_START)
-            seen, intr, err_clk = await self._poll(KMAC_INTR_STATE, _ERR, t0, bound)
-            if not seen:
-                status = await self._rd(KMAC_STATUS)
-                absorb_of[(mode, strength)] = _bits(status, _ABSORB)
-                self.chk.ok(
-                    "KMAC-UNSUP",
-                    False,
-                    **cell,
-                    reason="timeout",
-                    bound=bound,
-                    err=0,
-                    absorb=_bits(status, _ABSORB),
-                    idle=_bits(status, _IDLE),
-                )
-                continue
-            status1 = await self._rd(KMAC_STATUS)
-            intr1 = await self._rd(KMAC_INTR_STATE)
-            code1 = await self._rd(KMAC_ERR_CODE) & _ERR_CODE_MASK
-            h0 = self._now_clk()
-            await ClockCycles(cocotb.top.clk_i, t_clean)
-            status2 = await self._rd(KMAC_STATUS)
-            code2 = await self._rd(KMAC_ERR_CODE) & _ERR_CODE_MASK
-            hold_clk = self._now_clk() - h0
-            absorb = _bits(status1, _ABSORB) | _bits(status2, _ABSORB)
-            absorb_of[(mode, strength)] = absorb
-            ok = (
-                (pre_intr & _ERR) == 0
-                and (pre_code & _ERR_CODE_MASK) == 0
-                and _bits(intr1, _ERR) == 1
-                and _bits(status1, _IDLE) == 1
-                and _bits(status2, _IDLE) == 1
-                and absorb == 0
-                and _bits(intr1, _DONE) == 0
+            absorb_of[(mode, strength)] = await self._blocked_cell(
+                seed, mode, strength, msg, bound, t_clean
             )
+        return absorb_of
+
+    async def _sha3_cell(self, seed: int, plan: Plan, t_clean: int) -> None:
+        """SHA3-256 control, then SHA3-128 with the en bit 0 graded as a blocked cell."""
+        mode, strength = _SHA3_CTRL
+        await self._arm_cell(mode, strength, 0)
+        t0 = self._now_clk()
+        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        seen, status, clk = await self._poll(KMAC_STATUS, _ABSORB, t0, _OUTER_CLK)
+        err = _bits(await self._rd(KMAC_INTR_STATE), _ERR)
+        self.chk.ctrl(
+            "KMAC-UNSUP-SHA3",
+            seen and err == 0,
+            seed=seed,
+            mode=mode,
+            kstrength=strength,
+            en_unsup=0,
+            err=err,
+            absorb=_bits(status, _ABSORB),
+            start_clk=clk,
+            bound=_OUTER_CLK,
+        )
+        hold = max(t_clean, clk) if seen else t_clean
+        mode, strength = _SHA3_UNSUP
+        await self._blocked_cell(seed, mode, strength, plan.sha3_msg, _ERR_BOUND_MULT * hold, hold)
+
+    async def _blocked_cell(
+        self, seed: int, mode: str, strength: int, msg: bytes, bound: int, hold: int
+    ) -> int:
+        """One unsupported cell with en bit 0, then its recovery. Returns the absorb seen."""
+        cell = dict(seed=seed, mode=mode, kstrength=strength, en_unsup=0)
+        pre_intr, pre_code = await self._arm_cell(mode, strength, 0)
+        t0 = self._now_clk()
+        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        seen, intr, err_clk = await self._poll(KMAC_INTR_STATE, _ERR, t0, bound)
+        if not seen:
+            status = await self._rd(KMAC_STATUS)
             self.chk.ok(
                 "KMAC-UNSUP",
-                ok,
+                False,
                 **cell,
-                pre_err=_bits(pre_intr, _ERR),
-                pre_code=f"0x{pre_code & _ERR_CODE_MASK:x}",
-                err=_bits(intr1, _ERR),
-                absorb=absorb,
-                idle=_bits(status1, _IDLE) & _bits(status2, _IDLE),
-                done=_bits(intr1, _DONE),
-                err_clk=err_clk,
-                hold_clk=hold_clk,
-                status=f"0x{status1 & _STAGE_MASK:x}/0x{status2 & _STAGE_MASK:x}",
-                intr_rsvd=f"0x{intr1 & ~_INTR_MASK & 0xFFFF_FFFF:x}",
+                reason="timeout",
+                bound=bound,
+                err=0,
+                absorb=_bits(status, _ABSORB),
+                idle=_bits(status, _IDLE),
             )
-            self.chk.obs(
-                "KMAC-ERRCODE",
-                seed=seed,
-                mode=mode,
-                kstrength=strength,
-                err_code=f"0x{code1:x}/0x{code2:x}",
-            )
-            await self._recover(seed, mode, strength, msg)
-        return absorb_of
+            return _bits(status, _ABSORB)
+        status1 = await self._rd(KMAC_STATUS)
+        intr1 = await self._rd(KMAC_INTR_STATE)
+        code1 = await self._rd(KMAC_ERR_CODE) & _ERR_CODE_MASK
+        h0 = self._now_clk()
+        await ClockCycles(cocotb.top.clk_i, hold)
+        status2 = await self._rd(KMAC_STATUS)
+        code2 = await self._rd(KMAC_ERR_CODE) & _ERR_CODE_MASK
+        intr2 = await self._rd(KMAC_INTR_STATE)
+        hold_clk = self._now_clk() - h0
+        absorb = _bits(status1, _ABSORB) | _bits(status2, _ABSORB)
+        ok = (
+            (pre_intr & _ERR) == 0
+            and (pre_code & _ERR_CODE_MASK) == 0
+            and _bits(intr1, _ERR) == 1
+            and _bits(status1, _IDLE) == 1
+            and _bits(status2, _IDLE) == 1
+            and absorb == 0
+            and _bits(intr1, _DONE) == 0
+        )
+        self.chk.ok(
+            "KMAC-UNSUP",
+            ok,
+            **cell,
+            pre_err=_bits(pre_intr, _ERR),
+            pre_code=f"0x{pre_code & _ERR_CODE_MASK:x}",
+            err=_bits(intr1, _ERR),
+            absorb=absorb,
+            idle=_bits(status1, _IDLE) & _bits(status2, _IDLE),
+            done=_bits(intr1, _DONE),
+            err_clk=err_clk,
+            hold_clk=hold_clk,
+            status=f"0x{status1 & _STAGE_MASK:x}/0x{status2 & _STAGE_MASK:x}",
+            intr_rsvd=f"0x{intr1 & ~_INTR_MASK & 0xFFFF_FFFF:x}",
+        )
+        exp = EXP_ERR_UNEXPECTED_MODE_STRENGTH
+        self.chk.ok(
+            "KMAC-ERRCODE",
+            (pre_code & _ERR_CODE_MASK) == 0
+            and _code(code1) == exp
+            and _code(code2) == exp
+            and _bits(intr2, _ERR) == 1,
+            **cell,
+            pre_code=f"0x{pre_code & _ERR_CODE_MASK:x}",
+            code=f"0x{_code(code1):02x}/0x{_code(code2):02x}",
+            expected=f"0x{exp:02x}",
+            err_after_hold=_bits(intr2, _ERR),
+            debug=f"0x{code1 & 0xFF_FFFF:06x}/0x{code2 & 0xFF_FFFF:06x}",
+        )
+        await self._recover(seed, mode, strength, msg)
+        return absorb
 
     async def _recover(self, seed: int, mode: str, strength: int, msg: bytes) -> None:
         """Step 6: err_processed, W1C of kmac_err, then a SHA3-256 hash of ``msg``."""

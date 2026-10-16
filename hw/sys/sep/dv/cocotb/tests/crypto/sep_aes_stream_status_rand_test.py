@@ -11,6 +11,8 @@ Modifications; ``hw/sys/sep/doc/interrupts.adoc``, PIC source map):
   * MANUAL_OPERATION = 1: the unit starts only on TRIGGER.START, overwrites
     unread output and sets OUTPUT_LOST until the Control Register is rewritten.
   * IDLE is 0 while a block runs.
+  * INPUT_READY is 0 while the present DATA_IN values are not loaded into the
+    module, and 1 once the unit has loaded them.
   * AES has no interrupt: AES activity changes no bit of the interrupt vector.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
@@ -24,8 +26,8 @@ size, the operation (encrypt or decrypt for ECB and CBC, encrypt for CTR), the
 block count N (34 to 100), the input and output gap of every block (0 to 40
 clocks), one or two stall pairs and one or two control pairs (indexes in 1 to
 N - 2, no two pairs overlap), the stall delay factor of each pair (2 to 20
-times t_blk), the data words, and the factor of the manual-leg wait (2 to 8
-times t_blk). Keys, IVs and the CTR start counter come from published test
+times t_blk), the data words, the factor of the manual-leg wait (2 to 8
+times t_blk), and the three blocks of the INPUT_READY leg (drawn last). Keys, IVs and the CTR start counter come from published test
 constants; the CTR counter keeps its low 32 bits at or below 2^32 - N.
 
 Checkers:
@@ -47,7 +49,24 @@ Checkers:
   CHK-AES-NOIRQ       the 41 vector bits other than 36 and 37 keep their first
                       value on every clock of the AES legs. Control: one HMAC
                       operation with ``hmac_done`` enabled raises bit 17.
+  CHK-AES-INPUT-READY with output 0 unread and block 1 stalled (STALL = 1),
+                      block 2 is written: every STATUS read of a window of
+                      IR_WINDOW_FACTOR x t_blk clocks shows STALL = 1 and
+                      INPUT_READY = 0 (aes.rdl STATUS.INPUT_READY: "If the
+                      present values in the DATA_IN registers have not yet
+                      been loaded into the module this flag is `0` (not
+                      ready)."; theory_of_operation.md:37-39: the stalled unit
+                      "only continues once the previous output data has been
+                      read"). After output 0 is read, INPUT_READY reads 1
+                      inside a window of the same length
+                      (programmers_guide.md:53: INPUT_READY becomes 1 when the
+                      unit loads the block "and start operation"; :66), and
+                      the three outputs equal their goldens. Control: the
+                      STALL = 1 read before block 2 is written shows
+                      INPUT_READY = 1 (block 1 is loaded).
 Vector bits 36 and 37 (entropy pool sources) are logged as ``OBS-POOL-VEC``.
+``aes.rdl`` is ``vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl``; the two ``.md``
+files are under ``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/``.
 """
 
 from __future__ import annotations
@@ -99,6 +118,7 @@ ST_IDLE = AES.field_mask("STATUS", "idle")
 ST_STALL = AES.field_mask("STATUS", "stall")
 ST_LOST = AES.field_mask("STATUS", "output_lost")
 ST_OV = AES.field_mask("STATUS", "output_valid")
+ST_IR = AES.field_mask("STATUS", "input_ready")
 CTRL_MANUAL = AES.field_mask("CTRL_SHADOWED", "manual_operation")
 TRIG_START = AES.field_mask("TRIGGER", "start")
 
@@ -115,6 +135,9 @@ INTR_ENABLE_OFF = (
 WAIT_LIMIT = 20_000  # outer limit of a wait that has no clean time yet (logged as bound=)
 OV_BOUND_FACTOR = 64  # bounded OUTPUT_VALID wait = 64 x t_blk
 START_WINDOW_FACTOR = 20  # 20 x t_blk (test parameter)
+IR_WINDOW_FACTOR = 8  # held and load windows of the INPUT_READY leg = 8 x t_blk (test parameter)
+EXP_HELD_IR = 0  # INPUT_READY with block 2 written and not loaded (aes.rdl STATUS.INPUT_READY)
+EXP_LOADED_IR = 1  # INPUT_READY once the block is loaded (programmers_guide.md:53)
 
 
 def _le_words(data: bytes) -> list[int]:
@@ -178,6 +201,7 @@ class Plan:
     auto_block: tuple[int, ...]
     manual_blocks: tuple[tuple[int, ...], tuple[int, ...]]
     hmac_msg: tuple[int, ...]
+    ir_blocks: tuple[tuple[int, ...], ...]
 
     def describe(self) -> str:
         return (
@@ -236,7 +260,8 @@ def draw_plan(seed: int) -> Plan:
     auto_block = tuple(_unique_words(rng, 4, used))
     manual_blocks = (tuple(_unique_words(rng, 4, used)), tuple(_unique_words(rng, 4, used)))
     hmac_msg = tuple(_unique_words(rng, 8, used))
-    return Plan(seed, tuple(streams), manual_factor, auto_block, manual_blocks, hmac_msg)
+    ir_blocks = tuple(tuple(_unique_words(rng, 4, used)) for _ in range(3))
+    return Plan(seed, tuple(streams), manual_factor, auto_block, manual_blocks, hmac_msg, ir_blocks)
 
 
 @pyuvm.test()
@@ -250,6 +275,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         "CHK-AES-LOST",
         "CHK-AES-IDLE",
         "CHK-AES-NOIRQ",
+        "CHK-AES-INPUT-READY",
     )
 
     async def run_scenario(self) -> None:
@@ -294,6 +320,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         close_graded_window(self.logger)
         await self._start_auto_leg()
         await self._manual_leg()
+        await self._input_ready_leg()
         close_graded_window(self.logger)
 
         t1_ps = get_sim_time("ps")
@@ -628,6 +655,78 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         self.chk.ok(
             "AES-LOST", lost == 1 and data == g2 and lost_read == 1 and lost2 == 0, **fields
         )
+
+    # --- INPUT_READY around a held stall -----------------------------------------------
+    async def _input_ready_leg(self) -> None:
+        """Block 2 written while block 1 is stalled behind unread output 0.
+
+        The stalled unit holds block 1 until output 0 is read, so block 2 cannot be
+        loaded and INPUT_READY reads 0; the STALL bit of every read of the held window
+        shows that the hold lasts. After the read the unit continues, loads block 2 and
+        INPUT_READY reads 1.
+        """
+        key = _le_words(KEY_ROWS[256][0][1])
+        blocks = [list(b) for b in self.plan.ir_blocks]
+        gold = [aes_encrypt_words("ecb", key, b) for b in blocks]
+        ctrl = build_aes_ctrl(sideload=False, mode=AES_MODE_ECB, key_len=AES_KEY_LEN_256)
+        window = IR_WINDOW_FACTOR * (self.t_blk or 1)
+        await self._pulse_aes()
+        pre = -1
+        held: list[tuple[int, int]] = []
+        t_load = -1
+        outs: list[list[int] | None] = [None, None, None]
+        reason = ""
+        open_graded_window(TEST, self.logger)
+        try:
+            await self._load(ctrl, key, None)
+            await self._write_block(blocks[0])
+            await self._wait(ST_OV, ST_OV, self._ov_bound(), "ir_b0_output_valid")
+            await self._write_block(blocks[1])
+            await self._wait(ST_STALL, ST_STALL, self._ov_bound(), "ir_b1_stall")
+            pre = await self.aes._rd(AES_STATUS)
+            await self._write_block(blocks[2])
+            held = await self._sample(window)
+            outs[0] = await self._read_out()
+            t0 = self.clk.clk
+            loaded = await self._wait(ST_IR, ST_IR, window, "ir_b2_load")
+            t_load = loaded[-1][0] - t0
+            # Output 1 moves to DATA_OUT in the cycle block 2 is loaded (programmers_guide.md:66).
+            outs[1] = await self._read_out()
+            await self._wait(ST_IDLE | ST_OV, ST_IDLE | ST_OV, self._ov_bound(), "ir_b2_done")
+            outs[2] = await self._read_out()
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+        close_graded_window(self.logger)
+        pre_ok = pre >= 0 and bool(pre & ST_STALL) and int(bool(pre & ST_IR)) == EXP_LOADED_IR
+        self.chk.ctrl(
+            "AES-INPUT-READY",
+            pre_ok,
+            ctrl_stall=int(pre >= 0 and bool(pre & ST_STALL)),
+            ctrl_input_ready=int(pre >= 0 and bool(pre & ST_IR)),
+        )
+        held_ir = sum(1 for _, st in held if int(bool(st & ST_IR)) != EXP_HELD_IR)
+        held_unstalled = sum(1 for _, st in held if not st & ST_STALL)
+        ct_ok = [int(o == g) for o, g in zip(outs, gold, strict=True)]
+        fields = {
+            "held_samples": len(held),
+            "held_input_ready_bad": held_ir,
+            "held_stall0": held_unstalled,
+            "t_load_clk": t_load,
+            "window_clk": window,
+            "ct==golden": ct_ok,
+            "ctrl_input_ready": int(pre >= 0 and bool(pre & ST_IR)),
+        }
+        if reason:
+            fields["reason"] = reason
+        ok = (
+            not reason
+            and bool(held)
+            and held_ir == 0
+            and held_unstalled == 0
+            and 0 <= t_load <= window
+            and all(ct_ok)
+        )
+        self.chk.ok("AES-INPUT-READY", ok, **fields)
 
     # --- vector and HMAC control ------------------------------------------------------
     @staticmethod

@@ -43,9 +43,13 @@ Checkers:
                           Control: the IV read before the clear equals the
                           written IV.
   CHK-AES-RATE-CT         every block of the five rate runs equals the golden.
-The value of DATA_OUT after DATA_OUT_CLEAR has no stated value: the leaf logs
-``OBS-BLOCKED CHK-AES-CLEAR-OUT`` and ``OBS-AES-CLEAR-OUT`` and grades nothing
-there. The IV after the clear is logged as ``OBS-AES-CLEAR-IV``.
+DATA_OUT after DATA_OUT_CLEAR has no exact form: ``aes.hjson``:909-913 states only
+"clear those registers with pseudo-random data", and no value, status bit or
+read effect. A check that the value differs from the output before the clear
+fails a healthy DUT with probability 2^-128 and passes a partial clear, so it is
+not a check. The leaf logs ``OBS-BLOCKED CHK-AES-CLEAR-OUT`` and
+``OBS-AES-CLEAR-OUT`` and grades nothing there. The IV after the clear is logged
+as ``OBS-AES-CLEAR-IV``.
 """
 
 from __future__ import annotations
@@ -251,7 +255,9 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
                 await self._clear_key_trial()
         close_graded_window(self.logger)
 
-        self.chk.blocked("CHK-AES-CLEAR-OUT", "DATA_OUT value after clear not stated")
+        self.chk.blocked(
+            "CHK-AES-CLEAR-OUT", "no exact form: aes.hjson:909-913 states pseudo-random data only"
+        )
         await self.stop_fifo_drain()
         assert self.drbg_sb.report()
         await self.clk.stop()
@@ -433,7 +439,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
 
     # --- clear trials -------------------------------------------------------------
     async def _clear_out_trial(self) -> None:
-        """DATA_OUT_CLEAR: values logged only (no stated value after the clear)."""
+        """DATA_OUT_CLEAR: values logged only (aes.hjson:909-913 gives no exact form)."""
         plan = self.plan
         await self._pulse_aes()
         try:

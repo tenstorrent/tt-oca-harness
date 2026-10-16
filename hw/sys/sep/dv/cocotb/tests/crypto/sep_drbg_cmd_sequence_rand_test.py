@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""EDN boot-mode precedence, the EDN and CSRNG software command handshakes, and the
-invalid command sequence alert.
+"""EDN boot-mode precedence, the EDN and CSRNG software command handshakes and
+status, the invalid command sequence alert, the command header, the CTRL field and
+command alerts, the reseed limit and the GENBITS gate.
 
 Contract (``vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc``: CTRL,
 BOOT_INS_CMD, SW_CMD_REQ, SW_CMD_STS, HW_CMD_STS;
@@ -20,6 +21,40 @@ bit N - 1):
     (``CMD_STAGE_INVALID_CMD_SEQ_ALERT``); a write of 0 clears it. The text
     also says the command "is ignored and CSRNG continues to operate"; it gives
     no register value that shows this, so the leaf does not grade it.
+  * Command header (``vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/
+    theory_of_operation.md``:156-188, :211-279): "3:0 acmd", "7:4 clen",
+    "11:8 flag0", "23:12 glen"; "Instantiate 0x1", "Reseed 0x2", "Generate
+    0x3", "Uninstantiate 0x5", "Reserved 0x0,0x6-0xf". "Several control fields
+    use MuBi4 encodings, for which true is `0x6` and false is `0x9`."
+    (``doc/programmer/src/sep-programming.adoc``:390-391). Every command word of
+    the leaf is built from these fields.
+  * EDN boot words (edn.adoc:128-131, :142-145): ``BOOT_INS_CMD`` resets to
+    0x901 and ``BOOT_GEN_CMD`` to 0xFFF003; "the hardware only supports a value
+    of 0 for the `clen` field".
+  * EDN software status: "write an Instantiate command with no additional data
+    to `EDN.SW_CMD_REQ`. Poll `CMD_ACK` ... and require `CMD_STS` to report
+    success." (sep-programming.adoc:459-462). EDN ``CMD_STS`` uses the CSRNG
+    codes (edn.adoc:172-176): "0 SUCCESS", "1 INVALID_ACMD ... the issued
+    application command doesn't represent a valid operation", "4
+    RESEED_CNT_EXCEEDED ... This happens only for Generate commands."
+    (``vendor/lowRISC/opentitan/upstream/hw/ip/csrng/data/csrng.hjson``:406-440).
+  * ``CTRL`` field alerts: "This bit is set when the <field> field in the !!CTRL
+    register is set to a value other than kMultiBitBool4True or
+    kMultiBitBool4False. Writing a zero resets this status bit." (csrng.adoc
+    ``RECOV_ALERT_STS`` bits 0-3, :343-356; edn.adoc bits 0-3, :280-291).
+  * Command alerts (csrng.adoc ``RECOV_ALERT_STS``): bit 4 "is set when the
+    FLAG0 field in the Application Command is set to a value other than
+    kMultiBitBool4True or kMultiBitBool4False" (:343-345); bit 13 "is set when
+    an unsupported/illegal CSRNG command is received by the main state
+    machine" (:335-338); bit 15 "is set when the maximum number of generate
+    requests between reseeds is exceeded" (:325-328).
+  * Reseed limit (csrng.adoc ``RESEED_INTERVAL``:141-144): the counter "counts
+    the number of generate commands between reseed or instantiate commands. If
+    the counter reaches the value of this register, the violating command will
+    be acknowledged with a status error."
+  * ``GENBITS`` (csrng.adoc:223-225): "for !!GENBITS to be able to deliver
+    random numbers, also !!CTRL.SW_APP_ENABLE needs to be set to
+    `kMultiBitBool4True`. ... Otherwise, the register reads as 0."
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. Baseline ``SW_RESET_N`` = 0x20 (TRNG released; the Key
@@ -31,8 +66,15 @@ for the bring-up only: this leaf grades register state, not data.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first stimulus):
 the order of the boot group, the EDN software port leg and the CSRNG software
-instance leg, and the idle gap (0 to 16 clocks) before each poll read. The command
-words, the mode codes and the checked values do not depend on the seed.
+instance leg, and the idle gap (0 to 16 clocks) before each poll read; after them,
+the invalid value of each ``CTRL`` field, the invalid ``flag0``, the reserved
+``acmd``, the ``RESEED_INTERVAL`` value K (3 or 4) and the ``SW_APP_ENABLE`` value
+that is not True for the ``GENBITS`` read. The checked values do not depend on the
+seed.
+
+The three groups run in the drawn order. Then the leaf runs, in this order, the
+``CTRL`` alert leg (a TRNG reset, no bring-up), the command header leg and the
+reseed leg (each from a clean start).
 
 Checkers:
   CHK-EDN-BOOT   for each graded boot (AUTO_REQ_MODE true, then false) the first
@@ -46,7 +88,51 @@ Checkers:
   CHK-CSRNG-SW   the same handshake for the CSRNG software instance (vector bit
                  23), and bit 14 on the second command. Control: bit 14 reads 0
                  after the first command.
-The unstated effects are logged only (``OBS-EDN-*``, ``OBS-CSRNG-*``).
+  CHK-EDN-BOOT-CMD  before any write, ``BOOT_INS_CMD`` reads 0x901 and
+                 ``BOOT_GEN_CMD`` 0xFFF003; decoded with the header layout, acmd
+                 0x1 and 0x3, clen 0 in both, glen 0xFFF.
+  CHK-EDN-STS    ``SW_CMD_STS.CMD_STS`` = 0 (SUCCESS) at the ``CMD_ACK`` of the
+                 first EDN instantiate. Control: a reserved acmd through
+                 ``SW_CMD_REQ`` reads ``CMD_STS`` = 1 (INVALID_ACMD) at its ack.
+  CHK-EDN-ACK-ERR  after that reserved acmd acks with a non-zero ``CMD_STS``,
+                 EDN ``RECOV_ALERT_STS.CSRNG_ACK_ERR`` reads 1: "This bit is set
+                 when the CSRNG returns an acknowledgement where the status
+                 signal is non-zero. Writing a zero resets this status bit."
+                 (``vendor/lowRISC/opentitan/upstream/hw/ip/edn/data/edn.hjson``
+                 :542-543, the same text in ``edn.rdl`` ``RECOV_ALERT_STS``); code
+                 1 "Request completed with an invalid application command error.
+                 This error indicates that the issued application command
+                 doesn't represent a valid operation." (``csrng.hjson``:415-416).
+                 Control: after a write of 0 and before the command, the bit
+                 reads 0.
+  CHK-CSRNG-CTRL-MUBI, CHK-EDN-CTRL-MUBI  per ``CTRL`` field, a write of a value
+                 other than 6 or 9 sets the field alert bit; after the legal
+                 value is back, a write of 0 clears it. Control: the bit reads 0
+                 with the legal value, before the write.
+  CHK-CSRNG-ACMD-INV  a reserved acmd sets bit 13 and acks with ``CMD_STS`` = 1;
+                 a write of 0 clears bit 13. Control: bit 13 reads 0 after an
+                 instantiate.
+  CHK-CSRNG-FLAG0  an instantiate with an invalid value in flag0 [11:8] sets
+                 bit 4; a write of 0 clears it. Control: bit 4 reads 0 after an
+                 instantiate with flag0 0x9 and after one with flag0 0x6.
+  CHK-CSRNG-RESEED-LIMIT  with ``RESEED_INTERVAL`` = K, a Generate within the
+                 first K + 1 acks with ``CMD_STS`` = 4 and bit 15 reads 1 at
+                 that ack; a write of 0 clears bit 15. The counter reaches K
+                 after K or K + 1 Generates, whichever reading of "reaches"
+                 holds, so K + 1 Generates bound the leg. The index of the
+                 refused Generate is logged only (``OBS-CSRNG-RESEED-IDX``).
+                 Control: the first Generate (index 1 < K) acks with
+                 ``CMD_STS`` other than 4 and bit 15 at 0.
+  CHK-CSRNG-RESEED-HDR  after a Reseed word (acmd 0x2, clen 0, flag0 0x9, the
+                 header that EDN ``RESEED_CMD`` also takes, edn.adoc:225-230)
+                 the next Generate acks with ``CMD_STS`` other than 4 and bit 15
+                 at 0. Control: the Generate before the Reseed was refused.
+  CHK-CSRNG-GENBITS-GATE  with a Generate pending (``GENBITS_VLD`` = 1, the
+                 control), ``CTRL.SW_APP_ENABLE`` set to a value other than 6:
+                 four ``GENBITS`` reads return 0.
+The unstated effects are logged only (``OBS-EDN-*``, ``OBS-CSRNG-*``). The
+``CMD_STS`` of the CSRNG instantiate stays an observation (``OBS-CSRNG-STS``): no
+sentence states that a first instantiate on the software instance succeeds.
 """
 
 from __future__ import annotations
@@ -110,6 +196,74 @@ CMD_INSTANTIATE = EDN.reset("BOOT_INS_CMD")
 
 CSRNG_CTRL_ON = CSRNG.value("CTRL", ENABLE=MUBI_TRUE, SW_APP_ENABLE=MUBI_TRUE)
 
+CSRNG_GENBITS_VLD = sym("CSRNG_GENBITS_VLD_REG_ADDR")
+CSRNG_GENBITS = sym("CSRNG_GENBITS_REG_ADDR")
+CSRNG_RESEED_INTERVAL = sym("CSRNG_RESEED_INTERVAL_REG_ADDR")
+EDN_BOOT_INS_CMD = sym("EDN_BOOT_INS_CMD_REG_ADDR")
+EDN_BOOT_GEN_CMD = sym("EDN_BOOT_GEN_CMD_REG_ADDR")
+
+GB_VLD = CSRNG.fields("GENBITS_VLD")["GENBITS_VLD"]["bm"]
+_CS_RECOV = CSRNG.fields("RECOV_ALERT_STS")
+CS_FLAG0_INV = _CS_RECOV["ACMD_FLAG0_FIELD_ALERT"]["bm"]
+CS_ACMD_INV = _CS_RECOV["CMD_STAGE_INVALID_ACMD_ALERT"]["bm"]
+CS_RESEED_CNT = _CS_RECOV["CMD_STAGE_RESEED_CNT_ALERT"]["bm"]
+_ED_RECOV = EDN.fields("RECOV_ALERT_STS")
+# CTRL field -> its RECOV_ALERT_STS field alert bit (csrng.adoc and edn.adoc RECOV_ALERT_STS).
+CS_CTRL_ALERT = {
+    "ENABLE": _CS_RECOV["ENABLE_FIELD_ALERT"]["bm"],
+    "SW_APP_ENABLE": _CS_RECOV["SW_APP_ENABLE_FIELD_ALERT"]["bm"],
+    "READ_INT_STATE": _CS_RECOV["READ_INT_STATE_FIELD_ALERT"]["bm"],
+    "FIPS_FORCE_ENABLE": _CS_RECOV["FIPS_FORCE_ENABLE_FIELD_ALERT"]["bm"],
+}
+ED_CTRL_ALERT = {
+    "EDN_ENABLE": _ED_RECOV["EDN_ENABLE_FIELD_ALERT"]["bm"],
+    "BOOT_REQ_MODE": _ED_RECOV["BOOT_REQ_MODE_FIELD_ALERT"]["bm"],
+    "AUTO_REQ_MODE": _ED_RECOV["AUTO_REQ_MODE_FIELD_ALERT"]["bm"],
+    "CMD_FIFO_RST": _ED_RECOV["CMD_FIFO_RST_FIELD_ALERT"]["bm"],
+}
+MUBI_INVALID = tuple(v for v in range(16) if v not in (MUBI_TRUE, MUBI_FALSE))
+
+# Command header (theory_of_operation.md:156-188) and application commands (:211-279).
+ACMD_INSTANTIATE = 0x1
+ACMD_RESEED = 0x2
+ACMD_GENERATE = 0x3
+ACMD_UNINSTANTIATE = 0x5
+ACMD_RESERVED = (0x0, *range(0x6, 0x10))
+# CMD_STS codes (csrng.hjson SW_CMD_STS.CMD_STS; edn.adoc SW_CMD_STS links to them).
+STS_SUCCESS = 0
+STS_INVALID_ACMD = 1
+STS_RESEED_CNT_EXCEEDED = 4
+# EDN RECOV_ALERT_STS.CSRNG_ACK_ERR after an ack with a non-zero status (edn.hjson:542).
+EXP_ACK_ERR = 1
+# EDN boot command reset values (edn.adoc BOOT_INS_CMD, BOOT_GEN_CMD).
+BOOT_INS_RESET = 0x901
+BOOT_GEN_RESET = 0xFFF003
+
+
+def cmd_word(acmd: int, *, clen: int = 0, flag0: int = MUBI_FALSE, glen: int = 0) -> int:
+    """Command header: acmd [3:0], clen [7:4], flag0 [11:8], glen [23:12]."""
+    return ((glen & 0xFFF) << 12) | ((flag0 & 0xF) << 8) | ((clen & 0xF) << 4) | (acmd & 0xF)
+
+
+def decode_hdr(word: int) -> dict[str, int]:
+    """The header fields of ``word`` at the stated positions."""
+    return {
+        "acmd": word & 0xF,
+        "clen": (word >> 4) & 0xF,
+        "flag0": (word >> 8) & 0xF,
+        "glen": (word >> 12) & 0xFFF,
+    }
+
+
+CMD_GENERATE_1 = cmd_word(ACMD_GENERATE, glen=1)
+CSRNG_CTRL_OFF = CSRNG.value(
+    "CTRL",
+    ENABLE=MUBI_FALSE,
+    SW_APP_ENABLE=MUBI_FALSE,
+    READ_INT_STATE=MUBI_FALSE,
+    FIPS_FORCE_ENABLE=MUBI_FALSE,
+)
+
 
 def _edn_ctrl(boot: bool, auto: bool, enable: bool) -> int:
     return EDN.value(
@@ -134,6 +288,9 @@ TRNG_RESET_CAP = 4_000
 FIRST_CAP = 20_000
 VEC_CAP = 2_000
 BOUND_FACTOR = 16
+# Outer cap of a field-alert poll: the alert bit decodes a register field, so it
+# needs no command to run.
+ALERT_CAP = 2_000
 
 
 @dataclass(frozen=True)
@@ -141,9 +298,20 @@ class Plan:
     seed: int
     groups: tuple[str, ...]
     gaps: tuple[int, ...]
+    cs_bad: tuple[int, ...]
+    ed_bad: tuple[int, ...]
+    bad_flag0: int
+    bad_acmd: int
+    reseed_k: int
+    gen_off: int
 
     def describe(self) -> str:
-        return f"groups={','.join(self.groups)} gaps[0:8]={list(self.gaps[:8])}"
+        return (
+            f"groups={','.join(self.groups)} gaps[0:8]={list(self.gaps[:8])}"
+            f" cs_bad={[hex(v) for v in self.cs_bad]} ed_bad={[hex(v) for v in self.ed_bad]}"
+            f" bad_flag0=0x{self.bad_flag0:x} bad_acmd=0x{self.bad_acmd:x}"
+            f" reseed_k={self.reseed_k} gen_off=0x{self.gen_off:x}"
+        )
 
 
 def draw_plan(seed: int) -> Plan:
@@ -152,7 +320,13 @@ def draw_plan(seed: int) -> Plan:
     groups = list(GROUPS)
     rng.shuffle(groups)
     gaps = tuple(rng.randrange(0, 17) for _ in range(N_GAPS))
-    return Plan(seed, tuple(groups), gaps)
+    cs_bad = tuple(rng.choice(MUBI_INVALID) for _ in CS_CTRL_ALERT)
+    ed_bad = tuple(rng.choice(MUBI_INVALID) for _ in ED_CTRL_ALERT)
+    bad_flag0 = rng.choice(MUBI_INVALID)
+    bad_acmd = rng.choice(ACMD_RESERVED)
+    reseed_k = rng.randrange(3, 5)
+    gen_off = rng.choice(tuple(v for v in range(16) if v != MUBI_TRUE))
+    return Plan(seed, tuple(groups), gaps, cs_bad, ed_bad, bad_flag0, bad_acmd, reseed_k, gen_off)
 
 
 class _Reg(SepAxiRegDriver):
@@ -172,6 +346,16 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         "CHK-EDN-SW-HS",
         "CHK-EDN-INVSEQ",
         "CHK-CSRNG-SW",
+        "CHK-EDN-BOOT-CMD",
+        "CHK-EDN-STS",
+        "CHK-EDN-ACK-ERR",
+        "CHK-CSRNG-CTRL-MUBI",
+        "CHK-EDN-CTRL-MUBI",
+        "CHK-CSRNG-ACMD-INV",
+        "CHK-CSRNG-FLAG0",
+        "CHK-CSRNG-RESEED-LIMIT",
+        "CHK-CSRNG-RESEED-HDR",
+        "CHK-CSRNG-GENBITS-GATE",
     )
 
     async def run_scenario(self) -> None:
@@ -194,6 +378,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         self._gap_i = 0
         self.sb = None
         try:
+            await self._boot_cmd_reset()
             for group in plan.groups:
                 if group == "boot":
                     await self._boot_group()
@@ -201,6 +386,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                     await self._edn_sw_leg()
                 else:
                     await self._csrng_sw_leg()
+            await self._ctrl_mubi_leg()
+            await self._hdr_leg()
+            await self._reseed_leg()
         finally:
             close_graded_window(self.logger)
             if self.sb is not None:
@@ -345,6 +533,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         hs["vec27_pre0"] = int(self.vec.level("edn_done") == 0)
         reason = ""
         t_cmd = None
+        self._edn_first_sts = None
         try:
             _, pre = await self._wait(EDN_SW_CMD_STS, rdy_mask, rdy_mask, FIRST_CAP, "edn_rdy")
             hs["cmd_reg_rdy"] = int(bool(pre & ED_STS_REG_RDY))
@@ -364,7 +553,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             vclk = await self._wait_vec(m, "edn_done", VEC_CAP)
             hs["vec27"] = 1
             hs["vec_clk"] = vclk
-            self.chk.obs("EDN-STS", cmd_sts=_field(done, ED_STS_STS), t_cmd=t_cmd)
+            self._edn_first_sts = _field(done, ED_STS_STS)
             self.chk.obs("EDN-VEC", vec23=self.vec.level("cs_done"))
             await r._wr(EDN_INTR_STATE, ED_DONE)
         except TrialTimeout as exc:
@@ -395,8 +584,68 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         )
         if reason:
             self.chk.ok("EDN-INVSEQ", False, reason=f"no_first_command:{reason}")
+            self.chk.ok("EDN-STS", False, reason=f"no_first_command:{reason}")
             return
         await self._edn_invseq(t_cmd)
+        await self._edn_sts(t_cmd)
+
+    async def _edn_sts(self, t_cmd: int) -> None:
+        """CHK-EDN-STS: the first instantiate reported SUCCESS (0). Control: a
+        reserved acmd through the same port reads INVALID_ACMD (1) at its ack.
+
+        CHK-EDN-ACK-ERR: that non-zero ack sets ``CSRNG_ACK_ERR``. Control: the bit
+        reads 0 after a write of 0, before the command."""
+        r = self.reg
+        bound = BOUND_FACTOR * t_cmd
+        word = cmd_word(self.plan.bad_acmd)
+        rdy_mask = ED_STS_REG_RDY | ED_STS_RDY
+        reason = ""
+        bad_sts = None
+        ack_err = None
+        await r._wr(EDN_RECOV_ALERT_STS, 0)
+        pre_ack_err = int(bool(await r._rd(EDN_RECOV_ALERT_STS) & ED_ACK_ERR))
+        open_graded_window(TEST, self.logger)
+        try:
+            await self._wait(EDN_SW_CMD_STS, rdy_mask, rdy_mask, bound, "edn_rdy3")
+            await r._wr(EDN_SW_CMD_REQ, word)
+            _, sts = await self._wait(EDN_SW_CMD_STS, ED_STS_ACK, ED_STS_ACK, bound, "edn_ack3")
+            bad_sts = _field(sts, ED_STS_STS)
+            ack_err = int(bool(await r._rd(EDN_RECOV_ALERT_STS) & ED_ACK_ERR))
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+        self.chk.obs(
+            "EDN-ACMD-INV",
+            word=f"0x{word:x}",
+            csrng_acmd_alert=int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_ACMD_INV)),
+        )
+        close_graded_window(self.logger)
+        self.chk.ctrl("EDN-ACK-ERR", pre_ack_err == 0, ctrl_pre_ack_err=pre_ack_err)
+        ack_fields = {
+            "word": f"0x{word:x}",
+            "cmd_sts": "na" if bad_sts is None else bad_sts,
+            "ack_err": "na" if ack_err is None else ack_err,
+            "expected": EXP_ACK_ERR,
+            "ctrl_pre_ack_err": pre_ack_err,
+        }
+        if reason:
+            ack_fields["reason"] = reason
+        self.chk.ok(
+            "EDN-ACK-ERR",
+            not reason and bad_sts not in (None, STS_SUCCESS) and ack_err == EXP_ACK_ERR,
+            **ack_fields,
+        )
+        ctrl = {"word": f"0x{word:x}", "cmd_sts": "na" if bad_sts is None else bad_sts}
+        if reason:
+            ctrl["reason"] = reason
+        self.chk.ctrl("EDN-STS", bad_sts == STS_INVALID_ACMD, **ctrl)
+        first = self._edn_first_sts
+        self.chk.ok(
+            "EDN-STS",
+            first == STS_SUCCESS,
+            cmd_sts=first,
+            word=f"0x{CMD_INSTANTIATE:x}",
+            ctrl_cmd_sts=ctrl["cmd_sts"],
+        )
 
     async def _edn_invseq(self, t_cmd: int) -> None:
         r = self.reg
@@ -518,3 +767,293 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             )
         )
         self.chk.ok("CSRNG-SW", ok and first == 0 and cleared == 1, **hs)
+
+    # --- EDN boot command words at reset ----------------------------------------
+    async def _boot_cmd_reset(self) -> None:
+        """CHK-EDN-BOOT-CMD: the reset values of the two boot words, decoded with
+        the header layout. Runs before any write to EDN."""
+        r = self.reg
+        open_graded_window(TEST, self.logger)
+        ins = await r._rd(EDN_BOOT_INS_CMD)
+        gen = await r._rd(EDN_BOOT_GEN_CMD)
+        close_graded_window(self.logger)
+        hi = decode_hdr(ins)
+        hg = decode_hdr(gen)
+        self.chk.ok(
+            "EDN-BOOT-CMD",
+            ins == BOOT_INS_RESET
+            and gen == BOOT_GEN_RESET
+            and hi["acmd"] == ACMD_INSTANTIATE
+            and hg["acmd"] == ACMD_GENERATE
+            and hi["clen"] == 0
+            and hg["clen"] == 0
+            and hg["glen"] == 0xFFF,
+            boot_ins=f"0x{ins:x}",
+            boot_gen=f"0x{gen:x}",
+            ins_acmd=hi["acmd"],
+            ins_clen=hi["clen"],
+            ins_flag0=f"0x{hi['flag0']:x}",
+            gen_acmd=hg["acmd"],
+            gen_clen=hg["clen"],
+            gen_glen=f"0x{hg['glen']:x}",
+        )
+
+    # --- CTRL field alerts --------------------------------------------------------
+    async def _ctrl_mubi_leg(self) -> None:
+        """CHK-CSRNG-CTRL-MUBI and CHK-EDN-CTRL-MUBI, one trial per CTRL field."""
+        close_graded_window(self.logger)
+        await self._trng_reset()
+        units = (
+            (
+                "CSRNG-CTRL-MUBI",
+                CSRNG,
+                CSRNG_CTRL,
+                CSRNG_RECOV_ALERT_STS,
+                CS_CTRL_ALERT,
+                self.plan.cs_bad,
+            ),
+            ("EDN-CTRL-MUBI", EDN, EDN_CTRL, EDN_RECOV_ALERT_STS, ED_CTRL_ALERT, self.plan.ed_bad),
+        )
+        r = self.reg
+        for name, meta, ctrl_addr, recov_addr, alerts, bad in units:
+            legal = meta.value("CTRL", **{f: MUBI_FALSE for f in alerts})
+            for (field, bit), value in zip(alerts.items(), bad):
+                open_graded_window(TEST, self.logger)
+                await r._wr(ctrl_addr, legal)
+                pre = int(bool(await r._rd(recov_addr) & bit))
+                self.chk.ctrl(name, pre == 0, field=field, legal=f"0x{legal:x}", alert_pre=pre)
+                word = meta.value("CTRL", **{**{f: MUBI_FALSE for f in alerts}, field: value})
+                await r._wr(ctrl_addr, word)
+                reason = ""
+                recov = 0
+                try:
+                    _, recov = await self._wait(recov_addr, bit, bit, ALERT_CAP, f"{field}_alert")
+                except TrialTimeout as exc:
+                    reason = f"timeout:{exc.what} bound={exc.bound}"
+                await r._wr(ctrl_addr, legal)
+                await r._wr(recov_addr, 0)
+                cleared = int(not await r._rd(recov_addr) & bit)
+                close_graded_window(self.logger)
+                fields = {
+                    "field": field,
+                    "value": f"0x{value:x}",
+                    "ctrl": f"0x{word:x}",
+                    "alert_set": int(bool(recov & bit)),
+                    "recov": f"0x{recov:x}",
+                    "cleared_by_write0": cleared,
+                }
+                if reason:
+                    fields["reason"] = reason
+                self.chk.ok(name, not reason and bool(recov & bit) and cleared == 1, **fields)
+
+    # --- CSRNG software commands ----------------------------------------------------
+    async def _sw_cmd(self, word: int, bound: int, what: str, wait_ack: bool = True):
+        """Write ``word`` to CMD_REQ once CMD_RDY reads 1. With ``wait_ack``, wait for
+        CMD_ACK and return ``(clocks, CMD_STS)``; else return ``(0, None)``."""
+        await self._wait(CSRNG_SW_CMD_STS, CS_STS_RDY, CS_STS_RDY, bound, f"{what}_rdy")
+        t_wr = self._now()
+        await self.reg._wr(CSRNG_CMD_REQ, word)
+        if not wait_ack:
+            return 0, None
+        _, sts = await self._wait(CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, bound, f"{what}_ack")
+        return max(self._now() - t_wr, 1), _field(sts, CS_STS_STS)
+
+    async def _sw_generate(self, bound: int) -> tuple[int, int, int]:
+        """One Generate of one 128-bit block. Reads GENBITS while GENBITS_VLD is 1
+        until CMD_ACK, so the acknowledge can follow the data. Returns
+        ``(CMD_STS, RECOV_ALERT_STS at the ack, words read)``."""
+        r = self.reg
+        await self._wait(CSRNG_SW_CMD_STS, CS_STS_RDY, CS_STS_RDY, bound, "gen_rdy")
+        await r._wr(CSRNG_CMD_REQ, CMD_GENERATE_1)
+        t0 = self._now()
+        words = 0
+        while True:
+            sts = await self._reader(CSRNG_SW_CMD_STS)()
+            if sts & CS_STS_ACK:
+                break
+            if self._now() - t0 > bound:
+                raise TrialTimeout("gen_ack", bound)
+            if await r._rd(CSRNG_GENBITS_VLD) & GB_VLD:
+                await r._rd(CSRNG_GENBITS)
+                words += 1
+        recov = await r._rd(CSRNG_RECOV_ALERT_STS)
+        return _field(sts, CS_STS_STS), recov, words
+
+    async def _clear_bit(self, bit: int) -> int:
+        """Write 0 to RECOV_ALERT_STS; 1 if ``bit`` then reads 0."""
+        await self.reg._wr(CSRNG_RECOV_ALERT_STS, 0)
+        return int(not await self.reg._rd(CSRNG_RECOV_ALERT_STS) & bit)
+
+    # --- command header leg: reserved acmd and flag0 ---------------------------------
+    async def _hdr_leg(self) -> None:
+        await self._clean_start("hdr")
+        r = self.reg
+        plan = self.plan
+        open_graded_window(TEST, self.logger)
+        step = "ins_f9"
+        acmd = {"word": f"0x{cmd_word(plan.bad_acmd):x}", "alert_set": 0, "cmd_sts": "na"}
+        flag0 = {"word": f"0x{cmd_word(ACMD_INSTANTIATE, flag0=plan.bad_flag0):x}"}
+        flag0["alert_set"] = 0
+        reason = ""
+        try:
+            t_cmd, sts = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), FIRST_CAP, step)
+            bound = BOUND_FACTOR * t_cmd
+            recov = await r._rd(CSRNG_RECOV_ALERT_STS)
+            self.chk.obs("CSRNG-HDR-INS", flag0="0x9", cmd_sts=sts, t_cmd=t_cmd)
+            self.chk.ctrl(
+                "CSRNG-ACMD-INV", not recov & CS_ACMD_INV, recov=f"0x{recov:x}", after="instantiate"
+            )
+            self.chk.ctrl(
+                "CSRNG-FLAG0", not recov & CS_FLAG0_INV, flag0="0x9", recov=f"0x{recov:x}"
+            )
+            # Reserved acmd: bit 13 and CMD_STS INVALID_ACMD.
+            step = "acmd_inv"
+            _, sts = await self._sw_cmd(cmd_word(plan.bad_acmd), bound, step)
+            acmd["cmd_sts"] = sts
+            _, recov = await self._wait(
+                CSRNG_RECOV_ALERT_STS, CS_ACMD_INV, CS_ACMD_INV, bound, "acmd_alert"
+            )
+            acmd["alert_set"] = 1
+            acmd["cleared_by_write0"] = await self._clear_bit(CS_ACMD_INV)
+            # Uninstantiate, then an instantiate with flag0 True: bit 4 stays 0.
+            step = "uninst1"
+            _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
+            self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="acmd_inv")
+            step = "ins_f6"
+            _, sts = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE, flag0=MUBI_TRUE), bound, step)
+            recov = await r._rd(CSRNG_RECOV_ALERT_STS)
+            self.chk.obs("CSRNG-HDR-INS", flag0="0x6", cmd_sts=sts, recov=f"0x{recov:x}")
+            self.chk.ctrl(
+                "CSRNG-FLAG0", not recov & CS_FLAG0_INV, flag0="0x6", recov=f"0x{recov:x}"
+            )
+            step = "uninst2"
+            _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
+            self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="ins_f6")
+            # Instantiate with an invalid flag0: bit 4.
+            step = "ins_fbad"
+            word = cmd_word(ACMD_INSTANTIATE, flag0=plan.bad_flag0)
+            await self._sw_cmd(word, bound, step, wait_ack=False)
+            _, recov = await self._wait(
+                CSRNG_RECOV_ALERT_STS, CS_FLAG0_INV, CS_FLAG0_INV, bound, "flag0_alert"
+            )
+            flag0["alert_set"] = 1
+            sts = await r._rd(CSRNG_SW_CMD_STS)
+            self.chk.obs(
+                "CSRNG-FLAG0-CMD",
+                cmd_ack=int(bool(sts & CS_STS_ACK)),
+                cmd_sts=_field(sts, CS_STS_STS),
+                recov=f"0x{recov:x}",
+            )
+            flag0["cleared_by_write0"] = await self._clear_bit(CS_FLAG0_INV)
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound} step={step}"
+        close_graded_window(self.logger)
+        for fields in (acmd, flag0):
+            fields.setdefault("cleared_by_write0", 0)
+            if reason:
+                fields["reason"] = reason
+        self.chk.ok(
+            "CSRNG-ACMD-INV",
+            not reason
+            and acmd["alert_set"] == 1
+            and acmd["cmd_sts"] == STS_INVALID_ACMD
+            and acmd["cleared_by_write0"] == 1,
+            **acmd,
+        )
+        self.chk.ok(
+            "CSRNG-FLAG0",
+            not reason and flag0["alert_set"] == 1 and flag0["cleared_by_write0"] == 1,
+            **flag0,
+        )
+
+    # --- reseed leg: limit, reseed header, GENBITS gate -------------------------------
+    async def _reseed_leg(self) -> None:
+        await self._clean_start("reseed")
+        r = self.reg
+        plan = self.plan
+        k = plan.reseed_k
+        await r._wr(CSRNG_RESEED_INTERVAL, k)
+        open_graded_window(TEST, self.logger)
+        gens: list[tuple[int, int, int]] = []
+        refused = None
+        lim = {"k": k, "max_generates": k + 1}
+        hdr = {"word": f"0x{cmd_word(ACMD_RESEED):x}"}
+        gate = {"sw_app_enable": f"0x{plan.gen_off:x}"}
+        reason = ""
+        step = "ins"
+        try:
+            await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), FIRST_CAP, step)
+            for i in range(1, k + 2):
+                step = f"gen{i}"
+                sts, recov, words = await self._sw_generate(FIRST_CAP)
+                gens.append((sts, int(bool(recov & CS_RESEED_CNT)), words))
+                if i == 1:
+                    self.chk.ctrl(
+                        "CSRNG-RESEED-LIMIT",
+                        sts != STS_RESEED_CNT_EXCEEDED and not recov & CS_RESEED_CNT,
+                        index=1,
+                        cmd_sts=sts,
+                        alert15=int(bool(recov & CS_RESEED_CNT)),
+                        words=words,
+                    )
+                if sts == STS_RESEED_CNT_EXCEEDED:
+                    refused = i
+                    break
+            lim["refused_index"] = refused if refused is not None else "none"
+            lim["cmd_sts"] = [g[0] for g in gens]
+            lim["alert15"] = [g[1] for g in gens]
+            lim["words"] = [g[2] for g in gens]
+            self.chk.obs("CSRNG-RESEED-IDX", k=k, refused_index=lim["refused_index"])
+            lim["cleared_by_write0"] = await self._clear_bit(CS_RESEED_CNT)
+            # Reseed with the stated header, then one Generate.
+            step = "reseed"
+            _, sts = await self._sw_cmd(cmd_word(ACMD_RESEED), FIRST_CAP, step)
+            hdr["reseed_cmd_sts"] = sts
+            step = "gen_after_reseed"
+            sts, recov, words = await self._sw_generate(FIRST_CAP)
+            hdr.update(
+                {"cmd_sts": sts, "alert15": int(bool(recov & CS_RESEED_CNT)), "words": words}
+            )
+            # GENBITS gate: a Generate with data pending, then SW_APP_ENABLE not True.
+            step = "gate"
+            await self._sw_cmd(CMD_GENERATE_1, FIRST_CAP, step, wait_ack=False)
+            _, vld = await self._wait(CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, "gate_vld")
+            self.chk.ctrl("CSRNG-GENBITS-GATE", bool(vld & GB_VLD), genbits_vld=vld & GB_VLD)
+            await r._wr(
+                CSRNG_CTRL, CSRNG.value("CTRL", ENABLE=MUBI_TRUE, SW_APP_ENABLE=plan.gen_off)
+            )
+            gate["genbits"] = [f"0x{await r._rd(CSRNG_GENBITS):x}" for _ in range(4)]
+            self.chk.obs(
+                "CSRNG-GENBITS-GATE",
+                genbits_vld_after=await r._rd(CSRNG_GENBITS_VLD) & GB_VLD,
+            )
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound} step={step}"
+        close_graded_window(self.logger)
+        for fields in (lim, hdr, gate):
+            if reason:
+                fields["reason"] = reason
+        last = gens[-1] if gens else (None, 0, 0)
+        lim_ok = (
+            not reason
+            and refused is not None
+            and last[1] == 1
+            and lim.get("cleared_by_write0") == 1
+        )
+        self.chk.ok("CSRNG-RESEED-LIMIT", lim_ok, **lim)
+        self.chk.ctrl(
+            "CSRNG-RESEED-HDR", refused is not None, refused_index=lim.get("refused_index")
+        )
+        self.chk.ok(
+            "CSRNG-RESEED-HDR",
+            not reason
+            and hdr.get("cmd_sts", STS_RESEED_CNT_EXCEEDED) != STS_RESEED_CNT_EXCEEDED
+            and hdr.get("alert15") == 0,
+            **hdr,
+        )
+        words = gate.get("genbits", [])
+        self.chk.ok(
+            "CSRNG-GENBITS-GATE",
+            not reason and len(words) == 4 and all(w == "0x0" for w in words),
+            **gate,
+        )

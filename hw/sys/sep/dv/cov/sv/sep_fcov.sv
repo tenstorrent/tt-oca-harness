@@ -16692,6 +16692,9 @@ module sep_fcov (
       cy_t(aes_hw2reg_i.status.output_valid.d) : cy_a_ov;
   wire cy_a_err_n = cy_t(aes_hw2reg_i.status.alert_recov_ctrl_update_err.de) ?
       cy_t(aes_hw2reg_i.status.alert_recov_ctrl_update_err.d) : cy_a_err;
+  logic cy_a_ir = 1'b0;
+  wire cy_a_ir_n = cy_t(aes_hw2reg_i.status.input_ready.de) ?
+      cy_t(aes_hw2reg_i.status.input_ready.d) : cy_a_ir;
   wire cy_a_ov_rise = cy_ip[2] && cy_a_ov_n && !cy_a_ov;
   wire cy_a_we = cy_t(aes_ctrl_we_i);
   wire cy_a_eu = cy_t(aes_ctrl_err_update_i);
@@ -16725,10 +16728,12 @@ module sep_fcov (
       cy_a_stall <= 1'b0;
       cy_a_ov    <= 1'b0;
       cy_a_err   <= 1'b0;
+      cy_a_ir    <= 1'b0;
     end else begin
       cy_a_stall <= cy_a_stall_n;
       cy_a_ov    <= cy_a_ov_n;
       cy_a_err   <= cy_a_err_n;
+      cy_a_ir    <= cy_a_ir_n;
     end
     cy_a_idle_q     <= cy_a_idle;
     cy_a_lost_q     <= cy_a_lost;
@@ -16793,6 +16798,17 @@ module sep_fcov (
   wire cy_k_done_ev = cy_t(kmac_hw2reg_i.intr_state.kmac_done.de) &&
       cy_t(kmac_hw2reg_i.intr_state.kmac_done.d) && !cy_tst_rec[3] && cy_ip[4];
 
+  // Last ERR_CODE value the IP wrote since its reset: the HMAC word and the
+  // KMAC code field [31:24].
+  logic [31:0] cy_h_ec = '0;
+  logic [7:0] cy_k_ec = '0;
+  always @(posedge clk_i) begin
+    if (!cy_ip[3]) cy_h_ec <= '0;
+    else if (cy_t(hmac_hw2reg_i.err_code.de)) cy_h_ec <= hmac_hw2reg_i.err_code.d;
+    if (!cy_ip[4]) cy_k_ec <= '0;
+    else if (cy_t(kmac_hw2reg_i.err_code.de)) cy_k_ec <= kmac_hw2reg_i.err_code.d[31:24];
+  end
+
   // ---------------------------------------------------------------------
   // Covergroups of entries 1.25 to 1.39. Each sample carries one point;
   // the valid bit is set only when the owner of the point is in its window.
@@ -16807,6 +16823,12 @@ module sep_fcov (
     logic [4:0] km;
     logic km_v;  // {0 SHAKE / 1 cSHAKE, strength 0 224 / 1 384 / 2 512, enable bit, started}
     logic kr_v;
+    logic hc;
+    logic hc_v;  // HMAC blocked start: 1 the written ERR_CODE is 0x6 (SwInvalidConfig)
+    logic s3;
+    logic s3_v;  // KMAC SHA3-128, bit clear: 0 blocked, 1 absorbed
+    logic [2:0] kc;
+    logic kc_v;  // {0 SHAKE / 1 cSHAKE / 2 SHA3, 1 ERR_CODE[31:24] is 0x06}
   } cy_inv_t;
 
   covergroup sep_crypto_invalid_encoding_cg with function sample (cy_inv_t s);
@@ -16849,6 +16871,18 @@ module sep_fcov (
       wildcard illegal_bins unsupported_started_with_bit_clear = {5'b?_??_0_1};
     }
     cp_kmac_err_recover: coverpoint s.kr_v iff (s.kr_v) {bins recovered = {1'b1};}
+    cp_hmac_err_code: coverpoint s.hc iff (s.hc_v) {
+      bins sw_invalid_config = {1'b1}; illegal_bins other_code = {1'b0};
+    }
+    cp_kmac_sha3_128: coverpoint s.s3 iff (s.s3_v) {
+      bins blocked = {1'b0}; illegal_bins absorbed_with_bit_clear = {1'b1};
+    }
+    x_kmac_err_code: coverpoint s.kc iff (s.kc_v) {
+      bins shake_unexpected_mode_strength = {3'b00_1};
+      bins cshake_unexpected_mode_strength = {3'b01_1};
+      bins sha3_unexpected_mode_strength = {3'b10_1};
+      wildcard illegal_bins other_code = {3'b??_0};
+    }
   endgroup
 
   typedef struct packed {
@@ -16859,6 +16893,8 @@ module sep_fcov (
     logic rt;
     logic rt_v;  // 0 window ends with no acknowledge, 1 acknowledge in the window
     logic ct_v;
+    logic nk;
+    logic nk_v;  // sideload with no valid key: 0 no start to the window close, 1 a start
   } cy_acfg_t;
 
   covergroup sep_aes_cfg_cg with function sample (cy_acfg_t s);
@@ -16874,6 +16910,9 @@ module sep_fcov (
       bins no_reseed_write_quiet = {1'b0}; illegal_bins acknowledge_without_reseed_write = {1'b1};
     }
     cp_clear_trigger: coverpoint s.ct_v iff (s.ct_v) {bins key_iv_data_in_clear_reload = {1'b1};}
+    cp_sideload_no_key: coverpoint s.nk iff (s.nk_v) {
+      bins no_start_without_valid_key = {1'b0}; illegal_bins start_without_valid_key = {1'b1};
+    }
   endgroup
 
   typedef struct packed {
@@ -16885,6 +16924,8 @@ module sep_fcov (
     logic nc_v;  // IDLE 0 with 0 the core running / 1 STALL
     logic [1:0] ss;
     logic ss_v;  // START in 0 manual legal mode / 1 manual AES_NONE / 2 automatic
+    logic [1:0] ir;
+    logic ir_v;  // 0 held with INPUT_READY 0 to the STALL fall, 1 rise after the fall, 2 ready while held
   } cy_aop_t;
 
   covergroup sep_aes_op_status_cg with function sample (cy_aop_t s);
@@ -16906,6 +16947,11 @@ module sep_fcov (
       bins manual_none_no_output = {2'd1};
       bins automatic_no_start = {2'd2};
     }
+    cp_input_ready_hold: coverpoint s.ir iff (s.ir_v) {
+      bins held_while_stalled = {2'd0};
+      bins loaded_after_release = {2'd1};
+      illegal_bins ready_while_held = {2'd2};
+    }
   endgroup
 
   typedef struct packed {
@@ -16914,6 +16960,8 @@ module sep_fcov (
     logic ur_v;
     logic rr;
     logic rr_v;  // after the AES reset: 0 update error 0, 1 a new AUX pair lands
+    logic xa;
+    logic xa_v;  // CTRL_AUX_SHADOWED pair: 0 matched and read back, 1 mismatched with a pulse
   } cy_afl_t;
 
   covergroup sep_aes_fault_cg with function sample (cy_afl_t s);
@@ -16927,6 +16975,9 @@ module sep_fcov (
     cp_update_err_recovery: coverpoint s.ur_v iff (s.ur_v) {bins rewrite_then_output = {1'b1};}
     cp_reset_restore: coverpoint s.rr iff (s.rr_v) {
       bins update_error_cleared = {1'b0}; bins aux_pair_lands = {1'b1};
+    }
+    x_shadow_pair_aux: coverpoint s.xa iff (s.xa_v) {
+      bins matched = {1'b0}; bins mismatched = {1'b1};
     }
   endgroup
 
@@ -17034,6 +17085,8 @@ module sep_fcov (
     logic ea_v;
     logic [1:0] ar;
     logic ar_v;  // 0 threshold 2..4 reseeds, 1 threshold 0 quiet, 2 rise with threshold 0
+    logic [1:0] ec;
+    logic ec_v;  // {ERR_CODE[31:24] is 0x04 after a wait-timer expiry, prescaler 2 to 15}
   } cy_kent_t;
 
   covergroup sep_kmac_entropy_cg with function sample (cy_kent_t s);
@@ -17053,6 +17106,11 @@ module sep_fcov (
       bins timer0_never_expires_prescaler_n = {2'b01};
       bins timer_expires_prescaler0 = {2'b10};
       bins timer_expires_prescaler_n = {2'b11};
+    }
+    cp_timer_err_code: coverpoint s.ec iff (s.ec_v) {
+      bins wait_timer_expired_prescaler0 = {2'b10};
+      bins wait_timer_expired_prescaler_n = {2'b11};
+      wildcard illegal_bins other_code = {2'b0?};
     }
     cp_sw_seed_count: coverpoint s.sc iff (s.sc_v) {
       // 0 and 5 seeds: the KMAC register text does not state whether CMD.start is
@@ -17075,10 +17133,26 @@ module sep_fcov (
     }
   endgroup
 
-  covergroup sep_otbn_err_lock_cg with function sample (logic cw);
+  typedef struct packed {
+    logic cw_v;
+    logic se;
+    logic se_v;  // software-error end: 0 IDLE with illegal_insn, 1 LOCKED with fatal_software
+    logic lh;
+    logic lh_v;  // 0 CMD at LOCKED leaves LOCKED, 1 OTBN reset exits LOCKED to IDLE
+    logic ec_v;  // ERR_BITS non-zero cleared by a write at IDLE
+  } cy_otbn_el_t;
+
+  covergroup sep_otbn_err_lock_cg with function sample (cy_otbn_el_t s);
     option.per_instance = 1;
     option.name = "sep_otbn_err_lock_cg";
-    cp_ctrl_write_legality: coverpoint cw iff (cw) {bins busy_write_ignored = {1'b1};}
+    cp_ctrl_write_legality: coverpoint s.cw_v iff (s.cw_v) {bins busy_write_ignored = {1'b1};}
+    cp_sw_error_end: coverpoint s.se iff (s.se_v) {
+      bins recoverable_idle_illegal_insn = {1'b0}; bins fatal_locked_fatal_software = {1'b1};
+    }
+    cp_locked_hold_exit: coverpoint s.lh iff (s.lh_v) {
+      bins cmd_at_locked_ignored = {1'b0}; bins reset_exit_to_idle = {1'b1};
+    }
+    cp_err_bits_clear: coverpoint s.ec_v iff (s.ec_v) {bins nonzero_cleared_at_idle = {1'b1};}
   endgroup
 
   typedef struct packed {
@@ -17157,6 +17231,8 @@ module sep_fcov (
     logic ic_v;  // 0 zero after reset, 1 non-zero after EXECUTE
     logic [1:0] dn;
     logic dn_v;  // command of the done event
+    logic pd_v;  // done rises in the post-reset wipe, before the first CMD
+    logic ie_v;  // unrecognised CMD at IDLE with ERR_BITS non-zero leaves ERR_BITS
   } cy_otbn_t;
 
   covergroup sep_otbn_op_cg with function sample (cy_otbn_t s);
@@ -17181,6 +17257,8 @@ module sep_fcov (
     cp_done_event: coverpoint s.dn iff (s.dn_v) {
       bins execute = {2'd0}; bins sec_wipe_dmem = {2'd1}; bins sec_wipe_imem = {2'd2};
     }
+    cp_post_reset_done: coverpoint s.pd_v iff (s.pd_v) {bins wipe_raises_done = {1'b1};}
+    cp_cmd_ignored_err: coverpoint s.ie_v iff (s.ie_v) {bins err_bits_unchanged = {1'b1};}
   endgroup
 
   typedef struct packed {
@@ -17256,7 +17334,19 @@ module sep_fcov (
         e.km   = v;
         e.km_v = 1'b1;
       end
-      default: e.kr_v = 1'b1;
+      4: e.kr_v = 1'b1;
+      5: begin
+        e.hc   = v[0];
+        e.hc_v = 1'b1;
+      end
+      6: begin
+        e.s3   = v[0];
+        e.s3_v = 1'b1;
+      end
+      default: begin
+        e.kc   = v[2:0];
+        e.kc_v = 1'b1;
+      end
     endcase
     u_sep_crypto_invalid_encoding_cg.sample(e);
   endtask
@@ -17277,7 +17367,11 @@ module sep_fcov (
         e.rt   = v[0];
         e.rt_v = 1'b1;
       end
-      default: e.ct_v = 1'b1;
+      3: e.ct_v = 1'b1;
+      default: begin
+        e.nk   = v[0];
+        e.nk_v = 1'b1;
+      end
     endcase
     u_sep_aes_cfg_cg.sample(e);
   endtask
@@ -17298,9 +17392,13 @@ module sep_fcov (
         e.nc   = v[0];
         e.nc_v = 1'b1;
       end
-      default: begin
+      3: begin
         e.ss   = v;
         e.ss_v = 1'b1;
+      end
+      default: begin
+        e.ir   = v;
+        e.ir_v = 1'b1;
       end
     endcase
     u_sep_aes_op_status_cg.sample(e);
@@ -17315,13 +17413,66 @@ module sep_fcov (
         e.sp_v = 1'b1;
       end
       1: e.ur_v = 1'b1;
-      default: begin
+      2: begin
         e.rr   = v[0];
         e.rr_v = 1'b1;
+      end
+      default: begin
+        e.xa   = v[0];
+        e.xa_v = 1'b1;
       end
     endcase
     u_sep_aes_fault_cg.sample(e);
   endtask
+
+  // x_shadow_pair_aux (owner of x_shadow_pair_aes). The phase of the
+  // CTRL_AUX_SHADOWED pair is known after an AES reset or an AUX read, and
+  // only writes while CTRL_AUX_REGWEN is 1 count. A second write with a
+  // different value arms "mismatched" until a vector bit 32 rise within
+  // CyAlertBound clocks; an equal second write arms "matched" until the next
+  // AUX read, which samples the bin when it returns the written value and no
+  // bit 32 rise came between.
+  logic cy_xa_phase = 1'b0;
+  logic [31:0] cy_xa_prev = '0;
+  logic [1:0] cy_xa_pend = '0;  // 0 none, 1 matched, 2 mismatched
+  int unsigned cy_xa_cnt = 0;
+  wire cy_xa_wr = wr_ev && (aw_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR);
+  wire cy_xa_rd = rd_ev && (ar_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR);
+  always @(posedge clk_i) begin
+    if (!cy_ip[2] || !cy_own_shadow || !cy_t(aes_aux_regwen_i)) begin
+      cy_xa_phase <= 1'b0;
+      cy_xa_pend  <= 2'd0;
+    end else begin
+      if (cy_xa_wr) begin
+        if (!cy_xa_phase) begin
+          cy_xa_prev  <= wr_data & AesAuxFields;
+          cy_xa_phase <= 1'b1;
+        end else begin
+          cy_xa_pend  <= ((wr_data & AesAuxFields) == cy_xa_prev) ? 2'd1 : 2'd2;
+          cy_xa_cnt   <= 0;
+          cy_xa_phase <= 1'b0;
+        end
+      end
+      if (cy_xa_rd) cy_xa_phase <= 1'b0;
+      if (cy_xa_pend == 2'd2) begin
+        if (cy_vec_rise[32]) begin
+          cy_afl(3, 2'd1);
+          cy_xa_pend <= 2'd0;
+        end else if (cy_xa_cnt > CyAlertBound) begin
+          cy_xa_pend <= 2'd0;
+        end else begin
+          cy_xa_cnt <= cy_xa_cnt + 1;
+        end
+      end else if (cy_xa_pend == 2'd1) begin
+        if (cy_vec_rise[32]) begin
+          cy_xa_pend <= 2'd0;
+        end else if (cy_xa_rd) begin
+          if ((rd_data & AesAuxFields) == cy_xa_prev) cy_afl(3, 2'd0);
+          cy_xa_pend <= 2'd0;
+        end
+      end
+    end
+  end
 
   task automatic cy_kcc(input int unsigned pt, input logic [4:0] v);
     cy_kcc_t e;
@@ -17368,9 +17519,13 @@ module sep_fcov (
         e.hc_v = 1'b1;
       end
       4: e.ea_v = 1'b1;
-      default: begin
+      5: begin
         e.ar   = v[1:0];
         e.ar_v = 1'b1;
+      end
+      default: begin
+        e.ec   = v[1:0];
+        e.ec_v = 1'b1;
       end
     endcase
     u_sep_kmac_entropy_cg.sample(e);
@@ -17436,10 +17591,12 @@ module sep_fcov (
         e.ic   = v[0];
         e.ic_v = 1'b1;
       end
-      default: begin
+      5: begin
         e.dn   = v[1:0];
         e.dn_v = 1'b1;
       end
+      6: e.pd_v = 1'b1;
+      default: e.ie_v = 1'b1;
     endcase
     u_sep_otbn_op_cg.sample(e);
   endtask
@@ -17560,6 +17717,7 @@ module sep_fcov (
         if (err) cnt++;
         if (err && ((cnt > CySettle) || cy_h_start)) begin
           cy_inv(0, {1'b0, cy_hs_cls, 1'b0});
+          if (cy_own_hblk) cy_inv(5, {4'd0, (cy_h_ec == 32'h6)});
           if ((cy_hs_cls <= 3'd2) && ((!cy_hs_kv && cy_own_hblk) || (cy_hs_kv && cy_own_keysel))) begin
             cy_inv(1, {4'd0, cy_hs_kv});
           end
@@ -17834,6 +17992,75 @@ module sep_fcov (
   logic [31:0] cy_ar_exp = '0;
   logic cy_aux_rw_aw = 1'b1;  // CTRL_AUX_REGWEN at the last LSU AW handshake
   wire cy_aux_rw_now = cy_t(aes_aux_regwen_i);
+  wire cy_a_din_wr = wr_ev && cy_in(aw_addr_q, AES_DATA_IN_0__REG_ADDR, AES_DATA_IN_3__REG_ADDR);
+  wire [1:0] cy_a_din_ix = 2'((aw_addr_q - AES_DATA_IN_0__REG_ADDR) >> 2);
+
+  // cp_input_ready_hold (1.32): all four DATA_IN words written while STALL
+  // is 1 and INPUT_READY is 0 arm the hold; INPUT_READY 1 on a clock before
+  // the STALL fall is illegal; the STALL fall samples the held bin, and the
+  // first INPUT_READY rise from that fall samples the load. An INPUT_READY
+  // rise (a load) clears the written-word set.
+  logic [3:0] cy_ir_din = '0;
+  logic cy_ir_hold = 1'b0;
+  logic cy_ir_bad = 1'b0;
+  logic cy_ir_rel = 1'b0;
+  always @(posedge clk_i) begin
+    if (!cy_own_astr || !cy_ip[2]) begin
+      cy_ir_din  <= '0;
+      cy_ir_hold <= 1'b0;
+      cy_ir_bad  <= 1'b0;
+      cy_ir_rel  <= 1'b0;
+    end else begin
+      logic [3:0] d;
+      logic ir_rise;
+      ir_rise = cy_a_ir_n && !cy_a_ir;
+      d = cy_ir_din;
+      if (cy_a_din_wr) d[cy_a_din_ix] = 1'b1;
+      if (ir_rise) d = '0;
+      cy_ir_din <= d;
+      if (cy_ir_hold) begin
+        if (cy_a_stall_fall) begin
+          cy_aop(4, cy_ir_bad ? 2'd2 : 2'd0);
+          cy_ir_hold <= 1'b0;
+          if (!cy_ir_bad && ir_rise) cy_aop(4, 2'd1);
+          cy_ir_rel <= !cy_ir_bad && !ir_rise;
+        end else if (cy_a_ir_n) begin
+          cy_ir_bad <= 1'b1;
+        end
+      end else if (cy_ir_rel) begin
+        if (ir_rise) begin
+          cy_aop(4, 2'd1);
+          cy_ir_rel <= 1'b0;
+        end
+      end else if (cy_a_stall && (cy_ir_din == 4'hf) && !cy_a_ir_n) begin
+        cy_ir_hold <= 1'b1;
+        cy_ir_bad  <= 1'b0;
+      end
+    end
+  end
+
+  // cp_sideload_no_key (1.30): stored SIDELOAD 1 and delivered KEY_VALID 0
+  // from the last CTRL_SHADOWED commit, all four DATA_IN words written, and
+  // no AES start until the graded window closes. The commit restarts the
+  // word set, so only the words of the new message count.
+  logic [3:0] cy_nk_din = '0;
+  logic cy_nk_bad = 1'b0;
+  logic cy_own_keysel_q = 1'b0;
+  wire cy_nk_kv = cy_t(aes_key_valid_i);
+  wire cy_nk_sl = cy_t(aes_sideload_i);
+  always @(posedge clk_i) begin
+    cy_own_keysel_q <= cy_own_keysel;
+    if (!cy_own_keysel || !cy_ip[2] || cy_a_cm || cy_nk_kv || !cy_nk_sl) begin
+      if (cy_own_keysel_q && !cy_own_keysel && (cy_nk_din == 4'hf)) begin
+        cy_acfg(4, {2'b0, cy_nk_bad});
+      end
+      cy_nk_din <= '0;
+      cy_nk_bad <= 1'b0;
+    end else begin
+      if (cy_a_din_wr) cy_nk_din[cy_a_din_ix] <= 1'b1;
+      if ((cy_nk_din == 4'hf) && cy_busy[1] && !cy_busy_q[1]) cy_nk_bad <= 1'b1;
+    end
+  end
 
   always @(posedge clk_i) begin
     if (aw_hs) cy_aux_rw_aw <= cy_t(aes_aux_regwen_i);
@@ -18272,6 +18499,7 @@ module sep_fcov (
   endfunction
 
   logic cy_km_on = 1'b0;
+  logic cy_s3_on = 1'b0;
   logic [3:0] cy_km_cell = '0;  // {cSHAKE, strength index, enable bit}
   logic [1:0] cy_kr = '0;
   logic cy_cs_on = 1'b0;
@@ -18288,6 +18516,8 @@ module sep_fcov (
   logic cy_ml_rst = 1'b0;
   logic cy_tm_exp = 1'b0;
   logic cy_tm_pc = 1'b0;
+  logic cy_tm_ec = 1'b0;
+  logic cy_tm_ec_pc = 1'b0;
   logic cy_nv_on = 1'b0;
   logic cy_nv_pc = 1'b0;
   logic cy_k_tmo_q = 1'b0;
@@ -18315,6 +18545,7 @@ module sep_fcov (
     if (!cy_own_kunsup || !cy_ip[4]) begin
       cy_km_on <= 1'b0;
       cy_kr    <= 2'd0;
+      cy_s3_on <= 1'b0;
     end else begin
       // A cell with the enable bit set ends only at absorb: kmac_err may also
       // set on that start, and the register text makes it no outcome.
@@ -18324,6 +18555,7 @@ module sep_fcov (
           cy_km_on <= 1'b0;
         end else if (cy_st_rise[5] && cy_k_idle && !cy_km_cell[0]) begin
           cy_inv(3, {cy_km_cell, 1'b0});
+          cy_inv(7, {3'b000, cy_km_cell[3], (cy_k_ec == 8'h06)});
           if (!cy_km_cell[0]) cy_kr <= 2'd1;
           cy_km_on <= 1'b0;
         end else if (cy_k_cmd_qe) begin
@@ -18338,6 +18570,23 @@ module sep_fcov (
           cy_km_on   <= 1'b1;
           cy_km_cell <= {(cy_k_mode == KmacCshake), si, cy_k_unsup};
         end
+      end
+      // cp_kmac_sha3_128 and its x_kmac_err_code cell: SHA3 with strength 128
+      // and the enable bit clear.
+      if (cy_s3_on) begin
+        if (cy_k_abs) begin
+          cy_inv(6, 5'd1);
+          cy_s3_on <= 1'b0;
+        end else if (cy_st_rise[5] && cy_k_idle) begin
+          cy_inv(6, 5'd0);
+          cy_inv(7, {2'b00, 2'b10, (cy_k_ec == 8'h06)});
+          cy_s3_on <= 1'b0;
+        end else if (cy_k_cmd_qe) begin
+          cy_s3_on <= 1'b0;
+        end
+      end
+      if (cy_k_start && (cy_k_mode == KmacSha3) && (cy_k_str == KmacL128) && !cy_k_unsup) begin
+        cy_s3_on <= 1'b1;
       end
       // err_processed after the blocked start, then a start with kmac_err
       // cleared and sha3_idle 1, then a done event.
@@ -18425,6 +18674,7 @@ module sep_fcov (
       cy_ml_div <= 1'b0;
       cy_ml_rst <= 1'b1;
       cy_tm_exp <= 1'b0;
+      cy_tm_ec  <= 1'b0;
       cy_nv_on  <= 1'b0;
       cy_sd_n   <= 3'd0;
       cy_sd_on  <= 1'b0;
@@ -18484,7 +18734,15 @@ module sep_fcov (
         cy_tm_pc  <= (pc == 1);
       end else if (cy_tm_exp && cy_st_rise[5]) begin
         cy_kent(1, {1'b0, 1'b1, cy_tm_pc});
-        cy_tm_exp <= 1'b0;
+        cy_tm_exp   <= 1'b0;
+        cy_tm_ec    <= 1'b1;
+        cy_tm_ec_pc <= cy_tm_pc;
+      end
+      // cp_timer_err_code: one clock after the expiry sample, so the ERR_CODE
+      // write of the same error is in cy_k_ec.
+      if (cy_tm_ec) begin
+        if (cy_own_kent) cy_kent(6, {1'b0, (cy_k_ec == 8'h04), cy_tm_ec_pc});
+        cy_tm_ec <= 1'b0;
       end
       if (cy_nv_on) begin
         if (cy_st_rise[5] || cy_ack_rise[1]) begin
@@ -18648,12 +18906,36 @@ module sep_fcov (
   logic cy_cw_busy = 1'b0;
   logic cy_cw_ef = 1'b0;
   wire cy_o_ef = cy_t(otbn_errs_fatal_i);
+  localparam logic [7:0] OtbnStLocked = 8'hFF;  // otbn.hjson STATUS
+  // ERR_BITS fields (hwext, the read value); the field order does not matter,
+  // because the samplers compare the whole value with zero or with itself.
+  wire [$bits(otbn_hw2reg_i.err_bits)-1:0] cy_o_err = otbn_hw2reg_i.err_bits;
+  wire cy_o_ill = cy_t(otbn_hw2reg_i.err_bits.illegal_insn.d);
+  wire cy_o_fsw = cy_t(otbn_hw2reg_i.err_bits.fatal_software.d);
+  logic [7:0] cy_o_st_q = '0;
+  logic cy_o_fac_fsw = 1'b0;   // FATAL_ALERT_CAUSE.fatal_software written since the OTBN reset
+  logic cy_se_exec = 1'b0;     // an EXECUTE accepted at IDLE, not yet at its end
+  logic cy_pd_arm = 1'b0;      // set at an OTBN reset release, cleared by the first CMD
+  logic [1:0] cy_lh_rst = '0;  // 1 OTBN reset taken at LOCKED, 2 then the post-reset wipe
+  int unsigned cy_lh_cnt = 0;  // clocks of LOCKED after a CMD write at LOCKED
+  logic cy_ec_nz = 1'b0;       // IDLE and ERR_BITS non-zero at the AW of an ERR_BITS write
+  logic cy_ec_wr = 1'b0;       // that write got its OKAY response
+  logic [$bits(otbn_hw2reg_i.err_bits)-1:0] cy_ie_err = '0;
+  int unsigned cy_ie_cnt = 0;
   always @(posedge clk_i) begin
     logic done_rise;
     int wk;
+    cy_otbn_el_t el;
+    el = '0;
     done_rise = cy_t(otbn_done_i) && !cy_o_done_q;
     wk = cy_o_kind(wr_data[7:0]);
     cy_o_done_q <= cy_t(otbn_done_i);
+    cy_o_st_q   <= cy_o_st;
+    if (!cy_ip[1]) cy_o_fac_fsw <= 1'b0;
+    else if (cy_t(otbn_hw2reg_i.fatal_alert_cause.fatal_software.de)) cy_o_fac_fsw <= 1'b1;
+    if (aw_hs && (lsu_aw_addr_i == OTBN_ERR_BITS_REG_ADDR)) begin
+      cy_ec_nz <= (cy_o_st == OtbnIdle) && (cy_o_err != '0);
+    end
     if (aw_hs && (lsu_aw_addr_i == OTBN_CMD_REG_ADDR)) begin
       cy_ci_st  <= cy_o_st;
       cy_ci_chg <= 1'b0;
@@ -18670,7 +18952,91 @@ module sep_fcov (
       cy_ci_cnt <= 0;
       cy_pr     <= 2'd0;
       cy_dn_on  <= 1'b0;
+      cy_se_exec <= 1'b0;
+      cy_pd_arm <= 1'b0;
+      cy_lh_rst <= 2'd0;
+      cy_lh_cnt <= 0;
+      cy_ec_wr  <= 1'b0;
+      cy_ie_cnt <= 0;
     end else begin
+      // cp_sw_error_end: the end of an EXECUTE, the clock STATUS reaches IDLE
+      // (with software_errs_fatal 0) or LOCKED (with software_errs_fatal 1).
+      if (cy_o_cmd && (cy_o_st == OtbnIdle) && (cy_o_kind(cy_o_cmdv) == 0)) begin
+        cy_se_exec <= 1'b1;
+      end else if (cy_se_exec && (cy_o_st_q != cy_o_st) &&
+                   ((cy_o_st == OtbnIdle) || (cy_o_st == OtbnStLocked))) begin
+        if ((cy_o_st == OtbnIdle) && cy_o_ill && !cy_o_ef) begin
+          el.se   = 1'b0;
+          el.se_v = 1'b1;
+        end
+        if ((cy_o_st == OtbnStLocked) && cy_o_fsw && cy_o_fac_fsw && cy_o_ef) begin
+          el.se   = 1'b1;
+          el.se_v = 1'b1;
+        end
+        cy_se_exec <= 1'b0;
+      end
+      // cp_locked_hold_exit, bin 0: a recognised CMD write at LOCKED, STATUS
+      // still LOCKED four clocks after its OKAY response.
+      if (wr_ev && (aw_addr_q == OTBN_CMD_REG_ADDR) && (cy_o_st == OtbnStLocked) && (wk >= 0)) begin
+        cy_lh_cnt <= 4;
+      end else if (cy_lh_cnt != 0) begin
+        if (cy_o_st != OtbnStLocked) begin
+          cy_lh_cnt <= 0;
+        end else begin
+          if (cy_lh_cnt == 1) begin
+            el.lh   = 1'b0;
+            el.lh_v = 1'b1;
+          end
+          cy_lh_cnt <= cy_lh_cnt - 1;
+        end
+      end
+      // Bin 1: an OTBN reset taken at LOCKED, then the post-reset wipe ends
+      // at IDLE.
+      if (cy_ip_fall[1]) begin
+        cy_lh_rst <= (cy_o_st == OtbnStLocked) ? 2'd1 : 2'd0;
+      end else if (cy_ip[1]) begin
+        if ((cy_lh_rst == 2'd1) && (cy_o_st == OtbnStWipeInt)) begin
+          cy_lh_rst <= 2'd2;
+        end else if ((cy_lh_rst == 2'd2) && (cy_o_st != OtbnStWipeInt)) begin
+          if (cy_o_st == OtbnIdle) begin
+            el.lh   = 1'b1;
+            el.lh_v = 1'b1;
+          end
+          cy_lh_rst <= 2'd0;
+        end
+      end
+      // cp_err_bits_clear: an ERR_BITS write at IDLE with ERR_BITS non-zero,
+      // then an OKAY read of ERR_BITS that returns 0.
+      if (wr_ev && (aw_addr_q == OTBN_ERR_BITS_REG_ADDR)) begin
+        cy_ec_wr <= cy_ec_nz;
+      end else if (cy_ec_wr && rd_ev && cy_rd_known && (ar_addr_q == OTBN_ERR_BITS_REG_ADDR)) begin
+        if (rd_data == 32'h0) el.ec_v = 1'b1;
+        cy_ec_wr <= 1'b0;
+      end
+      // cp_post_reset_done: done rises after the OTBN reset release and
+      // before the first CMD write.
+      if (cy_ip_rise[1]) begin
+        cy_pd_arm <= 1'b1;
+      end else if (cy_o_cmd || !cy_ip[1]) begin
+        cy_pd_arm <= 1'b0;
+      end else if (cy_pd_arm && done_rise) begin
+        cy_otbn(6, 3'd0);
+        cy_pd_arm <= 1'b0;
+      end
+      // cp_cmd_ignored_err: an unrecognised CMD write at IDLE with ERR_BITS
+      // non-zero; ERR_BITS unchanged four clocks after its OKAY response.
+      if (wr_ev && (aw_addr_q == OTBN_CMD_REG_ADDR) && (cy_ci_st == OtbnIdle) && (wk < 0) &&
+          (cy_o_err != '0)) begin
+        cy_ie_cnt <= 4;
+        cy_ie_err <= cy_o_err;
+      end else if (cy_ie_cnt != 0) begin
+        if (cy_o_err != cy_ie_err) begin
+          cy_ie_cnt <= 0;
+        end else begin
+          if (cy_ie_cnt == 1) cy_otbn(7, 3'd0);
+          cy_ie_cnt <= cy_ie_cnt - 1;
+        end
+      end
       // cp_cmd: a recognised CMD write accepted at IDLE.
       if (wr_ev && (aw_addr_q == OTBN_CMD_REG_ADDR) && (cy_ci_st == OtbnIdle) && (wk >= 0)) begin
         cy_otbn(0, 3'(wk));
@@ -18745,8 +19111,9 @@ module sep_fcov (
       if (wr_ev && (aw_addr_q == OTBN_CTRL_REG_ADDR) && cy_cw_busy && cy_o_busy &&
           (((wr_data & OTBN_CTRL_SOFTWARE_ERRS_FATAL_MASK) != 32'h0) != cy_cw_ef) &&
           (cy_o_ef == cy_cw_ef)) begin
-        u_sep_otbn_err_lock_cg.sample(1'b1);
+        el.cw_v = 1'b1;
       end
+      if (el.cw_v || el.se_v || el.lh_v || el.ec_v) u_sep_otbn_err_lock_cg.sample(el);
     end
     if (cy_ip_fall[1]) begin
       cy_ic_exec <= 1'b0;
@@ -19176,6 +19543,13 @@ module sep_fcov (
     logic io_v;  // 0 software port first, 1 software port repeated, 2 hardware port 0
     logic [1:0] hs;
     logic hs_v;  // 0 CMD_RDY before, 1 CMD_ACK after, 2 CMD_RDY after the acknowledge
+    logic [2:0] ra;
+    logic ra_v;  // RECOV_ALERT_STS set request: 0-3 CTRL fields, 4 flag0, 5 bit 13, 6 bit 15
+    logic [1:0] cs;
+    logic cs_v;  // CMD_STS at the software ack: 1 INVALID_ACMD, 2 RESEED_CNT_EXCEEDED (code 4)
+    logic rs;
+    logic rs_v;  // 0 Generate refused at the limit, 1 Generate accepted after a Reseed
+    logic gg_v;  // GENBITS read 0 with GENBITS_VLD 1 and SW_APP_ENABLE not True
   } cz_ccmd_t;
 
   covergroup sep_csrng_cmd_cg with function sample (cz_ccmd_t s);
@@ -19189,6 +19563,22 @@ module sep_fcov (
     cp_sw_handshake: coverpoint s.hs iff (s.hs_v) {
       bins cmd_rdy_before = {2'd0}; bins cmd_ack_after = {2'd1}; bins cmd_rdy_after_ack = {2'd2};
     }
+    cp_recov_alert_set: coverpoint s.ra iff (s.ra_v) {
+      bins enable_field = {3'd0};
+      bins sw_app_enable_field = {3'd1};
+      bins read_int_state_field = {3'd2};
+      bins fips_force_enable_field = {3'd3};
+      bins acmd_flag0_field = {3'd4};
+      bins invalid_acmd = {3'd5};
+      bins reseed_cnt = {3'd6};
+    }
+    cp_sw_cmd_sts: coverpoint s.cs iff (s.cs_v) {
+      bins invalid_acmd = {2'd1}; bins reseed_cnt_exceeded = {2'd2};
+    }
+    cp_reseed_limit: coverpoint s.rs iff (s.rs_v) {
+      bins refused_at_limit = {1'b0}; bins accepted_after_reseed = {1'b1};
+    }
+    cp_genbits_gate: coverpoint s.gg_v iff (s.gg_v) {bins read_zero_gated = {1'b1};}
   endgroup
 
   typedef struct packed {
@@ -19200,6 +19590,13 @@ module sep_fcov (
     logic sp_v;  // 0 CMD_REG_RDY before, 1 CMD_ACK after, 2 edn_cmd_req_done set
     logic [1:0] aw;
     logic aw_v;  // {0 RESEED_CMD / 1 GENERATE_CMD, 0 one word / 1 13 words}
+    logic bc;
+    logic bc_v;  // 0 BOOT_INS_CMD read 0x901, 1 BOOT_GEN_CMD read 0xFFF003, before any EDN write
+    logic [1:0] fa;
+    logic fa_v;  // RECOV_ALERT_STS set request: 0 EDN_ENABLE, 1 BOOT_REQ_MODE, 2 AUTO_REQ_MODE, 3 CMD_FIFO_RST
+    logic es;
+    logic es_v;  // CMD_STS at the software ack: 0 SUCCESS, 1 INVALID_ACMD
+    logic ae_v;  // RECOV_ALERT_STS.CSRNG_ACK_ERR set request
   } cz_edn_t;
 
   covergroup sep_edn_mode_cg with function sample (cz_edn_t s);
@@ -19222,6 +19619,17 @@ module sep_fcov (
       bins generate_1 = {2'b10};
       bins generate_13 = {2'b11};
     }
+    cp_boot_cmd_reset: coverpoint s.bc iff (s.bc_v) {
+      bins boot_ins_0x901 = {1'b0}; bins boot_gen_0xfff003 = {1'b1};
+    }
+    cp_ctrl_field_alert: coverpoint s.fa iff (s.fa_v) {
+      bins edn_enable_field = {2'd0};
+      bins boot_req_mode_field = {2'd1};
+      bins auto_req_mode_field = {2'd2};
+      bins cmd_fifo_rst_field = {2'd3};
+    }
+    cp_sw_cmd_sts: coverpoint s.es iff (s.es_v) {bins success = {1'b0}; bins invalid_acmd = {1'b1};}
+    cp_csrng_ack_err: coverpoint s.ae_v iff (s.ae_v) {bins set_by_error_ack = {1'b1};}
   endgroup
 
   typedef struct packed {
@@ -19492,16 +19900,32 @@ module sep_fcov (
     u_sep_drbg_err_inject_cg.sample(e);
   endtask
 
-  task automatic cz_ccmd(input int unsigned pt, input logic [1:0] v);
+  task automatic cz_ccmd(input int unsigned pt, input logic [2:0] v);
     cz_ccmd_t e;
     e = '0;
-    if (pt == 0) begin
-      e.io   = v;
-      e.io_v = 1'b1;
-    end else begin
-      e.hs   = v;
-      e.hs_v = 1'b1;
-    end
+    case (pt)
+      0: begin
+        e.io   = v[1:0];
+        e.io_v = 1'b1;
+      end
+      1: begin
+        e.hs   = v[1:0];
+        e.hs_v = 1'b1;
+      end
+      2: begin
+        e.ra   = v;
+        e.ra_v = 1'b1;
+      end
+      3: begin
+        e.cs   = v[1:0];
+        e.cs_v = 1'b1;
+      end
+      4: begin
+        e.rs   = v[0];
+        e.rs_v = 1'b1;
+      end
+      default: e.gg_v = 1'b1;
+    endcase
     u_sep_csrng_cmd_cg.sample(e);
   endtask
 
@@ -19521,10 +19945,23 @@ module sep_fcov (
         e.sp   = v;
         e.sp_v = 1'b1;
       end
-      default: begin
+      3: begin
         e.aw   = v;
         e.aw_v = 1'b1;
       end
+      4: begin
+        e.bc   = v[0];
+        e.bc_v = 1'b1;
+      end
+      5: begin
+        e.fa   = v;
+        e.fa_v = 1'b1;
+      end
+      6: begin
+        e.es   = v[0];
+        e.es_v = 1'b1;
+      end
+      default: e.ae_v = 1'b1;
     endcase
     u_sep_edn_mode_cg.sample(e);
   endtask
@@ -21381,10 +21818,10 @@ module sep_fcov (
     end else begin
       if (cz_io_arm[0] && cz_cs_done_set) begin
         cz_sw_ins_ok <= 1'b1;
-        if (cy_own_dcmd) cz_ccmd(0, 2'd0);
+        if (cy_own_dcmd) cz_ccmd(0, 3'd0);
         cz_io_arm[0] <= 1'b0;
       end else if (cz_io_arm[1] && cz_rs_set) begin
-        if (cy_own_dcmd) cz_ccmd(0, 2'd1);
+        if (cy_own_dcmd) cz_ccmd(0, 3'd1);
         cz_io_arm[1] <= 1'b0;
       end else if ((cz_io_arm != 2'b00) && (cz_io_cnt >= CzCmdBound)) begin
         cz_io_arm <= '0;
@@ -21396,7 +21833,7 @@ module sep_fcov (
         else cz_io_arm <= '0;
       end
       if (cz_hw_arm && cy_t(csrng_app0_ack_i) && !cz_app0_ack_q) begin
-        if (cy_own_dcmd) cz_ccmd(0, 2'd2);
+        if (cy_own_dcmd) cz_ccmd(0, 3'd2);
         cz_hw_arm <= 1'b0;
       end else if (cz_hw_arm && (cz_hw_cnt >= CzCmdBound)) begin
         cz_hw_arm <= 1'b0;
@@ -21414,12 +21851,12 @@ module sep_fcov (
       cz_csh <= '0;
     end else begin
       if (wr_ev && (aw_addr_q == CSRNG_CMD_REQ_REG_ADDR)) begin
-        if (cz_aw_csrdy) cz_ccmd(1, 2'd0);
+        if (cz_aw_csrdy) cz_ccmd(1, 3'd0);
         cz_csh     <= 2'd1;
         cz_csh_cnt <= 0;
       end else if (cz_csh == 2'd1) begin
         if (cz_cs_ack_set) begin
-          cz_ccmd(1, 2'd1);
+          cz_ccmd(1, 3'd1);
           cz_csh <= 2'd2;
         end else if (cz_csh_cnt >= CzCmdBound) begin
           cz_csh <= '0;
@@ -21427,7 +21864,7 @@ module sep_fcov (
         cz_csh_cnt <= cz_csh_cnt + 1;
       end else if (cz_csh == 2'd2) begin
         if (cz_cs_rdy) begin
-          cz_ccmd(1, 2'd2);
+          cz_ccmd(1, 3'd2);
           cz_csh <= '0;
         end else if (cz_csh_cnt >= CzCmdBound) begin
           cz_csh <= '0;
@@ -21488,6 +21925,95 @@ module sep_fcov (
       cz_ed_boot <= b;
       cz_ed_auto <= a;
       if (cy_own_dcmd && (bde || ade) && b) cz_edn(1, {1'b0, a});
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // CSRNG and EDN command cells of the DRBG command-sequence owner: the
+  // RECOV_ALERT_STS set requests, CMD_STS at the software acknowledge, the
+  // reseed limit, the GENBITS gate and the reset read of the EDN boot words.
+  // ---------------------------------------------------------------------
+  localparam logic [31:0] CzEdBootIns = 32'h0000_0901;  // edn.hjson BOOT_INS_CMD resval
+  localparam logic [31:0] CzEdBootGen = 32'h00FF_F003;  // edn.hjson BOOT_GEN_CMD resval
+  logic [3:0] cz_cs_acmd = '0;  // acmd of the last software CMD_REQ header word
+  logic [3:0] cz_cs_rem = '0;   // additional-data words still due for that header
+  logic cz_rl_ref = 1'b0;       // a Generate refused at the limit since the TRNG reset
+  logic cz_rl_rsd = 1'b0;       // a Reseed acknowledged after that refusal
+  logic cz_ed_wr = 1'b0;        // an EDN register write since the TRNG reset
+  logic cz_ed_ack_q = 1'b0;
+  wire cz_gb_vld = cy_t(csrng_hw2reg_i.genbits_vld.genbits_vld.d);
+  always @(posedge clk_i) begin
+    logic [6:0] ra;
+    logic [3:0] fa;
+    logic cs_ack;
+    logic ed_ack_rise;
+    ra = {cz_dd(csrng_hw2reg_i.recov_alert_sts.cmd_stage_reseed_cnt_alert),
+          cz_dd(csrng_hw2reg_i.recov_alert_sts.cmd_stage_invalid_acmd_alert),
+          cz_dd(csrng_hw2reg_i.recov_alert_sts.acmd_flag0_field_alert),
+          cz_dd(csrng_hw2reg_i.recov_alert_sts.fips_force_enable_field_alert),
+          cz_dd(csrng_hw2reg_i.recov_alert_sts.read_int_state_field_alert),
+          cz_dd(csrng_hw2reg_i.recov_alert_sts.sw_app_enable_field_alert),
+          cz_dd(csrng_hw2reg_i.recov_alert_sts.enable_field_alert)};
+    fa = {cz_dd(edn_hw2reg_i.recov_alert_sts.cmd_fifo_rst_field_alert),
+          cz_dd(edn_hw2reg_i.recov_alert_sts.auto_req_mode_field_alert),
+          cz_dd(edn_hw2reg_i.recov_alert_sts.boot_req_mode_field_alert),
+          cz_dd(edn_hw2reg_i.recov_alert_sts.edn_enable_field_alert)};
+    // The CSRNG software acknowledge writes CMD_STS (its de is the ack
+    // pulse); the EDN CMD_ACK is a level, so its rise is the acknowledge.
+    cs_ack = cy_t(csrng_hw2reg_i.sw_cmd_sts.cmd_sts.de);
+    ed_ack_rise = cz_ed_ack_set && !cz_ed_ack_q;
+    cz_ed_ack_q <= cz_ed_ack_set;
+    if (cy_t(csrng_reg2hw_i.cmd_req.qe)) begin
+      if (cz_cs_rem == 4'd0) begin
+        cz_cs_acmd <= csrng_reg2hw_i.cmd_req.q[3:0];
+        cz_cs_rem  <= csrng_reg2hw_i.cmd_req.q[7:4];
+      end else begin
+        cz_cs_rem <= cz_cs_rem - 4'd1;
+      end
+    end
+    if (wr_ev && in_blk(aw_addr_q, EDN_REG_MAP_BASE_ADDR, EDN_REG_MAP_SIZE)) cz_ed_wr <= 1'b1;
+    if (cz_trng || !cy_ip[5]) begin
+      cz_cs_rem <= '0;
+      cz_rl_ref <= 1'b0;
+      cz_rl_rsd <= 1'b0;
+      cz_ed_wr  <= 1'b0;
+    end else if (cy_own_dcmd) begin
+      for (int b = 0; b < 7; b++) if (ra[b]) cz_ccmd(2, 3'(b));
+      for (int b = 0; b < 4; b++) if (fa[b]) cz_edn(5, 2'(b));
+      if (cz_dd(edn_hw2reg_i.recov_alert_sts.csrng_ack_err)) cz_edn(7, 2'd0);
+      if (cs_ack) begin
+        case (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d)
+          3'd1: cz_ccmd(3, 3'd1);
+          3'd4: cz_ccmd(3, 3'd2);
+          default: ;
+        endcase
+        if (cz_cs_acmd == 4'h3) begin
+          if (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd4) begin
+            cz_ccmd(4, 3'd0);
+            cz_rl_ref <= 1'b1;
+            cz_rl_rsd <= 1'b0;
+          end else if (cz_rl_rsd) begin
+            cz_ccmd(4, 3'd1);
+            cz_rl_rsd <= 1'b0;
+          end
+        end
+        if ((cz_cs_acmd == 4'h2) && cz_rl_ref && (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd0)) begin
+          cz_rl_rsd <= 1'b1;
+        end
+      end
+      if (ed_ack_rise) begin
+        if (edn_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd0) cz_edn(6, 2'd0);
+        if (edn_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd1) cz_edn(6, 2'd1);
+      end
+      if (rd_ev && cy_rd_known && (ar_addr_q == CSRNG_GENBITS_REG_ADDR) &&
+          (csrng_reg2hw_i.ctrl.sw_app_enable.q != CzMubiTrue) &&
+          cz_gb_vld && (rd_data == 32'h0)) begin
+        cz_ccmd(5, 3'd0);
+      end
+      if (rd_ev && cy_rd_known && !cz_ed_wr) begin
+        if ((ar_addr_q == EDN_BOOT_INS_CMD_REG_ADDR) && (rd_data == CzEdBootIns)) cz_edn(4, 2'd0);
+        if ((ar_addr_q == EDN_BOOT_GEN_CMD_REG_ADDR) && (rd_data == CzEdBootGen)) cz_edn(4, 2'd1);
+      end
     end
   end
 

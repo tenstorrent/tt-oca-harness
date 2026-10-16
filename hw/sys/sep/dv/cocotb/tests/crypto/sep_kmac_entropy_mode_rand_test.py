@@ -38,9 +38,21 @@ Checkers:
                            no acknowledge; error time T < 2T per prescaler and
                            P > 0 per wait timer. ``CTRL-KMAC-TIMER-PRESTATE``
                            reads kmac_err 0 and ERR_CODE at its reset value 0
-                           before each run. The register text does not state an
-                           ERR_CODE value for the timer expiry, so the code is
-                           logged as ``OBS-KMAC-TIMER-ERRCODE`` and not graded.
+                           before each run.
+  CHK-KMAC-ERRCODE-ENTROPY every timer run with wait timer T, 2T and 8 and
+                           prescaler 0 and P: ERR_CODE[31:24] = 0x04 on the read
+                           after kmac_err sets. The control is the 0 read of
+                           ``CTRL-KMAC-TIMER-PRESTATE`` before the same run.
+                           Sources: "Bits 31:24 contain the error code ... and
+                           bits 23:0 contain additional debug information."
+                           (kmac.adoc ``ERR_CODE``:344); "0x04 | WaitTimerExpired
+                           | EDN has not responded within the wait timer limit."
+                           and "If a non-zero timer expires, the module cancels
+                           the transaction and reports the `WaitTimerExpired`
+                           error." (``vendor/lowRISC/opentitan/upstream/hw/ip/
+                           kmac/doc/theory_of_operation.md``:724, :764). No text
+                           gives bits 23:0 a value for this code: they are
+                           masked and logged as ``OBS-KMAC-TIMER-ERRCODE``.
   CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
   CHK-KMAC-HASHCNT         counter 1..N, 0 after hash_cnt_clr, 1, 0 after
                            entropy_req, which adds an acknowledge.
@@ -53,7 +65,11 @@ seed gate text (``kmac.hjson`` ``ENTROPY_SEED``: "Only after that, the module
 can start processing commands") does not state whether a start before six
 seeds is refused or only gives no digest, and the register text SEP uses
 (``kmac.adoc`` ``ENTROPY_SEED``) does not carry it. These legs log the
-observed absorb, the seed count and ``kmac_err`` as ``OBS`` lines.
+observed absorb, the seed count and ``kmac_err`` as ``OBS`` lines. No text
+gives an error for a start before the seeds: error 0x09 (theory_of_operation.md
+:729) applies only when the masking feature is enabled, no SEP text states that
+build value, and the seed count itself differs between ``kmac.hjson``
+``ENTROPY_SEED`` (6 writes, :856) and theory_of_operation.md:705 (9 writes).
 
 Observables: KMAC register readback over the CPU-LSU master,
 ``crypto_edn_req_o[1]`` and ``crypto_edn_ack_o[1]`` (client 1 is KMAC,
@@ -124,6 +140,12 @@ HASH_CNT_MASK = KMAC.field_mask("ENTROPY_REFRESH_HASH_CNT", "hash_cnt")
 ERR_CODE_MASK = KMAC.field_mask("ERR_CODE", "err_code")
 PERIOD_PRESCALER_LSB = KMAC.field_lsb("ENTROPY_PERIOD", "prescaler")
 PERIOD_WAIT_LSB = KMAC.field_lsb("ENTROPY_PERIOD", "wait_timer")
+# kmac.adoc ERR_CODE:343-344: reset value 0; the error code is in bits 31:24.
+EXP_ERR_CODE_RESET = 0x0
+ERR_CODE_LSB = 24
+ERR_CODE_DEBUG_MASK = 0x00FF_FFFF
+# theory_of_operation.md:724 WaitTimerExpired.
+EXP_ERR_WAIT_TIMER_EXPIRED = 0x04
 
 # CFG_SHADOWED.entropy_mode enum (kmac.hjson:511 idle_mode, :522 edn_mode, :544 sw_mode).
 ENTROPY_MODE = {"idle": 0, "edn": 1, "sw": 2}
@@ -298,6 +320,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         "CHK-KMAC-MODE-LOCK",
         "CHK-KMAC-TIMER",
         "CHK-KMAC-TIMER0",
+        "CHK-KMAC-ERRCODE-ENTROPY",
         "CHK-KMAC-HASHCNT",
         "CHK-KMAC-AUTORESEED",
         "CHK-KMAC-AUTORESEED-OFF",
@@ -593,7 +616,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         pre_code = await self.kmac.read(KMAC_ERR_CODE) & ERR_CODE_MASK
         self.chk.ctrl(
             "KMAC-TIMER-PRESTATE",
-            pre_intr == 0 and pre_code == 0,
+            pre_intr == 0 and pre_code == EXP_ERR_CODE_RESET,
             wt=wait_timer,
             p=prescaler,
             kmac_err=int(bool(pre_intr)),
@@ -669,10 +692,35 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             acks=sum(r["acks"] for r in p0 + pp),
             reason="ok" if all_clean else "timeout_or_no_error",
         )
+
+        def err_code(run: dict) -> int | None:
+            return (run["code"] >> ERR_CODE_LSB) & 0xFF if "code" in run else None
+
+        def codes(runs: list[dict]) -> str:
+            return ",".join("na" if err_code(r) is None else f"0x{err_code(r):02x}" for r in runs)
+
+        self.chk.ok(
+            "KMAC-ERRCODE-ENTROPY",
+            all(
+                err_code(r) == EXP_ERR_WAIT_TIMER_EXPIRED and r["pre_code"] == EXP_ERR_CODE_RESET
+                for r in p0 + pp
+            ),
+            t=t,
+            p=self.plan.p,
+            p0_code=codes(p0),
+            p_code=codes(pp),
+            pre_code=",".join(f"0x{r['pre_code']:x}" for r in p0 + pp),
+            expected=f"0x{EXP_ERR_WAIT_TIMER_EXPIRED:02x}",
+        )
+        # Bits 23:0: no text gives them a value for WaitTimerExpired.
         self.chk.obs(
             "KMAC-TIMER-ERRCODE",
-            p0_code=",".join(f"0x{r['code']:x}" if "code" in r else "na" for r in p0),
-            p_code=",".join(f"0x{r['code']:x}" if "code" in r else "na" for r in pp),
+            p0_debug=",".join(
+                f"0x{r['code'] & ERR_CODE_DEBUG_MASK:x}" if "code" in r else "na" for r in p0
+            ),
+            p_debug=",".join(
+                f"0x{r['code'] & ERR_CODE_DEBUG_MASK:x}" if "code" in r else "na" for r in pp
+            ),
         )
 
     async def _timer0(self, prescaler: int, ctrl: dict) -> None:
