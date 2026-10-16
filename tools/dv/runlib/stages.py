@@ -102,6 +102,7 @@ from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatal
 from .paths import repo_path, repo_rel
 from .site import ToolLaunch, launch_argv, launch_env, tool_launch
 from .ui import Console
+from .uvm_library import UvmLibrary, fetch_uvm_library, resolve_uvm_library
 from .waves import (
     build_wave_metadata,
     format_time_ps,
@@ -2773,27 +2774,69 @@ def _vcs_defines(compile_target: dict[str, Any], args: argparse.Namespace) -> li
 
 # VCS's bare "-ntb_opts uvm" resolves to uvm-1.1, whose global
 # uvm_report_error lacks the context_name/report_enabled_checked parameters
-# that the vendored OpenTitan prim_assert macros pass; default to the 1.2
-# library. [build.vcs].uvm_lib overrides the selection (uvm-1.2 is the floor
-# the vendored OpenTitan asserts compile against).
-_VCS_UVM_LIB = "uvm-1.2"
-
-
+# that the vendored OpenTitan prim_assert macros pass, so a simulator-supplied
+# library is named in full, uvm-1.2 or later.
 def _vcs_uvm_lib(vcs_cfg: dict[str, Any]) -> str:
-    lib = str(vcs_cfg.get("uvm_lib", "")).strip()
-    return lib or _VCS_UVM_LIB
+    """The simulator-supplied UVM library `[build.vcs].uvm_lib` selects.
+
+    Empty selects the source library `[build.uvm_library]` pins instead.
+    """
+    return str(vcs_cfg.get("uvm_lib", "")).strip()
+
+
+def _vcs_compiles_uvm_source(flow: Flow, vcs_cfg: dict[str, Any]) -> bool:
+    return bool(vcs_cfg.get("uvm", flow.framework == "uvm")) and not _vcs_uvm_lib(vcs_cfg)
+
+
+def fetch_build_libraries(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    tool: str,
+    console: Console,
+    *,
+    site: dict[str, str] | None = None,
+) -> UvmLibrary | None:
+    """Fetch the source libraries the flow's build compiles, before any stage runs.
+
+    ``site`` is the site file's ``[uvm_library]`` table. Returns the UVM library the build
+    compiles, or None when it compiles none; a library that differs from its pin is reported.
+    """
+    build = build_cfg(flow, sim_cfg)
+    if tool != "vcs" or not _vcs_compiles_uvm_source(flow, build_vcs_cfg(build)):
+        return None
+    library = fetch_uvm_library(
+        root,
+        build,
+        str(flow.path),
+        site=site,
+        say=lambda text: console.event("uvm", text),
+        warn=lambda text: console.event("warning", text, force=True),
+    )
+    if library.unpinned:
+        console.event(
+            "warning",
+            f"{library.source}={library.src.parent} holds a UVM src tree with SHA-256 "
+            f"{library.tree_sha256}; [build.uvm_library].tree_sha256 pins {library.pin}",
+            force=True,
+        )
+    return library
+
+
+def _vcs_uvm_dpi_args(uvm_src: Path) -> list[str]:
+    # uvm_dpi.cc compiles its VCS HDL-access backend only under the VCS macro.
+    return [str(uvm_src / "dpi" / "uvm_dpi.cc"), "-CFLAGS", "-DVCS"]
 
 
 def _uvm_testname_override(extra_args: list[str]) -> str:
     """Return the +UVM_TESTNAME= value supplied in extra_args, or '' when absent.
 
-    UVM takes the FIRST +UVM_TESTNAME occurrence, and the simulator-shipped
-    uvm-1.2 library applies command-line factory overrides only after
-    run_test() has created the test component, so +uvm_set_type_override
-    cannot swap the test itself. Selecting a factory-registered subclass of a
-    testlist scenario therefore comes through +UVM_TESTNAME: when the caller
-    supplies one, the runner must not emit its testlist-mapped name ahead of
-    it.
+    UVM takes the FIRST +UVM_TESTNAME occurrence, and the UVM library applies
+    command-line factory overrides only after run_test() has created the test
+    component, so +uvm_set_type_override cannot swap the test itself.
+    Selecting a factory-registered subclass of a testlist scenario therefore
+    comes through +UVM_TESTNAME: when the caller supplies one, the runner must
+    not emit its testlist-mapped name ahead of it.
     """
     for arg in extra_args:
         if arg.startswith("+UVM_TESTNAME="):
@@ -2802,25 +2845,29 @@ def _uvm_testname_override(extra_args: list[str]) -> str:
 
 
 def _vcs_uvm_precompile_cmd(
-    vcs_cfg: dict[str, Any], compile_target: dict[str, Any], args: argparse.Namespace
+    vcs_cfg: dict[str, Any],
+    compile_target: dict[str, Any],
+    args: argparse.Namespace,
+    uvm_src: Path | None,
 ) -> str:
     """The UVM-library precompile line for the split vlogan -> vcs flow.
 
-    Carries the same defines as the user-source analysis: size-changing defines
-    (e.g. UVM_PACKER_MAX_BYTES) must agree across every analysis step of one
-    work library, or consumers of the precompiled uvm_pkg see a mismatched
-    packer geometry. Tokens are shell-quoted because the line is embedded in a
+    `uvm_src` is the source tree whose `uvm_pkg.sv` compiles, with the
+    user-source preamble so both analysis steps agree on the timescale; without
+    it the simulator-supplied library compiles through `-ntb_opts`. Carries the
+    same defines as the user-source analysis: size-changing defines (e.g.
+    UVM_PACKER_MAX_BYTES) must agree across every analysis step of one work
+    library, or consumers of the precompiled uvm_pkg see a mismatched packer
+    geometry. Tokens are shell-quoted because the line is embedded in a
     `bash -c` script (define values may carry quotes).
     """
-    return " ".join(
-        [
-            "vlogan",
-            "-full64",
-            "-ntb_opts",
-            shlex.quote(_vcs_uvm_lib(vcs_cfg)),
-            *(shlex.quote(d) for d in _vcs_defines(compile_target, args)),
-        ]
-    )
+    defines = _vcs_defines(compile_target, args)
+    if uvm_src is None:
+        argv = ["vlogan", "-full64", "-ntb_opts", _vcs_uvm_lib(vcs_cfg), *defines]
+    else:
+        argv = ["vlogan", *_vcs_preamble(vcs_cfg, "uvm"), f"+incdir+{uvm_src}", *defines]
+        argv.append(str(uvm_src / "uvm_pkg.sv"))
+    return " ".join(shlex.quote(token) for token in argv)
 
 
 def _vcs_preamble(vcs_cfg: dict[str, Any], framework: str) -> list[str]:
@@ -2828,8 +2875,9 @@ def _vcs_preamble(vcs_cfg: dict[str, Any], framework: str) -> list[str]:
     if bool(vcs_cfg.get("sverilog", True)):
         pre.append("-sverilog")
     pre.append("-full64")
-    if bool(vcs_cfg.get("uvm", framework == "uvm")):
-        pre += ["-ntb_opts", _vcs_uvm_lib(vcs_cfg)]
+    lib = _vcs_uvm_lib(vcs_cfg)
+    if lib and bool(vcs_cfg.get("uvm", framework == "uvm")):
+        pre += ["-ntb_opts", lib]
     timescale = str(vcs_cfg.get("timescale", "")).strip()
     if timescale:
         pre.append(f"-timescale={timescale}")
@@ -2841,11 +2889,15 @@ def _vcs_uum_elab_args(
     framework: str,
     options: dict[str, Any],
     args: argparse.Namespace,
+    uvm_src: Path | None,
 ) -> list[str]:
     """Return UUM elaboration options after vlogan has already parsed all sources."""
     elab = ["-full64"]
-    if bool(vcs_cfg.get("uvm", framework == "uvm")):
-        elab += ["-ntb_opts", _vcs_uvm_lib(vcs_cfg)]
+    lib = _vcs_uvm_lib(vcs_cfg)
+    if lib and bool(vcs_cfg.get("uvm", framework == "uvm")):
+        elab += ["-ntb_opts", lib]
+    if uvm_src is not None:
+        elab += _vcs_uvm_dpi_args(uvm_src)
     elab += vcs_build_args(options, vcs_cfg, _build_jobs_arg(args))
     if _wave_format(args, "vcs"):
         elab.append("-debug_access+all")
@@ -2875,6 +2927,18 @@ def _vcs_resolve_build(
     top = str(build.get("top_module", ""))
     if not top:
         raise ConfigError(f"{flow.path}: [build].top_module is required")
+    uvm: UvmLibrary | None = None
+    if _vcs_compiles_uvm_source(flow, vcs_cfg):
+        # The tree compiles outside the filelist, so its digest enters the build fingerprint;
+        # a sim leaf handed the model fingerprints nothing and skips the read.
+        uvm = resolve_uvm_library(
+            root,
+            build,
+            str(flow.path),
+            site=getattr(args, "_site_uvm_library", None),
+            present=not args.dry_run,
+            verify=model_dir is None,
+        )
     filelist = repo_path(root, str(build.get("filelist", "")))
     # Uniform build-tree convention `build/<framework>/<tool>/`: the configured work_dir carries
     # the framework segment (e.g. build/uvm), the runner appends the tool — mirroring how the
@@ -2924,6 +2988,7 @@ def _vcs_resolve_build(
                 *cache_key_extra(options),
                 *_target_fingerprint_extra(target_name, compile_target),
                 *_bender_sources_fingerprint(root, build),
+                *([f"uvm_library={uvm.tree_sha256[:16]}"] if uvm and uvm.tree_sha256 else []),
                 f"waves={wave_format}",
                 f"cov={bool(args.cov)}",
                 *coverage_compile_args,
@@ -2950,6 +3015,7 @@ def _vcs_resolve_build(
         "target_name": target_name,
         "compile_target": compile_target,
         "vcs_cfg": vcs_cfg,
+        "uvm_src": uvm.src if uvm else None,
         "top": top,
         "filelist": filelist,
         "build_dir": build_dir,
@@ -2973,10 +3039,12 @@ def vcs_analyze(
     """Three-step `compile` stage: analyze sources into the work library with vlogan."""
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     vcs_cfg = info["vcs_cfg"]
+    uvm_src = info["uvm_src"]
     launch = stage_tool_launch(args, "vcs")
     analyze_argv = [
         "vlogan",
         *_vcs_preamble(vcs_cfg, flow.framework),
+        *([f"+incdir+{uvm_src}"] if uvm_src else []),
         *_vcs_defines(info["compile_target"], args),
         *target_flags(info["compile_target"], "vcs"),
         *as_str_list(vcs_cfg.get("compile_args"), "build.vcs.compile_args"),
@@ -2986,14 +3054,14 @@ def vcs_analyze(
         str(info["filelist"]),
     ]
     if bool(vcs_cfg.get("uvm", flow.framework == "uvm")):
-        # In a split vlogan -> vcs flow, -ntb_opts uvm on the user-source
-        # invocation exposes the UVM macros but does not analyze uvm_pkg first.
-        # Precompile the simulator-owned package in the same work library before
-        # importing it from the OCAH and DUT UVM packages.
+        # The OCAH, DUT and assertion sources import uvm_pkg, and the user-source
+        # invocation's -ntb_opts or library +incdir exposes only the UVM macros.
+        # Precompile uvm_pkg into the same work library first.
+        precompile = _vcs_uvm_precompile_cmd(vcs_cfg, info["compile_target"], args, uvm_src)
         argv = [
             "bash",
             "-c",
-            f'set -euo pipefail\n{_vcs_uvm_precompile_cmd(vcs_cfg, info["compile_target"], args)}\nexec "$@"',
+            f'set -euo pipefail\n{precompile}\nexec "$@"',
             "vcs-analyze",
             *analyze_argv,
         ]
@@ -3073,6 +3141,9 @@ def vcs_build(
     launch = stage_tool_launch(args, "vcs")
     if include_filelist:
         argv = [launch.binary, *info["elab_args"]]
+        uvm_src = info["uvm_src"]
+        if uvm_src is not None:
+            argv += [f"+incdir+{uvm_src}", str(uvm_src / "uvm_pkg.sv"), *_vcs_uvm_dpi_args(uvm_src)]
         argv += ["-f", str(info["filelist"])]
     else:
         # UUM consumes the work library produced by vlogan. Source-language,
@@ -3085,6 +3156,7 @@ def vcs_build(
                 flow.framework,
                 build_options_cfg(info["build"]),
                 args,
+                info["uvm_src"],
             ),
             *info["coverage_args"],
         ]
@@ -4397,8 +4469,8 @@ def run_stage(
                 fingerprint=info["fingerprint"],
             )
         elif kind == "vcs_uvm_build":
-            # Canonical two-step build for SV-UVM on VCS: analyze (vlogan + simulator-owned UVM
-            # library precompile) then elaborate to the reusable simv, folded into one
+            # Canonical two-step build for SV-UVM on VCS: analyze (vlogan + UVM library
+            # precompile) then elaborate to the reusable simv, folded into one
             # `hdl_compile` stage. The analyze sub-step keeps the primary stage log/script; the
             # elaborate sub-step writes alongside it so neither sub-step's evidence is
             # overwritten, and a failing elaborate points the result at its own log.

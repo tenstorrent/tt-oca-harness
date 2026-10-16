@@ -84,6 +84,7 @@ RESULT_OPTIONAL_KEYS = {
     "overlay",
     "overlay_env",
     "site",
+    "uvm_library",
     "selection",
     "progress",
     "interruption",
@@ -210,7 +211,15 @@ REGRESSION_KEYS = {
     "tool_versions",
     "visibility",
 }
-REGRESSION_OPTIONAL_KEYS = {"progress", "interruption", "formal", "overlay", "overlay_env", "site"}
+REGRESSION_OPTIONAL_KEYS = {
+    "progress",
+    "interruption",
+    "formal",
+    "overlay",
+    "overlay_env",
+    "site",
+    "uvm_library",
+}
 REGRESSION_TESTS_KEYS = RESULT_TESTS_KEYS | {"flaky"}
 SELECTION_KEYS = {
     "allow_duplicates",
