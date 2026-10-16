@@ -567,6 +567,14 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_axi_random_stress_test"
+module = "smc_axi_random_stress_test"
+seed = 1
+timeout_sec = 300
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dma_traffic_shape_test"
 module = "smc_dma_traffic_shape_test"
 seed = 1
