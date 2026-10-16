@@ -155,6 +155,19 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.bus_name: str = ""
         # AXI ARID/AWID of this access. None keeps the VIP's own ID allocation.
         self.axi_id: int | None = None
+        # AXI AxLOCK / AxCACHE / AxQOS / AxREGION / AxUSER of this access. The
+        # defaults are the values the driver presents when a test sets none.
+        self.axi_lock: int = 0
+        self.axi_cache: int = 0b0011
+        self.axi_qos: int = 0
+        self.axi_region: int = 0
+        self.axi_user: int = 0
+        # Read the BID / RID of this access off the response channel into `bid` /
+        # `rid`. The capture is scoped to one transaction, so it is meaningful
+        # only for an access that is the sole one outstanding on its port.
+        self.capture_resp_id: bool = False
+        self.bid: int | None = None
+        self.rid: int | None = None
 
     @property
     def transfer_bytes(self) -> int:
@@ -250,9 +263,23 @@ class SmcSysAxiDriver(uvm_driver):
         stay valid while the subordinate is still answering earlier ones.
         """
         members = self._members(item)
+        captures = [self._start_id_capture(member) for member in members]
         events = [self._start_transfer(member) for member in members]
-        for member, event in zip(members, events):
+        for member, event, capture in zip(members, events, captures):
             await self._collect_transfer(member, event)
+            if capture is not None:
+                captured = await capture.finish()
+                if member.op is SmcSysAxiOp.READ:
+                    member.rid = captured
+                else:
+                    member.bid = captured
+
+    def _start_id_capture(self, item: SmcSysAxiItem):
+        if not item.capture_resp_id:
+            return None
+        return self.axi.driver.start_response_id_capture(
+            "r" if item.op is SmcSysAxiOp.READ else "b"
+        )
 
     def _start_transfer(self, item: SmcSysAxiItem):
         id_kw = {} if item.axi_id is None else {"arid": item.axi_id}
@@ -263,6 +290,11 @@ class SmcSysAxiDriver(uvm_driver):
                 size=self._axi_size(item.length),
                 burst=int(item.burst),
                 prot=int(item.prot),
+                lock=int(item.axi_lock),
+                cache=int(item.axi_cache),
+                qos=int(item.axi_qos),
+                region=int(item.axi_region),
+                user=int(item.axi_user),
                 **id_kw,
             )
         if item.op is SmcSysAxiOp.WRITE:
@@ -274,6 +306,11 @@ class SmcSysAxiDriver(uvm_driver):
                 size=self._axi_size(item.length),
                 burst=int(item.burst),
                 prot=int(item.prot),
+                lock=int(item.axi_lock),
+                cache=int(item.axi_cache),
+                qos=int(item.axi_qos),
+                region=int(item.axi_region),
+                user=int(item.axi_user),
                 **({} if item.axi_id is None else {"awid": item.axi_id}),
             )
         raise ValueError(f"unknown SMC SYS AXI op {item.op}")
@@ -315,12 +352,12 @@ class SmcSysAxiDriver(uvm_driver):
         aw.awlen = 0
         aw.awsize = size
         aw.awburst = int(item.burst)
-        aw.awlock = 0
-        aw.awcache = 0b0011
+        aw.awlock = int(item.axi_lock)
+        aw.awcache = int(item.axi_cache)
         aw.awprot = int(item.prot)
-        aw.awqos = 0
-        aw.awregion = 0
-        aw.awuser = 0
+        aw.awqos = int(item.axi_qos)
+        aw.awregion = int(item.axi_region)
+        aw.awuser = int(item.axi_user)
         w = wif.w_channel._transaction_obj()
         w.wdata = (item.wdata & data_mask) << (shift * 8)
         w.wstrb = item.wstrb << shift
