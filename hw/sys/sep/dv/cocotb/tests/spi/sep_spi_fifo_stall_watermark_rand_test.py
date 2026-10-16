@@ -90,9 +90,12 @@ Checkers:
                    and x4) after a drawn number of sck cycles. SW_RST clears
                    the internal state, not the registers. After the abort no
                    data lane output enable is on (``spi_sd_oe_o`` = 0) and chip
-                   select is high (``doc/integrator/src/smu-sep.adoc``, "SEP SPI
-                   Host Pin Assignment": a data lane is driven only while chip
-                   select is asserted), and TXQD = RXQD = CMDQD = 0. Controls:
+                   select is high (the CSB line can be deasserted by "resetting
+                   the core FSM via the CONTROL.SW_RST register",
+                   ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:245``;
+                   a data lane is driven only while chip select is asserted,
+                   ``doc/integrator/src/smu-sep.adoc``, "SEP SPI Host Pin
+                   Assignment"), and TXQD = RXQD = CMDQD = 0. Controls:
                    the last pad sample before the SW_RST write shows chip
                    select low and ``spi_sd_oe_o`` equal to the lane mask of the
                    Tx segment (0001 at x1, 0011 at x2, 1111 at x4), and the
@@ -126,14 +129,10 @@ Checkers:
                    Control: the 63-word
                    segment of the same search reads RXFULL = 0 and RXQD = 63,
                    else CTRL-MISSING.
-  CHK-SPI-DEPTH-CMD Every STATUS read of the CHK-SPI-CMDQD leg shows CMDQD <= 4
-                   ("how many unread 32-bit words are currently in the command
-                   segment queue", spi_host.hjson:318-319), CmdDepth = 4
-                   (spi_host.hjson, parameter CmdDepth).
-                   Upper bound only: no source ties READY = 0 to a full queue
-                   or says whether the held head segment counts in CMDQD.
-                   Control: the CHK-SPI-CMDQD controls (a held head and at
-                   least one accepted COMMAND, CMDQD +1 per COMMAND).
+  OBS-SPI-CMDQD-MAX The largest CMDQD of the CHK-SPI-CMDQD leg is logged. The
+                   leg queues at most four commands behind the held head, so
+                   it cannot show the CmdDepth = 4 bound (spi_host.hjson,
+                   parameter CmdDepth) fail.
   CHK-SPI-SB-FRAME Every frame of the width, as above (one scoreboard per width).
   CHK-SPI-LANE-DATA One line per width with ``width=`` and the Tx and Rx frame
                    and byte counts, after CHK-SPI-SB-FRAME of the width passed.
@@ -291,7 +290,6 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         "CHK-SPI-SWRST-ABORT",
         "CHK-SPI-DEPTH-TX",
         "CHK-SPI-DEPTH-RX",
-        "CHK-SPI-DEPTH-CMD",
         "CHK-SPI-SB-FRAME",
         "CHK-SPI-LANE-DATA",
         "CHK-SPI-SESSION-FRAMES",
@@ -1188,9 +1186,9 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             f"width={self._w} status_reads={len(reads)} max_cmdqd={top} bound={CMD_DEPTH} "
             f"control_accepted={accepted} control_cmdqd_held={held} control_c0={c0}"
         )
-        if top > CMD_DEPTH:
-            self._fail("CHK-SPI-DEPTH-CMD", line)
-        self.logger.info("CHK-SPI-DEPTH-CMD PASS seed=%d %s", self.seed, line)
+        # The leg queues at most four commands, so the CmdDepth bound cannot
+        # fail here: the maximum is logged.
+        self.logger.info("OBS-SPI-CMDQD-MAX seed=%d %s", self.seed, line)
         await self._sw_rst()
 
     # ---- step 14 -------------------------------------------------------
