@@ -679,6 +679,8 @@ in clk_ref_i cycles at two reference periods, in the ref4 cell (clk_ref_i / clk_
 |`smc_dfx_status_smu_pulse_reset_test` |`STATUS_SMU` abort bits alone, pulsed and through resets.
 |`smc_jtag_dm_sbcs_haltsum_test` |`sbcs` capabilities fixed under writes and `haltsum` idle at 0.
 |`smc_jtag_dm_halt_progbuf_test` |A halted hart runs a program-buffer store through the Debug Module and the stored word reads back in `CPU_CTRL.SCRATCH[0]`.
+|`smc_jtag_dm_sba_scratchpad_test` |Debug Module system bus writes and reads the scratchpad at 8, 16, 32 and 64 bits and the SEP_IN AXI driver sees the same words.
+|`smc_jtag_dm_abstractcs_lifecycle_test` |`abstractcs.busy` observed during a program-buffer loop and `cmderr` 1 and 2 set and cleared.
 |===
 
 ==== EFUSE
@@ -17916,6 +17918,212 @@ compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert ho
 
 '''''
 
+[[sec-532-smc_jtag_dm_sba_scratchpad_test]]
+===== 532 `smc_jtag_dm_sba_scratchpad_test`
+
+*Source Module*: `smc_jtag_dm_sba_scratchpad_test`
+
+*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
+`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs; DMI
+addresses `data0` 0x04, `sbcs` 0x38, `sbaddress0` 0x39, `sbaddress1` 0x3A, `sbdata0` 0x3C and
+`sbdata1` 0x3D, the not-implemented `data4` 0x08, `hartinfo` 0x12, `confstrptr0` 0x19, `nextdm`
+0x1D, `authdata` 0x30, `haltsum2` 0x34, `sbaddress2` 0x3B and `sbdata2` 0x3E, with `dtmcs` giving
+`abits` and the idle count; `sbcs` layout `sbversion` bits 31:29, `sbbusy` bit 21, `sbreadonaddr`
+bit 20, `sbaccess` bits 19:17, `sberror` bits 14:12 (write 1 to clear), `sbasize` bits 11:5 and
+`sbaccess128`..`sbaccess8` bits 4:0; ocah_axi_vip (AXI) on SEP_IN reading and writing
+`CPU_CTRL.RESET_CTRL` (8 bytes, `debug_reset_n` at bit 24) and the scratchpad words (4 and 8 bytes,
+addresses from the generated address map accessor `SPM_MEMORY_BASE`, the local alias); `clk_smc_i`
+
+*Objective*: The Debug Module system bus writes and reads the scratchpad at 8, 16, 32 and 64 bits
+and the SEP_IN AXI driver sees the same words.
+
+*Test Coverage*:
+
+* After the debug reset release and `dmcontrol.dmactive` = 1, `sbcs` reads `sbversion` 1, `sbasize`
+  56, `sbaccess8`, `sbaccess16`, `sbaccess32` and `sbaccess64` 1 and `sbaccess128` 0.
+* The not-implemented DMI registers `data4`, `hartinfo`, `confstrptr0`, `nextdm`, `authdata`,
+  `haltsum2`, `sbaddress2` and `sbdata2` read 0 before and after a write of 0xFFFFFFFF; `data0`
+  reads back its written pattern as the positive control.
+* Two 32-bit system bus writes at distinct scratchpad word addresses end with `sbbusy` 0 and
+  `sberror` 0 and `sbaddress0` reads back each address; `sbaddress1` is printed with the word
+  LINKED-ISSUE (a 2-state zero value).
+* System bus reads with `sbreadonaddr` of both words return the two distinct patterns.
+* Width-specific writes at 8, 16, 32 and 64 bits into four distinct doublewords with a known
+  background read back at the same width, and the 64-bit read of the doubleword equals the
+  background with only the written bytes replaced.
+* A 64-bit write with `sbdata1` loaded before `sbdata0` reads back with `sbdata0` the low word and
+  `sbdata1` the high word.
+* The AXI driver reads the words the system bus wrote, and the system bus reads a word the AXI
+  driver wrote.
+
+*Test Procedure*:
+
+[arabic]
+. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64 `clk_smc_i` cycles, read it back and
+  require bit 24 set. Create the TAP, reset it with `tb_cpu_jtag_reset` while TCK steps, read
+  IDCODE, activate the Debug Module (`dmactive` plus a bounded wait on `dmstatus`), read `dtmcs`
+  for `abits` and the idle count, then read `sbcs` and require `sbversion`, `sbasize` and the
+  `sbaccess` capability bits listed above.
+. Read each not-implemented DMI register, write 0xFFFFFFFF, read it again and require 0 both
+  times; write `data0` with a pattern and require it to read back.
+. Write `sbcs` with `sbaccess` 2 and `sberror` cleared, write `sbaddress1` 0 and `sbaddress0` with
+  the first word address, write `sbdata0` to start the access, read `sbcs` until `sbbusy` is 0
+  (sixteen reads at most) and require `sberror` 0; read `sbaddress0` back. Repeat at the second
+  word address with a different pattern and read `sbaddress0` and `sbaddress1`.
+. Write `sbcs` with `sbreadonaddr` and `sbaccess` 2, write `sbaddress0` with each word address in
+  turn, wait for `sbbusy` 0 and `sberror` 0, read `sbdata0` and require the written pattern.
+. For each of `sbaccess` 0, 1, 2 and 3 write a known 64-bit background into a doubleword, write
+  the width-specific pattern at a byte lane inside it, read it at the same width and read the
+  doubleword at 64 bits; require the pattern at the width and the background with only the written
+  bytes replaced.
+. Write `sbcs` with `sbaccess` 3, `sbaddress0`, `sbdata1` and then `sbdata0`; wait for `sbbusy` 0
+  and `sberror` 0, read the location back with `sbreadonaddr` and read `sbdata0` and `sbdata1`;
+  require the low and high words as written.
+. Read the words of steps 3 and 5 and the 64-bit location of step 6 with the SEP_IN AXI driver and
+  require each to equal the system bus value; write a new pattern at a fresh word with the AXI
+  driver, wait two `clk_smc_i` cycles and read it with a system bus read.
+. Require the steps in order with increasing stamps and each checker line after its step, print the
+  ordered-fence line and the bounded waits (DMI busy retries, four at most; `dmactive` wait and
+  `sbbusy` wait, sixteen reads each).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DM-SBCS-CAPS` |`sbcs` reads `sbversion` 1, `sbasize` 56, `sbaccess8`..`sbaccess64` 1 and
+`sbaccess128` 0; any other field value or a stalled scan fails it
+|`CHK-DM-NOT-IMPL-DMI` |Each listed not-implemented DMI register reads 0 before and after a write
+of 0xFFFFFFFF and `data0` reads back its pattern; a nonzero read or a failed control fails it
+|`CHK-DM-SBA-WRITE` |After each 32-bit system bus write `sbbusy` reads 0 within the bound and
+`sberror` 0 and `sbaddress0` reads back the written address, `sbaddress1` is printed as
+LINKED-ISSUE; a busy bit at the bound, a nonzero `sberror` or an address difference fails it
+|`CHK-DM-SBA-READ` |A system bus read of each written word returns its own pattern with `sbbusy` 0
+and `sberror` 0; a different word, an aliased word or a nonzero `sberror` fails it
+|`CHK-DM-SBA-WIDTHS` |Each of the 8-, 16-, 32- and 64-bit writes reads back its pattern at its width
+and the doubleword keeps its background outside the written bytes; any difference fails it
+|`CHK-DM-SBA-64BIT` |A 64-bit write started by `sbdata0` with `sbdata1` loaded first reads back
+`sbdata0` as the low word and `sbdata1` as the high word; a difference or swapped words fails it
+|`CHK-DM-SBA-VISIBLE` |The AXI reads of the words the system bus wrote equal the written values and
+the system bus read of the word the AXI driver wrote equals it; any difference fails it
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow their steps; a missing or misordered term fails it
+|`CHK-TIMEOUT-PATHS` |The DMI busy retries (four at most), the sixteen-read `dmactive` wait and the
+sixteen-read `sbbusy` wait are bounded and fail on expiry with the last `sbcs` and DMI response
+|===
+
+
+*Pass Criteria*: `CHK-DM-SBCS-CAPS`, `CHK-DM-NOT-IMPL-DMI`, `CHK-DM-SBA-WRITE`, `CHK-DM-SBA-READ`,
+`CHK-DM-SBA-WIDTHS`, `CHK-DM-SBA-64BIT` and `CHK-DM-SBA-VISIBLE` hold after their compares;
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`,
+`hosted`, `jtag`.
+
+'''''
+[[sec-533-smc_jtag_dm_abstractcs_lifecycle_test]]
+===== 533 `smc_jtag_dm_abstractcs_lifecycle_test`
+
+*Source Module*: `smc_jtag_dm_abstractcs_lifecycle_test`
+
+*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
+`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs (10 ns
+period); DMI addresses `data0` 0x04, `data1` 0x05, `dmcontrol` 0x10, `dmstatus` 0x11, `abstractcs`
+0x16, `command` 0x17 and `progbuf0`..`progbuf15` 0x20..0x2F, with `dtmcs` giving `abits` and the
+idle count; `abstractcs` fields `busy` bit 12 and `cmderr` bits 10:8 (write 1 to clear); Access
+Register fields `aarsize`, `postexec`, `transfer`, `write` and `regno` 0x1000..0x101F for `x0`..`x31`
+and the Quick Access command type 1; ocah_axi_vip (AXI) on SEP_IN reading and writing
+`CPU_CTRL.RESET_CTRL` (8 bytes, `debug_reset_n` at bit 24); hart 0 halted by `haltreq` and running
+the program-buffer loop; `clk_smc_i` measured by the leaf to size the loop count
+
+*Objective*: `abstractcs.busy` is observed while a program-buffer loop runs, and command misuse sets
+`cmderr` 1 and 2 without executing anything and clears on a write of 1s.
+
+*Test Coverage*:
+
+* Before any command `abstractcs` reads `busy` 0 and `cmderr` 0; after a postexec command with
+  `transfer` clear, `busy` reads 1 at least once while the loop runs (positive control that busy is
+  observable) and later 0 with `cmderr` 0.
+* A command written while `busy` is 1 does not execute (`x6` unchanged) and leaves `cmderr` 1; the
+  wait for `busy` 0 is a bench bound, not a specification value.
+* With `cmderr` 1 held and `busy` 0, a Quick Access write replaces the held code with 2; a write of
+  1s then reads `cmderr` 0.
+* With `cmderr` 0, a Quick Access command, an Access Register command with `transfer` set,
+  `aarsize` 3 and `regno` 0x1020, and one with `transfer` set, `aarsize` 1 and `regno` 0x1008 each
+  leave `cmderr` 2; the same operands with `transfer` clear leave `cmderr` 0.
+* A command written with `busy` 0 and `cmderr` 2 replaces the stored command and leaves `cmderr` 2;
+  it does not execute, so `x8` still reads its earlier pattern after the clear.
+* After the clear a 32-bit Access Register write and read of `x8` execute with `cmderr` 0.
+
+*Test Procedure*:
+
+[arabic]
+. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64 `clk_smc_i` cycles and read it back.
+  Create the TAP, reset it with `tb_cpu_jtag_reset` while TCK steps, read IDCODE and `dtmcs`, write
+  `dmcontrol.dmactive` and wait (sixteen reads at most) for `dmstatus` to answer, set `haltreq` and
+  wait (sixteen reads at most) for `allhalted`. Read `abstractcs` and require `busy` 0 and `cmderr`
+  0, then write `x8` with pattern A.
+. Measure the `clk_smc_i` period, compute the loop count from the TCK period, the DMI access cost
+  and two clocks per iteration, print it, and write `x5` with it. Write `progbuf0` `addi x5, x5, -1`
+  (0xFFF28293), `progbuf1` `bne x5, x0, -4` (0xFE029EE3) and `nop` into `progbuf2`..`progbuf15`,
+  printing each word.
+. Write the postexec command with `transfer` clear and read `abstractcs` until `busy` reads 0
+  (sixty-four reads at most); require a `busy` 1 read, then `busy` 0 and `cmderr` 0.
+. Write `x6`, re-arm `x5`, load the `x6` busy-write data, write the postexec command and read
+  `abstractcs` until `busy` reads 1; write the `x6` Access Register command, wait for `busy` 0
+  (sixty-four reads at most) and require `cmderr` 1; write a Quick Access command and require
+  `cmderr` 2; write 1s to `cmderr`, require 0 and read `x6`, requiring the earlier value.
+. Issue in turn, clearing `cmderr` after each rejected leg and reading `abstractcs` after each: the
+  Quick Access command, the `transfer` set `aarsize` 3 `regno` 0x1020 command, the `transfer` set
+  `aarsize` 1 `regno` 0x1008 command, and the `transfer` clear `aarsize` 1 `regno` 0x1020 command.
+. Load pattern B in `data0` and `data1`, write a Quick Access command to make `cmderr` 2, write the
+  Access Register command that writes `x8`, read `command` back and `abstractcs`, write 1s to
+  `cmderr` and read `x8` with a command, requiring pattern A.
+. Wait two `clk_smc_i` cycles, write a 32-bit Access Register write of `x8` with pattern C and a
+  32-bit read, reading `abstractcs` after each and `data0` after the read.
+. Require the steps in order with increasing stamps and each checker line after its step, print the
+  ordered-fence line and the bounded waits (DMI busy retries, four at most; the `dmactive`, halt and
+  idle waits of sixteen reads; the loop, busy-observe and busy-write waits of sixty-four reads).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DM-BUSY-LIFECYCLE` |`abstractcs` reads `busy` 0 and `cmderr` 0 before any command, `busy` 1 at
+least once during the loop and `busy` 0 with `cmderr` 0 after it; no busy read, a busy read at the
+bound or a nonzero `cmderr` fails it
+|`CHK-DM-BUSY-WRITE` |A command written while `busy` is 1 leaves `cmderr` 1 with `busy` 0 within the
+bench bound, `x6` unchanged and `cmderr` 0 after a write of 1s; any other value fails it
+|`CHK-DM-CMDERR-CMDTYPE` |A Quick Access command leaves `cmderr` 2 and `busy` 0; any other value
+fails it
+|`CHK-DM-CMDERR-REGNO` |An Access Register command with `transfer` set, `aarsize` 3 and `regno`
+0x1020 leaves `cmderr` 2; any other value fails it
+|`CHK-DM-CMDERR-AARSIZE` |An Access Register command with `transfer` set, `regno` 0x1008 and
+`aarsize` 1 leaves `cmderr` 2; any other value fails it
+|`CHK-DM-CMDERR-NOTRANSFER` |The operands rejected with `transfer` set leave `cmderr` 0 and `busy` 0
+with `transfer` clear, and the two rejected legs read `cmderr` 2; any other value fails it
+|`CHK-DM-CMDERR-STORE` |A command written with `busy` 0 and `cmderr` 2 reads back from `command` as
+written and leaves `cmderr` 2; the earlier value or another `cmderr` fails it
+|`CHK-DM-CMDERR-REPLACE` |With `cmderr` 1 held and `busy` 0 a Quick Access write leaves `cmderr` 2;
+`cmderr` 1 or any other value fails it
+|`CHK-DM-CMDERR-NOEXEC` |`x8` reads pattern A after the pattern-B write command issued with `cmderr`
+2; pattern B or any other value fails it
+|`CHK-DM-CMDERR-RECOVER-GPR32` |After the clear a 32-bit write of `x8` and a 32-bit read return
+`cmderr` 0 and `busy` 0 and the read returns pattern C; any other value fails it
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow their steps; a missing or misordered term fails it
+|`CHK-TIMEOUT-PATHS` |The DMI busy retries (four at most), the sixteen-read `dmactive`, halt and
+idle waits and the sixty-four-read loop, busy-observe and busy-write waits are bounded and fail on
+expiry with the last `dmstatus`, `abstractcs`, `command` and DMI response
+|===
+
+
+*Pass Criteria*: `CHK-DM-BUSY-LIFECYCLE`, `CHK-DM-BUSY-WRITE`, `CHK-DM-CMDERR-CMDTYPE`,
+`CHK-DM-CMDERR-REGNO`, `CHK-DM-CMDERR-AARSIZE`, `CHK-DM-CMDERR-NOTRANSFER`,
+`CHK-DM-CMDERR-STORE`, `CHK-DM-CMDERR-REPLACE`, `CHK-DM-CMDERR-NOEXEC` and
+`CHK-DM-CMDERR-RECOVER-GPR32` hold after their compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold
+and every sequence assert holds. Enrolled in: `all`, `hosted`, `jtag`.
+
+'''''
 
 ==== EFUSE
 
