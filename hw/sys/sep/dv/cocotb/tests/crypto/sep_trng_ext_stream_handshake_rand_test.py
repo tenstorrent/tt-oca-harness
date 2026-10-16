@@ -533,8 +533,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         """STATUS after the pool path is quiet (``POOL_QUIET`` clocks with no stream-2
         transfer and no pool acknowledge, bound ``SETTLE_CAP``), then until two
         consecutive reads agree. Returns (level, reads); reads is -1 when the path
-        never went quiet or no two consecutive reads agreed within the bound (the last
-        level is returned and the caller's compare grades it)."""
+        never went quiet or no two consecutive reads agreed within the bound. A caller
+        that grades the level fails its check with ``reason=timeout:settle`` on -1 and
+        logs every read count as ``settle_reads``."""
         quiet = await self._until(lambda: self.trace.pool_quiet >= POOL_QUIET, SETTLE_CAP)
         prev = -1
         for n in range(1, STATUS_AGREE_READS + 1):
@@ -653,12 +654,18 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         reason = ""
         # Control: a full-strobe beat (pair for stream 2) is accepted.
         if i == 2:
-            lvl0, _ = await self._status_settled()
+            lvl0, r0 = await self._status_settled()
             self.ext.send(2, [sp.ctrl_word, sp.ctrl_word])
             ok = await self._settle_pairs(2, 2, SETTLE_CAP) is not None
-            lvl1, _ = await self._status_settled()
+            lvl1, r1 = await self._status_settled()
             ctrl_delta = lvl1 - lvl0
-            self.chk.ctrl("EXT-STRB", ok and ctrl_delta == 1, stream=2, ctrl_f_delta=ctrl_delta)
+            self.chk.ctrl(
+                "EXT-STRB",
+                ok and ctrl_delta == 1 and min(r0, r1) > 0,
+                stream=2,
+                ctrl_f_delta=ctrl_delta,
+                settle_reads=[r0, r1],
+            )
         else:
             self.ext.send(1, [sp.ctrl_word])
             ok = await self._settle_pairs(1, 1, SETTLE_CAP) is not None
@@ -666,6 +673,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             self.chk.ctrl("EXT-STRB", ok, stream=1, ctrl_f_beat=int(ok))
             await self._trng_reset()
             lvl1 = 0
+            r1 = 0
         # Error injection: a legal source beat with a partial strobe.
         open_graded_window(TEST, self.logger)
         if i == 2:
@@ -680,37 +688,45 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         rows = self.trace.end()
         pending = held and all(r.pv[i] == 1 and r.pr[i] == 0 for r in rows) and len(rows) >= h
         pool_delta: int | str = "na"
+        settle: list[int] | str = "na"
         if i == 2:
-            lvl2, _ = await self._status_settled()
+            lvl2, r2 = await self._status_settled()
             pool_delta = lvl2 - lvl1
+            settle = [r1, r2]
         close_graded_window(self.logger)
         # Recovery: the sink reset and the source reset together, then a 0xF beat.
         await self._trng_reset(source_reset=i)
         words = [sp.recov_word, sp.recov_word] if i == 2 else [sp.recov_word]
         self.ext.send(i, words)
         post_ok = await self._settle_pairs(i, len(words), SETTLE_CAP) is not None
+        settled = settle == "na" or min(settle) > 0
         if not held:
             reason = "partial_beat_not_held"
+        elif not settled:
+            reason = "timeout:settle"
         fields = {
             "stream": i,
             "tstrb": f"0x{sp.strobe:x}",
             "pending": int(pending),
             "hold_clk": h,
             "pool_delta": pool_delta,
+            "settle_reads": settle,
             "ctrl_f_delta": ctrl_delta,
             "source_reset": 1,
             "post_reset_f_beat": int(post_ok),
         }
         if reason:
             fields["reason"] = reason
-        self.chk.ok("EXT-STRB", pending and pool_delta in (0, "na") and post_ok, **fields)
+        self.chk.ok(
+            "EXT-STRB", pending and settled and pool_delta in (0, "na") and post_ok, **fields
+        )
 
     async def _drop_leg(self, sp: StreamPlan) -> None:
         """CHK-EXT-DROP: with the select bit cleared every beat sees tready 1, no word
         reaches the post-mux probe and fifo_level does not change."""
         i = sp.stream
         sel = sp.s & ~sp.bit
-        lvl0 = (await self._status_settled())[0] if i == 2 else 0
+        lvl0, r0 = await self._status_settled() if i == 2 else (0, 0)
         open_graded_window(TEST, self.logger)
         got = await self._sel(sel)
         self.trace.begin()
@@ -720,20 +736,29 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         rows = self.trace.end()
         close_graded_window(self.logger)
         await self._drop_source(i)
-        lvl1 = (await self._status_settled())[0] if i == 2 else 0
+        lvl1, r1 = await self._status_settled() if i == 2 else (0, 0)
+        settled = i != 2 or min(r0, r1) > 0
         tready_low = sum(1 for r in rows if _bit(r.er, i) != 1)
         post = post_xfers(rows, i)
         ctrl = self.xfer_seen.get(i, 0)
         self.chk.ctrl("EXT-DROP", ctrl >= 1, stream=i, ctrl_xfers=ctrl)
+        reason = {} if settled else {"reason": "timeout:settle"}
         self.chk.ok(
             "EXT-DROP",
-            got == sel and done is not None and tready_low == 0 and not post and lvl1 == lvl0,
+            settled
+            and got == sel
+            and done is not None
+            and tready_low == 0
+            and not post
+            and lvl1 == lvl0,
+            **reason,
             stream=i,
             sel=f"0x{got:x}",
             sel_bit=(got >> i) & 1,
             tready_low=tready_low,
             post_mux_beats=len(post),
             pool_delta=lvl1 - lvl0 if i == 2 else "na",
+            settle_reads=[r0, r1] if i == 2 else "na",
             beats=len(sp.drop_words),
             ctrl_xfers=ctrl,
         )
@@ -757,7 +782,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         rows = self.trace.end()
         ncal = len(ext_xfers(rows, 2))
         tready_low = sum(1 for r in rows if _bit(r.ev, 2) == 1 and _bit(r.er, 2) == 0)
-        level_at_stall, _ = await self._status_settled()
+        level_at_stall, settle_reads = await self._status_settled()
         pops: list[int] = []
         bad_resp = 0
         timeout = ""
@@ -783,6 +808,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             "stream": 2,
             "tready_low_cycles": tready_low,
             "level_at_stall": level_at_stall,
+            "settle_reads": settle_reads,
             "ncal": ncal,
             "pairs": len(sent),
             "lost": lost,
@@ -792,11 +818,14 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         }
         if not stalled:
             fields["reason"] = f"no_stall_within_bound={BP_PAIR_BOUND}"
+        elif settle_reads < 0:
+            fields["reason"] = "timeout:settle"
         if timeout:
             fields["reason"] = timeout
         self.chk.ok(
             "EXT-BP",
-            stalled and not timeout and level_at_stall == POOL_DEPTH and pops == expect
+            stalled and not timeout and settle_reads > 0 and level_at_stall == POOL_DEPTH
+            and pops == expect
             and bad_resp == 0,
             **fields,
         )  # fmt: skip
@@ -959,11 +988,12 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             self.ext.send(2, [a, a])
             if await self._settle_pairs(2, 2, SETTLE_CAP) is not None:
                 completed += 1
-        lvl, _ = await self._status_settled()
+        lvl, reads = await self._status_settled()
         expect = min(POOL_DEPTH, completed - pops)
+        fill_reason = {} if reads > 0 else {"reason": "timeout:settle"}
         self.chk.ok(
-            "POOL-DATA", lvl == expect, op="fill", level_after=lvl, expect_level=expect,
-            pairs=len(sent),
+            "POOL-DATA", reads > 0 and lvl == expect, **fill_reason, op="fill", level_after=lvl,
+            expect_level=expect, settle_reads=reads, pairs=len(sent),
         )  # fmt: skip
         feeds = list(sp.feed_pairs)
         # Corner run: feeds to model level 32, one feed offered at level 32, then a pop.
@@ -1003,9 +1033,17 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
                     else:
                         ok = False
                         fields["reason"] = f"timeout:pending_feed hold={h}"
-            lvl, _ = await self._status_settled()
+            lvl, reads = await self._status_settled()
             expect = min(POOL_DEPTH, completed - pops)
-            fields.update(level_after=lvl, expect_level=expect, pending=int(pend_base is not None))
+            if reads < 0:
+                ok = False
+                fields.setdefault("reason", "timeout:settle")
+            fields.update(
+                level_after=lvl,
+                expect_level=expect,
+                settle_reads=reads,
+                pending=int(pend_base is not None),
+            )
             self.chk.ok("POOL-DATA", ok and lvl == expect, **fields)
             if "reason" in fields:
                 break

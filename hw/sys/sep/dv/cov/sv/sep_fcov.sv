@@ -17751,16 +17751,21 @@ module sep_fcov (
     end
   end
 
-  // x_alert_source (1.34): the leaf writes alert_rise_bound with the inject;
-  // cy_al_k counts the clk_i edges from the first edge that sees it (k = 0 on
-  // that edge, the first edge that sees the inject). A malformed pair
-  // (alert_p equal to alert_n, both known) on a receiver of a block that is out
-  // of reset samples the block when vector bit 32 rises on the same clock (the
-  // receiver integrity fail reaches bit 32 with no register). Otherwise a
+  // x_alert_source (1.34): cy_al_k counts the clk_i edges from the leaf's
+  // watcher mark, the clock count of raise_clk in CHK-ALERT-MALFORMED. The mark
+  // is the last clock the watcher sampled. The leaf drives the inject and writes
+  // alert_rise_bound on the next clock (clock 1), and tb_top forces the pair at
+  // the falling edge after it. So the first edge that sees a malformed pair
+  // (alert_p equal to alert_n, both known) is clock 2: cy_al_k takes 2 on that
+  // edge and counts up by one on each later edge while alert_rise_bound is not
+  // 0. The receiver integrity fail reaches bit 32 with no register, so bit 32
+  // rises on that same edge, and the leaf's watcher records the rise on the
+  // same clock. A malformed pair on a receiver of a block that is out of reset
+  // samples the block when bit 32 rises on the same clock. Otherwise a
   // malformed clock with bit 32 low on the previous clock arms the block, and a
   // rise of bit 32 samples the armed block. Either way the rise must come at
-  // 1 <= k < alert_rise_bound: the rise_clk window that CHK-ALERT-MALFORMED
-  // grades (a rise seen at k = 0 was high before the inject reached the pair).
+  // CyAlRiseClkMin <= k <= alert_rise_bound - 1: the inclusive window that
+  // CHK-ALERT-MALFORMED grades.
   function automatic int unsigned cy_al_blk(input int unsigned i);
     if (i == 0) return 0;
     return (i + 1) / 2;
@@ -17774,13 +17779,13 @@ module sep_fcov (
       default: return 5;
     endcase
   endfunction
+  localparam int unsigned CyAlRiseClkMin = 2;
   logic [5:0] cy_al_arm = '0;
   int unsigned cy_al_k = 0;
   always @(posedge clk_i) begin
     logic [5:0] mal;
     logic in_win;
-    in_win = (alert_rise_bound != 0) && (cy_al_k >= 1) && (cy_al_k < alert_rise_bound);
-    cy_al_k <= (alert_rise_bound == 0) ? 0 : cy_al_k + 1;
+    int unsigned k;
     mal = '0;
     for (int i = 0; i < 11; i++) begin
       if (((alert_tx_i[i].alert_p === 1'b1) && (alert_tx_i[i].alert_n === 1'b1)) ||
@@ -17788,6 +17793,17 @@ module sep_fcov (
         mal[cy_al_blk(i)] = 1'b1;
       end
     end
+    if (alert_rise_bound == 0) begin
+      k = 0;
+    end else if (cy_al_k != 0) begin
+      k = cy_al_k + 1;
+    end else if (mal != '0) begin
+      k = CyAlRiseClkMin;
+    end else begin
+      k = 0;
+    end
+    cy_al_k <= k;
+    in_win = (k >= CyAlRiseClkMin) && (k <= alert_rise_bound - 1);
     for (int b = 0; b < 6; b++) begin
       int unsigned d;
       d = cy_al_dom(b);

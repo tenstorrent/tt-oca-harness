@@ -168,8 +168,8 @@ def set_alert_rise_bound(clocks: int, log=None) -> bool:
     The shadow-update leaf writes the rise bound of a malformed-alert trial
     (WINDOW_FACTOR x the ``ALERT_TEST`` delay c of the block) together with the
     inject and 0 when the rise wait ends. ``x_alert_source`` samples only a rise of
-    vector bit 32 fewer than that many clocks after the first clock that sees the
-    write, the bound the leaf grades (docs/SEP_FCOV.adoc). Same rules as
+    vector bit 32 on a clock 2 to bound - 1 (inclusive) after the leaf's watcher
+    mark, the window the leaf grades (docs/SEP_FCOV.adoc). Same rules as
     ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
     without the variable is a testbench error.
     """

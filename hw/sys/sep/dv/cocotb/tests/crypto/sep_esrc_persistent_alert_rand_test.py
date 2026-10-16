@@ -90,6 +90,11 @@ Exact burst of n failing windows: ANY_FAIL_COUNT reads 0, then stuck0 from
 the next strobe and back-to-back reads of ANY_FAIL_COUNT. ANY_FAIL_COUNT counts
 one failing window at each window wrap (``architecture.adoc:136``), so the
 first read of n - 1 comes just after the wrap that starts window n (word o).
+A window that holds no stuck word passes (the clean-window rule below), so the
+first failing window ends at word 1 or later and the wrap that ends failing
+window n - 1 comes after word (n - 2) x W: CHK-PF-TRIP-COUNT, CHK-PF-TRIP-HOLD
+and CHK-PF-NOTRIP fail with ``reason=early:count_<n - 1>`` when o <= (n - 2) x W
+(``wrap_obs`` = [word of the read before, o], ``expect_wrap_word_gt``).
 Stuck0 stays until word o + W - W/8, then the break words and balanced. Window
 n holds at least 7W/8 >= 224 stuck words, a zero run above REPETITION_LIMIT =
 200 inside the window alone, so it fails. The break words end every
@@ -685,13 +690,18 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 res["reason"] = f"timeout:count_{target - 1}"
                 res["bound"] = bound
         if o is not None:
-            res.update(wrap_obs=[o_prev, o])
+            # n - 1 failing windows need more than (n - 2) x W stuck words (module
+            # docstring), so a read of n - 1 at or before that word is an early count.
+            early_max = (target - 2) * win
+            res.update(wrap_obs=[o_prev, o], expect_wrap_word_gt=early_max)
+            if o <= early_max:
+                res["reason"] = f"early:count_{target - 1}"
             stop = o + win - win // TAIL_DIV
             bound = self._word_bound(win, win)
             t0 = self._now()
             while poll_word() < stop and self._now() - t0 <= bound:
                 track(*(await self._poll_triple()))
-            if poll_word() < stop:
+            if poll_word() < stop and res["reason"] is None:
                 res["reason"] = f"timeout:strobes bound={bound}"
         await self._to_clean()
         switch = poll_word()
@@ -764,6 +774,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             alert=r["alert_any"],
             pf=r["pf_final"],
             wrap_obs=r.get("wrap_obs"),
+            expect_wrap_word_gt=r.get("expect_wrap_word_gt"),
             alert_bound_windows=LAT_WINDOWS,
         )
         o = r["o"]
@@ -1122,6 +1133,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             "any_fail_after": nt.get("count_final"),
             "test_fails_after_window_n": nt.get("test_fails_after_window_n"),
             "wrap_obs": nt.get("wrap_obs"),
+            "expect_wrap_word_gt": nt.get("expect_wrap_word_gt"),
             "watch_words": nt.get("watch_words"),
             "expect_watch_words_min": LAT_WINDOWS * blk.win,
         }

@@ -50,12 +50,17 @@ Checkers:
                        the AUX register differs from its reset value and the
                        update error reads 1.
   CHK-ALERT-MALFORMED  per block: bit 32 stays 0 over a quiet window before,
-                       rises during the malformed pair on a clock 1 to
-                       4 x c - 1 after the inject (c: the ALERT_TEST delay of
-                       the block in the same trial), reads 0 after the
+                       rises during the malformed pair on a clock 2 to
+                       4 x c - 1 (inclusive) after the mark, reads 0 after the
                        release and stays 0 over a quiet window after it.
-                       The FCOV sampler fills ``x_alert_source`` only inside
-                       the same rise window (``alert_rise_bound``).
+                       c: the ALERT_TEST delay of the block in the same trial.
+                       The mark is the last clock sampled before the inject:
+                       the leaf drives the inject on clock 1 and the pair is
+                       forced at the falling edge after it, so clock 2 is the
+                       first clock that can show the rise. The FCOV sampler
+                       counts the same clocks from the same mark and fills
+                       ``x_alert_source`` only inside the same window
+                       (``alert_rise_bound`` = 4 x c).
 The AES AUX pairs and every KMAC result are logged (``OBS-SHADOW-AUX``,
 ``OBS-SHADOW-KMAC``) and not graded; the ALERT_TEST write of each block is the
 timing reference ``OBS-ALERT-REF``.
@@ -155,6 +160,9 @@ KMAC_R = build_kmac_cfg(mode=KMAC_MODE["sha3"], kstrength=KMAC_STRENGTH[256], km
 WAIT_LIMIT = 20_000  # outer limit of a wait with no clean time (logged as bound=)
 ALERT_REF_BOUND = 2_000  # outer limit of the ALERT_TEST reference wait (logged)
 WINDOW_FACTOR = 4  # 4 x c_err and 4 x c (test parameter)
+# First clock after the mark that can show the malformed-alert rise: the leaf drives
+# the inject on clock 1 and tb_top forces the pair at the falling edge after it.
+ALERT_RISE_CLK_MIN = 2
 
 
 def _le_words(data: bytes) -> list[int]:
@@ -717,8 +725,11 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
 
             open_graded_window(TEST, self.logger)
             rise_bound = WINDOW_FACTOR * c
+            rise_max = rise_bound - 1
+            # The mark is the last clock the watcher sampled; this clock is clock 1 after it.
             m2 = self.vec.mark()
-            # The FCOV sampler takes the same rise window (sep_fcov_gate.set_alert_rise_bound).
+            # The FCOV sampler counts from the same mark and takes the same inclusive
+            # window ALERT_RISE_CLK_MIN to rise_bound - 1 (sep_fcov_gate.set_alert_rise_bound).
             set_alert_rise_bound(rise_bound)
             dut.crypto_alert_inject_idx_i.value = idx
             dut.crypto_alert_inject_val_i.value = val
@@ -737,8 +748,8 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             await ClockCycles(dut.clk_i, WINDOW_FACTOR * c)
             quiet_post = self.vec.high_clocks_since(mp, "alert")
             close_graded_window(self.logger)
-            # The rise counts only on a clock 1 to rise_bound - 1 after the mark.
-            raised = int(raise_clk is not None and 1 <= raise_clk < rise_bound)
+            # The rise counts only on a clock ALERT_RISE_CLK_MIN to rise_max after the mark.
+            raised = int(raise_clk is not None and ALERT_RISE_CLK_MIN <= raise_clk <= rise_max)
             self.chk.ok(
                 "ALERT-MALFORMED",
                 pre == 0 and quiet_pre == 0 and raised == 1 and post == 0 and quiet_post == 0,
@@ -752,7 +763,8 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 quiet_post_high_clk=quiet_post,
                 quiet_clk=WINDOW_FACTOR * c,
                 raise_clk=raise_clk,
-                expect_raise_clk_lt=rise_bound,
+                expect_raise_clk_min=ALERT_RISE_CLK_MIN,
+                expect_raise_clk_max=rise_max,
                 ref_clk=c,
             )
         dut.crypto_alert_inject_idx_i.value = 0
