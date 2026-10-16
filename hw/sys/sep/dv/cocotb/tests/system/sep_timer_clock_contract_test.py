@@ -86,17 +86,17 @@ allowance ``A`` of legs T and W, the clock period ``P_w`` of ``clk_wdt_i``, poll
 bounds and wait lengths.
 
 Legs L, P, K and C grade these sentences
-(``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/`` is ``<ot>``). A read of
+(``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/`` is ``<aon>``). A read of
 the timer returns the value at a ``clk_wdt_i`` edge inside the read, and a read
 follows the landing of every earlier write: "If software needs to guarantee
 completion of a register write then it can read back the register value. This
 will guarantee the completion of all previous writes to the peripheral."
-(``<ot>/doc/theory_of_operation.md:27-28``). ``E(t0, t1)`` is the ``clk_wdt_i``
+(``<aon>/doc/theory_of_operation.md:27-28``). ``E(t0, t1)`` is the ``clk_wdt_i``
 edges in (t0, t1].
 
 * CHK-REGWEN-LOCK-SCOPE. ``WDOG_CTRL``, ``WDOG_BARK_THOLD`` and
   ``WDOG_BITE_THOLD`` carry ``regwen: "WDOG_REGWEN"``
-  (``<ot>/data/aon_timer.hjson:257``, ``:274``, ``:287``); "Once cleared, the
+  (``<aon>/data/aon_timer.hjson:257``, ``:274``, ``:287``); "Once cleared, the
   watchdog configuration will be locked until the next reset." (``:247``).
   ``WDOG_COUNT`` and ``WKUP_*`` carry no ``regwen`` (``:168-239``,
   ``:295-308``). With regwen 0 a ``WDOG_CTRL`` write reads back unchanged, and
@@ -104,28 +104,28 @@ edges in (t0, t1].
   ``WKUP_THOLD_HI/LO`` read back the written value. CTL-REGWEN-LOCKED grades the
   thresholds.
 * CHK-WDT-PET. "Pet the watchdog by writing zero to the WDOG_COUNT register."
-  (``<ot>/doc/programmers_guide.md:13``). The first count read after the pet is
+  (``<aon>/doc/programmers_guide.md:13``). The first count read after the pet is
   below the count read before it and at most ``E(pet write, read done)``.
 * CHK-WDT-PET-HOLD. "To prevent the count reaching the bark or bite thresholds,
-  software is expected to periodically reset the count" (``<ot>/README.md:57``).
+  software is expected to periodically reset the count" (``<aon>/README.md:57``).
   A pet at a count below ``WDOG_BARK_THOLD - 31`` gives a bark status of 0 on
   every status read up to one issued ``WDOG_BARK_THOLD + A + 1`` periods after
   the enable read-back, where an unpetted run barks (CHK-WDT-BARK-TIME). Control
   CTL-WDT-PET-BARK: the same run barks later, at a count of at least
   ``WDOG_BARK_THOLD - A``.
 * CHK-WDT-THOLD-ZERO. "If the timer is enabled, there is a "bark" on every AON
-  clock tick when the count is at least WDOG_BARK_THOLD." (``<ot>/README.md:55``).
+  clock tick when the count is at least WDOG_BARK_THOLD." (``<aon>/README.md:55``).
   With ``WDOG_BARK_THOLD`` = 0 the bark status is 1 at the status read issued
   ``1 + A`` periods after the enable read-back. Control CTL-WDT-THOLD-ZERO: the
   status is 0 with the timer disabled.
 * CHK-WDT-THOLD-BELOW. ``:55`` and "If the timer is enabled, there is also a
   "bite" on every AON clock tick when the count is at least WDOG_BITE_THOLD."
-  (``<ot>/README.md:56``). A bark threshold, then a bite threshold, written at
+  (``<aon>/README.md:56``). A bark threshold, then a bite threshold, written at
   or below a count read taken before the write give the bark status 1, then
   ``wdt_timer_rst_req_o`` = 1, ``1 + A`` periods after the threshold read-back.
   Control CTL-WDT-THOLD-BELOW: each is 0 before its write.
 * CHK-WKUP-PRESC-MAX. "The number of cycles per tick is one more than the
-  12-bit WKUP_CTRL.prescaler field." (``<ot>/README.md:32``). At prescaler 4095
+  12-bit WKUP_CTRL.prescaler field." (``<aon>/README.md:32``). At prescaler 4095
   the ``clk_wdt_i`` edges ``E`` over N = 32 consecutive count steps satisfy
   ``|E - N x 4096| < N/2``: a step is located to within the edges ``u`` of two
   back-to-back ``WKUP_COUNT_LO`` reads (edge indices taken at the pin before and
@@ -136,16 +136,16 @@ edges in (t0, t1].
   The steps after the enable and the restart writes against the write landing
   are logged only (the landing bracket is wider than one period of difference).
 * CHK-WKUP-THOLD-ZERO. "Each time the pre-scaler completes when the count is at
-  or above the threshold, two outputs become high" (``<ot>/README.md:35``). With
+  or above the threshold, two outputs become high" (``<aon>/README.md:35``). With
   threshold 0, the ``wkup_timer_expired`` status and ``WKUP_CAUSE`` read 0 at
   reads done at most 4096 periods after the enable write, and 1 at reads issued
   ``A`` periods after the count reads 1. Control CTL-WKUP-THOLD-ZERO: those early
   reads exist.
 * CHK-WKUP-RESTART. "Each write to the register resets the internal prescaler
-  count." (``<ot>/data/aon_timer.hjson:171``). A ``WKUP_CTRL`` write of the same value,
+  count." (``<aon>/data/aon_timer.hjson:171``). A ``WKUP_CTRL`` write of the same value,
   ``restart_gap`` periods after the first count step, moves the next step: a
   read of the old count is issued at least 4096 periods after the first step.
-* CHK-WKUP-CARRY-READ. ``<ot>/doc/programmers_guide.md:24-29`` (a read of
+* CHK-WKUP-CARRY-READ. ``<aon>/doc/programmers_guide.md:24-29`` (a read of
   ``WKUP_COUNT_HI`` gives 0x1, the count then increments past the low-word
   carry, a read of ``WKUP_COUNT_LO`` gives the low word, and "The final 64-bit
   value of `0x1_0000_0000` is incorrect.") and the hi/lo/hi pseudo code
@@ -153,7 +153,7 @@ edges in (t0, t1].
   HI read is 0x1, the LO read is the low word in its count bounds, the second HI
   read is 0x2, and the hi/lo/hi value is in its count bounds, above the hi/lo
   value. Count bounds: ``[preload + E(enable read-back, issue) - 1, preload +
-  E(enable write, completion)]``, one count per period (``<ot>/README.md:31-32``,
+  E(enable write, completion)]``, one count per period (``<aon>/README.md:31-32``,
   prescaler 0). Control CTL-WKUP-CARRY: the HI read completes fewer than 256
   periods after the enable write and the LO read is issued more than 256 periods
   after the read-back, so the carry falls between them.
