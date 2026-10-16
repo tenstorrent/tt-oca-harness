@@ -60,7 +60,7 @@ addrmap dma_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Write-address decoupling. 0: the write address of each burst is held until the first read data beat of the matching read burst returns. 1: write addresses are issued without waiting for read data.";
+            desc="Write-address decoupling. 0: the write address of each burst is held until the first data beat of that burst is ready to be written. 1: write addresses are issued without waiting for write data.";
         } DECOUPLE_AW[0:0] = 0x0;
 
         field {
