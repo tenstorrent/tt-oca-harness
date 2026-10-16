@@ -17257,7 +17257,11 @@ module sep_fcov (
     cp_done_event: coverpoint s.dn iff (s.dn_v) {
       bins execute = {2'd0}; bins sec_wipe_dmem = {2'd1}; bins sec_wipe_imem = {2'd2};
     }
-    cp_post_reset_done: coverpoint s.pd_v iff (s.pd_v) {bins wipe_raises_done = {1'b1};}
+    // No sentence states INTR_STATE.done after the post-reset wipe, so the leaf
+    // logs it only (ungraded in docs/SEP_FCOV.adoc).
+    cp_post_reset_done: coverpoint s.pd_v iff (s.pd_v) {
+      option.weight = 0; ignore_bins wipe_raises_done = {1'b1};
+    }
     cp_cmd_ignored_err: coverpoint s.ie_v iff (s.ie_v) {bins err_bits_unchanged = {1'b1};}
   endgroup
 

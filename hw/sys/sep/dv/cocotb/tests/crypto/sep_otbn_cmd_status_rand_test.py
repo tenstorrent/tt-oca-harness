@@ -53,12 +53,15 @@ Checkers:
                        4 x t_cmd; a ``CMD`` write at 0x01 leaves ``STATUS`` 0x01.
   CHK-OTBN-BUSYWR      ``CTRL.software_errs_fatal`` written at 0x01 reads 0;
                        ``STATUS`` stays 0x01; not 0xFF after the release.
-  CHK-OTBN-INITDONE    after the first OTBN reset the probe shows 0x04 then
-                       0x00 and ``INTR_STATE.done`` reads 1. "After reset,
+  CHK-OTBN-INITDONE    after the first OTBN reset the probe shows 0x04 at the
+                       first clock after the release, then 0x00. "After reset,
                        OTBN is busy with the internal secure wipe and the
-                       STATUS register is set to BUSY_SEC_WIPE_INT." (ToO:103);
-                       "A transition out of the busy state is signaled by the
-                       done interrupt (INTR_STATE.done)." (ToO:112).
+                       STATUS register is set to BUSY_SEC_WIPE_INT." (ToO:103,
+                       0x04 per ``otbn.hjson`` :540); "After reset (init), OTBN
+                       performs a secure wipe of the internal state and then
+                       becomes idle." (ToO:98); "If OTBN is idle, the STATUS
+                       register is set to IDLE." (ToO:104, 0x00 per
+                       ``otbn.hjson`` :536).
   CHK-OTBN-SWERR-FATAL with ``software_errs_fatal`` = 1 the ``unimp`` program ends
                        with ``STATUS`` = 0xFF, ``done`` = 1, ``ERR_BITS`` non-zero
                        with ``fatal_software`` (bit 23) set and
@@ -115,13 +118,15 @@ Checkers:
 Controls: ``CTRL-OTBN-BUSYWR`` (the idle write reads back 1),
 ``CTRL-OTBN-DONE-LINE`` (enable-set ``INTR_TEST`` cell), ``CTRL-OTBN-CMD-IGNORE``
 (a recognised command of the same seed sets ``done``), ``CTRL-OTBN-INITDONE``
-(``done`` reads 0 after its W1C), ``CTRL-OTBN-SWERR-FATAL`` (the same program with
+(the probe does not read 0x04 before the reset pulse, so the 0x04 comes from the
+reset), ``CTRL-OTBN-SWERR-FATAL`` (the same program with
 ``software_errs_fatal`` = 0 ends at 0x00), ``CTRL-OTBN-SWERR-RECOV`` (each
 compute run of the command leg ends with ``ERR_BITS`` = 0),
 ``CTRL-OTBN-LOCKED-HOLD`` (a recognised command at IDLE starts an operation),
 ``CTRL-OTBN-ERRCLR``, ``CTRL-OTBN-CMDIGN-ERR`` (``ERR_BITS`` is non-zero before the
 write), ``CTRL-OTBN-BUSYWR-ERR`` (the recoverable error run sets ``ERR_BITS``).
-Log-only: ``OBS-OTBN-STATUS-SEQ``; ``OBS-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
+Log-only: ``OBS-OTBN-STATUS-SEQ``; ``OBS-OTBN-INITDONE-DONE`` (``INTR_STATE.done``
+after the post-reset wipe: no sentence states its value); ``OBS-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
 program, a chance outcome); ``OBS-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of the recoverable run: no sentence states the bits other
 than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error).
@@ -440,19 +445,26 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self.rst_t = SepEdgeTimer(dut.otbn_gated_rst_n_probe_o, name="otbn_gated_rst_n").start()
         self.idle_bound = _OUTER_CLK
 
-        # Steps 3-4: reset, wipe then IDLE, the done bit of the wipe, clear.
+        # Steps 3-4: reset, wipe then IDLE; the done bit of the wipe is logged only.
+        pre_status = self.rd(dut.otbn_status_probe_o, mask=M_STATUS)
         init_arc_ok, init_arc = await self._reset_otbn("initial")
+        self.chk.ok("OTBN-INITDONE", init_arc_ok, seed=seed, reset_arc=init_arc)
+        self.chk.ctrl(
+            "OTBN-INITDONE",
+            pre_status != ST_SEC_WIPE_INT,
+            seed=seed,
+            status_before_reset=f"0x{pre_status:02x}",
+        )
+        # No sentence states INTR_STATE.done after the post-reset wipe.
         init_done = await self._rd(A_INTR_STATE, M_DONE)
         after = await self._clear_done()
-        self.chk.ok(
-            "OTBN-INITDONE",
-            init_arc_ok and init_done == 1,
+        self.chk.obs(
+            "OTBN-INITDONE-DONE",
             seed=seed,
-            reset_arc=init_arc,
             done=init_done,
-            expect_done=1,
+            done_after_w1c=after,
+            reason="done_after_reset_wipe_unstated",
         )
-        self.chk.ctrl("OTBN-INITDONE", after == 0, seed=seed, done_after_w1c=after)
 
         open_graded_window(TEST, self.logger)
         cmd_end_pass = await self._command_leg(seed)

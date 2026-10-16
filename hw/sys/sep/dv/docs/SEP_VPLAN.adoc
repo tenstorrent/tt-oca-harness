@@ -762,7 +762,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, `sep_internal_interrupts_probe_o`, TRNG reset bit of `SW_RESET_N`; OTBN status probe (observation tap)
-|Proves the OTBN command and status sequence for EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM, the done interrupt, `INSN_CNT`, that the initial wipe after an OTBN reset raises `done`, that `ERR_BITS` stays 0 after a clean run, that a `CMD` write while busy and an unrecognised `CMD` value at idle are ignored and leave `ERR_BITS` unchanged, and that a CTRL write while busy is ignored and the same write while idle is stored. An illegal instruction with `software_errs_fatal` = 1 sends OTBN to LOCKED with `fatal_software` in `ERR_BITS` and `FATAL_ALERT_CAUSE`; LOCKED ignores `CMD` and an OTBN reset ends it. The same instruction with `software_errs_fatal` = 0 ends at IDLE with `ERR_BITS.illegal_insn`, and a write of any value at idle clears `ERR_BITS`.
+|Proves the OTBN command and status sequence for EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM, the done interrupt, `INSN_CNT`, that the status after an OTBN reset runs BUSY_SEC_WIPE_INT (0x04) and then IDLE (0x00), that `ERR_BITS` stays 0 after a clean run, that a `CMD` write while busy and an unrecognised `CMD` value at idle are ignored and leave `ERR_BITS` unchanged, and that a CTRL write while busy is ignored and the same write while idle is stored. An illegal instruction with `software_errs_fatal` = 1 sends OTBN to LOCKED with `fatal_software` in `ERR_BITS` and `FATAL_ALERT_CAUSE`; LOCKED ignores `CMD` and an OTBN reset ends it. The same instruction with `software_errs_fatal` = 0 ends at IDLE with `ERR_BITS.illegal_insn`, and a write of any value at idle clears `ERR_BITS`.
 
 |<<sep_abr_command_matrix_rand_test,`sep_abr_command_matrix_rand_test`>>
 |3
@@ -834,7 +834,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, `sep_internal_interrupts_probe_o`
-|Proves the EDN boot-mode precedence, the software command handshake, that an instantiate sent to an instantiated CSRNG sets the sequence alert, that the EDN boot words reset to 0x901 and 0xFFF003 with clen 0, that the first EDN instantiate reports CMD_STS SUCCESS, that the non-zero EDN acknowledge of a reserved acmd sets EDN CSRNG_ACK_ERR, that an invalid multi-bit boolean in any CSRNG or EDN CTRL field sets its RECOV_ALERT_STS bit, that a reserved acmd sets bit 13 with CMD_STS INVALID_ACMD and an invalid flag0 sets bit 4, that a Generate past RESEED_INTERVAL is refused with CMD_STS 4 and bit 15 and a Reseed restores the count, and that GENBITS reads 0 while SW_APP_ENABLE is not True.
+|Proves the EDN boot-mode precedence, the software command handshake, that an instantiate sent to an instantiated CSRNG sets the sequence alert, that the EDN boot words reset to 0x901 and 0xFFF003 with clen 0, that the first EDN instantiate reports CMD_STS SUCCESS, that the non-zero EDN acknowledge of a reserved acmd sets EDN CSRNG_ACK_ERR, that an invalid multi-bit boolean in any CSRNG or EDN CTRL field sets its RECOV_ALERT_STS bit, that a reserved acmd (the drawn 0x0, 0x6, 0x7, 0x8, 0xE or 0xF, and 0x9 on every seed in the last leg, CHK-CSRNG-ACMD-INV-HI, expected RED on this DUT) sets bit 13 with CMD_STS INVALID_ACMD and an invalid flag0 sets bit 4, that a Generate past RESEED_INTERVAL is refused with CMD_STS 4 and bit 15 and a Reseed restores the count, and that GENBITS reads 0 while SW_APP_ENABLE is not True.
 
 |<<sep_trng_ext_stream_handshake_rand_test,`sep_trng_ext_stream_handshake_rand_test`>>
 |3
@@ -2527,6 +2527,10 @@ the test does.
 |OTBN: the condition that sets ERR_BITS.mai_software_error. Source: `vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc` (`ERR_BITS`).
 |-
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|OTBN `INTR_STATE.done` after the post-reset internal secure wipe. The text states that the exit of the busy state raises `done`, and that the status after reset is BUSY_SEC_WIPE_INT, but also that busy states and `done` belong to an operation that a `CMD` write starts. The value is not stated.
+|OTBN: when `STATUS` goes 0x04 to 0x00 after an OTBN reset, must `INTR_STATE.done` read 1, read 0, or is it unspecified? Source: `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md` (Operational States); `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson` (`INTR_STATE`, `STATUS`); `hw/sys/sep/doc/otbn.adoc`.
+|`sep_otbn_cmd_status_rand_test` grades the status arc after the reset and logs `done` (`OBS-OTBN-INITDONE-DONE`).
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |With no external TRNG fitted and a stream selected as external, the data a sink receives is not stated. Only the CSR window answers DECERR.
 |External stream selected and no source driving it: what data does a sink receive? Source: `hw/sys/sep/doc/trng.adoc` (Distribution and Source Selection); `hw/sys/sep/regs/gen/adoc/memory_map.adoc`.
 |the leaf never leaves a selected stream idle while a consumer waits
@@ -3292,7 +3296,7 @@ feature, and the note says how the test treats the blocked leg.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |RECOV_ALERT_STS has nine bits cleared by writing zero; the three CMD_STAGE alerts ignore the bad command.
 |Bit 12 (`CS_BUS_CMP_ALERT`) needs two equal consecutive genbits words on the software port: an attack pattern with no stated stimulus, and a random repeat is a probabilistic event. Source: `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc` (`RECOV_ALERT_STS`).
-|Graded leg: bits 0 to 3 (CHK-CSRNG-CTRL-MUBI), bit 4 (CHK-CSRNG-FLAG0), bit 13 (CHK-CSRNG-ACMD-INV), bit 14 (CHK-EDN-INVSEQ, CHK-CSRNG-SW) and bit 15 (CHK-CSRNG-RESEED-LIMIT), each with its clear by a write of 0 (`sep_drbg_cmd_sequence_rand_test`). Bit 12 is not driven
+|Graded leg: bits 0 to 3 (CHK-CSRNG-CTRL-MUBI), bit 4 (CHK-CSRNG-FLAG0), bit 13 (CHK-CSRNG-ACMD-INV; CHK-CSRNG-ACMD-INV-HI for acmd 0x9, on this DUT the cell fails (expected RED): acmd 0x9 acks with `CMD_STS` = 3 and bit 13 at 0. The cell stays failing until the CSRNG text or the command decode changes.), bit 14 (CHK-EDN-INVSEQ, CHK-CSRNG-SW) and bit 15 (CHK-CSRNG-RESEED-LIMIT), each with its clear by a write of 0 (`sep_drbg_cmd_sequence_rand_test`). Bit 12 is not driven
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |BOOT_INS_CMD (reset 0x901) and BOOT_GEN_CMD (reset 0xFFF003) must use clen 0 or EDN hangs.
 |A `clen` other than 0 hangs EDN, and "Fixing this requires disabling and restarting both EDN and CSRNG": the hang has no bounded observable, so it is not injected. The clen position [7:4] is stated (`vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md:164-169`). Source: `vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc` (`BOOT_INS_CMD`, `BOOT_GEN_CMD`).
@@ -3300,7 +3304,7 @@ feature, and the note says how the test treats the blocked leg.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |`SW_CMD_STS.CMD_STS` codes 0 to 4 (`csrng.hjson:406-440`; EDN `CMD_STS` links to the same codes, edn.adoc:172-176).
 |No sentence states the code of a first instantiate on the CSRNG software instance (0 is given only "If the command is successful"), of a repeated instantiate (the INVALID_CMD_SEQ text names other cases) or of an uninstantiate. Source: `vendor/lowRISC/opentitan/upstream/hw/ip/csrng/data/csrng.hjson` (`SW_CMD_STS`).
-|Graded leg: EDN 0 after the first instantiate (`doc/programmer/src/sep-programming.adoc:459-462`) and 1 after a reserved acmd (CHK-EDN-STS); CSRNG 1 after a reserved acmd (CHK-CSRNG-ACMD-INV) and 4 on the refused Generate (CHK-CSRNG-RESEED-LIMIT). The other codes are logged (`OBS-CSRNG-STS`, `OBS-CSRNG-INVSEQ`, `OBS-EDN-INVSEQ`, `OBS-CSRNG-UNINST`)
+|Graded leg: EDN 0 after the first instantiate (`doc/programmer/src/sep-programming.adoc:459-462`) and 1 after a reserved acmd (CHK-EDN-STS); CSRNG 1 after a reserved acmd (CHK-CSRNG-ACMD-INV; 0x9 in CHK-CSRNG-ACMD-INV-HI, expected RED on this DUT) and 4 on the refused Generate (CHK-CSRNG-RESEED-LIMIT). The other codes are logged (`OBS-CSRNG-STS`, `OBS-CSRNG-INVSEQ`, `OBS-EDN-INVSEQ`, `OBS-CSRNG-UNINST`)
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |`RESEED_INTERVAL` = K: "If the counter reaches the value of this register, the violating command will be acknowledged with a status error." (csrng.adoc:143-144).
 |Whether the K-th or the (K+1)-th Generate after an instantiate is the violating one: "reaches" does not say if the count is taken before or after the command. Source: `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc` (`RESEED_INTERVAL`).
