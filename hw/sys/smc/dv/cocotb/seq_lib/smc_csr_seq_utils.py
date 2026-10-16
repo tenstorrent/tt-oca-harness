@@ -397,18 +397,11 @@ class SmcCsrSeq(smc_base_test_seq):
     _I2C_PADS_PER_INSTANCE = pad_index("I2C[1] SCL") - pad_index("I2C[0] SCL")
 
     async def arm_i2c_gpio_lsio(self, idx: int, label: str) -> None:
-        """Select the I2C``idx`` pad group for LSIO via GPIO DATA_CTRL.lsio_select.
+        """Select the I2C ``idx`` pad group for LSIO via GPIO DATA_CTRL.lsio_select.
 
-        The pad-function select of ``I2C_CTRL[idx].I2C_EN`` is observable on the
-        padring outputs (``core2pad_en_o`` / ``core2pad_o``) without this call:
-        with the bench resolving the instance-1 pad pair (``+smc_i2c1_pads``),
-        smc_i2c_dual_concurrent_transfer_test sees those outputs stay quiet
-        while ``I2C_EN`` is clear, show a START within 4000 ``clk_periph_i``
-        cycles once it is set, and complete a write before any ``lsio_select``
-        write. An earlier note here said Verilator zeroed ``i2c_en_o`` so the
-        CDC'd ``i2c_enable_smc_clk`` never rose; that run shows otherwise.
-        Software ``lsio_select`` is the pad-group select gpio_intf.rdl documents,
-        and the sequences keep it as the pad-sense path they were written against.
+        The group is the ``_I2C_PADS_PER_INSTANCE`` consecutive pads that start
+        at the integrator pad table's "I2C[idx] SCL" row; each pad's DATA_CTRL
+        is read back and rewritten with ``lsio_select`` set.
         """
         first = pad_index(f"I2C[{idx}] SCL")
         assert first == self._I2C0_SCL_PAD + idx * self._I2C_PADS_PER_INSTANCE, (
