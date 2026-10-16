@@ -423,15 +423,19 @@ class smu_alias_priority_overflow_test_seq:
         carry_addr = _f(carry_aw, "addr")[0]
         self._log(
             f"OBSERVATION carry write issued=0x{carry_issued:x} leaving=0x{carry_addr:x} "
-            f"initiator_status={carry_status} measured and logged only"
+            f"page=0x{carry_addr & ~LOW_MASK:x} initiator_status={carry_status} "
+            "measured and logged only"
         )
         self._chk(
             sb,
             "CHK-ALIASPRI-OVERFLOW-OBS",
-            "the leaving address and initiator status of the carry case are captured",
-            carry_aw is not None and carry_status is not None,
-            True,
-            f"leaving=0x{carry_addr:x} initiator_status={carry_status} (measured and logged only)",
+            "the carry write keeps its low 12 bits",
+            carry_addr & LOW_MASK,
+            CARRY_LOW_BITS,
+            f"issued=0x{carry_issued:x} leaving=0x{carry_addr:x}: the low 12 bits "
+            f"0x{carry_addr & LOW_MASK:x} against 0x{CARRY_LOW_BITS:x}; the leaving page "
+            f"0x{carry_addr & ~LOW_MASK:x} and initiator_status={carry_status} are measured "
+            "and logged only",
         )
 
         await self._mark("S7", "TIMEOUT: bounded waits and last state")

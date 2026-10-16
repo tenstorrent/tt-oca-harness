@@ -9,7 +9,8 @@ wildcard) and ``allow_burst`` is 1 or the access is a single beat; the lowest-nu
 entry's ``read_allowed`` (AR) or ``write_allowed`` (AW) then decides. "Address Range Granule":
 ``allow_burst`` 1 gives a 4 KB granule, ``START_ADDR`` widens down and ``END_ADDR`` widens up to its
 granule. ``hw/sys/sep/doc/fabric.adoc`` "Filtering and Protection": the outbound filter blocks
-unmatched traffic and has no bypass, so SEP-scope debug being open does not open it.
+unmatched traffic and has no bypass, so SEP-scope debug being open does not open it; the DUT's
+``lcc_dbg_disable_o`` sampled at 0 is the debug-open posture that the no-bypass compare carries.
 
 The debug module's system bus (RISC-V Debug Specification 0.13, "System Bus Access") reports a
 refused access in ``sbcs.sberror``; the code is measured and logged. The system bus issues
@@ -45,6 +46,7 @@ from seq_lib.smu_addr_map import (
     filter_ctrl_field_reset_encode,
 )
 from seq_lib.smu_axi_out_addr_len_size_test_seq import _OutboundTap
+from seq_lib.smu_compose_helpers import sample
 from seq_lib.smu_dtp_sep_dm_dmi_test_seq import (
     DMI_OP_READ,
     DMSTATUS_VERSION_SPEC_0_13,
@@ -284,7 +286,9 @@ class smu_sep_out_filter_rule_matrix_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             if not status & SBCS_SBBUSY:
                 break
         else:
-            self._site("sba_busy_poll", SBA_POLLS, SBA_POLLS, f"sbcs=0x{status:08x}", "polls")
+            self._site(
+                "sba_busy_poll", SBA_POLLS, SBA_POLLS + 1, f"EXPIRED sbcs=0x{status:08x}", "polls"
+            )
             raise AssertionError(
                 f"system-bus access 0x{addr:08x}: sbbusy never cleared in {SBA_POLLS} polls, "
                 f"last sbcs=0x{status:08x}"
@@ -314,7 +318,11 @@ class smu_sep_out_filter_rule_matrix_test_seq(smu_sep_sba_fabric_sweep_test_seq)
                 return
             await ClockCycles(self.clk, 1)
         self._site(
-            "responder_observe", OBSERVE_BOUND_CYCLES, OBSERVE_BOUND_CYCLES, last, "clk_smu cycles"
+            "responder_observe",
+            OBSERVE_BOUND_CYCLES,
+            OBSERVE_BOUND_CYCLES + 1,
+            f"EXPIRED {last}",
+            "clk_smu cycles",
         )
         raise AssertionError(
             f"responder observation expired after {OBSERVE_BOUND_CYCLES} cycles, last {last}"
@@ -421,13 +429,15 @@ class smu_sep_out_filter_rule_matrix_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             "unmatched write and read refused with no AW or AR at the responder and the byte "
             "unchanged; after the admit pair the write lands and the read returns the word",
         )
+        dbg_disable = sample(self.dut.lcc_dbg_disable_o, "lcc_dbg_disable_o")
         self._chk(
             sb,
             "CHK-SEPOUT-DEBUG-OPEN-NOBYPASS",
-            (self.dmstatus & 0xF, refused_w[0], refused_r[0], admitted_w[0]),
-            (DMSTATUS_VERSION_SPEC_0_13, True, True, False),
-            "the debug module answers with every debug path open and a system-bus write lands "
-            "after the admit pair, while the unmatched write and read were refused",
+            (self.dmstatus & 0xF, dbg_disable, refused_w[0], refused_r[0], admitted_w[0]),
+            (DMSTATUS_VERSION_SPEC_0_13, 0, True, True, False),
+            f"the debug module answers with lcc_dbg_disable_o=0x{dbg_disable:04x} (every debug "
+            "path open) and a system-bus write lands after the admit pair, while the unmatched "
+            "write and read were refused",
         )
 
     async def _s3(self, sb) -> None:
@@ -536,7 +546,8 @@ class smu_sep_out_filter_rule_matrix_test_seq(smu_sep_sba_fabric_sweep_test_seq)
 
     async def _s6(self, sb) -> None:
         allow_ns = self.allow_ns
-        # Entry 0 holds the deny page when entry 1 refuses and the widened granule when entry 0 does.
+        # Entry 0 holds the deny page when entry 1 refuses and the widened granule when entry 0
+        # does.
         narrow_addr = NARROW_PROBE_DENY_PAGE if allow_ns else NARROW_PROBE_GRANULE
         permit = _config(allow_ns)
         deny = _config(allow_ns, read=1, write=0)
@@ -633,7 +644,7 @@ class smu_sep_out_filter_rule_matrix_test_seq(smu_sep_sba_fabric_sweep_test_seq)
 
     def _s7(self, sb) -> None:
         expired = [
-            n for n, s in self.sites.items() if s["used"] is not None and s["used"] >= s["bound"]
+            n for n, s in self.sites.items() if s["used"] is not None and s["used"] > s["bound"]
         ]
         for name, site in sorted(self.sites.items()):
             used = "used: not measured" if site["used"] is None else f"max_used={site['used']}"

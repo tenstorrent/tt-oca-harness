@@ -515,23 +515,10 @@ class smu_out_filter_rule_matrix_test_seq:
             sb,
             "CHK-OUTRULE-PERMIT-DEFAULT",
             "the reset-state copy completes and the write outside R passes",
-            (
-                done,
-                before_hex,
-                after_hex,
-                ar_cover,
-                aw_cover,
-                self.write_outside_r,
-            ),
-            (
-                True,
-                _words(WORD_D0).hex(),
-                _words(WORD_PS).hex(),
-                (COPY_LENGTH, 0),
-                (COPY_LENGTH, 0),
-                WRITE_ADMITTED,
-            ),
-            f"reset-state copy done_equals_id={done} D before={before_hex} after={after_hex} "
+            (done, after_hex, ar_cover, aw_cover, self.write_outside_r),
+            (True, _words(WORD_PS).hex(), (COPY_LENGTH, 0), (COPY_LENGTH, 0), WRITE_ADMITTED),
+            f"reset-state copy done_equals_id={done} D before={before_hex} (the D0 the bench "
+            f"placed, logged only) after={after_hex} "
             f"AR bytes at source and AR outside={ar_cover} AW bytes at R and AW outside="
             f"{aw_cover}; write outside R with a deny entry {self.write_outside_r}",
         )

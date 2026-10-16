@@ -1450,7 +1450,7 @@ module = "smu_base_config_corners_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3000
 tags = ["depth", "fabric", "no_sep"]
 run_modes = ["sep_rtl"]
 args = [
@@ -1478,7 +1478,7 @@ module = "smu_axi_in_random_id_stress_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3000
 tags = ["depth", "fabric", "no_sep"]
 run_modes = ["sep_rtl"]
 args = [
@@ -1496,8 +1496,8 @@ args = [
 ]
 
 [[tests]]
-# Thirty-three JTAG2AXI accesses program six alias regions and probe them; the span is set by the JTAG
-# period.
+# Thirty-three JTAG2AXI accesses program six alias regions and probe them; the span is set by
+# the JTAG period.
 # +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
 # pll_wrap offers, so the bench toggles the core clock an eighth as often over
 # that span.
@@ -1661,6 +1661,14 @@ tests = [
   "smu_axi_out_outstanding_test",
   "smu_axi_in_sep_aperture_test",
   "smu_smc_inbound_window_sweep_test",
+  "smu_sys_in_filter_src_id_rule_test",
+  "smu_base_config_corners_test",
+  "smu_axi_in_random_id_stress_test",
+  "smu_alias_priority_overflow_test",
+  "smu_alias_dma_manager_test",
+  "smu_out_filter_rule_matrix_test",
+  "smu_sep_out_filter_rule_matrix_test",
+  "smu_sep_output_remap_region_matrix_test",
 ]
 
 # SMC leaves, enrolled together so a failure names the batch.

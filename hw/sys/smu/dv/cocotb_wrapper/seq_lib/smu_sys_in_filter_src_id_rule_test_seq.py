@@ -9,7 +9,10 @@ entry's ``read_allowed`` (AR) or ``write_allowed`` (AW) then decides. "Blocked T
 blocked transaction answers DECERR. "Address Range Granule" and the chapter's instance table: group
 ID matching is disabled at build time, so ``group_id`` has no effect.
 
-The source ID is AxUSER[3:0] of the external master, every other AxUSER bit zero.
+The leaf drives the source ID in AxUSER[3:0] of the external master and, in S6, a transaction
+group_id in AxUSER[7:4]; every other AxUSER bit is zero. No document states which AxUSER bits
+carry either value: the S2/S3 pair (5 admitted, 6 and 0 refused) is the witness that the entry
+reads the source-ID lane, and the group_id lane rests on the leaf's choice alone.
 
 S1: TAP reset, JTAG2AXI gate open, SMC aperture routed, entry 0 programmed over one page of
     SCRATCH_COLD with src_id 5 and read back.
@@ -19,8 +22,9 @@ S3: AxUSER 6 and 0 are refused (DECERR) on AR and AW at both registers; the refu
 S4: on one entry the AW with AxUSER 5 is admitted while the AR with AxUSER 6 is refused, and the
     mirror pair.
 S5: AxUSER 5 outside the entry's page is refused on AR and AW.
-S6: group_id 1, 15 and 8 admit; group_id 8 with the entry disabled and with the range moved off the
-    page refuses.
+S6: entry group_id 1, 15 and 8 each admit a transaction whose group_id lane carries a different
+    non-zero value; group_id 8 with the entry disabled and with the range moved off the page
+    refuses.
 S7: src_id 0 admits every AxUSER value 0..15 on AR and AW.
 S8: entry_enabled, range, allow_ns, src_id and allow_burst each flipped alone refuse AR and AW; the
     restored term admits both.
@@ -97,10 +101,15 @@ ENTRY_SRC_ID = 5
 # A source ID the entry does not match, and the wildcard value (filter_ctrl.rdl src_id).
 OTHER_SRC_ID = 6
 WILDCARD_SRC_ID = 0
-# hw/ip/axi_filter/doc/index.adoc "Match, Then Permit": group ID matching is disabled at build time,
-# so these group_id values must all leave the outcome unchanged.
-GROUP_IDS_ADMITTING = (1, GROUP_ID_MAX, 8)
+# hw/ip/axi_filter/doc/index.adoc "Match, Then Permit": group ID matching is disabled at build time.
+# filter_ctrl.rdl group_id: a transaction group_id of 0 matches regardless of the field, so each
+# entry value is probed with a non-zero transaction group_id that differs from it, which group
+# matching, were it enabled, would refuse. The lane AxUSER[7:4] is the leaf's choice; no document
+# states which AxUSER bits carry the group_id.
+GROUP_ID_USER_SHIFT = 4
+GROUP_LEGS = ((1, 4), (GROUP_ID_MAX, 2), (8, 11))
 GROUP_ID_REFUSED_LEGS = 8
+GROUP_ID_REFUSED_TX = 11
 
 # hw/ip/axi_filter/doc/index.adoc "Match, Then Permit": prot[1] equals allow_ns.
 PROT_SECURE = 0
@@ -151,6 +160,12 @@ def _require_probe_map() -> None:
         ),
         (PROBE_ADDR % (BURST_BEATS * WORD_BYTES) == 0, "the probe is not burst aligned"),
         (SRC_ID_VALUES == 16 and GROUP_ID_MAX == 15, "unexpected source or group ID width"),
+        (
+            all(0 < tx <= GROUP_ID_MAX and tx != entry for entry, tx in GROUP_LEGS)
+            and 0 < GROUP_ID_REFUSED_TX <= GROUP_ID_MAX
+            and GROUP_ID_REFUSED_TX != GROUP_ID_REFUSED_LEGS,
+            "a transaction group_id is zero or equals its entry field",
+        ),
         (
             len({PATTERN_A, PATTERN_A2, PATTERN_B, PROBE_RESET_VALUE}) == 4
             and all(
@@ -462,39 +477,46 @@ class smu_sys_in_filter_src_id_rule_test_seq:
             "answered OKAY",
         )
 
-    async def _group_probe(self, tag: int) -> tuple:
+    async def _group_probe(self, tag: int, tx_group: int) -> tuple:
         value = PATTERN_A ^ tag
-        aw = await self._wr(PROBE_ADDR, value, user=ENTRY_SRC_ID)
-        ar, data = await self._rd(PROBE_ADDR, user=ENTRY_SRC_ID)
+        user = ENTRY_SRC_ID | (tx_group << GROUP_ID_USER_SHIFT)
+        aw = await self._wr(PROBE_ADDR, value, user=user)
+        ar, data = await self._rd(PROBE_ADDR, user=user)
         self.value = value
         return aw, ar, data == value
 
-    async def _refused_probe(self) -> tuple:
-        aw = await self._wr(PROBE_ADDR, PATTERN_B, user=ENTRY_SRC_ID)
-        ar, _ = await self._rd(PROBE_ADDR, user=ENTRY_SRC_ID)
+    async def _refused_probe(self, tx_group: int) -> tuple:
+        user = ENTRY_SRC_ID | (tx_group << GROUP_ID_USER_SHIFT)
+        aw = await self._wr(PROBE_ADDR, PATTERN_B, user=user)
+        ar, _ = await self._rd(PROBE_ADDR, user=user)
         return aw, ar
 
     async def _s6(self, sb) -> None:
         cells = {}
-        for tag, group in enumerate(GROUP_IDS_ADMITTING, start=0x10):
+        want = {}
+        for tag, (group, tx_group) in enumerate(GROUP_LEGS, start=0x10):
             await self._set_config(f"group_{group}", group_id=group)
-            cells[f"group_id={group}"] = await self._group_probe(tag)
-        want = {f"group_id={g}": (OKAY, OKAY, True) for g in GROUP_IDS_ADMITTING}
+            key = f"group_id={group} tx_group_id={tx_group}"
+            cells[key] = await self._group_probe(tag, tx_group)
+            want[key] = (OKAY, OKAY, True)
         await self._set_config("group_disabled", group_id=GROUP_ID_REFUSED_LEGS, enabled=0)
-        cells["group_id=8 entry_enabled=0"] = await self._refused_probe()
+        cells["group_id=8 entry_enabled=0"] = await self._refused_probe(GROUP_ID_REFUSED_TX)
         want["group_id=8 entry_enabled=0"] = (DECERR, DECERR)
         await self._set_config("group_enabled", enabled=1)
         await self._set_range("group_moved", self.off_lo, self.off_hi)
-        cells["group_id=8 range moved"] = await self._refused_probe()
+        cells["group_id=8 range moved"] = await self._refused_probe(GROUP_ID_REFUSED_TX)
         want["group_id=8 range moved"] = (DECERR, DECERR)
+        legs = ", ".join(f"{g}/{t}" for g, t in GROUP_LEGS)
         self._chk(
             sb,
             "CHK-SRCID-GROUPID-NOEFFECT",
-            "group_id changes no outcome",
+            "a transaction group_id that differs from the entry field is still admitted",
             cells,
             want,
-            "group_id 1, 15 and 8 admit AxUSER 5 on AR and AW; group_id 8 with the entry disabled "
-            "and with the range moved off the page refuse on AR and AW",
+            f"entry group_id against transaction group_id {legs} in AxUSER[7:4] with AxUSER[3:0] "
+            "5 answer OKAY on AR and AW and read back the written pattern; group_id 8 with the "
+            f"entry disabled and with the range moved off the page refuse transaction group_id "
+            f"{GROUP_ID_REFUSED_TX} on AR and AW",
         )
 
     async def _s7(self, sb) -> None:

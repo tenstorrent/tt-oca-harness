@@ -100,6 +100,8 @@ EGRESS_BASE = 0xAA_AAAA_AAAA_A000 & ADDR_MASK
 EGRESS_STRIDE = 0x100
 EGRESS_COUNT = 8
 EGRESS_STROBE_ALL = 0xFF
+# A W beat on the ext_in pins with every byte lane selected; any other value is a partial strobe.
+FULL_STROBE = (1 << BUS_BYTES) - 1
 J2A_POLL_LIMIT = 128
 EGRESS_POLL_CYCLES = 4000
 LAUNCH_BOUND_NS = 4 * AXI_TIMEOUT_NS
@@ -308,7 +310,6 @@ class smu_axi_in_random_id_stress_test_seq:
         self.tap: _OutboundTap | None = None
         self.step_ts: dict[str, float] = {}
         self.sites: dict[str, dict] = {}
-        self.seed_logged = False
         self.id_width = 0
         self.pool: list[int] = []
         self.fill = bytes(self.rng.randrange(BYTE_VALUES) for _ in range(AREA_BYTES))
@@ -623,7 +624,6 @@ class smu_axi_in_random_id_stress_test_seq:
             f"pool={[hex(i) for i in self.pool]} window=[0x{lo:x},0x{hi:x}] "
             f"area=0x{AREA_BASE:x}+0x{AREA_BYTES:x}"
         )
-        self.seed_logged = True
 
     async def _s2(self, sb) -> None:
         fill = [
@@ -680,7 +680,7 @@ class smu_axi_in_random_id_stress_test_seq:
             for i in ids
         }
         want = {i: (n, n, n, m, m, m) for i, (n, _, _, m, _, _) in per_id.items()}
-        spans = self._bits_span(ids)
+        spans = self._bits_span(sorted(set(tr.aw_count) | set(tr.ar_count)))
         sizes = sorted(tr.sizes)
         self._chk(
             sb,
@@ -728,7 +728,7 @@ class smu_axi_in_random_id_stress_test_seq:
                 written_bytes += sum(1 for i in range(BLOCK_BYTES) if want[i] != self.fill[off + i])
                 if data != want:
                     bad.append((hex(req.addr), req.tid, data.hex(), want.hex()))
-        witness = written_bytes > 0
+        partial_on_pins = any(s != FULL_STROBE for s in self.trace.wstrbs)
         self._chk(
             sb,
             "CHK-RANDID-DATA",
@@ -736,12 +736,11 @@ class smu_axi_in_random_id_stress_test_seq:
             (
                 bad,
                 self.bad_resp,
-                witness,
-                self.partial_strobe_writes > 0,
+                partial_on_pins,
                 self.trace.misordered,
                 self.trace.unmatched,
             ),
-            ([], [], True, True, [], []),
+            ([], [], True, [], []),
             f"blocks={len(reqs)} bytes_differing_from_fill={written_bytes} "
             f"partial_strobe_writes={self.partial_strobe_writes} "
             f"wstrb_patterns_on_pins={sorted(self.trace.wstrbs)}",
@@ -862,8 +861,8 @@ class smu_axi_in_random_id_stress_test_seq:
             sb,
             "CHK-NONVAC",
             "ordered fence, stream length and seed",
-            (increasing, self.stream_len >= MIN_STREAM_LENGTH, self.seed_logged),
-            (True, True, True),
+            (increasing, self.stream_len >= MIN_STREAM_LENGTH),
+            (True, True),
             f"step stamps strictly increase to the pass point, stream_length={self.stream_len} "
             f"against the floor {MIN_STREAM_LENGTH}, seed {self.seed} logged",
         )

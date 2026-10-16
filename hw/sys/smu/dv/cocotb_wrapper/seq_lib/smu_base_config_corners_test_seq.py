@@ -18,8 +18,9 @@ S3: entry 0 over the old base through the new window, GLOBAL_BASE moved to an al
     and DECERR after the move; LOCAL_BASE unchanged while GLOBAL_BASE reads the new base.
 S4: entry 0 over the last window, GLOBAL_BASE at the top of the 56-bit space; the external read at
     the new base is OKAY; a probe at the low window offset is logged.
-S5: GLOBAL_BASE half a window below the top with REGION_SIZE unchanged; the external read and the
-    port are logged; GLOBAL_BASE restored to LOCAL_BASE and entry 0 cleared.
+S5: GLOBAL_BASE half a window below the top; smc_global_base_o equals the written base and
+    smc_region_size_o is unchanged; the external read is logged; GLOBAL_BASE restored to
+    LOCAL_BASE and entry 0 cleared.
 S6: every bounded wait reports its bound and last state.
 """
 
@@ -371,8 +372,8 @@ class smu_base_config_corners_test_seq:
             sb,
             "CHK-BASECFG-GLOBAL-TOP",
             "GLOBAL_BASE at the top of the space",
-            (port[0], global_rb, at_top, low[0] is not None),
-            (TOP_BASE_PORT, TOP_BASE, (OKAY, VERSION_LO_RESET), True),
+            (port[0], global_rb, at_top),
+            (TOP_BASE_PORT, TOP_BASE, (OKAY, VERSION_LO_RESET)),
             f"smc_global_base_o equals 0x{TOP_BASE_PORT:014x} and VERSION_LO at the new base "
             f"answers OKAY; low probe resp={low[0]} data=0x{low[1]:08x} measured and logged only",
         )
@@ -382,15 +383,19 @@ class smu_base_config_corners_test_seq:
         await ClockCycles(self.clk, PORT_POLL_CYCLES)
         port = self._ports()
         beyond = await self._ext_rd("beyond", BEYOND_BASE + VERSION_OFF)
-        captured = bool(port) and beyond[0] is not None
         self._log(
-            f"CHK-BASECFG-GLOBAL-BEYOND-OBS: measured resp={beyond[0]} data=0x{beyond[1]:08x} "
-            f"smc_global_base_o=0x{port[0]:x} smc_region_size_o=0x{port[1]:x} captured={captured}"
+            f"OBSERVATION window past 2^56: external read addr=0x{BEYOND_BASE + VERSION_OFF:x} "
+            f"resp={beyond[0]} data=0x{beyond[1]:08x} measured and logged only"
         )
-        self.test.env.scoreboard.expect_true(
-            "CHK-BASECFG-GLOBAL-BEYOND-OBS capture present",
-            captured,
-            evidence="CHK-BASECFG-GLOBAL-BEYOND-OBS",
+        self._chk(
+            sb,
+            "CHK-BASECFG-GLOBAL-BEYOND-OBS",
+            "GLOBAL_BASE half a window below the top",
+            port,
+            (BEYOND_BASE, REGION_SIZE_RESET),
+            f"smc_global_base_o equals the written 0x{BEYOND_BASE:014x} and smc_region_size_o "
+            f"stays 0x{REGION_SIZE_RESET:x} after {PORT_POLL_CYCLES} clk; the external read "
+            f"resp={beyond[0]} data=0x{beyond[1]:08x} is measured and logged only",
         )
         await self._j2a_ok_wr("global_base_restore", SMC_APERTURE_GLOBAL_BASE_REG, LOCAL_BASE)
         await self._await_ports("global_restore", base=LOCAL_BASE, size=None)

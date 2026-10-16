@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC alias remap in front of the iDMA manager: source remap, destination remap, shared table.
 
-Spec: hw/sys/smc/doc/fabric.adoc, the "DMA Controller" row of the master table (alias remap, then
-filtering, then the destination) and "Alias Remapping" (transparent at reset);
+Spec: hw/sys/smc/doc/fabric.adoc, the "DMA Controller" and "JTAG2AXI Bridge" rows of the traffic
+managers table (alias remap, then filtering, then the destination) and "Alias Remapping"
+(transparent at reset);
 hw/ip/axi_alias_remap/regs/alias_remap.rdl (REGION_START / REGION_END non-inclusive, REGION_ATTRS
 offset added to address bits [55:12], valid); hw/sys/smc/doc/dma.adoc (a read of NEXT_ID_0 submits
 the programmed copy, DONE_0 reports the id).
@@ -14,7 +15,8 @@ phases of each copy. The same copy runs three times: with every region at reset,
 over the source page, and with a region over the destination page.
 
 S1 setup, S2 copy with every region at reset, S3 source remap, S4 destination remap, S5 shared
-table observation, S6 bounded waits.
+table (a bridge write at D leaves at D' under the region that moved the iDMA destination), S6
+bounded waits.
 """
 
 from __future__ import annotations
@@ -337,9 +339,7 @@ class smu_alias_dma_manager_test_seq:
             f"{aw_plain} D0={d0.hex()}",
         )
 
-        await self._mark(
-            "S5", "bridge write at D while region 1 is valid; shared table observation"
-        )
+        await self._mark("S5", "bridge write at D while region 1 is valid; shared table")
         shared_issued = PAGE_D + SHARED_LOW_BITS
         mark = self.tap.mark()
         await self._j2a(True, shared_issued, SHARED_DATA)
@@ -363,16 +363,17 @@ class smu_alias_dma_manager_test_seq:
         held = mem.read_int(leaving, 8)
         self._log(
             f"OBSERVATION shared table: iDMA destination leaving=0x{dma_dst:x} "
-            f"bridge write issued=0x{shared_issued:x} leaving=0x{leaving:x} held=0x{held:x} "
             "measured and logged only"
         )
         self._chk(
             sb,
             "CHK-ALIASDMA-SHARED-TABLE",
-            "the iDMA destination address and the bridge write address are both captured",
-            (dma_dst >= 0, bool(shared_aw)),
-            (True, True),
-            f"dma_dst=0x{dma_dst:x} bridge_leaving=0x{leaving:x} (measured and logged only)",
+            "the bridge write at D leaves at D' under the region that moved the iDMA destination",
+            (leaving, held),
+            (PAGE_D_ALIAS + SHARED_LOW_BITS, SHARED_DATA),
+            f"bridge write issued=0x{shared_issued:x} leaving=0x{leaving:x} held=0x{held:x} "
+            f"against D' plus 0x{SHARED_LOW_BITS:x} and the written word; the iDMA destination "
+            f"leaving=0x{dma_dst:x} is measured and logged only",
         )
 
         await self._mark("S6", "TIMEOUT: bounded waits and last state")
