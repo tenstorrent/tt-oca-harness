@@ -55,7 +55,10 @@ Checkers:
                   non-zero.
   CHK-PF-CONSEC   two bursts of T - 2 windows with a clean gap: no alert; the
                   count reads 0 within two clean windows. Control: T + 1 trips.
-  CHK-PF-DISABLE  T = 0, ten stuck windows: no alert, ANY_FAIL_COUNT peak > 8.
+  CHK-PF-DISABLE  T = 0, ten stuck windows: no alert, ANY_FAIL_COUNT peak > 8, and
+                  after the burst ANY_FAIL_COUNT reads 0 within two clean windows
+                  (``ALERT_SUMMARY_FAIL_COUNTS``: it clears after an accepted
+                  passing window).
                   Control: T = 3 trips with the same pattern.
   CHK-PF-HALT     after a trip, BUSY = 0 and a drain: LEVEL stays 0 and
                   ``esrc_compress_vld_o`` is silent for H = t_ref. Control: the
@@ -974,43 +977,25 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         except TrialTimeout as exc:
             self.disable_result = {"win": win, "reason": f"timeout:{exc.what} bound={exc.bound}"}
             return
+        # The burst, then clean noise until ANY_FAIL_COUNT reads 0 (two windows), all in
+        # the graded window, so the count falls to 0 with the module enabled.
         open_graded_window(TEST, self.logger)
-        self.noise.byte_check(True)
-        c0, mm0 = self.noise.byte_control()
-        segs = self._burst_segs(DISABLE_WINDOWS, win)
-        task = cocotb.start_soon(self._schedule(segs, win))
-        alert = pf = 0
-        peak = 0
-        polls = 0
-        while not task.done():
-            a, f, cnt = await self._poll_triple()
-            alert |= a
-            pf |= f
-            peak = max(peak, cnt)
-            polls += 1
-        timeout = None
-        try:
-            await task
-        except EsrcStrobeTimeout as exc:
-            timeout = f"timeout:strobes bound={exc.bound}"
-        a, f, cnt = await self._poll_triple()
-        alert |= a
-        pf |= f
-        peak = max(peak, cnt)
+        r = await self._burst_and_settle(self._burst_segs(DISABLE_WINDOWS, win), win)
         close_graded_window(self.logger)
-        self.noise.set_lanes(list(self.plan.balanced))
-        c1, mm1 = self.noise.byte_control()
-        self.noise.byte_check(False)
-        self.chk.ctrl("NOISE-BYTES", mm1 == mm0 and c1 > c0, compared=c1 - c0, mismatched=mm1 - mm0)
         self.disable_result = {
-            "alert": int(alert),
-            "pf": int(pf),
-            "peak": peak,
-            "polls": polls,
+            "alert": r["alert"],
+            "pf": r["pf"],
+            "peak": r["peak"],
+            "polls": r["polls"],
             "win": win,
+            "after": r["after"],
+            "zero": r["zero"],
+            "bound": r["bound"],
         }
-        if timeout:
-            self.disable_result["reason"] = timeout
+        if r["timeout"]:
+            self.disable_result["reason"] = r["timeout"]
+        elif not r["zero"]:
+            self.disable_result["reason"] = "timeout:count_zero"
 
     # --- grading -----------------------------------------------------------------------
     def _grade_block(self, blk: _Block) -> None:
@@ -1079,12 +1064,15 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         d = self.disable_result or {}
         self.chk.ctrl("PF-DISABLE", ctrl_ok, ctrl_thr3_alert=int(ctrl_ok))
         extra = {"reason": d["reason"]} if d.get("reason") else {}
+        if d.get("reason") == "timeout:count_zero":
+            extra["bound"] = d.get("bound")
         self.chk.ok(
             "PF-DISABLE",
             not d.get("reason")
             and d.get("alert") == 0
             and d.get("pf") == 0
-            and d.get("peak", 0) > DISABLE_WINDOWS - 2,
+            and d.get("peak", 0) > DISABLE_WINDOWS - 2
+            and d.get("zero") is True,
             **extra,
             thr=0,
             win=d.get("win"),
@@ -1092,5 +1080,6 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             alert=d.get("alert"),
             pf=d.get("pf"),
             any_fail=d.get("peak"),
+            any_fail_after=d.get("after"),
             ctrl_thr3_alert=int(ctrl_ok),
         )

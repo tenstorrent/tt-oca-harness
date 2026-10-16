@@ -442,7 +442,9 @@ Observation probe groups:
 * Crypto and entropy FCOV sampler taps (`cov/sv/sep_fcov.sv`, crypto and
   entropy groups): read-only references from the `u_sep_fcov` connection
   block to the engine idle outputs of HMAC, AES, KMAC and OTBN; the alert
-  pairs `u_sep_crypto.crypto_alert_tx`; the internal DRBG endpoints
+  pairs at the inputs of the crypto alert receivers
+  (`u_sep_crypto.gen_alert_receivers[i].u_alert_receiver.alert_tx_i`); the
+  internal DRBG endpoints
   (`drbg_int_axis_req`, `drbg_int_axis_rsp`); the `sep` ports
   `ext_trng_axis_req_i`, `ext_trng_axis_rsp_o` and `ext_trng_irq_i`; the
   stream select `ext_trng_src_sel`; the pool state of `u_entropy_fifo`

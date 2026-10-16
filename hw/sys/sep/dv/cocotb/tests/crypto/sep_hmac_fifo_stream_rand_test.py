@@ -8,7 +8,7 @@ runs the same plan shape in drawn orders:
     25 length cells   SHA-256 with 0, 1, 3, 4, 55, 56, 63, 64, 65, 200 and 1000 bytes;
                       SHA-384 and SHA-512 with 111, 112, 127, 128, 129, 200 and 1000 bytes;
                       plain SHA-2 or HMAC and the write mode drawn per cell
-    3 stalled legs    one per write mode (burst of back-to-back single-beat writes, single
+    3 stalled legs    one per write mode (burst of back-to-back posted single-beat writes, single
                       writes with a drawn gap, single-byte writes): the FIFO fills under the
                       drain stall, a later beat is held, the stall is released, the
                       1000-byte message completes
@@ -90,6 +90,7 @@ from env.sep_crypto_kat_rows import RFC4231_KEYS
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_hmac_golden import SepDigestOrder, digest_words, hmac_sha2_bytes, sha2_bytes
 from env.sep_seeded_rng import SepSeededRng
+from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from sep_reg_meta import HMAC
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_resp_handshake, take_handshake
@@ -118,6 +119,10 @@ TEST = "sep_hmac_fifo_stream_rand_test"
 SW_RESET_BASELINE = 0x7E
 
 HMAC_WIPE_SECRET = HMAC.addr("WIPE_SECRET")
+RESP_OKAY = 0  # AXI BRESP OKAY
+# Fewest beats in one posted group of the burst mode: the second beat is issued while the
+# first is still outstanding.
+POST_MIN = 2
 ST_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
 ST_EMPTY = HMAC.field_mask("STATUS", "fifo_empty")
 ST_FULL = HMAC.field_mask("STATUS", "fifo_full")
@@ -589,10 +594,56 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
                 await self._wr(HMAC_KEY_0 + 4 * i, word)
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
 
+    async def _post_words(self, group: list[tuple[int, int]]) -> None:
+        """Post 32-bit MSG_FIFO beats back to back: each beat is issued without a wait for
+        the write response of the beat before it.
+
+        The sequencer runs one access at a time, so the beats go on the CPU-LSU master
+        directly. Every beat must complete OKAY within CLEAN_BOUND clocks per beat.
+        """
+        axi = self.env.axi_agent.driver.axi
+        evs = [
+            axi.init_write(address=HMAC_MSG_FIFO, data=v.to_bytes(n, "little"), size=2)
+            for n, v in group
+        ]
+        bound = CLEAN_BOUND * len(evs)
+        for _ in range(bound + 1):
+            if all(ev.is_set() for ev in evs):
+                break
+            await RisingEdge(self.dut.clk_i)
+        for k, ev in enumerate(evs):
+            if not ev.is_set() or ev.data is None:
+                raise AssertionError(
+                    f"posted MSG_FIFO beat {k} of {len(evs)} not answered in {bound} clocks"
+                )
+            code = worst_resp(getattr(ev.data, "resp", None))
+            if code != RESP_OKAY:
+                raise AssertionError(f"posted MSG_FIFO beat {k} of {len(evs)} resp={code}")
+
+    async def _post_run(self, ch: list[tuple[int, int]], size: int, phase: str | None) -> int:
+        """Post the 32-bit beats at the head of ``ch`` in groups of ``size``; read STATUS
+        after each group when ``phase`` is set. Returns the number of beats written."""
+        i = 0
+        while i < len(ch) and ch[i][0] == 4:
+            j = i
+            while j < len(ch) and ch[j][0] == 4 and j - i < size:
+                j += 1
+            await self._post_words(ch[i:j])
+            if phase is not None:
+                await self._status(phase)
+            i = j
+        return i
+
     async def _write_msg(
         self, ch: list[tuple[int, int]], mode: str, gap: int, rb: int, phase: str
     ) -> None:
-        for i, (n, v) in enumerate(ch):
+        """Write the chunks of a message. Burst mode posts the 32-bit beats in groups of
+        max(POST_MIN, rb) and reads STATUS after each group; the one-byte tail and the other
+        modes write one beat at a time and read STATUS after every rb writes."""
+        start = 0
+        if mode == "burst":
+            start = await self._post_run(ch, max(POST_MIN, rb), phase)
+        for i, (n, v) in enumerate(ch[start:], start):
             await self._wr_chunk(n, v)
             if mode == "gap" and gap:
                 await ClockCycles(self.dut.clk_i, gap)
@@ -766,7 +817,11 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
                 )
             await self._reset_hmac()
             return
-        for i in range(1, n):
+        first = 1
+        if leg.mode == "burst":
+            # Posted groups below the fill count: the FIFO takes every one of them.
+            first += await self._post_run(ch[1:n], max(POST_MIN, leg.rb), None)
+        for i in range(first, n):
             await self._wr_chunk(*ch[i])
             if leg.mode == "gap" and leg.gap:
                 await ClockCycles(dut.clk_i, leg.gap)

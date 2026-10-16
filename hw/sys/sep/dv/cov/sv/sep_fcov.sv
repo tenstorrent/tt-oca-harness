@@ -454,7 +454,7 @@ module sep_fcov (
   // ESRC the entropy source.
   // eng_idle: {OTBN idle_o is MuBi4True, KMAC, AES, HMAC wrapper idle_o}.
   input wire [3:0]                          eng_idle_i,
-  input prim_alert_pkg::alert_tx_t [10:0]   alert_tx_i,       // CRY.crypto_alert_tx
+  input prim_alert_pkg::alert_tx_t [10:0]   alert_tx_i,       // CRY alert receiver inputs
   // drbg_int: CRY.drbg_int_axis_req[i] / drbg_int_axis_rsp[i].
   input drbg_pkg::drbg_axis_req_t [2:0]     drbg_int_req_i,
   input drbg_pkg::drbg_axis_rsp_t [2:0]     drbg_int_rsp_i,
@@ -16220,8 +16220,10 @@ module sep_fcov (
   endfunction
   // Start class of x_hmac_start_class from the written CFG, -1 for a
   // configuration that is not one of the seven blocked classes.
+  // An all-zero key_length maps to Key_None (hmac.hjson CFG.key_length), so
+  // it is a Key_None class; a multi-bit value is the invalid class 4.
   function automatic int cy_h_class(input logic en, input logic [3:0] d, input logic [5:0] k);
-    if (en && (k == HmacKeyNone)) begin
+    if (en && ((k == HmacKeyNone) || (k == 6'h00))) begin
       if (d == HmacSha256) return 0;
       if (d == HmacSha384) return 1;
       if (d == HmacSha512) return 2;
@@ -17895,11 +17897,13 @@ module sep_fcov (
       cy_km_on <= 1'b0;
       cy_kr    <= 2'd0;
     end else begin
+      // A cell with the enable bit set ends only at absorb: kmac_err may also
+      // set on that start, and the register text makes it no outcome.
       if (cy_km_on) begin
         if (cy_k_abs) begin
           cy_inv(3, {cy_km_cell, 1'b1});
           cy_km_on <= 1'b0;
-        end else if (cy_st_rise[5] && cy_k_idle) begin
+        end else if (cy_st_rise[5] && cy_k_idle && !cy_km_cell[0]) begin
           cy_inv(3, {cy_km_cell, 1'b0});
           if (!cy_km_cell[0]) cy_kr <= 2'd1;
           cy_km_on <= 1'b0;
@@ -18049,8 +18053,10 @@ module sep_fcov (
       end
 
       // cp_wait_timer: expiry with wait_timer 1 to 8, then kmac_err; with
-      // wait_timer 0 and EDN mode, a window to the KMAC reset or the window
-      // close with no expiry, no kmac_err and no acknowledge on client 1.
+      // wait_timer 0 and EDN mode, a window to the window close with no
+      // kmac_err and no acknowledge on client 1. With wait_timer 0 the
+      // register text has no expiry ("waits the EDN response always"), so
+      // the internal timer flag is not an outcome there.
       if (!cy_own_kent) begin
         cy_tm_exp <= 1'b0;
       end else if (cy_k_tmo_now && !cy_k_tmo_q && (cy_k_wait >= 16'd1) && (cy_k_wait <= 16'd8) &&
@@ -18062,7 +18068,7 @@ module sep_fcov (
         cy_tm_exp <= 1'b0;
       end
       if (cy_nv_on) begin
-        if (cy_k_tmo_now || cy_st_rise[5] || cy_ack_rise[1]) begin
+        if (cy_st_rise[5] || cy_ack_rise[1]) begin
           cy_nv_on <= 1'b0;
         end else if (!cy_own_kent) begin
           cy_kent(1, {1'b0, 1'b0, cy_nv_pc});
@@ -19365,7 +19371,6 @@ module sep_fcov (
   // Stored values at the AW handshake of the write in flight (one
   // outstanding write: the value before the write lands).
   logic [7:0] cz_aw_ist = '0;
-  logic [11:0] cz_aw_g3 = '0;  // bit 3 of each generator status
   logic [15:0] cz_aw_csctrl = '0;
   logic [2:0] cz_aw_csff = '0;
   logic cz_aw_csrw = 1'b0;
@@ -19422,7 +19427,6 @@ module sep_fcov (
       cz_aw_edrw   <= cy_t(edn_regwen_i);
       cz_aw_sel    <= cz_sel;
       cz_aw_detune <= esrc_detune_i;
-      for (int j = 0; j < 12; j++) cz_aw_g3[j] <= cz_gst[j][3];
     end
   end
 
@@ -19811,10 +19815,13 @@ module sep_fcov (
       end
     end
     // cp_detune_lane: with AUTOTUNE_ENABLE 1 on this and the last clock, a
-    // detune bit of a lane whose generator status is set toggles.
+    // detune bit of a lane toggles on the clock after a clock with a failure
+    // status of that lane. The generator status input carries a failure as
+    // a pulse and the tune state of the lane registers its rise, so the
+    // toggle comes one clock after the pulse starts.
     if (cy_own_estune && cz_es_on && cz_atune && cz_atune_q && cz_dt_known && cz_dtq_known) begin
       for (int j = 0; j < 12; j++) begin
-        if ((esrc_detune_i[j] != cz_detune_q[j]) && (cz_gst[j] != 8'h00)) cz_ngen(1, 4'(j));
+        if ((esrc_detune_i[j] != cz_detune_q[j]) && (cz_gst_q[j] != 8'h00)) cz_ngen(1, 4'(j));
       end
     end
     // cp_lane_pattern: the class of each lane at the end of a window.
@@ -20098,6 +20105,8 @@ module sep_fcov (
   logic cz_par_arm = 1'b0;
   logic cz_ptr_arm = 1'b0;
   logic cz_ptr_taint = 1'b0;  // from a pointer-copy inject to the next TRNG reset
+  logic [11:0] cz_g3_rd1 = '0;  // the last OKAY read of the lane status had bit 3 set
+  logic [11:0] cz_g3_w1 = '0;  // then a write of 1 to bit 3 of that status
   logic [3:0] cz_par_rec = '0;
   logic [3:0] cz_ovf_rec = '0;
   localparam logic [31:0] CzAlertMask = 32'(ENTROPY_SOURCE_MAIN_SM_STATUS_ALERT_MASK);
@@ -20115,14 +20124,30 @@ module sep_fcov (
 
     // x_gen_latch (1.41): bit 3 latched per lane, bit 3 cleared by a write
     // of 1 to the status of the lane, and bits 0, 4, 5 latched on all lanes.
+    // The status input carries a failure as a pulse, not the latched field
+    // (sw rw, hw w), so the cleared cell is taken from the read data: an
+    // OKAY read with bit 3 set, a write of 1 to bit 3, then the next OKAY
+    // read of that status with bit 3 clear.
+    if (!cy_own_eshp || !cz_es_on) begin
+      cz_g3_rd1 <= '0;
+      cz_g3_w1  <= '0;
+    end else begin
+      if (wr_ev && (cz_gen_lane(aw_addr_q) >= 0)) begin
+        int j;
+        j = cz_gen_lane(aw_addr_q);
+        cz_g3_w1[j] <= cz_g3_rd1[j] && wr_data[3];
+      end
+      if (rd_ev && cy_rd_known && (cz_gen_lane(ar_addr_q) >= 0)) begin
+        int j;
+        j = cz_gen_lane(ar_addr_q);
+        if (cz_g3_w1[j] && !rd_data[3]) cz_falt(0, {2'b01, 4'(j)});
+        cz_g3_rd1[j] <= rd_data[3];
+        cz_g3_w1[j]  <= 1'b0;
+      end
+    end
     if (cy_own_eshp && cz_es_on) begin
       for (int j = 0; j < 12; j++) begin
         if ((cz_gst[j][3] === 1'b1) && (cz_gst_q[j][3] === 1'b0)) cz_falt(0, {2'b00, 4'(j)});
-      end
-      if (cz_w1 && (cz_gen_lane(cz_w1_a) >= 0) && cz_w1_d[3]) begin
-        int j;
-        j = cz_gen_lane(cz_w1_a);
-        if (cz_aw_g3[j] && (cz_gst[j][3] === 1'b0)) cz_falt(0, {2'b01, 4'(j)});
       end
       for (int b = 0; b < 3; b++) begin
         int unsigned k;
@@ -20231,7 +20256,8 @@ module sep_fcov (
       end
       // Write-one clear in AlertHang: a write of 1 to MAIN_SM_STATUS.ALERT
       // and the PERSISTENT_FAILURE fall by a write of 1; the FIFO level then
-      // does not rise for CzHangHold clocks.
+      // does not rise for CzHangHold clocks, or up to the MODULE_ENABLE fall
+      // that ends the hang if that comes first.
       if (cz_hang && cy_own_espa && cz_men) begin
         logic wa;
         logic wp;
@@ -20256,6 +20282,7 @@ module sep_fcov (
           end
         end
       end else begin
+        if (cz_wc_arm && cz_hang && cy_own_espa && cz_men_fall) cz_falt(4, 6'd4);
         cz_wc_arm <= 1'b0;
       end
       if (cz_men_fall) begin
@@ -20805,7 +20832,8 @@ module sep_fcov (
     // cp_edn_cmd_fifo and cp_auto_fifo_words: words written to RESEED_CMD
     // and GENERATE_CMD since the last EDN CTRL write or TRNG reset. One and
     // 13 words: no error set request of the FIFO. 13 words: no error and no
-    // fatal state for CySettle clocks. 14th word: the error set request of
+    // fatal state for CySettle clocks, or up to the AW handshake of the next
+    // word to the FIFO if that comes first. 14th word: the error set request of
     // the FIFO, the fatal state and a vector bit 32 rise, each at or after
     // the AW handshake of that word.
     for (int f = 0; f < 2; f++) begin
@@ -20842,7 +20870,7 @@ module sep_fcov (
         if (cz_ef13[f]) begin
           if (cz_ef_err[f] || cy_st[11] || !cy_own_dfat) begin
             cz_ef13[f] <= 1'b0;
-          end else if (cz_ef13_cnt[f] >= CySettle) begin
+          end else if ((cz_ef13_cnt[f] >= CySettle) || (aw_hs && (lsu_aw_addr_i == fa))) begin
             cz_derr(3, {4'd0, 1'(f), 1'b0});
             cz_ef13[f] <= 1'b0;
           end
@@ -20907,10 +20935,12 @@ module sep_fcov (
     end
 
     // x_inst_outcome. Software port: a CMD_REQ write of the instantiate
-    // word; the first since the TRNG reset ends with the cs_cmd_req_done set
-    // request, a repeated one with the invalid-sequence alert set request.
-    // Hardware port 0: an application-0 request of the instantiate word
-    // ends with its acknowledge.
+    // word, taken at the CSRNG register write strobe; the first since the
+    // TRNG reset ends with the cs_cmd_req_done set request, a repeated one
+    // with the invalid-sequence alert set request. The alert can set before
+    // the bus write response, so the arm is not the response. Hardware port
+    // 0: an application-0 request of the instantiate word ends with its
+    // acknowledge.
     if (cz_trng || !cy_ip[5]) begin
       cz_sw_ins_ok <= 1'b0;
       cz_io_arm    <= '0;
@@ -20927,9 +20957,9 @@ module sep_fcov (
         cz_io_arm <= '0;
       end
       cz_io_cnt <= cz_io_cnt + 1;
-      if (wr_ev && (aw_addr_q == CSRNG_CMD_REQ_REG_ADDR)) begin
+      if (cy_t(csrng_reg2hw_i.cmd_req.qe)) begin
         cz_io_cnt <= 0;
-        if (wr_data == CzCsInstantiate) cz_io_arm <= cz_sw_ins_ok ? 2'b10 : 2'b01;
+        if (csrng_reg2hw_i.cmd_req.q == CzCsInstantiate) cz_io_arm <= cz_sw_ins_ok ? 2'b10 : 2'b01;
         else cz_io_arm <= '0;
       end
       if (cz_hw_arm && cy_t(csrng_app0_ack_i) && !cz_app0_ack_q) begin
@@ -21079,6 +21109,9 @@ module sep_fcov (
   logic cz_lk_arm = 1'b0;
   logic cz_pc_ar = 1'b0;  // the TRNG window was high at the AR handshake
   logic [5:0] cz_pool_ar = '0;  // pool level at the AR handshake
+  // Pool level on the clock before the window rise: the clear forces
+  // fifo_level to 0 from the rise clock on.
+  logic [5:0] cz_pool_pre = '0;
   logic cz_ps_nz = 1'b0;
   logic [1:0] cz_xp_res = '0;  // first handshake after the window fall pending
   logic [3:0] cz_cc_pend = '0;
@@ -21101,13 +21134,15 @@ module sep_fcov (
       cz_pc_ar   <= cz_trng;
       cz_pool_ar <= pool_level_i;
     end
+    cz_pool_pre <= pool_level_i;
 
     // cp_clear_ext_sel and cp_pool_scrub at the window rise; the window fall
-    // ends cp_pool_scrub and cp_client_in_clear.
+    // ends cp_pool_scrub and cp_client_in_clear. The level at the window
+    // start is the level on the clock before the rise.
     if (cz_trng_rise) begin
       if (cy_own_xrst && cz_sel[1]) cz_crst(0, 4'd0);
       if (cy_own_xrst && cz_sel[2]) cz_crst(0, 4'd1);
-      cz_ps_nz <= (pool_level_i != 6'd0) && !$isunknown(pool_level_i);
+      cz_ps_nz <= (cz_pool_pre != 6'd0) && !$isunknown(cz_pool_pre);
     end
     if (cz_trng_fall) begin
       if (cy_own_xrst && cz_ps_nz && (pool_level_i == 6'd0)) cz_crst(3, 4'd0);
@@ -21117,11 +21152,12 @@ module sep_fcov (
 
     // cp_xfer_phase: an external handshake of stream 1 or 2 with the
     // external select; in the window (illegal), the first after the window
-    // fall (resume), or another with the window low (before_clear).
+    // fall (resume, also on the fall clock), or another with the window low
+    // (before_clear).
     for (int s = 0; s < 2; s++) begin
       if (cz_mhs[s+1] && cz_sel[s+1] && cy_own_xrst) begin
         if (cz_trng) cz_crst(1, {1'b0, 1'(s), 2'b01});
-        else if (cz_xp_res[s]) cz_crst(1, {1'b0, 1'(s), 2'b10});
+        else if (cz_xp_res[s] || cz_trng_fall) cz_crst(1, {1'b0, 1'(s), 2'b10});
         else cz_crst(1, {1'b0, 1'(s), 2'b00});
       end
       if (cz_mhs[s+1] && cz_sel[s+1] && !cz_trng) cz_xp_res[s] <= 1'b0;
@@ -21345,7 +21381,8 @@ module sep_fcov (
 
       // cp_hold_internal: with the external select, the internal endpoint
       // holds valid 1 and a stable word; after the select returns, its first
-      // handshake carries that word.
+      // handshake carries that word. That handshake can be on the clock the
+      // select returns.
       if (!cy_own_xhs) begin
         cz_ho_on[s]   <= 1'b0;
         cz_ho_wait[s] <= 1'b0;
@@ -21363,14 +21400,17 @@ module sep_fcov (
           cz_ho_bad[s] <= 1'b1;
         end
       end else begin
+        logic hw;
+        hw = cz_ho_wait[s];
         if (cz_ho_on[s] && cz_sel_q[i]) begin
-          cz_ho_wait[s] <= !cz_ho_bad[s];
-          cz_ho_on[s]   <= 1'b0;
+          hw = !cz_ho_bad[s];
+          cz_ho_on[s] <= 1'b0;
         end
-        if (cz_ho_wait[s] && cz_mhs[i]) begin
+        if (hw && cz_mhs[i]) begin
           if (mux_req_i[i].tdata == cz_ho_w[s]) cz_dlv(5, {2'b00, 1'(s)});
-          cz_ho_wait[s] <= 1'b0;
+          hw = 1'b0;
         end
+        cz_ho_wait[s] <= hw;
       end
 
       // Ring of the last 16 external words that the mux passed on.

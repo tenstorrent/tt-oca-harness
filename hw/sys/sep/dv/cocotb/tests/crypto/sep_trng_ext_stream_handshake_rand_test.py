@@ -91,6 +91,8 @@ GAP_PATTERNS = ("b2b", "random", "long")
 RANDOM_GAP_MAX = 20
 LONG_GAP = 200
 IRQ_BOUND = 64
+# Clocks that ext_trng_irq_i keeps each level after vector bit 16 follows it.
+IRQ_HOLD = 8
 # Outer caps of a first measurement (design rule: 20 x the clean value of the logs).
 TRNG_RESET_CAP = 4_000
 SETTLE_CAP = 20_000
@@ -969,7 +971,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     # --- legs after both streams -------------------------------------------------------
     async def _irq_leg(self) -> None:
-        """CHK-EXT-IRQ: ext_trng_irq_i = 1 gives vector bit 16 = 1, and 0 gives 0."""
+        """CHK-EXT-IRQ: ext_trng_irq_i = 1 gives vector bit 16 = 1, and 0 gives 0. Each level
+        is held for IRQ_HOLD clocks after bit 16 follows it (``OBS-EXT-IRQ-HOLD``)."""
         dut = cocotb.top
         vec = dut.sep_internal_interrupts_probe_o
         mask = 1 << VEC_EXT_IRQ
@@ -987,6 +990,15 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             if n is None:
                 fields["reason"] = f"timeout:vec16 bound={IRQ_BOUND}"
             self.chk.ok("EXT-IRQ", n is not None, **fields)
+            # The input keeps the level for IRQ_HOLD clocks after bit 16 follows it, so the
+            # sampled clock after the change sees the input and bit 16 at the same level.
+            # Whether bit 16 is a level is not stated, so the hold is logged only.
+            if n is not None:
+                held = 0
+                for _ in range(IRQ_HOLD):
+                    await RisingEdge(cocotb.top.clk_i)
+                    held += int(bit16() == level)
+                self.chk.obs("EXT-IRQ-HOLD", irq_i=level, vec16_at_level_clk=held, hold=IRQ_HOLD)
         close_graded_window(self.logger)
 
     async def _lock(self, value: int) -> int:

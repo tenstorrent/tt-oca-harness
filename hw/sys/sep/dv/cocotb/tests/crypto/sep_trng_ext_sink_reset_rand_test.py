@@ -858,13 +858,15 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         await self.swrst.release("trng")
         await self._wait_probe(0, "trng reset fall")
         await RisingEdge(dut.clk_i)
-        close_graded_window(self.logger)
+        # The window stays open to the end of the client operation, so the first
+        # acknowledge after the release is inside it.
         t_end = None
         for _ in range(OP_CAP):
             if task.done():
                 t_end = self.trace.clk
                 break
             await RisingEdge(dut.clk_i)
+        close_graded_window(self.logger)
         rows = self.trace.end()
         await self._stop_feeders()
         # Stale words: buffered = B beats that reached the adapter minus B words a

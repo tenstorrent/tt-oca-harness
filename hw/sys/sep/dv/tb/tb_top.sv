@@ -4612,6 +4612,13 @@ module sep_uvm_top
     assign fcov_ext_trng_req[0] = `SEP_CORE.ext_trng_axis_req_i[0];
     assign fcov_ext_trng_req[1] = `SEP_CORE.ext_trng_axis_req_i[1];
     assign fcov_ext_trng_req[2] = `SEP_CORE.ext_trng_axis_req_i[2];
+    // The alert pair at the input of each crypto alert receiver. The crypto
+    // alert sender inject forces this input, so the sender-side vector
+    // u_sep_crypto.crypto_alert_tx does not carry a malformed pair.
+    prim_alert_pkg::alert_tx_t [10:0] fcov_alert_rx;
+    for (genvar g = 0; g < 11; g++) begin : gen_fcov_alert_rx
+        assign fcov_alert_rx[g] = `FC_CRY.gen_alert_receivers[g].u_alert_receiver.alert_tx_i;
+    end
 
     sep_fcov u_sep_fcov (
         .clk_i                 (clk_i),
@@ -4964,7 +4971,7 @@ module sep_uvm_top
 
         // Crypto and entropy taps.
         .eng_idle_i            (fcov_eng_idle),
-        .alert_tx_i            (`FC_CRY.crypto_alert_tx),
+        .alert_tx_i            (fcov_alert_rx),
         .drbg_int_req_i        (`FC_CRY.drbg_int_axis_req),
         .drbg_int_rsp_i        (`FC_CRY.drbg_int_axis_rsp),
         .ext_trng_req_i        (fcov_ext_trng_req),

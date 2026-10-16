@@ -760,11 +760,11 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         c_not_ready = a_ctrl.ext_not_ready
         c_km_neq = a_ctrl.km_ep_neq
         c_valid = list(a_ctrl.axis_valid)
-        # Step 9: bit 0 set, bits 1 and 2 clear, written under a bridge stream.
+        # Step 9: bit 0 set, bits 1 and 2 clear, written under a bridge stream. The
+        # graded window opens before the select write, so the write that lands is in it.
         bridge = await self._select_external()
         sel = await self.reg._rd(SEL_ADDR)
         self.acc.reset(ext=True)
-        open_graded_window(TEST, self.logger)
         run = await self._km_with_beats(pattern=plan.gap_pattern, drop_held=False)
         close_graded_window(self.logger)
         a = self.acc
@@ -874,7 +874,8 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         write to its response: while bit 0 is clear each beat transfers in its clock and is
         discarded (tready 1), and after the write lands the held beat stays on the port
         until the sampler takes it. The beats still queued after the write go to the
-        sampler in order and are graded like every other beat.
+        sampler in order and are graded like every other beat. The graded FCOV window
+        opens just before the write and stays open for the external run.
         """
         dut = cocotb.top
         state = {"run": True, "offered": 0, "min_pending": BRIDGE_DEPTH}
@@ -894,6 +895,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         # The driver loads the first beat on the next rising edge; the feed starts after it.
         await ClockCycles(dut.clk_i, 2)
         task = cocotb.start_soon(feed())
+        open_graded_window(TEST, self.logger)
         await self.reg._wr(SEL_ADDR, 0x1)
         state["run"] = False
         await task

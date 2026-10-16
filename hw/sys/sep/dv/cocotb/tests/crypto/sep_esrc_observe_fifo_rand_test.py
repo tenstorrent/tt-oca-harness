@@ -44,6 +44,10 @@ Checkers:
                     the drain, before the write-one.
   CHK-OBS-LOCK      locked at 1: L + 2 words delivered, last two noise words equal the
                     lane value, FLUSH lowers LEVEL; locked at 0: LEVEL stays 0.
+  CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
+                    both LEVELs read 0 after 256 strobes (entropy_source.adoc:792,
+                    :828: ``RAW_ENABLE`` enables the capture).
+                    Control: both fields and both LEVELs read 0 before the hold.
 Logged only: ``OBS-BLOCKED CHK-OBS-MAIN`` (no stated rule that observe capture leaves
 the main chain rate unchanged); the main-chain leg logs its counts.
 """
@@ -59,6 +63,7 @@ from env.sep_chk_log import SepChkLog
 from env.sep_esrc_pattern_noise import (
     NUM_LANES,
     Balanced,
+    EsrcStrobeTimeout,
     SepEsrcPatternNoise,
     Stuck,
     balanced_lanes,
@@ -110,6 +115,8 @@ LOCK_FLUSH_WORDS = 4
 LOCK0_WAIT_FACTOR = 4
 UNGATED_WAIT_FACTOR = 4
 MAIN_WORDS = 256
+# Strobes of the capture-off leg: eight observe words of 32 samples.
+OFF_STROBES = 8 * 32
 DRAW_TRIES = 16
 FIFO_DEPTH_MAX = 64  # bound of a drain loop: the RDL LEVEL field holds at most 64 words
 ALL_ONES = 0xFFFF_FFFF
@@ -228,6 +235,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         "CHK-OBS-FLUSH",
         "CHK-OBS-OVERFLOW",
         "CHK-OBS-LOCK",
+        "CHK-OBS-OFF",
     )
 
     async def run_scenario(self) -> None:
@@ -251,6 +259,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         await self._flush_leg()
         await self._overflow_leg()
         await self._main_chain_leg()
+        await self._off_leg()
         for i, fifo in enumerate(("noise", "biw")):
             t_cap = await self._lock1(fifo, plan.z_lock[2 * i])
             await self._lock0(fifo, plan.z_lock[2 * i + 1], t_cap)
@@ -605,6 +614,39 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
         self.chk.blocked("OBS-MAIN", "observe_capture_vs_main_chain_unstated")
         self.chk.obs("OBS-MAIN", words_obs_on=on, words_obs_off=off, window_clk=w_clk or "none")
+
+    # --- capture-off leg ---------------------------------------------------------------
+    async def _off_leg(self) -> None:
+        """CHK-OBS-OFF: with both RAW_ENABLE fields 0 and the module running after the boot
+        phase, neither observe FIFO takes a word over OFF_STROBES strobes."""
+        await self._setup()
+        raw = {fifo: await self._read_raw(fifo) for fifo in FIFOS}
+        before = {fifo: await self._level(fifo) for fifo in FIFOS}
+        self.chk.ctrl(
+            "OBS-OFF",
+            all(v == 0 for v in raw.values()) and all(v == 0 for v in before.values()),
+            noise_raw=raw["noise"],
+            biw_raw=raw["biw"],
+            noise_level_before=before["noise"],
+            biw_level_before=before["biw"],
+        )
+        open_graded_window(TEST, self.logger)
+        bound = 2 * (OFF_STROBES + 1) * self._period()
+        reason = ""
+        try:
+            await self.noise.wait_words(OFF_STROBES, bound)
+        except EsrcStrobeTimeout:
+            reason = f"timeout:strobes bound={bound}"
+        after = {fifo: await self._level(fifo) for fifo in FIFOS}
+        close_graded_window(self.logger)
+        fields = {
+            "noise_level": after["noise"],
+            "biw_level": after["biw"],
+            "strobes": OFF_STROBES,
+        }
+        if reason:
+            fields["reason"] = reason
+        self.chk.ok("OBS-OFF", not reason and after["noise"] == 0 and after["biw"] == 0, **fields)
 
     async def _clocks_for_words(self, words: int, cap: int) -> int | None:
         dut = cocotb.top
