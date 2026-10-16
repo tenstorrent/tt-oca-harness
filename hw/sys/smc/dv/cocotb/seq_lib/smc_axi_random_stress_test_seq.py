@@ -17,12 +17,13 @@ from __future__ import annotations
 import os
 import random
 from collections import Counter, defaultdict
+from typing import TYPE_CHECKING
 
 import cocotb
 from cocotb.utils import get_sim_time
 from env.smc_env_cfg import SYS_OUT_MEM_SIZE
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
-from ocah_axi_vip import AxiTimingProfile
+from ocah_axi_vip import AxiTimingProfile, OcahAxiSlaveSequence
 
 from ._one_shot import _OneShot
 from .smc_addr_map import _REPO, reg_reset_word, smc_addr, smc_indexed_addr
@@ -43,6 +44,9 @@ from .smc_output_fabric_vip_utils import (
     output_fabric_pass_all_cfg_seq,
     output_responder_counts,
 )
+
+if TYPE_CHECKING:
+    from env.smc_env import SmcEnv
 
 FUSE_SENSE_BOUND = 200_000
 AXI_TIMEOUT_NS = 50_000
@@ -169,11 +173,26 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         self._cmp_done: Counter = Counter()
         self._cmp_bytes: Counter = Counter()
         self._out_next = {p: 0x1000 for p in PORTS}
-        self._shape = Counter()
+        self._shape: Counter = Counter()
         self._shape_rows: list = []
-        self.mem = None
+        self._watchers: list = []
 
     # ------------------------------------------------------------------ plumbing
+    @property
+    def _env(self) -> SmcEnv:
+        env = self.env
+        assert env is not None, "sequence env is not initialized"
+        return env
+
+    @property
+    def mem(self) -> OcahAxiSlaveSequence:
+        """The SYS_OUT responder the test binds through `cfg`."""
+        cfg = self.cfg
+        assert cfg is not None, "sequence cfg is not initialized"
+        mem = cfg.sys_out_mem
+        assert mem is not None, "SYS_OUT responder not bound"
+        return mem
+
     def _rng(self, tag: int | str) -> random.Random:
         return random.Random(f"{self.seed}:{tag}")
 
@@ -186,9 +205,9 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
 
     def _sequencer(self, port: str):
         agent = {
-            "SEP": self.env.sys_axi_agent,
-            "SYS": self.env.sys_in_axi_agent,
-            "JTAG": self.env.jtag_axi_agent,
+            "SEP": self._env.sys_axi_agent,
+            "SYS": self._env.sys_in_axi_agent,
+            "JTAG": self._env.jtag_axi_agent,
         }[port]
         return agent.sequencer
 
@@ -413,7 +432,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         b_ev = [e for e in events if e.chan == "b"]
         r_ev = [e for e in events if e.chan == "r"]
         want_b = Counter(i.axi_id for i in writes)
-        want_r = Counter()
+        want_r: Counter = Counter()
         want_last = Counter(i.axi_id for i in reads)
         for i in reads:
             want_r[i.axi_id] += i.beats
@@ -563,8 +582,6 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "RAND-SEED: %d (RANDOM_SEED of the run; one random.Random per step)", self.seed
         )
-        self.mem = self.cfg.sys_out_mem
-        assert self.mem is not None, "SYS_OUT responder not bound"
         assert self.mem.max_outstanding == SYS_OUT_DEPTH, (
             f"SYS_OUT responder depth {self.mem.max_outstanding}, this leaf needs {SYS_OUT_DEPTH}"
         )
@@ -783,7 +800,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         assert len(set(aw_users)) == 1, f"S5 awuser differs between JTAG writes: {aw_users}"
         assert len(set(ar_users)) == 1, f"S5 aruser differs between JTAG reads: {ar_users}"
         other = []
-        monitor = self.env.axi_monitor
+        monitor = self._env.axi_monitor
         saved_decerr = set(monitor.expected_decerr_addrs)
         try:
             for port in ("SYS", "SEP"):
@@ -812,7 +829,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             "allow_error": True,
             "observe": True,
         }
-        self.env.axi_monitor.expected_decerr_addrs.add(addr)
+        self._env.axi_monitor.expected_decerr_addrs.add(addr)
         mark = self.sampler.mark()
         wr = self._mk(port, SmcSysAxiOp.WRITE, addr, rng=rng, **attrs)
         await self._one(port, wr)
@@ -1059,9 +1076,9 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         )
 
     def _shape_text(self) -> str:
-        by_size = Counter()
-        by_burst = Counter()
-        by_len = Counter()
+        by_size: Counter = Counter()
+        by_burst: Counter = Counter()
+        by_len: Counter = Counter()
         for (size, burst, beats), count in self._shape.items():
             by_size[size] += count
             by_burst[burst] += count
@@ -1155,7 +1172,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         items = self._out_items(rng, port, n // 2, n - n // 2, allow_error=True, observe=True)
         self._give_ids(items, self._ids(rng, port, n))
         for item in items:
-            self.env.axi_monitor.expected_decerr_addrs.add(item.addr)
+            self._env.axi_monitor.expected_decerr_addrs.add(item.addr)
         return items
 
     def _out_window_events(self, mark: int, port: str = "JTAG"):
@@ -1174,7 +1191,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 concurrent = kind == "read" and depth == 8
                 saved_decerr = None
                 if concurrent:
-                    monitor = self.env.axi_monitor
+                    monitor = self._env.axi_monitor
                     saved_decerr = set(monitor.expected_decerr_addrs)
                     for port in ("SYS", "SEP"):
                         plan[port] = self._outside_items(rng, port, 8)
@@ -1302,7 +1319,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
 
     @staticmethod
     def _tally(items, injected: dict) -> Counter:
-        want = Counter()
+        want: Counter = Counter()
         for index, code in injected.items():
             want[
                 ("r_" if items[index].op is SmcSysAxiOp.READ else "b_") + RESP_NAMES[code].lower()
@@ -1318,7 +1335,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
 
     async def _s11(self) -> tuple[str, str]:
         rng = self._rng(11)
-        mon = self.env.output_axi_monitor
+        mon = self._env.output_axi_monitor
         mon.allow_slverr = True
         mon.allow_decerr = True
         seen = []
@@ -1424,7 +1441,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         return errors_text, combined_text
 
     async def _s12(self) -> None:
-        mon = self.env.output_axi_monitor
+        mon = self._env.output_axi_monitor
         mon.allow_slverr = False
         mon.allow_decerr = False
         self.mem.clear_errors()
