@@ -477,7 +477,7 @@ they leave out; the checker table of each linked entry is the full set.
 |Mailbox outbox FIFO, threshold interrupt and error flags |<<sep_axil_mailbox_iface_rand_test,`sep_axil_mailbox_iface_rand_test`>> |all, cpu_stub |`sep_mbox_rand_cg` |The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt status gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. This aperture's interrupt leaves the block on `smc_mailbox_interrupt_o`, so only its status registers are graded here; `Mailbox -> PIC` grades delivery to the SEP CPU, which the inbound aperture drives, on `sep_mailbox_plic_test`. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side and are graded by <<sep_mailbox_peer_rx_rirqt_test>>. |YES
 |Mailbox data path, all eight mailboxes, both directions |<<sep_mailbox_datapath_walk_test,`sep_mailbox_datapath_walk_test`>> |all, cpu_stub |None |Every bit of a 64-bit entry, walked one and zero, through each mailbox's host-to-peer and peer-to-host FIFO, in push order; FIFO depth on STATUS; strobed bytes in their own lanes; no push reaching another mailbox. |YES
 |Interrupt aggregator packing under simultaneous fan-in |<<sep_irq_simultaneous_fanin_no_alias_test,`sep_irq_simultaneous_fanin_no_alias_test`>> |all, cpu_stub |None |Several cross-IP sources asserted at once must produce exactly their own bits in `sep_internal_interrupts[8:33]`, with every bit of that region resolved rather than floating. `PIC source map` grades the source-to-PIC-id map and CPU delivery on `sep_pic_irq_source_map_delivery_test`; this row is the aggregation itself — the place a one-hot map can smear onto a neighbour — and is a distinct contract from delivery. |YES
-|SPI host control plane (CSR, interrupt, error status, watermark, enable) |<<sep_spi_ot_host_csr_irq_rand_test,`sep_spi_ot_host_csr_irq_rand_test`>> |all, cpu_stub |`sep_spi_flash_cg`, `sep_spi_host_rand_cg` |Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the OpenTitan Event-versus-Status interrupt contract (`INTR_STATE.ERROR` latches and clears only on write-one-to-clear; `INTR_STATE.SPI_EVENT` tracks the `INTR_TEST` force), `INTR_ENABLE` gating of `sep_internal_interrupts[13]`, five of the six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others (ACCESSINVAL is not claimed: its documented trigger is a write with no bytes enabled, which neither this AXI master nor the wrapper bridge presents to the core), a 64-bit CONTROL write whose empty STATUS half the wrapper must ack, the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane. |YES for the claimed part; the evidence cell names the rest
+|SPI host control plane (CSR, interrupt, error status, watermark, enable) |<<sep_spi_ot_host_csr_irq_rand_test,`sep_spi_ot_host_csr_irq_rand_test`>> |all, cpu_stub |`sep_spi_flash_cg`, `sep_spi_host_rand_cg` |Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the OpenTitan Event-versus-Status interrupt contract (`INTR_STATE.ERROR` latches and clears only on write-one-to-clear; `INTR_STATE.SPI_EVENT` is set by the `INTR_TEST` force and its release is logged only), `INTR_ENABLE` gating of `sep_internal_interrupts[13]`, five of the six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others (ACCESSINVAL is not claimed: its documented trigger is a write with no bytes enabled, which neither this AXI master nor the wrapper bridge presents to the core), a 64-bit CONTROL write whose empty STATUS half the wrapper must ack, the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane. |YES for the claimed part; the evidence cell names the rest
 |SECURE_TM shadow-write lock |<<sep_efuse_secure_tm_write_lock_test,`sep_efuse_secure_tm_write_lock_test`>> |all, cpu_stub |None |Each of `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` takes the same seeded payload twice: with the strap low the write lands (set-only rows OR-merge; `LC_STATE[31:8]` takes a plain shadow write), and after the strap is raised and the image re-sensed the stored value does not move and `sep_internal_interrupts[33]` pulses. The write response is logged, not graded. A `SecureTmUnlock` spare still takes a write with the strap up, so the refusal is the lock rather than a dead write path. Real fuse sense at `LC_PROD`. |YES for the claimed part; the evidence cell names the rest
 |eFuse locked-field access violation interrupt |<<sep_locked_field_access_irq_path_test,`sep_locked_field_access_irq_path_test`>> |all, cpu_stub |None |A write to a write-locked spare and a read of a read-locked spare each raise `sep_internal_interrupts[33]` (PIC source 34) for the duration of the access and drop the line after the access retires. The write-locked spare keeps its pre-write value, and the read-locked read does not return the stored value. An unlocked spare in the same OTP image is the negative control. The response code of a locked access is logged, not graded. Real fuse sense at `LC_PROD`. |YES for the claimed part; the evidence cell names the rest
 |Token comparator redundancy fault delivery to the CPU |<<sep_efuse_token_match_fault_pic_test,`sep_efuse_token_match_fault_pic_test`>> |all, cpu |None |EL2 claims PIC source 40, reads the sticky `TOKEN_MATCH_FAULT` bit, and masks `meie[40]`; because the fault bits are software-read-only and clear only on reset, the check requires the source to be still requesting across the quiet window, which is what makes the mask the reason for the quiet. `RMA token match -> LC update` grades the comparator matrix on `sep_efuse_rma_token_rand_test` and is not re-credited here. |YES
@@ -1151,7 +1151,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, bridge fault golden; outbound responder response control (error inject)
-|Proves that a faulting CPU access latches only its own block bit, that source 43 is the OR of the block bits, and that each clear bit clears only its own block. Also proves that a non-OKAY response to a DMA source read latches `host_path_err` alone and raises source 42, that `DMA_BUS_ERR_CLEAR` clears both DMA latches only on a written 1, and that a fault in the cycle of its own clear still latches. The same-cycle legs sample `sep_cpu_ctrl_err_pulse_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list. The DMA host-path legs use the response control of the outbound responder, an error inject the test adds to `docs/SEP_TB_ARCH.adoc`.
+|Proves that a faulting CPU access latches only its own block bit, that source 43 is the OR of the block bits, and that each clear bit clears only its own block. Also proves that a non-OKAY response to a DMA source read latches `host_path_err` alone and raises source 42, that `DMA_BUS_ERR_CLEAR` clears both DMA latches only on a written 1, that a write of 1 to `STATUS.ERROR` leaves `host_path_err` and source 42 set, and that a fault in the cycle of its own clear still latches. The same-cycle legs sample `sep_cpu_ctrl_err_pulse_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list. The DMA host-path legs use the response control of the outbound responder, an error inject the test adds to `docs/SEP_TB_ARCH.adoc`.
 |<<sep_cpu_ctrl_timeout_inert_rand_test,`sep_cpu_ctrl_timeout_inert_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
@@ -1209,17 +1209,17 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, SPI pad ports, lane and output-enable taps (approved)
-|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. Each cell runs at a drawn lane width, and its Tx and Rx data are graded byte for byte on the lanes. Each cell has exactly the frames it registered, and each Rx segment delivers exactly its RXDATA words. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because `spi_controller.adoc` (CONFIGOPTS) gives that cell a shift edge that differs from the general CPHA text; the CPHA=1 edge closes on a merge of regressions. At CPHA=0 and x1, x2 and x4 on every seed, an Rx segment from a late responder reads the seeded bytes with FULLCYC=1 and one beat late with FULLCYC=0 (control), so the FULLCYC sampling point is graded; at CPHA=1 it is not. CSNLEAD, CSNTRAIL and CSNIDLE are graded as the minimum bounds the OpenTitan theory of operation states, and their margin is logged.
+|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. Each cell runs at a drawn lane width, and its Tx and Rx data are graded byte for byte on the lanes. Each cell has exactly the frames it registered, and each Rx segment delivers exactly its RXDATA words. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because two OpenTitan texts give that cell different shift edges (`OBS-SPI-CPHA`); the CPHA=1 edge closes on a merge of regressions. At CPHA=0 and at CPHA=1, at x1, x2 and x4 on every seed, an Rx segment from a late responder reads the seeded bytes with FULLCYC=1 and one beat late with FULLCYC=0 (control), so the FULLCYC sampling point is graded. With CONTROL.OUTPUT_EN=1 the chip-select and clock output enables are on in every frame, in the gaps and while chip select is high, and both are off before the first OUTPUT_EN write (control). CSNLEAD, CSNTRAIL and CSNIDLE are graded as the minimum bounds the OpenTitan theory of operation states, and their margin is logged.
 |<<sep_spi_fifo_stall_watermark_rand_test,`sep_spi_fifo_stall_watermark_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, SPI pad ports, lane and output-enable taps (approved)
-|Proves, at x1, x2 and x4 on every seed, that TXSTALL and RXSTALL pause sck, that the watermark flags follow the occupancy at watermark 0, above the depth and on the RX axis as RXQD rises and falls, and that the full flags, the RXQD step per read and the command queue follow the words moved. Also proves at each width the Tx and Rx data of every frame, INTR_STATE.SPI_EVENT for the watermark events, and no data lane driven after a SW_RST abort.
+|Proves, at x1, x2 and x4 on every seed, that TXSTALL and RXSTALL pause sck, that the watermark flags follow the occupancy at watermark 0, above the depth and on the RX axis as RXQD rises and falls, and that the full flags, the RXQD step per read and the command queue follow the words moved. It also proves that the TX FIFO takes 73 words before TXFULL, that an idle 64-word Rx segment gives RXFULL and RXQD 64, and that CMDQD stays at 4 or below (`spi_host.hjson:93-107`, `theory_of_operation.md:684-685`). Also proves at each width the Tx and Rx data of every frame, INTR_STATE.SPI_EVENT for the watermark events, and no data lane driven and the chip-select and clock output enables on after a SW_RST abort. The RX words held past RXFULL are logged only: no source states them.
 |<<sep_spi_ot_host_csr_irq_rand_test_leg,`sep_spi_ot_host_csr_irq_rand_test`>> (extension)
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, SPI pad ports and `sep_internal_interrupts_probe_o` (approved)
-|Extends the open test with four legs: SPI_EVENT from real sources and the line into PIC source 14, INTR_STATE.ERROR from real error kinds (CSIDINVAL at a drawn CSID from 2 to 0xFFFFFFFE; CSID=1 logged only) with accumulation and clear masks, 8-byte writes whose strobes select one half, and SW_RST and SPIEN with queued commands. Only the new cells are graded. The open test keeps the rest.
+|Extends the open test with four legs: SPI_EVENT from real sources and the line into PIC source 14, INTR_STATE.ERROR from real error kinds (CSIDINVAL at a drawn CSID from 2 to 0xFFFFFFFE; CSID=1 logged only, because two statements of the OpenTitan theory of operation differ) with accumulation and clear masks, a masked kind that sets its own ERROR_STATUS bit and not INTR_STATE.ERROR, 8-byte writes whose strobes select one half, and SW_RST and SPIEN with queued commands. Only the new cells are graded. The open test keeps the rest.
 |<<sep_spi_cold_reset_values_rand_test,`sep_spi_cold_reset_values_rand_test`>>
 |3
 |no_cpu, real fuse sense (VCS only)
@@ -1229,22 +1229,22 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense
 |ocah_axi_vip, `spi_cs_oe_o`, `spi_sck_oe_o`, `spi_sd_oe_o`, `spi_cs_n_o` and `dbg_sep_reset_n_o` (approved)
-|Proves that no SPI pad is driven in the cold-reset window (graded on VCS) or while CONTROL.OUTPUT_EN is 0 with a command running, that a data lane is driven only while chip select is low, and that the chip-select and clock output enables are on while chip select is low.
+|Proves that no SPI pad is driven in the cold-reset window (graded on VCS) or while CONTROL.OUTPUT_EN is 0 with a command running, that a data lane is driven only while chip select is low, and that the chip-select and clock output enables are on with chip select high or low while CONTROL.OUTPUT_EN is 1 (`spi_host.hjson:222-224`).
 |<<sep-spi-lane-coverage,SPI lane data and output-enable coverage statement>>
 |3
 |-
 |-
-|States what the SPI tests grade at x1, x2 and x4 at the SEP boundary, and names the open items: the reset value of STATUS.BYTEORDER, the FIFO depths, the FULLCYC sampling point at CPHA=1, and code coverage. Octal, DDR, DQS and SPI.DATA[4-7] are not functions of the SEP host and are outside the statement.
+|States what the SPI tests grade at x1, x2 and x4 at the SEP boundary, and names the open items: the reset value of STATUS.BYTEORDER, the RX words held past RXFULL, the shift edge at CPHA=1 with FULLCYC=1, and code coverage. Octal, DDR, DQS and SPI.DATA[4-7] are not functions of the SEP host and are outside the statement.
 |<<sep_dma_transfer_matrix_rand_test,`sep_dma_transfer_matrix_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, `dma_busy_probe_o` and `sep_internal_interrupts_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
-|Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses (the full AxADDR at width 4; at widths 1 and 2 AxADDR[31:2] and the WSTRB byte lanes of each write beat, with AxADDR[1:0] logged only), the CHUNK_DONE rises and their hardware clear, and the DONE rise after the last B response.
+|Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses (the full AxADDR at width 4; at widths 1 and 2 AxADDR[31:2] and the WSTRB byte lanes of each write beat, with AxADDR[1:0] logged only), the CHUNK_DONE rises and their hardware clear, the stop after each non-final chunk until the next GO, and the DONE rise after the last B response.
 |<<sep_dma_irq_error_lock_rand_test,`sep_dma_irq_error_lock_rand_test`>>
 |3
 |no_cpu, real fuse sense
 |ocah_axi_vip, `sep_internal_interrupts_probe_o` and `dbg_sep_reset_n_o` (approved)
-|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, and that the engine takes a legal copy after a size error with no reset. It also proves that after a write of MuBi4 False (0x9) to RANGE_REGWEN, from idle and after a size error, RANGE_REGWEN reads 0x9 and no write of 0x6, 0xF, 0x9 or 0x0 re-opens it, and that writes to ENABLED_MEMORY_RANGE_BASE, ENABLED_MEMORY_RANGE_LIMIT and RANGE_VALID do not change their read-back, and that a copy with a non-zero SRC_ADDR_HI or DST_ADDR_HI and legal LO addresses moves no data to the 32-bit destination; ERROR_CODE for that copy is logged only.
+|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, that a single-chunk copy raises no CHUNK_DONE in STATUS, in INTR_STATE or on source 10, that a write of 1 to STATUS.ERROR releases INTR_STATE.DMA_ERROR and source 11, and that the engine takes a legal copy after a size error with no reset. It also proves that after a write of MuBi4 False (0x9) to RANGE_REGWEN, from idle and after a size error, RANGE_REGWEN reads 0x9 and no write of 0x6, 0xF, 0x9 or 0x0 re-opens it, and that writes to ENABLED_MEMORY_RANGE_BASE, ENABLED_MEMORY_RANGE_LIMIT and RANGE_VALID do not change their read-back, and that a copy with a non-zero SRC_ADDR_HI or DST_ADDR_HI and legal LO addresses moves no data to the 32-bit destination; ERROR_CODE for that copy is logged only.
 |<<sep_dma_abort_recovery_rand_test,`sep_dma_abort_recovery_rand_test`>>
 |3
 |no_cpu, real fuse sense
@@ -1398,7 +1398,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu
 |LSU master, `clk_i`, `clk_ref_i` and `clk_wdt_i` drive, timer register model, `dbg_rst_l_probe_o` (observation tap)
-|Proves that `REFERENCE_COUNTER` advances at the `clk_ref_i` rate and restarts from zero after a cold reset, that the watchdog bark and bite follow their thresholds in order and `INTR_TEST` forces the bark, and that the wakeup threshold and count work across the 32-bit boundary. Proves that 11 watchdog registers, each on the lane that its offset selects, answer four patterns with their access type. Owns the watchdog threshold and `WDOG_REGWEN.regwen` contract across every reset event: `regwen` clears once, the thresholds keep their values over a `wdt_rst_ni` pulse, a `dbg_rstb_i` pulse, a software engine reset and a `sep_reset_n` override, and all return to their defaults only at a cold reset. Extends the open timer tests with those cells only.
+|Proves that `REFERENCE_COUNTER` advances at the `clk_ref_i` rate and restarts from zero after a cold reset, that the watchdog count advances by 1 per `clk_wdt_i` period and the wakeup count by 1 per prescaler + 1 periods, that the bark time follows the bark threshold in `clk_wdt_i` periods, that the watchdog bark and bite follow their thresholds in order and `INTR_TEST` forces the bark, and that the wakeup threshold and count work across the 32-bit boundary. Proves that 11 watchdog registers, each on the lane that its offset selects, answer four patterns with their access type. Owns the watchdog threshold and `WDOG_REGWEN.regwen` contract across every reset event: `regwen` clears once, the thresholds keep their values over a `wdt_rst_ni` pulse, a `dbg_rstb_i` pulse, a software engine reset and a `sep_reset_n` override, and all return to their defaults only at a cold reset. Extends the open timer tests with those cells only.
 
 |<<sep_boot_rom_aperture_sweep_test,`sep_boot_rom_aperture_sweep_test`>>
 |3
@@ -2431,10 +2431,6 @@ the test does.
 |KMAC: list the ERR_CODE values. The RDL points to an RTL enum. Source: `vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc` (`ERR_CODE`).
 |`sep_kmac_unsupported_cfg_inject_test` grades the reset value 0 before the start and logs the code after the error (`OBS-KMAC-ERRCODE`). `sep_kmac_entropy_mode_rand_test` grades the reset value 0 before each EDN wait-timer run (`CTRL-KMAC-TIMER-PRESTATE`) and logs the code after the error (`OBS-KMAC-TIMER-ERRCODE`); CHK-KMAC-TIMER grades `kmac_err`
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
-|The HMAC, KMAC and OTBN windows beyond the listed registers are decoded in full or in part. Window offsets and sizes are not stated.
-|HMAC, KMAC and OTBN: are the window offsets in the integration RDL the ruling source? The documents state extents only. Source: `hw/sys/sep/regs/gen/adoc/memory_map.adoc`; `integration/rdl/sep/otbn.rdl`; `integration/rdl/sep/hmac.rdl`; `integration/rdl/sep/kmac.rdl`.
-|`sep_fabric_row_response_matrix_test` and `sep_cpu_bridge_fault_matrix_rand_test` use the RDL offsets
-|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |Firmware must zeroize between back-to-back ABR operations. The hardware response to a start without zeroize is not stated.
 |ABR: hardware response to a start without a zeroize. Source: `hw/sys/sep/doc/adams_bridge.adoc` (OCAH Modifications).
 |never driven
@@ -2780,7 +2776,7 @@ the test does.
 |`sep_pic_pending_map_walk_rand_test` logs the cell as `OBS-GW-EL` and grades the other three
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Release of the Secure DMA interrupt
-|Which write drops the Secure DMA interrupt (`DMA_DONE`) once it is set? (`secure_dma.adoc`: `INTR_STATE` is R, and `INTR_TEST` only forces it to 1.)
+|Which write drops a Secure DMA interrupt (`DMA_DONE`) that `INTR_TEST` forced? (`secure_dma.adoc`: `INTR_STATE` is R, and `INTR_TEST` only forces it to 1.) A write of 1 to the matching STATUS bit drops a status interrupt that the hardware set (OpenTitan DMA `programmers_guide.md:39`; `dma.adoc:131-132`).
 |`sep_pic_priority_gate_rand_test` and `sep_pic_pending_map_walk_rand_test` do not draw source 9 to 11
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Zero fill of unstrobed lanes with non-zero data
@@ -2800,8 +2796,8 @@ the test does.
 |-
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>; <<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA host-path double report
-|Does one clear (`DMA_BUS_ERR_CLEAR` or the DMA error clear) affect the other report? (`sep_cpu_ctrl.adoc`, `DMA_BUS_ERR_STATUS`; `vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl`, `ERROR_CODE`.) Does the DMA halt?
-|Graded leg: Non-OKAY response sets host_path_err and BUS_ERROR (`sep_cpu_bridge_fault_matrix_rand_test`)
+|Does a write of 1 to `DMA_BUS_ERR_CLEAR` change `STATUS.ERROR` or `ERROR_CODE.BUS_ERROR`? (`sep_cpu_ctrl.adoc`, `DMA_BUS_ERR_STATUS`; `vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl`, `ERROR_CODE`.) Does the DMA halt? A write of 1 to `STATUS.ERROR` leaves `host_path_err` set: each bit is "held until the corresponding DMA_BUS_ERR_CLEAR write" (`sep_cpu_ctrl.adoc:53-55`).
+|Graded leg: Non-OKAY response sets host_path_err and BUS_ERROR (CHK-HOST), and a write of 1 to STATUS.ERROR leaves host_path_err and source 42 set (CHK-DMA-HOST-HOLD) (`sep_cpu_bridge_fault_matrix_rand_test`). STATUS.ERROR and ERROR_CODE.BUS_ERROR after a write of 1 to DMA_BUS_ERR_CLEAR are logged (`OBS-DMA-HOST-CLR`)
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Order of bark against a takeable PIC interrupt
 |Is a bark or a takeable PIC interrupt taken first, and does an NMI preempt a running external handler? (`hw/sys/sep/doc/interrupts.adoc`, "NMI — Watchdog Timer Bark".)
@@ -2860,12 +2856,12 @@ the test does.
 |Graded leg: Period ratio in core clocks (`sep_spi_pad_timing_cfg_rand_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI FIFO depths
-|What are the TX and RX FIFO depths (`spi.adoc`, Features)?
-|Graded leg: Depth found at run time (`sep_spi_fifo_stall_watermark_rand_test`), never compared. Gated leg: the RX watermark crossing at the reset value 0x7F (the FCOV Bins-not-graded table, `cp_rxwm_reset`)
+|`spi.adoc` (Features) states no depth number. The SEP SPI host is the unmodified OpenTitan IP, whose parameters are TxDepth 72, RxDepth 64 and CmdDepth 4 (`spi_host.hjson:93-107`; `sep-programming.adoc:784`). Does the SEP build keep them?
+|Graded leg: TX 73 words before TXFULL, RXFULL and RXQD 64 at an idle 64-word Rx segment, CMDQD at 4 or below (`sep_spi_fifo_stall_watermark_rand_test`, CHK-SPI-DEPTH-TX, CHK-SPI-DEPTH-RX, CHK-SPI-DEPTH-CMD). The RX words past RXFULL are logged (`OBS-SPI-RX-EXTRA`). Gated leg: the RX watermark crossing at the reset value 0x7F (the FCOV Bins-not-graded table, `cp_rxwm_reset`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI CSIDINVAL at CSID=1
-|Does a command with CSID=1 raise CSIDINVAL when NumCS=1? `spi_host.hjson` (`ERROR_ENABLE.CSIDINVAL`) raises the error when CSID exceeds NumCS, and CSID=1 does not exceed NumCS=1. The CSID field text asserts `cio_csb_o[CSID]`, and `sep_io` has one chip select (`spi.adoc`, Features: `NUM_CS = 1`), so no line exists for CSID=1.
-|Graded leg: CSID from 2 to 0xFFFFFFFE (`sep_spi_ot_host_csr_irq_rand_test`, CHK-SPI-CSID-RANGE), where both texts agree. CSID=1 is logged as `OBS-SPI-CSID1 LOG`
+|Does a command with CSID=1 raise CSIDINVAL when NumCS=1? The OpenTitan theory of operation says "However in this case the CSID value is ignored." (`theory_of_operation.md:205`) and "Submitting a command segment to an invalid CSID (one larger or equal to `NumCS`) will trigger a ERROR_STATUS.CSIDINVAL event." (`theory_of_operation.md:597`), both of tenstorrent/tt-opentitan@d1ce369cb. `spi_host.hjson` (`ERROR_ENABLE.CSIDINVAL`) raises the error when CSID exceeds NumCS. `sep_io` has one chip select (`spi.adoc`, Features: `NUM_CS = 1`).
+|Graded leg: CSID from 2 to 0xFFFFFFFE (`sep_spi_ot_host_csr_irq_rand_test`, CHK-SPI-CSID-RANGE), where the statements agree. CSID=1 is logged as `OBS-SPI-CSID1 LOG`
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI access to a write-only or read-only register
 |What is the response to a read of a write-only or a write of a read-only SPI register?
@@ -2892,8 +2888,8 @@ the test does.
 |Graded leg: Reset value 0x77 (`sep_cpu_reset_retention_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA INTR_STATE release
-|How do INTR_STATE and a forced DMA interrupt release (`secure_dma.adoc`, INTR_STATE, INTR_TEST)? `secure_dma.adoc` and `secure_dma.rdl` give INTR_STATE as read-only, `dma.hjson` types the interrupts "status", and no write that releases INTR_STATE is stated.
-|Graded leg: Enable gate and event lines (`sep_dma_irq_error_lock_rand_test`). Interrupt trials start from a cold reset
+|How does a forced DMA interrupt release (`secure_dma.adoc`, INTR_STATE, INTR_TEST)? `secure_dma.adoc` and `secure_dma.rdl` give INTR_STATE as read-only and `dma.hjson` types the interrupts "status". A write of 1 to the matching STATUS bit releases a status interrupt that the hardware set ("Since interrupts are implemented as status bits, they are cleared by writing a '1' to the corresponding bit in the STATUS register", OpenTitan DMA `programmers_guide.md:39`; `dma.adoc:131-132`); no write that releases a bit forced by `INTR_TEST` is stated.
+|Graded leg: Enable gate and event lines, the single-chunk copy, and the release of INTR_STATE.DMA_ERROR by a write of 1 to STATUS.ERROR (`sep_dma_irq_error_lock_rand_test`, CHK-DMA-IRQ, CHK-DMA-IRQ-SINGLE, CHK-DMA-INTR-RELEASE). The release of DMA_DONE and DMA_CHUNK_DONE is not graded. Interrupt trials start from a cold reset
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA state between the configuration writes and GO, and `STATUS.BUSY` while a handshake DMA waits
 |What is the observable state of the DMA between the last configuration write and `GO` (FCOV `cp_busy_phase`, bin `configured_go_clear`), and does `STATUS.BUSY` read 1 while a hardware-handshake DMA waits for a trigger (bin `awaiting_handshake`)? The specification says only that the bit "may be set".
@@ -2930,10 +2926,6 @@ the test does.
 |SPI ALERT_TEST
 |Where does SPI ALERT_TEST go (`spi_controller.adoc`, ALERT_TEST)?
 |Graded leg: None
-|<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|Multi-chunk memory-to-memory GO protocol
-|Does one GO run every chunk to DONE, or does each chunk need its own GO, and with which INITIAL_TRANSFER value (`secure_dma.adoc`, TOTAL_DATA_SIZE, CHUNK_DATA_SIZE, CONTROL.GO, STATUS.CHUNK_DONE)?
-|Graded leg: Multi-chunk legs accept both readings and log `go_writes` (`sep_dma_transfer_matrix_rand_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |AxSIZE of a narrow DMA transaction
 |Does the TL-UL to AXI4 path set AxSIZE to the TL-UL size (1, 2 or 4 bytes) or to the bus width with narrow strobes, and which AxADDR[1:0] does a 1-byte or 2-byte transaction carry (`dma.adoc`, overview; `fabric.adoc`, Top Level AXI4)?
@@ -3027,10 +3019,6 @@ the test does.
 |What does 'same alignment' mean for two addresses that are each aligned to the transfer width, and which `ERROR_CODE` bit (`SRC_ADDR_ERROR`, `DST_ADDR_ERROR` or both) does a mismatch raise? Source: `vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc` (`SRC_ADDR_LO`, `DST_ADDR_LO`).
 |The open tests grade width-misaligned addresses only. No Phase 3 entry drives an alignment mismatch between source and destination.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|A copy of exactly one chunk and the chunk-done interrupt (PIC source 10). The cited text does not say whether a single-chunk copy raises `DMA_CHUNK_DONE`.
-|Does a copy of one chunk raise `DMA_CHUNK_DONE` when the source is enabled? Source: `vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc` (`INTR_ENABLE`, `STATUS.CHUNK_DONE`); `hw/sys/sep/doc/interrupts.adoc` (SEP CPU Interrupt Vector Map, source 10).
-|`sep_dma_irq_error_lock_rand_test` logs the line of source 10 for the single-chunk event and grades it only when `DMA_CHUNK_DONE` is disabled.
-|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`ROM_CTL` swap encodings
 |What does each of the 32 `ROM_CTL` swap encodings do to the ROM read path?
 |`sep_boot_rom_aperture_sweep_test` runs with `ROM_CTL` = 0 only
@@ -3070,10 +3058,6 @@ the test does.
 |Zbf, Zbp and Zbr encodings
 |Which encodings do Zbf, Zbp and Zbr use? (`hw/sys/sep/doc/cpu.adoc` names the extensions and gives no encodings. The Zbe encodings and result functions come from the draft, unratified "RISC-V Bitmanip Extension" specification v0.93 (January 2021), the approved source for Zbe; `sep_cpu_zbe_exec_test` grades Zbe.)
 |`sep_cpu_isa_pmp_csr_test` does not drive the Zbf, Zbp or Zbr traps
-|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
-|Watchdog count unit
-|Does `WDOG_COUNT` advance by one per `clk_wdt_i` period? The specification names `clk_wdt_i` as the timer clock and states no unit. Source: `hw/sys/sep/doc/watchdog.adoc`; `vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc` (`WDOG_COUNT`).
-|`sep_timer_clock_contract_test` grades count read-back relations only and logs the rate as `OBS-WDT-RATE`
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Sense-done stability
 |Does `sep_fuse_sense_done_o`, or `SEP_FUSE_SENSE_STATUS`, stay 1 after it rises while `rst_ni` is high? Source: `hw/sys/sep/doc/otp_fuse_controller.adoc` (Fuse Sensing and Boot Sequencing); `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc` (`SEP_FUSE_SENSE_STATUS`).
@@ -3434,13 +3418,9 @@ feature, and the note says how the test treats the blocked leg.
 |Where does a later chunk start when INCREMENT=0 and WRAP=0, given "not changed" for INCREMENT=0 and "contiguous ascending addresses" for WRAP=0 (`secure_dma.adoc`, SRC_CONFIG, DST_CONFIG)?
 |Effect: Driven with one chunk only (`sep_dma_transfer_matrix_rand_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|Masked SPI error
-|Does a masked SPI error still set its status bit (`spi_controller.adoc`, ERROR_ENABLE, ERROR_STATUS)?
-|Effect: Log-only (`OBS-SPI-MASK`)
-|<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |Forced SPI_EVENT release
-|How does a forced SPI_EVENT release (`spi_controller.adoc`, INTR_TEST)?
-|Effect: Not graded
+|What does INTR_STATE.SPI_EVENT read after INTR_TEST.SPI_EVENT is written 1 and then 0 with no EVENT_ENABLE source true? The OpenTitan comportability text gives the INTR_TEST release rule for neither interrupt type and does not say how INTR_TEST combines with the hardware input of a Status interrupt; `spi.adoc:80` states a release for ERROR only (`spi_controller.adoc`, INTR_TEST).
+|Effect: Not graded; the value is logged (`OBS-SPI-EVENT-RELEASE`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA interrupt clear write
 |When does the clear write of CLEAR_INTR_SRC land, and which bus encoding selects which port (`secure_dma.adoc`, CLEAR_INTR_SRC, INTR_SRC_ADDR_0)?
@@ -3827,7 +3807,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Non-OKAY response and response hold of the outbound responder `sep_outbound_mbx`
 |An inject on the responder for a non-OKAY response to a DMA source read and for a response hold. The responder answers OKAY at once.
 |ADD-PORT
-|The response control is an error inject on the `sep` input `smn_outbound_axi_resp_i` that the test adds to the inject exceptions of `docs/SEP_TB_ARCH.adoc`. Checks that use it: CHK-HOST and the host-path cells of CHK-DMA-CLR and CHK-RACE of `sep_cpu_bridge_fault_matrix_rand_test`, and the outbound filter, alias remap and DMA stalls of `sep_cpu_ctrl_timeout_inert_rand_test`. The response of the fabric to a DMA-master access at a reserved window is not stated (see the unstated cells), so no address replaces the control.
+|The response control is an error inject on the `sep` input `smn_outbound_axi_resp_i` that the test adds to the inject exceptions of `docs/SEP_TB_ARCH.adoc`. Checks that use it: CHK-HOST, CHK-DMA-HOST-HOLD and the host-path cells of CHK-DMA-CLR and CHK-RACE of `sep_cpu_bridge_fault_matrix_rand_test`, and the outbound filter, alias remap and DMA stalls of `sep_cpu_ctrl_timeout_inert_rand_test`. The response of the fabric to a DMA-master access at a reserved window is not stated (see the unstated cells), so no address replaces the control.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |FCOV sampler references into the PIC, the claim logic, the TLU, each mailbox and the inbound filter
 |Read-only hierarchical references from `u_sep_fcov` to `PIC` (`pic_ctrl_inst`), `CLAIM`, `TLU`, `MB[m]` (mailbox ports and FIFOs) and `FILT`
@@ -3862,7 +3842,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |DMA master beat fields, DMA STATUS level bits and the DMA_BUS_ERR_STATUS host-path latch
 |AxLEN, WSTRB, the read address step and the beat addresses of the DMA master; the level of `STATUS.DONE`, `CHUNK_DONE`, `ERROR`, `ABORTED` and `SHA2_DIGEST_VALID` on each clock; the fault input and the clear pulse of the host-path latch
 |ACCEPT-PROBE
-|No existing probe shows them. `dma_axi_req_probe_o`, `dma_status_probe_o` and `dma_bus_err_latch_probe_o` are observation taps the test adds to the SEP_TB_ARCH observation-probe list. Checks on them: CHK-DMA-BEAT, CHK-DMA-ADDR, CHK-DMA-CHUNKRISE and CHK-DMA-DONE-ORDER of `sep_dma_transfer_matrix_rand_test`, CHK-DMA-ABORT-BEATS of `sep_dma_abort_recovery_rand_test`. CHK-RACE of `sep_cpu_bridge_fault_matrix_rand_test` grades the DMA fault-versus-clear race on `sep_cpu_ctrl_err_pulse_probe_o`, which gives the same observation as `dma_bus_err_latch_probe_o` (see the same-cycle row above).
+|No existing probe shows them. `dma_axi_req_probe_o`, `dma_status_probe_o` and `dma_bus_err_latch_probe_o` are observation taps the test adds to the SEP_TB_ARCH observation-probe list. Checks on them: CHK-DMA-BEAT, CHK-DMA-ADDR, CHK-DMA-CHUNKRISE, CHK-DMA-DONE-ORDER and CHK-DMA-GO-CHUNKS of `sep_dma_transfer_matrix_rand_test`, CHK-DMA-ABORT-BEATS of `sep_dma_abort_recovery_rand_test`. CHK-RACE of `sep_cpu_bridge_fault_matrix_rand_test` grades the DMA fault-versus-clear race on `sep_cpu_ctrl_err_pulse_probe_o`, which gives the same observation as `dma_bus_err_latch_probe_o` (see the same-cycle row above).
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Clock of every flop
 |-
@@ -4385,7 +4365,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`dma_axi_req_probe_o`
 |Read-only probe
 |The AR, AW, W and B channel fields (address, AxLEN, write strobes, handshakes) of the DMA master after the alias remap.
-|`sep_dma_transfer_matrix_rand_test` (CHK-DMA-BEAT, CHK-DMA-ADDR, CHK-DMA-DONE-ORDER), `sep_dma_abort_recovery_rand_test` (CHK-DMA-ABORT-BEATS)
+|`sep_dma_transfer_matrix_rand_test` (CHK-DMA-BEAT, CHK-DMA-ADDR, CHK-DMA-DONE-ORDER, CHK-DMA-GO-CHUNKS), `sep_dma_abort_recovery_rand_test` (CHK-DMA-ABORT-BEATS)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |`dma_status_probe_o`
 |Read-only probe
@@ -5155,7 +5135,7 @@ test that owns the feature, or states why no pass or fail value exists.
 |The specification states no contract for these rows.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`clk_wdt_i` is a 200 kHz clock, asynchronous to `clk_i`, that times the watchdog counter.
-|The rate is a property of the bench clock, and no DUT output states a pass or fail value for it. The hole "Clock of every flop" and the question "Watchdog count unit" cover the observable part.
+|The rate is a property of the bench clock, and no DUT output states a pass or fail value for it. The hole "Clock of every flop" covers the observable part, and CHK-WDT-RATE grades the count per `clk_wdt_i` period.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |The core has no instruction cache and runs user mode.
 |The absence of an instruction cache is a negative property with no probe. The user-mode part stays with `sep_cpu_isa_pmp_csr_test`.
