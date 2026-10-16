@@ -943,6 +943,7 @@ reset, access type and write-one-to-clear behaviour in each instance.
 |`smc_log_engine_abort_test` |A log-engine transfer on all four wrapper instances halted part-way by clearing CTRL.EN, then a shorter entry re-triggered and delivered in full.
 |`smc_log_engine_transfer_test` |A real log-engine transfer on all four wrapper instances: four logs fetched from the SPM log region and written to the wrapper UART in loopback, read back byte for byte.
 |`smc_log_engine_region_size_test` |Wrapper 0 log-engine slot start, capacity clamp, zero-capacity completion and LOG_LEN resubmission over region sizes 0x80, 0x200, 135, 143, 144, 271 and 127.
+|`smc_log_engine_round_robin_test` |Wrapper 0 log-engine arbitration: whole 16-byte messages, each slot exactly once, zero lengths skipped, LOG_LEN held and hardware cleared, and a second wave written while a message is in flight; the service order is measured.
 |`smc_uart_log_engine_field_sweep_test` |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
 |`smc_uart_loopback_test` |AXI-program UART0 THR and capture the byte on pad12 TX.
@@ -27755,6 +27756,92 @@ not part of the claim. Enrolled in: `all`, `hosted`.
 
 '''''
 
+[[sec-531-smc_log_engine_round_robin_test]]
+===== 531 `smc_log_engine_round_robin_test`
+
+*Source Module*: `smc_log_engine_round_robin_test`
+
+*BFM / Model*: SEP_IN AXI sequencer writing and reading the SPM log window (0x100 bytes, slot `s`
+byte `j` carrying `(s << 4) | j`), the wrapper 0 log-engine registers `LOG_REGION_SIZE`,
+`LOG_REGION_ADDR`, `LOG_WRITE_ADDR`, `LOG_CTRL[i].LOG_LEN`, `CTRL.EN` and `INTR_STATUS`, the
+wrapper 0 UART `THR`, `RBR`, `LSR` and `MCR.LOOP`, and `CTRL.UART_EN`; the engine writes `THR` and
+the bytes return through the same UART's receiver, so no pad carries them
+
+*Objective*: The wrapper 0 arbiter serves each pending slot as one whole message exactly once,
+skips zero lengths, and `LOG_LEN` holds the submitted value until hardware clears it.
+
+*Test Coverage*:
+
+* Atomic messages: with four, sixteen and five slots pending, every message arrives at `RBR` as 16
+  consecutive bytes of one slot in order, with no byte of another slot between them
+  (`log_engine/doc/architecture.adoc` "Arbitration and Data Transfer": scheduling is per message,
+  not per byte; `log_engine/doc/index.adoc`).
+* Exactly once: with all 16 entries pending the stream is 256 bytes holding each slot's message
+  once and nothing after the last (`log_engine.rdl` `LOG_CTRL`; `architecture.adoc` "Arbitration
+  and Data Transfer").
+* Zero lengths: entries 0 and 11 written with `LOG_LEN` 0 beside four pending entries deliver no
+  byte and read 0 (`architecture.adoc` "Memory Slots and Lengths": only a nonzero length makes a
+  slot pending).
+* Hold and clear: `LOG_CTRL` reads taken during the first wave return the submitted 16 or 0, never
+  a count, and every entry reads 0 within 64 reads after its message arrived; the clear poll does
+  not wait on `LSR.TEMT` (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl`
+  `LOG_CTRL`).
+* A second wave: two entries written at the first byte read from `RBR` deliver their messages once
+  each, after the message in flight completed.
+* The service order of the slots is measured, not compared.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense; arm the wrapper 0 UART (`CTRL.UART_EN` 1, 8N1, divisor 1, `MCR.LOOP`, FIFO
+  enable, `IER` 0); disable the engine, clear `INTR_STATUS`, `INTR_ENABLE` 0, `LOG_REGION_SIZE`
+  0x100, `LOG_WRITE_ADDR` = the `THR` address, `LOG_REGION_ADDR` = the SPM log window base; write
+  the 0x100 tagged bytes and read them back; set `CTRL.EN`; stamp S1.
+. Wave A: write `LOG_LEN` 0 to entries 0 and 11 and 16 to entries 1, 4, 9 and 14 back to back; read
+  those four `LOG_CTRL` elements once; read 64 bytes from `RBR` through `LSR.DR` polls (400 reads
+  per byte); apply the idle rule (`LSR.TEMT` 1 and `LSR.DR` 0 on 32 consecutive polls); read each
+  `LOG_CTRL` until 0 within 64 reads; read `INTR_STATUS`; stamp S2 and print
+  `CHK-LOGENG-RR-ZERO-SKIPPED`, `CHK-LOGENG-LEN-ZERO-NOT-PENDING` and
+  `CHK-LOGENG-LEN-HOLD-SUBMITTED`.
+. Wave B: write `LOG_LEN` 16 to all 16 entries back to back; read 256 bytes; apply the idle rule;
+  poll all 16 entries to 0; read `INTR_STATUS`; stamp S3 and print `CHK-LOGENG-RR-EXACTLY-ONCE`.
+. Wave C: write `LOG_LEN` 16 to entries 3, 6 and 12; at the first byte read from `RBR` write 16 to
+  entries 2 and 13; read 80 bytes; apply the idle rule; poll the five entries to 0; read
+  `INTR_STATUS`; stamp S4 and print `CHK-LOGENG-RR-IN-FLIGHT`, `CHK-LOGENG-RR-ATOMIC`,
+  `CHK-LOGENG-LEN-HWCLEAR` and the measured `CHK-LOGENG-RR-ORDER-MEASURED`.
+. Clear `CTRL.EN`, `LOG_WRITE_ADDR`, `LOG_REGION_SIZE` and `LOG_REGION_ADDR`, restore the UART,
+  wait two `clk_smc_i` cycles, stamp S5, check the ordered fence and print `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOGENG-RR-ATOMIC` |In all three waves every message is 16 consecutive bytes `(slot << 4) | 0`
+  to `(slot << 4) | 15` and `INTR_STATUS` bits 0 and 4 read 0; a foreign byte inside a message, a
+  short or long message or reordered bytes fails
+|`CHK-LOGENG-RR-EXACTLY-ONCE` |With all 16 entries pending the stream is 256 bytes holding each
+  slot's message exactly once and no byte follows the last under the idle rule
+|`CHK-LOGENG-LEN-HWCLEAR` |Every entry written 16 in the three waves reads 0 within 64 `LOG_CTRL`
+  reads after its message and no zero write reaches a pending entry
+|`CHK-LOGENG-RR-ZERO-SKIPPED` |In wave A no byte tagged outside slots 1, 4, 9 and 14 arrives and the
+  entries never written read 0 afterwards
+|`CHK-LOGENG-LEN-ZERO-NOT-PENDING` |Entries 0 and 11, written 0 before wave A, deliver no byte and
+  read 0
+|`CHK-LOGENG-RR-IN-FLIGHT` |In wave C the first message completes its 16 bytes before any other
+  and entries 2 and 13 each deliver once, starting at stream position 16 or later
+|`CHK-LOGENG-LEN-HOLD-SUBMITTED` |The wave A `LOG_CTRL` reads return 16 or 0, never a count, and at
+  least one returns 16
+|`CHK-LOGENG-RR-ORDER-MEASURED` |The service order of the slots in each wave is printed, measured, not
+  compared
+|`CHK-NONVAC` |Steps S1 to S5 ran in order with strictly increasing simulation-time stamps and the
+  eight checker lines printed in order, each after its own step
+|===
+
+*Pass Criteria*: all checkers hold after their compares; the measured order is observed and is not
+part of the claim. Enrolled in: `all`, `hosted`.
+
+'''''
 
 ==== OCCP
 
