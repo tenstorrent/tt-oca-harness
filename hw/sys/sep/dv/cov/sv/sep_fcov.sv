@@ -17740,9 +17740,11 @@ module sep_fcov (
   end
 
   // x_alert_source (1.34): a malformed pair (alert_p equal to alert_n, both
-  // known) on a receiver of a block that is out of reset arms the block
-  // while vector bit 32 is 0; a rise of bit 32 within CyAlertBound clocks
-  // of the last malformed clock samples the armed block.
+  // known) on a receiver of a block that is out of reset samples the block
+  // when vector bit 32 rises on the same clock (the receiver integrity fail
+  // reaches bit 32 with no register). Otherwise a malformed clock with bit 32
+  // low on the previous clock arms the block, and a rise of bit 32 within
+  // CyAlertBound clocks of the last malformed clock samples the armed block.
   function automatic int unsigned cy_al_blk(input int unsigned i);
     if (i == 0) return 0;
     return (i + 1) / 2;
@@ -17772,14 +17774,14 @@ module sep_fcov (
       d = cy_al_dom(b);
       if (!cy_own_shadow || !cy_ip[d] || !cy_ip_q[d]) begin
         cy_al_arm[b] <= 1'b0;
-      end else if (cy_al_arm[b] && cy_vec_rise[32]) begin
+      end else if ((cy_al_arm[b] || mal[b]) && cy_vec_rise[32]) begin
         cy_alert_t e;
         e      = '0;
         e.as   = 3'(b);
         e.as_v = 1'b1;
         u_sep_crypto_alert_cg.sample(e);
         cy_al_arm[b] <= 1'b0;
-      end else if (mal[b] && (cy_al_arm[b] || !cy_vec[32])) begin
+      end else if (mal[b] && (cy_al_arm[b] || !cy_vec_q[32])) begin
         cy_al_arm[b] <= 1'b1;
         cy_al_cnt[b] <= 0;
       end else if (cy_al_arm[b]) begin
@@ -19456,7 +19458,6 @@ module sep_fcov (
   logic cz_lock_q = 1'b0;
   logic [1:0] cz_ff_on = '0;  // armed after the lock, [0] noise, [1] biw
   logic [1:0] cz_ff_raw = '0;  // RAW_ENABLE at the lock
-  logic [1:0] cz_ff_dr = '0;  // locked at 1: the level was drained to 0
   logic [1:0] cz_ff_w1 = '0;  // locked at 0: a write of 1 landed under the lock
   logic [1:0] cz_ff_up = '0;  // locked at 0: the level rose after that write
   logic [6:0] cz_nlvl_q = '0;
@@ -19476,19 +19477,18 @@ module sep_fcov (
     cz_nlvl_q <= esrc_noise_obs_level_i;
     cz_blvl_q <= esrc_biw_obs_level_i;
 
-    // x_fips_field. Locked at 1: the observe level drains to 0 after the
-    // lock and rises again. Locked at 0: after a write of 1 to RAW_ENABLE
+    // x_fips_field. Locked at 1: the observe level rises after the lock
+    // while RAW_ENABLE is still 1 (capture continues; the BIW FIFO has no
+    // flush, so no drain is required). Locked at 0: after a write of 1 to RAW_ENABLE
     // under the lock, an OKAY read of the observe STATUS returns LEVEL 0 and
     // the level has not risen since the write.
     if (!cy_own_esobs || !cz_es_on || !cz_lock) begin
       cz_ff_on <= '0;
-      cz_ff_dr <= '0;
       cz_ff_w1 <= '0;
       cz_ff_up <= '0;
     end else if (!cz_lock_q) begin
       cz_ff_on  <= 2'b11;
       cz_ff_raw <= raw;
-      cz_ff_dr  <= '0;
       cz_ff_w1  <= '0;
       cz_ff_up  <= '0;
     end else begin
@@ -19504,12 +19504,9 @@ module sep_fcov (
             ENTROPY_SOURCE_BIW_OBS_STATUS_REG_ADDR;
         sts_m = (f == 0) ? 32'(ENTROPY_SOURCE_NOISE_OBS_STATUS_LEVEL_MASK) :
             32'(ENTROPY_SOURCE_BIW_OBS_STATUS_LEVEL_MASK);
-        if (cz_ff_on[f] && cz_ff_raw[f]) begin
-          if (lvl[f] == 7'd0) cz_ff_dr[f] <= 1'b1;
-          else if (cz_ff_dr[f] && (lvl_q[f] == 7'd0)) begin
-            cz_lk(0, {1'(f), 1'b1});
-            cz_ff_on[f] <= 1'b0;
-          end
+        if (cz_ff_on[f] && cz_ff_raw[f] && raw[f] && (lvl[f] > lvl_q[f])) begin
+          cz_lk(0, {1'(f), 1'b1});
+          cz_ff_on[f] <= 1'b0;
         end
         if (cz_ff_on[f] && !cz_ff_raw[f]) begin
           if (cz_w1 && (cz_w1_a == ctl_a) && ((cz_w1_d & ctl_m) != 32'h0) && !raw[f]) begin

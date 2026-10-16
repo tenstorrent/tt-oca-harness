@@ -34,8 +34,11 @@ Checkers:
   CHK-XRST-POOL    a pool STATUS read issued and answered inside the clear returns
                    OKAY and fifo_level 0. Control: fifo_level = N before the reset.
   CHK-XRST-PAUSE   no transfer completes at an active external stream inside the
-                   clear while the driver holds tvalid. Control: transfers before
-                   and after the clear.
+                   clear while the driver holds tvalid: tready is a known 0 on
+                   every clock of the clear with tvalid 1. Control: transfers
+                   before and after the clear; on stream 1 exactly one beat since
+                   the set-up clear of the pool leg, so the crypto adapter has room
+                   at the rise.
   CHK-XRST-RESUME  the first transfer of each active stream after the clear comes
                    within 16 x t_xfer + 64 clocks, with no internal set-up.
   CHK-XRST-STALE   after the release fifo_level = M and the M pops return the new
@@ -123,6 +126,10 @@ STALE_WORDS = 4
 STALE_SETTLE = 64
 # Clocks from the rise of the probe until the held stream-1 beat shows on the port.
 HOLD_SHOW_CAP = 16
+# Stream-1 beats offered in the pool leg between its set-up clear and the graded
+# clear. With no client consuming, the crypto adapter holds this many words at the
+# rise and has room for the beat held in the clear.
+POOL_LEG_S1_BEATS = 1
 
 
 def _le_words(data: bytes) -> list[int]:
@@ -567,10 +574,15 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
     async def _pool_leg(self) -> None:
         plan = self.plan
         dut = cocotb.top
-        # Step 3: pool fill from empty adapters and pool; both streams active.
+        # Step 3: pool fill from empty adapters and pool; both streams active. Stream 1
+        # offers POOL_LEG_S1_BEATS beats only, so the crypto adapter is not full when
+        # the graded clear starts.
         await self._trng_reset()
         self.trace.begin()
-        self._start_feeder(1, self.sent_s)
+        for _ in range(POOL_LEG_S1_BEATS):
+            w = self._next_word()
+            self.sent_s.add(w)
+            self.ext.send(1, [w])
         t_start = self.trace.clk
         t_xfer = None
         for k, a in enumerate(plan.fill_pairs):
@@ -718,13 +730,19 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             before = len(xfers(rows[:first_clear], i))
             after = len(xfers(rows[last_clear + 1 :], i))
             in_clear = len(xfers(win, i))
-            tvalid_in = int(any(_bit(r.ev, i) == 1 for r in win))
-            self.chk.ctrl("XRST-PAUSE", before >= 1 and after >= 1, stream=i, xfers_before=before,
+            valid_rows = [r for r in win if _bit(r.ev, i) == 1]
+            tvalid_in = int(bool(valid_rows))
+            tready_low = sum(1 for r in valid_rows if _bit(r.er, i) == 0)
+            # Stream 1: exactly POOL_LEG_S1_BEATS beats since the set-up clear, so the
+            # crypto adapter has room and a sink that keeps tready high takes the beat.
+            room = before == POOL_LEG_S1_BEATS if i == 1 else before >= 1
+            self.chk.ctrl("XRST-PAUSE", room and after >= 1, stream=i, xfers_before=before,
                           xfers_after=after)  # fmt: skip
             self.chk.ok(
                 "XRST-PAUSE",
-                in_clear == 0 and tvalid_in == 1,
+                in_clear == 0 and tvalid_in == 1 and tready_low == len(valid_rows),
                 stream=i, xfers_in_clear=in_clear, tvalid_in_clear=tvalid_in,
+                tvalid_clk=len(valid_rows), tready_low_clk=tready_low,
                 clear_clk=len(win), xfers_before=before, xfers_after=after,
             )  # fmt: skip
             r = resumed[i]
