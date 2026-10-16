@@ -3063,7 +3063,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "sep", "real_rtl", "lifecycle"]
+tags = ["dtp", "jtag2axi", "otp", "sep", "real_rtl", "lifecycle"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -3085,7 +3085,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "sep", "real_rtl", "lifecycle"]
+tags = ["dtp", "jtag2axi", "otp", "sep", "real_rtl", "lifecycle"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -3107,7 +3107,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "sep", "real_rtl", "lifecycle"]
+tags = ["dtp", "jtag2axi", "otp", "sep", "real_rtl", "lifecycle"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -3173,7 +3173,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3000
-tags = ["dtp", "jtag2axi", "sep", "real_rtl", "lifecycle", "security"]
+tags = ["dtp", "jtag2axi", "otp", "sep", "stap", "real_rtl", "lifecycle", "security"]
 run_modes = ["sep_rtl"]
 args = [
   "+lc_sigint_inject",
@@ -3306,7 +3306,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3000
-tags = ["dtp", "jtag2axi", "sep", "real_rtl", "lifecycle", "security"]
+tags = ["dtp", "jtag2axi", "otp", "sep", "stap", "real_rtl", "lifecycle", "security"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smc_rom_default.hex",

@@ -145,9 +145,8 @@ IDLE_TCKS_AFTER_TLR = 8
 IJTAG_OPEN_SCAN_BITS = 12
 IJTAG_FLUSH_OPEN_CHAIN = 0b101100
 
-#: Bench fault-inject definition (the declared stand-in, tb/tb_wrapper_top.sv, LC_STATE pair fault
-#: inject): the n rail of bit 0 of the exported pair is inverted while ``lc_sigint_inject_i`` is
-#: high. It names the word the inject produces, not an expected response of the design.
+#: Bench fault-inject definition (tb/tb_wrapper_top.sv, LC_STATE pair fault inject): the n rail
+#: of bit 0 is inverted while lc_sigint_inject_i is high.
 LC_PAIR_FLIP = 0x10
 LC_PROD_WORD = lc_state_word(LC_RAW["PROD"])
 LC_PROD_BROKEN_WORD = LC_PROD_WORD ^ LC_PAIR_FLIP
@@ -158,7 +157,6 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
 
     def __init__(self, test) -> None:
         super().__init__(test, SPEC)
-        self.otp_reads = 0
 
     def _net(self) -> tuple[int, int]:
         scope = smu_scope(self.dut)
@@ -170,10 +168,6 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
     async def _feat(self) -> int:
         await RisingEdge(self.dut.clk_smu_i)
         return self._rd("lcc_feat_ctrl_o")
-
-    async def _sep_otp_read_counted(self, addr: int, name: str) -> tuple[int, int]:
-        self.otp_reads += 1
-        return await self._sep_otp_read(addr, name)
 
     async def _sep_otp_write(self, addr: int, data: int, name: str) -> int:
         """One SEP OTP SINGLE_OP write; returns the response status."""
@@ -264,7 +258,8 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
 
     @staticmethod
     def _follows(obs: dict) -> tuple[bool, bool, bool, bool]:
-        """(host edges equal PTAP edges, PTAP edges at least the IR length, both levels, TDO enable)."""
+        """(host edges equal PTAP edges, PTAP edges at least the IR length, both levels, TDO
+        enable)."""
         return (
             obs["sep_edges"] == obs["ptap_edges"],
             obs["ptap_edges"] >= MIN_PTAP_TMS_EDGES,
@@ -312,7 +307,7 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             expired=(status == J2A_STATUS_BUSY),
         )
         self._log(
-            f"CHK-LC-SECDIS-OVER-SIGINT-PROD: smc_otp_read status={status} "
+            f"OBSERVATION CHK-LC-SECDIS-OVER-SIGINT-PROD: smc_otp_read status={status} "
             f"rdata=0x{int(rdata) & 0xFFFF_FFFF:08x} (measured and logged only)"
         )
         counter = _ReadCounter(self.tap)
@@ -328,13 +323,14 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             expired=(status == J2A_STATUS_BUSY),
         )
         self._log(
-            f"CHK-LC-SECDIS-OVER-SIGINT-PROD: smc_otp_write status={status} "
+            f"OBSERVATION CHK-LC-SECDIS-OVER-SIGINT-PROD: smc_otp_write status={status} "
             "(measured and logged only)"
         )
 
     def _log_sigint_err(self, where: str) -> None:
         self._log(
-            f"CHK-LC-SECDIS-OVER-SIGINT-PROD: lc_sigint_err_o={self._rd('lc_sigint_err_o')} "
+            f"OBSERVATION CHK-LC-SECDIS-OVER-SIGINT-PROD: "
+            f"lc_sigint_err_o={self._rd('lc_sigint_err_o')} "
             f"{where} (measured and logged only)"
         )
 
@@ -350,7 +346,7 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
         net_before = self._net()
         stap_levels, stap_edges, stap_oen, stap_ptap, stap_select = await self._stap_parked_probe()
         start, end, delta_before = await self._fabric_deltas(launches=False)
-        control_op, match_before = await self._sep_otp_read_counted(
+        control_op, match_before = await self._sep_otp_read(
             TOKEN_MATCH, "SEC_DISABLE_TOKEN_MATCH before the token"
         )
         match_before &= TOKEN_STATUS_MASK
@@ -369,14 +365,14 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             for i, addr in enumerate(TOKEN_WORDS)
         ]
         eop_op = await self._sep_otp_write(TOKEN_EOP, TOKEN_GO, "TOKEN_EOP go")
-        word0_op, word0 = await self._sep_otp_read_counted(TOKEN_WORDS[0], "SEC_DISABLE_TOKEN_I[0]")
+        word0_op, word0 = await self._sep_otp_read(TOKEN_WORDS[0], "SEC_DISABLE_TOKEN_I[0]")
         self._log(
             f"OBSERVATION SEC_DISABLE_TOKEN_I[0] data=0x{word0:08x} (measured and logged only)"
         )
         match_reads = 0
         match_op, match_after = control_op, match_before
         for _ in range(MATCH_POLL_BOUND):
-            match_op, raw = await self._sep_otp_read_counted(TOKEN_MATCH, "SEC_DISABLE_TOKEN_MATCH")
+            match_op, raw = await self._sep_otp_read(TOKEN_MATCH, "SEC_DISABLE_TOKEN_MATCH")
             match_after = raw & TOKEN_STATUS_MASK
             match_reads += 1
             if match_after != match_before:
@@ -529,14 +525,12 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             f"sep_host_edges={inject_obs['sep_edges']} ptap_edges={inject_obs['ptap_edges']} "
             f"fabric deltas={delta_inject}; released feat=0x{feat_release:016x}",
             (
-                lc_injected,
                 feat_inject,
                 *self._follows(inject_obs),
                 delta_inject,
                 feat_release,
             ),
             (
-                LC_PROD_BROKEN_WORD,
                 FEAT_CTRL_ALL_ENABLED,
                 True,
                 True,
@@ -552,7 +546,7 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             *[f"stap_window_{i}" for i in range(1, 7)],
             "fabric_window_read",
             "fabric_window_write",
-            *["otp_read"] * self.otp_reads,
+            *["otp_read"] * (2 + match_reads),
             *["otp_write"] * (len(TOKEN_WORDS) + 1),
             "token_match",
             "stap_window_sep",

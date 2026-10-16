@@ -355,7 +355,7 @@ class smu_lc_secure_tm_scope_prod_test_seq(smu_lc_sec_dis_over_sigint_prod_test_
         status = -1
         match_op = -1
         for _ in range(MATCH_POLL_BOUND):
-            match_op, raw = await self._sep_otp_read_counted(TOKEN_MATCH, "SEC_DISABLE_TOKEN_MATCH")
+            match_op, raw = await self._sep_otp_read(TOKEN_MATCH, "SEC_DISABLE_TOKEN_MATCH")
             status = raw & TOKEN_STATUS_MASK
             match_reads += 1
             if status == TOKEN_MATCH_CODE:
@@ -422,13 +422,13 @@ class smu_lc_secure_tm_scope_prod_test_seq(smu_lc_sec_dis_over_sigint_prod_test_
         first, last = window["words"][0], window["words"][-1]
         for point, words in (("release", first), ("window end", last)):
             self._log(
-                f"CHK-LC-SECDIS-PERSIST-COLD-RESET-PROD-TM: OBSERVATION {point} "
+                f"OBSERVATION CHK-LC-SECDIS-PERSIST-COLD-RESET-PROD-TM: {point} "
                 f"lc_state_o=0x{words[0]:02x} obs_sep_lc_state_o=0x{words[1]:02x} "
                 f"smc_lc_state_in_o=0x{words[2]:02x} sep_fuse_sense_done_o={words[3]} "
                 f"lcc_dbg_disable_o=0x{words[4]:04x} measured=1 (measured and logged only)"
             )
         self._check(
-            "CHK-LC-SECTM-EARLY-CAPTURE-STRAP-LOW",
+            "CHK-LC-SECTM-COLD-RESET-CLEARS-STRAP-LOW",
             f"tb_secure_tm samples from the release={sorted(set(window['secure_tm']))} "
             f"over {window['samples']} edges strap={sorted(set(window['strap']))} "
             f"(before the reset tb_secure_tm={secure_tm_match})",
@@ -484,7 +484,7 @@ class smu_lc_secure_tm_scope_prod_test_seq(smu_lc_sec_dis_over_sigint_prod_test_
             "ijtag_window_closed_1",
             "ijtag_window_closed_2",
             *["otp_write"] * (len(TOKEN_WORDS) + 1),
-            *["otp_read"] * self.otp_reads,
+            *["otp_read"] * match_reads,
             "token_match",
             "ijtag_window_open_1",
             "ijtag_window_open_2",

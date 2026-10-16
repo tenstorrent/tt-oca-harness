@@ -1053,8 +1053,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "0 before the match",
         ),
         (
-            "CHK-LC-SECTM-EARLY-CAPTURE-STRAP-LOW",
-            "CHK-LC-SECTM-EARLY-CAPTURE-STRAP-LOW",
+            "CHK-LC-SECTM-COLD-RESET-CLEARS-STRAP-LOW",
+            "CHK-LC-SECTM-COLD-RESET-CLEARS-STRAP-LOW",
             "after a chiplet cold reset with the strap low and the match held, tb_secure_tm "
             "reads 0 on every clk_smu_i sample from the release, where it read 1 before the "
             "reset; the sampling edge is not distinguished",

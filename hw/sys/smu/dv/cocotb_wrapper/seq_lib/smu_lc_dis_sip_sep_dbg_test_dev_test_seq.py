@@ -54,7 +54,8 @@ IMAGE = "sep_efuse_shadow_lc_test_dev_sip_dis_sep_dbg.preload"
 #: sep_efuse_map.rdl, SIP_DIS).
 SIP_DIS_VECTOR = 1 << 0
 #: Same chapter, "Per-LC-state feature control profile": TEST_DEV enables every term and the
-#: disable vectors are ORed and inverted, so a set SIP_DIS bit clears exactly its feature-control bit.
+#: disable vectors are ORed and inverted, so a set SIP_DIS bit clears exactly its feature-control
+#: bit.
 FEAT_CTRL_SEP_DBG_CLOSED = FEAT_CTRL_ALL_ENABLED & ~SIP_DIS_VECTOR
 
 SPEC = ExportSpec(

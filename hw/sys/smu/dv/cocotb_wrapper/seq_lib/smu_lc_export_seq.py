@@ -30,7 +30,6 @@ Every bounded wait reports its bound, the cycles it used and the last observed s
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -79,15 +78,13 @@ from seq_lib.smu_otp_bridges_under_dbg_disable_seq import (
     SEP_EFUSE_LC_STATE,
     SEP_EFUSE_SPARE0,
 )
+from seq_lib.smu_sep_sba_peripheral_test_seq import TOKEN_WORDS
 from seq_lib.smu_sep_stap_hold_reset_test_seq import (
     SIB_BITS_FROM_SEP,
     SIB_COUNT,
     STAP_3DCR_BITS,
     TMS_WINDOW_CYCLES,
 )
-
-_REPO_ROOT = Path(__file__).resolve().parents[6]
-_SEP_ADDR_H = _REPO_ROOT / "hw" / "sys" / "sep" / "regs" / "gen" / "c" / "sep_addr.h"
 
 #: hw/sys/sep/doc/lifecycle_controller.adoc, "Per-LC-state feature control profile": with blank
 #: SIP_DIS and SYS_DIS vectors TEST_DEV, RMA_SIP and RMA_CHIPLET enable every DBG_1 [23:0],
@@ -113,10 +110,9 @@ NOT_LAUNCHED = (0, 0, 0)
 #: reads. The marker image (hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev_marker.preload)
 #: sets it at the offset sep_addr.h gives SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR.
 SPARE0_MARKER = 0xA5C3_5A3C
-#: hw/sys/sep/regs/gen/c/sep_addr.h, SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR index 7:
-#: 0x10930540 + 7 * 4. The register is sw = rw (hw/ip/efuse/regs/efuse_mmr.rdl); no TOKEN_EOP
-#: write follows, so no token match is triggered.
-SEP_EFUSE_SEC_DISABLE_TOKEN_I7 = 0x1093_055C
+#: SEC_DISABLE_TOKEN_I[7] from the generated sep_addr.h map. The register is sw = rw
+#: (hw/ip/efuse/regs/efuse_mmr.rdl); no TOKEN_EOP write follows, so no token match is triggered.
+SEP_EFUSE_SEC_DISABLE_TOKEN_I7 = TOKEN_WORDS[7]
 #: Non-zero pattern written to and read back from SEC_DISABLE_TOKEN_I[7].
 TOKEN_I7_PATTERN = 0x5A3C_A5C3
 
@@ -133,8 +129,7 @@ STAP_SELECT_WRITTEN = 1
 #: captures 0 whatever is shifted into it, and the closed DR is three bits long.
 IJTAG_DR_BIT = {"dfd": 0, "dft": 1, "dft_secure": 2}
 IJTAG_CLOSED_DR_BITS = 3
-#: Flush patterns shifted behind the SIB bits, mixed and nonzero: the JTAG VIP maps an X or Z TDO
-#: to 0, so an all-zero pattern could not fail.
+#: Flush patterns shifted behind the SIB bits: mixed and nonzero.
 IJTAG_FLUSH_OPEN_REQUEST = 0b101
 IJTAG_FLUSH_CAPTURE = 0b110
 IJTAG_SCAN_BITS = 2 * IJTAG_CLOSED_DR_BITS

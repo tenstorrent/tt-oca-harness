@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""In RMA_SIP a SIP_DIS SEP_DBG bit closes the Case 3 debug paths and no other.
+"""In RMA_SIP a SIP_DIS SEP_DBG bit shuts the SEP debug STAP and the DFT secure SIB while the I/O
+and SMC STAPs, the DFD SIB and the fabric bridge stay open.
 
 Spec: hw/sys/sep/doc/lifecycle_controller.adoc ("Disable vector bit table", "Per-LC-state
 feature control profile", "DTP access cases", "DTP path feature gates"),

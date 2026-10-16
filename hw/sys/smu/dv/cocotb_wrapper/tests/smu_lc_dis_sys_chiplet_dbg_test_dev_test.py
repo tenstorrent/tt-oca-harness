@@ -19,7 +19,8 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_lc_dis_sys_chiplet_dbg_test_dev_test(smu_base_test):
-    """SYS_DIS bit 1 in TEST_DEV shuts the SMC fabric, SMC, extra and SEP STAPs and both DFT SIBs."""
+    """SYS_DIS bit 1 in TEST_DEV shuts the SMC fabric, the SMC, extra and SEP STAPs and both DFT
+    SIBs."""
 
     use_shared_env = True
 

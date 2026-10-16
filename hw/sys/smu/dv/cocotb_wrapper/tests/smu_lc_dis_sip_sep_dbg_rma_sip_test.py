@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_lc_dis_sip_sep_dbg_rma_sip_test - in RMA_SIP SIP_DIS SEP_DBG closes Case 3 only.
+"""smu_lc_dis_sip_sep_dbg_rma_sip_test - in RMA_SIP SIP_DIS SEP_DBG shuts the SEP debug STAP and
+the DFT secure SIB while the I/O and SMC STAPs, the DFD SIB and the fabric bridge stay open.
 
 Spec: hw/sys/sep/doc/lifecycle_controller.adoc, hw/sys/dtp/doc/jtag.adoc.
 
@@ -19,7 +20,8 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_lc_dis_sip_sep_dbg_rma_sip_test(smu_base_test):
-    """SIP_DIS bit 0 in RMA_SIP shuts the SEP debug STAP and the DFT secure SIB only."""
+    """SIP_DIS bit 0 in RMA_SIP shuts the SEP debug STAP and the DFT secure SIB while the I/O and
+    SMC STAPs, the DFD SIB and the fabric bridge stay open."""
 
     use_shared_env = True
 

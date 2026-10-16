@@ -83,7 +83,8 @@ IMAGE = "sep_efuse_shadow_lc_test_dev_sys_dis_chiplet_dbg.preload"
 #: sep_efuse_map.rdl, SYS_DIS).
 SYS_DIS_VECTOR = 1 << 1
 #: Same chapter, "Per-LC-state feature control profile": TEST_DEV enables every term and the
-#: disable vectors are ORed and inverted, so a set SYS_DIS bit clears exactly its feature-control bit.
+#: disable vectors are ORed and inverted, so a set SYS_DIS bit clears exactly its feature-control
+#: bit.
 FEAT_CTRL_CHIPLET_DBG_CLOSED = FEAT_CTRL_ALL_ENABLED & ~SYS_DIS_VECTOR
 
 SPEC = ExportSpec(
@@ -95,8 +96,8 @@ SPEC = ExportSpec(
 )
 
 #: hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc, "iJTAG Network": with the DFD SIB open the DR
-#: is the three SIB bits and the DFD bench cell. The scan is wider than that chain and the flush
-#: patterns behind the SIB bits are mixed and nonzero, since the JTAG VIP maps an X or Z TDO to 0.
+#: is the three SIB bits and the DFD bench cell. The scan is wider than that chain.
+#: Flush patterns shifted behind the SIB bits: mixed and nonzero.
 IJTAG_CONTROL_SCAN_BITS = 8
 IJTAG_CONTROL_FLUSH_OPEN = 0b10101
 IJTAG_CONTROL_FLUSH_CAPTURE = 0b1011
@@ -109,7 +110,7 @@ STAP_NAMES = {"smc": "SMC debug", "extra0": "extra", "sep": "SEP debug"}
 
 
 class smu_lc_dis_sys_chiplet_dbg_test_dev_test_seq(smu_lc_sec_dis_over_sigint_prod_test_seq):
-    """TEST_DEV with SYS_DIS CHIPLET_DBG: the Case 1 paths open, the Case 2 and Case 3 paths shut."""
+    """TEST_DEV with SYS_DIS CHIPLET_DBG: Case 1 paths open, Case 2 and Case 3 paths shut."""
 
     def __init__(self, test) -> None:
         super().__init__(test)

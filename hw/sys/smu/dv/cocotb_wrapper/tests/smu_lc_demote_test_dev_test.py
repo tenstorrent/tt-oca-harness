@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_lc_demote_test_dev_test - in TEST_DEV a demotion forces its debug group open until cold reset.
+"""smu_lc_demote_test_dev_test - in TEST_DEV a demotion forces its debug group open until a cold
+reset.
 
 Spec: hw/sys/sep/doc/lifecycle_controller.adoc, hw/sys/sep/regs/blocks/sep_lifecycle_ctrl.
 
