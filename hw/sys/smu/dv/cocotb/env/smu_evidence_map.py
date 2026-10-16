@@ -328,6 +328,758 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<S2<S3<PASS"),
     ],
+    "smu_lc_export_test_dev_test": [
+        (
+            "CHK-LC-EXPORT-WRAPPER-TEST-DEV",
+            "CHK-LC-EXPORT-WRAPPER-TEST-DEV",
+            "with the TEST_DEV image (raw 4'b0000) lc_state_o equals 0xF0 on the sampling edge "
+            "after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F and "
+            "the SEP OTP bridge reads back the SPARE0 marker 0xA5C35A3C",
+        ),
+        (
+            "CHK-LC-EXPORT-SEP-OBS-TEST-DEV",
+            "CHK-LC-EXPORT-SEP-OBS-TEST-DEV",
+            "with the TEST_DEV image (raw 4'b0000) obs_sep_lc_state_o equals 0xF0 on the "
+            "sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense "
+            "word 0x0F and the SEP OTP bridge reads back the SPARE0 marker 0xA5C35A3C",
+        ),
+        (
+            "CHK-LC-EXPORT-SMC-INPUT-TEST-DEV",
+            "CHK-LC-EXPORT-SMC-INPUT-TEST-DEV",
+            "with the TEST_DEV image (raw 4'b0000) smc_lc_state_in_o equals 0xF0 on the "
+            "sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense "
+            "word 0x0F and the SEP OTP bridge reads back the SPARE0 marker 0xA5C35A3C",
+        ),
+        (
+            "CHK-LC-FEATCTRL-TEST-DEV",
+            "CHK-LC-FEATCTRL-TEST-DEV",
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF and differs from the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-LANE-SMC-JTAG2AXI-TEST-DEV",
+            "CHK-LC-LANE-SMC-JTAG2AXI-TEST-DEV",
+            "lcc_dbg_disable_smc_jtag2axi_o equals 1'b0, corroborated by the AR/AW/B launches",
+        ),
+        (
+            "CHK-LC-FABRIC-LAUNCH-TEST-DEV",
+            "CHK-LC-FABRIC-LAUNCH-TEST-DEV",
+            "an SMC fabric SINGLE_OP read and write advance the DTP-to-SMC debug AXI AR, AW and "
+            "B counters by 1 each with lcc_dbg_disable_smc_jtag2axi_o at 1'b0",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the last step, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles it used and the last observed "
+            "state, and none expires",
+        ),
+    ],
+    "smu_lc_export_prod_test": [
+        (
+            "CHK-LC-EXPORT-WRAPPER-PROD",
+            "CHK-LC-EXPORT-WRAPPER-PROD",
+            "with the PROD image (raw 4'b0001) lc_state_o equals 0xE1 on the sampling edge "
+            "after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F",
+        ),
+        (
+            "CHK-LC-EXPORT-SEP-OBS-PROD",
+            "CHK-LC-EXPORT-SEP-OBS-PROD",
+            "with the PROD image (raw 4'b0001) obs_sep_lc_state_o equals 0xE1 on the sampling "
+            "edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F",
+        ),
+        (
+            "CHK-LC-EXPORT-SMC-INPUT-PROD",
+            "CHK-LC-EXPORT-SMC-INPUT-PROD",
+            "with the PROD image (raw 4'b0001) smc_lc_state_in_o equals 0xE1 on the sampling "
+            "edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F",
+        ),
+        (
+            "CHK-LC-FEATCTRL-PROD",
+            "CHK-LC-FEATCTRL-PROD",
+            "lcc_feat_ctrl_o equals 64'hFFFF_0000_0000_0000 and differs from the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-LANE-SMC-JTAG2AXI-PROD",
+            "CHK-LC-LANE-SMC-JTAG2AXI-PROD",
+            "lcc_dbg_disable_smc_jtag2axi_o equals 1'b1",
+        ),
+        (
+            "CHK-LC-FABRIC-NOLAUNCH-PROD",
+            "CHK-LC-FABRIC-NOLAUNCH-PROD",
+            "an SMC fabric SINGLE_OP read and write leave the AR, AW and B counters unchanged "
+            "with lcc_dbg_disable_smc_jtag2axi_o at 1'b1, and in the same leaf a SEP OTP bridge "
+            "write of 0x5A3CA5C3 to SEC_DISABLE_TOKEN_I[7] and a read back both complete with "
+            "op 0 and the read returns 0x5A3CA5C3",
+        ),
+        (
+            "CHK-LC-STAP-SEP-PARKED-PROD",
+            "CHK-LC-STAP-SEP-PARKED-PROD",
+            "the SEP STAP host TMS holds 1'b0 on every sample and its TDO enable stays low "
+            "while the PTAP TMS toggles, and a 3DCR capture reads Select as 0 after Select was "
+            "written as 1",
+        ),
+        (
+            "CHK-LC-SIB-DFD-CLOSED-PROD",
+            "CHK-LC-SIB-DFD-CLOSED-PROD",
+            "the DFD SIB (DR bit 0) captures 0 after 1 was shifted into it, the DR is 3 bits "
+            "long and no host select asserts",
+        ),
+        (
+            "CHK-LC-SIB-DFT-NONSECURE-CLOSED-PROD",
+            "CHK-LC-SIB-DFT-NONSECURE-CLOSED-PROD",
+            "the DFT non-secure SIB (DR bit 1) captures 0 after 1 was shifted into it, the DR "
+            "is 3 bits long and no host select asserts",
+        ),
+        (
+            "CHK-LC-SIB-DFT-SECURE-CLOSED-PROD",
+            "CHK-LC-SIB-DFT-SECURE-CLOSED-PROD",
+            "the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR is 3 "
+            "bits long and no host select asserts",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the last step, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles it used and the last observed "
+            "state, and none expires",
+        ),
+    ],
+    "smu_lc_export_prod_end_test": [
+        (
+            "CHK-LC-EXPORT-WRAPPER-PROD-END",
+            "CHK-LC-EXPORT-WRAPPER-PROD-END",
+            "with the PROD_END image (raw 4'b1000) lc_state_o equals 0x78 on the sampling edge "
+            "after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F",
+        ),
+        (
+            "CHK-LC-EXPORT-SEP-OBS-PROD-END",
+            "CHK-LC-EXPORT-SEP-OBS-PROD-END",
+            "with the PROD_END image (raw 4'b1000) obs_sep_lc_state_o equals 0x78 on the "
+            "sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense "
+            "word 0x0F",
+        ),
+        (
+            "CHK-LC-EXPORT-SMC-INPUT-PROD-END",
+            "CHK-LC-EXPORT-SMC-INPUT-PROD-END",
+            "with the PROD_END image (raw 4'b1000) smc_lc_state_in_o equals 0x78 on the "
+            "sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense "
+            "word 0x0F",
+        ),
+        (
+            "CHK-LC-FEATCTRL-PROD-END",
+            "CHK-LC-FEATCTRL-PROD-END",
+            "lcc_feat_ctrl_o equals 64'hFFFF_0000_0000_0000 and differs from the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-FABRIC-NOLAUNCH-PROD-END",
+            "CHK-LC-FABRIC-NOLAUNCH-PROD-END",
+            "an SMC fabric SINGLE_OP read and write leave the AR, AW and B counters unchanged "
+            "with lcc_dbg_disable_smc_jtag2axi_o at 1'b1, and in the same leaf a SEP OTP bridge "
+            "read of LC_STATE completes with op 0 and returns 0x78",
+        ),
+        (
+            "CHK-LC-STAP-SEP-PARKED-PROD-END",
+            "CHK-LC-STAP-SEP-PARKED-PROD-END",
+            "the SEP STAP host TMS holds 1'b0 on every sample and its TDO enable stays low "
+            "while the PTAP TMS toggles, and a 3DCR capture reads Select as 0 after Select was "
+            "written as 1",
+        ),
+        (
+            "CHK-LC-SIB-DFD-CLOSED-PROD-END",
+            "CHK-LC-SIB-DFD-CLOSED-PROD-END",
+            "the DFD SIB (DR bit 0) captures 0 after 1 was shifted into it, the DR is 3 bits "
+            "long and no host select asserts",
+        ),
+        (
+            "CHK-LC-SIB-DFT-NONSECURE-CLOSED-PROD-END",
+            "CHK-LC-SIB-DFT-NONSECURE-CLOSED-PROD-END",
+            "the DFT non-secure SIB (DR bit 1) captures 0 after 1 was shifted into it, the DR "
+            "is 3 bits long and no host select asserts",
+        ),
+        (
+            "CHK-LC-SIB-DFT-SECURE-CLOSED-PROD-END",
+            "CHK-LC-SIB-DFT-SECURE-CLOSED-PROD-END",
+            "the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR is 3 "
+            "bits long and no host select asserts",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the last step, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles it used and the last observed "
+            "state, and none expires",
+        ),
+    ],
+    "smu_lc_export_rma_sip_0_test": [
+        (
+            "CHK-LC-EXPORT-WRAPPER-RMA-SIP",
+            "CHK-LC-EXPORT-WRAPPER-RMA-SIP",
+            "with the RMA_SIP image (raw 4'b0010) lc_state_o equals 0xD2 on the sampling edge "
+            "after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F",
+        ),
+        (
+            "CHK-LC-EXPORT-SEP-OBS-RMA-SIP",
+            "CHK-LC-EXPORT-SEP-OBS-RMA-SIP",
+            "with the RMA_SIP image (raw 4'b0010) obs_sep_lc_state_o equals 0xD2 on the "
+            "sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense "
+            "word 0x0F",
+        ),
+        (
+            "CHK-LC-EXPORT-SMC-INPUT-RMA-SIP",
+            "CHK-LC-EXPORT-SMC-INPUT-RMA-SIP",
+            "with the RMA_SIP image (raw 4'b0010) smc_lc_state_in_o equals 0xD2 on the sampling "
+            "edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F",
+        ),
+        (
+            "CHK-LC-FEATCTRL-RMA-SIP",
+            "CHK-LC-FEATCTRL-RMA-SIP",
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF and differs from the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-FABRIC-LAUNCH-RMA-SIP",
+            "CHK-LC-FABRIC-LAUNCH-RMA-SIP",
+            "an SMC fabric SINGLE_OP read and write advance the DTP-to-SMC debug AXI AR, AW and "
+            "B counters by 1 each with lcc_dbg_disable_smc_jtag2axi_o at 1'b0",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the last step, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles it used and the last observed "
+            "state, and none expires",
+        ),
+    ],
+    "smu_lc_export_rma_chiplet_0_test": [
+        (
+            "CHK-LC-EXPORT-WRAPPER-RMA-CHIPLET",
+            "CHK-LC-EXPORT-WRAPPER-RMA-CHIPLET",
+            "with the RMA_CHIPLET image (raw 4'b0110) lc_state_o equals 0x96 on the sampling "
+            "edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F",
+        ),
+        (
+            "CHK-LC-EXPORT-SEP-OBS-RMA-CHIPLET",
+            "CHK-LC-EXPORT-SEP-OBS-RMA-CHIPLET",
+            "with the RMA_CHIPLET image (raw 4'b0110) obs_sep_lc_state_o equals 0x96 on the "
+            "sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense "
+            "word 0x0F",
+        ),
+        (
+            "CHK-LC-EXPORT-SMC-INPUT-RMA-CHIPLET",
+            "CHK-LC-EXPORT-SMC-INPUT-RMA-CHIPLET",
+            "with the RMA_CHIPLET image (raw 4'b0110) smc_lc_state_in_o equals 0x96 on the "
+            "sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense "
+            "word 0x0F",
+        ),
+        (
+            "CHK-LC-FEATCTRL-RMA-CHIPLET",
+            "CHK-LC-FEATCTRL-RMA-CHIPLET",
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF and differs from the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-FABRIC-LAUNCH-RMA-CHIPLET",
+            "CHK-LC-FABRIC-LAUNCH-RMA-CHIPLET",
+            "an SMC fabric SINGLE_OP read and write advance the DTP-to-SMC debug AXI AR, AW and "
+            "B counters by 1 each with lcc_dbg_disable_smc_jtag2axi_o at 1'b0",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the last step, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles it used and the last observed "
+            "state, and none expires",
+        ),
+    ],
+    "smu_lc_sec_dis_over_sigint_prod_test": [
+        (
+            "CHK-LC-SECDIS-TOKEN-MATCH-JTAG-PROD",
+            "CHK-LC-SECDIS-TOKEN-MATCH-JTAG-PROD",
+            "SEC_DISABLE_TOKEN_MATCH reads 6'b010101 after the eight all-zero token words and "
+            "the TOKEN_EOP go bit, and read a value different from 6'b010101 before the go bit "
+            "with op 0 over the SEP OTP bridge",
+        ),
+        (
+            "CHK-LC-OTP-SEP-POLICY-PROD-MMR",
+            "CHK-LC-OTP-SEP-POLICY-PROD-MMR",
+            "in PROD the eight SEC_DISABLE_TOKEN_I writes, the TOKEN_EOP write, the "
+            "SEC_DISABLE_TOKEN_I[0] read and the SEC_DISABLE_TOKEN_MATCH read each complete "
+            "with op 0, and the match read returns 6'b010101",
+        ),
+        (
+            "CHK-LC-SECDIS-NET-PROD",
+            "CHK-LC-SECDIS-NET-PROD",
+            "the security-disable net is 1'b0 at the SMU and at the SMC before the token and "
+            "1'b1 at both after the match",
+        ),
+        (
+            "CHK-LC-SECDIS-FEATCTRL-PROD",
+            "CHK-LC-SECDIS-FEATCTRL-PROD",
+            "lcc_feat_ctrl_o equals 64'hFFFF_0000_0000_0000 before the match and "
+            "64'hFFFF_FFFF_FFFF_FFFF after it",
+        ),
+        (
+            "CHK-LC-SECDIS-SEP-STAP-OPEN-PROD",
+            "CHK-LC-SECDIS-SEP-STAP-OPEN-PROD",
+            "the SEP STAP host TMS is parked at 1'b0 with TDO enable low in the closed posture "
+            "and follows the PTAP TMS (equal edge count, more than while parked) with TDO "
+            "enable asserted after the match",
+        ),
+        (
+            "CHK-LC-SECDIS-OTHER-STAPS-OPEN-PROD",
+            "CHK-LC-SECDIS-OTHER-STAPS-OPEN-PROD",
+            "the I/O, SMC and extra STAP host TMS each follow the PTAP TMS (equal edge count) "
+            "with TDO enable asserted after the match",
+        ),
+        (
+            "CHK-LC-SECDIS-SIBS-OPEN-PROD",
+            "CHK-LC-SECDIS-SIBS-OPEN-PROD",
+            "the DFD, DFT non-secure and DFT secure SIBs each capture 1 after 1 was shifted in, "
+            "their bench cells join the loop and each host select asserts",
+        ),
+        (
+            "CHK-LC-SECDIS-FABRIC-LAUNCH-PROD",
+            "CHK-LC-SECDIS-FABRIC-LAUNCH-PROD",
+            "AR, AW and B at the DTP-to-SMC debug AXI port advance by 1 each after the match, "
+            "with all three unchanged before it and a SEP OTP bridge read completing with op 0 "
+            "in the same leaf",
+        ),
+        (
+            "CHK-LC-SECDIS-OVER-SIGINT-PROD",
+            "CHK-LC-SECDIS-OVER-SIGINT-PROD",
+            "with lc_sigint_inject_i high and the match held, lcc_feat_ctrl_o equals "
+            "64'hFFFF_FFFF_FFFF_FFFF, the SEP STAP host TMS follows the PTAP TMS and an SMC "
+            "fabric SINGLE_OP launches AR, AW and B, and lcc_feat_ctrl_o stays all ones after "
+            "the release; lc_sigint_err_o and the SMC OTP responses are measured and logged "
+            "only",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the injection release, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles it used and the last observed "
+            "state, and none expires",
+        ),
+    ],
+    "smu_lc_demote_test_dev_test": [
+        (
+            "CHK-LC-DEMOTE-REACH-1-TEST-DEV",
+            "CHK-LC-DEMOTE-REACH-1-TEST-DEV",
+            "after the DEMOTE_1.demote system-bus write over the SEP STAP and debug module "
+            "(dmstatus.version 2) lcc_demote_state_1_o differs from the code sampled at the "
+            "baseline and lcc_demote_state_2_o equals its baseline code; the absolute codes are "
+            "measured and logged only",
+        ),
+        (
+            "CHK-LC-DEMOTE-FORCES-DBG1-TEST-DEV",
+            "CHK-LC-DEMOTE-FORCES-DBG1-TEST-DEV",
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FDFF_FFF3 at the baseline and "
+            "64'hFFFF_FFFF_FDFF_FFFF after DEMOTE_1.demote: bits 2 and 3 read 1 over the "
+            "SIP_DIS bits and bit 25 stays 0",
+        ),
+        (
+            "CHK-LC-DEMOTE-LOCK-PERSIST-TEST-DEV",
+            "CHK-LC-DEMOTE-LOCK-PERSIST-TEST-DEV",
+            "after DEMOTE_1.lock a system-bus read of DEMOTE_1 returns 64'h3 (demote and lock "
+            "both set) and lcc_feat_ctrl_o still equals 64'hFFFF_FFFF_FDFF_FFFF; the post-lock "
+            "demote code is measured and logged only",
+        ),
+        (
+            "CHK-LC-DEMOTE-REACH-2-TEST-DEV",
+            "CHK-LC-DEMOTE-REACH-2-TEST-DEV",
+            "after the DEMOTE_2.demote system-bus write lcc_demote_state_2_o differs from its "
+            "baseline code and lcc_demote_state_1_o equals the code it held after the lock; the "
+            "absolute codes are measured and logged only",
+        ),
+        (
+            "CHK-LC-DEMOTE-FORCES-DBG2-TEST-DEV",
+            "CHK-LC-DEMOTE-FORCES-DBG2-TEST-DEV",
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF after DEMOTE_2.demote: bit 25, "
+            "still 0 after DEMOTE_1 alone, reads 1",
+        ),
+        (
+            "CHK-LC-DEMOTE-COLDCLEAR-CODES-TEST-DEV",
+            "CHK-LC-DEMOTE-COLDCLEAR-CODES-TEST-DEV",
+            "after the chiplet cold reset and sense done lcc_demote_state_1_o and "
+            "lcc_demote_state_2_o equal their baseline codes, each having differed from it "
+            "before the reset",
+        ),
+        (
+            "CHK-LC-DEMOTE-COLDCLEAR-FEATCTRL-TEST-DEV",
+            "CHK-LC-DEMOTE-COLDCLEAR-FEATCTRL-TEST-DEV",
+            "after the chiplet cold reset and sense done lcc_feat_ctrl_o equals "
+            "64'hFFFF_FFFF_FDFF_FFF3 again, having been 64'hFFFF_FFFF_FFFF_FFFF before the "
+            "reset",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the cold-reset samples, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles, polls or retries it used and the "
+            "last observed state, and none expires",
+        ),
+    ],
+    "smu_lc_dis_sys_chiplet_dbg_test_dev_test": [
+        (
+            "CHK-LC-FEATCTRL-SYS-DIS-CHIPLET-DBG-TEST-DEV",
+            "CHK-LC-FEATCTRL-SYS-DIS-CHIPLET-DBG-TEST-DEV",
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFD with sep_fuse_sense_done_o high "
+            "(SYS_DIS bit 1 alone clears feature-control bit 1 in TEST_DEV) and differs from "
+            "the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-CASE1-CONTROL-SYS-DIS-CHIPLET-DBG",
+            "CHK-LC-CASE1-CONTROL-SYS-DIS-CHIPLET-DBG",
+            "the I/O STAP host TMS edge count equals the PTAP TMS edge count with both levels "
+            "seen and its TDO-enable asserted, and the DFD SIB captures 1 with its bench cell "
+            "in the loop, its host select asserted and the other two selects low (Case 1 open: "
+            "the JTAG stimulus is live)",
+        ),
+        (
+            "CHK-LC-FABRIC-NOLAUNCH-SYS-DIS-CHIPLET-DBG",
+            "CHK-LC-FABRIC-NOLAUNCH-SYS-DIS-CHIPLET-DBG",
+            "AR, AW and B at the DTP-to-SMC debug AXI port do not move across an SMC fabric "
+            "SINGLE_OP read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b1 before and "
+            "after, with the Case 1 control passing in the same leaf",
+        ),
+        (
+            "CHK-LC-STAP-SMC-PARKED-SYS-DIS-CHIPLET-DBG",
+            "CHK-LC-STAP-SMC-PARKED-SYS-DIS-CHIPLET-DBG",
+            "with the SMC debug STAP selected over the PTAP its host TMS holds 1'b0 on every "
+            "sample while jtag_tms shows at least the minimum edge count, its host TDO-enable "
+            "stays low and a 3DCR capture reads Select as 0 after 1 was written",
+        ),
+        (
+            "CHK-LC-STAP-EXTRA-PARKED-SYS-DIS-CHIPLET-DBG",
+            "CHK-LC-STAP-EXTRA-PARKED-SYS-DIS-CHIPLET-DBG",
+            "with the extra STAP selected over the PTAP its host TMS holds 1'b0 on every sample "
+            "while jtag_tms shows at least the minimum edge count, its host TDO-enable stays "
+            "low and a 3DCR capture reads Select as 0 after 1 was written",
+        ),
+        (
+            "CHK-LC-SIB-NONSECURE-CLOSED-SYS-DIS-CHIPLET-DBG",
+            "CHK-LC-SIB-NONSECURE-CLOSED-SYS-DIS-CHIPLET-DBG",
+            "the DFT non-secure SIB (DR bit 1) captures 0 after 1 was shifted into it, the DR "
+            "stays 3 bits long (the flush patterns return), no host select asserts and TCKs "
+            "were seen",
+        ),
+        (
+            "CHK-LC-STAP-SEP-PARKED-SYS-DIS-CHIPLET-DBG",
+            "CHK-LC-STAP-SEP-PARKED-SYS-DIS-CHIPLET-DBG",
+            "with the SEP debug STAP selected over the PTAP its host TMS holds 1'b0 on every "
+            "sample while jtag_tms shows at least the minimum edge count, its host TDO-enable "
+            "stays low and a 3DCR capture reads Select as 0 after 1 was written",
+        ),
+        (
+            "CHK-LC-SIB-SECURE-CLOSED-SYS-DIS-CHIPLET-DBG",
+            "CHK-LC-SIB-SECURE-CLOSED-SYS-DIS-CHIPLET-DBG",
+            "the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR stays "
+            "3 bits long (the flush patterns return), no host select asserts and TCKs were seen",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the DFT secure SIB leg, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles used and the last observed state, "
+            "and none expires",
+        ),
+    ],
+    "smu_lc_dis_sip_sep_dbg_test_dev_test": [
+        (
+            "CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-TEST-DEV",
+            "CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-TEST-DEV",
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFE with sep_fuse_sense_done_o high "
+            "(SIP_DIS bit 0 alone clears feature-control bit 0 in TEST_DEV) and differs from "
+            "the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-FABRIC-LAUNCH-SIP-DIS-SEP-DBG-TEST-DEV",
+            "CHK-LC-FABRIC-LAUNCH-SIP-DIS-SEP-DBG-TEST-DEV",
+            "AR, AW and B at the DTP-to-SMC debug AXI port each advance by 1 across an SMC "
+            "fabric SINGLE_OP read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b0 "
+            "before and after (Case 2 open, SEP_DBG disabled)",
+        ),
+        (
+            "CHK-LC-STAP-SMC-OPEN-SIP-DIS-SEP-DBG",
+            "CHK-LC-STAP-SMC-OPEN-SIP-DIS-SEP-DBG",
+            "with the SMC debug STAP selected over the PTAP its host TMS edge count equals the "
+            "PTAP TMS edge count with both levels seen, the PTAP edges reach at least the IR "
+            "width and its TDO-enable asserts",
+        ),
+        (
+            "CHK-LC-STAP-EXTRA-OPEN-SIP-DIS-SEP-DBG",
+            "CHK-LC-STAP-EXTRA-OPEN-SIP-DIS-SEP-DBG",
+            "with the extra STAP selected over the PTAP its host TMS edge count equals the PTAP "
+            "TMS edge count with both levels seen, the PTAP edges reach at least the IR width "
+            "and its TDO-enable asserts",
+        ),
+        (
+            "CHK-LC-SIB-NONSECURE-OPEN-SIP-DIS-SEP-DBG",
+            "CHK-LC-SIB-NONSECURE-OPEN-SIP-DIS-SEP-DBG",
+            "the DFT non-secure SIB captures 1 after 1 was shifted into DR bit 1 and its bench "
+            "cell joins the loop (both scans return the words of the SIB and bench-cell model), "
+            "its host select asserts and the other two selects stay low",
+        ),
+        (
+            "CHK-LC-CASE1-CONTROL-SIP-DIS-SEP-DBG",
+            "CHK-LC-CASE1-CONTROL-SIP-DIS-SEP-DBG",
+            "the I/O STAP host TMS edge count equals the PTAP TMS edge count with both levels "
+            "seen and its TDO-enable asserted, and the DFD SIB captures 1 with its bench cell "
+            "in the loop, its host select asserted and the other two selects low (Case 1 open: "
+            "the JTAG stimulus is live)",
+        ),
+        (
+            "CHK-LC-STAP-SEP-PARKED-SIP-DIS-SEP-DBG",
+            "CHK-LC-STAP-SEP-PARKED-SIP-DIS-SEP-DBG",
+            "with the SEP debug STAP selected over the PTAP its host TMS holds 1'b0 on every "
+            "sample while jtag_tms shows at least the minimum edge count, its host TDO-enable "
+            "stays low and a 3DCR capture reads Select as 0 after 1 was written",
+        ),
+        (
+            "CHK-LC-SIB-SECURE-CLOSED-SIP-DIS-SEP-DBG",
+            "CHK-LC-SIB-SECURE-CLOSED-SIP-DIS-SEP-DBG",
+            "the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR stays "
+            "3 bits long (the flush patterns return), no host select asserts and TCKs were seen",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the DFT secure SIB leg, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles used and the last observed state, "
+            "and none expires",
+        ),
+    ],
+    "smu_lc_dis_sys_not_binding_rma_sip_test": [
+        (
+            "CHK-LC-SYSDIS-SEP-DBG-IGNORED-RMA-SIP",
+            "CHK-LC-SYSDIS-SEP-DBG-IGNORED-RMA-SIP",
+            "lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals "
+            "64'hFFFF_FFFF_FFFF_FFFF with bit 0 set although the image holds SYS_DIS bit 0 "
+            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), with sep_fuse_sense_done_o high and "
+            "a value differing from the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-SYSDIS-CHIPLET-DBG-IGNORED-RMA-SIP",
+            "CHK-LC-SYSDIS-CHIPLET-DBG-IGNORED-RMA-SIP",
+            "lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals "
+            "64'hFFFF_FFFF_FFFF_FFFF with bit 1 set although the image holds SYS_DIS bit 1 "
+            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), with sep_fuse_sense_done_o high and "
+            "a value differing from the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-SYSDIS-SIP-DBG-IGNORED-RMA-SIP",
+            "CHK-LC-SYSDIS-SIP-DBG-IGNORED-RMA-SIP",
+            "lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals "
+            "64'hFFFF_FFFF_FFFF_FFFF with bit 24 set although the image holds SYS_DIS bit 24 "
+            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), with sep_fuse_sense_done_o high and "
+            "a value differing from the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-STAP-SEP-OPEN-RMA-SIP-SYS-DIS",
+            "CHK-LC-STAP-SEP-OPEN-RMA-SIP-SYS-DIS",
+            "with the SEP debug STAP selected over the PTAP its host TMS edge count equals the "
+            "PTAP TMS edge count with both levels seen, the PTAP edges reach at least the IR "
+            "width and its TDO-enable asserts",
+        ),
+        (
+            "CHK-LC-SIB-SECURE-OPEN-RMA-SIP-SYS-DIS",
+            "CHK-LC-SIB-SECURE-OPEN-RMA-SIP-SYS-DIS",
+            "the DFT secure SIB captures 1 after 1 was shifted into DR bit 2 and its bench cell "
+            "joins the loop (both scans return the words of the SIB and bench-cell model), its "
+            "host select asserts and the other two selects stay low",
+        ),
+        (
+            "CHK-LC-STAP-SMC-OPEN-RMA-SIP-SYS-DIS",
+            "CHK-LC-STAP-SMC-OPEN-RMA-SIP-SYS-DIS",
+            "with the SMC debug STAP selected over the PTAP its host TMS edge count equals the "
+            "PTAP TMS edge count with both levels seen, the PTAP edges reach at least the IR "
+            "width and its TDO-enable asserts",
+        ),
+        (
+            "CHK-LC-STAP-IO-OPEN-RMA-SIP-SYS-DIS",
+            "CHK-LC-STAP-IO-OPEN-RMA-SIP-SYS-DIS",
+            "with the I/O STAP selected over the PTAP its host TMS edge count equals the PTAP "
+            "TMS edge count with both levels seen, the PTAP edges reach at least the IR width "
+            "and its TDO-enable asserts",
+        ),
+        (
+            "CHK-LC-SIB-DFD-OPEN-RMA-SIP-SYS-DIS",
+            "CHK-LC-SIB-DFD-OPEN-RMA-SIP-SYS-DIS",
+            "the DFD SIB captures 1 after 1 was shifted into DR bit 0 and its bench cell joins "
+            "the loop (both scans return the words of the SIB and bench-cell model), its host "
+            "select asserts and the other two selects stay low",
+        ),
+        (
+            "CHK-LC-FABRIC-CONTROL-RMA-SIP-SYS-DIS",
+            "CHK-LC-FABRIC-CONTROL-RMA-SIP-SYS-DIS",
+            "AR, AW and B at the DTP-to-SMC debug AXI port each advance by 1 across an SMC "
+            "fabric SINGLE_OP read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b0 "
+            "before and after (nothing closed with SYS_DIS bits 0, 1 and 24 set)",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the fabric control leg, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles used and the last observed state, "
+            "and none expires",
+        ),
+    ],
+    "smu_lc_dis_sip_sep_dbg_rma_sip_test": [
+        (
+            "CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-RMA-SIP",
+            "CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-RMA-SIP",
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFE with sep_fuse_sense_done_o high "
+            "(SIP_DIS bit 0 binds in RMA_SIP and clears feature-control bit 0 alone) and "
+            "differs from the 64'h0 reset value",
+        ),
+        (
+            "CHK-LC-CASE1-CONTROL-SIP-DIS-RMA-SIP",
+            "CHK-LC-CASE1-CONTROL-SIP-DIS-RMA-SIP",
+            "the I/O STAP host TMS edge count equals the PTAP TMS edge count with both levels "
+            "seen and its TDO-enable asserted, and the DFD SIB captures 1 with its bench cell "
+            "in the loop, its host select asserted and the other two selects low (Case 1 open: "
+            "the JTAG stimulus is live)",
+        ),
+        (
+            "CHK-LC-CASE2-CONTROL-SIP-DIS-RMA-SIP",
+            "CHK-LC-CASE2-CONTROL-SIP-DIS-RMA-SIP",
+            "the SMC debug STAP host TMS edge count equals the PTAP TMS edge count with both "
+            "levels seen and its TDO-enable asserted, and AR, AW and B at the DTP-to-SMC debug "
+            "AXI port each advance by 1 across an SMC fabric SINGLE_OP read and write (Case 2 "
+            "open: SEP_DBG alone is cleared)",
+        ),
+        (
+            "CHK-LC-CASE3-CLOSED-SEP-STAP-RMA-SIP",
+            "CHK-LC-CASE3-CLOSED-SEP-STAP-RMA-SIP",
+            "with the SEP debug STAP selected over the PTAP its host TMS holds 1'b0 on every "
+            "sample while jtag_tms shows at least the minimum edge count, its host TDO-enable "
+            "stays low and a 3DCR capture reads Select as 0 after 1 was written",
+        ),
+        (
+            "CHK-LC-CASE3-CLOSED-SECURE-SIB-RMA-SIP",
+            "CHK-LC-CASE3-CLOSED-SECURE-SIB-RMA-SIP",
+            "the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR stays "
+            "3 bits long (the flush patterns return), no host select asserts and TCKs were seen",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the DFT secure SIB leg, stamped PASS two "
+            "clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles used and the last observed state, "
+            "and none expires",
+        ),
+    ],
+    "smu_lc_secure_tm_scope_prod_test": [
+        (
+            "CHK-LC-SECTM-PROD-PROFILE",
+            "CHK-LC-SECTM-PROD-PROFILE",
+            "tb_secure_tm reads 0 on every sample under the SEP reset with the strap high from "
+            "the first clock and reads 1 after sep_fuse_sense_done_o rises, while "
+            "lcc_feat_ctrl_o equals 64'hFFFF_0000_0000_0000, the undemoted PROD word",
+        ),
+        (
+            "CHK-LC-SECTM-DFT-SIBS-CLOSED-STRAP-HIGH",
+            "CHK-LC-SECTM-DFT-SIBS-CLOSED-STRAP-HIGH",
+            "with tb_secure_tm = 1 the DFT non-secure and DFT secure SIBs capture 0 after 1 was "
+            "shifted into them, the DR stays 3 bits long (the flush patterns return) and no "
+            "host select asserts",
+        ),
+        (
+            "CHK-LC-SECTM-SECDIS-NOT-QUALIFIED",
+            "CHK-LC-SECTM-SECDIS-NOT-QUALIFIED",
+            "the eight SEC_DISABLE_TOKEN_I writes, the TOKEN_EOP write and the match read "
+            "complete with op 0 and the match status reads 6'b010101; lcc_feat_ctrl_o then "
+            "equals 64'hFFFF_FFFF_FFFF_FFFF and tb_secure_tm still reads 1",
+        ),
+        (
+            "CHK-LC-SECTM-INT-SECDIS-JOINT",
+            "CHK-LC-SECTM-INT-SECDIS-JOINT",
+            "with tb_secure_tm = 1 and the match held, lcc_feat_ctrl_o equals "
+            "64'hFFFF_FFFF_FFFF_FFFF and the DFT non-secure and DFT secure SIBs capture 1 with "
+            "their bench cells in the loop and their host selects asserted, where both captured "
+            "0 before the match",
+        ),
+        (
+            "CHK-LC-SECTM-EARLY-CAPTURE-STRAP-LOW",
+            "CHK-LC-SECTM-EARLY-CAPTURE-STRAP-LOW",
+            "after a chiplet cold reset with the strap low and the match held, tb_secure_tm "
+            "reads 0 on every clk_smu_i sample from the release, where it read 1 before the "
+            "reset; the sampling edge is not distinguished",
+        ),
+        (
+            "CHK-LC-SECDIS-PERSIST-COLD-RESET-PROD-TM",
+            "CHK-LC-SECDIS-PERSIST-COLD-RESET-PROD-TM",
+            "from the cold-reset release lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF and the "
+            "security-disable net at the SMU and the SMC reads 1'b1 on every sample, then the "
+            "SMC fabric launches AR, AW and B and the DFT secure SIB captures 1; the lifecycle "
+            "words after the reset are measured and logged only",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence from the image load to the fabric and DFT secure SIB leg after "
+            "the reset, stamped PASS two clk_smu_i cycles after it",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait records its bound, the cycles it used and the last observed "
+            "state, and none expires",
+        ),
+    ],
     "smu_lc_sigint_fail_closed_test": [
         (
             "CHK-LC-SIGINT-LEGAL-PAIR",
