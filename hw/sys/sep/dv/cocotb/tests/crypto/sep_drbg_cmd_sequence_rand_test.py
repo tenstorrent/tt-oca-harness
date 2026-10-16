@@ -162,8 +162,9 @@ Checkers:
                  "must be read four times for each request made",
                  csrng.hjson:475-476): the leg counts ``GENBITS`` reads while
                  ``GENBITS_VLD`` = 1, up to one read past four. Control: the
-                 Generate before the Reseed was refused, and ``GENBITS`` was
-                 drained until ``GENBITS_VLD`` read 0 before the Reseed.
+                 Generate before the Reseed was refused, ``GENBITS`` was
+                 drained until ``GENBITS_VLD`` read 0 before the Reseed, and the
+                 Reseed acked with ``CMD_STS`` = 0 (the same success code).
   CHK-CSRNG-GENBITS-GATE  with a Generate pending, ``CTRL.SW_APP_ENABLE`` set
                  to a value other than 6: four ``GENBITS`` reads return 0.
                  Control: ``GENBITS`` is first drained (read while
@@ -1147,10 +1148,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         self.chk.ok("CSRNG-RESEED-LIMIT", lim_ok, **lim)
         self.chk.ctrl(
             "CSRNG-RESEED-HDR",
-            refused is not None and hdr.get("pre_vld") == 0,
+            refused is not None
+            and hdr.get("pre_vld") == 0
+            and hdr.get("reseed_cmd_sts") == STS_SUCCESS,
             refused_index=lim.get("refused_index"),
             pre_drained=hdr.get("pre_drained"),
             pre_vld=hdr.get("pre_vld"),
+            reseed_cmd_sts=hdr.get("reseed_cmd_sts"),
+            expected_reseed_sts=STS_SUCCESS,
         )
         self.chk.ok(
             "CSRNG-RESEED-HDR",

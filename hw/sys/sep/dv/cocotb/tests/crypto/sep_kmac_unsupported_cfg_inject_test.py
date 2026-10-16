@@ -73,7 +73,9 @@ the SHA3-128 cell run after the blocked group.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from pathlib import Path
 
 import cocotb
 import pyuvm
@@ -112,6 +114,42 @@ _INTR_MASK = KMAC.mask32("INTR_STATE")
 _ERR_CODE_MASK = KMAC.field_mask("ERR_CODE", "err_code")
 _CMD_ERR_PROCESSED = KMAC.field_mask("CMD", "err_processed")
 _EN_UNSUP_LSB = KMAC.field_lsb("CFG_SHADOWED", "en_unsupported_modestrength")
+
+# CMD.cmd command codes from the enum of field ``cmd`` in register ``CMD`` of
+# vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson (start = 29,
+# process = 46, run = 49, done = 22). The overlay kmac.rdl CMD.cmd desc says
+# "the field is defined as enum" but carries no values, so the hjson enum is the
+# source. The field position comes from the generated register metadata.
+_KMAC_HJSON = (
+    Path(__file__).resolve().parents[7]
+    / "vendor"
+    / "lowRISC"
+    / "opentitan"
+    / "upstream"
+    / "hw"
+    / "ip"
+    / "kmac"
+    / "data"
+    / "kmac.hjson"
+)
+
+
+def _hjson_cmd_codes() -> dict[str, int]:
+    """Name -> value of the CMD.cmd enum in kmac.hjson. Raises if it is not found."""
+    text = _KMAC_HJSON.read_text(encoding="utf-8")
+    reg = text.find('{ name: "CMD"')
+    fld = text.find('name: "cmd"', reg) if reg >= 0 else -1
+    start = text.find("enum:", fld) if fld >= 0 else -1
+    end = text.find("] // enum", start) if start >= 0 else -1
+    body = text[start:end] if end >= 0 else ""
+    codes = {n: int(v, 0) for v, n in re.findall(r'value:\s*"(\w+)"\s*name:\s*"(\w+)"', body)}
+    if not {"start", "process", "done"} <= set(codes):
+        raise KeyError(f"CMD.cmd enum (start/process/done) not parsed from {_KMAC_HJSON}: {codes}")
+    return codes
+
+
+_CMD_CODES = _hjson_cmd_codes()
+_CMD_START_SPEC = _CMD_CODES["start"] << KMAC.field_lsb("CMD", "cmd")
 
 # cSHAKE PREFIX of the open helper: empty function name and empty
 # customization string, encode_string("") || encode_string("").
@@ -348,7 +386,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         mode, strength = _SHA3_CTRL
         await self._arm_cell(mode, strength, 0)
         t0 = self._now_clk()
-        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        await self._wr(KMAC_CMD, _CMD_START_SPEC)
         seen, status, clk = await self._poll(KMAC_STATUS, _ABSORB, t0, _OUTER_CLK)
         err = _bits(await self._rd(KMAC_INTR_STATE), _ERR)
         self.chk.ctrl(
@@ -374,7 +412,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         cell = dict(seed=seed, mode=mode, kstrength=strength, en_unsup=0)
         pre_intr, pre_code = await self._arm_cell(mode, strength, 0)
         t0 = self._now_clk()
-        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        await self._wr(KMAC_CMD, _CMD_START_SPEC)
         seen, intr, err_clk = await self._poll(KMAC_INTR_STATE, _ERR, t0, bound)
         if not seen:
             status = await self._rd(KMAC_STATUS)
