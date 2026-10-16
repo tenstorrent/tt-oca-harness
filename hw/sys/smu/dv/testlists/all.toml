@@ -3165,7 +3165,7 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_chiplet.preload",
 ]
 
-# PROD image with +lc_sigint_inject: a SEC_DIS token matched over the SEP OTP bridge opens every path, also while the pair is broken.
+# PROD image with +lc_sigint_inject: a SEC_DIS token matched over the SEP OTP bridge opens every path; the opened paths hold and the SMC OTP bridge fails closed while the pair is broken.
 [[tests]]
 name = "smu_lc_sec_dis_over_sigint_prod_test"
 module = "smu_lc_sec_dis_over_sigint_prod_test"

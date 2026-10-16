@@ -19,13 +19,13 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_lc_sec_dis_over_sigint_prod_test(smu_base_test):
-    """A token match in PROD opens the debug paths and keeps them open under a sigint injection."""
+    """A token match in PROD opens the debug paths; they hold while the exported pair is broken."""
 
     use_shared_env = True
 
     async def run_scenario(self) -> None:
         self.logger.info(
             "DUT_TAG=WRAPPER smu_lc_sec_dis_over_sigint_prod_test SEP=1 "
-            "PROD token match over an integrity error"
+            "PROD token match held across an LC_STATE pair inject"
         )
         await smu_lc_sec_dis_over_sigint_prod_test_seq(self).run()

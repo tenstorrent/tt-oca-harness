@@ -273,8 +273,8 @@ class smu_lc_dis_sys_chiplet_dbg_test_dev_test_seq(smu_lc_sec_dis_over_sigint_pr
             "CHK-LC-FEATCTRL-SYS-DIS-CHIPLET-DBG-TEST-DEV",
             f"lcc_feat_ctrl_o=0x{word:016x} want=0x{FEAT_CTRL_CHIPLET_DBG_CLOSED:016x} "
             f"reset=0x{FEAT_CTRL_RESET:016x} sense_done={done}",
-            (word, done, word != FEAT_CTRL_RESET),
-            (FEAT_CTRL_CHIPLET_DBG_CLOSED, 1, True),
+            (word, word != FEAT_CTRL_RESET),
+            (FEAT_CTRL_CHIPLET_DBG_CLOSED, True),
         )
 
         await self._mark("CASE 1 CONTROL: I/O STAP follows the PTAP TMS, the DFD SIB opens")

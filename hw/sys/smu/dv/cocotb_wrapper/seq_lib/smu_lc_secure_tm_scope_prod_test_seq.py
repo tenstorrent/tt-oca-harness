@@ -314,9 +314,8 @@ class smu_lc_secure_tm_scope_prod_test_seq(smu_lc_sec_dis_over_sigint_prod_test_
                 secure_tm_done,
                 strap_profile,
                 feat_profile,
-                done,
             ),
-            (True, 0, 0, SECURE_TM_SET, 1, FEAT_CTRL_FUNCTION_ONLY, 1),
+            (True, 0, 0, SECURE_TM_SET, 1, FEAT_CTRL_FUNCTION_ONLY),
         )
 
         await self._mark("SIBS CLOSED: DFT non-secure and DFT secure SIBs with the strap high")

@@ -12,7 +12,8 @@ hw/ip/jtag/jtag_stap/doc/architecture.adoc (disabled STAP).
 The eFuse shadow image named by ``+sep_shadow_reg_preload`` is the only stimulus. The sequence is
 parameterised by an ``ExportSpec``; the steps a leaf runs follow from it, in this order:
 
-S1, setup: the image is the leaf's own and ``sep_fuse_sense_done_o`` rises within its bound.
+S1, setup: the image is the leaf's own and ``sep_fuse_sense_done_o`` rises within its bound; the
+    flag is the bench's ``+skip_fuse_sense`` substitute, a recorded precondition and not graded.
 S2, export: ``lc_state_o``, ``obs_sep_lc_state_o`` and ``smc_lc_state_in_o`` sampled on one
     ``clk_smu_i`` edge each equal the state's word.
 witness: the SEP OTP bridge reads back a word only that image holds.
@@ -343,11 +344,11 @@ class smu_lc_export_seq:
     def _check_exports(self) -> None:
         spec = self.spec
         for point, value in self.exports.items():
-            observed: tuple = (value, self.sense_done_at_sample, value != LC_STATE_PRESENSE)
-            expected: tuple = (spec.lc_word, 1, True)
+            observed: tuple = (value, value != LC_STATE_PRESENSE)
+            expected: tuple = (spec.lc_word, True)
             text = (
                 f"{point} word=0x{value:02x} want=0x{spec.lc_word:02x} "
-                f"pre_sense=0x{LC_STATE_PRESENSE:02x}"
+                f"pre_sense=0x{LC_STATE_PRESENSE:02x} sense_done={self.sense_done_at_sample}"
             )
             if spec.witness == "spare0":
                 observed += (self.witness_word,)
@@ -448,8 +449,8 @@ class smu_lc_export_seq:
             self._chk("LC-FEATCTRL"),
             f"lcc_feat_ctrl_o=0x{word:016x} want=0x{spec.feat_ctrl:016x} "
             f"reset=0x{FEAT_CTRL_RESET:016x} sense_done={done}",
-            (word, done, word != FEAT_CTRL_RESET),
-            (spec.feat_ctrl, 1, True),
+            (word, word != FEAT_CTRL_RESET),
+            (spec.feat_ctrl, True),
         )
 
     async def _step_lane(self) -> None:

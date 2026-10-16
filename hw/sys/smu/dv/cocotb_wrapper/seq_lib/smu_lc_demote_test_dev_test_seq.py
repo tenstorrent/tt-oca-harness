@@ -336,8 +336,8 @@ class smu_lc_demote_test_dev_test_seq(smu_dtp_sep_dm_sba_test_seq):
             "CHK-LC-DEMOTE-COLDCLEAR-FEATCTRL-TEST-DEV",
             f"after cold reset lcc_feat_ctrl_o=0x{cleared:016x} sense_done={done} "
             f"want=0x{FEAT_CTRL_BASELINE:016x} before reset=0x{demoted_2:016x}",
-            (cleared, done, demoted_2),
-            (FEAT_CTRL_BASELINE, 1, FEAT_CTRL_DEMOTE_1_2),
+            (cleared, demoted_2),
+            (FEAT_CTRL_BASELINE, FEAT_CTRL_DEMOTE_1_2),
         )
 
         await self._finish()

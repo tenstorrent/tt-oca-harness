@@ -668,13 +668,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "in the same leaf",
         ),
         (
-            "CHK-LC-SECDIS-OVER-SIGINT-PROD",
-            "CHK-LC-SECDIS-OVER-SIGINT-PROD",
-            "with lc_sigint_inject_i high and the match held, lcc_feat_ctrl_o equals "
-            "64'hFFFF_FFFF_FFFF_FFFF, the SEP STAP host TMS follows the PTAP TMS and an SMC "
-            "fabric SINGLE_OP launches AR, AW and B, and lcc_feat_ctrl_o stays all ones after "
-            "the release; lc_sigint_err_o and the SMC OTP responses are measured and logged "
-            "only",
+            "CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD",
+            "CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD",
+            "with lc_sigint_inject_i high and the match held, lc_sigint_err_o is 1, "
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF, the SEP STAP host TMS follows the "
+            "PTAP TMS and an SMC fabric SINGLE_OP launches AR, AW and B; after the release "
+            "lc_sigint_err_o is 0 and lcc_feat_ctrl_o stays all ones",
+        ),
+        (
+            "CHK-LC-SMC-OTP-CLOSED-UNDER-SECDIS-SIGINT-PROD",
+            "CHK-LC-SMC-OTP-CLOSED-UNDER-SECDIS-SIGINT-PROD",
+            "with the match held, an SMC OTP bridge read of JTAG_PUBLIC_IDENTITY word 0 "
+            "returns SUCCESS before the inject, is refused while lc_sigint_inject_i is high "
+            "with lc_sigint_err_o at 1 and the security-disable net at 1'b1 at the SMU and the "
+            "SMC, and returns SUCCESS again after the release",
         ),
         (
             "CHK-NONVAC",
@@ -756,7 +763,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-FEATCTRL-SYS-DIS-CHIPLET-DBG-TEST-DEV",
             "CHK-LC-FEATCTRL-SYS-DIS-CHIPLET-DBG-TEST-DEV",
-            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFD with sep_fuse_sense_done_o high "
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFD after the sense-done wait "
             "(SYS_DIS bit 1 alone clears feature-control bit 1 in TEST_DEV) and differs from "
             "the 64'h0 reset value",
         ),
@@ -826,7 +833,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-TEST-DEV",
             "CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-TEST-DEV",
-            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFE with sep_fuse_sense_done_o high "
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFE after the sense-done wait "
             "(SIP_DIS bit 0 alone clears feature-control bit 0 in TEST_DEV) and differs from "
             "the 64'h0 reset value",
         ),
@@ -898,7 +905,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-LC-SYSDIS-SEP-DBG-IGNORED-RMA-SIP",
             "lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals "
             "64'hFFFF_FFFF_FFFF_FFFF with bit 0 set although the image holds SYS_DIS bit 0 "
-            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), with sep_fuse_sense_done_o high and "
+            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done wait and "
             "a value differing from the 64'h0 reset value",
         ),
         (
@@ -906,7 +913,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-LC-SYSDIS-CHIPLET-DBG-IGNORED-RMA-SIP",
             "lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals "
             "64'hFFFF_FFFF_FFFF_FFFF with bit 1 set although the image holds SYS_DIS bit 1 "
-            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), with sep_fuse_sense_done_o high and "
+            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done wait and "
             "a value differing from the 64'h0 reset value",
         ),
         (
@@ -914,7 +921,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-LC-SYSDIS-SIP-DBG-IGNORED-RMA-SIP",
             "lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals "
             "64'hFFFF_FFFF_FFFF_FFFF with bit 24 set although the image holds SYS_DIS bit 24 "
-            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), with sep_fuse_sense_done_o high and "
+            "(SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done wait and "
             "a value differing from the 64'h0 reset value",
         ),
         (
@@ -976,7 +983,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-RMA-SIP",
             "CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-RMA-SIP",
-            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFE with sep_fuse_sense_done_o high "
+            "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFE after the sense-done wait "
             "(SIP_DIS bit 0 binds in RMA_SIP and clears feature-control bit 0 alone) and "
             "differs from the 64'h0 reset value",
         ),

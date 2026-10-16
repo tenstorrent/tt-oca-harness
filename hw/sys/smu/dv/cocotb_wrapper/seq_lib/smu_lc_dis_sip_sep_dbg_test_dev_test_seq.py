@@ -120,8 +120,8 @@ class smu_lc_dis_sip_sep_dbg_test_dev_test_seq(smu_lc_dis_sys_chiplet_dbg_test_d
             "CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-TEST-DEV",
             f"lcc_feat_ctrl_o=0x{word:016x} want=0x{FEAT_CTRL_SEP_DBG_CLOSED:016x} "
             f"reset=0x{FEAT_CTRL_RESET:016x} sense_done={done}",
-            (word, done, word != FEAT_CTRL_RESET),
-            (FEAT_CTRL_SEP_DBG_CLOSED, 1, True),
+            (word, word != FEAT_CTRL_RESET),
+            (FEAT_CTRL_SEP_DBG_CLOSED, True),
         )
 
         await self._mark("SMC fabric SINGLE_OP read then write, DTP-to-SMC AR/AW/B counters")

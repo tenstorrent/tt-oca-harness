@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A matched security-disable token in PROD opens every debug path, also under a sigint injection.
+"""A matched security-disable token in PROD opens every debug path, and the opened paths hold
+while the exported LC_STATE pair is broken.
 
 Spec: hw/sys/sep/doc/security_disable.adoc (a token match overrides the lifecycle control and
 forces every feature-control bit on), hw/sys/sep/doc/lifecycle_controller.adoc (feature-control
-profile, "DTP path feature gates", the override applies after the integrity fail-closed),
-hw/sys/sep/doc/otp_fuse_controller.adoc (PROD admits only the eFuse MMR token block over JTAG),
+profile, "DTP path feature gates", the SMC OTP JTAG2AXIL path admits nothing on an integrity
+error), hw/sys/sep/doc/otp_fuse_controller.adoc (PROD admits only the eFuse MMR token block over
+the SEP OTP JTAG port; the SMC OTP JTAG port admits reads of JTAG_PUBLIC_IDENTITY in PROD),
 hw/ip/efuse/regs/efuse_mmr.rdl (token words, TOKEN_EOP, match code),
 hw/ip/jtag/jtag_stap/doc/architecture.adoc and hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc
 (STAP host TMS, iJTAG SIBs), hw/sys/dtp/doc/jtag.adoc (SMC fabric bridge).
@@ -24,11 +26,21 @@ S5, feature control: ``lcc_feat_ctrl_o``.
 S6, SEP STAP: selected over the PTAP, its host TMS follows the PTAP TMS.
 S7, other STAPs: the same for the I/O, SMC and extra STAPs.
 S8, SIBs: under SELECT_IJTAG the three SIBs open, capture 1 and their bench cells join the loop.
-S9, fabric: one SINGLE_OP read and write launch AR, AW and B.
-S10, injection: ``lc_sigint_inject_i`` raised; feature control, the SEP STAP host TMS and the
-    fabric launch hold; ``lc_sigint_err_o`` and the SMC OTP responses are measured and logged only.
-S11, release: ``lc_sigint_inject_i`` lowered; feature control holds.
+S9, fabric: one SINGLE_OP read and write launch AR, AW and B; from Test-Logic-Reset an SMC OTP
+    read of JTAG_PUBLIC_IDENTITY word 0 completes with SUCCESS.
+S10, injection: ``lc_sigint_inject_i`` raised; ``lc_sigint_err_o`` is 1; feature control, the SEP
+    STAP host TMS and the fabric launch hold; the SMC OTP read of JTAG_PUBLIC_IDENTITY is
+    refused.
+S11, release: ``lc_sigint_inject_i`` lowered; ``lc_sigint_err_o`` is 0; feature control holds;
+    the SMC OTP read of JTAG_PUBLIC_IDENTITY completes with SUCCESS again.
 Every bounded wait reports its bound, the cycles it used and the last observed state.
+
+The inject forces ``u_smu.sep_lc_state``, the pair between the SEP's ``lc_state_o`` and the SMC
+eFuse wrapper's decoder; the SEP lifecycle controller decodes its own shadow registers, so the
+SEP-side order of the integrity fail-closed and the SEC_DIS override is not observable on this
+bench. What the injection shows is that the SMU-side debug paths and the feature-control word are
+not a function of this pair, and that the SMC OTP JTAG2AXIL policy fails closed on it with the
+match held.
 """
 
 from __future__ import annotations
@@ -61,7 +73,6 @@ from seq_lib.smu_jtag_helpers import (
     PTAP_3DCR_WIDTH,
     SMC_OTP_AXSIZE_4B,
     otp_jtag2axi_single_read,
-    otp_jtag2axi_single_write,
     pack_otp_single_op,
     ptap_3dcr_value,
     require_jtag_tdo_resolved,
@@ -82,7 +93,7 @@ from seq_lib.smu_lc_export_seq import (
 )
 from seq_lib.smu_lc_sigint_fail_closed_seq import INJECT_TAKE_CYCLES
 from seq_lib.smu_lifecycle_table import LC_RAW, lc_state_word
-from seq_lib.smu_otp_bridges_under_dbg_disable_seq import SMC_EFUSE_SPARE0, SMC_SPARE_PATTERN
+from seq_lib.smu_otp_prod_error_resp_seq import REFUSED, SMC_PUBLIC_IDENTITY, _verdict
 from seq_lib.smu_sep_sba_peripheral_test_seq import (
     SECURITY_DISABLE_PATH,
     SECURITY_DISABLE_SMC_PATH,
@@ -119,6 +130,10 @@ TOKEN_OP_ADMITTED = J2A_STATUS_SUCCESS
 OTP_WRITE_WSTRB = 0xF
 #: Polls of the match read before the wait expires.
 MATCH_POLL_BOUND = 8
+#: hw/sys/smu/dv/tb/tb_wrapper_top.sv, LC_STATE pair fault inject: lc_sigint_err_o while the pair
+#: is broken and once it is legal again.
+SIGINT_RAISED = 1
+SIGINT_CLEAR = 0
 
 #: hw/sys/dtp/doc/jtag.adoc "STAP Secondary Scan Path", hw/sys/smu/doc/port_table.adoc: host TMS
 #: and TDO-enable taps of each STAP.
@@ -291,15 +306,16 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             expired=True,
         )
 
-    async def _smc_otp_logged(self) -> None:
-        """An SMC OTP read and write whose responses are measured and logged only."""
-        await self._ensure_tap()
+    async def _smc_public_identity_read(self, tag: str) -> int | str:
+        """One SMC OTP read of JTAG_PUBLIC_IDENTITY word 0 from Test-Logic-Reset, which clears
+        the PTAP STAP-select bit so the PTAP alone is scanned; returns its verdict."""
+        await self._tlr()
         counter = _ReadCounter(self.tap)
         status, rdata = await otp_jtag2axi_single_read(
-            counter, SMC_EFUSE_SPARE0, poll_limit=OTP_POLL_BOUND
+            counter, SMC_PUBLIC_IDENTITY, poll_limit=OTP_POLL_BOUND
         )
         self._record(
-            "smc_otp_read_inject",
+            f"smc_otp_public_{tag}",
             OTP_POLL_BOUND,
             counter.reads,
             "polls",
@@ -307,32 +323,14 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             expired=(status == J2A_STATUS_BUSY),
         )
         self._log(
-            f"OBSERVATION CHK-LC-SECDIS-OVER-SIGINT-PROD: smc_otp_read status={status} "
-            f"rdata=0x{int(rdata) & 0xFFFF_FFFF:08x} (measured and logged only)"
+            f"CELL smc_otp_public_identity {tag} status={status} "
+            f"rdata=0x{int(rdata) & 0xFFFF_FFFF:08x} lc_sigint_err_o={self._rd('lc_sigint_err_o')}"
         )
-        counter = _ReadCounter(self.tap)
-        status, _ = await otp_jtag2axi_single_write(
-            counter, SMC_EFUSE_SPARE0, SMC_SPARE_PATTERN, poll_limit=OTP_POLL_BOUND
-        )
-        self._record(
-            "smc_otp_write_inject",
-            OTP_POLL_BOUND,
-            counter.reads,
-            "polls",
-            f"status={status}",
-            expired=(status == J2A_STATUS_BUSY),
-        )
-        self._log(
-            f"OBSERVATION CHK-LC-SECDIS-OVER-SIGINT-PROD: smc_otp_write status={status} "
-            "(measured and logged only)"
-        )
+        return _verdict(status)
 
-    def _log_sigint_err(self, where: str) -> None:
-        self._log(
-            f"OBSERVATION CHK-LC-SECDIS-OVER-SIGINT-PROD: "
-            f"lc_sigint_err_o={self._rd('lc_sigint_err_o')} "
-            f"{where} (measured and logged only)"
-        )
+    async def _sigint(self) -> int:
+        await RisingEdge(self.dut.clk_smu_i)
+        return self._rd("lc_sigint_err_o")
 
     async def run(self) -> None:
         await self._mark(
@@ -505,39 +503,60 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             (delta_before, delta_after, control_op),
             (NOT_LAUNCHED, LAUNCHED_AR_AW_B, TOKEN_OP_ADMITTED),
         )
+        public_before = await self._smc_public_identity_read("before")
 
         await self._mark("INJECTION: lc_sigint_inject_i raised with the match held")
         await self._set_inject(1, LC_PROD_BROKEN_WORD)
-        self._log_sigint_err("while injected")
+        sigint_inject = await self._sigint()
+        net_inject = self._net()
         feat_inject = await self._feat()
         inject_obs = await self._stap_follow("sep", "_inject")
         _, _, delta_inject = await self._fabric_deltas(launches=True, tag="_inject")
-        await self._smc_otp_logged()
+        public_inject = await self._smc_public_identity_read("inject")
         lc_injected = self._rd("lc_state_o")
 
         await self._mark("RELEASE: lc_sigint_inject_i lowered")
         await self._set_inject(0, LC_PROD_WORD)
-        self._log_sigint_err("after release")
+        sigint_release = await self._sigint()
         feat_release = await self._feat()
+        public_release = await self._smc_public_identity_read("release")
         self._check(
-            "CHK-LC-SECDIS-OVER-SIGINT-PROD",
-            f"injected lc_state_o=0x{lc_injected:02x} feat=0x{feat_inject:016x} "
-            f"sep_host_edges={inject_obs['sep_edges']} ptap_edges={inject_obs['ptap_edges']} "
-            f"fabric deltas={delta_inject}; released feat=0x{feat_release:016x}",
+            "CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD",
+            f"injected lc_state_o=0x{lc_injected:02x} lc_sigint_err_o={sigint_inject} "
+            f"feat=0x{feat_inject:016x} sep_host_edges={inject_obs['sep_edges']} "
+            f"ptap_edges={inject_obs['ptap_edges']} fabric deltas={delta_inject}; released "
+            f"lc_sigint_err_o={sigint_release} feat=0x{feat_release:016x}",
             (
+                sigint_inject,
                 feat_inject,
                 *self._follows(inject_obs),
                 delta_inject,
+                sigint_release,
                 feat_release,
             ),
             (
+                SIGINT_RAISED,
                 FEAT_CTRL_ALL_ENABLED,
                 True,
                 True,
                 True,
                 True,
                 LAUNCHED_AR_AW_B,
+                SIGINT_CLEAR,
                 FEAT_CTRL_ALL_ENABLED,
+            ),
+        )
+        self._check(
+            "CHK-LC-SMC-OTP-CLOSED-UNDER-SECDIS-SIGINT-PROD",
+            f"SMC OTP JTAG_PUBLIC_IDENTITY read before={public_before} injected={public_inject} "
+            f"(lc_sigint_err_o={sigint_inject} net={net_inject}) released={public_release}",
+            (public_before, public_inject, sigint_inject, net_inject, public_release),
+            (
+                J2A_STATUS_SUCCESS,
+                REFUSED,
+                SIGINT_RAISED,
+                (SECURITY_DISABLE_HIGH, SECURITY_DISABLE_HIGH),
+                J2A_STATUS_SUCCESS,
             ),
         )
 
@@ -555,12 +574,13 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             "ijtag_window_2",
             "fabric_ar_open",
             "fabric_b_open",
+            "smc_otp_public_before",
             "inject_1",
             "stap_window_sep_inject",
             "fabric_ar_inject",
             "fabric_b_inject",
-            "smc_otp_read_inject",
-            "smc_otp_write_inject",
+            "smc_otp_public_inject",
             "inject_0",
+            "smc_otp_public_release",
         ]
         await self._finish(sorted(labels))
