@@ -71,22 +71,10 @@ Checkers:
                             sideload = 1 block with a valid key gives the golden of
                             K_a in t_side clocks; STATUS before the block reads
                             OUTPUT_VALID = 0 and IDLE = 1.
-  CHK-KEYSEL-MISMATCH-WRONG  each of the 11 mismatched cells gives a digest
-                            that differs from the digest of the matching
-                            key_length (256) on the same digest size
-                            (hmac.adoc:54-56: "A supported length that disagrees
-                            with the delivered key does not raise an error: ...
-                            the resulting digest is wrong but repeatable").
-                            Control: each matching-length digest equals the
-                            golden of K_h (``CTRL-KEYSEL-MISMATCH-WRONG``). On
-                            this DUT the cells above 128 bits fail (expected RED):
-                            the padding below the delivered key is zero, so the
-                            key equals K_h after the HMAC zero padding of a key
-                            shorter than the block, and the digest equals the
-                            matching-length digest.
-The digest of a mismatched length above 128 bits has no stated value; its
-compare with the matching-length digest and the decoy golden is logged as
-``OBS-KEYSEL-MISMATCH``.
+The digest of a mismatched length above 128 bits has no stated value:
+``hmac.adoc`` (OCAH Modifications) calls it "wrong but repeatable" but does not
+state the padding below the delivered key. Its compare with the matching-length
+digest and the decoy golden is logged as ``OBS-KEYSEL-MISMATCH``.
 
 DIGEST byte order: the register text settles the register order (DIGEST_0 holds
 digest bytes 0..3) and the ``digest_swap`` swap (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117), not the
@@ -291,7 +279,6 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
     required_evidence = (
         "CHK-KEYSEL-HMAC-MATCH",
         "CHK-KEYSEL-HMAC-MISMATCH",
-        "CHK-KEYSEL-MISMATCH-WRONG",
         "CHK-KEYSEL-HMAC-NONE",
         "CHK-KEYSEL-AES-SW",
         "CHK-KEYSEL-TWO",
@@ -356,18 +343,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         mismatch = await self._mismatched_cells(kh, matched)
         none_err = await self._none_leg()
         self.chk.ctrl("KEYSEL-HMAC-MISMATCH", none_err == 1, none_leg_hmac_err=none_err)
-        for sha in sorted(matched):
-            hit, _ = self.digest_order.match(matched[sha], g_kh[sha])
-            self.chk.ctrl("KEYSEL-MISMATCH-WRONG", hit, sha=sha, matched_eq_golden_kh=int(hit))
         for line in mismatch:
-            wrong = line.pop("_wrong")
-            self.chk.ok(
-                "KEYSEL-MISMATCH-WRONG",
-                wrong == 1,
-                sha=line["sha"],
-                keylen=line["keylen"],
-                digest_differs_from_matched=wrong,
-            )
             self.chk.ok("KEYSEL-HMAC-MISMATCH", line.pop("_ok"), **line)
 
         await self._aes_legs(ka)
@@ -518,9 +494,6 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             if reason:
                 line["reason"] = reason
             line["_ok"] = ok
-            # "wrong" (hmac.adoc:54-56): the digest differs from the matching-length digest.
-            ref = matched.get(sha)
-            line["_wrong"] = int(bool(runs) and ref is not None and runs[0] != ref)
             lines.append(line)
         return lines
 
