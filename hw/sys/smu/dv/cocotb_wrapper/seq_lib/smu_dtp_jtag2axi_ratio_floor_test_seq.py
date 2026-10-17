@@ -3,7 +3,9 @@
 """SMC fabric JTAG2AXI series completion across TCK to clk_smu_i ratios.
 
 The test runs the same four-word series write and four single-load series reads at TCK periods of
-40, 48, 32, 20 and 40 ns against a 10 ns clk_smu_i, each leg on a fresh JTAG master. The legs at
+40, 48, 32, 20 and 40 ns against a 10 ns clk_smu_i, each leg on a fresh JTAG master. The clk_smu_i
+period measured over four rising edges and the bench period from +pll_sys_period_ns are compared
+with the 10 ns system clock setting, so the ratios of the legs rest on a graded period. The legs at
 ratio 4.0 and 4.8 and the recovery leg at ratio 4.0 after SERIES_CTRL.reset compare completion,
 data, SERIES_CTRL.op and the write-launch and write-response counters at the SMU boundary. The legs
 at ratio 3.2 and 2.0 are measured and logged only, except that SERIES_CTRL.op is 0 or 3 and never
@@ -57,6 +59,10 @@ OP_PENDING = J2A_STATUS_BUSY
 LOW_LEGS = ("3P2", "2P0")
 # doc/integrator/src/smu-composition.adoc, system clock settings: the 100 MHz setting is 10 ns.
 SYS_CLK_PERIOD_NS = 10.0
+# Rising edges over which the clk_smu_i period is measured and the relative tolerance it is held
+# to against the setting.
+SYS_CLK_PERIOD_EDGES = 4
+SYS_CLK_PERIOD_TOLERANCE = 0.01
 
 # Legs: (name, TCK period in ns, first word of the series). TCK periods give ratios 4.0, 4.8, 3.2,
 # 2.0 against the system clock (doc/integrator/src/smu-dtp.adoc, TCK 10 MHz to 50 MHz).
@@ -290,9 +296,14 @@ class smu_dtp_jtag2axi_ratio_floor_test_seq:
         await self._mark("S1", "TAP reset, IDCODE, gate, counter baseline, SERIES_CTRL reset")
         clk = self.dut.clk_smu_i
         await RisingEdge(clk)
-        t0 = self._now()
-        await RisingEdge(clk)
-        period_ns = self._now() - t0
+        t0_ps = get_sim_time(unit="ps")
+        for _ in range(SYS_CLK_PERIOD_EDGES):
+            await RisingEdge(clk)
+        period_ns = (get_sim_time(unit="ps") - t0_ps) / SYS_CLK_PERIOD_EDGES / 1000.0
+        period_within = abs(period_ns - SYS_CLK_PERIOD_NS) <= (
+            SYS_CLK_PERIOD_TOLERANCE * SYS_CLK_PERIOD_NS
+        )
+        cfg_period_ns = float(self.cfg.smu_clk_period_ns)
         await self._new_master(SETUP_TCK_NS)
         self.scans += 1
         idcode = await self.jtag.read_idcode()
@@ -321,17 +332,19 @@ class smu_dtp_jtag2axi_ratio_floor_test_seq:
         after = await self._nop_op("setup_after_reset")
         ratio_unset = self.test.min_jtag_smu_ratio is None
         self._log(
-            f"OBSERVATION clk_smu_i period {period_ns} ns (system clock setting "
-            f"{SYS_CLK_PERIOD_NS} ns), min_jtag_smu_ratio unset {ratio_unset}, gate tap read "
-            f"{gate_value} after {used} polls; measured and logged only"
+            f"OBSERVATION min_jtag_smu_ratio unset {ratio_unset}, gate tap read {gate_value} "
+            f"after {used} polls; measured and logged only"
         )
         self._check(
             "CHK-DBG-RATIO-SETUP",
-            f"clk_smu_i period {period_ns} ns and min_jtag_smu_ratio unset {ratio_unset} logged, "
-            f"gate tap read {gate_value} after {used} polls, baselines aw/ar/b={base}, "
-            f"SERIES_CTRL.reset written (op {before} -> {after}) (want op {OP_OKAY})",
-            (after,),
-            (OP_OKAY,),
+            f"clk_smu_i period {period_ns:.3f} ns over {SYS_CLK_PERIOD_EDGES} edges within "
+            f"{SYS_CLK_PERIOD_TOLERANCE * 100:.0f} % of the {SYS_CLK_PERIOD_NS} ns system clock "
+            f"setting {period_within}, bench +pll_sys_period_ns period {cfg_period_ns} ns, "
+            f"min_jtag_smu_ratio unset {ratio_unset} logged, gate tap read {gate_value} after "
+            f"{used} polls, baselines aw/ar/b={base}, SERIES_CTRL.reset written (op {before} -> "
+            f"{after}) (want within True, bench period {SYS_CLK_PERIOD_NS}, op {OP_OKAY})",
+            (period_within, cfg_period_ns, after),
+            (True, SYS_CLK_PERIOD_NS, OP_OKAY),
         )
 
     async def _leg(self, leg: tuple[str, int, int], *, measured: bool, reset_first=False) -> None:

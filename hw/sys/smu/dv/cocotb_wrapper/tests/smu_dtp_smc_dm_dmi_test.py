@@ -18,6 +18,7 @@ class smu_dtp_smc_dm_dmi_test(smu_base_test):
         "CHK-DBG-SMC-DM-DMACTIVE",
         "CHK-DBG-SMC-DM-DMSTATUS",
         "CHK-DBG-SMC-DM-RELEASE",
+        "CHK-DBG-SMC-DM-RESET-CONTRAST",
         "CHK-DBG-SMC-DM-RESET-HELD",
         "CHK-DBG-SMC-DM-SBA-PATH",
         "CHK-DBG-SMC-DM-SBA-READ",

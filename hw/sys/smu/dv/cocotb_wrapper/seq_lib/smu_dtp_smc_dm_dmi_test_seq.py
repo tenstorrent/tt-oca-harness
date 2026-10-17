@@ -5,9 +5,12 @@
 The primary TAP selects the SMC STAP through TAP_3DCR. The SMC cluster's debug transport module
 (RISC-V External Debug Support 0.13) answers on its 5-bit instruction register: dtmcs gives abits,
 which sizes every dmi scan. CPU_CTRL RESET_CTRL holds the debug module in reset (bit 24, active
-low); the dmi answers while it is held are measured and logged only. The fabric SINGLE_OP write of
-the RESET_CTRL word with bit 24 set releases it, after which dmcontrol.dmactive, the dmstatus and
-sbcs capability fields and a debug system-bus write and read of CPU_CTRL SCRATCH[15] are compared.
+low): while bit 24 reads 0 a dmi read of dmcontrol after a write of dmactive does not answer op 0
+with dmactive 1 and a dmi read of dmstatus does not answer op 0 with version 2. The fabric
+SINGLE_OP write of the RESET_CTRL word with bit 24 set releases it, after which the same reads
+answer op 0 with dmactive 1 and version 2, and the dmstatus and sbcs capability fields and a debug
+system-bus write and read of CPU_CTRL SCRATCH[15] are compared. The held op values are logged; op
+1 is reserved in External Debug 0.13.
 A fabric write of SCRATCH[14] before the system-bus sequence is read back over the system bus, and
 the DTP-to-SMC launch counters stay flat across the system-bus traffic.
 
@@ -114,6 +117,8 @@ SMC_TAP_IR_DMI = 0x11
 DTMCS_WIDTH = 32
 DTMCS_ABITS_LSB = 4
 DTMCS_ABITS_MASK = 0x3F
+DTMCS_DMISTAT_LSB = 10
+DTMCS_DMISTAT_MASK = 0x3
 DTMCS_IDLE_LSB = 12
 DTMCS_IDLE_MASK = 0x7
 DTMCS_DMIRESET = 1 << 16
@@ -187,6 +192,7 @@ CHECK_ORDER = (
     "CHK-DBG-SMC-DM-RELEASE",
     "CHK-DBG-SMC-DM-DMACTIVE",
     "CHK-DBG-SMC-DM-DMSTATUS",
+    "CHK-DBG-SMC-DM-RESET-CONTRAST",
     "CHK-DBG-SMC-DM-SBCS",
     "CHK-DBG-SMC-DM-SBA-WRITE",
     "CHK-DBG-SMC-DM-SBA-READ",
@@ -231,6 +237,7 @@ class smu_dtp_smc_dm_dmi_test_seq:
         self.sites: list[dict] = []
         self.checks: dict[str, tuple[str, list[tuple[str, object, object]]]] = {}
         self.r: dict[str, object] = {}
+        self.dmistat: dict[str, int] = {}
         self.monitor_stop = False
         self.done = False
 
@@ -513,7 +520,8 @@ class smu_dtp_smc_dm_dmi_test_seq:
         if status != DMI_STATUS_OK:
             if not measure:
                 raise AssertionError(f"dmi {label} addr=0x{addr:02x} status={status}")
-            await self._dmireset(f"{label}_status{status}")
+            dtmcs = await self._dmireset(f"{label}_status{status}")
+            self.dmistat[label] = _field(dtmcs, DTMCS_DMISTAT_LSB, DTMCS_DMISTAT_MASK)
         if record:
             self._site(
                 "dmi_retry", label, DMI_RETRY_LIMIT, "retries", used, f"status={status}", False
@@ -646,20 +654,25 @@ class smu_dtp_smc_dm_dmi_test_seq:
 
     async def _dmi_while_held(self) -> None:
         await self._mark("S5", "dmi accesses with the debug module held, IDCODE after")
-        held = []
-        _, st = await self._dmi_op(
-            DMCONTROL_ADDR, DMCONTROL_DMACTIVE, DMI_OP_WRITE, "held_dmactive_wr", measure=True
+        held = {}
+        accesses = (
+            (
+                "dmcontrol write",
+                "held_dmcontrol_wr",
+                DMCONTROL_ADDR,
+                DMCONTROL_DMACTIVE,
+                DMI_OP_WRITE,
+            ),
+            ("dmcontrol read", "held_dmcontrol_rd", DMCONTROL_ADDR, 0, DMI_OP_READ),
+            ("dmstatus read", "held_dmstatus_rd", DMSTATUS_ADDR, 0, DMI_OP_READ),
         )
-        held.append(("dmcontrol write", st, 0))
-        for name, addr in (("dmcontrol read", DMCONTROL_ADDR), ("dmstatus read", DMSTATUS_ADDR)):
-            value, st = await self._dmi_op(
-                addr, 0, DMI_OP_READ, f"held_{name.split()[0]}_rd", measure=True
-            )
-            held.append((name, st, value))
-        for name, st, value in held:
+        for name, label, addr, data, op in accesses:
+            value, st = await self._dmi_op(addr, data, op, label, measure=True)
+            held[name] = (st, value)
             self._log(
                 f"OBSERVATION debug module held, {name} status measured={st} "
-                f"data measured=0x{value:08x} measured and logged only"
+                f"data measured=0x{value:08x} dtmcs.dmistat after it "
+                f"{self.dmistat.get(label)}; the status values are logged"
             )
         idcode, _ = await self._dr(DTP_IR_IDCODE, 0, 32, "idcode_after_held", smc_ir=SMC_TAP_IR_DMI)
         self.r["held"] = held
@@ -681,11 +694,15 @@ class smu_dtp_smc_dm_dmi_test_seq:
         await self._mark("S7", "dmactive after the release")
         await self._dmireset("release")
         await self._dmi(DMCONTROL_ADDR, DMCONTROL_DMACTIVE, DMI_OP_WRITE, "dmactive_wr")
-        self.r["dmcontrol"] = await self._dmi(DMCONTROL_ADDR, 0, DMI_OP_READ, "dmactive_rd")
+        self.r["dmcontrol"], self.r["dmcontrol_op"] = await self._dmi_op(
+            DMCONTROL_ADDR, 0, DMI_OP_READ, "dmactive_rd"
+        )
 
     async def _capabilities(self) -> None:
         await self._mark("S8", "dmstatus and sbcs capability read-backs")
-        self.r["dmstatus"] = await self._dmi(DMSTATUS_ADDR, 0, DMI_OP_READ, "dmstatus_rd")
+        self.r["dmstatus"], self.r["dmstatus_op"] = await self._dmi_op(
+            DMSTATUS_ADDR, 0, DMI_OP_READ, "dmstatus_rd"
+        )
         self.r["sbcs"] = await self._dmi(SBCS_ADDR, 0, DMI_OP_READ, "sbcs_rd")
 
     async def _system_bus_write(self) -> None:
@@ -741,7 +758,14 @@ class smu_dtp_smc_dm_dmi_test_seq:
         id_after = r["id_after"]
         sbversion = _field(sbcs, SBCS_SBVERSION_LSB, SBCS_SBVERSION_MASK)
         sbaccess = [_bit(sbcs, b) for b in SBCS_SBACCESS_BITS]
-        held_text = "; ".join(f"{n} status {s} data 0x{v:08x}" for n, s, v in r["held"])
+        held = r["held"]
+        held_text = "; ".join(f"{n} status {s} data 0x{v:08x}" for n, (s, v) in held.items())
+        held_dc_op, held_dc = held["dmcontrol read"]
+        held_ds_op, held_ds = held["dmstatus read"]
+        held_dmactive = held_dc & DMCONTROL_DMACTIVE
+        held_version = _field(held_ds, 0, DMSTATUS_VERSION_MASK)
+        dmactive = r["dmcontrol"] & DMCONTROL_DMACTIVE
+        version = _field(dmstatus, 0, DMSTATUS_VERSION_MASK)
 
         self._check(
             "CHK-DBG-SMC-DM-SETUP",
@@ -764,7 +788,7 @@ class smu_dtp_smc_dm_dmi_test_seq:
             f"RESET_CTRL read op {held_status} word 0x{d0:016x}: bit {RESET_DEBUG_BIT} "
             f"{_bit(d0, RESET_DEBUG_BIT)}; bits 3:0 0x{d0 & RESET_CORES_MASK:x} and bit "
             f"{RESET_UNCORE_BIT} {_bit(d0, RESET_UNCORE_BIT)} logged; dmi while held completed "
-            f"within the bound ({held_text}; measured and logged only); IDCODE after "
+            f"within the bound ({held_text}; the write status is logged); IDCODE after "
             f"0x{id_after:08x} (want op {FABRIC_OP_OKAY}, bit {RESET_DEBUG_BIT} "
             f"{RESET_DEBUG_HELD}, ID0 0x{id0:08x})",
             [
@@ -825,6 +849,43 @@ class smu_dtp_smc_dm_dmi_test_seq:
                     "confstrptrvalid",
                     _bit(dmstatus, DMSTATUS_CONFSTRPTRVALID_BIT),
                     DMSTATUS_CONFSTRPTRVALID,
+                ),
+            ],
+        )
+        self._check(
+            "CHK-DBG-SMC-DM-RESET-CONTRAST",
+            f"with bit {RESET_DEBUG_BIT} at {RESET_DEBUG_HELD} the dmi read of dmcontrol after "
+            f"the write of dmactive answered op {held_dc_op} data 0x{held_dc:08x} (dmactive "
+            f"{held_dmactive}) and the dmi read of dmstatus answered op {held_ds_op} data "
+            f"0x{held_ds:08x} (version {held_version}); with bit {RESET_DEBUG_BIT} at "
+            f"{RESET_DEBUG_RELEASED} dmcontrol answered op {r['dmcontrol_op']} dmactive "
+            f"{dmactive} and dmstatus op {r['dmstatus_op']} version {version} (want the held "
+            f"dmcontrol answer not op {DMI_STATUS_OK} with dmactive {DMCONTROL_DMACTIVE}, the "
+            f"held dmstatus answer not op {DMI_STATUS_OK} with version "
+            f"{DMSTATUS_VERSION_SPEC_0_13}, the released answers op {DMI_STATUS_OK} with "
+            f"dmactive {DMCONTROL_DMACTIVE} and op {DMI_STATUS_OK} with version "
+            f"{DMSTATUS_VERSION_SPEC_0_13}; the held op values are logged, op 1 is reserved in "
+            f"External Debug 0.13)",
+            [
+                (
+                    "held dmcontrol answers op 0 with dmactive 1",
+                    held_dc_op == DMI_STATUS_OK and held_dmactive == DMCONTROL_DMACTIVE,
+                    False,
+                ),
+                (
+                    "held dmstatus answers op 0 with version 2",
+                    held_ds_op == DMI_STATUS_OK and held_version == DMSTATUS_VERSION_SPEC_0_13,
+                    False,
+                ),
+                (
+                    "released dmcontrol op, dmactive",
+                    (r["dmcontrol_op"], dmactive),
+                    (DMI_STATUS_OK, DMCONTROL_DMACTIVE),
+                ),
+                (
+                    "released dmstatus op, version",
+                    (r["dmstatus_op"], version),
+                    (DMI_STATUS_OK, DMSTATUS_VERSION_SPEC_0_13),
                 ),
             ],
         )

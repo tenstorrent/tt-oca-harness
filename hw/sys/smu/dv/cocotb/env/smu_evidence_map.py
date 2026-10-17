@@ -3098,8 +3098,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DBG-RATIO-SETUP",
             "CHK-DBG-RATIO-SETUP",
-            "the clk_smu_i period and the absent TCK floor are logged, the gate tap reads 0 before "
-            "the first scan, SERIES_CTRL.reset leaves op 0 and the counter baselines are sampled",
+            "the clk_smu_i period measured over four rising edges is within 1 % of the 10 ns "
+            "system clock setting and the bench period from +pll_sys_period_ns equals it, the "
+            "absent TCK floor is logged, the gate tap reads 0 before the first scan, "
+            "SERIES_CTRL.reset leaves op 0 and the counter baselines are sampled",
         ),
         (
             "CHK-DBG-RATIO-COMPLETE-4P0",
@@ -3154,7 +3156,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-DBG-SMC-DM-RESET-HELD",
             "RESET_CTRL reads bit 24 = 0 and its bits 3:0 and bit 8 are logged; the dmi write and "
             "two dmi reads while the debug module is held complete inside the retry bound with "
-            "their values measured and logged only; the IDCODE after them equals the first",
+            "the write status logged; the IDCODE after them equals the first",
         ),
         (
             "CHK-DBG-SMC-DM-RELEASE",
@@ -3175,6 +3177,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the dtmcs scan completes and its abits size the dmi scans; dmstatus reads version 2, "
             "authenticated 1, hasresethaltreq 1, impebreak 1 and confstrptrvalid 0, each compared "
             "separately",
+        ),
+        (
+            "CHK-DBG-SMC-DM-RESET-CONTRAST",
+            "CHK-DBG-SMC-DM-RESET-CONTRAST",
+            "while RESET_CTRL bit 24 reads 0 the dmi read of dmcontrol after the write of "
+            "dmactive = 1 does not answer op 0 with dmactive 1 and the dmi read of dmstatus does "
+            "not answer op 0 with version 2; after the write that sets bit 24 the same reads "
+            "answer op 0 with dmactive 1 and op 0 with version 2; the held op values are logged "
+            "(op 1 is reserved in External Debug 0.13)",
         ),
         (
             "CHK-DBG-SMC-DM-SBCS",
