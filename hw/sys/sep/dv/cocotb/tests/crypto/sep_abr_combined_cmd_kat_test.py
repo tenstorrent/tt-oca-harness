@@ -366,7 +366,7 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
             return
         await self.abr.write_words(ABR_SEED, list(NIST_KG_SEED))
         await self.abr.write_words(ABR_EXTERNAL_MU, list(NIST_SG_MU))
-        await self.abr.write_words(ABR_ENTROPY, list(self.cfg.entropy))
+        await self.abr.write_words(ABR_ENTROPY, list(self.dsa_cfg.entropy))
         await self.abr.wr32(ABR_CTRL, CMD_KEYGEN_SIGN | CTRL_EXTERNAL_MU)
         st = await self._poll(ABR_STATUS, ST_VALID | ST_ERROR, VALID_POLLS, VALID_GAP)
         if st is None:
@@ -389,7 +389,7 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
     # --- scenario -----------------------------------------------------------
     async def run_scenario(self) -> None:
         self.seed = self.random_seed()
-        self.cfg = SepAbrKeygenCfg(self.seed)
+        self.dsa_cfg = SepAbrKeygenCfg(self.seed)
         self.chk = SepChkLog(self, TEST, self.seed)
         self._graded: set[str] = set()
 
@@ -403,7 +403,7 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
         self.logger.info(
             "PLAN seed=%d kem_keygen=acvp encaps_m=acvp dsa_seed=acvp entropy[0]=0x%08x",
             self.seed,
-            self.cfg.entropy[0],
+            self.dsa_cfg.entropy[0],
         )
         self.abr = SepAbr(self)
 
