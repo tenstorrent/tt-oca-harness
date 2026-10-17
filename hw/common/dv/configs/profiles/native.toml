@@ -109,12 +109,8 @@ kind = "coverage_merge"
 [frameworks.uvm.native.stages.cov_report]
 kind = "coverage_report"
 
-# SystemVerilog UVM: the UVM library compiles from the Accellera release archive
-# `uvm_library` pins by `sha256`, which the runner fetches into local/uvm/ on first use. A site
-# file's [uvm_library] delivers the same archive from a mirror or a local copy, or names an
-# installed UVM home, and OCAH_UVM_HOME names a home for one shell; `tree_sha256` pins the
-# unpacked src/ tree, so each of them is checked against the same release, and an archive
-# whose `sha256` differs is used with a warning when it unpacks to that tree. The VCS analyze stage
+# SystemVerilog UVM: the UVM library compiles from the Accellera release tree `uvm_library`
+# names, and OCAH_UVM_HOME names another UVM home for one shell. The VCS analyze stage
 # precompiles its uvm_pkg.sv before analyzing user sources, and the elaboration links its DPI
 # layer. `[build.vcs].uvm_lib` selects a simulator-supplied library instead.
 [frameworks.uvm]
@@ -124,10 +120,8 @@ visibility = "maintainer"
 runnability = "maintainer"
 license = "required-commercial"
 
-[frameworks.uvm.build.uvm_library]
-url = "https://www.accellera.org/images/downloads/standards/uvm/1800.2-2020.3.2%20Release.gz"
-sha256 = "4664ac015f23c72106dd785906aa874d70932ea63f74b85de1e32fa5339c15eb"
-tree_sha256 = "bead3d3ea2b208319c881d4f5236cd9b04c5713db1f14e4d0bfc42a0221981f5"
+[frameworks.uvm.build]
+uvm_library = "vendor/accellera/uvm-core/upstream"
 
 # The bare `UVM` framework gate (same bare-name wording rule as SIMULATION): every DUT's
 # `--framework uvm` view selects the SV-UVM shape of its shared testbench top with it. Target-table
