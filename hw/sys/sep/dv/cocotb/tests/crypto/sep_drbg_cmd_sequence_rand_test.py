@@ -574,7 +574,10 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await self.reg._wr(EDN_GENERATE_CMD, CMD_GENERATE_1)
         await self.reg._wr(EDN_RESEED_CMD, cmd_word(ACMD_RESEED))
         await self.reg._wr(EDN_MAX_REQS, max_reqs)
-        open_graded_window(TEST, self.logger)
+        # Only the graded trial (max_reqs 1) is a coverage sample; the value 0 is logged.
+        graded = max_reqs != 0
+        if graded:
+            open_graded_window(TEST, self.logger)
         await self.reg._wr(EDN_CTRL, _edn_ctrl(False, True, True))
         pre = await self.reg._rd(EDN_HW_CMD_STS)
         rdy = ED_STS_REG_RDY | ED_STS_RDY
@@ -582,7 +585,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await self.reg._wr(EDN_SW_CMD_REQ, CMD_INSTANTIATE)
         await self._wait(EDN_SW_CMD_STS, ED_STS_ACK, ED_STS_ACK, FIRST_CAP, f"auto_{kind}_sw_ack")
         hw = await self._auto_hw(f"auto_{kind}")
-        close_graded_window(self.logger)
+        if graded:
+            close_graded_window(self.logger)
         await self.reg._wr(EDN_CTRL, _edn_ctrl(False, False, False))
         return int(bool(pre & ED_AUTO_MODE)), hw
 
@@ -1247,6 +1251,17 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             )
             await r._wr(
                 CSRNG_CTRL, CSRNG.value("CTRL", ENABLE=MUBI_TRUE, SW_APP_ENABLE=plan.gen_off)
+            )
+            # Control: the block is still pending after the CTRL write, so the gated reads
+            # hit pending data. GENBITS_VLD "is set when genbits are available on this
+            # application interface after a generate command has been issued"
+            # (csrng.hjson GENBITS_VLD); the text gives it no SW_APP_ENABLE term.
+            vld_gated = await r._rd(CSRNG_GENBITS_VLD) & GB_VLD
+            self.chk.ctrl(
+                "CSRNG-GENBITS-GATE",
+                bool(vld_gated),
+                pending_after_ctrl=vld_gated,
+                sw_app_enable=f"0x{plan.gen_off:x}",
             )
             gate["genbits"] = [f"0x{await r._rd(CSRNG_GENBITS):x}" for _ in range(4)]
             self.chk.obs(

@@ -19663,7 +19663,7 @@ module sep_fcov (
       bins boot_ins_0x901 = {1'b0}; bins boot_gen_0xfff003 = {1'b1};
     }
     cp_auto_hw_cmd: coverpoint s.hc iff (s.hc_v) {
-      bins generate_cmd = {1'b0}; bins reseed_cmd = {1'b1};
+      bins generate_cmd = {1'b0}; ignore_bins reseed_cmd = {1'b1};
     }
     cp_ctrl_field_alert: coverpoint s.fa iff (s.fa_v) {
       bins edn_enable_field = {2'd0};
