@@ -321,9 +321,9 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
 
         The key pair of d' does not match the ek that produced c, so the
         re-encryption check of ML-KEM.Decaps_internal fails and the result is
-        K_bar = J(z || c) (FIPS 203). This grades the keyGen half of the combined
-        command against a computed standard value, and shows that the shared-key
-        window depends on the written seed.
+        K_bar = J(z || c) (FIPS 203). This grades the rejection path of the
+        combined command against a computed standard value. J does not depend on d;
+        the SELFCONSIST check of the same leaf fails a DUT that ignores d.
         """
         d_flip = [NIST_KEM_KG_D[0] ^ 1, *NIST_KEM_KG_D[1:]]
         exp = implicit_reject_key(NIST_KEM_KG_Z, ct)
