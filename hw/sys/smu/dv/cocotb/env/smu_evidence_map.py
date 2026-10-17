@@ -2974,6 +2974,65 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "recorded last state and the stated site count per kind",
         ),
     ],
+    "smu_dtp_otp_sep_series_error_test": [
+        (
+            "CHK-DBG-SEP-OTP-SETUP",
+            "CHK-DBG-SEP-OTP-SETUP",
+            "lc_state_o leaves its pre-sense value inside its bound, the SEP OTP gate tap reads "
+            "0, IDCODE reads the documented value, the AW, AR and B counter baselines are "
+            "sampled and SERIES_CTRL.reset leaves op 0",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-POSCTRL",
+            "CHK-DBG-SEP-OTP-POSCTRL",
+            "NO_INCR writes of 0x13579BDF and 0x2468ACE0 to the SPARE0 words leave op 0, the "
+            "single-load NO_INCR read returns the first word and the single-load INCR reads "
+            "return both words with op 0, and the 72-bit SINGLE_OP read of word 0 captures op 0 "
+            "with the first word; the three-scan INCR stream is measured and logged only",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-HOLE-SINGLE",
+            "CHK-DBG-SEP-OTP-HOLE-SINGLE",
+            "a SINGLE_OP read at 0x1093041C captures op 1 and the SINGLE_OP read of SPARE0 word "
+            "0 right after it captures op 0 with 0x13579BDF; the data word of the SLVERR read "
+            "is measured and logged only",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-HOLE-SERIES",
+            "CHK-DBG-SEP-OTP-HOLE-SERIES",
+            "SERIES_CTRL.op reads 0 before a series beat at 0x1093041C and 1 after it, the "
+            "single-load read of SPARE0 word 0 after it returns 0x13579BDF with op 1, and op "
+            "stays 1 beside a SINGLE_OP read that captures op 0; the first capture of the SPARE0 "
+            "load after the series hole beat is measured and logged only",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-ISOLATION",
+            "CHK-DBG-SEP-OTP-ISOLATION",
+            "the AW, AR and B counters equal their baselines after all SEP OTP traffic, then "
+            "the SMC fabric SINGLE_OP read at 0xC0017000 captures op 2 and the read of "
+            "0xC00390E8 captures op 0 with the AR counter up by 2 and the AW and B counters "
+            "unchanged",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-RESET",
+            "CHK-DBG-SEP-OTP-RESET",
+            "the SERIES_CTRL write with bit 38 set captures op 1 and the next capture reads "
+            "op 0, and the single-load series read of SPARE0 word 0 after it returns "
+            "0x13579BDF with op 0",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last "
+            "step and every step has a nonzero scan count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the sensing wait, the SERIES_CTRL.op polls and the SINGLE_OP capture polls finish "
+            "inside their bounds with a recorded last state and the stated site count per kind",
+        ),
+    ],
 }
 
 

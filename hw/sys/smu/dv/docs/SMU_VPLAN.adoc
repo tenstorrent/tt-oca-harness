@@ -365,6 +365,7 @@ one-line intent.
 |`smu_smc_gpio_spi_pad_ownership_test` |wrapper |With the SMU holding the SEP, GPIO pads 0-3, 8 and 9 follow the SEP SPI host and ignore DATA_CTRL until `lsio_disable` is set, and pads 4-7, 10 and 54 are not driven by the SPI host and answer to the register only once `lsio_disable` is set.
 |`smu_dtp_jtag2axi_series_contention_test` |wrapper |The SMC fabric JTAG2AXI bridge lands 32-bit and 64-bit INCR words, NO_INCR words and error-status beats in the SMC scratch words as the AW and B counters and `SINGLE_OP` read-backs show, reads a word with one `SERIES_CTRL` read load and two data scans (longer read streams measured and logged only), latches the first SLVERR (an empty mailbox read) or DECERR in `SERIES_CTRL.op` until `SERIES_CTRL.reset` independently of `SINGLE_OP`, and completes a spaced `SINGLE_OP` retry after unspaced pairs measured and logged only.
 |`smu_dtp_jtag2axi_caps_single_op_test` |wrapper |The three `*_JTAG2AXI_CAPS` words read the bridge-table values field by field and stay unchanged across shift-ins and an intervening IDCODE scan and BYPASS load, and the SMC fabric `SINGLE_OP` op field reports the status of the previous operation: SLVERR with `0xFEEDDEAD` for an empty mailbox read, DECERR with `0xBADCAB1E` for a read between unit apertures, OKAY for a scratch write and read, and a nop scan sends nothing.
+|`smu_dtp_otp_sep_series_error_test` |wrapper |The SEP OTP JTAG2AXIL bridge writes and reads the SPARE0 words through `SERIES_DATA_NO_INCR` and single-load INCR reads, answers the first in-span address with no register (`0x1093041C`) with SLVERR as a `SINGLE_OP` op and as a sticky `SERIES_CTRL.op` code, completes the next beat with the correct data, clears the code with `SERIES_CTRL.reset`, and leaves the DTP-to-SMC debug AXI counters untouched while two SMC fabric `SINGLE_OP` reads move the AR counter by 2.
 |===
 
 [[smu-test-procedures]]
@@ -7440,6 +7441,58 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-173-smu_dtp_otp_sep_series_error_test]]
+===== 173 `smu_dtp_otp_sep_series_error_test`
+
+*Source Module*: `smu_dtp_otp_sep_series_error_test` (`cocotb_wrapper/tests/`; the sequence `smu_dtp_otp_sep_series_error_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP, driven at the TCK period the bench draws for the seed and logs; instructions `IDCODE`, `SEP_OTP_AXI_SINGLE_OP`, `SEP_OTP_AXI_SERIES_CTRL`, `SEP_OTP_AXI_SERIES_DATA_INCR`, `SEP_OTP_AXI_SERIES_DATA_NO_INCR` and `SMC_AXI_SINGLE_OP`); the bench taps `lc_state_o` and `tb_otp_jtag2axi_security_disable` and the launch counters `dtp_smc_dbg_aw_count_o`, `dtp_smc_dbg_ar_count_o` and `dtp_smc_dbg_b_count_o` (`tb/tb_wrapper_top.sv`), sampled on `clk_smu_i`; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the SPARE0 and interface-control window addresses come from the generated `sep_addr.h` (a `c_header_u32` read through `seq_lib.smu_addr_map`)
+
+*Objective*: the SEP OTP JTAG2AXIL bridge writes and reads the SEP shadow-map SPARE0 words through its series instructions, answers the first in-span address that owns no register with SLVERR as a `SINGLE_OP` op and as a latched series code, completes the next beat with the correct data, clears the code with `SERIES_CTRL.reset`, and leaves the DTP-to-SMC debug AXI port untouched.
+
+*Test Coverage*:
+
+* Series write and read: the SPARE0 words are at `0x109302E0` and `0x109302E4` (`SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR`, `hw/sys/sep/regs/gen/c/sep_addr.h`). `SERIES_DATA_NO_INCR` writes the non-zero, distinct words `0x13579BDF` and `0x2468ACE0` (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`: `*_AXI_SERIES_DATA_NO_INCR` leaves the address unchanged), `SERIES_CTRL.op` reads 0 after each, and a single-load NO_INCR read (one `SERIES_CTRL` read load, two data scans) and single-load INCR reads of both words return capture 2 equal to the word written.
+* `SINGLE_OP` geometry: the register is 72 bits (`2 + S + D/8 + D + A` with D 32, A 32 and S 2; `*_AXI_SINGLE_OP` in `architecture.adoc` and the SEP OTP row of the bridges table in `hw/sys/dtp/doc/jtag.adoc`), measured by shifting a marker through a longer scan.
+* Hole, `SINGLE_OP`: the first in-span offset that owns no register is `0x1093041C`, the word after `SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR + SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE` and below `SEP_TOP_EFUSE_MMR_BASE_ADDR` (`sep_addr.h`); the APB decode answers any address in the span outside the register windows with SLVERR (`hw/sys/sep/doc/otp_fuse_controller.adoc`). A read there captures op 1, and a `SINGLE_OP` read of SPARE0 word 0 right after it captures op 0 with `0x13579BDF`.
+* Hole, series: `SERIES_CTRL.op` reads 0 before a series beat at `0x1093041C` and 1 after it, the code being sticky until `SERIES_CTRL.reset` and reporting the first failure (`*_AXI_SERIES_CTRL` op in `architecture.adoc`); the single-load read of SPARE0 word 0 after the hole returns `0x13579BDF` and op stays 1; a `SINGLE_OP` read beside the latched code captures op 0 with `0x13579BDF` and op stays 1 (the completion status of `SINGLE_OP` does not change the series code).
+* Isolation: the AW, AR and B counters at the SMU boundary equal their baselines after all SEP OTP traffic (`hw/sys/dtp/doc/jtag.adoc`: the three JTAG2AXI bridges are separate instruments); an SMC fabric `SINGLE_OP` read at `LOCAL_BASE + 0x001_7000` = `0xC0017000` (between unit apertures, `hw/sys/smc/doc/memmap.adoc`) captures op 2 and a read of CPU_CTRL `SCRATCH(13)` at `0xC00390E8` (`smc_addr.h`, `SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(13)`) captures op 0, with the AR counter up by exactly 2 and the AW and B counters unchanged.
+* Reset: a `SERIES_CTRL` write with bit 38 set (the reset field of the 39-bit control register, `architecture.adoc`) captures op 1 and the next capture reads op 0; the single-load series read of word 0 after it returns `0x13579BDF` with op 0.
+* Gate and sensing: `lc_state_o` leaves its pre-sense value inside 2000 polls of 50 `clk_smu_i` cycles and `tb_otp_jtag2axi_security_disable` reads 0 before any SEP OTP access.
+* Measured and logged only: the three-scan INCR stream from one load, the marker beats and the first capture of each series read, the `pl_depth` field of `SERIES_CTRL` captures, the data word of the `SINGLE_OP` hole read, the first capture of the SPARE0 load that follows the series hole beat, and the data word of the fabric gap read.
+* The `LOCKS` registers, writes at the hole and addresses outside `0x10930000..0x10930573` are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, read IDCODE, wait for `lc_state_o` to leave its pre-sense value, read `tb_otp_jtag2axi_security_disable`, sample the three counters and write `SERIES_CTRL.reset`.
+. Write `0x13579BDF` and `0x2468ACE0` to the SPARE0 words through `SERIES_DATA_NO_INCR`, polling `SERIES_CTRL.op` after each, then read word 0 back with one load and two NO_INCR scans.
+. Read each SPARE0 word with one `SERIES_CTRL` load and two INCR scans, then read one further three-scan INCR stream (logged only).
+. Measure the `SINGLE_OP` width, read `0x1093041C` and poll the capture, then read SPARE0 word 0 and poll the capture.
+. Capture `SERIES_CTRL.op`, load a read at `0x1093041C` with one NO_INCR scan and poll `SERIES_CTRL.op`, then read SPARE0 word 0 with one load and two NO_INCR scans and poll `SERIES_CTRL.op`.
+. Read SPARE0 word 0 with `SINGLE_OP` and capture `SERIES_CTRL.op`, then read the fabric gap at `0xC0017000` and `SCRATCH(13)` with the SMC `SINGLE_OP` and compare the counters.
+. Write `SERIES_CTRL.reset`, capture `SERIES_CTRL.op`, then read SPARE0 word 0 with one load and two NO_INCR scans and poll `SERIES_CTRL.op`.
+. Print the checker lines in step order, check that every wait finished inside its bound with the stated site count per kind, and stamp the pass point after the last step.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DBG-SEP-OTP-SETUP` |lc_state_o leaves its pre-sense value inside its bound, the SEP OTP gate tap reads 0, IDCODE reads the documented value, the AW, AR and B counter baselines are sampled and SERIES_CTRL.reset leaves op 0
+|`CHK-DBG-SEP-OTP-POSCTRL` |NO_INCR writes of 0x13579BDF and 0x2468ACE0 to the SPARE0 words leave op 0, the single-load NO_INCR read returns the first word and the single-load INCR reads return both words with op 0, and the 72-bit SINGLE_OP read of word 0 captures op 0 with the first word; the three-scan INCR stream is measured and logged only
+|`CHK-DBG-SEP-OTP-HOLE-SINGLE` |a SINGLE_OP read at 0x1093041C captures op 1 and the SINGLE_OP read of SPARE0 word 0 right after it captures op 0 with 0x13579BDF; the data word of the SLVERR read is measured and logged only
+|`CHK-DBG-SEP-OTP-HOLE-SERIES` |SERIES_CTRL.op reads 0 before a series beat at 0x1093041C and 1 after it, the single-load read of SPARE0 word 0 after it returns 0x13579BDF with op 1, and op stays 1 beside a SINGLE_OP read that captures op 0; the first capture of the SPARE0 load after the series hole beat is measured and logged only
+|`CHK-DBG-SEP-OTP-ISOLATION` |the AW, AR and B counters equal their baselines after all SEP OTP traffic, then the SMC fabric SINGLE_OP read at 0xC0017000 captures op 2 and the read of 0xC00390E8 captures op 0 with the AR counter up by 2 and the AW and B counters unchanged
+|`CHK-DBG-SEP-OTP-RESET` |the SERIES_CTRL write with bit 38 set captures op 1 and the next capture reads op 0, and the single-load series read of SPARE0 word 0 after it returns 0x13579BDF with op 0
+|`CHK-NONVAC` |ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last step and every step has a nonzero scan count
+|`CHK-TIMEOUT-PATHS` |the sensing wait, the SERIES_CTRL.op polls and the SINGLE_OP capture polls finish inside their bounds with a recorded last state and the stated site count per kind
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7610,6 +7663,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, hosted |`BSR_EXTEST_TDO_MATCH`
 |`smu_dtp_jtag2axi_series_contention_test` |F3 |hosted |`CHK-DBG-J2A-SERIES-SETUP`, `CHK-DBG-J2A-SERIES-INCR`, `CHK-DBG-J2A-SERIES-NOINCR`, `CHK-DBG-J2A-SERIES-ERRSTATUS`, `CHK-DBG-J2A-SERIES-PIPELINE`, `CHK-DBG-J2A-STICKY-SLVERR-FIRST`, `CHK-DBG-J2A-STICKY-DECERR-FIRST`, `CHK-DBG-J2A-STICKY-RESET`, `CHK-DBG-J2A-SINGLE-INDEP`, `CHK-DBG-J2A-BUSY-OP3`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |`smu_dtp_jtag2axi_caps_single_op_test` |F3 |hosted |`CHK-DBG-J2A-CAPS-SETUP`, `CHK-DBG-J2A-CAPS-SMC`, `CHK-DBG-J2A-CAPS-OTP`, `CHK-DBG-J2A-CAPS-STABLE`, `CHK-DBG-J2A-SINGLE-SLVERR`, `CHK-DBG-J2A-SINGLE-DECERR`, `CHK-DBG-J2A-SINGLE-OKAY`, `CHK-DBG-J2A-SINGLE-RECOVERY`, `CHK-DBG-J2A-SINGLE-NOP`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
+|`smu_dtp_otp_sep_series_error_test` |F3 |hosted |`CHK-DBG-SEP-OTP-SETUP`, `CHK-DBG-SEP-OTP-POSCTRL`, `CHK-DBG-SEP-OTP-HOLE-SINGLE`, `CHK-DBG-SEP-OTP-HOLE-SERIES`, `CHK-DBG-SEP-OTP-ISOLATION`, `CHK-DBG-SEP-OTP-RESET`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |===
 
 [[smu-out-and-wrapper]]
