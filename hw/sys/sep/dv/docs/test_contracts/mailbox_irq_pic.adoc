@@ -1429,7 +1429,7 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope limit*: Not graded: whether an external access to the same holes also latches a bit (see <<sep-vplan-phase3-blocked,Blocked features>>), the command-integrity cause, a halt of the DMA after the error, and whether one clear (`DMA_BUS_ERR_CLEAR` or the DMA error clear) affects the other report. The misaligned cause, the aes, csrng, edn and wdt bits, and the DMA response at a reserved window or past the mailbox wrapper extent are in <<sep-vplan-phase3-blocked,Blocked features>>. The single-block latch and the DMA register-path latch are owned by `sep_irq_ip_to_aggregator_test` and `sep_periph_bus_err_misaligned_test`, and the destination-side DMA fault by `sep_dma_basic_test`.
+*Scope limit*: Not graded: whether an external access to the same holes also latches a bit (see <<sep-vplan-phase3-blocked,Blocked features>>), the command-integrity cause, a halt of the DMA after the error, and whether one clear (`DMA_BUS_ERR_CLEAR` or the DMA error clear) affects the other report. The aes, csrng, edn and wdt bits, and the DMA response at a reserved window or past the mailbox wrapper extent are in <<sep-vplan-phase3-blocked,Blocked features>>. The partial-write cause is graded by `sep_periph_bus_err_misaligned_test`. The single-block latch and the DMA register-path latch are owned by `sep_irq_ip_to_aggregator_test` and `sep_periph_bus_err_misaligned_test`, and the destination-side DMA fault by `sep_dma_basic_test`.
 
 '''''
 [[sep_cpu_ctrl_timeout_inert_rand_test]]

@@ -2826,10 +2826,6 @@ the test does.
 |What response does a DMA-master access get at a reserved window or past the mailbox wrapper extent? `hw/sys/sep/doc/memory_map.adoc` states the codes only as seen at the inbound AXI port.
 |never driven; `sep_cpu_bridge_fault_matrix_rand_test` grades the source-read side with a non-OKAY response from the testbench
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
-|Misaligned-offset cause of `PERIPH_BUS_ERR_STATUS` and `reg_path_err`.
-|Which access shape is a "misaligned offset" that makes a bridge return a TL-UL error? Source: `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc` (`PERIPH_BUS_ERR_STATUS`); `hw/sys/sep/doc/interrupts.adoc`.
-|`sep_cpu_bridge_fault_matrix_rand_test` drives the in-extent hole only
-|<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>; <<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Uncorrectable ICCM fetch error
 |Is an uncorrectable ICCM fetch error an instruction access fault (`hw/sys/sep/doc/interrupts.adoc`, "Uncorrectable (double-bit) errors") or does it re-raise the NMI (`sep_cpu_ctrl.adoc`, `SEP_NMI_VEC`)?
 |-
@@ -2909,10 +2905,6 @@ the test does.
 |SPI and DMA state at reset
 |What happens to an in-flight transaction at reset (`reset_controller.adoc`)?
 |Graded leg: Register state after reset (`sep_spi_cold_reset_values_rand_test`, `sep_cpu_reset_retention_test`)
-|<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|Misaligned register access
-|What is the rule for a misaligned register access (`sep_cpu_ctrl.adoc`)?
-|Graded leg: Hole cells (`sep_fabric_row_response_matrix_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI byte order inside a word
 |Which byte of a TXDATA word goes on the wire first, and where does the first received byte land in RXDATA? `spi_controller.adoc` (STATUS.BYTEORDER) gives a read-only field with reset 0x0, while the SEP SPI host is the unmodified OpenTitan IP with its register map authoritative (`doc/trm/src/revision.adoc`, revision 0.5.34) and the OpenTitan parameter `ByteOrder` defaults to 1 (`spi_host.hjson`; theory of operation, "Input and Output Byte Ordering"), and the wrapper sets no override. The open point is the 0x0 reset in `spi_controller.adoc`.
