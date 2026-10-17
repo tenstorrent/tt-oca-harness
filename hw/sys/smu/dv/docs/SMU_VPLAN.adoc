@@ -363,6 +363,7 @@ one-line intent.
 |`smu_sep_stap_hold_reset_test` |wrapper |A deselected SEP debug STAP parks its host TMS at its TMS-Hold value and adds only its SIB bit to the scan string, and its 3DCR resets on TRST and, unless Config-Hold is set, on Test-Logic-Reset.
 |`smu_smc_gpio_access_filter_test` |wrapper |The GPIO pad access filter admits an access over the external AXI input only when its AxPROT equals the stored requirement once the matching filter is enabled, and admits AxPROT 0 and 7 while both filters are disabled.
 |`smu_smc_gpio_spi_pad_ownership_test` |wrapper |With the SMU holding the SEP, GPIO pads 0-3, 8 and 9 follow the SEP SPI host and ignore DATA_CTRL until `lsio_disable` is set, and pads 4-7, 10 and 54 are not driven by the SPI host and answer to the register only once `lsio_disable` is set.
+|`smu_dtp_jtag2axi_series_contention_test` |wrapper |The SMC fabric JTAG2AXI bridge lands 32-bit and 64-bit INCR words, NO_INCR words and error-status beats in the SMC scratch words as the AW and B counters and `SINGLE_OP` read-backs show, reads a word with one `SERIES_CTRL` read load and two data scans (longer read streams measured and logged only), latches the first SLVERR (an empty mailbox read) or DECERR in `SERIES_CTRL.op` until `SERIES_CTRL.reset` independently of `SINGLE_OP`, and completes a spaced `SINGLE_OP` retry after unspaced pairs measured and logged only.
 |===
 
 [[smu-test-procedures]]
@@ -7318,6 +7319,67 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-171-smu_dtp_jtag2axi_series_contention_test]]
+===== 171 `smu_dtp_jtag2axi_series_contention_test`
+
+*Source Module*: `smu_dtp_jtag2axi_series_contention_test` (`cocotb_wrapper/tests/`; the sequence `smu_dtp_jtag2axi_series_contention_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP, driven at the TCK period the bench draws for the seed and logs, with `min_jtag_smu_ratio = 4.0` so TCK is at least four `clk_smu_i` periods; instructions `SMC_AXI_SINGLE_OP`, `SMC_AXI_SERIES_CTRL`, `SMC_AXI_SERIES_DATA_INCR`, `SMC_AXI_SERIES_DATA_NO_INCR` and `SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS`); the bench taps `tb_smc_jtag2axi_security_disable` and the launch counters `dtp_smc_dbg_aw_count_o`, `dtp_smc_dbg_ar_count_o` and `dtp_smc_dbg_b_count_o` (`tb/tb_wrapper_top.sv`), sampled on `clk_smu_i`; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the scratch and outbound mailbox 0 addresses (`READ_DATA`, `STATUS`) come from the generated `smc_addr.h` and the `STATUS.EMPTY` bit mask from the generated mailbox header, both through `seq_lib.smu_addr_map`
+
+*Objective*: the SMC fabric JTAG2AXI bridge moves series data to and from the SMC scratch words at the right address, lane and width, reports the first series failure until reset without letting `SINGLE_OP` change or read that code, and completes a `SINGLE_OP` retry that is given Run-Test/Idle TCKs.
+
+*Test Coverage*:
+
+* Series geometry is `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, `*_AXI_SERIES_CTRL` (63 scan bits for the 56-bit address of the SMC fabric row of the bridge table in `hw/sys/dtp/doc/jtag.adoc`), `*_AXI_SERIES_DATA_INCR` (the address advances `2**E`, the data register is `8 * 2**E` bits) and `*_AXI_SERIES_DATA_NO_INCR` (the address does not change, the payload rides the lanes the address selects). The scratch words are eight 32-bit words at `0xC0002880` (`SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR` in `smc_addr.h`) and CPU_CTRL `SCRATCH(8)` at `0xC00390C0` implements `data[31:0]` only.
+* INCR: an eight-beat 32-bit write raises the AW and B counters at the SMU boundary by 8 and leaves `SERIES_CTRL.op` 0, `SINGLE_OP` reads of words 0, 1, 6 and 7 return W0, W1, W6 and W7, one `SERIES_CTRL` read load with two data scans returns W1 on capture 2, and a 64-bit leg raises the counters by 2 and reads back `0x5A5A0008` and `0x5A5A0009` at CPU_CTRL `SCRATCH(8)` and the next 8 bytes. The eight-scan read stream and its AR counter delta are measured and logged only.
+* NO_INCR: two NO_INCR writes at word 5 (address bit 2 set) raise the AW and B counters by 2 and leave the second word there, `SINGLE_OP` reads return it and leave the neighbour word 4 of the same 8-byte beat at its earlier value, and a single-load NO_INCR read returns it on capture 2 before a `SINGLE_OP` rewrite and the rewritten word after it.
+* WITH_ERROR_STATUS: the data register is 33 bits (`*_AXI_SERIES_DATA_WITH_ERROR_STATUS`); the increment bits 1, 0, 1, 1 steer the write so P0, P2 and P3 land on words 0 to 2 (counters up by 4), the status bit shifted out of every write scan reads 0, and a single-load read with increment bits 1 and 0 returns P0 with status 0 on capture 2. As the positive control of the status-0 compares, a `SERIES_CTRL` read load at `LOCAL_BASE + 0x001_7000` (a DECERR gap, `hw/sys/smc/doc/memmap.adoc`) followed by two WITH_ERROR_STATUS scans with increment 0 shifts out status 1 on the second scan (`architecture.adoc`); `SERIES_CTRL.reset` follows.
+* Pipeline: for `pl_depth` 0 and 3 (the two ends of the range of the bridge capability fields, `*_JTAG2AXI_CAPS`) two write beats shifted back to back raise the AW and B counters by 2, `SINGLE_OP` reads return them in order and `SERIES_CTRL.op` reads 0 after the leg. The `pl_depth` field of every capture is measured and logged only; no read pipeline is scanned.
+* Sticky status: `SERIES_CTRL.op` is 1 after an SLVERR and 2 after a DECERR, reports the first failure since `SERIES_CTRL.reset`, is not replaced by a later failure or an OKAY beat, and `SINGLE_OP` status neither changes nor reads it (`*_AXI_SERIES_CTRL` op field). The SLVERR source is a read of the outbound mailbox 0 `READ_DATA` register (`SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR` in `smc_addr.h`) while the mailbox is empty, which answers SLVERR with data `0xFEEDDEAD` (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`, Access Results), after a `SINGLE_OP` read of `STATUS` shows `EMPTY` set. A read at `LOCAL_BASE + 0x001_7000` answers DECERR with `0xBADCAB1E` (`hw/sys/smc/doc/memmap.adoc`). Both orders run with a positive control: an OKAY beat and a clean single-load read follow each failure, and a reset followed by an OKAY beat shows op 0 for each latched code. The response of a write at `0x1_7000`, which the chapter states as SLVERR, is measured and logged only. Every poll waits for `SERIES_CTRL.op` to leave 3 and, after writes, for the B counter.
+* `SINGLE_OP`: a read reports op 0 with the written word and a read of the empty mailbox `READ_DATA` reports op 1 with `0xFEEDDEAD` while code 2 stays latched in `SERIES_CTRL`.
+* Run-Test/Idle spacing (`*_AXI_SINGLE_OP` op 3): the op field and the AR counter delta of each unspaced `SINGLE_OP` pair are measured and logged only; the retry after 64 Run-Test/Idle TCKs and the spaced control pairs are compared.
+* Measured and logged only: the eight-scan read stream and its AR counter delta, the first-capture beats and marker payloads, the `pl_depth` field of every `SERIES_CTRL` capture, the address field captured after a series, the op field of a `SINGLE_OP` write at `0x1_7000`, the TCK count per operation, and the unspaced op field and AR delta.
+* The SERIES_CTRL behaviour below the four-to-one ratio, the E=0 and E=1 sizes, write strobes and the OTP bridges are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, read IDCODE, wait for `tb_smc_jtag2axi_security_disable` to read 0, sample the three counters, scan SERIES_CTRL once with a marker to measure its width, and write `SERIES_CTRL.reset`.
+. Write eight distinct words with INCR at `0xC0002880`, poll `SERIES_CTRL.op` and the B counter, and compare the counters.
+. Read words 0, 1, 6 and 7 back with `SINGLE_OP`, log the eight-scan read stream, then compare capture 2 of a single-load read of word 1.
+. Write two 64-bit words at CPU_CTRL `SCRATCH(8)` and read them back with `SINGLE_OP`.
+. Write two words with NO_INCR at word 5, read words 5 and 4 back with `SINGLE_OP`, read word 5 with a single-load NO_INCR read, rewrite it with `SINGLE_OP` and read it again.
+. Measure the 33-bit width, write four beats with WITH_ERROR_STATUS and the increment bits, read words 0 to 2 back with `SINGLE_OP`, compare a single-load read, then load a read at `0xC0017000`, scan twice with increment 0 and compare the status bit of the second scan, and write `SERIES_CTRL.reset`.
+. For `pl_depth` 0 and 3, shift two write beats back to back, wait for `SERIES_CTRL.op` and the B counter, and read both words back with `SINGLE_OP`.
+. Reset, read mailbox `STATUS` for `EMPTY`, read the empty `READ_DATA` with a single-load read, add an OKAY beat, read the gap and word 6 with single-load reads, log a `SINGLE_OP` write at `0x1_7000`, and reset again with an OKAY beat after it.
+. Read the gap first with a single-load read, read word 6 with a single-load read and read the empty mailbox `READ_DATA` with a single-load read.
+. With code 2 latched, run a `SINGLE_OP` read of word 6 and of the empty mailbox `READ_DATA`, scan SERIES_CTRL after each, then reset and add an OKAY beat.
+. Issue SINGLE_OP pairs with no Run-Test/Idle TCK between them (up to eight attempts), complete the retry after 64 idle TCKs, and run spaced control pairs.
+. Print the checker lines in step order, check that every wait finished inside its bound with the stated site count per kind, and stamp the pass point after the last step.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DBG-J2A-SERIES-SETUP` |the gate tap reads 0 before the first scan, SERIES_CTRL scans 63 bits wide and reads op 0 after `SERIES_CTRL.reset`, and the counter baselines are sampled
+|`CHK-DBG-J2A-SERIES-INCR` |an eight-beat 32-bit INCR write raises the AW and B counters by 8 and leaves op 0, SINGLE_OP reads return W0, W1, W6 and W7, a single-load series read returns W1 on capture 2, the 64-bit leg raises the counters by 2 and reads back both words, and the eight-scan read stream is measured and logged only
+|`CHK-DBG-J2A-SERIES-NOINCR` |a two-beat NO_INCR write leaves the last word at word 5 with the AW and B counters up by 2, word 4 of the same 8-byte beat is unchanged, and a single-load NO_INCR read returns X2 before a SINGLE_OP rewrite and X3 after it
+|`CHK-DBG-J2A-SERIES-ERRSTATUS` |WITH_ERROR_STATUS scans are 33 bits wide, report status 0 on every OKAY beat, land P0, P2, P3 on words 0 to 2 by the increment bits with the counters up by 4, a single-load read returns P0 with status 0, a read of 0xC0017000 followed by two scans with increment 0 shifts out status 1 on the second, and `SERIES_CTRL.reset` returns op from 2 to 0
+|`CHK-DBG-J2A-SERIES-PIPELINE` |for `pl_depth` 0 and 3 two back-to-back write beats raise the AW and B counters by 2 and land in order, and op reads 0 after the leg; the pending indication is measured and logged only
+|`CHK-DBG-J2A-STICKY-SLVERR-FIRST` |with the mailbox STATUS read showing EMPTY, a series read of the empty mailbox READ_DATA returns `0xFEEDDEAD` and `SERIES_CTRL.op` reads 1, stays 1 after an OKAY beat and after a DECERR gap read (`0xBADCAB1E`), and a single-load read of word 6 is clean; the `0x1_7000` window write response is measured and logged only
+|`CHK-DBG-J2A-STICKY-DECERR-FIRST` |`SERIES_CTRL.op` reads 2 after a DECERR gap read and stays 2 after a clean single-load read and an empty mailbox READ_DATA series read that returns `0xFEEDDEAD`
+|`CHK-DBG-J2A-STICKY-RESET` |`SERIES_CTRL.reset` returns op from 1 and from 2 to 0 and a following OKAY beat keeps it 0
+|`CHK-DBG-J2A-SINGLE-INDEP` |with series code 2 latched a SINGLE_OP OKAY read reports op 0 and a SINGLE_OP read of the empty mailbox READ_DATA reports op 1 with `0xFEEDDEAD`, and `SERIES_CTRL.op` stays 2 after each
+|`CHK-DBG-J2A-BUSY-OP3` |the op field and AR delta of unspaced SINGLE_OP pairs are measured and logged only, the retry after 64 Run-Test/Idle TCKs reads op 0 with word 7, and spaced pairs read op 0
+|`CHK-TIMEOUT-PATHS` |the gate wait, the `SERIES_CTRL.op` polls, the B counter waits, the SINGLE_OP capture polls, the unspaced-attempt loop and its single retry capture site finish inside their bounds with a recorded last state and the stated site count per kind
+|`CHK-NONVAC` |ordered sim-time fence S1<...<S12<PASS, the pass point is stamped after the last step and every step has a nonzero scan count
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7486,6 +7548,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_xtrig_ctm_illegal_phase_test` |F6 |dtp_under_smu, hosted |`XT_ILLEGAL_PHASE`
 |`smu_ic_reset_ss_domain_matrix_test` |F3 |smc_under_smu, hosted |`IC_RESET_SS_COLD_OVRD`, `IC_RESET_SS_WARM_OVRD`, `IC_RESET_SS_EXCL`
 |`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, hosted |`BSR_EXTEST_TDO_MATCH`
+|`smu_dtp_jtag2axi_series_contention_test` |F3 |hosted |`CHK-DBG-J2A-SERIES-SETUP`, `CHK-DBG-J2A-SERIES-INCR`, `CHK-DBG-J2A-SERIES-NOINCR`, `CHK-DBG-J2A-SERIES-ERRSTATUS`, `CHK-DBG-J2A-SERIES-PIPELINE`, `CHK-DBG-J2A-STICKY-SLVERR-FIRST`, `CHK-DBG-J2A-STICKY-DECERR-FIRST`, `CHK-DBG-J2A-STICKY-RESET`, `CHK-DBG-J2A-SINGLE-INDEP`, `CHK-DBG-J2A-BUSY-OP3`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |===
 
 [[smu-out-and-wrapper]]

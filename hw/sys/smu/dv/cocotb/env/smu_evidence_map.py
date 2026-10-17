@@ -2814,6 +2814,94 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "bounded J2A and pad waits with last state",
         ),
     ],
+    "smu_dtp_jtag2axi_series_contention_test": [
+        (
+            "CHK-DBG-J2A-SERIES-SETUP",
+            "CHK-DBG-J2A-SERIES-SETUP",
+            "the SMC fabric gate tap reads 0 before the first scan, SERIES_CTRL scans 63 bits wide "
+            "and reads op 0 after SERIES_CTRL.reset, and the AW, AR and B counter baselines are "
+            "sampled",
+        ),
+        (
+            "CHK-DBG-J2A-SERIES-INCR",
+            "CHK-DBG-J2A-SERIES-INCR",
+            "an eight-beat 32-bit INCR write raises the AW and B counters by 8 and leaves op 0, "
+            "SINGLE_OP reads return W0, W1, W6 and W7, a single-load series read returns W1 on "
+            "capture 2, the 64-bit leg raises the counters by 2 and reads back both words, and "
+            "the eight-scan read stream is measured and logged only",
+        ),
+        (
+            "CHK-DBG-J2A-SERIES-NOINCR",
+            "CHK-DBG-J2A-SERIES-NOINCR",
+            "a two-beat NO_INCR write leaves the last word at word 5 with the AW and B counters "
+            "up by 2, word 4 of the same 8-byte beat is unchanged, and a single-load NO_INCR read"
+            " returns X2 before a SINGLE_OP rewrite and X3 after it",
+        ),
+        (
+            "CHK-DBG-J2A-SERIES-ERRSTATUS",
+            "CHK-DBG-J2A-SERIES-ERRSTATUS",
+            "WITH_ERROR_STATUS scans are 33 bits wide, report status 0 on every OKAY beat, land "
+            "P0, P2, P3 on words 0 to 2 by the increment bits with the counters up by 4, a "
+            "single-load read returns P0 with status 0, a read of 0xC0017000 followed by two "
+            "scans with increment 0 shifts out status 1 on the second, and SERIES_CTRL.reset "
+            "returns op from 2 to 0",
+        ),
+        (
+            "CHK-DBG-J2A-SERIES-PIPELINE",
+            "CHK-DBG-J2A-SERIES-PIPELINE",
+            "for pl_depth 0 and 3 two back-to-back write beats raise the AW and B counters by 2 "
+            "and land in order, and op reads 0 after the leg; the pending indication is measured "
+            "and logged only",
+        ),
+        (
+            "CHK-DBG-J2A-STICKY-SLVERR-FIRST",
+            "CHK-DBG-J2A-STICKY-SLVERR-FIRST",
+            "with the mailbox STATUS read showing EMPTY, a series read of the empty mailbox "
+            "READ_DATA returns 0xFEEDDEAD and SERIES_CTRL.op reads 1, stays 1 after an OKAY beat "
+            "and after a DECERR gap read (0xBADCAB1E), and a single-load read of word 6 is clean;"
+            " the 0x1_7000 window write response is measured and logged only",
+        ),
+        (
+            "CHK-DBG-J2A-STICKY-DECERR-FIRST",
+            "CHK-DBG-J2A-STICKY-DECERR-FIRST",
+            "SERIES_CTRL.op reads 2 after a DECERR gap read and stays 2 after a clean single-load"
+            " read and an empty mailbox READ_DATA series read that returns 0xFEEDDEAD",
+        ),
+        (
+            "CHK-DBG-J2A-STICKY-RESET",
+            "CHK-DBG-J2A-STICKY-RESET",
+            "SERIES_CTRL.reset returns op from 1 and from 2 to 0 and a following OKAY beat keeps "
+            "it 0",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-INDEP",
+            "CHK-DBG-J2A-SINGLE-INDEP",
+            "with series code 2 latched a SINGLE_OP OKAY read reports op 0 and a SINGLE_OP read "
+            "of the empty mailbox READ_DATA reports op 1 with 0xFEEDDEAD, and SERIES_CTRL.op "
+            "stays 2 after each",
+        ),
+        (
+            "CHK-DBG-J2A-BUSY-OP3",
+            "CHK-DBG-J2A-BUSY-OP3",
+            "the op field and AR delta of unspaced SINGLE_OP pairs are measured and logged only, "
+            "the retry after 64 Run-Test/Idle TCKs reads op 0 with word 7, and spaced pairs read "
+            "op 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the gate wait, the SERIES_CTRL.op polls, the B counter waits, the SINGLE_OP capture "
+            "polls, the unspaced-attempt loop and its single retry capture site finish inside "
+            "their "
+            "bounds with a recorded last state and the stated site count per kind",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S12<PASS, the pass point is stamped after the last "
+            "step and every step has a nonzero scan count",
+        ),
+    ],
 }
 
 
