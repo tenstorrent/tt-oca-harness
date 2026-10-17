@@ -364,6 +364,7 @@ one-line intent.
 |`smu_smc_gpio_access_filter_test` |wrapper |The GPIO pad access filter admits an access over the external AXI input only when its AxPROT equals the stored requirement once the matching filter is enabled, and admits AxPROT 0 and 7 while both filters are disabled.
 |`smu_smc_gpio_spi_pad_ownership_test` |wrapper |With the SMU holding the SEP, GPIO pads 0-3, 8 and 9 follow the SEP SPI host and ignore DATA_CTRL until `lsio_disable` is set, and pads 4-7, 10 and 54 are not driven by the SPI host and answer to the register only once `lsio_disable` is set.
 |`smu_dtp_jtag2axi_series_contention_test` |wrapper |The SMC fabric JTAG2AXI bridge lands 32-bit and 64-bit INCR words, NO_INCR words and error-status beats in the SMC scratch words as the AW and B counters and `SINGLE_OP` read-backs show, reads a word with one `SERIES_CTRL` read load and two data scans (longer read streams measured and logged only), latches the first SLVERR (an empty mailbox read) or DECERR in `SERIES_CTRL.op` until `SERIES_CTRL.reset` independently of `SINGLE_OP`, and completes a spaced `SINGLE_OP` retry after unspaced pairs measured and logged only.
+|`smu_dtp_jtag2axi_caps_single_op_test` |wrapper |The three `*_JTAG2AXI_CAPS` words read the bridge-table values field by field and stay unchanged across shift-ins and an intervening IDCODE scan and BYPASS load, and the SMC fabric `SINGLE_OP` op field reports the status of the previous operation: SLVERR with `0xFEEDDEAD` for an empty mailbox read, DECERR with `0xBADCAB1E` for a read between unit apertures, OKAY for a scratch write and read, and a nop scan sends nothing.
 |===
 
 [[smu-test-procedures]]
@@ -7380,6 +7381,65 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-172-smu_dtp_jtag2axi_caps_single_op_test]]
+===== 172 `smu_dtp_jtag2axi_caps_single_op_test`
+
+*Source Module*: `smu_dtp_jtag2axi_caps_single_op_test` (`cocotb_wrapper/tests/`; the sequence `smu_dtp_jtag2axi_caps_single_op_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP, driven at the TCK period the bench draws for the seed and logs; instructions `SMC_JTAG2AXI_CAPS`, `SMC_OTP_JTAG2AXI_CAPS`, `SEP_OTP_JTAG2AXI_CAPS`, `IDCODE`, BYPASS and `SMC_AXI_SINGLE_OP`); the bench taps `tb_smc_jtag2axi_security_disable` and the launch counters `dtp_smc_dbg_aw_count_o`, `dtp_smc_dbg_ar_count_o` and `dtp_smc_dbg_b_count_o` (`tb/tb_wrapper_top.sv`), sampled on `clk_smu_i`; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the CPU_CTRL `SCRATCH(13)` and outbound mailbox 0 (`READ_DATA`, `STATUS`) addresses come from the generated `smc_addr.h` and the `STATUS.EMPTY` bit mask from the generated mailbox header, both through `seq_lib.smu_addr_map`
+
+*Objective*: the three JTAG2AXI bridges report the capability words of the bridge table, the words are read-only and stable, and the SMC fabric `SINGLE_OP` op field reports SLVERR, DECERR and OKAY as the status of the previous operation without leaving a sticky status or sending anything for op 0.
+
+*Test Coverage*:
+
+* Capability words: the field positions and encodings are the PTAP JTAG2AXI capability fields table of `hw/ip/jtag/jtag_ptap/doc/architecture.adoc` (`*_JTAG2AXI_CAPS`), the values the DTP JTAG2AXI bridges table of `hw/sys/dtp/doc/jtag.adoc`. The SMC fabric word is AXI4 (`bus_type` 0), `addr_size` 56, `data_size` 3 (8 bytes), `wr_pl_depth` 3 and `rd_pl_depth` 3, 0x3DF0. The SMC OTP and SEP OTP words are AXI4-Lite (`bus_type` 1), 32, 2 (4 bytes), 3 and 3, 0x3D41 each. Every word is built with `pack_jtag2axi_caps` from those tables and each field is compared separately.
+* Read-only and stable: the register is a read-only TDR (`*_JTAG2AXI_CAPS` in `architecture.adoc`). All zeros, all ones and 0x2AAA are shifted into each 14-bit register and updated, and each recapture equals the word above, as does the recapture after an IDCODE scan and after a BYPASS load.
+* `SINGLE_OP` geometry: the register is 132 bits (op 2, size 2, wstrb 8, data 64, address 56; `*_AXI_SINGLE_OP` fields with the SMC fabric widths of `hw/sys/dtp/doc/jtag.adoc`), measured by shifting a marker through a longer scan.
+* SLVERR status: a `SINGLE_OP` read of `STATUS` of the outbound mailbox 0 reads `EMPTY` 1 with op 0, then a read of `READ_DATA` of the empty mailbox captures op 1 with `0xFEEDDEAD` (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`, Access Results) and raises the AR counter by 1. The capture before it reads op 0, so op 1 is the first error status of the run. The op field of the `SINGLE_OP` write at `LOCAL_BASE + 0x001_7000`, which `hw/sys/smc/doc/memmap.adoc` states as SLVERR, is measured and logged only.
+* DECERR status: a read at `LOCAL_BASE + 0x001_7000`, an address between unit apertures, captures op 2 with `0xBADCAB1E` (`hw/sys/smc/doc/memmap.adoc`) and raises the AR counter by 1.
+* OKAY status: the capture before the write reads op 2; a write of `0x0A11CE5E` (non-zero, differing from the reset value 0 of `cpu_ctrl.rdl`) to CPU_CTRL `SCRATCH(13)` at `0xC00390E8` reads op 0 with the AW and B counters up by 1, and a read of it, issued right after a second gap read whose capture holds `0xBADCAB1E` and so differs from the written word, returns op 0, the written word and an AR counter up by 1.
+* Recovery: a second empty-mailbox read captures op 1 with `0xFEEDDEAD`, a clean read of `SCRATCH(13)` then captures op 0 with `0x0A11CE5E` (no sticky status and no alias onto the live register), and the write that followed the DECERR read read op 0.
+* Nop: two op 0 scans with a non-zero address, data and strobe leave the AR counter flat and, sampled after the op 1 scan of the same fields completes, the AW counter flat (`*_AXI_SINGLE_OP` op 0 sends nothing over AXI); the op 1 scan raises the AR counter by 1.
+* Measured and logged only: the op field and counter deltas of the `SINGLE_OP` write at `0x1_7000`.
+* Per-size and per-strobe `SINGLE_OP` matrices, the reserved op 3 and the series instructions are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, read IDCODE, wait for `tb_smc_jtag2axi_security_disable` to read 0, sample the three counters and measure the `SINGLE_OP` scan width.
+. Scan `SMC_JTAG2AXI_CAPS` and compare the word and its fields.
+. Scan `SMC_OTP_JTAG2AXI_CAPS` and `SEP_OTP_JTAG2AXI_CAPS` and compare each word and its fields.
+. For each of the three registers shift in zeros, ones and 0x2AAA and recapture after each, then recapture after an IDCODE scan and after a BYPASS load.
+. Read mailbox 0 `STATUS` for `EMPTY`, capture, read the empty `READ_DATA`, capture, and write `0xDEAD0003` at `0xC0017000` once (logged only).
+. Read `0xC0017000` and poll the capture until the op field leaves 3.
+. Capture, write `0x0A11CE5E` to `SCRATCH(13)` and poll the capture.
+. Read `0xC0017000` again, then read `SCRATCH(13)` and poll the capture.
+. Read the empty mailbox `READ_DATA` again, then read `SCRATCH(13)` cleanly.
+. Scan two op 0 words with a non-zero address, data and strobe, then scan the same fields with op 1.
+. Print the checker lines in step order, check that every wait finished inside its bound with the stated site count per kind, and stamp the pass point after the last step.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DBG-J2A-CAPS-SETUP` |the SMC fabric gate tap reads 0 before the first scan, IDCODE reads the documented value and the AW, AR and B counter baselines are sampled
+|`CHK-DBG-J2A-CAPS-SMC` |SMC_JTAG2AXI_CAPS reads 0x3DF0 with bus_type 0, addr_size 56, data_size 3, wr_pl_depth 3 and rd_pl_depth 3, each field compared separately
+|`CHK-DBG-J2A-CAPS-OTP` |SMC_OTP and SEP_OTP JTAG2AXI_CAPS both read 0x3D41 with bus_type 1, addr_size 32, data_size 2, wr_pl_depth 3 and rd_pl_depth 3, each field compared separately
+|`CHK-DBG-J2A-CAPS-STABLE` |each CAPS word recaptures as 0x3DF0, 0x3D41 and 0x3D41 after zeros, ones and 0x2AAA shift-ins and after an intervening IDCODE scan and BYPASS load
+|`CHK-DBG-J2A-SINGLE-SLVERR` |STATUS reads EMPTY with op 0, the empty-mailbox READ_DATA read captures op 1 with 0xFEEDDEAD and raises the AR counter by 1 after a capture of op 0, the SINGLE_OP scan is 132 bits wide, and the response of the 0xC0017000 window write is measured and logged only
+|`CHK-DBG-J2A-SINGLE-DECERR` |a read at 0xC0017000 captures op 2 with 0xBADCAB1E and raises the AR counter by 1
+|`CHK-DBG-J2A-SINGLE-OKAY` |the capture before a write of SCRATCH[13] reads op 2, the write reads op 0 with the AW and B counters up by 1, a gap read right before the read of SCRATCH[13] captures op 2 with 0xBADCAB1E, and the read returns 0x0A11CE5E with op 0 and the AR counter up by 1
+|`CHK-DBG-J2A-SINGLE-RECOVERY` |a second empty-mailbox READ_DATA read captures op 1 with 0xFEEDDEAD and a clean read of SCRATCH[13] captures op 0 with 0x0A11CE5E
+|`CHK-DBG-J2A-SINGLE-NOP` |two op 0 scans with a non-zero address, data and strobe leave the AR counter flat and, after the op 1 scan of the same fields completes, the AW counter flat and the AR counter up by 1
+|`CHK-NONVAC` |ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last step and every step has a nonzero scan count
+|`CHK-TIMEOUT-PATHS` |the gate wait and the ten SINGLE_OP capture polls finish inside their bounds with a recorded last state and the stated site count per kind
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7549,6 +7609,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_ic_reset_ss_domain_matrix_test` |F3 |smc_under_smu, hosted |`IC_RESET_SS_COLD_OVRD`, `IC_RESET_SS_WARM_OVRD`, `IC_RESET_SS_EXCL`
 |`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, hosted |`BSR_EXTEST_TDO_MATCH`
 |`smu_dtp_jtag2axi_series_contention_test` |F3 |hosted |`CHK-DBG-J2A-SERIES-SETUP`, `CHK-DBG-J2A-SERIES-INCR`, `CHK-DBG-J2A-SERIES-NOINCR`, `CHK-DBG-J2A-SERIES-ERRSTATUS`, `CHK-DBG-J2A-SERIES-PIPELINE`, `CHK-DBG-J2A-STICKY-SLVERR-FIRST`, `CHK-DBG-J2A-STICKY-DECERR-FIRST`, `CHK-DBG-J2A-STICKY-RESET`, `CHK-DBG-J2A-SINGLE-INDEP`, `CHK-DBG-J2A-BUSY-OP3`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
+|`smu_dtp_jtag2axi_caps_single_op_test` |F3 |hosted |`CHK-DBG-J2A-CAPS-SETUP`, `CHK-DBG-J2A-CAPS-SMC`, `CHK-DBG-J2A-CAPS-OTP`, `CHK-DBG-J2A-CAPS-STABLE`, `CHK-DBG-J2A-SINGLE-SLVERR`, `CHK-DBG-J2A-SINGLE-DECERR`, `CHK-DBG-J2A-SINGLE-OKAY`, `CHK-DBG-J2A-SINGLE-RECOVERY`, `CHK-DBG-J2A-SINGLE-NOP`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |===
 
 [[smu-out-and-wrapper]]

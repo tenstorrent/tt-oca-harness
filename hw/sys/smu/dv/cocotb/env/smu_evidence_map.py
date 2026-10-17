@@ -2902,6 +2902,78 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "step and every step has a nonzero scan count",
         ),
     ],
+    "smu_dtp_jtag2axi_caps_single_op_test": [
+        (
+            "CHK-DBG-J2A-CAPS-SETUP",
+            "CHK-DBG-J2A-CAPS-SETUP",
+            "the SMC fabric gate tap reads 0 before the first scan, IDCODE reads the documented "
+            "value and the AW, AR and B counter baselines are sampled",
+        ),
+        (
+            "CHK-DBG-J2A-CAPS-SMC",
+            "CHK-DBG-J2A-CAPS-SMC",
+            "SMC_JTAG2AXI_CAPS reads 0x3DF0 with bus_type 0, addr_size 56, data_size 3, "
+            "wr_pl_depth 3 and rd_pl_depth 3, each field compared separately",
+        ),
+        (
+            "CHK-DBG-J2A-CAPS-OTP",
+            "CHK-DBG-J2A-CAPS-OTP",
+            "SMC_OTP and SEP_OTP JTAG2AXI_CAPS both read 0x3D41 with bus_type 1, addr_size 32, "
+            "data_size 2, wr_pl_depth 3 and rd_pl_depth 3, each field compared separately",
+        ),
+        (
+            "CHK-DBG-J2A-CAPS-STABLE",
+            "CHK-DBG-J2A-CAPS-STABLE",
+            "each CAPS word recaptures as 0x3DF0, 0x3D41 and 0x3D41 after zeros, ones and 0x2AAA "
+            "shift-ins and after an intervening IDCODE scan and BYPASS load",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-SLVERR",
+            "CHK-DBG-J2A-SINGLE-SLVERR",
+            "STATUS reads EMPTY with op 0, the empty-mailbox READ_DATA read captures op 1 with "
+            "0xFEEDDEAD and raises the AR counter by 1 after a capture of op 0, the SINGLE_OP "
+            "scan is 132 bits wide, and the response of the 0xC0017000 window write is measured "
+            "and logged only",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-DECERR",
+            "CHK-DBG-J2A-SINGLE-DECERR",
+            "a read at 0xC0017000 captures op 2 with 0xBADCAB1E and raises the AR counter by 1",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-OKAY",
+            "CHK-DBG-J2A-SINGLE-OKAY",
+            "the capture before a write of SCRATCH[13] reads op 2, the write reads op 0 with the "
+            "AW and B counters up by 1, a gap read right before the read of SCRATCH[13] captures "
+            "op 2 with 0xBADCAB1E, and the read returns 0x0A11CE5E with op 0 and the AR counter "
+            "up by 1",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-RECOVERY",
+            "CHK-DBG-J2A-SINGLE-RECOVERY",
+            "a second empty-mailbox READ_DATA read captures op 1 with 0xFEEDDEAD and a clean read "
+            "of SCRATCH[13] captures op 0 with 0x0A11CE5E",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-NOP",
+            "CHK-DBG-J2A-SINGLE-NOP",
+            "two op 0 scans with a non-zero address, data and strobe leave the AR counter flat "
+            "and, after the op 1 scan of the same fields completes, the AW counter flat and the "
+            "AR counter up by 1",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last "
+            "step and every step has a nonzero scan count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the gate wait and the ten SINGLE_OP capture polls finish inside their bounds with a "
+            "recorded last state and the stated site count per kind",
+        ),
+    ],
 }
 
 
