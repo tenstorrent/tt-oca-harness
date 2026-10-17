@@ -80,10 +80,12 @@ instance leg, and the idle gap (0 to 16 clocks) before each poll read; after the
 the invalid value of each ``CTRL`` field, the invalid ``flag0``, the reserved
 ``acmd`` (0x0, 0x6, 0x7, 0x8, 0xe or 0xf: the reserved values whose bits [2:0] are
 also a reserved value), the ``RESEED_INTERVAL`` value K (3 or 4) and the
-``SW_APP_ENABLE`` value that is not True for the ``GENBITS`` read. The reserved
+``SW_APP_ENABLE`` value that is not True for the ``GENBITS`` read, and last the
+384-bit seed of the known-answer Generate. The reserved
 values 0x9 to 0xd carry a defined command code in bits [2:0]; the leaf sends 0x9 on
 every seed in its last leg (no draw) and logs the result only. The checked values do
-not depend on the seed.
+not depend on the seed; the known-answer control compares with the golden of the
+drawn seed.
 
 The three groups run in the drawn order. Then the leaf runs, in this order, the
 ``CTRL`` alert leg (a TRNG reset, no bring-up), the command header leg, the
@@ -179,7 +181,13 @@ Checkers:
                  Control: ``GENBITS`` is first drained (read while
                  ``GENBITS_VLD`` = 1, at most four reads per earlier Generate)
                  until ``GENBITS_VLD`` reads 0, and it reads 1 only after the
-                 leg's own Generate.
+                 leg's own Generate. Control: with ``SW_APP_ENABLE`` True, a
+                 known-answer Generate (instantiate with flag0 True and twelve
+                 drawn seed words, "Only provided additional data will be used as
+                 seed", theory_of_operation.md:227) returns the four ``GENBITS``
+                 words of the SP 800-90A CTR_DRBG golden (AES-256, "This block does
+                 not use a derivation function", README.md:47; word order
+                 programmers_guide.md:37-114), so the data path is live.
 The unstated effects are logged only (``OBS-EDN-*``, ``OBS-CSRNG-*``). The
 ``CMD_STS`` of the CSRNG instantiate stays an observation (``OBS-CSRNG-STS``): no
 sentence states that a first instantiate on the software instance succeeds.
@@ -194,6 +202,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
+from env.sep_ctr_drbg_golden import SepCtrDrbgGolden
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_reg_meta import CSRNG, EDN, SEP_CPU_CTRL, sym
 from env.sep_seeded_rng import SepSeededRng
@@ -303,6 +312,10 @@ BOOT_GEN_RESET = EDN.reset("BOOT_GEN_CMD")
 # (theory_of_operation.md:185) and GENBITS "must be read four times for each request
 # made" (csrng.hjson:475-476).
 GEN1_WORDS = 4
+# Known-answer instantiate: flag0 True with clen 12 uses "Only provided additional
+# data ... as seed" (theory_of_operation.md:227), a 384-bit seed of twelve words.
+KAT_SEED_BITS = 384
+KAT_CLEN = KAT_SEED_BITS // 32
 
 
 def cmd_word(acmd: int, *, clen: int = 0, flag0: int = MUBI_FALSE, glen: int = 0) -> int:
@@ -371,6 +384,7 @@ class Plan:
     bad_acmd: int
     reseed_k: int
     gen_off: int
+    kat_seed: int
 
     def describe(self) -> str:
         return (
@@ -378,6 +392,7 @@ class Plan:
             f" cs_bad={[hex(v) for v in self.cs_bad]} ed_bad={[hex(v) for v in self.ed_bad]}"
             f" bad_flag0=0x{self.bad_flag0:x} bad_acmd=0x{self.bad_acmd:x}"
             f" reseed_k={self.reseed_k} gen_off=0x{self.gen_off:x}"
+            f" kat_seed=0x{self.kat_seed:096x}"
         )
 
 
@@ -393,7 +408,10 @@ def draw_plan(seed: int) -> Plan:
     bad_acmd = rng.choice(ACMD_RESERVED_DRAW)
     reseed_k = rng.randrange(3, 5)
     gen_off = rng.choice(tuple(v for v in range(16) if v != MUBI_TRUE))
-    return Plan(seed, tuple(groups), gaps, cs_bad, ed_bad, bad_flag0, bad_acmd, reseed_k, gen_off)
+    kat_seed = rng.getrandbits(KAT_SEED_BITS)
+    return Plan(
+        seed, tuple(groups), gaps, cs_bad, ed_bad, bad_flag0, bad_acmd, reseed_k, gen_off, kat_seed
+    )
 
 
 class _Reg(SepAxiRegDriver):
@@ -1148,6 +1166,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         lim = {"k": k, "max_generates": k + 1}
         hdr = {"word": f"0x{cmd_word(ACMD_RESEED):x}"}
         gate = {"sw_app_enable": f"0x{plan.gen_off:x}"}
+        kat: dict = {}
         reason = ""
         step = "ins"
         try:
@@ -1234,6 +1253,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 "CSRNG-GENBITS-GATE",
                 genbits_vld_after=await r._rd(CSRNG_GENBITS_VLD) & GB_VLD,
             )
+            step = "kat"
+            kat = await self._genbits_kat(drain_max)
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound} step={step}"
         close_graded_window(self.logger)
@@ -1270,11 +1291,59 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             expected_words=GEN1_WORDS,
         )
         words = gate.get("genbits", [])
+        self.chk.ctrl(
+            "CSRNG-GENBITS-GATE",
+            not reason and bool(kat) and kat["genbits"] == kat["expected"],
+            kat="known_answer",
+            **kat,
+        )
         self.chk.ok(
             "CSRNG-GENBITS-GATE",
             not reason and len(words) == 4 and all(w == "0x0" for w in words),
             **gate,
         )
+
+    async def _genbits_kat(self, drain_max: int) -> dict:
+        """Known-answer Generate with SW_APP_ENABLE True: the GENBITS words equal the
+        SP 800-90A CTR_DRBG golden (AES-256, no derivation function) of the drawn seed.
+
+        The instance is uninstantiated and instantiated with flag0 True and clen 12,
+        so "Only provided additional data will be used as seed"
+        (theory_of_operation.md:227); "This block does not use a derivation function"
+        (README.md:47). The seed bytes B1 (most significant) .. B48 go to CMD_REQ
+        least significant word first, and GENBITS returns each 128-bit block least
+        significant word first (programmers_guide.md:37-114).
+        """
+        r = self.reg
+        seed = self.plan.kat_seed
+        await r._wr(CSRNG_CTRL, CSRNG_CTRL_ON)
+        drained = 0
+        while await r._rd(CSRNG_GENBITS_VLD) & GB_VLD and drained < drain_max:
+            await r._rd(CSRNG_GENBITS)
+            drained += 1
+        await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), FIRST_CAP, "kat_uni")
+        ins = cmd_word(ACMD_INSTANTIATE, clen=KAT_CLEN, flag0=MUBI_TRUE)
+        await self._sw_cmd(ins, FIRST_CAP, "kat_ins_rdy", wait_ack=False)
+        for i in range(KAT_CLEN):
+            await r._wr(CSRNG_CMD_REQ, (seed >> (32 * i)) & 0xFFFF_FFFF)
+        _, ins_sts = await self._wait(
+            CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "kat_ins_ack"
+        )
+        await self._sw_cmd(CMD_GENERATE_1, FIRST_CAP, "kat_gen", wait_ack=False)
+        got = []
+        for i in range(GEN1_WORDS):
+            await self._wait(CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, f"kat_vld{i}")
+            got.append(await r._rd(CSRNG_GENBITS))
+        golden = SepCtrDrbgGolden()
+        golden.instantiate(0, additional_input=seed)
+        block = golden.generate(1)[0]
+        expected = [(block >> (32 * i)) & 0xFFFF_FFFF for i in range(GEN1_WORDS)]
+        return {
+            "drained": drained,
+            "ins_cmd_sts": _field(ins_sts, CS_STS_STS),
+            "genbits": [f"0x{w:08x}" for w in got],
+            "expected": [f"0x{w:08x}" for w in expected],
+        }
 
     # --- reserved acmd 0x9: the last leg ---------------------------------------------
     async def _acmd_hi_leg(self) -> None:
