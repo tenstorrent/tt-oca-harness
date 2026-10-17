@@ -3141,6 +3141,83 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "inside their bounds with a recorded last state and the stated site count per kind",
         ),
     ],
+    "smu_dtp_smc_dm_dmi_test": [
+        (
+            "CHK-DBG-SMC-DM-SETUP",
+            "CHK-DBG-SMC-DM-SETUP",
+            "the gate tap reads 0 before the first scan, IDCODE reads the documented value, the "
+            "launch counter baselines are sampled, tb_stap_smc_tms stays parked while the SMC STAP "
+            "is unselected and follows jtag_tms edge for edge after TAP_3DCR with no TCK mismatch",
+        ),
+        (
+            "CHK-DBG-SMC-DM-RESET-HELD",
+            "CHK-DBG-SMC-DM-RESET-HELD",
+            "RESET_CTRL reads bit 24 = 0 and its bits 3:0 and bit 8 are logged; the dmi write and "
+            "two dmi reads while the debug module is held complete inside the retry bound with "
+            "their values measured and logged only; the IDCODE after them equals the first",
+        ),
+        (
+            "CHK-DBG-SMC-DM-RELEASE",
+            "CHK-DBG-SMC-DM-RELEASE",
+            "the RESET_CTRL write with bit 24 set captures op 0 with the AW and B counters each up "
+            "by 1 and the read back has bit 24 = 1 with bits 8:0 equal to the value read while "
+            "held",
+        ),
+        (
+            "CHK-DBG-SMC-DM-DMACTIVE",
+            "CHK-DBG-SMC-DM-DMACTIVE",
+            "after the release the dmi write of dmcontrol = 1 reads back dmactive = 1 inside the "
+            "retry bound",
+        ),
+        (
+            "CHK-DBG-SMC-DM-DMSTATUS",
+            "CHK-DBG-SMC-DM-DMSTATUS",
+            "the dtmcs scan completes and its abits size the dmi scans; dmstatus reads version 2, "
+            "authenticated 1, hasresethaltreq 1, impebreak 1 and confstrptrvalid 0, each compared "
+            "separately",
+        ),
+        (
+            "CHK-DBG-SMC-DM-SBCS",
+            "CHK-DBG-SMC-DM-SBCS",
+            "sbcs reads sbversion 1, sbasize 56, sbaccess8, sbaccess16, sbaccess32 and "
+            "sbaccess64 1 "
+            "and sbaccess128 0, each compared separately",
+        ),
+        (
+            "CHK-DBG-SMC-DM-SBA-WRITE",
+            "CHK-DBG-SMC-DM-SBA-WRITE",
+            "the 32-bit system-bus write of 0x5BA0F15E to SCRATCH[15] (0xC00390F8) completes with "
+            "sbbusy 0, sberror 0 and sbbusyerror 0 inside the poll bound",
+        ),
+        (
+            "CHK-DBG-SMC-DM-SBA-READ",
+            "CHK-DBG-SMC-DM-SBA-READ",
+            "the fabric read of 0xC00390F8 captures op 0 with 0x5BA0F15E, the system-bus read of "
+            "SCRATCH[14] (0xC00390F0) returns 0x0ECCA114 written over the fabric first and the "
+            "system-bus read of 0xC00390F8 then returns 0x5BA0F15E, with sbbusy, sberror and "
+            "sbbusyerror 0 after each",
+        ),
+        (
+            "CHK-DBG-SMC-DM-SBA-PATH",
+            "CHK-DBG-SMC-DM-SBA-PATH",
+            "the DTP-to-SMC AW, AR and B counters stay flat across the system-bus write and both "
+            "system-bus reads and rise by exactly 1 for each of the fabric write of 0x0ECCA114 and "
+            "the fabric read of 0xC00390F8",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last "
+            "step and every step S1 to S10 has a nonzero scan count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the gate wait, the five fabric op capture polls, the sixteen dmi retry loops and the "
+            "three sbbusy polls finish inside their bounds with a recorded last state and the "
+            "stated site count per kind",
+        ),
+    ],
 }
 
 

@@ -2751,6 +2751,28 @@ args = [
 ]
 
 [[tests]]
+name = "smu_dtp_smc_dm_dmi_test"
+module = "smu_dtp_smc_dm_dmi_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["depth", "dtp", "smc", "dmi", "sba", "stap"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+[[tests]]
 # The aperture windows are programmed through the SEP debug module's system
 # bus over JTAG DMI around the inbound ext_in transfers, so the span is set by
 # the JTAG period and the handshakes.
@@ -3757,8 +3779,9 @@ tests = [
   "smu_dtp_otp_sep_series_error_test",
   "smu_dtp_sep_ic_reset_effect_test",
   "smu_dtp_jtag2axi_ratio_floor_test",
+  "smu_dtp_smc_dm_dmi_test",
 ]
-expected_count = 133
+expected_count = 134
 
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
@@ -3937,8 +3960,9 @@ tests = [
   "smu_dtp_otp_sep_series_error_test",
   "smu_dtp_sep_ic_reset_effect_test",
   "smu_dtp_jtag2axi_ratio_floor_test",
+  "smu_dtp_smc_dm_dmi_test",
 ]
-expected_count = 169
+expected_count = 170
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.

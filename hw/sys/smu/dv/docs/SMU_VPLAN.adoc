@@ -368,6 +368,7 @@ one-line intent.
 |`smu_dtp_otp_sep_series_error_test` |wrapper |The SEP OTP JTAG2AXIL bridge writes and reads the SPARE0 words through `SERIES_DATA_NO_INCR` and single-load INCR reads, answers the first in-span address with no register (`0x1093041C`) with SLVERR as a `SINGLE_OP` op and as a sticky `SERIES_CTRL.op` code, completes the next beat with the correct data, clears the code with `SERIES_CTRL.reset`, and leaves the DTP-to-SMC debug AXI counters untouched while two SMC fabric `SINGLE_OP` reads move the AR counter by 2.
 |`smu_dtp_sep_ic_reset_effect_test` |wrapper |The `sep_reset_n` pair of the `IC_RESET` SEP slice (bits 13 and 14), written reset_control first, holds `sep_reset_n_o` low and clears SEP cold scratch word 0 written over the SEP debug system bus, leaves the external slice, `rst_primary_smc_clk_no` and the SMC fabric untouched, survives Test-Logic-Reset only with `reset_hold` 0, and restores the SEP when released reset_enable first.
 |`smu_dtp_jtag2axi_ratio_floor_test` |wrapper |The SMC fabric JTAG2AXI bridge completes a four-word series write and four single-load series reads with the documented data, `SERIES_CTRL.op` 0 and AW and B counters up by 4 at TCK 40 ns and 48 ns against a 10 ns `clk_smu_i`, and again at 40 ns after `SERIES_CTRL.reset`; the 32 ns and 20 ns legs are measured and logged only, except that every `SERIES_CTRL.op` capture there is 0 or 3.
+|`smu_dtp_smc_dm_dmi_test` |wrapper |The SMC debug module, reached through the SMC STAP and the SMC cluster debug transport module, leaves reset when the fabric write sets `RESET_CTRL` bit 24, reads the `dmstatus` and `sbcs` capability fields and `dmactive` after the release, writes and reads a `CPU_CTRL` `SCRATCH` word over its system bus beside a fabric-written neighbour, and leaves the DTP-to-SMC launch counters flat across the system-bus traffic; the dmi answers while the module is held are measured and logged only.
 |===
 
 [[smu-test-procedures]]
@@ -7598,6 +7599,63 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-176-smu_dtp_smc_dm_dmi_test]]
+===== 176 `smu_dtp_smc_dm_dmi_test`
+
+*Source Module*: `smu_dtp_smc_dm_dmi_test` (`cocotb_wrapper/tests/`; the sequence `smu_dtp_smc_dm_dmi_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP, driven at the TCK period the bench draws for the seed and logs; instructions `IDCODE`, `TAP_3DCR` and `SMC_AXI_SINGLE_OP`; the SMC STAP selected through the PTAP `TAP_3DCR`, SIB and STAP 3DCR scans, with its debug transport module registers `dtmcs` (IR 0x10) and `dmi` (IR 0x11) and the debug module registers `dmcontrol`, `dmstatus`, `sbcs`, `sbaddress0`, `sbaddress1` and `sbdata0`); the bench taps `tb_smc_jtag2axi_security_disable` (the gate), `dtp_smc_dbg_aw_count_o`, `dtp_smc_dbg_ar_count_o` and `dtp_smc_dbg_b_count_o` (the launch counters at the SMU boundary), `tb_stap_smc_tms`, `tb_stap_smc_tck` and `tb_stap_smc_tdo_oen` (the SMC STAP host interface) and `jtag_tms` (`tb/tb_wrapper_top.sv`), sampled on `clk_smu_i` and `clk_ref_i`; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the `RESET_CTRL` and `SCRATCH` addresses come from the generated `smc_addr.h`
+
+*Objective*: the SMC debug module, held in reset by `CPU_CTRL.RESET_CTRL`, is released by a fabric write that sets bit 24, answers `dmcontrol`, `dmstatus` and `sbcs` with the documented capability values and carries a system-bus write and read of `SCRATCH[15]` that the fabric bridge reads back and that does not move the DTP-to-SMC launch counters.
+
+*Test Coverage*:
+
+* Setup: `tb_smc_jtag2axi_security_disable` reads 0 inside 400 polls of 50 `clk_smu_i` cycles, IDCODE reads the documented value and the counter baselines are sampled. While the SMC STAP is unselected `tb_stap_smc_tms` does not follow `jtag_tms` on a fabric scan; after the `TAP_3DCR` selection (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`, the chain order io, smc, sep, extra0 of `doc/integrator/src/smu-composition.adoc`) it follows it on every TCK. The `tb_stap_smc_tdo_oen` TCK counts are measured and logged only.
+* Held: the fabric read of `RESET_CTRL` (`0xC0039020`, `smc_addr.h`) reads bit 24 (`debug_reset_n`, active low) 0 (`hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl`; `hw/sys/smc/doc/cpu.adoc`, debug-module reset); the core `reset_n` bits 3:0 and `uncore_reset_n` bit 8 are logged. The dmi write of `dmcontrol` and the two dmi reads with the module held complete inside the retry bound and their status and data are measured and logged only; the IDCODE scanned after them equals the first.
+* Release: the fabric write of the word read while held with bit 24 set captures op 0 with the AW and B counters each up by 1; the read back shows bit 24 = 1 and bits 8:0 equal to the held word, against the 0 read before (`cpu_ctrl.rdl`, writing 1 releases the debug module).
+* Capabilities: `dtmcs` (5-bit IR, RISC-V External Debug Support 0.13, `cpu.adoc` Debug Module Configuration) gives `abits`, which sizes every dmi scan and is logged with `version` and `idle`. After the release the dmi write of `dmcontrol` = 1 reads back `dmactive` 1; `dmstatus` reads `version` 2, `authenticated` 1, `hasresethaltreq` 1, `impebreak` 1 and `confstrptrvalid` 0; `sbcs` reads `sbversion` 1, `sbasize` 56, `sbaccess8`, `sbaccess16`, `sbaccess32` and `sbaccess64` 1 and `sbaccess128` 0 (`cpu.adoc`, SMC Debug Module capability readbacks), each field compared separately. A busy dmi status clears with `dtmcs.dmireset` and more idle TCKs before the access retries.
+* System bus: the fabric write of `0x0ECCA114` (size 2) to `SCRATCH[14]` (`0xC00390F0`) precedes the system-bus write of `0x5BA0F15E` to `SCRATCH[15]` (`0xC00390F8`), assembled from `sbaddress1` and `sbaddress0` with `sbaccess` 2 and started by the `sbdata0` write, `sbbusy` polled to 0 with `sberror` and `sbbusyerror` 0 (`cpu.adoc`, debug system bus through `fbus`). The fabric read of `0xC00390F8` returns op 0 and `0x5BA0F15E`; the system-bus reads (`sbreadonaddr` 1) of `0xC00390F0` first and `0xC00390F8` second return `0x0ECCA114` and `0x5BA0F15E` (`cpu_ctrl.rdl`, SCRATCH reset 0).
+* Path: the AW, AR and B counters rise by exactly 1 for the fabric write (AW and B) and the fabric read (AR) and stay flat across the system-bus write and both system-bus reads (`doc/integrator/src/smu-composition.adoc`, the debug system bus is the cluster path and the fabric bridge is the DTP-to-SMC debug AXI port).
+* Measured and logged only: the TCK period, the counter baselines, the `dtmcs` fields, the dmi status and data while the module is held, the first `sbbusy` poll of each system-bus access and the `tb_stap_smc_tdo_oen` TCK counts.
+* The SMC cores, abstract commands, program buffer and the SEP debug module are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, read IDCODE, wait for `tb_smc_jtag2axi_security_disable` to read 0 and sample the AW, AR and B counters.
+. Read `RESET_CTRL` through the SMC fabric `SINGLE_OP`, polling the capture, with the SMC STAP unselected and `tb_stap_smc_tms` observed.
+. Select the SMC STAP through the three `TAP_3DCR` scans.
+. Scan `dtmcs` through the network with `tb_stap_smc_tms` observed and keep `abits` and `idle`.
+. Write `dmcontrol` = 1 and read `dmcontrol` and `dmstatus` through dmi with the module held, then scan IDCODE.
+. Write the held `RESET_CTRL` word with bit 24 set through the fabric `SINGLE_OP` and read it back.
+. Clear the dmi status with `dtmcs.dmireset`, write `dmcontrol` = 1 and read it back.
+. Read `dmstatus` and `sbcs` through dmi.
+. Write `SCRATCH[14]` through the fabric `SINGLE_OP`, sample the counters, set `sbcs`, `sbaddress1`, `sbaddress0` and `sbdata0` through dmi and poll `sbcs` until `sbbusy` reads 0.
+. Read `SCRATCH[15]` through the fabric `SINGLE_OP`, sample the counters, set `sbcs` with `sbreadonaddr`, write `sbaddress0` with `0xC00390F0` and then `0xC00390F8`, poll `sbbusy` and read `sbdata0` after each, then sample the counters.
+. Print the checker lines in step order, check that every wait finished inside its bound with the stated site count per kind, and stamp the pass point after the last step.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DBG-SMC-DM-SETUP` |the gate tap reads 0 before the first scan, IDCODE reads the documented value, the launch counter baselines are sampled, tb_stap_smc_tms stays parked while the SMC STAP is unselected and follows jtag_tms edge for edge after TAP_3DCR with no TCK mismatch
+|`CHK-DBG-SMC-DM-RESET-HELD` |RESET_CTRL reads bit 24 = 0 and its bits 3:0 and bit 8 are logged; the dmi write and two dmi reads while the debug module is held complete inside the retry bound with their values measured and logged only; the IDCODE after them equals the first
+|`CHK-DBG-SMC-DM-RELEASE` |the RESET_CTRL write with bit 24 set captures op 0 with the AW and B counters each up by 1 and the read back has bit 24 = 1 with bits 8:0 equal to the value read while held
+|`CHK-DBG-SMC-DM-DMACTIVE` |after the release the dmi write of dmcontrol = 1 reads back dmactive = 1 inside the retry bound
+|`CHK-DBG-SMC-DM-DMSTATUS` |the dtmcs scan completes and its abits size the dmi scans; dmstatus reads version 2, authenticated 1, hasresethaltreq 1, impebreak 1 and confstrptrvalid 0, each compared separately
+|`CHK-DBG-SMC-DM-SBCS` |sbcs reads sbversion 1, sbasize 56, sbaccess8, sbaccess16, sbaccess32 and sbaccess64 1 and sbaccess128 0, each compared separately
+|`CHK-DBG-SMC-DM-SBA-WRITE` |the 32-bit system-bus write of 0x5BA0F15E to SCRATCH[15] (0xC00390F8) completes with sbbusy 0, sberror 0 and sbbusyerror 0 inside the poll bound
+|`CHK-DBG-SMC-DM-SBA-READ` |the fabric read of 0xC00390F8 captures op 0 with 0x5BA0F15E, the system-bus read of SCRATCH[14] (0xC00390F0) returns 0x0ECCA114 written over the fabric first and the system-bus read of 0xC00390F8 then returns 0x5BA0F15E, with sbbusy, sberror and sbbusyerror 0 after each
+|`CHK-DBG-SMC-DM-SBA-PATH` |the DTP-to-SMC AW, AR and B counters stay flat across the system-bus write and both system-bus reads and rise by exactly 1 for each of the fabric write of 0x0ECCA114 and the fabric read of 0xC00390F8
+|`CHK-NONVAC` |ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last step and every step S1 to S10 has a nonzero scan count
+|`CHK-TIMEOUT-PATHS` |the gate wait, the five fabric op capture polls, the sixteen dmi retry loops and the three sbbusy polls finish inside their bounds with a recorded last state and the stated site count per kind
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7771,6 +7829,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_otp_sep_series_error_test` |F3 |hosted |`CHK-DBG-SEP-OTP-SETUP`, `CHK-DBG-SEP-OTP-POSCTRL`, `CHK-DBG-SEP-OTP-HOLE-SINGLE`, `CHK-DBG-SEP-OTP-HOLE-SERIES`, `CHK-DBG-SEP-OTP-ISOLATION`, `CHK-DBG-SEP-OTP-RESET`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |`smu_dtp_sep_ic_reset_effect_test` |F3 |hosted |`CHK-DBG-IC-SEP-SETUP`, `CHK-DBG-IC-SEP-POSITION`, `CHK-DBG-IC-SEP-QUIESCE`, `CHK-DBG-IC-SEP-ISOLATION`, `CHK-DBG-IC-SEP-HOLD-TLR`, `CHK-DBG-IC-SEP-RELEASE`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |`smu_dtp_jtag2axi_ratio_floor_test` |F3 |hosted |`CHK-DBG-RATIO-SETUP`, `CHK-DBG-RATIO-COMPLETE-4P0`, `CHK-DBG-RATIO-COMPLETE-4P8`, `CHK-DBG-RATIO-OP3-RULE`, `CHK-DBG-RATIO-RECOVERY`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
+|`smu_dtp_smc_dm_dmi_test` |F3 |hosted |`CHK-DBG-SMC-DM-SETUP`, `CHK-DBG-SMC-DM-RESET-HELD`, `CHK-DBG-SMC-DM-RELEASE`, `CHK-DBG-SMC-DM-DMACTIVE`, `CHK-DBG-SMC-DM-DMSTATUS`, `CHK-DBG-SMC-DM-SBCS`, `CHK-DBG-SMC-DM-SBA-WRITE`, `CHK-DBG-SMC-DM-SBA-READ`, `CHK-DBG-SMC-DM-SBA-PATH`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |===
 
 [[smu-out-and-wrapper]]
