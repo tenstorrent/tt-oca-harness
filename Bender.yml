@@ -155,7 +155,7 @@ vendor_package:
   # idma: vendored src with in-place edits; generated bundle lives in overlay/.
   - name: idma
     target_dir: "vendor/pulp-platform/idma/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-iDMA.git", rev: "4664f8bd7eb2f10c732215bb5f9d43e0a8e08238" }
+    upstream: { git: "https://github.com/tenstorrent/tt-iDMA.git", rev: "54b28d5e41fc3f01b45d1d9e0ea48d3ae99822c6" }
     include_from_upstream:
       - "src"
     patch_dir: "vendor/pulp-platform/idma/patches"
@@ -301,6 +301,12 @@ vendor_package:
   #     - "rtl"
   #     - "dependencies/common"
   #   patch_dir: "vendor/tenstorrent/tt-hw-debug/patches"
+
+  # Accellera UVM reference implementation (IEEE 1800.2), which the SV-UVM builds compile
+  # from source. Accellera publishes each release as an archive on accellera.org, and
+  # vendor_package fetches only from git, so `make update-vendor-uvm` writes
+  # vendor/accellera/uvm-core/upstream/ from the archive and records the release in
+  # vendor/accellera/uvm-core/release.toml.
 
   # AXI-over-UCIe (AoU) bridge IP: RTL, CSR SystemRDL, and the MAS.
   - name: aou

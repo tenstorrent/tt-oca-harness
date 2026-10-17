@@ -1,8 +1,8 @@
 diff --git a/src/backend/idma_axi_read.sv b/src/backend/idma_axi_read.sv
-index 754dea438..af8b9dd8a 100644
+index 2dc2e5a..e587f7e 100644
 --- a/src/backend/idma_axi_read.sv
 +++ b/src/backend/idma_axi_read.sv
-@@ -201,6 +201,12 @@ module idma_axi_read #(
+@@ -194,6 +194,12 @@ module idma_axi_read #(
      //--------------------------------------
      // State
      //--------------------------------------
@@ -17,10 +17,10 @@ index 754dea438..af8b9dd8a 100644
  
  endmodule
 diff --git a/src/backend/idma_axi_write.sv b/src/backend/idma_axi_write.sv
-index ee27349d1..4cedbbdde 100644
+index 2123e2b..5349465 100644
 --- a/src/backend/idma_axi_write.sv
 +++ b/src/backend/idma_axi_write.sv
-@@ -288,7 +288,20 @@ module idma_axi_write #(
+@@ -296,7 +296,20 @@ module idma_axi_write #(
      //--------------------------------------
      // State
      //--------------------------------------
@@ -44,10 +44,10 @@ index ee27349d1..4cedbbdde 100644
  
  endmodule
 diff --git a/src/backend/idma_axis_write.sv b/src/backend/idma_axis_write.sv
-index ee5b0b171..0c25e2e68 100644
+index b05fdac..1f6910b 100644
 --- a/src/backend/idma_axis_write.sv
 +++ b/src/backend/idma_axis_write.sv
-@@ -143,9 +143,11 @@ module idma_axis_write #(
+@@ -147,9 +147,11 @@ module idma_axis_write #(
          // not used signal
          assign buffer_data_masked = '0;
          // simpler: direct connection
@@ -63,26 +63,29 @@ index ee5b0b171..0c25e2e68 100644
  
      // we are ready for the next transfer internally, once the w last signal is applied
 diff --git a/src/backend/idma_channel_coupler.sv b/src/backend/idma_channel_coupler.sv
-index 1491716a2..e0d5a5741 100644
+index c47c9dc..06333bb 100644
 --- a/src/backend/idma_channel_coupler.sv
 +++ b/src/backend/idma_channel_coupler.sv
-@@ -179,7 +179,13 @@ module idma_channel_coupler #(
+@@ -186,8 +186,15 @@ module idma_channel_coupler #(
      assign busy_o = aw_valid;
  
      // state
 -    `FF(aw_to_send_q, aw_to_send_d, '0, clk_i, rst_ni)
+-    `FF(aw_stall_q, aw_stall_d, '0, clk_i, rst_ni)
 +    always_ff @(posedge clk_i or negedge rst_ni) begin
 +        if (!rst_ni) begin
 +            aw_to_send_q <= '0;
++            aw_stall_q   <= 1'b0;
 +        end else begin
 +            aw_to_send_q <= aw_to_send_d;
++            aw_stall_q   <= aw_stall_d;
 +        end
 +    end
  
  
  endmodule
 diff --git a/src/backend/idma_dataflow_element.sv b/src/backend/idma_dataflow_element.sv
-index 00744710a..2b5d1c709 100644
+index 0074471..2b5d1c7 100644
 --- a/src/backend/idma_dataflow_element.sv
 +++ b/src/backend/idma_dataflow_element.sv
 @@ -12,6 +12,8 @@ module idma_dataflow_element #(
@@ -157,7 +160,7 @@ index 00744710a..2b5d1c709 100644
  
  endmodule
 diff --git a/src/backend/idma_error_handler.sv b/src/backend/idma_error_handler.sv
-index ad9abccea..2030cfea7 100644
+index a76f336..d309c28 100644
 --- a/src/backend/idma_error_handler.sv
 +++ b/src/backend/idma_error_handler.sv
 @@ -378,7 +378,21 @@ module idma_error_handler #(
@@ -185,10 +188,10 @@ index ad9abccea..2030cfea7 100644
  
  endmodule
 diff --git a/src/backend/idma_obi_write.sv b/src/backend/idma_obi_write.sv
-index d79163c12..8d4bbba79 100644
+index 5b9ef11..396e50d 100644
 --- a/src/backend/idma_obi_write.sv
 +++ b/src/backend/idma_obi_write.sv
-@@ -118,12 +118,13 @@ module idma_obi_write #(
+@@ -122,12 +122,13 @@ module idma_obi_write #(
          // always_comb process implements masking of invalid data
          always_comb begin : proc_mask
              // defaults
@@ -208,7 +211,7 @@ index d79163c12..8d4bbba79 100644
              // control the write to the bus apply data to the bus only if data should be written
              if (ready_to_write == 1'b1 & !dp_poison_i) begin
                  // assign data from buffers, mask non valid entries
-@@ -139,14 +140,15 @@ module idma_obi_write #(
+@@ -143,14 +144,15 @@ module idma_obi_write #(
  
      end else begin : gen_direct_connect
          // assign meta data
@@ -231,10 +234,10 @@ index d79163c12..8d4bbba79 100644
  
      // we are ready for the next transfer internally, once the w last signal is applied
 diff --git a/src/backend/idma_tilelink_read.sv b/src/backend/idma_tilelink_read.sv
-index f59c93856..06487dbd6 100644
+index e51379c..b1c4767 100644
 --- a/src/backend/idma_tilelink_read.sv
 +++ b/src/backend/idma_tilelink_read.sv
-@@ -213,7 +213,20 @@ module idma_tilelink_read #(
+@@ -206,7 +206,20 @@ module idma_tilelink_read #(
      //--------------------------------------
      // State
      //--------------------------------------
@@ -258,10 +261,10 @@ index f59c93856..06487dbd6 100644
  
  endmodule
 diff --git a/src/backend/idma_tilelink_write.sv b/src/backend/idma_tilelink_write.sv
-index 50c94b5e5..5aa7d0a26 100644
+index 95865f3..0b4cb77 100644
 --- a/src/backend/idma_tilelink_write.sv
 +++ b/src/backend/idma_tilelink_write.sv
-@@ -272,7 +272,21 @@ module idma_tilelink_write #(
+@@ -280,7 +280,21 @@ module idma_tilelink_write #(
      //--------------------------------------
      // State
      //--------------------------------------
@@ -286,7 +289,7 @@ index 50c94b5e5..5aa7d0a26 100644
  
  endmodule
 diff --git a/src/backend/tpl/idma_backend.sv.tpl b/src/backend/tpl/idma_backend.sv.tpl
-index c5a2e1641..eaade4f47 100644
+index 4247865..cc754f4 100644
 --- a/src/backend/tpl/idma_backend.sv.tpl
 +++ b/src/backend/tpl/idma_backend.sv.tpl
 @@ -25,6 +25,8 @@ module idma_backend_${name_uniqueifier} #(
@@ -298,7 +301,7 @@ index c5a2e1641..eaade4f47 100644
      /// With of a transfer: max transfer size is `2**TFLenWidth` bytes
      parameter int unsigned TFLenWidth       = 32'd24,
      /// The depth of the memory system the backend is attached to
-@@ -689,23 +691,24 @@ _rsp_t ${protocol}_write_rsp_i,
+@@ -690,23 +692,24 @@ _rsp_t ${protocol}_write_rsp_i,
      // Transport Layer / Datapath
      //--------------------------------------
      idma_transport_layer_${name_uniqueifier} #(
@@ -336,7 +339,7 @@ index c5a2e1641..eaade4f47 100644
  % endif
  % for protocol in used_protocols:
  ,
-@@ -824,7 +827,7 @@ w_req.decouple_aw || (w_req.w_dp_req.dst_protocol inside {\
+@@ -848,7 +851,7 @@ w_req.decouple_aw || (w_req.w_dp_req.dst_protocol inside {\
              .aw_req_i         (\
  % if one_write_port:
   w_req.aw_req                ),
@@ -345,7 +348,7 @@ index c5a2e1641..eaade4f47 100644
   w_meta_req_tagged           ),
  % endif
              .aw_valid_i       ( w_valid                     ),
-@@ -846,7 +849,7 @@ w_req.decouple_aw || (w_req.w_dp_req.dst_protocol inside {\
+@@ -870,7 +873,7 @@ w_req.decouple_aw || (w_req.w_dp_req.dst_protocol inside {\
          // Atleast one write protocol uses combined aw and w -> Need to buffer read meta requests
          // As a write could depend on up to two reads
          stream_fifo_optimal_wrap #(
@@ -355,7 +358,7 @@ index c5a2e1641..eaade4f47 100644
      % if one_write_port:
   write_meta_channel_t ),
 diff --git a/src/backend/tpl/idma_legalizer.sv.tpl b/src/backend/tpl/idma_legalizer.sv.tpl
-index 777ee1bca..e53d0e067 100644
+index 38489be..9ee966a 100644
 --- a/src/backend/tpl/idma_legalizer.sv.tpl
 +++ b/src/backend/tpl/idma_legalizer.sv.tpl
 @@ -657,10 +657,33 @@ ${database[protocol]['legalizer_write_data_path']}
@@ -372,7 +375,7 @@ index 777ee1bca..e53d0e067 100644
 +            opt_tf_q <= opt_tf_d;
 +        end
 +    end
-+
+ 
 +    always_ff @(posedge clk_i or negedge rst_ni) begin
 +        if (!rst_ni) begin
 +            r_tf_q <= '0;
@@ -382,7 +385,7 @@ index 777ee1bca..e53d0e067 100644
 +            end
 +        end
 +    end
- 
++
 +    always_ff @(posedge clk_i or negedge rst_ni) begin
 +        if (!rst_ni) begin
 +            w_tf_q <= '0;
@@ -396,7 +399,7 @@ index 777ee1bca..e53d0e067 100644
      //--------------------------------------
      // Assertions
 diff --git a/src/backend/tpl/idma_transport_layer.sv.tpl b/src/backend/tpl/idma_transport_layer.sv.tpl
-index 91d27131c..67d7283c3 100644
+index e82379b..7091e99 100644
 --- a/src/backend/tpl/idma_transport_layer.sv.tpl
 +++ b/src/backend/tpl/idma_transport_layer.sv.tpl
 @@ -19,6 +19,8 @@ module idma_transport_layer_${name_uniqueifier} #(
@@ -408,7 +411,7 @@ index 91d27131c..67d7283c3 100644
      /// Mask invalid data on the manager interface
      parameter bit MaskInvalidData = 1'b1,
      /// Print the info of the FIFO configuration
-@@ -425,11 +427,12 @@ ${rendered_read_ports[read_port]}
+@@ -426,11 +428,12 @@ ${rendered_read_ports[read_port]}
      //--------------------------------------
  
      idma_dataflow_element #(

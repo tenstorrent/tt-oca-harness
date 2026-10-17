@@ -449,6 +449,27 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         self._set_if_exists(dut, "hmac_fifo_drain_stall_i", 0)
         self._set_if_exists(dut, "kmac_fifo_drain_stall_i", 0)
+        # Crypto and entropy injects off and the external TRNG streams and
+        # interrupt on the wrapper tie-off unless a leaf drives them
+        # (docs/SEP_TB_ARCH.adoc).
+        for pin in (
+            "crypto_alert_inject_i",
+            "crypto_alert_inject_idx_i",
+            "crypto_alert_inject_val_i",
+            "esrc_fifo_parity_inject_i",
+            "esrc_fifo_parity_bit_i",
+            "esrc_fifo_ptr_inject_i",
+            "esrc_fifo_ptr_sel_i",
+            "esrc_fifo_ptr_bit_i",
+            "esrc_noise_stuck_en_i",
+            "esrc_noise_stuck_val_i",
+            "ext_trng_drive_en_i",
+            "ext_trng_tvalid_i",
+            "ext_trng_tdata_i",
+            "ext_trng_tstrb_i",
+            "ext_trng_irq_drive_i",
+        ):
+            self._set_if_exists(dut, pin, 0)
         # Boundary PIC input and outbound responder control: idle (0) unless a
         # leaf drives them (docs/SEP_TB_ARCH.adoc).
         self._set_if_exists(dut, "sep_ext_interrupts_i", 0)

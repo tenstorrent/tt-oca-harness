@@ -7,30 +7,32 @@ bridge's completed AXI transactions (SUCCESS, SLVERR, DECERR, or BUSY_OR_FULL
 while one is pending), and the data a SINGLE_OP capture returns after a
 completed OKAY read is the word the bus returned. Consumes the reconstructed
 scan stream (``write``) and the per-TCK event stream (``event_export``)
-through a ``DtpJtagIrModel``, applies every bridge-register DR scan and every
-observed bridge completion (``axi_export``) to a ``DtpJtag2AxiModel``, and
-publishes one ``DtpJtag2AxiStatusItem`` per scan item so the scoreboard pairs
-the two streams in lockstep; scans that are not a bridge capture, captures
-while the PTAP 3DCR select is set, captures inside the CDC settle window
-after a completion, and the captures the bridge model exempts carry no
-contract. Series-data captures (the pipelined read FIFO) are not predicted.
-No comparison, no reporting. The SV-UVM twin is
+through a ``DtpJtagIrModel``, applies every bridge-register DR scan, on the
+TCK cycle that leaves Update-DR, and every observed bridge completion
+(``axi_export``) to a ``DtpJtag2AxiModel``, and publishes one
+``DtpJtag2AxiStatusItem`` per scan item so the scoreboard pairs the two
+streams in lockstep; scans that are not a bridge capture, captures while the
+PTAP 3DCR select is set, captures inside the CDC settle window after a
+completion, and the captures the bridge model exempts carry no contract.
+Series-data captures (the pipelined read FIFO) are not predicted. Where a
+completion raced a system reset, the bridge model reads the capture's status
+field to choose between the completion's status and DECERR, the two outcomes
+of the race. No comparison, no reporting. The SV-UVM twin is
 ``dtp_jtag2axi_status_ref_model``.
 """
 
 from __future__ import annotations
 
-from cocotb.utils import get_sim_time
 from ocah_axi_vip import OcahAxiItem
-from ocah_jtag_vip import OcahJtagEvent, OcahJtagScanItem
+from ocah_jtag_vip import OcahJtagEvent, OcahJtagScanItem, OcahJtagState
 from ocah_lib import OcahRefModel
 from pyuvm import ConfigDB
 
 from .dtp_expected_item import DtpAnalysisImp
-from .dtp_jtag2axi_model import DtpJ2aScanKind, DtpJtag2AxiModel
+from .dtp_jtag2axi_model import DtpJ2aRequest, DtpJ2aScanKind, DtpJtag2AxiModel
 from .dtp_jtag2axi_status_item import DtpJtag2AxiStatusItem
 from .dtp_jtag_ir_model import DtpJtagIrModel
-from .dtp_types import DTP_J2A_STATUS_SETTLE_TCK, JTAG2AXI_TARGETS
+from .dtp_types import DTP_J2A_STATUS_SETTLE_TCK, JTAG2AXI_TARGETS, DtpJtag2AxiTargetCfg
 
 __all__ = ["DtpJtag2AxiStatusRefModel"]
 
@@ -53,13 +55,16 @@ class DtpJtag2AxiStatusRefModel(OcahRefModel):
         )
         self._target_by_source: dict[str, str] = {}
         self._sys_rst_seen = 0
+        # The bridge scan waiting for the TAP to leave Update-DR.
+        self._pending: tuple[DtpJtag2AxiTargetCfg, DtpJ2aRequest] | None = None
 
     def bind_port(self, target: str, source: str) -> None:
         """Name the monitor whose items carry a bridge's transactions."""
         self._target_by_source[source] = target
 
     def write(self, item: OcahJtagScanItem) -> None:
-        """One expected capture per scan item, predicted at its Capture-DR, then its Update-DR."""
+        """One expected capture per scan item, predicted at its Capture-DR; the scan's
+        Update-DR waits for the TCK cycle that leaves Update-DR."""
         expected = DtpJtag2AxiStatusItem(compare=False, time_ns=item.end_time_ns)
         self._sync_reset()
         if item.is_ir:
@@ -79,15 +84,27 @@ class DtpJtag2AxiStatusRefModel(OcahRefModel):
                     kind,
                     item.start_time_ns or 0.0,
                     context=f"{target.name} {kind.name} bits={item.bit_count}",
+                    observed_status=item.tdo_value & 0x3,
                 )
-            if self.tb_if.dbg_field(target.dbg_disable_bit):
-                self._bridge.gated(target.name)
-            else:
-                self._bridge.update(target, request, item.end_time_ns or 0.0)
+            self._pending = (target, request)
         self.expected_ap.write(expected)
 
     def write_event(self, item: OcahJtagEvent) -> None:
         self._sync_reset()
+        if item.kind == "STEP" and item.trst_n:
+            self._bridge.tck_step(item.time_ns or 0.0)
+        if (
+            self._pending is not None
+            and item.kind == "STEP"
+            and item.trst_n
+            and self._ir.tap_state() is OcahJtagState.UPDATE_DR
+        ):
+            target, request = self._pending
+            self._pending = None
+            if self.tb_if.dbg_field(target.dbg_disable_bit):
+                self._bridge.gated(target.name)
+            else:
+                self._bridge.update(target, request, item.time_ns or 0.0)
         self._ir.on_event(item)
         self._consume_tap_reset()
 
@@ -104,9 +121,10 @@ class DtpJtag2AxiStatusRefModel(OcahRefModel):
         sys_rst = self.tb_if.sample("sys_rst_assert_count")
         if sys_rst != self._sys_rst_seen:
             self._sys_rst_seen = sys_rst
-            self._bridge.abort_in_flight(float(get_sim_time("ns")))
+            self._bridge.system_reset()
 
     def _consume_tap_reset(self) -> None:
         """The bridges' JTAG-side registers reset whenever the TAP is in Test-Logic-Reset."""
         if self._ir.take_tap_reset():
+            self._pending = None
             self._bridge.reset()

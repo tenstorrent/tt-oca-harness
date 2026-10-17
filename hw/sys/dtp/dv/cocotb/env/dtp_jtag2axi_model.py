@@ -23,7 +23,17 @@ observed, after the jtag2axi update, capture, and completion rules:
                byte lanes that address selects; a read is issued only within
                the budget of pipeline_depth + 1 per CTRL programming. INCR (or
                the with-status increment bit) advances the address by the
-               transfer size on completion.
+               transfer size on completion. The scan is refused, setting the
+               sticky full flag, while pipeline_depth + 1 series requests
+               wait behind the transaction in flight, or for a read while
+               pipeline_depth + 1 series reads are in flight; a refused
+               with-status scan also sets the SINGLE_OP status to
+               BUSY_OR_FULL. A read past the budget that is not refused is
+               dropped silently; one that is refused leaves the SERIES_CTRL
+               status, and for a with-status scan the SINGLE_OP status,
+               without a contract until the status is next set, since the
+               PTAP document does not say whether such a scan reports
+               BUSY_OR_FULL.
 
 A gated update (the lifecycle disable of the bridge asserted) changes nothing
 but clears the read budget, and a completion while the disable is asserted
@@ -37,8 +47,9 @@ Completions are applied at the capture or update time that follows them, so a
 capture during a shift sees the state of its own Capture-DR. Plain class held
 by the JTAG2AXI reference models; no reporting. Not modelled: the series
 read-data FIFO a SERIES_DATA capture returns (and so the DECERR a system reset
-reports for its unread entries), and true request-FIFO backpressure. The
-SV-UVM twin is ``dtp_jtag2axi_model``.
+reports for its unread entries). The oldest outstanding transaction is the
+one in flight, and the series requests behind it wait in the request queue.
+The SV-UVM twin is ``dtp_jtag2axi_model``.
 """
 
 from __future__ import annotations
@@ -65,6 +76,14 @@ __all__ = ["DtpJ2aRequest", "DtpJ2aScanKind", "DtpJtag2AxiModel"]
 
 _AXI_RESP_SLVERR = 2
 _AXI_RESP_DECERR = 3
+# TCK edges from a system reset to the edge on which its CDC clear aborts the
+# bridges' operations: two through the clear synchronizer, then the abort.
+CLEAR_ABORT_TCK = 3
+# TCK edges after a response handshake at a bridge port before the bridge's
+# state machine has certainly taken the response: three through the CDC
+# pointer synchronizer, one into the destination spill register, one for the
+# state machine's handshake, and one for the crossing's phase.
+CDC_RESPONSE_TCK = 6
 
 
 class DtpJ2aScanKind(Enum):
@@ -198,10 +217,24 @@ class _Bridge:
     series_reads_pushed: int = 0
     sticky_status: DtpJtag2AxiStatus = DtpJtag2AxiStatus.SUCCESS
     sticky_full: bool = False
+    # The SINGLE_OP or SERIES_CTRL status carries no contract until it is next set.
+    single_uncertain: bool = False
+    series_uncertain: bool = False
+    # SINGLE_OP may read DECERR with a zero data field, or SERIES_CTRL DECERR,
+    # in place of the status the model holds, until a capture shows which.
+    single_alt: bool = False
+    series_alt: bool = False
     completion_seen: bool = False
     last_completion: float = 0.0
+    # TCK edges counted when the newest applied completion reached the port,
+    # whether it set the SINGLE_OP or the series status, and the series status
+    # before it.
+    last_completion_tck: int = 0
+    last_completion_single: bool = False
+    last_completion_series: bool = False
+    sticky_before_completion: DtpJtag2AxiStatus = DtpJtag2AxiStatus.SUCCESS
     issued: deque[_Issued] = field(default_factory=deque)
-    completed: deque[OcahAxiItem] = field(default_factory=deque)
+    completed: deque[tuple[OcahAxiItem, int]] = field(default_factory=deque)
     # Completions the AXI side consumes after a TAP reset, indexed by is_read.
     orphans: list[int] = field(default_factory=lambda: [0, 0])
 
@@ -213,6 +246,8 @@ class DtpJtag2AxiModel:
         # CDC window after a completion during which a capture carries no contract.
         self.settle_window_ns = settle_window_ns
         self._bridges: dict[str, _Bridge] = {}
+        self._abort_in = 0
+        self.tck = 0
         self.reset()
 
     def reset(self) -> None:
@@ -226,22 +261,57 @@ class DtpJtag2AxiModel:
         for name, old in prior.items():
             for read in (False, True):
                 launched = sum(e.is_read == read for e in old.issued)
-                landed = sum(c.is_read == read for c in old.completed)
+                landed = sum(c.is_read == read for c, _ in old.completed)
                 self._bridges[name].orphans[read] = old.orphans[read] + max(0, launched - landed)
 
-    def abort_in_flight(self, now_ns: float) -> None:
+    def system_reset(self) -> None:
+        """A system reset: its clear aborts the bridges' operations on the third TCK edge
+        after it, so a scan latched on the first two is aborted with them."""
+        self._abort_in = CLEAR_ABORT_TCK
+
+    @property
+    def abort_pending(self) -> bool:
+        """A system reset's clear is on its way to the bridges: a request latched now never
+        reaches the bus."""
+        return bool(self._abort_in)
+
+    def tck_step(self, now_ns: float) -> None:
+        """One TCK cycle, before the scan whose Update-DR it leaves takes effect."""
+        self.tck += 1
+        if self._abort_in:
+            self._abort_in -= 1
+            if not self._abort_in:
+                self.abort_in_flight(now_ns, reset_tck=max(0, self.tck - CLEAR_ABORT_TCK))
+
+    def abort_in_flight(self, now_ns: float, *, reset_tck: int | None = None) -> None:
         """System reset: every operation launched and not yet completed is discarded.
 
         A discarded single or with-status operation reads DECERR on SINGLE_OP;
         a discarded series operation reads DECERR on the sticky status unless
         it already holds a series error. Every other status and the
         SERIES_CTRL configuration keep their values. The reset also clears the
-        AXI side, so no orphan of an earlier TAP reset remains. Called at the
-        first scan or TAP event after the reset, so every queued completion
-        precedes it.
+        AXI side, so no orphan of an earlier TAP reset remains. Called on the
+        TCK edge the reset's clear reaches the bridges, so every queued
+        completion precedes it.
+
+        A completion that reached the port fewer than ``CDC_RESPONSE_TCK``
+        TCK edges before the reset (``reset_tck``) may not have reached the
+        bridge's state machine, which then discards the operation: the
+        status it set may read DECERR instead, as a discarded operation's
+        would, and the next capture of it shows which.
         """
         for name, bridge in self._bridges.items():
             self._apply_completions(name, now_ns)
+            if (
+                reset_tck is not None
+                and bridge.completion_seen
+                and bridge.last_completion_tck + CDC_RESPONSE_TCK > reset_tck
+            ):
+                bridge.single_alt = bridge.last_completion_single
+                bridge.series_alt = (
+                    bridge.last_completion_series
+                    and bridge.sticky_before_completion is DtpJtag2AxiStatus.SUCCESS
+                )
             single_lost = bridge.single_pending or any(e.with_status for e in bridge.issued)
             series_lost = any(not e.single for e in bridge.issued)
             bridge.issued.clear()
@@ -326,7 +396,7 @@ class DtpJtag2AxiModel:
         if bridge.orphans[observed.is_read]:
             bridge.orphans[observed.is_read] -= 1
             return
-        bridge.completed.append(observed)
+        bridge.completed.append((observed, self.tck))
         if not disabled:
             return
         while len(bridge.issued) > len(bridge.completed):
@@ -338,12 +408,20 @@ class DtpJtag2AxiModel:
         kind: DtpJ2aScanKind,
         capture_time_ns: float,
         context: str,
+        observed_status: int,
     ) -> DtpJtag2AxiStatusItem:
         """Expected capture of a SINGLE_OP or SERIES_CTRL scan whose Capture-DR was at
         ``capture_time_ns``.
 
         A completion inside the settle window before it has not crossed into
-        the TCK domain yet, so the capture carries no contract.
+        the TCK domain yet, so the capture carries no contract. Where a
+        completion reached the port fewer than ``CDC_RESPONSE_TCK`` (six) TCK
+        edges before a system reset, the prediction reads the DUT's captured
+        status, ``observed_status``, bounded to two values: the completion's
+        status or DECERR. The first compared capture of that status settles
+        the race, DECERR taking the discarded operation's status and any other
+        value held to the completion's, so a reset at offset five from the
+        handshake still accepts DECERR.
         """
         name = target.name
         self._apply_completions(name, capture_time_ns)
@@ -352,7 +430,15 @@ class DtpJtag2AxiModel:
             bridge.completion_seen
             and capture_time_ns - bridge.last_completion < self.settle_window_ns
         )
+        decerr = observed_status == int(DtpJtag2AxiStatus.DECERR)
         if kind is DtpJ2aScanKind.SINGLE_OP:
+            compare &= not bridge.single_uncertain
+            if compare and bridge.single_alt and not bridge.single_pending:
+                bridge.single_alt = False
+                context += " (or DECERR: the response raced a system reset)"
+                if decerr:
+                    bridge.last_single_status = DtpJtag2AxiStatus.DECERR
+                    bridge.last_read_data = 0
             status = (
                 DtpJtag2AxiStatus.BUSY_OR_FULL
                 if bridge.single_pending
@@ -375,6 +461,12 @@ class DtpJtag2AxiModel:
                 context=context,
                 time_ns=capture_time_ns,
             )
+        compare &= not bridge.series_uncertain
+        if compare and bridge.series_alt and not bridge.sticky_full:
+            bridge.series_alt = False
+            context += " (or DECERR: the response raced a system reset)"
+            if decerr:
+                bridge.sticky_status = DtpJtag2AxiStatus.DECERR
         status = DtpJtag2AxiStatus.BUSY_OR_FULL if bridge.sticky_full else bridge.sticky_status
         return DtpJtag2AxiStatusItem(
             compare=compare,
@@ -402,6 +494,8 @@ class DtpJtag2AxiModel:
         is_read = request.op == int(DtpJtag2AxiOp.READ)
         size = target.axsize(request.size)
         bridge.single_pending = True
+        bridge.single_uncertain = False
+        bridge.single_alt = False
         bridge.last_single_was_read = is_read
         bridge.issued.append(_Issued(True, is_read, False, False, size))
         if is_read:
@@ -429,6 +523,8 @@ class DtpJtag2AxiModel:
         if request.series_reset:
             bridge.sticky_status = DtpJtag2AxiStatus.SUCCESS
             bridge.sticky_full = False
+            bridge.series_uncertain = False
+            bridge.series_alt = False
 
     def _update_series_data(
         self, target: DtpJtag2AxiTargetCfg, request: DtpJ2aRequest
@@ -437,7 +533,23 @@ class DtpJtag2AxiModel:
         size = bridge.series_size
         addr = bridge.series_addr
         with_status = request.kind is DtpJ2aScanKind.SERIES_DATA_WITH_STATUS
-        if bridge.series_op == int(DtpJtag2AxiOp.WRITE):
+        if bridge.series_op not in (int(DtpJtag2AxiOp.READ), int(DtpJtag2AxiOp.WRITE)):
+            return None
+        entries = bridge.series_pipeline_depth + 1
+        queued = sum(not e.single for e in list(bridge.issued)[1:])
+        head = bridge.issued[0] if bridge.issued else None
+        reads_in_flight = int(head is not None and not head.single and head.is_read)
+        is_read = bridge.series_op == int(DtpJtag2AxiOp.READ)
+        if queued >= entries or (is_read and reads_in_flight >= entries):
+            if is_read and bridge.series_reads_pushed >= entries:
+                bridge.series_uncertain = True
+                bridge.single_uncertain |= with_status
+                return None
+            bridge.sticky_full = True
+            if with_status:
+                bridge.last_single_status = DtpJtag2AxiStatus.BUSY_OR_FULL
+            return None
+        if not is_read:
             bridge.issued.append(_Issued(False, False, request.incr, with_status, size))
             return self._make_item(
                 target,
@@ -447,15 +559,13 @@ class DtpJtag2AxiModel:
                 data=series_wdata(target, request.data, addr, size),
                 wstrb=series_wstrb(target, addr, size),
             )
-        if bridge.series_op == int(DtpJtag2AxiOp.READ):
-            # Past the budget the bridge drops the push silently.
-            if bridge.series_reads_pushed >= bridge.series_pipeline_depth + 1:
-                return None
-            if not with_status:
-                bridge.series_reads_pushed += 1
-            bridge.issued.append(_Issued(False, True, request.incr, with_status, size))
-            return self._make_item(target, "read", addr, size)
-        return None
+        # Past the budget the bridge drops the push silently.
+        if bridge.series_reads_pushed >= entries:
+            return None
+        if not with_status:
+            bridge.series_reads_pushed += 1
+        bridge.issued.append(_Issued(False, True, request.incr, with_status, size))
+        return self._make_item(target, "read", addr, size)
 
     @staticmethod
     def _make_item(
@@ -481,20 +591,26 @@ class DtpJtag2AxiModel:
     # --- completion rules ---------------------------------------------------------
     def _apply_completions(self, name: str, before_ns: float) -> None:
         bridge = self._bridges[name]
-        while bridge.completed and (bridge.completed[0].end_time_ns or 0) <= before_ns:
-            self._apply_completion(name, bridge.completed.popleft())
+        while bridge.completed and (bridge.completed[0][0].end_time_ns or 0) <= before_ns:
+            self._apply_completion(name, *bridge.completed.popleft())
 
-    def _apply_completion(self, name: str, observed: OcahAxiItem) -> None:
+    def _apply_completion(self, name: str, observed: OcahAxiItem, tck: int) -> None:
         target = JTAG2AXI_TARGETS[name]
         bridge = self._bridges[name]
         status = resp_to_status(observed.resp)
         bridge.completion_seen = True
         bridge.last_completion = float(observed.end_time_ns or 0)
+        bridge.last_completion_tck = tck
+        bridge.last_completion_single = False
+        bridge.last_completion_series = False
         # A completion nothing launched: the scoreboard reports it as an
         # unpredicted transaction; the bridge state has no entry to update.
         if not bridge.issued:
             return
         issued = bridge.issued.popleft()
+        bridge.last_completion_single = issued.single or issued.with_status
+        bridge.last_completion_series = not issued.single
+        bridge.sticky_before_completion = bridge.sticky_status
         if not issued.single and bridge.sticky_status is DtpJtag2AxiStatus.SUCCESS:
             bridge.sticky_status = status
         if issued.single or issued.with_status:

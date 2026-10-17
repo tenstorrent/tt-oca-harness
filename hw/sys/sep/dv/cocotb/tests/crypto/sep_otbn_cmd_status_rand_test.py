@@ -1,0 +1,851 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""OTBN commands, status codes, INSN_CNT, the done line and the ignored writes follow the register text.
+
+Spec: ``vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc``
+(``INTR_STATE`` :34, ``INTR_ENABLE`` :44, ``INTR_TEST`` :54, ``CMD`` codes
+:79-81, ``CTRL`` :96, ``STATUS`` :106-118, ``ERR_BITS`` :122,
+``FATAL_ALERT_CAUSE`` :149, ``INSN_CNT`` :171);
+``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson`` :463-464 (``CMD``
+writes are ignored if OTBN is not idle; unrecognized commands are ignored);
+``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/csr.yml`` :173 (an ``RND`` read
+stalls until a number arrives from the EDN); ``hw/sys/sep/doc/trng.adoc`` :189
+(native requests get no acknowledgement during the TRNG adapter clear);
+``hw/sys/sep/doc/interrupts.adoc`` :22 and :164-166 (vector bit 29 is PIC
+source 30, OTBN done).
+
+Legs (one seed draws the plan, logged in one ``PLAN`` line):
+  command    3 to 5 commands from EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM (each
+             at least once), each at IDLE after a drawn gap.
+  INSN_CNT   the compute program with a and b extra independent ADD
+             instructions, each run after an OTBN reset.
+  done line  two EXECUTE runs (enable 1 and enable 0, drawn order), then the
+             ``INTR_TEST`` sub-leg.
+  busy write an ``RND`` read held by the TRNG reset keeps ``STATUS`` at 0x01;
+             k ``CTRL`` writes and j ``CMD`` = SEC_WIPE_DMEM writes.
+  ignored    one unrecognised ``CMD`` value at IDLE.
+
+Checkers:
+  CHK-OTBN-CMD-END     each command returns to IDLE, never 0xFF on the way,
+                       ``done`` = 1 (read 0 before), ``ERR_BITS`` and
+                       ``FATAL_ALERT_CAUSE`` = 0.
+  CHK-OTBN-CMD-BUSY    the first non-IDLE code on the OTBN status probe after
+                       the ``CMD`` write is the busy code of the command.
+  CHK-OTBN-INSN        ``INSN_CNT`` reads 0 after a reset, differs by b - a for
+                       the two programs, each DMEM result equals the operator
+                       golden, and each reset shows 0x04 then 0x00 on the probe.
+  CHK-OTBN-DONE-LINE   vector bit 29 equals ``done`` AND ``INTR_ENABLE.done`` at
+                       every sample of the done-line leg. With the enable set,
+                       the first rise after the ``CMD`` write is at or after the
+                       start of the last ``INTR_STATE`` read that showed
+                       ``done`` = 0, and at the latest 64 clocks after the
+                       reads that show ``done`` = 1 and ``STATUS`` IDLE.
+  CHK-OTBN-CMD-IGNORE  an unrecognised ``CMD`` at IDLE starts nothing for
+                       4 x t_cmd; a ``CMD`` write at 0x01 leaves ``STATUS`` 0x01.
+  CHK-OTBN-BUSYWR      ``CTRL.software_errs_fatal`` written at 0x01 reads 0;
+                       ``STATUS`` stays 0x01; not 0xFF after the release.
+
+Controls: ``CTRL-OTBN-BUSYWR`` (the idle write reads back 1),
+``CTRL-OTBN-DONE-LINE`` (enable-set ``INTR_TEST`` cell), ``CTRL-OTBN-CMD-IGNORE``
+(a recognised command of the same seed sets ``done``).
+Log-only: ``OBS-OTBN-INITDONE``, ``OBS-OTBN-STATUS-SEQ``, ``OBS-OTBN-BUSYWR-ERR``,
+``OBS-OTBN-CMDIGN-ERR``.
+
+Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense +esrc_noise_force``.
+Bounds: ``_OUTER_CLK`` is the outer limit of the clean-time measurement of the
+command leg (logged ``bound=``); later waits use multiples of t_cmd.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import cocotb
+import pyuvm
+from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.utils import get_sim_time
+from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
+from env.sep_chk_log import SepChkLog
+from env.sep_edge_timer import SepEdgeTimer
+from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_rv32_asm import ZERO, add
+from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import ot_rdl_table_code
+from sep_base_test import sep_base_test
+from sep_reg_meta import OTBN
+from seq_lib.sep_otbn_compute_seq import OPS, golden_result, otbn_compute_prog
+from seq_lib.sep_otbn_seq import OTBN_RND_PROG, SepOtbn
+from seq_lib.sep_sw_reset_seq import SepSwReset
+
+TEST = "sep_otbn_cmd_status_rand_test"
+
+# Codes of otbn.adoc CMD (:79-81) and STATUS (:113-118), from the value tables of the
+# otbn.rdl field descriptions; the STATUS reset value from the generated register map.
+CMD_EXECUTE = ot_rdl_table_code("otbn", "CMD", "EXECUTE")
+CMD_SEC_WIPE_DMEM = ot_rdl_table_code("otbn", "CMD", "SEC_WIPE_DMEM")
+CMD_SEC_WIPE_IMEM = ot_rdl_table_code("otbn", "CMD", "SEC_WIPE_IMEM")
+COMMANDS = (CMD_EXECUTE, CMD_SEC_WIPE_DMEM, CMD_SEC_WIPE_IMEM)
+ST_IDLE = ot_rdl_table_code("otbn", "STATUS", "IDLE")
+ST_BUSY_EXECUTE = ot_rdl_table_code("otbn", "STATUS", "BUSY_EXECUTE")
+ST_BUSY = {
+    CMD_EXECUTE: ST_BUSY_EXECUTE,
+    CMD_SEC_WIPE_DMEM: ot_rdl_table_code("otbn", "STATUS", "BUSY_SEC_WIPE_DMEM"),
+    CMD_SEC_WIPE_IMEM: ot_rdl_table_code("otbn", "STATUS", "BUSY_SEC_WIPE_IMEM"),
+}
+ST_SEC_WIPE_INT = ot_rdl_table_code("otbn", "STATUS", "BUSY_SEC_WIPE_INT")
+ST_LOCKED = ot_rdl_table_code("otbn", "STATUS", "LOCKED")
+ST_RESET = OTBN.reset32("STATUS")  # otbn.adoc:106
+
+A_INTR_STATE = OTBN.addr("INTR_STATE")
+A_INTR_ENABLE = OTBN.addr("INTR_ENABLE")
+A_INTR_TEST = OTBN.addr("INTR_TEST")
+A_CMD = OTBN.addr("CMD")
+A_CTRL = OTBN.addr("CTRL")
+A_STATUS = OTBN.addr("STATUS")
+A_ERR_BITS = OTBN.addr("ERR_BITS")
+A_FATAL = OTBN.addr("FATAL_ALERT_CAUSE")
+A_INSN_CNT = OTBN.addr("INSN_CNT")
+M_DONE = OTBN.field_mask("INTR_STATE", "done")
+M_EN_DONE = OTBN.field_mask("INTR_ENABLE", "done")
+M_TEST_DONE = OTBN.field_mask("INTR_TEST", "done")
+M_STATUS = OTBN.field_mask("STATUS", "status")
+M_CTRL_SWERR = OTBN.field_mask("CTRL", "software_errs_fatal")
+M_INSN = OTBN.field_mask("INSN_CNT", "insn_cnt")
+M_ERR_BITS = OTBN.mask32("ERR_BITS")
+M_FATAL = OTBN.mask32("FATAL_ALERT_CAUSE")
+
+# Vector bit 29 is PIC source 30, OTBN done (interrupts.adoc:22, :164-166).
+VEC_OTBN_DONE = 29
+
+# DMEM layout of the compute program: [0] = a, [4] = b, [8] = result.
+DMEM_A, DMEM_B, DMEM_RES = 0x0, 0x4, 0x8
+
+# Leaf choices (not from the specification).
+_OUTER_CLK = 200_000  # outer limit of a clean-time wait
+_T_MULT = 8  # bound of a later command wait, in t_cmd
+_DONE_WIN_MULT = 2  # enable-clear watch window of the done-line leg, in t_cmd
+_IGNORE_WIN_MULT = 4  # ignored-command window, in t_cmd (contract)
+_RST_BOUND_CLK = 1_000  # gated reset release wait
+_LINE_BOUND_CLK = 64  # vector bit 29 follow wait after a register write
+
+
+@dataclass(frozen=True)
+class Plan:
+    seq: tuple[int, ...]
+    gaps: tuple[int, ...]
+    op: str
+    opa: int
+    opb: int
+    a: int
+    b: int
+    en_order: tuple[int, int]
+    k: int
+    bad_cmd: int
+    j: int
+
+    def line(self, seed: int) -> str:
+        return (
+            f"PLAN seed={seed} seq={','.join(f'0x{c:02x}' for c in self.seq)} "
+            f"gaps={','.join(map(str, self.gaps))} op={self.op} opa=0x{self.opa:08x} "
+            f"opb=0x{self.opb:08x} a={self.a} b={self.b} "
+            f"en_order={','.join(map(str, self.en_order))} k={self.k} "
+            f"bad_cmd=0x{self.bad_cmd:02x} j={self.j}"
+        )
+
+
+def draw_plan(seed: int) -> Plan:
+    """Every draw of the leaf, in a fixed order, with no simulator access."""
+    rng = SepSeededRng(seed)
+    n = rng.randrange(3, 6)
+    seq = list(COMMANDS)
+    rng.shuffle(seq)
+    seq += [rng.choice(COMMANDS) for _ in range(n - len(COMMANDS))]
+    rng.shuffle(seq)
+    gaps = tuple(rng.randrange(0, 201) for _ in seq)
+    op = rng.choice(OPS)
+    opa = rng.getrandbits(32)
+    opb = rng.getrandbits(32)
+    a = rng.randrange(0, 40)
+    b = rng.randrange(a + 1, 41)
+    en_order = [1, 0]
+    rng.shuffle(en_order)
+    k = rng.randrange(1, 5)
+    bad_cmd = rng.choice([c for c in range(256) if c not in COMMANDS])
+    j = rng.randrange(1, 5)
+    return Plan(tuple(seq), gaps, op, opa, opb, a, b, (en_order[0], en_order[1]), k, bad_cmd, j)
+
+
+def prog_with_extra(op: str, k: int) -> tuple[int, ...]:
+    """The compute program with k extra independent ``add x13, x13, x0`` before ``ecall``."""
+    base = otbn_compute_prog(op)
+    return base[:-1] + (add(13, 13, ZERO),) * k + base[-1:]
+
+
+def _now_ps() -> int:
+    return int(get_sim_time("ps"))
+
+
+def _runs(vals: list[int]) -> str:
+    """Run-length form of a list of polled codes, for a log line."""
+    out: list[str] = []
+    for v in vals:
+        s = f"0x{v:02x}"
+        if not out or out[-1] != s:
+            out.append(s)
+    return ",".join(out) or "-"
+
+
+@pyuvm.test()
+class sep_otbn_cmd_status_rand_test(sep_base_test):
+    """OTBN commands, status codes, INSN_CNT, the done line and the ignored writes."""
+
+    required_evidence = (
+        "CHK-OTBN-CMD-END",
+        "CHK-OTBN-CMD-BUSY",
+        "CHK-OTBN-INSN",
+        "CHK-OTBN-DONE-LINE",
+        "CHK-OTBN-CMD-IGNORE",
+        "CHK-OTBN-BUSYWR",
+    )
+
+    # ------------------------------------------------------------- helpers
+    async def _rd(self, addr: int, mask: int = 0xFFFF_FFFF) -> int:
+        return (await self.otbn._rd(addr)) & mask
+
+    async def _wr(self, addr: int, val: int) -> None:
+        await self.otbn._wr(addr, val)
+
+    def _clk(self) -> int:
+        return self.irq.clk
+
+    async def _poll_status(self, pred, bound: int, *, gap: int = 0) -> tuple[bool, list[int], int]:
+        """Read STATUS until ``pred(code)``; returns (met, codes read, clocks)."""
+        start = self._clk()
+        vals: list[int] = []
+        while True:
+            st = await self._rd(A_STATUS, M_STATUS)
+            vals.append(st)
+            if pred(st):
+                return True, vals, self._clk() - start
+            if self._clk() - start > bound:
+                return False, vals, self._clk() - start
+            if gap:
+                await ClockCycles(cocotb.top.clk_i, gap)
+
+    async def _poll_done_marked(self, bound: int) -> tuple[bool, BitMark | None]:
+        """Read INTR_STATE until ``done`` reads 1; return (seen, mark before the last 0 read).
+
+        A read that shows ``done`` = 0 was sampled after its mark, so with the enable set
+        the line cannot have risen before that mark.
+        """
+        start = self._clk()
+        last0 = None
+        while True:
+            m = self.irq.mark()
+            if await self._rd(A_INTR_STATE, M_DONE):
+                return True, last0
+            last0 = m
+            if self._clk() - start > bound:
+                return False, last0
+
+    async def _wait_idle(self, bound: int, *, gap: int = 0) -> tuple[bool, list[int], int]:
+        return await self._poll_status(lambda s: s == ST_IDLE, bound, gap=gap)
+
+    async def _reset_otbn(self, tag: str) -> tuple[bool, str]:
+        """Pulse the OTBN bit of SW_RESET_N, wait IDLE; return (reset arc ok, detail)."""
+        t0 = _now_ps()
+        await self.swrst.park("otbn")
+        await self.swrst.release("otbn")
+        dut = cocotb.top
+        released = False
+        for _ in range(_RST_BOUND_CLK):
+            await RisingEdge(dut.clk_i)
+            if self.rd(dut.otbn_gated_rst_n_probe_o, mask=1):
+                released = True
+                break
+        rises = self.rst_t.rises(t0, bit=0) if released else []
+        ok, vals, clks = await self._wait_idle(self.idle_bound, gap=4)
+        self.logger.info(
+            "OTBN-RESET %s released=%d idle=%d clk=%d status=%s",
+            tag,
+            int(released),
+            int(ok),
+            clks,
+            _runs(vals),
+        )
+        if not rises or not ok:
+            return False, f"released={int(released)} rise={len(rises)} idle={int(ok)}"
+        t_first = rises[-1] + self.period_ps
+        first = self.status_t.value_at(t_first)
+        after = [c.value for c in self.status_t.since(t_first + 1)]
+        arc_ok = first == ST_SEC_WIPE_INT and after[:1] == [ST_IDLE]
+        nxt = "none" if not after else ("X" if after[0] is None else f"0x{after[0]:02x}")
+        first_s = "X" if first is None else f"0x{first:02x}"
+        return arc_ok, f"arc={first_s},{nxt}"
+
+    async def _clear_done(self) -> int:
+        await self._wr(A_INTR_STATE, M_DONE)
+        return await self._rd(A_INTR_STATE, M_DONE)
+
+    async def _stage_compute(self, prog: tuple[int, ...]) -> int:
+        """Load ``prog``, stage the operands, pre-seed the result with ~golden."""
+        p = self.plan
+        golden = golden_result(p.op, p.opa, p.opb)
+        await self.otbn.load_program(prog)
+        await self.otbn.write_dmem(DMEM_A, p.opa)
+        await self.otbn.write_dmem(DMEM_B, p.opb)
+        await self.otbn.write_dmem(DMEM_RES, golden ^ 0xFFFF_FFFF)
+        return golden
+
+    def _line(self) -> int:
+        lvl = self.irq.level("done")
+        return -1 if lvl is None else lvl
+
+    async def _line_settle(self) -> int:
+        await ClockCycles(cocotb.top.clk_i, 4)
+        return self._line()
+
+    # ----------------------------------------------------- bring-up helpers
+    async def _bring_up_chain(self, sinks: dict) -> None:
+        close_graded_window(self.logger)
+        await self.bring_up_entropy(strict=True, score_km=False, score_sinks=sinks)
+        self.start_fifo_drain()
+
+    async def _retire_chain(self) -> None:
+        """Grade the running chain, then end its scoreboard before a TRNG reset."""
+        await self.stop_fifo_drain()
+        assert self.drbg_sb.report()
+        self.drbg_sb.stop()
+
+    # ------------------------------------------------------------- scenario
+    async def run_scenario(self) -> None:
+        dut = cocotb.top
+        await self.bring_up_no_cpu(park=("aes", "hmac", "kmac", "abr"))
+        self.suppress_host_axi_transaction_info()
+        self.swrst = getattr(self, "swrst", None) or SepSwReset(self)
+        # SepEntropyCfg() selects the internal source in EXT_TRNG_SRC_SEL.
+        await self._bring_up_chain({"otbn_urnd": "observe"})
+        baseline = await self.swrst.read_back()
+        self.swrst.value = baseline
+        self.logger.info("BASELINE SW_RESET_N=0x%08x ext_trng_src_sel=internal", baseline)
+
+        seed = self.random_seed()
+        self.plan = plan = draw_plan(seed)
+        self.logger.info(plan.line(seed))
+        self.chk = SepChkLog(self, TEST, seed)
+        self.otbn = SepOtbn(self)
+
+        await RisingEdge(dut.clk_i)
+        t_a = _now_ps()
+        await RisingEdge(dut.clk_i)
+        self.period_ps = _now_ps() - t_a
+        self.irq = SepBitWatch(dut.sep_internal_interrupts_probe_o, {"done": VEC_OTBN_DONE}).start()
+        self.status_t = SepEdgeTimer(dut.otbn_status_probe_o, name="otbn_status").start()
+        self.rst_t = SepEdgeTimer(dut.otbn_gated_rst_n_probe_o, name="otbn_gated_rst_n").start()
+        self.idle_bound = _OUTER_CLK
+
+        # Steps 3-4: reset, IDLE, initial done (log only), clear.
+        await self._reset_otbn("initial")
+        init_done = await self._rd(A_INTR_STATE, M_DONE)
+        self.chk.obs("OTBN-INITDONE", seed=seed, done=init_done)
+        after = await self._clear_done()
+        self.logger.info("OTBN initial done cleared: done=%d", after)
+
+        open_graded_window(TEST, self.logger)
+        cmd_end_pass = await self._command_leg(seed)
+        self.idle_bound = max(_T_MULT * self.t_cmd, 1)
+        await self._insn_leg(seed)
+        await self._done_line_leg(seed)
+        busy_ok = await self._busy_write_leg(seed)
+        await self._ignored_leg(seed)
+        close_graded_window(self.logger)
+
+        self.chk.ctrl(
+            "OTBN-CMD-IGNORE",
+            cmd_end_pass and busy_ok,
+            seed=seed,
+            cmd_end_done=int(cmd_end_pass),
+            busy_status_0x01=int(busy_ok),
+        )
+
+        await self.stop_fifo_drain()
+        await self.check_entropy_alerts_zero()
+        assert self.drbg_sb.report()
+        await self.irq.stop()
+        await self.status_t.stop()
+        await self.rst_t.stop()
+        self.chk.finish()
+
+    # ---------------------------------------------------------- command leg
+    async def _command_leg(self, seed: int) -> bool:
+        """Steps 5-9. Returns True when a command set ``done`` from a cleared state."""
+        p = self.plan
+        counts: list[int] = []
+        any_pass = False
+        for idx, (cmd, gap) in enumerate(zip(p.seq, p.gaps, strict=True)):
+            if gap:
+                await ClockCycles(cocotb.top.clk_i, gap)
+            if cmd == CMD_EXECUTE:
+                await self._stage_compute(otbn_compute_prog(p.op))
+            done_before = await self._rd(A_INTR_STATE, M_DONE)
+            pre = await self._rd(A_STATUS, M_STATUS)
+            t0 = _now_ps()
+            await self._wr(A_CMD, cmd)
+            ok, vals, clks = await self._wait_idle(_OUTER_CLK)
+            busy = [c.value for c in self.status_t.since(t0) if c.value != ST_IDLE]
+            first = busy[0] if busy else None
+            first_s = "none" if not busy else ("X" if first is None else f"0x{first:02x}")
+            self.chk.obs(
+                "OTBN-STATUS-SEQ", seed=seed, idx=idx, cmd=f"0x{cmd:02x}", polled=_runs(vals)
+            )
+            self.chk.ok(
+                "OTBN-CMD-BUSY",
+                first == ST_BUSY[cmd],
+                seed=seed,
+                idx=idx,
+                cmd=f"0x{cmd:02x}",
+                first_busy=first_s,
+                expect=f"0x{ST_BUSY[cmd]:02x}",
+            )
+            if not ok:
+                self.chk.ok(
+                    "OTBN-CMD-END",
+                    False,
+                    seed=seed,
+                    idx=idx,
+                    cmd=f"0x{cmd:02x}",
+                    reason="timeout",
+                    bound=_OUTER_CLK,
+                    last=f"0x{vals[-1]:02x}",
+                )
+                await self._reset_otbn(f"cmd{idx}-timeout")
+                await self._clear_done()
+                continue
+            counts.append(clks)
+            done = await self._rd(A_INTR_STATE, M_DONE)
+            err = await self._rd(A_ERR_BITS, M_ERR_BITS)
+            fatal = await self._rd(A_FATAL, M_FATAL)
+            cleared = await self._clear_done()
+            cond = (
+                pre == ST_IDLE
+                and done_before == 0
+                and ST_LOCKED not in vals
+                and done == 1
+                and err == 0
+                and fatal == 0
+            )
+            any_pass = any_pass or cond
+            self.chk.ok(
+                "OTBN-CMD-END",
+                cond,
+                seed=seed,
+                idx=idx,
+                cmd=f"0x{cmd:02x}",
+                pre=f"0x{pre:02x}",
+                final=f"0x{vals[-1]:02x}",
+                locked_seen=int(ST_LOCKED in vals),
+                done_state=done,
+                err_bits=f"0x{err:x}",
+                fatal_cause=f"0x{fatal:x}",
+                ctrl_done_before=done_before,
+                clk=clks,
+                done_after_w1c=cleared,
+            )
+        self.t_cmd = max(counts) if counts else _OUTER_CLK
+        self.logger.info("OTBN t_cmd=%d clocks (bound=%d)", self.t_cmd, _OUTER_CLK)
+        return any_pass
+
+    # ---------------------------------------------------------- INSN_CNT leg
+    async def _insn_leg(self, seed: int) -> None:
+        """Steps 10-12 for P(a) and P(b)."""
+        p = self.plan
+        cnt: dict[str, int] = {}
+        resets: dict[str, int] = {}
+        res_ok: dict[str, bool] = {}
+        arcs: dict[str, str] = {}
+        arcs_ok = True
+        timeout = False
+        for name, k in (("a", p.a), ("b", p.b)):
+            arc_ok, arc = await self._reset_otbn(f"insn-{name}")
+            arcs_ok = arcs_ok and arc_ok
+            arcs[name] = arc
+            await self._clear_done()
+            resets[name] = await self._rd(A_INSN_CNT, M_INSN)
+            golden = await self._stage_compute(prog_with_extra(p.op, k))
+            await self._wr(A_CMD, CMD_EXECUTE)
+            ok, vals, _ = await self._wait_idle(self.idle_bound)
+            if not ok:
+                timeout = True
+                self.chk.ok(
+                    "OTBN-INSN",
+                    False,
+                    seed=seed,
+                    run=name,
+                    k=k,
+                    reason="timeout",
+                    bound=self.idle_bound,
+                    last=f"0x{vals[-1]:02x}",
+                )
+                await self._reset_otbn(f"insn-{name}-timeout")
+                continue
+            cnt[name] = await self._rd(A_INSN_CNT, M_INSN)
+            got = await self.otbn.read_dmem(DMEM_RES)
+            res_ok[name] = got == golden
+            self.logger.info(
+                "OTBN INSN run=%s k=%d insn_cnt=%d result=0x%08x golden=0x%08x",
+                name,
+                k,
+                cnt[name],
+                got,
+                golden,
+            )
+        if timeout:
+            return
+        diff = cnt["b"] - cnt["a"]
+        cond = (
+            resets["a"] == 0
+            and resets["b"] == 0
+            and diff == p.b - p.a
+            and res_ok["a"]
+            and res_ok["b"]
+            and arcs_ok
+        )
+        self.chk.ok(
+            "OTBN-INSN",
+            cond,
+            seed=seed,
+            a=p.a,
+            b=p.b,
+            cnt_reset=f"{resets['a']},{resets['b']}",
+            cnt_a=cnt["a"],
+            cnt_b=cnt["b"],
+            diff=diff,
+            expect=p.b - p.a,
+            result_eq_golden=f"{int(res_ok['a'])},{int(res_ok['b'])}",
+            reset_arc=f"a:{arcs['a']} b:{arcs['b']}",
+        )
+
+    # --------------------------------------------------------- done-line leg
+    async def _done_line_leg(self, seed: int) -> None:
+        """Steps 13-16."""
+        p = self.plan
+        bound = self.idle_bound
+        win = _DONE_WIN_MULT * self.t_cmd
+        for en in p.en_order:
+            await self._reset_otbn(f"done-en{en}")
+            st0 = await self._clear_done()
+            vec0 = await self._line_settle()
+            await self._wr(A_INTR_ENABLE, M_EN_DONE if en else 0)
+            st1 = await self._rd(A_INTR_STATE, M_DONE)
+            await self._stage_compute(otbn_compute_prog(p.op))
+            mark = self.irq.mark()
+            await self._wr(A_CMD, CMD_EXECUTE)
+            last0 = None
+            if en:
+                _, last0 = await self._poll_done_marked(bound)
+            ok, vals, _ = await self._wait_idle(bound)
+            done = await self._rd(A_INTR_STATE, M_DONE)
+            if not ok or done != 1:
+                self.chk.ok(
+                    "OTBN-DONE-LINE",
+                    False,
+                    seed=seed,
+                    enable=en,
+                    reason="timeout",
+                    bound=bound,
+                    state=done,
+                    last=f"0x{vals[-1]:02x}",
+                )
+                await self._reset_otbn(f"done-en{en}-timeout")
+                continue
+            if en == 0:
+                await ClockCycles(cocotb.top.clk_i, win)
+                high = self.irq.high_clocks_since(mark, "done")
+                m2 = self.irq.mark()
+                await self._wr(A_INTR_ENABLE, M_EN_DONE)
+                try:
+                    await self.irq.wait_rise(m2, _LINE_BOUND_CLK, "done")
+                    rose = 1
+                except AssertionError:
+                    rose = 0
+                state_en = await self._rd(A_INTR_STATE, M_DONE)
+                vec_en = self._line()
+                # The line equals done AND enable at every sample: no fall from the
+                # enable write to the W1C write while both bits are 1.
+                falls = self.irq.fall_clks_since(m2, "done")
+                await self._wr(A_INTR_STATE, M_DONE)
+                st_clr = await self._rd(A_INTR_STATE, M_DONE)
+                vec_clr = await self._line_settle()
+                cond = (
+                    st0 == 0
+                    and vec0 == 0
+                    and st1 == 0
+                    and high == 0
+                    and rose == 1
+                    and state_en == 1
+                    and vec_en == 1
+                    and not falls
+                    and st_clr == 0
+                    and vec_clr == 0
+                )
+                self.chk.ok(
+                    "OTBN-DONE-LINE",
+                    cond,
+                    seed=seed,
+                    via="cmd",
+                    enable=0,
+                    vec29_falls_before_w1c=len(falls),
+                    state=done,
+                    vec29_high_clk=high,
+                    window_clk=win,
+                    then_enable=1,
+                    vec29_rose=rose,
+                    vec29=vec_en,
+                    then_w1c_state=st_clr,
+                    w1c_vec29=vec_clr,
+                    pre_state=st0,
+                    pre_vec29=vec0,
+                )
+            else:
+                try:
+                    rise_clk = await self.irq.wait_rise(mark, _LINE_BOUND_CLK, "done")
+                except BitWatchTimeout:
+                    rise_clk = None
+                rose = int(rise_clk is not None)
+                in_order = int(rose == 1 and last0 is not None and rise_clk >= last0.clk)
+                vec_en = self._line()
+                # No fall from the rise to the W1C write while done and enable are both 1.
+                falls = self.irq.fall_clks_since(mark, "done")
+                await self._wr(A_INTR_STATE, M_DONE)
+                st_clr = await self._rd(A_INTR_STATE, M_DONE)
+                vec_clr = await self._line_settle()
+                cond = (
+                    st0 == 0
+                    and vec0 == 0
+                    and st1 == 0
+                    and rose == 1
+                    and in_order == 1
+                    and vec_en == 1
+                    and not falls
+                    and st_clr == 0
+                    and vec_clr == 0
+                )
+                self.chk.ok(
+                    "OTBN-DONE-LINE",
+                    cond,
+                    seed=seed,
+                    via="cmd",
+                    enable=1,
+                    state=done,
+                    vec29_rose=rose,
+                    rise_clk=rise_clk if rise_clk is not None else "none",
+                    last_done0_clk=last0.clk if last0 is not None else "none",
+                    cmd_clk=mark.clk,
+                    rise_after_done0=in_order,
+                    vec29=vec_en,
+                    vec29_falls_before_w1c=len(falls),
+                    then_w1c_state=st_clr,
+                    w1c_vec29=vec_clr,
+                    pre_state=st0,
+                    pre_vec29=vec0,
+                )
+        await self._intr_test_leg(seed, win)
+
+    async def _intr_test_leg(self, seed: int, win: int) -> None:
+        """Step 16: the line follows the enable with the state set by INTR_TEST."""
+        await self._wr(A_INTR_ENABLE, 0)
+        mark = self.irq.mark()
+        await self._wr(A_INTR_TEST, M_TEST_DONE)
+        st_set = await self._rd(A_INTR_STATE, M_DONE)
+        await ClockCycles(cocotb.top.clk_i, win)
+        high = self.irq.high_clocks_since(mark, "done")
+        m_on = self.irq.mark()
+        await self._wr(A_INTR_ENABLE, M_EN_DONE)
+        try:
+            await self.irq.wait_rise(m_on, _LINE_BOUND_CLK, "done")
+            rose = 1
+        except AssertionError:
+            rose = 0
+        # No fall from the enable write to the enable-0 write while both bits are 1.
+        on_falls = self.irq.fall_clks_since(m_on, "done")
+        await self._wr(A_INTR_ENABLE, 0)
+        try:
+            await self.irq.wait_level(0, _LINE_BOUND_CLK, "done")
+            fell = 1
+        except AssertionError:
+            fell = 0
+        await self._wr(A_INTR_STATE, M_DONE)
+        st_clr = await self._rd(A_INTR_STATE, M_DONE)
+        vec_clr = await self._line_settle()
+        cond = (
+            st_set == 1
+            and high == 0
+            and rose == 1
+            and not on_falls
+            and fell == 1
+            and st_clr == 0
+            and vec_clr == 0
+        )
+        self.chk.ok(
+            "OTBN-DONE-LINE",
+            cond,
+            seed=seed,
+            via="test",
+            enable=0,
+            state=st_set,
+            vec29_high_clk=high,
+            window_clk=win,
+            then_enable=1,
+            vec29_rose=rose,
+            vec29_falls_while_enabled=len(on_falls),
+            then_enable0_vec29_fell=fell,
+            then_w1c_enable0_state=st_clr,
+            w1c_vec29=vec_clr,
+        )
+        # Enable-set INTR_TEST cell: control of this leg.
+        await self._wr(A_INTR_ENABLE, M_EN_DONE)
+        m_c = self.irq.mark()
+        await self._wr(A_INTR_TEST, M_TEST_DONE)
+        try:
+            await self.irq.wait_rise(m_c, _LINE_BOUND_CLK, "done")
+            c_rose = 1
+        except AssertionError:
+            c_rose = 0
+        c_falls = self.irq.fall_clks_since(m_c, "done")
+        await self._wr(A_INTR_STATE, M_DONE)
+        await self._rd(A_INTR_STATE, M_DONE)
+        c_clr = await self._line_settle()
+        self.chk.ctrl(
+            "OTBN-DONE-LINE",
+            c_rose == 1 and not c_falls and c_clr == 0,
+            seed=seed,
+            via="test",
+            enable=1,
+            vec29_rose=c_rose,
+            vec29_falls_before_w1c=len(c_falls),
+            w1c_vec29=c_clr,
+        )
+        await self._wr(A_INTR_ENABLE, 0)
+
+    # -------------------------------------------------------- busy-write leg
+    async def _busy_write_leg(self, seed: int) -> bool:
+        """Steps 17-22. Returns True when STATUS read 0x01 before the busy writes."""
+        p = self.plan
+        dut = cocotb.top
+        await self._reset_otbn("busywr")
+        await self._clear_done()
+        ctrl_pre = await self._rd(A_CTRL, M_CTRL_SWERR)
+        await self.otbn.load_program(OTBN_RND_PROG)
+
+        # The TRNG reset clears the chain under the running scoreboard: grade it first.
+        close_graded_window(self.logger)
+        await self._retire_chain()
+        open_graded_window(TEST, self.logger)
+
+        await self.swrst.park("trng")
+        for _ in range(_RST_BOUND_CLK):
+            await RisingEdge(dut.clk_i)
+            if self.rd(dut.trng_reset_active_probe_o, mask=1):
+                break
+        await self._wr(A_CMD, CMD_EXECUTE)
+        busy, vals, clks = await self._poll_status(lambda s: s == ST_BUSY_EXECUTE, self.idle_bound)
+        ctrl_reads: list[int] = []
+        st_after_ctrl: list[int] = []
+        st_after_cmd: list[int] = []
+        if busy:
+            for _ in range(p.k):
+                await self._wr(A_CTRL, M_CTRL_SWERR)
+                ctrl_reads.append(await self._rd(A_CTRL, M_CTRL_SWERR))
+                st_after_ctrl.append(await self._rd(A_STATUS, M_STATUS))
+            for _ in range(p.j):
+                await self._wr(A_CMD, CMD_SEC_WIPE_DMEM)
+                st_after_cmd.append(await self._rd(A_STATUS, M_STATUS))
+            self.chk.ok(
+                "OTBN-CMD-IGNORE",
+                all(s == ST_BUSY_EXECUTE for s in st_after_cmd),
+                seed=seed,
+                case="busy_wipe",
+                cmd=f"0x{CMD_SEC_WIPE_DMEM:02x}",
+                status=",".join(f"0x{s:02x}" for s in st_after_cmd),
+                done="n/a",
+                window_clk="n/a",
+                writes=p.j,
+            )
+
+        # Steps 21-22: release the TRNG reset, bring the chain up, finish.
+        await self.swrst.release("trng")
+        await self._bring_up_chain({"otbn_rnd": "observe"})
+        open_graded_window(TEST, self.logger)
+        idle, ivals, _ = await self._wait_idle(_OUTER_CLK, gap=4)
+        err = await self._rd(A_ERR_BITS, M_ERR_BITS)
+        self.chk.obs("OTBN-BUSYWR-ERR", seed=seed, err_bits=f"0x{err:x}")
+        st_rel = await self._rd(A_STATUS, M_STATUS)
+        await self._wr(A_CTRL, M_CTRL_SWERR)
+        ctrl_idle = await self._rd(A_CTRL, M_CTRL_SWERR)
+        self.chk.ctrl("OTBN-BUSYWR", ctrl_idle == 1, seed=seed, ctrl_after_idle_write=ctrl_idle)
+        if not busy:
+            self.chk.ok(
+                "OTBN-BUSYWR",
+                False,
+                seed=seed,
+                reason="timeout",
+                bound=self.idle_bound,
+                status=_runs(vals),
+                clk=clks,
+            )
+        else:
+            cond = (
+                ctrl_pre == 0
+                and all(c == 0 for c in ctrl_reads)
+                and all(s == ST_BUSY_EXECUTE for s in st_after_ctrl)
+                and idle
+                and st_rel != ST_LOCKED
+            )
+            self.chk.ok(
+                "OTBN-BUSYWR",
+                cond,
+                seed=seed,
+                ctrl_pre=ctrl_pre,
+                busy_status=f"0x{ST_BUSY_EXECUTE:02x}",
+                busy_writes=p.k,
+                ctrl_after_busy_write=",".join(map(str, ctrl_reads)),
+                status_after_busy_write=",".join(f"0x{s:02x}" for s in st_after_ctrl),
+                idle_after_release=int(idle),
+                status_after_release=f"0x{st_rel:02x}",
+                ctrl_after_idle_write=ctrl_idle,
+                release_status=_runs(ivals),
+            )
+        await self._reset_otbn("busywr-end")
+        return busy
+
+    # ------------------------------------------------------ ignored-cmd leg
+    async def _ignored_leg(self, seed: int) -> None:
+        """Step 23."""
+        p = self.plan
+        win = _IGNORE_WIN_MULT * self.t_cmd
+        ok, _, _ = await self._wait_idle(self.idle_bound)
+        st0 = await self._clear_done()
+        t0 = _now_ps()
+        await self._wr(A_CMD, p.bad_cmd)
+        _, vals, clks = await self._poll_status(lambda s: s != ST_IDLE, win)
+        done = await self._rd(A_INTR_STATE, M_DONE)
+        err = await self._rd(A_ERR_BITS, M_ERR_BITS)
+        fatal = await self._rd(A_FATAL, M_FATAL)
+        probe = [c.value for c in self.status_t.since(t0)]
+        self.chk.obs("OTBN-CMDIGN-ERR", seed=seed, err_bits=f"0x{err:x}")
+        cond = ok and st0 == 0 and all(v == ST_IDLE for v in vals) and done == 0
+        self.chk.ok(
+            "OTBN-CMD-IGNORE",
+            cond,
+            seed=seed,
+            case="idle_unrecognised",
+            cmd=f"0x{p.bad_cmd:02x}",
+            status=_runs(vals),
+            polls=len(vals),
+            done=done,
+            window_clk=clks,
+            writes=1,
+            pre_done=st0,
+            fatal_cause=f"0x{fatal:x}",
+            probe_changes=len(probe),
+        )

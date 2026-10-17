@@ -78,6 +78,11 @@ AES_MODE_CTR = _AES_CTRL_CODES["mode"]["AES_CTR"]
 AES_KEY_LEN_128 = _AES_CTRL_CODES["key_len"]["AES_128"]
 AES_KEY_LEN_192 = _AES_CTRL_CODES["key_len"]["AES_192"]
 AES_KEY_LEN_256 = _AES_CTRL_CODES["key_len"]["AES_256"]
+# CTRL_SHADOWED.PRNG_RESEED_RATE codes: the PER_1, PER_64 and PER_8K enum of
+# vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson (CTRL_SHADOWED,
+# prng_reseed_rate).
+AES_PRS_RATE_PER_1 = _AES_CTRL_CODES["prng_reseed_rate"]["PER_1"]
+AES_PRS_RATE_PER_64 = _AES_CTRL_CODES["prng_reseed_rate"]["PER_64"]
 AES_PRS_RATE_PER_8K = _AES_CTRL_CODES["prng_reseed_rate"]["PER_8K"]
 
 # mode name / key-bit-width -> CTRL_SHADOWED field encodings (aes.adoc).
