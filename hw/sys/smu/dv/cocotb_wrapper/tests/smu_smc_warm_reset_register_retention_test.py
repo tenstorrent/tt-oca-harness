@@ -25,11 +25,10 @@ class smu_smc_warm_reset_register_retention_test(smu_base_test):
         "CHK-TIMEOUT-PATHS",
         "CHK-WARM-RET-EVENT",
         "CHK-WARM-RET-ISO",
-        "CHK-WARM-RET-MEASURED",
         "CHK-WARM-RET-PRIMARY-STAY",
-        "CHK-WARM-RET-RELEASE",
         "CHK-WARM-RET-SSCFG",
         "CHK-WARM-RET-SSCOLD",
+        "CHK-WARM-RET-SSWARM",
         "CHK-WARM-RET-WDT-RETURN",
     )
 

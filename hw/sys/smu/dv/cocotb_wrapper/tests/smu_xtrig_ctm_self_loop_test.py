@@ -23,7 +23,6 @@ class smu_xtrig_ctm_self_loop_test(smu_base_test):
         "CHK-TIMEOUT-PATHS",
         "CHK-XT-SELFLOOP-ALIVE",
         "CHK-XT-SELFLOOP-CONTROL",
-        "CHK-XT-SELFLOOP-MEASURED",
         "CHK-XT-SELFLOOP-READBACK",
         "CHK-XT-SELFLOOP-RETRIGGER",
         "CHK-XT-SELFLOOP-STOP",

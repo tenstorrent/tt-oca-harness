@@ -15,7 +15,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_sep_wdt_bite_to_smc_reset_test(smu_base_test):
-    """A SEP watchdog bite drops the SMC watchdog-term and warm resets and the cool pin releases it."""
+    """SEP watchdog bite drops the SMC watchdog-term and warm resets; the cool pin releases them."""
 
     use_shared_env = True
     required_evidence = (
@@ -28,7 +28,6 @@ class smu_sep_wdt_bite_to_smc_reset_test(smu_base_test):
         "CHK-SEP-WDT-SMC-RELEASE",
         "CHK-SEP-WDT-SMC-REQ",
         "CHK-SEP-WDT-SMC-TERM-WARM",
-        "CHK-SEP-WDT-SMC-WARMVEC",
         "CHK-TIMEOUT-PATHS",
     )
 

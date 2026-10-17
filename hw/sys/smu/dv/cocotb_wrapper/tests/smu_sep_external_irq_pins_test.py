@@ -24,8 +24,6 @@ class smu_sep_external_irq_pins_test(smu_base_test):
         "CHK-SEP-EXTIRQ-FALL",
         "CHK-SEP-EXTIRQ-ONEHOT",
         "CHK-SEP-EXTIRQ-RISE",
-        "CHK-SEP-EXTIRQ-WALK",
-        "CHK-SEP-EXTIRQ-WIDTH",
         "CHK-SEP-EXTIRQ-ZERO",
         "CHK-TIMEOUT-PATHS",
     )

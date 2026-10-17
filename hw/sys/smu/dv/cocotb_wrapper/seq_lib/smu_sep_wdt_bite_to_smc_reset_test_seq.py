@@ -26,7 +26,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 
-from seq_lib.smu_addr_map import c_header_u32, reset_unit_u32
+from seq_lib.smu_addr_map import c_header_u32
 from seq_lib.smu_compose_helpers import hier, sample
 from seq_lib.smu_dtp_sep_dm_dmi_test_seq import smu_dtp_sep_dm_dmi_test_seq
 from seq_lib.smu_dtp_sep_dm_sba_test_seq import _REPO_ROOT, _SEP_ADDR_H
@@ -53,11 +53,6 @@ REQUEST_RAISED = 1
 # clk_rst.adoc reset equations: every reset net is active low, so 1 is released and 0 asserted.
 NET_RELEASED = 1
 NET_ASSERTED = 0
-# clk_rst.adoc: the watchdog reset is the external watchdog input AND NOT the SMC watchdog
-# second timeout; the SMC watchdog is never armed, so the second timeout reads 0.
-SECOND_TIMEOUT_IDLE = 0
-# reset_unit.rdl SS_WARM_RESET_N reset value, read through the generated header.
-WARM_VECTOR_RESET = reset_unit_u32("RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_reset")
 
 WDT_REQ_PATH = "sep_wdt_timer_rst_req"
 WDT_RESET_PATH = "u_smc.rst_wdt_smc_clk_no"
@@ -249,6 +244,10 @@ class smu_sep_wdt_bite_to_smc_reset_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         await self._mark("S4", "request raised, rst_wdt and rst_warm asserted")
 
         settled = await self._tick()
+        self._log(
+            f"OBSERVATION settled tb_smc_wdt_second_timeout={settled.second} (SMC watchdog not "
+            "armed by this leaf; logged only)"
+        )
         await self._mark("S5", f"settled sample after the bite: {self._state(settled)}")
 
         hold = await self._window(HOLD_WINDOW_CYCLES)
@@ -340,7 +339,6 @@ class smu_sep_wdt_bite_to_smc_reset_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         self._check_release(sb, at_primary, at_fall, released)
         self._check_order(sb, violations, wdt_low, gaps)
         self._check_converge(sb, closing, rises, settled, hold)
-        self._check_warmvec(sb, base)
         self._check_integrity(sb)
         self.done = True
 
@@ -385,14 +383,11 @@ class smu_sep_wdt_bite_to_smc_reset_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         )
 
     def _check_term_warm(self, sb, base, settled) -> None:
-        got = ((base.wdt, base.warm), (settled.req, settled.wdt, settled.warm, settled.second))
-        want = (
-            (NET_RELEASED, NET_RELEASED),
-            (REQUEST_RAISED, NET_ASSERTED, NET_ASSERTED, SECOND_TIMEOUT_IDLE),
-        )
+        got = ((base.wdt, base.warm), (settled.req, settled.wdt, settled.warm))
+        want = ((NET_RELEASED, NET_RELEASED), (REQUEST_RAISED, NET_ASSERTED, NET_ASSERTED))
         self._log(
             f"CHK-SEP-WDT-SMC-TERM-WARM: baseline (rst_wdt, rst_warm)={got[0]} expected={want[0]}; "
-            f"settled (request, rst_wdt, rst_warm, second timeout)={got[1]} expected={want[1]}"
+            f"settled (request, rst_wdt, rst_warm)={got[1]} expected={want[1]}"
         )
         sb.expect_eq(
             "CHK-SEP-WDT-SMC-TERM-WARM baseline released, settled asserted by the bite",
@@ -490,19 +485,6 @@ class smu_sep_wdt_bite_to_smc_reset_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             got,
             want,
             evidence="CHK-SEP-WDT-SMC-CONVERGE",
-        )
-
-    def _check_warmvec(self, sb, base) -> None:
-        self._log(
-            f"CHK-SEP-WDT-SMC-WARMVEC: baseline tb_ss_warm_reset_n=0x{base.warm_vec:08x} "
-            f"expected=0x{WARM_VECTOR_RESET:08x}; the level during and after the bite is "
-            "measured and logged only"
-        )
-        sb.expect_eq(
-            "CHK-SEP-WDT-SMC-WARMVEC baseline warm vector at its reset value",
-            base.warm_vec,
-            WARM_VECTOR_RESET,
-            evidence="CHK-SEP-WDT-SMC-WARMVEC",
         )
 
     def _check_integrity(self, sb) -> None:

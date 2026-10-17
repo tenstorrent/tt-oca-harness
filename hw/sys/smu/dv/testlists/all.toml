@@ -4504,7 +4504,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3000
-tags = ["depth", "sep", "irq", "pic"]
+tags = ["depth", "sep"]
 run_modes = ["sep_rtl"]
 args = [
   "+expected_sep=1",
@@ -4529,7 +4529,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3000
-tags = ["depth", "sep", "wdt", "reset", "sba"]
+tags = ["depth", "dtp", "sep", "sba", "wdt", "reset"]
 run_modes = ["sep_rtl"]
 args = [
   "+expected_sep=1",
@@ -4555,7 +4555,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3000
-tags = ["depth", "xtrig", "ctm", "ctp"]
+tags = ["depth", "dtp", "jtag2axi", "xtrig"]
 run_modes = ["sep_rtl"]
 args = [
   "+expected_sep=1",
@@ -4579,7 +4579,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3000
-tags = ["depth", "sep", "efuse", "token", "sba"]
+tags = ["depth", "dtp", "sep", "sba", "efuse"]
 run_modes = ["sep_rtl"]
 args = [
   "+expected_sep=1",
@@ -4605,7 +4605,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3000
-tags = ["depth", "smc", "wdt", "reset", "retention"]
+tags = ["depth", "dtp", "jtag2axi", "smc", "wdt", "reset"]
 run_modes = ["sep_rtl"]
 args = [
   "+expected_sep=1",

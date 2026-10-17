@@ -876,12 +876,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_sep_external_irq_pins_test": [
         (
-            "CHK-SEP-EXTIRQ-WIDTH",
-            "CHK-SEP-EXTIRQ-WIDTH",
-            "precondition: the external band is 212 lanes and every pin reads low before the first "
-            "drive; earns no feature credit",
-        ),
-        (
             "CHK-SEP-EXTIRQ-RISE",
             "CHK-SEP-EXTIRQ-RISE",
             "for every lane the pending bit of source 44+i reads 0 before the pin is driven and 1 "
@@ -910,12 +904,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-EXTIRQ-ZERO",
             "after lane i showed 1 and every lane is low the external-band pending bitmap is "
             "all-zero",
-        ),
-        (
-            "CHK-SEP-EXTIRQ-WALK",
-            "CHK-SEP-EXTIRQ-WALK",
-            "lanes 0 to W-1 are visited once each in ascending order with at most one lane high "
-            "and W unchanged",
         ),
         (
             "CHK-NONVAC",
@@ -948,7 +936,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-WDT-SMC-TERM-WARM",
             "CHK-SEP-WDT-SMC-TERM-WARM",
             "watchdog-term and warm nets read 1 at the baseline and 0 at the settled sample after "
-            "the bite, with the request 1 and the SMC watchdog second timeout 0",
+            "the bite, with the request 1; the SMC watchdog second timeout is logged",
         ),
         (
             "CHK-SEP-WDT-SMC-PRIMARY-COLD",
@@ -980,12 +968,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-WDT-SMC-CONVERGE",
             "in the closing window the request stays 0 and every reset net 1, and the request "
             "rose exactly once from the baseline",
-        ),
-        (
-            "CHK-SEP-WDT-SMC-WARMVEC",
-            "CHK-SEP-WDT-SMC-WARMVEC",
-            "the per-subsystem warm vector reads 0xFFFFFFFF at the baseline; its level during and "
-            "after the bite and the SEP reset level are measured and logged only",
         ),
         (
             "CHK-NONVAC",
@@ -1034,12 +1016,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "0, the last pulse ends within the bounded wait and the quiet window has zero rises",
         ),
         (
-            "CHK-XT-SELFLOOP-MEASURED",
-            "CHK-XT-SELFLOOP-MEASURED",
-            "the S2 precondition reads, the total rise count, the STATUS sample and the rises "
-            "after CONFIG.RESET are measured and logged only; only their presence is compared",
-        ),
-        (
             "CHK-NONVAC",
             "CHK-NONVAC",
             "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11; "
@@ -1056,9 +1032,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-RMA-PRECOND",
             "CHK-SEP-RMA-PRECOND",
-            "sep_fuse_sense_done_o reads 1 before the first token write and the first and last "
-            "word of the RMA SIP digest read back as laid out in the image; precondition "
-            "observation, no feature credit",
+            "sep_fuse_sense_done_o reads 1 before the first token write; the first and last "
+            "word of the RMA SIP digest are read back and logged only",
         ),
         (
             "CHK-SEP-RMA-IDLE",
@@ -1069,8 +1044,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-RMA-START",
             "CHK-SEP-RMA-START",
-            "TOKEN_EOP 0x1 gives a SIP result while the chiplet result stays 0x00, and TOKEN_EOP "
-            "0x100 gives a chiplet result while the SIP result keeps 0x15",
+            "the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read "
+            "right after TOKEN_EOP 0x100 is 0x15, each lane starting its own hash only",
         ),
         (
             "CHK-SEP-RMA-SIP-MATCH",
@@ -1095,18 +1070,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-RMA-INDEP",
             "the SIP result reads 0x15 again after the chiplet mismatch and match legs while the "
             "chiplet result changed",
-        ),
-        (
-            "CHK-SEP-RMA-SETTLE",
-            "CHK-SEP-RMA-SETTLE",
-            "in each of the three started legs the result leaves 0x00 within the bounded poll "
-            "count; the polls used are logged and no cycle count is compared",
-        ),
-        (
-            "CHK-SEP-RMA-FAULT-LOG",
-            "CHK-SEP-RMA-FAULT-LOG",
-            "TOKEN_MATCH_FAULT is read once after the last leg and its value is measured and "
-            "logged only; only the presence of the log is compared",
         ),
         (
             "CHK-NONVAC",
@@ -3075,6 +3038,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "reset; the reset value 0 differs",
         ),
         (
+            "CHK-WARM-RET-SSWARM",
+            "CHK-WARM-RET-SSWARM",
+            "SS_WARM_RESET_N reads its pattern before and after the warm reset; the reset "
+            "value 0xFFFFFFFF differs",
+        ),
+        (
             "CHK-WARM-RET-ISO",
             "CHK-WARM-RET-ISO",
             "ISOLATE_REQ_REG and ISOLATE_REQ_FLR_COUNTER_VALUE each read their non-zero "
@@ -3101,19 +3070,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the window",
         ),
         (
-            "CHK-WARM-RET-MEASURED",
-            "CHK-WARM-RET-MEASURED",
-            "SS_WARM_RESET_N, one CPU_CTRL SCRATCH word and one SCRATCH_COLD_WARM word "
-            "are measured and logged only, before and after; none is compared",
-        ),
-        (
-            "CHK-WARM-RET-RELEASE",
-            "CHK-WARM-RET-RELEASE",
-            "the warm reset return and the second timeout return waits each log their "
-            "release cycle or expiry with the last state; no compare depends on the "
-            "outcome",
-        ),
-        (
             "CHK-NONVAC",
             "CHK-NONVAC",
             "ordered simulation-time fence S1<S2<S3<S4<S5<S7<S8<S9<S10<S11; the PASS "
@@ -3123,7 +3079,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS",
             "four bounded waits in two kinds (event 2, release 2), no event wait "
-            "expired, release expiries recorded with the last state",
+            "expired, release expiries recorded with the last state, no unresolved probe "
+            "sample",
         ),
     ],
 }

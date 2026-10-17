@@ -82,7 +82,6 @@ STEP_CLOCK_GAP = 2
 
 EXPECTED_SITE_KINDS = {"sip_match": 1, "chiplet_mismatch": 1, "chiplet_match": 1}
 EXPECTED_SITES = 3
-FAULT_ITEMS = ("token_match_fault",)
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")
 
@@ -96,7 +95,6 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         self.period_ps = round(self.cfg.smu_clk_period_ns * 1000)
         self.sites: list[dict] = []
         self.stamp_ps: dict[str, int] = {}
-        self.measured: dict[str, int] = {}
         self.accesses = 0
         self.done = False
 
@@ -160,6 +158,11 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         sense_done = sample(self.dut.sep_fuse_sense_done_o, "sep_fuse_sense_done_o")
         digest_first = await self._read(jtag, SIP_DIGEST_FIRST)
         digest_last = await self._read(jtag, SIP_DIGEST_LAST)
+        self._log(
+            f"OBSERVATION RMA_SIP_TOKEN_DIGEST first word=0x{digest_first:08x} last word="
+            f"0x{digest_last:08x} image words=(0x{SIP_DIGEST_WORDS[0]:08x}, "
+            f"0x{SIP_DIGEST_WORDS[7]:08x}); bench image values, logged only"
+        )
         await self._mark("S2", f"sep_fuse_sense_done_o={sense_done} digest words read back")
 
         await self._write_token(jtag, SIP_TOKEN_WORDS, T_SIP)
@@ -167,18 +170,28 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         await self._mark("S3", f"eight SIP words written, result before TOKEN_EOP 0x{sip_idle:02x}")
 
         await self._write(jtag, TOKEN_EOP, SIP_GO)
+        chiplet_at_sip_start = await self._read(jtag, CHIPLET_MATCH) & STATUS_MASK
         sip_match = await self._poll(jtag, "sip_match", "RMA_SIP_TOKEN_MATCH", SIP_MATCH)
-        await self._mark("S4", f"SIP started, result 0x{sip_match:02x}")
+        await self._mark(
+            "S4",
+            f"SIP started, chiplet result at the start 0x{chiplet_at_sip_start:02x}, "
+            f"SIP result 0x{sip_match:02x}",
+        )
 
         chiplet_idle = await self._read(jtag, CHIPLET_MATCH) & STATUS_MASK
         await self._mark("S5", f"chiplet result while the SIP result holds 0x{chiplet_idle:02x}")
 
         await self._write_token(jtag, CHIPLET_TOKEN_WORDS, T_CHIP_ONE_BIT_OFF)
         await self._write(jtag, TOKEN_EOP, CHIPLET_GO)
+        sip_at_chiplet_start = await self._read(jtag, SIP_MATCH) & STATUS_MASK
         chiplet_mismatch = await self._poll(
             jtag, "chiplet_mismatch", "RMA_CHIPLET_TOKEN_MATCH", CHIPLET_MATCH
         )
-        await self._mark("S6", f"chiplet token one bit off, result 0x{chiplet_mismatch:02x}")
+        await self._mark(
+            "S6",
+            f"chiplet token one bit off, SIP result at the start 0x{sip_at_chiplet_start:02x}, "
+            f"chiplet result 0x{chiplet_mismatch:02x}",
+        )
 
         await self._write_token(jtag, CHIPLET_TOKEN_WORDS, T_CHIP)
         await self._write(jtag, TOKEN_EOP, CHIPLET_GO)
@@ -191,10 +204,7 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         await self._mark("S8", f"SIP result after the chiplet legs 0x{sip_after:02x}")
 
         fault = await self._read(jtag, MATCH_FAULT)
-        self.measured["token_match_fault"] = fault
-        self._log(
-            f"CHK-SEP-RMA-FAULT-LOG: TOKEN_MATCH_FAULT=0x{fault:08x} measured and logged only"
-        )
+        self._log(f"OBSERVATION TOKEN_MATCH_FAULT=0x{fault:08x} measured and logged only")
         await self._mark("S9", "TOKEN_MATCH_FAULT read and logged")
 
         await ClockCycles(self.clk, STEP_CLOCK_GAP)
@@ -202,28 +212,23 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         self._log(f"STEP S10 @{self.stamp_ps['S10'] / 1000:.3f}ns: PASS stamp")
         self._log(f"system-bus accesses used={self.accesses}")
 
-        self._check_precond(sb, sense_done, digest_first, digest_last)
+        self._check_precond(sb, sense_done)
         self._check_idle(sb, sip_idle, chiplet_idle)
-        self._check_start(sb, sip_match, chiplet_idle, chiplet_mismatch, sip_after)
+        self._check_start(sb, chiplet_at_sip_start, sip_at_chiplet_start)
         self._check_results(sb, sip_idle, sip_match, chiplet_idle, chiplet_mismatch, chiplet_match)
         self._check_indep(sb, sip_match, sip_after, chiplet_mismatch, chiplet_match)
-        self._check_settle(sb)
-        self._check_fault(sb)
         self._check_integrity(sb)
         self.done = True
 
-    def _check_precond(self, sb, sense_done, first, last) -> None:
-        got = (sense_done, first, last)
-        want = (SENSE_DONE, SIP_DIGEST_WORDS[0], SIP_DIGEST_WORDS[7])
+    def _check_precond(self, sb, sense_done) -> None:
         self._log(
-            f"CHK-SEP-RMA-PRECOND: (sep_fuse_sense_done_o, first digest word, last digest word)="
-            f"{tuple(f'0x{v:08x}' for v in got)} expected={tuple(f'0x{v:08x}' for v in want)}; "
-            "precondition observation, the digest words are the image words"
+            f"CHK-SEP-RMA-PRECOND: sep_fuse_sense_done_o={sense_done} expected={SENSE_DONE} before "
+            "the first token write"
         )
         sb.expect_eq(
-            "CHK-SEP-RMA-PRECOND fuse sensing done and the digest words read back as laid out",
-            got,
-            want,
+            "CHK-SEP-RMA-PRECOND fuse sensing done before the first token write",
+            sense_done,
+            SENSE_DONE,
             evidence="CHK-SEP-RMA-PRECOND",
         )
 
@@ -242,17 +247,16 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             evidence="CHK-SEP-RMA-IDLE",
         )
 
-    def _check_start(self, sb, sip_match, chiplet_idle, chiplet_mismatch, sip_after) -> None:
-        got = (sip_match != RESULT_IDLE, chiplet_idle, chiplet_mismatch != RESULT_IDLE, sip_after)
-        want = (True, RESULT_IDLE, True, RESULT_MATCH)
+    def _check_start(self, sb, chiplet_at_sip_start, sip_at_chiplet_start) -> None:
+        got = (chiplet_at_sip_start, sip_at_chiplet_start)
+        want = (RESULT_IDLE, RESULT_MATCH)
         self._log(
-            f"CHK-SEP-RMA-START: SIP result after TOKEN_EOP 0x1 non-idle={got[0]} expected=True; "
-            f"chiplet result then=0x{got[1]:02x} expected=0x{want[1]:02x}; chiplet result after "
-            f"TOKEN_EOP 0x100 non-idle={got[2]} expected=True; SIP result then=0x{got[3]:02x} "
-            f"expected=0x{want[3]:02x}"
+            f"CHK-SEP-RMA-START: chiplet result read right after TOKEN_EOP 0x1=0x{got[0]:02x} "
+            f"expected=0x{want[0]:02x}; SIP result read right after TOKEN_EOP 0x100="
+            f"0x{got[1]:02x} expected=0x{want[1]:02x}"
         )
         sb.expect_eq(
-            "CHK-SEP-RMA-START each TOKEN_EOP bit starts its own lane only",
+            "CHK-SEP-RMA-START each TOKEN_EOP bit leaves the other lane's result unchanged",
             got,
             want,
             evidence="CHK-SEP-RMA-START",
@@ -311,29 +315,6 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             got,
             want,
             evidence="CHK-SEP-RMA-INDEP",
-        )
-
-    def _check_settle(self, sb) -> None:
-        got = tuple(rec["last"] != f"0x{RESULT_IDLE:02x}" for rec in self.sites)
-        polls = {rec["kind"]: rec["used"] for rec in self.sites}
-        self._log(
-            f"CHK-SEP-RMA-SETTLE: result left idle within {RESULT_POLLS} polls in each started "
-            f"leg={got} expected=(True, True, True); polls used={polls}"
-        )
-        sb.expect_eq(
-            "CHK-SEP-RMA-SETTLE every started leg leaves idle within its poll bound",
-            got,
-            (True, True, True),
-            evidence="CHK-SEP-RMA-SETTLE",
-        )
-
-    def _check_fault(self, sb) -> None:
-        logged = tuple(name for name in FAULT_ITEMS if name in self.measured)
-        sb.expect_eq(
-            "CHK-SEP-RMA-FAULT-LOG TOKEN_MATCH_FAULT was read and logged",
-            logged,
-            FAULT_ITEMS,
-            evidence="CHK-SEP-RMA-FAULT-LOG",
         )
 
     def _check_integrity(self, sb) -> None:

@@ -6,10 +6,12 @@
 ``rst_primary_n AND rst_wdt_n AND fuse_reset_ni`` with the watchdog term ``rst_ext_wdt_ni AND
 NOT smc_wdt_second_timeout_i``; the primary reset carries no watchdog term. ``SS_CONFIG`` and
 ``SS_COLD_RESET_N`` are reset by the primary reset and the isolation registers and FLR counters
-by the stable cold reset, so a watchdog warm reset leaves all four. The CORE0 watchdog timer is
-covered by the warm reset ("Warm Reset"), so its ``CMP`` and ``CTRL`` return to the reset values
-of ``hw/sys/smc/regs/blocks/wdt/wdt.rdl``. ``SS_WARM_RESET_N``, a CPU_CTRL ``SCRATCH`` word and a
-``SCRATCH_COLD_WARM`` word sit in no domain a chapter names, so they are measured and logged only.
+by the stable cold reset, so a watchdog warm reset leaves all four; ``SS_WARM_RESET_N`` sits in
+``u_reset_unit_reg``, which the same chapter resets by ``rst_primary_smc_clk_no`` ("Reset
+Architecture"), so it is retained as well. The CORE0 watchdog timer is covered by the warm reset
+("Warm Reset"), so its ``CMP`` and ``CTRL`` return to the reset values of
+``hw/sys/smc/regs/blocks/wdt/wdt.rdl``. A CPU_CTRL ``SCRATCH`` word and a ``SCRATCH_COLD_WARM``
+word sit in no domain a chapter names, so they are measured and logged only.
 
 Every register access is a JTAG2AXI access on the SMC fabric; nothing is forced. A free-running
 monitor samples the watchdog second timeout, the warm reset probe and the primary and stable cold
@@ -61,14 +63,13 @@ FLR_COUNTER_RESET = reset_unit_u32(
 )
 SS_WARM_RESET = reset_unit_u32("RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_reset")
 
-# Non-zero patterns, each different from its reset value; the isolation pair holds the values
-# the isolation register and FLR counter are written with elsewhere in this bench.
+# Non-zero patterns, each different from its reset value.
 SS_CONFIG_PATTERN = 0x5A5A_5A5A
 SS_COLD_PATTERN = 0xA5A5_A5A5
+SS_WARM_PATTERN = 0x7FFF_FFFF
 ISOLATE_REG_PATTERN = 0xA5A5_A5A5
 FLR_COUNTER_PATTERN = 5
-# Measured-only registers: SS_WARM_RESET_N differs from 0xFFFFFFFF, the scratch words from 0.
-SS_WARM_PATTERN = 0x7FFF_FFFF
+# Measured-only scratch words, each different from 0.
 CPU_SCRATCH_PATTERN = 0x1357_9BDF
 COLD_WARM_SCRATCH_PATTERN = 0x2468_ACE0
 
@@ -249,15 +250,6 @@ class smu_smc_warm_reset_register_retention_test_seq:
         )
         return met, used
 
-    async def _event_wait(self, label: str, pred, bound: int) -> int:
-        met, used = await self._wait("event", label, pred, bound)
-        if not met:
-            rec = self.sites[-1]
-            raise AssertionError(
-                f"TIMEOUT {label}: bound={rec['bound']} used={used} last_state={rec['last']}"
-            )
-        return used
-
     async def _write_readback(self, addr: int, value: int, what: str) -> int:
         await self._wr32(addr, value, what)
         return await self._rd32(addr, what)
@@ -282,6 +274,7 @@ class smu_smc_warm_reset_register_retention_test_seq:
         retained = (
             ("SS_CONFIG", SS_CONFIG, SS_CONFIG_PATTERN, SS_CONFIG_RESET),
             ("SS_COLD_RESET_N", SS_COLD_RESET_N, SS_COLD_PATTERN, SS_COLD_RESET),
+            ("SS_WARM_RESET_N", SS_WARM_RESET_N, SS_WARM_PATTERN, SS_WARM_RESET),
             ("ISOLATE_REQ_REG", ISOLATE_REQ_REG, ISOLATE_REG_PATTERN, ISOLATE_REG_RESET),
             ("ISOLATE_REQ_FLR_COUNTER_VALUE", FLR_COUNTER, FLR_COUNTER_PATTERN, FLR_COUNTER_RESET),
         )
@@ -291,7 +284,6 @@ class smu_smc_warm_reset_register_retention_test_seq:
         await self._mark("S2", "retained patterns written and read back")
 
         measured = (
-            ("SS_WARM_RESET_N", SS_WARM_RESET_N, SS_WARM_PATTERN),
             ("CPU_CTRL SCRATCH[0]", CPU_CTRL_SCRATCH, CPU_SCRATCH_PATTERN),
             ("SCRATCH_COLD_WARM SCRATCH[0]", COLD_WARM_SCRATCH, COLD_WARM_SCRATCH_PATTERN),
         )
@@ -315,12 +307,14 @@ class smu_smc_warm_reset_register_retention_test_seq:
 
         arm_idx = len(self.trace)
         at_arm = self.trace[-1]
-        rise_used = await self._event_wait(
+        met_rise, rise_used = await self._wait(
+            "event",
             "second timeout rise",
             lambda: self._first(lambda s: s.second == SECOND_TIMEOUT_RAISED, arm_idx) >= 0,
             int(EVENT_RISE_BOUND_NS / self.cfg.smu_clk_period_ns),
         )
-        fall_used = await self._event_wait(
+        met_fall, fall_used = await self._wait(
+            "event",
             "warm reset fall",
             lambda: self._first(lambda s: s.warm == NET_ASSERTED, arm_idx) >= 0,
             EVENT_FALL_BOUND,
@@ -329,7 +323,7 @@ class smu_smc_warm_reset_register_retention_test_seq:
         i_fall = self._first(lambda s: s.warm == NET_ASSERTED, arm_idx)
         self.log.info(
             "OBSERVATION second timeout rose %d samples and warm reset fell %d samples after "
-            "the arming access; wait cycles used %d and %d",
+            "the arming access (-1 - arming sample when not seen); wait cycles used %d and %d",
             i_rise - arm_idx,
             i_fall - arm_idx,
             rise_used,
@@ -340,14 +334,24 @@ class smu_smc_warm_reset_register_retention_test_seq:
         released, release_used = await self._wait(
             "release",
             "warm reset return",
-            lambda: self._first(lambda s: s.warm == NET_RELEASED, i_fall) >= 0,
+            lambda: self._first(lambda s: s.warm == NET_RELEASED, max(i_fall, arm_idx)) >= 0,
             RELEASE_BOUND,
         )
         cleared, clear_used = await self._wait(
             "release",
             "second timeout return",
-            lambda: self._first(lambda s: s.second == SECOND_TIMEOUT_IDLE, i_rise) >= 0,
+            lambda: (
+                self._first(lambda s: s.second == SECOND_TIMEOUT_IDLE, max(i_rise, arm_idx)) >= 0
+            ),
             RELEASE_BOUND,
+        )
+        self.log.info(
+            "OBSERVATION warm reset return %s after %d wait cycles; second timeout return %s "
+            "after %d wait cycles; logged only",
+            "seen" if released else "not seen",
+            release_used,
+            "seen" if cleared else "not seen",
+            clear_used,
         )
         await self._mark("S7", "release waits finished")
 
@@ -377,10 +381,8 @@ class smu_smc_warm_reset_register_retention_test_seq:
 
         self._check_retained(sb, retained, before, after)
         self._check_wdt_return(sb, cmp_before, ctrl_before, cmp_after, ctrl_after)
-        self._check_event(sb, at_arm, arm_idx, i_rise, i_fall)
-        self._check_primary_stay(sb, i_fall)
-        self._check_measured(sb, measured_before, measured_after)
-        self._check_release(sb, (released, release_used), (cleared, clear_used), self.sites[-2:])
+        self._check_event(sb, at_arm, arm_idx, (met_rise, i_rise), (met_fall, i_fall))
+        self._check_primary_stay(sb)
         self._check_integrity(sb)
         self.done = True
 
@@ -388,8 +390,9 @@ class smu_smc_warm_reset_register_retention_test_seq:
         tokens = {
             "SS_CONFIG": "CHK-WARM-RET-SSCFG",
             "SS_COLD_RESET_N": "CHK-WARM-RET-SSCOLD",
+            "SS_WARM_RESET_N": "CHK-WARM-RET-SSWARM",
         }
-        for name, _addr, pattern, reset in retained[:2]:
+        for name, _addr, pattern, reset in retained[:3]:
             token = tokens[name]
             self.log.info(
                 "%s: %s before=0x%08x after=0x%08x expected=0x%08x (reset value 0x%08x)",
@@ -406,7 +409,7 @@ class smu_smc_warm_reset_register_retention_test_seq:
                 (pattern, pattern),
                 evidence=token,
             )
-        iso = retained[2:]
+        iso = retained[3:]
         got = tuple(v for name, *_ in iso for v in (before[name], after[name]))
         want = tuple(p for _n, _a, p, _r in iso for _ in range(2))
         self.log.info(
@@ -439,21 +442,22 @@ class smu_smc_warm_reset_register_retention_test_seq:
             evidence="CHK-WARM-RET-WDT-RETURN",
         )
 
-    def _check_event(self, sb, at_arm, arm_idx, i_rise, i_fall) -> None:
-        got = (at_arm.second, at_arm.warm, i_rise >= arm_idx, i_fall >= arm_idx)
+    def _check_event(self, sb, at_arm, arm_idx, rise, fall) -> None:
+        got = (at_arm.second, at_arm.warm, rise[0], fall[0])
         want = (SECOND_TIMEOUT_IDLE, NET_RELEASED, True, True)
         self.log.info(
             "CHK-WARM-RET-EVENT: (second timeout, warm reset) before arming=%s expected=%s; "
-            "second timeout read %d at sample %d and warm reset read %d at sample %d, both "
-            "after arming sample %d: %s",
+            "second timeout read %d within its bound after arming sample %d: %s (sample %d); "
+            "warm reset read %d within its bound: %s (sample %d)",
             got[:2],
             want[:2],
             SECOND_TIMEOUT_RAISED,
-            i_rise,
-            NET_ASSERTED,
-            i_fall,
             arm_idx,
-            got[2:],
+            rise[0],
+            rise[1],
+            NET_ASSERTED,
+            fall[0],
+            fall[1],
         )
         sb.expect_eq(
             "CHK-WARM-RET-EVENT second timeout rises and warm reset falls after arming",
@@ -462,7 +466,7 @@ class smu_smc_warm_reset_register_retention_test_seq:
             evidence="CHK-WARM-RET-EVENT",
         )
 
-    def _check_primary_stay(self, sb, i_fall) -> None:
+    def _check_primary_stay(self, sb) -> None:
         lo, hi = self.stamp_ps["S2"], self.stamp_ps["S10"]
         window = [s for s in self.trace if lo <= s.t_ps <= hi]
         primary_bad = sum(1 for s in window if s.primary != NET_RELEASED)
@@ -492,49 +496,6 @@ class smu_smc_warm_reset_register_retention_test_seq:
             evidence="CHK-WARM-RET-PRIMARY-STAY",
         )
 
-    def _check_measured(self, sb, measured_before, measured_after) -> None:
-        self.log.info(
-            "CHK-WARM-RET-MEASURED: measured and logged only, not compared; values logged "
-            "before=%d after=%d",
-            len(measured_before),
-            len(measured_after),
-        )
-        sb.expect_eq(
-            "CHK-WARM-RET-MEASURED before and after values logged for each measured register",
-            (len(measured_before), len(measured_after)),
-            (3, 3),
-            evidence="CHK-WARM-RET-MEASURED",
-        )
-
-    def _check_release(self, sb, warm_wait, second_wait, records) -> None:
-        for rec in records:
-            self.log.info(
-                "OBSERVATION release wait %s bound=%d used=%d %s last=%s",
-                rec["label"],
-                rec["bound"],
-                rec["used"],
-                "EXPIRED" if rec["expired"] else "released",
-                rec["last"],
-            )
-        unresolved = sum(1 for s in self.trace if -1 in (s.second, s.warm, s.primary, s.cold))
-        self.log.info(
-            "CHK-WARM-RET-RELEASE: warm reset return %s after %d cycles; second timeout return "
-            "%s after %d cycles; release waits logged=%d expected=2; unresolved samples=%d "
-            "expected=0; the retention compares do not depend on either outcome",
-            "seen" if warm_wait[0] else "expired",
-            warm_wait[1],
-            "seen" if second_wait[0] else "expired",
-            second_wait[1],
-            len(records),
-            unresolved,
-        )
-        sb.expect_eq(
-            "CHK-WARM-RET-RELEASE both release waits logged and no unresolved sample",
-            (len(records), unresolved),
-            (2, 0),
-            evidence="CHK-WARM-RET-RELEASE",
-        )
-
     def _check_integrity(self, sb) -> None:
         for rec in self.sites:
             self.log.info(
@@ -547,16 +508,20 @@ class smu_smc_warm_reset_register_retention_test_seq:
                 rec["last"],
             )
         event_expired = sum(r["expired"] for r in self.sites if r["kind"] == "event")
+        unresolved = sum(1 for s in self.trace if -1 in (s.second, s.warm, s.primary, s.cold))
         kinds = dict(Counter(rec["kind"] for rec in self.sites))
         self.log.info(
             "CHK-TIMEOUT-PATHS: sites=%d expected=%d kinds=%s event expiries=%d expected=0; "
-            "release expiries are recorded and not failures",
+            "unresolved probe samples=%d expected=0; release expiries are recorded and not "
+            "failures",
             len(self.sites),
             EXPECTED_SITES,
             kinds,
             event_expired,
+            unresolved,
         )
         sb.expect_eq("expired event waits", event_expired, 0, evidence="CHK-TIMEOUT-PATHS")
+        sb.expect_eq("unresolved probe samples", unresolved, 0, evidence="CHK-TIMEOUT-PATHS")
         sb.expect_eq(
             "bounded wait sites per kind",
             (len(self.sites), kinds),

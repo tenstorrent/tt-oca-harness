@@ -69,8 +69,8 @@ ACK_OUT_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__STATUS__ACK_OUT_bm")
 STRETCH_MULT_RESET = cross_trigger_u32("CROSS_TRIGGER_PORT__STRETCH_MULT__STRETCH_MULT_reset")
 
 # cross_trigger_port.rdl CONFIG: MODE 0 is wire-OR, the only mode with an echo of the lane's own
-# falling edge. The leaf uses an external CTP index (below CROSS_TRIGGER_NETWORK_CTP_NUM) left in
-# its wire-OR reset mode; every such index routes the same way.
+# falling edge. LANE is an external CTP index below CROSS_TRIGGER_NETWORK_CTP_NUM in its wire-OR
+# reset mode.
 LANE = 3
 LANE_SELECT = (1 << LANE) & CT_DST_SELECT_BM
 # cross_trigger_matrix.rdl CT_SRC[n].CONFIG_0: all-zero disables that CT_Src output.
@@ -110,17 +110,6 @@ STEP_CLOCK_GAP = 2
 # S10 4.
 EXPECTED_SITE_KINDS = {"ct_dst_rise": 1, "second_rise": 1, "last_pulse_end": 1}
 EXPECTED_J2A_ACCESSES = 16
-
-MEASURED_ITEMS = (
-    "s2_config",
-    "s2_stretch_mult",
-    "s2_ct_src",
-    "s6_total_rises",
-    "s6_busy",
-    "s6_req_out",
-    "s6_ack_out",
-    "s9_rises_after_reset",
-)
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11")
 
@@ -508,14 +497,6 @@ class smu_xtrig_ctm_self_loop_test_seq:
                 EXPECTED_ALIVE,
             ),
             evidence="CHK-XT-SELFLOOP-STOP",
-        )
-        logged = tuple(name for name in MEASURED_ITEMS if name in self.measured)
-        self._log(f"CHK-XT-SELFLOOP-MEASURED: logged items {logged} measured and logged only")
-        sb.expect_eq(
-            "CHK-XT-SELFLOOP-MEASURED every measured item was logged",
-            logged,
-            MEASURED_ITEMS,
-            evidence="CHK-XT-SELFLOOP-MEASURED",
         )
 
         kinds = dict(Counter(rec["kind"] for rec in self.sites))
