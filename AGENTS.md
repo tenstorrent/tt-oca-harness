@@ -441,7 +441,7 @@ Whatever the testbench, these hold:
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
 | `flows/` | Lint, format, synthesis and emulation flow makefiles; `synth/constraints/` shared SDC code, `synth/pdk/<tech>/` each technology's prim cell implementations and synthesis settings, and `cdc/` shared CDC/RDC sign-off collateral |
 | `virtual_platform/` | SystemC virtual platform: the `tt-oca-harness-model` submodule that provides `sep-vp`, `smc-vp` and `smu-vp`, the `sepvp` Python runner and its pytest suite, and the Makefile that builds them and their dependencies |
-| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
+| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches. `accellera/uvm-core/` comes from an Accellera release archive instead: `make update-vendor-uvm` writes it and `CHECK=1` compares it with the recorded archive |
 | `tools/` | Register, doc, DV and container tooling |
 | `scripts/` | `docker-run.sh` container front door, CI helpers |
 | `nonfree/` | Proprietary companion repository, present only for those with access |

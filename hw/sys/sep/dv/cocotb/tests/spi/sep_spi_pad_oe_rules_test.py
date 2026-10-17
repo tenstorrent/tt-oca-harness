@@ -10,9 +10,11 @@ the output-enable rules; ``spi_controller.adoc``, CONTROL.OUTPUT_EN, reset 0):
 * with CONTROL.OUTPUT_EN = 0 no SPI pad is driven, also while SPIEN = 1 and the
   host runs a command;
 * a data lane is driven only while chip select is asserted;
-* derived rule: ``spi_cs_oe_o`` and ``spi_sck_oe_o`` are 1 while chip select is
-  low. An undriven SPI.CS sits at the pad pull, so a low chip select and its
-  clock reach the device only while driven.
+* with CONTROL.OUTPUT_EN = 1, ``spi_cs_oe_o`` and ``spi_sck_oe_o`` are 1 with
+  chip select high or low:
+  ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:222-224``
+  (CONTROL.OUTPUT_EN) "Enable the SPI host output buffers for the sck, csb, and
+  sd lines." The pin-assignment text narrows only the data lanes.
 
 A per-clock sampler reads ``rst_ni``, ``dbg_sep_reset_n_o``, ``spi_cs_n_o``
 and the output-enable taps ``spi_cs_oe_o``, ``spi_sck_oe_o`` and
@@ -53,7 +55,12 @@ Checks:
                       commands, reads ``spi_sd_oe_o`` = 0. Control: the count of
                       traffic samples with chip select low and ``spi_sd_oe_o[0]``
                       = 1 is above zero, and samples after a chip-select rise
-                      exist.
+                      exist. The same samples, from the end of the CONTROL write
+                      that sets OUTPUT_EN (and the CSID and CONFIGOPTS writes
+                      after it), read ``spi_cs_oe_o`` = 1 and ``spi_sck_oe_o`` = 1
+                      (``spi_host.hjson:222-224``). Control: the
+                      OUTPUT_EN = 0 window (CHK-SPI-OE-OFF) read both 0 on
+                      every sample, and the graded count is above zero.
   CHK-SPI-OE-CS-LOW   every traffic sample with chip select low reads
                       ``spi_cs_oe_o`` = 1 and ``spi_sck_oe_o`` = 1. Control: the
                       chip-select-low sample count is above zero.
@@ -106,10 +113,12 @@ TEST = "sep_spi_pad_oe_rules_test"
 #   cold-reset window:    EXP_RESET = (1, 1, 0xF) -> CHK-SPI-OE-RESET fails (VCS)
 #   chip select high:     EXP_CS_HIGH_SD = 0x1    -> CHK-SPI-OE-CS-HIGH fails
 #   chip select low:      EXP_CS_LOW = (0, 0)     -> CHK-SPI-OE-CS-LOW fails
+#   chip select high:     EXP_CS_HIGH_CS_SCK = (0, 0) -> CHK-SPI-OE-CS-HIGH fails
 EXP_OFF = (0, 0, 0x0)  # (cs_oe, sck_oe, sd_oe[3:0])
 EXP_RESET = (0, 0, 0x0)
 EXP_CS_HIGH_SD = 0x0  # sd_oe[3:0] while chip select is high
 EXP_CS_LOW = (1, 1)  # (cs_oe, sck_oe) while chip select is low
+EXP_CS_HIGH_CS_SCK = (1, 1)  # (cs_oe, sck_oe) while chip select is high, OUTPUT_EN = 1
 
 SPEED = {1: SPEED_STD, 2: SPEED_DUAL, 4: SPEED_QUAD}
 FRAME_KINDS = ("tx1", "tx2", "tx4", "rx1", "rx4", "chain")
@@ -144,6 +153,8 @@ class _Win:
     sd0_high_cs_low: int = 0
     cs_low_violations: int = 0
     cs_high_violations: int = 0
+    cs_high_cs_sck: int = 0
+    cs_high_cs_sck_violations: int = 0
 
     def violate(self, clk: int, text: str) -> None:
         self.violations += 1
@@ -160,6 +171,8 @@ class _OeSampler:
         self.clk = 0
         self.mode: str | None = None  # "traffic", "reset", "off" or None
         self.reset_armed = False  # traffic: watch for rst_ni falling
+        # traffic: grade cs_oe and sck_oe with chip select high (OUTPUT_EN = 1 written)
+        self.cs_sck_high = False
         self.lag_samples = 0  # rst_ni low, SEP reset not yet asserted
         self.lag_oe: list[str] = []
         self.pre_reset: tuple | None = None  # last traffic sample before rst_ni fell
@@ -248,6 +261,13 @@ class _OeSampler:
             if sd_oe != EXP_CS_HIGH_SD:
                 win.cs_high_violations += 1
                 win.violate(self.clk, f"cs_n=1 sd_oe={sd_oe}")
+            if self.cs_sck_high:
+                win.cs_high_cs_sck += 1
+                if cs_oe is None or sck_oe is None:
+                    win.xz += 1
+                if (cs_oe, sck_oe) != EXP_CS_HIGH_CS_SCK:
+                    win.cs_high_cs_sck_violations += 1
+                    win.violate(self.clk, f"cs_n=1 cs_oe={cs_oe} sck_oe={sck_oe}")
         else:
             win.cs_low += 1
             if sd_oe is not None and sd_oe & 1:
@@ -427,6 +447,7 @@ class sep_spi_pad_oe_rules_test(sep_base_test):
         # Leg 1: traffic A, then the long TX x1 segment that the cold reset cuts.
         oe.mode = "traffic"
         await self._enable(CTRL_SPIEN | CTRL_OUTPUT_EN)
+        oe.cs_sck_high = True
         await self._traffic("a", d.order_a)
         await self._push_tx(d.reset_tx)
         rises0 = oe.sck_rises_cs_low
@@ -445,6 +466,7 @@ class sep_spi_pad_oe_rules_test(sep_base_test):
         rst = await self.pulse_rst_ni()
         await ClockCycles(clk, d.reset_tail)
         oe.mode = None
+        oe.cs_sck_high = False
         pre = oe.pre_reset
         win = oe.wins["reset"]
         ctl = (
@@ -495,21 +517,34 @@ class sep_spi_pad_oe_rules_test(sep_base_test):
         # Leg 4: traffic B.
         oe.mode = "traffic"
         await self._enable(CTRL_SPIEN | CTRL_OUTPUT_EN)
+        oe.cs_sck_high = True
         await self._traffic("b", d.order_b)
         await ClockCycles(clk, TAIL_CLKS)
         oe.mode = None
+        oe.cs_sck_high = False
         close_graded_window(self.logger)
 
         win = oe.wins["traffic"]
+        off = oe.wins["off"]
         line = (
             f"cs_high_samples={win.cs_high} cs_high_after_rise={win.cs_high_after_rise} "
             f"cs_rises={win.cs_rises} sd_oe_violations={win.cs_high_violations} "
-            f"control_sd0_high_cs_low={win.sd0_high_cs_low} xz={win.xz} "
-            f"first={';'.join(win.first) or '-'}"
+            f"cs_sck_samples={win.cs_high_cs_sck} "
+            f"expect_cs_sck_oe={EXP_CS_HIGH_CS_SCK} "
+            f"cs_sck_oe_violations={win.cs_high_cs_sck_violations} "
+            f"control_sd0_high_cs_low={win.sd0_high_cs_low} "
+            f"control_off_samples={off.samples} control_off_violations={off.violations} "
+            f"xz={win.xz} first={';'.join(win.first) or '-'}"
         )
-        if win.sd0_high_cs_low == 0 or win.cs_high_after_rise == 0:
+        if (
+            win.sd0_high_cs_low == 0
+            or win.cs_high_after_rise == 0
+            or win.cs_high_cs_sck == 0
+            or off.samples == 0
+            or off.violations
+        ):
             self._ctrl_missing("CHK-SPI-OE-CS-HIGH", line)
-        if win.cs_high_violations or (self.four_state and win.xz):
+        if win.cs_high_violations or win.cs_high_cs_sck_violations or (self.four_state and win.xz):
             self._fail("CHK-SPI-OE-CS-HIGH", line)
         self._pass("CHK-SPI-OE-CS-HIGH", line)
         await spi_lane_fcov(TEST, "oe", oe_win=2)

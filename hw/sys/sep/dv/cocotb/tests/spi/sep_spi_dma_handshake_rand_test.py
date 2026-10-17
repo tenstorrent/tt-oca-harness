@@ -35,8 +35,13 @@ handshake run keeps GO set:
 * handshake run, mask bit 0 set: the poll for the last word of chunk n sets
   t_fill, the window length of every later run (never an expected value);
 * masked run, mask bit 0 clear; the leaf drains the words after the check;
-* stop run: n_stop chunks move, firmware clears GO, more Rx data arrives; the
-  leaf drains the words after the check;
+* stop run: n_stop chunks move; with GO still 1, a second Rx segment of W+1
+  words after the trigger fell moves the next chunk; firmware clears GO, more
+  Rx data arrives; the leaf drains the words after the check;
+* interrupt-clear run, mask bit 0 set, CLEAR_INTR_SRC bit 0 = 1 and
+  CLEAR_INTR_BUS bit 0 = 1, INTR_SRC_ADDR_0 a SEP SRAM word outside the
+  destination, INTR_SRC_WR_VAL_0 a drawn word that differs from the word the
+  leaf writes there first; the same copy as the handshake run;
 * normal-mode control: a 4096-byte memory-to-memory copy in chunks of 1024.
 
 Wire monitor sessions: ``SepSpiWireMonitor`` (with the output-enable taps)
@@ -56,9 +61,22 @@ Checkers:
                   firmware clear), and still reads 1 once the destination holds
                   TOTAL_DATA_SIZE bytes and after a further wait as long as
                   t_fill (handshake run). STATUS.DONE at the total is logged.
-  CHK-HS-STOP     after the GO clear the words after the moved chunks keep their
-                  sentinel while the trigger probe is high, and the moved chunks
-                  keep the words read before the clear.
+  CHK-HS-STOP     re-trigger leg, GO=1: after the trigger fell, a second Rx
+                  segment raises it again and the engine moves at least one more
+                  chunk; the moved chunks equal the RX stream (the first segment,
+                  then the second, each from flash address 0) and the words after
+                  them keep their sentinel. "In response to the assertion of an
+                  enabled bit of the `lsio_trigger_i` input, the DMA controller
+                  will proceed to transfer an entire chunk of data from the
+                  source to the destination." and "Whilst the `lsio_trigger_i`
+                  input is not asserted, the DMA controller will remain in its
+                  Idle state awaiting instruction to proceed with the next chunk
+                  of the transfer." (``vendor/lowRISC/opentitan/upstream/hw/ip/
+                  dma/doc/theory_of_operation.md:461,463``). Controls: the
+                  trigger probe reads low before the second segment and rises in
+                  it. Stop leg: after the GO clear the words after the moved
+                  chunks keep their sentinel while the trigger probe is high,
+                  and the moved chunks keep the words read before the clear.
   CHK-HS-NOCHUNK  STATUS.CHUNK_DONE reads 0 at every poll of the handshake run,
                   and with INTR_ENABLE.DMA_CHUNK_DONE=1 PIC source 10 (bit 9 of
                   ``sep_internal_interrupts_probe_o``) stays low at every clock
@@ -87,14 +105,35 @@ Checkers:
                   (``SepSpiWireMonitor``), with the flash ledger and frame
                   shape.
 
+  CHK-HS-CLR      interrupt-clear run: at least one AW on the DMA master tap
+                  (``dma_axi_req_probe_o``, ``env/sep_dma_tap.py``) carries the
+                  address INTR_SRC_ADDR_0, and that SRAM word reads
+                  INTR_SRC_WR_VAL_0 over the frontdoor after the run. The tap
+                  carries no write data, so the data comes from that readback.
+                  Contract: "configure `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`,
+                  `INTR_SRC_ADDR` and `INTR_SRC_WR_VAL` for the connected host
+                  port (`CLEAR_INTR_BUS` bit 0 = 1)"
+                  (``doc/programmer/src/sep-programming.adoc:774-776``); "DMA
+                  issues writes with address from INTR_SRC_ADDR and write value
+                  from INTR_SRC_WR_VAL corresponding to each bit set in this
+                  register" (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
+                  dma.hjson:756-757``, CLEAR_INTR_SRC). Control: the handshake run
+                  (CLEAR_INTR_SRC = 0 from reset) moves its chunks with no AW to
+                  that address. The clock of each clear write, the count of clear
+                  writes and the WSTRB of the paired W beat are logged
+                  (``OBS-HS-CLR``): the text says only "when ... lsio_trigger
+                  becomes set".
+
 Controls: RX depth above W+1; mask=1 run fills the destination; trigger high in
-each "never" window; 1 <= n_moved < chunks_total; the normal-mode copy reads
-GO=0 at DONE and shows CHUNK_DONE in a poll or a rise of PIC source 10 (bit 9
-of ``sep_internal_interrupts_probe_o``). A missing control logs CTRL-MISSING and
-fails the leaf.
+each "never" window; 1 <= n_moved, and the chunks moved before the GO clear are
+fewer than chunks_total; the normal-mode copy reads GO=0 at DONE, shows
+CHUNK_DONE in a poll, and shows a rise of PIC source 10 (bit 9 of
+``sep_internal_interrupts_probe_o``), so a dead or mis-bound bit-9 tap fails
+the control of the line leg of CHK-HS-NOCHUNK. A missing control logs
+CTRL-MISSING and fails the leaf.
 
 Probes: ``spi_lsio_trigger_probe_o``, ``dma_busy_probe_o``, ``spi_tx_qd_probe_o``
-(logged), ``dbg_sep_reset_n_o``, ``sep_internal_interrupts_probe_o`` bit 9, the
+(logged), ``dma_axi_req_probe_o`` (handshake and interrupt-clear runs), ``dbg_sep_reset_n_o``, ``sep_internal_interrupts_probe_o`` bit 9, the
 SPI pad ports and lane taps, and the register frontdoor over ``s_axi``.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense, both simulators,
@@ -110,6 +149,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
+from env.sep_dma_tap import SepDmaTap
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
@@ -174,6 +214,13 @@ ASID = asid_word(7, 7)
 
 # Destination of the handshake runs and the normal-mode footprints (SRAM).
 HS_DST = SRAM_BASE + 0x1000
+# INTR_SRC_ADDR_0 of the interrupt-clear run: an SRAM word below HS_DST, inside
+# the handshake range and outside every destination.
+CLR_ADDR = SRAM_BASE + 0x800
+CLEAR_INTR_SRC = SECURE_DMA.addr("CLEAR_INTR_SRC")
+CLEAR_INTR_BUS = SECURE_DMA.addr("CLEAR_INTR_BUS")
+INTR_SRC_ADDR_0 = sym("SECURE_DMA_INTR_SRC_ADDR_0_0__REG_ADDR")
+INTR_SRC_WR_VAL_0 = sym("SECURE_DMA_INTR_SRC_WR_VAL_0_0__REG_ADDR")
 NM_SRC = SRAM_BASE + 0x8000
 NM_DST = SRAM_BASE + 0x10000
 NM_TOTAL = 4096
@@ -284,7 +331,8 @@ class _Cfg:
 
     @property
     def chunks_total_stop(self) -> int:
-        return self.n_stop + -(-self.extra_bytes // self.chunk) + 1
+        # Room for the first segment, the re-trigger segment and one unmoved chunk.
+        return self.n_stop + 2 * -(-self.extra_bytes // self.chunk) + 1
 
     def flash_bytes(self) -> bytes:
         return b"".join(w.to_bytes(4, "little") for w in self.flash_words)
@@ -327,6 +375,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         "CHK-HS-DATA",
         "CHK-HS-TRIG-EQ",
         "CHK-HS-LANE-RX",
+        "CHK-HS-CLR",
         "CHK-SPI-SESSION-FRAMES",
         "CHK-SPI-SB-RX",
         "CHK-SPI-WIRE",
@@ -506,7 +555,106 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         if until > self.tw.clk:
             await ClockCycles(cocotb.top.clk_i, until - self.tw.clk)
 
+    async def _stable_image(self, n_words: int, t_fill: int, what: str) -> list[int]:
+        """Destination words once two reads ``t_fill`` clocks apart are equal."""
+        img1 = await self.mem.read(HS_DST, n_words)
+        for _ in range(STABLE_READS):
+            await self._wait_clocks(self.tw.clk + t_fill)
+            img2 = await self.mem.read(HS_DST, n_words)
+            if img2 == img1:
+                return img1
+            img1 = img2
+        self._ctrl_missing(
+            "CHK-HS-STOP", f"{what}: destination not stable after {STABLE_READS} reads"
+        )
+        raise AssertionError  # unreachable: _ctrl_missing raises
+
+    def _filled(self, img: list[int], n_chunks: int) -> list[bool]:
+        """Per chunk of ``img``: True when no word of the chunk holds the sentinel."""
+        cw = self.cfg_.cw
+        return [
+            all(w != self.sentinel for w in img[c * cw : (c + 1) * cw]) for c in range(n_chunks)
+        ]
+
     # ---- runs --------------------------------------------------------------
+    async def _clear_run(
+        self, nw: int, rx_bytes: int, t_fill: int, hs_clr_aw: int, hs_aw: int
+    ) -> None:
+        """CHK-HS-CLR: the source 0 clear write reaches INTR_SRC_ADDR_0 on the DMA master.
+
+        The handshake run (CLEAR_INTR_SRC = 0) is the control: ``hs_aw`` AWs and
+        ``hs_clr_aw`` of them at CLR_ADDR. The wait after the last word lands is
+        ``t_fill``, the clocks the handshake run took from GO to its last word.
+        """
+        cfg = self.cfg_
+        dma = self.dma
+        await self._cold_reset("clear")
+        open_graded_window(TEST, self.logger)
+        # Appended draw: the clear value, never the word written there first.
+        clr_val = unique_words(cfg.rng, 1, exclude={self.sentinel})[0]
+        self.logger.info(
+            "DRAW seed=%d clear_addr=0x%08x clear_wr_val=0x%08x clear_pre=0x%08x",
+            cfg.seed,
+            CLR_ADDR,
+            clr_val,
+            self.sentinel,
+        )
+        await self.mem.fill(CLR_ADDR, [self.sentinel])
+        await dma.wr(CLEAR_INTR_SRC, 0x1)
+        await dma.wr(CLEAR_INTR_BUS, 0x1)
+        await dma.wr(INTR_SRC_ADDR_0, CLR_ADDR)
+        await dma.wr(INTR_SRC_WR_VAL_0, clr_val)
+        self.dtap.start()
+        m_tap = self.dtap.mark()
+        t_go, _ = await self._hs_start(
+            mask=cfg.mask_on, total=cfg.n * cfg.chunk, dst_words=nw, rx_bytes=rx_bytes
+        )
+        bound = cfg.seg_clks(rx_bytes)
+        last_addr = HS_DST + 4 * (nw - 1)
+        polls = 0
+        while (await self.mem.read(last_addr, 1))[0] == self.sentinel:
+            polls += 1
+            if self.tw.clk - t_go > bound:
+                self._fail(
+                    "CHK-HS-CLR",
+                    f"last word of chunk {cfg.n} still holds the sentinel {bound} clocks "
+                    f"after GO (polls={polls})",
+                )
+        t_last = self.tw.clk
+        await self._wait_clocks(t_last + t_fill)
+        await dma.wr(DMA_CONTROL, dma.last_control & ~GO_MASK)
+        ev = self.dtap.since(m_tap)
+        await self.dtap.stop()
+        clr_rb = (await self.mem.read(CLR_ADDR, 1))[0]
+        dest = await self.mem.read(HS_DST, nw)
+        clr_idx = [i for i, b in enumerate(ev.aw) if b.addr == CLR_ADDR]
+        self.logger.info(
+            "OBS-HS-CLR LOG seed=%d clear_aw=%d aw_total=%d clear_aw_clks=%s "
+            "clear_aw_size=%s clear_w_strb=%s go_tap_clk=%d last_word_clks_after_go=%d",
+            cfg.seed,
+            len(clr_idx),
+            len(ev.aw),
+            ",".join(str(ev.aw[i].clk - m_tap.clk) for i in clr_idx) or "-",
+            ",".join(str(ev.aw[i].size) for i in clr_idx) or "-",
+            ",".join(f"0x{ev.w[i].strb:x}" if i < len(ev.w) else "-" for i in clr_idx) or "-",
+            m_tap.clk,
+            t_last - t_go,
+        )
+        self._probe_log("clear")
+        close_graded_window(self.logger)
+        line = (
+            f"clear_addr=0x{CLR_ADDR:08x} clear_aw={len(clr_idx)} "
+            f"readback=0x{clr_rb:08x} expect=0x{clr_val:08x} pre=0x{self.sentinel:08x} "
+            f"clear_src=0x1 clear_bus=0x1 control_hs_aw={hs_aw} "
+            f"control_hs_clear_aw={hs_clr_aw} window_clks={t_fill}"
+        )
+        if hs_aw < 1 or hs_clr_aw != 0:
+            self._ctrl_missing("CHK-HS-CLR", line)
+        if not clr_idx or clr_rb != clr_val:
+            self._fail("CHK-HS-CLR", line)
+        self._pass("CHK-HS-CLR", line)
+        self._expect_rx(FLASH_READ, 1, words_bytes(dest), want=4 * nw, label="clear")
+
     async def _depth_check(self) -> None:
         cfg = self.cfg_
         await self._cold_reset("depth")
@@ -691,10 +839,10 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
                 f"{TEST} needs +{FOUR_LANE_PLUSARG}: the DUT must receive spi_sd_i on every lane"
             )
         self.logger.info(
-            "PLAN seed=%d runs=depth,reference,trigger,lanes,handshake,masked,stop,normal "
-            "graded=trigger,lanes,handshake,masked,stop checks=CHK-HS-MASKED,CHK-HS-GO,"
-            "CHK-HS-STOP,CHK-HS-NOCHUNK,CHK-HS-DATA,CHK-HS-TRIG-EQ,CHK-HS-LANE-RX,"
-            "CHK-SPI-SESSION-FRAMES,CHK-SPI-SB-RX,CHK-SPI-WIRE",
+            "PLAN seed=%d runs=depth,reference,trigger,lanes,handshake,masked,stop,clear,"
+            "normal graded=trigger,lanes,handshake,masked,stop,clear checks=CHK-HS-MASKED,"
+            "CHK-HS-GO,CHK-HS-STOP,CHK-HS-NOCHUNK,CHK-HS-DATA,CHK-HS-TRIG-EQ,CHK-HS-LANE-RX,"
+            "CHK-HS-CLR,CHK-SPI-SESSION-FRAMES,CHK-SPI-SB-RX,CHK-SPI-WIRE",
             cfg.seed,
         )
         self.logger.info(
@@ -744,6 +892,9 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         self.spi = SepSpiHostOps(self, clock=self.pads.now)
         self.dma = SepDmaOps(self)
         self.mem = SepMemWords(self)
+        # Runs only inside the handshake and interrupt-clear runs, never across
+        # an rst_ni pulse.
+        self.dtap = SepDmaTap(dut)
         self.wire = SepSpiWireMonitor(dut, name="sep_spi_hs_wire")
         self.flash = OcahSpiFlash(
             dut.spi_cs_n_o,
@@ -772,6 +923,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             await self.flash.stop()
             for w in (self.tw, self.busy, self.irq):
                 await w.stop()
+            await self.dtap.stop()
             await self.pads.stop()
         self.result_pass(TEST, cfg.seed, self.n_checks)
 
@@ -817,6 +969,8 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         bound = cfg.seg_clks(rx_bytes)
         await self.dma.wr(INTR_ENABLE, INTR_EN_CHUNK)
         m_hs_irq = self.irq.mark()
+        self.dtap.start()
+        m_hs_tap = self.dtap.mark()
         t_go, _ = await self._hs_start(
             mask=cfg.mask_on, total=cfg.n * cfg.chunk, dst_words=nw, rx_bytes=rx_bytes
         )
@@ -861,6 +1015,11 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         go2 = field_compare(await self.dma.rd(DMA_CONTROL), GO_MASK, GO_MASK)
         # Firmware stops the handshake operation by clearing GO.
         await self.dma.wr(DMA_CONTROL, self.dma.last_control & ~GO_MASK)
+        hs_ev = self.dtap.since(m_hs_tap)
+        await self.dtap.stop()
+        # Control of CHK-HS-CLR: CLEAR_INTR_SRC = 0 from reset.
+        hs_clr_aw = sum(1 for b in hs_ev.aw if b.addr == CLR_ADDR)
+        hs_aw = len(hs_ev.aw)
         hs_irq_rises = self.irq.rises_since(m_hs_irq, "chunk")
         hs_irq_high = self.irq.high_clocks_since(m_hs_irq, "chunk")
         self._probe_log("handshake")
@@ -931,19 +1090,8 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             mask=cfg.mask_on, total=n_tot * cfg.chunk, dst_words=tot_words, rx_bytes=rx_stop
         )
         await self.spi.wait_segment_done(self.pads, pad_mark, bound_clks=cfg.seg_clks(rx_stop))
-        img1 = await self.mem.read(HS_DST, tot_words)
-        for _ in range(STABLE_READS):
-            await self._wait_clocks(self.tw.clk + t_fill)
-            img2 = await self.mem.read(HS_DST, tot_words)
-            if img2 == img1:
-                break
-            img1 = img2
-        else:
-            self._ctrl_missing("CHK-HS-STOP", f"destination not stable after {STABLE_READS} reads")
-        filled = [
-            all(w != self.sentinel for w in img1[c * cfg.cw : (c + 1) * cfg.cw])
-            for c in range(n_tot)
-        ]
+        img1 = await self._stable_image(tot_words, t_fill, "first segment")
+        filled = self._filled(img1, n_tot)
         n_moved = sum(filled)
         self.logger.info(
             "STOP-PRE LOG seed=%d n_moved=%d chunks_total=%d filled=%s",
@@ -951,6 +1099,38 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             n_moved,
             n_tot,
             "".join(str(int(f)) for f in filled),
+        )
+        # Re-trigger leg, GO still 1: the DMA drained RXQD below RX_WATERMARK, so
+        # the trigger is low; a second segment of W+1 words raises it again and
+        # the engine moves the next chunk (OpenTitan DMA theory of operation:
+        # an assertion of an enabled trigger moves an entire chunk; while it is
+        # not asserted the engine waits for the next chunk).
+        # Stream of the RX FIFO: the first segment, then the second segment;
+        # each segment is a READ at flash address 0.
+        stream = cfg.flash_words[: rx_stop // 4] + cfg.flash_words[: cfg.extra_bytes // 4]
+        re_low_before = int(self.tw.level() == 0)
+        m_re = self.trig.mark()
+        mark_re = await self._spi_sequence(cfg.extra_bytes)
+        await self.spi.wait_segment_done(
+            self.pads, mark_re, bound_clks=cfg.seg_clks(cfg.extra_bytes)
+        )
+        img_re = await self._stable_image(tot_words, t_fill, "re-trigger segment")
+        re_rises = self.trig.rises_since(m_re)
+        filled_re = self._filled(img_re, n_tot)
+        n_re = sum(filled_re)
+        re_words = n_re * cfg.cw
+        re_data = int(
+            img_re[:re_words] == stream[:re_words]
+            and all(w == self.sentinel for w in img_re[re_words:])
+        )
+        self.logger.info(
+            "STOP-RETRIG LOG seed=%d n_moved_retrigger=%d filled=%s trigger_low_before=%d "
+            "trigger_rises=%d",
+            cfg.seed,
+            n_re,
+            "".join(str(int(f)) for f in filled_re),
+            re_low_before,
+            re_rises,
         )
         # Step 9: GO clear, more Rx data.
         # Control: GO still reads 1 before the clear, so the stop is caused by
@@ -964,36 +1144,50 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         await self._wait_clocks(t_clr + t_fill)
         trig_high = self.trig.high_clocks_since(m_trig)
         img3 = await self.mem.read(HS_DST, tot_words)
-        after = img3[n_moved * cfg.cw :]
+        after = img3[re_words:]
         after_kept = int(all(w == self.sentinel for w in after))
-        moved_kept = int(img3[: n_moved * cfg.cw] == img1[: n_moved * cfg.cw])
+        moved_kept = int(img3[:re_words] == img_re[:re_words])
         self._probe_log("stop")
         close_graded_window(self.logger)
         line = (
-            f"n_stop={cfg.n_stop} n_moved={n_moved} chunks_total={n_tot} "
+            f"n_stop={cfg.n_stop} n_moved={n_moved} n_moved_retrigger={n_re} "
+            f"chunks_total={n_tot} re_data_match={re_data} "
+            f"control_re_trigger_low_before={re_low_before} "
+            f"control_re_trigger_rises={re_rises} "
             f"dest_after_clear_sentinel={after_kept} trigger_high_clk={trig_high} "
             f"window_clks={t_fill} go_before_clear={go_before} "
             f"control_after_clear=0x{stop_ctrl:08x} "
             f"moved_unchanged={moved_kept}"
         )
-        if n_moved < 1 or n_moved >= n_tot or trig_high < 1 or not go_before:
+        if n_moved < 1 or n_re >= n_tot or trig_high < 1 or not go_before:
             self._ctrl_missing("CHK-HS-STOP", line)
+        if not re_low_before or re_rises < 1:
+            self._ctrl_missing("CHK-HS-STOP", line)
+        # With GO=1 the trigger that rises again moves the next chunk.
+        if n_re <= n_moved or not re_data:
+            self._fail("CHK-HS-STOP", line)
         if not (after_kept and moved_kept):
             self._fail("CHK-HS-STOP", line)
         self._pass("CHK-HS-STOP", line)
-        # The words the DMA left in the RX FIFO (rest of the first frame, then
-        # the second frame) go out through RXDATA.
-        moved = img3[: n_moved * cfg.cw]
-        left1 = max(0, rx_stop // 4 - len(moved))
+        # The words the DMA left in the RX FIFO (rest of the first two frames,
+        # then the third frame) go out through RXDATA.
+        moved = img3[:re_words]
+        held = rx_stop // 4 + cfg.extra_bytes // 4
         rest = await self._drain_words(
-            left1 + cfg.extra_bytes // 4, mark_more, "stop run after the GO clear"
+            held - len(moved) + cfg.extra_bytes // 4, mark_more, "stop run after the GO clear"
+        )
+        got = moved + rest
+        f1, f2 = rx_stop // 4, held
+        self._expect_rx(FLASH_READ, 1, words_bytes(got[:f1]), want=rx_stop, label="stop_first")
+        self._expect_rx(
+            FLASH_READ, 1, words_bytes(got[f1:f2]), want=cfg.extra_bytes, label="stop_retrigger"
         )
         self._expect_rx(
-            FLASH_READ, 1, words_bytes(moved + rest[:left1]), want=rx_stop, label="stop_first"
+            FLASH_READ, 1, words_bytes(got[f2:]), want=cfg.extra_bytes, label="stop_more"
         )
-        self._expect_rx(
-            FLASH_READ, 1, words_bytes(rest[left1:]), want=cfg.extra_bytes, label="stop_more"
-        )
+
+        # Interrupt-clear run: the handshake copy with the source 0 clear write.
+        await self._clear_run(nw, rx_bytes, t_fill, hs_clr_aw, hs_aw)
 
         # Steps 10-12: normal-mode control (no SPI traffic, no monitor session).
         await self._cold_reset("normal", session=False)
@@ -1041,7 +1235,9 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             f"control_normal_polls={len(statuses)} control_chunk_irq_rises={irq_rises} "
             f"control_normal_polls_with_chunk_done={nm_chunk_polls}"
         )
-        if nm_chunk_polls < 1 and irq_rises < 1:
+        # The poll leg and the line leg each need their own control: a dead or
+        # mis-bound bit-9 tap reads 0 here.
+        if nm_chunk_polls < 1 or irq_rises < 1:
             self._ctrl_missing("CHK-HS-NOCHUNK", line)
         if hs_chunk_polls or hs_irq_rises or hs_irq_high:
             self._fail("CHK-HS-NOCHUNK", line)

@@ -510,23 +510,20 @@ formal configuration (`<name>_formal_cfg.toml`).
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
 maintainer flow whose tool allowlist is VCS only; it carries
 `license = "required-commercial"`, so `--list` marks it `(licensed)` and the
-launcher says so when the simulator is absent. The UVM library is the
-Accellera 1800.2-2020 release that the profile's
-`[frameworks.uvm.build.uvm_library]` pins by URL and SHA-256, with
-`tree_sha256` pinning the `src/` tree the archive unpacks to. The tree is what
-identifies the library: an archive whose SHA-256 differs from the pin, such as
-a repack of the same release, is used with a warning when it unpacks to the
-pinned tree, and is refused otherwise. The launcher fetches it into
-`local/uvm/` before the first stage, on the submitting host for a cluster run,
-and later runs reuse that copy; a dry run fetches nothing. On a host that
-cannot reach the archive, the site layer's `[uvm_library]` fetches the same
-archive from a mirror or a local copy, or names an installed UVM home
-(<<runner-site-layer>>), and `OCAH_UVM_HOME` names a home for one shell, ahead
-of the site layer. Every build checks the tree it compiles against
-`tree_sha256`: a cache entry or a site home that differs is an error, and an
-`OCAH_UVM_HOME` home that differs compiles with a warning. The run-level
-`result.json` records the compiled library under `uvm_library`: its `source`
-(`archive`, `site`, or `OCAH_UVM_HOME`), its `home`, and its `tree_sha256`.
+launcher says so when the simulator is absent. The UVM library is an
+Accellera release tree checked in unmodified under
+`vendor/accellera/uvm-core/upstream/`, which the profile's
+`[frameworks.uvm.build]` `uvm_library` names, and
+`vendor/accellera/uvm-core/release.toml` records the release and its archive.
+`make update-vendor-uvm` replaces both with the newest release on Accellera's
+UVM download page, or with the one `UVM_RELEASE=<name>` names; `CHECK=1`
+downloads the recorded archive again and fails when the tree differs from it.
+`OCAH_UVM_HOME` names another UVM home for one shell, and the launcher warns
+when it does. The library compiles outside the filelist, so the build
+fingerprint carries a digest of its `src/` tree and an edit to it rebuilds
+the model. The run-level `result.json` records the compiled library under
+`uvm_library`: its `source` (`config` or `OCAH_UVM_HOME`), its `home`, and its
+`tree_sha256`.
 The build compiles its `uvm_pkg.sv` ahead of every user source and links its
 DPI layer. A sim config's `[build.vcs].uvm_lib` selects a simulator-supplied
 library through `-ntb_opts` instead (uvm-1.2 or later;
@@ -1129,10 +1126,9 @@ ships no copy of those files.
 
 The checked-in registries name each tool by its default executable and find
 it on `PATH`. A deployment whose tools carry other names, need an environment
-hook before they start, or run inside a container, or whose hosts cannot
-reach the pinned UVM library archive, describes that in one git-ignored file,
-`hw/common/dv/configs/site.local.toml`, or in the file the `OCAH_DV_SITE`
-environment variable names (the variable wins). The layer is
+hook before they start, or run inside a container describes that in one
+git-ignored file, `hw/common/dv/configs/site.local.toml`, or in the file the
+`OCAH_DV_SITE` environment variable names (the variable wins). The layer is
 active exactly when one of those files exists; a companion checkout beside
 the tree changes nothing. `site.local.example.toml` in the same directory is
 a template to copy.
@@ -1224,26 +1220,15 @@ own, so a site removes sources its layered bender graph adds that the checked-in
 graph never carries -- vendor simulation collateral a checkout cannot compile,
 say. Each is a substring matched against the generated bender filelist, like a
 config-owned drop, and applies to every target. A formal view is unaffected.
-
-|`[uvm_library]` one of `url = "https://..."`, `archive = "path"`, or
-`home = "path"`
-|replaces
-|Where the pinned UVM library comes from on this host. `url` is a mirror and
-`archive` a local copy of the release archive, each unpacked into `local/uvm/`
-when the cache lacks it and checked like the pinned archive; `home` is an
-installed UVM home, checked against the pin's `tree_sha256` on every build.
-The pin itself stays with the profile, so a site changes where the library
-comes from, never which release it is. A relative path resolves against the
-site file and must exist.
 |===
 
 Any other key fails validation, as does a `[duts.<dut>]` table that sets none
-of the four, a `[uvm_library]` table that sets other than one key, or a
-checked-in registry that carries `launcher`, `extra_env`, or `setup_hook`.
-Inside one command the stage's own variables (`PYTHONPATH`, `RANDOM_SEED`,
-the coverage and wave knobs) keep their values; below them the `setup_hook`
-exports win over `extra_env`, which wins over the ambient environment. The
-stage's `env/` snapshot records the result.
+of the four, or a checked-in registry that carries `launcher`, `extra_env`,
+or `setup_hook`. Inside one command the stage's own
+variables (`PYTHONPATH`, `RANDOM_SEED`, the coverage and wave knobs) keep
+their values; below them the `setup_hook` exports win over `extra_env`,
+which wins over the ambient environment. The stage's `env/` snapshot records
+the result.
 
 Where the keys reach:
 

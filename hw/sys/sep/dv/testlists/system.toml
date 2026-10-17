@@ -204,6 +204,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_irq_ip_to_aggregator_test"
 module = { cocotb = "system.sep_irq_ip_to_aggregator_test", uvm = "sep_irq_ip_to_aggregator_test" }
 seed = 1
+reseed = 4
 timeout_sec = 1800
 tags = ["interrupt", "aggregator", "csrng", "edn", "system", "subsystem"]
 run_modes = ["no_cpu"]
