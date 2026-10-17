@@ -33,7 +33,9 @@ Randomization (``SepSeededRng`` from the run seed, drawn before the first stimul
 by ``draw_plan``): the mode {CFB, OFB, GCM}, the key size {128, 192, 256}, the
 direction {encrypt, decrypt}, the key, the IV and the input. CFB and OFB: 2 to 4
 whole blocks. GCM: a 96-bit IV, an AAD length of 0 to 40 bytes and a text length of
-0 to 48 bytes, so the last AAD or text block can be partial. One cell runs per
+0 to 48 bytes, so the last AAD or text block can be partial. The DATA_IN bytes
+past NUM_VALID_BYTES of a partial block are 16 drawn non-zero bytes, so a DUT that
+does not mask them by NUM_VALID_BYTES shows a wrong text or tag. One cell runs per
 seed; the 18 cells close over merged regressions (docs/SEP_FCOV.adoc).
 
 Checkers (each logs mode, key size, direction and the first mismatched word):
@@ -56,7 +58,7 @@ A passing check writes one FCOV record (``sep_aes_cfb_ofb_gcm_cg``).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
 
@@ -193,8 +195,9 @@ def _blocks(data: bytes) -> list[bytes]:
     return [data[i : i + 16] for i in range(0, len(data), 16)]
 
 
-def _pad(block: bytes) -> bytes:
-    return block + bytes(16 - len(block))
+def _pad(block: bytes, fill: bytes) -> bytes:
+    """A 16-byte DATA_IN block: ``block``, then the bytes of ``fill`` past its length."""
+    return block + fill[len(block) : 16]
 
 
 # --- Plan ---------------------------------------------------------------------
@@ -208,6 +211,9 @@ class Plan:
     iv: bytes  # 16 bytes (CFB, OFB) or the 12-byte GCM IV
     data: bytes  # the DATA_IN stream: plaintext (enc) or ciphertext (dec)
     aad: bytes = b""
+    # DATA_IN bytes past NUM_VALID_BYTES of a partial last block: non-zero, so a
+    # DUT that does not mask them by NUM_VALID_BYTES shows a wrong text or tag.
+    pad_fill: bytes = bytes(16)
 
     @property
     def key_words(self) -> list[int]:
@@ -291,7 +297,9 @@ def draw_plan(seed: int) -> Plan:
             continue
         plan = Plan(seed, mode, key_bits, direction, key, iv, data, aad)
         if all(plan_guards(plan).values()):
-            return plan
+            break
+    pad_fill = bytes(rng.randrange(1, 256) for _ in range(16))
+    return replace(plan, pad_fill=pad_fill)
 
 
 def _whole_words(buf: bytes) -> list[int]:
@@ -408,7 +416,7 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
 
     async def _write_block(self, block: bytes) -> None:
         await self.aes._poll_status_bit(AES_STATUS_INPUT_READY, "input_ready")
-        for i, w in enumerate(bytes_to_words(_pad(block))):
+        for i, w in enumerate(bytes_to_words(_pad(block, self.plan.pad_fill))):
             await self.aes._wr(AES_DATA_IN_0 + 4 * i, w)
 
     async def _read_out(self) -> bytes:

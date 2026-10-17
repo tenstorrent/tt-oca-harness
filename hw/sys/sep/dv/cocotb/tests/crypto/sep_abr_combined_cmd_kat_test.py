@@ -26,6 +26,11 @@ writes them. The register description does not state an order.
 Checkers:
   CHK-ABR-KEYGEN-DECAPS-SELFCONSIST  all 8 words of MLKEM_SHARED_KEY after
                     KEYGEN+DECAPS equal the K of the ENCAPS.
+  CHK-ABR-KEYGEN-DECAPS-REJECT  after KEYGEN+DECAPS on the same z and c with
+                    bit 0 of seed word d[0] flipped, all 8 words of
+                    MLKEM_SHARED_KEY equal the implicit-rejection key
+                    J(z || c) = SHAKE256(z || c, 256) of FIPS 203. This compare has a
+                    golden: the standard function of the written z and c.
 
 Controls (a false control logs CTRL-MISSING and fails the leaf):
   CTRL-ABR-ENCAPS-K-NONZERO  the K of the ENCAPS has a non-zero word, so a
@@ -57,6 +62,8 @@ no_cpu (``lsu_stub_all_live``) / +skip_fuse_sense.
 """
 
 from __future__ import annotations
+
+import hashlib
 
 import cocotb
 import pyuvm
@@ -113,6 +120,7 @@ from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_abr_combined_cmd_kat_test"
 CHK = "ABR-KEYGEN-DECAPS-SELFCONSIST"
+CHK_REJECT = "ABR-KEYGEN-DECAPS-REJECT"
 
 # MLDSA_CTRL.CTRL 100 = KEYGEN+SIGN (abr_reg.rdl), parsed from the RDL text.
 CMD_KEYGEN_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN_SIGN")
@@ -133,6 +141,20 @@ def _match_count(got: list[int], exp: list[int]) -> int:
     return sum(1 for g, e in zip(got, exp) if g == e)
 
 
+def _words_to_bytes(words: list[int]) -> bytes:
+    """ABR I/O byte order: byte b sits in word b // 4, bits (b % 4) * 8 (little-endian)."""
+    return b"".join(w.to_bytes(4, "little") for w in words)
+
+
+def implicit_reject_key(z_words: list[int], c_words: list[int]) -> list[int]:
+    """FIPS 203 ML-KEM.Decaps_internal implicit-rejection key K_bar = J(z || c).
+
+    J(s) = SHAKE256(s, 8 * 32) (FIPS 203, section 4.1). Returned as 8 ABR words.
+    """
+    k = hashlib.shake_256(_words_to_bytes(z_words) + _words_to_bytes(c_words)).digest(32)
+    return [int.from_bytes(k[i : i + 4], "little") for i in range(0, 32, 4)]
+
+
 class _Timeout(Exception):
     """A bounded wait of the ML-KEM chain expired."""
 
@@ -141,7 +163,12 @@ class _Timeout(Exception):
 class sep_abr_combined_cmd_kat_test(sep_base_test):
     """ML-KEM KEYGEN+DECAPS self-consistency against a single-step ENCAPS; key windows logged."""
 
-    required_evidence = (f"CHK-{CHK}",)
+    required_evidence = (f"CHK-{CHK}", f"CHK-{CHK_REJECT}")
+
+    def _grade(self, name: str, cond: bool, **fields) -> bool:
+        """Grade one check through SepChkLog and remember that it ran."""
+        self._graded.add(name)
+        return self.chk.ok(name, cond, **fields)
 
     # --- register access ----------------------------------------------------
     async def _poll(self, status: int, mask: int, polls: int, gap: int) -> int | None:
@@ -212,7 +239,7 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
             "encaps",
         )
         if not st & KEM_ST_VALID:
-            self.chk.ok(
+            self._grade(
                 CHK, False, step="encaps", reason="error_without_valid", status=f"0x{st:08x}"
             )
             await self._recover("encaps")
@@ -256,14 +283,14 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
             pre=_hex(pre["k"]),
         )
         if not st & KEM_ST_VALID:
-            self.chk.ok(
+            self._grade(
                 CHK, False, step="keygen_decaps", reason="error_without_valid", status=f"0x{st:08x}"
             )
             await self._recover("keygen_decaps")
             return
         k_kd = await self.abr.read_words(MLKEM_SHARED_KEY, KEM_K_WORDS)
         bad = next((i for i, (g, e) in enumerate(zip(k_kd, k_enc)) if g != e), None)
-        self.chk.ok(
+        self._grade(
             CHK,
             len(k_kd) == len(k_enc) == KEM_K_WORDS and bad is None and k_live,
             compare="self_consistency_not_golden",
@@ -286,6 +313,48 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
             dk_nonzero=int(any(dk)),
         )
         await self._kem_zeroize("after keygen_decaps")
+        await self._abr_reset()
+        await self._kem_reject(ct, k_enc)
+
+    async def _kem_reject(self, ct: list[int], k_enc: list[int]) -> None:
+        """KEYGEN+DECAPS on a seed d with one bit flipped: the implicit-rejection key.
+
+        The key pair of d' does not match the ek that produced c, so the
+        re-encryption check of ML-KEM.Decaps_internal fails and the result is
+        K_bar = J(z || c) (FIPS 203). This grades the keyGen half of the combined
+        command against a computed standard value, and shows that the shared-key
+        window depends on the written seed.
+        """
+        d_flip = [NIST_KEM_KG_D[0] ^ 1, *NIST_KEM_KG_D[1:]]
+        exp = implicit_reject_key(NIST_KEM_KG_Z, ct)
+        st = await self._kem_command(
+            [(MLKEM_SEED_D, d_flip), (MLKEM_SEED_Z, NIST_KEM_KG_Z), (MLKEM_CIPHERTEXT, ct)],
+            KEM_CMD_KEYGEN_DECAPS,
+            "keygen_decaps_reject",
+        )
+        if not st & KEM_ST_VALID:
+            self._grade(
+                CHK_REJECT,
+                False,
+                step="keygen_decaps_reject",
+                reason="error_without_valid",
+                status=f"0x{st:08x}",
+            )
+            await self._recover("keygen_decaps_reject")
+            return
+        got = await self.abr.read_words(MLKEM_SHARED_KEY, KEM_K_WORDS)
+        bad = next((i for i, (g, e) in enumerate(zip(got, exp)) if g != e), None)
+        self._grade(
+            CHK_REJECT,
+            len(got) == KEM_K_WORDS and bad is None,
+            d_flip="word0_bit0",
+            first_diff_word=bad if bad is not None else "none",
+            ss=_hex(got),
+            exp=_hex(exp),
+            ne_k_encaps=int(exp != k_enc),
+            obs_error=int(bool(st & KEM_ST_ERROR)),
+        )
+        await self._kem_zeroize("after keygen_decaps_reject")
 
     # --- ML-DSA observation -------------------------------------------------
     async def _dsa_keygen_sign(self) -> None:
@@ -322,6 +391,7 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
         self.seed = self.random_seed()
         self.cfg = SepAbrKeygenCfg(self.seed)
         self.chk = SepChkLog(self, TEST, self.seed)
+        self._graded: set[str] = set()
 
         # KMAC, AES, HMAC and OTBN parked; ABR (bit 6) released.
         await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac"))
@@ -340,7 +410,9 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
         try:
             await self._kem_chain()
         except _Timeout as exc:
-            self.chk.ok(CHK, False, reason="timeout", detail=str(exc))
+            for name in (CHK, CHK_REJECT):
+                if name not in self._graded:
+                    self._grade(name, False, reason="timeout", detail=str(exc))
             await self._recover("kem_chain")
 
         await self._dsa_keygen_sign()
