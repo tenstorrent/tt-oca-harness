@@ -109,7 +109,7 @@
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the bridge's `PUT_PARTIAL_DATA` opcode arm — a sub-word write is refused upstream of the bridge from this master (SLVERR, status register unchanged), so only the `PUT_FULL_DATA` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench. For AES, CSRNG and EDN all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge (SLVERR, `PERIPH_BUS_ERR_STATUS` still 0); and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset term of both status registers is <<sep_periph_bus_err_misaligned_test>>.
+*Not claimed*: the bridge's `PUT_PARTIAL_DATA` opcode arm — a sub-word write is refused upstream of the bridge from this master (SLVERR, status register unchanged), so only the `PUT_FULL_DATA` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench. For AES, CSRNG and EDN all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge (SLVERR, `PERIPH_BUS_ERR_STATUS` still 0); and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The partial-write term of both status registers is <<sep_periph_bus_err_misaligned_test>>.
 
 '''''
 
@@ -126,20 +126,20 @@
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: A misaligned CPU access inside a mapped register extent. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's status bit.
+*Objective*: A partial write to a mapped register, and a narrow read inside it. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's status bit for a write that the block's register definition refuses. A partial write is one whose byte strobe misses a byte that the register owns. A narrow read inside a register is a legal access: OKAY, and no status bit.
 
-*Test Coverage*: The misaligned-offset term of `PERIPH_BUS_ERR_STATUS`, on the `hmac` bit, and of `DMA_BUS_ERR_STATUS`, on `reg_path_err`.
+*Test Coverage*: The partial-write term of `PERIPH_BUS_ERR_STATUS`, on the `hmac` bit, and of `DMA_BUS_ERR_STATUS`, on `reg_path_err`. The narrow read at the same offset, which must not latch.
 
 *Test Procedure*:
 
 [arabic]
 . Confirm `PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` both read 0, so the assertions below cannot be satisfied by stale state.
 . HMAC control: read two bytes at the aligned HMAC `CFG` offset (AxSIZE=2). Require one R beat answered OKAY and both registers still 0.
-. HMAC probe: read two bytes at `CFG` + 2 (AxSIZE=2). The read ends on the word boundary, so the master issues one beat. Require one R beat answered SLVERR, then SLVERR on the probe, `PERIPH_BUS_ERR_STATUS` exactly the `hmac` bit, and `DMA_BUS_ERR_STATUS` still 0.
-. DMA control: read two bytes at the aligned Secure DMA `INTR_STATE` offset. Require one R beat answered OKAY and both registers unchanged.
-. DMA probe: read two bytes at `INTR_STATE` + 2. Require one R beat answered SLVERR, then SLVERR on the probe, `DMA_BUS_ERR_STATUS` exactly `reg_path_err`, and `PERIPH_BUS_ERR_STATUS` still exactly the `hmac` bit.
+. HMAC narrow read: read two bytes at `CFG` + 2 (AxSIZE=2). The read ends on the word boundary, so the master issues one beat. Require one R beat answered OKAY and both registers still 0.
+. HMAC probe: write two bytes at `CFG` + 2 (byte lanes 2 and 3). `CFG` owns byte 0, so the strobe misses an owned byte. Require SLVERR, `PERIPH_BUS_ERR_STATUS` exactly the `hmac` bit, `DMA_BUS_ERR_STATUS` still 0, and `CFG` unchanged.
+. DMA control, narrow read and probe: the same three steps at the Secure DMA `INTR_STATE` offset, which owns byte 0. The probe requires SLVERR, `DMA_BUS_ERR_STATUS` exactly `reg_path_err`, `PERIPH_BUS_ERR_STATUS` still exactly the `hmac` bit, and `INTR_STATE` unchanged.
 
-Each probe must be one beat. A four-byte read at a word offset + 2 crosses the word and goes out as a two-beat burst, and on the crypto path `doc/crypto.adoc` § "Single-Beat Access Only" refuses it with DECERR before any beat reaches HMAC, so it never exercises the alignment check.
+Each access must be one beat. A four-byte access at a word offset + 2 crosses the word and goes out as a two-beat burst, and on the crypto path `doc/crypto.adoc` § "Single-Beat Access Only" refuses it with DECERR before any beat reaches HMAC.
 
 *Checkers*:
 
@@ -149,16 +149,16 @@ Each probe must be one beat. A four-byte read at a word offset + 2 crosses the w
 |CHK-MISALIGN-BASE
 |`PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` read 0 before the probes. A bit left set by an earlier step fails here.
 |CHK-MISALIGN-CTRL, CHK-MISALIGN-DMA-CTRL
-|The aligned read of the same shape completes as one OKAY beat and leaves both registers unchanged. Each probe then differs from an accepted access only in address bits [1:0].
-|CHK-MISALIGN-BEAT, CHK-MISALIGN-DMA-BEAT
-|The bus monitor records exactly one R beat for the probe, answered SLVERR. A burst, or any other response code, fails here.
+|The aligned read completes as one OKAY beat and leaves both registers unchanged.
+|CHK-MISALIGN-RD, CHK-MISALIGN-DMA-RD
+|The narrow read at offset + 2 completes as exactly one OKAY beat and leaves both registers unchanged. A refused narrow read, a burst, or a latched bit fails here.
 |CHK-MISALIGN-LATCH, CHK-MISALIGN-DMA-LATCH
-|The probe's response is SLVERR, and both registers read exactly the expected value: the owning block's bit latched and the other register unchanged.
+|The partial write's response is SLVERR, both registers read exactly the expected value (the owning block's bit latched, the other register unchanged), and the register reads back its value from the control read.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the same term on the AES, KMAC, OTBN, CSRNG, EDN and WDT bits. The error response's read data is not graded: no specification defines it.
+*Not claimed*: the same term on the AES, KMAC, OTBN, CSRNG, EDN and WDT bits. The narrow read's data is not graded.
 
 '''''
 
@@ -1429,7 +1429,7 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope limit*: Not graded: whether an external access to the same holes also latches a bit (see <<sep-vplan-phase3-blocked,Blocked features>>), the command-integrity cause, a halt of the DMA after the error, and whether one clear (`DMA_BUS_ERR_CLEAR` or the DMA error clear) affects the other report. The misaligned cause, the aes, csrng, edn and wdt bits, and the DMA response at a reserved window or past the mailbox wrapper extent are in <<sep-vplan-phase3-blocked,Blocked features>>. The single-block latch and the DMA register-path latch are owned by `sep_irq_ip_to_aggregator_test` and `sep_periph_bus_err_misaligned_test`, and the destination-side DMA fault by `sep_dma_basic_test`.
+*Scope limit*: Not graded: whether an external access to the same holes also latches a bit (see <<sep-vplan-phase3-blocked,Blocked features>>), the command-integrity cause, a halt of the DMA after the error, and whether one clear (`DMA_BUS_ERR_CLEAR` or the DMA error clear) affects the other report. The aes, csrng, edn and wdt bits, and the DMA response at a reserved window or past the mailbox wrapper extent are in <<sep-vplan-phase3-blocked,Blocked features>>. The partial-write cause is graded by `sep_periph_bus_err_misaligned_test`. The single-block latch and the DMA register-path latch are owned by `sep_irq_ip_to_aggregator_test` and `sep_periph_bus_err_misaligned_test`, and the destination-side DMA fault by `sep_dma_basic_test`.
 
 '''''
 [[sep_cpu_ctrl_timeout_inert_rand_test]]
