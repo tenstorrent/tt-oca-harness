@@ -214,16 +214,21 @@ class VcsUvmLibrary(unittest.TestCase):
                 library = stages.resolve_uvm_library(REPO_ROOT, build, dut, digest=False)
                 self.assertEqual((library.src, library.source), (src, "config"))
 
-    def test_coordinator_resolves_only_for_a_vcs_source_library(self):
-        flow = fixture_flow(REPO_ROOT, "uvm", "vcs", {})
+    def test_coordinator_resolves_only_for_a_source_library_build(self):
         named = {"build": {"uvm_library": "uvm"}}
         simulator = {"build": {**named["build"], "vcs": {"uvm_lib": "uvm-1.2"}}}
-        cases = [(named, "vcs", 1), (named, "verilator", 0), (simulator, "vcs", 0)]
-        for sim_cfg, tool, calls in cases:
+        cases = [
+            ("uvm", named, "vcs", 1),
+            ("uvm", named, "verilator", 1),
+            ("uvm", simulator, "vcs", 0),
+            ("cocotb", named, "verilator", 0),
+        ]
+        for framework, sim_cfg, tool, calls in cases:
             with (
-                self.subTest(tool=tool, cfg=sim_cfg),
+                self.subTest(framework=framework, tool=tool, cfg=sim_cfg),
                 mock.patch.object(stages, "resolve_uvm_library") as resolve,
             ):
+                flow = fixture_flow(REPO_ROOT, framework, tool, {})
                 stages.resolve_build_libraries(flow, REPO_ROOT, sim_cfg, tool, mock.Mock())
                 self.assertEqual(resolve.call_count, calls)
 
@@ -358,6 +363,13 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         "cocotb_sim": ("cocotb", "vcs", "cocotb_sim", "_cocotb_build_info", DRIFTED),
         "vcs_sim": ("uvm", "vcs", "vcs_sim", "_vcs_resolve_build", DRIFTED_NATIVE),
         "xrun_sim": ("uvm", "xcelium", "xcelium_sim", "_xcelium_resolve_build", DRIFTED_NATIVE),
+        "verilator_uvm_sim": (
+            "uvm",
+            "verilator",
+            "verilator_uvm_sim",
+            "_verilator_uvm_resolve_build",
+            DRIFTED_NATIVE,
+        ),
     }
     PASSING_UVM_LOG = (
         "UVM TEST PASSED\n--- UVM Report Summary ---\nUVM_ERROR :    0\nUVM_FATAL :    0\n"
@@ -473,10 +485,17 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         located = {
             "vcs": lambda argv: argv[0],
             "xcelium": lambda argv: argv[argv.index("-xmlibdirpath") + 1],
+            "verilator": lambda argv: argv[0],
+        }
+        model = {
+            "vcs": "/runs/model/simv",
+            "xcelium": "/runs/model",
+            "verilator": "/runs/model/Vtb_top",
         }
         for tool, sim_function, probe in (
             ("vcs", stages.vcs_sim, "vcs_version"),
             ("xcelium", stages.xcelium_sim, "xcelium_version"),
+            ("verilator", stages.verilator_uvm_sim, "verilator_version"),
         ):
             with self.subTest(tool=tool):
                 sim_cfg = merge_simulator_defaults(flow.raw, self.simulators, [tool])
@@ -512,6 +531,9 @@ class PrebuiltBuildIdentity(unittest.TestCase):
                     mock.patch.object(
                         stages, "_bender_sources_fingerprint", side_effect=AssertionError("read")
                     ),
+                    mock.patch.object(
+                        stages, "_filelist_sources_fingerprint", side_effect=AssertionError("read")
+                    ),
                     mock.patch.object(stages, "run_subprocess", side_effect=launch),
                     redirect_stdout(io.StringIO()),
                 ):
@@ -522,10 +544,7 @@ class PrebuiltBuildIdentity(unittest.TestCase):
                     rc = simulate()
                 self.assertEqual(rc, 0)
                 self.assertEqual(len(launches), 1)
-                self.assertEqual(
-                    located[tool](launches[0]),
-                    "/runs/model/simv" if tool == "vcs" else "/runs/model",
-                )
+                self.assertEqual(located[tool](launches[0]), model[tool])
 
     def test_a_sim_leaf_runs_the_model_its_build_recorded(self):
         flow = resolve_dut(REPO_ROOT, "dtp")

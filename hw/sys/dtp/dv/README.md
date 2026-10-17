@@ -21,7 +21,7 @@ scenarios, knobs, evidence, and coverage modules.
 | The `tt-oca-manifest` submodule | every `run_dv.py` command | A member of the root `uv` workspace: without it `uv` cannot resolve the project and the launcher stops before any stage runs. Check it out once with `git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest` |
 | Verilator 5.052 | the cocotb realization | The release CI builds (`.github/actions/dv-run/action.yml`); the doctor rejects a release older than 5.036 |
 | Bender | the filelist stage | Must be on `PATH` |
-| VCS | `--framework uvm` | A licensed simulator; the runner's `uvm` framework runs on VCS only |
+| VCS | `--framework uvm` | A licensed simulator; the DTP `uvm` view runs on VCS only |
 | SymbiYosys (`sby`) | `--mode formal` | Yosys with the yosys-slang frontend and an SMT solver on the same `PATH` |
 
 Once `uv` and the submodule are in place,

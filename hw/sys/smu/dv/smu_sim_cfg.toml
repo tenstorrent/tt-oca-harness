@@ -671,8 +671,8 @@ flags = [
 # `include`s uvm/tests/smu_tests.sv.
 [frameworks.uvm]
 description = "SMU SV-UVM flow on the smu_wrapper (VCS)"
-# The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on the
-# commercial simulators only (Verilator has no SV-UVM support), so the overlay restates them.
+# The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on VCS
+# only, so the overlay restates them.
 default_tool = "vcs"
 tools = ["vcs"]
 

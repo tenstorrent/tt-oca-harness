@@ -178,7 +178,9 @@ build_dir = "hw/<category>/<dut>/dv/build/uvm"
 
 Do not redeclare what the profile owns: the `UVM` define, the tool
 allowlist, and the backend stage mechanics all come from
-`profiles/native.toml`. `run_dv.py --validate-configs` checks every listed
+`profiles/native.toml`. A view that also runs on Verilator is the exception:
+it lists `vcs` and `verilator` in its own `tools` and sets
+`license = "none"`. `run_dv.py --validate-configs` checks every listed
 path, including the manifest fragments.
 
 ==== Step 2: Give the shared testbench top its UVM harness block
