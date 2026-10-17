@@ -58,6 +58,7 @@ module i2c_controller_fsm
                                                                // units.
   input  logic [12:0]                               thd_dat_i, // Data hold time in clock units.
   input  logic                                      sda_interference_i, // SCL high and SDA does not match while transmitting.
+  input  logic                                      bus_timeout_i, // SCL held low past the bus timeout.
   input  logic [29:0]                               stretch_timeout_i, // Max clocks a target may stretch the clock.
   input  logic                                      timeout_enable_i, // Enables event_stretch_timeout_o.
   input  logic [30:0]                               host_nack_handler_timeout_i, // Clocks the FSM may stay halted on an unhandled
@@ -296,7 +297,8 @@ module i2c_controller_fsm
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
       trans_started <= '0;
-    end else if (trans_started && (!host_enable_i || event_arbitration_lost_o)) begin
+    end else if (trans_started &&
+                 (!host_enable_i || event_arbitration_lost_o || bus_timeout_i)) begin
       trans_started <= '0;
     end else if (log_start) begin
       trans_started <= 1'b1;
@@ -680,8 +682,8 @@ module i2c_controller_fsm
             // issue a Stop if software takes too long to address the NACK. A short timeout
             // could also be used to automatically issue a Stop whenever an unexpected NACK
             // occurs.
-            // Note that we may also halt here on a bus timeout or if arbitration was lost, so
-            // software may fix up the FIFOs before beginning a new transaction.
+            // A bus timeout or a lost arbitration also halts here, but those have already ended
+            // the transaction, so the next FMT entry must carry START.
             if (trans_started && unhandled_nak_cnt_expired) begin
               // If our timeout counter expires, generate a STOP condition automatically.
               auto_stop_d = 1'b1;
@@ -954,6 +956,7 @@ module i2c_controller_fsm
       end
       // ACTIVE: continue while keeping SCL low
       ACTIVE: begin
+        bit_clr = 1'b1;
         if (fmt_flag_read_bytes_i) begin
           byte_clr = 1'b1;
           state_d = READ_CLOCK_LOW;
@@ -1004,7 +1007,7 @@ module i2c_controller_fsm
       end
     endcase  // unique case (state_q)
 
-    if (trans_started && (sda_interference_i || ctrl_symbol_failed)) begin
+    if (trans_started && (sda_interference_i || ctrl_symbol_failed || bus_timeout_i)) begin
       state_d = IDLE;
     end
   end
