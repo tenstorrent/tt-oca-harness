@@ -35,7 +35,7 @@ schema_version = 1
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`,
-#     `wdt_uvm_extended`) and runs on demand.
+#     `wdt_uvm_extended`, `cg_uvm_extended`) and runs on demand.
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
@@ -126,6 +126,24 @@ timeout_sec = 1800
 tools = ["vcs"]
 tags = ["uvm", "wdt", "reset"]
 run_modes = ["smoke"]
+
+[[tests]]
+# Checks cold CSR wake and retirement through filter/remapper register gates.
+name = "smc_fabric_reg_clock_gate_test"
+module = { uvm = "smc_fabric_reg_clock_gate_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "clock"]
+run_modes = ["smoke"]
+
+[[groups]]
+# Register-clock gate mapping, traffic-bearing wakes and closure.
+name = "cg_uvm_extended"
+expected_count = 1
+tests = [
+    "smc_fabric_reg_clock_gate_test",
+]
 
 [[groups]]
 # Register-block CSR and pipelined lock scenarios.

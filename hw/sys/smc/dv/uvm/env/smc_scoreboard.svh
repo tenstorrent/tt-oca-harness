@@ -48,6 +48,12 @@
 //                Only OKAY writes update the model; other writers and reset
 //                with outstanding watchdog accesses are outside its contract.
 //
+//   fabric_reg   required-feature-only full-width accesses to five register
+//                words compare OKAY responses, including error observations.
+//                Reads compare defined RDL fields. The SEP_IN read helper
+//                checks X/Z; the passive monitor does not retain data X/Z masks.
+//                Only OKAY writes update the model; filter configuration is fixed.
+//
 // Accesses outside those windows carry no data contract here and are skipped
 // on the observed side. The cocotb twin is env/smc_scoreboard.py (its SysAxi
 // expected-value checks).
@@ -68,10 +74,18 @@
 `uvm_analysis_imp_decl(_smc_wdt_csr_observed)
 `uvm_analysis_imp_decl(_smc_wdt_csr_expected)
 
+`uvm_analysis_imp_decl(_smc_fabric_reg_observed)
+`uvm_analysis_imp_decl(_smc_fabric_reg_expected)
+
 class smc_scoreboard extends ocah_scoreboard;
   `uvm_component_utils(smc_scoreboard)
 
   smc_env_cfg cfg;
+
+  uvm_analysis_imp_smc_fabric_reg_observed #(ocah_axi_item, smc_scoreboard)
+      fabric_reg_observed_export;
+  uvm_analysis_imp_smc_fabric_reg_expected #(ocah_axi_item, smc_scoreboard)
+      fabric_reg_expected_export;
 
   uvm_analysis_imp_smc_scratch_observed #(ocah_axi_item, smc_scoreboard) scratch_observed_export;
   uvm_analysis_imp_smc_scratch_expected #(ocah_axi_item, smc_scoreboard) scratch_expected_export;
@@ -121,6 +135,9 @@ class smc_scoreboard extends ocah_scoreboard;
     add_feature(SmcFeatureMutexSema);
     add_feature(SmcFeatureSpmMem);
     add_feature(SmcFeatureRegblockWide);
+    fabric_reg_observed_export = new("fabric_reg_observed_export", this);
+    fabric_reg_expected_export = new("fabric_reg_expected_export", this);
+    add_feature(SmcFeatureFabricReg);
     add_feature(SmcFeatureWdtCsr);
     foreach (cfg.required_features[i]) require_feature(cfg.required_features[i]);
   endfunction
@@ -246,6 +263,44 @@ class smc_scoreboard extends ocah_scoreboard;
         $sformatf("WDT%0d offset=0x%0h %s", core, offset, direction_label));
   endfunction
 
+  function void write_smc_fabric_reg_observed(ocah_axi_item t);
+    int unsigned index;
+    bit enabled = 0;
+    foreach (cfg.required_features[i]) begin
+      if (cfg.required_features[i] == SmcFeatureFabricReg) enabled = 1;
+    end
+    if (enabled && smc_is_fabric_reg_access(t, index)) push_observed(SmcFeatureFabricReg, t);
+  endfunction
+
+  function void write_smc_fabric_reg_expected(ocah_axi_item t);
+    push_expected(SmcFeatureFabricReg, t);
+  endfunction
+
+  protected function void compare_fabric_reg_pair(ocah_axi_item obs, ocah_axi_item exp);
+    smc_fabric_reg_entry_t entries[$];
+    int unsigned index;
+    bit passed = smc_is_fabric_reg_access(obs, index);
+    bit [63:0] mask;
+    string direction_label = obs.direction == OCAH_AXI_DIR_READ ? "read" : "write";
+    smc_fabric_reg_catalog(entries);
+    if (!passed) begin
+      record_compare(SmcFeatureFabricReg, 0, "catalogued single beat", "unsupported shape");
+      return;
+    end
+    mask = entries[index].read_mask;
+    passed = obs.direction == exp.direction && obs.address === exp.address &&
+             obs.size == exp.size && obs.resp_list.size() == 1 &&
+             exp.resp_list.size() == 1 && !obs.timed_out && !obs.any_resp_xz();
+    if (passed) passed = obs.resp_list[0] == exp.resp_list[0];
+    if (passed && obs.direction == OCAH_AXI_DIR_READ)
+      passed = (obs.first_data() & mask) === (exp.first_data() & mask);
+    record_compare(
+        SmcFeatureFabricReg, passed, $sformatf(
+        "data=0x%016h resp=%s", exp.first_data(), exp.worst_resp().name()), $sformatf(
+        "data=0x%016h resp=%s", obs.first_data(), obs.worst_resp().name()), $sformatf(
+        "%s %s addr=0x%0h mask=0x%016h", entries[index].name, direction_label, obs.address, mask));
+  endfunction
+
   // The CSR features compare 32-bit register lanes within each 64-bit beat.
   // SPM and wide register-block features compare complete 64-bit beats.
   virtual function void compare_pair(string feature, uvm_object observed, uvm_object expected);
@@ -254,10 +309,14 @@ class smc_scoreboard extends ocah_scoreboard;
     if (feature != SmcFeatureScratchCsr && feature != SmcFeatureDefaultReg &&
         feature != SmcFeatureLockCsr && feature != SmcFeatureMutexSema &&
         feature != SmcFeatureSpmMem && feature != SmcFeatureRegblockWide &&
-        feature != SmcFeatureWdtCsr)
+        feature != SmcFeatureWdtCsr && feature != SmcFeatureFabricReg)
       `uvm_fatal(get_type_name(), $sformatf("no compare for feature `%s`", feature))
     if (!$cast(obs, observed) || !$cast(exp, expected))
       `uvm_fatal(get_type_name(), {feature, " pair is not a pair of ocah_axi_item"})
+    if (feature == SmcFeatureFabricReg) begin
+      compare_fabric_reg_pair(obs, exp);
+      return;
+    end
     if (feature == SmcFeatureWdtCsr) begin
       compare_wdt_csr_pair(obs, exp);
       return;

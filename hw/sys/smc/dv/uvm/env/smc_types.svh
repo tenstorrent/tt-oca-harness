@@ -114,6 +114,108 @@ localparam string SmcFeatureSpmMem = "spm_mem";
 localparam string SmcFeatureRegblockWide = "regblock_wide";
 localparam string SmcFeatureWdtCsr = "wdt_csr";
 
+localparam string SmcFeatureFabricReg = "fabric_reg";
+
+// smc-clock-distribution.svg names the domains clocked by these gates.
+typedef enum int unsigned {
+  SMC_CG_SYS_OUT_FILTER,
+  SMC_CG_OB_FILTER,
+  SMC_CG_SYS_IN_FILTER,
+  SMC_CG_IB_FILTER,
+  SMC_CG_MMODE_REMAP,
+  SMC_CG_XVISOR_REMAP,
+  SMC_CG_ALIAS_REMAP,
+  SMC_CG_FABRIC
+} smc_fabric_gater_e;
+localparam int unsigned SmcFabricGaters = 8;
+localparam int unsigned SmcFabricRegWords = 5;
+localparam int unsigned SmcCgFilterEntry =
+    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_NUM) - 1;
+localparam int unsigned SmcCgRemapRegion =
+    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_NUM) - 1;
+
+typedef struct {
+  string name;
+  bit [63:0] addr;
+  bit [63:0] reset_value;
+  bit [63:0] write_mask;
+  bit [63:0] read_mask;
+  smc_fabric_gater_e domain;
+} smc_fabric_reg_entry_t;
+
+function automatic bit [63:0] smc_cg_filter_config(bit inbound);
+  if (inbound)
+    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+        SmcCgFilterEntry
+    );
+  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+      SmcCgFilterEntry
+  );
+endfunction
+
+function automatic bit [63:0] smc_cg_filter_end(bit inbound);
+  if (inbound)
+    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(
+        SmcCgFilterEntry
+    );
+  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(SmcCgFilterEntry);
+endfunction
+
+function automatic void smc_fabric_reg_catalog(ref smc_fabric_reg_entry_t entries[$]);
+  entries.delete();
+  entries.push_back(
+      '{"OB_FILTER.START",
+      smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(SmcCgFilterEntry),
+      FILTER_CTRL_START_ADDR_REG_DEFAULT, FILTER_CTRL_START_ADDR_START_ADDR_MASK,
+      FILTER_CTRL_START_ADDR_START_ADDR_MASK, SMC_CG_OB_FILTER});
+  entries.push_back(
+      '{"IB_FILTER.START",
+      smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(SmcCgFilterEntry),
+      FILTER_CTRL_START_ADDR_REG_DEFAULT, FILTER_CTRL_START_ADDR_START_ADDR_MASK,
+      FILTER_CTRL_START_ADDR_START_ADDR_MASK, SMC_CG_IB_FILTER});
+  entries.push_back(
+      '{"ALIAS.REGION_START",
+      smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(SmcCgRemapRegion),
+      REMAP_REGION_REGION_START_REG_DEFAULT, REMAP_REGION_REGION_START_START_ADDR_MASK,
+      REMAP_REGION_REGION_START_START_ADDR_MASK, SMC_CG_ALIAS_REMAP});
+  entries.push_back(
+      '{"MMODE.REGION_ATTRS",
+      smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR(SmcCgRemapRegion),
+      OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+      OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK | OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
+      OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK | OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
+      SMC_CG_MMODE_REMAP});
+  entries.push_back(
+      '{"XVISOR.REGION_ATTRS",
+      smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR(SmcCgRemapRegion),
+      OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+      OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK | OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
+      OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK | OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
+      SMC_CG_XVISOR_REMAP});
+endfunction
+
+function automatic bit smc_fabric_reg_lookup(bit [63:0] addr, output int unsigned index);
+  smc_fabric_reg_entry_t entries[$];
+  smc_fabric_reg_catalog(entries);
+  foreach (entries[i]) begin
+    if (entries[i].addr == addr) begin
+      index = i;
+      return 1;
+    end
+  end
+  return 0;
+endfunction
+
+// Every catalogued full-width single-beat access reaches comparison, even on
+// an error response. Only OKAY full-strobe writes update the model's shadow.
+function automatic bit smc_is_fabric_reg_access(ocah_axi_item t, output int unsigned index);
+  if (!smc_fabric_reg_lookup(t.address, index)) return 0;
+  return t.size == SmcMemSize && t.expected_beats == 1 && t.beat_count() == 1 &&
+         t.data_words.size() == 1 &&
+         (t.direction == OCAH_AXI_DIR_READ ||
+          (t.strobes.size() == 1 && t.strobes[0] == 8'hFF));
+endfunction
+
 localparam bit [63:0] SmcZeroerDestAddr =
     64'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR);
 localparam bit [63:0] SmcZeroerSizeAddr =
