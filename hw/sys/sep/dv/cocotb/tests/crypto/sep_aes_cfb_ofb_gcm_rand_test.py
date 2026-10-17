@@ -426,13 +426,14 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
         return words_to_bytes([await self.aes._rd(AES_DATA_OUT_0 + 4 * i) for i in range(4)])
 
     async def _phase_blocks(self, phase: int, data: bytes, *, read: bool) -> bytes:
-        """Write ``data`` in one GCM phase; the last block carries its byte count."""
+        """Write ``data`` in one GCM phase entered with NUM_VALID_BYTES = 16; a partial
+        last block gets its byte count after IDLE, as the programmer's guide states."""
         out = b""
         blocks = _blocks(data)
         n, last_len = len(blocks), len(blocks[-1])
-        await self._gcm_phase(phase, last_len if n == 1 else 16)
+        await self._gcm_phase(phase)
         for i, blk in enumerate(blocks):
-            if n > 1 and i == n - 1 and last_len < 16:
+            if i == n - 1 and last_len < 16:
                 await self._gcm_phase(phase, last_len)
             await self._write_block(blk)
             if read:
