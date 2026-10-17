@@ -219,8 +219,8 @@ belongs on a CSR vehicle. `cp_op` and the decrypt cells are owned by
 `sep_aes_mode_keysize_rand_test` CHK-CELL (the engine round trip);
 `cp_sideload.km_key` by `sep_km_aes_sideload_kat_test` and
 `sep_km_command_set_rand_test`. The ciphertext-equals-golden and
-round-trip-equals-plaintext claims stay on those tests. The GCM phases are
-Phase 2.
+round-trip-equals-plaintext claims stay on those tests. CFB, OFB and GCM are
+in the Phase 2 group `sep_aes_cfb_ofb_gcm_cg`.
 
 ==== `sep_hmac_mode_cg`
 
@@ -966,7 +966,7 @@ seed-dependent bin. The SPI and DMA area writes the mark as the status
 [cols="2,6",options="header"]
 |===
 |Area |Coverpoints
-|<<sep-fcov-p2-crypto-entropy,Crypto and entropy>> |`cp_detune_lane`, `cp_window_class`, `x_gen_latch` (the cleared lane bins), `cp_alert_threshold`, `cp_active_sinks`, `x_op_protocol` (the re-arm and single-step cells), `cp_verify_outcome` (the reason-class bins)
+|<<sep-fcov-p2-crypto-entropy,Crypto and entropy>> |`cp_mode`, `cp_key`, `cp_op` and `x_mode_key_op` of `sep_aes_cfb_ofb_gcm_cg`, `cp_detune_lane`, `cp_window_class`, `x_gen_latch` (the cleared lane bins), `cp_alert_threshold`, `cp_active_sinks`, `x_op_protocol` (the re-arm and single-step cells), `cp_verify_outcome` (the reason-class bins)
 |<<sep-fcov-p2-fabric-remap,Fabric and remap>> |`cp_smc_cfg_class_dir`, `sil_out_on_smc_route`, `sil_smc_outside_aperture` (the above-top bin)
 |<<sep-fcov-p2-mailbox-irq-pic,Mailbox, IRQ, PIC>> |`cp_winner`, `cp_nmi_target` (the trampoline-copy bins), `x_case_taken` (cases b to d), `cp_vec_unchanged` (cases b and c), `cp_level_val` (the encodings 2 to 13), `x_level_class_order` (the interior cells), `cp_thresh_val` (the values 1, 6, 9 and other), `x_op_offset`
 |<<sep-fcov-p2-spi-dma,SPI and DMA>> |`cp_len` (bins `b64` to `b4096`), `cp_irq_x_enable`, `cp_len_x_kind`, `cp_csaat_x_dir`, `cp_clkdiv_x_speed`, `cp_mode8`, `cp_mode_x_dir`, `cp_clkdiv_class`, `cp_csn_class`, `cp_cpha_edge`, `x_width_dir_test` (the `pad_timing_cfg` cells), `cp_clear_form`, `cp_mode_x_width`, `cp_mode_x_chunkcount`, `cp_wrap_independence`, `cp_abort_phase`, `cp_inrange_pos_x_side`, `cp_msg_len_class`
@@ -1008,6 +1008,7 @@ count values, not behaviour.
 |Other RANDCFG leaves |Key, data, operand, token and address values; sweep order; bit offsets inside a walked field |None: values inside a fixed contract that the checker reads back
 |`sep_aes_reseed_trigger_rand_test` |One multi-hot invalid reseed-rate code of four |`sep_crypto_invalid_encoding_cg.x_aes_invalid_map` (multi-hot class), on every seed. No bin per code
 |`sep_abr_command_matrix_rand_test` |Single-step cell, re-arm of each trial, predecessor of each trial, reason class and row of the ACVP ML-DSA reject case, the two ACVP ML-KEM modified-ciphertext rows |`sep_abr_completion_cg.x_op_protocol` (the re-arm cells of the combined operations and the single-step cells) and `cp_verify_outcome` (the reason-class bins), seed-dependent. The blocked cells and `cp_combined_cmd` fill on every seed. The predecessor, the row inside a reason class and the ML-KEM rows have no bin
+|`sep_aes_cfb_ofb_gcm_rand_test` |Mode {CFB, OFB, GCM}, key size, direction; key, IV, input; GCM AAD and text lengths |`sep_aes_cfb_ofb_gcm_cg.x_mode_key_op`, seed-dependent (one cell per leaf). The key, IV, input bytes and the GCM lengths have no bin: the check reads back the result of each value
 |`sep_esrc_health_pattern_rand_test` |Lane and window of each pattern trial |`sep_esrc_fault_alert_cg.x_gen_latch` (the cleared lane bins) and `sep_esrc_startup_health_cg.cp_window_class` (above 2048), seed-dependent
 |`sep_esrc_persistent_alert_rand_test` |Third threshold, 4, 5 or 7 |`sep_esrc_fault_alert_cg.cp_alert_threshold` (bins 5 and 7), seed-dependent
 |`sep_esrc_autotune_detune_test` |Detuned lane |`sep_esrc_noise_gen_cg.cp_detune_lane`, seed-dependent
@@ -1706,10 +1707,12 @@ bin.
 * An extension leg that runs in the testlist entry of an open test writes the
 code of its own Phase 3 entry for its leg only. The steps of the open test run
 with the window closed.
-* The SPI lane and output-enable groups (<<sep-fcov-spi-lane>>) are the one
-exception to the next rule: they sample a record that the leaf writes after its
-check passed, and the owner code of the record is the test dimension of
-`sep_spi_lane_data_cg`.
+* The SPI lane and output-enable groups (<<sep-fcov-spi-lane>>) and
+`sep_aes_cfb_ofb_gcm_cg` are the exceptions to the next rule: they sample a
+record that the leaf writes after its check passed, and the record carries the
+owner code. The owner code of an SPI record is the test dimension of
+`sep_spi_lane_data_cg`. `sep_aes_cfb_ofb_gcm_cg` still bins the committed AES
+control and samples only when the record matches it.
 * The gate is not a bin dimension, a checker verdict or a scoreboard count. A bin
 still samples a DUT signal, and the gate only enables the sample.
 * Outcome bounds. Where a row grades a DUT outcome inside a bound that the owner
@@ -1729,7 +1732,7 @@ does not use the `in_reset` gate of Phase 1. The graded window still applies.
 |===
 |Area |Groups
 |<<sep-fcov-p2-crypto-entropy,Crypto and entropy>>
-|`sep_crypto_bus_access_cg`, `sep_crypto_reset_cg`, `sep_crypto_intr_cg`, `sep_crypto_invalid_encoding_cg`, `sep_aes_cfg_cg`, `sep_aes_op_status_cg`, `sep_aes_fault_cg`, `sep_crypto_reg_lock_cg`, `sep_crypto_alert_cg`, `sep_kmac_cfg_cmd_cg`, `sep_kmac_entropy_cg`, `sep_otbn_err_lock_cg`, `sep_hmac_cfg_op_cg`, `sep_otbn_op_cg`, `sep_abr_completion_cg`, `sep_esrc_noise_gen_cg`, `sep_esrc_startup_health_cg`, `sep_esrc_fault_alert_cg`, `sep_esrc_conditioning_cg`, `sep_drbg_err_inject_cg`, `sep_csrng_cmd_cg`, `sep_edn_mode_cg`, `sep_entropy_delivery_cg`
+|`sep_crypto_bus_access_cg`, `sep_crypto_reset_cg`, `sep_crypto_intr_cg`, `sep_crypto_invalid_encoding_cg`, `sep_aes_cfg_cg`, `sep_aes_op_status_cg`, `sep_aes_fault_cg`, `sep_aes_cfb_ofb_gcm_cg`, `sep_crypto_reg_lock_cg`, `sep_crypto_alert_cg`, `sep_kmac_cfg_cmd_cg`, `sep_kmac_entropy_cg`, `sep_otbn_err_lock_cg`, `sep_hmac_cfg_op_cg`, `sep_otbn_op_cg`, `sep_abr_completion_cg`, `sep_esrc_noise_gen_cg`, `sep_esrc_startup_health_cg`, `sep_esrc_fault_alert_cg`, `sep_esrc_conditioning_cg`, `sep_drbg_err_inject_cg`, `sep_csrng_cmd_cg`, `sep_edn_mode_cg`, `sep_entropy_delivery_cg`
 |<<sep-fcov-p2-fabric-remap,Fabric and remap>>
 |`sep_fabric_inbound_aperture_cg`, `sep_fabric_outbound_route_cg`, `sep_remap_output_offset_cg`, `sep_remap_alias_cg`, `sep_filter_match_cg`, `sep_filter_range_granule_cg`, `sep_filter_default_policy_cg`, `sep_fabric_dedicated_port_cg`, `sep_dma_endpoint_cg`, `sep_aperture_reserved_access_cg`, `sep_crypto_bus_access_cg`, `sep_fabric_port_silence_cp`
 |<<sep-fcov-p2-mailbox-irq-pic,Mailbox, IRQ, PIC>>
@@ -1759,7 +1762,9 @@ covergroup in `cov/sv/sep_fcov.sv` under `ifndef VERILATOR`.
 ===== Sampling rules
 
 . Every coverpoint samples a DUT signal. No coverpoint samples a log line or a
-scoreboard count.
+scoreboard count. `sep_aes_cfb_ofb_gcm_cg` samples the committed AES control
+and is gated by a record that its owner writes after its golden compare passed
+(see that group).
 . Every coverpoint is a VCS covergroup in the sampler under `ifndef VERILATOR`.
 The graded VCS coverage run builds `--target default`. In `no_cpu` mode the
 LSU master is spliced onto the CPU bus of that build.
@@ -2075,6 +2080,39 @@ restore. `OT` aes (`CTRL_SHADOWED`, `CTRL_AUX_SHADOWED`, `CTRL_AUX_REGWEN`,
 |`x_shadow_pair_aux` |`CTRL_AUX_SHADOWED` x pair {matched: no pulse on vector bit 32 and the next read of the register returns the written value; mismatched: a pulse on vector bit 32 within `CyAlertBound` clocks of the second write} (`aes.hjson:825-826`). 2 cells. The update-error status bit is not part of the outcome (`aes.hjson:995` names the Control Register only) |`csr_lsu` (`AES_CTRL_AUX_SHADOWED`), `intr_vec` |executable. Stimulus: Walk
 |`cp_update_err_recovery` |Update error 1, then a `CTRL_SHADOWED` rewrite clears it, then an AES block reaches `OUTPUT_VALID`. 1 bin |`aes_ctrl_strobe`, `aes_fault`, `aes_status` |executable. Stimulus: Walk
 |`cp_reset_restore` |After `aes_gated_rst_n` rises: {update error 0, armed by update error 1 before the reset; a new AUX pair lands, armed by `CTRL_AUX_REGWEN` 0 before the reset}. 2 bins. The AUX register value after the reset is logged by the owner and graded by another test, so it is not a bin |`ip_rst`, `aes_fault`, `aes_aux_regwen` |executable. Stimulus: Defined
+|===
+
+===== `sep_aes_cfb_ofb_gcm_cg`
+
+*Description*: AES CFB-128, OFB and GCM, encrypt and decrypt, at key sizes 128,
+192 and 256, where the output equals the NIST golden. `SPEC` `aes.adoc`
+(Features); `OT` aes (`aes.hjson`: AES.MODE.CFB-128, AES.MODE.OFB,
+AES.MODE.GCM, `CTRL_SHADOWED`, `CTRL_GCM_SHADOWED`). The golden is NIST SP
+800-38A (CFB-128, OFB) and SP 800-38D (GCM), `hw/sys/sep/dv/cocotb/env/sep_aes_mode_golden.py`.
+
+*Owning tests*: `sep_aes_cfb_ofb_gcm_rand_test` (owner code 154 in
+`tb/sep_fcov_owner_codes.svh`). *Tool*: VCS. *Class*: executable.
+
+The sampler cannot compare a data block with the golden, so the group records a
+check that passed, as the SPI lane groups do (<<sep-fcov-spi-lane>>). After
+CHK-AES-CFB, CHK-AES-OFB, or both CHK-AES-GCM lines (text and tag) pass, the
+owner writes one record into the `sep_fcov` variables `aes_mx_owner` (its owner
+code), `aes_mx_mode`, `aes_mx_key` and `aes_mx_op` (the `CTRL_SHADOWED` MODE,
+KEY_LEN and OPERATION codes of the cell) through the `u_sep_fcov` handle and adds
+1 to `aes_mx_seq` (`aes_mode_fcov` in the leaf). `sep_fcov.sv` samples once on
+the first `clk_i` edge that sees a new `aes_mx_seq`. The sample is valid only
+when the owner code matches and the three record codes equal the committed
+control `aes_ctrl` (`aes_mode_q`, `key_len_q`, `aes_op_q`); the bins take their
+values from `aes_ctrl`. A failing check writes no record, so it fills no bin.
+The variables drive nothing. On Verilator the leaf writes nothing.
+
+[cols="1,4,2,1",options="header"]
+|===
+|Coverpoint |Bins |Sampled signal |Class and stimulus
+|`cp_mode` |Committed MODE {AES_CFB, AES_OFB, AES_GCM}. 3 bins. It extends `sep_aes_mode_cg` `cp_mode`, which bins ECB, CBC and CTR |`aes_ctrl` (`aes_mode_q`) |executable. Stimulus: Seed-dependent (see `x_mode_key_op`)
+|`cp_key` |Committed KEY_LEN {AES_128, AES_192, AES_256}. 3 bins |`aes_ctrl` (`key_len_q`) |executable. Stimulus: Seed-dependent (see `x_mode_key_op`)
+|`cp_op` |Committed OPERATION {AES_ENC, AES_DEC}. 2 bins |`aes_ctrl` (`aes_op_q`) |executable. Stimulus: Seed-dependent (see `x_mode_key_op`)
+|`x_mode_key_op` |`cp_mode` x `cp_key` x `cp_op`. 18 cells. Each cell is one run whose every DATA_OUT block (CFB, OFB) or every TEXT-phase block and the tag (GCM) equals the golden. CFB and GCM decrypt differ from encrypt (CFB feeds back the input block, the GCM tag covers the input text). OFB decrypt has the same golden as OFB encrypt, so its cells prove that a run programmed with AES_DEC uses the forward cipher, not that OPERATION reaches the core |`aes_ctrl`, gated by the owner record |executable. Stimulus: Seed-dependent: the owner draws one cell per leaf, each with a probability of 1/18, so no cell fills on every seed and the 18 cells close in about 18 * H(18) = 63 leaf runs, that is about 63 / reseed regressions
 |===
 
 ===== `sep_crypto_reg_lock_cg`
@@ -2431,6 +2469,7 @@ of `sep_esrc_edn_flow_cg` fills from the same runs as `cp_pool_pop` below.
 |===
 |Owning test |Phase 1 group |Phase 2 coverpoint
 |`sep_crypto_delivered_key_select_rand_test` |`sep_aes_mode_cg` `cp_sideload` |`sep_aes_cfg_cg` `x_key_source` (cell: software key with a valid delivered key), `cp_sideload_no_key`
+|`sep_aes_cfb_ofb_gcm_rand_test` |`sep_aes_mode_cg` `cp_mode`, `cp_key`, `cp_op` |`sep_aes_cfb_ofb_gcm_cg` (all coverpoints)
 |`sep_otbn_cmd_status_rand_test` |`sep_otbn_execute_cg` |`sep_otbn_op_cg` (all coverpoints)
 |`sep_abr_command_matrix_rand_test` |`sep_abr_keygen_cg`, `sep_abr_sign_cg`, `sep_abr_mlkem_cg` |`sep_abr_completion_cg` (all coverpoints)
 |`sep_trng_ext_stream_handshake_rand_test` |`sep_esrc_edn_flow_cg` `cp_pool_pop` |`sep_entropy_delivery_cg` `cp_pool_pop`
@@ -2448,9 +2487,9 @@ no bin, for the reason given.
 |Group |Cells without a bin |Reason
 |`sep_crypto_invalid_encoding_cg` |A `hash_continue` with a blocked configuration |No owner drives `hash_continue` with a blocked configuration
 |`sep_crypto_intr_cg` |ESRC line check onto PIC source 16; ABR sources; HMAC and KMAC `fifo_empty` unmet conditions (second and third condition); hardware raise of kmac_fifo_empty, cs_entropy_req and cs_hw_inst_exc; enable flip and write-one clear of the two `fifo_empty` bits; the `INTR_TEST` raise of each ESRC source alone (graded by `sep_esrc_alert_delivery_test`); the 8 ESRC cells (status 1, enable 0) of `x_esrc_status_enable`; the cell (0, 0) of hmac_err, the four CSRNG sources and the two EDN sources in `x_line_gate`; the cells (0, 0) and (0, 1) of the two `fifo_empty` sources in `x_line_gate`; the cell (1, 1) of hmac_err, cs_entropy_req and cs_hw_inst_exc in `x_line_gate`; the hardware raise of `FIFO_UNDERFLOW` in `cp_esrc_raise_path` |The line is not observable. Whether an ESRC status bit latches while its enable bit is clear is a Blocked specification question (VPLAN Phase 3 Blocked features); the owner logs those status reads and every ESRC owner grades a status bit with its enable set. No test drives ABR errors. No stimulus for the unmet conditions or for the three hardware raises (an ignored command is not stated as a hardware exception). Retention of a forced read-only bit is blocked. The open interrupt test grades the line low with the state and the enable at 0 for the seven sources that it walks, so the extension leg runs that cell as a control. No owner drives a `fifo_empty` status of 0: the owner of the two `fifo_empty` sources makes the status 1 from the FIFO and grades the enable-1 and enable-0 cells of state 1 only. No hardware-fill owner raises hmac_err with its enable set, and no owner raises cs_entropy_req or cs_hw_inst_exc from hardware; the open interrupt tests grade the cell (1, 1) of these three sources with `INTR_TEST`. The hardware raise of `FIFO_UNDERFLOW` is a control of `sep_esrc_fifo_flow_rand_test`, and `sep_esrc_e2e_fifo_closed_test` grades it
-|`sep_aes_cfg_cg` |GCM phases, `NUM_VALID_BYTES`, key length cells, mode x operation cells; the `DATA_OUT_CLEAR` cell of `cp_clear_trigger` and the `DATA_OUT` and `IV` values after a clear trigger |No Phase 3 test drives GCM. The open mode test fills the cipher cells. The register text states a clear with pseudo-random data and no value or status effect, so the owner logs the values and grades the encryption after the key clear only
+|`sep_aes_cfg_cg` |GCM phases, `NUM_VALID_BYTES`, key length cells, mode x operation cells; the `DATA_OUT_CLEAR` cell of `cp_clear_trigger` and the `DATA_OUT` and `IV` values after a clear trigger |`sep_aes_cfb_ofb_gcm_rand_test` runs the GCM phases and `NUM_VALID_BYTES` as the stimulus of its golden compare, and `sep_aes_cfb_ofb_gcm_cg` records the mode x key length x operation cells of CFB, OFB and GCM; no bin records a phase or a byte count. The open mode test fills the ECB, CBC and CTR cells. The register text states a clear with pseudo-random data and no value or status effect, so the owner logs the values and grades the encryption after the key clear only
 |`sep_aes_op_status_cg` |`IDLE` causes "register clearing" and "PRNG reseeding"; register group completeness; busy writes; `OUTPUT_VALID` falling after a partial read of `DATA_OUT` |The owner checks the encrypt and stall causes only. The register text states no fall condition.
-|`sep_aes_fault_cg` |`CTRL_GCM_SHADOWED`; secret register scrub on reset; `ALERT_FATAL_FAULT` stays 0 |No Phase 3 test drives GCM. The scrub values are not stated. The fatal input is tied off and has no control window
+|`sep_aes_fault_cg` |`CTRL_GCM_SHADOWED` pairs; secret register scrub on reset; `ALERT_FATAL_FAULT` stays 0 |No Phase 3 test writes a mismatched `CTRL_GCM_SHADOWED` pair; `sep_aes_cfb_ofb_gcm_rand_test` writes matched pairs only. The scrub values are not stated. The fatal input is tied off and has no control window
 |`sep_crypto_reg_lock_cg` |CSRNG lock cells of `CMD_REQ`, `INT_STATE_READ_ENABLE`, `INT_STATE_READ_ENABLE_REGWEN`, `HW_EXC_STS`, `RECOV_ALERT_STS`, `ERR_CODE_TEST`; 36 of the 39 locked ESRC fields; the `FIPS_LOCK` write-one, write-zero and reset behaviour; `LOCK` set with `HEALTH_TEST_WINDOW_SIZE` of at least 1024 and the unlocked `MODULE_ENABLE` write (the lock set is graded by `sep_esrc_fips_lock_test`, no check grades the window size at the lock, and the unlocked write is a control of `sep_esrc_csr_rw_walk_rand_test`) |The owner drives two CSRNG registers and one EDN register. An open test grades the locked fields and the lock behaviour.
 |`sep_crypto_alert_cg` |The update error of the KMAC shadow pairs (`CFG_SHADOWED`, `ENTROPY_REFRESH_THRESHOLD_SHADOWED`), which the owner logs and does not grade, because the text does not state its cause; the kind of each `ALERT_TEST` bit and the receiver index that it reaches; the receiver range of an alert; CSRNG and EDN field alerts, the CSRNG command alerts, the status codes and EDN `CSRNG_ACK_ERR` as alert cells (they are bins of `sep_csrng_cmd_cg` and `sep_edn_mode_cg`); `CS_BUS_CMP_ALERT`; `HW_EXC_STS` bit 0, `CS_HW_INST_EXC` and `CMD_RDY` after an ignored instantiate |The map from an `ALERT_TEST` bit to a receiver index is not stated. `CS_BUS_CMP_ALERT` needs two equal consecutive genbits words, a chance outcome. The CSRNG text states that bit 14 sets and that the command is ignored, and no acknowledge or hardware-exception status.
 |`sep_kmac_cfg_cmd_cg` |`msg_mask` x `entropy_fast_process` (they act only in KMAC mode; the keyed digest is graded by an open test); PREFIX, key length, key source, application interface, pass-through quirk, command x stage cells of `err_processed`, `hash_cnt_clr`, `entropy_req` |Open Phase 1 tests fill the PREFIX and key cells. No check for the rest

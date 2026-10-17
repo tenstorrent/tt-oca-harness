@@ -44,6 +44,7 @@ localparam int unsigned FcovOwnSepDrbgCmdSequenceRandTest = 150;
 localparam int unsigned FcovOwnSepTrngExtStreamHandshakeRandTest = 151;
 localparam int unsigned FcovOwnSepTrngExtSinkResetRandTest = 152;
 localparam int unsigned FcovOwnSepDrbgSinkMixRandTest = 153;
+localparam int unsigned FcovOwnSepAesCfbOfbGcmRandTest = 154;
 
 // Fabric and remap.
 localparam int unsigned FcovOwnSepFabricInboundRebaseTest = 225;
