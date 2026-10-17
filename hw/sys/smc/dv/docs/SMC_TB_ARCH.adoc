@@ -749,10 +749,13 @@ Its first/second-timeout taps mirror the existing live `tb_wdt_*` signals;
 records the selected first timeout, second timeout and WDT/warm reset edges
 while rejecting unknown signals or primary reset. CSR service stops before
 the reset window; the scenario resumes accesses only after warm/fuse release.
-No watchdog CSR scoreboard feature is required by this scenario; sequence
-checks grade the live timeout/reset observations and CSR responses.
-Post-warm timeout and watchdog CSR values are observations only; explicit
-watchdog configuration and timeout programming establish the next baseline.
+The scenario requires `wdt_csr`, whose model resets its shadow on warm reset.
+Non-reset CMP markers on all cores make post-warm default readbacks
+discriminating; CTRL and COUNT are additionally exercised on the rotating
+selected core. Sequence checks grade CTRL/COUNT/CMP defaults before explicit
+rebaseline; the model independently grades CTRL/CMP and access responses.
+CPU_CTRL timeout retention remains an observation rather than a verdict.
+Explicit watchdog configuration and timeout programming establish the next baseline.
 
 The fabric-register gate scenario reads eight pairs of `smc_tb_if.cg_clk_active`
 and `cg_bus_active` taps bound to the filter, remapper and output-fabric activity
