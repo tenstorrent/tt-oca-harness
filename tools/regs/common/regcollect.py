@@ -12,7 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from systemrdl import RDLListener
-from systemrdl.node import SignalNode
+from systemrdl.node import FieldNode, SignalNode
+from systemrdl.rdltypes import PropertyReference, UserEnum
 
 from .fieldprops import extract_field_props
 
@@ -22,17 +23,20 @@ class FieldInfo:
     name: str
     high: int
     low: int
-    reset: object  # int, or SignalNode when reset is hardware-driven
+    reset: int | None  # None when the field has no constant reset value
     sw: str
+    hw: str
     onwrite: str
     onread: str
     singlepulse: bool
+    volatile: bool
 
 
 @dataclass
 class RegTypeInfo:
     address: int
     regwidth: int
+    path: str  # instance whose fields are recorded, named when another disagrees
     fields: list = field(default_factory=list)  # FieldInfo, low-to-high
 
 
@@ -44,17 +48,53 @@ class RegInstInfo:
     address: int
 
 
-def field_access_key(field_info: FieldInfo) -> tuple:
-    """Field identity and software-visible access properties, excluding reset."""
-    return (
-        field_info.name,
-        field_info.high,
-        field_info.low,
-        field_info.sw,
-        field_info.onwrite,
-        field_info.onread,
-        field_info.singlepulse,
-    )
+# Field identity, access properties and reset every instance of a type must agree on.
+FIELD_ACCESS_PROPS = (
+    "name",
+    "high",
+    "low",
+    "sw",
+    "hw",
+    "onwrite",
+    "onread",
+    "singlepulse",
+    "volatile",
+    "reset",
+)
+
+
+def check_same_fields(type_name: str, known: RegTypeInfo, path: str, fields: list) -> None:
+    """Raise when instance `path` of `type_name` disagrees with the one in `known`."""
+    where = f"register type '{type_name}' ({known.path} vs {path})"
+    if len(known.fields) != len(fields):
+        raise ValueError(f"{where}: {len(known.fields)} fields vs {len(fields)}")
+    for old, new in zip(known.fields, fields):
+        for prop in FIELD_ACCESS_PROPS:
+            if getattr(old, prop) != getattr(new, prop):
+                raise ValueError(
+                    f"{where}: field '{old.name}' {prop} {getattr(old, prop)!r} "
+                    f"vs {getattr(new, prop)!r}"
+                )
+
+
+def constant_reset(node, reset) -> int | None:
+    """Integer reset of a field, or None when a signal, field or property drives it."""
+    if reset is None or isinstance(reset, (SignalNode, FieldNode, PropertyReference)):
+        return None
+    if isinstance(reset, UserEnum):
+        return reset.value
+    if isinstance(reset, int):
+        return reset
+    raise ValueError(f"field '{node.get_path()}' has an unsupported reset {reset!r}")
+
+
+def reg_type_name(node) -> str:
+    """Flattened register type name: the parent's type, then the register's."""
+    # Prefer orig_type_name; type_name may carry a hash when properties are dynamic.
+    fullname = node.parent.type_name.removesuffix("_ispresent_t").upper()
+    if node.orig_type_name is None:
+        return fullname + "_" + node.type_name
+    return fullname + "_" + node.orig_type_name.upper()
 
 
 def path_minus_root(node) -> str:
@@ -71,8 +111,8 @@ def def_name(node, shorten_names: bool) -> str:
 class FieldCollector(RDLListener):
     """Collect per-type field layouts and per-instance shapes under a target addrmap.
 
-    Subclasses may override enter_* methods for text emission; call super() first
-    so collection stays consistent.
+    Subclasses may override enter_* and exit_* methods for text emission; call
+    super() first so collection stays consistent.
     """
 
     def __init__(self, root, target_addr_map, shorten_names):
@@ -84,6 +124,7 @@ class FieldCollector(RDLListener):
         self.regs: dict[str, RegTypeInfo] = {}
         self.reg_inst_count: dict[str, RegInstInfo] = {}
         self.curr_reg_fields: list[FieldInfo] = []
+        self.curr_reg_inst: RegInstInfo | None = None  # set by exit_Reg for subclasses
 
     def path_minus_root(self, node) -> str:
         return path_minus_root(node)
@@ -113,13 +154,7 @@ class FieldCollector(RDLListener):
         if not self.under_target:
             return
         parent = node.parent
-
-        # Prefer orig_type_name; type_name may carry a hash when properties are dynamic.
-        fullname = parent.type_name.removesuffix("_ispresent_t").upper()
-        if node.orig_type_name is None:
-            fullname += "_" + node.type_name
-        else:
-            fullname += "_" + node.orig_type_name.upper()
+        fullname = reg_type_name(node)
 
         # Nested under a non-target parent: prefix to avoid instance-name collisions.
         if parent.get_path_segment().lower() == self.target_addr_map.lower():
@@ -141,20 +176,17 @@ class FieldCollector(RDLListener):
             )
 
         fields = sorted(self.curr_reg_fields, key=lambda f: f.low)
-
-        # Same type must agree on field layout and access (reset may differ).
+        path = node.get_path()
         if fullname in self.regs:
-            existing_fields = self.regs[fullname].fields
-            if [field_access_key(f) for f in existing_fields] != [
-                field_access_key(f) for f in fields
-            ]:
-                raise ValueError(f"ERROR: register '{fullname}' already exists")
+            check_same_fields(fullname, self.regs[fullname], path, fields)
 
         self.regs[fullname] = RegTypeInfo(
             address=node.raw_absolute_address,
             regwidth=node.get_property("regwidth"),
+            path=path,
             fields=fields,
         )
+        self.curr_reg_inst = self.reg_inst_count[inst_name]
 
     def enter_Field(self, node):
         if self.under_target:
@@ -164,11 +196,13 @@ class FieldCollector(RDLListener):
                     name=node.get_path_segment(array_suffix="_{index:d}_"),
                     high=node.high,
                     low=node.low,
-                    reset=0 if props.reset is None else props.reset,
+                    reset=constant_reset(node, props.reset),
                     sw=props.sw,
+                    hw=props.hw,
                     onwrite=props.onwrite,
                     onread=props.onread,
                     singlepulse=props.singlepulse,
+                    volatile=props.volatile,
                 )
             )
 
@@ -189,9 +223,8 @@ def build_struct_fields(fields: list[FieldInfo]) -> list[tuple[str, int]]:
 
 
 def compute_default(fields: list[FieldInfo]) -> int:
-    """OR constant field resets into a register default; SignalNode resets contribute 0."""
+    """OR constant field resets into a register default; fields without one contribute 0."""
     reg_reset = 0
     for f in fields:
-        reset = 0 if isinstance(f.reset, SignalNode) else f.reset
-        reg_reset |= reset << f.low
+        reg_reset |= (f.reset or 0) << f.low
     return reg_reset

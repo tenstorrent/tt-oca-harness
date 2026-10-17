@@ -23,11 +23,13 @@ from dataclasses import dataclass
 @dataclass
 class FieldProps:
     sw: str  # software access enum name, e.g. "rw", "r", "w"
+    hw: str  # hardware access enum name, e.g. "rw", "r", "w", "na"
     onwrite: str  # "woset"/"woclr"/... enum name, or "" when the field has none
     onread: str  # "rclr"/"rset"/... enum name, or "" when the field has none
     singlepulse: bool
     woclr: bool  # raw woclr shorthand, reported standalone by the JSON model
-    reset: object  # int, SignalNode, or None
+    volatile: bool  # hardware can change the value between software accesses
+    reset: object  # int, UserEnum member, SignalNode, FieldNode, PropertyReference, or None
     lsb: int
     msb: int
 
@@ -55,10 +57,12 @@ def extract_field_props(node) -> FieldProps:
 
     return FieldProps(
         sw=node.get_property("sw").name,
+        hw=node.get_property("hw").name,
         onwrite=onwrite,
         onread=onread,
         singlepulse=bool(node.get_property("singlepulse")),
         woclr=bool(node.get_property("woclr")),
+        volatile=bool(node.is_volatile),
         reset=node.get_property("reset"),
         lsb=node.lsb,
         msb=node.msb,
