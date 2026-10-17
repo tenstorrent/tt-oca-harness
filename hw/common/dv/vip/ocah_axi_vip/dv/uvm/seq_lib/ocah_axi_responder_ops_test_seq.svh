@@ -156,7 +156,7 @@ class ocah_axi_responder_ops_test_seq extends ocah_axi_pipeline_base_test_seq;
     ocah_axi_item wres, rres;
     m_stop = 1'b0;
     fork
-      record();
+      record_samples();
       begin
         foreach (addrs[i]) begin
           write_result(addrs[i], data[i], wres);

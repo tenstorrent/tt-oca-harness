@@ -33,7 +33,7 @@ class ocah_axi_pipeline_base_test_seq extends ocah_axi_master_sequence;
     super.new(name);
   endfunction
 
-  protected task record();
+  protected task record_samples();
     m_samples.delete();
     while (!m_stop) begin
       sample_t row;
@@ -105,7 +105,7 @@ class ocah_axi_pipeline_base_test_seq extends ocah_axi_master_sequence;
                                    input bit allow_timeout = 1'b0, input int unsigned tail = 0);
     m_stop = 1'b0;
     fork
-      record();
+      record_samples();
       begin
         pipeline_result(ops, result, b_hold, r_hold, 1'b1, allow_timeout);
         repeat (tail) @(cfg.vif.mon_cb);

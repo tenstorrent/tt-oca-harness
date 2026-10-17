@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Tenstorrent Inc.
 //
-// Commercial-simulator AXI/AXI-Lite functional coverage hook.
-// Do not add this file to Verilator filelists: it uses covergroups.
+// AXI/AXI-Lite functional coverage hook. It compiles in the SV-UVM layer
+// (uvm/sources.toml) only; do not add it to Bender or cocotb filelists.
 
 interface ocah_axi_cov_if #(
   parameter int unsigned ADDR_WIDTH = 64,

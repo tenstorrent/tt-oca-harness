@@ -670,11 +670,11 @@ flags = [
 # tb/tb_wrapper_top.sv from the ported cocotb shape to the self-contained SV-UVM shape, which
 # `include`s uvm/tests/smu_tests.sv.
 [frameworks.uvm]
-description = "SMU SV-UVM flow on the smu_wrapper (VCS)"
+description = "SMU SV-UVM flow on the smu_wrapper (VCS, Verilator)"
 # The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on VCS
-# only, so the overlay restates them.
+# and Verilator, so the overlay restates them.
 default_tool = "vcs"
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 
 [frameworks.uvm.build]
 # The shared framework library and the VIP SV-UVM layers come from their owned ordered
