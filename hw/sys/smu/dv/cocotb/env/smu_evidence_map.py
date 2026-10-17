@@ -3094,6 +3094,53 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "with a recorded last state and the stated site count per kind",
         ),
     ],
+    "smu_dtp_jtag2axi_ratio_floor_test": [
+        (
+            "CHK-DBG-RATIO-SETUP",
+            "CHK-DBG-RATIO-SETUP",
+            "the clk_smu_i period and the absent TCK floor are logged, the gate tap reads 0 before "
+            "the first scan, SERIES_CTRL.reset leaves op 0 and the counter baselines are sampled",
+        ),
+        (
+            "CHK-DBG-RATIO-COMPLETE-4P0",
+            "CHK-DBG-RATIO-COMPLETE-4P0",
+            "at TCK 40 ns the four-word series write raises the AW and B counters by 4 and the "
+            "four single-load series reads return the four words with op 0 after every load; "
+            "the AR delta is measured and logged only",
+        ),
+        (
+            "CHK-DBG-RATIO-COMPLETE-4P8",
+            "CHK-DBG-RATIO-COMPLETE-4P8",
+            "at TCK 48 ns the four-word series write raises the AW and B counters by 4 and the "
+            "four single-load series reads return the four words with op 0 after every load",
+        ),
+        (
+            "CHK-DBG-RATIO-OP3-RULE",
+            "CHK-DBG-RATIO-OP3-RULE",
+            "every SERIES_CTRL.op capture of the 3.2 and 2.0 legs is 0 or 3 and never 1 or 2, "
+            "and the integration legs read 0; a leg that never reads 3 is reported as "
+            "NOT-EXERCISED for that branch",
+        ),
+        (
+            "CHK-DBG-RATIO-RECOVERY",
+            "CHK-DBG-RATIO-RECOVERY",
+            "after SERIES_CTRL.reset at TCK 40 ns op reads 0 and a new four-word series write "
+            "and four single-load reads complete with equal data, op 0 after every load and "
+            "the AW and B counters up by 4",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last "
+            "step and every scanning step has a nonzero access count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the gate wait, the op polls, the B counter waits and the two retry loops finish "
+            "inside their bounds with a recorded last state and the stated site count per kind",
+        ),
+    ],
 }
 
 
