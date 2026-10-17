@@ -1149,6 +1149,11 @@ class smc_base_test(uvm_test):
     # Names from FILE_PLUSARGS whose file this test writes during the run.
     run_written_file_plusargs: tuple[str, ...] = ()
 
+    # Outstanding depth per direction of the SYS_OUT responder. None keeps the
+    # responder that serves one request at a time; a leaf that needs responses of
+    # different IDs to overtake one another sets a depth.
+    sys_out_max_outstanding: int | None = None
+
     @staticmethod
     def random_seed() -> int:
         return int(os.environ.get("RANDOM_SEED", "1"), 0)
@@ -1444,6 +1449,7 @@ class smc_base_test(uvm_test):
             reset_active_level=False,
             size=SYS_OUT_MEM_SIZE,
             name="smc_sys_out",
+            max_outstanding=self.sys_out_max_outstanding,
         ).sequence
         cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, unit="ns").start())

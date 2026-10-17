@@ -446,6 +446,10 @@ SEP_IN, SYS_IN and JTAG at both LOCAL_BASE and GLOBAL_BASE.
 |`smc_unit_extent_register_decode_test` |The base register of the mailbox, eFuse, timer and CLA
 apertures and the ROM and SPM words decode and answer OKAY from SEP_IN, SYS_IN and JTAG at both
 bases, and the last register of five units answers over SEP_IN at `LOCAL_BASE`.
+|`smc_axi_random_stress_test` |Seeded random AXI attributes, burst shapes, outstanding depths and
+SYS_OUT responder timing and error faults on SEP_IN, SYS_IN and JTAG all leave every access
+completing at its own port with its own ID and, where answered OKAY, returning the word of its own
+address.
 |===
 
 ==== RESET
@@ -10275,7 +10279,188 @@ expires.
 `CHK-TIMEOUT-PATHS` are all printed; every base-register read answers OKAY with one value across
 the three ports and two bases (the declared reset where there is one), the ROM words match across
 ports, the SPM patterns round-trip across bases and ports, the DMA and zeroer patterns survive the
-last-register reads, and at least 105 accesses are issued. Enrolled in: `all`, `fabric`.
+last-register reads, and at least 105 accesses are issued. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-528-smc_axi_random_stress_test]]
+===== 528 `smc_axi_random_stress_test`
+
+*Source Module*: `smc_axi_random_stress_test`
+
+*BFM / Model*: `ocah_axi_vip (AXI)` managers on SEP_IN (`env.sys_axi_agent`), SYS_IN
+(`env.sys_in_axi_agent`) and JTAG (`env.jtag_axi_agent`) driving AxID, AxLOCK, AxCACHE, AxQOS,
+AxREGION, AxUSER and AxPROT per access, as single accesses and as `SmcSysAxiGroupItem` groups
+under a per-group `AxiTimingProfile`; the VIP response-ID capture (`capture_resp_id`); passive
+`SmcAxiPortResponseRecorder` on the B and R handshakes of `s_axi_*`, `sys_axi_*` and
+`jtag_axi_*`, `SmcRawRStallWatch` on the raw R valid probes and `SmcOutputHandshakeSampler` on
+the AW and AR handshakes of `u_output_axi_if`; the SYS_OUT responder (`cfg.sys_out_mem`, depth 8
+through `sys_out_max_outstanding`) with `set_response_delay`, `enable_backpressure` and
+`inject_error`; `env.output_axi_monitor` `allow_slverr` and `allow_decerr` and
+`env.axi_monitor.expected_decerr_addrs`; a per-port golden model keyed by byte address; every draw
+from a `random.Random` stream per step seeded from `RANDOM_SEED`
+
+*Objective*: Seeded random AXI attributes, burst shapes, outstanding depths and SYS_OUT responder
+timing and error faults on SEP_IN, SYS_IN and JTAG all leave every access completing at its own
+port with its own ID and, where answered OKAY, returning the word of its own address.
+
+*Test Coverage*:
+
+* Response IDs: on SYS_IN and SEP_IN 12 AxIDs (0x00, 0x3F, each single bit and four draws) and on
+  JTAG IDs 0 to 3 twice, every write answers OKAY with BID equal to its AWID and every read OKAY
+  with RID equal to its ARID and the word written (`fabric.adoc`, Interfaces / AXI ID Widths by
+  Fabric Stage).
+* Sideband attributes: 16 write-then-read pairs per port over AxCACHE 0 to 15 and drawn AxQOS,
+  AxREGION and AxUSER, half at the port's SPM window and half at its registers; every read answered
+  OKAY after an OKAY write returns the word of its own address and the pairs of a port do not all
+  drop out of the compare; the response code per knob value is observed (`fabric.adoc`, Interfaces
+  / AXI Interface Widths and Address Remapping).
+* AxLOCK: an exclusive read and an exclusive write per port are observed and the ordinary
+  write-then-read after each returns the fresh word.
+* Carriage to output_axi: eight JTAG writes and eight reads at OUT2 reach the responder at their
+  own address with the driven AxCACHE and with one AxUSER value whatever was driven; SYS_IN and
+  SEP_IN accesses outside the SMC window are observed (`fabric.adoc`, Routing / Outbound Traffic
+  Flow).
+* Shapes: AxSIZE 1 to 8 at SPM words and registers, INCR bursts of 2, 16, 256 and drawn lengths,
+  FIXED and WRAP bursts and narrow register bursts, then a mixed stream of 40 accesses per port
+  with every attribute, size, burst, length, direction and target drawn and up to 4 outstanding,
+  followed by the full-width reads of KNOWN words (after one aligned write when the stream left
+  none) that bring the stream's compare reads to two when the drawn ones fall short;
+  every OKAY read at a KNOWN byte returns the golden byte of that address, each beat count equals
+  AxLEN+1 (`fabric.adoc`, Interfaces / AXI Interface Widths and Topology).
+* Local concurrency: groups of depth 4, 8, 9, 16 and 24 per port, the AxID set {1, 2} on all three
+  ports at once and manager-side BREADY and RREADY holds; per port and AxID the recorded responses
+  equal the requests (`fabric.adoc`, Configuration Parameters / SMC Fabric Transaction Limits).
+* Output concurrency: JTAG groups of depth 1, 8 and 16 at OUT2, SYS_IN and SEP_IN accesses outside
+  the window while a JTAG group is outstanding, and a JTAG split between SPM2 and OUT2 with local
+  SYS_IN and SEP_IN traffic; the OUT2 handshakes equal the JTAG accesses issued (`fabric.adoc`,
+  Topology).
+* Responder timing and errors: response delays, AW and AR ready stalls and depth-8 reordering at
+  the responder; injected SLVERR and DECERR on writes and reads alone, in a group of 24 and under
+  delay and stall with local traffic outstanding (`smu-smc.adoc`, AXI Interface Configuration).
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done` within 200000 `clk_smc_i` rises; print `RAND-SEED`; bind the
+SYS_OUT responder and require depth 8; start the three port recorders and the output sampler; over
+SEP_IN program inbound and outbound filter entry 0 pass-all; write the four registers of each port
+(`SCRATCH_COLD(0..3)` for SYS_IN, `SCRATCH_COLD(4..7)` for SEP_IN, `SCRATCH_COLD_WARM(0..3)` for
+JTAG) with 4-byte words by address; preload each port's output window in the responder.
+. Per port, for each AxID of the list, write then read one SPM word with `capture_resp_id`; require
+OKAY, BID and RID equal to the request ID both through the VIP capture and the port recorder, and
+the read word equal to the write; print `CHK-RAND-ID-ECHO`.
+. Per port, 16 write-then-read pairs with AxCACHE k, drawn AxQOS, AxREGION, AxUSER and AxID, even
+k at the SPM window with 8 bytes and odd k at a register with 4 bytes, `allow_error` set; require
+every read answered OKAY after an OKAY write to return the word written and at least one pair of
+the port to have compared; print the OKAY and non-OKAY counts per port and `CHK-RAND-ATTR-OWN-WORD`.
+. Per port at one SPM word: write, exclusive read, write, read, exclusive write, write, read;
+require the two ordinary reads OKAY with the fresh word; print the exclusive responses and
+`CHK-RAND-LOCK-OBS`.
+. On JTAG, eight writes then reads at OUT2 with AxCACHE 0x0, 0xF, 0x3 and five draws and AxUSER
+draws; require one AW and one AR at the responder per access with the driven AxCACHE, the read word
+equal to the write, one `awuser` across the writes and one `aruser` across the reads; on SYS_IN and
+SEP_IN two pairs each at OUT0 and OUT1 with `allow_error`, their codes and sampled handshakes
+printed; print `CHK-RAND-OUT-SIDEBAND`.
+. Per port, 51 accesses: SPM write-then-read at AxSIZE 1, 2, 4, 8; register pairs at each size
+with the 4-byte pair compared and the others observed, each followed by a 4-byte re-arm; INCR
+bursts of 2, 16, 256 and two drawn lengths of 8-byte beats compared beat by beat; FIXED x4, x16 and
+WRAP x2, x4, x8, x16 observed and then a fresh word; four narrow INCR register reads each followed
+by a register read; require exactly 51 accesses per port and every compare read of the step to
+have compared.
+. Three tasks, one per port, each 10 groups of 4 disjoint accesses with every attribute, AxPROT,
+size, burst, length, direction and target drawn; observed where FIXED, WRAP, AxLOCK 1 or a narrow
+register access; require the reads issued at KNOWN bytes of each port not to have all dropped out
+of the compare; print one `OBS-SHAPE` line per observed access, the `OBS-SHAPE-PROT` DECERR view
+and `CHK-RAND-SHAPE-BY-ADDR` with the compared byte count.
+. Groups of depth 4, 8, 9, 16 and 24 on the three ports together, a group of 8 per port under the
+AxID set {1, 2}, and a group of 16 per port under a seeded `AxiTimingProfile` run one port at a
+time; require per port and AxID the recorded B responses, R beats and R words to equal the
+requests and the b and r stall counts above 0 on every port; print `CHK-RAND-LOCAL-DEEP`.
+. JTAG groups of depth 1, 8 and 16 of reads then of writes at OUT2, with SYS_IN and SEP_IN
+presenting 8 accesses each at OUT0 and OUT1 during the depth-8 read group, then a three-task group
+of JTAG split between SPM2 and OUT2 with 16 local accesses on SYS_IN and SEP_IN; require the OUT2
+AW and AR handshakes and the responder counters to advance by exactly the JTAG accesses issued;
+print `CHK-RAND-OUT-DEEP` and `CHK-RAND-OUT-OTHER-PORTS-OBS`.
+. Four responder profiles (delay 1 to 8, delay 32 to 64, AW and AR stall 16, delay 0 to 64 with
+depth 8), each a JTAG group of 12 writes and 12 reads at OUT2; require the AW and AR address sets
+at the responder to equal the sets issued and the counters to advance by 12 and 12; print
+`CHK-RAND-RESP-TIMING`.
+. Set `allow_slverr` and `allow_decerr`; three rounds of one-shot SLVERR and DECERR injections on a
+write and on a read with `capture_resp_id`, each followed by an ordinary write-then-read; a JTAG
+group of 24 with a seeded third injected; the same under delay, ready stall and reorder with 12
+local accesses outstanding on each of SYS_IN and SEP_IN; require the response ID of each one-shot,
+the monitor tally equal to the injected codes, the ordinary pairs OKAY with the word written and
+every local access OKAY; print `CHK-RAND-RESP-ERRORS-OBS` and `CHK-RAND-RESP-COMBINED`.
+. Clear the monitor opt-ins, responder errors, backpressure and delays; restore inbound and
+outbound filter entry 0 to the RDL reset over SEP_IN; write `SCRATCH_COLD(0..7)` and
+`SCRATCH_COLD_WARM(0..3)` to 0; stop the recorders; print `CHK-TIMEOUT-PATHS`, then run the fence
+that prints `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-RAND-ID-ECHO` |On every port each write of the AxID list answered OKAY with BID equal to its
+AWID and each read OKAY with RID equal to its ARID and the word written, the IDs read both through
+the VIP capture and the passive port recorder.
+|`CHK-RAND-ATTR-OWN-WORD` |All 48 attribute pairs completed within the guard, every read answered
+OKAY after an OKAY write returned the word of its own address, and on every port at least one of
+the pairs issued at KNOWN bytes compared; the response code per knob value is printed, not
+asserted.
+|`CHK-RAND-LOCK-OBS` |All 21 lock-leg accesses completed within the guard and on every port the
+ordinary write-then-read after the exclusive read and after the exclusive write answered OKAY with
+the fresh word; the exclusive responses are printed, not asserted.
+|`CHK-RAND-OUT-SIDEBAND` |All eight JTAG writes and reads reached the responder at their own OUT2
+address with `awcache` and `arcache` equal to the driven AxCACHE, the read word equal to the
+write, one `awuser` across the writes and one `aruser` across the reads; the SYS_IN and SEP_IN
+codes and handshakes are printed, not asserted.
+|`CHK-RAND-SHAPE-BY-ADDR` |Every access of steps 6 and 7 completed within the guard, each beat
+count equals AxLEN+1, every OKAY read at a KNOWN byte returned the golden byte of its own address,
+every compare read of step 6 compared, the compare reads of step 7 did not all drop out on any
+port, and the recovery write-then-reads returned the fresh word; FIXED, WRAP, narrow register,
+AxLOCK 1 and AxPROT responses are printed, not asserted.
+|`CHK-RAND-LOCAL-DEEP` |For depths 4, 8, 9, 16 and 24, the AxID set {1, 2} on all three ports and
+the manager stall profiles, per port and AxID the recorded B responses, R beats and R words equal
+the requests, and the b and r stall counts are above 0 on every port; the DUT-side stall counts
+and the response order are printed, not asserted.
+|`CHK-RAND-OUT-DEEP` |For the JTAG groups of depth 1, 8 and 16 and the JTAG split between SPM2 and
+OUT2 with local SYS_IN and SEP_IN traffic, per AxID the B count and returned words match the
+requests, every OKAY read word equals the responder word of its address, and the OUT2 handshakes
+and responder counters advanced by exactly the JTAG accesses issued.
+|`CHK-RAND-OUT-OTHER-PORTS-OBS` |All 16 SYS_IN and SEP_IN accesses at OUT0 and OUT1 presented while
+the JTAG depth-8 group was outstanding completed within the guard at their own port and the JTAG
+group still returned its own words and IDs; their codes and the counter deltas are printed, not
+asserted.
+|`CHK-RAND-RESP-TIMING` |Under the four responder profiles all 96 JTAG accesses completed within the
+guard, per AxID the B count and returned words match the requests, the AW and AR address sets at
+the responder equal the sets issued and the counters advanced by 24 per profile; the response
+order is printed, not asserted.
+|`CHK-RAND-RESP-ERRORS-OBS` |The 12 one-shot injections and the injected third of the group of 24
+each completed at the JTAG port with its own ID, the responder monitor counted exactly the
+injected codes, and each ordinary write-then-read after an injection answered OKAY with the word
+written; the code seen at the inbound port is printed next to the injected one, not asserted.
+|`CHK-RAND-RESP-COMBINED` |With delay, ready stall, reorder and injected errors on the JTAG group of
+24, all 24 SYS_IN and SEP_IN local accesses answered OKAY at their own port with the golden word of
+their own address, every JTAG access completed with its own ID and every OKAY JTAG read word equals
+the responder word of its address.
+|`CHK-NONVAC` |The step stamps S1 to S12 are in increasing time order, the eleven checker lines
+above were printed in step order each after its own step, each port recorder saw at least one
+response and at least one AW handshake was sampled at the responder.
+|`CHK-TIMEOUT-PATHS` |Reports every bounded wait with its bound (the fuse-sense wait of 200000
+`clk_smc_i` rises and the 50 us driver guard per access); it is a printed report with no compare,
+each wait raising its own failure when its bound expires.
+|===
+
+*Pass Criteria*: `CHK-RAND-ID-ECHO`, `CHK-RAND-ATTR-OWN-WORD`, `CHK-RAND-LOCK-OBS`,
+`CHK-RAND-OUT-SIDEBAND`, `CHK-RAND-SHAPE-BY-ADDR`, `CHK-RAND-LOCAL-DEEP`, `CHK-RAND-OUT-DEEP`,
+`CHK-RAND-OUT-OTHER-PORTS-OBS`, `CHK-RAND-RESP-TIMING`, `CHK-RAND-RESP-ERRORS-OBS`,
+`CHK-RAND-RESP-COMBINED`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every access
+completes within the guard at its own port, every OKAY read of a KNOWN or responder address
+returns the word of that address, the response IDs echo the request IDs, the compare reads of
+steps 3, 6 and 7 did not all drop out on any port, and the OUT2 handshakes and responder counters
+match the JTAG accesses issued. Enrolled in: `all`, `fabric`.
 
 '''''
 
