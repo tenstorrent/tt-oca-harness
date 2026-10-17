@@ -66,7 +66,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_drbg_regwen_lock_rand_test, VCS only (crypto.toml). Its reset reads must carry
 #   no X, which only a four-state simulator shows.
 name = "all"
-expected_count = 217
+expected_count = 219
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -233,6 +233,8 @@ tests = [
     "sep_pic_pending_map_walk_rand_test",
     "sep_cpu_bridge_fault_matrix_rand_test",
     "sep_cpu_ctrl_timeout_inert_rand_test",
+    "sep_outbound_contention_rand_test",
+    "sep_outbound_stall_saturation_test",
     "sep_nmi_vector_bark_rand_test",
     "sep_boot_release_terms_test",
     "sep_boot_release_terms_test_smc_hold",
@@ -472,6 +474,8 @@ tests = [
     "sep_mailbox_reset_clear_test",
     "sep_cpu_bridge_fault_matrix_rand_test",
     "sep_cpu_ctrl_timeout_inert_rand_test",
+    "sep_outbound_contention_rand_test",
+    "sep_outbound_stall_saturation_test",
     "sep_boot_release_terms_test",
     "sep_boot_release_terms_test_smc_hold",
     "sep_cold_reset_phase_test",

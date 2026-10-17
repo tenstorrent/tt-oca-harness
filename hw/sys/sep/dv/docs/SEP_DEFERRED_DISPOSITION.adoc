@@ -42,7 +42,11 @@ grade take no LC or fuse input
 (`hw/sys/sep/rtl/sep_ot_spi_wrap.sv`, `hw/sys/sep/rtl/sep_dma_wrap.sv`). The
 mailboxes, the PIC, the bridge-fault and timeout registers of `SEP_CPU_CTRL`
 and the NMI vector that the eleven mailbox, IRQ and PIC leaves of the scope
-grade take no fuse content. The inbound filter that these leaves program takes
+grade take no fuse content. The outbound port traffic, the responder delays
+and the crossbar limits that `sep_outbound_contention_rand_test` and
+`sep_outbound_stall_saturation_test` grade take no LC or fuse input; the
+outbound and inbound filter entries they program are plain registers. The
+inbound filter that these leaves program takes
 `feat_ctrl.sep_debug` (`hw/sys/sep/rtl/sep.sv`, `inbound_filter_skip_i`), and
 each of these leaves needs it at 0, the reset decode that `+skip_fuse_sense`
 leaves in place.
@@ -53,12 +57,13 @@ sense path and the shadow are graded by the eFuse and LCC tests, which run
 without the plusarg.
 
 |Scope
-|The `+skip_fuse_sense` entry in the testlist `args` of these twenty-seven tests:
+|The `+skip_fuse_sense` entry in the testlist `args` of these twenty-nine tests:
 `sep_fabric_alias_remap_attr_rand_test`, `sep_fabric_smc_route_test`,
 `sep_dma_transfer_matrix_rand_test`, `sep_mailbox_fifo_model_rand_test`,
 `sep_mailbox_access_error_inject_test`, `sep_mailbox_filter_type_matrix_test`,
 `sep_mailbox_reset_clear_test`, `sep_cpu_bridge_fault_matrix_rand_test`,
-`sep_cpu_ctrl_timeout_inert_rand_test` (`testlists/system.toml`);
+`sep_cpu_ctrl_timeout_inert_rand_test`, `sep_outbound_contention_rand_test`,
+`sep_outbound_stall_saturation_test` (`testlists/system.toml`);
 `sep_cpu_lsu_alias_window_twin_test`,
 `sep_fabric_dma_endpoint_matrix_test`, `sep_dma_basic_test`,
 `sep_cpu_ifu_lsu_alias_remap_matrix_test`,
@@ -80,10 +85,10 @@ without the plusarg.
 |===
 |Stand-in |Command |Expected
 
-|`+skip_fuse_sense` on the twenty-five leaves
+|`+skip_fuse_sense` on the twenty-nine leaves
 |`grep -A8 'name = "<test>"' hw/sys/sep/dv/testlists/*.toml` for each test of
 the scope, then `grep -n 'BRINGUP LOG: feat_ctrl'` in any log of
 `sep_fabric_smc_route_test`
-|`+skip_fuse_sense` in the `args` of each of the twenty-five entries, and
+|`+skip_fuse_sense` in the `args` of each of the twenty-nine entries, and
 `feat_ctrl=0x0000000000000000`, the reset decode.
 |===
