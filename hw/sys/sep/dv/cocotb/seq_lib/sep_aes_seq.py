@@ -146,7 +146,7 @@ AES_PRS_RATE_PER_1 = _AES_CTRL_CODES["prng_reseed_rate"]["PER_1"]
 AES_PRS_RATE_PER_64 = _AES_CTRL_CODES["prng_reseed_rate"]["PER_64"]
 AES_PRS_RATE_PER_8K = _AES_CTRL_CODES["prng_reseed_rate"]["PER_8K"]
 
-# mode name / key-bit-width -> CTRL_SHADOWED field encodings (aes.adoc).
+# mode name / key-bit-width -> CTRL_SHADOWED field encodings (the aes.hjson enums above).
 AES_MODE_CTRL = {"ecb": AES_MODE_ECB, "cbc": AES_MODE_CBC, "ctr": AES_MODE_CTR}
 AES_KEYLEN_CTRL = {128: AES_KEY_LEN_128, 192: AES_KEY_LEN_192, 256: AES_KEY_LEN_256}
 
