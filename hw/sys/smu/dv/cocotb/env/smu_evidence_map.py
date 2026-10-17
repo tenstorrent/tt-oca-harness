@@ -1030,12 +1030,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_sep_rma_token_match_test": [
         (
-            "CHK-SEP-RMA-PRECOND",
-            "CHK-SEP-RMA-PRECOND",
-            "sep_fuse_sense_done_o reads 1 before the first token write; the first and last "
-            "word of the RMA SIP digest are read back and logged only",
-        ),
-        (
             "CHK-SEP-RMA-IDLE",
             "CHK-SEP-RMA-IDLE",
             "the SIP result reads 0x00 with eight words written and no TOKEN_EOP, and the chiplet "
@@ -3078,9 +3072,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS",
-            "four bounded waits in two kinds (event 2, release 2), no event wait "
-            "expired, release expiries recorded with the last state, no unresolved probe "
-            "sample",
+            "four bounded waits in two kinds (event 2, release 2), none expired, with the "
+            "bound, cycles used and last state recorded, no unresolved probe sample",
         ),
     ],
 }

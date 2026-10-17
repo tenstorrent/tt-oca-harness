@@ -250,6 +250,16 @@ class smu_smc_warm_reset_register_retention_test_seq:
         )
         return met, used
 
+    async def _wait_required(self, kind: str, label: str, pred, bound: int) -> int:
+        """Tick until ``pred`` holds; an expired bound fails the leaf with the last state."""
+        met, used = await self._wait(kind, label, pred, bound)
+        if not met:
+            raise AssertionError(
+                f"TIMEOUT {kind} {label}: bound={bound} used={used} "
+                f"last_state={self.sites[-1]['last']}"
+            )
+        return used
+
     async def _write_readback(self, addr: int, value: int, what: str) -> int:
         await self._wr32(addr, value, what)
         return await self._rd32(addr, what)
@@ -331,13 +341,13 @@ class smu_smc_warm_reset_register_retention_test_seq:
         )
         await self._mark("S5", "second timeout raised and warm reset fell")
 
-        released, release_used = await self._wait(
+        release_used = await self._wait_required(
             "release",
             "warm reset return",
             lambda: self._first(lambda s: s.warm == NET_RELEASED, max(i_fall, arm_idx)) >= 0,
             RELEASE_BOUND,
         )
-        cleared, clear_used = await self._wait(
+        clear_used = await self._wait_required(
             "release",
             "second timeout return",
             lambda: (
@@ -346,14 +356,12 @@ class smu_smc_warm_reset_register_retention_test_seq:
             RELEASE_BOUND,
         )
         self.log.info(
-            "OBSERVATION warm reset return %s after %d wait cycles; second timeout return %s "
-            "after %d wait cycles; logged only",
-            "seen" if released else "not seen",
+            "OBSERVATION warm reset returned after %d wait cycles; second timeout returned "
+            "after %d wait cycles",
             release_used,
-            "seen" if cleared else "not seen",
             clear_used,
         )
-        await self._mark("S7", "release waits finished")
+        await self._mark("S7", "warm reset and second timeout released")
 
         after = {}
         for name, addr, _pattern, _reset in retained:
@@ -507,20 +515,19 @@ class smu_smc_warm_reset_register_retention_test_seq:
                 "EXPIRED" if rec["expired"] else "ok",
                 rec["last"],
             )
-        event_expired = sum(r["expired"] for r in self.sites if r["kind"] == "event")
+        expired = sum(r["expired"] for r in self.sites)
         unresolved = sum(1 for s in self.trace if -1 in (s.second, s.warm, s.primary, s.cold))
         kinds = dict(Counter(rec["kind"] for rec in self.sites))
         self.log.info(
-            "CHK-TIMEOUT-PATHS: sites=%d expected=%d kinds=%s event expiries=%d expected=0; "
-            "unresolved probe samples=%d expected=0; release expiries are recorded and not "
-            "failures",
+            "CHK-TIMEOUT-PATHS: sites=%d expected=%d kinds=%s expiries=%d expected=0; "
+            "unresolved probe samples=%d expected=0",
             len(self.sites),
             EXPECTED_SITES,
             kinds,
-            event_expired,
+            expired,
             unresolved,
         )
-        sb.expect_eq("expired event waits", event_expired, 0, evidence="CHK-TIMEOUT-PATHS")
+        sb.expect_eq("expired waits", expired, 0, evidence="CHK-TIMEOUT-PATHS")
         sb.expect_eq("unresolved probe samples", unresolved, 0, evidence="CHK-TIMEOUT-PATHS")
         sb.expect_eq(
             "bounded wait sites per kind",

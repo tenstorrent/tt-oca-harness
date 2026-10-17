@@ -24,7 +24,6 @@ class smu_sep_rma_token_match_test(smu_base_test):
         "CHK-SEP-RMA-CHIP-MISMATCH",
         "CHK-SEP-RMA-IDLE",
         "CHK-SEP-RMA-INDEP",
-        "CHK-SEP-RMA-PRECOND",
         "CHK-SEP-RMA-SIP-MATCH",
         "CHK-SEP-RMA-START",
         "CHK-TIMEOUT-PATHS",

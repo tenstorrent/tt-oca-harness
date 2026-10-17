@@ -50,8 +50,6 @@ STATUS_MASK = c_header_u32(_MMR_H, "EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_b
 RESULT_IDLE = 0x00
 RESULT_MATCH = 0b010101
 RESULT_MISMATCH = 0b101010
-# token_processing.adoc, "Token Submission": RMA results remain idle until fuse sensing completes.
-SENSE_DONE = 1
 # System-bus access size 2 is a 32-bit access (RISC-V Debug Specification 0.13, sbcs.sbaccess).
 SB_ACCESS_32 = 2
 
@@ -156,6 +154,10 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         )
 
         sense_done = sample(self.dut.sep_fuse_sense_done_o, "sep_fuse_sense_done_o")
+        self._log(
+            f"OBSERVATION sep_fuse_sense_done_o={sense_done} before the first token write; "
+            "supplied by +skip_fuse_sense, logged only"
+        )
         digest_first = await self._read(jtag, SIP_DIGEST_FIRST)
         digest_last = await self._read(jtag, SIP_DIGEST_LAST)
         self._log(
@@ -212,25 +214,12 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         self._log(f"STEP S10 @{self.stamp_ps['S10'] / 1000:.3f}ns: PASS stamp")
         self._log(f"system-bus accesses used={self.accesses}")
 
-        self._check_precond(sb, sense_done)
         self._check_idle(sb, sip_idle, chiplet_idle)
         self._check_start(sb, chiplet_at_sip_start, sip_at_chiplet_start)
         self._check_results(sb, sip_idle, sip_match, chiplet_idle, chiplet_mismatch, chiplet_match)
         self._check_indep(sb, sip_match, sip_after, chiplet_mismatch, chiplet_match)
         self._check_integrity(sb)
         self.done = True
-
-    def _check_precond(self, sb, sense_done) -> None:
-        self._log(
-            f"CHK-SEP-RMA-PRECOND: sep_fuse_sense_done_o={sense_done} expected={SENSE_DONE} before "
-            "the first token write"
-        )
-        sb.expect_eq(
-            "CHK-SEP-RMA-PRECOND fuse sensing done before the first token write",
-            sense_done,
-            SENSE_DONE,
-            evidence="CHK-SEP-RMA-PRECOND",
-        )
 
     def _check_idle(self, sb, sip_idle, chiplet_idle) -> None:
         got = (sip_idle, chiplet_idle)

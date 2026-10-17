@@ -7496,8 +7496,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * Results: the encodings are idle 0x00, match 0x15 and mismatch 0x2a, the six-bit `TOKEN_MATCH_STATUS` field (`token_processing.adoc`, "Token result encodings"; `efuse_mmr.rdl`, `TOKEN_MATCH`). The SIP token reads 0x15 (`CHK-SEP-RMA-SIP-MATCH`), the chiplet token one bit off reads 0x2a (`CHK-SEP-RMA-CHIP-MISMATCH`) and the correct chiplet token reads 0x15 (`CHK-SEP-RMA-CHIP-MATCH`); the matches are the positive controls of the mismatch and the idle reads are the controls of the matches.
 * Independence: the SIP result still reads 0x15 after the chiplet lane changed from idle to mismatch to match (`CHK-SEP-RMA-INDEP`; `efuse_mmr.rdl`, `RMA_SIP_TOKEN_MATCH` and `RMA_CHIPLET_TOKEN_MATCH`).
 * Settling: in each of the three started legs the result leaves 0x00 within a bounded poll count, each poll a recorded wait site (`CHK-TIMEOUT-PATHS`); the polls used are logged and no cycle count is compared.
-* Precondition: `sep_fuse_sense_done_o` reads 1 before the first token write (RMA results stay idle until fuse sensing completes, `token_processing.adoc`, "Token Submission") (`CHK-SEP-RMA-PRECOND`). The first and last word of `RMA_SIP_TOKEN_DIGEST` (`sep_efuse_map.rdl`, a 256-bit field) are read back and logged against the image words; they are bench image values and are not compared, and only the SIP digest is read back.
-* Measured and logged only: the two SIP digest words, `TOKEN_MATCH_FAULT` after the last leg, the polls used per leg and the system-bus access count. The token values, the poll bound and the preload image words are bench constants.
+* Measured and logged only: `sep_fuse_sense_done_o` before the first token write, a value `+skip_fuse_sense` supplies; the first and last word of `RMA_SIP_TOKEN_DIGEST` (`sep_efuse_map.rdl`, a 256-bit field), read back and logged against the image words, bench image values that are not compared, with only the SIP digest read back; `TOKEN_MATCH_FAULT` after the last leg; the polls used per leg and the system-bus access count. The token values, the poll bound and the preload image words are bench constants.
 * Out of scope: the error encoding 0x3f, the security-disable token, a start written while a hash is in flight, the half before fuse sensing completes, reset retention of the digest and lifecycle transitions on a match.
 
 *Test Procedure*:
@@ -7519,7 +7518,6 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SEP-RMA-PRECOND` |sep_fuse_sense_done_o reads 1 before the first token write; the first and last word of the RMA SIP digest are read back and logged only
 |`CHK-SEP-RMA-IDLE` |the SIP result reads 0x00 with eight words written and no TOKEN_EOP, and the chiplet result reads 0x00 while the SIP result holds its match
 |`CHK-SEP-RMA-START` |the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read right after TOKEN_EOP 0x100 is 0x15, each lane starting its own hash only
 |`CHK-SEP-RMA-SIP-MATCH` |after the eight words of the SIP token and TOKEN_EOP 0x1 the SIP result reads 0x15, having read 0x00 before TOKEN_EOP
@@ -7550,8 +7548,8 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * Returned registers: the warm reset covers the per-core watchdog timers (`clk_rst.adoc`, "Warm Reset"), so CORE0 `CMP` reads the armed value, not the 0x1000 reset value, and `CTRL` reads the `WDOGRSTEN`, `WDOGENALWAYS` and `WDOGZEROCMP` bits before the event, then `CMP` reads 0x1000 and `CTRL` reads 0 (`hw/sys/smc/regs/blocks/wdt/wdt.rdl`, read through the generated `wdt.h`) (`CHK-WARM-RET-WDT-RETURN`). `CMP` and `CTRL` are the positive control: registers written away from reset that read their reset values after the event.
 * Event: with `WDOGRSTEN` set the watchdog drives a sticky reset signal to the top level, so after the arming `tb_smc_wdt_second_timeout` reads 1 and the warm reset probe reads 0 within their bounded waits, both at idle just before the arming (`wdt.rdl`; `clk_rst.adoc`, "Watchdog Timeout" and the reset equations) (`CHK-WARM-RET-EVENT`).
 * Primary and cold stay released: `rst_primary_smc_clk_n_o` and `rst_cold_n_o` read 1 at every `clk_smu_i` sample from the end of the retained-register writes to the last post-event read, with no sampling gap, while the warm reset reads 0 inside that window (`clk_rst.adoc`, reset equations) (`CHK-WARM-RET-PRIMARY-STAY`).
-* Release waits: the return of the warm reset probe to 1 and of the second timeout to 0 are bounded waits that may expire; each is a recorded wait site whose release cycle or expiry with the last state is logged (`CHK-TIMEOUT-PATHS`), and no retention compare depends on it.
-* Measured and logged only: one CPU_CTRL `SCRATCH` word and one `SCRATCH_COLD_WARM` word are logged before and after the event and never compared, because no chapter names the reset domain of `cpu_ctrl.rdl` `SCRATCH` or `misc_wrap.rdl` `SCRATCH_COLD_WARM`; the release-wait outcomes, the wait bounds and the pattern values are bench constants or logged values.
+* Release waits: the return of the warm reset probe to 1 and of the second timeout to 0 are bounded waits, each a recorded wait site whose release cycle is logged; a wait that expires fails the leaf with its bound, cycles used and last state, so the retained and returned registers are read only after the warm reset released (`CHK-TIMEOUT-PATHS`).
+* Measured and logged only: one CPU_CTRL `SCRATCH` word and one `SCRATCH_COLD_WARM` word are logged before and after the event and never compared, because no chapter names the reset domain of `cpu_ctrl.rdl` `SCRATCH` or `misc_wrap.rdl` `SCRATCH_COLD_WARM`; the release cycles, the wait bounds and the pattern values are bench constants or logged values.
 * Out of scope: the pin-enable, SMC-enable and reset-counter registers, the PLIC and CLINT registers, the SEP debug bus, the RMA registers and the SEP paths.
 
 *Test Procedure*:
@@ -7563,11 +7561,11 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 . Arm CORE0 with the key then `CMP`, read it back, then the key then `CTRL` with `WDOGRSTEN`, `WDOGENALWAYS` and `WDOGZEROCMP`, and read it back.
 . Wait for `tb_smc_wdt_second_timeout` to read 1 and then for the warm reset probe to read 0, logging both cycles.
 . Compare the primary and cold output samples between the end of step 2 and the end of step 10.
-. Wait for the warm reset probe to return to 1 and for the second timeout to return to 0; either wait may expire and its last state is logged.
+. Wait for the warm reset probe to return to 1 and for the second timeout to return to 0, each within its bound; an expired wait fails the leaf with its last state.
 . Read the five retained registers.
 . Read CORE0 `CMP` and `CTRL`.
 . Read the two measured-only registers and log each before and after value.
-. Stamp PASS two `clk_smu_i` cycles later; check every event wait finished inside its bound, every probe sample resolved, the release waits recorded with their last state, the number of wait sites of each kind, and the order of the steps.
+. Stamp PASS two `clk_smu_i` cycles later; check every wait finished inside its bound, every probe sample resolved, the number of wait sites of each kind, and the order of the steps.
 
 *Checkers*:
 
@@ -7582,7 +7580,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 |`CHK-WARM-RET-EVENT` |after arming, the second timeout reads 1 and the warm reset probe reads 0 within their bounded waits, with both at idle just before arming
 |`CHK-WARM-RET-PRIMARY-STAY` |rst_primary_smc_clk_n_o and rst_cold_n_o read 1 at every clk_smu_i sample from S2 to S10 with no sampling gap, while the warm reset reads 0 inside the window
 |`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S7<S8<S9<S10<S11; the PASS stamp is two clk_smu_i cycles after S10
-|`CHK-TIMEOUT-PATHS` |four bounded waits in two kinds (event 2, release 2), no event wait expired, release expiries recorded with the last state, no unresolved probe sample
+|`CHK-TIMEOUT-PATHS` |four bounded waits in two kinds (event 2, release 2), none expired, with the bound, cycles used and last state recorded, no unresolved probe sample
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
