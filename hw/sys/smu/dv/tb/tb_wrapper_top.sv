@@ -1449,7 +1449,7 @@ module smu_wrapper_uvm_top
     .mbist_abort_i (tb_mbist_abort),
 
     .sep_cpu_trace_o (sep_cpu_trace),
-    .sep_ext_interrupts_i ('0),
+    .sep_ext_interrupts_i (tb_sep_ext_interrupts),
     .lcc_demote_state_1_o (lcc_demote_state_1_o),
     .lcc_demote_state_2_o (lcc_demote_state_2_o),
     .sep_fuse_dft_disable_o (),
@@ -1993,6 +1993,7 @@ module smu_wrapper_uvm_top
 
   // SMC boundary controls idle.
   assign tb_smc_ext_interrupts   = '0;
+  assign tb_sep_ext_interrupts   = '0;
   assign tb_smc_ndmreset_request = '0;
   assign tb_cfg_flr_pf_active    = 1'b0;
   assign tb_mem_repair_abort     = 1'b0;

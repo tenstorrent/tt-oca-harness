@@ -874,6 +874,210 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "every external-aperture and TRNG-window access returns a system-bus error",
         ),
     ],
+    "smu_sep_external_irq_pins_test": [
+        (
+            "CHK-SEP-EXTIRQ-RISE",
+            "CHK-SEP-EXTIRQ-RISE",
+            "for every lane the pending bit of source 44+i reads 0 before the pin is driven and 1 "
+            "within the bounded wait; the pin-to-pending cycles are measured and logged only",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-ONEHOT",
+            "CHK-SEP-EXTIRQ-ONEHOT",
+            "with only lane i high the external-band pending bitmap is the one-hot value at "
+            "source 44+i",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-CORE-PORT",
+            "CHK-SEP-EXTIRQ-CORE-PORT",
+            "the core external-request port bit of source 44+i equals the pending bit, both 1, "
+            "and the port's external band is the same one-hot value",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-FALL",
+            "CHK-SEP-EXTIRQ-FALL",
+            "after lane i returns low its pending bit reads 0 within the bounded wait with no "
+            "gateway or clear register written; the fall cycles are measured and logged only",
+        ),
+        (
+            "CHK-SEP-EXTIRQ-ZERO",
+            "CHK-SEP-EXTIRQ-ZERO",
+            "after lane i showed 1 and every lane is low the external-band pending bitmap is "
+            "all-zero",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8; "
+            "the PASS stamp is two clk_smu_i cycles after S7",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "bounded pending-rise and pending-fall waits, 212 sites each, none expired, with "
+            "the last state recorded",
+        ),
+    ],
+    "smu_sep_wdt_bite_to_smc_reset_test": [
+        (
+            "CHK-SEP-WDT-SMC-REQ",
+            "CHK-SEP-WDT-SMC-REQ",
+            "the SEP watchdog request reads 0 before the enable write and 1 within the bounded "
+            "wait after it, and falls to 0 only once the SMC primary reset asserted; bite cycles "
+            "are measured and logged only",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-ASSERT",
+            "CHK-SEP-WDT-SMC-ASSERT",
+            "after the request first reads 1 the SMC watchdog-term net and the warm net each read "
+            "0 within their bounded waits; the cycles to each fall are measured and logged only",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-TERM-WARM",
+            "CHK-SEP-WDT-SMC-TERM-WARM",
+            "watchdog-term and warm nets read 1 at the baseline and 0 at the settled sample after "
+            "the bite, with the request 1; the SMC watchdog second timeout is logged",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-PRIMARY-COLD",
+            "CHK-SEP-WDT-SMC-PRIMARY-COLD",
+            "the SMC primary reset and the stable cold reset read 1 at every sample of the hold "
+            "window that began after the request and both nets changed",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-HOLD",
+            "CHK-SEP-WDT-SMC-HOLD",
+            "while the watchdog-term and warm nets read 0 the request reads 1 at every sample of "
+            "the hold window",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-RELEASE",
+            "CHK-SEP-WDT-SMC-RELEASE",
+            "the held cool-reset pin drives the primary reset to 0 and the request to 0; after "
+            "the pin is released primary, watchdog-term and warm nets each read 1; the order and "
+            "cycles are measured and logged only",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-ORDER",
+            "CHK-SEP-WDT-SMC-ORDER",
+            "from the request's first 1 sample to the end of the release no sample has the warm "
+            "net 1 while the watchdog-term net is 0, with no sampling gap",
+        ),
+        (
+            "CHK-SEP-WDT-SMC-CONVERGE",
+            "CHK-SEP-WDT-SMC-CONVERGE",
+            "in the closing window the request stays 0 and every reset net 1, and the request "
+            "rose exactly once from the baseline",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11<S12; "
+            "the PASS stamp is two clk_smu_i cycles after S11",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "eight bounded waits in five kinds (request rise 1, assert 2, primary assert 1, "
+            "request fall 1, release 3), none expired, with the last state recorded",
+        ),
+    ],
+    "smu_xtrig_ctm_self_loop_test": [
+        (
+            "CHK-XT-SELFLOOP-READBACK",
+            "CHK-XT-SELFLOOP-READBACK",
+            "every CT_SRC[n].CONFIG_0 and CONFIG write of the leaf reads back as written, the "
+            "mask 1<<n and RESET set included, and the restore writes read 0",
+        ),
+        (
+            "CHK-XT-SELFLOOP-CONTROL",
+            "CHK-XT-SELFLOOP-CONTROL",
+            "with the mask 0 one external assertion makes ct_dst[n] rise once and the lane "
+            "request-output enable has zero rises over the window",
+        ),
+        (
+            "CHK-XT-SELFLOOP-RETRIGGER",
+            "CHK-XT-SELFLOOP-RETRIGGER",
+            "with the mask 1<<n the first request-output pulse is STRETCH_MULT+1 = 1 clk_smu_i "
+            "cycle wide and a second rise follows within the bounded wait; width and gap are "
+            "logged",
+        ),
+        (
+            "CHK-XT-SELFLOOP-ALIVE",
+            "CHK-XT-SELFLOOP-ALIVE",
+            "a request-output rise occurs in the last sub-window of the fixed loop window; the "
+            "total rise count is measured and logged only",
+        ),
+        (
+            "CHK-XT-SELFLOOP-STOP",
+            "CHK-XT-SELFLOOP-STOP",
+            "the request output is sampled every cycle from the first loop rise to the S7 write "
+            "issue and rises within the last 12 cycles before it; the mask written 0 reads back "
+            "0, the last pulse ends within the bounded wait and the quiet window has zero rises",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11; "
+            "the PASS stamp is two clk_smu_i cycles after S10",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "three bounded waits, one each for the ct_dst rise, the second rise and the last "
+            "pulse end, and every JTAG2AXI poll, none expired, with the last state recorded",
+        ),
+    ],
+    "smu_sep_rma_token_match_test": [
+        (
+            "CHK-SEP-RMA-IDLE",
+            "CHK-SEP-RMA-IDLE",
+            "the SIP result reads 0x00 with eight words written and no TOKEN_EOP, and the chiplet "
+            "result reads 0x00 while the SIP result holds its match",
+        ),
+        (
+            "CHK-SEP-RMA-START",
+            "CHK-SEP-RMA-START",
+            "the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read "
+            "right after TOKEN_EOP 0x100 is 0x15, each lane starting its own hash only",
+        ),
+        (
+            "CHK-SEP-RMA-SIP-MATCH",
+            "CHK-SEP-RMA-SIP-MATCH",
+            "after the eight words of the SIP token and TOKEN_EOP 0x1 the SIP result reads 0x15, "
+            "having read 0x00 before TOKEN_EOP",
+        ),
+        (
+            "CHK-SEP-RMA-CHIP-MISMATCH",
+            "CHK-SEP-RMA-CHIP-MISMATCH",
+            "the chiplet token one bit off, written and started, reads 0x2a, having read 0x00 "
+            "before",
+        ),
+        (
+            "CHK-SEP-RMA-CHIP-MATCH",
+            "CHK-SEP-RMA-CHIP-MATCH",
+            "the correct chiplet token written and started reads 0x15, having read 0x2a in the "
+            "leg before",
+        ),
+        (
+            "CHK-SEP-RMA-INDEP",
+            "CHK-SEP-RMA-INDEP",
+            "the SIP result reads 0x15 again after the chiplet mismatch and match legs while the "
+            "chiplet result changed",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10; the PASS stamp is two "
+            "clk_smu_i cycles after S9",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "three bounded result polls, one each for the SIP match, the chiplet mismatch and the "
+            "chiplet match, none expired, with the poll bound, polls used and last value recorded",
+        ),
+    ],
     "smu_sep_sba_peripheral_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",
@@ -2812,6 +3016,64 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-TIMEOUT-PATHS",
             "CHK_TIMEOUT_PATHS",
             "bounded J2A and pad waits with last state",
+        ),
+    ],
+    "smu_smc_warm_reset_register_retention_test": [
+        (
+            "CHK-WARM-RET-SSCFG",
+            "CHK-WARM-RET-SSCFG",
+            "SS_CONFIG reads its non-zero pattern before and after the CORE0 watchdog "
+            "warm reset; the reset value 0 differs",
+        ),
+        (
+            "CHK-WARM-RET-SSCOLD",
+            "CHK-WARM-RET-SSCOLD",
+            "SS_COLD_RESET_N reads its non-zero pattern before and after the warm "
+            "reset; the reset value 0 differs",
+        ),
+        (
+            "CHK-WARM-RET-SSWARM",
+            "CHK-WARM-RET-SSWARM",
+            "SS_WARM_RESET_N reads its pattern before and after the warm reset; the reset "
+            "value 0xFFFFFFFF differs",
+        ),
+        (
+            "CHK-WARM-RET-ISO",
+            "CHK-WARM-RET-ISO",
+            "ISOLATE_REQ_REG and ISOLATE_REQ_FLR_COUNTER_VALUE each read their non-zero "
+            "value before and after the warm reset; the reset value 0 differs",
+        ),
+        (
+            "CHK-WARM-RET-WDT-RETURN",
+            "CHK-WARM-RET-WDT-RETURN",
+            "CORE0 CMP reads the armed value and CTRL the WDOGRSTEN, WDOGENALWAYS and "
+            "WDOGZEROCMP bits before the event; after it CMP reads 0x1000 and CTRL "
+            "reads 0",
+        ),
+        (
+            "CHK-WARM-RET-EVENT",
+            "CHK-WARM-RET-EVENT",
+            "after arming, the second timeout reads 1 and the warm reset probe reads 0 "
+            "within their bounded waits, with both at idle just before arming",
+        ),
+        (
+            "CHK-WARM-RET-PRIMARY-STAY",
+            "CHK-WARM-RET-PRIMARY-STAY",
+            "rst_primary_smc_clk_n_o and rst_cold_n_o read 1 at every clk_smu_i sample "
+            "from S2 to S10 with no sampling gap, while the warm reset reads 0 inside "
+            "the window",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S7<S8<S9<S10<S11; the PASS "
+            "stamp is two clk_smu_i cycles after S10",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "four bounded waits in two kinds (event 2, release 2), none expired, with the "
+            "bound, cycles used and last state recorded, no unresolved probe sample",
         ),
     ],
 }
