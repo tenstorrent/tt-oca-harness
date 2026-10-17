@@ -16915,9 +16915,7 @@ module sep_fcov (
     cp_sideload_no_key: coverpoint s.nk iff (s.nk_v) {
       bins no_start_without_valid_key = {1'b0}; illegal_bins start_without_valid_key = {1'b1};
     }
-    cp_idle_reseed: coverpoint s.ir iff (s.ir_v) {
-      bins idle_fell = {1'b0}; bins idle_rose = {1'b1};
-    }
+    cp_idle_reseed: coverpoint s.ir iff (s.ir_v) {bins idle_fell = {1'b0}; bins idle_rose = {1'b1};}
   endgroup
 
   typedef struct packed {
