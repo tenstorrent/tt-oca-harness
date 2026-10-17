@@ -59,10 +59,7 @@ A passing check writes one FCOV record (``sep_aes_cfb_ofb_gcm_cg``).
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, replace
-from functools import lru_cache
-from pathlib import Path
 
 import cocotb
 import pyuvm
@@ -86,10 +83,9 @@ from env.sep_spec_tables import ot_rdl_named_codes
 from sep_base_test import sep_base_test
 from sep_reg_meta import AES
 from seq_lib.sep_aes_seq import (
-    AES_DATA_IN_0,
-    AES_DATA_OUT_0,
+    AES_DATA_IN,
+    AES_DATA_OUT,
     AES_KEYLEN_CTRL,
-    AES_MODE_CTRL,
     AES_OP_DEC,
     AES_OP_ENC,
     AES_STATUS,
@@ -97,6 +93,7 @@ from seq_lib.sep_aes_seq import (
     AES_STATUS_INPUT_READY,
     AES_STATUS_OUTPUT_VALID,
     SepAes,
+    aes_hjson_enum,
 )
 
 TEST = "sep_aes_cfb_ofb_gcm_rand_test"
@@ -106,53 +103,15 @@ KEY_SIZES = (128, 192, 256)
 DIRECTIONS = ("enc", "dec")
 CHK_NAME = {"cfb": "AES-CFB", "ofb": "AES-OFB", "gcm": "AES-GCM"}
 
-# --- Field codes from the OpenTitan AES register description ---------------
-_AES_HJSON = (
-    Path(__file__).resolve().parents[7]
-    / "vendor"
-    / "lowRISC"
-    / "opentitan"
-    / "upstream"
-    / "hw"
-    / "ip"
-    / "aes"
-    / "data"
-    / "aes.hjson"
-)
-_HJSON_REG = re.compile(r'\{\s*name:\s*"([A-Z0-9_]+)",')
-_HJSON_ENUM_ROW = re.compile(r'value:\s*"(\w+)",\s*name:\s*"([A-Z0-9_]+)"')
-
-
-@lru_cache(maxsize=None)
-def hjson_enum(reg: str, field: str) -> dict[str, int]:
-    """The ``enum`` list of field ``field`` of register ``reg`` in aes.hjson."""
-    text = _AES_HJSON.read_text(encoding="utf-8")
-    starts = [m for m in _HJSON_REG.finditer(text) if m.group(1) == reg]
-    if len(starts) != 1:
-        raise ValueError(f"aes.hjson: register {reg} found {len(starts)} times")
-    fld = re.compile(rf'name:\s*"{field}",').search(text, starts[0].end())
-    if fld is None:
-        raise ValueError(f"aes.hjson: {reg}.{field} not found")
-    nxt = text.find("enum: [", fld.end())
-    end = text.find("]", nxt)
-    if nxt < 0 or end < 0:
-        raise ValueError(f"aes.hjson: {reg}.{field} has no enum list")
-    return {name: int(value, 0) for value, name in _HJSON_ENUM_ROW.findall(text[nxt:end])}
-
 
 def _check_codes() -> tuple[dict[str, int], dict[str, int]]:
-    """Mode and GCM phase codes from aes.hjson, cross-checked before any use.
+    """CFB, OFB, GCM and the GCM phase codes from aes.hjson.
 
-    The ECB, CBC and CTR codes that ``seq_lib/sep_aes_seq.py`` programs must equal
-    the parsed MODE enum, GCM_INIT must equal the code that aes.rdl states, and
-    every code must be one-hot in its RDL field width, so a parse of the wrong
-    field fails at import.
+    GCM_INIT must equal the code aes.rdl states, and every code must be one-hot
+    in its RDL field width, so a parse of the wrong field fails at import.
     """
-    mode = hjson_enum("CTRL_SHADOWED", "MODE")
-    phase = hjson_enum("CTRL_GCM_SHADOWED", "PHASE")
-    for name, ours in (("AES_ECB", "ecb"), ("AES_CBC", "cbc"), ("AES_CTR", "ctr")):
-        if mode.get(name) != AES_MODE_CTRL[ours]:
-            raise ValueError(f"aes.hjson MODE {name}={mode.get(name)} != sep_aes_seq code")
+    mode = aes_hjson_enum("CTRL_SHADOWED", "MODE")
+    phase = aes_hjson_enum("CTRL_GCM_SHADOWED", "PHASE")
     stated = ot_rdl_named_codes("aes", "CTRL_GCM_SHADOWED")
     if phase.get("GCM_INIT") != stated.get("GCM_INIT"):
         raise ValueError(f"aes.hjson GCM_INIT={phase.get('GCM_INIT')} != aes.rdl {stated}")
@@ -419,11 +378,11 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
     async def _write_block(self, block: bytes) -> None:
         await self.aes._poll_status_bit(AES_STATUS_INPUT_READY, "input_ready")
         for i, w in enumerate(bytes_to_words(_pad(block, self.plan.pad_fill))):
-            await self.aes._wr(AES_DATA_IN_0 + 4 * i, w)
+            await self.aes._wr(AES_DATA_IN[i], w)
 
     async def _read_out(self) -> bytes:
         await self.aes._poll_status_bit(AES_STATUS_OUTPUT_VALID, "output_valid")
-        return words_to_bytes([await self.aes._rd(AES_DATA_OUT_0 + 4 * i) for i in range(4)])
+        return words_to_bytes([await self.aes._rd(AES_DATA_OUT[i]) for i in range(4)])
 
     async def _phase_blocks(self, phase: int, data: bytes, *, read: bool) -> bytes:
         """Write ``data`` in one GCM phase entered with NUM_VALID_BYTES = 16; a partial

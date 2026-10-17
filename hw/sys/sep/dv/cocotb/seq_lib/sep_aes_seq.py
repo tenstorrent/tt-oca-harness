@@ -16,7 +16,10 @@ AES register map (base from the generated SEP header; offsets from aes.adoc):
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -24,30 +27,88 @@ from env.sep_spec_tables import ot_rdl_named_codes
 from sep_reg_meta import AES, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+from seq_lib.sep_hmac_seq import reg_array
 
 AES_BASE = sym("AES_REG_MAP_BASE_ADDR")
-AES_KEY_SHARE0_0 = sym("AES_KEY_SHARE0_0__REG_ADDR")
-AES_KEY_SHARE1_0 = sym("AES_KEY_SHARE1_0__REG_ADDR")
-AES_IV_0 = sym("AES_IV_0__REG_ADDR")
-AES_DATA_IN_0 = sym("AES_DATA_IN_0__REG_ADDR")
-AES_DATA_OUT_0 = sym("AES_DATA_OUT_0__REG_ADDR")
+AES_KEY_SHARE0 = reg_array("AES_KEY_SHARE0")
+AES_KEY_SHARE1 = reg_array("AES_KEY_SHARE1")
+AES_IV = reg_array("AES_IV")
+AES_DATA_IN = reg_array("AES_DATA_IN")
+AES_DATA_OUT = reg_array("AES_DATA_OUT")
+AES_KEY_SHARE0_0 = AES_KEY_SHARE0[0]
+AES_KEY_SHARE1_0 = AES_KEY_SHARE1[0]
+AES_IV_0 = AES_IV[0]
+AES_DATA_IN_0 = AES_DATA_IN[0]
+AES_DATA_OUT_0 = AES_DATA_OUT[0]
+if (
+    len(AES_KEY_SHARE0) != 8
+    or len(AES_KEY_SHARE1) != 8
+    or len(AES_IV) != 4
+    or len(AES_DATA_IN) != 4
+    or len(AES_DATA_OUT) != 4
+):
+    raise ValueError(
+        "AES register map does not have 8 key-share words and 4 IV/DATA words: "
+        f"share0={len(AES_KEY_SHARE0)} share1={len(AES_KEY_SHARE1)} "
+        f"iv={len(AES_IV)} in={len(AES_DATA_IN)} out={len(AES_DATA_OUT)}"
+    )
 AES_CTRL_SHADOWED = AES.addr("CTRL_SHADOWED")
 AES_TRIGGER = AES.addr("TRIGGER")
 AES_STATUS = AES.addr("STATUS")
 
 # CTRL_SHADOWED field codes. The overlay aes.rdl declares no enum for these
-# fields and names only some codes in its field descriptions, so this table is
-# transcribed from the CTRL_SHADOWED enum lists of the OpenTitan register
-# description, vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson
-# (operation, mode, key_len, prng_reseed_rate). _check_aes_ctrl_codes() below
-# requires every code the aes.rdl text does name to match this table, and every
-# code to be one-hot in its RDL field width, so a drift fails at import.
+# fields and names only some codes in its field descriptions, so the values are
+# the enum lists of vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson
+# (OPERATION, MODE, KEY_LEN, PRNG_RESEED_RATE). _check_aes_ctrl_codes() requires
+# every code the aes.rdl text does name to match the parsed enum, and every
+# code to be one-hot in its RDL field width, so a parse of the wrong field
+# fails at import.
+_AES_HJSON = (
+    Path(__file__).resolve().parents[6]
+    / "vendor"
+    / "lowRISC"
+    / "opentitan"
+    / "upstream"
+    / "hw"
+    / "ip"
+    / "aes"
+    / "data"
+    / "aes.hjson"
+)
+_HJSON_REG = re.compile(r'\{\s*name:\s*"([A-Z0-9_]+)",')
+_HJSON_ENUM_ROW = re.compile(r'value:\s*"(\w+)",\s*name:\s*"([A-Z0-9_]+)"')
+
+
+@lru_cache(maxsize=None)
+def aes_hjson_enum(reg: str, field: str) -> dict[str, int]:
+    """Name to value of the ``enum`` list of field ``field`` of register ``reg``."""
+    text = _AES_HJSON.read_text(encoding="utf-8")
+    starts = [m for m in _HJSON_REG.finditer(text) if m.group(1) == reg]
+    if len(starts) != 1:
+        raise ValueError(f"aes.hjson: register {reg} found {len(starts)} times")
+    fld = re.compile(rf'name:\s*"{field}",').search(text, starts[0].end())
+    if fld is None:
+        raise ValueError(f"aes.hjson: {reg}.{field} not found")
+    nxt = text.find("enum: [", fld.end())
+    end = text.find("]", nxt)
+    if nxt < 0 or end < 0:
+        raise ValueError(f"aes.hjson: {reg}.{field} has no enum list")
+    return {name: int(value, 0) for value, name in _HJSON_ENUM_ROW.findall(text[nxt:end])}
+
+
+def _ctrl_codes(field: str, names: tuple[str, ...]) -> dict[str, int]:
+    enum = aes_hjson_enum("CTRL_SHADOWED", field)
+    missing = [name for name in names if name not in enum]
+    if missing:
+        raise ValueError(f"aes.hjson CTRL_SHADOWED.{field} has no {missing}")
+    return {name: enum[name] for name in names}
+
+
 _AES_CTRL_CODES = {
-    # field: {aes.hjson enum name: value}
-    "operation": {"AES_ENC": 0b01, "AES_DEC": 0b10},
-    "mode": {"AES_ECB": 0b00_0001, "AES_CBC": 0b00_0010, "AES_CTR": 0b01_0000},
-    "key_len": {"AES_128": 0b001, "AES_192": 0b010, "AES_256": 0b100},
-    "prng_reseed_rate": {"PER_1": 0b001, "PER_64": 0b010, "PER_8K": 0b100},
+    "operation": _ctrl_codes("OPERATION", ("AES_ENC", "AES_DEC")),
+    "mode": _ctrl_codes("MODE", ("AES_ECB", "AES_CBC", "AES_CTR")),
+    "key_len": _ctrl_codes("KEY_LEN", ("AES_128", "AES_192", "AES_256")),
+    "prng_reseed_rate": _ctrl_codes("PRNG_RESEED_RATE", ("PER_1", "PER_64", "PER_8K")),
 }
 
 
@@ -60,7 +121,7 @@ def _check_aes_ctrl_codes() -> None:
                 raise ValueError(f"AES CTRL_SHADOWED.{field} {name}=0b{value:b} is not one-hot")
             if name in stated and stated[name] != value:
                 raise ValueError(
-                    f"AES CTRL_SHADOWED.{field} {name}: DV table 0b{value:b}, "
+                    f"AES CTRL_SHADOWED.{field} {name}: parsed 0b{value:b}, "
                     f"aes.rdl states 0b{stated[name]:b}"
                 )
     missing = {"AES_ENC", "AES_256", "PER_1"} - stated.keys()
@@ -229,14 +290,14 @@ class SepAes(SepAxiRegDriver):
             share1[0] = 1
         share0 = [(padded[i] ^ share1[i]) & 0xFFFF_FFFF for i in range(8)]
         for i in range(8):
-            await self._wr(AES_KEY_SHARE0_0 + i * 4, share0[i])
-            await self._wr(AES_KEY_SHARE1_0 + i * 4, share1[i])
+            await self._wr(AES_KEY_SHARE0[i], share0[i])
+            await self._wr(AES_KEY_SHARE1[i], share1[i])
 
     async def write_iv(self, iv_words: list[int]) -> None:
         """Write IV_0..3 (little-endian words). Required for CBC/CTR, unused ECB."""
         assert len(iv_words) == 4, "AES IV = 4 words (128-bit)"
         for i, word in enumerate(iv_words):
-            await self._wr(AES_IV_0 + i * 4, word & 0xFFFF_FFFF)
+            await self._wr(AES_IV[i], word & 0xFFFF_FFFF)
 
     async def load_key_iv(self, key_words: list[int], iv_words: list[int] | None = None) -> None:
         """Spec-ordered SW key + IV load (OpenTitan AES Programmer's Guide, upstream): a KEY write
@@ -298,8 +359,8 @@ class SepAes(SepAxiRegDriver):
         assert the control read is non-zero; otherwise a dead read path returning
         zeros for everything would look identical to a pass.
         """
-        s0 = [await self._rd(AES_KEY_SHARE0_0 + i * 4) for i in range(8)]
-        s1 = [await self._rd(AES_KEY_SHARE1_0 + i * 4) for i in range(8)]
+        s0 = [await self._rd(AES_KEY_SHARE0[i]) for i in range(8)]
+        s1 = [await self._rd(AES_KEY_SHARE1[i]) for i in range(8)]
         control = await self._rd(AES_STATUS)
         return s0, s1, control
 
@@ -319,7 +380,7 @@ class SepAes(SepAxiRegDriver):
         assert len(pt_words) == 4, "AES block needs 4 data words"
         await self._poll_status_bit(AES_STATUS_INPUT_READY, "input_ready")
         for i, word in enumerate(pt_words):
-            await self._wr(AES_DATA_IN_0 + i * 4, word & 0xFFFF_FFFF)
+            await self._wr(AES_DATA_IN[i], word & 0xFFFF_FFFF)
         await self._poll_status_bit(AES_STATUS_OUTPUT_VALID, "output_valid")
         return await self.read_data_out()
 
@@ -341,10 +402,10 @@ class SepAes(SepAxiRegDriver):
         assert len(pt_words) == 4, "AES block needs 4 data words"
         await self._poll_status_bit(AES_STATUS_INPUT_READY, "input_ready")
         for i, word in enumerate(pt_words):
-            await self._wr(AES_DATA_IN_0 + i * 4, word & 0xFFFF_FFFF)
+            await self._wr(AES_DATA_IN[i], word & 0xFFFF_FFFF)
 
     async def read_data_out(self) -> list[int]:
         """Read DATA_OUT_0..3. Re-readable: AES holds the last ciphertext in the
         output registers until the next block output, an explicit DATA_OUT_CLEAR
         trigger, or a reset of the AES domain (no auto-clear on read by default)."""
-        return [await self._rd(AES_DATA_OUT_0 + i * 4) for i in range(4)]
+        return [await self._rd(AES_DATA_OUT[i]) for i in range(4)]
