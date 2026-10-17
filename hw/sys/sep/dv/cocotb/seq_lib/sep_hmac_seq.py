@@ -47,8 +47,11 @@ HMAC_STATUS_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
 HMAC_INTR_DONE = HMAC.field_mask("INTR_STATE", "hmac_done")
 HMAC_INTR_ERR = HMAC.field_mask("INTR_STATE", "hmac_err")
 
-# CFG field encodings (hmac.adoc digest_size / key_length, one-hot).
-HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}  # SHA2_256/384/512
+# CFG field encodings, one-hot, from the enum values of
+# vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson: digest_size (:242)
+# SHA2_256 = 1, SHA2_384 = 2, SHA2_512 = 4 (:250-263); key_length (:280) Key_128 = 1,
+# Key_256 = 2, Key_384 = 4, Key_512 = 8, Key_1024 = 16 (:296-321).
+HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}
 HMAC_KEY_LENGTH = {128: 0x1, 256: 0x2, 384: 0x4, 512: 0x8, 1024: 0x10}
 # Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.adoc).
 HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}

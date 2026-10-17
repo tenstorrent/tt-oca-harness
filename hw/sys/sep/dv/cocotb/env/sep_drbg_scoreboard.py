@@ -266,6 +266,17 @@ class SepDrbgScoreboard:
         self.chk5_enable = False
 
     # ------------------------------------------------------------------ drive
+    def stop(self) -> None:
+        """End every task ``start`` forked (noise driver and monitors).
+
+        A leaf calls this before a TRNG reset that ends the bring-up the tasks
+        observe; a later ``start`` forks a fresh set. Results stay readable.
+        """
+        for task in self._tasks:
+            stop = getattr(task, "cancel", None) or task.kill
+            stop()
+        self._tasks = []
+
     def start(self):
         """Fork the noise driver + per-stream monitors (after reset released)."""
         d = self.dut

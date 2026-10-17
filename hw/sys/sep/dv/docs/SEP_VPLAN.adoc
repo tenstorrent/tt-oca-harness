@@ -586,7 +586,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |Thirteen cells across SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256 and KMAC-128/256 spanning all five key lengths.
 |<<sep_crypto_edn_multisink_arbitration_test,`sep_crypto_edn_multisink_arbitration_test`>>
 |2
-|no_cpu, +skip_fuse_sense
+|no_cpu, +skip_fuse_sense, +esrc_noise_force
 |ocah_axi_vip, entropy golden
 |Two crypto sinks draw EDN entropy concurrently and both complete correctly: each AES fork block matches its golden bit-exact and the KMAC digest matches its own, while both are shown to have taken real post-adapter EDN beats inside the contention window. An AES-alone baseline in which KMAC takes zero beats is the control that keeps the both-beats check from passing vacuously.
 |<<sep_crypto_edn_round_robin_grant_test,`sep_crypto_edn_round_robin_grant_test`>>
@@ -690,7 +690,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master; HMAC, KMAC, AES and OTBN golden models
-|Extension leg of the open test. Proves that HMAC, KMAC SHA-3, AES and OTBN operations that overlap in time each return the result of their own golden, with the HMAC and OTBN members, skewed starts and an HMAC bystander that the open test does not run.
+|Extension leg of the open test. Proves that HMAC, KMAC SHA-3, AES and OTBN operations that overlap in time each return the result of their own golden, with the HMAC and OTBN members, skewed starts (OTBN last, the other engines held busy until every member has started) and an HMAC bystander that the open test does not run.
 
 |<<sep_hmac_illegal_cfg_start_test,`sep_hmac_illegal_cfg_start_test`>>
 |3
@@ -702,13 +702,13 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`
 |CPU-LSU master with write-response timing; inject `hmac_fifo_drain_stall_i`; HMAC golden model
-|Proves that the HMAC message FIFO reports its occupancy, back-pressures a full FIFO without losing data, and raises `fifo_empty` only after the FIFO has been full, and that a `WIPE_SECRET` write overwrites the digest and the key.
+|Proves that the HMAC message FIFO reports its occupancy, holds a write to a full FIFO within a bounded number of beats without losing data, and raises `fifo_empty` only after the FIFO has been full, that a `WIPE_SECRET` write overwrites the digest and the key, and that 8-bit and 16-bit writes at any byte lane of `MSG_FIFO` join the message (a known limitation of this design). The index of the held beat is logged only.
 
 |<<sep_hmac_swap_context_rand_test,`sep_hmac_swap_context_rand_test`>>
 |3
 |no_cpu, `+skip_fuse_sense`
 |CPU-LSU master, `sep_internal_interrupts_probe_o`; HMAC golden model
-|Proves the endian and digest byte-order bits, the stop and continue context path, the digest clear when `sha_en` is cleared, and the rise of the `hmac_done` interrupt line.
+|Proves the message byte order of `endian_swap`, the byte swap between the two `digest_swap` values, the stop, save, restore and continue context path of the OpenTitan programmer's guide, the digest clear when `sha_en` is cleared, and the rise of the `hmac_done` interrupt line. The byte order inside a DIGEST word at `digest_swap` = 0 is logged only.
 
 |<<sep_crypto_delivered_key_select_rand_test,`sep_crypto_delivered_key_select_rand_test`>>
 |3
@@ -750,13 +750,13 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, `sep_internal_interrupts_probe_o`; KMAC golden model
-|Proves the KMAC start and run stages, the idle state with no command, the lock of `CFG_SHADOWED` by `CFG_REGWEN` in the absorb stage, the message and state endianness, that `run` gives the next SHAKE block, and the rise of the `kmac_done` interrupt line.
+|Proves the KMAC start and run stages, the idle state with no command, the lock of `CFG_SHADOWED` by `CFG_REGWEN` in the absorb stage, the message and state endianness, that `run` gives the next SHAKE block, the rise of the `kmac_done` interrupt line, and that 8-bit and 16-bit message writes at byte lanes 1 to 3 of the `MSG_FIFO` window complete OKAY and hash in write order.
 
 |<<sep_kmac_entropy_mode_rand_test,`sep_kmac_entropy_mode_rand_test`>>
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, `crypto_edn_req_o[1]`, `crypto_edn_ack_o[1]`
-|Proves the KMAC entropy mode contract: software seeding needs six seed words, the mode is fixed once `entropy_ready` is written, the EDN wait timer bounds the wait, the hash counter counts and clears, and the automatic reseed follows the threshold.
+|Proves the KMAC entropy mode contract: software seeding with six seed words gives the golden digest, the mode is fixed once `entropy_ready` is written, the EDN wait timer bounds the wait, the hash counter counts and clears, and the automatic reseed follows the threshold. A start with fewer than six seed words is logged only.
 
 |<<sep_otbn_cmd_status_rand_test,`sep_otbn_cmd_status_rand_test`>>
 |3
@@ -774,19 +774,19 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master with VCS X check on readback; ESRC register reset and access model from the RDL
-|Proves that read-only ESRC registers (including `COMPONENT_ID`) ignore writes, a TRNG reset restores the unlocked read-write fields, a locked `CTRL.MODULE_ENABLE` ignores a write of 0, and, with all eight enable bits set, the `INTR_STATUS` bits follow a drawn `INTR_TEST` mask and a drawn subset clear, with `INTR_ENABLE` graded as a stored value.
+|Proves that read-only ESRC registers (including `COMPONENT_ID`) ignore writes and answer OKAY or SLVERR, a TRNG reset restores the stored unlocked read-write fields, a locked `CTRL.MODULE_ENABLE` ignores a write of 0, and, with all eight enable bits set, the `INTR_STATUS` bits follow a drawn `INTR_TEST` mask and a drawn subset clear, with `INTR_ENABLE` graded as a stored value. The status and alert latches are logged across the reset and not graded.
 
 |<<sep_esrc_health_pattern_rand_test,`sep_esrc_health_pattern_rand_test`>>
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
-|CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_decor_valid_o`, `esrc_decor_bytes_o`, `esrc_whiten_push_o`, `esrc_compress_vld_o`, `esrc_compress_data_o`
-|Proves, with exact-count noise patterns, that the adaptive-proportion health test trips on a biased generator lane while the repetition and Markov tests stay quiet under shared limits, that a limit beyond the exact run and alternation counts trips the repetition and Markov tests of every generator, that a constant-zero stream sets the adaptive-proportion and Markov low bits (the repetition bit is a control here; the high-side bit and counters are logged), that a constant non-zero stream from all lanes stuck at 1 trips the 32-bit adaptive-proportion high test, that enable and clear behave as specified, and that with whitening on the whitener turns a constant-zero stream into 8 digest words per 16 input words after the gating test fails.
+|CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_decor_valid_o`, `esrc_decor_bytes_o`, `esrc_whiten_push_o`, `esrc_compress_vld_o`; SHA-256 status tap (observation tap)
+|Proves, with exact-count noise patterns, that the adaptive-proportion health test trips on a biased generator lane while the repetition and Markov tests stay quiet under shared limits, that a limit beyond the exact run and alternation counts trips the repetition and Markov tests of every generator, that a constant-zero stream sets the adaptive-proportion and Markov low bits (the repetition bit is a control here; the high-side bit and counters are logged), that a constant non-zero stream from all lanes stuck at 1 trips the 32-bit adaptive-proportion high test, that enable and clear behave as specified, and that with whitening on the whitener turns a constant-zero stream into exactly 8 digest words per 16 input words. The repetition count after a disable and the whitener input after a post-boot health-test failure are logged as blocked.
 
 |<<sep_esrc_persistent_alert_rand_test,`sep_esrc_persistent_alert_rand_test`>>
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_compress_vld_o`
-|Proves that `ALERT_THRESHOLD` consecutive failing windows halt the entropy output with the alert and persistent-failure status set, that threshold 0 disables it, and that the output stays halted until a MODULE_ENABLE cycle or a TRNG reset.
+|Proves that exactly T failing windows trip the alert, that T - 1 do not, that a following clean window does not cancel the trip, that the alert halts the entropy output with the alert and persistent-failure status set, that threshold 0 disables it, and that the output stays halted until a MODULE_ENABLE cycle or a TRNG reset (the reset exit with no CTRL write after the reset). The trip latency is logged, not graded (<<known-limitations,Known Limitations>>).
 
 |<<sep_esrc_autotune_detune_test,`sep_esrc_autotune_detune_test`>>
 |3
@@ -798,13 +798,13 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_compress_vld_o`
-|Proves that no ESRC output passes the boot gate before a passing startup window, that clearing MODULE_ENABLE idles the state machine, and that a rising edge restarts startup and the counters.
+|Proves that no ESRC output passes the boot gate before a passing startup window, that clearing MODULE_ENABLE idles the state machine, and that a rising edge restarts startup (`BOOT_PHASE_DONE` reads 0 after it) and clears the total-failure counters, at three fall moments.
 
 |<<sep_esrc_conditioning_matrix_rand_test,`sep_esrc_conditioning_matrix_rand_test`>>
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
-|CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_decor_bytes_o`, `esrc_decor_valid_o`, `esrc_compress_vld_o`; SHA-256 status tap (observation tap)
-|Proves the conditioning options: the decorrelator byte mask; the compressor-bypass word order and all twelve generator-to-byte positions; `DOWNSAMPLE_RATE`; and the SHA-256 whitener count or pass-through.
+|CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_decor_bytes_o`, `esrc_decor_valid_o`, `esrc_whiten_push_o`, `esrc_compress_vld_o`; SHA-256 status tap (observation tap)
+|Proves the conditioning options: the decorrelator byte mask; the compressor-bypass word order and all twelve generator-to-byte positions; the exact strobe count of `DOWNSAMPLE_RATE`; the exact 16-to-8 count of the SHA-256 whitener and its `OUTPUT_COUNT`; and the pass-through.
 
 |<<sep_esrc_fifo_flow_rand_test,`sep_esrc_fifo_flow_rand_test`>>
 |3
@@ -816,13 +816,13 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_compress_vld_o`; ESRC noise-source stuck-at inject (added hook, error inject)
-|Proves the ESRC observe FIFOs: the noise observe path sees the stream before the boot gate, a lane change and a flush discard buffered words, a full FIFO plateaus and sets the overflow bit, and capture continues under the lock.
+|Proves the ESRC observe FIFOs: the noise observe path sees the stream before the boot gate, a lane change restarts packing so that the first word holds 32 samples of the new lane (a known limitation of this RTL), a lane change and a flush discard buffered words, a full FIFO plateaus and sets the overflow bit, and capture continues under the lock. The main-chain word counts with the observe paths on and off are logged only.
 
 |<<sep_drbg_fatal_err_inject_rand_test,`sep_drbg_fatal_err_inject_rand_test`>>
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, `sep_internal_interrupts_probe_o`
-|Proves that a forced CSRNG or EDN error sets its `ERR_CODE` source bit and fatal interrupt, pulses the crypto alert where the RDL says so, keeps the source bit set after a write-one clear of the interrupt state (the EDN bit 0 excepted) and clears it at a TRNG reset, and that a 14th EDN command word is refused.
+|Proves that a forced CSRNG or EDN error sets its `ERR_CODE` source bit and fatal interrupt, pulses the crypto alert where the RDL says so, keeps the source bit set after a write-one clear of the interrupt state (the EDN bit 0 excepted) and clears it at a TRNG reset, and that a 14th EDN command word after a command-FIFO reset is refused.
 
 |<<sep_drbg_regwen_lock_rand_test,`sep_drbg_regwen_lock_rand_test`>>
 |3
@@ -834,7 +834,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, `sep_internal_interrupts_probe_o`
-|Proves the EDN boot-mode precedence, the software command handshake, and that an instantiate sent to an instantiated CSRNG is ignored with the sequence alert set.
+|Proves the EDN boot-mode precedence, the software command handshake, and that an instantiate sent to an instantiated CSRNG sets the sequence alert.
 
 |<<sep_trng_ext_stream_handshake_rand_test,`sep_trng_ext_stream_handshake_rand_test`>>
 |3
@@ -852,7 +852,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense, `+esrc_noise_force`, multi-sink firmware
 |CPU-LSU master, multi-sink firmware, `crypto_edn_*`, `km_entropy_*`, `axis1_*`, `axis2_*`, `pool_edn_*` probes; external stream driver for the Key Manager leg (added hook, top-port drive); external stream response monitor and internal DRBG endpoint probe (observation taps)
-|Proves that a drawn set of three to six sinks that holds the Key Manager sampler (the full set of six with weight 1/2) completes its counts, and that the Key Manager sampler receives the driven words when the external source is selected for its stream.
+|Proves that a drawn set of three to six sinks that holds the Key Manager sampler (the full set of six with weight 1/2) completes its counts with every pair of busy windows overlapping at a request barrier, that the AES and KMAC results of that run equal their goldens, and that the Key Manager sampler receives the driven words when the external source is selected for its stream.
 |===
 
 [[sep-vplan-summary-2]]
@@ -2400,7 +2400,7 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |HMAC.ERR_CODE reports the error cause; the value list is not stated.
 |HMAC ERR_CODE: list the err_code values and their causes. The RDL points to an RTL enum. Source: `vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc` (`ERR_CODE`).
-|`sep_hmac_illegal_cfg_start_test` grades non-zero only
+|`sep_hmac_illegal_cfg_start_test` logs the value as `OBS-HMAC-ERRCODE` and does not grade it
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |`STATUS.hmac_idle` reports that HMAC is idle; the register text gives only its reset value 1 and the rule that `DIGEST` and `MSG_LENGTH` writes are legal while it is 1.
 |HMAC `STATUS.hmac_idle`: what value does the bit take during a hash, after `hmac_done`, and after a start that `CFG` blocks? Source: `vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson` (`STATUS.hmac_idle`); `vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc` (`STATUS`).
@@ -2420,7 +2420,7 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |KMAC ERR_CODE holds a code in [31:24] and debug data in [23:0]; the code values are not stated.
 |KMAC: list the ERR_CODE values. The RDL points to an RTL enum. Source: `vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc` (`ERR_CODE`).
-|`sep_kmac_unsupported_cfg_inject_test` and `sep_kmac_entropy_mode_rand_test` grade non-zero only
+|`sep_kmac_unsupported_cfg_inject_test` grades the reset value 0 before the start and logs the code after the error (`OBS-KMAC-ERRCODE`). `sep_kmac_entropy_mode_rand_test` grades the reset value 0 before each EDN wait-timer run (`CTRL-KMAC-TIMER-PRESTATE`) and logs the code after the error (`OBS-KMAC-TIMER-ERRCODE`); CHK-KMAC-TIMER grades `kmac_err`
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |The HMAC, KMAC and OTBN windows beyond the listed registers are decoded in full or in part. Window offsets and sizes are not stated.
 |HMAC, KMAC and OTBN: are the window offsets in the integration RDL the ruling source? The documents state extents only. Source: `hw/sys/sep/regs/gen/adoc/memory_map.adoc`; `integration/rdl/sep/otbn.rdl`; `integration/rdl/sep/hmac.rdl`; `integration/rdl/sep/kmac.rdl`.
@@ -2440,7 +2440,7 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |The gating 32-bit health test observes the extracted stream before SHA-256. The whitener conditions each 512-bit BIW block into a 256-bit digest. The block chaining, the padding, and the word and byte order of the input and digest words are not stated.
 |ESRC SHA-256 whitener: does each block start from the SHA-256 initial value or from the previous digest, is the block padded, and in which word and byte order do the 16 input words enter the block and the 8 digest words enter the FIFO? Source: `hw/ip/entropy_source/doc/architecture.adoc` (SHA-256 Whitening); `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`CTRL.SHA256_WHITENING_ENABLE`); `hw/sys/sep/doc/trng.adoc` (Entropy Generation).
-|`sep_esrc_health_pattern_rand_test` grades the 2:1 word count of the whitener on a constant-zero stream, logs the digest words, and does not grade the position of the 32-bit test
+|`sep_esrc_health_pattern_rand_test` grades the exact 16-to-8 word count of the whitener on a constant-zero stream, logs the digest words, and does not grade the position of the 32-bit test
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |HEALTH_TEST_STATUS latches repetition [0], APT [3], Markov high [4] and Markov low [5]. Bits [2:1] and [7:6] and the APT high/low split are not stated.
 |ESRC: meaning of HEALTH_TEST_STATUS bits 1, 2, 6 and 7 and the split of the adaptive-proportion failure into high and low. Source: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`HEALTH_TEST_STATUS`); `hw/ip/entropy_source/doc/architecture.adoc` (Health Testing).
@@ -2604,7 +2604,7 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |In software entropy mode KMAC waits for six `ENTROPY_SEED` writes before it processes commands.
 |KMAC: how is a `CMD.start` that arrives during the wait answered (ignored, queued or flagged with `kmac_err`)? Source: `vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc` (`ENTROPY_SEED`, `CMD`, `ERR_CODE`).
-|`sep_kmac_entropy_mode_rand_test` grades that `sha3_absorb` stays 0 and logs `kmac_err`
+|`sep_kmac_entropy_mode_rand_test` logs the absorb and `kmac_err` of the five-seed and zero-seed starts and of the sw-locked start with no seed word (`OBS-BLOCKED CHK-KMAC-SWSEED-NEG`, `OBS-BLOCKED CHK-KMAC-MODE-LOCK`) and grades none of them
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |HMAC and KMAC `INTR_STATE.fifo_empty` is a read-only state bit, and `INTR_TEST` can force it.
 |HMAC and KMAC: after an `INTR_TEST` write forces `fifo_empty` to 1, does the bit stay set, and does a write-one clear act on it? The register text states neither. Source: `vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc`; `vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc` (`INTR_STATE`, `INTR_TEST`).
@@ -2640,11 +2640,11 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |`SHA256_STATUS.INPUT_COUNT` counts the 32-bit words in the 512-bit input block. Its value at the block boundary is not stated.
 |ESRC: state whether `SHA256_STATUS.INPUT_COUNT` reaches 15 or 16 at the 512-bit block boundary. Source: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`SHA256_STATUS`).
-|`sep_esrc_conditioning_matrix_rand_test` (CHK-COND-SHA-COUNT) has no bin and no check at the boundary; the check reads the ESRC SHA-256 status tap, an observation tap
+|`sep_esrc_conditioning_matrix_rand_test` (CHK-COND-SHA, CHK-COND-SHA-COUNT) and `sep_esrc_health_pattern_rand_test` (CHK-HT-PRESHA) have no bin and no check at the boundary; CHK-COND-SHA and CHK-HT-PRESHA read `INPUT_COUNT` only at quiet clocks, where no block is at its boundary. The checks read the ESRC SHA-256 status tap, an observation tap
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |The CSRNG `CTRL` fields (`ENABLE`, `SW_APP_ENABLE`, `READ_INT_STATE`, `FIPS_FORCE_ENABLE`) and the EDN `CTRL` fields (`EDN_ENABLE`, `BOOT_REQ_MODE`, `AUTO_REQ_MODE`, `CMD_FIFO_RST`) are 4-bit multi-bit booleans with True = 6 and False = 9. A value that is neither sets the field alert bit of `RECOV_ALERT_STS`. `CMD_FIFO_RST` = True clears both EDN command FIFOs.
 |No specification question: the RDL states the values, the alert bits and the FIFO clear. Source: `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/csrng.rdl` and `vendor/lowRISC/opentitan/overlay/regs/edn/regs/edn.rdl` (`CTRL`, `RECOV_ALERT_STS`).
-|`sep_drbg_cmd_sequence_rand_test` does not drive either cell. The cells need, after bring-up, one error-injection write of a value other than 6 or 9 to one field, with the field alert bit expected, and one `CMD_FIFO_RST` = True write with both command FIFOs expected empty: two checks with their own steps, which the entry does not carry.
+|`sep_drbg_cmd_sequence_rand_test` does not drive either cell. `sep_drbg_fatal_err_inject_rand_test` writes `CMD_FIFO_RST` = True, then False, as the set-up of its command-FIFO count and grades no FIFO clear on it. The cells need, after bring-up, one error-injection write of a value other than 6 or 9 to one field, with the field alert bit expected, and one `CMD_FIFO_RST` = True write with both command FIFOs expected empty: two checks with their own steps, which no entry carries.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |KMAC `STATUS` reports `fifo_depth`, `fifo_empty`, `fifo_full`, `alert_fatal_fault` and `alert_recov_ctrl_update_err`. The entries grade `sha3_idle`, `sha3_absorb` and `sha3_squeeze` only.
 |KMAC: at which `fifo_depth` does `STATUS.fifo_full` read 1? The depth is not stated (same question as for the HMAC message FIFO). Source: `vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc` (`STATUS`).
@@ -3333,6 +3333,14 @@ feature, and the note says how the test treats the blocked leg.
 |===
 |Area |Item |Blocked leg and open question |Note
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|A write to the full HMAC message FIFO back-pressures the interconnect, and the data is not lost.
+|Which write after `STATUS.fifo_full` reads 1 is held. A byte packer sits in front of the FIFO, and the register text does not state how many writes it takes after `fifo_full` reads 1. HMAC: state which write is held. Source: `vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc` (`STATUS`); `vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson` (`STATUS.fifo_full`).
+|`sep_hmac_fifo_stream_rand_test` logs the held beat (`OBS-BLOCKED CHK-HMAC-BACKPRESSURE`, `OBS-HMAC-BP-HOLD-BEAT`) and grades a hold with no lost data (CHK-HMAC-BACKPRESSURE-HOLD). The leg stops after 16 beats; 16 is a termination bound of the leg, not a spec value, and a DUT that holds no beat by then fails
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|`CFG.digest_swap` = 1 converts the byte order of each DIGEST word and keeps the register order.
+|The byte order inside a DIGEST word at `digest_swap` = 0. The register text states the swap and that DIGEST_0 holds the first 4 bytes, and no in-word order at the reset value. HMAC: state the byte order of a DIGEST word at `digest_swap` = 0. Source: `vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc` (`CFG`).
+|`sep_hmac_illegal_cfg_start_test`, `sep_hmac_swap_context_rand_test`, `sep_hmac_fifo_stream_rand_test`, `sep_crypto_delivered_key_select_rand_test` and the concurrency leg of `sep_crypto_edn_multisink_arbitration_test` accept the big-endian or the little-endian read with one order per seed, log it as `OBS-HMAC-DIGEST-ORDER`; `sep_hmac_swap_context_rand_test` also grades the byte swap between the two `digest_swap` values (CHK-HMAC-DSWAP-REL)
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |RECOV_ALERT_STS has nine bits cleared by writing zero; the three CMD_STAGE alerts ignore the bad command.
 |RECOV_ALERT_STS bits other than CMD_STAGE_INVALID_CMD_SEQ_ALERT: bit 13 needs an illegal ACMD, bit 15 needs the reseed enforcement, bits 0 to 4 need a stimulus that writes an invalid multi-bit boolean (True = 6 and False = 9 are stated, and no Phase 3 entry drives an invalid value), bit 12 needs an attack pattern. Source: `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc` (`RECOV_ALERT_STS`).
 |`sep_drbg_cmd_sequence_rand_test` grades bit 14
@@ -3357,6 +3365,10 @@ feature, and the note says how the test treats the blocked leg.
 |ESRC: when an observe FIFO is full, is the incoming word or the oldest word the one that is discarded? Source: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`INTR_STATUS`, `NOISE_OBS_CTRL`, `BIW_OBS_CTRL`).
 |`sep_esrc_observe_fifo_rand_test` grades the plateau level, the overflow bit and its write-one clear only
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|The noise and BIW observe FIFOs capture beside the main entropy chain.
+|ESRC: does observe capture, with both observe FIFOs full, leave the word rate of the main chain unchanged? No sentence states it. Source: `hw/ip/entropy_source/doc/architecture.adoc` (Entropy Source); `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`NOISE_OBS_CTRL`, `BIW_OBS_CTRL`).
+|`sep_esrc_observe_fifo_rand_test` logs `OBS-BLOCKED CHK-OBS-MAIN` and the stream word counts with the observe paths off and on, and grades nothing on them
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |The stream port of the main FIFO carries each word as it is written into the FIFO with no back-pressure, and a write while full is discarded.
 |ESRC: does a word whose write is discarded while the FIFO is full appear on the stream? Source: `hw/ip/entropy_source/doc/architecture.adoc` (Output FIFO); `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`FIFO_STATUS`, `INTR_STATUS`).
 |`sep_esrc_fifo_flow_rand_test` logs the stream word count while the FIFO is full and grades nothing on it
@@ -3364,6 +3376,18 @@ feature, and the note says how the test treats the blocked leg.
 |ESRC `INTR_STATUS` reports the latched interrupt status of eight sources, and `INTR_ENABLE` enables each source.
 |ESRC: does an `INTR_STATUS` bit latch while its `INTR_ENABLE` bit is clear, or does the enable gate the source into the status? Source: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`INTR_STATUS`, `INTR_ENABLE`, `INTR_TEST`).
 |Every ESRC entry that grades a status bit writes its enable bit 1 after each TRNG reset (crypto common rule "ESRC interrupt status"). `sep_esrc_csr_rw_walk_rand_test` logs the status under a clear enable bit and grades nothing on it. FCOV `x_esrc_status_enable` has no bin for the (status 1, enable 0) cells
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|Disabling an ESRC health test with `HEALTH_TEST_CTRL.ENABLE` clears its state.
+|ESRC: what does `REPETITION_TEST_COUNT` read after the repetition test is disabled? The vendored tester holds a count of 1 while inactive. Source: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`HEALTH_TEST_CTRL`, `REPETITION_TEST_COUNT`).
+|`sep_esrc_health_pattern_rand_test` (CHK-HT-ENABLE) grades that the count falls below 100 and below its value before the disable, and logs the value as `OBS-BLOCKED CHK-HT-ENABLE-REPCOUNT-VALUE`. FCOV `cp_disable_clears` has no graded bin
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|With whitening on, the SHA-256 whitener conditions the BIW stream, and a 32-bit health-test failure after boot does not stop the module.
+|ESRC: after the 32-bit health test fails after `BOOT_PHASE_DONE`, does the whitener keep taking input words? Source: `hw/ip/entropy_source/doc/architecture.adoc` (Entropy Source, Health Testing, SHA-256 Whitening).
+|`sep_esrc_health_pattern_rand_test` (CHK-HT-PRESHA) grades the exact 16-to-8 count when at least 64 input words pass; a trace with fewer input words logs `OBS-BLOCKED CHK-HT-PRESHA-NOPUSH` and the missing check line fails the leaf
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|The SHA-256 whitener accumulates 16 BIW words into one block and emits 8 digest words.
+|ESRC: does the whitener take every BIW word while it hashes a block, or can a BIW word reach the BIW observe FIFO and not the whitener? Source: `hw/ip/entropy_source/doc/architecture.adoc` (SHA-256 Whitening); `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`SHA256_STATUS`, `BIW_OBS_CTRL`).
+|`sep_esrc_conditioning_matrix_rand_test` (CHK-COND-SHA) grades the exact count on the whitener input strobe `esrc_whiten_push_o`, not on the BIW observe count, and logs both as `OBS-BLOCKED CHK-COND-SHA-INTAKE`
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |KMAC CFG_SHADOWED.mode selects cSHAKE, and the encoded name and customization prefix is written by software into the PREFIX registers.
 |KMAC: which encoded name and customization prefix gives the digest golden of an unkeyed cSHAKE cell, and how does the specification define the encoding? Source: `vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc` (`PREFIX_0`, `CFG_SHADOWED`).
@@ -4282,7 +4306,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |ESRC SHA-256 status tap
 |Read-only tap
 |The next value of the `SHA256_STATUS` fields on every `clk_i`.
-|`sep_esrc_conditioning_matrix_rand_test` (CHK-COND-SHA-COUNT)
+|`sep_esrc_conditioning_matrix_rand_test` (CHK-COND-SHA, CHK-COND-SHA-COUNT); `sep_esrc_health_pattern_rand_test` (CHK-HT-PRESHA)
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |Crypto and entropy FCOV sampler taps
 |Sampler taps
@@ -4564,13 +4588,13 @@ use it" names the entries whose checks need the hook.
 |Error inject
 |A force of the output of the noise ring oscillator of each lane to a constant 0 or 1 (a stuck noise source), upstream of the sampling flop, the synchronizer and the noise observe samples.
 |The output of the noise ring oscillator of each ESRC lane
-|`sep_esrc_observe_fifo_rand_test` (CHK-OBS-LANE, CHK-OBS-FLUSH, CHK-OBS-LOCK)
+|`sep_esrc_observe_fifo_rand_test` (CHK-OBS-PACK, CHK-OBS-LANE, CHK-OBS-FLUSH, CHK-OBS-LOCK)
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |`hmac_fifo_drain_stall_i`
 |Existing bench hook, listed (error inject)
 |Holds the read side of the HMAC message FIFO idle while the input is high, so the hash engine stops consuming and the FIFO fills.
 |The read-ready net of the HMAC message FIFO, inside `sep`
-|`sep_hmac_fifo_stream_rand_test` (the stalled legs: CHK-HMAC-BACKPRESSURE, CHK-HMAC-FIFOEMPTY); `sep_pic_pending_map_walk_rand_test` (source 19 set-up of CHK-FIFO-EMPTY)
+|`sep_hmac_fifo_stream_rand_test` (the stalled legs: CHK-HMAC-BACKPRESSURE-HOLD, CHK-HMAC-FIFOEMPTY); `sep_pic_pending_map_walk_rand_test` (source 19 set-up of CHK-FIFO-EMPTY)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |BH-SMC
 |Top-port drive
@@ -5326,4 +5350,26 @@ defect. Behaviour that this plan does not claim at all is in
 
 |Lifecycle codes with no owner. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`). The `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set.
 |The encodings are closed. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset. From a given image only a W1S superset is reachable in one leaf.
+
+|KMAC message-window narrow write (hardware gap). The KMAC `MSG_FIFO` window takes byte writes at any address of the window (`vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson`, `MSG_FIFO`, `byte-write: "true"`; the low 12 address bits are ignored). On this DUT an 8-bit write at byte lane 1, 2 or 3 or a 16-bit write at byte lane 2 of the window answers SLVERR: the register bridge (`hw/common/axi/axi_lite_to_tlul.sv`) sends a 4-byte request at the unaligned address, and the register block (`hw/common/tlul/rtl/tlul_err.sv`) refuses it. *Issue*: #3131
+|`sep_kmac_stream_cfg_rand_test` CHK-KMAC-NARROW-WRITE fails on this DUT (<<sep_kmac_stream_cfg_rand_test>>). The drawn cells of the leaf write their messages at byte lane 0, so the other checks of the leaf grade on a path that answers OKAY. Firmware must write the window at byte lane 0.
+
+|HMAC message-window narrow write (hardware gap). The HMAC `MSG_FIFO` window takes byte writes (`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson`, `MSG_FIFO`, `byte-write: "true"`). On this DUT an 8-bit write at byte lane 1, 2 or 3 or a 16-bit write at byte lane 2 of the window answers SLVERR, through the same register bridge as the KMAC row above. *Issue*: #3131
+|`sep_hmac_fifo_stream_rand_test` CHK-HMAC-NARROW-WRITE fails on this DUT (<<sep_hmac_fifo_stream_rand_test>>). The leaf runs the narrow-lane leg last, so the other checks of the leaf grade on writes at byte lane 0. Firmware must write the window at byte lane 0.
+
+|ESRC persistent-failure alert one window late (spec-vs-design difference, spec update pending). `hw/ip/entropy_source/doc/architecture.adoc` (persistent-failure path) states that the main state machine goes to the alert state when `ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT` reaches `ALERT_THRESHOLD.THRESHOLD`. On this DUT the state machine acts at the end of the next health window, so entropy output continues for one window after the count reaches the threshold, and `ANY_FAIL_COUNT` reads the threshold plus 1 at the trip when that window also fails. The text states no trip timing in windows. *Issue*: #3140
+
+|CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD fail on this DUT (#3149). `sep_esrc_persistent_alert_rand_test` grades the failing-window count (T trips, T - 1 does not, a clean window after window T does not cancel the trip) and logs the trip latency as `OBS-PF-TRIP-LATENCY` without grading it (<<sep_esrc_persistent_alert_rand_test>>).
+
+|ESRC failing-window count (hardware gap). `hw/ip/entropy_source/doc/architecture.adoc` (line 136) and `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`ALERT_SUMMARY_FAIL_COUNTS`, line 728) state one count per failing window. On this DUT ESRC counts the clean window after a window whose health test fails at the window end as a failing window. *Issue*: #3149
+|`sep_esrc_persistent_alert_rand_test` CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD fail on this DUT (<<sep_esrc_persistent_alert_rand_test>>). The other checks of the leaf grade the trip at the drawn threshold and later steps.
+
+|ESRC observe-word packing (hardware gap). `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`NOISE_OBS_RDATA`) states that each word holds 32 LSB-first samples of the selected lane. On this DUT a pushed word holds 31 samples in bits 31:1, and bit 0 holds the previous content of the packer: 0 in the first word after a lane change. *Issue*: #3141
+|`sep_esrc_observe_fifo_rand_test` CHK-OBS-PACK fails on this DUT on each change to a lane held at 1 (<<sep_esrc_observe_fifo_rand_test>>). CHK-OBS-LANE grades the later words of each change, where the lane level is constant, so a one-sample shift does not show there.
+
+|OTBN OTP scramble-key handshake (hardware gap). `vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sync_reqack.sv` (the request synchronizer of the OTBN OTP-key port) states that the destination does not send an acknowledge without a request. On this DUT the SEP mock OTP-key responder (`hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv`) holds the acknowledge one clock after the request falls, once per SEC_WIPE_DMEM or SEC_WIPE_IMEM command. *Issue*: #3156
+|`sep_otbn_cmd_status_rand_test` fails on VCS on the synchronizer assertions `SyncReqAckAckNeedsReq` and `SyncReqAckHoldReq`; its checkers pass (<<sep_otbn_cmd_status_rand_test>>). Verilator compiles these assertions out.
+
+|Key Manager CPU AXI master valid in reset (hardware gap). AXI (IHI0022, A3.1.2) requires a master to drive ARVALID, AWVALID and WVALID low during reset, and `hw/ip/key_manager/doc/architecture.adoc` names the CPU port an AXI4-Lite master with an asynchronous cold reset. On this DUT the PicoRV32 master clears its request only on the next clock edge, so a read that waits for `ARREADY` when the cold reset asserts keeps `ARVALID` high for one clock. *Issue*: #3170
+|`sep_drbg_sink_mix_rand_test` fails on VCS on `OCAH_AXI_AR_VALID_RESET_LOW` of the Key Manager CPU port when its `rst_ni` pulse lands on such a clock, which depends on the seed; its checkers pass (<<sep_drbg_sink_mix_rand_test>>). Verilator compiles the AXI assertions out. Other leaves that pulse `rst_ni` while the Key Manager firmware runs can fail the same way.
 |===
