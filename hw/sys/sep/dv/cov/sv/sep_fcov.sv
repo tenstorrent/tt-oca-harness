@@ -16950,6 +16950,8 @@ module sep_fcov (
     logic ct_v;
     logic nk;
     logic nk_v;  // sideload with no valid key: 0 no start to the window close, 1 a start
+    logic ir;
+    logic ir_v;  // STATUS.IDLE after TRIGGER.PRNG_RESEED: 0 fell, 1 rose again
   } cy_acfg_t;
 
   covergroup sep_aes_cfg_cg with function sample (cy_acfg_t s);
@@ -16968,6 +16970,7 @@ module sep_fcov (
     cp_sideload_no_key: coverpoint s.nk iff (s.nk_v) {
       bins no_start_without_valid_key = {1'b0}; illegal_bins start_without_valid_key = {1'b1};
     }
+    cp_idle_reseed: coverpoint s.ir iff (s.ir_v) {bins idle_fell = {1'b0}; bins idle_rose = {1'b1};}
   endgroup
 
   typedef struct packed {
@@ -17427,9 +17430,13 @@ module sep_fcov (
         e.rt_v = 1'b1;
       end
       3: e.ct_v = 1'b1;
-      default: begin
+      4: begin
         e.nk   = v[0];
         e.nk_v = 1'b1;
+      end
+      default: begin
+        e.ir   = v[0];
+        e.ir_v = 1'b1;
       end
     endcase
     u_sep_aes_cfg_cg.sample(e);
@@ -18027,6 +18034,8 @@ module sep_fcov (
   logic [2:0] cy_rr_rate = '0;
   int unsigned cy_rr_n = 0;
   logic cy_rt_on = 1'b0;
+  logic cy_ir_on = 1'b0;
+  logic cy_ir_low = 1'b0;
   logic cy_ct_on = 1'b0;
   logic [2:0] cy_ct_m = '0;
   logic cy_ms_stall = 1'b0;
@@ -18214,6 +18223,30 @@ module sep_fcov (
                  (aw_addr_q == AES_TRIGGER_REG_ADDR) &&
                  ((wr_data & AES_TRIGGER_PRNG_RESEED_MASK) == 32'h0)) begin
       cy_rt_on <= 1'b1;
+    end
+    // STATUS.IDLE is 0 after TRIGGER.PRNG_RESEED and 1 again when that reseed ends.
+    // Level, not the edge: the fall can be in the same cycle as the write that arms this.
+    if (cy_ir_on) begin
+      if (!cy_own_arsd || !cy_ip[2]) begin
+        cy_ir_on  <= 1'b0;
+        cy_ir_low <= 1'b0;
+      end else if (!cy_ir_low && !cy_a_idle) begin
+        cy_acfg(5, 3'd0);
+        cy_ir_low <= 1'b1;
+      end else if (cy_ir_low && cy_a_idle) begin
+        cy_acfg(5, 3'd1);
+        cy_ir_on  <= 1'b0;
+        cy_ir_low <= 1'b0;
+      end
+    end else if (cy_own_arsd && cy_ip[2] && wr_ev &&
+                 (aw_addr_q == AES_TRIGGER_REG_ADDR) &&
+                 ((wr_data & AES_TRIGGER_PRNG_RESEED_MASK) != 32'h0)) begin
+      // The write response can land after IDLE has already fallen.
+      cy_ir_on <= 1'b1;
+      if (!cy_a_idle) begin
+        cy_acfg(5, 3'd0);
+        cy_ir_low <= 1'b1;
+      end else cy_ir_low <= 1'b0;
     end
 
     // Entry 1.32: x_mode_status, cp_lost_clear, cp_nonidle_cause.
@@ -19643,8 +19676,8 @@ module sep_fcov (
   typedef struct packed {
     logic [1:0] mf;
     logic mf_v;  // {BOOT_REQ_MODE true, AUTO_REQ_MODE true} at the enable
-    logic rm;
-    logic rm_v;  // HW_CMD_STS 0 (BOOT_MODE 1, AUTO_MODE 0), 1 both 1
+    logic [1:0] rm;
+    logic rm_v;  // HW_CMD_STS 0 boot only, 1 both, 2 auto only
     logic [1:0] sp;
     logic sp_v;  // 0 CMD_REG_RDY before, 1 CMD_ACK after, 2 edn_cmd_req_done set
     logic [1:0] aw;
@@ -19656,6 +19689,8 @@ module sep_fcov (
     logic es;
     logic es_v;  // CMD_STS at the software ack: 0 SUCCESS, 1 INVALID_ACMD
     logic ae_v;  // RECOV_ALERT_STS.CSRNG_ACK_ERR set request
+    logic hc;
+    logic hc_v;  // hardware command while AUTO_MODE 1: 0 generate, 1 reseed
   } cz_edn_t;
 
   covergroup sep_edn_mode_cg with function sample (cz_edn_t s);
@@ -19665,9 +19700,10 @@ module sep_fcov (
       bins boot_true_auto_true = {2'b11};
       bins boot_false_auto_false = {2'b00};
       bins boot_true_auto_false = {2'b10};
+      bins boot_false_auto_true = {2'b01};
     }
     cp_reported_mode: coverpoint s.rm iff (s.rm_v) {
-      bins boot_only = {1'b0}; illegal_bins boot_and_auto = {1'b1};
+      bins boot_only = {2'd0}; illegal_bins boot_and_auto = {2'd1}; bins auto_only = {2'd2};
     }
     cp_sw_port_hs: coverpoint s.sp iff (s.sp_v) {
       bins cmd_reg_rdy_before = {2'd0}; bins cmd_ack_after = {2'd1}; bins cmd_req_done_set = {2'd2};
@@ -19680,6 +19716,9 @@ module sep_fcov (
     }
     cp_boot_cmd_reset: coverpoint s.bc iff (s.bc_v) {
       bins boot_ins_0x901 = {1'b0}; bins boot_gen_0xfff003 = {1'b1};
+    }
+    cp_auto_hw_cmd: coverpoint s.hc iff (s.hc_v) {
+      bins generate_cmd = {1'b0}; ignore_bins reseed_cmd = {1'b1};
     }
     cp_ctrl_field_alert: coverpoint s.fa iff (s.fa_v) {
       bins edn_enable_field = {2'd0};
@@ -20000,7 +20039,7 @@ module sep_fcov (
         e.mf_v = 1'b1;
       end
       1: begin
-        e.rm   = v[0];
+        e.rm   = v;
         e.rm_v = 1'b1;
       end
       2: begin
@@ -20022,6 +20061,10 @@ module sep_fcov (
       6: begin
         e.es   = v[0];
         e.es_v = 1'b1;
+      end
+      8: begin
+        e.hc   = v[0];
+        e.hc_v = 1'b1;
       end
       default: e.ae_v = 1'b1;
     endcase
@@ -21987,6 +22030,11 @@ module sep_fcov (
       cz_ed_boot <= b;
       cz_ed_auto <= a;
       if (cy_own_dcmd && (bde || ade) && b) cz_edn(1, {1'b0, a});
+      else if (cy_own_dcmd && (bde || ade) && !b && a) cz_edn(1, 2'd2);
+      if (cy_own_dcmd && !b && a && cy_t(edn_hw2reg_i.hw_cmd_sts.cmd_type.de)) begin
+        if (edn_hw2reg_i.hw_cmd_sts.cmd_type.d == 4'd3) cz_edn(8, 2'd0);
+        else if (edn_hw2reg_i.hw_cmd_sts.cmd_type.d == 4'd2) cz_edn(8, 2'd1);
+      end
     end
   end
 
