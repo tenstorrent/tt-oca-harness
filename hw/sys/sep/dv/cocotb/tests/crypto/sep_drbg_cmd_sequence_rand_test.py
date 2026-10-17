@@ -592,6 +592,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         fields = {
             "first_type": _typ(gen_hw),
             "first_auto": _bit(gen_hw, ED_AUTO_MODE),
+            "first_boot": _bit(gen_hw, ED_BOOT_MODE),
             "first_ack": _bit(gen_hw, ED_HW_ACK),
             "expected_type": ACMD_GENERATE,
         }
@@ -599,7 +600,10 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             fields["reason"] = reason
         self.chk.ok(
             "EDN-AUTO",
-            not reason and _typ(gen_hw) == ACMD_GENERATE and _bit(gen_hw, ED_AUTO_MODE) == 1,
+            not reason
+            and _typ(gen_hw) == ACMD_GENERATE
+            and _bit(gen_hw, ED_AUTO_MODE) == 1
+            and _bit(gen_hw, ED_BOOT_MODE) == 0,
             **fields,
         )
         self.chk.obs(
@@ -607,6 +611,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             max_num_reqs=0,
             first_type=_typ(rs_hw),
             first_auto=_bit(rs_hw, ED_AUTO_MODE),
+            first_boot=_bit(rs_hw, ED_BOOT_MODE),
             first_ack=_bit(rs_hw, ED_HW_ACK),
             reason=reason or "na",
         )

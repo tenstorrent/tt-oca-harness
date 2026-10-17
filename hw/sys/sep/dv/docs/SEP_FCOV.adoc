@@ -2380,7 +2380,7 @@ alert, autotune and FIFO flags. `ESRC_RDL` (`GENERATOR_<n>_HEALTH_STATUS`,
 
 ===== `sep_edn_mode_cg`
 
-*Description*: EDN boot and auto request mode, reported mode, software port, automatic command FIFOs, the reset read of the boot words, the `CTRL` field alerts and the software `CMD_STS` codes. `OT` edn (`CTRL`, `BOOT_INS_CMD`, `BOOT_GEN_CMD`, `SW_CMD_STS`, `HW_CMD_STS`, `RESEED_CMD`, `GENERATE_CMD`, `RECOV_ALERT_STS`, `INTR_STATE`). The cell (BOOT_REQ_MODE false, AUTO_REQ_MODE true) and the reported mode (BOOT 0, AUTO 1) are not driven: auto mode needs an endpoint that pulls EDN data, and the owners hold every endpoint in reset. The multi-bit boolean codes are True = 6 and False = 9, from `edn.rdl`.
+*Description*: EDN boot and auto request mode, reported mode, software port, automatic command FIFOs, the reset read of the boot words, the `CTRL` field alerts and the software `CMD_STS` codes. `OT` edn (`CTRL`, `BOOT_INS_CMD`, `BOOT_GEN_CMD`, `SW_CMD_STS`, `HW_CMD_STS`, `RESEED_CMD`, `GENERATE_CMD`, `RECOV_ALERT_STS`, `INTR_STATE`). `sep_drbg_cmd_sequence_rand_test` drives the cell (BOOT_REQ_MODE false, AUTO_REQ_MODE true) and the reported mode (BOOT 0, AUTO 1) in its auto-mode leg: after the software instantiate EDN sends the hardware commands with the endpoints in reset. The multi-bit boolean codes are True = 6 and False = 9, from `edn.rdl`.
 
 *Owning tests*: `sep_drbg_cmd_sequence_rand_test`,
 `sep_drbg_fatal_err_inject_rand_test`. *Tool*: VCS. *Class*: executable.
