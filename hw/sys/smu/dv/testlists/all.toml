@@ -2827,11 +2827,6 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-  # The JTAG sep_reset_n override this leaf drives resets the crypto engines
-  # without isolation, so an ungranted EDN request can drop with no endpoint
-  # cancel. tb_wrapper_top turns the crypto EDN request-hold checks off for
-  # it; the pool instance keeps its checks.
-  "+sep_edn_jtag_reset_waive",
   # Releasing km_jtag_rst_n takes the Key Manager out of its software reset.
   # An empty ROM returns X and the look-ahead read takes u_km_rom.req_i to X.
   # The image is the SEP Key Manager smoke ROM, which no stage of this leaf

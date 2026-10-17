@@ -671,7 +671,7 @@ A stand-in is anything that answers in place of the mechanism a claim is
 about: a testbench force, a simulation-only path selected by a plusarg, a
 configuration waiver, a loopback where a chain would be, a compiled-in
 substitute for a product cell, or a model inside the product composition.
-Eleven sit on proof paths of enrolled SMU tests. Each has one entry of three
+Twelve sit on proof paths of enrolled SMU tests. Each has one entry of three
 fields, filled from the tree: the claim that is accepted with the stand-in in
 place, why the real path cannot be used, and the exact scope. Who approved an
 entry, against which revision, and when it is next reviewed are recorded in
@@ -698,6 +698,7 @@ run.
 |Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (five host scan chains and the I/O and extra STAP TDO-to-TDI returns) |`smu_dtp_bsr_extest_loopback_test`, `smu_dtp_scan_chain_boundary_test`
 |CTP data-input tie-offs |`tb/tb_wrapper_top.sv` (the `xtrig_ctp_*_din_i` bindings of `u_dut`), `cocotb_wrapper/tests/smu_base_test.py` (`IDLE_INPUTS`) |`smu_boundary_port_composition_test`
 |`noXOnCsI` hold-off window |`tb/tb_wrapper_top.sv` (the `$assertoff` / `$asserton` block on the three `prim_rom` instances), four-state simulators only |every `--dut smu` leaf on a four-state simulator; load-bearing for `smu_jtag_reset_override_test`, whose Key Manager ROM part only `noXOnCsI` grades
+|Crypto EDN request-hold window |`tb/tb_wrapper_top.sv` (the `crypto_edn_request_hold_window` block), four-state simulators, cocotb shape only |every `--dut smu` cocotb leaf on a four-state simulator compiles it in; it opens only on a leaf whose IC_RESET write clears the `reset_enable` of `sep_reset_n`, `aes_jtag_rst_n`, `kmac_jtag_rst_n` or `otbn_jtag_rst_n` with that port's `reset_control` low, which is `smu_jtag_reset_override_test` alone (its SS/SEP walk, every SEP port). No other IC_RESET writer can open it: `smu_jtag_ic_reset_layout_caps_test` clears `reset_control` bits only, `smu_jtag_ic_reset_ext_override_test` writes the external port and `reset_hold` only, and `smu_ic_reset_dual_domain_illegal_test`, `smu_ic_reset_smc_multi_domain_test`, `smu_ic_reset_ss_domain_matrix_test`, `smu_boot_stall_vs_ic_reset_priority_test`, `smu_clock_domain_composition_test` and `smu_clock_stop_coordination_test` write SMC ports only. The release side is outside the window: a write that clears a release-type override (`ovrd` set with `val` high) while the sequenced reset is low re-asserts that engine's reset with no window open
 |`prim_sync2` / `prim_sync3` stand-ins |`[build].stubs` of `smu_sim_cfg.toml`, from `hw/sys/smc/dv/tb/verilator_stubs/` |every leaf on Verilator; reset and boot-gate observes downstream
 |eFuse models in the product composition |`hw/top/smc_ip_integration.sv`, `hw/top/sep_ip_integration.sv` |the OTP JTAG2AXI leaves, `smu_sep_efuse_test`, the lifecycle and chain leaves, and the nine leaves whose real sense they answer: the five boot-stall leaves, `smu_sep_lcc_flow_test`, `smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test`, `smu_smc_efuse_shadow_sense_reset_test`
 |===
@@ -707,8 +708,8 @@ run.
 
 Each row names one command and the string it prints when the entry above is
 still true of the tree in front of you. None of them needs a stored run: the
-first nine are static reads of the tree, and the last two pair a static read
-with a line any run of the named group prints. A row that prints nothing is an entry that has gone
+first nine are static reads of the tree, and the last three pair a static read
+with a line a run prints. A row that prints nothing is an entry that has gone
 stale, and the entry -- not the run -- is what needs the edit.
 
 [cols="2,3,3",options="header"]
@@ -750,6 +751,10 @@ stale, and the entry -- not the run -- is what needs the edit.
 |`noXOnCsI` hold-off window
 |`grep -n 'noXOnCsI\|rst_primary_smc_clk_n === ' hw/sys/smu/dv/tb/tb_wrapper_top.sv`
 |The comment line above the block and seven lines inside one `ifndef VERILATOR` block: three `$assertoff` and three `$asserton` naming `u_rom_mem.u_mem`, `u_sep_boot_rom` and `u_km_rom`, and the `wait (rst_primary_smc_clk_n === 1'b1)` between them. No other line turns a `noXOnCsI` off.
+
+|Crypto EDN request-hold window
+|`grep -n 'crypto EDN request-hold window' hw/sys/smu/dv/tb/tb_wrapper_top.sv hw/sys/smu/dv/smu_sim_cfg.toml`, then `python3 tools/dv/run_dv.py --dut smu --items smu_jtag_reset_override_test --tool vcs --seed 703853225` and, over its test log, `grep -c 'request-hold window open'`, `grep -c 'request-hold window closed'`, `grep -c 'window still open at end'` and the `u_axis_edn_(crypto\|pool)_s3c_scan` entry of `extra_hard_fail_patterns` in `smu_sim_cfg.toml`
+|Six lines: the three `$display` lines in the bench (`window open`, `window closed`, `window still open at end`) inside one `ifndef UVM` block, and in `smu_sim_cfg.toml` the two comment lines above `extra_hard_fail_patterns` and its one entry naming `window still open at end`; in the log `1`, `1` and `0` -- one `window open` line carrying `sep/otbn/kmac/aes=1111`, one `window closed` line and no `still open at end` line -- and zero hard-fail hits.
 
 |`prim_sync2` / `prim_sync3` stand-ins
 |`grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml`, then any run's `hdl_compile.log`
@@ -866,6 +871,18 @@ stale, and the entry -- not the run -- is what needs the edit.
 |`prim_rom`'s `noXOnCsI` has no reset term (its disable argument is `'0`), so on a four-state simulator it fires on the X every ROM request carries before reset reaches the requesting logic. The wrapper elaborates `sep_ip_integration` on both profiles, so the two SEP ROMs carry that X even with SEP disabled. Giving the assertion a reset term is a change to vendored code.
 |Scope
 |`tb/tb_wrapper_top.sv`, inside `ifndef VERILATOR`: `$assertoff` on the three `noXOnCsI` at time 0, `wait (rst_primary_smc_clk_n === 1'b1)`, one `clk_smu` edge, then `$asserton` on the same three. On the default reset sequence the re-arm lands at about 3 us (3086.25 ns on `smu_jtag_reset_override_test`), and every leaf on a four-state simulator compiles it in. The window ends long before `smu_jtag_reset_override_test` releases the Key Manager, at about 71 us, so it does not cover that release. On Verilator `+define+ASSERTS_OFF` (its own entry) compiles the assertion out, so the window has no effect there.
+|===
+
+=== Crypto EDN request-hold window
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The six request-hold checks of the crypto EDN adapter `u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_axis_edn_crypto_s3c_scan` -- the arbiter pair `u_arbiter.ReqStaysHighUntilGranted0_M` and `u_arbiter.LockArbDecision_A`, and the four `gen_ep[0..3].AxisEdnReqStableUnlessEndpointCancelled_A` -- hold at every instant outside one window. The window opens when the SMU-side JTAG IC_RESET override holds `sep_reset_n`, `aes_jtag_rst_n`, `kmac_jtag_rst_n` or `otbn_jtag_rst_n` low (`ovrd` set with `val` low) and closes eight SEP clocks after the last of those holds clears. Inside it the arbiter pair is off on any one of the four causes, and an endpoint check is off only while the reset of its own engine is held (endpoint 0 AES, 1 KMAC, 2 and 3 OTBN; all four under `sep_reset_n`) and for eight SEP clocks after that hold clears, whatever the other causes do; a check no cause has named for that long is armed. A firing at any other instant fails the run through the `u_axis_edn_(crypto\|pool)_s3c_scan` entry of `smu_sim_cfg.toml` `extra_hard_fail_patterns`, a run that ends inside the window fails through the `window still open at end` entry of the same list, and the pool instance keeps its checks throughout. What is not proven is the request hold from the JTAG reset edge to eight SEP clocks after its release: an ungranted request of an engine the override resets drops with no endpoint cancel, and the window covers that drop. The window does not cover a drop caused by clearing a release-type override (`ovrd` set with `val` high) while the sequenced reset is low: the engine reset then re-asserts from the sequenced reset two `clk_i` later with no endpoint cancel, the window keys only on `ovrd` set with `val` low, and a firing there fails the run.
+|Why the real path cannot be used
+|The JTAG IC_RESET override asserts the crypto engine resets without the isolation sequence: the `sep_reset_n` override reaches every engine reset asynchronously, a per-engine override reaches its engine two `clk_i` edges after the TCK-domain bit changes, and the EDN adapter and arbiter stay on the SEP power-on reset. The endpoint cancel the adapter needs before a client reset comes only from the isolation sequence, which the debug path skips by design, so the checks cannot hold across that edge.
+|Scope
+|`tb/tb_wrapper_top.sv`, inside `ifndef VERILATOR` and `ifndef UVM`: the window keys on `u_dut.u_smu.jtag_sep_reset_ctrl`, an `ovrd` bit set with its `val` bit low for `sep_reset_n`, `aes_jtag_rst_n`, `kmac_jtag_rst_n` or `otbn_jtag_rst_n`. While a cause holds, the arbiter pair is killed (`$assertkill`) on any cause and an endpoint check only for the engine the cause names (endpoint 0 AES, 1 KMAC, 2 and 3 OTBN; all four under `sep_reset_n`); an endpoint check re-arms eight SEP clocks after its own causes clear and the arbiter pair eight SEP clocks after the last cause clears, which closes the window; a margin during which the SEP clock has not risen for eight `clk_smu_i` edges ends after eight `clk_smu_i` edges instead, so a stopped SEP clock cannot hold the window open. The window prints `[tb] crypto EDN request-hold window open at <time>: JTAG override holds engine reset low: sep/otbn/kmac/aes=<bits>` on open, `[tb] crypto EDN request-hold window closed at <time>` on close, and `[tb] crypto EDN request-hold window still open at end: sep/otbn/kmac/aes=<bits>, SEP clock <running\|stopped>, last rose at <time>` from a `final` block if a run ends inside it; the `crypto EDN request-hold window still open at end` entry of `smu_sim_cfg.toml` `extra_hard_fail_patterns` fails the run on that last line. No plusarg selects it: every cocotb leaf of the wrapper on a four-state simulator compiles it in, and it opens only on a leaf whose override holds one of those resets low (the stand-in table names the one leaf that does). On `smu_jtag_reset_override_test` one open/close pair spans the SEP-port walk, from about 73.9 us to 88.0 us on seed 703853225. On Verilator `+define+ASSERTS_OFF` (its own entry) compiles the assertions out, and the SV-UVM shape holds the whole `u_axis_edn_crypto_s3c_scan` scope off by name (SEP assertion-ignore patterns entry; `SMU_TB_ARCH.adoc`), so the window is excluded there by `ifndef UVM`.
 |===
 
 === `prim_sync2` / `prim_sync3` stand-ins
