@@ -51,9 +51,13 @@ other than 0x6 there), ``CTRL-HMAC-ERRCODE-CLR`` (before each blocked class the 
 reset and ``ERR_CODE`` reads its reset value 0x0, hmac.adoc:171; no text states a clear of
 ``ERR_CODE`` by a write, a legal hash or the write-one clear of ``hmac_err``, so the reset is
 the only stated way back to 0x0; the last hash then runs again so that D_prev holds its
-golden) and ``CTRL-HMAC-ERRCODE-BEFORE`` (``ERR_CODE`` just before each blocked start is not
+golden), ``CTRL-HMAC-ERRCODE-BEFORE`` (``ERR_CODE`` just before each blocked start is not
 0x6, so the 0x6 of ``CHK-HMAC-ERRCODE`` comes from that start; the exact value after the
-legal hash is not stated and is logged). Log-only:
+legal hash is not stated and is logged) and ``CTRL-HMAC-ERR-PRESTART`` (after the blocked
+``CFG`` and ``KEY`` writes and one hold, before ``hash_start``, ``hmac_err`` reads 0 and
+``ERR_CODE`` is not 0x6: the error is raised "when hashing starts", hmac.adoc:52-53, so the
+``hmac_err`` and ``ERR_CODE`` of ``CHK-HMAC-BLOCK`` and ``CHK-HMAC-ERRCODE`` come from the
+start and not from the configuration writes). Log-only:
 ``OBS-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
 start; the register text does not state them) and
 ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text does not state its value after a
@@ -566,9 +570,23 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         await self._wr(HMAC_CFG, cfg_word(step.digest_code, step.key_code, step.hmac_en))
         if step.hmac_en:
             await self._write_key_row(step.row)
+        hold = self.hold
+        # Control: the blocked CFG and KEY writes alone raise no error ("raises a
+        # configuration error when hashing starts", hw/sys/sep/doc/hmac.adoc:52-53), so
+        # the hmac_err and ERR_CODE read after the start come from the start.
+        await ClockCycles(cocotb.top.clk_i, hold)
+        intr_pre = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
+        err_code_pre = await self._rd(HMAC_ERR_CODE)
+        self.chk.ctrl(
+            "HMAC-ERR-PRESTART",
+            not (intr_pre & HMAC_INTR_ERR) and err_code_pre != EXP_ERR_INVALID_CFG,
+            **{"class": step.name},
+            err=int(bool(intr_pre & HMAC_INTR_ERR)),
+            err_code=f"0x{err_code_pre:x}",
+            hold=hold,
+        )
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         t0 = self._now_clk()
-        hold = self.hold
         await ClockCycles(cocotb.top.clk_i, hold)
         # "Signalled": the error state and code, read before any message write so that
         # only the start can have set them.

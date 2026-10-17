@@ -16,7 +16,9 @@ KMAC register map (base from the generated SEP header; offsets from kmac.adoc):
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -29,6 +31,7 @@ from sep_reg_meta import KMAC, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+from seq_lib.sep_hmac_seq import reg_array
 
 KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
 KMAC_INTR_STATE = KMAC.addr("INTR_STATE")
@@ -44,15 +47,52 @@ KMAC_STATE_S0 = sym("KMAC_STATE_MEM_BASE_ADDR")
 KMAC_STATE_S1 = sym("KMAC_STATE_MEM_BASE_ADDR") + (sym("KMAC_STATE_MEM_SIZE") // 2)
 KMAC_MSG_FIFO = sym("KMAC_MSG_FIFO_MEM_BASE_ADDR")
 
-KMAC_NUM_PUBLIC_KEY = 16  # KEY_SHARE0_0..15 / KEY_SHARE1_0..15
-KMAC_NUM_PREFIX = 11  # PREFIX_0..10
+KMAC_KEY_SHARE0 = reg_array("KMAC_KEY_SHARE0")
+KMAC_KEY_SHARE1 = reg_array("KMAC_KEY_SHARE1")
+KMAC_PREFIX = reg_array("KMAC_PREFIX")
+KMAC_NUM_PUBLIC_KEY = len(KMAC_KEY_SHARE0)
+KMAC_NUM_PREFIX = len(KMAC_PREFIX)
 KMAC_KEY_WORDS = 8  # 256-bit key
 KMAC_DIGEST_WORDS = 8  # 256-bit MAC
 
-# CMD sparse encodings (kmac.adoc / OpenTitan CMD field).
-KMAC_CMD_START = 0x1D
-KMAC_CMD_PROCESS = 0x2E
-KMAC_CMD_DONE = 0x16
+# CMD.cmd command codes from the enum of field ``cmd`` in register ``CMD`` of
+# vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson (start = 29,
+# process = 46, run = 49, done = 22). The overlay kmac.rdl CMD.cmd desc says
+# "the field is defined as enum" but carries no values, so the hjson enum is the
+# source. The field position comes from the generated register metadata.
+_KMAC_HJSON = (
+    Path(__file__).resolve().parents[6]
+    / "vendor"
+    / "lowRISC"
+    / "opentitan"
+    / "upstream"
+    / "hw"
+    / "ip"
+    / "kmac"
+    / "data"
+    / "kmac.hjson"
+)
+
+
+def kmac_cmd_codes() -> dict[str, int]:
+    """Name -> value of the CMD.cmd enum in kmac.hjson. Raises if it is not found."""
+    text = _KMAC_HJSON.read_text(encoding="utf-8")
+    reg = text.find('{ name: "CMD"')
+    fld = text.find('name: "cmd"', reg) if reg >= 0 else -1
+    start = text.find("enum:", fld) if fld >= 0 else -1
+    end = text.find("] // enum", start) if start >= 0 else -1
+    body = text[start:end] if end >= 0 else ""
+    codes = {n: int(v, 0) for v, n in re.findall(r'value:\s*"(\w+)"\s*name:\s*"(\w+)"', body)}
+    if not {"start", "process", "done"} <= set(codes):
+        raise KeyError(f"CMD.cmd enum (start/process/done) not parsed from {_KMAC_HJSON}: {codes}")
+    return codes
+
+
+_CMD_LSB = KMAC.field_lsb("CMD", "cmd")
+KMAC_CMD_CODES = kmac_cmd_codes()
+KMAC_CMD_START = KMAC_CMD_CODES["start"] << _CMD_LSB
+KMAC_CMD_PROCESS = KMAC_CMD_CODES["process"] << _CMD_LSB
+KMAC_CMD_DONE = KMAC_CMD_CODES["done"] << _CMD_LSB
 
 # ERR_CODE: bits 31:24 hold the error code (kmac.rdl ERR_CODE). The code values
 # are the "Error Report" table of the OpenTitan KMAC Theory of Operation, which
@@ -93,7 +133,7 @@ def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool, sideload: bool =
     masking-required config. Keyed KMAC-256 is mode=CShake: SW key 0x0101_0035,
     sideload 0x0101_1035."""
     return (
-        int(bool(kmac_en))
+        (int(bool(kmac_en)) << KMAC.field_lsb("CFG_SHADOWED", "kmac_en"))
         | (kstrength << KMAC.field_lsb("CFG_SHADOWED", "kstrength"))
         | (mode << KMAC.field_lsb("CFG_SHADOWED", "mode"))
         | (int(bool(sideload)) << KMAC.field_lsb("CFG_SHADOWED", "sideload"))
@@ -180,8 +220,8 @@ class SepKmac(SepAxiRegDriver):
         read is non-zero; otherwise a dead read path returning zeros for everything
         would look identical to a pass.
         """
-        s0 = [await self._rd(KMAC_KEY_SHARE0_0 + i * 4) for i in range(KMAC_NUM_PUBLIC_KEY)]
-        s1 = [await self._rd(KMAC_KEY_SHARE1_0 + i * 4) for i in range(KMAC_NUM_PUBLIC_KEY)]
+        s0 = [await self._rd(KMAC_KEY_SHARE0[i]) for i in range(KMAC_NUM_PUBLIC_KEY)]
+        s1 = [await self._rd(KMAC_KEY_SHARE1[i]) for i in range(KMAC_NUM_PUBLIC_KEY)]
         control = await self._rd(KMAC_STATUS)
         return s0, s1, control
 
@@ -221,8 +261,8 @@ class SepKmac(SepAxiRegDriver):
         if not sideload:
             assert sw_key is not None and len(sw_key) == KMAC_KEY_WORDS, "sw_key needs 8 words"
             for i, word in enumerate(sw_key):
-                await self._wr(KMAC_KEY_SHARE0_0 + i * 4, word & 0xFFFF_FFFF)
-                await self._wr(KMAC_KEY_SHARE1_0 + i * 4, 0)
+                await self._wr(KMAC_KEY_SHARE0[i], word & 0xFFFF_FFFF)
+                await self._wr(KMAC_KEY_SHARE1[i], 0)
         # CFG_SHADOWED double-write. Keyed KMAC is mode=cSHAKE + kmac_en=1.
         cfg = build_kmac_cfg(
             mode=KMAC_MODE["cshake"],
@@ -264,7 +304,7 @@ class SepKmac(SepAxiRegDriver):
             for i in range(0, len(prefix), 4)
         ]
         for i in range(KMAC_NUM_PREFIX):
-            await self._wr(KMAC_PREFIX_0 + i * 4, words[i] if i < len(words) else 0)
+            await self._wr(KMAC_PREFIX[i], words[i] if i < len(words) else 0)
 
     async def _push_msg_bytes(self, data: bytes) -> None:
         """Absorb an exact byte string into MSG_FIFO: full 32-bit words, then a
@@ -303,8 +343,8 @@ class SepKmac(SepAxiRegDriver):
         if cfg.kmac_en:
             assert cfg.key_words is not None, "kmac needs sw key_words"
             for i, word in enumerate(cfg.key_words):
-                await self._wr(KMAC_KEY_SHARE0_0 + i * 4, word & 0xFFFF_FFFF)
-                await self._wr(KMAC_KEY_SHARE1_0 + i * 4, 0)
+                await self._wr(KMAC_KEY_SHARE0[i], word & 0xFFFF_FFFF)
+                await self._wr(KMAC_KEY_SHARE1[i], 0)
         cfg_word = cfg.cfg_word()
         await self._wr(KMAC_CFG_SHADOWED, cfg_word)
         await self._wr(KMAC_CFG_SHADOWED, cfg_word)

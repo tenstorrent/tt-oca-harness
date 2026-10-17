@@ -100,7 +100,7 @@ from env.sep_seeded_rng import SepSeededRng
 from env.sep_trial_wait import TrialTimeout, wait_until
 from sep_base_test import sep_base_test
 from sep_monitor_life import MonitorLife
-from sep_reg_meta import AES, KMAC, sep_addr_define
+from sep_reg_meta import AES, KMAC, RegBlock, sep_addr_define
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
     AES_DATA_IN_0,
@@ -137,15 +137,23 @@ KEY_ROWS = AES_KEY_ROWS[256]
 AES_PT = SP800_38A_PT_BLOCK1
 
 VEC_ALERT_BIT = 32  # source 33, Crypto alert (hw/sys/sep/doc/interrupts.adoc)
-# Receiver index range of each block (hw/sys/sep/doc/crypto.adoc, alert routing table)
-# and the ALERT_TEST register of each block.
+
+
+def _alert_test_bits(block: str) -> int:
+    """Number of ALERT_TEST bits of ``block`` in the generated register map (one
+    bit per alert, from bit 0)."""
+    return bin(RegBlock(block).mask("ALERT_TEST")).count("1")
+
+
+# Receiver index range of each block (hw/sys/sep/doc/crypto.adoc, alert routing table),
+# the ALERT_TEST register of each block and its bit count.
 BLOCKS = {
-    "hmac": ((0,), "SEP_TOP_HMAC_ALERT_TEST_BASE_ADDR", 1),
-    "otbn": ((1, 2), "SEP_TOP_OTBN_ALERT_TEST_BASE_ADDR", 2),
-    "aes": ((3, 4), "SEP_TOP_AES_ALERT_TEST_BASE_ADDR", 2),
-    "kmac": ((5, 6), "SEP_TOP_KMAC_ALERT_TEST_BASE_ADDR", 2),
-    "csrng": ((7, 8), "SEP_TOP_CSRNG_ALERT_TEST_BASE_ADDR", 2),
-    "edn": ((9, 10), "SEP_TOP_EDN_ALERT_TEST_BASE_ADDR", 2),
+    "hmac": ((0,), "SEP_TOP_HMAC_ALERT_TEST_BASE_ADDR", _alert_test_bits("HMAC")),
+    "otbn": ((1, 2), "SEP_TOP_OTBN_ALERT_TEST_BASE_ADDR", _alert_test_bits("OTBN")),
+    "aes": ((3, 4), "SEP_TOP_AES_ALERT_TEST_BASE_ADDR", _alert_test_bits("AES")),
+    "kmac": ((5, 6), "SEP_TOP_KMAC_ALERT_TEST_BASE_ADDR", _alert_test_bits("KMAC")),
+    "csrng": ((7, 8), "SEP_TOP_CSRNG_ALERT_TEST_BASE_ADDR", _alert_test_bits("CSRNG")),
+    "edn": ((9, 10), "SEP_TOP_EDN_ALERT_TEST_BASE_ADDR", _alert_test_bits("EDN")),
 }
 
 AES_ST_IDLE = AES.field_mask("STATUS", "idle")

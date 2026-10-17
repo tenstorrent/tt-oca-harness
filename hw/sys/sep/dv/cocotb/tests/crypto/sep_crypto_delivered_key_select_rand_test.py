@@ -9,7 +9,9 @@ Modifications; ``hw/sys/sep/doc/crypto.adoc``, Key Manager Key Delivery;
     256-bit delivered key sits at the most-significant end of the 1024-bit key
     field, and only CFG.key_length = 256 matches it.
   * A supported key_length that disagrees gives a repeatable digest and no
-    error; key_length 128 takes the top 128 bits of the delivered key.
+    error; key_length 128 takes the top 128 bits of the delivered key. The
+    digest is "wrong but repeatable" (hmac.adoc:54-56): it differs from the
+    digest of the matching key_length.
   * key_length = Key_None with hmac_en = 1 raises a configuration error at
     start and leaves DIGEST unchanged.
   * AES ignores the delivered key while CTRL_SHADOWED.sideload = 0 and reports
@@ -69,8 +71,22 @@ Checkers:
                             sideload = 1 block with a valid key gives the golden of
                             K_a in t_side clocks; STATUS before the block reads
                             OUTPUT_VALID = 0 and IDLE = 1.
+  CHK-KEYSEL-MISMATCH-WRONG  each of the 11 mismatched cells gives a digest
+                            that differs from the digest of the matching
+                            key_length (256) on the same digest size
+                            (hmac.adoc:54-56: "A supported length that disagrees
+                            with the delivered key does not raise an error: ...
+                            the resulting digest is wrong but repeatable").
+                            Control: each matching-length digest equals the
+                            golden of K_h (``CTRL-KEYSEL-MISMATCH-WRONG``). On
+                            this DUT the cells above 128 bits fail (expected RED):
+                            the padding below the delivered key is zero, so the
+                            key equals K_h after the HMAC zero padding of a key
+                            shorter than the block, and the digest equals the
+                            matching-length digest.
 The digest of a mismatched length above 128 bits has no stated value; its
-comparisons are logged as ``OBS-KEYSEL-MISMATCH``.
+compare with the matching-length digest and the decoy golden is logged as
+``OBS-KEYSEL-MISMATCH``.
 
 DIGEST byte order: the register text settles the register order (DIGEST_0 holds
 digest bytes 0..3) and the ``digest_swap`` swap (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117), not the
@@ -106,9 +122,6 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import AES, HMAC, sym
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
-    AES_DATA_IN_0,
-    AES_DATA_OUT_0,
-    AES_IV_0,
     AES_KEY_LEN_256,
     AES_KEYLEN_CTRL,
     AES_MODE_CTRL,
@@ -125,15 +138,19 @@ from seq_lib.sep_hmac_seq import (
     HMAC_CMD,
     HMAC_CMD_HASH_PROCESS,
     HMAC_CMD_HASH_START,
+    HMAC_DIGEST,
     HMAC_DIGEST_WORDS,
     HMAC_INTR_DONE,
     HMAC_INTR_ERR,
     HMAC_INTR_STATE,
+    HMAC_KEY,
     HMAC_MSG_FIFO,
+    HMAC_NUM_PUBLIC_KEY,
     HMAC_STATUS,
     HMAC_STATUS_IDLE,
     SepHmac,
     build_cfg,
+    reg_array,
 )
 from seq_lib.sep_km_mailbox_seq import KM_DEST_AES, KM_DEST_HMAC, SepKmMailbox
 
@@ -167,22 +184,10 @@ ST_OV = AES.field_mask("STATUS", "output_valid")
 ST_ERR = AES.field_mask("STATUS", "alert_recov_ctrl_update_err") | AES.field_mask(
     "STATUS", "alert_fatal_fault"
 )
-HMAC_DIGEST_0 = sym("HMAC_DIGEST_0__REG_ADDR")
-HMAC_KEY_0 = sym("HMAC_KEY_0__REG_ADDR")
-
-
-def _hmac_key_regs() -> int:
-    """Count of the HMAC KEY multireg registers in the generated register map."""
-    n = 0
-    while True:
-        try:
-            sym(f"HMAC_KEY_{n}__REG_ADDR")
-        except KeyError:
-            return n
-        n += 1
-
-
-HMAC_KEY_REGS = _hmac_key_regs()
+HMAC_KEY_REGS = HMAC_NUM_PUBLIC_KEY
+AES_IV = reg_array("AES_IV")
+AES_DATA_IN = reg_array("AES_DATA_IN")
+AES_DATA_OUT = reg_array("AES_DATA_OUT")
 
 WAIT_LIMIT = 20_000  # outer limit of a wait with no clean time (logged as bound=)
 ALERT_TEST_FIELDS = ("recov_ctrl_update_err", "fatal_fault")  # aes.rdl ALERT_TEST fields
@@ -286,6 +291,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
     required_evidence = (
         "CHK-KEYSEL-HMAC-MATCH",
         "CHK-KEYSEL-HMAC-MISMATCH",
+        "CHK-KEYSEL-MISMATCH-WRONG",
         "CHK-KEYSEL-HMAC-NONE",
         "CHK-KEYSEL-AES-SW",
         "CHK-KEYSEL-TWO",
@@ -350,7 +356,18 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         mismatch = await self._mismatched_cells(kh, matched)
         none_err = await self._none_leg()
         self.chk.ctrl("KEYSEL-HMAC-MISMATCH", none_err == 1, none_leg_hmac_err=none_err)
+        for sha in sorted(matched):
+            hit, _ = self.digest_order.match(matched[sha], g_kh[sha])
+            self.chk.ctrl("KEYSEL-MISMATCH-WRONG", hit, sha=sha, matched_eq_golden_kh=int(hit))
         for line in mismatch:
+            wrong = line.pop("_wrong")
+            self.chk.ok(
+                "KEYSEL-MISMATCH-WRONG",
+                wrong == 1,
+                sha=line["sha"],
+                keylen=line["keylen"],
+                digest_differs_from_matched=wrong,
+            )
             self.chk.ok("KEYSEL-HMAC-MISMATCH", line.pop("_ok"), **line)
 
         await self._aes_legs(ka)
@@ -394,7 +411,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
                 raise AssertionError(f"HMAC partial MSG_FIFO write ({rem}B) not OKAY")
 
     async def _read_digest(self, sha: int) -> list[int]:
-        return [await self.hmac._rd(HMAC_DIGEST_0 + 4 * i) for i in range(HMAC_DIGEST_WORDS[sha])]
+        return [await self.hmac._rd(HMAC_DIGEST[i]) for i in range(HMAC_DIGEST_WORDS[sha])]
 
     async def _hmac_run(self, sha: int, keylen: int | None) -> tuple[list[int], int]:
         """The HMAC run of the procedure. Returns (DIGEST, INTR_STATE after done)."""
@@ -402,7 +419,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, WAIT_LIMIT, "hmac_idle"
         )
         for i, w in enumerate(self.plan.decoy):
-            await self.hmac._wr(HMAC_KEY_0 + 4 * i, w)
+            await self.hmac._wr(HMAC_KEY[i], w)
         await self.hmac._wr(HMAC_INTR_STATE, HMAC_INTR_ERR | HMAC_INTR_DONE)
         await self.hmac._wr(
             HMAC.addr("CFG"), build_cfg(hmac_en=True, sha_bits=sha, key_bits=keylen)
@@ -501,6 +518,9 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             if reason:
                 line["reason"] = reason
             line["_ok"] = ok
+            # "wrong" (hmac.adoc:54-56): the digest differs from the matching-length digest.
+            ref = matched.get(sha)
+            line["_wrong"] = int(bool(runs) and ref is not None and runs[0] != ref)
             lines.append(line)
         return lines
 
@@ -518,7 +538,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
                 HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, WAIT_LIMIT, "hmac_idle"
             )
             for i, w in enumerate(self.plan.decoy):
-                await self.hmac._wr(HMAC_KEY_0 + 4 * i, w)
+                await self.hmac._wr(HMAC_KEY[i], w)
             await self.hmac._wr(HMAC_INTR_STATE, HMAC_INTR_ERR)
             await self.hmac._wr(HMAC.addr("CFG"), cfg)
             d_prev = await self._read_digest(sha)
@@ -564,16 +584,16 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             await self._aes_wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "aes_idle_after_key")
         if iv is not None:
             for i, w in enumerate(iv):
-                await self.aes._wr(AES_IV_0 + 4 * i, w)
+                await self.aes._wr(AES_IV[i], w)
             await self._aes_wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "aes_idle_after_iv")
         await self.aes._wr(AES_TRIGGER, AES_TRIGGER_DATA_OUT_CLEAR)
         await self._aes_wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "aes_idle_after_clear")
         for i, w in enumerate(_le_words(AES_PT)):
-            await self.aes._wr(AES_DATA_IN_0 + 4 * i, w)
+            await self.aes._wr(AES_DATA_IN[i], w)
         t_in = self.vec.clk
         await self._aes_wait(ST_OV, ST_OV, WAIT_LIMIT, "aes_output_valid")
         self.aes_t_ov = self.vec.clk - t_in
-        return [await self.aes._rd(AES_DATA_OUT_0 + 4 * i) for i in range(4)]
+        return [await self.aes._rd(AES_DATA_OUT[i]) for i in range(4)]
 
     async def _aes_sideload_block(self) -> list[int] | None:
         ctrl = build_aes_ctrl(sideload=True, mode=AES_MODE_ECB, key_len=AES_KEY_LEN_256)

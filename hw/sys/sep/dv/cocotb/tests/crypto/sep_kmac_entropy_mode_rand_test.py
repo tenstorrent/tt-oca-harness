@@ -256,7 +256,7 @@ class _KmacEntropy(SepKmac):
         """SHA3-256 (``keyed`` False) or keyed cSHAKE-256 with ``kmac_en`` (True)."""
         mode = KMAC_MODE["cshake" if keyed else "sha3"]
         return (
-            int(keyed)
+            (int(keyed) << KMAC.field_lsb("CFG_SHADOWED", "kmac_en"))
             | (KMAC_STRENGTH[256] << KMAC.field_lsb("CFG_SHADOWED", "kstrength"))
             | (mode << KMAC.field_lsb("CFG_SHADOWED", "mode"))
             | (ENTROPY_MODE[entropy_mode] << CFG_MODE_LSB)
@@ -666,7 +666,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             return (
                 run["err_clk"] is not None
                 and run["pre_err"] == 0
-                and run["pre_code"] == 0
+                and run["pre_code"] == EXP_ERR_CODE_RESET
                 and run["err"] == 1
                 and run["acks"] == 0
             )
@@ -742,7 +742,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         err = int(bool(intr & KMAC_INTR_KMAC_ERR))
         self.chk.ok(
             "KMAC-TIMER0",
-            err == 0 and not line and code == 0 and req == 1 and acks == 0,
+            err == 0 and not line and code == EXP_ERR_CODE_RESET and req == 1 and acks == 0,
             p=prescaler,
             window_clk=window,
             err=err,

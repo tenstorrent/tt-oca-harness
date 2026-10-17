@@ -696,7 +696,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`
 |CPU-LSU master; HMAC golden model
-|Proves that an HMAC start with an unset or invalid key length, with a 1024-bit key on SHA-256, or with an unset or invalid digest size is blocked and signalled with `ERR_CODE` = 0x6 (`SwInvalidConfig`), and that a legal hash runs after the error is cleared. The legal start cells run as controls.
+|Proves that an HMAC start with an unset or invalid key length, with a 1024-bit key on SHA-256, or with an unset or invalid digest size is blocked and signalled with `ERR_CODE` = 0x6 (`SwInvalidConfig`) at the start and not at the configuration writes, and that a legal hash runs after the error is cleared. The legal start cells run as controls.
 
 |<<sep_hmac_fifo_stream_rand_test,`sep_hmac_fifo_stream_rand_test`>>
 |3
@@ -714,7 +714,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense, `+esrc_noise_force`, Key Manager firmware
 |CPU-LSU master, Key Manager firmware image of the open sideload tests, `sep_internal_interrupts_probe_o`; HMAC and AES golden models
-|Proves how HMAC and AES use a delivered key: HMAC uses it whenever it is valid, a mismatched length gives a repeatable digest with no error, AES uses it only when `sideload` is set, and AES in automatic mode does not start a `sideload` = 1 block after the Key Manager shreds its key.
+|Proves how HMAC and AES use a delivered key: HMAC uses it whenever it is valid, a mismatched length gives a repeatable digest with no error that differs from the matched-length digest (CHK-KEYSEL-MISMATCH-WRONG, expected RED on this DUT: the digest of a length above 256 equals the matched digest), AES uses it only when `sideload` is set, and AES in automatic mode does not start a `sideload` = 1 block after the Key Manager shreds its key.
 
 |<<sep_aes_encoding_inject_rand_test,`sep_aes_encoding_inject_rand_test`>>
 |3
@@ -726,7 +726,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, `sep_internal_interrupts_probe_o`; AES golden model
-|Proves the AES streaming and status contract: stall on unread output, output lost in manual mode, `IDLE` while a block runs, `INPUT_READY` = 0 for a block that waits behind a stall and 1 once it is loaded, and no interrupt.
+|Proves the AES streaming and status contract: stall on unread output, no start in manual mode before `TRIGGER.START`, output lost in manual mode, `IDLE` while a block runs, `INPUT_READY` = 0 for a block that waits behind a stall and 1 once it is loaded, and no interrupt.
 
 |<<sep_aes_reseed_trigger_rand_test,`sep_aes_reseed_trigger_rand_test`>>
 |3
@@ -2593,7 +2593,7 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |HMAC justifies a delivered 256-bit key to the top of the key field; a supported `key_length` that disagrees gives a digest with no error.
 |HMAC: which value fills the key bits below a delivered 256-bit key when `key_length` is above 256? The padding is mixed into the key and its value is not stated, so a mismatched-length digest has no expected value. Source: `hw/sys/sep/doc/hmac.adoc` (OCAH Modifications).
-|`sep_crypto_delivered_key_select_rand_test` grades no error and a repeatable digest on the mismatched cells, the golden of the top 128 bits of the delivered key for `key_length` 128, and no digest value for the longer lengths
+|`sep_crypto_delivered_key_select_rand_test` grades no error and a repeatable digest on the mismatched cells, the golden of the top 128 bits of the delivered key for `key_length` 128, and for every mismatched cell that the digest differs from the matched-length digest ("wrong", CHK-KEYSEL-MISMATCH-WRONG); no digest value is graded for the longer lengths
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |The HMAC message FIFO reports `STATUS.fifo_full` and `fifo_depth`. The depth at which `fifo_full` reads 1 is not stated.
 |HMAC: state the message FIFO depth at which `STATUS.fifo_full` reads 1. Source: `vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc` (`STATUS`).

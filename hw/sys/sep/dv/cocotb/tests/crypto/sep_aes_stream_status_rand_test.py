@@ -39,6 +39,13 @@ Checkers:
   CHK-AES-START-AUTO  a START write in automatic mode with no input leaves
                       IDLE = 1 and OUTPUT_VALID = 0 for 20 x t_blk clocks.
                       Control: four DATA_IN words start a block.
+  CHK-AES-START-MANUAL  in manual mode, with block 1 written to DATA_IN, every
+                      STATUS read of a 20 x t_blk window before the START write
+                      shows IDLE = 1 and OUTPUT_VALID = 0, and OUTPUT_VALID rises
+                      after the START write (aes.adoc:106, MANUAL_OPERATION: the
+                      unit "only starts to encrypt/decrypt after receiving a start
+                      trigger"). Control: in automatic mode the same DATA_IN write
+                      gives OUTPUT_VALID inside the window.
   CHK-AES-LOST        manual overwrite sets OUTPUT_LOST, DATA_OUT holds block
                       2, OUTPUT_LOST stays 1 after the full DATA_OUT read, and a
                       Control Register rewrite clears it.
@@ -89,9 +96,6 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import AES, HMAC, sep_addr_define
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
-    AES_DATA_IN_0,
-    AES_DATA_OUT_0,
-    AES_IV_0,
     AES_KEY_LEN_256,
     AES_KEYLEN_CTRL,
     AES_MODE_CTRL,
@@ -105,9 +109,13 @@ from seq_lib.sep_aes_seq import (
     build_aes_ctrl,
 )
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
-from seq_lib.sep_hmac_seq import HMAC_STATUS_IDLE, SepHmac
+from seq_lib.sep_hmac_seq import HMAC_STATUS_IDLE, SepHmac, reg_array
 
 TEST = "sep_aes_stream_status_rand_test"
+
+AES_IV = reg_array("AES_IV")
+AES_DATA_IN = reg_array("AES_DATA_IN")
+AES_DATA_OUT = reg_array("AES_DATA_OUT")
 
 # Published test constants (env/sep_crypto_kat_rows.py). The seed picks a row, never the
 # bytes.
@@ -272,6 +280,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         "CHK-AES-STREAM",
         "CHK-AES-STALL",
         "CHK-AES-START-AUTO",
+        "CHK-AES-START-MANUAL",
         "CHK-AES-LOST",
         "CHK-AES-IDLE",
         "CHK-AES-NOIRQ",
@@ -297,6 +306,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         # Clock count of the leaf: the clk of a watcher that samples every rising edge.
         self.clk = SepBitWatch(cocotb.top.rst_ni, {"rst_ni": 0}, name="clk_count").start()
         self.t_blk: int | None = None
+        self.auto_start_clk = -1
         self.quiet = False
         self.idle_busy = 0
         self.idle_bad: list[str] = []
@@ -405,17 +415,17 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_key")
         if iv is not None:
             for i, w in enumerate(iv):
-                await self.aes._wr(AES_IV_0 + 4 * i, w)
+                await self.aes._wr(AES_IV[i], w)
             await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_iv")
         await self.aes._wr(AES_TRIGGER, AES_TRIGGER_DATA_OUT_CLEAR)
         await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_clear")
 
     async def _write_block(self, words) -> None:
         for i, w in enumerate(words):
-            await self.aes._wr(AES_DATA_IN_0 + 4 * i, w)
+            await self.aes._wr(AES_DATA_IN[i], w)
 
     async def _read_out(self) -> list[int]:
-        return [await self.aes._rd(AES_DATA_OUT_0 + 4 * i) for i in range(4)]
+        return [await self.aes._rd(AES_DATA_OUT[i]) for i in range(4)]
 
     def _grade_idle(self, tag: str, samples: list[tuple[int, int]]) -> None:
         """IDLE = 0 from its first fall until the OUTPUT_VALID sample (that sample excluded)."""
@@ -563,11 +573,16 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         ctrl_idle = -1
         try:
             await self._write_block(blk)
+            t_in = self.clk.clk
             await self._wait(ST_IDLE, 0, self._ov_bound(), "ctrl_idle_fall")
             ctrl_idle = 0
             await self._wait(ST_OV, ST_OV, self._ov_bound(), "ctrl_output_valid")
             ct = await self._read_out()
             ctrl_ok = ct == aes_encrypt_words("ecb", key, blk)
+            if ctrl_ok:
+                # Automatic mode: the clocks from the last DATA_IN write to OUTPUT_VALID,
+                # the control of CHK-AES-START-MANUAL.
+                self.auto_start_clk = self.clk.clk - t_in
             # IDLE control: the quiet unit reads IDLE = 1 in a bounded wait.
             self.quiet, _ = await self._poll(ST_IDLE, ST_IDLE, self._ov_bound())
         except TrialTimeout:
@@ -589,6 +604,12 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         """Returns (OUTPUT_LOST after block 2, DATA_OUT after block 2, OUTPUT_LOST after the
         full DATA_OUT read, OUTPUT_LOST after the rewrite).
 
+        aes.adoc:106: in manual mode the unit "only starts to encrypt/decrypt after receiving a
+        start trigger". In the graded trial (``read_between`` False) block 1 waits in DATA_IN
+        for START_WINDOW_FACTOR x t_blk before the START write; every STATUS read of that
+        window must show IDLE = 1 and OUTPUT_VALID = 0, and OUTPUT_VALID must rise after the
+        START write (CHK-AES-START-MANUAL).
+
         aes.adoc:184: once set, OUTPUT_LOST "remains set until AES operation is restarted by
         re-writing the Control Register", so it reads 1 after the full DATA_OUT read and 0
         only after the rewrite. A DUT that clears it on the DATA_OUT read fails the check.
@@ -600,9 +621,13 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         )
         await self._load(ctrl, key, None)
         await self._write_block(b1)
+        if not read_between:
+            self.manual_pre = await self._sample(START_WINDOW_FACTOR * (self.t_blk or 1))
         await self.aes._wr(AES_TRIGGER, TRIG_START)
+        t_start = self.clk.clk
         samples = await self._wait(ST_OV, ST_OV, self._ov_bound(), "manual_b1_output_valid")
         if not read_between:
+            self.manual_run_clk = self.clk.clk - t_start
             self._grade_idle("manual.b1", samples)
         else:
             await self._read_out()
@@ -626,6 +651,8 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         reason = ""
         lost = lost_read = lost2 = -1
         data: list[int] | None = None
+        self.manual_pre: list[tuple[int, int]] = []
+        self.manual_run_clk = -1
         open_graded_window(TEST, self.logger)
         try:
             lost, data, lost_read, lost2 = await self._manual_trial(read_between=False)
@@ -654,6 +681,31 @@ class sep_aes_stream_status_rand_test(sep_base_test):
             fields["reason"] = reason
         self.chk.ok(
             "AES-LOST", lost == 1 and data == g2 and lost_read == 1 and lost2 == 0, **fields
+        )
+        # CHK-AES-START-MANUAL. Control: in automatic mode the same DATA_IN write gave
+        # OUTPUT_VALID inside the window (CTRL-AES-START-MANUAL), so a manual unit that
+        # starts on DATA_IN shows OUTPUT_VALID = 1 inside the window.
+        window = START_WINDOW_FACTOR * (self.t_blk or 1)
+        auto_clk = self.auto_start_clk
+        self.chk.ctrl(
+            "AES-START-MANUAL", 0 <= auto_clk < window, auto_start_clk=auto_clk, window_clk=window
+        )
+        pre = self.manual_pre
+        pre_bad = [st for _, st in pre if not st & ST_IDLE or st & ST_OV]
+        start_fields = {
+            "pre_samples": len(pre),
+            "pre_idle": 0 if any(not st & ST_IDLE for st in pre_bad) else 1,
+            "pre_output_valid": 1 if any(st & ST_OV for st in pre_bad) else 0,
+            "run_clk": self.manual_run_clk,
+            "window_clk": window,
+            "auto_start_clk": auto_clk,
+        }
+        if reason:
+            start_fields["reason"] = reason
+        self.chk.ok(
+            "AES-START-MANUAL",
+            not reason and bool(pre) and not pre_bad and self.manual_run_clk >= 0,
+            **start_fields,
         )
 
     # --- INPUT_READY around a held stall -----------------------------------------------
