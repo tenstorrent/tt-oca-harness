@@ -33,10 +33,12 @@ flow:
   build, the bare `UVM` define, assertions enabled, and `SIMULATION` kept
   on. DUT configs declare only their own sources and incdirs.
 * *Checked-in UVM library.* The UVM base-class library is the Accellera
-  1800.2-2020 reference implementation, compiled from source. Its release
-  tree sits unmodified in `vendor/accellera/uvm-core/upstream/`, and
-  `OCAH_UVM_HOME` names another UVM home for one shell. The analyze stage
-  compiles it before any user source.
+  reference implementation of IEEE 1800.2, compiled from source. Its
+  release tree sits unmodified in `vendor/accellera/uvm-core/upstream/`,
+  `vendor/accellera/uvm-core/release.toml` records which release it is,
+  and `make update-vendor-uvm` replaces both. `OCAH_UVM_HOME` names
+  another UVM home for one shell. The analyze stage compiles the library
+  before any user source.
 * *One testbench top, one core.* The same `tb_top.sv` compiles as a
   framework-neutral core (interface instances, DUT, adapters) whose
   instances both frameworks consume; the `UVM` define adds only the harness

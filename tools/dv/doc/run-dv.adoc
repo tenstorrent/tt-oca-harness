@@ -510,15 +510,20 @@ formal configuration (`<name>_formal_cfg.toml`).
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
 maintainer flow whose tool allowlist is VCS only; it carries
 `license = "required-commercial"`, so `--list` marks it `(licensed)` and the
-launcher says so when the simulator is absent. The UVM library is the
-Accellera 1800.2-2020 release tree checked in unmodified under
+launcher says so when the simulator is absent. The UVM library is an
+Accellera release tree checked in unmodified under
 `vendor/accellera/uvm-core/upstream/`, which the profile's
-`[frameworks.uvm.build]` `uvm_library` names. `OCAH_UVM_HOME` names another UVM home for one shell, and
-the launcher warns when it does. The library compiles outside the filelist,
-so the build fingerprint carries a digest of its `src/` tree and an edit to
-it rebuilds the model. The run-level `result.json` records the compiled
-library under `uvm_library`: its `source` (`config` or `OCAH_UVM_HOME`), its
-`home`, and its `tree_sha256`.
+`[frameworks.uvm.build]` `uvm_library` names, and
+`vendor/accellera/uvm-core/release.toml` records the release and its archive.
+`make update-vendor-uvm` replaces both with the newest release on Accellera's
+UVM download page, or with the one `UVM_RELEASE=<name>` names; `CHECK=1`
+downloads the recorded archive again and fails when the tree differs from it.
+`OCAH_UVM_HOME` names another UVM home for one shell, and the launcher warns
+when it does. The library compiles outside the filelist, so the build
+fingerprint carries a digest of its `src/` tree and an edit to it rebuilds
+the model. The run-level `result.json` records the compiled library under
+`uvm_library`: its `source` (`config` or `OCAH_UVM_HOME`), its `home`, and its
+`tree_sha256`.
 The build compiles its `uvm_pkg.sv` ahead of every user source and links its
 DPI layer. A sim config's `[build.vcs].uvm_lib` selects a simulator-supplied
 library through `-ntb_opts` instead (uvm-1.2 or later;
