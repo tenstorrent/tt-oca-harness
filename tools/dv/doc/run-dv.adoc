@@ -510,7 +510,9 @@ formal configuration (`<name>_formal_cfg.toml`).
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
 maintainer flow whose tool allowlist is VCS only; it carries
 `license = "required-commercial"`, so `--list` marks it `(licensed)` and the
-launcher says so when the simulator is absent. The UVM library is an
+launcher says so when the simulator is absent. A view that also runs on
+Verilator lists `verilator` in its own `[frameworks.uvm]` `tools` and sets
+`license = "none"`. The UVM library is an
 Accellera release tree checked in unmodified under
 `vendor/accellera/uvm-core/upstream/`, which the profile's
 `[frameworks.uvm.build]` `uvm_library` names, and
@@ -527,7 +529,13 @@ the model. The run-level `result.json` records the compiled library under
 The build compiles its `uvm_pkg.sv` ahead of every user source and links its
 DPI layer. A sim config's `[build.vcs].uvm_lib` selects a simulator-supplied
 library through `-ntb_opts` instead (uvm-1.2 or later;
-VCS's bare `uvm` is uvm-1.1). Tests are selected with
+VCS's bare `uvm` is uvm-1.1). On Verilator, one `verilator --binary` build
+verilates the library and the view's filelist into the model
+`<work_dir>/verilator/V<top>` and compiles the DPI layer with `--vpi`. The
+profile's `[frameworks.uvm.build.verilator]` `timescale` gives every source
+that declares none the `1ns/1ps` the VCS build uses. Each test runs the model
+with `+verilator+seed+<seed>` and `+ntb_random_seed=<seed>`, and the Verilator
+build dumps no waves. Tests are selected with
 `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
 the `uvm-log` parse policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium
 and Questa are not in the allowlist. The reference consumer is the

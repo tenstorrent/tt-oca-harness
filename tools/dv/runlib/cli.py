@@ -1687,6 +1687,11 @@ def list_flows(
         ] or ["-"]
         return "/".join(toolsArr)
 
+    def free_view(flow: Flow, framework: str) -> bool:
+        """Whether ``flow`` runs ``framework`` on a free tool and needs no commercial license."""
+        tools = set(flow.tools) & set(frameworkTools.get(framework, []))
+        return flow.license != "required-commercial" and any(freesims[tool] for tool in tools)
+
     def row(name: str, kind: str, label: str, tools: str, description: str) -> None:
         print(
             f"{name:<{widths[0]}} {kind:<{widths[1]}} {align(label, widths[2])} {align(tools, widths[3])} {description}"
@@ -1703,23 +1708,23 @@ def list_flows(
             row(name, "-", "-", "-", f"unavailable: {unavailable_sim[name].reason}")
         elif flow is not None:
             spill = False
-            frameworks = {
-                framework: format_selected_licensed(
-                    framework,
-                    (flow.framework and framework == flow.framework)
-                    or (not flow.framework and framework == flow.default_framework),
-                    freeframeworks[framework],
-                )
-                for framework in sorted(
-                    flow.frameworks,
-                    key=lambda x: (0, 0) if x == flow.default_framework else (1, str.lower(x)),
-                )
-            } or {"": "-"}
-            for framework, label in frameworks.items():
+            frameworks = sorted(
+                flow.frameworks,
+                key=lambda x: (0, 0) if x == flow.default_framework else (1, str.lower(x)),
+            ) or [""]
+            for framework in frameworks:
                 view = (
                     resolve_dut(root, name, framework=framework, site=site)
                     if root is not None and framework and framework != flow.framework
                     else flow
+                )
+                selected = (flow.framework and framework == flow.framework) or (
+                    not flow.framework and framework == flow.default_framework
+                )
+                label = (
+                    format_selected_licensed(framework, selected, free_view(view, framework))
+                    if framework
+                    else "-"
                 )
                 row(
                     flow.name if not spill else "",

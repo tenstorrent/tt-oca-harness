@@ -15,7 +15,7 @@
 |Project |OCAH
 |Framework |PyUVM on cocotb; SystemVerilog UVM smoke set on the same top (`--framework uvm`, VCS)
 |Primary simulator |Verilator
-|Supported simulator matrix |cocotb on `verilator` (default), `vcs` and `xcelium`; SV-UVM on `vcs` only, because Verilator has no SV-UVM support
+|Supported simulator matrix |cocotb on `verilator` (default), `vcs` and `xcelium`; SV-UVM on `vcs` only, the tools the view lists
 |Commercial simulator use |VCS / Xcelium for development iteration; VCS for graded coverage and the SV-UVM realization. Verilator is pre-merge acceptance
 |How to run |`README.md` (`tools/dv/run_dv.py --dut sep`)
 |===
