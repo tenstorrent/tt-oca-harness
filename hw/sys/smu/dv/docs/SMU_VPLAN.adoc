@@ -366,6 +366,7 @@ one-line intent.
 |`smu_dtp_jtag2axi_series_contention_test` |wrapper |The SMC fabric JTAG2AXI bridge lands 32-bit and 64-bit INCR words, NO_INCR words and error-status beats in the SMC scratch words as the AW and B counters and `SINGLE_OP` read-backs show, reads a word with one `SERIES_CTRL` read load and two data scans (longer read streams measured and logged only), latches the first SLVERR (an empty mailbox read) or DECERR in `SERIES_CTRL.op` until `SERIES_CTRL.reset` independently of `SINGLE_OP`, and completes a spaced `SINGLE_OP` retry after unspaced pairs measured and logged only.
 |`smu_dtp_jtag2axi_caps_single_op_test` |wrapper |The three `*_JTAG2AXI_CAPS` words read the bridge-table values field by field and stay unchanged across shift-ins and an intervening IDCODE scan and BYPASS load, and the SMC fabric `SINGLE_OP` op field reports the status of the previous operation: SLVERR with `0xFEEDDEAD` for an empty mailbox read, DECERR with `0xBADCAB1E` for a read between unit apertures, OKAY for a scratch write and read, and a nop scan sends nothing.
 |`smu_dtp_otp_sep_series_error_test` |wrapper |The SEP OTP JTAG2AXIL bridge writes and reads the SPARE0 words through `SERIES_DATA_NO_INCR` and single-load INCR reads, answers the first in-span address with no register (`0x1093041C`) with SLVERR as a `SINGLE_OP` op and as a sticky `SERIES_CTRL.op` code, completes the next beat with the correct data, clears the code with `SERIES_CTRL.reset`, and leaves the DTP-to-SMC debug AXI counters untouched while two SMC fabric `SINGLE_OP` reads move the AR counter by 2.
+|`smu_dtp_sep_ic_reset_effect_test` |wrapper |The `sep_reset_n` pair of the `IC_RESET` SEP slice (bits 13 and 14), written reset_control first, holds `sep_reset_n_o` low and clears SEP cold scratch word 0 written over the SEP debug system bus, leaves the external slice, `rst_primary_smc_clk_no` and the SMC fabric untouched, survives Test-Logic-Reset only with `reset_hold` 0, and restores the SEP when released reset_enable first.
 |===
 
 [[smu-test-procedures]]
@@ -7493,6 +7494,62 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-174-smu_dtp_sep_ic_reset_effect_test]]
+===== 174 `smu_dtp_sep_ic_reset_effect_test`
+
+*Source Module*: `smu_dtp_sep_ic_reset_effect_test` (`cocotb_wrapper/tests/`; the sequence `smu_dtp_sep_ic_reset_effect_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP, driven at the TCK period the bench draws for the seed and logs; instructions `IDCODE`, `JTAG_CAPS`, `IC_RESET`, `TAP_3DCR` and `SMC_AXI_SINGLE_OP`; the SEP STAP selected through the PTAP `TAP_3DCR`, SIB and STAP 3DCR scans with its debug TAP `dmi` register and the debug module system bus `sbcs`, `sbaddress0` and `sbdata0`); the bench taps `sep_reset_n_o` (the SEP reset after the JTAG override), `obs_sep_rst_n_o` (the reset at the SEP input, logged only), `obs_sep_clk_o`, `sep_trace_valid_o`, `obs_smc_rst_n_o` (`rst_primary_smc_clk_no`), `jtag_ic_reset_ext_ovrd` and `jtag_ic_reset_ext_ctrl_n` (the two members of `jtag_ic_reset_ext_o`), `lc_state_o` and `lcc_dbg_disable_o` (`tb/tb_wrapper_top.sv`), sampled on `clk_smu_i`; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC shadow preload and the TEST_DEV SEP shadow preload `sep_efuse_shadow_lc_test_dev.preload`, which opens the SEP debug STAP, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the SEP cold scratch word address comes from the generated `sep_addr.h` and the SMC `SCRATCH[11]` address from `smc_addr.h`
+
+*Objective*: the `sep_reset_n` pair of the IC_RESET SEP slice, programmed in the documented order, holds the SEP main reset low and clears SEP cold scratch word 0, Test-Logic-Reset keeps or releases the override according to `reset_hold`, the documented release order restores the SEP, and the SMC slice, the external slice and the SMC fabric stay untouched while the override holds.
+
+*Test Coverage*:
+
+* Layout: with `num_ext_ic_rst` 1 in `JTAG_CAPS` (bits 24:17, `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`), 68 SMC and 8 SEP ports, the `IC_RESET` TDR is 155 bits (`doc/integrator/src/smu-composition.adoc`), measured by shifting the reset image ahead of 32 extra bits. Port _n_ counted from TDO holds `reset_enable` at bit 2n+1 and `reset_control` at bit 2n+2 (`architecture.adoc`, PTAP IC_RESET fields); the SEP slice runs `km`, `otbn`, `aes`, `hmac`, `kmac`, `sep_reset_n`, `trng`, `abr` from the external slice inward (`smu-composition.adoc`), so `sep_reset_n` is port 6 with `reset_enable` at bit 13 and `reset_control` at bit 14, derived in the sequence from the helper port constants.
+* Positive control: SEP cold scratch word 0 (`SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)`, `0x10802000`, `sep_addr.h`) is written with `0x5EC01D5E` over the SEP debug system bus and read back; `sep_reset_n_o` reads 1 and `obs_sep_clk_o` shows both levels. Scratch set 0 is cleared by `sep_reset_n` (`hw/sys/sep/doc/cpu.adoc`, Scratch-bank reset behavior); the word reads 0 after each override where the non-zero word stood before it.
+* Attribution control: with no override engaged, five TMS-high TCKs (Test-Logic-Reset), a STAP re-select and a `dmactive` re-activation leave cold scratch word 0 equal to `0x5EC01D5E` over the system bus.
+* Engage: reset_control first (bit 14 = 0 with bit 13 = 1) leaves `sep_reset_n_o` at 1 and the scratch word at `0x5EC01D5E`; reset_enable second (bits 13 and 14 = 0) takes `sep_reset_n_o` to 0 and holds it on every one of 2000 `clk_smu_i` cycles, with `obs_sep_clk_o` at both levels (`hw/sys/dtp/doc/clk_rst.adoc`, IC_RESET overrides). The capture of the held image clears exactly bits 13 and 14.
+* Isolation: while the override holds, `jtag_ic_reset_ext_o` reads ovrd 0 and val 1, `rst_primary_smc_clk_no` reads 1 on every sample of a 500-sample window and the SMC fabric read of `SCRATCH[11]` (`0xC00390D8`, `smc_addr.h`) captures op 0 with the `0x5C5C0B01` written before. The external slice reads ovrd 1 with val 0 while the control leg drives it (bit 2 = 0, then bit 1 = 0) and ovrd 0 after release; `sep_reset_n_o` reads 1 throughout.
+* Test-Logic-Reset: with `reset_hold` 1 five TMS-high TCKs return `sep_reset_n_o` to 1 and the capture to all ones, the scratch word reads 0 and a new word `0x5EC02D5E` reads back; with `reset_hold` 0 (`architecture.adoc`, `clk_rst.adoc`) the override survives, `sep_reset_n_o` reads 0 on 400 samples and the capture clears bits 0, 13 and 14 only.
+* Release: reset_enable first (bit 13 = 1) returns `sep_reset_n_o` to 1, it stays 1 on 200 samples after reset_control (bit 14 = 1), the capture clears only bit 0, the scratch word reads 0 and `0x5EC03D5E` reads back.
+* Gate and sensing: `lc_state_o` leaves its pre-sense value and `lcc_dbg_disable_o` reads 0 inside 2000 polls of 50 `clk_smu_i` cycles before the SEP STAP is selected.
+* Measured and logged only: the `sep_trace_valid_o` 1-sample counts before and during the hold, the fall and rise latencies of `sep_reset_n_o`, the 1-sample count of `obs_sep_rst_n_o` over the hold window, and the TCK period.
+* The SEP-internal sibling reset ports and the warm scratch bank are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, read IDCODE, wait for the lifecycle posture, read `JTAG_CAPS`, scan `IC_RESET` with the reset image ahead of 32 extra bits and write `SCRATCH[11]` through the SMC fabric `SINGLE_OP` with `0x5C5C0B01`, polling the capture.
+. Select the SEP STAP, set `dmcontrol.dmactive`, write `0x5EC01D5E` to SEP cold scratch word 0 over the system bus and read it back, then sample `sep_reset_n_o`, `obs_sep_clk_o` and `sep_trace_valid_o` over 2000 cycles.
+. With no override engaged drive five TMS-high TCKs, re-select the SEP STAP, set `dmactive` and read the scratch word over the system bus.
+. Update `IC_RESET` with bit 14 = 0 and bit 13 = 1, sample `sep_reset_n_o` over 200 cycles and read the scratch word over the system bus.
+. Update `IC_RESET` with bits 13 and 14 = 0, wait for `sep_reset_n_o` to read 0 and sample the hold window of 2000 cycles.
+. Scan `IC_RESET` with the held image, sample `jtag_ic_reset_ext_o`, `rst_primary_smc_clk_no` over 500 cycles and read `SCRATCH[11]` through the SMC fabric `SINGLE_OP`, polling the capture.
+. Drive five TMS-high TCKs with `reset_hold` 1, wait for `sep_reset_n_o` to read 1, scan `IC_RESET`, re-select the SEP STAP, set `dmactive`, read the scratch word, write `0x5EC02D5E` and read it back.
+. Update `IC_RESET` with `reset_hold` 0, then bit 14 = 0, then bit 13 = 0, wait for `sep_reset_n_o` to read 0, drive five TMS-high TCKs, sample 400 cycles and scan `IC_RESET`.
+. Release with bit 13 = 1 and wait for `sep_reset_n_o` to read 1, write bit 14 = 1, sample 200 cycles, scan `IC_RESET`, re-select the SEP STAP, set `dmactive`, read the scratch word, write `0x5EC03D5E` and read it back.
+. Stage the external control bit, apply the external override, wait for `jtag_ic_reset_ext_o` ovrd to read 1, release with the enable bit then the control bit, wait for ovrd to read 0 and write `reset_hold` 1 back.
+. Print the checker lines in step order, check that every wait finished inside its bound with the stated site count per kind, and stamp the pass point after the last step.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DBG-IC-SEP-SETUP` |IDCODE reads the documented value, JTAG_CAPS reports 68, 8 and 1 IC_RESET ports, the IC_RESET scan returns a 155-bit all-ones image, the SCRATCH[11] write of 0x5C5C0B01 captures op 0 and dmcontrol.dmactive reads 1 through the SEP STAP
+|`CHK-DBG-IC-SEP-POSITION` |update 1 (bit 14 = 0, bit 13 = 1) leaves sep_reset_n_o at 1 and SEP cold scratch word 0 at 0x5EC01D5E; update 2 (bits 13 and 14 = 0) takes sep_reset_n_o to 0; the capture has exactly bits 13 and 14 clear
+|`CHK-DBG-IC-SEP-QUIESCE` |cold scratch word 0 reads 0x5EC01D5E over the system bus with sep_reset_n_o at 1 and obs_sep_clk_o at both levels before the override and again after Test-Logic-Reset and a STAP re-select with no override engaged; after the override sep_reset_n_o reads 0 on every one of 2000 hold samples with obs_sep_clk_o at both levels; sep_trace_valid_o counts are measured and logged only
+|`CHK-DBG-IC-SEP-ISOLATION` |during the SEP override jtag_ic_reset_ext_o reads ovrd 0 and val 1, rst_primary_smc_clk_no reads 1 on every sample of its window and the SMC fabric read of 0xC00390D8 captures op 0 with 0x5C5C0B01; the external control leg drives ovrd 1 and val 0 and releases to ovrd 0
+|`CHK-DBG-IC-SEP-HOLD-TLR` |with reset_hold 1 Test-Logic-Reset returns sep_reset_n_o to 1, the capture is all ones, cold scratch word 0 reads 0 and 0x5EC02D5E reads back; with reset_hold 0 sep_reset_n_o stays 0 on 400 samples and the capture clears bits 0, 13 and 14
+|`CHK-DBG-IC-SEP-RELEASE` |reset_enable written 1 first returns sep_reset_n_o to 1, it stays 1 on 200 samples after reset_control is written 1, the capture clears only bit 0, cold scratch word 0 reads 0 and 0x5EC03D5E reads back
+|`CHK-NONVAC` |ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last step and every step S1 to S10 has a nonzero scan count
+|`CHK-TIMEOUT-PATHS` |the sensing wait, the capture polls, the reset and external-output waits, the system-bus completion polls and the dmi retry loops finish inside their bounds with a recorded last state and the stated site count per kind
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7664,6 +7721,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_jtag2axi_series_contention_test` |F3 |hosted |`CHK-DBG-J2A-SERIES-SETUP`, `CHK-DBG-J2A-SERIES-INCR`, `CHK-DBG-J2A-SERIES-NOINCR`, `CHK-DBG-J2A-SERIES-ERRSTATUS`, `CHK-DBG-J2A-SERIES-PIPELINE`, `CHK-DBG-J2A-STICKY-SLVERR-FIRST`, `CHK-DBG-J2A-STICKY-DECERR-FIRST`, `CHK-DBG-J2A-STICKY-RESET`, `CHK-DBG-J2A-SINGLE-INDEP`, `CHK-DBG-J2A-BUSY-OP3`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |`smu_dtp_jtag2axi_caps_single_op_test` |F3 |hosted |`CHK-DBG-J2A-CAPS-SETUP`, `CHK-DBG-J2A-CAPS-SMC`, `CHK-DBG-J2A-CAPS-OTP`, `CHK-DBG-J2A-CAPS-STABLE`, `CHK-DBG-J2A-SINGLE-SLVERR`, `CHK-DBG-J2A-SINGLE-DECERR`, `CHK-DBG-J2A-SINGLE-OKAY`, `CHK-DBG-J2A-SINGLE-RECOVERY`, `CHK-DBG-J2A-SINGLE-NOP`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |`smu_dtp_otp_sep_series_error_test` |F3 |hosted |`CHK-DBG-SEP-OTP-SETUP`, `CHK-DBG-SEP-OTP-POSCTRL`, `CHK-DBG-SEP-OTP-HOLE-SINGLE`, `CHK-DBG-SEP-OTP-HOLE-SERIES`, `CHK-DBG-SEP-OTP-ISOLATION`, `CHK-DBG-SEP-OTP-RESET`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
+|`smu_dtp_sep_ic_reset_effect_test` |F3 |hosted |`CHK-DBG-IC-SEP-SETUP`, `CHK-DBG-IC-SEP-POSITION`, `CHK-DBG-IC-SEP-QUIESCE`, `CHK-DBG-IC-SEP-ISOLATION`, `CHK-DBG-IC-SEP-HOLD-TLR`, `CHK-DBG-IC-SEP-RELEASE`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |===
 
 [[smu-out-and-wrapper]]

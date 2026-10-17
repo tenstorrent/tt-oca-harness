@@ -3033,6 +3033,67 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "inside their bounds with a recorded last state and the stated site count per kind",
         ),
     ],
+    "smu_dtp_sep_ic_reset_effect_test": [
+        (
+            "CHK-DBG-IC-SEP-SETUP",
+            "CHK-DBG-IC-SEP-SETUP",
+            "IDCODE reads the documented value, JTAG_CAPS reports 68, 8 and 1 IC_RESET ports, "
+            "the IC_RESET scan returns a 155-bit all-ones image, the SCRATCH[11] write of "
+            "0x5C5C0B01 captures op 0 and dmcontrol.dmactive reads 1 through the SEP STAP",
+        ),
+        (
+            "CHK-DBG-IC-SEP-POSITION",
+            "CHK-DBG-IC-SEP-POSITION",
+            "update 1 (bit 14 = 0, bit 13 = 1) leaves sep_reset_n_o at 1 and SEP cold scratch "
+            "word 0 at 0x5EC01D5E; update 2 (bits 13 and 14 = 0) takes sep_reset_n_o to 0; "
+            "the capture has exactly bits 13 and 14 clear",
+        ),
+        (
+            "CHK-DBG-IC-SEP-QUIESCE",
+            "CHK-DBG-IC-SEP-QUIESCE",
+            "cold scratch word 0 reads 0x5EC01D5E over the system bus with sep_reset_n_o at 1 "
+            "and obs_sep_clk_o at both levels before the override and again after "
+            "Test-Logic-Reset and a STAP re-select with no override engaged; after the override "
+            "sep_reset_n_o reads 0 on every one of 2000 hold samples with obs_sep_clk_o at both "
+            "levels; sep_trace_valid_o counts are measured and logged only",
+        ),
+        (
+            "CHK-DBG-IC-SEP-ISOLATION",
+            "CHK-DBG-IC-SEP-ISOLATION",
+            "during the SEP override jtag_ic_reset_ext_o reads ovrd 0 and val 1, "
+            "rst_primary_smc_clk_no reads 1 on every sample of its window and the SMC fabric "
+            "read of "
+            "0xC00390D8 captures op 0 with 0x5C5C0B01; the external control leg drives ovrd 1 "
+            "and val 0 and releases to ovrd 0",
+        ),
+        (
+            "CHK-DBG-IC-SEP-HOLD-TLR",
+            "CHK-DBG-IC-SEP-HOLD-TLR",
+            "with reset_hold 1 Test-Logic-Reset returns sep_reset_n_o to 1, the capture is "
+            "all ones, cold scratch word 0 reads 0 and 0x5EC02D5E reads back; with reset_hold 0 "
+            "sep_reset_n_o stays 0 on 400 samples and the capture clears bits 0, 13 and 14",
+        ),
+        (
+            "CHK-DBG-IC-SEP-RELEASE",
+            "CHK-DBG-IC-SEP-RELEASE",
+            "reset_enable written 1 first returns sep_reset_n_o to 1, it stays 1 on 200 "
+            "samples after reset_control is written 1, the capture clears only bit 0, cold "
+            "scratch word 0 reads 0 and 0x5EC03D5E reads back",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last "
+            "step and every step S1 to S10 has a nonzero scan count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the sensing wait, the capture polls, the reset and external-output waits, the "
+            "system-bus completion polls and the dmi retry loops finish inside their bounds "
+            "with a recorded last state and the stated site count per kind",
+        ),
+    ],
 }
 
 
