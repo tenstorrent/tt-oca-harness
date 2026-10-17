@@ -4061,4 +4061,8 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Scope limit*: The leaf does not claim the grant order, the endpoint depth, or the value of a delivered word. It does not claim a partial strobe on stream 0, a TRNG reset during a sample, or the `tuser` of the Key Manager stream. `sep_crypto_edn_round_robin_grant_test` keeps the routing, no starvation and the grant of the crypto sinks and the pool; `sep_drbg_real_sink_multi_km_aes_test` keeps the membership of every stream 1 and Key Manager word in the generated bit multiset; `sep_crypto_edn_round_robin_grant_test` also keeps the routing of a beat to one sink; `sep_crypto_edn_multisink_arbitration_test` keeps the arbitration of several sinks.
 
+*Known limitation*: On VCS this leaf can fail on the AXI reset assertion of the Key Manager CPU port, with no failing checker. When the `rst_ni` pulse between the two runs lands on a clock where a Key Manager CPU read waits for `ARREADY`, the PicoRV32 AXI4-Lite master holds `ARVALID` high for one clock after the cold reset asserts (`OCAH_AXI_AR_VALID_RESET_LOW`; AXI A3.1.2 requires VALID low during reset). Whether it fires depends on the seed. Verilator compiles the AXI assertions out.
+
+*Issue*: #3170
+
 '''''
