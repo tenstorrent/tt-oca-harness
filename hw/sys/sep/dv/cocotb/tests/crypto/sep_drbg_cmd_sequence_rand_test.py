@@ -11,6 +11,11 @@ SW_CMD_STS, RECOV_ALERT_STS; ``hw/sys/sep/doc/interrupts.adoc``: source N on vec
 bit N - 1):
   * With ``CTRL.BOOT_REQ_MODE`` true EDN reports ``HW_CMD_STS.BOOT_MODE`` = 1 and
     ``AUTO_MODE`` = 0, also with ``AUTO_REQ_MODE`` true (boot mode takes precedence).
+  * With ``AUTO_REQ_MODE`` true and ``BOOT_REQ_MODE`` false, after the software
+    instantiate, ``HW_CMD_STS.AUTO_MODE`` reads 1 and ``CMD_TYPE`` is the
+    hardware command. ``MAX_NUM_REQS_BETWEEN_RESEEDS`` = 1 issues
+    ``GENERATE_CMD`` first. The reset value 0 issues no generate, so the
+    hardware command is ``RESEED_CMD``.
   * With both modes false EDN is in software port mode: ``CMD_REG_RDY`` and
     ``CMD_RDY`` are 1 before a command, ``CMD_ACK`` rises once CSRNG acknowledges
     it, and ``INTR_STATE.edn_cmd_req_done`` sets.
@@ -244,6 +249,11 @@ CSRNG_GENBITS = sym("CSRNG_GENBITS_REG_ADDR")
 CSRNG_RESEED_INTERVAL = sym("CSRNG_RESEED_INTERVAL_REG_ADDR")
 EDN_BOOT_INS_CMD = sym("EDN_BOOT_INS_CMD_REG_ADDR")
 EDN_BOOT_GEN_CMD = sym("EDN_BOOT_GEN_CMD_REG_ADDR")
+EDN_RESEED_CMD = sym("EDN_RESEED_CMD_REG_ADDR")
+EDN_GENERATE_CMD = sym("EDN_GENERATE_CMD_REG_ADDR")
+EDN_MAX_REQS = sym("EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_ADDR")
+ED_HW_TYPE = EDN.fields("HW_CMD_STS")["CMD_TYPE"]
+ED_HW_ACK = EDN.fields("HW_CMD_STS")["CMD_ACK"]["bm"]
 
 GB_VLD = CSRNG.fields("GENBITS_VLD")["GENBITS_VLD"]["bm"]
 _CS_RECOV = CSRNG.fields("RECOV_ALERT_STS")
@@ -318,13 +328,13 @@ CSRNG_CTRL_OFF = CSRNG.value(
 )
 
 
-def _edn_ctrl(boot: bool, auto: bool, enable: bool) -> int:
+def _edn_ctrl(boot: bool, auto: bool, enable: bool, fifo_rst: bool = False) -> int:
     return EDN.value(
         "CTRL",
         EDN_ENABLE=MUBI_TRUE if enable else MUBI_FALSE,
         BOOT_REQ_MODE=MUBI_TRUE if boot else MUBI_FALSE,
         AUTO_REQ_MODE=MUBI_TRUE if auto else MUBI_FALSE,
-        CMD_FIFO_RST=MUBI_FALSE,
+        CMD_FIFO_RST=MUBI_TRUE if fifo_rst else MUBI_FALSE,
     )
 
 
@@ -339,6 +349,8 @@ N_GAPS = 256
 # Outer caps of a first measurement (design rule: 20 x the clean value of the logs).
 TRNG_RESET_CAP = 4_000
 FIRST_CAP = 20_000
+# A hardware generate or reseed waits on entropy after the instantiate ack.
+AUTO_CAP = 60_000
 VEC_CAP = 2_000
 BOUND_FACTOR = 16
 # Outer cap of a field-alert poll: the alert bit decodes a register field, so it
@@ -408,6 +420,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         "CHK-CSRNG-RESEED-LIMIT",
         "CHK-CSRNG-RESEED-HDR",
         "CHK-CSRNG-GENBITS-GATE",
+        "CHK-EDN-AUTO",
     )
 
     async def run_scenario(self) -> None:
@@ -441,6 +454,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await self._ctrl_mubi_leg()
             await self._hdr_leg()
             await self._reseed_leg()
+            await self._auto_leg()
             await self._acmd_hi_leg()
         finally:
             close_graded_window(self.logger)
@@ -516,6 +530,85 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         bit14 = int(bool(recov & CS_INVSEQ))
         self.chk.ctrl("CLEAN-START", bit14 == 0, group=group, csrng_invseq=bit14)
         return bit14
+
+    # --- auto request mode ----------------------------------------------------------
+    async def _auto_hw(self, type_code: int, what: str) -> int:
+        """Poll HW_CMD_STS with no idle gap until AUTO_MODE is 1 and CMD_TYPE matches.
+
+        The command stays in flight while its data or its entropy is outstanding, so
+        the matching read is stable. A drawn gap would only delay that read.
+        """
+        mask = ED_AUTO_MODE | ED_HW_TYPE["bm"]
+        want = ED_AUTO_MODE | ((type_code << ED_HW_TYPE["bp"]) & ED_HW_TYPE["bm"])
+
+        async def read() -> int:
+            return await self.reg._rd(EDN_HW_CMD_STS)
+
+        samples = await wait_until(read, self._now, mask, want, AUTO_CAP, what)
+        return samples[-1][1]
+
+    async def _auto_trial(self, kind: str, type_code: int, max_reqs: int) -> tuple[int, int]:
+        """One auto-mode session. Returns (AUTO_MODE before the instantiate, HW_CMD_STS)."""
+        await self._clean_start(f"edn_auto_{kind}")
+        await self.reg._wr(EDN_CTRL, _edn_ctrl(False, False, False, fifo_rst=True))
+        await self.reg._wr(EDN_CTRL, _edn_ctrl(False, True, False))
+        await self.reg._wr(EDN_GENERATE_CMD, CMD_GENERATE_1)
+        await self.reg._wr(EDN_RESEED_CMD, cmd_word(ACMD_RESEED))
+        await self.reg._wr(EDN_MAX_REQS, max_reqs)
+        open_graded_window(TEST, self.logger)
+        await self.reg._wr(EDN_CTRL, _edn_ctrl(False, True, True))
+        pre = await self.reg._rd(EDN_HW_CMD_STS)
+        rdy = ED_STS_REG_RDY | ED_STS_RDY
+        await self._wait(EDN_SW_CMD_STS, rdy, rdy, FIRST_CAP, f"auto_{kind}_rdy")
+        await self.reg._wr(EDN_SW_CMD_REQ, CMD_INSTANTIATE)
+        await self._wait(EDN_SW_CMD_STS, ED_STS_ACK, ED_STS_ACK, FIRST_CAP, f"auto_{kind}_sw_ack")
+        hw = await self._auto_hw(type_code, f"auto_{kind}")
+        close_graded_window(self.logger)
+        await self.reg._wr(EDN_CTRL, _edn_ctrl(False, False, False))
+        return int(bool(pre & ED_AUTO_MODE)), hw
+
+    async def _auto_leg(self) -> None:
+        """GENERATE_CMD with MAX_NUM_REQS = 1, then RESEED_CMD with MAX_NUM_REQS = 0."""
+        gen_pre = None
+        gen_hw = None
+        rs_hw = None
+        reason = ""
+        try:
+            gen_pre, gen_hw = await self._auto_trial("generate", ACMD_GENERATE, 1)
+            _, rs_hw = await self._auto_trial("reseed", ACMD_RESEED, 0)
+        except TrialTimeout as exc:
+            close_graded_window(self.logger)
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+            await self.reg._wr(EDN_CTRL, _edn_ctrl(False, False, False))
+
+        def _typ(value: int | None) -> int | None:
+            return None if value is None else _field(value, ED_HW_TYPE)
+
+        def _bit(value: int | None, mask: int) -> int | None:
+            return None if value is None else int(bool(value & mask))
+
+        self.chk.ctrl("EDN-AUTO", gen_pre == 0, auto_before=gen_pre)
+        fields = {
+            "gen_type": _typ(gen_hw),
+            "gen_auto": _bit(gen_hw, ED_AUTO_MODE),
+            "gen_ack": _bit(gen_hw, ED_HW_ACK),
+            "reseed_type": _typ(rs_hw),
+            "reseed_auto": _bit(rs_hw, ED_AUTO_MODE),
+            "reseed_ack": _bit(rs_hw, ED_HW_ACK),
+            "expected_gen": ACMD_GENERATE,
+            "expected_reseed": ACMD_RESEED,
+        }
+        if reason:
+            fields["reason"] = reason
+        self.chk.ok(
+            "EDN-AUTO",
+            not reason
+            and _typ(gen_hw) == ACMD_GENERATE
+            and _bit(gen_hw, ED_AUTO_MODE) == 1
+            and _typ(rs_hw) == ACMD_RESEED
+            and _bit(rs_hw, ED_AUTO_MODE) == 1,
+            **fields,
+        )
 
     # --- boot group -----------------------------------------------------------------
     async def _boot(self, auto: bool, bound: int) -> tuple[int | None, int, int]:
