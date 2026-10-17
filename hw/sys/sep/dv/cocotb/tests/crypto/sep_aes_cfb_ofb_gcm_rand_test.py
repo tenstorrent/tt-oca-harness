@@ -19,12 +19,13 @@ Golden: ``env/sep_aes_mode_golden.py`` (SP 800-38A CFB-128 and OFB, SP 800-38D G
 the FIPS-197 cipher of ``env/sep_aes_golden.py``), self-checked against the published
 vectors by ``env/run_golden_selftests.py``.
 
-Register programming that the in-tree sources do not state (stimulus, not golden;
-taken from the OpenTitan AES Programmer's Guide, GCM section, which aes.adoc names as
-the authoritative core documentation): in GCM_INIT software writes the 96-bit IV to
-IV_0..IV_2 and 0 to IV_3, and the hardware forms J0 = IV || 0^31 || 1 itself (inc32);
-the GCM_TAG input block is [len(A)]_64 || [len(C)]_64 in bits, big-endian, in the data
-byte order. A DUT result that disagrees fails the check.
+GCM register programming (vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/
+programmers_guide.md, GCM Encryption and GCM Decryption): in GCM_INIT software writes
+the 96-bit IV to IV_0..IV_2 and 0 to IV_3, and the hardware forms J0 = IV || 0^31 || 1;
+before a partial last AAD or text block it waits for IDLE and sets NUM_VALID_BYTES.
+The byte order of the GCM_TAG length block is not stated in-tree: the leaf writes
+[len(A)]_64 || [len(C)]_64 in bits, big-endian, in the data byte order (stimulus, not
+golden). A DUT result that disagrees fails the check.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. The internal entropy source feeds ESRC, CSRNG and EDN for
