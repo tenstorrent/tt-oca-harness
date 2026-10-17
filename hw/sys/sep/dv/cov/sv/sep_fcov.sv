@@ -11953,6 +11953,8 @@ module sep_fcov (
     logic tv_v;  // 0 taken trap, 1 interrupt cause 0x1E, 2 NMI
     logic [2:0] ic;
     logic ic_v;  // 0 M, 1 C, 2 Zba, 3 Zbb, 4 Zbc retired, 5 Zbs trapped
+    logic [1:0] ze;
+    logic ze_v;  // Zbe retired: 0 bext (bit extract), 1 bdep (bit deposit), 2 pack, 3 packh
   } mr_dbg_t;
 
   covergroup sep_debug_trace_cg with function sample (mr_dbg_t s);
@@ -11983,6 +11985,12 @@ module sep_fcov (
       bins retired_zbb = {3'd3};
       bins retired_zbc = {3'd4};
       bins trapped_zbs = {3'd5};
+    }
+    cp_zbe_instr: coverpoint s.ze iff (s.ze_v) {
+      bins retired_bext = {2'd0};
+      bins retired_bdep = {2'd1};
+      bins retired_pack = {2'd2};
+      bins retired_packh = {2'd3};
     }
   endgroup
 
@@ -14379,6 +14387,7 @@ module sep_fcov (
   wire mm_own_demux = (graded_owner == FcovOwnSepCpuDemuxUnmappedFetchTest);
   wire mm_own_dmi = (graded_owner == FcovOwnSepDebugMasterTargetMatrixTest);
   wire mm_own_isa = (graded_owner == FcovOwnSepCpuIsaPmpCsrTest);
+  wire mm_own_zbe = (graded_owner == FcovOwnSepCpuZbeExecTest);
 
   localparam int unsigned MmRomRdAge = 16;  // a ROM read request this recent explains a macro request
   localparam int unsigned MmStoreQuiet = 32;  // clk_i edges watched after a ROM store response
@@ -14652,9 +14661,13 @@ module sep_fcov (
         e.tv   = v[1:0];
         e.tv_v = 1'b1;
       end
-      default: begin
+      2'd2: begin
         e.ic   = v;
         e.ic_v = 1'b1;
+      end
+      default: begin
+        e.ze   = v[1:0];
+        e.ze_v = 1'b1;
       end
     endcase
     u_sep_debug_trace_cg.sample(e);
@@ -15255,6 +15268,22 @@ module sep_fcov (
     return 3'd7;
   endfunction
 
+  // Zbe encoding of the draft "RISC-V Bitmanip Extension" specification v0.93,
+  // section 2.12: {1, 0} bext (bit extract), {1, 1} bdep (bit deposit), {1, 2}
+  // pack with rs2 != x0 (rs2 = x0 is zext.h, Zbb), {1, 3} packh, {0, 0} other.
+  function automatic logic [2:0] mm_zcls(input logic [31:0] i);
+    logic [2:0] f3;
+    logic [6:0] f7;
+    if (i[6:0] != 7'b0110011) return 3'd0;
+    f3 = i[14:12];
+    f7 = i[31:25];
+    if ((f7 == 7'b0000100) && (f3 == 3'b110)) return 3'b100;
+    if ((f7 == 7'b0100100) && (f3 == 3'b110)) return 3'b101;
+    if ((f7 == 7'b0000100) && (f3 == 3'b100) && (i[24:20] != 5'd0)) return 3'b110;
+    if ((f7 == 7'b0000100) && (f3 == 3'b111)) return 3'b111;
+    return 3'd0;
+  endfunction
+
   logic [31:0] mm_mc_q = '0;
   logic mm_md_arm = 1'b0;
   logic mm_md_mst = 1'b0;
@@ -15287,6 +15316,11 @@ module sep_fcov (
       c = mm_icls(cpu_trace_insn_i);
       if (!exc && !intr && (c <= 3'd4)) mm_dbg(2'd2, c);
       if (exc && !intr && (c == 3'd5)) mm_dbg(2'd2, 3'd5);
+    end
+    // cp_zbe_instr.
+    if (mm_own_zbe && tr && !exc && !intr) begin
+      c = mm_zcls(cpu_trace_insn_i);
+      if (c[2]) mm_dbg(2'd3, {1'b0, c[1:0]});
     end
     // cp_mceip_delivery: one trap per arming of mie[30] with mstatus.MIE set.
     if (!mm_mie5_q && (tlu_mie_i[5] === 1'b1)) begin

@@ -1992,6 +1992,52 @@ Functional coverage: `cp_traced_event` (the trap cell), `cp_instr_class` (M, C, 
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0. Firmware logs on the mailbox and the CPU trace monitor are the observation points.
 
-*Scope limit*: The test does not claim Zbe execution and the Zbf, Zbp and Zbr traps (the specification gives no encodings), the implemented `pmpaddr` width and granularity, the access to `pmpaddr16` and above (see <<sep-vplan-phase3-blocked,Blocked features>>), the four-stage pipeline depth (no observation point), or the PMP permission cells beyond the one denied and one allowed region. Only the new cells are graded: the open owners (`sep_rom_sanity_test`, `sep_boot_rom_smoke_test`, `sep_cpu_trace_diag_test`) keep the retirement of base-format instructions, the staged-image PCs and the breakpoint trap record.
+*Scope limit*: The test does not claim Zbe execution (graded by `sep_cpu_zbe_exec_test`) and the Zbf, Zbp and Zbr traps (the specification gives no encodings), the implemented `pmpaddr` width and granularity, the access to `pmpaddr16` and above (see <<sep-vplan-phase3-blocked,Blocked features>>), the four-stage pipeline depth (no observation point), or the PMP permission cells beyond the one denied and one allowed region. Only the new cells are graded: the open owners (`sep_rom_sanity_test`, `sep_boot_rom_smoke_test`, `sep_cpu_trace_diag_test`) keep the retirement of base-format instructions, the staged-image PCs and the breakpoint trap record.
+
+'''''
+
+[[sep_cpu_zbe_exec_test]]
+===== 5.30 `sep_cpu_zbe_exec_test`
+
+*Phase*: 3
+
+*Area*: Memory, boot, reset, WDT, clock
+
+*Run mode*: `cpu` (real core and firmware; operands from a DCCM table), `+skip_fuse_sense`, Verilator and VCS, four seeds (`seed = 1`, `reseed = 4`). Testlist: group `all` and group `cpu`; testlist `cpu.toml`.
+
+*Source Module*: `sep_cpu_zbe_exec_test`
+
+*BFM / Model*: The CPU firmware (an image booted from the ICCM; each Zbe instruction is an explicit data word that holds the encoding of the draft "RISC-V Bitmanip Extension" specification v0.93, so the assembler cannot replace it), an instruction model in the bench that computes the expected values from the result functions of that specification, the DCCM table of operands loaded by backdoor before reset release, the firmware result reads on the outbound mailbox (approved), and the CPU trace port with its monitor (approved). No PROPOSED item. Every check is a reached check.
+
+*Randomization*: `SepSeededRng` from the run seed: the operand rows. The table also holds the fixed corner rows 0, 1, 0xFFFF_FFFF and 0x8000_0000. `reseed = 4` samples different operand rows. The instruction list is the same on every seed. `pack` never uses rs2 = x0, because that encoding is `zext.h` (Zbb).
+
+*Objective*: The core executes the Zbe instructions Zbe `bext` (bit extract), Zbe `bdep` (bit deposit), `pack` and `packh`, and each result equals the result function of the specification. The draft "RISC-V Bitmanip Extension" specification v0.93 (January 2021) is the source of the encodings and of the result functions. It is a draft, unratified specification. `hw/sys/sep/doc/cpu.adoc` (Processor Core) states that Zbe is enabled and gives no encodings.
+
+*Test Coverage*: Extends `sep_cpu_isa_pmp_csr_test`, which grades the M, C, Zba, Zbb and Zbc instructions and the Zbs trap. This entry adds only the cells that execute a Zbe instruction.
+
+* Zbe `bext` (bit extract), Zbe `bdep` (bit deposit), `pack` and `packh` on each row of the operand table.
+
+Functional coverage: `cp_zbe_instr` of `sep_debug_trace_cg`, sampled only while the test holds its graded window (the Zbe leg of the firmware). The bin records retirement only. `CHK-ZBE` grades the result.
+
+*Test Procedure*:
+
+[arabic]
+. The bench draws the operand rows and computes the expected result of each Zbe instruction on each row from the result functions of the specification, and never from a core read. The bench loads the operand table into the DCCM by backdoor before reset release.
+. Release the reset with the reset vector at the ICCM base.
+. For each row and each Zbe instruction, the firmware executes the instruction word on the operands of the row and logs the result on the mailbox with the row index. The firmware does not compare.
+. The firmware logs the completion marker.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ZBE
+|Each Zbe instruction returns the expected value on each row. The bench compares the logged result with the value that it computes from the result functions of the draft specification v0.93: Zbe `bext` (bit extract) packs the bits of rs1 at the set positions of the mask rs2 into the low bits of rd; Zbe `bdep` (bit deposit) places the low bits of rs1 at the set positions of the mask rs2 and sets the other bits to 0; `pack` gives rd[15:0] = rs1[15:0] and rd[31:16] = rs2[15:0]; `packh` gives rd[7:0] = rs1[7:0], rd[15:8] = rs2[7:0] and rd[31:16] = 0. A wrong result of any instruction on any row fails. The anchors are the logged result of the core and the expected value of the bench.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0. Firmware logs on the mailbox are the observation points.
+
+*Scope limit*: The test does not claim the Zbf, Zbp and Zbr traps (the specification gives no encodings), the RV64 forms of the instructions, or the Zbs encoding of `bext`. The ratified extensions are graded in `sep_cpu_isa_pmp_csr_test`.
 
 '''''
