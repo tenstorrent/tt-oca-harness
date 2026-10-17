@@ -12,10 +12,12 @@ bit N - 1):
   * With ``CTRL.BOOT_REQ_MODE`` true EDN reports ``HW_CMD_STS.BOOT_MODE`` = 1 and
     ``AUTO_MODE`` = 0, also with ``AUTO_REQ_MODE`` true (boot mode takes precedence).
   * With ``AUTO_REQ_MODE`` true and ``BOOT_REQ_MODE`` false, after the software
-    instantiate, ``HW_CMD_STS.AUTO_MODE`` reads 1 and ``CMD_TYPE`` is the
-    hardware command. ``MAX_NUM_REQS_BETWEEN_RESEEDS`` = 1 issues
-    ``GENERATE_CMD`` first. The reset value 0 issues no generate, so the
-    hardware command is ``RESEED_CMD``.
+    instantiate, ``HW_CMD_STS.AUTO_MODE`` reads 1 and the first hardware
+    command is ``GENERATE_CMD`` ("the first ``generate`` command is sent out
+    automatically", edn.adoc:107). With ``MAX_NUM_REQS_BETWEEN_RESEEDS`` = 0
+    the first hardware command is logged only (``OBS-EDN-AUTO-ZERO``): edn.adoc:107
+    says the first command is a generate, and edn.hjson:480-484 describes a
+    down-counter that requests a reseed when it reaches zero.
   * With both modes false EDN is in software port mode: ``CMD_REG_RDY`` and
     ``CMD_RDY`` are 1 before a command, ``CMD_ACK`` rises once CSRNG acknowledges
     it, and ``INTR_STATE.edn_cmd_req_done`` sets.
@@ -532,22 +534,21 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         return bit14
 
     # --- auto request mode ----------------------------------------------------------
-    async def _auto_hw(self, type_code: int, what: str) -> int:
-        """Poll HW_CMD_STS with no idle gap until AUTO_MODE is 1 and CMD_TYPE matches.
+    async def _auto_hw(self, what: str) -> int:
+        """Poll HW_CMD_STS with no idle gap; return the first read with AUTO_MODE = 1
+        whose CMD_TYPE is a hardware command (not the software instantiate, not 0).
 
         The command stays in flight while its data or its entropy is outstanding, so
-        the matching read is stable. A drawn gap would only delay that read.
+        back-to-back reads see the first hardware command. A drawn gap could miss it.
         """
-        mask = ED_AUTO_MODE | ED_HW_TYPE["bm"]
-        want = ED_AUTO_MODE | ((type_code << ED_HW_TYPE["bp"]) & ED_HW_TYPE["bm"])
+        t0 = self._now()
+        while self._now() - t0 <= AUTO_CAP:
+            value = await self.reg._rd(EDN_HW_CMD_STS)
+            if value & ED_AUTO_MODE and _field(value, ED_HW_TYPE) not in (0, ACMD_INSTANTIATE):
+                return value
+        raise TrialTimeout(what, AUTO_CAP)
 
-        async def read() -> int:
-            return await self.reg._rd(EDN_HW_CMD_STS)
-
-        samples = await wait_until(read, self._now, mask, want, AUTO_CAP, what)
-        return samples[-1][1]
-
-    async def _auto_trial(self, kind: str, type_code: int, max_reqs: int) -> tuple[int, int]:
+    async def _auto_trial(self, kind: str, max_reqs: int) -> tuple[int, int]:
         """One auto-mode session. Returns (AUTO_MODE before the instantiate, HW_CMD_STS)."""
         await self._clean_start(f"edn_auto_{kind}")
         await self.reg._wr(EDN_CTRL, _edn_ctrl(False, False, False, fifo_rst=True))
@@ -562,20 +563,20 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await self._wait(EDN_SW_CMD_STS, rdy, rdy, FIRST_CAP, f"auto_{kind}_rdy")
         await self.reg._wr(EDN_SW_CMD_REQ, CMD_INSTANTIATE)
         await self._wait(EDN_SW_CMD_STS, ED_STS_ACK, ED_STS_ACK, FIRST_CAP, f"auto_{kind}_sw_ack")
-        hw = await self._auto_hw(type_code, f"auto_{kind}")
+        hw = await self._auto_hw(f"auto_{kind}")
         close_graded_window(self.logger)
         await self.reg._wr(EDN_CTRL, _edn_ctrl(False, False, False))
         return int(bool(pre & ED_AUTO_MODE)), hw
 
     async def _auto_leg(self) -> None:
-        """GENERATE_CMD with MAX_NUM_REQS = 1, then RESEED_CMD with MAX_NUM_REQS = 0."""
+        """The first hardware command with MAX_NUM_REQS = 1 (graded), then with 0 (logged)."""
         gen_pre = None
         gen_hw = None
         rs_hw = None
         reason = ""
         try:
-            gen_pre, gen_hw = await self._auto_trial("generate", ACMD_GENERATE, 1)
-            _, rs_hw = await self._auto_trial("reseed", ACMD_RESEED, 0)
+            gen_pre, gen_hw = await self._auto_trial("generate", 1)
+            _, rs_hw = await self._auto_trial("zero", 0)
         except TrialTimeout as exc:
             close_graded_window(self.logger)
             reason = f"timeout:{exc.what} bound={exc.bound}"
@@ -589,25 +590,25 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
 
         self.chk.ctrl("EDN-AUTO", gen_pre == 0, auto_before=gen_pre)
         fields = {
-            "gen_type": _typ(gen_hw),
-            "gen_auto": _bit(gen_hw, ED_AUTO_MODE),
-            "gen_ack": _bit(gen_hw, ED_HW_ACK),
-            "reseed_type": _typ(rs_hw),
-            "reseed_auto": _bit(rs_hw, ED_AUTO_MODE),
-            "reseed_ack": _bit(rs_hw, ED_HW_ACK),
-            "expected_gen": ACMD_GENERATE,
-            "expected_reseed": ACMD_RESEED,
+            "first_type": _typ(gen_hw),
+            "first_auto": _bit(gen_hw, ED_AUTO_MODE),
+            "first_ack": _bit(gen_hw, ED_HW_ACK),
+            "expected_type": ACMD_GENERATE,
         }
         if reason:
             fields["reason"] = reason
         self.chk.ok(
             "EDN-AUTO",
-            not reason
-            and _typ(gen_hw) == ACMD_GENERATE
-            and _bit(gen_hw, ED_AUTO_MODE) == 1
-            and _typ(rs_hw) == ACMD_RESEED
-            and _bit(rs_hw, ED_AUTO_MODE) == 1,
+            not reason and _typ(gen_hw) == ACMD_GENERATE and _bit(gen_hw, ED_AUTO_MODE) == 1,
             **fields,
+        )
+        self.chk.obs(
+            "EDN-AUTO-ZERO",
+            max_num_reqs=0,
+            first_type=_typ(rs_hw),
+            first_auto=_bit(rs_hw, ED_AUTO_MODE),
+            first_ack=_bit(rs_hw, ED_HW_ACK),
+            reason=reason or "na",
         )
 
     # --- boot group -----------------------------------------------------------------

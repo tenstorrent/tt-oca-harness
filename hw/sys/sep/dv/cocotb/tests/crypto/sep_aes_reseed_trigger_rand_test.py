@@ -31,8 +31,8 @@ Checkers:
   CHK-AES-RESEED-RATE     count(PER_1) > count(PER_64) > count(PER_8K) over N blocks
                           (rises of ``crypto_edn_ack_o[0]``).
   CHK-AES-RESEED-INVALID  3'b000 and the multi-hot value each map to PER_1
-                          (aes.adoc:109): each count equals count(PER_1) of the
-                          same key and plaintexts. Control: each count is above
+                          (aes.adoc:109): written over a committed PER_8K, each
+                          count equals count(PER_1) of the same key and plaintexts. Control: each count is above
                           count(PER_64).
   CHK-AES-RESEED-TRIG     no acknowledge in 4 x t_r clocks after a TRIGGER write
                           of 0 on an idle unit. Control: a PRNG_RESEED write is
@@ -342,6 +342,10 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         bad = 0
         try:
+            if run not in LEGAL_RATE:
+                # The reset value is PER_1, so commit PER_8K first: a DUT that ignores
+                # the invalid write then keeps PER_8K and its count differs from PER_1.
+                await self._ctrl(self._ctrl_word(PER_8K))
             await self._ctrl(self._ctrl_word(value))
             mark = self.ack.mark()
             await self._key_and_clear()
