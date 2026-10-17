@@ -1056,7 +1056,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|A single-beat misaligned read inside the HMAC register extent receives SLVERR and latches the `hmac` bit of `PERIPH_BUS_ERR_STATUS`, and one inside the Secure DMA register extent receives SLVERR and latches `DMA_BUS_ERR_STATUS.reg_path_err`, as `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require. The same read at each aligned offset is the control.
+|A single-beat partial write to an HMAC register receives SLVERR and latches the `hmac` bit of `PERIPH_BUS_ERR_STATUS`, and one to a Secure DMA register receives SLVERR and latches `DMA_BUS_ERR_STATUS.reg_path_err`, as `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require. The aligned read and the narrow read at the same offset complete with OKAY and latch nothing.
 |<<sep_axil_mailbox_iface_rand_test,`sep_axil_mailbox_iface_rand_test`>>
 |2
 |no_cpu, +skip_fuse_sense
