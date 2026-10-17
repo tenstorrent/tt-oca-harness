@@ -23,6 +23,7 @@ import smc_seq_lib_pkg::*;
 `include "smc_register_sanity_test.svh"
 `include "smc_default_reg_rd_test.svh"
 `include "smc_regblock_sparse_strobe_test.svh"
+`include "smc_fabric_reg_clock_gate_test.svh"
 `include "smc_wdt_feed_zerocmp_test.svh"
 `include "smc_wdt_core_awake_gate_test.svh"
 
