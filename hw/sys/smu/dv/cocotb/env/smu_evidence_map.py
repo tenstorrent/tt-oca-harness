@@ -51,6 +51,125 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and AXI waits with last state"),
     ],
+    "smu_alias_dma_manager_test": [
+        (
+            "CHK-ALIASDMA-NOREGION-PLACE",
+            "CHK-ALIASDMA-NOREGION-PLACE",
+            "with every alias region at reset the copy completes with DONE equal to the launched "
+            "id, the destination D holds the source pattern PX and the AR phases cover exactly "
+            "the source page X and no other address",
+        ),
+        (
+            "CHK-ALIASDMA-SRC",
+            "CHK-ALIASDMA-SRC",
+            "with a valid region over X the same copy completes with DONE equal to the id, D "
+            "holds PY (the pattern at X', not PX) and the AR phases cover exactly X' and never X",
+        ),
+        (
+            "CHK-ALIASDMA-DST",
+            "CHK-ALIASDMA-DST",
+            "with region 0 invalid and a valid region over D the same copy completes with DONE "
+            "equal to the id, D' holds PX, D keeps the PY of the previous copy and the AW phases "
+            "cover exactly D' and never D",
+        ),
+        (
+            "CHK-ALIASDMA-SHARED-TABLE",
+            "CHK-ALIASDMA-SHARED-TABLE",
+            "the bridge write at D plus 0x200 under the still valid region over D leaves at D' "
+            "plus 0x200 and the responder holds the written word, the same region that moved the "
+            "iDMA destination (fabric.adoc traffic managers: the JTAG2AXI bridge passes the alias "
+            "remap before filtering); the iDMA destination address is measured and logged only",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence S1<S2<S3<S4<S5<S6<PASS with strictly increasing stamps, the pass "
+            "point two clk_smu_i cycles after S6 and an access in each of S2..S5, the un-remapped "
+            "copy first",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI poll, iDMA DONE poll and responder capture wait finishes inside its "
+            "bound with a recorded last state and none expires; the JTAG2AXI poll count is not "
+            "measured",
+        ),
+    ],
+    "smu_alias_priority_overflow_test": [
+        (
+            "CHK-ALIASPRI-HIT-TRANSLATE",
+            "CHK-ALIASPRI-HIT-TRANSLATE",
+            "the write and the read at A plus 0x7F8 leave at a translated address, not the "
+            "miss-reference address, with the low 12 bits 0x7F8 kept and the same address on AW "
+            "and AR",
+        ),
+        (
+            "CHK-ALIASPRI-OVERLAP-WINNER",
+            "CHK-ALIASPRI-OVERLAP-WINNER",
+            "two overlapping valid regions leave exactly one of the two translated addresses, the "
+            "same on both writes and the read, the read returns the last write, and a write "
+            "covered only by region 1 leaves translated by its offset; the winning region index "
+            "is measured and logged only",
+        ),
+        (
+            "CHK-ALIASPRI-OFFSET-LOWBITS",
+            "CHK-ALIASPRI-OFFSET-LOWBITS",
+            "the leaving address minus the issued address equals the winning region's offset on "
+            "both writes and the read",
+        ),
+        (
+            "CHK-ALIASPRI-FIELDS-PRESERVED",
+            "CHK-ALIASPRI-FIELDS-PRESERVED",
+            "AxPROT, AxLEN, AxSIZE, AxID and AxBURST of the hit write and read equal the miss "
+            "reference captured earlier from the same bridge access; AxCACHE, AxLOCK, AxQOS and "
+            "AxREGION are measured and logged only",
+        ),
+        (
+            "CHK-ALIASPRI-PAYLOAD-BYTES",
+            "CHK-ALIASPRI-PAYLOAD-BYTES",
+            "narrow writes of 1, 2, 4 and 8 bytes leave exactly those bytes at the winning page "
+            "in 0xFF-filled memory with the neighbour bytes and the losing page unchanged; the "
+            "captured AxSIZE per size is measured and logged only",
+        ),
+        (
+            "CHK-ALIASPRI-DEGEN-EQ",
+            "CHK-ALIASPRI-DEGEN-EQ",
+            "the write at the START page of a valid region with START equal to END leaves at the "
+            "issued address, with the overlap hit as positive control",
+        ),
+        (
+            "CHK-ALIASPRI-DEGEN-GT",
+            "CHK-ALIASPRI-DEGEN-GT",
+            "the writes between END and START and at START of a valid region with START above END "
+            "leave at the issued address, with the overlap hit as positive control",
+        ),
+        (
+            "CHK-ALIASPRI-OFFSET-TOP",
+            "CHK-ALIASPRI-OFFSET-TOP",
+            "the write through a region whose offset reaches 0xFF_FFFF_F000 leaves at that page "
+            "plus its low 12 bits with SUCCESS and the responder holds the data",
+        ),
+        (
+            "CHK-ALIASPRI-OVERFLOW-OBS",
+            "CHK-ALIASPRI-OVERFLOW-OBS",
+            "the write whose offset sum passes bit 55 leaves with its low 12 bits 0x240 preserved "
+            "(alias_remap.rdl: the lower 12 bits of the address are preserved unchanged); the "
+            "leaving page and the initiator status are measured and logged only",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence S1<S2<S3<S4<S5<S6<S7<PASS with strictly increasing stamps, the "
+            "pass point two clk_smu_i cycles after S7, an access in each of S2..S6 and at most 33 "
+            "JTAG2AXI accesses",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI poll and responder capture wait finishes inside its bound with a "
+            "recorded last state and none expires; the JTAG2AXI poll count is not measured",
+        ),
+    ],
     "smu_axi_alias_remap_manager_scope_test": [
         (
             "CHK-ALIAS-REMAP-SCOPE-S3",
@@ -413,6 +532,49 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "an inbound multi-beat FIXED burst write at a register target is refused with SLVERR",
         ),
     ],
+    "smu_axi_in_random_id_stress_test": [
+        (
+            "CHK-RANDID-ECHO",
+            "CHK-RANDID-ECHO",
+            "every response on ext_in carries the ID of an outstanding request, the per-ID counts "
+            "of AW, B, AR and R equal the requests issued, and at least three IDs and two AxSIZE "
+            "values are exercised over the whole ID width",
+        ),
+        (
+            "CHK-RANDID-ORDER",
+            "CHK-RANDID-ORDER",
+            "within each ID the read responses return the data of the oldest outstanding request, "
+            "with at least three IDs in flight at once and at least three same-ID read pairs of "
+            "distinct data in flight together",
+        ),
+        (
+            "CHK-RANDID-DATA",
+            "CHK-RANDID-DATA",
+            "the read-back per ID equals the bytes that ID wrote under its byte strobes over a "
+            "pre-write fill, at least one W beat on the pins carries a partial strobe, every "
+            "response OKAY, no unmatched response and no out-of-order read beat during the "
+            "read-back",
+        ),
+        (
+            "CHK-RANDID-CONCURRENT",
+            "CHK-RANDID-CONCURRENT",
+            "eight JTAG2AXI writes complete with SUCCESS while the stream runs, smu_axi_out "
+            "carries each address once with an OKAY response and the responder holds each word; "
+            "every ext_in request is answered once with none outstanding",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence S1<S2<S3<S4<S5<S6<PASS with strictly increasing stamps and a stream of "
+            "at least 64 transactions; the seed is logged",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI, external-response, launch, egress-join and responder wait finishes "
+            "inside its bound with a recorded last state and none expires",
+        ),
+    ],
     "smu_axi_filter_in_instance_matrix_test": [
         (
             "CHK-FILTER-IN-INSTANCES-S1",
@@ -440,6 +602,66 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-PROT-S9-MATRIX",
             "CHK-SMU-PROT-S9-MATRIX",
             "eight-way AxPROT matrix on VERSION_LO",
+        ),
+    ],
+    "smu_base_config_corners_test": [
+        (
+            "CHK-BASECFG-LOCAL-RO",
+            "CHK-BASECFG-LOCAL-RO",
+            "LOCAL_BASE reads 0xC000_0000 at reset and after the all-ones write and after the "
+            "0x1234_5000 write, never a written value; the write responses are measured and "
+            "logged only",
+        ),
+        (
+            "CHK-BASECFG-LOCAL-VIEW",
+            "CHK-BASECFG-LOCAL-VIEW",
+            "VERSION_LO at the local alias returns SUCCESS and the CHIP_CONFIG reset value after "
+            "the LOCAL_BASE writes",
+        ),
+        (
+            "CHK-BASECFG-PORTS-LOCAL",
+            "CHK-BASECFG-PORTS-LOCAL",
+            "smc_global_base_o equals 0x4000_0000 and smc_region_size_o equals 0x100_0000 at "
+            "reset and after the LOCAL_BASE writes",
+        ),
+        (
+            "CHK-BASECFG-GLOBAL-MOVE",
+            "CHK-BASECFG-GLOBAL-MOVE",
+            "smc_global_base_o follows a GLOBAL_BASE move within 64 clk; VERSION_LO answers OKAY "
+            "with the reset value at the new base and at the old base before the move, and the "
+            "old base answers DECERR after it",
+        ),
+        (
+            "CHK-BASECFG-LOCAL-ISOLATED",
+            "CHK-BASECFG-LOCAL-ISOLATED",
+            "LOCAL_BASE still reads 0xC000_0000 while GLOBAL_BASE reads the moved base",
+        ),
+        (
+            "CHK-BASECFG-GLOBAL-TOP",
+            "CHK-BASECFG-GLOBAL-TOP",
+            "GLOBAL_BASE 2^56 minus 0x100_0000 reaches smc_global_base_o as 0x00FF_FFFF_FF00_0000 "
+            "and reads back, VERSION_LO at the new base answers OKAY with the reset value; the "
+            "low-address probe is measured and logged only",
+        ),
+        (
+            "CHK-BASECFG-GLOBAL-BEYOND-OBS",
+            "CHK-BASECFG-GLOBAL-BEYOND-OBS",
+            "with GLOBAL_BASE written 2^56 minus 0x80_0000 and REGION_SIZE untouched, "
+            "smc_global_base_o equals the written base and smc_region_size_o is unchanged; the "
+            "external response and its data are measured and logged only",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence S1<S2<S3<S4<S5<PASS with strictly increasing stamps, the pass "
+            "point two clk_smu_i cycles after the last step, and at least one access or port "
+            "sample in each of S1..S5",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI, external-response and port wait finishes inside its bound with a "
+            "recorded last state and none expires",
         ),
     ],
     "smu_boot_stall_jtag_cold_reset_matrix_test": [
@@ -825,6 +1047,138 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-TIMEOUT-PATHS",
             "CHK_TIMEOUT_PATHS",
             "bounded SBA and DMI waits with last state",
+        ),
+    ],
+    "smu_sep_out_filter_rule_matrix_test": [
+        (
+            "CHK-SEPOUT-BLOCK-DEFAULT",
+            "CHK-SEPOUT-BLOCK-DEFAULT",
+            "with every outbound entry at reset the system-bus write and read answer with sberror "
+            "non-zero, the responder AW and AR handshakes stay at zero and the byte is unchanged; "
+            "after the admit pair at entries 30 and 31 the write lands with sberror 0 and one AW "
+            "and the read returns the written word with one AR; the sberror code is measured and "
+            "logged only",
+        ),
+        (
+            "CHK-SEPOUT-DEBUG-OPEN-NOBYPASS",
+            "CHK-SEPOUT-DEBUG-OPEN-NOBYPASS",
+            "dmstatus reports debug specification version 2 with the DUT lcc_dbg_disable_o "
+            "sampled at 0, and a system-bus write completes with sberror 0 after the admit pair, "
+            "while the unmatched write and read had been refused with sberror non-zero, so "
+            "SEP-scope debug being open does not bypass the outbound filter",
+        ),
+        (
+            "CHK-SEPOUT-PERM-CHANNEL",
+            "CHK-SEPOUT-PERM-CHANNEL",
+            "with write_allowed 0 the write over the deny page is refused with no AW and the byte "
+            "unchanged while the read is admitted with one AR; with read_allowed 0 and "
+            "write_allowed 1 the write is admitted and lands while the read is refused with no "
+            "AR; a write outside the page is admitted",
+        ),
+        (
+            "CHK-SEPOUT-PROT1-PAIR",
+            "CHK-SEPOUT-PROT1-PAIR",
+            "of the two single-entry write probes (allow_ns 0 and allow_ns 1) exactly one is "
+            "refused with no AW and the byte unchanged and the other lands with one AW; the "
+            "refusing allow_ns value is measured and logged only",
+        ),
+        (
+            "CHK-SEPOUT-GRANULE-END",
+            "CHK-SEPOUT-GRANULE-END",
+            "with START 0x1001 and END 0x1002 the registers read back widened to 0x1000 and "
+            "0x1FFF and the writes at 0x1000 and 0x1FFF are refused and the writes at 0x0FFF and "
+            "0x2000 are admitted; with END 0x2000 the write at 0x2000 is refused and the write at "
+            "0x3000 is admitted",
+        ),
+        (
+            "CHK-SEPOUT-INDEX-ALONE",
+            "CHK-SEPOUT-INDEX-ALONE",
+            "the unmatched write is refused with every entry at reset and again with every entry "
+            "disabled, and each of entries 0, 15, 16 and 31 alone enabled admits a write with "
+            "sberror 0, one AW and the word landed",
+        ),
+        (
+            "CHK-SEPOUT-PRIORITY",
+            "CHK-SEPOUT-PRIORITY",
+            "entry 0 as a narrow deny over entry 31 as a broad permit refuses the narrow write "
+            "and admits a write elsewhere; entry 15 as a narrow permit over entry 16 as a broad "
+            "deny admits the narrow write while a write elsewhere in the broad range is refused",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence S1<S2<S3<S4<S5<S6<S7<PASS with strictly increasing clk_smu_i "
+            "stamps, the pass point two clk_smu_i cycles after S7, a system-bus access in each of "
+            "S2..S6 and the access count within the 67 access budget: block by default, admit, "
+            "permission, polarity, granule, index and priority",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait (system-bus busy poll, responder observation, debug module "
+            "retries, posture settle) has a finite bound, a last state and no expiry; the busy "
+            "poll and observation use are measured, the retry and posture settle use is not "
+            "measured",
+        ),
+    ],
+    "smu_sep_output_remap_region_matrix_test": [
+        (
+            "CHK-SEPREMAP-AP-REGIONS",
+            "CHK-SEPREMAP-AP-REGIONS",
+            "for each of AP output remap regions 1 to 15 programmed with its own 512 KiB-aligned "
+            "offset and valid, the doubleword written at the window base plus the region index "
+            "times 512 KiB plus 0x40 lands at the offset plus 0x40 with sberror 0, one AW at that "
+            "address and no AR, the window address stays at the sentinel, no other region's "
+            "translated address holds the pattern, and the AW count equals the 30 writes",
+        ),
+        (
+            "CHK-SEPREMAP-STEE-REGIONS",
+            "CHK-SEPREMAP-STEE-REGIONS",
+            "for each of STEE output remap regions 1 to 15 programmed with its own 512 "
+            "KiB-aligned offset and valid, the doubleword written at the window base plus the "
+            "region index times 512 KiB plus 0x40 lands at the offset plus 0x40 with sberror 0, "
+            "one AW at that address and no AR, the window address stays at the sentinel, no other "
+            "region's translated address holds the pattern, and the AW count equals the 30 writes",
+        ),
+        (
+            "CHK-SEPREMAP-TABLE-INDEP",
+            "CHK-SEPREMAP-TABLE-INDEP",
+            "with AP region k and STEE region k programmed with different offsets, the AP write "
+            "lands at the AP offset and leaves the STEE offset at the sentinel, and the STEE "
+            "write lands at the STEE offset and leaves the AP offset holding the AP pattern, for "
+            "k = 1 to 15",
+        ),
+        (
+            "CHK-SEPREMAP-AP-INVALID",
+            "CHK-SEPREMAP-AP-INVALID",
+            "the write at AP region 0, never programmed, and at AP region 7 after valid is "
+            "cleared with the offset kept land at their unchanged window addresses with sberror 0 "
+            "and one AW each, against the translated valid leg of region 7 that landed at its "
+            "offset; a sberror non-zero or a translated address fails the check",
+        ),
+        (
+            "CHK-SEPREMAP-STEE-INVALID",
+            "CHK-SEPREMAP-STEE-INVALID",
+            "the write at STEE region 0, never programmed, and at STEE region 7 after valid is "
+            "cleared with the offset kept land at their unchanged window addresses with sberror 0 "
+            "and one AW each, against the translated valid leg of region 7 that landed at its "
+            "offset; a sberror non-zero or a translated address fails the check",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence S1 to S4 and PASS, each stamp on a clk_smu_i rising edge and strictly "
+            "increasing with PASS two cycles after S4; the admit pair is programmed before the "
+            "first valid write, all 30 valid translated writes precede each of the four "
+            "unchanged-address writes, every access step issues system-bus accesses and the count "
+            "stays within 74",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded wait (DMI retry, posture settle, SBA busy poll, responder observation) "
+            "reports a finite bound, its measured use or used: not measured, and its last state; "
+            "none expired",
         ),
     ],
     "smu_sep_sba_fabric_sweep_test": [
@@ -1393,6 +1747,85 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_otp_vs_fabric_map_race_test": [
         ("CHK-RACE-OTP-FAB", "RACE_OTP_FABRIC", "shadow == last writer"),
+    ],
+    "smu_out_filter_rule_matrix_test": [
+        (
+            "CHK-OUTRULE-PERMIT-DEFAULT",
+            "CHK-OUTRULE-PERMIT-DEFAULT",
+            "with every outbound entry at reset the iDMA copy completes with DONE equal to the "
+            "launched id, the destination holds the source pattern PS (the D0 the bench placed "
+            "there is logged only), the AR handshakes cover exactly the source page and the AW "
+            "handshakes exactly the destination page, and with a deny entry over R the write "
+            "outside R still moves AW, W and B by one each",
+        ),
+        (
+            "CHK-OUTRULE-WRITE-DENY",
+            "CHK-OUTRULE-WRITE-DENY",
+            "with write_allowed 0 the JTAG2AXI write to R answers DECERR, the AW, W and B "
+            "counters keep their value and the responder byte is unchanged, against the write "
+            "outside R that answers SUCCESS, moves AW, W and B by one each and lands its byte",
+        ),
+        (
+            "CHK-OUTRULE-READ-CHANNEL",
+            "CHK-OUTRULE-READ-CHANNEL",
+            "with write_allowed 0 and read_allowed 1 the read of R answers SUCCESS with AR and R "
+            "by one each and returns the responder word while the write answers DECERR; with "
+            "read_allowed 0 the read answers DECERR and AR and R keep their value; every refusing "
+            "entry carries src_id 0",
+        ),
+        (
+            "CHK-OUTRULE-PROT1-PAIR",
+            "CHK-OUTRULE-PROT1-PAIR",
+            "of the two single-entry write probes (allow_ns 0 and allow_ns 1) exactly one answers "
+            "DECERR and the other SUCCESS with its counters and byte consistent with the status; "
+            "the refusing allow_ns value is measured and logged only",
+        ),
+        (
+            "CHK-OUTRULE-DMA-DENY",
+            "CHK-OUTRULE-DMA-DENY",
+            "with the deny entry over R the second copy leaves the destination at D1 (the "
+            "reset-state copy had replaced D0 with PS), the AW and W counters keep their value "
+            "and the source reads show the copy ran; the iDMA status, DONE and the polls used are "
+            "measured and logged only",
+        ),
+        (
+            "CHK-OUTRULE-GRANULE-END",
+            "CHK-OUTRULE-GRANULE-END",
+            "with START 0x1001 and END 0x1002 in one 4 KB granule its first and last byte answer "
+            "DECERR and the bytes below and above answer SUCCESS; with END raised by one granule "
+            "the address equal to END answers DECERR and the next granule SUCCESS",
+        ),
+        (
+            "CHK-OUTRULE-PRIORITY",
+            "CHK-OUTRULE-PRIORITY",
+            "a narrow deny at entry 0 inside a broad permit at entry 1 refuses the narrow write "
+            "and passes a write elsewhere in the broad range; a narrow permit at entry 0 inside a "
+            "broad deny at entry 1 passes the narrow write while the write elsewhere in the broad "
+            "range is refused",
+        ),
+        (
+            "CHK-OUTRULE-SRCID-SWEEP",
+            "CHK-OUTRULE-SRCID-SWEEP",
+            "src_id 1 to 15 are each probed once and at most one value refuses, every probe with "
+            "counters and byte consistent with its status; the refusing count and value are "
+            "measured and logged only",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS with strictly increasing stamps, "
+            "the pass point two clk_smu_i cycles after S9, an access in each of S2..S8 and the "
+            "egress counters sampled: reset-state copy, polarity pair, deny legs, refused copy, "
+            "granule, priority, sweep",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI poll and iDMA DONE poll has a finite bound, a recorded last state and "
+            "no unexpected expiry; the reset-state copy's DONE poll must finish and an expiry of "
+            "the refused copy's DONE poll, if it happens, is recorded as the measured outcome; "
+            "the JTAG2AXI poll count is not measured",
+        ),
     ],
     "smu_periph_ext_window_test": [
         (
@@ -2280,6 +2713,83 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_sys_in_filter_reprogram_shrink_test": [
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "shrink restores BLOCK_BY_DEFAULT"),
+    ],
+    "smu_sys_in_filter_src_id_rule_test": [
+        (
+            "CHK-SRCID-MATCH-ADMIT",
+            "CHK-SRCID-MATCH-ADMIT",
+            "AW then AR with AxUSER 5 against the src_id 5 entry answer OKAY and the read returns "
+            "the written pattern",
+        ),
+        (
+            "CHK-SRCID-MISMATCH-REFUSE",
+            "CHK-SRCID-MISMATCH-REFUSE",
+            "AxUSER 6 and 0 on AR and AW answer DECERR (eight cells) after the AxUSER 5 control "
+            "answered OKAY",
+        ),
+        (
+            "CHK-SRCID-REFUSED-NO-EFFECT",
+            "CHK-SRCID-REFUSED-NO-EFFECT",
+            "the AxUSER 5 reads after the refused writes return the admitted patterns, never the "
+            "refused pattern",
+        ),
+        (
+            "CHK-SRCID-CHANNEL-SPLIT",
+            "CHK-SRCID-CHANNEL-SPLIT",
+            "on one entry the AW with AxUSER 5 answers OKAY and the AR with AxUSER 6 answers "
+            "DECERR, and the mirror pair does the same",
+        ),
+        (
+            "CHK-SRCID-BLOCK-OUTSIDE",
+            "CHK-SRCID-BLOCK-OUTSIDE",
+            "AR and AW with AxUSER 5 at a register outside the entry page answer DECERR, with the "
+            "in-range OKAY control earlier",
+        ),
+        (
+            "CHK-SRCID-GROUPID-NOEFFECT",
+            "CHK-SRCID-GROUPID-NOEFFECT",
+            "entry group_id 1, 15 and 8 each admit AR and AW whose AxUSER[7:4] carries a "
+            "different non-zero transaction group_id (4, 2 and 11) beside AxUSER[3:0] 5 and the "
+            "read returns the written pattern, which group matching, were it enabled, would "
+            "refuse; group_id 8 with the entry disabled and with the range moved off the page "
+            "refuses AR and AW",
+        ),
+        (
+            "CHK-SRCID-WILDCARD",
+            "CHK-SRCID-WILDCARD",
+            "src_id 0 admits AR and AW at every AxUSER value 0..15, after AxUSER 6 and 0 were "
+            "refused under src_id 5",
+        ),
+        (
+            "CHK-SRCID-CONJ-FLIP",
+            "CHK-SRCID-CONJ-FLIP",
+            "entry_enabled, range, allow_ns, src_id and allow_burst each flipped alone refuse AR "
+            "and AW with DECERR and the restored term admits both",
+        ),
+        (
+            "CHK-SRCID-PERM-CHANNEL",
+            "CHK-SRCID-PERM-CHANNEL",
+            "read_allowed 0 refuses AR and admits AW; write_allowed 0 refuses AW with the "
+            "register keeping its value and admits AR",
+        ),
+        (
+            "CHK-SRCID-ALLOWNS-MATRIX",
+            "CHK-SRCID-ALLOWNS-MATRIX",
+            "allow_ns 0 admits prot[1] 0 and refuses prot[1] 1, allow_ns 1 the reverse, on AR and "
+            "AW, with no change for any prot[2] or prot[0] value",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered step fence S1..S11 to the pass point with strictly increasing stamps and at "
+            "least one access in each of S1..S10",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI and external-response wait finishes inside its bound with a recorded "
+            "last state and none expires",
+        ),
     ],
     "smu_sys_in_filter_window_edge_test": [
         (
