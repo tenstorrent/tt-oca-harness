@@ -10,6 +10,7 @@ ignore:
   include:
     # Third-party vendored snapshots keep their upstream license; TT does not
     # claim copyright on them, so they stay out of the SPDX check.
+    - vendor/accellera/
     - vendor/chipsalliance/
     - vendor/lowRISC/
     - vendor/pulp-platform/

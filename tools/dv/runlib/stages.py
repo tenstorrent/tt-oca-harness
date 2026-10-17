@@ -102,7 +102,7 @@ from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatal
 from .paths import repo_path, repo_rel
 from .site import ToolLaunch, launch_argv, launch_env, tool_launch
 from .ui import Console
-from .uvm_library import UvmLibrary, fetch_uvm_library, resolve_uvm_library
+from .uvm_library import UVM_HOME_ENV, UvmLibrary, resolve_uvm_library
 from .waves import (
     build_wave_metadata,
     format_time_ps,
@@ -2779,7 +2779,7 @@ def _vcs_defines(compile_target: dict[str, Any], args: argparse.Namespace) -> li
 def _vcs_uvm_lib(vcs_cfg: dict[str, Any]) -> str:
     """The simulator-supplied UVM library `[build.vcs].uvm_lib` selects.
 
-    Empty selects the source library `[build.uvm_library]` pins instead.
+    Empty selects the source tree `[build].uvm_library` names instead.
     """
     return str(vcs_cfg.get("uvm_lib", "")).strip()
 
@@ -2788,36 +2788,22 @@ def _vcs_compiles_uvm_source(flow: Flow, vcs_cfg: dict[str, Any]) -> bool:
     return bool(vcs_cfg.get("uvm", flow.framework == "uvm")) and not _vcs_uvm_lib(vcs_cfg)
 
 
-def fetch_build_libraries(
-    flow: Flow,
-    root: Path,
-    sim_cfg: dict[str, Any],
-    tool: str,
-    console: Console,
-    *,
-    site: dict[str, str] | None = None,
+def resolve_build_libraries(
+    flow: Flow, root: Path, sim_cfg: dict[str, Any], tool: str, console: Console
 ) -> UvmLibrary | None:
-    """Fetch the source libraries the flow's build compiles, before any stage runs.
+    """Resolve the source libraries the flow's build compiles, before any stage runs.
 
-    ``site`` is the site file's ``[uvm_library]`` table. Returns the UVM library the build
-    compiles, or None when it compiles none; a library that differs from its pin is reported.
+    Returns the UVM library the build compiles, or None when it compiles none; a UVM home
+    ``OCAH_UVM_HOME`` names is reported.
     """
     build = build_cfg(flow, sim_cfg)
     if tool != "vcs" or not _vcs_compiles_uvm_source(flow, build_vcs_cfg(build)):
         return None
-    library = fetch_uvm_library(
-        root,
-        build,
-        str(flow.path),
-        site=site,
-        say=lambda text: console.event("uvm", text),
-        warn=lambda text: console.event("warning", text, force=True),
-    )
-    if library.unpinned:
+    library = resolve_uvm_library(root, build, str(flow.path))
+    if library.source == UVM_HOME_ENV:
         console.event(
             "warning",
-            f"{library.source}={library.src.parent} holds a UVM src tree with SHA-256 "
-            f"{library.tree_sha256}; [build.uvm_library].tree_sha256 pins {library.pin}",
+            f"{UVM_HOME_ENV}={library.src.parent} replaces [build].uvm_library",
             force=True,
         )
     return library
@@ -2931,14 +2917,7 @@ def _vcs_resolve_build(
     if _vcs_compiles_uvm_source(flow, vcs_cfg):
         # The tree compiles outside the filelist, so its digest enters the build fingerprint;
         # a sim leaf handed the model fingerprints nothing and skips the read.
-        uvm = resolve_uvm_library(
-            root,
-            build,
-            str(flow.path),
-            site=getattr(args, "_site_uvm_library", None),
-            present=not args.dry_run,
-            verify=model_dir is None,
-        )
+        uvm = resolve_uvm_library(root, build, str(flow.path), digest=model_dir is None)
     filelist = repo_path(root, str(build.get("filelist", "")))
     # Uniform build-tree convention `build/<framework>/<tool>/`: the configured work_dir carries
     # the framework segment (e.g. build/uvm), the runner appends the tool — mirroring how the

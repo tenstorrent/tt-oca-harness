@@ -42,7 +42,6 @@ from runlib.stages import (  # noqa: E402
     expand_ocah_vendor_define_aliases,
     mark_target_built,
 )
-from runlib.uvm_library import uvm_tree_sha256  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -199,53 +198,34 @@ class VcsUvmLibrary(unittest.TestCase):
         dpi = argv.index("/kit/src/dpi/uvm_dpi.cc")
         self.assertEqual(argv[dpi + 1 : dpi + 3], ["-CFLAGS", "-DVCS"])
 
+    @mock.patch.dict(os.environ, {"OCAH_UVM_HOME": ""})
     def test_a_uvm_build_without_a_library_is_a_config_error(self):
-        with self.assertRaisesRegex(stages.ConfigError, r"uvm_library\] or"):
+        with self.assertRaisesRegex(stages.ConfigError, r"\[build\]\.uvm_library or"):
             stages.resolve_uvm_library(REPO_ROOT, {}, "fixture")
 
     @mock.patch.dict(os.environ, {"OCAH_UVM_HOME": ""})
-    def test_every_uvm_view_pins_the_release_archive(self):
-        cache = REPO_ROOT / "local" / "uvm" / "4664ac015f23c721" / "src"
+    def test_every_uvm_view_compiles_the_checked_in_library(self):
+        src = REPO_ROOT / "vendor" / "accellera" / "uvm-core" / "upstream" / "src"
         for dut in ("dtp", "sep", "smc", "smu", "ocah_axi_vip", "ocah_jtag_vip"):
             with self.subTest(dut=dut):
                 flow = resolve_dut(REPO_ROOT, dut, framework="uvm")
                 build = stages.build_cfg(flow, flow.raw)
                 self.assertTrue(stages._vcs_compiles_uvm_source(flow, stages.build_vcs_cfg(build)))
-                library = stages.resolve_uvm_library(
-                    REPO_ROOT, build, dut, present=False, verify=False
-                )
-                self.assertEqual(library.src, cache)
+                library = stages.resolve_uvm_library(REPO_ROOT, build, dut, digest=False)
+                self.assertEqual((library.src, library.source), (src, "config"))
 
-    def test_coordinator_fetches_only_for_a_vcs_source_library(self):
+    def test_coordinator_resolves_only_for_a_vcs_source_library(self):
         flow = fixture_flow(REPO_ROOT, "uvm", "vcs", {})
-        pinned = {
-            "build": {"uvm_library": {"url": "u", "sha256": "0" * 64, "tree_sha256": "0" * 64}}
-        }
-        simulator = {"build": {**pinned["build"], "vcs": {"uvm_lib": "uvm-1.2"}}}
-        cases = [(pinned, "vcs", 1), (pinned, "verilator", 0), (simulator, "vcs", 0)]
+        named = {"build": {"uvm_library": "uvm"}}
+        simulator = {"build": {**named["build"], "vcs": {"uvm_lib": "uvm-1.2"}}}
+        cases = [(named, "vcs", 1), (named, "verilator", 0), (simulator, "vcs", 0)]
         for sim_cfg, tool, calls in cases:
             with (
                 self.subTest(tool=tool, cfg=sim_cfg),
-                mock.patch.object(stages, "fetch_uvm_library") as fetch,
+                mock.patch.object(stages, "resolve_uvm_library") as resolve,
             ):
-                stages.fetch_build_libraries(flow, REPO_ROOT, sim_cfg, tool, mock.Mock())
-                self.assertEqual(fetch.call_count, calls)
-
-    def test_coordinator_reports_a_repacked_archive_as_a_warning(self):
-        flow = fixture_flow(REPO_ROOT, "uvm", "vcs", {})
-        sim_cfg = {
-            "build": {"uvm_library": {"url": "u", "sha256": "0" * 64, "tree_sha256": "0" * 64}}
-        }
-        console = mock.Mock()
-        with mock.patch.object(stages, "fetch_uvm_library") as fetch:
-            fetch.return_value.unpinned = False
-            stages.fetch_build_libraries(flow, REPO_ROOT, sim_cfg, "vcs", console)
-            fetch.call_args.kwargs["warn"]("repacked")
-            fetch.call_args.kwargs["say"]("fetching")
-        self.assertEqual(
-            console.event.call_args_list,
-            [mock.call("warning", "repacked", force=True), mock.call("uvm", "fetching")],
-        )
+                stages.resolve_build_libraries(flow, REPO_ROOT, sim_cfg, tool, mock.Mock())
+                self.assertEqual(resolve.call_count, calls)
 
     def uvm_home(self, text: str) -> Path:
         home = Path(tempfile.mkdtemp())
@@ -254,32 +234,47 @@ class VcsUvmLibrary(unittest.TestCase):
         (home / "src" / "uvm_pkg.sv").write_text(text)
         return home
 
-    def test_coordinator_reports_an_override_of_another_release(self):
+    def test_coordinator_reports_an_override(self):
         flow = fixture_flow(REPO_ROOT, "uvm", "vcs", {})
-        pin = {"url": "https://unreachable.invalid/uvm.gz", "sha256": "0" * 64}
-        sim_cfg = {"build": {"uvm_library": {**pin, "tree_sha256": "0" * 64}}}
+        sim_cfg = {"build": {"uvm_library": "absent"}}
         home = self.uvm_home("package uvm_pkg;\nendpackage\n")
         console = mock.Mock()
         with mock.patch.dict(os.environ, {"OCAH_UVM_HOME": str(home)}):
-            library = stages.fetch_build_libraries(flow, REPO_ROOT, sim_cfg, "vcs", console)
+            library = stages.resolve_build_libraries(flow, REPO_ROOT, sim_cfg, "vcs", console)
         assert library is not None
         self.assertEqual(library.src, home / "src")
         kind, message = console.event.call_args.args
         self.assertEqual(kind, "warning")
-        self.assertIn(f"OCAH_UVM_HOME={home} holds a UVM src tree", message)
+        self.assertEqual(message, f"OCAH_UVM_HOME={home} replaces [build].uvm_library")
 
-    @mock.patch.dict(os.environ, {"OCAH_UVM_HOME": ""})
-    def test_a_build_compiles_the_home_the_site_file_names(self):
+    def test_a_build_compiles_the_home_the_override_names(self):
         home = self.uvm_home("package uvm_pkg;\nendpackage\n")
-        tree = uvm_tree_sha256(home / "src")
-        pin = {"url": "https://unreachable.invalid/uvm.gz", "sha256": "0" * 64, "tree_sha256": tree}
-        sim_cfg = {"build": {"top_module": "tb_top", "work_dir": "build", "uvm_library": pin}}
+        sim_cfg = {"build": {"top_module": "tb_top", "work_dir": "build", "uvm_library": "absent"}}
         args = parse_args(["--dut", "dtp", "--framework", "uvm"])
-        args._site_uvm_library = {"home": str(home)}
-        info = stages._vcs_resolve_build(
-            fixture_flow(REPO_ROOT, "uvm", "vcs", sim_cfg), REPO_ROOT, sim_cfg, args, model_dir=home
-        )
+        with mock.patch.dict(os.environ, {"OCAH_UVM_HOME": str(home)}):
+            info = stages._vcs_resolve_build(
+                fixture_flow(REPO_ROOT, "uvm", "vcs", sim_cfg),
+                REPO_ROOT,
+                sim_cfg,
+                args,
+                model_dir=home,
+            )
         self.assertEqual(info["uvm_src"], home / "src")
+
+    def test_an_edit_to_the_library_changes_the_build_fingerprint(self):
+        home = self.uvm_home("package uvm_pkg;\nendpackage\n")
+        sim_cfg = {"build": {"top_module": "tb_top", "work_dir": "build", "uvm_library": str(home)}}
+        flow = fixture_flow(REPO_ROOT, "uvm", "vcs", sim_cfg)
+        args = parse_args(["--dut", "dtp", "--framework", "uvm"])
+
+        def fingerprint() -> str:
+            with mock.patch.dict(os.environ, {"OCAH_UVM_HOME": ""}):
+                return stages._vcs_resolve_build(flow, REPO_ROOT, sim_cfg, args)["fingerprint"]
+
+        before = fingerprint()
+        self.assertEqual(fingerprint(), before)
+        (home / "src" / "uvm_pkg.sv").write_text("package uvm_pkg;\n// edited\nendpackage\n")
+        self.assertNotEqual(fingerprint(), before)
 
 
 class UvmTestnameOverride(unittest.TestCase):

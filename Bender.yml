@@ -302,6 +302,12 @@ vendor_package:
   #     - "dependencies/common"
   #   patch_dir: "vendor/tenstorrent/tt-hw-debug/patches"
 
+  # Accellera UVM 1800.2-2020 reference implementation, release 2020-3.2, which the SV-UVM
+  # builds compile from source. Accellera publishes this release only as an archive on
+  # accellera.org, so no git remote carries it for vendor_package:
+  # vendor/accellera/uvm-core/upstream/ holds the archive's src/, LICENSE.txt, NOTICE.txt and
+  # README.md unmodified.
+
   # AXI-over-UCIe (AoU) bridge IP: RTL, CSR SystemRDL, and the MAS.
   - name: aou
     target_dir: "vendor/tenstorrent/aou/upstream"
