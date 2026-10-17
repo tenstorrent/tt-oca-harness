@@ -303,7 +303,7 @@ Observation probe groups:
    `sep_cpu_demux_unmapped_fetch_test`.
    Its replies (monitor PR-OUT-RSP): B (`resp`, `id`) and R (`resp`, `id`,
    `last`) on `smn_outbound_axi_resp_i`, with READY from the request net.
-   Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST),
+   Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST, CHK-DMA-HOST-HOLD),
    `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-STALL-REAL).
 ** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, same fields. Owners:
    `sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test`.
@@ -638,7 +638,7 @@ Exceptions (a closed set):
   once. A held response also holds a firmware console store, so no CPU leaf
   raises the hold. The responder state and the DUT nets the checkers read are
   not forced. Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST,
-  CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
+  CHK-DMA-HOST-HOLD, CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
   (CHK-STALL-REAL, CHK-TO-INERT).
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto

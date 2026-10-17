@@ -12,7 +12,11 @@ writes are ignored if OTBN is not idle; unrecognized commands are ignored);
 stalls until a number arrives from the EDN); ``hw/sys/sep/doc/trng.adoc`` :189
 (native requests get no acknowledgement during the TRNG adapter clear);
 ``hw/sys/sep/doc/interrupts.adoc`` :22 and :164-166 (vector bit 29 is PIC
-source 30, OTBN done).
+source 30, OTBN done);
+``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md``
+(``ToO`` below) and ``otbn.hjson`` / ``base-insns.yml`` in the same ``otbn`` tree
+for the reset wipe, the errors and the locked state; ``hw/sys/sep/doc/otbn.adoc``
+:66-70 (the FIPS tag that OTBN RND gets is tied high).
 
 Legs (one seed draws the plan, logged in one ``PLAN`` line):
   command    3 to 5 commands from EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM (each
@@ -23,7 +27,12 @@ Legs (one seed draws the plan, logged in one ``PLAN`` line):
              ``INTR_TEST`` sub-leg.
   busy write an ``RND`` read held by the TRNG reset keeps ``STATUS`` at 0x01;
              k ``CTRL`` writes and j ``CMD`` = SEC_WIPE_DMEM writes.
-  ignored    one unrecognised ``CMD`` value at IDLE.
+  sw error   the ``unimp`` program (``CSRRW x0, 0xC00, x0`` then ``ecall``) with
+             ``CTRL.software_errs_fatal`` = 1, a ``CMD`` write at LOCKED, an
+             OTBN reset; then the same program with ``software_errs_fatal`` = 0.
+  ignored    one unrecognised ``CMD`` value at IDLE, with ``ERR_BITS`` still
+             holding the error of the sw error leg; then a write of a drawn
+             value to ``ERR_BITS`` at IDLE.
 
 Checkers:
   CHK-OTBN-CMD-END     each command returns to IDLE, never 0xFF on the way,
@@ -44,12 +53,86 @@ Checkers:
                        4 x t_cmd; a ``CMD`` write at 0x01 leaves ``STATUS`` 0x01.
   CHK-OTBN-BUSYWR      ``CTRL.software_errs_fatal`` written at 0x01 reads 0;
                        ``STATUS`` stays 0x01; not 0xFF after the release.
+  CHK-OTBN-INITDONE    after the first OTBN reset the probe shows 0x04 at the
+                       first clock after the release, then 0x00. "After reset,
+                       OTBN is busy with the internal secure wipe and the
+                       STATUS register is set to BUSY_SEC_WIPE_INT." (ToO:103,
+                       0x04 per ``otbn.hjson`` :540); "After reset (init), OTBN
+                       performs a secure wipe of the internal state and then
+                       becomes idle." (ToO:98); "If OTBN is idle, the STATUS
+                       register is set to IDLE." (ToO:104, 0x00 per
+                       ``otbn.hjson`` :536).
+  CHK-OTBN-SWERR-FATAL with ``software_errs_fatal`` = 1 the ``unimp`` program ends
+                       with ``STATUS`` = 0xFF, ``done`` = 1, ``ERR_BITS`` non-zero
+                       with ``fatal_software`` (bit 23) set and
+                       ``FATAL_ALERT_CAUSE.fatal_software`` (bit 7) set.
+                       "If csr isn't the index of a valid CSR, this results in
+                       an error (setting bit illegal_insn in ERR_BITS)."
+                       (``base-insns.yml`` :494; ``unimp`` is CSRRW of 0xC00 and
+                       "Triggers an illegal instruction error", :681-690);
+                       ILLEGAL_INSN is class "software" (ToO:226-229);
+                       "When CTRL.software_errs_fatal is set, software errors
+                       become fatal errors." (ToO:154); "Fatal errors are
+                       treated as described in the section Reaction to Fatal
+                       Errors." (ToO:156); "The ERR_BITS register is set to a
+                       non-zero value that describes the error." (ToO:186); "The
+                       current operation is marked as complete by setting
+                       INTR_STATE.done." (ToO:187); "The STATUS register is set
+                       to LOCKED." (ToO:188); FATAL_SOFTWARE "A software error
+                       was seen and CTRL.software_errs_fatal was set."
+                       (ToO:296-298); "The error that caused the alert can be
+                       determined by reading the FATAL_ALERT_CAUSE register. If
+                       OTBN was running, this value will also be reflected in
+                       the ERR_BITS register." (ToO:312-313).
+  CHK-OTBN-LOCKED-HOLD a ``CMD`` = EXECUTE write at LOCKED leaves ``STATUS`` at
+                       0xFF for 4 x t_cmd and ``FATAL_ALERT_CAUSE`` unchanged;
+                       after an OTBN reset the probe shows 0x04 then 0x00 and
+                       ``FATAL_ALERT_CAUSE`` reads 0. "The locked state is a
+                       terminal state; transitioning out of it requires an OTBN
+                       reset." (ToO:114); "Writes are ignored if OTBN is not
+                       idle." (``otbn.hjson`` :463); "the value of this register
+                       does not change until OTBN is reset." (``otbn.hjson``
+                       :672-673, reset value 0).
+  CHK-OTBN-SWERR-RECOV with ``software_errs_fatal`` = 0 the same program ends with
+                       ``STATUS`` = 0x00 (never 0xFF), ``done`` = 1 and
+                       ``ERR_BITS.illegal_insn`` (bit 3) set. "All software
+                       errors are treated as recoverable, unless
+                       CTRL.software_errs_fatal is set" (ToO:153); ToO:168-170
+                       (ERR_BITS non-zero, done set, STATUS set to IDLE).
+  CHK-OTBN-ERRCLR      a write of a drawn value to ``ERR_BITS`` at IDLE makes it
+                       read 0. "Writing any value to ERR_BITS clears this
+                       register to zero." (ToO:317); ``otbn.hjson`` :562-563.
+  CHK-OTBN-BUSYWR-ERR  after the RND program ends, ``ERR_BITS`` reads 0 in every
+                       bit except ``rnd_rep_chk_fail`` (bit 6). "The ERR_BITS
+                       register is set to indicate either a successful execution
+                       (value 0), or to indicate the error that was observed"
+                       (ToO:137); the program ends with ``ecall`` and the FIPS
+                       tag is tied high (``otbn.adoc`` :67-69). Bit 6 is set when
+                       two EDN words are equal (ToO:246-251), a chance outcome,
+                       so it is logged only.
+  CHK-OTBN-CMDIGN-ERR  the unrecognised ``CMD`` at IDLE leaves ``ERR_BITS`` at its
+                       value before the write (non-zero). "Unrecognized commands
+                       are ignored." (``otbn.hjson`` :464); ``ERR_BITS`` is set at
+                       the end of an operation (ToO:137).
 
 Controls: ``CTRL-OTBN-BUSYWR`` (the idle write reads back 1),
 ``CTRL-OTBN-DONE-LINE`` (enable-set ``INTR_TEST`` cell), ``CTRL-OTBN-CMD-IGNORE``
-(a recognised command of the same seed sets ``done``).
-Log-only: ``OBS-OTBN-INITDONE``, ``OBS-OTBN-STATUS-SEQ``, ``OBS-OTBN-BUSYWR-ERR``,
-``OBS-OTBN-CMDIGN-ERR``.
+(a recognised command of the same seed sets ``done``), ``CTRL-OTBN-INITDONE``
+(after the power-on wipe ``STATUS`` reads 0x00 and the probe holds 0x00 up to the
+clock before the gated reset falls, so the 0x04 comes from the reset pulse; "After
+reset (init), OTBN performs a secure wipe of the internal state and then becomes
+idle." ToO:98; "If OTBN is idle, the STATUS register is set to IDLE." ToO:104,
+0x00 per ``otbn.hjson`` :536), ``CTRL-OTBN-SWERR-FATAL`` (the same program with
+``software_errs_fatal`` = 0 ends at 0x00), ``CTRL-OTBN-SWERR-RECOV`` (each
+compute run of the command leg ends with ``ERR_BITS`` = 0),
+``CTRL-OTBN-LOCKED-HOLD`` (a recognised command at IDLE starts an operation),
+``CTRL-OTBN-ERRCLR``, ``CTRL-OTBN-CMDIGN-ERR`` (``ERR_BITS`` is non-zero before the
+write), ``CTRL-OTBN-BUSYWR-ERR`` (the recoverable error run sets ``ERR_BITS``).
+Log-only: ``OBS-OTBN-STATUS-SEQ``; ``OBS-OTBN-INITDONE-DONE`` (``INTR_STATE.done``
+after the post-reset wipe: no sentence states its value); ``OBS-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
+program, a chance outcome); ``OBS-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
+``FATAL_ALERT_CAUSE`` of the recoverable run: no sentence states the bits other
+than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error).
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense +esrc_noise_force``.
 Bounds: ``_OUTER_CLK`` is the outer limit of the clean-time measurement of the
@@ -68,7 +151,7 @@ from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_edge_timer import SepEdgeTimer
 from env.sep_fcov_gate import close_graded_window, open_graded_window
-from env.sep_rv32_asm import ZERO, add
+from env.sep_rv32_asm import ECALL, ZERO, add, csrw
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import ot_rdl_table_code
 from sep_base_test import sep_base_test
@@ -113,6 +196,16 @@ M_CTRL_SWERR = OTBN.field_mask("CTRL", "software_errs_fatal")
 M_INSN = OTBN.field_mask("INSN_CNT", "insn_cnt")
 M_ERR_BITS = OTBN.mask32("ERR_BITS")
 M_FATAL = OTBN.mask32("FATAL_ALERT_CAUSE")
+M_ERR_ILLEGAL = OTBN.field_mask("ERR_BITS", "illegal_insn")
+M_ERR_RND_REP = OTBN.field_mask("ERR_BITS", "rnd_rep_chk_fail")
+M_ERR_FATAL_SW = OTBN.field_mask("ERR_BITS", "fatal_software")
+M_FATAL_SW = OTBN.field_mask("FATAL_ALERT_CAUSE", "fatal_software")
+
+# ``unimp`` (base-insns.yml :681-690): CSRRW x0, 0xC00, x0. 0xC00 is not an OTBN CSR
+# (csr.yml), so the instruction is an ILLEGAL_INSN software error. The ``ecall``
+# after it ends the program cleanly if the error is not raised.
+CSR_CYCLE = 0xC00
+OTBN_UNIMP_PROG = (csrw(CSR_CYCLE, ZERO), ECALL)
 
 # Vector bit 29 is PIC source 30, OTBN done (interrupts.adoc:22, :164-166).
 VEC_OTBN_DONE = 29
@@ -142,6 +235,7 @@ class Plan:
     k: int
     bad_cmd: int
     j: int
+    errclr: int
 
     def line(self, seed: int) -> str:
         return (
@@ -149,7 +243,7 @@ class Plan:
             f"gaps={','.join(map(str, self.gaps))} op={self.op} opa=0x{self.opa:08x} "
             f"opb=0x{self.opb:08x} a={self.a} b={self.b} "
             f"en_order={','.join(map(str, self.en_order))} k={self.k} "
-            f"bad_cmd=0x{self.bad_cmd:02x} j={self.j}"
+            f"bad_cmd=0x{self.bad_cmd:02x} j={self.j} errclr=0x{self.errclr:08x}"
         )
 
 
@@ -172,7 +266,10 @@ def draw_plan(seed: int) -> Plan:
     k = rng.randrange(1, 5)
     bad_cmd = rng.choice([c for c in range(256) if c not in COMMANDS])
     j = rng.randrange(1, 5)
-    return Plan(tuple(seq), gaps, op, opa, opb, a, b, (en_order[0], en_order[1]), k, bad_cmd, j)
+    errclr = rng.getrandbits(32)
+    return Plan(
+        tuple(seq), gaps, op, opa, opb, a, b, (en_order[0], en_order[1]), k, bad_cmd, j, errclr
+    )
 
 
 def prog_with_extra(op: str, k: int) -> tuple[int, ...]:
@@ -206,6 +303,13 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         "CHK-OTBN-DONE-LINE",
         "CHK-OTBN-CMD-IGNORE",
         "CHK-OTBN-BUSYWR",
+        "CHK-OTBN-INITDONE",
+        "CHK-OTBN-SWERR-FATAL",
+        "CHK-OTBN-LOCKED-HOLD",
+        "CHK-OTBN-SWERR-RECOV",
+        "CHK-OTBN-ERRCLR",
+        "CHK-OTBN-BUSYWR-ERR",
+        "CHK-OTBN-CMDIGN-ERR",
     )
 
     # ------------------------------------------------------------- helpers
@@ -344,12 +448,39 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self.rst_t = SepEdgeTimer(dut.otbn_gated_rst_n_probe_o, name="otbn_gated_rst_n").start()
         self.idle_bound = _OUTER_CLK
 
-        # Steps 3-4: reset, IDLE, initial done (log only), clear.
-        await self._reset_otbn("initial")
+        # Steps 3-4: the power-on wipe ends at IDLE (ToO:98), then reset, wipe then IDLE;
+        # the done bit of the wipe is logged only.
+        pre_idle, pre_vals, _ = await self._wait_idle(self.idle_bound, gap=4)
+        t_pre = _now_ps()
+        pre_status = self.rd(dut.otbn_status_probe_o, mask=M_STATUS)
+        init_arc_ok, init_arc = await self._reset_otbn("initial")
+        self.chk.ok("OTBN-INITDONE", init_arc_ok, seed=seed, reset_arc=init_arc)
+        # The probe holds IDLE from the read before the pulse up to the clock before the
+        # gated reset falls, so the 0x04 after the release is caused by the pulse.
+        pre_falls = self.rst_t.falls(t_pre, bit=0)
+        t_fall = pre_falls[0] if pre_falls else None
+        pre_moves = None if t_fall is None else len(self.status_t.since(t_pre, until_ps=t_fall - 1))
+        at_fall = None if t_fall is None else self.status_t.value_at(t_fall - 1)
+        self.chk.ctrl(
+            "OTBN-INITDONE",
+            pre_idle and pre_status == ST_IDLE and pre_moves == 0 and at_fall == ST_IDLE,
+            seed=seed,
+            pre_idle=int(pre_idle),
+            status_before_reset=f"0x{pre_status:02x}",
+            pre_polled=_runs(pre_vals),
+            moves_to_fall="none" if pre_moves is None else pre_moves,
+            status_at_fall="none" if at_fall is None else f"0x{at_fall:02x}",
+        )
+        # No sentence states INTR_STATE.done after the post-reset wipe.
         init_done = await self._rd(A_INTR_STATE, M_DONE)
-        self.chk.obs("OTBN-INITDONE", seed=seed, done=init_done)
         after = await self._clear_done()
-        self.logger.info("OTBN initial done cleared: done=%d", after)
+        self.chk.obs(
+            "OTBN-INITDONE-DONE",
+            seed=seed,
+            done=init_done,
+            done_after_w1c=after,
+            reason="done_after_reset_wipe_unstated",
+        )
 
         open_graded_window(TEST, self.logger)
         cmd_end_pass = await self._command_leg(seed)
@@ -357,6 +488,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         await self._insn_leg(seed)
         await self._done_line_leg(seed)
         busy_ok = await self._busy_write_leg(seed)
+        recov_err = await self._sw_error_leg(seed)
         await self._ignored_leg(seed)
         close_graded_window(self.logger)
 
@@ -366,6 +498,15 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             seed=seed,
             cmd_end_done=int(cmd_end_pass),
             busy_status_0x01=int(busy_ok),
+        )
+        self.chk.ctrl(
+            "OTBN-LOCKED-HOLD", cmd_end_pass, seed=seed, cmd_at_idle_done=int(cmd_end_pass)
+        )
+        self.chk.ctrl(
+            "OTBN-SWERR-RECOV", cmd_end_pass, seed=seed, cmd_end_err_bits_0=int(cmd_end_pass)
+        )
+        self.chk.ctrl(
+            "OTBN-BUSYWR-ERR", recov_err != 0, seed=seed, recov_err_bits=f"0x{recov_err:x}"
         )
 
         await self.stop_fifo_drain()
@@ -778,7 +919,20 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         idle, ivals, _ = await self._wait_idle(_OUTER_CLK, gap=4)
         err = await self._rd(A_ERR_BITS, M_ERR_BITS)
-        self.chk.obs("OTBN-BUSYWR-ERR", seed=seed, err_bits=f"0x{err:x}")
+        # Bit 6 (two equal EDN words) is a chance outcome: logged, not graded.
+        self.chk.obs(
+            "OTBN-BUSYWR-RNDREP", seed=seed, rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP))
+        )
+        err_graded = err & ~M_ERR_RND_REP
+        self.chk.ok(
+            "OTBN-BUSYWR-ERR",
+            idle and err_graded == 0,
+            seed=seed,
+            idle_after_release=int(idle),
+            err_bits=f"0x{err:x}",
+            err_bits_without_rnd_rep=f"0x{err_graded:x}",
+            expect="0x0",
+        )
         st_rel = await self._rd(A_STATUS, M_STATUS)
         await self._wr(A_CTRL, M_CTRL_SWERR)
         ctrl_idle = await self._rd(A_CTRL, M_CTRL_SWERR)
@@ -818,13 +972,125 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         await self._reset_otbn("busywr-end")
         return busy
 
+    # ---------------------------------------------------- software-error leg
+    async def _run_unimp(self, fatal_cfg: int) -> tuple[int, int, list[int], int]:
+        """Write CTRL at IDLE, run the ``unimp`` program; return (ctrl, done_before, codes, clk).
+
+        The poll ends at the first IDLE or LOCKED read.
+        """
+        await self._clear_done()
+        await self._wr(A_CTRL, M_CTRL_SWERR if fatal_cfg else 0)
+        ctrl = await self._rd(A_CTRL, M_CTRL_SWERR)
+        await self.otbn.load_program(OTBN_UNIMP_PROG)
+        done_before = await self._rd(A_INTR_STATE, M_DONE)
+        await self._wr(A_CMD, CMD_EXECUTE)
+        _, vals, clks = await self._poll_status(
+            lambda s: s in (ST_IDLE, ST_LOCKED), self.idle_bound
+        )
+        return ctrl, done_before, vals, clks
+
+    async def _sw_error_leg(self, seed: int) -> int:
+        """The ``unimp`` program, fatal then recoverable. Returns ERR_BITS of the recoverable run."""
+        win = _IGNORE_WIN_MULT * self.t_cmd
+        # Fatal: software_errs_fatal = 1.
+        ctrl, done0, vals, clks = await self._run_unimp(1)
+        st = vals[-1]
+        done = await self._rd(A_INTR_STATE, M_DONE)
+        err = await self._rd(A_ERR_BITS, M_ERR_BITS)
+        fatal = await self._rd(A_FATAL, M_FATAL)
+        self.chk.ok(
+            "OTBN-SWERR-FATAL",
+            ctrl == 1
+            and done0 == 0
+            and st == ST_LOCKED
+            and done == 1
+            and err != 0
+            and bool(err & M_ERR_FATAL_SW)
+            and bool(fatal & M_FATAL_SW),
+            seed=seed,
+            ctrl=ctrl,
+            status=_runs(vals),
+            final=f"0x{st:02x}",
+            expect=f"0x{ST_LOCKED:02x}",
+            done=done,
+            pre_done=done0,
+            err_bits=f"0x{err:x}",
+            fatal_cause=f"0x{fatal:x}",
+            clk=clks,
+            bound=self.idle_bound,
+        )
+        # LOCKED hold: a recognised command at LOCKED, then the OTBN reset exit.
+        await self._wr(A_CMD, CMD_EXECUTE)
+        _, hvals, hclks = await self._poll_status(lambda s: s != ST_LOCKED, win)
+        fatal_hold = await self._rd(A_FATAL, M_FATAL)
+        exit_ok, exit_arc = await self._reset_otbn("swerr-fatal-exit")
+        st_exit = await self._rd(A_STATUS, M_STATUS)
+        fatal_exit = await self._rd(A_FATAL, M_FATAL)
+        self.chk.ok(
+            "OTBN-LOCKED-HOLD",
+            st == ST_LOCKED
+            and all(v == ST_LOCKED for v in hvals)
+            and fatal_hold == fatal
+            and exit_ok
+            and st_exit == ST_IDLE
+            and fatal_exit == 0,
+            seed=seed,
+            cmd=f"0x{CMD_EXECUTE:02x}",
+            hold_status=_runs(hvals),
+            hold_polls=len(hvals),
+            window_clk=hclks,
+            fatal_before=f"0x{fatal:x}",
+            fatal_after_cmd=f"0x{fatal_hold:x}",
+            reset_arc=exit_arc,
+            status_after_reset=f"0x{st_exit:02x}",
+            fatal_after_reset=f"0x{fatal_exit:x}",
+        )
+        # Recoverable: software_errs_fatal = 0, same program.
+        rctrl, rdone0, rvals, rclks = await self._run_unimp(0)
+        rst = rvals[-1]
+        rdone = await self._rd(A_INTR_STATE, M_DONE)
+        rerr = await self._rd(A_ERR_BITS, M_ERR_BITS)
+        rfatal = await self._rd(A_FATAL, M_FATAL)
+        self.chk.ok(
+            "OTBN-SWERR-RECOV",
+            rctrl == 0
+            and rdone0 == 0
+            and rst == ST_IDLE
+            and ST_LOCKED not in rvals
+            and rdone == 1
+            and bool(rerr & M_ERR_ILLEGAL),
+            seed=seed,
+            ctrl=rctrl,
+            status=_runs(rvals),
+            final=f"0x{rst:02x}",
+            expect=f"0x{ST_IDLE:02x}",
+            done=rdone,
+            pre_done=rdone0,
+            illegal_insn=int(bool(rerr & M_ERR_ILLEGAL)),
+            clk=rclks,
+            bound=self.idle_bound,
+        )
+        # No sentence states the other ERR_BITS bits, or FATAL_ALERT_CAUSE, here.
+        self.chk.obs(
+            "OTBN-SWERR-CAUSE", seed=seed, err_bits=f"0x{rerr:x}", fatal_cause=f"0x{rfatal:x}"
+        )
+        self.chk.ctrl(
+            "OTBN-SWERR-FATAL",
+            rst == ST_IDLE and ST_LOCKED not in rvals,
+            seed=seed,
+            software_errs_fatal=0,
+            final=f"0x{rst:02x}",
+        )
+        return rerr
+
     # ------------------------------------------------------ ignored-cmd leg
     async def _ignored_leg(self, seed: int) -> None:
-        """Step 23."""
+        """Step 23, then the ERR_BITS clear at IDLE."""
         p = self.plan
         win = _IGNORE_WIN_MULT * self.t_cmd
         ok, _, _ = await self._wait_idle(self.idle_bound)
         st0 = await self._clear_done()
+        err_pre = await self._rd(A_ERR_BITS, M_ERR_BITS)
         t0 = _now_ps()
         await self._wr(A_CMD, p.bad_cmd)
         _, vals, clks = await self._poll_status(lambda s: s != ST_IDLE, win)
@@ -832,7 +1098,29 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         err = await self._rd(A_ERR_BITS, M_ERR_BITS)
         fatal = await self._rd(A_FATAL, M_FATAL)
         probe = [c.value for c in self.status_t.since(t0)]
-        self.chk.obs("OTBN-CMDIGN-ERR", seed=seed, err_bits=f"0x{err:x}")
+        self.chk.ok(
+            "OTBN-CMDIGN-ERR",
+            err == err_pre,
+            seed=seed,
+            cmd=f"0x{p.bad_cmd:02x}",
+            err_bits_before=f"0x{err_pre:x}",
+            err_bits=f"0x{err:x}",
+        )
+        self.chk.ctrl("OTBN-CMDIGN-ERR", err_pre != 0, seed=seed, err_bits_before=f"0x{err_pre:x}")
+        # ERR_BITS clear: a write of the drawn value at IDLE.
+        st_clr = await self._rd(A_STATUS, M_STATUS)
+        await self._wr(A_ERR_BITS, p.errclr)
+        err_clr = await self._rd(A_ERR_BITS, M_ERR_BITS)
+        self.chk.ok(
+            "OTBN-ERRCLR",
+            st_clr == ST_IDLE and err_clr == 0,
+            seed=seed,
+            status=f"0x{st_clr:02x}",
+            written=f"0x{p.errclr:08x}",
+            err_bits_before=f"0x{err:x}",
+            err_bits_after=f"0x{err_clr:x}",
+        )
+        self.chk.ctrl("OTBN-ERRCLR", err != 0, seed=seed, err_bits_before=f"0x{err:x}")
         cond = ok and st0 == 0 and all(v == ST_IDLE for v in vals) and done == 0
         self.chk.ok(
             "OTBN-CMD-IGNORE",
