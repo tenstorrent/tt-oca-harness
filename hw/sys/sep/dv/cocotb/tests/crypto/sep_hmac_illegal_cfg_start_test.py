@@ -33,12 +33,31 @@ Checkers:
                     engine finishes inside the hold
   CHK-HMAC-RECOVER  after the write-one clear ``hmac_err`` reads 0, and a legal HMAC hash
                     returns its golden, which differs from D_prev
+  CHK-HMAC-ERRCODE  after each blocked start, all 32 bits of ``ERR_CODE`` read 0x6
+                    (``SwInvalidConfig``): "The error is reported when HMAC has been configured
+                    incorrectly by SW, i.e. invalid digest size for SHA-2/HMAC modes or invalid
+                    key length for HMAC mode."
+                    (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md:128``;
+                    ``hw/sys/sep/doc/hmac.adoc:52-53`` "An unset or unsupported length raises a
+                    configuration error when hashing starts."). The register text gives
+                    ``err_code`` the full 31:0 field (hmac.adoc:171), so no bit is masked
 
 Controls: ``CTRL-HMAC-NOBLOCK`` (each legal class raises no error, sets ``hmac_done`` and
 returns its golden), ``CTRL-HMAC-DPREV`` (D_prev equals the golden of the last completed hash
 and is non-zero), ``CTRL-HMAC-REF`` (the reference hash and the worst-case hash return their
-goldens). Log-only:
-``OBS-HMAC-ERRCODE`` (the value; the register text, hmac.adoc:171-172, states no value),
+goldens), ``CTRL-HMAC-ERRCODE-RESET`` (``ERR_CODE`` reads its reset value 0x0,
+hmac.adoc:171, after the engine reset and before any start, so a healthy DUT reads a value
+other than 0x6 there), ``CTRL-HMAC-ERRCODE-CLR`` (before each blocked class the engine is
+reset and ``ERR_CODE`` reads its reset value 0x0, hmac.adoc:171; no text states a clear of
+``ERR_CODE`` by a write, a legal hash or the write-one clear of ``hmac_err``, so the reset is
+the only stated way back to 0x0; the last hash then runs again so that D_prev holds its
+golden), ``CTRL-HMAC-ERRCODE-BEFORE`` (``ERR_CODE`` just before each blocked start is not
+0x6, so the 0x6 of ``CHK-HMAC-ERRCODE`` comes from that start; the exact value after the
+legal hash is not stated and is logged) and ``CTRL-HMAC-ERR-PRESTART`` (after the blocked
+``CFG`` and ``KEY`` writes and one hold, before ``hash_start``, ``hmac_err`` reads 0 and
+``ERR_CODE`` is not 0x6: the error is raised "when hashing starts", hmac.adoc:52-53, so the
+``hmac_err`` and ``ERR_CODE`` of ``CHK-HMAC-BLOCK`` and ``CHK-HMAC-ERRCODE`` come from the
+start and not from the configuration writes). Log-only:
 ``OBS-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
 start; the register text does not state them) and
 ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text does not state its value after a
@@ -103,6 +122,9 @@ INVALID_KEYLEN = tuple(v for v in range(32) if 2 <= bin(v).count("1") <= 5)
 # 256"), so a B8 start can be blocked only by its SHA2_None digest_size.
 B8_KEY_BITS = (128, 256, 384, 512)
 SW_RESET_BASELINE = 0x7E
+# programmers_guide.md:128 SwInvalidConfig; hmac.adoc:171 ERR_CODE reset value.
+EXP_ERR_INVALID_CFG = 0x6
+EXP_ERR_CODE_RESET = 0x0
 INTR_FIELDS = HMAC_INTR_DONE | HMAC_INTR_ERR | HMAC.field_mask("INTR_STATE", "fifo_empty")
 CFG_LSB = {f: HMAC.field_lsb("CFG", f) for f in ("hmac_en", "sha_en", "digest_size", "key_length")}
 
@@ -287,7 +309,7 @@ def draw_plan(seed: int) -> Plan:
 class sep_hmac_illegal_cfg_start_test(sep_base_test):
     """Blocked HMAC starts raise hmac_err with DIGEST unchanged; the engine then recovers."""
 
-    required_evidence = ("CHK-HMAC-BLOCK", "CHK-HMAC-RECOVER")
+    required_evidence = ("CHK-HMAC-BLOCK", "CHK-HMAC-RECOVER", "CHK-HMAC-ERRCODE")
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
@@ -306,6 +328,13 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         self._period_ps = round(self.cfg.sys_clk_period_ns * 1000)
         self._dorder: str | None = None
         await self._reset_hmac(dut)
+        err_code_reset = await self._rd(HMAC_ERR_CODE)
+        self.chk.ctrl(
+            "HMAC-ERRCODE-RESET",
+            err_code_reset == EXP_ERR_CODE_RESET,
+            err_code=f"0x{err_code_reset:x}",
+            expected=f"0x{EXP_ERR_CODE_RESET:x}",
+        )
 
         # Worst-case hash: HMAC-SHA2_512 with Key_1024 and a MSG_MAX-byte message is the
         # longest hash a class can start (largest block, keyed, longest message). Its
@@ -501,6 +530,22 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         )
 
     async def _blocked_class(self, step: ClassStep, last: Hash) -> Hash:
+        # ERR_CODE back to its reset value 0x0 (hmac.adoc:171) before the class: a reset
+        # is the only stated way. The last hash then runs again so D_prev holds its golden.
+        await self._reset_hmac(cocotb.top)
+        err_code_clr = await self._rd(HMAC_ERR_CODE)
+        self.chk.ctrl(
+            "HMAC-ERRCODE-CLR",
+            err_code_clr == EXP_ERR_CODE_RESET,
+            **{"class": step.name},
+            err_code=f"0x{err_code_clr:x}",
+            expected=f"0x{EXP_ERR_CODE_RESET:x}",
+        )
+        t_last, _ = await self._run_hash(last, bound=self.hash_bound)
+        if t_last is None:
+            raise AssertionError(
+                f"HMAC hash before class {step.name} timed out (bound={self.hash_bound} clocks)"
+            )
         nwords = HMAC_DIGEST_WORDS[last.sha]
         d_prev = await self._read_digest(last.sha)
         self.chk.ctrl(
@@ -512,14 +557,36 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             words=nwords,
         )
 
+        err_code_before = await self._rd(HMAC_ERR_CODE)
+        self.chk.ctrl(
+            "HMAC-ERRCODE-BEFORE",
+            err_code_before != EXP_ERR_INVALID_CFG,
+            **{"class": step.name},
+            err_code=f"0x{err_code_before:x}",
+            not_expected=f"0x{EXP_ERR_INVALID_CFG:x}",
+        )
         # Error injection: a start with the blocked digest_size, key_length and hmac_en.
         open_graded_window(TEST, self.logger)
         await self._wr(HMAC_CFG, cfg_word(step.digest_code, step.key_code, step.hmac_en))
         if step.hmac_en:
             await self._write_key_row(step.row)
+        hold = self.hold
+        # Control: the blocked CFG and KEY writes alone raise no error ("raises a
+        # configuration error when hashing starts", hw/sys/sep/doc/hmac.adoc:52-53), so
+        # the hmac_err and ERR_CODE read after the start come from the start.
+        await ClockCycles(cocotb.top.clk_i, hold)
+        intr_pre = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
+        err_code_pre = await self._rd(HMAC_ERR_CODE)
+        self.chk.ctrl(
+            "HMAC-ERR-PRESTART",
+            not (intr_pre & HMAC_INTR_ERR) and err_code_pre != EXP_ERR_INVALID_CFG,
+            **{"class": step.name},
+            err=int(bool(intr_pre & HMAC_INTR_ERR)),
+            err_code=f"0x{err_code_pre:x}",
+            hold=hold,
+        )
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         t0 = self._now_clk()
-        hold = self.hold
         await ClockCycles(cocotb.top.clk_i, hold)
         # "Signalled": the error state and code, read before any message write so that
         # only the start can have set them.
@@ -559,7 +626,13 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             hold=hold,
             t_clean=self.t_clean,
         )
-        self.chk.obs("HMAC-ERRCODE", **{"class": step.name}, err_code=f"0x{err_code:x}")
+        self.chk.ok(
+            "HMAC-ERRCODE",
+            err_code == EXP_ERR_INVALID_CFG,
+            **{"class": step.name},
+            err_code=f"0x{err_code:x}",
+            expected=f"0x{EXP_ERR_INVALID_CFG:x}",
+        )
         self.chk.obs("HMAC-BLOCKED-MSG-RESP", **{"class": step.name}, refused=refused)
         self.chk.obs(
             "HMAC-IDLE",

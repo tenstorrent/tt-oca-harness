@@ -160,6 +160,10 @@ class SepEntropyGolden:
             w |= ((self._decor.get_sr(lane) >> 21) & 0xFF) << (8 * lane)
         return w
 
+    def sample_fired(self):
+        """True when the last ``feed_noise`` took a sample on any enabled lane."""
+        return any(self._decor.output_valid(lane) for lane in range(MAX_LANES))
+
     # ----------------------------------------------------------------- drive
     def step_cycle(self):
         """Advance one DUT cycle using the INTERNAL noise source (standalone use):

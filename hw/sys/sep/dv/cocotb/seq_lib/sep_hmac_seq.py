@@ -26,6 +26,22 @@ from sep_reg_meta import HMAC, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
+
+def reg_array(prefix: str) -> tuple[int, ...]:
+    """Addresses of the multireg instances ``<prefix>_0``, ``<prefix>_1``, ... in
+    the generated SEP register map, in index order. The length is the number of
+    instances the map declares."""
+    addrs: list[int] = []
+    while True:
+        try:
+            addrs.append(sym(f"{prefix}_{len(addrs)}__REG_ADDR"))
+        except KeyError:
+            break
+    if not addrs:
+        raise KeyError(f"{prefix}_0__REG_ADDR not found in the generated register map")
+    return tuple(addrs)
+
+
 HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
 HMAC_INTR_STATE = HMAC.addr("INTR_STATE")
 HMAC_CFG = HMAC.addr("CFG")
@@ -35,7 +51,9 @@ HMAC_ERR_CODE = HMAC.addr("ERR_CODE")
 HMAC_KEY_0 = sym("HMAC_KEY_0__REG_ADDR")
 HMAC_DIGEST_0 = sym("HMAC_DIGEST_0__REG_ADDR")
 HMAC_MSG_FIFO = sym("HMAC_MSG_FIFO_MEM_BASE_ADDR")
-HMAC_NUM_PUBLIC_KEY = 32
+HMAC_KEY = reg_array("HMAC_KEY")
+HMAC_DIGEST = reg_array("HMAC_DIGEST")
+HMAC_NUM_PUBLIC_KEY = len(HMAC_KEY)
 
 HMAC_CMD_HASH_START = HMAC.field_mask("CMD", "hash_start")
 HMAC_CMD_HASH_PROCESS = HMAC.field_mask("CMD", "hash_process")
@@ -172,7 +190,7 @@ class SepHmac(SepAxiRegDriver):
         read is non-zero; otherwise a dead read path returning zeros for everything
         would look identical to a pass.
         """
-        keys = [await self._rd(HMAC_KEY_0 + i * 4) for i in range(HMAC_NUM_PUBLIC_KEY)]
+        keys = [await self._rd(HMAC_KEY[i]) for i in range(HMAC_NUM_PUBLIC_KEY)]
         control = await self._rd(HMAC_STATUS)
         return keys, control
 
@@ -188,7 +206,7 @@ class SepHmac(SepAxiRegDriver):
             await self._wr(HMAC_MSG_FIFO, word & 0xFFFF_FFFF)
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
         await self._wait_done()
-        digest = [await self._rd(HMAC_DIGEST_0 + i * 4) for i in range(8)]
+        digest = [await self._rd(HMAC_DIGEST[i]) for i in range(8)]
         # W1C the done event and prove it clears (RW1C).
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
         post = await self._rd(HMAC_INTR_STATE)
@@ -206,7 +224,7 @@ class SepHmac(SepAxiRegDriver):
     async def read_digest(self) -> list[int]:
         """Read the 8 DIGEST words (word0 = MSB). Re-readable: HMAC holds DIGEST
         until the next hash_start / wipe / a reset of the HMAC domain."""
-        return [await self._rd(HMAC_DIGEST_0 + i * 4) for i in range(8)]
+        return [await self._rd(HMAC_DIGEST[i]) for i in range(8)]
 
     async def run_sha256(self, msg_words: list[int]) -> list[int]:
         """Run one SHA-256 over msg_words; return the 8 DIGEST words (word0=MSB).
@@ -235,7 +253,7 @@ class SepHmac(SepAxiRegDriver):
     async def write_key(self, key_words: list[int]) -> None:
         """Write the SW key to the public KEY_0..KEY_{n-1} CSRs (n = len)."""
         for i, word in enumerate(key_words):
-            await self._wr(HMAC_KEY_0 + i * 4, word & 0xFFFF_FFFF)
+            await self._wr(HMAC_KEY[i], word & 0xFFFF_FFFF)
 
     async def run_mac(self, msg_words: list[int], *, sha_bits: int) -> list[int]:
         """Run one hash (keyed or plain per the current CFG) over msg_words.
@@ -249,7 +267,7 @@ class SepHmac(SepAxiRegDriver):
             await self._wr(HMAC_MSG_FIFO, word & 0xFFFF_FFFF)
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
         await self._wait_done()
-        digest = [await self._rd(HMAC_DIGEST_0 + i * 4) for i in range(HMAC_DIGEST_WORDS[sha_bits])]
+        digest = [await self._rd(HMAC_DIGEST[i]) for i in range(HMAC_DIGEST_WORDS[sha_bits])]
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
         post = await self._rd(HMAC_INTR_STATE)
         assert (post & HMAC_INTR_DONE) == 0, (

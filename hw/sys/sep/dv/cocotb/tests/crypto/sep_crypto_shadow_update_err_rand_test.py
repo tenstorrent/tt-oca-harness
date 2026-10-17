@@ -9,6 +9,12 @@ Contract:
     again (``vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson``,
     CTRL_SHADOWED and ``recov_ctrl_update_err``). An equal pair commits and
     raises no alert.
+  * AES CTRL_AUX_SHADOWED: "This register is shadowed, meaning two subsequent
+    write operations are required to change its content. If the two write
+    operations try to set a different value, a recoverable alert is triggered
+    (See Status Register)." (``vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson:825-826``).
+    The AES recoverable alert channel is ORed into the Crypto alert source
+    (``hw/sys/sep/doc/crypto.adoc:122-127``, routing table row AES, ``:150-151``).
   * CTRL_AUX_REGWEN is RW0C: once cleared it blocks CTRL_AUX_SHADOWED writes,
     and a write of 1 does not set it again
     (``vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc``).
@@ -42,6 +48,13 @@ Checkers:
   CHK-SHADOW-CTRL      AES equal pair: no pulse over 4 x c_err clocks and the
                        register reads A. Control: the mismatched pair pulsed.
   CHK-SHADOW-RESTART   after R written twice the next AES block equals its golden.
+  CHK-AUX-SHADOW-ERR   AES AUX mismatched pair: bit 32 pulses (alert_cycles > 0)
+                       within 4 x c_err clocks of the second write. Control:
+                       CTRL-AUX-SHADOW-EQ, the equal pair gives no pulse.
+  CHK-AUX-SHADOW-WRITE AES AUX equal pair of A_AUX: the register reads A_AUX.
+                       Control: CTRL-AUX-SHADOW-PRE, the read before the pair
+                       gives the reset value 0x1 (``aes.adoc:131``), which
+                       differs from A_AUX.
   CHK-AUX-REGWEN       REGWEN reads 0 after a 0 write, a new AUX pair does not
                        land, a 1 write leaves REGWEN at 0. Control: the same
                        AUX write lands before the lock.
@@ -61,8 +74,12 @@ Checkers:
                        counts the same clocks from the same mark and fills
                        ``x_alert_source`` only inside the same window
                        (``alert_rise_bound`` = 4 x c).
-The AES AUX pairs and every KMAC result are logged (``OBS-SHADOW-AUX``,
-``OBS-SHADOW-KMAC``) and not graded; the ALERT_TEST write of each block is the
+``OBS-SHADOW-AUX`` logs ``STATUS.ALERT_RECOV_CTRL_UPDATE_ERR`` after each AES AUX
+pair: the status text names "the shadowed Control Register" (aes.hjson:995) and
+no text states that it covers CTRL_AUX_SHADOWED. Every KMAC result
+(``CFG_SHADOWED`` and ``ENTROPY_REFRESH_THRESHOLD_SHADOWED``) is logged as
+``OBS-SHADOW-KMAC`` and not graded: no KMAC text defines the update-error write
+sequence of those registers; the ALERT_TEST write of each block is the
 timing reference ``OBS-ALERT-REF``.
 """
 
@@ -83,7 +100,7 @@ from env.sep_seeded_rng import SepSeededRng
 from env.sep_trial_wait import TrialTimeout, wait_until
 from sep_base_test import sep_base_test
 from sep_monitor_life import MonitorLife
-from sep_reg_meta import AES, KMAC, sep_addr_define
+from sep_reg_meta import AES, KMAC, RegBlock, sep_addr_define
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
     AES_DATA_IN_0,
@@ -120,15 +137,23 @@ KEY_ROWS = AES_KEY_ROWS[256]
 AES_PT = SP800_38A_PT_BLOCK1
 
 VEC_ALERT_BIT = 32  # source 33, Crypto alert (hw/sys/sep/doc/interrupts.adoc)
-# Receiver index range of each block (hw/sys/sep/doc/crypto.adoc, alert routing table)
-# and the ALERT_TEST register of each block.
+
+
+def _alert_test_bits(block: str) -> int:
+    """Number of ALERT_TEST bits of ``block`` in the generated register map (one
+    bit per alert, from bit 0)."""
+    return bin(RegBlock(block).mask("ALERT_TEST")).count("1")
+
+
+# Receiver index range of each block (hw/sys/sep/doc/crypto.adoc, alert routing table),
+# the ALERT_TEST register of each block and its bit count.
 BLOCKS = {
-    "hmac": ((0,), "SEP_TOP_HMAC_ALERT_TEST_BASE_ADDR", 1),
-    "otbn": ((1, 2), "SEP_TOP_OTBN_ALERT_TEST_BASE_ADDR", 2),
-    "aes": ((3, 4), "SEP_TOP_AES_ALERT_TEST_BASE_ADDR", 2),
-    "kmac": ((5, 6), "SEP_TOP_KMAC_ALERT_TEST_BASE_ADDR", 2),
-    "csrng": ((7, 8), "SEP_TOP_CSRNG_ALERT_TEST_BASE_ADDR", 2),
-    "edn": ((9, 10), "SEP_TOP_EDN_ALERT_TEST_BASE_ADDR", 2),
+    "hmac": ((0,), "SEP_TOP_HMAC_ALERT_TEST_BASE_ADDR", _alert_test_bits("HMAC")),
+    "otbn": ((1, 2), "SEP_TOP_OTBN_ALERT_TEST_BASE_ADDR", _alert_test_bits("OTBN")),
+    "aes": ((3, 4), "SEP_TOP_AES_ALERT_TEST_BASE_ADDR", _alert_test_bits("AES")),
+    "kmac": ((5, 6), "SEP_TOP_KMAC_ALERT_TEST_BASE_ADDR", _alert_test_bits("KMAC")),
+    "csrng": ((7, 8), "SEP_TOP_CSRNG_ALERT_TEST_BASE_ADDR", _alert_test_bits("CSRNG")),
+    "edn": ((9, 10), "SEP_TOP_EDN_ALERT_TEST_BASE_ADDR", _alert_test_bits("EDN")),
 }
 
 AES_ST_IDLE = AES.field_mask("STATUS", "idle")
@@ -143,7 +168,7 @@ AES_AUX_RESET = AES.reset32("CTRL_AUX_SHADOWED")
 AES_REGWEN = AES.addr("CTRL_AUX_REGWEN")
 AES_REGWEN_MASK = AES.field_mask("CTRL_AUX_REGWEN", "ctrl_aux_regwen")
 AES_ST_FIELDS = AES.mask32("STATUS")
-A_AUX = 0  # KEY_TOUCH_FORCES_RESEED = 0, FORCE_MASKS = 0 (differs from the reset value)
+A_AUX = 0  # KEY_TOUCH_FORCES_RESEED = 0, FORCE_MASKS = 0 (differs from the reset value 0x1)
 B_AUX = AES_AUX_KTFR  # KEY_TOUCH_FORCES_RESEED = 1, FORCE_MASKS = 0
 
 KMAC_ST_ERR = KMAC.field_mask("STATUS", "alert_recov_ctrl_update_err")
@@ -322,6 +347,8 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         "CHK-SHADOW-ERR",
         "CHK-SHADOW-CTRL",
         "CHK-SHADOW-RESTART",
+        "CHK-AUX-SHADOW-ERR",
+        "CHK-AUX-SHADOW-WRITE",
         "CHK-AUX-REGWEN",
         "CHK-AUX-RESET",
         "CHK-ALERT-MALFORMED",
@@ -510,30 +537,57 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             ctrl_c_err=c_err,
         )
 
-        # AUX pairs (logged only).
+        # AUX pairs: the alert of the mismatched pair and the write of the equal pair.
         aux1, aux2 = plan.aux_pair
         await self._aes_reset()
+        open_graded_window(TEST, self.logger)
         m1, m2 = await self._pair(self.aes, AES_AUX, aux1, aux2, plan.gaps["aux_mis"])
         await self._until(m2, window)
+        mis_cycles = self.vec.high_clocks_since(m1, "alert")
         st = await self.aes._rd(AES_STATUS)
+        close_graded_window(self.logger)
         self.chk.obs(
-            "SHADOW-AUX",
-            reg="aes_aux",
-            pair="mismatched",
-            status_err=int(bool(st & AES_ST_ERR)),
-            alert_cycles=self.vec.high_clocks_since(m1, "alert"),
+            "SHADOW-AUX", reg="aes_aux", pair="mismatched", status_err=int(bool(st & AES_ST_ERR))
         )
+        # The equal pair writes A_AUX, which differs from the reset value, so a pair
+        # that does not land reads the reset value.
         await self._aes_reset()
-        m1, m2 = await self._pair(self.aes, AES_AUX, aux1, aux1, 0)
+        open_graded_window(TEST, self.logger)
+        aux_pre = await self.aes._rd(AES_AUX) & AES_AUX_MASK
+        m1, m2 = await self._pair(self.aes, AES_AUX, A_AUX, A_AUX, 0)
         await self._until(m2, window)
+        eq_cycles = self.vec.high_clocks_since(m1, "alert")
         st = await self.aes._rd(AES_STATUS)
+        aux_rb = await self.aes._rd(AES_AUX) & AES_AUX_MASK
+        close_graded_window(self.logger)
         self.chk.obs(
-            "SHADOW-AUX",
+            "SHADOW-AUX", reg="aes_aux", pair="equal", status_err=int(bool(st & AES_ST_ERR))
+        )
+        self.chk.ctrl("AUX-SHADOW-EQ", eq_cycles == 0, ctrl_eq_alert_cycles=eq_cycles)
+        self.chk.ok(
+            "AUX-SHADOW-ERR",
+            mis_cycles > 0,
             reg="aes_aux",
-            pair="equal",
-            status_err=int(bool(st & AES_ST_ERR)),
-            alert_cycles=self.vec.high_clocks_since(m1, "alert"),
-            readback=f"0x{await self.aes._rd(AES_AUX) & AES_AUX_MASK:x}",
+            first=f"0x{aux1:x}",
+            second=f"0x{aux2:x}",
+            alert_cycles=mis_cycles,
+            window_clk=window,
+            ctrl_eq_alert_cycles=eq_cycles,
+        )
+        reset_aux = AES_AUX_RESET & AES_AUX_MASK
+        self.chk.ctrl(
+            "AUX-SHADOW-PRE",
+            aux_pre == reset_aux and reset_aux != A_AUX,
+            ctrl_aux_pre=f"0x{aux_pre:x}",
+            reset=f"0x{reset_aux:x}",
+        )
+        self.chk.ok(
+            "AUX-SHADOW-WRITE",
+            aux_rb == A_AUX,
+            reg="aes_aux",
+            value=f"0x{A_AUX:x}",
+            readback=f"0x{aux_rb:x}",
+            ctrl_aux_pre=f"0x{aux_pre:x}",
         )
         return base
 
@@ -555,7 +609,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             st = await self.kmac._rd(KMAC_STATUS)
             rb = await self.kmac._rd(addr) if pair == "equal" else None
             self.chk.obs(
-                "SHADOW-AUX" if reg == "kmac_thr" else "SHADOW-KMAC",
+                "SHADOW-KMAC",
                 reg=reg,
                 pair=pair,
                 status_err=int(bool(st & KMAC_ST_ERR)),
