@@ -8032,6 +8032,61 @@ module sep_fcov (
   end
 
   // =====================================================================
+  // AES CFB, OFB and GCM group (docs/SEP_FCOV.adoc, sep_aes_cfb_ofb_gcm_cg).
+  // VCS only.
+  //
+  // SOURCE. After CHK-AES-CFB, CHK-AES-OFB or CHK-AES-GCM (text and tag)
+  // passes, sep_aes_cfb_ofb_gcm_rand_test writes one record into the aes_mx_*
+  // variables through the u_sep_fcov handle and adds 1 to aes_mx_seq
+  // (aes_mode_fcov in the leaf). The block below samples the record once on
+  // the first clock that sees a new aes_mx_seq. These variables drive nothing.
+  //
+  // GATE. A record samples only when aes_mx_owner is the code of the owning
+  // test and the MODE, KEY_LEN and OPERATION codes of the record equal the
+  // committed control of u_aes_core (aes_mode_i, aes_key_len_i, aes_op_i).
+  // The bins take their values from the committed control.
+  // =====================================================================
+  int unsigned aes_mx_owner = FcovOwnNone;  // owner code of the test that graded the record
+  bit [5:0] aes_mx_mode = 6'd0;  // CTRL_SHADOWED.MODE code of the graded cell
+  bit [2:0] aes_mx_key = 3'd0;  // CTRL_SHADOWED.KEY_LEN code of the graded cell
+  bit [1:0] aes_mx_op = 2'd0;  // CTRL_SHADOWED.OPERATION code of the graded cell
+  int unsigned aes_mx_seq = 0;  // sample strobe: the leaf adds 1 per record
+  int unsigned aes_mx_seq_q = 0;
+
+  // CTRL_SHADOWED.MODE codes (aes.hjson, CTRL_SHADOWED MODE enum).
+  localparam logic [5:0] AesModeCfb = 6'b00_0100;
+  localparam logic [5:0] AesModeOfb = 6'b00_1000;
+  localparam logic [5:0] AesModeGcm = 6'b10_0000;
+
+  // Mode x key size x operation of a cell whose golden compare passed.
+  covergroup sep_aes_cfb_ofb_gcm_cg with function sample (
+      logic [5:0] mode, logic [2:0] key, logic [1:0] op, logic v
+  );
+    option.per_instance = 1;
+    option.name = "sep_aes_cfb_ofb_gcm_cg";
+    cp_mode: coverpoint mode iff (v) {
+      bins cfb = {AesModeCfb}; bins ofb = {AesModeOfb}; bins gcm = {AesModeGcm};
+    }
+    cp_key: coverpoint key iff (v) {
+      bins k128 = {AesKey128}; bins k192 = {AesKey192}; bins k256 = {AesKey256};
+    }
+    cp_op: coverpoint op iff (v) {bins enc = {AesOpEnc}; bins dec = {AesOpDec};}
+    x_mode_key_op: cross cp_mode, cp_key, cp_op iff (v);
+  endgroup
+
+  sep_aes_cfb_ofb_gcm_cg u_sep_aes_cfb_ofb_gcm_cg = new();
+
+  wire aes_mx_v = (aes_mx_owner == FcovOwnSepAesCfbOfbGcmRandTest) &&
+      (aes_mode_i == aes_mx_mode) && (aes_key_len_i == aes_mx_key) && (aes_op_i == aes_mx_op);
+
+  always @(posedge clk_i) begin
+    aes_mx_seq_q <= aes_mx_seq;
+    if (aes_mx_seq != aes_mx_seq_q) begin
+      u_sep_aes_cfb_ofb_gcm_cg.sample(aes_mode_i, aes_key_len_i, aes_op_i, aes_mx_v);
+    end
+  end
+
+  // =====================================================================
   // Mailbox, IRQ and PIC groups (docs/SEP_FCOV.adoc, mailbox, IRQ and PIC
   // groups). VCS only.
   //

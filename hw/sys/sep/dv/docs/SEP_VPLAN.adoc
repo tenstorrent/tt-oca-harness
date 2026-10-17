@@ -422,6 +422,7 @@ they leave out; the checker table of each linked entry is the full set.
 |DMA zero fill |<<sep_dma_zero_fill_rand_test,`sep_dma_zero_fill_rand_test`>>, <<sep_dma_zero_fill_continuation_test,`sep_dma_zero_fill_continuation_test`>>, <<sep_dma_zero_test,`sep_dma_zero_test`>> |all, cpu_stub, cpu |`sep_dma_zero_cg` |The checker table of each entry named. |YES
 |SRAM datapath |<<sep_sram_smoke_test,`sep_sram_smoke_test`>>, <<sep_sram_datapath_breadth_test,`sep_sram_datapath_breadth_test`>>, <<sep_sram_burst_type_test,`sep_sram_burst_type_test`>>, <<sep_sram_inbound_burst_attr_test,`sep_sram_inbound_burst_attr_test`>> |all, cpu_stub |`sep_sram_access_cg` |`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test` (`CHK-ADDR-LINES` reaches the upper 192 KiB), `sep_sram_burst_type_test` (FIXED / WRAP), `sep_sram_inbound_burst_attr_test` (inbound INCR bursts, seeded request attributes) |YES
 |AES mode × key-size |<<sep_aes_mode_keysize_rand_test,`sep_aes_mode_keysize_rand_test`>> |all, cpu_stub |`sep_aes_mode_cg` |`sep_aes_mode_keysize_rand_test` (9-cell). CTR x DECRYPT is not claimed: CTR is a stream mode and the engine runs the forward cipher whichever way `OPERATION` is programmed, so the cell has no DUT-observable cipher contract and a test there would pass with the field disconnected. `OPERATION`'s shadowed-register behaviour is mode-independent and belongs on a CSR vehicle. |YES for the claimed part; the evidence cell names the rest
+|AES CFB / OFB / GCM |<<sep_aes_cfb_ofb_gcm_rand_test,`sep_aes_cfb_ofb_gcm_rand_test`>> |all, cpu_stub |`sep_aes_cfb_ofb_gcm_cg` |`sep_aes_cfb_ofb_gcm_rand_test` grades CFB-128, OFB and GCM at 128, 192 and 256 bits, encrypt and decrypt, against NIST SP 800-38A and SP 800-38D; `sep_aes_mode_keysize_rand_test` keeps ECB, CBC and CTR. One cell per seed; the 18 cells close over merged regressions. |YES
 |HMAC SHA variants |<<sep_hmac_sha_variant_rand_test,`sep_hmac_sha_variant_rand_test`>> |all, cpu_stub |`sep_hmac_mode_cg` |The checker table of each entry named. |YES
 |KMAC / SHA3 / SHAKE |<<sep_kmac_mode_strength_rand_test,`sep_kmac_mode_strength_rand_test`>> |all, cpu_stub |`sep_kmac_mode_cg` |The checker table of each entry named. |YES
 |OTBN as compute |<<sep_otbn_compute_rand_test,`sep_otbn_compute_rand_test`>> |all, cpu_stub |`sep_otbn_execute_cg` |The checker table of each entry named. |YES
@@ -469,7 +470,8 @@ they leave out; the checker table of each linked entry is the full set.
 |Dead-space decode |<<sep_fabric_deadspace_decode_test,`sep_fabric_deadspace_decode_test`>> |all, cpu_stub |None |Single-beat refuse and no-alias in every block window, and the crypto-region burst rule. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and requires DECERR on every beat of a read burst into the crypto region. `CHK-DEADSPACE-BURST` requires the write burst there to answer DECERR and move no register, and no read beat to return a live value. Bursts into other register regions are outside the specification and are not graded; see <<known-limitations>>. |YES for the claimed part; the evidence cell names the rest
 |Adams Bridge ML-DSA-87 keyGen |<<sep_abr_mldsa_keygen_kat_test,`sep_abr_mldsa_keygen_kat_test`>> |all, cpu_stub |`sep_abr_keygen_cg` |The key-vault seed path is a separate vehicle, `sep_km_abr_mldsa_kat_test`. ML-KEM is a separate vehicle, `sep_abr_mlkem_kat_test`. |YES
 |Adams Bridge ML-DSA-87 sigGen / sigVer |<<sep_abr_mldsa_sign_verify_kat_test,`sep_abr_mldsa_sign_verify_kat_test`>> |all, cpu_stub |`sep_abr_sign_cg` |Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair with `MLDSA_VERIFY_RES` compared against each signature's c~. `KEYGEN_SIGN` and the key-vault seed path are not claimed. |YES for the claimed part; the evidence cell names the rest
-|Adams Bridge ML-KEM-1024 |<<sep_abr_mlkem_kat_test,`sep_abr_mlkem_kat_test`>> |all, cpu_stub |`sep_abr_mlkem_cg`, `sep_crypto_isolate_cg` |KeyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. The same leaf grades the Adams Bridge `SW_RESET_N` domain on a live result — see `Per-IP SW_RESET_N isolation`. `KEYGEN+DECAPS` and the key-vault seed path are not claimed. |YES for the claimed part; the evidence cell names the rest
+|Adams Bridge ML-KEM-1024 |<<sep_abr_mlkem_kat_test,`sep_abr_mlkem_kat_test`>> |all, cpu_stub |`sep_abr_mlkem_cg`, `sep_crypto_isolate_cg` |KeyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. The same leaf grades the Adams Bridge `SW_RESET_N` domain on a live result — see `Per-IP SW_RESET_N isolation`. `KEYGEN+DECAPS` is on the row `Adams Bridge ML-KEM-1024 KEYGEN+DECAPS`; the key-vault seed path is not claimed. |YES for the claimed part; the evidence cell names the rest
+|Adams Bridge ML-KEM-1024 KEYGEN+DECAPS |<<sep_abr_combined_cmd_kat_test,`sep_abr_combined_cmd_kat_test`>> |all, cpu_stub |None |Self-consistency compare, not a golden: after KEYGEN+DECAPS on the seeds of an ACVP keyGen vector and the ciphertext of a single-step ENCAPS against that vector's ek, `MLKEM_SHARED_KEY` equals the K of the ENCAPS (FIPS 203 correctness). Both sides are DUT outputs; ENCAPS against ACVP is graded on `sep_abr_mlkem_kat_test`. With bit 0 of the seed d flipped, KEYGEN+DECAPS on the same z and ciphertext returns the FIPS 203 implicit-rejection key J(z‖c) = SHAKE256(z‖c), a computed golden. The key windows after KEYGEN+DECAPS and `MLDSA_PUBKEY` after KEYGEN+SIGN are logged only (see <<sep-vplan-phase3-blocked,Blocked features>>). No FCOV bin. |YES for the claimed part; the evidence cell names the rest
 |Adams Bridge host bus: pipelined reads, access sizes, concurrent masters |<<sep_abr_pipelined_read_test,`sep_abr_pipelined_read_test`>>, <<sep_abr_pipelined_read_matrix_test,`sep_abr_pipelined_read_matrix_test`>>, <<sep_abr_access_size_test,`sep_abr_access_size_test`>>, <<sep_abr_concurrent_rw_test,`sep_abr_concurrent_rw_test`>> |all, cpu_stub |`sep_smn_inbound_cg` |`sep_abr_pipelined_read_test` (up to eight reads of one register in flight on the SMN inbound master), `sep_abr_pipelined_read_matrix_test` (up to eight reads in flight per master, and both masters at once, each returning its own word), `sep_abr_access_size_test` (the ABR access-size rules of `adams_bridge.adoc` for 64-bit, narrow and partial-strobe accesses) and `sep_abr_concurrent_rw_test` (seeded concurrent reads and writes from both masters under response backpressure). The AHB transfer sequence itself is not observed; these grade what the host bus returns and what the registers hold. |YES for the claimed part; the evidence cell names the rest
 |Entropy pool aperture + PIC sources |<<sep_entropy_pool_aperture_test,`sep_entropy_pool_aperture_test`>> |all, cpu_stub |`sep_esrc_edn_flow_cg` |Drain-under-fill is not claimed; stall duration is graded by `CHK-STALL-DURATION`. |YES for the claimed part; the evidence cell names the rest
 |KM CRC engine (PCPI) |<<sep_km_crc_pcpi_kat_test,`sep_km_crc_pcpi_kat_test`>> |all, cpu_stub |None |All three modes against an independent golden, plus a hardware-only word-versus-byte chaining cross-check that holds if the golden is wrong. |YES
@@ -734,6 +736,12 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |CPU-LSU master, `crypto_edn_ack_o[0]`
 |Proves that `PRNG_RESEED_RATE` sets how often the AES masking PRNG reseeds from EDN, that an invalid rate value maps to PER_1, that a `TRIGGER` write with `PRNG_RESEED` = 0 causes no reseed request, and that the engine encrypts correctly after a key, IV and data clear and a reload; the register values after a clear are logged.
 
+|<<sep_aes_cfb_ofb_gcm_rand_test,`sep_aes_cfb_ofb_gcm_rand_test`>>
+|3
+|no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
+|CPU-LSU master; AES CFB, OFB and GCM golden model (NIST SP 800-38A, SP 800-38D)
+|Proves that AES CFB-128, OFB and GCM, encrypt and decrypt, at key sizes 128, 192 and 256 give the NIST SP 800-38A and SP 800-38D results: every CFB and OFB block, every GCM text block (partial last blocks included) and the GCM tag. One drawn cell per seed. `sep_aes_mode_keysize_rand_test` keeps the ECB, CBC and CTR cells.
+
 |<<sep_crypto_shadow_update_err_rand_test,`sep_crypto_shadow_update_err_rand_test`>>
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`, VCS only
@@ -769,6 +777,12 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |no_cpu, `+skip_fuse_sense`
 |CPU-LSU master with ABR window access; NIST ACVP ML-DSA-87 and ML-KEM-1024 known-answer vectors
 |Proves that ML-DSA-87 and ML-KEM-1024 accept the combined KEYGEN+SIGN and KEYGEN+DECAPS commands and park, that a zeroize or a reset re-arms ABR, that ML-DSA-87 verification of a published ACVP reject case (a modified mu, commitment, hint or z) does not report the signature verified, and that ML-KEM-1024 decapsulation of a published ACVP modified-ciphertext case returns the published implicit-rejection key.
+
+|<<sep_abr_combined_cmd_kat_test,`sep_abr_combined_cmd_kat_test`>>
+|3
+|no_cpu, `+skip_fuse_sense`
+|CPU-LSU master with ABR window access; NIST ACVP ML-KEM-1024 and ML-DSA-87 keyGen vectors
+|Proves that ML-KEM-1024 KEYGEN+DECAPS on the seeds of a published keyGen vector decapsulates a ciphertext made by ENCAPS against the published encapsulation key to the same shared key (a self-consistency compare, not a golden), and that with one seed bit flipped it returns the FIPS 203 implicit-rejection key J(z‖c). Logs which key windows KEYGEN+DECAPS and KEYGEN+SIGN fill.
 
 |<<sep_esrc_csr_rw_walk_rand_test,`sep_esrc_csr_rw_walk_rand_test`>>
 |3
@@ -1939,7 +1953,7 @@ another test.
 |===
 |Area |Test numbers |Scope
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
-|1.25 to 1.53
+|1.25 to 1.55
 |Crypto interrupt lines and cross-engine concurrency (two extension legs of open tests), HMAC, AES, KMAC, OTBN, ABR, delivered-key select, crypto alerts, ESRC health, FIFO integrity, autotune and conditioning, DRBG faults and sinks, TRNG stream handshake and external entropy to the Key Manager.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |2.25 to 2.33
@@ -2084,6 +2098,9 @@ the entry adds. A row marked "parked" names a parked test
 |`sep_aes_reseed_trigger_rand_test`
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |RANDCFG
+|`sep_aes_cfb_ofb_gcm_rand_test`
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|RAND-REP
 |`sep_crypto_shadow_update_err_rand_test`
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |RAND-REP
@@ -2102,6 +2119,9 @@ the entry adds. A row marked "parked" names a parked test
 |`sep_abr_command_matrix_rand_test`
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |RAND-REP
+|`sep_abr_combined_cmd_kat_test`
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|RANDCFG
 |`sep_esrc_csr_rw_walk_rand_test`
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |RAND-REP
@@ -2413,7 +2433,7 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |`hw/sys/sep/doc/aes.adoc` lists the key sizes 128, 192 and 256 and the modes ECB, CBC, CFB, OFB, CTR and CTR-GCM as supported. The SEP build has GCM support, so `CTRL_GCM_SHADOWED.PHASE`, `NUM_VALID_BYTES` and the `AES_GCM` mode code take the values the register text states for a GCM build.
 |No specification question: `hw/sys/sep/doc/aes.adoc` (AES Cipher) lists CTR-GCM, its OCAH Modifications change only the bus interfaces, and the OpenTitan default of `AESGCMEnable` is 1 (`vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson`, `AESGCMEnable`), so the clauses for a build with GCM disabled at compile time do not apply. Source: `hw/sys/sep/doc/aes.adoc`; `vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson` (`AESGCMEnable`, `CTRL_GCM_SHADOWED`); `vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/programmers_guide.md` (GCM Encryption, GCM Decryption).
-|No entry drives GCM. A check can grade one GCM encryption and one decryption (`MODE` = `AES_GCM`, the phase sequence of the programmer's guide) against the NIST SP 800-38D golden of the ciphertext and the tag; no entry carries it.
+|`sep_aes_cfb_ofb_gcm_rand_test` grades GCM encryption and decryption (`MODE` = `AES_GCM`, the phase sequence of the programmer's guide) against the NIST SP 800-38D golden of the ciphertext and the tag.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |CTRL_AUX_SHADOWED.FORCE_MASKS needs the Masking and SecAllowForcingMasks parameters; the OCAH build values are not stated.
 |AES: values of the Masking and SecAllowForcingMasks parameters in the OCAH build. Source: `vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc` (`CTRL_AUX_SHADOWED`).
@@ -2545,11 +2565,11 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |CTRL_GCM_SHADOWED.PHASE has six one-hot phases (INIT reset, RESTORE, AAD, TEXT, SAVE, TAG) with the stated legal successors; invalid values map to GCM_INIT.
 |No specification question for the stated cells: the SEP build has GCM support (`hw/sys/sep/doc/aes.adoc`, AES Cipher), so `PHASE` is writable, each phase lists its successors and a value with several bits set or 6'b00_0000 maps to GCM_INIT. Not stated: the outcome of a write of a phase that the current phase does not list, and whether a readback shows the written or the mapped value. Source: `vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson` (`CTRL_GCM_SHADOWED.PHASE`); `vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc` (`CTRL_GCM_SHADOWED`).
-|No entry drives GCM. A check can grade a GCM run that steps through listed successors and a multi-hot or zero `PHASE` write that acts as GCM_INIT, against the NIST GCM golden; no entry carries it.
+|`sep_aes_cfb_ofb_gcm_rand_test` steps through the listed successors INIT, AAD, TEXT, TAG and grades the data result against the NIST GCM golden. No entry grades a multi-hot or zero `PHASE` write.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |NUM_VALID_BYTES gives valid bytes of the last AAD or TEXT block; 16 for all other blocks; invalid values map to 5'b1_0000.
 |No specification question for the stated cells: in the SEP GCM build, values 1 to 16 give the valid bytes of the last AAD or TEXT block and 5'b0_0000 maps to 16. Not stated: values 17 to 31 and the readback of a mapped value. Source: `vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson` (`CTRL_GCM_SHADOWED.NUM_VALID_BYTES`); `vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc` (`CTRL_GCM_SHADOWED`).
-|No entry drives GCM. A check can grade a GCM run with a partial last AAD or TEXT block against the NIST GCM tag; no entry carries it.
+|`sep_aes_cfb_ofb_gcm_rand_test` grades GCM runs with a partial last AAD or TEXT block (values 1 to 16, bytes past `NUM_VALID_BYTES` non-zero) against the NIST GCM text and tag.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |FIPS_FORCE forces the FIPS flag of an instance on the next instantiate or reseed when CTRL.FIPS_FORCE_ENABLE is true.
 |CSRNG: which `FIPS_FORCE` bit belongs to the software instance (the number of hardware instances, NumHwApps, is not stated for the SEP build). The FLAG0 position [11:8] and its encoding (True 6, False 9) are stated (`vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md:172-176`; `doc/programmer/src/sep-programming.adoc:390-391`). Source: `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc` (`FIPS_FORCE`).
@@ -2569,7 +2589,7 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |The ABR combined commands KEYGEN+SIGN (CTRL 100) and KEYGEN+DECAPS (CTRL 100) are listed by code only. A reset of ABR (`SW_RESET_N` bit 6) is stated to re-arm READY; clearing is stated for ZEROIZE only.
 |ABR: which output registers (`MLDSA_PUBKEY`, `MLKEM_ENCAPS_KEY`) a combined command fills, which signing randomness KEYGEN+SIGN uses (or an independent signature vector of the combined command, because acceptance by the DUT's own verify compares the DUT with itself), and whether an ABR reset clears the secret output windows that are `external mem` backed by SRAM outside SEP. Source: `integration/rdl/sep/abr_reg.rdl` (`MLDSA_CTRL`, `MLKEM_CTRL`, `ZEROIZE`, `MLDSA_PUBKEY`); `hw/sys/sep/doc/adams_bridge.adoc` (OCAH Modifications).
-|`sep_abr_command_matrix_rand_test` grades the combined cells by STATUS, logs the accepted verify of the produced signature as `OBS-ABR-COMBO-VERIFY` and does not grade it, and grades the windows after a zeroize only
+|`sep_abr_command_matrix_rand_test` grades the combined cells by STATUS, logs the accepted verify of the produced signature as `OBS-ABR-COMBO-VERIFY` and does not grade it, and grades the windows after a zeroize only. `sep_abr_combined_cmd_kat_test` logs the word-match counts of `MLKEM_ENCAPS_KEY` and `MLKEM_DECAPS_KEY` after KEYGEN+DECAPS and of `MLDSA_PUBKEY` after KEYGEN+SIGN against the ACVP keyGen vector (`OBS-ABR-KEYGEN-DECAPS-KEY`, `OBS-ABR-KEYGEN-SIGN-KEY`) and does not grade them.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |The ESRC tune state machine toggles a lane detune on a rising edge of any health-test failure.
 |ESRC: does a failure of one generator count into `ANY_FAIL_COUNT`, and does each failing window give its own rising edge to the tune state machine? Source: `hw/ip/entropy_source/doc/architecture.adoc` (Noise Generation, Health Testing); `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`ALERT_SUMMARY_FAIL_COUNTS`).
@@ -4786,7 +4806,7 @@ test that owns the feature, or states why no pass or fail value exists.
 |A library statement. The spec gives no vectors and no program images, so no SEP-level pass or fail value exists. The OpenTitan IP-level DV owns the library.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |AES supports 128, 192 and 256-bit keys; KEY_LEN is one-hot (AES_128 = 001, AES_192 = 010, AES_256 = 100, reset AES_128).
-|`sep_aes_mode_keysize_rand_test` grades the three key sizes in ECB, CBC and CTR.
+|`sep_aes_mode_keysize_rand_test` grades the three key sizes in ECB, CBC and CTR; `sep_aes_cfb_ofb_gcm_rand_test` grades them in CFB, OFB and GCM.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |The AES key CSR block carries 8 words per share. AES passes the two shares into the cipher as a masked pair and does not combine them on the delivery path.
 |The sideload tests grade the delivered key through the engine.
