@@ -365,6 +365,18 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# AES CFB-128, OFB and GCM results, encrypt and decrypt, for each key length.
+name = "sep_aes_cfb_ofb_gcm_rand_test"
+module = "crypto.sep_aes_cfb_ofb_gcm_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "aes", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 # AES reseed-rate order, the invalid-rate mapping, the zero reseed trigger and the key clear.
 name = "sep_aes_reseed_trigger_rand_test"
 module = "crypto.sep_aes_reseed_trigger_rand_test"
@@ -451,6 +463,17 @@ seed = 1
 reseed = 4
 timeout_sec = 21600
 tags = ["crypto", "abr", "mldsa", "mlkem", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# ABR ML-KEM KEYGEN+DECAPS shared key against a single-step ENCAPS on the same key pair.
+name = "sep_abr_combined_cmd_kat_test"
+module = "crypto.sep_abr_combined_cmd_kat_test"
+seed = 1
+timeout_sec = 10800
+tags = ["crypto", "abr", "mldsa", "mlkem", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

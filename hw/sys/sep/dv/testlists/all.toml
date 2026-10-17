@@ -66,7 +66,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_drbg_regwen_lock_rand_test, VCS only (crypto.toml). Its reset reads must carry
 #   no X, which only a four-state simulator shows.
 name = "all"
-expected_count = 217
+expected_count = 219
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -264,6 +264,7 @@ tests = [
     "sep_crypto_delivered_key_select_rand_test",
     "sep_aes_encoding_inject_rand_test",
     "sep_aes_stream_status_rand_test",
+    "sep_aes_cfb_ofb_gcm_rand_test",
     "sep_aes_reseed_trigger_rand_test",
     "sep_crypto_shadow_update_err_rand_test",
     "sep_kmac_unsupported_cfg_inject_test",
@@ -271,6 +272,7 @@ tests = [
     "sep_kmac_entropy_mode_rand_test",
     "sep_otbn_cmd_status_rand_test",
     "sep_abr_command_matrix_rand_test",
+    "sep_abr_combined_cmd_kat_test",
     "sep_esrc_csr_rw_walk_rand_test",
     "sep_esrc_health_pattern_rand_test",
     "sep_esrc_persistent_alert_rand_test",
@@ -489,6 +491,7 @@ tests = [
     "sep_crypto_delivered_key_select_rand_test",
     "sep_aes_encoding_inject_rand_test",
     "sep_aes_stream_status_rand_test",
+    "sep_aes_cfb_ofb_gcm_rand_test",
     "sep_aes_reseed_trigger_rand_test",
     "sep_crypto_shadow_update_err_rand_test",
     "sep_kmac_unsupported_cfg_inject_test",
@@ -496,6 +499,7 @@ tests = [
     "sep_kmac_entropy_mode_rand_test",
     "sep_otbn_cmd_status_rand_test",
     "sep_abr_command_matrix_rand_test",
+    "sep_abr_combined_cmd_kat_test",
     "sep_esrc_csr_rw_walk_rand_test",
     "sep_esrc_health_pattern_rand_test",
     "sep_esrc_persistent_alert_rand_test",
@@ -844,7 +848,7 @@ tests = [
 # Convenience group of the crypto and entropy tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_crypto_entropy"
-expected_count = 29
+expected_count = 31
 tests = [
     "sep_irq_ip_to_aggregator_test",
     "sep_crypto_edn_multisink_arbitration_test",
@@ -854,6 +858,7 @@ tests = [
     "sep_crypto_delivered_key_select_rand_test",
     "sep_aes_encoding_inject_rand_test",
     "sep_aes_stream_status_rand_test",
+    "sep_aes_cfb_ofb_gcm_rand_test",
     "sep_aes_reseed_trigger_rand_test",
     "sep_crypto_shadow_update_err_rand_test",
     "sep_kmac_unsupported_cfg_inject_test",
@@ -861,6 +866,7 @@ tests = [
     "sep_kmac_entropy_mode_rand_test",
     "sep_otbn_cmd_status_rand_test",
     "sep_abr_command_matrix_rand_test",
+    "sep_abr_combined_cmd_kat_test",
     "sep_esrc_csr_rw_walk_rand_test",
     "sep_esrc_health_pattern_rand_test",
     "sep_esrc_persistent_alert_rand_test",
