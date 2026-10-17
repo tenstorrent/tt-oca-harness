@@ -45,6 +45,8 @@ class smc_test_cfg extends ocah_test_cfg;
   bit wdt_feed_sequence_negative;  // +SMC_WDT_FEED_SEQUENCE_NEGATIVE
   bit wdt_coreawake_sequence_negative;  // +SMC_WDT_COREAWAKE_SEQUENCE_NEGATIVE
   bit wdt_stage2_sequence_negative;  // +SMC_WDT_STAGE2_SEQUENCE_NEGATIVE
+  bit mailbox_reset_sequence_negative;  // +SMC_MAILBOX_RESET_SEQUENCE_NEGATIVE
+  bit mailbox_fifo_scoreboard_negative;  // +SMC_MAILBOX_FIFO_SCOREBOARD_NEGATIVE
 
   function new(string name = "smc_test_cfg");
     super.new(name);
@@ -73,6 +75,8 @@ class smc_test_cfg extends ocah_test_cfg;
     wdt_feed_sequence_negative = ocah_knobs::is_set("SMC_WDT_FEED_SEQUENCE_NEGATIVE");
     wdt_coreawake_sequence_negative = ocah_knobs::is_set("SMC_WDT_COREAWAKE_SEQUENCE_NEGATIVE");
     wdt_stage2_sequence_negative = ocah_knobs::is_set("SMC_WDT_STAGE2_SEQUENCE_NEGATIVE");
+    mailbox_reset_sequence_negative = ocah_knobs::is_set("SMC_MAILBOX_RESET_SEQUENCE_NEGATIVE");
+    mailbox_fifo_scoreboard_negative = ocah_knobs::is_set("SMC_MAILBOX_FIFO_SCOREBOARD_NEGATIVE");
   endfunction
 
   // Replace the required scoreboard features.
