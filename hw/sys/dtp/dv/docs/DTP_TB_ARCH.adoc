@@ -14,7 +14,7 @@
 |Project |OCAH
 |Framework |One UVM environment, realized in PyUVM on cocotb (`cocotb/`) and in SystemVerilog UVM (`uvm/`, `--framework uvm`)
 |Primary simulator |Verilator (cocotb realization; the PR gate and the scheduled regressions)
-|Supported simulator matrix |cocotb on `verilator` (default), `vcs`, and `xcelium`; SV-UVM on `vcs` only, the profile's UVM allowlist (`run_dv.py --list --json` reports the pairs for `dtp`)
+|Supported simulator matrix |cocotb on `verilator` (default), `vcs`, and `xcelium`; SV-UVM on `vcs` (default) and `verilator` (`run_dv.py --list --json` reports the pairs for `dtp`)
 |Commercial simulator use |SV covergroup, assertion, and code coverage collection; the SV-UVM realization
 |===
 
