@@ -2620,7 +2620,7 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope limit*: This entry does not grade the reset value of `STATUS.IDLE`, the fall of `OUTPUT_VALID` on a partial read of DATA_OUT (no fall condition is stated), a DATA_OUT read before `OUTPUT_VALID`, a CTR decrypt cell, or the CFB, OFB and GCM modes. `STATUS.INPUT_READY` is graded only for a block that waits behind a stall and its load after the stall; its value at idle with no input written and during a run with no input waiting is not graded (no sentence states it). `sep_aes_mode_keysize_rand_test` owns the 2-block cells of the open test and keeps them.
+*Scope limit*: This entry does not grade the reset value of `STATUS.IDLE`, the fall of `OUTPUT_VALID` on a partial read of DATA_OUT (no fall condition is stated), a DATA_OUT read before `OUTPUT_VALID`, or a CTR decrypt cell. The CFB, OFB and GCM modes are graded by `sep_aes_cfb_ofb_gcm_rand_test`. `STATUS.INPUT_READY` is graded only for a block that waits behind a stall and its load after the stall; its value at idle with no input written and during a run with no input waiting is not graded (no sentence states it). `sep_aes_mode_keysize_rand_test` owns the 2-block cells of the open test and keeps them.
 
 '''''
 
@@ -4134,5 +4134,108 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 *Known limitation*: On VCS this leaf can fail on the AXI reset assertion of the Key Manager CPU port, with no failing checker. When the `rst_ni` pulse between the two runs lands on a clock where a Key Manager CPU read waits for `ARREADY`, the PicoRV32 AXI4-Lite master holds `ARVALID` high for one clock after the cold reset asserts (`OCAH_AXI_AR_VALID_RESET_LOW`; AXI A3.1.2 requires VALID low during reset). Whether it fires depends on the seed. Verilator compiles the AXI assertions out.
 
 *Issue*: #3170
+
+'''''
+
+[[sep_aes_cfb_ofb_gcm_rand_test]]
+===== 1.54 `sep_aes_cfb_ofb_gcm_rand_test`
+
+*Phase*: 3
+
+*Area*: Crypto and entropy (AES)
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+esrc_noise_force`, 4 seeds; testlist `crypto.toml`, groups `cpu_stub` and `all`; Verilator and VCS
+
+*Source Module*: `sep_aes_cfb_ofb_gcm_rand_test`
+
+*BFM / Model*: ocah_axi_vip (CPU-LSU master; in `no_cpu` mode it is spliced onto the CPU bus); `seq_lib/sep_aes_seq.py` (AES driver); `env/sep_aes_mode_golden.py` (NIST SP 800-38A CFB-128 and OFB, NIST SP 800-38D GCM, on the FIPS-197 cipher of `env/sep_aes_golden.py`; `env/run_golden_selftests.py` checks it against the SP 800-38A vectors F.3.13 to F.3.18 and F.4.1 to F.4.6 and the GCM test cases of the SP 800-38D submission); `env/sep_seeded_rng.py`. Probe: none. Inject: none. PROPOSED items: none.
+
+*Randomization*: RAND-REP. `SepSeededRng` from the run seed, drawn before the first stimulus: the mode (CFB, OFB or GCM), the key size (128, 192 or 256), the direction (encrypt or decrypt), the key, the IV and the input bytes. Every whole input word is unique and non-zero. CFB and OFB: 2 to 4 whole blocks. GCM: a 96-bit IV, an AAD length of 0 to 40 bytes and a text length of 0 to 48 bytes, so the last AAD or text block can be partial and either phase can be empty. The leaf redraws the input bytes until the construction guards of the controls hold; the plan stays a pure function of the seed. One cell runs per seed and the leaf does not walk the cross. The 18 cells of mode x key size x direction close over a merge of regressions (<<sep-fcov-rand-phase2,SEP_FCOV>>, `sep_aes_cfb_ofb_gcm_cg`).
+
+*Objective*: AES does both operations in CFB with a 128-bit segment, in OFB and in GCM at the three key lengths. Each CFB and OFB DATA_OUT block equals the SP 800-38A result for the written key, IV and input. Each GCM TEXT-phase DATA_OUT block equals the SP 800-38D ciphertext (encrypt) or plaintext (decrypt), and the DATA_OUT block after GCM_TAG equals the SP 800-38D tag over the AAD and the ciphertext. The GCM phases run INIT, then AAD when there is AAD, then TEXT when there is text, then TAG, and the last AAD or text block carries `NUM_VALID_BYTES` equal to its byte count. Spec: `hw/sys/sep/doc/aes.adoc` (Features); `vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson` (AES.MODE.CFB-128, AES.MODE.OFB, AES.MODE.GCM, `CTRL_SHADOWED.MODE`, `CTRL_GCM_SHADOWED.PHASE` and `NUM_VALID_BYTES`); NIST SP 800-38A and SP 800-38D.
+
+*Test Coverage*: One cell of {CFB, OFB, GCM} x {128, 192, 256} x {encrypt, decrypt} per seed, with a drawn key, IV and input, and for GCM drawn AAD and text lengths that include partial last blocks and empty phases. This entry extends `sep_aes_mode_keysize_rand_test` (1.3), which keeps the ECB, CBC and CTR cells: only CFB, OFB and GCM are graded here. Functional coverage: `sep_aes_cfb_ofb_gcm_cg`.
+
+*Register programming not stated in-tree*: The leaf writes the GCM pre-counter block J0 = IV || 0^31 || 1 (SP 800-38D) to IV_0 to IV_3 in the data byte order, so IV_3 = 0x01000000, and writes the GCM_TAG input block [len(A)]_64 || [len(C)]_64 (bit lengths, big-endian) in the data byte order. Bytes past `NUM_VALID_BYTES` in a partial input block are 0. A DUT result that disagrees fails the check.
+
+*Test Procedure*:
+
+[arabic]
+. Draw the plan from the seed and log it (`PLAN seed=<n> mode=<m> keylen=<k> dir=<d> ...`).
+. Bring up in `no_cpu` with the HMAC, KMAC, OTBN and ABR bits of `SW_RESET_N` held at 0. Bring up ESRC, CSRNG and EDN as the open entropy tests do and wait for CSRNG genbits.
+. Log the controls `CTRL-AES-OUT-NE-IN` and `CTRL-AES-MODE-DISTINCT` (a false control logs `CTRL-MISSING` and fails the leaf). Write `TRIGGER.PRNG_RESEED` and `TRIGGER.DATA_OUT_CLEAR`, each followed by a bounded wait for `STATUS.IDLE` = 1.
+. Write `CTRL_SHADOWED` twice with `MANUAL_OPERATION` = 0, the MODE code of the cell, the KEY_LEN code and the OPERATION code. The MODE and PHASE codes come from the enum lists of `aes.hjson`; the leaf checks at import that the ECB, CBC and CTR codes equal the codes of `seq_lib/sep_aes_seq.py`, that GCM_INIT equals the code that `aes.rdl` states, and that every code is one-hot in its RDL field width.
+. CFB and OFB: write all eight words of KEY_SHARE0 and KEY_SHARE1 and wait for `STATUS.IDLE` = 1, write IV_0 to IV_3 and wait for `STATUS.IDLE` = 1, write `TRIGGER.DATA_OUT_CLEAR` and wait for `STATUS.IDLE` = 1. For each block: wait for `INPUT_READY` = 1, write the four DATA_IN words, wait for `OUTPUT_VALID` = 1 and read the four DATA_OUT words. Every wait of the leaf has the fixed outer limit of the AES driver (`seq_lib/sep_aes_seq.py`: 4000 `STATUS` polls, 20 `clk_i` cycles apart), a test parameter; an expiry fails the check of the cell with `reason=` logged.
+. GCM: write `CTRL_GCM_SHADOWED` twice with PHASE = GCM_INIT and `NUM_VALID_BYTES` = 16. Write the key shares and wait for `STATUS.IDLE` = 1, then write J0 to IV_0 to IV_3 and wait for `STATUS.IDLE` = 1. Every write of `CTRL_GCM_SHADOWED` is a pair with the unit idle before and after it.
+. GCM, when there is AAD: write PHASE = GCM_AAD with `NUM_VALID_BYTES` = 16 (or the byte count when the AAD is one partial block). Write each block after `INPUT_READY` = 1; before a partial last block of two or more blocks, wait for `STATUS.IDLE` = 1 and rewrite PHASE = GCM_AAD with its byte count. Wait for `STATUS.IDLE` = 1.
+. GCM, when there is text: the same with PHASE = GCM_TEXT. After each block wait for `OUTPUT_VALID` = 1 and read the four DATA_OUT words; keep the valid bytes of the block. Wait for `STATUS.IDLE` = 1.
+. GCM: write PHASE = GCM_TAG with `NUM_VALID_BYTES` = 16, write the length block, wait for `OUTPUT_VALID` = 1 and read the four DATA_OUT words as the tag. Log `STATUS` (`OBS-AES-GCM-TAG-STATUS`).
+. Compare the outputs with the golden and log the checks. Require `STATUS.ALERT_RECOV_CTRL_UPDATE_ERR` = 0 and `ALERT_FATAL_FAULT` = 0. After a passing check write the FCOV record. Stop the FIFO drain, check the entropy alerts and the strict entropy scoreboard, and log `RESULT sep_aes_cfb_ofb_gcm_rand_test seed=<n> PASS checks=1`.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-AES-CFB
+|Every DATA_OUT block equals the SP 800-38A CFB-128 result (encrypt: C_j = P_j XOR E(C_(j-1)); decrypt: P_j = C_j XOR E(C_(j-1)); C_0 = IV) for the written key, IV and input. A DUT that runs another feedback mode, the inverse cipher, the wrong key length, or that returns DATA_IN, gives a mismatch. Anchor: DATA_OUT readback against `env/sep_aes_mode_golden.py`. Control: `CTRL-AES-OUT-NE-IN` (every golden block differs from its input block) and `CTRL-AES-MODE-DISTINCT` (the golden differs from the OFB, CTR and other-direction CFB results for the same key, IV and input). Evidence: `CHK-AES-CFB PASS seed=<n> mode=cfb keylen=<k> dir=<d> blocks=<b> first_bad_word=none`.
+|CHK-AES-OFB
+|Every DATA_OUT block equals the SP 800-38A OFB result (O_j = E(O_(j-1)), O_0 = IV, output = input XOR O_j) for the written key, IV and input. OFB decrypt has the same result as OFB encrypt, so the decrypt cells prove that a run programmed with AES_DEC uses the forward cipher. A DUT that runs CFB or CTR, the inverse cipher, the wrong key length, or that returns DATA_IN, gives a mismatch. Anchor: DATA_OUT readback against `env/sep_aes_mode_golden.py`. Control: `CTRL-AES-OUT-NE-IN` and `CTRL-AES-MODE-DISTINCT` (the golden differs from both CFB results and the CTR result). Evidence: `CHK-AES-OFB PASS seed=<n> mode=ofb keylen=<k> dir=<d> blocks=<b> first_bad_word=none`.
+|CHK-AES-GCM
+|Two lines. `part=text` (when there is text): every TEXT-phase DATA_OUT block equals the SP 800-38D GCTR result from inc32(J0), compared on the valid bytes of a partial last block. `part=tag`: the DATA_OUT block after GCM_TAG equals the 128-bit SP 800-38D tag GCTR(J0, GHASH(AAD, ciphertext, length block)); on decrypt the ciphertext is the input. A DUT that drops or mis-pads AAD, uses the wrong counter start, ignores `NUM_VALID_BYTES`, hashes the wrong text on decrypt, or uses the wrong key length gives a mismatch. Anchor: DATA_OUT readback against `env/sep_aes_mode_golden.py`. Control: `CTRL-AES-OUT-NE-IN`, and `CTRL-AES-MODE-DISTINCT` (the text golden differs from CTR mode started at J0, and the tag golden differs from the length block). Evidence: `CHK-AES-GCM PASS seed=<n> part=text mode=gcm keylen=<k> dir=<d> aad_bytes=<a> text_bytes=<t> first_bad_word=none` and the same with `part=tag`.
+|CHK1..CHK4
+|Strict entropy scoreboard of the bring-up (the masking reseed needs the crypto EDN leg). HMAC, KMAC, OTBN and ABR are held in reset, so AES is the only crypto EDN client.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope limit*: This entry does not grade the GCM_RESTORE and GCM_SAVE phases, the readback of `CTRL_GCM_SHADOWED`, an illegal phase successor, an IV length other than 96 bits, a tag-compare status (the register text states none; the leaf compares the tag in software), or the DATA_OUT bytes past `NUM_VALID_BYTES` of a partial block (no value is stated). The GCM IV and length-block layout is DV stimulus, not a stated register contract.
+
+'''''
+
+[[sep_abr_combined_cmd_kat_test]]
+===== 1.55 `sep_abr_combined_cmd_kat_test`
+
+*Phase*: 3
+
+*Area*: Crypto and entropy (ABR)
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 1 seed; testlist `crypto.toml`, groups `cpu_stub` and `all`; Verilator and VCS
+
+*Source Module*: `sep_abr_combined_cmd_kat_test`
+
+*BFM / Model*: ocah_axi_vip with the CPU-LSU master readback and write of the ABR window (approved). Published NIST ACVP vectors as inputs: the ML-KEM-1024 keyGen vector (seeds d and z, encapsulation key ek, decapsulation key dk), the message m of the ML-KEM-1024 encaps vector, and the ML-DSA-87 keyGen seed and public key pk with the external-mu value mu of the sigGen vector. Vector source: `hw/sys/sep/dv/fw/tests/common/gen_abr_nist_vectors.py`; `hw/sys/sep/dv/cocotb/env/sep_abr_kem_nist.py` and `hw/sys/sep/dv/cocotb/env/sep_abr_nist.py` parse them. No published vector gives the shared key of ENCAPS for this (ek, m) pair, so the graded compare has no reference model: both sides are DUT outputs. The ABR reset bit of `SW_RESET_N`. No observation tap. No inject beyond the register writes of the scenario. No coverage label.
+
+*Randomization*: RANDCFG. `SepSeededRng` from the run seed draws the 16 words of the ABR entropy input of the KEYGEN+SIGN command (a masking input, not a key; `SepAbrKeygenCfg`). No expected value and no logged match count depends on them. Every other input is a fixed published vector, so one seed runs the whole contract.
+
+*Objective*: ML-KEM-1024 has the combined command KEYGEN+DECAPS (`MLKEM_CTRL.CTRL` = 4). It takes the keyGen seeds in `MLKEM_SEED_D` and `MLKEM_SEED_Z` and the ciphertext in `MLKEM_CIPHERTEXT`, and writes the shared key to `MLKEM_SHARED_KEY`. FIPS 203 correctness: for a key pair (ek, dk) from ML-KEM.KeyGen(d, z) and (K, c) from ML-KEM.Encaps(ek), ML-KEM.Decaps(dk, c) returns K. Spec: `integration/rdl/sep/abr_reg.rdl` (`MLKEM_CTRL`, `MLKEM_SEED_D`, `MLKEM_SEED_Z`, `MLKEM_MSG`, `MLKEM_CIPHERTEXT`, `MLKEM_SHARED_KEY`, `MLKEM_STATUS`, `MLDSA_CTRL`, `MLDSA_PUBKEY`); `hw/sys/sep/doc/adams_bridge.adoc` (OCAH Modifications: READY re-asserts after a zeroize or a reset).
+
+*Test Coverage*: One ML-KEM-1024 KEYGEN+DECAPS whose result is compared with the K of a single-step ENCAPS against the same key pair, and one ML-DSA-87 KEYGEN+SIGN whose public-key window is logged. Extends `sep_abr_command_matrix_rand_test`, which grades the park and the re-arm of both combined commands and logs the verify of the combined signature, and grades no result of a combined command; and `sep_abr_mlkem_kat_test`, which grades the single-step KEYGEN, ENCAPS and DECAPS against ACVP. This entry adds only the shared key of KEYGEN+DECAPS. Functional coverage: none (a self-consistency compare scores no bin).
+
+*Test Procedure*:
+
+[arabic]
+. Set `SW_RESET_N` to the baseline of the common rules with the bits of KMAC, AES, HMAC and OTBN clear and the ABR bit (bit 6) set. Log the baseline and `PLAN seed=<n>`.
+. Wait for `MLKEM_STATUS.READY` = 1 (a bounded wait) and require `VALID` = 0 at that read (`CTRL-ABR-VALID-PRE`; a 1 logs `CTRL-MISSING` and fails the leaf). Every ML-KEM command of the leaf runs this read.
+. Write the ek of the ACVP keyGen vector to `MLKEM_ENCAPS_KEY` and the m of the ACVP encaps vector to `MLKEM_MSG`. Write ENCAPS (2). Wait for `VALID` = 1 (a bounded wait). Read the ciphertext c and the shared key K. Log them (`OBS-ABR-ENCAPS-STIMULUS`). No check grades this ENCAPS. Require K to hold a non-zero word (`CTRL-ABR-ENCAPS-K-NONZERO`).
+. Write `ZEROIZE` and wait for `READY` = 1. Reset ABR (bit 6 of `SW_RESET_N` low, then high).
+. Run step 2. Write d to `MLKEM_SEED_D`, z to `MLKEM_SEED_Z` and c to `MLKEM_CIPHERTEXT`, in that order and before the command write (the order of the KEYGEN+DECAPS cell of `sep_abr_command_matrix_rand_test`; the register description does not state an order). Read `MLKEM_SHARED_KEY` and require it to differ from K (`CTRL-ABR-SHARED-KEY-PRE`). Write KEYGEN+DECAPS (4). Wait for `VALID` = 1 (a bounded wait). Read `MLKEM_SHARED_KEY` and compare all 8 words with K.
+. Read `MLKEM_ENCAPS_KEY` and `MLKEM_DECAPS_KEY` and log the number of words equal to the ACVP ek and dk (`OBS-ABR-KEYGEN-DECAPS-KEY`). Write `ZEROIZE` and wait for `READY` = 1.
+. Wait for `MLDSA_STATUS.READY` = 1. Write the ACVP keyGen seed to `MLDSA_SEED`, mu to `MLDSA_EXTERNAL_MU` and the drawn entropy to `ABR_ENTROPY`. Write KEYGEN+SIGN (4) with `EXTERNAL_MU` set. Wait for `VALID` = 1 (a bounded wait). Read `MLDSA_PUBKEY` and log the number of words equal to the ACVP pk (`OBS-ABR-KEYGEN-SIGN-KEY`). The signature is not read. Write `ZEROIZE` and wait for `READY` = 1.
+
+A wait that times out in steps 2-6 logs `CHK-ABR-KEYGEN-DECAPS-SELFCONSIST FAIL` with `reason=timeout`, resets ABR and continues with step 7; the leaf fails at the end. A timeout in step 7 is logged in `OBS-ABR-KEYGEN-SIGN-KEY` with `pk_match=n/a`.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ABR-KEYGEN-DECAPS-SELFCONSIST
+|After KEYGEN+DECAPS (`MLKEM_CTRL.CTRL` = 4) on the seeds d, z of an ACVP keyGen vector and the ciphertext c that a single-step ENCAPS produced against the ek of the same vector, all 8 words of `MLKEM_SHARED_KEY` equal the K of that ENCAPS (FIPS 203 correctness; `abr_reg.rdl` `MLKEM_CTRL`, `MLKEM_SHARED_KEY`). This is a self-consistency compare, not a golden: K is a DUT output and no published vector holds it. A wrong DUT that ignores the keyGen half (decapsulates with a zero or stale dk), ignores the written ciphertext, or skips the decapsulation shows a different key: a wrong dk or c gives the implicit-rejection key or another value. `STATUS.ERROR` is logged in `obs_error` and not graded. Anchor: `MLKEM_SHARED_KEY` readback. Controls: `CTRL-ABR-ENCAPS-K-NONZERO` (K has a non-zero word, so a window that reads 0 cannot match), `CTRL-ABR-SHARED-KEY-PRE` (the window differs from K immediately before the command write, after a ZEROIZE and an ABR reset, so a K left in the window does not match), `CTRL-ABR-VALID-PRE` (`VALID` = 0 before each command write, so the `VALID` wait sees this command). Evidence: `CHK-ABR-KEYGEN-DECAPS-SELFCONSIST PASS: seed=<n> compare=self_consistency_not_golden words=8 first_diff_word=none ss=<hex> k_encaps=<hex> valid=1 obs_error=<e>`, `CTRL-ABR-ENCAPS-K-NONZERO seen:`, `CTRL-ABR-SHARED-KEY-PRE seen: ... pre_zero=<z> pre=<hex>`, `CTRL-ABR-VALID-PRE seen: ... cmd=<encaps or keygen_decaps> valid=0 ready=1`, `OBS-ABR-ENCAPS-STIMULUS seed=<n> ... k=<hex>`, `OBS-ABR-KEYGEN-DECAPS-KEY seed=<n> ek_match=<m>/392 dk_match=<m>/792 ...` and `OBS-ABR-KEYGEN-SIGN-KEY seed=<n> pk_match=<m>/648 ...`.
+|===
+
+*Pass Criteria*: Every named checker PASSes and no control is missing. The `OBS-*` lines are not counted and do not fail the leaf. UVM_ERROR == 0.
+
+*Scope limit*: This test grades only the shared key of KEYGEN+DECAPS, and only against the DUT's own ENCAPS. The following are not claimed. The shared key has no independent expected value, because no published vector chains a keyGen output into an encapsulation for the same key pair. Which key windows KEYGEN+DECAPS and KEYGEN+SIGN fill is not stated, so `MLKEM_ENCAPS_KEY`, `MLKEM_DECAPS_KEY` and `MLDSA_PUBKEY` are logged and not graded (see <<sep-vplan-phase3-blocked,Blocked features>>, the ABR combined-command row). The KEYGEN+SIGN signature and its verify are not read here; `sep_abr_command_matrix_rand_test` logs the verify. The park and re-arm of the combined commands belong to `sep_abr_command_matrix_rand_test`. The single-step ENCAPS is stimulus; `sep_abr_mlkem_kat_test` grades ENCAPS against ACVP. A ciphertext for which decapsulation rejects is not driven through KEYGEN+DECAPS. `STATUS.ERROR` is logged and not graded. The key-vault seed path and the ABR interrupt sources are not driven.
 
 '''''
