@@ -791,8 +791,14 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         if self.fall_delay is None:
             self.fall_delay = fall - a_park
         win = w.window(fall, a_rel)
+        hold_win = w.window(fall, rise - 1)
+        settled = None
+        if hold_win and all(x.cnt is not None for x in hold_win):
+            changes = [
+                b.cyc for a, b in zip(hold_win, hold_win[1:], strict=False) if b.cnt != a.cnt
+            ]
+            settled = changes[-1] if changes else hold_win[0].cyc
         s_rel = w.by_cyc.get(a_rel)
-        s_pre = w.by_cyc.get(a_rel - 1)
         rec = {
             "label": label,
             "hold": hold,
@@ -805,10 +811,13 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             "first_fetch": cnt_at - rise - 1,
             "after_fall": a_rel > fall,
             "iso_at_rel": s_rel is not None and s_rel.iso == (1, 1, 1),
-            "cnt_stable": s_rel is not None
-            and s_pre is not None
-            and s_rel.cnt is not None
-            and s_rel.cnt == s_pre.cnt,
+            # The KM is held when the ROM fetch count settles before the reset
+            # releases: two equal successive reads at least, then no change up to
+            # the rise. The count is registered and the KM CPU reset follows the
+            # net through the reset conditioner, so the last fetches of the running
+            # KM can show one or two clocks after the fall.
+            "cnt_settled": settled,
+            "cnt_stable": settled is not None and settled <= rise - 2,
             "known": all(s.rst is not None and s.cnt is not None for s in win),
             "iso_seen": any(s.iso == (1, 1, 1) for s in win),
             "hold_fetches": (
@@ -829,6 +838,8 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             release_aw=r["a_rel"],
             iso_isolated_at_release=r["iso_at_rel"],
             count_stable=r["cnt_stable"],
+            count_settled=r["cnt_settled"],
+            rise=r["rise"],
             hold_fetches=r["hold_fetches"],
             known=r["known"],
         )
