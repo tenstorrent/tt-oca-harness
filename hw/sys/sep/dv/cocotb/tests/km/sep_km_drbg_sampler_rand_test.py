@@ -48,12 +48,18 @@ Checkers:
                   at timeout 8 times out; each fed read pair takes a handshake;
                   DRBG_READY reads 1 while the held word blocks the stream.
   CHK-SMP-WR      writes to DATA and PREFETCH_DATA answer SLVERR and leave STATUS
-                  and PREFETCH_DATA unchanged. Control: AXI_SLVERR reads 0 after
-                  each clear before the write.
+                  and PREFETCH_DATA unchanged, on the stalled stream and again
+                  with a prefetched word held (a known PREFETCH_DATA value).
+                  Control: AXI_SLVERR reads 0 after each clear before the write.
   CHK-SMP-TRNG    the first DATA read after a TRNG reset with the KM held in
                   software reset completes OKAY with STREAM_ERR 0, COUNT_BAD 0
-                  and DRBG_ERR 0. Control: before the pulse the producer offers
-                  a beat (TVALID 1) that the held sampler does not take (TREADY 0).
+                  and DRBG_ERR 0. The pulse is seen on the reset-sequencer
+                  probes: the TRNG gated reset is low for at least one clock,
+                  every such clock has the three TRNG host paths isolated and
+                  the KM warm reset low (reset_controller.adoc:190-194, 211-212),
+                  and it is high before and after the pulse. Control: before the
+                  pulse the producer offers a beat (TVALID 1) that the held
+                  sampler does not take (TREADY 0).
   CHK-SMP-STRM    a withdrawal sets STREAM_ERR and DRBG_ERR with no read active
                   (COUNT_BAD + 1) and in the first active cycle of a read at
                   timeout 256, 1 and 2 (SLVERR, data 0, COUNT_BAD + 1 or more);
@@ -108,6 +114,9 @@ _GOOD_LOOP_CYCLES = 60_000_000
 _STALLED_LIST_CYCLES = 2_000_000
 
 _KM_BIT = 1 << SW_RESET_N_BIT["km"]
+# trng_axi_isolated_probe_o: the EDN, CSRNG and entropy-source host paths.
+_TRNG_ISO_ALL = 0b111
+_TRNG_RELEASE_BOUND = 2_000
 _SW_ALL = sum(1 << b for b in SW_RESET_N_BIT.values())
 
 # Stimulus words of the write-refusal leg.
@@ -219,6 +228,24 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             await self.report_entropy_stall()
             raise AssertionError(f"ESRC produced no seed in the {what} entropy initialization")
         await self.start_seq(SepEsrcEnableEdnSeq(f"edn_enable_{what}"))
+
+    async def _watch_trng_reset(self) -> None:
+        """Count the clocks with the TRNG gated reset low until ``self._trng_watch_stop``.
+
+        In each such clock the three TRNG host paths must read isolated and the
+        KM warm reset low. An X or Z probe raises.
+        """
+        dut = cocotb.top
+        w = self.trng_watch
+        while not self._trng_watch_stop:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.trng_gated_rst_n_probe_o) == 0:
+                w["rst_clks"] += 1
+                if self.rd(dut.trng_axi_isolated_probe_o) != _TRNG_ISO_ALL:
+                    w["not_isolated"] += 1
+                if self.rd(dut.km_gated_rst_n_probe_o) != 0:
+                    w["km_not_held"] += 1
 
     # --- HK-STRM ------------------------------------------------------------------
 
@@ -409,8 +436,15 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         clear = [int(bool(self._irq(res[i].value) & pl.IRQ_SLVERR)) for i in (1, 8)]
         after = [int(bool(self._irq(res[i].value) & pl.IRQ_SLVERR)) for i in (5, 10)]
         sts = [self._status(res[i].value) for i in (2, 6, 12)]
+        # PREFETCH_DATA has no reset value. Both reads unknown: no compare here
+        # (the held-word leg grades the same claim on a known value). One
+        # unknown and one known, or two different known values: not kept.
         pdata_known = res[3].known and res[11].known
-        pdata_kept = (res[3].value == res[11].value) if pdata_known else True
+        pdata_kept = (
+            res[3].value == res[11].value
+            if pdata_known
+            else (not res[3].known and not res[11].known)
+        )
         self.chk.ctrl("SMP-WR-CLEAR", clear == [0, 0], clear_before=clear)
         acc = self._acc(res, {4, 9})
         self.chk.ok(
@@ -427,7 +461,8 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             clear_before=clear,
             status=[_h(s) for s in sts],
             pdata=[_h(res[3].value), _h(res[11].value)],
-            pdata_known=pdata_known,
+            pdata_known=[int(res[3].known), int(res[11].known)],
+            point="stalled",
             bad_responses=",".join(acc) or "none",
         )
         self.status_kept_after_wr = sts[0] == sts[2]
@@ -574,10 +609,29 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             tvalid_before=tvalid_before,
             tready_before=tready_before,
         )
+        await ReadOnly()
+        rst_before = self.rd(dut.trng_gated_rst_n_probe_o)
+        await RisingEdge(dut.clk_i)
+        self.trng_watch = {"rst_clks": 0, "not_isolated": 0, "km_not_held": 0}
+        self._trng_watch_stop = False
+        watch = cocotb.start_soon(self._watch_trng_reset())
         self._gate(True)
         await self.swrst.park("trng")
         await self.swrst.release("trng")
+        rst_after = 0
+        for _ in range(_TRNG_RELEASE_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            rst_after = self.rd(dut.trng_gated_rst_n_probe_o)
+            if rst_after and self.trng_watch["rst_clks"]:
+                break
+        await RisingEdge(dut.clk_i)
+        self._trng_watch_stop = True
+        await ClockCycles(dut.clk_i, 2)
+        watch.kill()
         self._gate(False)
+        self.trng_watch.update(rst_before=rst_before, rst_after=rst_after)
+        self.logger.info("LOG trng reset probes %s", self.trng_watch)
         swrst = await self.swrst.read_back()
         self.logger.info("LOG trng reset pulse done sw_reset_n=%s", _h(swrst))
         await self._entropy_init(reset_trng=False, what="after_trng_reset")
@@ -605,9 +659,15 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         st, irq = self._status(res[5].value), self._irq(res[6].value)
         acc = self._acc(res)
         self.first_read_stream_err = pl.st(st, "STREAM_ERR")
+        tw = self.trng_watch
         self.chk.ok(
             "SMP-TRNG",
             self.controls["trng_offer_held"]
+            and tw["rst_before"] == 1
+            and tw["rst_clks"] >= 1
+            and tw["not_isolated"] == 0
+            and tw["km_not_held"] == 0
+            and tw["rst_after"] == 1
             and res[4].slv == 0
             and pl.st(st, "STREAM_ERR") == 0
             and pl.st(st, "COUNT_BAD") == 0
@@ -615,6 +675,11 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             and not acc,
             tvalid_before=self.trng_pre[0],
             tready_before=self.trng_pre[1],
+            trng_rst_before=tw["rst_before"],
+            trng_rst_clks=tw["rst_clks"],
+            trng_rst_not_isolated=tw["not_isolated"],
+            trng_rst_km_not_held=tw["km_not_held"],
+            trng_rst_after=tw["rst_after"],
             first_read_ok=int(res[4].slv == 0 and res[4].dec == 0),
             stream_err=pl.st(st, "STREAM_ERR"),
             count_bad=pl.st(st, "COUNT_BAD"),
@@ -697,6 +762,10 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 1)),
             kp.poll(pl.A_STATUS, pl.ST_PREFETCHED, pl.ST_PREFETCHED, _PREFETCH_POLL_LOADS),
             kp.rdblk(pl.A_PDATA, pl.PDATA_READS, stride=0),
+            kp.wr(pl.A_PDATA, _PDATA_WR_WORD),
+            kp.wr(pl.A_DATA, _DATA_WR_WORD),
+            kp.rd(pl.A_PDATA),
+            kp.rd(pl.A_STATUS),
             kp.sync(),
             kp.rd(pl.A_STATUS),
             kp.sync(),
@@ -721,6 +790,25 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             return None
 
         res = await self._run(ops, on_sync=on_sync)
+        # Ops 3 to 6 are the held-word write refusals; the PREFETCH legs follow.
+        wr_res, res = res[3:7], res[:3] + res[7:]
+        held_wr_acc = self._acc(wr_res, {wr_res[0].index, wr_res[1].index})
+        st_wr = self._status(wr_res[3].value)
+        held = res[2].data[0]
+        self.chk.ok(
+            "SMP-WR",
+            wr_res[0].slv == 1
+            and wr_res[1].slv == 1
+            and wr_res[2].value == held
+            and pl.st(st_wr, "PREFETCHED") == 1
+            and not held_wr_acc,
+            point="held_word",
+            pdata_wr_slv=wr_res[0].slv,
+            data_wr_slv=wr_res[1].slv,
+            pdata=[_h(held), _h(wr_res[2].value)],
+            prefetched_after=pl.st(st_wr, "PREFETCHED"),
+            bad_responses=",".join(held_wr_acc) or "none",
+        )
         prefetched = pl.st(res[1].data[0], "PREFETCHED")
         pd = [res[2].data[i] for i in range(pl.PDATA_READS)]
         pd_flags = res[2].flags
