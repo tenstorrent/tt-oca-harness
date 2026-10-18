@@ -32213,6 +32213,9 @@ positive control, not read directly. Thresholds and IRQEN are discriminating
 only on the stated ports. FIFO occupancy evidence combines accepted pushes
 and STATUS, which has no numeric level field. Data X/Z is checked through
 the active read helper, not the passive model.
+The cleanup flush acts on FIFOs that recovery has already drained. Its response
+is checked, but its state-clearing effect and the model's flush behavior are
+not independently validated by this scenario.
 
 *Pass Criteria*: All required checks pass. Used alone,
 `+SMC_MAILBOX_RESET_SEQUENCE_NEGATIVE` changes 24 DEFAULTS, three EMPTY and
