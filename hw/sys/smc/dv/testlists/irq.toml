@@ -107,9 +107,145 @@ tests = [
 ]
 
 [[tests]]
+name = "smc_ext_irq_pulse_sampling_test"
+module = "smc_ext_irq_pulse_sampling_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "ext"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_mailbox_irq_test"
 module = "smc_mailbox_irq_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "axil", "canonical"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ext_irq_hold_release_test"
+module = "smc_ext_irq_hold_release_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "ext"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ext_irq_low_bits_test"
+module = "smc_ext_irq_low_bits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "ext"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sep_mbx_irq_vector_test"
+module = "smc_sep_mbx_irq_vector_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ndm_irq_or_test"
+module = "smc_ndm_irq_or_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_irq_reserved_idle_zero_test"
+module = "smc_irq_reserved_idle_zero_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sep_wdt_irq_level_test"
+module = "smc_sep_wdt_irq_level_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sync_irq_isolation_test"
+module = "smc_sync_irq_isolation_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_hang_sys_timeout_window_test"
+module = "smc_hang_sys_timeout_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "hang"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_hang_data_timeout_window_test"
+module = "smc_hang_data_timeout_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "hang"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_irq_vector_assembly_test"
+module = "smc_irq_vector_assembly_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_hang_sep_timeout_window_test"
+module = "smc_hang_sep_timeout_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "hang"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_hang_sep_threshold_test"
+module = "smc_hang_sep_threshold_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "hang"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_hang_sep_drop_controls_test"
+module = "smc_hang_sep_drop_controls_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "hang"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_irq_csr_readback_test"
+module = "smc_irq_csr_readback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_hang_irq_or_matrix_test"
+module = "smc_hang_irq_or_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "hang"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mbx_inbound_irq_vector_test"
+module = "smc_mbx_inbound_irq_vector_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
 run_modes = ["smoke"]

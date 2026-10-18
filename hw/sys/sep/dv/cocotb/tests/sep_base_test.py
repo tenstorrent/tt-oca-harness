@@ -11,6 +11,7 @@ shadow array against that image after sense-done.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import logging
 import os
@@ -240,11 +241,40 @@ class sep_base_test(uvm_test):
         return sep_base_test.rd(sig, mask)
 
     @staticmethod
+    def full_cpu_build() -> bool:
+        """True when the build carries the full ``sep_cpu`` with the VeeR core.
+
+        The ``lsu_stub_all_live`` build replaces ``sep_cpu`` with the LSU stub, which has
+        no ``u_el2_veer_wrapper``. A build whose hierarchy does not expose the core
+        reads as not full.
+        """
+        try:
+            cocotb.top.u_dut.u_sep.u_sep_cpu.u_el2_veer_wrapper  # noqa: B018 - hierarchy probe
+        except AttributeError:
+            return False
+        return True
+
+    @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
+        """Idle-default drive: a pin the build does not have is skipped.
+
+        Only for idle defaults. A graded or stimulus drive uses ``_set_pin``.
+        """
         try:
             getattr(dut, name).value = value
         except AttributeError:
             pass
+
+    @staticmethod
+    def _set_pin(dut, name: str, value: int) -> None:
+        """Stimulus drive: raises when the build does not have the pin."""
+        try:
+            sig = getattr(dut, name)
+        except AttributeError as exc:
+            raise AssertionError(
+                f"PIN-DRIVE FAIL: {name} is not a port of this build; the stimulus cannot be driven"
+            ) from exc
+        sig.value = value
 
     def build_phase(self) -> None:
         require_file_plusargs(FILE_PLUSARGS)
@@ -253,6 +283,11 @@ class sep_base_test(uvm_test):
         self._install_evidence_filter(self._evidence)
         self.cfg = SepEnvCfg("cfg")
         self._efuse_compare_image: SepEfuseImage | None = None
+        # The eFuse model reads out/sep_efuse.hex once, when rst_ni first reads 1
+        # (efuse_bank_model.sv). After that load, and before the first sense
+        # compare, a new image cannot reach the OTP (write_efuse_image raises).
+        self._efuse_otp_loaded = False
+        self._efuse_sense_checked = False
         self.logger.info(
             "SEP timing: sys_clk_period=%s ns ref_clk_period=%s ns",
             self.cfg.sys_clk_period_ns,
@@ -269,16 +304,86 @@ class sep_base_test(uvm_test):
         if self.build_env:
             self.env = SepEnv("env", self)
 
-    def start_clocks(self, dut=None) -> None:
-        """Start the clocks exposed by tb_top."""
+    def start_clocks(self, dut=None, *, phases_ps: dict[str, int] | None = None) -> None:
+        """Start the clocks exposed by tb_top.
+
+        ``phases_ps`` maps a clock pin name (``clk_i``, ``clk_wdt_i``,
+        ``entropy_rosc_sample_clk_i``, ``clk_ref_i``) to a start delay in whole ps.
+        The clock pin stays at its value until the delay ends, then the clock
+        starts high. A pin that is not in the map starts at once, as with no map.
+        With no ``phases_ps`` argument the map is ``self.clock_phases_ps``, which
+        a leaf sets before a bring-up helper calls this method. Periods and phases
+        are whole ps, so every delay is exact at a 1 ps or 1 fs simulator precision.
+        """
         if dut is None:
             dut = cocotb.top
-        cocotb.start_soon(Clock(dut.clk_i, self.cfg.sys_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_wdt_i, self.cfg.wdt_clk_period_ns, units="ns").start())
-        cocotb.start_soon(
-            Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns, units="ns").start()
-        )
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
+        if phases_ps is None:
+            phases_ps = getattr(self, "clock_phases_ps", None)
+        phases = dict(phases_ps or {})
+        unknown = set(phases) - set(self._clock_periods_ns())
+        if unknown:
+            raise KeyError(f"start_clocks: unknown clock pin(s) {sorted(unknown)}")
+        for name, period_ns in self._clock_periods_ns().items():
+            self._start_clock(dut, name, period_ns, phases.get(name, 0))
+
+    def _clock_periods_ns(self) -> dict[str, float]:
+        return {
+            "clk_i": self.cfg.sys_clk_period_ns,
+            "clk_wdt_i": self.cfg.wdt_clk_period_ns,
+            "entropy_rosc_sample_clk_i": self.cfg.entropy_clk_period_ns,
+            "clk_ref_i": self.cfg.ref_clk_period_ns,
+        }
+
+    @staticmethod
+    def _whole_ps(value_ns: float, what: str) -> int:
+        ps = round(value_ns * 1000)
+        if abs(value_ns * 1000 - ps) > 1e-6:
+            raise ValueError(f"{what} {value_ns} ns is not a whole number of ps")
+        return ps
+
+    def _start_clock(self, dut, name: str, period_ns: float, phase_ps: int) -> None:
+        if not hasattr(self, "_clock_drivers"):
+            self._clock_drivers = {}
+        if phase_ps != int(phase_ps) or phase_ps < 0:
+            raise ValueError(f"{name} start phase {phase_ps} is not a whole, non-negative ps")
+        period_ps = self._whole_ps(period_ns, f"{name} period")
+        clk = Clock(getattr(dut, name), period_ps, units="ps")
+        if not phase_ps:
+            task = cocotb.start_soon(clk.start())
+        else:
+
+            async def _delayed() -> None:
+                await Timer(int(phase_ps), units="ps")
+                started = clk.start()
+                # cocotb 1.x returns the clock coroutine; cocotb 2.x runs its own task.
+                if inspect.iscoroutine(started):
+                    await started
+
+            task = cocotb.start_soon(_delayed())
+        self._clock_drivers[name] = (clk, task)
+
+    def restart_clock(self, name: str, period_ns: float, phase_ps: int = 0, dut=None) -> None:
+        """Stop the clock on pin ``name`` and start it again at ``period_ns``.
+
+        The pin holds its last value for ``phase_ps`` (whole ps), then the clock
+        starts high. The other clocks keep running.
+        """
+        if dut is None:
+            dut = cocotb.top
+        clocks = getattr(self, "_clock_drivers", {})
+        if name not in clocks:
+            raise KeyError(f"restart_clock: {name} was not started by start_clocks")
+        clk, task = clocks.pop(name)
+        stop = getattr(clk, "stop", None)
+        if stop is not None:
+            try:
+                stop()
+            except RuntimeError:
+                # cocotb 2.x: the clock of a delayed start had not started yet.
+                pass
+        if not task.done():
+            task.cancel()
+        self._start_clock(dut, name, period_ns, phase_ps)
 
     def bind_smc_responder(self, dut) -> None:
         """Attach the shared AXI slave agent to the SEP->SMC boundary.
@@ -321,6 +426,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "rst_vec_i", rst_vec)
         self._set_if_exists(dut, "esrc_noise_ext_i", 0)
         self._set_if_exists(dut, "spi_miso_i", 1)
+        self._set_if_exists(dut, "spi_sd_i", 0)
         # TEST_EN strap / LC sigint inject default off. Tests that need either
         # polarity raise the port themselves after bring-up (or before sense).
         self._set_if_exists(dut, "test_en_strap_i", 0)
@@ -348,11 +454,50 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         self._set_if_exists(dut, "hmac_fifo_drain_stall_i", 0)
         self._set_if_exists(dut, "kmac_fifo_drain_stall_i", 0)
+        # Crypto and entropy injects off and the external TRNG streams and
+        # interrupt on the wrapper tie-off unless a leaf drives them
+        # (docs/SEP_TB_ARCH.adoc).
+        for pin in (
+            "crypto_alert_inject_i",
+            "crypto_alert_inject_idx_i",
+            "crypto_alert_inject_val_i",
+            "esrc_fifo_parity_inject_i",
+            "esrc_fifo_parity_bit_i",
+            "esrc_fifo_ptr_inject_i",
+            "esrc_fifo_ptr_sel_i",
+            "esrc_fifo_ptr_bit_i",
+            "esrc_noise_stuck_en_i",
+            "esrc_noise_stuck_val_i",
+            "ext_trng_drive_en_i",
+            "ext_trng_tvalid_i",
+            "ext_trng_tdata_i",
+            "ext_trng_tstrb_i",
+            "ext_trng_irq_drive_i",
+        ):
+            self._set_if_exists(dut, pin, 0)
         # Boundary PIC input and outbound responder control: idle (0) unless a
         # leaf drives them (docs/SEP_TB_ARCH.adoc).
         self._set_if_exists(dut, "sep_ext_interrupts_i", 0)
         self._set_if_exists(dut, "smn_outbound_resp_hold_i", 0)
         self._set_if_exists(dut, "smn_outbound_rd_slverr_i", 0)
+        self._set_if_exists(dut, "smn_outbound_ready_stall_i", 0)
+        self._set_if_exists(dut, "smn_outbound_rd_addr_data_i", 0)
+        # DFT pins in functional mode, DMI enables off, the core TAP pins on the
+        # tb_top registers, and the TCM and ROM bit-flip injects idle
+        # (docs/SEP_TB_ARCH.adoc).
+        self._set_if_exists(dut, "test_en_i", 0)
+        self._set_if_exists(dut, "scan_rst_ni_i", 1)
+        self._set_if_exists(dut, "dmi_core_enable_i", 0)
+        self._set_if_exists(dut, "dmi_uncore_enable_i", 0)
+        self._set_if_exists(dut, "jtag_bench_own_i", 0)
+        self._set_if_exists(dut, "jtag_tck_i", 0)
+        self._set_if_exists(dut, "jtag_tms_i", 0)
+        self._set_if_exists(dut, "jtag_tdi_i", 0)
+        self._set_if_exists(dut, "jtag_trst_n_i", 0)
+        for pin in ("tcm_flip_i", "tcm_flip_addr_i", "tcm_flip_mask_i"):
+            self._set_if_exists(dut, pin, 0)
+        for pin in ("rom_flip_i", "rom_flip_index_i", "rom_flip_mask_i"):
+            self._set_if_exists(dut, pin, 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
         # bus. Called before start_clocks. Env-built tests drive the same idle.
@@ -379,6 +524,7 @@ class sep_base_test(uvm_test):
 
     def _check_efuse_shadow_after_sense(self) -> None:
         """Backdoor-compare sensed shadow data for real eFuse-image sense runs."""
+        self._efuse_sense_checked = True
         if "skip_fuse_sense" in cocotb.plusargs:
             return
         if self._efuse_compare_image is None:
@@ -435,9 +581,9 @@ class sep_base_test(uvm_test):
         dut = cocotb.top
         val = 1 if hold else 0
         for eng in engines:
-            port = self._JTAG_SW_RST_HOLD.get(eng)
-            if port is not None:
-                self._set_if_exists(dut, port, val)
+            if eng not in self._JTAG_SW_RST_HOLD:
+                raise KeyError(f"no JTAG SW-reset hold pin for engine {eng!r}")
+            self._set_pin(dut, self._JTAG_SW_RST_HOLD[eng], val)
         if engines:
             self.logger.info(
                 "JTAG SW-reset hold %s -> %s",
@@ -461,6 +607,7 @@ class sep_base_test(uvm_test):
         on stimulus that does not exist.
         """
         dut.rst_ni.value = 1
+        self._efuse_otp_loaded = True
         await Timer(1, units="ns")
         dut.rst_ni.value = 0
         await Timer(1, units="ns")
@@ -480,7 +627,17 @@ class sep_base_test(uvm_test):
         await self.assert_cold_reset(dut)
         self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
-        await ClockCycles(dut.clk_i, 20)
+        # Power-on debug reset: dbg_rstb_i falls and rises while rst_ni is low.
+        # On the full-CPU build it resets the core debug module, whose dmcontrol
+        # bits gate the core reset (el2_veer.sv core_rst_l); without the edge
+        # they stay X on a four-state simulator. The stub build has no load.
+        self._set_if_exists(dut, "dbg_rstb_i", 0)
+        await ClockCycles(dut.clk_i, 10)
+        self._set_if_exists(dut, "dbg_rstb_i", 1)
+        self.logger.info(
+            "Power-on debug reset: dbg_rstb_i pulsed low for 10 clocks with rst_ni low"
+        )
+        await ClockCycles(dut.clk_i, 10)
         self.logger.info("Releasing rst_ni")
         dut.rst_ni.value = 1
         await ClockCycles(dut.clk_i, 2)
@@ -664,7 +821,7 @@ class sep_base_test(uvm_test):
         self.drive_idle_defaults(dut, cpu_run=True, rst_vec=rst_vec)
         await self.assert_cold_reset(dut)
         # CPU boot: EL2 debug reset follows cold reset.
-        self._set_if_exists(dut, "dbg_rstb_i", 0)
+        self._set_pin(dut, "dbg_rstb_i", 0)
         self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)
@@ -674,7 +831,7 @@ class sep_base_test(uvm_test):
             self.logger.info("CPU boot: pre-reset hook complete")
         self.logger.info("Releasing rst_ni")
         dut.rst_ni.value = 1
-        self._set_if_exists(dut, "dbg_rstb_i", 1)
+        self._set_pin(dut, "dbg_rstb_i", 1)
         # Gate on the real fabric-release signal, then a small CPU settle margin.
         await self._wait_fuse_sense(max_cycles)
         if park and release_park:
@@ -921,10 +1078,43 @@ class sep_base_test(uvm_test):
         The efuse bank model loads that default path unless ``+sep_efuse_hex=<path>``
         overrides it for a special run. The image is also kept as
         the golden for the automatic post-sense shadow comparison.
+
+        The model reads the file once, when ``rst_ni`` first reads 1. A call
+        after that load and before the first post-sense compare, with real fuse
+        sense and an image that differs from the file on disk, raises: the
+        sense would read the earlier image. After a sense, a call updates only
+        the golden (for example after a program), and the log says so.
         """
         out_dir = os.path.join(os.getcwd(), "out")
         os.makedirs(out_dir, exist_ok=True)
         path = os.path.join(out_dir, "sep_efuse.hex")
+        loaded = self._efuse_otp_loaded or str(cocotb.top.rst_ni.value) == "1"
+        if loaded:
+            tmp = f"{path}.after_load.{os.getpid()}"
+            image.write_hex(tmp)
+            try:
+                with open(tmp, "rb") as new, open(path, "rb") as old:
+                    same = new.read() == old.read()
+            except OSError:
+                same = False
+            finally:
+                os.remove(tmp)
+            real_sense = "skip_fuse_sense" not in cocotb.plusargs
+            override = "sep_efuse_hex" in cocotb.plusargs
+            if not same and real_sense and not override and not self._efuse_sense_checked:
+                msg = (
+                    "EFUSE-IMAGE FAIL: write_efuse_image after the OTP load "
+                    f"({path} is read once, when rst_ni first reads 1) and before "
+                    "the first sense: the sense reads the earlier image. Write the "
+                    "image before the first reset."
+                )
+                self.logger.error(msg)
+                raise AssertionError(msg)
+            self.logger.info(
+                "eFuse image written after the OTP load: the OTP keeps its contents; "
+                "this image is the post-sense golden only (same_as_loaded_file=%d)",
+                int(same),
+            )
         image.write_hex(path)
         # The CWD copy above (loaded by the responder) lives in the test dir and
         # is overwritten every run. Archive a per-run copy under the run output
@@ -1829,9 +2019,32 @@ class sep_base_test(uvm_test):
                 + " -- the run exited cleanly without grading what it claims to grade"
             )
 
+    def result_pass(self, test: str, seed: int, checks: int, extra: str = "") -> None:
+        """Hold the ``RESULT <test> seed=<n> PASS checks=<k>`` line of the leaf.
+
+        A leaf calls this at the end of ``run_scenario``. The line is logged in
+        ``report_phase``, so it appears only after the evidence gate and every
+        component ``check_phase`` passed; a leaf that fails either one logs no
+        ``RESULT ... PASS`` line.
+        """
+        self._result_pass = (test, seed, checks, extra)
+
     async def run_phase(self) -> None:
         self.raise_objection()
         self._log_run_identity()
         await self.run_scenario()
+        # The last bus beat of a scenario can land on the clk_i edge where it
+        # returns. Leave that time step before the run ends, so that the HDL
+        # processes of the edge (the FCOV sampler among them) run.
+        await Timer(1, units="ns")
         self._finalize_evidence()
+        self._evidence_passed = True
         self.drop_objection()
+
+    def report_phase(self) -> None:
+        # pyuvm runs report_phase after check_phase of every component, and only
+        # when none of them raised.
+        held = getattr(self, "_result_pass", None)
+        if held is not None and getattr(self, "_evidence_passed", False):
+            test, seed, checks, extra = held
+            self.logger.info("RESULT %s seed=%d PASS checks=%d%s", test, seed, checks, extra)

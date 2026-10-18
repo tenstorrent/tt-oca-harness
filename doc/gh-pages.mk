@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# GitHub Pages publish path (ghp-import -> gh-pages branch).
+# GitHub Pages site staging. .github/workflows/doc.yml deploys the staged tree
+# as a Pages artifact.
 #
 ifndef ocah_doc_ghpages_mk
 ocah_doc_ghpages_mk := 1
@@ -13,7 +14,8 @@ OCAH_COMBINED_PLAYBOOK ?= $(OCAH_ROOT)/antora-playbook.yml
 # org.github.io/repo host with no custom domain, or empty/unset if a
 # custom domain fronts the repo root. Left as an override, not hardcoded.
 OCAH_DOC_SITE_URL ?=
-# 1 also publishes the release documentation snapshots (needs gh).
+# 1 also restores the release documentation snapshots into the staged tree
+# (needs gh).
 OCAH_DOC_RELEASE_SNAPSHOTS ?= 0
 
 ## Build the combined multi-book site (Home + every book, one Antora run).
@@ -32,12 +34,11 @@ ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-pr
 	$(call ocah_stage_dashboard_data,$(OCAH_GHPAGES_DIR))
 	@echo "Done: $(OCAH_GHPAGES_DIR)/ocah-home/latest/index.html"
 
-## Stage the combined site for GitHub Pages: add PDFs + .nojekyll on top of
-## the Antora output. No more manual copying of separate builds.
+## Stage the combined site for GitHub Pages: add PDFs on top of the Antora
+## output. No more manual copying of separate builds.
 .PHONY: ocah-doc-stage-ghpages
 ocah-doc-stage-ghpages: ocah-doc-combined-html
 	@mkdir -p "$(OCAH_GHPAGES_DIR)/downloads"
-	@touch "$(OCAH_GHPAGES_DIR)/.nojekyll"
 	@if [ -f "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" ]; then \
 		cp "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
 	else \
@@ -65,33 +66,11 @@ ocah-doc-stage-ghpages: ocah-doc-combined-html
 			echo "warning: Datasheet PDF not found at $(OCAH_DATASHEETS_BUILD)/$$pdf, skipping -- run: ./scripts/docker-run.sh doc-pdf datasheets"; \
 		fi; \
 	done
-	@echo "Staged GitHub Pages tree at $(OCAH_GHPAGES_DIR)"
-	@echo "Note: datasheet download links for sheets that are not yet authored remain placeholders."
-
-## Push the already-staged tree to the gh-pages branch. This is what CI
-## calls, after CI's own separate HTML/PDF build steps have already run.
-.PHONY: ocah-doc-push-ghpages
-ocah-doc-push-ghpages: ocah-doc-stage-ghpages
-	@command -v uv >/dev/null 2>&1 || { \
-		echo "error: uv is required to deploy GitHub Pages (ghp-import)."; \
-		echo "install uv, or see https://docs.astral.sh/uv/"; \
-		exit 1; \
-	}
 ifeq ($(OCAH_DOC_RELEASE_SNAPSHOTS),1)
 	@cd "$(OCAH_ROOT)" && uv run python tools/doc/release_docs.py restore "$(OCAH_GHPAGES_DIR)"
 endif
-	@cd "$(OCAH_ROOT)" && uv run ghp-import -n -p -f "$(OCAH_GHPAGES_DIR)"
-	@echo "Deployed to GitHub Pages (gh-pages branch)."
-
-## All-in-one convenience for a manual local deploy: build HTML and PDFs,
-## stage, and push.
-.PHONY: ocah-doc-deploy-ghpages
-ocah-doc-deploy-ghpages:
-	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-trm-pdf
-	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-integrator-pdf
-	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-programmer-pdf
-	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-datasheets-pdf
-	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-push-ghpages
+	@echo "Staged GitHub Pages tree at $(OCAH_GHPAGES_DIR)"
+	@echo "Note: datasheet download links for sheets that are not yet authored remain placeholders."
 
 .PHONY: ocah-doc-ghpages-clean
 ocah-doc-ghpages-clean:
@@ -103,8 +82,6 @@ ocah-doc-clean: ocah-doc-ghpages-clean
 OCAH_PHONY += \
   ocah-doc-combined-html \
   ocah-doc-stage-ghpages \
-  ocah-doc-push-ghpages \
-  ocah-doc-deploy-ghpages \
   ocah-doc-ghpages-clean
 
 endif

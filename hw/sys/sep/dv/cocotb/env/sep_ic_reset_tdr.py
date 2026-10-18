@@ -103,6 +103,24 @@ class SepIcResetTdr:
         self._set("jtag_ic_reset_tdr_en_i", 1)
         await ReadWrite()
 
+    async def trst_pulse(self, low_ps: int) -> None:
+        """Assert the PTAP TRST for ``low_ps`` ps, then release it; the TDR stays routed.
+
+        ``hw/sys/dtp/doc/clk_rst.adoc`` (Reset Architecture): TRST_n drives the PTAP
+        to Test-Logic-Reset and clears all TDRs. The bench models the two effects
+        on the register with two pins, so both are low for the pulse:
+        ``jtag_ic_reset_trst_n_i`` (TRST, the ``reset_hold`` reset) and
+        ``jtag_ic_reset_rst_n_i`` (the Test-Logic-Reset scan reset of
+        ``reset_enable`` and ``reset_control``). ``jtag_ic_reset_tdr_en_i`` stays
+        1, so the DUT sees the register outputs through the pulse.
+        """
+        self._set("jtag_ic_reset_trst_n_i", 0)
+        self._set("jtag_ic_reset_rst_n_i", 0)
+        await Timer(low_ps, unit="ps")
+        self._set("jtag_ic_reset_rst_n_i", 1)
+        self._set("jtag_ic_reset_trst_n_i", 1)
+        await ReadWrite()
+
     async def capture_shift_update(self, value: int) -> int:
         """Capture-DR, shift ``value`` LSB first, Update-DR. Returns the captured word."""
         self._set("jtag_ic_reset_select_i", 1)

@@ -14,6 +14,38 @@
 
 localparam int unsigned FcovOwnNone = 0;
 
+// Crypto and entropy.
+localparam int unsigned FcovOwnSepIrqIpToAggregatorTest = 125;
+localparam int unsigned FcovOwnSepCryptoEdnMultisinkArbitrationTest = 126;
+localparam int unsigned FcovOwnSepHmacIllegalCfgStartTest = 127;
+localparam int unsigned FcovOwnSepHmacFifoStreamRandTest = 128;
+localparam int unsigned FcovOwnSepHmacSwapContextRandTest = 129;
+localparam int unsigned FcovOwnSepCryptoDeliveredKeySelectRandTest = 130;
+localparam int unsigned FcovOwnSepAesEncodingInjectRandTest = 131;
+localparam int unsigned FcovOwnSepAesStreamStatusRandTest = 132;
+localparam int unsigned FcovOwnSepAesReseedTriggerRandTest = 133;
+localparam int unsigned FcovOwnSepCryptoShadowUpdateErrRandTest = 134;
+localparam int unsigned FcovOwnSepKmacUnsupportedCfgInjectTest = 135;
+localparam int unsigned FcovOwnSepKmacStreamCfgRandTest = 136;
+localparam int unsigned FcovOwnSepKmacEntropyModeRandTest = 137;
+localparam int unsigned FcovOwnSepOtbnCmdStatusRandTest = 138;
+localparam int unsigned FcovOwnSepAbrCommandMatrixRandTest = 139;
+localparam int unsigned FcovOwnSepEsrcCsrRwWalkRandTest = 140;
+localparam int unsigned FcovOwnSepEsrcHealthPatternRandTest = 141;
+localparam int unsigned FcovOwnSepEsrcPersistentAlertRandTest = 142;
+localparam int unsigned FcovOwnSepEsrcAutotuneDetuneTest = 143;
+localparam int unsigned FcovOwnSepEsrcStartupGateRandTest = 144;
+localparam int unsigned FcovOwnSepEsrcConditioningMatrixRandTest = 145;
+localparam int unsigned FcovOwnSepEsrcFifoFlowRandTest = 146;
+localparam int unsigned FcovOwnSepEsrcObserveFifoRandTest = 147;
+localparam int unsigned FcovOwnSepDrbgFatalErrInjectRandTest = 148;
+localparam int unsigned FcovOwnSepDrbgRegwenLockRandTest = 149;
+localparam int unsigned FcovOwnSepDrbgCmdSequenceRandTest = 150;
+localparam int unsigned FcovOwnSepTrngExtStreamHandshakeRandTest = 151;
+localparam int unsigned FcovOwnSepTrngExtSinkResetRandTest = 152;
+localparam int unsigned FcovOwnSepDrbgSinkMixRandTest = 153;
+localparam int unsigned FcovOwnSepAesCfbOfbGcmRandTest = 154;
+
 // Fabric and remap.
 localparam int unsigned FcovOwnSepFabricInboundRebaseTest = 225;
 localparam int unsigned FcovOwnSepFabricFilterMatchPriorityRandTest = 226;
@@ -50,6 +82,30 @@ localparam int unsigned FcovOwnSepDmaIrqErrorLockRandTest = 413;
 localparam int unsigned FcovOwnSepDmaAbortRecoveryRandTest = 414;
 localparam int unsigned FcovOwnSepSpiDmaHandshakeRandTest = 415;
 localparam int unsigned FcovOwnSepDmaZeroFillRandTest = 416;
+localparam int unsigned FcovOwnSepSpiOtDmaRxTest = 417;
+localparam int unsigned FcovOwnSepSpiPadOeRulesTest = 418;
+localparam int unsigned FcovOwnSepSpiOtFlashCmdRandTest = 419;
+localparam int unsigned FcovOwnSepSpiOtDmaTxTest = 420;
+localparam int unsigned FcovOwnSepDmaZeroFillContinuationTest = 421;
+localparam int unsigned FcovOwnSepDmaZeroTest = 422;
 
-// Owner of sep_fabric_dedicated_port_cg.cp_tcm_dma_dir_range.
+// Memory, boot, reset, WDT and clock. SepTcmDmaApertureEccTest also owns
+// sep_fabric_dedicated_port_cg.cp_tcm_dma_dir_range.
+localparam int unsigned FcovOwnSepBootReleaseTermsTest = 513;
+localparam int unsigned FcovOwnSepColdResetPhaseTest = 514;
+localparam int unsigned FcovOwnSepCpuResetRetentionTest = 515;
+localparam int unsigned FcovOwnSepSwResetIsolationMatrixTest = 516;
+localparam int unsigned FcovOwnSepIpResetOverrideMatrixTest = 517;
+localparam int unsigned FcovOwnSepScanResetOverrideTest = 518;
+localparam int unsigned FcovOwnSepCpuResetEntryTest = 519;
+localparam int unsigned FcovOwnSepSecureTmStrapSamplingTest = 520;
+localparam int unsigned FcovOwnSepCpuCtrlRegShapeTest = 521;
+localparam int unsigned FcovOwnSepTimerClockContractTest = 522;
+localparam int unsigned FcovOwnSepBootRomApertureSweepTest = 523;
+localparam int unsigned FcovOwnSepSramAxiShapeMatrixTest = 524;
 localparam int unsigned FcovOwnSepTcmDmaApertureEccTest = 525;
+localparam int unsigned FcovOwnSepTcmEccCpuTrapTest = 526;
+localparam int unsigned FcovOwnSepCpuDemuxUnmappedFetchTest = 527;
+localparam int unsigned FcovOwnSepDebugMasterTargetMatrixTest = 528;
+localparam int unsigned FcovOwnSepCpuIsaPmpCsrTest = 529;
+localparam int unsigned FcovOwnSepCpuZbeExecTest = 530;

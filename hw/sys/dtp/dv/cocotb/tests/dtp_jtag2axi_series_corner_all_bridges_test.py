@@ -20,6 +20,7 @@ class dtp_jtag2axi_series_corner_all_bridges_test(dtp_jtag2axi_robustness_base_t
         "CHK-AXI-RDATA",
         "CHK-AXI-STRB",
         "CHK-AXI-WMEM",
+        "CHK-AXI-NOACT",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",

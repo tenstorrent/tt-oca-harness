@@ -54,13 +54,13 @@ permissions:
   actions: write
 
 # A deploy restores the release snapshots present when it starts, so deploys
-# of one ref run in order rather than racing to push gh-pages.
+# of one ref run in order rather than racing each other.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     # The site publishes only full releases.
     if: github.event_name != 'release' || !github.event.release.prerelease
     runs-on: ubuntu-latest
@@ -157,18 +157,36 @@ jobs:
           gh release upload "$SNAPSHOT_TAG" "$tarball" --clobber
           gh workflow run doc.yml --ref main
 
-      # A push to main, a dispatch on main, or a successful dashboard run
-      # deploys.
-      - name: Deploy to GitHub Pages
-        if: >-
-          env.SNAPSHOT_TAG == '' && (
-          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-          (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-          (github.event_name == 'workflow_run' &&
-           github.event.workflow_run.conclusion == 'success'))
+      - name: Stage the site
+        if: env.SNAPSHOT_TAG == ''
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          make ocah-doc-push-ghpages OCAH_DOC_RELEASE_SNAPSHOTS=1
+        run: make ocah-doc-stage-ghpages OCAH_DOC_RELEASE_SNAPSHOTS=1
+
+      - name: Upload the site
+        if: env.SNAPSHOT_TAG == ''
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: doc/_build/html_antora
+          retention-days: 1
+
+  # A push to main, a dispatch on main, or a successful dashboard run
+  # deploys.
+  deploy:
+    needs: build
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.tag == '') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

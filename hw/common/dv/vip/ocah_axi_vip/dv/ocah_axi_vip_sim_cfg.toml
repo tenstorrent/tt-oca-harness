@@ -92,11 +92,11 @@ build_args = [
 # passive cocotb wire harness to the self-contained SV-UVM shape, which `include`s
 # uvm/tests/ocah_axi_vip_tests.sv.
 [frameworks.uvm]
-description = "Shared AXI VIP SV-UVM selftest flow (VCS)"
-# The DUT-level default_tool/tools above serve the cocotb view; this view is
-# VCS-only (the profile's [frameworks.uvm] contract).
+description = "Shared AXI VIP SV-UVM selftest flow (VCS, Verilator)"
+# The DUT-level default_tool/tools above serve the cocotb view; this view runs on VCS and
+# Verilator.
 default_tool = "vcs"
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 
 [frameworks.uvm.build]
 # The VIP SV-UVM layer comes from its VIP-owned ordered manifest, expanded AHEAD of this
@@ -123,6 +123,11 @@ sources = [
 
 [frameworks.uvm.sim]
 args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+# The SV-UVM shape of the harness has its own checker instances, so the view
+# grades against holes of its own; the scope file is the cocotb view's.
+[frameworks.uvm.coverage.verilator]
+policy_file = "hw/common/dv/vip/ocah_axi_vip/dv/cov/config/verilator/uvm_coverage_policy.toml"
 
 [frameworks.uvm.targets.default]
 description = "Shared AXI VIP SV-UVM default target"

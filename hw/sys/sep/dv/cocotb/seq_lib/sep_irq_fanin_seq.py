@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from itertools import combinations
 
+from env.sep_spec_tables import pic
 from sep_reg_meta import CSRNG, EDN, HMAC, KMAC
 
 from seq_lib.sep_irq_aggregator_seq import (
@@ -63,10 +64,15 @@ FANIN_SOURCES = (
     ),
 )
 
-# The aggregator region this test owns: sep_internal_interrupts[8:33] (the
-# crypto/KM/DMA fan-in; bits [7:0] are the mailbox region, covered elsewhere).
-REGION_LO = 8
-REGION_HI = 33
+# The aggregator region this test owns: from the first source after the eight
+# mailbox sources ("DMA transfer done", PIC 9) to "Locked field access" (PIC 34),
+# both from hw/sys/sep/doc/interrupts.adoc (SEP PIC source assignments table) via
+# the DV-owned PIC table in env/sep_spec_tables.py. That is
+# sep_internal_interrupts[8:33], the DMA/crypto/KM fan-in; bits [7:0] are the
+# mailbox sources.
+REGION_LO = agg_from_pic(pic("DMA transfer done"))
+REGION_HI = agg_from_pic(pic("Locked field access"))
+assert (REGION_LO, REGION_HI) == (8, 33), (REGION_LO, REGION_HI)
 REGION_MASK = (((1 << (REGION_HI + 1)) - 1) >> REGION_LO) << REGION_LO
 
 

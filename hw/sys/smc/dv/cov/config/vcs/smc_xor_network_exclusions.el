@@ -6,9 +6,9 @@
 // ExclMode: default
 //
 // Generated from urg's condition template and the merged report; regenerate
-// rather than edit. Only conditions that are
-// an XOR of four or more terms are listed, and only their uncovered rows;
-// the network's output is what the tests compare.
+// rather than edit. Only conditions that are an XOR of four or more terms are
+// listed, and only their uncovered rows; the network's output is what the
+// tests compare.
 //==================================================
 
 CHECKSUM: "3814944388 3447933561"

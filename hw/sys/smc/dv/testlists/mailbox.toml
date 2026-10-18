@@ -55,8 +55,56 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_mailbox_irq_ack_output_test"
+module = "smc_mailbox_irq_ack_output_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_mailbox_event_irq_test"
 module = "smc_mailbox_event_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mailbox_pair_datapath_test"
+module = "smc_mailbox_pair_datapath_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mailbox_access_error_test"
+module = "smc_mailbox_access_error_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mailbox_flush_status_test"
+module = "smc_mailbox_flush_status_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mailbox_threshold_irqs_test"
+module = "smc_mailbox_threshold_irqs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mailbox_register_map_reset_test"
+module = "smc_mailbox_register_map_reset_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]

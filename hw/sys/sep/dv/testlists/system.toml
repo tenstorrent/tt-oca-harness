@@ -204,6 +204,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_irq_ip_to_aggregator_test"
 module = { cocotb = "system.sep_irq_ip_to_aggregator_test", uvm = "sep_irq_ip_to_aggregator_test" }
 seed = 1
+reseed = 4
 timeout_sec = 1800
 tags = ["interrupt", "aggregator", "csrng", "edn", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -712,3 +713,105 @@ tags = ["timeout", "irq", "fabric", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# sep_reset_n releases synchronously to clk_i, the watchdog timer-domain reset releases
+# synchronized to clk_wdt_i, and the watchdog and wakeup control registers hold their
+# reset values after a cold reset.
+name = "sep_cold_reset_phase_test"
+module = "system.sep_cold_reset_phase_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["reset", "clock", "wdt", "system", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# While test_en_i is high, scan_rst_ni replaces the SEP and watchdog reset synchronizer
+# outputs, the scan bypass muxes and the Key Manager reset conditioner outputs. With
+# test_en_i low it has no effect.
+name = "sep_scan_reset_override_test"
+module = "system.sep_scan_reset_override_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["reset", "dft", "scan", "system", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+sep_edn_jtag_reset_waive"]
+
+[[tests]]
+# SEP_CPU_CTRL version ID, NMI vector lock, read-only status and write-only timeout
+# registers, and the scratch bank field layout for every write order and shape.
+name = "sep_cpu_ctrl_reg_shape_test"
+module = "system.sep_cpu_ctrl_reg_shape_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["cpu_ctrl", "csr", "scratch", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# REFERENCE_COUNTER, the watchdog and the wakeup timer count as the register description
+# states, the watchdog registers answer on either lane, and only a cold reset sets
+# WDOG_REGWEN again.
+name = "sep_timer_clock_contract_test"
+module = "system.sep_timer_clock_contract_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive"]
+
+[[tests]]
+# The same leaf on the full-CPU model, where the dbg_rstb_i cell of the WDOG_REGWEN hold
+# check runs; it fails without the full CPU on VCS.
+name = "sep_timer_clock_contract_test_dbg"
+module = "system.sep_timer_clock_contract_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem"]
+run_modes = ["no_cpu"]
+tools = ["vcs"]
+target = "default"
+args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"]
+
+[[tests]]
+# The CPU LSU and the Secure DMA toward the outbound port, singly and together, under
+# seed-drawn responder READY and VALID delays: path, LSU/DMA requests outstanding at the
+# port at once, same-ID order, exactly-once B and R, response routing, AxUSER, AxPROT and
+# ID per initiator. The SMN inbound master issues alongside as the stimulus of the no-path
+# check (fabric.adoc, Routing: DECERR, nothing at the port). RANDCFG.
+name = "sep_outbound_contention_rand_test"
+module = "system.sep_outbound_contention_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["outbound", "fabric", "dma", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+sep_outbound_depth=64"]
+
+[[tests]]
+# Outbound target READY stall and B/R hold-then-release against the CPU LSU and the Secure
+# DMA, with the local crossbar outstanding limit reached under the held target: finite
+# stop, held request completes after a release, drain without deadlock, B and R
+# accounting. The outbound chain limit is printed, not graded. The SMN inbound master
+# issues alongside as the stimulus of the no-path check.
+name = "sep_outbound_stall_saturation_test"
+module = "system.sep_outbound_stall_saturation_test"
+seed = 1
+timeout_sec = 1800
+tags = ["outbound", "fabric", "dma", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+sep_outbound_depth=64"]

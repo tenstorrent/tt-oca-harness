@@ -78,6 +78,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // System cycles a wait on a bridge port's request or completion lasts
   // before it records a CHK-AXI-COMPLETION timeout.
   localparam int unsigned PortWaitCycles = 200;
+  // Bits of the seeded marker a SERIES_DATA length measurement shifts.
+  localparam int unsigned SeriesLenMarkerBits = 16;
 
   // Completed responder bursts per bridge when the pass began: the
   // anti-vacuity record of a scenario requires the bridge it ran on to have
@@ -260,8 +262,9 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
 
   // A seeded word, nonzero and different from every `avoid` word: a capture
   // that repeats an `avoid` word, or a data field a status poll cleared,
-  // cannot pass for it.
-  function bit [63:0] random_distinct_word(dtp_j2a_target_t t, bit [63:0] avoid[$]);
+  // cannot pass for it. `avoid` is a dynamic array because Verilator cannot
+  // pass a fixed-size array to a queue argument.
+  function bit [63:0] random_distinct_word(dtp_j2a_target_t t, bit [63:0] avoid[]);
     bit [63:0] excluded[$];
     bit [63:0] word;
     foreach (avoid[i]) excluded.push_back(mask_target_data(t, avoid[i]));
@@ -1129,6 +1132,119 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     check_status(t, "series_no_incr.status", status, DTP_J2A_SUCCESS);
   endtask
 
+  // Seeded SERIES_CTRL(WRITE) programmings whose beats land in `image`. Each
+  // programming draws a size other than the previous one's and four to six
+  // beats, each an INCR, NO_INCR or WITH_ERROR_STATUS shift of seeded data; a
+  // WITH_ERROR_STATUS shift carries a seeded increment bit. On the AXI4
+  // fabric port a series starts at a seeded size-aligned byte offset inside
+  // the beat; an OTP beat below the bus width never increments, so the stream
+  // keeps every OTP address word-aligned. A beat completes before the next
+  // shift, so none queues. The SERIES_CTRL capture after each programming
+  // holds the address past the last incrementing beat and an OKAY status, and
+  // CHK-J2A-MEM-IMAGE judges the image after the last programming.
+  // +DTP_J2A_SERIES_IMAGE_NEGATIVE flips bit 0 of the image byte at the last
+  // beat's address, and +DTP_J2A_SERIES_ADDR_NEGATIVE expects each
+  // programming's address one stride further, so either run must fail.
+  task run_random_series(dtp_j2a_target_t t, ref bit [7:0] image[bit [63:0]]);
+    bit subword = (t.protocol == OCAH_AXI_PROTO_AXI4);
+    bit addr_negative = test_cfg != null && test_cfg.j2a_series_addr_negative;
+    int unsigned programmings = (random_count < 2) ? 2 : ((random_count > 4) ? 4 : random_count);
+    int unsigned size = 0;
+    bit [63:0] last = '0;
+    if (addr_negative)
+      `uvm_info(get_type_name(), "NEGATIVE VALIDATION: the series end addresses will be corrupted",
+                UVM_LOW)
+    if (test_cfg != null && test_cfg.j2a_series_status_bit_negative)
+      `uvm_info(get_type_name(), "NEGATIVE VALIDATION: the series status bits will be corrupted",
+                UVM_LOW)
+    for (int unsigned prog = 1; prog <= programmings; prog++) begin
+      int unsigned prev = size;
+      int unsigned stride, beats, offset;
+      bit [63:0] base, addr;
+      bit incr_ok;
+      dtp_jtag_instr_e instrs[$];
+      do size = $urandom_range(dtp_j2a_data_size(t)); while (prog > 1 && size == prev);
+      stride  = size_bytes(size);
+      beats   = $urandom_range(6, 4);
+      offset  = subword ? ($urandom_range((t.beat_bytes >> size) - 1) << size) : 0;
+      base    = random_series_base(t, t.beat_bytes * ((offset + beats * stride + t.beat_bytes - 1) /
+                                                     t.beat_bytes), 1'b1) + offset;
+      incr_ok = subword || size == dtp_j2a_data_size(t);
+      instrs  = '{t.series_data_no_incr_instr, t.series_data_with_status_instr};
+      if (incr_ok) instrs.push_back(t.series_data_incr_instr);
+      log_iteration(prog, programmings, $sformatf(
+                    "series write base=0x%014h size=%0d beats=%0d", base, size, beats));
+      series_ctrl_op(t, DTP_J2A_OP_WRITE, base, size);
+      addr = base;
+      for (int unsigned beat = 0; beat < beats; beat++) begin
+        dtp_jtag_instr_e instr = instrs[$urandom_range(instrs.size() - 1)];
+        bit increment = (instr == t.series_data_incr_instr) ||
+            (instr == t.series_data_with_status_instr && incr_ok && $urandom_range(1));
+        bit [63:0] data = {$urandom(), $urandom()} & data_mask(size);
+        string ctx = $sformatf("random_series#%0d.%0d", prog, beat);
+        `uvm_info(
+            get_type_name(), $sformatf(
+            "%s %s addr=0x%014h data=0x%0h increment=%0d", ctx, instr.name(), addr, data, increment
+            ), UVM_LOW)
+        snapshot_target_word(t, image, addr, size);
+        random_series_beat(t, instr, data, addr, size, increment, ctx);
+        image_write(image, addr, data, full_wstrb(size), size);
+        last = addr;
+        if (increment) addr += stride;
+        operation_count++;
+      end
+      check_series_addr(t, addr + (addr_negative ? stride : 0), size, $sformatf(
+                        "random_series#%0d", prog), status);
+      check_status(t, $sformatf("random_series#%0d.status", prog), status, DTP_J2A_SUCCESS);
+    end
+    if (test_cfg != null && test_cfg.j2a_series_image_negative) begin
+      `uvm_info(get_type_name(), "NEGATIVE VALIDATION: the series byte image will be corrupted",
+                UVM_LOW)
+      image[last%DtpJ2aTargetMemBytes] ^= 8'h01;
+    end
+    check_memory_image(t, image, "random_series");
+  endtask
+
+  // One series write beat shifted through `instr`, judged once the port
+  // completes it: the beat's address, data and strobes are armed as stimulus
+  // intents (CHK-AXI-WADDR, CHK-AXI-WDATA, CHK-AXI-STRB), the ledger judges
+  // the request (CHK-J2A-BUS-REQ), and the subordinate must hold `data` at
+  // `addr` (CHK-AXI-WMEM). A WITH_ERROR_STATUS shift returns the status bit of
+  // the last WITH_ERROR_STATUS or SINGLE_OP operation, every one of them OKAY
+  // here, so the bit is 0 (CHK-J2A-STATUS-BIT).
+  // +DTP_J2A_SERIES_STATUS_BIT_NEGATIVE expects 1, so the run must fail.
+  task random_series_beat(dtp_j2a_target_t t, dtp_jtag_instr_e instr, bit [63:0] data,
+                          bit [63:0] addr, int unsigned size, bit increment, string context_s);
+    bit [63:0] wdata = dtp_j2a_series_wdata(t, data, addr, size);
+    bit [7:0] wstrb = dtp_j2a_series_wstrb(t, addr, size);
+    int unsigned completed;
+    int unsigned aw0, w0, ar0;
+    bit [63:0] unused_rdata;
+    bit status_bit;
+    bit done;
+    axi_cfg.arm_expected_write(addr & bit_mask(t.addr_width), wdata, wstrb);
+    if (instr != t.series_data_with_status_instr) begin
+      series_write_beat(t, data, addr, size, increment, context_s);
+      return;
+    end
+    completed = port_history(t.name).count(1'b0);
+    sample_activity(t, aw0, w0, ar0);
+    series_data_with_status(t, data, size, increment, unused_rdata, status_bit);
+    `uvm_info(get_type_name(), $sformatf("%s status_bit=%0d", context_s, status_bit), UVM_MEDIUM)
+    wait_for_target_activity(t, aw0, w0, ar0, 1'b0, {context_s, ".axi"});
+    wait_port_count(t, 1'b0, completed, done);
+    if (!done) record_wait_timeout(t, PortWaitCycles, {context_s, ".write_completion"});
+    expect_bus_request(t, 1'b0, addr, size, wdata, wstrb, context_s);
+    check_target_memory(t, addr, data, size, {context_s, ".mem"});
+    void'(axi_evidence.expect_equal(
+        DtpJ2aStatusBitCheckId,
+        64'(status_bit),
+        64'(test_cfg != null && test_cfg.j2a_series_status_bit_negative),
+        $sformatf(
+            "%s.status_bit target=%s addr=0x%0h", context_s, t.name, addr)
+    ));
+  endtask
+
   // WITH_ERROR_STATUS write stream with one armed fault beat, then a
   // recovery write outside it.
   task run_series_write_incr_with_error(dtp_j2a_target_t t);
@@ -1292,7 +1408,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // seeded sentinel at its address while gated and after the release,
   // latches nothing (CHK-J2A-GATE-TDR), and only the sanctioned restore
   // write completes across the pass. Then a gated series with beats queued
-  // behind one on the bus, and a recovery write.
+  // behind one on the bus, a recovery write, a gated SERIES_CTRL programming,
+  // and a second recovery write.
   task run_write_security_gating(dtp_j2a_target_t t, bit [63:0] addr);
     int unsigned size = t.default_size;
     bit [7:0] wstrb = full_wstrb(size);
@@ -1355,6 +1472,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
              ));
     run_queued_write_drop(t, addr + 64'h100, "gate.queued_drop");
     recover_target(t, addr + 64'h140, (data ^ 64'hA5A5) & data_mask(size), 1'b0, "gate.queued_drop",
+                   status);
+    log_step("5", $sformatf("Gate a %s SERIES_CTRL programming", t.name));
+    gate_series_ctrl(t, "gate.series_ctrl");
+    recover_target(t, addr + 64'h180, (data ^ 64'h5A5A) & data_mask(size), 1'b0, "gate.series_ctrl",
                    status);
     emit_nonvacuity_evidence(t, (write_bursts_now(t) - wr_bursts_start) >= 3, $sformatf(
                              "gate.writes source=responder_burst_counts write_bursts=%0d sanctioned>=3 (baseline+2 restores)",
@@ -1422,6 +1543,119 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
                                  t
                              ) - rd_bursts_start
                              ));
+  endtask
+
+  // A SERIES_CTRL programming under the bridge's lifecycle disable latches
+  // nothing. An enabled SERIES_CTRL(WRITE) programming with the reset bit
+  // sets a seeded address and size, which its capture must hold. The gated
+  // scan programs a READ or WRITE whose address and size both differ. While
+  // the bridge is gated, and before any other SERIES_CTRL scan, the
+  // SERIES_DATA register must keep the length of the first programming's
+  // size; a capture while gated and one after the release must hold its
+  // address and size (CHK-J2A-GATE-TDR). No request reaches the port from the
+  // gated scan to the release (CHK-AXI-NOACT). +DTP_J2A_GATE_SERIES_NEGATIVE
+  // leaves the bridge enabled across the gated scan, so the run must fail.
+  task gate_series_ctrl(dtp_j2a_target_t t, string context_s);
+    string labels[3] = '{"reference", "gated_capture", "post_release_capture"};
+    int unsigned data_size = dtp_j2a_data_size(t);
+    bit [63:0] ref_addr = random_upper_addr(t) | random_target_aligned_addr(t, t.default_size);
+    int unsigned ref_size = $urandom_range(data_size);
+    dtp_j2a_op_e gated_op = $urandom_range(1) ? DTP_J2A_OP_READ : DTP_J2A_OP_WRITE;
+    int unsigned gated_depth = $urandom_range(t.rd_pl_depth);
+    bit [63:0] gated_addr;
+    bit [63:0] flip;
+    int unsigned gated_size;
+    int length;
+    int unsigned aw0, w0, ar0, aw1, w1, ar1;
+    string detail = $sformatf("%s target=%s", context_s, t.name);
+    do flip = ({$urandom(), $urandom()} << data_size) & bit_mask(t.addr_width); while (flip == '0);
+    gated_addr = ref_addr ^ flip;
+    do gated_size = $urandom_range(data_size); while (gated_size == ref_size);
+    `uvm_info(get_type_name(),
+              $sformatf(
+                  "%s reference addr=0x%0h size=%0d; gated %s addr=0x%0h size=%0d pl_depth=%0d",
+                  detail, ref_addr, ref_size, gated_op.name(), gated_addr, gated_size, gated_depth),
+              UVM_LOW)
+    series_ctrl_op(t, DTP_J2A_OP_WRITE, ref_addr, ref_size, 0, 1'b1);
+    foreach (labels[c]) begin
+      bit sr_reset;
+      bit [63:0] cap_addr;
+      int unsigned cap_pl, cap_size;
+      dtp_j2a_status_e cap_status;
+      if (c == 1) begin
+        if (test_cfg != null && test_cfg.j2a_gate_series_negative) begin
+          `uvm_info(get_type_name(),
+                    "NEGATIVE VALIDATION: the bridge stays enabled across the gated scan", UVM_LOW)
+        end else begin
+          gate_target(t);
+        end
+        sample_activity(t, aw0, w0, ar0);
+        series_ctrl_op(t, gated_op, gated_addr, gated_size, gated_depth);
+        series_data_scan_length(t, length);
+        void'(axi_evidence.expect_equal(
+            DtpJ2aGateTdrCheckId,
+            64'(length),
+            64'(8 * size_bytes(
+                ref_size
+            )),
+            {
+              detail, " field=gated_series_data_len"
+            }
+        ));
+      end
+      if (c == 2) enable_all_debug();
+      read_series_ctrl(t, ref_size, sr_reset, cap_addr, cap_pl, cap_size, cap_status);
+      void'(axi_evidence.expect_equal(
+          DtpJ2aGateTdrCheckId, cap_addr, ref_addr, {detail, " field=", labels[c], ".addr"}
+      ));
+      void'(axi_evidence.expect_equal(
+          DtpJ2aGateTdrCheckId,
+          64'(cap_size),
+          64'(ref_size),
+          {
+            detail, " field=", labels[c], ".size"
+          }
+      ));
+    end
+    void'(axi_evidence.expect_true(
+        DtpJ2aGateTdrCheckId,
+        gated_addr != ref_addr && gated_size != ref_size,
+        {
+          detail, " field=request_differs"
+        }
+    ));
+    wait_sys_cycles(8);
+    sample_activity(t, aw1, w1, ar1);
+    expect_no_activity_evidence(t, aw0, w0, ar0, aw1, w1, ar1, {
+                                context_s, " window=gated_scans+release"});
+  endtask
+
+  // The Shift-DR length of the bridge's SERIES_DATA_NO_INCR register, by a
+  // marker flush: a seeded marker, its first and last bits set, follows as
+  // many zeros as the longest series-data register holds. TDO returns the
+  // captured register and then TDI delayed by the register's length, so the
+  // marker's offset past those zeros is that length; -1 when no offset up to
+  // the longest register matches. The scan ends in Update-DR.
+  task series_data_scan_length(dtp_j2a_target_t t, output int length);
+    int unsigned longest = 8 * t.beat_bytes + 1;
+    bit [SeriesLenMarkerBits-1:0] marker = SeriesLenMarkerBits'($urandom());
+    bit pattern[] = new[2 * longest + SeriesLenMarkerBits];
+    bit observed[];
+    marker[0] = 1'b1;
+    marker[SeriesLenMarkerBits-1] = 1'b1;
+    foreach (pattern[i])
+      pattern[i] = (i >= longest && i < longest + SeriesLenMarkerBits) ? marker[i-longest] : 1'b0;
+    load_ir(IrWidth'(t.series_data_no_incr_instr));
+    shift_dr_wide(pattern, observed);
+    length = -1;
+    for (int unsigned n = 0; n <= longest && length < 0; n++) begin
+      bit match = 1'b1;
+      for (int unsigned b = 0; b < SeriesLenMarkerBits; b++)
+      if (observed[longest+n+b] != marker[b]) match = 1'b0;
+      if (match) length = n;
+    end
+    `uvm_info(get_type_name(), $sformatf("%s SERIES_DATA marker=0x%04h length=%0d", t.name, marker,
+                                         length), UVM_MEDIUM)
   endtask
 
   // --- lifecycle debug disables (must be cleared before JTAG2AXI ops) ----

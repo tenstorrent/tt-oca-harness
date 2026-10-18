@@ -73,6 +73,15 @@ timeout_sec = 1800
 tags = ["ci", "reset", "wdt"]
 run_modes = ["smoke"]
 
+# scratch_cold / scratch_cold_warm reset value and per-register independence.
+[[tests]]
+name = "smc_scratch_banks_test"
+module = "smc_scratch_banks_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "scratch"]
+run_modes = ["smoke"]
+
 # BFM: NDM pin → REQUEST/IRQ[11] → PROCESS CSR (no Force/FW).
 [[tests]]
 name = "smc_ndm_reset_test"
@@ -130,6 +139,16 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_jtag_reset_ctrl_test"
 module = "smc_jtag_reset_ctrl_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "jtag_reset_ctrl"]
+run_modes = ["smoke"]
+
+# BFM: the fuse, cold and per-subsystem jtag_reset_ctrl_i override muxes
+# smc_jtag_reset_ctrl_test leaves idle.
+[[tests]]
+name = "smc_jtag_reset_ovrd_walk_test"
+module = "smc_jtag_reset_ovrd_walk_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset", "jtag_reset_ctrl"]
@@ -200,6 +219,7 @@ tests = [
     "smc_cool_reset_from_pcie_test",
     "smc_ss_reset_complete_test",
     "smc_jtag_reset_ctrl_test",
+    "smc_jtag_reset_ovrd_walk_test",
     "smc_cool_reset_x_cold_reset_test",
 ]
 
@@ -234,4 +254,60 @@ module = "smc_cool_reset_zero_delay_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cool_reset_deglitch_window_test"
+module = "smc_cool_reset_deglitch_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cool_reset_pin_flr_overlap_test"
+module = "smc_cool_reset_pin_flr_overlap_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cool_reset_recovery_test"
+module = "smc_cool_reset_recovery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ndm_process_extra_bits_test"
+module = "smc_ndm_process_extra_bits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "ndm_extra"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sync_reg_irq_test"
+module = "smc_sync_reg_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "sync_irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_reset_pin_deglitch_test"
+module = "smc_reset_pin_deglitch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "deglitch"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_reset_sync_async_assert_test"
+module = "smc_reset_sync_async_assert_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "sync"]
 run_modes = ["smoke"]

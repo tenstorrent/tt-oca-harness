@@ -477,6 +477,34 @@ module smc_uvm_top
     end
 `endif
 
+    // assert_bad_ext_{rd,wr}_ack: the PeakRDL blocks with external registers
+    // (cpu_ctrl, reset_unit, system_timer_octs) check their ack strobes as
+    // simple immediate asserts in the else arm of `if (~arst_n)`. The first
+    // clk_sys edge is at time 0, before the reset tree has resolved, so
+    // arst_n is X, the else arm runs, and each assert fails once on X
+    // operands in every simulation. $assertoff does not reach simple
+    // immediate asserts, so this uses $assertcontrol (control 4 = off,
+    // 3 = on; assertion type 2 = simple immediate; directive 1 = assert)
+    // on the three register-block instances until cold reset has released
+    // and one SMC clock edge has passed. The off call and the first clock
+    // edge are both active at time 0; VCS orders the initial first. VCS
+    // only: the Xcelium build has no coverage configuration and keeps the
+    // time-0 failures.
+`ifdef VCS
+    initial begin
+        $assertcontrol(4, 2, 1, 0,
+            u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.u_cpu_ctrl_reg,
+            u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_reset_unit_reg,
+            u_dut.u_smc.u_smc_peripherals.u_system_timer_octs.u_reg);
+        wait (rst_cold_n_int === 1'b1);
+        @(posedge clk_smc);
+        $assertcontrol(3, 2, 1, 0,
+            u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.u_cpu_ctrl_reg,
+            u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_reset_unit_reg,
+            u_dut.u_smc.u_smc_peripherals.u_system_timer_octs.u_reg);
+    end
+`endif
+
     // The force-mode CPU reset withdraws the R beat the CPU is presenting to
     // the front-port demux without `ready`
     // (cocotb/seq_lib/README_cpu_isolate_flush.md), and the R arbiter's
@@ -668,6 +696,22 @@ module smc_uvm_top
     assign tb_i2c0_sda = !(tb_i2c0_sda_dut_low || tb_i2c0_sda_ext_low ||
                            (tb_i2c_shared_bus && (tb_i2c1_sda_dut_low ||
                                                   tb_i2c2_sda_dut_low)));
+    // Instance 1 resolves on its own pad pair from the padring outputs, i.e.
+    // after the I2C_EN pad-function select: core2pad_en_o is active-high and
+    // the data is 0 while the pad drives low. +smc_i2c1_pads drives the
+    // resolved value onto pads 41/42; without it those pads stay un-driven.
+    logic tb_i2c1_pads;
+    logic tb_i2c1_scl_pad_low;
+    logic tb_i2c1_sda_pad_low;
+    initial begin
+        tb_i2c1_pads = $test$plusargs("smc_i2c1_pads");
+    end
+    assign tb_i2c1_scl_pad_low = u_dut.u_smc.core2pad_en_o[I2c1SclPad] &&
+                                 !u_dut.u_smc.core2pad_o[I2c1SclPad];
+    assign tb_i2c1_sda_pad_low = u_dut.u_smc.core2pad_en_o[I2c1SdaPad] &&
+                                 !u_dut.u_smc.core2pad_o[I2c1SdaPad];
+    assign tb_i2c1_scl = !(tb_i2c1_scl_pad_low || tb_i2c1_scl_ext_low);
+    assign tb_i2c1_sda = !(tb_i2c1_sda_pad_low || tb_i2c1_sda_ext_low);
     // SMBus sideband open-drain resolve: wrap *_no is 0 while that controller
     // asserts the open-drain line.
     logic tb_i2c0_smbalert_dut_low;
@@ -782,6 +826,12 @@ module smc_uvm_top
         tb_pad_drive_val[I2c0SclPad] = tb_i2c0_scl;
         tb_pad_drive_en[I2c0SdaPad]  = 1'b1;
         tb_pad_drive_val[I2c0SdaPad] = tb_i2c0_sda;
+        if (!tb_i2c_shared_bus && tb_i2c1_pads) begin
+            tb_pad_drive_en[I2c1SclPad]  = 1'b1;
+            tb_pad_drive_val[I2c1SclPad] = tb_i2c1_scl;
+            tb_pad_drive_en[I2c1SdaPad]  = 1'b1;
+            tb_pad_drive_val[I2c1SdaPad] = tb_i2c1_sda;
+        end
         if (tb_i2c_shared_bus) begin
             tb_pad_drive_en[I2c1SclPad]  = 1'b1;
             tb_pad_drive_val[I2c1SclPad] = tb_i2c0_scl;
@@ -1542,6 +1592,10 @@ module smc_uvm_top
     assign tb_temp_interrupt_irq = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[1];
     assign tb_ext_interrupt_0_sync = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[0];
     assign tb_ss0_warm_reset_n = ss_reset_ctrl[0].warm_reset_n;
+    for (genvar ss_i = 0; ss_i < 32; ss_i++) begin : gen_tb_ss_reset_n
+        assign tb_ss_cold_reset_n[ss_i] = ss_reset_ctrl[ss_i].cold_reset_n;
+        assign tb_ss_warm_reset_n[ss_i] = ss_reset_ctrl[ss_i].warm_reset_n;
+    end
     assign tb_ndmreset_irq = u_dut.u_smc.peripheral_interrupts[11];
     assign tb_rst_cool_from_flr =
         u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.rst_cool_no;
@@ -3154,7 +3208,31 @@ module smc_uvm_top
     assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
     assign u_tb_if.rst_wdt_smc_clk_n         = rst_wdt_smc_clk_no;
     assign u_tb_if.cpu_cluster_isolate       = tb_cpu_cluster_isolate;
+    assign u_tb_if.cg_clk_active = {
+        u_dut.u_smc.u_smc_base.fabric_clk_active,
+        u_dut.u_smc.u_smc_base.alias_remap_clk_active,
+        u_dut.u_smc.u_smc_base.xvisor_remap_clk_active,
+        u_dut.u_smc.u_smc_base.mmode_remap_clk_active,
+        u_dut.u_smc.u_smc_base.ib_filter_clk_active,
+        u_dut.u_smc.u_smc_base.sys_in_filter_clk_active,
+        u_dut.u_smc.u_smc_base.ob_filter_clk_active,
+        u_dut.u_smc.u_smc_base.sys_out_filter_clk_active
+    };
+    assign u_tb_if.cg_bus_active = {
+        u_dut.u_smc.u_smc_base.fabric_bus_active,
+        u_dut.u_smc.u_smc_base.alias_remap_bus_active,
+        u_dut.u_smc.u_smc_base.xvisor_remap_bus_active,
+        u_dut.u_smc.u_smc_base.mmode_remap_bus_active,
+        u_dut.u_smc.u_smc_base.ib_filter_bus_active,
+        u_dut.u_smc.u_smc_base.sys_in_filter_bus_active,
+        u_dut.u_smc.u_smc_base.ob_filter_bus_active,
+        u_dut.u_smc.u_smc_base.sys_out_filter_bus_active
+    };
     assign u_tb_if.zeroer_busy               = tb_zeroer_busy;
+    assign u_tb_if.clk_smc                   = clk_smc;
+    assign u_tb_if.wdt_first_timeout         = tb_wdt_first_timeout;
+    assign u_tb_if.wdt_second_timeout        = tb_wdt_second_timeout;
+    assign u_tb_if.wdt_timeout_core          = u_dut.u_smc.cpu_wdt_timeout_cluster;
     assign u_tb_if.fuse_sense_done           = tb_fuse_sense_done;
     assign u_tb_if.fuse_reset_n              = tb_fuse_reset_n;
     assign u_tb_if.rst_warm_smc_clk_n        = tb_rst_warm_smc_clk_n;
@@ -3441,6 +3519,8 @@ module smc_uvm_top
     assign tb_test_en_i        = 1'b0;
     assign tb_i2c0_scl_ext_low = 1'b0;
     assign tb_i2c0_sda_ext_low = 1'b0;
+    assign tb_i2c1_scl_ext_low = 1'b0;
+    assign tb_i2c1_sda_ext_low = 1'b0;
     assign tb_i3c0_scl_ext_low = 1'b0;
     assign tb_i3c0_sda_ext_low = 1'b0;
     assign tb_cpu_jtag_tck     = 1'b0;

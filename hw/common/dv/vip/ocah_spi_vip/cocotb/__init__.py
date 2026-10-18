@@ -12,9 +12,9 @@ Primary exports
 ---------------
 OcahSpiFlash            — SPI/QSPI/OSPI NOR-flash device BFM (generic pin set).
 OcahSepSpiFlash         — SEP-specific subclass mapped to the SEP octal-SPI pad bundle.
-OcahSpiMasterBfm        — Mode-0 SPI controller engine for benches without a host IP.
+OcahSpiMasterBfm        — SPI controller engine (all four modes) for benches without a host IP.
 OcahSpiMasterSequence   — Test-facing operations over the controller engine.
-OcahSpiMonitor          — Passive monitor for SPI command/address/data sequences.
+OcahSpiMonitor          — Passive monitor and wire checker for SPI frames.
 OcahSpiFlashChecker     — Command, state, and memory checker over a flash reference model.
 OcahSpiFlashRefModel    — The reference model the checker rebuilds from the wire.
 OcahSpiOpcode           — Baseline command opcodes.
@@ -71,17 +71,22 @@ See ``examples/`` for annotated usage snippets.
 from .ocah_sep_spi_flash import OcahSepSpiFlash, OcahSepSpiFlashError
 from .ocah_spi_flash import OcahSpiFlash, OcahSpiFlashError
 from .ocah_spi_flash_checker import OcahSpiFlashChecker, OcahSpiFlashRecord, OcahSpiFlashRefModel
-from .ocah_spi_master_bfm import OcahSpiMasterBfm
+from .ocah_spi_master_bfm import OcahSpiMasterBfm, OcahSpiMasterBfmError
 from .ocah_spi_master_sequence import OcahSpiMasterSequence
-from .ocah_spi_monitor import OcahSpiMonitor
+from .ocah_spi_monitor import OcahSpiMonitor, OcahSpiMonitorError
 from .ocah_spi_types import (
+    FRAME_SHAPE_REASONS,
     IN_SCOPE_OPCODES,
+    LANE_OPCODES,
     PAGE_SIZE,
     SECTOR_SIZE,
     SR1_BUSY,
     SR1_WEL,
+    OcahSpiCommandFormat,
     OcahSpiOpcode,
     SpiMode,
+    command_format,
+    lanes_to_bytes,
     opcode_name,
 )
 
@@ -91,9 +96,11 @@ __all__ = [
     "OcahSepSpiFlash",
     # Controller side
     "OcahSpiMasterBfm",
+    "OcahSpiMasterBfmError",
     "OcahSpiMasterSequence",
     # Passive monitor
     "OcahSpiMonitor",
+    "OcahSpiMonitorError",
     # Checker and reference model
     "OcahSpiFlashChecker",
     "OcahSpiFlashRecord",
@@ -102,7 +109,12 @@ __all__ = [
     "OcahSpiFlashError",
     "OcahSepSpiFlashError",
     # Types and constants
+    "FRAME_SHAPE_REASONS",
     "IN_SCOPE_OPCODES",
+    "LANE_OPCODES",
+    "OcahSpiCommandFormat",
+    "command_format",
+    "lanes_to_bytes",
     "PAGE_SIZE",
     "SECTOR_SIZE",
     "SR1_BUSY",

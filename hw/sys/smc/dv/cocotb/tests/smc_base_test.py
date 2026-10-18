@@ -1313,6 +1313,10 @@ class smc_base_test(uvm_test):
             dut.tb_i2c0_scl_ext_low.value = 0
         if hasattr(dut, "tb_i2c0_sda_ext_low"):
             dut.tb_i2c0_sda_ext_low.value = 0
+        if hasattr(dut, "tb_i2c1_scl_ext_low"):
+            dut.tb_i2c1_scl_ext_low.value = 0
+        if hasattr(dut, "tb_i2c1_sda_ext_low"):
+            dut.tb_i2c1_sda_ext_low.value = 0
         if hasattr(dut, "tb_i3c0_scl_ext_low"):
             dut.tb_i3c0_scl_ext_low.value = 0
         if hasattr(dut, "tb_i3c0_sda_ext_low"):

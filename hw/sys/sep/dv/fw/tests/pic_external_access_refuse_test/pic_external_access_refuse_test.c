@@ -15,13 +15,17 @@
 //   CHK-CPU-READ  every armed register reads non-zero and meip[0] bit 1 reads 1
 //                 before the external accesses (control).
 //   CHK-LANDED    after the last external access, every armed register reads
-//                 its armed value and meip[0] bit 1 still reads 1.
+//                 its armed value, meip[0] bit 1 still reads 1, and every PIC
+//                 register (mpiccfg, every meipl, meie, meigwctrl and meigwclr
+//                 entry and every meip word, with the excluded idle bits
+//                 masked) reads the value it read before the first access.
 //
 // Console lines (sep_console_rec.h shapes):
 //   PIC-ARMED ...          the armed values as read before the accesses
 //   PIC-WINDOW ns=<n> ...  FILTER_CONFIG, START_ADDR and END_ADDR of each PIC window entry
 //   PIC-COMPLETE r=<A|B>   the popped completion word
 //   PIC-LANDED ...         the read-back after the last access
+//   PIC-SNAP-DIFF ...      the first PIC register that differs from the snapshot
 //   REQ regime_a / REQ regime_b   the host runs the accesses of that regime
 //
 // mstatus.MIE and mie.MEIE stay 0, so no armed source delivers.
@@ -49,17 +53,28 @@ enum {
     P_ORDER1,  // targets 6 to 11
     P_ORDER2,  // targets 12 to 17
     P_RWFIRST, // bit t: target t is written before it is read
-    P_IDLE0,   // meip[0] bits of the excluded idle sources
-    P_CW_A,    // completion word of regime A (low 32 bits)
-    P_CW_B,    // completion word of regime B (low 32 bits)
+    // One word per meip word: the meip bits of the excluded idle sources.
+    P_IDLE,
+    // Completion words of regime A and regime B (low 32 bits).
+    P_CW_A = P_IDLE + SEP_TOP_PIC_MEIP_NUM,
+    P_CW_B,
     P_PIC_END, // last byte of the EL2_PIC aperture (generated memory map)
     P_COUNT
 };
 
 // Committed defaults: a directed image that runs stand-alone.
 volatile uint32_t g_p[P_COUNT] = {
-    P_MAGIC_WORD, 0x1u, 77u,  3u,          0xC0080800u, 0xC0086000u, 0x0u,
-    0x0u,         0x0u, 0x0u, 0x0001A000u, 0x0C0DE0A0u, 0x0C0DE0B0u, 0xC0087FFFu,
+    [P_MAGIC] = P_MAGIC_WORD,
+    [P_SEED] = 0x1u,
+    [P_J] = 77u,
+    [P_MEIP_W] = 3u,
+    [P_HOLE] = 0xC0080800u,
+    [P_PAST] = 0xC0086000u,
+    [P_IDLE] = 0x0001A000u,
+    [P_IDLE + 1] = 0x000000E0u,
+    [P_CW_A] = 0x0C0DE0A0u,
+    [P_CW_B] = 0x0C0DE0B0u,
+    [P_PIC_END] = 0xC0087FFFu,
 };
 
 // Armed values (the contract of the entry, step 2).
@@ -120,8 +135,12 @@ static inline void wr(uint32_t a, uint32_t v) {
     __asm__ volatile("fence" ::: "memory");
 }
 
+static uint32_t meip_masked(uint32_t w) {
+    return pic_read_meip(w) & ~g_p[P_IDLE + w];
+}
+
 static uint32_t meip0_masked(void) {
-    return pic_read_meip(0) & ~g_p[P_IDLE0];
+    return meip_masked(0u);
 }
 
 // ---- Inbound filter entry ----
@@ -164,6 +183,75 @@ static void print_armed(const char *tag, const struct armed *a) {
     rec_hex("gw", (a->gw[0] << 16) | (a->gw[1] << 8) | a->gw[2]);
     rec_hex("meip0", a->meip0);
     rec_end();
+}
+
+// ---- Whole-PIC snapshot ----
+// Every register of the PIC map in one array: mpiccfg, then the meipl, meie,
+// meigwctrl and meigwclr arrays, then the meip words (generated array sizes).
+#define SNAP_MEIPL 1u
+#define SNAP_MEIE (SNAP_MEIPL + SEP_TOP_PIC_MEIPL_NUM)
+#define SNAP_GW (SNAP_MEIE + SEP_TOP_PIC_MEIE_NUM)
+#define SNAP_GWCLR (SNAP_GW + SEP_TOP_PIC_MEIGWCTRL_NUM)
+#define SNAP_MEIP (SNAP_GWCLR + SEP_TOP_PIC_MEIGWCLR_NUM)
+#define SNAP_N (SNAP_MEIP + SEP_TOP_PIC_MEIP_NUM)
+
+static uint32_t g_snap[SNAP_N];
+
+static uint32_t snap_addr(uint32_t k) {
+    if (k == 0u) {
+        return SEP_TOP_PIC_MPICCFG_BASE_ADDR;
+    }
+    if (k < SNAP_MEIE) {
+        uint32_t n = k - SNAP_MEIPL;
+        return SEP_TOP_PIC_MEIPL_BASE_ADDR(n);
+    }
+    if (k < SNAP_GW) {
+        uint32_t n = k - SNAP_MEIE;
+        return SEP_TOP_PIC_MEIE_BASE_ADDR(n);
+    }
+    if (k < SNAP_GWCLR) {
+        uint32_t n = k - SNAP_GW;
+        return SEP_TOP_PIC_MEIGWCTRL_BASE_ADDR(n);
+    }
+    if (k < SNAP_MEIP) {
+        uint32_t n = k - SNAP_GWCLR;
+        return SEP_TOP_PIC_MEIGWCLR_BASE_ADDR(n);
+    }
+    uint32_t n = k - SNAP_MEIP;
+    return SEP_TOP_PIC_MEIP_BASE_ADDR(n);
+}
+
+static uint32_t snap_read(uint32_t k) {
+    if (k >= SNAP_MEIP) {
+        return meip_masked(k - SNAP_MEIP);
+    }
+    return pic_rd32(snap_addr(k));
+}
+
+static void snap_take(void) {
+    for (uint32_t k = 0; k < SNAP_N; k++) {
+        g_snap[k] = snap_read(k);
+    }
+}
+
+// Returns the number of PIC registers that differ from the snapshot and prints
+// the first one.
+static uint32_t snap_diff(void) {
+    uint32_t n = 0;
+    for (uint32_t k = 0; k < SNAP_N; k++) {
+        uint32_t v = snap_read(k);
+        if (v != g_snap[k]) {
+            if (n == 0u) {
+                sep_mbx_puts("PIC-SNAP-DIFF");
+                rec_hex("addr", snap_addr(k));
+                rec_hex("before", g_snap[k]);
+                rec_hex("after", v);
+                rec_end();
+            }
+            n++;
+        }
+    }
+    return n;
 }
 
 static void arm_pic(void) {
@@ -253,7 +341,7 @@ int main(void) {
     rec_hex("o1", g_p[P_ORDER1]);
     rec_hex("o2", g_p[P_ORDER2]);
     rec_hex("rw", g_p[P_RWFIRST]);
-    rec_hex("idle0", g_p[P_IDLE0]);
+    rec_hex("idle0", g_p[P_IDLE]);
     rec_hex("pic_end", g_p[P_PIC_END]);
     rec_end();
 
@@ -283,6 +371,7 @@ int main(void) {
     rec_num("meip0_bit1", bit1);
     rec_end();
     g_err += !ok;
+    snap_take();
 
     // Regime A: no PIC window; mailbox 7 window open as the completion channel.
     rec_mark(0, "regime_a");
@@ -317,11 +406,14 @@ int main(void) {
                 ARM_GWCTRL;
         }
         same += (a1.meip0 >> SRC_FIRST) & 1u;
-        int lok = same == 11u;
+        uint32_t diff = snap_diff();
+        int lok = same == 11u && diff == 0u;
         rec_chk("LANDED", lok);
         rec_num("regs", 11u);
         rec_num("same", lok ? 1u : 0u);
         rec_num("matched", same);
+        rec_num("snap_regs", SNAP_N);
+        rec_num("snap_diff", diff);
         rec_end();
         g_err += !lok;
     }

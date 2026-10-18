@@ -234,3 +234,70 @@ timeout_sec = 3600
 tags = ["nmi", "wdt", "pic", "interrupt", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The first fetch after cold reset is at the boot ROM base unless the reset-vector TDR
+# redirects it. The TDR value persists through CPU resets until a TAP reset.
+name = "sep_cpu_reset_entry_test"
+module = "cpu.sep_cpu_reset_entry_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["boot", "reset", "cpu", "jtag", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Same module with real fuse sense of a PROD image (the skip plusarg is set at time 0, so
+# one entry cannot carry both). The TAP resets of the scope leg also grade
+# sep_fuse_sense_done_o, which the second cold reset drops as the control.
+name = "sep_cpu_reset_entry_test_real_sense"
+module = "cpu.sep_cpu_reset_entry_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["boot", "reset", "cpu", "jtag", "efuse", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+]
+
+[[tests]]
+# dmi_core_enable_i gates the debug-module core accesses, dmi_uncore_enable_i gates the
+# uncore outputs, and dbg_rstb_i resets the debug module only. The core runs a ROM spin
+# loop.
+name = "sep_debug_master_target_matrix_test"
+module = "cpu.sep_debug_master_target_matrix_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["debug", "jtag", "dmi", "cpu", "subsystem"]
+tools = ["vcs"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# RV32 M, Zba, Zbb and Zbc results match the ISA model, a Zbs instruction is illegal, a
+# pmpaddr write changes that entry only, and mrac grants no permission.
+name = "sep_cpu_isa_pmp_csr_test"
+module = "cpu.sep_cpu_isa_pmp_csr_test"
+firmware = "cpu_isa_pmp_csr_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["cpu", "isa", "pmp", "csr", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The Zbe instructions bext (bit extract), bdep (bit deposit), pack and packh
+# return the result of the draft Bitmanip v0.93 instruction model.
+name = "sep_cpu_zbe_exec_test"
+module = "cpu.sep_cpu_zbe_exec_test"
+firmware = "cpu_zbe_exec_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["cpu", "isa", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]

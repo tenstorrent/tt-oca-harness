@@ -102,6 +102,7 @@ from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatal
 from .paths import repo_path, repo_rel
 from .site import ToolLaunch, launch_argv, launch_env, tool_launch
 from .ui import Console
+from .uvm_library import UVM_HOME_ENV, UvmLibrary, resolve_uvm_library
 from .waves import (
     build_wave_metadata,
     format_time_ps,
@@ -1661,6 +1662,11 @@ def generate_filelist(
     return 0
 
 
+def _verilator_compile_args(verilator_cfg: dict[str, Any]) -> list[str]:
+    configured = as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args")
+    return configured or ["--timing", "-sv", "--language", "1800-2023"]
+
+
 def verilator_compile(
     flow: Flow,
     root: Path,
@@ -1680,11 +1686,7 @@ def verilator_compile(
     work_dir = required_path(build, "work_dir", "build", str(flow.path))
     mdir = repo_path(root, str(tool_cfg.get("mdir", work_dir)))
     launch = stage_tool_launch(args, tool)
-    argv = [launch.binary, "--cc"]
-    argv.extend(
-        as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args")
-        or ["--timing", "-sv", "--language", "1800-2023"]
-    )
+    argv = [launch.binary, "--cc", *_verilator_compile_args(verilator_cfg)]
     if build.get("top_module"):
         argv.extend(["--top-module", str(build["top_module"])])
     argv.extend(expand_ocah_vendor_define_aliases(target_flags(compile_target, "verilator")))
@@ -1745,10 +1747,7 @@ def _cocotb_build_args(
     if tool == "verilator":
         verilator_cfg = build_verilator_cfg(build)
         return [
-            *(
-                as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args")
-                or ["--timing", "-sv", "--language", "1800-2023"]
-            ),
+            *_verilator_compile_args(verilator_cfg),
             *expand_ocah_vendor_define_aliases(target_flags(run_target, "verilator")),
             *(args.comp_arg or []),
             *defines,
@@ -2773,27 +2772,59 @@ def _vcs_defines(compile_target: dict[str, Any], args: argparse.Namespace) -> li
 
 # VCS's bare "-ntb_opts uvm" resolves to uvm-1.1, whose global
 # uvm_report_error lacks the context_name/report_enabled_checked parameters
-# that the vendored OpenTitan prim_assert macros pass; default to the 1.2
-# library. [build.vcs].uvm_lib overrides the selection (uvm-1.2 is the floor
-# the vendored OpenTitan asserts compile against).
-_VCS_UVM_LIB = "uvm-1.2"
-
-
+# that the vendored OpenTitan prim_assert macros pass, so a simulator-supplied
+# library is named in full, uvm-1.2 or later.
 def _vcs_uvm_lib(vcs_cfg: dict[str, Any]) -> str:
-    lib = str(vcs_cfg.get("uvm_lib", "")).strip()
-    return lib or _VCS_UVM_LIB
+    """The simulator-supplied UVM library `[build.vcs].uvm_lib` selects.
+
+    Empty selects the source tree `[build].uvm_library` names instead.
+    """
+    return str(vcs_cfg.get("uvm_lib", "")).strip()
+
+
+def _vcs_compiles_uvm_source(flow: Flow, vcs_cfg: dict[str, Any]) -> bool:
+    return bool(vcs_cfg.get("uvm", flow.framework == "uvm")) and not _vcs_uvm_lib(vcs_cfg)
+
+
+def resolve_build_libraries(
+    flow: Flow, root: Path, sim_cfg: dict[str, Any], tool: str, console: Console
+) -> UvmLibrary | None:
+    """Resolve the source libraries the flow's build compiles, before any stage runs.
+
+    Returns the UVM library the build compiles, or None when it compiles none; a UVM home
+    ``OCAH_UVM_HOME`` names is reported.
+    """
+    build = build_cfg(flow, sim_cfg)
+    if tool == "vcs":
+        compiles = _vcs_compiles_uvm_source(flow, build_vcs_cfg(build))
+    else:
+        compiles = tool == "verilator" and flow.framework == "uvm"
+    if not compiles:
+        return None
+    library = resolve_uvm_library(root, build, str(flow.path))
+    if library.source == UVM_HOME_ENV:
+        console.event(
+            "warning",
+            f"{UVM_HOME_ENV}={library.src.parent} replaces [build].uvm_library",
+            force=True,
+        )
+    return library
+
+
+def _vcs_uvm_dpi_args(uvm_src: Path) -> list[str]:
+    # uvm_dpi.cc compiles its VCS HDL-access backend only under the VCS macro.
+    return [str(uvm_src / "dpi" / "uvm_dpi.cc"), "-CFLAGS", "-DVCS"]
 
 
 def _uvm_testname_override(extra_args: list[str]) -> str:
     """Return the +UVM_TESTNAME= value supplied in extra_args, or '' when absent.
 
-    UVM takes the FIRST +UVM_TESTNAME occurrence, and the simulator-shipped
-    uvm-1.2 library applies command-line factory overrides only after
-    run_test() has created the test component, so +uvm_set_type_override
-    cannot swap the test itself. Selecting a factory-registered subclass of a
-    testlist scenario therefore comes through +UVM_TESTNAME: when the caller
-    supplies one, the runner must not emit its testlist-mapped name ahead of
-    it.
+    UVM takes the FIRST +UVM_TESTNAME occurrence, and the UVM library applies
+    command-line factory overrides only after run_test() has created the test
+    component, so +uvm_set_type_override cannot swap the test itself.
+    Selecting a factory-registered subclass of a testlist scenario therefore
+    comes through +UVM_TESTNAME: when the caller supplies one, the runner must
+    not emit its testlist-mapped name ahead of it.
     """
     for arg in extra_args:
         if arg.startswith("+UVM_TESTNAME="):
@@ -2802,25 +2833,29 @@ def _uvm_testname_override(extra_args: list[str]) -> str:
 
 
 def _vcs_uvm_precompile_cmd(
-    vcs_cfg: dict[str, Any], compile_target: dict[str, Any], args: argparse.Namespace
+    vcs_cfg: dict[str, Any],
+    compile_target: dict[str, Any],
+    args: argparse.Namespace,
+    uvm_src: Path | None,
 ) -> str:
     """The UVM-library precompile line for the split vlogan -> vcs flow.
 
-    Carries the same defines as the user-source analysis: size-changing defines
-    (e.g. UVM_PACKER_MAX_BYTES) must agree across every analysis step of one
-    work library, or consumers of the precompiled uvm_pkg see a mismatched
-    packer geometry. Tokens are shell-quoted because the line is embedded in a
+    `uvm_src` is the source tree whose `uvm_pkg.sv` compiles, with the
+    user-source preamble so both analysis steps agree on the timescale; without
+    it the simulator-supplied library compiles through `-ntb_opts`. Carries the
+    same defines as the user-source analysis: size-changing defines (e.g.
+    UVM_PACKER_MAX_BYTES) must agree across every analysis step of one work
+    library, or consumers of the precompiled uvm_pkg see a mismatched packer
+    geometry. Tokens are shell-quoted because the line is embedded in a
     `bash -c` script (define values may carry quotes).
     """
-    return " ".join(
-        [
-            "vlogan",
-            "-full64",
-            "-ntb_opts",
-            shlex.quote(_vcs_uvm_lib(vcs_cfg)),
-            *(shlex.quote(d) for d in _vcs_defines(compile_target, args)),
-        ]
-    )
+    defines = _vcs_defines(compile_target, args)
+    if uvm_src is None:
+        argv = ["vlogan", "-full64", "-ntb_opts", _vcs_uvm_lib(vcs_cfg), *defines]
+    else:
+        argv = ["vlogan", *_vcs_preamble(vcs_cfg, "uvm"), f"+incdir+{uvm_src}", *defines]
+        argv.append(str(uvm_src / "uvm_pkg.sv"))
+    return " ".join(shlex.quote(token) for token in argv)
 
 
 def _vcs_preamble(vcs_cfg: dict[str, Any], framework: str) -> list[str]:
@@ -2828,8 +2863,9 @@ def _vcs_preamble(vcs_cfg: dict[str, Any], framework: str) -> list[str]:
     if bool(vcs_cfg.get("sverilog", True)):
         pre.append("-sverilog")
     pre.append("-full64")
-    if bool(vcs_cfg.get("uvm", framework == "uvm")):
-        pre += ["-ntb_opts", _vcs_uvm_lib(vcs_cfg)]
+    lib = _vcs_uvm_lib(vcs_cfg)
+    if lib and bool(vcs_cfg.get("uvm", framework == "uvm")):
+        pre += ["-ntb_opts", lib]
     timescale = str(vcs_cfg.get("timescale", "")).strip()
     if timescale:
         pre.append(f"-timescale={timescale}")
@@ -2841,11 +2877,15 @@ def _vcs_uum_elab_args(
     framework: str,
     options: dict[str, Any],
     args: argparse.Namespace,
+    uvm_src: Path | None,
 ) -> list[str]:
     """Return UUM elaboration options after vlogan has already parsed all sources."""
     elab = ["-full64"]
-    if bool(vcs_cfg.get("uvm", framework == "uvm")):
-        elab += ["-ntb_opts", _vcs_uvm_lib(vcs_cfg)]
+    lib = _vcs_uvm_lib(vcs_cfg)
+    if lib and bool(vcs_cfg.get("uvm", framework == "uvm")):
+        elab += ["-ntb_opts", lib]
+    if uvm_src is not None:
+        elab += _vcs_uvm_dpi_args(uvm_src)
     elab += vcs_build_args(options, vcs_cfg, _build_jobs_arg(args))
     if _wave_format(args, "vcs"):
         elab.append("-debug_access+all")
@@ -2875,6 +2915,11 @@ def _vcs_resolve_build(
     top = str(build.get("top_module", ""))
     if not top:
         raise ConfigError(f"{flow.path}: [build].top_module is required")
+    uvm: UvmLibrary | None = None
+    if _vcs_compiles_uvm_source(flow, vcs_cfg):
+        # The tree compiles outside the filelist, so its digest enters the build fingerprint;
+        # a sim leaf handed the model fingerprints nothing and skips the read.
+        uvm = resolve_uvm_library(root, build, str(flow.path), digest=model_dir is None)
     filelist = repo_path(root, str(build.get("filelist", "")))
     # Uniform build-tree convention `build/<framework>/<tool>/`: the configured work_dir carries
     # the framework segment (e.g. build/uvm), the runner appends the tool — mirroring how the
@@ -2924,6 +2969,7 @@ def _vcs_resolve_build(
                 *cache_key_extra(options),
                 *_target_fingerprint_extra(target_name, compile_target),
                 *_bender_sources_fingerprint(root, build),
+                *([f"uvm_library={uvm.tree_sha256[:16]}"] if uvm and uvm.tree_sha256 else []),
                 f"waves={wave_format}",
                 f"cov={bool(args.cov)}",
                 *coverage_compile_args,
@@ -2950,6 +2996,7 @@ def _vcs_resolve_build(
         "target_name": target_name,
         "compile_target": compile_target,
         "vcs_cfg": vcs_cfg,
+        "uvm_src": uvm.src if uvm else None,
         "top": top,
         "filelist": filelist,
         "build_dir": build_dir,
@@ -2973,10 +3020,12 @@ def vcs_analyze(
     """Three-step `compile` stage: analyze sources into the work library with vlogan."""
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     vcs_cfg = info["vcs_cfg"]
+    uvm_src = info["uvm_src"]
     launch = stage_tool_launch(args, "vcs")
     analyze_argv = [
         "vlogan",
         *_vcs_preamble(vcs_cfg, flow.framework),
+        *([f"+incdir+{uvm_src}"] if uvm_src else []),
         *_vcs_defines(info["compile_target"], args),
         *target_flags(info["compile_target"], "vcs"),
         *as_str_list(vcs_cfg.get("compile_args"), "build.vcs.compile_args"),
@@ -2986,14 +3035,14 @@ def vcs_analyze(
         str(info["filelist"]),
     ]
     if bool(vcs_cfg.get("uvm", flow.framework == "uvm")):
-        # In a split vlogan -> vcs flow, -ntb_opts uvm on the user-source
-        # invocation exposes the UVM macros but does not analyze uvm_pkg first.
-        # Precompile the simulator-owned package in the same work library before
-        # importing it from the OCAH and DUT UVM packages.
+        # The OCAH, DUT and assertion sources import uvm_pkg, and the user-source
+        # invocation's -ntb_opts or library +incdir exposes only the UVM macros.
+        # Precompile uvm_pkg into the same work library first.
+        precompile = _vcs_uvm_precompile_cmd(vcs_cfg, info["compile_target"], args, uvm_src)
         argv = [
             "bash",
             "-c",
-            f'set -euo pipefail\n{_vcs_uvm_precompile_cmd(vcs_cfg, info["compile_target"], args)}\nexec "$@"',
+            f'set -euo pipefail\n{precompile}\nexec "$@"',
             "vcs-analyze",
             *analyze_argv,
         ]
@@ -3024,6 +3073,7 @@ def _run_elaboration(
     script_path: Path,
     env_path: Path,
     launch: ToolLaunch,
+    env: dict[str, str] | None = None,
 ) -> int:
     """Run a native elaboration in its build directory and record the model it leaves there.
 
@@ -3043,6 +3093,7 @@ def _run_elaboration(
         env_path,
         args.quiet,
         cwd=build_dir,
+        env=env,
         verbose=args.verbose,
         timeout_sec=args.timeout,
         launch=launch,
@@ -3073,6 +3124,9 @@ def vcs_build(
     launch = stage_tool_launch(args, "vcs")
     if include_filelist:
         argv = [launch.binary, *info["elab_args"]]
+        uvm_src = info["uvm_src"]
+        if uvm_src is not None:
+            argv += [f"+incdir+{uvm_src}", str(uvm_src / "uvm_pkg.sv"), *_vcs_uvm_dpi_args(uvm_src)]
         argv += ["-f", str(info["filelist"])]
     else:
         # UUM consumes the work library produced by vlogan. Source-language,
@@ -3085,6 +3139,7 @@ def vcs_build(
                 flow.framework,
                 build_options_cfg(info["build"]),
                 args,
+                info["uvm_src"],
             ),
             *info["coverage_args"],
         ]
@@ -3192,6 +3247,255 @@ def vcs_sim(
         verbose=args.verbose,
         timeout_sec=timeout_sec,
         launch=stage_tool_launch(args, "vcs"),
+    )
+
+
+# --- Verilator SV-UVM stages --------------------------------------------------------------------
+# One `verilator --binary` build verilates the UVM library ahead of the view's filelist and
+# compiles both into an executable model, which every seed of a regression runs.
+
+
+def _verilator_uvm_dpi_args(uvm_src: Path) -> list[str]:
+    # Verilator's make flow defines VERILATOR, which selects uvm_dpi.cc's Verilator HDL-access
+    # backend; that backend calls the VPI, which the model links only under --vpi. uvm_dpi.h
+    # includes <malloc.h>, which macOS lacks, unless UVM_NO_MALLOC is defined; the <stdlib.h>
+    # it includes first declares malloc.
+    return ["--vpi", str(uvm_src / "dpi" / "uvm_dpi.cc"), "-CFLAGS", "-DUVM_NO_MALLOC"]
+
+
+def _verilator_uvm_coverage_scope(uvm_src: Path) -> str:
+    # The UVM library and Verilator's std package, whose classes the library uses, stay out of
+    # the coverage database wherever the library is installed. `coverage_off` matches the path
+    # as Verilator opened the file, which for the library starts with the `uvm_src` the build
+    # passes.
+    return "\n".join(
+        [
+            "`verilator_config",
+            f'coverage_off -file "{uvm_src}/*"',
+            'coverage_off -file "*verilated_std.sv"',
+            "",
+        ]
+    )
+
+
+def _verilator_uvm_resolve_build(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    *,
+    model_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Resolve the Verilator SV-UVM build directory, model path and build arguments.
+
+    Shared by the build and sim stages, and fingerprinted as `_vcs_resolve_build` is: a sim
+    leaf handed ``model_dir`` runs the model there and reads no source.
+    """
+    build = build_cfg(flow, sim_cfg)
+    target_name = _target_name(sim_cfg)
+    compile_target = selected_compile_target(sim_cfg)
+    options = build_options_cfg(build)
+    verilator_cfg = build_verilator_cfg(build)
+    top = str(build.get("top_module", ""))
+    if not top:
+        raise ConfigError(f"{flow.path}: [build].top_module is required")
+    if _wave_format(args, "verilator"):
+        raise ConfigError(f"{flow.path}: the Verilator SV-UVM build dumps no waves")
+    uvm = resolve_uvm_library(root, build, str(flow.path), digest=model_dir is None)
+    filelist = repo_path(root, str(build.get("filelist", "")))
+    # The coverage build is a sibling of the plain one, as the cocotb Verilator build's is:
+    # verilated.mk puts `..` on the make VPATH, so a nested build links the plain objects.
+    work_dir = repo_path(root, required_path(build, "work_dir", "build", str(flow.path)))
+    base_build = work_dir / ("verilator-coverage" if args.cov else "verilator")
+    timescale = str(verilator_cfg.get("timescale", "")).strip()
+    build_args = [
+        *_verilator_compile_args(verilator_cfg),
+        *(["--timescale", timescale] if timescale else []),
+        *expand_ocah_vendor_define_aliases(target_flags(compile_target, "verilator")),
+        *(args.comp_arg or []),
+        *expand_ocah_vendor_define_aliases(
+            [f"+define+{define}" for define in config_list(compile_target, "defines")]
+            + [f"+define+{define}" for define in (args.define or [])]
+        ),
+        *option_build_args(options, verilator_cfg, _build_jobs_arg(args)),
+    ]
+    coverage_build_args: list[str] = []
+    if args.cov:
+        tool_cov = coverage_cfg(sim_cfg).get("verilator", {})
+        if not isinstance(tool_cov, dict):
+            raise ConfigError("coverage.verilator must be a table")
+        coverage_build_args = as_str_list(
+            tool_cov.get("build_args"), "coverage.verilator.build_args"
+        )
+
+    fingerprint: str | None
+    tool_version: str | None
+    if model_dir is None:
+        filelist_text = (
+            filelist.read_text(encoding="utf-8", errors="replace")
+            if filelist.is_file()
+            else str(filelist)
+        )
+        tool_version = verilator_version(root)
+        fingerprint = build_fingerprint(
+            build_args=[*build_args, *coverage_build_args],
+            top_module=top,
+            tool_version=tool_version,
+            filelist_text=filelist_text,
+            extra=[
+                *cache_key_extra(options),
+                *_target_fingerprint_extra(target_name, compile_target),
+                *_filelist_sources_fingerprint(root, filelist),
+                *_file_args_fingerprint(root, build_args),
+                *([f"uvm_library={uvm.tree_sha256[:16]}"] if uvm.tree_sha256 else []),
+                f"cov={bool(args.cov)}",
+            ],
+        )
+        build_dir = resolve_build_dir(base_build, options, fingerprint)
+    else:
+        fingerprint = tool_version = None
+        build_dir = model_dir
+    coverage_args = _render_list(
+        coverage_build_args,
+        {
+            "tool": "verilator",
+            "target": target_name,
+            "repo_root": str(root),
+            "build_dir": str(build_dir),
+            "cov_dir": str(build_dir / "coverage"),
+        },
+    )
+    return {
+        "target_name": target_name,
+        "options": options,
+        "verilator_cfg": verilator_cfg,
+        "uvm_src": uvm.src,
+        "top": top,
+        "filelist": filelist,
+        "build_dir": build_dir,
+        "fingerprint": fingerprint,
+        "tool_version": tool_version,
+        "model": build_dir / f"V{top}",
+        "build_args": build_args,
+        "coverage_args": coverage_args,
+    }
+
+
+def verilator_uvm_build(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+) -> int:
+    """Verilate the UVM library and the view's filelist into one executable model."""
+    info = _verilator_uvm_resolve_build(flow, root, sim_cfg, args)
+    uvm_src = info["uvm_src"]
+    build_dir = info["build_dir"]
+    coverage_scope: list[str] = []
+    if args.cov:
+        scope = build_dir / "uvm_coverage_scope.vlt"
+        write_text_file(scope, _verilator_uvm_coverage_scope(uvm_src), args.dry_run)
+        coverage_scope = [str(scope)]
+    launch = stage_tool_launch(args, "verilator")
+    argv = [
+        launch.binary,
+        "--binary",
+        *info["build_args"],
+        *info["coverage_args"],
+        *coverage_scope,
+        "--top-module",
+        info["top"],
+        "-Mdir",
+        str(build_dir),
+        "-o",
+        info["model"].name,
+        f"+incdir+{uvm_src}",
+        str(uvm_src / "uvm_pkg.sv"),
+        "-f",
+        str(info["filelist"]),
+        *_verilator_uvm_dpi_args(uvm_src),
+    ]
+    env = apply_option_env(info["options"], dict(os.environ), info["verilator_cfg"])
+    console = console_from_args(args)
+    console.artifact("build", build_dir)
+    console.artifact("model", info["model"])
+    return _run_elaboration(info, args, argv, root, log_path, script_path, env_path, launch, env)
+
+
+def verilator_uvm_sim(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    catalog: TestCatalog,
+    item: str,
+    args: argparse.Namespace,
+    item_dir: Path,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+    seed: int,
+    test_args: list[str] | None = None,
+) -> int:
+    """Run the built Verilator model for one test/seed. The model is reused across all seeds."""
+    info = _verilator_uvm_resolve_build(
+        flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg)
+    )
+    test = catalog.tests[item]
+    run_mode = selected_run_mode(sim_cfg, test, args)
+    uvm_test = test.module or test.name
+    extra_args = (
+        list(test_args)
+        if test_args is not None
+        else _sim_test_args(sim_cfg, run_mode, test, args, seed, root)
+    )
+    argv = [str(info["model"])]
+    if not _uvm_testname_override(extra_args):
+        argv.append(f"+UVM_TESTNAME={uvm_test}")
+    # +verilator+seed seeds the model's random number generator, and ocah_test takes its seed
+    # from +ntb_random_seed.
+    argv += [f"+verilator+seed+{seed}", f"+ntb_random_seed={seed}", *extra_args]
+    if args.cov:
+        tool_cov = coverage_cfg(sim_cfg).get("verilator", {})
+        if not isinstance(tool_cov, dict):
+            raise ConfigError("coverage.verilator must be a table")
+        cov_dir = item_dir / "coverage"
+        argv += _render_list(
+            [
+                *as_str_list(tool_cov.get("sim_args"), "coverage.verilator.sim_args"),
+                *as_str_list(tool_cov.get("test_args"), "coverage.verilator.test_args"),
+            ],
+            {
+                "tool": "verilator",
+                "target": info["target_name"],
+                "build_dir": str(info["build_dir"]),
+                "cov_dir": str(cov_dir),
+                "run_dir": str(item_dir),
+                "item": item,
+                "seed": str(seed),
+            },
+        )
+        if not args.dry_run:
+            cov_dir.mkdir(parents=True, exist_ok=True)
+    console = console_from_args(args)
+    console.artifact("model", info["model"])
+    console.artifact("test", f"{uvm_test} seed={seed}")
+    if not args.dry_run:
+        framework_results_dir(item_dir, args).mkdir(parents=True, exist_ok=True)
+    return run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=item_dir,
+        verbose=args.verbose,
+        timeout_sec=resolve_timeout_sec(sim_cfg, test, run_mode, args),
+        launch=stage_tool_launch(args, "verilator"),
     )
 
 
@@ -4062,8 +4366,8 @@ def _resolve_stage_kind(kind: str, framework: str, tool: str, where: Any) -> str
     """Map a generic stage kind to its concrete (tool, framework) adapter.
 
     Generic kinds keep the profile stage graph framework-neutral; the concrete adapter is
-    picked here at dispatch time. `vcs_uvm_build` is internal-only (the folded analyze +
-    elaborate two-step for SV-UVM on VCS) and never appears in configs.
+    picked here at dispatch time. `vcs_uvm_build` (the folded analyze + elaborate two-step for
+    SV-UVM on VCS) and the `verilator_uvm_*` kinds are internal-only and never appear in configs.
     """
     if kind == "filelist":
         return "bender_filelist"
@@ -4071,6 +4375,8 @@ def _resolve_stage_kind(kind: str, framework: str, tool: str, where: Any) -> str
         if framework == "uvm":
             if tool == "vcs":
                 return "vcs_uvm_build"
+            if tool == "verilator":
+                return "verilator_uvm_build"
             raise ConfigError(
                 f"{where}: framework `uvm` has no `hdl_compile` adapter for tool `{tool}` yet"
             )
@@ -4079,6 +4385,8 @@ def _resolve_stage_kind(kind: str, framework: str, tool: str, where: Any) -> str
         if framework == "uvm":
             if tool == "vcs":
                 return "vcs_sim"
+            if tool == "verilator":
+                return "verilator_uvm_sim"
             raise ConfigError(
                 f"{where}: framework `uvm` has no `sim` adapter for tool `{tool}` yet"
             )
@@ -4397,8 +4705,8 @@ def run_stage(
                 fingerprint=info["fingerprint"],
             )
         elif kind == "vcs_uvm_build":
-            # Canonical two-step build for SV-UVM on VCS: analyze (vlogan + simulator-owned UVM
-            # library precompile) then elaborate to the reusable simv, folded into one
+            # Canonical two-step build for SV-UVM on VCS: analyze (vlogan + UVM library
+            # precompile) then elaborate to the reusable simv, folded into one
             # `hdl_compile` stage. The analyze sub-step keeps the primary stage log/script; the
             # elaborate sub-step writes alongside it so neither sub-step's evidence is
             # overwritten, and a failing elaborate points the result at its own log.
@@ -4458,6 +4766,61 @@ def run_stage(
                 args,
                 target_name=info["target_name"],
                 tool="vcs",
+                build_dir=info["build_dir"],
+                fingerprint=info["fingerprint"],
+            )
+            metadata["target_build"] = target_build
+            _stamp_provenance(
+                root,
+                log_path,
+                metadata,
+                fingerprint=target_build.get("fingerprint"),
+                filelist=None,
+                dry_run=bool(args.dry_run),
+                sim_args=sim_args,
+                cwd=stage_dir,
+            )
+        elif kind == "verilator_uvm_build":
+            rc = verilator_uvm_build(flow, root, sim_cfg, args, log_path, script_path, env_path)
+            info = _verilator_uvm_resolve_build(flow, root, sim_cfg, args)
+            metadata["target_build"] = _target_build_metadata(
+                target_name=info["target_name"],
+                tool="verilator",
+                build_dir=info["build_dir"],
+                fingerprint=info["fingerprint"],
+            )
+        elif kind == "verilator_uvm_sim":
+            if item is None:
+                raise ConfigError("verilator_uvm_sim stage requires a test item")
+            sim_args = _sim_test_args(
+                sim_cfg,
+                selected_run_mode(sim_cfg, catalog.tests[item], args),
+                catalog.tests[item],
+                args,
+                seed,
+                root,
+            )
+            rc = verilator_uvm_sim(
+                flow,
+                root,
+                sim_cfg,
+                catalog,
+                item,
+                args,
+                stage_dir,
+                log_path,
+                script_path,
+                env_path,
+                seed,
+                test_args=sim_args,
+            )
+            info = _verilator_uvm_resolve_build(
+                flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg)
+            )
+            target_build = _leaf_target_build(
+                args,
+                target_name=info["target_name"],
+                tool="verilator",
                 build_dir=info["build_dir"],
                 fingerprint=info["fingerprint"],
             )

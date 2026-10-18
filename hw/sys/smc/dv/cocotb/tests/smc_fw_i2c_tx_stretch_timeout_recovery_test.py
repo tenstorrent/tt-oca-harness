@@ -51,7 +51,7 @@ class smc_fw_i2c_tx_stretch_timeout_recovery_test(smc_base_test):
         seq = smc_fw_i2c_pair_test_seq(
             "fw_i2c_tx_stretch_timeout_recovery_seq",
             tag="I2C-TX-STRETCH-TIMEOUT",
-            # PASS landed 2.47 ms after release in the reference run (~4900 polls at a
+            # The image reaches PASS about 2.5 ms after release (~4900 polls at a
             # 5 ns clk_smc_i); 50_000 is ~10x that.
             poll_iterations=50_000,
             floors=(

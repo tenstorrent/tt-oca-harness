@@ -11,7 +11,13 @@
 //     unchanged, and leaves the probe writable after the release;
 //   * the software reset register is back at its default afterwards;
 //   * a write and a read to the unmapped gap past the reset-controller window
-//     each raise a bus-error NMI; exactly two must be counted.
+//     each raise a bus-error NMI; exactly two must be counted;
+//   * a store that gets DECERR (the reset-controller gap) and a store that gets
+//     SLVERR (the read-only entropy pool) each raise one D-bus error NMI; the
+//     handler records mcause and mdseac of each, and the firmware reports them
+//     for the testbench to grade;
+//   * a store that gets OKAY (an OTBN register) and its restore raise no NMI in
+//     the same window, and the written value reads back.
 //
 // Phase B, watchdog:
 //   * the first bark fires the NMI and the handler disables the watchdog; after
@@ -92,6 +98,25 @@
 
 #define RESET_CTRL_BAD_ADDR (SEP_RESET_CTRL_SW_RESET_N + 0x8u) // unmapped gap
 
+// Store-response targets. hw/sys/sep/regs/sep.rdl gives the reset-controller
+// aperture a DECERR write response past its one register, and
+// hw/sys/sep/doc/entropy_pool.adoc states that a write to any offset of the
+// read-only entropy pool ends with BRESP=SLVERR and changes no state. The OKAY
+// target is the OTBN probe register of the reset-wire leg, a read-write field.
+#define STORE_DECERR_ADDR RESET_CTRL_BAD_ADDR
+#define STORE_DECERR_DATA 0xDEADBEEFu
+#define STORE_SLVERR_ADDR SEP_TOP_ENTROPY_POOL_STATUS_BASE_ADDR
+#define STORE_SLVERR_DATA 0x5A5AC3C3u
+#define STORE_OKAY_ADDR OTBN_INTR_ENABLE_ADDR
+#define STORE_OKAY_DATA OTBN_INTR_ENABLE_WR
+#define STORE_OKAY_RESTORE OTBN_INTR_ENABLE_RST
+
+// Bound of the wait for a store-error NMI, in polls of a DCCM counter, and the
+// settle that follows it so a second NMI for the same store is also counted.
+#define STORE_NMI_POLL 4000
+#define STORE_SETTLE_ITERS 200
+#define NMI_REC_MAX 8u
+
 // WDT thresholds in WDT-clock ticks, small because the WDT clock is much slower
 // than the core clock; the bark->NMI and bite->reset paths do not depend on the
 // values. Bite > bark so the bark fires first.
@@ -136,6 +161,9 @@ static uint32_t wait_mcycle(uint32_t n) {
 
 static volatile uint32_t g_bad_addr_nmi = 0;
 static volatile uint32_t g_wdt_bark = 0;
+// mcause and mdseac of each D-bus error NMI, in arrival order.
+static volatile uint32_t g_buserr_mcause[NMI_REC_MAX];
+static volatile uint32_t g_buserr_mdseac[NMI_REC_MAX];
 
 // Unified NMI handler. WDT bark (Phase B) vs D-bus error (Phase A) is told apart
 // by the WDT bark status bit; the two sources never overlap in time.
@@ -148,15 +176,96 @@ void nmi_handler(void) {
         }
         // 2nd bark: leave the WDT enabled so it advances to BITE.
     } else {
-        // D-bus error NMI: read and unlock the captured error address (mdseac,
-        // mdeau) so the NMI deasserts, then count it.
+        // D-bus error NMI: record mcause and the captured error address
+        // (mdseac), then unlock mdseac (write mdeau) so the next bus error is
+        // captured, and count it.
+        uint32_t mcause;
         uint32_t mdseac;
+        uint32_t n = g_bad_addr_nmi;
+        __asm__ volatile("csrr %0, mcause" : "=r"(mcause));
         __asm__ volatile("csrr %0, 0xFC0" : "=r"(mdseac));
-        (void)mdseac;
+        if (n < NMI_REC_MAX) {
+            g_buserr_mcause[n] = mcause;
+            g_buserr_mdseac[n] = mdseac;
+        }
         __asm__ volatile("csrw 0xBC0, zero");
-        g_bad_addr_nmi++;
+        g_bad_addr_nmi = n + 1u;
     }
     __asm__ volatile("fence" ::: "memory");
+}
+
+static void settle(void) {
+    for (volatile int i = 0; i < STORE_SETTLE_ITERS; i++) {
+        __asm__ volatile("nop");
+    }
+}
+
+// Waits up to STORE_NMI_POLL polls for the NMI count to pass `base`, then
+// settles. Returns the number of NMIs counted since `base`.
+static uint32_t wait_store_nmi(uint32_t base) {
+    for (volatile int i = 0; i < STORE_NMI_POLL; i++) {
+        if (g_bad_addr_nmi != base) {
+            break;
+        }
+    }
+    settle();
+    return g_bad_addr_nmi - base;
+}
+
+// One store that the target answers with an error response. Reports the NMI
+// count of the store and the mcause and mdseac of its first NMI (0 when none)
+// on one line, which the testbench grades:
+//   CHK-STORE-ERR-NMI REC resp=<kind> addr=<a> nmi=<n> mcause=<c> mdseac=<d>
+// A store that completes without an NMI reports nmi=0.
+static void store_err_leg(const char *kind, uint32_t addr, uint32_t data) {
+    uint32_t base = g_bad_addr_nmi;
+    __asm__ volatile("fence" ::: "memory");
+    *(volatile uint32_t *)addr = data;
+    uint32_t n = wait_store_nmi(base);
+    uint32_t mcause = 0u;
+    uint32_t mdseac = 0u;
+    if (n != 0u && base < NMI_REC_MAX) {
+        mcause = g_buserr_mcause[base];
+        mdseac = g_buserr_mdseac[base];
+    }
+    sep_mbx_puts("CHK-STORE-ERR-NMI REC resp=");
+    sep_mbx_puts(kind);
+    sep_mbx_puts(" addr=");
+    sep_mbx_puthex(addr);
+    sep_mbx_puts(" nmi=");
+    sep_mbx_puthex(n);
+    sep_mbx_puts(" mcause=");
+    sep_mbx_puthex(mcause);
+    sep_mbx_puts(" mdseac=");
+    sep_mbx_puthex(mdseac);
+    sep_mbx_putc('\n');
+}
+
+// A store that the target answers with OKAY, and the store that restores the
+// register, each followed by the same wait as an error store. Reports the NMI
+// count over both stores and the readback of the written value:
+//   CHK-STORE-OK-QUIET REC addr=<a> wrote=<w> readback=<r> restored=<s> nmi=<n>
+static void store_ok_leg(void) {
+    uint32_t base = g_bad_addr_nmi;
+    __asm__ volatile("fence" ::: "memory");
+    *(volatile uint32_t *)STORE_OKAY_ADDR = STORE_OKAY_DATA;
+    (void)wait_store_nmi(base);
+    uint32_t rb = *(volatile uint32_t *)STORE_OKAY_ADDR;
+    *(volatile uint32_t *)STORE_OKAY_ADDR = STORE_OKAY_RESTORE;
+    (void)wait_store_nmi(base);
+    uint32_t restored = *(volatile uint32_t *)STORE_OKAY_ADDR;
+    uint32_t n = g_bad_addr_nmi - base;
+    sep_mbx_puts("CHK-STORE-OK-QUIET REC addr=");
+    sep_mbx_puthex(STORE_OKAY_ADDR);
+    sep_mbx_puts(" wrote=");
+    sep_mbx_puthex(STORE_OKAY_DATA);
+    sep_mbx_puts(" readback=");
+    sep_mbx_puthex(rb);
+    sep_mbx_puts(" restored=");
+    sep_mbx_puthex(restored);
+    sep_mbx_puts(" nmi=");
+    sep_mbx_puthex(n);
+    sep_mbx_putc('\n');
 }
 
 // One reset-wire probe: a CSR in the reset domain of `bit`, the value written
@@ -298,17 +407,12 @@ int main(void) {
     // 64-bit register at offset 0, so the 0x8 window ends there) each raise a
     // D-bus error -> NMI; expect exactly 2. The STORE error is IMPRECISE, so it
     // must be allowed to land before the next bus access -- otherwise it coalesces
-    // with the precise LOAD-error NMI and only one is counted. Settle after each.
+    // with the precise LOAD-error NMI and only one is counted. The store leg
+    // waits for its NMI and settles; the load settles after it.
     g_bad_addr_nmi = 0;
-    __asm__ volatile("fence" ::: "memory");
-    *(volatile uint32_t *)RESET_CTRL_BAD_ADDR = 0xDEADBEEFu;
-    for (volatile int i = 0; i < 200; i++) {
-        __asm__ volatile("nop");
-    }
+    store_err_leg("DECERR", STORE_DECERR_ADDR, STORE_DECERR_DATA);
     (void)(*(volatile uint32_t *)(RESET_CTRL_BAD_ADDR + 0x8u));
-    for (volatile int i = 0; i < 200; i++) {
-        __asm__ volatile("nop");
-    }
+    settle();
     if (g_bad_addr_nmi != 2u) {
         sep_mbx_puts("FAIL: bad-address NMI count ");
         sep_mbx_puthex(g_bad_addr_nmi);
@@ -317,6 +421,11 @@ int main(void) {
     } else {
         sep_mbx_puts("reset_ctrl bad-address NMI count == 2 OK\n");
     }
+
+    // Store responses: a SLVERR store raises the same store-error NMI as the
+    // DECERR store above; an OKAY store and its restore raise none.
+    store_err_leg("SLVERR", STORE_SLVERR_ADDR, STORE_SLVERR_DATA);
+    store_ok_leg();
 
     // ---- PHASE B: watchdog ----
     g_wdt_bark = 0;

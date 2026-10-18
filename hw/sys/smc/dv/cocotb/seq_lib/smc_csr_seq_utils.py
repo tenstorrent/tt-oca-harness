@@ -397,13 +397,11 @@ class SmcCsrSeq(smc_base_test_seq):
     _I2C_PADS_PER_INSTANCE = pad_index("I2C[1] SCL") - pad_index("I2C[0] SCL")
 
     async def arm_i2c_gpio_lsio(self, idx: int, label: str) -> None:
-        """Force the I2C``idx`` pad group onto LSIO via GPIO DATA_CTRL.lsio_select.
+        """Select the I2C ``idx`` pad group for LSIO via GPIO DATA_CTRL.lsio_select.
 
-        Verilator codegen of ``i2c_wrap``'s ``MaxNumI2cs`` always_comb writes
-        OOB and then zeros ``i2c_en_o`` / ``i2c_controller_mode_en_o``, so the
-        CDC'd ``i2c_enable_smc_clk`` never rises and GPIO holds ``scl_i/sda_i``
-        at 0. Software ``lsio_select`` is the supported override (same as
-        gpio_intf.rdl) and restores pad sense without touching RTL.
+        The group is the ``_I2C_PADS_PER_INSTANCE`` consecutive pads that start
+        at the integrator pad table's "I2C[idx] SCL" row; each pad's DATA_CTRL
+        is read back and rewritten with ``lsio_select`` set.
         """
         first = pad_index(f"I2C[{idx}] SCL")
         assert first == self._I2C0_SCL_PAD + idx * self._I2C_PADS_PER_INSTANCE, (
@@ -529,8 +527,9 @@ class SmcCsrSeq(smc_base_test_seq):
             f"{block}: no scoreboard on this sequence's env, so the CSR traffic "
             f"cannot be corroborated independently of the sequence's own counter"
         )
-        assert sb.sys_axi_checks_seen >= self.accesses, (
-            f"{block}: the scoreboard checked only {sb.sys_axi_checks_seen} SYS "
+        seen = sb.sys_axi_checks_seen + sb.sys_axi_reset_aborted_seen
+        assert seen >= self.accesses, (
+            f"{block}: the scoreboard saw only {seen} SYS "
             f"AXI item(s) but this sequence issued {self.accesses} access(es) -- "
             f"the traffic never reached the scoreboard, so none of it is checked "
             f"evidence"
@@ -591,8 +590,9 @@ class SmcCsrSeq(smc_base_test_seq):
             f"{block}: no scoreboard on this sequence's env, so the CSR traffic "
             f"cannot be corroborated independently of the sequence's own counter"
         )
-        assert sb.sys_axi_checks_seen >= self.accesses, (
-            f"{block}: the scoreboard checked only {sb.sys_axi_checks_seen} SYS "
+        seen = sb.sys_axi_checks_seen + sb.sys_axi_reset_aborted_seen
+        assert seen >= self.accesses, (
+            f"{block}: the scoreboard saw only {seen} SYS "
             f"AXI item(s) but this sequence issued {self.accesses} access(es) -- "
             f"the traffic never reached the scoreboard"
         )

@@ -55,7 +55,7 @@ class smc_fw_i2c_fifo_full_test(smc_base_test):
         seq = smc_fw_i2c_pair_test_seq(
             "fw_i2c_fifo_full_seq",
             tag="I2C-FIFO-FULL",
-            # PASS landed 1.70 ms after release in the reference run (~3400 polls at a
+            # The image reaches PASS about 1.7 ms after release (~3400 polls at a
             # 5 ns clk_smc_i); 35_000 is ~10x that.
             poll_iterations=35_000,
             floors=(

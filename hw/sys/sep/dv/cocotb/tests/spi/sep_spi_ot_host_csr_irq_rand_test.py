@@ -31,9 +31,19 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
   CHK-INTR      : INTR_STATE.ERROR is an Event latch -- INTR_TEST sets it with
                   INTR_ENABLE clear (the enable gates only the outgoing line),
                   a write of 0 to INTR_TEST does not clear it, and W1C does.
-                  INTR_STATE.SPI_EVENT is Status-type and tracks the INTR_TEST
-                  force level instead. INTR_ENABLE raises and drops
-                  sep_internal_interrupts[13] (PIC source 14) for both sources.
+                  INTR_STATE.SPI_EVENT is Status-type and a write of 1 to
+                  INTR_TEST.SPI_EVENT sets it
+                  (vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/
+                  spi_controller.rdl:45 "Write 1 to force
+                  !!INTR_STATE.spi_event to 1."). With EVENT_ENABLE = 0, a
+                  write of 0 to INTR_TEST returns SPI_EVENT to 0 and drops the
+                  line: SPI_EVENT is a "Level-sensitive status of the
+                  conditions selected by EVENT_ENABLE ... not a latched error
+                  event" (hw/sys/sep/doc/spi.adoc:84-86) and "follows the level
+                  of the events selected by EVENT_ENABLE"
+                  (doc/programmer/src/sep-programming.adoc:792-793).
+                  INTR_ENABLE raises and drops sep_internal_interrupts[13]
+                  (PIC source 14) for both sources.
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (COMMAND
                   SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
@@ -61,7 +71,10 @@ RXWM is covered by the RX-path tests (`sep_spi_ot_flash_cmd_rand_test` /
 The checks above run first, with the graded FCOV window closed. Four legs follow
 that grade only the cells the checks above do not grade, against
 ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc``,
-``hw/sys/sep/doc/spi.adoc`` (Features) and ``hw/sys/sep/doc/interrupts.adoc``
+``hw/sys/sep/doc/spi.adoc`` (Features), ``hw/sys/sep/doc/interrupts.adoc`` and
+the OpenTitan SPI_HOST theory of operation
+(``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md``,
+cited below as ``theory_of_operation.md``)
 (PIC source 14 is ``sep_internal_interrupts_probe_o`` index 13). The legs start
 from the SPI clean state with CONTROL SPIEN=1 OUTPUT_EN=1, CONFIGOPTS CLKDIV 1
 and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
@@ -81,11 +94,29 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       survives the ERROR_STATUS clear and clears on its own W1C.
   L2 CHK-SPI-CSID-RANGE : a COMMAND at a drawn CSID from 2 to 0xFFFFFFFE sets
                       ERROR_STATUS to CSIDINVAL alone; CSID=1 is logged only
-                      (OBS-SPI-CSID1).
+                      (OBS-SPI-CSID1): at NumCS=1 the OpenTitan SPI_HOST theory
+                      of operation says both "in this case the CSID value is
+                      ignored" (theory_of_operation.md:205) and "Submitting a
+                      command segment to an invalid CSID (one larger or equal
+                      to NumCS) will trigger a ERROR_STATUS.CSIDINVAL event"
+                      (theory_of_operation.md:597), so CSID=1 has no single
+                      stated result.
   L2 CHK-SPI-ERR-MASK : accumulated kinds OR into ERROR_STATUS, a drawn W1C mask
                       clears only its bits and a write of 0 clears nothing. A
-                      kind injected with its ERROR_ENABLE bit clear is logged
-                      only (OBS-SPI-MASK).
+                      drawn configurable kind injected with its ERROR_ENABLE
+                      bit clear sets its own ERROR_STATUS bit and leaves
+                      INTR_STATE.ERROR at 0 (masked=1 line). Sources:
+                      theory_of_operation.md:605 "Clearing the bit
+                      corresponding bit in the ERROR_ENABLE register in the
+                      suppresses interrupts for that class of error event";
+                      theory_of_operation.md:606 "The ERROR_STATUS register
+                      will continue to report all violations even if a
+                      particular class of error event has been disabled.";
+                      hw/sys/sep/doc/spi.adoc:79 "An enabled error event or an
+                      INTR_TEST write sets it." Control: the bit and
+                      INTR_STATE.ERROR read 0 before the injection, and the
+                      same kind with ERROR_ENABLE set gives INTR_STATE.ERROR=1
+                      (CHK-SPI-ERR-KIND), else CTRL-MISSING.
   L2 CHK-SPI-CMDBUSY0 : a COMMAND written while READY=0 and ACTIVE=0 (SPIEN=0)
                       sets CMDBUSY.
   L3 CHK-SPI-STRB   : an 8-byte write with strobe 0x0F, 0xF0 or 0xFF at the
@@ -102,7 +133,7 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
 
 Run mode: no_cpu with +skip_fuse_sense. The graded window carries this test's
 code during the four legs only; it is closed during the checks above, the
-control cells and the logged-only injections. RANDCFG and RAND-REP draws of the
+control cells, the masked-kind injection and the logged-only injections. RANDCFG and RAND-REP draws of the
 legs come from ``SepSeededRng`` and the run seed and are logged on the PLAN and
 DRAW lines.
 """
@@ -221,6 +252,14 @@ _CTRL_TX_WM_LSB = _R.field_lsb("CONTROL", "tx_watermark")
 _CTRL_RX_WM_LSB = _R.field_lsb("CONTROL", "rx_watermark")
 _CTRL_RX_WM_RESET = (CTRL_RESET & _R.field_mask("CONTROL", "rx_watermark")) >> _CTRL_RX_WM_LSB
 _ERR_EN_ALL = _R.reset32("ERROR_ENABLE")
+_ST_TXQD_LSB = _R.field_lsb("STATUS", "txqd")
+
+
+def _txqd(st: int) -> int:
+    """STATUS.TXQD as a word count."""
+    return (st & ST_TXQD) >> _ST_TXQD_LSB
+
+
 _CFG_BASE = configopts_word(clkdiv=1)
 _SPEED_RESERVED = 3
 _CMD_DUMMY = command_word(0, direction=DIR_DUMMY)
@@ -337,7 +376,6 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         for half, wm, fill in self.scfg.tx_wm_reps:
             await self._chk_watermark(half, wm, fill)
         await self._chk_enable()
-        self.logger.info("SPI host CSR/IRQ breadth ALL CHECKS PASS")
         await self._extension_legs()
 
     # ---- helpers ----------------------------------------------------------
@@ -481,9 +519,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         #   interrupt line, never the state bit, so the whole leg runs with the
         #   enable clear and the latch is still required to set.
         #
-        #   SPI_EVENT is Status-type. INTR_STATE.SPI_EVENT is read-only and
-        #   tracks its source level, with INTR_TEST holding a force that a write
-        #   of 0 releases.
+        #   SPI_EVENT is Status-type. INTR_STATE.SPI_EVENT is read-only, a
+        #   write of 1 to INTR_TEST.SPI_EVENT forces it to 1, and with
+        #   EVENT_ENABLE = 0 it follows the selected event level back to 0 once
+        #   INTR_TEST is written back to 0 (spi.adoc:84-86,
+        #   sep-programming.adoc:792-793).
         #
         # The wrapper ORs the two core lines onto one SEP interrupt. That OR
         # is sampled on sep_internal_interrupts[13].
@@ -534,7 +574,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         st = await self.spi.rd(INTR_STATE)
         assert not (st & INTR_SPI_EVENT), (
             f"CHK-INTR SPI_EVENT: releasing INTR_TEST left the status bit set "
-            f"(0x{st:08x}) -- a status interrupt tracks its source level"
+            f"(0x{st:08x}) -- with EVENT_ENABLE = 0 the status follows the event level"
         )
         await self.poll_internal_irq(_SPI_AGG, 0)
         await self.spi.wr(INTR_ENABLE, 0)
@@ -542,8 +582,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             "CHK-INTR PASS: INTR_STATE.ERROR latches on INTR_TEST with INTR_ENABLE "
             "clear and aggregator [%d] held off, holds across an INTR_TEST release, "
             "raises the aggregator only after INTR_ENABLE, and clears both on W1C; "
-            "INTR_STATE.SPI_EVENT tracks the INTR_TEST force level and the same "
-            "enable gate",
+            "INTR_TEST forces INTR_STATE.SPI_EVENT to 1 and its release returns it to 0 "
+            "with EVENT_ENABLE = 0, and INTR_ENABLE gates its aggregator line on and off",
             _SPI_AGG,
         )
 
@@ -646,7 +686,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         ctrl = CTRL_RESET | (wm << CTRL_TX_WM_LSB)
         await self.spi.wr(CONTROL, ctrl)
         st_empty = await self.spi.rd(STATUS)
-        assert (st_empty & ST_TXQD) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
+        assert _txqd(st_empty) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
         # STATUS.TXWM: high while the amount of data in the TX FIFO has fallen
         # below CONTROL.TX_WATERMARK words -- so an empty FIFO sets it. The
         # polarity is the whole of this facet, so it is taken from the register
@@ -657,27 +697,26 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         for _ in range(wm - 1):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_below = await self.spi.rd(STATUS)
-        assert (st_below & ST_TXQD) == wm - 1, (
-            f"CHK-WATERMARK TXQD={st_below & ST_TXQD} != {wm - 1} below wm={wm} (0x{st_below:08x})"
+        assert _txqd(st_below) == wm - 1, (
+            f"CHK-WATERMARK TXQD={_txqd(st_below)} != {wm - 1} below wm={wm} (0x{st_below:08x})"
         )
         assert st_below & ST_TXWM, (
-            f"CHK-WATERMARK STATUS.TXWM clear at TXQD={st_below & ST_TXQD} < wm={wm} "
+            f"CHK-WATERMARK STATUS.TXWM clear at TXQD={_txqd(st_below)} < wm={wm} "
             f"(0x{st_below:08x})"
         )
         await self.spi.wr(TXDATA, 0xA5A5_A5A5)  # the word that reaches the threshold
         st_at = await self.spi.rd(STATUS)
-        assert (st_at & ST_TXQD) == wm, (
-            f"CHK-WATERMARK TXQD={st_at & ST_TXQD} != {wm} at wm={wm} (0x{st_at:08x})"
+        assert _txqd(st_at) == wm, (
+            f"CHK-WATERMARK TXQD={_txqd(st_at)} != {wm} at wm={wm} (0x{st_at:08x})"
         )
         assert not (st_at & ST_TXWM), (
-            f"CHK-WATERMARK STATUS.TXWM still set at TXQD={st_at & ST_TXQD} == wm={wm} "
-            f"(0x{st_at:08x})"
+            f"CHK-WATERMARK STATUS.TXWM still set at TXQD={_txqd(st_at)} == wm={wm} (0x{st_at:08x})"
         )
         extra = fill - wm
         for _ in range(extra):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_full = await self.spi.rd(STATUS)
-        txqd = st_full & ST_TXQD
+        txqd = _txqd(st_full)
         assert txqd == fill, f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {fill} (wm={wm})"
         assert not (st_full & ST_TXWM), (
             f"CHK-WATERMARK STATUS.TXWM set after filling past wm={wm} (0x{st_full:08x})"
@@ -687,11 +726,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             "-> %d/%d (tx_wm = qd < wm)",
             half,
             wm,
-            st_empty & ST_TXQD,
+            _txqd(st_empty),
             int(bool(st_empty & ST_TXWM)),
-            st_below & ST_TXQD,
+            _txqd(st_below),
             int(bool(st_below & ST_TXWM)),
-            st_at & ST_TXQD,
+            _txqd(st_at),
             int(bool(st_at & ST_TXWM)),
             txqd,
             int(bool(st_full & ST_TXWM)),
@@ -704,7 +743,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._sw_rst_pulse()
         await self.spi.wr(TXDATA, 0xDEAD_BEEF)
         st = await self.spi.rd(STATUS)
-        assert (st & ST_TXQD) == 1, f"one TXDATA write left TXQD={st & ST_TXQD} (0x{st:08x})"
+        assert _txqd(st) == 1, f"one TXDATA write left TXQD={_txqd(st)} (0x{st:08x})"
         await self.spi.wr(COMMAND, CMD_DIR_TX)
 
     async def _poll_drain(self, budget: int) -> int:
@@ -750,8 +789,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"polls, at least {_NEG_WINDOW_MARGIN}x the {calib}-poll enabled drain)"
         )
         st_held = await self.spi.rd(STATUS)
-        assert (st_held & ST_TXQD) == 1, (
-            f"CHK-ENABLE: TXQD={st_held & ST_TXQD} after the SPIEN=0 window -- the "
+        assert _txqd(st_held) == 1, (
+            f"CHK-ENABLE: TXQD={_txqd(st_held)} after the SPIEN=0 window -- the "
             f"queued command consumed the FIFO without STATUS.TXEMPTY (0x{st_held:08x})"
         )
         assert not (st_held & ST_TXEMPTY), (
@@ -795,6 +834,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         self.ops = SepSpiHostOps(self, clock=self.pads.now)
         self.intr_en = self.draw["I"]
         self.ev_en = 0
+        self.kind_intr: dict[str, int] = {}
         try:
             await self._leg_setup()
             self._window(True)
@@ -805,9 +845,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         finally:
             close_graded_window(self.logger)
             await self.pads.stop()
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.checks + _OPEN_CHECKS
-        )
+        self.result_pass(TEST, self.seed, self.checks + _OPEN_CHECKS)
 
     # ---- draws ------------------------------------------------------------
     def _leg_draw(self, rng: SepSeededRng) -> dict:
@@ -1037,7 +1075,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         expect_ev = int(any(levels[s] for s in selected))
         ist = await self.ops.rd(INTR_STATE)
         pic = await self._pic14()
-        await self.ops.wr(INTR_ENABLE, 3)
+        await self.ops.wr(INTR_ENABLE, _IE_EVENT | _IE_ERROR)
         ist_twin = await self.ops.rd(INTR_STATE)
         twin = await self._pic14()
         await self.ops.wr(INTR_ENABLE, self.intr_en)
@@ -1065,7 +1103,12 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._set_ev(pass_ev)
         await self.ops.clean_state()
         await self._set_ev(pass_ev)
-        await self.ops.wr(CONTROL, _CTRL_BASE & ~CTRL_RX_WM | (tx_wm << _CTRL_TX_WM_LSB) | rx_wm)
+        await self.ops.wr(
+            CONTROL,
+            _CTRL_BASE & ~CTRL_RX_WM
+            | (tx_wm << _CTRL_TX_WM_LSB)
+            | ((rx_wm << _CTRL_RX_WM_LSB) & CTRL_RX_WM),
+        )
         for w in range(words):
             await self.ops.push_tx(0x1100_0000 | w)
         if rx_bytes:
@@ -1298,6 +1341,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             bit,
         )
         ie1 = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
+        self.kind_intr[kind] = ie1
         if kind == "CSIDINVAL":
             self._grade(
                 "CHK-SPI-CSID-RANGE",
@@ -1335,7 +1379,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         st = await self.ops.read_status()
         ie = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
         self.logger.info(
-            "OBS-SPI-CSID1 LOG seed=%d csid=0x1 err_status=0x%02x intr_error=%d active=%d cmdqd=%d",
+            "OBS-SPI-CSID1 LOG seed=%d csid=0x1 err_status=0x%02x intr_error=%d active=%d cmdqd=%d "
+            "reason=the OT spi_host theory of operation says CSID is ignored at NumCS=1 and "
+            "also that a CSID >= NumCS is CSIDINVAL",
             self.seed,
             es,
             ie,
@@ -1401,16 +1447,31 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
         await self.ops.clean_state()
 
-        # The masked kind is logged only.
+        # The masked kind: its ERROR_STATUS bit sets and INTR_STATE.ERROR stays 0.
+        # Control: the bit and INTR_STATE.ERROR read 0 at entry (_kind_entry),
+        # and the unmasked twin of the same kind above set INTR_STATE.ERROR.
         self._window(False)
         kind = d["masked_kind"]
-        await self._kind_entry()
-        await self.ops.wr(ERROR_ENABLE, _ERR_EN_ALL & ~_KIND_BIT[kind])
+        bit = _KIND_BIT[kind]
+        es0, ie0 = await self._kind_entry()
+        twin_ie = self.kind_intr.get(kind)
+        if twin_ie != 1:
+            self._ctrl_missing(f"masked kind={kind} unmasked twin intr_error={twin_ie}")
+        await self.ops.wr(ERROR_ENABLE, _ERR_EN_ALL & ~bit)
         await self._inject(kind)
-        es = await self.ops.rd(ERROR_STATUS)
+        es = 0
+        for _ in range(_POLL_READS):
+            es = await self.ops.rd(ERROR_STATUS)
+            if es & bit:
+                break
         ie = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
-        self.logger.info(
-            "OBS-SPI-MASK seed=%d kind=%s err_status=0x%02x intr_error=%d", self.seed, kind, es, ie
+        self._grade(
+            "CHK-SPI-ERR-MASK",
+            bool(es & bit) and ie == 0,
+            f"masked=1 kind={kind} error_enable=0x{_ERR_EN_ALL & ~bit:02x} "
+            f"err_status=0x{es:02x} own_bit=0x{bit:02x} intr_error={ie} expect_intr_error=0 "
+            f"control_err_status_before=0x{es0:02x} control_intr_error_before={ie0} "
+            f"control_twin_intr_error={twin_ie}",
         )
         await self.ops.wr(ERROR_ENABLE, _ERR_EN_ALL)
         await self.ops.clean_state()

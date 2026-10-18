@@ -338,8 +338,7 @@ endif::backend-html5[]
 == Address Remapping
 
 The SMC fabric implements two complementary address remapping mechanisms:
-alias remapping in the input fabric and privilege-controlled remapping in the
-output fabric.
+alias remapping in the input fabric and output remapping in the output fabric.
 
 ifdef::backend-html5[]
 ++++
@@ -381,19 +380,34 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 [[smc-fabric-privilege-controlled-remapping]]
-=== Privilege-Controlled Remapping
+=== Output Remapping
 
-Privilege-controlled address remapping enables programmable translation of
-outbound SMC transactions for software running at different privilege levels.
-The output fabric selects a remap by the address window a request targets, not
-by the initiator's AxPROT privilege bit, and each remap sets its own source
-ID.
+Every outbound SMC request carries a source ID in AxUSER. The SMC outbound
+filter (<<smc-fabric-outbound-filtering>>) and the filters in front of other
+targets in the system match on it, together with address and NS, to decide
+what the request may reach.
 
-The fabric provides separate remap regions for Machine-mode (highest privilege)
-and Xvisor/Hypervisor (intermediate privilege) operations. When accessing shared
-resources like shared memory, SMC traffic passes through the appropriate
-privilege-controlled remap stage to ensure proper address translation and
-privilege enforcement.
+The output remaps change that source ID. A request to a remap window is
+translated through the window's programmed regions and leaves with the
+window's source ID instead of the SMC's:
+
+M-mode remap:: `MMODE_ID`, the source ID of machine-mode firmware on another
+processor in the system.
+Xvisor remap:: `OTHER_ID`, the source ID of that processor's hypervisor and
+its guests.
+Direct path:: Any other address goes out untranslated, with `SMC_ID`.
+
+The remaps are useful when the system integrates such a processor, for example
+an application processor (AP) running machine-mode firmware and the Xvisor
+hypervisor. SMC firmware can then reach memory the AP firmware owns through
+the M-mode window, or memory it shares with the hypervisor through the Xvisor
+window, and every filter treats the request as one from that software. A system
+without such a processor has no use for them.
+
+M-mode and Xvisor name the other processor's software, not SMC privilege
+modes: SMC firmware runs in machine mode whichever window it uses. The address
+window alone selects the remap and the source ID; the privilege mode of the
+issuing SMC hart does not, and AxPROT, including NS, passes unchanged.
 
 == Filtering and Protection
 
@@ -500,7 +514,7 @@ traffic requires a matching entry whose read or write permission is clear.
 Address, source ID, and NS matching select an entry. The filter does not
 infer software privilege or grant broader access to a higher privilege mode.
 
-All outbound traffic, after passing through any privilege remap stages,
+All outbound traffic, after passing through any output remap,
 is subject to outbound filtering enforcement based on address, security
 attributes (NS), and source ID. The outbound filters use the same
 register structure as inbound filters.
@@ -687,26 +701,25 @@ endif::backend-html5[]
 SMC outbound traffic serves dual purposes: accessing shared system
 services and extending the SMC's private domain across the system.
 
-For shared resources (e.g., shared memory), traffic passes through
-privilege-controlled remap logic—Xvisor-controlled for
-hypervisor-managed resources or M-mode-controlled for machine-mode
-resources. For private memory or memory-mapped I/O resources, traffic
-bypasses remap stages and goes directly to the system NoC, reducing
-latency.
+For resources that another processor's software owns or shares, such as
+shared memory, traffic passes through that software's output remap
+(<<smc-fabric-privilege-controlled-remapping>>). For private memory or
+memory-mapped I/O resources, traffic bypasses the remaps and goes directly to
+the system NoC, reducing latency.
 
-Each outbound transaction carries a Source ID identifying its privilege
-level and routing path (<<smc-source-id-by-traffic-path-table>>). A
+Each outbound transaction carries a source ID naming the software it acts for,
+set by its traffic path (<<smc-source-id-by-traffic-path-table>>). A
 transaction that hits an alias remap region carries that region's AxCACHE
 value; any other keeps the AxCACHE its initiator issued.
 
 [[smc-source-id-by-traffic-path-table]]
 .SMC Source ID by Traffic Path
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",cols="30%,25%,45%",options="header",]
 |==============================
-|Traffic Path |Source ID
-|Direct to NoC |SMC_ID
-|Through Xvisor remap |OTHER_ID
-|Through M-mode remap |MMODE_ID
+|Traffic Path |Source ID |Acts For
+|Direct to NoC |SMC_ID |The SMC
+|Through Xvisor remap |OTHER_ID |Another processor's hypervisor and guests
+|Through M-mode remap |MMODE_ID |Another processor's machine-mode firmware
 |==============================
 
 ifdef::backend-html5[]
@@ -754,10 +767,8 @@ endif::backend-html5[]
 [[smc-fabric-output-remap-registers]]
 ==== Output Remap Registers
 
-The output remap registers control privilege-controlled address
-remapping for outbound transactions. The fabric provides separate remap
-regions for Machine-mode (highest privilege) and Xvisor/Hypervisor
-(intermediate privilege) operations. Each region carries a
+The output remap registers program the M-mode and Xvisor output remap
+regions (<<smc-fabric-privilege-controlled-remapping>>). Each region carries a
 `REGION_ATTRS.valid` bit (reset 0): when set, accesses selecting the
 region are remapped through its offset; when clear, they pass through
 with their address unchanged, so an unprogrammed entry acts as an

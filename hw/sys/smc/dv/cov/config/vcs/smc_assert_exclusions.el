@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//==================================================
+// SMC VCS assertion exclusions, instance scope.
+// Format Version: 2
+// ExclMode: default
+//
+// Generated from urg's assertion template and the run's raw report; regenerate
+// from each graded run rather than edit. Only an assertion the run attempts
+// with no real success is written. The ANNOTATION before each block states the
+// fact and README.md states the class.
+//==================================================
+
+CHECKSUM: "3237937044"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core
+ANNOTATION: "SMC-FPV-SECCM: prim_assert_sec_cm.svh:20-22,36-40,61-62 expand the assertion as $rose(<count>.err_o) |-> ##[0:30] alert_p on the prim_count guarding a FIFO pointer (prim_fifo_sync_cnt.sv:74-115). prim_count.sv:142-154 raises err_o only when the primary and secondary counters no longer sum to all ones, :118-123 load both from one commit, and :79-81 tie fpv_force, the only other term in cnt_q, to '0 outside PrimCountFpv, so err_o never rises without an injected fault and the antecedent is never sampled true. i2c_core.sv:550-574 and uart_16550.sv:350-361 place the checks. NOT waived: every other assertion of the instance (the FIFO depth, host timeout and known-output checks). Retired by a fault-injection leaf that corrupts a pointer flop, or an alert path a functional stimulus can raise."
+Assert FpvSecCmControllerRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmControllerRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmControllerTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmControllerTxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetTxFifoWptrErrTriggerAlert_A "assertion"
+
+CHECKSUM: "3237937044"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core
+ANNOTATION: "SMC-FPV-SECCM: prim_assert_sec_cm.svh:20-22,36-40,61-62 expand the assertion as $rose(<count>.err_o) |-> ##[0:30] alert_p on the prim_count guarding a FIFO pointer (prim_fifo_sync_cnt.sv:74-115). prim_count.sv:142-154 raises err_o only when the primary and secondary counters no longer sum to all ones, :118-123 load both from one commit, and :79-81 tie fpv_force, the only other term in cnt_q, to '0 outside PrimCountFpv, so err_o never rises without an injected fault and the antecedent is never sampled true. i2c_core.sv:550-574 and uart_16550.sv:350-361 place the checks. NOT waived: every other assertion of the instance (the FIFO depth, host timeout and known-output checks). Retired by a fault-injection leaf that corrupts a pointer flop, or an alert path a functional stimulus can raise."
+Assert FpvSecCmControllerRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmControllerRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmControllerTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmControllerTxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetTxFifoWptrErrTriggerAlert_A "assertion"
+
+CHECKSUM: "3237937044"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
+ANNOTATION: "SMC-FPV-SECCM: prim_assert_sec_cm.svh:20-22,36-40,61-62 expand the assertion as $rose(<count>.err_o) |-> ##[0:30] alert_p on the prim_count guarding a FIFO pointer (prim_fifo_sync_cnt.sv:74-115). prim_count.sv:142-154 raises err_o only when the primary and secondary counters no longer sum to all ones, :118-123 load both from one commit, and :79-81 tie fpv_force, the only other term in cnt_q, to '0 outside PrimCountFpv, so err_o never rises without an injected fault and the antecedent is never sampled true. i2c_core.sv:550-574 and uart_16550.sv:350-361 place the checks. NOT waived: every other assertion of the instance (the FIFO depth, host timeout and known-output checks). Retired by a fault-injection leaf that corrupts a pointer flop, or an alert path a functional stimulus can raise."
+Assert FpvSecCmControllerRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmControllerRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmControllerTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmControllerTxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTargetTxFifoWptrErrTriggerAlert_A "assertion"
+
+CHECKSUM: "2553735515"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550
+ANNOTATION: "SMC-FPV-SECCM: prim_assert_sec_cm.svh:20-22,36-40,61-62 expand the assertion as $rose(<count>.err_o) |-> ##[0:30] alert_p on the prim_count guarding a FIFO pointer (prim_fifo_sync_cnt.sv:74-115). prim_count.sv:142-154 raises err_o only when the primary and secondary counters no longer sum to all ones, :118-123 load both from one commit, and :79-81 tie fpv_force, the only other term in cnt_q, to '0 outside PrimCountFpv, so err_o never rises without an injected fault and the antecedent is never sampled true. i2c_core.sv:550-574 and uart_16550.sv:350-361 place the checks. NOT waived: every other assertion of the instance (the FIFO depth, host timeout and known-output checks). Retired by a fault-injection leaf that corrupts a pointer flop, or an alert path a functional stimulus can raise."
+Assert FpvSecCmRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTxFifoWptrErrTriggerAlert_A "assertion"
+
+CHECKSUM: "2553735515"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550
+ANNOTATION: "SMC-FPV-SECCM: prim_assert_sec_cm.svh:20-22,36-40,61-62 expand the assertion as $rose(<count>.err_o) |-> ##[0:30] alert_p on the prim_count guarding a FIFO pointer (prim_fifo_sync_cnt.sv:74-115). prim_count.sv:142-154 raises err_o only when the primary and secondary counters no longer sum to all ones, :118-123 load both from one commit, and :79-81 tie fpv_force, the only other term in cnt_q, to '0 outside PrimCountFpv, so err_o never rises without an injected fault and the antecedent is never sampled true. i2c_core.sv:550-574 and uart_16550.sv:350-361 place the checks. NOT waived: every other assertion of the instance (the FIFO depth, host timeout and known-output checks). Retired by a fault-injection leaf that corrupts a pointer flop, or an alert path a functional stimulus can raise."
+Assert FpvSecCmRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTxFifoWptrErrTriggerAlert_A "assertion"
+
+CHECKSUM: "2553735515"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550
+ANNOTATION: "SMC-FPV-SECCM: prim_assert_sec_cm.svh:20-22,36-40,61-62 expand the assertion as $rose(<count>.err_o) |-> ##[0:30] alert_p on the prim_count guarding a FIFO pointer (prim_fifo_sync_cnt.sv:74-115). prim_count.sv:142-154 raises err_o only when the primary and secondary counters no longer sum to all ones, :118-123 load both from one commit, and :79-81 tie fpv_force, the only other term in cnt_q, to '0 outside PrimCountFpv, so err_o never rises without an injected fault and the antecedent is never sampled true. i2c_core.sv:550-574 and uart_16550.sv:350-361 place the checks. NOT waived: every other assertion of the instance (the FIFO depth, host timeout and known-output checks). Retired by a fault-injection leaf that corrupts a pointer flop, or an alert path a functional stimulus can raise."
+Assert FpvSecCmRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTxFifoWptrErrTriggerAlert_A "assertion"
+
+CHECKSUM: "2553735515"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550
+ANNOTATION: "SMC-FPV-SECCM: prim_assert_sec_cm.svh:20-22,36-40,61-62 expand the assertion as $rose(<count>.err_o) |-> ##[0:30] alert_p on the prim_count guarding a FIFO pointer (prim_fifo_sync_cnt.sv:74-115). prim_count.sv:142-154 raises err_o only when the primary and secondary counters no longer sum to all ones, :118-123 load both from one commit, and :79-81 tie fpv_force, the only other term in cnt_q, to '0 outside PrimCountFpv, so err_o never rises without an injected fault and the antecedent is never sampled true. i2c_core.sv:550-574 and uart_16550.sv:350-361 place the checks. NOT waived: every other assertion of the instance (the FIFO depth, host timeout and known-output checks). Retired by a fault-injection leaf that corrupts a pointer flop, or an alert path a functional stimulus can raise."
+Assert FpvSecCmRxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmRxFifoWptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTxFifoRptrErrTriggerAlert_A "assertion"
+Assert FpvSecCmTxFifoWptrErrTriggerAlert_A "assertion"

@@ -29,6 +29,14 @@ tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_uart_fifo_control_depth_test"
+module = "smc_uart_fifo_control_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_log_engine_fetch_error_test"
 module = "smc_log_engine_fetch_error_test"
 seed = 1
@@ -121,6 +129,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_uart_pad_mux_enable_test"
+module = "smc_uart_pad_mux_enable_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_uart_log_engine_error_boundary_test"
 module = "smc_uart_log_engine_error_boundary_test"
 seed = 1
@@ -157,6 +173,22 @@ tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_log_engine_region_size_test"
+module = "smc_log_engine_region_size_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_log_engine_round_robin_test"
+module = "smc_log_engine_round_robin_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_log_engine_abort_test"
 module = "smc_log_engine_abort_test"
 seed = 1
@@ -177,5 +209,29 @@ name = "smc_uart_core_mode_select_test"
 module = "smc_uart_core_mode_select_test"
 seed = 1
 timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_reg_reset_rw_test"
+module = "smc_uart_reg_reset_rw_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_irq_thre_identify_test"
+module = "smc_uart_irq_thre_identify_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_log_engine_reg_map_test"
+module = "smc_uart_log_engine_reg_map_test"
+seed = 1
+timeout_sec = 3600
 tags = ["ci", "uart"]
 run_modes = ["smoke"]

@@ -32,7 +32,7 @@ ones are a convenience for iterating on a single component without a full site b
 
 PDF output is entirely separate from the HTML build — it uses `asciidoctor-pdf` directly against each component's `src/` tree, with no Antora involvement. HTML and PDF share the same underlying `.adoc` source files but are assembled independently.
 
-Deployment is via GitHub Actions (`.github/workflows/doc.yml`), which builds and publishes to the `gh-pages` branch on every push to `main`.
+Deployment is via GitHub Actions (`.github/workflows/doc.yml`), which builds the site and deploys it to GitHub Pages as a workflow artifact on every push to `main`. No branch holds the published site.
 ### Every component stages its own full copy of the shared hardware documentation
 
 This is the single most important architectural fact for anyone editing content under `hw/`.

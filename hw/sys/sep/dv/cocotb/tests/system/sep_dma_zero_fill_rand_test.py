@@ -32,7 +32,9 @@ beats come from ``env/sep_dma_model.DmaZeroFill``.
 Probes: register and SRAM frontdoor over ``s_axi``; ``dma_axi_req_probe_o`` and
 ``dma_status_probe_o`` through ``env/sep_dma_tap.py``; ``dma_busy_probe_o``;
 bits 8 and 10 of ``sep_internal_interrupts_probe_o`` (PIC sources 9 and 11);
-``spi_lsio_trigger_probe_o``. No inject.
+``spi_lsio_trigger_probe_o``. No inject. Each fill or copy window fails
+(``DMA-TAP-WINDOW FAIL``) unless the tap sampled every clock from GO to
+BUSY=0, so an empty AR or AW list is proof of no traffic.
 
 Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
   CHK-DMA-ZERO-IMAGE     per Leg Z cell: every word of the destination span
@@ -46,11 +48,16 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          addresses, through the same tap, else CTRL-MISSING.
   CHK-DMA-ZERO-RESIDUE   per Leg Z cell: the cleared bytes read 0 although the
                          last word of the copy before the fill is non-zero.
+                         Control: the copy destination, zeroed before the
+                         copy, reads back equal to the non-zero source words,
+                         else CTRL-MISSING.
   CHK-DMA-ZERO-WIN-OK    the fill of the whole range completes, clears the
                          range and leaves the guards.
   CHK-DMA-ZERO-WIN-ERR   per out-of-range fill: ERROR=1 with ERROR_CODE equal
-                         to DST_ADDR_ERROR alone, AW beats for the in-range
-                         beats only, the in-range beats cleared and every other
+                         to DST_ADDR_ERROR alone; no AR; one AW per in-range
+                         model beat with AxLEN 0, AxADDR[31:2] and the WSTRB
+                         lanes of that beat, and no other AW or W; one OKAY B
+                         per AW; the in-range beats cleared and every other
                          byte unchanged.
   CHK-DMA-ZERO-WIN-EXACT the fill whose narrow last beat ends on an unaligned
                          LIMIT completes and leaves the bytes after LIMIT.
@@ -75,8 +82,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          the whole destination.
   CHK-DMA-ZERO-WIN-LOCK  RANGE_REGWEN reads other than True after it is written
                          False and LIMIT keeps its value through a later write;
-                         a fill past LIMIT then stops at the first beat beyond
-                         it.
+                         a fill past LIMIT then ends in DST_ADDR_ERROR with
+                         the AW, W and B shape of CHK-DMA-ZERO-WIN-ERR for
+                         the beats up to LIMIT and no beat beyond it.
 
 Logged only: ``OBS-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
 rise (``sep_dma_abort_recovery_rand_test`` grades that contract).
@@ -91,7 +99,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import DmaZeroFill, ZeroBeat, bytes_to_words, words_to_bytes
 from env.sep_dma_tap import DmaTapEvents, SepDmaTap
@@ -338,6 +346,22 @@ class Plan:
         )
 
 
+class _EdgeCount:
+    """Counts clock edges, so a tap window can prove it sampled every clock."""
+
+    def __init__(self, clk) -> None:
+        self.n = 0
+        self._task = cocotb.start_soon(self._run(clk))
+
+    async def _run(self, clk) -> None:
+        while True:
+            await RisingEdge(clk)
+            self.n += 1
+
+    async def stop(self) -> None:
+        self._task.cancel()
+
+
 @dataclass
 class FillRun:
     """What one fill or copy showed: the last STATUS, ERROR_CODE and the tap window GO..BUSY=0."""
@@ -394,6 +418,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         self.suppress_host_axi_transaction_info()
         dut = cocotb.top
         self.tap = SepDmaTap(dut).start()
+        self.edges = _EdgeCount(dut.clk_i)
         self.busy = SepBitWatch(dut.dma_busy_probe_o, name="dma_busy_probe_o").start()
         self.irq = SepBitWatch(
             dut.sep_internal_interrupts_probe_o,
@@ -413,9 +438,9 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             await self._leg_l(plan)
         finally:
             close_graded_window(self.logger)
-            for watch in (self.tap, self.busy, self.irq, self.trigger):
+            for watch in (self.tap, self.busy, self.irq, self.trigger, self.edges):
                 await watch.stop()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.k)
+        self.result_pass(TEST, self.seed, self.k)
 
     async def _setup(self) -> None:
         ops = self.ops
@@ -471,6 +496,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             dst_wrap=dst_wrap,
         )
         mark = self.tap.mark()
+        e0 = self.edges.n
         await ops.go(opcode=opcode, hs=hs)
         stop = (lambda s: bool(s.error or s.aborted)) if stop_on_error else (lambda s: False)
         res = await ops.run_to_done(2 * total, busy=self.busy, stop_on=stop)
@@ -479,7 +505,22 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             await self._idle()
         elif res.status.busy:
             await ops.poll_status(lambda s: not s.busy, ERR_POLL_BOUND, "BUSY=0 after DONE")
+        self._tap_window_sampled(mark.clk, e0)
         return FillRun(res.status, ec, self.tap.since(mark), res.go_writes)
+
+    def _tap_window_sampled(self, tap0: int, e0: int) -> None:
+        """Fails unless the tap sampled every clock of the window.
+
+        An empty AR or AW list is proof of no traffic only when the tap ran
+        through the whole window; one clock of slack covers the edge on which
+        the window opens or closes.
+        """
+        sampled = self.tap.clk - tap0
+        edges = self.edges.n - e0
+        if sampled == 0 or sampled + 1 < edges:
+            line = f"DMA-TAP-WINDOW FAIL seed={self.seed} tap_samples={sampled} clocks={edges}"
+            self.logger.error(line)
+            raise AssertionError(line)
 
     def _irq_levels(self) -> tuple[int | None, int | None]:
         """PIC source 9 and 11 levels at the last sample."""
@@ -530,6 +571,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             )
             await self.mem.fill(c.region.addr, c.region.words)
             await self.mem.fill(c.copy_src.addr, c.copy_src.words)
+            await self.mem.fill(c.copy_dst, [0] * (COPY_BYTES // 4))
             cp = await self._run(
                 opcode=OP_COPY,
                 src=c.copy_src.addr,
@@ -546,6 +588,12 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
                     "CHK-DMA-ZERO-BEAT",
                     f"{tag} copy ar={len(cp_ar)} expect={len(exp_ar)} "
                     f"addrs={[f'0x{a or 0:08x}' for a in cp_ar[:4]]}",
+                )
+            cp_got = await self.mem.read(c.copy_dst, COPY_BYTES // 4)
+            if cp_got != c.copy_src.words:
+                self._ctrl_missing(
+                    "CHK-DMA-ZERO-RESIDUE",
+                    f"{tag} copy_dst {self._diff(cp_got, c.copy_src.words, c.copy_dst)}",
                 )
             inc, wrap = MODES[c.mode]
             run = await self._run(
@@ -581,7 +629,8 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             self._pass(
                 "CHK-DMA-ZERO-RESIDUE",
                 all(img[a] == 0 for a in cleared),
-                f"{tag} copy_last=0x{c.copy_src.words[-1]:08x} cleared_bytes={len(cleared)}",
+                f"{tag} copy_last=0x{c.copy_src.words[-1]:08x} "
+                f"copy_dst_last=0x{cp_got[-1]:08x} cleared_bytes={len(cleared)}",
             )
             await self._idle()
 
@@ -606,14 +655,15 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         exp = self._expect_words(d.region, fill, beats)
         st = run.status
         ec = run.error_code & ERROR_CODE_MASK
-        aw = len(run.ev.aw)
-        ok = st.error and not st.done and ec == DST_ERR and got == exp and aw == len(beats)
+        probs = self._beat_problems(run.ev, beats)
+        ok = st.error and not st.done and ec == DST_ERR and got == exp and not probs
         self._pass(
             "CHK-DMA-ZERO-WIN-ERR",
-            ok and not run.ev.ar,
+            ok,
             f"case={case} base=0x{base:08x} limit=0x{limit:08x} dst=0x{fill.dst_base:08x} "
             f"total={fill.total} chunk={fill.chunk} {st.fmt()} error_code=0x{ec:x} "
-            f"aw={aw} in_range_beats={len(beats)} {self._diff(got, exp, d.region.addr)}",
+            f"aw={len(run.ev.aw)} in_range_beats={len(beats)} "
+            f"{' '.join(probs) or 'shape=model'} {self._diff(got, exp, d.region.addr)}",
         )
         if irq:
             done_r = self.irq.rises_since(m_irq, "done")
@@ -881,15 +931,17 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         st = run.status
         ec = run.error_code & ERROR_CODE_MASK
         cmp = field_compare(limit_rb, plan.l_limit, _D.mask32("ENABLED_MEMORY_RANGE_LIMIT"))
+        probs = self._beat_problems(run.ev, beats)
         self._pass(
             "CHK-DMA-ZERO-WIN-LOCK",
             cmp.ok
             and st.error
             and ec == DST_ERR
             and got == exp
-            and len(run.ev.aw) == len(beats) == plan.l_words,
+            and not probs
+            and len(beats) == plan.l_words,
             f"regwen=0x{regwen:x} limit_readback=0x{limit_rb:08x} {st.fmt()} "
             f"error_code=0x{ec:x} aw={len(run.ev.aw)} in_range_beats={len(beats)} "
-            f"{self._diff(got, exp, r.addr)}",
+            f"{' '.join(probs) or 'shape=model'} {self._diff(got, exp, r.addr)}",
         )
         await self._idle()

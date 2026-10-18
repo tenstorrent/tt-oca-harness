@@ -113,7 +113,7 @@ simulators on `PATH`, and the license variables each licensed tool expects.
 Each package's wire-harness selftests (`--dut ocah_<protocol>_vip`) are the
 qualification vehicle of a simulator and framework pair. The native runner's
 cocotb framework runs on Verilator and the optional backends accepted by its
-profile; the SV-UVM framework runs on the backend accepted by its profile.
+profile; the SV-UVM framework runs on VCS and Verilator.
 `run_dv.py --list --json` is the authoritative framework/tool matrix.
 
 [cols="<2,<3,<3,<3",options="header"]
@@ -160,19 +160,9 @@ testlist import
 |the checker, model, and pure-Python components stay usable; masters and
 responders need the backend
 
-|SV-UVM on Verilator
-|the runner rejects `--framework uvm` for a Verilator-only DUT
-|Verilator compiles no UVM library; the cocotb realization is the
-license-free path
-
 |SV-UVM on a backend outside the framework allowlist
 |the runner rejects the selected tool for the framework
 |use a backend reported for the SV-UVM view by `run_dv.py --list`
-
-|Covergroups on Verilator
-|`cov/` collateral never enters a Verilator filelist
-|covergroups collect on the four-state simulators through the SV-UVM
-harness shapes (<<shared-vip-checking-ownership>>)
 
 |A four-state simulator with an undriven harness bundle
 |`OCAH_AXI_*_VALID_RESET_LOW` fails at the first clock edge on an X-valued

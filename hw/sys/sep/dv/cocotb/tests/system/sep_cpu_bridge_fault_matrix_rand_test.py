@@ -55,7 +55,28 @@ Checkers:
   CHK-CLR-READ0   both clear registers read 0 with both status registers set.
   CHK-DMA-CLR     write 0 keeps, write 1 clears both, no cross-set.
   CHK-HOST        a SLVERR DMA source read latches host_path_err alone.
+  CHK-DMA-HOST-HOLD
+                  after the host-path fault, a write of 1 to DMA STATUS.ERROR
+                  reads ERROR = 0 and leaves host_path_err = 1 and source 42
+                  (vector bit 41) high. Sources:
+                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:53-55``
+                  "Secure DMA bridge fault status. Each bit is latched in
+                  hardware and held until the corresponding DMA_BUS_ERR_CLEAR
+                  write. These bits also drive dedicated PIC sources.";
+                  ``hw/sys/sep/doc/interrupts.adoc:231-232`` source 42 "DMA
+                  host-path integrity/bus fault";
+                  ``hw/sys/sep/doc/dma.adoc:131-132`` "Status completion and
+                  error bits are write-one-to-clear". Control: the next cell
+                  (``cell=host_only`` of CHK-DMA-CLR) writes 1 to
+                  DMA_BUS_ERR_CLEAR and needs host_path_err = 0 and source 42
+                  low (``sep_cpu_ctrl.adoc:60`` "Writing 1 emits a single-cycle
+                  clear pulse to both latches").
   CHK-RACE        a same-cycle fault and clear leaves the latch set.
+
+Observed only (``OBS-DMA-HOST-CLR``): STATUS.ERROR and ERROR_CODE.BUS_ERROR
+after a write of 1 to DMA_BUS_ERR_CLEAR while both are set. No sentence states
+whether DMA_BUS_ERR_CLEAR changes the DMA report, so the leaf logs the values
+and grades nothing.
 
 The expected latch set of CHK-CLR-MATRIX and CHK-MASK, before and after each
 clear, is the set of faults the leaf drove minus the bits it cleared, never a
@@ -243,6 +264,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         "CHK-CLR-READ0",
         "CHK-DMA-CLR",
         "CHK-HOST",
+        "CHK-DMA-HOST-HOLD",
         "CHK-RACE",
     )
 
@@ -362,8 +384,8 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             + " ".join(f"{b}:{RESP_NAME.get(r, r)}" for b, r, _ in reads)
         )
         fcs = [
-            field_compare(p, 0, PERIPH_MASK),
-            field_compare(d, 0, DMA_MASK),
+            field_compare(p, SEP_CPU_CTRL.reset32("PERIPH_BUS_ERR_STATUS"), PERIPH_MASK),
+            field_compare(d, SEP_CPU_CTRL.reset32("DMA_BUS_ERR_STATUS"), DMA_MASK),
             field_compare(p2, 0, PERIPH_MASK),
             field_compare(d2, 0, DMA_MASK),
         ]
@@ -641,7 +663,21 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             self._fail("CHK-HOST", line)
         self._pass("CHK-HOST", line)
 
-        # Host-path clear cells.
+        # A write of 1 to STATUS.ERROR leaves the host-path latch and source 42.
+        await self._w1c_error()
+        st_w = await self.dma.read_status()
+        d = await self._dma()
+        vec = await self._vec()
+        line = (
+            f"after=status_error_w1c error={st_w.error} "
+            f"host_path_err={int(bool(d & DMA_HOST_PATH_BIT))} "
+            f"bus_err_status=0x{d & DMA_MASK:02x} vec41={self._b(vec, 41)}"
+        )
+        if st_w.error != 0 or not d & DMA_HOST_PATH_BIT or self._b(vec, 41) != 1:
+            self._fail("CHK-DMA-HOST-HOLD", line)
+        self._pass("CHK-DMA-HOST-HOLD", line)
+
+        # Host-path clear cells; cell=host_only is the control of CHK-DMA-HOST-HOLD.
         before = d & DMA_MASK
         await self._wr_ok(DMA_CLEAR_ADDR, 0)
         a0 = await self._dma()
@@ -673,6 +709,15 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         await self._wr_ok(DMA_CLEAR_ADDR, 1)
         a1 = await self._dma()
         v1 = await self._vec()
+        st_c = await self.dma.read_status()
+        ecode_c = await self.dma.rd(_D.addr("ERROR_CODE"))
+        self.logger.info(
+            "OBS-DMA-HOST-CLR LOG seed=%d after=dma_bus_err_clear error=%d bus_error=%d "
+            "reason=no_sentence_states_whether_dma_bus_err_clear_changes_the_dma_report",
+            self.c.seed,
+            st_c.error,
+            int(bool(ecode_c & BUS_ERROR)),
+        )
         line = (
             f"cell=both before=0x{before:x} after_write0=0x{a0 & DMA_MASK:x} "
             f"after_write1=0x{a1 & DMA_MASK:x} vec40={self._b(v1, 40)} vec41={self._b(v1, 41)}"
@@ -886,6 +931,4 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         await self.pulses.stop()
         await self.out.stop()
         await self.out_rsp.stop()
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d counts=%s", TEST, seed, self.n_checks, self.counts
-        )
+        self.result_pass(TEST, seed, self.n_checks, f" counts={self.counts}")

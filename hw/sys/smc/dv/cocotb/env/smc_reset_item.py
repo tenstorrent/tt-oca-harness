@@ -9,8 +9,8 @@ from enum import Enum
 from pyuvm import uvm_sequence_item
 
 # Every reset observable the driver samples, in log order. Anything sampled and
-# logged must appear here so it also gets a fail-capable compare
-# ([EXACT-EXPECTATION]: an observed-but-never-compared field reads as checked).
+# logged must appear here so it also gets a fail-capable compare: an
+# observed-but-never-compared field reads as checked.
 RESET_SAMPLE_FIELDS = (
     "powergood_stable",
     "rst_cold_stable_ref_clk_n",
@@ -30,7 +30,7 @@ class SmcResetOp(Enum):
     SAMPLE = "SAMPLE"
     RAW_SAMPLE = "RAW_SAMPLE"
     # Bounded poll until the requested expect_* state is observed. Expiry is a
-    # testcase failure with last-state diagnostics ([TIMEOUT-MUST-FAIL]): a
+    # testcase failure with last-state diagnostics: a
     # handshake, not a fixed ClockCycles delay followed by SAMPLE.
     WAIT_STATE = "WAIT_STATE"
     POWERGOOD_LO = "POWERGOOD_LO"
@@ -59,7 +59,7 @@ class SmcResetItem(uvm_sequence_item):
         # expect_* to override one leg with a SPEC-exact value for that leg.
         # On RAW_SAMPLE / WAIT_STATE nothing is checked unless at least one
         # expect_* (or expect_left_stable) is set: a mid-glitch snapshot has no
-        # post-release invariant to assert, so the sequence owns the contract.
+        # post-release invariant to assert, so the sequence states the expectation.
         self.expect_powergood_stable: int | None = None
         self.expect_rst_cold_stable_ref_clk_n: int | None = None
         self.expect_rst_primary_ref_clk_n: int | None = None
@@ -73,6 +73,8 @@ class SmcResetItem(uvm_sequence_item):
         self.timeout_ref_cycles: int = 2000
         self.timed_out: bool = False
         self.wait_ref_cycles: int = -1
+        # RAW_SAMPLE items a hold window sent; set on the window's last item.
+        self.hold_samples: int = 0
 
     def expectations(self) -> list[tuple[str, int]]:
         """(field, expected) pairs this item explicitly asks to be compared."""

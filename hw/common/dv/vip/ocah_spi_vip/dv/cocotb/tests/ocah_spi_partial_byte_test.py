@@ -194,6 +194,7 @@ async def ocah_spi_partial_byte_test(dut) -> None:
             "frame",
             flash,
             lambda probe: probe.replay(records[: _PARTIAL_FRAME + 1]),
+            check_id="CHK-SPI-FRAME-BYTES",
         ),
         context="a probe checker handed the refused record must fail CHK-SPI-FRAME-BYTES",
     )

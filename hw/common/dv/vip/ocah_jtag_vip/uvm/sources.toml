@@ -3,7 +3,7 @@
 
 # Ordered SV compile manifest for the shared JTAG VIP. Consumed by DUT sim configs via
 # [frameworks.uvm.build].source_lists — never hand-copy these paths into a DUT config, and
-# never add them to Bender or Verilator filelists. Order is load-bearing: interface and
+# never add them to Bender or cocotb filelists. Order is load-bearing: interface and
 # bind collateral first, the UVM package last (importers compile after it).
 description = "OCAH JTAG VIP SV-UVM compile layer (interface, cov/sva collateral, UVM package)"
 

@@ -47,6 +47,18 @@ def _coerce_int(value, where: str) -> int:
     sys.exit(f"error: {where}: value must be an integer or a '0x...' string")
 
 
+def _locks_value(config: dict, block_schema: dict) -> int:
+    field_cfg = config.get("LOCKS", {}).get("fields", {}).get("lock_entries", {})
+    value = _coerce_int(field_cfg.get("value", 0), "LOCKS.lock_entries")
+    if value < 0:
+        sys.exit("error: LOCKS.lock_entries: value must not be negative")
+    if value >= (1 << block_schema["regwidth"]):
+        sys.exit(
+            f"error: LOCKS.lock_entries: value does not fit in {block_schema['regwidth']} bits"
+        )
+    return value
+
+
 def build_image(config: dict, schema: dict) -> int:
     if "LOCKS" not in schema:
         sys.exit("error: schema has no LOCKS block")
@@ -60,8 +72,9 @@ def build_image(config: dict, schema: dict) -> int:
         width = block_schema["regwidth"]
 
         if block == "LOCKS":
-            # Built from the blocks' lock flags; any LOCKS value in the configuration is ignored.
+            # The configured LOCKS value is OR-ed with the bits derived from the lock flags.
             lock_offset, lock_width = offset, width
+            locks |= _locks_value(config, block_schema)
             offset += width
             continue
 

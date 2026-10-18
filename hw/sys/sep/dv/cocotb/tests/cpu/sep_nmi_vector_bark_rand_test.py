@@ -17,8 +17,9 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   on ``cpu_trace_addr_o``, equal the programmed vector. Bark 1 runs with
   mstatus.MIE 0, bark 2 with mstatus.MIE 1. ``wdt_timer_rst_req_o`` at the
   handler entry is logged (``OBS-BITE-REQ``).
-* CHK-NMI-NOPIC (firmware) meip[0] read in the NMI handler equals meip[0]
-  before the bark, with the six excluded idle bits masked; the pending source
+* CHK-NMI-NOPIC (firmware) each of the eight meip words read in the NMI
+  handler equals the same word read before the bark, with the six excluded
+  idle bits masked; the pending source
   delivers once after its gate opens (case a and the drawn case).
 * CHK-BARK-VEC (host) with SEP_NMI_VEC at its RDL reset value the first retired
   PC after the loop is 0xC000_0100 and the stub prints ``M0`` (control leg);
@@ -262,7 +263,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         dut = cocotb.top
         await RisingEdge(dut.clk_i)
         dut.rst_ni.value = 0
-        self._set_if_exists(dut, "dbg_rstb_i", 0)
+        self._set_pin(dut, "dbg_rstb_i", 0)
         await ClockCycles(dut.clk_i, 20)
         shutil.copyfile(itcm, os.path.join(os.getcwd(), "sep_itcm.hex"))
         shutil.copyfile(dtcm, os.path.join(os.getcwd(), "sep_dtcm.hex"))
@@ -272,7 +273,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, 4)
         self.logger.info("cold reset: TCM reloaded with the leg-2 parameter block")
         dut.rst_ni.value = 1
-        self._set_if_exists(dut, "dbg_rstb_i", 1)
+        self._set_pin(dut, "dbg_rstb_i", 1)
         await self._wait_fuse_sense(20_000)
         await ClockCycles(dut.clk_i, 30)
         dut.i_cpu_run_req_i.value = 1
@@ -442,4 +443,4 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         if cases != ["a", CASES[cfg.case]]:
             raise AssertionError(f"CHK-NMI-NOPIC FAIL: cases {cases}, drawn a,{CASES[cfg.case]}")
         n_host = self._chk_taken(sy) + self._chk_bark_vec(sy, boot2_clk)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, n_fw + n_host)
+        self.result_pass(TEST, seed, n_fw + n_host)
