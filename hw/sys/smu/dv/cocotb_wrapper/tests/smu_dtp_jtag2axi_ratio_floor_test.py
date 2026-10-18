@@ -14,7 +14,7 @@ class smu_dtp_jtag2axi_ratio_floor_test(smu_base_test):
     """Series write and single-load reads at TCK to clk_smu_i ratios 4.0, 4.8, 3.2, 2.0, 4.0."""
 
     use_shared_env = True
-    # The TCK to clk_smu_i ratio is set per leg by the sequence, so the base test applies no floor.
+    # No TCK floor: the sequence sets the TCK period of each leg.
     min_jtag_smu_ratio = None
     required_evidence = (
         "CHK-DBG-RATIO-COMPLETE-4P0",

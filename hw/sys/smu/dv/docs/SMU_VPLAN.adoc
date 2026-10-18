@@ -7998,7 +7998,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DBG-J2A-SERIES-SETUP` |the gate tap reads 0 before the first scan, SERIES_CTRL scans 63 bits wide and reads op 0 after `SERIES_CTRL.reset`, and the counter baselines are sampled
+|`CHK-DBG-J2A-SERIES-SETUP` |the gate tap reads 0 before the first bridge scan, SERIES_CTRL scans 63 bits wide and reads op 0 after `SERIES_CTRL.reset`, and the counter baselines are sampled
 |`CHK-DBG-J2A-SERIES-INCR` |an eight-beat 32-bit INCR write raises the AW and B counters by 8 and leaves op 0, SINGLE_OP reads return W0, W1, W6 and W7, a single-load series read returns W1 on capture 2, the 64-bit leg raises the counters by 2 and reads back both words, and the eight-scan read stream is measured and logged only
 |`CHK-DBG-J2A-SERIES-NOINCR` |a two-beat NO_INCR write leaves the last word at word 5 with the AW and B counters up by 2, word 4 of the same 8-byte beat is unchanged, and a single-load NO_INCR read returns X2 before a SINGLE_OP rewrite and X3 after it
 |`CHK-DBG-J2A-SERIES-ERRSTATUS` |WITH_ERROR_STATUS scans are 33 bits wide, report status 0 on every OKAY beat, land P0, P2, P3 on words 0 to 2 by the increment bits with the counters up by 4, a single-load read returns P0 with status 0, a read of 0xC0017000 followed by two scans with increment 0 shifts out status 1 on the second, and `SERIES_CTRL.reset` returns op from 2 to 0
@@ -8009,7 +8009,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 |`CHK-DBG-J2A-SINGLE-INDEP` |with series code 2 latched a SINGLE_OP OKAY read reports op 0 and a SINGLE_OP read of the empty mailbox READ_DATA reports op 1 with `0xFEEDDEAD`, and `SERIES_CTRL.op` stays 2 after each
 |`CHK-DBG-J2A-BUSY-OP3` |the op field and AR delta of unspaced SINGLE_OP pairs are measured and logged only, the retry after 64 Run-Test/Idle TCKs reads op 0 with word 7, and spaced pairs read op 0
 |`CHK-TIMEOUT-PATHS` |the gate wait, the `SERIES_CTRL.op` polls, the B counter waits, the SINGLE_OP capture polls, the unspaced-attempt loop and its single retry capture site finish inside their bounds with a recorded last state and the stated site count per kind
-|`CHK-NONVAC` |ordered sim-time fence S1<...<S12<PASS, the pass point is stamped after the last step and every step has a nonzero scan count
+|`CHK-NONVAC` |ordered sim-time fence S1<...<S12<PASS, the pass point is stamped after the last step and every step S1 to S11 has a nonzero scan count
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
@@ -8058,7 +8058,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DBG-J2A-CAPS-SETUP` |the SMC fabric gate tap reads 0 before the first scan, IDCODE reads the documented value and the AW, AR and B counter baselines are sampled
+|`CHK-DBG-J2A-CAPS-SETUP` |the SMC fabric gate tap reads 0 before the first bridge scan, IDCODE reads the documented value and the AW, AR and B counter baselines are sampled
 |`CHK-DBG-J2A-CAPS-SMC` |SMC_JTAG2AXI_CAPS reads 0x3DF0 with bus_type 0, addr_size 56, data_size 3, wr_pl_depth 3 and rd_pl_depth 3, each field compared separately
 |`CHK-DBG-J2A-CAPS-OTP` |SMC_OTP and SEP_OTP JTAG2AXI_CAPS both read 0x3D41 with bus_type 1, addr_size 32, data_size 2, wr_pl_depth 3 and rd_pl_depth 3, each field compared separately
 |`CHK-DBG-J2A-CAPS-STABLE` |each CAPS word recaptures as 0x3DF0, 0x3D41 and 0x3D41 after zeros, ones and 0x2AAA shift-ins and after an intervening IDCODE scan and BYPASS load
@@ -8067,7 +8067,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 |`CHK-DBG-J2A-SINGLE-OKAY` |the capture before a write of SCRATCH[13] reads op 2, the write reads op 0 with the AW and B counters up by 1, a gap read right before the read of SCRATCH[13] captures op 2 with 0xBADCAB1E, and the read returns 0x0A11CE5E with op 0 and the AR counter up by 1
 |`CHK-DBG-J2A-SINGLE-RECOVERY` |a second empty-mailbox READ_DATA read captures op 1 with 0xFEEDDEAD and a clean read of SCRATCH[13] captures op 0 with 0x0A11CE5E
 |`CHK-DBG-J2A-SINGLE-NOP` |two op 0 scans with a non-zero address, data and strobe leave the AR counter flat and, after the op 1 scan of the same fields completes, the AW counter flat and the AR counter up by 1
-|`CHK-NONVAC` |ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last step and every step has a nonzero scan count
+|`CHK-NONVAC` |ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last step and every step S1 to S10 has a nonzero scan count
 |`CHK-TIMEOUT-PATHS` |the gate wait and the ten SINGLE_OP capture polls finish inside their bounds with a recorded last state and the stated site count per kind
 |===
 
@@ -8119,7 +8119,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 |`CHK-DBG-SEP-OTP-HOLE-SERIES` |SERIES_CTRL.op reads 0 before a series beat at 0x1093041C and 1 after it, the single-load read of SPARE0 word 0 after it returns 0x13579BDF with op 1, and op stays 1 beside a SINGLE_OP read that captures op 0; the first capture of the SPARE0 load after the series hole beat is measured and logged only
 |`CHK-DBG-SEP-OTP-ISOLATION` |the AW, AR and B counters equal their baselines after all SEP OTP traffic, then the SMC fabric SINGLE_OP read at 0xC0017000 captures op 2 and the read of 0xC00390E8 captures op 0 with the AR counter up by 2 and the AW and B counters unchanged
 |`CHK-DBG-SEP-OTP-RESET` |the SERIES_CTRL write with bit 38 set captures op 1 and the next capture reads op 0, and the single-load series read of SPARE0 word 0 after it returns 0x13579BDF with op 0
-|`CHK-NONVAC` |ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last step and every step has a nonzero scan count
+|`CHK-NONVAC` |ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last step and every step S1 to S7 has a nonzero scan count
 |`CHK-TIMEOUT-PATHS` |the sensing wait, the SERIES_CTRL.op polls and the SINGLE_OP capture polls finish inside their bounds with a recorded last state and the stated site count per kind
 |===
 
@@ -8194,7 +8194,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 *Test Coverage*:
 
-* Setup: the `clk_smu_i` period measured over four rising edges is within 1 % of the 10 ns system clock setting (`doc/integrator/src/smu-composition.adoc`, system clock settings) and the bench period from `+pll_sys_period_ns` equals that setting, so the TCK ratios of the legs rest on a graded period; no TCK to `clk_smu_i` floor is set because the test owns the ratio, logged; `tb_smc_jtag2axi_security_disable` reads 0 inside 400 polls of 50 `clk_smu_i` cycles before the first scan, `SERIES_CTRL.reset` (bit 62) leaves `op` 0 (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, `*_AXI_SERIES_CTRL`) and the counter baselines are sampled.
+* Setup: the `clk_smu_i` period measured over four rising edges is within 1 % of the 10 ns system clock setting (`doc/integrator/src/smu-composition.adoc`, system clock settings) and the bench period from `+pll_sys_period_ns` equals that setting; the leaf sets no TCK to `clk_smu_i` floor (the sequence sets the TCK period of each leg), logged; `tb_smc_jtag2axi_security_disable` reads 0 inside 400 polls of 50 `clk_smu_i` cycles before the first bridge scan, `SERIES_CTRL.reset` (bit 62) leaves `op` 0 (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, `*_AXI_SERIES_CTRL`) and the counter baselines are sampled.
 * Ratio 4.0 and 4.8: a write of four 32-bit words (`SERIES_DATA_INCR`, `architecture.adoc`) to `SCRATCH_COLD_WARM[0..3]` at `0xC0002880` (`smc_addr.h`) raises the AW and B counters by 4, `SERIES_CTRL.op`, captured with `nop` control scans, leaves 3 within 16 captures and the B counter shows four completions within 64 polls of 4 cycles; each word is then read with one `SERIES_CTRL` read load and two data scans and capture 2 equals the word written (`0x40400001` to `0x40400004` at TCK 40 ns, `0x48480001` to `0x48480004` at 48 ns), with `op` 0 after every load (`doc/integrator/src/smu-dtp.adoc`, TCK 10 MHz to 50 MHz against a 100 MHz system clock). The AR delta and the `pl_depth` field capture are measured and logged only.
 * Ratio 3.2 and 2.0: the same series with words `0x32320001` and `0x20200001` onward is run at TCK 32 ns and 20 ns. `SERIES_CTRL.op` after every load, the read-back words, the counter deltas, the retry count (64 Run-Test/Idle TCKs per retry, at most 4, applied to every capture that reads 3) and the TCK count per operation are measured and logged only (no minimum ratio is documented in `doc/integrator/src/smu-dtp.adoc` or `hw/sys/dtp/doc/clk_rst.adoc`). The one compare is the op code rule: every capture is 0 or 3 and never 1 or 2, because 1 and 2 report a failed response and 3 reports an operation attempted before the previous completed (`architecture.adoc`); when no capture reads 3 the checker reports the 3 branch as NOT-EXERCISED.
 * Recovery: `SERIES_CTRL.reset` at TCK 40 ns reads `op` 0 on the next capture (the reset clears the sticky code, `architecture.adoc`) and the series of words `0x4A4A0001` to `0x4A4A0004` completes with equal read-backs, `op` 0 and the AW and B counters up by 4.
@@ -8217,7 +8217,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DBG-RATIO-SETUP` |the clk_smu_i period measured over four rising edges is within 1 % of the 10 ns system clock setting and the bench period from +pll_sys_period_ns equals it, the absent TCK floor is logged, the gate tap reads 0 before the first scan, SERIES_CTRL.reset leaves op 0 and the counter baselines are sampled
+|`CHK-DBG-RATIO-SETUP` |the clk_smu_i period measured over four rising edges is within 1 % of the 10 ns system clock setting and the bench period from +pll_sys_period_ns equals it, the absent TCK floor is logged, the gate tap reads 0 before the first bridge scan, SERIES_CTRL.reset leaves op 0 and the counter baselines are sampled
 |`CHK-DBG-RATIO-COMPLETE-4P0` |at TCK 40 ns the four-word series write raises the AW and B counters by 4 and the four single-load series reads return the four words with op 0 after every load; the AR delta is measured and logged only
 |`CHK-DBG-RATIO-COMPLETE-4P8` |at TCK 48 ns the four-word series write raises the AW and B counters by 4 and the four single-load series reads return the four words with op 0 after every load
 |`CHK-DBG-RATIO-OP3-RULE` |every SERIES_CTRL.op capture of the 3.2 and 2.0 legs is 0 or 3 and never 1 or 2, and the integration legs read 0; a leg that never reads 3 is reported as NOT-EXERCISED for that branch
@@ -8270,7 +8270,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DBG-SMC-DM-SETUP` |the gate tap reads 0 before the first scan, IDCODE reads the documented value, the launch counter baselines are sampled, tb_stap_smc_tms stays parked while the SMC STAP is unselected and follows jtag_tms edge for edge after TAP_3DCR with no TCK mismatch
+|`CHK-DBG-SMC-DM-SETUP` |the gate tap reads 0 before the first bridge scan, IDCODE reads the documented value, the launch counter baselines are sampled, tb_stap_smc_tms stays parked while the SMC STAP is unselected and follows jtag_tms edge for edge after TAP_3DCR with no TCK mismatch
 |`CHK-DBG-SMC-DM-RESET-HELD` |RESET_CTRL reads bit 24 = 0 and its bits 3:0 and bit 8 are logged; the dmi write and two dmi reads while the debug module is held complete inside the retry bound with the write status logged; the IDCODE after them equals the first
 |`CHK-DBG-SMC-DM-RELEASE` |the RESET_CTRL write with bit 24 set captures op 0 with the AW and B counters each up by 1 and the read back has bit 24 = 1 with bits 8:0 equal to the value read while held
 |`CHK-DBG-SMC-DM-DMACTIVE` |after the release the dmi write of dmcontrol = 1 reads back dmactive = 1 inside the retry bound

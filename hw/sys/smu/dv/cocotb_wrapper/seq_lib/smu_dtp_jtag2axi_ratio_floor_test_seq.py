@@ -5,12 +5,11 @@
 The test runs the same four-word series write and four single-load series reads at TCK periods of
 40, 48, 32, 20 and 40 ns against a 10 ns clk_smu_i, each leg on a fresh JTAG master. The clk_smu_i
 period measured over four rising edges and the bench period from +pll_sys_period_ns are compared
-with the 10 ns system clock setting, so the ratios of the legs rest on a graded period. The legs at
-ratio 4.0 and 4.8 and the recovery leg at ratio 4.0 after SERIES_CTRL.reset compare completion,
-data, SERIES_CTRL.op and the write-launch and write-response counters at the SMU boundary. The legs
-at ratio 3.2 and 2.0 are measured and logged only, except that SERIES_CTRL.op is 0 or 3 and never
-1 or 2. A series read is one SERIES_CTRL read load followed by two data scans; capture 2 is the
-word.
+with the 10 ns system clock setting. The legs at ratio 4.0 and 4.8 and the recovery leg at ratio
+4.0 after SERIES_CTRL.reset compare completion, data, SERIES_CTRL.op and the write-launch and
+write-response counters at the SMU boundary. The legs at ratio 3.2 and 2.0 are measured and logged
+only, except that SERIES_CTRL.op is 0 or 3 and never 1 or 2. A series read is one SERIES_CTRL read
+load followed by two data scans; capture 2 is the word.
 
 Sources: doc/integrator/src/smu-composition.adoc and doc/integrator/src/smu-dtp.adoc (system clock
 and TCK settings), hw/ip/jtag/jtag_ptap/doc/architecture.adoc (*_AXI_SERIES_CTRL op codes and

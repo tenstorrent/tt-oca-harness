@@ -3580,9 +3580,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DBG-J2A-SERIES-SETUP",
             "CHK-DBG-J2A-SERIES-SETUP",
-            "the SMC fabric gate tap reads 0 before the first scan, SERIES_CTRL scans 63 bits wide "
-            "and reads op 0 after SERIES_CTRL.reset, and the AW, AR and B counter baselines are "
-            "sampled",
+            "the SMC fabric gate tap reads 0 before the first bridge scan, SERIES_CTRL scans 63 "
+            "bits wide and reads op 0 after SERIES_CTRL.reset, and the AW, AR and B counter "
+            "baselines are sampled",
         ),
         (
             "CHK-DBG-J2A-SERIES-INCR",
@@ -3661,15 +3661,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-NONVAC",
             "CHK-NONVAC",
             "ordered sim-time fence S1<...<S12<PASS, the pass point is stamped after the last "
-            "step and every step has a nonzero scan count",
+            "step and every step S1 to S11 has a nonzero scan count",
         ),
     ],
     "smu_dtp_jtag2axi_caps_single_op_test": [
         (
             "CHK-DBG-J2A-CAPS-SETUP",
             "CHK-DBG-J2A-CAPS-SETUP",
-            "the SMC fabric gate tap reads 0 before the first scan, IDCODE reads the documented "
-            "value and the AW, AR and B counter baselines are sampled",
+            "the SMC fabric gate tap reads 0 before the first bridge scan, IDCODE reads the "
+            "documented value and the AW, AR and B counter baselines are sampled",
         ),
         (
             "CHK-DBG-J2A-CAPS-SMC",
@@ -3727,7 +3727,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-NONVAC",
             "CHK-NONVAC",
             "ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last "
-            "step and every step has a nonzero scan count",
+            "step and every step S1 to S10 has a nonzero scan count",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -3786,7 +3786,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-NONVAC",
             "CHK-NONVAC",
             "ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last "
-            "step and every step has a nonzero scan count",
+            "step and every step S1 to S7 has a nonzero scan count",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -3862,7 +3862,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-DBG-RATIO-SETUP",
             "the clk_smu_i period measured over four rising edges is within 1 % of the 10 ns "
             "system clock setting and the bench period from +pll_sys_period_ns equals it, the "
-            "absent TCK floor is logged, the gate tap reads 0 before the first scan, "
+            "absent TCK floor is logged, the gate tap reads 0 before the first bridge scan, "
             "SERIES_CTRL.reset leaves op 0 and the counter baselines are sampled",
         ),
         (
@@ -3909,9 +3909,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DBG-SMC-DM-SETUP",
             "CHK-DBG-SMC-DM-SETUP",
-            "the gate tap reads 0 before the first scan, IDCODE reads the documented value, the "
-            "launch counter baselines are sampled, tb_stap_smc_tms stays parked while the SMC STAP "
-            "is unselected and follows jtag_tms edge for edge after TAP_3DCR with no TCK mismatch",
+            "the gate tap reads 0 before the first bridge scan, IDCODE reads the documented value, "
+            "the launch counter baselines are sampled, tb_stap_smc_tms stays parked while the SMC "
+            "STAP is unselected and follows jtag_tms edge for edge after TAP_3DCR with no TCK "
+            "mismatch",
         ),
         (
             "CHK-DBG-SMC-DM-RESET-HELD",
