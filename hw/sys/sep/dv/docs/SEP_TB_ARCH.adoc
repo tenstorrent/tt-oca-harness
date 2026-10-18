@@ -242,7 +242,8 @@ Observation probe groups:
   is copy k of channel c: 0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS).
   `jtag_filter_lc_sigint_err_probe_o`, the integrity-error flag of the JTAG
   lifecycle filter decoder; `lcc_sigint_err_probe_o` stays 0 under a
-  filter-side inject. `jtag_id_probe_o`, the `sep` input `jtag_id_i`. Owners:
+  filter-side inject. `jtag_id_probe_o`, the `sep` input `jtag_id_i`. `sec_dis_digest_probe_o`, the SEC_DIS
+  expected digest that the bench binds to `SEP_SEC_DISABLE_TOKEN`. Owners:
   `sep_lcc_feat_ctrl_state_matrix_rand_test`,
   `sep_efuse_transient_rma_rand_test`, `sep_efuse_token_channel_rand_test`,
   `sep_efuse_token_fault_matrix_test`, `sep_efuse_interface_status_rand_test`,

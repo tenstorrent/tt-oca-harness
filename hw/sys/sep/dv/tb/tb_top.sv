@@ -587,6 +587,10 @@ module sep_uvm_top
     // force security_disable.
     localparam bit [255:0] SecDisTbDigest =
         256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+    // Read-only copy of the bound digest: a localparam has no simulator handle on
+    // every tool, a net does. CHK-BIND reads it.
+    wire [255:0] sec_dis_digest_probe_o;
+    assign sec_dis_digest_probe_o = SecDisTbDigest;
     // SMC fuse-sense completion. No SMC RTL is instantiated in this top, so the TB
     // stands in for what the SoC provides: the SMC finishes sensing its eFuse array
     // after reset and holds the indication high afterwards. Cold reset re-senses;

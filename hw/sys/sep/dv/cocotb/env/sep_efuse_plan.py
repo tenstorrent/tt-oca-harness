@@ -259,9 +259,10 @@ if (DBG1_MASK, DBG2_MASK, FUNC_MASK) != (0xFF_FFFF, 0xFF_FFFF << 24, 0xFFFF << 4
         f"LC_DISABLE groups {DBG1_MASK:#x}/{DBG2_MASK:#x}/{FUNC_MASK:#x} differ from the "
         "specification layout DBG_1 [23:0], DBG_2 [47:24], Function [63:48]"
     )
-# The five named DBG_1 bits SEP_DBG, CHIPLET_DBG, SEP_FUSE_DBG, SMC_FUSE_DBG,
-# ENTROPY_DBG (lifecycle_controller.adoc, SEP feature-disable vector table).
-NAMED_DBG_BITS = (0, 1, 2, 3, 4)
+# The five named disable bits of the DFT fuse gate ports: SEP_DBG 0, CHIPLET_DBG 1,
+# SEP_FUSE_DBG 2, SMC_FUSE_DBG 3 and SIP_DBG 24 (lifecycle_controller.adoc, SEP
+# feature-disable vector table and Debug and Test Port Path Gating).
+DFT_GATE_BITS = (0, 1, 2, 3, 24)
 # Bits that the walk of sep_lcc_feat_ctrl_state_matrix_rand_test weights double and
 # pins to the owner SIP_DIS in TEST_DEV and SYS_DIS in PROD (VPLAN entry).
 WALK_PINNED_BITS = (0, 1, 2, 3, 4, 23, 24, 25, 47, 48, 63)
@@ -894,13 +895,25 @@ class SepEfusePlan:
     def words(self) -> list[int]:
         return list(self.image.words)
 
-    def log_lines(self) -> list[str]:
-        """``SEED`` line and one ``DRAW`` line per drawn value, in draw order."""
-        head = (
-            f"SEED seed={self.seed} test={self.test} lc_raw=0x{self.lc_raw:x} "
-            f"state={lc_state_class(self.lc_raw)} sip_dis=0x{self.sip_dis:016x} "
-            f"sys_dis=0x{self.sys_dis:016x} prestaged={int(self.prestaged)}"
-        )
+    def log_lines(self, **seed_fields: Any) -> list[str]:
+        """One ``SEED`` line and one ``DRAW`` line per drawn value, in draw order.
+
+        ``seed_fields`` are the keys of the entry's ``SEED`` form (VPLAN entry,
+        procedure step 1), printed right after ``seed=<n>`` in the given order; the
+        plan keys follow, and a plan key that the entry form also names is not
+        printed twice.
+        """
+        plan_fields = {
+            "test": self.test,
+            "lc_raw": f"0x{self.lc_raw:x}",
+            "state": lc_state_class(self.lc_raw),
+            "sip_dis": f"0x{self.sip_dis:016x}",
+            "sys_dis": f"0x{self.sys_dis:016x}",
+            "prestaged": int(self.prestaged),
+        }
+        fields = {k: _fmt(v) for k, v in seed_fields.items()}
+        fields.update({k: str(v) for k, v in plan_fields.items() if k not in fields})
+        head = " ".join([f"SEED seed={self.seed}", *(f"{k}={v}" for k, v in fields.items())])
         lines = [head]
         lines += [f"DRAW seed={self.seed} name={k} value={_fmt(v)}" for k, v in self.draws.items()]
         if self.setup_fail:
@@ -1412,7 +1425,7 @@ def plan_feat_ctrl_matrix(seed: int) -> SepEfusePlan:
             steps.append({"bit": b, "owner": owner, "width": width})
         leg["walk"] = steps
     elif leg_name == LEG_E:
-        order = d.shuffled("leg_e_order", NAMED_DBG_BITS)
+        order = d.shuffled("leg_e_order", DFT_GATE_BITS)
         leg["leg_e"] = [{"bit": b, "width": d.choice(f"leg_e_width.{b}", (64, 32))} for b in order]
     return _make_plan(T_FEAT_MATRIX, seed, d, r, sip, sys_, img, leg)
 
@@ -1662,6 +1675,22 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
                 else (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_R, _LOCK_KIND_WR)
             )
             layout[s] = d.choice(f"lock_kind.{s}", kinds)
+        # Trap filter (no lock on a slot that the leaf needs later in the image): the
+        # CHK-LOCK-CELL control needs an unblocked shadow write on another slot of the
+        # leaf. When every shadow-write slot is write-locked, one of them, drawn, redraws
+        # its kind with equal weight until it carries no write-lock.
+        shadow_slots = [SLOT_OF_FIELD[f] for f in _SHADOW_WRITE_FIELDS]
+        if all(layout.get(s) in (_LOCK_KIND_W, _LOCK_KIND_WR) for s in shadow_slots):
+            s = d.choice("shadow_write_twin_slot", shadow_slots)
+            all_kinds = (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_R, _LOCK_KIND_WR)
+            layout[s] = d.until(
+                f"redraw.lock_kind.{s}",
+                lambda: d.rng.choice(list(all_kinds)),
+                lambda k: k not in (_LOCK_KIND_W, _LOCK_KIND_WR),
+            )
+        leg["shadow_write_twin_free"] = [
+            s for s in shadow_slots if layout.get(s) not in (_LOCK_KIND_W, _LOCK_KIND_WR)
+        ]
         for s, k in layout.items():
             lock_bits |= _lock_bits_of(s, k)
         prog_slots = d.sample(
@@ -1854,6 +1883,7 @@ _EXTRA_CELLS = (
     ("match", "rd"),
 )
 _JTAG_VECTORS = ("TOKEN_T1", "TOKEN_T2", "TOKEN_OTHER")
+_JTAG_GO_TRIES = 64
 
 
 def plan_jtag_access(seed: int) -> SepEfusePlan:
@@ -1881,10 +1911,31 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
     n = d.randrange("access_count", 15, 21)
     go_ch = d.choice("go_channel", (CH_SIP, CH_CHIPLET))
     order = d.word_order(f"go_{go_ch}")
+    # The go result is drawn (Match or Mismatch, equal weight), so the go golden varies
+    # over seeds, and the array content is built to give it: a Match array takes every
+    # word from the right vector of the channel; a Mismatch array draws a vector per word
+    # and is redrawn (bounded) while the SHA-256 model gives Match.
+    go_result = {"match": CODE_MATCH, "mismatch": CODE_MISMATCH}[
+        d.choice("go_result", ("match", "mismatch"))
+    ]
+    right = next(n for n in _JTAG_VECTORS if TOKENS[n] == RIGHT_TOKEN[go_ch])
+    vectors: dict[int, str] = {}
+    for _try in range(_JTAG_GO_TRIES):
+        for k in order:
+            vectors[k] = (
+                d.put(f"word_vector.{k}", right)
+                if go_result == CODE_MATCH
+                else d.choice(f"word_vector.{k}", _JTAG_VECTORS)
+            )
+        token = words_token([token_words(TOKENS[vectors[k]])[k] for k in range(8)])
+        if match_code(go_ch, token, img) == go_result:
+            break
+    else:
+        raise RuntimeError(f"{T_JTAG_ACCESS} seed {seed}: no array gives the drawn go result")
     writes = []
     content = [0] * 8
     for k in order:
-        vec = d.choice(f"word_vector.{k}", _JTAG_VECTORS)
+        vec = vectors[k]
         word = token_words(TOKENS[vec])[k]
         content[k] = word
         writes.append(
@@ -1899,6 +1950,8 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
             }
         )
     golden = match_code(go_ch, words_token(content), img)
+    if golden != go_result:
+        raise AssertionError(f"{T_JTAG_ACCESS}: go golden 0x{golden:02x} != drawn result")
     token_block: list[dict[str, Any]] = list(writes)
     eop_pos = d.randrange("eop_position", 8, len(token_block) + 1)
     token_block.insert(
@@ -1973,6 +2026,7 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
         "access_count": n,
         "go_channel": go_ch,
         "go_golden": golden,
+        "go_result": go_result,
         "denied": denied,
         "token_block": token_block,
         "spare_c": c_bit,

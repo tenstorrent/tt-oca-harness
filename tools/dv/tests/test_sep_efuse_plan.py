@@ -180,6 +180,59 @@ class ImageRuleTest(unittest.TestCase):
         fails = [s for s in range(1, 4001) if P.plan(P.T_FIELD_LAYOUT, s).setup_fail]
         self.assertEqual(fails, [])
 
+    def test_lock_leg_always_leaves_a_shadow_write_twin_over_4000_seeds(self) -> None:
+        shadow = [
+            P.SLOT_OF_FIELD[f] for f in ("SIP_DIS", "SYS_DIS", "REQUIRED_SIGNERS", "REQUIRED_ALGS")
+        ]
+        fails, redraws, leaves = [], 0, 0
+        for seed in range(1, 4001):
+            p = P.plan(P.T_LOCK_SLOT, seed)
+            if p.setup_fail:
+                fails.append(seed)
+            if p.leg["kind"] != "lock_leg":
+                continue
+            leaves += 1
+            layout = p.leg["layout"]
+            free = [s for s in shadow if layout.get(s) not in ("write", "write_read")]
+            if not free:
+                fails.append(seed)
+            self.assertEqual(free, p.leg["shadow_write_twin_free"])
+            lock_bits = p.image.field_int("LOCKS") | (p.image.field_int("LOCKS_SPARE") << 64)
+            for s in free:
+                self.assertFalse(lock_bits >> P.write_lock_bit(s) & 1, (seed, s))
+            if "shadow_write_twin_slot" in p.draws:
+                redraws += 1
+                s = p.draws["shadow_write_twin_slot"]
+                self.assertIn(f"redraw.lock_kind.{s}", p.draws)
+                self.assertTrue(any(f"name=redraw.lock_kind.{s} " in ln for ln in p.log_lines()))
+        self.assertEqual(fails, [])
+        self.assertGreater(leaves, 1000)
+        self.assertGreater(redraws, 0, "no seed of 1..4000 exercised the redraw")
+
+    def test_feat_matrix_leg_e_walks_the_contract_bits(self) -> None:
+        seen = 0
+        for seed in range(1, 400):
+            p = P.plan(P.T_FEAT_MATRIX, seed)
+            if "leg_e" in p.leg:
+                seen += 1
+                self.assertEqual(sorted(st["bit"] for st in p.leg["leg_e"]), [0, 1, 2, 3, 24])
+        self.assertGreater(seen, 0)
+
+    def test_jtag_access_go_result_takes_both_values(self) -> None:
+        seen = set()
+        for seed in range(1, 200):
+            p = P.plan(P.T_JTAG_ACCESS, seed)
+            ch = p.leg["go_channel"]
+            content = {}
+            for acc in p.leg["token_block"]:
+                if acc["cls"] == "token_word" and acc["op"] == "wr" and acc["channel"] == ch:
+                    content[acc["index"]] = acc["data"]
+            golden = P.match_code(ch, P.words_token([content[k] for k in range(8)]), p.image)
+            self.assertEqual(golden, p.leg["go_golden"])
+            self.assertEqual(golden, p.leg["go_result"])
+            seen.add((ch, golden))
+        self.assertEqual(len(seen), 4, seen)
+
     def test_field_layout_redraw_is_logged_with_its_class(self) -> None:
         seen = 0
         for seed in range(1, 200):
