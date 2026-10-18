@@ -623,6 +623,13 @@ module sep_uvm_top
         end
     end
 
+    // JTAG ID (docs/SEP_TB_ARCH.adoc, HDL Top port table): the TB input
+    // jtag_id_i drives the sep_wrapper input jtag_id. An undriven (Verilator 0,
+    // VCS z) or unknown value drives 0, so a leaf that does not drive it keeps
+    // the ID at 0.
+    logic [31:1] jtag_id_drive;
+    assign jtag_id_drive = $isunknown(jtag_id_i) ? 31'h0 : jtag_id_i;
+
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
         .SEP_SEC_DISABLE_TOKEN (SecDisTbDigest)
@@ -679,7 +686,7 @@ module sep_uvm_top
         .sep_cpu_trace                (cpu_trace_w),
         // Direct reset-vector input.
         .rst_vec                      (rst_vec_i),
-        .jtag_id                      ('0),
+        .jtag_id                      (jtag_id_drive),
 
         // Interrupts. timer_int and soft_int are tied to 0. The boundary PIC
         // input is the top-port drive sep_ext_interrupts_i (0 unless a leaf
@@ -2320,6 +2327,24 @@ module sep_uvm_top
 `define CMP_CHIP `TOKEN_PROC.u_triple_redundant_comparator_rma_chiplet_token
 `define CMP_SEC  `TOKEN_PROC.u_triple_redundant_comparator_sec_disable_token
 `define DIGEST_SIP `TOKEN_PROC.u_sha256_rma_sip_token
+    // token_cmp_fault_copy_i picks the copy k of a collapse or disagree
+    // pattern as a one-hot bit: copy 0 when the select is 0, undriven or
+    // unknown, copy 1 for 2'b01, copy 2 for 2'b10. 2'b11 forces nothing. At
+    // copy 0 the two patterns force 110/000 and 110/001, as they did before
+    // the select existed. The common-mode patterns ignore the select.
+    logic [2:0] token_cmp_copy_bit;
+    logic       token_cmp_copy_ok;
+    always_comb begin
+        token_cmp_copy_bit = 3'b001;
+        token_cmp_copy_ok = 1'b1;
+        if (token_cmp_fault_copy_i === 2'b01) begin
+            token_cmp_copy_bit = 3'b010;
+        end else if (token_cmp_fault_copy_i === 2'b10) begin
+            token_cmp_copy_bit = 3'b100;
+        end else if (token_cmp_fault_copy_i === 2'b11) begin
+            token_cmp_copy_ok = 1'b0;
+        end
+    end
     logic [2:0] token_cmp_force_p, token_cmp_force_n;
     logic       token_cmp_do_force;
     always_comb begin
@@ -2327,13 +2352,13 @@ module sep_uvm_top
         token_cmp_force_n = 3'b000;
         token_cmp_do_force = 1'b0;
         if (token_cmp_fault_inject_i === 3'b001) begin
-            token_cmp_force_p = 3'b110;
+            token_cmp_force_p = 3'b111 & ~token_cmp_copy_bit;
             token_cmp_force_n = 3'b000;
-            token_cmp_do_force = 1'b1;
+            token_cmp_do_force = token_cmp_copy_ok;
         end else if (token_cmp_fault_inject_i === 3'b010) begin
-            token_cmp_force_p = 3'b110;
-            token_cmp_force_n = 3'b001;
-            token_cmp_do_force = 1'b1;
+            token_cmp_force_p = 3'b111 & ~token_cmp_copy_bit;
+            token_cmp_force_n = token_cmp_copy_bit;
+            token_cmp_do_force = token_cmp_copy_ok;
         end else if (token_cmp_fault_inject_i === 3'b011) begin
             token_cmp_force_p = 3'b000;
             token_cmp_force_n = 3'b111;
@@ -2394,6 +2419,41 @@ module sep_uvm_top
             release `DIGEST_SIP.test_en_i;
         end
     end
+    // Gated comparator rails after the force point above (read-only): bit
+    // 3c+k is copy k of channel c, 0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS.
+    assign token_cmp_match_p_o = {`CMP_SEC.match_p, `CMP_CHIP.match_p, `CMP_SIP.match_p};
+    assign token_cmp_match_n_o = {`CMP_SEC.match_n, `CMP_CHIP.match_n, `CMP_SIP.match_n};
+    // The 24 token word registers (read-only). They have no reset.
+    assign token_sip_words_o = `TOKEN_PROC.sip_rma_token_raw_n0_scan;
+    assign token_chiplet_words_o = `TOKEN_PROC.chiplet_rma_token_raw_n0_scan;
+    assign token_sdis_words_o = `TOKEN_PROC.sec_disable_token_raw_n0_scan;
+    // Retained digest latches of RMA_CHIPLET and SEC_DIS: read-only probes and
+    // the test-enable inject of each latch. Same clock-reissued force/release
+    // convention as the RMA_SIP inject above; the production DFT input is tied
+    // low, so the freeze has no frontdoor. Token commands, digest capture and
+    // the match registers stay frontdoor. Default 0.
+`define DIGEST_CHIP `TOKEN_PROC.u_sha256_rma_chiplet_token
+`define DIGEST_SEC  `TOKEN_PROC.u_sha256_sec_disable_token
+    assign token_digest_chiplet_sticky_o = `DIGEST_CHIP.sha_digest_sticky_n0_scan;
+    assign token_digest_chiplet_valid_o = `DIGEST_CHIP.digest_vld_sticky_n0_scan;
+    assign token_digest_chiplet_test_en_o = `DIGEST_CHIP.test_en_i;
+    assign token_digest_sdis_sticky_o = `DIGEST_SEC.sha_digest_sticky_n0_scan;
+    assign token_digest_sdis_valid_o = `DIGEST_SEC.digest_vld_sticky_n0_scan;
+    assign token_digest_sdis_test_en_o = `DIGEST_SEC.test_en_i;
+    always @(posedge clk_i) begin
+        if (token_digest_chiplet_test_en_inject_i === 1'b1) begin
+            force `DIGEST_CHIP.test_en_i = 1'b1;
+        end else begin
+            release `DIGEST_CHIP.test_en_i;
+        end
+        if (token_digest_sdis_test_en_inject_i === 1'b1) begin
+            force `DIGEST_SEC.test_en_i = 1'b1;
+        end else begin
+            release `DIGEST_SEC.test_en_i;
+        end
+    end
+`undef DIGEST_CHIP
+`undef DIGEST_SEC
     // ------------------------------------------------------------------
     // eFuse read/program FSM fail-closed probes and one-cycle illegal-state
     // inject. Same clock-reissued force/release convention as the digest hook
@@ -2446,6 +2506,110 @@ module sep_uvm_top
         end
     end
     /* verilator lint_on ENUMVALUE */
+
+    // ------------------------------------------------------------------
+    // eFuse and lifecycle observation taps (read-only, no force).
+    // ------------------------------------------------------------------
+    // The post-guard fuse command at the sep output efuse_shim_command_req_o.
+    // The request valids of the read and program interfaces above sit before
+    // the guard and cannot show a refusal.
+    assign efuse_shim_cmd_valid_o = `SEP_CORE.efuse_shim_command_req_o.valid;
+    assign efuse_shim_cmd_command_o = `SEP_CORE.efuse_shim_command_req_o.command;
+    assign efuse_shim_cmd_address_o = `SEP_CORE.efuse_shim_command_req_o.address;
+    assign efuse_shim_cmd_program_data_o = `SEP_CORE.efuse_shim_command_req_o.program_data;
+    assign efuse_shim_cmd_len_o = `SEP_CORE.efuse_shim_command_req_o.access_length_words;
+    // The 256 bank words that SEP reaches: the bank model decodes paddr[9:0],
+    // so words 256..1023 of its register block are unreachable. One assign per
+    // word.
+    for (genvar g = 0; g < sep_efuse_pkg::NumFuseWords; g++) begin : gen_otp_bank_probe
+        assign otp_bank_probe_o[g] =
+            `SEP_IPI.u_efuse_bank_model.u_efuse_bank_reg.field_storage.EFUSE_BANK_REG[g].dout.value;
+    end
+    // Integrity-error flag of the JTAG lifecycle filter decoder.
+`define JTAG_LC_DEC `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_lc_state_jtag_dec
+    assign jtag_filter_lc_sigint_err_probe_o = `JTAG_LC_DEC.sigint_o;
+    // The sep input jtag_id_i as the DUT receives it.
+    assign jtag_id_probe_o = `SEP_CORE.jtag_id_i;
+
+    // ------------------------------------------------------------------
+    // JTAG lifecycle filter integrity inject.
+    // ------------------------------------------------------------------
+    // No legal OTP image presents a broken {~raw, raw} LC_STATE pair to the
+    // JTAG lifecycle filter, so its fail-closed path has no frontdoor. When
+    // jtag_filter_lc_sigint_inject_i=1, force both rails of the byte at the
+    // filter decoder input to 0. The input is connected to an expression of
+    // the shadow, so the LC_STATE shadow and the lifecycle controller decoder
+    // (lc_sigint_inject_i) are not forced. Re-issue every clock (Verilator
+    // snapshots a force RHS); release when the input drops. Default 0.
+    always @(posedge clk_i) begin
+        if (jtag_filter_lc_sigint_inject_i === 1'b1) begin
+            force `JTAG_LC_DEC.data_i = '0;
+        end else begin
+            release `JTAG_LC_DEC.data_i;
+        end
+    end
+`undef JTAG_LC_DEC
+
+    // ------------------------------------------------------------------
+    // eFuse sense status inject.
+    // ------------------------------------------------------------------
+    // A healthy bank never returns an APB error, so the sense status path has
+    // no frontdoor. While efuse_sense_status_inject_i=1, during fuse sense only
+    // (fuse_sense_done low), with a READ command at the post-guard port, the
+    // bank model APB response to the word efuse_sense_status_word_i carries
+    // pslverr=1 (sep_ip_integration net efuse_model_otp_resp, the shim input
+    // efuse_model_otp_resp_i); the shim copies it to the status bit of that
+    // sense response.
+    // The sense streams words 0..255 from bit address 0 and the shim reads
+    // byte address (bit address >> 3), so word w has paddr[9:2] == w. Program
+    // read-back uses another command and frontdoor reads run after sense done,
+    // so neither matches. prdata and pready are not forced. The gate is
+    // evaluated at the clock edge that starts the APB access phase (psel high,
+    // penable not yet high), so the force covers the whole access phase.
+    // Re-issued every clock and released when the gate drops. Default 0.
+`define EFUSE_OTP_REQ  `SEP_IPI.efuse_model_otp_req
+`define EFUSE_OTP_RESP `SEP_IPI.efuse_model_otp_resp
+    wire efuse_sense_status_hit =
+        (efuse_sense_status_inject_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b0) &&
+        (`SEP_CORE.efuse_shim_command_req_o.valid === 1'b1) &&
+        (`SEP_CORE.efuse_shim_command_req_o.command === efuse_pkg::FUSE_COMMAND_READ) &&
+        (`EFUSE_OTP_REQ.psel === 1'b1) &&
+        (`EFUSE_OTP_REQ.paddr[9:2] === efuse_sense_status_word_i);
+    always @(posedge clk_i) begin
+        if (efuse_sense_status_hit) begin
+            force `EFUSE_OTP_RESP.pslverr = 1'b1;
+        end else begin
+            release `EFUSE_OTP_RESP.pslverr;
+        end
+    end
+`undef EFUSE_OTP_REQ
+`undef EFUSE_OTP_RESP
+
+    // ------------------------------------------------------------------
+    // eFuse shim response hold.
+    // ------------------------------------------------------------------
+    // A healthy shim always answers, so a late program response has no
+    // frontdoor. While efuse_shim_resp_hold_i=1 and a PROGRAM or
+    // PROGRAM_READ_BACK command is at the post-guard port, the valid of the
+    // shim response at the sep input efuse_shim_command_resp_i (the
+    // sep_wrapper net efuse_shim_command_resp) is forced to 0. A READ command
+    // never matches, so sense and read responses are not held. The program
+    // interface keeps its request valid until a response arrives, so while
+    // held the shim repeats the program of the same bit, and the first
+    // response after the release completes the request. Re-issued every clock
+    // and released when the gate drops. Default 0.
+    wire efuse_shim_resp_hold_hit =
+        (efuse_shim_resp_hold_i === 1'b1) &&
+        (`SEP_CORE.efuse_shim_command_req_o.valid === 1'b1) &&
+        (`SEP_CORE.efuse_shim_command_req_o.command !== efuse_pkg::FUSE_COMMAND_READ);
+    always @(posedge clk_i) begin
+        if (efuse_shim_resp_hold_hit) begin
+            force u_dut.efuse_shim_command_resp.valid = 1'b0;
+        end else begin
+            release u_dut.efuse_shim_command_resp.valid;
+        end
+    end
 `undef EFUSE_RD
 `undef EFUSE_PG
 `undef EFUSE_CTRL
@@ -3746,7 +3910,14 @@ module sep_uvm_top
     assign lc_sigint_inject_i       = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
+    assign token_cmp_fault_copy_i   = '0;
     assign token_digest_test_en_inject_i = 1'b0;
+    assign token_digest_chiplet_test_en_inject_i = 1'b0;
+    assign token_digest_sdis_test_en_inject_i = 1'b0;
+    assign jtag_filter_lc_sigint_inject_i = 1'b0;
+    assign efuse_sense_status_inject_i = 1'b0;
+    assign efuse_sense_status_word_i = '0;
+    assign efuse_shim_resp_hold_i   = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
     assign kmac_fifo_drain_stall_i  = 1'b0;
@@ -3771,6 +3942,7 @@ module sep_uvm_top
     assign smn_outbound_ready_stall_i = '0;
     assign smn_outbound_rd_addr_data_i = 1'b0;
     assign rst_vec_i                = '0;
+    assign jtag_id_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;
     assign esrc_noise_ext_i         = '0;
@@ -4625,6 +4797,17 @@ module sep_uvm_top
         assign fcov_alert_rx[g] = `FC_CRY.gen_alert_receivers[g].u_alert_receiver.alert_tx_i;
     end
 
+    // eFuse and lifecycle sampler taps (docs/SEP_FCOV.adoc, eFuse,
+    // lifecycle groups, Sampled signals): read-only, no force.
+`define FC_EFCTRL `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
+`define FC_TOKEN `FC_EFCTRL.gen_mmr_reg.u_efuse_token_processing
+    wire [2:0][7:0][31:0] fcov_tok_words = {
+        token_sdis_words_o, token_chiplet_words_o, token_sip_words_o
+    };
+    wire [2:0][255:0] fcov_latch_sticky = {
+        token_digest_sdis_sticky_o, token_digest_chiplet_sticky_o, token_digest_sticky_o
+    };
+
     sep_fcov u_sep_fcov (
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_int),
@@ -5076,8 +5259,51 @@ module sep_uvm_top
         .esrc_whiten_push_i    (esrc_whiten_push_o),
         .esrc_decor_noise_i    (esrc_decor_noise_o),
         .esrc_par_inj_i        (esrc_fifo_parity_inject_i === 1'b1),
-        .esrc_ptr_inj_i        (esrc_fifo_ptr_inject_i === 1'b1)
+        .esrc_ptr_inj_i        (esrc_fifo_ptr_inject_i === 1'b1),
+        // eFuse, lifecycle and SEC_DIS taps.
+        .shim_cmd_i            (`SEP_CORE.efuse_shim_command_req_o),
+        .shim_resp_i           (`SEP_CORE.efuse_shim_command_resp_i),
+        .efuse_shadow_i        (efuse_shadow_probe_o),
+        .stored_shadow_i       (`FC_EFCTRL.u_efuse_shadow_regs.shadow_efuse),
+        .feat_ctrl_i           (lcc_feat_ctrl_probe_o),
+        .lc_sigint_i           (lcc_sigint_err_probe_o),
+        .demote_lock_1_i       (lcc_demote_lock_1_probe_o),
+        .demote_lock_2_i       (lcc_demote_lock_2_probe_o),
+        .sep_fuse_dft_disable_i (sep_fuse_dft_disable_o),
+        .smc_fuse_dft_disable_i (smc_fuse_dft_disable_o),
+        .jtag_req_i            (j_axil_req_drive),
+        .jtag_resp_i           (j_axil_resp_w),
+        .irq_token_fault_i     (sep_internal_interrupts_probe_o[39]),
+        .tok_sip_i             (ext_debug_bus_o[229:224]),
+        .tok_chp_i             (ext_debug_bus_o[213:208]),
+        .tok_sdis_i            (`FC_TOKEN.sec_disable_token_match_q),
+        .tok_fault_i           (`FC_TOKEN.token_match_fault_sticky_q),
+        .token_go_i            ({`FC_TOKEN.secure_disable_token_go,
+                                 `FC_TOKEN.rma_chiplet_token_go,
+                                 `FC_TOKEN.rma_sip_token_go}),
+        .tok_words_i           (fcov_tok_words),
+        .sec_disable_expected_i (`FC_TOKEN.sec_disable_token_rev),
+        .rd_addr_err_i         (`FC_EFCTRL.read_addr_error),
+        .pg_addr_err_i         (`FC_EFCTRL.program_addr_error),
+        .req_err_i             (`FC_EFCTRL.efuse_req_err),
+        .cmp_match_p_i         (token_cmp_match_p_o),
+        .cmp_match_n_i         (token_cmp_match_n_o),
+        .latch_sticky_i        (fcov_latch_sticky),
+        .latch_valid_i         ({token_digest_sdis_valid_o, token_digest_chiplet_valid_o,
+                                 token_digest_valid_o}),
+        .latch_test_en_i       ({token_digest_sdis_test_en_o, token_digest_chiplet_test_en_o,
+                                 token_digest_test_en_o}),
+        .jtag_filt_sigint_i    (jtag_filter_lc_sigint_err_probe_o),
+        .jtag_id_i             (jtag_id_probe_o),
+        .efuse_read_error_i    (efuse_read_error_o),
+        .efuse_read_done_i     (efuse_read_done_o),
+        .efuse_read_busy_i     (efuse_read_busy_o),
+        .efuse_program_error_i (efuse_program_error_o),
+        .efuse_program_done_i  (efuse_program_done_o),
+        .efuse_program_busy_i  (efuse_program_busy_o)
     );
+`undef FC_EFCTRL
+`undef FC_TOKEN
 `undef FC_CRY
 `undef FC_HMAC
 `undef FC_AES
