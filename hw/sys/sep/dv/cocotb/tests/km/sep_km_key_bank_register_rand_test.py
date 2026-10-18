@@ -504,8 +504,10 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         )
         self.chk.ctrl("SK-SW-TWIN", self.walk_set_ok, normal_bank_set=self.walk_set_ok)
         consume_zero = not r[3].value & pl.SK_VALID
-        words_zero = not any(r[4].data)
-        sw_ignored = not r[6].value & pl.SK_VALID and not any(r[7].data)
+        # Zeroize: the words read 0 after the consume and stay 0 after the
+        # refused set. The set refusal is graded on key_valid alone.
+        words_zero = not any(r[4].data) and not any(r[7].data)
+        sw_ignored = not r[6].value & pl.SK_VALID
         resp = all(_ok(x) for x in r[2:8])
         self.chk.ok(
             "BANK-SK-SW",
@@ -514,6 +516,8 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             words_zero=words_zero,
             sw_set_ignored=sw_ignored,
             key_ctrl_after_set=_h(r[6].value),
+            words_after_consume=[_h(w) for w in r[4].data],
+            words_after_set=[_h(w) for w in r[7].data],
             resp_ok=resp,
         )
 
