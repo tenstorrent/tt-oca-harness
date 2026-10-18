@@ -562,7 +562,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         )
 
     async def _leg_c(self) -> None:
-        chk_bind(self.chk)
+        await chk_bind(self.chk)
         self.sdis_seen = False
         reg, probe = await self._feat()
         self._feat_cell("c", reg, probe, sdis_port="na")

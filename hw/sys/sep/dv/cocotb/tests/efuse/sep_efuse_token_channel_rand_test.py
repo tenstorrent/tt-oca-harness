@@ -276,7 +276,7 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         w_hash: dict[str, int] = {}
         leg = p.leg
 
-        chk_bind(self.chk)
+        await chk_bind(self.chk)
 
         self.write_efuse_image(p.image)
         await self.bring_up_no_cpu()

@@ -232,7 +232,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         row = feat_ctrl_profile(p.lc_raw, p.sip_dis, p.sys_dis)
         self.logger.info("GOLDEN feat %s value=0x%016x", row.log(), row.value)
 
-        chk_bind(self.chk)
+        await chk_bind(self.chk)
         self.write_efuse_image(p.image)
 
         # Strap-1 epoch.

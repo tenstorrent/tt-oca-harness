@@ -581,7 +581,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         faults = p.leg["faults"]
         order = p.leg["cell_order"]
 
-        chk_bind(self.chk)
+        await chk_bind(self.chk)
         self.sdis_ctl_seen = False
 
         self.write_efuse_image(p.image)

@@ -39,7 +39,7 @@ from collections.abc import Sequence
 from typing import Any
 
 import cocotb
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from sep_reg_meta import SEP_LIFECYCLE_CTRL
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -188,16 +188,23 @@ def bound_sec_dis_digest() -> int | None:
         return None
 
 
-def chk_bind(chk: Any) -> int:
+async def chk_bind(chk: Any) -> int:
     """CHK-BIND: SHA-256 of 32 zero bytes equals the bound SEC_DIS digest.
 
     The bound digest comes from the simulator handle of the bench net, never
     from the bench source text. A build that does not show the handle fails the leaf
-    with ``CHK-HOOK FAIL``.
+    with ``CHK-HOOK FAIL``. At time 0 a 4-state simulator can still hold the net at X
+    before its continuous assignment runs; the read is then repeated once after one
+    simulator time step (no wait when the first read resolves).
     """
+    visible = getattr(cocotb.top, SEC_DIS_DIGEST_HANDLE, None) is not None
     bound = bound_sec_dis_digest()
+    if bound is None and visible:
+        await Timer(1, "step")
+        bound = bound_sec_dis_digest()
     if bound is None:
-        hook_fail(chk, reason="bound_digest_handle_not_visible", handle=SEC_DIS_DIGEST_HANDLE)
+        reason = "bound_digest_value_unknown" if visible else "bound_digest_handle_not_visible"
+        hook_fail(chk, reason=reason, handle=SEC_DIS_DIGEST_HANDLE)
         raise AssertionError("unreachable: hook_fail ends the leaf")
     chk.ok(
         "BIND",

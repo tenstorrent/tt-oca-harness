@@ -381,7 +381,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         close_graded_window(self.logger)
         self.fd = SepEfuseFd(self)
 
-        chk_bind(self.chk)
+        await chk_bind(self.chk)
         self.write_efuse_image(p.image)
         await self.bring_up_no_cpu(max_cycles=SENSE_BOUND)
         await self._legs_a_b(n, p.sip_dis, p.sys_dis)

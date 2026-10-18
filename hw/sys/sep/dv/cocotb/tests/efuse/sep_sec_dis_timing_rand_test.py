@@ -284,7 +284,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         staged = [w for w in range(256) if w != _LC_WORD and p.image.words[w] != 0]
         staged_val = {w: p.image.words[w] & 0xFFFF_FFFF for w in staged}
 
-        chk_bind(self.chk)
+        await chk_bind(self.chk)
 
         # ---------------------------------------------------------- control sense
         self.write_efuse_image(p.image)
