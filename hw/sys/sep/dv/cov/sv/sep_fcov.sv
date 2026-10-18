@@ -23360,7 +23360,12 @@ module sep_fcov (
     cp_reset_vector: coverpoint s.rv iff (s.rv_v) {
       bins vector[] = {[4'd1 : 4'd15]}; ignore_bins clear_state = {4'd0};
     }
-    x_otp_invariant: coverpoint s.oi iff (s.oi_v) {bins cells[] = {[5'd0 : 5'd23]};}
+    // A change to demotion 00 needs a cleared DEMOTE register. Only a reset
+    // clears one, and the reset also ends the compare.
+    x_otp_invariant: coverpoint s.oi iff (s.oi_v) {
+      bins cells[] = {[5'd0 : 5'd23]};
+      ignore_bins to_undemoted = {5'd0, 5'd4, 5'd8, 5'd12, 5'd16, 5'd20};
+    }
     // No bin names a polarity.
     x_export_codeword: coverpoint s.ec iff (s.ec_v) {
       bins demote_1_complementary = {2'b0_0};
@@ -23452,8 +23457,9 @@ module sep_fcov (
       illegal_bins other = {[6'h01 : 6'h14], [6'h16 : 6'h29], [6'h2B : 6'h3E]};
     }
     // Shape 0 all zeros, 1 all ones, 2 the token words of another channel (the
-    // words of a channel whose array is unchanged since its go and whose code
-    // is Match). The legal verdict is Mismatch. (SEC_DIS, all zeros) is not declared.
+    // words of a go on that channel that gave Match since the last reset, with
+    // its array unchanged from the go to the result). The legal verdict is
+    // Mismatch. (SEC_DIS, all zeros) is not declared.
     x_ch_shape: coverpoint s.cs iff (s.cs_v) {
       bins cells[] = {5'd0, 5'd1, 5'd2, 5'd3, 5'd4, 5'd5, 5'd7, 5'd8};
       illegal_bins match = {[5'd16 : 5'd24]};
@@ -25310,10 +25316,17 @@ module sep_fcov (
   logic [2:0][1:0] ef_go_shape = '0;
   logic [2:0] ef_go_shape_v = '0;
   logic [2:0] ef_pre_arm = '0, ef_pre_bad = '0;  // RMA go before sense done
+  // An RMA go before sense done whose code read idle until a reset ended the
+  // epoch with sense done still low: the result waits for a later sense.
+  logic [1:0] ef_pre_carry = '0, ef_pre_csd = '0;
+  // Token words of the last go of each channel, and the words of a go that
+  // gave Match since the last reset (the token of that channel, as the DUT
+  // itself judged it).
+  logic [2:0][7:0][31:0] ef_go_words = '0, ef_match_words = '0;
+  logic [2:0] ef_match_v = '0;
   logic [2:0][5:0] ef_code_q = '0;
   logic [2:0][7:0][31:0] ef_words_q = '0;
-  // Array c changed since its last go. The words of a clean array whose code is
-  // Match are the token of that channel, as the DUT itself judged them.
+  // Array c changed since its last go.
   logic [2:0] ef_arr_dirty = '1;
   logic [2:0] ef_hw_arm = '0;
   logic [2:0][5:0] ef_hw_code = '0;
@@ -25350,6 +25363,15 @@ module sep_fcov (
       ef_go_arm <= '0;
       ef_pre_arm <= '0;
       ef_hw_arm <= '0;
+      ef_match_v <= '0;
+      // A pre-sense go carries over a reset only while sense done is still low
+      // and the code has read idle since the go; a carried one stays carried.
+      if (ef_rst_fall) begin
+        for (int c = 0; c < 2; c++) begin
+          ef_pre_carry[c] <= (ef_pre_arm[c] && !ef_pre_bad[c]) || (ef_pre_carry[c] && !ef_pre_csd[c]);
+        end
+        ef_pre_csd <= '0;
+      end
     end else begin
       for (int c = 0; c < 3; c++) begin
         code = ef_code[c];
@@ -25370,15 +25392,16 @@ module sep_fcov (
           ef_go_others_ok[c] <= ef_nonidle(ef_code[o1]) && ef_nonidle(ef_code[o2]);
           ef_go_fault[c] <= (tok_fault_i[c] === 1'b1);
           ef_go_replay[c] <= ef_words_eq(tok_words_i[c], ef_dig[c]);
+          ef_go_words[c] <= tok_words_i[c];
           ef_go_shape_v[c] <= 1'b1;
           if (tok_words_i[c] == '0) ef_go_shape[c] <= 2'd0;
           else if (tok_words_i[c] == '1) ef_go_shape[c] <= 2'd1;
-          else if (((tok_words_i[c] == tok_words_i[o1]) && !ef_arr_dirty[o1] &&
-                    (ef_code[o1] == EfCodeMatch)) ||
-                   ((tok_words_i[c] == tok_words_i[o2]) && !ef_arr_dirty[o2] &&
-                    (ef_code[o2] == EfCodeMatch)))
+          else if ((ef_match_v[o1] && (tok_words_i[c] === ef_match_words[o1])) ||
+                   (ef_match_v[o2] && (tok_words_i[c] === ef_match_words[o2])))
             ef_go_shape[c] <= 2'd2;
           else ef_go_shape_v[c] <= 1'b0;
+          // A new go on an RMA channel ends a carried pre-sense go.
+          if (c < 2) ef_pre_carry[c] <= 1'b0;
           if ((c < 2) && (fuse_sense_done_i !== 1'b1)) begin
             ef_pre_arm[c] <= 1'b1;
             ef_pre_bad[c] <= 1'b0;
@@ -25389,6 +25412,10 @@ module sep_fcov (
             ef_go_others_ok[c] <= 1'b0;
           if (ef_go_idle[c] && ef_nonidle(code)) begin
             ef_go_arm[c] <= 1'b0;
+            if ((code == EfCodeMatch) && !ef_arr_dirty[c] && !$isunknown(ef_go_words[c])) begin
+              ef_match_v[c] <= 1'b1;
+              ef_match_words[c] <= ef_go_words[c];
+            end
             if (ef_own_tch) begin
               if (code inside {EfCodeMatch, EfCodeMismatch}) begin
                 ef_tc(0, {1'b0, 2'(c), code == EfCodeMismatch});
@@ -25419,6 +25446,18 @@ module sep_fcov (
           ef_pre_arm[c] <= 1'b0;
           if (ef_own_tch && !ef_pre_bad[c] && ef_isidle(code)) ef_tc(3, {3'd0, 2'(c), 1'b0});
         end
+        // x_rma_go_phase, before sense, carried over a reset: the first non-idle
+        // code after a later sense done, with no new go on the channel, is the
+        // Match of the retained digest. A non-idle code before sense done, or
+        // a code other than Match, ends the carry with no sample.
+        if ((c < 2) && ef_pre_carry[c] && (token_go_i[c] !== 1'b1)) begin
+          if (fuse_sense_done_i === 1'b1) ef_pre_csd[c] <= 1'b1;
+          if (ef_nonidle(code)) begin
+            ef_pre_carry[c] <= 1'b0;
+            if (ef_own_tch && (fuse_sense_done_i === 1'b1) && (code == EfCodeMatch))
+              ef_tc(3, {3'd0, 2'(c), 1'b0});
+          end
+        end
         // cp_hold_word_write: a token word changes while a non-idle code is
         // held, and the code is unchanged EfTokSettle clocks later.
         if ((tok_words_i[c] !== ef_words_q[c]) && ef_nonidle(code) && !ef_go_arm[c]) begin
@@ -25447,8 +25486,11 @@ module sep_fcov (
 
   // cp_retention: a cold reset with an RMA_SIP Match held. The words and the
   // code are taken on the last clock before rst_ni falls. Bins 0 and 1 sample
-  // EfTokSettle clocks after the release, not on the release clock.
-  logic ef_ret_chk = 1'b0;
+  // EfTokSettle clocks after the release, not on the release clock. Bin 2 waits
+  // for the first non-idle RMA_SIP code; a further reset that falls while the
+  // code still reads idle and sense done has stayed low carries the wait into
+  // the next epoch.
+  logic ef_ret_chk = 1'b0, ef_ret_sd = 1'b0;
   int unsigned ef_ret_cnt = 0;
   always @(posedge clk_i) begin
     if (!in_reset) begin
@@ -25458,7 +25500,7 @@ module sep_fcov (
     if (ef_rst_fall) begin
       ef_ret_pend  <= ef_own_tch && (ef_last_sipc === EfCodeMatch);
       ef_ret_words <= ef_last_sipw;
-      ef_ret_wait  <= 1'b0;
+      ef_ret_wait  <= ef_ret_wait && !ef_ret_sd && ef_isidle(ef_last_sipc);
       ef_ret_chk   <= 1'b0;
     end
     if (ef_rel && ef_ret_pend) begin
@@ -25471,6 +25513,7 @@ module sep_fcov (
       if (ef_ret_cnt == EfTokSettle) begin
         ef_ret_chk  <= 1'b0;
         ef_ret_wait <= 1'b1;
+        ef_ret_sd   <= (fuse_sense_done_i === 1'b1);
         if (ef_own_tch && !skip_fuse_sense_q) begin
           if (tok_words_i[0] === ef_ret_words) ef_tc(7, 6'd0);
           if (ef_isidle(tok_sip_i) && (fuse_sense_done_i === 1'b0)) ef_tc(7, 6'd1);
@@ -25480,6 +25523,7 @@ module sep_fcov (
       end
     end else if (ef_ret_wait && !in_reset) begin
       if (token_go_i[0] === 1'b1) ef_ret_nogo <= 1'b0;
+      if (fuse_sense_done_i === 1'b1) ef_ret_sd <= 1'b1;
       if (ef_nonidle(tok_sip_i)) begin
         ef_ret_wait <= 1'b0;
         if (ef_own_tch && ef_ret_nogo && (token_go_i[0] !== 1'b1) && (fuse_sense_done_i === 1'b1) &&
@@ -25728,7 +25772,13 @@ module sep_fcov (
   // sep_efuse_if_status_cg shim points: cp_sense_status_word and
   // x_prog_lifecycle.
   // ---------------------------------------------------------------------
-  logic [12:0] ef_ssw_last = '0;
+  // Word index of a sense response: the start word (bits [12:5] of the bit
+  // address) of the READ command that the response answers, plus the number
+  // of earlier responses to that command. The sense is one READ command at
+  // address 0 that streams one response per word.
+  logic [7:0] ef_ssw_base = '0;
+  logic [8:0] ef_ssw_idx = '0;
+  logic ef_ssw_cv = 1'b0;  // a READ command with a known address in this epoch
   logic ef_ssw_pend = 1'b0;
   // The status response carried known non-zero data, so a shadow word left at 0
   // shows the data was dropped and not that the image word was 0.
@@ -25744,19 +25794,28 @@ module sep_fcov (
   int unsigned ef_pl_cnt = 0;
   logic ef_pl_done_seen = 1'b0, ef_pdone_q = 1'b0, ef_cmd_pg_q = 1'b0;
   always @(posedge clk_i) begin
-    logic [7:0] w;
+    logic [8:0] w;
     ef_pdone_q <= (efuse_program_done_i === 1'b1);
     ef_cmd_pg_q <= ef_cmd_pg;
-    if (ef_rst_fall) ef_ssw_pend <= 1'b0;
+    if (ef_rst_fall) begin
+      ef_ssw_pend <= 1'b0;
+      ef_ssw_cv   <= 1'b0;
+    end
     if (ef_live && (fuse_sense_done_i !== 1'b1)) begin
-      if (ef_cmd_rd) ef_ssw_last <= ef_cmd_addr;
-      if (ef_resp_v && (shim_resp_i.status === 1'b1)) begin
-        w = ef_ssw_last[12:5];
-        if ((w >= 8'd10) && (w <= 8'd254) && !$isunknown(ef_ssw_last)) begin
+      // A response on the clock of a new READ command answers the earlier one.
+      if (ef_resp_v && ef_ssw_cv) begin
+        ef_ssw_idx <= ef_ssw_idx + 9'd1;
+        w = {1'b0, ef_ssw_base} + ef_ssw_idx;
+        if ((shim_resp_i.status === 1'b1) && (w >= 9'd10) && (w <= 9'd254)) begin
           ef_ssw_pend <= 1'b1;
-          ef_ssw_w <= w;
+          ef_ssw_w <= w[7:0];
           ef_ssw_nz <= !$isunknown(shim_resp_i.data) && (shim_resp_i.data != '0);
         end
+      end
+      if (ef_cmd_rd) begin
+        ef_ssw_base <= ef_cmd_addr[12:5];
+        ef_ssw_idx  <= '0;
+        ef_ssw_cv   <= !$isunknown(ef_cmd_addr);
       end
     end
     if (ef_sense_rise && ef_ssw_pend) begin
