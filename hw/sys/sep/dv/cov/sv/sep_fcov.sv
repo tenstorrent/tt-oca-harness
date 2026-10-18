@@ -25448,11 +25448,14 @@ module sep_fcov (
         end
         // x_rma_go_phase, before sense, carried over a reset: the first non-idle
         // code after a later sense done, with no new go on the channel, is the
-        // Match of the retained digest. A non-idle code before sense done, or
-        // a code other than Match, ends the carry with no sample.
+        // Match of the retained digest. A code other than a known idle before
+        // sense done (an X or Z included), or a non-idle code other than Match
+        // after it, ends the carry with no sample.
         if ((c < 2) && ef_pre_carry[c] && (token_go_i[c] !== 1'b1)) begin
           if (fuse_sense_done_i === 1'b1) ef_pre_csd[c] <= 1'b1;
-          if (ef_nonidle(code)) begin
+          if ((fuse_sense_done_i !== 1'b1) && !ef_isidle(code)) begin
+            ef_pre_carry[c] <= 1'b0;
+          end else if (ef_nonidle(code)) begin
             ef_pre_carry[c] <= 1'b0;
             if (ef_own_tch && (fuse_sense_done_i === 1'b1) && (code == EfCodeMatch))
               ef_tc(3, {3'd0, 2'(c), 1'b0});
@@ -25775,8 +25778,11 @@ module sep_fcov (
   // Word index of a sense response: the start word (bits [12:5] of the bit
   // address) of the READ command that the response answers, plus the number
   // of earlier responses to that command. The sense is one READ command at
-  // address 0 that streams one response per word.
+  // address 0 that streams one response per word, and the request holds
+  // valid high for the whole sense. So a READ command starts only on a clock
+  // where valid is known 1 and was not known 1 on the clock before.
   logic [7:0] ef_ssw_base = '0;
+  logic ef_ssw_v_q = 1'b0;  // shim_cmd_i.valid known 1 on the previous clock
   logic [8:0] ef_ssw_idx = '0;
   logic ef_ssw_cv = 1'b0;  // a READ command with a known address in this epoch
   logic ef_ssw_pend = 1'b0;
@@ -25797,6 +25803,7 @@ module sep_fcov (
     logic [8:0] w;
     ef_pdone_q <= (efuse_program_done_i === 1'b1);
     ef_cmd_pg_q <= ef_cmd_pg;
+    ef_ssw_v_q <= ef_cmd_v;
     if (ef_rst_fall) begin
       ef_ssw_pend <= 1'b0;
       ef_ssw_cv   <= 1'b0;
@@ -25812,7 +25819,7 @@ module sep_fcov (
           ef_ssw_nz <= !$isunknown(shim_resp_i.data) && (shim_resp_i.data != '0);
         end
       end
-      if (ef_cmd_rd) begin
+      if (ef_cmd_rd && !ef_ssw_v_q) begin
         ef_ssw_base <= ef_cmd_addr[12:5];
         ef_ssw_idx  <= '0;
         ef_ssw_cv   <= !$isunknown(ef_cmd_addr);
