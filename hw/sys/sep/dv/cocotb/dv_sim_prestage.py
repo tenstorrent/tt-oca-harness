@@ -161,6 +161,20 @@ def _efuse_plan_words(item: str, seed: int) -> list[int]:
     return words
 
 
+def _km_fuse_plan_words(item: str, seed: int) -> list[int]:
+    """The t=0 image words of a Key Manager OTP or eFuse-window test.
+
+    ``env/sep_km_fuse_plan.py`` draws the whole leaf plan from the seed, and the
+    test calls the same ``plan(item, seed)`` at runtime, so the staged image and
+    the test golden are one function of the seed.
+    """
+    mod = _load_env_module("sep_km_fuse_plan", "sep_km_fuse_plan.py")
+    plan = mod.plan(item, seed)
+    print(f"[dv_sim_prestage] KM-FUSE-PLAN {plan.summary()}", flush=True)
+    words: list[int] = plan.words
+    return words
+
+
 # Common LC-gated field pins shared by several PROD-lifecycle tests.
 _SIP_SYS_DIS_PINS = {
     "SIP_DIS": 0x0F0F_0F0F_0F0F_0F0F,
@@ -355,6 +369,11 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_efuse_secure_tm_matrix_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
     "sep_efuse_jtag_access_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
     "sep_sec_dis_timing_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    # Key Manager OTP and eFuse-window tests whose t=0 image has a seed-drawn
+    # dimension. The whole image comes from env/sep_km_fuse_plan.py; see
+    # _km_fuse_plan_words().
+    "sep_km_crossbar_efuse_window_rand_test": {"mode": "random", "fixed_from": "km_fuse_plan"},
+    "sep_km_otp_interface_rand_test": {"mode": "random", "fixed_from": "km_fuse_plan"},
 }
 
 
@@ -439,16 +458,67 @@ def _stage_km_rom_main(item: str, cwd, sim_args) -> bool:
     return True
 
 
+# Scripted KM images with a seed-drawn parameter block (HK-IMG-PARAM and the
+# IMG-MBOX-KM block). test name -> committed image template under cocotb/tests/.
+# The staged copy is <template>.param.parhex in the sim directory, and the
+# entry boots it with +km_rom_hex=<template>.param.parhex.
+KM_IMG_PARAM_REGISTRY: dict[str, str] = {
+    "sep_km_sram_scrambler_key_rand_test": "km_rom_scr",
+    "sep_km_mailbox_km_side_rand_test": "km_rom_mbox_km",
+}
+_KM_IMG_TEMPLATE_DIR = _DV_ROOT / "cocotb" / "tests"
+
+
+def km_img_param_name(item: str) -> str:
+    """File name of the staged parameter image of ``item``."""
+    return f"{KM_IMG_PARAM_REGISTRY[item]}.param.parhex"
+
+
+def _stage_km_img_param(item: str, seed: int, cwd) -> bool:
+    """Write the KM ROM image of ``item`` with the parameter block of ``seed``.
+
+    The template is the committed blob that c_compile verifies against its
+    source. ``env/sep_km_img_param.py`` appends the block at its fixed ROM word
+    address; the test rebuilds the same block from the seed at runtime. The
+    copy is written to a temporary name, then moved into place. A missing
+    template raises, so a leaf never boots an image without its block.
+    """
+    template = KM_IMG_PARAM_REGISTRY.get(item)
+    if template is None:
+        return False
+    src = _KM_IMG_TEMPLATE_DIR / f"{template}.parhex"
+    if not src.is_file():
+        raise FileNotFoundError(f"{item}: no committed KM image template {src}")
+    mod = _load_env_module("sep_km_img_param", "sep_km_img_param.py")
+    text = mod.staged_text(src, item, seed)
+    cwd = Path(cwd)
+    dst = cwd / km_img_param_name(item)
+    tmp = cwd / f".{dst.name}.tmp.{os.getpid()}"
+    tmp.write_text(text, encoding="ascii")
+    os.replace(tmp, dst)
+    print(
+        f"[dv_sim_prestage] KM-IMG-PARAM item={item} seed={seed} template={src.name} "
+        f"template_sha256={mod.identity(src.read_text(encoding='ascii'))} "
+        f"staged={dst} staged_sha256={mod.identity(text)} "
+        f"block_words={len(mod.block_words(item, seed))}",
+        flush=True,
+    )
+    return True
+
+
 def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
     """Stage the pre-sim images a leaf loads at time 0.
 
     Copies this run's KM rom_main image when the leaf boots it (see
-    ``_stage_km_rom_main``). Writes ``<cwd>/out/sep_efuse.hex`` for a registered
+    ``_stage_km_rom_main``), and writes the KM ROM image with the parameter
+    block of the seed for a registered scripted-image test (see
+    ``_stage_km_img_param``). Writes ``<cwd>/out/sep_efuse.hex`` for a registered
     efuse test OR any test that passes ``+sep_efuse_preload`` (the plusarg
     overrides the registry, matching the runtime ``select_efuse_image``
     contract). Returns True if an eFuse image was staged, False if the test is
     neither registered nor carrying a preload plusarg."""
     _stage_km_rom_main(item, cwd, sim_args)
+    _stage_km_img_param(item, seed, cwd)
     preload_sel = _preload_from_args(sim_args)
     spec = EFUSE_IMAGE_REGISTRY.get(item)
     if preload_sel is None and spec is None:
@@ -475,6 +545,9 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
     elif spec is not None and spec.get("fixed_from") == "efuse_plan":
         # The plan pins every word, so no randomize() draw is made.
         image.words = _efuse_plan_words(item, seed + int(spec.get("seed_offset", 0)))
+    elif spec is not None and spec.get("fixed_from") == "km_fuse_plan":
+        # The plan pins every word, so no randomize() draw is made.
+        image.words = _km_fuse_plan_words(item, seed + int(spec.get("seed_offset", 0)))
     else:
         fixed = spec.get("fixed")
         if spec.get("fixed_from") == "rma_token":

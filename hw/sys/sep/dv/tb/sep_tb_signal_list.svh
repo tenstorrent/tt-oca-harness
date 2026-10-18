@@ -170,6 +170,28 @@
 // docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
 `SEP_TB_IN(logic [11:0], esrc_noise_stuck_en_i)
 `SEP_TB_IN(logic [11:0], esrc_noise_stuck_val_i)
+// Key Manager OTP input rail flip (HK-OTP). Default 0. While
+// km_otp_flip_en_i is 1, the KM OTP input otp_data_i of the Key Manager is
+// held at the value it had at the rise of the input XOR km_otp_flip_mask_i.
+// The mask has the km_otp_data_t layout: each dual-rail field is
+// {complement rail, value rail}, so a mask bit on one rail is a single-rail
+// flip and the same bit on both rails is a legal value change. Error inject,
+// docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, km_otp_flip_en_i)
+`SEP_TB_IN(logic [3583:0], km_otp_flip_mask_i)
+// Key Manager DRBG sampler TVALID withdrawal (HK-STRM). Default 0. While
+// km_strm_wd_arm_i is 1 the bench drives the sampler sink TVALID once: with
+// km_strm_wd_mode_i 0, high for one clock in a clock with the sink TREADY low,
+// then low for one clock; with km_strm_wd_mode_i 1, high in the clock in which
+// a DATA read starts (the sampler leaves its idle state on the next edge),
+// then low until the read ends. TDATA and TSTRB are not driven. Error inject,
+// docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, km_strm_wd_arm_i)
+`SEP_TB_IN(logic, km_strm_wd_mode_i)
+// KM-SRAM read address: word index of the KM SRAM array word that
+// km_sram_peek_o shows. A select of the read-only tap; it drives nothing in
+// the DUT. Default 0.
+`SEP_TB_IN(logic [12:0], km_sram_peek_addr_i)
 // External TRNG stream driver (top-port drive of the sep input
 // ext_trng_axis_req_i[2:0], docs/SEP_TB_ARCH.adoc). Default 0. While bit i of
 // ext_trng_drive_en_i is 1, stream i carries tvalid ext_trng_tvalid_i[i], tdata
@@ -479,6 +501,59 @@
 // block offset of the last one. Observation-only.
 `SEP_TB_OUT(logic [31:0], km_mbox_sep_wr_err_count_o)
 `SEP_TB_OUT(logic [4:0], km_mbox_sep_wr_err_addr_o)
+// Key Manager observation taps (docs/SEP_TB_ARCH.adoc, observation probes),
+// read-only. KM-VALID: KEY_CTRL.key_valid of the eight engine key banks in
+// DEST_VALID bit order (0 HMAC, 1 KMAC, 2 AES, 3 OTBN, 4 MLDSA_SEED, 5
+// MLKEM_SEED_D, 6 MLKEM_SEED_Z, 7 MLKEM_MSG), and the ABR shared key:
+// KEY_CTRL.key_valid, KEY[0..7] (word i at [32*i +: 32]),
+// IRQ_STATUS.key_valid and IRQ_ENABLE.key_valid_en. The ABR bits read 0 in
+// the build without Adams Bridge.
+`SEP_TB_OUT(logic [7:0], km_engine_key_valid_o)
+`SEP_TB_OUT(logic, km_abr_sk_valid_o)
+`SEP_TB_OUT(logic [255:0], km_abr_sk_key_o)
+`SEP_TB_OUT(logic, km_abr_sk_irq_status_o)
+`SEP_TB_OUT(logic, km_abr_sk_irq_enable_o)
+// KM-KPV: CTRL[s] at [4*s +: 4] in register bit order {seal, erase, lock_use,
+// lock_write}, and the 1024 stored KPV words in stored (physical) order,
+// word i at [32*i +: 32]. The stored words have no reset.
+`SEP_TB_OUT(logic [255:0], km_kpv_ctrl_o)
+`SEP_TB_OUT(logic [32767:0], km_kpv_words_o)
+// KM-CSR, every clock: IRQ_STATUS, IRQ_ENABLE, the interrupt aggregate (OR
+// of status AND enable), RECOVERABLE_ERR, BOOT_STATUS.COLD_BOOT_DONE,
+// SRAM_EXEC_MODE, OTP_READ_LOCK, OTP_READ_LOCK_COLD, OTP_CHANGE_STATUS (field
+// bit order of km_csr.adoc), the SCRAMBLER_KEY register value, the count of
+// KM writes to SCRAMBLER_KEY since the bench reset, and SCRAMBLER_CTRL
+// {lock, enable}.
+`SEP_TB_OUT(logic [11:0], km_csr_irq_status_o)
+`SEP_TB_OUT(logic [11:0], km_csr_irq_enable_o)
+`SEP_TB_OUT(logic, km_csr_irq_o)
+`SEP_TB_OUT(logic, km_csr_recov_err_o)
+`SEP_TB_OUT(logic, km_csr_cold_boot_done_o)
+`SEP_TB_OUT(logic, km_csr_sram_exec_mode_o)
+`SEP_TB_OUT(logic [8:0], km_csr_otp_read_lock_o)
+`SEP_TB_OUT(logic [8:0], km_csr_otp_read_lock_cold_o)
+`SEP_TB_OUT(logic [8:0], km_csr_otp_change_status_o)
+`SEP_TB_OUT(logic [31:0], km_csr_scrambler_key_o)
+`SEP_TB_OUT(logic [31:0], km_csr_scrambler_key_wr_count_o)
+`SEP_TB_OUT(logic [1:0], km_csr_scrambler_ctrl_o)
+// KM-SRAM: the KM SRAM array word at km_sram_peek_addr_i in stored form,
+// {parity[3:0], data[31:0]}.
+`SEP_TB_OUT(logic [35:0], km_sram_peek_o)
+// KM-BUS (eFuse part): the KM eFuse master efuse_req_o after the address
+// remap: AR and AW valid, ready and address.
+`SEP_TB_OUT(logic, km_efuse_ar_valid_o)
+`SEP_TB_OUT(logic, km_efuse_ar_ready_o)
+`SEP_TB_OUT(logic [31:0], km_efuse_ar_addr_o)
+`SEP_TB_OUT(logic, km_efuse_aw_valid_o)
+`SEP_TB_OUT(logic, km_efuse_aw_ready_o)
+`SEP_TB_OUT(logic [31:0], km_efuse_aw_addr_o)
+// HK-OTP and HK-STRM state: the OTP input is held by the inject; the
+// withdrawal pulse has been driven since the arm, and the sink TREADY in the
+// pulse clock; the sampler sink TVALID after the inject.
+`SEP_TB_OUT(logic, km_otp_flip_active_o)
+`SEP_TB_OUT(logic, km_strm_wd_fired_o)
+`SEP_TB_OUT(logic, km_strm_wd_tready_o)
+`SEP_TB_OUT(logic, km_strm_sink_tvalid_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)

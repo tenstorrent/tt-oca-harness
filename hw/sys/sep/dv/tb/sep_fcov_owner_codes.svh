@@ -124,3 +124,14 @@ localparam int unsigned FcovOwnSepEfuseSecureTmMatrixRandTest = 627;
 localparam int unsigned FcovOwnSepEfuseJtagAccessRandTest = 628;
 localparam int unsigned FcovOwnSepSecDisTimingRandTest = 629;
 localparam int unsigned FcovOwnSepEfuseShimResponseFaultTest = 630;
+
+// Key Manager.
+localparam int unsigned FcovOwnSepKmKmcsrResetRandTest = 729;
+localparam int unsigned FcovOwnSepKmKpvRandTest = 730;
+localparam int unsigned FcovOwnSepKmCpuProtectRandTest = 731;
+localparam int unsigned FcovOwnSepKmCrossbarEfuseWindowRandTest = 732;
+localparam int unsigned FcovOwnSepKmMailboxKmSideRandTest = 733;
+localparam int unsigned FcovOwnSepKmDrbgSamplerRandTest = 734;
+localparam int unsigned FcovOwnSepKmOtpInterfaceRandTest = 735;
+localparam int unsigned FcovOwnSepKmKeyBankRegisterRandTest = 736;
+localparam int unsigned FcovOwnSepKmSramScramblerKeyRandTest = 737;

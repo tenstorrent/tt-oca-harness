@@ -3470,6 +3470,201 @@ module sep_uvm_top
     assign km_mbox_sep_wr_err_count_o = km_mbox_sep_wr_err_cnt_q;
     assign km_mbox_sep_wr_err_addr_o  = km_mbox_sep_wr_err_addr_q;
 
+    // ------------------------------------------------------------------
+    // Key Manager observation taps KM-VALID, KM-KPV, KM-CSR, KM-SRAM and
+    // KM-BUS (docs/SEP_TB_ARCH.adoc, observation probes). Read-only
+    // continuous reads; they drive nothing and sit outside the tb s_axi /
+    // m_axi ready/valid cones.
+    // ------------------------------------------------------------------
+`define KM_TAP `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan
+`define KM_CRY `SEP_CORE.u_sep_crypto
+    // KM-VALID: engine KEY_CTRL.key_valid in DEST_VALID bit order.
+    assign km_engine_key_valid_o[0] = `KM_CRY.u_hmac_wrapper_s3c_scan.hmac_keymgr_key.valid;
+    assign km_engine_key_valid_o[1] = `KM_CRY.u_kmac_wrapper_s3c_scan.kmac_keymgr_key.valid;
+    assign km_engine_key_valid_o[2] = `KM_CRY.u_aes_wrapper_s3c_scan.aes_keymgr_key.valid;
+    assign km_engine_key_valid_o[3] =
+        `KM_CRY.u_sep_crypto_otbn_wrapper_s3c_scan.otbn_keymgr_key.valid;
+`ifdef SEP_ABR_EN
+`define KM_ABR_KEY `KM_CRY.u_sep_crypto_abr_wrapper_s3c_scan.abr_key_hwif_out
+    assign km_engine_key_valid_o[4] = `KM_ABR_KEY.MLDSA_SEED.KEY_CTRL.key_valid.value;
+    assign km_engine_key_valid_o[5] = `KM_ABR_KEY.MLKEM_SEED_D.KEY_CTRL.key_valid.value;
+    assign km_engine_key_valid_o[6] = `KM_ABR_KEY.MLKEM_SEED_Z.KEY_CTRL.key_valid.value;
+    assign km_engine_key_valid_o[7] = `KM_ABR_KEY.MLKEM_MSG.KEY_CTRL.key_valid.value;
+    assign km_abr_sk_valid_o = `KM_ABR_KEY.MLKEM_SHARED_KEY.KEY_CTRL.key_valid.value;
+    assign km_abr_sk_irq_status_o = `KM_ABR_KEY.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.value;
+    assign km_abr_sk_irq_enable_o = `KM_ABR_KEY.MLKEM_SHARED_KEY.IRQ_ENABLE.key_valid_en.value;
+    for (genvar i = 0; i < 8; i++) begin : g_km_abr_sk_key
+        assign km_abr_sk_key_o[32*i +: 32] = `KM_ABR_KEY.MLKEM_SHARED_KEY.KEY[i].data.value;
+    end
+`undef KM_ABR_KEY
+`else
+    assign km_engine_key_valid_o[7:4] = '0;
+    assign km_abr_sk_valid_o = 1'b0;
+    assign km_abr_sk_irq_status_o = 1'b0;
+    assign km_abr_sk_irq_enable_o = 1'b0;
+    assign km_abr_sk_key_o = '0;
+`endif
+    // KM-KPV: CTRL[s] {seal, erase, lock_use, lock_write} and the stored
+    // KPV words.
+    for (genvar s = 0; s < 64; s++) begin : g_km_kpv_ctrl
+        assign km_kpv_ctrl_o[4*s +: 4] = {
+            `KM_TAP.u_kpv.kpv_hwif_out.CTRL[s].seal.value,
+            `KM_TAP.u_kpv.kpv_hwif_out.CTRL[s].erase.value,
+            `KM_TAP.u_kpv.kpv_hwif_out.CTRL[s].lock_use.value,
+            `KM_TAP.u_kpv.kpv_hwif_out.CTRL[s].lock_write.value
+        };
+    end
+    for (genvar i = 0; i < 1024; i++) begin : g_km_kpv_words
+        assign km_kpv_words_o[32*i +: 32] = `KM_TAP.u_kpv.u_key_regfile.mem[i];
+    end
+    // KM-CSR.
+`define KM_CSR_OUT `KM_TAP.u_kmcsr.hwif_out
+    assign km_csr_irq_status_o = `KM_TAP.u_kmcsr.irq_status;
+    assign km_csr_irq_enable_o = `KM_TAP.u_kmcsr.irq_enable;
+    assign km_csr_irq_o = `KM_TAP.km_irq;
+    assign km_csr_recov_err_o = `KM_CSR_OUT.RECOVERABLE_ERR.recoverable_err.value;
+    assign km_csr_cold_boot_done_o = `KM_CSR_OUT.BOOT_STATUS.cold_boot_done.value;
+    assign km_csr_sram_exec_mode_o = `KM_TAP.sram_exec_mode;
+`define KM_OTP_FIELDS(reg_, out_) \
+    assign out_ = { \
+        `KM_CSR_OUT.reg_.sep_sys_id.value, `KM_CSR_OUT.reg_.sep_sip_id.value, \
+        `KM_CSR_OUT.reg_.sep_chiplet_id.value, `KM_CSR_OUT.reg_.class_key.value, \
+        `KM_CSR_OUT.reg_.sys_uid.value, `KM_CSR_OUT.reg_.sip_uid.value, \
+        `KM_CSR_OUT.reg_.chiplet_uid.value, `KM_CSR_OUT.reg_.demotion.value, \
+        `KM_CSR_OUT.reg_.life_cycle.value}
+    `KM_OTP_FIELDS(OTP_READ_LOCK, km_csr_otp_read_lock_o);
+    `KM_OTP_FIELDS(OTP_READ_LOCK_COLD, km_csr_otp_read_lock_cold_o);
+    `KM_OTP_FIELDS(OTP_CHANGE_STATUS, km_csr_otp_change_status_o);
+`undef KM_OTP_FIELDS
+    assign km_csr_scrambler_key_o = `KM_CSR_OUT.SCRAMBLER_KEY.key.value;
+    assign km_csr_scrambler_ctrl_o = {
+        `KM_CSR_OUT.SCRAMBLER_CTRL.lock.value, `KM_CSR_OUT.SCRAMBLER_CTRL.enable.value
+    };
+`undef KM_CSR_OUT
+    // Writes to SCRAMBLER_KEY: AW handshakes at the KMCSR port of the KM
+    // crossbar with the SCRAMBLER_KEY offset. Reset to 0 by rst_n_int.
+    localparam logic [31:0] KmScrKeyOff = 32'(
+        key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_SCRAMBLER_KEY_BASE_ADDR -
+        key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_BASE_ADDR);
+    logic [31:0] km_scr_key_wr_cnt_q;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_scr_key_wr_cnt_q <= '0;
+        end else if ((`KM_TAP.kmcsr_req.aw_valid === 1'b1) &&
+                     (`KM_TAP.kmcsr_resp.aw_ready === 1'b1) &&
+                     (32'(`KM_TAP.kmcsr_req.aw.addr) % 32'h800 == KmScrKeyOff)) begin
+            km_scr_key_wr_cnt_q <= km_scr_key_wr_cnt_q + 32'd1;
+        end
+    end
+    assign km_csr_scrambler_key_wr_count_o = km_scr_key_wr_cnt_q;
+    // KM-SRAM: one array word in stored form; an unknown address reads word 0.
+    assign km_sram_peek_o = u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[
+        $isunknown(km_sram_peek_addr_i) ? 13'h0 : km_sram_peek_addr_i];
+    // KM-BUS (eFuse part): efuse_req_o after the remap.
+    assign km_efuse_ar_valid_o = `KM_TAP.efuse_req_o.ar_valid;
+    assign km_efuse_ar_ready_o = `KM_TAP.efuse_resp_i.ar_ready;
+    assign km_efuse_ar_addr_o = `KM_TAP.efuse_req_o.ar.addr;
+    assign km_efuse_aw_valid_o = `KM_TAP.efuse_req_o.aw_valid;
+    assign km_efuse_aw_ready_o = `KM_TAP.efuse_resp_i.aw_ready;
+    assign km_efuse_aw_addr_o = `KM_TAP.efuse_req_o.aw.addr;
+
+    // ------------------------------------------------------------------
+    // HK-OTP: KM OTP input rail flip (docs/SEP_TB_ARCH.adoc, inject
+    // exceptions). No legal fuse image presents a broken dual-rail word: the
+    // SEP drives each field to the KM as {~value, value}. At the rise of
+    // km_otp_flip_en_i the bench captures the KM input otp_data_i, XORs
+    // km_otp_flip_mask_i into it and holds the KM input at that value while
+    // the input stays 1; the release restores the live value. The force
+    // value is a bench variable, captured once, so the forced net is never
+    // its own source. Re-issued on every falling edge (Verilator snapshots a
+    // force RHS). Default 0: no force.
+    // ------------------------------------------------------------------
+    km_intf_pkg::km_otp_data_t km_otp_flip_val;
+    logic km_otp_flip_on;
+    initial begin
+        km_otp_flip_on  = 1'b0;
+        km_otp_flip_val = '0;
+    end
+    always @(negedge clk_i) begin
+        if (km_otp_flip_en_i === 1'b1) begin
+            if (!km_otp_flip_on) begin
+                km_otp_flip_on  = 1'b1;
+                km_otp_flip_val = `KM_TAP.otp_data_i ^
+                    ($isunknown(km_otp_flip_mask_i) ? '0 : km_otp_flip_mask_i);
+                $display("[tb] KM OTP rail flip: %0d mask bits", $countones(
+                         $isunknown(km_otp_flip_mask_i) ? '0 : km_otp_flip_mask_i));
+            end
+            force `KM_TAP.otp_data_i = km_otp_flip_val;
+        end else begin
+            km_otp_flip_on = 1'b0;
+            release `KM_TAP.otp_data_i;
+        end
+    end
+    assign km_otp_flip_active_o = km_otp_flip_on;
+
+    // ------------------------------------------------------------------
+    // HK-STRM: DRBG sampler TVALID withdrawal (docs/SEP_TB_ARCH.adoc, inject
+    // exceptions). The force point is the sampler sink TVALID (the tvalid
+    // net of u_drbg_sampler); TDATA and TSTRB are not driven. While
+    // km_strm_wd_arm_i is 1 the bench drives one withdrawal:
+    //   * mode 0: TVALID high in the first clock with the sink TREADY low,
+    //     then low for one clock, then released;
+    //   * mode 1: TVALID high in the clock in which a DATA read starts (the
+    //     sampler state is idle and leaves it on the next edge), then low
+    //     until the state is idle again, then released.
+    // The sink TREADY of the pulse clock is kept on km_strm_wd_tready_o. The
+    // value is set on every falling edge (Verilator snapshots a force RHS).
+    // A drop of the arm releases the force. Default 0: no force.
+    // ------------------------------------------------------------------
+`define KM_SMP `KM_TAP.u_drbg_sampler
+    logic [1:0] km_strm_ph;
+    logic km_strm_fired_q, km_strm_tready_q;
+    initial begin
+        km_strm_ph       = 2'd0;
+        km_strm_fired_q  = 1'b0;
+        km_strm_tready_q = 1'b0;
+    end
+    always @(negedge clk_i) begin
+        if (km_strm_wd_arm_i !== 1'b1) begin
+            km_strm_ph      = 2'd0;
+            km_strm_fired_q = 1'b0;
+            release `KM_SMP.tvalid;
+        end else begin
+            unique case (km_strm_ph)
+                2'd0: begin
+                    if (((km_strm_wd_mode_i !== 1'b1) &&
+                         (`KM_SMP.drbg_axis_resp_o.tready === 1'b0)) ||
+                        ((km_strm_wd_mode_i === 1'b1) && (3'(`KM_SMP.state_q) == 3'd0) &&
+                         (3'(`KM_SMP.state_d) == 3'd1))) begin
+                        km_strm_tready_q = (`KM_SMP.drbg_axis_resp_o.tready === 1'b1);
+                        km_strm_fired_q  = 1'b1;
+                        km_strm_ph       = 2'd1;
+                        force `KM_SMP.tvalid = 1'b1;
+                    end
+                end
+                2'd1: begin
+                    km_strm_ph = 2'd2;
+                    force `KM_SMP.tvalid = 1'b0;
+                end
+                2'd2: begin
+                    if ((km_strm_wd_mode_i === 1'b1) && (3'(`KM_SMP.state_q) != 3'd0)) begin
+                        force `KM_SMP.tvalid = 1'b0;
+                    end else begin
+                        km_strm_ph = 2'd3;
+                        release `KM_SMP.tvalid;
+                    end
+                end
+                default: release `KM_SMP.tvalid;
+            endcase
+        end
+    end
+    assign km_strm_wd_fired_o    = km_strm_fired_q;
+    assign km_strm_wd_tready_o   = km_strm_tready_q;
+    assign km_strm_sink_tvalid_o = `KM_SMP.tvalid;
+`undef KM_SMP
+`undef KM_CRY
+`undef KM_TAP
+
     // Outbound mailbox responder + firmware-console/PASS-magic monitor. The
     // response control (hold, read SLVERR) is an error inject on
     // smn_outbound_axi_resp_i; both inputs are 0 unless a leaf drives them.
@@ -3980,6 +4175,11 @@ module sep_uvm_top
     assign esrc_fifo_ptr_bit_i      = '0;
     assign esrc_noise_stuck_en_i    = '0;
     assign esrc_noise_stuck_val_i   = '0;
+    assign km_otp_flip_en_i         = 1'b0;
+    assign km_otp_flip_mask_i       = '0;
+    assign km_strm_wd_arm_i         = 1'b0;
+    assign km_strm_wd_mode_i        = 1'b0;
+    assign km_sram_peek_addr_i      = '0;
     assign ext_trng_drive_en_i      = '0;
     assign ext_trng_tvalid_i        = '0;
     assign ext_trng_tdata_i         = '0;
@@ -4824,6 +5024,9 @@ module sep_uvm_top
 `define FC_AES  `FC_CRY.u_aes_wrapper_s3c_scan.u_tt_aes
 `define FC_KMAC `FC_CRY.u_kmac_wrapper_s3c_scan.u_tt_kmac
 `define FC_OTBN `FC_CRY.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn
+`define FC_KM   `FC_CRY.u_key_manager_s3c_scan
+`define FC_KMBX `FC_KM.u_mailbox
+`define FC_KSMP `FC_KM.u_drbg_sampler
     // The engine idle outputs are unconnected at the sep_crypto level; the tap
     // reads each port. OTBN reports idle as a multi-bit boolean.
     wire [3:0] fcov_eng_idle = {
@@ -5349,10 +5552,119 @@ module sep_uvm_top
         .efuse_read_busy_i     (efuse_read_busy_o),
         .efuse_program_error_i (efuse_program_error_o),
         .efuse_program_done_i  (efuse_program_done_o),
-        .efuse_program_busy_i  (efuse_program_busy_o)
+        .efuse_program_busy_i  (efuse_program_busy_o),
+        // Key Manager taps (docs/SEP_FCOV.adoc, Key Manager groups, Sampled
+        // signals): read-only, no force.
+        .km_axi_req_i          (`FC_KM.cpu_axil_req),
+        .km_axi_resp_i         (`FC_KM.cpu_axil_resp),
+        .km_axi_err_i          ({`FC_KM.cpu_axi_decerr, `FC_KM.cpu_axi_slverr}),
+        .km_mem_valid_i        (`FC_KM.u_cpu.mem_valid),
+        .km_mem_ready_i        (`FC_KM.u_cpu.mem_ready),
+        .km_mem_instr_i        (`FC_KM.u_cpu.mem_instr),
+        .km_mem_addr_i         (`FC_KM.u_cpu.mem_addr),
+        .km_mem_wstrb_i        (`FC_KM.u_cpu.mem_wstrb),
+        .km_mem_rdata_i        (`FC_KM.u_cpu.mem_rdata),
+        .km_err_flags_i        ({`FC_KM.rom_access_violation, `FC_KM.exec_violation,
+                                 `FC_KM.cpu_rom_write_err, `FC_KM.cpu_sram_parity_err,
+                                 `FC_KM.cpu_rom_parity_err}),
+        .km_trap_i             (`FC_KM.cpu_trap),
+        .km_irq_active_i       (`FC_KM.u_cpu.u_picorv32.irq_active),
+        .km_cpu_irq_i          (`FC_KM.cpu_irq),
+        .km_cpu_mbox_irq_i     (`FC_KM.cpu_mbox_irq),
+        .km_cpu_sk_irq_i       (`FC_KM.abr_mlkem_sharedkey_irq_i),
+        .km_irq_status_i       (km_csr_irq_status_o),
+        .km_irq_enable_i       (km_csr_irq_enable_o),
+        .km_cold_boot_done_i   (km_csr_cold_boot_done_o),
+        .km_sram_exec_mode_i   (km_csr_sram_exec_mode_o),
+        .km_sram_lock_i        (`FC_KM.sram_lock_bits),
+        .km_sram_viol_i        (`FC_KM.u_kmcsr.hwif_out.SRAM_WRITE_LOCK_VIOLATION.violation_bits.value),
+        .km_sram_viol_pulse_i  (`FC_KM.sram_write_lock_violation_region),
+        .km_scr_key_i          (km_csr_scrambler_key_o),
+        .km_scr_ctrl_i         (km_csr_scrambler_ctrl_o),
+        .km_scr_en_i           (`FC_KM.scrambler_enable),
+        .km_scr_lock_i         (`FC_KM.scrambler_lock),
+        .km_otp_rlock_i        (km_csr_otp_read_lock_o),
+        .km_otp_rlock_cold_i   (km_csr_otp_read_lock_cold_o),
+        .km_otp_chg_i          (km_csr_otp_change_status_o),
+        .km_irq_entry_addr_i   (`FC_KM.irq_entry_addr),
+        .km_irq_entry_lock_i   (`FC_KM.u_kmcsr.hwif_out.IRQ_ENTRY_LOCK.lock.value),
+        .km_kpv_ctrl_i         (km_kpv_ctrl_o),
+        .km_kpv_words_i        (km_kpv_words_o),
+        .km_kpv_scr_key_i      (`FC_KM.u_kpv.kpv_hwif_out.KPV_SCRAMBLER_KEY.key.value),
+        .km_kpv_scr_ctrl_i     ({`FC_KM.u_kpv.kpv_hwif_out.KPV_SCRAMBLER_CTRL.lock.value,
+                                 `FC_KM.u_kpv.kpv_hwif_out.KPV_SCRAMBLER_CTRL.enable.value}),
+        .km_mbx_in_depth_i     (`FC_KMBX.inbound_depth),
+        .km_mbx_out_depth_i    (`FC_KMBX.outbound_depth),
+        .km_mbx_flags_i        ({`FC_KMBX.outbound_full, `FC_KMBX.outbound_empty,
+                                 `FC_KMBX.inbound_full, `FC_KMBX.inbound_empty}),
+        .km_mbx_hs_i           ({`FC_KMBX.outbound_rvalid & `FC_KMBX.outbound_rready,
+                                 `FC_KMBX.outbound_wvalid & `FC_KMBX.outbound_wready,
+                                 `FC_KMBX.inbound_rvalid & `FC_KMBX.inbound_rready,
+                                 `FC_KMBX.inbound_wvalid & `FC_KMBX.inbound_wready}),
+        .km_mbx_sep_i          ({`FC_KMBX.outbound_rdata[32], `FC_KMBX.outbound_wdata[32],
+                                 `FC_KMBX.inbound_rdata[32], `FC_KMBX.inbound_wdata[32]}),
+        .km_mbx_err_i          ({`FC_KMBX.sep_outbound_underflow_detected,
+                                 `FC_KMBX.sep_inbound_overflow_detected,
+                                 `FC_KMBX.km_inbound_underflow_detected,
+                                 `FC_KMBX.km_outbound_overflow_detected}),
+        .km_mbx_km_irq_i       ({`FC_KMBX.km_hwif_out.KM_IRQ_STATUS.flushed_by_sep.value,
+                                 `FC_KMBX.km_hwif_out.KM_IRQ_STATUS.inbound_underflow.value,
+                                 `FC_KMBX.km_hwif_out.KM_IRQ_STATUS.outbound_overflow.value}),
+        .km_mbx_km_en_i        ({`FC_KMBX.km_hwif_out.KM_IRQ_ENABLE.flushed_by_sep_en.value,
+                                 `FC_KMBX.km_hwif_out.KM_IRQ_ENABLE.inbound_underflow_en.value,
+                                 `FC_KMBX.km_hwif_out.KM_IRQ_ENABLE.outbound_overflow_en.value,
+                                 `FC_KMBX.km_hwif_out.KM_IRQ_ENABLE.outbound_write_space_avail_en.value,
+                                 `FC_KMBX.km_hwif_out.KM_IRQ_ENABLE.inbound_read_data_avail_en.value}),
+        .km_mbx_km_ctrl_i      ({`FC_KMBX.km_hwif_out.KM_CTRL.flush.value,
+                                 `FC_KMBX.km_hwif_out.KM_CTRL.inbound_underflow_resp.value,
+                                 `FC_KMBX.km_hwif_out.KM_CTRL.outbound_overflow_resp.value}),
+        .km_mbx_km_sepset_i    (`FC_KMBX.km_hwif_out.KM_WRITE_SEPARATOR.set.value),
+        .km_mbx_sep_irq_i      ({`FC_KMBX.sep_hwif_out.SEP_IRQ_STATUS.flushed_by_km.value,
+                                 `FC_KMBX.sep_hwif_out.SEP_IRQ_STATUS.outbound_underflow.value,
+                                 `FC_KMBX.sep_hwif_out.SEP_IRQ_STATUS.inbound_overflow.value}),
+        .km_mbx_sep_sepset_i   (`FC_KMBX.sep_hwif_out.SEP_WRITE_SEPARATOR.set.value),
+        .km_mbx_flush_i        ({`FC_KMBX.sep_flush_active, `FC_KMBX.km_flush_active}),
+        .km_smp_cfg_i          ({`FC_KSMP.hwif_out.CFG.timeout.value, `FC_KSMP.hwif_out.CFG.prefetch.value}),
+        .km_smp_sticky_i       ({`FC_KSMP.hwif_out.STATUS.stream_err.value,
+                                 `FC_KSMP.hwif_out.STATUS.timeout_err.value}),
+        .km_smp_count_good_i   (`FC_KSMP.count_good),
+        .km_smp_count_bad_i    (`FC_KSMP.count_bad),
+        .km_smp_prefetched_i   (`FC_KSMP.prefetched_valid),
+        .km_smp_prefetch_data_i (`FC_KSMP.prefetch_data_reg),
+        .km_smp_state_i        (3'(`FC_KSMP.state_q)),
+        .km_smp_tvalid_i       (`FC_KSMP.tvalid),
+        .km_smp_tready_i       (`FC_KSMP.drbg_axis_resp_o.tready),
+        .km_smp_tstrb_i        (`FC_KSMP.tstrb),
+        .km_smp_req_i          (`FC_KM.drbg_req),
+        .km_smp_resp_i         (`FC_KM.drbg_resp),
+        .km_wipe_i             ({`FC_KM.wipe_pulse, `FC_KM.wipe_state_i}),
+        .km_otp_data_i         (`FC_KM.otp_data_i),
+        .km_rom_req_i          (u_dut.km_rom_mem_req.req),
+        .km_sram_if_i          ({u_dut.km_sram_mem_rsp.rvalid, u_dut.km_sram_mem_rsp.gnt,
+                                 u_dut.km_sram_mem_req.we, u_dut.km_sram_mem_req.req}),
+        .km_sram_addr_i        (u_dut.km_sram_mem_req.addr),
+        .km_efuse_req_i        (`FC_KM.efuse_req_o),
+        .km_efuse_resp_i       (`FC_KM.efuse_resp_i),
+        .km_efuse_pg_busy_i    (efuse_program_busy_o),
+        .km_secure_tm_i        (secure_tm_o),
+        .km_strap_i            (test_en_strap_i === 1'b1),
+        .km_rst_i              ({`FC_KM.rst_warm_sync_n, `FC_KM.rst_cold_aasd_n, `FC_KM.soft_rst_n,
+                                 `FC_KM.warm_rst_ni}),
+        .km_iso_i              ({abr_km_isolated_probe_o, kmac_km_isolated_probe_o,
+                                 hmac_km_isolated_probe_o}),
+        .km_unrec_err_i        (sep_internal_interrupts_probe_o[30]),
+        .km_key_valid_i        (km_engine_key_valid_o),
+        .km_sk_valid_i         (km_abr_sk_valid_o),
+        .km_sk_key_i           (km_abr_sk_key_o),
+        .km_sk_irq_status_i    (km_abr_sk_irq_status_o),
+        .km_sk_irq_enable_i    (km_abr_sk_irq_enable_o),
+        .km_sram_probe_i       (km_sram_probe_o)
     );
 `undef FC_EFCTRL
 `undef FC_TOKEN
+`undef FC_KM
+`undef FC_KMBX
+`undef FC_KSMP
 `undef FC_CRY
 `undef FC_HMAC
 `undef FC_AES

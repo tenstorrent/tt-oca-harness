@@ -614,7 +614,98 @@ module sep_fcov (
   input wire                                efuse_read_busy_i,
   input wire                                efuse_program_error_i,
   input wire                                efuse_program_done_i,
-  input wire                                efuse_program_busy_i
+  input wire                                efuse_program_busy_i,
+
+  // Key Manager taps (docs/SEP_FCOV.adoc, Key Manager groups, Sampled
+  // signals): read-only, no force. KM is
+  // SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.
+  input km_intf_pkg::km_axil_req_t          km_axi_req_i,     // KM cpu_axil_req
+  input km_intf_pkg::km_axil_resp_t         km_axi_resp_i,    // KM cpu_axil_resp
+  input wire [1:0]                          km_axi_err_i,     // {cpu_axi_decerr, cpu_axi_slverr}
+  input wire                                km_mem_valid_i,   // KM u_cpu.mem_valid
+  input wire                                km_mem_ready_i,   // KM u_cpu.mem_ready
+  input wire                                km_mem_instr_i,   // KM u_cpu.mem_instr
+  input wire [31:0]                         km_mem_addr_i,    // KM u_cpu.mem_addr
+  input wire [3:0]                          km_mem_wstrb_i,   // KM u_cpu.mem_wstrb
+  input wire [31:0]                         km_mem_rdata_i,   // KM u_cpu.mem_rdata
+  // {rom_access_violation, exec_violation, cpu_rom_write_err,
+  //  cpu_sram_parity_err, cpu_rom_parity_err}
+  input wire [4:0]                          km_err_flags_i,
+  input wire                                km_trap_i,        // KM cpu_trap
+  input wire                                km_irq_active_i,  // PicoRV32 irq_active
+  input wire                                km_cpu_irq_i,     // KM cpu_irq (KMCSR aggregate)
+  input wire                                km_cpu_mbox_irq_i, // KM cpu_mbox_irq
+  input wire                                km_cpu_sk_irq_i,  // KM abr_mlkem_sharedkey_irq_i
+  input wire [11:0]                         km_irq_status_i,  // km_csr_irq_status_o
+  input wire [11:0]                         km_irq_enable_i,  // km_csr_irq_enable_o
+  input wire                                km_cold_boot_done_i,
+  input wire                                km_sram_exec_mode_i,
+  input wire [31:0]                         km_sram_lock_i,   // KM sram_lock_bits
+  input wire [31:0]                         km_sram_viol_i,   // SRAM_WRITE_LOCK_VIOLATION
+  input wire [31:0]                         km_sram_viol_pulse_i, // sram_write_lock_violation_region
+  input wire [31:0]                         km_scr_key_i,     // SCRAMBLER_KEY register value
+  input wire [1:0]                          km_scr_ctrl_i,    // SCRAMBLER_CTRL {lock, enable}
+  input wire                                km_scr_en_i,      // KM scrambler_enable
+  input wire                                km_scr_lock_i,    // KM scrambler_lock
+  input wire [8:0]                          km_otp_rlock_i,   // OTP_READ_LOCK
+  input wire [8:0]                          km_otp_rlock_cold_i, // OTP_READ_LOCK_COLD
+  input wire [8:0]                          km_otp_chg_i,     // OTP_CHANGE_STATUS
+  input wire [31:0]                         km_irq_entry_addr_i,
+  input wire                                km_irq_entry_lock_i,
+  input wire [255:0]                        km_kpv_ctrl_i,    // km_kpv_ctrl_o
+  input wire [32767:0]                      km_kpv_words_i,   // km_kpv_words_o
+  input wire [31:0]                         km_kpv_scr_key_i, // KPV_SCRAMBLER_KEY register
+  input wire [1:0]                          km_kpv_scr_ctrl_i, // KPV_SCRAMBLER_CTRL {lock, enable}
+  input wire [4:0]                          km_mbx_in_depth_i,  // inbound (SEP to KM) depth
+  input wire [4:0]                          km_mbx_out_depth_i, // outbound (KM to SEP) depth
+  // {outbound_full, outbound_empty, inbound_full, inbound_empty}
+  input wire [3:0]                          km_mbx_flags_i,
+  // {outbound pop, outbound push, inbound pop, inbound push} handshakes
+  input wire [3:0]                          km_mbx_hs_i,
+  // separator bit of {outbound head, outbound write, inbound head, inbound write}
+  input wire [3:0]                          km_mbx_sep_i,
+  // {SEP outbound underflow, SEP inbound overflow, KM inbound underflow,
+  //  KM outbound overflow} detection pulses
+  input wire [3:0]                          km_mbx_err_i,
+  input wire [2:0]                          km_mbx_km_irq_i,  // KM_IRQ_STATUS {flushed_by_sep, inbound_underflow, outbound_overflow}
+  input wire [4:0]                          km_mbx_km_en_i,   // KM_IRQ_ENABLE
+  input wire [2:0]                          km_mbx_km_ctrl_i, // KM_CTRL {flush, inbound_underflow_resp, outbound_overflow_resp}
+  input wire                                km_mbx_km_sepset_i, // KM_WRITE_SEPARATOR.set
+  input wire [2:0]                          km_mbx_sep_irq_i, // SEP_IRQ_STATUS {flushed_by_km, outbound_underflow, inbound_overflow}
+  input wire                                km_mbx_sep_sepset_i, // SEP_WRITE_SEPARATOR.set
+  input wire [1:0]                          km_mbx_flush_i,   // {SEP flush active, KM flush active}
+  input wire [16:0]                         km_smp_cfg_i,     // DRBG CFG {timeout, prefetch}
+  input wire [1:0]                          km_smp_sticky_i,  // STATUS {stream_err, timeout_err}
+  input wire [15:0]                         km_smp_count_good_i,
+  input wire [7:0]                          km_smp_count_bad_i,
+  input wire                                km_smp_prefetched_i,
+  input wire [31:0]                         km_smp_prefetch_data_i,
+  input wire [2:0]                          km_smp_state_i,   // sampler DATA-read state
+  input wire                                km_smp_tvalid_i,  // sampler sink TVALID
+  input wire                                km_smp_tready_i,  // sampler sink TREADY
+  input wire [3:0]                          km_smp_tstrb_i,
+  input km_intf_pkg::km_axil_req_t          km_smp_req_i,     // KM drbg_req
+  input km_intf_pkg::km_axil_resp_t         km_smp_resp_i,    // KM drbg_resp
+  input wire [1:0]                          km_wipe_i,        // {wipe_pulse, wipe_state_i}
+  input km_intf_pkg::km_otp_data_t          km_otp_data_i,    // KM otp_data_i
+  input wire                                km_rom_req_i,     // km_rom_mem_req.req
+  input wire [3:0]                          km_sram_if_i,     // km_sram_mem_req/rsp {rvalid, gnt, we, req}
+  input wire [12:0]                         km_sram_addr_i,   // km_sram_mem_req.addr
+  input km_intf_pkg::km_axil_req_t          km_efuse_req_i,   // KM efuse_req_o (after the remap)
+  input km_intf_pkg::km_axil_resp_t         km_efuse_resp_i,  // KM efuse_resp_i
+  input wire                                km_efuse_pg_busy_i, // efuse_program_busy_o
+  input wire                                km_secure_tm_i,   // secure_tm_o
+  input wire                                km_strap_i,       // test_en_strap_i
+  // {rst_warm_sync_n, rst_cold_aasd_n, soft_rst_n, warm_rst_ni}
+  input wire [3:0]                          km_rst_i,
+  input wire [2:0]                          km_iso_i,         // {abr, kmac, hmac} KM-path isolated
+  input wire                                km_unrec_err_i,   // PIC vector bit 30
+  input wire [7:0]                          km_key_valid_i,   // km_engine_key_valid_o
+  input wire                                km_sk_valid_i,    // km_abr_sk_valid_o
+  input wire [255:0]                        km_sk_key_i,      // km_abr_sk_key_o
+  input wire                                km_sk_irq_status_i, // km_abr_sk_irq_status_o
+  input wire                                km_sk_irq_enable_i, // km_abr_sk_irq_enable_o
+  input wire [98*32-1:0]                    km_sram_probe_i   // km_sram_probe_o
 );
 
   import sep_top_addrmap_pkg::*;
@@ -25950,6 +26041,3046 @@ module sep_fcov (
         u_sep_efuse_jtag_policy_cg.sample(je);
       end
     end
+  end
+
+  // =====================================================================
+  // Key Manager groups (docs/SEP_FCOV.adoc, Key Manager groups). Every
+  // point samples only while graded_owner holds the code of a test that
+  // owns the point or the bin. The KM groups do not use the in_reset gate:
+  // the reset points sample across a reset, so their state flops have no
+  // reset and every input compare is X-safe. The settle counts and windows
+  // below are choices of the environment; the specification gives none.
+  //
+  // Every covergroup takes sample(pt, v): pt selects the coverpoint, v is
+  // its value, and a call is made only when the owner of the bin is in its
+  // window.
+  // =====================================================================
+  wire km_own_csr = (graded_owner == FcovOwnSepKmKmcsrResetRandTest);
+  wire km_own_kpv = (graded_owner == FcovOwnSepKmKpvRandTest);
+  wire km_own_cpu = (graded_owner == FcovOwnSepKmCpuProtectRandTest);
+  wire km_own_xbar = (graded_owner == FcovOwnSepKmCrossbarEfuseWindowRandTest);
+  wire km_own_mbx = (graded_owner == FcovOwnSepKmMailboxKmSideRandTest);
+  wire km_own_smp = (graded_owner == FcovOwnSepKmDrbgSamplerRandTest);
+  wire km_own_otp = (graded_owner == FcovOwnSepKmOtpInterfaceRandTest);
+  wire km_own_bank = (graded_owner == FcovOwnSepKmKeyBankRegisterRandTest);
+  wire km_own_scr = (graded_owner == FcovOwnSepKmSramScramblerKeyRandTest);
+
+  localparam int unsigned KmSettle = 2;  // clocks from a B or a reset release to its effect
+  localparam int unsigned KmStoreWin = 6;  // clocks a store has to reach the SRAM macro
+  localparam int unsigned KmQuietWin = 64;  // quiet window of the no-effect bins
+  localparam int unsigned KmRunWin = 1000;  // KM run time before a steady-state bin
+  localparam int unsigned KmErrHoldWin = 5000;  // km_unrecoverable_err_o high time before a reset
+  localparam int unsigned KmPgWin = 8192;  // eFuse program window after the go
+  localparam int unsigned KmLevelWin = 100;  // wipe level held high for many cycles
+  localparam logic [1:0] KmOkay = 2'b00;
+  localparam logic [1:0] KmSlverr = 2'b10;
+  localparam logic [1:0] KmDecerr = 2'b11;
+
+  // --- KM memory map (hw/ip/key_manager/regs/gen/adoc/memory_map.adoc) ---
+  localparam logic [31:0] KmRomBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_ROM_BASE_ADDR);
+  localparam logic [31:0] KmRomEnd = KmRomBase + 32'(key_manager_addrmap_pkg::KEY_MANAGER_ROM_SIZE);
+  localparam logic [31:0] KmSramBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_SRAM_BASE_ADDR);
+  localparam logic [31:0] KmSramEnd = KmSramBase +
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_SRAM_SIZE);
+  localparam logic [31:0] KmMbxBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_MAILBOX_KM_BASE_ADDR);
+  localparam logic [31:0] KmEfMapBase =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR);
+  localparam logic [31:0] KmEfCtrlBase =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR);
+  localparam logic [31:0] KmEfMmrBase =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR);
+  localparam logic [31:0] KmKpvBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_BASE_ADDR);
+  // CTRL[0] follows the 64 key entries.
+  localparam logic [31:0] KmKpvCtrl0 = KmKpvBase +
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_TOTAL_SIZE);
+  localparam logic [31:0] KmKpvScrKey =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR);
+  localparam logic [31:0] KmKpvScrCtrl =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR);
+  localparam logic [31:0] KmCsrBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_BASE_ADDR);
+  localparam logic [31:0] KmSmpBase =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_BASE_ADDR);
+  localparam logic [31:0] KmOtbnBase =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTBN_WRAPPER_KEY_BASE_ADDR);
+  localparam logic [31:0] KmAesBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_AES_WRAPPER_KEY_BASE_ADDR);
+  localparam logic [31:0] KmKmacBase =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMAC_WRAPPER_KEY_BASE_ADDR);
+  localparam logic [31:0] KmHmacBase =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR);
+  localparam logic [31:0] KmAbrBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_BASE_ADDR);
+  localparam logic [31:0] KmVromBase = 32'h1000_0000;  // memory_map.adoc, VROM window
+  // KMCSR registers.
+  localparam logic [31:0] KmCsrVersion =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_VERSION_BASE_ADDR);
+  localparam logic [31:0] KmCsrCtrl = 32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_CTRL_BASE_ADDR);
+  localparam logic [31:0] KmCsrSoftRst =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_SOFT_RST_CODE_BASE_ADDR);
+  localparam logic [31:0] KmCsrIrqStatus =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_IRQ_STATUS_BASE_ADDR);
+  localparam logic [31:0] KmCsrScrKey =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_SCRAMBLER_KEY_BASE_ADDR);
+  localparam logic [31:0] KmCsrScrCtrl =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_SCRAMBLER_CTRL_BASE_ADDR);
+  localparam logic [31:0] KmCsrSramLock =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR);
+  localparam logic [31:0] KmCsrExecMode =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_SRAM_EXEC_MODE_BASE_ADDR);
+  localparam logic [31:0] KmCsrEntryAddr =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_IRQ_ENTRY_ADDR_BASE_ADDR);
+  localparam logic [31:0] KmCsrEntryLock =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_IRQ_ENTRY_LOCK_BASE_ADDR);
+  localparam logic [31:0] KmCsrDebug = 32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR);
+  localparam logic [31:0] KmCsrLifeCycle =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_LIFE_CYCLE_BASE_ADDR);
+  localparam logic [31:0] KmCsrDemotion =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_DEMOTION_STATE_BASE_ADDR);
+  localparam logic [31:0] KmCsrReadLock =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_READ_LOCK_BASE_ADDR);
+  localparam logic [31:0] KmCsrReadLockCold =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_READ_LOCK_COLD_BASE_ADDR);
+  localparam logic [31:0] KmCsrChgStatus =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_CHANGE_STATUS_BASE_ADDR);
+  // The 7 dual-rail readout fields in OTP_READ_LOCK bit order 2 to 8, each 8
+  // value words then 8 complement words (km_csr.adoc).
+  localparam logic [31:0] KmCsrOtpChipletUid = KmCsrBase + 32'h200;
+  localparam logic [31:0] KmCsrOtpSepChipletId = KmCsrBase + 32'h400;
+  // DRBG sampler registers.
+  localparam logic [31:0] KmSmpData = 32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR);
+  localparam logic [31:0] KmSmpCfg = 32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR);
+  localparam logic [31:0] KmSmpStatus =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR);
+  localparam logic [31:0] KmSmpPfData =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_PREFETCH_DATA_BASE_ADDR);
+  // Mailbox KM side.
+  localparam logic [31:0] KmMbxIrqStatus =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR);
+  // ABR shared key.
+  localparam logic [31:0] KmSkKeyCtrl =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_KEY_CTRL_BASE_ADDR);
+  localparam logic [31:0] KmSkIrqStatus =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_STATUS_BASE_ADDR);
+  localparam logic [31:0] KmSkIrqEnable =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_BASE_ADDR);
+  // Reset values from km_csr.adoc: VERSION major 1, minor 0, patch 0;
+  // DEBUG magic; IRQ_ENTRY_ADDR 0x10. SOFT_RST_CODE accepts 'SRST'.
+  localparam logic [31:0] KmVersionReset = 32'h0001_0000;
+  localparam logic [31:0] KmDebugMagic = 32'hCAFE_BEEF;
+  localparam logic [31:0] KmEntryReset = 32'h0000_0010;
+  localparam logic [31:0] KmSoftRstCode = 32'h5352_5354;
+  // KM DRBG sampler CFG reset (km_drbg_sampler.adoc, CFG: timeout 0x100,
+  // prefetch 0) and the bad response data of the eFuse gaps.
+  localparam logic [16:0] KmSmpCfgReset = {16'h0100, 1'b0};
+  localparam logic [31:0] KmBadcab = 32'hBADC_AB1E;
+  // eFuse program control (efuse_interface_ctrl.adoc), at its SEP address.
+  localparam logic [31:0] KmEfPgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
+  localparam logic [31:0] KmEfPgGo = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK;
+  // DRBG sampler DATA-read states (architecture.adoc, table "Key Manager
+  // DRBG sampler states"): idle, request, byte assembly, respond, timeout,
+  // stream error.
+  localparam logic [2:0] KmStIdle = 3'd0;
+  localparam logic [2:0] KmStRequest = 3'd1;
+  localparam logic [2:0] KmStTimeout = 3'd4;
+  localparam logic [2:0] KmStStreamErr = 3'd5;
+  // Release write of km_sw_rst_n: the leaf raises AWVALID of the SW_RESET_N
+  // write that sets bit 0 W host clocks after the km_sw_rst_n fall
+  // (cp_rd_hold). The bins hold W.
+
+  function automatic logic km_in(logic [31:0] a, logic [31:0] lo, logic [31:0] size);
+    return (a >= lo) && (a < lo + size);
+  endfunction
+
+  // Engine key bank of a KM address, in DEST_VALID bit order (0 HMAC, 1 KMAC,
+  // 2 AES, 3 OTBN, 4 MLDSA_SEED, 5 MLKEM_SEED_D, 6 MLKEM_SEED_Z, 7 MLKEM_MSG),
+  // and the bank base; 4'hF when the address is in no bank.
+  function automatic logic [3:0] km_bank(logic [31:0] a);
+    if (km_in(a, KmHmacBase, 32'h44)) return 4'd0;
+    if (km_in(a, KmKmacBase, 32'h44)) return 4'd1;
+    if (km_in(a, KmAesBase, 32'h44)) return 4'd2;
+    if (km_in(a, KmOtbnBase, 32'h64)) return 4'd3;
+    if (km_in(a, KmAbrBase + 32'h000, 32'h44)) return 4'd4;
+    if (km_in(a, KmAbrBase + 32'h100, 32'h44)) return 4'd5;
+    if (km_in(a, KmAbrBase + 32'h200, 32'h44)) return 4'd6;
+    if (km_in(a, KmAbrBase + 32'h300, 32'h44)) return 4'd7;
+    return 4'hF;
+  endfunction
+
+  function automatic logic [31:0] km_bank_base(logic [3:0] b);
+    case (b)
+      4'd0: return KmHmacBase;
+      4'd1: return KmKmacBase;
+      4'd2: return KmAesBase;
+      4'd3: return KmOtbnBase;
+      4'd4: return KmAbrBase;
+      4'd5: return KmAbrBase + 32'h100;
+      4'd6: return KmAbrBase + 32'h200;
+      default: return KmAbrBase + 32'h300;
+    endcase
+  endfunction
+
+  // Share-word count of a bank: OTBN 12 words per share, the others 8
+  // (otbn_wrapper_key.adoc, the *_wrapper_key.adoc maps).
+  function automatic logic [4:0] km_bank_words(logic [3:0] b);
+    return (b == 4'd3) ? 5'd12 : 5'd8;
+  endfunction
+
+  // Byte offset of KEY_CTRL in a bank: after the two shares.
+  function automatic logic [31:0] km_bank_ctl_off(logic [3:0] b);
+    return 32'(km_bank_words(b)) << 3;
+  endfunction
+
+  // OTP readout field of a KMCSR address: 0 life cycle, 1 demotion, 2..8 the
+  // dual-rail fields in OTP_READ_LOCK order; rail 1 is the complement half.
+  // field 4'hF when the address is not a readout word.
+  function automatic logic [8:0] km_otp_word(logic [31:0] a);
+    logic [31:0] off;
+    if (a == KmCsrLifeCycle) return {4'd0, 5'd16};
+    if (a == KmCsrDemotion) return {4'd1, 5'd16};
+    if (km_in(a, KmCsrOtpChipletUid, 32'h100)) begin
+      off = a - KmCsrOtpChipletUid;
+      return {4'(2 + off[7:6]), 1'b0, off[5:2]};
+    end
+    if (km_in(a, KmCsrOtpSepChipletId, 32'hC0)) begin
+      off = a - KmCsrOtpSepChipletId;
+      return {4'(6 + off[7:6]), 1'b0, off[5:2]};
+    end
+    return {4'hF, 5'd0};
+  endfunction
+
+  // --- KM CPU AXI master: one transaction in flight ----------------------
+  // The PicoRV32 AXI adapter waits for each response before the next
+  // request, so the address and the data latched at the start belong to the
+  // response. A write event fires one clock after its B handshake, so the
+  // taps show the stored result; a read event fires on its R handshake.
+  wire km_rst_cold_n = (km_rst_i[2] !== 1'b0);
+  wire km_rst_warm_n = (km_rst_i[3] !== 1'b0);
+  wire km_soft_n = (km_rst_i[1] !== 1'b0);
+  wire km_swrst_n = (km_rst_i[0] !== 1'b0);
+  wire kx_aw_v = (km_axi_req_i.aw_valid === 1'b1);
+  wire kx_ar_v = (km_axi_req_i.ar_valid === 1'b1);
+  wire kx_w_hs = (km_axi_req_i.w_valid === 1'b1) && (km_axi_resp_i.w_ready === 1'b1);
+  wire kx_b_hs = (km_axi_resp_i.b_valid === 1'b1) && (km_axi_req_i.b_ready === 1'b1);
+  wire kx_r_hs = (km_axi_resp_i.r_valid === 1'b1) && (km_axi_req_i.r_ready === 1'b1);
+  logic kx_wbusy = 1'b0, kx_rbusy = 1'b0;
+  logic [31:0] kx_waddr = '0, kx_wdata = '0, kx_raddr = '0;
+  logic [3:0] kx_wstrb = '0;
+  wire kx_wstart = kx_aw_v && !kx_wbusy;
+  wire kx_rstart = kx_ar_v && !kx_rbusy;
+  // Write event, one clock after the B handshake.
+  logic kw_ev = 1'b0;
+  logic [31:0] kw_addr = '0, kw_data = '0;
+  logic [1:0] kw_resp = '0;
+  // Snapshots at the start of the write and of the read (pre values).
+  logic [11:0] kwp_irq_status = '0, krp_irq_status = '0;
+  logic [11:0] kwp_irq_enable = '0;
+  logic [31:0] kwp_scr_key = '0, kwp_sram_lock = '0, kwp_entry_addr = '0, kwp_sram_viol = '0;
+  logic [1:0] kwp_scr_ctrl = '0;
+  logic kwp_scr_lock = 1'b0, kwp_scr_en = 1'b0, kwp_entry_lock = 1'b0, kwp_exec = 1'b0;
+  logic krp_scr_lock = 1'b0, krp_scr_en = 1'b0, krp_pf = 1'b0, krp_tvalid = 1'b0;
+  logic [8:0] kwp_rlock = '0, kwp_rlock_cold = '0, kwp_chg = '0;
+  logic [8:0] krp_rlock = '0, krp_rlock_cold = '0;
+  logic [255:0] kwp_kpv_ctrl = '0, krp_kpv_ctrl = '0;
+  logic [1:0] kwp_kpv_scr = '0;
+  logic [1:0] kwp_smp_sticky = '0;
+  logic [15:0] kwp_good = '0;
+  logic [7:0] kwp_bad = '0;
+  logic [2:0] kwp_mbx_km_irq = '0;
+  logic kwp_sk_valid = 1'b0, kwp_sk_irq = 1'b0;
+  logic [7:0] kwp_key_valid = '0;
+  logic kwp_engaged = 1'b0;
+  logic [32767:0] kwp_kpv_words = '0;
+  logic krp_secure_tm = 1'b0, krp_sigint = 1'b0;
+  // ROM lockout (architecture.adoc, ROM Lockout): armed by
+  // SRAM_EXEC_MODE.enable, engaged on the first committed instruction fetch
+  // from a write-locked SRAM address, cleared by a warm or cold reset.
+  logic km_engaged = 1'b0;
+  // The demotion state at the KM OTP input differs from its value at the
+  // last KM cold release (a DEMOTE write since the boot).
+  logic km_dem_changed = 1'b0;
+
+  always @(posedge clk_i) begin
+    kw_ev <= 1'b0;
+    if (!km_rst_warm_n || !km_rst_cold_n) begin
+      kx_wbusy <= 1'b0;
+      kx_rbusy <= 1'b0;
+    end else begin
+      if (kx_wstart) begin
+        kx_wbusy <= 1'b1;
+        kx_waddr <= 32'(km_axi_req_i.aw.addr);
+        kwp_irq_status <= km_irq_status_i;
+        kwp_irq_enable <= km_irq_enable_i;
+        kwp_scr_key <= km_scr_key_i;
+        kwp_scr_ctrl <= km_scr_ctrl_i;
+        kwp_scr_lock <= (km_scr_lock_i === 1'b1);
+        kwp_scr_en <= (km_scr_en_i === 1'b1);
+        kwp_sram_lock <= km_sram_lock_i;
+        kwp_sram_viol <= km_sram_viol_i;
+        kwp_entry_addr <= km_irq_entry_addr_i;
+        kwp_entry_lock <= (km_irq_entry_lock_i === 1'b1);
+        kwp_exec <= (km_sram_exec_mode_i === 1'b1);
+        kwp_rlock <= km_otp_rlock_i;
+        kwp_rlock_cold <= km_otp_rlock_cold_i;
+        kwp_chg <= km_otp_chg_i;
+        kwp_kpv_ctrl <= km_kpv_ctrl_i;
+        kwp_kpv_scr <= km_kpv_scr_ctrl_i;
+        kwp_kpv_words <= km_kpv_words_i;
+        kwp_smp_sticky <= km_smp_sticky_i;
+        kwp_good <= km_smp_count_good_i;
+        kwp_bad <= km_smp_count_bad_i;
+        kwp_mbx_km_irq <= km_mbx_km_irq_i;
+        kwp_sk_valid <= (km_sk_valid_i === 1'b1);
+        kwp_sk_irq <= (km_sk_irq_status_i === 1'b1);
+        kwp_key_valid <= km_key_valid_i;
+        kwp_engaged <= km_engaged;
+      end
+      if (kx_w_hs) begin
+        kx_wdata <= 32'(km_axi_req_i.w.data);
+        kx_wstrb <= 4'(km_axi_req_i.w.strb);
+      end
+      if (kx_b_hs && kx_wbusy) begin
+        kx_wbusy <= 1'b0;
+        kw_ev <= 1'b1;
+        kw_addr <= kx_waddr;
+        kw_data <= kx_w_hs ? 32'(km_axi_req_i.w.data) : kx_wdata;
+        kw_resp <= 2'(km_axi_resp_i.b.resp);
+      end
+      if (kx_rstart) begin
+        kx_rbusy <= 1'b1;
+        kx_raddr <= 32'(km_axi_req_i.ar.addr);
+        krp_irq_status <= km_irq_status_i;
+        krp_scr_lock <= (km_scr_lock_i === 1'b1);
+        krp_scr_en <= (km_scr_en_i === 1'b1);
+        krp_rlock <= km_otp_rlock_i;
+        krp_rlock_cold <= km_otp_rlock_cold_i;
+        krp_kpv_ctrl <= km_kpv_ctrl_i;
+        krp_pf <= (km_smp_prefetched_i === 1'b1);
+        krp_tvalid <= (km_smp_tvalid_i === 1'b1);
+        krp_secure_tm <= (km_secure_tm_i === 1'b1);
+        krp_sigint <= (km_irq_status_i[9] === 1'b1);
+      end
+      if (kx_r_hs && kx_rbusy) kx_rbusy <= 1'b0;
+    end
+  end
+  wire kr_ev = kx_r_hs && kx_rbusy && km_rst_warm_n && km_rst_cold_n;
+  wire [31:0] kr_addr = kx_raddr;
+  wire [31:0] kr_data = 32'(km_axi_resp_i.r.data);
+  wire [1:0] kr_resp = 2'(km_axi_resp_i.r.resp);
+
+  // --- KM CPU memory bus (ROM, SRAM, fetches) ---------------------------
+  // A native access starts on the first clock of mem_valid and completes on
+  // mem_ready. The fields are taken at the start.
+  logic km_mb_busy = 1'b0;
+  wire km_mb_v = (km_mem_valid_i === 1'b1);
+  wire km_mb_rdy = (km_mem_ready_i === 1'b1);
+  wire km_mb_start = km_mb_v && !km_mb_busy;
+  wire km_mb_instr = (km_mem_instr_i === 1'b1);
+  wire km_mb_wr = (km_mem_wstrb_i !== 4'h0) && !$isunknown(km_mem_wstrb_i);
+  wire km_mb_rom = km_in(km_mem_addr_i, KmRomBase, KmRomEnd - KmRomBase);
+  wire km_mb_sram = km_in(km_mem_addr_i, KmSramBase, KmSramEnd - KmSramBase);
+  wire [4:0] km_mb_region = 5'((km_mem_addr_i - KmSramBase) >> 10);
+  // Committed fetch: an instruction fetch that completes.
+  wire km_fetch_done = km_mb_v && km_mb_rdy && km_mb_instr;
+  logic [31:0] km_last_fetch = '0;
+  always @(posedge clk_i) begin
+    if (!km_rst_warm_n || !km_rst_cold_n) begin
+      km_mb_busy <= 1'b0;
+      km_engaged <= 1'b0;
+    end else begin
+      if (km_mb_start && !km_mb_rdy) km_mb_busy <= 1'b1;
+      else if (km_mb_v && km_mb_rdy) km_mb_busy <= 1'b0;
+      if (km_fetch_done) km_last_fetch <= km_mem_rdata_i;
+      if (km_fetch_done && (km_sram_exec_mode_i === 1'b1) && km_mb_sram &&
+          (km_sram_lock_i[km_mb_region] === 1'b1))
+        km_engaged <= 1'b1;
+    end
+  end
+
+  // --- KM reset edges ----------------------------------------------------
+  // A warm reset is rst_warm_sync_n low with rst_cold_aasd_n high. A release
+  // event fires KmSettle clocks after the reset net rises. The pre values
+  // are the copies of the clock before the reset net fell.
+  logic km_cold_q = 1'b1, km_warm_q = 1'b1, km_soft_q = 1'b1, km_swrst_q = 1'b1;
+  logic km_warm_only = 1'b0;  // the reset in progress is a warm reset
+  logic km_warm_soft = 1'b0;  // the warm reset in progress came from SOFT_RST_CODE
+  logic [3:0] km_rel_cnt = '0;
+  logic km_rel_cold = 1'b0;  // the release in progress is a cold release
+  logic km_rel_ev = 1'b0;  // KmSettle clocks after a reset release
+  // Previous-clock copies and the pre-reset record.
+  logic [255:0] km_ctrl_q = '0, km_rst_pre_ctrl = '0;
+  logic [1:0] km_kpv_scr_q = '0, km_rst_pre_kpv_scr = '0;
+  logic [1:0] km_scr_ctrl_q = '0, km_rst_pre_scr_ctrl = '0;
+  logic [31:0] km_sram_lock_q = '0, km_rst_pre_sram_lock = '0;
+  logic [8:0]
+      km_rlock_q = '0, km_rlock_cold_q = '0, km_rst_pre_rlock = '0, km_rst_pre_rlock_cold = '0;
+  logic km_cbd_q = 1'b0, km_rst_pre_cbd = 1'b0;
+  logic km_exec_q = 1'b0, km_rst_pre_exec = 1'b0, km_rst_pre_engaged = 1'b0;
+  logic [16:0] km_smp_cfg_q = '0;
+  logic km_unrec_q = 1'b0;
+  wire km_cold_fall = km_cold_q && !km_rst_cold_n;
+  wire km_warm_fall = km_warm_q && !km_rst_warm_n && km_rst_cold_n;
+  wire km_any_rel = (!km_cold_q && km_rst_cold_n) || (!km_warm_q && km_rst_warm_n && km_rst_cold_n);
+  always @(posedge clk_i) begin
+    km_cold_q <= km_rst_cold_n;
+    km_warm_q <= km_rst_warm_n;
+    km_soft_q <= km_soft_n;
+    km_swrst_q <= km_swrst_n;
+    km_ctrl_q <= km_kpv_ctrl_i;
+    km_kpv_scr_q <= km_kpv_scr_ctrl_i;
+    km_scr_ctrl_q <= km_scr_ctrl_i;
+    km_sram_lock_q <= km_sram_lock_i;
+    km_rlock_q <= km_otp_rlock_i;
+    km_rlock_cold_q <= km_otp_rlock_cold_i;
+    km_cbd_q <= (km_cold_boot_done_i === 1'b1);
+    km_exec_q <= (km_sram_exec_mode_i === 1'b1);
+    km_smp_cfg_q <= km_smp_cfg_i;
+    km_unrec_q <= (km_unrec_err_i === 1'b1);
+    km_rel_ev <= 1'b0;
+    if (km_cold_fall || km_warm_fall) begin
+      // The copies of the last clock before the fall are the pre values.
+      km_rst_pre_ctrl <= km_ctrl_q;
+      km_rst_pre_kpv_scr <= km_kpv_scr_q;
+      km_rst_pre_scr_ctrl <= km_scr_ctrl_q;
+      km_rst_pre_sram_lock <= km_sram_lock_q;
+      km_rst_pre_rlock <= km_rlock_q;
+      km_rst_pre_rlock_cold <= km_rlock_cold_q;
+      km_rst_pre_cbd <= km_cbd_q;
+      km_rst_pre_exec <= km_exec_q;
+      km_rst_pre_engaged <= km_engaged;
+      km_warm_only <= !km_cold_fall;
+      km_warm_soft <= !km_cold_fall && !km_soft_q;
+    end
+    if (!km_rst_cold_n) km_warm_only <= 1'b0;
+    if (km_warm_fall && !km_soft_n) km_warm_soft <= 1'b1;
+    if (km_any_rel) begin
+      km_rel_cnt <= 4'd1;
+      km_rel_cold <= !km_warm_only;
+    end else if (km_rel_cnt != 4'd0) begin
+      if (km_rel_cnt == 4'(KmSettle)) begin
+        km_rel_cnt <= 4'd0;
+        km_rel_ev <= 1'b1;
+      end else km_rel_cnt <= km_rel_cnt + 4'd1;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Covergroups. sample(pt, v): pt selects the coverpoint, v is its value.
+  // ---------------------------------------------------------------------
+  covergroup sep_km_mailbox_fault_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_mailbox_fault_cg";
+    // 0 KM inbound underflow, 1 KM outbound overflow.
+    cp_mbf_cond: coverpoint v[0] iff (pt == 5'd0) {
+      bins km_inbound_underflow = {1'b0}; bins km_outbound_overflow = {1'b1};
+    }
+    // {condition, response bit}.
+    cp_mbf_resp_cfg: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins underflow_resp0 = {2'b00};
+      bins underflow_resp1 = {2'b01};
+      bins overflow_resp0 = {2'b10};
+      bins overflow_resp1 = {2'b11};
+    }
+    // {bit (0 KM inbound underflow, 1 KM outbound overflow, 2 KM
+    // flushed_by_sep, 3 SEP flushed_by_km), action (0 W1C clears, 1 write 0
+    // keeps, 2 persists after its cause)}.
+    cp_mbf_sticky_clear: coverpoint v[3:0] iff (pt == 5'd2) {
+      bins km_in_underflow[] = {4'b00_00, 4'b00_01, 4'b00_10};
+      bins km_out_overflow[] = {4'b01_00, 4'b01_01, 4'b01_10};
+      bins km_flushed_by_sep[] = {4'b10_00, 4'b10_01, 4'b10_10};
+      bins sep_flushed_by_km[] = {4'b11_00, 4'b11_01, 4'b11_10};
+    }
+    // {initiator (0 SEP, 1 KM), fill (0 both empty, 1 one non-empty, 2
+    // both non-empty)}.
+    cp_mbf_flush: coverpoint v[2:0] iff (pt == 5'd3) {
+      bins sep_both_empty = {3'b0_00};
+      bins sep_one_nonempty = {3'b0_01};
+      bins sep_both_nonempty = {3'b0_10};
+      bins km_both_empty = {3'b1_00};
+      bins km_one_nonempty = {3'b1_01};
+      bins km_both_nonempty = {3'b1_10};
+    }
+  endgroup
+
+  covergroup sep_km_mailbox_transport_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_mailbox_transport_cg";
+    // {requester (0 SEP, 1 KM), access (0 write own FIFO, 1 read other FIFO)}.
+    cp_mbt_access: coverpoint v[1:0] iff (pt == 5'd0) {
+      bins sep_write_own = {2'b00};
+      bins sep_read_other = {2'b01};
+      bins km_write_own = {2'b10};
+      bins km_read_other = {2'b11};
+    }
+    // {direction (0 inbound, 1 outbound), class (0 empty, 1 one word, 2 15
+    // words, 3 16 words, 4 an empty or full flag that disagrees with the
+    // depth)}.
+    cp_mbt_occupancy: coverpoint v[3:0] iff (pt == 5'd1) {
+      bins inbound_empty = {4'b0_000};
+      bins inbound_one = {4'b0_001};
+      bins inbound_fifteen = {4'b0_010};
+      bins inbound_full = {4'b0_011};
+      bins outbound_empty = {4'b1_000};
+      bins outbound_one = {4'b1_001};
+      bins outbound_fifteen = {4'b1_010};
+      bins outbound_full = {4'b1_011};
+      illegal_bins flag_disagrees_with_depth = {4'b0_100, 4'b1_100};
+    }
+    // 0 arm then write, 1 write without arm, 2 read a word with the separator
+    // set, 3 read a word with it clear, 4 separator words passed in both
+    // directions, 5 the set bit self-clears at its write.
+    cp_mbt_separator: coverpoint v[2:0] iff (pt == 5'd2) {
+      bins arm_then_write = {3'd0};
+      bins write_without_arm = {3'd1};
+      bins read_separator_set = {3'd2};
+      bins read_separator_clear = {3'd3};
+      bins both_directions = {3'd4};
+      bins set_self_clears = {3'd5};
+    }
+    // KM side {source, enable}: sources 0 data available, 1 write space,
+    // 2 inbound underflow, 3 outbound overflow, 4 flushed by SEP. The SEP-side
+    // cells are added with their owner.
+    cp_mbt_irq_src_x_en: coverpoint v[3:0] iff (pt == 5'd3) {
+      bins km_data_avail_en0 = {4'b000_0};
+      bins km_data_avail_en1 = {4'b000_1};
+      bins km_write_space_en0 = {4'b001_0};
+      bins km_write_space_en1 = {4'b001_1};
+      bins km_in_underflow_en0 = {4'b010_0};
+      bins km_in_underflow_en1 = {4'b010_1};
+      bins km_out_overflow_en0 = {4'b011_0};
+      bins km_out_overflow_en1 = {4'b011_1};
+      bins km_flushed_by_sep_en0 = {4'b100_0};
+      bins km_flushed_by_sep_en1 = {4'b100_1};
+    }
+    // KM aggregate: 0 rises with (status AND enable) non-zero, 1 falls when a
+    // level cause clears, 2 a sticky source holds it until its W1C. The SEP
+    // aggregate on PIC source 15 is added with its owner.
+    cp_mbt_irq_aggregate: coverpoint v[1:0] iff (pt == 5'd4) {
+      bins aggregate_rises = {2'd0};
+      bins level_source_falls = {2'd1};
+      bins sticky_source_held_until_w1c = {2'd2};
+    }
+  endgroup
+
+  covergroup sep_km_memory_boot_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_memory_boot_cg";
+    cp_mem_iface_req: coverpoint v[1:0] iff (pt == 5'd0) {
+      bins rom_read = {2'd0};
+      bins sram_read = {2'd1};
+      bins sram_write = {2'd2};
+      bins rom_write_at_cpu_bus = {2'd3};
+    }
+    cp_mem_scr_key_access: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins write_unlocked_accepted = {2'd0};
+      bins read_unlocked_value = {2'd1};
+      bins write_locked_ignored = {2'd2};
+      bins read_locked_zero = {2'd3};
+    }
+    cp_mem_scr_ctrl: coverpoint v[2:0] iff (pt == 5'd2) {
+      bins enable0 = {3'd0};
+      bins enable1 = {3'd1};
+      bins lock_write_once_with_enable1 = {3'd2};
+      bins lock_write0_no_effect = {3'd3};
+      bins kept_by_warm_reset = {3'd4};
+      bins cleared_by_cold_reset = {3'd5};
+      bins lock_with_enable0_forces_scrambling = {3'd6};
+    }
+    // Region 1 to 31 set by a write of 1 and kept by a later write of 0.
+    cp_km_sram_region: coverpoint v[4:0] iff (pt == 5'd3) {
+      bins region[] = {[5'd1 : 5'd31]};
+    }
+    cp_mem_r31: coverpoint v[0] iff (pt == 5'd4) {
+      bins locked_store_dropped = {1'b0}; bins unlocked_store_accepted = {1'b1};
+    }
+    cp_km_scr_key: coverpoint v[1:0] iff (pt == 5'd5) {
+      bins key_write_enabled_unlocked_resident = {2'd0};
+      bins old_key_written_back = {2'd1};
+      bins key_write_after_lock = {2'd2};
+    }
+  endgroup
+
+  covergroup sep_km_kpv_slot_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_kpv_slot_cg";
+    cp_kpv_slot_index: coverpoint v[5:0] iff (pt == 5'd0) {bins slot[] = {[6'd0 : 6'd63]};}
+    cp_kpv_word_index: coverpoint v[3:0] iff (pt == 5'd1) {bins word[] = {[4'd0 : 4'd15]};}
+    cp_kpv_post_reset: coverpoint v[0] iff (pt == 5'd2) {
+      bins all_ctrl_zero_after_cold = {1'b0}; bins all_ctrl_zero_after_warm = {1'b1};
+    }
+    // {field (0 lock_write, 1 lock_use, 2 erase, 3 seal), rule (0 write 1
+    // sets, 1 write 0 leaves, 2 three identical writes)}.
+    cp_kpv_ctrl_write: coverpoint v[3:0] iff (pt == 5'd3) {
+      bins lock_write[] = {4'b00_00, 4'b00_01, 4'b00_10};
+      bins lock_use[] = {4'b01_00, 4'b01_01, 4'b01_10};
+      bins erase[] = {4'b10_00, 4'b10_01, 4'b10_10};
+      bins seal[] = {4'b11_00, 4'b11_01, 4'b11_10};
+    }
+    cp_kpv_lock_write: coverpoint v[2:0] iff (pt == 5'd4) {
+      bins set_by_write1 = {3'd0};
+      bins key_write_lands_while_clear = {3'd1};
+      bins ctrl_writable_while_set = {3'd2};
+      bins cleared_by_warm_reset = {3'd3};
+      bins cleared_by_cold_reset = {3'd4};
+      bins held_while_sealed = {3'd5};
+    }
+    cp_kpv_lock_use: coverpoint v[2:0] iff (pt == 5'd5) {
+      bins set_by_write1 = {3'd0};
+      bins read_while_clear_returns_data = {3'd1};
+      bins set_by_hw_on_sealed_erase = {3'd2};
+      bins cleared_by_warm_reset = {3'd3};
+      bins key_write_lands_while_set = {3'd4};
+    }
+    cp_kpv_erase: coverpoint v[1:0] iff (pt == 5'd6) {
+      bins in_flight_self_clears = {2'd0};
+      bins unsealed_slot_freed = {2'd1};
+      bins sealed_slot_retired = {2'd2};
+      bins never_blocked_by_locks = {2'd3};
+    }
+    cp_kpv_seal: coverpoint v[2:0] iff (pt == 5'd7) {
+      bins seal_sets_seal_and_lock_write = {3'd0};
+      bins key_read_on_sealed_slot = {3'd1};
+      bins write0_no_effect = {3'd2};
+      bins cleared_by_warm_reset = {3'd3};
+      bins seal_during_erase_retires = {3'd4};
+    }
+    cp_kpv_scramble_mode: coverpoint v[2:0] iff (pt == 5'd8) {
+      bins enable0_write = {3'd0};
+      bins enable1_one_stored_word_changes = {3'd1};
+      bins kept_by_warm_reset = {3'd2};
+      bins cleared_by_cold_reset = {3'd3};
+      bins cleared_by_wipe = {3'd4};
+    }
+    cp_kpv_trailing: coverpoint v[0] iff (pt == 5'd9) {
+      bins unwritten_word_kept = {1'b0}; bins unwritten_word_zero_with_lock_use = {1'b1};
+    }
+  endgroup
+
+  covergroup sep_km_kpv_locked_access_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_kpv_locked_access_cg";
+    // {state (0 free, 1 write-locked, 2 read-locked, 3 both, 4 sealed, 5
+    // retired), op (0 key read, 1 key write, 2 erase)}. The write-locked key
+    // write and erase are controls of their owner and are not cells.
+    cp_kpv_state_x_op: coverpoint v[4:0] iff (pt == 5'd0) {
+      bins free[] = {5'b000_00, 5'b000_01, 5'b000_10};
+      bins write_locked_read = {5'b001_00};
+      bins read_locked[] = {5'b010_00, 5'b010_01, 5'b010_10};
+      bins both_locked[] = {5'b011_00, 5'b011_01, 5'b011_10};
+      bins sealed[] = {5'b100_00, 5'b100_01, 5'b100_10};
+      bins retired[] = {5'b101_00, 5'b101_01, 5'b101_10};
+    }
+    cp_kpv_locked_write: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins write_locked_slot_slverr = {2'd0};
+      bins write0_lock_write_no_effect = {2'd1};
+      bins other_ctrl_bit_lands = {2'd2};
+    }
+    cp_kpv_locked_read: coverpoint v[0] iff (pt == 5'd2) {
+      bins read_locked_slot_slverr_zero = {1'b0}; bins lock_use_set_by_sealed_erase = {1'b1};
+    }
+    cp_kpv_retired: coverpoint v[0] iff (pt == 5'd3) {
+      bins refused_before_repeat_erase = {1'b0}; bins refused_after_repeat_erase = {1'b1};
+    }
+    // {state (0 locked, 1 sealed, 2 retired), slot (0 slot 0, 1 slot 63)}.
+    cp_kpv_boundary: coverpoint v[2:0] iff (pt == 5'd4) {
+      bins locked_slot0 = {3'b00_0};
+      bins locked_slot63 = {3'b00_1};
+      bins sealed_slot0 = {3'b01_0};
+      bins sealed_slot63 = {3'b01_1};
+      bins retired_slot0 = {3'b10_0};
+      bins retired_slot63 = {3'b10_1};
+    }
+  endgroup
+
+  covergroup sep_km_secret_nonexposure_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_secret_nonexposure_cg";
+    // {bank[2:0] in DEST_VALID order, share, word[3:0]}: 8 words per share,
+    // 12 for OTBN (bank 3).
+    cp_nx_share_read: coverpoint v[7:0] iff (pt == 5'd0) {
+      bins hmac[] = {[8'h00 : 8'h07], [8'h10 : 8'h17]};
+      bins kmac[] = {[8'h20 : 8'h27], [8'h30 : 8'h37]};
+      bins aes[] = {[8'h40 : 8'h47], [8'h50 : 8'h57]};
+      bins otbn[] = {[8'h60 : 8'h6B], [8'h70 : 8'h7B]};
+      bins mldsa_seed[] = {[8'h80 : 8'h87], [8'h90 : 8'h97]};
+      bins mlkem_seed_d[] = {[8'hA0 : 8'hA7], [8'hB0 : 8'hB7]};
+      bins mlkem_seed_z[] = {[8'hC0 : 8'hC7], [8'hD0 : 8'hD7]};
+      bins mlkem_msg[] = {[8'hE0 : 8'hE7], [8'hF0 : 8'hF7]};
+    }
+    // Before the handover: VAL_0 of CHIPLET_UID, SIP_UID, SYS_UID and
+    // CLASS_KEY reads non-zero. The four after-handover bins are added with
+    // their owner.
+    cp_nx_epoch_secret: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins chiplet_uid_nonzero_pre_handover = {2'd0};
+      bins sip_uid_nonzero_pre_handover = {2'd1};
+      bins sys_uid_nonzero_pre_handover = {2'd2};
+      bins class_key_nonzero_pre_handover = {2'd3};
+    }
+  endgroup
+
+  covergroup sep_km_kmcsr_status_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_kmcsr_status_cg";
+    cp_csr_version: coverpoint v[0] iff (pt == 5'd0) {bins version_1_0_0 = {1'b1};}
+    cp_csr_irq_source: coverpoint v[3:0] iff (pt == 5'd1) {bins source[] = {[4'd0 : 4'd11]};}
+    // {source[3:0], rule (0 W1C clears, 1 write 0 keeps, 2 W1C of other bits
+    // keeps)}.
+    cp_csr_status_semantics: coverpoint v[5:0] iff (pt == 5'd2) {
+      wildcard bins w1c_clears[] = {6'b0000_00, 6'b0001_00, 6'b0010_00, 6'b0011_00,
+                                    6'b0100_00, 6'b0101_00, 6'b0110_00, 6'b0111_00,
+                                    6'b1000_00, 6'b1001_00, 6'b1010_00, 6'b1011_00};
+      wildcard bins zero_keeps[] = {6'b0000_01, 6'b0001_01, 6'b0010_01, 6'b0011_01,
+                                    6'b0100_01, 6'b0101_01, 6'b0110_01, 6'b0111_01,
+                                    6'b1000_01, 6'b1001_01, 6'b1010_01, 6'b1011_01};
+      wildcard bins other_w1c_keeps[] = {6'b0000_10, 6'b0001_10, 6'b0010_10, 6'b0011_10,
+                                         6'b0100_10, 6'b0101_10, 6'b0110_10, 6'b0111_10,
+                                         6'b1000_10, 6'b1001_10, 6'b1010_10, 6'b1011_10};
+    }
+    // {source[3:0], enable}.
+    cp_csr_src_x_en: coverpoint v[4:0] iff (pt == 5'd3) {
+      bins en0[] = {5'b0000_0, 5'b0001_0, 5'b0010_0, 5'b0011_0, 5'b0100_0, 5'b0101_0,
+                    5'b0110_0, 5'b0111_0, 5'b1000_0, 5'b1001_0, 5'b1010_0, 5'b1011_0};
+      bins en1[] = {5'b0000_1, 5'b0001_1, 5'b0010_1, 5'b0011_1, 5'b0100_1, 5'b0101_1,
+                    5'b0110_1, 5'b0111_1, 5'b1000_1, 5'b1001_1, 5'b1010_1, 5'b1011_1};
+    }
+    cp_csr_aggregate: coverpoint v[1:0] iff (pt == 5'd4) {
+      bins rises = {2'd0}; bins falls_on_last_clear = {2'd1}; bins reset_all_masked = {2'd2};
+    }
+    cp_csr_entry_vector: coverpoint v[1:0] iff (pt == 5'd5) {
+      bins reset_0x10 = {2'd0};
+      bins aligned = {2'd1};
+      bins unaligned = {2'd2};
+      bins all_ones = {2'd3};
+    }
+    // The after-handover bin (address 0x10, lock 0) is added with its owner.
+    cp_csr_entry_lock: coverpoint v[1:0] iff (pt == 5'd6) {
+      bins lock0_allows_write = {2'd0};
+      bins lock_write_once = {2'd1};
+      bins lock_write0_no_effect = {2'd2};
+      bins locked_addr_write_ignored = {2'd3};
+    }
+    cp_csr_debug_ctrl_read: coverpoint v[0] iff (pt == 5'd7) {
+      bins debug_cafebeef = {1'b0}; bins ctrl_zero = {1'b1};
+    }
+  endgroup
+
+  covergroup sep_km_otp_readout_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_otp_readout_cg";
+    cp_otp_field: coverpoint v[3:0] iff (pt == 5'd0) {
+      bins life_cycle = {4'd0};
+      bins demotion = {4'd1};
+      bins chiplet_uid = {4'd2};
+      bins sip_uid = {4'd3};
+      bins sys_uid = {4'd4};
+      bins class_key = {4'd5};
+      bins sep_chiplet_id = {4'd6};
+      bins sep_sip_id = {4'd7};
+      bins sep_sys_id = {4'd8};
+    }
+    // {field[3:0] 2 to 8, value word 0-7 / complement word 8-15}, and the two
+    // decoded status registers.
+    cp_otp_word_index: coverpoint v[8:0] iff (pt == 5'd1) {
+      bins chiplet_uid[] = {[9'h040 : 9'h04F]};
+      bins sip_uid[] = {[9'h060 : 9'h06F]};
+      bins sys_uid[] = {[9'h080 : 9'h08F]};
+      bins class_key[] = {[9'h0A0 : 9'h0AF]};
+      bins sep_chiplet_id[] = {[9'h0C0 : 9'h0CF]};
+      bins sep_sip_id[] = {[9'h0E0 : 9'h0EF]};
+      bins sep_sys_id[] = {[9'h100 : 9'h10F]};
+      bins life_cycle_reg = {9'h010};
+      bins demotion_reg = {9'h030};
+    }
+    cp_otp_read_through: coverpoint v[1:0] iff (pt == 5'd2) {
+      bins lc_test_dev = {2'd0};
+      bins lc_prod = {2'd1};
+      bins demotion_before_demote = {2'd2};
+      bins demotion_after_demote = {2'd3};
+    }
+    // 0-8 a field changes with both rails consistent, 9 a stable value sets
+    // nothing, 10 the demotion state kept by a KM warm reset sets nothing, 11
+    // several fields change together, 12 W1C of a bit.
+    cp_otp_change: coverpoint v[3:0] iff (pt == 5'd3) {
+      bins field_change[] = {[4'd0 : 4'd8]};
+      bins stable_sets_nothing = {4'd9};
+      bins demotion_after_warm_reset_sets_nothing = {4'd10};
+      bins several_fields_together = {4'd11};
+      bins w1c_clears = {4'd12};
+    }
+    // {field[3:0], lock (0 neither, 1 warm only, 2 cold only, 3 both)}.
+    cp_otp_lock_matrix: coverpoint v[5:0] iff (pt == 5'd4) {
+      bins neither[] = {6'h00, 6'h04, 6'h08, 6'h0C, 6'h10, 6'h14, 6'h18, 6'h1C, 6'h20};
+      bins warm_only[] = {6'h01, 6'h05, 6'h09, 6'h0D, 6'h11, 6'h15, 6'h19, 6'h1D, 6'h21};
+      bins cold_only[] = {6'h02, 6'h06, 6'h0A, 6'h0E, 6'h12, 6'h16, 6'h1A, 6'h1E, 6'h22};
+      bins both[] = {6'h03, 6'h07, 6'h0B, 6'h0F, 6'h13, 6'h17, 6'h1B, 6'h1F, 6'h23};
+    }
+    cp_otp_lock_reg: coverpoint v[2:0] iff (pt == 5'd5) {
+      bins warm_reg_write1_sets = {3'd0};
+      bins cold_reg_write1_sets = {3'd1};
+      bins write0_no_effect = {3'd2};
+      bins warm_reset_clears_warm_only = {3'd3};
+      bins cold_reset_clears_both = {3'd4};
+      bins three_identical_writes = {3'd5};
+    }
+    cp_otp_secure_tm: coverpoint v[1:0] iff (pt == 5'd6) {
+      bins strap0_secret_staged = {2'd0};
+      bins strap1_secret_masked_quiet = {2'd1};
+      bins strap_stable_while_km_runs = {2'd2};
+    }
+    // {class (0 shadow map, 1 interface control, 2 token registers, 3 gap
+    // 0x1141C, 4 gap 0x11574, 5 reserved 0x11600), response (0 OKAY, 1 SLVERR
+    // with 0xBADCAB1E)}.
+    cp_efw_read_class: coverpoint v[3:0] iff (pt == 5'd7) {
+      bins shadow_okay = {4'b000_0};
+      bins ctrl_okay = {4'b001_0};
+      bins token_okay = {4'b010_0};
+      bins gap_1141c_slverr = {4'b011_1};
+      bins gap_11574_slverr = {4'b100_1};
+      bins reserved_11600_slverr = {4'b101_1};
+      ignore_bins no_such_response = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
+    }
+    // {path (0 KM, 1 host), class (0 unlocked spare, 1 write-locked field, 2
+    // secure test strap set)}.
+    cp_efw_program: coverpoint v[2:0] iff (pt == 5'd8) {
+      bins km_unlocked_spare = {3'b0_00};
+      bins km_write_locked = {3'b0_01};
+      bins km_strap_set = {3'b0_10};
+      bins host_strap_set = {3'b1_10};
+    }
+  endgroup
+
+  covergroup sep_km_integrity_fault_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_integrity_fault_cg";
+    // Window index of km_window().
+    cp_if_window: coverpoint v[4:0] iff (pt == 5'd0) {
+      bins rom = {5'd0};
+      bins rsv_4000 = {5'd1};
+      bins sram = {5'd2};
+      bins mailbox = {5'd3};
+      bins rsv_10020 = {5'd4};
+      bins efuse_map = {5'd5};
+      bins efuse_ctrl = {5'd6};
+      bins efuse_token = {5'd7};
+      bins rsv_11600 = {5'd8};
+      bins kpv = {5'd9};
+      bins kmcsr = {5'd10};
+      bins rsv_14800 = {5'd11};
+      bins drbg = {5'd12};
+      bins rsv_15010 = {5'd13};
+      bins otbn = {5'd14};
+      bins aes = {5'd15};
+      bins kmac = {5'd16};
+      bins hmac = {5'd17};
+      bins abr = {5'd18};
+      bins rsv_18080 = {5'd19};
+      bins rsv_19080 = {5'd20};
+      bins rsv_1a080 = {5'd21};
+      bins rsv_1b080 = {5'd22};
+      bins rsv_1c800 = {5'd23};
+    }
+    // {outcome (0 DECERR on reserved, 1 SLVERR past extent, 2 SLVERR with
+    // 0xBADCAB1E in an eFuse gap), direction (0 read, 1 write)}.
+    cp_if_decode_outcome: coverpoint v[2:0] iff (pt == 5'd1) {
+      bins reserved_decerr_rd = {3'b00_0};
+      bins reserved_decerr_wr = {3'b00_1};
+      bins past_extent_slverr_rd = {3'b01_0};
+      bins past_extent_slverr_wr = {3'b01_1};
+      bins efuse_gap_slverr_rd = {3'b10_0};
+      bins efuse_gap_slverr_wr = {3'b10_1};
+    }
+    // {row[3:0] of km_row(), class (0 first word, 1 last decoded word, 2
+    // first hole word, 3 first word past the extent, 4 last word of the
+    // span)}. The first word of the mailbox, the DRBG sampler and the five
+    // key windows are not cells.
+    cp_if_offset_class: coverpoint v[6:0] iff (pt == 5'd2) {
+      bins rom[] = {7'h00, 7'h01, 7'h04};
+      bins sram[] = {7'h08, 7'h09, 7'h0C};
+      bins mailbox[] = {7'h11, 7'h13, 7'h14};
+      bins efuse_map[] = {7'h18, 7'h19, 7'h1C};
+      bins efuse_ctrl[] = {7'h20, 7'h21, 7'h23, 7'h24};
+      bins efuse_token[] = {7'h28, 7'h29, 7'h2B, 7'h2C};
+      bins kpv[] = {7'h30, 7'h31, 7'h33, 7'h34};
+      bins kmcsr[] = {7'h38, 7'h39, 7'h3A, 7'h3B, 7'h3C};
+      bins drbg[] = {7'h41, 7'h44};
+      bins otbn[] = {7'h49, 7'h4B, 7'h4C};
+      bins aes[] = {7'h51, 7'h53, 7'h54};
+      bins kmac[] = {7'h59, 7'h5B, 7'h5C};
+      bins hmac[] = {7'h61, 7'h63, 7'h64};
+      bins abr[] = {7'h6A, 7'h69, 7'h6B, 7'h6C};
+      ignore_bins class_not_in_row = {7'h02, 7'h03, 7'h0A, 7'h0B, 7'h12, 7'h1A, 7'h1B, 7'h22,
+                                      7'h2A, 7'h32, 7'h42, 7'h43, 7'h4A, 7'h52, 7'h5A, 7'h62};
+    }
+    cp_if_efuse_remap: coverpoint v[0] iff (pt == 5'd3) {
+      bins low12_equal_km_offset = {1'b0}; bins upper_constant_over_three_maps = {1'b1};
+    }
+    // {region[4:0] 1 to 31, store (0 to a locked region: dropped, violation
+    // bit and IRQ bit set; 1 to an unlocked region: accepted, no bit)}.
+    cp_if_sram_lock_violation: coverpoint v[5:0] iff (pt == 5'd4) {
+      bins locked[] = {[6'b00001_0 : 6'b11111_0]} with (item[0] == 1'b0);
+      bins unlocked[] = {[6'b00001_1 : 6'b11111_1]} with (item[0] == 1'b1);
+    }
+    // {field[3:0], class (0 complement correct, 1 value-rail flip, 2
+    // complement-rail flip)}.
+    cp_if_otp_dual_rail: coverpoint v[5:0] iff (pt == 5'd5) {
+      bins value_change[] = {6'h00, 6'h04, 6'h08, 6'h0C, 6'h10, 6'h14, 6'h18, 6'h1C, 6'h20};
+      bins value_rail_flip[] = {6'h01, 6'h05, 6'h09, 6'h0D, 6'h11, 6'h15, 6'h19, 6'h1D, 6'h21};
+      bins complement_rail_flip[] = {6'h02, 6'h06, 6'h0A, 6'h0E, 6'h12, 6'h16, 6'h1A, 6'h1E, 6'h22};
+    }
+    cp_if_rom_write: coverpoint v[0] iff (pt == 5'd6) {bins rom_write_after_lockout = {1'b1};}
+  endgroup
+
+  covergroup sep_km_exec_protection_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_exec_protection_cg";
+    // {enable, target[2:0] (0 ROM, 1 write-locked SRAM, 2 unlocked SRAM, 3
+    // peripheral window, 4 0x10000000), outcome[1:0] (0 permitted, 1
+    // EXEC_VIOLATION, 2 ROM_ACCESS_VIOLATION)}.
+    cp_ex_mode_x_target: coverpoint v[5:0] iff (pt == 5'd0) {
+      wildcard bins en0_rom = {6'b0_000_??};
+      wildcard bins en0_locked_sram = {6'b0_001_??};
+      wildcard bins en0_unlocked_sram = {6'b0_010_??};
+      wildcard bins en0_periph = {6'b0_011_??};
+      wildcard bins en0_vrom = {6'b0_100_??};
+      wildcard bins en1_rom = {6'b1_000_??};
+      wildcard bins en1_locked_sram = {6'b1_001_??};
+      wildcard bins en1_unlocked_sram = {6'b1_010_??};
+      wildcard bins en1_periph = {6'b1_011_??};
+      wildcard bins en1_vrom = {6'b1_100_??};
+      wildcard ignore_bins en0_rom_access_violation = {6'b0_???_10};
+    }
+    cp_ex_mode_enable: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins write1_sets = {2'd0};
+      bins write0_no_effect = {2'd1};
+      bins cleared_by_warm_reset = {2'd2};
+      bins cleared_by_cold_reset = {2'd3};
+    }
+    // {lockout (0 enable 0, 1 enable 1 not engaged, 2 engaged), access (0 ROM
+    // fetch, 1 ROM data read, 2 ROM write)}. The ROM write before the lockout
+    // is a control of its owner and is not a cell.
+    cp_ex_lockout_x_access: coverpoint v[3:0] iff (pt == 5'd2) {
+      bins en0_fetch = {4'b00_00};
+      bins en0_data_read = {4'b00_01};
+      bins armed_fetch = {4'b01_00};
+      bins armed_data_read = {4'b01_01};
+      bins engaged_fetch = {4'b10_00};
+      bins engaged_data_read = {4'b10_01};
+      bins engaged_rom_write = {4'b10_10};
+    }
+    cp_ex_lockout_order: coverpoint v[0] iff (pt == 5'd3) {bins violation_before_trap = {1'b1};}
+    cp_ex_lockout_irreversible: coverpoint v[0] iff (pt == 5'd4) {
+      bins write0_after_engage_keeps = {1'b0}; bins reset_clears = {1'b1};
+    }
+  endgroup
+
+  covergroup sep_km_drbg_sampler_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_drbg_sampler_cg";
+    cp_smp_read_service: coverpoint v[0] iff (pt == 5'd0) {
+      bins prefetched_word_at_once = {1'b0}; bins tready_and_wait = {1'b1};
+    }
+    // The delayed-arrival bins need the PROPOSED drive HK-STRM-PAT and are
+    // not declared.
+    cp_smp_tvalid_arrival: coverpoint v[0] iff (pt == 5'd1) {
+      bins tvalid_high_at_read_start = {1'b1};
+    }
+    // Every TSTRB value other than 0xF needs the PROPOSED drive HK-STRM-PAT
+    // and is not declared.
+    cp_smp_strb: coverpoint v[3:0] iff (pt == 5'd2) {
+      bins strb_f = {4'hF}; ignore_bins strb_0_not_stated = {4'h0};
+    }
+    cp_smp_freshness: coverpoint v[0] iff (pt == 5'd3) {bins new_word_per_read = {1'b1};}
+    cp_smp_prefetch_mode: coverpoint v[2:0] iff (pt == 5'd4) {
+      bins prefetch0 = {3'd0};
+      bins prefetch1 = {3'd1};
+      bins word_held_after_read = {3'd2};
+      bins disable_clears_held_word = {3'd3};
+      bins stalled_prefetch_no_timeout = {3'd4};
+    }
+    cp_smp_prefetch_mirror: coverpoint v[1:0] iff (pt == 5'd5) {
+      bins equals_next_data_read = {2'd0};
+      bins repeated_reads_one_value = {2'd1};
+      bins cleared_when_disabled = {2'd2};
+    }
+    cp_smp_count_good: coverpoint v[2:0] iff (pt == 5'd6) {
+      bins count0 = {3'd0};
+      bins count1 = {3'd1};
+      bins count_ffff = {3'd2};
+      bins saturated_no_wrap = {3'd3};
+      bins prefetched_not_counted = {3'd4};
+      bins nonzero_write_clears = {3'd5};
+      bins zero_write_keeps = {3'd6};
+    }
+    cp_smp_count_bad: coverpoint v[2:0] iff (pt == 5'd7) {
+      bins count0 = {3'd0};
+      bins count1 = {3'd1};
+      bins count_ff = {3'd2};
+      bins saturated_no_wrap = {3'd3};
+      bins nonzero_write_clears = {3'd4};
+      bins zero_write_keeps = {3'd5};
+    }
+    cp_smp_reset_defaults: coverpoint v[0] iff (pt == 5'd8) {
+      bins after_cold_reset = {1'b0}; bins after_warm_reset = {1'b1};
+    }
+    cp_smp_ready: coverpoint v[0] iff (pt == 5'd9) {
+      bins stalled_reads0 = {1'b0}; bins valid_reads1 = {1'b1};
+    }
+  endgroup
+
+  covergroup sep_km_drbg_fault_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_drbg_fault_cg";
+    cp_df_timeout_value: coverpoint v[0] iff (pt == 5'd0) {
+      bins timeout1 = {1'b0}; bins timeout65535 = {1'b1};
+    }
+    // The timeout from ST_BYTE_ASSEMBLY needs the PROPOSED drive HK-STRM-PAT
+    // and is not declared.
+    cp_df_entry_state: coverpoint v[0] iff (pt == 5'd1) {
+      bins from_request = {1'b0};
+    }
+    cp_df_timeout_outcome: coverpoint v[1:0] iff (pt == 5'd2) {
+      bins slverr_data0 = {2'd0};
+      bins timeout_err_set = {2'd1};
+      bins count_bad_plus1 = {2'd2};
+      bins irq_drbg_err_set = {2'd3};
+    }
+    cp_df_stream_violation: coverpoint v[0] iff (pt == 5'd3) {
+      bins no_read_active = {1'b0}; bins first_active_cycle_tready_low = {1'b1};
+    }
+    cp_df_offset_race: coverpoint v[0] iff (pt == 5'd4) {
+      bins timeout1_same_cycle = {1'b0}; bins timeout2_before_expiry = {1'b1};
+    }
+    // {bit (0 TIMEOUT_ERR, 1 STREAM_ERR), write (0 W1C clears, 1 write 0
+    // keeps)}.
+    cp_df_status_clear: coverpoint v[1:0] iff (pt == 5'd5) {
+      bins timeout_err_w1c = {2'b00};
+      bins timeout_err_w0_keeps = {2'b01};
+      bins stream_err_w1c = {2'b10};
+      bins stream_err_w0_keeps = {2'b11};
+    }
+    cp_df_trng_reset: coverpoint v[0] iff (pt == 5'd6) {
+      bins first_read_clean_after_trng_reset = {1'b1};
+    }
+  endgroup
+
+  covergroup sep_km_fault_report_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_fault_report_cg";
+    // The "no command answered while high" bin is added with its owner.
+    cp_fr_err_out: coverpoint v[2:0] iff (pt == 5'd0) {
+      bins low_in_normal_operation = {3'd0};
+      bins high_on_trap = {3'd1};
+      bins stays_high_until_reset = {3'd2};
+      bins cleared_by_warm_reset = {3'd3};
+      bins cleared_by_cold_reset = {3'd4};
+    }
+    cp_km_trap_cause: coverpoint v[2:0] iff (pt == 5'd1) {
+      bins ebreak_masked = {3'd0};
+      bins illegal_instruction = {3'd1};
+      bins misaligned_access = {3'd2};
+      bins ebreak_in_handler = {3'd3};
+      bins illegal_in_handler = {3'd4};
+      bins undefined_crc_encoding = {3'd5};
+    }
+  endgroup
+
+  covergroup sep_km_reset_domain_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_reset_domain_cg";
+    cp_rd_source: coverpoint v[1:0] iff (pt == 5'd0) {
+      bins km_sw_rst_n_while_running = {2'd0};
+      bins cold_reset = {2'd1};
+      bins soft_rst_code_accepted = {2'd2};
+    }
+    cp_rd_soft_wrong: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins zero = {2'd0}; bins all_ones = {2'd1}; bins one_bit_neighbour = {2'd2};
+    }
+    // {witness (0 SRAM_LOCK, 1 OTP_READ_LOCK, 2 OTP_READ_LOCK_COLD, 3
+    // COLD_BOOT_DONE), flavour (0 cold, 1 warm)}.
+    cp_rd_matrix: coverpoint v[2:0] iff (pt == 5'd2) {
+      bins sram_lock_cold = {3'b00_0};
+      bins sram_lock_warm = {3'b00_1};
+      bins otp_read_lock_cold = {3'b01_0};
+      bins otp_read_lock_warm = {3'b01_1};
+      bins otp_read_lock_cold_reg_cold = {3'b10_0};
+      bins otp_read_lock_cold_reg_warm = {3'b10_1};
+      bins cold_boot_done_cold = {3'b11_0};
+      bins cold_boot_done_warm = {3'b11_1};
+    }
+    cp_rd_cbd_history: coverpoint v[1:0] iff (pt == 5'd3) {
+      bins zero_after_cold_reset = {2'd0};
+      bins one_after_rom_sets = {2'd1};
+      bins one_after_soft_reset = {2'd2};
+      bins zero_after_next_cold_reset = {2'd3};
+    }
+    // Host hold W of km_sw_rst_n, with the warm reset held at least 10
+    // clocks after the release.
+    cp_rd_hold: coverpoint v[4:0] iff (pt == 5'd4) {
+      bins hold1 = {5'd1}; bins hold2 = {5'd2}; bins hold5 = {5'd5}; bins hold12 = {5'd12};
+    }
+    cp_rd_isolation: coverpoint v[1:0] iff (pt == 5'd5) {
+      bins hmac_stays0 = {2'd0}; bins kmac_stays0 = {2'd1}; bins abr_stays0 = {2'd2};
+    }
+  endgroup
+
+  covergroup sep_km_sideload_delivery_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_sideload_delivery_cg";
+    // The clear by the engine SW_RESET_N reset is not stated as a KM-side
+    // key register effect (docs/SEP_FCOV.adoc, Bins not graded).
+    cp_sd_key_valid_semantics: coverpoint v[2:0] iff (pt == 5'd0) {
+      bins reset_value0 = {3'd0};
+      bins write1_sets = {3'd1};
+      bins write1_twice = {3'd2};
+      bins write0_clears = {3'd3};
+      ignore_bins cleared_by_engine_reset = {3'd4};
+    }
+  endgroup
+
+  covergroup sep_km_abr_shared_key_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_abr_shared_key_cg";
+    cp_sk_delivery_state: coverpoint v[1:0] iff (pt == 5'd0) {
+      bins no_key_pending = {2'd0};
+      bins abr_delivers = {2'd1};
+      bins firmware_consumes = {2'd2};
+      bins second_delivery_reloads = {2'd3};
+    }
+    cp_sk_write_dir: coverpoint v[0] iff (pt == 5'd1) {
+      bins write0_accepted = {1'b0}; bins set_refused = {1'b1};
+    }
+    cp_sk_interrupt: coverpoint v[2:0] iff (pt == 5'd2) {
+      bins set_by_hardware = {3'd0};
+      bins enable0_line_low = {3'd1};
+      bins enable1_line_high = {3'd2};
+      bins w1c_clears = {3'd3};
+      bins write0_keeps = {3'd4};
+      bins second_delivery_sets_again = {3'd5};
+    }
+  endgroup
+
+  covergroup sep_km_vault_wipe_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_vault_wipe_cg";
+    cp_vw_pre_contents: coverpoint v[2:0] iff (pt == 5'd0) {
+      bins empty = {3'd0};
+      bins keys_in_unsealed_slots = {3'd1};
+      bins keys_in_sealed_slots = {3'd2};
+      bins retired_slots = {3'd3};
+      bins kpv_scrambler_locked = {3'd4};
+    }
+    cp_vw_effect: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins sep_bit_vault_cleared = {2'd0};
+      bins sep_bit_scrambler_cleared = {2'd1};
+      bins cpu_trap_vault_cleared = {2'd2};
+    }
+    cp_vw_edge: coverpoint v[2:0] iff (pt == 5'd2) {
+      bins rise_left_high = {3'd0};
+      bins fall_rise_second_wipe = {3'd1};
+      bins write1_while_high_no_wipe = {3'd2};
+      bins level_held_high = {3'd3};
+      bins high_one_clock_or_more = {3'd4};
+    }
+    cp_vw_scope: coverpoint v[1:0] iff (pt == 5'd3) {
+      bins cpu_not_halted = {2'd0};
+      bins sram_words_kept = {2'd1};
+      bins mailbox_word_kept = {2'd2};
+      bins engine_key_valid_kept = {2'd3};
+    }
+  endgroup
+
+  sep_km_mailbox_fault_cg      u_sep_km_mailbox_fault_cg      = new();
+  sep_km_mailbox_transport_cg  u_sep_km_mailbox_transport_cg  = new();
+  sep_km_memory_boot_cg        u_sep_km_memory_boot_cg        = new();
+  sep_km_kpv_slot_cg           u_sep_km_kpv_slot_cg           = new();
+  sep_km_kpv_locked_access_cg  u_sep_km_kpv_locked_access_cg  = new();
+  sep_km_secret_nonexposure_cg u_sep_km_secret_nonexposure_cg = new();
+  sep_km_kmcsr_status_cg       u_sep_km_kmcsr_status_cg       = new();
+  sep_km_otp_readout_cg        u_sep_km_otp_readout_cg        = new();
+  sep_km_integrity_fault_cg    u_sep_km_integrity_fault_cg    = new();
+  sep_km_exec_protection_cg    u_sep_km_exec_protection_cg    = new();
+  sep_km_drbg_sampler_cg       u_sep_km_drbg_sampler_cg       = new();
+  sep_km_drbg_fault_cg         u_sep_km_drbg_fault_cg         = new();
+  sep_km_fault_report_cg       u_sep_km_fault_report_cg       = new();
+  sep_km_reset_domain_cg       u_sep_km_reset_domain_cg       = new();
+  sep_km_sideload_delivery_cg  u_sep_km_sideload_delivery_cg  = new();
+  sep_km_abr_shared_key_cg     u_sep_km_abr_shared_key_cg     = new();
+  sep_km_vault_wipe_cg         u_sep_km_vault_wipe_cg         = new();
+
+  // ---------------------------------------------------------------------
+  // KMCSR, KPV, scrambler, OTP and execute-protection points that a KM CPU
+  // register write or read decides.
+  // ---------------------------------------------------------------------
+  // SCRAMBLER_KEY values before the last two key writes (cp_km_scr_key).
+  logic [31:0] km_key_prev = '0, km_key_prev2 = '0;
+  logic km_key_prev_v = 1'b0, km_key_prev2_v = 1'b0;
+  // Scrambled SRAM writes since the KM cold reset (resident words).
+  logic km_scr_resident = 1'b0;
+  // A lock written with the enable at 0, waiting for the next SRAM write.
+  logic km_lock_en0_pend = 1'b0;
+  // SRAM_LOCK bits set by a write of 1 in this boot (cp_km_sram_region).
+  logic [31:0] km_region_set = '0;
+  // IRQ_ENTRY_ADDR written since the last KM reset.
+  logic km_entry_written = 1'b0;
+  // Identical consecutive writes: CTRL[s] (cp_kpv_ctrl_write) and the OTP
+  // lock registers (cp_otp_lock_reg).
+  logic [31:0] km_rep_addr = '0, km_rep_data = '0;
+  logic [3:0] km_rep_post = '0;
+  logic [8:0] km_rep_lock_post = '0;
+  logic [1:0] km_rep_cnt = '0;
+  // Per-slot state: retired-slot refusals before and after a repeated
+  // erase, the seal-during-erase try, and the trailing-word record.
+  logic [63:0] km_ret_rerased = '0;
+  logic [63:0] km_ret_rd_ref0 = '0, km_ret_wr_ref0 = '0, km_ret_rd_ref1 = '0, km_ret_wr_ref1 = '0;
+  logic [63:0] km_race_armed = '0, km_race_seen = '0;
+  logic [63:0] km_tr_erased = '0, km_tr_wrote = '0;
+  logic [15:0] km_tr_wmask[64];
+  logic [15:0] km_tr_have[64];
+  logic [31:0] km_tr_val[64][16];
+  // The last key write for cp_kpv_scramble_mode.
+  logic [31:0] km_scr_last_addr = '0, km_scr_last_data = '0;
+  logic km_scr_last_v = 1'b0;
+  // Engine KEY_CTRL written since the KM release (reset value bin).
+  logic [7:0] km_bank_ctrl_written = '0;
+  // A delivery of the shared key consumed in this boot, and W1C of its IRQ.
+  logic km_sk_consumed = 1'b0, km_sk_irq_cleared = 1'b0;
+  // Share words written with a non-zero value (cp_nx_share_read).
+  logic [255:0] km_nx_written = '0;
+  // eFuse remap: upper address bits seen per map.
+  logic [19:0] km_remap_hi = '0;
+  logic [2:0] km_remap_seen = '0;
+  logic km_remap_bad = 1'b0;
+  initial begin
+    for (int s = 0; s < 64; s++) begin
+      km_tr_wmask[s] = '0;
+      km_tr_have[s] = '0;
+      for (int w = 0; w < 16; w++) km_tr_val[s][w] = '0;
+    end
+  end
+
+  // KPV address decode: slot and word of a key-word address, slot of a CTRL
+  // address.
+  function automatic logic km_kpv_key(logic [31:0] a);
+    return km_in(a, KmKpvBase, 32'h1000);
+  endfunction
+  function automatic logic km_kpv_ctl(logic [31:0] a);
+    return km_in(a, KmKpvCtrl0, 32'h100);
+  endfunction
+  function automatic logic [5:0] km_kpv_slot(logic [31:0] a);
+    return km_kpv_key(a) ? 6'((a - KmKpvBase) >> 6) : 6'((a - KmKpvCtrl0) >> 2);
+  endfunction
+  // Slot state of a CTRL value {seal, erase, lock_use, lock_write}: 0 free,
+  // 1 write-locked, 2 read-locked, 3 both, 4 sealed, 5 retired, 7 other.
+  function automatic logic [2:0] km_slot_state(logic [3:0] c);
+    if (c[3] && c[1] && c[0]) return 3'd5;
+    if (c[3] && !c[1]) return 3'd4;
+    if (c[3]) return 3'd7;
+    case (c[1:0])
+      2'b00: return 3'd0;
+      2'b01: return 3'd1;
+      2'b10: return 3'd2;
+      default: return 3'd3;
+    endcase
+  endfunction
+
+  always @(posedge clk_i) begin
+    logic [3:0] pre_c, post_c, b;
+    logic [5:0] s;
+    logic [3:0] w;
+    logic [8:0] ow;
+    logic [2:0] st;
+    int unsigned nchg;
+    if (!km_rst_cold_n) begin
+      km_scr_resident <= 1'b0;
+      km_lock_en0_pend <= 1'b0;
+      km_key_prev_v <= 1'b0;
+      km_key_prev2_v <= 1'b0;
+    end
+    if (!km_rst_warm_n || !km_rst_cold_n) begin
+      km_region_set <= '0;
+      km_entry_written <= 1'b0;
+      km_rep_cnt <= '0;
+      km_ret_rerased <= '0;
+      km_ret_rd_ref0 <= '0;
+      km_ret_wr_ref0 <= '0;
+      km_ret_rd_ref1 <= '0;
+      km_ret_wr_ref1 <= '0;
+      km_race_armed <= '0;
+      km_race_seen <= '0;
+      km_tr_erased <= '0;
+      km_tr_wrote <= '0;
+      km_scr_last_v <= 1'b0;
+      km_bank_ctrl_written <= '0;
+      km_sk_consumed <= 1'b0;
+      km_sk_irq_cleared <= 1'b0;
+      km_nx_written <= '0;
+    end
+    if ((km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) && (km_sram_if_i[2] === 1'b1) &&
+        (km_scr_en_i === 1'b1)) begin
+      km_scr_resident <= 1'b1;
+      if (km_lock_en0_pend && km_own_scr) u_sep_km_memory_boot_cg.sample(5'd2, 16'd6);
+      km_lock_en0_pend <= 1'b0;
+    end
+
+    // ---- register writes ----
+    if (kw_ev) begin
+      // KMCSR IRQ_STATUS: W1C, write 0, W1C of other bits (12 sources).
+      if ((kw_addr == KmCsrIrqStatus) && km_own_csr) begin
+        for (int i = 0; i < 12; i++) begin
+          if (kwp_irq_status[i]) begin
+            if (kw_data[i] && (km_irq_status_i[i] === 1'b0))
+              u_sep_km_kmcsr_status_cg.sample(5'd2, 16'({4'(i), 2'd0}));
+            else if ((kw_data[11:0] == 12'h0) && (km_irq_status_i[i] === 1'b1))
+              u_sep_km_kmcsr_status_cg.sample(5'd2, 16'({4'(i), 2'd1}));
+            else if (!kw_data[i] && (kw_data[11:0] != 12'h0) && (km_irq_status_i[i] === 1'b1))
+              u_sep_km_kmcsr_status_cg.sample(5'd2, 16'({4'(i), 2'd2}));
+          end
+        end
+      end
+      // IRQ_ENTRY_ADDR and IRQ_ENTRY_LOCK.
+      if (kw_addr == KmCsrEntryAddr) begin
+        km_entry_written <= 1'b1;
+        if (km_own_csr && !kwp_entry_lock && (km_irq_entry_addr_i === kw_data)) begin
+          u_sep_km_kmcsr_status_cg.sample(5'd6, 16'd0);
+          if (kw_data == 32'hFFFF_FFFF) u_sep_km_kmcsr_status_cg.sample(5'd5, 16'd3);
+          else if (kw_data[1:0] != 2'b00) u_sep_km_kmcsr_status_cg.sample(5'd5, 16'd2);
+          else if (kw_data != KmEntryReset) u_sep_km_kmcsr_status_cg.sample(5'd5, 16'd1);
+        end
+        if (km_own_csr && kwp_entry_lock && (kw_data != kwp_entry_addr) &&
+            (km_irq_entry_addr_i === kwp_entry_addr))
+          u_sep_km_kmcsr_status_cg.sample(5'd6, 16'd3);
+      end
+      if ((kw_addr == KmCsrEntryLock) && km_own_csr) begin
+        if (!kwp_entry_lock && kw_data[0] && (km_irq_entry_lock_i === 1'b1))
+          u_sep_km_kmcsr_status_cg.sample(5'd6, 16'd1);
+        if (kwp_entry_lock && !kw_data[0] && (km_irq_entry_lock_i === 1'b1))
+          u_sep_km_kmcsr_status_cg.sample(5'd6, 16'd2);
+      end
+      // SCRAMBLER_KEY (cp_mem_scr_key_access, cp_km_scr_key).
+      if (kw_addr == KmCsrScrKey) begin
+        if (!kwp_scr_lock && (km_scr_key_i === kw_data) && (km_own_csr || km_own_scr))
+          u_sep_km_memory_boot_cg.sample(5'd1, 16'd0);
+        if (kwp_scr_lock && (km_scr_key_i === kwp_scr_key) && (km_own_csr || km_own_scr))
+          u_sep_km_memory_boot_cg.sample(5'd1, 16'd2);
+        if (km_own_scr) begin
+          if (!kwp_scr_lock && kwp_scr_en && km_scr_resident)
+            u_sep_km_memory_boot_cg.sample(5'd5, 16'd0);
+          if (!kwp_scr_lock && km_key_prev2_v && (kw_data == km_key_prev2) &&
+              (kw_data != kwp_scr_key))
+            u_sep_km_memory_boot_cg.sample(5'd5, 16'd1);
+          if (kwp_scr_lock) u_sep_km_memory_boot_cg.sample(5'd5, 16'd2);
+        end
+        if (!kwp_scr_lock) begin
+          km_key_prev2 <= kwp_scr_key;
+          km_key_prev2_v <= km_key_prev_v;
+          km_key_prev <= kw_data;
+          km_key_prev_v <= 1'b1;
+        end
+      end
+      // SCRAMBLER_CTRL {lock, enable} (cp_mem_scr_ctrl).
+      if (kw_addr == KmCsrScrCtrl) begin
+        if (!kwp_scr_lock && !kw_data[1] && !kw_data[0] && (km_scr_ctrl_i[0] === 1'b0) &&
+            (km_own_csr || km_own_scr))
+          u_sep_km_memory_boot_cg.sample(5'd2, 16'd0);
+        if (km_own_scr) begin
+          if (!kwp_scr_lock && !kw_data[1] && kw_data[0] && (km_scr_ctrl_i[0] === 1'b1))
+            u_sep_km_memory_boot_cg.sample(5'd2, 16'd1);
+          if (!kwp_scr_lock && (kw_data[1:0] == 2'b11) && (km_scr_ctrl_i === 2'b11))
+            u_sep_km_memory_boot_cg.sample(5'd2, 16'd2);
+          if (kwp_scr_lock && !kw_data[1] && (km_scr_ctrl_i[1] === 1'b1))
+            u_sep_km_memory_boot_cg.sample(5'd2, 16'd3);
+        end
+        if (!kwp_scr_lock && (kw_data[1:0] == 2'b10)) km_lock_en0_pend <= 1'b1;
+      end
+      // SRAM_LOCK (cp_km_sram_region): set by a write of 1, kept by a 0.
+      if (kw_addr == KmCsrSramLock) begin
+        for (int r = 1; r < 32; r++) begin
+          if (kw_data[r] && !kwp_sram_lock[r] && (km_sram_lock_i[r] === 1'b1))
+            km_region_set[r] <= 1'b1;
+          if (!kw_data[r] && km_region_set[r] && (km_sram_lock_i[r] === 1'b1) && km_own_csr)
+            u_sep_km_memory_boot_cg.sample(5'd3, 16'(r));
+        end
+      end
+      // SRAM_EXEC_MODE (cp_ex_mode_enable, cp_ex_lockout_irreversible).
+      if ((kw_addr == KmCsrExecMode) && km_own_cpu) begin
+        if (kw_data[0] && !kwp_exec && (km_sram_exec_mode_i === 1'b1))
+          u_sep_km_exec_protection_cg.sample(5'd1, 16'd0);
+        if (!kw_data[0] && kwp_exec && (km_sram_exec_mode_i === 1'b1)) begin
+          u_sep_km_exec_protection_cg.sample(5'd1, 16'd1);
+          if (kwp_engaged) u_sep_km_exec_protection_cg.sample(5'd4, 16'd0);
+        end
+      end
+      // OTP_READ_LOCK and OTP_READ_LOCK_COLD (cp_otp_lock_reg).
+      if ((kw_addr == KmCsrReadLock) || (kw_addr == KmCsrReadLockCold)) begin
+        logic [8:0] pre_l, post_l;
+        logic cold_reg;
+        cold_reg = (kw_addr == KmCsrReadLockCold);
+        pre_l = cold_reg ? kwp_rlock_cold : kwp_rlock;
+        post_l = cold_reg ? km_otp_rlock_cold_i : km_otp_rlock_i;
+        if (km_own_otp) begin
+          if (|(kw_data[8:0] & ~pre_l) && ((post_l & kw_data[8:0]) == kw_data[8:0]))
+            u_sep_km_otp_readout_cg.sample(5'd5, cold_reg ? 16'd1 : 16'd0);
+          if ((pre_l != 9'h0) && ((kw_data[8:0] & pre_l) != pre_l) && ((post_l & pre_l) == pre_l))
+            u_sep_km_otp_readout_cg.sample(5'd5, 16'd2);
+          if ((km_rep_cnt == 2'd2) && (km_rep_addr == kw_addr) && (km_rep_data == kw_data) &&
+              (post_l === km_rep_lock_post) && (kw_data[8:0] != 9'h0))
+            u_sep_km_otp_readout_cg.sample(5'd5, 16'd5);
+        end
+      end
+      // OTP_CHANGE_STATUS W1C (cp_otp_change).
+      if ((kw_addr == KmCsrChgStatus) && km_own_otp) begin
+        if (|(kw_data[8:0] & kwp_chg & ~km_otp_chg_i)) u_sep_km_otp_readout_cg.sample(5'd3, 16'd12);
+      end
+      // KPV CTRL[s] (cp_kpv_ctrl_write, cp_kpv_lock_write, cp_kpv_lock_use,
+      // cp_kpv_seal, cp_kpv_erase, cp_kpv_locked_write, cp_kpv_state_x_op).
+      if (km_kpv_ctl(kw_addr)) begin
+        s = km_kpv_slot(kw_addr);
+        pre_c = kwp_kpv_ctrl[4*s+:4];
+        post_c = km_kpv_ctrl_i[4*s+:4];
+        st = km_slot_state(pre_c);
+        if (km_own_kpv) begin
+          u_sep_km_kpv_slot_cg.sample(5'd0, 16'(s));
+          // Field order of the point: 0 lock_write, 1 lock_use, 2 erase, 3 seal.
+          for (int f = 0; f < 4; f++) begin
+            if (kw_data[f] && !pre_c[f] && post_c[f])
+              u_sep_km_kpv_slot_cg.sample(5'd3, 16'({2'(f), 2'd0}));
+            // A write of 0 keeps a set lock bit; it starts no erase.
+            if ((kw_data[3:0] == 4'h0) && ((f == 2) ? !post_c[f] : (pre_c[f] && post_c[f])))
+              u_sep_km_kpv_slot_cg.sample(5'd3, 16'({2'(f), 2'd1}));
+            if (kw_data[f] && (km_rep_cnt == 2'd2) && (km_rep_addr == kw_addr) &&
+                (km_rep_data == kw_data) && (post_c == km_rep_post))
+              u_sep_km_kpv_slot_cg.sample(5'd3, 16'({2'(f), 2'd2}));
+          end
+          if (kw_data[0] && !pre_c[0] && post_c[0]) u_sep_km_kpv_slot_cg.sample(5'd4, 16'd0);
+          if (pre_c[0] && (|(kw_data[3:1] & ~pre_c[3:1] & post_c[3:1])))
+            u_sep_km_kpv_slot_cg.sample(5'd4, 16'd2);
+          if (pre_c[3] && post_c[0]) u_sep_km_kpv_slot_cg.sample(5'd4, 16'd5);
+          if (kw_data[1] && !pre_c[1] && post_c[1]) u_sep_km_kpv_slot_cg.sample(5'd5, 16'd0);
+          if (kw_data[3] && !pre_c[3] && post_c[3] && post_c[0])
+            u_sep_km_kpv_slot_cg.sample(5'd7, 16'd0);
+          if (!kw_data[3] && pre_c[3] && post_c[3]) u_sep_km_kpv_slot_cg.sample(5'd7, 16'd2);
+          if (kw_data[2] && (pre_c[3] || pre_c[1] || pre_c[0]) && post_c[2])
+            u_sep_km_kpv_slot_cg.sample(5'd6, 16'd3);
+          if (pre_c[0] && !kw_data[0] && post_c[0])
+            u_sep_km_kpv_locked_access_cg.sample(5'd1, 16'd1);
+          if (pre_c[0] && !pre_c[3] && kw_data[1] && !pre_c[1] && post_c[1])
+            u_sep_km_kpv_locked_access_cg.sample(5'd1, 16'd2);
+          if (kw_data[2] && (st != 3'd7) && !((st == 3'd1)))
+            u_sep_km_kpv_locked_access_cg.sample(5'd0, 16'({st, 2'd2}));
+          if ((s == 6'd0) || (s == 6'd63)) begin
+            if (st inside {3'd1, 3'd2, 3'd3})
+              u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd0, s == 6'd63}));
+            if (st == 3'd4) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd1, s == 6'd63}));
+            if (st == 3'd5) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd2, s == 6'd63}));
+          end
+        end
+        // A repeated erase of a retired slot, and a seal written while the
+        // erase of the slot is in flight.
+        if (kw_data[2] && (st == 3'd5)) km_ret_rerased[s] <= 1'b1;
+        if (kw_data[3] && pre_c[2]) km_race_armed[s] <= 1'b1;
+        if (kw_data[2]) begin
+          km_tr_erased[s] <= 1'b0;
+          km_tr_wrote[s] <= 1'b0;
+        end
+      end
+      // KPV key word (cp_kpv_word_index, cp_kpv_lock_write, cp_kpv_lock_use,
+      // cp_kpv_state_x_op, cp_kpv_locked_write, cp_kpv_retired,
+      // cp_kpv_scramble_mode, cp_kpv_trailing).
+      if (km_kpv_key(kw_addr)) begin
+        s = km_kpv_slot(kw_addr);
+        w = 4'(kw_addr[5:2]);
+        pre_c = kwp_kpv_ctrl[4*s+:4];
+        st = km_slot_state(pre_c);
+        if (km_own_kpv) begin
+          u_sep_km_kpv_slot_cg.sample(5'd0, 16'(s));
+          u_sep_km_kpv_slot_cg.sample(5'd1, 16'(w));
+          if (!pre_c[0] && !pre_c[3] && (kw_resp == KmOkay))
+            u_sep_km_kpv_slot_cg.sample(5'd4, 16'd1);
+          if (pre_c[1] && !pre_c[0] && !pre_c[3] && (kw_resp == KmOkay))
+            u_sep_km_kpv_slot_cg.sample(5'd5, 16'd4);
+          if ((st != 3'd7) && (st != 3'd1))
+            u_sep_km_kpv_locked_access_cg.sample(5'd0, 16'({st, 2'd1}));
+          if (pre_c[0] && (kw_resp == KmSlverr) && (km_irq_status_i[4] === 1'b1))
+            u_sep_km_kpv_locked_access_cg.sample(5'd1, 16'd0);
+          if ((s == 6'd0) || (s == 6'd63)) begin
+            if (st inside {3'd1, 3'd2, 3'd3})
+              u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd0, s == 6'd63}));
+            if (st == 3'd4) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd1, s == 6'd63}));
+            if (st == 3'd5) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd2, s == 6'd63}));
+          end
+          // Scrambler: with enable 1, two writes of different data to one
+          // cell change exactly one stored word.
+          if (kwp_kpv_scr[0] == 1'b0) u_sep_km_kpv_slot_cg.sample(5'd8, 16'd0);
+          if (kwp_kpv_scr[0] && km_scr_last_v && (km_scr_last_addr == kw_addr) &&
+              (km_scr_last_data != kw_data) && (kw_resp == KmOkay)) begin
+            nchg = 0;
+            for (int i = 0; i < 1024; i++)
+            if (km_kpv_words_i[32*i+:32] !== kwp_kpv_words[32*i+:32]) nchg++;
+            if (nchg == 1) u_sep_km_kpv_slot_cg.sample(5'd8, 16'd1);
+          end
+        end
+        if (st == 3'd5 && (kw_resp == KmSlverr)) begin
+          if (km_ret_rerased[s]) km_ret_wr_ref1[s] <= 1'b1;
+          else km_ret_wr_ref0[s] <= 1'b1;
+        end
+        km_scr_last_addr <= kw_addr;
+        km_scr_last_data <= kw_data;
+        km_scr_last_v <= (kw_resp == KmOkay);
+        if (km_tr_erased[s] && (kw_resp == KmOkay)) begin
+          km_tr_wrote[s] <= 1'b1;
+          km_tr_wmask[s][w] <= 1'b1;
+        end
+      end
+      // Engine key banks (cp_sd_key_valid_semantics, cp_nx_share_read).
+      b = km_bank(kw_addr);
+      if (b != 4'hF) begin
+        logic [31:0] off;
+        off = kw_addr - km_bank_base(b);
+        if (off == km_bank_ctl_off(b)) begin
+          km_bank_ctrl_written[b] <= 1'b1;
+          if (km_own_bank) begin
+            if (kw_data[0] && !kwp_key_valid[b] && (km_key_valid_i[b] === 1'b1))
+              u_sep_km_sideload_delivery_cg.sample(5'd0, 16'd1);
+            if (kw_data[0] && kwp_key_valid[b] && (km_key_valid_i[b] === 1'b1))
+              u_sep_km_sideload_delivery_cg.sample(5'd0, 16'd2);
+            if (!kw_data[0] && kwp_key_valid[b] && (km_key_valid_i[b] === 1'b0))
+              u_sep_km_sideload_delivery_cg.sample(5'd0, 16'd3);
+          end
+        end else if ((off < km_bank_ctl_off(b)) && (kw_resp == KmOkay) && (kw_data != 0)) begin
+          km_nx_written[{b[2:0], off[2+:5]}] <= 1'b1;
+        end
+      end
+      // ABR shared key (cp_sk_delivery_state, cp_sk_write_dir,
+      // cp_sk_interrupt).
+      if ((kw_addr == KmSkKeyCtrl) && km_own_bank) begin
+        if (!kw_data[0] && (kw_resp == KmOkay) && (km_sk_valid_i === 1'b0))
+          u_sep_km_abr_shared_key_cg.sample(5'd1, 16'd0);
+        if (kw_data[0] && !kwp_sk_valid && (km_sk_valid_i === 1'b0))
+          u_sep_km_abr_shared_key_cg.sample(5'd1, 16'd1);
+        if (!kw_data[0] && kwp_sk_valid && (km_sk_valid_i === 1'b0) && (km_sk_key_i === '0)) begin
+          u_sep_km_abr_shared_key_cg.sample(5'd0, 16'd2);
+          km_sk_consumed <= 1'b1;
+        end
+      end
+      if ((kw_addr == KmSkIrqStatus) && km_own_bank) begin
+        if (kw_data[0] && kwp_sk_irq && (km_sk_irq_status_i === 1'b0)) begin
+          u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd3);
+          km_sk_irq_cleared <= 1'b1;
+        end
+        if (!kw_data[0] && kwp_sk_irq && (km_sk_irq_status_i === 1'b1))
+          u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd4);
+      end
+      // KM mailbox sticky bits written by the KM (cp_mbf_sticky_clear).
+      if ((kw_addr == KmMbxIrqStatus) && km_own_mbx) begin
+        for (int i = 0; i < 3; i++) begin
+          // Point bit order: 0 inbound underflow, 1 outbound overflow, 2
+          // flushed_by_sep; KM_IRQ_STATUS[4:2] is {flushed_by_sep,
+          // inbound_underflow, outbound_overflow}.
+          logic [1:0] pb;
+          pb = (i == 0) ? 2'd1 : (i == 1) ? 2'd0 : 2'd2;
+          if (kwp_mbx_km_irq[i] && kw_data[2+i] && (km_mbx_km_irq_i[i] === 1'b0))
+            u_sep_km_mailbox_fault_cg.sample(5'd2, 16'({pb, 2'd0}));
+          if (kwp_mbx_km_irq[i] && !kw_data[2+i] && (km_mbx_km_irq_i[i] === 1'b1))
+            u_sep_km_mailbox_fault_cg.sample(5'd2, 16'({pb, 2'd1}));
+        end
+      end
+      // DRBG sampler STATUS writes (cp_smp_count_good, cp_smp_count_bad,
+      // cp_df_status_clear).
+      if ((kw_addr == KmSmpStatus) && km_own_smp) begin
+        if ((kw_data[31:16] != 16'h0) && (kwp_good != 16'h0) && (km_smp_count_good_i === 16'h0))
+          u_sep_km_drbg_sampler_cg.sample(5'd6, 16'd5);
+        if ((kw_data[31:16] == 16'h0) && (kwp_good != 16'h0) && (km_smp_count_good_i === kwp_good))
+          u_sep_km_drbg_sampler_cg.sample(5'd6, 16'd6);
+        if ((kw_data[15:8] != 8'h0) && (kwp_bad != 8'h0) && (km_smp_count_bad_i === 8'h0))
+          u_sep_km_drbg_sampler_cg.sample(5'd7, 16'd4);
+        if ((kw_data[15:8] == 8'h0) && (kwp_bad != 8'h0) && (km_smp_count_bad_i === kwp_bad))
+          u_sep_km_drbg_sampler_cg.sample(5'd7, 16'd5);
+        // One sticky bit at a time: TIMEOUT_ERR is bit 2, STREAM_ERR bit 3.
+        if (kwp_smp_sticky[0] && !kw_data[3]) begin
+          if (kw_data[2] && (km_smp_sticky_i[0] === 1'b0))
+            u_sep_km_drbg_fault_cg.sample(5'd5, 16'd0);
+          if (!kw_data[2] && (km_smp_sticky_i[0] === 1'b1))
+            u_sep_km_drbg_fault_cg.sample(5'd5, 16'd1);
+        end
+        if (kwp_smp_sticky[1] && !kw_data[2]) begin
+          if (kw_data[3] && (km_smp_sticky_i[1] === 1'b0))
+            u_sep_km_drbg_fault_cg.sample(5'd5, 16'd2);
+          if (!kw_data[3] && (km_smp_sticky_i[1] === 1'b1))
+            u_sep_km_drbg_fault_cg.sample(5'd5, 16'd3);
+        end
+      end
+      // DRBG sampler CFG (cp_smp_prefetch_mode PREFETCH 1).
+      if ((kw_addr == KmSmpCfg) && km_own_smp && kw_data[0] && (km_smp_cfg_i[0] === 1'b1))
+        u_sep_km_drbg_sampler_cg.sample(5'd4, 16'd1);
+      // Repeat tracker for identical consecutive writes. The IRQ_STATUS
+      // clear that the image writes before an op does not break a run.
+      if (kw_addr == KmCsrIrqStatus) begin
+      end else if ((kw_addr == km_rep_addr) && (kw_data == km_rep_data)) begin
+        if (km_rep_cnt != 2'd3) km_rep_cnt <= km_rep_cnt + 2'd1;
+      end else begin
+        km_rep_cnt <= 2'd1;
+        km_rep_addr <= kw_addr;
+        km_rep_data <= kw_data;
+        km_rep_post <= km_kpv_ctl(kw_addr) ? km_kpv_ctrl_i[4*km_kpv_slot(kw_addr)+:4] : 4'h0;
+        km_rep_lock_post <= (kw_addr == KmCsrReadLockCold) ? km_otp_rlock_cold_i : km_otp_rlock_i;
+      end
+    end
+
+    // ---- register reads ----
+    if (kr_ev) begin
+      if ((kr_addr == KmCsrVersion) && (kr_resp == KmOkay) && (kr_data == KmVersionReset) && km_own_csr)
+        u_sep_km_kmcsr_status_cg.sample(5'd0, 16'd1);
+      if ((kr_addr == KmCsrDebug) && (kr_data == KmDebugMagic) && km_own_csr)
+        u_sep_km_kmcsr_status_cg.sample(5'd7, 16'd0);
+      if ((kr_addr == KmCsrCtrl) && (kr_resp == KmOkay) && (kr_data == 32'h0) && km_own_csr)
+        u_sep_km_kmcsr_status_cg.sample(5'd7, 16'd1);
+      if ((kr_addr == KmCsrEntryAddr) && !km_entry_written && (kr_data == KmEntryReset) && km_own_csr)
+        u_sep_km_kmcsr_status_cg.sample(5'd5, 16'd0);
+      if ((kr_addr == KmCsrScrKey) && (km_own_csr || km_own_scr)) begin
+        if (!krp_scr_lock && (kr_data == km_scr_key_i)) u_sep_km_memory_boot_cg.sample(5'd1, 16'd1);
+        if (krp_scr_lock && (kr_data == 32'h0)) u_sep_km_memory_boot_cg.sample(5'd1, 16'd3);
+      end
+      if ((kr_addr == KmCsrScrCtrl) && !krp_scr_lock && (kr_resp == KmOkay) && (km_own_csr || km_own_scr))
+        u_sep_km_memory_boot_cg.sample(5'd2, kr_data[0] ? 16'd1 : 16'd0);
+      // OTP readout (cp_otp_field, cp_otp_word_index, cp_otp_lock_matrix,
+      // cp_otp_read_through, cp_otp_secure_tm, cp_nx_epoch_secret).
+      ow = km_otp_word(kr_addr);
+      if ((ow[8:5] != 4'hF) && (kr_resp == KmOkay)) begin
+        logic [3:0] fld;
+        logic lw, lc;
+        fld = ow[8:5];
+        lw = krp_rlock[fld];
+        lc = krp_rlock_cold[fld];
+        if (km_own_otp) begin
+          u_sep_km_otp_readout_cg.sample(5'd0, 16'(fld));
+          u_sep_km_otp_readout_cg.sample(5'd1, 16'(ow));
+          if (!(lw || lc) || (kr_data == 32'h0))
+            u_sep_km_otp_readout_cg.sample(5'd4, 16'({fld, lc, lw}));
+          if ((fld == 4'd0) && !(lw || lc) && (kr_data[7:0] === km_otp_data_i.life_cycle)) begin
+            if (km_otp_data_i.life_cycle[3:0] == 4'h0) u_sep_km_otp_readout_cg.sample(5'd2, 16'd0);
+            if (km_otp_data_i.life_cycle[3:0] == 4'h1) u_sep_km_otp_readout_cg.sample(5'd2, 16'd1);
+          end
+          if ((fld == 4'd1) && !(lw || lc) &&
+              (kr_data[3:0] === {km_otp_data_i.demotion_state_2, km_otp_data_i.demotion_state_1}))
+            u_sep_km_otp_readout_cg.sample(5'd2, km_dem_changed ? 16'd3 : 16'd2);
+          if ((fld inside {[4'd2 : 4'd5]}) && !(lw || lc)) begin
+            if (!krp_secure_tm && !ow[3] && (kr_data != 32'h0))
+              u_sep_km_otp_readout_cg.sample(5'd6, 16'd0);
+            if (krp_secure_tm && !krp_sigint && (km_irq_status_i[9] === 1'b0) &&
+                ((!ow[3] && (kr_data == 32'h0)) || (ow[3] && (kr_data == 32'hFFFF_FFFF))))
+              u_sep_km_otp_readout_cg.sample(5'd6, 16'd1);
+            if ((ow[3:0] == 4'd0) && (kr_data != 32'h0))
+              u_sep_km_secret_nonexposure_cg.sample(5'd1, 16'(fld - 4'd2));
+          end
+        end
+      end
+      // Engine key-bank reads (cp_nx_share_read, cp_sd_key_valid_semantics).
+      b = km_bank(kr_addr);
+      if ((b != 4'hF) && km_own_bank) begin
+        logic [31:0] off;
+        off = kr_addr - km_bank_base(b);
+        if ((off == km_bank_ctl_off(
+                b
+            )) && !km_bank_ctrl_written[b] && (kr_data == 32'h0) && (kr_resp == KmOkay))
+          u_sep_km_sideload_delivery_cg.sample(5'd0, 16'd0);
+        if ((off < km_bank_ctl_off(
+                b
+            )) && (kr_data == 32'h0) && km_nx_written[{b[2:0], off[2+:5]}]) begin
+          logic [3:0] wi;
+          logic sh;
+          sh = (off[6:2] >= km_bank_words(b));
+          wi = 4'(sh ? (off[6:2] - km_bank_words(b)) : off[6:2]);
+          u_sep_km_secret_nonexposure_cg.sample(5'd0, 16'({b[2:0], sh, wi}));
+        end
+      end
+      if ((kr_addr == KmSkKeyCtrl) && (kr_data[0] == 1'b0) && (kr_resp == KmOkay) && km_own_bank &&
+          !km_sk_consumed)
+        u_sep_km_abr_shared_key_cg.sample(5'd0, 16'd0);
+      // KPV reads (cp_kpv_slot_index, cp_kpv_word_index, cp_kpv_lock_use,
+      // cp_kpv_seal, cp_kpv_state_x_op, cp_kpv_locked_read, cp_kpv_retired,
+      // cp_kpv_boundary, cp_kpv_trailing).
+      if (km_kpv_key(kr_addr) || km_kpv_ctl(kr_addr)) begin
+        s = km_kpv_slot(kr_addr);
+        pre_c = krp_kpv_ctrl[4*s+:4];
+        st = km_slot_state(pre_c);
+        if (km_own_kpv) begin
+          u_sep_km_kpv_slot_cg.sample(5'd0, 16'(s));
+          if ((s == 6'd0) || (s == 6'd63)) begin
+            if (st inside {3'd1, 3'd2, 3'd3})
+              u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd0, s == 6'd63}));
+            if (st == 3'd4) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd1, s == 6'd63}));
+            if (st == 3'd5) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd2, s == 6'd63}));
+          end
+        end
+        if (km_kpv_ctl(kr_addr) && km_race_armed[s]) begin
+          km_race_armed[s] <= 1'b0;
+          km_race_seen[s] <= kr_data[2];
+        end
+        if (km_kpv_key(kr_addr)) begin
+          w = 4'(kr_addr[5:2]);
+          if (km_own_kpv) begin
+            u_sep_km_kpv_slot_cg.sample(5'd1, 16'(w));
+            if (!pre_c[1] && (kr_resp == KmOkay)) u_sep_km_kpv_slot_cg.sample(5'd5, 16'd1);
+            if (st == 3'd4 && (kr_resp == KmOkay)) u_sep_km_kpv_slot_cg.sample(5'd7, 16'd1);
+            if (st != 3'd7) u_sep_km_kpv_locked_access_cg.sample(5'd0, 16'({st, 2'd0}));
+            if (pre_c[1] && (kr_resp == KmSlverr) && (kr_data == 32'h0))
+              u_sep_km_kpv_locked_access_cg.sample(5'd2, 16'd0);
+            // Trailing words: an unwritten word since the erase.
+            if (km_tr_erased[s] && km_tr_wrote[s] && !km_tr_wmask[s][w]) begin
+              if (!pre_c[1] && km_tr_have[s][w] && (kr_data == km_tr_val[s][w]))
+                u_sep_km_kpv_slot_cg.sample(5'd9, 16'd0);
+              if (pre_c[1] && (kr_data == 32'h0)) u_sep_km_kpv_slot_cg.sample(5'd9, 16'd1);
+            end
+          end
+          if (st == 3'd5 && (kr_resp == KmSlverr)) begin
+            if (km_ret_rerased[s]) km_ret_rd_ref1[s] <= 1'b1;
+            else km_ret_rd_ref0[s] <= 1'b1;
+          end
+          if (km_tr_erased[s] && !km_tr_wrote[s] && (kr_resp == KmOkay)) begin
+            km_tr_val[s][w] <= kr_data;
+            km_tr_have[s][w] <= 1'b1;
+          end
+        end
+      end
+      // DRBG sampler reads (cp_smp_count_good, cp_smp_count_bad,
+      // cp_smp_ready).
+      if ((kr_addr == KmSmpStatus) && km_own_smp) begin
+        if (kr_data[31:16] == 16'h0) u_sep_km_drbg_sampler_cg.sample(5'd6, 16'd0);
+        if (kr_data[31:16] == 16'h1) u_sep_km_drbg_sampler_cg.sample(5'd6, 16'd1);
+        if (kr_data[31:16] == 16'hFFFF) u_sep_km_drbg_sampler_cg.sample(5'd6, 16'd2);
+        if (kr_data[15:8] == 8'h0) u_sep_km_drbg_sampler_cg.sample(5'd7, 16'd0);
+        if (kr_data[15:8] == 8'h1) u_sep_km_drbg_sampler_cg.sample(5'd7, 16'd1);
+        if (kr_data[15:8] == 8'hFF) u_sep_km_drbg_sampler_cg.sample(5'd7, 16'd2);
+        if (kr_data[0] == krp_tvalid) u_sep_km_drbg_sampler_cg.sample(5'd9, 16'(kr_data[0]));
+      end
+    end
+
+    // ---- per-slot KPV edges (cp_kpv_erase, cp_kpv_lock_use, cp_kpv_seal,
+    // cp_kpv_locked_read) ----
+    for (int i = 0; i < 64; i++) begin
+      if (km_ctrl_q[4*i+2] && (km_kpv_ctrl_i[4*i+2] === 1'b0) && km_rst_warm_n && km_rst_cold_n) begin
+        km_tr_erased[i] <= 1'b1;
+        km_tr_wrote[i] <= 1'b0;
+        km_tr_wmask[i] <= '0;
+        km_tr_have[i] <= '0;
+        if (km_own_kpv) begin
+          u_sep_km_kpv_slot_cg.sample(5'd6, 16'd0);
+          if (!km_ctrl_q[4*i+3] && (km_kpv_ctrl_i[4*i+:4] === 4'h0))
+            u_sep_km_kpv_slot_cg.sample(5'd6, 16'd1);
+          if (km_ctrl_q[4*i+3] && (km_kpv_ctrl_i[4*i+:4] === 4'hB)) begin
+            u_sep_km_kpv_slot_cg.sample(5'd6, 16'd2);
+            if (km_race_seen[i]) u_sep_km_kpv_slot_cg.sample(5'd7, 16'd4);
+          end
+          if (!km_ctrl_q[4*i+1] && (km_kpv_ctrl_i[4*i+1] === 1'b1) && km_ctrl_q[4*i+3]) begin
+            u_sep_km_kpv_slot_cg.sample(5'd5, 16'd2);
+            u_sep_km_kpv_locked_access_cg.sample(5'd2, 16'd1);
+          end
+        end
+        km_race_seen[i] <= 1'b0;
+      end
+      if (km_own_kpv && km_ret_rd_ref0[i] && km_ret_wr_ref0[i])
+        u_sep_km_kpv_locked_access_cg.sample(5'd3, 16'd0);
+      if (km_own_kpv && km_ret_rd_ref1[i] && km_ret_wr_ref1[i])
+        u_sep_km_kpv_locked_access_cg.sample(5'd3, 16'd1);
+    end
+    if (km_ret_rd_ref0 & km_ret_wr_ref0) begin
+      km_ret_rd_ref0 <= km_ret_rd_ref0 & ~(km_ret_rd_ref0 & km_ret_wr_ref0);
+      km_ret_wr_ref0 <= km_ret_wr_ref0 & ~(km_ret_rd_ref0 & km_ret_wr_ref0);
+    end
+    if (km_ret_rd_ref1 & km_ret_wr_ref1) begin
+      km_ret_rd_ref1 <= km_ret_rd_ref1 & ~(km_ret_rd_ref1 & km_ret_wr_ref1);
+      km_ret_wr_ref1 <= km_ret_wr_ref1 & ~(km_ret_rd_ref1 & km_ret_wr_ref1);
+    end
+
+    // ---- eFuse remap at the KM eFuse master (cp_if_efuse_remap) ----
+    if ((km_efuse_req_i.ar_valid === 1'b1) && (km_efuse_resp_i.ar_ready === 1'b1) && kx_rbusy &&
+        km_own_xbar) begin
+      logic [31:0] ea;
+      logic [1:0] m;
+      ea = 32'(km_efuse_req_i.ar.addr);
+      m = km_in(kx_raddr, KmEfMapBase, 32'h400) ? 2'd0 :
+          km_in(kx_raddr, KmEfCtrlBase, 32'h100) ? 2'd1 : 2'd2;
+      if (ea[11:0] == kx_raddr[11:0]) u_sep_km_integrity_fault_cg.sample(5'd3, 16'd0);
+      if ((km_remap_seen != 3'b000) && (ea[31:12] != km_remap_hi)) km_remap_bad <= 1'b1;
+      km_remap_hi <= ea[31:12];
+      km_remap_seen[m] <= 1'b1;
+      if (((km_remap_seen | (3'b001 << m)) == 3'b111) && !km_remap_bad &&
+          ((km_remap_seen == 3'b000) || (ea[31:12] == km_remap_hi)))
+        u_sep_km_integrity_fault_cg.sample(5'd3, 16'd1);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // KM memory-map rows and windows (memory_map.adoc). Row order of
+  // cp_if_offset_class: 0 ROM, 1 SRAM, 2 mailbox, 3 eFuse map, 4 eFuse
+  // control, 5 eFuse token, 6 KPV, 7 KMCSR, 8 DRBG, 9 OTBN, 10 AES, 11 KMAC,
+  // 12 HMAC, 13 ABR. Hole: the first word inside the decoded extent that no
+  // register decodes (KMCSR after SRAM_EXEC_MODE, ABR after MLDSA_SEED); 0
+  // when the row has none.
+  // ---------------------------------------------------------------------
+  localparam int unsigned KmRows = 14;
+  localparam logic [31:0] KmRowBase[KmRows] = '{
+      KmRomBase,
+      KmSramBase,
+      KmMbxBase,
+      KmEfMapBase,
+      KmEfCtrlBase,
+      KmEfMmrBase,
+      KmKpvBase,
+      KmCsrBase,
+      KmSmpBase,
+      KmOtbnBase,
+      KmAesBase,
+      KmKmacBase,
+      KmHmacBase,
+      KmAbrBase
+  };
+  localparam logic [31:0] KmRowSpan[KmRows] = '{
+      32'h4000,
+      32'h8000,
+      32'h20,
+      32'h400,
+      32'h100,
+      32'h100,
+      32'h2000,
+      32'h800,
+      32'h10,
+      32'h80,
+      32'h80,
+      32'h80,
+      32'h80,
+      32'h800
+  };
+  localparam logic [31:0] KmRowExt[KmRows] = '{
+      32'h4000,
+      32'h8000,
+      32'h1C,
+      32'h400,
+      32'h1C,
+      32'h74,
+      32'h1108,
+      32'h4C0,
+      32'h10,
+      32'h64,
+      32'h44,
+      32'h44,
+      32'h44,
+      32'h42C
+  };
+  localparam logic [31:0] KmRowHole[KmRows] = '{
+      32'h0,
+      32'h0,
+      32'h0,
+      32'h0,
+      32'h0,
+      32'h0,
+      32'h0,
+      32'h3C,
+      32'h0,
+      32'h0,
+      32'h0,
+      32'h0,
+      32'h0,
+      32'h44
+  };
+
+  function automatic logic [3:0] km_row(logic [31:0] a);
+    for (int r = 0; r < KmRows; r++) if (km_in(a, KmRowBase[r], KmRowSpan[r])) return 4'(r);
+    return 4'hF;
+  endfunction
+
+  // Window index of cp_if_window; 5'h1F outside the KM map.
+  function automatic logic [4:0] km_window(logic [31:0] a);
+    logic [3:0] r;
+    r = km_row(a);
+    case (r)
+      4'd0: return 5'd0;
+      4'd1: return 5'd2;
+      4'd2: return 5'd3;
+      4'd3: return 5'd5;
+      4'd4: return 5'd6;
+      4'd5: return 5'd7;
+      4'd6: return 5'd9;
+      4'd7: return 5'd10;
+      4'd8: return 5'd12;
+      4'd9: return 5'd14;
+      4'd10: return 5'd15;
+      4'd11: return 5'd16;
+      4'd12: return 5'd17;
+      4'd13: return 5'd18;
+      default: ;
+    endcase
+    if (km_in(a, 32'h4000, 32'h4000)) return 5'd1;
+    if (km_in(a, 32'h10020, 32'hFE0)) return 5'd4;
+    if (km_in(a, 32'h11600, 32'hA00)) return 5'd8;
+    if (km_in(a, 32'h14800, 32'h800)) return 5'd11;
+    if (km_in(a, 32'h15010, 32'h2FF0)) return 5'd13;
+    if (km_in(a, 32'h18080, 32'hF80)) return 5'd19;
+    if (km_in(a, 32'h19080, 32'hF80)) return 5'd20;
+    if (km_in(a, 32'h1A080, 32'hF80)) return 5'd21;
+    if (km_in(a, 32'h1B080, 32'hF80)) return 5'd22;
+    if (km_in(a, 32'h1C800, 32'h800)) return 5'd23;
+    return 5'h1F;
+  endfunction
+
+  function automatic logic km_rsv_window(logic [4:0] w);
+    return w inside {5'd1, 5'd4, 5'd11, 5'd13, 5'd19, 5'd20, 5'd21, 5'd22, 5'd23};
+  endfunction
+
+  // eFuse gap of an address: 1 0x1141C to 0x114FF, 2 0x11574 to 0x115FF,
+  // 3 0x11600 to 0x11FFF, 0 none.
+  function automatic logic [1:0] km_ef_gap(logic [31:0] a);
+    if (km_in(a, KmEfCtrlBase + 32'h1C, 32'hE4)) return 2'd1;
+    if (km_in(a, KmEfMmrBase + 32'h74, 32'h8C)) return 2'd2;
+    if (km_in(a, 32'h11600, 32'hA00)) return 2'd3;
+    return 2'd0;
+  endfunction
+
+  // Past-extent or hole address of a non-eFuse decoded row.
+  function automatic logic km_past(logic [31:0] a);
+    logic [3:0] r;
+    logic [31:0] o;
+    r = km_row(a);
+    if ((r == 4'hF) || (r inside {4'd0, 4'd1, 4'd3, 4'd4, 4'd5})) return 1'b0;
+    o = a - KmRowBase[r];
+    if (o >= KmRowExt[r]) return 1'b1;
+    // KMCSR and ABR holes inside the extent (register maps of km_csr.adoc
+    // and abr_wrapper_key.adoc).
+    if ((r == 4'd7) && (o >= 32'h3C) && (o < 32'hB8)) return 1'b1;
+    if ((r == 4'd13) && (o[7:0] >= 8'h44) && (o < 32'h400)) return 1'b1;
+    return 1'b0;
+  endfunction
+
+  // ---------------------------------------------------------------------
+  // Window, offset class and decode outcome (cp_if_window,
+  // cp_if_offset_class, cp_if_decode_outcome, cp_efw_read_class).
+  // ---------------------------------------------------------------------
+  logic km_dec_pend = 1'b0;
+  logic [1:0] km_dec_cls = '0;
+  logic km_dec_wr = 1'b0;
+  always @(posedge clk_i) begin
+    logic [3:0] r;
+    logic [31:0] o, a;
+    logic [4:0] win;
+    logic [1:0] gap;
+    km_dec_pend <= 1'b0;
+    if (km_mb_start && !km_mb_instr && km_own_xbar && km_rst_warm_n) begin
+      a = km_mem_addr_i;
+      win = km_window(a);
+      if (win != 5'h1F) u_sep_km_integrity_fault_cg.sample(5'd0, 16'(win));
+      r = km_row(a);
+      if (r != 4'hF) begin
+        o = a - KmRowBase[r];
+        if (o == 32'h0) u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd0}));
+        if (o == KmRowExt[r] - 32'd4) u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd1}));
+        if ((KmRowHole[r] != 32'h0) && (o == KmRowHole[r]))
+          u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd2}));
+        if ((KmRowExt[r] < KmRowSpan[r]) && (o == KmRowExt[r]))
+          u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd3}));
+        if (o == KmRowSpan[r] - 32'd4) u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd4}));
+      end
+    end
+    // Decode outcome of a completed KM AXI access; the IRQ_STATUS bit is
+    // checked one clock later.
+    if ((kw_ev || kr_ev) && km_own_xbar) begin
+      a = kw_ev ? kw_addr : kr_addr;
+      win = km_window(a);
+      gap = km_ef_gap(a);
+      if (km_rsv_window(win) && ((kw_ev ? kw_resp : kr_resp) == KmDecerr)) begin
+        km_dec_pend <= 1'b1;
+        km_dec_cls <= 2'd0;
+        km_dec_wr <= kw_ev;
+      end else if ((gap != 2'd0) && ((kw_ev ? kw_resp : kr_resp) == KmSlverr) &&
+                   (kw_ev || (kr_data == KmBadcab))) begin
+        km_dec_pend <= 1'b1;
+        km_dec_cls <= 2'd2;
+        km_dec_wr <= kw_ev;
+      end else if (km_past(
+              a
+          ) && ((kw_ev ? kw_resp : kr_resp) == KmSlverr) && (kw_ev || (kr_data == 32'h0))) begin
+        km_dec_pend <= 1'b1;
+        km_dec_cls <= 2'd1;
+        km_dec_wr <= kw_ev;
+      end
+    end
+    if (km_dec_pend && km_own_xbar &&
+        (((km_dec_cls == 2'd0) && (km_irq_status_i[5] === 1'b1)) ||
+         ((km_dec_cls != 2'd0) && (km_irq_status_i[4] === 1'b1))))
+      u_sep_km_integrity_fault_cg.sample(5'd1, 16'({km_dec_cls, km_dec_wr}));
+    // eFuse read class.
+    if (kr_ev && km_own_xbar && km_in(kr_addr, KmEfMapBase, 32'h1000)) begin
+      logic [2:0] cls;
+      logic ok_rsp;
+      gap = km_ef_gap(kr_addr);
+      cls = km_in(kr_addr, KmEfMapBase, 32'h400) ? 3'd0 :
+            (gap == 2'd1) ? 3'd3 : (gap == 2'd2) ? 3'd4 : (gap == 2'd3) ? 3'd5 :
+            km_in(kr_addr, KmEfCtrlBase, 32'h100) ? 3'd1 : 3'd2;
+      ok_rsp = (kr_resp == KmOkay);
+      if (ok_rsp) u_sep_km_otp_readout_cg.sample(5'd7, 16'({cls, 1'b0}));
+      else if ((kr_resp == KmSlverr) && (kr_data == KmBadcab))
+        u_sep_km_otp_readout_cg.sample(5'd7, 16'({cls, 1'b1}));
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Memory interface, SRAM stores, ROM and fetch protection.
+  // ---------------------------------------------------------------------
+  wire km_sram_rd = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b0) &&
+      (km_sram_if_i[2] === 1'b1);
+  wire km_sram_wr = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) &&
+      (km_sram_if_i[2] === 1'b1);
+  logic [3:0] km_st_cnt = '0;
+  logic [4:0] km_st_region = '0;
+  logic [12:0] km_st_word = '0;
+  logic km_st_locked = 1'b0, km_st_we = 1'b0, km_st_viol = 1'b0;
+  // Fetch outcome window (cp_ex_mode_x_target) and the ROM store after the
+  // lockout (cp_if_rom_write).
+  logic [2:0] km_fx_cnt = '0;
+  logic [3:0] km_fx_cell = '0;
+  logic [1:0] km_fx_out = '0;
+  logic [2:0] km_rw_cnt = '0;
+  logic km_rw_err = 1'b0, km_rw_rav = 1'b0;
+  wire km_fx_exec = (km_err_flags_i[3] === 1'b1);
+  wire km_fx_rav = (km_err_flags_i[4] === 1'b1);
+  always @(posedge clk_i) begin
+    logic [2:0] tgt;
+    logic tgt_v;
+    if (km_rst_cold_n && (km_own_csr || km_own_cpu || km_own_scr)) begin
+      if (km_rom_req_i === 1'b1) u_sep_km_memory_boot_cg.sample(5'd0, 16'd0);
+      if (km_sram_rd) u_sep_km_memory_boot_cg.sample(5'd0, 16'd1);
+      if (km_sram_wr) u_sep_km_memory_boot_cg.sample(5'd0, 16'd2);
+      if (km_mb_start && km_mb_rom && km_mb_wr) u_sep_km_memory_boot_cg.sample(5'd0, 16'd3);
+    end
+    // SRAM store: dropped and flagged in a locked region, landed in an
+    // unlocked one. With the scrambler off the macro word address is the
+    // logical word index.
+    if (km_st_cnt != 4'd0) begin
+      if (km_sram_wr && ((km_scr_en_i === 1'b1) || (km_sram_addr_i === km_st_word)))
+        km_st_we <= 1'b1;
+      if (km_sram_viol_pulse_i[km_st_region] === 1'b1) km_st_viol <= 1'b1;
+      if (km_st_cnt == 4'(KmStoreWin)) begin
+        km_st_cnt <= '0;
+        if (km_own_csr && (km_st_region != 5'd0)) begin
+          if (km_st_locked && !km_st_we && km_st_viol && (km_irq_status_i[3] === 1'b1) &&
+              (km_sram_viol_i[km_st_region] === 1'b1)) begin
+            u_sep_km_integrity_fault_cg.sample(5'd4, 16'({km_st_region, 1'b0}));
+            if (km_st_region == 5'd31) u_sep_km_memory_boot_cg.sample(5'd4, 16'd0);
+          end
+          if (!km_st_locked && km_st_we && !km_st_viol) begin
+            u_sep_km_integrity_fault_cg.sample(5'd4, 16'({km_st_region, 1'b1}));
+            if (km_st_region == 5'd31) u_sep_km_memory_boot_cg.sample(5'd4, 16'd1);
+          end
+        end
+      end else km_st_cnt <= km_st_cnt + 4'd1;
+    end
+    if (km_mb_start && km_mb_sram && km_mb_wr && !km_mb_instr && km_rst_warm_n) begin
+      km_st_cnt <= 4'd1;
+      km_st_region <= km_mb_region;
+      km_st_word <= 13'((km_mem_addr_i - KmSramBase) >> 2);
+      km_st_locked <= (km_sram_lock_i[km_mb_region] === 1'b1);
+      km_st_we <= km_sram_wr && (km_sram_addr_i === 13'((km_mem_addr_i - KmSramBase) >> 2));
+      km_st_viol <= (km_sram_viol_pulse_i[km_mb_region] === 1'b1);
+    end
+    // Fetch target by SRAM_EXEC_MODE.enable and its outcome.
+    if (km_fx_cnt != 3'd0) begin
+      if (km_fx_exec) km_fx_out <= 2'd1;
+      else if (km_fx_rav && (km_fx_out == 2'd0)) km_fx_out <= 2'd2;
+      if (km_fx_cnt == 3'd4) begin
+        km_fx_cnt <= '0;
+        if (km_own_cpu) u_sep_km_exec_protection_cg.sample(5'd0, 16'({km_fx_cell, km_fx_out}));
+      end else km_fx_cnt <= km_fx_cnt + 3'd1;
+    end
+    tgt_v = 1'b1;
+    tgt = 3'd0;
+    if (km_mb_rom) tgt = 3'd0;
+    else if (km_mb_sram) tgt = (km_sram_lock_i[km_mb_region] === 1'b1) ? 3'd1 : 3'd2;
+    else if (km_in(km_mem_addr_i, KmMbxBase, 32'hD000)) tgt = 3'd3;
+    else if (km_in(km_mem_addr_i, KmVromBase, 32'h10000)) tgt = 3'd4;
+    else tgt_v = 1'b0;
+    if (km_mb_start && km_mb_instr && tgt_v && km_rst_warm_n && ((km_fx_cnt == 3'd0) || !km_mb_rom)) begin
+      km_fx_cnt <= 3'd1;
+      km_fx_cell <= {(km_sram_exec_mode_i === 1'b1), tgt};
+      km_fx_out <= km_fx_exec ? 2'd1 : km_fx_rav ? 2'd2 : 2'd0;
+    end
+    // ROM access by lockout state.
+    if (km_mb_start && km_mb_rom && km_own_cpu && km_rst_warm_n) begin
+      logic [1:0] ls, acc;
+      ls = (km_sram_exec_mode_i !== 1'b1) ? 2'd0 : km_engaged ? 2'd2 : 2'd1;
+      acc = km_mb_instr ? 2'd0 : km_mb_wr ? 2'd2 : 2'd1;
+      if (!((acc == 2'd2) && (ls != 2'd2)))
+        u_sep_km_exec_protection_cg.sample(5'd2, 16'({ls, acc}));
+      if ((acc == 2'd2) && km_engaged) begin
+        km_rw_cnt <= 3'd1;
+        km_rw_err <= (km_err_flags_i[2] === 1'b1);
+        km_rw_rav <= km_fx_rav;
+      end
+    end
+    if (km_rw_cnt != 3'd0) begin
+      if (km_err_flags_i[2] === 1'b1) km_rw_err <= 1'b1;
+      if (km_fx_rav) km_rw_rav <= 1'b1;
+      if (km_rw_cnt == 3'd4) begin
+        km_rw_cnt <= '0;
+        if (km_own_cpu && km_rw_err && !km_rw_rav) u_sep_km_integrity_fault_cg.sample(5'd6, 16'd1);
+      end else km_rw_cnt <= km_rw_cnt + 3'd1;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // KMCSR interrupt sources, enable and aggregate (cp_csr_irq_source,
+  // cp_csr_src_x_en, cp_csr_aggregate).
+  // ---------------------------------------------------------------------
+  logic [11:0] km_irqs_q = '0, km_rise_q = '0, km_rise_en_q = '0, km_mask_q = '0;
+  logic km_cpu_irq_q = 1'b0;
+  always @(posedge clk_i) begin
+    logic [11:0] st, en, rise;
+    for (int i = 0; i < 12; i++) begin
+      st[i] = (km_irq_status_i[i] === 1'b1);
+      en[i] = (km_irq_enable_i[i] === 1'b1);
+    end
+    rise = st & ~km_irqs_q;
+    km_irqs_q <= st;
+    km_rise_q <= km_rst_cold_n && km_rst_warm_n ? rise : '0;
+    km_rise_en_q <= en;
+    km_mask_q <= st & en;
+    km_cpu_irq_q <= (km_cpu_irq_i === 1'b1);
+    if (km_own_csr && km_rst_cold_n && km_rst_warm_n) begin
+      for (int i = 0; i < 12; i++) begin
+        if (rise[i]) u_sep_km_kmcsr_status_cg.sample(5'd1, 16'(i));
+        if (km_rise_q[i]) begin
+          if (km_rise_en_q[i] && (km_cpu_irq_i === 1'b1))
+            u_sep_km_kmcsr_status_cg.sample(5'd3, 16'({4'(i), 1'b1}));
+          if (!km_rise_en_q[i] && ((st & en) == 12'h0) && (km_cpu_irq_i === 1'b0))
+            u_sep_km_kmcsr_status_cg.sample(5'd3, 16'({4'(i), 1'b0}));
+        end
+      end
+      if (!km_cpu_irq_q && (km_cpu_irq_i === 1'b1) && ((st & en) != 12'h0))
+        u_sep_km_kmcsr_status_cg.sample(5'd4, 16'd0);
+      if (km_cpu_irq_q && (km_cpu_irq_i === 1'b0) && (km_mask_q != 12'h0) && ((st & en) == 12'h0) &&
+          (en == km_rise_en_q))
+        u_sep_km_kmcsr_status_cg.sample(5'd4, 16'd1);
+    end
+    if (km_own_csr && km_rel_ev && (km_irq_enable_i === 12'h0))
+      u_sep_km_kmcsr_status_cg.sample(5'd4, 16'd2);
+  end
+
+  // ---------------------------------------------------------------------
+  // Reset-domain points that compare the pre-reset record with the value
+  // KmSettle clocks after the release.
+  // ---------------------------------------------------------------------
+  logic [6:0] km_wrong_cnt = '0;
+  logic [31:0] km_wrong_code = '0;
+  logic [4:0] km_hold_d = '0;
+  logic km_hold_v = 1'b0, km_hold_seen = 1'b0;
+  logic [4:0] km_hold_cnt = '0;
+  logic km_hold_rel = 1'b0;
+  logic [2:0] km_soft_iso_seen = '0;
+  logic km_in_soft = 1'b0;
+  wire km_lsu_aw_start = (lsu_aw_valid_i === 1'b1) && (lsu_aw_addr_i == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR);
+  always @(posedge clk_i) begin
+    logic warm;
+    logic [255:0] lw_mask, lu_mask, seal_mask;
+    warm = !km_rel_cold;
+    for (int i = 0; i < 64; i++) begin
+      lw_mask[4*i+:4] = 4'b0001;
+      lu_mask[4*i+:4] = 4'b0010;
+      seal_mask[4*i+:4] = 4'b1000;
+    end
+    if (km_rel_ev) begin
+      // Scrambler (cp_mem_scr_ctrl).
+      if (km_own_scr && warm && (km_rst_pre_scr_ctrl == 2'b11) && (km_scr_ctrl_i === 2'b11))
+        u_sep_km_memory_boot_cg.sample(5'd2, 16'd4);
+      if (km_own_scr && !warm && (km_rst_pre_scr_ctrl != 2'b00) && (km_scr_ctrl_i === 2'b00))
+        u_sep_km_memory_boot_cg.sample(5'd2, 16'd5);
+      // KPV CTRL and scrambler.
+      if (km_own_kpv) begin
+        if ((km_rst_pre_ctrl != '0) && (km_kpv_ctrl_i === '0))
+          u_sep_km_kpv_slot_cg.sample(5'd2, 16'(warm));
+        if (((km_rst_pre_ctrl & lw_mask) != '0) && ((km_kpv_ctrl_i & lw_mask) === '0))
+          u_sep_km_kpv_slot_cg.sample(5'd4, warm ? 16'd3 : 16'd4);
+        if (warm && ((km_rst_pre_ctrl & lu_mask) != '0) && ((km_kpv_ctrl_i & lu_mask) === '0))
+          u_sep_km_kpv_slot_cg.sample(5'd5, 16'd3);
+        if (warm && ((km_rst_pre_ctrl & seal_mask) != '0) && ((km_kpv_ctrl_i & seal_mask) === '0))
+          u_sep_km_kpv_slot_cg.sample(5'd7, 16'd3);
+        if (warm && (km_rst_pre_kpv_scr != 2'b00) && (km_kpv_scr_ctrl_i === km_rst_pre_kpv_scr))
+          u_sep_km_kpv_slot_cg.sample(5'd8, 16'd2);
+        if (!warm && (km_rst_pre_kpv_scr != 2'b00) && (km_kpv_scr_ctrl_i === 2'b00))
+          u_sep_km_kpv_slot_cg.sample(5'd8, 16'd3);
+      end
+      // OTP lock registers (cp_otp_lock_reg; the reset bins also belong to
+      // the KMCSR reset test).
+      if (km_own_otp || km_own_csr) begin
+        if (warm && (km_rst_pre_rlock != 9'h0) && (km_rst_pre_rlock_cold != 9'h0) &&
+            (km_otp_rlock_i === 9'h0) && (km_otp_rlock_cold_i === km_rst_pre_rlock_cold))
+          u_sep_km_otp_readout_cg.sample(5'd5, 16'd3);
+        if (!warm && ((km_rst_pre_rlock | km_rst_pre_rlock_cold) != 9'h0) &&
+            (km_otp_rlock_i === 9'h0) && (km_otp_rlock_cold_i === 9'h0))
+          u_sep_km_otp_readout_cg.sample(5'd5, 16'd4);
+      end
+      // SRAM_EXEC_MODE and the lockout (cp_ex_mode_enable,
+      // cp_ex_lockout_irreversible).
+      if (km_own_cpu && km_rst_pre_exec && (km_sram_exec_mode_i === 1'b0)) begin
+        u_sep_km_exec_protection_cg.sample(5'd1, warm ? 16'd2 : 16'd3);
+        if (km_rst_pre_engaged) u_sep_km_exec_protection_cg.sample(5'd4, 16'd1);
+      end
+      // Reset-domain matrix and COLD_BOOT_DONE history.
+      if (km_own_csr) begin
+        if (!warm) begin
+          if ((km_rst_pre_sram_lock != '0) && (km_sram_lock_i === '0))
+            u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b00_0));
+          if ((km_rst_pre_rlock != '0) && (km_otp_rlock_i === '0))
+            u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b01_0));
+          if ((km_rst_pre_rlock_cold != '0) && (km_otp_rlock_cold_i === '0))
+            u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b10_0));
+          if (km_rst_pre_cbd && (km_cold_boot_done_i === 1'b0))
+            u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b11_0));
+          if (km_cold_boot_done_i === 1'b0) u_sep_km_reset_domain_cg.sample(5'd3, 16'd0);
+          if (km_rst_pre_cbd && (km_cold_boot_done_i === 1'b0))
+            u_sep_km_reset_domain_cg.sample(5'd3, 16'd3);
+        end else begin
+          if ((km_rst_pre_sram_lock != '0) && (km_sram_lock_i === '0))
+            u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b00_1));
+          if ((km_rst_pre_rlock != '0) && (km_otp_rlock_i === '0))
+            u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b01_1));
+          if ((km_rst_pre_rlock_cold != '0) && (km_otp_rlock_cold_i === km_rst_pre_rlock_cold))
+            u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b10_1));
+          if (km_rst_pre_cbd && (km_cold_boot_done_i === 1'b1))
+            u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b11_1));
+          if (km_warm_soft && km_rst_pre_cbd && (km_cold_boot_done_i === 1'b1))
+            u_sep_km_reset_domain_cg.sample(5'd3, 16'd2);
+        end
+      end
+      // Sampler CFG defaults (cp_smp_reset_defaults).
+      if ((km_own_smp || km_own_csr) && (km_smp_cfg_i === KmSmpCfgReset))
+        u_sep_km_drbg_sampler_cg.sample(5'd8, 16'(warm));
+    end
+    // COLD_BOOT_DONE set by the ROM.
+    if (km_own_csr && !km_cbd_q && (km_cold_boot_done_i === 1'b1) && km_rst_cold_n)
+      u_sep_km_reset_domain_cg.sample(5'd3, 16'd1);
+    // Reset source.
+    if (km_own_csr) begin
+      if (km_swrst_q && !km_swrst_n && km_warm_q && km_rst_cold_n)
+        u_sep_km_reset_domain_cg.sample(5'd0, 16'd0);
+      if (km_cold_fall) u_sep_km_reset_domain_cg.sample(5'd0, 16'd1);
+      if (km_soft_q && !km_soft_n && km_rst_cold_n) u_sep_km_reset_domain_cg.sample(5'd0, 16'd2);
+    end
+    // A wrong SOFT_RST_CODE takes no reset over the quiet window.
+    if (kw_ev && (kw_addr == KmCsrSoftRst) && (kw_data != KmSoftRstCode)) begin
+      km_wrong_cnt <= 7'd1;
+      km_wrong_code <= kw_data;
+    end else if (km_wrong_cnt != 7'd0) begin
+      if (!km_soft_n || !km_rst_warm_n || !km_rst_cold_n) km_wrong_cnt <= '0;
+      else if (km_wrong_cnt == 7'(KmQuietWin)) begin
+        km_wrong_cnt <= '0;
+        if (km_own_csr) begin
+          if (km_wrong_code == 32'h0) u_sep_km_reset_domain_cg.sample(5'd1, 16'd0);
+          else if (km_wrong_code == 32'hFFFF_FFFF) u_sep_km_reset_domain_cg.sample(5'd1, 16'd1);
+          else if ($countones(km_wrong_code ^ KmSoftRstCode) == 1)
+            u_sep_km_reset_domain_cg.sample(5'd1, 16'd2);
+        end
+      end else km_wrong_cnt <= km_wrong_cnt + 7'd1;
+    end
+    // Hold: W = clocks from the km_sw_rst_n fall to AWVALID of the next
+    // SW_RESET_N write; the warm reset rises at least 10 clocks after
+    // km_sw_rst_n rises.
+    if (km_swrst_q && !km_swrst_n) begin
+      km_hold_d <= '0;
+      km_hold_v <= 1'b1;
+      km_hold_seen <= 1'b0;
+    end else if (km_hold_v && !km_hold_seen) begin
+      if (km_lsu_aw_start) km_hold_seen <= 1'b1;
+      else if (km_hold_d != 5'h1F) km_hold_d <= km_hold_d + 5'd1;
+    end
+    if (!km_swrst_q && km_swrst_n && km_hold_v) begin
+      km_hold_rel <= 1'b1;
+      km_hold_cnt <= 5'd1;
+    end else if (km_hold_rel) begin
+      if (km_rst_warm_n) begin
+        km_hold_rel <= 1'b0;
+        km_hold_v <= 1'b0;
+        if (km_own_csr && km_hold_seen && (km_hold_cnt >= 5'd10))
+          u_sep_km_reset_domain_cg.sample(5'd4, 16'(km_hold_d + 5'd1));
+      end else if (km_hold_cnt != 5'h1F) km_hold_cnt <= km_hold_cnt + 5'd1;
+    end
+    // Isolation probes during a soft reset.
+    if (km_soft_q && !km_soft_n && km_rst_cold_n) begin
+      km_in_soft <= 1'b1;
+      km_soft_iso_seen <= '0;
+    end else if (km_in_soft) begin
+      for (int i = 0; i < 3; i++) if (km_iso_i[i] !== 1'b0) km_soft_iso_seen[i] <= 1'b1;
+      if (!km_warm_q && km_rst_warm_n) begin
+        km_in_soft <= 1'b0;
+        if (km_own_csr)
+          for (int i = 0; i < 3; i++)
+          if (!km_soft_iso_seen[i] && (km_iso_i[i] === 1'b0))
+            u_sep_km_reset_domain_cg.sample(5'd5, 16'(i));
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // km_unrecoverable_err_o, the trap cause and the lockout order
+  // (cp_fr_err_out, cp_km_trap_cause, cp_ex_lockout_order).
+  // ---------------------------------------------------------------------
+  logic [12:0] km_err_hi_cnt = '0;
+  logic [10:0] km_run_cnt = '0;
+  logic km_run_done = 1'b0;
+  logic km_trap_q = 1'b0, km_rav_q = 1'b0, km_rav_seen = 1'b0;
+  always @(posedge clk_i) begin
+    logic unrec, trap_rise;
+    logic [31:0] f;
+    unrec = (km_unrec_err_i === 1'b1);
+    km_trap_q <= (km_trap_i === 1'b1);
+    km_rav_q <= (km_irq_status_i[11] === 1'b1);
+    trap_rise = !km_trap_q && (km_trap_i === 1'b1);
+    if (!km_rst_warm_n || !km_rst_cold_n) begin
+      km_run_cnt <= '0;
+      km_run_done <= 1'b0;
+      km_rav_seen <= 1'b0;
+    end else begin
+      if (!km_rav_q && (km_irq_status_i[11] === 1'b1)) km_rav_seen <= 1'b1;
+      if (!unrec && !km_run_done) begin
+        if (km_run_cnt == 11'(KmRunWin)) begin
+          km_run_done <= 1'b1;
+          if (km_own_cpu) u_sep_km_fault_report_cg.sample(5'd0, 16'd0);
+        end else km_run_cnt <= km_run_cnt + 11'd1;
+      end
+    end
+    if (unrec) begin
+      if (km_err_hi_cnt != 13'h1FFF) km_err_hi_cnt <= km_err_hi_cnt + 13'd1;
+    end else km_err_hi_cnt <= '0;
+    if (km_own_cpu) begin
+      if (!km_unrec_q && unrec && (km_trap_i === 1'b1))
+        u_sep_km_fault_report_cg.sample(5'd0, 16'd1);
+      if (km_unrec_q && !unrec && (!km_rst_warm_n || !km_rst_cold_n || !km_warm_q || !km_cold_q)) begin
+        if (km_err_hi_cnt >= 13'(KmErrHoldWin)) u_sep_km_fault_report_cg.sample(5'd0, 16'd2);
+        u_sep_km_fault_report_cg.sample(5'd0, (!km_rst_cold_n || !km_cold_q) ? 16'd4 : 16'd3);
+      end
+      if (trap_rise) begin
+        f = km_last_fetch;
+        if (km_rav_seen) u_sep_km_exec_protection_cg.sample(5'd3, 16'd1);
+        if ((f == 32'h0010_0073) || (f[15:0] == 16'h9002) || (f[31:16] == 16'h9002))
+          u_sep_km_fault_report_cg.sample(5'd1, (km_irq_active_i === 1'b1) ? 16'd3 : 16'd0);
+        else if ((f[6:0] == 7'h0B) && (f[31:25] == 7'h2C) && (f[14:12] >= 3'd3))
+          u_sep_km_fault_report_cg.sample(5'd1, 16'd5);
+        else if ((f[6:0] == 7'h03) || (f[6:0] == 7'h23) ||
+                 ((f[1:0] == 2'b00) && ((f[15:13] == 3'b010) || (f[15:13] == 3'b110)) &&
+                  (f[15:0] != 16'h0)))
+          u_sep_km_fault_report_cg.sample(5'd1, 16'd2);
+        else u_sep_km_fault_report_cg.sample(5'd1, (km_irq_active_i === 1'b1) ? 16'd4 : 16'd1);
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // KM mailbox (sep_km_mailbox_fault_cg, sep_km_mailbox_transport_cg).
+  // KM side only; the SEP-side cells are added with their owner.
+  // ---------------------------------------------------------------------
+  logic [3:0] km_mbx_err_q = '0;
+  logic [1:0] km_mbx_flush_q = '0;
+  logic [1:0] km_fl_fill = '0;
+  logic km_fl_init_km = 1'b0, km_fl_on = 1'b0;
+  logic [4:0] km_in_d_q = '0, km_out_d_q = '0;
+  logic [3:0] km_flags_q = '0;
+  logic km_in_stable = 1'b0, km_out_stable = 1'b0;
+  logic km_sep_in_q = 1'b0, km_sep_out_q = 1'b0;  // separator words popped per direction
+  logic km_both_dir_done = 1'b0;
+  logic km_sepset_q = 1'b0, km_sep_sepset_q = 1'b0;
+  logic km_push_q = 1'b0, km_sep_push_q = 1'b0;
+  logic [4:0] km_src_q = '0, km_rise5_q = '0, km_en5_q = '0, km_mask5_q = '0;
+  logic km_mbox_irq_q = 1'b0;
+  logic [3:0] km_mbx_w1c_age = '0;
+  logic km_sep_irq_pre = 1'b0;
+  // Sources in KM_IRQ_ENABLE bit order: 0 data available, 1 write space, 2
+  // outbound overflow, 3 inbound underflow, 4 flushed by SEP.
+  function automatic logic [2:0] km_src_pt(int unsigned e);
+    case (e)
+      0: return 3'd0;
+      1: return 3'd1;
+      2: return 3'd3;
+      3: return 3'd2;
+      default: return 3'd4;
+    endcase
+  endfunction
+  always @(posedge clk_i) begin
+    logic [4:0] src, en, rise;
+    logic in_e, in_f, out_e, out_f;
+    logic [3:0] hs;
+    hs = km_mbx_hs_i;
+    in_e = (km_mbx_flags_i[0] === 1'b1);
+    in_f = (km_mbx_flags_i[1] === 1'b1);
+    out_e = (km_mbx_flags_i[2] === 1'b1);
+    out_f = (km_mbx_flags_i[3] === 1'b1);
+    km_mbx_err_q <= km_mbx_err_i;
+    km_mbx_flush_q <= km_mbx_flush_i;
+    km_in_d_q <= km_mbx_in_depth_i;
+    km_out_d_q <= km_mbx_out_depth_i;
+    km_flags_q <= km_mbx_flags_i;
+    km_sepset_q <= (km_mbx_km_sepset_i === 1'b1);
+    km_sep_sepset_q <= (km_mbx_sep_sepset_i === 1'b1);
+    km_push_q <= (hs[2] === 1'b1);
+    km_sep_push_q <= (hs[0] === 1'b1);
+    if (!km_rst_cold_n) begin
+      km_sep_in_q <= 1'b0;
+      km_sep_out_q <= 1'b0;
+      km_both_dir_done <= 1'b0;
+      km_fl_on <= 1'b0;
+    end
+    if (km_own_mbx && km_rst_cold_n) begin
+      // Error conditions and their response bits.
+      if (km_mbx_err_q[1] && (km_mbx_km_irq_i[1] === 1'b1))
+        u_sep_km_mailbox_fault_cg.sample(5'd0, 16'd0);
+      if (km_mbx_err_q[0] && (km_mbx_km_irq_i[0] === 1'b1))
+        u_sep_km_mailbox_fault_cg.sample(5'd0, 16'd1);
+      if (km_mbx_err_i[1] === 1'b1)
+        u_sep_km_mailbox_fault_cg.sample(5'd1, 16'({1'b0, km_mbx_km_ctrl_i[1] === 1'b1}));
+      if (km_mbx_err_i[0] === 1'b1)
+        u_sep_km_mailbox_fault_cg.sample(5'd1, 16'({1'b1, km_mbx_km_ctrl_i[0] === 1'b1}));
+      // Access by requester.
+      if (hs[0] === 1'b1) u_sep_km_mailbox_transport_cg.sample(5'd0, 16'(2'b00));
+      if (hs[3] === 1'b1) u_sep_km_mailbox_transport_cg.sample(5'd0, 16'(2'b01));
+      if (hs[2] === 1'b1) u_sep_km_mailbox_transport_cg.sample(5'd0, 16'(2'b10));
+      if (hs[1] === 1'b1) u_sep_km_mailbox_transport_cg.sample(5'd0, 16'(2'b11));
+      // Occupancy, sampled when depth and flags hold for two clocks.
+      if (km_in_stable) begin
+        if ((km_mbx_in_depth_i == 5'd0) != in_e)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b0_100));
+        else if ((km_mbx_in_depth_i == 5'd16) != in_f)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b0_100));
+        else if (km_mbx_in_depth_i == 5'd0)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b0_000));
+        else if (km_mbx_in_depth_i == 5'd1)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b0_001));
+        else if (km_mbx_in_depth_i == 5'd15)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b0_010));
+        else if (km_mbx_in_depth_i == 5'd16)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b0_011));
+      end
+      if (km_out_stable) begin
+        if ((km_mbx_out_depth_i == 5'd0) != out_e)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b1_100));
+        else if ((km_mbx_out_depth_i == 5'd16) != out_f)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b1_100));
+        else if (km_mbx_out_depth_i == 5'd0)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b1_000));
+        else if (km_mbx_out_depth_i == 5'd1)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b1_001));
+        else if (km_mbx_out_depth_i == 5'd15)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b1_010));
+        else if (km_mbx_out_depth_i == 5'd16)
+          u_sep_km_mailbox_transport_cg.sample(5'd1, 16'(4'b1_011));
+      end
+      // Separator.
+      if (hs[0] === 1'b1)
+        u_sep_km_mailbox_transport_cg.sample(5'd2, (km_mbx_sep_i[0] === 1'b1) ? 16'd0 : 16'd1);
+      if (hs[2] === 1'b1)
+        u_sep_km_mailbox_transport_cg.sample(5'd2, (km_mbx_sep_i[2] === 1'b1) ? 16'd0 : 16'd1);
+      if (hs[1] === 1'b1)
+        u_sep_km_mailbox_transport_cg.sample(5'd2, (km_mbx_sep_i[1] === 1'b1) ? 16'd2 : 16'd3);
+      if (hs[3] === 1'b1)
+        u_sep_km_mailbox_transport_cg.sample(5'd2, (km_mbx_sep_i[3] === 1'b1) ? 16'd2 : 16'd3);
+      if ((km_push_q && km_sepset_q && (km_mbx_km_sepset_i === 1'b0)) ||
+          (km_sep_push_q && km_sep_sepset_q && (km_mbx_sep_sepset_i === 1'b0)))
+        u_sep_km_mailbox_transport_cg.sample(5'd2, 16'd5);
+      if (km_sep_in_q && km_sep_out_q && !km_both_dir_done) begin
+        km_both_dir_done <= 1'b1;
+        u_sep_km_mailbox_transport_cg.sample(5'd2, 16'd4);
+      end
+    end
+    if ((hs[1] === 1'b1) && (km_mbx_sep_i[1] === 1'b1)) km_sep_in_q <= 1'b1;
+    if ((hs[3] === 1'b1) && (km_mbx_sep_i[3] === 1'b1)) km_sep_out_q <= 1'b1;
+    km_in_stable <= (km_mbx_in_depth_i === km_in_d_q) && (km_mbx_flags_i[1:0] === km_flags_q[1:0]);
+    km_out_stable <= (km_mbx_out_depth_i === km_out_d_q) &&
+        (km_mbx_flags_i[3:2] === km_flags_q[3:2]);
+    // Flush: initiator and pre-flush fill at the rise, the result at the
+    // self-clear.
+    if (!km_mbx_flush_q[0] && (km_mbx_flush_i[0] === 1'b1)) begin
+      km_fl_on <= 1'b1;
+      km_fl_init_km <= 1'b1;
+      km_fl_fill <= 2'((km_mbx_in_depth_i != 5'd0) + (km_mbx_out_depth_i != 5'd0));
+    end else if (!km_mbx_flush_q[1] && (km_mbx_flush_i[1] === 1'b1)) begin
+      km_fl_on <= 1'b1;
+      km_fl_init_km <= 1'b0;
+      km_fl_fill <= 2'((km_mbx_in_depth_i != 5'd0) + (km_mbx_out_depth_i != 5'd0));
+    end
+    if (km_fl_on && (km_mbx_flush_i[0] !== 1'b1) && (km_mbx_flush_i[1] !== 1'b1)) begin
+      km_fl_on <= 1'b0;
+      if (km_own_mbx) begin
+        if (km_fl_init_km && in_e && out_e)
+          u_sep_km_mailbox_fault_cg.sample(5'd3, 16'({1'b1, km_fl_fill}));
+        if (!km_fl_init_km && out_e)
+          u_sep_km_mailbox_fault_cg.sample(5'd3, 16'({1'b0, km_fl_fill}));
+      end
+    end
+    // Sticky persistence after the cause, read by the KM.
+    if (kr_ev && (kr_addr == KmMbxIrqStatus) && km_own_mbx) begin
+      if (kr_data[3] && !km_mbx_err_q[1] && (km_mbx_err_i[1] !== 1'b1))
+        u_sep_km_mailbox_fault_cg.sample(5'd2, 16'({2'd0, 2'd2}));
+      if (kr_data[2] && !km_mbx_err_q[0] && (km_mbx_err_i[0] !== 1'b1))
+        u_sep_km_mailbox_fault_cg.sample(5'd2, 16'({2'd1, 2'd2}));
+      if (kr_data[4] && (km_mbx_flush_i[1] !== 1'b1))
+        u_sep_km_mailbox_fault_cg.sample(5'd2, 16'({2'd2, 2'd2}));
+    end
+    // SEP flushed_by_km, written and read by the host.
+    if ((lsu_aw_valid_i === 1'b1) && (lsu_aw_ready_i === 1'b1) &&
+        (lsu_aw_addr_i == KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_ADDR))
+      km_sep_irq_pre <= (km_mbx_sep_irq_i[2] === 1'b1);
+    if (km_own_mbx && wr_ev && (aw_addr_q == KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_ADDR) && km_sep_irq_pre) begin
+      if (wr_data[4] && (km_mbx_sep_irq_i[2] === 1'b0))
+        u_sep_km_mailbox_fault_cg.sample(5'd2, 16'({2'd3, 2'd0}));
+      if (!wr_data[4] && (km_mbx_sep_irq_i[2] === 1'b1))
+        u_sep_km_mailbox_fault_cg.sample(5'd2, 16'({2'd3, 2'd1}));
+    end
+    if (km_own_mbx && rd_ev && (ar_addr_q == KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_ADDR) && rd_data[4] &&
+        (km_mbx_flush_i[0] !== 1'b1))
+      u_sep_km_mailbox_fault_cg.sample(5'd2, 16'({2'd3, 2'd2}));
+    // KM-side interrupt sources by enable, and the KM aggregate.
+    src = {
+      km_mbx_km_irq_i[2] === 1'b1,
+      km_mbx_km_irq_i[1] === 1'b1,
+      km_mbx_km_irq_i[0] === 1'b1,
+      !out_f,
+      !in_e
+    };
+    for (int i = 0; i < 5; i++) en[i] = (km_mbx_km_en_i[i] === 1'b1);
+    rise = src & ~km_src_q;
+    km_src_q <= src;
+    km_rise5_q <= km_rst_cold_n ? rise : '0;
+    km_en5_q <= en;
+    km_mask5_q <= src & en;
+    km_mbox_irq_q <= (km_cpu_mbox_irq_i === 1'b1);
+    if (kw_ev && (kw_addr == KmMbxIrqStatus)) km_mbx_w1c_age <= 4'd1;
+    else if ((km_mbx_w1c_age != 4'd0) && (km_mbx_w1c_age != 4'd4))
+      km_mbx_w1c_age <= km_mbx_w1c_age + 4'd1;
+    else km_mbx_w1c_age <= '0;
+    if (km_own_mbx && km_rst_cold_n) begin
+      for (int i = 0; i < 5; i++) begin
+        if (km_rise5_q[i]) begin
+          if (km_en5_q[i] && (km_cpu_mbox_irq_i === 1'b1))
+            u_sep_km_mailbox_transport_cg.sample(5'd3, 16'({km_src_pt(i), 1'b1}));
+          if (!km_en5_q[i] && ((src & en) == 5'h0) && (km_cpu_mbox_irq_i === 1'b0))
+            u_sep_km_mailbox_transport_cg.sample(5'd3, 16'({km_src_pt(i), 1'b0}));
+        end
+      end
+      if (!km_mbox_irq_q && (km_cpu_mbox_irq_i === 1'b1) && ((src & en) != 5'h0))
+        u_sep_km_mailbox_transport_cg.sample(5'd4, 16'd0);
+      if (km_mbox_irq_q && (km_cpu_mbox_irq_i === 1'b0) && ((src & en) == 5'h0) && (en == km_en5_q)) begin
+        if ((km_mask5_q != 5'h0) && ((km_mask5_q & 5'b11100) == 5'h0))
+          u_sep_km_mailbox_transport_cg.sample(5'd4, 16'd1);
+        if ((km_mask5_q != 5'h0) && ((km_mask5_q & 5'b00011) == 5'h0) && (km_mbx_w1c_age != 4'd0))
+          u_sep_km_mailbox_transport_cg.sample(5'd4, 16'd2);
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // KM DRBG sampler (sep_km_drbg_sampler_cg, sep_km_drbg_fault_cg). The
+  // sink TVALID is the sampler input after the HK-STRM inject.
+  // ---------------------------------------------------------------------
+  logic [2:0] km_smp_st_q = '0;
+  logic km_tv_q = 1'b0, km_tr_q = 1'b0;
+  logic km_pf_q = 1'b0;
+  logic [15:0] km_good_q = '0;
+  logic [7:0] km_bad_q = '0;
+  logic [1:0] km_sticky_q = '0;
+  logic km_wait_req = 1'b0;  // a DATA read started with no prefetched word
+  logic km_prev_data_ok = 1'b0;
+  logic [15:0] km_hs_since = '0;
+  logic km_pf_read_done = 1'b0;  // a DATA read completed with prefetch 1
+  logic [3:0] km_pf_dis_cnt = '0;
+  logic km_pf_dis_word = 1'b0;  // prefetch disabled with a word held
+  logic [17:0] km_stall_cnt = '0;
+  logic km_stall_done = 1'b0;
+  logic [31:0] km_pf_val = '0;
+  logic km_pf_val_v = 1'b0, km_pf_prev_rd = 1'b0;
+  logic [31:0] km_pf_prev_val = '0;
+  logic [3:0] km_to_cnt = '0;
+  logic [7:0] km_to_bad = '0;
+  logic km_to_slv = 1'b0;
+  logic [3:0] km_se_cnt = '0;
+  logic km_se_active = 1'b0, km_se_rd_pend = 1'b0;
+  logic [7:0] km_se_bad = '0;
+  logic km_trng_armed = 1'b0;
+  wire km_tv = (km_smp_tvalid_i === 1'b1);
+  wire km_tr = (km_smp_tready_i === 1'b1);
+  wire km_smp_hs = km_tv && km_tr;
+  // Withdrawal: TVALID high with TREADY low, then TVALID low.
+  wire km_withdraw = km_tv_q && !km_tr_q && !km_tv && km_rst_warm_n && km_rst_cold_n;
+  wire km_data_rd = kr_ev && (kr_addr == KmSmpData);
+  always @(posedge clk_i) begin
+    logic [2:0] st;
+    st = km_smp_state_i;
+    km_smp_st_q <= st;
+    km_tv_q <= km_tv;
+    km_tr_q <= km_tr;
+    km_pf_q <= (km_smp_prefetched_i === 1'b1);
+    km_good_q <= km_smp_count_good_i;
+    km_bad_q <= km_smp_count_bad_i;
+    km_sticky_q <= km_smp_sticky_i;
+    if (!km_rst_warm_n || !km_rst_cold_n) begin
+      km_wait_req <= 1'b0;
+      km_prev_data_ok <= 1'b0;
+      km_pf_read_done <= 1'b0;
+      km_pf_dis_word <= 1'b0;
+      km_pf_val_v <= 1'b0;
+      km_pf_prev_rd <= 1'b0;
+      km_to_cnt <= '0;
+      km_se_cnt <= '0;
+      km_se_rd_pend <= 1'b0;
+      km_stall_cnt <= '0;
+      km_stall_done <= 1'b0;
+    end else if (km_own_smp) begin
+      // Read service and the arrival of TVALID at the read start.
+      if (kx_rstart && (32'(km_axi_req_i.ar.addr) == KmSmpData)) begin
+        if (km_smp_prefetched_i === 1'b1) u_sep_km_drbg_sampler_cg.sample(5'd0, 16'd0);
+        else km_wait_req <= 1'b1;
+        if (km_smp_cfg_i[0] === 1'b0) u_sep_km_drbg_sampler_cg.sample(5'd4, 16'd0);
+      end
+      if ((km_smp_st_q == KmStIdle) && (st == KmStRequest)) begin
+        if (km_wait_req && km_tr) u_sep_km_drbg_sampler_cg.sample(5'd0, 16'd1);
+        km_wait_req <= 1'b0;
+        if (km_tv) u_sep_km_drbg_sampler_cg.sample(5'd1, 16'd1);
+      end
+      if (km_smp_hs && ((st == KmStRequest) || (st == 3'd2)))
+        u_sep_km_drbg_sampler_cg.sample(5'd2, 16'(km_smp_tstrb_i));
+      // Freshness: a sink handshake between two OKAY DATA reads.
+      if (km_smp_hs && (km_hs_since != 16'hFFFF)) km_hs_since <= km_hs_since + 16'd1;
+      if (km_data_rd) begin
+        if ((kr_resp == KmOkay) && km_prev_data_ok && ((km_hs_since != 16'd0) || km_smp_hs))
+          u_sep_km_drbg_sampler_cg.sample(5'd3, 16'd1);
+        km_prev_data_ok <= (kr_resp == KmOkay);
+        km_hs_since <= '0;
+        if ((kr_resp == KmOkay) && (km_smp_cfg_i[0] === 1'b1)) km_pf_read_done <= 1'b1;
+        // PREFETCH_DATA mirror: the next DATA read returns the mirrored word.
+        if (km_pf_val_v && (kr_resp == KmOkay) && (kr_data == km_pf_val))
+          u_sep_km_drbg_sampler_cg.sample(5'd5, 16'd0);
+        km_pf_val_v <= 1'b0;
+        km_pf_prev_rd <= 1'b0;
+        // Good-side saturation: an OKAY read at 0xFFFF keeps 0xFFFF.
+        if ((kr_resp == KmOkay) && (km_good_q == 16'hFFFF) && (km_smp_count_good_i === 16'hFFFF))
+          u_sep_km_drbg_sampler_cg.sample(5'd6, 16'd3);
+      end
+      if (kr_ev && (kr_addr == KmSmpPfData)) begin
+        if (krp_pf && (kr_resp == KmOkay)) begin
+          km_pf_val <= kr_data;
+          km_pf_val_v <= 1'b1;
+          if (km_pf_prev_rd && (kr_data == km_pf_prev_val))
+            u_sep_km_drbg_sampler_cg.sample(5'd5, 16'd1);
+          km_pf_prev_rd <= 1'b1;
+          km_pf_prev_val <= kr_data;
+        end
+        if (km_pf_dis_word && (km_smp_cfg_i[0] === 1'b0) && (kr_data == 32'h0))
+          u_sep_km_drbg_sampler_cg.sample(5'd5, 16'd2);
+      end
+      // Prefetch: a word held after a read, cleared when disabled.
+      if (!km_pf_q && (km_smp_prefetched_i === 1'b1)) begin
+        if (km_pf_read_done) u_sep_km_drbg_sampler_cg.sample(5'd4, 16'd2);
+        km_pf_read_done <= 1'b0;
+        if (km_smp_count_good_i === km_good_q) u_sep_km_drbg_sampler_cg.sample(5'd6, 16'd4);
+      end
+      if (km_smp_cfg_q[0] && (km_smp_cfg_i[0] === 1'b0) && km_pf_q) km_pf_dis_cnt <= 4'd1;
+      else if (km_pf_dis_cnt != 4'd0) begin
+        if (km_smp_prefetched_i === 1'b0) begin
+          km_pf_dis_cnt <= '0;
+          km_pf_dis_word <= 1'b1;
+          u_sep_km_drbg_sampler_cg.sample(5'd4, 16'd3);
+        end else if (km_pf_dis_cnt == 4'd4) km_pf_dis_cnt <= '0;
+        else km_pf_dis_cnt <= km_pf_dis_cnt + 4'd1;
+      end
+      if ((km_smp_cfg_i[0] === 1'b1) && !km_smp_cfg_q[0]) km_pf_dis_word <= 1'b0;
+      // A stalled prefetch: prefetch 1, no word, no TVALID, longer than the
+      // timeout, with no timeout and no bad count.
+      if ((km_smp_cfg_i[0] === 1'b1) && (km_smp_prefetched_i === 1'b0) && !km_tv && (st == KmStIdle) &&
+          (km_smp_sticky_i[0] === km_sticky_q[0]) && (km_smp_count_bad_i === km_bad_q)) begin
+        if (km_stall_cnt != 18'h3FFFF) km_stall_cnt <= km_stall_cnt + 18'd1;
+        if (!km_stall_done && (km_smp_cfg_i[16:1] != 16'h0) &&
+            (km_stall_cnt > {2'b00, km_smp_cfg_i[16:1]} + 18'd16) && (km_smp_sticky_i[0] === 1'b0)) begin
+          km_stall_done <= 1'b1;
+          u_sep_km_drbg_sampler_cg.sample(5'd4, 16'd4);
+        end
+      end else begin
+        km_stall_cnt <= '0;
+        km_stall_done <= 1'b0;
+      end
+      // Timeout entry and its outcome.
+      if ((st == KmStTimeout) && (km_smp_st_q != KmStTimeout)) begin
+        if (km_smp_cfg_i[16:1] == 16'd1) u_sep_km_drbg_fault_cg.sample(5'd0, 16'd0);
+        if (km_smp_cfg_i[16:1] == 16'hFFFF) u_sep_km_drbg_fault_cg.sample(5'd0, 16'd1);
+        if (km_smp_st_q == KmStRequest) u_sep_km_drbg_fault_cg.sample(5'd1, 16'd0);
+        km_to_cnt <= 4'd1;
+        km_to_bad <= km_bad_q;
+        km_to_slv <= 1'b0;
+        if ((km_smp_sticky_i[0] === 1'b1) && !km_sticky_q[0])
+          u_sep_km_drbg_fault_cg.sample(5'd2, 16'd1);
+      end else if (km_to_cnt != 4'd0) begin
+        if (!km_sticky_q[0] && (km_smp_sticky_i[0] === 1'b1))
+          u_sep_km_drbg_fault_cg.sample(5'd2, 16'd1);
+        if ((km_bad_q == km_to_bad) && (km_smp_count_bad_i === km_to_bad + 8'd1))
+          u_sep_km_drbg_fault_cg.sample(5'd2, 16'd2);
+        if ((km_to_bad == 8'hFF) && (km_to_cnt == 4'd8) && (km_smp_count_bad_i === 8'hFF))
+          u_sep_km_drbg_sampler_cg.sample(5'd7, 16'd3);
+        if (!km_irqs_q[6] && (km_irq_status_i[6] === 1'b1))
+          u_sep_km_drbg_fault_cg.sample(5'd2, 16'd3);
+        km_to_cnt <= (km_to_cnt == 4'd8) ? 4'd0 : km_to_cnt + 4'd1;
+      end
+      if (km_data_rd && (kr_resp == KmSlverr) && (kr_data == 32'h0) && (km_to_cnt != 4'd0))
+        u_sep_km_drbg_fault_cg.sample(5'd2, 16'd0);
+      // Withdrawal with no read active and in the first active cycle.
+      if (km_withdraw) begin
+        km_se_bad <= km_bad_q;
+        if ((st == KmStIdle) && (km_smp_st_q == KmStIdle)) begin
+          km_se_active <= 1'b0;
+          km_se_cnt <= 4'd1;
+        end else if ((st == KmStRequest) && (km_smp_st_q == KmStIdle)) begin
+          km_se_active <= 1'b1;
+          km_se_rd_pend <= 1'b1;
+          km_se_cnt <= 4'd1;
+          if ((km_smp_cfg_i[16:1] == 16'd1) || (km_smp_cfg_i[16:1] == 16'd2))
+            u_sep_km_drbg_fault_cg.sample(5'd4, (km_smp_cfg_i[16:1] == 16'd2) ? 16'd1 : 16'd0);
+        end
+      end else if (km_se_cnt != 4'd0) begin
+        if (!km_se_active && (km_se_cnt == 4'd4) && (km_smp_sticky_i[1] === 1'b1) &&
+            (km_smp_count_bad_i === km_se_bad + 8'd1) && (km_irq_status_i[6] === 1'b1))
+          u_sep_km_drbg_fault_cg.sample(5'd3, 16'd0);
+        km_se_cnt <= (km_se_cnt == 4'd4) ? 4'd0 : km_se_cnt + 4'd1;
+      end
+      if (km_data_rd && km_se_rd_pend) begin
+        km_se_rd_pend <= 1'b0;
+        if ((kr_resp == KmSlverr) && (kr_data == 32'h0) && (km_smp_sticky_i[1] === 1'b1) &&
+            (km_smp_count_bad_i > km_se_bad))
+          u_sep_km_drbg_fault_cg.sample(5'd3, 16'd1);
+      end
+    end
+    // A TRNG reset while the KM is held, then the first DATA read.
+    if ((trng_rst_i === 1'b1) && (km_rst_i[0] === 1'b0)) km_trng_armed <= 1'b1;
+    if (km_data_rd && km_trng_armed) begin
+      km_trng_armed <= 1'b0;
+      if (km_own_smp && (kr_resp == KmOkay) && (km_smp_sticky_i[1] === 1'b0))
+        u_sep_km_drbg_fault_cg.sample(5'd6, 16'd1);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // KM OTP input: change status, dual-rail integrity and the secure test
+  // strap (cp_otp_change, cp_if_otp_dual_rail, cp_otp_secure_tm).
+  // ---------------------------------------------------------------------
+  km_intf_pkg::km_otp_data_t km_otp_q;
+  logic [8:0] km_chg_q = '0, km_chg_rise_q = '0;
+  logic [1:0] km_dr_cls[9];
+  logic [2:0] km_dr_cnt[9];
+  logic [3:0] km_dem_base = '0;
+  logic [6:0] km_quiet_cnt = '0;
+  logic km_quiet_armed = 1'b0, km_quiet_warm = 1'b0;
+  logic km_strap_at_rel = 1'b0, km_strap_bad = 1'b0, km_strap_done = 1'b0;
+  logic [10:0] km_strap_cnt = '0;
+  initial begin
+    km_otp_q = '0;
+    for (int f = 0; f < 9; f++) begin
+      km_dr_cls[f] = '0;
+      km_dr_cnt[f] = '0;
+    end
+  end
+  // Value and complement rail of field f: 0 life cycle {~raw, raw}, 1 the
+  // two demotion groups {~d, d}, 2 to 8 the 256-bit fields {~v, v}.
+  function automatic logic [511:0] km_otp_rails(km_intf_pkg::km_otp_data_t d, int unsigned f);
+    case (f)
+      0: return {252'h0, d.life_cycle[7:4], 252'h0, d.life_cycle[3:0]};
+      1: return {254'h0, d.demotion_state_2[1], d.demotion_state_1[1],
+                 254'h0, d.demotion_state_2[0], d.demotion_state_1[0]};
+      2: return d.chiplet_uid;
+      3: return d.sip_uid;
+      4: return d.sys_uid;
+      5: return d.class_key;
+      6: return d.sep_chiplet_id;
+      7: return d.sep_sip_id;
+      default: return d.sep_sys_id;
+    endcase
+  endfunction
+  function automatic logic [255:0] km_rail_mask(int unsigned f);
+    return (f == 0) ? 256'hF : (f == 1) ? 256'h3 : '1;
+  endfunction
+  always @(posedge clk_i) begin
+    logic [511:0] now, prev;
+    logic [255:0] m;
+    logic dv, dc, cons;
+    logic [8:0] rise;
+    logic [3:0] dem;
+    km_otp_q <= km_otp_data_i;
+    km_chg_q <= km_otp_chg_i;
+    dem = {km_otp_data_i.demotion_state_2, km_otp_data_i.demotion_state_1};
+    if (km_rel_ev && km_rel_cold) begin
+      km_dem_base <= dem;
+      km_dem_changed <= 1'b0;
+    end else if (km_rst_cold_n && (dem !== km_dem_base)) km_dem_changed <= 1'b1;
+    for (int f = 0; f < 9; f++) begin
+      now = km_otp_rails(km_otp_data_i, f);
+      prev = km_otp_rails(km_otp_q, f);
+      m = km_rail_mask(f);
+      dv = ((now[255:0] ^ prev[255:0]) & m) != '0;
+      dc = ((now[511:256] ^ prev[511:256]) & m) != '0;
+      cons = ((now[255:0] ^ now[511:256]) & m) == m;
+      if (km_dr_cnt[f] != 3'd0) begin
+        if (km_dr_cnt[f] == 3'd4) begin
+          km_dr_cnt[f] <= '0;
+          if (km_own_otp && ((km_dr_cls[f] == 2'd0) || (km_irq_status_i[9] === 1'b1)))
+            u_sep_km_integrity_fault_cg.sample(5'd5, 16'({4'(f), km_dr_cls[f]}));
+        end else km_dr_cnt[f] <= km_dr_cnt[f] + 3'd1;
+      end
+      if (km_rst_cold_n && (dv || dc) && !$isunknown(now)) begin
+        km_dr_cnt[f] <= 3'd1;
+        km_dr_cls[f] <= (dv && dc && cons) ? 2'd0 : (dv && !dc) ? 2'd1 : (dc && !dv) ? 2'd2 : 2'd3;
+      end
+    end
+    // Change status: per-field rise with both rails consistent and
+    // IRQ_STATUS.otp_change set; several fields in one clock.
+    for (int f = 0; f < 9; f++) rise[f] = !km_chg_q[f] && (km_otp_chg_i[f] === 1'b1);
+    km_chg_rise_q <= km_rst_cold_n ? rise : '0;
+    if (km_own_otp && km_rst_cold_n) begin
+      for (int f = 0; f < 9; f++) begin
+        now = km_otp_rails(km_otp_data_i, f);
+        m = km_rail_mask(f);
+        if (km_chg_rise_q[f] && (((now[255:0] ^ now[511:256]) & m) == m) &&
+            (km_irq_status_i[8] === 1'b1))
+          u_sep_km_otp_readout_cg.sample(5'd3, 16'(f));
+      end
+      if ($countones(rise) >= 2) u_sep_km_otp_readout_cg.sample(5'd3, 16'd11);
+    end
+    // Quiet windows: after a cold release (stable value) and after a warm
+    // release with the demotion state changed since the boot.
+    if (km_rel_ev) begin
+      km_quiet_armed <= 1'b1;
+      km_quiet_warm <= !km_rel_cold;
+      km_quiet_cnt <= '0;
+    end else if (km_quiet_armed) begin
+      if ((km_otp_data_i !== km_otp_q) || (km_otp_chg_i !== 9'h0) || (km_irq_status_i[8] !== 1'b0) ||
+          !km_rst_warm_n)
+        km_quiet_armed <= 1'b0;
+      else if (km_quiet_cnt == 7'(KmQuietWin)) begin
+        km_quiet_armed <= 1'b0;
+        if (km_own_otp) begin
+          if (!km_quiet_warm) u_sep_km_otp_readout_cg.sample(5'd3, 16'd9);
+          if (km_quiet_warm && km_dem_changed) u_sep_km_otp_readout_cg.sample(5'd3, 16'd10);
+        end
+      end else km_quiet_cnt <= km_quiet_cnt + 7'd1;
+    end
+    // The strap stays at its value from before the cold reset while the KM
+    // runs.
+    if (km_rel_ev && km_rel_cold) begin
+      km_strap_at_rel <= (km_strap_i === 1'b1);
+      km_strap_bad <= 1'b0;
+      km_strap_done <= 1'b0;
+      km_strap_cnt <= '0;
+    end else if (km_rst_cold_n && km_rst_warm_n && !km_strap_done) begin
+      if ((km_strap_i === 1'b1) != km_strap_at_rel) km_strap_bad <= 1'b1;
+      if (km_strap_cnt == 11'(KmRunWin)) begin
+        km_strap_done <= 1'b1;
+        if (km_own_otp && !km_strap_bad && ((km_secure_tm_i === 1'b1) == km_strap_at_rel))
+          u_sep_km_otp_readout_cg.sample(5'd6, 16'd2);
+      end else km_strap_cnt <= km_strap_cnt + 11'd1;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // eFuse program by path (cp_efw_program): the class is the strap at the
+  // go, else the request result when the program interface is idle again.
+  // ---------------------------------------------------------------------
+  logic [13:0] km_pg_cnt = '0;
+  logic km_pg_host = 1'b0, km_pg_tm = 1'b0, km_pg_busy_seen = 1'b0;
+  always @(posedge clk_i) begin
+    if (km_pg_cnt != 14'd0) begin
+      if (km_efuse_pg_busy_i === 1'b1) km_pg_busy_seen <= 1'b1;
+      if ((km_pg_busy_seen && (km_efuse_pg_busy_i === 1'b0) && (km_pg_cnt > 14'd2)) ||
+          (km_pg_cnt == 14'(KmPgWin))) begin
+        km_pg_cnt <= '0;
+        if (km_own_xbar) begin
+          if (km_pg_tm) u_sep_km_otp_readout_cg.sample(5'd8, 16'({km_pg_host, 2'd2}));
+          else if (!km_pg_host)
+            u_sep_km_otp_readout_cg.sample(5'd8,
+                                           (req_err_i === 1'b1) ? 16'(3'b0_01) : 16'(3'b0_00));
+        end
+      end else km_pg_cnt <= km_pg_cnt + 14'd1;
+    end
+    if (kw_ev && (kw_addr == KmEfCtrlBase + (KmEfPgCtrl - EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR)) &&
+        |(kw_data & KmEfPgGo)) begin
+      km_pg_cnt <= 14'd1;
+      km_pg_host <= 1'b0;
+      km_pg_tm <= (km_secure_tm_i === 1'b1);
+      km_pg_busy_seen <= 1'b0;
+    end else if (wr_ev && (aw_addr_q == KmEfPgCtrl) && |(wr_data & KmEfPgGo)) begin
+      km_pg_cnt <= 14'd1;
+      km_pg_host <= 1'b1;
+      km_pg_tm <= (km_secure_tm_i === 1'b1);
+      km_pg_busy_seen <= 1'b0;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Vault wipe (sep_km_vault_wipe_cg).
+  // ---------------------------------------------------------------------
+  logic km_wipe_q = 1'b0;
+  logic km_wp_sep = 1'b0, km_wp_trap = 1'b0;
+  logic [1:0] km_wp_cnt = '0;
+  logic km_wp_had_seal = 1'b0, km_wp_had_scr = 1'b0;
+  logic [3:0] km_wp_sram_wr = '0;
+  logic [98*32-1:0] km_wp_probe_q = '0, km_wp_probe_pre = '0;
+  logic [4:0] km_wp_in_d = '0;
+  logic [7:0] km_wp_valid = '0;
+  logic [10:0] km_wp_run = '0;
+  logic km_wp_run_on = 1'b0;
+  logic [7:0] km_wipe_hi_cnt = '0;
+  logic [7:0] km_wipe_pulses = '0;
+  logic km_wipe_seen = 1'b0, km_wipe_fell = 1'b0;
+  logic [4:0] km_w1h_cnt = '0;
+  logic km_w1h_pulse = 1'b0;
+  always @(posedge clk_i) begin
+    logic pulse, lvl;
+    int unsigned nz, nsr;
+    logic any_seal, any_ret;
+    pulse = (km_wipe_i[1] === 1'b1);
+    lvl = (km_wipe_i[0] === 1'b1);
+    km_wipe_q <= lvl;
+    km_wp_probe_q <= km_sram_probe_i;
+    if (km_wp_sram_wr != 4'd0) km_wp_sram_wr <= km_wp_sram_wr - 4'd1;
+    if (km_sram_wr) km_wp_sram_wr <= 4'd3;
+    if (!km_rst_cold_n) begin
+      km_wipe_seen <= 1'b0;
+      km_wipe_fell <= 1'b0;
+    end
+    if (pulse && km_rst_cold_n) begin
+      // Vault at the wipe: the regfile and CTRL clear on the next edge.
+      nz = 0;
+      nsr = 0;
+      any_seal = 1'b0;
+      any_ret = 1'b0;
+      for (int i = 0; i < 1024; i++) if (km_kpv_words_i[32*i+:32] != 32'h0) nz++;
+      for (int s = 0; s < 64; s++) begin
+        if (km_slot_state(km_kpv_ctrl_i[4*s+:4]) == 3'd4) begin
+          any_seal = 1'b1;
+          nsr++;
+        end
+        if (km_slot_state(km_kpv_ctrl_i[4*s+:4]) == 3'd5) begin
+          any_ret = 1'b1;
+          nsr++;
+        end
+      end
+      if (km_own_kpv || km_own_cpu) begin
+        if ((nz == 0) && (km_kpv_ctrl_i === '0)) u_sep_km_vault_wipe_cg.sample(5'd0, 16'd0);
+        if (nz > 16 * nsr) u_sep_km_vault_wipe_cg.sample(5'd0, 16'd1);
+        if (any_seal) u_sep_km_vault_wipe_cg.sample(5'd0, 16'd2);
+        if (any_ret) u_sep_km_vault_wipe_cg.sample(5'd0, 16'd3);
+        if (km_kpv_scr_ctrl_i[1] === 1'b1) u_sep_km_vault_wipe_cg.sample(5'd0, 16'd4);
+      end
+      km_wp_cnt <= 2'd1;
+      km_wp_trap <= (km_trap_i === 1'b1);
+      km_wp_sep <= lvl && (km_trap_i !== 1'b1);
+      km_wp_had_seal <= any_seal || any_ret;
+      km_wp_had_scr <= (km_kpv_scr_ctrl_i !== 2'b00) || (km_kpv_scr_key_i !== 32'h0);
+      km_wp_probe_pre <= km_wp_probe_q;
+      km_wp_in_d <= km_mbx_in_depth_i;
+      km_wp_valid <= km_key_valid_i;
+      // Edge protocol of the SEP bit.
+      if (lvl && (km_trap_i !== 1'b1)) begin
+        if (km_own_kpv) begin
+          u_sep_km_vault_wipe_cg.sample(5'd2, 16'd4);
+          if (km_wipe_seen && km_wipe_fell) u_sep_km_vault_wipe_cg.sample(5'd2, 16'd1);
+        end
+        km_wipe_seen <= 1'b1;
+        km_wipe_fell <= 1'b0;
+        km_wp_run <= '0;
+        km_wp_run_on <= 1'b1;
+      end
+    end
+    // The clock after the wipe edge.
+    if (km_wp_cnt == 2'd1) begin
+      km_wp_cnt <= '0;
+      if ((km_kpv_words_i === '0) && (km_kpv_ctrl_i === '0)) begin
+        if (km_wp_sep && km_wp_had_seal && km_own_kpv) u_sep_km_vault_wipe_cg.sample(5'd1, 16'd0);
+        if (km_wp_trap && km_own_cpu) u_sep_km_vault_wipe_cg.sample(5'd1, 16'd2);
+      end
+      if (km_wp_sep && km_wp_had_scr && (km_kpv_scr_ctrl_i === 2'b00) && (km_kpv_scr_key_i === 32'h0) &&
+          km_own_kpv) begin
+        u_sep_km_vault_wipe_cg.sample(5'd1, 16'd1);
+        u_sep_km_kpv_slot_cg.sample(5'd8, 16'd4);
+      end
+      // Scope of an SEP wipe.
+      if (km_wp_sep && km_own_kpv) begin
+        if ((km_wp_sram_wr == 4'd0) && !km_sram_wr && (km_sram_probe_i === km_wp_probe_pre) &&
+            (km_wp_probe_pre != '0))
+          u_sep_km_vault_wipe_cg.sample(5'd3, 16'd1);
+        if ((km_wp_in_d != 5'd0) && (km_mbx_in_depth_i === km_wp_in_d))
+          u_sep_km_vault_wipe_cg.sample(5'd3, 16'd2);
+        if ((km_wp_valid != 8'h0) && (km_key_valid_i === km_wp_valid))
+          u_sep_km_vault_wipe_cg.sample(5'd3, 16'd3);
+      end
+    end
+    // The CPU keeps running after an SEP wipe: a KM bus access completes
+    // with no trap.
+    if (km_wp_run_on) begin
+      if ((km_trap_i === 1'b1) || !km_rst_warm_n || (km_wp_run == 11'h7FF)) km_wp_run_on <= 1'b0;
+      else begin
+        km_wp_run <= km_wp_run + 11'd1;
+        if ((km_wp_run > 11'd2) && (kw_ev || kr_ev)) begin
+          km_wp_run_on <= 1'b0;
+          if (km_own_kpv) u_sep_km_vault_wipe_cg.sample(5'd3, 16'd0);
+        end
+      end
+    end
+    // Level held high: one wipe over KmLevelWin clocks, and the bit left
+    // high after the rise.
+    if (km_wipe_q && !lvl) km_wipe_fell <= 1'b1;
+    if (!lvl) begin
+      km_wipe_hi_cnt <= '0;
+      km_wipe_pulses <= '0;
+    end else begin
+      if (km_wipe_hi_cnt != 8'hFF) km_wipe_hi_cnt <= km_wipe_hi_cnt + 8'd1;
+      if (pulse && (km_wipe_pulses != 8'hFF)) km_wipe_pulses <= km_wipe_pulses + 8'd1;
+      if (km_own_kpv && (km_wipe_hi_cnt == 8'd8) && (km_wipe_pulses == 8'd1))
+        u_sep_km_vault_wipe_cg.sample(5'd2, 16'd0);
+      if (km_own_kpv && (km_wipe_hi_cnt == 8'(KmLevelWin)) && (km_wipe_pulses == 8'd1))
+        u_sep_km_vault_wipe_cg.sample(5'd2, 16'd3);
+    end
+    // A write of 1 to KM_WIPE_CTRL while the bit is high gives no second
+    // wipe.
+    if (km_wipe && km_wipe_q && lvl) begin
+      km_w1h_cnt <= 5'd1;
+      km_w1h_pulse <= 1'b0;
+    end else if (km_w1h_cnt != 5'd0) begin
+      if (pulse) km_w1h_pulse <= 1'b1;
+      if (!lvl) km_w1h_cnt <= '0;
+      else if (km_w1h_cnt == 5'd16) begin
+        km_w1h_cnt <= '0;
+        if (km_own_kpv && !km_w1h_pulse && !pulse) u_sep_km_vault_wipe_cg.sample(5'd2, 16'd2);
+      end else km_w1h_cnt <= km_w1h_cnt + 5'd1;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // ABR shared key hardware events (cp_sk_delivery_state, cp_sk_interrupt).
+  // ---------------------------------------------------------------------
+  logic km_skv_q = 1'b0, km_ski_q = 1'b0;
+  logic [1:0] km_sk_line_st = 2'b11;
+  always @(posedge clk_i) begin
+    logic v, i, e;
+    logic [1:0] ls;
+    v = (km_sk_valid_i === 1'b1);
+    i = (km_sk_irq_status_i === 1'b1);
+    e = (km_sk_irq_enable_i === 1'b1);
+    km_skv_q <= v;
+    km_ski_q <= i;
+    if (km_own_bank && km_rst_cold_n) begin
+      if (!km_skv_q && v) begin
+        u_sep_km_abr_shared_key_cg.sample(5'd0, 16'd1);
+        if (km_sk_consumed) u_sep_km_abr_shared_key_cg.sample(5'd0, 16'd3);
+      end
+      if (!km_ski_q && i && !(kw_ev && (kw_addr == KmSkIrqStatus))) begin
+        u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd0);
+        if (km_sk_irq_cleared) u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd5);
+      end
+      ls = {i, e};
+      if (ls != km_sk_line_st) begin
+        if ((ls == 2'b10) && (km_cpu_sk_irq_i === 1'b0))
+          u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd1);
+        if ((ls == 2'b11) && (km_cpu_sk_irq_i === 1'b1))
+          u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd2);
+      end
+    end
+    km_sk_line_st <= {i, e};
   end
 
 endmodule : sep_fcov

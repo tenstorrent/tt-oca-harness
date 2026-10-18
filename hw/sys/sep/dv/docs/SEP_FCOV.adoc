@@ -6085,7 +6085,7 @@ The table lists the nets that the testbench has or that a testbench probe covers
 |`km_sram_mem_if` |`u_dut.km_sram_mem_req` and `u_dut.km_sram_mem_rsp` (`req`, `we`, `addr`, `wdata`, `gnt`, `rvalid`, `rdata`, `rparity`) |`hw/top/sep_wrapper.sv`, `hw/ip/key_manager/rtl/km_intf_pkg.sv` |approved for `req`, `we`, `addr`, `wdata`, `gnt` and `rvalid`, which `tb_top.sv` reads; added tap for `rdata` and `rparity`
 |`km_rom_req` |`u_dut.km_rom_mem_req.req`. The ROM request has `req` and `addr` only, with no write field |`hw/ip/key_manager/rtl/km_intf_pkg.sv` |approved for `req`, which `tb_top.sv` reads; added tap for `addr`
 |`km_rom_rsp` |`u_dut.km_rom_mem_rsp` (`gnt`, `rvalid`, `rdata`, `parity`) |`hw/top/sep_wrapper.sv` |added tap
-|`efuse_req_err` |eFuse controller `efuse_req_err` |`hw/ip/efuse/rtl/efuse_interface_controller.sv` |added tap
+|`efuse_req_err` |eFuse controller `efuse_req_err`, read through the `req_err_i` port that the eFuse groups also use (one port, one tap) |`hw/ip/efuse/rtl/efuse_interface_controller.sv` |added tap
 |`test_en_strap` |Secure test strap `test_en_strap` to `secure_tm_req_i` |`hw/sys/sep/dv/tb/tb_top.sv` |approved (`test_en_strap_i` input)
 |`hk_kpv_arm` |The logical KPV word index and the bit that the error inject `HK-KPV` arms, read as stimulus |the `HK-KPV` inject of `sep_km_fault_inject_rand_test` |added hook (error inject); it blocks no bin
 |===
@@ -6524,7 +6524,7 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 [cols="2,6,2,3,2",options="header"]
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
-|`cp_sd_key_valid_semantics` |Reset value 0. Write 1 sets. Write 1 twice. Write 0 clears. Cleared by the engine SW_RESET_N reset. 5 bins. |`engine_key_valid`, `km_cpu_axi` |`sep_km_key_bank_register_rand_test` |executable
+|`cp_sd_key_valid_semantics` |Reset value 0. Write 1 sets. Write 1 twice. Write 0 clears. 4 bins. The clear by the engine SW_RESET_N reset is in <<sep-fcov-km-unreachable>>. |`engine_key_valid`, `km_cpu_axi` |`sep_km_key_bank_register_rand_test` |executable
 |`cp_sd_mask_shape` |Each bit alone, a bit with others, all 8 bits. 3 bins. The mask 0 is not drawn. |`host_mbx_bus`, `cmd_decode`, `engine_key_valid` |`sep_km_key_transfer_rand_test` |executable
 |`cp_sd_dest_x_cmd` |Destination bit (8) by command {CMD_KEY_GENERATE, CMD_KEY_TRANSFER, CMD_ENGINE_SHRED, CMD_KEY_LOAD, CMD_ABR_SK_TRANSFER}. 40 cells. A cell is hit when the command succeeds with that bit in its mask. The CMD_ENGINE_SHRED cells of bits 5 to 7 come from the subset shred of `sep_km_key_transfer_rand_test`, which holds them on every seed. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_key_transfer_rand_test`, `sep_km_key_vault_alloc_rand_test`, `sep_km_abr_shared_key_flow_rand_test` |executable
 |`cp_km_size_vs_width` |Engine {AES, HMAC, KMAC, OTBN, ABR seed} by key size against the share width {below, equal, above}. Width 8 words, 12 for OTBN. 15 cells. The six AES and HMAC cells run on every seed. The owner draws one class for each of KMAC, OTBN and the ABR seed in each leaf, so those nine cells fill on a merge of regressions. |`host_mbx_bus`, `rsp_decode`, `handle_table`, `engine_key_valid` |`sep_km_key_transfer_rand_test` |executable; seed-dependent
@@ -6642,6 +6642,10 @@ These cells are not bins of any point. No stimulus of an owning test drives them
 |`sep_km_mailbox_fault_cg` `cp_mbf_flush` |KM flush mid-frame, SEP flush mid-frame, SEP flush during a blocked response send |No owning test flushes in the middle of a frame, and the outcome of a SEP flush during a blocked response send is not stated. |UNSTATED
 |`sep_km_mailbox_transport_cg` `cp_mbt_separator` |Arm twice without a write |The specification states no outcome for a second arm. |UNSTATED
 |`sep_km_memory_boot_cg` `cp_km_sram_region`, `sep_km_integrity_fault_cg` `cp_if_sram_lock_violation` |Region 0 (the region bit and its two store cells) |Region 0 holds the POKE image data, so the owning test never locks or writes it. |NO-STIMULUS
+|`sep_km_sideload_delivery_cg` `cp_sd_key_valid_semantics` |key_valid cleared by the engine SW_RESET_N reset |No sentence states that the engine software reset clears the KM-side key registers of the engine. The sampler keeps the cell as an `ignore_bins`. |UNSTATED
+|`sep_km_otp_readout_cg` `cp_efw_read_class` |Shadow map read with SLVERR and 0xBADCAB1E |The response class of a read of a read-locked shadow field is not stated; the owner grades the KM read against the host read. The sampler keeps the cell as an `ignore_bins`. |UNSTATED
+|`sep_km_otp_readout_cg` `cp_efw_read_class` |Interface control or token register read with SLVERR and 0xBADCAB1E |The read response of a word inside the decoded extent of these maps that no register holds, and of a write-only word, is not stated. The sampler keeps the cells as `ignore_bins`. |UNSTATED
+|`sep_km_otp_readout_cg` `cp_efw_read_class` |Gap 0x1141C, gap 0x11574 and reserved 0x11600 read with OKAY |`memory_map.adoc` answers every offset outside the three maps with SLVERR and 0xBADCAB1E. The sampler keeps the cells as `ignore_bins`. |IMPOSSIBLE
 |===
 
 ===== Points per owning test

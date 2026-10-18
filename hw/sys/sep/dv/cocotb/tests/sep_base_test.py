@@ -475,6 +475,16 @@ class sep_base_test(uvm_test):
             "ext_trng_irq_drive_i",
         ):
             self._set_if_exists(dut, pin, 0)
+        # Key Manager injects off and the KM-SRAM tap at word 0
+        # (docs/SEP_TB_ARCH.adoc).
+        for pin in (
+            "km_otp_flip_en_i",
+            "km_otp_flip_mask_i",
+            "km_strm_wd_arm_i",
+            "km_strm_wd_mode_i",
+            "km_sram_peek_addr_i",
+        ):
+            self._set_if_exists(dut, pin, 0)
         # Boundary PIC input and outbound responder control: idle (0) unless a
         # leaf drives them (docs/SEP_TB_ARCH.adoc).
         self._set_if_exists(dut, "sep_ext_interrupts_i", 0)

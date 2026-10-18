@@ -266,6 +266,51 @@ Observation probe groups:
   check reads them. Users: the owners of the eFuse and lifecycle groups of
   `docs/SEP_FCOV.adoc`.
 * KM OTP ID probes (`km_otp_sep_*_id_o`).
+* Secure test mode output (`secure_tm_o`): the `sep` output that shows the
+  latched secure test mode. Users: `sep_km_crossbar_efuse_window_rand_test`,
+  `sep_km_otp_interface_rand_test`, with `sep_fuse_sense_done_o`,
+  `efuse_shadow_probe_o` and `km_otp_sep_*_id_o` (OTP-TAP of the Key Manager
+  area of `docs/SEP_VPLAN.adoc`).
+* Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS of the Key
+  Manager area of `docs/SEP_VPLAN.adoc`), read-only continuous reads of
+  `u_key_manager_s3c_scan` and of the engine wrappers of `u_sep_crypto`:
+** KM-VALID (`km_engine_key_valid_o`, `km_abr_sk_*_o`): `KEY_CTRL.key_valid`
+   of the eight engine key banks in DEST_VALID bit order (0 HMAC, 1 KMAC, 2
+   AES, 3 OTBN, 4 MLDSA_SEED, 5 MLKEM_SEED_D, 6 MLKEM_SEED_Z, 7 MLKEM_MSG),
+   and of the Adams Bridge shared key `KEY_CTRL.key_valid`, `KEY[0..7]`,
+   `IRQ_STATUS.key_valid` and `IRQ_ENABLE.key_valid_en`. The Adams Bridge
+   bits read 0 in the build without Adams Bridge. Users:
+   `sep_km_cpu_protect_rand_test`, `sep_km_key_bank_register_rand_test`.
+** KM-KPV (`km_kpv_ctrl_o`, `km_kpv_words_o`): the 64 KPV `CTRL` registers
+   (`CTRL[s]` at `[4*s +: 4]`, register bit order) and the 1024 stored KPV
+   words in stored order. The stored words have no reset. User:
+   `sep_km_kpv_rand_test`.
+** KM-CSR (`km_csr_*_o`): `IRQ_STATUS`, `IRQ_ENABLE`, the interrupt
+   aggregate, `RECOVERABLE_ERR`, `BOOT_STATUS.COLD_BOOT_DONE`,
+   `SRAM_EXEC_MODE`, `OTP_READ_LOCK`, `OTP_READ_LOCK_COLD`,
+   `OTP_CHANGE_STATUS`, the `SCRAMBLER_KEY` register value, the count of KM
+   writes to `SCRAMBLER_KEY` and `SCRAMBLER_CTRL`, on every clock. Users:
+   `sep_km_cpu_protect_rand_test`, `sep_km_otp_interface_rand_test`.
+** KM-SRAM (`km_sram_peek_o`): the word of the 8192-word KM SRAM array at
+   `km_sram_peek_addr_i`, in stored form `{parity, data}`. The address input
+   is a select of the tap and drives nothing in the DUT; it is 0 by default.
+   There is no write path. User: `sep_km_sram_scrambler_key_rand_test`.
+** KM-BUS, eFuse part (`km_efuse_ar_*_o`, `km_efuse_aw_*_o`): the AR and AW
+   VALID, READY and address of the KM eFuse master `efuse_req_o` after the
+   address remap. User: `sep_km_crossbar_efuse_window_rand_test`.
+* Key Manager sampler taps (KM-COV): the KM nets that only the coverage
+  sampler `u_sep_fcov` reads, bound by hierarchical reference in the
+  `u_sep_fcov` port list (VCS only): the KM CPU AXI master and its error
+  pulses, the KM CPU memory bus, `cpu_trap`, `irq_active` and the CPU
+  interrupt lines, the error flags, the SRAM write-lock and violation bits,
+  the scrambler enable and lock, `IRQ_ENTRY_ADDR` and `IRQ_ENTRY_LOCK`, the KPV
+  scrambler registers, the depth, flags, handshakes, separators, error pulses
+  and register fields of both KM mailbox FIFOs, the DRBG sampler `CFG`,
+  `STATUS`, counters, prefetch word and DATA-read state, the wipe input and
+  pulse, the KM OTP input, the ROM request, the SRAM macro request and
+  response, the KM eFuse master and the eFuse controller `efuse_req_err`, and
+  the four KM reset nets. Owners: the Key Manager groups of
+  `docs/SEP_FCOV.adoc`.
 * SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`).
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
   of the KM SRAM macro array that carry the KM ROM images' result words.
@@ -572,6 +617,31 @@ Exceptions (a closed set):
   default, and the force is released when the input drops. The interrupt
   vector the checker reads is not forced. Users: the shadow-update and alert
   entry of the crypto and entropy area.
+* *Key Manager OTP rail flip* (HK-OTP) — while `km_otp_flip_en_i` is 1, the
+  KM OTP input `otp_data_i` of `u_key_manager_s3c_scan` is held at the value
+  it had at the rise of the input XOR `km_otp_flip_mask_i` (layout
+  `km_otp_data_t`, each dual-rail field `{complement, value}`): a mask bit on
+  one rail is a single-rail flip, the same bit on both rails a legal value
+  change, and bits of several fields change them together. The SEP drives
+  every field to the KM as a dual-rail pair, so no fuse image presents a
+  broken pair or changes a field after the sense. Both inputs are 0 by
+  default, and the force is released when the enable drops; the readback
+  `km_otp_flip_active_o` shows the hold. The KMCSR registers the checkers
+  read stay frontdoor. User: `sep_km_otp_interface_rand_test` (CHK-OTP-SIG,
+  CHK-OTP-CHG).
+* *Key Manager DRBG sampler TVALID withdrawal* (HK-STRM) — while
+  `km_strm_wd_arm_i` is 1 the bench drives the sink TVALID of the KM DRBG
+  sampler (`u_drbg_sampler.tvalid`) once. With `km_strm_wd_mode_i` 0 it
+  drives TVALID high in the first clock with the sink TREADY low, then low for
+  one clock. With `km_strm_wd_mode_i` 1 it drives TVALID high in the clock in
+  which a DATA read starts (the sampler leaves its idle state on the next
+  edge), then holds it low until the read ends. TDATA and TSTRB are not
+  driven. A live stream does not withdraw a beat, so the stream error has no
+  frontdoor. Both inputs are 0 by default, and the force is released at the
+  end of the drive and when the arm drops. Readbacks: `km_strm_wd_fired_o`,
+  `km_strm_wd_tready_o` (the sink TREADY in the pulse clock) and
+  `km_strm_sink_tvalid_o`. User: `sep_km_drbg_sampler_rand_test`
+  (CHK-SMP-STRM).
 * *Crypto and entropy observation taps* — the external stream response
   monitor, the internal DRBG endpoint probe, the detune probe, the OTBN status
   probe, the ESRC SHA-256 status tap and the ESRC noise-bit readback (see the
@@ -1233,6 +1303,26 @@ a t=0 `$fatal` in `tb_top`.
 
 The small committed `km_rom*.parhex` assembly images are a different class
 and stay tracked; they do not use this profile.
+
+[[_km_rom_param_blocks]]
+==== Key Manager Scripted Images and Parameter Blocks
+
+The scripted KM images IMG-SCR (`sep_km_sram_scrambler_key_rand_test`) and
+IMG-MBOX-KM (`sep_km_mailbox_km_side_rand_test`) read the drawn configuration
+of their leaf from a parameter block at KM ROM word `0xF00` (byte `0x3C00`).
+`cocotb/dv_sim_prestage.py` writes a copy of the committed image,
+`<image>.param.parhex`, into the sim directory before the simulator starts:
+the template lines, then the block at `@00000F00` in the `.parhex` format of
+`tests/km_fw/gen_parhex.py`. The image load `tb_backdoor_mem` preloads the
+copy through `+km_rom_hex=<image>.param.parhex` at t=0, before the KM leaves
+reset, so no bench write changes the image after t=0. Block layout: the magic
+word `0x4B4D5052`, the version and block id, the payload length, the payload,
+and the XOR of the words before it. `cocotb/env/sep_km_img_param.py` draws the
+payload from the leaf seed with `SepSeededRng`; the test calls the same
+function at runtime for its golden, and the prestage log names the sha256 of
+the template and of the staged copy. The IMG-SCR block is the preload
+HK-IMG-PARAM of the Key Manager area of `docs/SEP_VPLAN.adoc`. A template that
+reaches the block address, or a missing template, stops the prestage.
 
 Build the image by hand only when iterating on the KM firmware itself:
 
