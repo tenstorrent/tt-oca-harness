@@ -595,8 +595,10 @@ Exceptions (a closed set):
   program command is at the post-guard port, the `valid` of the shim response
   at the `sep` input `efuse_shim_command_resp_i` is forced to 0. Sense and
   read responses are not held. A healthy shim always answers, so a late
-  program response has no frontdoor. While held the shim repeats the program
-  command, and the first response after the release completes it. Default 0.
+  program response has no frontdoor. While held the program command stays
+  valid at the post-guard port (one command at the tap), the shim repeats its
+  bank write, and the first response after the release completes the
+  request. Default 0.
   Owner: `sep_efuse_shim_response_fault_test`.
 * *eFuse read/program FSM state inject* — `efuse_read_state_inject_i` /
   `efuse_program_state_inject_i` with their enables force `read_state_q` /

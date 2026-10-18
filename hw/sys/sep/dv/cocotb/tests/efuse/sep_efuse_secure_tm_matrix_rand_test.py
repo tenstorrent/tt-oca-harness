@@ -418,5 +418,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             sdis_after_mismatch=bit(self, "lcc_security_disable_probe_o"),
         )
         await self.shim.stop()
+        # The monitor stop returns in the read-only phase; leave it before the drive.
+        await ClockCycles(cocotb.top.clk_i, 1)
         hold_strap(self, 0)
         self.chk.finish(f" state={state}")

@@ -35,8 +35,13 @@ Checkers:
                     every clock of the window and every frontdoor read; after the
                     release done 1, status 0, busy 0 and the bit reads 1 at the direct
                     read. Control: the same program without a hold completes and burns.
-                    Hook control: the held window shows at least two program commands to
-                    the bit at ``efuse_shim_command_req_o`` (``CHK-HOOK FAIL`` otherwise).
+                    Hook control: the held program shows its program command to the bit at
+                    ``efuse_shim_command_req_o``, and the unheld control program completes in
+                    fewer clocks than the held program spends from its go to the end of the
+                    held window, so a response that the hold did not withhold would show
+                    ``program_done`` inside the window (``CHK-HOOK FAIL`` otherwise). The
+                    command request stays valid while the response is withheld, so the tap
+                    shows one command.
 
 Log-only: ``CHK-PROG-TIMEOUT INFO`` (busy, done and status after m x T clocks of a held
 program with the timeout enabled; the specification does not state the report).
@@ -238,8 +243,10 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         # Step 6: control program of a, no hold.
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
         await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
+        ctl_go = self.clk
         await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1, read_back=0))
         pg = await self._poll_pg(_M_PG_DONE, poll_bound)
+        ctl_clks = self.clk - ctl_go if pg is not None else None
         pg = await self._rd(PROGRAM_CTRL_ADDR) if pg is not None else None
         await self._wr(PROGRAM_CTRL_ADDR, 0)
         ctl_word_a, ctl_bit = await self._direct_bit(a)
@@ -265,6 +272,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         m_go = cmds.mark()
         dut.efuse_shim_resp_hold_i.value = 1
         open_graded_window(TEST, self.logger)
+        held_go = self.clk
         await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(b["addr"], data=1))
         busy_seen = None
         start = self.clk
@@ -295,6 +303,8 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
                 await ClockCycles(dut.clk_i, gap)
                 reads.append(await self._rd(PROGRAM_CTRL_ADDR))
             await task
+        held_span = self.clk - held_go
+        if busy_seen is not None:
             await ClockCycles(dut.clk_i, 1)
         held_cmds = len(cmds.programs_since(m_go, address=b["addr"]))
         held_busy = int(
@@ -317,8 +327,14 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await cmds.stop()
         await self._wr(PROGRAM_CTRL_ADDR, 0)
         word_b, bit_b = await self._direct_bit(b)
-        hook = held_cmds >= 2
-        fields = {"check": "PROG-LIFE", "held_prog_cmds": held_cmds, "bit_addr": b["addr"]}
+        hook = held_cmds >= 1 and ctl_clks is not None and ctl_clks < held_span
+        fields = {
+            "check": "PROG-LIFE",
+            "held_prog_cmds": held_cmds,
+            "bit_addr": b["addr"],
+            "ctl_clks": "none" if ctl_clks is None else ctl_clks,
+            "held_span": held_span,
+        }
         if hook:
             self.chk.ctrl("HOOK", True, **fields)
         else:

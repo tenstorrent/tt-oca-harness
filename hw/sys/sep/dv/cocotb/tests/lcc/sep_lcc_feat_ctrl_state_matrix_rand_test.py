@@ -410,9 +410,9 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
                 demote_2=f"0x{d2:016x}",
             )
         self.logger.info(
-            "LEG-B ref pairs=0b%02b/0b%02b lc_shadow=0x%x feat=0x%016x",
-            self.ref_pairs[1],
-            self.ref_pairs[2],
+            "LEG-B ref pairs=0b%s/0b%s lc_shadow=0x%x feat=0x%016x",
+            format(self.ref_pairs[1], "02b"),
+            format(self.ref_pairs[2], "02b"),
             self.ref_lcw,
             self.ref_feat,
         )

@@ -2373,6 +2373,18 @@ module sep_uvm_top
             token_cmp_do_force = 1'b1;
         end
     end
+    // Drain clock: on the first clock after the inject drops, the rails of the
+    // comparator that was forced are forced to the value of their own driver
+    // ({3{compute_comparison_vld_i}} & match_*_raw), and released on the next
+    // clock. A Verilator release of a variable keeps the forced value until
+    // the driver changes, and match_p and match_n change on different
+    // driver inputs, so a release straight from an injected pattern can
+    // leave one rail at the injected value and present a collapsed pair to
+    // the fault detector. With the drain the value kept at the release is
+    // the driver value. A cell releases the inject (select 0, pattern off)
+    // before it selects another comparator.
+    logic       token_cmp_drain_q = 1'b0;
+    logic [1:0] token_cmp_drain_sel_q = 2'b00;
     always @(posedge clk_i) begin
         if (token_cmp_do_force && token_cmp_fault_sel_i === 2'b00) begin
             force `CMP_SIP.match_p = token_cmp_force_p;
@@ -2395,6 +2407,17 @@ module sep_uvm_top
             release `CMP_CHIP.match_n;
             force `CMP_SEC.match_p = token_cmp_force_p;
             force `CMP_SEC.match_n = token_cmp_force_n;
+        end else if (token_cmp_drain_q && token_cmp_drain_sel_q == 2'b00) begin
+            force `CMP_SIP.match_p = {3{`CMP_SIP.compute_comparison_vld_i}} & `CMP_SIP.match_p_raw;
+            force `CMP_SIP.match_n = {3{`CMP_SIP.compute_comparison_vld_i}} & `CMP_SIP.match_n_raw;
+        end else if (token_cmp_drain_q && token_cmp_drain_sel_q == 2'b01) begin
+            force `CMP_CHIP.match_p =
+                {3{`CMP_CHIP.compute_comparison_vld_i}} & `CMP_CHIP.match_p_raw;
+            force `CMP_CHIP.match_n =
+                {3{`CMP_CHIP.compute_comparison_vld_i}} & `CMP_CHIP.match_n_raw;
+        end else if (token_cmp_drain_q && token_cmp_drain_sel_q == 2'b10) begin
+            force `CMP_SEC.match_p = {3{`CMP_SEC.compute_comparison_vld_i}} & `CMP_SEC.match_p_raw;
+            force `CMP_SEC.match_n = {3{`CMP_SEC.compute_comparison_vld_i}} & `CMP_SEC.match_n_raw;
         end else begin
             release `CMP_SIP.match_p;
             release `CMP_SIP.match_n;
@@ -2403,6 +2426,8 @@ module sep_uvm_top
             release `CMP_SEC.match_p;
             release `CMP_SEC.match_n;
         end
+        token_cmp_drain_q <= token_cmp_do_force && (token_cmp_fault_sel_i !== 2'b11);
+        token_cmp_drain_sel_q <= token_cmp_fault_sel_i;
     end
     // The production DFT input is tied low at this TB boundary. Use the same
     // clock-reissued force/release convention as the comparator hook above to

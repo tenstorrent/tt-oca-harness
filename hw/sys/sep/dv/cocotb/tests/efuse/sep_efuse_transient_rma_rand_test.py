@@ -102,6 +102,9 @@ _PG = "EFUSE_PROGRAM_CTRL"
 _PG_BUSY = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_busy")
 _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_done")
 _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_status")
+_ST = "EFUSE_INTERFACE_CTRL_STATUS"
+_REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error")
+_REQ_ERR_CLR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error_clear")
 _CH_NAME = {CH_SIP: "sip", CH_CHIPLET: "chp"}
 _SCRIPT_CH = {"SIP": CH_SIP, "CHIPLET": CH_CHIPLET}
 
@@ -179,7 +182,11 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
 
         Two writes: enable, data and address, then the same with the go bit. The
         command record runs from the go write to the end of W. ``program_enable`` is
-        dropped before the direct read, so the read interface reaches the bank.
+        dropped before the direct read, so the read interface reaches the bank. A
+        refused program sets the sticky ``efuse_req_error``, which holds off every
+        later read and program request until software writes
+        ``efuse_req_error_clear`` (``efuse_interface_ctrl.adoc``); the flag is
+        returned (logged, not graded) and cleared before the direct read.
         """
         await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, go=0))
         mark = self.shim.mark()
@@ -190,6 +197,9 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         status = await self.fd.rd(STATUS_ADDR)
         pctl = await self.fd.rd(PROGRAM_CTRL_ADDR)
         await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
+        req_err = int(bool(status & _REQ_ERR))
+        if req_err:
+            await self.fd.wr(STATUS_ADDR, _REQ_ERR_CLR)
         word = await direct_word(self, bit_addr // 32)
         return {
             "cmd": own,
@@ -198,6 +208,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             "busy": int(bool(pctl & _PG_BUSY)),
             "done": int(bool(pctl & _PG_DONE)),
             "pstatus": int(bool(pctl & _PG_STATUS)),
+            "req_err": req_err,
             "word": word,
             "bit": (word >> (bit_addr % 32)) & 1,
         }
@@ -427,6 +438,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             landed=ref1["bit"],
             busy=ref1["busy"],
             done=ref1["done"],
+            req_err=ref1["req_err"],
             shadow_pre=f"0x{shadow0 & 0xFF:02x}",
             shadow_after_sense="na",
             exp_after_sense="na",
@@ -497,6 +509,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             landed=ref2["bit"],
             busy=ref2["busy"],
             done=ref2["done"],
+            req_err=ref2["req_err"],
             chp_code=f"0x{chp_held:02x}",
             shadow_pre=f"0x{sense1 & 0xFF:02x}",
             shadow_after_sense="na",
