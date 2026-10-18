@@ -54,7 +54,10 @@ array content that gives it, so the go golden varies over seeds. The other value
 shows in the same leaf: after a Mismatch go, the CHK-JTAG-TOKEN Match; after a SIP
 Match go, the ``TOKEN_OTHER`` Mismatch that step 13 polls before ``TOKEN_T1`` (a
 missing 0x2a fails CHK-JTAG-TOKEN); after a chiplet Match go, the end-of-leaf
-``TOKEN_OTHER`` Mismatch, graded as ``CTRL-JTAG-MATCH-END``.
+``TOKEN_OTHER`` Mismatch, graded as ``CTRL-JTAG-MATCH-END``. Step 13 polls the
+``TOKEN_OTHER`` Mismatch unless the SIP go of the leaf gave a Mismatch, so a leaf
+whose go is on the chiplet channel runs it too: the 0x15 of CHK-JTAG-TOKEN always
+follows a known 0x2a on the SIP channel.
 
 A match read of a channel with no go since power-on logs ``OBS-JTAG-MATCH-NOGO``.
 The response code of a denied access and the data of a denied read are not graded.
@@ -516,9 +519,11 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         for acc in p.leg["token_block"]:
             await self._token_access(acc)
 
-        # Token match with every debug bit closed.
+        # Token match with every debug bit closed. The 0x15 must follow a known
+        # 0x2a on the SIP channel: the SIP code has no reset value after power-on,
+        # so only a graded Mismatch go of this leaf skips the TOKEN_OTHER step.
         pre_resps: list[int] = []
-        if self.last_result.get(CH_SIP) == CODE_MATCH:
+        if self.last_result.get(CH_SIP) != CODE_MISMATCH:
             pre_resps = await self._jtag_token(CH_SIP, TOKEN_OTHER)
             code, _codes, more = await self._jtag_poll(CH_SIP, CODE_MISMATCH)
             pre_resps += more

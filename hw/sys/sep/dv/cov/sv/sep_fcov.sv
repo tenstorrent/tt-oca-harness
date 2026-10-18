@@ -22676,7 +22676,6 @@ module sep_fcov (
   // Clocks from the B of a go before its idle or refusal outcome counts: a program
   // or read command that has not reached the shim by then is "none".
   localparam int unsigned EfReqWait = 64;
-  localparam int unsigned EfCmdWin = 64;  // read_rlocked window after idle
   localparam int unsigned EfBothWin = 1024;  // both_enables sample after the go
   localparam int unsigned EfProgN = 64;  // x_prog_lifecycle N
   localparam int unsigned EfLatchWin = 4096;  // digest replacement after release
@@ -24901,7 +24900,7 @@ module sep_fcov (
         end
       end else if (ef_rg_v) begin
         if (ef_cmd_rd) ef_rg_rcmd <= 1'b1;
-        if (ef_rg_cnt < EfBothWin + EfCmdWin) ef_rg_cnt <= ef_rg_cnt + 1;
+        if (ef_rg_cnt < EfBothWin) ef_rg_cnt <= ef_rg_cnt + 1;
         // x_slot_read and x_kind_op, read-locked kind: the STATUS read that
         // ends the request carries efuse_req_error. The flag is 0 at the go,
         // so only this request can have set it.
@@ -24937,9 +24936,10 @@ module sep_fcov (
             end
           end
         end
-        // x_case_cmd read_rlocked: no READ command from the go to EfCmdWin
-        // clocks after the idle sample.
-        if (ef_rg_win_open && !ef_rg_idle_open && (ef_rg_cnt == EfCmdWin)) begin
+        // x_case_cmd read_rlocked: no READ command from the go to the first
+        // STATUS read after the idle sample. The owner makes that read at the end
+        // of the window W, so the sampled window covers W.
+        if (ef_rg_win_open && !ef_rg_idle_open && ef_status_rd) begin
           ef_rg_win_open <= 1'b0;
           if (ef_own_ifs) ef_ifs(3, {4'd0, 2'd1, ef_rg_rcmd || ef_cmd_rd});
         end
@@ -25086,7 +25086,7 @@ module sep_fcov (
     logic [5:0] s;
     logic [31:0] pre, now, pre_l, now_l;
     logic [1:0] f;
-    logic wl, chg, r, ol, od, nd, nl, l_other, d_other_pre, d_other_now, nx;
+    logic wl, wr_ok, chg, r, ol, od, nd, nl, l_other, d_other_pre, d_other_now, nx;
     logic [23:0] dis_grp;
     logic [1:0] wcls;
     logic [2:0] clr, now_flags;
@@ -25121,15 +25121,16 @@ module sep_fcov (
         // Write-lock as the LOCKS words of the shadow held at the AW.
         wl = (s < 6'd32) ? ef_pw_shadow[32*EfWLocks+2*s] :
             (s < 6'(EfSlots)) ? ef_pw_shadow[32*EfWLocksSp+2*(s-6'd32)] : 1'b0;
-        chg = (now != pre);
         f = (s == EfSlotSipDis) ? 2'd0 : (s == EfSlotSysDis) ? 2'd1 : (s == EfSlotSigners) ? 2'd2 : 2'd3;
-        // A shadow word with an X or Z bit after the write is a wrong outcome for
-        // either lock value.
+        // An open write lands as the OR of the shadow and the write data; a locked
+        // write leaves the shadow unchanged. Any other value, or an X or Z bit
+        // after the write, is a wrong outcome for either lock value.
         if (ef_own_lock && (s inside {EfSlotSipDis, EfSlotSysDis, EfSlotSigners, EfSlotAlgs}) &&
-            !$isunknown(pre) && ((ef_pw_data & ~pre) != 32'h0)) begin
-          ef_lk(6, 8'({$isunknown(now) || (wl ? chg : !chg), f, wl}));
-          if (!wl && chg) ef_lk(7, 8'd0);
-          if (wl && !chg) ef_lk(7, 8'd1);
+            !$isunknown(pre) && !$isunknown(ef_pw_data) && ((ef_pw_data & ~pre) != 32'h0)) begin
+          wr_ok = wl ? (now === pre) : (now === (pre | ef_pw_data));
+          ef_lk(6, 8'({!wr_ok, f, wl}));
+          if (!wl && wr_ok) ef_lk(7, 8'd0);
+          if (wl && wr_ok) ef_lk(7, 8'd1);
         end
         // A write that clears a set lock bit leaves every set bit set.
         if (ef_own_lock && (s == EfNoSlot) && (pre != 32'h0) && ((ef_pw_data & pre) != pre) &&
