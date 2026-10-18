@@ -505,7 +505,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Shard 1 of 3 of sep_esrc_health_pattern_rand_test: the first pattern trial and the APT enable leg. The regression runs the shards; the
+# Shard 1 of 3 of sep_esrc_health_pattern_rand_test: both pattern trials and the APT enable leg. The regression runs the shards; the
 # shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_esrc_health_pattern_rand_test_shard1"
 module = "crypto.sep_esrc_health_pattern_rand_test"
@@ -518,7 +518,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=1"]
 
 [[tests]]
-# Shard 2 of 3 of sep_esrc_health_pattern_rand_test: the second pattern trial, the repetition enable leg and the limit trials. The regression runs the shards; the
+# Shard 2 of 3 of sep_esrc_health_pattern_rand_test: the repetition enable leg and the limit trials. The regression runs the shards; the
 # shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_esrc_health_pattern_rand_test_shard2"
 module = "crypto.sep_esrc_health_pattern_rand_test"
