@@ -114,6 +114,7 @@ from env.sep_esrc_pattern_noise import (
 from env.sep_esrc_sha_tap import BLOCK_WORDS, DIGEST_WORDS, SepEsrcShaTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_shard import sep_shard
 from env.sep_trial_wait import TrialTimeout
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, sym
@@ -134,6 +135,24 @@ REPCOUNT_PRE_WORDS = 128 + REPCOUNT_PRE
 PRESHA_PUSHES = 64
 PRESHA_TAIL = 4  # input words past PRESHA_PUSHES, so the trace ends after a quiet clock
 DRAIN_POPS = 160
+
+# Shards (env/sep_shard.py). Every group starts with its own TRNG reset.
+# 1: the first pattern trial and the APT enable leg, which repeats its window.
+# 2: the second pattern trial, the repetition enable leg and the limit trials,
+#    which the repetition enable grade reads.
+# 3: the constant-zero and constant-ones legs; the ones leg reads the zero leg.
+SHARD_EVIDENCE = {
+    1: ("CHK-HT-TRIP", "CHK-HT-PASS", "CHK-HT-OTHERS", "CHK-HT-W1C", "CHK-HT-ENABLE"),
+    2: (
+        "CHK-HT-TRIP",
+        "CHK-HT-PASS",
+        "CHK-HT-OTHERS",
+        "CHK-HT-W1C",
+        "CHK-HT-ENABLE",
+        "CHK-HT-LIMIT",
+    ),
+    3: ("CHK-HT-PRESHA", "CHK-HT-TOP-ZERO", "CHK-HT-TOP-ONE"),
+}
 
 
 def _addr(reg: str) -> int:
@@ -289,6 +308,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         plan = draw_plan(seed)
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
+        shard = sep_shard(self, SHARD_EVIDENCE)
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _Esrc(self)
         self.clk = SepBitWatch(dut.rst_ni, {"rst_ni": 0}, name="clk_count").start()
@@ -301,8 +321,13 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         # The first start is bring-up (SepEsrcLeafSetup raises). A later set-up or
         # strobe wait that times out fails the check of its trial (reason=timeout) and
         # the leaf goes on with the next trial, which starts with its own TRNG reset.
+        def runs(group: int) -> bool:
+            return shard is None or shard == group
+
         trip_results: dict[str, bool] = {}
-        for trial in plan.trials:
+        for i, trial in enumerate(plan.trials):
+            if not runs(1 if i == 0 else 2):
+                continue
             trip_results[trial.name] = await self._guard(
                 self._pattern_trial(trial),
                 ("HT-TRIP",),
@@ -310,20 +335,23 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
                 pattern=trial.name,
                 lane=trial.lane,
             )
-        await self._guard(
-            self._apt_enable_leg(plan.trials[0], trip_results[plan.trials[0].name]),
-            ("HT-ENABLE",),
-            None,
-            tester="apt",
-        )
-        self.rep_timeout = ""
-        rep_before, rep_after = await self._guard(
-            self._rep_enable_leg(), (), (None, None), tester="rep"
-        )
-        limit_status = await self._limit_trials()
-        self._grade_rep_enable(rep_before, rep_after, limit_status)
-        apt_hi_zero = await self._guard(self._zero_leg(), ("HT-TOP-ZERO",), None)
-        await self._guard(self._ones_leg(apt_hi_zero), ("HT-TOP-ONE",), None)
+        if runs(1):
+            await self._guard(
+                self._apt_enable_leg(plan.trials[0], trip_results[plan.trials[0].name]),
+                ("HT-ENABLE",),
+                None,
+                tester="apt",
+            )
+        if runs(2):
+            self.rep_timeout = ""
+            rep_before, rep_after = await self._guard(
+                self._rep_enable_leg(), (), (None, None), tester="rep"
+            )
+            limit_status = await self._limit_trials()
+            self._grade_rep_enable(rep_before, rep_after, limit_status)
+        if runs(3):
+            apt_hi_zero = await self._guard(self._zero_leg(), ("HT-TOP-ZERO",), None)
+            await self._guard(self._ones_leg(apt_hi_zero), ("HT-TOP-ONE",), None)
         close_graded_window(self.logger)
 
         await self.noise.stop()
