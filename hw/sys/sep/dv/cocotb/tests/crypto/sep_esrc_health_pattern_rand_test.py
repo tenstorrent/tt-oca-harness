@@ -137,20 +137,12 @@ PRESHA_TAIL = 4  # input words past PRESHA_PUSHES, so the trace ends after a qui
 DRAIN_POPS = 160
 
 # Shards (env/sep_shard.py). Every group starts with its own TRNG reset.
-# 1: the first pattern trial and the APT enable leg, which repeats its window.
-# 2: the second pattern trial, the repetition enable leg and the limit trials,
-#    which the repetition enable grade reads.
+# 1: both pattern trials and the APT enable leg, which repeats the first trial.
+# 2: the repetition enable leg and the limit trials, which its grade reads.
 # 3: the constant-zero and constant-ones legs; the ones leg reads the zero leg.
 SHARD_EVIDENCE = {
     1: ("CHK-HT-TRIP", "CHK-HT-PASS", "CHK-HT-OTHERS", "CHK-HT-W1C", "CHK-HT-ENABLE"),
-    2: (
-        "CHK-HT-TRIP",
-        "CHK-HT-PASS",
-        "CHK-HT-OTHERS",
-        "CHK-HT-W1C",
-        "CHK-HT-ENABLE",
-        "CHK-HT-LIMIT",
-    ),
+    2: ("CHK-HT-ENABLE", "CHK-HT-LIMIT"),
     3: ("CHK-HT-PRESHA", "CHK-HT-TOP-ZERO", "CHK-HT-TOP-ONE"),
 }
 
@@ -325,17 +317,15 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             return shard is None or shard == group
 
         trip_results: dict[str, bool] = {}
-        for i, trial in enumerate(plan.trials):
-            if not runs(1 if i == 0 else 2):
-                continue
-            trip_results[trial.name] = await self._guard(
-                self._pattern_trial(trial),
-                ("HT-TRIP",),
-                False,
-                pattern=trial.name,
-                lane=trial.lane,
-            )
         if runs(1):
+            for trial in plan.trials:
+                trip_results[trial.name] = await self._guard(
+                    self._pattern_trial(trial),
+                    ("HT-TRIP",),
+                    False,
+                    pattern=trial.name,
+                    lane=trial.lane,
+                )
             await self._guard(
                 self._apt_enable_leg(plan.trials[0], trip_results[plan.trials[0].name]),
                 ("HT-ENABLE",),

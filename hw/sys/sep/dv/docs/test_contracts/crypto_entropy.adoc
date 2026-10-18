@@ -3198,7 +3198,7 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Area*: Crypto and entropy
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+esrc_noise_force`, 4 seeds; testlist `crypto.toml`, groups `cpu_stub` and `all`; Verilator and VCS. The pattern leg runs two trials of three windows each.
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+esrc_noise_force`, 4 seeds; testlist `crypto.toml`; groups `cpu_stub` and `all` run it as three shards (`+sep_shard`, `env/sep_shard.py`): both pattern trials and the APT enable leg; the repetition enable leg and the limit trials; the constant-zero and constant-ones legs. Verilator and VCS. The pattern leg runs two trials of three windows each.
 
 *Source Module*: `sep_esrc_health_pattern_rand_test`
 
@@ -3370,7 +3370,7 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Area*: Crypto and entropy
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+esrc_noise_force`, detune probe (observation tap), 4 seeds; testlist `crypto.toml`, groups `cpu_stub` and `all`; Verilator and VCS.
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+esrc_noise_force`, detune probe (observation tap), 4 seeds; testlist `crypto.toml`; groups `cpu_stub` and `all` run it as two shards (`+sep_shard`, `env/sep_shard.py`): the graded manual, off and ignored legs with burst 0; the manual and ignored legs again, ungraded, with bursts 1 and 2. Verilator and VCS.
 
 *Source Module*: `sep_esrc_autotune_detune_test`
 
