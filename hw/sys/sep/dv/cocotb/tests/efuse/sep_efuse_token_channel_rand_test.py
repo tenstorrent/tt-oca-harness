@@ -125,15 +125,16 @@ async def _read_run_from(rd, ch: str, held: int, *, max_reads: int) -> ReadRun:
 def _idle_rule(run: ReadRun, held: int, n_idle_ref: int) -> tuple[bool, bool]:
     """Relative Idle rule of a read run after a go from the held code ``held``.
 
-    No read returns a code outside {held, 0x00, final}; when held differs from the
-    final code no read after the first 0x00 returns held; when the first run of the
+    No read returns a code outside {held, 0x00, final}; when held is not Idle and
+    differs from the final code, no read after the first 0x00 returns held (a held
+    Idle code is the 0x00 itself); when the first run of the
     channel saw 2 or more Idle reads, this run holds at least one 0x00. Returns
     (ok, idle_first_graded).
     """
     final = run.final
     codes = run.codes
     ok = final is not None and all(c in (held, CODE_IDLE, final) for c in codes)
-    if ok and held != final and CODE_IDLE in codes:
+    if ok and held != final and held != CODE_IDLE and CODE_IDLE in codes:
         first = codes.index(CODE_IDLE)
         ok = held not in codes[first + 1 :]
     graded = held != CODE_IDLE and n_idle_ref >= 2

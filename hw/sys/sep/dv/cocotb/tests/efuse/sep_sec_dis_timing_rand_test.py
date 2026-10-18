@@ -246,7 +246,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
 
     async def _mismatch_drop(self, label: str) -> None:
         """TOKEN_OTHER on SEC_DIS, go, poll until 0x2a; security_disable_o drops."""
-        await self.fd.write_sdis_words(TOKEN_OTHER)
+        await self._write_sdis_words(TOKEN_OTHER)
         await token_go(self.fd.wr, CH_SEC_DIS)
         code, _n = await poll_code(
             self.fd.rd, CH_SEC_DIS, max_reads=_POLL_READS, until=CODE_MISMATCH
@@ -349,7 +349,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         # Match latency L: first token-word write to the rise of security_disable_o.
         rise = cocotb.start_soon(self._sdis_rise(w))
         c0 = self.clk.n
-        await self.fd.write_sdis_words(TOKEN_ZERO)
+        await self._write_sdis_words(TOKEN_ZERO)
         await token_go(self.fd.wr, CH_SEC_DIS)
         rise_n = await rise
         if rise_n is None:
@@ -434,7 +434,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         )
 
         # Recovery: mismatch, cold reset, full sense (logged control).
-        await self.fd.write_sdis_words(TOKEN_OTHER)
+        await self._write_sdis_words(TOKEN_OTHER)
         await token_go(self.fd.wr, CH_SEC_DIS)
         rec_code, _n = await poll_code(
             self.fd.rd, CH_SEC_DIS, max_reads=_POLL_READS, until=CODE_MISMATCH
@@ -500,7 +500,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             mon = _HoldMonitor("rise")
             await ClockCycles(dut.clk_i, k)
             set_efuse_sdis_hold_bound(w, self.logger)
-            await self.fd.write_sdis_words(TOKEN_ZERO)
+            await self._write_sdis_words(TOKEN_ZERO)
             await token_go(self.fd.wr, CH_SEC_DIS)
             for _ in range(w):
                 if mon.rise_at is not None:
@@ -585,7 +585,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         dut = cocotb.top
         open_graded_window(_NAME, self.logger)
         rise = cocotb.start_soon(self._sdis_rise(w))
-        await self.fd.write_sdis_words(TOKEN_ZERO)
+        await self._write_sdis_words(TOKEN_ZERO)
         await token_go(self.fd.wr, CH_SEC_DIS)
         code, _n = await poll_code(self.fd.rd, CH_SEC_DIS, max_reads=_POLL_READS, until=CODE_MATCH)
         rise_n = await rise

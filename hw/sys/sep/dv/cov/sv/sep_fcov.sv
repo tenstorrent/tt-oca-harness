@@ -23449,8 +23449,9 @@ module sep_fcov (
       bins error = {EfCodeErr};
       illegal_bins other = {[6'h01 : 6'h14], [6'h16 : 6'h29], [6'h2B : 6'h3E]};
     }
-    // Shape 0 all zeros, 1 all ones, 2 the token words of another channel.
-    // The legal verdict is Mismatch. (SEC_DIS, all zeros) is not declared.
+    // Shape 0 all zeros, 1 all ones, 2 the token words of another channel (the
+    // words of a channel whose array is unchanged since its go and whose code
+    // is Match). The legal verdict is Mismatch. (SEC_DIS, all zeros) is not declared.
     x_ch_shape: coverpoint s.cs iff (s.cs_v) {
       bins cells[] = {5'd0, 5'd1, 5'd2, 5'd3, 5'd4, 5'd5, 5'd7, 5'd8};
       illegal_bins match = {[5'd16 : 5'd24]};
@@ -23823,7 +23824,10 @@ module sep_fcov (
   // 2'b10, interface.adoc Fuse Command Protocol) and response.
   wire ef_cmd_v = (shim_cmd_i.valid === 1'b1);
   wire ef_cmd_rd = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_READ);
-  wire ef_cmd_pg = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM);
+  // A program command is PROGRAM or PROGRAM_READ_BACK: the read-back flag of
+  // EFUSE_PROGRAM_CTRL selects the second, and both burn the bit.
+  wire ef_cmd_pg = ef_cmd_v && ((shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM) ||
+                                (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK));
   wire [12:0] ef_cmd_addr = 13'(shim_cmd_i.address);
   wire ef_resp_v = (shim_resp_i.valid === 1'b1);
 
@@ -25172,6 +25176,9 @@ module sep_fcov (
   logic [2:0] ef_pre_arm = '0, ef_pre_bad = '0;  // RMA go before sense done
   logic [2:0][5:0] ef_code_q = '0;
   logic [2:0][7:0][31:0] ef_words_q = '0;
+  // Array c changed since its last go. The words of a clean array whose code is
+  // Match are the token of that channel, as the DUT itself judged them.
+  logic [2:0] ef_arr_dirty = '1;
   logic [2:0] ef_hw_arm = '0;
   logic [2:0][5:0] ef_hw_code = '0;
   int unsigned ef_hw_cnt[3] = '{0, 0, 0};
@@ -25224,7 +25231,10 @@ module sep_fcov (
           ef_go_shape_v[c] <= 1'b1;
           if (tok_words_i[c] == '0) ef_go_shape[c] <= 2'd0;
           else if (tok_words_i[c] == '1) ef_go_shape[c] <= 2'd1;
-          else if ((tok_words_i[c] == tok_words_i[o1]) || (tok_words_i[c] == tok_words_i[o2]))
+          else if (((tok_words_i[c] == tok_words_i[o1]) && !ef_arr_dirty[o1] &&
+                    (ef_code[o1] == EfCodeMatch)) ||
+                   ((tok_words_i[c] == tok_words_i[o2]) && !ef_arr_dirty[o2] &&
+                    (ef_code[o2] == EfCodeMatch)))
             ef_go_shape[c] <= 2'd2;
           else ef_go_shape_v[c] <= 1'b0;
           if ((c < 2) && (fuse_sense_done_i !== 1'b1)) begin
@@ -25285,6 +25295,10 @@ module sep_fcov (
     end
     ef_code_q <= ef_code;
     ef_words_q <= tok_words_i;
+    for (int c = 0; c < 3; c++) begin
+      if (token_go_i[c] === 1'b1) ef_arr_dirty[c] <= 1'b0;
+      else if (tok_words_i[c] !== ef_words_q[c]) ef_arr_dirty[c] <= 1'b1;
+    end
   end
 
   // cp_retention: a cold reset with an RMA_SIP Match held. The words and the
