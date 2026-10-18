@@ -295,30 +295,6 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
             if sig_bits(dut.lcc_security_disable_probe_o) != "0":
                 seen[0] += 1
 
-    async def _rail_trace(self, ch: str, stop: list[bool], out: list[str]) -> None:
-        """Record each clock on which the rails of ``ch`` or the fault flags change."""
-        dut = cocotb.top
-        last = None
-        n = 0
-        while not stop[0]:
-            await RisingEdge(dut.clk_i)
-            await ReadOnly()
-            n += 1
-            p_r = sig_bits(dut.token_cmp_match_p_o)
-            n_r = sig_bits(dut.token_cmp_match_n_o)
-            pic = sig_bits(dut.sep_internal_interrupts_probe_o)
-            if p_r and n_r and set(p_r + n_r) <= {"0", "1"}:
-                pairs = ",".join(
-                    f"{a}{b}" for a, b in (_pair(int(p_r, 2), int(n_r, 2), ch, i) for i in range(3))
-                )
-            else:
-                pairs = "x"
-            pic40 = (int(pic, 2) >> _PIC40) & 1 if pic and set(pic) <= {"0", "1"} else "x"
-            cur = (pairs, pic40)
-            if cur != last:
-                out.append(f"c{n}:{pairs}/pic{pic40}")
-                last = cur
-
     # ------------------------------------------------------------------ cells
 
     async def _fault_like_cell(self, ch: str, kind: str, copy: int | None, held: str) -> None:
@@ -421,30 +397,12 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
             rails=",".join(f"{p}{n}" for p, n in pairs),
         )
 
-        if cm:
-            trace: list[str] = []
-            stop_t = [False]
-            rails = cocotb.start_soon(self._rail_trace(ch, stop_t, trace))
         self._release_inject()
         await ClockCycles(dut.clk_i, 3)
         if cm:
             for chk in ("FAULT-STICKY", "FAULT-NO-W1C", "FAULT-RESET"):
                 self.logger.info("CHK-%s N/A seed=%d kind=%s", chk, seed, kind)
-            flags_rel = await self._faults()
             await self._end_match(ch, f"{label}.end")
-            flags_end = await self._faults()
-            stop_t[0] = True
-            await rails
-            await NextTimeStep()
-            # Diagnostic only: where a flag first shows after a common-mode cell.
-            self.chk.obs(
-                "CM-RELEASE",
-                ch=_CH_NAME[ch],
-                kind=kind,
-                flags_after_release=f"0x{flags_rel:x}",
-                flags_after_end=f"0x{flags_end:x}",
-                rail_changes=";".join(trace[:24]) or "none",
-            )
             return
 
         pre_retry = await self.fd.match(ch)

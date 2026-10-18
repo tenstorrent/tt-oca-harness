@@ -2373,19 +2373,25 @@ module sep_uvm_top
             token_cmp_do_force = 1'b1;
         end
     end
-    // Drain clock: on the first clock after the inject drops, the rails of the
-    // comparator that was forced are forced to the value of their own driver
-    // ({3{compute_comparison_vld_i}} & match_*_raw), and released on the next
-    // clock. A Verilator release of a variable keeps the forced value until
-    // the driver changes, and match_p and match_n change on different
-    // driver inputs, so a release straight from an injected pattern can
-    // leave one rail at the injected value and present a collapsed pair to
-    // the fault detector. With the drain the value kept at the release is
-    // the driver value. A cell releases the inject (select 0, pattern off)
-    // before it selects another comparator.
+    // The forces and releases run on the falling edge of clk_i. Every DUT flop
+    // samples on the rising edge, and match_p and match_n are separate forced
+    // variables, so a change of both rails at one edge passes through a mixed
+    // state. On the rising edge the sticky TOKEN_MATCH_FAULT flop can sample
+    // that collapsed pair. Half a clock later both rails have their final
+    // value at the next rising edge, so only the injected pattern itself
+    // reaches a DUT flop.
+    // Drain clock: on the first falling edge after the inject drops, the rails
+    // of the comparator that was forced are forced to the value of their own
+    // driver ({3{compute_comparison_vld_i}} & match_*_raw), and released on
+    // the next falling edge. A Verilator release of a variable keeps the forced
+    // value until the driver changes, and match_p and match_n change on
+    // different driver inputs, so a release straight from an injected pattern
+    // can leave one rail at the injected value. With the drain the value kept
+    // at the release is the driver value. A cell releases the inject (select
+    // 0, pattern off) before it selects another comparator.
     logic       token_cmp_drain_q = 1'b0;
     logic [1:0] token_cmp_drain_sel_q = 2'b00;
-    always @(posedge clk_i) begin
+    always @(negedge clk_i) begin
         if (token_cmp_do_force && token_cmp_fault_sel_i === 2'b00) begin
             force `CMP_SIP.match_p = token_cmp_force_p;
             force `CMP_SIP.match_n = token_cmp_force_n;
