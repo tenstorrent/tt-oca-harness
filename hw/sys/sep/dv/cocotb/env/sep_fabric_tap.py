@@ -18,7 +18,7 @@ PR-OUT     ``pr_out``       aw, ar: addr id user cache prot len size burst;
 PR-SMC     ``pr_smc``       as PR-OUT
 PR-EXT     ``pr_ext``       as PR-OUT (32-bit address)
 PR-EXT-RSP ``pr_ext``       b: resp id; r: resp id last (the PR-EXT replies)
-PR-OUT-RSP ``pr_out``       b: resp id; r: resp id last (the PR-OUT replies,
+PR-OUT-RSP ``pr_out``       b: resp id; r: resp id last data (the PR-OUT replies,
                             from the outbound responder)
 PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
 PR-CPU-LSU ``pr_cpu_lsu``   aw, ar: prot (raw CPU LSU request; graded)
@@ -113,7 +113,11 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-SMC": ("pr_smc", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
     "PR-EXT": ("pr_ext", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
     "PR-EXT-RSP": ("pr_ext", {"b": ("resp", "id"), "r": ("resp", "id", "last")}, "axi"),
-    "PR-OUT-RSP": ("pr_out", {"b": ("resp", "id"), "r": ("resp", "id", "last")}, "axi"),
+    "PR-OUT-RSP": (
+        "pr_out",
+        {"b": ("resp", "id"), "r": ("resp", "id", "last", "data")},
+        "axi",
+    ),
     "PR-DMACSR": ("pr_dmacsr", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
     "PR-CPU-LSU": ("pr_cpu_lsu", {"aw": ("prot",), "ar": ("prot",)}, "axi"),
     "PR-CPU-IFU": ("pr_cpu_ifu", {"ar": ("prot",)}, "axi"),
