@@ -43,6 +43,8 @@ coverage_off -file "*hw/sys/smc/dv/tb/verilator_stubs/*"
 // DV collateral bound into smc_ip_integration: counters, FW mailbox, ECC
 // inject hook, image backdoors.
 coverage_off -file "*hw/sys/smc/dv/models/*"
+// The SV-UVM environment, sequences and tests.
+coverage_off -file "*hw/sys/smc/dv/uvm/*"
 
 // ---------------------------------------------------------------------------
 // Chipyard-generated CPU cluster.
