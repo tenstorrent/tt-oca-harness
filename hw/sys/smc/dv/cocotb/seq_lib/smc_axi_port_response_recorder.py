@@ -9,6 +9,7 @@ outstanding accesses are attributed here, per port, from the flat signals of the
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
@@ -91,7 +92,10 @@ class SmcAxiPortResponseRecorder:
 
 @dataclass(frozen=True)
 class OutputHandshake:
-    """One accepted AW (``chan`` "aw") or AR (``chan`` "ar") beat on u_output_axi_if."""
+    """One accepted AW (``chan`` "aw") or AR (``chan`` "ar") beat on u_output_axi_if.
+
+    ``cycle`` is the sampler's clk_smc_i edge count at the handshake.
+    """
 
     chan: str
     addr: int
@@ -99,14 +103,30 @@ class OutputHandshake:
     user: int
     ident: int
     length: int
+    cycle: int
+
+
+@dataclass(frozen=True)
+class OutputResponse:
+    """One accepted B beat (``chan`` "b") or RLAST beat (``chan`` "r") on u_output_axi_if."""
+
+    chan: str
+    ident: int
+    cycle: int
 
 
 class SmcOutputHandshakeSampler:
-    """Log every AW and AR handshake of u_output_axi_if per clk_smc_i edge."""
+    """Log the AW, AR, B and RLAST handshakes of u_output_axi_if per clk_smc_i edge.
+
+    ``stalls`` counts the edges on which AW or AR was valid with READY low.
+    """
 
     def __init__(self) -> None:
         self.stop = False
         self.events: list[OutputHandshake] = []
+        self.resps: list[OutputResponse] = []
+        self.stalls = {"aw": 0, "ar": 0}
+        self.cycle = 0
 
     def mark(self) -> int:
         return len(self.events)
@@ -114,18 +134,35 @@ class SmcOutputHandshakeSampler:
     def since(self, mark: int, chan: str | None = None) -> list[OutputHandshake]:
         return [e for e in self.events[mark:] if chan is None or e.chan == chan]
 
+    def mark_resps(self) -> int:
+        return len(self.resps)
+
+    def resps_since(self, mark: int) -> list[OutputResponse]:
+        return self.resps[mark:]
+
+    @staticmethod
+    def _handshake(ifc, ch: str) -> bool | None:
+        """True on a handshake, False when idle, None when valid without ready."""
+        valid, ready = (getattr(ifc, f"{ch}{n}") for n in ("valid", "ready"))
+        assert valid.value.is_resolvable and ready.value.is_resolvable, (
+            f"u_output_axi_if {ch}valid/{ch}ready are X/Z"
+        )
+        if not int(valid.value):
+            return False
+        return True if int(ready.value) else None
+
     async def run(self) -> None:
-        top = cocotb.top
+        top: Any = cocotb.top
         ifc = top.u_output_axi_if
         while not self.stop:
             await RisingEdge(top.clk_smc_i)
             await ReadOnly()
+            self.cycle += 1
             for ch in ("aw", "ar"):
-                ctl = [getattr(ifc, f"{ch}{n}") for n in ("valid", "ready")]
-                assert all(s.value.is_resolvable for s in ctl), (
-                    f"u_output_axi_if {ch}valid/{ch}ready are X/Z"
-                )
-                if not all(int(s.value) for s in ctl):
+                state = self._handshake(ifc, ch)
+                if state is None:
+                    self.stalls[ch] += 1
+                if not state:
                     continue
                 names = ("addr", "cache", "user", "id", "len")
                 sigs = [getattr(ifc, f"{ch}{n}") for n in names]
@@ -133,7 +170,19 @@ class SmcOutputHandshakeSampler:
                     f"u_output_axi_if {ch} payload is X/Z on a handshake"
                 )
                 addr, cache, user, ident, length = (int(s.value) for s in sigs)
-                self.events.append(OutputHandshake(ch, addr, cache, user, ident, length))
+                self.events.append(
+                    OutputHandshake(ch, addr, cache, user, ident, length, self.cycle)
+                )
+            for ch in ("b", "r"):
+                if not self._handshake(ifc, ch):
+                    continue
+                sigs = [getattr(ifc, f"{ch}id")] + ([ifc.rlast] if ch == "r" else [])
+                assert all(s.value.is_resolvable for s in sigs), (
+                    f"u_output_axi_if {ch}id/rlast is X/Z on a handshake"
+                )
+                if ch == "r" and not int(ifc.rlast.value):
+                    continue
+                self.resps.append(OutputResponse(ch, int(sigs[0].value), self.cycle))
 
 
 class SmcRawRStallWatch(SmcAxiPortWatch):

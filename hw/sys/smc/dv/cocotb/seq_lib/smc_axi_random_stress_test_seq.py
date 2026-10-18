@@ -7,9 +7,13 @@ memmap.adoc Memory Map, scratch.rdl SCRATCH, smu-smc.adoc AXI Interface Configur
 
 Each inbound port keeps to its own registers, SPM window and output window. Data is checked by
 byte address against a per-port golden model; a response is attributed to its port and AxID by
-the passive recorders. Where the specification leaves the response code or the order open the
-measured value is printed and only completion, the data of the own address and the response
-reaching its originating port are asserted. The 50 us driver guard is the only time bound.
+the passive recorders. The env scoreboard fails any access not allowed to error that answers
+non-OKAY; a read issued at KNOWN bytes with AxPROT[1] clear must answer OKAY and compare here;
+SYS_IN and SEP_IN outside both apertures answer DECERR (memmap.adoc Memory Map); an injected
+SYS_OUT code reaches the JTAG port unchanged. Where the documents leave the response code or the
+order open the measured value is printed and only completion, the data of the own address and
+the response reaching its originating port are asserted. The 50 us driver guard is the only time
+bound.
 """
 
 from __future__ import annotations
@@ -26,7 +30,15 @@ from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 from ocah_axi_vip import AxiTimingProfile, OcahAxiSlaveSequence
 
 from ._one_shot import _OneShot
-from .smc_addr_map import _REPO, reg_reset_word, smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _REPO,
+    GLOBAL_BASE_RESET,
+    LOCAL_BASE_RESET,
+    REGION_SIZE_RESET,
+    reg_reset_word,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_axi_port_response_recorder import (
     SmcAxiPortResponseRecorder,
     SmcOutputHandshakeSampler,
@@ -94,9 +106,9 @@ CHECKERS = (
     ("CHK-RAND-SHAPE-BY-ADDR", "S7"),
     ("CHK-RAND-LOCAL-DEEP", "S8"),
     ("CHK-RAND-OUT-DEEP", "S9"),
-    ("CHK-RAND-OUT-OTHER-PORTS-OBS", "S9"),
+    ("CHK-RAND-OUT-OTHER-PORTS-DECERR", "S9"),
     ("CHK-RAND-RESP-TIMING", "S10"),
-    ("CHK-RAND-RESP-ERRORS-OBS", "S11"),
+    ("CHK-RAND-RESP-ERRORS-ECHO", "S11"),
     ("CHK-RAND-RESP-COMBINED", "S11"),
 )
 
@@ -167,8 +179,8 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         self._n_item = 0
         self._step_accesses: Counter = Counter()
         self._codes: dict[str, Counter] = {p: Counter() for p in PORTS}
-        # Per (step, port): reads issued at KNOWN bytes and those that answered OKAY and
-        # compared; per step: the bytes compared.
+        # Per (step, port): reads issued at KNOWN bytes with AxPROT[1] clear and those that
+        # answered OKAY and compared; per step: the bytes compared.
         self._cmp_issued: Counter = Counter()
         self._cmp_done: Counter = Counter()
         self._cmp_bytes: Counter = Counter()
@@ -322,7 +334,9 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             known = sum(1 for i in range(total) if item.addr + i in golden.byte)
         if not known:
             return
-        self._cmp_issued[(self._step, port)] += 1
+        expected = not item.prot & 2
+        if expected:
+            self._cmp_issued[(self._step, port)] += 1
         if code != 0:
             return
         got = item.rdata.to_bytes(total, "little")
@@ -338,16 +352,17 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 f"{item.beats}: byte @0x{bad[0][0]:x} returned 0x{bad[0][2]:02x}, golden of that "
                 f"address 0x{bad[0][1]:02x} ({len(bad)} bytes differ)"
             )
-        self._cmp_done[(self._step, port)] += 1
+        if expected:
+            self._cmp_done[(self._step, port)] += 1
         self._cmp_bytes[self._step] += known
 
-    def _compare_floor(self, step: str, port: str, *, every: bool = False) -> str:
-        """The reads `step` issued at KNOWN bytes on `port` compared: not none, or all with `every`."""
+    def _compare_floor(self, step: str, port: str) -> str:
+        """Every read `step` issued on `port` at KNOWN bytes with AxPROT[1] clear compared."""
         issued = self._cmp_issued[(step, port)]
         done = self._cmp_done[(step, port)]
-        assert issued and (done == issued if every else done), (
-            f"{step} {PORT_NAME[port]}: {done} of {issued} reads issued at KNOWN bytes compared"
-            + (", every one must" if every else ", the compare is vacuous")
+        assert issued and done == issued, (
+            f"{step} {PORT_NAME[port]}: {done} of {issued} reads issued at KNOWN bytes with "
+            f"AxPROT[1] clear compared; at least one must be issued and none may answer non-OKAY"
         )
         return f"{PORT_NAME[port]} {done}/{issued}"
 
@@ -587,6 +602,16 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         )
         assert SPM["JTAG"] + WINDOW <= SPM_APERTURE_END, "SPM2 end outside the SPM aperture"
         assert OUT_LIMIT <= SYS_OUT_MEM_SIZE, "OUT2 end outside the responder memory"
+        for base in (LOCAL_BASE_RESET, GLOBAL_BASE_RESET):
+            assert OUT_LIMIT <= base or OUT0 >= base + REGION_SIZE_RESET, (
+                f"output windows 0x{OUT0:x}-0x{OUT_LIMIT:x} overlap the SMC aperture at "
+                f"0x{base:x} of {REGION_SIZE_RESET:#x} bytes"
+            )
+        for port in PORTS:
+            width = len(getattr(dut, f"{PREFIX[port]}_bid"))
+            assert ID_SPACE[port] == 1 << width, (
+                f"{PORT_NAME[port]} BID is {width} bits wide, the ID space here is {ID_SPACE[port]}"
+            )
         for port in PORTS:
             self.rec[port] = SmcAxiPortResponseRecorder(dut, PREFIX[port])
         self._watchers = [cocotb.start_soon(r.run()) for r in self.rec.values()]
@@ -654,6 +679,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
     async def _s3(self) -> str:
         rng = self._rng(3)
         notes = []
+        floors = []
         for port in PORTS:
             qos = [0x0, 0xF] + [rng.randrange(16) for _ in range(14)]
             region = [0x0, 0xF] + [rng.randrange(16) for _ in range(14)]
@@ -692,17 +718,17 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                     odd_reg.append(k)
             bad = [f"k{k}:{RESP_NAMES[w]}/{RESP_NAMES[r]}" for k, w, r in rows if (w, r) != (0, 0)]
             okay = sum(1 for _, w, r in rows if (w, r) == (0, 0))
-            self._compare_floor("S3", port)
+            floors.append(self._compare_floor("S3", port))
             notes.append(
-                f"{PORT_NAME[port]} {okay} of 16 pairs OKAY/OKAY, non-OKAY [{' '.join(bad) or 'none'}] "
-                f"(AxCACHE k, AxQOS {qos}, AxREGION {region}, AxUSER "
+                f"{PORT_NAME[port]} {okay} of 16 pairs OKAY/OKAY, non-OKAY "
+                f"[{' '.join(bad) or 'none'}] (AxCACHE k, AxQOS {qos}, AxREGION {region}, AxUSER "
                 f"{[hex(u) for u in user]}; {len(odd_reg)} pairs at registers)"
             )
         return (
             "48 write-then-read pairs completed within the guard with defined data, every read "
-            "answered OKAY after an OKAY write returned the word of its own address and no port's "
-            "pairs all dropped out of the compare; response codes "
-            "per knob value are printed and not graded, and AxUSER carriage at the island is not "
+            "after an OKAY write answered OKAY and returned the word of its own address "
+            "(compared/issued per port: " + ", ".join(floors) + "); the write code per knob "
+            "value is printed and not graded, and AxUSER carriage at the island is not "
             "observable: " + " | ".join(notes)
         )
 
@@ -813,13 +839,13 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             f"on JTAG all 8 writes and 8 reads reached the responder at their own OUT2 address "
             f"with awcache and arcache equal to the driven AxCACHE [{' '.join(rows)}], the written "
             f"word at the address, awuser 0x{aw_users[0]:X} on all 8 writes and aruser "
-            f"0x{ar_users[0]:X} on all 8 reads whatever AxUSER was driven (the numeric source ID is "
-            f"not graded); SYS_IN and SEP_IN are observed only, their codes printed and not "
-            f"graded: " + " | ".join(other)
+            f"0x{ar_users[0]:X} on all 8 reads whatever AxUSER was driven (the numeric source ID "
+            f"is not graded); the SYS_IN and SEP_IN pairs at OUT0 and OUT1, outside both "
+            f"apertures, answered DECERR with no AW or AR at the responder: " + " | ".join(other)
         )
 
     async def _s5_other(self, rng: random.Random, port: str, k: int) -> str:
-        """One observed write and read of SYS_IN or SEP_IN at word `k` of its OUT window."""
+        """A write and a read of SYS_IN or SEP_IN at word `k` of its OUT window answer DECERR."""
         addr = OUT[port] + 8 * k
         cache, user = rng.randrange(16), rng.randrange(4096)
         attrs = {
@@ -838,12 +864,15 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         rd = self._mk(port, SmcSysAxiOp.READ, addr, **attrs)
         await self._one(port, rd)
         ar = [e for e in self.sampler.since(mark, "ar") if e.addr == addr]
+        assert (wr.resp_code, rd.resp_code, len(aw), len(ar)) == (DECERR, DECERR, 0, 0), (
+            f"S5 {PORT_NAME[port]} @0x{addr:x}, inside neither aperture: write "
+            f"{RESP_NAMES[wr.resp_code]} with {len(aw)} AW at the responder, read "
+            f"{RESP_NAMES[rd.resp_code]} with {len(ar)} AR; the map answers DECERR there and the "
+            f"access must not reach SYS_OUT"
+        )
         return (
-            f"{PORT_NAME[port]} k{k} cache 0x{cache:X} user 0x{user:03X}: write "
-            f"{RESP_NAMES[wr.resp_code]} aw_seen={len(aw)}"
-            f"{'' if not aw else f' awcache 0x{aw[0].cache:X} awuser 0x{aw[0].user:X}'}, "
-            f"read {RESP_NAMES[rd.resp_code]} ar_seen={len(ar)}"
-            f"{'' if not ar else f' arcache 0x{ar[0].cache:X} aruser 0x{ar[0].user:X}'}"
+            f"{PORT_NAME[port]} k{k} cache 0x{cache:X} user 0x{user:03X}: write DECERR, read "
+            f"DECERR, no AW or AR at the responder"
         )
 
     async def _s6_port(self, rng: random.Random, port: str) -> list[str]:
@@ -1042,12 +1071,13 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             await task
 
     def _log_shape_rows(self) -> None:
-        """One line per observe-only access of steps 6 and 7, AxLOCK 1 marked, then the PROT view."""
+        """One line per observe-only access of steps 6 and 7 with AxLOCK, then the AxPROT view."""
         for step, port, it in self._shape_rows:
             if not it.observe:
                 continue
             cocotb.log.info(
-                "OBS-SHAPE: %s %s %s @0x%x AxSIZE=%d AxBURST=%s AxLEN=%d AxLOCK=%d AxPROT=%d resp=%s",
+                "OBS-SHAPE: %s %s %s @0x%x AxSIZE=%d AxBURST=%s AxLEN=%d AxLOCK=%d AxPROT=%d "
+                "resp=%s",
                 step,
                 PORT_NAME[port],
                 it.op.value,
@@ -1064,11 +1094,13 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         for p in PORTS:
             hi = [it for q, it in rows if q == p and it.prot & 2]
             lo = [it for q, it in rows if q == p and not it.prot & 2]
+            hi_dec = [i for i in hi if i.resp_code == DECERR]
+            hi_reads = sum(1 for i in hi_dec if i.op is SmcSysAxiOp.READ)
+            lo_dec = sum(1 for i in lo if i.resp_code == DECERR)
             parts.append(
-                f"{PORT_NAME[p]} AxPROT[1]=1: {len(hi)} accesses, {sum(1 for i in hi if i.resp_code == DECERR)} DECERR "
-                f"({sum(1 for i in hi if i.resp_code == DECERR and i.op is SmcSysAxiOp.READ)} reads, "
-                f"{sum(1 for i in hi if i.resp_code == DECERR and i.op is SmcSysAxiOp.WRITE)} writes); "
-                f"AxPROT[1]=0: {len(lo)} accesses, {sum(1 for i in lo if i.resp_code == DECERR)} DECERR"
+                f"{PORT_NAME[p]} AxPROT[1]=1: {len(hi)} accesses, {len(hi_dec)} DECERR "
+                f"({hi_reads} reads, {len(hi_dec) - hi_reads} writes); "
+                f"AxPROT[1]=0: {len(lo)} accesses, {lo_dec} DECERR"
             )
         cocotb.log.info(
             "OBS-SHAPE-PROT: step 7 DECERR by AxPROT[1], observed and not graded: %s",
@@ -1145,7 +1177,8 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             stalls[port] = dict(watch.stalls)
             assert watch.stalls["b"] > 0 and watch.stalls["r"] > 0, (
                 f"S8 {PORT_NAME[port]} manager hold {timing[port].summary()} never held a "
-                f"response: stalls {watch.stalls} valid cycles {watch.valid_cycles} of {watch.cycles}"
+                f"response: stalls {watch.stalls} valid cycles {watch.valid_cycles} of "
+                f"{watch.cycles}"
             )
         notes.append(
             "manager holds reached the bus (b, r stall counts above 0): "
@@ -1160,12 +1193,12 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             )
         )
         return (
-            "per port and per AxID the recorded B responses, R beats and R words equal the requests "
-            "for depths 4, 8, 9, 16, 24 (61 accesses per port), for the AxID set {1, 2} on all three "
-            "ports and under the manager stall profiles with the b and r stall counters "
-            "above 0 on every port; every access completed within the guard; response order "
-            "is printed and not graded, and accesses beyond the configured limits are answered "
-            "rather than refused: " + " | ".join(notes)
+            "per port and per AxID the recorded B responses, R beats and R words equal the "
+            "requests for depths 4, 8, 9, 16, 24 (61 accesses per port), for the AxID set {1, 2} "
+            "on all three ports and under the manager stall profiles with the b and r stall "
+            "counters above 0 on every port; every access completed within the guard; response "
+            "order is printed and not graded, and accesses beyond the configured limits are "
+            "answered rather than refused: " + " | ".join(notes)
         )
 
     def _outside_items(self, rng, port: str, n: int):
@@ -1208,19 +1241,29 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 assert [e.chan for e in seen].count("aw") == n_w and [e.chan for e in seen].count(
                     "ar"
                 ) == n_r, f"S9 JTAG {kind} depth {depth}: OUT2 handshakes {len(seen)}"
-                if concurrent:
-                    others.append(
-                        "JTAG depth-8 read group outstanding: "
-                        + "; ".join(
-                            f"{PORT_NAME[p]} codes {[RESP_NAMES[i.resp_code] for i in plan[p]]}"
-                            for p in ("SYS", "SEP")
-                        )
-                        + f"; responder counter deltas beyond the 8 JTAG reads: write {w1 - w0}, read {r1 - r0 - 8}"
+                assert (w1 - w0, r1 - r0) == (n_w, n_r), (
+                    f"S9 JTAG {kind} depth {depth}: responder counters advanced "
+                    f"{w1 - w0} writes {r1 - r0} reads, JTAG issued {n_w}/{n_r}"
+                    + (
+                        " and the SYS_IN and SEP_IN accesses must not reach it"
+                        if concurrent
+                        else ""
                     )
-                else:
-                    assert (w1 - w0, r1 - r0) == (n_w, n_r), (
-                        f"S9 JTAG {kind} depth {depth}: responder counters advanced "
-                        f"{w1 - w0} writes {r1 - r0} reads, issued {n_w}/{n_r}"
+                )
+                if concurrent:
+                    for port in ("SYS", "SEP"):
+                        codes = [RESP_NAMES[i.resp_code] for i in plan[port]]
+                        stray = self._out_window_events(mark, port)
+                        assert all(i.resp_code == DECERR for i in plan[port]) and not stray, (
+                            f"S9 {PORT_NAME[port]} at {('OUT0', 'OUT1')[PIDX[port]]} while the "
+                            f"JTAG depth-8 group is outstanding: codes {codes}, {len(stray)} "
+                            f"handshakes at the responder; inside neither aperture the map "
+                            f"answers DECERR and the access must not reach SYS_OUT"
+                        )
+                    others.append(
+                        "JTAG depth-8 read group outstanding: SYS_IN and SEP_IN 8 accesses each "
+                        "DECERR, no OUT0 or OUT1 handshake at the responder, counters advanced "
+                        f"{w1 - w0} writes and {r1 - r0} reads for the 8 JTAG reads"
                     )
                 deep.append(f"{kind} depth {depth}: {out['JTAG']}")
         # (c) JTAG split between SPM2 and OUT2 with SYS_IN and SEP_IN local traffic.
@@ -1254,35 +1297,61 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
             "depth beyond what the fabric admits: " + " | ".join(deep)
         ), (
             "all 16 SYS_IN and SEP_IN accesses at OUT0 and OUT1 presented while the JTAG depth-8 "
-            "group was outstanding completed within the guard at their own port; response codes "
-            "and counter deltas printed, nothing graded on them; the "
-            "concurrent JTAG group still returned its own words and IDs: " + " | ".join(others)
+            "group was outstanding answered DECERR within the guard at their own port with no AW "
+            "or AR at the responder, the responder counters advanced by the 8 JTAG reads only, "
+            "and the concurrent JTAG group still returned its own words and IDs: "
+            + " | ".join(others)
         )
+
+    def _resp_latency(self, mark: int, resp_mark: int) -> dict[str, int]:
+        """Fewest cycles from the k-th AW (AR) of an ID to its k-th B (RLAST) at the responder."""
+        requests: dict[str, dict[int, list[int]]] = {
+            "aw": defaultdict(list),
+            "ar": defaultdict(list),
+        }
+        for e in self.sampler.since(mark):
+            requests[e.chan][e.ident].append(e.cycle)
+        latency: dict[str, list[int]] = {"b": [], "r": []}
+        for r in self.sampler.resps_since(resp_mark):
+            queue = requests["aw" if r.chan == "b" else "ar"][r.ident]
+            assert queue, f"S10: {r.chan} beat of ID {r.ident} at the responder without a request"
+            latency[r.chan].append(r.cycle - queue.pop(0))
+        assert latency["b"] and latency["r"], f"S10: responses at the responder {latency}"
+        return {chan: min(values) for chan, values in latency.items()}
 
     async def _s10(self) -> str:
         rng = self._rng(10)
         mem = self.mem
         notes = []
+        # (label, arm, fewest delay cycles of the profile; None for the READY stall profile)
         profiles = (
-            ("delay 1-8", lambda: mem.set_response_delay([rng.randint(1, 8) for _ in range(24)])),
+            (
+                "delay 1-8",
+                lambda: mem.set_response_delay([rng.randint(1, 8) for _ in range(24)]),
+                1,
+            ),
             (
                 "delay 32-64",
                 lambda: mem.set_response_delay([rng.randint(32, 64) for _ in range(24)]),
+                32,
             ),
             (
                 "aw/ar stall 16",
                 lambda: mem.enable_backpressure(channels=("aw", "ar"), stall_cycles=16),
+                None,
             ),
             (
                 "delay 0-64 depth 8",
                 lambda: mem.set_response_delay([rng.randint(0, 64) for _ in range(24)]),
+                0,
             ),
         )
-        for label, arm in profiles:
+        for label, arm, min_delay in profiles:
             items = self._out_items(rng, "JTAG", 12, 12)
             self._give_ids(items, [i % 4 for i in range(24)])
             w0, r0 = output_responder_counts()
-            mark = self.sampler.mark()
+            mark, resp_mark = self.sampler.mark(), self.sampler.mark_resps()
+            stalls0 = dict(self.sampler.stalls)
             arm()
             try:
                 out = await self._groups({"JTAG": items})
@@ -1303,12 +1372,29 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 f"S10 {label}: responder counters advanced {w1 - w0} writes {r1 - r0} reads, "
                 f"issued 12/12"
             )
-            notes.append(f"{label}: {out['JTAG']}")
+            if min_delay is None:
+                held = {ch: self.sampler.stalls[ch] - stalls0[ch] for ch in ("aw", "ar")}
+                assert held["aw"] > 0 and held["ar"] > 0, (
+                    f"S10 {label}: the responder held AWREADY low on {held['aw']} and ARREADY low "
+                    f"on {held['ar']} cycles with a request valid; the stall never reached the wire"
+                )
+                control = f"AWREADY/ARREADY held low {held['aw']}/{held['ar']} cycles"
+            else:
+                shortest = self._resp_latency(mark, resp_mark)
+                assert min(shortest.values()) >= min_delay, (
+                    f"S10 {label}: shortest AW-to-B {shortest['b']} and AR-to-RLAST "
+                    f"{shortest['r']} cycles at the responder, the profile delays every response "
+                    f"by at least {min_delay}"
+                )
+                control = f"shortest AW-to-B/AR-to-RLAST {shortest['b']}/{shortest['r']} cycles"
+            notes.append(f"{label} ({control}): {out['JTAG']}")
         return (
             "under the four profiles all 96 JTAG accesses completed within the guard, per AxID the "
             "B count and returned words match the requests, every OKAY read word equals the "
             "responder word of its address, the AW and AR address sets at the responder equal the "
-            "sets issued and the responder counters advanced by 24 per profile; response order "
+            "sets issued, the responder counters advanced by 24 per profile, the stall profile "
+            "held AWREADY and ARREADY low with a request valid and each delay profile's shortest "
+            "response at the responder took at least its fewest delay cycles; response order "
             "under each profile is printed and not graded: " + " | ".join(notes)
         )
 
@@ -1325,6 +1411,25 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 ("r_" if items[index].op is SmcSysAxiOp.READ else "b_") + RESP_NAMES[code].lower()
             ] += 1
         return want
+
+    @staticmethod
+    def _pairs(items, injected: dict) -> list[str]:
+        """`<op><id>:<injected>-><answered>` of every injected member."""
+        return [
+            f"{items[i].op.value[0]}{items[i].axi_id}:{RESP_NAMES[c]}->"
+            f"{RESP_NAMES[items[i].resp_code]}"
+            for i, c in injected.items()
+        ]
+
+    @staticmethod
+    def _check_echo(items, injected: dict, label: str) -> None:
+        """Every member answered at JTAG with the code the responder returned: injected or OKAY."""
+        for index, item in enumerate(items):
+            want = injected.get(index, 0)
+            assert item.resp_code == want, (
+                f"S11 {label}: {item.op.value} ID {item.axi_id} @0x{item.addr:x} answered "
+                f"{RESP_NAMES[item.resp_code]} at JTAG, the responder returned {RESP_NAMES[want]}"
+            )
 
     def _check_monitor(self, before: dict, after: dict, want: Counter, label: str) -> None:
         for key in ("b_slverr", "b_decerr", "r_slverr", "r_decerr"):
@@ -1369,6 +1474,10 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
                 assert got_id == ident, (
                     f"S11 {label} round {rnd}: response ID {got_id}, request ID {ident}"
                 )
+                assert item.resp_code == code, (
+                    f"S11 {label} round {rnd}: JTAG answered {RESP_NAMES[item.resp_code]}, the "
+                    f"responder returned {RESP_NAMES[code]}"
+                )
                 key = ("r_" if is_read else "b_") + RESP_NAMES[code].lower()
                 self._check_monitor(
                     before, mon.snapshot(), Counter({key: 1}), f"{label} round {rnd}"
@@ -1391,19 +1500,17 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         before = mon.snapshot()
         out_b = await self._groups({"JTAG": items})
         self._check_monitor(before, mon.snapshot(), self._tally(items, injected), "group of 24")
-        pairs_b = [
-            f"{items[i].op.value[0]}{items[i].axi_id}:{RESP_NAMES[c]}->{RESP_NAMES[items[i].resp_code]}"
-            for i, c in injected.items()
-        ]
+        self._check_echo(items, injected, "group of 24")
+        pairs_b = self._pairs(items, injected)
         errors_text = (
             f"the 12 one-shot injections [{' '.join(seen)}] and the injected third of the group of "
             f"24 [{' '.join(pairs_b)}] each completed within the guard at the originating port "
-            f"with its own ID, the responder monitor counted exactly the injected codes on the "
-            f"wire, and each ordinary write-then-read after an injection answered OKAY and returned "
-            f"the word written; the code at the inbound port is printed next to the injected one, "
-            f"not graded; {out_b['JTAG']}"
+            f"with its own ID and the injected code, the other 16 of the group answered OKAY, the "
+            f"responder monitor counted exactly the injected codes on the wire, and each ordinary "
+            f"write-then-read after an injection answered OKAY and returned the word written; "
+            f"{out_b['JTAG']}"
         )
-        # (c) delay, ready stall and reorder with injected errors while local traffic is outstanding.
+        # (c) delay, ready stall and reorder with injected errors under outstanding local traffic.
         items = self._out_items(rng, "JTAG", 12, 12, allow_error=True)
         self._give_ids(items, [i % 4 for i in range(24)])
         injected = {i: rng.choice((SLVERR, DECERR)) for i in sorted(rng.sample(range(24), 8))}
@@ -1420,21 +1527,19 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         before = mon.snapshot()
         out_c = await self._groups(plan)
         self._check_monitor(before, mon.snapshot(), self._tally(items, injected), "stressed group")
+        self._check_echo(items, injected, "stressed group")
         for port in ("SYS", "SEP"):
             assert all(i.resp_code == 0 for i in plan[port]), (
                 f"S11 {PORT_NAME[port]} local access not OKAY while the responder is stressed: "
                 f"{[RESP_NAMES[i.resp_code] for i in plan[port]]}"
             )
-        pairs_c = [
-            f"{items[i].op.value[0]}{items[i].axi_id}:{RESP_NAMES[c]}->{RESP_NAMES[items[i].resp_code]}"
-            for i, c in injected.items()
-        ]
+        pairs_c = self._pairs(items, injected)
         combined_text = (
             f"with response delay 0-64, aw/ar ready stall {stall}, the depth-8 reorder and the "
             f"injected third [{' '.join(pairs_c)}] on the JTAG group of 24 at OUT2, all 24 SYS_IN "
             f"and SEP_IN accesses answered OKAY within the guard at their own port with the golden "
             f"word of their own address, every JTAG access completed at the JTAG port with its own "
-            f"ID (code and order are printed and not graded) and "
+            f"ID and the code the responder returned (order is printed and not graded) and "
             f"every OKAY JTAG read word equals the responder word of its address: "
             + "; ".join(out_c.values())
         )
@@ -1495,19 +1600,21 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         self._mark_step("S7")
         self._log_shape_rows()
         floors = {
-            "S6": [self._compare_floor("S6", p, every=True) for p in PORTS],
+            "S6": [self._compare_floor("S6", p) for p in PORTS],
             "S7": [self._compare_floor("S7", p) for p in PORTS],
         }
         self._log_chk(
             "CHK-RAND-SHAPE-BY-ADDR",
-            f"all {self._step_accesses['S6']} + {self._step_accesses['S7']} accesses of steps 6 and "
-            f"7 completed within the guard with defined data, each beat count equals AxLEN+1, every "
-            f"OKAY read at a KNOWN byte returned the golden byte of its own address (reads at KNOWN "
-            f"bytes compared/issued: step 6 {', '.join(floors['S6'])}, step 7 "
-            f"{', '.join(floors['S7'])}; {self._cmp_bytes['S6'] + self._cmp_bytes['S7']} bytes "
-            f"compared), recovery write-then-reads returned the fresh "
-            f"word; responses of FIXED, WRAP, narrow register and AxLOCK 1 accesses printed "
-            f"are printed and not graded: {self._shape_text()}; " + " | ".join(notes6),
+            f"all {self._step_accesses['S6']} + {self._step_accesses['S7']} accesses of steps 6 "
+            f"and 7 completed within the guard with defined data, each beat count equals AxLEN+1, "
+            f"every OKAY read at a KNOWN byte returned the golden byte of its own address and "
+            f"every read issued at KNOWN bytes with AxPROT[1] clear answered OKAY "
+            f"(compared/issued: step 6 {', '.join(floors['S6'])}, step 7 "
+            f"{', '.join(floors['S7'])}; "
+            f"{self._cmp_bytes['S6'] + self._cmp_bytes['S7']} bytes compared), recovery "
+            f"write-then-reads returned the fresh word; responses of FIXED, WRAP, narrow register, "
+            f"AxLOCK 1 and AxPROT[1] accesses are printed and not graded: {self._shape_text()}; "
+            + " | ".join(notes6),
         )
 
         self._step = "S8"
@@ -1519,7 +1626,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         deep, others = await self._s9()
         self._mark_step("S9")
         self._log_chk("CHK-RAND-OUT-DEEP", deep)
-        self._log_chk("CHK-RAND-OUT-OTHER-PORTS-OBS", others)
+        self._log_chk("CHK-RAND-OUT-OTHER-PORTS-DECERR", others)
 
         self._step = "S10"
         text = await self._s10()
@@ -1529,7 +1636,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         self._step = "S11"
         errors_text, combined_text = await self._s11()
         self._mark_step("S11")
-        self._log_chk("CHK-RAND-RESP-ERRORS-OBS", errors_text)
+        self._log_chk("CHK-RAND-RESP-ERRORS-ECHO", errors_text)
         self._log_chk("CHK-RAND-RESP-COMBINED", combined_text)
 
         self._step = "S12"
@@ -1561,14 +1668,21 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         assert any(e.chan == "aw" for e in self.sampler.events), (
             "no AW handshake sampled at SYS_OUT"
         )
+        codes = {
+            PORT_NAME[p]: {
+                f"{op}:{RESP_NAMES[c]}": n for (op, c), n in sorted(self._codes[p].items())
+            }
+            for p in PORTS
+        }
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; RAND-SEED %d; checker lines %s; recorder responses %s; "
-            "AW handshakes at the responder %d; accesses %d; stamps %s",
+            "AW handshakes at the responder %d; accesses %d; codes per port %s; stamps %s",
             "<".join(STEPS),
             self.seed,
             ",".join(c for c, _ in self._chk_marks),
             {PORT_NAME[p]: len(self.rec[p].events) for p in PORTS},
             sum(1 for e in self.sampler.events if e.chan == "aw"),
             self.accesses,
+            codes,
             ",".join(f"{s}={t}" for s, t in self._stamps),
         )
