@@ -3,11 +3,12 @@
 """Responder controls and window counters for the outbound stall and saturation leaf.
 
 The responder (``tb/sep_outbound_mbx.sv``) is steered only through its top
-ports: ``smn_outbound_resp_hold_i`` keeps B and R VALID low while requests are
-still accepted, and bit 0, 1 and 2 of ``smn_outbound_ready_stall_i`` keep AW,
-W and AR READY low. The counters read the handshakes of the two TB masters
-(``PinWatch``) and of the outbound port taps, attributing every PR-OUT
-request to its initiator by address (``Layout``).
+ports: ``smn_outbound_resp_hold_i`` keeps it from raising a new B or R VALID
+(one already on offer completes) while requests are still accepted, and bit 0,
+1 and 2 of ``smn_outbound_ready_stall_i`` keep AW, W and AR READY low. The
+counters read the handshakes of the two TB masters (``PinWatch``) and of the
+outbound port taps, attributing every PR-OUT request to its initiator by
+address (``Layout``).
 
 Contents:
 

@@ -313,15 +313,16 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         return SimpleNamespace(
             lat=lat,
             resp=(RESP_OKAY if job.status_error == 0 else RESP_SLVERR) if init == "dma" else t.resp,
+            done=int(job.done if init == "dma" else t.done),
             reached=snap["port"][init]["aw"] + snap["port"][init]["ar"] > 0,
         )
 
-    def _delays_line(self, chan, delay, init, op, lat, base, done, reached) -> None:
+    def _delays_line(self, chan, delay, init, op, lat, base, done, total, reached) -> None:
         emit = self._obs_row if init == "sysif" and not reached else self._line
         emit(
             "CHK-DELAYS",
             f"chan={chan} delay_cycles={delay} init={init} latency_ns={lat:.1f} "
-            f"baseline_ns={base:.1f} completed={done}/{done} op={op} reached={int(reached)}",
+            f"baseline_ns={base:.1f} completed={done}/{total} op={op} reached={int(reached)}",
         )
 
     async def _s2_baseline(self) -> None:
@@ -332,7 +333,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 if init != "sysif" and (r.resp != RESP_OKAY or not r.reached):
                     self._fail(chk, f"baseline init={init} op={op} resp={r.resp}")
                 self.base[(init, op)] = r.lat
-                self._delays_line("none", 0, init, op, r.lat, r.lat, 1, r.reached)
+                self._delays_line("none", 0, init, op, r.lat, r.lat, r.done, 1, r.reached)
         self._fence("BASELINE")
 
     async def _s3_channels(self) -> None:
@@ -349,13 +350,14 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                     self._fail(
                         chk,
                         f"chan={chan} init={init} delay_cycles={d} latency_ns={r.lat:.1f} "
-                        f"baseline_ns={base:.1f} period_ns={period}: the delay never reached the path",
+                        f"baseline_ns={base:.1f} period_ns={period}: the delay never reached "
+                        "the path",
                     )
                 if not grade:
                     self.logger.info(
                         "OBS-SYSIF-DELAY: chan=%s init=sysif reached=0 no_outbound_path=1", chan
                     )
-                self._delays_line(chan, d, init, op, r.lat, base, 1, r.reached)
+                self._delays_line(chan, d, init, op, r.lat, base, r.done, 1, r.reached)
         self._fence("CHANNEL_DELAYS")
 
     async def _s4_all(self) -> None:
@@ -398,6 +400,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 "mix",
                 max(t.latency_ns for t in items),
                 max(self.base[(init, "wr")], self.base[(init, "rd")]),
+                sum(1 for t in items if t.done),
                 len(items),
                 reach[init],
             )
@@ -408,6 +411,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             "mix",
             max(j.latency_ns for j in jobs),
             max(self.base[("dma", "wr")], self.base[("dma", "rd")]),
+            sum(1 for j in jobs if j.done),
             len(jobs),
             reach["dma"],
         )
@@ -457,7 +461,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         return made
 
     async def _window(self, s, chk: str) -> dict:
-        """Two observation windows under the hold; the accepted counts must not rise in the second."""
+        """Two observation windows under the hold; the accepted counts stop rising by the second."""
         self._wait_bound("hold_window", f"clocks={2 * WINDOW}")
         await ClockCycles(self.dut_clk, WINDOW)
         a = s.meter.read()
@@ -611,9 +615,10 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 sys_n,
             )
             self.logger.info(
-                "OBS-LIMIT: session=%s accepted_at_port=%d demand=%d per_init=%s rtl_max_trans=%d (the LSU "
-                "and DMA total at the port; the DMA issues one write at a time on its held B, "
-                "so this stop is the DMA's issue policy, not a slave-port limit)",
+                "OBS-LIMIT: session=%s accepted_at_port=%d demand=%d per_init=%s "
+                "rtl_max_trans=%d (the LSU and DMA total at the port; the DMA issues one "
+                "write at a time on its held B, so this stop is the DMA's issue policy, not "
+                "a slave-port limit)",
                 name,
                 acc,
                 slv_lsu + DMA_WORDS,

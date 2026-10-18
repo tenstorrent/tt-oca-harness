@@ -820,8 +820,8 @@ class OutboundLeaf:
             return
         self.waits_logged.add(kind)
         self.logger.info(
-            "CHK-TIMEOUT-PATHS: wait=%s bound=%s on_expiry=fail_with_initiator_txn_and_last_port_state "
-            "last_port_state=%s",
+            "CHK-TIMEOUT-PATHS: wait=%s bound=%s "
+            "on_expiry=fail_with_initiator_txn_and_last_port_state last_port_state=%s",
             kind,
             bound,
             self._port_state(),

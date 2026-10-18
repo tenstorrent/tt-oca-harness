@@ -786,7 +786,11 @@ target = "default"
 args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"]
 
 [[tests]]
-# Concurrent LSU, Secure DMA and SMN inbound traffic to the outbound port under seed-drawn target READY and VALID delays: path, concurrency, same-ID order, exactly-once B and R, response routing, AxUSER, AxPROT and ID per initiator. RANDCFG.
+# The CPU LSU and the Secure DMA toward the outbound port, singly and together, under
+# seed-drawn responder READY and VALID delays: path, LSU/DMA requests outstanding at the
+# port at once, same-ID order, exactly-once B and R, response routing, AxUSER, AxPROT and
+# ID per initiator. The SMN inbound master issues alongside as the stimulus of the no-path
+# check (fabric.adoc, Routing: DECERR, nothing at the port). RANDCFG.
 name = "sep_outbound_contention_rand_test"
 module = "system.sep_outbound_contention_rand_test"
 seed = 1
@@ -798,7 +802,11 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+sep_outbound_depth=64"]
 
 [[tests]]
-# Outbound target stall and hold-then-release from the LSU, Secure DMA and SMN inbound master, with the local crossbar and outbound chain outstanding limits reached under a held target: finite stop, held request completes, drain without deadlock, B and R accounting.
+# Outbound target READY stall and B/R hold-then-release against the CPU LSU and the Secure
+# DMA, with the local crossbar outstanding limit reached under the held target: finite
+# stop, held request completes after a release, drain without deadlock, B and R
+# accounting. The outbound chain limit is printed, not graded. The SMN inbound master
+# issues alongside as the stimulus of the no-path check.
 name = "sep_outbound_stall_saturation_test"
 module = "system.sep_outbound_stall_saturation_test"
 seed = 1

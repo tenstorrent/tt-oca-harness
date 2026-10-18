@@ -738,9 +738,9 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             if depth < 2:
                 self._fail(
                     chk,
-                    f"id={c.same_id} inits={'+'.join(inits)} same_id_reads_outstanding_max={depth}: "
-                    "no two same-ID reads were outstanding at the port at once, so their "
-                    "order is not exercised",
+                    f"id={c.same_id} inits={'+'.join(inits)} "
+                    f"same_id_reads_outstanding_max={depth}: no two same-ID reads were "
+                    "outstanding at the port at once, so their order is not exercised",
                 )
             self._obs_row(
                 "ID-ORDER",
