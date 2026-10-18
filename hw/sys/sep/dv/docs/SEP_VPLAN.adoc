@@ -4731,6 +4731,12 @@ use it" names the entries whose checks need the hook.
 |The `token_cmp_fault` injection port
 |`sep_efuse_token_fault_matrix_test` (copy 0 and common-mode cells)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
+|`+sep_km_axil_ar_reset_waive`
+|Existing bench hook
+|Turns off only the `OCAH_AXI_AR_VALID_RESET_LOW` rule of the KM CPU AXI-Lite protocol checker `u_km_axil_sva`, for a leaf that resets the KM while its CPU polls the bus. The KM CPU master drops ARVALID one clock after a warm or cold reset asserts, and no check in these leaves grades ARVALID during reset. Every other rule of the checker stays live.
+|The ARVALID input of `u_km_axil_sva`, masked to 0 while the KM warm reset is low
+|`sep_km_kmcsr_reset_rand_test`, `sep_km_kpv_rand_test`, `sep_km_cpu_protect_rand_test`, `sep_km_crossbar_efuse_window_rand_test`
+|<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-IRQSET`
 |Error inject
 |Sets IRQ_STATUS bits through the IRQ_SET path.

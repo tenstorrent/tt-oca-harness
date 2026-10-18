@@ -331,7 +331,7 @@ timeout_sec = 3600
 tags = ["km", "kmcsr", "reset", "sram_lock", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex"]
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+sep_km_axil_ar_reset_waive"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
 
@@ -346,7 +346,7 @@ timeout_sec = 3600
 tags = ["km", "kpv", "scrambler", "wipe", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex"]
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+sep_km_axil_ar_reset_waive"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
 
@@ -361,7 +361,7 @@ timeout_sec = 5400
 tags = ["km", "vault", "cpu", "rand", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex"]
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+sep_km_axil_ar_reset_waive"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
 
@@ -377,4 +377,4 @@ timeout_sec = 5400
 tags = ["km", "efuse", "crossbar", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+km_rom_hex=km_rom_poke.parhex"]
+args = ["+km_rom_hex=km_rom_poke.parhex", "+sep_km_axil_ar_reset_waive"]
