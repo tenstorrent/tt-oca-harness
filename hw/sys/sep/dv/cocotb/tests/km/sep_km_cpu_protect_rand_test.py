@@ -530,6 +530,17 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             high += self._err()
         return high, rom0, self._rom_count()
 
+    async def _wait_ops_done(self, n: int, what: str) -> int:
+        """Bounded wait until PROG shows at least ``n`` ops completed in the running list."""
+        for cycle in range(0, MARKER_BOUND, 16):
+            if self.poke.progress()[0] >= n:
+                return cycle
+            await ClockCycles(cocotb.top.clk_i, 16)
+        raise AssertionError(
+            f"{what}: PROG shows {self.poke.progress()[0]} ops completed after "
+            f"{MARKER_BOUND} clocks, expected {n}"
+        )
+
     async def _wait_err_rise(self, what: str) -> int:
         for cycle in range(1, TRAP_RISE_BOUND + 1):
             await RisingEdge(cocotb.top.clk_i)
@@ -682,6 +693,9 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         ops = [kp.mark(w.sram), kp.delay(WITNESS_DELAY), *trap_ops]
         handle = await self.poke.post(ops)
         await self.poke.wait(handle, (kp.ST_RUN,))
+        # STATE reads RUN before the first op runs; wait until the mark op
+        # (op 0) has stored the SRAM witness, so the witness read below sees it.
+        await self._wait_ops_done(1, f"trap {kind} SRAM witness mark")
         await self.poke.mbox.post_raw_words([w.mbox])
         depth_before = await self._mbox_depth()
         await ReadOnly()

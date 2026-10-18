@@ -127,7 +127,8 @@ class _ResetWatch:
         self._on = False
 
     def cyc(self) -> int:
-        return round(get_sim_time("ps") / self.period_ps)
+        # Clock index from sim time; floor keeps one index per clock at any start phase.
+        return int(get_sim_time("ps")) // self.period_ps
 
     def _bit(self, sig) -> int | None:
         try:
@@ -250,7 +251,11 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         self.poke = SepKmPoke(self)
         self.watch = _ResetWatch(self, self.period_ps)
         await self._wait_sep_reset_n()
+        # The watcher takes two samples before the launch, so an AWVALID that rises
+        # in the launch clock is seen as a start.
         self.watch.start()
+        await ClockCycles(self.dut.clk_i, 2)
+        await self._edge()
         task, e = self._launch("release")
         await task
         await ClockCycles(self.dut.clk_i, 2)
