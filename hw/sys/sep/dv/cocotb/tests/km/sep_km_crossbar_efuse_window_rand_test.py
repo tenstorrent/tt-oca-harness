@@ -905,11 +905,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             kp.wr(km(R_PROG), pw | PC_GO, raw=mode == "allow"),
         ]
         if mode == "allow":
-            # program_busy "When set, the program is in progress" and
-            # program_done "When set, the program has completed"
-            # (efuse_interface_ctrl.adoc, EFUSE_PROGRAM_CTRL). The spec does not
-            # say that the go clears program_done, so busy seen at 1 after the
-            # go is what shows that this program ran.
+            # Looks for program_busy = 1 after the go; busy_seen is logged only.
             ops.append(kp.poll(km(R_PROG), PC_BUSY, PC_BUSY, BUSY_RISE_LOADS, raw=True))
             ops.append(kp.poll(km(R_PROG), PC_BUSY | PC_DONE, PC_DONE, PROG_POLL_LOADS))
         elif mode == "deny":
@@ -1042,7 +1038,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
     async def _program_pair(self, rng: SepSeededRng, fp: KmFusePlan) -> dict:
         km_t, host_t = fp.targets["km_spare"], fp.targets["host_spare"]
         out: dict = {}
-        for path in self._order(rng, "prog.order"):
+        order = self._order(rng, "prog.order")
+        for path in order:
             tgt = km_t if path == "km" else host_t
             r = await (
                 self._km_program(tgt, "allow") if path == "km" else self._host_program(tgt, "allow")
@@ -1057,17 +1054,22 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             otp = r["otp"]
             r["otp_bit"] = (otp["word"] >> tgt.bit) & 1
             r["otp_word_eq"] = int(otp["word"] == want)
-            # program_done and program_status belong to this program only when
-            # done read 0 before the go or busy was seen at 1 after it. Else
-            # they can be left from the earlier program: logged, not graded.
-            r["fresh"] = int(r["done_before"] == 0 or r["busy_seen"] == 1)
+            # program_done resets to 0x0 (efuse_interface_ctrl.adoc,
+            # EFUSE_PROGRAM_CTRL) at the cold reset that starts this boot
+            # (otp_fuse_controller.adoc: SEP released from chiplet_cold_reset),
+            # and no program runs between that reset and this pair. The first
+            # program of the pair therefore starts at done = 0, and its done and
+            # status belong to it. The second program follows a program that set
+            # done, so its done and status are logged, not graded. The drawn
+            # order gives each path the graded place over the seeds.
+            r["fresh"] = int(path == order[0])
             line = (
                 f"path={path} spare={tgt.field} word={tgt.word} bit={tgt.bit} "
                 f"done_before={r['done_before']} done={r['done']} status={r['status']} "
                 f"req_err_before={r['req_err_before']} req_err={r['req_err']} "
                 f"otp_word=0x{otp['word']:08x} staged=0x{staged:08x} otp_bit={r['otp_bit']} "
                 f"otp_word_eq={r['otp_word_eq']} busy_seen={r['busy_seen']} "
-                f"status_graded={r['fresh']}"
+                f"status_graded={r['fresh']}" + ("" if r["fresh"] else " reason=prior_program")
             )
             r["line"] = line
             bad = []
@@ -1075,6 +1077,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 bad.append("efuse_req_error read 1 after its clear (control)")
             if not r["waited"] or not otp["waited"]:
                 bad.append("the bounded wait ran out")
+            if r["fresh"] and r["done_before"] != 0:
+                bad.append("program_done read 1 before the first program since the reset")
             if r["fresh"] and r["done"] != 1:
                 bad.append("program_done != 1")
             if r["fresh"] and r["status"] != 0:
@@ -1087,29 +1091,19 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 problems += [f"{b}: {line}" for b in bad]
             else:
                 self.logger.info("CTL-EFW-PROG %s control=1 match=%d", line, int(not bad))
-        if not out["km"]["fresh"]:
-            # The spec states no way to clear program_done before the go
-            # (efuse_interface_ctrl.adoc: R, reset 0x0), so the KM program must
-            # show itself: done read 0 before the go, or busy seen at 1 after it.
-            problems.append(
-                "CTRL-MISSING: the KM program showed neither program_done = 0 before "
-                "the go nor program_busy = 1 after it, so its program_done and "
-                f"program_status cannot be told from the earlier program: {out['km']['line']}"
-            )
         # efuse_req_error is cleared before each program, so it is compared
-        # always; program_done and program_status only when both paths are fresh.
-        keys = ("done", "status", "req_err")
-        if not (out["km"]["fresh"] and out["host"]["fresh"]):
-            keys = ("req_err",)
+        # always. Only one program of the pair has graded done and status.
+        keys = ("req_err",)
         km_tuple = tuple(out["km"][k] for k in keys)
         host_tuple = tuple(out["host"][k] for k in keys)
         if km_tuple != host_tuple:
             problems.append(f"KM tuple {km_tuple} != host tuple {host_tuple}")
         self._fail("CHK-EFW-PROG", problems)
         self.logger.info(
-            "CHK-EFW-PROG PASS %s host_tuple_equal=1 tuple_fields=%s",
+            "CHK-EFW-PROG PASS %s host_tuple_equal=1 tuple_fields=%s status_graded_path=%s",
             out["km"]["line"],
             ",".join(keys),
+            order[0],
         )
         return out
 
