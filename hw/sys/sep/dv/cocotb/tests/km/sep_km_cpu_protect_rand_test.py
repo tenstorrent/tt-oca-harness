@@ -288,6 +288,47 @@ def snippet_p(base: int, rom_addr: int, rom_store: int) -> list[int]:
     return a.words()
 
 
+def kpv_reset_control_fault(
+    kind: str,
+    slots: list[int],
+    locks: dict[int, str],
+    words: dict[int, tuple[int, ...]],
+    tap_after: dict[int, tuple[int, ...]],
+    port_after: dict[int, kp.PokeResult],
+    ctrl_after: list[int],
+) -> str | None:
+    """None when every locked slot kept its words over a plain reset, else the failure.
+
+    The stored words are graded on KM-KPV for every slot. A slot whose CTRL reads
+    0 after the reset (locks cleared) is also graded on the KM port, with every
+    read free of slv and dec. A slot still locked after the reset is not read on
+    the port, because lock_use or seal refuses that read.
+    """
+    for i, s in enumerate(slots):
+        if tap_after[s] != words[s]:
+            return (
+                f"CHK-TRAP-WIPE FAIL: control: KM-KPV slot {s} ({locks[s]}) holds "
+                f"{[hex(v) for v in tap_after[s]]} after a plain {kind} reset, wrote "
+                f"{[hex(v) for v in words[s]]}; a reset alone overwrote a locked slot"
+            )
+        if ctrl_after[i]:
+            continue
+        r = port_after[s]
+        bad = [k for k, f in enumerate(r.flags) if f is None or f.slv or f.dec]
+        if bad:
+            return (
+                f"CHK-TRAP-WIPE FAIL: control: slot {s} ({locks[s]}) port reads {bad} reported "
+                f"slv or dec after a plain {kind} reset with CTRL 0"
+            )
+        if tuple(r.data) != words[s]:
+            return (
+                f"CHK-TRAP-WIPE FAIL: control: slot {s} ({locks[s]}) reads "
+                f"{[hex(v) for v in r.data]} on the port after a plain {kind} reset, wrote "
+                f"{[hex(v) for v in words[s]]}"
+            )
+    return None
+
+
 # --- plan -----------------------------------------------------------------------
 
 
@@ -834,42 +875,86 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         self.err_hits += 1
         self._graded(False)
 
+    def _kpv_tap_words(self, slot: int) -> tuple[int, ...]:
+        """KM-KPV: the 16 stored words of ``slot``. The KPV scrambler stays off
+        (reset 0, never enabled here), so stored word i is logical word i."""
+        lo = 32 * slot * KPV_WORDS_PER_SLOT
+        mask = ((1 << (32 * KPV_WORDS_PER_SLOT)) - 1) << lo
+        v = self.rd_known(cocotb.top.km_kpv_words_o, mask=mask) >> lo
+        return tuple((v >> (32 * i)) & kp.WORD_MASK for i in range(KPV_WORDS_PER_SLOT))
+
     async def _plain_reset_kpv_control(self, kind: str) -> None:
         """Control of CHK-TRAP-WIPE: a reset with no trap keeps the KPV words.
 
-        architecture.adoc, "Key and Policy Vault (KPV)": cold or warm reset alone
-        does not overwrite their contents. A zero after a trap and the same kind
-        of reset therefore comes from the trap wipe.
+        architecture.adoc:466 ("Key and Policy Vault (KPV)"): cold or warm reset
+        alone does not overwrite their contents. One slot per lock kind of the
+        trap witnesses (lock_write, lock_use, seal) is written, read back,
+        locked, and reset with no trap. A zero after a trap and the same kind of
+        reset therefore comes from the trap wipe, also for a locked slot.
         """
-        slot = self.plan.rng.randrange(KPV_SLOTS)
-        words = tuple(_nz(self.plan.rng) for _ in range(KPV_WORDS_PER_SLOT))
-        self.logger.info(
-            "DRAW kpv_reset_control reset=%s slot=%d words=%s",
-            kind,
-            slot,
-            ",".join(f"0x{v:08x}" for v in words),
+        kinds = sorted(KPV_LOCKS)
+        slots = self.plan.rng.sample(range(KPV_SLOTS), len(kinds))
+        words = {s: tuple(_nz(self.plan.rng) for _ in range(KPV_WORDS_PER_SLOT)) for s in slots}
+        locks = dict(zip(slots, kinds, strict=True))
+        for s in slots:
+            self.logger.info(
+                "DRAW kpv_reset_control reset=%s slot=%d lock=%s words=%s",
+                kind,
+                s,
+                locks[s],
+                ",".join(f"0x{v:08x}" for v in words[s]),
+            )
+        for s in slots:
+            base = kpv_word_addr(s, 0)
+            res = await self.poke.run(
+                [kp.wrblk(base, words[s]), kp.rdblk(base, KPV_WORDS_PER_SLOT)]
+            )
+            self._require_clean(res, f"KPV {kind} reset control write")
+            assert tuple(res[1].data) == words[s], (
+                f"KPV {kind} reset control: slot {s} read back "
+                f"{[hex(v) for v in res[1].data]} before the reset; the control write failed"
+            )
+        res = await self.poke.run(
+            [kp.wr(kpv_ctrl_addr(s), KPV_LOCKS[locks[s]]) for s in slots]
+            + [kp.rd(kpv_ctrl_addr(s)) for s in slots]
         )
-        base = kpv_word_addr(slot, 0)
-        res = await self.poke.run([kp.wrblk(base, words), kp.rdblk(base, KPV_WORDS_PER_SLOT)])
-        self._require_clean(res, f"KPV {kind} reset control write")
-        assert tuple(res[1].data) == words, (
-            f"KPV {kind} reset control: slot {slot} read back "
-            f"{[hex(v) for v in res[1].data]} before the reset; the control write failed"
-        )
+        self._require_clean(res, f"KPV {kind} reset control lock")
+        ctrl_before = [res[len(slots) + i].value for i in range(len(slots))]
+        for s, c in zip(slots, ctrl_before, strict=True):
+            assert c & KPV_LOCKS[locks[s]], (
+                f"KPV {kind} reset control: slot {s} CTRL=0x{c:x} after the {locks[s]} write; "
+                "the lock did not set, so the control does not cover a locked slot"
+            )
+        await ReadOnly()
+        tap_before = {s: self._kpv_tap_words(s) for s in slots}
+        for s in slots:
+            assert tap_before[s] == words[s], (
+                f"KPV {kind} reset control: KM-KPV slot {s} shows "
+                f"{[hex(v) for v in tap_before[s]]} with the port readback "
+                f"{[hex(v) for v in words[s]]}; the tap does not show the stored words"
+            )
         await self._reset(kind)
-        res = await self.poke.run([kp.rdblk(base, KPV_WORDS_PER_SLOT)])
-        self._require_clean(res, f"KPV {kind} reset control read")
-        after = tuple(res[0].data)
-        assert after == words, (
-            f"CHK-TRAP-WIPE FAIL: control: slot {slot} read {[hex(v) for v in after]} after a "
-            f"plain {kind} reset, wrote {[hex(v) for v in words]}; a reset alone overwrote the KPV"
+        await ReadOnly()
+        tap_after = {s: self._kpv_tap_words(s) for s in slots}
+        res = await self.poke.run(
+            [kp.rd(kpv_ctrl_addr(s)) for s in slots]
+            + [kp.rdblk(kpv_word_addr(s, 0), KPV_WORDS_PER_SLOT) for s in slots]
         )
+        ctrl_after = [r.value for r in res[: len(slots)]]
+        port_after = {s: res[len(slots) + i] for i, s in enumerate(slots)}
+        msg = kpv_reset_control_fault(kind, slots, locks, words, tap_after, port_after, ctrl_after)
+        assert msg is None, msg
         self.kpv_kept[kind] = True
         self.logger.info(
-            "LOG kpv_reset_control control=1 reset=%s slot=%d words_kept=%d slv=0 dec=0",
+            "LOG kpv_reset_control control=1 reset=%s slots=%s locks=%s ctrl_before=%s "
+            "ctrl_after=%s tap_words_kept=%d port_words_kept=%d slv=0 dec=0",
             kind,
-            slot,
-            KPV_WORDS_PER_SLOT,
+            ",".join(str(s) for s in slots),
+            ",".join(locks[s] for s in slots),
+            ",".join(f"0x{c:x}" for c in ctrl_before),
+            ",".join(f"0x{c:x}" for c in ctrl_after),
+            KPV_WORDS_PER_SLOT * len(slots),
+            sum(KPV_WORDS_PER_SLOT for s in slots if ctrl_after[slots.index(s)] == 0),
         )
 
     async def _normal_irq_control(self) -> None:
