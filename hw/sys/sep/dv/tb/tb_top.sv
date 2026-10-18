@@ -2334,8 +2334,8 @@ module sep_uvm_top
     // token_cmp_fault_copy_i picks the copy k of a collapse or disagree
     // pattern as a one-hot bit: copy 0 when the select is 0, undriven or
     // unknown, copy 1 for 2'b01, copy 2 for 2'b10. 2'b11 forces nothing. At
-    // copy 0 the two patterns force 110/000 and 110/001, as they did before
-    // the select existed. The common-mode patterns ignore the select.
+    // copy 0 the two patterns force 110/000 and 110/001. The common-mode
+    // patterns ignore the select.
     logic [2:0] token_cmp_copy_bit;
     logic       token_cmp_copy_ok;
     always_comb begin
