@@ -65,7 +65,14 @@ def _load_env_module(modname: str, filename: str):
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {modname} from {path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # A module that defines a dataclass must be in sys.modules while it
+    # executes: dataclasses looks up sys.modules[cls.__module__].
+    sys.modules[modname] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(modname, None)
+        raise
     return module
 
 

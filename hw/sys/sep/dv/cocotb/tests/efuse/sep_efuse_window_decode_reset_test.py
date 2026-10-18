@@ -106,6 +106,7 @@ _RSVD_PINNED = (SHADOW_BASE + 0x600, SHADOW_BASE + 0xC1C, SHADOW_BASE + 0xFFFC)
 _ARRAY_TOKEN = {"sip": TOKEN_T1, "chiplet": TOKEN_T2, "sec_dis": TOKEN_OTHER}
 _ARRAY_TAG = {"sip": "sip", "chiplet": "chp", "sec_dis": "sdis"}
 _RESP = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "NONE"}
+_RESP_DECERR = 3
 _WORD = 0xFFFF_FFFF
 
 
@@ -145,6 +146,21 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             out[name] = v & _IC.mask32(name)
         return out
 
+    async def _unmapped(self, access):
+        """Run one access whose response code is logged and not graded.
+
+        The AXI monitor fails a DECERR beat it was not told to expect. The
+        response here is not graded, so the access takes one credit and hands it
+        back when the answer is not DECERR (a credit left standing would hide a
+        later unexpected DECERR).
+        """
+        mon = self.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        result = await access()
+        if result[-1] != _RESP_DECERR:
+            mon.release_expected_decerr(1)
+        return result
+
     async def _decode_access(self, win: str, addr: int) -> None:
         """Procedure step 14 for one address: read, then write the complement."""
         off = addr & 0x3FF
@@ -158,7 +174,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         word0, _ok, _c = await self._rd(word_addr)
         for op in ("rd", "wr"):
             if op == "rd":
-                rdata, _ok, code = await self._rd(addr, ungraded=True)
+                rdata, _ok, code = await self._unmapped(lambda: self._rd(addr, ungraded=True))
                 self._log(
                     "OBS-WIN-RESP",
                     win=win,
@@ -168,7 +184,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
                     rdata=f"0x{rdata:08x}",
                 )
             else:
-                _ok, code = await self._wr(addr, wdata, ungraded=True)
+                _ok, code = await self._unmapped(lambda: self._wr(addr, wdata, ungraded=True))
                 self._log(
                     "OBS-WIN-RESP",
                     win=win,

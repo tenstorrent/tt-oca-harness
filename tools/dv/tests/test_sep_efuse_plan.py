@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -115,6 +116,37 @@ class PrestageRuntimeEqualityTest(unittest.TestCase):
                 with self.subTest(test=test, seed=seed):
                     self.assertEqual(staged, _hex(runtime.words()))
                     self.assertEqual(len(staged.split()), 256)
+
+    def test_stage_in_a_fresh_interpreter(self) -> None:
+        """``stage()`` as run_dv.py runs it: no env module imported before the call.
+
+        In this process ``sep_efuse_plan`` is already in ``sys.modules``, which hides a
+        file-path import that does not register the module (a dataclass then fails to
+        build). A child interpreter imports only ``dv_sim_prestage``.
+        """
+        code = (
+            "import io, sys, tempfile\n"
+            "from contextlib import redirect_stdout\n"
+            "from pathlib import Path\n"
+            f"sys.path.insert(0, {str(COCOTB)!r})\n"
+            "import dv_sim_prestage\n"
+            "test, seed = sys.argv[1], int(sys.argv[2])\n"
+            "with tempfile.TemporaryDirectory() as tmp, redirect_stdout(io.StringIO()):\n"
+            "    ok = dv_sim_prestage.stage(test, seed, tmp)\n"
+            "    hexs = (Path(tmp) / 'out' / 'sep_efuse.hex').read_text() if ok else ''\n"
+            "sys.stdout.write(hexs)\n"
+        )
+        for test in P.PRESTAGED_TESTS:
+            seed = SEEDS[0]
+            res = subprocess.run(
+                [sys.executable, "-I", "-c", code, test, str(seed)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            with self.subTest(test=test, seed=seed):
+                self.assertEqual(res.returncode, 0, res.stderr[-2000:])
+                self.assertEqual(res.stdout, _hex(P.plan(test, seed).words()))
 
 
 class ImageRuleTest(unittest.TestCase):

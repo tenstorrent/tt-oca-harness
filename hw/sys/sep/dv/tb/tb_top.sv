@@ -2561,9 +2561,16 @@ module sep_uvm_top
     // no frontdoor. While efuse_sense_status_inject_i=1, during fuse sense only
     // (fuse_sense_done low), with a READ command at the post-guard port, the
     // bank model APB response to the word efuse_sense_status_word_i carries
-    // pslverr=1 (sep_ip_integration net efuse_model_otp_resp, the shim input
-    // efuse_model_otp_resp_i); the shim copies it to the status bit of that
+    // pslverr=1 at the shim, and the shim copies it to the status bit of that
     // sense response.
+    // The force target is the shim's read-path copy of the bank response
+    // (u_efuse_interface_shim.apb_fuse_bank_resp_r, the efuse_model_otp_resp_i
+    // input routed by the READ command). It is a variable of an always_comb
+    // block that also drives the APB request, so the block runs again on the
+    // next request change and the released pslverr takes the bank value again
+    // within one clock. The bank pslverr itself has a constant driver, so a
+    // released force there would keep the value 1 (Verilator release of a
+    // variable) and fail every later sense word, also after rst_ni.
     // The sense streams words 0..255 from bit address 0 and the shim reads
     // byte address (bit address >> 3), so word w has paddr[9:2] == w. Program
     // read-back uses another command and frontdoor reads run after sense done,
@@ -2572,7 +2579,7 @@ module sep_uvm_top
     // penable not yet high), so the force covers the whole access phase.
     // Re-issued every clock and released when the gate drops. Default 0.
 `define EFUSE_OTP_REQ  `SEP_IPI.efuse_model_otp_req
-`define EFUSE_OTP_RESP `SEP_IPI.efuse_model_otp_resp
+`define EFUSE_SHIM_RESP_R `SEP_IPI.u_efuse_interface_shim.apb_fuse_bank_resp_r
     wire efuse_sense_status_hit =
         (efuse_sense_status_inject_i === 1'b1) &&
         (`EFUSE_CTRL.fuse_sense_done === 1'b0) &&
@@ -2582,13 +2589,13 @@ module sep_uvm_top
         (`EFUSE_OTP_REQ.paddr[9:2] === efuse_sense_status_word_i);
     always @(posedge clk_i) begin
         if (efuse_sense_status_hit) begin
-            force `EFUSE_OTP_RESP.pslverr = 1'b1;
+            force `EFUSE_SHIM_RESP_R.pslverr = 1'b1;
         end else begin
-            release `EFUSE_OTP_RESP.pslverr;
+            release `EFUSE_SHIM_RESP_R.pslverr;
         end
     end
 `undef EFUSE_OTP_REQ
-`undef EFUSE_OTP_RESP
+`undef EFUSE_SHIM_RESP_R
 
     // ------------------------------------------------------------------
     // eFuse shim response hold.

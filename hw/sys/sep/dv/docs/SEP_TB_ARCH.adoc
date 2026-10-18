@@ -584,7 +584,8 @@ Exceptions (a closed set):
   `sep_lcc_state_codeword_rand_test`.
 * *eFuse sense status inject* — while `efuse_sense_status_inject_i` is 1,
   during fuse sense only, the bank model APB response to the READ of word
-  `efuse_sense_status_word_i` carries `pslverr` = 1, so the shim returns that
+  `efuse_sense_status_word_i` carries `pslverr` = 1 at the shim (the force is
+  on the shim read-path copy of the response), so the shim returns that
   sense response with its status bit set. The force covers the APB access
   phase of that word. Data and ready are not forced. A healthy bank never
   returns an error, so the sense status path has no frontdoor. Default 0;
