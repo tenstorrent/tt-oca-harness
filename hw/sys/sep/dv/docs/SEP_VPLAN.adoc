@@ -3060,7 +3060,7 @@ the test does.
 |-
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |JTAG access policy outside PROD and RMA_SIP
-|What read data does a blocked JTAG read return (the error response is stated, the data is not)? What is the JTAG policy in PROD_END, RMA_CHIPLET and INVALID, and before sense? Is `TOKEN_MATCH_FAULT` inside the token block? What may TRoot reach over JTAG? Does the JTAG policy of the lifecycle integrity error use the decoder that the bench injection reaches (`lc_sigint_inject_i` acts at the lifecycle decoder input)? (`sep_efuse_jtag_access_rand_test` draws only PROD and RMA_SIP, grades a non-OKAY response and does not read the shadow map over JTAG. The integrity-error leg of `sep_lcc_state_codeword_rand_test` (CHK-JTAG-SIGINT) uses the error inject `jtag_filter_lc_sigint_inject_i` at the decoder of the JTAG lifecycle filter, an added hook.)
+|What read data does a blocked JTAG read return (the error response is stated, the data is not)? What is the JTAG policy in PROD_END, RMA_CHIPLET and INVALID, and before sense? Is `TOKEN_MATCH_FAULT` inside the token block? What may TRoot reach over JTAG? Does the JTAG policy of the lifecycle integrity error use the decoder that the bench injection reaches (`lc_sigint_inject_i` acts at the lifecycle decoder input)? (`sep_efuse_jtag_access_rand_test` draws only PROD and RMA_SIP. Over JTAG it reads and writes drawn shadow words and interface-control registers as denied accesses. It grades each target unchanged at the frontdoor and a response that is not OKAY, except for a PROD read of a shadow word or of `EFUSE_PROGRAM_CTRL`, whose response it logs. It does not grade the data of a denied read. The integrity-error leg of `sep_lcc_state_codeword_rand_test` (CHK-JTAG-SIGINT) uses the error inject `jtag_filter_lc_sigint_inject_i` at the decoder of the JTAG lifecycle filter, an added hook.)
 |-
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Concurrent AXI and JTAG requests
@@ -4067,7 +4067,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Program and read commands that reach the bank port after the guard
 |The command at `efuse_shim_command_req_o` after the guard
 |ACCEPT-PROBE
-|The tap is an observation tap that the owning tests add to the SEP_TB_ARCH observation-probe list. Checks that read it: every command-count and read-command statement (CHK-DEMOTE-OTP, CHK-TRANSIENT-NOBURN, CHK-PROG-LC, the read statements of CHK-IF-CMD, CHK-IF-PRESENSE, CHK-LOCK-CELL, CHK-STM-PROG, CHK-STM-PROG-CTL, CHK-JTAG and the class C command statement of `sep_sec_dis_timing_rand_test`). The OTP image diff reads the observation tap `otp_bank_probe_o`. A direct OTP word read stands in for "no program command" only where the read interface is not under test.
+|The tap is an observation tap that the owning tests add to the SEP_TB_ARCH observation-probe list. Checks that read it: every command-count and read-command statement (CHK-DEMOTE-OTP, CHK-TRANSIENT-NOBURN, CHK-PROG-LC, the read statements of CHK-IF-CMD and CHK-IF-CTRL, CHK-IF-PRESENSE, CHK-LOCK-CELL, CHK-STM-PROG, CHK-STM-PROG-CTL, CHK-JTAG and the class C command statement of `sep_sec_dis_timing_rand_test`). The OTP image diff reads the observation tap `otp_bank_probe_o`. A direct OTP word read stands in for "no program command" only where the read interface is not under test.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Reset state of the 24 token word registers
 |The X value of an unreset token word array
@@ -4440,7 +4440,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`efuse_shim_command_req_o` tap (`efuse_shim_cmd_valid_o`, `efuse_shim_cmd_command_o`, `efuse_shim_cmd_address_o`, `efuse_shim_cmd_program_data_o`, `efuse_shim_cmd_len_o`)
 |Read-only tap
 |The program and read commands that reach the bank port after the guard: valid, command, bit address, program data and word count.
-|`sep_lcc_feat_ctrl_state_matrix_rand_test` (CHK-DEMOTE-OTP), `sep_efuse_transient_rma_rand_test` (CHK-TRANSIENT-NOBURN, CHK-PROG-LC), `sep_efuse_interface_status_rand_test` (CHK-IF-CMD, CHK-IF-PRESENSE), `sep_efuse_lock_slot_matrix_rand_test` (CHK-LOCK-CELL), `sep_efuse_secure_tm_matrix_rand_test` (CHK-STM-PROG, CHK-STM-PROG-CTL), `sep_efuse_jtag_access_rand_test` (CHK-JTAG), `sep_sec_dis_timing_rand_test` (class C), `sep_efuse_shim_response_fault_test` (CHK-HOOK hook control)
+|`sep_lcc_feat_ctrl_state_matrix_rand_test` (CHK-DEMOTE-OTP), `sep_efuse_transient_rma_rand_test` (CHK-TRANSIENT-NOBURN, CHK-PROG-LC), `sep_efuse_interface_status_rand_test` (CHK-IF-CMD, CHK-IF-CTRL, CHK-IF-PRESENSE), `sep_efuse_lock_slot_matrix_rand_test` (CHK-LOCK-CELL), `sep_efuse_secure_tm_matrix_rand_test` (CHK-STM-PROG, CHK-STM-PROG-CTL), `sep_efuse_jtag_access_rand_test` (CHK-JTAG), `sep_sec_dis_timing_rand_test` (class C), `sep_efuse_shim_response_fault_test` (CHK-HOOK hook control)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`otp_bank_probe_o`
 |Read-only probe

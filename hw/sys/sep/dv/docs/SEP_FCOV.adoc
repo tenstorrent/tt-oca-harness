@@ -5134,21 +5134,21 @@ that closed set (<<sep-fcov-parked>>); it blocks no cell. Each absent input is l
 |`cpu_reset_n_i`, `sep_reset_n_i`, `jtag_sep_reset_n_ovrd_i`, `jtag_sep_reset_n_val_i` |reset pair and IC_RESET override |reset release |In the sampler
 |Generated address constants `SEP_EFUSE_MAP_*`, `EFUSE_INTERFACE_CTRL_*`, `EFUSE_MMR_*`, `SEP_LIFECYCLE_CTRL_*` |`sep_reg.svh` |address decode |In the sampler (the sampler already uses constants of this family)
 |`shim_cmd_i.command` (READ `2'b00`, PROGRAM `2'b01`, PROGRAM_READ_BACK `2'b10`) and `.valid` |decode of the post-guard shim command |program or read at the shim |In the sampler; the input is the added tap `shim_cmd_i`
-|`efuse_shadow_probe_o` (masked `shadow_efuse_o`), words LOCKS 0 to 2, LC_STATE 3, TRANSIENT_RMA_EN 5, SIP_DIS 6 to 7, SYS_DIS 8 to 9, digests, secrets |sensed shadow words |DIS words, lock bits, field values |Approved probe. Not in the sampler
-|`feat_ctrl_i[63:0]` |`lcc_feat_ctrl_probe_o` (`SEP_CORE.feat_ctrl`) |64-bit feature control |Approved probe. Not in the sampler
-|`lc_sigint_i` |`lcc_sigint_err_probe_o` (`lc_sigint_err_o`) |lifecycle integrity error |Approved probe. Not in the sampler
-|`demote_lock_1_i`, `demote_lock_2_i` |`lcc_demote_lock_1_probe_o`, `lcc_demote_lock_2_probe_o` |demotion lock bits |Approved probe. Not in the sampler
-|`sep_fuse_dft_disable_i`, `smc_fuse_dft_disable_i` |`sep_fuse_dft_disable_o`, `smc_fuse_dft_disable_o` |fuse DFT gate ports |Approved port. Not in the sampler
-|`jtag_req_i`, `jtag_resp_i` |`j_axil_req_drive`, `j_axil_resp_w` (`axil_sep_otp_jtag_req_i`, `axil_sep_otp_jtag_resp_o`) |JTAG address class and response |Approved probe. Not in the sampler. Live only in the target that defines `SEP_JTAG_AXIL_LIVE` (`lsu_stub_all_live`)
-|`irq_token_fault_i` |`sep_internal_interrupts_probe_o[39]` (PIC source 40 request line) |token fault interrupt request |Approved probe. Not in the sampler. The CPU stub has no PIC, so the request line is sampled and not a PIC pending bit
-|`tok_sip_i[5:0]`, `tok_chp_i[5:0]` |`ext_debug_bus_o[229:224]`, `ext_debug_bus_o[213:208]` |RMA token match status codes |Approved path (DUT output `ext_debug_bus_o`). The code values come from `token_processing.adoc`. The bit positions are resolved from the RTL. Not in the sampler
-|`efuse_read_error_o`, `efuse_read_done_o`, `efuse_read_busy_o`, `efuse_program_error_o`, `efuse_program_done_o`, `efuse_program_busy_o` |interface status bits |read and program status, done, busy |Approved probes. Not in the sampler
-|`strap_i` |`test_en_strap_i` (DUT `secure_tm_req_i`) |TEST_EN strap level |Approved. Not in the sampler
+|`efuse_shadow_probe_o` (masked `shadow_efuse_o`), words LOCKS 0 to 2, LC_STATE 3, TRANSIENT_RMA_EN 5, SIP_DIS 6 to 7, SYS_DIS 8 to 9, digests, secrets |sensed shadow words |DIS words, lock bits, field values |Approved probe. In the sampler; the input is `efuse_shadow_i`
+|`feat_ctrl_i[63:0]` |`lcc_feat_ctrl_probe_o` (`SEP_CORE.feat_ctrl`) |64-bit feature control |Approved probe. In the sampler
+|`lc_sigint_i` |`lcc_sigint_err_probe_o` (`lc_sigint_err_o`) |lifecycle integrity error |Approved probe. In the sampler
+|`demote_lock_1_i`, `demote_lock_2_i` |`lcc_demote_lock_1_probe_o`, `lcc_demote_lock_2_probe_o` |demotion lock bits |Approved probe. In the sampler
+|`sep_fuse_dft_disable_i`, `smc_fuse_dft_disable_i` |`sep_fuse_dft_disable_o`, `smc_fuse_dft_disable_o` |fuse DFT gate ports |Approved port. In the sampler
+|`jtag_req_i`, `jtag_resp_i` |`j_axil_req_drive`, `j_axil_resp_w` (`axil_sep_otp_jtag_req_i`, `axil_sep_otp_jtag_resp_o`) |JTAG address class and response |Approved probe. In the sampler. Live only in the target that defines `SEP_JTAG_AXIL_LIVE` (`lsu_stub_all_live`)
+|`irq_token_fault_i` |`sep_internal_interrupts_probe_o[39]` (PIC source 40 request line) |token fault interrupt request |Approved probe. In the sampler. The CPU stub has no PIC, so the request line is sampled and not a PIC pending bit
+|`tok_sip_i[5:0]`, `tok_chp_i[5:0]` |`ext_debug_bus_o[229:224]`, `ext_debug_bus_o[213:208]` |RMA token match status codes |Approved path (DUT output `ext_debug_bus_o`). The code values come from `token_processing.adoc`. The bit positions are resolved from the RTL. In the sampler
+|`efuse_read_error_o`, `efuse_read_done_o`, `efuse_read_busy_o`, `efuse_program_error_o`, `efuse_program_done_o`, `efuse_program_busy_o` |interface status bits |read and program status, done, busy |Approved probes. In the sampler; the inputs are `efuse_read_error_i`, `efuse_read_done_i`, `efuse_read_busy_i`, `efuse_program_error_i`, `efuse_program_done_i` and `efuse_program_busy_i`
+|`strap_i` |`test_en_strap_i` (DUT `secure_tm_req_i`) |TEST_EN strap level |Approved. In the sampler
 |`shim_cmd_i` |`SEP_CORE.efuse_shim_command_req_o` (post-guard command: valid, command, address) |bank command that reaches the shim |Added tap. The existing probes `efuse_read_cmd_req_valid_o` and `efuse_program_cmd_req_valid_o` tap the interface output before the guard, so they cannot show a guard refusal.
 |`shim_resp_i.valid`, `.status`, `.data` |`SEP_CORE.efuse_shim_command_resp_i` (shim response at the `sep` input, after the bench sense status inject and the response hold) |arrival, status and data of the response to a shim command |Added tap. The sampler input of `cp_sense_status_word` and `x_prog_lifecycle`
 |`tok_sdis_i` |`TOKEN_PROC.sec_disable_token_match_q` |SEC_DIS token match status |Added tap
 |`tok_fault_i[2:0]` |`TOKEN_PROC.token_match_fault_sticky_q` |sticky comparator fault bits (`TOKEN_MATCH_FAULT`) |Added tap
-|`jtag_id_i` |DUT port `jtag_id_i[31:1]` (`port_table.adoc`) |JTAG ID class |Approved port. Not in the sampler
+|`jtag_id_i` |DUT port `jtag_id_i[31:1]` (`port_table.adoc`) |JTAG ID class |Approved port. In the sampler, read through `jtag_id_probe_o`
 |`tok_words_i` |`TOKEN_PROC` raw token arrays (`sip_rma_token_raw_n0_scan[7:0]`, `chiplet_rma_token_raw_n0_scan[7:0]`, SEC_DIS token raw array) |token input words |Added tap
 |`token_go_i[2:0]` |`TOKEN_PROC.rma_sip_token_go`, `rma_chiplet_token_go`, `secure_disable_token_go` |hash start pulses |Added tap
 |`sec_disable_expected_i` |`TOKEN_PROC.sec_disable_token_rev` |SEC_DIS expected-digest constant |Added tap
@@ -6824,17 +6824,12 @@ Names that do not resolve. Each is a permanent hole. The paths that resolve in t
 [[sep-fcov-p2-unresolved-efuse-lifecycle]]
 ===== eFuse, lifecycle, SEC_DIS, locked-field
 
-These names and inputs do not resolve in the testbench. The disposition of each is in its row.
+This name does not resolve in the testbench. Every other input of this area resolves: the sampler inputs, added taps and added hooks are in the sampled-signals table of the area.
 
 [cols="2,3,3,3",options="header"]
 |===
 |Signal |Source |Use |Disposition
-|`jtag_id_i` (stimulus) |DUT port `jtag_id_i` |JTAG ID value drive |Bench input missing: `tb_top.sv` ties the DUT port to `'0`. Added hook (top-port drive) that the owning test adds to the HDL Top port table of `docs/SEP_TB_ARCH.adoc`
-|`token_cmp_fault_copy_i` (stimulus) |comparator fault hook |copy select (0, 1, 2) |Bench input missing: the hook has a channel select and fixed vectors on copy 0 only. Added hook (error inject) that the owning test adds to the inject exceptions of `docs/SEP_TB_ARCH.adoc`
 |PIC source pending bit |none |PIC pending |Name not found in `tb_top.sv`. The CPU stub has no PIC. Use `irq_token_fault_i` (approved)
-|Existing bench probes without a sampler input: `efuse_shadow_probe_o`, `lcc_feat_ctrl_probe_o`, `lcc_sigint_err_probe_o`, `lcc_demote_lock_*_probe_o`, `sep_fuse_dft_disable_o`, `smc_fuse_dft_disable_o`, `j_axil_req_drive`, `j_axil_resp_w`, `sep_internal_interrupts_probe_o[39]`, `ext_debug_bus_o`, interface status bits, `test_en_strap_i` |`tb_top.sv` |Sampler inputs of the groups of this area |Approved probes, not in the sampler. A read-only sampler input with no DUT change
-|Nets without a tap: `SEP_CORE.efuse_shim_command_req_o`, `SEP_CORE.efuse_shim_command_resp_i`, `TOKEN_PROC` token match, fault, word, go and expected-digest nets, `EFUSE_CTRL` address-error flags and `stored_shadow`, the comparator match rails |`tb_top.sv` |Sampler inputs of the groups of this area |Added tap: a read-only hierarchical reference in `tb_top.sv`, with no force, that the owning test adds to the SEP_TB_ARCH observation-probe list. No bin reads `SEP_CORE.lc_state_o`
-|Bench hooks and drives without a port: `jtag_id_i` drive, comparator copy select, `efuse_sense_status_inject_i`, `efuse_sense_status_word_i`, `efuse_shim_resp_hold_i`, `jtag_filter_lc_sigint_inject_i`, test-enable inject of the RMA_CHIPLET and SEC_DIS latches |`tb_top.sv` |Stimulus of the tests of this area |Added hooks: the owning tests add the error injects to the inject exceptions and the drive of `jtag_id_i` to the HDL Top port table of `docs/SEP_TB_ARCH.adoc`. They block no bin and are never a coverpoint input
 |===
 
 [[sep-fcov-p2-unresolved-key-manager]]

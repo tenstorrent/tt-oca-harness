@@ -25,12 +25,14 @@ Checkers:
   CHK-LOCK-CELL     lock leg and single-bit image, one line per read slot: the
                     sensed-shadow output equals the staged words (the sense ignores
                     locks); an unlocked frontdoor read equals them; a read-interface
-                    request on a read-locked field sets ``efuse_req_error``, on an
+                    request on a read-locked field sets ``efuse_req_error`` from 0
+                    (read before the go) and the write-one clear returns it to 0, on an
                     unlocked twin it ends with ``read_done`` 1, ``read_status`` 0 and
                     ``efuse_req_error`` 0; a program on a write-locked field sets
-                    ``efuse_req_error`` with no bank bit change and no program command
-                    at the post-guard tap, on an unlocked field it lands exactly its
-                    bit with one program command at its address; a shadow write is
+                    ``efuse_req_error``, which the clear returns to 0, with no bank
+                    bit change and no program command at the post-guard tap, on an
+                    unlocked field it lands exactly its bit with one program command
+                    at its address; a shadow write is
                     blocked under a write-lock and ORs the new bit without one.
   CHK-LOCK-EXEMPT   exempt cell: ``LC_STATE``, ``LOCKS`` and ``LOCKS_SPARE`` read their
                     staged values with every assigned lock bit burned.
@@ -233,11 +235,22 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         return clock.clocks
 
     # --- read and program interface (entry step 1) -------------------------------
-    async def _clear_status(self) -> None:
-        await self._wr(STATUS_ADDR, _CLEAR3)
+    async def _req_err_now(self) -> int:
+        return _bit(await self._rd32(STATUS_ADDR), _REQ_ERR)
 
-    async def _read_if(self, bit_addr: int) -> dict[str, int]:
-        """Read bit ``bit_addr`` through the read interface: go, full W, status, disable."""
+    async def _clear_status(self) -> int:
+        """Write-one clear of the three flags; returns ``efuse_req_error`` read back after it."""
+        await self._wr(STATUS_ADDR, _CLEAR3)
+        return await self._req_err_now()
+
+    async def _read_if(self, bit_addr: int) -> dict[str, Any]:
+        """Read bit ``bit_addr`` through the read interface: go, full W, status, disable.
+
+        ``efuse_req_error`` is sticky, so the request reads it before the go
+        (``pre_req_err``) and after its own clear (``clr_req_err``); a blocked read
+        graded on a flag that was already set cannot pass.
+        """
+        pre = await self._req_err_now()
         await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit_addr))
         await ClockCycles(cocotb.top.clk_i, self.w)
         ctrl = await self._rd32(READ_CTRL_ADDR)
@@ -248,9 +261,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "done": _bit(ctrl, _RD_DONE),
             "status": _bit(ctrl, _RD_STATUS),
             "req_err": _bit(st, _REQ_ERR),
+            "pre_req_err": pre,
+            "clr_req_err": "na",
         }
         if r["req_err"] or r["status"]:
-            await self._clear_status()
+            r["clr_req_err"] = await self._clear_status()
         return r
 
     async def _program(self, bit_addr: int, *, read_back: int = 0, watch: bool = True) -> dict:
@@ -271,9 +286,10 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "req_err": _bit(st, _REQ_ERR),
             "diff": diff,
             "progs": progs,
+            "clr_req_err": "na",
         }
         if r["req_err"]:
-            await self._clear_status()
+            r["clr_req_err"] = await self._clear_status()
         return r
 
     @staticmethod
@@ -291,7 +307,13 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
     @staticmethod
     def _refused(r: dict) -> bool:
         progs = r["progs"]
-        return r["busy"] == 0 and r["req_err"] == 1 and not r["diff"] and not progs
+        return (
+            r["busy"] == 0
+            and r["req_err"] == 1
+            and r["clr_req_err"] == 0
+            and not r["diff"]
+            and not progs
+        )
 
     # --- scenario ---------------------------------------------------------------
     async def run_scenario(self) -> None:
@@ -382,26 +404,36 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         if read_bit is None:
             f["rd_if"] = "na"
             f["rd_req_err"] = "na"
+            f["rd_pre_req_err"] = "na"
+            f["rd_clr_req_err"] = "na"
         else:
             r = await self._read_if(read_bit["addr"])
             f["rd_if"] = "blocked" if rl else "accepted"
             f["rd_req_err"] = r["req_err"]
+            f["rd_pre_req_err"] = r["pre_req_err"]
+            f["rd_clr_req_err"] = r["clr_req_err"]
             f["rd_bit_addr"] = read_bit["addr"]
             f["rd_flags"] = f"busy{r['busy']}/done{r['done']}/st{r['status']}"
             if rl:
-                ok &= r["req_err"] == 1 and r["busy"] == 0
+                ok &= (
+                    r["pre_req_err"] == 0
+                    and r["req_err"] == 1
+                    and r["clr_req_err"] == 0
+                    and r["busy"] == 0
+                )
             else:
                 ok &= r["busy"] == 0 and r["done"] == 1 and r["status"] == 0 and r["req_err"] == 0
                 self.accepted_reads += int(ok)
 
         # Step 5: program a zero bit of the used range.
         if prog_bit is None:
-            f.update(prog="na", req_err="na", otp_diff="na", shim_cmd="na")
+            f.update(prog="na", req_err="na", clr_req_err="na", otp_diff="na", shim_cmd="na")
         else:
             a = prog_bit["addr"]
             r = await self._program(a)
             f["prog_bit_addr"] = a
             f["req_err"] = r["req_err"]
+            f["clr_req_err"] = r["clr_req_err"]
             f["otp_diff"] = (
                 "none" if not r["diff"] else (a if diff_is_exactly(r["diff"], a) else "other")
             )
@@ -531,14 +563,21 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         close_graded_window(self.logger)
         ck = await self._read_if(leg["class_key_bit"]["addr"])
         lk = await self._read_if(leg["locks_bit"]["addr"])
-        ctl_rl = ck["req_err"] == 1 and ck["busy"] == 0
+        ctl_rl = (
+            ck["pre_req_err"] == 0
+            and ck["req_err"] == 1
+            and ck["clr_req_err"] == 0
+            and ck["busy"] == 0
+        )
         ctl_twin = lk["busy"] == 0 and lk["done"] == 1 and lk["status"] == 0 and lk["req_err"] == 0
         self.chk.ctrl(
             "LOCK-EXEMPT-RL",
             ctl_rl,
             field="CLASS_KEY",
             bit_addr=leg["class_key_bit"]["addr"],
+            pre_req_err=ck["pre_req_err"],
             req_err=ck["req_err"],
+            clr_req_err=ck["clr_req_err"],
             busy=ck["busy"],
         )
         self.chk.ctrl(

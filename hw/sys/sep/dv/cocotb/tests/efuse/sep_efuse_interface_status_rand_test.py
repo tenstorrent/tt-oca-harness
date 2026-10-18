@@ -243,8 +243,13 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         )
         return ok
 
-    def _twin_read(self, case: str, f: dict[str, int], addr: int) -> bool:
-        ok = f["rd_done"] == 1 and self._idle(f) and self._s4(f) == "0b0000"
+    def _twin_read(self, case: str, f: dict[str, int], addr: int, read_cmds: int) -> bool:
+        """Accepted read: one READ at ``addr`` on the shim tap, read_done=1, idle, flags 0.
+
+        read_done stays 1 from the frame read, so the shim command count is the
+        evidence that this go made a new read.
+        """
+        ok = read_cmds == 1 and f["rd_done"] == 1 and self._idle(f) and self._s4(f) == "0b0000"
         self.chk.ok(
             "IF-CTRL",
             ok,
@@ -253,9 +258,18 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             flags=self._s4(f),
             landed="na",
             read_done=f["rd_done"],
+            read_cmds=read_cmds,
             bit_addr=addr,
         )
         return ok
+
+    async def _accepted_read(self, case: str, bit_addr: int) -> int:
+        """Run an enabled read and grade it as the accepted twin; returns the READ count."""
+        mark = self.cmds.mark()
+        f = await self._run_read(bit_addr)
+        n = len(self.cmds.reads_since(mark, address=bit_addr))
+        self._twin_read(case, f, bit_addr, n)
+        return n
 
     def _status(
         self, case: str, addr: int, f: dict[str, int], exp: str, cleared: Any, ok_clear: bool
@@ -387,14 +401,12 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await self._frame("read_go_no_enable")
         f = await self._run_read(bit, enable=0)
         self._status("read_go_no_enable", bit, f, "0b1000", "na", True)
-        f = await self._run_read(bit, enable=1)
-        self._twin_read("read_go_no_enable", f, bit)
+        await self._accepted_read("read_go_no_enable", bit)
 
     async def _case_oor_read(self) -> None:
         """Step 9: accepted read of bit 8191, then reads at the three out-of-range addresses."""
         await self._frame("oor_read")
-        f = await self._run_read(_BIT_8191)
-        self._twin_read("oor_read", f, _BIT_8191)
+        await self._accepted_read("oor_read", _BIT_8191)
         for a in self.oor:
             snap = await self._frame("oor_read")
             f = await self._run_read(a)
@@ -467,13 +479,10 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         )
         await self._clear(_M_CLR_RE)
         twin = self.reads["lock_read_twin"]["addr"]
-        m2 = self.cmds.mark()
-        f = await self._run_read(twin)
-        ctl = len(self.cmds.reads_since(m2, address=twin))
-        self._twin_read("lock_read", f, twin)
+        ctl = await self._accepted_read("lock_read", twin)
         self.chk.ok(
             "IF-CMD",
-            n_reads == 0 and ctl >= 1,
+            n_reads == 0 and ctl == 1,
             case="read_rlocked",
             read_cmds=n_reads,
             ctl_twin_cmd=ctl,
@@ -517,13 +526,10 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         self._check_efuse_shadow_after_sense()
         n_reads = len([c for c in self.cmds.reads_since(mark) if c.clk <= c_fall + 1])
         await self._frame("both_enables")
-        m2 = self.cmds.mark()
-        f = await self._run_read(bit)
-        ctl = len(self.cmds.reads_since(m2, address=bit))
-        self._twin_read("both_enables", f, bit)
+        ctl = await self._accepted_read("both_enables", bit)
         self.chk.ok(
             "IF-CMD",
-            n_reads == 0 and ctl >= 1,
+            n_reads == 0 and ctl == 1,
             case="both_enables",
             read_cmds=n_reads,
             ctl_twin_cmd=ctl,
