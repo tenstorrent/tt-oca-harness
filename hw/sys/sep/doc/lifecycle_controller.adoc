@@ -26,9 +26,9 @@ Downstream logic uses these outputs to gate debug, test and functional paths.
 
 The sections below explain states and security domains, feature-control rules,
 demotion, scan protection and firmware authorization. Hardware gating is
-implemented; the multi-owner signing model in <<demote-signing-model,Firmware Authorization>>
-is a deferred firmware design. Do not use that model as a description of current
-ROM verification.
+implemented; the secure-boot signing model in <<demote-signing-model,Firmware Authorization>>
+specifies the manifest policy the 1.0 SEP Boot ROM enforces. The 0.5 ROM does
+not implement it.
 
 <<sep-lifecycle-controller-figure>> shows a high-level view of the Life Cycle Controller
 components.
@@ -447,9 +447,12 @@ https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.h
 endif::backend-pdf[]
 is in the Programmer's Guide.
 
-This is the hardware mechanism. The current ROM's manifest handling is
-documented in the Boot ROM chapter; the multi-owner authorization model
-above remains deferred.
+This is the hardware mechanism. Authorization follows the signing policy: the
+demotion registers are written by a boot stage whose manifest was authenticated
+against the `REQUIRED_SIGNERS` and `REQUIRED_ALGS` values in force for that
+manifest (<<secure-boot-signing-model>>), so an owner whose co-signature those
+values require on that manifest controls the demotion decision. The 0.5 ROM's
+manifest handling is documented in the Boot ROM chapter.
 
 [[demote-reset-behavior]]
 === Reset Behavior
@@ -817,9 +820,11 @@ in a future revision of this specification.
 [[secure-boot-enforcement]][[demote-signing-model]]The LCC does not inspect
 manifests or signatures. It supplies the lifecycle state, and the OTP Fuse
 Controller chapter defines the fuse fields that govern firmware authorization:
-`SBOOT_DIS`, the `SIP_DIS` and `SYS_DIS` debug vectors, the public-key digests, `CHIPLET_PUBK_REVOKE`, and the `REQUIRED_SIGNERS` and
-`REQUIRED_ALGS` fields reserved for a deferred multi-owner signing model.
-Firmware, not the LCC, interprets them. The SEP Boot ROM reads `CHIPLET_DBG`
+`SBOOT_DIS`, the `SIP_DIS` and `SYS_DIS` debug vectors, the public-key digests,
+`CHIPLET_PUBK_REVOKE`, and the `REQUIRED_SIGNERS`, `REQUIRED_ALGS` and
+`SIGNATURE_REVOKE` policy fields. Firmware, not the LCC, interprets them: the
+SEP Boot ROM and each later boot stage verify manifests as specified in
+<<secure-boot-signing-model>>. The SEP Boot ROM reads `CHIPLET_DBG`
 from the `SIP_DIS` and `SYS_DIS` fuse shadows rather than from `FEAT_CTRL`,
 because `SEC_DIS` and demotion can force `FEAT_CTRL` open on a part whose fuses
 disable debug.
@@ -840,15 +845,241 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 https://docs.tenstorrent.com/tt-oca-harness/ocah-appnotes/latest/sip-secure-boot.html#sip-secure-boot-decision[SiP Secure Boot application note]
 endif::backend-pdf[]
-summarizes that decision and describes the multi-owner model, which the
-current ROM does not implement, under
-ifdef::backend-html5[]
-xref:ocah-appnotes::sip-secure-boot.adoc#sip-secure-boot-multi-owner-model[deferred multi-owner signing model]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-https://docs.tenstorrent.com/tt-oca-harness/ocah-appnotes/latest/sip-secure-boot.html#sip-secure-boot-multi-owner-model[deferred multi-owner signing model]
-endif::backend-pdf[]
-there.
+summarizes that decision for SiP integrators.
+
+[[secure-boot-signing-model]]
+=== Secure-Boot Signing Model
+
+This section specifies the manifest signing policy that the 1.0 SEP Boot ROM
+enforces whenever the Secure Boot Decision above requires a verified manifest.
+The policy is carried by three fields of the OTP Fuse Controller, defined in
+the Fuse Fields table of that chapter: `REQUIRED_SIGNERS`, `REQUIRED_ALGS` and
+`SIGNATURE_REVOKE`. It applies to every OCA Payload Manifest the boot chain
+verifies. A public key is trusted only if its digest matches a digest embedded
+in SEP ROM or one of the fused digests `CHIPLET_PUBK_HASH0/1`,
+`CHIPLET_PUBK_PQC_HASH0/1`, `SIP_PUBK_HASH0/1`, `SIP_PUBK_PQC_HASH0/1`,
+`SYS_PUBK_HASH` and `SYS_PUBK_PQC_HASH`, and only while the bit assigned to
+that digest in `CHIPLET_PUBK_REVOKE` is clear. The 0.5 ROM does not implement
+this model.
+
+*Terms.* The following terms are used throughout this section. Each one names
+specific bits of a fuse field.
+
+Required-co-signer mask:: `REQUIRED_SIGNERS[7:0]`. Bit N-1 set means
+co-signer N is required (bit 0 is co-signer 1, bit 7 is co-signer 8).
+Owner code of co-signer N:: `REQUIRED_SIGNERS[4N+7:4N+4]`, a one-hot value
+defined in <<sep-cosigner-owner-codes-table>>.
+Algorithm nibble of an entity:: the four bits of `REQUIRED_ALGS` assigned to
+that entity: `REQUIRED_ALGS[3:0]` for the chiplet creator,
+`REQUIRED_ALGS[7:4]` for the verifier key, and `REQUIRED_ALGS[4N+7:4N+4]` for
+co-signer N. Bit 0 set requires a classical signature (RSA, ECDSA or EdDSA);
+bit 1 set requires a post-quantum signature (ML-DSA); bits 3:2 are reserved. A
+nibble with both bits set is called _hybrid_. For co-signer N the owner code
+and the algorithm nibble occupy the same bit positions in their respective
+fields.
+Revoked algorithm family:: an algorithm family whose bit in
+`SIGNATURE_REVOKE` is set.
+Revoked key digest:: a ROM-embedded or fused public-key digest whose bit in
+`CHIPLET_PUBK_REVOKE` is set. This is key revocation and is independent of
+algorithm-family revocation.
+Policy in force:: the values held in the `REQUIRED_SIGNERS` and
+`REQUIRED_ALGS` shadow registers when a manifest is verified. At cold reset
+the shadow registers hold the fused values; a later boot stage may rewrite
+them as described under _Policy propagation_ below.
+
+*Verification entities.* An OCA Payload Manifest can carry signatures from
+three kinds of entity. The _chiplet creator_ signs with its root keys, whose
+digests are embedded in SEP ROM or fused in `CHIPLET_PUBK_HASH0/1` and
+`CHIPLET_PUBK_PQC_HASH0/1`. A _verifier key_ is a second public key carried in
+a verifier key entry appended to the manifest and itself signed by the chiplet
+creator; when the manifest sets `use_verifier_key`, the main manifest is signed
+by the verifier key rather than by the chiplet creator directly, so the chain
+is chiplet creator -> verifier key entry -> main manifest. This lets the
+chiplet creator keep its root keys offline and authorize a developer or
+third-party signer without provisioning that signer's key. _Co-signers_ are up
+to eight further signature blocks appended to the manifest; the manifest
+enables each with a bit of its `co_signer_enable` field, and each block
+carries its own public key(s), signature(s) and signature-type fields.
+
+[[sep-signing-entities-table]]
+[width="100%",cols="<16%,<36%,<28%,<20%",options="header",]
+.Verification entities and the fuse bits that govern them
+|=======================================================================
+|Entity |Manifest structure |Fuse bits |Verified
+
+|Chiplet creator
+|Signature over the main manifest when `use_verifier_key` is clear; signature
+over the verifier key entry when it is set.
+|`REQUIRED_ALGS[3:0]`
+|Always.
+
+|Verifier key
+|Verifier key entry (a public key signed by the chiplet creator) and its
+signature over the main manifest.
+|`REQUIRED_ALGS[7:4]`
+|When the manifest sets `use_verifier_key`.
+
+|Co-signer N (1-8)
+|Co-signer block N, enabled by `co_signer_enable` bit N-1.
+|`REQUIRED_SIGNERS` bit N-1 (required); `REQUIRED_SIGNERS[4N+7:4N+4]` (owner
+code); `REQUIRED_ALGS[4N+7:4N+4]` (algorithm nibble)
+|When `REQUIRED_SIGNERS` bit N-1 is set.
+|=======================================================================
+
+*Co-signer owner codes.* The owner code of a required co-signer tells the ROM
+which public keys may sign in that co-signer's block. Codes are one-hot; a
+required co-signer whose owner code is all-zero or a reserved value causes the
+manifest to be rejected, which is why the OTP Fuse Controller chapter requires
+`REQUIRED_SIGNERS[4N+7:4N+4]` to be burned and read back before
+`REQUIRED_SIGNERS` bit N-1.
+
+[[sep-cosigner-owner-codes-table]]
+[width="100%",cols="<10%,<17%,<43%,<30%",options="header",]
+.Co-signer owner codes (`REQUIRED_SIGNERS[4N+7:4N+4]`)
+|=======================================================================
+|Code |Owner |Public key the ROM accepts |`CHIPLET_PUBK_REVOKE` bits checked
+
+|`0b0001` |Anonymous
+|The public key(s) carried in the co-signer block itself. The signature is
+verified with that key; the key is not matched against any digest.
+|None; there is no digest to revoke.
+
+|`0b0010` |Chiplet-designated
+|A key whose digest matches a ROM-embedded chiplet-creator digest,
+`CHIPLET_PUBK_HASH0/1` (classical) or `CHIPLET_PUBK_PQC_HASH0/1` (PQC).
+|[15:0] for the ROM-embedded digests; [16]/[17] for `CHIPLET_PUBK_HASH0/1`;
+[18]/[19] for `CHIPLET_PUBK_PQC_HASH0/1`.
+
+|`0b0100` |SiP owner
+|A key whose digest matches `SIP_PUBK_HASH0/1` (classical) or
+`SIP_PUBK_PQC_HASH0/1` (PQC).
+|[20] `SIP_PUBK_HASH0`; [21] `SIP_PUBK_PQC_HASH0`; [24] `SIP_PUBK_HASH1`;
+[25] `SIP_PUBK_PQC_HASH1`.
+
+|`0b1000` |System owner
+|A key whose digest matches `SYS_PUBK_HASH` (classical) or
+`SYS_PUBK_PQC_HASH` (PQC).
+|[22] `SYS_PUBK_HASH`; [23] `SYS_PUBK_PQC_HASH`.
+|=======================================================================
+
+*Requirement rule.* SEP ROM authenticates a manifest only if all of the
+following hold. Each later boot stage applies the same rule to the manifest it
+verifies, using the policy in force at that time.
+
+. *Revoked algorithm families are removed first.* For each entity, a
+signature whose algorithm family has its `SIGNATURE_REVOKE` bit set is treated
+as not present, and the bit of that entity's algorithm nibble that the
+signature would have satisfied -- bit 0 for a classical signature, bit 1 for a
+post-quantum signature -- is treated as 0 for this verification only; the
+shadow register is not changed. If this leaves an entity's algorithm nibble
+all-zero although its value in the shadow register is not all-zero, the
+manifest is rejected: a requirement existed and nothing still trusted can
+satisfy it. Hence a hybrid manifest whose post-quantum signature belongs to a
+revoked family authenticates on its classical signature alone, while a
+manifest whose required signatures all belong to revoked families is rejected.
+. *Chiplet creator.* The chiplet-creator signatures required by
+`REQUIRED_ALGS[3:0]` are present and verify under a public key whose digest
+matches a ROM-embedded chiplet-creator digest, `CHIPLET_PUBK_HASH0/1` or
+`CHIPLET_PUBK_PQC_HASH0/1`, and whose `CHIPLET_PUBK_REVOKE` bit is clear. When
+`use_verifier_key` is clear these signatures cover the main manifest; when it
+is set they cover the verifier key entry.
+. *Verifier key.* When `use_verifier_key` is set, the verifier key entry is
+authenticated as in step 2, and the verifier key's signatures over the main
+manifest required by `REQUIRED_ALGS[7:4]` are present and verify under the
+public key carried in the verifier key entry.
+. *Required co-signers.* For every N such that `REQUIRED_SIGNERS` bit N-1 is
+set: the manifest sets `co_signer_enable` bit N-1; co-signer block N is present
+and populated; the public key in the block satisfies the owner code
+`REQUIRED_SIGNERS[4N+7:4N+4]` as defined in <<sep-cosigner-owner-codes-table>>,
+including that the `CHIPLET_PUBK_REVOKE` bit of the matched digest is clear;
+and the signatures required by `REQUIRED_ALGS[4N+7:4N+4]` are present and
+verify under that public key.
+. *Algorithms.* In an entity's algorithm nibble, bit 0 set requires a
+classical signature and bit 1 set requires a post-quantum signature; when both
+are set, both signatures shall be present and both shall verify. The scheme
+and parameter set (for example ML-DSA-44, -65 or -87) are those declared by the
+entity's own signature-type fields in the manifest and shall match the
+entity's key; `REQUIRED_ALGS` does not select them. An all-zero algorithm
+nibble requires no signature from that entity. For a required co-signer, and
+for the verifier key when `use_verifier_key` is set, an all-zero nibble causes
+the manifest to be rejected. For the chiplet creator, an all-zero
+`REQUIRED_ALGS[3:0]` means that no chiplet-creator signature is required for
+this manifest; this value is legitimate only when written to the shadow
+register by a boot stage as described under _Policy propagation_, never as the
+fused value.
+. *Non-required co-signers.* A co-signer block N for which `REQUIRED_SIGNERS`
+bit N-1 is clear is ignored: it is not verified, and its presence, absence or
+validity has no effect on the result.
+
+*Policy propagation.* The fused values of `REQUIRED_SIGNERS` and
+`REQUIRED_ALGS` set the policy for the first manifest only. At cold reset the
+fuse-sensing FSM loads both fields into their shadow registers, and SEP ROM
+verifies the BL1 manifest against the shadow registers, which at that point
+hold the fused values. Both shadow registers are SW-writable: a boot stage
+whose manifest has been authenticated may rewrite them to set the policy for
+the next manifest it verifies -- setting or clearing bits of
+`REQUIRED_SIGNERS[7:0]`, changing an owner code, or changing an algorithm
+nibble -- and may then set the write-lock bits of both fields in the `LOCKS`
+shadow register to freeze that policy for the rest of the boot. The chiplet
+creator has no bit in `REQUIRED_SIGNERS[7:0]`; a stage removes the
+chiplet-creator requirement from the next manifest by writing
+`REQUIRED_ALGS[3:0]` to `0b0000` in the shadow register. The next cold reset
+reloads the fused values. Firmware enforces this propagation; there is no
+hardware gate on the policy, and a stage whose manifest has been authenticated
+is trusted to set the policy for its successor.
+
+`SIGNATURE_REVOKE` is not propagated in this way. Its shadow register is
+set-only: a stage may set further bits to retire an algorithm family for later
+manifests in the same boot, but can never clear one, and the fused value
+applies to every manifest from the next cold reset. The conditions under which
+a boot stage may burn `SIGNATURE_REVOKE` are given in its description in the
+OTP Fuse Controller chapter.
+
+The chiplet creator shall burn `REQUIRED_ALGS[3:0]` to a non-zero value before
+a part leaves its control. A fused `REQUIRED_ALGS[3:0]` of `0b0000` is a
+provisioning error, not a policy: it would let the BL1 manifest be accepted
+without a chiplet-creator signature.
+
+[[sep-signing-examples-table]]
+[width="100%",cols="<44%,<56%",options="header",]
+.Signing-policy examples
+|=======================================================================
+|Policy in force |What the manifest must carry
+
+|`REQUIRED_SIGNERS[7:0]` = `0x00`; `REQUIRED_ALGS[3:0]` = `0b0001`
+|A classical chiplet-creator signature over the main manifest. This is the
+single-signer flow.
+
+|`REQUIRED_SIGNERS[7:0]` = `0x00`; `REQUIRED_ALGS[3:0]` = `0b0011`
+|Classical and ML-DSA chiplet-creator signatures, both verifying. Any entity
+whose algorithm nibble has bit 1 set forces the PQC manifest variant.
+
+|`REQUIRED_SIGNERS[7:0]` = `0x01`; `REQUIRED_SIGNERS[11:8]` = `0b0100` (SiP
+owner); `REQUIRED_ALGS[3:0]` = `0b0011`; `REQUIRED_ALGS[11:8]` = `0b0001`
+|As above, plus `co_signer_enable` bit 0 set and co-signer block 1 populated
+with a classical signature under a key whose digest matches `SIP_PUBK_HASH0`
+or `SIP_PUBK_HASH1` and whose `CHIPLET_PUBK_REVOKE` bit is clear.
+
+|Manifest sets `use_verifier_key`; `REQUIRED_ALGS[3:0]` = `0b0011`;
+`REQUIRED_ALGS[7:4]` = `0b0001`
+|A verifier key entry signed classical and ML-DSA by the chiplet creator, and
+a classical signature by the verifier key over the main manifest.
+
+|Fused values as in row 3. After its own manifest is authenticated, BL1 writes
+the shadow registers: `REQUIRED_SIGNERS[7:0]` = `0x03`,
+`REQUIRED_SIGNERS[15:12]` = `0b1000` (system owner), `REQUIRED_ALGS[15:12]` =
+`0b0001`
+|The BL2 manifest carries, in addition to row 3, co-signer block 2 with a
+classical signature under a key whose digest matches `SYS_PUBK_HASH`. The BL1
+manifest itself was not required to carry it. The next cold reset reloads the
+fused values.
+
+|`REQUIRED_ALGS[3:0]` = `0b0011`; `SIGNATURE_REVOKE` bit 6 (ML-DSA) set
+|The chiplet creator's ML-DSA signature is treated as not present and
+`REQUIRED_ALGS[3:0]` as `0b0001` for this verification, so the classical
+signature alone authenticates the manifest. A manifest whose chiplet-creator
+signature is ML-DSA only is rejected.
+|=======================================================================
 
 == Memory Map and Register Reference
 
