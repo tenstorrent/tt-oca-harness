@@ -6,8 +6,7 @@ schema_version = 1
 [verilator]
 kind = "simulation"
 binary = "verilator"
-# Verilator has no SV-UVM support, so it runs the cocotb framework only.
-frameworks = ["cocotb"]
+frameworks = ["cocotb", "uvm"]
 license_env = []
 # cocotb's documented Verilator floor, the `VLT_MIN` of its Makefile flow. cocotb's Python
 # runner enforces no floor, so the doctor compares the release the binary reports against this.
@@ -108,7 +107,7 @@ extra_fail_patterns = [
 [xcelium]
 kind = "simulation"
 binary = "xrun"
-# The native runner's SV-UVM flow is VCS-only (profiles/native.toml [frameworks.uvm]).
+# The native runner has SV-UVM adapters for VCS and Verilator only.
 frameworks = ["cocotb"]
 license_env = ["CDS_LIC_FILE", "LM_LICENSE_FILE"]
 supports_waves = ["shm", "fsdb", "vcd"]

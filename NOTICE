@@ -162,3 +162,11 @@ This project incorporates code from the following third-party sources:
     Derived from
     https://chromium.googlesource.com/chromiumos/platform/ec/+/refs/heads/cr50_stab/chip/g/dcrypto/dcrypto_bn.c
     Source: hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/montmul.s
+
+20. Accellera UVM reference implementation (IEEE 1800.2)
+    Copyright Accellera Systems Initiative and the contributors its NOTICE.txt lists
+    Licensed under the Apache License, Version 2.0
+    Project: https://www.accellera.org/downloads/standards/uvm
+    The src/ tree, LICENSE.txt, NOTICE.txt and README.md of the release that
+    vendor/accellera/uvm-core/release.toml names are vendored unmodified under
+    vendor/accellera/uvm-core/upstream/.

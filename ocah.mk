@@ -68,6 +68,17 @@ ocah-update-integration-filelists:
 
 OCAH_PHONY += ocah-update-integration-filelists
 
+## @section Vendored packages
+
+## Replace vendor/accellera/uvm-core/upstream/ with an Accellera UVM release and record it.
+## @param UVM_RELEASE=2020-3.2 Optional release name; default the newest the download page lists
+## @param CHECK=1 Compare the tree with its recorded release and fail instead of rewriting.
+.PHONY: ocah-update-vendor-uvm
+ocah-update-vendor-uvm:
+	@cd "$(OCAH_ROOT)" && python3 tools/dv/update_vendor_uvm.py $(if $(filter 1,$(CHECK)),--check,$(if $(UVM_RELEASE),--release "$(UVM_RELEASE)"))
+
+OCAH_PHONY += ocah-update-vendor-uvm
+
 ## Core hardware collateral and DV firmware build targets.
 include $(OCAH_ROOT)/hw/common/regs/regs.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/fw.mk

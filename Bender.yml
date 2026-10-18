@@ -29,6 +29,28 @@ vendor_package:
       - "hw/ip/kmac/doc/kmac-block-diagram.svg"
       - "hw/ip/otbn/doc/otbn_blockarch.svg"
       - "hw/ip/dma/doc/block_diagram.svg"
+      # OpenTitan IP documentation (whole doc directory, so its links resolve) that SEP DV cites as the specification of
+      # the OpenTitan IPs it verifies.
+      - "hw/ip/spi_host/README.md"
+      - "hw/ip/spi_host/doc"
+      - "hw/ip/dma/README.md"
+      - "hw/ip/dma/doc"
+      - "hw/ip/aon_timer/README.md"
+      - "hw/ip/aon_timer/doc"
+      - "hw/ip/aes/README.md"
+      - "hw/ip/aes/doc"
+      - "hw/ip/otbn/README.md"
+      - "hw/ip/otbn/doc"
+      - "hw/ip/hmac/README.md"
+      - "hw/ip/hmac/doc"
+      - "hw/ip/kmac/README.md"
+      - "hw/ip/kmac/doc"
+      - "hw/ip/csrng/README.md"
+      - "hw/ip/csrng/doc"
+      - "hw/ip/edn/README.md"
+      - "hw/ip/edn/doc"
+      - "hw/ip/entropy_src/README.md"
+      - "hw/ip/entropy_src/doc"
       - "hw/ip/prim/rtl"
       - "hw/ip/prim_generic/rtl"
       - "hw/ip/prim_generic/lint"
@@ -301,6 +323,12 @@ vendor_package:
   #     - "rtl"
   #     - "dependencies/common"
   #   patch_dir: "vendor/tenstorrent/tt-hw-debug/patches"
+
+  # Accellera UVM reference implementation (IEEE 1800.2), which the SV-UVM builds compile
+  # from source. Accellera publishes each release as an archive on accellera.org, and
+  # vendor_package fetches only from git, so `make update-vendor-uvm` writes
+  # vendor/accellera/uvm-core/upstream/ from the archive and records the release in
+  # vendor/accellera/uvm-core/release.toml.
 
   # AXI-over-UCIe (AoU) bridge IP: RTL, CSR SystemRDL, and the MAS.
   - name: aou

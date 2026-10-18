@@ -505,11 +505,11 @@ flags = [
 # tb/tb_top.sv from the ported cocotb shape to the self-contained SV-UVM shape, which
 # `include`s uvm/tests/smc_tests.sv.
 [frameworks.uvm]
-description = "SMC SV-UVM smoke flow (VCS)"
-# The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on the
-# commercial simulators only (Verilator has no SV-UVM support), so the overlay restates them.
+description = "SMC SV-UVM smoke flow (VCS, Verilator)"
+# The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on VCS
+# and Verilator, so the overlay restates them.
 default_tool = "vcs"
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 
 [frameworks.uvm.build]
 # The shared framework library and the AXI VIP SV-UVM layer come from their owned ordered

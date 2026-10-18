@@ -26,6 +26,7 @@ from env.sep_spec_tables import (
     abr_ctrl_cmd,
     abr_field_mask,
     abr_off,
+    abr_words,
     kv_field_mask,
     window,
 )
@@ -77,13 +78,14 @@ KEM_ST_READY = abr_field_mask("MLKEM_STATUS", "READY")
 KEM_ST_VALID = abr_field_mask("MLKEM_STATUS", "VALID")
 KEM_ST_ERROR = abr_field_mask("MLKEM_STATUS", "ERROR")
 
-# ML-KEM-1024 window sizes, in 32-bit words.
-KEM_SEED_WORDS = 8
-KEM_MSG_WORDS = 8
-KEM_K_WORDS = 8
-KEM_EK_WORDS = 392
-KEM_DK_WORDS = 792
-KEM_CT_WORDS = 392
+# ML-KEM-1024 window sizes, in 32-bit words, from the array counts and
+# mementries of abr_reg.rdl.
+KEM_SEED_WORDS = abr_words("MLKEM_SEED_D")
+KEM_MSG_WORDS = abr_words("MLKEM_MSG")
+KEM_K_WORDS = abr_words("MLKEM_SHARED_KEY")
+KEM_EK_WORDS = abr_words("MLKEM_ENCAPS_KEY")
+KEM_DK_WORDS = abr_words("MLKEM_DECAPS_KEY")
+KEM_CT_WORDS = abr_words("MLKEM_CIPHERTEXT")
 
 
 class SepAbrMlkem(SepAbr):
@@ -122,6 +124,11 @@ def _selftest() -> None:
     # And the whole ML-KEM aperture must stay inside the ABR decode window.
     assert MLKEM_CIPHERTEXT + 4 * KEM_CT_WORDS <= window("ABR").end
     assert MLKEM_VERSION0 - MLKEM_NAME0 == 0x8
+    # FIPS 203 ML-KEM-1024 sizes: 32-byte seeds, message and shared key;
+    # ek 1568, dk 3168 and ciphertext 1568 bytes.
+    assert abr_words("MLKEM_SEED_Z") == KEM_SEED_WORDS == 8
+    assert KEM_MSG_WORDS == KEM_K_WORDS == 8
+    assert (KEM_EK_WORDS, KEM_DK_WORDS, KEM_CT_WORDS) == (392, 792, 392)
 
 
 _selftest()

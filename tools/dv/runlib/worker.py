@@ -153,7 +153,6 @@ def run_manifest(path: Path) -> int:
     args = attempt_args(args, task, ui_leaf_mode=str(cli.get("ui_leaf_mode") or "full"))
     args._multi_target_run = multi_target
     args._site_layer = registries.site.label if registries.site is not None else None
-    args._site_uvm_library = registries.site.uvm_library if registries.site is not None else None
     if task.is_build:
         # The job's core request bounds the compile; without one the host's core count does.
         if task.resources.cores:
