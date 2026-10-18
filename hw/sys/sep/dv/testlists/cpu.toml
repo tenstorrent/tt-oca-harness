@@ -288,3 +288,16 @@ timeout_sec = 3600
 tags = ["cpu", "isa", "pmp", "csr", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The Zbe instructions bext (bit extract), bdep (bit deposit), pack and packh
+# return the result of the draft Bitmanip v0.93 instruction model.
+name = "sep_cpu_zbe_exec_test"
+module = "cpu.sep_cpu_zbe_exec_test"
+firmware = "cpu_zbe_exec_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["cpu", "isa", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]

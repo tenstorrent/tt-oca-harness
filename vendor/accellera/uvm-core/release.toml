@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The Accellera UVM release upstream/ holds unmodified. `make update-vendor-uvm` writes this
+# file and upstream/ together.
+release = "2020-3.2"
+url = "https://www.accellera.org/images/downloads/standards/uvm/1800.2-2020.3.2%20Release.gz"
+sha256 = "4664ac015f23c72106dd785906aa874d70932ea63f74b85de1e32fa5339c15eb"

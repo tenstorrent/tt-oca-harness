@@ -10,6 +10,13 @@ the golden decorrelator shifts a lane only on cycles esrc_ro_enable_o enables it
 Each stage compares its Nth DUT item to the golden's Nth item, after a short CHK1 warmup
 for the decorrelator SR-fill / enable-edge transient.
 
+CHK1 records a pair on every cycle the DUT decor output changes and on every cycle the
+golden sample divider fires, so a decor output that stops updating (or updates off
+the sample cadence) is compared against the sample the golden takes on that cycle.
+The per-lane ring-oscillator enable (``esrc_ro_enable_o``) is logged at the lock, not
+graded: no text states that the enable at the generator equals
+``RING_OSC_ENABLE.ENABLE``.
+
 strict=False logs mismatches and dumps the first N pairs; strict=True makes report() raise.
 """
 
@@ -266,6 +273,17 @@ class SepDrbgScoreboard:
         self.chk5_enable = False
 
     # ------------------------------------------------------------------ drive
+    def stop(self) -> None:
+        """End every task ``start`` forked (noise driver and monitors).
+
+        A leaf calls this before a TRNG reset that ends the bring-up the tasks
+        observe; a later ``start`` forks a fresh set. Results stay readable.
+        """
+        for task in self._tasks:
+            stop = getattr(task, "cancel", None) or task.kill
+            stop()
+        self._tasks = []
+
     def start(self):
         """Fork the noise driver + per-stream monitors (after reset released)."""
         d = self.dut
@@ -450,6 +468,11 @@ class SepDrbgScoreboard:
                         self.log.info(
                             "CHK1 golden seeded from live ff_stage @ decor=%024x", dut_decor
                         )
+                        ro_en = _safe_int(d.esrc_ro_enable_o)
+                        self.log.info(
+                            "OBS-CHK1-RO-ENABLE esrc_ro_enable_o=%s",
+                            "X/Z" if ro_en is None else f"0x{ro_en:03x}",
+                        )
             elif state == "locked" and changed:
                 # SRs are in lockstep -> gsr (golden ff[28:21]) equals the DUT's
                 # registered decor sample on every decor-change cycle.
@@ -469,6 +492,16 @@ class SepDrbgScoreboard:
             shifted = _safe_int(d.esrc_noise_o) or 0
             en = _safe_int(d.esrc_ro_enable_o) or 0
             self.golden.feed_noise(shifted, enable_mask=en)
+            # The golden divider samples the pre-shift SR (gsr), which is the value
+            # the DUT presents on this cycle when its divider fires too. A cycle
+            # where the golden samples and the DUT output did not change is
+            # compared here (a change cycle was compared above).
+            if state == "locked" and not changed and self.golden.sample_fired():
+                self._record_pair(
+                    "CHK1_decor",
+                    gsr,
+                    None if dut_decor is None else dut_decor & ((1 << 96) - 1),
+                )
             await NextTimeStep()
             d.esrc_noise_ext_i.value = self.noise_gen.step_all()
             await RisingEdge(d.clk_i)
@@ -476,10 +509,12 @@ class SepDrbgScoreboard:
 
     def _seed_golden(self, sr_packed):
         """Re-create the CHK1 SR golden and seed it from the live RTL ff_stage
-        snapshot; clk_divider=8 phase-aligns the model divider with the RTL /8
-        downsampler."""
+        snapshot. The seed lands on a DUT sample cycle, so a divider of one
+        sample period (SAMPLE_CLK_DIV + 1) phase-aligns the model divider with
+        the RTL downsampler."""
         self.golden = SepEntropyGolden(**self._gk)
-        self.golden.seed_decor_sr(sr_packed, clk_divider=8)
+        period = self._gk.get("sample_clk_div", 7) + 1
+        self.golden.seed_decor_sr(sr_packed, clk_divider=period)
 
     def _reset_results(self):
         """Clear per-stream stats (called at the TRNG reset that begins the run)."""

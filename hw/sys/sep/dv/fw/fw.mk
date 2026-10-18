@@ -96,6 +96,9 @@ $(foreach t,$(FW_TEST_BITMANIP), \
 # cpu_isa_pmp_csr_test is built for RV32I: the only M, C or Zb* encodings it
 # retires are the explicit instruction words of its table rows and of bset.
 FW_TEST_IMAGE_CFLAGS_cpu_isa_pmp_csr_test += -march=rv32i_zicsr_zifencei
+# cpu_zbe_exec_test is built for RV32I: the only Zbe encodings it retires are
+# the explicit instruction words of its table rows.
+FW_TEST_IMAGE_CFLAGS_cpu_zbe_exec_test += -march=rv32i_zicsr_zifencei
 
 # Default link mode: link/modes/tcm.ld, auto-discovered by compile.mk.
 FW_DEFAULT_TEST_MODE := tcm

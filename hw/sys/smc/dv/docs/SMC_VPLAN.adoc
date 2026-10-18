@@ -311,6 +311,7 @@ single-byte writes.
 |`smc_dma_completion_status_test` |DONE_0 and STATUS_0 report reset, idle, no-data and held; the busy indication is measured.
 |`smc_dma_csr_config_test` |DMA descriptor registers and CONFIG hold, keep and alias their values.
 |`smc_dma_field_widths_test` |DMA fields drop bits above their effective widths and keep bits 55:32.
+|`smc_dma_invalid_descriptor_test` |ENABLED_ND-cleared and zero-length DMA commands move no data against a valid copy; their registers are measured.
 |`smc_dma_linear_copy_test` |Linear DMA copies match byte for byte across offsets and sizes.
 |`smc_zeroer_busy_outstanding_test` |Zeroer stays busy to the last B; over 32 bursts; AW/W in order.
 |`smc_zeroer_irq_test` |Zeroer completion pulse comes once, after the last B, only with INT_EN.
@@ -941,9 +942,12 @@ reset, access type and write-one-to-clear behaviour in each instance.
 |`smc_uart_log_engine_error_boundary_test` |Run log-engine CSR R/W depth as the error/boundary checker.
 |`smc_log_engine_abort_test` |A log-engine transfer on all four wrapper instances halted part-way by clearing CTRL.EN, then a shorter entry re-triggered and delivered in full.
 |`smc_log_engine_transfer_test` |A real log-engine transfer on all four wrapper instances: four logs fetched from the SPM log region and written to the wrapper UART in loopback, read back byte for byte.
+|`smc_log_engine_region_size_test` |Wrapper 0 log-engine slot start, capacity clamp, zero-capacity completion and LOG_LEN resubmission over region sizes 0x80, 0x200, 135, 143, 144, 271 and 127.
+|`smc_log_engine_round_robin_test` |Wrapper 0 log-engine arbitration: whole 16-byte messages, each slot exactly once, zero lengths skipped, LOG_LEN held and hardware cleared, and a second wave written while a message is in flight; the service order is measured.
 |`smc_uart_log_engine_field_sweep_test` |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
 |`smc_uart_loopback_test` |AXI-program UART0 THR and capture the byte on pad12 TX.
+|`smc_uart_pad_mux_enable_test` |UART0 THR frame on pad 12 with CTRL.UART_EN set, cleared (pad measured) and set again.
 |`smc_uart_sanity_test` |UART pad-cross byte exchange on pairs 0→3 and 1→2.
 |`smc_uart_spi_log_engine_test` |Run the UART/log-engine representative CSR precheck.
 |`smc_uart_fifo_control_depth_test` |UART0 FIFO enable change, depth, trigger fields and read order.
@@ -4996,6 +5000,127 @@ leave exactly the requested bytes zero, the egress job raises one pulse, the den
 untouched, every zeroer job ends with `STATUS` 0 and the DMA copy to the SRAM matches. The
 unmapped-target and denied-target response fields and the unmapped DMA copy results are reported
 only. Enrolled in: `all`, `dma`.
+
+'''''
+
+[[sec-528-smc_dma_invalid_descriptor_test]]
+===== 528 `smc_dma_invalid_descriptor_test`
+
+*Source Module*: `smc_dma_invalid_descriptor_test`
+
+*BFM / Model*: SEP_IN AXI sequencer (`env.sys_axi_agent`, no protocol VIP) for the DMA registers;
+the TB SYS_OUT output-fabric responder memory (`cfg.sys_out_mem`) preloaded and read back through
+its backdoor; TB input pin `tb_top.tb_output_axi_resp_hold` driven 0; passive probes
+`tb_output_axi_arvalid`, `tb_output_axi_arready`, `tb_output_axi_araddr`,
+`tb_output_axi_awvalid`, `tb_output_axi_awready`, `tb_output_axi_awaddr`, `tb_dma_busy` and bit 322
+of `tb_cpu_interrupts` sampled at every `clk_smc_i` rise; DMA registers `DONE_0`, `STATUS_0`,
+`NEXT_ID_0`, `CONFIG`, `NUM_REPETITIONS`, `SRC_ADDRESS`, `DST_ADDRESS`, `LENGTH`, `SRC_STRIDE`,
+`DST_STRIDE`
+
+*Objective*: A command with `CONFIG.ENABLED_ND` cleared and a zero-length command move no data and
+issue no AR or AW handshake, while the same descriptor with `ENABLED_ND` set and a nonzero length
+copies; the register-boundary results of the no-data commands are measured.
+
+*Test Coverage*:
+
+* Clearing `CONFIG.ENABLED_ND` forces a zero-repetition command that moves no data and still retires
+  its transfer ID (`dma.adoc`, Linear and Two-Dimensional Copies; `dma_ctrl.rdl`,
+  `CONFIG.ENABLED_ND`). `DONE_0` must differ from its pre-command value within 3000 reads, all 16
+  destination bytes must keep their 0xEE poison and no AR or AW handshake may occur between the
+  submit and the `DONE_0` change. Over the whole leaf the AR and AW counts must equal those of the
+  three copy legs, so no handshake occurs outside the copies.
+* The `NEXT_ID_0` value the submit returned, `DONE_0` before and after, `STATUS_0[9:0]` before and
+  after and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command are measured,
+  not compared, until tenstorrent/tt-oca-harness#2455 is resolved: that issue tracks the open
+  disagreement between `dma.adoc` and `dma_ctrl.rdl` on what `NEXT_ID_0` returns when no command
+  is set up.
+* Zero-length transfers are rejected (`dma.adoc`, Stream and Register Ownership, the DMA register
+  storage table): a linear command (`NUM_REPETITIONS_LO` 1) and a 2D command (`NUM_REPETITIONS_LO`
+  4, source stride 0x30, destination stride 0x28) with `LENGTH` 0 must leave 16 and 136 destination
+  bytes at 0xEE and produce no AR or AW handshake through the end of a 3000-read `DONE_0` poll.
+  Whether `DONE_0` changed, `STATUS_0[9:0]`, the returned `NEXT_ID_0` and the bit 322 pulse count
+  of both commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved.
+* Positive control (`dma.adoc`, Linear and Two-Dimensional Copies): the same descriptor with
+  `ENABLED_ND` set and `LENGTH_LO` 16 copies. A 2D copy with `NUM_REPETITIONS_LO` 4 and the strides
+  0x30 and 0x28 of the zero-length 2D command writes its four source rows over the 136-byte
+  destination span, the 72 bytes between rows staying 0xEE, with at least four AR and four AW
+  handshakes; a linear copy of one row equals its source with at least one AR and one AW
+  handshake. Every destination byte the no-data compares require to stay 0xEE is therefore shown
+  writable by a command of this leaf.
+* A 32-bit read of `NEXT_ID_0` at 0x48 launches exactly one command: `DONE_0` holds its new value on
+  six further reads. A 64-bit read at 0x48 launches one command as well and counts the same AR and
+  AW handshakes (`dma.adoc`, Stream and Register Ownership; `dma_ctrl.rdl`, `NEXT_ID_0`).
+* The DMA interrupt is a one-cycle pulse on a falling edge of combined busy, raw CPU vector bit 322
+  (`dma.adoc`, Submission and Completion): the valid copy gives exactly one pulse, one `clk_smc_i`
+  cycle wide, up to one rise after `tb_dma_busy` reads low.
+
+*Test Procedure*:
+
+[arabic]
+. Require the nine `tb_top` probes to exist, release the R and B hold, program the inbound and
+  outbound filter windows to pass all, start the sampler of AR and AW handshakes, bit 322 and
+  `tb_dma_busy`, read `DONE_0` and wait two `clk_smc_i` cycles.
+. Write a 16-byte source pattern and 16 bytes of 0xEE at the destination, program `CONFIG` 0, the
+  addresses, `LENGTH_LO` 16, nonzero strides and one repetition, read `DONE_0` and `STATUS_0`, read
+  `NEXT_ID_0` (32-bit) to submit, poll `DONE_0` until it differs (3000 reads), read `STATUS_0`,
+  take the handshake counts and bit 322 pulses, and read the destination.
+. Re-poison the destination, program `ENABLED_ND` set with `LENGTH` 0 and one repetition, submit,
+  poll `DONE_0` for 3000 reads or until it differs, and take the status, handshake, pulse and
+  destination readings.
+. Preload 0xEE over the 136-byte destination span, program `LENGTH` 0 with four repetitions and
+  strides 0x30 and 0x28, and repeat the readings of step 3.
+. Preload 0xEE over the 136-byte destination span, program the step-4 descriptor with
+  `ENABLED_ND` set and `LENGTH_LO` 16 (four rows, strides 0x30 and 0x28), submit with a 32-bit
+  read of `NEXT_ID_0`, poll `DONE_0` until it differs, read `DONE_0` six more times, wait for
+  `tb_dma_busy` low and read the 136-byte span. Then re-poison 16 bytes, program the leg-a
+  descriptor with `ENABLED_ND` set and one repetition, submit with a 32-bit read of `NEXT_ID_0`,
+  poll `DONE_0` until it differs, read `DONE_0` six more times, wait for `tb_dma_busy` low and the
+  following rise, then read the destination and take the counts and the bit 322 pulses.
+. Re-poison the destination, program the same descriptor, submit with a 64-bit read at 0x48, poll
+  `DONE_0`, read it six more times and read the destination.
+. Wait two `clk_smc_i` cycles after step 6, require the step stamps to strictly increase and the
+  step order to hold, and require the AR and AW counts accumulated since step 1 over the whole leaf
+  to equal the sums of the three copy legs' counts, so any extra handshake fails; record the
+  non-vacuity checker.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DMA-ND-CLEAR-NO-DATA` |After the `ENABLED_ND`-cleared command retires, all 16 destination
+  bytes read 0xEE and no AR or AW handshake occurs between the submit and the `DONE_0` change
+|`CHK-DMA-ND-CLEAR-DONE-ADVANCES` |`DONE_0` differs from its pre-command value within 3000 reads
+  after the `ENABLED_ND`-cleared command
+|`CHK-DMA-ND-CLEAR-MEASURED` |The returned `NEXT_ID_0`, `DONE_0`, `STATUS_0[9:0]` and bit 322 pulse
+  readings of the `ENABLED_ND`-cleared command are measured and printed without comparing them,
+  until tenstorrent/tt-oca-harness#2455 is resolved
+|`CHK-DMA-ZEROLEN-NO-DATA` |The linear and the 2D zero-length commands leave their 16 and 136
+  destination bytes at 0xEE with no AR or AW handshake through the end of the poll
+|`CHK-DMA-ZEROLEN-MEASURED` |The returned `NEXT_ID_0`, `DONE_0` change, `STATUS_0[9:0]` and bit 322
+  pulse readings of both zero-length commands are measured and printed without comparing them,
+  until tenstorrent/tt-oca-harness#2455 is resolved
+|`CHK-DMA-COPY-CONTROL` |The `ENABLED_ND`-set 2D copy of four 16-byte rows at strides 0x30 and
+  0x28 writes its source rows over the 136-byte destination span with the bytes between rows still
+  0xEE, after `DONE_0` differs, with at least four AR and four AW handshakes; the linear copy of 16
+  bytes equals its source after `DONE_0` differs, with at least one AR and one AW handshake
+|`CHK-DMA-SUBMIT-32BIT` |The 32-bit read of `NEXT_ID_0` launches one command: `DONE_0` changes and
+  holds on six further reads and the destination equals the source
+|`CHK-DMA-SUBMIT-64BIT` |The 64-bit read at 0x48 launches one command: the destination equals the
+  source, `DONE_0` changes and holds, and the AR and AW counts equal those of the 32-bit copy
+|`CHK-DMA-IRQ-PULSE-COPY` |The valid copy gives exactly one bit 322 pulse, one `clk_smc_i` cycle
+  wide, ending low one rise after `tb_dma_busy` reads low
+|`CHK-NONVAC` |The seven step stamps are strictly increasing in step order and the AR and AW counts
+  accumulated since setup equal the sums of the three copy legs' counts; any extra handshake fails
+|===
+
+*Pass Criteria*: all ten checkers hold and every sequence assert holds: the `ENABLED_ND`-cleared
+command retires its ID and both zero-length commands leave the destination at 0xEE with no bus
+traffic, the 2D copy writes the 136-byte span the zero-length 2D compare covers, the linear copy
+moves its 16 bytes through both a 32-bit and a 64-bit submit with equal handshake counts, and the
+linear copy raises one one-cycle interrupt pulse. The register-boundary results of the no-data
+commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved. Enrolled
+in: `all`, `dma`.
 
 ==== FABRIC
 
@@ -27462,6 +27587,290 @@ delta bits and the `IER` bits above 4 are recorded and are not part of the claim
 
 '''''
 
+[[sec-529-smc_uart_pad_mux_enable_test]]
+===== 529 `smc_uart_pad_mux_enable_test`
+
+*Source Module*: `smc_uart_pad_mux_enable_test`
+
+*BFM / Model*: SEP_IN AXI sequencer writing and reading `CTRL.UART_EN` of wrapper 0, the UART0
+`THR`, `LSR.THRE` and `LSR.TEMT`, the pad-12 GPIO `DATA_CTRL` fields `interface_enable`,
+`enable_rx_tx` and `core2pad`, and `CLOCK_GATE_CONTROL` (`UART_CG_EN`); the UART0 pad VIP sink on
+`tb_uart0_tx_from_dut` (pad 12) decodes 8N1 frames at 115200 baud, and the same signal is also
+sampled on every `clk_smc_i` rise; `tb_uart0_rx_ext_drive` (pad 11) is bound by the VIP and left
+idle
+
+*Objective*: `THR` 0xA5 reaches pad 12 as one frame with `UART_EN` set, again after `UART_EN` is
+cleared and set, and the UART transmits with `UART_EN` clear while the pad is only measured.
+
+*Test Coverage*:
+
+* `CTRL.UART_EN` of wrapper 0 set: a `THR` write of 0xA5 produces exactly one 8N1 frame on pad 12
+  decoded as 0xA5 within the 5000 us capture bound (`uart_log_engine_ctrl.rdl` `CTRL.UART_EN`;
+  `ocah_gpio_table` pad 12 = `UART[0].TX`).
+* `UART_EN` cleared while idle: `LSR.TEMT` reads 0 after the `THR` write and `LSR.THRE` and
+  `LSR.TEMT` read 1 together after the byte is shifted out (`uart_16550_main.rdl` `LSR`), so the
+  UART itself transmitted.
+* The frames the pad VIP decodes on pad 12 within a window of 3 frame times and the minimum and
+  maximum pad level on every `clk_smc_i` rise are measured, not compared; the document does not
+  state the pad behaviour with `UART_EN` clear.
+* Pad-12 `DATA_CTRL` with `interface_enable` 1, `enable_rx_tx` 1 and `core2pad` 1 then 0: the
+  fields read back the written values (compared, `gpio_intf.rdl`); the pad level after each write
+  is measured, not compared, for the same reason.
+* `UART_EN` set again: the same `THR` write produces exactly one frame decoded as 0xA5, the
+  positive control that the stimulus and the pad decoder still work after the clear leg.
+
+*Test Procedure*:
+
+[arabic]
+. Read `CLOCK_GATE_CONTROL` and clear `UART_CG_EN`; program UART0 for 115200 baud 8N1 through
+  `LCR.DLAB`, `DLL` and `DLM`; read `LSR` requiring `TEMT` and `THRE` 1; bind the pad VIP; read
+  `CTRL` and the pad-12 `DATA_CTRL` as the restore values; stamp S1.
+. Write `UART_EN` 1 and read it back; write `THR` 0xA5; capture the frame within 5000 us; poll
+  `LSR` to idle and wait one frame time; require one frame decoded as 0xA5; stamp S2 and print
+  `CHK-UART-PADMUX-FRAME-ON`.
+. Read `LSR` (both bits 1), write `UART_EN` 0 and read it back, read `LSR` again, start the
+  `clk_smc_i` level sampler, write `THR` 0xA5 and read `LSR` repeatedly until `TEMT` and `THRE`
+  both read 1 within 5000 us, then complete the 3-frame-time window; stamp S3, print
+  `CHK-UART-PADMUX-OFF-TX-SHIFTED` after its compare and the measured
+  `CHK-UART-PADMUX-OFF-PAD-MEASURED`.
+. With `UART_EN` still 0 write pad-12 `DATA_CTRL` with `interface_enable`, `enable_rx_tx` 1 and
+  `core2pad` 1, sample the pad after the write and after the read-back, repeat with `core2pad` 0,
+  then write the saved `DATA_CTRL` back and read it; stamp S4 and print
+  `CHK-UART-PADMUX-GPIO-LEVEL-MEASURED`.
+. Write `UART_EN` 1 and read it back; write `THR` 0xA5; capture the frame, poll `LSR` to idle and
+  wait one frame time; require one frame decoded as 0xA5; stamp S5 and print
+  `CHK-UART-PADMUX-FRAME-RECOVER`.
+. Write the saved `CTRL` and `CLOCK_GATE_CONTROL`, wait two `clk_smc_i` cycles, stamp S6, check
+  the ordered fence and print `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-PADMUX-FRAME-ON` |With `UART_EN` read back 1 a `THR` write of 0xA5 yields exactly one
+  frame on pad 12 decoded as 0xA5 within 5000 us; no frame, another byte, a second frame or a
+  `UART_EN` read-back of 0 fails
+|`CHK-UART-PADMUX-OFF-TX-SHIFTED` |With `UART_EN` read back 0, `LSR.TEMT` reads 0 after the `THR`
+  write and `TEMT` and `THRE` read 1 together before 5000 us, after idle reads of 1 and 1 before
+  the write; a `TEMT` that never reads 0 or an idle that never returns fails
+|`CHK-UART-PADMUX-OFF-PAD-MEASURED` |Measured, not compared: frames decoded, their bytes and the
+  minimum and maximum pad-12 level over the 3-frame-time window; an X/Z sample or no sample fails
+|`CHK-UART-PADMUX-GPIO-LEVEL-MEASURED` |Pad-12 `DATA_CTRL` `interface_enable`, `enable_rx_tx` and
+  `core2pad` read back the written values (compared) and the saved value after the restore; the
+  pad level after each write is measured, not compared, and an X/Z sample fails
+|`CHK-UART-PADMUX-FRAME-RECOVER` |With `UART_EN` read back 1 again the same `THR` write yields
+  exactly one frame decoded as 0xA5 within 5000 us
+|`CHK-NONVAC` |Steps S1 to S6 ran in order with strictly increasing simulation-time stamps and the
+  five checker lines printed in order, each after its own step
+|===
+
+*Pass Criteria*: all checkers hold after their compares. The pad behaviour with `UART_EN` clear
+is observed and is not part of the claim. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-530-smc_log_engine_region_size_test]]
+===== 530 `smc_log_engine_region_size_test`
+
+*Source Module*: `smc_log_engine_region_size_test`
+
+*BFM / Model*: SEP_IN AXI sequencer writing and reading the SPM log window (tagged bytes, read
+back), the wrapper 0 log-engine registers `LOG_REGION_SIZE`, `LOG_REGION_ADDR`, `LOG_WRITE_ADDR`,
+`LOG_CTRL[i].LOG_LEN`, `CTRL.EN` and `INTR_STATUS`, the wrapper 0 UART `THR`, `RBR`, `LSR` and
+`MCR.LOOP`, and `CTRL.UART_EN`; the engine writes `THR` and the bytes return through the same
+UART's receiver, so no pad carries them
+
+*Objective*: Wrapper 0 delivers the bytes the slot-start formula, the capacity clamp and the
+zero-capacity rule name, for region sizes other than the one `smc_log_engine_transfer_test` uses.
+
+*Test Coverage*:
+
+* Slot start at the minimum size: `LOG_REGION_SIZE` 0x80, `LOG_LEN` 8 on each of the 16 slots, the
+  delivered bytes equal the window bytes at `LOG_REGION_ADDR + (LOG_REGION_SIZE / 16) * i`
+  (`log_engine/doc/architecture.adoc` "Memory Slots and Lengths").
+* Slot start at a mid size: `LOG_REGION_SIZE` 0x200, slots 0, 7 and 15 with `LOG_LEN` 0x20; the
+  window bytes differ above offset 0x100 so a start off by 0x100 fails.
+* Byte order: every compared message arrives at `RBR` in increasing address order, least
+  significant byte first in each fetched word, exactly `LOG_LEN` bytes and none beyond
+  (`architecture.adoc` "Arbitration and Data Transfer").
+* Resubmission: slot 0 at 0x200 takes `LOG_LEN` 0x20 a second time after hardware cleared it and
+  delivers the same 32 bytes (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl`
+  `LOG_CTRL`).
+* Capacity clamp: `LOG_REGION_SIZE` 135, 143, 144 and 271 on slots 0, 1 and 15; `LOG_LEN` at the
+  capacity (8, 8, 8 and 16 bytes) or below delivers 8 bytes, and `LOG_LEN` of capacity + 8 and the
+  largest multiple of eight the field holds (0xFFF8) each deliver exactly the capacity
+  (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl` `LOG_REGION_SIZE`).
+* The slot start of the unaligned sizes is measured, not compared; the compare is that every
+  delivered message is made of consecutive window offsets. The window byte names its offset only
+  below 0x100 (above it the byte is the offset XOR 0xA5, so a start off by 0x100 fails), so the
+  leaf also requires every delivered message of these sizes to end at or below offset 0x100; the
+  sizes and slots chosen keep them there (size 271, slot 15 ends exactly at 0x100).
+* Zero capacity: `LOG_REGION_SIZE` 127, `LOG_LEN` 8 on slots 0, 1 and 15 clears within 64 reads
+  with no byte at `RBR`; the delivering legs of the same leaf are the positive control.
+* `LOG_LEN` 9 and 7 at 0x200 is a measured leg: the count and values of the delivered bytes are
+  printed, measured, not compared; the hardware clear of `LOG_LEN` within 64 reads is compared, as
+  in every other leg.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense; arm the wrapper 0 UART (`CTRL.UART_EN` 1, 8N1, divisor 1, `MCR.LOOP`, FIFO
+  enable, `IER` 0); disable the engine, clear `INTR_STATUS`, `INTR_ENABLE` 0, `LOG_WRITE_ADDR` =
+  the `THR` address, `LOG_REGION_ADDR` = the SPM log window base; write 0x200 tagged bytes and read
+  them back; set `CTRL.EN`; stamp S1.
+. `LOG_REGION_SIZE` 0x80; for slots 0 to 15 in turn write `LOG_LEN` 8, drain `RBR` through `LSR.DR`
+  polls until the receiver is idle, read `LOG_CTRL[i]` until 0 within 64 reads, read
+  `INTR_STATUS`; stamp S2 and print `CHK-LOGENG-REGION-SLOT-START-MIN`.
+. `LOG_REGION_SIZE` 0x200; for slots 0, 7 and 15 write `LOG_LEN` 0x20 and drain 32 bytes; write
+  slot 0 again and drain the second delivery; stamp S3 and print
+  `CHK-LOGENG-REGION-SLOT-START-MID`, `CHK-LOGENG-REGION-RESUBMIT` and
+  `CHK-LOGENG-REGION-BYTE-ORDER`.
+. For `LOG_REGION_SIZE` 135, 143, 144 and 271 and slots 0, 1 and 15 write `LOG_LEN` 8, capacity +
+  8 and 0xFFF8, each after the previous message cleared and the receiver idled
+  (`LSR.TEMT` 1 and `LSR.DR` 0 on 32 consecutive polls); record every delivered message; stamp S4
+  and print `CHK-LOGENG-REGION-UNALIGNED-CAPACITY`, `CHK-LOGENG-REGION-UNALIGNED-BELOW-CAP` and
+  the measured `CHK-LOGENG-REGION-UNALIGNED-START-MEASURED`.
+. `LOG_REGION_SIZE` 127; for slots 0, 1 and 15 write `LOG_LEN` 8, apply the idle rule, read
+  `LOG_CTRL` until 0 within 64 reads, read `LSR` and `INTR_STATUS`; stamp S5 and print
+  `CHK-LOGENG-REGION-ZERO-CAPACITY`.
+. `LOG_REGION_SIZE` 0x200, slot 0, `LOG_LEN` 9 then 7, each followed by the idle rule and the
+  clear poll; stamp S6 and print the measured `CHK-LOGENG-REGION-LEN-NOT-MULT8-MEASURED`.
+. Clear `CTRL.EN`, `LOG_WRITE_ADDR`, `LOG_REGION_SIZE` and `LOG_REGION_ADDR`, restore the UART,
+  wait two `clk_smc_i` cycles, stamp S7, check the ordered fence and print `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOGENG-REGION-SLOT-START-MIN` |At `LOG_REGION_SIZE` 0x80 each of the 16 slots delivers the 8
+  window bytes at offset 8 * i and `INTR_STATUS` bits 0 and 4 read 0; a wrong first byte, a wrong
+  count or a clear that never comes fails
+|`CHK-LOGENG-REGION-SLOT-START-MID` |At 0x200 slots 0, 7 and 15 deliver the 32 window bytes at offset
+  0x20 * i, first bytes 0x00, 0xE0 and 0x45; a start off by any multiple of 8 fails
+|`CHK-LOGENG-REGION-BYTE-ORDER` |Every compared message arrives in increasing address order with
+  exactly `LOG_LEN` bytes and `LSR.DR` reads 0 after them; reversed or reordered bytes, a wrong
+  count or a trailing byte fails
+|`CHK-LOGENG-REGION-RESUBMIT` |Slot 0 at 0x200 delivers the same 32 bytes a second time after
+  `LOG_LEN` 0x20 is written again and `LOG_LEN` reads 0 afterwards
+|`CHK-LOGENG-REGION-UNALIGNED-CAPACITY` |For sizes 135, 143, 144 and 271 a `LOG_LEN` of capacity + 8
+  and of 0xFFF8, the largest multiple of eight the field holds, each deliver exactly the capacity
+  and nothing beyond on slots 0, 1 and 15, and `LOG_LEN` reads 0 afterwards
+|`CHK-LOGENG-REGION-UNALIGNED-BELOW-CAP` |`LOG_LEN` 8 delivers exactly 8 bytes at each of the four
+  unaligned sizes on slots 0, 1 and 15
+|`CHK-LOGENG-REGION-UNALIGNED-START-MEASURED` |The first fetched window offset of the slot 1 and 15
+  messages is printed, measured, not compared; every delivered message is consecutive window
+  offsets ending at or below offset 0x100 and none is empty
+|`CHK-LOGENG-REGION-ZERO-CAPACITY` |At size 127 `LOG_LEN` 8 on slots 0, 1 and 15 reads 0 within 64
+  reads, no byte reaches `RBR` and `INTR_STATUS` bits 0 and 4 read 0
+|`CHK-LOGENG-REGION-LEN-NOT-MULT8-MEASURED` |`LOG_LEN` 9 and 7 at 0x200: the delivered count and
+  values are printed, measured, not compared; the hardware clear of `LOG_LEN` within 64 reads is
+  compared
+|`CHK-NONVAC` |Steps S1 to S7 ran in order with strictly increasing simulation-time stamps and the
+  nine checker lines printed in order, each after its own step
+|===
+
+*Pass Criteria*: all checkers hold after their compares; the measured legs are observed and are
+not part of the claim. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-531-smc_log_engine_round_robin_test]]
+===== 531 `smc_log_engine_round_robin_test`
+
+*Source Module*: `smc_log_engine_round_robin_test`
+
+*BFM / Model*: SEP_IN AXI sequencer writing and reading the SPM log window (0x100 bytes, slot `s`
+byte `j` carrying `(s << 4) | j`), the wrapper 0 log-engine registers `LOG_REGION_SIZE`,
+`LOG_REGION_ADDR`, `LOG_WRITE_ADDR`, `LOG_CTRL[i].LOG_LEN`, `CTRL.EN` and `INTR_STATUS`, the
+wrapper 0 UART `THR`, `RBR`, `LSR` and `MCR.LOOP`, and `CTRL.UART_EN`; the engine writes `THR` and
+the bytes return through the same UART's receiver, so no pad carries them
+
+*Objective*: The wrapper 0 arbiter serves each pending slot as one whole message exactly once,
+skips zero lengths, and `LOG_LEN` holds the submitted value until hardware clears it.
+
+*Test Coverage*:
+
+* Atomic messages: with four, sixteen and five slots pending, every message arrives at `RBR` as 16
+  consecutive bytes of one slot in order, with no byte of another slot between them
+  (`log_engine/doc/architecture.adoc` "Arbitration and Data Transfer": scheduling is per message,
+  not per byte; `log_engine/doc/index.adoc`).
+* Exactly once: with all 16 entries pending the stream is 256 bytes holding each slot's message
+  once and nothing after the last (`log_engine.rdl` `LOG_CTRL`; `architecture.adoc` "Arbitration
+  and Data Transfer").
+* Zero lengths: entries 0 and 11 written with `LOG_LEN` 0 beside four pending entries deliver no
+  byte and read 0 (`architecture.adoc` "Memory Slots and Lengths": only a nonzero length makes a
+  slot pending).
+* Hold and clear: `LOG_CTRL` reads taken right after the first wave's writes return the submitted
+  16 or 0, never a count; in every wave the `LOG_CTRL` element of the slot whose message is
+  arriving, read after its fourth byte left `RBR`, still reads 16 (the engine is paced one
+  character at a time, so a remaining-byte counter reads at most 12 there); and every entry reads 0
+  within 64 reads after its message arrived; the clear poll does not wait on `LSR.TEMT`
+  (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl` `LOG_CTRL`).
+* A second wave: at the first byte read from `RBR` the `LOG_CTRL` element of that byte's slot is
+  read and must still hold 16, so its message is in flight at the engine; two entries written then
+  deliver their messages once each, after the message in flight completed.
+* The service order of the slots is measured, not compared.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense; arm the wrapper 0 UART (`CTRL.UART_EN` 1, 8N1, divisor 1, `MCR.LOOP`, FIFO
+  enable, `IER` 0); disable the engine, clear `INTR_STATUS`, `INTR_ENABLE` 0, `LOG_REGION_SIZE`
+  0x100, `LOG_WRITE_ADDR` = the `THR` address, `LOG_REGION_ADDR` = the SPM log window base; write
+  the 0x100 tagged bytes and read them back; set `CTRL.EN`; stamp S1.
+. Wave A: write `LOG_LEN` 0 to entries 0 and 11 and 16 to entries 1, 4, 9 and 14 back to back; read
+  those four `LOG_CTRL` elements once; read 64 bytes from `RBR` through `LSR.DR` polls (400 reads
+  per byte), reading the `LOG_CTRL` element of the first message's slot after its fourth byte;
+  apply the idle rule (`LSR.TEMT` 1 and `LSR.DR` 0 on 32 consecutive polls); read each
+  `LOG_CTRL` until 0 within 64 reads; read `INTR_STATUS`; stamp S2 and print
+  `CHK-LOGENG-RR-ZERO-SKIPPED`, `CHK-LOGENG-LEN-ZERO-NOT-PENDING` and
+  `CHK-LOGENG-LEN-HOLD-SUBMITTED`.
+. Wave B: write `LOG_LEN` 16 to all 16 entries back to back; read 256 bytes with the same
+  mid-message `LOG_CTRL` read; apply the idle rule; poll all 16 entries to 0; read `INTR_STATUS`;
+  stamp S3 and print `CHK-LOGENG-RR-EXACTLY-ONCE`.
+. Wave C: write `LOG_LEN` 16 to entries 3, 6 and 12; at the first byte read from `RBR` read the
+  `LOG_CTRL` element of that byte's slot, then write 16 to entries 2 and 13; read 80 bytes with
+  the same mid-message `LOG_CTRL` read; apply the idle rule; poll the five entries to 0; read
+  `INTR_STATUS`; stamp S4 and print `CHK-LOGENG-RR-IN-FLIGHT`, `CHK-LOGENG-RR-ATOMIC`,
+  `CHK-LOGENG-LEN-HWCLEAR` and the measured `CHK-LOGENG-RR-ORDER-MEASURED`.
+. Clear `CTRL.EN`, `LOG_WRITE_ADDR`, `LOG_REGION_SIZE` and `LOG_REGION_ADDR`, restore the UART,
+  wait two `clk_smc_i` cycles, stamp S5, check the ordered fence and print `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOGENG-RR-ATOMIC` |In all three waves every message is 16 consecutive bytes `(slot << 4) | 0`
+  to `(slot << 4) | 15` and `INTR_STATUS` bits 0 and 4 read 0; a foreign byte inside a message, a
+  short or long message or reordered bytes fails
+|`CHK-LOGENG-RR-EXACTLY-ONCE` |With all 16 entries pending the stream is 256 bytes holding each
+  slot's message exactly once and no byte follows the last under the idle rule
+|`CHK-LOGENG-LEN-HWCLEAR` |Every entry written 16 in the three waves reads 0 within 64 `LOG_CTRL`
+  reads after its message, the mid-message read of each wave returned 16, and no zero write reaches
+  a pending entry
+|`CHK-LOGENG-RR-ZERO-SKIPPED` |In wave A no byte tagged outside slots 1, 4, 9 and 14 arrives and the
+  entries never written read 0 afterwards
+|`CHK-LOGENG-LEN-ZERO-NOT-PENDING` |Entries 0 and 11, written 0 before wave A, deliver no byte and
+  read 0
+|`CHK-LOGENG-RR-IN-FLIGHT` |In wave C the `LOG_CTRL` element of the first message's slot still reads
+  16 at the first byte, before entries 2 and 13 are written, that message completes its 16 bytes
+  before any other, and entries 2 and 13 each deliver once, starting at stream position 16 or later
+|`CHK-LOGENG-LEN-HOLD-SUBMITTED` |The wave A `LOG_CTRL` reads right after the writes return 16 or 0,
+  never a count, at least one returns 16, and the element of the slot whose message is arriving
+  reads 16 after the fourth byte left `RBR`, where a remaining-byte counter reads at most 12
+|`CHK-LOGENG-RR-ORDER-MEASURED` |The service order of the slots in each wave is printed, measured, not
+  compared
+|`CHK-NONVAC` |Steps S1 to S5 ran in order with strictly increasing simulation-time stamps and the
+  eight checker lines printed in order, each after its own step
+|===
+
+*Pass Criteria*: all checkers hold after their compares; the measured order is observed and is not
+part of the claim. Enrolled in: `all`, `hosted`.
+
+'''''
 
 ==== OCCP
 

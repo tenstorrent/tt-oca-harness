@@ -226,11 +226,12 @@ def fabric_output_remap_regions() -> int:
 
 
 @lru_cache(maxsize=1)
-def abr_offsets() -> dict[str, int]:
-    """CSR offsets from ``abr_reg.rdl``."""
+def _abr_layout() -> tuple[dict[str, int], dict[str, int]]:
+    """CSR offsets and 32-bit word counts from ``abr_reg.rdl``."""
     text = _ABR_RDL.read_text(encoding="utf-8")
     off = 0
     out: dict[str, int] = {}
+    words: dict[str, int] = {}
     for m in _ABR_CLOSE.finditer(text):
         name, count, at = m.group(1), m.group(2), m.group(3)
         n = int(count) if count else 1
@@ -254,8 +255,10 @@ def abr_offsets() -> dict[str, int]:
             entries = int(re.search(r"mementries\s*=\s*(\d+)", mem_body).group(1))
             width = int(re.search(r"memwidth\s*=\s*(\d+)", mem_body).group(1))
             off = addr + entries * (width // 8)
+            words[name] = entries * width // 32
         else:
             off = addr + n * 4
+            words[name] = n
     # `type name @addr;` instances. An instance without @addr is packed 4 bytes
     # after the previous one only when nothing but blank or comment lines lies
     # between them (a run such as the KV control block at @0xC000).
@@ -288,7 +291,12 @@ def abr_offsets() -> dict[str, int]:
         raise RuntimeError(f"abr_reg.rdl intr_block_t packed {len(insts)} instances, need 9")
     for i, name in enumerate(insts):
         out.setdefault(name, i * 4)
-    return out
+    return out, words
+
+
+def abr_offsets() -> dict[str, int]:
+    """CSR offsets from ``abr_reg.rdl``."""
+    return _abr_layout()[0]
 
 
 def abr_off(name: str) -> int:
@@ -296,6 +304,14 @@ def abr_off(name: str) -> int:
         return abr_offsets()[name]
     except KeyError as exc:
         raise KeyError(f"{name!r} missing from abr_reg.rdl") from exc
+
+
+def abr_words(name: str) -> int:
+    """32-bit word count of an ``abr_reg.rdl`` register array or memory window."""
+    try:
+        return _abr_layout()[1][name]
+    except KeyError as exc:
+        raise KeyError(f"{name!r} is not a register array or memory in abr_reg.rdl") from exc
 
 
 # Implicit-packed `reg { ... } NAME;` blocks in abr_reg.rdl. Field [N] is a

@@ -175,7 +175,7 @@ public surface:
 
 DUT sim configs consume the layer only through the manifest
 (`[frameworks.uvm.build].source_lists`); VIP paths are never hand-copied
-into DUT configs, Bender targets, or Verilator filelists. Manifests
+into DUT configs, Bender targets, or cocotb filelists. Manifests
 dedup-merge when a DUT consumes several VIPs, so shared entries (such as
 the checker package) compile exactly once. Naming mirrors cocotb: the same
 protocol operations exist in both frameworks' sequence/BFM APIs, and the

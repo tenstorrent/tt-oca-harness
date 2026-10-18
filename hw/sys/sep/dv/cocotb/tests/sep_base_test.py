@@ -283,6 +283,11 @@ class sep_base_test(uvm_test):
         self._install_evidence_filter(self._evidence)
         self.cfg = SepEnvCfg("cfg")
         self._efuse_compare_image: SepEfuseImage | None = None
+        # The eFuse model reads out/sep_efuse.hex once, when rst_ni first reads 1
+        # (efuse_bank_model.sv). After that load, and before the first sense
+        # compare, a new image cannot reach the OTP (write_efuse_image raises).
+        self._efuse_otp_loaded = False
+        self._efuse_sense_checked = False
         self.logger.info(
             "SEP timing: sys_clk_period=%s ns ref_clk_period=%s ns",
             self.cfg.sys_clk_period_ns,
@@ -449,6 +454,27 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         self._set_if_exists(dut, "hmac_fifo_drain_stall_i", 0)
         self._set_if_exists(dut, "kmac_fifo_drain_stall_i", 0)
+        # Crypto and entropy injects off and the external TRNG streams and
+        # interrupt on the wrapper tie-off unless a leaf drives them
+        # (docs/SEP_TB_ARCH.adoc).
+        for pin in (
+            "crypto_alert_inject_i",
+            "crypto_alert_inject_idx_i",
+            "crypto_alert_inject_val_i",
+            "esrc_fifo_parity_inject_i",
+            "esrc_fifo_parity_bit_i",
+            "esrc_fifo_ptr_inject_i",
+            "esrc_fifo_ptr_sel_i",
+            "esrc_fifo_ptr_bit_i",
+            "esrc_noise_stuck_en_i",
+            "esrc_noise_stuck_val_i",
+            "ext_trng_drive_en_i",
+            "ext_trng_tvalid_i",
+            "ext_trng_tdata_i",
+            "ext_trng_tstrb_i",
+            "ext_trng_irq_drive_i",
+        ):
+            self._set_if_exists(dut, pin, 0)
         # Boundary PIC input and outbound responder control: idle (0) unless a
         # leaf drives them (docs/SEP_TB_ARCH.adoc).
         self._set_if_exists(dut, "sep_ext_interrupts_i", 0)
@@ -496,6 +522,7 @@ class sep_base_test(uvm_test):
 
     def _check_efuse_shadow_after_sense(self) -> None:
         """Backdoor-compare sensed shadow data for real eFuse-image sense runs."""
+        self._efuse_sense_checked = True
         if "skip_fuse_sense" in cocotb.plusargs:
             return
         if self._efuse_compare_image is None:
@@ -578,6 +605,7 @@ class sep_base_test(uvm_test):
         on stimulus that does not exist.
         """
         dut.rst_ni.value = 1
+        self._efuse_otp_loaded = True
         await Timer(1, units="ns")
         dut.rst_ni.value = 0
         await Timer(1, units="ns")
@@ -1048,10 +1076,43 @@ class sep_base_test(uvm_test):
         The efuse bank model loads that default path unless ``+sep_efuse_hex=<path>``
         overrides it for a special run. The image is also kept as
         the golden for the automatic post-sense shadow comparison.
+
+        The model reads the file once, when ``rst_ni`` first reads 1. A call
+        after that load and before the first post-sense compare, with real fuse
+        sense and an image that differs from the file on disk, raises: the
+        sense would read the earlier image. After a sense, a call updates only
+        the golden (for example after a program), and the log says so.
         """
         out_dir = os.path.join(os.getcwd(), "out")
         os.makedirs(out_dir, exist_ok=True)
         path = os.path.join(out_dir, "sep_efuse.hex")
+        loaded = self._efuse_otp_loaded or str(cocotb.top.rst_ni.value) == "1"
+        if loaded:
+            tmp = f"{path}.after_load.{os.getpid()}"
+            image.write_hex(tmp)
+            try:
+                with open(tmp, "rb") as new, open(path, "rb") as old:
+                    same = new.read() == old.read()
+            except OSError:
+                same = False
+            finally:
+                os.remove(tmp)
+            real_sense = "skip_fuse_sense" not in cocotb.plusargs
+            override = "sep_efuse_hex" in cocotb.plusargs
+            if not same and real_sense and not override and not self._efuse_sense_checked:
+                msg = (
+                    "EFUSE-IMAGE FAIL: write_efuse_image after the OTP load "
+                    f"({path} is read once, when rst_ni first reads 1) and before "
+                    "the first sense: the sense reads the earlier image. Write the "
+                    "image before the first reset."
+                )
+                self.logger.error(msg)
+                raise AssertionError(msg)
+            self.logger.info(
+                "eFuse image written after the OTP load: the OTP keeps its contents; "
+                "this image is the post-sense golden only (same_as_loaded_file=%d)",
+                int(same),
+            )
         image.write_hex(path)
         # The CWD copy above (loaded by the responder) lives in the test dir and
         # is overwritten every run. Archive a per-run copy under the run output

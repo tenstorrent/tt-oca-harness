@@ -87,9 +87,9 @@ build_args = [
 # from the passive cocotb wire harness to the self-contained SV-UVM shape, which `include`s
 # uvm/tests/ocah_jtag_vip_tests.sv.
 [frameworks.uvm]
-description = "Shared JTAG VIP SV-UVM selftest flow (VCS)"
+description = "Shared JTAG VIP SV-UVM selftest flow (VCS, Verilator)"
 default_tool = "vcs"
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 
 [frameworks.uvm.build]
 # The library and VIP SV-UVM layers come from their owned ordered manifests, expanded AHEAD

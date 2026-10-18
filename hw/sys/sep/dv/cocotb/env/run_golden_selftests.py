@@ -22,6 +22,7 @@ _MODELS = _HERE.parents[5] / "hw" / "ip" / "entropy_source" / "dv" / "cocotb" / 
 # The goldens with an executable self-test (KAT/NIST/FIPS/RFC or hand vectors).
 _GOLDENS = (
     _HERE / "sep_aes_golden.py",
+    _HERE / "sep_aes_mode_golden.py",
     _HERE / "sep_hmac_golden.py",
     _HERE / "sep_ctr_drbg_golden.py",
     _MODELS / "entropy_conditioning_model.py",

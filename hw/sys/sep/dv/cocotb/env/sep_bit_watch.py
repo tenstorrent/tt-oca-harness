@@ -11,6 +11,9 @@ Typical ports: ``sep_internal_interrupts_probe_o`` (PIC source n at index
 n-1), ``dma_busy_probe_o`` and ``spi_lsio_trigger_probe_o`` (approved probes,
 docs/SEP_TB_ARCH.adoc).
 
+A bit index outside the port width raises ``BitWatchIndexError`` at ``start``
+and on the first sample, so a watcher never reads another bit of the port.
+
 A watched bit that resolves to X or Z fails the leaf with ``BIT-WATCH-XZ
 FAIL`` while ``xz_fail`` is set. Verilator is 2-state.
 
@@ -57,6 +60,10 @@ class BitWatchIdleError(AssertionError):
     """A query covers a window in which the watcher took no sample."""
 
 
+class BitWatchIndexError(AssertionError):
+    """A watched bit index is outside the width of the port."""
+
+
 @dataclass
 class _BitRec:
     idx: int
@@ -95,6 +102,7 @@ class SepBitWatch:
         self._default = next(iter(self.bits)) if len(self.bits) == 1 else None
         self.xz_fail = xz_fail
         self.clk = 0
+        self._width: int | None = None
         self._task: Any = None
         self.life = MonitorLife(f"BIT-WATCH {self.name}", lambda: self.clk)
         self.log = logging.getLogger("cocotb.sep_bit_watch")
@@ -114,7 +122,21 @@ class SepBitWatch:
     def _rec(self, bit: str | None) -> _BitRec:
         return self.bits[self._key(bit)]
 
+    def _check_width(self, width: int) -> None:
+        """Raise when a watched index is negative or at or above ``width``."""
+        if self._width == width:
+            return
+        bad = {k: r.idx for k, r in self.bits.items() if not 0 <= r.idx < width}
+        if bad:
+            msg = f"BIT-WATCH-INDEX FAIL: {self.name} is {width} bits wide; indices {bad}"
+            self.log.error(msg)
+            raise BitWatchIndexError(msg)
+        self._width = width
+
     def start(self) -> "SepBitWatch":
+        bits = self._bitstr()
+        if bits:
+            self._check_width(len(bits))
         if self._task is None:
             self._task = self.life.start(self._run())
         return self
@@ -210,6 +232,7 @@ class SepBitWatch:
             await ReadOnly()
             self.clk += 1
             bits = self._bitstr()
+            self._check_width(len(bits))
             for key, rec in self.bits.items():
                 c = bits[len(bits) - 1 - rec.idx]
                 if c not in "01":
