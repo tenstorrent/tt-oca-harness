@@ -66,7 +66,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_drbg_regwen_lock_rand_test, VCS only (crypto.toml). Its reset reads must carry
 #   no X, which only a four-state simulator shows.
 name = "all"
-expected_count = 219
+expected_count = 222
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -274,9 +274,12 @@ tests = [
     "sep_abr_command_matrix_rand_test",
     "sep_abr_combined_cmd_kat_test",
     "sep_esrc_csr_rw_walk_rand_test",
-    "sep_esrc_health_pattern_rand_test",
+    "sep_esrc_health_pattern_rand_test_shard1",
+    "sep_esrc_health_pattern_rand_test_shard2",
+    "sep_esrc_health_pattern_rand_test_shard3",
     "sep_esrc_persistent_alert_rand_test",
-    "sep_esrc_autotune_detune_test",
+    "sep_esrc_autotune_detune_test_shard1",
+    "sep_esrc_autotune_detune_test_shard2",
     "sep_esrc_startup_gate_rand_test",
     "sep_esrc_conditioning_matrix_rand_test",
     "sep_esrc_fifo_flow_rand_test",
@@ -501,9 +504,12 @@ tests = [
     "sep_abr_command_matrix_rand_test",
     "sep_abr_combined_cmd_kat_test",
     "sep_esrc_csr_rw_walk_rand_test",
-    "sep_esrc_health_pattern_rand_test",
+    "sep_esrc_health_pattern_rand_test_shard1",
+    "sep_esrc_health_pattern_rand_test_shard2",
+    "sep_esrc_health_pattern_rand_test_shard3",
     "sep_esrc_persistent_alert_rand_test",
-    "sep_esrc_autotune_detune_test",
+    "sep_esrc_autotune_detune_test_shard1",
+    "sep_esrc_autotune_detune_test_shard2",
     "sep_esrc_startup_gate_rand_test",
     "sep_esrc_conditioning_matrix_rand_test",
     "sep_esrc_fifo_flow_rand_test",
@@ -848,7 +854,7 @@ tests = [
 # Convenience group of the crypto and entropy tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_crypto_entropy"
-expected_count = 31
+expected_count = 34
 tests = [
     "sep_irq_ip_to_aggregator_test",
     "sep_crypto_edn_multisink_arbitration_test",
@@ -868,9 +874,12 @@ tests = [
     "sep_abr_command_matrix_rand_test",
     "sep_abr_combined_cmd_kat_test",
     "sep_esrc_csr_rw_walk_rand_test",
-    "sep_esrc_health_pattern_rand_test",
+    "sep_esrc_health_pattern_rand_test_shard1",
+    "sep_esrc_health_pattern_rand_test_shard2",
+    "sep_esrc_health_pattern_rand_test_shard3",
     "sep_esrc_persistent_alert_rand_test",
-    "sep_esrc_autotune_detune_test",
+    "sep_esrc_autotune_detune_test_shard1",
+    "sep_esrc_autotune_detune_test_shard2",
     "sep_esrc_startup_gate_rand_test",
     "sep_esrc_conditioning_matrix_rand_test",
     "sep_esrc_fifo_flow_rand_test",

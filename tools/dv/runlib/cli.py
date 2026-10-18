@@ -391,6 +391,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Simulation/regression fan-out job count",
     )
     parallel.add_argument(
+        "--leaf-order-from",
+        dest="leaf_order_from",
+        metavar="RESULT_JSON",
+        help=(
+            "Start the regression leaves longest first, using the leaf durations in this "
+            "earlier result.json; a leaf without one starts before every timed leaf"
+        ),
+    )
+    parallel.add_argument(
         "--build-jobs",
         type=int,
         metavar="N",
@@ -632,6 +641,34 @@ _WAIVE_SELECTION_FLAGS = {
     "run_only": "--run-only",
     "dry_run": "--dry-run",
 }
+
+
+def leaf_order(
+    leaves: list[dict[str, Any]], order_from: str | None, root: Path
+) -> list[dict[str, Any]]:
+    """The leaves in submit order: testlist order, or longest first from an earlier run.
+
+    With ``order_from`` each leaf is keyed by the longest ``sim`` duration of its item
+    in that result.json. A leaf whose item has no duration there starts first, in
+    testlist order, so a new or renamed leaf is never left to the end. The sort is
+    stable and changes no leaf id or seed.
+    """
+    if not order_from:
+        return list(leaves)
+    path = Path(order_from).expanduser()
+    if not path.is_absolute():
+        path = root / path
+    try:
+        prior = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"--leaf-order-from: cannot read {path}: {exc}") from exc
+    durations: dict[str, float] = {}
+    for stage in prior.get("stages", []):
+        if stage.get("name") != "sim" or stage.get("item") is None:
+            continue
+        duration = float(stage.get("duration_sec") or 0.0)
+        durations[stage["item"]] = max(durations.get(stage["item"], 0.0), duration)
+    return sorted(leaves, key=lambda leaf: -durations.get(str(leaf["item"]), float("inf")))
 
 
 def validate_mode_options(args: argparse.Namespace) -> None:
@@ -3879,7 +3916,13 @@ def run_flow(
         poll_interval = float(limits["poll_interval_sec"])
         cancel_grace = float(limits["cancel_grace_sec"])
         blocked_leaves = [leaf for leaf in leaves if leaf.get("target") in blocked_targets]
-        pending = deque(leaf for leaf in leaves if leaf.get("target") not in blocked_targets)
+        pending = deque(
+            leaf_order(
+                [leaf for leaf in leaves if leaf.get("target") not in blocked_targets],
+                args.leaf_order_from,
+                root,
+            )
+        )
         leaf_by_id = {int(leaf["id"]): leaf for leaf in leaves}
         tasks: dict[str, LeafTask] = {}
         handles: dict[str, JobHandle] = {}

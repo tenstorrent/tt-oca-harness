@@ -505,6 +505,45 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# Shard 1 of 3 of sep_esrc_health_pattern_rand_test: both pattern trials and the APT enable leg. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_health_pattern_rand_test_shard1"
+module = "crypto.sep_esrc_health_pattern_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=1"]
+
+[[tests]]
+# Shard 2 of 3 of sep_esrc_health_pattern_rand_test: the repetition enable leg and the limit trials. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_health_pattern_rand_test_shard2"
+module = "crypto.sep_esrc_health_pattern_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=2"]
+
+[[tests]]
+# Shard 3 of 3 of sep_esrc_health_pattern_rand_test: the constant-zero and constant-ones legs. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_health_pattern_rand_test_shard3"
+module = "crypto.sep_esrc_health_pattern_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=3"]
+
+[[tests]]
 # ESRC persistent-failure threshold: trip, no trip, burst gap, disable, halt and the
 # two exits.
 name = "sep_esrc_persistent_alert_rand_test"
@@ -528,6 +567,32 @@ tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Shard 1 of 2 of sep_esrc_autotune_detune_test: the manual, off and ignored legs and the first burst. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_autotune_detune_test_shard1"
+module = "crypto.sep_esrc_autotune_detune_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=1"]
+
+[[tests]]
+# Shard 2 of 2 of sep_esrc_autotune_detune_test: the second and third bursts after the same manual and ignored set-up. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_autotune_detune_test_shard2"
+module = "crypto.sep_esrc_autotune_detune_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=2"]
 
 [[tests]]
 # ESRC boot gate, idle hold and the restart of startup testing by MODULE_ENABLE.
