@@ -1184,6 +1184,11 @@
 `SEP_TB_OUT(sep_efuse_pkg::efuse_addr_bit_t, efuse_shim_cmd_address_o)
 `SEP_TB_OUT(logic, efuse_shim_cmd_program_data_o)
 `SEP_TB_OUT(sep_efuse_pkg::efuse_word_counter_t, efuse_shim_cmd_len_o)
+// Shim response at the sep input efuse_shim_command_resp_i: valid, status and
+// data. Read-only taps.
+`SEP_TB_OUT(logic, efuse_shim_resp_valid_o)
+`SEP_TB_OUT(logic, efuse_shim_resp_status_o)
+`SEP_TB_OUT(sep_efuse_pkg::efuse_data_t, efuse_shim_resp_data_o)
 // The 256 OTP bank words that SEP reaches (words 0..255 of the bank model).
 // Read-only tap; the bench has no bank write hook.
 `SEP_TB_OUT(logic [255:0][31:0], otp_bank_probe_o)

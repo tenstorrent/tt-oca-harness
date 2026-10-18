@@ -49,7 +49,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
-from env.sep_efuse_image import lc_encode
+from env.sep_efuse_image import LC_FIELD_MASK, lc_encode
 from env.sep_efuse_plan import (
     CH_CHIPLET,
     CH_SIP,
@@ -276,6 +276,18 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         spare = leg["spare"]
         ctl = await self._program(spare["addr"])
         landed = ctl["busy"] == 0 and ctl["done"] == 1 and ctl["bit"] == 1
+        ctl_seen = landed and ctl["cmd"] == 1 and ctl["cmd_all"] == 1
+        self.chk.ctrl(
+            "WINDOW-CTL",
+            ctl_seen,
+            bit_addr=spare["addr"],
+            busy=ctl["busy"],
+            done=ctl["done"],
+            bit=ctl["bit"],
+            cmds=ctl["cmd"],
+            cmds_all=ctl["cmd_all"],
+            w_cycles=self.w,
+        )
         if not landed:
             hook_fail(
                 self.chk,
@@ -286,11 +298,14 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
                 bit=ctl["bit"],
                 w_cycles=self.w,
             )
-        if ctl["cmd"] < 1:
+        if not ctl_seen:
             hook_fail(
-                self.chk, reason="window_control_cmd", bit_addr=spare["addr"], cmds=ctl["cmd"]
+                self.chk,
+                reason="window_control_cmd",
+                bit_addr=spare["addr"],
+                cmds=ctl["cmd"],
+                cmds_all=ctl["cmd_all"],
             )
-        self.chk.ctrl("WINDOW-CTL", True, bit_addr=spare["addr"], cmds=ctl["cmd"], w_cycles=self.w)
         log_line(self.logger, "OBS-WINDOW-CTL", seed, w_cycles=self.w, landed=1)
         spare_word = field_word(spare["field"]) + spare["word"]
         self.golden.words[spare_word] = ctl["word"]
@@ -323,9 +338,9 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             exp_feat = feat_ctrl_profile(raw, p.sip_dis, p.sys_dis)
             ok = (
                 code == CODE_MATCH
-                and got["word"] & 0xFF == exp_byte
+                and got["word"] & LC_FIELD_MASK == exp_byte
                 and got["probe_lc"] is not None
-                and got["probe_lc"] & 0xFF == exp_byte
+                and got["probe_lc"] & LC_FIELD_MASK == exp_byte
                 and got["feat"] == exp_feat.value
                 and got["probe_feat"] == exp_feat.value
             )
@@ -338,15 +353,17 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
                 tok=_CH_NAME[ch],
                 code="none" if code is None else f"0x{code:02x}",
                 exp_byte=f"0x{exp_byte:02x}",
-                got_byte=f"0x{got['word'] & 0xFF:02x}",
-                probe_byte="x" if got["probe_lc"] is None else f"0x{got['probe_lc'] & 0xFF:02x}",
+                got_byte=f"0x{got['word'] & LC_FIELD_MASK:02x}",
+                probe_byte="x"
+                if got["probe_lc"] is None
+                else f"0x{got['probe_lc'] & LC_FIELD_MASK:02x}",
                 exp_feat=f"0x{exp_feat.value:016x}",
                 got_feat=f"0x{got['feat']:016x}",
                 probe_feat="x" if got["probe_feat"] is None else f"0x{got['probe_feat']:016x}",
                 exp_state=lc_state_class(raw),
                 profile=exp_feat.log(),
             )
-        shadow_pre_reset = got["word"] & 0xFF
+        shadow_pre_reset = got["word"] & LC_FIELD_MASK
         for ch in (CH_SIP, CH_CHIPLET):
             if await self.fd.match(ch) == CODE_MATCH:
                 pre_reset_codes[ch] = await self._mismatch(ch, f"a.end.{_CH_NAME[ch]}")
@@ -355,11 +372,11 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         burn_cmds = self.shim.programs_since(burn_mark)
         self.chk.ok(
             "TRANSIENT-NOBURN",
-            lc_otp == staged_word and not burn_cmds and ctl["bit"] == 1 and ctl["cmd"] >= 1,
+            lc_otp == staged_word and not burn_cmds and ctl["bit"] == 1 and ctl["cmd"] == 1,
             lc_otp_word=f"0x{lc_otp:08x}",
             staged_word=f"0x{staged_word:08x}",
             ctl_spare_bit=ctl["bit"],
-            ctl_cmd=int(ctl["cmd"] >= 1),
+            ctl_cmd=ctl["cmd"],
             prog_cmds_in_window=len(burn_cmds),
         )
 
@@ -370,7 +387,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         self.chk.ok(
             "TRANSIENT-RESET",
             codes_ok
-            and after["word"] & 0xFF == staged_byte
+            and after["word"] & LC_FIELD_MASK == staged_byte
             and after["feat"] == staged_feat.value
             and after["probe_feat"] == staged_feat.value
             and (not updated or shadow_pre_reset != staged_byte),
@@ -380,7 +397,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             )
             or "none",
             staged_byte=f"0x{staged_byte:02x}",
-            got_byte=f"0x{after['word'] & 0xFF:02x}",
+            got_byte=f"0x{after['word'] & LC_FIELD_MASK:02x}",
             exp_feat=f"0x{staged_feat.value:016x}",
             got_feat=f"0x{after['feat']:016x}",
             updated=int(updated),
@@ -422,24 +439,29 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             and own1["done"] == 1
             and own1["word"] == otp1
             and shadow_own1 == shadow0
-            and sense1 & 0xFF == exp1
+            and sense1 & LC_FIELD_MASK == exp1
             and sip_end == CODE_MISMATCH
             and chp_code == CODE_MISMATCH
         )
         self.chk.ok(
             "PROG-LC",
-            ref1["cmd"] == 0 and ref1["word"] == staged_word and shadow_ref1 == shadow0 and own1_ok,
+            ref1["cmd"] == 0
+            and ref1["cmd_all"] == 0
+            and ref1["word"] == staged_word
+            and shadow_ref1 == shadow0
+            and own1_ok,
             bit=1,
             match="other_only",
             role="new",
             shim_cmd=ref1["cmd"],
+            shim_cmd_all=ref1["cmd_all"],
             w_cycles=self.w,
             lc_otp_word=f"0x{ref1['word']:08x}",
             landed=ref1["bit"],
             busy=ref1["busy"],
             done=ref1["done"],
             req_err=ref1["req_err"],
-            shadow_pre=f"0x{shadow0 & 0xFF:02x}",
+            shadow_pre=f"0x{shadow0 & LC_FIELD_MASK:02x}",
             shadow_after_sense="na",
             exp_after_sense="na",
             state_after_sense="na",
@@ -455,8 +477,8 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             w_cycles=self.w,
             lc_otp_word=f"0x{own1['word']:08x}",
             landed=own1["bit"],
-            shadow_pre=f"0x{shadow_own1 & 0xFF:02x}",
-            shadow_after_sense=f"0x{sense1 & 0xFF:02x}",
+            shadow_pre=f"0x{shadow_own1 & LC_FIELD_MASK:02x}",
+            shadow_after_sense=f"0x{sense1 & LC_FIELD_MASK:02x}",
             exp_after_sense=f"0x{exp1:02x}",
             state_after_sense=lc_state_class(r1),
         )
@@ -489,7 +511,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             and own2["done"] == 1
             and own2["word"] == otp2
             and shadow_own2 == sense1
-            and sense2 & 0xFF == exp2
+            and sense2 & LC_FIELD_MASK == exp2
             and sip_end2 == CODE_MISMATCH
             and chp_end2 == CODE_MISMATCH
         )
@@ -497,6 +519,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             "PROG-LC",
             chp_held != CODE_MATCH
             and ref2["cmd"] == 0
+            and ref2["cmd_all"] == 0
             and ref2["word"] == otp1
             and shadow_ref2 == sense1
             and own2_ok,
@@ -504,6 +527,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             match="other_only",
             role="control",
             shim_cmd=ref2["cmd"],
+            shim_cmd_all=ref2["cmd_all"],
             w_cycles=self.w,
             lc_otp_word=f"0x{ref2['word']:08x}",
             landed=ref2["bit"],
@@ -511,7 +535,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             done=ref2["done"],
             req_err=ref2["req_err"],
             chp_code=f"0x{chp_held:02x}",
-            shadow_pre=f"0x{sense1 & 0xFF:02x}",
+            shadow_pre=f"0x{sense1 & LC_FIELD_MASK:02x}",
             shadow_after_sense="na",
             exp_after_sense="na",
             state_after_sense="na",
@@ -527,8 +551,8 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             w_cycles=self.w,
             lc_otp_word=f"0x{own2['word']:08x}",
             landed=own2["bit"],
-            shadow_pre=f"0x{shadow_own2 & 0xFF:02x}",
-            shadow_after_sense=f"0x{sense2 & 0xFF:02x}",
+            shadow_pre=f"0x{shadow_own2 & LC_FIELD_MASK:02x}",
+            shadow_after_sense=f"0x{sense2 & LC_FIELD_MASK:02x}",
             exp_after_sense=f"0x{exp2:02x}",
             state_after_sense=lc_state_class(r2),
         )

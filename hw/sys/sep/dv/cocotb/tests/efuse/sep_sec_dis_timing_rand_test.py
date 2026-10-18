@@ -389,6 +389,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
                 "ctl_probe_changed": ctl_probe_changed,
                 "ctl_map_resp": ctl_map_resp,
                 "sep_rst_released": hold.get("rst_released", "na"),
+                "sep_rst_pre": hold.get("rst_pre", "na"),
                 "match_lat": lat,
                 "k": hold.get("k", "na"),
                 "n_loaded": hold.get("n_loaded", "na"),
@@ -547,7 +548,9 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         await mon.until(mon.rise_at + w)
         set_efuse_sdis_hold_bound(0, self.logger)
 
-        # Release the SEP reset through the IC_RESET TDR and hold W more clocks.
+        # Release the SEP reset through the IC_RESET TDR and hold W more clocks. The net
+        # reads held (0) before the TDR step, so the release is an edge the TDR made.
+        rst_pre = self.rd_known(dut.dbg_sep_reset_n_o) & 1
         tdr = SepIcResetTdr(self.rd_known)
         await tdr.reset_and_select()
         await tdr.capture_shift_update(tdr_word(apply=("sep_reset_n",)))
@@ -555,7 +558,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         for _ in range(_RST_RELEASE_BOUND):
             await RisingEdge(dut.clk_i)
             if self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True) & 1:
-                released = 1
+                released = int(rst_pre == 0)
                 break
         n_rel = mon.n
         await mon.until(n_rel + w)
@@ -577,6 +580,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             "held": mon.held,
             "probe_unchanged": int(mon.bad_probe == 0),
             "rst_released": released,
+            "rst_pre": rst_pre,
             "map_resp": map_seq.resp_code,
         }
 

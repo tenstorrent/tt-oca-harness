@@ -174,7 +174,8 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         return (await self._rd(MATCH_ADDR[ch])) & MATCH_STATUS_MASK
 
     def _sense_done(self) -> int:
-        return self.rd(cocotb.top.sep_fuse_sense_done_o, allow_unknown=True) & 1
+        """``sep_fuse_sense_done_o``; an X or Z raises, so it never counts as low."""
+        return self.rd_known(cocotb.top.sep_fuse_sense_done_o) & 1
 
     def _sdis(self) -> int:
         return self.rd(cocotb.top.lcc_security_disable_probe_o, allow_unknown=True) & 1
@@ -350,12 +351,13 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
                 self.chk.obs("SDIS-AFTER-FOREIGN", secdis=self._sdis())
             self.chk.ok(
                 "TOKEN-HOLD",
-                hold_ok and held in (CODE_MATCH, CODE_MISMATCH) and run_d.w_hash <= window,
+                hold_ok and held in (CODE_MATCH, CODE_MISMATCH) and run_d.w_hash <= w_hash[ch],
                 ch=_CH_NAME[ch],
                 held="none" if held is None else f"0x{held:02x}",
                 reads_in_window=len(hold_codes),
                 all_equal=int(hold_ok),
                 next_go_reads=run_d.w_hash,
+                w_hash=w_hash[ch],
             )
 
         self.chk.ok(

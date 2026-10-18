@@ -18,9 +18,12 @@ by class, vector choice, ``LOCKS`` and ``LOCKS_SPARE`` write-lock sets, filter-l
 pair, adjacent-equal redraws); the same plan gives the drawn ``jtag_id_i``. The leaf
 makes no program, no shadow write and no lock write.
 
-The offset table comes from the address column of ``sep_efuse_map.adoc`` and the widths
-from its field tables; a table that does not tile words 0 to 255 with 43 registers
-fails the leaf before any DUT access (``SETUP FAIL reason=table_tile``).
+The offset table comes from the RDL-generated register header (``SEP_EFUSE_MAP_*_REG_OFFSET``
+of ``regs/gen/py/sep_reg.py``, through ``SepEfuseImage``) and the widths from the
+register sizes of the RDL-generated IP-XACT (``regs/gen/ipxact/sep.xml``); a table that
+does not tile words 0 to 255 with 43 registers fails the leaf before any DUT access
+(``SETUP FAIL reason=table_tile``). The used-bit masks come from the RDL field masks
+(``field_used_masks`` of ``env/sep_efuse_plan.py``).
 
 Checkers:
   CHK-FIELD-USED  the used bits of each graded narrow register equal the staged value
@@ -35,41 +38,23 @@ Log-only: the word-by-word compare of the 43 registers (``OBS-FIELD LOG``).
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
-from env.sep_efuse_image import SHADOW_BASE
-from env.sep_efuse_plan import T_FIELD_LAYOUT, plan
+from env.sep_efuse_image import SHADOW_BASE, SepEfuseImage
+from env.sep_efuse_plan import T_FIELD_LAYOUT, field_used_masks, plan
 from env.sep_efuse_test_lib import SepEfuseFd, hook_fail, log_line, probe_words
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
+from sep_reg_meta import iter_ipxact_registers
 
 TEST = T_FIELD_LAYOUT
 
-_MAP_ADOC = (
-    Path(__file__).resolve().parents[4] / "regs" / "gen" / "adoc" / "blocks" / "sep_efuse_map.adoc"
-)
 _N_REGS = 43
 _N_WORDS = 256
 _WORD = 0xFFFF_FFFF
 
-# Used masks of the 32-bit registers (contract procedure step 6).
-_USED_MASK = {
-    "LOCKS_SPARE": 0x0003_FFFF,
-    "LC_STATE": 0x0000_00FF,
-    "SBOOT_DIS": 0x1,
-    "TRANSIENT_RMA_EN": 0x1,
-    "CHIPLET_PUBK_REVOKE": 0x03FF_FFFF,
-    "STATUS_RPT": 0x3,
-    "REQUIRED_SIGNERS": 0x3,
-    "ROM_CTL": 0x3F,
-    "SYSCLK_FREQ_MHZ": 0x7FF,
-    "REQUIRED_ALGS": 0x333,
-}
 _GRADED = (
     "LC_STATE",
     "SBOOT_DIS",
@@ -81,43 +66,21 @@ _GRADED = (
     "REQUIRED_SIGNERS",
     "REQUIRED_ALGS",
 )
-
-_ROW_MAP = re.compile(r"^\|\s*(0x[0-9A-Fa-f]+)\s*\|\s*<<[^,>]*,([A-Za-z0-9_]+)>>")
-_ROW_SECTION = re.compile(r"^===\s+([A-Za-z0-9_]+)\s*$")
-_ROW_BITS = re.compile(r"^\|\s*(\d+)(?::(\d+))?\s*\|")
+# Used-bit masks of the 32-bit registers, from the RDL field masks (contract step 6).
+_USED_MASK = {n: field_used_masks(n)[0] for n in ("LOCKS_SPARE", *_GRADED)}
 
 
-def parse_offset_table(text: str) -> list[tuple[str, int, int]]:
-    """(name, byte offset, words) of every register of the address map, in map order.
+def offset_table() -> list[tuple[str, int, int]]:
+    """(name, byte offset, words) of every register of the eFuse map, in map order.
 
-    Offsets come from the address column of the address map; widths from the highest
-    bit of each register's field table (rounded up to 32-bit words).
+    Offsets come from the generated register header; widths from the register size of
+    the generated IP-XACT at the same address (0 words when the IP-XACT has none).
     """
-    offsets: list[tuple[str, int]] = []
-    in_map = False
-    hi_bit: dict[str, int] = {}
-    section: str | None = None
-    for line in text.splitlines():
-        if line.startswith("| Address | Name"):
-            in_map = True
-            continue
-        if in_map:
-            if line.startswith("|==="):
-                in_map = False
-                continue
-            m = _ROW_MAP.match(line)
-            if m:
-                offsets.append((m.group(2).upper(), int(m.group(1), 16)))
-            continue
-        m = _ROW_SECTION.match(line)
-        if m:
-            section = m.group(1).upper()
-            continue
-        if section is not None:
-            m = _ROW_BITS.match(line)
-            if m:
-                hi_bit[section] = max(hi_bit.get(section, -1), int(m.group(1)))
-    return [(n, off, (hi_bit[n] + 32) // 32 if n in hi_bit else 0) for n, off in offsets]
+    size_bits = {a: w for a, w, _f in iter_ipxact_registers()}
+    return [
+        (f.name, f.offset, size_bits.get(SHADOW_BASE + f.offset, 0) // 32)
+        for f in SepEfuseImage.fields
+    ]
 
 
 def table_tiles(table: list[tuple[str, int, int]]) -> bool:
@@ -161,8 +124,8 @@ class sep_efuse_field_layout_rand_test(sep_base_test):
         dut = cocotb.top
         seed = self.random_seed()
 
-        # Step 1: offset table from the address map; fails before any DUT access.
-        table = parse_offset_table(_MAP_ADOC.read_text())
+        # Step 1: offset table from the generated map; fails before any DUT access.
+        table = offset_table()
         if not table_tiles(table):
             self.logger.error(
                 "SETUP FAIL seed=%d reason=table_tile rows=%d table=%s", seed, len(table), table

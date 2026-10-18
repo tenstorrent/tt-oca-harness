@@ -33,7 +33,9 @@ Mechanism and Token Submission):
                     frontdoor program of c sets bit c at the same direct read and shows
                     one program command at the tap (else ``CHK-HOOK FAIL``); the read
                     address error flag reads 1 before the denied status write (else
-                    ``CHK-HOOK FAIL``).
+                    ``CHK-HOOK FAIL``); at the end of the leaf the pattern of each
+                    denied shadow write and ``EFUSE_READ_CTRL`` write, written through
+                    the frontdoor, changes the readback (``CTRL-JTAG-DENY-WRITE``).
   CHK-JTAG-TOKEN    with every DBG_1 and DBG_2 bit of ``FEAT_CTRL`` at 0 (register and
                     probe), a JTAG write of ``TOKEN_T1`` into the SIP array and a go
                     give the SIP match 0x15 at a frontdoor read.
@@ -99,6 +101,10 @@ READ_ADDR_ERROR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_read_addr_error"
 )
 PROGRAM_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
+# RW fields of EFUSE_READ_CTRL that hold a written value (efuse_read_go is RW 1P).
+READ_CTRL_RW = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_READ_CTRL", "read_enable"
+) | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "efuse_addr")
 # The first bit address past the 256 words of 32 bits.
 OUT_OF_RANGE_BIT = 8192
 # W = W_MULT x the measured sense time (test parameter).
@@ -300,6 +306,52 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                     channel=ch,
                 )
 
+    async def _deny_write_controls(self, w: int) -> None:
+        """Control of "target unchanged" for the denied shadow and ``EFUSE_READ_CTRL``
+        writes: the same pattern written through the frontdoor changes the readback.
+
+        Runs after every graded access of the leaf, because a shadow write is set-only and
+        cannot be undone. ``EFUSE_READ_CTRL`` goes first (its RW fields read back the
+        written ``read_enable`` and ``efuse_addr`` after a write of 0 and then of the
+        pattern; it is then written 0), so a lock bit
+        that a shadow control sets cannot refuse its read.
+        """
+        seen: set[tuple[int, int]] = set()
+        accs = [a for a in self.p.leg["denied"] if a["op"] == "wr"]
+        rd_ctl = [a for a in accs if a.get("reg") == "EFUSE_READ_CTRL"]
+        shadow = [a for a in accs if a["cls"] == "shadow"]
+        for acc in rd_ctl + shadow:
+            key = (acc["addr"], acc["data"])
+            if key in seen:
+                continue
+            seen.add(key)
+            addr, data = acc["addr"], acc["data"]
+            if acc["cls"] != "shadow":
+                await self.fd.wr(addr, 0)
+            before = await self.fd.rd(addr)
+            await self.fd.wr(addr, data)
+            if acc["cls"] == "shadow":
+                after = await self.fd.rd(addr)
+                seen_ok = before & data == 0 and after & data == data
+                mask = data
+            else:
+                await ClockCycles(cocotb.top.clk_i, w)
+                after = await self.fd.rd(addr)
+                await self.fd.wr(addr, 0)
+                mask = READ_CTRL_RW
+                seen_ok = before & mask != data & mask and after & mask == data & mask
+            self.chk.ctrl(
+                "JTAG-DENY-WRITE",
+                seen_ok,
+                state=self.state,
+                tgt=acc["cls"],
+                reg=acc.get("field", acc.get("reg", "na")),
+                addr=f"0x{addr:08x}",
+                wdata=f"0x{data:08x}",
+                before=f"0x{before & mask:08x}",
+                after=f"0x{after & mask:08x}",
+            )
+
     async def _jtag_token(self, ch: str, token: int) -> list[int]:
         resps = [
             await self._jwr(TOKEN_ARRAY_ADDR[ch][k], w) for k, w in enumerate(token_words(token))
@@ -469,5 +521,6 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 non_okay=sum(1 for r in resps if r != OKAY),
             )
             self.last_result[ch] = CODE_MISMATCH
+        await self._deny_write_controls(w)
         await self.shim.stop()
         self.chk.finish(f" state={self.state}")

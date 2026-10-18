@@ -24429,7 +24429,7 @@ module sep_fcov (
     logic [4:0] row;
     logic [2:0] oc;
     logic [23:0] sg, yg, og, m;
-    logic c1, c2, c3, ao, sep_p, smc_p, ref_sep, ref_smc, ref_v;
+    logic c1, c2, c3, ao, all_open, sep_p, smc_p, ref_sep, ref_smc, ref_v;
     logic [1:0] fs_dm;
     logic [2:0] chg;
     int unsigned b;
@@ -24501,7 +24501,10 @@ module sep_fcov (
         end
 
         // sep_dtp_gating_ladder_cg. The port value enters only as "same as"
-        // or "other than" its value in the all-open cell of the leaf.
+        // or "other than" its value in the all-open cell of the leaf. The
+        // all-open cell sets the reference and is not sampled into the port
+        // points, so a "same" cell fills only from another combination of the
+        // same class and never from a compare of the reference with itself.
         c1 = feat_ctrl_i[EfBitSipDbg];
         c2 = c1 && feat_ctrl_i[EfBitChipDbg];
         c3 = c2 && feat_ctrl_i[EfBitSepDbg];
@@ -24510,19 +24513,17 @@ module sep_fcov (
         ref_v = ef_dtp_ref_v;
         ref_sep = ef_dtp_ref_sep;
         ref_smc = ef_dtp_ref_smc;
-        if (c3 && feat_ctrl_i[EfBitSepFuseDbg] && feat_ctrl_i[EfBitSmcFuseDbg]) begin
-          ref_v = 1'b1;
-          ref_sep = sep_p;
-          ref_smc = smc_p;
+        all_open = c3 && feat_ctrl_i[EfBitSepFuseDbg] && feat_ctrl_i[EfBitSmcFuseDbg];
+        if (all_open) begin
           ef_dtp_ref_v <= 1'b1;
           ef_dtp_ref_sep <= sep_p;
           ef_dtp_ref_smc <= smc_p;
         end
         de = '0;
         de.sp = {c3, feat_ctrl_i[EfBitSepFuseDbg], sep_p != ref_sep};
-        de.sp_v = ref_v;
+        de.sp_v = ref_v && !all_open;
         de.mp = {c2, feat_ctrl_i[EfBitSmcFuseDbg], smc_p != ref_smc};
-        de.mp_v = ref_v;
+        de.mp_v = ref_v && !all_open;
         de.ns = c3 ? 2'd3 : c2 ? 2'd2 : 2'd1;
         de.ns_v = c1;
         u_sep_dtp_gating_ladder_cg.sample(de);
@@ -24637,6 +24638,7 @@ module sep_fcov (
   logic ef_pg_v = 1'b0;  // a program request is open
   logic [15:0] ef_pg_addr = '0;
   logic ef_pg_data = 1'b0, ef_pg_en = 1'b0, ef_pg_sensed = 1'b0, ef_pg_stm = 1'b0;
+  logic ef_pg_rqe = 1'b0;  // efuse_req_error at the AW of the go
   logic [1:0] ef_pg_tok = '0;  // {RMA_CHIPLET, RMA_SIP} matched at the go
   logic ef_pg_seen = 1'b0;
   logic [31:0] ef_pg_pre = '0;  // sensed word of the target before the program
@@ -24646,6 +24648,7 @@ module sep_fcov (
   logic ef_rg_v = 1'b0;
   logic [15:0] ef_rg_addr = '0;
   logic ef_rg_en = 1'b0, ef_rg_pen = 1'b0;
+  logic ef_rg_rqe = 1'b0;  // efuse_req_error at the AW of the go
   logic ef_rg_rcmd = 1'b0;  // a READ command reached the shim since the AW of the go
   logic ef_rg_lock_open = 1'b0, ef_rg_idle_open = 1'b0, ef_rg_win_open = 1'b0;
   int unsigned ef_rg_cnt = 0;
@@ -24696,8 +24699,11 @@ module sep_fcov (
     off = ef_pg_addr[12:3];
     s = ef_slot_of({1'b0, off});
     landed = ef_pg_seen;
-    if (ef_own_lock && ef_pg_data && (ef_pg_addr < 16'(EfFuseBits)) && (s != EfNoSlot) &&
-        (s != 6'd0)) begin
+    // A refusal cell fills only when the write-lock is the one cause left: the go
+    // carries program_enable, efuse_req_error is 0 at the go, sense is done and
+    // secure test mode is off.
+    if (ef_own_lock && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed && !ef_pg_stm &&
+        (ef_pg_addr < 16'(EfFuseBits)) && (s != EfNoSlot) && (s != 6'd0)) begin
       wl = ef_wlock(s);
       rl = ef_rlock(s);
       ef_lk(0, {landed == wl, 7'((s - 6'd1) * 2) + 7'(wl)});
@@ -24712,7 +24718,8 @@ module sep_fcov (
     // x_lc_prog_gate: LC_STATE bit 1 is gated by the RMA_SIP match, bit 2 by
     // the RMA_CHIPLET match (otp_fuse_controller.adoc, Fuse Programming and
     // RMA Authorization).
-    if (ef_own_tr && ef_pg_data) begin
+    // The same qualification: only the token gate can refuse the program.
+    if (ef_own_tr && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed && !ef_pg_stm) begin
       if (ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 1)) begin
         if (ef_pg_tok[0]) ef_lk(10, {5'd0, 1'b0, 1'b0, landed});
         else if (ef_pg_tok[1]) ef_lk(10, {5'd0, 1'b0, 1'b1, landed});
@@ -24750,6 +24757,7 @@ module sep_fcov (
         ef_pg_en <= |(wr_data & EfPgEnMask);
         ef_pg_sensed <= (fuse_sense_done_i === 1'b1);
         ef_pg_stm <= (secure_tm_i === 1'b1);
+        ef_pg_rqe <= ef_aw_flags[0];
         ef_pg_tok <= {tok_chp_i == EfCodeMatch, tok_sip_i == EfCodeMatch};
         ef_pg_seen <= ef_aw_pcmd_v && (13'(wr_data & EfPgAddrMask) == ef_aw_pcmd_addr) &&
             ((wr_data & EfPgAddrMask) < 32'(EfFuseBits));
@@ -24798,7 +24806,11 @@ module sep_fcov (
             cls = 3'd0;
           else if ((s != 6'd0) && (s != EfNoSlot) && ((EfSlotOff[s+1] - EfSlotOff[s]) == 11'd4))
             cls = 3'd1;
-          if (ef_own_stm && ef_pg_data && ef_pg_sensed && (ef_pg_addr < 16'(EfFuseBits)) && (cls != 3'd7)) begin
+          // Only the strap can refuse the program: program_enable at the go, no
+          // efuse_req_error at the go and no write-lock on the slot.
+          if (ef_own_stm && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed &&
+              (ef_pg_addr < 16'(EfFuseBits)) && (cls != 3'd7) &&
+              ((s == EfNoSlot) || !ef_wlock(s))) begin
             te = '0;
             te.pb = {ef_pg_seen == ef_pg_stm, 4'(cls * 2) + 4'(ef_pg_stm)};
             te.pb_v = 1'b1;
@@ -24814,6 +24826,7 @@ module sep_fcov (
         ef_rg_addr <= 16'(wr_data & EfRdAddrMask);
         ef_rg_en <= |(wr_data & EfRdEnMask);
         ef_rg_pen <= ef_pen_q;
+        ef_rg_rqe <= ef_aw_flags[0];
         ef_rg_rcmd <= ef_aw_rcmd_v;
         ef_rg_lock_open <= 1'b1;
         ef_rg_idle_open <= 1'b1;
@@ -24830,11 +24843,12 @@ module sep_fcov (
         if (ef_cmd_rd) ef_rg_rcmd <= 1'b1;
         if (ef_rg_cnt < EfBothWin + EfCmdWin) ef_rg_cnt <= ef_rg_cnt + 1;
         // x_slot_read and x_kind_op, read-locked kind: the STATUS read that
-        // ends the request carries efuse_req_error.
+        // ends the request carries efuse_req_error. The flag is 0 at the go,
+        // so only this request can have set it.
         if (ef_rg_lock_open && ef_status_rd && (efuse_read_busy_i !== 1'b1)) begin
           ef_rg_lock_open <= 1'b0;
           s = ef_slot_of(11'(ef_rg_addr[12:3]));
-          if (ef_own_lock && ef_rg_en && !ef_rg_pen && (ef_rg_addr < 16'(EfFuseBits)) &&
+          if (ef_own_lock && ef_rg_en && !ef_rg_pen && !ef_rg_rqe && (ef_rg_addr < 16'(EfFuseBits)) &&
               (s != EfNoSlot) && (s != 6'd0) && ef_rlock(
                   s
               )) begin
@@ -25471,7 +25485,6 @@ module sep_fcov (
   logic ef_ss_arm = 1'b0, ef_ss_phase = 1'b0, ef_ss_bad = 1'b0;
   logic [EfFuseBits-1:0] ef_ss_snap = '0;
   int unsigned ef_ss_cnt = 0;
-  logic ef_rvh_done = 1'b0;
   // Clocks since the last reset release; a SEC_DIS that is high within
   // EfGoSettle clocks of the release counts as held at the release.
   int unsigned ef_since_rel = 0;
@@ -25517,15 +25530,16 @@ module sep_fcov (
       if (efuse_shadow_i !== ef_ss_snap) ef_ss_bad <= 1'b1;
       ef_ss_cnt <= ef_ss_cnt + 1;
       if ((efuse_sdis_hold_bound != 0) && (ef_ss_cnt + 1 == efuse_sdis_hold_bound)) begin
-        if (ef_own_sdt && !ef_ss_bad && (efuse_shadow_i === ef_ss_snap))
+        if (ef_own_sdt && !ef_ss_bad && (efuse_shadow_i === ef_ss_snap)) begin
           ef_rob(1, {2'b00, ef_ss_phase});
+          // cp_reset_values_hold: at the end of the same bounded hold, in the
+          // window that starts at a reset release, when every shadow word
+          // except the LC_STATE word read 0 at the release and on every clock
+          // of the hold. A design that senses under the match loads a word
+          // inside the bound, so the bin cannot fill on the release clock.
+          if (ef_ss_phase && ((ef_ss_snap & ~EfLcWordMask) == '0)) ef_rob(3, 3'd1);
+        end
       end
-    end
-    // cp_reset_values_hold: once per held window after a reset release.
-    if (ef_rel) ef_rvh_done <= 1'b0;
-    if (open && !ef_rvh_done && ef_own_sdt && ((efuse_shadow_i & ~EfLcWordMask) == '0)) begin
-      ef_rob(3, 3'd1);
-      ef_rvh_done <= 1'b1;
     end
   end
 

@@ -17,6 +17,8 @@ OR-merged with the writes of the leaf).
   CHK-FEAT-CELL     legs A and C: ``FEAT_CTRL`` (register and probe) equals the
                     profile row of the (raw, demotion, SEC_DIS, strap) cell; the
                     ``LC_STATE`` shadow word holds ``{~r, r}``; ``lc_sigint_err_o`` = 0.
+                    Hook control at the leg A read: the strap port and the latched
+                    ``secure_tm_o`` equal s (``CHK-HOOK FAIL`` otherwise).
                     In leg C the SEC_DIS cell is all ones with ``security_disable_o``
                     high and the cell after the mismatch is the demotion row with it
                     low. The RMA_CHIPLET SEC_DIS cell is logged ``ctl=1``.
@@ -32,7 +34,8 @@ OR-merged with the writes of the leaf).
                     bit of the register.
   CHK-DEMOTE-RESET  leg B: after each cold reset both registers read 0, and
                     ``FEAT_CTRL`` and both pairs equal the undemoted reference.
-  CHK-DEMOTE-OTP    leg B: the ``LC_STATE`` shadow word equals the staged byte after
+  CHK-DEMOTE-OTP    leg B: the ``LC_STATE`` shadow word equals the staged byte
+                    ``{~r, r}`` (and keeps its leg B start value) after
                     every operation and every sense, no bank bit changes
                     (``otp_bank_probe_o``) and no program command reaches
                     ``efuse_shim_command_req_o`` from the first check cycle to the end
@@ -282,8 +285,26 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
 
     # -- leg A ---------------------------------------------------------------
 
+    def _strap_hook(self) -> int:
+        """Hook control of the strap drive: the DUT port ``secure_tm_req_i`` (bench net
+        ``test_en_strap_i``) and the latched ``secure_tm_o`` both equal s; a miss ends the
+        leaf (``CHK-HOOK FAIL``)."""
+        port = bit(self, "test_en_strap_i")
+        latched = bit(self, "secure_tm_o")
+        if port != self._strap or latched != self._strap:
+            hook_fail(
+                self.chk,
+                reason="strap",
+                stm=self._strap,
+                strap_port=port,
+                secure_tm_o=latched,
+            )
+        self.chk.ctrl("HOOK", True, reason="strap", stm=self._strap, strap_port=port)
+        return port
+
     async def _leg_a(self) -> None:
         reg, probe = await self._feat()
+        self._strap_hook()
         self._feat_cell("a", reg, probe, sdis_port=bit(self, "lcc_security_disable_probe_o"))
         if self._strap:
             close_graded_window(self.logger)
@@ -344,7 +365,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self._otp_note(step, lcw, diff, progs)
 
     def _otp_note(self, step: str, lcw: int, diff, progs) -> None:
-        bad = lcw != self.ref_lcw or diff or progs
+        bad = (lcw & LC_FIELD_MASK) != self.staged_lc or lcw != self.ref_lcw or diff or progs
         self.otp_cycles += 1
         if bad:
             self.otp_bad.append(f"{step}:lc=0x{lcw:x},diff={diff_log(diff)},progs={len(progs)}")
@@ -396,6 +417,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.otp_after_sense: list[int] = []
         self.ref_pairs = {1: self._pair(1), 2: self._pair(2)}
         self.ref_lcw = shadow_word(self, LC_WORD_IDX)
+        self.staged_lc = lc_encode(self.raw) & LC_FIELD_MASK
         self.ref_feat = self._golden().value
         if self.state in (ST_TEST_DEV, ST_PROD):
             base = feat_ctrl_profile(self.raw, self.sip_m, self.sys_m).value
@@ -499,13 +521,17 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             "DEMOTE-OTP",
             not self.otp_bad
             and self.otp_cycles > 0
-            and all(x == self.ref_lcw for x in self.otp_after_sense)
+            and (self.ref_lcw & LC_FIELD_MASK) == self.staged_lc
+            and all(
+                (x & LC_FIELD_MASK) == self.staged_lc and x == self.ref_lcw
+                for x in self.otp_after_sense
+            )
             and done is not None
             and spare8 == staged | (1 << ctl["bit"])
             and ctl_cmd == 1
             and diff_is_exactly(diff, ctl["addr"]),
             lc_shadow=f"0x{self.ref_lcw:x}",
-            ref=f"0x{lc_encode(self.raw):x}",
+            ref=f"0x{self.staged_lc:x}",
             lc_shadow_after_sense=f"0x{lcw:x}",
             cycles=self.otp_cycles,
             violations=len(self.otp_bad),

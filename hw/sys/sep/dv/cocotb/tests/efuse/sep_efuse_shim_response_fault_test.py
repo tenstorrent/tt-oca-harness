@@ -31,6 +31,10 @@ Checkers:
                     reads 0x0 at ``efuse_shadow_probe_o`` and at the frontdoor, every
                     other word equals its staged value, and ``efuse_sense_done`` reads 1.
                     Control: the first sense loads word w with its non-zero staged value.
+                    The check also requires that in the injected sense the shim responses at the
+                    ``sep`` input (taps ``efuse_shim_resp_*_o``) are one per word, and
+                    exactly one carries status 1: the response of word w, with the
+                    staged data of word w.
   CHK-PROG-LIFE     with the response held, ``program_busy`` 1 and ``program_done`` 0 at
                     every clock of the window and every frontdoor read; after the
                     release done 1, status 0, busy 0 and the bit reads 1 at the direct
@@ -133,6 +137,34 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             await ClockCycles(dut.clk_i, 8)
         return None
 
+    async def _sense_resp_mon(self, rec: list[tuple[int, int]]) -> None:
+        """Shim responses at the ``sep`` input (taps ``efuse_shim_resp_*_o``) of one sense.
+
+        Records (status, data) of every clock with the response valid, from the first
+        clock after ``rst_ni`` was seen low to the ``sep_fuse_sense_done_o`` rise. The
+        sense reads words 0 to 255 in order, so entry k is the response of word k.
+        """
+        dut = cocotb.top
+        seen_reset = False
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if not self.rd_known(dut.rst_ni) & 1:
+                seen_reset = True
+                rec.clear()
+                continue
+            if not seen_reset:
+                continue
+            if self.rd_known(dut.efuse_shim_resp_valid_o) & 1:
+                rec.append(
+                    (
+                        self.rd_known(dut.efuse_shim_resp_status_o) & 1,
+                        self.rd_known(dut.efuse_shim_resp_data_o) & _WORD,
+                    )
+                )
+            if self.rd_known(dut.sep_fuse_sense_done_o) & 1:
+                return
+
     async def _clk_counter(self) -> None:
         while True:
             await RisingEdge(cocotb.top.clk_i)
@@ -207,9 +239,25 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         dut.efuse_sense_status_word_i.value = w
         dut.efuse_sense_status_inject_i.value = 1
         open_graded_window(TEST, self.logger)
+        resp: list[tuple[int, int]] = []
+        resp_task = cocotb.start_soon(self._sense_resp_mon(resp))
         await rst_pulse(self, hold=_RST_HOLD)
         n = await clocks_to_sense(self, sense_bound, started=True)
         await ClockCycles(dut.clk_i, 20)
+        resp_done = resp_task.done()
+        if not resp_done:
+            resp_task.cancel()
+        # Exactly one response of the sense carries status 1, at word w,
+        # with the staged data, and the sense has one response per word.
+        err_idx = [k for k, (st, _d) in enumerate(resp) if st]
+        resp_w = resp[w] if len(resp) > w else None
+        resp_ok = (
+            resp_done
+            and len(resp) == _N_WORDS
+            and err_idx == [w]
+            and resp_w is not None
+            and resp_w[1] == staged[w]
+        )
         close_graded_window(self.logger)
         probe = self._probe_words()
         got_w = await self._rd(SHADOW_BASE + 4 * w)
@@ -221,6 +269,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             "SENSE-STATUS",
             n is not None
             and ctl_ok
+            and resp_ok
             and probe[w] == 0
             and got_w == 0
             and got_w1 == staged[w + 1]
@@ -238,6 +287,10 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             t_sense_inj="none" if n is None else n,
             status_sense_done=_b(status, _M_SENSE_DONE),
             ctl_word=f"0x{ctl_w:08x}",
+            resp_strobes=len(resp),
+            resp_status_words=",".join(str(k) for k in err_idx[:8]) or "none",
+            resp_w_status="none" if resp_w is None else resp_w[0],
+            resp_w_data="none" if resp_w is None else f"0x{resp_w[1]:08x}",
         )
 
         # Step 6: control program of a, no hold.
