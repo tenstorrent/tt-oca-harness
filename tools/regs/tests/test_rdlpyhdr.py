@@ -84,7 +84,7 @@ addrmap top {
     };
     ctrl_t ctrl @0x0;
     ctrl_t ctrl_copy @0x4;
-    ctrl_copy.enable->sw = r;
+    ctrl_copy.enable->%s;
 };
 """
 
@@ -192,17 +192,24 @@ class RdlPyHdrTest(unittest.TestCase):
         text = generate(self.rdl, out, "--bitfields", "none")
         m = load(out)
         self.assertEqual(m.TOP_CTRL_T_REG_FIELDS, CTRL_FIELDS)
+        self.assertEqual(m.TOP_CTRL_T_REG_DEFAULT, 0x30001)
         self.assertNotIn("class ", text)
 
-    def test_instances_of_one_type_must_agree_on_access(self):
+    def assert_instances_disagree(self, assignment: str, message: str) -> None:
         rdl = Path(self.temp.name) / "disagree.rdl"
-        rdl.write_text(RDL_DISAGREE)
+        rdl.write_text(RDL_DISAGREE % assignment)
         result = run_generator(rdl, Path(self.temp.name) / "disagree_reg.py")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(
-            "register type 'TOP_CTRL_T' (top.ctrl vs top.ctrl_copy): field 'enable' sw 'rw' vs 'r'",
+            f"register type 'TOP_CTRL_T' (top.ctrl vs top.ctrl_copy): field 'enable' {message}",
             result.stderr,
         )
+
+    def test_instances_of_one_type_must_agree_on_access(self):
+        self.assert_instances_disagree("sw = r", "sw 'rw' vs 'r'")
+
+    def test_instances_of_one_type_must_agree_on_reset(self):
+        self.assert_instances_disagree("reset = 0x0", "reset 1 vs 0")
 
 
 if __name__ == "__main__":
