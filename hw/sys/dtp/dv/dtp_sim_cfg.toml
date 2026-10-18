@@ -184,7 +184,7 @@ compile_args = [
 # (clock generator, uvm_config_db publication, run_test()), which `include`s
 # uvm/tests/dtp_tests.sv.
 [frameworks.uvm]
-description = "DTP SV-UVM flow (VCS)"
+description = "DTP SV-UVM flow (VCS, Verilator)"
 
 [frameworks.uvm.build]
 # The shared framework library and the VIP SV-UVM layers come from their owned ordered

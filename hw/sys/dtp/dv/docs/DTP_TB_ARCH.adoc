@@ -14,7 +14,7 @@
 |Project |OCAH
 |Framework |One UVM environment, realized in PyUVM on cocotb (`cocotb/`) and in SystemVerilog UVM (`uvm/`, `--framework uvm`)
 |Primary simulator |Verilator (cocotb realization; the PR gate and the scheduled regressions)
-|Supported simulator matrix |cocotb on `verilator` (default), `vcs`, and `xcelium`; SV-UVM on `vcs` only, because Verilator has no SV-UVM support and the runner's SV-UVM flow is VCS-only (`run_dv.py --list --json` reports the pairs for `dtp`)
+|Supported simulator matrix |cocotb on `verilator` (default), `vcs`, and `xcelium`; SV-UVM on `vcs` (default) and `verilator` (`run_dv.py --list --json` reports the pairs for `dtp`)
 |Commercial simulator use |SV covergroup, assertion, and code coverage collection; the SV-UVM realization
 |===
 
@@ -587,7 +587,7 @@ and CSR RTL selected by the subsystem source graph.
 The SV-UVM realization runs through the same native runner: `dtp_sim_cfg.toml`
 declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut dtp --framework uvm` selects
-it on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm-1.2`). Every
+it on VCS (the `native` profile's `uvm` framework, UVM 1800.2-2020). Every
 scenario carries both implementations in its testlist `module` binding map,
 so any group runs unchanged under either framework.
 
@@ -601,11 +601,11 @@ and `run_test()`.
 The Integrator Guide's Project Defines chapter
 (`doc/integrator/src/defines.adoc`) lists the preprocessor defines DTP
 compiles use, including `UVM`. `UVM` is the only source of the harness block:
-the simulator's `-ntb_opts` option selects which UVM library is compiled but
-does not set the name. The runner compiles `uvm-1.2` unless the sim config
-selects another library with `[build.vcs]` `uvm_lib`. `uvm-1.2` is the floor,
-because the vendored OpenTitan assertion macros do not compile against older
-libraries.
+compiling the UVM library does not set the name. The runner compiles the
+Accellera library from source unless the sim config selects a
+simulator-supplied one with `[build.vcs]` `uvm_lib`. `uvm-1.2` is the floor
+for that selection, because the vendored OpenTitan assertion macros do not
+compile against older libraries.
 
 The class library mirrors the cocotb
 conventions under `uvm/` with identical basenames, one class per file:

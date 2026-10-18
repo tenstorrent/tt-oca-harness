@@ -890,6 +890,15 @@ class ResultRecordingTest(SiteCase):
         self.assertNotIn("site", self.payload(Namespace()))
         self.assertNotIn("site", self.payload(None))
 
+    def test_compiled_uvm_library_recorded_when_resolved(self) -> None:
+        record = {
+            "source": "config",
+            "home": "vendor/accellera/uvm-core/upstream",
+            "tree_sha256": "0" * 64,
+        }
+        self.assertEqual(self.payload(Namespace(_uvm_library=record))["uvm_library"], record)
+        self.assertNotIn("uvm_library", self.payload(Namespace()))
+
 
 class ExampleFileTest(SiteCase):
     def test_example_loads_and_merges_over_the_registries(self) -> None:

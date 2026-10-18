@@ -13,9 +13,9 @@
 |Bare core |`sep` (`hw/sys/sep/rtl/sep.sv`)
 |Repository |`tt-oca-harness`
 |Project |OCAH
-|Framework |PyUVM on cocotb; SystemVerilog UVM smoke set on the same top (`--framework uvm`, VCS)
+|Framework |PyUVM on cocotb; SystemVerilog UVM smoke set on the same top (`--framework uvm`, VCS or Verilator)
 |Primary simulator |Verilator
-|Supported simulator matrix |cocotb on `verilator` (default), `vcs` and `xcelium`; SV-UVM on `vcs` only, because Verilator has no SV-UVM support
+|Supported simulator matrix |cocotb on `verilator` (default), `vcs` and `xcelium`; SV-UVM on `vcs` (default) and `verilator`
 |Commercial simulator use |VCS / Xcelium for development iteration; VCS for graded coverage and the SV-UVM realization. Verilator is pre-merge acceptance
 |How to run |`README.md` (`tools/dv/run_dv.py --dut sep`)
 |===
@@ -131,6 +131,8 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |SEP->SMC AXI |`rom_boot` target: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Every other target answers the port through the BH-SMC responder `u_smc_route_mem` (`tb/sep_smc_route_mem.sv`), which is idle unless BH-SMC is enabled; the decode check is not compiled there.
 |BH-SMC: SMC aperture inputs and SMC responder |Added hook (top-port drive) on every target without `SEP_SMC_MEM_MODEL`. `tb_top` drives `smc_global_base_addr_i` and `smc_region_size_i` from `bh_smc_base_i` and `bh_smc_size_i` when the leaf sets `bh_smc_en_i` to 1 before it releases reset (`env/sep_bh_smc.py`), or else from `+sep_smc_aperture_base=<hex>` and `+sep_smc_aperture_size=<hex>`; with neither, both inputs are 0. While the hook is on, `u_smc_route_mem` answers `sep_ext_to_smc_axi_resp_i`: OKAY with the request ID, one burst per channel in flight, written bytes stored and returned, and `{~a, a}` (`a` the low 32 bits of the 8-byte-aligned address) for a word no write touched. Owners: `sep_fabric_smc_route_test` (leaf drive), `sep_fabric_dma_endpoint_matrix_test` (plusargs).
 |Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN).
+|External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
+|External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
 |DMI enables |Added hook (top-port drive). `tb_top` drives the `sep` inputs `dmi_core_enable_i` and `dmi_uncore_enable_i` (wrapper ports `dmi_core_enable`, `dmi_uncore_enable`) from the TB inputs of the same name; a value other than 1 drives 0. `dmi_uncore_rdata` is held at 0. Owner: `sep_debug_master_target_matrix_test`.
 |Core JTAG TAP pins |Added hook (top-port drive). With `jtag_bench_own_i` = 1 the TB inputs `jtag_tck_i`, `jtag_tms_i`, `jtag_tdi_i` and `jtag_trst_n_i` drive the core TAP, and cocotb shifts it (`env/sep_jtag_dmi.py` on `OcahJtagMasterDriver`). Any other value keeps the pins on the `tb_top` registers that the `+cpu_boot` reset-vector TDR task drives. TRST of those registers starts high and falls at 1 ps, so the TAP and its reset-vector TDR take their reset values on a four-state simulator, and stays low outside that task. Owners: `sep_cpu_reset_entry_test`, `sep_debug_master_target_matrix_test`.
@@ -140,7 +142,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar ports for `OcahSpiFlash` and `OcahSpiMonitor`: `spi_cs_n_o`, `spi_sck_o`, `spi_mosi_o` (`sep_io_spi_req_o.sd[0]`) and `spi_miso_i` (`sep_io_spi_rsp_i.sd[1]`). Monitor-only taps of the DUT output struct `sep_io_spi_req_o`: `spi_sd_o[3:0]` (`sd`), `spi_sd_oe_o[3:0]` (`sd_oe`), `spi_cs_oe_o` (`cs_oe`) and `spi_sck_oe_o` (`sck_oe`); `env/sep_spi_wire_monitor.py` attaches them to `OcahSpiMonitor`, which grades the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment"). SEP top-port drive: `spi_sd_i[3:0]` drives all four response lanes of `sep_io_spi_rsp_i.sd` in a run with `+sep_spi_four_lane`; otherwise lane 1 is `spi_miso_i` and lanes 0, 2 and 3 are 0. `sep_base_test` holds `spi_sd_i` at 0. Monitor-only tap `spi_sd_rsp_o[3:0]`: the four lanes the DUT receives, which `env/sep_spi_wire_monitor.py` gives the monitor as its input lanes.
-|Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
+|Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic), except on a lane whose ESRC noise-source stuck-at inject is on
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
 |Observation probes |Observation-only unless listed as an inject exception. The probe groups are listed below the table
@@ -250,6 +252,34 @@ Observation probe groups:
 * Crypto alert receiver probe (`crypto_alert_pulse_probe_o`): bit i is the
   alert pulse of receiver index i (`u_sep_crypto.crypto_alert_pulse`). Owner:
   `sep_pic_pending_map_walk_rand_test` (CHK-ALERT-IDX).
+* External stream response monitor (`ext_trng_tready_o`, with the stream as
+  the `sep` port sees it: `ext_trng_tvalid_o`, `ext_trng_tdata_o`,
+  `ext_trng_tstrb_o`): `ext_trng_axis_rsp_o[i].tready` and
+  `ext_trng_axis_req_i[i]` of stream i. A beat transfers on a rising edge of
+  `clk_i` with tvalid and tready high (`env/sep_ext_trng_stream.py` records
+  the beats). Users: the external stream entries of the crypto and entropy
+  area of `docs/SEP_VPLAN.adoc`.
+* Internal DRBG endpoint probe (`drbg_int_tvalid_o`, `drbg_int_tready_o`,
+  `drbg_int_tdata_o`, `drbg_int_tuser_o`): `u_sep_crypto.drbg_int_axis_req[i]`
+  and `drbg_int_axis_rsp[i]`, the internal DRBG stream i before the source
+  mux. Users: the external stream entries of the crypto and entropy area.
+* Detune probe (`esrc_detune_o`): bit i is the effective ring-oscillator
+  detune select of ESRC lane i (`u_generator.detune`). Users: the ESRC tuning
+  entry of the crypto and entropy area.
+* OTBN status probe (`otbn_status_probe_o`): `status_q` of the OTBN core on
+  every clock. Users: the OTBN command entry of the crypto and entropy area.
+* ESRC SHA-256 status tap (`esrc_sha256_status_o`): the next value of the
+  `SHA256_STATUS` fields (`reg_in.SHA256_STATUS`) on every clock: bit 0 BUSY,
+  bits 4:1 INPUT_COUNT, bits 8:5 OUTPUT_COUNT. Users: the ESRC conditioning
+  and health-pattern entries of the crypto and entropy area.
+* ESRC decorrelator input tap (`esrc_decor_noise_o`): bit i is
+  `u_decorrelator.noise_i` of ESRC lane i, the decorrelator input bit that the
+  ESRC noise force drives. Read-only. Users: the FCOV lane-pattern and
+  byte-mask points of the ESRC entries of the crypto and entropy area.
+* ESRC noise-bit readback (`esrc_noise_bit_o`): bit i is `u_generator.noise_bit`
+  of lane i, the synchronized noise-source bit that the noise observe FIFO
+  samples. It shows that the ESRC noise-source stuck-at inject reached the
+  lane. Users: the ESRC observe-FIFO entry of the crypto and entropy area.
 * PIC read-data probe (`pic_rd_data_probe_o`): `picm_rd_data` of the VeeR
   EL2 PIC with the registered read strobe and read address
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), four-state on VCS;
@@ -273,7 +303,7 @@ Observation probe groups:
    `sep_cpu_demux_unmapped_fetch_test`.
    Its replies (monitor PR-OUT-RSP): B (`resp`, `id`) and R (`resp`, `id`,
    `last`) on `smn_outbound_axi_resp_i`, with READY from the request net.
-   Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST),
+   Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST, CHK-DMA-HOST-HOLD),
    `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-STALL-REAL).
 ** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, same fields. Owners:
    `sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test`.
@@ -409,6 +439,30 @@ Observation probe groups:
   `sep_sram_axi_shape_matrix_test`, `sep_tcm_dma_aperture_ecc_test`,
   `sep_tcm_ecc_cpu_trap_test`, `sep_cpu_demux_unmapped_fetch_test`,
   `sep_debug_master_target_matrix_test`, `sep_cpu_isa_pmp_csr_test`.
+* Crypto and entropy FCOV sampler taps (`cov/sv/sep_fcov.sv`, crypto and
+  entropy groups): read-only references from the `u_sep_fcov` connection
+  block to the engine idle outputs of HMAC, AES, KMAC and OTBN; the alert
+  pairs at the inputs of the crypto alert receivers
+  (`u_sep_crypto.gen_alert_receivers[i].u_alert_receiver.alert_tx_i`); the
+  internal DRBG endpoints
+  (`drbg_int_axis_req`, `drbg_int_axis_rsp`); the `sep` ports
+  `ext_trng_axis_req_i`, `ext_trng_axis_rsp_o` and `ext_trng_irq_i`; the
+  stream select `ext_trng_src_sel`; the pool state of `u_entropy_fifo`
+  (`fifo_level_o`, `pool_low_o`, `fill_stall_o`, `entropy_clear_i`); the
+  `reg2hw` and `hw2reg` structs of HMAC, AES, KMAC, OTBN, CSRNG and EDN and
+  their interrupt lines; the delivered-key valid of HMAC and AES; the
+  committed AES control and its strobes (`u_aes_core`) and
+  `ctrl_aux_regwen_qs`; the KMAC entropy mode, timer and hash count; the
+  OTBN `status_q`, `software_errs_fatal_q`, `done` and `insn_cnt`; CSRNG
+  application port 0 and the CSRNG and EDN `regwen_qs`; the ESRC `reg_in` and
+  `reg_out` structs, state machine, failure terms, observe FIFOs, main FIFO
+  and per-lane detune; the crypto entropy mux request and response
+  (`u_sep_crypto.entropy_muxed_req`, `entropy_muxed_rsp`); and, through the
+  connection block, the probes `trng_reset_active_probe_o`, `crypto_edn_*`,
+  `pool_edn_*`, `esrc_decor_bytes_o`, `esrc_decor_valid_o`,
+  `esrc_compress_vld_o`, `esrc_whiten_push_o`, `esrc_decor_noise_o` and the
+  ESRC FIFO integrity inject inputs. Owners: the owning tests of the crypto
+  and entropy groups.
 * The covergroup sampler's direct reads of the WDT bark interrupt
   (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
   `ARSIZE` (owner `sep_axi_partial_lane_read_test`); and, for the Phase 2 SPI
@@ -437,7 +491,49 @@ Exceptions (a closed set):
   `u_lsu_local_alias_remap`, so a test whose checked path includes the remap
   or the core names the build its evidence comes from. Owner: every no_cpu
   leaf graded on that build; each logs `LSU VIP force-splice active`.
-* *ESRC noise force* — `esrc_noise_ext_i` into the decorrelator.
+* *ESRC noise force* — `esrc_noise_ext_i` into the decorrelator. A lane whose
+  ESRC noise-source stuck-at inject is on is released, so the two hooks never
+  drive one lane together.
+* *ESRC noise-source stuck-at inject* — while bit i of `esrc_noise_stuck_en_i`
+  is 1, the output of the noise ring oscillator of lane i
+  (`u_noise_source.noise_async`, upstream of the sampling flop) is forced to
+  bit i of `esrc_noise_stuck_val_i`, and the ESRC noise force of that lane is
+  released. The value passes the sampling flop and the synchronizer, so it
+  reaches the noise observe FIFO and the decorrelator of the lane. Software
+  cannot make a ring oscillator stick. Both inputs are 0 by default, and the
+  force is released when the bit drops. `NOISE_OBS_RDATA`, `NOISE_OBS_STATUS`
+  and the other registers the checkers read stay frontdoor. Readback:
+  `esrc_noise_bit_o`. Users: the ESRC observe-FIFO entry of the crypto and
+  entropy area of `docs/SEP_VPLAN.adoc`.
+* *ESRC FIFO integrity inject* — two error injects on the ESRC main FIFO
+  (`u_entropy_fifo`). Parity: while `esrc_fifo_parity_inject_i` is 1, the
+  parity nibble that the read check takes from the entry at the read pointer
+  (`stored_parity`) has bit `esrc_fifo_parity_bit_i` inverted; the stored array
+  is not written. Pointer: at the rise of `esrc_fifo_ptr_inject_i` the bench
+  takes one counter copy of one pointer pair (`esrc_fifo_ptr_sel_i`: bit 1 the
+  write or read pointer, bit 0 the primary or secondary copy of `prim_count`)
+  with bit `esrc_fifo_ptr_bit_i` inverted, and holds that copy at that value
+  while the input stays 1. Software cannot store a wrong parity or move one
+  pointer copy, so the integrity check has no frontdoor. All inputs are 0 by
+  default, and each force is released when its input drops. `INTR_STATUS`,
+  `FIFO_STATUS` and the stream taps the checkers read stay frontdoor or
+  read-only. Users: the ESRC FIFO entry of the crypto and entropy area.
+* *Crypto alert sender inject* — while `crypto_alert_inject_i` is 1, the alert
+  pair (`alert_p`, `alert_n`) at the input of crypto alert receiver
+  `crypto_alert_inject_idx_i` (0 to 10, the index order of
+  `crypto_alert_pulse_probe_o`) is forced to `crypto_alert_inject_val_i` on both
+  wires, which is not a differential code. No block sends a malformed pair, so
+  the integrity fail of a receiver has no frontdoor. All inputs are 0 by
+  default, and the force is released when the input drops. The interrupt
+  vector the checker reads is not forced. Users: the shadow-update and alert
+  entry of the crypto and entropy area.
+* *Crypto and entropy observation taps* — the external stream response
+  monitor, the internal DRBG endpoint probe, the detune probe, the OTBN status
+  probe, the ESRC SHA-256 status tap and the ESRC noise-bit readback (see the
+  observation-probe list). No CSR shows a stream handshake, the internal DRBG
+  endpoint behind the source mux, the effective detune of a lane, or a state
+  code on every clock; a register read samples a status once. Read-only; no
+  force.
 * *LC differential / token-comparator fault inject* — fail-closed paths with no
   legal OTP frontdoor.
 * *eFuse read/program FSM state inject* — `efuse_read_state_inject_i` /
@@ -459,7 +555,10 @@ Exceptions (a closed set):
   user code. The force targets that input only. `DMA_BUS_ERR_STATUS` and
   the interrupt aggregate stay frontdoor. Owner: `sep_dma_basic_test`.
 * *Crypto message-FIFO drain stall* — `hmac_fifo_drain_stall_i` holds the
-  read-ready of the HMAC message FIFO at 0. `kmac_fifo_drain_stall_i` holds
+  read-ready of the HMAC message FIFO (`fifo_rready`) and the word valid that
+  `hmac_core` gives the SHA-2 engine (`u_hmac.sha_rvalid_o`, the core's view of
+  the FIFO valid `fifo_rvalid`) at 0; the FIFO's own `fifo_rvalid`, which
+  `STATUS.fifo_empty` reads, is not forced. `kmac_fifo_drain_stall_i` holds
   the read-ready of the KMAC message FIFO and the FIFO valid toward the KMAC
   core at 0. While the input is 1 the engine takes no message word, so the
   FIFO fills and `STATUS.fifo_full` reads 1. The engine absorbs a message as
@@ -468,7 +567,9 @@ Exceptions (a closed set):
   The force targets those nets only. `STATUS`, `INTR_STATE` and the
   interrupt lines the checkers read stay frontdoor. Owners:
   `sep_rom_hmac_fifo_stall_terminal_test` (HMAC),
-  `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY).
+  `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY),
+  `sep_hmac_fifo_stream_rand_test` (HMAC, CHK-HMAC-BACKPRESSURE-HOLD and the
+  FIFO-full cells).
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *TCM bit-flip* — stored-bit error inject on the ICCM and DCCM macro arrays,
@@ -537,7 +638,7 @@ Exceptions (a closed set):
   once. A held response also holds a firmware console store, so no CPU leaf
   raises the hold. The responder state and the DUT nets the checkers read are
   not forced. Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST,
-  CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
+  CHK-DMA-HOST-HOLD, CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
   (CHK-STALL-REAL, CHK-TO-INERT).
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
@@ -1040,7 +1141,7 @@ make -C hw/sys/sep/dv/cocotb/tests/km_fw rom_main
 The SV-UVM realization runs through the same native runner: `sep_sim_cfg.toml`
 declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut sep --framework uvm` selects it
-on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
+on VCS (the `native` profile's `uvm` framework, UVM 1800.2-2020). Scenarios
 carry both implementations in their testlist `module` binding map
 (`module = { cocotb = "<module>", uvm = "<name>" }`); group selections skip
 those without a `uvm` entry, and naming one errors. The framework

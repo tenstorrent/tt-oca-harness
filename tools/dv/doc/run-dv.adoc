@@ -508,11 +508,34 @@ the selected backend is absent. A DUT selects a backend only through its
 formal configuration (`<name>_formal_cfg.toml`).
 
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
-maintainer flow whose tool allowlist is VCS only; it carries
-`license = "required-commercial"`, so `--list` marks it `(licensed)` and the
-launcher says so when the simulator is absent. The UVM library comes from the
-simulator via `-ntb_opts uvm-1.2` (`[build.vcs].uvm_lib` selects another),
-tests are selected with `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
+maintainer flow whose tool allowlist is VCS, the default, and Verilator. The
+UVM library is an
+Accellera release tree checked in unmodified under
+`vendor/accellera/uvm-core/upstream/`, which the profile's
+`[frameworks.uvm.build]` `uvm_library` names, and
+`vendor/accellera/uvm-core/release.toml` records the release and its archive.
+`make update-vendor-uvm` replaces both with the newest release on Accellera's
+UVM download page, or with the one `UVM_RELEASE=<name>` names; `CHECK=1`
+downloads the recorded archive again and fails when the tree differs from it.
+`OCAH_UVM_HOME` names another UVM home for one shell, and the launcher warns
+when it does. The library compiles outside the filelist, so the build
+fingerprint carries a digest of its `src/` tree and an edit to it rebuilds
+the model. The run-level `result.json` records the compiled library under
+`uvm_library`: its `source` (`config` or `OCAH_UVM_HOME`), its `home`, and its
+`tree_sha256`.
+The build compiles its `uvm_pkg.sv` ahead of every user source and links its
+DPI layer. A sim config's `[build.vcs].uvm_lib` selects a simulator-supplied
+library through `-ntb_opts` instead (uvm-1.2 or later;
+VCS's bare `uvm` is uvm-1.1). On Verilator, one `verilator --binary` build
+verilates the library and the view's filelist into the model
+`<work_dir>/verilator/V<top>` and compiles the DPI layer with `--vpi`. The
+profile's `[frameworks.uvm.build.verilator]` `timescale` gives every source
+that declares none the `1ns/1ps` the VCS build uses, and its `extra_args`
+pass `--x-initial-edge`, so a reset asserted at time 0 makes the X-to-0 edge a
+four-state simulator sees. Each test runs the model with
+`+verilator+seed+<seed>` and `+ntb_random_seed=<seed>`, and the Verilator
+build dumps no waves. Tests are selected with
+`+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
 the `uvm-log` parse policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium
 and Questa are not in the allowlist. The reference consumer is the
 DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter
@@ -1905,7 +1928,7 @@ stage's configured `kind` chooses its backend implementation. The shared
 `hdl_compile`, `sim`) that dispatch per (tool, framework) at run time: for
 cocotb, `hdl_compile` builds the simulator model and `sim` launches the cocotb
 test; for SV-UVM on VCS, `hdl_compile` runs the folded two-step build —
-analyze (vlogan, with the simulator-owned UVM library precompiled first) then
+analyze (vlogan, with the UVM library precompiled first) then
 elaborate to the reusable `simv` — and `sim` is one `simv` invocation per
 test/seed (`+UVM_TESTNAME`). There is no separate `elaborate` stage in the
 shared graph; the elaborate sub-step logs alongside the `hdl_compile` log as
@@ -2733,6 +2756,14 @@ them in automation.
 executor it is the number of attempts queued or running at once, bounded by
 the executor's `limits.max_in_flight`.
 
+|`--leaf-order-from RESULT_JSON`
+|On a cluster executor, submit the leaves longest first, keyed by the longest
+`sim` duration of each item in an earlier `result.json`. A relative path
+resolves against the repository root. A leaf whose item has no duration there
+starts first, in testlist order. Leaf ids and seeds do not change. An
+unreadable file stops the run. Without the option the leaves go in testlist
+order.
+
 |`--build-jobs N`
 |Set backend/model build concurrency when configuration does not supply it;
 otherwise derives from `--sim-jobs`, capped at this host's CPU count when a
@@ -2942,7 +2973,8 @@ When an adopter overlay was applied, its path is recorded under `overlay`
 (repo-relative when inside the checkout, absolute otherwise) and its `[env]`
 table, when present, under `overlay_env` in both the run-level `result.json`
 and `regression.json`. When a site layer was active, its path is recorded
-under `site` in the same two files (<<runner-site-layer>>).
+under `site` in the same two files (<<runner-site-layer>>), and a run that
+compiled a UVM library from source records it under `uvm_library`.
 
 [[runner-log-provenance]]
 === Provenance lines in the per-test log

@@ -1,0 +1,1003 @@
+# OpenTitan Big Number Accelerator (OTBN) Technical Specification
+<!-- BEGIN CMDGEN util/mdbook_regression_links.py --hjson hw/ip/otbn/data/otbn.hjson --top earlgrey -->
+| Regression | Version | [Stages](https://opentitan.org/book/doc/project_governance/development_stages.html) | Results |
+|-|-|-|-|
+ [`otbn`](https://dashboard.reports.lowrisc.org/opentitan/earlgrey/dashboard.html) | 1.2.0 | D1, V0 | ![](https://dashboard.reports.lowrisc.org/opentitan/earlgrey/badge/otbn/test.svg) ![](https://dashboard.reports.lowrisc.org/opentitan/earlgrey/badge/otbn/passing.svg) ![](https://dashboard.reports.lowrisc.org/opentitan/earlgrey/badge/otbn/functional.svg) ![](https://dashboard.reports.lowrisc.org/opentitan/earlgrey/badge/otbn/code.svg) |
+
+This IP has been taped out in Earl Grey 1.0.0. The corresponding documentation and regression results can be found [here](https://opentitan.org/earlgrey_1.0.0/book/hw/ip/otbn/index.html).
+
+<!-- END CMDGEN -->
+
+> OTBN is currently under development as new PQC related features are added.
+> This is indicated by the development stages (see [`otbn.hjson`](https://github.com/lowRISC/opentitan/blob/master/hw/ip/otbn/data/otbn.hjson) and [here](https://opentitan.org/book/doc/project_governance/development_stages.html)).
+> As of this the documentation can slightly differ from the current RTL / simulator implementation.
+> The documentation for the OTBN version with design stage D2S and verification stage V2S (OTBN v1.1.0) can be found under the Earl Grey v1.0.0 documentation [here](https://opentitan.org/earlgrey_1.0.0/book/hw/ip/otbn/index.html).
+
+# Overview
+
+This document specifies functionality of the OpenTitan Big Number Accelerator, or OTBN.
+OTBN is a coprocessor for asymmetric cryptographic operations like RSA or Elliptic Curve Cryptography (ECC).
+
+This module conforms to the [Comportable guideline for peripheral functionality](../../../doc/contributing/hw/comportability/README.md).
+See that document for integration overview within the broader top level system.
+
+## Features
+
+* Processor optimized for wide integer arithmetic
+* 32b wide control path with 32 32b wide registers
+* 256b wide data path with 32 256b wide registers
+* Full control-flow support with conditional branch and unconditional jump instructions, hardware loops, and hardware-managed call/return stacks.
+* Reduced, security-focused instruction set architecture for easier verification and the prevention of data leaks.
+* Built-in access to random numbers.
+* CSR / WSR based interface to KMAC HWIP to offload hashing operations.
+
+## Description
+
+OTBN is a processor, specialized for the execution of security-sensitive asymmetric (public-key) cryptography code, such as RSA or ECC.
+Such algorithms are dominated by wide integer arithmetic, which are supported by OTBN's 256b wide data path, registers, and instructions which operate these wide data words.
+On the other hand, the control flow is clearly separated from the data, and reduced to a minimum to avoid data leakage.
+
+The data OTBN processes is security-sensitive, and the processor design centers around that.
+The design is kept as simple as possible to reduce the attack surface and aid verification and testing.
+For example, no interrupts or exceptions are included in the design, and all instructions are designed to be executable within a single cycle.
+
+OTBN is designed as a self-contained co-processor with its own instruction and data memory, which is accessible as a bus device.
+
+## Compatibility
+
+OTBN is not designed to be compatible with other cryptographic accelerators.
+It received some inspiration from assembly code available from the [Chromium EC project](https://chromium.googlesource.com/chromiumos/platform/ec/),
+which has been formally verified within the [Fiat Crypto project](http://adam.chlipala.net/papers/FiatCryptoSP19/FiatCryptoSP19.pdf).
+
+# Instruction Set
+
+OTBN is a processor with a custom instruction set.
+The full ISA description can be found in our [ISA manual](./doc/isa.md).
+The instruction set is split into two groups:
+
+* The **base instruction subset** operates on the 32b General Purpose Registers (GPRs).
+  Its instructions are used for the control flow of a OTBN application.
+  The base instructions are inspired by RISC-V's RV32I instruction set, but not compatible with it.
+* The **big number instruction subset** operates on 256b Wide Data Registers (WDRs).
+  Its instructions are used for data processing.
+
+## Processor State
+
+### General Purpose Registers (GPRs)
+
+OTBN has 32 General Purpose Registers (GPRs), each of which is 32b wide.
+The GPRs are defined in line with RV32I and are mainly used for control flow.
+They are accessed through the base instruction subset.
+GPRs aren't used by the main data path; this operates on the [Wide Data Registers](#wide-data-registers-wdrs), a separate register file, controlled by the big number instructions.
+
+<table>
+  <tr>
+    <td><code>x0</code></td>
+    <td>Zero register. Reads as 0; writes are ignored.</td>
+  </tr>
+  <tr>
+    <td><code>x1</code></td>
+<td>
+
+Access to the [call stack](#call-stack)
+
+</td>
+  </tr>
+  <tr>
+    <td><code>x2</code> ... <code>x31</code></td>
+    <td>General purpose registers</td>
+  </tr>
+</table>
+
+Note: Currently, OTBN has no "standard calling convention," and GPRs other than `x0` and `x1` can be used for any purpose.
+If a calling convention is needed at some point, it is expected to be aligned with the RISC-V standard calling conventions, and the roles assigned to registers in that convention.
+Even without a agreed-on calling convention, software authors are encouraged to follow the RISC-V calling convention where it makes sense.
+For example, good choices for temporary registers are `x6`, `x7`, `x28`, `x29`, `x30`, and `x31`.
+
+### Call Stack
+
+OTBN has an in-built call stack which is accessed through the `x1` GPR.
+This is intended to be used as a return address stack, containing return addresses for the current stack of function calls.
+See the documentation for {{#otbn-insn-ref JAL}} and {{#otbn-insn-ref JALR}} for a description of how to use it for this purpose.
+
+The call stack has a maximum depth of 8 elements.
+Each instruction that reads from `x1` pops a single element from the stack.
+Each instruction that writes to `x1` pushes a single element onto the stack.
+An instruction that reads from an empty stack or writes to a full stack causes a `CALL_STACK` [software error](doc/theory_of_operation.md#errors).
+
+A single instruction can both read and write to the stack.
+In this case, the read is ordered before the write.
+Providing the stack has at least one element, this is allowed, even if the stack is full.
+
+### Control and Status Registers (CSRs)
+
+Control and Status Registers (CSRs) are 32b wide registers used for "special" purposes, as detailed in their description;
+they are not related to the GPRs.
+CSRs can be accessed through dedicated instructions, {{#otbn-insn-ref CSRRS}} and {{#otbn-insn-ref CSRRW}}.
+Writes to read-only (RO) registers are ignored; they do not signal an error.
+All read-write (RW) CSRs are set to 0 when OTBN starts an operation (when 1 is written to [`CMD.start`](doc/registers.md#cmd)).
+
+<!-- This list of CSRs is replicated in otbn_env_cov.sv, csr.py, wsr.py, the
+     RTL and in rig/model.py. If editing one, edit the other five as well. -->
+<!-- BEGIN CMDGEN ./hw/ip/otbn/util/docs/md_isrs.py hw/ip/otbn/data/csr.yml -->
+<table>
+  <thead>
+    <tr>
+      <th>Number</th>
+      <th>Access</th>
+      <th>Name</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0x7C0</td>
+      <td>RW</td>
+      <td>FG0</td>
+      <td>
+        Wide arithmetic flag group 0.
+        This CSR provides access to flag group 0 used by wide integer arithmetic.
+        *FLAGS*, *FG0* and *FG1* provide different views on the same underlying bits.
+        <table>
+          <thead>
+            <tr><th>Bit</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>
+                Carry of flag group 0
+              </td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>
+                MSb of flag group 0
+              </td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>
+                LSb of flag group 0
+              </td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>
+                Zero of flag group 0
+              </td>
+            </tr>
+            <tr>
+              <td>31:4</td>
+              <td>
+                Reserved. Always reads as 0. Any write is ignored.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>0x7C1</td>
+      <td>RW</td>
+      <td>FG1</td>
+      <td>
+        Wide arithmetic flag group 1.
+        This CSR provides access to flag group 1 used by wide integer arithmetic.
+        *FLAGS*, *FG0* and *FG1* provide different views on the same underlying bits.
+        <table>
+          <thead>
+            <tr><th>Bit</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>
+                Carry of flag group 1
+              </td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>
+                MSb of flag group 1
+              </td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>
+                LSb of flag group 1
+              </td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>
+                Zero of flag group 1
+              </td>
+            </tr>
+            <tr>
+              <td>31:4</td>
+              <td>
+                Reserved. Always reads as 0. Any write is ignored.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>0x7C8</td>
+      <td>RW</td>
+      <td>FLAGS</td>
+      <td>
+        Wide arithmetic flag groups.
+        This CSR provides access to both flag groups used by wide integer arithmetic.
+        *FLAGS*, *FG0* and *FG1* provide different views on the same underlying bits.
+        <table>
+          <thead>
+            <tr><th>Bit</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>
+                Carry of flag group 0
+              </td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>
+                MSb of flag group 0
+              </td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>
+                LSb of flag group 0
+              </td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>
+                Zero of flag group 0
+              </td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>
+                Carry of flag group 1
+              </td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>
+                MSb of flag group 1
+              </td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>
+                LSb of flag group 1
+              </td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>
+                Zero of flag group 1
+              </td>
+            </tr>
+            <tr>
+              <td>31:8</td>
+              <td>
+                Reserved. Always reads as 0. Any write is ignored.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D0</td>
+      <td>RW</td>
+      <td>MOD0</td>
+      <td>
+        Bits [31:0] of the modulus operand, used in the {{#otbn-insn-ref BN.ADDM}}/{{#otbn-insn-ref BN.SUBM}} instructions.
+        This CSR is mapped to the MOD WSR.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D1</td>
+      <td>RW</td>
+      <td>MOD1</td>
+      <td>
+        Bits [63:32] of the modulus operand, used in the {{#otbn-insn-ref BN.ADDM}}/{{#otbn-insn-ref BN.SUBM}} instructions.
+        This CSR is mapped to the MOD WSR.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D2</td>
+      <td>RW</td>
+      <td>MOD2</td>
+      <td>
+        Bits [95:64] of the modulus operand, used in the {{#otbn-insn-ref BN.ADDM}}/{{#otbn-insn-ref BN.SUBM}} instructions.
+        This CSR is mapped to the MOD WSR.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D3</td>
+      <td>RW</td>
+      <td>MOD3</td>
+      <td>
+        Bits [127:96] of the modulus operand, used in the {{#otbn-insn-ref BN.ADDM}}/{{#otbn-insn-ref BN.SUBM}} instructions.
+        This CSR is mapped to the MOD WSR.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D4</td>
+      <td>RW</td>
+      <td>MOD4</td>
+      <td>
+        Bits [159:128] of the modulus operand, used in the {{#otbn-insn-ref BN.ADDM}}/{{#otbn-insn-ref BN.SUBM}} instructions.
+        This CSR is mapped to the MOD WSR.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D5</td>
+      <td>RW</td>
+      <td>MOD5</td>
+      <td>
+        Bits [191:160] of the modulus operand, used in the {{#otbn-insn-ref BN.ADDM}}/{{#otbn-insn-ref BN.SUBM}} instructions.
+        This CSR is mapped to the MOD WSR.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D6</td>
+      <td>RW</td>
+      <td>MOD6</td>
+      <td>
+        Bits [223:192] of the modulus operand, used in the {{#otbn-insn-ref BN.ADDM}}/{{#otbn-insn-ref BN.SUBM}} instructions.
+        This CSR is mapped to the MOD WSR.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D7</td>
+      <td>RW</td>
+      <td>MOD7</td>
+      <td>
+        Bits [255:224] of the modulus operand, used in the {{#otbn-insn-ref BN.ADDM}}/{{#otbn-insn-ref BN.SUBM}} instructions.
+        This CSR is mapped to the MOD WSR.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D8</td>
+      <td>RW</td>
+      <td>RND_PREFETCH</td>
+      <td>
+        Write to this CSR to begin a request to fill the RND cache.
+        Always reads as 0.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7D9</td>
+      <td>RW</td>
+      <td>KMAC_STATUS</td>
+      <td>
+        KMAC_STATUS exposes status information for the OTBN-KMAC interface.
+        All fields are read only except RSP_ERROR, CTRL_ERROR, and MSG_WRITE_ERROR which are W1C.
+        <table>
+          <thead>
+            <tr><th>Bit</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>
+                READY is 1 when the interface is ready to accept a command and/or new data in KMAC_DATA_S0/1.
+              </td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>
+                RSP_VALID is 1 when the lowest 64 bit words in KMAC_DATA_S0/1 contain valid data (actual digest data is only valid if RSP_ERROR is not 1). This flag is cleared once both, KMAC_DATA_S0 and KMAC_DATA_S1, have been read or when a DONE command is issued.
+              </td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>
+                RSP_ERROR is set to 1 and held when a response is received that signals an error on the KMAC HWIP side. If 1, all received digest data (incl. previously received) must be considered as invalid. This flag is cleared (W1C) when SW writes a 1 to it.
+              </td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>
+                CTRL_ERROR is 1 when a command was issued while the interface was not ready for it or the command violated the expected command order (for example, a SEND command is issued before a START command). A command raising this error is ignored. This flag is cleared (W1C) when SW writes a 1 to it.
+              </td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>
+                MSG_WRITE_ERROR is 1 when a write to KMAC_DATA_S0/1, KMAC_STRB or KMAC_CFG occurred while the interface was not ready to accept new message data or a new configuration. It is also set when a write to KMAC_DATA_S0/1 collides with an incoming digest response. This flag is cleared (W1C) when SW writes a 1 to it.
+              </td>
+            </tr>
+            <tr>
+              <td>31:5</td>
+              <td>
+                Reserved. Always reads as 0. Any write is ignored.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>0x7DA</td>
+      <td>RW</td>
+      <td>KMAC_CTRL</td>
+      <td>
+        The KMAC control register is used to control the KMAC interface.
+        Always reads as 0.
+        <table>
+          <thead>
+            <tr><th>Bit</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>
+                START: Writing 1 to this bit issues a START command.
+              </td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>
+                SEND: Writing 1 to this bit starts sending the current message in KMAC_DATA_S0/1.
+              </td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>
+                PROCESS: Writing 1 to this bit issues a PROCESS command.
+              </td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>
+                DONE: Writing 1 to this bit issues a DONE command.
+              </td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>
+                CLOSE: Writing 1 to this bit issues a CLOSE command.
+              </td>
+            </tr>
+            <tr>
+              <td>31:5</td>
+              <td>
+                Reserved. Any write is ignored. Always reads as 0.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>0x7DB</td>
+      <td>RW</td>
+      <td>KMAC_CFG</td>
+      <td>
+        The KMAC configuration register is used to set the hashing session configuration.
+        The three fields EN_XOF, STRENGTH, and MODE are duplicated.
+        For a configuration to be valid, the upper fields must contain the bitwise inverted value of the lower fields.
+        <table>
+          <thead>
+            <tr><th>Bit</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>
+                EN_XOF enables the eXtendable Output Function (XOF) operation. If 1, XOF operation is enabled and the KMAC HWIP will automatically trigger a RUN command once the full rate has been pushed. If 0, KMAC HWIP will only push the first rate, and no other digest will be produced. Usually enabled for SHAKE and cSHAKE and disabled for SHA3 and KMAC modes.
+              </td>
+            </tr>
+            <tr>
+              <td>3:1</td>
+              <td>
+                STRENGTH defines the security strength of the operation. Valid values are L128, L224, L256, L384, and L512. See KMAC HWIP for encoding of values. The selected value must be compatible with chosen mode (see corresponding standards).  If STRENGTH = L224 and MODE = SHA3, the digest size is not a multiple of 64 bits. As such, only the lower 32 bits of the last digest response (4th beat of the digest response) contain valid data.
+              </td>
+            </tr>
+            <tr>
+              <td>5:4</td>
+              <td>
+                MODE defines the hashing mode. This can be SHA3, SHAKE, cSHAKE, or KMAC. See KMAC HWIP for encoding of values. Note, cSHAKE uses prefix from KMAC HWIP CSRs (configured by SW), and KMAC always uses hard coded "KMAC" prefix.
+              </td>
+            </tr>
+            <tr>
+              <td>15:6</td>
+              <td>
+                Reserved. Any write is ignored. Always reads as 0.
+              </td>
+            </tr>
+            <tr>
+              <td>16</td>
+              <td>
+                EN_XOF_INV must be the bitwise inverted value of EN_XOF.
+              </td>
+            </tr>
+            <tr>
+              <td>19:17</td>
+              <td>
+                STRENGTH_INV must be the bitwise inverted value of STRENGTH.
+              </td>
+            </tr>
+            <tr>
+              <td>21:20</td>
+              <td>
+                MODE_INV must be the bitwise inverted value of MODE.
+              </td>
+            </tr>
+            <tr>
+              <td>31:22</td>
+              <td>
+                Reserved. Any write is ignored. Always reads as 0.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>0x7DC</td>
+      <td>RW</td>
+      <td>KMAC_STRB</td>
+      <td>
+        Defines which of the bytes of KMAC_DATA_S0/1 are valid and should be sent towards the KMAC HWIP.
+        Each bit corresponds to one byte in KMAC_DATA_S0/1, with bit 0 corresponding to the least significant byte.
+        May only be written to when KMAC_STATUS.READY = 1.
+        <br>
+        For all messages except the final one, KMAC_STRB must be programmed to all ones, indicating that all bytes in KMAC_DATA_S0/1 are valid.
+        The final message can be shorter.
+        It can be 1 to 32 bytes long which must be encoded in KMAC_STRB by setting the corresponding number of least significant bits to 1.
+        The strobe therefore must always be contiguous and LSB aligned.
+        If a non contiguous strobe is defined the behaviour is undefined.
+        <br>
+        Reads from this register return the current strobe.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7E0</td>
+      <td>RW</td>
+      <td>MAI_CTRL</td>
+      <td>
+        The MAI control register. This is used to start MAI operations as well as configuring the accelerators.
+        <table>
+          <thead>
+            <tr><th>Bit</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>
+                MAI_START: Writing 1 to this bit starts the MAI operation. Writing it when MAI is busy will cause a MAI_ERROR software error.
+              </td>
+            </tr>
+            <tr>
+              <td>5:1</td>
+              <td>
+                The MAI_OPERATION field defines which accelerator is used for the next operation. Invalid values and writing to these bits when MAI is busy will cause a MAI_ERROR software error.
+                <p>Values:</p><ul>
+                  <li>11: A2B</li>
+                  <li>16: B2A</li>
+                  <li>23: secAdd</li>
+                  <li>12: secAddMod</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>31:6</td>
+              <td>
+                Reserved. Any write is ignored. Always reads as 0.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>0xFC0</td>
+      <td>RO</td>
+      <td>RND</td>
+      <td>
+        An AIS31-compliant class PTG.3 random number with guaranteed entropy and forward and backward secrecy.
+        Primarily intended to be used for key generation.
+        <br>
+        The number is sourced from the EDN via a single-entry cache.
+        Reads when the cache is empty will cause OTBN to be stalled until a new random number is fetched from the EDN.
+      </td>
+    </tr>
+    <tr>
+      <td>0xFC1</td>
+      <td>RO</td>
+      <td>URND</td>
+      <td>
+        A random number without guaranteed secrecy properties or specific statistical properties.
+        Intended for use in masking and blinding schemes.
+        Use RND for high-quality randomness.
+        <br>
+        The number is sourced from an local PRNG.
+        Reads never stall.
+      </td>
+    </tr>
+    <tr>
+      <td>0xFCA</td>
+      <td>RO</td>
+      <td>MAI_STATUS</td>
+      <td>
+        The MAI status register.
+        <table>
+          <thead>
+            <tr><th>Bit</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>
+                MAI_BUSY: This bit is set to 1 when an MAI operation is in progress. If reset, the MAI accepts new configuration values and a new execution can be started by writing to the MAI_START bit in the MAI_CTRL CSR.
+              </td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>
+                MAI_READY: This bit is set to 1 when the MAI_INx_Sx WSRs are ready to accept new values for the next execution.
+              </td>
+            </tr>
+            <tr>
+              <td>31:2</td>
+              <td>
+                Reserved. Always reads as 0.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- END CMDGEN -->
+
+### Wide Data Registers (WDRs)
+
+In addition to the 32b wide GPRs, OTBN has a second "wide" register file, which is used by the big number instruction subset.
+This register file consists of NWDR = 32 Wide Data Registers (WDRs).
+Each WDR is WLEN = 256b wide.
+
+Wide Data Registers (WDRs) and the 32b General Purpose Registers (GPRs) are separate register files.
+They are only accessible through their respective instruction subset:
+GPRs are accessible from the base instruction subset, and WDRs are accessible from the big number instruction subset (`BN` instructions).
+
+| Register |
+|----------|
+| w0       |
+| w1       |
+| ...      |
+| w31      |
+
+### Wide Special Purpose Registers (WSRs)
+
+OTBN has 256b Wide Special purpose Registers (WSRs).
+These are analogous to the 32b CSRs, but are used by big number instructions.
+They can be accessed with the {{#otbn-insn-ref BN.WSRR}} and {{#otbn-insn-ref BN.WSRW}} instructions.
+Writes to read-only (RO) registers are ignored; they do not signal an error.
+All read-write (RW) WSRs are set to 0 when OTBN starts an operation (when 1 is written to [`CMD.start`](doc/registers.md#cmd)).
+
+<!-- This list of WSRs is replicated in otbn_env_cov.sv, wsr.py, the
+     RTL and in rig/model.py. If editing one, edit the other four as well. -->
+<!-- BEGIN CMDGEN ./hw/ip/otbn/util/docs/md_isrs.py --add-anchors hw/ip/otbn/data/wsr.yml -->
+<table>
+  <thead>
+    <tr>
+      <th>Number</th>
+      <th>Access</th>
+      <th>Name</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0x0</td>
+      <td>RW</td>
+      <td><a name="mod">MOD</a></td>
+      <td>
+        The modulus used by the {{#otbn-insn-ref BN.ADDM}} and {{#otbn-insn-ref BN.SUBM}} instructions as well as their vectorized variants.
+        This WSR is also visible as CSRs `MOD0` through to `MOD7`.
+      </td>
+    </tr>
+    <tr>
+      <td>0x1</td>
+      <td>RO</td>
+      <td><a name="rnd">RND</a></td>
+      <td>
+        An AIS31-compliant class PTG.3 random number with guaranteed entropy and forward and backward secrecy.
+        Primarily intended to be used for key generation.
+        <br>
+        The number is sourced from the EDN via a single-entry cache.
+        Reads when the cache is empty will cause OTBN to be stalled until a new random number is fetched from the EDN.
+      </td>
+    </tr>
+    <tr>
+      <td>0x2</td>
+      <td>RO</td>
+      <td><a name="urnd">URND</a></td>
+      <td>
+        A random number without guaranteed secrecy properties or specific statistical properties.
+        Intended for use in masking and blinding schemes.
+        Use RND for high-quality randomness.
+        <br>
+        The number is sourced from an local PRNG.
+        Reads never stall.
+      </td>
+    </tr>
+    <tr>
+      <td>0x3</td>
+      <td>RW</td>
+      <td><a name="acc">ACC</a></td>
+      <td>
+        The accumulator register used by the {{#otbn-insn-ref BN.MULQACC}} instruction and the vectorized multiplication instructions like {{#otbn-insn-ref BN.MULV}}.
+      </td>
+    </tr>
+    <tr>
+      <td>0x4</td>
+      <td>RO</td>
+      <td><a name="key-s0-l">KEY_S0_L</a></td>
+      <td>
+        Bits [255:0] of share 0 of the 384b OTBN sideload key provided by the [Key Manager](../keymgr/README.md).
+        <br>
+        A `KEY_INVALID` software error is raised on read if the Key Manager has not provided a valid key.
+      </td>
+    </tr>
+    <tr>
+      <td>0x5</td>
+      <td>RO</td>
+      <td><a name="key-s0-h">KEY_S0_H</a></td>
+      <td>
+        Bits [255:128] of this register are always zero.
+        Bits [127:0] contain bits [383:256] of share 0 of the 384b OTBN sideload key provided by the [Key Manager](../keymgr/README.md).
+        <br>
+        A `KEY_INVALID` software error is raised on read if the Key Manager has not provided a valid key.
+      </td>
+    </tr>
+    <tr>
+      <td>0x6</td>
+      <td>RO</td>
+      <td><a name="key-s1-l">KEY_S1_L</a></td>
+      <td>
+        Bits [255:0] of share 1 of the 384b OTBN sideload key provided by the [Key Manager](../keymgr/README.md).
+        <br>
+        A `KEY_INVALID` software error is raised on read if the Key Manager has not provided a valid key.
+      </td>
+    </tr>
+    <tr>
+      <td>0x7</td>
+      <td>RO</td>
+      <td><a name="key-s1-h">KEY_S1_H</a></td>
+      <td>
+        Bits [255:128] of this register are always zero.
+        Bits [127:0] contain bits [383:256] of share 1 of the 384b OTBN sideload key provided by the [Key Manager](../keymgr/README.md).
+        <br>
+        A `KEY_INVALID` software error is raised on read if the Key Manager has not provided a valid key.
+      </td>
+    </tr>
+    <tr>
+      <td>0x8</td>
+      <td>RW</td>
+      <td><a name="kmac-data-s0">KMAC_DATA_S0</a></td>
+      <td>
+        KMAC_DATA_S0 and KMAC_DATA_S1 are used to send message parts towards the KMAC HWIP as well as to receive the resulting digest.
+        <br>
+        For sending message parts, i.e., when writing to the WSRs, the WSRs are 256-bit wide.
+        The message is sent towards the KMAC HWIP in 64-bit parts, starting with the least significant word.
+        To send a masked message, provide the first share in KMAC_DATA_S0 and the second share in KMAC_DATA_S1.
+        If no masking is required, set one share to the plaintext data and the other share to all-zeros.
+        <br>
+        When reading from the WSRs, the digest data is only 64-bit wide and is placed in the least significant 64 bits.
+        The upper bits [255:64] are not updated by the digest response.
+        If a valid response is present (indicated by KMAC_STATUS.RSP_VALID), once both KMAC_DATA_S0 and KMAC_DATA_S1 are read, the KMAC interface starts accepting the next digest part.
+        <br>
+        The provided digest is always in Boolean shared representation.
+        To retrieve the plaintext digest, software must XOR the values from KMAC_DATA_S0 and KMAC_DATA_S1.
+        <table>
+          <thead>
+            <tr><th>Bit</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>63:0</td>
+              <td>
+                Write: Least significant word of the message share. Read: Current 64-bit word of the digest share.
+              </td>
+            </tr>
+            <tr>
+              <td>255:64</td>
+              <td>
+                Write: Words 1-3 of the message share. Read: Digest shares are read out via the least significant word only, these bits are not affected by a digest response and keep the value written by SW.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>0x9</td>
+      <td>RW</td>
+      <td><a name="kmac-data-s1">KMAC_DATA_S1</a></td>
+      <td>
+        KMAC_DATA_S1 is the counterpart of KMAC_DATA_S0: see its documentation for details.
+      </td>
+    </tr>
+    <tr>
+      <td>0xA</td>
+      <td>RW</td>
+      <td><a name="mai-res-s0">MAI_RES_S0</a></td>
+      <td>
+        This WSR holds share 0 of the masked results produced by the MAI.
+        The results are organized as eight 32-bit values.
+        Results are valid when MAI is not busy anymore.
+        The results are valid until the next operation produces its first result (depends on the selected accelerator's latency).
+      </td>
+    </tr>
+    <tr>
+      <td>0xB</td>
+      <td>RW</td>
+      <td><a name="mai-res-s1">MAI_RES_S1</a></td>
+      <td>
+        This WSR holds share 1 of the masked results produced by the MAI.
+        The results are organized as eight 32-bit values.
+        Results are valid when MAI is not busy anymore.
+        The results are valid until the next operation produces its first result (depends on the selected accelerator's latency).
+      </td>
+    </tr>
+    <tr>
+      <td>0xC</td>
+      <td>RW</td>
+      <td><a name="mai-in0-s0">MAI_IN0_S0</a></td>
+      <td>
+        This WSR transfers share 0 of the first input secrets towards the MAI.
+        The inputs are considered as eight 32-bit values.
+        Writing to this WSR while MAI is not ready will cause a MAI_ERROR software error.
+      </td>
+    </tr>
+    <tr>
+      <td>0xD</td>
+      <td>RW</td>
+      <td><a name="mai-in0-s1">MAI_IN0_S1</a></td>
+      <td>
+        This WSR transfers share 1 of the first input secrets towards the MAI.
+        The inputs are considered as eight 32-bit values.
+        Writing to this WSR while MAI is not ready will cause a MAI_ERROR software error.
+      </td>
+    </tr>
+    <tr>
+      <td>0xE</td>
+      <td>RW</td>
+      <td><a name="mai-in1-s0">MAI_IN1_S0</a></td>
+      <td>
+        This WSR transfers share 0 of the second input secrets towards the MAI.
+        The inputs are considered as eight 32-bit values.
+        Writing to this WSR while MAI is not ready will cause a MAI_ERROR software error.
+      </td>
+    </tr>
+    <tr>
+      <td>0xF</td>
+      <td>RW</td>
+      <td><a name="mai-in1-s1">MAI_IN1_S1</a></td>
+      <td>
+        This WSR transfers share 1 of the second input secrets towards the MAI.
+        The inputs are considered as eight 32-bit values.
+        Writing to this WSR while MAI is not ready will cause a MAI_ERROR software error.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- END CMDGEN -->
+
+### Flags
+
+In addition to the wide register file, OTBN maintains global state in two groups of flags for the use by wide integer operations.
+Flag groups are named Flag Group 0 (`FG0`), and Flag Group 1 (`FG1`).
+Each group consists of four flags.
+Each flag is a single bit.
+
+- `C` (Carry flag).
+  Set to 1 an overflow occurred in the last arithmetic instruction.
+
+- `M` (MSb flag)
+  The most significant bit of the result of the last arithmetic or shift instruction.
+
+- `L` (LSb flag).
+  The least significant bit of the result of the last arithmetic or shift instruction.
+
+- `Z` (Zero Flag)
+  Set to 1 if the result of the last operation was zero; otherwise 0.
+
+The `M`, `L`, and `Z` flags are determined based on the result of the operation as it is written back into the result register, without considering the overflow bit.
+
+### Loop Stack
+
+OTBN has two instructions for hardware-assisted loops: {{#otbn-insn-ref LOOP}} and {{#otbn-insn-ref LOOPI}}.
+Both use the same state for tracking control flow.
+This is a stack of tuples containing a loop count, start address and end address.
+The stack has a maximum depth of eight and the top of the stack is the current loop.
+
+# Security Features
+
+OTBN is a security co-processor.
+It contains various security features and is hardened against side-channel analysis and fault injection attacks.
+The following sections describe the high-level security features of OTBN.
+Refer to the [Design Details](#design-details) section for a more in-depth description.
+
+## Data Integrity Protection
+
+OTBN's data integrity protection is designed to protect the data stored and processed within OTBN from modifications through physical attacks.
+
+Data in OTBN travels along a data path which includes the data memory (DMEM), the load-store-unit (LSU), the register files (GPR and WDR), and the execution units.
+Whenever possible, data transmitted or stored within OTBN is protected with an integrity protection code which guarantees the detection of at least three modified bits per 32 bit word.
+Additionally, instructions and data stored in the instruction and data memory, respectively, are scrambled with a lightweight, non-cryptographically-secure cipher.
+
+Refer to the [Data Integrity Protection](./doc/theory_of_operation.md#data-integrity-protection) section for details of how the data integrity protections are implemented.
+
+## Secure Wipe
+
+OTBN provides a mechanism to securely wipe all state it stores, including the instruction memory.
+
+The full secure wipe mechanism is split into three parts:
+- [Data memory secure wipe](./doc/theory_of_operation.md#data-memory-dmem-secure-wipe)
+- [Instruction memory secure wipe](./doc/theory_of_operation.md#instruction-memory-imem-secure-wipe)
+- [Internal state secure wipe](./doc/theory_of_operation.md#internal-state-secure-wipe)
+
+A secure wipe is performed automatically in certain situations, or can be requested manually by the host software.
+The full secure wipe is automatically initiated as a local reaction to a fatal error.
+In addition, it can be triggered by the [Life Cycle Controller](../lc_ctrl/README.md) before RMA entry using the `lc_rma_req/ack` interface.
+In both cases OTBN enters the locked state afterwards and needs to be reset.
+A secure wipe of only the internal state is performed after reset, whenever an OTBN operation is complete, and after a recoverable error.
+Finally, host software can manually trigger the data memory and instruction memory secure wipe operations by issuing an appropriate
+[command](./doc/theory_of_operation.md#operations-and-commands).
+
+Refer to the [Secure Wipe](./doc/theory_of_operation.md#secure-wipe) section for implementation details.
+
+## Instruction Counter
+
+In order to detect and mitigate fault injection attacks on the OTBN, the host CPU can read the number of executed instructions from [`INSN_CNT`](doc/registers.md#insn_cnt) and verify whether it matches the expectation.
+The host CPU can clear the instruction counter when OTBN is not running.
+Writing any value to [`INSN_CNT`](doc/registers.md#insn_cnt) clears this register to zero.
+Write attempts while OTBN is running are ignored.
+
+## Key Sideloading
+
+OTBN software can make use of a single 384b wide key provided by the [Key Manager](../keymgr/README.md), which is made available in two shares.
+The key is passed through a dedicated connection between the Key Manager and OTBN to avoid exposing it to other components.
+Software can access the first share of the key through the [`KEY_S0_L`](#key-s0-l) and [`KEY_S0_H`](#key-s0-h) WSRs, and the second share of the key through the [`KEY_S1_L`](#key-s1-l) and [`KEY_S1_H`](#key-s1-h) WSRs.
+
+It is up to host software to configure the Key Manager so that it provides the right key to OTBN at the start of the operation, and to remove the key again once the operation on OTBN has completed.
+A `KEY_INVALID` software error is raised if OTBN software accesses any of the `KEY_*` WSRs when the Key Manager has not presented a key.
+
+## Blanking
+
+To reduce side channel leakage OTBN employs a blanking technique on certain control and data paths.
+When a path is blanked it is forced to 0 (by ANDing the path with a blanking signal) preventing sensitive data bits producing a power signature via that path where that path isn't needed for the current instruction.
+
+Blanking controls all come directly from flops to prevent glitches in decode logic reducing the effectiveness of the blanking.
+These control signals are determined in the [prefetch stage](#instruction-prefetch) via pre-decode logic.
+Full decoding is still performed in the execution stage with the full decode results checked against the pre-decode blanking control.
+If the full decode disagrees with the pre-decode OTBN raises a `BAD_INTERNAL_STATE` fatal error.
+
+Blanking is applied in the following locations:
+
+* Read path from the bignum, CSR and WDR register files.
+  This is achieved with a one-hot mux with a two-level AND-OR structure.
+* Write data into the bignum, CSR and WDR register files.
+  Blanking is done separately for each register (as opposed to once on incoming write data that fans out to each register).
+* All relevant data paths within the bignum ALU and MAC.
+  Data paths not required for the instruction being executed are blanked.
+
+Note there is no blanking on the base side (save for the CSRs as these provide access to WDRs such as ACC).

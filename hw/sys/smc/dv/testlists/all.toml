@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 529
+expected_count = 533
 tests = [
     "smc_dfd_csr_field_access_test",
     "smc_dfx_aperture_extent_test",
@@ -79,6 +79,7 @@ tests = [
     "smc_5agent_observability_test",
     "smc_dma_linear_copy_test",
     "smc_dma_completion_status_test",
+    "smc_dma_invalid_descriptor_test",
     "smc_dma_2d_copy_test",
     "smc_dma_csr_config_test",
     "smc_dma_field_widths_test",
@@ -368,6 +369,8 @@ tests = [
     "smc_log_engine_abort_test",
     "smc_log_engine_intr_mask_test",
     "smc_log_engine_transfer_test",
+    "smc_log_engine_region_size_test",
+    "smc_log_engine_round_robin_test",
     "smc_mailbox_data_error_test",
     "smc_mailbox_event_irq_test",
     "smc_mailbox_field_sweep_test",
@@ -449,6 +452,7 @@ tests = [
     "smc_uart_log_engine_field_sweep_test",
     "smc_uart_log_engine_reg_rw_test",
     "smc_uart_loopback_test",
+    "smc_uart_pad_mux_enable_test",
     "smc_uart_rbr_error_path_test",
     "smc_uart_sanity_test",
     "smc_uart_spi_log_engine_test",
@@ -597,7 +601,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 512
+expected_count = 516
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -827,6 +831,8 @@ tests = [
     "smc_log_engine_abort_test",
     "smc_log_engine_intr_mask_test",
     "smc_log_engine_transfer_test",
+    "smc_log_engine_region_size_test",
+    "smc_log_engine_round_robin_test",
     "smc_mailbox_data_error_test",
     "smc_mailbox_event_irq_test",
     "smc_mailbox_field_sweep_test",
@@ -895,6 +901,7 @@ tests = [
     "smc_uart_log_engine_field_sweep_test",
     "smc_uart_log_engine_reg_rw_test",
     "smc_uart_loopback_test",
+    "smc_uart_pad_mux_enable_test",
     "smc_uart_rbr_error_path_test",
     "smc_uart_sanity_test",
     "smc_uart_spi_log_engine_test",
@@ -927,6 +934,7 @@ tests = [
     "smc_wdt_scale_zerocmp_test",
     "smc_dma_linear_copy_test",
     "smc_dma_completion_status_test",
+    "smc_dma_invalid_descriptor_test",
     "smc_dma_2d_copy_test",
     "smc_dma_csr_config_test",
     "smc_dma_field_widths_test",

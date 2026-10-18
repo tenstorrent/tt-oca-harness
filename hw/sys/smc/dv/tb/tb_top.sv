@@ -3208,6 +3208,26 @@ module smc_uvm_top
     assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
     assign u_tb_if.rst_wdt_smc_clk_n         = rst_wdt_smc_clk_no;
     assign u_tb_if.cpu_cluster_isolate       = tb_cpu_cluster_isolate;
+    assign u_tb_if.cg_clk_active = {
+        u_dut.u_smc.u_smc_base.fabric_clk_active,
+        u_dut.u_smc.u_smc_base.alias_remap_clk_active,
+        u_dut.u_smc.u_smc_base.xvisor_remap_clk_active,
+        u_dut.u_smc.u_smc_base.mmode_remap_clk_active,
+        u_dut.u_smc.u_smc_base.ib_filter_clk_active,
+        u_dut.u_smc.u_smc_base.sys_in_filter_clk_active,
+        u_dut.u_smc.u_smc_base.ob_filter_clk_active,
+        u_dut.u_smc.u_smc_base.sys_out_filter_clk_active
+    };
+    assign u_tb_if.cg_bus_active = {
+        u_dut.u_smc.u_smc_base.fabric_bus_active,
+        u_dut.u_smc.u_smc_base.alias_remap_bus_active,
+        u_dut.u_smc.u_smc_base.xvisor_remap_bus_active,
+        u_dut.u_smc.u_smc_base.mmode_remap_bus_active,
+        u_dut.u_smc.u_smc_base.ib_filter_bus_active,
+        u_dut.u_smc.u_smc_base.sys_in_filter_bus_active,
+        u_dut.u_smc.u_smc_base.ob_filter_bus_active,
+        u_dut.u_smc.u_smc_base.sys_out_filter_bus_active
+    };
     assign u_tb_if.zeroer_busy               = tb_zeroer_busy;
     assign u_tb_if.clk_smc                   = clk_smc;
     assign u_tb_if.wdt_first_timeout         = tb_wdt_first_timeout;
