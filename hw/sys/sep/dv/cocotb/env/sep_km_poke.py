@@ -374,6 +374,17 @@ def encode_list(ops: Sequence[PokeOp], tag: int) -> list[int]:
     return [header] + [w for op in ops for w in op.words]
 
 
+def list_header(ops: Sequence[PokeOp], tag: int) -> int:
+    """The header word of the list ``ops`` with ``tag`` (word 0 of ``encode_list``).
+
+    A host may post this word ahead of the rest of the list, for example while
+    the image runs a ``delay`` op of the previous list. The image takes the
+    header as the start of its next list and then waits for the remaining
+    ``encode_list(ops, tag)[1:]`` words.
+    """
+    return encode_list(ops, tag)[0]
+
+
 # --- results ------------------------------------------------------------------
 
 

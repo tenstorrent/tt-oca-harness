@@ -70,7 +70,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_sec_dis_timing_rand_test, VCS only (efuse_lcc.toml). Its reset-value checks of
 #   the unreset shadow words under the SEC_DIS match need X.
 name = "all"
-expected_count = 237
+expected_count = 241
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -216,6 +216,10 @@ tests = [
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
     "sep_km_drbg_sampler_timeout_reset_test",
+    "sep_km_kmcsr_reset_rand_test",
+    "sep_km_kpv_rand_test",
+    "sep_km_cpu_protect_rand_test",
+    "sep_km_crossbar_efuse_window_rand_test",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
@@ -481,6 +485,10 @@ tests = [
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
     "sep_km_drbg_sampler_timeout_reset_test",
+    "sep_km_kmcsr_reset_rand_test",
+    "sep_km_kpv_rand_test",
+    "sep_km_cpu_protect_rand_test",
+    "sep_km_crossbar_efuse_window_rand_test",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
@@ -945,4 +953,16 @@ tests = [
     "sep_efuse_jtag_access_rand_test",
     "sep_sec_dis_timing_rand_test",
     "sep_efuse_shim_response_fault_test",
+]
+
+[[groups]]
+# Convenience group of the Key Manager hardware tests.
+# It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
+name = "phase3_key_manager"
+expected_count = 4
+tests = [
+    "sep_km_kmcsr_reset_rand_test",
+    "sep_km_kpv_rand_test",
+    "sep_km_cpu_protect_rand_test",
+    "sep_km_crossbar_efuse_window_rand_test",
 ]

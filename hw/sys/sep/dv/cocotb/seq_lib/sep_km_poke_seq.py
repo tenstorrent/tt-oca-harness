@@ -142,11 +142,40 @@ class SepKmPoke:
         self._tag = self._tag % 0xFF + 1
         return self._tag
 
-    async def post(self, ops: Sequence[kp.PokeOp]) -> PokeHandle:
-        """Post one list. Does not wait for it to run."""
-        handle = PokeHandle(self._next_tag(), tuple(ops))
+    def reserve(self, ops: Sequence[kp.PokeOp]) -> PokeHandle:
+        """Take the next tag for ``ops`` without posting anything.
+
+        ``kp.list_header(handle.ops, handle.tag)`` is the header word. Post it
+        early with ``post_header`` and the rest later with
+        ``post(handle.ops, handle=handle, header_sent=True)``.
+        """
+        return PokeHandle(self._next_tag(), tuple(ops))
+
+    async def post_header(self, handle: PokeHandle) -> None:
+        """Write only the header word of a reserved list to the inbound FIFO."""
+        await self.mbox.post_raw_words([kp.list_header(handle.ops, handle.tag)])
+
+    async def post(
+        self,
+        ops: Sequence[kp.PokeOp],
+        *,
+        handle: PokeHandle | None = None,
+        header_sent: bool = False,
+    ) -> PokeHandle:
+        """Post one list. Does not wait for it to run.
+
+        With ``handle`` (from ``reserve``) the list keeps that tag; ``ops`` must be
+        ``handle.ops``. ``header_sent=True`` skips the header word, which
+        ``post_header`` already wrote.
+        """
+        if handle is None:
+            if header_sent:
+                raise ValueError("post: header_sent needs the handle from reserve()")
+            handle = PokeHandle(self._next_tag(), tuple(ops))
+        elif tuple(ops) != handle.ops:
+            raise ValueError("post: ops differ from the reserved handle")
         words = kp.encode_list(handle.ops, handle.tag)
-        pos = 0
+        pos = 1 if header_sent else 0
         while pos < len(words):
             status = await self.mbox.read_status()
             depth = (status >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK

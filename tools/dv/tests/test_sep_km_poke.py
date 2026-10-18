@@ -448,6 +448,24 @@ class ImageTest(unittest.TestCase):
         self.assertEqual(m.word(kp.W_ERR) >> 24, 3)
         self.assertEqual(m.run_list([kp.mark(1)], tag=10), (kp.ST_DONE, 10))
 
+    def test_header_posted_ahead(self) -> None:
+        """A header posted while a delay op runs starts the next list."""
+        m = model()
+        ops_b = [kp.mark(0x77), kp.rd(kp.ADDR_HWORD)]
+        tag_b = 5
+        header = kp.list_header(ops_b, tag_b)
+        self.assertEqual(header, kp.encode_list(ops_b, tag_b)[0])
+        m.inbound.extend(kp.encode_list([kp.delay(50)], 4))
+        m.run_until(lambda: m.state() == (kp.ST_RUN, 4))
+        m.inbound.append(header)
+        m.run_until(lambda: m.state() == (kp.ST_DONE, 4))
+        self.assertEqual(len(m.inbound), 1, "the image took the header during the delay op")
+        m.run_until(lambda: len(m.inbound) == 0)
+        self.assertNotEqual(m.state(), (kp.ST_ERROR, tag_b))
+        m.inbound.extend(kp.encode_list(ops_b, tag_b)[1:])
+        m.run_until(lambda: m.state() == (kp.ST_DONE, tag_b))
+        self.assertEqual(kp.decode(ops_b, m.words())[0].value, 0x77)
+
 
 if __name__ == "__main__":
     unittest.main()
