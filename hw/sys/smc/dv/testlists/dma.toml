@@ -149,6 +149,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dma_invalid_descriptor_test"
+module = "smc_dma_invalid_descriptor_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_accel_window_decode_test"
 module = "smc_accel_window_decode_test"
 seed = 1
