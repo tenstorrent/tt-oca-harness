@@ -534,8 +534,9 @@ that declares none the `1ns/1ps` the VCS build uses, and its `extra_args`
 pass `--x-initial-edge`, so a reset asserted at time 0 makes the X-to-0 edge a
 four-state simulator sees. Each test runs the model with
 `+verilator+seed+<seed>` and `+ntb_random_seed=<seed>`, and the Verilator
-build dumps no waves. Tests are selected with
-`+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
+build dumps no waves. A `--cov` build adds a scope file that keeps the UVM
+library and Verilator's `std` package out of the coverage database. Tests are
+selected with `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
 the `uvm-log` parse policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium
 and Questa are not in the allowlist. The reference consumer is the
 DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter

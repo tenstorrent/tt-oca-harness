@@ -54,7 +54,9 @@ flow:
   stages for both frameworks, and the UVM build and sim adapters inject the
   simulator's coverage instrumentation, so `--cov` on the UVM view collects,
   merges and reports coverage like the cocotb view; an adopter does not wire
-  coverage itself.
+  coverage itself. The Verilator build keeps the UVM library out of the
+  database, and the DUT's Verilator scope file, which both views share, drops
+  the bench's `dv/uvm/` tree with the rest of the bench.
 
 [[shared-uvm-conventions]]
 === Normative Conventions

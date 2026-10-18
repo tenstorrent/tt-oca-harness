@@ -16,6 +16,15 @@
 // The harness body is the test bench, not the collateral under test.
 coverage_off -file "*hw/common/dv/vip/ocah_jtag_vip/dv/tb/tb_top.sv"
 
+// The SV-UVM layers: the VIP package, the shared checker and framework
+// packages, the selftest environment, and the covergroup collector, whose
+// bins stay in the database.
+coverage_off -file "*hw/common/dv/vip/ocah_jtag_vip/uvm/*"
+coverage_off -file "*hw/common/dv/vip/ocah_checker/*"
+coverage_off -file "*hw/common/dv/vip/ocah_lib/*"
+coverage_off -file "*hw/common/dv/vip/ocah_jtag_vip/dv/uvm/*"
+coverage_off -file "*hw/common/dv/vip/ocah_jtag_vip/cov/*"
+
 // Vendored pulp packages from the base package closure are not part of the
 // VIP.
 coverage_off -file "*vendor/pulp-platform/*"
