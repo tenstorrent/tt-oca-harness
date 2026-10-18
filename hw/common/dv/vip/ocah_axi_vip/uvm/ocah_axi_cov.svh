@@ -5,8 +5,6 @@
 // covergroups in cov/ocah_axi_cov.sv (ocah_axi_cov_if, default parameters)
 // once per completed transaction. Built only when cfg.en_cov is set; the TB
 // instantiates ocah_axi_cov_if and publishes it as "axi_cov_vif".
-// Commercial-simulator only (never in Verilator filelists), like the
-// interface it samples.
 
 class ocah_axi_cov extends uvm_subscriber #(ocah_axi_item);
   `uvm_component_utils(ocah_axi_cov)

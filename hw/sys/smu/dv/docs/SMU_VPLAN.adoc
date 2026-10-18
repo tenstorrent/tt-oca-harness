@@ -185,7 +185,7 @@ Signoff Package; this table is the credit decision.
 |F4 ATOP reject — no stimulus path |`smu_axi_atomic_operation_test` covers the non-ATOP path only |`hosted` |none |none — `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package has no ATOP driver |NO
 |F5 SMC↔SEP interop |`smu_sep_bidirect_test`, `smu_sep_smc_notify_test` |`sep_real_fw`, `all` |none |none in `TEST_EVIDENCE`; the verdict is the firmware's terminal loop |NO. OUT of `hosted` credit: both leaves run SEP DV firmware, so they need the RISC-V toolchain and sit in `sep_real_fw` / `all`, which no workflow schedules
 |F6 Cross-trigger and clock-stop |`smu_clock_stop_coordination_test`, `smu_xtrig_ctm_illegal_phase_test`, `smu_xtrig_ctm_remap_test` |`hosted` |`smu_clkstop_fcov` (`c_clk_stop_req_delivered`, `c_stop_clks_from_debug_control`, `c_stop_clks_released`), `smu_dtp_fcov` CTP points (`c_ctp_req_out_width_16`, `c_ctp_ack_in_width_16`, `c_ctp_unused_input_tied_zero_inert`) |`CHK-DTP-BOOT-STALL-S1`, `XT_ILLEGAL_PHASE`, `XT_CTM_REMAP` |YES
-|F7 Lifecycle observe-only |— |— |`smu_lc_fcov` (`c_lc_state_width_8`, `c_demote_1_width_2`, `c_demote_2_width_2`), `smu_boot_fcov` (`c_lc_state_changed`, `g_sep.c_lcc_demote_state_1`, `g_sep.c_lcc_demote_state_2`, `g_sep.c_lcc_demote_both`), `smu_dbg_fcov` (`g_sep.c_dbg_disable_blocks_smc_fabric_bridge`) |none |NO. The lifecycle observe credit is OUT: the lifecycle stimulus is SEP firmware (`smu_sep_lcc_flow_test` in `sep_real_fw`, the `sep_lifecycle` and `sep_chain` groups), which needs the RISC-V toolchain and sits outside `hosted`, the one group `regress.yml` schedules; the SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`) needs `smu #(.CFG(smu_pkg::NoSepCfg))`, which this package does not build, and is `not-runnable` in the disposition record; `feat_ctrl` / policy matrices stay OUT.
+|F7 Lifecycle and security |twelve eFuse-image lifecycle leaves, cards 171-182 (`smu_lc_export_test_dev_test`, `smu_lc_export_prod_test`, `smu_lc_export_prod_end_test`, `smu_lc_export_rma_sip_0_test`, `smu_lc_export_rma_chiplet_0_test`, `smu_lc_sec_dis_over_sigint_prod_test`, `smu_lc_demote_test_dev_test`, `smu_lc_dis_sys_chiplet_dbg_test_dev_test`, `smu_lc_dis_sip_sep_dbg_test_dev_test`, `smu_lc_dis_sys_not_binding_rma_sip_test`, `smu_lc_dis_sip_sep_dbg_rma_sip_test`, `smu_lc_secure_tm_scope_prod_test`) |`hosted` |`smu_lc_fcov` (`c_lc_state_width_8`, `c_demote_1_width_2`, `c_demote_2_width_2`), `smu_boot_fcov` (`c_lc_state_changed`, `g_sep.c_lcc_demote_state_1`, `g_sep.c_lcc_demote_state_2`, `g_sep.c_lcc_demote_both`), `smu_dbg_fcov` (`g_sep.c_dbg_disable_blocks_smc_fabric_bridge`) |the `CHK-LC-*` tokens of cards 171-182 (LC_STATE export per state, feature-control word, SMC fabric launch or refusal, STAP and SIB posture, DEMOTE_1 / DEMOTE_2, SEC_DIS token match, SECURE_TM strap) |YES for the eFuse-image stimulus of cards 171-182. Still OUT: the SEP-firmware lifecycle flow (`smu_sep_lcc_flow_test` in `sep_real_fw`, the `sep_lifecycle` and `sep_chain` groups), which needs the RISC-V toolchain and sits outside `hosted`, the one group `regress.yml` schedules; the SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`) needs `smu #(.CFG(smu_pkg::NoSepCfg))`, which this package does not build, and is `not-runnable` in the disposition record
 |===
 
 `smu_sep_smoke_test` on `--dut smu` is F1 observe / F6 export on the
@@ -363,6 +363,18 @@ one-line intent.
 |`smu_sep_stap_hold_reset_test` |wrapper |A deselected SEP debug STAP parks its host TMS at its TMS-Hold value and adds only its SIB bit to the scan string, and its 3DCR resets on TRST and, unless Config-Hold is set, on Test-Logic-Reset.
 |`smu_smc_gpio_access_filter_test` |wrapper |The GPIO pad access filter admits an access over the external AXI input only when its AxPROT equals the stored requirement once the matching filter is enabled, and admits AxPROT 0 and 7 while both filters are disabled.
 |`smu_smc_gpio_spi_pad_ownership_test` |wrapper |With the SMU holding the SEP, GPIO pads 0-3, 8 and 9 follow the SEP SPI host and ignore DATA_CTRL until `lsio_disable` is set, and pads 4-7, 10 and 54 are not driven by the SPI host and answer to the register only once `lsio_disable` is set.
+|`smu_lc_export_test_dev_test` |wrapper |With the eFuse shadow image holding the TEST_DEV state and a SPARE0 marker, the SMU exports the LC_STATE word `0xF0` at the wrapper boundary, at the SEP observation point and at the SMC's LC_STATE input, with all-ones feature control and the SMC fabric bridge launching.
+|`smu_lc_export_prod_test` |wrapper |With the eFuse shadow image holding the PROD state, the SMU exports `0xE1`, closes DBG_1 and DBG_2, and the SMC fabric bridge, the SEP debug STAP and the three iJTAG SIBs stay closed while an OTP bridge read completes.
+|`smu_lc_export_prod_end_test` |wrapper |With the eFuse shadow image holding the PROD_END state, the SMU exports `0x78`, closes DBG_1 and DBG_2, and the SMC fabric bridge, the SEP debug STAP and the three iJTAG SIBs stay closed while an OTP LC_STATE read completes.
+|`smu_lc_export_rma_sip_0_test` |wrapper |With the eFuse shadow image holding the RMA_SIP state, the SMU exports the LC_STATE word `0xD2`, enables every feature-control term and the SMC fabric bridge launches.
+|`smu_lc_export_rma_chiplet_0_test` |wrapper |With the eFuse shadow image holding the RMA_CHIPLET state, the SMU exports the LC_STATE word `0x96`, enables every feature-control term and the SMC fabric bridge launches.
+|`smu_lc_sec_dis_over_sigint_prod_test` |wrapper |With the PROD image, a security-disable token written over the SEP OTP bridge raises the security-disable net, forces feature control to all ones and opens the SEP, I/O, SMC and extra STAPs, the three iJTAG SIBs and the SMC fabric bridge; while a sigint injection breaks the exported pair, `lc_sigint_err_o` is raised, the opened paths hold and the SMC OTP read that PROD admits is refused.
+|`smu_lc_demote_test_dev_test` |wrapper |With the TEST_DEV image restricting feature-control bits 2, 3 and 25 through SIP_DIS, demotion writes over the SEP system bus force bits 2 and 3 open (DEMOTE_1) and bit 25 open (DEMOTE_2), the lock leaves them open, and a chiplet cold reset restores the restricted word and the demote lane codes.
+|`smu_lc_dis_sys_chiplet_dbg_test_dev_test` |wrapper |With the TEST_DEV image setting only the CHIPLET_DBG bit of SYS_DIS, `lcc_feat_ctrl_o` clears exactly bit 1, the I/O STAP and the DFD SIB stay open as the control, and the SMC fabric bridge, the SMC debug, extra and SEP debug STAPs and the DFT non-secure and DFT secure SIBs stay shut.
+|`smu_lc_dis_sip_sep_dbg_test_dev_test` |wrapper |With the TEST_DEV image setting only the SEP_DBG bit of SIP_DIS, `lcc_feat_ctrl_o` clears exactly bit 0, the SMC fabric bridge launches and the SMC debug, extra and I/O STAPs and the DFT non-secure and DFD SIBs open, and the SEP debug STAP and the DFT secure SIB stay shut.
+|`smu_lc_dis_sys_not_binding_rma_sip_test` |wrapper |With the RMA_SIP image setting SYS_DIS bits 0, 1 and 24 and leaving SIP_DIS clear, the SYS_DIS word read back over the SEP debug module's system bus holds those bits, `lc_state_o` reads `8'hD2`, `lcc_feat_ctrl_o` stays all ones, and the SEP, SMC and I/O STAPs, the DFT secure and DFD SIBs and the SMC fabric bridge all open.
+|`smu_lc_dis_sip_sep_dbg_rma_sip_test` |wrapper |With the RMA_SIP image setting only the SEP_DBG bit of SIP_DIS, `lcc_feat_ctrl_o` clears exactly bit 0, the I/O and SMC STAPs, the DFD SIB and the SMC fabric bridge open, and the SEP debug STAP and the DFT secure SIB stay shut.
+|`smu_lc_secure_tm_scope_prod_test` |wrapper |With the PROD image and the TEST_EN strap held high, `tb_secure_tm` reads 1 while `lcc_feat_ctrl_o` stays the undemoted PROD word and the DFT SIBs stay shut; a SEC_DIS match then forces feature control to all ones with `tb_secure_tm` still 1 and opens the DFT SIBs, and after a chiplet cold reset with the strap low `tb_secure_tm` reads 0 while the match, the fabric launch and the DFT secure SIB hold.
 |===
 
 [[smu-test-procedures]]
@@ -7318,6 +7330,626 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-171-smu_lc_export_test_dev_test]]
+===== 171 `smu_lc_export_test_dev_test`
+
+*Source Module*: `smu_lc_export_test_dev_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_export_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: boundary outputs `lc_state_o`, `smc_lc_state_in_o`, `lc_sigint_err_o`, `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o` and `lcc_dbg_disable_smc_jtag2axi_o` and the bench observation `obs_sep_lc_state_o`, all read X-strict on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port (`tb/tb_wrapper_top.sv`); `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` register and the `SEP_OTP_AXI_SINGLE_OP` register), the TAP's `jtag_tdo` read X-strict; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev_marker.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the eFuse shadow image holding the TEST_DEV state and a non-zero SPARE0 marker, the SMU exports the LC_STATE word `0xF0` at the wrapper boundary, at the SEP observation point and at the SMC's LC_STATE input, the feature-control word is all ones, and the SMC fabric JTAG2AXI bridge launches its transactions.
+
+*Test Coverage*:
+
+* The SEP shadow encodes the logical state as `{~raw[3:0], raw[3:0]}` in bits [7:0] (`hw/sys/sep/doc/otp_fuse_controller.adoc`, LC_STATE row; `hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl`, LC_STATE) and the raw encodings are the `hw/sys/sep/doc/lifecycle_controller.adoc` lifecycle state encodings table. TEST_DEV is raw `4'b0000`, so the exported word is `0xF0`.
+* The leaf waits for `sep_fuse_sense_done_o` within 60000 `clk_smu_i` cycles (the flag is the bench's `+skip_fuse_sense` substitute, a recorded precondition and not graded), then on one `clk_smu_i` edge `lc_state_o` (`hw/sys/smu/doc/port_table.adoc`), `obs_sep_lc_state_o` and `smc_lc_state_in_o` each read `0xF0` and differ from the pre-sense INVALID word `0x0F`; `sep_fuse_sense_done_o` is logged on that edge.
+* `0xF0` is also the LC_STATE shadow reset value, so the sample alone does not show the image was loaded. The marker image `sep_efuse_shadow_lc_test_dev_marker.preload` is the TEST_DEV image with the SEP eFuse MAP SPARE0 word (`SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR` minus `SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR` in the generated `hw/sys/sep/regs/gen/c/sep_addr.h`) set to `0xA5C35A3C`; a SEP OTP JTAG2AXIL bridge read of that word returns `0xA5C35A3C`, which is non-zero and differs from `0xF0`. TEST_DEV admits the shadow map over JTAG (`hw/sys/sep/doc/otp_fuse_controller.adoc`). The three export checkers carry that witness.
+* `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FFFF_FFFF` (`hw/sys/sep/doc/lifecycle_controller.adoc`, per-LC-state feature control profile table, TEST_DEV with SEC_DIS 0 and no demotion: every DBG_1, DBG_2 and Function term is `~(SIP_DIS | SYS_DIS)` of zero vectors; DBG_1 bits [23:0], DBG_2 bits [47:24], Function bits [63:48]) and differs from the all-zero FEAT_CTRL reset value (`hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`).
+* `dbg_disable_i.smc_jtag2axi` is active-high (`hw/sys/dtp/doc/jtag.adoc`, Debug Disable table) and the SMC fabric JTAG2AXI path is a Case 2 path, `SIP_DBG & CHIPLET_DBG` (`hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table), so `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b0` in TEST_DEV with blank DIS vectors, and the same leaf shows the launches that corroborate the zero. An `AXI_SINGLE_OP` read then write of SMC CPU_CTRL SCRATCH word 0 (`SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR` in the generated `hw/sys/smc/regs/gen/c/smc_addr.h`) through the `SMC_*` instructions (`hw/sys/dtp/doc/jtag.adoc`, SMC fabric bridge) advances the AR, AW and B counters at the DTP-to-SMC debug AXI port by 1 each; each wait for the counter is bounded at 4000 `clk_smu_i` cycles, and `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b0` after both.
+* Measured and logged only: `lc_sigint_err_o` on the sampling edge and the cycle count of each wait. The OTP bridge poll count is also measured and logged.
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. The other lifecycle states, the SIP_DIS and SYS_DIS vectors and the SEP STAP and iJTAG paths in this state are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the shadow preload to be the TEST_DEV marker image and `+lc_sigint_inject` to be absent.
+. Wait for `sep_fuse_sense_done_o`, then sample `lc_state_o`, `obs_sep_lc_state_o` and `smc_lc_state_in_o` on one edge.
+. Reset the TAP, read the SEP eFuse MAP SPARE0 word over the SEP OTP bridge and compare it with `0xA5C35A3C`; compare the three exported words with `0xF0` together with the witness.
+. Sample `lcc_feat_ctrl_o` and compare it with all ones.
+. Sample `lcc_dbg_disable_smc_jtag2axi_o`.
+. Issue the SMC fabric `AXI_SINGLE_OP` read and then write, wait for the AR counter and the B counter, compare the counter deltas with 1 each and sample the lane again; compare the lane before and after with `1'b0`.
+. Check that every wait finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-EXPORT-WRAPPER-TEST-DEV` |with the TEST_DEV image (raw 4'b0000) lc_state_o equals 0xF0 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F and the SEP OTP bridge reads back the SPARE0 marker 0xA5C35A3C
+|`CHK-LC-EXPORT-SEP-OBS-TEST-DEV` |with the TEST_DEV image (raw 4'b0000) obs_sep_lc_state_o equals 0xF0 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F and the SEP OTP bridge reads back the SPARE0 marker 0xA5C35A3C
+|`CHK-LC-EXPORT-SMC-INPUT-TEST-DEV` |with the TEST_DEV image (raw 4'b0000) smc_lc_state_in_o equals 0xF0 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F and the SEP OTP bridge reads back the SPARE0 marker 0xA5C35A3C
+|`CHK-LC-FEATCTRL-TEST-DEV` |lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF and differs from the 64'h0 reset value
+|`CHK-LC-LANE-SMC-JTAG2AXI-TEST-DEV` |lcc_dbg_disable_smc_jtag2axi_o equals 1'b0, corroborated by the AR/AW/B launches
+|`CHK-LC-FABRIC-LAUNCH-TEST-DEV` |an SMC fabric SINGLE_OP read and write advance the DTP-to-SMC debug AXI AR, AW and B counters by 1 each with lcc_dbg_disable_smc_jtag2axi_o at 1'b0
+|`CHK-NONVAC` |ordered step fence from the image load to the last step, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles it used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-172-smu_lc_export_prod_test]]
+===== 172 `smu_lc_export_prod_test`
+
+*Source Module*: `smu_lc_export_prod_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_export_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: boundary outputs `lc_state_o`, `smc_lc_state_in_o`, `lc_sigint_err_o`, `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o` and `lcc_dbg_disable_smc_jtag2axi_o` and the bench observation `obs_sep_lc_state_o`, all read X-strict on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port (`tb/tb_wrapper_top.sv`); `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` register and the `SEP_OTP_AXI_SINGLE_OP` register (a write and a read of SEC_DISABLE_TOKEN_I[7]; no TOKEN_EOP write), and `OcahJtagMasterSequence` scans over the secondary scan string and the iJTAG network), the TAP's `jtag_tdo` read X-strict; `jtag_tms` and `jtag_tck` sampled on `clk_ref_i`; bench observation `tb_stap_sep_tms` (the TMS of the SEP debug STAP host interface, `tb/tb_wrapper_top.sv`) and the DTP port `jtag_stap_sep_host_tdo_oen_o` read through `u_dut.u_smu.u_dtp`, both sampled on `clk_ref_i`; the iJTAG host selects `tb_dfd_select`, `tb_dft_select` and `tb_dft_secure_select`; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the eFuse shadow image holding the PROD state, the SMU exports the LC_STATE word `0xE1` at the wrapper boundary, at the SEP observation point and at the SMC's LC_STATE input, the feature-control word closes DBG_1 and DBG_2, and the SMC fabric bridge, the SEP debug STAP and the three iJTAG SIBs stay closed while a SEP OTP bridge read completes.
+
+*Test Coverage*:
+
+* The SEP shadow encodes the logical state as `{~raw[3:0], raw[3:0]}` in bits [7:0] (`hw/sys/sep/doc/otp_fuse_controller.adoc`, LC_STATE row; `hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl`, LC_STATE) and the raw encodings are the `hw/sys/sep/doc/lifecycle_controller.adoc` lifecycle state encodings table. PROD is raw `4'b0001`, so the exported word is `0xE1`.
+* The leaf waits for `sep_fuse_sense_done_o` within 60000 `clk_smu_i` cycles (the flag is the bench's `+skip_fuse_sense` substitute, a recorded precondition and not graded), then on one `clk_smu_i` edge `lc_state_o` (`hw/sys/smu/doc/port_table.adoc`), `obs_sep_lc_state_o` and `smc_lc_state_in_o` each read `0xE1` and differ from the pre-sense INVALID word `0x0F`; `sep_fuse_sense_done_o` is logged on that edge.
+* `lcc_feat_ctrl_o` equals `64'hFFFF_0000_0000_0000` (`hw/sys/sep/doc/lifecycle_controller.adoc`, per-LC-state feature control profile table, PROD undemoted: DBG_1 `F`, DBG_2 `F`, Function `~(SIP_DIS.FUNC | SYS_DIS.FUNC)`; DBG_1 bits [23:0], DBG_2 bits [47:24], Function bits [63:48]) and differs from the all-zero FEAT_CTRL reset value (`hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`).
+* `dbg_disable_i.smc_jtag2axi` is active-high (`hw/sys/dtp/doc/jtag.adoc`, Debug Disable table) and the SMC fabric JTAG2AXI path is a Case 2 path, `SIP_DBG & CHIPLET_DBG` (`hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table), so `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b1` in undemoted PROD; the value differs from the zero a reset or an open state gives.
+* Positive control: a SEP OTP JTAG2AXIL bridge write of the non-zero pattern `0x5A3CA5C3` to SEC_DISABLE_TOKEN_I[7] (`SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR` index 7, `0x1093055C`, in the generated `hw/sys/sep/regs/gen/c/sep_addr.h`; the register is sw = rw in `hw/ip/efuse/regs/efuse_mmr.rdl`) and a read back of that word both complete with status 0 and the read returns `0x5A3CA5C3`; the OTP bridge is ungated and in PROD admits the MMR region (`hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table), so the TAP, the PTAP and an ungated bridge are live in this leaf by a value a gated or stuck bridge cannot return. No TOKEN_EOP write follows, so no token match is triggered.
+* The SMC fabric bridge does not launch: an `AXI_SINGLE_OP` read then write of SMC CPU_CTRL SCRATCH word 0 (`SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR` in the generated `hw/sys/smc/regs/gen/c/smc_addr.h`) leave the AR, AW and B counters unchanged over a 4000-cycle window after each issue, a disabled bridge not latching its TDR update (`hw/sys/dtp/doc/jtag.adoc`, Debug Disable); the window is longer than the launch latency the open-state leaves record. The lane stays `1'b1` and the positive control completed in the same leaf.
+* With the SEP STAP disabled (a Case 3 path, `hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table) its host TMS is parked at the TMS-Hold bit of its 3DCR, which resets to 0, its host TDO enable is held low, and a capture of the 3DCR reads Select as 0 whatever is stored (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`, disabled-STAP behaviour and 3DCR Register). The leaf selects the secondary scan string in the PTAP 3DCR, opens the SEP SIB, writes the SEP STAP 3DCR with Select 1 and TMS-Hold 0 and captures it, each scan inside its own observation window of up to 2000 `clk_ref_i` cycles: the SEP host TMS holds `1'b0` on every sample, never changes level, the TDO enable never reads high, and the capture reads Select as 0. The PTAP `jtag_tms` must show at least as many edges as the IR is wide, the witness that the TAP moved while the host TMS stayed parked; the other captured 3DCR bits are measured and logged only, and a final scan deselects the secondary string.
+* With the DFD, DFT non-secure and DFT secure disable fields set, each SIB stays closed and captures 0 whatever is shifted into it, and the DR is three bits long: bit 0 DFD, bit 1 DFT non-secure, bit 2 DFT secure (`hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc`, iJTAG Network and the closed-SIB DR map; the paths are closed in this state by `hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table). Under `SELECT_IJTAG` one 6-bit scan shifts 1 into each SIB bit with the flush pattern `0b101` behind, a second 6-bit scan shifts 0 behind the flush pattern `0b110`; the second scan captures 0 in DR bits 0, 1 and 2, both scans return their flush pattern three bits late (a longer DR would return it later), the three host selects (`tb_dfd_select`, `tb_dft_select`, `tb_dft_secure_select`) read 0 on every TCK of both scans, and each scan's window saw at least 6 TCKs.
+* Measured and logged only: `lc_sigint_err_o` on the sampling edge and the cycle count of each wait. The 3DCR bits other than Select are measured and logged only.
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. The SEC_DIS token flow, demotion and the open states are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the shadow preload to be the PROD image and `+lc_sigint_inject` to be absent.
+. Wait for `sep_fuse_sense_done_o`, then sample `lc_state_o`, `obs_sep_lc_state_o` and `smc_lc_state_in_o` on one edge and compare each with `0xE1`.
+. Sample `lcc_feat_ctrl_o` and compare it with `64'hFFFF_0000_0000_0000`.
+. Sample `lcc_dbg_disable_smc_jtag2axi_o` and compare it with `1'b1`.
+. Reset the TAP, write `0x5A3CA5C3` to SEC_DISABLE_TOKEN_I[7] over the SEP OTP bridge and read it back; both statuses must be 0 and the read must return `0x5A3CA5C3`.
+. Issue the SMC fabric `AXI_SINGLE_OP` read and write, hold a 4000-cycle window after each, and compare the counter deltas with zero, the lane with `1'b1` and the positive control.
+. Select the secondary scan string, open the SEP SIB, write and capture the SEP STAP 3DCR while sampling the host TMS, its TDO enable and the PTAP TMS, then deselect the string.
+. Load `SELECT_IJTAG`, shift the open request and the capture scan, and compare the captures, the flush returns and the host select counts.
+. Check that every wait and window finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-EXPORT-WRAPPER-PROD` |with the PROD image (raw 4'b0001) lc_state_o equals 0xE1 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-EXPORT-SEP-OBS-PROD` |with the PROD image (raw 4'b0001) obs_sep_lc_state_o equals 0xE1 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-EXPORT-SMC-INPUT-PROD` |with the PROD image (raw 4'b0001) smc_lc_state_in_o equals 0xE1 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-FEATCTRL-PROD` |lcc_feat_ctrl_o equals 64'hFFFF_0000_0000_0000 and differs from the 64'h0 reset value
+|`CHK-LC-LANE-SMC-JTAG2AXI-PROD` |lcc_dbg_disable_smc_jtag2axi_o equals 1'b1
+|`CHK-LC-FABRIC-NOLAUNCH-PROD` |an SMC fabric SINGLE_OP read and write leave the AR, AW and B counters unchanged with lcc_dbg_disable_smc_jtag2axi_o at 1'b1, and in the same leaf a SEP OTP bridge write of 0x5A3CA5C3 to SEC_DISABLE_TOKEN_I[7] and a read back both complete with op 0 and the read returns 0x5A3CA5C3
+|`CHK-LC-STAP-SEP-PARKED-PROD` |the SEP STAP host TMS holds 1'b0 on every sample and its TDO enable stays low while the PTAP TMS toggles, and a 3DCR capture reads Select as 0 after Select was written as 1
+|`CHK-LC-SIB-DFD-CLOSED-PROD` |the DFD SIB (DR bit 0) captures 0 after 1 was shifted into it, the DR is 3 bits long and no host select asserts
+|`CHK-LC-SIB-DFT-NONSECURE-CLOSED-PROD` |the DFT non-secure SIB (DR bit 1) captures 0 after 1 was shifted into it, the DR is 3 bits long and no host select asserts
+|`CHK-LC-SIB-DFT-SECURE-CLOSED-PROD` |the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR is 3 bits long and no host select asserts
+|`CHK-NONVAC` |ordered step fence from the image load to the last step, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles it used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-173-smu_lc_export_prod_end_test]]
+===== 173 `smu_lc_export_prod_end_test`
+
+*Source Module*: `smu_lc_export_prod_end_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_export_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: boundary outputs `lc_state_o`, `smc_lc_state_in_o`, `lc_sigint_err_o`, `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o` and `lcc_dbg_disable_smc_jtag2axi_o` and the bench observation `obs_sep_lc_state_o`, all read X-strict on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port (`tb/tb_wrapper_top.sv`); `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` register and the `SEP_OTP_AXI_SINGLE_OP` register, and `OcahJtagMasterSequence` scans over the secondary scan string and the iJTAG network), the TAP's `jtag_tdo` read X-strict; `jtag_tms` and `jtag_tck` sampled on `clk_ref_i`; bench observation `tb_stap_sep_tms` (the TMS of the SEP debug STAP host interface, `tb/tb_wrapper_top.sv`) and the DTP port `jtag_stap_sep_host_tdo_oen_o` read through `u_dut.u_smu.u_dtp`, both sampled on `clk_ref_i`; the iJTAG host selects `tb_dfd_select`, `tb_dft_select` and `tb_dft_secure_select`; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod_end.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the eFuse shadow image holding the PROD_END state, the SMU exports the LC_STATE word `0x78` at the wrapper boundary, at the SEP observation point and at the SMC's LC_STATE input, the feature-control word closes DBG_1 and DBG_2, and the SMC fabric bridge, the SEP debug STAP and the three iJTAG SIBs stay closed while a SEP OTP bridge read of LC_STATE completes.
+
+*Test Coverage*:
+
+* The SEP shadow encodes the logical state as `{~raw[3:0], raw[3:0]}` in bits [7:0] (`hw/sys/sep/doc/otp_fuse_controller.adoc`, LC_STATE row; `hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl`, LC_STATE) and the raw encodings are the `hw/sys/sep/doc/lifecycle_controller.adoc` lifecycle state encodings table. PROD_END is raw `4'b1000`, so the exported word is `0x78`.
+* The leaf waits for `sep_fuse_sense_done_o` within 60000 `clk_smu_i` cycles (the flag is the bench's `+skip_fuse_sense` substitute, a recorded precondition and not graded), then on one `clk_smu_i` edge `lc_state_o` (`hw/sys/smu/doc/port_table.adoc`), `obs_sep_lc_state_o` and `smc_lc_state_in_o` each read `0x78` and differ from the pre-sense INVALID word `0x0F`; `sep_fuse_sense_done_o` is logged on that edge.
+* `lcc_feat_ctrl_o` equals `64'hFFFF_0000_0000_0000` (`hw/sys/sep/doc/lifecycle_controller.adoc`, per-LC-state feature control profile table, PROD_END with SEC_DIS 0: DBG_1 `F`, DBG_2 `F`, Function `~(SIP_DIS.FUNC | SYS_DIS.FUNC)`; demotion has no effect; DBG_1 bits [23:0], DBG_2 bits [47:24], Function bits [63:48]) and differs from the all-zero FEAT_CTRL reset value (`hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`).
+* Positive control: a SEP OTP JTAG2AXIL bridge read of the LC_STATE word (`SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR` in the generated `hw/sys/sep/regs/gen/c/sep_addr.h`) completes with status 0 and returns `0x78` in bits [7:0]; PROD_END admits the shadow map over JTAG (`hw/sys/sep/doc/otp_fuse_controller.adoc`), so the TAP, the PTAP and an ungated bridge are live in this leaf.
+* `dbg_disable_i.smc_jtag2axi` is active-high (`hw/sys/dtp/doc/jtag.adoc`, Debug Disable table) and the SMC fabric JTAG2AXI path is a Case 2 path, `SIP_DBG & CHIPLET_DBG` (`hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table). The SMC fabric bridge does not launch in PROD_END: an `AXI_SINGLE_OP` read then write of SMC CPU_CTRL SCRATCH word 0 (`SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR` in the generated `hw/sys/smc/regs/gen/c/smc_addr.h`) leave the AR, AW and B counters unchanged over a 4000-cycle window after each issue, and `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b1` after both; the window is longer than the launch latency the open-state leaves record, and the positive control completed in the same leaf.
+* With the SEP STAP disabled (a Case 3 path, `hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table) its host TMS is parked at the TMS-Hold bit of its 3DCR, which resets to 0, its host TDO enable is held low, and a capture of the 3DCR reads Select as 0 whatever is stored (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`, disabled-STAP behaviour and 3DCR Register). The leaf selects the secondary scan string in the PTAP 3DCR, opens the SEP SIB, writes the SEP STAP 3DCR with Select 1 and TMS-Hold 0 and captures it, each scan inside its own observation window of up to 2000 `clk_ref_i` cycles: the SEP host TMS holds `1'b0` on every sample, never changes level, the TDO enable never reads high, and the capture reads Select as 0. The PTAP `jtag_tms` must show at least as many edges as the IR is wide, the witness that the TAP moved while the host TMS stayed parked; the other captured 3DCR bits are measured and logged only, and a final scan deselects the secondary string.
+* With the DFD, DFT non-secure and DFT secure disable fields set, each SIB stays closed and captures 0 whatever is shifted into it, and the DR is three bits long: bit 0 DFD, bit 1 DFT non-secure, bit 2 DFT secure (`hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc`, iJTAG Network and the closed-SIB DR map; the paths are closed in this state by `hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table). Under `SELECT_IJTAG` one 6-bit scan shifts 1 into each SIB bit with the flush pattern `0b101` behind, a second 6-bit scan shifts 0 behind the flush pattern `0b110`; the second scan captures 0 in DR bits 0, 1 and 2, both scans return their flush pattern three bits late (a longer DR would return it later), the three host selects (`tb_dfd_select`, `tb_dft_select`, `tb_dft_secure_select`) read 0 on every TCK of both scans, and each scan's window saw at least 6 TCKs.
+* Measured and logged only: `lc_sigint_err_o` on the sampling edge and the cycle count of each wait.
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. The lane is checked through the fabric no-launch checker only. The SEC_DIS override and the open states are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the shadow preload to be the PROD_END image and `+lc_sigint_inject` to be absent.
+. Wait for `sep_fuse_sense_done_o`, then sample `lc_state_o`, `obs_sep_lc_state_o` and `smc_lc_state_in_o` on one edge and compare each with `0x78`.
+. Sample `lcc_feat_ctrl_o` and compare it with `64'hFFFF_0000_0000_0000`.
+. Reset the TAP and read LC_STATE over the SEP OTP bridge; the status must be 0 and bits [7:0] `0x78`.
+. Issue the SMC fabric `AXI_SINGLE_OP` read and write, hold a 4000-cycle window after each, and compare the counter deltas with zero, the lane with `1'b1` and the positive control.
+. Select the secondary scan string, open the SEP SIB, write and capture the SEP STAP 3DCR while sampling the host TMS, its TDO enable and the PTAP TMS, then deselect the string.
+. Load `SELECT_IJTAG`, shift the open request and the capture scan, and compare the captures, the flush returns and the host select counts.
+. Check that every wait and window finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-EXPORT-WRAPPER-PROD-END` |with the PROD_END image (raw 4'b1000) lc_state_o equals 0x78 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-EXPORT-SEP-OBS-PROD-END` |with the PROD_END image (raw 4'b1000) obs_sep_lc_state_o equals 0x78 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-EXPORT-SMC-INPUT-PROD-END` |with the PROD_END image (raw 4'b1000) smc_lc_state_in_o equals 0x78 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-FEATCTRL-PROD-END` |lcc_feat_ctrl_o equals 64'hFFFF_0000_0000_0000 and differs from the 64'h0 reset value
+|`CHK-LC-FABRIC-NOLAUNCH-PROD-END` |an SMC fabric SINGLE_OP read and write leave the AR, AW and B counters unchanged with lcc_dbg_disable_smc_jtag2axi_o at 1'b1, and in the same leaf a SEP OTP bridge read of LC_STATE completes with op 0 and returns 0x78
+|`CHK-LC-STAP-SEP-PARKED-PROD-END` |the SEP STAP host TMS holds 1'b0 on every sample and its TDO enable stays low while the PTAP TMS toggles, and a 3DCR capture reads Select as 0 after Select was written as 1
+|`CHK-LC-SIB-DFD-CLOSED-PROD-END` |the DFD SIB (DR bit 0) captures 0 after 1 was shifted into it, the DR is 3 bits long and no host select asserts
+|`CHK-LC-SIB-DFT-NONSECURE-CLOSED-PROD-END` |the DFT non-secure SIB (DR bit 1) captures 0 after 1 was shifted into it, the DR is 3 bits long and no host select asserts
+|`CHK-LC-SIB-DFT-SECURE-CLOSED-PROD-END` |the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR is 3 bits long and no host select asserts
+|`CHK-NONVAC` |ordered step fence from the image load to the last step, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles it used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-174-smu_lc_export_rma_sip_0_test]]
+===== 174 `smu_lc_export_rma_sip_0_test`
+
+*Source Module*: `smu_lc_export_rma_sip_0_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_export_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: boundary outputs `lc_state_o`, `smc_lc_state_in_o`, `lc_sigint_err_o`, `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o` and `lcc_dbg_disable_smc_jtag2axi_o` and the bench observation `obs_sep_lc_state_o`, all read X-strict on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port (`tb/tb_wrapper_top.sv`); `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` register), the TAP's `jtag_tdo` read X-strict; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_sip_0.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the eFuse shadow image holding the RMA_SIP state, the SMU exports the LC_STATE word `0xD2` at the wrapper boundary, at the SEP observation point and at the SMC's LC_STATE input, the feature-control word is all ones, and the SMC fabric JTAG2AXI bridge launches its transactions.
+
+*Test Coverage*:
+
+* The SEP shadow encodes the logical state as `{~raw[3:0], raw[3:0]}` in bits [7:0] (`hw/sys/sep/doc/otp_fuse_controller.adoc`, LC_STATE row; `hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl`, LC_STATE) and the raw encodings are the `hw/sys/sep/doc/lifecycle_controller.adoc` lifecycle state encodings table. RMA_SIP is raw `4'b0010` (one of the two codes of `RMA_SIP 4'b001X`), so the exported word is `0xD2`.
+* The leaf waits for `sep_fuse_sense_done_o` within 60000 `clk_smu_i` cycles (the flag is the bench's `+skip_fuse_sense` substitute, a recorded precondition and not graded), then on one `clk_smu_i` edge `lc_state_o` (`hw/sys/smu/doc/port_table.adoc`), `obs_sep_lc_state_o` and `smc_lc_state_in_o` each read `0xD2` and differ from the pre-sense INVALID word `0x0F`; `sep_fuse_sense_done_o` is logged on that edge.
+* `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FFFF_FFFF` (`hw/sys/sep/doc/lifecycle_controller.adoc`, per-LC-state feature control profile table, RMA_SIP with SEC_DIS 0: `~SIP_DIS` per group, all ones for a blank SIP_DIS vector; DBG_1 bits [23:0], DBG_2 bits [47:24], Function bits [63:48]) and differs from the all-zero FEAT_CTRL reset value (`hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`).
+* `dbg_disable_i.smc_jtag2axi` is active-high (`hw/sys/dtp/doc/jtag.adoc`, Debug Disable table) and the SMC fabric JTAG2AXI path is a Case 2 path, `SIP_DBG & CHIPLET_DBG` (`hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table), so `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b0` in this state with blank DIS vectors. An `AXI_SINGLE_OP` read then write of SMC CPU_CTRL SCRATCH word 0 (`SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR` in the generated `hw/sys/smc/regs/gen/c/smc_addr.h`) through the `SMC_*` instructions (`hw/sys/dtp/doc/jtag.adoc`, SMC fabric bridge) advances the AR, AW and B counters at the DTP-to-SMC debug AXI port by 1 each; each wait for the counter is bounded at 4000 `clk_smu_i` cycles, and `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b0` after both.
+* Measured and logged only: `lc_sigint_err_o` on the sampling edge and the cycle count of each wait.
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. The other lifecycle states, the DIS vectors and the SEP STAP and iJTAG paths in this state are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the shadow preload to be the RMA_SIP image and `+lc_sigint_inject` to be absent.
+. Wait for `sep_fuse_sense_done_o`, then sample `lc_state_o`, `obs_sep_lc_state_o` and `smc_lc_state_in_o` on one edge and compare each with `0xD2`.
+. Sample `lcc_feat_ctrl_o` and compare it with all ones.
+. Reset the TAP, issue the SMC fabric `AXI_SINGLE_OP` read and then write, wait for the AR counter and the B counter, compare the counter deltas with 1 each and the lane with `1'b0`.
+. Check that every wait finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-EXPORT-WRAPPER-RMA-SIP` |with the RMA_SIP image (raw 4'b0010) lc_state_o equals 0xD2 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-EXPORT-SEP-OBS-RMA-SIP` |with the RMA_SIP image (raw 4'b0010) obs_sep_lc_state_o equals 0xD2 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-EXPORT-SMC-INPUT-RMA-SIP` |with the RMA_SIP image (raw 4'b0010) smc_lc_state_in_o equals 0xD2 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-FEATCTRL-RMA-SIP` |lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF and differs from the 64'h0 reset value
+|`CHK-LC-FABRIC-LAUNCH-RMA-SIP` |an SMC fabric SINGLE_OP read and write advance the DTP-to-SMC debug AXI AR, AW and B counters by 1 each with lcc_dbg_disable_smc_jtag2axi_o at 1'b0
+|`CHK-NONVAC` |ordered step fence from the image load to the last step, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles it used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-175-smu_lc_export_rma_chiplet_0_test]]
+===== 175 `smu_lc_export_rma_chiplet_0_test`
+
+*Source Module*: `smu_lc_export_rma_chiplet_0_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_export_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: boundary outputs `lc_state_o`, `smc_lc_state_in_o`, `lc_sigint_err_o`, `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o` and `lcc_dbg_disable_smc_jtag2axi_o` and the bench observation `obs_sep_lc_state_o`, all read X-strict on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port (`tb/tb_wrapper_top.sv`); `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` register), the TAP's `jtag_tdo` read X-strict; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_chiplet.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the eFuse shadow image holding the RMA_CHIPLET state, the SMU exports the LC_STATE word `0x96` at the wrapper boundary, at the SEP observation point and at the SMC's LC_STATE input, the feature-control word is all ones, and the SMC fabric JTAG2AXI bridge launches its transactions.
+
+*Test Coverage*:
+
+* The SEP shadow encodes the logical state as `{~raw[3:0], raw[3:0]}` in bits [7:0] (`hw/sys/sep/doc/otp_fuse_controller.adoc`, LC_STATE row; `hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl`, LC_STATE) and the raw encodings are the `hw/sys/sep/doc/lifecycle_controller.adoc` lifecycle state encodings table. RMA_CHIPLET is raw `4'b0110` (one of the two codes of `RMA_CHIPLET 4'b011X`), so the exported word is `0x96`.
+* The leaf waits for `sep_fuse_sense_done_o` within 60000 `clk_smu_i` cycles (the flag is the bench's `+skip_fuse_sense` substitute, a recorded precondition and not graded), then on one `clk_smu_i` edge `lc_state_o` (`hw/sys/smu/doc/port_table.adoc`), `obs_sep_lc_state_o` and `smc_lc_state_in_o` each read `0x96` and differ from the pre-sense INVALID word `0x0F`; `sep_fuse_sense_done_o` is logged on that edge.
+* `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FFFF_FFFF` (`hw/sys/sep/doc/lifecycle_controller.adoc`, per-LC-state feature control profile table, RMA_CHIPLET: every term true whatever the DIS vectors hold; DBG_1 bits [23:0], DBG_2 bits [47:24], Function bits [63:48]) and differs from the all-zero FEAT_CTRL reset value (`hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`).
+* `dbg_disable_i.smc_jtag2axi` is active-high (`hw/sys/dtp/doc/jtag.adoc`, Debug Disable table) and the SMC fabric JTAG2AXI path is a Case 2 path, `SIP_DBG & CHIPLET_DBG` (`hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table), so `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b0` in this state with blank DIS vectors. An `AXI_SINGLE_OP` read then write of SMC CPU_CTRL SCRATCH word 0 (`SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR` in the generated `hw/sys/smc/regs/gen/c/smc_addr.h`) through the `SMC_*` instructions (`hw/sys/dtp/doc/jtag.adoc`, SMC fabric bridge) advances the AR, AW and B counters at the DTP-to-SMC debug AXI port by 1 each; each wait for the counter is bounded at 4000 `clk_smu_i` cycles, and `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b0` after both.
+* Measured and logged only: `lc_sigint_err_o` on the sampling edge and the cycle count of each wait.
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. The other lifecycle states, the DIS vectors and the SEP STAP and iJTAG paths in this state are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the shadow preload to be the RMA_CHIPLET image and `+lc_sigint_inject` to be absent.
+. Wait for `sep_fuse_sense_done_o`, then sample `lc_state_o`, `obs_sep_lc_state_o` and `smc_lc_state_in_o` on one edge and compare each with `0x96`.
+. Sample `lcc_feat_ctrl_o` and compare it with all ones.
+. Reset the TAP, issue the SMC fabric `AXI_SINGLE_OP` read and then write, wait for the AR counter and the B counter, compare the counter deltas with 1 each and the lane with `1'b0`.
+. Check that every wait finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-EXPORT-WRAPPER-RMA-CHIPLET` |with the RMA_CHIPLET image (raw 4'b0110) lc_state_o equals 0x96 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-EXPORT-SEP-OBS-RMA-CHIPLET` |with the RMA_CHIPLET image (raw 4'b0110) obs_sep_lc_state_o equals 0x96 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-EXPORT-SMC-INPUT-RMA-CHIPLET` |with the RMA_CHIPLET image (raw 4'b0110) smc_lc_state_in_o equals 0x96 on the sampling edge after sep_fuse_sense_done_o is high and differs from the pre-sense word 0x0F
+|`CHK-LC-FEATCTRL-RMA-CHIPLET` |lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF and differs from the 64'h0 reset value
+|`CHK-LC-FABRIC-LAUNCH-RMA-CHIPLET` |an SMC fabric SINGLE_OP read and write advance the DTP-to-SMC debug AXI AR, AW and B counters by 1 each with lcc_dbg_disable_smc_jtag2axi_o at 1'b0
+|`CHK-NONVAC` |ordered step fence from the image load to the last step, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles it used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-176-smu_lc_sec_dis_over_sigint_prod_test]]
+===== 176 `smu_lc_sec_dis_over_sigint_prod_test`
+
+*Source Module*: `smu_lc_sec_dis_over_sigint_prod_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_sec_dis_over_sigint_prod_test_seq` in `cocotb_wrapper/seq_lib/`, which extends `smu_lc_export_seq`)
+
+*BFM / Model*: boundary outputs `lc_state_o`, `lc_sigint_err_o`, `sep_fuse_sense_done_o` and `lcc_feat_ctrl_o`, all read X-strict on `clk_smu_i`; the input `lc_sigint_inject_i`, driven low until the injection step (`tb/tb_wrapper_top.sv`, LC_STATE pair fault inject, armed by `+lc_sigint_inject`); the security-disable net read at the SMU (`sep_security_disable`) and at the SMC (`u_smc.sep_security_disable_i`) on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port; `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP`, `SEP_OTP_AXI_SINGLE_OP` and `SMC_OTP_AXI_SINGLE_OP` registers, and `OcahJtagMasterSequence` scans over the secondary scan string and the iJTAG network), the TAP's `jtag_tdo` read X-strict; `jtag_tms` and `jtag_tck` sampled on `clk_ref_i`; the STAP host TMS taps `tb_stap_sep_tms`, `tb_stap_io_tms`, `tb_stap_smc_tms` and `tb_stap_extra0_tms` and the TDO-enable taps `jtag_stap_sep_host_tdo_oen_o` (read through `u_dut.u_smu.u_dtp`), `tb_stap_io_tdo_oen`, `tb_stap_smc_tdo_oen` and `tb_stap_extra0_tdo_oen`, sampled on `clk_ref_i`; the iJTAG host selects `tb_dfd_select`, `tb_dft_select` and `tb_dft_secure_select`; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the leaf fails if another image is named); `+lc_sigint_inject` present (the leaf fails if it is absent); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the undemoted PROD image, the closed posture holds until a security-disable token written over the SEP OTP JTAG2AXIL bridge matches; the match then raises the security-disable net at the SMU and the SMC, forces every feature-control bit on and opens the SEP, I/O, SMC and extra STAPs, the three iJTAG SIBs and the SMC fabric bridge; while `lc_sigint_inject_i` breaks the exported LC_STATE pair, `lc_sigint_err_o` is raised, the opened paths and the all-ones word hold, and the SMC OTP JTAG2AXIL read that PROD admits is refused.
+
+*Test Coverage*:
+
+* Closed posture first: `lcc_feat_ctrl_o` equals `64'hFFFF_0000_0000_0000` (`hw/sys/sep/doc/lifecycle_controller.adoc`, per-LC-state feature control profile table, PROD undemoted); the security-disable net reads `1'b0` at the SMU and at the SMC (`hw/sys/sep/doc/security_disable.adoc`, token activation and the status the SMC receives); the SEP STAP host TMS holds `1'b0` with the TDO enable low while the PTAP TMS toggles (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`, disabled-STAP behaviour; DTP path feature gates table) and the PTAP shows at least as many TMS edges as the IR is wide; an `AXI_SINGLE_OP` read then write of SMC CPU_CTRL SCRATCH word 0 (`SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR` in the generated `hw/sys/smc/regs/gen/c/smc_addr.h`) leave the AR, AW and B counters unchanged over a 4000-cycle window after each issue (`hw/sys/dtp/doc/jtag.adoc`, SMC fabric bridge instructions).
+* Positive control: a SEP OTP bridge read of SEC_DISABLE_TOKEN_MATCH (`SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR` in the generated `hw/sys/sep/regs/gen/c/sep_addr.h`) completes with op 0 before the token, and its status field reads a value different from the match code.
+* Token: in PROD only the eFuse MMR token block is reachable over JTAG (`hw/sys/sep/doc/otp_fuse_controller.adoc`; `hw/sys/sep/doc/lifecycle_controller.adoc`, debug path table). Eight all-zero words are written to `SEC_DISABLE_TOKEN_I[0..7]`, TOKEN_EOP is written with its `secure_disable_token_go` bit (`hw/ip/efuse/regs/efuse_mmr.rdl`; generated `hw/ip/efuse/regs/gen/c/efuse_mmr.h`; addresses from `sep_addr.h`), then `SEC_DISABLE_TOKEN_I[0]` and SEC_DISABLE_TOKEN_MATCH are read; each of these accesses completes with op 0 and the match status, masked by TOKEN_MATCH_STATUS, equals `6'b010101` (`hw/ip/efuse/regs/efuse_mmr.rdl`, TOKEN_MATCH). The match read repeats up to 8 times until the status leaves its pre-token value; the data of the `SEC_DISABLE_TOKEN_I[0]` read is measured and logged only.
+* After the match the net reads `1'b1` at the SMU and at the SMC and `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FFFF_FFFF` (`hw/sys/sep/doc/security_disable.adoc`: a match forces every feature-control bit on; `hw/sys/sep/doc/lifecycle_controller.adoc`).
+* STAPs: each STAP is selected in turn over the PTAP 3DCR from Test-Logic-Reset reached on TMS alone (no TRST), its SIB is opened and its 3DCR written with Select 1; an IDCODE IR and DR scan then runs inside a window of up to 4000 `clk_ref_i` cycles. For the SEP, I/O, SMC and extra STAPs the host TMS edge count equals the PTAP TMS edge count, both levels occur and the TDO enable asserts (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`; `hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table); the SEP host edge count is larger than the zero edges of the closed posture.
+* SIBs: under `SELECT_IJTAG` a 12-bit scan shifts 1 into DR bits 0, 1 and 2 behind the flush pattern `0b101`, and a second 12-bit scan through the open chain (three SIB bits and three bench cells) shifts the flush pattern `0b101100`; each SIB captures 1, both scans return the words the SIB and bench-cell model gives (the payload returns six bits late, a closed chain would return it three bits late) and each host select asserts on at least 12 TCKs (`hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc`, iJTAG Network; DTP path feature gates table).
+* Fabric: the same `AXI_SINGLE_OP` read and write then advance AR, AW and B by 1 each, each wait bounded at 4000 `clk_smu_i` cycles (`hw/sys/dtp/doc/jtag.adoc`). An SMC OTP JTAG2AXIL read of JTAG_PUBLIC_IDENTITY word 0 (`SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR` in the generated `hw/sys/smc/regs/gen/c/smc_addr.h`), issued from Test-Logic-Reset reached on TMS alone so that the PTAP STAP-select bit is clear and the PTAP alone is scanned (`hw/sys/dtp/doc/jtag.adoc`, DTP JTAG scan chain), returns SUCCESS with the match held (`hw/sys/sep/doc/lifecycle_controller.adoc`, debug path table: in PROD the SMC OTP path admits the public-identity reads).
+* Injection: `lc_sigint_inject_i` is raised and `lc_state_o` reaches the pair with the n rail of bit 0 inverted (`0xF1`); `lc_sigint_err_o` reads 1 (`hw/sys/smu/doc/port_table.adoc`; the SMC eFuse wrapper decodes the forwarded pair); `lcc_feat_ctrl_o` still equals all ones, the SEP STAP host TMS still follows the PTAP TMS and a further read and write launch AR, AW and B (`hw/sys/sep/doc/security_disable.adoc`: the match forces every feature-control bit on; the SEP lifecycle controller decodes its own shadow registers, which the inject does not reach); the JTAG_PUBLIC_IDENTITY read is refused (`lifecycle_controller.adoc`, debug path table: on an integrity error the SMC OTP path admits nothing; the match does not open it). After the release `lc_state_o` returns to `0xE1`, `lc_sigint_err_o` reads 0, `lcc_feat_ctrl_o` still equals all ones and the JTAG_PUBLIC_IDENTITY read returns SUCCESS again. Each OTP wait is bounded at 128 polls and a response still BUSY at the bound fails the leaf.
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. The inject forces `u_smu.sep_lc_state`, which feeds the SMC eFuse wrapper and `lc_state_o` only, so the SEP-side order of the integrity fail-closed and the SEC_DIS override is not observable on this bench and is out of scope, with the persistence of the match across reset, the mismatch token and the other lifecycle states.
+
+*Test Procedure*:
+
+[arabic]
+. Require the PROD shadow preload and `+lc_sigint_inject`; wait for `sep_fuse_sense_done_o`.
+. Sample `lcc_feat_ctrl_o` and the security-disable net, run the SEP STAP select scans while sampling the host TMS, issue the fabric read and write over a 4000-cycle window each, and read SEC_DISABLE_TOKEN_MATCH over the SEP OTP bridge.
+. Write the eight zero token words and TOKEN_EOP with the go bit, read `SEC_DISABLE_TOKEN_I[0]`, read the match status until it leaves its pre-token value, and compare the op codes and the status.
+. Sample the security-disable net, then `lcc_feat_ctrl_o`.
+. Select the SEP STAP, then the I/O, SMC and extra STAPs, one at a time, and compare each host TMS edge count with the PTAP TMS edge count.
+. Load `SELECT_IJTAG`, open the three SIBs, scan through the open chain and compare the captures, the returned words and the host select counts.
+. Issue the fabric read and write and compare the counter deltas with 1 each.
+. From Test-Logic-Reset, read JTAG_PUBLIC_IDENTITY word 0 over the SMC OTP bridge.
+. Raise `lc_sigint_inject_i`, wait for the broken pair, sample `lc_sigint_err_o` and `lcc_feat_ctrl_o`, repeat the SEP STAP scan and the fabric read and write, and repeat the JTAG_PUBLIC_IDENTITY read from Test-Logic-Reset.
+. Lower `lc_sigint_inject_i`, wait for the legal pair, sample `lc_sigint_err_o` and `lcc_feat_ctrl_o`, and repeat the JTAG_PUBLIC_IDENTITY read from Test-Logic-Reset.
+. Check that every wait and window finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-SECDIS-TOKEN-MATCH-JTAG-PROD` |SEC_DISABLE_TOKEN_MATCH reads 6'b010101 after the eight all-zero token words and the TOKEN_EOP go bit, and read a value different from 6'b010101 before the go bit with op 0 over the SEP OTP bridge
+|`CHK-LC-OTP-SEP-POLICY-PROD-MMR` |in PROD the eight SEC_DISABLE_TOKEN_I writes, the TOKEN_EOP write, the SEC_DISABLE_TOKEN_I[0] read and the SEC_DISABLE_TOKEN_MATCH read each complete with op 0, and the match read returns 6'b010101
+|`CHK-LC-SECDIS-NET-PROD` |the security-disable net is 1'b0 at the SMU and at the SMC before the token and 1'b1 at both after the match
+|`CHK-LC-SECDIS-FEATCTRL-PROD` |lcc_feat_ctrl_o equals 64'hFFFF_0000_0000_0000 before the match and 64'hFFFF_FFFF_FFFF_FFFF after it
+|`CHK-LC-SECDIS-SEP-STAP-OPEN-PROD` |the SEP STAP host TMS is parked at 1'b0 with TDO enable low in the closed posture and follows the PTAP TMS (equal edge count, more than while parked) with TDO enable asserted after the match
+|`CHK-LC-SECDIS-OTHER-STAPS-OPEN-PROD` |the I/O, SMC and extra STAP host TMS each follow the PTAP TMS (equal edge count) with TDO enable asserted after the match
+|`CHK-LC-SECDIS-SIBS-OPEN-PROD` |the DFD, DFT non-secure and DFT secure SIBs each capture 1 after 1 was shifted in, their bench cells join the loop and each host select asserts
+|`CHK-LC-SECDIS-FABRIC-LAUNCH-PROD` |AR, AW and B at the DTP-to-SMC debug AXI port advance by 1 each after the match, with all three unchanged before it and a SEP OTP bridge read completing with op 0 in the same leaf
+|`CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD` |with lc_sigint_inject_i high and the match held, lc_sigint_err_o is 1, lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF, the SEP STAP host TMS follows the PTAP TMS and an SMC fabric SINGLE_OP launches AR, AW and B; after the release lc_sigint_err_o is 0 and lcc_feat_ctrl_o stays all ones
+|`CHK-LC-SMC-OTP-CLOSED-UNDER-SECDIS-SIGINT-PROD` |with the match held, an SMC OTP bridge read of JTAG_PUBLIC_IDENTITY word 0 returns SUCCESS before the inject, is refused while lc_sigint_inject_i is high with lc_sigint_err_o at 1 and the security-disable net at 1'b1 at the SMU and the SMC, and returns SUCCESS again after the release
+|`CHK-NONVAC` |ordered step fence from the image load to the injection release, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles it used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-177-smu_lc_demote_test_dev_test]]
+===== 177 `smu_lc_demote_test_dev_test`
+
+*Source Module*: `smu_lc_demote_test_dev_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_demote_test_dev_test_seq` in `cocotb_wrapper/seq_lib/`, which extends `smu_dtp_sep_dm_sba_test_seq` and drives `smu_lc_export_seq` for the sense-done wait)
+
+*BFM / Model*: boundary outputs `lcc_feat_ctrl_o`, `lcc_demote_state_1_o` and `lcc_demote_state_2_o`, the bench observation `obs_sep_rst_n_o` and `sep_fuse_sense_done_o`, all read X-strict on `clk_smu_i` (the reset hold on `clk_ref_i`); the inputs `rst_cold_ni` and `jtag_trst`, driven only for the chiplet cold reset; `ocah_jtag_vip` (`OcahJtagMasterSequence` on the primary TAP, with the SEP STAP selected through the PTAP 3DCR and the SEP debug module's `dmi` register, then the debug module's system bus) with the TAP's `jtag_tdo` read through the VIP; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev_dis_fuse_dbg.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the TEST_DEV image with SIP_DIS `64'h0000_0000_0200_000C` (low word `0200000C` at offset 0x18, high word 0) and SYS_DIS 0; the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the TEST_DEV image restricting feature-control bits 2, 3 and 25 through SIP_DIS, a `DEMOTE_1.demote` write over the SEP system bus forces bits 2 and 3 open, a `DEMOTE_1.lock` write leaves them open, a `DEMOTE_2.demote` write forces bit 25 open, and a chiplet cold reset clears both demotions and restores the restricted word.
+
+*Test Coverage*:
+
+* Baseline: `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FDFF_FFF3`, the TEST_DEV expression `~(SIP_DIS | SYS_DIS)` with bits 2, 3 and 25 set in SIP_DIS (`hw/sys/sep/doc/lifecycle_controller.adoc`, per-LC-state feature control profile table, TEST_DEV DEMOTE 0 / 0; disable vector bit table). The pre-write demote codes are measured and logged only: their encoding is not public.
+* Reach: the SEP STAP is selected through the PTAP 3DCR and the debug module is brought out of reset (`dmstatus.version` 2); `DEMOTE_1` and `DEMOTE_2` are written over the debug module's system bus at the addresses of `SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR` and `SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR` in the generated `hw/sys/sep/regs/gen/c/sep_addr.h`, with the demote and lock bits of `hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl` (write-one-to-set; `lifecycle_controller.adoc`, Programming and Locking). After the `DEMOTE_1` write `lcc_demote_state_1_o` differs from its baseline code and `lcc_demote_state_2_o` equals its baseline; after the `DEMOTE_2` write `lcc_demote_state_2_o` differs from its baseline and `lcc_demote_state_1_o` equals the code it held after the lock (the demotions are independent). The compares are transitions; the absolute codes are measured and logged only.
+* Forces open: after `DEMOTE_1.demote` the word equals `64'hFFFF_FFFF_FDFF_FFFF` (DBG_1 [23:0] forced open over SIP_DIS, DBG_2 keeps its restriction), unchanged after `DEMOTE_1.lock`, which is shown to have landed by a system-bus read of `DEMOTE_1` returning `64'h3` (demote and lock both set; both fields are readable write-one-to-set, `sep_lifecycle_ctrl.rdl`; a dropped lock write reads `64'h1`) (`lifecycle_controller.adoc`, TEST_DEV DEMOTE 1 / 0 row; the lock freezes the decision), and `64'hFFFF_FFFF_FFFF_FFFF` after `DEMOTE_2.demote` (DBG_2 [47:24] forced open, DEMOTE 1 / 1 row). Forcing SIP_DBG, CHIPLET_DBG or SEP_DBG open is not observable apart from the restricted fuse bits and is out of scope.
+* Cold reset: `rst_cold_ni` is asserted until `sep_fuse_sense_done_o` and `obs_sep_rst_n_o` read 0, held for 64 `clk_ref_i` cycles and released with `jtag_trst`; after sense done both lanes equal their baseline codes (each differed from it before the reset) and `lcc_feat_ctrl_o` equals the baseline word again (`lifecycle_controller.adoc`, Reset Behavior: cold reset clears `demote` and `lock`). The post-lock lane 1 code is measured and logged only.
+* Every bounded wait is recorded with its bound, the cycles, polls or retries it used and its last observed state, and none may expire. Other lifecycle states, PROD demotion, SYS_DIS vectors and the SEC_DIS override are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the TEST_DEV image with SIP_DIS bits 2, 3 and 25 and `+lc_sigint_inject` absent; wait for `sep_fuse_sense_done_o`.
+. Sample `lcc_feat_ctrl_o` and both demote lanes.
+. Select the SEP STAP, write `dmcontrol.dmactive` and read `dmstatus`.
+. Write `DEMOTE_1.demote` over the system bus, wait for lane 1 to leave its baseline code and compare both lanes with their baselines.
+. Sample `lcc_feat_ctrl_o` and compare it with the baseline and the DBG_1 forced-open word.
+. Write `DEMOTE_1.lock`, read `DEMOTE_1` over the system bus and compare it with `64'h3`, sample `lcc_feat_ctrl_o` and record the post-lock lane 1 code.
+. Write `DEMOTE_2.demote`, wait for lane 2 to leave its baseline code and compare both lanes.
+. Sample `lcc_feat_ctrl_o` and compare it with all ones.
+. Assert and release the chiplet cold reset, wait for sense done, and compare both lanes and `lcc_feat_ctrl_o` with their baselines.
+. Check that every wait finished inside its bound, each recorded with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-DEMOTE-REACH-1-TEST-DEV` |after the DEMOTE_1.demote system-bus write over the SEP STAP and debug module (dmstatus.version 2) lcc_demote_state_1_o differs from the code sampled at the baseline and lcc_demote_state_2_o equals its baseline code; the absolute codes are measured and logged only
+|`CHK-LC-DEMOTE-FORCES-DBG1-TEST-DEV` |lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FDFF_FFF3 at the baseline and 64'hFFFF_FFFF_FDFF_FFFF after DEMOTE_1.demote: bits 2 and 3 read 1 over the SIP_DIS bits and bit 25 stays 0
+|`CHK-LC-DEMOTE-LOCK-PERSIST-TEST-DEV` |after DEMOTE_1.lock a system-bus read of DEMOTE_1 returns 64'h3 (demote and lock both set) and lcc_feat_ctrl_o still equals 64'hFFFF_FFFF_FDFF_FFFF; the post-lock demote code is measured and logged only
+|`CHK-LC-DEMOTE-REACH-2-TEST-DEV` |after the DEMOTE_2.demote system-bus write lcc_demote_state_2_o differs from its baseline code and lcc_demote_state_1_o equals the code it held after the lock; the absolute codes are measured and logged only
+|`CHK-LC-DEMOTE-FORCES-DBG2-TEST-DEV` |lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF after DEMOTE_2.demote: bit 25, still 0 after DEMOTE_1 alone, reads 1
+|`CHK-LC-DEMOTE-COLDCLEAR-CODES-TEST-DEV` |after the chiplet cold reset and sense done lcc_demote_state_1_o and lcc_demote_state_2_o equal their baseline codes, each having differed from it before the reset
+|`CHK-LC-DEMOTE-COLDCLEAR-FEATCTRL-TEST-DEV` |after the chiplet cold reset and sense done lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FDFF_FFF3 again, having been 64'hFFFF_FFFF_FFFF_FFFF before the reset
+|`CHK-NONVAC` |ordered step fence from the image load to the cold-reset samples, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles, polls or retries it used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-178-smu_lc_dis_sys_chiplet_dbg_test_dev_test]]
+===== 178 `smu_lc_dis_sys_chiplet_dbg_test_dev_test`
+
+*Source Module*: `smu_lc_dis_sys_chiplet_dbg_test_dev_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_dis_sys_chiplet_dbg_test_dev_test_seq` in `cocotb_wrapper/seq_lib/`, which extends `smu_lc_sec_dis_over_sigint_prod_test_seq` and so `smu_lc_export_seq`)
+
+*BFM / Model*: boundary outputs `lc_state_o`, `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o` and `lcc_dbg_disable_smc_jtag2axi_o`, all read X-strict on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port; `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` register, and `OcahJtagMasterSequence` scans over the secondary scan string and the iJTAG network), the TAP's `jtag_tdo` read X-strict; `jtag_tms` and `jtag_tck` sampled on `clk_ref_i`; the STAP host TMS taps `tb_stap_io_tms`, `tb_stap_smc_tms`, `tb_stap_extra0_tms` and `tb_stap_sep_tms` and the TDO-enable taps `tb_stap_io_tdo_oen`, `tb_stap_smc_tdo_oen`, `tb_stap_extra0_tdo_oen` and `jtag_stap_sep_host_tdo_oen_o` (read through `u_dut.u_smu.u_dtp`), sampled on `clk_ref_i`; the iJTAG host selects `tb_dfd_select`, `tb_dft_select` and `tb_dft_secure_select`; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev_sys_dis_chiplet_dbg.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the TEST_DEV image with SYS_DIS `64'h0000_0000_0000_0002` (low word `00000002` at offset 0x20, high word 0) and SIP_DIS 0; the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the TEST_DEV image setting only the CHIPLET_DBG bit of SYS_DIS, `lcc_feat_ctrl_o` clears exactly bit 1, the Case 1 paths (the I/O STAP and the DFD SIB) stay open as the control, and the Case 2 and Case 3 paths (the SMC fabric bridge, the SMC debug, extra and SEP debug STAPs, and the DFT non-secure and DFT secure SIBs) stay shut.
+
+*Test Coverage*:
+
+* Feature control: `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FFFF_FFFD` after the sense-done wait (the flag is the bench's `+skip_fuse_sense` substitute, a recorded precondition and not graded) and differs from the `64'h0` reset value of FEAT_CTRL (`hw/sys/sep/doc/lifecycle_controller.adoc`: disable vector bit table, bit 1 CHIPLET_DBG; per-LC-state feature control profile table, TEST_DEV with the vectors ORed then inverted; `hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl`, SYS_DIS; `hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`, FEAT_CTRL).
+* Case 1 control (positive control of every closed leg in this leaf): the I/O STAP is selected over the PTAP 3DCR from Test-Logic-Reset reached on TMS alone and an IDCODE IR and DR scan runs inside a window of up to 4000 `clk_ref_i` cycles; its host TMS edge count equals the PTAP TMS edge count, both levels occur, the PTAP edges reach at least the IR width and its TDO enable asserts (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`; `lifecycle_controller.adoc`, DTP access cases and DTP path feature gates table, the I/O STAP host path is Case 1). Under `SELECT_IJTAG` an 8-bit scan shifts 1 into DR bit 0 behind the flush pattern `0b10101`, and a second 8-bit scan through the open chain (three SIB bits and the DFD bench cell) shifts the flush pattern `0b1011` and closes the SIB again; the DFD SIB captures 1, both scans return the words the SIB and bench-cell model gives (a chain without the bench cell would return the payload one bit earlier), the DFD host select asserts on at least 8 TCKs and the other two host selects stay low (`hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc`, iJTAG Network; the DFD iJTAG path is Case 1).
+* Fabric: an `AXI_SINGLE_OP` read then write of the fabric probe address leave the AR, AW and B counters unchanged over a 4000-cycle window after each issue and `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b1` before and after (`lifecycle_controller.adoc`, the SMC fabric JTAG2AXI path is Case 2; `hw/sys/dtp/doc/jtag.adoc`, SMC fabric bridge instructions and the disabled bridge); the Case 1 control passes in the same leaf.
+* STAPs: for the SMC debug, extra and SEP debug STAPs in turn, the PTAP selects the secondary chain, the STAP SIB is opened, its 3DCR is written with Select 1 and TMS-Hold 0 and captured; the PTAP is then deselected. Over the six scans the STAP host TMS holds `1'b0` on every sample while `jtag_tms` shows at least as many edges as the IR is wide, the host TDO enable stays low and the captured Select reads 0 (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`, disabled STAP and 3DCR register; `lifecycle_controller.adoc`, DTP path feature gates table, Case 2 and Case 3). The captured TMS-Hold and config-hold bits are measured and logged only.
+* SIBs: under `SELECT_IJTAG` a 6-bit scan shifts 1 into DR bit 1 (DFT non-secure) and later DR bit 2 (DFT secure) behind the flush pattern `0b101`, and a second 6-bit scan shifts the flush pattern `0b110`; the SIB captures 0, both scans return the words of a closed 3-bit DR, no host select asserts and TCKs are seen on both scans (`jtag_intf_unit/doc/architecture.adoc`, iJTAG Network; `lifecycle_controller.adoc`, DTP path feature gates table).
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. SIP_DIS bits, the other SYS_DIS bits, the other lifecycle states and the SEC_DIS override are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the TEST_DEV image with SYS_DIS bit 1 and `+lc_sigint_inject` absent; wait for `sep_fuse_sense_done_o`.
+. Sample `lcc_feat_ctrl_o` and compare it with `64'hFFFF_FFFF_FFFF_FFFD`.
+. Select the I/O STAP and compare its host TMS edges with the PTAP TMS edges; open the DFD SIB under `SELECT_IJTAG`, capture it and close it.
+. Issue the fabric read and write and compare the counter deltas with 0 and the lane with `1'b1`.
+. Run the SMC debug STAP select scans while sampling its host TMS, TDO enable and the PTAP TMS, and compare the captured Select with 0.
+. Run the same scans for the extra STAP.
+. Under `SELECT_IJTAG` shift 1 into the DFT non-secure SIB, capture, and compare the capture, the returned words and the host selects.
+. Run the same scans for the SEP debug STAP.
+. Under `SELECT_IJTAG` shift 1 into the DFT secure SIB, capture, and compare as for the non-secure SIB.
+. Check that every wait and window finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-FEATCTRL-SYS-DIS-CHIPLET-DBG-TEST-DEV` |lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFD after the sense-done wait (SYS_DIS bit 1 alone clears feature-control bit 1 in TEST_DEV) and differs from the 64'h0 reset value
+|`CHK-LC-CASE1-CONTROL-SYS-DIS-CHIPLET-DBG` |the I/O STAP host TMS edge count equals the PTAP TMS edge count with both levels seen and its TDO-enable asserted, and the DFD SIB captures 1 with its bench cell in the loop, its host select asserted and the other two selects low (Case 1 open: the JTAG stimulus is live)
+|`CHK-LC-FABRIC-NOLAUNCH-SYS-DIS-CHIPLET-DBG` |AR, AW and B at the DTP-to-SMC debug AXI port do not move across an SMC fabric SINGLE_OP read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b1 before and after, with the Case 1 control passing in the same leaf
+|`CHK-LC-STAP-SMC-PARKED-SYS-DIS-CHIPLET-DBG` |with the SMC debug STAP selected over the PTAP its host TMS holds 1'b0 on every sample while jtag_tms shows at least the minimum edge count, its host TDO-enable stays low and a 3DCR capture reads Select as 0 after 1 was written
+|`CHK-LC-STAP-EXTRA-PARKED-SYS-DIS-CHIPLET-DBG` |with the extra STAP selected over the PTAP its host TMS holds 1'b0 on every sample while jtag_tms shows at least the minimum edge count, its host TDO-enable stays low and a 3DCR capture reads Select as 0 after 1 was written
+|`CHK-LC-SIB-NONSECURE-CLOSED-SYS-DIS-CHIPLET-DBG` |the DFT non-secure SIB (DR bit 1) captures 0 after 1 was shifted into it, the DR stays 3 bits long (the flush patterns return), no host select asserts and TCKs were seen
+|`CHK-LC-STAP-SEP-PARKED-SYS-DIS-CHIPLET-DBG` |with the SEP debug STAP selected over the PTAP its host TMS holds 1'b0 on every sample while jtag_tms shows at least the minimum edge count, its host TDO-enable stays low and a 3DCR capture reads Select as 0 after 1 was written
+|`CHK-LC-SIB-SECURE-CLOSED-SYS-DIS-CHIPLET-DBG` |the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR stays 3 bits long (the flush patterns return), no host select asserts and TCKs were seen
+|`CHK-NONVAC` |ordered step fence from the image load to the DFT secure SIB leg, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+[[sec-179-smu_lc_dis_sip_sep_dbg_test_dev_test]]
+===== 179 `smu_lc_dis_sip_sep_dbg_test_dev_test`
+
+*Source Module*: `smu_lc_dis_sip_sep_dbg_test_dev_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_dis_sip_sep_dbg_test_dev_test_seq` in `cocotb_wrapper/seq_lib/`, which extends `smu_lc_dis_sys_chiplet_dbg_test_dev_test_seq` and so `smu_lc_sec_dis_over_sigint_prod_test_seq` and `smu_lc_export_seq`)
+
+*BFM / Model*: boundary outputs `lc_state_o`, `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o` and `lcc_dbg_disable_smc_jtag2axi_o`, all read X-strict on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port; `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` register, and `OcahJtagMasterSequence` scans over the secondary scan string and the iJTAG network), the TAP's `jtag_tdo` read X-strict; `jtag_tms` and `jtag_tck` sampled on `clk_ref_i`; the STAP host TMS taps `tb_stap_io_tms`, `tb_stap_smc_tms`, `tb_stap_extra0_tms` and `tb_stap_sep_tms` and the TDO-enable taps `tb_stap_io_tdo_oen`, `tb_stap_smc_tdo_oen`, `tb_stap_extra0_tdo_oen` and `jtag_stap_sep_host_tdo_oen_o` (read through `u_dut.u_smu.u_dtp`), sampled on `clk_ref_i`; the iJTAG host selects `tb_dfd_select`, `tb_dft_select` and `tb_dft_secure_select`; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev_sip_dis_sep_dbg.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the TEST_DEV image with SIP_DIS `64'h0000_0000_0000_0001` (low word `00000001` at offset 0x18, high word 0) and SYS_DIS 0; the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the TEST_DEV image setting only the SEP_DBG bit of SIP_DIS, `lcc_feat_ctrl_o` clears exactly bit 0, the Case 1 and Case 2 paths (the SMC fabric bridge, the SMC debug, extra and I/O STAPs, and the DFT non-secure and DFD SIBs) stay open, and the Case 3 paths (the SEP debug STAP and the DFT secure SIB) stay shut.
+
+*Test Coverage*:
+
+* Feature control: `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FFFF_FFFE` after the sense-done wait (the flag is the bench's `+skip_fuse_sense` substitute, a recorded precondition and not graded) and differs from the `64'h0` reset value of FEAT_CTRL (`hw/sys/sep/doc/lifecycle_controller.adoc`: disable vector bit table, bit 0 SEP_DBG; per-LC-state feature control profile table, TEST_DEV with the vectors ORed then inverted; `hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl`, SIP_DIS; `hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`, FEAT_CTRL).
+* Fabric: an `AXI_SINGLE_OP` read then write of the fabric probe address advance AR, AW and B by 1 each, each launch awaited for up to 4000 `clk_smu_i` cycles, and `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b0` before and after (`lifecycle_controller.adoc`, DTP access cases and DTP path feature gates table, the SMC fabric JTAG2AXI path is Case 2; `hw/sys/dtp/doc/jtag.adoc`, SMC fabric bridge instructions).
+* Open STAPs: the SMC debug STAP and then the extra STAP are selected over the PTAP 3DCR from Test-Logic-Reset reached on TMS alone and an IDCODE IR and DR scan runs inside a window of up to 4000 `clk_ref_i` cycles; the host TMS edge count equals the PTAP TMS edge count and is nonzero, both levels occur, the PTAP edges reach at least the IR width and the TDO enable asserts (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`; `lifecycle_controller.adoc`, DTP path feature gates table). A STAP whose host TMS stayed parked would show one level and no edges, so the compare fails on a closed STAP.
+* DFT non-secure SIB: under `SELECT_IJTAG` an 8-bit scan shifts 1 into DR bit 1 behind the flush pattern `0b10101`, and a second 8-bit scan through the open chain (three SIB bits and the DFT bench cell) shifts the flush pattern `0b1011` and closes the SIB again; the SIB captures 1, both scans return the words the SIB and bench-cell model gives (a chain without the bench cell would return the payload one bit earlier), the DFT host select asserts on at least 8 TCKs and the other two host selects stay low (`hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc`, iJTAG Network).
+* Case 1 control (positive control of the closed legs in this leaf): the I/O STAP follows the PTAP TMS as for the open STAPs, and the same two-scan procedure opens the DFD SIB with its bench cell and closes it again (`lifecycle_controller.adoc`, the I/O STAP host path and the DFD iJTAG path are Case 1).
+* SEP debug STAP: the PTAP selects the secondary chain, the STAP SIB is opened, its 3DCR is written with Select 1 and TMS-Hold 0 and captured; the PTAP is then deselected. Over the six scans the STAP host TMS holds `1'b0` on every sample while `jtag_tms` shows at least as many edges as the IR is wide, the host TDO enable stays low and the captured Select reads 0 (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`, disabled STAP and 3DCR register; `lifecycle_controller.adoc`, DTP path feature gates table, Case 3). The captured TMS-Hold and config-hold bits are measured and logged only. The open STAPs above are the positive control.
+* DFT secure SIB: under `SELECT_IJTAG` a 6-bit scan shifts 1 into DR bit 2 behind the flush pattern `0b101`, and a second 6-bit scan shifts the flush pattern `0b110`; the SIB captures 0, both scans return the words of a closed 3-bit DR, no host select asserts and TCKs are seen on both scans (`jtag_intf_unit/doc/architecture.adoc`, iJTAG Network; `lifecycle_controller.adoc`, DTP path feature gates table). The open DFT non-secure SIB is the positive control.
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. The other SIP_DIS bits, SYS_DIS bits, the other lifecycle states and the SEC_DIS override are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the TEST_DEV image with SIP_DIS bit 0 and `+lc_sigint_inject` absent; wait for `sep_fuse_sense_done_o`.
+. Sample `lcc_feat_ctrl_o` and compare it with `64'hFFFF_FFFF_FFFF_FFFE`.
+. Issue the fabric read and write and compare the counter deltas with 1 each and the lane with `1'b0`.
+. Select the SMC debug STAP and compare its host TMS edges with the PTAP TMS edges.
+. Select the extra STAP and compare the same.
+. Under `SELECT_IJTAG` shift 1 into the DFT non-secure SIB, capture, and compare the capture, the returned words and the host selects.
+. Select the I/O STAP and compare its host TMS edges with the PTAP TMS edges; open the DFD SIB under `SELECT_IJTAG`, capture it and close it.
+. Run the SEP debug STAP select scans while sampling its host TMS, TDO enable and the PTAP TMS, and compare the captured Select with 0.
+. Under `SELECT_IJTAG` shift 1 into the DFT secure SIB, capture, and compare the capture, the returned words and the host selects.
+. Check that every wait and window finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-TEST-DEV` |lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFE after the sense-done wait (SIP_DIS bit 0 alone clears feature-control bit 0 in TEST_DEV) and differs from the 64'h0 reset value
+|`CHK-LC-FABRIC-LAUNCH-SIP-DIS-SEP-DBG-TEST-DEV` |AR, AW and B at the DTP-to-SMC debug AXI port each advance by 1 across an SMC fabric SINGLE_OP read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b0 before and after (Case 2 open, SEP_DBG disabled)
+|`CHK-LC-STAP-SMC-OPEN-SIP-DIS-SEP-DBG` |with the SMC debug STAP selected over the PTAP its host TMS edge count equals the PTAP TMS edge count with both levels seen, the PTAP edges reach at least the IR width and its TDO-enable asserts
+|`CHK-LC-STAP-EXTRA-OPEN-SIP-DIS-SEP-DBG` |with the extra STAP selected over the PTAP its host TMS edge count equals the PTAP TMS edge count with both levels seen, the PTAP edges reach at least the IR width and its TDO-enable asserts
+|`CHK-LC-SIB-NONSECURE-OPEN-SIP-DIS-SEP-DBG` |the DFT non-secure SIB captures 1 after 1 was shifted into DR bit 1 and its bench cell joins the loop (both scans return the words of the SIB and bench-cell model), its host select asserts and the other two selects stay low
+|`CHK-LC-CASE1-CONTROL-SIP-DIS-SEP-DBG` |the I/O STAP host TMS edge count equals the PTAP TMS edge count with both levels seen and its TDO-enable asserted, and the DFD SIB captures 1 with its bench cell in the loop, its host select asserted and the other two selects low (Case 1 open: the JTAG stimulus is live)
+|`CHK-LC-STAP-SEP-PARKED-SIP-DIS-SEP-DBG` |with the SEP debug STAP selected over the PTAP its host TMS holds 1'b0 on every sample while jtag_tms shows at least the minimum edge count, its host TDO-enable stays low and a 3DCR capture reads Select as 0 after 1 was written
+|`CHK-LC-SIB-SECURE-CLOSED-SIP-DIS-SEP-DBG` |the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR stays 3 bits long (the flush patterns return), no host select asserts and TCKs were seen
+|`CHK-NONVAC` |ordered step fence from the image load to the DFT secure SIB leg, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+[[sec-180-smu_lc_dis_sys_not_binding_rma_sip_test]]
+===== 180 `smu_lc_dis_sys_not_binding_rma_sip_test`
+
+*Source Module*: `smu_lc_dis_sys_not_binding_rma_sip_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_dis_sys_not_binding_rma_sip_test_seq` in `cocotb_wrapper/seq_lib/`, which extends `smu_lc_dis_sys_chiplet_dbg_test_dev_test_seq` and so `smu_lc_sec_dis_over_sigint_prod_test_seq` and `smu_lc_export_seq`)
+
+*BFM / Model*: boundary outputs `lc_state_o`, `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o` and `lcc_dbg_disable_smc_jtag2axi_o`, all read X-strict on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port; `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` register, and `OcahJtagMasterSequence` scans over the secondary scan string and the iJTAG network, with the SEP STAP selected through the PTAP 3DCR and the SEP debug module's `dmi` register, then the debug module's system bus, for the SYS_DIS read-back), the TAP's `jtag_tdo` read X-strict; `jtag_tms` and `jtag_tck` sampled on `clk_ref_i`; the STAP host TMS taps `tb_stap_io_tms`, `tb_stap_smc_tms` and `tb_stap_sep_tms` and the TDO-enable taps `tb_stap_io_tdo_oen`, `tb_stap_smc_tdo_oen` and `jtag_stap_sep_host_tdo_oen_o` (read through `u_dut.u_smu.u_dtp`), sampled on `clk_ref_i`; the iJTAG host selects `tb_dfd_select`, `tb_dft_select` and `tb_dft_secure_select`; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_sip_0_sys_dis.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the RMA_SIP image with SYS_DIS `64'h0000_0000_0100_0003` (low word `01000003` at offset 0x20, high word 0) and SIP_DIS 0; the leaf fails if another image is named, reads both vectors back from the image file and reads SYS_DIS back from the DUT); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the RMA_SIP image setting SYS_DIS bits 0 (SEP_DBG), 1 (CHIPLET_DBG) and 24 (SIP_DBG) and SIP_DIS clear, the SYS_DIS word read back from the DUT over the SEP debug module's system bus holds those three bits, `lcc_feat_ctrl_o` keeps every bit set and every gated path (the SEP debug STAP, the DFT secure SIB, the SMC and I/O STAPs, the DFD SIB and the SMC fabric bridge) stays open, because RMA_SIP honours SIP_DIS only.
+
+*Test Coverage*:
+
+* Read-back (last leg): the SEP STAP is selected over the PTAP 3DCR from Test-Logic-Reset reached on TMS alone with the configuration held, the debug module is activated through its `dmi` register, and two 32-bit system-bus reads (RISC-V Debug Specification 0.13, System Bus Access) of the SYS_DIS shadow register at `SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR` in the generated `hw/sys/sep/regs/gen/c/sep_addr.h`, low word first, return the word the DUT holds; each `sbcs` poll is a recorded bounded wait of up to 32 polls and `dmstatus.version` is logged. The SEP OTP JTAG2AXIL bridge cannot serve this read: in RMA_SIP the JTAG port reaches only the eFuse MMR token block (`hw/sys/sep/doc/otp_fuse_controller.adoc`, Shadow Register and JTAG Access Control), while SYS_DIS is SW readable over the system bus and the image sets no read-lock (same chapter, SEP fuse fields table). The held selection survives Test-Logic-Reset (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`, Config-Hold), so the leg runs after the STAP, SIB and fabric legs.
+* Witness and feature control, sampled on one `clk_smu_i` edge after the read-back: `lc_state_o` reads `8'hD2`, the RMA_SIP word of the image that carries the SYS_DIS bits, and `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FFFF_FFFF` after the sense-done wait (the flag is the bench's `+skip_fuse_sense` substitute, a recorded precondition and not graded), so bits 0, 1 and 24 stay set although the DUT-held SYS_DIS word, equal to the image vector `64'h0000_0000_0100_0003`, has those bits set; the word differs from the `64'h0` reset value of FEAT_CTRL. One checker per bit repeats the witness, the word, that bit in the read-back word and that bit's image state (`hw/sys/sep/doc/lifecycle_controller.adoc`: disable vector bit table, disable vector applicability, SYS_DIS restrictions bypassed in RMA_SIP, per-LC-state feature control profile; `hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl`, SIP_DIS and SYS_DIS; `hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`, FEAT_CTRL). The image vectors are read back from the file named by `+sep_shadow_reg_preload` at the offsets `sep_addr.h` gives, so a compare cannot pass on an image that lacks the SYS_DIS bits, and "ignored" rests on the word the DUT holds.
+* Open STAPs: the SEP debug STAP, then the SMC debug STAP and the I/O STAP, are each selected over the PTAP 3DCR from Test-Logic-Reset reached on TMS alone and an IDCODE IR and DR scan runs inside a window of up to 4000 `clk_ref_i` cycles; the host TMS edge count equals the PTAP TMS edge count and is nonzero, both levels occur, the PTAP edges reach at least the IR width and the TDO enable asserts (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`; `lifecycle_controller.adoc`, DTP access cases and DTP path feature gates table). A STAP whose host TMS stayed parked would show one level and no edges, so each compare fails on a closed STAP.
+* DFT secure SIB: under `SELECT_IJTAG` an 8-bit scan shifts 1 into DR bit 2 behind the flush pattern `0b10101`, and a second 8-bit scan through the open chain (three SIB bits and the secure bench cell) shifts the flush pattern `0b1011` and closes the SIB again; the SIB captures 1, both scans return the words the SIB and bench-cell model gives (a chain without the bench cell returns the payload one bit earlier), the secure host select asserts on at least 8 TCKs and the other two host selects stay low (`hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc`, iJTAG Network; `lifecycle_controller.adoc`, DTP path feature gates table).
+* DFD SIB: the same two-scan procedure on DR bit 0 with the DFD bench cell.
+* Fabric control: an `AXI_SINGLE_OP` read then write of the fabric probe address advance AR, AW and B by 1 each, each launch awaited for up to 4000 `clk_smu_i` cycles, and `lcc_dbg_disable_smc_jtag2axi_o` reads `1'b0` before and after (`lifecycle_controller.adoc`, the SMC fabric JTAG2AXI path is Case 2; `hw/sys/dtp/doc/jtag.adoc`, SMC fabric bridge instructions).
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. The captured 3DCR payload bits are not read in this leaf. Other SYS_DIS bits, SIP_DIS bits, the other lifecycle states and the SEC_DIS override are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the RMA_SIP image with SYS_DIS bits 0, 1 and 24 and `+lc_sigint_inject` absent; wait for `sep_fuse_sense_done_o`.
+. Select the SEP debug STAP and compare its host TMS edges with the PTAP TMS edges.
+. Under `SELECT_IJTAG` shift 1 into the DFT secure SIB, capture, and compare the capture, the returned words and the host selects.
+. Select the SMC debug STAP and compare the same.
+. Select the I/O STAP and compare the same.
+. Under `SELECT_IJTAG` shift 1 into the DFD SIB, capture, and compare the capture, the returned words and the host selects.
+. Issue the fabric read and write and compare the counter deltas with 1 each and the lane with `1'b0`.
+. Select the SEP STAP with the configuration held, activate the debug module and read the two SYS_DIS words over its system bus.
+. Sample `lc_state_o` and `lcc_feat_ctrl_o`; compare the state with `8'hD2`, the word with `64'hFFFF_FFFF_FFFF_FFFF`, the read-back SYS_DIS word and the image vectors with their programmed values.
+. Check that every wait and window finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-SYSDIS-SEP-DBG-IGNORED-RMA-SIP` |lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF with bit 0 set although SYS_DIS bit 0 is set in the word the DUT holds, read back over the SEP debug module's system bus and equal to the image vector (SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done wait and a value differing from the 64'h0 reset value
+|`CHK-LC-SYSDIS-CHIPLET-DBG-IGNORED-RMA-SIP` |lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF with bit 1 set although SYS_DIS bit 1 is set in the word the DUT holds, read back over the SEP debug module's system bus and equal to the image vector (SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done wait and a value differing from the 64'h0 reset value
+|`CHK-LC-SYSDIS-SIP-DBG-IGNORED-RMA-SIP` |lc_state_o is the RMA_SIP word 8'hD2 and lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF with bit 24 set although SYS_DIS bit 24 is set in the word the DUT holds, read back over the SEP debug module's system bus and equal to the image vector (SYS_DIS 64'h0000_0000_0100_0003, SIP_DIS 0), after the sense-done wait and a value differing from the 64'h0 reset value
+|`CHK-LC-STAP-SEP-OPEN-RMA-SIP-SYS-DIS` |with the SEP debug STAP selected over the PTAP its host TMS edge count equals the PTAP TMS edge count with both levels seen, the PTAP edges reach at least the IR width and its TDO-enable asserts
+|`CHK-LC-SIB-SECURE-OPEN-RMA-SIP-SYS-DIS` |the DFT secure SIB captures 1 after 1 was shifted into DR bit 2 and its bench cell joins the loop (both scans return the words of the SIB and bench-cell model), its host select asserts and the other two selects stay low
+|`CHK-LC-STAP-SMC-OPEN-RMA-SIP-SYS-DIS` |with the SMC debug STAP selected over the PTAP its host TMS edge count equals the PTAP TMS edge count with both levels seen, the PTAP edges reach at least the IR width and its TDO-enable asserts
+|`CHK-LC-STAP-IO-OPEN-RMA-SIP-SYS-DIS` |with the I/O STAP selected over the PTAP its host TMS edge count equals the PTAP TMS edge count with both levels seen, the PTAP edges reach at least the IR width and its TDO-enable asserts
+|`CHK-LC-SIB-DFD-OPEN-RMA-SIP-SYS-DIS` |the DFD SIB captures 1 after 1 was shifted into DR bit 0 and its bench cell joins the loop (both scans return the words of the SIB and bench-cell model), its host select asserts and the other two selects stay low
+|`CHK-LC-FABRIC-CONTROL-RMA-SIP-SYS-DIS` |AR, AW and B at the DTP-to-SMC debug AXI port each advance by 1 across an SMC fabric SINGLE_OP read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b0 before and after (nothing closed with SYS_DIS bits 0, 1 and 24 set)
+|`CHK-NONVAC` |ordered step fence from the image load to the SYS_DIS read-back and compare, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+[[sec-181-smu_lc_dis_sip_sep_dbg_rma_sip_test]]
+===== 181 `smu_lc_dis_sip_sep_dbg_rma_sip_test`
+
+*Source Module*: `smu_lc_dis_sip_sep_dbg_rma_sip_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_dis_sip_sep_dbg_rma_sip_test_seq` in `cocotb_wrapper/seq_lib/`, which extends `smu_lc_dis_sys_chiplet_dbg_test_dev_test_seq` and so `smu_lc_sec_dis_over_sigint_prod_test_seq` and `smu_lc_export_seq`)
+
+*BFM / Model*: boundary outputs `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o` and `lcc_dbg_disable_smc_jtag2axi_o`, all read X-strict on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port; `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` register, and `OcahJtagMasterSequence` scans over the secondary scan string and the iJTAG network), the TAP's `jtag_tdo` read X-strict; `jtag_tms` and `jtag_tck` sampled on `clk_ref_i`; the STAP host TMS taps `tb_stap_io_tms`, `tb_stap_smc_tms` and `tb_stap_sep_tms` and the TDO-enable taps `tb_stap_io_tdo_oen`, `tb_stap_smc_tdo_oen` and `jtag_stap_sep_host_tdo_oen_o` (read through `u_dut.u_smu.u_dtp`), sampled on `clk_ref_i`; the iJTAG host selects `tb_dfd_select`, `tb_dft_select` and `tb_dft_secure_select`; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_sip_0_sip_dis_sep_dbg.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` (the RMA_SIP image with SIP_DIS `64'h0000_0000_0000_0001` (low word `00000001` at offset 0x18, high word 0) and SYS_DIS 0; the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the RMA_SIP image setting only the SEP_DBG bit of SIP_DIS, `lcc_feat_ctrl_o` clears exactly bit 0, the Case 1 and Case 2 paths (the I/O and SMC STAPs, the DFD SIB and the SMC fabric bridge) stay open, and the Case 3 paths (the SEP debug STAP and the DFT secure SIB) stay shut, because RMA_SIP honours SIP_DIS.
+
+*Test Coverage*:
+
+* Feature control: `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FFFF_FFFE` after the sense-done wait (the flag is the bench's `+skip_fuse_sense` substitute, a recorded precondition and not graded) and differs from the `64'h0` reset value of FEAT_CTRL (`hw/sys/sep/doc/lifecycle_controller.adoc`: disable vector bit table, bit 0 SEP_DBG; disable vector applicability and per-LC-state feature control profile table, RMA_SIP applies the inverted SIP_DIS per group; `hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl`, SIP_DIS; `hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`, FEAT_CTRL).
+* Case 1 control (positive control of the closed legs in this leaf): the I/O STAP is selected over the PTAP 3DCR from Test-Logic-Reset reached on TMS alone and an IDCODE IR and DR scan runs inside a window of up to 4000 `clk_ref_i` cycles; the host TMS edge count equals the PTAP TMS edge count and is nonzero, both levels occur, the PTAP edges reach at least the IR width and the TDO enable asserts. Under `SELECT_IJTAG` an 8-bit scan shifts 1 into DR bit 0 behind the flush pattern `0b10101`, and a second 8-bit scan through the open chain (three SIB bits and the DFD bench cell) shifts the flush pattern `0b1011` and closes the SIB again; the SIB captures 1, both scans return the words the SIB and bench-cell model gives (a chain without the bench cell would return the payload one bit earlier), the DFD host select asserts on at least 8 TCKs and the other two host selects stay low (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`; `hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc`, iJTAG Network; `lifecycle_controller.adoc`, DTP access cases and DTP path feature gates table, the I/O STAP host path and the DFD iJTAG path are Case 1).
+* Case 2 control (positive control of the closed legs in this leaf): the SMC debug STAP is selected and compared as for the I/O STAP, then an `AXI_SINGLE_OP` read and write of the fabric probe address advance AR, AW and B by 1 each, each launch awaited for up to 4000 `clk_smu_i` cycles (`lifecycle_controller.adoc`, the SMC debug STAP and the SMC fabric JTAG2AXI path are Case 2; `hw/sys/dtp/doc/jtag.adoc`, SMC fabric bridge instructions).
+* SEP debug STAP: the PTAP selects the secondary chain, the STAP SIB is opened, its 3DCR is written with Select 1 and TMS-Hold 0 and captured; the PTAP is then deselected. Over the six scans the STAP host TMS holds `1'b0` on every sample while `jtag_tms` shows at least as many edges as the IR is wide, the host TDO enable stays low and the captured Select reads 0 (`hw/ip/jtag/jtag_stap/doc/architecture.adoc`, disabled STAP and 3DCR register; `lifecycle_controller.adoc`, DTP path feature gates table, Case 3). The captured TMS-Hold and config-hold bits are measured and logged only. The open STAPs of the controls are the positive control.
+* DFT secure SIB: under `SELECT_IJTAG` a 6-bit scan shifts 1 into DR bit 2 behind the flush pattern `0b101`, and a second 6-bit scan shifts the flush pattern `0b110`; the SIB captures 0, both scans return the words of a closed 3-bit DR, no host select asserts and TCKs are seen on both scans (`jtag_intf_unit/doc/architecture.adoc`, iJTAG Network; `lifecycle_controller.adoc`, DTP path feature gates table). The open DFD SIB of the Case 1 control is the positive control.
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. The other SIP_DIS bits, SYS_DIS bits, the other lifecycle states and the SEC_DIS override are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Require the RMA_SIP image with SIP_DIS bit 0 and `+lc_sigint_inject` absent; wait for `sep_fuse_sense_done_o`.
+. Sample `lcc_feat_ctrl_o` and compare it with `64'hFFFF_FFFF_FFFF_FFFE`.
+. Select the I/O STAP and compare its host TMS edges with the PTAP TMS edges; open the DFD SIB under `SELECT_IJTAG`, capture it and close it.
+. Select the SMC debug STAP and compare the same; issue the fabric read and write and compare the counter deltas with 1 each.
+. Run the SEP debug STAP select scans while sampling its host TMS, TDO enable and the PTAP TMS, and compare the captured Select with 0.
+. Under `SELECT_IJTAG` shift 1 into the DFT secure SIB, capture, and compare the capture, the returned words and the host selects.
+. Check that every wait and window finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-RMA-SIP` |lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFE after the sense-done wait (SIP_DIS bit 0 binds in RMA_SIP and clears feature-control bit 0 alone) and differs from the 64'h0 reset value
+|`CHK-LC-CASE1-CONTROL-SIP-DIS-RMA-SIP` |the I/O STAP host TMS edge count equals the PTAP TMS edge count with both levels seen and its TDO-enable asserted, and the DFD SIB captures 1 with its bench cell in the loop, its host select asserted and the other two selects low (Case 1 open: the JTAG stimulus is live)
+|`CHK-LC-CASE2-CONTROL-SIP-DIS-RMA-SIP` |the SMC debug STAP host TMS edge count equals the PTAP TMS edge count with both levels seen and its TDO-enable asserted, and AR, AW and B at the DTP-to-SMC debug AXI port each advance by 1 across an SMC fabric SINGLE_OP read and write (Case 2 open: SEP_DBG alone is cleared)
+|`CHK-LC-CASE3-CLOSED-SEP-STAP-RMA-SIP` |with the SEP debug STAP selected over the PTAP its host TMS holds 1'b0 on every sample while jtag_tms shows at least the minimum edge count, its host TDO-enable stays low and a 3DCR capture reads Select as 0 after 1 was written
+|`CHK-LC-CASE3-CLOSED-SECURE-SIB-RMA-SIP` |the DFT secure SIB (DR bit 2) captures 0 after 1 was shifted into it, the DR stays 3 bits long (the flush patterns return), no host select asserts and TCKs were seen
+|`CHK-NONVAC` |ordered step fence from the image load to the DFT secure SIB leg, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-182-smu_lc_secure_tm_scope_prod_test]]
+===== 182 `smu_lc_secure_tm_scope_prod_test`
+
+*Source Module*: `smu_lc_secure_tm_scope_prod_test` (`cocotb_wrapper/tests/`; the sequence `smu_lc_secure_tm_scope_prod_test_seq` in `cocotb_wrapper/seq_lib/`, which extends `smu_lc_sec_dis_over_sigint_prod_test_seq` and so `smu_lc_export_seq`)
+
+*BFM / Model*: boundary outputs `sep_fuse_sense_done_o`, `lcc_feat_ctrl_o`, `lc_state_o`, `obs_sep_lc_state_o`, `smc_lc_state_in_o`, `lcc_dbg_disable_o`, `obs_sep_rst_n_o`, `rst_cold_n_o` and `rst_primary_smc_clk_n_o`, all read on `clk_smu_i` or `clk_ref_i`; the TEST_EN strap `tb_secure_tm_req`, driven high by the leaf's `drive_idle_inputs` before the clocks start and driven low before the cold reset (`tb/tb_wrapper_top.sv`), and the sampled value `tb_secure_tm`; the chiplet cold reset input `rst_cold_ni` with `jtag_trst`; the security-disable net read at the SMU (`sep_security_disable`) and at the SMC (`u_smc.sep_security_disable_i`) on `clk_smu_i`; bench counters `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_aw_count_o` and `dtp_smc_dbg_b_count_o` at the DTP-to-SMC debug AXI port; `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP with the `SMC_AXI_SINGLE_OP` and `SEP_OTP_AXI_SINGLE_OP` registers, and `OcahJtagMasterSequence` scans over the iJTAG network), the TAP's `jtag_tdo` read X-strict; `jtag_tck` sampled on `clk_ref_i`; the iJTAG host selects `tb_dfd_select`, `tb_dft_select` and `tb_dft_secure_select`; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod.preload` supplied as `+sep_shadow_reg_preload` under `+skip_fuse_sense` and left unchanged across the cold reset (the leaf fails if another image is named); `+lc_sigint_inject` absent (the leaf fails if it is set); `elaboration` firmware mode under the `sep_rtl` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images and the default SMC shadow preload
+
+*Objective*: with the undemoted PROD image and the TEST_EN strap high, the sampled `SECURE_TM` is not a term of the feature-control word: it reads 1 after fuse-sense completion while `lcc_feat_ctrl_o` is the PROD word and the DFT non-secure and DFT secure SIBs stay shut, a SEC_DIS match forces the word to all ones and opens both SIBs while `SECURE_TM` still reads 1, and after a chiplet cold reset with the strap low `SECURE_TM` reads 0 while the match, the word, the security-disable net, the SMC fabric launch and the DFT secure SIB hold.
+
+*Test Coverage*:
+
+* Profile: `tb_secure_tm` reads 0 on every `clk_smu_i` sample taken under the SEP reset (cleared by cold reset) with the strap high from the first clock, at least one sample is taken, and after `sep_fuse_sense_done_o` rises it reads 1; `lcc_feat_ctrl_o` equals `64'hFFFF_0000_0000_0000` (`hw/sys/sep/doc/test_mode.adoc`, sampling table; `hw/sys/sep/doc/lifecycle_controller.adoc`, per-LC-state feature control profile table, PROD undemoted, `SECURE_TM` is not a term of `feat_ctrl_o`). The read of 1 after sense done, with the same strap, is the witness that the strap is live; the reset-time zeros alone could not fail on a two-state zero.
+* SIBs closed: under `SELECT_IJTAG` a 6-bit scan shifts 1 into DR bits 1 and 2 behind the flush pattern `0b101`, and a second 6-bit scan shifts the flush pattern `0b110`; the DFT non-secure and DFT secure SIBs capture 0, both scans return the words of a closed 3-bit DR, no host select of the three asserts and TCKs are seen on both scans, with `tb_secure_tm` reading 1 (`hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc`, iJTAG Network; `hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates table; `hw/sys/sep/doc/test_mode.adoc`, `SECURE_TM` does not qualify the debug and function bits). The open SIBs of the leg after the match are the positive control.
+* Token: in PROD only the eFuse MMR token block is reachable over JTAG (`hw/sys/sep/doc/otp_fuse_controller.adoc`). Eight all-zero words are written to `SEC_DISABLE_TOKEN_I[0..7]`, TOKEN_EOP is written with its `secure_disable_token_go` bit (`hw/ip/efuse/regs/efuse_mmr.rdl`; addresses from the generated `hw/sys/sep/regs/gen/c/sep_addr.h`), and SEC_DISABLE_TOKEN_MATCH is read up to 8 times until its status, masked by TOKEN_MATCH_STATUS, equals `6'b010101` (`efuse_mmr.rdl`, TOKEN_MATCH); each access completes with op 0.
+* Not qualified: after the match `lcc_feat_ctrl_o` equals `64'hFFFF_FFFF_FFFF_FFFF` and `tb_secure_tm` still reads 1 (`hw/sys/sep/doc/security_disable.adoc`: SEC_DIS neither qualifies nor overrides `SECURE_TM`; `lifecycle_controller.adoc`, SEC_DIS row).
+* Joint observation: with the match held and `tb_secure_tm` reading 1, a 12-bit scan shifts 1 into DR bits 1 and 2 behind the flush pattern `0b101`, and a second 12-bit scan through the open chain (three SIB bits and two bench cells) shifts the flush pattern `0b101100`; the DFT non-secure and DFT secure SIBs capture 1, both scans return the words the SIB and bench-cell model gives and each of the two host selects asserts on at least 12 TCKs, where both SIBs captured 0 before the match.
+* Cold reset: the strap is dropped, `rst_cold_ni` and `jtag_trst` are asserted until the SEP reset is observed asserted and `sep_fuse_sense_done_o` low, held for 64 `clk_ref_i` cycles and released with the image unchanged. Over 48 `clk_smu_i` samples from the release `tb_secure_tm` reads 0 on every sample (`hw/sys/sep/doc/test_mode.adoc`: a cold reset clears `SECURE_TM`; with SEC_DIS asserted the strap is sampled after the release; `hw/sys/sep/doc/security_disable.adoc`, reset persistence), `lcc_feat_ctrl_o` equals all ones on every sample and the security-disable net reads `1'b1` at the SMU and the SMC on every sample (`security_disable.adoc`, reset persistence: the match holds from cold-reset release). The sampling edge (the second rising edge after the release versus one cycle after it) is not distinguished, and a missing early capture cannot fail the `tb_secure_tm` leg because the cold-reset clear gives the same 0; the pre-reset read of 1 is its only witness.
+* Measured and logged only: `lc_state_o`, `obs_sep_lc_state_o`, `smc_lc_state_in_o`, `sep_fuse_sense_done_o` and `lcc_dbg_disable_o` at the first and the last sample of the window after the release; none is compared.
+* After the reset: the cold and SMC primary resets release within 2000 cycles, an `AXI_SINGLE_OP` read then write of the fabric probe address advance AR, AW and B by 1 each (`hw/sys/dtp/doc/jtag.adoc`, SMC fabric bridge instructions; `lifecycle_controller.adoc`, SEC_DIS override), and under `SELECT_IJTAG` a 12-bit scan opens the DFT secure SIB and a second scan through the open chain (three SIB bits and one bench cell) returns the model words with the SIB capturing 1 and its host select asserting on at least 12 TCKs.
+* Every bounded wait is recorded once with its bound, the cycles it used and its last observed state, and none may expire. A SEC_DIS match that is not preceded by a cold reset, the strap changing while the match is held and the other lifecycle states are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `tb_secure_tm_req` high before the clocks, start the reset probe, require the PROD shadow preload and `+lc_sigint_inject` absent; wait for `sep_fuse_sense_done_o`.
+. Compare the reset-probe samples of `tb_secure_tm` with 0, then sample `tb_secure_tm` and `lcc_feat_ctrl_o`.
+. Under `SELECT_IJTAG` shift 1 into the DFT non-secure and DFT secure SIBs, capture, and compare the captures, the returned words and the host selects.
+. Write the eight zero token words and TOKEN_EOP with the go bit, and read the match status until it equals `6'b010101`.
+. Sample `lcc_feat_ctrl_o` and `tb_secure_tm`.
+. Open the two SIBs, scan through the open chain, sample `lcc_feat_ctrl_o` and `tb_secure_tm`, and compare the captures, the returned words and the host selects with the closed leg.
+. Drop the strap, assert and release `rst_cold_ni` with the image unchanged, sample `tb_secure_tm`, `lcc_feat_ctrl_o`, the security-disable net and the lifecycle words on every `clk_smu_i` edge from the release, and compare all but the lifecycle words.
+. Wait for the cold and SMC primary resets to release, issue the fabric read and write and compare the counter deltas with 1 each, then open the DFT secure SIB, scan through the open chain and compare the capture, the returned words and the host select.
+. Check that every wait and window finished inside its bound, each recorded once with a finite bound and a last observed state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-SECTM-PROD-PROFILE` |tb_secure_tm reads 0 on every sample under the SEP reset with the strap high from the first clock and reads 1 after sep_fuse_sense_done_o rises, while lcc_feat_ctrl_o equals 64'hFFFF_0000_0000_0000, the undemoted PROD word
+|`CHK-LC-SECTM-DFT-SIBS-CLOSED-STRAP-HIGH` |with tb_secure_tm = 1 the DFT non-secure and DFT secure SIBs capture 0 after 1 was shifted into them, the DR stays 3 bits long (the flush patterns return) and no host select asserts
+|`CHK-LC-SECTM-SECDIS-NOT-QUALIFIED` |the eight SEC_DISABLE_TOKEN_I writes, the TOKEN_EOP write and the match read complete with op 0 and the match status reads 6'b010101; lcc_feat_ctrl_o then equals 64'hFFFF_FFFF_FFFF_FFFF and tb_secure_tm still reads 1
+|`CHK-LC-SECTM-INT-SECDIS-JOINT` |with tb_secure_tm = 1 and the match held, lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF and the DFT non-secure and DFT secure SIBs capture 1 with their bench cells in the loop and their host selects asserted, where both captured 0 before the match
+|`CHK-LC-SECTM-COLD-RESET-CLEARS-STRAP-LOW` |after a chiplet cold reset with the strap low and the match held, tb_secure_tm reads 0 on every clk_smu_i sample from the release, where it read 1 before the reset; the sampling edge is not distinguished
+|`CHK-LC-SECDIS-PERSIST-COLD-RESET-PROD-TM` |from the cold-reset release lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF and the security-disable net at the SMU and the SMC reads 1'b1 on every sample, then the SMC fabric launches AR, AW and B and the DFT secure SIB captures 1; the lifecycle words after the reset are measured and logged only
+|`CHK-NONVAC` |ordered step fence from the image load to the fabric and DFT secure SIB leg after the reset, stamped PASS two clk_smu_i cycles after it
+|`CHK-TIMEOUT-PATHS` |every bounded wait records its bound, the cycles it used and the last observed state, and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -7400,11 +8032,11 @@ disposition record.
 |ID |SPEC feature |Scope |What is in |What stays OUT
 |F1 |SMC boot and firmware execution |IN (observe) |Bring-up, reset release, mailbox CSR, WDT, GPIO strap, OCTS free-run |SMC CPU firmware boot, ROM regression
 |F2 |Real SEP RTL under the SMU |OUT |— |SEP boot and firmware execution as credit: `smu_sep_smoke_test` retires SEP instructions on the wrapper, but it boots SEP firmware, so it needs the RISC-V toolchain and sits in `fw_boot` / `all`, outside `hosted`; observe-only
-|F3 |DTP debug and test access |IN |PTAP IDCODE/BYPASS, JTAG2AXI, OTP MAP, STAP, BSR select, boot-stall, IC_RESET, SEP DMI `IR=5'h11` |Closed JTAG2AXI security gate (the default SEP eFuse preload leaves debug enabled), lifecycle policy, iJTAG model depth
+|F3 |DTP debug and test access |IN |PTAP IDCODE/BYPASS, JTAG2AXI, OTP MAP, STAP, BSR select, boot-stall, IC_RESET, SEP DMI `IR=5'h11` |iJTAG model depth
 |F4 |AXI crossbar fabric |IN |External-port ID conversion through the crossbar, filters, ATOP reject, alias remap, fabric BAR |The crossbar routing matrix beyond the SMC aperture; the SEP=0 shape (direct ID converters, `smu_axi_xbar` absent), which needs `smu #(.CFG(smu_pkg::NoSepCfg))`, an elaboration this package does not build
 |F5 |SMC↔SEP interoperability |OUT |— |Mailbox challenge-response and SEP→SMC notify (`smu_sep_bidirect_test`, `smu_sep_smc_notify_test`): SEP DV firmware leaves, which need the RISC-V toolchain and sit in `sep_real_fw` / `all`, outside `hosted`; observe-only
 |F6 |Cross-trigger and clock-stop |IN (pin-level) |Clock-stop coordination, product-pin CTM remap, illegal-phase corners |Four-phase CTM handshake / CLA loop (no product pin or frontdoor for CLA feedback or the CTM handshake)
-|F7 |Lifecycle and security |OUT |— |The SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`, needs `smu #(.CFG(smu_pkg::NoSepCfg))`, which this package does not build); `feat_ctrl` matrices and lifecycle policy: the lifecycle stimulus is SEP firmware (`smu_sep_lcc_flow_test`, the `sep_lifecycle` and `sep_chain` groups), which needs the RISC-V toolchain and sits outside `hosted`
+|F7 |Lifecycle and security |IN (eFuse-image stimulus) |LC_STATE export for TEST_DEV, PROD, PROD_END, RMA_SIP and RMA_CHIPLET; SIP_DIS / SYS_DIS single-bit images and their applicability per state; DEMOTE_1 / DEMOTE_2 over the SEP system bus; the SEC_DIS token over the SEP OTP bridge; the SECURE_TM strap (cards 171-182, `CHK-LC-*` tokens) |The SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`, needs `smu #(.CFG(smu_pkg::NoSepCfg))`, which this package does not build); the SEP-firmware lifecycle flow (`smu_sep_lcc_flow_test`, the `sep_lifecycle` and `sep_chain` groups), which needs the RISC-V toolchain and sits outside `hosted`
 |===
 
 [[smu-enrolled-mapping]]
@@ -7486,6 +8118,18 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_xtrig_ctm_illegal_phase_test` |F6 |dtp_under_smu, hosted |`XT_ILLEGAL_PHASE`
 |`smu_ic_reset_ss_domain_matrix_test` |F3 |smc_under_smu, hosted |`IC_RESET_SS_COLD_OVRD`, `IC_RESET_SS_WARM_OVRD`, `IC_RESET_SS_EXCL`
 |`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, hosted |`BSR_EXTEST_TDO_MATCH`
+|`smu_lc_export_test_dev_test` |F7 |hosted |`CHK-LC-EXPORT-WRAPPER-TEST-DEV`, `CHK-LC-FEATCTRL-TEST-DEV`, `CHK-LC-FABRIC-LAUNCH-TEST-DEV`
+|`smu_lc_export_prod_test` |F7 / F3 |hosted |`CHK-LC-EXPORT-WRAPPER-PROD`, `CHK-LC-FEATCTRL-PROD`, `CHK-LC-FABRIC-NOLAUNCH-PROD`
+|`smu_lc_export_prod_end_test` |F7 / F3 |hosted |`CHK-LC-EXPORT-WRAPPER-PROD-END`, `CHK-LC-FEATCTRL-PROD-END`, `CHK-LC-FABRIC-NOLAUNCH-PROD-END`
+|`smu_lc_export_rma_sip_0_test` |F7 |hosted |`CHK-LC-EXPORT-WRAPPER-RMA-SIP`, `CHK-LC-FEATCTRL-RMA-SIP`, `CHK-LC-FABRIC-LAUNCH-RMA-SIP`
+|`smu_lc_export_rma_chiplet_0_test` |F7 |hosted |`CHK-LC-EXPORT-WRAPPER-RMA-CHIPLET`, `CHK-LC-FEATCTRL-RMA-CHIPLET`, `CHK-LC-FABRIC-LAUNCH-RMA-CHIPLET`
+|`smu_lc_sec_dis_over_sigint_prod_test` |F7 |hosted |`CHK-LC-SECDIS-TOKEN-MATCH-JTAG-PROD`, `CHK-LC-SECDIS-FEATCTRL-PROD`, `CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD`, `CHK-LC-SMC-OTP-CLOSED-UNDER-SECDIS-SIGINT-PROD`
+|`smu_lc_demote_test_dev_test` |F7 |hosted |`CHK-LC-DEMOTE-FORCES-DBG1-TEST-DEV`, `CHK-LC-DEMOTE-FORCES-DBG2-TEST-DEV`, `CHK-LC-DEMOTE-COLDCLEAR-FEATCTRL-TEST-DEV`
+|`smu_lc_dis_sys_chiplet_dbg_test_dev_test` |F7 |hosted |`CHK-LC-FEATCTRL-SYS-DIS-CHIPLET-DBG-TEST-DEV`, `CHK-LC-FABRIC-NOLAUNCH-SYS-DIS-CHIPLET-DBG`, `CHK-LC-SIB-SECURE-CLOSED-SYS-DIS-CHIPLET-DBG`
+|`smu_lc_dis_sip_sep_dbg_test_dev_test` |F7 |hosted |`CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-TEST-DEV`, `CHK-LC-STAP-SEP-PARKED-SIP-DIS-SEP-DBG`, `CHK-LC-FABRIC-LAUNCH-SIP-DIS-SEP-DBG-TEST-DEV`
+|`smu_lc_dis_sys_not_binding_rma_sip_test` |F7 |hosted |`CHK-LC-SYSDIS-CHIPLET-DBG-IGNORED-RMA-SIP`, `CHK-LC-FABRIC-CONTROL-RMA-SIP-SYS-DIS`
+|`smu_lc_dis_sip_sep_dbg_rma_sip_test` |F7 |hosted |`CHK-LC-FEATCTRL-SIP-DIS-SEP-DBG-RMA-SIP`, `CHK-LC-CASE3-CLOSED-SEP-STAP-RMA-SIP`, `CHK-LC-CASE2-CONTROL-SIP-DIS-RMA-SIP`
+|`smu_lc_secure_tm_scope_prod_test` |F7 |hosted |`CHK-LC-SECTM-PROD-PROFILE`, `CHK-LC-SECTM-SECDIS-NOT-QUALIFIED`, `CHK-LC-SECTM-COLD-RESET-CLEARS-STRAP-LOW`
 |===
 
 [[smu-out-and-wrapper]]

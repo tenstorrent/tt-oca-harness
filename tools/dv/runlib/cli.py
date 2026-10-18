@@ -140,11 +140,11 @@ from .site import (
 )
 from .stages import (
     cocotb_python_paths,
-    fetch_build_libraries,
     item_artifact_dir,
     mark_target_built,
     request_stage_cancellation,
     reset_stage_cancellation,
+    resolve_build_libraries,
     resolve_coverage_policy,
     run_stage,
     seed_for_item,
@@ -391,6 +391,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Simulation/regression fan-out job count",
     )
     parallel.add_argument(
+        "--leaf-order-from",
+        dest="leaf_order_from",
+        metavar="RESULT_JSON",
+        help=(
+            "Start the regression leaves longest first, using the leaf durations in this "
+            "earlier result.json; a leaf without one starts before every timed leaf"
+        ),
+    )
+    parallel.add_argument(
         "--build-jobs",
         type=int,
         metavar="N",
@@ -632,6 +641,34 @@ _WAIVE_SELECTION_FLAGS = {
     "run_only": "--run-only",
     "dry_run": "--dry-run",
 }
+
+
+def leaf_order(
+    leaves: list[dict[str, Any]], order_from: str | None, root: Path
+) -> list[dict[str, Any]]:
+    """The leaves in submit order: testlist order, or longest first from an earlier run.
+
+    With ``order_from`` each leaf is keyed by the longest ``sim`` duration of its item
+    in that result.json. A leaf whose item has no duration there starts first, in
+    testlist order, so a new or renamed leaf is never left to the end. The sort is
+    stable and changes no leaf id or seed.
+    """
+    if not order_from:
+        return list(leaves)
+    path = Path(order_from).expanduser()
+    if not path.is_absolute():
+        path = root / path
+    try:
+        prior = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"--leaf-order-from: cannot read {path}: {exc}") from exc
+    durations: dict[str, float] = {}
+    for stage in prior.get("stages", []):
+        if stage.get("name") != "sim" or stage.get("item") is None:
+            continue
+        duration = float(stage.get("duration_sec") or 0.0)
+        durations[stage["item"]] = max(durations.get(stage["item"], 0.0), duration)
+    return sorted(leaves, key=lambda leaf: -durations.get(str(leaf["item"]), float("inf")))
 
 
 def validate_mode_options(args: argparse.Namespace) -> None:
@@ -1687,6 +1724,11 @@ def list_flows(
         ] or ["-"]
         return "/".join(toolsArr)
 
+    def free_view(flow: Flow, framework: str) -> bool:
+        """Whether ``flow`` runs ``framework`` on a free tool and needs no commercial license."""
+        tools = set(flow.tools) & set(frameworkTools.get(framework, []))
+        return flow.license != "required-commercial" and any(freesims[tool] for tool in tools)
+
     def row(name: str, kind: str, label: str, tools: str, description: str) -> None:
         print(
             f"{name:<{widths[0]}} {kind:<{widths[1]}} {align(label, widths[2])} {align(tools, widths[3])} {description}"
@@ -1703,23 +1745,23 @@ def list_flows(
             row(name, "-", "-", "-", f"unavailable: {unavailable_sim[name].reason}")
         elif flow is not None:
             spill = False
-            frameworks = {
-                framework: format_selected_licensed(
-                    framework,
-                    (flow.framework and framework == flow.framework)
-                    or (not flow.framework and framework == flow.default_framework),
-                    freeframeworks[framework],
-                )
-                for framework in sorted(
-                    flow.frameworks,
-                    key=lambda x: (0, 0) if x == flow.default_framework else (1, str.lower(x)),
-                )
-            } or {"": "-"}
-            for framework, label in frameworks.items():
+            frameworks = sorted(
+                flow.frameworks,
+                key=lambda x: (0, 0) if x == flow.default_framework else (1, str.lower(x)),
+            ) or [""]
+            for framework in frameworks:
                 view = (
                     resolve_dut(root, name, framework=framework, site=site)
                     if root is not None and framework and framework != flow.framework
                     else flow
+                )
+                selected = (flow.framework and framework == flow.framework) or (
+                    not flow.framework and framework == flow.default_framework
+                )
+                label = (
+                    format_selected_licensed(framework, selected, free_view(view, framework))
+                    if framework
+                    else "-"
                 )
                 row(
                     flow.name if not spill else "",
@@ -3178,7 +3220,6 @@ def run_flow(
         # result.json records the site file beside the overlay, so a result is attributable
         # to every config layer that produced it.
         setattr(args, "_site_layer", registries.site.label)
-        setattr(args, "_site_uvm_library", registries.site.uvm_library)
     # Before the tool probes and the first stage, so every subprocess environment, env
     # snapshot, and in-process tool runner inherits the overlay's [env].
     overlay_env = activate_adopter_overlay_env(flow.raw)
@@ -3343,12 +3384,9 @@ def run_flow(
             "config",
             "overlay_env=" + " ".join(f"{name}={value}" for name, value in overlay_env.items()),
         )
-    if not args.dry_run:
-        library = fetch_build_libraries(
-            flow, root, sim_cfg, tool, console, site=getattr(args, "_site_uvm_library", None)
-        )
-        if library is not None:
-            setattr(args, "_uvm_library", library.record(root))
+    library = resolve_build_libraries(flow, root, sim_cfg, tool, console)
+    if library is not None:
+        setattr(args, "_uvm_library", library.record(root))
     args._ui_leaf_mode = "compact" if scheduler else "full"
     for kind in ("skipped_excluded", "skipped_unimplemented"):
         names = list(getattr(args, f"_{kind}", []) or [])
@@ -3878,7 +3916,13 @@ def run_flow(
         poll_interval = float(limits["poll_interval_sec"])
         cancel_grace = float(limits["cancel_grace_sec"])
         blocked_leaves = [leaf for leaf in leaves if leaf.get("target") in blocked_targets]
-        pending = deque(leaf for leaf in leaves if leaf.get("target") not in blocked_targets)
+        pending = deque(
+            leaf_order(
+                [leaf for leaf in leaves if leaf.get("target") not in blocked_targets],
+                args.leaf_order_from,
+                root,
+            )
+        )
         leaf_by_id = {int(leaf["id"]): leaf for leaf in leaves}
         tasks: dict[str, LeafTask] = {}
         handles: dict[str, JobHandle] = {}

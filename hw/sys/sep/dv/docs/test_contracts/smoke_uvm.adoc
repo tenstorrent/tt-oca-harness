@@ -534,9 +534,8 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 === SystemVerilog UVM Smoke Set
 
 The SV-UVM realization runs a smoke set of the cocotb scenarios on the same
-testbench top, for adopters with a commercial UVM simulator. It is VCS only and
-sits outside the three phases. A scenario keeps its cocotb name; its testlist
-entry binds both implementations
+testbench top, on VCS or Verilator. It sits outside the three phases. A
+scenario keeps its cocotb name; its testlist entry binds both implementations
 (`module = { cocotb = "...", uvm = "..." }`), and the SV-UVM class name is the
 `uvm` entry (`+UVM_TESTNAME`). `--framework uvm --items all` runs every bound
 scenario. The class library and run recipes are in
