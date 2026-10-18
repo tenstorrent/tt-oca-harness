@@ -436,9 +436,13 @@ module smc_base #(
   assign debug_bus[16*29-1:16*28]     = {zeroer_busy, dma_busy, cpu_cluster_ded_i, wdt_second_timeout_i,
                                           {{(4-NumCpuCores){1'b0}}, cpu_wdt_timeout_cluster_i},
                                           debug_marker};
-  assign debug_bus[16*30-1:16*29]     = {4'h0, remap_debug_mmio.aw_remap_hit_debug, remap_debug_mmio.ar_remap_hit_debug,
+  assign debug_bus[16*30-1:16*29]     = {remap_debug_mmio.no_write_hit, remap_debug_mmio.no_read_hit,
+                                          remap_debug_jtag.no_write_hit, remap_debug_jtag.no_read_hit,
+                                          remap_debug_mmio.aw_remap_hit_debug, remap_debug_mmio.ar_remap_hit_debug,
                                                 remap_debug_jtag.aw_remap_hit_debug, remap_debug_jtag.ar_remap_hit_debug};
-  assign debug_bus[16*31-1:16*30]     = {4'h0, remap_debug_log.aw_remap_hit_debug, remap_debug_log.ar_remap_hit_debug,
+  assign debug_bus[16*31-1:16*30]     = {remap_debug_log.no_write_hit, remap_debug_log.no_read_hit,
+                                          remap_debug_dma.no_write_hit, remap_debug_dma.no_read_hit,
+                                          remap_debug_log.aw_remap_hit_debug, remap_debug_log.ar_remap_hit_debug,
                                                 remap_debug_dma.aw_remap_hit_debug, remap_debug_dma.ar_remap_hit_debug};
   assign debug_bus[16*32-1:16*31]     = {inbound_write_filter_hit_debug, inbound_read_filter_hit_debug,
                                           outbound_write_filter_hit_debug, outbound_read_filter_hit_debug};

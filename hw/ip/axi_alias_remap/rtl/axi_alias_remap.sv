@@ -18,6 +18,8 @@ module axi_alias_remap #(
                                                                    // region_end, offset and
                                                                    // cacheable fields.
   parameter type          remap_debug_t                   = logic, // Debug type with
+                                                                   // no_write_hit and
+                                                                   // no_read_hit miss flags and
                                                                    // aw_remap_hit_debug and
                                                                    // ar_remap_hit_debug
                                                                    // region-index fields.
@@ -35,9 +37,11 @@ module axi_alias_remap #(
   localparam int unsigned AliasRemapOffsetWidth        = AXI_ADDR_WIDTH - ALIAS_REMAP_IDX_START // Width of the remapped upper address field.
 ) (
   input   remap_region_t                      remap_regions_i [NUM_REGIONS-1:0], // Per-region remap configuration.
-  output  remap_debug_t                       remap_debug_o, // Index of the lowest-numbered region
-                                                             // hit by the current AW and AR
-                                                             // addresses; zero when neither hits.
+  output  remap_debug_t                       remap_debug_o, // Per-channel miss flag and index of
+                                                             // the lowest-numbered region hit by
+                                                             // the current AW and AR addresses;
+                                                             // on a miss the index reads as the
+                                                             // highest region.
 
   input   axi_req_t                           axi_in_req_i, // Pre-remap AXI request.
   output  axi_resp_t                          axi_in_resp_o, // Pre-remap AXI response.
@@ -88,6 +92,8 @@ module axi_alias_remap #(
   );
 
   if (DEBUG_OUTPUT == 1) begin : gen_remap_debug
+    assign remap_debug_o.no_write_hit       = no_write_hit;
+    assign remap_debug_o.no_read_hit        = no_read_hit;
     assign remap_debug_o.aw_remap_hit_debug = aw_remap_idx;
     assign remap_debug_o.ar_remap_hit_debug = ar_remap_idx;
   end else begin : gen_no_remap_debug
