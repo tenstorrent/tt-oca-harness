@@ -1029,11 +1029,11 @@ hardware gate on the policy, and a stage whose manifest has been authenticated
 is trusted to set the policy for its successor.
 
 `SIGNATURE_REVOKE` is not propagated in this way. Its shadow register is
-set-only: a stage may set further bits to retire an algorithm family for later
-manifests in the same boot, but can never clear one, and the fused value
-applies to every manifest from the next cold reset. The conditions under which
-a boot stage may burn `SIGNATURE_REVOKE` are given in its description in the
-OTP Fuse Controller chapter.
+set-only and is write-locked by BL1 before hand-off, so only BL1 can change it,
+and only by adding revoked families. A revocation requested by the BL1 manifest
+applies from BL1's verification of the next-stage manifest onward in the same
+boot, and from SEP ROM's verification of the BL1 manifest at every later cold
+reset. <<signature-algorithm-revocation>> specifies the update.
 
 The chiplet creator shall burn `REQUIRED_ALGS[3:0]` to a non-zero value before
 a part leaves its control. A fused `REQUIRED_ALGS[3:0]` of `0b0000` is a
@@ -1080,6 +1080,98 @@ fused values.
 signature alone authenticates the manifest. A manifest whose chiplet-creator
 signature is ML-DSA only is rejected.
 |=======================================================================
+
+[[signature-algorithm-revocation]]
+=== Signature Algorithm Revocation
+
+`SIGNATURE_REVOKE` holds the set of revoked algorithm families. Its effect on
+verification is given by step 1 of the requirement rule in
+<<secure-boot-signing-model>>; this section specifies how the field is updated.
+The OCA Payload Manifest requests an update through its `signature_class_revoke`
+field, whose value is applied to the device after the manifest has been
+authenticated. SEP applies such a request as follows.
+
+*Authority.* Only BL1 programs `SIGNATURE_REVOKE`. SEP ROM never programs a
+fuse, and no boot stage after BL1 can program this field or write its shadow
+register, because BL1 write-locks it before handing off. The request acted on
+is the `signature_class_revoke` field of the BL1 manifest -- the manifest SEP
+ROM authenticated under the policy in force -- and only when
+`signature_class_revoke_update_disable` in that manifest's
+`manifest_security_control` is clear. The ROOT-authorization rules the manifest
+places on this field when `use_verifier_key` is set (the
+`verifier_authorized_signature_class_revoke` copy and
+`modify_allowed_signature_class_revoke`) are enforced as part of manifest
+verification and are not restated here. A `signature_class_revoke` value
+carried by any later-stage manifest is not acted on by SEP.
+
+*Update sequence.* After SEP ROM has handed off to BL1, and before BL1 hands off
+to the next stage, BL1 shall:
+
+. Read the `SIGNATURE_REVOKE` shadow register, which at this point holds the
+fused value, and compute _requested_ = shadow OR the manifest's
+`signature_class_revoke` value mapped onto `SIGNATURE_REVOKE` as defined in the
+OTP Fuse Controller chapter. If _requested_ equals the shadow value, there is
+nothing to program; continue at step 5.
+. Perform the survivability check below with `SIGNATURE_REVOKE` taken as
+_requested_. If it fails, do not program the fuse, report the rejected request,
+and continue at step 5.
+. Program the bits of _requested_ not already set in the fuse, through the
+fuse-programming function of the OTP Fuse Controller, and read the fuse back.
+A read-back that differs from _requested_ is a fuse-programming failure and is
+reported; the sequence continues, and because the manifest still carries the
+request it is retried at the next boot.
+. Write _requested_ to the `SIGNATURE_REVOKE` shadow register. Programming a
+fuse does not update its shadow register until the next fuse sensing, so this
+write is what makes the revocation part of the policy in force for the rest of
+this boot. The shadow register is set-only, so the write can only add revoked
+families.
+. Set the write-lock bit of `SIGNATURE_REVOKE`, `LOCKS_SPARE[18]`, in the LOCKS
+shadow register. A write-lock blocks both fuse programming and shadow writes,
+so from this point no stage in this boot can change the field. The LOCKS
+_fuse_ bit for this slot is never programmed: the lock clears at the next cold
+reset, which is what allows a further family to be revoked in a later boot.
+. Verify the next-stage manifest against the policy in force, which now
+includes the revocation, and hand off.
+
+Step 5 is performed on every boot, whether or not steps 3 and 4 ran, so that
+BL1 is the only stage that can ever program this field.
+
+*Survivability check.* A revocation shall never leave the device unable to
+boot. Before programming, BL1 shall confirm that both of the following
+manifests satisfy the requirement rule of <<secure-boot-signing-model>> with
+`SIGNATURE_REVOKE` taken as _requested_ and the rest of the policy in force
+unchanged:
+
+* the BL1 manifest itself, so that SEP ROM accepts it again at the next cold
+reset. SEP ROM has already verified its signatures, so this is evaluated from
+the manifest's signature-type fields and the policy, without repeating the
+signature verification; and
+* the next-stage manifest, if BL1 loads one, so that this boot completes. BL1
+verifies that manifest in step 6 in any case; performing that verification
+under _requested_ before step 3 satisfies this condition.
+
+If either manifest fails, the request is not programmed and the boot continues
+under the unchanged policy. SEP defines no override for a request that would
+leave no trusted algorithm family: such a request is never programmed.
+
+Because the check is defined through the requirement rule, it follows whatever
+that rule says about revoked families and needs no separate definition.
+
+*Example.* The fused policy is `REQUIRED_ALGS[3:0]` = `0b0011`,
+`REQUIRED_SIGNERS[7:0]` = `0x00` and `SIGNATURE_REVOKE` = 0. A BL1 manifest
+arrives signed classical and ML-DSA, carrying a `signature_class_revoke` value
+that maps to `SIGNATURE_REVOKE` bit 6 (ML-DSA).
+
+. SEP ROM verifies both chiplet-creator signatures and hands off.
+. BL1 computes _requested_ = bit 6. Under step 1 of the requirement rule, its
+own manifest still authenticates on its classical signature, as does the
+next-stage manifest; the check passes.
+. BL1 programs bit 6, writes the shadow register, sets `LOCKS_SPARE[18]` in the
+LOCKS shadow, verifies the next-stage manifest with ML-DSA revoked, and hands
+off.
+. At the next cold reset SEP ROM verifies the same BL1 manifest with
+`SIGNATURE_REVOKE` bit 6 fused: the ML-DSA signature is not checked and the
+classical signature alone authenticates it.
 
 == Memory Map and Register Reference
 
