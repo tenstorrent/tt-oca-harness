@@ -82,13 +82,16 @@ at half or twice the stated rate is outside the bound. Control: CTL-WDT-ENABLE
 watchdog timer will count.",
 ``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/data/aon_timer.hjson:261``).
 Environment choices (logged): the edge allowance ``a`` of leg R, the count
-allowance ``A`` of legs T and W, the clock period ``P_w`` of ``clk_wdt_i``, poll
+allowance ``A`` of legs T, W and C, the clock period ``P_w`` of ``clk_wdt_i``, poll
 bounds and wait lengths.
 
 Legs L, P, K and C grade these sentences
 (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/`` is ``<aon>``). A read of
-the timer returns the value at a ``clk_wdt_i`` edge inside the read, and a read
-follows the landing of every earlier write: "If software needs to guarantee
+the timer returns a copy of the count from the clock-domain crossing ("Register
+reads via the TL-UL interface (SYS domain) are synchronized to the slow clock (AON
+domain)", ``<aon>/doc/theory_of_operation.md:25``). The copy is taken at or before
+the read and may lag the live count by up to the allowance ``A``: no sentence gives
+its age. A read follows the landing of every earlier write: "If software needs to guarantee
 completion of a register write then it can read back the register value. This
 will guarantee the completion of all previous writes to the peripheral."
 (``<aon>/doc/theory_of_operation.md:27-28``). ``E(t0, t1)`` is the ``clk_wdt_i``
@@ -158,16 +161,20 @@ edges in (t0, t1].
   (``:33-45``). At prescaler 0 with the count preloaded 256 below the carry: the
   HI read is 0x1, the LO read is the low word in its count bounds, the second HI
   read is 0x2, and the hi/lo/hi value is in its count bounds, above the hi/lo
-  value. Count bounds: ``[preload + E(enable read-back, issue) - 1, preload +
+  value. Count bounds: ``[preload + E(enable read-back, issue) - 1 - A, preload +
   E(enable write, completion)]``, one count per period (``<aon>/README.md:31-32``,
-  prescaler 0). Control CTL-WKUP-CARRY: the HI read completes fewer than 256
+  prescaler 0). ``A`` covers the age of the count copy, which no sentence states.
+  Control CTL-WKUP-CARRY: the HI read completes fewer than 256
   periods after the enable write and the LO read is issued more than 256 periods
   after the read-back, so the carry falls between them.
 
 ``A`` appears in legs P and K only where a status crosses into ``clk_i``: the
 same crossing that CHK-WDT-BARK-TIME bounds by ``A`` periods on every run, so a
 healthy DUT cannot exceed it here. The count bounds of CHK-WDT-PET,
-CHK-WKUP-PRESC-MAX, CHK-WKUP-RESTART and CHK-WKUP-CARRY-READ use no allowance.
+CHK-WKUP-PRESC-MAX and CHK-WKUP-RESTART use no allowance: a lagging copy only
+lowers a CHK-WDT-PET read, and the two bracketed steps of CHK-WKUP-PRESC-MAX see the
+same copy delay. The lower count bounds of CHK-WKUP-CARRY-READ use ``A`` for the
+age of the count copy.
 "A pet after the bark stops the bite" is not graded: no sentence states it.
 
 Checkers: CHK-REFCNT-RATE, CHK-REFCNT-PHASE, CHK-REFCNT-WRITE,
@@ -1956,9 +1963,12 @@ class sep_timer_clock_contract_test(sep_base_test):
         """CHK-WKUP-CARRY-READ, control CTL-WKUP-CARRY, at prescaler 0.
 
         With prescaler 0 the count rises by one per clk_wdt_i period after the
-        enable write lands, and a read returns the count at a clk_wdt_i edge
-        inside the read. So the count of a read is within
-        [pre + E(read-back, issue) - 1, pre + E(enable write, completion)].
+        enable write lands. A read returns a copy of the count taken at or
+        before the read, which may lag the live count by up to A counts. So the
+        count of a read is within
+        [pre + E(read-back, issue) - 1 - A, pre + E(enable write, completion)].
+        The upper bounds take no allowance: a lagging copy is never above the
+        live count.
         """
         dut = cocotb.top
         seed = self.tcfg.seed
@@ -2003,25 +2013,27 @@ class sep_timer_clock_contract_test(sep_base_test):
             e_h,
             e_l_lo,
         )
-        lo_min = e_l_lo - 1 - CARRY_MARGIN
+        lo_min = e_l_lo - 1 - COUNT_ALLOW - CARRY_MARGIN
         lo_max = self._edges("clk_wdt_i", t_en, d_l) - CARRY_MARGIN
-        r_min = pre + self._edges("clk_wdt_i", t_rb, s_l2) - 1
+        r_min = pre + self._edges("clk_wdt_i", t_rb, s_l2) - 1 - COUNT_ALLOW
         r_max = pre + self._edges("clk_wdt_i", t_en, d_l2)
         line = (
             f"seed={seed} preload=0x{pre:x} hi=0x{hi1:x} lo=0x{lo:x} lo_bounds=[{lo_min},"
             f"{lo_max}] naive=0x{naive:x} hi2=0x{hi2:x} lo2=0x{lo2:x} result=0x{result:x} "
-            f"result_bounds=[0x{r_min:x},0x{r_max:x}]"
+            f"result_bounds=[0x{r_min:x},0x{r_max:x}] allow={COUNT_ALLOW} "
+            f"lag_lo={e_l_lo - 1 - CARRY_MARGIN - lo}"
         )
-        ok = (
-            hi1 == 1
-            and lo_min <= lo <= lo_max
-            and naive < (2 << 32)
-            and hi2 == 2
-            and r_min <= result <= r_max
-            and naive < result
+        clauses = (
+            ("hi1", hi1 == 1),
+            ("lo_bounds", lo_min <= lo <= lo_max),
+            ("naive", naive < (2 << 32)),
+            ("hi2", hi2 == 2),
+            ("result_bounds", r_min <= result <= r_max),
+            ("naive_lt_result", naive < result),
         )
-        if not ok:
-            raise AssertionError(f"{chk} FAIL: {line}")
+        failed = [name for name, held in clauses if not held]
+        if failed:
+            raise AssertionError(f"{chk} FAIL: {line} failed={','.join(failed)}")
         self.logger.info("%s PASS: %s", chk, line)
         await self._wkup_stop()
 

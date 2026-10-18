@@ -2388,9 +2388,11 @@ module sep_uvm_top
     // different driver inputs, so a release straight from an injected pattern
     // can leave one rail at the injected value. With the drain the value kept
     // at the release is the driver value. A cell releases the inject (select
-    // 0, pattern off) before it selects another comparator.
-    logic       token_cmp_drain_q = 1'b0;
-    logic [1:0] token_cmp_drain_sel_q = 2'b00;
+    // 0, pattern off) before it selects another comparator. No declaration
+    // initializers (see the SMC fuse-sense note): the first falling edge sets
+    // both variables, and until then the X drain flag selects the release arm.
+    logic       token_cmp_drain_q;
+    logic [1:0] token_cmp_drain_sel_q;
     always @(negedge clk_i) begin
         if (token_cmp_do_force && token_cmp_fault_sel_i === 2'b00) begin
             force `CMP_SIP.match_p = token_cmp_force_p;
