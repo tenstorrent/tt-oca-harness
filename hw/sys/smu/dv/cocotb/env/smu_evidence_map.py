@@ -3780,6 +3780,422 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "bounded J2A and pad waits with last state",
         ),
     ],
+    "smu_dtp_jtag2axi_series_contention_test": [
+        (
+            "CHK-DBG-J2A-SERIES-SETUP",
+            "CHK-DBG-J2A-SERIES-SETUP",
+            "the SMC fabric gate tap reads 0 before the first bridge scan, SERIES_CTRL scans 63 "
+            "bits wide and reads op 0 after SERIES_CTRL.reset, and the AW, AR and B counter "
+            "baselines are sampled",
+        ),
+        (
+            "CHK-DBG-J2A-SERIES-INCR",
+            "CHK-DBG-J2A-SERIES-INCR",
+            "an eight-beat 32-bit INCR write raises the AW and B counters by 8 and leaves op 0, "
+            "SINGLE_OP reads return W0, W1, W6 and W7, a single-load series read returns W1 on "
+            "capture 2, the 64-bit leg raises the counters by 2 and reads back both words, and "
+            "the eight-scan read stream is measured and logged only",
+        ),
+        (
+            "CHK-DBG-J2A-SERIES-NOINCR",
+            "CHK-DBG-J2A-SERIES-NOINCR",
+            "a two-beat NO_INCR write leaves the last word at word 5 with the AW and B counters "
+            "up by 2, word 4 of the same 8-byte beat is unchanged, and a single-load NO_INCR read"
+            " returns X2 before a SINGLE_OP rewrite and X3 after it",
+        ),
+        (
+            "CHK-DBG-J2A-SERIES-ERRSTATUS",
+            "CHK-DBG-J2A-SERIES-ERRSTATUS",
+            "WITH_ERROR_STATUS scans are 33 bits wide, report status 0 on every OKAY beat, land "
+            "P0, P2, P3 on words 0 to 2 by the increment bits with the counters up by 4, a "
+            "single-load read returns P0 with status 0, a read of 0xC0017000 followed by two "
+            "scans with increment 0 shifts out status 1 on the second, and SERIES_CTRL.reset "
+            "returns op from 2 to 0",
+        ),
+        (
+            "CHK-DBG-J2A-SERIES-PIPELINE",
+            "CHK-DBG-J2A-SERIES-PIPELINE",
+            "for pl_depth 0 and 3 two back-to-back write beats raise the AW and B counters by 2 "
+            "and land in order, and op reads 0 after the leg; the pending indication is measured "
+            "and logged only",
+        ),
+        (
+            "CHK-DBG-J2A-STICKY-SLVERR-FIRST",
+            "CHK-DBG-J2A-STICKY-SLVERR-FIRST",
+            "with the mailbox STATUS read showing EMPTY, a series read of the empty mailbox "
+            "READ_DATA returns 0xFEEDDEAD and SERIES_CTRL.op reads 1, stays 1 after an OKAY beat "
+            "and after a DECERR gap read (0xBADCAB1E), and a single-load read of word 6 is clean;"
+            " the 0x1_7000 window write response is measured and logged only",
+        ),
+        (
+            "CHK-DBG-J2A-STICKY-DECERR-FIRST",
+            "CHK-DBG-J2A-STICKY-DECERR-FIRST",
+            "SERIES_CTRL.op reads 2 after a DECERR gap read and stays 2 after a clean single-load"
+            " read and an empty mailbox READ_DATA series read that returns 0xFEEDDEAD",
+        ),
+        (
+            "CHK-DBG-J2A-STICKY-RESET",
+            "CHK-DBG-J2A-STICKY-RESET",
+            "SERIES_CTRL.reset returns op from 1 and from 2 to 0 and a following OKAY beat keeps "
+            "it 0",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-INDEP",
+            "CHK-DBG-J2A-SINGLE-INDEP",
+            "with series code 2 latched a SINGLE_OP OKAY read reports op 0 and a SINGLE_OP read "
+            "of the empty mailbox READ_DATA reports op 1 with 0xFEEDDEAD, and SERIES_CTRL.op "
+            "stays 2 after each",
+        ),
+        (
+            "CHK-DBG-J2A-BUSY-OP3",
+            "CHK-DBG-J2A-BUSY-OP3",
+            "the op field and AR delta of unspaced SINGLE_OP pairs are measured and logged only, "
+            "the retry after 64 Run-Test/Idle TCKs reads op 0 with word 7, and spaced pairs read "
+            "op 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the gate wait, the SERIES_CTRL.op polls, the B counter waits, the SINGLE_OP capture "
+            "polls, the unspaced-attempt loop and its single retry capture site finish inside "
+            "their "
+            "bounds with a recorded last state and the stated site count per kind",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S12<PASS, the pass point is stamped after the last "
+            "step and every step S1 to S11 has a nonzero scan count",
+        ),
+    ],
+    "smu_dtp_jtag2axi_caps_single_op_test": [
+        (
+            "CHK-DBG-J2A-CAPS-SETUP",
+            "CHK-DBG-J2A-CAPS-SETUP",
+            "the SMC fabric gate tap reads 0 before the first bridge scan, IDCODE reads the "
+            "documented value and the AW, AR and B counter baselines are sampled",
+        ),
+        (
+            "CHK-DBG-J2A-CAPS-SMC",
+            "CHK-DBG-J2A-CAPS-SMC",
+            "SMC_JTAG2AXI_CAPS reads 0x3DF0 with bus_type 0, addr_size 56, data_size 3, "
+            "wr_pl_depth 3 and rd_pl_depth 3, each field compared separately",
+        ),
+        (
+            "CHK-DBG-J2A-CAPS-OTP",
+            "CHK-DBG-J2A-CAPS-OTP",
+            "SMC_OTP and SEP_OTP JTAG2AXI_CAPS both read 0x3D41 with bus_type 1, addr_size 32, "
+            "data_size 2, wr_pl_depth 3 and rd_pl_depth 3, each field compared separately",
+        ),
+        (
+            "CHK-DBG-J2A-CAPS-STABLE",
+            "CHK-DBG-J2A-CAPS-STABLE",
+            "each CAPS word recaptures as 0x3DF0, 0x3D41 and 0x3D41 after zeros, ones and 0x2AAA "
+            "shift-ins and after an intervening IDCODE scan and BYPASS load",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-SLVERR",
+            "CHK-DBG-J2A-SINGLE-SLVERR",
+            "STATUS reads EMPTY with op 0, the empty-mailbox READ_DATA read captures op 1 with "
+            "0xFEEDDEAD and raises the AR counter by 1 after a capture of op 0, the SINGLE_OP "
+            "scan is 132 bits wide, and the response of the 0xC0017000 window write is measured "
+            "and logged only",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-DECERR",
+            "CHK-DBG-J2A-SINGLE-DECERR",
+            "a read at 0xC0017000 captures op 2 with 0xBADCAB1E and raises the AR counter by 1",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-OKAY",
+            "CHK-DBG-J2A-SINGLE-OKAY",
+            "the capture before a write of SCRATCH[13] reads op 2, the write reads op 0 with the "
+            "AW and B counters up by 1, a gap read right before the read of SCRATCH[13] captures "
+            "op 2 with 0xBADCAB1E, and the read returns 0x0A11CE5E with op 0 and the AR counter "
+            "up by 1",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-RECOVERY",
+            "CHK-DBG-J2A-SINGLE-RECOVERY",
+            "a second empty-mailbox READ_DATA read captures op 1 with 0xFEEDDEAD and a clean read "
+            "of SCRATCH[13] captures op 0 with 0x0A11CE5E",
+        ),
+        (
+            "CHK-DBG-J2A-SINGLE-NOP",
+            "CHK-DBG-J2A-SINGLE-NOP",
+            "two op 0 scans with a non-zero address, data and strobe leave the AR counter flat "
+            "and, after the op 1 scan of the same fields completes, the AW counter flat and the "
+            "AR counter up by 1",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last "
+            "step and every step S1 to S10 has a nonzero scan count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the gate wait and the ten SINGLE_OP capture polls finish inside their bounds with a "
+            "recorded last state and the stated site count per kind",
+        ),
+    ],
+    "smu_dtp_otp_sep_series_error_test": [
+        (
+            "CHK-DBG-SEP-OTP-SETUP",
+            "CHK-DBG-SEP-OTP-SETUP",
+            "lc_state_o leaves its pre-sense value inside its bound, the SEP OTP gate tap reads "
+            "0, IDCODE reads the documented value, the AW, AR and B counter baselines are "
+            "sampled and SERIES_CTRL.reset leaves op 0",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-POSCTRL",
+            "CHK-DBG-SEP-OTP-POSCTRL",
+            "NO_INCR writes of 0x13579BDF and 0x2468ACE0 to the SPARE0 words leave op 0, the "
+            "single-load NO_INCR read returns the first word and the single-load INCR reads "
+            "return both words with op 0, and the 72-bit SINGLE_OP read of word 0 captures op 0 "
+            "with the first word; the three-scan INCR stream is measured and logged only",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-HOLE-SINGLE",
+            "CHK-DBG-SEP-OTP-HOLE-SINGLE",
+            "a SINGLE_OP read at 0x1093041C captures op 1 and the SINGLE_OP read of SPARE0 word "
+            "0 right after it captures op 0 with 0x13579BDF; the data word of the SLVERR read "
+            "is measured and logged only",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-HOLE-SERIES",
+            "CHK-DBG-SEP-OTP-HOLE-SERIES",
+            "SERIES_CTRL.op reads 0 before a series beat at 0x1093041C and 1 after it, the "
+            "single-load read of SPARE0 word 0 after it returns 0x13579BDF with op 1, and op "
+            "stays 1 beside a SINGLE_OP read that captures op 0; the first capture of the SPARE0 "
+            "load after the series hole beat is measured and logged only",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-ISOLATION",
+            "CHK-DBG-SEP-OTP-ISOLATION",
+            "the AW, AR and B counters equal their baselines after all SEP OTP traffic, then "
+            "the SMC fabric SINGLE_OP read at 0xC0017000 captures op 2 and the read of "
+            "0xC00390E8 captures op 0 with the AR counter up by 2 and the AW and B counters "
+            "unchanged",
+        ),
+        (
+            "CHK-DBG-SEP-OTP-RESET",
+            "CHK-DBG-SEP-OTP-RESET",
+            "the SERIES_CTRL write with bit 38 set captures op 1 and the next capture reads "
+            "op 0, and the single-load series read of SPARE0 word 0 after it returns "
+            "0x13579BDF with op 0",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last "
+            "step and every step S1 to S7 has a nonzero scan count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the sensing wait, the SERIES_CTRL.op polls and the SINGLE_OP capture polls finish "
+            "inside their bounds with a recorded last state and the stated site count per kind",
+        ),
+    ],
+    "smu_dtp_sep_ic_reset_effect_test": [
+        (
+            "CHK-DBG-IC-SEP-SETUP",
+            "CHK-DBG-IC-SEP-SETUP",
+            "IDCODE reads the documented value, JTAG_CAPS reports 68, 8 and 1 IC_RESET ports, "
+            "the IC_RESET scan returns a 155-bit all-ones image, the SCRATCH[11] write of "
+            "0x5C5C0B01 captures op 0 and dmcontrol.dmactive reads 1 through the SEP STAP",
+        ),
+        (
+            "CHK-DBG-IC-SEP-POSITION",
+            "CHK-DBG-IC-SEP-POSITION",
+            "update 1 (bit 14 = 0, bit 13 = 1) leaves sep_reset_n_o at 1 and SEP cold scratch "
+            "word 0 at 0x5EC01D5E; update 2 (bits 13 and 14 = 0) takes sep_reset_n_o to 0; "
+            "the capture has exactly bits 13 and 14 clear",
+        ),
+        (
+            "CHK-DBG-IC-SEP-QUIESCE",
+            "CHK-DBG-IC-SEP-QUIESCE",
+            "cold scratch word 0 reads 0x5EC01D5E over the system bus with sep_reset_n_o at 1 "
+            "and obs_sep_clk_o at both levels before the override and again after "
+            "Test-Logic-Reset and a STAP re-select with no override engaged; after the override "
+            "sep_reset_n_o reads 0 on every one of 2000 hold samples with obs_sep_clk_o at both "
+            "levels; sep_trace_valid_o counts are measured and logged only",
+        ),
+        (
+            "CHK-DBG-IC-SEP-ISOLATION",
+            "CHK-DBG-IC-SEP-ISOLATION",
+            "during the SEP override jtag_ic_reset_ext_o reads ovrd 0 and val 1, "
+            "rst_primary_smc_clk_no reads 1 on every sample of its window and the SMC fabric "
+            "read of "
+            "0xC00390D8 captures op 0 with 0x5C5C0B01; the external control leg drives ovrd 1 "
+            "and val 0 and releases to ovrd 0",
+        ),
+        (
+            "CHK-DBG-IC-SEP-HOLD-TLR",
+            "CHK-DBG-IC-SEP-HOLD-TLR",
+            "with reset_hold 1 Test-Logic-Reset returns sep_reset_n_o to 1, the capture is "
+            "all ones, cold scratch word 0 reads 0 and 0x5EC02D5E reads back; with reset_hold 0 "
+            "sep_reset_n_o stays 0 on 400 samples and the capture clears bits 0, 13 and 14",
+        ),
+        (
+            "CHK-DBG-IC-SEP-RELEASE",
+            "CHK-DBG-IC-SEP-RELEASE",
+            "reset_enable written 1 first returns sep_reset_n_o to 1, it stays 1 on 200 "
+            "samples after reset_control is written 1, the capture clears only bit 0, cold "
+            "scratch word 0 reads 0 and 0x5EC03D5E reads back",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last "
+            "step and every step S1 to S10 has a nonzero scan count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the sensing wait, the capture polls, the reset and external-output waits, the "
+            "system-bus completion polls and the dmi retry loops finish inside their bounds "
+            "with a recorded last state and the stated site count per kind",
+        ),
+    ],
+    "smu_dtp_jtag2axi_ratio_floor_test": [
+        (
+            "CHK-DBG-RATIO-SETUP",
+            "CHK-DBG-RATIO-SETUP",
+            "the clk_smu_i period measured over four rising edges is within 1 % of the 10 ns "
+            "system clock setting and the bench period from +pll_sys_period_ns equals it, the "
+            "absent TCK floor is logged, the gate tap reads 0 before the first bridge scan, "
+            "SERIES_CTRL.reset leaves op 0 and the counter baselines are sampled",
+        ),
+        (
+            "CHK-DBG-RATIO-COMPLETE-4P0",
+            "CHK-DBG-RATIO-COMPLETE-4P0",
+            "at TCK 40 ns the four-word series write raises the AW and B counters by 4 and the "
+            "four single-load series reads return the four words with op 0 after every load; "
+            "the AR delta is measured and logged only",
+        ),
+        (
+            "CHK-DBG-RATIO-COMPLETE-4P8",
+            "CHK-DBG-RATIO-COMPLETE-4P8",
+            "at TCK 48 ns the four-word series write raises the AW and B counters by 4 and the "
+            "four single-load series reads return the four words with op 0 after every load",
+        ),
+        (
+            "CHK-DBG-RATIO-OP3-RULE",
+            "CHK-DBG-RATIO-OP3-RULE",
+            "every SERIES_CTRL.op capture of the 3.2 and 2.0 legs is 0 or 3 and never 1 or 2, "
+            "and the integration legs read 0; a leg that never reads 3 is reported as "
+            "NOT-EXERCISED for that branch",
+        ),
+        (
+            "CHK-DBG-RATIO-RECOVERY",
+            "CHK-DBG-RATIO-RECOVERY",
+            "after SERIES_CTRL.reset at TCK 40 ns op reads 0 and a new four-word series write "
+            "and four single-load reads complete with equal data, op 0 after every load and "
+            "the AW and B counters up by 4",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last "
+            "step and every scanning step has a nonzero access count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the gate wait, the op polls, the B counter waits and the two retry loops finish "
+            "inside their bounds with a recorded last state and the stated site count per kind",
+        ),
+    ],
+    "smu_dtp_smc_dm_dmi_test": [
+        (
+            "CHK-DBG-SMC-DM-SETUP",
+            "CHK-DBG-SMC-DM-SETUP",
+            "the gate tap reads 0 before the first bridge scan, IDCODE reads the documented value, "
+            "the launch counter baselines are sampled, tb_stap_smc_tms stays parked while the SMC "
+            "STAP is unselected and follows jtag_tms edge for edge after TAP_3DCR with no TCK "
+            "mismatch",
+        ),
+        (
+            "CHK-DBG-SMC-DM-RESET-HELD",
+            "CHK-DBG-SMC-DM-RESET-HELD",
+            "RESET_CTRL reads bit 24 = 0 and its bits 3:0 and bit 8 are logged; the dmi write and "
+            "two dmi reads while the debug module is held complete inside the retry bound with "
+            "the write status logged; the IDCODE after them equals the first",
+        ),
+        (
+            "CHK-DBG-SMC-DM-RELEASE",
+            "CHK-DBG-SMC-DM-RELEASE",
+            "the RESET_CTRL write with bit 24 set captures op 0 with the AW and B counters each up "
+            "by 1 and the read back has bit 24 = 1 with bits 8:0 equal to the value read while "
+            "held",
+        ),
+        (
+            "CHK-DBG-SMC-DM-DMACTIVE",
+            "CHK-DBG-SMC-DM-DMACTIVE",
+            "after the release the dmi write of dmcontrol = 1 reads back dmactive = 1 inside the "
+            "retry bound",
+        ),
+        (
+            "CHK-DBG-SMC-DM-DMSTATUS",
+            "CHK-DBG-SMC-DM-DMSTATUS",
+            "the dtmcs scan completes and its abits size the dmi scans; dmstatus reads version 2, "
+            "authenticated 1, hasresethaltreq 1, impebreak 1 and confstrptrvalid 0, each compared "
+            "separately",
+        ),
+        (
+            "CHK-DBG-SMC-DM-RESET-CONTRAST",
+            "CHK-DBG-SMC-DM-RESET-CONTRAST",
+            "while RESET_CTRL bit 24 reads 0 the dmi read of dmcontrol after the write of "
+            "dmactive = 1 does not answer op 0 with dmactive 1 and the dmi read of dmstatus does "
+            "not answer op 0 with version 2; after the write that sets bit 24 the same reads "
+            "answer op 0 with dmactive 1 and op 0 with version 2; the held op values are logged "
+            "(op 1 is reserved in External Debug 0.13)",
+        ),
+        (
+            "CHK-DBG-SMC-DM-SBCS",
+            "CHK-DBG-SMC-DM-SBCS",
+            "sbcs reads sbversion 1, sbasize 56, sbaccess8, sbaccess16, sbaccess32 and "
+            "sbaccess64 1 "
+            "and sbaccess128 0, each compared separately",
+        ),
+        (
+            "CHK-DBG-SMC-DM-SBA-WRITE",
+            "CHK-DBG-SMC-DM-SBA-WRITE",
+            "the 32-bit system-bus write of 0x5BA0F15E to SCRATCH[15] (0xC00390F8) completes with "
+            "sbbusy 0, sberror 0 and sbbusyerror 0 inside the poll bound",
+        ),
+        (
+            "CHK-DBG-SMC-DM-SBA-READ",
+            "CHK-DBG-SMC-DM-SBA-READ",
+            "the fabric read of 0xC00390F8 captures op 0 with 0x5BA0F15E, the system-bus read of "
+            "SCRATCH[14] (0xC00390F0) returns 0x0ECCA114 written over the fabric first and the "
+            "system-bus read of 0xC00390F8 then returns 0x5BA0F15E, with sbbusy, sberror and "
+            "sbbusyerror 0 after each",
+        ),
+        (
+            "CHK-DBG-SMC-DM-SBA-PATH",
+            "CHK-DBG-SMC-DM-SBA-PATH",
+            "the DTP-to-SMC AW, AR and B counters stay flat across the system-bus write and both "
+            "system-bus reads and rise by exactly 1 for each of the fabric write of 0x0ECCA114 and "
+            "the fabric read of 0xC00390F8",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last "
+            "step and every step S1 to S10 has a nonzero scan count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "the gate wait, the five fabric op capture polls, the sixteen dmi retry loops and the "
+            "three sbbusy polls finish inside their bounds with a recorded last state and the "
+            "stated site count per kind",
+        ),
+    ],
     "smu_smc_warm_reset_register_retention_test": [
         (
             "CHK-WARM-RET-SSCFG",
