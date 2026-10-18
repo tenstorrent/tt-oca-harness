@@ -468,7 +468,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 and s_self == bj
                 and s_j == 0,
                 bit=i,
-                name=pl.IRQ_NAMES[i],
+                irq=pl.IRQ_NAMES[i],
                 src="irq_set",
                 j=j,
                 set=_h(s_set),

@@ -150,6 +150,20 @@ _TOKEN_STATUS_REGS = (
 )
 
 
+def _mmr_mask(reg: str) -> int:
+    """RDL field mask of a token register.
+
+    The three ``*_TOKEN_MATCH`` registers share one generated register type,
+    ``EFUSE_MMR_TOKEN_MATCH_reg_t``, so their mask comes from that type.
+    """
+    try:
+        return EFUSE_MMR.mask(reg)
+    except KeyError:
+        if reg.endswith("_TOKEN_MATCH"):
+            return EFUSE_MMR.mask("TOKEN_MATCH")
+        raise
+
+
 def _f(reg: str, name: str) -> int:
     return EFUSE_INTERFACE_CTRL.field_mask(reg, name)
 
@@ -683,7 +697,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             )
         for reg in _TOKEN_STATUS_REGS:
             sep = EFUSE_MMR.addr(reg)
-            out.append(("token", KM_EFUSE_MAP + sep - SHADOW_BASE, sep, EFUSE_MMR.mask(reg)))
+            out.append(("token", KM_EFUSE_MAP + sep - SHADOW_BASE, sep, _mmr_mask(reg)))
         rng.shuffle(out)
         for k, (m, km, sep, mask) in enumerate(out):
             self._draw(
