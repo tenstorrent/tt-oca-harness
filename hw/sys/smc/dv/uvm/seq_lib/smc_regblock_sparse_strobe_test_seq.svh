@@ -195,6 +195,7 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       bit [63:0] data;
       bit [63:0] full_expected;
       bit [7:0] strb;
+      int unsigned pick;
       int unsigned rw_lane_count = $countones(entries[i].rw_lane_mask);
       int unsigned lane = rw_lane_at(entries[i].rw_lane_mask, loop_index % rw_lane_count);
 
@@ -228,7 +229,9 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       end
 
       valid_sparse_strobes(entries[i].rw_lane_mask, valid);
-      strb   = valid[int'(random_pattern(8)%valid.size())];
+      // A function call inside a queue index stops Verilator with an internal error.
+      pick   = int'(random_pattern(8) % valid.size());
+      strb   = valid[pick];
       data   = ~shadow;
       shadow = smc_regblock_merge_write(shadow, data, strb, entries[i].rw_mask);
       write_strobe(entries[i].addr, data, strb, $sformatf(

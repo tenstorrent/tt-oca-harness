@@ -2,11 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Functional-coverage collector for the shared JTAG VIP: TAP state/transition
-// occupancy, IR/DR scan shapes, and reset causes. Commercial-simulator only
-// (covergroups are outside Verilator's supported subset) — never add to
-// Verilator filelists. Sampling is function-based so both procedural code and
-// UVM subscriber write() functions can drive it; the UVM-side sampler is
-// uvm/ocah_jtag_cov.svh.
+// occupancy, IR/DR scan shapes, and reset causes. Sampling is function-based so
+// both procedural code and UVM subscriber write() functions can drive it; the
+// UVM-side sampler is uvm/ocah_jtag_cov.svh.
 //
 // State numbering follows the VIP convention: IEEE 1149.1 states 0..15
 // (Test-Logic-Reset = 0), i.e. the bit index of one-hot RTL encodings.

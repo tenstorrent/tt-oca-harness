@@ -740,7 +740,7 @@ one surface convention, with the JTAG master env as the reference template:
 - `ocah_axi_cov_if` with `sample_write()` and `sample_read()` tasks.
 - `ocah_axi_cov` module wrapper with scalar sample ports for bind-friendly flows.
 
-Do not add this file to Verilator default filelists.
+Do not add this file to Bender or cocotb filelists.
 
 ## DTP Usage
 

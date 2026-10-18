@@ -4,7 +4,7 @@
 Open-source DV environment for the SMC (System Management Controller) subsystem,
 built on cocotb/PyUVM and driven by `tools/dv/run_dv.py --dut smc`, with a
 SystemVerilog UVM realization of the same testbench top selected by
-`--framework uvm` (VCS).
+`--framework uvm` (VCS or Verilator).
 
 **DUT** = `smc_wrapper` (`hw/top/smc_wrapper.sv`) — the `smc` core plus
 `smc_ip_integration` (pll/pvt/eFuse/pad macros, I3C DAT-DCT-RLT) and
@@ -47,7 +47,7 @@ it, and why that is still a real DUT path). The helpers that set it live in
 | Python ≥ 3.11 | launcher | `tools/dv/run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi); there is nothing to source. Set `OCAH_DV_SKIP_UV=1` only inside a pre-provisioned environment that already supplies the `dv` group |
 | Bender | filelist (`--stage flist`) | must be on `PATH` |
 | RISC-V GCC with picolibc, or a container engine | firmware images for `all` (`fw/`) | `docker` or `podman` for `scripts/docker-run.sh`, which builds the images in the `ocah-toolchain` container; not needed for `smoke` or `hosted` |
-| VCS | `--framework uvm`, and `--cov` coverage | Verilator has no SV-UVM support; see `frameworks` in `hw/common/dv/configs/simulators.toml` |
+| VCS | `--cov` coverage, and `--framework uvm` by default | `--framework uvm --tool verilator` runs the SV-UVM view without it |
 
 `python3 tools/dv/run_dv.py --doctor --dut smc --tool verilator` reports which
 of these tools the machine can see and whether the DV configs are consistent,
@@ -337,10 +337,10 @@ scenario carries both implementations in its `module` binding map
 (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
 selects the same VPLAN scenario in either framework; the UVM class name is
 the `uvm` entry (`+UVM_TESTNAME`). A group runs its UVM-implemented subset;
-naming a scenario with no `uvm` entry errors. VCS only: Verilator has no
-SV-UVM support. The bench architecture is in `docs/SMC_TB_ARCH.adoc`
-("SystemVerilog UVM Realization"); the framework conventions it follows are
-in `hw/common/dv/docs/uvm-framework.adoc`.
+naming a scenario with no `uvm` entry errors. The view runs on VCS by
+default and on Verilator with `--tool verilator`. The bench architecture is
+in `docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
+conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
 
 One bound scenario is `smc_register_sanity_test`:
 SEP_IN AXI4 idle-read / write / readback / restore of the `SCRATCH_COLD` and
@@ -397,7 +397,7 @@ hw/sys/smc/dv/
 │   ├── env/                #   agents, scoreboard, monitors, env cfg
 │   ├── seq_lib/            #   sequences (the VPLAN scenarios) + shared VIP helpers
 │   └── tests/              #   @pyuvm.test() entries, one per VPLAN testcase
-├── uvm/                    # SV-UVM realization (--framework uvm, VCS)
+├── uvm/                    # SV-UVM realization (--framework uvm)
 │   ├── env/                #   smc_env_pkg: types, cfgs, ref model, scoreboard, env
 │   ├── seq_lib/            #   smc_seq_lib_pkg: operations + scenario sequences
 │   └── tests/              #   thin test classes + smc_tests.sv include manifest
