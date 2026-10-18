@@ -3370,7 +3370,7 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Area*: Crypto and entropy
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+esrc_noise_force`, detune probe (observation tap), 4 seeds; testlist `crypto.toml`; groups `cpu_stub` and `all` run it as two shards (`+sep_shard`, `env/sep_shard.py`): the graded manual, off and ignored legs with burst 0; the manual and ignored legs again, ungraded, with bursts 1 and 2. Verilator and VCS.
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+esrc_noise_force`, detune probe (observation tap), 4 seeds; testlist `crypto.toml`; groups `cpu_stub` and `all` run it as two shards (`+sep_shard`, `env/sep_shard.py`): the graded manual, off and ignored legs with the first burst; the manual and ignored legs again, ungraded, with the second and third bursts. Verilator and VCS.
 
 *Source Module*: `sep_esrc_autotune_detune_test`
 

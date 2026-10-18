@@ -294,13 +294,13 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
+        shard = sep_shard(self, SHARD_EVIDENCE)
         await self.bring_up_no_cpu(park=BASELINE_PARK)
         self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
         seed = self.random_seed()
         plan = draw_plan(seed)
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
-        shard = sep_shard(self, SHARD_EVIDENCE)
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _Esrc(self)
         self.clk = SepBitWatch(dut.rst_ni, {"rst_ni": 0}, name="clk_count").start()

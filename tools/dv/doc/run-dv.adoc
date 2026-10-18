@@ -2756,6 +2756,14 @@ them in automation.
 executor it is the number of attempts queued or running at once, bounded by
 the executor's `limits.max_in_flight`.
 
+|`--leaf-order-from RESULT_JSON`
+|On a cluster executor, submit the leaves longest first, keyed by the longest
+`sim` duration of each item in an earlier `result.json`. A relative path
+resolves against the repository root. A leaf whose item has no duration there
+starts first, in testlist order. Leaf ids and seeds do not change. An
+unreadable file stops the run. Without the option the leaves go in testlist
+order.
+
 |`--build-jobs N`
 |Set backend/model build concurrency when configuration does not supply it;
 otherwise derives from `--sim-jobs`, capped at this host's CPU count when a

@@ -569,7 +569,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Shard 1 of 2 of sep_esrc_autotune_detune_test: the manual, off and ignored legs and burst 1. The regression runs the shards; the
+# Shard 1 of 2 of sep_esrc_autotune_detune_test: the manual, off and ignored legs and the first burst. The regression runs the shards; the
 # shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_esrc_autotune_detune_test_shard1"
 module = "crypto.sep_esrc_autotune_detune_test"
@@ -582,7 +582,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=1"]
 
 [[tests]]
-# Shard 2 of 2 of sep_esrc_autotune_detune_test: bursts 2 and 3 after the same manual and ignored set-up. The regression runs the shards; the
+# Shard 2 of 2 of sep_esrc_autotune_detune_test: the second and third bursts after the same manual and ignored set-up. The regression runs the shards; the
 # shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_esrc_autotune_detune_test_shard2"
 module = "crypto.sep_esrc_autotune_detune_test"

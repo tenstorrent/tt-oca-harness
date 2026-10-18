@@ -27,8 +27,8 @@ def sep_shard(test, evidence: dict[int, tuple[str, ...]]) -> int | None:
     if raw is None:
         return None
     try:
-        shard = int(raw)
-    except (TypeError, ValueError):
+        shard = int(raw) if isinstance(raw, str) else None
+    except ValueError:
         shard = None
     if shard not in evidence:
         raise AssertionError(f"+sep_shard={raw!r}: the shards of this leaf are {sorted(evidence)}")
