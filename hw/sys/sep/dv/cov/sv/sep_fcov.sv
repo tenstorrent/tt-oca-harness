@@ -7035,11 +7035,13 @@ module sep_fcov (
     // {side 0 SRC_ADDR_HI 1 DST_ADDR_HI, a write address landed in the LO
     // destination}, scored at the first DONE or ERROR rise after the GO. No
     // document states the destination footprint, so a LO write is not scored.
-    // The owner leg logs this cell only (no document states the outcome).
+    // The owner leg logs this cell only (no document states the outcome) and
+    // keeps the graded window closed, so the sampler never scores it and
+    // every value is an ignore bin.
     cp_addr_hi_nonzero: coverpoint ah iff (ah_v) {
       option.weight = 0;
-      bins src_hi_no_lo_write = {2'b0_0};
-      bins dst_hi_no_lo_write = {2'b1_0};
+      ignore_bins src_hi_no_lo_write = {2'b0_0};
+      ignore_bins dst_hi_no_lo_write = {2'b1_0};
       ignore_bins lo_write = {2'b0_1, 2'b1_1};
     }
   endgroup
@@ -17316,9 +17318,12 @@ module sep_fcov (
       bins execute = {2'd0}; bins sec_wipe_dmem = {2'd1}; bins sec_wipe_imem = {2'd2};
     }
     // No sentence states INTR_STATE.done after the post-reset wipe, so the leaf
-    // logs it only (ungraded in docs/SEP_FCOV.adoc).
+    // logs it only (ungraded in docs/SEP_FCOV.adoc). The iff term makes 0
+    // unreachable, so every value is an ignore bin.
     cp_post_reset_done: coverpoint s.pd_v iff (s.pd_v) {
-      option.weight = 0; ignore_bins wipe_raises_done = {1'b1};
+      option.weight = 0;
+      ignore_bins wipe_raises_done = {1'b1};
+      ignore_bins unreachable_no_done = {1'b0};
     }
     cp_cmd_ignored_err: coverpoint s.ie_v iff (s.ie_v) {bins err_bits_unchanged = {1'b1};}
   endgroup
@@ -17494,13 +17499,14 @@ module sep_fcov (
   // x_shadow_pair_aux (owner of x_shadow_pair_aes). The phase of the
   // CTRL_AUX_SHADOWED pair is known after an AES reset or an AUX read, and
   // only writes while CTRL_AUX_REGWEN is 1 count. A second write with a
-  // different value arms "mismatched" until a vector bit 32 rise within
-  // CyAlertBound clocks; an equal second write arms "matched" until the next
-  // AUX read, which samples the bin when it returns the written value and no
-  // bit 32 rise came between.
+  // different value samples "mismatched" at a vector bit 32 rise from its AW
+  // handshake to CyAlertBound clocks after its OKAY response; an equal second
+  // write arms "matched" until the next AUX read, which samples the bin when
+  // it returns the written value and no bit 32 rise came between.
   logic cy_xa_phase = 1'b0;
   logic [31:0] cy_xa_prev = '0;
   logic [1:0] cy_xa_pend = '0;  // 0 none, 1 matched, 2 mismatched
+  logic cy_xa_pulse = 1'b0;     // bit 32 rose since the last AUX AW handshake
   int unsigned cy_xa_cnt = 0;
   wire cy_xa_wr = wr_ev && (aw_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR);
   wire cy_xa_rd = rd_ev && (ar_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR);
@@ -17508,13 +17514,28 @@ module sep_fcov (
     if (!cy_ip[2] || !cy_own_shadow || !cy_t(aes_aux_regwen_i)) begin
       cy_xa_phase <= 1'b0;
       cy_xa_pend  <= 2'd0;
+      cy_xa_pulse <= 1'b0;
     end else begin
+      if (aw_hs && (lsu_aw_addr_i == AES_CTRL_AUX_SHADOWED_REG_ADDR)) begin
+        cy_xa_pulse <= cy_vec_rise[32];
+      end else if (cy_vec_rise[32]) begin
+        cy_xa_pulse <= 1'b1;
+      end
       if (cy_xa_wr) begin
         if (!cy_xa_phase) begin
           cy_xa_prev  <= wr_data & AesAuxFields;
           cy_xa_phase <= 1'b1;
+        end else if ((wr_data & AesAuxFields) != cy_xa_prev) begin
+          if (cy_xa_pulse || cy_vec_rise[32]) begin
+            cy_afl(3, 2'd1);
+            cy_xa_pend <= 2'd0;
+          end else begin
+            cy_xa_pend <= 2'd2;
+          end
+          cy_xa_cnt   <= 0;
+          cy_xa_phase <= 1'b0;
         end else begin
-          cy_xa_pend  <= ((wr_data & AesAuxFields) == cy_xa_prev) ? 2'd1 : 2'd2;
+          cy_xa_pend  <= (cy_xa_pulse || cy_vec_rise[32]) ? 2'd0 : 2'd1;
           cy_xa_cnt   <= 0;
           cy_xa_phase <= 1'b0;
         end
@@ -19083,9 +19104,10 @@ module sep_fcov (
         end
       end
       // Bin 1: an OTBN reset taken at LOCKED, then the post-reset wipe ends
-      // at IDLE.
+      // at IDLE. STATUS resets asynchronously to the wipe state, so the state
+      // before the reset is the value one clock earlier.
       if (cy_ip_fall[1]) begin
-        cy_lh_rst <= (cy_o_st == OtbnStLocked) ? 2'd1 : 2'd0;
+        cy_lh_rst <= (cy_o_st_q == OtbnStLocked) ? 2'd1 : 2'd0;
       end else if (cy_ip[1]) begin
         if ((cy_lh_rst == 2'd1) && (cy_o_st == OtbnStWipeInt)) begin
           cy_lh_rst <= 2'd2;
