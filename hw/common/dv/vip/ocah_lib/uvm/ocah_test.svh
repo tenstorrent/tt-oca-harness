@@ -5,8 +5,8 @@
 // the pass-banner contract. "UVM TEST PASSED" is emitted only from
 // report_phase and only when the global UVM_ERROR/UVM_FATAL counts are both
 // zero (uvm-log parser contract); never from sequence or scoreboard code.
-// This is the one accessor of the simulator seed plusarg (+ntb_random_seed
-// on VCS, appended by the runner).
+// This is the one accessor of the simulator seed plusarg (+ntb_random_seed,
+// which the runner appends on VCS and Verilator).
 //
 // Looped-scenario contract (cocotb OcahTest parity): every looped scenario
 // runs at least MinDefaultLoops passes, each with its own scenario seed

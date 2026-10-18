@@ -121,8 +121,8 @@ the overlay targets.
 |Active exactly when the file exists; a companion checkout beside the tree
 changes nothing. Only the keys the runner page lists are accepted, and each
 either replaces a registry value or adds a complete tool, executor, or
-formal-config entry, or says where the pinned UVM library comes from. The
-active file is recorded as `site` in `result.json`. Checked by `--validate-configs`, which reports the merged
+formal-config entry. The active file is recorded as `site` in
+`result.json`. Checked by `--validate-configs`, which reports the merged
 registries, and by the site-layer tests.
 
 |Leaf manifest: `<run>/stages/regress/jobs/<task>.json`, its
