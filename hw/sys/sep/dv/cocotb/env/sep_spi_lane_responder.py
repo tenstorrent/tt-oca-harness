@@ -95,7 +95,16 @@ __all__ = [
 SPEED = {1: 0, 2: 1, 4: 2}
 DIRECTION = {"dummy": DIR_DUMMY, "rx": DIR_RX, "tx": DIR_TX, "bidir": DIR_BIDIR}
 
-_KIND = {"data": 1, "opcode": 2, "oe": 3, "trigger": 4, "abort": 5, "chain": 6, "fullcyc": 7}
+_KIND = {
+    "data": 1,
+    "opcode": 2,
+    "oe": 3,
+    "trigger": 4,
+    "abort": 5,
+    "chain": 6,
+    "fullcyc": 7,
+    "cmdq": 8,
+}
 
 Segment = tuple[int, str, bytes | int]
 
@@ -413,7 +422,8 @@ async def spi_lane_fcov(
     ``trigger`` (RXQD == RX_WATERMARK), ``abort`` (``abort``: 0 SW_RST,
     1 rst_ni; with ``lanes``), ``chain`` (``chain``: 0 same width, 1 width
     changes), ``fullcyc`` (``lanes``: an RX frame read with
-    CONFIGOPTS.FULLCYC = 1). Returns False on Verilator (no sampler). On any other simulator
+    CONFIGOPTS.FULLCYC = 1), ``cmdq`` (``lanes``: a command queue fill whose
+    CHK-SPI-CMDQD-DEPTH passed at that width). Returns False on Verilator (no sampler). On any other simulator
     a sampler without ``spi_ln_seq`` is a testbench error.
     """
     if kind not in _KIND:
