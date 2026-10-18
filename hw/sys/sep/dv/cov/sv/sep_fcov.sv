@@ -17506,7 +17506,7 @@ module sep_fcov (
   logic cy_xa_phase = 1'b0;
   logic [31:0] cy_xa_prev = '0;
   logic [1:0] cy_xa_pend = '0;  // 0 none, 1 matched, 2 mismatched
-  logic cy_xa_pulse = 1'b0;     // bit 32 rose since the AW of a second AUX write
+  logic cy_xa_pulse = 1'b0;     // bit 32 rose since the last AUX AW handshake
   int unsigned cy_xa_cnt = 0;
   wire cy_xa_wr = wr_ev && (aw_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR);
   wire cy_xa_rd = rd_ev && (ar_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR);
@@ -17516,7 +17516,7 @@ module sep_fcov (
       cy_xa_pend  <= 2'd0;
       cy_xa_pulse <= 1'b0;
     end else begin
-      if (aw_hs && (lsu_aw_addr_i == AES_CTRL_AUX_SHADOWED_REG_ADDR) && cy_xa_phase) begin
+      if (aw_hs && (lsu_aw_addr_i == AES_CTRL_AUX_SHADOWED_REG_ADDR)) begin
         cy_xa_pulse <= cy_vec_rise[32];
       end else if (cy_vec_rise[32]) begin
         cy_xa_pulse <= 1'b1;
