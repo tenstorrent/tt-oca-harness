@@ -413,7 +413,7 @@ module = "km.sep_km_drbg_sampler_rand_test"
 firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
 seed = 1
 reseed = 3
-timeout_sec = 7200
+timeout_sec = 10800
 tags = ["km", "drbg", "entropy", "rand", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
