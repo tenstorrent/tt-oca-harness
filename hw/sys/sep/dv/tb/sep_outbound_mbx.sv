@@ -15,7 +15,8 @@
 // FIFO in order, and each W beat takes the address of its own burst (INCR
 // beats advance by AxSIZE), so the monitor decodes every beat at its own
 // address. W beats stall while the B queue is full, so every accepted burst
-// gets exactly one B response, in order. The monitor assembles console
+// gets exactly one B response, in order. AR requests wait in a FIFO in order
+// and are answered one burst at a time. The monitor assembles console
 // characters (byte-strobe stores at STDOUT) and latches fw_done/fw_pass on the
 // magic sequence at STDOUT:
 //   * the first completed magic pair sets fw_done; a later pair can only
@@ -26,12 +27,29 @@
 //
 // Response control (an error inject on smn_outbound_axi_resp_i, both inputs 0
 // by default, which answers OKAY at once):
-//   * resp_hold_i=1 holds B VALID and R VALID low. AW, W and AR are still
-//     accepted, so a request reaches the port and waits for its response. The
-//     held responses go out in order when the input falls. A firmware console
-//     store waits too, so a CPU leaf does not raise it.
+//   * resp_hold_i=1 keeps the responder from raising B VALID or R VALID. A
+//     VALID already high stays high until its handshake, so the hold gates the
+//     next response, never one on offer. AW, W and AR are still accepted, so a
+//     request reaches the port and waits for its response. The held responses
+//     go out in order when the input falls. A firmware console store waits
+//     too, so a CPU leaf does not raise it.
 //   * rd_slverr_i, sampled at the AR handshake, makes every R beat of that
-//     read answer SLVERR (data 0).
+//     read answer SLVERR; the beats carry the read data of the run ({~a, a}
+//     under rd_addr_data_i, else 0).
+//
+// Request-side control (both inputs 0 by default, which accepts at once and
+// returns zero read data):
+//   * ready_stall_i[0], [1] and [2] hold AW READY, W READY and AR READY low
+//     while the bit is high. The driver of the input draws the stall cycle
+//     by cycle. A W beat is accepted ahead of its AW only in the cycle that
+//     AW is accepted.
+//   * rd_addr_data_i=1 returns {~a, a} on every R beat, where a is the low 32
+//     bits of the 8-byte-aligned address of that beat.
+//
+// Queue limits: +sep_outbound_depth=<n> (1 to 64) sets the queued write
+// bursts, the pending B responses and the queued reads each to n, so the port
+// accepts 2n AW, n W-complete bursts and n AR before a held response stops it.
+// Without the plusarg they are 16, 16 and 1.
 
 `timescale 1ps / 1fs
 
@@ -47,6 +65,9 @@ module sep_outbound_mbx
   // Response control: hold every B and R response; SLVERR on the next read.
   input  wire logic resp_hold_i,
   input  wire logic rd_slverr_i,
+  // Request-side control: hold AW, W and AR READY low; address-derived read data.
+  input  wire logic [2:0] ready_stall_i,
+  input  wire logic rd_addr_data_i,
   // Decoded firmware-console observables (read by cocotb via tb_top).
   output logic       fw_done_o,
   output logic       fw_pass_o,
@@ -60,8 +81,10 @@ module sep_outbound_mbx
 
   localparam int unsigned Aw = $bits(req_i.aw.addr);
   localparam int unsigned Idw = $bits(req_i.aw.id);
-  localparam int unsigned Depth = 16;
+  localparam int unsigned Depth = 64;
   localparam int unsigned Pw = $clog2(Depth);
+  localparam int unsigned WrLimitDefault = 16;
+  localparam int unsigned RdLimitDefault = 1;
 
   localparam logic [Aw-1:0] StdoutAddr = Aw'(SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT);
 
@@ -73,11 +96,36 @@ module sep_outbound_mbx
     logic [Idw-1:0] id;
   } wburst_t;
 
+  // One accepted read burst: start address, size, burst type, ID, AxLEN and
+  // the response code sampled at its AR handshake.
+  typedef struct packed {
+    logic [Aw-1:0]  addr;
+    logic [2:0]     size;
+    logic [1:0]     burst;
+    logic [Idw-1:0] id;
+    logic [7:0]     len;
+    logic           err;
+  } rburst_t;
+
   function automatic logic [Aw-1:0] next_addr(input wburst_t b);
     logic [Aw-1:0] step;
     step = Aw'(1) << b.size;
     next_addr = (b.burst == axi_pkg::BURST_FIXED) ? b.addr : (b.addr & ~(step - Aw'(1))) + step;
   endfunction
+
+  // The queue limits of this run.
+  logic [Pw:0] wr_limit, rd_limit;
+  initial begin
+    int unsigned n;
+    wr_limit = (Pw + 1)'(WrLimitDefault);
+    rd_limit = (Pw + 1)'(RdLimitDefault);
+    if ($value$plusargs("sep_outbound_depth=%d", n)) begin
+      if (n < 1) n = 1;
+      if (n > Depth) n = Depth;
+      wr_limit = (Pw + 1)'(n);
+      rd_limit = (Pw + 1)'(n);
+    end
+  end
 
   wburst_t aw_fifo[Depth];
   logic [Pw-1:0] aw_rd_q, aw_wr_q;
@@ -87,10 +135,13 @@ module sep_outbound_mbx
   logic [Pw:0]    b_cnt_q;
   logic           w_active_q;
   wburst_t        w_cur_q;
-  logic           ar_active_q;
-  logic [Idw-1:0] r_id_q;
-  logic [8:0]     r_beats_q;
-  logic           r_err_q;
+  rburst_t ar_fifo[Depth];
+  logic [Pw-1:0] ar_rd_q, ar_wr_q, ar_nxt;
+  logic [Pw:0]    ar_cnt_q;
+  logic [Aw-1:0]  r_addr_q;
+  logic [7:0]     r_sent_q;
+  // A B or R VALID raised and not yet accepted; it stays up through a hold.
+  logic b_valid_q, r_valid_q;
   logic           magic_seen_q;
   logic           stray_seen_q;
   logic [Aw-1:0]  stray_addr_q;
@@ -104,7 +155,8 @@ module sep_outbound_mbx
     else if (aw_cnt_q != '0) w_burst = aw_fifo[aw_rd_q];
     else w_burst = aw_in;
   end
-  wire w_known = w_active_q || (aw_cnt_q != '0) || req_i.aw_valid;
+  wire aw_ready_w = (aw_cnt_q < wr_limit) && !ready_stall_i[0];
+  wire w_known = w_active_q || (aw_cnt_q != '0) || (req_i.aw_valid && aw_ready_w);
   wire aw_fire = req_i.aw_valid & resp_o.aw_ready;
   wire w_fire = req_i.w_valid & resp_o.w_ready;
   // The W beat takes the same-cycle AW directly, so that AW is not queued.
@@ -124,19 +176,36 @@ module sep_outbound_mbx
   wire [31:0] mbx_word = (req_i.w.strb[7:4] != 4'h0) ? req_i.w.data[63:32] : req_i.w.data[31:0];
   wire word_store = (req_i.w.strb == 8'h0F) || (req_i.w.strb == 8'hF0);
 
+  // The read on offer is the oldest accepted AR; r_addr_q is the address of
+  // its next beat and r_sent_q the beats of it already accepted.
+  rburst_t r_head;
+  assign r_head = ar_fifo[ar_rd_q];
+  assign ar_nxt = ar_rd_q + 1'b1;
+  wire ar_fire = req_i.ar_valid & resp_o.ar_ready;
+  wire r_fire = resp_o.r_valid & req_i.r_ready;
+  wire r_last = (r_sent_q == r_head.len);
+  wire ar_pop = r_fire & r_last;
+  // Low 32 bits of the 8-byte-aligned address of the R beat on offer.
+  wire [31:0] r_word_lo = {r_addr_q[31:3], 3'b000};
+  wburst_t    r_cur;
+  always_comb r_cur = '{addr: r_addr_q, size: r_head.size, burst: r_head.burst, id: '0};
+
+  // The response fields are 0 while nothing is queued, so they are never X.
+  wire b_queued = (b_cnt_q != '0);
+  wire r_queued = (ar_cnt_q != '0);
   always_comb begin
     resp_o          = '0;
-    resp_o.aw_ready = (aw_cnt_q < (Pw + 1)'(Depth));
-    resp_o.w_ready  = w_known && (b_cnt_q < (Pw + 1)'(Depth));
-    resp_o.b_valid  = (b_cnt_q != '0) && !resp_hold_i;
-    resp_o.b.id     = b_fifo[b_rd_q];
+    resp_o.aw_ready = aw_ready_w;
+    resp_o.w_ready  = w_known && (b_cnt_q < wr_limit) && !ready_stall_i[1];
+    resp_o.b_valid  = b_valid_q || (b_queued && !resp_hold_i);
+    resp_o.b.id     = b_queued ? b_fifo[b_rd_q] : '0;
     resp_o.b.resp   = 2'b00;  // OKAY
-    resp_o.ar_ready = !ar_active_q;
-    resp_o.r_valid  = ar_active_q && !resp_hold_i;
-    resp_o.r.id     = r_id_q;
-    resp_o.r.data   = '0;
-    resp_o.r.resp   = r_err_q ? 2'b10 : 2'b00;  // SLVERR under rd_slverr_i, else OKAY
-    resp_o.r.last   = (r_beats_q == 9'd1);
+    resp_o.ar_ready = (ar_cnt_q < rd_limit) && !ready_stall_i[2];
+    resp_o.r_valid  = r_valid_q || (r_queued && !resp_hold_i);
+    resp_o.r.id     = r_queued ? r_head.id : '0;
+    resp_o.r.data   = rd_addr_data_i ? {~r_word_lo, r_word_lo} : '0;
+    resp_o.r.resp   = (r_queued && r_head.err) ? 2'b10 : 2'b00;  // SLVERR under rd_slverr_i
+    resp_o.r.last   = r_queued && r_last;
   end
 
   // Log the first 40 STDOUT writes, so a console decode miss shows in the log.
@@ -152,10 +221,13 @@ module sep_outbound_mbx
       b_cnt_q         <= '0;
       w_active_q      <= 1'b0;
       w_cur_q         <= '0;
-      ar_active_q     <= 1'b0;
-      r_id_q          <= '0;
-      r_beats_q       <= '0;
-      r_err_q         <= 1'b0;
+      ar_rd_q         <= '0;
+      ar_wr_q         <= '0;
+      ar_cnt_q        <= '0;
+      r_addr_q        <= '0;
+      r_sent_q        <= '0;
+      b_valid_q       <= 1'b0;
+      r_valid_q       <= 1'b0;
       magic_seen_q    <= 1'b0;
       stray_seen_q    <= 1'b0;
       stray_addr_q    <= '0;
@@ -166,6 +238,8 @@ module sep_outbound_mbx
       dbg_cnt         <= 0;
     end else begin
       fw_char_valid_o <= 1'b0;  // 1-cycle pulse by default
+      b_valid_q       <= resp_o.b_valid && !req_i.b_ready;
+      r_valid_q       <= resp_o.r_valid && !req_i.r_ready;
 
       // AW FIFO.
       if (aw_push) begin
@@ -192,16 +266,26 @@ module sep_outbound_mbx
       if (b_pop) b_rd_q <= b_rd_q + 1'b1;
       b_cnt_q <= b_cnt_q + (Pw + 1)'(b_push) - (Pw + 1)'(b_pop);
 
-      // Read response: zero data, honour the burst length. The response code
-      // of the whole burst is taken at the AR handshake.
-      if (req_i.ar_valid & resp_o.ar_ready) begin
-        ar_active_q <= 1'b1;
-        r_id_q      <= req_i.ar.id;
-        r_beats_q   <= req_i.ar.len + 9'd1;
-        r_err_q     <= rd_slverr_i;
-      end else if (resp_o.r_valid & req_i.r_ready) begin
-        if (r_beats_q <= 9'd1) ar_active_q <= 1'b0;
-        else r_beats_q <= r_beats_q - 9'd1;
+      // AR FIFO.
+      if (ar_fire) begin
+        ar_fifo[ar_wr_q] <= '{addr: req_i.ar.addr, size: req_i.ar.size, burst: req_i.ar.burst,
+                              id: req_i.ar.id, len: req_i.ar.len, err: rd_slverr_i};
+        ar_wr_q <= ar_wr_q + 1'b1;
+      end
+      if (ar_pop) ar_rd_q <= ar_rd_q + 1'b1;
+      ar_cnt_q <= ar_cnt_q + (Pw + 1)'(ar_fire) - (Pw + 1)'(ar_pop);
+
+      // R beats: advance the address inside the burst; after its last beat
+      // the next read, queued or arriving on this cycle, is on offer.
+      if (r_fire && !r_last) begin
+        r_addr_q <= next_addr(r_cur);
+        r_sent_q <= r_sent_q + 8'd1;
+      end else if (ar_pop) begin
+        r_sent_q <= '0;
+        if (ar_cnt_q > (Pw + 1)'(1)) r_addr_q <= ar_fifo[ar_nxt].addr;
+        else if (ar_fire) r_addr_q <= req_i.ar.addr;
+      end else if (ar_fire && (ar_cnt_q == '0)) begin
+        r_addr_q <= req_i.ar.addr;
       end
 
       if (w_fire & to_stdout) begin

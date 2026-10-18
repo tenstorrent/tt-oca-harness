@@ -6,9 +6,8 @@
 One git-ignored ``hw/common/dv/configs/site.local.toml``, or the file named by ``OCAH_DV_SITE``,
 merges over ``simulators.toml`` and ``executors.toml``: a deployment renames a tool binary,
 wraps every tool command in a launcher (a container), sources an environment hook before the
-tool starts, adds a tool table the checked-in registry lacks, names a DUT's formal config
-that lives outside this checkout, or says where the pinned UVM library comes from on a host
-that cannot reach its archive. ``runlib.cli.load_registries`` applies the layer once, so
+tool starts, adds a tool table the checked-in registry lacks, or names a DUT's formal config
+that lives outside this checkout. ``runlib.cli.load_registries`` applies the layer once, so
 ``--validate-configs``, ``--doctor``, ``--dry-run``, and the run path resolve one merged view.
 Nothing but the site file itself, or the environment variable, activates the layer.
 
@@ -26,9 +25,6 @@ Layout of a site file::
 
     [duts.dtp]
     formal_cfg = "companion/hw/sys/dtp/dv/dtp_formal_cfg.toml"
-
-    [uvm_library]                         # one of url, archive, home
-    archive = "uvm/1800.2-2020.3.2.gz"    # the pinned archive, relative to the site file
 
     [executors.lsf]                       # a complete schema-2 cluster table, or per-key
     kind = "cluster"                      # overrides on one the registry declares
@@ -71,17 +67,13 @@ from .paths import configs_root, repo_rel
 SITE_FILE_NAME = "site.local.toml"
 SITE_ENV = "OCAH_DV_SITE"
 SITE_SCHEMA_VERSION = 1
-SITE_TOP_KEYS = {"schema_version", "description", "simulators", "executors", "duts", "uvm_library"}
+SITE_TOP_KEYS = {"schema_version", "description", "simulators", "executors", "duts"}
 # Keys a site may set on a tool table the checked-in registry declares; each replaces the
 # checked-in value whole.
 SITE_TOOL_KEYS = {"binary", "launcher", "argv", "license_env", "extra_env", "setup_hook"}
 # Every data key of an executor table; `kind` stays with the registry.
 SITE_EXECUTOR_KEYS = (CLUSTER_EXECUTOR_KEYS | CLUSTER_EXECUTOR_V1_KEYS) - {"kind"}
 SITE_DUT_KEYS = {"formal_cfg", "sim_cfg", "tools", "exclude_files"}
-# Where the pinned UVM library comes from, one key per table: a mirror `url` or a local
-# `archive` of the pinned release archive, or an installed UVM `home`. The pin's digests
-# check whichever it is.
-SITE_UVM_LIBRARY_KEYS = {"url", "archive", "home"}
 SETUP_HOOK_TIMEOUT_SEC = 120
 # Shell bookkeeping a sourced hook changes without exporting anything.
 _HOOK_NOISE_VARS = {"_", "SHLVL", "PWD", "OLDPWD"}
@@ -102,8 +94,6 @@ class SiteLayer:
     simulators: dict[str, dict[str, Any]]
     executors: dict[str, dict[str, Any]]
     duts: dict[str, dict[str, Any]]
-    # The validated [uvm_library] table; `archive` and `home` are absolute paths.
-    uvm_library: dict[str, str] = field(default_factory=dict)
 
     @property
     def where(self) -> str:
@@ -179,14 +169,6 @@ def _tables(data: dict[str, Any], key: str, where: str) -> dict[str, dict[str, A
     return out
 
 
-def _site_path(text: str, site_dir: Path) -> Path:
-    """``text`` as an absolute path, a relative one resolved against the site file's directory."""
-    path = Path(text).expanduser()
-    if not path.is_absolute():
-        path = site_dir / path
-    return path.resolve()
-
-
 def _site_tool_table(table: dict[str, Any], where: str, site_dir: Path) -> dict[str, Any]:
     """Shape-check the keys only a site supplies and the overridable scalars."""
     out = dict(table)
@@ -204,7 +186,10 @@ def _site_tool_table(table: dict[str, Any], where: str, site_dir: Path) -> dict[
         text = table["setup_hook"]
         if not isinstance(text, str) or not text:
             raise ConfigError(f"{where}.setup_hook must be a non-empty path")
-        hook = _site_path(text, site_dir)
+        hook = Path(text).expanduser()
+        if not hook.is_absolute():
+            hook = site_dir / hook
+        hook = hook.resolve()
         if not hook.is_file():
             raise ConfigError(f"{where}.setup_hook does not exist: {hook}")
         out["setup_hook"] = str(hook)
@@ -220,36 +205,14 @@ def _site_executor_table(table: dict[str, Any], where: str, site_dir: Path) -> d
         text = table["setup_hook"]
         if not isinstance(text, str) or not text:
             raise ConfigError(f"{where}.setup_hook must be a non-empty path")
-        hook = _site_path(text, site_dir)
+        hook = Path(text).expanduser()
+        if not hook.is_absolute():
+            hook = site_dir / hook
+        hook = hook.resolve()
         if not hook.is_file():
             raise ConfigError(f"{where}.setup_hook does not exist: {hook}")
         out["setup_hook"] = str(hook)
     return out
-
-
-def _site_uvm_library(data: dict[str, Any], where: str, site_dir: Path) -> dict[str, str]:
-    """The ``[uvm_library]`` table with its one key checked and a path resolved."""
-    table = data.get("uvm_library")
-    if table is None:
-        return {}
-    where = f"{where} [uvm_library]"
-    if not isinstance(table, dict):
-        raise ConfigError(f"{where} must be a table")
-    validate_allowed_keys(table, SITE_UVM_LIBRARY_KEYS, where)
-    if len(table) != 1:
-        raise ConfigError(
-            f"{where} sets exactly one of: {', '.join(sorted(SITE_UVM_LIBRARY_KEYS))}"
-        )
-    ((key, text),) = table.items()
-    if not isinstance(text, str) or not text:
-        raise ConfigError(f"{where}.{key} must be a non-empty string")
-    if key == "url":
-        return {key: text}
-    path = _site_path(text, site_dir)
-    exists = path.is_file() if key == "archive" else path.is_dir()
-    if not exists:
-        raise ConfigError(f"{where}.{key} does not exist: {path}")
-    return {key: str(path)}
 
 
 def load_site_layer(root: Path, environ: Mapping[str, str] | None = None) -> SiteLayer | None:
@@ -291,14 +254,7 @@ def load_site_layer(root: Path, environ: Mapping[str, str] | None = None) -> Sit
                 raise ConfigError(
                     f"{entry_where}.exclude_files must be a non-empty list of filelist patterns"
                 )
-    return SiteLayer(
-        path=path,
-        label=label,
-        simulators=simulators,
-        executors=executors,
-        duts=duts,
-        uvm_library=_site_uvm_library(data, where, path.parent),
-    )
+    return SiteLayer(path=path, label=label, simulators=simulators, executors=executors, duts=duts)
 
 
 def validate_site_duts(site: SiteLayer, known: Iterable[str]) -> None:
@@ -395,8 +351,6 @@ def site_summary(site: SiteLayer, checked_in_tools: Iterable[str]) -> str:
             "duts: "
             + ", ".join(f"{name}({', '.join(sorted(entry))})" for name, entry in site.duts.items())
         )
-    if site.uvm_library:
-        parts.append(f"uvm_library({', '.join(site.uvm_library)})")
     return f"site={site.label} " + ("; ".join(parts) if parts else "(no overrides)")
 
 
@@ -545,7 +499,6 @@ __all__ = [
     "SITE_FILE_NAME",
     "SITE_ONLY_TOOL_KEYS",
     "SITE_TOOL_KEYS",
-    "SITE_UVM_LIBRARY_KEYS",
     "SiteLayer",
     "ToolLaunch",
     "launch_argv",
