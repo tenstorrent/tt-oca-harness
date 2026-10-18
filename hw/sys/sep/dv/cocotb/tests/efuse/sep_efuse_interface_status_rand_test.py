@@ -276,7 +276,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
     async def _case_presense(self) -> None:
         """Steps 6-7: program go before sense done, then the post-sense twin."""
         dut = cocotb.top
-        bit = self.progs["presense"]["addr"]
+        bit = self.progs["pre_sense"]["addr"]
         self._golden_from_bank()
         open_graded_window(TEST, self.logger)
         await RisingEdge(dut.clk_i)
@@ -326,7 +326,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         f = await self._flags()
         self.chk.obs(
             "IF-STATUS-FLAGS",
-            case="presense",
+            case="pre_sense",
             addr=bit,
             status=self._s4(f),
             pg_done=f["pg_done"],
@@ -335,7 +335,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         )
         # Cold reset again so that no held request carries over; then the twin.
         await self._cold_reset()
-        twin = self.progs["presense_twin"]["addr"]
+        twin = self.progs["pre_sense_twin"]["addr"]
         snap = self.bank.read()
         watch = SepEfuseBankWatch(dut).start(reference=snap)
         m_cmd = self.cmds.mark()
@@ -349,7 +349,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         t_land = None if first is None else first[0] - m1.clk
         diff = self.bank.diff_since(snap)
         ctl_cmd = len(self.cmds.programs_since(m_cmd, address=twin))
-        twin_ok = self._twin_program("presense_twin", f2, diff, twin)
+        twin_ok = self._twin_program("pre_sense_twin", f2, diff, twin)
         pre_diff = win["changed"]
         self.chk.ok(
             "IF-PRESENSE",
@@ -593,7 +593,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, 2)
 
         cases = {
-            "presense": self._case_presense,
+            "pre_sense": self._case_presense,
             "read_go_no_enable": self._case_read_go_no_enable,
             "oor_read": self._case_oor_read,
             "oor_program": self._case_oor_program,

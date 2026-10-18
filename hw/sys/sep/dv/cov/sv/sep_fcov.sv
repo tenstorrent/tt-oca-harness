@@ -24607,8 +24607,9 @@ module sep_fcov (
   // x_raw16_sigint: a complementary state byte {~r, r} at sense done.
   always @(posedge clk_i) begin
     ef_sig_t se;
-    if (ef_sense_rise && ef_own_fc && !$isunknown(ef_lc_word[7:0]) &&
-        (ef_lc_word[7:4] == ~ef_lc_word[3:0])) begin
+    if (ef_sense_rise && ef_own_fc && !$isunknown(
+            ef_lc_word[7:0]
+        ) && (ef_lc_word[7:4] == ~ef_lc_word[3:0])) begin
       se = '0;
       // An X or Z on lc_sigint_i at sense done counts as the error.
       se.rs = {lc_sigint_i !== 1'b0, ef_lc_word[3:0]};
@@ -24620,7 +24621,7 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // x_transient: a match code on RMA_SIP or RMA_CHIPLET, the old class at
   // the match rise, and the LC_STATE word outcome within EfTransWin clocks
-  // (a sampler parameter no longer than the window W of the owning test).
+  // (a sampler parameter at most the window W of the owning test).
   // ---------------------------------------------------------------------
   logic ef_tr_arm = 1'b0;
   logic ef_tr_en = 1'b0, ef_tr_ch = 1'b0;
@@ -24638,8 +24639,9 @@ module sep_fcov (
     rise_c = (tok_chp_i == EfCodeMatch) && (ef_chp_q != EfCodeMatch);
     if (!ef_sensed || !ef_own_tr) begin
       ef_tr_arm <= 1'b0;
-    end else if (!ef_tr_arm && (rise_s || rise_c) && (ef_lc != EfPe) &&
-                 !$isunknown({efuse_lc_raw_i, ef_trans_en, ef_lc_word})) begin
+    end else if (!ef_tr_arm && (rise_s || rise_c) && (ef_lc != EfPe) && !$isunknown(
+            {efuse_lc_raw_i, ef_trans_en, ef_lc_word}
+        )) begin
       ef_tr_arm <= 1'b1;
       ef_tr_en  <= ef_trans_en;
       ef_tr_ch  <= !rise_s;
@@ -24868,7 +24870,9 @@ module sep_fcov (
           // efuse_req_error at the go and no write-lock on the slot.
           if (ef_own_stm && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed && ef_pg_stmk &&
               (ef_pg_addr < 16'(EfFuseBits)) && (cls != 3'd7) &&
-              ((s == EfNoSlot) || !ef_wlock(s))) begin
+              ((s == EfNoSlot) || !ef_wlock(
+                  s
+              ))) begin
             te = '0;
             te.pb = {ef_pg_seen == ef_pg_stm, 4'(cls * 2) + 4'(ef_pg_stm)};
             te.pb_v = 1'b1;
@@ -24996,8 +25000,11 @@ module sep_fcov (
       // only on a known non-zero sensed word, because a blocked read that
       // returns 0 equals a zero word. A known mismatch still reaches the
       // wrong-outcome bins.
-      if (rd_okay && ef_own_lock && (secure_tm_i === 1'b0) &&
-          !$isunknown(rd_data) && !$isunknown(ef_word(off[9:0]))) begin
+      if (rd_okay && ef_own_lock && (secure_tm_i === 1'b0) && !$isunknown(
+              rd_data
+          ) && !$isunknown(
+              ef_word(off[9:0])
+          )) begin
         if ((s != EfNoSlot) && (s != 6'd0) && !ef_rlock(s)) begin
           bad = (rd_data != ef_word(off[9:0]));
           if (bad || (ef_word(off[9:0]) != 32'h0)) begin
@@ -25010,8 +25017,7 @@ module sep_fcov (
             end
           end
         end
-        if (ef_all_locked && (ef_word(off[9:0]) != 32'h0) &&
-            (rd_data == ef_word(off[9:0]))) begin
+        if (ef_all_locked && (ef_word(off[9:0]) != 32'h0) && (rd_data == ef_word(off[9:0]))) begin
           if (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR) ef_lk(4, 8'd0);
           if (ar_addr_q inside {SEP_EFUSE_MAP_LOCKS_REG_ADDR, SEP_EFUSE_MAP_LOCKS_REG_ADDR + 32'd4})
             ef_lk(4, 8'd1);
@@ -25126,7 +25132,11 @@ module sep_fcov (
         // write leaves the shadow unchanged. Any other value, or an X or Z bit
         // after the write, is a wrong outcome for either lock value.
         if (ef_own_lock && (s inside {EfSlotSipDis, EfSlotSysDis, EfSlotSigners, EfSlotAlgs}) &&
-            !$isunknown(pre) && !$isunknown(ef_pw_data) && ((ef_pw_data & ~pre) != 32'h0)) begin
+            !$isunknown(
+                pre
+            ) && !$isunknown(
+                ef_pw_data
+            ) && ((ef_pw_data & ~pre) != 32'h0)) begin
           wr_ok = wl ? (now === pre) : (now === (pre | ef_pw_data));
           ef_lk(6, 8'({!wr_ok, f, wl}));
           if (!wl && wr_ok) ef_lk(7, 8'd0);
@@ -25184,12 +25194,17 @@ module sep_fcov (
           // not all ones in PROD (the demote relaxes it to the DIS vectors)
           // (lifecycle_controller.adoc, Per-LC-state Feature Control Profile).
           dis_grp = ef_grp(ef_pw_shadow[32*EfWSipDis+:64] | ef_pw_shadow[32*EfWSysDis+:64], r);
-          if (ol && |(ef_pw_data & EfDemoteMask) && !od && (sec_dis_i === 1'b0) &&
-              !$isunknown(efuse_lc_raw_i) && !$isunknown(feat_ctrl_i) &&
-              !$isunknown(dis_grp) && (feat_ctrl_i == ef_pw_feat) &&
-              (d_other_pre == d_other_now) &&
-              (((ef_lc == EfTd) && (dis_grp != 24'h0)) ||
-               ((ef_lc == EfProd) && (dis_grp != ef_gmask(int'(r)))))) begin
+          if (ol && |(ef_pw_data & EfDemoteMask) && !od && (sec_dis_i === 1'b0) && !$isunknown(
+                  efuse_lc_raw_i
+              ) && !$isunknown(
+                  feat_ctrl_i
+              ) && !$isunknown(
+                  dis_grp
+              ) && (feat_ctrl_i == ef_pw_feat) && (d_other_pre == d_other_now) &&
+                  (((ef_lc == EfTd) && (dis_grp != 24'h0)) ||
+                   ((ef_lc == EfProd) && (dis_grp != ef_gmask(
+                  int'(r)
+              ))))) begin
             ke.pu = r;
             ke.pu_v = 1'b1;
           end
@@ -25218,8 +25233,11 @@ module sep_fcov (
         now_flags = {rd_addr_err_i === 1'b1, pg_addr_err_i === 1'b1, req_err_i === 1'b1};
         // The flags are known at the AW and after the settle, so an X or Z never
         // reads as a fall or as an unchanged flag.
-        if (($countones(clr) == 1) && !ef_pw_flx &&
-            !$isunknown({rd_addr_err_i, pg_addr_err_i, req_err_i})) begin
+        if (($countones(
+                clr
+            ) == 1) && !ef_pw_flx && !$isunknown(
+                {rd_addr_err_i, pg_addr_err_i, req_err_i}
+            )) begin
           if (clr[2] && ef_pw_flags[2] && !now_flags[2] && (now_flags[1:0] == ef_pw_flags[1:0]))
             ef_ifs(4, 7'd0);
           if (clr[1] && ef_pw_flags[1] && !now_flags[1] &&
@@ -25269,8 +25287,9 @@ module sep_fcov (
     end
     if (ef_sense_rise && ef_rv_pend) begin
       ef_rv_pend <= 1'b0;
-      if (ef_own_fc && (vec == 4'h0) &&
-          !$isunknown({demote_1_i, demote_2_i, demote_lock_1_i, demote_lock_2_i})) begin
+      if (ef_own_fc && (vec == 4'h0) && !$isunknown(
+              {demote_1_i, demote_2_i, demote_lock_1_i, demote_lock_2_i}
+          )) begin
         me = '0;
         me.rv = ef_rv_vec;
         me.rv_v = 1'b1;
@@ -25617,8 +25636,9 @@ module sep_fcov (
         ef_lf_cnt[i] <= 0;
       end else if (ef_lf_rel[i]) begin
         if (token_go_i[c1] === 1'b1) ef_lf_rel_go[i] <= 1'b1;
-        if (ef_lf_rel_go[i] && !$isunknown(latch_sticky_i[c1]) &&
-            (latch_sticky_i[c1] !== ef_lf_dig[i])) begin
+        if (ef_lf_rel_go[i] && !$isunknown(
+                latch_sticky_i[c1]
+            ) && (latch_sticky_i[c1] !== ef_lf_dig[i])) begin
           ef_lf_rel[i] <= 1'b0;
           if (ef_own_tf) ef_tfs(7, {2'b00, 1'(i), 1'b1, 1'b0});
         end else if (ef_lf_cnt[i] == EfLatchWin) begin
@@ -25715,12 +25735,12 @@ module sep_fcov (
   logic ef_ssw_nz = 1'b0;
   logic [7:0] ef_ssw_w = '0;
   typedef enum logic [1:0] {
-    EfPlIdle,
-    EfPlWait,
-    EfPlHeld,
-    EfPlRel
+    EF_PL_IDLE,
+    EF_PL_WAIT,
+    EF_PL_HELD,
+    EF_PL_REL
   } ef_pl_e;
-  ef_pl_e ef_pl_st = EfPlIdle;
+  ef_pl_e ef_pl_st = EF_PL_IDLE;
   int unsigned ef_pl_cnt = 0;
   logic ef_pl_done_seen = 1'b0, ef_pdone_q = 1'b0, ef_cmd_pg_q = 1'b0;
   always @(posedge clk_i) begin
@@ -25745,18 +25765,18 @@ module sep_fcov (
     end
     // x_prog_lifecycle: a PROGRAM command with the program timeout off.
     if (in_reset) begin
-      ef_pl_st <= EfPlIdle;
+      ef_pl_st <= EF_PL_IDLE;
     end else begin
       case (ef_pl_st)
-        EfPlIdle: begin
+        EF_PL_IDLE: begin
           if (ef_cmd_pg && !ef_cmd_pg_q && !ef_pg_tmo_en_q) begin
-            ef_pl_st  <= EfPlWait;
+            ef_pl_st  <= EF_PL_WAIT;
             ef_pl_cnt <= 0;
           end
         end
-        EfPlWait: begin
+        EF_PL_WAIT: begin
           if (ef_resp_v) begin
-            ef_pl_st <= EfPlIdle;
+            ef_pl_st <= EF_PL_IDLE;
           end else if (ef_pl_cnt == EfProgN) begin
             if (ef_own_shim) begin
               ef_ifs(
@@ -25764,14 +25784,14 @@ module sep_fcov (
                   5'd0, 1'b0, !((efuse_program_busy_i === 1'b1) && (efuse_program_done_i === 1'b0))
                   });
             end
-            ef_pl_st <= EfPlHeld;
+            ef_pl_st <= EF_PL_HELD;
           end else begin
             ef_pl_cnt <= ef_pl_cnt + 1;
           end
         end
-        EfPlHeld: begin
+        EF_PL_HELD: begin
           if (ef_resp_v) begin
-            ef_pl_st <= EfPlRel;
+            ef_pl_st <= EF_PL_REL;
             ef_pl_done_seen <= 1'b0;
             ef_pl_cnt <= 0;
           end
@@ -25789,7 +25809,7 @@ module sep_fcov (
                                         (efuse_program_busy_i === 1'b0))
                      });
             end
-            ef_pl_st <= EfPlIdle;
+            ef_pl_st <= EF_PL_IDLE;
           end else begin
             ef_pl_cnt <= ef_pl_cnt + 1;
           end

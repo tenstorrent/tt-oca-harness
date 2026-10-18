@@ -1569,7 +1569,7 @@ def plan_token_fault(seed: int) -> SepEfusePlan:
 
 
 IF_CASES = (
-    "presense",
+    "pre_sense",
     "read_go_no_enable",
     "oor_read",
     "oor_program",
@@ -1602,7 +1602,7 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
     locked = {LOCK_SLOT_FIELD[wl], LOCK_SLOT_FIELD[rl]}
     spares = d.sample("program_spare_fields", [f for f in SPARE_FIELDS if f not in locked], 4)
     progs = {}
-    for role, f in zip(("presense", "presense_twin", "lock_twin", "data0"), spares):
+    for role, f in zip(("pre_sense", "pre_sense_twin", "lock_twin", "data0"), spares):
         progs[role] = _pick_bit(d, f"program.{role}", img, f)
     lock_prog = _pick_bit(d, "program.lock_blocked", img, LOCK_SLOT_FIELD[wl])
     lock_read = _pick_bit(d, "read.lock_blocked", img, LOCK_SLOT_FIELD[rl], zero=False)

@@ -258,8 +258,8 @@ Observation probe groups:
   comparator fault bits), `token_go_i` (hash start pulses),
   `sec_disable_expected_i` (SEC_DIS expected digest), `rd_addr_err_i`,
   `pg_addr_err_i` and `req_err_i` (the `EFUSE_INTERFACE_CTRL_STATUS` error
-  flags), `stored_shadow_i` (the unmasked stored shadow), `shim_resp_i` (valid
-  and status of the shim response at the `sep` input
+  flags), `stored_shadow_i` (the unmasked stored shadow), `shim_resp_i` (valid,
+  status and data of the shim response at the `sep` input
   `efuse_shim_command_resp_i`) and `shim_cmd_i` (the post-guard fuse command).
   The sampler also reads `cmp_match_p_i` and `cmp_match_n_i`, `tok_words_i`,
   the digest latch inputs and `jtag_filt_sigint_i` from the taps above. No
@@ -449,6 +449,13 @@ Observation probe groups:
   sampler variable that the mailbox leaf writes under the rules of
   `graded_owner` (`env/sep_fcov_gate.py`, `set_quiet_window`). It drives
   nothing and touches no DUT net. Owner: `sep_mailbox_fifo_model_rand_test`.
+* The outcome bound `u_sep_fcov.efuse_sdis_hold_bound` of the eFuse and
+  lifecycle sampler: a sampler variable in `clk_i` clocks that the owner writes
+  under the rules of `graded_owner` (`env/sep_fcov_gate.py`,
+  `set_efuse_sdis_hold_bound`), the window W before the hold and 0 when its wait
+  ends. It gates `cp_stops_sense` and `cp_reset_values_hold`, is never a bin
+  value, drives nothing and touches no DUT net. Owner:
+  `sep_sec_dis_timing_rand_test`.
 * Mailbox, IRQ and PIC FCOV sampler taps (`cov/sv/sep_fcov.sv`, mailbox,
   IRQ and PIC groups): read-only references from the `u_sep_fcov`
   connection block to the PIC (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`),
@@ -772,6 +779,10 @@ The CPU is held off (`mpc_reset_run_req=0`). Two masters can drive the DUT:
   not a `force`. This path has no inbound filter. On a full-CPU VCS
   `--target default` elaboration, a no_cpu test force-splices the same
   post-remap node (see the exceptions under <<sep-hdl-top>>).
+  The LSU demux of the stub runs on the SEP CPU reset `sep_cpu_reset_n`, so
+  no frontdoor access of a no_cpu leaf spans a release of that reset. A leaf
+  that lets sense complete during the leaf waits, bounded, for
+  `dbg_sep_reset_n_o` to read 1 before its next frontdoor access.
 * *SMN-inbound (`m_axi_*`).* A second `SepAxiAgent` on the real
   `smn_inbound` port. It is idle unless the test starts an external sequence.
   This path goes through `u_inbound_filter`, which blocks by default (DECERR

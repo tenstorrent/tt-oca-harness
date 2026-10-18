@@ -1593,19 +1593,19 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_efuse_field_layout_rand_test,`sep_efuse_field_layout_rand_test`>>
 |3
 |no_cpu, real fuse sense
-|Frontdoor master, sensed-shadow probe, OTP preload, `jtag_id_i` drive (added hook)
-|Proves that the used bits of nine narrow shadow registers (the ten 32-bit registers except `LOCKS_SPARE`) read back as staged at edge values that the seed draws, and that a drawn non-zero `jtag_id_i` enters no shadow word. The offset and width of all 43 shadow registers run as a logged control.
+|Frontdoor master, sensed-shadow probe, OTP preload, `jtag_id_i` drive (added hook), `jtag_id_probe_o` (observation tap)
+|Proves that the used bits of nine narrow shadow registers (the ten 32-bit registers except `LOCKS_SPARE`) read back as staged at edge values that the seed draws, and that a drawn non-zero `jtag_id_i` enters no shadow word. The offset and width of all 43 shadow registers, taken from the generated register header and IP-XACT, run as a logged control.
 
 |<<sep_lcc_state_codeword_rand_test,`sep_lcc_state_codeword_rand_test`>>
 |3
 |no_cpu, real fuse sense
-|`lc_sigint_inject_i`, `lcc_feat_ctrl_probe_o`, JTAG master, JTAG lifecycle filter inject (added hook)
+|`lc_sigint_inject_i`, `lcc_feat_ctrl_probe_o`, JTAG master, JTAG lifecycle filter inject (added hook), `jtag_filter_lc_sigint_err_probe_o` and bound SEC_DIS digest tap (observation taps)
 |Proves that a non-complementary byte at the lifecycle decoder input raises `lc_sigint_err_o` and forces feature control to 0 in each open-profile nibble, unless SEC_DIS forces all ones, and, in a TEST_DEV leaf, that the JTAG port admits only the token block under an integrity error at the JTAG lifecycle filter.
 
 |<<sep_lcc_feat_ctrl_state_matrix_rand_test,`sep_lcc_feat_ctrl_state_matrix_rand_test`>>
 |3
 |no_cpu, real fuse sense
-|Frontdoor master, `lcc_feat_ctrl_probe_o`, demotion output and DFT disable port probes, OTP preload, OTP bank probe and `efuse_shim_command_req_o` tap (observation taps)
+|Frontdoor master, `lcc_feat_ctrl_probe_o`, demotion output and DFT disable port probes, OTP preload, OTP bank probe, `efuse_shim_command_req_o` tap and bound SEC_DIS digest tap (observation taps)
 |Proves that feature control equals the profile row for all 16 raw state codes, demotion and SEC_DIS cells with random disable vectors, that each disable bit closes its own feature bit and software can only add restrictions, that the two demotion registers follow their lock and write rules over random operation sequences and cold reset, and that the two fuse DFT disable ports split the 32 combinations of the five named disable bits by their case conjunction.
 
 |<<sep_efuse_transient_rma_rand_test,`sep_efuse_transient_rma_rand_test`>>
@@ -1617,13 +1617,13 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_efuse_token_channel_rand_test,`sep_efuse_token_channel_rand_test`>>
 |3
 |no_cpu, real fuse sense, VCS only
-|Frontdoor master, token word tap (observation tap), OTP preload
+|Frontdoor master, token word tap and bound SEC_DIS digest tap (observation taps), OTP preload
 |Proves that each of three token channels hashes its eight-word array on its own go bit, returns only Idle, Match or Mismatch, holds its result, stays independent of the other channels, and gives its result again after a cold reset once sensing is done.
 
 |<<sep_efuse_token_fault_matrix_test,`sep_efuse_token_fault_matrix_test`>>
 |3
 |no_cpu, real fuse sense
-|`token_cmp_fault_inject_i`, digest latch probes and comparator rail taps (observation taps), comparator copy select and test-enable inject (added hooks), PIC source 40 probe
+|`token_cmp_fault_inject_i` with `token_cmp_fault_sel_i`, digest latch probes, comparator rail taps and bound SEC_DIS digest tap (observation taps), comparator copy select and test-enable inject (added hooks), PIC source 40 probe
 |Proves that a collapsed pair or a disagreeing comparator copy forces the error code, sets that channel's sticky flag and the PIC request, that a common-mode flip on RMA_CHIPLET inverts the held result and raises nothing, and that a test enable freezes the retained digest and valid bit of every channel.
 
 |<<sep_efuse_interface_status_rand_test,`sep_efuse_interface_status_rand_test`>>
@@ -1641,25 +1641,25 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_efuse_secure_tm_matrix_rand_test,`sep_efuse_secure_tm_matrix_rand_test`>>
 |3
 |no_cpu, real fuse sense
-|Frontdoor master, JTAG master, `secure_tm_req_i`, sensed-shadow probe, direct OTP read, `efuse_shim_command_req_o` tap (observation tap)
+|Frontdoor master, JTAG master, `secure_tm_req_i`, sensed-shadow probe, direct OTP read, `efuse_shim_command_req_o` tap and bound SEC_DIS digest tap (observation taps)
 |Proves that with secure test mode active no program changes the bank, the four secret fields read zero at the sensed-shadow output, and the protection shadows ignore software and JTAG writes, with the feature control as a control.
 
 |<<sep_efuse_jtag_access_rand_test,`sep_efuse_jtag_access_rand_test`>>
 |3
 |no_cpu, real fuse sense
 |JTAG master, frontdoor master, direct OTP read, `efuse_shim_command_req_o` tap (observation tap)
-|Proves that in PROD and in RMA_SIP the JTAG port reaches only the token block, that every other access completes with an error and changes nothing, and that no feature-control bit gates the port.
+|Proves that in PROD and in RMA_SIP the JTAG port reaches only the token block, that every other access completes with an error and changes nothing, with a frontdoor write of each denied pattern as the control, and that no feature-control bit gates the port. The PROD token word accesses are logged only.
 
 |<<sep_sec_dis_timing_rand_test,`sep_sec_dis_timing_rand_test`>>
 |3
 |no_cpu, real fuse sense, VCS only
-|Frontdoor master, `security_disable_o`, `sep_fuse_sense_done_o`, sensed-shadow probe, IC_RESET TDR driver
+|Frontdoor master, `security_disable_o`, `sep_fuse_sense_done_o`, sensed-shadow probe, IC_RESET TDR driver, bound SEC_DIS digest tap and `efuse_shim_command_req_o` tap (observation taps)
 |Proves that a SEC_DIS match made before sensing keeps sense done low and the sensed shadow words at their reset values, that a match made during sensing keeps sense done low and the sensed shadow words unchanged, and that every shadow word reads its reset value after a cold reset under the match, with the sense stop, the open map read and the recovery as controls.
 
 |<<sep_efuse_shim_response_fault_test,`sep_efuse_shim_response_fault_test`>>
 |3
 |no_cpu, real fuse sense, injected shim response
-|Sense status inject and shim response hold (added hooks), read and program interface outputs
+|Sense status inject and shim response hold (added hooks), shim response taps and `efuse_shim_command_req_o` tap (observation taps), read and program interface outputs
 |Proves that a sense response with its status bit set leaves its shadow word at the reset value and still lets sense done rise, and that a program request shows busy and not done while its response is withheld and done with no error after it.
 |===
 
@@ -4077,7 +4077,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |`jtag_id_i` in the shadow words
 |A drive of `jtag_id_i[31:1]`; no shadow word carries the ID
 |ADD-PORT
-|`tb_top` ties the port to 0. The drive is a top-port drive, an added hook (<<sep-vplan-phase3-added-hooks>>). CHK-JTAGID of `sep_efuse_field_layout_rand_test` uses it.
+|`tb_top` drives the port from the TB input `jtag_id_i`; an undriven or unknown value drives 0. The drive is a top-port drive, an added hook (<<sep-vplan-phase3-added-hooks>>). CHK-JTAGID of `sep_efuse_field_layout_rand_test` uses it.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Comparator copy of a token digest match
 |The copy select (copy 1 and copy 2) at the `token_cmp_fault` injection port
@@ -4437,35 +4437,55 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Core CSR nets `tlu.{mcause, mscause, mdccmect, miccmect, ce_int, mie, mip}`, `dmi_rst_vec`, `dmi_en`, `dmi_addr`, `dmi_wr_en`, `SEP_CORE.nmi_vec`, the four `u_sep_wdt_wrap` stage nets and the two Key Manager conditioner nets.
 |The owners of `cp_ce_*`, `cp_mceip_delivery`, `cp_tcm_trap_cause`, `cp_nmi_fast_path`, `cp_jtag_mech`, `cp_rstvec_tdr`, `cp_dmi_*`, `cp_adapt_stage` and `cp_scan_net_effect`
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|`efuse_shim_command_req_o` tap
+|`efuse_shim_command_req_o` tap (`efuse_shim_cmd_valid_o`, `efuse_shim_cmd_command_o`, `efuse_shim_cmd_address_o`, `efuse_shim_cmd_program_data_o`, `efuse_shim_cmd_len_o`)
 |Read-only tap
-|The program and read commands that reach the bank port after the guard.
-|`sep_lcc_feat_ctrl_state_matrix_rand_test` (CHK-DEMOTE-OTP), `sep_efuse_transient_rma_rand_test` (CHK-TRANSIENT-NOBURN, CHK-PROG-LC), `sep_efuse_interface_status_rand_test` (CHK-IF-CMD, CHK-IF-PRESENSE), `sep_efuse_lock_slot_matrix_rand_test` (CHK-LOCK-CELL), `sep_efuse_secure_tm_matrix_rand_test` (CHK-STM-PROG, CHK-STM-PROG-CTL), `sep_efuse_jtag_access_rand_test` (CHK-JTAG), `sep_sec_dis_timing_rand_test` (class C)
+|The program and read commands that reach the bank port after the guard: valid, command, bit address, program data and word count.
+|`sep_lcc_feat_ctrl_state_matrix_rand_test` (CHK-DEMOTE-OTP), `sep_efuse_transient_rma_rand_test` (CHK-TRANSIENT-NOBURN, CHK-PROG-LC), `sep_efuse_interface_status_rand_test` (CHK-IF-CMD, CHK-IF-PRESENSE), `sep_efuse_lock_slot_matrix_rand_test` (CHK-LOCK-CELL), `sep_efuse_secure_tm_matrix_rand_test` (CHK-STM-PROG, CHK-STM-PROG-CTL), `sep_efuse_jtag_access_rand_test` (CHK-JTAG), `sep_sec_dis_timing_rand_test` (class C), `sep_efuse_shim_response_fault_test` (CHK-HOOK hook control)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`otp_bank_probe_o`
 |Read-only probe
-|A read-only view of the 256 OTP bank words for the bank snapshot, the bit diff and the per-clock sample. The bank loads once at t=0 and the bench has no restage or bank-read hook.
+|A read-only view of the 256 OTP bank words (`otp_bank_probe_o[255:0]`, 32 bits each, words 0 to 255 of the bank model) for the bank snapshot, the bit diff and the per-clock sample. The bank loads once at t=0 and the bench has no restage or bank-read hook.
 |`sep_lcc_feat_ctrl_state_matrix_rand_test` (CHK-DEMOTE-OTP bank diff), `sep_efuse_interface_status_rand_test` (CHK-IF-CMD, CHK-IF-CTRL, CHK-IF-PRESENSE), `sep_efuse_lock_slot_matrix_rand_test` (CHK-LOCK-CELL, CHK-PROG-ROUND bank clauses)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Token word tap
+|Token word tap (`token_sip_words_o`, `token_chiplet_words_o`, `token_sdis_words_o`)
 |Read-only tap
-|The 24 token word registers: X on the unreset arrays.
+|The 24 token word registers, eight 32-bit words per channel: X on the unreset arrays.
 |`sep_efuse_token_channel_rand_test` (CHK-NORESET)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Digest latch probes for RMA_CHIPLET and SEC_DIS
+|Digest latch probes for RMA_CHIPLET and SEC_DIS (`token_digest_chiplet_{sticky,valid,test_en}_o`, `token_digest_sdis_{sticky,valid,test_en}_o`)
 |Read-only tap
-|The sticky digest and valid bit. The existing probes cover RMA_SIP only.
+|The 256-bit sticky digest, the valid bit and the test enable of each latch. The existing probes cover RMA_SIP only.
 |`sep_efuse_token_fault_matrix_test` (CHK-LATCH-FREEZE)
+|<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
+|Comparator rail taps (`token_cmp_match_p_o`, `token_cmp_match_n_o`)
+|Read-only tap
+|The nine gated comparator rails after the comparator fault inject: bit 3c+k is copy k of channel c (0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS).
+|`sep_efuse_token_fault_matrix_test` (CHK-FAULT-CELL hook control of the comparator copy select)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |eFuse and lifecycle FCOV sampler taps
 |Sampler taps
-|Read-only nets `tok_sdis_i`, `tok_fault_i`, `token_go_i`, `sec_disable_expected_i`, `rd_addr_err_i`, `pg_addr_err_i`, `req_err_i`, `stored_shadow_i`, `cmp_match_p_i` and `cmp_match_n_i`.
-|The owners of the groups of the eFuse section of `SEP_FCOV.adoc`. `cmp_match_p_i` and `cmp_match_n_i` are also the hook control of the comparator copy select in `sep_efuse_token_fault_matrix_test` (CHK-FAULT-CELL)
+|Read-only nets `tok_sdis_i`, `tok_fault_i`, `token_go_i`, `sec_disable_expected_i`, `rd_addr_err_i`, `pg_addr_err_i`, `req_err_i`, `stored_shadow_i` and `shim_resp_i` (valid, status and data of the shim response at the `sep` input `efuse_shim_command_resp_i`). Under their sampler names the group also reads nets that the checks read through the probes of this table: `shim_cmd_i` (the post-guard command), `tok_words_i` (the token words), `cmp_match_p_i` and `cmp_match_n_i` (the comparator rails), `latch_sticky_i`, `latch_valid_i` and `latch_test_en_i` (the digest latches) and `jtag_filt_sigint_i` (the JTAG filter integrity flag).
+|The owners of the groups of the eFuse section of `SEP_FCOV.adoc`. No check reads them.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`jtag_filter_lc_sigint_err_probe_o`
 |Read-only probe
 |The integrity-error flag at the decoder output of the JTAG lifecycle filter. The existing `lc_sigint_err_o` is on the lifecycle controller side and stays 0 under a filter-side injection.
 |`sep_lcc_state_codeword_rand_test` (CHK-JTAG-SIGINT)
+|<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
+|`jtag_id_i` port tap (`jtag_id_probe_o`)
+|Read-only tap
+|The DUT port `jtag_id_i` at the `sep` boundary: the hook control of the `jtag_id_i[31:1]` drive.
+|`sep_efuse_field_layout_rand_test` (CHK-JTAGID hook control); the FCOV sampler (`cp_jtag_id_class`)
+|<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
+|Shim response taps (`efuse_shim_resp_valid_o`, `efuse_shim_resp_status_o`, `efuse_shim_resp_data_o`)
+|Read-only tap
+|The shim response at the `sep` input `efuse_shim_command_resp_i`: valid, status bit and data of each sense and program response.
+|`sep_efuse_shim_response_fault_test` (CHK-SENSE-STATUS)
+|<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
+|Bound SEC_DIS digest tap (`sec_dis_digest_probe_o`)
+|Read-only tap
+|The SEC_DIS expected digest that `tb_top` binds to the DUT.
+|`sep_lcc_state_codeword_rand_test`, `sep_lcc_feat_ctrl_state_matrix_rand_test`, `sep_efuse_token_channel_rand_test`, `sep_efuse_token_fault_matrix_test`, `sep_efuse_secure_tm_matrix_rand_test`, `sep_sec_dis_timing_rand_test` (CHK-BIND)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-VALID`
 |Read-only tap
@@ -4663,17 +4683,17 @@ use it" names the entries whose checks need the hook.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`jtag_id_i` drive
 |Top-port drive
-|`jtag_id_i[31:1]`; `tb_top` ties the port to 0. It shows that no shadow word carries the ID.
+|`jtag_id_i[31:1]` from the TB input `jtag_id_i`; an undriven or unknown value drives 0. It shows that no shadow word carries the ID.
 |`jtag_id_i[31:1]`
 |`sep_efuse_field_layout_rand_test` (CHK-JTAGID)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Comparator copy select
 |Error inject
-|The select of copy 1 and copy 2 at the `token_cmp_fault` injection port.
+|`token_cmp_fault_copy_i`: the select of copy 1 and copy 2 at the `token_cmp_fault` injection port.
 |The `token_cmp_fault` injection port
 |`sep_efuse_token_fault_matrix_test` (copy 1 and copy 2 cells)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Digest latch test-enable inject for RMA_CHIPLET and SEC_DIS
+|Digest latch test-enable inject for RMA_CHIPLET and SEC_DIS (`token_digest_chiplet_test_en_inject_i`, `token_digest_sdis_test_en_inject_i`)
 |Error inject
 |A force of the latch test enable.
 |The test enable of the RMA_CHIPLET and SEC_DIS digest latches
@@ -4688,7 +4708,7 @@ use it" names the entries whose checks need the hook.
 |`efuse_sense_status_inject_i` with `efuse_sense_status_word_i`
 |Error inject
 |Sets the status bit on the sense response of one bank-model word.
-|The sense response of the eFuse bank model
+|The `pslverr` of the bank-model APB response on the read path of the eFuse interface shim, during fuse sense only
 |`sep_efuse_shim_response_fault_test` (CHK-SENSE-STATUS)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`efuse_shim_resp_hold_i`
