@@ -202,9 +202,10 @@ MAX_SNIPPET_SLOTS = W_P - kp.W_DATA
 
 # Host-chosen stimulus markers: what the snippets store, never a DUT result.
 MARK_S = 0x5EC5_0001
+MARK_S_UNLOCKED = 0x5EC5_0003  # C1 boot B: a snippet that differs from boot A's
 MARK_P_START = 0x5EC5_0002
 MARK_P_END = 0x5EC5_00FF
-MARKERS = (MARK_S, MARK_P_START, MARK_P_END)
+MARKERS = (MARK_S, MARK_S_UNLOCKED, MARK_P_START, MARK_P_END)
 
 TRAP_KINDS = ("a", "b", "c", "d", "e", "f")
 TRAP_TEXT = {
@@ -354,10 +355,13 @@ class Plan:
             rom_addr=rom_addr,
             rom_word=rom_word,
             rom_store=_nz(rng, (rom_word,)),
-            c1_regions={
-                "locked": rng.randrange(REGION_MIN, REGION_MAX + 1),
-                "unlocked": rng.randrange(REGION_MIN, REGION_MAX + 1),
-            },
+            c1_regions=dict(
+                zip(
+                    ("locked", "unlocked"),
+                    rng.sample(range(REGION_MIN, REGION_MAX + 1), 2),
+                    strict=True,
+                )
+            ),
             c2_region=rng.randrange(REGION_MIN, REGION_MAX + 1),
             c4_region=rng.randrange(REGION_MIN, REGION_MAX + 1),
             c5_window=rng.choice(PERIPH_WINDOWS),
@@ -1301,12 +1305,23 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         self._graded(True)
         await self._case_c0()
 
-        for region_kind, locked in (("locked", 1), ("unlocked", 0)):
+        for region_kind, locked, marker in (
+            ("locked", 1, MARK_S),
+            ("unlocked", 0, MARK_S_UNLOCKED),
+        ):
             r = self.plan.c1_regions[region_kind]
             base = region_base(r)
-            await self._copy_snippet(base, snippet_s(MARK_S), f"C1 {region_kind} snippet")
-            if locked:
-                await self.poke.run([kp.wr(SRAM_LOCK_A, 1 << r)])
+            await self._copy_snippet(base, snippet_s(marker), f"C1 {region_kind} snippet")
+            ops = [kp.wr(SRAM_LOCK_A, 1 << r)] if locked else []
+            res = await self.poke.run([*ops, kp.rd(SRAM_LOCK_A)])
+            lock_rd = res[-1].value
+            assert (lock_rd >> r) & 1 == locked, (
+                f"CHK-EXEC FAIL: C1 {region_kind} region={r}: SRAM_LOCK reads 0x{lock_rd:08x} "
+                f"before the jump, expected lock bit {r} = {locked}"
+            )
+            self.logger.info(
+                "LOG C1 %s region=%d SRAM_LOCK=0x%08x lock_bit=%d", region_kind, r, lock_rd, locked
+            )
             await self._refused_case("C1", base, enable=0, region=str(r), locked=locked)
 
         await self._case_c2("warm")

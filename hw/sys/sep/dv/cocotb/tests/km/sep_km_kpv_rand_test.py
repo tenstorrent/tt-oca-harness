@@ -53,7 +53,9 @@ Checkers:
                    lock_use set they read 0 with SLVERR. Control: words 0 to
                    k - 1 read the written values.
   CHK-KPV-NEIGH    no op of the CTRL-rule, state-walk, race and trailing-word
-                   steps changes CTRL or a word of the slots next to its slot.
+                   steps changes CTRL (port read) or any of the 16 stored words
+                   (KM-KPV snapshot; the scrambler is off) of the slots next to
+                   its slot. The port read of neighbour word 0 is logged.
                    Control: CTRL of the slot itself changes in each sequence.
   CHK-KPV-RESET    CTRL of the 12 drawn slots reads 0 after the power-up cold
                    reset, after a warm reset (SW_RESET_N bit 0) that follows
@@ -173,13 +175,16 @@ class _Watch:
     slot: int
     snaps: list[tuple] = field(default_factory=list)
     own: list[int] = field(default_factory=list)
+    port: list[tuple] = field(default_factory=list)
     ops: int = 0
 
     def snap_ops(self) -> list[kp.PokeOp]:
+        """CTRL of the slot, CTRL and word 0 of each neighbour, then a sync op at
+        which the host takes a KM-KPV snapshot of the neighbours' stored words."""
         ops = [kp.rd(m.ctrl_addr(self.slot))]
         for n in m.neighbours(self.slot):
             ops += [kp.rd(m.ctrl_addr(n)), kp.rd(m.word_addr(n, 0))]
-        return ops
+        return [*ops, kp.sync()]
 
 
 @pyuvm.test()
@@ -267,16 +272,43 @@ class sep_km_kpv_rand_test(sep_base_test):
             seq.append(w.snap_ops())
             seq.append(g)
         seq.append(w.snap_ops())
+        # Index in self.taps of the snapshot taken at the sync op that ends each
+        # neighbour read group (groups may hold syncs of their own).
+        # self.group_taps[i] lists the snapshot indices of the syncs in groups[i].
+        tap = len(self.taps)
+        snap_tap: list[int] = []
+        self.group_taps = []
+        for k, g in enumerate(seq):
+            own_taps = []
+            for op in g:
+                if op.code == kp.OP_SYNC:
+                    if k % 2 == 0:
+                        snap_tap.append(tap)
+                    else:
+                        own_taps.append(tap)
+                    tap += 1
+            if k % 2:
+                self.group_taps.append(own_taps)
         res = await self._run_groups(seq)
+        nbs = m.neighbours(w.slot)
         for k in range(0, len(res), 2):
             snap = res[k]
+            stored = self.taps[snap_tap[k // 2]]
             w.own.append(self._ctrl(snap[0].value))
+            # Graded: neighbour CTRL and the 16 stored words from KM-KPV (the
+            # scrambler is off in steps 6 to 9, so slot n is tap words 16 n to
+            # 16 n + 15). Logged: the port read of word 0, which reads 0 with
+            # SLVERR on a read-locked neighbour.
             w.snaps.append(
                 tuple(
-                    (self._ctrl(snap[1 + 2 * j].value), snap[2 + 2 * j].value)
-                    for j in range(len(m.neighbours(w.slot)))
+                    (
+                        self._ctrl(snap[1 + 2 * j].value),
+                        tuple(stored[n * m.N_WORDS : (n + 1) * m.N_WORDS]),
+                    )
+                    for j, n in enumerate(nbs)
                 )
             )
+            w.port.append(tuple(snap[2 + 2 * j].value for j in range(len(nbs))))
         w.ops += len(groups)
         if not any(x is w for x in self.watches):
             self.watches.append(w)
@@ -574,7 +606,6 @@ class sep_km_kpv_rand_test(sep_base_test):
                         [kp.wrblk(base, new)],
                         [kp.rdblk(base, m.N_WORDS)],
                     ]
-                tap0 = len(self.taps)
                 res = await self._watched(w, groups)
                 self._erase_done(res[5], s)
                 wr = res[2][1] if st == "WR" else res[2][0]
@@ -592,7 +623,7 @@ class sep_km_kpv_rand_test(sep_base_test):
                         rd_slv=rd_slv,
                     )
                 else:
-                    kept = self._tap_kept(tap0, s)
+                    kept = self._tap_kept(self.group_taps[2][0], s)
                     graded = wr_slv == 1 and kept and rd == 0 and rd_slv == 1
                 fields = {"wr_slv": wr_slv}
                 if st == "WR":
@@ -671,11 +702,11 @@ class sep_km_kpv_rand_test(sep_base_test):
                 self._tapped_wr(wa, vr),
                 [kp.rd(ca)],
             ]
-            tap0 = len(self.taps)
             res = await self._watched(w, groups)
             self._erase_done(res[2], s)
             r1, w1, r2, w2 = res[0][0], res[1][1], res[3][0], res[4][1]
-            kept1, kept2 = self._tap_kept(tap0, s), self._tap_kept(tap0 + 2, s)
+            kept1 = self._tap_kept(self.group_taps[1][0], s)
+            kept2 = self._tap_kept(self.group_taps[4][0], s)
             final = self._ctrl(res[5][0].value)
             self.chk.ctrl("KPV-RETIRED-REERASE", final == m.RETIRED, slot=s, ctrl=_h(final))
             self.chk.ok(
@@ -798,18 +829,22 @@ class sep_km_kpv_rand_test(sep_base_test):
         for w in self.watches:
             by_slot.setdefault(w.slot, []).append(w)
         changes = 0
+        port_changes = 0
         ops = 0
         moved = True
         for slot, ws in by_slot.items():
             snaps = [sn for w in ws for sn in w.snaps]
             own = [o for w in ws for o in w.own]
+            port = [pv for w in ws for pv in w.port]
             ops += sum(w.ops for w in ws)
             changes += sum(1 for i in range(1, len(snaps)) if snaps[i] != snaps[0])
+            port_changes += sum(1 for i in range(1, len(port)) if port[i] != port[0])
             slot_moved = any(o != own[0] for o in own)
             moved &= slot_moved
             if not slot_moved:
                 self.logger.info("LOG neigh slot=%d own_ctrl_constant=%s", slot, _h(own[0]))
         self.controls["neigh_twin"] = self.chk.ctrl("KPV-NEIGH-TWIN", moved, slots=len(by_slot))
+        self.logger.info("LOG neigh port_word0_changes=%d", port_changes)
         self.chk.ok(
             "KPV-NEIGH", changes == 0, ops=ops, slots=len(by_slot), neighbor_changes=changes
         )
