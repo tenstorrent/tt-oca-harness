@@ -279,12 +279,12 @@ Observation probe groups:
    AES, 3 OTBN, 4 MLDSA_SEED, 5 MLKEM_SEED_D, 6 MLKEM_SEED_Z, 7 MLKEM_MSG),
    and of the Adams Bridge shared key `KEY_CTRL.key_valid`, `KEY[0..7]`,
    `IRQ_STATUS.key_valid` and `IRQ_ENABLE.key_valid_en`. The Adams Bridge
-   bits read 0 in the build without Adams Bridge. Users:
-   `sep_km_cpu_protect_rand_test`, `sep_km_key_bank_register_rand_test`.
+   bits read 0 in the build without Adams Bridge. User:
+   `sep_km_cpu_protect_rand_test`.
 ** KM-KPV (`km_kpv_ctrl_o`, `km_kpv_words_o`): the 64 KPV `CTRL` registers
    (`CTRL[s]` at `[4*s +: 4]`, register bit order) and the 1024 stored KPV
-   words in stored order. The stored words have no reset. User:
-   `sep_km_kpv_rand_test`.
+   words in stored order. The stored words have no reset. Users:
+   `sep_km_kpv_rand_test`, `sep_km_cpu_protect_rand_test`.
 ** KM-CSR (`km_csr_*_o`): `IRQ_STATUS`, `IRQ_ENABLE`, the interrupt
    aggregate, `RECOVERABLE_ERR`, `BOOT_STATUS.COLD_BOOT_DONE`,
    `SRAM_EXEC_MODE`, `OTP_READ_LOCK`, `OTP_READ_LOCK_COLD`,

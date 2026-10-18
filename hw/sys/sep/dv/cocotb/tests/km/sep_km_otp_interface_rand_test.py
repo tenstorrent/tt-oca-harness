@@ -116,6 +116,7 @@ class Readout:
     bad: list[str] = field(default_factory=list)
     reg_bad: list[str] = field(default_factory=list)
     slot_resp: dict[m.Slot, str] = field(default_factory=dict)
+    slot_resp_only: set[m.Slot] = field(default_factory=set)
 
 
 @dataclass
@@ -315,12 +316,15 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         words: dict[m.Slot, int] = {}
         bad: list[str] = []
         slot_resp: dict[m.Slot, str] = {}
+        resp_only: set[m.Slot] = set()
         for res, slots in ((r1[0], s0), (r1[1], s1), (r2[0], s2)):
             for k, slot in enumerate(slots):
                 words[slot] = res.data[k]
                 if not _ok(res, k):
                     bad.append(f"{label} {_FN[slot[0]]}.{slot[1]}{slot[2]} not a clean OKAY read")
                     fl = res.flags[k]
+                    if res.known and fl is not None and fl.clean:
+                        resp_only.add(slot)
                     slot_resp[slot] = (
                         f"known={int(res.known)} slv={fl.slv} dec={fl.dec} "
                         f"pre_clean={int(fl.clean)}"
@@ -346,6 +350,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             bad + reg_bad,
             reg_bad,
             slot_resp,
+            resp_only,
         )
         self._rsvd("OTP_LIFE_CYCLE", words[(m.F_LC, "reg", 0)], m.LC_FIELDS)
         self._rsvd("OTP_DEMOTION_STATE", words[(m.F_DEM, "reg", 0)], m.DEM_FIELDS)
@@ -359,14 +364,16 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         """Response problems of a readout under the effective lock ``eff``.
 
         The RDL states only that a locked field reads zero, not the response,
-        so a locked read is graded on its data and its response is logged.
-        Every unlocked read and every register read counts only as a clean OKAY.
+        so a locked read is graded on its data and its SLVERR / DECERR bits are
+        logged. A locked read with an unknown bit or a failed clear before it
+        fails: an unknown word would otherwise compare equal to 0. Every
+        unlocked read and every register read counts only as a clean OKAY.
         """
         out = list(ro.reg_bad)
         locked: list[str] = []
         for slot, resp in ro.slot_resp.items():
             name = f"{_FN[slot[0]]}.{slot[1]}{slot[2]}"
-            if (eff >> slot[0]) & 1:
+            if (eff >> slot[0]) & 1 and slot in ro.slot_resp_only:
                 locked.append(f"{name}:{resp}")
             else:
                 out.append(f"{ro.label} {name} not a clean OKAY read")

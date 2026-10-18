@@ -20,7 +20,9 @@ Specification: ``hw/ip/scrambler/doc/architecture.adoc`` ("Data Scrambling
 Algorithm", "Address Tweaking", "Address Scrambling", "Integration in the Key
 Manager"); ``hw/ip/key_manager/doc/architecture.adoc`` ("Key Manager Control
 and Status Registers (KMCSR)", "ROM Warm-Persistent SRAM Region", "Mailbox
-Transport"); ``hw/ip/key_manager/regs/gen/adoc/km_csr.adoc`` ("SCRAMBLER_KEY",
+Transport"); ``hw/ip/key_manager/doc/firmware.adoc`` ("Memory Scrambler
+Provisioning": the SRAM scrambler key and enable/lock state survive warm reset);
+``hw/ip/key_manager/regs/gen/adoc/km_csr.adoc`` ("SCRAMBLER_KEY",
 "SCRAMBLER_CTRL").
 
 Checks:

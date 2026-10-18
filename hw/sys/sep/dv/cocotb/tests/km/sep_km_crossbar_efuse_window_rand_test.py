@@ -32,13 +32,17 @@ Checks (anchor):
   CHK-EFW-RD      40 KM reads of the eFuse maps equal the host reads of the same
                   register (KM readback vs host readback, staged fuse model)
   CHK-EFW-RD-TM   the same with ``secure_tm_o`` = 1
-  CHK-EFW-PROG    a KM program of an unlocked spare bit completes and lands
-                  (path readback + host OTP readback)
+  CHK-EFW-PROG    a KM program of an unlocked spare bit completes and lands;
+                  program_done is graded on the first program after the boot
+                  cold reset, the second program's done is logged (path
+                  readback + host OTP readback)
   CHK-EFW-DENY    a KM program of a write-locked bit is refused, no bit lands
                   (``efuse_req_error`` readback + host OTP readback)
-  CHK-EFW-TM      in secure test mode the KM and host program results are equal,
-                  a blocked OTP read returns 0 on both paths, and no bit lands
-                  (path readback, shadow frontdoor, ``efuse_shadow_probe_o``)
+  CHK-EFW-TM      in secure test mode the KM and host program results, write
+                  responses and efuse_addr echoes are equal, each KM eFuse write
+                  leaves on efuse_req_o in order, a blocked OTP read returns 0
+                  on both paths, and no bit lands (path readback, ``KM-BUS``
+                  write handshakes, shadow frontdoor, ``efuse_shadow_probe_o``)
   CHK-REMAP-BUS   ``efuse_req_o`` after the remap keeps bits [11:0] of the KM
                   offset and holds one constant [31:12] (``KM-BUS`` tap)
 
