@@ -165,8 +165,9 @@ edges in (t0, t1].
   E(enable write, completion)]``, one count per period (``<aon>/README.md:31-32``,
   prescaler 0). ``A`` covers the age of the count copy, which no sentence states.
   Control CTL-WKUP-CARRY: the HI read completes fewer than 256
-  periods after the enable write and the LO read is issued more than 256 periods
-  after the read-back, so the carry falls between them.
+  periods after the enable write and the LO read is issued more than 256 + A
+  periods after the read-back, so the carry falls between them even in a copy
+  that lags by A.
 
 ``A`` appears in legs P and K only where a status crosses into ``clk_i``: the
 same crossing that CHK-WDT-BARK-TIME bounds by ``A`` periods on every run, so a
@@ -1993,7 +1994,9 @@ class sep_timer_clock_contract_test(sep_base_test):
         # puts the LO carry between them.
         hi1, _s, d_h = await self._timed_rd(WKUP_COUNT_HI)
         e_h = self._edges("clk_wdt_i", t_en, d_h)
-        await ClockCycles(dut.clk_wdt_i, CARRY_MARGIN + 1)
+        # The LO read waits A periods more, so even a copy that lags by A already
+        # holds the carried count.
+        await ClockCycles(dut.clk_wdt_i, CARRY_MARGIN + 1 + COUNT_ALLOW)
         lo, s_l, d_l = await self._timed_rd(WKUP_COUNT_LO)
         hi2 = await self._rd(WKUP_COUNT_HI)
         lo2, s_l2, d_l2 = lo, s_l, d_l
@@ -2002,10 +2005,10 @@ class sep_timer_clock_contract_test(sep_base_test):
         result = (hi2 << 32) | lo2
         naive = (hi1 << 32) | lo
         e_l_lo = self._edges("clk_wdt_i", t_rb, s_l)
-        if e_h >= CARRY_MARGIN or e_l_lo - 1 < CARRY_MARGIN:
+        if e_h >= CARRY_MARGIN or e_l_lo - 1 - COUNT_ALLOW < CARRY_MARGIN:
             raise AssertionError(
                 f"CTRL-MISSING {chk}: seed={seed} HI read done E={e_h} (need < {CARRY_MARGIN}) "
-                f"LO read issued E={e_l_lo} after the read-back (need > {CARRY_MARGIN})"
+                f"LO read issued E={e_l_lo} after the read-back (need > {CARRY_MARGIN} + A {COUNT_ALLOW})"
             )
         self.logger.info(
             "CTL-WKUP-CARRY: seed=%d hi_read_E=%d lo_read_E=%d carry_between=1",
