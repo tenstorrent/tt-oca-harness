@@ -1101,21 +1101,39 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             soft_cleared_sram_lock=self.soft_cleared_lock,
         )
 
+    def _otp_witness(self, w) -> list[kp.PokeOp]:
+        """The OTP read-lock witness writes of a round; updates the model."""
+        self.model["otp_cold"] |= 1 << w.otp_cold_bit
+        self.model["otp_lock"] |= 1 << w.otp_bit
+        return [
+            kp.wr(pl.A_OTP_LOCK_COLD, 1 << w.otp_cold_bit, raw=True),
+            kp.wr(pl.A_OTP_LOCK, 1 << w.otp_bit, raw=True),
+        ]
+
+    def _pre_expect(self, w) -> dict[str, int]:
+        """The pre-reset record the round expects, from the model."""
+        want = dict(self.model)
+        for i, (_a, v) in enumerate(w.sram):
+            want[f"sram{i}"] = v
+        return want
+
     async def _reset_round(self, k: int, w) -> None:
         m = self.model
         # Step 18: the witnesses, cold domain, then data, then warm domain.
-        m["otp_cold"] |= 1 << w.otp_cold_bit
+        # IRQ_STATUS is cleared first, so an event of an earlier round does not
+        # carry into this record.
         m["cbd"] = pl.CBD_BIT
         m["irq_en"] = pl.W_IRQ_ENABLE
-        m["irq_status"] |= pl.W_IRQ_SET
+        m["irq_status"] = pl.W_IRQ_SET
         if not m["entry_lock"]:
             m["entry"] = pl.W_ENTRY
         m["entry_lock"] = pl.ENTRY_LOCK_BIT
-        m["otp_lock"] |= 1 << w.otp_bit
         m["cfg"] = pl.W_CFG & pl.CFG_FIELDS
         m["sram_lock"] |= w.sram_lock
+        otp_ops = self._otp_witness(w)
         wr_ops = [
-            kp.wr(pl.A_OTP_LOCK_COLD, 1 << w.otp_cold_bit, raw=True),
+            self._raw_clear_irq(),
+            *otp_ops[:1],
             kp.wr(pl.A_BOOT, pl.CBD_BIT, raw=True),
             kp.wr(pl.A_BOOT, 0, raw=True),
             *[kp.wr(a, v, raw=True) for a, v in w.sram],
@@ -1123,16 +1141,14 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             kp.wr(pl.A_IRQ_SET, pl.W_IRQ_SET, raw=True),
             kp.wr(pl.A_ENTRY, pl.W_ENTRY, raw=True),
             kp.wr(pl.A_ENTRY_LOCK, pl.ENTRY_LOCK_BIT, raw=True),
-            kp.wr(pl.A_OTP_LOCK, 1 << w.otp_bit, raw=True),
+            *otp_ops[1:],
             kp.wr(pl.A_SMP_CFG, pl.W_CFG, raw=True),
             kp.wr(pl.A_SRAM_LOCK, w.sram_lock, raw=True),
         ]
         rd_ops, names = self._witness_reads(w)
         res = await self._run(wr_ops + rd_ops)
         pre, pre_rsvd = self._decode(res[len(wr_ops) :], names)
-        want = dict(m)
-        for i, (_a, v) in enumerate(w.sram):
-            want[f"sram{i}"] = v
+        want = self._pre_expect(w)
         miss = {n: _h(pre[n]) for n in want if pre.get(n) != want[n] or not pre[n]}
         self.chk.ctrl(
             "RST-PRE",
@@ -1161,8 +1177,9 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
 
     async def _readback(self, w, names, *, allow_unknown: bool = False):
         rd_ops, _ = self._witness_reads(w)
-        res = await self._run(rd_ops, allow_unknown=allow_unknown)
-        return self._decode(res, names)
+        # The readback ends with an IRQ_STATUS clear, so the next round starts clean.
+        res = await self._run([*rd_ops, self._raw_clear_irq()], allow_unknown=allow_unknown)
+        return self._decode(res[: len(rd_ops)], names)
 
     def _warm_fields(self, post) -> dict[str, bool]:
         return {

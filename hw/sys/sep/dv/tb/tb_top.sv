@@ -3852,21 +3852,6 @@ module sep_uvm_top
     // This checks PROTOCOL, not data. A register that accepts a write, answers
     // OKAY and stores nothing breaks no rule here, so a green run is not
     // evidence that a KM register write landed.
-    //
-    // +sep_km_axil_ar_reset_waive turns off only OCAH_AXI_AR_VALID_RESET_LOW
-    // on this bind. The KM CPU AXI-Lite master drops ARVALID one clock after a
-    // warm or cold reset asserts. A leaf that resets the KM while its CPU polls
-    // the bus sets the plusarg; no check in those leaves grades ARVALID during
-    // reset. The checker sees ARVALID forced low only while the warm reset is
-    // low. Every other rule that reads ARVALID is reset-disabled or keeps its
-    // tracking state in reset, so that rule is the only one the mask changes.
-    // This is a port mask, not $assertoff: Verilator keeps one assertion on/off
-    // state per simulation context, not per scope, so a scoped $assertoff
-    // there turns off every assertion. All other binds stay live.
-    bit km_axil_ar_reset_waive = $test$plusargs("sep_km_axil_ar_reset_waive");
-    initial if (km_axil_ar_reset_waive)
-        $display("[tb] KM AXI-Lite ARVALID reset-low check off (+sep_km_axil_ar_reset_waive)");
-
     bind key_manager ocah_axi_sva #(
         .IS_LITE    (1'b1),
         .ADDR_WIDTH (32),
@@ -3907,10 +3892,7 @@ module sep_uvm_top
         .arburst (2'b01),
         .arlock  (1'b0),
         .arprot  (cpu_axil_req.ar.prot),
-        // Upward reference: the bit lives in sep_uvm_top, see above.
-        .arvalid (cpu_axil_req.ar_valid
-                  && !(sep_uvm_top.km_axil_ar_reset_waive
-                       && (rst_warm_sync_n === 1'b0))),
+        .arvalid (cpu_axil_req.ar_valid),
         .arready (cpu_axil_resp.ar_ready),
         .rid     (1'b0),
         .rdata   (cpu_axil_resp.r.data),
