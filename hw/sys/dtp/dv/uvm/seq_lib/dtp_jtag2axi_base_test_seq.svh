@@ -262,8 +262,9 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
 
   // A seeded word, nonzero and different from every `avoid` word: a capture
   // that repeats an `avoid` word, or a data field a status poll cleared,
-  // cannot pass for it.
-  function bit [63:0] random_distinct_word(dtp_j2a_target_t t, bit [63:0] avoid[$]);
+  // cannot pass for it. `avoid` is a dynamic array because Verilator cannot
+  // pass a fixed-size array to a queue argument.
+  function bit [63:0] random_distinct_word(dtp_j2a_target_t t, bit [63:0] avoid[]);
     bit [63:0] excluded[$];
     bit [63:0] word;
     foreach (avoid[i]) excluded.push_back(mask_target_data(t, avoid[i]));

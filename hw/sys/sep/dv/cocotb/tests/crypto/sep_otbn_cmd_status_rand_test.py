@@ -40,9 +40,11 @@ Checkers:
                        ``FATAL_ALERT_CAUSE`` = 0.
   CHK-OTBN-CMD-BUSY    the first non-IDLE code on the OTBN status probe after
                        the ``CMD`` write is the busy code of the command.
-  CHK-OTBN-INSN        ``INSN_CNT`` reads 0 after a reset, differs by b - a for
-                       the two programs, each DMEM result equals the operator
-                       golden, and each reset shows 0x04 then 0x00 on the probe.
+  CHK-OTBN-INSN        ``INSN_CNT`` reads 0 after a reset, equals the length of
+                       each straight-line program (``ecall`` included), differs
+                       by b - a for the two programs, each DMEM result equals the
+                       operator golden, and each reset shows 0x04 then 0x00 on
+                       the probe.
   CHK-OTBN-DONE-LINE   vector bit 29 equals ``done`` AND ``INTR_ENABLE.done`` at
                        every sample of the done-line leg. With the enable set,
                        the first rise after the ``CMD`` write is at or after the
@@ -601,6 +603,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         """Steps 10-12 for P(a) and P(b)."""
         p = self.plan
         cnt: dict[str, int] = {}
+        n_prog: dict[str, int] = {}
         resets: dict[str, int] = {}
         res_ok: dict[str, bool] = {}
         arcs: dict[str, str] = {}
@@ -612,7 +615,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             arcs[name] = arc
             await self._clear_done()
             resets[name] = await self._rd(A_INSN_CNT, M_INSN)
-            golden = await self._stage_compute(prog_with_extra(p.op, k))
+            prog = prog_with_extra(p.op, k)
+            n_prog[name] = len(prog)
+            golden = await self._stage_compute(prog)
             await self._wr(A_CMD, CMD_EXECUTE)
             ok, vals, _ = await self._wait_idle(self.idle_bound)
             if not ok:
@@ -647,6 +652,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             resets["a"] == 0
             and resets["b"] == 0
             and diff == p.b - p.a
+            and cnt["a"] == n_prog["a"]
+            and cnt["b"] == n_prog["b"]
             and res_ok["a"]
             and res_ok["b"]
             and arcs_ok
@@ -660,6 +667,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             cnt_reset=f"{resets['a']},{resets['b']}",
             cnt_a=cnt["a"],
             cnt_b=cnt["b"],
+            expect_cnt=f"{n_prog['a']},{n_prog['b']}",
             diff=diff,
             expect=p.b - p.a,
             result_eq_golden=f"{int(res_ok['a'])},{int(res_ok['b'])}",

@@ -75,6 +75,7 @@ from env.sep_esrc_pattern_noise import (
 )
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_shard import sep_shard
 from env.sep_trial_wait import TrialTimeout
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, sym
@@ -91,6 +92,16 @@ DETUNE_BITS = (1 << NUM_LANES) - 1
 REG_POLL_CAP = 4_000  # outer limit of a register poll with no clean time yet (clocks)
 PROBE_SETTLE = 4  # clocks between a DETUNE write and the probe sample
 PERIOD_STROBES = 8
+
+# Shards (env/sep_shard.py). Each shard boots once.
+# 1: the manual, off and ignored legs and burst 1, which gives the controls of the
+#    manual and off grades.
+# 2: the manual and ignored legs again, ungraded, so bursts 2 and 3 start from the
+#    same AUTOTUNE_ENABLE and DETUNE state as in the whole leaf, then bursts 2 and 3.
+SHARD_EVIDENCE = {
+    1: ("CHK-TUNE-MANUAL", "CHK-TUNE-IGNORED", "CHK-TUNE-AUTO", "CHK-TUNE-TOGGLE", "CHK-TUNE-OFF"),
+    2: ("CHK-TUNE-AUTO", "CHK-TUNE-TOGGLE"),
+}
 
 
 def _addr(reg: str) -> int:
@@ -191,6 +202,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
+        shard = sep_shard(self, SHARD_EVIDENCE)
         await self.bring_up_no_cpu(park=BASELINE_PARK)
         self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
@@ -226,11 +238,13 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         self.first_toggle_ps: list[int] = []
         open_graded_window(TEST, self.logger)
 
+        grades = shard in (None, 1)
         manual = await self._manual_leg()
-        off = await self._off_leg()
+        off = await self._off_leg() if grades else None
         ignored = await self._ignored_leg(manual)
+        bursts = {None: (0, 1, 2), 1: (0,), 2: (1, 2)}[shard]
         toggles: list[int | None] = []
-        for i in range(3):
+        for i in bursts:
             toggles.append(await self._auto_burst(i))
         close_graded_window(self.logger)
         await self._clear_status(clear_autotune=True)
@@ -240,10 +254,11 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             lane=plan.lane,
             toggles=",".join("na" if t is None else str(t) for t in toggles),
         )
-        ctrl_auto_toggle = any(t for t in toggles if t is not None)
-        self._grade_manual(manual, off, ctrl_auto_toggle)
-        self._grade_off(off, ctrl_auto_fail=self.auto_fail_seen)
-        self._grade_ignored(ignored, manual)
+        if grades:
+            ctrl_auto_toggle = any(t for t in toggles if t is not None)
+            self._grade_manual(manual, off, ctrl_auto_toggle)
+            self._grade_off(off, ctrl_auto_fail=self.auto_fail_seen)
+            self._grade_ignored(ignored, manual)
 
         await self.timer.stop()
         await self.noise.stop()

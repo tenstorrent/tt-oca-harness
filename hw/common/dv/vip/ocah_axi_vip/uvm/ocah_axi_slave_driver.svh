@@ -272,7 +272,9 @@ class ocah_axi_slave_driver extends uvm_component;
         join_any
         disable fork;
         w_early = !aw_taken;
-        if (w_early) cfg.vif.awready <= 1'b0;
+        // accept_aw lowers AWREADY at the handshake, but Verilator discards the
+        // pending nonblocking writes of a finished branch under `disable fork`.
+        cfg.vif.awready <= 1'b0;
       end
       if (w_early) begin
         cfg.w_before_aw = 1'b0;
