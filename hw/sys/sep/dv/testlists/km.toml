@@ -392,3 +392,80 @@ target = "lsu_stub_all_live"
 # limit keeps the leaf running after an assertion error, so its own checks still
 # grade; any assertion error still fails the leaf.
 args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM-side mailbox registers, words, errors, flush and the KM CPU interrupt route. IMG-MBOX-KM image, prestaged parameter block.
+name = "sep_km_mailbox_km_side_rand_test"
+module = "km.sep_km_mailbox_km_side_rand_test"
+firmware = { name = "km_rom_mbox_km", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "mailbox", "irq", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_mbox_km.param.parhex"]
+
+[[tests]]
+# KM DRBG sampler timeouts, counters, prefetch, write refusals, TRNG reset and stream errors. POKE image.
+name = "sep_km_drbg_sampler_rand_test"
+module = "km.sep_km_drbg_sampler_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 7200
+tags = ["km", "drbg", "entropy", "rand", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+# The leaf resets the KM while its CPU polls the bus. The raised Verilator error
+# limit keeps the leaf running after an assertion error, so its own checks still
+# grade; any assertion error still fails the leaf.
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# KMCSR OTP readout, read locks, secure test mode, demotion change and HK-OTP integrity. POKE image, real
+# fuse sense of a per-leaf image staged by dv_sim_prestage.py (env/sep_km_fuse_plan.py). VCS only.
+name = "sep_km_otp_interface_rand_test"
+module = "km.sep_km_otp_interface_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 7200
+tools = ["vcs"]
+tags = ["km", "otp", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# KM-bus key-share words, key_valid rules and the ML-KEM shared-key block. POKE image, Adams Bridge present.
+name = "sep_km_key_bank_register_rand_test"
+module = "km.sep_km_key_bank_register_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 5400
+tags = ["km", "key_bank", "abr", "mlkem", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# IMG-SCR with the block of the leaf seed: dv_sim_prestage.py stages km_rom_scr.param.parhex in the sim
+# directory. The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+name = "sep_km_sram_scrambler_key_rand_test"
+module = "km.sep_km_sram_scrambler_key_rand_test"
+firmware = { name = "km_rom_scr", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "scrambler", "sram", "reset", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_scr.param.parhex", "+verilator+error+limit+10000"]
