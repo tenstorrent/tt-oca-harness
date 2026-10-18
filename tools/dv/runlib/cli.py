@@ -668,7 +668,7 @@ def leaf_order(
             continue
         duration = float(stage.get("duration_sec") or 0.0)
         durations[stage["item"]] = max(durations.get(stage["item"], 0.0), duration)
-    return sorted(leaves, key=lambda leaf: -durations.get(leaf.get("item"), float("inf")))
+    return sorted(leaves, key=lambda leaf: -durations.get(str(leaf["item"]), float("inf")))
 
 
 def validate_mode_options(args: argparse.Namespace) -> None:
