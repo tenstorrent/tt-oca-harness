@@ -2,7 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """KMCSR registers, the KM SRAM write lock and size, and the KM reset domains.
 
-no_cpu / lsu_stub_all_live / +skip_fuse_sense / +km_rom_hex=km_rom_poke.parhex.
+no_cpu / lsu_stub_all_live / real fuse sense / +km_rom_hex=km_rom_poke.parhex.
+The leaf stages a seeded eFuse image (LC PROD, every KM identity and class-key
+field non-zero) before the first reset, so the dual-rail OTP bundle at the
+SEP-to-KM boundary carries non-trivial value and complement words; the bank
+keeps the image across every rst_ni pulse and it stays the golden of the
+post-sense shadow compare after each sense.
 SRAM scrambler off. Seeded (``SepSeededRng``): every draw is logged as ``DRAW``.
 
 The KM CPU runs the POKE image (``tests/km_fw/km_rom_poke.S``), a legal master
@@ -69,6 +74,7 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env import sep_km_poke as kp
 from env.sep_chk_log import SepChkLog
+from env.sep_efuse_image import LC_PROD
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from km import sep_km_kmcsr_reset_rand_plan as pl
 from sep_base_test import sep_base_test
@@ -82,6 +88,16 @@ from seq_lib.sep_sw_reset_seq import (
 )
 
 TEST = "sep_km_kmcsr_reset_rand_test"
+# eFuse fields that feed the KM OTP bundle; each must be non-zero in the staged image.
+_KM_OTP_FIELDS = (
+    "CHIPLET_UID",
+    "SIP_UID",
+    "SYS_UID",
+    "CLASS_KEY",
+    "SEP_CHIPLET_ID",
+    "SEP_SIP_ID",
+    "SEP_SYS_ID",
+)
 
 _SEP_RESET_BOUND = 20_000  # clocks for dbg_sep_reset_n_o to read 1
 _PARK_BOUND = 20_000  # clocks for the fall, the rise and the first fetch
@@ -245,7 +261,18 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         self.iso_park_seen: bool | None = None
         self.soft_cleared_lock: bool | None = None
 
-        # Step 1: cold bring-up, KM release, start marker.
+        # Step 1: stage the eFuse image, cold bring-up with real sense, KM release,
+        # start marker.
+        image = self.select_efuse_image(lc_raw=LC_PROD)
+        zero = [n for n in _KM_OTP_FIELDS if image.field_int(n) == 0]
+        if zero:
+            raise AssertionError(f"staged eFuse image has zero KM OTP field(s) {zero}")
+        self.write_efuse_image(image)
+        self.logger.info(
+            "LOG efuse image lc_raw=0x%x %s",
+            image.lc_raw(),
+            " ".join(f"{n}[0]=0x{image.field_int(n) & 0xFFFF_FFFF:08x}" for n in _KM_OTP_FIELDS),
+        )
         await self.bring_up_no_cpu()
         self.swrst = SepSwReset(self)
         self.poke = SepKmPoke(self)

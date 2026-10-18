@@ -1034,8 +1034,10 @@ Other enrolled tests also run *real* fuse sense (no `+skip_fuse_sense`) for a
 different contract — lifecycle decode, inbound-filter `SEP_DBG` gating, public-ID
 delivery to the Key Manager — and do not replace the shadow-compare pair:
 `sep_efuse_lcc_lc_state_stitch_test`, `sep_lcc_uvm_inbound_filter_gating_test`,
-`sep_fabric_inbound_filter_rule_matrix_test`, `sep_efuse_km_public_id_test`. The
-last reads the Key Manager's OTP input from the `km_otp_sep_*_id_o` ports.
+`sep_fabric_inbound_filter_rule_matrix_test`, `sep_efuse_km_public_id_test`,
+`sep_km_kmcsr_reset_rand_test`. `sep_efuse_km_public_id_test` reads the Key
+Manager's OTP input from the `km_otp_sep_*_id_o` ports; `sep_km_kmcsr_reset_rand_test`
+grades IRQ_STATUS, including OTP_SIGINT, across the KM reset kinds.
 
 === Memory, eFuse, and SPI Models
 

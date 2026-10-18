@@ -2386,7 +2386,7 @@ Every test runs in run mode `no_cpu`, target `lsu_stub_all_live`, and joins the 
 
 *Area*: Key Manager vault
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), vehicle POKE, `+skip_fuse_sense`, SRAM scrambler off, `reseed = 3`; testlist `km.toml`, groups `cpu_stub` and `all`; VCS (Verilator runs the value checks)
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), vehicle POKE with real fuse sense (no `+skip_fuse_sense`) and a seeded eFuse image (LC PROD, every KM identity and class-key field non-zero) staged before the first reset, SRAM scrambler off, `reseed = 3`; testlist `km.toml`, groups `cpu_stub` and `all`; VCS (Verilator runs the value checks). Real sense is needed because the IRQ_STATUS reset witness includes OTP_SIGINT, which depends on the OTP bundle at the SEP-to-KM boundary
 
 *Source Module*: `sep_km_kmcsr_reset_rand_test`
 
@@ -2401,7 +2401,7 @@ Every test runs in run mode `no_cpu`, target `lsu_stub_all_live`, and joins the 
 *Test Procedure*:
 
 [arabic]
-. Cold-reset the SEP with `+skip_fuse_sense`, release the KM and wait for the start marker of the POKE image in the KM SRAM result words (a bounded wait; a timeout fails the leaf). Draw the plan. Log `SEED` and every `DRAW` value.
+. Stage the eFuse image, cold-reset the SEP with real fuse sense, release the KM and wait for the start marker of the POKE image in the KM SRAM result words (a bounded wait; a timeout fails the leaf). Draw the plan. Log `SEED` and every `DRAW` value.
 . Post a list that reads IRQ_ENABLE, IRQ_ENTRY_ADDR, IRQ_ENTRY_LOCK, VERSION, DEBUG, CTRL and SCRAMBLER_CTRL. Log the VERSION read value as a control.
 . Error injection, point: KM bus write to VERSION; kind: write to a read-only register; expected response: SLVERR and the value unchanged. Post a list that clears IRQ_STATUS (write one to all 12 bits), reads VERSION, writes a drawn value that differs from 0x0001_0000 (the `VERSION` reset value in `km_csr.adoc`), reads IRQ_STATUS (`slv`) and reads VERSION again.
 . IRQ_STATUS walk. Arm the counting handler for CPU IRQ bit 3 with IRQ_ENABLE at 0, read the handler count after each IRQ_SET write of the walk, and disarm the handler after the walk. For each of the 12 bits i in a drawn order, post a list that writes IRQ_SET with bit i and reads IRQ_STATUS; writes IRQ_STATUS with the other 11 bits set (W1C of the complement) and reads it; writes 0 and reads it; writes IRQ_SET with a drawn second bit j and reads it; writes IRQ_STATUS with bit i and reads it; writes IRQ_STATUS with bit j and reads it. Every IRQ_STATUS read also shows the reserved bits [31:12].
