@@ -173,12 +173,13 @@
 // Key Manager OTP input rail flip (HK-OTP). Default 0. While
 // km_otp_flip_en_i is 1, the KM OTP input otp_data_i of the Key Manager is
 // held at the value it had at the rise of the input XOR km_otp_flip_mask_i.
-// The mask has the km_otp_data_t layout: each dual-rail field is
+// The mask has the km_otp_data_t layout and width (3596 bits, life_cycle
+// and the two demotion_state fields at the top): each dual-rail field is
 // {complement rail, value rail}, so a mask bit on one rail is a single-rail
 // flip and the same bit on both rails is a legal value change. Error inject,
 // docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
 `SEP_TB_IN(logic, km_otp_flip_en_i)
-`SEP_TB_IN(logic [3583:0], km_otp_flip_mask_i)
+`SEP_TB_IN(logic [$bits(km_intf_pkg::km_otp_data_t)-1:0], km_otp_flip_mask_i)
 // Key Manager DRBG sampler TVALID withdrawal (HK-STRM). Default 0. While
 // km_strm_wd_arm_i is 1 the bench drives the sampler sink TVALID once: with
 // km_strm_wd_mode_i 0, high for one clock in a clock with the sink TREADY low,

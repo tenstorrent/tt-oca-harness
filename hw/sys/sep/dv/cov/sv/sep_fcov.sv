@@ -26108,7 +26108,8 @@ module sep_fcov (
   localparam logic [31:0] KmHmacBase =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR);
   localparam logic [31:0] KmAbrBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_BASE_ADDR);
-  localparam logic [31:0] KmVromBase = 32'h1000_0000;  // memory_map.adoc, VROM window
+  // VROM window base (hw/ip/key_manager/doc/architecture.adoc:663).
+  localparam logic [31:0] KmVromBase = 32'h1000_0000;
   // KMCSR registers.
   localparam logic [31:0] KmCsrVersion =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_VERSION_BASE_ADDR);
@@ -27606,9 +27607,6 @@ module sep_fcov (
             u_sep_km_drbg_fault_cg.sample(5'd5, 16'd3);
         end
       end
-      // DRBG sampler CFG (cp_smp_prefetch_mode PREFETCH 1).
-      if ((kw_addr == KmSmpCfg) && km_own_smp && kw_data[0] && (km_smp_cfg_i[0] === 1'b1))
-        u_sep_km_drbg_sampler_cg.sample(5'd4, 16'd1);
       // Repeat tracker for identical consecutive writes. The IRQ_STATUS
       // clear that the image writes before an op does not break a run.
       if (kw_addr == KmCsrIrqStatus) begin
@@ -28630,7 +28628,10 @@ module sep_fcov (
       if (kx_rstart && (32'(km_axi_req_i.ar.addr) == KmSmpData)) begin
         if (km_smp_prefetched_i === 1'b1) u_sep_km_drbg_sampler_cg.sample(5'd0, 16'd0);
         else km_wait_req <= 1'b1;
+        // cp_smp_prefetch_mode PREFETCH 0 and 1: CFG.PREFETCH at a DATA read
+        // start.
         if (km_smp_cfg_i[0] === 1'b0) u_sep_km_drbg_sampler_cg.sample(5'd4, 16'd0);
+        if (km_smp_cfg_i[0] === 1'b1) u_sep_km_drbg_sampler_cg.sample(5'd4, 16'd1);
       end
       if ((km_smp_st_q == KmStIdle) && (st == KmStRequest)) begin
         if (km_wait_req && km_tr) u_sep_km_drbg_sampler_cg.sample(5'd0, 16'd1);
@@ -28878,21 +28879,138 @@ module sep_fcov (
 
   // ---------------------------------------------------------------------
   // eFuse program by path (cp_efw_program): the class is the strap at the
-  // go, else the request result when the program interface is idle again.
+  // go, else the write-lock state of the target field in the sensed shadow at
+  // the go. The cell samples when the program interface is idle again, and a
+  // non-strap cell only with the result that the class states: a program of
+  // an unlocked spare field raises no efuse_req_err, and a program of a
+  // write-locked field raises it (efuse_interface_ctrl.adoc,
+  // EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error).
   // ---------------------------------------------------------------------
+  // Write-lock target of a program (cp_efw_program). Field n of the shadow map
+  // spans the OTP bits from 8 times its REG_OFFSET to the next field, and its
+  // write lock is the <FIELD>_WRITE_LOCK bit of LOCKS or LOCKS_SPARE
+  // (sep_efuse_map.adoc). The lock vector is the sensed shadow from OTP bit
+  // 8 * LOCKS REG_OFFSET.
+  localparam int unsigned KmEfFields = 41;
+  localparam int unsigned KmEfSpareLockOfs =
+      (SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET - SEP_EFUSE_MAP_LOCKS_REG_OFFSET) * 8;
+  localparam int unsigned KmEfFieldOff[KmEfFields+1] = '{
+      SEP_EFUSE_MAP_LC_STATE_REG_OFFSET,
+      SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET,
+      SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET,
+      SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET,
+      SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET,
+      SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET,
+      SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET,
+      SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET,
+      SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET,
+      SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET,
+      SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET,
+      SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET,
+      SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET,
+      SEP_EFUSE_MAP_SIP_UID_REG_OFFSET,
+      SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET,
+      SEP_EFUSE_MAP_SYS_UID_REG_OFFSET,
+      SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET,
+      SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET,
+      SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET,
+      SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET,
+      SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_OFFSET,
+      SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET,
+      SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET,
+      SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET,
+      SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_OFFSET,
+      SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_OFFSET,
+      SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_OFFSET,
+      SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_OFFSET,
+      SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_OFFSET,
+      SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET,
+      SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET,
+      SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE0_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE1_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE2_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE3_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE4_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE5_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE6_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE7_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE8_REG_OFFSET,
+      SEP_EFUSE_MAP_SPARE8_REG_OFFSET + SpareStrideB
+  };
+  localparam int unsigned KmEfFieldWlock[KmEfFields] = '{
+      SEP_EFUSE_MAP_LOCKS_LC_STATE_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SBOOT_DIS_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_TRANSIENT_RMA_EN_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SIP_DIS_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SYS_DIS_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_CLASS_KEY_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_REVOKE_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_BL1_VERSION_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_BL2_VERSION_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_CHIPLET_UID_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SIP_PUBK_HASH0_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SIP_UID_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SYS_PUBK_HASH_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SYS_UID_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_STATUS_RPT_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_ROM_CTL_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SYSCLK_FREQ_MHZ_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_HASH0_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_HASH1_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_REQUIRED_SIGNERS_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_REQUIRED_ALGS_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SIP_PUBK_PQC_HASH0_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SYS_PUBK_PQC_HASH_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SIP_PUBK_HASH1_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SIP_PUBK_PQC_HASH1_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SEP_CHIPLET_ID_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SEP_SIP_ID_WRITE_LOCK_SHIFT,
+      SEP_EFUSE_MAP_LOCKS_SEP_SYS_ID_WRITE_LOCK_SHIFT,
+      KmEfSpareLockOfs + SEP_EFUSE_MAP_LOCKS_SPARE_SPARE0_WRITE_LOCK_SHIFT,
+      KmEfSpareLockOfs + SEP_EFUSE_MAP_LOCKS_SPARE_SPARE1_WRITE_LOCK_SHIFT,
+      KmEfSpareLockOfs + SEP_EFUSE_MAP_LOCKS_SPARE_SPARE2_WRITE_LOCK_SHIFT,
+      KmEfSpareLockOfs + SEP_EFUSE_MAP_LOCKS_SPARE_SPARE3_WRITE_LOCK_SHIFT,
+      KmEfSpareLockOfs + SEP_EFUSE_MAP_LOCKS_SPARE_SPARE4_WRITE_LOCK_SHIFT,
+      KmEfSpareLockOfs + SEP_EFUSE_MAP_LOCKS_SPARE_SPARE5_WRITE_LOCK_SHIFT,
+      KmEfSpareLockOfs + SEP_EFUSE_MAP_LOCKS_SPARE_SPARE6_WRITE_LOCK_SHIFT,
+      KmEfSpareLockOfs + SEP_EFUSE_MAP_LOCKS_SPARE_SPARE7_WRITE_LOCK_SHIFT,
+      KmEfSpareLockOfs + SEP_EFUSE_MAP_LOCKS_SPARE_SPARE8_WRITE_LOCK_SHIFT
+  };
+  localparam int unsigned KmEfFirstSpare = KmEfFields - SpareCount;
+  // {field found, spare field, write lock set} of the field that holds OTP bit
+  // b, from the sensed lock vector. LC_STATE ignores its lock bits
+  // (otp_fuse_controller.adoc, Shadow Register and JTAG Access Control), so it
+  // is no target class.
+  function automatic logic [2:0] km_ef_target(logic [15:0] b, logic [95:0] locks);
+    for (int unsigned f = 1; f < KmEfFields; f++)
+    if ((32'(b) >= KmEfFieldOff[f] * 8) && (32'(b) < KmEfFieldOff[f+1] * 8))
+      return {1'b1, (f >= KmEfFirstSpare), (locks[KmEfFieldWlock[f]] === 1'b1)};
+    return 3'b000;
+  endfunction
   logic [13:0] km_pg_cnt = '0;
   logic km_pg_host = 1'b0, km_pg_tm = 1'b0, km_pg_busy_seen = 1'b0;
+  logic [2:0] km_pg_tgt = '0;
+  logic km_pg_err_seen = 1'b0;
   always @(posedge clk_i) begin
     if (km_pg_cnt != 14'd0) begin
       if (km_efuse_pg_busy_i === 1'b1) km_pg_busy_seen <= 1'b1;
+      if (req_err_i === 1'b1) km_pg_err_seen <= 1'b1;
       if ((km_pg_busy_seen && (km_efuse_pg_busy_i === 1'b0) && (km_pg_cnt > 14'd2)) ||
           (km_pg_cnt == 14'(KmPgWin))) begin
         km_pg_cnt <= '0;
         if (km_own_xbar) begin
           if (km_pg_tm) u_sep_km_otp_readout_cg.sample(5'd8, 16'({km_pg_host, 2'd2}));
-          else if (!km_pg_host)
-            u_sep_km_otp_readout_cg.sample(5'd8,
-                                           (req_err_i === 1'b1) ? 16'(3'b0_01) : 16'(3'b0_00));
+          else if (!km_pg_host && km_pg_tgt[2]) begin
+            if (km_pg_tgt[0] && (km_pg_err_seen || (req_err_i === 1'b1)))
+              u_sep_km_otp_readout_cg.sample(5'd8, 16'(3'b0_01));
+            else if (!km_pg_tgt[0] && km_pg_tgt[1] && !km_pg_err_seen && (req_err_i !== 1'b1))
+              u_sep_km_otp_readout_cg.sample(5'd8, 16'(3'b0_00));
+          end
         end
       end else km_pg_cnt <= km_pg_cnt + 14'd1;
     end
@@ -28902,11 +29020,17 @@ module sep_fcov (
       km_pg_host <= 1'b0;
       km_pg_tm <= (km_secure_tm_i === 1'b1);
       km_pg_busy_seen <= 1'b0;
+      km_pg_err_seen <= 1'b0;
+      km_pg_tgt <= km_ef_target(16'((kw_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK) >>
+                                    EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT),
+                                {ef_locks_sp, ef_locks});
     end else if (wr_ev && (aw_addr_q == KmEfPgCtrl) && |(wr_data & KmEfPgGo)) begin
       km_pg_cnt <= 14'd1;
       km_pg_host <= 1'b1;
       km_pg_tm <= (km_secure_tm_i === 1'b1);
       km_pg_busy_seen <= 1'b0;
+      km_pg_err_seen <= 1'b0;
+      km_pg_tgt <= '0;
     end
   end
 

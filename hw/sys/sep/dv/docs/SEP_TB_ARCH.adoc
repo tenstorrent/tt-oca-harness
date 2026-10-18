@@ -308,8 +308,9 @@ Observation probe groups:
   and register fields of both KM mailbox FIFOs, the DRBG sampler `CFG`,
   `STATUS`, counters, prefetch word and DATA-read state, the wipe input and
   pulse, the KM OTP input, the ROM request, the SRAM macro request and
-  response, the KM eFuse master and the eFuse controller `efuse_req_err`, and
-  the four KM reset nets. Owners: the Key Manager groups of
+  response, the KM eFuse master and the eFuse controller `efuse_req_err`, the
+  sensed `LOCKS` and `LOCKS_SPARE` words of `efuse_shadow_probe_o`, and the
+  four KM reset nets. Owners: the Key Manager groups of
   `docs/SEP_FCOV.adoc`.
 * SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`).
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
@@ -619,10 +620,11 @@ Exceptions (a closed set):
   entry of the crypto and entropy area.
 * *Key Manager OTP rail flip* (HK-OTP) — while `km_otp_flip_en_i` is 1, the
   KM OTP input `otp_data_i` of `u_key_manager_s3c_scan` is held at the value
-  it had at the rise of the input XOR `km_otp_flip_mask_i` (layout
-  `km_otp_data_t`, each dual-rail field `{complement, value}`): a mask bit on
-  one rail is a single-rail flip, the same bit on both rails a legal value
-  change, and bits of several fields change them together. The SEP drives
+  it had at the rise of the input XOR `km_otp_flip_mask_i` (layout and width
+  of `km_otp_data_t`, 3596 bits with `life_cycle`, `demotion_state_1` and
+  `demotion_state_2` at the top, each dual-rail field `{complement, value}`):
+  a mask bit on one rail is a single-rail flip, the same bit on both rails a
+  legal value change, and bits of several fields change them together. The SEP drives
   every field to the KM as a dual-rail pair, so no fuse image presents a
   broken pair or changes a field after the sense. Both inputs are 0 by
   default, and the force is released when the enable drops; the readback
@@ -1313,7 +1315,7 @@ of their leaf from a parameter block at KM ROM word `0xF00` (byte `0x3C00`).
 `cocotb/dv_sim_prestage.py` writes a copy of the committed image,
 `<image>.param.parhex`, into the sim directory before the simulator starts:
 the template lines, then the block at `@00000F00` in the `.parhex` format of
-`tests/km_fw/gen_parhex.py`. The image load `tb_backdoor_mem` preloads the
+`cocotb/tests/km_fw/gen_parhex.py`. The image load `tb_backdoor_mem` preloads the
 copy through `+km_rom_hex=<image>.param.parhex` at t=0, before the KM leaves
 reset, so no bench write changes the image after t=0. Block layout: the magic
 word `0x4B4D5052`, the version and block id, the payload length, the payload,
