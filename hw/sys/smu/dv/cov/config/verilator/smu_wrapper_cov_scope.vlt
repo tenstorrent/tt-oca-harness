@@ -28,6 +28,7 @@
 // Testbench code.
 // ---------------------------------------------------------------------------
 coverage_off -file "*hw/sys/smu/dv/tb/tb_wrapper_top.sv"
+coverage_off -file "*hw/sys/smu/dv/uvm/*"
 
 // ---------------------------------------------------------------------------
 // Internal logic: the SMU block itself, and the subsystems that carry their

@@ -1858,6 +1858,7 @@ module sep_uvm_top
     assign pr_out_rready_o = smn_outbound_req_w.r_ready;
     assign pr_out_rresp_o  = smn_outbound_resp_w.r.resp;
     assign pr_out_rid_o    = smn_outbound_resp_w.r.id;
+    assign pr_out_rdata_o  = smn_outbound_resp_w.r.data;
     assign pr_out_rlast_o  = smn_outbound_resp_w.r.last;
     // PR-SMC: sep_ext_to_smc_axi_req_o (the net ext_to_smc_req_w).
     assign pr_smc_awvalid_o = ext_to_smc_req_w.aw_valid;
@@ -3266,6 +3267,8 @@ module sep_uvm_top
         .resp_o          (smn_outbound_resp_w),
         .resp_hold_i     (smn_outbound_resp_hold_i),
         .rd_slverr_i     (smn_outbound_rd_slverr_i),
+        .ready_stall_i   (smn_outbound_ready_stall_i),
+        .rd_addr_data_i  (smn_outbound_rd_addr_data_i),
         .fw_done_o       (fw_done_o),
         .fw_pass_o       (fw_pass_o),
         .fw_char_o       (fw_char_o),
@@ -3765,6 +3768,8 @@ module sep_uvm_top
     assign sep_ext_interrupts_i     = '0;
     assign smn_outbound_resp_hold_i = 1'b0;
     assign smn_outbound_rd_slverr_i = 1'b0;
+    assign smn_outbound_ready_stall_i = '0;
+    assign smn_outbound_rd_addr_data_i = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;

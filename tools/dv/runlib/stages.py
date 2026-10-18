@@ -3263,6 +3263,21 @@ def _verilator_uvm_dpi_args(uvm_src: Path) -> list[str]:
     return ["--vpi", str(uvm_src / "dpi" / "uvm_dpi.cc"), "-CFLAGS", "-DUVM_NO_MALLOC"]
 
 
+def _verilator_uvm_coverage_scope(uvm_src: Path) -> str:
+    # The UVM library and Verilator's std package, whose classes the library uses, stay out of
+    # the coverage database wherever the library is installed. `coverage_off` matches the path
+    # as Verilator opened the file, which for the library starts with the `uvm_src` the build
+    # passes.
+    return "\n".join(
+        [
+            "`verilator_config",
+            f'coverage_off -file "{uvm_src}/*"',
+            'coverage_off -file "*verilated_std.sv"',
+            "",
+        ]
+    )
+
+
 def _verilator_uvm_resolve_build(
     flow: Flow,
     root: Path,
@@ -3379,12 +3394,18 @@ def verilator_uvm_build(
     info = _verilator_uvm_resolve_build(flow, root, sim_cfg, args)
     uvm_src = info["uvm_src"]
     build_dir = info["build_dir"]
+    coverage_scope: list[str] = []
+    if args.cov:
+        scope = build_dir / "uvm_coverage_scope.vlt"
+        write_text_file(scope, _verilator_uvm_coverage_scope(uvm_src), args.dry_run)
+        coverage_scope = [str(scope)]
     launch = stage_tool_launch(args, "verilator")
     argv = [
         launch.binary,
         "--binary",
         *info["build_args"],
         *info["coverage_args"],
+        *coverage_scope,
         "--top-module",
         info["top"],
         "-Mdir",
