@@ -27,7 +27,10 @@ post-guard fuse port (``security_disable.adoc``, section Reset Persistence).
 
 Both classes: a cold reset under the match leaves every shadow field except
 ``LC_STATE`` at its reset value 0x0 with an OKAY response
-(``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``, reset values). A mismatch,
+(``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``, reset values). The compare
+takes each word's field bits and reset value from the generated IP-XACT, so the
+``rsvd`` and ``reserved`` fields (access R, reset 0x0) are compared too; only a bit
+with no field or no declared reset is masked and logged as ``rsvd=0x<v>``. A mismatch,
 a cold reset and a full sense recover the staged image; that recovery, the sense
 stop, the OKAY map read and the feature override are logged controls here.
 ``secure_tm_req_i`` stays 0 for the whole leaf. The shadow reset value of
@@ -83,7 +86,7 @@ from env.sep_fcov_gate import (
 )
 from env.sep_ic_reset_tdr import IC_RESET_IDLE, SepIcResetTdr, tdr_word
 from sep_base_test import sep_base_test
-from sep_reg_meta import RegBlock
+from sep_reg_meta import register_fields, word_reset, word_unreset_mask
 
 _NAME = "sep_sec_dis_timing_rand_test"
 # Test parameters: W = _W_MULT x the measured sense time; the recovery sense is
@@ -96,7 +99,6 @@ _POLL_READS = 400
 _RST_RELEASE_BOUND = 64
 _LC_WORD = field_word("LC_STATE")
 _LC_MASK = 0xFFFF_FFFF << (32 * _LC_WORD)
-_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
 _TO0 = str.maketrans("xXzZ", "0000")
 _X1 = str.maketrans("01xXzZ", "001111")
 
@@ -113,14 +115,20 @@ def _word(value: int, w: int) -> int:
     return (value >> (32 * w)) & 0xFFFF_FFFF
 
 
-def _field_mask(name: str, k: int) -> int:
-    """RDL field bits of shadow word k of ``name`` (a 256-bit field: every bit)."""
-    if field_n_words(name) == 1:
-        try:
-            return _EFUSE_MAP.mask32(name)
-        except (KeyError, AttributeError, LookupError):
-            return 0xFFFF_FFFF
-    return 0xFFFF_FFFF
+def _reset_compare(name: str, k: int) -> tuple[int, int]:
+    """(compared bits, reset value) of shadow word k of ``name``, from the generated
+    IP-XACT of ``sep_efuse_map``.
+
+    The compared bits are every bit of a field that declares a reset, ``rsvd`` and
+    ``reserved`` fields included (access R, reset 0x0 in the map). Only a bit outside
+    every field, or of a field with no declared reset, is left out.
+    """
+    addr = shadow_addr(name, 0)
+    _width, fields = register_fields(addr)
+    in_field = (sum(f.mask for f in fields) >> (32 * k)) & 0xFFFF_FFFF
+    word = addr + 4 * k
+    mask = in_field & ~word_unreset_mask(word)
+    return mask, word_reset(word) & mask
 
 
 class _Clk:
@@ -409,15 +417,20 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         fields_read = set()
         staged_fields = set(p.leg["staged_fields"])
         staged_zero = True
+        rsvd = 0
         for name, k, data, resp, sd in values:
             if name == "LC_STATE":
                 self.chk.obs("SDIS-LC-RESET", word=f"0x{data:08x}", resp=RESP_NAME.get(resp))
                 continue
             fields_read.add(name)
-            mask = _field_mask(name, k)
-            if resp != RESP_OKAY or data & mask or sd:
-                bad.append(f"{name}[{k}]=0x{data:08x}/{RESP_NAME.get(resp, resp)}/sd{sd}")
-            if name in staged_fields and data & mask:
+            mask, exp = _reset_compare(name, k)
+            rsvd |= data & ~mask & 0xFFFF_FFFF
+            if resp != RESP_OKAY or data & mask != exp or sd:
+                bad.append(
+                    f"{name}[{k}]=0x{data:08x}/exp0x{exp:08x}/m0x{mask:08x}"
+                    f"/{RESP_NAME.get(resp, resp)}/sd{sd}"
+                )
+            if name in staged_fields and data & mask != exp:
                 staged_zero = False
         close_graded_window(self.logger)
         self.chk.ok(
@@ -430,6 +443,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
                 "n_loaded": hold.get("n_loaded", "na"),
                 "all_reset_value": int(not bad),
                 "ctl_sense_done": 0,
+                "rsvd": f"0x{rsvd:x}",
                 "first_bad": ",".join(bad[:4]) or "none",
             },
         )

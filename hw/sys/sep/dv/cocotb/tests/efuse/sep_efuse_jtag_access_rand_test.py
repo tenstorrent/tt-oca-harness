@@ -9,7 +9,9 @@ bit set and drawn Function bits, a drawn ``SYS_DIS``, the RMA digests of
 control bit c and the probe bit p (two 0 spare bits), the access count N (15 to
 20) and the access list: every (class, operation) cell at least once, the go
 channel with the word order and the vector of each word write, the positions of the
-other token-block accesses, and per denied access its address and pattern.
+other token-block accesses, and per denied access its address and pattern. The
+required interface-control write of every leaf is a denied ``EFUSE_PROGRAM_CTRL``
+program of p, so the p read at the end grades a refused burn in every leaf.
 ``dv_sim_prestage.py`` stages the image from ``env/sep_efuse_plan.py`` and the leaf
 builds the same plan. JTAG and frontdoor accesses never overlap.
 
@@ -34,8 +36,11 @@ Mechanism and Token Submission):
                     one program command at the tap (else ``CHK-HOOK FAIL``); the read
                     address error flag reads 1 before the denied status write (else
                     ``CHK-HOOK FAIL``); at the end of the leaf the pattern of each
-                    denied shadow write and ``EFUSE_READ_CTRL`` write, written through
-                    the frontdoor, changes the readback (``CTRL-JTAG-DENY-WRITE``).
+                    denied shadow write, ``EFUSE_READ_CTRL`` write and status write,
+                    written through the frontdoor, changes the readback
+                    (``CTRL-JTAG-DENY-WRITE``): for the status write the flag is set
+                    again by an out-of-range read, reads 1, and the frontdoor clear
+                    makes it read 0.
   CHK-JTAG-TOKEN    with every DBG_1 and DBG_2 bit of ``FEAT_CTRL`` at 0 (register and
                     probe), a JTAG write of ``TOKEN_T1`` into the SIP array and a go
                     give the SIP match 0x15 at a frontdoor read.
@@ -306,16 +311,49 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                     channel=ch,
                 )
 
+    async def _status_clear_control(self, w: int) -> None:
+        """Control of "target unchanged" for the denied status write: the same clear,
+        written through the frontdoor, drops ``efuse_read_addr_error``.
+
+        The flag is set again first by the out-of-range read of step 5 and must read 1,
+        so a frontdoor clear that the DUT ignores leaves it at 1 and the control fails.
+        """
+        accs = [
+            a
+            for a in self.p.leg["denied"]
+            if a["op"] == "wr" and a.get("reg") == "EFUSE_INTERFACE_CTRL_STATUS"
+        ]
+        if not accs:
+            return
+        await self.fd.wr(READ_CTRL_ADDR, read_ctrl_word(OUT_OF_RANGE_BIT))
+        await ClockCycles(cocotb.top.clk_i, w)
+        await self.fd.wr(READ_CTRL_ADDR, 0)
+        before = await self.fd.rd(STATUS_ADDR)
+        await self.fd.wr(STATUS_ADDR, accs[0]["data"])
+        after = await self.fd.rd(STATUS_ADDR)
+        self.chk.ctrl(
+            "JTAG-DENY-WRITE",
+            bool(before & READ_ADDR_ERROR) and not after & READ_ADDR_ERROR,
+            state=self.state,
+            tgt="ifctl",
+            reg="EFUSE_INTERFACE_CTRL_STATUS",
+            addr=f"0x{STATUS_ADDR:08x}",
+            wdata=f"0x{accs[0]['data']:08x}",
+            before=f"0x{before & READ_ADDR_ERROR:08x}",
+            after=f"0x{after & READ_ADDR_ERROR:08x}",
+        )
+
     async def _deny_write_controls(self, w: int) -> None:
-        """Control of "target unchanged" for the denied shadow and ``EFUSE_READ_CTRL``
-        writes: the same pattern written through the frontdoor changes the readback.
+        """Control of "target unchanged" for the denied status, ``EFUSE_READ_CTRL`` and
+        shadow writes: the same pattern written through the frontdoor changes the readback.
 
         Runs after every graded access of the leaf, because a shadow write is set-only and
-        cannot be undone. ``EFUSE_READ_CTRL`` goes first (its RW fields read back the
-        written ``read_enable`` and ``efuse_addr`` after a write of 0 and then of the
-        pattern; it is then written 0), so a lock bit
-        that a shadow control sets cannot refuse its read.
+        cannot be undone. The status clear goes first, then ``EFUSE_READ_CTRL`` (its RW
+        fields read back the written ``read_enable`` and ``efuse_addr`` after a write of 0
+        and then of the pattern; it is then written 0), so a lock bit that a shadow
+        control sets cannot refuse their reads.
         """
+        await self._status_clear_control(w)
         seen: set[tuple[int, int]] = set()
         accs = [a for a in self.p.leg["denied"] if a["op"] == "wr"]
         rd_ctl = [a for a in accs if a.get("reg") == "EFUSE_READ_CTRL"]
@@ -489,11 +527,19 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         )
         close_graded_window(self.logger)
 
+        p_writes = sum(
+            1 for a in p.leg["denied"] if a["op"] == "wr" and a.get("reg") == "EFUSE_PROGRAM_CTRL"
+        )
         self.chk.ok(
             "JTAG",
-            p_bit_read == 0 and ctl_bit_read == 1 and ctl_cmd == 1 and not denied_progs,
+            p_writes >= 1
+            and p_bit_read == 0
+            and ctl_bit_read == 1
+            and ctl_cmd == 1
+            and not denied_progs,
             state=self.state,
             tgt="otp_word_p",
+            p_writes=p_writes,
             p_bit_read=p_bit_read,
             ctl_bit_read=ctl_bit_read,
             ctl_cmd=ctl_cmd,

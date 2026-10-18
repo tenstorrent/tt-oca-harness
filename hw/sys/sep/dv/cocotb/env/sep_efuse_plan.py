@@ -1895,7 +1895,8 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
     bit); c and p; N (15..20); the go channel; the word order and the vector of each
     word write of its array; insert positions of the other token-block accesses and
     the extras; the class and operation of each extra; per access its address and
-    pattern.
+    pattern. The required interface-control write is always ``EFUSE_PROGRAM_CTRL``
+    with the address of p; an extra interface-control write draws its register.
     """
     d = SepEfuseDraws(seed)
     raw = d.choice("state", (LC_PROD, LC_RMA_SIP_0))
@@ -1965,8 +1966,12 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
             "golden": golden,
         },
     )
+    # The required interface-control write targets EFUSE_PROGRAM_CTRL, so every leaf
+    # makes one denied program of p and the end-of-leaf p read grades a refused burn.
     denied: list[dict[str, Any]] = [
-        {"cls": c, "op": o} for c, o in _REQUIRED_CELLS if c in ("shadow", "ifctl")
+        {"cls": c, "op": o, **({"reg": "EFUSE_PROGRAM_CTRL"} if (c, o) == ("ifctl", "wr") else {})}
+        for c, o in _REQUIRED_CELLS
+        if c in ("shadow", "ifctl")
     ]
     others: list[dict[str, Any]] = [{"cls": "token_word", "op": "rd"}, {"cls": "match", "op": "rd"}]
     for i in range(n - 15):
@@ -2014,7 +2019,11 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
             reg = d.choice(f"ifctl_read_reg.{i}", _IFCTL_REGS)
             acc.update(reg=reg, addr=EFUSE_INTERFACE_CTRL.addr(reg))
         else:
-            reg = d.choice(f"ifctl_write_reg.{i}", _IFCTL_WR_REGS)
+            reg = (
+                d.put(f"ifctl_write_reg.{i}", acc["reg"])
+                if "reg" in acc
+                else d.choice(f"ifctl_write_reg.{i}", _IFCTL_WR_REGS)
+            )
             if reg == "EFUSE_INTERFACE_CTRL_STATUS":
                 data = EFUSE_INTERFACE_CTRL.field_mask(reg, "efuse_read_addr_error_clear")
             elif reg == "EFUSE_PROGRAM_CTRL":

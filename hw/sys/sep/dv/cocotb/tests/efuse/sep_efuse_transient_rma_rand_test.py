@@ -29,7 +29,9 @@ matched is refused (a control of the open refusal, ``role=control``); with
 RMA_CHIPLET matched it lands. After each resense the shadow byte is
 ``{~r, r}`` with r the raw nibble OR the programmed bit (``otp_fuse_controller.adoc``,
 sections Fuse Programming and RMA Authorization, Shadow Register Updates and
-Test-Mode Protection).
+Test-Mode Protection). Every match and mismatch go of leg B must reach its code
+(``0x15`` or ``0x2a``) inside the bounded poll; a go that does not fails
+CHK-PROG-LC and ends the leaf before the program it sets up is graded.
 
 Time: the window W is a multiple of the sense time the leaf measures, at least
 256 clocks. Every program wait lasts the full W with no early exit. The window
@@ -410,18 +412,41 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         await self.shim.stop()
         self.chk.finish()
 
+    def _leg_b_code(self, step: str, code: int | None, want: int) -> None:
+        """Grade the code a leg B match or mismatch go reaches.
+
+        The program authorization that follows a go is graded only after the go
+        reaches its code. A bounded poll that ends first, or a different code,
+        fails CHK-PROG-LC and ends the leaf, so no refusal is graded against a
+        channel state other than the one the step sets up.
+        """
+        self.leg_b_codes.append(f"{step}:{'none' if code is None else f'0x{code:02x}'}")
+        if code != want:
+            self.chk.ok(
+                "PROG-LC",
+                False,
+                step=step,
+                exp_code=f"0x{want:02x}",
+                code="none" if code is None else f"0x{code:02x}",
+                w_cycles=self.w,
+            )
+            self.chk.finish()
+
     async def _leg_b(self, seed: int, staged_word: int) -> None:
         """Program authorization of LC_STATE bits 1 and 2 (TEST_DEV, enable 0)."""
+        self.leg_b_codes: list[str] = []
         shadow0 = await self.fd.rd(shadow_addr("LC_STATE"))
 
         # Bit 1 with only RMA_CHIPLET matched: refused.
-        await self._match(CH_CHIPLET, "b1.chp")
+        self._leg_b_code("b1.chp", await self._match(CH_CHIPLET, "b1.chp"), CODE_MATCH)
         ref1 = await self._program(_LC_BIT1)
         shadow_ref1 = await self.fd.rd(shadow_addr("LC_STATE"))
-        await self._mismatch(CH_CHIPLET, "b1.chp_end")
+        self._leg_b_code(
+            "b1.chp_end", await self._mismatch(CH_CHIPLET, "b1.chp_end"), CODE_MISMATCH
+        )
 
         # Bit 1 with RMA_SIP matched: lands.
-        await self._match(CH_SIP, "b1.sip")
+        self._leg_b_code("b1.sip", await self._match(CH_SIP, "b1.sip"), CODE_MATCH)
         own1 = await self._program(_LC_BIT1)
         shadow_own1 = await self.fd.rd(shadow_addr("LC_STATE"))
         sip_end = await self._mismatch(CH_SIP, "b1.sip_end")
@@ -466,6 +491,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             exp_after_sense="na",
             state_after_sense="na",
             ctl_own_landed=int(own1_ok),
+            go_codes=",".join(self.leg_b_codes),
         )
         self.chk.ok(
             "PROG-LC",
@@ -481,10 +507,13 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             shadow_after_sense=f"0x{sense1 & LC_FIELD_MASK:02x}",
             exp_after_sense=f"0x{exp1:02x}",
             state_after_sense=lc_state_class(r1),
+            sip_end=f"0x{sip_end:02x}" if sip_end is not None else "none",
+            chp_code=f"0x{chp_code:02x}",
+            go_codes=",".join(self.leg_b_codes),
         )
 
         # Bit 2 with only RMA_SIP matched: refused (control of the open refusal).
-        await self._match(CH_SIP, "b2.sip")
+        self._leg_b_code("b2.sip", await self._match(CH_SIP, "b2.sip"), CODE_MATCH)
         chp_held = await self.fd.match(CH_CHIPLET)
         self.chk.obs("PROG-LC-CHP", chp_code=f"0x{chp_held:02x}")
         close_graded_window(self.logger)
@@ -493,7 +522,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         shadow_ref2 = await self.fd.rd(shadow_addr("LC_STATE"))
 
         # Bit 2 with RMA_CHIPLET matched: lands.
-        await self._match(CH_CHIPLET, "b2.chp")
+        self._leg_b_code("b2.chp", await self._match(CH_CHIPLET, "b2.chp"), CODE_MATCH)
         own2 = await self._program(_LC_BIT2)
         shadow_own2 = await self.fd.rd(shadow_addr("LC_STATE"))
         sip_end2 = await self._mismatch(CH_SIP, "b2.sip_end")
@@ -540,6 +569,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             exp_after_sense="na",
             state_after_sense="na",
             ctl_own_landed=int(own2_ok),
+            go_codes=",".join(self.leg_b_codes),
         )
         self.chk.ok(
             "PROG-LC",
@@ -555,4 +585,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             shadow_after_sense=f"0x{sense2 & LC_FIELD_MASK:02x}",
             exp_after_sense=f"0x{exp2:02x}",
             state_after_sense=lc_state_class(r2),
+            sip_end=f"0x{sip_end2:02x}" if sip_end2 is not None else "none",
+            chp_end=f"0x{chp_end2:02x}" if chp_end2 is not None else "none",
+            go_codes=",".join(self.leg_b_codes),
         )

@@ -24927,19 +24927,26 @@ module sep_fcov (
       s = ef_slot_of(off);
       f = ef_secret_of(s);
       // Lock leaf reads at strap 0, where the frontdoor and the sensed-shadow
-      // output carry the same word.
-      if (rd_okay && ef_own_lock && (secure_tm_i !== 1'b1)) begin
+      // output carry the same word. A read that is not blocked earns its cell
+      // only on a known non-zero sensed word, because a blocked read that
+      // returns 0 equals a zero word. A known mismatch still reaches the
+      // wrong-outcome bins.
+      if (rd_okay && ef_own_lock && (secure_tm_i !== 1'b1) &&
+          !$isunknown(rd_data) && !$isunknown(ef_word(off[9:0]))) begin
         if ((s != EfNoSlot) && (s != 6'd0) && !ef_rlock(s)) begin
           bad = (rd_data != ef_word(off[9:0]));
-          ef_lk(1, {bad, 7'((s - 6'd1) * 2)});
-          ef_lk(2, 8'({bad, 1'b0, ef_wlock(s), 1'b1}));
-          if (!ef_wlock(s) && !bad) begin
-            if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd1);
-            sn = s + 6'd1;
-            if ((sn < 6'(EfSlots)) && (ef_wlock(sn) || ef_rlock(sn))) ef_lk(3, 8'd3);
+          if (bad || (ef_word(off[9:0]) != 32'h0)) begin
+            ef_lk(1, {bad, 7'((s - 6'd1) * 2)});
+            ef_lk(2, 8'({bad, 1'b0, ef_wlock(s), 1'b1}));
+            if (!ef_wlock(s) && !bad) begin
+              if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd1);
+              sn = s + 6'd1;
+              if ((sn < 6'(EfSlots)) && (ef_wlock(sn) || ef_rlock(sn))) ef_lk(3, 8'd3);
+            end
           end
         end
-        if (ef_all_locked && (rd_data == ef_word(off[9:0]))) begin
+        if (ef_all_locked && (ef_word(off[9:0]) != 32'h0) &&
+            (rd_data == ef_word(off[9:0]))) begin
           if (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR) ef_lk(4, 8'd0);
           if (ar_addr_q inside {SEP_EFUSE_MAP_LOCKS_REG_ADDR, SEP_EFUSE_MAP_LOCKS_REG_ADDR + 32'd4})
             ef_lk(4, 8'd1);
@@ -25013,6 +25020,7 @@ module sep_fcov (
     logic [31:0] pre, now, pre_l, now_l;
     logic [1:0] f;
     logic wl, chg, r, ol, od, nd, nl, l_other, d_other_pre, d_other_now;
+    logic [23:0] dis_grp;
     logic [1:0] wcls;
     logic [2:0] clr, now_flags;
     if (in_reset) begin
@@ -25092,9 +25100,19 @@ module sep_fcov (
             ke.ci = r;
             ke.ci_v = 1'b1;
           end
-          if (ol && (feat_ctrl_i == ef_pw_feat) && (d_other_pre == d_other_now) && (ef_grp(
-                  ef_pw_shadow[32*EfWSipDis+:64] | ef_pw_shadow[32*EfWSysDis+:64], r
-              ) != 24'h0)) begin
+          // cp_profile_unchanged: a set-demote write to a locked register that would
+          // change the profile if the register were open. The old demote is 0,
+          // SEC_DIS is off and the state is TEST_DEV or PROD; the DIS group the
+          // register governs is non-zero in TEST_DEV (the demote forces it open) and
+          // not all ones in PROD (the demote relaxes it to the DIS vectors)
+          // (lifecycle_controller.adoc, Per-LC-state Feature Control Profile).
+          dis_grp = ef_grp(ef_pw_shadow[32*EfWSipDis+:64] | ef_pw_shadow[32*EfWSysDis+:64], r);
+          if (ol && |(ef_pw_data & EfDemoteMask) && !od && (sec_dis_i === 1'b0) &&
+              !$isunknown(efuse_lc_raw_i) && !$isunknown(feat_ctrl_i) &&
+              !$isunknown(dis_grp) && (feat_ctrl_i == ef_pw_feat) &&
+              (d_other_pre == d_other_now) &&
+              (((ef_lc == EfTd) && (dis_grp != 24'h0)) ||
+               ((ef_lc == EfProd) && (dis_grp != ef_gmask(int'(r)))))) begin
             ke.pu = r;
             ke.pu_v = 1'b1;
           end
@@ -25207,12 +25225,14 @@ module sep_fcov (
   function automatic logic ef_nonidle(input logic [5:0] c);
     return (c != EfCodeIdle) && !$isunknown(c);
   endfunction
-  // Words equal to a 256-bit value, in either word order.
+  // Words equal to a 256-bit value, in either word order. An X or Z bit on
+  // either side is not equal, so an unwritten array never labels a replay.
   function automatic logic ef_words_eq(input logic [7:0][31:0] w, input logic [255:0] d);
     logic rev;
+    if ($isunknown(w) || $isunknown(d)) return 1'b0;
     rev = 1'b1;
-    for (int i = 0; i < 8; i++) if (w[i] != d[32*(7-i)+:32]) rev = 1'b0;
-    return (w == d) || rev;
+    for (int i = 0; i < 8; i++) if (w[i] !== d[32*(7-i)+:32]) rev = 1'b0;
+    return (w === d) || rev;
   endfunction
 
   always @(posedge clk_i) begin
@@ -25549,6 +25569,9 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   logic [12:0] ef_ssw_last = '0;
   logic ef_ssw_pend = 1'b0;
+  // The status response carried known non-zero data, so a shadow word left at 0
+  // shows the data was dropped and not that the image word was 0.
+  logic ef_ssw_nz = 1'b0;
   logic [7:0] ef_ssw_w = '0;
   typedef enum logic [1:0] {
     EfPlIdle,
@@ -25568,15 +25591,16 @@ module sep_fcov (
       if (ef_cmd_rd) ef_ssw_last <= ef_cmd_addr;
       if (ef_resp_v && (shim_resp_i.status === 1'b1)) begin
         w = ef_ssw_last[12:5];
-        if ((w >= 8'd10) && (w <= 8'd254)) begin
+        if ((w >= 8'd10) && (w <= 8'd254) && !$isunknown(ef_ssw_last)) begin
           ef_ssw_pend <= 1'b1;
           ef_ssw_w <= w;
+          ef_ssw_nz <= !$isunknown(shim_resp_i.data) && (shim_resp_i.data != '0);
         end
       end
     end
     if (ef_sense_rise && ef_ssw_pend) begin
       ef_ssw_pend <= 1'b0;
-      if (ef_own_shim && (efuse_shadow_i[32*ef_ssw_w+:32] == 32'h0)) ef_ifs(5, 7'd1);
+      if (ef_own_shim && ef_ssw_nz && (efuse_shadow_i[32*ef_ssw_w+:32] === 32'h0)) ef_ifs(5, 7'd1);
     end
     // x_prog_lifecycle: a PROGRAM command with the program timeout off.
     if (in_reset) begin

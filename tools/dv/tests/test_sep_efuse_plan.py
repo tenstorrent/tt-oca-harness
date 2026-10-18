@@ -265,6 +265,18 @@ class ImageRuleTest(unittest.TestCase):
             seen.add((ch, golden))
         self.assertEqual(len(seen), 4, seen)
 
+    def test_jtag_access_every_leaf_makes_a_denied_program_of_p(self) -> None:
+        for seed in range(1, 500):
+            p = P.plan(P.T_JTAG_ACCESS, seed)
+            progs = [
+                a
+                for a in p.leg["denied"]
+                if a["op"] == "wr" and a.get("reg") == "EFUSE_PROGRAM_CTRL"
+            ]
+            self.assertTrue(progs, f"seed {seed}: no denied EFUSE_PROGRAM_CTRL write")
+            for a in progs:
+                self.assertEqual(a["data"], P.program_ctrl_word(p.leg["spare_p"]["addr"]))
+
     def test_field_layout_redraw_is_logged_with_its_class(self) -> None:
         seen = 0
         for seed in range(1, 200):
