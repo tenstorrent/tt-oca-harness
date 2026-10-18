@@ -86,15 +86,17 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_poke as kp
+from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_reg_meta import EDN, ENTROPY_SOURCE, sym
 from env.sep_seeded_rng import SepSeededRng
 from km import sep_km_drbg_sampler_rand_plan as pl
+from pyuvm import uvm_sequence
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_bringup_seq import (
     SepEntropyCfg,
     SepEsrcConfigSeq,
-    SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
 )
 from seq_lib.sep_km_drbg_sampler_seq import SepKmTreadyMonitor
@@ -122,6 +124,69 @@ _SW_ALL = sum(1 << b for b in SW_RESET_N_BIT.values())
 # Stimulus words of the write-refusal leg.
 _DATA_WR_WORD = 0xA5A5_5A5A
 _PDATA_WR_WORD = 0x5A5A_A5A5
+
+# EDN in auto request mode only (BOOT_REQ_MODE false). Boot mode takes
+# precedence when both modes are set and serves one boot Generate, 4095 blocks of
+# 128 bits, and the COUNT_GOOD saturation loop reads more words than that. In auto
+# mode EDN sends GENERATE_CMD again after each Generate and a Reseed after
+# MAX_NUM_REQS_BETWEEN_RESEEDS Generates, once software sends the first
+# instantiate through SW_CMD_REQ (edn.adoc, AUTO_REQ_MODE). Each Generate is
+# 4095 blocks, so the legs other than the saturation loop read inside the first one.
+_EDN_GLEN = 4095
+_EDN_RESEED_EVERY = 1
+_EDN_CMD_BOUND = 20_000
+_EDN_CTRL = sym("EDN_CTRL_REG_ADDR")
+_EDN_SW_CMD_REQ = sym("EDN_SW_CMD_REQ_REG_ADDR")
+_EDN_SW_CMD_STS = sym("EDN_SW_CMD_STS_REG_ADDR")
+_ESRC_FIPS_LOCK = sym("ENTROPY_SOURCE_FIPS_LOCK_REG_ADDR")
+_EDN_STS = EDN.fields("SW_CMD_STS")
+_EDN_RDY = _EDN_STS["CMD_REG_RDY"]["bm"] | _EDN_STS["CMD_RDY"]["bm"]
+_EDN_ACK = _EDN_STS["CMD_ACK"]["bm"]
+_EDN_CMD_STS = _EDN_STS["CMD_STS"]
+_MUBI4_FALSE = EDN.fields("CTRL")["EDN_ENABLE"]["reset"]
+_MUBI4_TRUE = (~_MUBI4_FALSE) & ((1 << EDN.fields("CTRL")["EDN_ENABLE"]["bw"]) - 1)
+_EDN_CTRL_AUTO_ONLY = EDN.value(
+    "CTRL",
+    EDN_ENABLE=_MUBI4_TRUE,
+    BOOT_REQ_MODE=_MUBI4_FALSE,
+    AUTO_REQ_MODE=_MUBI4_TRUE,
+    CMD_FIFO_RST=_MUBI4_FALSE,
+)
+_CMD_INSTANTIATE = EDN.reset("BOOT_INS_CMD")
+
+
+class _EdnAutoOnlySeq(uvm_sequence):
+    """Lock ESRC, enable EDN in auto request mode only and send the instantiate."""
+
+    async def _access(self, op: SepAxiOp, addr: int, data: int = 0) -> int:
+        item = SepAxiItem(f"edn_auto_0x{addr:08x}")
+        item.op = op
+        item.addr = addr
+        item.length = 4
+        item.wdata = data
+        await self.start_item(item)
+        await self.finish_item(item)
+        return item.rdata if op == SepAxiOp.READ else 0
+
+    async def _poll(self, mask: int, what: str) -> int:
+        for _ in range(_EDN_CMD_BOUND):
+            sts = await self._access(SepAxiOp.READ, _EDN_SW_CMD_STS)
+            if sts & mask == mask:
+                return sts
+        raise AssertionError(f"EDN SW_CMD_STS showed no {what} within {_EDN_CMD_BOUND} reads")
+
+    async def body(self) -> None:
+        await self._access(
+            SepAxiOp.WRITE, _ESRC_FIPS_LOCK, ENTROPY_SOURCE.value("FIPS_LOCK", LOCK=1)
+        )
+        await self._access(SepAxiOp.WRITE, _EDN_CTRL, _EDN_CTRL_AUTO_ONLY)
+        await self._poll(_EDN_RDY, "CMD_REG_RDY and CMD_RDY")
+        await self._access(SepAxiOp.WRITE, _EDN_SW_CMD_REQ, _CMD_INSTANTIATE)
+        sts = await self._poll(_EDN_ACK, "CMD_ACK")
+        code = (sts & _EDN_CMD_STS["bm"]) >> _EDN_CMD_STS["bp"]
+        if code:
+            raise AssertionError(f"EDN instantiate acknowledged with CMD_STS={code}")
+
 
 _REQUIRED = (
     "CHK-SMP-TO",
@@ -227,7 +292,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         if not await self.wait_seed_ready():
             await self.report_entropy_stall()
             raise AssertionError(f"ESRC produced no seed in the {what} entropy initialization")
-        await self.start_seq(SepEsrcEnableEdnSeq(f"edn_enable_{what}"))
+        await self.start_seq(_EdnAutoOnlySeq(f"edn_enable_{what}"))
 
     async def _watch_trng_reset(self) -> None:
         """Count the clocks with the TRNG gated reset low until ``self._trng_watch_stop``.
@@ -294,7 +359,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         self.marks: list[int] = []
         self.true_withdrawals = 0
         self.noise = None
-        self.entropy_cfg = SepEntropyCfg()
+        self.entropy_cfg = SepEntropyCfg(glen=_EDN_GLEN, reseed_interval=_EDN_RESEED_EVERY)
 
         # Step 1: cold reset, stalled stream (no entropy initialization), KM boot.
         self._gate(False)
