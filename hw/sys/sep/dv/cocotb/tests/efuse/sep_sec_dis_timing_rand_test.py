@@ -263,6 +263,36 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         if code != CODE_MISMATCH or self._sdis() != 0:
             hook_fail(self.chk, reason=f"{label}_drop", code=code, secdis=self._sdis())
 
+    async def _wait_sep_reset_release(self, attempt: int) -> None:
+        """Wait, bounded, until the SEP CPU reset net reads released.
+
+        A try whose SEC_DIS rise came at or after sense done lets sense complete, and
+        the SEP Reset Controller then releases ``sep_cpu_reset_n`` a few clocks later.
+        In a no-CPU leaf every frontdoor access passes the CPU-stub LSU demux, which
+        runs on that reset, so no frontdoor access may span the release. The drop
+        writes start only after ``dbg_sep_reset_n_o`` reads 1. A net that stays low
+        fails CHK-SDIS-HOLD, the check the retried try feeds.
+        """
+        dut = cocotb.top
+        for _ in range(_RST_RELEASE_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True) & 1:
+                break
+        else:
+            self.chk.ok(
+                "SDIS-HOLD",
+                False,
+                **{
+                    "class": "B",
+                    "reason": f"try{attempt}_sep_reset_release",
+                    "attempt": attempt,
+                    "bound": _RST_RELEASE_BOUND,
+                },
+            )
+            self.chk.finish()
+        await RisingEdge(dut.clk_i)
+
     async def _read_shadow_map(self) -> list[tuple[str, int, int, int, int]]:
         """Every shadow word: (field, word, data, response code, sense done at response)."""
         out = []
@@ -548,6 +578,8 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             else:
                 k = (k + k_hi) // 2
             close_graded_window(self.logger)
+            if mon.rise_sd:
+                await self._wait_sep_reset_release(attempt)
             await self._mismatch_drop(f"try{attempt}")
             await self.pulse_rst_ni(max_sense_cycles=_SENSE_BOUND)
             open_graded_window(_NAME, self.logger)

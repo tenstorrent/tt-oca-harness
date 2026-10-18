@@ -27,10 +27,14 @@ Mechanism and Token Submission):
                     golden of its last go (Match 0x15, Mismatch 0x2a). A shadow word or
                     interface-control access answers a response that is not OKAY and
                     the target reads the same at the frontdoor before and after; the
-                    bit p reads 0 at the direct read at the end. The PROD token word
-                    read and write, the PROD read of ``SEC_DISABLE_TOKEN_MATCH`` and
-                    the PROD read of a shadow word or ``EFUSE_PROGRAM_CTRL`` log their
-                    response (``resp_graded=0``). No program command reaches
+                    bit p reads 0 at the direct read at the end. The PROD read of
+                    ``SEC_DISABLE_TOKEN_MATCH`` after a go grades its code, and the PROD
+                    read of a shadow word or ``EFUSE_PROGRAM_CTRL`` grades the target
+                    unchanged; both log their response (``resp_graded=0``). The PROD
+                    token word read and write and the PROD read of
+                    ``SEC_DISABLE_TOKEN_MATCH`` with no go compare nothing: they log
+                    ``OBS-JTAG-LOGGED`` with the response and print no PASS token.
+                    No program command reaches
                     ``efuse_shim_command_req_o`` after a denied write. Controls: the
                     frontdoor program of c sets bit c at the same direct read and shows
                     one program command at the tap (else ``CHK-HOOK FAIL``); the read
@@ -171,6 +175,20 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             **extra,
         )
 
+    def _jtag_logged(self, acc: dict, exp: str, resp: int, **extra) -> None:
+        """Log an access that compares nothing: an observation, never a PASS token."""
+        self.chk.obs(
+            "JTAG-LOGGED",
+            state=self.state,
+            op=acc["op"],
+            tgt=acc["cls"],
+            addr=f"0x{acc['addr']:08x}",
+            exp=exp,
+            resp=resp,
+            resp_graded=0,
+            **extra,
+        )
+
     # -- denied accesses -----------------------------------------------------
 
     async def _denied(self, acc: dict) -> None:
@@ -216,26 +234,26 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         if acc["cls"] == "token_word" and acc["op"] == "wr":
             resp = await self._jwr(acc["addr"], acc["data"])
             self.last_wr[(acc["channel"], acc["index"])] = acc["data"]
-            self._jtag_line(
-                prod or resp == OKAY,
-                acc,
-                "allow",
-                resp,
-                not prod,
-                data_ok="na",
-                target_unchanged="na",
-                channel=acc["channel"],
-                index=acc["index"],
-                vector=acc["vector"],
-            )
+            ids = {"channel": acc["channel"], "index": acc["index"], "vector": acc["vector"]}
+            if prod:
+                self._jtag_logged(acc, "allow", resp, **ids)
+            else:
+                self._jtag_line(
+                    resp == OKAY,
+                    acc,
+                    "allow",
+                    resp,
+                    True,
+                    data_ok="na",
+                    target_unchanged="na",
+                    **ids,
+                )
         elif acc["cls"] == "token_word":
             resp, data = await self._jrd(acc["addr"])
             last = self.last_wr[(acc["channel"], acc["index"])]
             extra = {"data": f"0x{data:08x}", "last_wr": f"0x{last:08x}"}
             if prod:
-                self._jtag_line(
-                    True, acc, "allow", resp, False, data_ok="na", target_unchanged="na", **extra
-                )
+                self._jtag_logged(acc, "allow", resp, **extra)
             else:
                 self._jtag_line(
                     resp == OKAY and data == last,
@@ -300,16 +318,19 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 )
             else:
                 self.chk.obs("JTAG-MATCH-NOGO", state=self.state, channel=ch, data=f"0x{code:02x}")
-                self._jtag_line(
-                    logged or resp == OKAY,
-                    acc,
-                    "allow",
-                    resp,
-                    not logged,
-                    data_ok="na",
-                    target_unchanged="na",
-                    channel=ch,
-                )
+                if logged:
+                    self._jtag_logged(acc, "allow", resp, channel=ch)
+                else:
+                    self._jtag_line(
+                        resp == OKAY,
+                        acc,
+                        "allow",
+                        resp,
+                        True,
+                        data_ok="na",
+                        target_unchanged="na",
+                        channel=ch,
+                    )
 
     async def _status_clear_control(self, w: int) -> None:
         """Control of "target unchanged" for the denied status write: the same clear,
