@@ -54,8 +54,8 @@ RESULT_MISMATCH = 0b101010
 SB_ACCESS_32 = 2
 
 # Stimulus tokens: 256-bit values written as eight words, index 0 holding token[31:0]
-# (token_processing.adoc, "Token Submission"). The two lanes use different tokens, and every word
-# of each token differs, so a word written to the wrong index or lane is a different token.
+# (token_processing.adoc, "Token Submission"). The two tokens differ and every word of each token
+# differs from every other word of both tokens.
 T_SIP = 0x11111111_22222222_33333333_44444444_55555555_66666666_77777777_88888888
 T_CHIP = 0xA1A2A3A4_B1B2B3B4_C1C2C3C4_D1D2D3D4_E1E2E3E4_F1F2F3F4_01020304_05060708
 T_CHIP_ONE_BIT_OFF = T_CHIP ^ 1
@@ -240,9 +240,9 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         got = (chiplet_at_sip_start, sip_at_chiplet_start)
         want = (RESULT_IDLE, RESULT_MATCH)
         self._log(
-            f"CHK-SEP-RMA-START: chiplet result read right after TOKEN_EOP 0x1=0x{got[0]:02x} "
-            f"expected=0x{want[0]:02x}; SIP result read right after TOKEN_EOP 0x100="
-            f"0x{got[1]:02x} expected=0x{want[1]:02x}"
+            f"CHK-SEP-RMA-START: chiplet result read right after TOKEN_EOP 0x{SIP_GO:x}="
+            f"0x{got[0]:02x} expected=0x{want[0]:02x}; SIP result read right after TOKEN_EOP "
+            f"0x{CHIPLET_GO:x}=0x{got[1]:02x} expected=0x{want[1]:02x}"
         )
         sb.expect_eq(
             "CHK-SEP-RMA-START each TOKEN_EOP bit leaves the other lane's result unchanged",

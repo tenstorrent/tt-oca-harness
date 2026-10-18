@@ -3785,25 +3785,26 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-WARM-RET-SSCFG",
             "CHK-WARM-RET-SSCFG",
             "SS_CONFIG reads its non-zero pattern before and after the CORE0 watchdog "
-            "warm reset; the reset value 0 differs",
+            "warm reset, and the value read before differs from the reset value 0",
         ),
         (
             "CHK-WARM-RET-SSCOLD",
             "CHK-WARM-RET-SSCOLD",
             "SS_COLD_RESET_N reads its non-zero pattern before and after the warm "
-            "reset; the reset value 0 differs",
+            "reset, and the value read before differs from the reset value 0",
         ),
         (
             "CHK-WARM-RET-SSWARM",
             "CHK-WARM-RET-SSWARM",
-            "SS_WARM_RESET_N reads its pattern before and after the warm reset; the reset "
-            "value 0xFFFFFFFF differs",
+            "SS_WARM_RESET_N reads its pattern before and after the warm reset, and the "
+            "value read before differs from the reset value 0xFFFFFFFF",
         ),
         (
             "CHK-WARM-RET-ISO",
             "CHK-WARM-RET-ISO",
             "ISOLATE_REQ_REG and ISOLATE_REQ_FLR_COUNTER_VALUE each read their non-zero "
-            "value before and after the warm reset; the reset value 0 differs",
+            "value before and after the warm reset, and each value read before differs "
+            "from the reset value 0",
         ),
         (
             "CHK-WARM-RET-WDT-RETURN",

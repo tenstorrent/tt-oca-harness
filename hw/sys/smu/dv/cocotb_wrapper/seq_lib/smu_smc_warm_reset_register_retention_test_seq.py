@@ -403,32 +403,34 @@ class smu_smc_warm_reset_register_retention_test_seq:
         for name, _addr, pattern, reset in retained[:3]:
             token = tokens[name]
             self.log.info(
-                "%s: %s before=0x%08x after=0x%08x expected=0x%08x (reset value 0x%08x)",
+                "%s: %s before=0x%08x after=0x%08x expected=0x%08x; before differs from the "
+                "reset value 0x%08x: %s",
                 token,
                 name,
                 before[name],
                 after[name],
                 pattern,
                 reset,
+                before[name] != reset,
             )
             sb.expect_eq(
-                f"{token} {name} keeps its pattern across the warm reset",
-                (before[name], after[name]),
-                (pattern, pattern),
+                f"{token} {name} keeps its pattern across the warm reset, away from its reset value",
+                (before[name], after[name], before[name] != reset),
+                (pattern, pattern, True),
                 evidence=token,
             )
         iso = retained[3:]
-        got = tuple(v for name, *_ in iso for v in (before[name], after[name]))
-        want = tuple(p for _n, _a, p, _r in iso for _ in range(2))
+        got = tuple((before[n], after[n], before[n] != r) for n, _a, _p, r in iso)
+        want = tuple((p, p, True) for _n, _a, p, _r in iso)
         self.log.info(
-            "CHK-WARM-RET-ISO: (ISOLATE_REQ_REG before, after, FLR counter before, after)="
-            "%s expected=%s (reset values %s)",
-            tuple(f"0x{v:08x}" for v in got),
-            tuple(f"0x{v:08x}" for v in want),
+            "CHK-WARM-RET-ISO: (before, after, before differs from reset) for ISOLATE_REQ_REG and "
+            "the FLR counter=%s expected=%s (reset values %s)",
+            [(f"0x{b:08x}", f"0x{a:08x}", d) for b, a, d in got],
+            [(f"0x{b:08x}", f"0x{a:08x}", d) for b, a, d in want],
             tuple(f"0x{r:08x}" for _n, _a, _p, r in iso),
         )
         sb.expect_eq(
-            "CHK-WARM-RET-ISO isolation request and FLR counter keep their values",
+            "CHK-WARM-RET-ISO isolation request and FLR counter keep their values, away from reset",
             got,
             want,
             evidence="CHK-WARM-RET-ISO",
