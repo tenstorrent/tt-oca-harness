@@ -11,8 +11,8 @@ width, reset values and per-field access metadata, and optional
 Each register type gets a `<TYPE>_REG_WIDTH` constant and a `<TYPE>_REG_FIELDS`
 tuple with one record per field, and every register instance names its type in
 `<INST>_REG_TYPE`, so a walker joins an address to its field contract without
-guessing names. Registers wider than 64 bits, or blocks with `--bitfields none`,
-get constants and field records only (no reset value, no ctypes classes).
+guessing names. Registers wider than 64 bits get no reset value and no ctypes
+classes; `--bitfields none` drops only the ctypes classes.
 """
 
 from __future__ import annotations

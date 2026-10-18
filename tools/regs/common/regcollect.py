@@ -49,7 +49,7 @@ class RegInstInfo:
 
 
 # Field identity, access properties and reset every instance of a type must agree on.
-FIELD_ACCESS_PROPS = (
+FIELD_CONTRACT_PROPS = (
     "name",
     "high",
     "low",
@@ -69,7 +69,7 @@ def check_same_fields(type_name: str, known: RegTypeInfo, path: str, fields: lis
     if len(known.fields) != len(fields):
         raise ValueError(f"{where}: {len(known.fields)} fields vs {len(fields)}")
     for old, new in zip(known.fields, fields):
-        for prop in FIELD_ACCESS_PROPS:
+        for prop in FIELD_CONTRACT_PROPS:
             if getattr(old, prop) != getattr(new, prop):
                 raise ValueError(
                     f"{where}: field '{old.name}' {prop} {getattr(old, prop)!r} "
