@@ -195,6 +195,10 @@ RESET_HOLD = 20
 PROG_POLL_LOADS = 2_000  # KM loads of the bounded program / read waits
 HOST_POLL_READS = 400  # host reads of the same waits
 TM_POLL_READS = 32  # the secure-test status interval, the same on both paths
+# KM loads that look for program_busy = 1 right after the go store. The go
+# store and this poll are raw (no IRQ_STATUS settle reads), so the first load
+# follows the store directly.
+BUSY_RISE_LOADS = 64
 LIST_TIMEOUT = 4_000_000
 
 _RESP_OF = {(0, 0): "OKAY", (1, 0): "SLVERR", (0, 1): "DECERR"}
@@ -898,9 +902,15 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             kp.wr(km(R_READ), 0),
             kp.rd(km(R_PROG)),
             kp.wr(km(R_PROG), pw),
-            kp.wr(km(R_PROG), pw | PC_GO),
+            kp.wr(km(R_PROG), pw | PC_GO, raw=mode == "allow"),
         ]
         if mode == "allow":
+            # program_busy "When set, the program is in progress" and
+            # program_done "When set, the program has completed"
+            # (efuse_interface_ctrl.adoc, EFUSE_PROGRAM_CTRL). The spec does not
+            # say that the go clears program_done, so busy seen at 1 after the
+            # go is what shows that this program ran.
+            ops.append(kp.poll(km(R_PROG), PC_BUSY, PC_BUSY, BUSY_RISE_LOADS, raw=True))
             ops.append(kp.poll(km(R_PROG), PC_BUSY | PC_DONE, PC_DONE, PROG_POLL_LOADS))
         elif mode == "deny":
             ops.append(kp.poll(km(R_STATUS), ST_REQ_ERR, ST_REQ_ERR, PROG_POLL_LOADS))
@@ -916,8 +926,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         res = await self._run(self._km_prog_ops(tgt, mode))
         polls = [r for r in res if r.op.code == kp.OP_POLL]
         pc, st = res[-3].value, res[-2].value
+        busy_seen = 0
         if mode == "allow":
-            waited = (polls[0].data[0] & (PC_BUSY | PC_DONE)) == PC_DONE
+            busy_seen = _bit(polls[0].data[0], PC_BUSY)
+            waited = (polls[1].data[0] & (PC_BUSY | PC_DONE)) == PC_DONE
         elif mode == "deny":
             waited = bool(polls[0].data[0] & ST_REQ_ERR) and not polls[1].data[0] & PC_BUSY
         else:
@@ -929,6 +941,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             "done": _bit(pc, PC_DONE),
             "status": _bit(pc, PC_STATUS),
             "busy": _bit(pc, PC_BUSY),
+            "busy_seen": busy_seen,
             "req_err": _bit(st, ST_REQ_ERR),
             "waited": waited,
         }
@@ -942,6 +955,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         await self._hw(R_PROG, pw)
         await self._hw(R_PROG, pw | PC_GO)
         waited = False
+        busy_seen = 0
         if mode == "tm":
             for _ in range(TM_POLL_READS):
                 await self._hr(R_PROG)
@@ -951,6 +965,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 pc = await self._hr(R_PROG)
                 st = await self._hr(R_STATUS)
                 busy, done, err = _bit(pc, PC_BUSY), _bit(pc, PC_DONE), _bit(st, ST_REQ_ERR)
+                busy_seen |= busy
                 if mode == "allow" and not busy and done:
                     waited = True
                     break
@@ -962,6 +977,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         await self._hw(R_STATUS, ST_REQ_ERR_CLR)
         return {
             "path": "host",
+            "busy_seen": busy_seen,
             "req_err_before": req_before,
             "done_before": done_before,
             "done": _bit(pc, PC_DONE),
@@ -1041,12 +1057,17 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             otp = r["otp"]
             r["otp_bit"] = (otp["word"] >> tgt.bit) & 1
             r["otp_word_eq"] = int(otp["word"] == want)
+            # program_done and program_status belong to this program only when
+            # done read 0 before the go or busy was seen at 1 after it. Else
+            # they can be left from the earlier program: logged, not graded.
+            r["fresh"] = int(r["done_before"] == 0 or r["busy_seen"] == 1)
             line = (
                 f"path={path} spare={tgt.field} word={tgt.word} bit={tgt.bit} "
                 f"done_before={r['done_before']} done={r['done']} status={r['status']} "
                 f"req_err_before={r['req_err_before']} req_err={r['req_err']} "
                 f"otp_word=0x{otp['word']:08x} staged=0x{staged:08x} otp_bit={r['otp_bit']} "
-                f"otp_word_eq={r['otp_word_eq']}"
+                f"otp_word_eq={r['otp_word_eq']} busy_seen={r['busy_seen']} "
+                f"status_graded={r['fresh']}"
             )
             r["line"] = line
             bad = []
@@ -1054,22 +1075,42 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 bad.append("efuse_req_error read 1 after its clear (control)")
             if not r["waited"] or not otp["waited"]:
                 bad.append("the bounded wait ran out")
-            if r["done_before"] == 0 and r["done"] != 1:
+            if r["fresh"] and r["done"] != 1:
                 bad.append("program_done != 1")
-            if r["status"] != 0 or r["req_err"] != 0:
-                bad.append("program_status or efuse_req_error is 1")
+            if r["fresh"] and r["status"] != 0:
+                bad.append("program_status is 1")
+            if r["req_err"] != 0:
+                bad.append("efuse_req_error is 1")
             if not r["otp_word_eq"]:
                 bad.append(f"OTP word != staged + target bit 0x{want:08x}")
             if path == "km":
                 problems += [f"{b}: {line}" for b in bad]
             else:
                 self.logger.info("CTL-EFW-PROG %s control=1 match=%d", line, int(not bad))
-        km_tuple = tuple(out["km"][k] for k in ("done", "status", "req_err"))
-        host_tuple = tuple(out["host"][k] for k in ("done", "status", "req_err"))
+        if not out["km"]["fresh"]:
+            # The spec states no way to clear program_done before the go
+            # (efuse_interface_ctrl.adoc: R, reset 0x0), so the KM program must
+            # show itself: done read 0 before the go, or busy seen at 1 after it.
+            problems.append(
+                "CTRL-MISSING: the KM program showed neither program_done = 0 before "
+                "the go nor program_busy = 1 after it, so its program_done and "
+                f"program_status cannot be told from the earlier program: {out['km']['line']}"
+            )
+        # efuse_req_error is cleared before each program, so it is compared
+        # always; program_done and program_status only when both paths are fresh.
+        keys = ("done", "status", "req_err")
+        if not (out["km"]["fresh"] and out["host"]["fresh"]):
+            keys = ("req_err",)
+        km_tuple = tuple(out["km"][k] for k in keys)
+        host_tuple = tuple(out["host"][k] for k in keys)
         if km_tuple != host_tuple:
             problems.append(f"KM tuple {km_tuple} != host tuple {host_tuple}")
         self._fail("CHK-EFW-PROG", problems)
-        self.logger.info("CHK-EFW-PROG PASS %s host_tuple_equal=1", out["km"]["line"])
+        self.logger.info(
+            "CHK-EFW-PROG PASS %s host_tuple_equal=1 tuple_fields=%s",
+            out["km"]["line"],
+            ",".join(keys),
+        )
         return out
 
     async def _deny_pair(self, rng: SepSeededRng, fp: KmFusePlan, prog: dict) -> None:

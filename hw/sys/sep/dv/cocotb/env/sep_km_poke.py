@@ -104,8 +104,28 @@ BUF_WORDS = 128
 SETTLE_READS = 32
 SLOTS_PER_FLAG_WORD = 8
 
-# KM SRAM byte address of a result word (region 0; never locked by a test).
-KM_SRAM_BASE = 0x8000
+# KM SRAM byte address of a result word (region 0; never locked by a test),
+# from the generated KM memory map header.
+_KM_ADDR_H = (
+    Path(__file__).resolve().parents[5]
+    / "ip"
+    / "key_manager"
+    / "regs"
+    / "gen"
+    / "c"
+    / "key_manager_addr.h"
+)
+
+
+def _km_addr_define(name: str) -> int:
+    for line in _KM_ADDR_H.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) == 3 and parts[0] == "#define" and parts[1] == name:
+            return int(parts[2], 0)
+    raise KeyError(f"{name} not found in {_KM_ADDR_H}")
+
+
+KM_SRAM_BASE = _km_addr_define("KEY_MANAGER_SRAM_BASE_ADDR")
 
 
 def sram_addr(word: int) -> int:

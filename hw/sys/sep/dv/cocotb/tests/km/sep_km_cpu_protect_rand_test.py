@@ -793,10 +793,24 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
 
         res = await self.poke.run([kp.rdloop(KPV_BASE, KPV_WORDS)], timeout_cycles=RDLOOP_TIMEOUT)
         kpv_nonzero, kpv_or = res[0].data
+        kpv_slv, kpv_dec = res[0].slv, res[0].dec
         ctrl = await self.poke.run([kp.rdblk(kpv_ctrl_addr(0), KPV_SLOTS)])
         ctrl_nonzero = sum(1 for v in ctrl[0].data if v)
+        ctrl_err = sum(1 for f in ctrl[0].flags if f is not None and (f.slv or f.dec))
         self.logger.info(
-            "LOG ctrl_nonzero_after_reset=%d kind=%s reset=%s", ctrl_nonzero, kind, reset
+            "LOG ctrl_nonzero_after_reset=%d ctrl_reads_with_slv_or_dec=%d kind=%s reset=%s",
+            ctrl_nonzero,
+            ctrl_err,
+            kind,
+            reset,
+        )
+        assert self.kpv_kept.get(reset), (
+            f"CHK-TRAP-WIPE FAIL: kind={kind}: no plain {reset} reset control showed the KPV "
+            "words kept, so a zero read cannot be credited to the trap"
+        )
+        assert kpv_slv == 0 and kpv_dec == 0, (
+            f"CHK-TRAP-WIPE FAIL: kind={kind} reset={reset}: the KPV read loop reported "
+            f"slv={kpv_slv} dec={kpv_dec}; a refused read is not a wiped word"
         )
         assert ctl["kpv_nonzero_before"] == 1, (
             f"CHK-TRAP-WIPE FAIL: kind={kind}: a witness slot read back fewer than "
@@ -808,12 +822,51 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             "the KPV"
         )
         self.logger.info(
-            "CHK-TRAP-WIPE PASS: kind=%s reset=%s kpv_nonzero_before=1 kpv_nonzero_after_reset=0",
+            "CHK-TRAP-WIPE PASS: kind=%s reset=%s kpv_nonzero_before=1 kpv_nonzero_after_reset=0 "
+            "slv=0 dec=0 plain_reset_kept=1",
             kind,
             reset,
         )
         self.err_hits += 1
         self._graded(False)
+
+    async def _plain_reset_kpv_control(self, kind: str) -> None:
+        """Control of CHK-TRAP-WIPE: a reset with no trap keeps the KPV words.
+
+        architecture.adoc, "Key and Policy Vault (KPV)": cold or warm reset alone
+        does not overwrite their contents. A zero after a trap and the same kind
+        of reset therefore comes from the trap wipe.
+        """
+        slot = self.plan.rng.randrange(KPV_SLOTS)
+        words = tuple(_nz(self.plan.rng) for _ in range(KPV_WORDS_PER_SLOT))
+        self.logger.info(
+            "DRAW kpv_reset_control reset=%s slot=%d words=%s",
+            kind,
+            slot,
+            ",".join(f"0x{v:08x}" for v in words),
+        )
+        base = kpv_word_addr(slot, 0)
+        res = await self.poke.run([kp.wrblk(base, words), kp.rdblk(base, KPV_WORDS_PER_SLOT)])
+        self._require_clean(res, f"KPV {kind} reset control write")
+        assert tuple(res[1].data) == words, (
+            f"KPV {kind} reset control: slot {slot} read back "
+            f"{[hex(v) for v in res[1].data]} before the reset; the control write failed"
+        )
+        await self._reset(kind)
+        res = await self.poke.run([kp.rdblk(base, KPV_WORDS_PER_SLOT)])
+        self._require_clean(res, f"KPV {kind} reset control read")
+        after = tuple(res[0].data)
+        assert after == words, (
+            f"CHK-TRAP-WIPE FAIL: control: slot {slot} read {[hex(v) for v in after]} after a "
+            f"plain {kind} reset, wrote {[hex(v) for v in words]}; a reset alone overwrote the KPV"
+        )
+        self.kpv_kept[kind] = True
+        self.logger.info(
+            "LOG kpv_reset_control control=1 reset=%s slot=%d words_kept=%d slv=0 dec=0",
+            kind,
+            slot,
+            KPV_WORDS_PER_SLOT,
+        )
 
     async def _normal_irq_control(self) -> None:
         a0, a1 = self.plan.crc_operands
@@ -1235,6 +1288,9 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         # Normal interrupt and legal CRC encodings: the control of the trap kinds.
         self._graded(False)
         await self._normal_irq_control()
+        self.kpv_kept: dict[str, bool] = {}
+        for reset_kind in ("warm", "cold"):
+            await self._plain_reset_kpv_control(reset_kind)
 
         for kind in self.plan.kind_order:
             await self._trap_leg(kind)

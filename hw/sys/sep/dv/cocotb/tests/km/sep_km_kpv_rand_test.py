@@ -34,13 +34,17 @@ Checkers:
                    F keep the value, a second field G adds its bit. Control:
                    CTRL reads 0 after the erase that starts each sequence.
   CHK-KPV-STATE    W: read returns the record, no SLVERR. R: write completes
-                   with no SLVERR. WR: write and read refused with SLVERR, read
-                   0. Sealed: write refused with SLVERR, read returns the
-                   record. Control: the free-state write and read of the slot.
+                   with no SLVERR. WR: write refused with SLVERR and the 16
+                   stored words of the slot unchanged (KM-KPV snapshot before
+                   and after the write), read 0 with SLVERR. Sealed: write
+                   refused with SLVERR, read returns the record. Control: the
+                   free-state write and read of the slot.
   CHK-KPV-ERASE    the erase of an R or a WR slot clears CTRL, the 16 reads
                    complete with no SLVERR and 16 new values read back.
   CHK-KPV-RETIRED  a sealed slot that is erased reads CTRL 0xB and refuses read
-                   (0, SLVERR) and write (SLVERR), before and after a second erase.
+                   (0, SLVERR) and write (SLVERR, the 16 stored words of the slot
+                   unchanged in the KM-KPV snapshots around the write), before
+                   and after a second erase.
   CHK-KPV-RACE     erase and seal in back-to-back writes retire the slot when
                    the erase bit reads 1 right after the seal write. A try that
                    shows the erase bit at 0 is logged and not graded. Control:
@@ -199,6 +203,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             raise AssertionError(f"POKE op {r.index} ({r.op.name}) returned an unknown bit")
 
     async def _run(self, ops, **kw) -> list[kp.PokeResult]:
+        kw.setdefault("on_sync", self._tap_sync)
         res = await self.poke.run(ops, allow_unknown=True, **kw)
         for r in res:
             self._check_result(r)
@@ -277,6 +282,27 @@ class sep_km_kpv_rand_test(sep_base_test):
             self.watches.append(w)
         return [res[k] for k in range(1, len(res), 2)]
 
+    async def _tap_sync(self, _k: int) -> None:
+        """At a sync op of a tapped write: keep a KM-KPV snapshot."""
+        words, x = self._snapshot()
+        self.x_snap_bits += x
+        self.taps.append(words)
+        return None
+
+    @staticmethod
+    def _tapped_wr(addr: int, value: int) -> list[kp.PokeOp]:
+        """A key write with a KM-KPV snapshot before and after it."""
+        return [kp.sync(), kp.wr(addr, value), kp.sync()]
+
+    def _tap_kept(self, first: int, slot: int) -> bool:
+        """The 16 stored words of ``slot`` are the same in snapshots ``first`` and ``first + 1``.
+
+        The scrambler is off in the state walk, so the stored words of slot s are
+        the tap words s x 16 to s x 16 + 15.
+        """
+        lo, hi = slot * m.N_WORDS, (slot + 1) * m.N_WORDS
+        return self.taps[first][lo:hi] == self.taps[first + 1][lo:hi]
+
     def _snapshot(self) -> tuple[list[int], int]:
         """KM-KPV tap: the 1024 stored words and the number of X or Z bits."""
         sig = cocotb.top.km_kpv_words_o
@@ -342,6 +368,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         }
         self.watches: list[_Watch] = []
         self.controls: dict[str, bool] = {}
+        self.taps: list[list[int]] = []
 
         # Step 1: cold reset, KM release, start marker.
         self._gate(False)
@@ -533,7 +560,7 @@ class sep_km_kpv_rand_test(sep_base_test):
                 groups = [
                     [kp.wrblk(base, rec)],
                     [kp.wr(ca, _STATE_BITS[st])],
-                    [kp.wr(wa, vne)],
+                    self._tapped_wr(wa, vne) if st == "WR" else [kp.wr(wa, vne)],
                     [kp.rd(wa)],
                     [kp.wr(ca, 0)],
                     _erase_ops(s),
@@ -547,9 +574,11 @@ class sep_km_kpv_rand_test(sep_base_test):
                         [kp.wrblk(base, new)],
                         [kp.rdblk(base, m.N_WORDS)],
                     ]
+                tap0 = len(self.taps)
                 res = await self._watched(w, groups)
                 self._erase_done(res[5], s)
-                wr_slv, rd, rd_slv = res[2][0].slv, res[3][0].value, res[3][0].slv
+                wr = res[2][1] if st == "WR" else res[2][0]
+                wr_slv, rd, rd_slv = wr.slv, res[3][0].value, res[3][0].slv
                 if st == "W":
                     graded = rd == rec[wk] and rd_slv == 0
                     self.chk.ctrl("KPV-STATE-W-WRITE", wr_slv == 1, slot=s, wr_slv=wr_slv)
@@ -563,9 +592,13 @@ class sep_km_kpv_rand_test(sep_base_test):
                         rd_slv=rd_slv,
                     )
                 else:
-                    graded = wr_slv == 1 and rd == 0 and rd_slv == 1
+                    kept = self._tap_kept(tap0, s)
+                    graded = wr_slv == 1 and kept and rd == 0 and rd_slv == 1
+                fields = {"wr_slv": wr_slv}
+                if st == "WR":
+                    fields["wr_dropped"] = kept
                 self.chk.ok(
-                    "KPV-STATE", graded, slot=s, state=st, wr_slv=wr_slv, rd=_h(rd), rd_slv=rd_slv
+                    "KPV-STATE", graded, slot=s, state=st, **fields, rd=_h(rd), rd_slv=rd_slv
                 )
                 if st in ("R", "WR"):
                     after = res[6]
@@ -632,15 +665,17 @@ class sep_km_kpv_rand_test(sep_base_test):
             self._draw(f"walk_retired_value_s{s}", _h(vr))
             groups = [
                 [kp.rd(wa)],
-                [kp.wr(wa, vr)],
+                self._tapped_wr(wa, vr),
                 _erase_ops(s),
                 [kp.rd(wa)],
-                [kp.wr(wa, vr)],
+                self._tapped_wr(wa, vr),
                 [kp.rd(ca)],
             ]
+            tap0 = len(self.taps)
             res = await self._watched(w, groups)
             self._erase_done(res[2], s)
-            r1, w1, r2, w2 = res[0][0], res[1][0], res[3][0], res[4][0]
+            r1, w1, r2, w2 = res[0][0], res[1][1], res[3][0], res[4][1]
+            kept1, kept2 = self._tap_kept(tap0, s), self._tap_kept(tap0 + 2, s)
             final = self._ctrl(res[5][0].value)
             self.chk.ctrl("KPV-RETIRED-REERASE", final == m.RETIRED, slot=s, ctrl=_h(final))
             self.chk.ok(
@@ -649,18 +684,21 @@ class sep_km_kpv_rand_test(sep_base_test):
                 and r1.value == 0
                 and r1.slv == 1
                 and w1.slv == 1
+                and kept1
                 and r2.value == 0
                 and r2.slv == 1
-                and w2.slv == 1,
+                and w2.slv == 1
+                and kept2,
                 slot=s,
                 ctrl=f"0x{retired_ctrl:X}",
                 rd=_h(r1.value),
                 rd_slv=r1.slv,
-                wr_dropped=w1.slv,
+                wr_dropped=kept1,
                 wr_slv=w1.slv,
                 after_reerase_rd=_h(r2.value),
                 after_reerase_rd_slv=r2.slv,
-                after_reerase_wr_dropped=w2.slv,
+                after_reerase_wr_dropped=kept2,
+                after_reerase_wr_slv=w2.slv,
                 ctrl_control=f"0x{final:X}",
             )
         self.controls["state_free_twin"] = self.chk.ctrl("KPV-STATE-TWIN", twin_ok)
