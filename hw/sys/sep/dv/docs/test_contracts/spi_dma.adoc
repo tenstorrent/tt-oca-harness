@@ -235,7 +235,7 @@
 
 *Area*: SPI and DMA
 
-*Run mode*: `cpu`, `+skip_fuse_sense`, firmware `spi_ot_flash_cmd_test`, 3 seeds
+*Run mode*: `cpu`, `+skip_fuse_sense`, firmware `spi_ot_flash_cmd_test`, 1 seed per regression, because the seed selects only the address, word count and data inside one page
 
 *Source Module*: `sep_spi_ot_flash_cmd_rand_test`
 
@@ -1403,13 +1403,13 @@ The offsets come from `spi_controller.adoc`, and TXDATA at 0x28 and RXDATA at 0x
 
 *Area*: SPI and DMA
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`) with real fuse sense of the committed default image (no `+skip_fuse_sense`), because the leaf asserts `rst_ni`. 3 seeds; tool: both (Verilator and VCS); the reset-window check is graded on VCS only; testlist groups `cpu_stub` and `all`, file `spi.toml`.
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) with real fuse sense of the committed default image (no `+skip_fuse_sense`), because the leaf asserts `rst_ni`. 1 seed per regression, because every run walks every output-enable window; tool: both (Verilator and VCS); the reset-window check is graded on VCS only; testlist groups `cpu_stub` and `all`, file `spi.toml`.
 
 *Source Module*: `sep_spi_pad_oe_rules_test`
 
 *BFM / Model*: `ocah_axi_vip` for the register frontdoor over `s_axi` (CPU-LSU splice, approved). A per-clock sampler reads `rst_ni`, `dbg_sep_reset_n_o`, `spi_cs_n_o`, `spi_sck_o` and the output-enable taps `spi_cs_oe_o`, `spi_sck_oe_o` and `spi_sd_oe_o[3:0]` of `tb_top` (approved, `SEP_TB_ARCH.adoc`, SPI host pads) on every rising edge of `clk_i`, in the read-only phase. It drives nothing. The leaf names the window that each sample belongs to; a sample outside every window is not graded. No responder: the RX segments receive the testbench default. No proposed probe. No inject. No check is blocked.
 
-*Randomization*: `SepSeededRng` from the run seed (RAND-REP). Dimensions: CONFIGOPTS (CLKDIV 1 to 3, CSNLEAD, CSNTRAIL and CSNIDLE 0 to 3); the order of the six frames of each traffic leg; per frame the TX bytes (1 to 8) or the RX length (1 to 8), and in the chain the TX byte and the dummy length (2 to 6 cycles); the length of the segment that the reset cuts (16 to 32 bytes), the `rst_ni` point (in sck rises) and the wait after the release; the length of the OUTPUT_EN = 0 segment (8 to 32 bytes). `reseed = 3` samples other orders, lengths and reset points. The legs and their windows are the same on every seed.
+*Randomization*: `SepSeededRng` from the run seed (RAND-REP). Dimensions: CONFIGOPTS (CLKDIV 1 to 3, CSNLEAD, CSNTRAIL and CSNIDLE 0 to 3); the order of the six frames of each traffic leg; per frame the TX bytes (1 to 8) or the RX length (1 to 8), and in the chain the TX byte and the dummy length (2 to 6 cycles); the length of the segment that the reset cuts (16 to 32 bytes), the `rst_ni` point (in sck rises) and the wait after the release; the length of the OUTPUT_EN = 0 segment (8 to 32 bytes). One seed runs per regression, and each regression draws new orders, lengths and reset points. The legs and their windows are the same on every seed.
 
 *Objective*: The output-enable rules of the SEP SPI host hold (`smu-sep.adoc`, "SEP SPI Host Pin Assignment"; `spi_controller.adoc`, CONTROL.OUTPUT_EN with reset 0; OpenTitan SPI_HOST theory of operation, "SPI_HOST Output Enable"). The host drives no pad until software sets CONTROL.OUTPUT_EN, so all output enables are 0 from a cold reset to the first OUTPUT_EN write, and with OUTPUT_EN = 0 also while SPIEN = 1 and the host runs a command. The host drives a data lane only while chip select is asserted. With CONTROL.OUTPUT_EN = 1, `cs_oe` and `sck_oe` are 1 with chip select high or low (`spi_host.hjson:222-224`, CONTROL.OUTPUT_EN: "Enable the SPI host output buffers for the sck, csb, and sd lines."); the pin-assignment text narrows only the data lanes.
 
