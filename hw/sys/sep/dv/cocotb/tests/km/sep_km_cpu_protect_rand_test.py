@@ -15,8 +15,8 @@ Processing") and the generated register descriptions (``km_csr.adoc``,
 RTL. The ROM word golden is the committed POKE image file (the stimulus).
 
 Probes: ``KM-RESULT``, ``HOST-MBX`` (``SEP_STATUS``), ``PIC-IRQ`` bit 30
-(``km_unrecoverable_err_o``), ``KM-COUNT`` (``km_rom_req_count_o``),
-``dbg_sep_reset_n_o``, and the read-only taps ``KM-VALID``
+(``km_unrecoverable_err_o``), ``KM-COUNT`` (``km_rom_req_count_o``,
+``km_cpu_fetch_count_o``), ``dbg_sep_reset_n_o``, and the read-only taps ``KM-VALID``
 (``km_engine_key_valid_o``), ``KM-KPV`` (``km_kpv_words_o``, the plain-reset
 control of CHK-TRAP-WIPE) and ``KM-CSR`` (``km_csr_irq_status_o``). No inject.
 

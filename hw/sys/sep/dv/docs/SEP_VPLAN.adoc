@@ -1820,7 +1820,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 
 |<<sep_km_kmcsr_reset_rand_test,`sep_km_kmcsr_reset_rand_test`>>
 |3
-|no_cpu, POKE, +skip_fuse_sense
+|no_cpu, POKE, real fuse sense
 |KM bus operation image with result words, host mailbox status, KM ROM request counter, isolation probes, `KM-RST` observation tap
 |Proves that the KMCSR registers, the SRAM write locks and each reset kind follow their stated access and domain rules. The reset hold check reads the tap.
 
@@ -1833,7 +1833,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |<<sep_km_cpu_protect_rand_test,`sep_km_cpu_protect_rand_test`>>
 |3
 |no_cpu, POKE, +skip_fuse_sense
-|KM bus operation image with result words, host mailbox status, PIC interrupt probe (bit 30), KM ROM request counter, `KM-VALID`, `KM-KPV` and `KM-CSR` observation taps
+|KM bus operation image with result words, host mailbox status, PIC interrupt probe (bit 30), KM ROM request counter, KM CPU fetch counter (observation tap), `KM-VALID`, `KM-KPV` and `KM-CSR` observation taps
 |Proves that each KM CPU trap kind asserts km_unrecoverable_err_o and wipes the KPV, and that the execute whitelist and the ROM lockout admit and refuse the stated fetches. The trap engine, trap status, execute refusal and lockout order checks read the taps.
 
 |<<sep_km_crossbar_efuse_window_rand_test,`sep_km_crossbar_efuse_window_rand_test`>>
@@ -1845,19 +1845,19 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |<<sep_km_mailbox_km_side_rand_test,`sep_km_mailbox_km_side_rand_test`>>
 |3
 |no_cpu, IMG-MBOX-KM, +skip_fuse_sense
-|KM mailbox image with result words, host mailbox master
+|KM mailbox image with a preloaded parameter block and result words, host mailbox master
 |Proves that the KM-side mailbox registers, separators, errors, response bits, flush and interrupt follow the register text.
 
 |<<sep_km_drbg_sampler_rand_test,`sep_km_drbg_sampler_rand_test`>>
 |3
 |no_cpu, POKE, HK-STRM, +skip_fuse_sense, entropy noise forced
-|KM bus operation image with result words, KM entropy sink probe, host mailbox master, `HK-STRM` stream fault inject, `HK-STRM-PAT` beat-pattern drive (proposed)
+|KM bus operation image with result words, KM entropy sink probe, host mailbox master, KM and TRNG reset probes, TRNG isolation probe, `HK-STRM` stream fault inject with its `km_strm_wd_*` readbacks (added hook), `HK-STRM-PAT` beat-pattern drive (proposed)
 |Proves that the DRBG sampler times out a stalled read, flags a stream error, and that its counters, prefetch and write refusals follow the register text. The byte-packing, partial-beat timeout and handshake-control checks need the proposed beat-pattern drive and are blocked.
 
 |<<sep_km_otp_interface_rand_test,`sep_km_otp_interface_rand_test`>>
 |3
 |no_cpu, POKE, real fuse sense, HK-OTP
-|KM bus operation image with result words, secure test mode and fuse sense probes, host mailbox master and host life-cycle path, `HK-OTP` bit flip inject
+|KM bus operation image with result words, secure test mode and fuse sense probes, host mailbox master and host life-cycle path, `HK-OTP` rail flip inject with its `km_otp_flip_active_o` readback (added hook)
 |Proves that the OTP readout equals the staged fuse image in dual-rail form, that it reads zero under the read locks and in secure test mode, that a single-rail flip sets OTP_SIGINT, and that a two-rail change sets OTP_CHANGE.
 
 |<<sep_km_key_bank_register_rand_test,`sep_km_key_bank_register_rand_test`>>
@@ -1869,7 +1869,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |<<sep_km_sram_scrambler_key_rand_test,`sep_km_sram_scrambler_key_rand_test`>>
 |3
 |no_cpu, IMG-SCR, +skip_fuse_sense
-|KM scrambler image with a preloaded parameter block (`HK-IMG-PARAM`) and mailbox report, scrambled SRAM write monitor and `KM-SRAM` observation tap
+|KM scrambler image with a preloaded parameter block (`HK-IMG-PARAM`) and mailbox report, KM SRAM write counter, scrambled SRAM write monitor and `KM-SRAM` observation tap
 |Proves that the stored form of an SRAM word depends on key and address, that the old key reads its data back after a key change, that a key write after the lock is ignored, and that a lock set with the enable clear keeps the scrambler on.
 |===
 
@@ -4506,18 +4506,23 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-SRAM`
 |Read-only tap
-|The 8192-word KM SRAM array in stored form.
+|The 8192-word KM SRAM array in stored form, at the word index that the select `km_sram_peek_addr_i` sets (the select drives nothing in the DUT).
 |`sep_km_sram_scrambler_key_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-BUS`
 |Read-only tap
-|The requests on the five key-path ports ahead of the isolation stages, and `efuse_req_o` after the address remap.
+|The requests on the five key-path ports ahead of the isolation stages, and `efuse_req_o` after the address remap: AR and AW valid, ready and address (`km_efuse_ar_*_o`, `km_efuse_aw_*_o`).
 |`sep_km_key_transfer_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_crossbar_efuse_window_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-FETCH`
 |Read-only tap
-|The KM CPU memory bus: `mem_valid`, `mem_instr`, `mem_addr`, `mem_wstrb`, `mem_wdata` and `mem_rdata`. The instruction fetches are the cycles with `mem_instr` high.
+|The KM CPU memory bus: `mem_valid`, `mem_ready`, `mem_instr`, `mem_addr`, `mem_wstrb` and `mem_rdata`. The instruction fetches are the cycles with `mem_instr` high.
 |`sep_km_handover_rand_test`
+|<<sep-vplan-phase3-key-manager,Key Manager>>
+|KM CPU fetch counter (`km_cpu_fetch_count_o`)
+|Read-only tap
+|The count of KM CPU instruction fetches that complete on the CPU memory bus (`mem_valid`, `mem_ready` and `mem_instr` high in one clock), whatever the target, since the bench reset. A ROM fetch that the lockout blocks moves this counter and not `km_rom_req_count_o`.
+|`sep_km_cpu_protect_rand_test` (CHK-LOCKOUT-FETCH)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-LAT`
 |Read-only tap
@@ -4531,7 +4536,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Key Manager FCOV sampler taps (`KM-COV`)
 |Sampler taps
-|Read-only nets `km_sram_lock`, `km_irq_entry`, `km_kpv_scrambler`, `km_mbx_fifo`, `km_mbx_regs`, `km_drbg_sampler`, `km_cpu_trap`, `km_cpu_irq_active`, `km_cpu_insn_opcode`, `km_cpu_irq_lines`, `km_cpu_axi`, `km_axi_err`, `km_err_flags`, `km_wipe`, `km_otp_input`, `km_rom_rsp`, the `addr` field of `km_rom_req`, the `rdata` and `rparity` fields of `km_sram_mem_if`, and `efuse_req_err` (<<sep-vplan-km-proposed>>).
+|Read-only nets `km_sram_lock`, `km_irq_entry`, `km_kpv_scrambler`, `km_mbx_fifo`, `km_mbx_regs`, `km_drbg_sampler`, `km_cpu_trap`, `km_cpu_irq_active`, `km_cpu_insn_opcode`, `km_cpu_irq_lines`, `km_cpu_axi`, `km_axi_err`, `km_err_flags`, `km_wipe`, `km_otp_input`, `km_rom_rsp`, the `addr` field of `km_rom_req`, the `rdata` and `rparity` fields of `km_sram_mem_if`, and `efuse_req_err` (<<sep-vplan-km-proposed>>). The sampler reads `efuse_req_err` through the `req_err_i` port of the eFuse and lifecycle sampler taps: the Key Manager adds no port for it.
 |The owners of the groups of the Key Manager section of `SEP_FCOV.adoc`
 |===
 
@@ -4739,8 +4744,8 @@ use it" names the entries whose checks need the hook.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-OTP`
 |Error inject
-|Flips one bit on one rail of the KM OTP input.
-|One rail of the KM OTP input
+|Holds the KM OTP input at the value it had at the rise of `km_otp_flip_en_i`, XOR the mask `km_otp_flip_mask_i`: a mask bit on one rail is a single-rail flip, the same bit on both rails a legal value change. The readback `km_otp_flip_active_o` shows the hold.
+|The KM OTP input `otp_data_i`, inside `sep`
 |`sep_km_otp_interface_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-KPV`
@@ -4751,8 +4756,8 @@ use it" names the entries whose checks need the hook.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-STRM`
 |Error inject
-|Drives `TVALID` high for one cycle in a cycle with `TREADY` low, then low, at the DRBG sampler sink (a withdrawal, the stream fault). In an active read it holds `TVALID` low until the read ends.
-|`TVALID` of the DRBG sampler stream at the KM sink, inside `sep`
+|Drives `TVALID` high for one cycle in a cycle with `TREADY` low, then low, at the DRBG sampler sink (a withdrawal, the stream fault); with `km_strm_wd_mode_i` at 1 it drives `TVALID` high in the clock in which a DATA read starts and holds it low until the read ends. `TDATA` and `TSTRB` are not driven. While `km_strm_wd_arm_i` is 1 the bench turns off the sampler assertion `KmDrbgTvalidStability_A`, which the withdrawal breaks by design.
+|`TVALID` of the DRBG sampler stream at the KM sink, inside `sep`; readbacks `km_strm_wd_fired_o`, `km_strm_wd_tready_o` and `km_strm_sink_tvalid_o`
 |`sep_km_drbg_sampler_rand_test` (CHK-SMP-STRM)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-PAR`

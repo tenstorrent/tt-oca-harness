@@ -152,6 +152,13 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 Observation probe groups:
 
 * eFuse shadow, scratch, and the KM and OTBN counters.
+* KM bus counters (`km_rom_req_count_o`, `km_sram_req_count_o`,
+  `km_sram_write_count_o`, `km_cpu_fetch_count_o`), reset with the bench reset.
+  `km_cpu_fetch_count_o` counts the KM CPU instruction fetches that complete
+  (`mem_valid`, `mem_ready` and `mem_instr` high in one clock), whatever the
+  target. A ROM fetch that the ROM lockout blocks moves this counter and not
+  `km_rom_req_count_o`. User of `km_cpu_fetch_count_o`:
+  `sep_km_cpu_protect_rand_test`.
 * KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`).
 * KM SRAM read-latency probes (`km_sram_rd_*`) and scrambled-write probes
   (`km_sram_scr_wr_*`).
@@ -267,10 +274,9 @@ Observation probe groups:
   `docs/SEP_FCOV.adoc`.
 * KM OTP ID probes (`km_otp_sep_*_id_o`).
 * Secure test mode output (`secure_tm_o`): the `sep` output that shows the
-  latched secure test mode. Users: `sep_km_crossbar_efuse_window_rand_test`,
-  `sep_km_otp_interface_rand_test`, with `sep_fuse_sense_done_o`,
-  `efuse_shadow_probe_o` and `km_otp_sep_*_id_o` (OTP-TAP of the Key Manager
-  area of `docs/SEP_VPLAN.adoc`).
+  latched secure test mode. Users: `sep_km_crossbar_efuse_window_rand_test`
+  (with `efuse_shadow_probe_o`) and `sep_km_otp_interface_rand_test` (with
+  `sep_fuse_sense_done_o`).
 * Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS of the Key
   Manager area of `docs/SEP_VPLAN.adoc`), read-only continuous reads of
   `u_key_manager_s3c_scan` and of the engine wrappers of `u_sep_crypto`:
@@ -289,15 +295,16 @@ Observation probe groups:
    aggregate, `RECOVERABLE_ERR`, `BOOT_STATUS.COLD_BOOT_DONE`,
    `SRAM_EXEC_MODE`, `OTP_READ_LOCK`, `OTP_READ_LOCK_COLD`,
    `OTP_CHANGE_STATUS`, the `SCRAMBLER_KEY` register value, the count of KM
-   writes to `SCRAMBLER_KEY` and `SCRAMBLER_CTRL`, on every clock. Users:
-   `sep_km_cpu_protect_rand_test`, `sep_km_otp_interface_rand_test`.
+   writes to `SCRAMBLER_KEY` and `SCRAMBLER_CTRL`, on every clock. User:
+   `sep_km_cpu_protect_rand_test`.
 ** KM-SRAM (`km_sram_peek_o`): the word of the 8192-word KM SRAM array at
    `km_sram_peek_addr_i`, in stored form `{parity, data}`. The address input
    is a select of the tap and drives nothing in the DUT; it is 0 by default.
    There is no write path. User: `sep_km_sram_scrambler_key_rand_test`.
 ** KM-BUS, eFuse part (`km_efuse_ar_*_o`, `km_efuse_aw_*_o`): the AR and AW
    VALID, READY and address of the KM eFuse master `efuse_req_o` after the
-   address remap. User: `sep_km_crossbar_efuse_window_rand_test`.
+   address remap, reached through `km_efuse_{ar,aw}_{valid,ready,addr}_o`.
+   User: `sep_km_crossbar_efuse_window_rand_test`.
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
   `u_sep_fcov` port list (VCS only): the KM CPU AXI master and its error
@@ -309,10 +316,12 @@ Observation probe groups:
   and register fields of both KM mailbox FIFOs, the DRBG sampler `CFG`,
   `STATUS`, counters, prefetch word and DATA-read state, the wipe input and
   pulse, the KM OTP input, the ROM request, the SRAM macro request and
-  response, the KM eFuse master and the eFuse controller `efuse_req_err`, the
-  sensed `LOCKS` and `LOCKS_SPARE` words of `efuse_shadow_probe_o`, and the
-  four KM reset nets. Owners: the Key Manager groups of
-  `docs/SEP_FCOV.adoc`.
+  response, the KM eFuse master, the KM CPU shared-key interrupt line, and the
+  four KM reset nets. The sampler reads the eFuse controller `efuse_req_err`
+  through the port `req_err_i`, and the sensed `LOCKS` and `LOCKS_SPARE` words
+  of `efuse_shadow_probe_o` through the port `efuse_shadow_i`. The eFuse and
+  lifecycle taps above define both ports; the KM taps reuse them and define no
+  port of their own. Owners: the Key Manager groups of `docs/SEP_FCOV.adoc`.
 * SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`).
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
   of the KM SRAM macro array that carry the KM ROM images' result words.
