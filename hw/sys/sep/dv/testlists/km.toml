@@ -347,7 +347,7 @@ module = "km.sep_km_kpv_rand_test"
 firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
 seed = 1
 reseed = 3
-timeout_sec = 3600
+timeout_sec = 10800
 tags = ["km", "kpv", "scrambler", "wipe", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"

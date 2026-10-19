@@ -501,7 +501,9 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         status = await self.poke.mbox.read_status()
         return (status >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK
 
-    def _graded(self, on: bool) -> None:
+    async def _graded(self, on: bool) -> None:
+        # The gate is a signal write, which cocotb refuses in the ReadOnly phase.
+        await RisingEdge(cocotb.top.clk_i)
         if on:
             open_graded_window(TEST_NAME, self.logger)
         else:
@@ -728,7 +730,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             w.sram,
             w.mbox,
         )
-        self._graded(True)
+        await self._graded(True)
         ctl = await self._write_witnesses(w)
 
         # Quiet window before the trap: the control of CHK-TRAP.
@@ -874,7 +876,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             reset,
         )
         self.err_hits += 1
-        self._graded(False)
+        await self._graded(False)
 
     def _kpv_tap_words(self, slot: int) -> tuple[int, ...]:
         """KM-KPV: the 16 stored words of ``slot``. The KPV scrambler stays off
@@ -1064,9 +1066,9 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
 
     async def _plain_reset(self) -> None:
         """A warm reset between two case boots; not a graded stimulus."""
-        self._graded(False)
+        await self._graded(False)
         await self._reset("warm")
-        self._graded(True)
+        await self._graded(True)
 
     async def _refused_case(
         self, case: str, target: int, *, enable: int, region: str, locked: int
@@ -1376,7 +1378,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         await self.poke.wait_boot()
 
         # Normal interrupt and legal CRC encodings: the control of the trap kinds.
-        self._graded(False)
+        await self._graded(False)
         await self._normal_irq_control()
         self.kpv_kept: dict[str, bool] = {}
         for reset_kind in ("warm", "cold"):
@@ -1385,10 +1387,10 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         for kind in self.plan.kind_order:
             await self._trap_leg(kind)
 
-        self._graded(False)
+        await self._graded(False)
         await self._obs_opcode()
 
-        self._graded(True)
+        await self._graded(True)
         await self._case_c0()
 
         for region_kind, locked, marker in (
@@ -1432,7 +1434,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         await self._refused_case(
             "C6", VROM_BASE, enable=p.c6_enable, region=f"0x{VROM_BASE:08x}", locked=0
         )
-        self._graded(False)
+        await self._graded(False)
 
         # Each "stays 0" check above has a hit of the same signal in this leaf:
         # EXEC_VIOLATION (CHK-EXEC-OK) rose in C1, C3, C5, C6; ROM_ACCESS_VIOLATION

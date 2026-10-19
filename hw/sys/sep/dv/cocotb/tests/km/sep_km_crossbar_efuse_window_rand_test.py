@@ -634,9 +634,13 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 )
                 continue
             want = _EXP_BITS[cell.resp]
-            got_ok = res.known and res.clean and (res.slv, res.dec) == want
             if d == "rd" and cell.rdata is not None:
+                got_ok = res.known and res.clean and (res.slv, res.dec) == want
                 got_ok = got_ok and res.value == cell.rdata
+            else:
+                # The response is graded; read data no golden states (a word with
+                # no reset, such as a KPV word or a token register) may be unknown.
+                got_ok = res.flags_known and res.clean and (res.slv, res.dec) == want
             line = f"{tag} rd={rd_txt} slv={res.slv} dec={res.dec} pre_clean={int(res.clean)}"
             if cell.control:
                 self.logger.info("CTL-XBAR %s control=1 match=%d", line, int(got_ok))

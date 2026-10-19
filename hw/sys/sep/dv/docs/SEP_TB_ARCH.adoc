@@ -642,7 +642,9 @@ Exceptions (a closed set):
   frontdoor. Both inputs are 0 by default, and the force is released at the
   end of the drive and when the arm drops. Readbacks: `km_strm_wd_fired_o`,
   `km_strm_wd_tready_o` (the sink TREADY in the pulse clock) and
-  `km_strm_sink_tvalid_o`. User: `sep_km_drbg_sampler_rand_test`
+  `km_strm_sink_tvalid_o`. While the arm is 1 the bench turns off the sampler
+  assertion `KmDrbgTvalidStability_A`, which the withdrawal breaks by design;
+  every other assertion stays on. User: `sep_km_drbg_sampler_rand_test`
   (CHK-SMP-STRM).
 * *Crypto and entropy observation taps* — the external stream response
   monitor, the internal DRBG endpoint probe, the detune probe, the OTBN status

@@ -432,6 +432,8 @@ class PokeResult:
     data: tuple[int, ...]
     flags: tuple[SlotFlags | None, ...]
     known: bool = True
+    # The slv/dec flag words alone held no unknown bit (the data words may).
+    flags_known: bool = True
 
     @property
     def value(self) -> int:
@@ -492,12 +494,18 @@ def decode(
         else:
             flags = tuple(None for _ in range(op.slots))
         used: set[int] = set()
+        used_flags: set[int] = set()
         for k in range(op.slots):
             d, f = slot_words(slot + k)
             used.add(d)
             if flags[k] is not None:
-                used.add(f)
-        out.append(PokeResult(i, op, data, flags, known=not (used & bad)))
+                used_flags.add(f)
+        used |= used_flags
+        out.append(
+            PokeResult(
+                i, op, data, flags, known=not (used & bad), flags_known=not (used_flags & bad)
+            )
+        )
         slot += op.slots
     return out
 

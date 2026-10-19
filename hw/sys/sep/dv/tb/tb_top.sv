@@ -3658,6 +3658,16 @@ module sep_uvm_top
             endcase
         end
     end
+    // The withdrawal breaks the AXI-Stream rule that the sampler assertion
+    // KmDrbgTvalidStability_A states, so that assertion is off while the arm is
+    // 1 and on otherwise. Every other assertion stays on. Verilator applies
+    // $assertoff to the whole design, so its builds keep the assertion on.
+`ifndef VERILATOR
+    always @(km_strm_wd_arm_i) begin
+        if (km_strm_wd_arm_i === 1'b1) $assertoff(0, `KM_SMP.KmDrbgTvalidStability_A);
+        else $asserton(0, `KM_SMP.KmDrbgTvalidStability_A);
+    end
+`endif
     assign km_strm_wd_fired_o    = km_strm_fired_q;
     assign km_strm_wd_tready_o   = km_strm_tready_q;
     assign km_strm_sink_tvalid_o = `KM_SMP.tvalid;
