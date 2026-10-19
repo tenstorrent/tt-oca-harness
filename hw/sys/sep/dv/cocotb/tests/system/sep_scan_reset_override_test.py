@@ -14,9 +14,9 @@ Contract (``hw/sys/sep/doc/port_table.adoc``, ``test_en_i``, ``scan_rst_ni``,
 Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
 ``hw/sys/sep/doc/test_mode.adoc``, Entry and Exit):
 
-* While ``test_en_i`` is high, ``scan_rst_ni`` replaces the 11 nets
-  ``sep_reset_n``, ``sep_cpu_reset_n``, ``ip_rst_n[6:1]``, ``aon_rst_n`` and
-  ``km_cond_rst[1:0]``. ``sep_reset_n`` and ``aon_rst_n`` rise before the next
+* While ``test_en_i`` is high, ``scan_rst_ni`` replaces the 12 nets
+  ``sep_reset_n``, ``sep_cpu_reset_n``, ``ip_rst_n[6:0]`` (each scan bypass
+  mux), ``aon_rst_n`` and ``km_cond_rst[1:0]``. ``sep_reset_n`` and ``aon_rst_n`` rise before the next
   edge of their own clock after the ``scan_rst_ni`` rise (the synchronizer is
   not in the path). With ``test_en_i`` low, ``scan_rst_ni`` has no effect.
 * ``test_en_i`` and ``secure_tm_req_i`` are separate ports: ``secure_tm_o``
@@ -28,20 +28,19 @@ falls on a ``clk_i`` edge or on the drawn release point. The hold interval H
 (32 ``clk_i`` cycles, at least two ``clk_wdt_i`` periods) is a test parameter.
 
 Checkers:
-  CHK-SCAN-IDLE     test_en_i=0: the 11 nets stay high on every clk_i edge from
+  CHK-SCAN-IDLE     test_en_i=0: the 12 nets stay high on every clk_i edge from
                     the scan_rst_ni fall to the end of the hold after its rise.
-  CHK-SCAN-REPLACE  test_en_i=1: the 11 nets are low on every clk_i edge
+  CHK-SCAN-REPLACE  test_en_i=1: the 12 nets are low on every clk_i edge
                     while scan_rst_ni is low and high with scan_rst_ni=1;
                     sep_reset_n and aon_rst_n rise before the next clk_i and
                     clk_wdt_i edge. Other rise offsets: OBS-SCAN-OFFSET.
   CHK-STRAP-INDEP   secure_tm_o does not move across the test_en_i toggles, at
                     strap 1 and at strap 0.
 
-Blocked (open specification question): the specification does not name the
-test inputs that ``test_en_i`` must reach, and the design ties some clock-gater
-and AXI cell test inputs to 0. No test pin is graded. A read-only hierarchy walk
-collects a pin population from the DUT itself, so it is not a golden set. The
-leaf logs ``OBS-TEST-EN-PINS`` (the walk totals, the count of pins that follow
+``sep_test_en_pin_reach_test`` grades the clock-gater and AXI cell test
+inputs that ``test_en_i`` reaches. This leaf runs the same read-only walk
+(``env/sep_test_en_walk.py``, root ``u_dut``) and grades no pin. It logs
+``OBS-TEST-EN-PINS`` (the walk totals, the count of pins that follow
 ``test_en_i`` and the path of every pin that does not) and ``OBS-STRAP-PINS``
 (the walked pins that move across the strap toggles).
 
@@ -52,7 +51,7 @@ and for the Key Manager release.
 
 from __future__ import annotations
 
-import re
+from typing import Any
 
 import cocotb
 import pyuvm
@@ -61,16 +60,18 @@ from cocotb.utils import get_sim_time
 from env.sep_edge_timer import SepEdgeTimer, SepPinEdgeCounter
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_test_en_walk import PIN_BOUND, pin_value, walk_test_en_pins
 from sep_base_test import sep_base_test
 from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_scan_reset_override_test"
 
-# The 11 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
+# The 12 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
 # rst_warm_sync_n, bit 1 rst_cold_aasd_n).
 NETS: tuple[tuple[str, str, int | None], ...] = (
     ("sep_reset_n", "dbg_sep_reset_n_o", None),
     ("sep_cpu_reset_n", "sep_cpu_reset_n_o", None),
+    ("ip_rst_n[0]", "km_gated_rst_n_probe_o", None),
     ("ip_rst_n[1]", "otbn_gated_rst_n_probe_o", None),
     ("ip_rst_n[2]", "aes_gated_rst_n_probe_o", None),
     ("ip_rst_n[3]", "hmac_gated_rst_n_probe_o", None),
@@ -86,16 +87,9 @@ N_NETS = len(NETS)
 H = 32  # hold interval in clk_i cycles (at least two clk_wdt_i periods)
 P_W = 8  # clk_wdt_i period in clk_i periods
 WDT_PHASE_PCT = 5  # clk_wdt_i rising edge, percent of a clk_i period after clk_i
-PIN_BOUND = 16  # clk_i cycles for every pin to follow test_en_i
 TAP_BOUND = 2_000  # clk_i cycles for a reset tap to read 1
 SENSE_BOUND = 40_000  # clk_i cycles for real fuse sense
 RST_PULSE = 20  # clk_i cycles of the rst_ni pulse of the strap-0 boot
-
-# Pin classes of the walk: (class, definition-name pattern, test port).
-PIN_CLASSES = (
-    ("clock_gater", re.compile(r"clock_gat|clk_gat", re.I), "test_en_i"),
-    ("axi_cell", re.compile(r"^axi_|^axi$", re.I), "test_i"),
-)
 
 
 class _Cfg:
@@ -141,49 +135,27 @@ class sep_scan_reset_override_test(sep_base_test):
     # -- hierarchy walk -----------------------------------------------------------
 
     def _walk(self) -> dict[str, list[tuple[str, object]]]:
-        """Read-only walk of the SEP hierarchy for the test pins of each class."""
-        from cocotb.handle import HierarchyArrayObject, HierarchyObject
-
-        found: dict[str, list[tuple[str, object]]] = {c: [] for c, _p, _n in PIN_CLASSES}
-        scopes = 0
-
-        def visit(h, path: str) -> None:
-            nonlocal scopes
-            scopes += 1
-            try:
-                defn = h._def_name or ""
-            except Exception:  # noqa: BLE001 - a scope without a definition name
-                defn = ""
-            for cls, pat, port in PIN_CLASSES:
-                if defn and pat.search(defn):
-                    pin = getattr(h, port, None) if hasattr(h, port) else None
-                    if pin is not None:
-                        found[cls].append((f"{path}.{port} ({defn})", pin))
-            try:
-                children = list(h)
-            except Exception:  # noqa: BLE001 - a scope the simulator cannot iterate
-                return
-            for child in children:
-                name = getattr(child, "_name", "?")
-                if isinstance(child, HierarchyArrayObject):
-                    for sub in child:
-                        visit(sub, f"{path}.{getattr(sub, '_name', name)}")
-                elif isinstance(child, HierarchyObject):
-                    visit(child, f"{path}.{name}")
-
-        visit(cocotb.top.u_dut.u_sep, "u_dut.u_sep")
+        """Read-only walk of the DUT for the test pins of each class (logged only)."""
+        top: Any = cocotb.top
+        walk = walk_test_en_pins(top.u_dut, "u_dut")
+        found: dict[str, list[tuple[str, object]]] = {"clock_gater": [], "axi_cell": []}
+        for p in walk.pins:
+            found[p.cls].append((f"{p.path} ({p.cell})", p))
         self.logger.info(
-            "TEST-EN-WALK LOG: scopes=%d %s",
-            scopes,
+            "TEST-EN-WALK LOG: scopes=%d %s unwalkable=%d",
+            walk.scopes,
             " ".join(f"{c}={len(v)}" for c, v in found.items()),
+            len(walk.unwalkable),
         )
+        for u in walk.unwalkable:
+            self.logger.info("OBS-TEST-EN-UNWALKABLE: %s", u.label())
         for cls, pins in found.items():
             for path, _pin in pins:
                 self.logger.info("TEST-EN-PIN LOG: class=%s pin=%s", cls, path)
         return found
 
-    def _pins(self) -> list[tuple[str, int]]:
-        return [(p, self.rd(sig)) for pins in self.walk.values() for p, sig in pins]
+    def _pins(self) -> list[tuple[str, int | None]]:
+        return [(p, pin_value(pin)) for pins in self.walk.values() for p, pin in pins]
 
     async def _set_test_en(self, v: int) -> None:
         """Drive test_en_i, wait up to PIN_BOUND cycles for every walked pin to
@@ -401,7 +373,8 @@ class sep_scan_reset_override_test(sep_base_test):
             self.logger.info("OBS-TEST-EN-PINS: not_following=%s", path)
         self.logger.info(
             "OBS-TEST-EN-PINS: pins=%d clock_gater=%d axi_cell=%d follow_test_en_i=%d "
-            "not_following=%d (test_en_i toggled at strap 1 and 0)",
+            "not_following=%d (test_en_i toggled at strap 1 and 0; graded by "
+            "sep_test_en_pin_reach_test)",
             npins,
             len(self.walk["clock_gater"]),
             len(self.walk["axi_cell"]),
