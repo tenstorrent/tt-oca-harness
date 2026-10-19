@@ -31,6 +31,7 @@ module i3ccore_wrapper
 ) (
   input logic clk_i,                                        // System clock.
   input logic rst_ni,                                       // Async reset, active-low.
+  input logic test_en_i,                                    // DFT test mode to the AXI cells.
 
   input  logic           awvalid_i,                         // Write-address valid.
   output logic           awready_o,                         // Write-address ready.
@@ -184,7 +185,7 @@ module i3ccore_wrapper
   ) u_axil_demux (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
-    .test_i(1'b0),
+    .test_i(test_en_i),
     .slv_req_i(axil_req),
     .slv_aw_select_i(write_select),
     .slv_ar_select_i(read_select),

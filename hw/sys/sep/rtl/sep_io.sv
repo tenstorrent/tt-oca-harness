@@ -199,6 +199,7 @@ module sep_io #(
   ) u_axil_err_slv (
     .clk_i,
     .rst_ni,
+    .test_en_i,
     .axil_req_i  (axil_reqs [NumSlaves-1]),
     .axil_resp_o (axil_resps[NumSlaves-1])
   );

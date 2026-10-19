@@ -195,6 +195,7 @@ module tb_i3ccore;
   ) u_dut (
     .clk_i(clk),
     .rst_ni(rst_n),
+    .test_en_i(1'b0),
 
     // AXI-Lite Write Address Channel
     .awvalid_i(axi_awvalid),

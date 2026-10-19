@@ -42,10 +42,11 @@ module smc_cpu_ctrl_wrap #(
                                                                    // reset-control state, mutexes
                                                                    // and semaphores.
 
-  input  logic                                    test_en_i,  // Scan test mode enable; not used in
-                                                              // this module.
-  input  logic                                    scan_rst_ni,  // Active-low scan reset; not used
-                                                                // in this module.
+  input  logic                                    test_en_i,  // Scan test mode enable; selects
+                                                              // scan_rst_ni in the reference
+                                                              // counter.
+  input  logic                                    scan_rst_ni,  // Active-low scan reset for the
+                                                                // reference counter.
 
   input  smc_pkg::smc_axil_32_64_req_t            axil_req_i,  // AXI-Lite request to the cpu_ctrl
                                                                // CSR block from the SMC front-port
@@ -145,6 +146,8 @@ module smc_cpu_ctrl_wrap #(
     .cnt_update_i(ref_count_wr_swacc_q),
     .cnt_update_value_i(ref_count_from_reg),
     .out_clk_i(clk_smc_i),
+    .test_en_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
     .count_o(ref_count_sync)
   );
 

@@ -91,6 +91,8 @@ module prim_clk_counter #(
     .src_clk_i(refclk_i),
     .src_rst_ni(refclk_rst_ni),
     .dst_clk_i(clk_i),
+    .test_en_i(test_mode_i),
+    .scan_rst_ni(scan_rst_ni),
     .dst_pulse_o(cnt_done_synced)
   );
 
