@@ -570,7 +570,7 @@ the AES key and start the same block: the engine must produce no output.
 |CHK-PCRC-ARG
 |The `RC_PAYLOAD_CRC` response of the corrupt-CRC frame of CHK-FRAME carries the CRC-32C that the KM computed over the received payload: `RETURN_ARG` equals the CRC-32C of the payload words as sent, computed by `env/sep_crc_golden.py` (`firmware.adoc`, "0x00 - RESP_CMD", return-code table, `payload_crc`, and the sentence below the table: both CRC return arguments carry the value that the KM computed). The golden differs from the corrupt CRC in the frame, and the leaf asserts this before it sends the frame. A DUT that echoes the sent CRC, or returns no argument, fails. Evidence: `CHK-PCRC-ARG PASS: arg=0x<crc> golden=0x<crc> sent=0x<bad>`.
 |CHK-OTP
-|`CMD_OTP_READ_LOCK_COLD` of one identity bit returns success with that bit set in the echo; a reserved bit returns the invalid-argument code; a zero-length payload returns the invalid-length code.
+|`CMD_OTP_READ_LOCK_COLD` of one identity bit, the first lock after a cold reset, returns success with an echo equal to that bit alone (`firmware.adoc`, "0x28 - CMD_OTP_READ_LOCK_COLD": the echo is the register value after the write; `OTP_READ_LOCK_COLD` resets to 0); a reserved bit returns the invalid-argument code; a zero-length payload returns the invalid-length code.
 |CHK-RECOV
 |SEP `CTRL.FLUSH` posts `RESP_RECOVERABLE_FAULT` with the flushed-by-SEP code; `CMD_STAT` reports the latched bit; aggregator bit 31 is 1; `CMD_RECOV_ACK` clears the STAT bit and the aggregator bit. The following transfer and shred are the key commands accepted after the ACK.
 |CHK-GONE
@@ -933,8 +933,8 @@ its `KEY_VALID` is clear is not claimed here.
 be non-zero. The `Z` probe reads the REF `Z` after the REF KEYGEN and a value
 other than the ALT `Z` before the KV read, so the ALT `Z` compare after the
 sideloaded KEYGEN can fail. The shared key read on the register-driven path is required to be
-non-zero, and it precedes the check that the vault-sourced shared key reads
-zero. Each sideload leg is preceded by a run on different words, so the
+non-zero; the shared-key readback after the vault-sourced ENCAPS is logged
+(`OBS-KEM-SK-CONFIDENTIAL`) and is not graded. Each sideload leg is preceded by a run on different words, so the
 register the lane bypasses holds the wrong value when the lane is read -- a
 lane that delivers nothing fails on the inequality before the equality is
 reached. The ML-KEM identity words are logged as information only. Every seed

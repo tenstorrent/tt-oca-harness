@@ -72,7 +72,7 @@ Checkers:
               CHK-FRAME carries, as RETURN_ARG, the CRC-32C the KM computed
               over the payload as sent, not the corrupt CRC in the frame
   CHK-OTP     CMD_OTP_READ_LOCK_COLD of one identity bit returns rc=0 with
-              that bit set in the echo; a reserved bit returns RC_INVALID_ARG;
+              an echo equal to that bit alone; a reserved bit returns RC_INVALID_ARG;
               a zero-length payload returns RC_INVALID_LEN
   CHK-RECOV   SEP CTRL.FLUSH raises RESP_RECOVERABLE_FAULT; CMD_STAT reports
               the latched bit; aggregator [31] is 1; CMD_RECOV_ACK clears both
@@ -683,9 +683,13 @@ class sep_km_command_set_rand_test(sep_base_test):
         # --- CHK-OTP: cold OTP read-lock, one identity bit --------------------
         rc, arg = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_IDENTITY])
         assert rc == KM_RC_SUCCESS, f"CHK-OTP FAIL: lock identity bit rc={rc}"
-        assert (arg & _OTP_LOCK_IDENTITY) == _OTP_LOCK_IDENTITY, (
-            f"CHK-OTP FAIL: RETURN_ARG 0x{arg:08x} does not set identity bit "
-            f"0x{_OTP_LOCK_IDENTITY:x}"
+        # firmware.adoc, "0x28 - CMD_OTP_READ_LOCK_COLD": RETURN_ARG is the
+        # OTP_READ_LOCK_COLD value after the write. The register resets to 0 on
+        # a cold reset (km_csr.rdl) and this is the leaf's first lock, so the
+        # value is exactly the identity bit.
+        assert arg == _OTP_LOCK_IDENTITY, (
+            f"CHK-OTP FAIL: RETURN_ARG 0x{arg:08x}, expected 0x{_OTP_LOCK_IDENTITY:08x} "
+            "(only the identity bit, from a cold-reset 0)"
         )
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_RESERVED])
         assert rc == KM_RC_INVALID_ARG, (
@@ -696,8 +700,9 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"CHK-OTP FAIL: zero-length lock payload returned rc={rc}, expected {KM_RC_INVALID_LEN}"
         )
         self.logger.info(
-            "CHK-OTP PASS: identity bit locked and echoed; reserved bit RC_INVALID_ARG; "
-            "empty payload RC_INVALID_LEN"
+            "CHK-OTP PASS: lock_arg=0x%08x identity bit locked and echoed; reserved bit "
+            "RC_INVALID_ARG; empty payload RC_INVALID_LEN",
+            arg,
         )
         await self._check_alive("post-otp-lock")
 

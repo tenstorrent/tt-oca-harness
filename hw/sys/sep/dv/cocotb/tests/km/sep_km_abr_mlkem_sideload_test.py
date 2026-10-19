@@ -43,7 +43,7 @@ A later delivery re-arms the notification (CHK-KEM-SK-REARM): a second
 writeback ENCAPS, with q CMD_HW_VER frames queued before the host reads, gives
 exactly one more RESP_ABR_SHARED_KEY_READY frame, all q responses, and a
 CMD_ABR_SK_TRANSFER that succeeds after it. q is the one seeded draw of the
-leaf, in [0, 3].
+leaf, in [1, 3].
 """
 
 from __future__ import annotations
