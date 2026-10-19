@@ -1342,17 +1342,25 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             status=f"0x{status:03x}",
         )
         if self.unrec:
-            # Control: the count does not move in the quiet window before the write.
+            # Control: the quiet window measures the writes of the running ROM
+            # with no fault (stack and variables). The shred must add one SRAM
+            # of writes over that rate held for every clock to the rise:
+            # delta >= 8192 + quiet_writes * rise_clk / w_clk (integer form).
+            quiet = pre.wr_end - pre.wr_start
+            rise_clk = watch.rise
             self.chk.ok(
                 "SRAM-SHRED",
                 rose
-                and pre.wr_start == pre.wr_end
                 and delta is not None
-                and delta >= pl.SRAM_WORDS,
+                and rise_clk is not None
+                and delta * pre.w_clk >= pl.SRAM_WORDS * pre.w_clk + quiet * rise_clk,
                 writes_delta="none" if delta is None else delta,
                 min=pl.SRAM_WORDS,
                 full_extent_logged=pl.SRAM_FULL_EXTENT,
-                control_quiet_writes=pre.wr_end - pre.wr_start,
+                control_quiet_writes=quiet,
+                w_clk=pre.w_clk,
+                rise_clk="none" if rise_clk is None else rise_clk,
+                idle_bound="none" if rise_clk is None else -(-quiet * rise_clk // pre.w_clk),
             )
             self.chk.ok(
                 "SHRED-WITNESS",
