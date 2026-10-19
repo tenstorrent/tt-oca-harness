@@ -35,7 +35,7 @@ schema_version = 1
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`,
-#     `wdt_uvm_extended`, `cg_uvm_extended`) and runs on demand.
+#     `wdt_uvm_extended`, `cg_uvm_extended`, `mailbox_uvm_extended`) and runs on demand.
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
@@ -144,6 +144,22 @@ expected_count = 1
 tests = [
     "smc_fabric_reg_clock_gate_test",
 ]
+
+[[tests]]
+# Checks occupied mailbox state clearing and fresh traffic across cool reset.
+name = "smc_mailbox_cool_reset_recovery_test"
+module = { uvm = "smc_mailbox_cool_reset_recovery_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "mailbox", "reset"]
+run_modes = ["smoke"]
+
+[[groups]]
+# Mailbox state and FIFO recovery across primary-domain reset.
+name = "mailbox_uvm_extended"
+expected_count = 1
+tests = ["smc_mailbox_cool_reset_recovery_test"]
 
 [[groups]]
 # Register-block CSR and pipelined lock scenarios.

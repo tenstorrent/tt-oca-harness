@@ -38,7 +38,7 @@ tests = ["sep_axi_smoke_test"]
 # the size. `rom_fw` is not a member: it runs a third RTL target and states
 # firmware rather than hardware contracts. `all` is the coverage set.
 #
-# Thirteen members are pinned to one simulator, so a single-simulator run of `all`
+# Seventeen members are pinned to one simulator, so a single-simulator run of `all`
 # logs the members pinned to the other simulator as skipped_wrong_tool:
 # - sep_crypto_shadow_update_err_rand_test, VCS only (crypto.toml). It grades that the
 #   reads after an AES reset carry no X, which only a four-state simulator shows.
@@ -52,6 +52,9 @@ tests = ["sep_axi_smoke_test"]
 #   state after rst_ni, and Verilator is two-state.
 # - sep_cold_reset_phase_test and sep_scan_reset_override_test, VCS only
 #   (system.toml). They grade sub-cycle reset phases and walk the hierarchy.
+# - sep_scan_mode_state_hold_test and sep_test_en_pin_reach_test, VCS only
+#   (system.toml). The nets can hold X across the scan pulse, and the second
+#   walks the hierarchy.
 # - sep_cpu_reset_retention_test_dbg (memory.toml),
 #   sep_timer_clock_contract_test_dbg (system.toml) and
 #   sep_secure_tm_strap_sampling_test_dbg (efuse_lcc.toml), VCS only on the
@@ -65,8 +68,12 @@ tests = ["sep_axi_smoke_test"]
 #   full CPU, which the CPU stub does not have.
 # - sep_drbg_regwen_lock_rand_test, VCS only (crypto.toml). Its reset reads must carry
 #   no X, which only a four-state simulator shows.
+# - sep_efuse_token_channel_rand_test, VCS only (efuse_lcc.toml). Its no-reset check
+#   needs X on the unreset token flops, which only a four-state simulator shows.
+# - sep_sec_dis_timing_rand_test, VCS only (efuse_lcc.toml). Its reset-value checks of
+#   the unreset shadow words under the SEC_DIS match need X.
 name = "all"
-expected_count = 224
+expected_count = 239
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -152,6 +159,19 @@ tests = [
     "sep_efuse_illegal_state_fail_closed_test",
     "sep_sec_dis_override_test",
     "sep_sec_dis_reset_reach_test",
+    "sep_efuse_window_decode_reset_test",
+    "sep_efuse_field_layout_rand_test",
+    "sep_lcc_state_codeword_rand_test",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test",
+    "sep_efuse_transient_rma_rand_test",
+    "sep_efuse_token_channel_rand_test",
+    "sep_efuse_token_fault_matrix_test",
+    "sep_efuse_interface_status_rand_test",
+    "sep_efuse_lock_slot_matrix_rand_test",
+    "sep_efuse_secure_tm_matrix_rand_test",
+    "sep_efuse_jtag_access_rand_test",
+    "sep_sec_dis_timing_rand_test",
+    "sep_efuse_shim_response_fault_test",
     "sep_fabric_output_remap_datapath_proxy_test",
     "sep_fabric_local_alias_datapath_test",
     "sep_fabric_outbound_remap_filter_walk_test",
@@ -244,6 +264,8 @@ tests = [
     "sep_sw_reset_isolation_matrix_test",
     "sep_ip_reset_override_matrix_test",
     "sep_scan_reset_override_test",
+    "sep_scan_mode_state_hold_test",
+    "sep_test_en_pin_reach_test",
     "sep_cpu_reset_entry_test",
     "sep_cpu_reset_entry_test_real_sense",
     "sep_secure_tm_strap_sampling_test",
@@ -404,6 +426,19 @@ tests = [
     "sep_efuse_illegal_state_fail_closed_test",
     "sep_sec_dis_override_test",
     "sep_sec_dis_reset_reach_test",
+    "sep_efuse_window_decode_reset_test",
+    "sep_efuse_field_layout_rand_test",
+    "sep_lcc_state_codeword_rand_test",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test",
+    "sep_efuse_transient_rma_rand_test",
+    "sep_efuse_token_channel_rand_test",
+    "sep_efuse_token_fault_matrix_test",
+    "sep_efuse_interface_status_rand_test",
+    "sep_efuse_lock_slot_matrix_rand_test",
+    "sep_efuse_secure_tm_matrix_rand_test",
+    "sep_efuse_jtag_access_rand_test",
+    "sep_sec_dis_timing_rand_test",
+    "sep_efuse_shim_response_fault_test",
     "sep_fabric_output_remap_datapath_proxy_test",
     "sep_fabric_local_alias_datapath_test",
     "sep_fabric_outbound_remap_filter_walk_test",
@@ -488,6 +523,8 @@ tests = [
     "sep_sw_reset_isolation_matrix_test",
     "sep_ip_reset_override_matrix_test",
     "sep_scan_reset_override_test",
+    "sep_scan_mode_state_hold_test",
+    "sep_test_en_pin_reach_test",
     "sep_secure_tm_strap_sampling_test",
     "sep_cpu_ctrl_reg_shape_test",
     "sep_timer_clock_contract_test",
@@ -809,7 +846,7 @@ tests = [
 # entries, sep_tcm_dma_aperture_ecc_test and
 # sep_debug_master_target_matrix_test_sba).
 name = "phase3_memory_boot_reset"
-expected_count = 24
+expected_count = 26
 tests = [
     "sep_boot_release_terms_test",
     "sep_boot_release_terms_test_smc_hold",
@@ -819,6 +856,8 @@ tests = [
     "sep_sw_reset_isolation_matrix_test",
     "sep_ip_reset_override_matrix_test",
     "sep_scan_reset_override_test",
+    "sep_scan_mode_state_hold_test",
+    "sep_test_en_pin_reach_test",
     "sep_cpu_reset_entry_test",
     "sep_cpu_reset_entry_test_real_sense",
     "sep_secure_tm_strap_sampling_test",
@@ -894,4 +933,25 @@ tests = [
     "sep_trng_ext_stream_handshake_rand_test",
     "sep_trng_ext_sink_reset_rand_test",
     "sep_drbg_sink_mix_rand_test",
+]
+
+[[groups]]
+# Convenience group of the eFuse, lifecycle and SEC_DIS tests.
+# It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
+name = "phase3_efuse_lifecycle"
+expected_count = 13
+tests = [
+    "sep_efuse_window_decode_reset_test",
+    "sep_efuse_field_layout_rand_test",
+    "sep_lcc_state_codeword_rand_test",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test",
+    "sep_efuse_transient_rma_rand_test",
+    "sep_efuse_token_channel_rand_test",
+    "sep_efuse_token_fault_matrix_test",
+    "sep_efuse_interface_status_rand_test",
+    "sep_efuse_lock_slot_matrix_rand_test",
+    "sep_efuse_secure_tm_matrix_rand_test",
+    "sep_efuse_jtag_access_rand_test",
+    "sep_sec_dis_timing_rand_test",
+    "sep_efuse_shim_response_fault_test",
 ]

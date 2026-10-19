@@ -53,6 +53,16 @@ Checkers:
   CHK-STM-LATE     in leg E, with no match at the boot, ``secure_tm_o`` stays 0
                    after the strap rises and the ``SEC_DIS`` token matches.
                    Control: leg D shows the early capture to 1.
+  CHK-STM-SECDIS-FEAT
+                   in leg D with the match present and ``secure_tm_o`` = 1,
+                   ``FEAT_CTRL`` (``lcc_feat_ctrl_probe_o``) reads all ones on
+                   every sample from the capture to the end of the hold
+                   (``hw/sys/sep/doc/lifecycle_controller.adoc``, Overrides and
+                   Final Gates: SEC_DIS forces all ones and ``SECURE_TM`` is not
+                   a term; ``hw/sys/sep/doc/security_disable.adoc``). Control:
+                   in leg D0 (no match, strap 1) the probe reads the PROD
+                   profile word of the staged disable vectors, which is not all
+                   ones.
 
 ``OBS-STM-CAPTURE0`` logs ``secure_tm_o`` of the strap-0 boot of leg D (the
 cold-reset clear gives the same 0, so it is not graded as a capture). The
@@ -75,9 +85,12 @@ the seed draws ``c`` (8 to 200) and the order of the leg B events.
 
 from __future__ import annotations
 
+from typing import Any
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ReadOnly, RisingEdge
+from env.sep_efuse_plan import feat_ctrl_profile
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_lcc_golden import LC_PROD
 from env.sep_seeded_rng import SepSeededRng
@@ -111,6 +124,7 @@ _HMAC_BOUND = 4_096
 _TOKEN_POLLS = 200
 
 _EVENTS = ("wdt_rst_ni", "dbg_rstb_i", "sw_reset_n", "sep_reset_n_ovrd")
+_FEAT_MASK = (1 << 64) - 1
 
 
 def _bit(sig) -> int | None:
@@ -118,6 +132,13 @@ def _bit(sig) -> int | None:
     if not v.is_resolvable:
         return None
     return int(v) & 1
+
+
+def _word(sig) -> int | None:
+    v = sig.value
+    if not v.is_resolvable:
+        return None
+    return int(v)
 
 
 @pyuvm.test()
@@ -129,12 +150,13 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         "CHK-STM-RETAIN",
         "CHK-STM-CLEAR",
         "CHK-STM-LATE",
+        "CHK-STM-SECDIS-FEAT",
     )
 
     # -- sampler -------------------------------------------------------------
 
     async def _sampler(self) -> None:
-        dut = cocotb.top
+        dut: Any = cocotb.top
         while True:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
@@ -148,6 +170,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                     "cpu": _bit(dut.sep_cpu_reset_n_o),
                     "mpc": _bit(dut.mpc_run_sync_probe_o),
                     "secdis": _bit(dut.lcc_security_disable_probe_o),
+                    "feat": _word(dut.lcc_feat_ctrl_probe_o),
                 }
             )
 
@@ -400,6 +423,18 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
         )
         self.write_efuse_image(image)
+        feat_d0 = feat_ctrl_profile(LC_PROD, _SIP_DIS, _SYS_DIS)
+        feat_sd = feat_ctrl_profile(LC_PROD, _SIP_DIS, _SYS_DIS, sec_dis=1)
+        assert feat_sd.value == _FEAT_MASK and feat_d0.value != _FEAT_MASK, (
+            f"test bug: SEC_DIS word 0x{feat_sd.value:016x} control word 0x{feat_d0.value:016x}"
+        )
+        self.logger.info(
+            "GOLDEN feat no_match %s value=0x%016x; sec_dis %s value=0x%016x",
+            feat_d0.log(),
+            feat_d0.value,
+            feat_sd.log(),
+            feat_sd.value,
+        )
         self.swrst = SepSwReset(self)
         self.rec: list[dict] = []
         retain: list[str] = []
@@ -552,6 +587,20 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             d0_one,
             t_sense,
         )
+        try:
+            d0_feat_at = await self._wait_sample("feat", feat_d0.value, _STM_BOUND, "leg D0")
+        except AssertionError:
+            last = self.rec[-1]["feat"]
+            raise AssertionError(
+                f"CHK-STM-SECDIS-FEAT FAIL: control: leg D0 FEAT_CTRL did not read the profile "
+                f"word 0x{feat_d0.value:016x} within {_STM_BOUND} cycles of secure_tm_o=1 "
+                f"(last {'X' if last is None else f'0x{last:016x}'})"
+            ) from None
+        self.logger.info(
+            "CTL-STM-D0-FEAT: match_present=0 strap=1 FEAT_CTRL=0x%016x at sample %d",
+            feat_d0.value,
+            d0_feat_at,
+        )
 
         # Leg E: late SEC_DIS.
         _rel, sense = await self._cold_boot(0, "leg E")
@@ -625,6 +674,24 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f0 - rel,
         )
         retain.append(f"leg=D events=strap_1to0@capture+{c} value=1 cycles={f1 - f0}")
+        feats = self._window(cap, f1 - 1, "feat")
+        bad_feat = [
+            (cap + i, "X" if v is None else f"0x{v:016x}")
+            for i, v in enumerate(feats)
+            if v != feat_sd.value
+        ]
+        assert not bad_feat, (
+            f"CHK-STM-SECDIS-FEAT FAIL: leg=D match_present=1 secure_tm_o=1: FEAT_CTRL is not "
+            f"0x{feat_sd.value:016x} at {bad_feat[:8]}"
+        )
+        self.logger.info(
+            "CHK-STM-SECDIS-FEAT PASS: leg=D match_present=1 secure_tm_o=1 FEAT_CTRL=0x%016x "
+            "on %d samples from release+%d control_D0=0x%016x",
+            feat_sd.value,
+            len(feats),
+            cap - rel,
+            feat_d0.value,
+        )
 
         # Leg D, strap 0 (retention leg).
         _a, rel = await self._cold_reset()

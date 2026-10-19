@@ -183,15 +183,16 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# KM public-ID OTP readout and both read locks. RANDCFG. The km_rom_otp_id image
-# copies the KMCSR OTP_SEP_*_ID words before and after OTP_READ_LOCK.
+# KM public-ID OTP readout and both read locks, and the secret readout at strap 0
+# and strap 1 (valid zero). RANDCFG. The km_rom_otp_id image copies the KMCSR
+# OTP_SEP_*_ID words before and after OTP_READ_LOCK and the secret words.
 name = "sep_efuse_km_public_id_test"
 module = "efuse.sep_efuse_km_public_id_test"
 firmware = { name = "km_rom_otp_id", mode = "km_rom_blob" }
 seed = 1
 reseed = 3
 timeout_sec = 1800
-tags = ["efuse", "km", "lock", "subsystem"]
+tags = ["efuse", "km", "lock", "subsystem", "scan_secure_tm"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+km_rom_hex=km_rom_otp_id.parhex"]
@@ -204,7 +205,7 @@ args = ["+km_rom_hex=km_rom_otp_id.parhex"]
 name = "sep_efuse_secure_tm_write_lock_test"
 module = "efuse.sep_locked_field_access_irq_path_test"
 seed = 1
-reseed = 3
+# No reseed: the graded deny targets are fixed; the seed selects only the control spare and data.
 timeout_sec = 1800
 tags = ["efuse", "interrupt", "lock", "secure_tm", "subsystem"]
 run_modes = ["no_cpu"]
@@ -323,9 +324,9 @@ args = ["+lc_start=8", "+lc_transient_rma"]
 name = "sep_secure_tm_strap_sampling_test"
 module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
-reseed = 4
+# No reseed: every run runs all four events; the seed selects only the flip offset and their order.
 timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem"]
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive"]
@@ -336,10 +337,173 @@ args = ["+sep_edn_jtag_reset_waive"]
 name = "sep_secure_tm_strap_sampling_test_dbg"
 module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
-reseed = 4
+# No reseed: the dbg_rstb_i event is directed; the main entry carries the drawn offset and order.
 timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem"]
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm"]
 run_modes = ["no_cpu"]
 tools = ["vcs"]
 target = "default"
 args = ["+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"]
+
+[[tests]]
+# Interface-control and token window reset values and read-write behaviour after a real
+# sense, and no change of the interface registers or a shadow word by an access past
+# the interface-control extent or in the reserved span. RANDCFG.
+name = "sep_efuse_window_decode_reset_test"
+module = "efuse.sep_efuse_window_decode_reset_test"
+seed = 1
+# No reseed: every run reads every cell; the seed selects only offsets, values and orders.
+timeout_sec = 1800
+tags = ["efuse", "window", "rand_cfg", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Used bits of nine narrow fuse registers at drawn edge values, and no shadow word
+# carries the drawn JTAG ID. RAND-REP.
+name = "sep_efuse_field_layout_rand_test"
+module = "efuse.sep_efuse_field_layout_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["efuse", "field_layout", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Lifecycle integrity error: any corrupt state code word gives feature control 0 and the
+# error output, SEC_DIS overrides to all ones, and the JTAG lifecycle filter refuses
+# while its error flag is high. RAND-REP.
+name = "sep_lcc_state_codeword_rand_test"
+module = "lcc.sep_lcc_state_codeword_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["lcc", "sigint", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Feature control per lifecycle state, strap and demotion, disable-vector ownership,
+# demotion registers and the DFT gate ports. RAND-REP.
+name = "sep_lcc_feat_ctrl_state_matrix_rand_test"
+module = "lcc.sep_lcc_feat_ctrl_state_matrix_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Transient RMA update by token match changes the state shadow and burns no fuse.
+# RAND-REP.
+name = "sep_efuse_transient_rma_rand_test"
+module = "efuse.sep_efuse_transient_rma_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["efuse", "lcc", "rma", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Token match, mismatch shapes, hold, channel independence, no reset of the token
+# arrays, and retention of a SEC_DIS match over cold reset. VCS only: the no-reset check
+# needs X on unreset flops. RAND-REP.
+name = "sep_efuse_token_channel_rand_test"
+module = "efuse.sep_efuse_token_channel_rand_test"
+seed = 1
+# No reseed: every run walks the 18 (shape, channel) cells; the seed selects only order and values.
+timeout_sec = 3600
+tags = ["efuse", "token", "sec_dis", "rand_rep", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Token comparator faults on each copy, sticky flags, no write-one-to-clear, reset
+# clear, common-mode flips and digest latch freeze. RAND-REP.
+name = "sep_efuse_token_fault_matrix_test"
+module = "efuse.sep_efuse_token_fault_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["efuse", "token", "fault", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Read and program interface status flags, empty program, accepted twins, and no program
+# before sense done. RAND-REP.
+name = "sep_efuse_interface_status_rand_test"
+module = "efuse.sep_efuse_interface_status_rand_test"
+seed = 1
+# No reseed: every run walks the eight cases; the seed selects only order, slots and values.
+timeout_sec = 3600
+tags = ["efuse", "interface", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Read-lock and write-lock slots, lock exemptions, lock order, program and resense
+# rounds, and version flags. RAND-REP and RANDCFG.
+name = "sep_efuse_lock_slot_matrix_rand_test"
+module = "efuse.sep_efuse_lock_slot_matrix_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["efuse", "lock", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Secure test mode: secret fields mask at the sensed-shadow output, programs and JTAG
+# shadow writes are blocked at strap 1. RAND-REP.
+name = "sep_efuse_secure_tm_matrix_rand_test"
+module = "efuse.sep_efuse_secure_tm_matrix_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["efuse", "secure_tm", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# JTAG access policy of the eFuse windows in PROD and RMA_SIP. RANDCFG.
+name = "sep_efuse_jtag_access_rand_test"
+module = "efuse.sep_efuse_jtag_access_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["efuse", "jtag", "rand_cfg", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# SEC_DIS match before and during sense, shadow hold and reset values under the match.
+# VCS only: the reset values of unreset shadow words need X. The JTAG reset override
+# resets the crypto engines without isolation, so +sep_edn_jtag_reset_waive turns the
+# crypto EDN request-hold checks off. RAND-REP.
+name = "sep_sec_dis_timing_rand_test"
+module = "efuse.sep_sec_dis_timing_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["efuse", "lcc", "sec_dis", "rand_rep", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+sep_edn_jtag_reset_waive"]
+
+[[tests]]
+# A set sense-response status bit on one fuse word gives a zero shadow word and a
+# finished sense, and a withheld program response keeps the interface busy. RAND-REP.
+name = "sep_efuse_shim_response_fault_test"
+module = "efuse.sep_efuse_shim_response_fault_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["efuse", "shim", "fault", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"

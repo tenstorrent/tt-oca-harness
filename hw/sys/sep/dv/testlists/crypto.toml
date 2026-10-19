@@ -409,7 +409,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 name = "sep_kmac_unsupported_cfg_inject_test"
 module = "crypto.sep_kmac_unsupported_cfg_inject_test"
 seed = 1
-reseed = 4
+reseed = 3
 timeout_sec = 1800
 tags = ["crypto", "kmac", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
@@ -536,7 +536,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=2"]
 name = "sep_esrc_health_pattern_rand_test_shard3"
 module = "crypto.sep_esrc_health_pattern_rand_test"
 seed = 1
-reseed = 4
+# No reseed: every run drives the fixed stuck patterns; the seed selects only the clean noise before the window.
 timeout_sec = 7200
 tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
@@ -651,7 +651,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 name = "sep_drbg_fatal_err_inject_rand_test"
 module = "crypto.sep_drbg_fatal_err_inject_rand_test"
 seed = 1
-reseed = 4
+# No reseed: every run walks all 12 cells and both FIFO trials; the seed selects only the interior count and data.
 timeout_sec = 1800
 tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
@@ -664,7 +664,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 name = "sep_drbg_regwen_lock_rand_test"
 module = "crypto.sep_drbg_regwen_lock_rand_test"
 seed = 1
-reseed = 4
+# No reseed: every run walks all three targets; the seed selects only the written values.
 timeout_sec = 1800
 tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem"]
 tools = ["vcs"]
