@@ -183,15 +183,16 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# KM public-ID OTP readout and both read locks. RANDCFG. The km_rom_otp_id image
-# copies the KMCSR OTP_SEP_*_ID words before and after OTP_READ_LOCK.
+# KM public-ID OTP readout and both read locks, and the secret readout at strap 0
+# and strap 1 (valid zero). RANDCFG. The km_rom_otp_id image copies the KMCSR
+# OTP_SEP_*_ID words before and after OTP_READ_LOCK and the secret words.
 name = "sep_efuse_km_public_id_test"
 module = "efuse.sep_efuse_km_public_id_test"
 firmware = { name = "km_rom_otp_id", mode = "km_rom_blob" }
 seed = 1
 reseed = 3
 timeout_sec = 1800
-tags = ["efuse", "km", "lock", "subsystem"]
+tags = ["efuse", "km", "lock", "subsystem", "scan_secure_tm"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+km_rom_hex=km_rom_otp_id.parhex"]
@@ -325,7 +326,7 @@ module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
 # No reseed: every run runs all four events; the seed selects only the flip offset and their order.
 timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem"]
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive"]
@@ -338,7 +339,7 @@ module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
 # No reseed: the dbg_rstb_i event is directed; the main entry carries the drawn offset and order.
 timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem"]
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm"]
 run_modes = ["no_cpu"]
 tools = ["vcs"]
 target = "default"
