@@ -8,8 +8,15 @@
 == Operation
 
 Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
-0x400), providing per-core timeout monitoring. Reset effects are described in
-Clocks and Resets. Base addresses and interrupt-related context for the WDT are
+0x400), providing per-core timeout monitoring. Reset effects, including why a
+per-core reset leaves the watchdog unchanged, are described in
+ifdef::backend-html5[]
+xref:smc:clk_rst.adoc#smc-reset-distribution-figure[SMC reset distribution].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-reset-distribution-figure,SMC reset distribution>>.
+endif::backend-pdf[]
+Base addresses and interrupt-related context for the WDT are
 summarized in
 ifdef::backend-html5[]
 xref:smc:interrupts.adoc#interrupts[Interrupts].
