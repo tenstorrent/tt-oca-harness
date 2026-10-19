@@ -80,6 +80,11 @@ module axi_lite_to_tlul
 	// Sticky error tracking
 	logic                          sticky_err_q, sticky_err_d;
 
+	// a_size is always 2, which tlul_err only accepts at a word-aligned address; the byte
+	// lanes of a narrow access are carried by the strobe in a_mask instead.
+	logic [AXI_ADDR_WIDTH-1:0]     tl_addr;
+	assign tl_addr = {req_addr_q[AXI_ADDR_WIDTH-1:2], 2'b00};
+
 	// Integrity signals
 	logic [tlul_pkg::H2D_CMD_INTG_WIDTH-1:0] cmd_intg;
 	logic [tlul_pkg::DATA_INTG_WIDTH-1:0]    data_intg;
@@ -160,7 +165,7 @@ module axi_lite_to_tlul
 			TL_GET_REQ: begin
 				tl_o.a_valid   = 1'b1;
 				tl_o.a_opcode  = tlul_pkg::GET;
-				tl_o.a_address = req_addr_q;
+				tl_o.a_address = tl_addr;
 				tl_o.a_mask    = {(AXI_DATA_WIDTH/8){1'b1}};
 
 				if (tl_i.a_ready) begin
@@ -193,7 +198,7 @@ module axi_lite_to_tlul
 			// ==========================================
 			TL_PUT_REQ: begin
 				tl_o.a_valid   = 1'b1;
-				tl_o.a_address = req_addr_q;
+				tl_o.a_address = tl_addr;
 				tl_o.a_data    = req_data_q;
 				tl_o.a_mask    = req_strb_q;
 
@@ -267,5 +272,6 @@ module axi_lite_to_tlul
 	// Assertions
 	// --------------------------------------------------
 	`OCAH_ASSERT_STATIC(AxiDataWidthMatches, AXI_DATA_WIDTH == 32)
+	`OCAH_ASSERT_IF(TlAddrWordAligned_A, tl_o.a_address[1:0] == 2'b00, tl_o.a_valid)
 
 endmodule : axi_lite_to_tlul
