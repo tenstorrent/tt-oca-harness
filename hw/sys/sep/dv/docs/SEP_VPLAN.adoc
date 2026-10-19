@@ -1710,7 +1710,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |2
 |no_cpu, real fuse sense
 |ocah_axi_vip, KM path / golden
-|Produce, move and destroy a key over the KM mailbox; reject illegal, over-long and mis-framed commands. AES is the consume witness. Version queries, OTP cold lock, recoverable-fault ACK, and a directed ABR ML-DSA seed transfer every seed. RANDCFG extra transfer dest (HMAC / KMAC / AES / OTBN) writes one classic `cp_dest` cell per seed. The four sideload KATs are the MUST-fill owners for HMAC/KMAC/AES/OTBN consume.
+|Produce, move and destroy a key over the KM mailbox; reject illegal, over-long and mis-framed commands, with the received payload length and the computed payload CRC-32C as the argument of the length and payload-CRC rejections. AES is the consume witness. Version queries, OTP cold lock, recoverable-fault ACK, and a directed ABR ML-DSA seed transfer every seed. RANDCFG extra transfer dest (HMAC / KMAC / AES / OTBN) writes one classic `cp_dest` cell per seed. The four sideload KATs are the MUST-fill owners for HMAC/KMAC/AES/OTBN consume.
 |<<sep_km_wipe_reset_test,`sep_km_wipe_reset_test`>>
 |2
 |no_cpu, real fuse sense
@@ -1730,7 +1730,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |2
 |no_cpu, real fuse sense
 |ocah_axi_vip, `abr_mlkem_seed_z_probe_o`
-|The three ML-KEM lanes of the KV facade: the 16-dword seed lane carrying D then Z, the message lane, and the shared-key writeback the KM consumes back out with `CMD_ABR_SK_TRANSFER`. Each lane is compared against a direct-register run of the same words, preceded by a run on different words. Also the confidentiality rule: the shared key stops reading back once an input came from the vault, and the value rule: the shared key the KM consumes, transferred to AES, is the engine's own `MLKEM_SHARED_KEY` words.
+|The three ML-KEM lanes of the KV facade: the 16-dword seed lane carrying D then Z, the message lane, and the shared-key writeback the KM consumes back out with `CMD_ABR_SK_TRANSFER`. Each lane is compared against a direct-register run of the same words, preceded by a run on different words. Also the confidentiality rule: the shared key stops reading back once an input came from the vault, and the value rule: the shared key the KM consumes, transferred to AES, is the engine's own `MLKEM_SHARED_KEY` words. A second writeback re-arms the notification: exactly one more `RESP_ABR_SHARED_KEY_READY` frame, with 0 to 3 queued commands answered.
 |<<sep_km_abr_mldsa_kat_test,`sep_km_abr_mldsa_kat_test`>>
 |2
 |no_cpu, real fuse sense
@@ -1780,7 +1780,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, HOST
 |Host mailbox master, PIC interrupt probe (bits 14 and 31), `KM-VALID` and `KM-KPV` observation taps
-|Proves that the first failing frame check returns its own code and argument, that the sequence counters wrap and restart on each stated cause, that the recoverable gate admits five commands, and that the mailbox keeps response order and separators. The vault no-change check reads the taps.
+|Proves the order of two frame faults, that the sequence counters wrap and restart after an overflow, a SEP flush and a warm reset, that the recoverable gate admits five commands, refuses the others after frame validation and holds until the acknowledge or a warm reset, and that an overflow with responses pending sends the fault frame first. The vault no-change check reads the taps.
 
 |<<sep_km_key_vault_alloc_rand_test,`sep_km_key_vault_alloc_rand_test`>>
 |3
@@ -1792,7 +1792,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, HOST
 |Host mailbox master, AES and HMAC output witnesses against independent goldens, KM entropy sink probe, `KM-BUS` and `KM-VALID` observation taps
-|Proves that a transfer writes one full share pair and draws DRBG words to pad a short key, that it needs every requested destination inside the stored policy, and that a shred purges exactly the selected subset. The delivery and bank checks read the taps, and the share order is logged.
+|Proves that a key above 16 words delivers its leading words to the AES and HMAC witnesses, that a transfer needs every requested destination inside the stored policy, that the banks are written in DEST_VALID bit order, and that a shred purges exactly the selected subset. The bank and order checks read the taps.
 
 |<<sep_km_abr_shared_key_flow_rand_test,`sep_km_abr_shared_key_flow_rand_test`>>
 |3
@@ -1802,21 +1802,21 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 
 |<<sep_km_boot_reset_rand_test,`sep_km_boot_reset_rand_test`>>
 |3
-|no_cpu, HOST-BOOTWIPE
-|Host mailbox master, AES and HMAC output witnesses, `KM-CSR`, `KM-KPV`, `KM-VALID` and `KM-BUS` observation taps, and the `HOST-BOOTWIPE` `rom_main` build (preload)
-|Proves that each KM warm reset runs the boot sequence, that the boot wipe shreds the vault, the engine banks and the shared key and ends with RESP_KM_READY, that OTP_READ_LOCK_COLD accumulates through its command, and that a cold reset clears the stored image size.
+|no_cpu, HOST-DEFAULT
+|Host mailbox master, `KM-CSR` observation tap, and the `HOST-DEFAULT` `rom_main` build (`km_rom_main_default`, the shipped wipe defaults; preload)
+|Proves that every cold and warm boot of the shipped build ends with RESP_KM_READY, that COLD_BOOT_DONE rises before RESP_KM_READY, that the boot flushes stale mailbox words, that a warm boot does not rewrite the SRAM scrambler key, that a cold reset clears the stored image size, and that CMD_SRAM_VER fails while a stored image does not run.
 
 |<<sep_km_handover_rand_test,`sep_km_handover_rand_test`>>
 |3
 |no_cpu, HOST, IMG-H
-|Host mailbox master, IMG-H report words, PIC interrupt probe (bit 30), KM SRAM write counter, `KM-KPV`, `KM-BUS`, `KM-FETCH` and `KM-CSR` observation taps
-|Proves that a streamed image loads with one response, that a CRC error is the fatal fw_crc fault, that an oversize or zero size is refused, and that at the jump the ROM has shredded, locked and cleared the stated state and left the entry address in x5. The sideload bus and execute checks read the taps, and the stored KPV words are logged.
+|Host mailbox master, IMG-H report words, PIC interrupt probe (bit 30), KM SRAM write counter, `KM-VALID` and `KM-BUS` observation taps
+|Proves that a CRC error is the fatal fw_crc fault, that an oversize or zero size is refused, and that at the jump the ROM has shredded, locked and cleared the stated state, left no sticky status bit set and left the entry address in x5. The sideload bus check reads the tap, and the shared-key words are logged.
 
 |<<sep_km_fault_inject_rand_test,`sep_km_fault_inject_rand_test`>>
 |3
-|no_cpu, HOST and HOST-UNREC (two entries), HK-IRQSET, HK-PAR, HK-KPV, HK-LAT
-|Host mailbox master, PIC interrupt probe (bits 30 and 31), KM SRAM write counter, AES and HMAC output witnesses, `HK-IRQSET`, `HK-PAR` and `HK-KPV` injects, the `HK-LAT` latency drive, the `HOST-UNREC` `rom_main` build (preload), `KM-LAT`, `KM-VALID`, `KM-KPV`, `KM-CSR`, `KM-BUS` and `KM-OUTFIFO` observation taps
-|Proves that a fatal source makes the ROM shred, flush, report the first source in ISR order, shred SRAM and trap, that a corrupt key read from the KPV gives the key_slot_crc fault, and that a command result does not depend on the SRAM latency.
+|no_cpu, HOST and HOST-UNREC (two entries), HK-IRQSET, HK-CPUIRQ, HK-PAR, HK-KPV, HK-LAT
+|Host mailbox master, PIC interrupt probe (bits 30 and 31), KM SRAM write counter, KM entropy sink probe, KM isolation probes, AES and HMAC output witnesses, `HK-IRQSET`, `HK-CPUIRQ`, `HK-PAR` and `HK-KPV` injects, the `HK-LAT` latency drive, the `HOST-UNREC` `rom_main` build (preload), `KM-LAT`, `KM-VALID`, `KM-KPV`, `KM-CSR`, `KM-BUS` and `KM-OUTFIFO` observation taps
+|Proves that a fatal source makes the ROM shred, flush, report the first source in ISR order, shred SRAM and trap, that the CPU lines report -9 and -10 above every KMCSR source, that an organic DRBG stall reports -8, that a key-path error is fatal and stops the transfer, that a main-context fatal fault sends one report, that a corrupt key read from the KPV gives the key_slot_crc fault, and that a command result does not depend on the SRAM latency.
 
 |<<sep_km_kmcsr_reset_rand_test,`sep_km_kmcsr_reset_rand_test`>>
 |3
@@ -4131,10 +4131,10 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |PERMANENT-HOLE
 |STATUS has no state field. The state effects (COUNT_GOOD, errors, SLVERR) are graded in `sep_km_drbg_sampler_rand_test`.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
-|Fatal codes -9, -10, -11, -15, -16
-|A stimulus for illegal instruction, bus error, ebreak, stack overflow and shred range inside the ROM
+|Fatal codes -11, -15, -16
+|A stimulus for ebreak, stack overflow and shred range inside the ROM
 |PERMANENT-HOLE
-|The production ROM contains none of these faults and the host cannot raise them. Code -12 is blocked (spurious interrupt code). Code -1 is graded in `sep_km_wipe_reset_test`, and code -14 in `sep_km_handover_rand_test`. Codes -2 to -8, -13, -17 and -18 are graded in `sep_km_fault_inject_rand_test` with the error injects HK-IRQSET and HK-PAR.
+|The production ROM contains none of these faults and the host cannot raise them. Code -12 is blocked (spurious interrupt code). Code -1 is graded in `sep_km_wipe_reset_test`, and code -14 in `sep_km_handover_rand_test` and `sep_km_fault_inject_rand_test` (CHK-MAINCTX-FATAL). Codes -2 to -8, -13, -17 and -18 are graded in `sep_km_fault_inject_rand_test` with the error injects HK-IRQSET and HK-PAR, and code -8 also on an organic DRBG stall (CHK-DRBG-STALL). Codes -9 and -10 are graded in `sep_km_fault_inject_rand_test` (CHK-CPU-TRAP) with the error inject HK-CPUIRQ on the PicoRV32 interrupt lines 1 and 2.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Shred count out of range
 |A shred count outside the range
@@ -4146,10 +4146,10 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |ADD-PORT
 |The ROM never writes a full FIFO or reads an empty one. An injected Key Manager mailbox error (a set of KM_IRQ_STATUS.outbound_overflow or inbound_underflow) would make the codes and the ISR order observable. No inject of `tb_top.sv` and no added hook of a Phase 3 entry provides it. The codes -2 and -5 are graded in `sep_km_command_protocol_rand_test`.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
-|Co-asserted fatal sources 1, 2, 15, 16, 17
-|A stimulus for EBREAK or illegal instruction, bus error, the mailbox, the ABR shared key and the spurious interrupt as fatal co-asserted sources
+|Co-asserted fatal sources 1, 15, 16, 17
+|A stimulus for EBREAK or illegal instruction, the mailbox, the ABR shared key and the spurious interrupt as fatal co-asserted sources
 |PERMANENT-HOLE
-|These are CPU-internal or non-fatal sources. The eleven KMCSR fatal sources are graded in pairs in `sep_km_fault_inject_rand_test`.
+|These are CPU-internal or non-fatal sources. The eleven KMCSR fatal sources are graded in pairs in `sep_km_fault_inject_rand_test`, and the bus error (source 2) with one KMCSR source in the same clock in CHK-CPU-TRAP.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Key registry metadata
 |The key registry metadata (base slot, word count, CRC, policy, reverse map)
@@ -4196,10 +4196,10 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |ADD-PORT
 |The slot-write failure needs an injected KPV write failure. No inject of `tb_top.sv` and no added hook of a Phase 3 entry provides it, and no entry grades the contract.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
-|CMD_KEY_TRANSFER stops at the first driver failure and keeps the earlier engine writes.
-|A failure of one engine key write
+|CMD_KEY_TRANSFER keeps the earlier engine writes after a driver failure.
+|A failure of a later engine key write of the mask, after an earlier bank is written
 |ADD-PORT
-|The failure needs an injected engine-write failure. No inject of `tb_top.sv` and no added hook of a Phase 3 entry provides it, and no entry grades the contract.
+|`sep_km_fault_inject_rand_test` (CHK-XFER-STOP) grades the stop at the first driver failure with a legal stimulus: a key write to HMAC while HMAC is in its software reset fails, and no later bank is written. The keep of an earlier bank needs the failure at a later bank; no entry grades it.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |The OTP change interrupt flow of the ROM.
 |The source is not enabled at boot, so the flow is dormant in the ROM.
@@ -4492,7 +4492,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`KM-VALID`
 |Read-only tap
 |`KEY_CTRL.key_valid` of the eight engine key banks, the ABR shared-key `key_valid` and `KEY[0..7]` words, and the ABR shared-key `IRQ_STATUS.key_valid` and `IRQ_ENABLE.key_valid_en`.
-|`sep_km_command_protocol_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_cpu_protect_rand_test`
+|`sep_km_command_protocol_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_cpu_protect_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-KPV`
 |Read-only tap
@@ -4511,7 +4511,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-BUS`
 |Read-only tap
-|The requests on the five key-path ports ahead of the isolation stages, and `efuse_req_o` after the address remap: AR and AW valid, ready and address (`km_efuse_ar_*_o`, `km_efuse_aw_*_o`).
+|The requests on the five key-path ports ahead of the isolation stages, and `efuse_req_o` after the address remap: AR and AW valid, ready and address. Key-path part: `km_key_{ar,aw}_{valid,ready}_o[4:0]` and `km_key_{ar,aw}_addr_o[159:0]`, read at the interconnect ports `<engine>_key_axil_req_i` and `<engine>_key_axil_resp_o`; index i is bench isolate stage 8 + i (0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR). eFuse part: `km_efuse_ar_*_o`, `km_efuse_aw_*_o`.
 |`sep_km_key_transfer_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_crossbar_efuse_window_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-FETCH`
@@ -4526,12 +4526,12 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-LAT`
 |Read-only tap
-|The SRAM macro read latency from the accepted request to `rvalid`.
-|`sep_km_fault_inject_rand_test`
+|The SRAM read latency at the `sep` input `km_sram_mem_rsp_i`, from the accepted request to `rvalid`: `km_sram_rd_lat_o[7:0]` (the last completed read) and `km_sram_rd_done_count_o` (the completed reads since the bench reset).
+|`sep_km_fault_inject_rand_test` (CHK-LAT, CHK-LAT-VAR)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-OUTFIFO`
 |Read-only tap
-|The fill level of the outbound FIFO of the Key Manager mailbox, on every clock.
+|The fill level of the outbound FIFO of the Key Manager mailbox, on every clock (`km_outfifo_depth_o[8:0]`).
 |`sep_km_fault_inject_rand_test` (CHK-SHRED-FIRST and the `KM-VALID` and `KM-KPV` samples at the report)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Key Manager FCOV sampler taps (`KM-COV`)
@@ -4738,9 +4738,15 @@ use it" names the entries whose checks need the hook.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-IRQSET`
 |Error inject
-|Sets IRQ_STATUS bits through the IRQ_SET path.
-|The IRQ_SET path of the KMCSR `IRQ_STATUS`
-|`sep_km_fault_inject_rand_test` (including CHK-KPV-TRAP)
+|With `km_irqset_arm_i` at 1, drives the single-pulse IRQ_SET field output of each bit of `km_irqset_mask_i[11:0]` (bit i is IRQ_STATUS bit i) high for one clock, once per arm, so all sources of the mask set in one clock. Readback `km_irqset_fired_o`.
+|The IRQ_SET field outputs of the KMCSR register block, the path that a software write to IRQ_SET drives into the `IRQ_STATUS` set
+|`sep_km_fault_inject_rand_test` (including CHK-KPV-TRAP and CHK-CPU-TRAP)
+|<<sep-vplan-phase3-key-manager,Key Manager>>
+|`HK-CPUIRQ`
+|Error inject
+|With `km_cpuirq_arm_i` at 1, drives PicoRV32 interrupt line 1 (EBREAK or illegal instruction; bit 0 of `km_cpuirq_lines_i[1:0]`) or line 2 (bus error; bit 1) of the KM CPU high for one clock, once per arm. Lines 3 to 5 keep their live value. Readbacks `km_cpuirq_fired_o` and `km_cpuirq_pending_o` (the core pending bits 2:1).
+|Bits 1 and 2 of the `irq` input of the PicoRV32 core in the KM CPU wrapper, which the wrapper drives 0
+|`sep_km_fault_inject_rand_test` (CHK-CPU-TRAP)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-OTP`
 |Error inject
@@ -4750,7 +4756,7 @@ use it" names the entries whose checks need the hook.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-KPV`
 |Error inject
-|Inverts one bit of the KPV read data of one logical word index (slot x 16 + word), after the descrambler, on every read until the test disarms it.
+|While `km_kpv_flip_en_i` is 1, inverts bit `km_kpv_flip_bit_i[4:0]` of the KPV read data of the logical word index `km_kpv_flip_index_i[9:0]` (slot x 16 + word), after the descrambler, on every read. A read of a slot with `lock_use` set and the reads of an erase are not changed, and the stored word does not change. Readback `km_kpv_flip_count_o`.
 |The KPV KM-port read data, after the descrambler
 |`sep_km_fault_inject_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
@@ -4762,13 +4768,13 @@ use it" names the entries whose checks need the hook.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-PAR`
 |Error inject
-|Flips one parity bit of one ROM or SRAM macro response.
+|While `km_par_arm_i` is 1, inverts parity bit `km_par_lane_i[1:0]` of the N-th read response (N = `km_par_n_i[7:0]` from 1; 0 leaves the hook idle) of the ROM (`km_par_mem_i` 0) or the SRAM (1) for one clock, once per arm. The data bits do not change. Readbacks `km_par_fired_o`, `km_par_resp_count_o` and `km_par_rstrb_o`.
 |`km_rom_mem_rsp_i`, `km_sram_mem_rsp_i`
 |`sep_km_fault_inject_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-LAT`
 |Top-port drive
-|Sets the SRAM macro response latency.
+|While `km_sram_lat_en_i` is 1, a SRAM read response reaches the KM L = `km_sram_lat_i[3:0]` clocks after the accepted request, for L in [2, 15]; L of 0 or 1 keeps the macro latency of 1. Readback `km_sram_lat_delayed_count_o`.
 |`km_sram_mem_rsp_i`
 |`sep_km_fault_inject_rand_test`
 |===
@@ -5371,4 +5377,13 @@ defect. Behaviour that this plan does not claim at all is in
 
 |Key Manager CPU AXI master valid in reset (hardware gap). AXI (IHI0022, A3.1.2) requires a master to drive ARVALID, AWVALID and WVALID low during reset, and `hw/ip/key_manager/doc/architecture.adoc` names the CPU port an AXI4-Lite master with an asynchronous cold reset. On this DUT the PicoRV32 master clears its request only on the next clock edge, so a read that waits for `ARREADY` when the cold reset asserts keeps `ARVALID` high for one clock. *Issue*: #3170
 |`sep_drbg_sink_mix_rand_test` fails on VCS on `OCAH_AXI_AR_VALID_RESET_LOW` of the Key Manager CPU port when its `rst_ni` pulse lands on such a clock, which depends on the seed; its checkers pass (<<sep_drbg_sink_mix_rand_test>>). Verilator compiles the AXI assertions out. Other leaves that pulse `rst_ni` while the Key Manager firmware runs can fail the same way.
+
+|Key Manager ROM receive-overflow recovery (firmware gap). `hw/ip/key_manager/doc/firmware.adoc` ("0xFE - RESP_RECOVERABLE_FAULT", code -2; "Error Recovery") states that an overflowing partial frame flushes the mailbox FIFOs and the software buffers and that the first response after the reset has sequence zero. The ROM runs this recovery in main context with the mailbox interrupt unmasked, so the mailbox interrupt handler can write the rest of a pending response into the flushed outbound FIFO ahead of the fault frame. *Issue*: #3101
+|`sep_km_command_protocol_rand_test` CHK-OFLOW-PEND can fail on this DUT (<<sep_km_command_protocol_rand_test>>). The overflow step runs last in the leaf, so the other checks grade before it.
+
+|Key Manager ROM handover status (firmware gap). `hw/ip/key_manager/doc/firmware.adoc` ("SRAM Firmware Handover", step "Disable IRQs and flush the mailbox") states that the ROM clears the sticky KMCSR status bits so that mutable firmware inherits no spurious interrupts. The handover scramble that follows writes the write-locked SRAM regions, which sets `IRQ_STATUS.sram_write_lock_err` and SRAM_WRITE_LOCK_VIOLATION whatever the enables are, so the image starts with both set. *Issue*: #3103
+|`sep_km_handover_rand_test` CHK-HO-NOIRQ can fail on this DUT (<<sep_km_handover_rand_test>>). The other handover checks read their own fields of the same report.
+
+|Key Manager ROM main-context fatal path (firmware gap). `hw/ip/key_manager/doc/firmware.adoc` (unrecoverable-fault code table, `fw_crc`; "Error Recovery") states one report followed by the SRAM shred and the trap. With the wipe predicate on, a fatal fault that the ROM raises in main context ends in the SRAM shred, whose final `ebreak` runs with the CPU interrupts unmasked; the core raises the EBREAK interrupt, and the ROM runs the fatal path again: a second report with code -11, a mailbox flush that can discard the first report, and a second SRAM shred. *Issue*: #3099
+|`sep_km_fault_inject_rand_test` CHK-MAINCTX-FATAL (HOST-UNREC entry) can fail on this DUT (<<sep_km_fault_inject_rand_test>>). The point runs after the other fatal points of the leaf, so their checks grade before it. The HOST entry and `sep_km_handover_rand_test` run the bench build, whose fatal path traps without the SRAM shred.
 |===
