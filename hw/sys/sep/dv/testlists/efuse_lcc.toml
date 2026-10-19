@@ -351,7 +351,7 @@ args = ["+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"]
 name = "sep_efuse_window_decode_reset_test"
 module = "efuse.sep_efuse_window_decode_reset_test"
 seed = 1
-reseed = 4
+# No reseed: every run reads every cell; the seed selects only offsets, values and orders.
 timeout_sec = 1800
 tags = ["efuse", "window", "rand_cfg", "subsystem"]
 run_modes = ["no_cpu"]
@@ -413,7 +413,7 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_token_channel_rand_test"
 module = "efuse.sep_efuse_token_channel_rand_test"
 seed = 1
-reseed = 3
+# No reseed: every run walks the 18 (shape, channel) cells; the seed selects only order and values.
 timeout_sec = 3600
 tags = ["efuse", "token", "sec_dis", "rand_rep", "subsystem"]
 tools = ["vcs"]
@@ -438,7 +438,7 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_interface_status_rand_test"
 module = "efuse.sep_efuse_interface_status_rand_test"
 seed = 1
-reseed = 4
+# No reseed: every run walks the eight cases; the seed selects only order, slots and values.
 timeout_sec = 3600
 tags = ["efuse", "interface", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]

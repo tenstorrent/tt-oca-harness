@@ -2015,7 +2015,9 @@ regressions, never in one regression (<<sep-fcov-rand-phase2,SEP_FCOV>>). For N
 equally likely cells and d draws per leaf the expected closure is about
 N * ln(N) / (d * reseed) regressions. The seed count of an entry stays small
 (3 or 4) and is not raised to fill cells; an entry that runs more seeds states
-the reason.
+the reason. An entry whose leaf runs its whole cell set in every run, so that
+the seed selects only orders, values and timing, runs one seed per regression
+(no `reseed`); each regression draws a new seed, so those values still vary.
 
 *Testlist entries.* A Phase 3 test has one testlist entry. Each entry runs on
 its testlist target, so a test that grades some checks on one simulator only
