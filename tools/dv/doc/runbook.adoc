@@ -24,17 +24,20 @@ target below is one the workflows enforce.
 |===
 |Service |Trigger and schedule |Budget |What the result means
 
-|Pull-request gate: `verilator-smoke (<dut>)` for `dtp`, `sep`, `smu`,
-and `smc`
+|Pull-request gate: `verilator-smoke (<dut>)` and
+`verilator-smoke (<dut> uvm)` for `dtp`, `sep`, `smu`, and `smc`
 |`sim.yml` on every pull request, every push to `main`, and
 `workflow_dispatch`. A new push to a pull request cancels the smoke run it
 supersedes; a push to `main` never cancels a run in progress.
-|60 minutes per DUT job, including a Verilator build on a cache miss.
-|`verilator-smoke (dtp)` and `verilator-smoke (sep)` are the required
-contexts on `main`: a failed, cancelled, or missing one blocks the merge. The
-other three report without blocking. A documentation-only diff runs every
-job, which prints one line and skips the simulation, so the contexts
-report regardless.
+|60 minutes per job, including a Verilator build on a cache miss.
+|The four `verilator-smoke (<dut>)` contexts are required on `main`: a
+failed, cancelled, or missing one blocks the merge, and the `uvm` contexts
+report without blocking. Every job runs for every change, so the contexts
+report regardless; on a pull request a job prints one line and skips the
+simulation when the diff is documentation-only or changes none of its
+inputs, and the `diff-class` job summary says which input made each check
+run (xref:run-dv.adoc#runner-ci-smoke-scope[Which smoke checks a pull
+request runs]).
 
 |Nightly regression
 |`regress.yml` on the cron `0 18 * * 0-5` (18:00 UTC, Sunday to Friday) or
@@ -474,6 +477,6 @@ publishes, which is the recovery for a dispatched or missed weekly.
   more; nothing removes a wrong point except the trim or a manual revert.
 * The documentation site's rendering of the data is outside these
   workflows.
-* Of the DV contexts, main protection requires `verilator-smoke (dtp)` and
-  `verilator-smoke (sep)` only; the other smoke rows and the scheduled tiers
-  report without blocking.
+* Of the DV contexts, main protection requires the four cocotb smoke
+  contexts, `verilator-smoke (<dut>)`; the `uvm` smoke contexts and the
+  scheduled tiers report without blocking.
