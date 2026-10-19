@@ -129,7 +129,7 @@ _DBG_QUIET_CYCLES = 256
 
 
 class _BusChangeWatch:
-    """Record every bit of a bus that differs between two consecutive clock edges.
+    """Record every bit of a bus that changes from the start value or between clock edges.
 
     The value is compared as a 0/1/X/Z string, so an X that appears or clears
     is a change too. No bit position is interpreted.
@@ -145,14 +145,12 @@ class _BusChangeWatch:
         self.last = ""
 
     async def _run(self) -> None:
-        prev = ""
+        prev = self.first
         while True:
             await RisingEdge(self._clk)
             await ReadOnly()
             cur = str(self._sig.value)
-            if not prev:
-                self.first = cur
-            elif cur != prev:
+            if cur != prev:
                 width = len(cur)
                 for i, (a, b) in enumerate(zip(prev, cur)):
                     if a != b:
@@ -164,6 +162,9 @@ class _BusChangeWatch:
                 return
 
     def start(self) -> "_BusChangeWatch":
+        # The baseline is the value when the watch starts, so a change on the
+        # first sampled edge counts.
+        self.first = str(self._sig.value)
         cocotb.start_soon(self._run())
         return self
 
