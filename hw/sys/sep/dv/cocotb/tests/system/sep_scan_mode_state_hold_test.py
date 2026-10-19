@@ -71,10 +71,13 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 from env.sep_efuse_plan import (
+    CH_SEC_DIS,
     CODE_MATCH,
     CODE_MISMATCH,
     DEFAULT_VECTOR,
     FIELD_VECTORS,
+    MATCH_ADDR,
+    MATCH_STATUS_MASK,
     SECRET_FIELDS,
     TOKEN_OTHER,
     TOKEN_ZERO,
@@ -408,9 +411,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             for c in children:
                 name = getattr(c, "_name", "")
                 p = f"{path}.{name}"
-                if _CLASS1_NAME.search(name):
+                scope = isinstance(c, (HierarchyObject, HierarchyArrayObject))
+                # Storage and signal handles only: an instance or struct scope is not
+                # storage, and a parameter is a constant.
+                const = bool(getattr(c, "is_const", False)) or type(c).__name__ == "ConstantObject"
+                if not scope and not const and _CLASS1_NAME.search(name):
                     found.append(p)
-                if depth < 12 and isinstance(c, (HierarchyObject, HierarchyArrayObject)):
+                if depth < 12 and scope:
                     visit(c, p, depth + 1)
 
         for inst in ("u_sep_efuse_wrapper", "u_sep_lifecycle_ctrl"):
@@ -532,6 +539,9 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         code_te, reads_te = await sec_dis_go(
             self.fd, TOKEN_OTHER, CODE_MISMATCH, max_reads=MATCH_READS
         )
+        # The poll returns None when no read in MATCH_READS gave the mismatch code;
+        # one more read gives the code the register holds at the end of the poll.
+        last_te = (await self.fd.rd(MATCH_ADDR[CH_SEC_DIS])) & MATCH_STATUS_MASK
         await ClockCycles(dut.clk_i, H)
         await ReadOnly()
         go = self._sample()
@@ -539,10 +549,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         dut.test_en_i.value = 0
         await ClockCycles(dut.clk_i, H)
         self.logger.info(
-            "OBS-SCAN-SECDIS-GO: test_en_i=1 token=TOKEN_OTHER code=%s reads=%d "
-            "security_disable_o=%s valid=%s digest_unchanged=%d",
-            _hex(code_te, 2),
+            "OBS-SCAN-SECDIS-GO: test_en_i=1 token=TOKEN_OTHER mismatch_code_seen=%d "
+            "reads=%d last_code=%s security_disable_o=%s valid=%s digest_unchanged=%d",
+            int(code_te is not None),
             reads_te,
+            _hex(last_te, 2),
             go["secdis"],
             go["dvalid"],
             int(go["digest"] == after["digest"]),
