@@ -552,6 +552,9 @@ in https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/yosys/REA
 [WARNING]
 ====
 The yosys flow is still WIP, as timing constraints are not yet integrated/pipe cleaned.
+
+Synthesis is especially memory-hungry. Full Synthesis of the SMU takes nearly 6 days, and uses
+around 105GB RAM.
 ====
 
 == Emulation elaboration
