@@ -4,13 +4,14 @@
 // Stretch and synchronize an async active-low reset into clk_i.
 //
 // sync_rst_no asserts asynchronously with rst_ni and deasserts after WIDTH clk_i cycles of
-// rst_ni deasserted, through a chain of metastability-hardened flops.
+// rst_ni deasserted. The first min(WIDTH, 4) stages are a prim_flop_*sync cell; each stage
+// beyond 4 is a prim_metastab_hardened_dffr.
 // test_mode_i, active-high, swaps scan_rst_ni onto the hazard-free bypass mux.
 // sync_rst_no is the synchronized active-low reset output.
 
 module prim_sync_reset #(
-  parameter int unsigned WIDTH = 16  // Synchronizer stages; clk_i cycles from rst_ni deasserting to
-                                     // sync_rst_no deasserting.
+  parameter int unsigned WIDTH = 16  // Synchronizer stages, at least 2; clk_i cycles from rst_ni
+                                     // deasserting to sync_rst_no deasserting.
 ) (
   input logic clk_i,  // Destination clock.
   input logic rst_ni,  // Async reset to synchronize, active-low.
@@ -21,7 +22,49 @@ module prim_sync_reset #(
 
 );
 
-  logic [WIDTH-1:0] sync_reg;
+  localparam int unsigned SyncStages = (WIDTH < 4) ? WIDTH : 4;
+
+  logic [WIDTH-1:SyncStages-1] sync_reg;
+
+  if (WIDTH < 2) begin : gen_width_check
+    $error("prim_sync_reset: WIDTH must be at least 2");
+  end
+
+  if (SyncStages == 2) begin : gen_sync
+    prim_flop_2sync #(
+      .Width(1),
+      .EnablePrimCdcRand(0)
+    ) u_sync (
+      .clk_i (clk_i),
+      .rst_ni(rst_ni),
+      .d_i   (1'b1),
+      .q_o   (sync_reg[SyncStages-1])
+    );
+  end else if (SyncStages == 3) begin : gen_sync
+    prim_flop_3sync_r u_sync (
+      .clk_i (clk_i),
+      .d_i   (1'b1),
+      .rst_ni(rst_ni),
+      .q_o   (sync_reg[SyncStages-1])
+    );
+  end else begin : gen_sync
+    prim_flop_4sync_r u_sync (
+      .clk_i (clk_i),
+      .d_i   (1'b1),
+      .rst_ni(rst_ni),
+      .q_o   (sync_reg[SyncStages-1])
+    );
+  end
+
+  // The loop index names the stage, so gen_rst_sync_stage[WIDTH-1] is the last flop.
+  for (genvar stage = SyncStages; stage < WIDTH; stage = stage + 1) begin : gen_rst_sync_stage
+    prim_metastab_hardened_dffr u_sync_dffr (
+      .clk_i (clk_i),
+      .d_i   (sync_reg[stage-1]),
+      .rst_ni(rst_ni),
+      .q_o   (sync_reg[stage])
+    );
+  end
 
   prim_rst_mux2_hf_n u_sync_rst_n_bypass (
     .rst0_ni(sync_reg[WIDTH-1]),
@@ -29,24 +72,5 @@ module prim_sync_reset #(
     .sel_i  (test_mode_i),
     .rst_no (sync_rst_no)
   );
-
-  prim_metastab_hardened_dffr u_sync_dffr (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),       // Asynch Reset
-    .d_i (1'b1),
-    .q_o (sync_reg[0])
-  );
-
-  for (genvar stage = 1; stage < WIDTH; stage = stage + 1) begin : gen_rst_sync_stage
-
-    prim_metastab_hardened_dffr u_sync_dffr (
-      .clk_i(clk_i),
-      .rst_ni(rst_ni),              // Asynch Reset
-      .d_i (sync_reg[stage-1]),
-      .q_o (sync_reg[stage])
-    );
-
-  end
-
 
 endmodule
