@@ -4447,7 +4447,6 @@ section or register name.
 |`sep_ip_reset_override_matrix_test` |`cp_reset_class`, `cp_ovrd_no_iso`, `cp_ip_ovrd_x_sw`, `cp_ovrd_priority` |none
 |`sep_scan_reset_override_test` |`cp_source_edge` (`scan_rst_ni` cells), `cp_scan_bypass`, `cp_scan_net_effect` |none
 |`sep_scan_mode_state_hold_test` |`cp_event`, `cp_secure_tm`, `cx_event_tm` (`sep_scan_hold_cg`) |none
-|`sep_test_en_pin_reach_test` |`cp_test_en_consumer` (the AXI cell cells) |none
 |`sep_cpu_reset_entry_test` |`cp_source_edge`, `cp_jtag_mech`, `cp_domain_crossing`, `cp_first_fetch`, `cp_reset_class`, `cp_bank_class_outcome`, `cp_tap_instruction`, `cp_rstvec_tdr`, `cp_trace_activity` |`sep_boot_rom_cg` (`cp_ifu`), `sep_cpu_boot_cg`
 |`sep_secure_tm_strap_sampling_test` |`cp_secure_tm_state`, `cp_stm_event_x_strap`, `cp_stm_strap_stability` |none
 |`sep_cpu_ctrl_reg_shape_test` |`cp_version_id`, `cp_nmi_vec`, `cp_nmi_lock`, `cp_status_ro_write`, `cp_timeout_write_inert`, `cp_reserved_field_write`, `cp_bank_reg_access` |`sep_scratch_reset_cg`
@@ -4528,7 +4527,7 @@ Tool: VCS.
 [cols="2,6,4,3,3,3",options="header"]
 |===
 |Coverpoint |Bins and crosses |Illegal bins |Sampled signals |Owning tests |Notes
-|`cp_test_en_consumer` |`test_en_i` {0, 1} x AXI cell test inputs = 2 graded cells. A cell hits when every one of the AXI cell test inputs listed in `tb/tb_top.sv` (`fcov_te_axi`) equals the `test_en_i` value `MrTeSettle` `clk_i` cycles after a `test_en_i` edge. The two clock-gater cells (`fcov_te_gater`, the Secure DMA clock gater) are `ignore_bins`: that gater sits inside vendor IP, outside the graded set of `sep_test_en_pin_reach_test`. Spec: `doc/port_table.adoc`, port list (`test_en_i`: "Drives clock-gater test ports and AXI cell test inputs.") |None |`test_en_i`, `fcov_te_axi` of `tb/tb_top.sv` |`sep_test_en_pin_reach_test` |executable. The 0 to 1 and 1 to 0 edges of CHK-TEST-EN-PINS fill both cells in every leaf. `test_en_i` is an added hook (top-port drive)
+|`cp_test_en_consumer` |`test_en_i` {0, 1} x consumer class {clock-gater test ports, AXI cell test inputs} = 4 cells. A cell hits when the Secure DMA clock-gater test port (clock-gater class) or every one of the AXI cell test inputs listed in `tb/tb_top.sv` (AXI cell class) equals the `test_en_i` value `MrTeSettle` `clk_i` cycles after a `test_en_i` edge. Spec: `doc/port_table.adoc`, port list (`test_en_i`) |None |`test_en_i`, `fcov_te_gater` and `fcov_te_axi` of `tb/tb_top.sv` |none |Not graded (<<sep-fcov-p2-mem-boot-reset-unowned>>), `option.weight = 0`. The sampler runs in the graded window of `sep_scan_reset_override_test`, which toggles `test_en_i`. `test_en_i` is an added hook (top-port drive)
 |===
 
 [[sep-fcov-p2-scan-hold]]
@@ -4896,8 +4895,8 @@ owner reaches them.
 |The response codes OKAY, SLVERR and DECERR of the ROM store as separate bins; the early capture with strap 0 and the two fuse-sense completion cells of `cp_stm_event_x_strap`
 |The specification states that a store receives a response and fixes no code. After the early capture with strap 0, `secure_tm_o` = 0 is also the value of the cold-reset clear, so the cell cannot show a missing capture. The sampling at fuse-sense completion is graded by `sep_efuse_lcc_lc_state_stitch_test` (open) and is a control of `sep_secure_tm_strap_sampling_test`.
 |`sep_static_tieoff_cg`
-|The `core_id` tie-off cell (no SEP port), the `jtag_id_i` cells and the IDCODE readback (the IDCODE contract is on the blocked list); the two clock-gater cells of `cp_test_en_consumer` (`ignore_bins`)
-|No SEP port, or the contract is not stated. The clock gater that the sampler reads (the Secure DMA clock gater) is instantiated inside vendor IP, so `sep_test_en_pin_reach_test` logs it and does not grade it, and the one clock gater in its graded set (the entropy source health-test gate) does not follow `test_en_i` on the design.
+|The `core_id` tie-off cell (no SEP port), the `jtag_id_i` cells and the IDCODE readback (the IDCODE contract is on the blocked list); `cp_test_en_consumer` (all four cells)
+|No SEP port, or the contract is not stated. `cp_test_en_consumer`: the graded pin set of `test_en_i` is the committed inventory `GRADED_PINS` (`cocotb/tests/system/sep_test_en_pin_inventory.py`), which `sep_test_en_pin_reach_test` checks per pin in CHK-TEST-EN-PINS. The sampler reads a different list of nets (`fcov_te_gater`, `fcov_te_axi` of `tb/tb_top.sv`), so a cell hit does not show that the graded pins follow `test_en_i`.
 |`sep_reset_source_cg`
 |The arrival bins of `cp_release_order` before the `rst_ni` rise, in the `clk_i` cycle of the `rst_ni` rise, after the `rst_ni` rise and before the `sep_fuse_sense_done_o` rise, and within K cycles after the `sep_fuse_sense_done_o` rise
 |In these arrivals the sensing or a short delay is the last term, so a design that ignores `ext_boot_seq_done_i` releases at the same time as a compliant one. `sep_boot_release_terms_test` runs them in its drawn epoch as controls of CHK-REL-GATE, and `sep_sec_dis_override_test` and `sep_sec_dis_reset_reach_test` (open) grade the sense-only release.

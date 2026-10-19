@@ -11449,7 +11449,6 @@ module sep_fcov (
   wire mr_own_ccreg = (graded_owner == FcovOwnSepCpuCtrlRegShapeTest);
   wire mr_own_tmr = (graded_owner == FcovOwnSepTimerClockContractTest);
   wire mr_own_hold = (graded_owner == FcovOwnSepScanModeStateHoldTest);
-  wire mr_own_pin = (graded_owner == FcovOwnSepTestEnPinReachTest);
 
   localparam realtime MrEdgeTol = 1.0;  // 1 ps with `timescale 1ps/1fs
   localparam int unsigned MrHeldK = 401;  // cp_release_order K, from 401 to 514
@@ -11784,12 +11783,12 @@ module sep_fcov (
   covergroup sep_static_tieoff_cg with function sample (mr_tie_t s);
     option.per_instance = 1;
     option.name = "sep_static_tieoff_cg";
-    // The sampled clock gater sits inside vendor IP, outside the graded set of
-    // sep_test_en_pin_reach_test, so its two cells are not graded.
     cp_test_en_consumer: coverpoint s.tc iff (s.tc_v) {
+      option.weight = 0;
+      bins te0_clock_gater = {2'b00};
       bins te0_axi_cell = {2'b01};
+      bins te1_clock_gater = {2'b10};
       bins te1_axi_cell = {2'b11};
-      ignore_bins clock_gater = {2'b00, 2'b10};
     }
   endgroup
 
@@ -13197,7 +13196,7 @@ module sep_fcov (
     // cp_test_en_consumer: every pin of a class equals test_en_i after the
     // settle.
     mr_te_st <= (mr_te != mr_te_q) ? 0 : ((mr_te_st < MrTeSettle + 1) ? mr_te_st + 1 : mr_te_st);
-    if (mr_own_pin && (mr_te_st == MrTeSettle)) begin
+    if (mr_own_scan && (mr_te_st == MrTeSettle)) begin
       for (int c = 0; c < 2; c++) begin
         if (mr_te ? te_pins_one_i[c] : te_pins_zero_i[c]) begin
           mr_tie_t e;

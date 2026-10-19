@@ -45,8 +45,7 @@ Checkers:
                     0 edge, so it fails the 0 to 1 edge only; the FAIL line
                     counts it in fail_pins and in stuck_0.
 
-The graded window (owner code of this test) is open from the 0 to 1 edge to
-the end of the hold after the 1 to 0 edge.
+The test owns no functional coverage and opens no graded window.
 """
 
 from __future__ import annotations
@@ -54,7 +53,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
-from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_test_en_walk import (
     CLASS_NAMES,
     PIN_BOUND,
@@ -127,7 +125,6 @@ class sep_test_en_pin_reach_test(sep_base_test):
         self.logger.info("SEED seed=%d", seed)
         self.logger.info("CFG pin_bound=%d hold=%d (no draw)", PIN_BOUND, H)
         dut = cocotb.top
-        close_graded_window(self.logger)
         dut.test_en_i.value = 0
         dut.scan_rst_ni_i.value = 1
         await self.bring_up_no_cpu(max_cycles=SENSE_BOUND)
@@ -188,10 +185,8 @@ class sep_test_en_pin_reach_test(sep_base_test):
             "TEST-EN-BASE LOG: test_en_i=0 graded pins not 0 before the first edge=%d", len(base)
         )
 
-        open_graded_window(TEST, self.logger)
         rise_bad, rise_first, rise_val = await self._edge(graded, 1)
         fall_bad, fall_first, fall_val = await self._edge(graded, 0)
-        close_graded_window(self.logger)
 
         failing: list[tuple[TestEnPin, str]] = [(p, "0to1") for p in rise_bad]
         failing += [(p, "1to0") for p in fall_bad]
