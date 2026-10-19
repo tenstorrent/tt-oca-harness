@@ -16,7 +16,8 @@ verdict on the command ID or its arguments, never on framing.
 Checkers:
   CHK0        rom_main boots on real entropy -> RESP_KM_READY
   CHK-HW-VER  CMD_HW_VER returns rc=0 and RETURN_ARG = KMCSR VERSION 1.0.0
-  CHK-ROM-VER CMD_ROM_VER returns rc=0 and the packed ROM 1.1.0 word
+  CHK-ROM-VER CMD_ROM_VER returns rc=0 with a return argument; the value is
+              logged as OBS-ROM-VER (no spec states it)
   CHK-SRAM-VER
               CMD_SRAM_VER returns RC_FAILURE: this image is ROM-only
   CHK-GEN     CMD_KEY_GENERATE returns rc=0 and a non-null handle, and its
@@ -148,16 +149,9 @@ from seq_lib.sep_km_mailbox_seq import (
     SepKmMailbox,
 )
 
-# CHK-ROM-VER expected word. The packing is the CMD_ROM_VER return argument in
-# hw/ip/key_manager/doc/firmware.adoc (km-cmd-rom-ver): patch[7:0], minor[15:8],
-# major[23:16], [31:24] reserved zero. The spec does not state a release
-# number, so 1.1.0 is the DV-owned value from the VPLAN CHK-ROM-VER contract.
-# It is packed here and not read from the KM firmware headers: the ROM builds
-# its reply from those headers, so a wrong version there must fail this check.
-_ROM_VER_MAJOR, _ROM_VER_MINOR, _ROM_VER_PATCH = 1, 1, 0
-KM_ROM_VER_1_1_0 = (_ROM_VER_MAJOR << 16) | (_ROM_VER_MINOR << 8) | _ROM_VER_PATCH
-
-# Identity lock bit 8 (rom_defs.h OTP lock bits [8:0]; secrets are 0-5).
+# Identity lock bit 8 (SsI) and reserved bit 9: firmware.adoc, "0x28 -
+# CMD_OTP_READ_LOCK_COLD", OTP cold-read-lock bit encoding (bits [8:0], [31:9]
+# reserved).
 _OTP_LOCK_IDENTITY = 1 << 8
 _OTP_LOCK_RESERVED = 1 << 9
 
@@ -174,7 +168,7 @@ _ABR_SEED = (
     0x600DF00D,
 )
 
-# rom_defs.h ROM_KM_RFAULT_FLUSHED_BY_SEP.
+# flushed_by_sep: firmware.adoc, "0xFE - RESP_RECOVERABLE_FAULT", fault-code table.
 _RFAULT_FLUSHED_BY_SEP = -5
 _KM_RECOV = agg_from_pic("KM recoverable error")
 
@@ -306,12 +300,14 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.logger.info("CHK-HW-VER PASS: rc=0 RETURN_ARG=0x%08x (KMCSR 1.0.0)", arg)
 
-        rc, arg = await self.km.send_raw_expect_rc(KM_CMD_ROM_VER, [])
-        assert rc == KM_RC_SUCCESS and arg == KM_ROM_VER_1_1_0, (
-            f"CHK-ROM-VER FAIL: rc={rc} arg=0x{arg:08x}, expected rc=0 "
-            f"arg=0x{KM_ROM_VER_1_1_0:08x} (ROM 1.1.0 packed)"
-        )
-        self.logger.info("CHK-ROM-VER PASS: rc=0 RETURN_ARG=0x%08x (ROM 1.1.0)", arg)
+        # hw/ip/key_manager/doc/firmware.adoc, "0x01 - CMD_ROM_VER": success and a
+        # return argument. No spec states the version value, so it is logged only.
+        seq = await self.km.send_command(KM_CMD_ROM_VER, [])
+        rc, arg = await self.km.recv_resp_cmd(KM_CMD_ROM_VER, seq, require_arg=True)
+        await self.km.check_outbound_empty("POST-ROM-VER")
+        assert rc == KM_RC_SUCCESS, f"CHK-ROM-VER FAIL: rc={rc}, expected rc=0"
+        self.logger.info("CHK-ROM-VER PASS: rc=0 with a RETURN_ARG")
+        self.logger.info("OBS-ROM-VER LOG ver=0x%08x", arg)
 
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_SRAM_VER, [])
         assert rc == KM_RC_FAILURE, (

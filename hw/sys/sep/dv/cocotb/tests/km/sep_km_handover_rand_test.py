@@ -77,6 +77,8 @@ mask. CHK-HO-NOIRQ can fail on this DUT (contract, "Known limitation").
 
 from __future__ import annotations
 
+import hashlib
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, Event, ReadOnly, RisingEdge
@@ -651,8 +653,7 @@ class sep_km_handover_rand_test(sep_base_test):
         )
         watch = _RiseHold(self)
         watch.start()
-        await self._post(frame[:-1])
-        await self._post(frame[-1:])
+        await self._post(frame)
         watch.mark_trailer()
         first = await self._read_frame(FRAME_POLLS)
         extra: list[_Frame] = []
@@ -927,6 +928,12 @@ class sep_km_handover_rand_test(sep_base_test):
         await SepKmac(self).wait_idle("post-release")
         await SepOtbn(self).wait_idle("post-release")
 
+        self.logger.info(
+            "FW-PROVENANCE img_h=cocotb/tests/%s sha256=%s words=%d",
+            imgh.IMAGE_PATH.name,
+            hashlib.sha256(imgh.IMAGE_PATH.read_bytes()).hexdigest(),
+            len(imgh.read_image()),
+        )
         await self._good_load()  # steps 2 and 3
         await self._fwcrc_leg()  # steps 5 and 6
         # Step 7: the warm boot of step 6 serves the first oversize value.

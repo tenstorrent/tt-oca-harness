@@ -706,7 +706,24 @@ module sep_fcov (
   input wire [255:0]                        km_sk_key_i,      // km_abr_sk_key_o
   input wire                                km_sk_irq_status_i, // km_abr_sk_irq_status_o
   input wire                                km_sk_irq_enable_i, // km_abr_sk_irq_enable_o
-  input wire [98*32-1:0]                    km_sram_probe_i   // km_sram_probe_o
+  input wire [98*32-1:0]                    km_sram_probe_i,  // km_sram_probe_o
+  // Key Manager taps of the 7.22 to 7.28 points (docs/SEP_FCOV.adoc, Key
+  // Manager groups, Sampled signals): read-only, no force.
+  input wire                                km_recov_err_i,   // km_csr_recov_err_o (KM-CSR)
+  input wire                                km_rec_pic_i,     // PIC vector bit 31
+  input wire [8:0]                          km_outfifo_depth_i, // km_outfifo_depth_o (KM-OUTFIFO)
+  input wire [7:0]                          km_sram_lat_i,    // km_sram_rd_lat_o (KM-LAT)
+  input wire [31:0]                         km_sram_lat_done_i, // km_sram_rd_done_count_o (KM-LAT)
+  // KM-BUS key path, AW channel: port 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
+  input wire [4:0]                          km_key_aw_valid_i,
+  input wire [4:0]                          km_key_aw_ready_i,
+  input wire [5*32-1:0]                     km_key_aw_addr_i,
+  input wire                                km_kpv_flip_en_i, // HK-KPV arm, read as stimulus
+  input wire [9:0]                          km_kpv_flip_idx_i, // HK-KPV logical word index
+  input wire                                km_par_fired_i,   // HK-PAR flip since the arm
+  input wire                                km_par_mem_i,     // HK-PAR memory (0 ROM, 1 SRAM)
+  input wire [1:0]                          km_par_lane_i,    // HK-PAR flipped lane
+  input wire [3:0]                          km_par_rstrb_i    // lanes the KM checked on the flip
 );
 
   import sep_top_addrmap_pkg::*;
@@ -26065,6 +26082,11 @@ module sep_fcov (
   wire km_own_otp = (graded_owner == FcovOwnSepKmOtpInterfaceRandTest);
   wire km_own_bank = (graded_owner == FcovOwnSepKmKeyBankRegisterRandTest);
   wire km_own_scr = (graded_owner == FcovOwnSepKmSramScramblerKeyRandTest);
+  wire km_own_cp = (graded_owner == FcovOwnSepKmCommandProtocolRandTest);
+  wire km_own_xf = (graded_owner == FcovOwnSepKmKeyTransferRandTest);
+  wire km_own_br = (graded_owner == FcovOwnSepKmBootResetRandTest);
+  wire km_own_ho = (graded_owner == FcovOwnSepKmHandoverRandTest);
+  wire km_own_fi = (graded_owner == FcovOwnSepKmFaultInjectRandTest);
 
   localparam int unsigned KmSettle = 2;  // clocks from a B or a reset release to its effect
   localparam int unsigned KmStoreWin = 6;  // clocks a store has to reach the SRAM macro
@@ -26497,6 +26519,13 @@ module sep_fcov (
       bins km_one_nonempty = {3'b1_01};
       bins km_both_nonempty = {3'b1_10};
     }
+    // A frame with a header CRC fault (0), an invalid command ID (1) or a
+    // PAYLOAD_LEN that contradicts the wire (2), answered by its RESP_CMD.
+    cp_mbf_raw_transport: coverpoint v[1:0] iff (pt == 5'd4) {
+      bins bad_header_crc = {2'd0};
+      bins illegal_command_id = {2'd1};
+      bins inconsistent_length = {2'd2};
+    }
   endgroup
 
   covergroup sep_km_mailbox_transport_cg with function sample (logic [4:0] pt, logic [15:0] v);
@@ -26594,6 +26623,19 @@ module sep_fcov (
       bins key_write_enabled_unlocked_resident = {2'd0};
       bins old_key_written_back = {2'd1};
       bins key_write_after_lock = {2'd2};
+    }
+    cp_mem_boot_order: coverpoint v[0] iff (pt == 5'd6) {
+      bins cold_boot_done_before_ready = {1'b0}; bins ready_first_with_seq0 = {1'b1};
+    }
+    cp_mem_boot_type: coverpoint v[0] iff (pt == 5'd7) {
+      bins cold_boot_writes_key = {1'b0}; bins warm_boot_writes_no_key = {1'b1};
+    }
+    // Grant-to-rvalid latency 1 to 8; 9: two different delayed latencies in
+    // one run.
+    cp_km_sram_latency: coverpoint v[3:0] iff (pt == 5'd8) {
+      bins latency[] = {[4'd1 : 4'd8]};
+      bins two_values_in_one_run = {4'd9};
+      illegal_bins latency0 = {4'd0};
     }
   endgroup
 
@@ -26705,13 +26747,26 @@ module sep_fcov (
       bins mlkem_msg[] = {[8'hE0 : 8'hE7], [8'hF0 : 8'hF7]};
     }
     // Before the handover: VAL_0 of CHIPLET_UID, SIP_UID, SYS_UID and
-    // CLASS_KEY reads non-zero. The four after-handover bins are added with
-    // their owner.
-    cp_nx_epoch_secret: coverpoint v[1:0] iff (pt == 5'd1) {
-      bins chiplet_uid_nonzero_pre_handover = {2'd0};
-      bins sip_uid_nonzero_pre_handover = {2'd1};
-      bins sys_uid_nonzero_pre_handover = {2'd2};
-      bins class_key_nonzero_pre_handover = {2'd3};
+    // CLASS_KEY reads non-zero (0 to 3). At the jump of the handover:
+    // OTP_READ_LOCK bits 2 to 5 read 1 (4 to 7).
+    cp_nx_epoch_secret: coverpoint v[2:0] iff (pt == 5'd1) {
+      bins chiplet_uid_nonzero_pre_handover = {3'd0};
+      bins sip_uid_nonzero_pre_handover = {3'd1};
+      bins sys_uid_nonzero_pre_handover = {3'd2};
+      bins class_key_nonzero_pre_handover = {3'd3};
+      bins chiplet_uid_locked_post_handover = {3'd4};
+      bins sip_uid_locked_post_handover = {3'd5};
+      bins sys_uid_locked_post_handover = {3'd6};
+      bins class_key_locked_post_handover = {3'd7};
+    }
+    // 1 CMD_KEY_LOAD, 2 CMD_KEY_TRANSFER: a RESP_CMD of 3 or 4 payload
+    // words. The CMD_KEY_GENERATE and CMD_ABR_SK_TRANSFER cells are blocked
+    // (docs/SEP_FCOV.adoc).
+    cp_nx_resp_payload: coverpoint v[1:0] iff (pt == 5'd2) {
+      bins key_load = {2'd1}; bins key_transfer = {2'd2};
+    }
+    cp_nx_permitted_channel: coverpoint v[0] iff (pt == 5'd3) {
+      bins sep_write_data_accepted = {1'b0};
     }
   endgroup
 
@@ -26749,15 +26804,38 @@ module sep_fcov (
       bins unaligned = {2'd2};
       bins all_ones = {2'd3};
     }
-    // The after-handover bin (address 0x10, lock 0) is added with its owner.
-    cp_csr_entry_lock: coverpoint v[1:0] iff (pt == 5'd6) {
-      bins lock0_allows_write = {2'd0};
-      bins lock_write_once = {2'd1};
-      bins lock_write0_no_effect = {2'd2};
-      bins locked_addr_write_ignored = {2'd3};
+    // 4: at the jump of the handover, address 0x10 and lock 0.
+    cp_csr_entry_lock: coverpoint v[2:0] iff (pt == 5'd6) {
+      bins lock0_allows_write = {3'd0};
+      bins lock_write_once = {3'd1};
+      bins lock_write0_no_effect = {3'd2};
+      bins locked_addr_write_ignored = {3'd3};
+      bins after_handover_0x10_lock0 = {3'd4};
     }
     cp_csr_debug_ctrl_read: coverpoint v[0] iff (pt == 5'd7) {
       bins debug_cafebeef = {1'b0}; bins ctrl_zero = {1'b1};
+    }
+    cp_csr_recov_err: coverpoint v[1:0] iff (pt == 5'd8) {
+      bins set_after_fault = {2'd0};
+      bins cleared_by_recov_ack = {2'd1};
+      bins cleared_by_warm_reset = {2'd2};
+      bins visible_on_pic_bit31 = {2'd3};
+    }
+    // {rank of the winner (kq_rank_bit order), a lower-ranked source set}.
+    // (wipe_state, alone) is a control of the owner and is not a bin.
+    cp_csr_isr_winner: coverpoint v[4:0] iff (pt == 5'd9) {
+      bins wipe_state_with_lower = {5'h01};
+      bins rom_parity[] = {5'h02, 5'h03};
+      bins sram_parity[] = {5'h04, 5'h05};
+      bins rom_write[] = {5'h06, 5'h07};
+      bins sram_write_lock[] = {5'h08, 5'h09};
+      bins axi_decerr[] = {5'h0A, 5'h0B};
+      bins drbg_err[] = {5'h0C, 5'h0D};
+      bins axi_slverr[] = {5'h0E, 5'h0F};
+      bins otp_sigint[] = {5'h10, 5'h11};
+      bins exec[] = {5'h12, 5'h13};
+      bins rom_access_alone = {5'h14};
+      ignore_bins rom_access_with_lower = {5'h15};
     }
   endgroup
 
@@ -26925,6 +27003,10 @@ module sep_fcov (
       bins complement_rail_flip[] = {6'h02, 6'h06, 6'h0A, 6'h0E, 6'h12, 6'h16, 6'h1A, 6'h1E, 6'h22};
     }
     cp_if_rom_write: coverpoint v[0] iff (pt == 5'd6) {bins rom_write_after_lockout = {1'b1};}
+    // {memory (0 ROM, 1 SRAM), byte lane}.
+    cp_if_parity: coverpoint v[2:0] iff (pt == 5'd7) {
+      bins rom_lane[] = {[3'b0_00 : 3'b0_11]}; bins sram_lane[] = {[3'b1_00 : 3'b1_11]};
+    }
   endgroup
 
   covergroup sep_km_exec_protection_cg with function sample (logic [4:0] pt, logic [15:0] v);
@@ -27063,13 +27145,13 @@ module sep_fcov (
   covergroup sep_km_fault_report_cg with function sample (logic [4:0] pt, logic [15:0] v);
     option.per_instance = 1;
     option.name = "sep_km_fault_report_cg";
-    // The "no command answered while high" bin is added with its owner.
     cp_fr_err_out: coverpoint v[2:0] iff (pt == 5'd0) {
       bins low_in_normal_operation = {3'd0};
       bins high_on_trap = {3'd1};
       bins stays_high_until_reset = {3'd2};
       bins cleared_by_warm_reset = {3'd3};
       bins cleared_by_cold_reset = {3'd4};
+      bins no_command_answered_while_high = {3'd5};
     }
     cp_km_trap_cause: coverpoint v[2:0] iff (pt == 5'd1) {
       bins ebreak_masked = {3'd0};
@@ -27078,6 +27160,52 @@ module sep_fcov (
       bins ebreak_in_handler = {3'd3};
       bins illegal_in_handler = {3'd4};
       bins undefined_crc_encoding = {3'd5};
+    }
+    // The sign-extended code byte of RESP_UNRECOVERABLE_FAULT.
+    cp_fr_unrec_code: coverpoint v[7:0] iff (pt == 5'd2) {
+      bins rom_parity = {8'hFE};
+      bins sram_parity = {8'hFD};
+      bins rom_write = {8'hFC};
+      bins sram_write_lock = {8'hFB};
+      bins axi_decerr = {8'hFA};
+      bins axi_slverr = {8'hF9};
+      bins drbg_err = {8'hF8};
+      bins otp_sigint = {8'hF3};
+      bins fw_crc = {8'hF2};
+      bins exec = {8'hEF};
+      bins rom_access = {8'hEE};
+    }
+    cp_fr_code_encoding: coverpoint v[1:0] iff (pt == 5'd3) {
+      bins recoverable_sign_extended = {2'd0};
+      bins unrecoverable_sign_extended = {2'd1};
+      bins drbg_not_slverr_in_same_set = {2'd2};
+    }
+    cp_fr_flow_order: coverpoint v[1:0] iff (pt == 5'd4) {
+      bins key_valid_cleared_before_report = {2'd0};
+      bins mailbox_flushed_before_report = {2'd1};
+      bins report_before_sram_burst = {2'd2};
+      bins sram_burst_before_err_out = {2'd3};
+    }
+    cp_fr_wipe_predicate: coverpoint v[0] iff (pt == 5'd5) {
+      bins predicate_on_both_shreds = {1'b0}; bins predicate_off_keys_stay = {1'b1};
+    }
+    cp_fr_rec_code: coverpoint v[1:0] iff (pt == 5'd6) {
+      bins key_slot_crc = {2'd0}; bins rx_buff_oflow = {2'd1}; bins flushed_by_sep = {2'd2};
+    }
+    cp_fr_resp_pairing: coverpoint v[0] iff (pt == 5'd7) {
+      bins fault_then_failure_resp_cmd = {1'b0}; bins fault_frame_alone = {1'b1};
+    }
+    // {cause (0 rx_buff_oflow, 1 flushed_by_sep), step (0 no paired RESP_CMD,
+    // 1 first response sequence 0, 2 gated command refused, 3 CMD_RECOV_ACK
+    // then recov_fault 0, 4 gated command accepted)}.
+    cp_fr_recovery_handshake: coverpoint v[3:0] iff (pt == 5'd8) {
+      bins rx_oflow[] = {[4'b0_000 : 4'b0_100]};
+      bins flush[] = {4'b1_000, 4'b1_001, 4'b1_010, 4'b1_100};
+    }
+    // Halting handlers by rank (kq_rank_bit order) with IRQ_STATUS still set
+    // after the halt; 11 the informational shared-key handler.
+    cp_fr_isr_disposition: coverpoint v[3:0] iff (pt == 5'd9) {
+      bins halting[] = {[4'd0 : 4'd10]}; bins informational_shared_key = {4'd11};
     }
   endgroup
 
@@ -27132,6 +27260,33 @@ module sep_fcov (
       bins write0_clears = {3'd3};
       ignore_bins cleared_by_engine_reset = {3'd4};
     }
+    cp_sd_mask_shape: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins single_bit = {2'd0}; bins bit_with_others = {2'd1}; bins all_eight = {2'd2};
+    }
+    // {command (1 CMD_KEY_TRANSFER, 2 CMD_ENGINE_SHRED, 3 CMD_KEY_LOAD),
+    // DEST_VALID bit}. The CMD_KEY_GENERATE (0) and CMD_ABR_SK_TRANSFER (4)
+    // rows are blocked (docs/SEP_FCOV.adoc).
+    cp_sd_dest_x_cmd: coverpoint v[5:0] iff (pt == 5'd2) {
+      bins key_transfer[] = {[6'b001_000 : 6'b001_111]};
+      bins engine_shred[] = {[6'b010_000 : 6'b010_111]};
+      bins key_load[] = {[6'b011_000 : 6'b011_111]};
+    }
+    // {DEST_VALID bit (0 HMAC, 1 KMAC, 2 AES, 3 OTBN, 4 ABR ML-DSA seed),
+    // size against the share width (0 below, 1 equal, 2 above)}.
+    cp_km_size_vs_width: coverpoint v[4:0] iff (pt == 5'd3) {
+      bins hmac[] = {5'b000_00, 5'b000_01, 5'b000_10};
+      bins kmac[] = {5'b001_00, 5'b001_01, 5'b001_10};
+      bins aes[] = {5'b010_00, 5'b010_01, 5'b010_10};
+      bins otbn[] = {5'b011_00, 5'b011_01, 5'b011_10};
+      bins mldsa_seed[] = {5'b100_00, 5'b100_01, 5'b100_10};
+    }
+    // A shred of a bank: 0 the KEY_CTRL write first, 1 at least 2 x width
+    // share-word writes, 2 a bank that held no key.
+    cp_sd_shred_order: coverpoint v[1:0] iff (pt == 5'd4) {
+      bins key_valid0_first = {2'd0};
+      bins share_words_after = {2'd1};
+      bins bank_without_key = {2'd2};
+    }
   endgroup
 
   covergroup sep_km_abr_shared_key_cg with function sample (logic [4:0] pt, logic [15:0] v);
@@ -27183,6 +27338,19 @@ module sep_fcov (
       bins sram_words_kept = {2'd1};
       bins mailbox_word_kept = {2'd2};
       bins engine_key_valid_kept = {2'd3};
+    }
+    cp_vw_isr_flow: coverpoint v[1:0] iff (pt == 5'd4) {
+      bins sideload_purged_before_report = {2'd0};
+      bins sram_shred_after_report = {2'd1};
+      bins wipe_state_left_set = {2'd2};
+    }
+    // 0 to 7: a bank in DEST_VALID order that held a key; 8: a bank that
+    // held none; 9: the shared key with a delivery pending; 10: with none.
+    cp_vw_handover_shred: coverpoint v[3:0] iff (pt == 5'd5) {
+      bins bank_with_key[] = {[4'd0 : 4'd7]};
+      bins bank_without_key = {4'd8};
+      bins shared_key_pending = {4'd9};
+      bins shared_key_none = {4'd10};
     }
   endgroup
 
@@ -27315,7 +27483,8 @@ module sep_fcov (
     if ((km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) && (km_sram_if_i[2] === 1'b1) &&
         (km_scr_en_i === 1'b1)) begin
       km_scr_resident <= 1'b1;
-      if (km_lock_en0_pend && km_own_scr) u_sep_km_memory_boot_cg.sample(5'd2, 16'd6);
+      if (km_lock_en0_pend && (km_own_scr || km_own_br))
+        u_sep_km_memory_boot_cg.sample(5'd2, 16'd6);
       km_lock_en0_pend <= 1'b0;
     end
 
@@ -27379,7 +27548,7 @@ module sep_fcov (
         if (!kwp_scr_lock && !kw_data[1] && !kw_data[0] && (km_scr_ctrl_i[0] === 1'b0) &&
             (km_own_csr || km_own_scr))
           u_sep_km_memory_boot_cg.sample(5'd2, 16'd0);
-        if (km_own_scr) begin
+        if (km_own_scr || km_own_br) begin
           if (!kwp_scr_lock && !kw_data[1] && kw_data[0] && (km_scr_ctrl_i[0] === 1'b1))
             u_sep_km_memory_boot_cg.sample(5'd2, 16'd1);
           if (!kwp_scr_lock && (kw_data[1:0] == 2'b11) && (km_scr_ctrl_i === 2'b11))
@@ -27414,7 +27583,7 @@ module sep_fcov (
         cold_reg = (kw_addr == KmCsrReadLockCold);
         pre_l = cold_reg ? kwp_rlock_cold : kwp_rlock;
         post_l = cold_reg ? km_otp_rlock_cold_i : km_otp_rlock_i;
-        if (km_own_otp) begin
+        if (km_own_otp || km_own_ho) begin
           if (|(kw_data[8:0] & ~pre_l) && ((post_l & kw_data[8:0]) == kw_data[8:0]))
             u_sep_km_otp_readout_cg.sample(5'd5, cold_reg ? 16'd1 : 16'd0);
           if ((pre_l != 9'h0) && ((kw_data[8:0] & pre_l) != pre_l) && ((post_l & pre_l) == pre_l))
@@ -27435,9 +27604,9 @@ module sep_fcov (
         pre_c = kwp_kpv_ctrl[4*s+:4];
         post_c = km_kpv_ctrl_i[4*s+:4];
         st = km_slot_state(pre_c);
-        if (km_own_kpv) begin
-          u_sep_km_kpv_slot_cg.sample(5'd0, 16'(s));
-          // Field order of the point: 0 lock_write, 1 lock_use, 2 erase, 3 seal.
+        // Field order of cp_kpv_ctrl_write: 0 lock_write, 1 lock_use, 2
+        // erase, 3 seal.
+        if (km_own_kpv || km_own_ho) begin
           for (int f = 0; f < 4; f++) begin
             if (kw_data[f] && !pre_c[f] && post_c[f])
               u_sep_km_kpv_slot_cg.sample(5'd3, 16'({2'(f), 2'd0}));
@@ -27448,6 +27617,9 @@ module sep_fcov (
                 (km_rep_data == kw_data) && (post_c == km_rep_post))
               u_sep_km_kpv_slot_cg.sample(5'd3, 16'({2'(f), 2'd2}));
           end
+        end
+        if (km_own_kpv) begin
+          u_sep_km_kpv_slot_cg.sample(5'd0, 16'(s));
           if (kw_data[0] && !pre_c[0] && post_c[0]) u_sep_km_kpv_slot_cg.sample(5'd4, 16'd0);
           if (pre_c[0] && (|(kw_data[3:1] & ~pre_c[3:1] & post_c[3:1])))
             u_sep_km_kpv_slot_cg.sample(5'd4, 16'd2);
@@ -27634,7 +27806,8 @@ module sep_fcov (
         if (!krp_scr_lock && (kr_data == km_scr_key_i)) u_sep_km_memory_boot_cg.sample(5'd1, 16'd1);
         if (krp_scr_lock && (kr_data == 32'h0)) u_sep_km_memory_boot_cg.sample(5'd1, 16'd3);
       end
-      if ((kr_addr == KmCsrScrCtrl) && !krp_scr_lock && (kr_resp == KmOkay) && (km_own_csr || km_own_scr))
+      if ((kr_addr == KmCsrScrCtrl) && !krp_scr_lock && (kr_resp == KmOkay) &&
+          (km_own_csr || km_own_scr || (km_own_br && kr_data[0])))
         u_sep_km_memory_boot_cg.sample(5'd2, kr_data[0] ? 16'd1 : 16'd0);
       // OTP readout (cp_otp_field, cp_otp_word_index, cp_otp_lock_matrix,
       // cp_otp_read_through, cp_otp_secure_tm, cp_nx_epoch_secret).
@@ -28140,9 +28313,10 @@ module sep_fcov (
     km_rise_en_q <= en;
     km_mask_q <= st & en;
     km_cpu_irq_q <= (km_cpu_irq_i === 1'b1);
+    if ((km_own_csr || km_own_fi) && km_rst_cold_n && km_rst_warm_n)
+      for (int i = 0; i < 12; i++) if (rise[i]) u_sep_km_kmcsr_status_cg.sample(5'd1, 16'(i));
     if (km_own_csr && km_rst_cold_n && km_rst_warm_n) begin
       for (int i = 0; i < 12; i++) begin
-        if (rise[i]) u_sep_km_kmcsr_status_cg.sample(5'd1, 16'(i));
         if (km_rise_q[i]) begin
           if (km_rise_en_q[i] && (km_cpu_irq_i === 1'b1))
             u_sep_km_kmcsr_status_cg.sample(5'd3, 16'({4'(i), 1'b1}));
@@ -28184,9 +28358,11 @@ module sep_fcov (
     end
     if (km_rel_ev) begin
       // Scrambler (cp_mem_scr_ctrl).
-      if (km_own_scr && warm && (km_rst_pre_scr_ctrl == 2'b11) && (km_scr_ctrl_i === 2'b11))
+      if ((km_own_scr || km_own_br) && warm && (km_rst_pre_scr_ctrl == 2'b11) &&
+          (km_scr_ctrl_i === 2'b11))
         u_sep_km_memory_boot_cg.sample(5'd2, 16'd4);
-      if (km_own_scr && !warm && (km_rst_pre_scr_ctrl != 2'b00) && (km_scr_ctrl_i === 2'b00))
+      if ((km_own_scr || km_own_br) && !warm && (km_rst_pre_scr_ctrl != 2'b00) &&
+          (km_scr_ctrl_i === 2'b00))
         u_sep_km_memory_boot_cg.sample(5'd2, 16'd5);
       // KPV CTRL and scrambler.
       if (km_own_kpv) begin
@@ -28230,9 +28406,6 @@ module sep_fcov (
             u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b10_0));
           if (km_rst_pre_cbd && (km_cold_boot_done_i === 1'b0))
             u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b11_0));
-          if (km_cold_boot_done_i === 1'b0) u_sep_km_reset_domain_cg.sample(5'd3, 16'd0);
-          if (km_rst_pre_cbd && (km_cold_boot_done_i === 1'b0))
-            u_sep_km_reset_domain_cg.sample(5'd3, 16'd3);
         end else begin
           if ((km_rst_pre_sram_lock != '0) && (km_sram_lock_i === '0))
             u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b00_1));
@@ -28242,19 +28415,24 @@ module sep_fcov (
             u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b10_1));
           if (km_rst_pre_cbd && (km_cold_boot_done_i === 1'b1))
             u_sep_km_reset_domain_cg.sample(5'd2, 16'(3'b11_1));
-          if (km_warm_soft && km_rst_pre_cbd && (km_cold_boot_done_i === 1'b1))
-            u_sep_km_reset_domain_cg.sample(5'd3, 16'd2);
         end
+      end
+      if (km_own_csr || km_own_br) begin
+        if (!warm && (km_cold_boot_done_i === 1'b0)) u_sep_km_reset_domain_cg.sample(5'd3, 16'd0);
+        if (!warm && km_rst_pre_cbd && (km_cold_boot_done_i === 1'b0))
+          u_sep_km_reset_domain_cg.sample(5'd3, 16'd3);
+        if (warm && km_warm_soft && km_rst_pre_cbd && (km_cold_boot_done_i === 1'b1))
+          u_sep_km_reset_domain_cg.sample(5'd3, 16'd2);
       end
       // Sampler CFG defaults (cp_smp_reset_defaults).
       if ((km_own_smp || km_own_csr) && (km_smp_cfg_i === KmSmpCfgReset))
         u_sep_km_drbg_sampler_cg.sample(5'd8, 16'(warm));
     end
     // COLD_BOOT_DONE set by the ROM.
-    if (km_own_csr && !km_cbd_q && (km_cold_boot_done_i === 1'b1) && km_rst_cold_n)
+    if ((km_own_csr || km_own_br) && !km_cbd_q && (km_cold_boot_done_i === 1'b1) && km_rst_cold_n)
       u_sep_km_reset_domain_cg.sample(5'd3, 16'd1);
     // Reset source.
-    if (km_own_csr) begin
+    if (km_own_csr || km_own_br) begin
       if (km_swrst_q && !km_swrst_n && km_warm_q && km_rst_cold_n)
         u_sep_km_reset_domain_cg.sample(5'd0, 16'd0);
       if (km_cold_fall) u_sep_km_reset_domain_cg.sample(5'd0, 16'd1);
@@ -28338,20 +28516,22 @@ module sep_fcov (
       if (!unrec && !km_run_done) begin
         if (km_run_cnt == 11'(KmRunWin)) begin
           km_run_done <= 1'b1;
-          if (km_own_cpu) u_sep_km_fault_report_cg.sample(5'd0, 16'd0);
+          if (km_own_cpu || km_own_ho || km_own_fi) u_sep_km_fault_report_cg.sample(5'd0, 16'd0);
         end else km_run_cnt <= km_run_cnt + 11'd1;
       end
     end
     if (unrec) begin
       if (km_err_hi_cnt != 13'h1FFF) km_err_hi_cnt <= km_err_hi_cnt + 13'd1;
     end else km_err_hi_cnt <= '0;
-    if (km_own_cpu) begin
+    if (km_own_cpu || km_own_ho || km_own_fi) begin
       if (!km_unrec_q && unrec && (km_trap_i === 1'b1))
         u_sep_km_fault_report_cg.sample(5'd0, 16'd1);
       if (km_unrec_q && !unrec && (!km_rst_warm_n || !km_rst_cold_n || !km_warm_q || !km_cold_q)) begin
         if (km_err_hi_cnt >= 13'(KmErrHoldWin)) u_sep_km_fault_report_cg.sample(5'd0, 16'd2);
         u_sep_km_fault_report_cg.sample(5'd0, (!km_rst_cold_n || !km_cold_q) ? 16'd4 : 16'd3);
       end
+    end
+    if (km_own_cpu) begin
       if (trap_rise) begin
         // The opcode of the instruction that traps. The last fetch is the
         // prefetched next word, not the trapping one.
@@ -28503,7 +28683,7 @@ module sep_fcov (
     end
     if (km_fl_on && (km_mbx_flush_i[0] !== 1'b1) && (km_mbx_flush_i[1] !== 1'b1)) begin
       km_fl_on <= 1'b0;
-      if (km_own_mbx) begin
+      if (km_own_mbx || km_own_cp) begin
         if (km_fl_init_km && in_e && out_e)
           u_sep_km_mailbox_fault_cg.sample(5'd3, 16'({1'b1, km_fl_fill}));
         if (!km_fl_init_km && out_e)
@@ -29092,7 +29272,7 @@ module sep_fcov (
           nsr++;
         end
       end
-      if (km_own_kpv || km_own_cpu) begin
+      if (km_own_kpv || km_own_cpu || km_own_fi) begin
         if ((nz == 0) && (km_kpv_ctrl_i === '0)) u_sep_km_vault_wipe_cg.sample(5'd0, 16'd0);
         if (nz > 16 * nsr) u_sep_km_vault_wipe_cg.sample(5'd0, 16'd1);
         if (any_seal) u_sep_km_vault_wipe_cg.sample(5'd0, 16'd2);
@@ -29109,7 +29289,7 @@ module sep_fcov (
       km_wp_valid <= km_key_valid_i;
       // Edge protocol of the SEP bit.
       if (lvl && (km_trap_i !== 1'b1)) begin
-        if (km_own_kpv) begin
+        if (km_own_kpv || km_own_fi) begin
           u_sep_km_vault_wipe_cg.sample(5'd2, 16'd4);
           if (km_wipe_seen && km_wipe_fell) u_sep_km_vault_wipe_cg.sample(5'd2, 16'd1);
         end
@@ -29123,13 +29303,13 @@ module sep_fcov (
     if (km_wp_cnt == 2'd1) begin
       km_wp_cnt <= '0;
       if ((km_kpv_words_i === '0) && (km_kpv_ctrl_i === '0)) begin
-        if (km_wp_sep && km_wp_had_seal && km_own_kpv) u_sep_km_vault_wipe_cg.sample(5'd1, 16'd0);
+        if (km_wp_sep && km_wp_had_seal && (km_own_kpv || km_own_fi))
+          u_sep_km_vault_wipe_cg.sample(5'd1, 16'd0);
         if (km_wp_trap && km_own_cpu) u_sep_km_vault_wipe_cg.sample(5'd1, 16'd2);
       end
-      if (km_wp_sep && km_wp_had_scr && (km_kpv_scr_ctrl_i === 2'b00) && (km_kpv_scr_key_i === 32'h0) &&
-          km_own_kpv) begin
-        u_sep_km_vault_wipe_cg.sample(5'd1, 16'd1);
-        u_sep_km_kpv_slot_cg.sample(5'd8, 16'd4);
+      if (km_wp_sep && km_wp_had_scr && (km_kpv_scr_ctrl_i === 2'b00) && (km_kpv_scr_key_i === 32'h0)) begin
+        if (km_own_kpv || km_own_fi) u_sep_km_vault_wipe_cg.sample(5'd1, 16'd1);
+        if (km_own_kpv) u_sep_km_kpv_slot_cg.sample(5'd8, 16'd4);
       end
       // Scope of an SEP wipe.
       if (km_wp_sep && km_own_kpv) begin
@@ -29163,9 +29343,9 @@ module sep_fcov (
     end else begin
       if (km_wipe_hi_cnt != 8'hFF) km_wipe_hi_cnt <= km_wipe_hi_cnt + 8'd1;
       if (pulse && (km_wipe_pulses != 8'hFF)) km_wipe_pulses <= km_wipe_pulses + 8'd1;
-      if (km_own_kpv && (km_wipe_hi_cnt == 8'd8) && (km_wipe_pulses == 8'd1))
+      if ((km_own_kpv || km_own_fi) && (km_wipe_hi_cnt == 8'd8) && (km_wipe_pulses == 8'd1))
         u_sep_km_vault_wipe_cg.sample(5'd2, 16'd0);
-      if (km_own_kpv && (km_wipe_hi_cnt == 8'(KmLevelWin)) && (km_wipe_pulses == 8'd1))
+      if ((km_own_kpv || km_own_fi) && (km_wipe_hi_cnt == 8'(KmLevelWin)) && (km_wipe_pulses == 8'd1))
         u_sep_km_vault_wipe_cg.sample(5'd2, 16'd3);
     end
     // A write of 1 to KM_WIPE_CTRL while the bit is high gives no second
@@ -29214,6 +29394,1258 @@ module sep_fcov (
       end
     end
     km_sk_line_st <= {i, e};
+  end
+
+  // =====================================================================
+  // Key Manager points of the 7.22 to 7.28 owners (docs/SEP_FCOV.adoc, Key
+  // Manager groups, "Decoders in the sampler"). The host mailbox stream is
+  // decoded from the host LSU bus: cmd_decode and crc_check classify each
+  // command frame at its separator word, seq_model holds the next expected
+  // command sequence, and rsp_decode reads every outbound frame with its own
+  // word index. A RESP_CMD is paired with the oldest command frame that has
+  // no response yet, and only when it echoes the sequence and the ID of that
+  // frame. A frame class only selects a cell: every cell also needs the DUT
+  // response or the DUT net that the point names, so a wrong response fills
+  // no cell. Only the bins of checks that the owners implement are declared;
+  // docs/SEP_FCOV.adoc lists the others as blocked or parked.
+  // =====================================================================
+
+  // One command frame, classified at its separator word.
+  typedef struct packed {
+    logic [7:0]  id;
+    logic [7:0]  seq;
+    logic [7:0]  plen;
+    logic [7:0]  e;         // seq_model value at the frame end
+    // Faults present: {dispatch length, payload CRC, wire length, command
+    // ID, sequence, header CRC}.
+    logic [5:0]  flt;
+    logic        recov;     // km_recoverable_err at the frame end
+    logic [7:0]  hcrc;      // received HEADER_CRC8
+    logic [31:0] pcrc;      // received last word (PAYLOAD_CRC32)
+    logic [31:0] p0;        // payload word 0
+    logic [31:0] p1;        // payload word 1
+    logic        flip;      // HK-KPV armed at the frame end
+    logic [9:0]  flip_idx;  // logical KPV word index that HK-KPV arms
+  } kq_frame_t;
+
+  localparam logic [7:0] KqRespReady = 8'h55;
+  localparam logic [7:0] KqRespSkReady = 8'h56;
+  localparam logic [7:0] KqRespRec = 8'hFE;
+  localparam logic [7:0] KqRespUnrec = 8'hFF;
+  // Signed 8-bit return codes of RESP_CMD (firmware.adoc, RESP_CMD).
+  localparam logic [7:0] KqRcFail = 8'hFF;
+  localparam logic [7:0] KqRcHdr = 8'hFE;
+  localparam logic [7:0] KqRcSeq = 8'hFD;
+  localparam logic [7:0] KqRcId = 8'hFC;
+  localparam logic [7:0] KqRcLen = 8'hFB;
+  localparam logic [7:0] KqRcPcrc = 8'hFA;
+  localparam logic [7:0] KqRcArg = 8'hF9;
+  localparam logic [7:0] KqCmdStat = 8'h03;
+  localparam logic [7:0] KqCmdRevoke = 8'h23;
+  localparam logic [7:0] KqCmdShred = 8'h25;
+  localparam logic [7:0] KqCmdLoad = 8'h26;
+  // The SRAM has 8192 words (architecture.adoc, Parameters): an SRAM shred
+  // writes at least that many words.
+  localparam int unsigned KqShredWords = 8192;
+
+  // CRC-8/ROHC over {PAYLOAD_LEN, COMMAND_ID, CMD_SEQ_NUM}, least significant
+  // byte first (firmware.adoc, CRC Function Library): poly 0x07 reflected,
+  // init 0xFF, no final XOR.
+  function automatic logic [7:0] kq_crc8_rohc(logic [23:0] hdr);
+    logic [7:0] c;
+    logic fb;
+    c = 8'hFF;
+    for (int i = 0; i < 24; i++) begin
+      fb = c[0] ^ hdr[i];
+      c = c >> 1;
+      if (fb) c = c ^ 8'hE0;
+    end
+    return c;
+  endfunction
+
+  // CRC-32C running remainder over one little-endian word: poly 0x1EDC6F41
+  // reflected, init 0xFFFFFFFF; the CRC is the inverted remainder.
+  function automatic logic [31:0] kq_crc32c_upd(logic [31:0] c, logic [31:0] w);
+    logic [31:0] r;
+    logic fb;
+    r = c;
+    for (int i = 0; i < 32; i++) begin
+      fb = r[0] ^ w[i];
+      r = r >> 1;
+      if (fb) r = r ^ 32'h82F6_3B78;
+    end
+    return r;
+  endfunction
+
+  // The 15 command IDs (firmware.adoc, Key Manager command summary).
+  function automatic logic kq_id_valid(logic [7:0] id);
+    return (id <= 8'h04) || ((id >= 8'h10) && (id <= 8'h12)) || ((id >= 8'h22) && (id <= 8'h28));
+  endfunction
+
+  // Commands that the recovery gate refuses (firmware.adoc, Error Recovery).
+  function automatic logic kq_id_gated(logic [7:0] id);
+    return kq_id_valid(id) && (id >= 8'h10);
+  endfunction
+
+  // plen_table: the PAYLOAD_LEN that a command requires. CMD_KEY_LOAD takes
+  // KEY_SIZE + 3 words and checks it as an argument, so it has no fixed
+  // length (8'hFF).
+  function automatic logic [7:0] kq_req_len(logic [7:0] id);
+    case (id)
+      8'h11, 8'h23, 8'h25, 8'h27, 8'h28: return 8'd1;
+      8'h22, 8'h24: return 8'd2;
+      8'h26: return 8'hFF;
+      default: return 8'd0;
+    endcase
+  endfunction
+
+  // Index of a valid command ID in the order of cp_cmd_x_outcome.
+  function automatic logic [3:0] kq_id_idx(logic [7:0] id);
+    if (id <= 8'h04) return 4'(id);
+    if (id <= 8'h12) return 4'(id - 8'h10 + 8'd5);
+    return 4'(id - 8'h22 + 8'd8);
+  endfunction
+
+  // cmd_decode and crc_check of one frame of L wire words. A payload CRC
+  // fault counts on a frame whose PAYLOAD_LEN matches the wire, and on a
+  // frame whose PAYLOAD_LEN contradicts the wire when the wire payload has
+  // the length that the command requires (the CRC word is then where the
+  // command puts it). The dispatch length fault needs a self-consistent
+  // frame.
+  function automatic kq_frame_t kq_classify(logic [31:0] hdr, logic [8:0] l, logic [31:0] crc_calc,
+                                            logic [31:0] last, logic [31:0] p0, logic [31:0] p1,
+                                            logic [7:0] e, logic recov);
+    kq_frame_t r;
+    logic [7:0] rq;
+    logic wire_ok, idv;
+    r = '0;
+    r.plen = hdr[23:16];
+    r.id = hdr[15:8];
+    r.seq = hdr[7:0];
+    r.e = e;
+    r.recov = recov;
+    r.hcrc = hdr[31:24];
+    r.pcrc = last;
+    r.p0 = p0;
+    r.p1 = p1;
+    wire_ok = (r.plen == 8'd0) ? (l == 9'd1) : (l == (9'(r.plen) + 9'd2));
+    rq = kq_req_len(r.id);
+    idv = kq_id_valid(r.id);
+    r.flt[0] = (kq_crc8_rohc(hdr[23:0]) != hdr[31:24]);
+    r.flt[1] = (r.seq != e);
+    r.flt[2] = !idv;
+    r.flt[3] = !wire_ok;
+    if (wire_ok) r.flt[4] = (r.plen != 8'd0) && (crc_calc != last);
+    else
+      r.flt[4] = (l >= 9'd3) && idv && (rq != 8'hFF) && ((9'(rq) + 9'd2) == l) && (crc_calc != last);
+    r.flt[5] = wire_ok && idv && (rq != 8'hFF) && (r.plen != rq);
+    return r;
+  endfunction
+
+  // The first failing check in the order of the incoming message handler:
+  // 0 header CRC, 1 sequence, 2 command ID, 3 length, 4 payload CRC, 5 the
+  // recovery gate, 6 the handler. The dispatch length check follows the gate
+  // and reports the length code, so it is class 3.
+  function automatic logic [2:0] kq_first(kq_frame_t f);
+    if (f.flt[0]) return 3'd0;
+    if (f.flt[1]) return 3'd1;
+    if (f.flt[2]) return 3'd2;
+    if (f.flt[3]) return 3'd3;
+    if (f.flt[4]) return 3'd4;
+    if (f.recov && kq_id_gated(f.id)) return 3'd5;
+    if (f.flt[5]) return 3'd3;
+    return 3'd6;
+  endfunction
+
+  function automatic logic [7:0] kq_first_code(logic [2:0] c);
+    case (c)
+      3'd0: return KqRcHdr;
+      3'd1: return KqRcSeq;
+      3'd2: return KqRcId;
+      3'd3: return KqRcLen;
+      3'd4: return KqRcPcrc;
+      default: return KqRcFail;
+    endcase
+  endfunction
+
+  // The fault pair of cp_fv_pair_order: the first two faults in check order
+  // {header CRC, sequence, command ID, wire length, payload CRC, dispatch
+  // length}; 4'hF when the frame has fewer than two faults or no pair bin.
+  function automatic logic [3:0] kq_pair(logic [5:0] flt);
+    int a, b;
+    logic [5:0] ab;
+    a = -1;
+    b = -1;
+    for (int i = 0; i < 6; i++) begin
+      if (flt[i] && (a < 0)) a = i;
+      else if (flt[i] && (b < 0)) b = i;
+    end
+    if (b < 0) return 4'hF;
+    ab = {3'(a), 3'(b)};
+    case (ab)
+      {3'd0, 3'd1} : return 4'd0;
+      {3'd0, 3'd2} : return 4'd1;
+      {3'd0, 3'd3} : return 4'd2;
+      {3'd0, 3'd4} : return 4'd3;
+      {3'd1, 3'd2} : return 4'd4;
+      {3'd1, 3'd3} : return 4'd5;
+      {3'd1, 3'd4} : return 4'd6;
+      {3'd2, 3'd3} : return 4'd7;
+      {3'd2, 3'd4} : return 4'd8;
+      {3'd3, 3'd4} : return 4'd9;
+      {3'd0, 3'd5} : return 4'd10;
+      {3'd1, 3'd5} : return 4'd11;
+      {3'd4, 3'd5} : return 4'd12;
+      default: return 4'hF;
+    endcase
+  endfunction
+
+  // IRQ_STATUS bit of the fatal source at priority rank r (firmware.adoc,
+  // Interrupt Priority): wipe_state, rom_parity, sram_parity, rom_write,
+  // sram_write_lock, axi_decerr, drbg_err, axi_slverr, otp_sigint, exec,
+  // rom_access (km_csr.adoc, IRQ_STATUS bit order).
+  function automatic logic [3:0] kq_rank_bit(logic [3:0] r);
+    case (r)
+      4'd0: return 4'd7;
+      4'd1: return 4'd0;
+      4'd2: return 4'd1;
+      4'd3: return 4'd2;
+      4'd4: return 4'd3;
+      4'd5: return 4'd5;
+      4'd6: return 4'd6;
+      4'd7: return 4'd4;
+      4'd8: return 4'd9;
+      4'd9: return 4'd10;
+      default: return 4'd11;
+    endcase
+  endfunction
+
+  // Rank of an unrecoverable fault code (firmware.adoc, unrecoverable-fault
+  // codes); 4'hF for a code with no IRQ_STATUS source.
+  function automatic logic [3:0] kq_code_rank(logic [7:0] c);
+    case (c)
+      8'hFF: return 4'd0;
+      8'hFE: return 4'd1;
+      8'hFD: return 4'd2;
+      8'hFC: return 4'd3;
+      8'hFB: return 4'd4;
+      8'hFA: return 4'd5;
+      8'hF8: return 4'd6;
+      8'hF9: return 4'd7;
+      8'hF3: return 4'd8;
+      8'hEF: return 4'd9;
+      8'hEE: return 4'd10;
+      default: return 4'hF;
+    endcase
+  endfunction
+
+  // Engine bank of a KM-BUS key-path write, in DEST_VALID order: port 0
+  // OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 Adams Bridge, whose seed and message
+  // windows are 0x100 apart (abr_wrapper_key.adoc); 4'hF elsewhere.
+  function automatic logic [3:0] kq_key_bank(int unsigned port, logic [31:0] a);
+    case (port)
+      0: return 4'd3;
+      1: return 4'd2;
+      2: return 4'd0;
+      3: return 4'd1;
+      default: return (a[11:10] == 2'b00) ? {2'b01, a[9:8]} : 4'hF;
+    endcase
+  endfunction
+
+  function automatic logic [63:0] kq_lock_write(logic [255:0] c);
+    logic [63:0] r;
+    for (int s = 0; s < 64; s++) r[s] = (c[4*s] === 1'b1);
+    return r;
+  endfunction
+
+  function automatic logic [5:0] kq_lowest(logic [63:0] m);
+    logic [5:0] r;
+    r = '0;
+    for (int s = 63; s >= 0; s--) if (m[s]) r = 6'(s);
+    return r;
+  endfunction
+
+  // --- cmd_decode, rsp_decode, seq_model and handle_table ----------------
+  wire kq_held = !km_rst_warm_n || !km_rst_cold_n || !km_swrst_n;
+  wire kq_wr_data = wr_ev && (aw_addr_q == KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_ADDR);
+  wire kq_wr_sep = wr_ev && (aw_addr_q == KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_ADDR) && wr_data[0];
+  wire kq_rd_data = rd_ev && (ar_addr_q == KM_MAILBOX_SEP_SEP_READ_DATA_REG_ADDR);
+  wire kq_unrec = (km_unrec_err_i === 1'b1);
+  wire kq_recov = (km_recov_err_i === 1'b1);
+  kq_frame_t kq_q[16];
+  logic [3:0] kq_rp = '0, kq_wp = '0;
+  logic [4:0] kq_cnt = '0;
+  logic [8:0] kq_cn = '0;  // words of the inbound frame so far
+  logic [31:0] kq_chdr = '0, kq_cp0 = '0, kq_cp1 = '0;
+  logic [31:0] kq_ccrc = 32'hFFFF_FFFF;
+  logic kq_carm = 1'b0;  // SEP_WRITE_SEPARATOR.set written for the next word
+  logic [9:0] kq_nosep = '0;  // inbound words since the last frame end
+  logic [7:0] kq_e = '0;  // seq_model: next expected command sequence
+  logic [16:0] kq_raw = '0;  // image words and trailer still to come
+  logic [31:0] kq_icrc = 32'hFFFF_FFFF;
+  logic kq_img_bad = 1'b0;  // the trailer differs from the CRC-32C of the image
+  logic kq_quiet = 1'b0;  // inbound words after an image stream are not frames
+  logic kq_roff = 1'b0;  // outbound words after SRAM execution starts are not frames
+  logic [8:0] kq_ri = '0;  // outbound word index in the frame (0: header)
+  logic [7:0] kq_rrid = '0, kq_rseq = '0, kq_rplen = '0;
+  logic [31:0] kq_rw0 = '0, kq_rw1 = '0, kq_rw2 = '0, kq_rw3 = '0;
+  logic [255:0] kq_hv = '0;  // handle_table: handle valid
+  logic [7:0] kq_hsize[256];  // key words
+  logic [7:0] kq_hpol[256];  // stored DEST_VALID policy
+  logic [5:0] kq_hslot[256];  // first slot of the run
+  logic [63:0] kq_lw_q = '0, kq_lw_rise = '0;  // CTRL lock_write rises since the frame end
+  logic [8:0] kq_kv_q = '0;  // {shared key, engine key_valid[7:0]}
+  logic kq_kv_rise = 1'b0;  // a key_valid rose since the frame end
+  // Events, one clock after the host access.
+  logic kq_ev_hdr = 1'b0;
+  logic [7:0] kq_ev_hrid = '0, kq_ev_hseq = '0;
+  logic kq_ev_done = 1'b0;
+  logic [7:0] kq_ev_rid = '0, kq_ev_seq = '0, kq_ev_plen = '0;
+  logic [31:0] kq_ev_w0 = '0, kq_ev_w1 = '0, kq_ev_w2 = '0, kq_ev_w3 = '0;
+  logic kq_ev_mv = 1'b0;  // the RESP_CMD pairs with kq_ev_m
+  kq_frame_t kq_ev_m = '0;
+  logic kq_ev_kvr = 1'b0;
+  logic [9:0] kq_ev_nosep = '0;
+  logic kq_ev_fend = 1'b0;  // a command frame ended
+  logic kq_ev_fend_unrec = 1'b0;
+  kq_frame_t kq_ev_f = '0;  // the frame that ended
+  logic kq_ev_img = 1'b0;  // the image trailer arrived
+  initial begin
+    for (int i = 0; i < 256; i++) begin
+      kq_hsize[i] = '0;
+      kq_hpol[i] = '0;
+      kq_hslot[i] = '0;
+    end
+    for (int i = 0; i < 16; i++) kq_q[i] = '0;
+  end
+
+  always @(posedge clk_i) begin
+    logic [31:0] w;
+    logic [8:0] n1;
+    logic [63:0] lw;
+    logic [8:0] kv;
+    kq_frame_t f, h;
+    logic push, pop, clr_q, clr_all, done, mv;
+    logic [7:0] rid, rseq, rplen, rc, hx;
+    logic [31:0] w0, w1, w2, w3;
+    lw = kq_lock_write(km_kpv_ctrl_i);
+    for (int i = 0; i < 8; i++) kv[i] = (km_key_valid_i[i] === 1'b1);
+    kv[8] = (km_sk_valid_i === 1'b1);
+    push = 1'b0;
+    pop = 1'b0;
+    clr_q = 1'b0;
+    clr_all = 1'b0;
+    done = 1'b0;
+    mv = 1'b0;
+    h = '0;
+    rid = '0;
+    rseq = '0;
+    rplen = '0;
+    kq_lw_q <= lw;
+    kq_kv_q <= kv;
+    kq_lw_rise <= kq_lw_rise | (lw & ~kq_lw_q);
+    if ((kv & ~kq_kv_q) != 9'h0) kq_kv_rise <= 1'b1;
+    kq_ev_hdr <= 1'b0;
+    kq_ev_done <= 1'b0;
+    kq_ev_fend <= 1'b0;
+    kq_ev_img <= 1'b0;
+    if (km_sram_exec_mode_i === 1'b1) kq_roff <= 1'b1;
+    if (kq_held) begin
+      // A KM reset restarts both counters and drops every frame in flight
+      // (firmware.adoc, Boot Sequence); the handle table is not kept.
+      kq_cn <= '0;
+      kq_carm <= 1'b0;
+      kq_nosep <= '0;
+      kq_e <= '0;
+      kq_raw <= '0;
+      kq_quiet <= 1'b0;
+      kq_roff <= 1'b0;
+      kq_ri <= '0;
+      kq_rp <= '0;
+      kq_wp <= '0;
+      kq_cnt <= '0;
+      kq_hv <= '0;
+    end else begin
+      // ---- inbound: command frames, or the raw image after a confirmed
+      // CMD_SRAM_LOAD_EXEC (FW_WORDS words and a CRC-32C trailer) ----
+      if (kq_wr_sep) kq_carm <= 1'b1;
+      if (kq_wr_data) begin
+        w = wr_data;
+        kq_carm <= 1'b0;
+        if (kq_raw != '0) begin
+          kq_raw <= kq_raw - 17'd1;
+          if (kq_raw == 17'd1) begin
+            kq_img_bad <= (~kq_icrc != w);
+            kq_ev_img <= 1'b1;
+            kq_quiet <= 1'b1;
+          end else kq_icrc <= kq_crc32c_upd(kq_icrc, w);
+        end else if (!kq_quiet) begin
+          n1 = kq_cn + 9'd1;
+          if (kq_nosep != 10'h3FF) kq_nosep <= kq_nosep + 10'd1;
+          if (kq_cn == 9'd0) kq_chdr <= w;
+          if (kq_cn == 9'd0) kq_ccrc <= 32'hFFFF_FFFF;
+          else kq_ccrc <= kq_crc32c_upd(kq_ccrc, w);
+          if (kq_cn == 9'd1) kq_cp0 <= w;
+          if (kq_cn == 9'd2) kq_cp1 <= w;
+          if (kq_carm) begin
+            // The separator word ends the frame. kq_ccrc holds the
+            // remainder over words 1 to L-2.
+            f = kq_classify((kq_cn == 9'd0) ? w : kq_chdr, n1, (kq_cn == 9'd0) ? 32'h0 : ~kq_ccrc, w,
+                            (kq_cn == 9'd1) ? w : kq_cp0, (kq_cn == 9'd2) ? w : kq_cp1, kq_e, kq_recov);
+            f.flip = (km_kpv_flip_en_i === 1'b1);
+            f.flip_idx = km_kpv_flip_idx_i;
+            // seq_model: the header CRC and sequence rejections keep the
+            // expected number; every other frame advances it.
+            if (!f.flt[0] && !f.flt[1]) kq_e <= kq_e + 8'd1;
+            if (kq_cnt != 5'd16) begin
+              kq_q[kq_wp] <= f;
+              push = 1'b1;
+            end
+            kq_cn <= '0;
+            kq_nosep <= '0;
+            kq_lw_rise <= '0;
+            kq_kv_rise <= 1'b0;
+            kq_ev_fend <= 1'b1;
+            kq_ev_fend_unrec <= kq_unrec;
+            kq_ev_f <= f;
+          end else if (kq_cn != 9'h1FF) kq_cn <= n1;
+        end
+      end
+      // ---- outbound: rsp_decode ----
+      if (kq_rd_data && !kq_roff) begin
+        w = rd_data;
+        if (kq_ri == 9'd0) begin
+          kq_rrid <= w[15:8];
+          kq_rseq <= w[7:0];
+          kq_rplen <= w[23:16];
+          kq_ev_hdr <= 1'b1;
+          kq_ev_hrid <= w[15:8];
+          kq_ev_hseq <= w[7:0];
+          if (w[23:16] == 8'd0) begin
+            done = 1'b1;
+            rid = w[15:8];
+            rseq = w[7:0];
+          end else kq_ri <= 9'd1;
+        end else if (kq_ri <= 9'(kq_rplen)) begin
+          if (kq_ri == 9'd1) kq_rw0 <= w;
+          if (kq_ri == 9'd2) kq_rw1 <= w;
+          if (kq_ri == 9'd3) kq_rw2 <= w;
+          if (kq_ri == 9'd4) kq_rw3 <= w;
+          kq_ri <= kq_ri + 9'd1;
+        end else begin
+          // The PAYLOAD_CRC32 word ends the frame.
+          done = 1'b1;
+          rid = kq_rrid;
+          rseq = kq_rseq;
+          rplen = kq_rplen;
+          kq_ri <= '0;
+        end
+      end
+      if (done) begin
+        w0 = (rplen >= 8'd1) ? kq_rw0 : 32'h0;
+        w1 = (rplen >= 8'd2) ? kq_rw1 : 32'h0;
+        w2 = (rplen >= 8'd3) ? kq_rw2 : 32'h0;
+        w3 = (rplen >= 8'd4) ? kq_rw3 : 32'h0;
+        rc = w2[7:0];
+        if ((rid == KmRespCmd) && ((rplen == 8'd3) || (rplen == 8'd4)) && (kq_cnt != 5'd0)) begin
+          h = kq_q[kq_rp];
+          pop = 1'b1;
+          if ((h.seq == w0[7:0]) && (h.id == w1[7:0])) mv = 1'b1;
+          else clr_q = 1'b1;
+        end
+        // A ready message and a fault that flushes the mailbox restart both
+        // counters and the message buffers (firmware.adoc, Error Recovery).
+        if ((rid == KqRespReady) ||
+            ((rid == KqRespRec) && (rplen != 8'd0) && (w0[7:0] inside {8'hFE, 8'hFD, 8'hFC, 8'hFB})))
+          clr_all = 1'b1;
+        // handle_table, from the RESP_CMD arguments of the paired frame.
+        if (mv && (rc == 8'h00)) begin
+          if (((h.id == KqCmdLoad) || (h.id == KmCmdGenerate)) && (rplen == 8'd4)) begin
+            hx = w3[7:0];
+            kq_hv[hx] <= 1'b1;
+            kq_hsize[hx] <= {1'b0, w3[14:8]} + 8'd1;
+            kq_hpol[hx] <= w3[23:16];
+            kq_hslot[hx] <= kq_lowest(kq_lw_rise);
+          end
+          if (h.id == KqCmdRevoke) kq_hv[h.p0[7:0]] <= 1'b0;
+          if (h.id == KmCmdSramLoadExec) begin
+            kq_raw <= 17'(h.p0[15:0]) + 17'd1;
+            kq_icrc <= 32'hFFFF_FFFF;
+          end
+        end
+        kq_ev_done <= 1'b1;
+        kq_ev_rid <= rid;
+        kq_ev_seq <= rseq;
+        kq_ev_plen <= rplen;
+        kq_ev_w0 <= w0;
+        kq_ev_w1 <= w1;
+        kq_ev_w2 <= w2;
+        kq_ev_w3 <= w3;
+        kq_ev_mv <= mv;
+        kq_ev_m <= h;
+        kq_ev_kvr <= kq_kv_rise;
+        kq_ev_nosep <= kq_nosep;
+      end
+      if (push) kq_wp <= kq_wp + 4'd1;
+      if (clr_all) begin
+        kq_rp <= kq_wp;
+        kq_cnt <= '0;
+        kq_cn <= '0;
+        kq_carm <= 1'b0;
+        kq_nosep <= '0;
+        kq_e <= '0;
+      end else if (clr_q) begin
+        kq_rp <= kq_wp;
+        kq_cnt <= '0;
+      end else begin
+        if (pop) kq_rp <= kq_rp + 4'd1;
+        kq_cnt <= kq_cnt + 5'(push) - 5'(pop);
+      end
+    end
+  end
+
+  // --- covergroups of the 7.22 to 7.28 points ----------------------------
+  covergroup sep_km_frame_validation_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_frame_validation_cg";
+    // The first failing check of a frame whose RESP_CMD carries the code of
+    // that check: 0 header CRC, 1 sequence, 2 command ID, 3 length, 4 payload
+    // CRC, 5 the gate with RECOVERABLE_ERR set, 6 the handler.
+    cp_fv_first_fail: coverpoint v[2:0] iff (pt == 5'd0) {
+      bins header_crc = {3'd0};
+      bins sequence_number = {3'd1};
+      bins command_id = {3'd2};
+      bins length = {3'd3};
+      bins payload_crc = {3'd4};
+      bins admission_gate = {3'd5};
+      bins handler_reached = {3'd6};
+    }
+    // The 13 ordered fault pairs of kq_pair(), with the code of the earlier
+    // check.
+    cp_fv_pair_order: coverpoint v[3:0] iff (pt == 5'd1) {
+      bins hdr_seq = {4'd0};
+      bins hdr_id = {4'd1};
+      bins hdr_len = {4'd2};
+      bins hdr_pcrc = {4'd3};
+      bins seq_id = {4'd4};
+      bins seq_len = {4'd5};
+      bins seq_pcrc = {4'd6};
+      bins id_len = {4'd7};
+      bins id_pcrc = {4'd8};
+      bins len_pcrc = {4'd9};
+      bins hdr_dispatch_len = {4'd10};
+      bins seq_dispatch_len = {4'd11};
+      bins pcrc_dispatch_len = {4'd12};
+    }
+    // 0 equal, 3 the frame with sequence 0 after the frame with 0xFF, 4 a
+    // mismatch other than plus or minus one, refused with -3. The plus-one
+    // and minus-one cells are blocked (docs/SEP_FCOV.adoc).
+    cp_fv_seq: coverpoint v[2:0] iff (pt == 5'd2) {
+      bins equal = {3'd0}; bins rollover_ff_to_00 = {3'd3}; bins other_mismatch = {3'd4};
+    }
+    cp_km_seq_wrap: coverpoint v[0] iff (pt == 5'd3) {
+      bins command_counter_255_to_0 = {1'b0}; bins response_counter_255_to_0 = {1'b1};
+    }
+    // {cause (0 SEP flush, 1 receive overflow, 2 warm reset), 0 first
+    // response sequence 0 / 1 first accepted command sequence 0}.
+    cp_fv_counter_reset: coverpoint v[2:0] iff (pt == 5'd4) {
+      bins flush_first_resp_seq0 = {3'b00_0};
+      bins flush_first_cmd_seq0 = {3'b00_1};
+      bins oflow_first_resp_seq0 = {3'b01_0};
+      bins oflow_first_cmd_seq0 = {3'b01_1};
+      bins warm_first_resp_seq0 = {3'b10_0};
+      bins warm_first_cmd_seq0 = {3'b10_1};
+    }
+    cp_fv_arg_kind: coverpoint v[1:0] iff (pt == 5'd5) {
+      bins len_arg_is_received_length = {2'd0};
+      bins seq_arg_is_expected = {2'd1};
+      bins hdr_crc_arg_differs = {2'd2};
+      bins pcrc_arg_differs = {2'd3};
+    }
+    // The accepted 257-word frame is blocked (docs/SEP_FCOV.adoc).
+    cp_fv_rx_buffer: coverpoint v[0] iff (pt == 5'd6) {
+      bins no_separator_257_overflow = {1'b1};
+    }
+  endgroup
+
+  covergroup sep_km_cmd_reject_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_cmd_reject_cg";
+    // {class (0 admitted, 1 gated), RECOVERABLE_ERR}.
+    cp_gate: coverpoint v[1:0] iff (pt == 5'd0) {
+      bins admitted_gate0 = {2'b0_0};
+      bins admitted_gate1 = {2'b0_1};
+      bins gated_gate0 = {2'b1_0};
+      bins gated_gate1 = {2'b1_1};
+    }
+    cp_gate_cmd: coverpoint v[7:0] iff (pt == 5'd1) {
+      bins exec_rom = {8'h10};
+      bins sram_load_exec = {8'h11};
+      bins sram_exec = {8'h12};
+      bins key_generate = {8'h22};
+      bins key_revoke = {8'h23};
+      bins key_transfer = {8'h24};
+      bins engine_shred = {8'h25};
+      bins key_load = {8'h26};
+      bins otp_read_lock_cold = {8'h28};
+    }
+    cp_transfer_policy: coverpoint v[0] iff (pt == 5'd2) {
+      bins subset_allowed = {1'b0}; bins mixed_refused_no_key_valid = {1'b1};
+    }
+    // HK-KPV word class against the slot run: 0 first used, 1 interior, 2
+    // last used, 3 residue after the key end.
+    cp_transfer_integrity: coverpoint v[1:0] iff (pt == 5'd3) {
+      bins first_used = {2'd0};
+      bins interior = {2'd1};
+      bins last_used = {2'd2};
+      bins residue_success = {2'd3};
+    }
+    cp_image_bounds: coverpoint v[1:0] iff (pt == 5'd4) {
+      bins zero_rejected = {2'd0}; bins at_or_above_8192_rejected = {2'd1}; bins accepted = {2'd2};
+    }
+  endgroup
+
+  covergroup sep_km_command_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_command_cg";
+    // {command index (kq_id_idx), non-success}. Blocked: (CMD_ROM_VER,
+    // non-success), (CMD_RECOV_ACK, non-success) and (CMD_ABR_SK_TRANSFER,
+    // success) (docs/SEP_FCOV.adoc).
+    cp_cmd_x_outcome: coverpoint v[4:0] iff (pt == 5'd0) {
+      bins hw_ver[] = {5'b0000_0, 5'b0000_1};
+      bins rom_ver_success = {5'b0001_0};
+      bins sram_ver_nonsuccess = {5'b0010_1};
+      bins stat[] = {5'b0011_0, 5'b0011_1};
+      bins recov_ack_success = {5'b0100_0};
+      bins exec_rom[] = {5'b0101_0, 5'b0101_1};
+      bins sram_load_exec[] = {5'b0110_0, 5'b0110_1};
+      bins sram_exec[] = {5'b0111_0, 5'b0111_1};
+      bins key_generate[] = {5'b1000_0, 5'b1000_1};
+      bins key_revoke[] = {5'b1001_0, 5'b1001_1};
+      bins key_transfer[] = {5'b1010_0, 5'b1010_1};
+      bins engine_shred[] = {5'b1011_0, 5'b1011_1};
+      bins key_load[] = {5'b1100_0, 5'b1100_1};
+      bins abr_sk_transfer_nonsuccess = {5'b1101_1};
+      bins otp_read_lock_cold[] = {5'b1110_0, 5'b1110_1};
+      ignore_bins sram_ver_success = {5'b0010_0};
+    }
+    cp_ret_code: coverpoint v[7:0] iff (pt == 5'd1) {
+      bins success = {8'h00};
+      bins failure = {8'hFF};
+      bins header_crc = {8'hFE};
+      bins cmd_noseq = {8'hFD};
+      bins invalid_cmd = {8'hFC};
+      bins invalid_len = {8'hFB};
+      bins payload_crc = {8'hFA};
+      bins invalid_arg = {8'hF9};
+    }
+    // The 0x56 frame is blocked (docs/SEP_FCOV.adoc).
+    cp_resp_shape: coverpoint v[2:0] iff (pt == 5'd2) {
+      bins resp_cmd_3 = {3'd0};
+      bins resp_cmd_4 = {3'd1};
+      bins recoverable_fault_1 = {3'd2};
+      bins unrecoverable_fault_1 = {3'd3};
+      bins km_ready_0 = {3'd4};
+    }
+    cp_stat_recov: coverpoint v[0] iff (pt == 5'd3) {
+      bins recov_fault0 = {1'b0}; bins recov_fault1 = {1'b1};
+    }
+  endgroup
+
+  covergroup sep_km_handover_cg with function sample (logic [4:0] pt, logic [15:0] v);
+    option.per_instance = 1;
+    option.name = "sep_km_handover_cg";
+    cp_ho_entry_path: coverpoint v[0] iff (pt == 5'd0) {
+      bins sram_load_exec = {1'b0}; bins sram_exec = {1'b1};
+    }
+    // The refusal after an interrupted load is blocked (docs/SEP_FCOV.adoc).
+    cp_ho_fwsize: coverpoint v[0] iff (pt == 5'd1) {
+      bins refused_after_cold_boot = {1'b0};
+    }
+    // The confirmation before the stream is blocked (docs/SEP_FCOV.adoc).
+    cp_ho_image_state: coverpoint v[1:0] iff (pt == 5'd2) {
+      bins no_second_resp_cmd = {2'd1}; bins trailer_mismatch_fault = {2'd2};
+    }
+    cp_ho_state_at_jump: coverpoint v[1:0] iff (pt == 5'd3) {
+      bins kmcsr_irq_enable0 = {2'd0};
+      bins km_irq_enable0 = {2'd1};
+      bins entry_addr_0x10 = {2'd2};
+      bins entry_lock0 = {2'd3};
+    }
+    // The confirmation cells are blocked (docs/SEP_FCOV.adoc).
+    cp_ho_mailbox_flush: coverpoint v[1:0] iff (pt == 5'd4) {
+      bins both_fifos_empty = {2'd0}; bins inbound_residue_erased = {2'd1};
+    }
+  endgroup
+
+  sep_km_frame_validation_cg u_sep_km_frame_validation_cg = new();
+  sep_km_cmd_reject_cg       u_sep_km_cmd_reject_cg       = new();
+  sep_km_command_cg          u_sep_km_command_cg          = new();
+  sep_km_handover_cg         u_sep_km_handover_cg         = new();
+
+  // --- sampler state --------------------------------------------------
+  logic kq_prev_ff = 1'b0;  // the last frame that passed the sequence check had 0xFF
+  logic [7:0] kq_prev_hseq = '0;  // the last RESP_CMD header sequence
+  logic kq_prev_hv = 1'b0;
+  logic kq_boot_cold = 1'b1;  // the KM reset in progress or last released is a cold reset
+  logic kq_rel_first = 1'b0;  // no outbound header read since the KM release
+  logic [7:0] kq_scr_wr = '0;  // SCRAMBLER_KEY writes since the KM release
+  logic kq_cr_arm = 1'b0;  // a counter-reset cause waits for its first accepted command
+  logic [1:0] kq_cr_c = '0;
+  logic kq_fe_pend = 1'b0;  // the last frame was a recoverable fault
+  logic [7:0] kq_fe_code = '0;
+  logic kq_rh_on = 1'b0, kq_rh_c = 1'b0, kq_rh_s2 = 1'b0, kq_rh_ack = 1'b0, kq_rh_s3 = 1'b0;
+  logic kq_rec_q = 1'b0, kq_rec_pre = 1'b0;
+  logic [1:0] kq_rec_cnt = '0;
+  logic kq_loaded = 1'b0;  // a CMD_SRAM_LOAD_EXEC confirmed since the last cold release
+  logic kq_ho_arm = 1'b0;  // a handover command frame waits for its response
+  logic kq_ho_pend = 1'b0, kq_ho_path = 1'b0, kq_ho_rcmd = 1'b0, kq_ho_fl = 1'b0;
+  logic kq_ho_res = 1'b0, kq_ho_sk0 = 1'b0, kq_ho_ff = 1'b0;
+  logic [7:0] kq_ho_kv0 = '0;
+  logic [7:0] kq_ho_aw[8];  // key-path writes per bank since the handover command
+  logic [7:0] kq_ho_ctl1 = '0;  // the first of them was the KEY_CTRL write
+  logic [1:0] kq_mbx_fl_q = '0;
+  logic kq_par_q = 1'b0;
+  logic [6:0] kq_par_win = '0;
+  logic kq_par_mem = 1'b0;
+  logic [1:0] kq_par_lane = '0;
+  logic [3:0] kq_par_rstrb = '0;
+  logic [1:0] kq_par_st_q = '0;
+  logic [31:0] kq_lat_done_q = '0;
+  logic [7:0] kq_lat_prev = '0;
+  logic [10:0] kq_sil = '0;  // clocks of silence after a frame sent while bit 30 is high
+  logic kq_unrec_q = 1'b0;
+  logic [11:0] kq_st_q = '0;
+  // Fatal episode: a wipe edge or a fatal IRQ_STATUS rise, to the bit 30
+  // rise.
+  logic kq_ep_on = 1'b0, kq_ep_wipe = 1'b0, kq_ep_kvclr = 1'b0, kq_ep_fl = 1'b0;
+  logic kq_ep_rep = 1'b0, kq_ep_kv_rep = 1'b0, kq_ep_fl_rep = 1'b0;
+  logic [8:0] kq_ep_kv0 = '0;
+  logic [15:0] kq_ep_sr_pre = '0, kq_ep_sr = '0;
+  initial for (int i = 0; i < 8; i++) kq_ho_aw[i] = '0;
+
+  // Key-path AW handshakes by bank of DEST_VALID order: {the write is to
+  // KEY_CTRL of the bank, a write}. KEY_CTRL follows the two shares (8
+  // words each, 12 for OTBN) in every bank window.
+  function automatic logic [15:0] kq_bank_aw(logic [4:0] v, logic [4:0] r, logic [159:0] a);
+    logic [15:0] m;
+    logic [3:0] b;
+    m = '0;
+    for (int p = 0; p < 5; p++) begin
+      if ((v[p] === 1'b1) && (r[p] === 1'b1)) begin
+        b = kq_key_bank(p, a[32*p+:32]);
+        if (b != 4'hF) begin
+          m[b[2:0]] = 1'b1;
+          m[8+b[2:0]] = (a[32*p+:8] == ((b == 4'd3) ? 8'h60 : 8'h40));
+        end
+      end
+    end
+    return m;
+  endfunction
+
+  always @(posedge clk_i) begin
+    logic [7:0] rc, id, msk, pol, sz, wid;
+    logic [31:0] arg;
+    logic has_arg, valid, rcmd, jump, lat_new, gw, ofd;
+    logic [2:0] ff, cls;
+    logic [3:0] pr, r, rb;
+    logic [11:0] st, hi_m, lo_m, ranked;
+    logic [8:0] kv;
+    logic [7:0] aw, awc;
+    logic [9:0] off;
+    kq_frame_t m;
+    for (int i = 0; i < 12; i++) st[i] = (km_irq_status_i[i] === 1'b1);
+    for (int i = 0; i < 8; i++) kv[i] = (km_key_valid_i[i] === 1'b1);
+    kv[8] = (km_sk_valid_i === 1'b1);
+    ranked = 12'hEFF;  // every IRQ_STATUS source but otp_change
+    {awc, aw} = kq_bank_aw(km_key_aw_valid_i, km_key_aw_ready_i, km_key_aw_addr_i);
+    kq_unrec_q <= kq_unrec;
+    kq_st_q <= st;
+    kq_rec_q <= kq_recov;
+    kq_mbx_fl_q <= km_mbx_flush_i;
+    jump = 1'b0;
+    ofd = (km_outfifo_depth_i != 9'd0) && !$isunknown(km_outfifo_depth_i);
+
+    // ---- KM reset and release bookkeeping ----
+    if (!km_rst_cold_n) begin
+      kq_boot_cold <= 1'b1;
+      kq_loaded <= 1'b0;
+    end else if (!km_rst_warm_n) kq_boot_cold <= 1'b0;
+    if (km_warm_fall) kq_rec_pre <= kq_rec_q;
+    if (kq_held) begin
+      kq_rel_first <= 1'b1;
+      kq_scr_wr <= '0;
+      kq_prev_ff <= 1'b0;
+      kq_prev_hv <= 1'b0;
+      kq_cr_arm <= 1'b0;
+      kq_fe_pend <= 1'b0;
+      kq_rh_on <= 1'b0;
+      kq_ho_arm <= 1'b0;
+      kq_ho_pend <= 1'b0;
+      kq_ep_on <= 1'b0;
+      kq_sil <= '0;
+    end
+    if (kw_ev && (kw_addr == KmCsrScrKey) && (kq_scr_wr != 8'hFF)) kq_scr_wr <= kq_scr_wr + 8'd1;
+
+    // ---- outbound headers (cp_mem_boot_order, cp_mem_boot_type,
+    // cp_km_seq_wrap) ----
+    if (kq_ev_hdr) begin
+      kq_rel_first <= 1'b0;
+      if ((kq_ev_hrid == KqRespReady) && kq_rel_first && km_own_br) begin
+        if (kq_boot_cold && (km_cold_boot_done_i === 1'b1))
+          u_sep_km_memory_boot_cg.sample(5'd6, 16'd0);
+        if (kq_ev_hseq == 8'd0) u_sep_km_memory_boot_cg.sample(5'd6, 16'd1);
+        if (kq_boot_cold && (kq_scr_wr != 8'd0)) u_sep_km_memory_boot_cg.sample(5'd7, 16'd0);
+        if (!kq_boot_cold && (kq_scr_wr == 8'd0)) u_sep_km_memory_boot_cg.sample(5'd7, 16'd1);
+      end
+      if (kq_ev_hrid == KmRespCmd) begin
+        if (km_own_cp && kq_prev_hv && (kq_prev_hseq == 8'hFF) && (kq_ev_hseq == 8'h00))
+          u_sep_km_frame_validation_cg.sample(5'd3, 16'd1);
+        kq_prev_hseq <= kq_ev_hseq;
+        kq_prev_hv <= 1'b1;
+      end else kq_prev_hv <= 1'b0;
+    end
+
+    // ---- complete outbound frames ----
+    if (kq_ev_done) begin
+      rc = kq_ev_w2[7:0];
+      arg = kq_ev_w3;
+      has_arg = (kq_ev_plen == 8'd4);
+      rcmd = (kq_ev_rid == KmRespCmd) && ((kq_ev_plen == 8'd3) || (kq_ev_plen == 8'd4));
+      m = kq_ev_m;
+      valid = (m.flt[4:0] == 5'h0);
+      // A gated command that the gate shows: CMD_ABR_SK_TRANSFER with no key
+      // pending fails in both gate states.
+      gw = kq_id_gated(m.id) && (m.id != 8'h27);
+      id = kq_ev_w1[7:0];
+      // Response shape (cp_resp_shape).
+      if (km_own_cp || km_own_br || km_own_ho) begin
+        if (rcmd) u_sep_km_command_cg.sample(5'd2, has_arg ? 16'd1 : 16'd0);
+        if ((kq_ev_rid == KqRespRec) && (kq_ev_plen == 8'd1))
+          u_sep_km_command_cg.sample(5'd2, 16'd2);
+        if ((kq_ev_rid == KqRespUnrec) && (kq_ev_plen == 8'd1))
+          u_sep_km_command_cg.sample(5'd2, 16'd3);
+        if ((kq_ev_rid == KqRespReady) && (kq_ev_plen == 8'd0))
+          u_sep_km_command_cg.sample(5'd2, 16'd4);
+      end
+      if (rcmd && kq_id_valid(id) && (kq_ev_w2[31:8] == 24'h0)) begin
+        // Every command by outcome (cp_cmd_x_outcome), every return code
+        // (cp_ret_code), the CMD_STAT word (cp_stat_recov) and the response
+        // length of the key commands (cp_nx_resp_payload).
+        if (km_own_cp || km_own_ho || km_own_br)
+          u_sep_km_command_cg.sample(5'd0, 16'({kq_id_idx(id), rc != 8'h00}));
+        if (km_own_cp) u_sep_km_command_cg.sample(5'd1, 16'(rc));
+        if ((km_own_cp || km_own_fi) && (id == KqCmdStat) && (rc == 8'h00) && has_arg &&
+            (arg[31:1] == 31'h0))
+          u_sep_km_command_cg.sample(5'd3, 16'(arg[0]));
+        if (km_own_xf && (id == KqCmdLoad)) u_sep_km_secret_nonexposure_cg.sample(5'd2, 16'd1);
+        if (km_own_xf && (id == KmCmdTransfer)) u_sep_km_secret_nonexposure_cg.sample(5'd2, 16'd2);
+      end
+      if (rcmd && kq_ev_mv) begin
+        ff = kq_first(m);
+        // cp_fv_first_fail, cp_fv_pair_order, cp_fv_seq, cp_km_seq_wrap,
+        // cp_fv_arg_kind, cp_mbf_raw_transport.
+        if (km_own_cp) begin
+          if ((ff == 3'd6) || (rc == kq_first_code(ff)))
+            u_sep_km_frame_validation_cg.sample(5'd0, 16'(ff));
+          pr = kq_pair(m.flt);
+          if ((pr != 4'hF) && (rc == kq_first_code(kq_first(m))))
+            u_sep_km_frame_validation_cg.sample(5'd1, 16'(pr));
+          if (!m.flt[0]) begin
+            if (!m.flt[1]) begin
+              u_sep_km_frame_validation_cg.sample(5'd2, 16'd0);
+              if (kq_prev_ff && (m.seq == 8'h00) && (rc == 8'h00)) begin
+                u_sep_km_frame_validation_cg.sample(5'd2, 16'd3);
+                u_sep_km_frame_validation_cg.sample(5'd3, 16'd0);
+              end
+            end else if (((m.seq - m.e) != 8'h01) && ((m.seq - m.e) != 8'hFF) && (rc == KqRcSeq))
+              u_sep_km_frame_validation_cg.sample(5'd2, 16'd4);
+          end
+          if (has_arg) begin
+            if ((ff == 3'd3) && !m.flt[3] && (rc == KqRcLen) && (arg == 32'(m.plen)))
+              u_sep_km_frame_validation_cg.sample(5'd5, 16'd0);
+            if ((ff == 3'd1) && (rc == KqRcSeq) && (arg == 32'(m.e)))
+              u_sep_km_frame_validation_cg.sample(5'd5, 16'd1);
+            if ((ff == 3'd0) && (rc == KqRcHdr) && (arg[7:0] != m.hcrc))
+              u_sep_km_frame_validation_cg.sample(5'd5, 16'd2);
+            if ((ff == 3'd4) && (rc == KqRcPcrc) && (arg != m.pcrc))
+              u_sep_km_frame_validation_cg.sample(5'd5, 16'd3);
+          end
+          if (m.flt[0]) u_sep_km_mailbox_fault_cg.sample(5'd4, 16'd0);
+          if (m.flt[2]) u_sep_km_mailbox_fault_cg.sample(5'd4, 16'd1);
+          if (m.flt[3]) u_sep_km_mailbox_fault_cg.sample(5'd4, 16'd2);
+          // The gate (cp_gate, cp_gate_cmd).
+          if (valid && (m.id != KmCmdSramVer)) begin
+            if (!kq_id_gated(m.id) && (rc == 8'h00))
+              u_sep_km_cmd_reject_cg.sample(5'd0, 16'({1'b0, m.recov}));
+            if (kq_id_gated(m.id) && !m.recov) u_sep_km_cmd_reject_cg.sample(5'd0, 16'd2);
+            if (kq_id_gated(m.id) && m.recov && (rc == KqRcFail))
+              u_sep_km_cmd_reject_cg.sample(5'd0, 16'd3);
+          end
+          if (valid && m.recov && gw && (rc == KqRcFail) && !has_arg)
+            u_sep_km_cmd_reject_cg.sample(5'd1, 16'(m.id));
+        end
+        if (!m.flt[0] && !m.flt[1]) kq_prev_ff <= (m.seq == 8'hFF);
+        // Counter reset: the first frame that passes the sequence check
+        // after the cause.
+        if (kq_cr_arm && !m.flt[0] && !m.flt[1]) begin
+          kq_cr_arm <= 1'b0;
+          if (km_own_cp && (m.seq == 8'h00) && (rc != KqRcHdr) && (rc != KqRcSeq))
+            u_sep_km_frame_validation_cg.sample(5'd4, 16'({kq_cr_c, 1'b1}));
+        end
+        // Recovery handshake (cp_fr_recovery_handshake): {cause (0
+        // rx_buff_oflow, 1 flushed_by_sep), step}.
+        if (kq_rh_on && km_own_cp) begin
+          if (valid && m.recov && gw && (rc == KqRcFail) && !has_arg) begin
+            kq_rh_s2 <= 1'b1;
+            u_sep_km_fault_report_cg.sample(5'd8, 16'({kq_rh_c, 3'd2}));
+          end
+          if (kq_rh_s2 && (m.id == KmCmdRecovAck) && valid && (rc == 8'h00)) kq_rh_ack <= 1'b1;
+          if (kq_rh_ack && (m.id == KqCmdStat) && valid && (rc == 8'h00) && has_arg && !arg[0]) begin
+            kq_rh_s3 <= 1'b1;
+            if (!kq_rh_c) u_sep_km_fault_report_cg.sample(5'd8, 16'({1'b0, 3'd3}));
+          end
+          if ((kq_rh_s3 || (kq_rh_c && kq_rh_ack)) && valid && !m.recov && gw && (rc == 8'h00)) begin
+            kq_rh_on <= 1'b0;
+            u_sep_km_fault_report_cg.sample(5'd8, 16'({kq_rh_c, 3'd4}));
+          end
+        end
+        // RECOVERABLE_ERR cleared by CMD_RECOV_ACK (cp_csr_recov_err).
+        if ((km_own_cp || km_own_fi) && (m.id == KmCmdRecovAck) && valid && m.recov &&
+            (rc == 8'h00) && !kq_recov)
+          u_sep_km_kmcsr_status_cg.sample(5'd8, 16'd1);
+        // Transfer against the stored policy (cp_transfer_policy) and the
+        // delivery points (cp_sd_mask_shape, cp_sd_dest_x_cmd,
+        // cp_km_size_vs_width).
+        if (valid && !m.recov && (m.id == KmCmdTransfer) && kq_hv[m.p0[7:0]]) begin
+          msk = m.p1[7:0];
+          pol = kq_hpol[m.p0[7:0]];
+          sz = kq_hsize[m.p0[7:0]];
+          if (km_own_xf && (msk != 8'h0) && ((msk & ~pol) == 8'h0) && (rc == 8'h00))
+            u_sep_km_cmd_reject_cg.sample(5'd2, 16'd0);
+          if (km_own_xf && ((msk & pol) != 8'h0) && ((msk & ~pol) != 8'h0) && (rc == KqRcFail) &&
+              !has_arg && !kq_ev_kvr)
+            u_sep_km_cmd_reject_cg.sample(5'd2, 16'd1);
+          if (km_own_xf && (rc == 8'h00) && ((kv[7:0] & msk) == msk)) begin
+            if ($countones(msk) == 1) u_sep_km_sideload_delivery_cg.sample(5'd1, 16'd0);
+            else if (msk == 8'hFF) u_sep_km_sideload_delivery_cg.sample(5'd1, 16'd2);
+            else if (msk != 8'h0) u_sep_km_sideload_delivery_cg.sample(5'd1, 16'd1);
+            if (($countones(msk) == 1) && (msk[7:5] == 3'b000)) begin
+              wid = msk[3] ? 8'd12 : 8'd8;
+              for (int b = 0; b < 5; b++) begin
+                if (msk[b]) begin
+                  cls = (sz < wid) ? 3'd0 : ((sz == wid) ? 3'd1 : 3'd2);
+                  u_sep_km_sideload_delivery_cg.sample(5'd3, 16'({3'(b), cls[1:0]}));
+                end
+              end
+            end
+          end
+        end
+        if (km_own_xf && valid && !m.recov && (rc == 8'h00)) begin
+          msk = (m.id == KmCmdTransfer) ? m.p1[7:0] : (m.id == KqCmdShred) ? m.p0[7:0] :
+              (m.id == KqCmdLoad) ? m.p1[7:0] : 8'h00;
+          cls = (m.id == KmCmdTransfer) ? 3'd1 : (m.id == KqCmdShred) ? 3'd2 : 3'd3;
+          for (int b = 0; b < 8; b++)
+          if (msk[b]) u_sep_km_sideload_delivery_cg.sample(5'd2, 16'({cls, 3'(b)}));
+        end
+        // HK-KPV word class (cp_transfer_integrity): the key CRC fault frame
+        // came first, then this failure, RECOVERABLE_ERR set and no engine
+        // key_valid rise; or a residue flip that passes.
+        if (km_own_fi && valid && (m.id == KmCmdTransfer) && m.flip && kq_hv[m.p0[7:0]]) begin
+          off = m.flip_idx - 10'({kq_hslot[m.p0[7:0]], 4'h0});
+          sz = kq_hsize[m.p0[7:0]];
+          if (off == 10'd0) cls = 3'd0;
+          else if (off == 10'(sz - 8'd1)) cls = 3'd2;
+          else if (off < 10'(sz)) cls = 3'd1;
+          else if (off < 10'({sz[7:4] + (sz[3:0] != 4'h0), 4'h0})) cls = 3'd3;
+          else cls = 3'd7;
+          if ((cls <= 3'd2) && kq_fe_pend && (kq_fe_code == 8'hFF) && (rc == KqRcFail) && !has_arg &&
+              kq_recov && !kq_ev_kvr)
+            u_sep_km_cmd_reject_cg.sample(5'd3, 16'(cls));
+          if ((cls == 3'd3) && !kq_fe_pend && (rc == 8'h00))
+            u_sep_km_cmd_reject_cg.sample(5'd3, 16'd3);
+        end
+        // Image size (cp_image_bounds) and the stored size (cp_ho_fwsize).
+        if (km_own_ho && valid && !m.recov && (m.id == KmCmdSramLoadExec)) begin
+          if ((rc == KqRcArg) && has_arg && (arg == 32'h0) && (m.p0 == 32'h0))
+            u_sep_km_cmd_reject_cg.sample(5'd4, 16'd0);
+          if ((rc == KqRcArg) && has_arg && (arg == 32'h0) && (m.p0[31:16] == 16'h0) &&
+              (m.p0[15:0] >= 16'd8192))
+            u_sep_km_cmd_reject_cg.sample(5'd4, 16'd1);
+          if (rc == 8'h00) u_sep_km_cmd_reject_cg.sample(5'd4, 16'd2);
+        end
+        if (km_own_br && valid && !m.recov && (m.id == KmCmdSramExec) && (rc == KqRcArg) &&
+            !has_arg && !kq_loaded)
+          u_sep_km_handover_cg.sample(5'd1, 16'd0);
+        // A confirmed handover command starts the handover; the record of
+        // the key banks started at the end of its frame.
+        if ((m.id == KmCmdSramLoadExec) || (m.id == KmCmdSramExec)) kq_ho_arm <= 1'b0;
+        if (kq_ho_arm && valid && !m.recov && (rc == 8'h00) &&
+            ((m.id == KmCmdSramLoadExec) || (m.id == KmCmdSramExec))) begin
+          kq_ho_pend <= 1'b1;
+          kq_ho_path <= (m.id == KmCmdSramExec);
+          kq_ho_rcmd <= 1'b0;
+          kq_ho_ff <= 1'b0;
+          if (m.id == KmCmdSramLoadExec) kq_loaded <= 1'b1;
+        end else if (kq_ho_pend) kq_ho_rcmd <= 1'b1;
+      end else if (rcmd && kq_ho_pend) kq_ho_rcmd <= 1'b1;
+
+      // The frame after a recoverable fault (cp_fr_resp_pairing, step 0
+      // of cp_fr_recovery_handshake).
+      if (kq_fe_pend) begin
+        kq_fe_pend <= 1'b0;
+        if ((km_own_fi || km_own_cp) && (kq_fe_code == 8'hFF) && rcmd && (rc == KqRcFail))
+          u_sep_km_fault_report_cg.sample(5'd7, 16'd0);
+        if ((km_own_fi || km_own_cp) && (kq_fe_code inside {8'hFE, 8'hFB}) && rcmd && kq_ev_mv)
+          u_sep_km_fault_report_cg.sample(5'd7, 16'd1);
+        if (km_own_cp && kq_rh_on && (kq_fe_code inside {8'hFE, 8'hFB}) && rcmd && kq_ev_mv)
+          u_sep_km_fault_report_cg.sample(5'd8, 16'({kq_rh_c, 3'd0}));
+      end
+      // Recoverable faults (cp_fr_rec_code, cp_fr_code_encoding,
+      // cp_fv_counter_reset, cp_fv_rx_buffer, cp_fr_recovery_handshake).
+      if ((kq_ev_rid == KqRespRec) && (kq_ev_plen == 8'd1)) begin
+        kq_fe_pend <= 1'b1;
+        kq_fe_code <= kq_ev_w0[7:0];
+        if (km_own_fi || km_own_cp) begin
+          if (kq_ev_w0[7:0] == 8'hFF) u_sep_km_fault_report_cg.sample(5'd6, 16'd0);
+          if (kq_ev_w0[7:0] == 8'hFE) u_sep_km_fault_report_cg.sample(5'd6, 16'd1);
+          if (kq_ev_w0[7:0] == 8'hFB) u_sep_km_fault_report_cg.sample(5'd6, 16'd2);
+        end
+        if ((km_own_fi || km_own_cp || km_own_ho) && (kq_ev_w0[31:8] == 24'hFF_FFFF))
+          u_sep_km_fault_report_cg.sample(5'd3, 16'd0);
+        if (kq_ev_w0[7:0] inside {8'hFE, 8'hFB}) begin
+          kq_cr_arm <= 1'b1;
+          kq_cr_c <= (kq_ev_w0[7:0] == 8'hFE) ? 2'd1 : 2'd0;
+          kq_prev_ff <= 1'b0;
+          if (km_own_cp && (kq_ev_seq == 8'h00))
+            u_sep_km_frame_validation_cg.sample(5'd4, (kq_ev_w0[7:0] == 8'hFE) ? 16'd2 : 16'd0);
+          if (km_own_cp && (kq_ev_w0[7:0] == 8'hFE) && (kq_ev_nosep >= 10'd257))
+            u_sep_km_frame_validation_cg.sample(5'd6, 16'd1);
+          kq_rh_on <= 1'b1;
+          kq_rh_c <= (kq_ev_w0[7:0] == 8'hFB);
+          kq_rh_s2 <= 1'b0;
+          kq_rh_ack <= 1'b0;
+          kq_rh_s3 <= 1'b0;
+          if (km_own_cp && (kq_ev_seq == 8'h00))
+            u_sep_km_fault_report_cg.sample(5'd8, 16'({kq_ev_w0[7:0] == 8'hFB, 3'd1}));
+        end
+      end
+      // The ready message after a warm reset (cp_fv_counter_reset).
+      if (kq_ev_rid == KqRespReady) begin
+        kq_prev_ff <= 1'b0;
+        kq_rh_on <= 1'b0;
+        if (!kq_boot_cold) begin
+          kq_cr_arm <= 1'b1;
+          kq_cr_c <= 2'd2;
+          if (km_own_cp && (kq_ev_seq == 8'h00))
+            u_sep_km_frame_validation_cg.sample(5'd4, 16'({2'd2, 1'b0}));
+        end else kq_cr_arm <= 1'b0;
+      end
+      // Unrecoverable faults (cp_fr_unrec_code, cp_fr_code_encoding,
+      // cp_csr_isr_winner, cp_fr_isr_disposition, cp_ho_image_state).
+      if ((kq_ev_rid == KqRespUnrec) && (kq_ev_plen == 8'd1)) begin
+        if ((km_own_fi || km_own_ho) &&
+            (kq_ev_w0[7:0] inside {8'hFE, 8'hFD, 8'hFC, 8'hFB, 8'hFA, 8'hF9, 8'hF8, 8'hF3, 8'hF2, 8'hEF, 8'hEE}))
+          u_sep_km_fault_report_cg.sample(5'd2, 16'(kq_ev_w0[7:0]));
+        if ((km_own_fi || km_own_cp || km_own_ho) && (kq_ev_w0[31:8] == 24'hFF_FFFF))
+          u_sep_km_fault_report_cg.sample(5'd3, 16'd1);
+        if (km_own_fi && (kq_ev_w0[7:0] == 8'hF8) && st[4] && st[6])
+          u_sep_km_fault_report_cg.sample(5'd3, 16'd2);
+        r = kq_code_rank(kq_ev_w0[7:0]);
+        if (km_own_fi && (r != 4'hF)) begin
+          hi_m = '0;
+          lo_m = '0;
+          for (int k = 0; k < 11; k++) begin
+            rb = kq_rank_bit(4'(k));
+            if (k < r) hi_m[rb] = 1'b1;
+            if (k > r) lo_m[rb] = 1'b1;
+          end
+          if (st[kq_rank_bit(r)] && ((st & hi_m) == 12'h0))
+            u_sep_km_kmcsr_status_cg.sample(5'd9, 16'({r, (st & lo_m) != 12'h0}));
+          if (kq_unrec && st[kq_rank_bit(r)]) u_sep_km_fault_report_cg.sample(5'd9, 16'(r));
+        end
+        if (km_own_ho && kq_ho_pend && !kq_ho_path && !kq_ho_rcmd) begin
+          kq_ho_ff <= 1'b1;
+          u_sep_km_handover_cg.sample(5'd2, 16'd1);
+          if (kq_img_bad && (kq_ev_w0[7:0] == 8'hF2)) u_sep_km_handover_cg.sample(5'd2, 16'd2);
+        end
+      end
+      // The shared-key notice while the KM runs (cp_fr_isr_disposition).
+      if (km_own_fi && (kq_ev_rid == KqRespSkReady) && (kq_ev_plen == 8'd0) && !kq_unrec)
+        u_sep_km_fault_report_cg.sample(5'd9, 16'd11);
+    end
+
+    // ---- host side: SEP_WRITE_DATA accepted (cp_nx_permitted_channel) ----
+    if (km_own_cp && kq_wr_data) u_sep_km_secret_nonexposure_cg.sample(5'd3, 16'd0);
+
+    // ---- RECOVERABLE_ERR (cp_csr_recov_err) ----
+    if (!kq_held && !kq_rec_q && kq_recov) begin
+      kq_rec_cnt <= 2'd1;
+      if (km_own_cp || km_own_fi) u_sep_km_kmcsr_status_cg.sample(5'd8, 16'd0);
+    end else if (kq_rec_cnt != 2'd0) begin
+      if (kq_rec_cnt == 2'(KmSettle)) begin
+        kq_rec_cnt <= '0;
+        if ((km_own_cp || km_own_fi) && kq_recov && (km_rec_pic_i === 1'b1))
+          u_sep_km_kmcsr_status_cg.sample(5'd8, 16'd3);
+      end else kq_rec_cnt <= kq_rec_cnt + 2'd1;
+    end
+    if (km_rel_ev && !km_rel_cold && kq_rec_pre && !kq_recov && (km_own_cp || km_own_fi))
+      u_sep_km_kmcsr_status_cg.sample(5'd8, 16'd2);
+
+    // ---- SRAM read latency (cp_km_sram_latency) ----
+    lat_new = (km_sram_lat_done_i !== kq_lat_done_q) && !$isunknown(km_sram_lat_done_i);
+    kq_lat_done_q <= km_sram_lat_done_i;
+    if (lat_new && !$isunknown(km_sram_lat_i)) begin
+      kq_lat_prev <= km_sram_lat_i;
+      if (km_own_fi && (km_sram_lat_i <= 8'd8))
+        u_sep_km_memory_boot_cg.sample(5'd8, 16'(km_sram_lat_i));
+      if (km_own_fi && (km_sram_lat_i >= 8'd2) && (km_sram_lat_i <= 8'd8) && (kq_lat_prev >= 8'd2) &&
+          (kq_lat_prev <= 8'd8) && (km_sram_lat_i != kq_lat_prev))
+        u_sep_km_memory_boot_cg.sample(5'd8, 16'd9);
+    end
+
+    // ---- HK-PAR parity flips (cp_if_parity): the lane that the hook
+    // flipped and the KM checked, then the parity bit of that memory ----
+    kq_par_q <= (km_par_fired_i === 1'b1);
+    kq_par_st_q <= st[1:0];
+    if (!kq_par_q && (km_par_fired_i === 1'b1)) begin
+      kq_par_win <= 7'd1;
+      kq_par_mem <= (km_par_mem_i === 1'b1);
+      kq_par_lane <= km_par_lane_i;
+      kq_par_rstrb <= km_par_rstrb_i;
+    end else if (kq_par_win != 7'd0) begin
+      if (!kq_par_st_q[kq_par_mem] && st[kq_par_mem]) begin
+        kq_par_win <= '0;
+        if (km_own_fi && kq_par_rstrb[kq_par_lane] && !st[!kq_par_mem])
+          u_sep_km_integrity_fault_cg.sample(5'd7, 16'({kq_par_mem, kq_par_lane}));
+      end else if (kq_par_win == 7'h7F) kq_par_win <= '0;
+      else kq_par_win <= kq_par_win + 7'd1;
+    end
+
+    // ---- no command answered while bit 30 is high (cp_fr_err_out) ----
+    if (kq_ev_fend && kq_ev_fend_unrec && kq_unrec) kq_sil <= 11'd1;
+    else if (kq_sil != 11'd0) begin
+      if (!kq_unrec || (km_mbx_hs_i[2] === 1'b1)) kq_sil <= '0;
+      else if (kq_sil == 11'(KmRunWin)) begin
+        kq_sil <= '0;
+        if (km_own_fi) u_sep_km_fault_report_cg.sample(5'd0, 16'd5);
+      end else kq_sil <= kq_sil + 11'd1;
+    end
+
+    // ---- fatal episode (cp_fr_flow_order, cp_fr_wipe_predicate,
+    // cp_vw_isr_flow) ----
+    if (!kq_ep_on && !kq_held && !kq_unrec &&
+        ((km_wipe_i[1] === 1'b1) || ((st & ~kq_st_q & ranked) != 12'h0))) begin
+      kq_ep_on <= 1'b1;
+      kq_ep_wipe <= (km_wipe_i[1] === 1'b1);
+      kq_ep_kv0 <= kv;
+      kq_ep_kvclr <= 1'b0;
+      kq_ep_fl <= 1'b0;
+      kq_ep_rep <= 1'b0;
+      kq_ep_kv_rep <= 1'b0;
+      kq_ep_fl_rep <= 1'b0;
+      kq_ep_sr_pre <= '0;
+      kq_ep_sr <= '0;
+    end else if (kq_ep_on) begin
+      if ((kq_ep_kv0 != 9'h0) && (kv == 9'h0)) kq_ep_kvclr <= 1'b1;
+      if (!kq_mbx_fl_q[0] && (km_mbx_flush_i[0] === 1'b1)) kq_ep_fl <= 1'b1;
+      if (!kq_ep_rep && kq_ep_fl && (km_mbx_flush_i[0] !== 1'b1) && ofd) begin
+        kq_ep_rep <= 1'b1;
+        kq_ep_kv_rep <= kq_ep_kvclr || ((kq_ep_kv0 != 9'h0) && (kv == 9'h0));
+        kq_ep_fl_rep <= 1'b1;
+      end
+      if (km_sram_wr) begin
+        if (kq_ep_rep && (kq_ep_sr != 16'hFFFF)) kq_ep_sr <= kq_ep_sr + 16'd1;
+        if (!kq_ep_rep && (kq_ep_sr_pre != 16'hFFFF)) kq_ep_sr_pre <= kq_ep_sr_pre + 16'd1;
+      end
+      if (!kq_unrec_q && kq_unrec) begin
+        kq_ep_on <= 1'b0;
+        if (km_own_fi) begin
+          if (kq_ep_rep && kq_ep_kv_rep) u_sep_km_fault_report_cg.sample(5'd4, 16'd0);
+          if (kq_ep_rep && kq_ep_fl_rep) u_sep_km_fault_report_cg.sample(5'd4, 16'd1);
+          if (kq_ep_rep && (kq_ep_sr >= 16'(KqShredWords)) && (kq_ep_sr_pre < 16'(KqShredWords)))
+            u_sep_km_fault_report_cg.sample(5'd4, 16'd2);
+          if (kq_ep_rep && (kq_ep_sr >= 16'(KqShredWords)))
+            u_sep_km_fault_report_cg.sample(5'd4, 16'd3);
+          if (kq_ep_rep && (kq_ep_kvclr || (kv == 9'h0)) && (kq_ep_kv0 != 9'h0) &&
+              (kq_ep_sr >= 16'(KqShredWords)))
+            u_sep_km_fault_report_cg.sample(5'd5, 16'd0);
+          if (kq_ep_rep && (kq_ep_kv0 != 9'h0) && (kv == kq_ep_kv0))
+            u_sep_km_fault_report_cg.sample(5'd5, 16'd1);
+          if (kq_ep_wipe) begin
+            if (kq_ep_rep && kq_ep_kv_rep) u_sep_km_vault_wipe_cg.sample(5'd4, 16'd0);
+            if (kq_ep_rep && (kq_ep_sr >= 16'(KqShredWords)))
+              u_sep_km_vault_wipe_cg.sample(5'd4, 16'd1);
+            if (st[7]) u_sep_km_vault_wipe_cg.sample(5'd4, 16'd2);
+          end
+        end
+      end
+    end
+
+    // ---- handover (sep_km_handover_cg, cp_nx_epoch_secret,
+    // cp_csr_entry_lock, cp_vw_handover_shred) ----
+    if (kq_ho_arm || kq_ho_pend) begin
+      for (int b = 0; b < 8; b++) begin
+        if (aw[b] && (kq_ho_aw[b] != 8'hFF)) kq_ho_aw[b] <= kq_ho_aw[b] + 8'd1;
+        if (aw[b] && (kq_ho_aw[b] == 8'd0)) kq_ho_ctl1[b] <= awc[b];
+      end
+      // The KM flush of the handover: the inbound residue at the rise, both
+      // FIFOs at the self-clear.
+      if (!kq_mbx_fl_q[0] && (km_mbx_flush_i[0] === 1'b1)) begin
+        kq_ho_fl <= 1'b1;
+        kq_ho_res <= (km_mbx_in_depth_i != 5'd0);
+      end
+      if (kq_ho_fl && kq_mbx_fl_q[0] && (km_mbx_flush_i[0] !== 1'b1)) begin
+        kq_ho_fl <= 1'b0;
+        if (km_own_ho && (km_mbx_in_depth_i === 5'd0) && (km_mbx_out_depth_i === 5'd0)) begin
+          u_sep_km_handover_cg.sample(5'd4, 16'd0);
+          if (kq_ho_res) u_sep_km_handover_cg.sample(5'd4, 16'd1);
+        end
+      end
+      jump = kq_ho_pend && km_fetch_done && km_mb_sram && (km_sram_exec_mode_i === 1'b1);
+    end
+    if (jump) begin
+      kq_ho_pend <= 1'b0;
+      if (km_own_ho || km_own_br) u_sep_km_handover_cg.sample(5'd0, 16'(kq_ho_path));
+      if (km_own_ho) begin
+        if (!kq_ho_path && !kq_ho_rcmd && !kq_ho_ff) u_sep_km_handover_cg.sample(5'd2, 16'd1);
+        if (km_irq_enable_i === 12'h0) u_sep_km_handover_cg.sample(5'd3, 16'd0);
+        if (km_mbx_km_en_i === 5'h0) u_sep_km_handover_cg.sample(5'd3, 16'd1);
+        if (km_irq_entry_addr_i === KmEntryReset) u_sep_km_handover_cg.sample(5'd3, 16'd2);
+        if (km_irq_entry_lock_i === 1'b0) u_sep_km_handover_cg.sample(5'd3, 16'd3);
+        for (int f = 2; f < 6; f++)
+        if (km_otp_rlock_i[f] === 1'b1) u_sep_km_secret_nonexposure_cg.sample(5'd1, 16'(f + 2));
+        if ((km_irq_entry_addr_i === KmEntryReset) && (km_irq_entry_lock_i === 1'b0))
+          u_sep_km_kmcsr_status_cg.sample(5'd6, 16'd4);
+        // Each bank written on its key path in the handover, key_valid clear
+        // at the jump: banks that held a key, and a bank that held none.
+        // The handover shred of each bank (cp_sd_shred_order): the KEY_CTRL
+        // write first for a bank that held a key, the share writes, and a
+        // bank that held none.
+        for (int b = 0; b < 8; b++) begin
+          if ((kq_ho_aw[b] >= ((b == 3) ? 8'd24 : 8'd16)) && !kv[b]) begin
+            if (kq_ho_kv0[b]) u_sep_km_vault_wipe_cg.sample(5'd5, 16'(b));
+            else u_sep_km_vault_wipe_cg.sample(5'd5, 16'd8);
+            if (kq_ho_kv0[b] && kq_ho_ctl1[b]) u_sep_km_sideload_delivery_cg.sample(5'd4, 16'd0);
+            u_sep_km_sideload_delivery_cg.sample(5'd4, 16'd1);
+            if (!kq_ho_kv0[b]) u_sep_km_sideload_delivery_cg.sample(5'd4, 16'd2);
+          end
+        end
+        if (kq_ho_sk0 && !kv[8]) u_sep_km_vault_wipe_cg.sample(5'd5, 16'd9);
+        if (!kq_ho_sk0 && !kv[8]) u_sep_km_vault_wipe_cg.sample(5'd5, 16'd10);
+      end
+    end
+    // The end of a handover command frame: the key banks and the shared key
+    // before the handover, and the key-path writes from here.
+    if (kq_ev_fend && (kq_ev_f.flt[4:0] == 5'h0) &&
+        ((kq_ev_f.id == KmCmdSramLoadExec) || (kq_ev_f.id == KmCmdSramExec))) begin
+      kq_ho_arm <= 1'b1;
+      kq_ho_fl <= 1'b0;
+      kq_ho_kv0 <= kv[7:0];
+      kq_ho_sk0 <= kv[8];
+      for (int b = 0; b < 8; b++) kq_ho_aw[b] <= '0;
+      kq_ho_ctl1 <= '0;
+    end
   end
 
 endmodule : sep_fcov

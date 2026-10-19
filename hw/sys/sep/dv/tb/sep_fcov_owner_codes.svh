@@ -128,7 +128,9 @@ localparam int unsigned FcovOwnSepEfuseShimResponseFaultTest = 630;
 // Key Manager.
 localparam int unsigned FcovOwnSepKmCommandProtocolRandTest = 722;
 localparam int unsigned FcovOwnSepKmKeyTransferRandTest = 724;
+localparam int unsigned FcovOwnSepKmBootResetRandTest = 726;
 localparam int unsigned FcovOwnSepKmHandoverRandTest = 727;
+localparam int unsigned FcovOwnSepKmFaultInjectRandTest = 728;
 localparam int unsigned FcovOwnSepKmKmcsrResetRandTest = 729;
 localparam int unsigned FcovOwnSepKmKpvRandTest = 730;
 localparam int unsigned FcovOwnSepKmCpuProtectRandTest = 731;

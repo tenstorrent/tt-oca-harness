@@ -1750,9 +1750,10 @@ does not use the `in_reset` gate of Phase 1. The graded window still applies.
 
 A group that two areas extend is listed under both areas. Its definition is in the area that names it as its home, and the other area adds cells.
 
-No Phase 2 group is parked: every group listed above has at least one
-executable bin, and its `*Class*:` line states `executable` or `executable in
-part`.
+No Phase 2 group is parked except `sep_km_key_registry_cg`, whose only owner
+has no implemented checker (<<sep-fcov-km-planned>>): every other group listed
+above has at least one executable bin, and its `*Class*:` line states
+`executable` or `executable in part`.
 
 [[sep-fcov-p2-crypto-entropy]]
 ==== Crypto and entropy groups
@@ -6057,6 +6058,7 @@ The group names and the owning tests are the contract. The owning tests are the 
 * The SEP host clock and the Key Manager clock are one net, so every point has one clock.
 * The class of a point is `executable`, `executable in part` or `parked` (<<sep-fcov-parked>>). A bin whose stimulus needs the PROPOSED drive `HK-STRM-PAT` is blocked: the point reads `executable in part. Blocked: <bins> need <item>`, or `parked: <item>` when it has no executable bin. The added hooks (the error injects and the top-port drive `HK-LAT`) and the preloads (`HK-IMG-PARAM`, `HOST-UNREC`, `HOST-BOOTWIPE`) block no bin. <<sep-vplan-km-proposed>> in the VPLAN lists the items. A parked point and a blocked bin are not in an executable total.
 * A sampled net that is not an approved item is an added tap: a read-only reference that the owning test adds to the SEP_TB_ARCH observation-probe list. It drives nothing and blocks no bin. <<sep-fcov-km-signals>> lists the class of every sampled net.
+* [[sep-fcov-km-planned]]A Phase 3 owner fills a point only through a check that its contract lists as `Implemented` in the field `*Check status*` (`hw/sys/sep/dv/docs/test_contracts/key_manager.adoc`). A bin that only a `Planned` check, or only an owner with no implemented checker, fills is blocked: the class cell reads `executable in part. Blocked: <bins> need <check or owner>`, or `parked: <reason>` when the point has no other bin. The sampler declares no blocked bin. An owner whose checks of a shared point are all `Planned` opens no gate for that point, and the class cell names it.
 * A point whose class ends in `seed-dependent` records cells that its owner draws from the seed of the leaf, so one regression can leave a cell empty. The point is graded on a merge of regressions, as <<sep-fcov-rand>> states for the `_rand_cg` groups, and no single regression is claimed to fill it. The bins text of the point names the cells that run on every seed. A point without the mark is filled by cells that its owners run on every seed.
 
 [[sep-fcov-km-signals]]
@@ -6089,6 +6091,7 @@ The table lists the nets that the testbench has or that a testbench probe covers
 |`efuse_locks` |`efuse_shadow_probe_o` bits 95:0, the sensed `LOCKS` and `LOCKS_SPARE` words of the shadow map, read through the `efuse_shadow_i` port that the eFuse groups also use |`hw/sys/sep/dv/tb/tb_top.sv` |approved (`efuse_shadow_probe_o`)
 |`test_en_strap` |Secure test strap `test_en_strap` to `secure_tm_req_i` |`hw/sys/sep/dv/tb/tb_top.sv` |approved (`test_en_strap_i` input)
 |`hk_kpv_arm` |The logical KPV word index and the bit that the error inject `HK-KPV` arms, read as stimulus |the `HK-KPV` inject of `sep_km_fault_inject_rand_test` |added hook (error inject); it blocks no bin
+|`hk_par_arm` |The memory and the byte lane that the error inject `HK-PAR` flips, its fired flag and the lanes that the KM checked on the flipped response (`km_par_mem_i`, `km_par_lane_i`, `km_par_fired_o`, `km_par_rstrb_o`), read as stimulus |the `HK-PAR` inject of `sep_km_fault_inject_rand_test` |added hook (error inject); it blocks no bin
 |===
 
 ====== Signals in the unresolved list
@@ -6101,11 +6104,12 @@ Every name in <<sep-fcov-p2-unresolved-key-manager,Unresolved signal paths>> is 
 |===
 |Name |Function
 |`rsp_decode` |Unarmed decoder of every outbound frame on `SEP_READ_DATA` with its own word index. It records response ID, payload length, sequence, return code, return argument and fault code. It does not need a command to arm it, so it sees `RESP_KM_READY`, `RESP_ABR_SHARED_KEY_READY` and unsolicited fault frames. See `hw/ip/key_manager/doc/firmware.adoc`, "Response Message Reference".
-|`cmd_decode` |Decoder of the command frame on `SEP_WRITE_DATA`: sent sequence number, command ID, payload length, wire word count and separator position.
-|`seq_model` |Model of the expected sequence number, built from the responses. It advances on a rejection after the header passes. It resets on a flush, a receive overflow and a warm reset. See `hw/ip/key_manager/doc/firmware.adoc`, "Command Message Reference".
+|`cmd_decode` |Decoder of the command frame on `SEP_WRITE_DATA`: sent sequence number, command ID, payload length, wire word count and separator position. The word written after `SEP_WRITE_SEPARATOR.set` ends the frame. After a confirmed CMD_SRAM_LOAD_EXEC the next FW_WORDS words and the trailer are the image, not a frame; `crc_check` compares the trailer with the CRC-32C of the image words, and later inbound words are no frame until the next KM reset. Outbound words after `SRAM_EXEC_MODE.enable` rises are no frame until the next KM reset.
+|`seq_model` |Model of the expected sequence number. It advances at the end of every frame that passes the header CRC and the sequence check, also when a later check rejects the frame. It resets on a KM reset, on RESP_KM_READY and on a RESP_RECOVERABLE_FAULT with code -2 to -5. See `hw/ip/key_manager/doc/firmware.adoc`, "Command Message Reference".
+|`rsp_pair` |A RESP_CMD pairs with the oldest ended frame that has no response yet, only when it echoes the sequence number and the command ID of that frame. Each point that names `rsp_decode` and `cmd_decode` samples a paired response only. A response whose code is not the code that the point states fills no bin.
 |`crc_check` |CRC-8/ROHC and CRC-32C functions over the words that the host sent. They classify a frame as header-CRC-bad or payload-CRC-bad. See `hw/ip/key_manager/doc/firmware.adoc`, "CRC Function Library".
 |`plen_table` |Table of the fixed payload length of each command: IDs 0x00 to 0x04, 0x10 and 0x12 take 0 words. IDs 0x11, 0x23, 0x25, 0x27 and 0x28 take 1 word. IDs 0x22 and 0x24 take 2 words. ID 0x26 takes KEY_SIZE+3 words.
-|`handle_table` |Table of the echoed size and the handle per handle value, built from the `RESP_CMD` fields.
+|`handle_table` |Table of the echoed size, the stored policy and the first slot per handle value. The size, the policy and the handle come from the `RESP_CMD` argument of CMD_KEY_LOAD and CMD_KEY_GENERATE. The first slot is the lowest KPV slot whose `lock_write` rose on `km_kpv_ctrl` between the frame end and its response. CMD_KEY_REVOKE and a KM reset remove a handle.
 |===
 
 
@@ -6133,27 +6137,27 @@ The image report words of `sep_km_handover_rand_test` do not carry 0x00 in bits 
 [cols="3,1,5",options="header"]
 |===
 |Group |Tool |Class
-|`sep_km_frame_validation_cg` |VCS |executable
-|`sep_km_cmd_reject_cg` |VCS |executable
-|`sep_km_command_cg` |VCS |executable
+|`sep_km_frame_validation_cg` |VCS |executable in part; parked: `cp_fv_invalid_id_gap`, `cp_fv_plen`, `cp_fv_reserved_bits` (<<sep-fcov-km-planned>>)
+|`sep_km_cmd_reject_cg` |VCS |executable in part; parked: `cp_key_extent`, `cp_capacity`, `cp_load_arg_order` (<<sep-fcov-km-planned>>)
+|`sep_km_command_cg` |VCS |executable in part; parked: `cp_otp_lock_cold_cmd` (<<sep-fcov-km-planned>>)
 |`sep_km_mailbox_fault_cg` |VCS |executable
-|`sep_km_mailbox_transport_cg` |VCS |executable
+|`sep_km_mailbox_transport_cg` |VCS |executable in part; parked: `cp_mbt_backpressure` (<<sep-fcov-km-planned>>)
 |`sep_km_memory_boot_cg` |VCS |executable
-|`sep_km_kpv_slot_cg` |VCS |executable
+|`sep_km_kpv_slot_cg` |VCS |executable in part; parked: `cp_kpv_extent` (<<sep-fcov-km-planned>>)
 |`sep_km_kpv_locked_access_cg` |VCS |executable
-|`sep_km_key_registry_cg` |VCS |executable
+|`sep_km_key_registry_cg` |VCS |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
 |`sep_km_secret_nonexposure_cg` |VCS |executable
 |`sep_km_kmcsr_status_cg` |VCS |executable
 |`sep_km_otp_readout_cg` |VCS |executable
 |`sep_km_integrity_fault_cg` |VCS |executable
-|`sep_km_exec_protection_cg` |VCS |executable
+|`sep_km_exec_protection_cg` |VCS |executable in part; parked: `cp_ex_handover_entry` (<<sep-fcov-km-planned>>)
 |`sep_km_drbg_sampler_cg` |VCS |executable in part; stimulus needs the PROPOSED drive `HK-STRM-PAT`: `cp_smp_tvalid_arrival`, `cp_smp_strb`
 |`sep_km_drbg_fault_cg` |VCS |executable in part; stimulus needs the PROPOSED drive `HK-STRM-PAT`: `cp_df_entry_state`
 |`sep_km_fault_report_cg` |VCS |executable
 |`sep_km_reset_domain_cg` |VCS |executable
-|`sep_km_sideload_delivery_cg` |VCS |executable
-|`sep_km_abr_shared_key_cg` |VCS |executable
-|`sep_km_handover_cg` |VCS |executable
+|`sep_km_sideload_delivery_cg` |VCS |executable in part; parked: `cp_sd_write_order` (<<sep-fcov-km-planned>>)
+|`sep_km_abr_shared_key_cg` |VCS |executable in part; parked: `cp_sk_notify`, `cp_km_sk_consume` (<<sep-fcov-km-planned>>)
+|`sep_km_handover_cg` |VCS |executable in part; parked: `cp_ho_order` (<<sep-fcov-km-planned>>)
 |`sep_km_vault_wipe_cg` |VCS |executable
 |===
 
@@ -6162,29 +6166,29 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 [[sep-fcov-km-frame-validation]]
 ===== `sep_km_frame_validation_cg`
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: executable in part; parked: `cp_fv_invalid_id_gap`, `cp_fv_plen`, `cp_fv_reserved_bits` (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/doc/firmware.adoc`, "Command Message Reference", "0x00 - RESP_CMD", "Message Buffers", "Incoming Message Handler".
 
 [cols="2,6,2,3,2",options="header"]
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
-|`cp_fv_first_fail` |The first check to fail, one bin per ordered check: header CRC (-2), sequence (-3), command ID (-4), length (-5), payload CRC (-6), admission gate (-1 with RECOVERABLE_ERR set), handler reached. 7 bins. Cross with the return code. An `illegal_bins` entry is any return code that does not match the first failing check. |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `seq_model`, `km_recoverable_err` |`sep_km_command_protocol_rand_test` |executable
-|`cp_fv_pair_order` |Two faults in one frame. Ordered pairs (earlier, later) of {header CRC, sequence, command ID, frame length, payload CRC}: 10 bins. Pairs with the dispatch length check, which follows the payload CRC check: (header CRC, dispatch length), (sequence, dispatch length), (payload CRC, dispatch length): 3 bins. 13 bins in all. A bin is hit when the frame has both faults and the reply code is the earlier one. `illegal_bins`: the reply code is the later one. The pairs (command ID, dispatch length) and (frame length, dispatch length) have no valid frame and are not bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `seq_model`, `crc_check` |`sep_km_command_protocol_rand_test` |executable
-|`cp_fv_seq` |Sent sequence against the expected one: equal, plus one (skip), minus one (replay), 0xFF to 0x00 rollover, other mismatch. The mismatch bins cross with return code -3. |`host_mbx_bus`, `cmd_decode`, `seq_model` |`sep_km_command_protocol_rand_test` |executable
+|`cp_fv_first_fail` |The first check to fail, one bin per ordered check: header CRC (-2), sequence (-3), command ID (-4), length (-5), payload CRC (-6), admission gate (-1 with RECOVERABLE_ERR set), handler reached. 7 bins. Cross with the return code. A response whose code does not match the first failing check fills no bin. The dispatch length check follows the gate and fills the length bin. |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `seq_model`, `km_recoverable_err` |`sep_km_command_protocol_rand_test` |executable
+|`cp_fv_pair_order` |Two faults in one frame. Ordered pairs (earlier, later) of {header CRC, sequence, command ID, frame length, payload CRC}: 10 bins. Pairs with the dispatch length check, which follows the payload CRC check: (header CRC, dispatch length), (sequence, dispatch length), (payload CRC, dispatch length): 3 bins. 13 bins in all. A bin is hit when the frame has both faults and the reply code is the earlier one. A reply with the code of the later check fills no bin. A frame with three faults counts as the pair of its first two. A payload CRC fault of a frame whose PAYLOAD_LEN contradicts the wire counts only when the wire payload has the length that the command requires. The pairs (command ID, dispatch length) and (frame length, dispatch length) have no valid frame and are not bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `seq_model`, `crc_check` |`sep_km_command_protocol_rand_test` |executable
+|`cp_fv_seq` |Sent sequence against the expected one: equal, plus one (skip), minus one (replay), 0xFF to 0x00 rollover, other mismatch. The mismatch bins cross with return code -3. |`host_mbx_bus`, `cmd_decode`, `seq_model` |`sep_km_command_protocol_rand_test` |executable in part. Blocked: plus one (skip) and minus one (replay) need the Planned check CHK-FRAME of the owner (<<sep-fcov-km-planned>>)
 |`cp_km_seq_wrap` |Command counter at 255 then 0, response counter at 255 then 0. 2 bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_command_protocol_rand_test` |executable
 |`cp_fv_counter_reset` |Cause of the flush: SEP flush, receive overflow, warm reset. Each crossed with {first response sequence 0, first accepted command sequence 0}. 6 bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `km_reset_nets` |`sep_km_command_protocol_rand_test` |executable
-|`cp_fv_invalid_id_gap` |Command ID in a gap: 0x05 to 0x0F, 0x13 to 0x21, 0x29 to 0xFF. Crossed with return code -4. 3 bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_command_protocol_rand_test` |executable
-|`cp_fv_plen` |PAYLOAD_LEN class against the length the command requires (`plen_table`): 0, 1, exact, one too few, one too many, 255. Crossed with {accepted by the length check, return code -5}. `ignore_bins`: cells with no command of that length. |`host_mbx_bus`, `cmd_decode`, `plen_table` |`sep_km_command_protocol_rand_test` |executable
+|`cp_fv_invalid_id_gap` |Command ID in a gap: 0x05 to 0x0F, 0x13 to 0x21, 0x29 to 0xFF. Crossed with return code -4. 3 bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_command_protocol_rand_test` |parked: the owner fills it with the Planned check CHK-FRAME (<<sep-fcov-km-planned>>)
+|`cp_fv_plen` |PAYLOAD_LEN class against the length the command requires (`plen_table`): 0, 1, exact, one too few, one too many, 255. Crossed with {accepted by the length check, return code -5}. `ignore_bins`: cells with no command of that length. |`host_mbx_bus`, `cmd_decode`, `plen_table` |`sep_km_command_protocol_rand_test` |parked: the owner fills it with the Planned check CHK-FRAME (<<sep-fcov-km-planned>>)
 |`cp_fv_arg_kind` |Return argument of the rejection: -5 argument equals the received length for a self-consistent frame whose PAYLOAD_LEN differs from the length that the command requires (the argument for a frame whose PAYLOAD_LEN contradicts the wire length is not stated and is not a bin), -3 argument equals the expected sequence, -2 and -6 argument differs from the received CRC when the received CRC is wrong. 4 bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `seq_model`, `crc_check` |`sep_km_command_protocol_rand_test` |executable
-|`cp_fv_rx_buffer` |A frame of 257 words with the separator on the last word is accepted. 257 words without a separator raise rx_buff_oflow. 2 bins. The bin follows the firmware text: a full buffer of 257 words without a separator. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_command_protocol_rand_test` |executable
-|`cp_fv_reserved_bits` |Reserved bit set, by field: CMD_KEY_GENERATE REQ_SIZE[31:7], CMD_KEY_GENERATE DEST_VALID[31:8], CMD_KEY_LOAD KEY_SIZE[31:7], CMD_KEY_LOAD DEST_VALID[31:8], CMD_ABR_SK_TRANSFER DEST_VALID[31:8]. Each crossed with return code -7 and the stated argument word index. 5 bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_command_protocol_rand_test` |executable
+|`cp_fv_rx_buffer` |A frame of 257 words with the separator on the last word is accepted. 257 words without a separator raise rx_buff_oflow. 2 bins. The bin follows the firmware text: a full buffer of 257 words without a separator. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_command_protocol_rand_test` |executable in part. Blocked: the accepted 257-word frame needs the Planned check CHK-257 of the owner (<<sep-fcov-km-planned>>)
+|`cp_fv_reserved_bits` |Reserved bit set, by field: CMD_KEY_GENERATE REQ_SIZE[31:7], CMD_KEY_GENERATE DEST_VALID[31:8], CMD_KEY_LOAD KEY_SIZE[31:7], CMD_KEY_LOAD DEST_VALID[31:8], CMD_ABR_SK_TRANSFER DEST_VALID[31:8]. Each crossed with return code -7 and the stated argument word index. 5 bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_command_protocol_rand_test` |parked: the owner fills it with the Planned check CHK-ARG (<<sep-fcov-km-planned>>)
 |===
 
 [[sep-fcov-km-cmd-reject]]
 ===== `sep_km_cmd_reject_cg`
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: executable in part; parked: `cp_key_extent`, `cp_capacity`, `cp_load_arg_order` (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/doc/firmware.adoc`, "0x12 - CMD_SRAM_EXEC", "0x22 - CMD_KEY_GENERATE", "0x24 - CMD_KEY_TRANSFER", "0x25 - CMD_ENGINE_SHRED", "0x26 - CMD_KEY_LOAD", "SRAM Firmware Handover", "Key Registry", "Key Management".
 
@@ -6192,30 +6196,30 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
 |`cp_gate` |Command class {5 admitted, 10 gated} by RECOVERABLE_ERR {0, 1}. 4 cells. `ignore_bins`: CMD_SRAM_VER (it fails in both states). |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `km_recoverable_err` |`sep_km_command_protocol_rand_test` |executable
-|`cp_gate_cmd` |Each of the 9 gated command IDs (0x10, 0x11, 0x12, 0x22, 0x23, 0x24, 0x25, 0x26, 0x28) with the gate set, in a frame that passes header CRC, sequence, command ID, frame length and payload CRC (classified by `crc_check`, `seq_model` and `cmd_decode`). The frame validation runs before the gate (`firmware.adoc`, "Error Recovery"), so a frame that fails one of those checks is not sampled here; `cp_fv_first_fail` owns the order. `illegal_bins`: a return code other than -1 for such a frame with the gate set. 9 bins. CMD_ABR_SK_TRANSFER (0x27) is not a bin: with no shared key pending it returns -1 in both gate states, so it is a control of the owner and no check can show the gate. |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `seq_model`, `crc_check`, `km_recoverable_err` |`sep_km_command_protocol_rand_test` |executable
-|`cp_key_extent` |Key length in words: 1, 16, 17, 128 accepted. Read from the echoed size of CMD_KEY_LOAD and CMD_KEY_GENERATE. 4 bins. Length 0 and 129 are not host reachable. |`host_mbx_bus`, `rsp_decode`, `km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |executable
-|`cp_capacity` |Failure with no argument and: no free slot (64 live 16-word keys), free slots but handle 255 already issued, fewer consecutive free slots than the span needs (one free slot and a 2-slot request, or free slots that are not adjacent). 3 bins. |`host_mbx_bus`, `rsp_decode`, `handle_table`, `km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |executable
-|`cp_load_arg_order` |The five CMD_KEY_LOAD checks, each as the first failure: PAYLOAD_LEN below 3 (argument 0), KEY_SIZE reserved bits (0), PAYLOAD_LEN not KEY_SIZE+3 (0), DEST_VALID reserved bits (1), DEST_VALID zero (1). Crossed with return code -7. 5 bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_command_protocol_rand_test` |executable
+|`cp_gate_cmd` |Each of the 9 gated command IDs (0x10, 0x11, 0x12, 0x22, 0x23, 0x24, 0x25, 0x26, 0x28) with the gate set, in a frame that passes header CRC, sequence, command ID, frame length and payload CRC (classified by `crc_check`, `seq_model` and `cmd_decode`). The frame validation runs before the gate (`firmware.adoc`, "Error Recovery"), so a frame that fails one of those checks is not sampled here; `cp_fv_first_fail` owns the order. A return code other than -1 for such a frame with the gate set fills no bin. 9 bins. CMD_ABR_SK_TRANSFER (0x27) is not a bin: with no shared key pending it returns -1 in both gate states, so it is a control of the owner and no check can show the gate. |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `seq_model`, `crc_check`, `km_recoverable_err` |`sep_km_command_protocol_rand_test` |executable
+|`cp_key_extent` |Key length in words: 1, 16, 17, 128 accepted. Read from the echoed size of CMD_KEY_LOAD and CMD_KEY_GENERATE. 4 bins. Length 0 and 129 are not host reachable. |`host_mbx_bus`, `rsp_decode`, `km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
+|`cp_capacity` |Failure with no argument and: no free slot (64 live 16-word keys), free slots but handle 255 already issued, fewer consecutive free slots than the span needs (one free slot and a 2-slot request, or free slots that are not adjacent). 3 bins. |`host_mbx_bus`, `rsp_decode`, `handle_table`, `km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
+|`cp_load_arg_order` |The five CMD_KEY_LOAD checks, each as the first failure: PAYLOAD_LEN below 3 (argument 0), KEY_SIZE reserved bits (0), PAYLOAD_LEN not KEY_SIZE+3 (0), DEST_VALID reserved bits (1), DEST_VALID zero (1). Crossed with return code -7. 5 bins. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_command_protocol_rand_test` |parked: the owner fills it with the Planned check CHK-ARG (<<sep-fcov-km-planned>>)
 |`cp_transfer_policy` |Transfer mask against the stored policy: subset (allowed), mixed (some in, some out). The mixed refusal crosses with "no destination key_valid rose". 2 bins. The fully-outside mask is graded by `sep_km_command_set_rand_test`, and the owning test runs it as a control, so it is not a bin. |`host_mbx_bus`, `rsp_decode`, `cmd_decode`, `engine_key_valid` |`sep_km_key_transfer_rand_test` |executable
-|`cp_transfer_integrity` |The key CRC fails on an `HK-KPV` read-data fault before the policy check: fault frame (-1) then RESP_CMD failure, RECOVERABLE_ERR set, no engine key_valid rise. Crossed with the word class of the logical index that `HK-KPV` arms, against the slot run on `km_kpv_ctrl` {first used, interior, last used, residue after the key end}. The residue class must give success. 4 bins. The residue bin runs on every seed. The owner flips one used-word class in each leaf, so the first-used, interior and last-used bins fill on a merge of regressions. |`host_mbx_bus`, `rsp_decode`, `km_recoverable_err`, `km_kpv_ctrl`, `hk_kpv_arm`, `engine_key_valid` |`sep_km_fault_inject_rand_test` |executable; seed-dependent
+|`cp_transfer_integrity` |The key CRC fails on an `HK-KPV` read-data fault before the policy check: fault frame (-1) then RESP_CMD failure, RECOVERABLE_ERR set, no engine key_valid rise. Crossed with the word class of the logical index that `HK-KPV` arms, against the slot run on `km_kpv_ctrl` {first used, interior, last used, residue after the key end}. The residue class must give success. 4 bins. The residue bin runs on every seed. The owner flips one used-word class in each leaf, so the first-used, interior and last-used bins fill on a merge of regressions. |`host_mbx_bus`, `rsp_decode`, `km_recoverable_err`, `km_kpv_ctrl`, `hk_kpv_arm`, `handle_table`, `engine_key_valid` |`sep_km_fault_inject_rand_test` |executable; seed-dependent
 |`cp_image_bounds` |FW_WORDS: zero (rejected with argument 0 and no image request), at or above 8192 (rejected, values 8192 and 0xFFFF on every seed and one drawn value), an accepted size. 3 bins. The accepted ceiling is not stated and is not binned. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_handover_rand_test` |executable
 |===
 
 [[sep-fcov-km-command]]
 ===== `sep_km_command_cg`
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: executable in part; parked: `cp_otp_lock_cold_cmd` (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/doc/firmware.adoc`, "0x00 - CMD_HW_VER to 0x28 - CMD_OTP_READ_LOCK_COLD", "0x00 - RESP_CMD", "Error Recovery".
 
 [cols="2,6,2,3,2",options="header"]
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
-|`cp_cmd_x_outcome` |The 15 command IDs by {success, documented non-success}. 30 cells. `ignore_bins`: (CMD_SRAM_VER, success), because the ROM always returns failure. |`host_mbx_bus`, `rsp_decode` |`sep_km_command_protocol_rand_test`, `sep_km_handover_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_abr_shared_key_flow_rand_test` |executable
+|`cp_cmd_x_outcome` |The 15 command IDs by {success, documented non-success}. 30 cells. `ignore_bins`: (CMD_SRAM_VER, success), because the ROM always returns failure. |`host_mbx_bus`, `rsp_decode` |`sep_km_command_protocol_rand_test`, `sep_km_handover_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_abr_shared_key_flow_rand_test` |executable in part. Blocked: (CMD_ROM_VER, non-success) and (CMD_RECOV_ACK, non-success) need the Planned check CHK-FRAME of `sep_km_command_protocol_rand_test`, and (CMD_ABR_SK_TRANSFER, success) needs `sep_km_abr_shared_key_flow_rand_test`, which has no implemented checker (<<sep-fcov-km-planned>>)
 |`cp_ret_code` |The 8 signed return codes: 0, -1, -2, -3, -4, -5, -6, -7. |`host_mbx_bus`, `rsp_decode` |`sep_km_command_protocol_rand_test` |executable
-|`cp_resp_shape` |Response ID by payload word count: RESP_CMD 3 words and 4 words, 0xFE with 1 word, 0xFF with 1 word, 0x55 with 0, 0x56 with 0. 6 bins. |`host_mbx_bus`, `rsp_decode` |`sep_km_boot_reset_rand_test`, `sep_km_abr_shared_key_flow_rand_test`, `sep_km_command_protocol_rand_test`, `sep_km_handover_rand_test` |executable
+|`cp_resp_shape` |Response ID by payload word count: RESP_CMD 3 words and 4 words, 0xFE with 1 word, 0xFF with 1 word, 0x55 with 0, 0x56 with 0. 6 bins. |`host_mbx_bus`, `rsp_decode` |`sep_km_boot_reset_rand_test`, `sep_km_abr_shared_key_flow_rand_test`, `sep_km_command_protocol_rand_test`, `sep_km_handover_rand_test` |executable in part. Blocked: 0x56 with 0 words needs `sep_km_abr_shared_key_flow_rand_test`, which has no implemented checker (<<sep-fcov-km-planned>>)
 |`cp_stat_recov` |CMD_STAT reports recov_fault 0 and 1, with bits [31:1] of the status word zero in both. 2 bins. |`host_mbx_bus`, `rsp_decode` |`sep_km_command_protocol_rand_test`, `sep_km_fault_inject_rand_test` |executable
-|`cp_otp_lock_cold_cmd` |CMD_OTP_READ_LOCK_COLD: accumulate disjoint masks. 1 bin. The first set is graded by `sep_km_command_set_rand_test`. The repeat of a set mask, the value after a warm reset and the value zero after a cold reset are controls of the owner: `sep_km_otp_interface_rand_test` grades the write-one-to-set rules of the register, and `sep_km_kmcsr_reset_rand_test` grades its warm survive and cold clear. These are not bins. |`host_mbx_bus`, `rsp_decode`, `km_otp_read_lock` |`sep_km_boot_reset_rand_test` |executable
+|`cp_otp_lock_cold_cmd` |CMD_OTP_READ_LOCK_COLD: accumulate disjoint masks. 1 bin. The first set is graded by `sep_km_command_set_rand_test`. The repeat of a set mask, the value after a warm reset and the value zero after a cold reset are controls of the owner: `sep_km_otp_interface_rand_test` grades the write-one-to-set rules of the register, and `sep_km_kmcsr_reset_rand_test` grades its warm survive and cold clear. These are not bins. |`host_mbx_bus`, `rsp_decode`, `km_otp_read_lock` |`sep_km_boot_reset_rand_test` |parked: the owner fills it with the Planned check CHK-OTP-ACC (<<sep-fcov-km-planned>>)
 |===
 
 [[sep-fcov-km-mailbox-fault]]
@@ -6232,25 +6236,25 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |`cp_mbf_resp_cfg` |The two KM response bits (KM_CTRL.inbound_underflow_resp, KM_CTRL.outbound_overflow_resp) at 0 and 1, each with its error event. 4 cells. |`km_mbx_regs`, `km_cpu_axi`, `km_axi_err` |`sep_km_mailbox_km_side_rand_test` |executable
 |`cp_mbf_sticky_clear` |Per sticky bit: write 1 clears, write 0 keeps, bit persists until cleared. Bits: KM inbound underflow, KM outbound overflow, KM flushed_by_sep, SEP flushed_by_km. 4 bits by 3 actions. |`km_mbx_regs`, `host_mbx_bus` |`sep_km_mailbox_km_side_rand_test` |executable
 |`cp_mbf_flush` |Initiator and pre-flush FIFO state: SEP with both FIFOs empty, SEP with one FIFO non-empty, SEP with both non-empty, KM with both empty, KM with one non-empty, KM with both non-empty. 6 cells. Per KM cell both FIFOs read empty and KM_CTRL.flush self-clears. Per SEP cell the outbound FIFO reads empty; the inbound FIFO and the SEP_CTRL.flush self-clear after a SEP flush are graded by `sep_km_mailbox_protocol_rand_test`, are controls of the owners and are not part of the cell. |`km_mbx_fifo`, `km_mbx_regs`, `host_mbx_bus` |`sep_km_mailbox_km_side_rand_test`, `sep_km_command_protocol_rand_test` |executable
-|`cp_mbf_raw_transport` |A frame with a bad header CRC, with an illegal command ID, with an inconsistent length. Each is answered by one RESP_CMD that the sequence model accepts (CHK-FRAME), so the frame passed the FIFO. 3 bins. |`km_mbx_fifo`, `host_mbx_bus`, `cmd_decode`, `crc_check` |`sep_km_command_protocol_rand_test` |executable
+|`cp_mbf_raw_transport` |A frame with a bad header CRC, with an illegal command ID, with an inconsistent length. Each is answered by one RESP_CMD that pairs with the frame (`rsp_decode` echoes its sequence and command ID), so the frame passed the FIFO. 3 bins. |`km_mbx_fifo`, `host_mbx_bus`, `cmd_decode`, `crc_check` |`sep_km_command_protocol_rand_test` |executable
 |===
 
 [[sep-fcov-km-mailbox-transport]]
 ===== `sep_km_mailbox_transport_cg`
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: executable in part; parked: `cp_mbt_backpressure` (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/regs/gen/adoc/km_mailbox_sep.adoc`, "SEP_WRITE_DATA to SEP_CTRL"; `hw/ip/key_manager/regs/gen/adoc/km_mailbox_km.adoc`, "Key Manager Mailbox KM Side to KM_CTRL"; `hw/ip/key_manager/doc/architecture.adoc`, "Mailbox Transport"; `hw/sys/sep/doc/interrupts.adoc`, "SEP CPU Interrupt Vector Map".
 
 [cols="2,6,2,3,2",options="header"]
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
-|`cp_mbt_access` |Requester {SEP, KM} by access {write own FIFO, read other FIFO}. 4 cells. |`km_mbx_fifo`, `km_cpu_axi`, `host_mbx_bus` |`sep_km_mailbox_km_side_rand_test`, `sep_km_command_protocol_rand_test` |executable
-|`cp_mbt_occupancy` |Per direction: empty, 1 word, 15 words, 16 words (full). 8 bins. Flags: `illegal_bins` when empty differs from depth 0, or full differs from depth 16. |`km_mbx_fifo`, `host_mbx_bus` |`sep_km_mailbox_km_side_rand_test`, `sep_km_command_protocol_rand_test` |executable
-|`cp_mbt_separator` |Arm then write; write without arm; read a word with the separator set; read a word with it clear; both directions; the set bit self-clears. 6 bins. |`km_mbx_regs`, `host_mbx_bus` |`sep_km_command_protocol_rand_test`, `sep_km_mailbox_km_side_rand_test` |executable
-|`cp_mbt_irq_src_x_en` |Side {SEP, KM} by source by enable {0, 1}. SEP sources: data available, write space. KM sources: data available, write space, inbound underflow, outbound overflow, flushed by other. 14 cells. |`km_mbx_regs`, `km_cpu_irq_lines`, `pic_km_mbx_irq` |`sep_km_command_protocol_rand_test`, `sep_km_mailbox_km_side_rand_test` |executable
-|`cp_mbt_irq_aggregate` |Aggregate rises when (status AND enable) is non-zero. A level source falls when the cause clears. A sticky source stays until W1C. SEP aggregate reaches PIC source 15 (vector bit 14). 4 bins. |`km_mbx_regs`, `km_cpu_irq_lines`, `pic_km_mbx_irq` |`sep_km_command_protocol_rand_test`, `sep_km_mailbox_km_side_rand_test` |executable
-|`cp_mbt_backpressure` |The outbound FIFO is full while the KM holds a response, then drains with every response in command order. 2 bins. |`km_mbx_fifo`, `host_mbx_bus`, `rsp_decode` |`sep_km_command_protocol_rand_test` |executable
+|`cp_mbt_access` |Requester {SEP, KM} by access {write own FIFO, read other FIFO}. 4 cells. |`km_mbx_fifo`, `km_cpu_axi`, `host_mbx_bus` |`sep_km_mailbox_km_side_rand_test`, `sep_km_command_protocol_rand_test` |executable; `sep_km_command_protocol_rand_test` opens no gate here: its checks of the point are Planned (<<sep-fcov-km-planned>>)
+|`cp_mbt_occupancy` |Per direction: empty, 1 word, 15 words, 16 words (full). 8 bins. Flags: `illegal_bins` when empty differs from depth 0, or full differs from depth 16. |`km_mbx_fifo`, `host_mbx_bus` |`sep_km_mailbox_km_side_rand_test`, `sep_km_command_protocol_rand_test` |executable; `sep_km_command_protocol_rand_test` opens no gate here: its checks of the point are Planned (<<sep-fcov-km-planned>>)
+|`cp_mbt_separator` |Arm then write; write without arm; read a word with the separator set; read a word with it clear; both directions; the set bit self-clears. 6 bins. |`km_mbx_regs`, `host_mbx_bus` |`sep_km_command_protocol_rand_test`, `sep_km_mailbox_km_side_rand_test` |executable; `sep_km_command_protocol_rand_test` opens no gate here: its checks of the point are Planned (<<sep-fcov-km-planned>>)
+|`cp_mbt_irq_src_x_en` |Side {SEP, KM} by source by enable {0, 1}. SEP sources: data available, write space. KM sources: data available, write space, inbound underflow, outbound overflow, flushed by other. 14 cells. |`km_mbx_regs`, `km_cpu_irq_lines`, `pic_km_mbx_irq` |`sep_km_command_protocol_rand_test`, `sep_km_mailbox_km_side_rand_test` |executable in part. Blocked: the four SEP cells need the Planned check CHK-LEVEL of `sep_km_command_protocol_rand_test` (<<sep-fcov-km-planned>>)
+|`cp_mbt_irq_aggregate` |Aggregate rises when (status AND enable) is non-zero. A level source falls when the cause clears. A sticky source stays until W1C. SEP aggregate reaches PIC source 15 (vector bit 14). 4 bins. |`km_mbx_regs`, `km_cpu_irq_lines`, `pic_km_mbx_irq` |`sep_km_command_protocol_rand_test`, `sep_km_mailbox_km_side_rand_test` |executable in part. Blocked: the SEP aggregate on PIC source 15 needs the Planned check CHK-LEVEL of `sep_km_command_protocol_rand_test` (<<sep-fcov-km-planned>>)
+|`cp_mbt_backpressure` |The outbound FIFO is full while the KM holds a response, then drains with every response in command order. 2 bins. |`km_mbx_fifo`, `host_mbx_bus`, `rsp_decode` |`sep_km_command_protocol_rand_test` |parked: the owner fills it with the Planned check CHK-ORDER (<<sep-fcov-km-planned>>)
 |===
 
 [[sep-fcov-km-memory-boot]]
@@ -6277,7 +6281,7 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 [[sep-fcov-km-kpv-slot]]
 ===== `sep_km_kpv_slot_cg`
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: executable in part; parked: `cp_kpv_extent` (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/doc/architecture.adoc`, "Key and Policy Vault (KPV)", "KPV Scrambling"; `hw/ip/key_manager/regs/gen/adoc/km_kpv.adoc`, "Key and Policy Vault (KM Port)", "KEY_ENTRY[64].WORD[16] to KPV_SCRAMBLER_CTRL".
 
@@ -6286,14 +6290,14 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
 |`cp_kpv_slot_index` |Slot 0 to 63 on a completed key-word or CTRL access. 64 bins. Boundary slots 0 and 63 required. |`km_cpu_axi` |`sep_km_kpv_rand_test` |executable
 |`cp_kpv_word_index` |Word 0 to 15 of a key access. 16 bins. Words 0 and 15 required. |`km_cpu_axi` |`sep_km_kpv_rand_test` |executable
-|`cp_kpv_post_reset` |After a reset all 64 CTRL read 0. Cold and warm. 2 bins. |`km_kpv_ctrl`, `km_reset_nets` |`sep_km_kpv_rand_test`, `sep_km_boot_reset_rand_test` |executable
+|`cp_kpv_post_reset` |After a reset all 64 CTRL read 0. Cold and warm. 2 bins. |`km_kpv_ctrl`, `km_reset_nets` |`sep_km_kpv_rand_test`, `sep_km_boot_reset_rand_test` |executable; `sep_km_boot_reset_rand_test` opens no gate here: its check of the point, CHK-SHRED-KPV, is Planned (<<sep-fcov-km-planned>>)
 |`cp_kpv_ctrl_write` |Per field (lock_write, lock_use, seal, erase): write 1 sets, write 0 leaves, three identical writes are idempotent. 4 by 3 bins. |`km_cpu_axi`, `km_kpv_ctrl` |`sep_km_kpv_rand_test`, `sep_km_handover_rand_test` |executable
 |`cp_kpv_lock_write` |Set by write 1; key write while clear lands; CTRL stays writable while set; cleared by a warm reset; cleared by a cold reset; held set while seal is set. 6 bins. |`km_kpv_ctrl`, `km_kpv_words`, `km_cpu_axi`, `km_reset_nets` |`sep_km_kpv_rand_test` |executable
 |`cp_kpv_lock_use` |Set by write 1; read while clear returns data; set by hardware when an erase of a sealed slot completes; cleared by warm reset; independent of lock_write. 5 bins. |`km_kpv_ctrl`, `km_cpu_axi`, `km_reset_nets` |`sep_km_kpv_rand_test` |executable
 |`cp_kpv_erase` |Erase bit reads 1 while in flight and self-clears. From an unsealed slot CTRL clears and the slot takes new data. From a sealed slot the slot is retired (CTRL 0xB). Erase is never blocked by lock_write, lock_use or seal. 4 bins. |`km_kpv_ctrl`, `km_kpv_words`, `km_cpu_axi` |`sep_km_kpv_rand_test` |executable
 |`cp_kpv_seal` |One CTRL write of seal gives seal and lock_write 1. Key read on a sealed slot succeeds. Write 0 to seal has no effect. Seal cleared by a warm reset. Seal and erase in back-to-back writes retires the slot when the erase is still in flight at the seal write; this bin samples only a try in which the CTRL read right after the seal write shows the erase bit at 1, and a `finished` try does not score. 5 bins. |`km_kpv_ctrl`, `km_cpu_axi`, `km_reset_nets` |`sep_km_kpv_rand_test` |executable
 |`cp_kpv_scramble_mode` |KPV_SCRAMBLER_CTRL.enable 0 and 1. With enable 1 two writes of different data to one cell change exactly one stored word, and the inverse-cipher difference of the two stored words equals the data difference. Enable and lock kept by a warm reset. Cleared by a cold reset and by a wipe. 5 bins. |`km_kpv_scrambler`, `km_kpv_words`, `km_cpu_axi` |`sep_km_kpv_rand_test` |executable
-|`cp_kpv_extent` |Key length 1, 15, 16, 17, 128 words gives a CTRL run of 1, 1, 1, 2, 8 slots. Final-slot residue 0 and non-zero. 7 bins. |`km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |executable
+|`cp_kpv_extent` |Key length 1, 15, 16, 17, 128 words gives a CTRL run of 1, 1, 1, 2, 8 slots. Final-slot residue 0 and non-zero. 7 bins. |`km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
 |`cp_kpv_trailing` |After an erase, a partial write keeps the unwritten words. With lock_use set the same words read 0. 2 bins. |`km_kpv_words`, `km_cpu_axi` |`sep_km_kpv_rand_test` |executable
 |===
 
@@ -6317,20 +6321,20 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 [[sep-fcov-km-key-registry]]
 ===== `sep_km_key_registry_cg`
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: parked: the owner has no implemented checker (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/doc/firmware.adoc`, "0x22 - CMD_KEY_GENERATE", "0x23 - CMD_KEY_REVOKE", "0x26 - CMD_KEY_LOAD", "Key Registry", "Key Management".
 
 [cols="2,6,2,3,2",options="header"]
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
-|`cp_reg_handle_value` |Handle 1 (first), an interior value 2 to 254, 255 (last). The null handle 0x00 is never returned: `illegal_bins`. 3 bins. |`host_mbx_bus`, `rsp_decode`, `handle_table` |`sep_km_key_vault_alloc_rand_test` |executable
-|`cp_reg_handle_lifecycle` |Allocated, destroyed by revoke, the next allocation returns a handle never issued before in the boot. 3 bins. |`host_mbx_bus`, `rsp_decode`, `handle_table` |`sep_km_key_vault_alloc_rand_test` |executable
-|`cp_reg_run_start` |First slot of the allocated run, in quarters of the vault: 0 to 15, 16 to 31, 32 to 47, 48 to 63. 4 bins. |`km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |executable
-|`cp_reg_span` |Allocated span of 1, 2 and 8 slots. 3 bins. |`km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |executable
-|`cp_reg_eligibility` |An allocated run holds no slot of a live handle: every slot of the run reads CTRL 0 before the load and every live key keeps its CTRL. An allocated run ends at slot 63. An allocated run starts at slot 0. `illegal_bins`: one key whose run holds slot 63 and slot 0. 3 bins. Locked, sealed and retired slots are not graded. |`km_kpv_ctrl`, `host_mbx_bus`, `rsp_decode` |`sep_km_key_vault_alloc_rand_test` |executable
-|`cp_reg_revoke` |Revoke of a key of span 1, 2 and 8: CTRL.erase rises on every slot of the span, each self-clears, CTRL reads 0 and the handle is destroyed. 3 bins. |`km_kpv_ctrl`, `km_kpv_words`, `host_mbx_bus`, `rsp_decode` |`sep_km_key_vault_alloc_rand_test` |executable
-|`cp_reg_gen_size` |CMD_KEY_GENERATE of 1, 15, 16, 17, 31, 32, 33, 64, 127 and 128 words, each with the echoed size and a non-null handle. 10 bins. |`host_mbx_bus`, `rsp_decode`, `km_entropy_stream` |`sep_km_key_vault_alloc_rand_test` |executable
+|`cp_reg_handle_value` |Handle 1 (first), an interior value 2 to 254, 255 (last). The null handle 0x00 is never returned: `illegal_bins`. 3 bins. |`host_mbx_bus`, `rsp_decode`, `handle_table` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
+|`cp_reg_handle_lifecycle` |Allocated, destroyed by revoke, the next allocation returns a handle never issued before in the boot. 3 bins. |`host_mbx_bus`, `rsp_decode`, `handle_table` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
+|`cp_reg_run_start` |First slot of the allocated run, in quarters of the vault: 0 to 15, 16 to 31, 32 to 47, 48 to 63. 4 bins. |`km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
+|`cp_reg_span` |Allocated span of 1, 2 and 8 slots. 3 bins. |`km_kpv_ctrl` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
+|`cp_reg_eligibility` |An allocated run holds no slot of a live handle: every slot of the run reads CTRL 0 before the load and every live key keeps its CTRL. An allocated run ends at slot 63. An allocated run starts at slot 0. `illegal_bins`: one key whose run holds slot 63 and slot 0. 3 bins. Locked, sealed and retired slots are not graded. |`km_kpv_ctrl`, `host_mbx_bus`, `rsp_decode` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
+|`cp_reg_revoke` |Revoke of a key of span 1, 2 and 8: CTRL.erase rises on every slot of the span, each self-clears, CTRL reads 0 and the handle is destroyed. 3 bins. |`km_kpv_ctrl`, `km_kpv_words`, `host_mbx_bus`, `rsp_decode` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
+|`cp_reg_gen_size` |CMD_KEY_GENERATE of 1, 15, 16, 17, 31, 32, 33, 64, 127 and 128 words, each with the echoed size and a non-null handle. 10 bins. |`host_mbx_bus`, `rsp_decode`, `km_entropy_stream` |`sep_km_key_vault_alloc_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
 |===
 
 [[sep-fcov-km-secret-nonexposure]]
@@ -6344,7 +6348,7 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
 |`cp_nx_share_read` |Destination (8) by share (2) by word index. 136 cells (HMAC, KMAC, AES, ABR seeds 8 words; OTBN 12 words). Per cell a write of a non-zero word is accepted and the read returns exactly 0. |`km_cpu_axi` |`sep_km_key_bank_register_rand_test` |executable
-|`cp_nx_resp_payload` |The response of CMD_KEY_GENERATE, CMD_KEY_LOAD, CMD_KEY_TRANSFER and CMD_ABR_SK_TRANSFER has 3 or 4 payload words. 4 bins. |`host_mbx_bus`, `rsp_decode` |`sep_km_key_vault_alloc_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test` |executable
+|`cp_nx_resp_payload` |The response of CMD_KEY_GENERATE, CMD_KEY_LOAD, CMD_KEY_TRANSFER and CMD_ABR_SK_TRANSFER has 3 or 4 payload words. 4 bins. |`host_mbx_bus`, `rsp_decode` |`sep_km_key_vault_alloc_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test` |executable in part. Blocked: CMD_KEY_GENERATE and CMD_ABR_SK_TRANSFER need `sep_km_key_vault_alloc_rand_test` and `sep_km_abr_shared_key_flow_rand_test`, which have no implemented checker (<<sep-fcov-km-planned>>)
 |`cp_nx_epoch_secret` |After the handover: the OTP_READ_LOCK bits of CHIPLET_UID, SIP_UID, SYS_UID and CLASS_KEY (bits 2 to 5) read 1 (4 bins, CHK-HO-OTP). The zero read of their VAL_0 words after the handover is a control of the owner, because `sep_km_otp_interface_rand_test` grades the zero read of a locked field. Before the handover the same fields read non-zero (4 bins). |`km_cpu_axi`, `km_otp_read_lock` |`sep_km_otp_interface_rand_test`, `sep_km_handover_rand_test` |executable
 |`cp_nx_permitted_channel` |A host write to SEP_WRITE_DATA is accepted. 1 bin. |`host_mbx_bus` |`sep_km_command_protocol_rand_test` |executable
 |===
@@ -6386,7 +6390,7 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |`cp_otp_read_through` |Life-cycle state TEST_DEV and PROD; demotion state before and after a DEMOTE write. Each read equals the OTP port. 4 bins. The two demotion bins run on every seed. The owner stages one drawn life-cycle state for each leaf, so the TEST_DEV and PROD bins fill on a merge of regressions. |`km_otp_input`, `km_cpu_axi` |`sep_km_otp_interface_rand_test` |executable; seed-dependent
 |`cp_otp_change` |Per field (9): the value changes with both rails consistent and the OTP_CHANGE_STATUS bit and IRQ_STATUS.otp_change rise. A stable value sets nothing. The demotion state that persists after a KM warm reset sets nothing. Several fields change together. W1C per bit. 13 bins. |`km_otp_change_status`, `km_irq_status`, `km_otp_input` |`sep_km_otp_interface_rand_test` |executable
 |`cp_otp_lock_matrix` |9 fields by lock state {neither, warm only, cold only, both}. 36 cells. In a locked cell the value and complement words read 0. |`km_otp_read_lock`, `km_cpu_axi` |`sep_km_otp_interface_rand_test` |executable
-|`cp_otp_lock_reg` |Write 1 sets, write 0 has no effect, on both registers. Warm reset clears OTP_READ_LOCK only. Cold reset clears both. Three identical writes. 6 bins. The bin `write0_no_effect` covers both registers in one bin: a write of 0 to a set bit of either register fills it. |`km_otp_read_lock`, `km_cpu_axi`, `km_reset_nets` |`sep_km_otp_interface_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_kmcsr_reset_rand_test` (the warm and cold reset bins, CHK-RST-WARM and CHK-RST-COLD) |executable
+|`cp_otp_lock_reg` |Write 1 sets, write 0 has no effect, on both registers. Warm reset clears OTP_READ_LOCK only. Cold reset clears both. Three identical writes. 6 bins. The bin `write0_no_effect` covers both registers in one bin: a write of 0 to a set bit of either register fills it. |`km_otp_read_lock`, `km_cpu_axi`, `km_reset_nets` |`sep_km_otp_interface_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_kmcsr_reset_rand_test` (the warm and cold reset bins, CHK-RST-WARM and CHK-RST-COLD) |executable; `sep_km_boot_reset_rand_test` opens no gate here: its checks of the point, CHK-OTP-ACC, CHK-OTP-WARM and CHK-OTP-COLD, are Planned (<<sep-fcov-km-planned>>)
 |`cp_otp_secure_tm` |Strap 0 from before the cold reset: secret fields staged. Strap 1 from before the cold reset: the four secret fields read value 0 and complement all ones with OTP_SIGINT quiet; the three public identities keep their values. The strap never changes while the KM runs. 3 bins. |`secure_tm`, `test_en_strap`, `km_cpu_axi`, `km_irq_status` |`sep_km_otp_interface_rand_test` |executable
 |`cp_efw_read_class` |KM read class {shadow map, interface control, token register, gap 0x1141C to 0x114FF, gap 0x11574 to 0x115FF, reserved 0x11600 to 0x11FFF} by response {OKAY, SLVERR with 0xBADCAB1E}. 12 cells. `ignore_bins`: cells with no such response. |`km_cpu_axi`, `km_efuse_master` |`sep_km_crossbar_efuse_window_rand_test` |executable
 |`cp_efw_program` |A program request from the KM and from the host, each against {unlocked spare field, write-locked field, secure test strap set}. Result: allowed or efuse_req_error for the first two; for the strap cell, equal KM and host results, no fuse change and a zero read word. 4 cells: the KM path against the three classes, and the host path in the strap cell. The host program of an unlocked spare field and the host program of a write-locked field are graded by `sep_efuse_program_lock_matrix_test`, are controls of the owner and are not cells. The class of a non-strap program is its target: the field that holds the `efuse_addr` bit of the go write, and the write-lock bit of that field in the sensed `LOCKS` or `LOCKS_SPARE` shadow at the go. `LC_STATE` and the lock words are no class. The cell samples when the program interface is idle again, and only with the result that the class states (`efuse_req_err` clear for an unlocked spare field, set for a write-locked field), so a wrong result fills no cell. |`km_efuse_master`, `efuse_locks`, `efuse_req_err`, `test_en_strap`, `host_mbx_bus` |`sep_km_crossbar_efuse_window_rand_test` |executable
@@ -6408,14 +6412,14 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |`cp_if_efuse_remap` |Address bits [11:0] at the eFuse master equal the KM offset. Address bits [31:12] hold one constant value for the shadow map, the control registers and the token registers. 2 bins. |`km_efuse_master` |`sep_km_crossbar_efuse_window_rand_test` |executable
 |`cp_if_sram_lock_violation` |Region bits 1 to 31 by {store to a locked region: dropped, violation bit set, IRQ_STATUS.sram_write_lock_err set; store to an unlocked region: accepted, no bit}. 62 cells. W1C per bit. |`km_sram_lock`, `km_cpu_mem_bus`, `km_irq_status` |`sep_km_kmcsr_reset_rand_test` |executable
 |`cp_if_otp_dual_rail` |9 fields by corruption class {complement correct (value change), one bit flipped in the value word, one bit flipped in the complement word}. 27 cells. Each single-rail violation sets IRQ_STATUS.otp_sigint. |`km_otp_input`, `km_irq_status` |`sep_km_otp_interface_rand_test` |executable
-|`cp_if_parity` |Memory {ROM, SRAM} by byte lane {0, 1, 2, 3}. 8 cells. Per cell the matching IRQ_STATUS parity bit rises. The corruption class is not observable. The owner draws 3 of the 8 cells in each leaf, so the point fills on a merge of regressions. |`km_rom_rsp`, `km_sram_mem_if`, `km_err_flags`, `km_irq_status` |`sep_km_fault_inject_rand_test` |executable; seed-dependent
+|`cp_if_parity` |Memory {ROM, SRAM} by byte lane {0, 1, 2, 3}. 8 cells. Per cell the matching IRQ_STATUS parity bit rises. The cell is the lane that `HK-PAR` flipped and the KM checked (`hk_par_arm`), and it fills when the parity bit of that memory rises with the bit of the other memory clear. The corruption class is not observable. The owner draws 3 of the 8 cells in each leaf, so the point fills on a merge of regressions. |`hk_par_arm`, `km_irq_status` |`sep_km_fault_inject_rand_test` |executable; seed-dependent
 |`cp_if_rom_write` |ROM write after the lockout raises rom_write_err and not rom_access_violation. 1 bin. The write before the lockout is graded by `sep_km_rom_write_err_test`. |`km_cpu_mem_bus`, `km_err_flags`, `km_irq_status` |`sep_km_cpu_protect_rand_test` |executable
 |===
 
 [[sep-fcov-km-exec-protection]]
 ===== `sep_km_exec_protection_cg`
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: executable in part; parked: `cp_ex_handover_entry` (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/doc/architecture.adoc`, "Key Manager Control and Status Registers (KMCSR)"; `hw/ip/key_manager/regs/gen/adoc/km_csr.adoc`, "IRQ_STATUS", "SRAM_EXEC_MODE".
 
@@ -6427,7 +6431,7 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |`cp_ex_lockout_x_access` |Lockout state {enable 0, enable 1 not engaged, engaged} by access {ROM fetch, ROM data read, ROM write}. 7 cells. Case C0 gives the enable-0 data read. The ROM write before the lockout (enable 0, and enable 1 not engaged) is graded by `sep_km_rom_write_err_test`, is a control of the owner and is not a cell. |`km_cpu_mem_bus`, `km_sram_exec_mode`, `km_err_flags` |`sep_km_cpu_protect_rand_test` |executable
 |`cp_ex_lockout_order` |IRQ_STATUS.rom_access_violation rises in an earlier cycle than the CPU trap. 1 bin. |`km_irq_status`, `km_cpu_trap` |`sep_km_cpu_protect_rand_test` |executable
 |`cp_ex_lockout_irreversible` |After the lockout engages, a write of 0 to the enable leaves it 1. Only a reset clears it. 2 bins. |`km_cpu_axi`, `km_sram_exec_mode`, `km_reset_nets` |`sep_km_cpu_protect_rand_test` |executable
-|`cp_ex_handover_entry` |After the jump the first instruction fetch is at 0x8000. The enable is the last write before the jump. 2 bins. |`km_cpu_mem_bus`, `km_sram_exec_mode`, `km_cpu_axi` |`sep_km_handover_rand_test` |executable
+|`cp_ex_handover_entry` |After the jump the first instruction fetch is at 0x8000. The enable is the last write before the jump. 2 bins. |`km_cpu_mem_bus`, `km_sram_exec_mode`, `km_cpu_axi` |`sep_km_handover_rand_test` |parked: the owner fills it with the Planned check CHK-HO-EXEC (<<sep-fcov-km-planned>>)
 |===
 
 [[sep-fcov-km-drbg-sampler]]
@@ -6488,7 +6492,7 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |`cp_fr_rec_code` |Recoverable codes -1, -2, -5. 3 bins. The codes -3 and -4 are in <<sep-fcov-km-unreachable>>. |`host_mbx_bus`, `rsp_decode` |`sep_km_fault_inject_rand_test`, `sep_km_command_protocol_rand_test` |executable
 |`cp_fr_resp_pairing` |The fault frame and then a failure RESP_CMD (key_slot_crc). The fault frame alone (rx_buff_oflow, flushed_by_sep). 2 bins. |`host_mbx_bus`, `rsp_decode` |`sep_km_fault_inject_rand_test`, `sep_km_command_protocol_rand_test` |executable
 |`cp_fr_recovery_handshake` |Cause {rx_buff_oflow, flushed_by_sep} by step in order: the fault frame with no paired RESP_CMD; the first response sequence 0; a gated command refused with failure; CMD_RECOV_ACK success with recov_fault 0 afterwards; the gated command accepted. 9 bins. (flushed_by_sep, CMD_RECOV_ACK success with recov_fault 0 afterwards) is graded by `sep_km_command_set_rand_test`, is a control of the owner and is not a bin. |`host_mbx_bus`, `rsp_decode`, `km_recoverable_err`, `pic_km_rec_err` |`sep_km_command_protocol_rand_test` |executable
-|`cp_fr_isr_disposition` |Handler by disposition. Halting: wipe_state, rom_parity, sram_parity, rom_write, sram_write_lock, axi_decerr, axi_slverr, drbg_err, otp_sigint, exec, rom_access (11). Informational: the ABR shared key (1). IRQ_STATUS stays set after a halt. 12 bins. The otp_change handler is dormant in the ROM and is in <<sep-fcov-km-unreachable>>. |`km_irq_status`, `pic_km_unrec_err`, `km_cpu_trap`, `host_mbx_bus`, `rsp_decode` |`sep_km_fault_inject_rand_test`, `sep_km_abr_shared_key_flow_rand_test` |executable; seed-dependent: the wipe_state, drbg_err and informational bins run on every seed, and the other halting bins come from the fatal points that the owner draws in each leaf
+|`cp_fr_isr_disposition` |Handler by disposition. Halting: wipe_state, rom_parity, sram_parity, rom_write, sram_write_lock, axi_decerr, axi_slverr, drbg_err, otp_sigint, exec, rom_access (11). Informational: the ABR shared key (1). IRQ_STATUS stays set after a halt. 12 bins. The informational bin is the 0x56 frame that the KM sends while bit 30 is low. The otp_change handler is dormant in the ROM and is in <<sep-fcov-km-unreachable>>. |`km_irq_status`, `pic_km_unrec_err`, `km_cpu_trap`, `host_mbx_bus`, `rsp_decode` |`sep_km_fault_inject_rand_test`, `sep_km_abr_shared_key_flow_rand_test` |executable; seed-dependent: the wipe_state, drbg_err and informational bins run on every seed, and the other halting bins come from the fatal points that the owner draws in each leaf
 |`cp_fr_err_out` |km_unrecoverable_err_o low in normal operation. High on a trap. Stays high until a reset. Cleared by a warm reset. Cleared by a cold reset. No command answered while high. 6 bins. |`pic_km_unrec_err`, `host_mbx_bus`, `rsp_decode`, `km_reset_nets` |`sep_km_cpu_protect_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_handover_rand_test` |executable
 |`cp_km_trap_cause` |Trap entry: EBREAK with the interrupt masked, illegal instruction, misaligned access, EBREAK inside a handler, illegal instruction inside a handler, an undefined CRC accelerator encoding. 6 bins. The cause is classified from the opcode of the trapping instruction (`km_cpu_insn_opcode`) and `irq_active` (`km_cpu_irq_active`). |`km_cpu_trap`, `km_cpu_insn_opcode`, `km_cpu_irq_active` |`sep_km_cpu_protect_rand_test` |executable
 |===
@@ -6518,7 +6522,7 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 
 *Description*: The destination bits, the key size against the engine share width and the write order of a key delivery. The Phase 1 group `sep_km_command_sideload_cg` scores the destination bits of the command (`cp_dest`). This group scores the delivery that follows.
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: executable in part; parked: `cp_sd_write_order` (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/doc/architecture.adoc`, "Key Delivery", "Host Coordination"; `hw/ip/key_manager/doc/firmware.adoc`, "0x23 - CMD_KEY_REVOKE", "0x24 - CMD_KEY_TRANSFER", "0x25 - CMD_ENGINE_SHRED", "Register Access Shuffling", "Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)"; `hw/ip/key_manager/regs/gen/adoc/abr_wrapper_key.adoc`, "Adams Bridge Key Sideload Registers".
 
@@ -6527,10 +6531,10 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
 |`cp_sd_key_valid_semantics` |Reset value 0. Write 1 sets. Write 1 twice. Write 0 clears. 4 bins. The clear by the engine SW_RESET_N reset is in <<sep-fcov-km-unreachable>>. |`engine_key_valid`, `km_cpu_axi` |`sep_km_key_bank_register_rand_test` |executable
 |`cp_sd_mask_shape` |Each bit alone, a bit with others, all 8 bits. 3 bins. The mask 0 is not drawn. |`host_mbx_bus`, `cmd_decode`, `engine_key_valid` |`sep_km_key_transfer_rand_test` |executable
-|`cp_sd_dest_x_cmd` |Destination bit (8) by command {CMD_KEY_GENERATE, CMD_KEY_TRANSFER, CMD_ENGINE_SHRED, CMD_KEY_LOAD, CMD_ABR_SK_TRANSFER}. 40 cells. A cell is hit when the command succeeds with that bit in its mask. The CMD_ENGINE_SHRED cells of bits 5 to 7 come from the subset shred of `sep_km_key_transfer_rand_test`, which holds them on every seed. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_key_transfer_rand_test`, `sep_km_key_vault_alloc_rand_test`, `sep_km_abr_shared_key_flow_rand_test` |executable
+|`cp_sd_dest_x_cmd` |Destination bit (8) by command {CMD_KEY_GENERATE, CMD_KEY_TRANSFER, CMD_ENGINE_SHRED, CMD_KEY_LOAD, CMD_ABR_SK_TRANSFER}. 40 cells. A cell is hit when the command succeeds with that bit in its mask. The CMD_ENGINE_SHRED cells of bits 5 to 7 come from the subset shred of `sep_km_key_transfer_rand_test`, which holds them on every seed. |`host_mbx_bus`, `rsp_decode`, `cmd_decode` |`sep_km_key_transfer_rand_test`, `sep_km_key_vault_alloc_rand_test`, `sep_km_abr_shared_key_flow_rand_test` |executable in part. Blocked: the CMD_KEY_GENERATE and CMD_ABR_SK_TRANSFER rows need `sep_km_key_vault_alloc_rand_test` and `sep_km_abr_shared_key_flow_rand_test`, which have no implemented checker (<<sep-fcov-km-planned>>)
 |`cp_km_size_vs_width` |Engine {AES, HMAC, KMAC, OTBN, ABR seed} by key size against the share width {below, equal, above}. Width 8 words, 12 for OTBN. 15 cells. The six AES and HMAC cells run on every seed. The owner draws one class for each of KMAC, OTBN and the ABR seed in each leaf, so those nine cells fill on a merge of regressions. |`host_mbx_bus`, `rsp_decode`, `handle_table`, `engine_key_valid` |`sep_km_key_transfer_rand_test` |executable; seed-dependent
-|`cp_sd_write_order` |One transfer to one bank: key_valid is the last write. Every (share, word) address is written once. 2 bins. |`engine_key_bus` |`sep_km_key_transfer_rand_test` |executable
-|`cp_sd_shred_order` |A shred writes key_valid 0 first. Then at least 2 x width share words. Shred of a bank that holds no key. 3 bins. |`engine_key_bus`, `engine_key_valid` |`sep_km_key_transfer_rand_test`, `sep_km_handover_rand_test` |executable
+|`cp_sd_write_order` |One transfer to one bank: key_valid is the last write. Every (share, word) address is written once. 2 bins. |`engine_key_bus` |`sep_km_key_transfer_rand_test` |parked: the owner fills it with the Planned checks CHK-DELIV and CHK-ORDER (<<sep-fcov-km-planned>>)
+|`cp_sd_shred_order` |A shred writes key_valid 0 first. Then at least 2 x width share words. Shred of a bank that holds no key. 3 bins. The handover shred of `sep_km_handover_rand_test` (CHK-HO-SIDELOAD-BUS) fills every bin: the first key-path write to the bank is its KEY_CTRL address and key_valid reads 0 at the jump. |`engine_key_bus`, `engine_key_valid` |`sep_km_key_transfer_rand_test`, `sep_km_handover_rand_test` |executable; `sep_km_key_transfer_rand_test` opens no gate here: its check of the point, CHK-SHRED-ORDER, is Planned (<<sep-fcov-km-planned>>)
 |===
 
 [[sep-fcov-km-abr-shared-key]]
@@ -6538,18 +6542,18 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 
 *Description*: The delivery, the consume, the interrupt and the notification of the ABR shared key. No Phase 1 group samples them.
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: executable in part; parked: `cp_sk_notify`, `cp_km_sk_consume` (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/doc/architecture.adoc`, "Adams Bridge Key Sideload Interfaces"; `hw/ip/key_manager/regs/gen/adoc/abr_wrapper_key.adoc`, "Adams Bridge Key Sideload Registers", "KEY[8] to IRQ_ENABLE"; `hw/ip/key_manager/doc/firmware.adoc`, "0x27 - CMD_ABR_SK_TRANSFER", "0x56 - RESP_ABR_SHARED_KEY_READY".
 
 [cols="2,6,2,3,2",options="header"]
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
-|`cp_sk_delivery_state` |No key pending. ABR delivers (key_valid 1). Firmware consumes (key_valid 0, words 0). A second delivery re-loads. 4 bins. |`abr_shared_key` |`sep_km_abr_shared_key_flow_rand_test`, `sep_km_key_bank_register_rand_test` |executable
+|`cp_sk_delivery_state` |No key pending. ABR delivers (key_valid 1). Firmware consumes (key_valid 0, words 0). A second delivery re-loads. 4 bins. |`abr_shared_key` |`sep_km_abr_shared_key_flow_rand_test`, `sep_km_key_bank_register_rand_test` |executable; `sep_km_abr_shared_key_flow_rand_test` has no implemented checker and opens no gate (<<sep-fcov-km-planned>>)
 |`cp_sk_write_dir` |Firmware write of KEY_CTRL 0 is accepted. A write that sets key_valid is refused. 2 bins. |`abr_shared_key`, `km_cpu_axi` |`sep_km_key_bank_register_rand_test` |executable
 |`cp_sk_interrupt` |IRQ_STATUS.key_valid set by hardware. Enable 0 keeps the CPU line low. Enable 1 raises it. W1C clears. Write 0 keeps. A second delivery after W1C sets it again. 6 bins. |`abr_shared_key`, `km_cpu_irq_lines` |`sep_km_key_bank_register_rand_test` |executable
-|`cp_sk_notify` |One delivery gives one RESP_ABR_SHARED_KEY_READY (0x56). Two deliveries give two. 2 bins. |`host_mbx_bus`, `rsp_decode` |`sep_km_abr_shared_key_flow_rand_test` |executable
-|`cp_km_sk_consume` |A successful transfer clears the source key_valid. A second transfer fails. A transfer after an allocation failure fails and the source key_valid is clear. 3 bins. The source words after a transfer are logged by the owner and are not part of a bin, because no step of the owner makes them hold a stated non-zero value. |`abr_shared_key`, `host_mbx_bus`, `rsp_decode` |`sep_km_abr_shared_key_flow_rand_test` |executable
+|`cp_sk_notify` |One delivery gives one RESP_ABR_SHARED_KEY_READY (0x56). Two deliveries give two. 2 bins. |`host_mbx_bus`, `rsp_decode` |`sep_km_abr_shared_key_flow_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
+|`cp_km_sk_consume` |A successful transfer clears the source key_valid. A second transfer fails. A transfer after an allocation failure fails and the source key_valid is clear. 3 bins. The source words after a transfer are logged by the owner and are not part of a bin, because no step of the owner makes them hold a stated non-zero value. |`abr_shared_key`, `host_mbx_bus`, `rsp_decode` |`sep_km_abr_shared_key_flow_rand_test` |parked: the owner has no implemented checker (<<sep-fcov-km-planned>>)
 |===
 
 [[sep-fcov-km-handover]]
@@ -6557,7 +6561,7 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 
 *Description*: The handover entry, the image state and the state at the jump.
 
-*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+*Tool*: VCS. *Class*: executable in part; parked: `cp_ho_order` (<<sep-fcov-parked>>, <<sep-fcov-km-planned>>).
 
 *Specification*: `hw/ip/key_manager/doc/firmware.adoc`, "SRAM Firmware Handover", "ROM Stack Budget and the Static Load Ceiling"; `hw/ip/key_manager/doc/architecture.adoc`, "OTP Inputs and Readout", "ROM Warm-Persistent SRAM Region", "Mutable Firmware Model".
 
@@ -6565,11 +6569,11 @@ The window and decode points of the Key Manager memory map are in `sep_km_integr
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
 |`cp_ho_entry_path` |CMD_SRAM_LOAD_EXEC reaches the handover. CMD_SRAM_EXEC reaches the handover. 2 bins. |`host_mbx_bus`, `rsp_decode`, `km_sram_exec_mode` |`sep_km_handover_rand_test`, `sep_km_boot_reset_rand_test` |executable
-|`cp_ho_fwsize` |The stored image size seen through CMD_SRAM_EXEC: refused after a cold boot, refused after a load whose stream stopped after the confirmation. 2 bins. The success after a warm reset with a stored image is graded by `sep_km_handover_test`, is a control of the owners and is not a bin. |`host_mbx_bus`, `rsp_decode`, `km_reset_nets` |`sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test` |executable
-|`cp_ho_image_state` |One RESP_CMD before the stream. No second RESP_CMD. A trailer mismatch gives the fault. 3 bins. |`host_mbx_bus`, `rsp_decode`, `pic_km_unrec_err` |`sep_km_handover_rand_test` |executable
+|`cp_ho_fwsize` |The stored image size seen through CMD_SRAM_EXEC: refused after a cold boot, refused after a load whose stream stopped after the confirmation. 2 bins. The success after a warm reset with a stored image is graded by `sep_km_handover_test`, is a control of the owners and is not a bin. |`host_mbx_bus`, `rsp_decode`, `km_reset_nets` |`sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test` |executable in part. Blocked: the refusal after a load whose stream stopped after the confirmation needs the Planned check CHK-FWSIZE-CLR of `sep_km_handover_rand_test` (<<sep-fcov-km-planned>>)
+|`cp_ho_image_state` |One RESP_CMD before the stream. No second RESP_CMD. A trailer mismatch gives the fault. 3 bins. |`host_mbx_bus`, `rsp_decode`, `pic_km_unrec_err` |`sep_km_handover_rand_test` |executable in part. Blocked: one RESP_CMD before the stream needs the Planned check CHK-LOAD-OK of the owner (<<sep-fcov-km-planned>>)
 |`cp_ho_state_at_jump` |At the jump: KMCSR IRQ_ENABLE 0, KM_IRQ_ENABLE 0, IRQ_ENTRY_ADDR 0x10, IRQ_ENTRY_LOCK 0. 4 bins. |`km_irq_enable`, `km_mbx_regs`, `km_irq_entry`, `km_sram_exec_mode` |`sep_km_handover_rand_test` |executable
-|`cp_ho_mailbox_flush` |Both FIFOs empty after the flush. Inbound residue is erased. The confirmation is read before the flush. The confirmation is still unread so the ROM waits. 4 bins. |`km_mbx_fifo`, `host_mbx_bus` |`sep_km_handover_rand_test` |executable
-|`cp_ho_order` |The enable of SRAM_EXEC_MODE is the last write before the jump. The outbound FIFO is drained before the flush. 2 bins. |`km_cpu_axi`, `km_sram_exec_mode`, `km_mbx_fifo` |`sep_km_handover_rand_test` |executable
+|`cp_ho_mailbox_flush` |Both FIFOs empty after the flush. Inbound residue is erased. The confirmation is read before the flush. The confirmation is still unread so the ROM waits. 4 bins. |`km_mbx_fifo`, `host_mbx_bus` |`sep_km_handover_rand_test` |executable in part. Blocked: the two confirmation cells need the Planned check CHK-HO-CONFIRM of the owner (<<sep-fcov-km-planned>>)
+|`cp_ho_order` |The enable of SRAM_EXEC_MODE is the last write before the jump. The outbound FIFO is drained before the flush. 2 bins. |`km_cpu_axi`, `km_sram_exec_mode`, `km_mbx_fifo` |`sep_km_handover_rand_test` |parked: the owner fills it with the Planned checks CHK-HO-EXEC and CHK-HO-CONFIRM (<<sep-fcov-km-planned>>)
 |===
 
 [[sep-fcov-km-vault-wipe]]
@@ -6858,7 +6862,7 @@ Each row is a net that the testbench does not sample. The net exists in the RTL.
 |`km_irq_enable` |`u_kmcsr.irq_enable[11:0]` |`hw/ip/key_manager/rtl/km_csr.sv` |Added tap (ACCEPT-PROBE) |Same. VPLAN item KM-CSR.
 |`km_irq_aggregate` |KMCSR aggregate IRQ `km_irq_o` |`hw/ip/key_manager/rtl/km_csr.sv`, `hw/ip/key_manager/rtl/key_manager.sv` |Added tap (ACCEPT-PROBE) |The specification defines it as the OR of status AND enable: `hw/ip/key_manager/doc/architecture.adoc`, "Key Manager Control and Status Registers (KMCSR)". VPLAN item KM-CSR.
 |`km_cold_boot_done` |`u_kmcsr.hwif_out.BOOT_STATUS.cold_boot_done.value` |`hw/ip/key_manager/rtl/km_csr.sv`, `hw/ip/key_manager/regs/gen/sv/km_csr_reg_pkg.sv` |Added tap (ACCEPT-PROBE) |VPLAN item KM-CSR.
-|`km_recoverable_err` |`u_kmcsr.hwif_out.RECOVERABLE_ERR.recoverable_err.value` |`hw/ip/key_manager/rtl/km_csr.sv`, `hw/ip/key_manager/rtl/key_manager.sv` |Added tap (ACCEPT-PROBE) |The level also reaches `pic_km_rec_err`. VPLAN item KM-CSR.
+|`km_recoverable_err` |`u_kmcsr.hwif_out.RECOVERABLE_ERR.recoverable_err.value`, through `km_csr_recov_err_o` of `tb_top.sv` |`hw/ip/key_manager/rtl/km_csr.sv`, `hw/ip/key_manager/rtl/key_manager.sv` |Added tap (ACCEPT-PROBE) |The level also reaches `pic_km_rec_err`. VPLAN item KM-CSR.
 |`km_sram_exec_mode` |`sram_exec_mode` |`hw/ip/key_manager/rtl/key_manager.sv` |Added tap (ACCEPT-PROBE) |VPLAN item KM-CSR.
 |`km_sram_lock` |`sram_lock_bits[31:0]`, `sram_write_lock_violation_region[31:0]`, `SRAM_WRITE_LOCK_VIOLATION.violation_bits` |`hw/ip/key_manager/rtl/key_manager.sv`, `hw/ip/key_manager/rtl/km_csr.sv` |Added tap (ACCEPT-PROBE) |VPLAN item KM-COV: a sampler-side net that no test check uses.
 |`km_scrambler_cfg` |`scrambler_enable`, `scrambler_lock`, `scrambler_key` |`hw/ip/key_manager/rtl/key_manager.sv` |Added tap (ACCEPT-PROBE) |VPLAN item KM-CSR.
@@ -6876,7 +6880,7 @@ Each row is a net that the testbench does not sample. The net exists in the RTL.
 |`km_cpu_axi` |KM CPU AXI master `cpu_axil_req`, `cpu_axil_resp` |`hw/ip/key_manager/rtl/key_manager.sv` |Added tap (ACCEPT-PROBE) |Peripheral accesses only. VPLAN item KM-COV: a sampler-side net that no test check uses.
 |`km_axi_err` |AXI error events `cpu_axi_slverr`, `cpu_axi_decerr` |`hw/ip/key_manager/rtl/key_manager.sv`, `hw/ip/key_manager/rtl/picorv32_wrapper.sv` |Added tap (ACCEPT-PROBE) |VPLAN item KM-COV: a sampler-side net that no test check uses.
 |`km_efuse_master` |KM eFuse master `efuse_req_o`, `efuse_resp_i`, and `efuse_program_busy_o` (the existing eFuse probe) |`hw/ip/key_manager/rtl/key_manager.sv`, `hw/sys/sep/rtl/sep_crypto.sv` |Added tap (ACCEPT-PROBE) |The eFuse address remap is in `hw/ip/key_manager/rtl/key_manager.sv`. VPLAN item KM-BUS.
-|`engine_key_bus` |Engine key bus requests ahead of isolation: `otbn_key_axil_req`, `aes_key_axil_req`, `kmac_key_axil_req`, `hmac_key_axil_req`, `abr_key_axil_req` |`hw/sys/sep/rtl/sep_crypto.sv` |Added tap (ADD-PORT) |Outside the KM. A testbench tap is needed. VPLAN item KM-BUS.
+|`engine_key_bus` |Engine key bus requests ahead of isolation: `otbn_key_axil_req`, `aes_key_axil_req`, `kmac_key_axil_req`, `hmac_key_axil_req`, `abr_key_axil_req`. The sampler reads the AW valid, ready and address of the five ports through `km_key_aw_valid_o`, `km_key_aw_ready_o` and `km_key_aw_addr_o` of `tb_top.sv` |`hw/sys/sep/rtl/sep_crypto.sv`, `hw/sys/sep/dv/tb/tb_top.sv` |Added tap (ADD-PORT) |Outside the KM. VPLAN item KM-BUS.
 |`engine_key_valid` |Engine bank `KEY_CTRL.key_valid`: AES, HMAC, KMAC, OTBN, ABR seeds (4) |`hw/sys/sep/rtl/aes_wrapper.sv`, `hw/sys/sep/rtl/hmac_wrapper.sv`, `hw/sys/sep/rtl/kmac_wrapper.sv`, `hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv`, `hw/sys/sep/rtl/sep_abr_kv_shim.sv` |Added tap (ADD-PORT) |Outside the KM. The wrapper instances are in `hw/sys/sep/rtl/sep_crypto.sv`. VPLAN item KM-VALID.
 |`abr_shared_key` |ABR shared key `KEY[0..7].data.value`, `KEY_CTRL.key_valid`, `IRQ_STATUS.key_valid`, `IRQ_ENABLE.key_valid_en` |`hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv`, `hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg_pkg.sv` |Added tap (ADD-PORT) |Outside the KM. VPLAN item KM-VALID.
 |`km_wipe` |`wipe_state_i`, `wipe_pulse` |`hw/ip/key_manager/rtl/key_manager.sv`, `hw/sys/sep/rtl/sep_crypto.sv`, `hw/sys/sep/rtl/sep.sv` |Added tap (ACCEPT-PROBE) |VPLAN item KM-COV: a sampler-side net that no test check uses.
@@ -6887,7 +6891,8 @@ Each row is a net that the testbench does not sample. The net exists in the RTL.
 |`km_err_flags` |`cpu_rom_parity_err`, `cpu_sram_parity_err`, `cpu_rom_write_err`, `exec_violation`, `rom_access_violation` |`hw/ip/key_manager/rtl/key_manager.sv` |Added tap (ACCEPT-PROBE) |VPLAN item KM-COV: a sampler-side net that no test check uses.
 |`km_irq_entry` |`irq_entry_addr`, `IRQ_ENTRY_LOCK` |`hw/ip/key_manager/rtl/key_manager.sv`, `hw/ip/key_manager/rtl/km_csr.sv` |Added tap (ACCEPT-PROBE) |VPLAN item KM-COV: a sampler-side net that no test check uses.
 |`km_cpu_irq_lines` |KM CPU interrupt lines `cpu_irq`, `cpu_mbox_irq`, `abr_mlkem_sharedkey_irq_i` |`hw/ip/key_manager/rtl/key_manager.sv` |Added tap (ACCEPT-PROBE) |VPLAN item KM-COV: a sampler-side net that no test check uses.
-|`km_sram_latency` |SRAM response latency, grant to `rvalid`, in cycles |`hw/sys/sep/dv/tb/tb_top.sv` |Added tap (ADD-PORT) |No monitor measures the latency: the existing read-latency counters count only the one-cycle case. VPLAN item KM-LAT.
+|`km_sram_latency` |SRAM response latency, grant to `rvalid`, in cycles: `km_sram_rd_lat_o`, the latency of the last completed read, and `km_sram_rd_done_count_o`, the completed reads |`hw/sys/sep/dv/tb/tb_top.sv` |Added tap (ADD-PORT) |The existing read-latency counters count only the one-cycle case. VPLAN item KM-LAT.
+|`km_outfifo` |Fill level of the outbound FIFO of the KM mailbox, every clock: `u_mailbox.outbound_depth` through `km_outfifo_depth_o` of `tb_top.sv` |`hw/ip/key_manager/rtl/km_mailbox.sv`, `hw/sys/sep/dv/tb/tb_top.sv` |Added tap (ACCEPT-PROBE) |The first word of a fault frame in the FIFO after the KM flush (`cp_fr_flow_order`). VPLAN item KM-OUTFIFO.
 |===
 
 Every signal of the table is an added tap (<<sep-fcov-parked>>). No signal is a PERMANENT-HOLE. A coverpoint that samples one of them is not blocked by it.

@@ -78,10 +78,14 @@ from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_OUTPUT_VALID, SepAes
 from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_km_mailbox_seq import (
     KM_CMD_ENGINE_SHRED,
+    KM_CMD_KEY_LOAD,
     KM_CMD_KEY_TRANSFER,
+    KM_MBOX_WRITE_DATA,
+    KM_MBOX_WRITE_SEPARATOR,
     KM_RC_FAILURE,
     KM_RC_SUCCESS,
     KM_RESP_CMD,
+    KM_STATUS_INBOUND_FULL,
     SepKmMailbox,
 )
 from seq_lib.sep_kmac_seq import SepKmac
@@ -110,6 +114,8 @@ W_FACTOR = 8  # W = W_FACTOR x the duration of the first AES output of the leaf
 AES_FIRST_BOUND = 80_000  # clocks for the first AES output (it always has a key)
 AES_POLL_GAP = 20
 SEP_RESET_BOUND = 20_000  # clocks for dbg_sep_reset_n_o to read 1
+INBOUND_POLLS = 2_000  # SEP_STATUS reads for inbound_full to read 0 before one word
+INBOUND_POLL_GAP = 20
 
 
 def _h(v: int) -> str:
@@ -340,7 +346,33 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             )
 
     async def _load(self, words: tuple[int, ...], dest: int) -> int:
-        return await self.km.key_load(key_words=list(words), dest=dest)
+        """CMD_KEY_LOAD, each word written only while ``inbound_full`` reads 0.
+
+        A frame longer than the 16-word inbound FIFO gets SLVERR on overflow
+        (SEP_CTRL.inbound_overflow_resp resets to 0), so the writer waits for room.
+        """
+        seq = self.km.seq_num
+        frame = self.km.build_frame(KM_CMD_KEY_LOAD, seq, [len(words) - 1, dest, *words])
+        for i, word in enumerate(frame):
+            for _ in range(INBOUND_POLLS):
+                if not (await self.km._status() >> KM_STATUS_INBOUND_FULL) & 1:
+                    break
+                await ClockCycles(cocotb.top.clk_i, INBOUND_POLL_GAP)
+            else:
+                raise AssertionError(
+                    f"CMD_KEY_LOAD: SEP_STATUS.inbound_full stayed 1 for {INBOUND_POLLS} "
+                    f"polls at word {i} of {len(frame)}"
+                )
+            if i == len(frame) - 1:
+                await self.km._wr(KM_MBOX_WRITE_SEPARATOR, 1)
+            await self.km._wr(KM_MBOX_WRITE_DATA, word)
+        self.km.seq_num = (self.km.seq_num + 1) & 0xFF
+        rc, arg = await self.km.recv_resp_cmd(KM_CMD_KEY_LOAD, seq)
+        handle = arg & 0xFF
+        if rc != KM_RC_SUCCESS or handle == 0:
+            raise AssertionError(f"CMD_KEY_LOAD dest={_h(dest)} rc={rc} handle={_h(handle)}")
+        await self.km.check_outbound_empty("POST-KEY-LOAD")
+        return handle
 
     async def _revoke_pre(self, handle: int) -> None:
         code, arg = await self.km.key_revoke(handle=handle)

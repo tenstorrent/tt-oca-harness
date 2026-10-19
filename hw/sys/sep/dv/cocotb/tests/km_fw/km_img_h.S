@@ -86,7 +86,7 @@
     .equ REPORT_WORDS,  263
     .equ LAYOUT,        ((LAYOUT_VERSION << 16) | REPORT_WORDS)
     .equ CTRL_PROBE,    0x4B4D5756
-    .equ KEY_VALID,     1           // KEY_CTRL.key_valid, bit 0 (kmac_wrapper_key.adoc)
+    .equ KEY_VALID,     KMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bm
     .equ N_GPR,         14
     .equ N_SLOTS,       KEY_MANAGER_KPV_CTRL_NUM
     .equ N_TBL_A,       5           // entries of tbl_a, tbl_b, tbl_c

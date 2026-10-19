@@ -18,7 +18,7 @@ check values.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from env.sep_crc_golden import crc8_rohc, crc32c
 from env.sep_seeded_rng import SepSeededRng
@@ -219,8 +219,12 @@ class FaultFrame:
     declared_plen: int
 
 
-def build_fault_frame(d: PairDraw, kinds: frozenset[str], e: int) -> FaultFrame:
+def build_fault_frame(
+    d: PairDraw, kinds: frozenset[str], e: int, payload: tuple[int, ...] | None = None
+) -> FaultFrame:
     """Build the frame of ``d`` that carries the faults ``kinds`` (a subset of its pair).
+
+    ``payload`` replaces the carrier payload when the frame has no (e) fault.
 
     Each wrong value is asserted to differ from the right value before the
     frame is returned, so a fault that is not one cannot reach the DUT.
@@ -231,7 +235,7 @@ def build_fault_frame(d: PairDraw, kinds: frozenset[str], e: int) -> FaultFrame:
     if "len_self" in kinds:
         payload = tuple(d.e_words)
         assert len(payload) != REQUIRED_PLEN[carrier], "len_self payload has the required length"
-    else:
+    elif payload is None:
         payload = (SHRED_MASK,) if carrier == CMD_ENGINE_SHRED else ()
     cmd = carrier
     if "cmd_id" in kinds:
@@ -288,6 +292,28 @@ def build_fault_frame(d: PairDraw, kinds: frozenset[str], e: int) -> FaultFrame:
         payload=payload,
         declared_plen=plen,
     )
+
+
+# The frame-level kinds a vault-writing command carries in the pair leg. Kinds
+# (c) and (e) change the command or its required length, so they are not used.
+VAULT_KINDS = ("hdr_crc", "seq", "len_wire", "pcrc")
+VAULT_CMDS = (CMD_KEY_LOAD, CMD_KEY_GENERATE)
+
+
+@dataclass(frozen=True)
+class VaultDraw:
+    """The vault-writing frame of one pair: its command, its payload and the (d) PAYLOAD_LEN."""
+
+    cmd: int
+    payload: tuple[int, ...]
+    d_plen: int
+
+
+def build_vault_frame(d: PairDraw, v: VaultDraw, e: int) -> FaultFrame:
+    """The command of ``v`` with the frame-level faults of the pair ``d``."""
+    kinds = frozenset(k for k in d.kinds if k in VAULT_KINDS)
+    vd = replace(d, carrier=v.cmd, d_extra=(), d_plen=v.d_plen)
+    return build_fault_frame(vd, kinds, e, payload=v.payload)
 
 
 # --- seeded plan ----------------------------------------------------------------------
@@ -408,10 +434,18 @@ class CommandProtocolPlan:
             self.handovers.append(HandoverDraw(cmd=cmd, source=src, oflow_words=words))
         self.handovers = tuple(self.handovers)
 
-        self.oflow_q = rng.randrange(3, 9)
+        # q is 3: with more unread frames the KM stops taking inbound words and
+        # the overflow cannot be reached (firmware.adoc, "Message Buffers": a
+        # complete frame blocks further writes until consumed; "Outgoing Message
+        # Handler": TX spin-waits until the SEP drains the FIFO). The draw is kept
+        # so that the later draws do not move.
+        rng.randrange(3, 9)
+        self.oflow_q = 3
         self.oflow_words = _words(rng, RX_BUFFER_WORDS)
         self._log("oflow_q", self.oflow_q)
         self._log("oflow_pend_words", self.oflow_words)
+
+        self.vault = tuple(self._vault(rng, i, d) for i, d in enumerate(self.pairs))
 
     # -- draw helpers ------------------------------------------------------------------
 
@@ -459,6 +493,26 @@ class CommandProtocolPlan:
             self._log(f"{tag}_d_plen", d_plen)
             self._log(f"{tag}_d_extra", d_extra)
         return d
+
+    def _vault(self, rng: SepSeededRng, idx: int, d: PairDraw) -> VaultDraw:
+        cmd = rng.choice(VAULT_CMDS)
+        if cmd == CMD_KEY_GENERATE:
+            payload = (rng.randrange(1, 17) - 1, _dest_with(rng, DEST_AES))
+        else:
+            key = _key(rng, rng.randrange(8, 17))
+            payload = (len(key) - 1, _dest_with(rng, DEST_AES), *key)
+        d_plen = 0
+        if "len_wire" in d.kinds:
+            while True:
+                d_plen = rng.randrange(0, 0x100)
+                if frame_len(d_plen) != frame_len(len(payload)):
+                    break
+        tag = f"pair{idx}_vault"
+        self._log(f"{tag}_cmd", f"0x{cmd:02x}")
+        self._log(f"{tag}_payload", payload)
+        if "len_wire" in d.kinds:
+            self._log(f"{tag}_d_plen", d_plen)
+        return VaultDraw(cmd, payload, d_plen)
 
     def _gate(self, rng: SepSeededRng, source: str) -> GateDraw:
         gen_words = rng.randrange(1, 17)

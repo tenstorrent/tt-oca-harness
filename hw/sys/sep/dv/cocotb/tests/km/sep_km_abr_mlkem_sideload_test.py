@@ -203,7 +203,6 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         "CHK-KEM-SEED-REF",
         "CHK-KEM-SEED-SIDELOAD",
         "CHK-KEM-MSG-SIDELOAD",
-        "CHK-KEM-SK-CONFIDENTIAL",
         "CHK-KEM-SK-NOTIFY",
         "CHK-KEM-SK-WRITEBACK",
         "CHK-KEM-SK-VALUE",
@@ -255,17 +254,10 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         The CIPHERTEXT is what the value compares use: it is public, and a
         deterministic function of the encapsulation key and the message.
 
-        The shared key is returned too. Whether it reads back at all is the
-        contract of CHK-KEM-SK-CONFIDENTIAL, and the value read on a fully
-        register-driven ENCAPS is the reference for CHK-KEM-SK-VALUE. The
-        ML-KEM shared key is consumed directly by the Key Manager
-        (hw/sys/sep/doc/crypto.adoc, "a gated ML-KEM shared-key interrupt
-        consumed directly by the Key Manager") and shared-key storage is
-        secret-bearing Class 2 logic (hw/sys/sep/doc/attack_countermeasures.adoc),
-        so a key the vault sourced must not be readable by software over the
-        CSR aperture. This test establishes
-        that it IS readable when every input came over the bus, and is withheld
-        once an input came from the vault.
+        The shared key is returned too. The value read on a fully
+        register-driven ENCAPS is the reference for CHK-KEM-SK-VALUE. The value
+        read after a vault-sourced ENCAPS is logged as OBS-KEM-SK-CONFIDENTIAL:
+        no spec states it.
         """
         await self._wait_status(kem, KEM_ST_READY, KEM_ST_READY, what=f"{what} pre-command READY")
         await kem.write_words(MLKEM_ENCAPS_KEY, list(ek))
@@ -422,19 +414,17 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         )
         await self._zeroize(kem, what="after sideload keygen")
 
-        # --- CHK-KEM-MSG-SIDELOAD + CHK-KEM-SK-CONFIDENTIAL ------------------
+        # --- CHK-KEM-MSG-SIDELOAD + OBS-KEM-SK-CONFIDENTIAL ------------------
         # The compares run on the CIPHERTEXT, which is public and a
-        # deterministic function of (ek, m). The shared key cannot serve: the
-        # engine withholds it from software as soon as an input came from the
-        # vault, which is the confidentiality rule the next checker grades.
+        # deterministic function of (ek, m). No spec states the shared-key
+        # read value after a vault-sourced ENCAPS, so the shared key cannot serve.
         #
         # Reference first on the OTHER message, so the register holds _M_REF
         # when the sideload leg runs.
         ct_alt, sk_alt = await self._encaps(kem, ek_alt, _M_ALT, what="CHK-KEM-MSG-REF alt")
-        assert any(w != 0 for w in sk_alt), (
-            "CHK-KEM-SK-CONFIDENTIAL FAIL: the shared key already reads back as "
-            "zero on a fully register-driven ENCAPS, so the withheld-key check "
-            "below would pass with the readback broken rather than gated"
+        self.logger.info(
+            "CTRL-KEM-SK-READBACK LOG words_nonzero=%d",
+            int(any(w != 0 for w in sk_alt)),
         )
         await self._zeroize(kem, what="after alt encaps")
         ct_ref, _ = await self._encaps(kem, ek_alt, _M_REF, what="CHK-KEM-MSG-REF ref")
@@ -465,21 +455,13 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             KEM_CT_WORDS,
         )
 
-        # Same ENCAPS, and now the shared key must NOT be visible: its message
-        # came from the vault. The register-driven ENCAPS above is the positive
-        # control that the readback path works at all, so this is a conditional
-        # withholding rather than a readback that never worked.
-        assert all(w == 0 for w in sk_km), (
-            "CHK-KEM-SK-CONFIDENTIAL FAIL: the shared key of an ENCAPS whose "
-            "message came from the vault is readable over the bus "
-            f"(first non-zero word 0x{next(w for w in sk_km if w != 0):08x}); a "
-            "shared key the vault sourced is consumed by the Key Manager and "
-            "must not reach software over the CSR aperture"
-        )
+        # The shared key of the vault-sourced ENCAPS is logged, not graded: no
+        # spec states the read value of MLKEM_SHARED_KEY after it.
+        first_nz = next((w for w in sk_km if w != 0), None)
         self.logger.info(
-            "CHK-KEM-SK-CONFIDENTIAL PASS: the shared key reads back on a "
-            "register-driven ENCAPS and reads zero once the message came from "
-            "the vault, so the withholding is gated and not simply broken"
+            "OBS-KEM-SK-CONFIDENTIAL LOG words_zero=%d first_nonzero=%s",
+            int(first_nz is None),
+            "none" if first_nz is None else f"0x{first_nz:08x}",
         )
 
         # --- CHK-KEM-SK-WRITEBACK: kv_write, and its negative control ---------

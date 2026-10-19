@@ -6018,7 +6018,24 @@ module sep_uvm_top
         .km_sk_key_i           (km_abr_sk_key_o),
         .km_sk_irq_status_i    (km_abr_sk_irq_status_o),
         .km_sk_irq_enable_i    (km_abr_sk_irq_enable_o),
-        .km_sram_probe_i       (km_sram_probe_o)
+        .km_sram_probe_i       (km_sram_probe_o),
+        // Key Manager taps of the 7.22 to 7.28 points: KM-CSR, PIC bit 31,
+        // KM-OUTFIFO, KM-LAT, the KM-BUS key-path AW channel and the HK-KPV
+        // and HK-PAR stimulus readbacks.
+        .km_recov_err_i        (km_csr_recov_err_o),
+        .km_rec_pic_i          (sep_internal_interrupts_probe_o[31]),
+        .km_outfifo_depth_i    (km_outfifo_depth_o),
+        .km_sram_lat_i         (km_sram_rd_lat_o),
+        .km_sram_lat_done_i    (km_sram_rd_done_count_o),
+        .km_key_aw_valid_i     (km_key_aw_valid_o),
+        .km_key_aw_ready_i     (km_key_aw_ready_o),
+        .km_key_aw_addr_i      (km_key_aw_addr_o),
+        .km_kpv_flip_en_i      (km_kpv_flip_en_i),
+        .km_kpv_flip_idx_i     (km_kpv_flip_index_i),
+        .km_par_fired_i        (km_par_fired_o),
+        .km_par_mem_i          (km_par_mem_i),
+        .km_par_lane_i         (km_par_lane_i),
+        .km_par_rstrb_i        (km_par_rstrb_o)
     );
 `undef FC_EFCTRL
 `undef FC_TOKEN

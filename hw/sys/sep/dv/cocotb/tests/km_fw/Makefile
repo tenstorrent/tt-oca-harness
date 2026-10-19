@@ -123,7 +123,8 @@ KM_WIPE_KNOBS_rom_main_unrec := KM_BOOT_WIPE=0 KM_UNREC_WIPE=1
 # build error instead of a silently stale constant.
 KM_REG_INC := $(OCH_ROOT)/hw/ip/key_manager/regs/gen/c
 
-# Field MASKS live in km_csr.h / km_kpv.h / km_mailbox_km.h / km_drbg_sampler.h, C headers of structs and
+# Field MASKS live in km_csr.h / km_kpv.h / km_mailbox_km.h / km_drbg_sampler.h /
+# kmac_wrapper_key.h, C headers of structs and
 # static_asserts an .S cannot include. This target lifts the plain #define
 # lines an image needs into an assembler-safe include, so a field that moves
 # at the next RDL regeneration changes the mask instead of leaving a
@@ -133,17 +134,19 @@ KM_CSR_H := $(KM_REG_INC)/km_csr.h
 KM_KPV_H := $(KM_REG_INC)/km_kpv.h
 KM_MBOX_KM_H := $(KM_REG_INC)/km_mailbox_km.h
 KM_DRBG_H := $(KM_REG_INC)/km_drbg_sampler.h
+KMAC_KEY_H := $(KM_REG_INC)/kmac_wrapper_key.h
 KM_FIELD_INC := $(OBJ_DIR)/km_fields.inc
 KM_CSR_DEFS := KM_CSR__(IRQ_STATUS_REG__(AXI_SLVERR|AXI_DECERR|SRAM_WRITE_LOCK_ERR|DRBG_ERR|ROM_PARITY_ERR|SRAM_PARITY_ERR|ROM_WRITE_ERR)|OTP_READ_LOCK_REG__SEP_(CHIPLET|SIP|SYS)_ID|SCRAMBLER_CTRL_REG__ENABLE|BOOT_STATUS_REG__COLD_BOOT_DONE)_bm
 KM_KPV_DEFS := KM_KPV__(CTRL_REG__(LOCK_WRITE|LOCK_USE|ERASE|SEAL)|KPV_SCRAMBLER_CTRL_REG__(ENABLE|LOCK))_bm
 KM_MBOX_KM_DEFS := KM_MAILBOX_KM__(STATUS_REG__(INBOUND_EMPTY|OUTBOUND_FULL)|WRITE_SEPARATOR_REG__SET)_bm
 KM_DRBG_DEFS := KM_DRBG_SAMPLER__(STATUS_REG__DRBG_READY_bm|CFG_REG__TIMEOUT_bp)
+KMAC_KEY_DEFS := KMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bm
 
 # Written to a temporary name, then moved into place, so a reader never sees a partial file.
-$(KM_FIELD_INC): $(KM_CSR_H) $(KM_KPV_H) $(KM_MBOX_KM_H) $(KM_DRBG_H) Makefile
+$(KM_FIELD_INC): $(KM_CSR_H) $(KM_KPV_H) $(KM_MBOX_KM_H) $(KM_DRBG_H) $(KMAC_KEY_H) Makefile
 	@mkdir -p $(OBJ_DIR)
 	@tmp=$@.tmp.$$$$; \
-	printf '/* Generated from km_csr.h / km_kpv.h / km_mailbox_km.h / km_drbg_sampler.h by km_fw/Makefile. Do not edit. */\n' > $$tmp; \
+	printf '/* Generated from km_csr.h / km_kpv.h / km_mailbox_km.h / km_drbg_sampler.h / kmac_wrapper_key.h by km_fw/Makefile. Do not edit. */\n' > $$tmp; \
 	grep -E '^#define ($(KM_CSR_DEFS)) ' $(KM_CSR_H) >> $$tmp || { \
 	    echo "$(KM_CSR_H): expected field-mask defines matching $(KM_CSR_DEFS)" >&2; \
 	    rm -f $$tmp; exit 1; }; \
@@ -155,6 +158,9 @@ $(KM_FIELD_INC): $(KM_CSR_H) $(KM_KPV_H) $(KM_MBOX_KM_H) $(KM_DRBG_H) Makefile
 	    rm -f $$tmp; exit 1; }; \
 	grep -E '^#define ($(KM_DRBG_DEFS)) ' $(KM_DRBG_H) >> $$tmp || { \
 	    echo "$(KM_DRBG_H): expected field defines matching $(KM_DRBG_DEFS)" >&2; \
+	    rm -f $$tmp; exit 1; }; \
+	grep -E '^#define ($(KMAC_KEY_DEFS)) ' $(KMAC_KEY_H) >> $$tmp || { \
+	    echo "$(KMAC_KEY_H): expected field-mask defines matching $(KMAC_KEY_DEFS)" >&2; \
 	    rm -f $$tmp; exit 1; }; \
 	mv -f $$tmp $@
 

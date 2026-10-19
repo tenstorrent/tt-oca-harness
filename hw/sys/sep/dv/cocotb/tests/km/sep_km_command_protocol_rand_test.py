@@ -430,12 +430,13 @@ class sep_km_command_protocol_rand_test(sep_base_test):
     # ------------------------------------------------------------- pair leg
 
     async def _pair_leg(self) -> None:
-        """Step 9 (with the vault samples of step 10): 13 ordered fault pairs and twins."""
+        """Step 9 (with the vault samples of step 10): 13 ordered fault pairs, twins and vault frames."""
         rejected = 0
         nonzero: list[str] = []
         kv_seen = 0
         ctrl_seen = 0
-        for idx, d in enumerate(self.plan.pairs):
+        vault_bad: list[str] = []
+        for idx, (d, v) in enumerate(zip(self.plan.pairs, self.plan.vault, strict=True)):
             e0 = self.e
             pf = pl.build_fault_frame(d, frozenset(d.kinds), e0)
             tag = f"pair{idx} {d.first}>{d.second}"
@@ -457,6 +458,21 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             kv_seen |= kv
             if ctrl or kv:
                 nonzero.append(f"{tag} twin:ctrl={ctrl:#x}:kv={kv:#x}")
+
+            # A vault-writing command with the frame-level faults of the pair: a
+            # DUT that acts on the command before it validates the frame changes
+            # the vault sample below.
+            vf = pl.build_vault_frame(d, v, self.e)
+            vr = await self._send_words(vf.words, vf.sent_cmd, vf.sent_seq, f"{tag} vault")
+            self.e = vf.e_after
+            ctrl, kv = await self._vault()
+            rejected += 1
+            ctrl_seen |= ctrl
+            kv_seen |= kv
+            if ctrl or kv:
+                nonzero.append(f"{tag} vault:ctrl={ctrl:#x}:kv={kv:#x}")
+            if vr.code != vf.code:
+                vault_bad.append(f"{tag}:cmd=0x{v.cmd:02x}:code={vr.code}:golden={vf.code}")
 
             if pf.arg == pl.ARG_LOGGED:
                 arg_ok, golden = True, "logged"
@@ -485,6 +501,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         self._pair_nonzero = nonzero
         self._pair_ctrl = ctrl_seen
         self._pair_kv = kv_seen
+        self._pair_vault_bad = vault_bad
 
     async def _alive_and_twins(self) -> None:
         """Steps 10 and 14: CMD_STAT after the pair leg, then the positive twins."""
@@ -515,9 +532,14 @@ class sep_km_command_protocol_rand_test(sep_base_test):
 
         self.chk.ok(
             "NOCHG-VAULT",
-            not self._pair_nonzero and gen.code == 0 and lock_write == 1,
+            not self._pair_nonzero
+            and not self._pair_vault_bad
+            and gen.code == 0
+            and lock_write == 1,
             leg="pair",
             rejected=self._pair_rejected,
+            vault_frames=len(self.plan.vault),
+            vault_code_bad=self._pair_vault_bad[:4],
             ctrl_nonzero=int(self._pair_ctrl != 0),
             key_valid=f"0x{self._pair_kv:03x}",
             samples_nonzero=self._pair_nonzero[:4],
@@ -1017,21 +1039,21 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         await ClockCycles(self.clk, _OFLOW_SETTLE)
         got = await self._drain_raw(tag)
 
+        fault_hdr = pl.header(pl.RESP_RECOVERABLE_FAULT, 0, 1)
         hdr = got[0] if got else None
-        first_ok = (
-            hdr is not None
-            and (hdr >> 8) & 0xFF == pl.RESP_RECOVERABLE_FAULT
-            and hdr & 0xFF == 0
-            and (hdr >> 16) & 0xFF == 1
-            and hdr >> 24 == pl.header_crc(0, pl.RESP_RECOVERABLE_FAULT, 1)
-        )
+        first_ok = hdr == fault_hdr
         code_ok = (
             first_ok
             and len(got) >= _FAULT_HDR_WORDS
             and got[1] == (pl.FAULT_RX_BUFF_OFLOW & pl.WORD_MASK)
             and got[2] == pl.payload_crc([got[1]])
         )
-        stale = len(got) - _FAULT_HDR_WORDS if first_ok else len(got)
+        # Stale words: after the fault frame when it comes first, else the words
+        # before the first fault header (all words when none is read).
+        if first_ok:
+            stale = len(got) - _FAULT_HDR_WORDS
+        else:
+            stale = got.index(fault_hdr) if fault_hdr in got else len(got)
         self.chk.ok(
             "OFLOW-PEND",
             full == 1 and first_ok and code_ok and stale == 0,
