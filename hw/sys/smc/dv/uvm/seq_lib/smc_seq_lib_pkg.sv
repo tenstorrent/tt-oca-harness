@@ -53,5 +53,6 @@ package smc_seq_lib_pkg;
   `include "smc_multi_reset_csr_persistence_test_seq.svh"
   `include "smc_regblock_sparse_strobe_test_seq.svh"
   `include "smc_fabric_reg_clock_gate_test_seq.svh"
+  `include "smc_mailbox_cool_reset_recovery_test_seq.svh"
 
 endpackage : smc_seq_lib_pkg
