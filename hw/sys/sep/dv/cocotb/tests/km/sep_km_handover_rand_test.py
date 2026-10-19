@@ -81,7 +81,7 @@ import hashlib
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, Event, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, Event, FallingEdge, ReadOnly, RisingEdge
 from env import sep_km_img_h as imgh
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import LC_PROD, SepEfuseImage
@@ -354,9 +354,11 @@ class sep_km_handover_rand_test(sep_base_test):
         return self.rd_known(cocotb.top.km_sram_write_count_o)
 
     async def _wmap_clear(self) -> None:
-        """KM-WMAP: clear the distinct-word counts for one clock."""
+        """KM-WMAP: clear the distinct-word counts. The clear is held to the
+        falling edge, so the rising edge that the model evaluates samples it."""
         cocotb.top.km_sram_wmap_clr_i.value = 1
         await RisingEdge(cocotb.top.clk_i)
+        await FallingEdge(cocotb.top.clk_i)
         cocotb.top.km_sram_wmap_clr_i.value = 0
 
     def _wmap_regions(self) -> list[int]:
