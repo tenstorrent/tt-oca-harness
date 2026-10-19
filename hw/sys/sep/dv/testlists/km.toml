@@ -556,3 +556,73 @@ tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# Shard 1 of 5 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point and the single-source IRQ_SET points. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard1"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 3
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=1"]
+
+[[tests]]
+# Shard 2 of 5 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point and the multi-source IRQ_SET points. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard2"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 3
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=2"]
+
+[[tests]]
+# Shard 3 of 5 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point and the parity points. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard3"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 3
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=3"]
+
+[[tests]]
+# Shard 4 of 5 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point and the key CRC leg. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard4"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 3
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=4"]
+
+[[tests]]
+# Shard 5 of 5 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point and the KM CPU line points, the SRAM latency leg and the main-context point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard5"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 3
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=5"]

@@ -72,7 +72,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml), as its run mode states. It
 #   grades the KM OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 252
+expected_count = 256
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -232,7 +232,11 @@ tests = [
     "sep_km_handover_rand_test",
     "sep_km_boot_reset_rand_test",
     "sep_km_fault_inject_rand_test",
-    "sep_km_fault_inject_rand_test_unrec",
+    "sep_km_fault_inject_rand_test_unrec_shard1",
+    "sep_km_fault_inject_rand_test_unrec_shard2",
+    "sep_km_fault_inject_rand_test_unrec_shard3",
+    "sep_km_fault_inject_rand_test_unrec_shard4",
+    "sep_km_fault_inject_rand_test_unrec_shard5",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
@@ -512,7 +516,11 @@ tests = [
     "sep_km_handover_rand_test",
     "sep_km_boot_reset_rand_test",
     "sep_km_fault_inject_rand_test",
-    "sep_km_fault_inject_rand_test_unrec",
+    "sep_km_fault_inject_rand_test_unrec_shard1",
+    "sep_km_fault_inject_rand_test_unrec_shard2",
+    "sep_km_fault_inject_rand_test_unrec_shard3",
+    "sep_km_fault_inject_rand_test_unrec_shard4",
+    "sep_km_fault_inject_rand_test_unrec_shard5",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
@@ -983,7 +991,7 @@ tests = [
 # Convenience group of the Key Manager hardware tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_key_manager"
-expected_count = 15
+expected_count = 19
 tests = [
     "sep_km_kmcsr_reset_rand_test",
     "sep_km_kpv_rand_test",
@@ -999,5 +1007,9 @@ tests = [
     "sep_km_handover_rand_test",
     "sep_km_boot_reset_rand_test",
     "sep_km_fault_inject_rand_test",
-    "sep_km_fault_inject_rand_test_unrec",
+    "sep_km_fault_inject_rand_test_unrec_shard1",
+    "sep_km_fault_inject_rand_test_unrec_shard2",
+    "sep_km_fault_inject_rand_test_unrec_shard3",
+    "sep_km_fault_inject_rand_test_unrec_shard4",
+    "sep_km_fault_inject_rand_test_unrec_shard5",
 ]

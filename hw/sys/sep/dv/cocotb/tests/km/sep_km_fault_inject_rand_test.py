@@ -93,6 +93,7 @@ from env.sep_efuse_image import LC_PROD
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_hmac_golden import hmac_sha256_words
 from env.sep_reg_meta import SEP_CPU_CTRL
+from env.sep_shard import sep_shard
 from env.sep_spec_tables import agg_from_pic
 from km import sep_km_fault_inject_rand_plan as pl
 from sep_base_test import sep_base_test
@@ -197,6 +198,37 @@ EVIDENCE_UNREC = (
     "CHK-CPU-TRAP",
     "CHK-MAINCTX-FATAL",
 )
+# Shards of the HOST-UNREC entry (env/sep_shard.py). Each fatal point of this
+# build shreds the SRAM (about 2,000,000 clocks), so the regression runs the
+# fault groups in parallel. Every shard boots, runs the clean boot and the
+# real-wipe point (the AES and key references of the later points), then its
+# own group.
+SHARD_EVIDENCE_UNREC = {
+    1: (
+        "CHK-PARITY-CLEAN",
+        "CHK-FATAL-WIPE",
+        "CHK-FLUSH-FIRST",
+        "CHK-SRAM-SHRED",
+        "CHK-SHRED-WITNESS",
+        "CHK-TRAP-HELD",
+        "CHK-STATUS-HELD",
+        "CHK-SHRED-FIRST",
+        "CHK-RESTORE",
+        "CHK-FATAL-SET",
+        "CHK-KPV-TRAP",
+    ),
+    2: ("CHK-FATAL-SET", "CHK-STATUS-HELD", "CHK-SHRED-FIRST", "CHK-KPV-TRAP", "CHK-RESTORE"),
+    3: ("CHK-PARITY", "CHK-PARITY-VAC", "CHK-PARITY-CLEAN", "CHK-RESTORE"),
+    4: (
+        "CHK-KEYCRC",
+        "CHK-CRC-FIRST",
+        "CHK-NOFLUSH",
+        "CHK-GATE-AFTER",
+        "CHK-RESIDUE",
+        "CHK-RESTORE",
+    ),
+    5: ("CHK-CPU-TRAP", "CHK-LAT", "CHK-LAT-VAR", "CHK-MAINCTX-FATAL", "CHK-RESTORE"),
+}
 
 # Bounded waits. Each expiry fails the leaf with a named message, or fails the
 # check of the step with timeout=1.
@@ -574,6 +606,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.unrec = self._entry() == "unrec"
         entry = ENTRY_UNREC if self.unrec else TEST
         self.required_evidence = EVIDENCE_UNREC if self.unrec else EVIDENCE_HOST
+        shard = sep_shard(self, SHARD_EVIDENCE_UNREC) if self.unrec else None
         self.chk = SepChkLog(self, entry, seed)
         self.plan = pl.draw_plan(seed)
         pl.check_plan(self.plan)
@@ -600,18 +633,23 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self._clean_run(self.plan.max_parity_n, None, "clean_boot")  # step 2
         await self._real_wipe_point()  # steps 3 to 9
         if self.unrec:
-            for name in self.plan.singles:  # step 10
-                await self._irqset_point((name,))
-            for names in self.plan.multis:  # step 11
-                await self._irqset_point(names)
-            for mem, lane, n in self.plan.parity:  # step 12
-                await self._parity_point(mem, lane, n)
-            await self._keycrc_leg()  # steps 13 to 18
-            await self._cpu_point(2, None)  # step 19
-            await self._cpu_point(1, None)
-            await self._cpu_point(2, self.plan.cpu_src)
-            await self._lat_leg()  # step 23
-            await self._mainctx_point()  # step 20, after every other fatal point
+            if shard in (None, 1):
+                for name in self.plan.singles:  # step 10
+                    await self._irqset_point((name,))
+            if shard in (None, 2):
+                for names in self.plan.multis:  # step 11
+                    await self._irqset_point(names)
+            if shard in (None, 3):
+                for mem, lane, n in self.plan.parity:  # step 12
+                    await self._parity_point(mem, lane, n)
+            if shard in (None, 4):
+                await self._keycrc_leg()  # steps 13 to 18
+            if shard in (None, 5):
+                await self._cpu_point(2, None)  # step 19
+                await self._cpu_point(1, None)
+                await self._cpu_point(2, self.plan.cpu_src)
+                await self._lat_leg()  # step 23
+                await self._mainctx_point()  # step 20, after every other fatal point
         else:
             await self._drbg_stall_point()  # step 21
             await self._keypath_point()  # step 22
