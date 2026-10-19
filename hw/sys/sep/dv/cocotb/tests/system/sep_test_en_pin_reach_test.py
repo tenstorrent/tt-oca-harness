@@ -4,7 +4,9 @@
 
 no_cpu on ``lsu_stub_all_live`` with ``+skip_fuse_sense`` (no fuse content is
 used), VCS only (the walk reads the hierarchy). No draw: every run walks the
-same hierarchy and drives the same two edges.
+same hierarchy and drives the same two edges. The test drives no AXI
+traffic, so it builds no AXI environment and no AXI scoreboard
+(``build_env = False``); its evidence is the CHK line on the DUT pins.
 
 Contract (``hw/sys/sep/doc/port_table.adoc``, ``test_en_i``: "Drives
 clock-gater test ports and AXI cell test inputs."; read as every such input;
@@ -64,6 +66,7 @@ FAIL_LINES = 64  # failing pins printed in the FAIL line; every pin has a log li
 class sep_test_en_pin_reach_test(sep_base_test):
     """Every SEP-owned test pin follows test_en_i on both edges."""
 
+    build_env = False
     required_evidence = ("CHK-TEST-EN-PINS",)
 
     async def _edge(

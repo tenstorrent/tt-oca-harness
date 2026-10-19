@@ -47,12 +47,18 @@ OTP_READ_LOCK holds the field's bit.
                         the bitwise inverse of its complement word). A KM read
                         lock gives VAL = CPL = 0 and fails the rail word.
                         Control: CHK-KM-SECRET-TM0 of the same leaf.
+  CHK-KM-PUBID-TM1      strap 1 (``secure_tm_o`` = 1): the 48 KMCSR public-ID
+                        words KM firmware read, the eFuse-read-locked field
+                        included, are the staged words and their complements.
+                        ``hw/ip/key_manager/doc/architecture.adoc``: public
+                        identities remain available in secure test mode;
+                        ``hw/sys/sep/doc/test_mode.adoc`` disconnects only
+                        CHIPLET_UID, SIP_UID, SYS_UID and CLASS_KEY. A public
+                        ID masked to zero reads VAL = 0 against a staged word
+                        that is never 0. Control: CHK-KM-ID-CSR at strap 0.
 
-Logged, not graded: OBS-KM-PUBID-TM1 (the 48 public-ID words and the KM port at
-strap 1; ``hw/sys/sep/doc/otp_fuse_controller.adoc`` says the fuse-bank outputs
-are disconnected while ``SECURE_TM`` = 1 and the Key Manager architecture says
-the public identities stay available) and OBS-KM-OTHER-TM1 (``OTP_LIFE_CYCLE``
-and ``OTP_DEMOTION_STATE`` at both straps).
+Logged, not graded: OBS-KM-OTHER-TM1 (the KM port public-ID taps at strap 1,
+``OTP_LIFE_CYCLE`` and ``OTP_DEMOTION_STATE`` at both straps).
 """
 
 from __future__ import annotations
@@ -118,6 +124,7 @@ class sep_efuse_km_public_id_test(sep_base_test):
         "CHK-KM-ID-KM-LOCK",
         "CHK-KM-SECRET-TM0",
         "CHK-KM-SECRET-TM1",
+        "CHK-KM-PUBID-TM1",
     )
 
     def _check_port(self, cfg: SepKmOtpIdCfg, when: str) -> None:
@@ -306,12 +313,22 @@ class sep_efuse_km_public_id_test(sep_base_test):
 
         opened1 = sram1[OPEN_DUMP_WORD : OPEN_DUMP_WORD + DUMP_WORDS]
         bad1 = self._mismatches(opened1, expected_window(cfg.ids))
+        zero1 = sum(1 for w in opened1 if w == 0)
+        assert not bad1, (
+            f"CHK-KM-PUBID-TM1 FAIL: strap=1 secure_tm_o=1 {len(bad1)} of {DUMP_WORDS} "
+            f"words differ from the staged IDs (zero={zero1}): " + "; ".join(bad1[:8])
+        )
         self.logger.info(
-            "OBS-KM-PUBID-TM1: strap=1 KMCSR public-ID words equal to staged=%d/%d "
-            "zero=%d port_equal_staged=%s",
-            DUMP_WORDS - len(bad1),
+            "CHK-KM-PUBID-TM1 PASS: strap=1 secure_tm_o=1 KM firmware read %d "
+            "OTP_SEP_*_ID_{VAL,CPL} words equal to the staged IDs and their complements "
+            "(eFuse-read-locked %s included) zero=%d word0=0x%08x",
             DUMP_WORDS,
-            sum(1 for w in opened1 if w == 0),
+            cfg.locked_field,
+            zero1,
+            opened1[0],
+        )
+        self.logger.info(
+            "OBS-KM-OTHER-TM1: KM port public-ID taps equal to staged at strap 1: %s",
             ",".join(f"{f}:{int(port[f] == dual_rail(cfg.ids[f]))}" for f in ID_FIELDS),
         )
         self.logger.info(
