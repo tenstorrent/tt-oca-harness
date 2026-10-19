@@ -341,6 +341,14 @@ vendor_package:
       - "DOC/integration_guide"
     patch_dir: "vendor/tenstorrent/aou/patches"
 
+  # AoU SV-UVM testbench. Its configs name repository-relative hw/ip/aou/dv/
+  # paths, which the hw/ip/aou/dv link resolves into this tree.
+  - name: aou-dv
+    target_dir: "vendor/tenstorrent/aou/dv/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "8ef393cfa69d54f96bc570f95c3a7fa22383a003" }
+    include_from_upstream:
+      - "hw/ip/aou/dv"
+
   # I3C controller/target core. The wrapper and memory primitives are left out;
   # this tree supplies its own through i3ccore_wrap.
   - name: i3c-core

@@ -148,11 +148,15 @@ runs:
         # verilation, so it is slow to discover. Installed unconditionally so
         # the runner never depends on which DUT the matrix is running.
         #
+        # z3: the SMT solver a Verilator model starts from PATH to solve
+        # randomize(); without it every randomize() of an SV-UVM bench (aou)
+        # fails.
+        #
         # Acquire options: same stall-into-error rationale as the Verilator
         # build step above.
         timeout 10m sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
         timeout 10m sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
-          install -y --no-install-recommends libfl2 ccache
+          install -y --no-install-recommends libfl2 ccache z3
 
     - name: Check environment
       shell: bash

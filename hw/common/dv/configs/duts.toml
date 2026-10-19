@@ -89,3 +89,15 @@ root = "hw/ip/uart/uart_log_engine_wrap/dv"
 
 [duts.uart_wrap]
 root = "hw/ip/uart/uart_wrap/dv"
+
+# AoU bridge benches beside `aou`, the T1 bench the convention finds: the
+# register bench and the DUT-free L3 and AXI self-tests are further sim configs
+# in the same hw/ip/aou/dv root, so each is registered here.
+[duts.aou_reg]
+root = "hw/ip/aou/dv"
+
+[duts.aou_l3_unit]
+root = "hw/ip/aou/dv"
+
+[duts.aou_axi_selftest]
+root = "hw/ip/aou/dv"

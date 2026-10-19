@@ -67,10 +67,10 @@ jobs:
         # at head; see "Continuous integration" in tools/dv/doc/run-dv.adoc.
         #
         # The composite action omits `--framework`, so each DUT runs its
-        # default framework (cocotb). Licensed SV-UVM jobs live outside hosted
-        # CI; enumerate (DUT, framework) pairs with `run_dv.py --list --json`
-        # instead of hardcoding names (see "Framework-aware CI matrices" in
-        # the same doc).
+        # default framework: cocotb, or SV-UVM for the UVM-only aou. SV-UVM
+        # jobs on licensed simulators live outside hosted CI; enumerate (DUT,
+        # framework) pairs with `run_dv.py --list --json` instead of
+        # hardcoding names (see "Framework-aware CI matrices" in the same doc).
         #
         # The single-IP benches (cross_trigger, axi_hang_detector) are not in
         # the gate: their smoke cost is one job of runner setup each for
@@ -93,6 +93,8 @@ jobs:
           - dut: smu
             runner: ubuntu-latest
           - dut: smc
+            runner: ubuntu-latest
+          - dut: aou
             runner: ubuntu-latest
     env:
       # Required check names (verilator-smoke (dtp/sep)) must still report,

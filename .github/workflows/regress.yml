@@ -122,6 +122,14 @@ jobs:
             reseed: 1
             coverage: false
             runner: ubuntu-latest
+          - dut: aou
+            # The larger groups hold leaves that fail on filed DUT bugs, which
+            # the bench marks as expected failures only in its own
+            # expected_fail.yaml; run_dv.py does not read that file.
+            items: smoke
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
           # IP-level benches (cross-trigger family, UART family, system timer,
           # scrambler): small single-IP DUTs, seconds to a few minutes per
           # full group; nightly is their only scheduled enrollment besides
@@ -262,6 +270,11 @@ jobs:
             # not count there.
             items: rtl_issue
             label: rtl_issue
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: aou
+            items: smoke
             reseed: 1
             coverage: false
             runner: ubuntu-latest
