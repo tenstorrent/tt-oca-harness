@@ -38,18 +38,58 @@ override still releases the SEP reset. A mismatch token then drops SEC_DIS
 and a second reset runs a full sense against the staged image. That sense
 is the live control for both stuck windows: it must finish in fewer cycles
 than each window waited.
+
+In that retained window (SEC_DIS=1, sense stopped, every shadow at its reset
+value) the JTAG AXI-Lite port writes the shadow map. The lifecycle filter
+restricts JTAG only in PROD and RMA_SIP, and the held INVALID encoding is
+neither, so the port reaches the map. A writable shadow takes the write; the
+INVALID ``LC_STATE`` is terminal and keeps its value. The external debug bus
+must change around those writes and hold still in the quiet windows on each
+side of them; no lane position is assumed.
+
+After a later full sense, a fresh match on the PROD image opens
+``FEAT_CTRL`` with the ``TEST_EN`` strap at 0: the register and the
+feature-control probe are all ones and ``secure_tm_o`` is 0.
+
+Checks (``CHK-<ID> PASS`` lines; every failure raises):
+
+  CHK-OVR-ALONE          the IC_RESET override alone releases the reset, FEAT_CTRL closed
+  CHK-SENSE-GATED-RESET  a match does not release the sense-gated reset
+  CHK-FEAT-PRESENSE      the match opens FEAT_CTRL before sense-done
+  CHK-OVR-AFTER          the override releases the reset after the match
+  CHK-MAP-OPEN           LC_STATE shadow read answers OKAY under SEC_DIS
+  CHK-SENSE-STUCK        sense stays stopped and the reset held under SEC_DIS
+  CHK-RETAIN-*           the same five contracts after rst_ni with the token kept
+  CHK-SECDIS-SHADOW-WR   JTAG write of a 0 bit of REQUIRED_SIGNERS lands (frontdoor)
+  CHK-SECDIS-LC-WR       JTAG write of LC_STATE leaves the INVALID word unchanged
+  CHK-SECDIS-DBG-BUS     ext_debug_bus_o changes around the JTAG writes and not
+                         in the quiet windows (control: CHK-HOOK)
+  CHK-DROP               a mismatch drops SEC_DIS
+  CHK-SENSE-CONTROL      a healthy sense finishes inside each stuck window
+  CHK-MISMATCH, CHK-NO-OVERRIDE  mismatch code and the fail-closed PROD FEAT_CTRL
+  CHK-MATCH, CHK-OVERRIDE        match code and the all-ones FEAT_CTRL
+  CHK-OVERRIDE-TM0       at CHK-OVERRIDE with the strap at 0 (control: CHK-HOOK):
+                         FEAT_CTRL == lcc_feat_ctrl_probe_o == all ones, secure_tm_o == 0
+  CHK-DEACTIVATE, CHK-RESTORE    mismatch code and the PROD FEAT_CTRL again
 """
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
-from env.sep_efuse_image import SepEfuseImage
-from env.sep_lcc_golden import LC_PROD, M64, feat_ctrl_expected, lc_state_name
+from env.sep_efuse_image import LC_FIELD_MASK, SepEfuseImage, lc_encode
+from env.sep_lcc_golden import (
+    LC_PROD,
+    M64,
+    feat_ctrl_expected,
+    is_invalid_lc,
+    lc_state_name,
+)
 from env.sep_rma_token import token_digest
 from sep_base_test import sep_base_test
+from sep_reg_meta import register_fields
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_MATCH,
@@ -77,6 +117,58 @@ _MISMATCH_TOKEN = 1
 _WITHHELD_LC = 0xF
 # SHA-256 of 32 zero bytes; must match ``SecDisTbDigest`` in ``tb/tb_top.sv``.
 _TB_SEC_DIS_DIGEST = 0x66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0D5F2925
+# AXI OKAY response code of ``jtag_axil_op``.
+_AXI_OKAY = 0
+_M32 = 0xFFFF_FFFF
+# Cycles the debug bus is watched after the last JTAG write of the event window,
+# and the floor of each quiet window (a quiet window is also at least twice the
+# event window).
+_DBG_SETTLE_CYCLES = 16
+_DBG_QUIET_CYCLES = 256
+
+
+class _BusChangeWatch:
+    """Record every bit of a bus that differs between two consecutive clock edges.
+
+    The value is compared as a 0/1/X/Z string, so an X that appears or clears
+    is a change too. No bit position is interpreted.
+    """
+
+    def __init__(self, sig, clk) -> None:
+        self._sig = sig
+        self._clk = clk
+        self._stop = False
+        self.changed = 0
+        self.edges = 0
+        self.first = ""
+        self.last = ""
+
+    async def _run(self) -> None:
+        prev = ""
+        while True:
+            await RisingEdge(self._clk)
+            await ReadOnly()
+            cur = str(self._sig.value)
+            if not prev:
+                self.first = cur
+            elif cur != prev:
+                width = len(cur)
+                for i, (a, b) in enumerate(zip(prev, cur)):
+                    if a != b:
+                        self.changed |= 1 << (width - 1 - i)
+            prev = cur
+            self.last = cur
+            self.edges += 1
+            if self._stop:
+                return
+
+    def start(self) -> "_BusChangeWatch":
+        cocotb.start_soon(self._run())
+        return self
+
+    async def stop(self) -> None:
+        self._stop = True
+        await ClockCycles(self._clk, 2)
 
 
 @pyuvm.test()
@@ -339,6 +431,218 @@ class sep_sec_dis_override_test(sep_base_test):
         self.cfg.reset_done.set()
         return cycle
 
+    def _check_override_tm0(self, feat_reg: int) -> None:
+        """Sample the strap, the probe and ``secure_tm_o`` at the CHK-OVERRIDE read.
+
+        hw/sys/sep/doc/lifecycle_controller.adoc (Overrides and Final Gates):
+        "when SEC_DIS = 1, feat_ctrl is forced to all-1s -- every feature
+        enabled, regardless of the LC state, the DIS vectors, or the sigint
+        result", and "SECURE_TM is *not* a term in feat_ctrl_o".
+        hw/sys/sep/doc/security_disable.adoc: "SECURE_TM is not a term in the
+        feature-control computation, so SEC_DIS neither qualifies nor overrides
+        it." hw/sys/sep/doc/test_mode.adoc: "SECURE_TM does not qualify those
+        bits." So with the strap at 0 every feature bit is still 1. The
+        test_mode.adoc sampling table loads the strap at fuse-sense completion,
+        so after the full sense with the strap at 0, ``secure_tm_o`` is 0.
+        """
+        label = "CHK-OVERRIDE-TM0"
+        dut = cocotb.top
+        strap = self.rd_known(dut.test_en_strap_i) & 0x1
+        if strap != 0:
+            raise AssertionError(
+                f"CHK-HOOK FAIL: {label} test_en_strap_i={strap} want 0 -- the "
+                "strap-0 cell is not in place, so the check does not grade it"
+            )
+        sec_dis = self.rd_known(dut.lcc_security_disable_probe_o) & 0x1
+        probe = self.rd_known(dut.lcc_feat_ctrl_probe_o)
+        stm = self.rd_known(dut.secure_tm_o) & 0x1
+        want = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, secure_tm=0, sec_dis=1)
+        assert want == M64, f"{label} FAIL: override golden 0x{want:016x} is not all ones"
+        assert sec_dis == 1 and feat_reg == want and probe == want and stm == 0, (
+            f"{label} FAIL: strap=0 sec_dis={sec_dis} want 1 "
+            f"FEAT_CTRL=0x{feat_reg:016x} probe=0x{probe:016x} want 0x{want:016x}, "
+            f"secure_tm_o={stm} want 0"
+        )
+        self.logger.info(
+            "%s PASS: %s strap=0 sec_dis=1 secure_tm_o=0 FEAT_CTRL=0x%016x "
+            "probe=0x%016x exp=0x%016x",
+            label,
+            lc_state_name(LC_PROD),
+            feat_reg,
+            probe,
+            want,
+        )
+
+    async def _fd_read_word(self, label: str, addr: int, what: str) -> int:
+        """Frontdoor 32-bit read of a shadow word while sense is stopped; OKAY required."""
+        self._require_sense_open(label, sec_dis=1)
+        seq = SepAxiAccessSeq(
+            f"sec_dis_{what}_rd",
+            op=SepAxiOp.READ,
+            addr=addr,
+            size=2,
+            allow_ungraded_read_resp=True,
+        )
+        await self.start_seq(seq)
+        self._require_sense_open(label, sec_dis=1)
+        assert seq.resp_ok and not seq.timed_out, (
+            f"{label} FAIL: sec_dis=1 sense_done=0 {what} @0x{addr:08x} "
+            f"resp_ok={int(seq.resp_ok)} resp={seq.resp_code} "
+            f"timed_out={int(seq.timed_out)}, want AXI OKAY"
+        )
+        return seq.rdata & _M32
+
+    async def _watch_quiet(self, cycles: int, which: str) -> _BusChangeWatch:
+        """Watch the debug bus for ``cycles`` with no access; any change fails the control."""
+        self._require_sense_open("CHK-SECDIS-DBG-BUS", sec_dis=1)
+        dut = cocotb.top
+        watch = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
+        await ClockCycles(dut.clk_i, cycles)
+        await watch.stop()
+        self._require_sense_open("CHK-SECDIS-DBG-BUS", sec_dis=1)
+        if watch.changed:
+            raise AssertionError(
+                f"CHK-HOOK FAIL: CHK-SECDIS-DBG-BUS {which} quiet window: "
+                f"ext_debug_bus_o changed with no eFuse access over {watch.edges} edges "
+                f"(changed bits mask=0x{watch.changed:x}). A lane outside the eFuse "
+                "state toggles, so a whole-bus change cannot grade the eFuse lane"
+            )
+        return watch
+
+    async def _check_jtag_writes_under_sec_dis(self) -> None:
+        """JTAG shadow writes in the retained SEC_DIS window, and the debug bus around them.
+
+        Golden (hw/sys/sep/doc, no RTL):
+
+        * security_disable.adoc, Reset Persistence: after the reset with the
+          match kept, "Fuse sensing then does not start, every shadow register
+          keeps its reset value". lifecycle_controller.adoc: "Before fuse
+          sensing completes, the shadow output holds the INVALID encoding
+          4'b1111", stored as ``{~raw, raw}`` (otp_fuse_controller.adoc fuse
+          field table, LC_STATE row).
+        * otp_fuse_controller.adoc, Shadow Register and JTAG Access Control:
+          "In addition to the shadow-register access control defined by
+          <<sep-fuse-fields-table>>, the JTAG port shall be further restricted:
+          in the PROD and RMA_SIP states it may reach only the eFuse MMR token
+          block." INVALID is neither state, so JTAG has the table's access.
+        * otp_fuse_controller.adoc, controller overview: the
+          ``security_disable_i`` input "skips fuse sensing and opens the shadow
+          registers to software". Fuse field table: REQUIRED_SIGNERS is "SW
+          writable true"; sep_efuse_map.rdl: ``required_signers`` is
+          ``sw = rw; onwrite = woset`` with reset 0, and the LOCKS bits reset to
+          0. So a write of a 0 bit sets that bit and leaves the rest.
+        * otp_fuse_controller.adoc, LC_STATE row: "Invalid lifecycle encodings
+          are terminal." A write of another encoding leaves the word unchanged.
+
+        Both writes are graded by a frontdoor readback ("A read of the eFuse
+        shadow map over the SEP bus completes with OKAY", security_disable.adoc).
+        The JTAG write response is logged, not graded: the specification does
+        not state it for a write the terminal rule refuses.
+
+        The debug bus has no lane layout in the specification, so it is graded
+        layout-free: it must change while the two JTAG writes run, and hold
+        still in a quiet window before them and in one after them, each at
+        least twice the event window. The writable shadow keeps its new bit
+        until the rst_ni pulse ahead of the next full sense, which reloads every
+        shadow from the staged image before any later check reads it.
+        """
+        dut = cocotb.top
+        rs_addr = SepEfuseImage.field("REQUIRED_SIGNERS").shadow_addr
+        lc_addr = SepEfuseImage.field("LC_STATE").shadow_addr
+        _width, rs_fields = register_fields(rs_addr)
+        rs_field = next(f for f in rs_fields if f.name == "required_signers")
+        assert rs_field.one_to_set and rs_field.reset is not None, (
+            "test bug: REQUIRED_SIGNERS.required_signers is not woset with a reset in the RDL"
+        )
+        rs_reset = sum((f.reset or 0) << f.lsb for f in rs_fields)
+        free = rs_field.mask & ~rs_reset
+        assert free, "test bug: REQUIRED_SIGNERS has no 0 bit at its RDL reset"
+        rs_bit = (free & -free).bit_length() - 1
+        lc_invalid = lc_encode(_WITHHELD_LC)
+        lc_new = lc_encode(LC_PROD)
+        assert is_invalid_lc(_WITHHELD_LC) and lc_new != lc_invalid
+
+        rs_pre = await self._fd_read_word("CHK-SECDIS-SHADOW-WR", rs_addr, "required_signers")
+        assert rs_pre == rs_reset, (
+            f"CHK-SECDIS-SHADOW-WR FAIL: REQUIRED_SIGNERS @0x{rs_addr:08x} "
+            f"pre=0x{rs_pre:08x} want RDL reset 0x{rs_reset:08x} -- the shadow did "
+            "not keep its reset value after the reset with the match kept"
+        )
+        lc_pre = await self._fd_read_word("CHK-SECDIS-LC-WR", lc_addr, "lc_state")
+        assert lc_pre & LC_FIELD_MASK == lc_invalid, (
+            f"CHK-SECDIS-LC-WR FAIL: LC_STATE @0x{lc_addr:08x} pre=0x{lc_pre:08x} "
+            f"want [7:0]=0x{lc_invalid:02x} (INVALID 4'b1111) while sense is stopped"
+        )
+
+        # The frontdoor reads above are the last eFuse accesses before the
+        # first quiet window.
+        await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
+        pre_quiet = await self._watch_quiet(_DBG_QUIET_CYCLES, "pre")
+
+        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
+        event = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
+        rs_resp, _ = await self.jtag_axil_op(write=True, addr=rs_addr, wdata=1 << rs_bit)
+        lc_wdata = (lc_pre & ~LC_FIELD_MASK & _M32) | lc_new
+        lc_resp, _ = await self.jtag_axil_op(write=True, addr=lc_addr, wdata=lc_wdata)
+        await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
+        await event.stop()
+        self._require_sense_open("CHK-SECDIS-LC-WR", sec_dis=1)
+
+        post_quiet = await self._watch_quiet(max(_DBG_QUIET_CYCLES, 2 * event.edges), "post")
+        assert pre_quiet.edges >= 2 * event.edges, (
+            f"CHK-HOOK FAIL: CHK-SECDIS-DBG-BUS pre quiet window {pre_quiet.edges} edges "
+            f"is shorter than twice the {event.edges}-edge event window"
+        )
+
+        rs_post = await self._fd_read_word("CHK-SECDIS-SHADOW-WR", rs_addr, "required_signers")
+        rs_want = rs_pre | (1 << rs_bit)
+        assert rs_post == rs_want, (
+            f"CHK-SECDIS-SHADOW-WR FAIL: sec_dis=1 sense_done=0 JTAG write "
+            f"0x{1 << rs_bit:08x} to REQUIRED_SIGNERS @0x{rs_addr:08x} (resp={rs_resp}): "
+            f"pre=0x{rs_pre:08x} post=0x{rs_post:08x} want 0x{rs_want:08x}"
+        )
+        self.logger.info(
+            "CHK-SECDIS-SHADOW-WR PASS: sec_dis=1 sense_done=0 JTAG wr REQUIRED_SIGNERS "
+            "@0x%08x bit=%d resp=%d resp_graded=0 pre=0x%08x post=0x%08x exp=0x%08x",
+            rs_addr,
+            rs_bit,
+            rs_resp,
+            rs_pre,
+            rs_post,
+            rs_want,
+        )
+
+        lc_post = await self._fd_read_word("CHK-SECDIS-LC-WR", lc_addr, "lc_state")
+        assert lc_post == lc_pre, (
+            f"CHK-SECDIS-LC-WR FAIL: sec_dis=1 sense_done=0 JTAG write 0x{lc_wdata:08x} "
+            f"to LC_STATE @0x{lc_addr:08x} (resp={lc_resp}) changed the INVALID word: "
+            f"pre=0x{lc_pre:08x} post=0x{lc_post:08x} want unchanged"
+        )
+        self.logger.info(
+            "CHK-SECDIS-LC-WR PASS: sec_dis=1 sense_done=0 JTAG wr LC_STATE @0x%08x "
+            "wdata=0x%08x resp=%d resp_graded=0 pre=0x%08x post=0x%08x (INVALID terminal)",
+            lc_addr,
+            lc_wdata,
+            lc_resp,
+            lc_pre,
+            lc_post,
+        )
+
+        assert event.changed, (
+            f"CHK-SECDIS-DBG-BUS FAIL: ext_debug_bus_o did not change over the "
+            f"{event.edges}-edge window of the JTAG REQUIRED_SIGNERS and LC_STATE writes "
+            f"(value={event.last or '-'}) -- the eFuse debug state does not reach the bus"
+        )
+        self.logger.info(
+            "CHK-SECDIS-DBG-BUS PASS: event edges=%d changed_bits=%d mask=0x%x; "
+            "quiet pre edges=%d changed=0, post edges=%d changed=0",
+            event.edges,
+            bin(event.changed).count("1"),
+            event.changed,
+            pre_quiet.edges,
+            post_quiet.edges,
+        )
+
     async def run_scenario(self) -> None:
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
@@ -382,6 +686,7 @@ class sep_sec_dis_override_test(sep_base_test):
         await self._check_window_feat(1, "CHK-RETAIN-FEAT")
         self._check_reset_stays_sense_gated("CHK-RETAIN-RESET")
         await self._read_shadow_map("CHK-RETAIN-MAP-OPEN")
+        await self._check_jtag_writes_under_sec_dis()
         await self._check_override_after_match("CHK-RETAIN-OVR")
         await self._check_sense_stuck("CHK-RETAIN-STUCK")
 
@@ -434,7 +739,8 @@ class sep_sec_dis_override_test(sep_base_test):
         self.logger.info(
             "CHK-MATCH PASS: SEC_DISABLE_TOKEN_MATCH=0x%02x after all-zero token", hit.match_code
         )
-        await self._check_feat(1, "CHK-OVERRIDE")
+        feat_open = await self._check_feat(1, "CHK-OVERRIDE")
+        self._check_override_tm0(feat_open)
 
         deact = await self._present(_MISMATCH_TOKEN)
         assert deact.match_code == TOKEN_MISMATCH, (

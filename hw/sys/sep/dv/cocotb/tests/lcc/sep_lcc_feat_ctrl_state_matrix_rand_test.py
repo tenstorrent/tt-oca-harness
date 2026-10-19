@@ -233,6 +233,8 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
     async def _cold_reset(self, *, strap: int | None = None) -> None:
         """Cold reset with clocks running; the strap changes only while rst_ni is low."""
         await rst_pulse(self, strap=strap)
+        if strap is not None:
+            self._strap = strap
         await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
         self.cfg.reset_done.set()
         self.sip_m, self.sys_m = self.p.sip_dis, self.p.sys_dis
