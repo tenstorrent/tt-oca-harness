@@ -97,8 +97,7 @@ sentence; the inventory sets only which pins are graded.
 
 |Why the real path is not needed
 |The specification names the two pin classes and no list of instances, so the
-graded set is a bench decision. The DV owner chose the SEP-owned boundary on
-2026-10-19. A committed list keeps the graded set independent of a source
+graded set is a bench decision: the SEP-owned boundary. A committed list keeps the graded set independent of a source
 scan at run time: the hierarchy walk finds each inventory pin, an inventory
 pin that the walk does not find fails CTL-PIN-WALK by name, and the source
 ownership scan of `cocotb/env/sep_test_en_walk.py` only labels the walked pins
