@@ -512,3 +512,47 @@ tags = ["km", "handover", "vault", "rand", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM boot after warm and cold resets on the shipped rom_main build (both wipes on): boot flush,
+# scrambler keep, COLD_BOOT_DONE order, stored-image size. The leaf resets the KM while its CPU
+# runs; the raised Verilator error limit keeps it running.
+name = "sep_km_boot_reset_rand_test"
+module = "km.sep_km_boot_reset_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_default" }
+seed = 1
+reseed = 3
+timeout_sec = 10800
+tags = ["km", "mailbox", "reset", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_default.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM fatal faults on the bench build (HOST): real wipe with the wipe predicate off, DRBG stall, key-path fault.
+# The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+name = "sep_km_fault_inject_rand_test"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 7200
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM fatal faults on the HOST-UNREC build: fatal-handler shreds, first-source rule, CPU lines, parity, key CRC,
+# SRAM latency, main-context fault. The leaf resets the KM while its CPU runs; the raised Verilator error limit
+# keeps it running.
+name = "sep_km_fault_inject_rand_test_unrec"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 3
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000"]
