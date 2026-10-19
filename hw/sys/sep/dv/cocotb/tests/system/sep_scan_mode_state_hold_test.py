@@ -8,6 +8,10 @@ nets can hold X across the scan pulse). The seed draws the low width ``w`` of
 choice), its fall and release ``phase`` (10 to 90 percent of the ``clk_i``
 period after a ``clk_i`` rising edge) and the order of the two strap legs.
 Every run runs the strap-0 leg, the strap-1 leg and the SEC_DIS leg (last).
+``clk_wdt_i`` runs at ``P_W`` ``clk_i`` periods with its rising edge ``WDT_PHASE_PCT``
+percent of a ``clk_i`` period after a ``clk_i`` rising edge (environment choice), so
+``aon_rst_n`` (``rst_ni`` synchronized into ``clk_wdt_i``) releases within the tap
+bound after each cold boot and no ``clk_wdt_i`` edge meets a ``clk_i`` sample.
 
 Each leg: a cold boot with real fuse sense at the leg strap, DEMOTE_1 and
 DEMOTE_2 set and locked, the Key Manager released, then the scan session:
@@ -122,6 +126,8 @@ M32 = 0xFFFF_FFFF
 
 H = 32  # hold of each session step, clk_i cycles (test parameter)
 PRE = 8  # samples before the test_en_i rise
+P_W = 8  # clk_wdt_i period in clk_i periods
+WDT_PHASE_PCT = 5  # clk_wdt_i rising edge, percent of a clk_i period after clk_i
 SENSE_BOUND = 40_000
 TAP_BOUND = 2_000
 STM_BOUND = 16
@@ -231,7 +237,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             await rst_pulse(self, strap=strap)
         await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
         self.cfg.reset_done.set()
-        for port in ("dbg_sep_reset_n_o", "sep_cpu_reset_n_o"):
+        for port in ("dbg_sep_reset_n_o", "sep_cpu_reset_n_o", "aon_rst_n_probe_o"):
             n = await wait_bit(self, port, 1, TAP_BOUND)
             await RisingEdge(dut.clk_i)
             assert n is not None, f"{port} did not read 1 within {TAP_BOUND} clk_i cycles"
@@ -555,10 +561,14 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             ",".join(str(s) for s in cfg.straps),
         )
         self.sys_ps = int(round(self.cfg.sys_clk_period_ns * 1000))
+        self.cfg.wdt_clk_period_ns = P_W * self.cfg.sys_clk_period_ns
+        self.clock_phases_ps = {"clk_wdt_i": WDT_PHASE_PCT * self.sys_ps // 100}
         self.logger.info(
-            "CFG H=%d pre=%d sense_bound=%d tap_bound=%d stm_bound=%d",
+            "CFG H=%d pre=%d p_w=%d wdt_phase_pct=%d sense_bound=%d tap_bound=%d stm_bound=%d",
             H,
             PRE,
+            P_W,
+            WDT_PHASE_PCT,
             SENSE_BOUND,
             TAP_BOUND,
             STM_BOUND,
