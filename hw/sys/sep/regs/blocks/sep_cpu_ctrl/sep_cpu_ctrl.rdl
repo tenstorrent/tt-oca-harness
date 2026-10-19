@@ -351,8 +351,10 @@ addrmap sep_cpu_ctrl {
             sw = r;
             hw = w;
             desc = "Register-path bus error: a CPU access to a Secure DMA register returned
-                    a TL-UL error response (unmapped or misaligned offset). The faulting
-                    access also received SLVERR synchronously.";
+                    a TL-UL error response (an unmapped offset, or a partial write: a byte
+                    strobe that misses a byte the register owns). The faulting access also
+                    received SLVERR synchronously. A narrow read inside a register returns
+                    OKAY.";
         } reg_path_err [0:0] = 0x0;
 
         field {
@@ -385,9 +387,10 @@ addrmap sep_cpu_ctrl {
         accesswidth = 64;
         desc = "Peripheral register-bridge fault status, one bit per block. Each bit latches
                 when a CPU access to that block's registers returned a TL-UL error response
-                (unmapped or misaligned offset), and is held until the matching
-                PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also received
-                SLVERR synchronously.
+                (an unmapped offset, or a partial write: a byte strobe that misses a byte the
+                register owns), and is held until the matching PERIPH_BUS_ERR_CLEAR bit is
+                written. The faulting access also received SLVERR synchronously. A narrow
+                read inside a register returns OKAY.
 
                 All bits OR together into a single PIC source, so read this register to
                 identify which block faulted.

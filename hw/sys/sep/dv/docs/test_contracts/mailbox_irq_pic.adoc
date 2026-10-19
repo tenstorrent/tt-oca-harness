@@ -109,7 +109,7 @@
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the bridge's `PUT_PARTIAL_DATA` opcode arm — a sub-word write is refused upstream of the bridge from this master (SLVERR, status register unchanged), so only the `PUT_FULL_DATA` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench. For AES, CSRNG and EDN all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge (SLVERR, `PERIPH_BUS_ERR_STATUS` still 0); and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset term of both status registers is <<sep_periph_bus_err_misaligned_test>>.
+*Not claimed*: the bridge's `PUT_PARTIAL_DATA` opcode arm — a sub-word write is refused upstream of the bridge from this master (SLVERR, status register unchanged), so only the `PUT_FULL_DATA` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench. For AES, CSRNG and EDN all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge (SLVERR, `PERIPH_BUS_ERR_STATUS` still 0); and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The partial-write term of both status registers is <<sep_periph_bus_err_misaligned_test>>.
 
 '''''
 
@@ -126,20 +126,20 @@
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: A misaligned CPU access inside a mapped register extent. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's status bit.
+*Objective*: A partial write to a mapped register, and a narrow read inside it. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's status bit for a write that the block's register definition refuses. A partial write is one whose byte strobe misses a byte that the register owns. A narrow read inside a register is a legal access: OKAY, and no status bit.
 
-*Test Coverage*: The misaligned-offset term of `PERIPH_BUS_ERR_STATUS`, on the `hmac` bit, and of `DMA_BUS_ERR_STATUS`, on `reg_path_err`.
+*Test Coverage*: The partial-write term of `PERIPH_BUS_ERR_STATUS`, on the `hmac` bit, and of `DMA_BUS_ERR_STATUS`, on `reg_path_err`. The narrow read at the same offset, which must not latch.
 
 *Test Procedure*:
 
 [arabic]
 . Confirm `PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` both read 0, so the assertions below cannot be satisfied by stale state.
 . HMAC control: read two bytes at the aligned HMAC `CFG` offset (AxSIZE=2). Require one R beat answered OKAY and both registers still 0.
-. HMAC probe: read two bytes at `CFG` + 2 (AxSIZE=2). The read ends on the word boundary, so the master issues one beat. Require one R beat answered SLVERR, then SLVERR on the probe, `PERIPH_BUS_ERR_STATUS` exactly the `hmac` bit, and `DMA_BUS_ERR_STATUS` still 0.
-. DMA control: read two bytes at the aligned Secure DMA `INTR_STATE` offset. Require one R beat answered OKAY and both registers unchanged.
-. DMA probe: read two bytes at `INTR_STATE` + 2. Require one R beat answered SLVERR, then SLVERR on the probe, `DMA_BUS_ERR_STATUS` exactly `reg_path_err`, and `PERIPH_BUS_ERR_STATUS` still exactly the `hmac` bit.
+. HMAC narrow read: read two bytes at `CFG` + 2 (AxSIZE=2). The read ends on the word boundary, so the master issues one beat. Require one R beat answered OKAY and both registers still 0.
+. HMAC probe: write two bytes at `CFG` + 2 (byte lanes 2 and 3). `CFG` owns byte 0, so the strobe misses an owned byte. Require SLVERR, `PERIPH_BUS_ERR_STATUS` exactly the `hmac` bit, `DMA_BUS_ERR_STATUS` still 0, and `CFG` unchanged.
+. DMA control, narrow read and probe: the same three steps at the Secure DMA `INTR_STATE` offset, which owns byte 0. The probe requires SLVERR, `DMA_BUS_ERR_STATUS` exactly `reg_path_err`, `PERIPH_BUS_ERR_STATUS` still exactly the `hmac` bit, and `INTR_STATE` unchanged.
 
-Each probe must be one beat. A four-byte read at a word offset + 2 crosses the word and goes out as a two-beat burst, and on the crypto path `doc/crypto.adoc` § "Single-Beat Access Only" refuses it with DECERR before any beat reaches HMAC, so it never exercises the alignment check.
+Each access must be one beat. A four-byte access at a word offset + 2 crosses the word and goes out as a two-beat burst, and on the crypto path `doc/crypto.adoc` § "Single-Beat Access Only" refuses it with DECERR before any beat reaches HMAC.
 
 *Checkers*:
 
@@ -149,16 +149,16 @@ Each probe must be one beat. A four-byte read at a word offset + 2 crosses the w
 |CHK-MISALIGN-BASE
 |`PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` read 0 before the probes. A bit left set by an earlier step fails here.
 |CHK-MISALIGN-CTRL, CHK-MISALIGN-DMA-CTRL
-|The aligned read of the same shape completes as one OKAY beat and leaves both registers unchanged. Each probe then differs from an accepted access only in address bits [1:0].
-|CHK-MISALIGN-BEAT, CHK-MISALIGN-DMA-BEAT
-|The bus monitor records exactly one R beat for the probe, answered SLVERR. A burst, or any other response code, fails here.
+|The aligned read completes as one OKAY beat and leaves both registers unchanged.
+|CHK-MISALIGN-RD, CHK-MISALIGN-DMA-RD
+|The narrow read at offset + 2 completes as exactly one OKAY beat and leaves both registers unchanged. A refused narrow read, a burst, or a latched bit fails here.
 |CHK-MISALIGN-LATCH, CHK-MISALIGN-DMA-LATCH
-|The probe's response is SLVERR, and both registers read exactly the expected value: the owning block's bit latched and the other register unchanged.
+|The partial write's response is SLVERR, both registers read exactly the expected value (the owning block's bit latched, the other register unchanged), and the register reads back its value from the control read.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the same term on the AES, KMAC, OTBN, CSRNG, EDN and WDT bits. The error response's read data is not graded: no specification defines it.
+*Not claimed*: the same term on the AES, KMAC, OTBN, CSRNG, EDN and WDT bits. The narrow read's data is not graded.
 
 '''''
 
@@ -289,7 +289,7 @@ claimed for the same reason. Both need the external inbound master — see
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, 3 seeds
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, 1 seed per regression, because every run walks every mailbox, bit and direction
 
 *Source Module*: `sep_mailbox_datapath_walk_test`
 
@@ -300,7 +300,7 @@ strobe runs and their data, and every inbound request attribute (AxID 1 to 63,
 AxPROT, a non-reserved AxCACHE, AxQOS, AxREGION, AxUSER, WUSER, ARLOCK on
 reads) come from the run seed (`SepMboxWalkCfg`, `SepInboundAttrs`). Every
 mailbox, every bit position, both directions and every byte lane are walked on
-every seed; `reseed = 3`.
+every seed, and one seed runs per regression.
 
 *Objective*: `hw/sys/sep/doc/mailbox.adoc`: each of the eight mailboxes holds two FIFOs of eight 64-bit entries, and `WRITE_DATA` in one port pushes the FIFO that `READ_DATA` in the other port pops; a write pushes one entry. The inbound filter decides on the address, `prot[1]`, `user[3:0]` and `AxLEN` only (`hw/ip/axi_filter/doc/index.adoc`, "Match, Then Permit"), so the other request fields of an admitted access must not change the data.
 
@@ -600,7 +600,7 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu`, real fuse sense (no `+skip_fuse_sense`), `LC_PROD`
+*Run mode*: `no_cpu`, real fuse sense (no `+skip_fuse_sense`), `LC_PROD`, 1 seed per regression, because the graded deny targets are fixed and the seed selects only the control spare and data
 
 *Source Module*: `sep_locked_field_access_irq_path_test` (`+secure_tm_lock`)
 
@@ -1431,7 +1431,7 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope limit*: Not graded: whether an external access to the same holes also latches a bit (see <<sep-vplan-phase3-blocked,Blocked features>>), the command-integrity cause, a halt of the DMA after the error, and the effect of a write of 1 to `DMA_BUS_ERR_CLEAR` on `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` (`OBS-DMA-HOST-CLR`: no sentence states it). The effect of a write of 1 to `STATUS.ERROR` on `host_path_err` is graded by CHK-DMA-HOST-HOLD. The misaligned cause, the aes, csrng, edn and wdt bits, and the DMA response at a reserved window or past the mailbox wrapper extent are in <<sep-vplan-phase3-blocked,Blocked features>>. The single-block latch and the DMA register-path latch are owned by `sep_irq_ip_to_aggregator_test` and `sep_periph_bus_err_misaligned_test`, and the destination-side DMA fault by `sep_dma_basic_test`.
+*Scope limit*: Not graded: whether an external access to the same holes also latches a bit (see <<sep-vplan-phase3-blocked,Blocked features>>), the command-integrity cause, a halt of the DMA after the error, and the effect of a write of 1 to `DMA_BUS_ERR_CLEAR` on `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` (`OBS-DMA-HOST-CLR`: no sentence states it). The effect of a write of 1 to `STATUS.ERROR` on `host_path_err` is graded by CHK-DMA-HOST-HOLD. The aes, csrng, edn and wdt bits, and the DMA response at a reserved window or past the mailbox wrapper extent are in <<sep-vplan-phase3-blocked,Blocked features>>. The partial-write cause is graded by `sep_periph_bus_err_misaligned_test`. The single-block latch and the DMA register-path latch are owned by `sep_irq_ip_to_aggregator_test` and `sep_periph_bus_err_misaligned_test`, and the destination-side DMA fault by `sep_dma_basic_test`.
 
 '''''
 [[sep_cpu_ctrl_timeout_inert_rand_test]]
@@ -1441,13 +1441,13 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `reseed = 3`
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 1 seed per regression, because every run stalls every block
 
 *Source Module*: `sep_cpu_ctrl_timeout_inert_rand_test`
 
 *BFM / Model*: CPU-LSU master on `s_axi` (`SepAxiAgent` over `ocah_axi_vip`) and external SMN master on `m_axi` (second `SepAxiAgent`), each with `RREADY` and `BREADY` under test control; the response monitor of each stalled port (`VALID`, `READY` and response handshake count); `sep_internal_interrupts_probe_o`; register model from the generated IP-XACT (`sep_reg_meta`). Error inject: the response hold of the outbound responder on the `sep` input `smn_outbound_axi_resp_i` (without the inject `tb/sep_outbound_mbx.sv` answers OKAY at once), which the test adds to the inject exceptions of `SEP_TB_ARCH.adoc`; the outbound filter, alias remap and DMA legs use it. The outbound port monitor counts the requests on `smn_outbound_axi_req_o` and the response handshakes on `smn_outbound_axi_resp_i`. The observation tap `timeout_interrupt_probe_o` is the read source of `TIMEOUT_INTERRUPT.reserved` (the field has no storage: sw=r, hw=w, so a read returns the hardware input of the register block on that clock); the test adds it to the SEP_TB_ARCH observation-probe list. Secure DMA with an SRAM endpoint for the DMA leg. The entropy write and entropy read legs stall the CPU-LSU master at the entropy pool (`sep_entropy_fifo`), so the response monitor of the CPU-LSU port is their anchor. No added tap.
 
-*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the order of the nine arming writes (`TIMEOUT_ENABLE` and the eight `TIMEOUT_COUNT_*` registers) and the order of the stalled blocks. `reseed = 3` samples three pairs of orders. The hold length, the stalled addresses and the write data are fixed. The `SEP_CPU_CTRL` writes go to `TIMEOUT_ENABLE` and the eight count registers only.
+*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the order of the nine arming writes (`TIMEOUT_ENABLE` and the eight `TIMEOUT_COUNT_*` registers) and the order of the stalled blocks. Each regression draws a new pair of orders. The hold length, the stalled addresses and the write data are fixed. The `SEP_CPU_CTRL` writes go to `TIMEOUT_ENABLE` and the eight count registers only.
 
 *Objective*: The timeout block is reserved and not implemented. `TIMEOUT_INTERRUPT` (R, reset 0) reads 0. `TIMEOUT_ENABLE` and each of the eight `TIMEOUT_COUNT_*` registers have one RW bit 0 with reset 0 and hold a written 1. A stall of a block path beyond its armed count sets no `TIMEOUT_INTERRUPT` bit, raises no PIC source and aborts no access. Sources: `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc` (`TIMEOUT_INTERRUPT`, `TIMEOUT_ENABLE`, `TIMEOUT_COUNT_*`, `TIMEOUT_CLEAR`, `TIMEOUT_MODE`); `hw/sys/sep/doc/fabric.adoc` (System Interface initiator, Fabric Topology); `hw/sys/sep/doc/cpu.adoc` (Dual Scratch Register Banks) and `hw/sys/sep/regs/gen/adoc/blocks/sep_scratch.adoc` (`SCRATCH`); `hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.adoc` (`WIRQT`).
 

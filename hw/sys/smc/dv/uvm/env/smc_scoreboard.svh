@@ -54,6 +54,14 @@
 //                checks X/Z; the passive monitor does not retain data X/Z masks.
 //                Only OKAY writes update the model; filter configuration is fixed.
 //
+//   mailbox_fifo required-only sequential full-width mailbox accesses compare
+//                request-derived responses and defined read fields. IRQS data
+//                and data of reads answered SLVERR are excluded; successful
+//                ERROR reads are predicted. Error accesses still update error
+//                flags; cold/cool epochs clear shadow. No other accessor or
+//                reset with outstanding traffic is supported. Active SEP_IN
+//                helpers check X/Z; the passive monitor discards data X/Z masks.
+//
 // Accesses outside those windows carry no data contract here and are skipped
 // on the observed side. The cocotb twin is env/smc_scoreboard.py (its SysAxi
 // expected-value checks).
@@ -76,6 +84,8 @@
 
 `uvm_analysis_imp_decl(_smc_fabric_reg_observed)
 `uvm_analysis_imp_decl(_smc_fabric_reg_expected)
+`uvm_analysis_imp_decl(_smc_mailbox_fifo_observed)
+`uvm_analysis_imp_decl(_smc_mailbox_fifo_expected)
 
 class smc_scoreboard extends ocah_scoreboard;
   `uvm_component_utils(smc_scoreboard)
@@ -86,6 +96,11 @@ class smc_scoreboard extends ocah_scoreboard;
       fabric_reg_observed_export;
   uvm_analysis_imp_smc_fabric_reg_expected #(ocah_axi_item, smc_scoreboard)
       fabric_reg_expected_export;
+
+  uvm_analysis_imp_smc_mailbox_fifo_observed #(ocah_axi_item, smc_scoreboard)
+      mailbox_fifo_observed_export;
+  uvm_analysis_imp_smc_mailbox_fifo_expected #(ocah_axi_item, smc_scoreboard)
+      mailbox_fifo_expected_export;
 
   uvm_analysis_imp_smc_scratch_observed #(ocah_axi_item, smc_scoreboard) scratch_observed_export;
   uvm_analysis_imp_smc_scratch_expected #(ocah_axi_item, smc_scoreboard) scratch_expected_export;
@@ -139,6 +154,9 @@ class smc_scoreboard extends ocah_scoreboard;
     fabric_reg_expected_export = new("fabric_reg_expected_export", this);
     add_feature(SmcFeatureFabricReg);
     add_feature(SmcFeatureWdtCsr);
+    mailbox_fifo_observed_export = new("mailbox_fifo_observed_export", this);
+    mailbox_fifo_expected_export = new("mailbox_fifo_expected_export", this);
+    add_feature(SmcFeatureMailboxFifo);
     foreach (cfg.required_features[i]) require_feature(cfg.required_features[i]);
   endfunction
 
@@ -301,6 +319,44 @@ class smc_scoreboard extends ocah_scoreboard;
         "%s %s addr=0x%0h mask=0x%016h", entries[index].name, direction_label, obs.address, mask));
   endfunction
 
+  function void write_smc_mailbox_fifo_observed(ocah_axi_item t);
+    bit enabled = 0;
+    int unsigned mailbox, offset;
+    bit inbound;
+    foreach (cfg.required_features[i])
+    if (cfg.required_features[i] == SmcFeatureMailboxFifo) enabled = 1;
+    if (!enabled || !smc_mailbox_decode(t.address, mailbox, inbound, offset)) return;
+    if (!smc_is_mailbox_fifo_access(t))
+      `uvm_fatal(get_type_name(), "mailbox_fifo observed unsupported access")
+    push_observed(SmcFeatureMailboxFifo, t);
+  endfunction
+
+  function void write_smc_mailbox_fifo_expected(ocah_axi_item t);
+    push_expected(SmcFeatureMailboxFifo, t);
+  endfunction
+
+  protected function void compare_mailbox_fifo_pair(ocah_axi_item obs, ocah_axi_item exp);
+    int unsigned mailbox, offset;
+    bit inbound;
+    bit [63:0] mask;
+    bit passed = smc_mailbox_decode(obs.address, mailbox, inbound, offset);
+    string direction_label = obs.direction == OCAH_AXI_DIR_READ ? "read" : "write";
+    mask = smc_mailbox_mask(offset);
+    passed &= obs.address === exp.address && obs.direction == exp.direction &&
+        obs.size == exp.size && obs.expected_beats == 1 && exp.expected_beats == 1 &&
+        obs.resp_list.size() == 1 && exp.resp_list.size() == 1 &&
+        !obs.timed_out && !obs.any_resp_xz();
+    if (passed) passed = obs.resp_list[0] == exp.resp_list[0];
+    if (passed && obs.direction == OCAH_AXI_DIR_READ && exp.data_words.size() == 1)
+      passed = obs.data_words.size() == 1 &&
+          (obs.first_data() & mask) === (exp.first_data() & mask);
+    record_compare(
+        SmcFeatureMailboxFifo, passed, $sformatf(
+        "data=0x%016h resp=%s", exp.first_data(), exp.worst_resp().name()), $sformatf(
+        "data=0x%016h resp=%s", obs.first_data(), obs.worst_resp().name()), $sformatf(
+        "mailbox=%0d inbound=%0b offset=0x%0h %s", mailbox, inbound, offset, direction_label));
+  endfunction
+
   // The CSR features compare 32-bit register lanes within each 64-bit beat.
   // SPM and wide register-block features compare complete 64-bit beats.
   virtual function void compare_pair(string feature, uvm_object observed, uvm_object expected);
@@ -309,10 +365,15 @@ class smc_scoreboard extends ocah_scoreboard;
     if (feature != SmcFeatureScratchCsr && feature != SmcFeatureDefaultReg &&
         feature != SmcFeatureLockCsr && feature != SmcFeatureMutexSema &&
         feature != SmcFeatureSpmMem && feature != SmcFeatureRegblockWide &&
-        feature != SmcFeatureWdtCsr && feature != SmcFeatureFabricReg)
+        feature != SmcFeatureWdtCsr && feature != SmcFeatureFabricReg &&
+        feature != SmcFeatureMailboxFifo)
       `uvm_fatal(get_type_name(), $sformatf("no compare for feature `%s`", feature))
     if (!$cast(obs, observed) || !$cast(exp, expected))
       `uvm_fatal(get_type_name(), {feature, " pair is not a pair of ocah_axi_item"})
+    if (feature == SmcFeatureMailboxFifo) begin
+      compare_mailbox_fifo_pair(obs, exp);
+      return;
+    end
     if (feature == SmcFeatureFabricReg) begin
       compare_fabric_reg_pair(obs, exp);
       return;

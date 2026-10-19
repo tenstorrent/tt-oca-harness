@@ -466,7 +466,7 @@ and STEE output-remap banks.
 
 *BFM / Model*: ocah_axi_vip
 
-*Randomization*: RANDCFG — three seeds (`reseed = 3`). The seed varies the block order, the complement-vs-ones order and every touch value, never which registers are swept: the cell set is identical on every seed, so coverage is not seed-dependent. Reseeding is what exposes a register that accepts one mask-legal value and refuses another. The reset walk is the inventory after reasoned skips. Write-lands is the full-mask registers; the inbound START/END pairs use the wrap model.
+*Randomization*: RANDCFG — one seed per regression (no `reseed`), because every run bashes every register. The seed varies the block order, the complement-vs-ones order and every touch value, never which registers are swept: the cell set is identical on every seed, so coverage is not seed-dependent. A new seed in each regression exposes a register that accepts one mask-legal value and refuses another. The reset walk is the inventory after reasoned skips. Write-lands is the full-mask registers; the inbound START/END pairs use the wrap model.
 
 *Objective*: Proves that every register in the generated SystemRDL export reads its RDL reset value, that a write moves exactly its software-usable bits, that read-only and reserved bits hold, and that every side-effect-free register stores a seeded value. `env/sep_reg_meta.py` exports `addr`, `reset`, `mask` (software-usable field bits) and `mask_all` (storage, reserved included) from the generated SystemRDL.
 

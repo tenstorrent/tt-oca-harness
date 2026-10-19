@@ -738,6 +738,7 @@ module i2c_core
     .tsu_sto_i                      (tsu_sto),
     .thd_dat_i                      (thd_dat),
     .sda_interference_i             (controller_sda_interference),
+    .bus_timeout_i                  (event_bus_active_timeout),
     .stretch_timeout_i              (bus_active_timeout),
     .timeout_enable_i               (stretch_timeout_enable),
     .host_nack_handler_timeout_i    (host_nack_handler_timeout),

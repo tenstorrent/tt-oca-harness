@@ -155,6 +155,19 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.bus_name: str = ""
         # AXI ARID/AWID of this access. None keeps the VIP's own ID allocation.
         self.axi_id: int | None = None
+        # AXI AxLOCK / AxCACHE / AxQOS / AxREGION / AxUSER of this access. The
+        # defaults are the values the driver presents when a test sets none.
+        self.axi_lock: int = 0
+        self.axi_cache: int = 0b0011
+        self.axi_qos: int = 0
+        self.axi_region: int = 0
+        self.axi_user: int = 0
+        # Read the BID / RID of this access off the response channel into `bid` /
+        # `rid`. The capture is scoped to one transaction, so it is meaningful
+        # only for an access that is the sole one outstanding on its port.
+        self.capture_resp_id: bool = False
+        self.bid: int | None = None
+        self.rid: int | None = None
 
     @property
     def transfer_bytes(self) -> int:
@@ -231,16 +244,24 @@ class SmcSysAxiDriver(uvm_driver):
         """The accesses an item carries: a group's members, or the item itself."""
         return list(item.items) if isinstance(item, SmcSysAxiGroupItem) else [item]
 
+    @property
+    def _vip(self) -> OcahAxiMasterSequence:
+        """The VIP sequence `run_phase` attaches before it takes the first item."""
+        axi = self.axi
+        assert axi is not None, f"{self.bus_name}: no VIP is attached to {self.bus_prefix}"
+        return axi
+
     async def _drive(self, item) -> None:
         """Drive one item or group, under its own channel timing when it has one."""
         if item.timing is None:
             await self._drive_transfers(item)
             return
-        self.axi.driver.set_timing(item.timing)
+        driver = self._vip.driver
+        driver.set_timing(item.timing)
         try:
             await self._drive_transfers(item)
         finally:
-            clear_profile(self.axi.driver)
+            clear_profile(driver)
 
     async def _drive_transfers(self, item) -> None:
         """Start every member on the bus, then collect the responses.
@@ -250,30 +271,63 @@ class SmcSysAxiDriver(uvm_driver):
         stay valid while the subordinate is still answering earlier ones.
         """
         members = self._members(item)
-        events = [self._start_transfer(member) for member in members]
-        for member, event in zip(members, events):
-            await self._collect_transfer(member, event)
+        assert len(members) == 1 or not any(m.capture_resp_id for m in members), (
+            f"{self.bus_name}: the response-ID capture samples the first completing beat on the "
+            f"port, so a capturing access cannot share a group of {len(members)}"
+        )
+        captures = [self._start_id_capture(member) for member in members]
+        try:
+            events = [self._start_transfer(member) for member in members]
+            for member, event, capture in zip(members, events, captures):
+                await self._collect_transfer(member, event)
+                if capture is not None:
+                    captured = await capture.finish()
+                    if member.op is SmcSysAxiOp.READ:
+                        member.rid = captured
+                    else:
+                        member.bid = captured
+        finally:
+            for capture in captures:
+                if capture is not None:
+                    capture.cancel()
+
+    def _start_id_capture(self, item: SmcSysAxiItem):
+        if not item.capture_resp_id:
+            return None
+        return self._vip.driver.start_response_id_capture(
+            "r" if item.op is SmcSysAxiOp.READ else "b"
+        )
 
     def _start_transfer(self, item: SmcSysAxiItem):
         id_kw = {} if item.axi_id is None else {"arid": item.axi_id}
         if item.op is SmcSysAxiOp.READ:
-            return self.axi.init_read(
+            return self._vip.init_read(
                 address=item.addr,
                 length=item.transfer_bytes,
                 size=self._axi_size(item.length),
                 burst=int(item.burst),
                 prot=int(item.prot),
+                lock=int(item.axi_lock),
+                cache=int(item.axi_cache),
+                qos=int(item.axi_qos),
+                region=int(item.axi_region),
+                user=int(item.axi_user),
                 **id_kw,
             )
         if item.op is SmcSysAxiOp.WRITE:
             if item.wstrb is not None:
                 return self._start_strobed_write(item)
-            return self.axi.init_write(
+            return self._vip.init_write(
                 address=item.addr,
                 data=item.wdata.to_bytes(item.transfer_bytes, "little"),
                 size=self._axi_size(item.length),
                 burst=int(item.burst),
                 prot=int(item.prot),
+                lock=int(item.axi_lock),
+                cache=int(item.axi_cache),
+                qos=int(item.axi_qos),
+                region=int(item.axi_region),
+                user=int(item.axi_user),
                 **({} if item.axi_id is None else {"awid": item.axi_id}),
             )
         raise ValueError(f"unknown SMC SYS AXI op {item.op}")
@@ -288,16 +342,18 @@ class SmcSysAxiDriver(uvm_driver):
         context, so the B beat completes the returned event the way it does
         for a write the backend built itself.
         """
-        wif = self.axi.backend.write_if
+        wif = self._vip.backend.write_if
         lanes = wif.byte_lanes
         size = self._axi_size(item.length)
+        wstrb = item.wstrb
+        assert wstrb is not None, "a strobed write carries an explicit wstrb"
         assert item.beats == 1, "an explicit strobe applies to a single-beat write"
         assert item.addr % item.length == 0, (
             f"an explicit strobe needs a {item.length}-byte aligned address, got 0x{item.addr:x}"
         )
         transfer = (1 << item.length) - 1
-        assert 0 <= item.wstrb <= transfer, (
-            f"wstrb 0x{item.wstrb:x} is negative or strobes outside the {item.length}-byte "
+        assert 0 <= wstrb <= transfer, (
+            f"wstrb 0x{wstrb:x} is negative or strobes outside the {item.length}-byte "
             f"transfer at 0x{item.addr:x}"
         )
         shift = item.addr % lanes
@@ -315,15 +371,15 @@ class SmcSysAxiDriver(uvm_driver):
         aw.awlen = 0
         aw.awsize = size
         aw.awburst = int(item.burst)
-        aw.awlock = 0
-        aw.awcache = 0b0011
+        aw.awlock = int(item.axi_lock)
+        aw.awcache = int(item.axi_cache)
         aw.awprot = int(item.prot)
-        aw.awqos = 0
-        aw.awregion = 0
-        aw.awuser = 0
+        aw.awqos = int(item.axi_qos)
+        aw.awregion = int(item.axi_region)
+        aw.awuser = int(item.axi_user)
         w = wif.w_channel._transaction_obj()
         w.wdata = (item.wdata & data_mask) << (shift * 8)
-        w.wstrb = item.wstrb << shift
+        w.wstrb = wstrb << shift
         w.wlast = 1
         w.wuser = 0
         wif.in_flight_operations += 1
@@ -383,7 +439,7 @@ class SmcSysAxiDriver(uvm_driver):
             )
 
     @staticmethod
-    def _tolerated_note(raw_ok: bool, resp_code: int) -> str:
+    def _tolerated_note(raw_ok: bool, resp_code: int | None) -> str:
         """Suffix that makes a TOLERATED error response visible in the log.
 
         `item.resp_ok` is `self._resp_ok(resp) or item.allow_error`, so without
@@ -394,7 +450,9 @@ class SmcSysAxiDriver(uvm_driver):
         """
         if raw_ok:
             return ""
-        name = {1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}.get(resp_code, f"resp={resp_code}")
+        name = f"resp={resp_code}"
+        if resp_code is not None:
+            name = {1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}.get(resp_code, name)
         return f" [{name} TOLERATED via allow_error]"
 
     async def _timed_event(self, event, item: SmcSysAxiItem, what: str):

@@ -177,7 +177,7 @@ args = ["+sep_edn_jtag_reset_waive", "+sep_efuse_preload"]
 name = "sep_debug_master_target_matrix_test_sba"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
-reseed = 4
+# No reseed: every run walks all targets and sizes; the seed selects only order, data and the alias base.
 timeout_sec = 3600
 tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem"]
 tools = ["vcs"]

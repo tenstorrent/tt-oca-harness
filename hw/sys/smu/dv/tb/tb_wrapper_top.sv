@@ -594,28 +594,131 @@ module smu_wrapper_uvm_top
     $asserton(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
   end
 
-  // A JTAG sep_reset_n override resets the crypto engines without isolation,
-  // so an engine can drop an ungranted EDN request with no endpoint cancel.
-  // JTAG resets are out of scope for the cancel, so the request-hold checks
-  // report a debug-only event rather than a design gap. Scoped to the crypto
-  // EDN instance: the pool instance keeps its checks.
-  initial begin
-    if ($test$plusargs("sep_edn_jtag_reset_waive")) begin
-      $display("[tb] crypto EDN request-hold checks off (+sep_edn_jtag_reset_waive)");
-      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
-          .u_axis_edn_crypto_s3c_scan.u_arbiter.ReqStaysHighUntilGranted0_M);
-      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
-          .u_axis_edn_crypto_s3c_scan.u_arbiter.LockArbDecision_A);
-      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
-          .u_axis_edn_crypto_s3c_scan.gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
-      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
-          .u_axis_edn_crypto_s3c_scan.gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
-      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
-          .u_axis_edn_crypto_s3c_scan.gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
-      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
-          .u_axis_edn_crypto_s3c_scan.gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+`ifndef UVM
+  // The JTAG IC_RESET override asserts the crypto engine resets with no endpoint
+  // cancel: the sep_reset_n override asynchronously, a per-IP override two clk_i
+  // edges after its TCK-domain bit changes. A request-hold attempt in flight at
+  // that edge has to end, hence $assertkill. SMU_DEFERRED_DISPOSITION.adoc
+  // records the scope.
+  wire [3:0] crypto_edn_jtag_rst_held = {
+    (u_dut.u_smu.jtag_sep_reset_ctrl.ovrd.sep_reset_n_ovrd === 1'b1) &&
+    (u_dut.u_smu.jtag_sep_reset_ctrl.val.sep_reset_n_val === 1'b0),
+    (u_dut.u_smu.jtag_sep_reset_ctrl.ovrd.otbn_jtag_rst_n_ovrd === 1'b1) &&
+    (u_dut.u_smu.jtag_sep_reset_ctrl.val.otbn_jtag_rst_n_val === 1'b0),
+    (u_dut.u_smu.jtag_sep_reset_ctrl.ovrd.kmac_jtag_rst_n_ovrd === 1'b1) &&
+    (u_dut.u_smu.jtag_sep_reset_ctrl.val.kmac_jtag_rst_n_val === 1'b0),
+    (u_dut.u_smu.jtag_sep_reset_ctrl.ovrd.aes_jtag_rst_n_ovrd === 1'b1) &&
+    (u_dut.u_smu.jtag_sep_reset_ctrl.val.aes_jtag_rst_n_val === 1'b0)
+  };
+
+  // Bit 4 holds the arbiter pair off on any cause; bits 3:0 hold the endpoint
+  // checks off, each on its own engine's cause or on sep_reset_n.
+  wire [4:0] crypto_edn_check_held_off = {
+    |crypto_edn_jtag_rst_held,
+    crypto_edn_jtag_rst_held[2] | crypto_edn_jtag_rst_held[3],
+    crypto_edn_jtag_rst_held[2] | crypto_edn_jtag_rst_held[3],
+    crypto_edn_jtag_rst_held[1] | crypto_edn_jtag_rst_held[3],
+    crypto_edn_jtag_rst_held[0] | crypto_edn_jtag_rst_held[3]
+  };
+
+  localparam int unsigned CryptoEdnMarginClks = 8;
+  int unsigned crypto_edn_sep_clks = 0;
+  int unsigned crypto_edn_smu_clks = 0;
+  int unsigned crypto_edn_sep_stall_clks = 0;
+  time         crypto_edn_sep_clk_rose_at = 0;
+  always @(posedge clk_smu) begin
+    crypto_edn_sep_clks++;
+    crypto_edn_sep_stall_clks = 0;
+    crypto_edn_sep_clk_rose_at = $time;
+  end
+  always @(posedge clk_smu_i) begin
+    crypto_edn_smu_clks++;
+    crypto_edn_sep_stall_clks++;
+  end
+  wire crypto_edn_sep_clk_stopped = crypto_edn_sep_stall_clks >= CryptoEdnMarginClks;
+
+  // Returns once check idx has had no cause for the margin.
+  task automatic crypto_edn_margin(input int unsigned idx);
+    int unsigned sep_end, smu_end;
+    do begin
+      wait (crypto_edn_check_held_off[idx] === 1'b0);
+      sep_end = crypto_edn_sep_clks + CryptoEdnMarginClks;
+      smu_end = crypto_edn_smu_clks + CryptoEdnMarginClks;
+      wait (crypto_edn_check_held_off[idx] === 1'b1 || crypto_edn_sep_clks >= sep_end ||
+            (crypto_edn_smu_clks >= smu_end && crypto_edn_sep_clk_stopped));
+    end while (crypto_edn_check_held_off[idx] === 1'b1);
+  endtask
+
+  task automatic crypto_edn_arbiter_checks(input bit enable);
+    if (enable) begin
+      $asserton(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+          .u_arbiter.ReqStaysHighUntilGranted0_M);
+      $asserton(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+          .u_arbiter.LockArbDecision_A);
+    end else begin
+      $assertkill(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+          .u_arbiter.ReqStaysHighUntilGranted0_M);
+      $assertkill(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+          .u_arbiter.LockArbDecision_A);
+    end
+  endtask
+
+  // gen_ep takes only a literal index, hence a macro rather than a loop.
+  `define CRYPTO_EDN_ENDPOINT_CHECK(idx)                                           \
+    if (enable) begin                                                              \
+      $asserton(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_axis_edn_crypto_s3c_scan \
+          .gen_ep[idx].AxisEdnReqStableUnlessEndpointCancelled_A);                 \
+    end else begin                                                                 \
+      $assertkill(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_axis_edn_crypto_s3c_scan \
+          .gen_ep[idx].AxisEdnReqStableUnlessEndpointCancelled_A);                 \
+    end
+
+  task automatic crypto_edn_endpoint_check(input int unsigned ep, input bit enable);
+    case (ep)
+      0: begin `CRYPTO_EDN_ENDPOINT_CHECK(0) end
+      1: begin `CRYPTO_EDN_ENDPOINT_CHECK(1) end
+      2: begin `CRYPTO_EDN_ENDPOINT_CHECK(2) end
+      3: begin `CRYPTO_EDN_ENDPOINT_CHECK(3) end
+      default: ;
+    endcase
+  endtask
+  `undef CRYPTO_EDN_ENDPOINT_CHECK
+
+  for (genvar ep = 0; ep < 4; ep++) begin : gen_crypto_edn_endpoint_hold
+    initial forever begin
+      wait (crypto_edn_check_held_off[ep] === 1'b1);
+      crypto_edn_endpoint_check(ep, 1'b0);
+      crypto_edn_margin(ep);
+      crypto_edn_endpoint_check(ep, 1'b1);
     end
   end
+
+  logic crypto_edn_window_open = 1'b0;
+
+  initial begin : crypto_edn_request_hold_window
+    forever begin
+      wait (crypto_edn_check_held_off[4] === 1'b1);
+      crypto_edn_window_open = 1'b1;
+      crypto_edn_arbiter_checks(1'b0);
+      $display({"[tb] crypto EDN request-hold window open at %0t: ",
+                "JTAG override holds engine reset low: sep/otbn/kmac/aes=%b"},
+               $time, crypto_edn_jtag_rst_held);
+      crypto_edn_margin(4);
+      crypto_edn_arbiter_checks(1'b1);
+      crypto_edn_window_open = 1'b0;
+      $display("[tb] crypto EDN request-hold window closed at %0t", $time);
+    end
+  end
+
+  final begin
+    if (crypto_edn_window_open) begin
+      $display({"[tb] crypto EDN request-hold window still open at end: ",
+                "sep/otbn/kmac/aes=%b, SEP clock %0s, last rose at %0t"},
+               crypto_edn_jtag_rst_held, crypto_edn_sep_clk_stopped ? "stopped" : "running",
+               crypto_edn_sep_clk_rose_at);
+    end
+  end
+`endif
 `endif
 
   // powergood_stable is the SMC reset controller's stretched and synchronized
@@ -1449,7 +1552,7 @@ module smu_wrapper_uvm_top
     .mbist_abort_i (tb_mbist_abort),
 
     .sep_cpu_trace_o (sep_cpu_trace),
-    .sep_ext_interrupts_i ('0),
+    .sep_ext_interrupts_i (tb_sep_ext_interrupts),
     .lcc_demote_state_1_o (lcc_demote_state_1_o),
     .lcc_demote_state_2_o (lcc_demote_state_2_o),
     .sep_fuse_dft_disable_o (),
@@ -1993,6 +2096,7 @@ module smu_wrapper_uvm_top
 
   // SMC boundary controls idle.
   assign tb_smc_ext_interrupts   = '0;
+  assign tb_sep_ext_interrupts   = '0;
   assign tb_smc_ndmreset_request = '0;
   assign tb_cfg_flr_pf_active    = 1'b0;
   assign tb_mem_repair_abort     = 1'b0;
