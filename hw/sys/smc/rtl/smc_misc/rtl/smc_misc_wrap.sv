@@ -277,6 +277,7 @@ module smc_misc_wrap #(
   ) u_prim_axi_lite_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
+    .test_en_i  (test_en_i),
     .axil_req_i (from_demux_reg_axi_lite_req[smc_misc_pkg::ERR_SLV]),
     .axil_resp_o(from_demux_reg_axi_lite_resp[smc_misc_pkg::ERR_SLV])
   );

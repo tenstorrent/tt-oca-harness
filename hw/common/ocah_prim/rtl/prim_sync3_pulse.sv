@@ -18,6 +18,8 @@ module prim_sync3_pulse (
   input  logic src_rst_ni,  // Active-low reset, sampled synchronously on src_clk_i and
                             // synchronized into dst_clk_i for the destination side.
   input  logic dst_clk_i,  // Destination clock.
+  input  logic test_en_i,  // Test mode; selects scan_rst_ni as the destination reset.
+  input  logic scan_rst_ni,  // DFT scan reset, active-low.
   output logic dst_pulse_o  // One-cycle pulse on dst_clk_i.
 );
 
@@ -33,6 +35,8 @@ module prim_sync3_pulse (
   prim_sync3_pulse_dest u_dest (
     .dst_clk_i(dst_clk_i),
     .src_rst_ni(src_rst_ni),
+    .test_en_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
     .toggle_i(toggle),
     .dst_pulse_o(dst_pulse_o)
   );
@@ -55,6 +59,8 @@ module prim_sync3_pulse_dest (
   input  logic src_rst_ni,  // Source-domain active-low reset; synchronized into dst_clk_i
                             // through three stages, it clears the synchronizer and holds
                             // dst_pulse_o low.
+  input  logic test_en_i,  // Test mode; selects scan_rst_ni as the destination reset.
+  input  logic scan_rst_ni,  // DFT scan reset, active-low.
   input  logic toggle_i,  // Source toggle level, asynchronous to dst_clk_i.
   output logic dst_pulse_o  // One-cycle pulse on dst_clk_i for each synchronized change of
                             // toggle_i.
@@ -75,9 +81,9 @@ module prim_sync3_pulse_dest (
   ) u_src_reset_n_sync (
     .clk_i      (dst_clk_i              ),
     .rst_ni     (src_rst_ni             ),
-    .test_mode_i(1'b0                   ),
+    .test_mode_i(test_en_i              ),
     .sync_rst_no(src_reset_n_reg_dst_clk),
-    .scan_rst_ni(1'b0                   )
+    .scan_rst_ni(scan_rst_ni            )
   );
 
   reg toggle_synced_d;

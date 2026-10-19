@@ -29,6 +29,9 @@ module prim_clk_counter_fifo_sync #(
 
   input  logic                            clk_count_en_i,  // Arms a count; in the ref_clk_i domain.
   input  logic                            clk_i,  // Clock under measurement.
+  input  logic                            test_en_i,  // Test mode; selects scan_rst_ni for every
+                                                      // synchronized reset.
+  input  logic                            scan_rst_ni,  // DFT scan reset, active-low.
   output logic                            clk_count_valid_o,  // ss_clk_i copy of the counter's
                                                               // valid flag, updated with
                                                               // clk_counts_o.
@@ -58,8 +61,8 @@ module prim_clk_counter_fifo_sync #(
     .clk_i(clk_i),
     .rst_ni(tile_rst_ni),
 
-    .test_mode_i('0),
-    .scan_rst_ni('0),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
 
     .cnt_en_i(clk_count_en_i),
     .clk_cnt_o(clock_count),
@@ -69,8 +72,8 @@ module prim_clk_counter_fifo_sync #(
   prim_sync_reset u_prim_pll_sync_reset (
     .clk_i(clk_i),
     .rst_ni(tile_rst_ni),
-    .test_mode_i('0),
-    .scan_rst_ni('0),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
     .sync_rst_no(tile_reset_n_sync)
   );
 
@@ -79,16 +82,16 @@ module prim_clk_counter_fifo_sync #(
   prim_sync_reset u_prim_pll_combined_sync_reset (
     .clk_i(clk_i),
     .rst_ni(combined_reset_n),
-    .test_mode_i('0),
-    .scan_rst_ni('0),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
     .sync_rst_no(combined_tile_reset_n_sync)
   );
 
   prim_sync_reset u_ss_combined_sync_reset (
     .clk_i(ss_clk_i),
     .rst_ni(combined_reset_n),
-    .test_mode_i('0),
-    .scan_rst_ni('0),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
     .sync_rst_no(combined_ss_reset_n_sync)
   );
 

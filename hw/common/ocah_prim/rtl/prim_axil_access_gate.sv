@@ -92,6 +92,7 @@ module prim_axil_access_gate #(
   ) u_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),
+    .test_en_i   (test_en_i),
     .axil_req_i  (axil_reqs[ErrPort]),
     .axil_resp_o (axil_resps[ErrPort])
   );

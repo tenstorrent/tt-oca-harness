@@ -25,6 +25,7 @@ module uart_16550
   input logic            rst_ni,        // Active-low reset. Assert asynchronously; deassert
                                         // synchronously to clk_i. Resets all registers to their
                                         // defaults and clears the FIFOs.
+  input logic            test_en_i,     // DFT test mode to the AXI cells.
 
   input  axil_req_t      axil_req_i,    // AXI-Lite req (AXI4-Lite Register Interface).
   output axil_resp_t     axil_resp_o,   // AXI-Lite resp.
@@ -200,7 +201,7 @@ module uart_16550
   ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i          (1'b0),
+    .test_i          (test_en_i),
     .slv_req_i       (axil_mst_req),
     .slv_aw_select_i (axil_aw_select),
     .slv_ar_select_i (axil_ar_select),

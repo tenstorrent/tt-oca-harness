@@ -447,6 +447,10 @@ SEP_IN, SYS_IN and JTAG at both LOCAL_BASE and GLOBAL_BASE.
 |`smc_unit_extent_register_decode_test` |The base register of the mailbox, eFuse, timer and CLA
 apertures and the ROM and SPM words decode and answer OKAY from SEP_IN, SYS_IN and JTAG at both
 bases, and the last register of five units answers over SEP_IN at `LOCAL_BASE`.
+|`smc_axi_random_stress_test` |Seeded random AXI attributes, burst shapes, outstanding depths and
+SYS_OUT responder timing and error faults on SEP_IN, SYS_IN and JTAG all leave every access
+completing at its own port with its own ID and, where answered OKAY, returning the word of its own
+address.
 |===
 
 ==== RESET
@@ -10426,6 +10430,202 @@ expires.
 the three ports and two bases (the declared reset where there is one), the ROM words match across
 ports, the SPM patterns round-trip across bases and ports, the DMA and zeroer patterns survive the
 last-register reads, and at least 105 accesses are issued. Enrolled in: `all`, `fabric`.
+
+'''''
+
+[[sec-540-smc_axi_random_stress_test]]
+===== 540 `smc_axi_random_stress_test`
+
+*Source Module*: `smc_axi_random_stress_test`
+
+*BFM / Model*: `ocah_axi_vip (AXI)` managers on SEP_IN (`env.sys_axi_agent`), SYS_IN
+(`env.sys_in_axi_agent`) and JTAG (`env.jtag_axi_agent`) driving AxID, AxLOCK, AxCACHE, AxQOS,
+AxREGION, AxUSER and AxPROT per access, as single accesses and as `SmcSysAxiGroupItem` groups
+under a per-group `AxiTimingProfile`; the VIP response-ID capture (`capture_resp_id`); passive
+`SmcAxiPortResponseRecorder` on the B and R handshakes of `s_axi_*`, `sys_axi_*` and
+`jtag_axi_*`, `SmcRawRStallWatch` on the raw R valid probes and `SmcOutputHandshakeSampler` on
+the AW, AR, B and RLAST handshakes and the AW and AR READY stalls of `u_output_axi_if`; the
+SYS_OUT responder (`cfg.sys_out_mem`, depth 8
+through `sys_out_max_outstanding`) with `set_response_delay`, `enable_backpressure` and
+`inject_error`; `env.output_axi_monitor` `allow_slverr` and `allow_decerr` and
+`env.axi_monitor.expected_decerr_addrs`; a per-port golden model keyed by byte address; every draw
+from a `random.Random` stream per step seeded from `RANDOM_SEED`
+
+*Objective*: Seeded random AXI attributes, burst shapes, outstanding depths and SYS_OUT responder
+timing and error faults on SEP_IN, SYS_IN and JTAG all leave every access completing at its own
+port with its own ID and, where answered OKAY, returning the word of its own address.
+
+*Test Coverage*:
+
+* Response IDs: on SYS_IN and SEP_IN 12 AxIDs (0x00, 0x3F, each single bit and four draws) and on
+  JTAG IDs 0 to 3 twice, every write answers OKAY with BID equal to its AWID and every read OKAY
+  with RID equal to its ARID and the word written (`fabric.adoc`, Interfaces / AXI ID Widths by
+  Fabric Stage).
+* Sideband attributes: 16 write-then-read pairs per port over AxCACHE 0 to 15 and drawn AxQOS,
+  AxREGION and AxUSER, half at the port's SPM window and half at its registers; every read after
+  an OKAY write answers OKAY and returns the word of its own address; the write code per knob
+  value is observed (`fabric.adoc`, Interfaces / AXI Interface Widths and Address Remapping).
+* AxLOCK: an exclusive read and an exclusive write per port are observed and the ordinary
+  write-then-read after each returns the fresh word.
+* Carriage to output_axi: eight JTAG writes and eight reads at OUT2 reach the responder at their
+  own address with the driven AxCACHE and with one AxUSER value whatever was driven; SYS_IN and
+  SEP_IN accesses at OUT0 and OUT1, inside neither the local nor the global aperture, answer
+  DECERR and never reach the responder (`fabric.adoc`, Routing / Outbound Traffic Flow;
+  `memmap.adoc`, Memory Map).
+* Shapes: AxSIZE 1 to 8 at SPM words and registers, INCR bursts of 2, 16, 256 and drawn lengths,
+  FIXED and WRAP bursts and narrow register bursts, then a mixed stream of 40 accesses per port
+  with every attribute, size, burst, length, direction and target drawn and up to 4 outstanding,
+  followed by the full-width reads of KNOWN words (after one aligned write when the stream left
+  none) that bring the stream's compare reads to two when the drawn ones fall short;
+  every OKAY read at a KNOWN byte returns the golden byte of that address, every read issued at
+  KNOWN bytes with AxPROT[1] clear answers OKAY, each beat count equals AxLEN+1 (`fabric.adoc`,
+  Interfaces / AXI Interface Widths and Topology).
+* Local concurrency: groups of depth 4, 8, 9, 16 and 24 per port, the AxID set {1, 2} on all three
+  ports at once and manager-side BREADY and RREADY holds; per port and AxID the recorded responses
+  equal the requests (`fabric.adoc`, Configuration Parameters / SMC Fabric Transaction Limits).
+* Output concurrency: JTAG groups of depth 1, 8 and 16 at OUT2, SYS_IN and SEP_IN accesses outside
+  the window while a JTAG group is outstanding, and a JTAG split between SPM2 and OUT2 with local
+  SYS_IN and SEP_IN traffic; the OUT2 handshakes equal the JTAG accesses issued (`fabric.adoc`,
+  Topology).
+* Responder timing and errors: response delays, AW and AR ready stalls and depth-8 reordering at
+  the responder, each profile shown on the wire; injected SLVERR and DECERR on writes and reads
+  alone, in a group of 24 and under delay and stall with local traffic outstanding, each code
+  answered unchanged at the JTAG port (`smu-smc.adoc`, AXI Interface Configuration).
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done` within 200000 `clk_smc_i` rises; print `RAND-SEED`; bind the
+SYS_OUT responder and require depth 8; require the ID space of each port to equal its BID width
+and the output windows to lie outside the local and global apertures of `SMC_BASE_CONFIG`; start
+the three port recorders and the output sampler; over
+SEP_IN program inbound and outbound filter entry 0 pass-all; write the four registers of each port
+(`SCRATCH_COLD(0..3)` for SYS_IN, `SCRATCH_COLD(4..7)` for SEP_IN, `SCRATCH_COLD_WARM(0..3)` for
+JTAG) with 4-byte words by address; preload each port's output window in the responder.
+. Per port, for each AxID of the list, write then read one SPM word with `capture_resp_id`; require
+OKAY, BID and RID equal to the request ID both through the VIP capture and the port recorder, and
+the read word equal to the write; print `CHK-RAND-ID-ECHO`.
+. Per port, 16 write-then-read pairs with AxCACHE k, drawn AxQOS, AxREGION, AxUSER and AxID, even
+k at the SPM window with 8 bytes and odd k at a register with 4 bytes, `allow_error` set; require
+every read after an OKAY write to answer OKAY and return the word written, with at least one such
+pair per port; print the OKAY and non-OKAY counts per port and `CHK-RAND-ATTR-OWN-WORD`.
+. Per port at one SPM word: write, exclusive read, write, read, exclusive write, write, read;
+require the two ordinary reads OKAY with the fresh word; print the exclusive responses and
+`CHK-RAND-LOCK-OBS`.
+. On JTAG, eight writes then reads at OUT2 with AxCACHE 0x0, 0xF, 0x3 and five draws and AxUSER
+draws; require one AW and one AR at the responder per access with the driven AxCACHE, the read word
+equal to the write, one `awuser` across the writes and one `aruser` across the reads; on SYS_IN and
+SEP_IN two pairs each at OUT0 and OUT1 with `allow_error`, each required to answer DECERR with no
+AW or AR sampled at the responder; print `CHK-RAND-OUT-SIDEBAND`.
+. Per port, 51 accesses: SPM write-then-read at AxSIZE 1, 2, 4, 8; register pairs at each size
+with the 4-byte pair compared and the others observed, each followed by a 4-byte re-arm; INCR
+bursts of 2, 16, 256 and two drawn lengths of 8-byte beats compared beat by beat; FIXED x4, x16 and
+WRAP x2, x4, x8, x16 observed and then a fresh word; four narrow INCR register reads each followed
+by a register read; require exactly 51 accesses per port and every compare read of the step to
+have compared.
+. Three tasks, one per port, each 10 groups of 4 disjoint accesses with every attribute, AxPROT,
+size, burst, length, direction and target drawn; observed where FIXED, WRAP, AxLOCK 1 or a narrow
+register access; require every read issued at KNOWN bytes with AxPROT[1] clear on each port to
+have answered OKAY and compared; print one `OBS-SHAPE` line per observed access, the
+`OBS-SHAPE-PROT` DECERR view and `CHK-RAND-SHAPE-BY-ADDR` with the compared byte count.
+. Groups of depth 4, 8, 9, 16 and 24 on the three ports together, a group of 8 per port under the
+AxID set {1, 2}, and a group of 16 per port under a seeded `AxiTimingProfile` run one port at a
+time; require per port and AxID the recorded B responses, R beats and R words to equal the
+requests and the b and r stall counts above 0 on every port; print `CHK-RAND-LOCAL-DEEP`.
+. JTAG groups of depth 1, 8 and 16 of reads then of writes at OUT2, with SYS_IN and SEP_IN
+presenting 8 accesses each at OUT0 and OUT1 during the depth-8 read group, then a three-task group
+of JTAG split between SPM2 and OUT2 with 16 local accesses on SYS_IN and SEP_IN; require the OUT2
+AW and AR handshakes and the responder counters to advance by exactly the JTAG accesses issued,
+and the SYS_IN and SEP_IN accesses at OUT0 and OUT1 to answer DECERR with no handshake at the
+responder; print `CHK-RAND-OUT-DEEP` and `CHK-RAND-OUT-OTHER-PORTS-DECERR`.
+. Four responder profiles (delay 1 to 8, delay 32 to 64, AW and AR stall 16, delay 0 to 64 with
+depth 8), each a JTAG group of 12 writes and 12 reads at OUT2; require the AW and AR address sets
+at the responder to equal the sets issued, the counters to advance by 12 and 12, the stall profile
+to have held AWREADY and ARREADY low with a request valid, and each delay profile's shortest
+AW-to-B and AR-to-RLAST at the responder to be at least its fewest delay cycles; print
+`CHK-RAND-RESP-TIMING`.
+. Set `allow_slverr` and `allow_decerr`; three rounds of one-shot SLVERR and DECERR injections on a
+write and on a read with `capture_resp_id`, each followed by an ordinary write-then-read; a JTAG
+group of 24 with a seeded third injected; the same under delay, ready stall and reorder with 12
+local accesses outstanding on each of SYS_IN and SEP_IN; require the response ID and the injected
+code of each one-shot at the JTAG port, the injected code on each injected group member and OKAY
+on the others, the monitor tally equal to the injected codes, the ordinary pairs OKAY with the
+word written and every local access OKAY; print `CHK-RAND-RESP-ERRORS-ECHO` and
+`CHK-RAND-RESP-COMBINED`.
+. Clear the monitor opt-ins, responder errors, backpressure and delays; restore inbound and
+outbound filter entry 0 to the RDL reset over SEP_IN; write `SCRATCH_COLD(0..7)` and
+`SCRATCH_COLD_WARM(0..3)` to 0; stop the recorders; print `CHK-TIMEOUT-PATHS`, then run the fence
+that prints `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-RAND-ID-ECHO` |On every port each write of the AxID list answered OKAY with BID equal to its
+AWID and each read OKAY with RID equal to its ARID and the word written, the IDs read both through
+the VIP capture and the passive port recorder.
+|`CHK-RAND-ATTR-OWN-WORD` |All 48 attribute pairs completed within the guard, every read after an
+OKAY write answered OKAY and returned the word of its own address, and on every port at least one
+such pair was issued; the write code per knob value is printed, not asserted.
+|`CHK-RAND-LOCK-OBS` |All 21 lock-leg accesses completed within the guard and on every port the
+ordinary write-then-read after the exclusive read and after the exclusive write answered OKAY with
+the fresh word; the exclusive responses are printed, not asserted.
+|`CHK-RAND-OUT-SIDEBAND` |All eight JTAG writes and reads reached the responder at their own OUT2
+address with `awcache` and `arcache` equal to the driven AxCACHE, the read word equal to the
+write, one `awuser` across the writes and one `aruser` across the reads; the SYS_IN and SEP_IN
+pairs at OUT0 and OUT1 answered DECERR with no AW or AR at the responder.
+|`CHK-RAND-SHAPE-BY-ADDR` |Every access of steps 6 and 7 completed within the guard, each beat
+count equals AxLEN+1, every OKAY read at a KNOWN byte returned the golden byte of its own address,
+every read of steps 6 and 7 issued at KNOWN bytes with AxPROT[1] clear answered OKAY and compared
+with at least one such read per port and step, and the recovery write-then-reads returned the
+fresh word; FIXED, WRAP, narrow register, AxLOCK 1 and AxPROT[1] responses are printed, not
+asserted.
+|`CHK-RAND-LOCAL-DEEP` |For depths 4, 8, 9, 16 and 24, the AxID set {1, 2} on all three ports and
+the manager stall profiles, per port and AxID the recorded B responses, R beats and R words equal
+the requests, and the b and r stall counts are above 0 on every port; the DUT-side stall counts
+and the response order are printed, not asserted.
+|`CHK-RAND-OUT-DEEP` |For the JTAG groups of depth 1, 8 and 16 and the JTAG split between SPM2 and
+OUT2 with local SYS_IN and SEP_IN traffic, per AxID the B count and returned words match the
+requests, every OKAY read word equals the responder word of its address, and the OUT2 handshakes
+and responder counters advanced by exactly the JTAG accesses issued.
+|`CHK-RAND-OUT-OTHER-PORTS-DECERR` |All 16 SYS_IN and SEP_IN accesses at OUT0 and OUT1 presented
+while the JTAG depth-8 group was outstanding answered DECERR within the guard at their own port
+with no AW or AR at the responder, the responder counters advanced by the 8 JTAG reads only, and
+the JTAG group still returned its own words and IDs.
+|`CHK-RAND-RESP-TIMING` |Under the four responder profiles all 96 JTAG accesses completed within the
+guard, per AxID the B count and returned words match the requests, the AW and AR address sets at
+the responder equal the sets issued, the counters advanced by 24 per profile, the stall profile
+held AWREADY and ARREADY low with a request valid, and each delay profile's shortest AW-to-B and
+AR-to-RLAST at the responder is at least its fewest delay cycles; the response order is printed,
+not asserted.
+|`CHK-RAND-RESP-ERRORS-ECHO` |The 12 one-shot injections and the injected third of the group of 24
+each completed at the JTAG port with its own ID and the injected code, the other members of the
+group answered OKAY, the responder monitor counted exactly the injected codes, and each ordinary
+write-then-read after an injection answered OKAY with the word written.
+|`CHK-RAND-RESP-COMBINED` |With delay, ready stall, reorder and injected errors on the JTAG group of
+24, all 24 SYS_IN and SEP_IN local accesses answered OKAY at their own port with the golden word of
+their own address, every JTAG access completed with its own ID and the code the responder
+returned, and every OKAY JTAG read word equals the responder word of its address.
+|`CHK-NONVAC` |The step stamps S1 to S12 are in increasing time order, the eleven checker lines
+above were printed in step order each after its own step, each port recorder saw at least one
+response and at least one AW handshake was sampled at the responder.
+|`CHK-TIMEOUT-PATHS` |Reports every bounded wait with its bound (the fuse-sense wait of 200000
+`clk_smc_i` rises and the 50 us driver guard per access); it is a printed report with no compare,
+each wait raising its own failure when its bound expires.
+|===
+
+*Pass Criteria*: `CHK-RAND-ID-ECHO`, `CHK-RAND-ATTR-OWN-WORD`, `CHK-RAND-LOCK-OBS`,
+`CHK-RAND-OUT-SIDEBAND`, `CHK-RAND-SHAPE-BY-ADDR`, `CHK-RAND-LOCAL-DEEP`, `CHK-RAND-OUT-DEEP`,
+`CHK-RAND-OUT-OTHER-PORTS-DECERR`, `CHK-RAND-RESP-TIMING`, `CHK-RAND-RESP-ERRORS-ECHO`,
+`CHK-RAND-RESP-COMBINED`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every access
+completes within the guard at its own port and answers OKAY unless it is allowed to error, every
+OKAY read of a KNOWN or responder address returns the word of that address, every read of steps
+3, 6 and 7 issued at KNOWN bytes with AxPROT[1] clear answers OKAY and compares, the response IDs
+echo the request IDs, SYS_IN and SEP_IN outside both apertures answer DECERR without reaching the
+responder, each injected code is answered unchanged at JTAG, each responder profile shows on the
+wire, and the OUT2 handshakes and responder counters match the JTAG accesses issued. Enrolled in:
+`all`, `fabric`.
 
 '''''
 
@@ -33318,9 +33518,10 @@ restore operations to each catalogued word, requires no Zeroer busy or unknown
 value sampled on a rising SMC clock edge from before the first catalogued
 operation through the final status read, checks Zeroer state and lane
 coverage, runs a real one-word Zeroer command to SPM after the no-start check
-and requires the busy sample count to increase, waits with a bound for all
-predicted comparisons, then checks
-scoreboard results and access counts.
+and requires the busy sample count to increase. It reads back DEST_ADDR and
+SIZE after their control restore writes in every pass, waits with a bound
+for all predicted comparisons, then checks scoreboard results and access
+counts.
 
 *Checkers*:
 
@@ -33351,7 +33552,8 @@ After the absence check, a bounded positive control uses the last aligned SPM
 word as scratch. No CPU or other initiator may use that word during the pass.
 It is left zero through a SEP_IN write that also updates the SPM model; its
 initial SRAM contents are not read or restored. DEST_ADDR and SIZE return to
-their reset values. The control does not grade the Zeroer's zeroed payload.
+their reset values and are read back within the same pass. The control does
+not grade the Zeroer's zeroed payload.
 It excludes registers whose writes change decode, gating, reset, lock or other
 operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
 because a later core reset that does not also assert warm reset can consume a
@@ -33363,7 +33565,8 @@ handles a real error response; the error-read path has no directed run here.
 
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
-comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
+read comparisons: 59 read mismatches per pass, with writes unaffected.
+`+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
 full-write, no-start and busy-control expectations and must fail seven
 `CHK-REGBLOCK-WIDE-FULL-RW` records and one
 `CHK-REGBLOCK-WIDE-NO-ZEROER-START` record and one
@@ -33373,9 +33576,10 @@ while the scoreboard records no mismatch.
 write responses to SLVERR and must fail every catalogued write comparison and
 no read comparison: 54 write mismatches per pass (35 base writes, 15 fixed
 sparse writes and four positive-control writes).
-The positive run requires 111 comparisons per pass (57 reads and 54 writes).
+The positive run requires 113 comparisons per pass (59 reads and 54 writes).
 With 16 passes, the sequence negative requires 144 checker failures and the
-response negative requires 864 write mismatches. A separate local mutation
+response negative requires 864 write mismatches; the scoreboard negative
+requires 944 read mismatches. A separate local mutation
 holding the busy tap or sample counter at zero must fail the busy-control
 check even with the sequence negative disabled. Control completion and
 safe-state prerequisites are outside the expectation-inverting negative.
@@ -33481,6 +33685,99 @@ RATE and WINDOW remain unmodified in the negative run: they establish valid
 measurement conditions, and a failed condition records FAIL then terminates
 the pass with a fatal error.
 The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
+
+'''''
+
+[[sec-smc_mailbox_cool_reset_recovery_test]]
+====== `smc_mailbox_cool_reset_recovery_test`
+
+*Source Module*: `smc_mailbox_cool_reset_recovery_test` (SV-UVM only)
+
+*Objective*: A cool reset clears occupied mailbox FIFO state, sticky errors,
+interrupt enables, thresholds and latched interrupt status; fresh traffic
+recovers without returning a pre-reset word.
+
+*BFM / Model*: Existing SEP_IN `ocah_axi_vip` and required `mailbox_fifo`
+feature. The request-derived model predicts paired queues, ERROR, IRQEN,
+thresholds, STATUS and read/write responses. IRQS data is checked by the
+sequence at designated milestones, not predicted by the model.
+
+*Test Coverage*: Two distinct mailbox pairs per pass, including pair 0 and
+the last pair in fixed pass slots. A holds two forward words and one reverse
+word; B holds one forward word. Overflow on A-out and underflow on B-in set
+errors. IRQEN differs from reset on A-out/B-in and both thresholds differ
+on A-out. IRQS on A-out is required non-zero. Other ports' default readbacks
+are consistency checks, not discriminating reset evidence.
+
+*Expectation Sources*: `axil_mailbox.rdl` supplies field masks, defaults,
+read-clear ERROR, threshold clamping and write-one-clear IRQS.
+`hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc` defines paired FIFO
+semantics, SLVERR on full writes/empty reads, and reset clearing queues,
+thresholds, errors and interrupt state/enables. `clk_rst.adoc` defines
+cool reset as a primary-reset source. Integration evidence for mailbox
+primary reset is `smc_internal_regs.sv`, `u_smc_axil_mailbox.rst_ni`;
+this reset-domain connection is taken from RTL, not independently specified
+for the mailbox by name. Geometry comes from `smc_pkg` and generated addresses.
+
+*Test Procedure*: Require the mailbox gate disabled and six-register default
+baselines on both ports of both pairs. Fill A's forward queue, provoke the
+overflow and underflow, and read ERROR as a positive control; recreate both
+errors without reading ERROR again, then load A's reverse and B's forward
+queues. Program/read back IRQEN and clamped thresholds; require populated
+STATUS and non-zero IRQS. Drain comparisons, pulse cool reset and wait for
+primary/warm release and fuse readiness. Read six default registers on all
+four ports before three formerly occupied directions are probed empty.
+Transfer four fresh words, check their identity and modeled full payload,
+then flush, clear errors, restore IRQEN/thresholds, acknowledge IRQS and
+read back all six registers. Bounds are bench limits, not device latency contracts.
+
+*Checkers*:
+
+[cols="1,2",options="header"]
+|===
+|Checker |Description
+|`CHK-MBX-RST-PRE` |Default baseline, clock-gate scope and discriminating pre-reset DUT state hold; failures stop the run
+|`CHK-MBX-RST-ASSERTED`, `CHK-MBX-RST-RELEASED` |Primary and warm reset reach both requested levels within bounds
+|`CHK-MBX-RST-EPOCH` |One cool reset and no cold reset occur
+|`CHK-MBX-RST-DEFAULTS` |Six generated defaults match on all four ports after reset
+|`CHK-MBX-RST-EMPTY` |Three formerly occupied queues return one known SLVERR response without timeout
+|`CHK-MBX-RST-RECOVERY` |Four fresh returned words carry the expected identity or payload
+|`CHK-MBX-RST-CLEAN` |Six register defaults match on all four ports after cleanup
+|`CHK-MBX-RST-SCOREBOARD` |No new mailbox comparison mismatch
+|`CHK-SB-MAILBOX-FIFO` |Required feature has activity, no mismatch and no unpaired item
+|`CHK-NONVAC` |141 mailbox memory accesses/comparisons and one clock-gate CSR read per pass
+|`CHK-SB-MIN-ACTIVITY`, `CHK-MEM-RESP`, `CHK-CSR-RESP`, `CHK-FUSE-SENSE-DONE` |Prior-pass activity, access responses and bring-up complete
+|===
+
+*Known Limitations*: No AXI transaction remains outstanding through reset.
+Only sequential aligned full-width/full-strobe accesses from SEP_IN are
+supported; another mailbox accessor is excluded. Unsupported accesses in the
+mailbox window stop the required feature. Mailbox clock gating, cold-only or
+warm-only reset, FLR and interrupt wires are not exercised. IRQS exact bits
+and timing before reset are not modeled; only non-zero pre-reset and default
+post-reset/cleanup values are checked by the sequence. The last pre-reset
+ERROR state is inferred from a repeated SLVERR access after its read-clear
+positive control, not read directly. Thresholds and IRQEN are discriminating
+only on the stated ports. FIFO occupancy evidence combines accepted pushes
+and STATUS, which has no numeric level field. Data X/Z is checked through
+the active read helper, not the passive model.
+The cleanup flush acts on FIFOs that recovery has already drained. Its response
+is checked, but its state-clearing effect and the model's flush behavior are
+not independently validated by this scenario.
+
+*Pass Criteria*: All required checks pass. Used alone,
+`+SMC_MAILBOX_RESET_SEQUENCE_NEGATIVE` changes 24 DEFAULTS, three EMPTY and
+four RECOVERY expectations per pass: 31 failures/pass or 496 for sixteen
+passes, without model mismatch or UVM_FATAL. PRE, reset transitions/epoch,
+CLEAN, NONVAC and response-validity prerequisites are not corrupted.
+Used alone, `+SMC_MAILBOX_FIFO_SCOREBOARD_NEGATIVE` corrupts every emitted
+mailbox prediction's response (OKAY and SLVERR exchange), and defined
+successful read data, without modifying shadow. It must produce 141
+mismatches/pass, one scenario scoreboard failure/pass and one final
+`CHK-SB-MAILBOX-FIFO` failure: 2273 errors for sixteen passes. The two
+negative controls are mutually exclusive. Reset-shadow mutation is a local,
+uncommitted validation experiment, not an enrolled test or persistent knob.
+The leaf runs only on demand in `mailbox_uvm_extended`.
 
 '''''
 
@@ -33594,20 +33891,29 @@ does not postpone the selected core's timeout and warm-reset recovery.
 
 *BFM / Model*: SEP_IN `ocah_axi_vip`; bounded sequence checks against live
 per-core and aggregate timeout taps, WDT reset, warm reset and primary reset.
-The scenario uses the shared WDT base helpers, not a watchdog CSR model.
+The required `wdt_csr` feature independently predicts CTRL (IP masked), KEY
+and CMP readbacks and in-scope responses from passive SEP_IN traffic. COUNT
+data is graded by the sequence, not by the model.
 
 *Test Coverage*: All four cores rotate by pass. The timeout is programmed to
 0x1800, distinct from reset. Correct-core service spans two configured
 intervals; wrong-core pulses end before the expected reset window. Two warm
-resets occur per pass. No CSR access overlaps reset. Post-warm CSR values are
-observed without grading; watchdogs are explicitly configured idle and the
-timeout is reprogrammed before the next leg and restored at the end.
+resets occur per pass. No CSR access overlaps reset. Non-reset CMP markers
+on every core distinguish warm reset from retention. CTRL, COUNT and CMP
+defaults are checked before explicit idle configuration after each reset.
+The timeout is reprogrammed before the next leg and restored at the end.
 
 *Expectation Sources*: `cpu_ctrl.rdl` defines WDT_TIMEOUT as the second-stage
 cycle count and the four singlepulse WDT_TIMEOUT_RESET controls. `wdt.rdl`
 defines rst-enable, always-count, compare and register reset values.
 `hw/sys/smc/doc/clk_rst.adoc`, Primary and Warm Reset, defines second timeout
 as a watchdog/warm-reset source and distinguishes it from primary reset.
+The SMC owner has confirmed that warm reset resets the per-core watchdog
+timers. `clk_rst.adoc` states that warm reset drives the CPU cluster's
+interrupt and timer logic, and `hw/sys/smc/doc/watchdog.adoc` defers reset
+effects to that section, but neither names the watchdogs; this check relies
+on the owner's confirmation for reset scope and on `wdt.rdl` for register
+defaults.
 Addresses, masks and core count come from the existing generated collateral
 and SMC types. Timing allowances below are bench measurement bounds, not new
 software-visible register semantics.
@@ -33615,12 +33921,13 @@ software-visible register semantics.
 *Test Procedure*: Require all cores released and WDTs in reset state. Save and
 program WDT_TIMEOUT. Before each arm, read back COUNT=0 and CMP=0x800,
 distinct from CMP reset, while counting is disabled. These are configuration
-prerequisites, not a precise first-stage timing check. Start the bounded
+prerequisites, not a precise first-stage timing check. Program and read back
+the same non-reset CMP marker on each other, disabled watchdog. Start the bounded
 watcher before enabling the selected WDT and service it periodically. Require no expiry
 during service, then stop CSR traffic and observe expiry and recovery. Re-arm
 and service a different core, requiring expiry at the unserviced deadline.
-Check reset scope. After each recovery, log timeout and watchdog CSR values
-without requiring retention or reset values, then explicitly configure and
+Check reset scope. After each recovery, observe timeout retention without
+grading it and check watchdog CTRL, COUNT and CMP defaults, then explicitly configure and
 verify idle CTRL, COUNT and CMP readbacks on every core. Reprogram the timeout
 before the wrong-core leg; restore the timeout and check exact CSR-access
 accounting.
@@ -33638,7 +33945,11 @@ accounting.
 |`CHK-WDT-STAGE2-WRONG-CORE` |A different core is serviced and cannot defer selected-core expiry
 |`CHK-WDT-STAGE2-RECOVERY` |WDT/warm reset assert and release within bounds; fuse/warm readiness precedes further CSR access
 |`CHK-WDT-STAGE2-SCOPE` |No primary reset, unknown observable or initially isolated core; timeout taps are idle and resets released after explicit rebaseline
-|`CHK-NONVAC` |Two warm-reset assertions are observed and CSR accesses equal 139 fixed accesses plus all service writes
+|`CHK-WDT-STAGE2-WDT-RESET` |CTRL, COUNT and CMP match RDL defaults on every core after each warm reset, before reconfiguration
+|`CHK-WDT-STAGE2-SCOREBOARD` |The pass adds no watchdog model mismatch
+|`CHK-SB-WDT-CSR` |The required watchdog feature has comparisons, no mismatch and no unpaired item
+|`CHK-SB-MIN-ACTIVITY` |Prior passes meet the passive watchdog comparison floor
+|`CHK-NONVAC` |Two warm resets, 165 fixed CSR accesses plus service writes, and exactly 156 passive watchdog comparisons per pass
 |`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP` |Bring-up and frontdoor responses complete
 |===
 
@@ -33648,19 +33959,26 @@ clock negedges; sub-cycle transitions are not graded. The unserviced timing
 allowance is two cycles; the serviced allowance is two cycles after the last
 write response. Recovery bounds of 4096 assertion and 16384 release cycles are
 conservative bench limits, not latency guarantees. No CSR remains outstanding
-across reset. The scenario does not validate a general watchdog reference model.
+across reset. CMP differs from reset on every core before each reset; CTRL
+and COUNT differ only on the selected core. At least four passes are needed
+to exercise the latter fields on all cores. The scenario does not validate
+a general watchdog reference model or individual-core reset retention.
 `CHK-WDT-STAGE2-TIMEOUT-RETAINED` is blocked by the undocumented CPU_CTRL
-WDT_TIMEOUT retention across warm reset. `CHK-WDT-STAGE2-WDT-RESET` is blocked
-by the undocumented watchdog CSR reset values after warm reset. Both are
-logged as observations, excluded from the verdict, and replaced by explicit
-configuration before subsequent stimulus.
+WDT_TIMEOUT retention across warm reset. It is logged as an observation,
+excluded from the verdict, and replaced by explicit configuration before
+subsequent stimulus.
 Idle timeout taps after explicit rebaseline are a prerequisite for the next
 measurement, not a claim about automatic warm-reset state clearing.
 
 *Pass Criteria*: Every required checker passes. Used alone,
-`+SMC_WDT_STAGE2_SEQUENCE_NEGATIVE` changes five expectations per pass:
+`+SMC_WDT_STAGE2_SEQUENCE_NEGATIVE` changes thirteen expectations per pass:
 configured timeout, HELD, serviced EXPIRES, serviced RECOVERY and WRONG-CORE
-expiry. It must produce five failures per pass without UVM_FATAL. Other
+expiry, plus eight post-warm watchdog-state records. It must produce thirteen
+failures per pass (208 for sixteen passes) without UVM_FATAL and without model
+mismatches. Used alone, `+SMC_WDT_CSR_SCOREBOARD_NEGATIVE` must produce 134
+mismatches per pass (46 reads and 88 writes), one scenario scoreboard failure
+per pass and one final `CHK-SB-WDT-CSR` failure: 2161 errors for sixteen passes.
+The 22 COUNT comparisons per pass grade responses only and remain passing. Other
 checks establish stimulus/observation validity and remain unchanged; invalid
 conditions record failure and stop the run. Enrolled on demand in
 `wdt_uvm_extended`, not the scheduled hosted tiers.
@@ -34789,6 +35107,7 @@ to make; its *Closes when* cell names the ruling that closes it.
 [cols="2,1,3,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
+|`smc_mailbox_cool_reset_recovery_test` |`mailbox_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_fabric_reg_clock_gate_test` |`cg_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf

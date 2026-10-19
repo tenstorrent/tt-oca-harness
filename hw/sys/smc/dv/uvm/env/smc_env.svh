@@ -56,6 +56,7 @@ class smc_env extends ocah_env;
   smc_regblock_wide_ref_model m_regblock_wide_ref_model;
   smc_wdt_csr_ref_model m_wdt_csr_ref_model;
   smc_fabric_reg_ref_model m_fabric_reg_ref_model;
+  smc_mailbox_fifo_ref_model m_mailbox_fifo_ref_model;
   smc_scoreboard            m_scoreboard;
   smc_virtual_sequencer     m_vseqr;
 
@@ -101,6 +102,9 @@ class smc_env extends ocah_env;
     m_fabric_reg_ref_model =
         smc_fabric_reg_ref_model::type_id::create("m_fabric_reg_ref_model", this);
     m_fabric_reg_ref_model.tb_vif = tb_vif;
+    m_mailbox_fifo_ref_model =
+        smc_mailbox_fifo_ref_model::type_id::create("m_mailbox_fifo_ref_model", this);
+    m_mailbox_fifo_ref_model.tb_vif = tb_vif;
     m_scoreboard = smc_scoreboard::type_id::create("m_scoreboard", this);
 
     m_vseqr = smc_virtual_sequencer::type_id::create("m_vseqr", this);
@@ -144,6 +148,10 @@ class smc_env extends ocah_env;
     m_sep_in_axi_env.item_ap.connect(m_wdt_csr_ref_model.analysis_export);
     m_wdt_csr_ref_model.expected_ap.connect(m_scoreboard.wdt_csr_expected_export);
     m_sep_in_axi_env.item_ap.connect(m_scoreboard.wdt_csr_observed_export);
+    // mailbox_fifo: paired queues, access errors and configuration across primary reset.
+    m_sep_in_axi_env.item_ap.connect(m_mailbox_fifo_ref_model.analysis_export);
+    m_mailbox_fifo_ref_model.expected_ap.connect(m_scoreboard.mailbox_fifo_expected_export);
+    m_sep_in_axi_env.item_ap.connect(m_scoreboard.mailbox_fifo_observed_export);
   endfunction
 
   // ------------------------------------------------------------------

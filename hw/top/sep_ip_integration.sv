@@ -766,6 +766,7 @@ module sep_ip_integration
   ) u_ext_trng_axil_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),
+    .test_en_i   (test_en_i),
     .axil_req_i  (ext_trng_axil_req_i),
     .axil_resp_o (ext_trng_axil_resp_o)
   );

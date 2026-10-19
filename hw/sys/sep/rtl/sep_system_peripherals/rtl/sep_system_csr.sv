@@ -22,8 +22,10 @@ module sep_system_csr (
   input  logic rst_warm_ni,                   // Active-low warm reset of the warm scratch registers
                                               // only.
   input  logic test_en_i,                     // DFT test-enable (scan-enable) to the AXI-Lite
-                                              // demuxes.
-  input  logic scan_rst_ni,                   // DFT scan reset, active-low; unused.
+                                              // demuxes and the reference-counter reset
+                                              // synchronizers.
+  input  logic scan_rst_ni,                   // DFT scan reset, active-low, to the reference
+                                              // counter.
 
   input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  sep_system_csr_axil_req_i,  // AXI-Lite request from sep_system_peripherals_xbar, with absolute addresses.
   output sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t sep_system_csr_axil_resp_o,  // AXI-Lite response to sep_system_peripherals_xbar.
@@ -588,6 +590,7 @@ module sep_system_csr (
     ) u_err_slv (
       .clk_i       (clk_i),
       .rst_ni      (rst_ni),
+      .test_en_i   (test_en_i),
       .axil_req_i  (locked_reg_req),
       .axil_resp_o (locked_reg_resp)
     );
@@ -703,6 +706,7 @@ module sep_system_csr (
     ) u_err_slv (
       .clk_i       (clk_i),
       .rst_ni      (rst_ni),
+      .test_en_i   (test_en_i),
       .axil_req_i  (locked_reg_req),
       .axil_resp_o (locked_reg_resp)
     );
@@ -799,6 +803,8 @@ module sep_system_csr (
     .cnt_update_i       (ref_count_wr_swacc_q),
     .cnt_update_value_i (ref_count_from_reg),
     .out_clk_i          (clk_i),
+    .test_en_i          (test_en_i),
+    .scan_rst_ni        (scan_rst_ni),
     .count_o            (reference_counter)
   );
 
@@ -936,6 +942,7 @@ module sep_system_csr (
   ) u_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),
+    .test_en_i   (test_en_i),
     .axil_req_i  (sep_system_csr_axil_reqs[sep_pkg::ERR_SLV]),
     .axil_resp_o (sep_system_csr_axil_resps[sep_pkg::ERR_SLV])
   );

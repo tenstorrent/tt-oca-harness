@@ -443,6 +443,7 @@ module sep_crypto #(
     .clk_i                     (clk_i),
     .por_rst_ni                (rst_ni),
     .rst_ni                    (gated_rst_ni.trng),
+    .test_en_i                 (test_en_i),
     .entropy_rosc_sample_clk_i (entropy_rosc_sample_clk_i),
     .esrc_axil_req_i           (esrc_axil_isolated_req),
     .esrc_axil_resp_o          (esrc_axil_isolated_resp),
@@ -662,6 +663,7 @@ module sep_crypto #(
   ) u_abr_key_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),
+    .test_en_i   (test_en_i),
     .axil_req_i  (abr_key_axil_isolated_req),
     .axil_resp_o (abr_key_axil_isolated_resp)
   );

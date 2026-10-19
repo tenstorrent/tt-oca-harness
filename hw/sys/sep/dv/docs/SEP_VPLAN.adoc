@@ -90,7 +90,7 @@ are in <<sep-vplan-phase3-proposed>>. The parked-test rule of Phase 3 is in
 . *Bring-up*: drive `ext_boot_seq_done_i`. A test that does not need
   fuse content may use `+skip_fuse_sense`; it must then grade no fuse- or
   LC-derived value. <<sep-standin-skip-fuse-sense>> records the claim and
-  scope of this bypass for the leaves it lists. Hold the CPU off for
+  scope of this bypass for every leaf that uses it. Hold the CPU off for
   `no_cpu` runs. With `+skip_fuse_sense` and no
   `+sep_shadow_reg_preload`, the eFuse shadow is all zero except
   `LC_STATE` raw `4'hF`, which is INVALID. `FEAT_CTRL` is then zero, so
@@ -452,7 +452,7 @@ they leave out; the checker table of each linked entry is the full set.
 |Coordinated TRNG reset and ordered recovery |<<sep_trng_reset_recovery_test,`sep_trng_reset_recovery_test`>> |all, cpu_stub |None |One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset for this domain is covered here. Also covers the two-stage synchronization of the reset-derived downstream clear, pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. Intra-window decode of the adopter TRNG passthrough is not graded. |YES for the claimed part; the evidence cell names the rest
 |Clock-gate CSR |<<sep_clock_gate_control_test,`sep_clock_gate_control_test`>> |all, cpu_stub |None |`sep_clock_gate_control_test` (storage / reachability). Live per-IP gate is not in this RTL. |YES for the claimed part; the evidence cell names the rest
 |JTAG vs CPU vs KM eFuse mux |<<sep_efuse_jtag_axil_el2_cpu_mux_test,`sep_efuse_jtag_axil_el2_cpu_mux_test`>>, <<sep_efuse_km_axil_cpu_mux_coexist_test,`sep_efuse_km_axil_cpu_mux_coexist_test`>> |all, cpu |None |The checker table of each entry named. |YES
-|eFuse public identities → Key Manager |<<sep_efuse_km_public_id_test,`sep_efuse_km_public_id_test`>> |all, cpu_stub |None |The sensed `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` are compared with the staged image on the Key Manager's OTP input (`{~id, id}`) and in the 48 KMCSR words KM firmware reads. The two read-lock domains are graded apart: an eFuse read lock withholds the shadow read and leaves both KM views, and `OTP_READ_LOCK` zeroes the KMCSR words and leaves the input. Delivery under `secure_tm`, `OTP_READ_LOCK_COLD` for these fields, and identity-key derivation from them are not claimed. |YES for the claimed part; the evidence cell names the rest
+|eFuse public identities → Key Manager |<<sep_efuse_km_public_id_test,`sep_efuse_km_public_id_test`>> |all, cpu_stub |None |The sensed `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` are compared with the staged image on the Key Manager's OTP input (`{~id, id}`) and in the 48 KMCSR words KM firmware reads. The two read-lock domains are graded apart: an eFuse read lock withholds the shadow read and leaves both KM views, and `OTP_READ_LOCK` zeroes the KMCSR words and leaves the input. With `secure_tm` at 1 (strap 1) the 48 KMCSR words still equal the staged image, and the four secrets `CHIPLET_UID`, `SIP_UID`, `SYS_UID` and `CLASS_KEY` read valid zero in KMCSR (every value word 0, every complement word all ones); at strap 0 they read the staged secrets. The KM input, `OTP_LIFE_CYCLE` and `OTP_DEMOTION_STATE` at strap 1, `OTP_READ_LOCK_COLD` for these fields, and identity-key derivation from them are not claimed. |YES for the claimed part; the evidence cell names the rest
 |SEC_DIS override |<<sep_sec_dis_override_test,`sep_sec_dis_override_test`>> |all, cpu_stub |`sep_feat_ctrl_cg`, `sep_sec_dis_boot_cg` |`CHK-OVR-ALONE` grades the `sep_reset_n` override before any match: reset releases and feature control stays closed (`hw/sys/sep/doc/security_disable.adoc`). `CHK-SENSE-GATED-RESET` grades that the match leaves the reset held. `CHK-FEAT-PRESENSE` grades that the match opens feature control before sensing finishes (`hw/sys/sep/doc/token_processing.adoc`). `CHK-OVR-AFTER` grades the same override inputs after the match. `CHK-MAP-OPEN` requires an OKAY `LC_STATE` shadow-map read while sensing is still open. `CHK-SENSE-STUCK` grades that the match stops the sense. The `CHK-RETAIN-*` checkers grade the recovery reset: the token digest survives `rst_ni`, so SEC_DIS, the open map and the override still work and sense stays stopped. `CHK-DROP` and `CHK-SENSE-CONTROL` clear SEC_DIS and grade a full sense after a second reset. The post-sense match, mismatch and restore cells also run in this leaf. The leaf drives the SEP override inputs and reads the reset probes. `sep_sec_dis_reset_reach_test` grades the bus access and the IC_RESET TDR write. |YES
 |eFuse set-only (anti-rollback) |<<sep_efuse_set_only_monotonicity_test,`sep_efuse_set_only_monotonicity_test`>> |all, cpu_stub |None |Set-only OR-merge is walked on the six non-`LOCK` set-only rows and on both `LOCK` RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after those other rows. SW-writable rows, `REQUIRED_SIGNERS` included, overwrite and then a write of 0 clears. |YES
 |eFuse per-spare write-lock slot numbering |<<sep_efuse_program_lock_matrix_test,`sep_efuse_program_lock_matrix_test`>> |all, cpu_stub |`sep_efuse_program_lock_cg` |Every run walks `SPARE0..SPARE8`: each spare is programmed while unlocked, then its own `LOCKS_SPARE` bit is set and a second bit in the same spare is rejected. The spares are walked in order after each preceding lock, so a lock bit wired past its own slot fails the next spare's unlocked-program cell. Slot coverage does not depend on the seed; only the bit offsets within a spare do. |YES
@@ -1070,7 +1070,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|A single-beat misaligned read inside the HMAC register extent receives SLVERR and latches the `hmac` bit of `PERIPH_BUS_ERR_STATUS`, and one inside the Secure DMA register extent receives SLVERR and latches `DMA_BUS_ERR_STATUS.reg_path_err`, as `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require. The same read at each aligned offset is the control.
+|A single-beat partial write to an HMAC register receives SLVERR and latches the `hmac` bit of `PERIPH_BUS_ERR_STATUS`, and one to a Secure DMA register receives SLVERR and latches `DMA_BUS_ERR_STATUS.reg_path_err`, as `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require. The aligned read and the narrow read at the same offset complete with OKAY and latch nothing.
 |<<sep_axil_mailbox_iface_rand_test,`sep_axil_mailbox_iface_rand_test`>>
 |2
 |no_cpu, +skip_fuse_sense
@@ -1388,7 +1388,19 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu, VCS only
 |`test_en_i` and `scan_rst_ni` top-port drives (added hook), reset taps, scan-net walk
-|Proves that with `test_en_i` high `scan_rst_ni` replaces the SEP reset nets, that with `test_en_i` low it has no effect, and that `secure_tm_o` does not follow `test_en_i`. The clock-gater test pins and AXI cell test inputs are logged only (the `test_en_i` consumer set is a Blocked feature).
+|Proves that with `test_en_i` high `scan_rst_ni` replaces the SEP reset nets, that with `test_en_i` low it has no effect, and that `secure_tm_o` does not follow `test_en_i`. The clock-gater test pins and AXI cell test inputs are logged only here; `sep_test_en_pin_reach_test` grades them. The state that a scan session must not move is graded in `sep_scan_mode_state_hold_test`.
+
+|<<sep_scan_mode_state_hold_test,`sep_scan_mode_state_hold_test`>>
+|3
+|no_cpu, real fuse sense, VCS only
+|LSU master, strap and `rst_ni` drive, `test_en_i` and `scan_rst_ni` top-port drives (added hook), `secure_tm_o`, eFuse shadow, lifecycle and SEC_DIS digest taps, reset taps
+|Proves that a scan session (a `test_en_i` rise, a `scan_rst_ni` pulse with `test_en_i` high and a `test_en_i` fall) keeps `secure_tm_o` at its sampled value at strap 0 and at strap 1 while the strap moves to the opposite value and back with `test_en_i` high, keeps the four secret shadow outputs at zero while `SECURE_TM` is 1, and keeps `security_disable_o`, the SEC_DIS digest and its valid bit after a match. Each pulse is shown to reach the 12 scan-replaced reset nets. The fuse-sense, feature-control, DEMOTE and `LC_STATE` values under the scan reset, a shadow write and a token go with `test_en_i` high, and the `_n0_scan` storage names are logged only. Extends the open scan-reset and `SECURE_TM` tests with the scan-session cells only.
+
+|<<sep_test_en_pin_reach_test,`sep_test_en_pin_reach_test`>>
+|3
+|no_cpu, skip-sense plusarg, VCS only
+|`test_en_i` top-port drive (added hook), hierarchy walk of the test pins (observation taps)
+|Proves that every clock-gater test port and AXI cell test input of a committed pin inventory (bench configuration: the test inputs of the clock-gater and AXI cell instances that OCAH RTL instantiates, changed only by a reviewed edit) equals `test_en_i` after its rise and after its fall. The specification sentence is read as every such input, and the ticket that this reading opens may end as a specification fix. An inventory pin that the hierarchy walk does not find fails by name. Pins inside vendor libraries and inside `sep_cpu` are logged only.
 
 |<<sep_cpu_reset_entry_test,`sep_cpu_reset_entry_test`>>
 |3
@@ -1400,7 +1412,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu, real fuse sense
 |Strap drive, `secure_tm_o` tap, `SEC_DIS` token driver
-|Proves that `SECURE_TM` clears on cold reset, samples a strap of 1 at the early capture point with `SEC_DIS`, and holds its value on every other event and after a strap change. The sampling at fuse-sense completion is a control. Extends the open `SECURE_TM` tests with the early capture, the clear, the retention and the strap change between sampling events only.
+|Proves that `SECURE_TM` clears on cold reset, samples a strap of 1 at the early capture point with `SEC_DIS`, and holds its value on every other event and after a strap change, and that with a `SEC_DIS` match formed at strap 0 and `SECURE_TM` at 1 `FEAT_CTRL` reads all ones. The sampling at fuse-sense completion and the profile word with no match are controls. Extends the open `SECURE_TM` tests with the early capture, the clear, the retention, the strap change between sampling events and the `SEC_DIS` feature override at `SECURE_TM` = 1 only.
 
 |<<sep_cpu_ctrl_reg_shape_test,`sep_cpu_ctrl_reg_shape_test`>>
 |3
@@ -1583,7 +1595,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |2
 |no_cpu, real fuse sense
 |ocah_axi_vip, KM CPU image
-|The three sensed `SEP_*_ID` fuses reach the Key Manager: `{~id, id}` on its OTP input, and value and complement in the KMCSR `OTP_SEP_*_ID_{VAL,CPL}` words as KM firmware reads them. One seed-selected field carries its eFuse read lock, which withholds that field's shadow read and leaves both KM views intact. The KM-side `OTP_READ_LOCK` then zeroes the KMCSR words and leaves the input intact.
+|The three sensed `SEP_*_ID` fuses reach the Key Manager: `{~id, id}` on its OTP input, and value and complement in the KMCSR `OTP_SEP_*_ID_{VAL,CPL}` words as KM firmware reads them. One seed-selected field carries its eFuse read lock, which withholds that field's shadow read and leaves both KM views intact. The KM-side `OTP_READ_LOCK` then zeroes the KMCSR words and leaves the input intact. A second leg cold-boots at strap 1 (`SECURE_TM` = 1): the 48 public-ID words still equal the staged image, and the four secret KMCSR fields read valid zero (every value word 0, every complement word all ones). At strap 0 the same secret fields read the staged secrets.
 |<<sep_efuse_window_decode_reset_test,`sep_efuse_window_decode_reset_test`>>
 |3
 |no_cpu, real fuse sense
@@ -1593,19 +1605,19 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_efuse_field_layout_rand_test,`sep_efuse_field_layout_rand_test`>>
 |3
 |no_cpu, real fuse sense
-|Frontdoor master, sensed-shadow probe, OTP preload, `jtag_id_i` drive (added hook)
-|Proves that the used bits of nine narrow shadow registers (the ten 32-bit registers except `LOCKS_SPARE`) read back as staged at edge values that the seed draws, and that a drawn non-zero `jtag_id_i` enters no shadow word. The offset and width of all 43 shadow registers run as a logged control.
+|Frontdoor master, sensed-shadow probe, OTP preload, `jtag_id_i` drive (added hook), `jtag_id_probe_o` (observation tap)
+|Proves that the used bits of nine narrow shadow registers (the ten 32-bit registers except `LOCKS_SPARE`) read back as staged at edge values that the seed draws, and that a drawn non-zero `jtag_id_i` enters no shadow word. The offset and width of all 43 shadow registers, taken from the generated register header and IP-XACT, run as a logged control.
 
 |<<sep_lcc_state_codeword_rand_test,`sep_lcc_state_codeword_rand_test`>>
 |3
 |no_cpu, real fuse sense
-|`lc_sigint_inject_i`, `lcc_feat_ctrl_probe_o`, JTAG master, JTAG lifecycle filter inject (added hook)
+|`lc_sigint_inject_i`, `lcc_feat_ctrl_probe_o`, JTAG master, JTAG lifecycle filter inject (added hook), `jtag_filter_lc_sigint_err_probe_o` and bound SEC_DIS digest tap (observation taps)
 |Proves that a non-complementary byte at the lifecycle decoder input raises `lc_sigint_err_o` and forces feature control to 0 in each open-profile nibble, unless SEC_DIS forces all ones, and, in a TEST_DEV leaf, that the JTAG port admits only the token block under an integrity error at the JTAG lifecycle filter.
 
 |<<sep_lcc_feat_ctrl_state_matrix_rand_test,`sep_lcc_feat_ctrl_state_matrix_rand_test`>>
 |3
 |no_cpu, real fuse sense
-|Frontdoor master, `lcc_feat_ctrl_probe_o`, demotion output and DFT disable port probes, OTP preload, OTP bank probe and `efuse_shim_command_req_o` tap (observation taps)
+|Frontdoor master, `lcc_feat_ctrl_probe_o`, demotion output and DFT disable port probes, OTP preload, OTP bank probe, `efuse_shim_command_req_o` tap and bound SEC_DIS digest tap (observation taps)
 |Proves that feature control equals the profile row for all 16 raw state codes, demotion and SEC_DIS cells with random disable vectors, that each disable bit closes its own feature bit and software can only add restrictions, that the two demotion registers follow their lock and write rules over random operation sequences and cold reset, and that the two fuse DFT disable ports split the 32 combinations of the five named disable bits by their case conjunction.
 
 |<<sep_efuse_transient_rma_rand_test,`sep_efuse_transient_rma_rand_test`>>
@@ -1617,13 +1629,13 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_efuse_token_channel_rand_test,`sep_efuse_token_channel_rand_test`>>
 |3
 |no_cpu, real fuse sense, VCS only
-|Frontdoor master, token word tap (observation tap), OTP preload
+|Frontdoor master, token word tap and bound SEC_DIS digest tap (observation taps), OTP preload
 |Proves that each of three token channels hashes its eight-word array on its own go bit, returns only Idle, Match or Mismatch, holds its result, stays independent of the other channels, and gives its result again after a cold reset once sensing is done.
 
 |<<sep_efuse_token_fault_matrix_test,`sep_efuse_token_fault_matrix_test`>>
 |3
 |no_cpu, real fuse sense
-|`token_cmp_fault_inject_i`, digest latch probes and comparator rail taps (observation taps), comparator copy select and test-enable inject (added hooks), PIC source 40 probe
+|`token_cmp_fault_inject_i` with `token_cmp_fault_sel_i`, digest latch probes, comparator rail taps and bound SEC_DIS digest tap (observation taps), comparator copy select and test-enable inject (added hooks), PIC source 40 probe
 |Proves that a collapsed pair or a disagreeing comparator copy forces the error code, sets that channel's sticky flag and the PIC request, that a common-mode flip on RMA_CHIPLET inverts the held result and raises nothing, and that a test enable freezes the retained digest and valid bit of every channel.
 
 |<<sep_efuse_interface_status_rand_test,`sep_efuse_interface_status_rand_test`>>
@@ -1641,25 +1653,25 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_efuse_secure_tm_matrix_rand_test,`sep_efuse_secure_tm_matrix_rand_test`>>
 |3
 |no_cpu, real fuse sense
-|Frontdoor master, JTAG master, `secure_tm_req_i`, sensed-shadow probe, direct OTP read, `efuse_shim_command_req_o` tap (observation tap)
+|Frontdoor master, JTAG master, `secure_tm_req_i`, sensed-shadow probe, direct OTP read, `efuse_shim_command_req_o` tap and bound SEC_DIS digest tap (observation taps)
 |Proves that with secure test mode active no program changes the bank, the four secret fields read zero at the sensed-shadow output, and the protection shadows ignore software and JTAG writes, with the feature control as a control.
 
 |<<sep_efuse_jtag_access_rand_test,`sep_efuse_jtag_access_rand_test`>>
 |3
 |no_cpu, real fuse sense
 |JTAG master, frontdoor master, direct OTP read, `efuse_shim_command_req_o` tap (observation tap)
-|Proves that in PROD and in RMA_SIP the JTAG port reaches only the token block, that every other access completes with an error and changes nothing, and that no feature-control bit gates the port.
+|Proves that in PROD and in RMA_SIP the JTAG port reaches only the token block, that every other access completes with an error and changes nothing, with a frontdoor write of each denied pattern as the control, and that no feature-control bit gates the port. The PROD token word accesses are logged only.
 
 |<<sep_sec_dis_timing_rand_test,`sep_sec_dis_timing_rand_test`>>
 |3
 |no_cpu, real fuse sense, VCS only
-|Frontdoor master, `security_disable_o`, `sep_fuse_sense_done_o`, sensed-shadow probe, IC_RESET TDR driver
+|Frontdoor master, `security_disable_o`, `sep_fuse_sense_done_o`, sensed-shadow probe, IC_RESET TDR driver, bound SEC_DIS digest tap and `efuse_shim_command_req_o` tap (observation taps)
 |Proves that a SEC_DIS match made before sensing keeps sense done low and the sensed shadow words at their reset values, that a match made during sensing keeps sense done low and the sensed shadow words unchanged, and that every shadow word reads its reset value after a cold reset under the match, with the sense stop, the open map read and the recovery as controls.
 
 |<<sep_efuse_shim_response_fault_test,`sep_efuse_shim_response_fault_test`>>
 |3
 |no_cpu, real fuse sense, injected shim response
-|Sense status inject and shim response hold (added hooks), read and program interface outputs
+|Sense status inject and shim response hold (added hooks), shim response taps and `efuse_shim_command_req_o` tap (observation taps), read and program interface outputs
 |Proves that a sense response with its status bit set leaves its shadow word at the reset value and still lets sense done rise, and that a program request shows busy and not done while its response is withheld and done with no error after it.
 |===
 
@@ -1965,8 +1977,8 @@ another test.
 |4.7 to 4.20
 |SPI pad, lane data at x1, x2 and x4, output-enable, FIFO, interrupt, error, strobe and reset contracts (one entry extends an open SPI test), and the SPI lane coverage statement; DMA address modes, geometry, interrupt gate, range lock, abort, inline hash and SPI handshake.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset, WDT, clock>>
-|5.13 to 5.29
-|Reset release, cold and CPU-only reset, software reset and isolation, JTAG and scan overrides, reset vector and run request, `SECURE_TM`, scratch and CPU control registers, watchdog, wakeup timer and reference counter, memory apertures and ECC, CPU demux, debug master, ISA and PMP.
+|5.13 to 5.32
+|Reset release, cold and CPU-only reset, software reset and isolation, JTAG and scan overrides, reset vector and run request, `SECURE_TM`, state held through a scan session, `test_en_i` reach to the test inputs, scratch and CPU control registers, watchdog, wakeup timer and reference counter, memory apertures and ECC, CPU demux, debug master, ISA and PMP.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle, SEC_DIS, locked-field>>
 |6.18 to 6.30
 |eFuse windows and fields, lifecycle code words, feature control, demotion and DFT gate ports, transient RMA, token channels, faults and latch freeze, interface status, lock slots, secure test mode, JTAG access, SEC_DIS timing, sense response and program interface faults.
@@ -2015,7 +2027,9 @@ regressions, never in one regression (<<sep-fcov-rand-phase2,SEP_FCOV>>). For N
 equally likely cells and d draws per leaf the expected closure is about
 N * ln(N) / (d * reseed) regressions. The seed count of an entry stays small
 (3 or 4) and is not raised to fill cells; an entry that runs more seeds states
-the reason.
+the reason. An entry whose leaf runs its whole cell set in every run, so that
+the seed selects only orders, values and timing, runs one seed per regression
+(no `reseed`); each regression draws a new seed, so those values still vary.
 
 *Testlist entries.* A Phase 3 test has one testlist entry. Each entry runs on
 its testlist target, so a test that grades some checks on one simulator only
@@ -2044,7 +2058,7 @@ run the `dbg_rstb_i` legs on VCS; and 7.28
 preloaded `rom_main` builds (HOST and HOST-UNREC, set by the t=0 plusarg
 `+km_rom_hex`). An extension leg runs in the testlist entry of its
 open test and adds no entry. Where the leg needs more seeds than that entry
-runs, the entry takes the seed count of the leg (1.25 and 1.26).
+runs, the entry takes the seed count of the leg (1.26).
 
 [[sep-vplan-phase3-edn-waiver]]
 *JTAG reset override waiver.* The JTAG `sep_reset_n` override and the per-IP
@@ -2056,7 +2070,7 @@ testlist entry whose leaf drives the `sep_reset_n` override (on the bench pins
 TDR) or a per-IP hold `jtag_<ip>_rst_hold_i` adds `+sep_edn_jtag_reset_waive`.
 The plusarg turns off only the crypto EDN arbiter and adapter request-hold
 assertions (`tb/tb_top.sv`), and `tb_top` logs that it is set. The Phase 3
-entries that add it are 5.17, 5.18, 5.20, 5.22 and 6.29. Entry 5.18 adds it
+entries that add it are 5.17, 5.18, 5.20, 5.22, 5.31 and 6.29. Entries 5.18 and 5.31 add it
 because the scan reset asserts the same crypto engine resets without the
 isolation sequence.
 
@@ -2275,6 +2289,12 @@ the entry adds. A row marked "parked" names a parked test
 |`sep_scan_reset_override_test`
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |RAND-REP
+|`sep_scan_mode_state_hold_test`
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|RAND-REP
+|`sep_test_en_pin_reach_test`
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|RAND-NONE
 |`sep_cpu_reset_entry_test`
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |RANDCFG
@@ -2819,10 +2839,6 @@ the test does.
 |What response does a DMA-master access get at a reserved window or past the mailbox wrapper extent? `hw/sys/sep/doc/memory_map.adoc` states the codes only as seen at the inbound AXI port.
 |never driven; `sep_cpu_bridge_fault_matrix_rand_test` grades the source-read side with a non-OKAY response from the testbench
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
-|Misaligned-offset cause of `PERIPH_BUS_ERR_STATUS` and `reg_path_err`.
-|Which access shape is a "misaligned offset" that makes a bridge return a TL-UL error? Source: `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc` (`PERIPH_BUS_ERR_STATUS`); `hw/sys/sep/doc/interrupts.adoc`.
-|`sep_cpu_bridge_fault_matrix_rand_test` drives the in-extent hole only
-|<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>; <<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Uncorrectable ICCM fetch error
 |Is an uncorrectable ICCM fetch error an instruction access fault (`hw/sys/sep/doc/interrupts.adoc`, "Uncorrectable (double-bit) errors") or does it re-raise the NMI (`sep_cpu_ctrl.adoc`, `SEP_NMI_VEC`)?
 |-
@@ -2902,10 +2918,6 @@ the test does.
 |SPI and DMA state at reset
 |What happens to an in-flight transaction at reset (`reset_controller.adoc`)?
 |Graded leg: Register state after reset (`sep_spi_cold_reset_values_rand_test`, `sep_cpu_reset_retention_test`)
-|<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|Misaligned register access
-|What is the rule for a misaligned register access (`sep_cpu_ctrl.adoc`)?
-|Graded leg: Hole cells (`sep_fabric_row_response_matrix_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI byte order inside a word
 |Which byte of a TXDATA word goes on the wire first, and where does the first received byte land in RXDATA? `spi_controller.adoc` (STATUS.BYTEORDER) gives a read-only field with reset 0x0, while the SEP SPI host is the unmodified OpenTitan IP with its register map authoritative (`doc/trm/src/revision.adoc`, revision 0.5.34) and the OpenTitan parameter `ByteOrder` defaults to 1 (`spi_host.hjson`; theory of operation, "Input and Output Byte Ordering"), and the wrapper sets no override. The open point is the 0x0 reset in `spi_controller.adoc`.
@@ -3024,8 +3036,8 @@ the test does.
 |`sep_debug_master_target_matrix_test` does not grade it
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`test_en_i` consumers
-|Which clock-gater test ports and AXI cell test inputs must `test_en_i` reach? The design ties some of them to 0. (`hw/sys/sep/doc/port_table.adoc` states only that `test_en_i` drives clock-gater test ports and AXI cell test inputs, and names none of them.)
-|`sep_scan_reset_override_test` logs the hierarchy walk as `OBS-TEST-EN-PINS` and `OBS-STRAP-PINS` and grades no test pin
+|No specification question for the graded reading. `hw/sys/sep/doc/port_table.adoc` states that `test_en_i` drives clock-gater test ports and AXI cell test inputs and names none of them. This plan reads the sentence as every clock-gater test port and AXI cell test input that OCAH RTL instantiates. The specification states no latency. The ticket that this reading opens may end as a specification fix.
+|`sep_test_en_pin_reach_test` grades the reading (CHK-TEST-EN-PINS). `sep_scan_reset_override_test` logs the same walk as `OBS-TEST-EN-PINS` and `OBS-STRAP-PINS`
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`pmpaddr` implementation
 |What is the implemented `pmpaddr` width and granularity? (`hw/sys/sep/doc/cpu.adoc`, Processor Core, states only 16 entries with Smepmp.)
@@ -3060,7 +3072,7 @@ the test does.
 |-
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |JTAG access policy outside PROD and RMA_SIP
-|What read data does a blocked JTAG read return (the error response is stated, the data is not)? What is the JTAG policy in PROD_END, RMA_CHIPLET and INVALID, and before sense? Is `TOKEN_MATCH_FAULT` inside the token block? What may TRoot reach over JTAG? Does the JTAG policy of the lifecycle integrity error use the decoder that the bench injection reaches (`lc_sigint_inject_i` acts at the lifecycle decoder input)? (`sep_efuse_jtag_access_rand_test` draws only PROD and RMA_SIP, grades a non-OKAY response and does not read the shadow map over JTAG. The integrity-error leg of `sep_lcc_state_codeword_rand_test` (CHK-JTAG-SIGINT) uses the error inject `jtag_filter_lc_sigint_inject_i` at the decoder of the JTAG lifecycle filter, an added hook.)
+|What read data does a blocked JTAG read return (the error response is stated, the data is not)? What is the JTAG policy in PROD_END, RMA_CHIPLET and INVALID, and before sense? Is `TOKEN_MATCH_FAULT` inside the token block? What may TRoot reach over JTAG? Does the JTAG policy of the lifecycle integrity error use the decoder that the bench injection reaches (`lc_sigint_inject_i` acts at the lifecycle decoder input)? (`sep_efuse_jtag_access_rand_test` draws only PROD and RMA_SIP. Over JTAG it reads and writes drawn shadow words and interface-control registers as denied accesses. It grades each target unchanged at the frontdoor and a response that is not OKAY, except for a PROD read of a shadow word or of `EFUSE_PROGRAM_CTRL`, whose response it logs. It does not grade the data of a denied read. The integrity-error leg of `sep_lcc_state_codeword_rand_test` (CHK-JTAG-SIGINT) uses the error inject `jtag_filter_lc_sigint_inject_i` at the decoder of the JTAG lifecycle filter, an added hook.)
 |-
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Concurrent AXI and JTAG requests
@@ -3133,7 +3145,7 @@ the test does.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Test enable and token freeze
 |Which signal is test enable and what does the freeze do to a match in progress?
-|Every SEC_DIS token go runs with `secure_tm_req_i` at 0; no test grades a match at strap 1 (`sep_lcc_feat_ctrl_state_matrix_rand_test`, `sep_efuse_secure_tm_matrix_rand_test`)
+|A match formed at strap 0 and held into `SECURE_TM` = 1 is graded by `sep_secure_tm_strap_sampling_test` (CHK-STM-SECDIS-FEAT), and a match held through a scan session by `sep_scan_mode_state_hold_test` (CHK-SCAN-SECDIS-HOLD). A token go with the strap at 1 is not graded: every SEC_DIS token go runs with `secure_tm_req_i` at 0. `sep_scan_mode_state_hold_test` logs a token go with `test_en_i` = 1 (`OBS-SCAN-SECDIS-GO`)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Demote and lock in one write
 |If one write sets `demote` and `lock` together, does `demote` take effect? (`sep_lcc_feat_ctrl_state_matrix_rand_test` never writes `0x3`.)
@@ -4017,7 +4029,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Non-scannable lifecycle-critical registers
 |-
 |PERMANENT-HOLE
-|Scan-membership audit.
+|Scan-membership audit. `sep_scan_mode_state_hold_test` logs the signal and storage names under the eFuse wrapper and the lifecycle controller that carry `_n0_scan` (`OBS-SCAN-CLASS1-NAME`). The specification does not define the marker, so no check grades the names.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Scan class matrix
 |-
@@ -4027,7 +4039,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Class 1a and 1b scan membership
 |-
 |PERMANENT-HOLE
-|Scan-membership audit.
+|Scan-membership audit. `sep_scan_mode_state_hold_test` logs the signal and storage names under the eFuse wrapper and the lifecycle controller that carry `_n0_scan` (`OBS-SCAN-CLASS1-NAME`). The specification does not define the marker, so no check grades the names.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Secure chain test and dump command admission
 |-
@@ -4067,7 +4079,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Program and read commands that reach the bank port after the guard
 |The command at `efuse_shim_command_req_o` after the guard
 |ACCEPT-PROBE
-|The tap is an observation tap that the owning tests add to the SEP_TB_ARCH observation-probe list. Checks that read it: every command-count and read-command statement (CHK-DEMOTE-OTP, CHK-TRANSIENT-NOBURN, CHK-PROG-LC, the read statements of CHK-IF-CMD, CHK-IF-PRESENSE, CHK-LOCK-CELL, CHK-STM-PROG, CHK-STM-PROG-CTL, CHK-JTAG and the class C command statement of `sep_sec_dis_timing_rand_test`). The OTP image diff reads the observation tap `otp_bank_probe_o`. A direct OTP word read stands in for "no program command" only where the read interface is not under test.
+|The tap is an observation tap that the owning tests add to the SEP_TB_ARCH observation-probe list. Checks that read it: every command-count and read-command statement (CHK-DEMOTE-OTP, CHK-TRANSIENT-NOBURN, CHK-PROG-LC, the read statements of CHK-IF-CMD and CHK-IF-CTRL, CHK-IF-PRESENSE, CHK-LOCK-CELL, CHK-STM-PROG, CHK-STM-PROG-CTL, CHK-JTAG and the class C command statement of `sep_sec_dis_timing_rand_test`). The OTP image diff reads the observation tap `otp_bank_probe_o`. A direct OTP word read stands in for "no program command" only where the read interface is not under test.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Reset state of the 24 token word registers
 |The X value of an unreset token word array
@@ -4077,7 +4089,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |`jtag_id_i` in the shadow words
 |A drive of `jtag_id_i[31:1]`; no shadow word carries the ID
 |ADD-PORT
-|`tb_top` ties the port to 0. The drive is a top-port drive, an added hook (<<sep-vplan-phase3-added-hooks>>). CHK-JTAGID of `sep_efuse_field_layout_rand_test` uses it.
+|`tb_top` drives the port from the TB input `jtag_id_i`; an undriven or unknown value drives 0. The drive is a top-port drive, an added hook (<<sep-vplan-phase3-added-hooks>>). CHK-JTAGID of `sep_efuse_field_layout_rand_test` uses it.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Comparator copy of a token digest match
 |The copy select (copy 1 and copy 2) at the `token_cmp_fault` injection port
@@ -4370,7 +4382,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`aon_rst_n` tap (`SEP_CORE.u_sep_wdt_wrap.rst_wdt_n`)
 |Read-only tap
 |The watchdog timer-domain reset.
-|`sep_cold_reset_phase_test` (CHK-AON-REL), `sep_ip_reset_override_matrix_test` (CHK-OVR-AND), `sep_scan_reset_override_test`
+|`sep_cold_reset_phase_test` (CHK-AON-REL), `sep_ip_reset_override_matrix_test` (CHK-OVR-AND), `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test` (CTL-SCAN-REACH)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`mpc_run_sync`
 |Read-only tap
@@ -4380,12 +4392,12 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`km_cond_rst[1:0]`
 |Read-only tap
 |The two Key Manager reset conditioner outputs.
-|`sep_scan_reset_override_test`
+|`sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test` (CTL-SCAN-REACH)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`ip_rst_n[0]` (`KM-RST`)
 |Read-only tap
 |The Key Manager warm reset net `km_sw_rst_n`: bit 0 of `sep_crypto_gated_rst_no`, index 0 of the `ip_rst_n` vector.
-|`sep_sw_reset_isolation_matrix_test` (Key Manager leg, CHK-ISO-ORDER and CHK-ISO-REL), `sep_km_kmcsr_reset_rand_test` (CHK-HOLD)
+|`sep_sw_reset_isolation_matrix_test` (Key Manager leg, CHK-ISO-ORDER and CHK-ISO-REL), `sep_km_kmcsr_reset_rand_test` (CHK-HOLD), `sep_scan_reset_override_test` (CHK-SCAN-IDLE, CHK-SCAN-REPLACE), `sep_scan_mode_state_hold_test` (CTL-SCAN-REACH)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>; <<sep-vplan-phase3-key-manager,Key Manager>>
 |Isolate request and isolate-complete vectors
 |Read-only tap
@@ -4430,42 +4442,62 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Clock-gater test pins and AXI cell test inputs
 |Read-only tap
 |The test pins found by a hierarchy walk.
-|`sep_scan_reset_override_test` (logged as `OBS-TEST-EN-PINS` and `OBS-STRAP-PINS`, not graded)
+|`sep_test_en_pin_reach_test` (CHK-TEST-EN-PINS, CTL-PIN-WALK), `sep_scan_reset_override_test` (logged as `OBS-TEST-EN-PINS` and `OBS-STRAP-PINS`, not graded)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Memory, boot and reset FCOV sampler nets
 |Sampler taps
 |Core CSR nets `tlu.{mcause, mscause, mdccmect, miccmect, ce_int, mie, mip}`, `dmi_rst_vec`, `dmi_en`, `dmi_addr`, `dmi_wr_en`, `SEP_CORE.nmi_vec`, the four `u_sep_wdt_wrap` stage nets and the two Key Manager conditioner nets.
 |The owners of `cp_ce_*`, `cp_mceip_delivery`, `cp_tcm_trap_cause`, `cp_nmi_fast_path`, `cp_jtag_mech`, `cp_rstvec_tdr`, `cp_dmi_*`, `cp_adapt_stage` and `cp_scan_net_effect`
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|`efuse_shim_command_req_o` tap
+|`efuse_shim_command_req_o` tap (`efuse_shim_cmd_valid_o`, `efuse_shim_cmd_command_o`, `efuse_shim_cmd_address_o`, `efuse_shim_cmd_program_data_o`, `efuse_shim_cmd_len_o`)
 |Read-only tap
-|The program and read commands that reach the bank port after the guard.
-|`sep_lcc_feat_ctrl_state_matrix_rand_test` (CHK-DEMOTE-OTP), `sep_efuse_transient_rma_rand_test` (CHK-TRANSIENT-NOBURN, CHK-PROG-LC), `sep_efuse_interface_status_rand_test` (CHK-IF-CMD, CHK-IF-PRESENSE), `sep_efuse_lock_slot_matrix_rand_test` (CHK-LOCK-CELL), `sep_efuse_secure_tm_matrix_rand_test` (CHK-STM-PROG, CHK-STM-PROG-CTL), `sep_efuse_jtag_access_rand_test` (CHK-JTAG), `sep_sec_dis_timing_rand_test` (class C)
+|The program and read commands that reach the bank port after the guard: valid, command, bit address, program data and word count.
+|`sep_lcc_feat_ctrl_state_matrix_rand_test` (CHK-DEMOTE-OTP), `sep_efuse_transient_rma_rand_test` (CHK-TRANSIENT-NOBURN, CHK-PROG-LC), `sep_efuse_interface_status_rand_test` (CHK-IF-CMD, CHK-IF-CTRL, CHK-IF-PRESENSE), `sep_efuse_lock_slot_matrix_rand_test` (CHK-LOCK-CELL), `sep_efuse_secure_tm_matrix_rand_test` (CHK-STM-PROG, CHK-STM-PROG-CTL), `sep_efuse_jtag_access_rand_test` (CHK-JTAG), `sep_sec_dis_timing_rand_test` (class C), `sep_efuse_shim_response_fault_test` (CHK-HOOK hook control)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`otp_bank_probe_o`
 |Read-only probe
-|A read-only view of the 256 OTP bank words for the bank snapshot, the bit diff and the per-clock sample. The bank loads once at t=0 and the bench has no restage or bank-read hook.
+|A read-only view of the 256 OTP bank words (`otp_bank_probe_o[255:0]`, 32 bits each, words 0 to 255 of the bank model) for the bank snapshot, the bit diff and the per-clock sample. The bank loads once at t=0 and the bench has no restage or bank-read hook.
 |`sep_lcc_feat_ctrl_state_matrix_rand_test` (CHK-DEMOTE-OTP bank diff), `sep_efuse_interface_status_rand_test` (CHK-IF-CMD, CHK-IF-CTRL, CHK-IF-PRESENSE), `sep_efuse_lock_slot_matrix_rand_test` (CHK-LOCK-CELL, CHK-PROG-ROUND bank clauses)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Token word tap
+|Token word tap (`token_sip_words_o`, `token_chiplet_words_o`, `token_sdis_words_o`)
 |Read-only tap
-|The 24 token word registers: X on the unreset arrays.
+|The 24 token word registers, eight 32-bit words per channel: X on the unreset arrays.
 |`sep_efuse_token_channel_rand_test` (CHK-NORESET)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Digest latch probes for RMA_CHIPLET and SEC_DIS
+|Digest latch probes for RMA_CHIPLET and SEC_DIS (`token_digest_chiplet_{sticky,valid,test_en}_o`, `token_digest_sdis_{sticky,valid,test_en}_o`)
 |Read-only tap
-|The sticky digest and valid bit. The existing probes cover RMA_SIP only.
+|The 256-bit sticky digest, the valid bit and the test enable of each latch. The existing probes cover RMA_SIP only.
 |`sep_efuse_token_fault_matrix_test` (CHK-LATCH-FREEZE)
+|<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
+|Comparator rail taps (`token_cmp_match_p_o`, `token_cmp_match_n_o`)
+|Read-only tap
+|The nine gated comparator rails after the comparator fault inject: bit 3c+k is copy k of channel c (0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS).
+|`sep_efuse_token_fault_matrix_test` (CHK-FAULT-CELL hook control of the comparator copy select)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |eFuse and lifecycle FCOV sampler taps
 |Sampler taps
-|Read-only nets `tok_sdis_i`, `tok_fault_i`, `token_go_i`, `sec_disable_expected_i`, `rd_addr_err_i`, `pg_addr_err_i`, `req_err_i`, `stored_shadow_i`, `cmp_match_p_i` and `cmp_match_n_i`.
-|The owners of the groups of the eFuse section of `SEP_FCOV.adoc`. `cmp_match_p_i` and `cmp_match_n_i` are also the hook control of the comparator copy select in `sep_efuse_token_fault_matrix_test` (CHK-FAULT-CELL)
+|Read-only nets `tok_sdis_i`, `tok_fault_i`, `token_go_i`, `sec_disable_expected_i`, `rd_addr_err_i`, `pg_addr_err_i`, `req_err_i`, `stored_shadow_i` and `shim_resp_i` (valid, status and data of the shim response at the `sep` input `efuse_shim_command_resp_i`). Under their sampler names the group also reads nets that the checks read through the probes of this table: `shim_cmd_i` (the post-guard command), `tok_words_i` (the token words), `cmp_match_p_i` and `cmp_match_n_i` (the comparator rails), `latch_sticky_i`, `latch_valid_i` and `latch_test_en_i` (the digest latches) and `jtag_filt_sigint_i` (the JTAG filter integrity flag).
+|The owners of the groups of the eFuse section of `SEP_FCOV.adoc`. No check reads them.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`jtag_filter_lc_sigint_err_probe_o`
 |Read-only probe
 |The integrity-error flag at the decoder output of the JTAG lifecycle filter. The existing `lc_sigint_err_o` is on the lifecycle controller side and stays 0 under a filter-side injection.
 |`sep_lcc_state_codeword_rand_test` (CHK-JTAG-SIGINT)
+|<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
+|`jtag_id_i` port tap (`jtag_id_probe_o`)
+|Read-only tap
+|The DUT port `jtag_id_i` at the `sep` boundary: the hook control of the `jtag_id_i[31:1]` drive.
+|`sep_efuse_field_layout_rand_test` (CHK-JTAGID hook control); the FCOV sampler (`cp_jtag_id_class`)
+|<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
+|Shim response taps (`efuse_shim_resp_valid_o`, `efuse_shim_resp_status_o`, `efuse_shim_resp_data_o`)
+|Read-only tap
+|The shim response at the `sep` input `efuse_shim_command_resp_i`: valid, status bit and data of each sense and program response.
+|`sep_efuse_shim_response_fault_test` (CHK-SENSE-STATUS)
+|<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
+|Bound SEC_DIS digest tap (`sec_dis_digest_probe_o`)
+|Read-only tap
+|The SEC_DIS expected digest that `tb_top` binds to the DUT.
+|`sep_lcc_state_codeword_rand_test`, `sep_lcc_feat_ctrl_state_matrix_rand_test`, `sep_efuse_token_channel_rand_test`, `sep_efuse_token_fault_matrix_test`, `sep_efuse_secure_tm_matrix_rand_test`, `sep_sec_dis_timing_rand_test` (CHK-BIND)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-VALID`
 |Read-only tap
@@ -4593,7 +4625,7 @@ use it" names the entries whose checks need the hook.
 |Top-port drive
 |DFT stimulus. `tb_top.sv` ties them to 0 and 1.
 |`test_en_i`, `scan_rst_ni`
-|`sep_scan_reset_override_test`
+|`sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`, `sep_test_en_pin_reach_test` (`test_en_i` only)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`dmi_core_enable_i` and `dmi_uncore_enable_i` as bench inputs
 |Top-port drive
@@ -4659,21 +4691,21 @@ use it" names the entries whose checks need the hook.
 |Existing bench hook
 |Turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override (<<sep-vplan-phase3-edn-waiver>>).
 |The assertion control of `tb_top`
-|`sep_ip_reset_override_matrix_test`, `sep_scan_reset_override_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`
+|`sep_ip_reset_override_matrix_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`jtag_id_i` drive
 |Top-port drive
-|`jtag_id_i[31:1]`; `tb_top` ties the port to 0. It shows that no shadow word carries the ID.
+|`jtag_id_i[31:1]` from the TB input `jtag_id_i`; an undriven or unknown value drives 0. It shows that no shadow word carries the ID.
 |`jtag_id_i[31:1]`
 |`sep_efuse_field_layout_rand_test` (CHK-JTAGID)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Comparator copy select
 |Error inject
-|The select of copy 1 and copy 2 at the `token_cmp_fault` injection port.
+|`token_cmp_fault_copy_i`: the select of copy 1 and copy 2 at the `token_cmp_fault` injection port.
 |The `token_cmp_fault` injection port
 |`sep_efuse_token_fault_matrix_test` (copy 1 and copy 2 cells)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Digest latch test-enable inject for RMA_CHIPLET and SEC_DIS
+|Digest latch test-enable inject for RMA_CHIPLET and SEC_DIS (`token_digest_chiplet_test_en_inject_i`, `token_digest_sdis_test_en_inject_i`)
 |Error inject
 |A force of the latch test enable.
 |The test enable of the RMA_CHIPLET and SEC_DIS digest latches
@@ -4688,7 +4720,7 @@ use it" names the entries whose checks need the hook.
 |`efuse_sense_status_inject_i` with `efuse_sense_status_word_i`
 |Error inject
 |Sets the status bit on the sense response of one bank-model word.
-|The sense response of the eFuse bank model
+|The `pslverr` of the bank-model APB response on the read path of the eFuse interface shim, during fuse sense only
 |`sep_efuse_shim_response_fault_test` (CHK-SENSE-STATUS)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`efuse_shim_resp_hold_i`

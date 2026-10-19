@@ -625,6 +625,8 @@ module avsbus_controller #(
     .src_pulse_i(R_avs_interrupt_clear_F_clear_avs_slave_issued_interrupt),
     .src_rst_ni(reset_n_apb_clk_syncd),
     .dst_clk_i(avs_clk),
+    .test_en_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
     .dst_pulse_o(R_avs_interrupt_clear_F_clear_avs_slave_issued_interrupt_RS_avs_clk)
   );
 
@@ -633,6 +635,8 @@ module avsbus_controller #(
     .src_pulse_i(R_avs_interrupt_clear_F_clear_slave_unresponsive_int),
     .src_rst_ni(reset_n_apb_clk_syncd),
     .dst_clk_i(avs_clk),
+    .test_en_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
     .dst_pulse_o(R_avs_interrupt_clear_F_clear_slave_unresponsive_int_RS_avs_clk)
   );
 

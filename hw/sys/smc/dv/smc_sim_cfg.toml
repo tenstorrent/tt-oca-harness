@@ -615,6 +615,11 @@ sources = [
   "hw/sys/smc/dv/uvm/seq_lib/smc_seq_lib_pkg.sv",
 ]
 
+# A C++ unit of the SV-UVM model needs more memory to compile than a cocotb
+# one: eight compiles at once exceed a 16 GB host, where four fit.
+[frameworks.uvm.build.options]
+build_jobs = 4
+
 [frameworks.uvm.sim]
 args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
 

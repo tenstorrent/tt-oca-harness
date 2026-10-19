@@ -739,9 +739,32 @@ Sub-cycle pulses between sampling edges are outside this check.
 After the no-start check, each wide-register strobe pass issues a real
 one-word Zeroer command to the last SPM word and requires the known sample
 count to change. A dead tap or counter fails the same run's positive control.
-The command completes before DEST_ADDR/SIZE are restored. The scratch word
-is left zero through SEP_IN so the ingress-only SPM model sees its final state;
-no other initiator may use that word during the pass.
+The command completes before DEST_ADDR/SIZE are restored and read back.
+The scratch word is left zero through SEP_IN so the ingress-only SPM model
+sees its final state; no other initiator may use that word during the pass.
+
+The required-only `mailbox_fifo` feature observes sequential SEP_IN full-width,
+full-strobe mailbox accesses. It derives paired FIFO queues, sticky error
+flags, IRQEN and clamped write/read thresholds from requests, not DUT response
+codes. A predicted full write or empty read returns SLVERR and sets the
+corresponding error flag; reading ERROR returns then clears those flags.
+Cold/cool reset epochs clear the model before the next access. Responses are
+compared for both directions even when the DUT reports an error; successful
+read data is compared under generated RDL masks. IRQS data and data of reads
+answered SLVERR are not predicted; successful ERROR reads are predicted.
+The active SEP_IN read helper checks X/Z; the passive monitor
+does not retain data X/Z masks. Unsupported mailbox shapes, offsets or
+directions stop a required feature rather than silently omitting comparisons.
+Other writers and reset with outstanding accesses are excluded.
+
+The mailbox cool-reset recovery scenario loads two mailbox pairs, drains all
+SEP_IN comparisons before driving the existing cool-reset pin, then observes
+primary/warm assertion and release with bounds. It checks generated reset
+values before fresh FIFO traffic. ERROR positive-control reads clear their
+flags, so the scenario recreates both errors and leaves them unread until
+reset. IRQS is checked non-zero before reset and at its default after reset
+and cleanup, without modeling latch latency. The mailbox clock gate must be
+disabled. No new agent, pin binding or model handle on the sequencer is needed.
 
 The second-stage watchdog scenario samples `smc_tb_if.clk_smc` at negedges.
 Its first/second-timeout taps mirror the existing live `tb_wdt_*` signals;
@@ -749,10 +772,13 @@ Its first/second-timeout taps mirror the existing live `tb_wdt_*` signals;
 records the selected first timeout, second timeout and WDT/warm reset edges
 while rejecting unknown signals or primary reset. CSR service stops before
 the reset window; the scenario resumes accesses only after warm/fuse release.
-No watchdog CSR scoreboard feature is required by this scenario; sequence
-checks grade the live timeout/reset observations and CSR responses.
-Post-warm timeout and watchdog CSR values are observations only; explicit
-watchdog configuration and timeout programming establish the next baseline.
+The scenario requires `wdt_csr`, whose model resets its shadow on warm reset.
+Non-reset CMP markers on all cores make post-warm default readbacks
+discriminating; CTRL and COUNT are additionally exercised on the rotating
+selected core. Sequence checks grade CTRL/COUNT/CMP defaults before explicit
+rebaseline; the model independently grades CTRL/CMP and access responses.
+CPU_CTRL timeout retention remains an observation rather than a verdict.
+Explicit watchdog configuration and timeout programming establish the next baseline.
 
 The fabric-register gate scenario reads eight pairs of `smc_tb_if.cg_clk_active`
 and `cg_bus_active` taps bound to the filter, remapper and output-fabric activity

@@ -65,7 +65,14 @@ def _load_env_module(modname: str, filename: str):
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {modname} from {path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # A module that defines a dataclass must be in sys.modules while it
+    # executes: dataclasses looks up sys.modules[cls.__module__].
+    sys.modules[modname] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(modname, None)
+        raise
     return module
 
 
@@ -140,6 +147,18 @@ def _km_otp_id_fixed(seed: int) -> dict[str, int]:
     mod = _load_env_module("sep_km_otp_id", "sep_km_otp_id.py")
     fixed: dict[str, int] = mod.SepKmOtpIdCfg(seed).image_fixed()
     return fixed
+
+
+def _efuse_plan_words(item: str, seed: int) -> list[int]:
+    """The t=0 image words of an eFuse/lifecycle plan test.
+
+    ``env/sep_efuse_plan.py`` draws the whole leaf plan from the seed, and the
+    test calls the same ``plan(item, seed)`` at runtime, so the staged image and
+    the test golden are one function of the seed.
+    """
+    mod = _load_env_module("sep_efuse_plan", "sep_efuse_plan.py")
+    words: list[int] = mod.image_words(item, seed)
+    return words
 
 
 # Common LC-gated field pins shared by several PROD-lifecycle tests.
@@ -323,6 +342,19 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x1,
         "fixed_from": "km_otp_id",
     },
+    # eFuse, lifecycle and SEC_DIS tests whose t=0 image has a seed-drawn
+    # dimension. The whole image comes from env/sep_efuse_plan.py; see
+    # _efuse_plan_words().
+    "sep_efuse_field_layout_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    "sep_lcc_state_codeword_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    "sep_lcc_feat_ctrl_state_matrix_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    "sep_efuse_transient_rma_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    "sep_efuse_token_fault_matrix_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    "sep_efuse_interface_status_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    "sep_efuse_lock_slot_matrix_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    "sep_efuse_secure_tm_matrix_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    "sep_efuse_jtag_access_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
+    "sep_sec_dis_timing_rand_test": {"mode": "random", "fixed_from": "efuse_plan"},
 }
 
 
@@ -440,6 +472,9 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
         image.load(spec["preload"])
     elif spec.get("mode") == "blank":
         pass
+    elif spec is not None and spec.get("fixed_from") == "efuse_plan":
+        # The plan pins every word, so no randomize() draw is made.
+        image.words = _efuse_plan_words(item, seed + int(spec.get("seed_offset", 0)))
     else:
         fixed = spec.get("fixed")
         if spec.get("fixed_from") == "rma_token":
