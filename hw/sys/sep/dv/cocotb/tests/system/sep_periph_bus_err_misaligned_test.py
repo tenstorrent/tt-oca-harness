@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A misaligned beat to HMAC or the Secure DMA gets SLVERR and latches that block's error bit.
+"""A partial write to an HMAC or Secure DMA register gets SLVERR and latches that block's bit.
 
-sep_cpu_ctrl.rdl and hw/sys/sep/doc/interrupts.adoc require a misaligned offset to receive
-SLVERR and latch the owning block's bit: the HMAC bit of PERIPH_BUS_ERR_STATUS
-for an HMAC register, and reg_path_err of DMA_BUS_ERR_STATUS for a Secure DMA
-register.
+sep_cpu_ctrl.rdl and hw/sys/sep/doc/interrupts.adoc require a write that the block's
+register definition refuses to receive SLVERR and latch the owning block's bit: the
+HMAC bit of PERIPH_BUS_ERR_STATUS for an HMAC register, and reg_path_err of
+DMA_BUS_ERR_STATUS for a Secure DMA register. A partial write is one whose byte
+strobe misses a byte that the register owns. A narrow read inside a register is a
+legal access: it completes with OKAY and latches nothing.
 """
 
 from __future__ import annotations
@@ -28,10 +30,12 @@ from seq_lib.sep_irq_aggregator_seq import (
 )
 
 # Two bytes at a word offset + 2 end on the word boundary, so the master issues
-# one beat. Four bytes would cross the word and go out as a two-beat burst,
-# which a burst-refusing path (hw/sys/sep/doc/crypto.adoc "Single-Beat Access Only")
-# answers with DECERR before any beat reaches the block.
+# one beat with byte lanes 2 and 3. Four bytes would cross the word and go out as
+# a two-beat burst, which a burst-refusing path (hw/sys/sep/doc/crypto.adoc
+# "Single-Beat Access Only") answers with DECERR before any beat reaches the block.
+# HMAC CFG and Secure DMA INTR_STATE own byte 0, so lanes 2 and 3 miss an owned byte.
 _PROBE_BYTES = 2
+_PROBE_OFFSET = 2
 _RESP_OKAY = 0
 # The monitor records an R beat on its own clock edge, which may not have run
 # when start_seq returns.
@@ -40,20 +44,13 @@ _BEAT_SETTLE_CYCLES = 2
 
 @pyuvm.test()
 class sep_periph_bus_err_misaligned_test(sep_base_test):
-    """A misaligned beat inside a mapped extent must latch the block's bit."""
+    """A partial register write must latch the block's bit; a narrow read must not."""
 
     async def _read_beats(self, name: str, addr: int) -> tuple[SepAxiAccessSeq, list]:
         """Read ``_PROBE_BYTES`` at ``addr`` and return the RRESP of every R beat."""
         mon = self.env.axi_monitor
         mon.start_beat_capture()
-        seq = SepAxiAccessSeq(
-            name,
-            op=SepAxiOp.READ,
-            addr=addr,
-            length=_PROBE_BYTES,
-            size=2,
-            expect_error=addr % 4 != 0,
-        )
+        seq = SepAxiAccessSeq(name, op=SepAxiOp.READ, addr=addr, length=_PROBE_BYTES, size=2)
         await self.start_seq(seq)
         await ClockCycles(cocotb.top.clk_i, _BEAT_SETTLE_CYCLES)
         return seq, mon.take_beat_capture()
@@ -68,10 +65,10 @@ class sep_periph_bus_err_misaligned_test(sep_base_test):
     async def _probe(
         self, tag: str, block: str, aligned: int, before: tuple[int, int], after: tuple[int, int]
     ) -> None:
-        """Grade one block: the aligned control, then the single misaligned beat.
+        """Grade one block: the aligned read, the narrow read, then the partial write.
 
-        ``before`` is the (PERIPH, DMA) status the control must leave unchanged,
-        and ``after`` is the exact (PERIPH, DMA) status the misaligned beat must
+        ``before`` is the (PERIPH, DMA) status the two reads must leave unchanged,
+        and ``after`` is the exact (PERIPH, DMA) status the partial write must
         leave. Both registers are compared whole, so a bit latched in the other
         register fails too.
         """
@@ -82,34 +79,49 @@ class sep_periph_bus_err_misaligned_test(sep_base_test):
             f"beats {beats} and left (PERIPH, DMA) status=({status[0]:#x}, {status[1]:#x}); "
             f"the control requires one OKAY beat and ({before[0]:#x}, {before[1]:#x})"
         )
-        self.logger.info("CHK-MISALIGN%s-CTRL PASS: 0x%08x one OKAY beat", tag, aligned)
-
-        addr = aligned + 2
-        seq, beats = await self._read_beats(f"{block}_misaligned_rd", addr)
-        # One beat is what makes this a misaligned-offset probe: a burst can be
-        # refused before it reaches the block's alignment check.
-        assert beats == [RESP_SLVERR], (
-            f"{block} misaligned read @0x{addr:08x} returned R beats {beats}; the probe "
-            f"requires one beat answered SLVERR ({RESP_SLVERR})"
+        self.logger.info(
+            "CHK-MISALIGN%s-CTRL PASS: 0x%08x one OKAY beat rdata=%#x", tag, aligned, ctrl.rdata
         )
-        self.logger.info("CHK-MISALIGN%s-BEAT PASS: 0x%08x one SLVERR beat", tag, addr)
 
+        addr = aligned + _PROBE_OFFSET
+        narrow, beats = await self._read_beats(f"{block}_narrow_rd", addr)
         status = await self._status()
-        # Both halves of the contract are graded. The status bit alone would go
-        # green on an RTL change that latched the bit while answering another
-        # code, and the scoreboard's expect_error arm accepts any non-OKAY, so
-        # the response code needs its own comparison rather than only appearing
-        # in this message.
-        assert (seq.resp_code, status) == (RESP_SLVERR, after), (
-            f"{block} misaligned read @0x{addr:08x} returned resp={seq.resp_code} and left "
-            f"(PERIPH, DMA) status=({status[0]:#x}, {status[1]:#x}); the contract requires "
-            f"SLVERR ({RESP_SLVERR}) and ({after[0]:#x}, {after[1]:#x})"
+        assert (narrow.resp_code, beats, status) == (_RESP_OKAY, [_RESP_OKAY], before), (
+            f"{block} narrow read @0x{addr:08x} returned resp={narrow.resp_code} over R "
+            f"beats {beats} and left (PERIPH, DMA) status=({status[0]:#x}, {status[1]:#x}); "
+            f"a narrow read is legal and requires one OKAY beat and "
+            f"({before[0]:#x}, {before[1]:#x})"
+        )
+        self.logger.info("CHK-MISALIGN%s-RD PASS: 0x%08x one OKAY beat, no latch", tag, addr)
+
+        wr = SepAxiAccessSeq(
+            f"{block}_partial_wr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=0xFFFF,
+            length=_PROBE_BYTES,
+            size=2,
+            expect_error=True,
+        )
+        await self.start_seq(wr)
+        status = await self._status()
+        readback, _ = await self._read_beats(f"{block}_readback_rd", aligned)
+        # The response code needs its own comparison: the scoreboard's expect_error
+        # arm accepts any non-OKAY. The readback shows the refused write changed
+        # nothing, and the status shows the latch.
+        assert (wr.resp_code, status, readback.rdata) == (RESP_SLVERR, after, ctrl.rdata), (
+            f"{block} partial write @0x{addr:08x} returned resp={wr.resp_code}, left "
+            f"(PERIPH, DMA) status=({status[0]:#x}, {status[1]:#x}) and register "
+            f"{readback.rdata:#x}; the contract requires SLVERR ({RESP_SLVERR}), "
+            f"({after[0]:#x}, {after[1]:#x}) and the register unchanged at {ctrl.rdata:#x}"
         )
         self.logger.info(
-            "CHK-MISALIGN%s-LATCH PASS: 0x%08x latched (PERIPH, DMA)=(%#x, %#x)",
+            "CHK-MISALIGN%s-LATCH PASS: 0x%08x SLVERR, latched (PERIPH, DMA)=(%#x, %#x), "
+            "register unchanged %#x",
             tag,
             addr,
             *status,
+            readback.rdata,
         )
 
     async def run_scenario(self) -> None:
