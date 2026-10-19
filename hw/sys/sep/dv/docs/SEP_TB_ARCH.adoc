@@ -1382,8 +1382,10 @@ so `c_compile` builds `hw/sys/sep/dv/cocotb/tests/rom_main.rom.parhex` from
 tracked `hw/ip/key_manager/approm/prod` source. The parhex is gitignored. The
 profile drives `make -C hw/sys/sep/dv/cocotb/tests/km_fw rom_main`, which
 builds the application ROM with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` into its own
-`build/sep_dv` directory. A default KM build wipes SRAM at boot and halts before
-`RESP_KM_READY`.
+`build/sep_dv` directory. A default KM build wipes the engine key banks at
+boot. In a leaf that holds OTBN, KMAC and HMAC in reset, those writes get
+SLVERR and the ROM sends an unrecoverable-fault frame in place of
+`RESP_KM_READY`, so such leaves use the build with both wipes off.
 
 `--stage sim` without that output fails with `firmware outputs missing`
 rather than hanging the KM. A named `+km_rom_hex` that does not resolve is

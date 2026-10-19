@@ -523,13 +523,14 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             _a(word),
             int(b.ready_ok),
         )
+        # A boot restarts both sequence counters: RESP_KM_READY is response 0.
+        self.r, self.e = 1, 0
         return b
 
     def _ready_or_stop(self, b: _Boot) -> None:
         """CHK-WIPE-READY of one boot: the first word is the RESP_KM_READY header."""
         if b.ready_ok and b.depth == 1:
             self.boot_clks.append(b.boot_clk)
-            self.r, self.e = 1, 0
             return
         self.chk.ok(
             "WIPE-READY",
@@ -671,7 +672,6 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         # Step 11: CMD_STAT at sequence 0; its response must be the next frame.
         echo, code, rseq, f = False, None, -1, None
         if b.ready_ok:
-            self.r, self.e = 1, 0
             echo, code, rseq, f = await self._first_stat(tag)
         writes_okay = all(r == RESP_OKAY for r in resps)
         self.chk.ok(
