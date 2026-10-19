@@ -235,7 +235,7 @@
 
 *Area*: SPI and DMA
 
-*Run mode*: `cpu`, `+skip_fuse_sense`, firmware `spi_ot_flash_cmd_test`, 3 seeds
+*Run mode*: `cpu`, `+skip_fuse_sense`, firmware `spi_ot_flash_cmd_test`, 1 seed per regression, because the seed selects only the address, word count and data inside one page
 
 *Source Module*: `sep_spi_ot_flash_cmd_rand_test`
 
@@ -1403,7 +1403,7 @@ The offsets come from `spi_controller.adoc`, and TXDATA at 0x28 and RXDATA at 0x
 
 *Area*: SPI and DMA
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`) with real fuse sense of the committed default image (no `+skip_fuse_sense`), because the leaf asserts `rst_ni`. 3 seeds; tool: both (Verilator and VCS); the reset-window check is graded on VCS only; testlist groups `cpu_stub` and `all`, file `spi.toml`.
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) with real fuse sense of the committed default image (no `+skip_fuse_sense`), because the leaf asserts `rst_ni`. 1 seed per regression, because every run walks every output-enable window; tool: both (Verilator and VCS); the reset-window check is graded on VCS only; testlist groups `cpu_stub` and `all`, file `spi.toml`.
 
 *Source Module*: `sep_spi_pad_oe_rules_test`
 

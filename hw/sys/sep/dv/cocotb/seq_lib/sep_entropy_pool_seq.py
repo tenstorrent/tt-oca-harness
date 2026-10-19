@@ -198,7 +198,7 @@ def _selftest() -> None:
     assert cfg.alias_offs == _ALIAS_UNMAPPED
     assert cfg.unmapped_offs == (0x18, 0x40, 0x80)
     assert 1 <= cfg.extra_pops <= 4
-    # Each of the three pinned testlist seeds walks the full alias set.
+    # Every seed walks the full alias set.
     for pinned in (1, 2, 3):
         pinned_cfg = SepEntropyPoolCfg(pinned)
         assert pinned_cfg.alias_offs == _ALIAS_UNMAPPED

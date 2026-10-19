@@ -204,7 +204,7 @@ args = ["+km_rom_hex=km_rom_otp_id.parhex"]
 name = "sep_efuse_secure_tm_write_lock_test"
 module = "efuse.sep_locked_field_access_irq_path_test"
 seed = 1
-reseed = 3
+# No reseed: the graded deny targets are fixed; the seed selects only the control spare and data.
 timeout_sec = 1800
 tags = ["efuse", "interrupt", "lock", "secure_tm", "subsystem"]
 run_modes = ["no_cpu"]
@@ -323,7 +323,7 @@ args = ["+lc_start=8", "+lc_transient_rma"]
 name = "sep_secure_tm_strap_sampling_test"
 module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
-reseed = 4
+# No reseed: every run runs all four events; the seed selects only the flip offset and their order.
 timeout_sec = 3600
 tags = ["lcc", "efuse", "strap", "reset", "subsystem"]
 run_modes = ["no_cpu"]
@@ -336,7 +336,7 @@ args = ["+sep_edn_jtag_reset_waive"]
 name = "sep_secure_tm_strap_sampling_test_dbg"
 module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
-reseed = 4
+# No reseed: the dbg_rstb_i event is directed; the main entry carries the drawn offset and order.
 timeout_sec = 3600
 tags = ["lcc", "efuse", "strap", "reset", "subsystem"]
 run_modes = ["no_cpu"]
