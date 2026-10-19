@@ -102,6 +102,8 @@ N_PARITY = 3
 CPU_LINE_MASK = {1: 0b01, 2: 0b10}
 CPU_LINE_CODE = {1: CODE_ILLEGAL_INSN, 2: CODE_BUS_ERROR}
 
+PAR_N_MAX = 200  # HK-PAR read index N is drawn from [1, PAR_N_MAX]
+
 # Memories of HK-PAR (km_par_mem_i) and their IRQ_STATUS parity bit.
 MEM_ROM, MEM_SRAM = 0, 1
 MEM_NAME = {MEM_ROM: "rom", MEM_SRAM: "sram"}
@@ -281,7 +283,7 @@ def draw_plan(seed: int) -> Plan:
     multis = (FORCED_DRBG_SET, *(_draw_multi(rng, w) for w in winners))
     # HK-PAR points.
     cells = rng.sample([(m, lane) for m in (MEM_ROM, MEM_SRAM) for lane in range(4)], N_PARITY)
-    parity = tuple((m, lane, rng.randrange(1, 201)) for m, lane in cells)
+    parity = tuple((m, lane, rng.randrange(1, PAR_N_MAX + 1)) for m, lane in cells)
     # Key CRC leg.
     key_b = _key(rng, 4)
     size_a = rng.randrange(1, MAX_KEY_WORDS + 1)
@@ -395,7 +397,7 @@ def check_plan(p: Plan) -> None:
             errs.append(f"winner of {m}")
     if len({(m, lane) for m, lane, _n in p.parity}) != N_PARITY:
         errs.append("parity points repeat")
-    if any(not 1 <= n <= 200 for _m, _l, n in p.parity):
+    if any(not 1 <= n <= PAR_N_MAX for _m, _l, n in p.parity):
         errs.append("parity N outside [1, 200]")
     if len(p.key_b) != 4 or not p.dest_a & (1 << AES) or p.dest_a == ALL_BANKS:
         errs.append("key B or DEST_VALID of key A")

@@ -238,6 +238,7 @@ FRAME_POLLS = 20_000  # polls for one response frame
 READY_POLLS = 20_000  # polls for RESP_KM_READY after a release
 INBOUND_POLLS = 20_000  # polls for inbound FIFO space while posting
 RISE_BOUND = 4_000_000  # clocks from an injection to the PIC bit 30 rise
+MAIN_RISE_BOUND = 200_000  # clocks from the main-context trailer to the PIC bit 30 rise
 KEM_POLLS = 20_000
 KEM_GAP = 200
 QUIET_FACTOR = 10  # w_clk = 10 x ctrl_stat_clk
@@ -245,7 +246,9 @@ TRAP_SAMPLES = 20
 SETTLE_STABLE = 4  # equal outbound depth reads before the quiet window
 SETTLE_POLLS = 400
 MAIN_HOLD_FACTOR = 8  # main-context window = 8 x the clocks from the trailer to the rise
-PAR_REDRAWS = 4
+MAIN_WINDOW_MAX = 100_000  # upper bound of the main-context window, in clocks
+PAR_REDRAWS = 8
+PAR_REDRAW_STRIDE = 37  # a redraw steps past a run of reads that skip the flipped lane
 PAR_STATS = 64  # CMD_STAT frames that drive reads after an HK-PAR arm
 STAT_POLLS = 2_000  # polls for one CMD_STAT answer during the parity traffic
 CLEAN_STATS = 128  # CMD_STAT frames of a clean run
@@ -1111,14 +1114,14 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             raise AssertionError(f"{reg} read @0x{addr:08x} not OKAY")
         return seq.rdata & 0xFFFF_FFFF
 
-    async def _wait_rise(self, watch: _FatalWatch, what: str) -> bool:
-        for _ in range(RISE_BOUND // 64):
+    async def _wait_rise(self, watch: _FatalWatch, what: str, bound: int = RISE_BOUND) -> bool:
+        for _ in range(bound // 64):
             if watch.rise is not None:
                 return True
             await ClockCycles(cocotb.top.clk_i, 64)
         if watch.rise is None:
             self.logger.error(
-                "%s: PIC bit 30 did not rise within %d clocks of the injection", what, RISE_BOUND
+                "%s: PIC bit 30 did not rise within %d clocks of the injection", what, bound
             )
             return False
         return True
@@ -1547,7 +1550,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         n = n0
         redraws = 0
         for redraws in range(PAR_REDRAWS + 1):
-            n = min(n0 + redraws, 255)
+            n = 1 + (n0 - 1 + redraws * PAR_REDRAW_STRIDE) % pl.PAR_N_MAX
             await RisingEdge(top.clk_i)
             top.km_par_mem_i.value = mem
             top.km_par_lane_i.value = lane
@@ -1573,6 +1576,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             mem=pl.MEM_NAME[mem],
             lane=lane,
             n_drawn=n0,
+            n_final=n,
             redraws=redraws,
         )
         status = 0
@@ -1919,11 +1923,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self._post(frame[:-1])
         await self._post(frame[-1:])
         trailer = watch.cyc
-        rose = await self._wait_rise(watch, "main-context fatal")
+        rose = await self._wait_rise(watch, "main-context fatal", bound=MAIN_RISE_BOUND)
         frames: list[_Frame] = []
         window = 0
         if rose:
-            window = MAIN_HOLD_FACTOR * max(1, watch.rise - trailer)
+            window = min(MAIN_HOLD_FACTOR * max(1, watch.rise - trailer), MAIN_WINDOW_MAX)
             end = watch.rise + window
             while watch.cyc < end:
                 await ClockCycles(cocotb.top.clk_i, 64)
@@ -1953,6 +1957,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             control_quiet=b0,
             confirm=code,
             confirm_arg=_hx(arg),
+            rise_clk=watch.rise - trailer if rose else None,
             window_clk=window,
             low_in_window=watch.low_after_rise,
             frame_list=[f.text() for f in frames] or "-",
