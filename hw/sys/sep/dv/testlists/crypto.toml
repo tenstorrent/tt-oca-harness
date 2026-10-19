@@ -228,6 +228,18 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Adams Bridge ML-DSA-87 VERIFY on every NIST sigVer case with a malformed hint,
+# pure with a streamed message and context, and external mu.
+name = "sep_abr_mldsa_hint_reject_kat_test"
+module = "crypto.sep_abr_mldsa_hint_reject_kat_test"
+seed = 1
+timeout_sec = 10800
+tags = ["crypto", "abr", "mldsa", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Adams Bridge ML-KEM-1024 keyGen / encaps / decaps NIST KAT.
 name = "sep_abr_mlkem_kat_test"
 module = "crypto.sep_abr_mlkem_kat_test"

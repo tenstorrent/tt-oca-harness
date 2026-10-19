@@ -4372,3 +4372,85 @@ fault and its genuine case passes, so the refusal here is caused by the dropped
 command and not by the image or the flow.
 
 '''''
+
+[[sep_abr_mldsa_hint_reject_kat_test]]
+===== 1.58 `sep_abr_mldsa_hint_reject_kat_test`
+
+*Phase*: 2
+
+*Area*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_mldsa_hint_reject_kat_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves that ML-DSA-87 VERIFY rejects a signature whose hint
+encoding FIPS 204 HintBitUnpack (Algorithm 21) rejects, on both interfaces the
+SEP drives: pure ML-DSA with a context, the message streamed through
+`MLDSA_MSG[0]` with `MLDSA_MSG_STROBE`, and external mu. A malformed hint the
+engine accepted would give one signature a second valid encoding. The vectors
+are every ML-DSA-87 sigVer case the NIST ACVP-Server (commit `15c0f3de`,
+RELEASE/v1.1.0.42) marks "modified signature - hint": tcIds 61, 64 and 71
+(pure, tgId 5) and 153, 159 and 163 (external mu, tgId 11). `gen_abr_nist_vectors.py --hint` checks
+each one independently of the ACVP verdict: every z coefficient is in range
+and the hint encoding is malformed, so the engine passes its z check and must
+reject at the hint decode.
+
+*Test Coverage*: Six malformed-hint rejections, and one pure-with-context
+verify that must pass (tcId 63).
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu`.
+. For each case, tcId 63 first: write `ZEROIZE` and wait for VALID to drop and
+  READY to rise. Write the public key and the signature.
+. For an external-mu case, write mu to `MLDSA_EXTERNAL_MU` and issue VERIFYING
+  with `MLDSA_CTRL.EXTERNAL_MU` set.
+. For a pure case, write the context length to `MLDSA_CTX_CONFIG` and the context
+  to `MLDSA_CTX`, issue VERIFYING with `MLDSA_CTRL.STREAM_MSG` set, and require
+  `MLDSA_VERIFY_RES` to read the inverted c~ (CHK-HINT-PRELOAD). Wait for
+  `MSG_STREAM_READY`, failing if VALID rises first, then write each message word
+  to `MLDSA_MSG[0]` after a `MLDSA_MSG_STROBE` of `0xF`, and end with the strobe
+  of the trailing bytes, or `0x0` and a dummy word for a whole-word message.
+. Wait for VALID with ERROR=0 and read `MLDSA_VERIFY_RES` (CHK-HINT-CONTROL,
+  CHK-HINT-REJECT).
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-HINT-PRELOAD
+|After VERIFYING with `STREAM_MSG` is accepted, before any message word, every
+word of `MLDSA_VERIFY_RES` is the inverse of the signature's c~.
+|CHK-HINT-CONTROL
+|tcId 63 completes VALID with ERROR=0 and `MLDSA_VERIFY_RES` equals c~: the
+streamed message and the context reach the engine intact.
+|CHK-HINT-REJECT
+|Each malformed-hint case completes VALID with ERROR=0, and every word of
+`MLDSA_VERIFY_RES` is the inverse of the signature's c~: not c~, which would be
+an accepted signature, and not a recomputed c~', which would mean the engine
+decoded the hint and finished the verify. For a pure case, `MSG_STREAM_READY`
+rose before VALID, so the engine consumed the message and rejected after it.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope*: The verdict is the engine's own result register; the command-done and
+error events are graded by <<sep_abr_mldsa87_verify_test>>. The pure cases carry
+contexts of 12 to 237 bytes and messages of 329 to 7927 bytes, so the context
+path and a stream that ends on a whole word and on each partial length are
+exercised as well.
+Pre-hash ML-DSA (tgId 6) and the internal interface without external mu
+(tgId 12) are not driven: the SEP uses neither.
+
+*Anti-vacuity*: tcId 63 runs first through the same stream and context path and
+must verify, so a broken stream or context fails on a known answer rather than
+passing as a reject. Each reject must be the inverted c~ specifically, so an
+engine that accepted the hint and computed a wrong c~' fails as surely as one
+that accepted the signature.
+
+'''''
