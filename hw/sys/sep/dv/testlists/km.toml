@@ -469,3 +469,46 @@ tags = ["km", "scrambler", "sram", "reset", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_scr.param.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM frame validation order, sequence wrap, transport recovery and the recovery gate (rom_main).
+# The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+name = "sep_km_command_protocol_rand_test"
+module = "km.sep_km_command_protocol_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 10800
+tags = ["km", "mailbox", "recovery", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM key transfer: keys of 17 to 128 words, multi-engine masks, mixed-mask refusal, subset shred,
+# engine write order (rom_main). The leaf resets the KM while its CPU runs; the raised Verilator
+# error limit keeps it running.
+name = "sep_km_key_transfer_rand_test"
+module = "km.sep_km_key_transfer_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 7200
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM image load refusals, the fw_crc fault and the KM state at the handover jump (IMG-H, rom_main).
+# The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+name = "sep_km_handover_rand_test"
+module = "km.sep_km_handover_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 10800
+tags = ["km", "handover", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]

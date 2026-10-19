@@ -64,6 +64,12 @@ Checkers:
               computed, a wrong sequence number returns RC_CMD_NOSEQ with the
               number it expected, and a corrupt payload CRC-32C returns
               RC_PAYLOAD_CRC
+  CHK-LEN-ARG the RC_INVALID_LEN response of the CHK-LEN frame carries the
+              payload length the KM received (2) as RETURN_ARG
+  CHK-PCRC-ARG
+              the RC_PAYLOAD_CRC response of the corrupt-CRC frame of
+              CHK-FRAME carries, as RETURN_ARG, the CRC-32C the KM computed
+              over the payload as sent, not the corrupt CRC in the frame
   CHK-OTP     CMD_OTP_READ_LOCK_COLD of one identity bit returns rc=0 with
               that bit set in the echo; a reserved bit returns RC_INVALID_ARG;
               a zero-length payload returns RC_INVALID_LEN
@@ -108,7 +114,7 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_aes_golden import aes256_ecb_encrypt_words
-from env.sep_crc_golden import crc8_rohc
+from env.sep_crc_golden import crc8_rohc, crc32c
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic
 from sep_base_test import sep_base_test
@@ -578,12 +584,27 @@ class sep_km_command_set_rand_test(sep_base_test):
         # --- CHK-LEN: a defined command with the wrong payload length ---------
         # CMD_KEY_REVOKE takes exactly one payload word; two must be refused on
         # the length, not silently accepted with the surplus ignored.
-        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_KEY_REVOKE, [gen_handle2, 0])
+        len_payload = [gen_handle2, 0]
+        rc, len_arg = await self.km.send_raw_expect_rc(KM_CMD_KEY_REVOKE, len_payload)
         assert rc == KM_RC_INVALID_LEN, (
             f"CHK-LEN FAIL: CMD_KEY_REVOKE with a 2-word payload returned rc={rc}, "
             f"expected {KM_RC_INVALID_LEN} (RC_INVALID_LEN)"
         )
         self.logger.info("CHK-LEN PASS: over-long CMD_KEY_REVOKE payload returned RC_INVALID_LEN")
+
+        # --- CHK-LEN-ARG: RC_INVALID_LEN carries the received payload length --
+        # hw/ip/key_manager/doc/firmware.adoc, "0x00 - RESP_CMD", return-code
+        # table, invalid_len: the argument is the length of the received
+        # payload. The frame is self-consistent, so that is the PAYLOAD_LEN as
+        # sent. The argument word is compared whole. A response without an
+        # argument reads 0, and a KM that returns the required length returns
+        # 1, so neither can equal 2.
+        sent_plen = len(len_payload)
+        assert len_arg == sent_plen, (
+            f"CHK-LEN-ARG FAIL: RC_INVALID_LEN carried RETURN_ARG=0x{len_arg:08x}, "
+            f"expected the received payload length {sent_plen}"
+        )
+        self.logger.info("CHK-LEN-ARG PASS: plen=%d arg=%d", sent_plen, len_arg)
         await self._check_alive("post-bad-length")
 
         # --- CHK-FRAME: the three framing rejections --------------------------
@@ -625,12 +646,42 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         await self._check_alive("post-bad-seq")
 
-        rc, _ = await self.km.send_bad_payload_crc(KM_CMD_KEY_REVOKE, [gen_handle2])
+        # CHK-PCRC-ARG golden: the CRC-32C of the payload words as sent, from
+        # env/sep_crc_golden.py. send_bad_payload_crc sends the payload
+        # unchanged and flips bit 0 of the CRC word, so the corrupt CRC in the
+        # frame is golden ^ 1. The leaf asserts that the two differ before the
+        # frame goes out, so an echo of the sent CRC cannot match the golden,
+        # and that the golden is not 0, so a missing argument (read as 0)
+        # cannot match it either.
+        pcrc_payload = [gen_handle2]
+        pcrc_golden = crc32c(b"".join(w.to_bytes(4, "little") for w in pcrc_payload))
+        pcrc_sent = pcrc_golden ^ 0x0000_0001
+        assert pcrc_sent != pcrc_golden and pcrc_golden != 0, (
+            f"test construction error: CHK-PCRC-ARG golden 0x{pcrc_golden:08x} cannot be "
+            f"told apart from the sent CRC 0x{pcrc_sent:08x} or from a missing argument"
+        )
+        rc, pcrc_arg = await self.km.send_bad_payload_crc(KM_CMD_KEY_REVOKE, pcrc_payload)
         assert rc == KM_RC_PAYLOAD_CRC, (
             f"CHK-FRAME FAIL: a corrupt payload CRC-32C returned rc={rc}, expected "
             f"{KM_RC_PAYLOAD_CRC} (RC_PAYLOAD_CRC)"
         )
         self.logger.info("CHK-FRAME PASS: corrupt payload CRC-32C refused RC_PAYLOAD_CRC")
+
+        # --- CHK-PCRC-ARG: RC_PAYLOAD_CRC carries the CRC the KM computed -----
+        # firmware.adoc, "0x00 - RESP_CMD", return-code table, payload_crc, and
+        # the sentence below the table: both CRC return arguments carry the
+        # value that the KM computed. The argument word is compared whole.
+        assert pcrc_arg == pcrc_golden, (
+            f"CHK-PCRC-ARG FAIL: RC_PAYLOAD_CRC carried RETURN_ARG=0x{pcrc_arg:08x}, "
+            f"expected CRC-32C 0x{pcrc_golden:08x} of the payload as sent"
+            + (" (it echoes the corrupt CRC in the frame)" if pcrc_arg == pcrc_sent else "")
+        )
+        self.logger.info(
+            "CHK-PCRC-ARG PASS: arg=0x%08x golden=0x%08x sent=0x%08x",
+            pcrc_arg,
+            pcrc_golden,
+            pcrc_sent,
+        )
         await self._check_alive("post-bad-payload-crc")
 
         # --- CHK-OTP: cold OTP read-lock, one identity bit --------------------

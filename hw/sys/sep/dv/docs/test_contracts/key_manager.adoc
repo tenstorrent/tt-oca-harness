@@ -842,7 +842,8 @@ the outputs" rule, not a consume probe.
 legs is directed: each leg is a value-equality compare between a sideloaded
 and a direct run, and a random input on either side would remove the compare.
 The re-arm leg draws q, the number of `CMD_HW_VER` frames queued before the
-second notification is read, in [0, 3] with `SepSeededRng` from the run seed,
+second notification is read, in [1, 3] with `SepSeededRng` from the run seed
+(at least one, so every seed queues a command ahead of the notification),
 and logs it as `DRAW q=<q>`.
 
 *Objective*: every ML-KEM lane of the Key-Vault facade carries what the KM
