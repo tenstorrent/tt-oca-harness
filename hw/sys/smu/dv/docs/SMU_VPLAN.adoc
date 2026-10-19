@@ -386,6 +386,14 @@ one-line intent.
 |`smu_xtrig_ctm_self_loop_test` |wrapper |A CT_SRC mask that selects its own wire-OR CTP lane makes one external assertion re-trigger the lane request output, writing the mask to 0 ends it, and with the mask 0 the assertion produces no request-output rise.
 |`smu_sep_rma_token_match_test` |wrapper |With the SEP eFuse image holding the RMA digests of two known tokens, each token written over the SEP debug system bus and started with its own `TOKEN_EOP` bit reads match on its own lane and a token one bit off reads mismatch, a lane reads idle until started, and the two result registers do not affect each other.
 |`smu_smc_warm_reset_register_retention_test` |wrapper |After the CORE0 watchdog is armed with `WDOGRSTEN` and its second timeout asserts the SMC warm reset, `SS_CONFIG`, `SS_COLD_RESET_N`, `SS_WARM_RESET_N`, `ISOLATE_REQ_REG` and the FLR counter keep their non-reset values while CORE0 `CMP` and `CTRL` read their reset values; the primary and cold outputs stay released and two scratch words are measured and logged only.
+|`smu_sys_in_filter_src_id_rule_test` |wrapper |On SYS_IN entry 0 the external master's AxUSER must equal `src_id` (or `src_id` be 0) for an access to be admitted, a transaction group_id that differs from `group_id` is still admitted (group matching is disabled at build time), and each other match term and each permission bit acts alone and on its own channel.
+|`smu_base_config_corners_test` |wrapper |LOCAL_BASE ignores writes and GLOBAL_BASE moves the SMC aperture up to the top of the 56-bit space with the ports following.
+|`smu_axi_in_random_id_stress_test` |wrapper |A seeded stream of random IDs, sizes and burst lengths from the external AXI input into the SMC SPM returns each ID's responses in request order with the ID echoed and each ID's bytes intact, while eight JTAG2AXI writes leave on the outbound port once each.
+|`smu_alias_priority_overflow_test` |wrapper |Two overlapping valid alias regions translate an access by exactly one of their offsets, the same on write and read, with AxPROT, AxLEN, AxSIZE, AxID and AxBURST and narrow-write bytes unchanged; regions with START equal to or above END pass through, and an offset reaching 0xFF_FFFF_F000 lands exactly.
+|`smu_alias_dma_manager_test` |wrapper |An iDMA copy completes with its source and destination untranslated while every alias region is at reset, then reads the translated source page when a region covers the source and writes the translated destination page when a region covers the destination, and the address a bridge write leaves at under that region is logged.
+|`smu_out_filter_rule_matrix_test` |wrapper |With every outbound filter entry at reset an iDMA copy completes; with deny entries over a 4 KB page the JTAG2AXI write and read of the page and the iDMA copy are refused while the traffic outside it passes, the 4 KB granule edges and the inclusive END, the lower-index priority and the source-ID wildcard hold, and the allow_ns value and the source-ID values that refuse are logged.
+|`smu_sep_out_filter_rule_matrix_test` |wrapper |With every SEP outbound filter entry at reset a system-bus write and read toward the SMU aperture are refused; an admit pair, a deny pair, the 4 KB granule edges and the inclusive END, each entry index alone and the lower-index priority decide as the filter chapter states, and the allow_ns value that matches the system bus is logged.
+|`smu_sep_output_remap_region_matrix_test` |wrapper |SEP AP and STEE output remap regions 1 to 15 each translate a system-bus write to their own 512 KiB-aligned offset, the two tables translate independently, and a write at a region never programmed or with valid cleared passes through at its unchanged address.
 |===
 
 [[smu-test-procedures]]
@@ -8557,6 +8565,420 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-194-smu_sys_in_filter_src_id_rule_test]]
+===== 194 `smu_sys_in_filter_src_id_rule_test`
+
+*Source Module*: `smu_sys_in_filter_src_id_rule_test` (`cocotb_wrapper/tests/`; the sequence `smu_sys_in_filter_src_id_rule_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP and the SMC fabric JTAG2AXI bridge: 8-byte writes of the three SYS_IN entry 0 registers and one FILTER_CONFIG read, used for setup and reprogramming, 33 JTAG2AXI accesses in all); `ocah_axi_vip` master on the external AXI input of the SMU with the primary reset `rst_primary_smc_clk_no` as its reset, issuing 4-byte reads and writes and 16-byte INCR bursts with AxUSER bits [3:0] set to the source ID and, in the group-ID step, AxUSER bits [7:4] set to a transaction group_id, every other AxUSER bit zero, through the `user` argument of `read_bytes_result` and `write_bytes_result` and the bench wiring of `ext_in_awuser` and `ext_in_aruser` (`tb/tb_wrapper_top.sv`); `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads, `+pll_sys_period_ns=10`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the register addresses and field masks come from the generated `smc_addr.h` and `filter_ctrl.h` of the register collateral
+
+*Objective*: on SMC inbound filter entry 0 an access is admitted only when its AxUSER equals `src_id` or `src_id` is 0, a transaction group_id that differs from `group_id` is still admitted, each of `entry_enabled`, the range, `allow_ns`, `src_id` and `allow_burst` refuses AR and AW when flipped alone, and `read_allowed` and `write_allowed` each act on their own channel only.
+
+*Test Coverage*:
+
+* `hw/ip/axi_filter/doc/index.adoc` "Match, Then Permit": an entry matches only when `entry_enabled` is 1, the address is in range after granule widening, `prot[1]` equals `allow_ns`, the source ID equals `src_id` or `src_id` is 0, and `allow_burst` is 1 or the access is a single beat; the matching entry's `read_allowed` (AR) or `write_allowed` (AW) then decides, and AW and AR run the decode independently. "Blocked Transactions" gives DECERR for a blocked access. The fields are `hw/ip/axi_filter/regs/filter_ctrl.rdl` and the `FILTER_CTRL__FILTER_CONFIG__*_bm` masks of `hw/ip/axi_filter/regs/gen/c/filter_ctrl.h`.
+* Setup over JTAG2AXI: the SMC GLOBAL_BASE is written with the LOCAL_BASE value and read back, and entry 0 is given the 4 KB page of SCRATCH_COLD (`hw/sys/smc/regs/gen/c/smc_addr.h`) with `src_id` 5, `group_id` 0, `allow_ns` 0, `allow_burst` 1, read and write allowed and the entry enabled; FILTER_CONFIG reads back every programmed field. The entry values are values the leaf programs.
+* Source ID: AW and AR with AxUSER 5 write two SCRATCH_COLD registers and read them back (OKAY, the written patterns, which differ from the reset value 0 in `hw/sys/smc/regs/blocks/scratch/scratch.rdl`); AxUSER 6 and 0 on AR and AW at both registers (eight cells) answer DECERR and the following AxUSER 5 reads return the admitted patterns, not the refused one; on one entry the AW with AxUSER 5 is admitted while the AR with AxUSER 6 is refused, and the mirror pair.
+* Outside the entry: AR and AW with AxUSER 5 at the first SMC watchdog control register, on another page of the SMC aperture, answer DECERR, with the admitted accesses above as the positive control.
+* Group ID: `hw/ip/axi_filter/doc/index.adoc` states group ID matching is disabled at build time on every instance, and `filter_ctrl.rdl` states a transaction whose group_id is 0 matches regardless of the field, so the leaf drives a non-zero transaction group_id that differs from the entry field, which group matching, were it enabled, would refuse: entry `group_id` 1 against transaction group_id 4, 15 against 2 and 8 against 11, each carried in AxUSER bits [7:4] beside the source ID 5, admit AR and AW and the read returns the written pattern; with `group_id` 8 and the entry disabled, and with `group_id` 8 and the range moved to the next page, AR and AW with transaction group_id 11 answer DECERR. No document states which AxUSER bits carry the group_id; the lane is the leaf's choice and has no positive control, since matching is disabled.
+* No document states which AxUSER bits carry the source ID; the leaf drives bits [3:0], and the S2/S3 pair (5 admitted, 6 and 0 refused) is the witness that the entry reads that lane.
+* Wildcard: with `src_id` 0 the entry admits AR and AW at each AxUSER value 0 to 15, after AxUSER 6 and 0 were refused under `src_id` 5.
+* Single-term flips, each followed by restoring the term: `entry_enabled` 0, the range moved to the next page, `allow_ns` 1 against `prot[1]` 0, `src_id` 6 against AxUSER 5, and `allow_burst` 0 against a four-beat INCR burst (AxLEN 3). Each flip answers DECERR on AR and AW, the first read after the restore returns the value the entry held before the refused write, and the restored term admits an AW and the AR that reads it back.
+* Permission bits: `read_allowed` 0 with `write_allowed` 1 refuses the AR and admits the AW; `write_allowed` 0 with `read_allowed` 1 refuses the AW, the register keeps the value the admitted AW wrote, and the AR is admitted.
+* `allow_ns` against `prot[1]`: with `allow_ns` 0, `prot[1]` 0 is admitted and `prot[1]` 1 refused; after one reprogramming to `allow_ns` 1 the result reverses, on AR and AW at every `prot[2]` and `prot[0]` value (32 cells), with the admitted cells reading back the written pattern.
+* The JTAG2AXI polls and external-response waits each record their bound, the clock cycles used and the last state; the bound of an external response is 200 us.
+* Measured and logged only: the per-wait clock cycles used and the per-step access counts.
+* Only the worst response of a blocked burst is compared, on the `allow_burst` flip and its restore; the beat count, RLAST and data of a blocked burst are not. The `LOCKED` bit is not written, and entries 1 to 15 and the outbound filters are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, check the JTAG2AXI gate is open, route the SMC aperture to its local alias, create the AXI master, program entry 0 and read FILTER_CONFIG back.
+. With AxUSER 5, write and read back two SCRATCH_COLD registers.
+. With AxUSER 6 and 0, write and read both registers, then read both with AxUSER 5.
+. With AxUSER 5, write and read the register, then with AxUSER 6 read, with AxUSER 5 read and with AxUSER 6 write, and read again with AxUSER 5.
+. With AxUSER 5, read and write the register outside the entry page.
+. Program `group_id` 1, 15 and 8 and probe each with a different non-zero transaction group_id in AxUSER bits [7:4], disable the entry with `group_id` 8 and probe, enable it and move the range off the page and probe.
+. Restore the range, program `src_id` 0, write and read back at each AxUSER 0 to 15, then restore `src_id` 5.
+. For each of the five terms, flip it, probe AR and AW, restore it, read, write and read back.
+. Program `read_allowed` 0 and probe, program `write_allowed` 0 with `read_allowed` 1 and probe.
+. Restore both permissions, write and read back at each `prot` value 0 to 7 with `allow_ns` 0, reprogram `allow_ns` 1 and repeat.
+. Check every JTAG2AXI poll and external-response wait finished inside its bound with a recorded last state, the JTAG2AXI access count, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SRCID-MATCH-ADMIT` |AW then AR with AxUSER 5 against the src_id 5 entry answer OKAY and the read returns the written pattern
+|`CHK-SRCID-MISMATCH-REFUSE` |AxUSER 6 and 0 on AR and AW answer DECERR (eight cells) after the AxUSER 5 control answered OKAY
+|`CHK-SRCID-REFUSED-NO-EFFECT` |the AxUSER 5 reads after the refused writes return the admitted patterns, never the refused pattern
+|`CHK-SRCID-CHANNEL-SPLIT` |on one entry the AW with AxUSER 5 answers OKAY and the AR with AxUSER 6 answers DECERR, and the mirror pair does the same
+|`CHK-SRCID-BLOCK-OUTSIDE` |AR and AW with AxUSER 5 at a register outside the entry page answer DECERR, with the in-range OKAY control earlier
+|`CHK-SRCID-GROUPID-NOEFFECT` |entry group_id 1, 15 and 8 each admit AR and AW whose AxUSER[7:4] carries a different non-zero transaction group_id (4, 2 and 11) beside AxUSER[3:0] 5 and the read returns the written pattern, which group matching, were it enabled, would refuse; group_id 8 with the entry disabled and with the range moved off the page refuses AR and AW
+|`CHK-SRCID-WILDCARD` |src_id 0 admits AR and AW at every AxUSER value 0..15, after AxUSER 6 and 0 were refused under src_id 5
+|`CHK-SRCID-CONJ-FLIP` |entry_enabled, range, allow_ns, src_id and allow_burst each flipped alone refuse AR and AW with DECERR and the restored term admits both
+|`CHK-SRCID-PERM-CHANNEL` |read_allowed 0 refuses AR and admits AW; write_allowed 0 refuses AW with the register keeping its value and admits AR
+|`CHK-SRCID-ALLOWNS-MATRIX` |allow_ns 0 admits prot[1] 0 and refuses prot[1] 1, allow_ns 1 the reverse, on AR and AW, with no change for any prot[2] or prot[0] value
+|`CHK-NONVAC` |ordered step fence S1..S11 to the pass point with strictly increasing stamps and at least one access in each of S1..S10
+|`CHK-TIMEOUT-PATHS` |every JTAG2AXI and external-response wait finishes inside its bound with a recorded last state and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-195-smu_base_config_corners_test]]
+===== 195 `smu_base_config_corners_test`
+
+*Source Module*: `smu_base_config_corners_test` (`cocotb_wrapper/tests/`; the sequence `smu_base_config_corners_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP and the SMC fabric JTAG2AXI bridge: 8-byte accesses to LOCAL_BASE, GLOBAL_BASE and the three SYS_IN entry 0 registers, a 4-byte access to CHIP_CONFIG VERSION_LO, 20 JTAG2AXI accesses in all); `ocah_axi_vip` master on the external AXI input of the SMU with the primary reset `rst_primary_smc_clk_no` as its reset, issuing 4-byte reads; the wrapper outputs `smc_global_base_o` and `smc_region_size_o`, sampled passively on `clk_smu_i`; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads, `+pll_sys_period_ns=10`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the register addresses, reset values and field masks come from the generated `smc_addr.h`, `smc_base_config.h` and `filter_ctrl.h` of the register collateral
+
+*Objective*: writes to the read-only LOCAL_BASE change nothing, a GLOBAL_BASE move reaches the SMU crossbar rule and `smc_global_base_o` up to the last window below 2^56.
+
+*Test Coverage*:
+
+* `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl`: LOCAL_BASE is `sw=r` with reset `0xC000_0000`; GLOBAL_BASE is a 56-bit `sw=rw` field with reset `0x4000_0000`; REGION_SIZE resets to `0x100_0000`. The reset values are `hw/sys/smc/regs/gen/c/blocks/smc_base_config.h`.
+* LOCAL_BASE: all ones and `0x1234_5000`, both different from the reset value, are written over JTAG2AXI; LOCAL_BASE reads `0xC000_0000` at reset and after each write, and VERSION_LO at its local alias (`smc_addr.h`) still returns SUCCESS and the CHIP_CONFIG reset value. The write responses are measured and logged only.
+* Ports: `smc_global_base_o` is `0x4000_0000` and `smc_region_size_o` is `0x100_0000` at reset and after the LOCAL_BASE writes.
+* GLOBAL_BASE move: `hw/sys/smu/doc/index.adoc` gives the SMC rule as [GLOBAL_BASE, GLOBAL_BASE + REGION_SIZE) with an `ext_in` miss answering DECERR. Entry 0 is programmed from the old base through the new window, so the filter admits both addresses and the crossbar rule alone decides. GLOBAL_BASE is written with the `0xAA..` pattern aligned to 16 MiB; the port follows within 64 clk, the external read of VERSION_LO at the new base answers OKAY with the reset value, the same read at the old base answers OKAY before the move and DECERR after it, and LOCAL_BASE still reads `0xC000_0000` while GLOBAL_BASE reads the new base.
+* Top of the space: entry 0 covers the last 16 MiB window; GLOBAL_BASE is written with 2^56 minus `0x100_0000`, the port equals `0x00FF_FFFF_FF00_0000`, GLOBAL_BASE reads back, and the external read of VERSION_LO at the new base answers OKAY with the reset value. A read at the low address equal to the window offset is measured and logged only.
+* Past the top: GLOBAL_BASE is written with 2^56 minus `0x80_0000` with REGION_SIZE untouched; `smc_global_base_o` equals the written base (GLOBAL_BASE is a 56-bit `sw=rw` field whose port the move and top steps show following it) and `smc_region_size_o` is unchanged, sampled 64 clk after the write; the external response and its data are measured and logged only. GLOBAL_BASE is then restored to LOCAL_BASE and entry 0 is cleared.
+* Measured and logged only: the LOCAL_BASE write responses, the low-address probe, the external read at the window past 2^56, the clock cycles each wait used and the per-step access counts.
+* REGION_SIZE closing a unit window is not compared: a trial with REGION_SIZE `0x2_0000` observed OKAY at a mailbox address where `smc_base_config.rdl` states DECERR; the leg stays measured until the document or the RTL is ruled on, and REGION_SIZE is not written by this leaf. Not covered: a zero or sub-page REGION_SIZE, an unaligned GLOBAL_BASE other than the window past 2^56, and the SEP aperture.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, check the JTAG2AXI gate is open, create the AXI master and sample both ports.
+. Read LOCAL_BASE, write all ones and `0x1234_5000` reading back after each, read VERSION_LO and sample both ports.
+. Program entry 0 over the old base and the new window, read at the old base, write GLOBAL_BASE, wait for the port, read at the new and the old base, then read LOCAL_BASE and GLOBAL_BASE.
+. Program entry 0 over the last window, write GLOBAL_BASE, wait for the port, read GLOBAL_BASE back, read at the new base and at the low address.
+. Write GLOBAL_BASE half a window below the top, settle and sample the ports and read at the base, then write GLOBAL_BASE with LOCAL_BASE, wait for the port and clear entry 0.
+. Check every JTAG2AXI poll, external-response wait and port wait finished inside its bound with a recorded last state, the JTAG2AXI access count, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-BASECFG-LOCAL-RO` |LOCAL_BASE reads 0xC000_0000 at reset and after the all-ones write and after the 0x1234_5000 write, never a written value; the write responses are measured and logged only
+|`CHK-BASECFG-LOCAL-VIEW` |VERSION_LO at the local alias returns SUCCESS and the CHIP_CONFIG reset value after the LOCAL_BASE writes
+|`CHK-BASECFG-PORTS-LOCAL` |smc_global_base_o equals 0x4000_0000 and smc_region_size_o equals 0x100_0000 at reset and after the LOCAL_BASE writes
+|`CHK-BASECFG-GLOBAL-MOVE` |smc_global_base_o follows a GLOBAL_BASE move within 64 clk; VERSION_LO answers OKAY with the reset value at the new base and at the old base before the move, and the old base answers DECERR after it
+|`CHK-BASECFG-LOCAL-ISOLATED` |LOCAL_BASE still reads 0xC000_0000 while GLOBAL_BASE reads the moved base
+|`CHK-BASECFG-GLOBAL-TOP` |GLOBAL_BASE 2^56 minus 0x100_0000 reaches smc_global_base_o as 0x00FF_FFFF_FF00_0000 and reads back, VERSION_LO at the new base answers OKAY with the reset value; the low-address probe is measured and logged only
+|`CHK-BASECFG-GLOBAL-BEYOND-OBS` |with GLOBAL_BASE written 2^56 minus 0x80_0000 and REGION_SIZE untouched, smc_global_base_o equals the written base and smc_region_size_o is unchanged; the external response and its data are measured and logged only
+|`CHK-NONVAC` |ordered step fence S1<S2<S3<S4<S5<PASS with strictly increasing stamps, the pass point two clk_smu_i cycles after the last step, and at least one access or port sample in each of S1..S5
+|`CHK-TIMEOUT-PATHS` |every JTAG2AXI, external-response and port wait finishes inside its bound with a recorded last state and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-196-smu_axi_in_random_id_stress_test]]
+===== 196 `smu_axi_in_random_id_stress_test`
+
+*Source Module*: `smu_axi_in_random_id_stress_test` (`cocotb_wrapper/tests/`; the sequence `smu_axi_in_random_id_stress_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP and the SMC fabric JTAG2AXI bridge: two accesses for the aperture alias, three 8-byte writes for the SYS_IN entry 0 registers and eight 8-byte egress writes, 13 JTAG2AXI accesses in all); `ocah_axi_vip` master on the external AXI input of the SMU with the primary reset `rst_primary_smc_clk_no` as its reset, issuing seeded INCR writes and reads with AxSIZE 0 to 3 and AxLEN 0 to 3, with its response-channel hold-backs set per wave through `AxiTimingProfile`; a passive monitor of the `ext_in` handshakes (`ext_in_aw*`, `ext_in_ar*`, `ext_in_w*`, `ext_in_b*`, `ext_in_r*`, sampled on `clk_smu_i`); a passive monitor of the outbound boundary interface `u_axi_out_if`; the bench responder memory `cfg.axi_out_mem` behind `smu_axi_out`; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads, `+pll_sys_period_ns=10`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the random source is `random.Random` seeded with the cocotb `RANDOM_SEED`, which the leaf logs; the SPM window and register addresses come from the generated `smc_addr.h` and `filter_ctrl.h` of the register collateral
+
+*Objective*: with random IDs over the whole ID width of the external input, random AxSIZE and short INCR bursts, several IDs in flight and held-back response channels, every response returns the ID of its request in request order per ID, every byte written into the SPM under a byte strobe reads back from the ID that wrote it, and eight concurrent JTAG2AXI writes each cross the outbound port once.
+
+*Test Coverage*:
+
+* ID width: `hw/sys/smu/doc/port_table.adoc` names the `smu_axi_in` port type without a width and the integrator chapter gives none, so the width is that of the bound `ext_in_awid` signal on the bench top, a bench fact; the IDs of the stream are drawn from a seeded pool of eight that has every ID bit at both values.
+* Echo and ordering rule: AMBA AXI4 specification, ordering model (a response carries the ID of its request; responses of one ID return in request order) and `hw/sys/smc/doc/fabric.adoc` "AXI Transaction ID widths". Every B and R handshake on the pins is matched to the oldest outstanding request of its ID; an ID without an outstanding request, or a per-ID count of AW, B, AR or R that differs from the requests issued, fails the check. A read response is compared beat by beat with the model bytes of the oldest outstanding request of the same ID, so a response of another request fails when the two requests read different bytes; at least three IDs must be in flight at once on the pins and at least three pairs of same-ID reads of different data must have been in flight together, guaranteed by a closing wave of six full-block reads under one ID launched back to back. A B response carries no payload, so write order within an ID is bounded by the per-ID counts.
+* Stream: 78 transactions (48 writes and 30 reads, the floor is 64) in waves of three to eight, each at a random AxSIZE 0 to 3 and AxLEN 0 to 3 INCR, with random BREADY and RREADY hold-backs of 0 to 24 cycles per wave; at least three distinct IDs and two AxSIZE values must be seen on the address channels. Before the stream every 32-byte block of the 78 the leaf owns inside the SPM window (`hw/sys/smc/regs/gen/c/smc_addr.h` `SMC_TOP_SPM_MEMORY_BASE_ADDR`, `_SIZE`) is filled with seeded bytes. The VIP drives a contiguous byte range of one beat at a random offset, so the byte strobes the leaf varies are the partial first and last beats and the narrow beats; the strobe values seen on the W pins are logged.
+* Data: each write goes to its own block at a random byte range whose every byte differs from the fill byte of that cell; the read-back of every written block under the ID that wrote it equals the model, which keeps the fill in the bytes no strobe selected. A read-back equal to the fill where a written byte is expected fails, and every response must be OKAY.
+* Concurrent egress: eight 8-byte JTAG2AXI writes at 256-byte steps above the `0xAA..` pattern, outside both apertures (`hw/sys/smu/doc/index.adoc` "AXI Crossbar"), run from a forked coroutine; the stream waves are gated on the launch of each write so that ext_in handshakes fall inside every write's window. `u_axi_out_if` carries each address once with an OKAY B response, the responder memory holds each word, and every ext_in request is answered exactly once with nothing outstanding.
+* The JTAG2AXI accesses, external-response waits, egress launch waits, the egress task join and responder observation waits each record their bound and the last state. The elapsed `clk_smu_i` cycles of each JTAG2AXI access are measured and logged; the number of polls the JTAG2AXI helper used is not measured, and those site lines say `max_used=not measured`. The bound of an external response is 200 us.
+* Measured and logged only: the ready hold-back values per wave, the AxLEN and AxSIZE values seen on the pins, the maximum in-flight count, the strobe values on the W pins, the per-wait used counts where measured and the egress window times.
+* Out of scope: write ordering within an ID beyond the per-ID counts, interleaved read data across IDs beyond the per-ID beat compare, WRAP and FIXED bursts, non-contiguous strobes (the VIP cannot drive them) and the SEP aperture.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, check the JTAG2AXI gate is open, route the SMC aperture to its local alias, program entry 0 over the SPM window, create the AXI master, read the ID width, draw the ID pool and log the seed.
+. Fill the 78 blocks, then run the seeded stream in waves with random hold-backs while the eight JTAG2AXI egress writes run, each wave starting as its write launches.
+. Compare the per-ID counts, the unmatched responses, the read beats against the oldest same-ID request and the in-flight IDs sampled on the pins.
+. Read every written block back under its ID, compare it with the model and re-check the unmatched and out-of-order lists.
+. Join the egress task under its bound, compare the outbound AW addresses and B responses, the responder words, the overlap of each write window with ext_in handshakes and the ext_in response totals.
+. Check every wait finished inside its bound with a recorded last state, the JTAG2AXI access count against the budget of 20, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-RANDID-ECHO` |every response on ext_in carries the ID of an outstanding request, the per-ID counts of AW, B, AR and R equal the requests issued, and at least three IDs and two AxSIZE values are exercised over the whole ID width
+|`CHK-RANDID-ORDER` |within each ID the read responses return the data of the oldest outstanding request, with at least three IDs in flight at once and at least three same-ID read pairs of distinct data in flight together
+|`CHK-RANDID-DATA` |the read-back per ID equals the bytes that ID wrote under its byte strobes over a pre-write fill, at least one W beat on the pins carries a partial strobe, every response OKAY, no unmatched response and no out-of-order read beat during the read-back
+|`CHK-RANDID-CONCURRENT` |eight JTAG2AXI writes complete with SUCCESS while the stream runs, smu_axi_out carries each address once with an OKAY response and the responder holds each word; every ext_in request is answered once with none outstanding
+|`CHK-NONVAC` |ordered fence S1<S2<S3<S4<S5<S6<PASS with strictly increasing stamps and a stream of at least 64 transactions; the seed is logged
+|`CHK-TIMEOUT-PATHS` |every JTAG2AXI, external-response, launch, egress-join and responder wait finishes inside its bound with a recorded last state and none expires
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-197-smu_alias_priority_overflow_test]]
+===== 197 `smu_alias_priority_overflow_test`
+
+*Source Module*: `smu_alias_priority_overflow_test` (`cocotb_wrapper/tests/`; the sequence `smu_alias_priority_overflow_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP and the SMC fabric JTAG2AXI bridge: 8-byte writes of the alias region registers, 1, 2, 4 and 8-byte writes and an 8-byte read towards `smu_axi_out`, 33 JTAG2AXI accesses in all); a passive tap of the outbound boundary interface `u_axi_out_if` (address phases with AxADDR, AxLEN, AxSIZE, AxBURST, AxID, AxPROT, AxLOCK, AxCACHE, AxQOS and AxREGION, sampled on `clk_smu_i`); the bench responder memory `cfg.axi_out_mem` behind `smu_axi_out`, filled with 0xFF by the bench at every page the leaf writes and read by the bench only; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads, `+pll_sys_period_ns=10`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the region register addresses come from the generated `smc_addr.h` and the field masks from `hw/ip/axi_alias_remap/regs/gen/c/alias_remap.h`
+
+*Objective*: with alias regions 0 and 1 valid over the same input page, one translation applies, the same on write and read; a hit keeps every bridge-driven field of the miss reference and the bytes of narrow writes; a valid region with START equal to or above END never hits; and an offset that reaches 0xFF_FFFF_F000 lands exactly there.
+
+*Test Coverage*:
+
+* `hw/ip/axi_alias_remap/regs/alias_remap.rdl`: REGION_START and REGION_END are 56-bit addresses with fields at [55:12], END non-inclusive; REGION_ATTRS holds the offset added to bits [55:12] with the lower 12 bits preserved, and the valid bit. Masks and shifts are read from `alias_remap.h`.
+* Miss reference: with every region at reset an 8-byte write and read at A plus 0x7F8, A outside the SMC and SEP apertures (`hw/sys/smu/doc/index.adoc` "AXI Crossbar"), leave at the issued address; the captured AxPROT, AxLEN, AxSIZE, AxID and AxBURST of the first AW and AR are the reference. No absolute value of any of them is compared.
+* Overlap: region 0 covers one page of A with offset 0x0200_0000 and region 1 covers four pages with offset 0x0400_0000. Two writes and a read at A plus 0x7F8 leave at exactly one of the two translated addresses (`hw/sys/smc/doc/fabric.adoc` "Alias Remapping" does not state which region wins), the same on all three, with the low 12 bits 0x7F8, the difference equal to the winner's offset, and the read returning the second write; one more write at A plus one page plus 0x7F8, covered by region 1 only, leaves translated by region 1's offset. The winning region index is measured and logged only.
+* Preservation: AxPROT, AxLEN, AxSIZE, AxID and AxBURST of the hit write and read equal the miss reference (`fabric.adoc` "Protection Bit Pass-Through"); AxCACHE is replaced on a hit (`alias_remap.rdl`), so AxCACHE, AxLOCK, AxQOS and AxREGION are measured and logged only. Writes of 1, 2, 4 and 8 bytes at distinct lanes leave exactly their bytes at the winning page in the 0xFF-filled memory, the neighbour bytes and the same offset of the losing page stay 0xFF, and the AxSIZE captured on each AW is measured and logged only, since no public document states the bridge size-to-AxSIZE mapping.
+* Degenerate regions: a valid region 2 with START equal to END and a valid region 3 with START above END, each with a non-zero offset, pass a write at the START page and, for region 3, at an address between END and START through at the issued address (`alias_remap.rdl` states END as non-inclusive, so no address satisfies START <= address < END); the overlap hits are the positive control.
+* Offset arithmetic: region 4 maps input page 0x8130_0000 with the offset that gives 0xFF_FFFF_F000, and the write leaves at exactly that page plus its low 12 bits with the responder holding the data. Region 5 maps input page 0x8140_0000 with an offset whose sum passes bit 55; the write leaves with its low 12 bits 0x240 preserved (`alias_remap.rdl`: the lower 12 bits of the address are preserved unchanged), and the leaving page and the initiator status are measured and logged only.
+* Measured and logged only: the winning region, the AxCACHE, AxLOCK, AxQOS and AxREGION values, the narrow-write AxSIZE values, the carry-case leaving page and status, the capture-wait cycles each wait used and the per-step access counts. The JTAG2AXI poll count is not measured.
+* Out of scope: the other alias regions, AxCACHE values, output remapping, the SEP aperture, and reads at the degenerate regions. The regions are not cleared at the end of the leaf.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, check the JTAG2AXI gate is open, create the outbound tap and fill the responder pages with 0xFF.
+. Write and read 8 bytes at A plus 0x7F8 with every region at reset and capture the first AW and AR.
+. Program regions 0 and 1, write twice and read at A plus 0x7F8, write once at an address covered by region 1 only, and compare the three leaving addresses, their low bits and offset difference.
+. Compare the hit fields with the miss reference, then write 1, 2, 4 and 8 bytes and compare the responder bytes at the winning and the losing page.
+. Program regions 2 and 3, write at the START page of region 2 and between END and START and at START of region 3, and compare the leaving addresses.
+. Program regions 4 and 5, write through each, compare the exact top address and the preserved low bits of the carry case.
+. Check every JTAG2AXI poll and capture wait finished inside its bound with a recorded last state, the access count against the budget of 33, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ALIASPRI-HIT-TRANSLATE` |the write and the read at A plus 0x7F8 leave at a translated address, not the miss-reference address, with the low 12 bits 0x7F8 kept and the same address on AW and AR
+|`CHK-ALIASPRI-OVERLAP-WINNER` |two overlapping valid regions leave exactly one of the two translated addresses, the same on both writes and the read, the read returns the last write, and a write covered only by region 1 leaves translated by its offset; the winning region index is measured and logged only
+|`CHK-ALIASPRI-OFFSET-LOWBITS` |the leaving address minus the issued address equals the winning region's offset on both writes and the read
+|`CHK-ALIASPRI-FIELDS-PRESERVED` |AxPROT, AxLEN, AxSIZE, AxID and AxBURST of the hit write and read equal the miss reference captured earlier from the same bridge access; AxCACHE, AxLOCK, AxQOS and AxREGION are measured and logged only
+|`CHK-ALIASPRI-PAYLOAD-BYTES` |narrow writes of 1, 2, 4 and 8 bytes leave exactly those bytes at the winning page in 0xFF-filled memory with the neighbour bytes and the losing page unchanged; the captured AxSIZE per size is measured and logged only
+|`CHK-ALIASPRI-DEGEN-EQ` |the write at the START page of a valid region with START equal to END leaves at the issued address, with the overlap hit as positive control
+|`CHK-ALIASPRI-DEGEN-GT` |the writes between END and START and at START of a valid region with START above END leave at the issued address, with the overlap hit as positive control
+|`CHK-ALIASPRI-OFFSET-TOP` |the write through a region whose offset reaches 0xFF_FFFF_F000 leaves at that page plus its low 12 bits with SUCCESS and the responder holds the data
+|`CHK-ALIASPRI-OVERFLOW-OBS` |the write whose offset sum passes bit 55 leaves with its low 12 bits 0x240 preserved (alias_remap.rdl: the lower 12 bits of the address are preserved unchanged); the leaving page and the initiator status are measured and logged only
+|`CHK-NONVAC` |ordered step fence S1<S2<S3<S4<S5<S6<S7<PASS with strictly increasing stamps, the pass point two clk_smu_i cycles after S7, an access in each of S2..S6 and at most 33 JTAG2AXI accesses
+|`CHK-TIMEOUT-PATHS` |every JTAG2AXI poll and responder capture wait finishes inside its bound with a recorded last state and none expires; the JTAG2AXI poll count is not measured
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-198-smu_alias_dma_manager_test]]
+===== 198 `smu_alias_dma_manager_test`
+
+*Source Module*: `smu_alias_dma_manager_test` (`cocotb_wrapper/tests/`; the sequence `smu_alias_dma_manager_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP and the SMC fabric JTAG2AXI bridge: 8-byte writes of the alias region registers and of one outbound word, 4-byte writes of the iDMA CONFIG, address, length, stride and repetition registers, 4-byte reads of NEXT_ID_0 and DONE_0; the access count is measured and logged, not compared); a passive tap of the outbound boundary interface `u_axi_out_if` (address phases with AxADDR, AxLEN and AxSIZE, sampled on `clk_smu_i`); the bench responder memory `cfg.axi_out_mem` behind `smu_axi_out`, written and read by the bench only; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads, `+pll_sys_period_ns=10`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the region and iDMA register addresses come from the generated `smc_addr.h`, the CONFIG mask from the iDMA `dma_ctrl.h` and the field masks from `hw/ip/axi_alias_remap/regs/gen/c/alias_remap.h`
+
+*Objective*: with every alias region at reset an iDMA copy from X to D moves PX to D; with a valid region over X it reads the translated page X' and D holds PY; with a valid region over D it writes the translated page D', D' holds PX and D keeps its previous bytes.
+
+*Test Coverage*:
+
+* `hw/sys/smc/doc/fabric.adoc`: the "DMA Controller" and "JTAG2AXI Bridge" rows of the traffic managers table send the iDMA's and the bridge's accesses through the alias remap, then filtering, then the destination; "Alias Remapping" states the remap is transparent at reset.
+* `hw/ip/axi_alias_remap/regs/alias_remap.rdl`: REGION_START and REGION_END are 56-bit addresses with fields at [55:12], END non-inclusive; REGION_ATTRS holds the offset added to bits [55:12] and the valid bit. Masks are read from `alias_remap.h`.
+* `hw/sys/smc/doc/dma.adoc`: the copy moves LENGTH bytes from SRC_ADDRESS to DST_ADDRESS, a read of NEXT_ID_0 submits it and DONE_0 reports the id. The copy is 64 bytes from X to D, both outside the SMC and SEP apertures (`hw/sys/smu/doc/index.adoc` "AXI Crossbar"); PX, PY and D0 are distinct non-zero 8-byte words repeated over the copy.
+* Un-remapped copy: DONE equals the launched id, D holds PX and the recorded AR phases cover exactly 64 bytes at X and nothing elsewhere.
+* Source remap: region 0 covers X with offset 0x0200_0000 to X'; the same copy leaves DONE equal to the id, D holding PY and the AR phases covering exactly 64 bytes at X' and none at X.
+* Destination remap: region 0 is invalidated and region 1 covers D with offset 0x0200_0000 to D'; the same copy leaves D' holding PX, D still holding PY (different from PX and from D0) and the AW phases covering exactly 64 bytes at D' and none at D.
+* Shared table: one bridge write at D plus 0x200 under the still valid region 1 leaves at D' plus 0x200 and the responder holds the written word, the same region that moved the iDMA destination (the traffic managers table gives the bridge the same alias remap before filtering); the iDMA destination address is measured and logged only.
+* Measured and logged only: the iDMA destination address of the shared-table step, the DONE polls each copy used, the JTAG2AXI access count, the capture-wait cycles and the per-step access counts. The JTAG2AXI poll count is not measured.
+* Out of scope: the other alias regions, AxLEN and AxSIZE of the iDMA phases, the source and destination remaps together, output remapping, and the SEP aperture. The regions are not cleared at the end of the leaf.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, check the JTAG2AXI gate is open, create the outbound tap, write PX at X, PY at X', D0 at D and D', open the outbound filter to every address and program the copy.
+. Submit the copy with every region at reset, poll DONE and compare DONE, D and the AR phases.
+. Program region 0 over X, submit the same copy and compare DONE, D and the AR phases.
+. Clear the valid bit of region 0, program region 1 over D, submit the same copy and compare DONE, D', D and the AW phases.
+. Write through the bridge at D plus 0x200 and compare the address it leaves at and the word the responder holds, logging the iDMA destination address.
+. Check every JTAG2AXI poll, DONE poll and capture wait finished inside its bound with a recorded last state, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ALIASDMA-NOREGION-PLACE` |with every alias region at reset the copy completes with DONE equal to the launched id, the destination D holds the source pattern PX and the AR phases cover exactly the source page X and no other address
+|`CHK-ALIASDMA-SRC` |with a valid region over X the same copy completes with DONE equal to the id, D holds PY (the pattern at X', not PX) and the AR phases cover exactly X' and never X
+|`CHK-ALIASDMA-DST` |with region 0 invalid and a valid region over D the same copy completes with DONE equal to the id, D' holds PX, D keeps the PY of the previous copy and the AW phases cover exactly D' and never D
+|`CHK-ALIASDMA-SHARED-TABLE` |the bridge write at D plus 0x200 under the still valid region over D leaves at D' plus 0x200 and the responder holds the written word, the same region that moved the iDMA destination (fabric.adoc traffic managers: the JTAG2AXI bridge passes the alias remap before filtering); the iDMA destination address is measured and logged only
+|`CHK-NONVAC` |ordered step fence S1<S2<S3<S4<S5<S6<PASS with strictly increasing stamps, the pass point two clk_smu_i cycles after S6 and an access in each of S2..S5, the un-remapped copy first
+|`CHK-TIMEOUT-PATHS` |every JTAG2AXI poll, iDMA DONE poll and responder capture wait finishes inside its bound with a recorded last state and none expires; the JTAG2AXI poll count is not measured
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-199-smu_out_filter_rule_matrix_test]]
+===== 199 `smu_out_filter_rule_matrix_test`
+
+*Source Module*: `smu_out_filter_rule_matrix_test` (`cocotb_wrapper/tests/`; the sequence `smu_out_filter_rule_matrix_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP and the SMC fabric JTAG2AXI bridge: 8-byte writes of the outbound filter START_ADDR, END_ADDR and FILTER_CONFIG registers, 1-byte write probes, 8-byte read probes, 4-byte writes of the iDMA CONFIG, DST, SRC, LENGTH and repetition registers, 4-byte reads of NEXT_ID_0, DONE_0 and STATUS_0; the access count is measured and logged against a budget of 78, not compared); a passive tap of the outbound boundary interface `u_axi_out_if` (the AW, W, B, AR and R handshake counts and the AxADDR, AxLEN, AxSIZE and AxPROT of every address handshake, sampled on `clk_smu_i`); the bench responder memory `cfg.axi_out_mem` behind `smu_axi_out`, written and read by the bench only; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense` with the default SMC and SEP shadow preloads, `+pll_sys_period_ns=10`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the entry and iDMA register addresses come from the generated `smc_addr.h` and the field masks from `hw/ip/axi_filter/regs/gen/c/filter_ctrl.h` and the iDMA `dma_ctrl.h`
+
+*Objective*: with every outbound entry at reset an iDMA copy from the source page to R completes; with deny entries over R the JTAG2AXI write and read, and the iDMA copy, are refused while traffic outside R passes; the 4 KB granule edges and the inclusive END, the lower-index priority and the source-ID wildcard decide as the axi_filter chapter states; the allow_ns value and the src_id values that refuse are measured and logged.
+
+*Test Coverage*:
+
+* `hw/sys/smc/doc/fabric.adoc` "Outbound Filtering": an unmatched request passes, so denying traffic needs a matching entry whose permission bit is clear. `hw/sys/smc/doc/dma.adoc`: the copy moves LENGTH bytes from SRC_ADDRESS to DST_ADDRESS, a read of NEXT_ID_0 submits it, DONE_0 reports the id, and the iDMA's accesses pass through the SMC filtering. The copy is 64 bytes from the source page to R, both outside the SMC and SEP apertures (`hw/sys/smu/doc/index.adoc` "AXI Crossbar"); PS, D0 and D1 are distinct non-zero 8-byte words repeated over the copy.
+* `hw/ip/axi_filter/doc/index.adoc` "Match, Then Permit", "Address Range Granule", "Blocked Transactions" and `hw/ip/axi_filter/regs/filter_ctrl.rdl`: the field list of an entry, `src_id` 0 as the wildcard, the lowest matching entry deciding, the 4 KB granule with `allow_burst` 1 and DECERR for a blocked transaction.
+* Default permit: with every entry at reset the copy leaves DONE equal to the launched id, the destination holding PS (the D0 the bench placed there is logged only), the AR handshakes covering exactly the source page and the AW handshakes exactly R; later, with a deny entry over R, a write outside R answers SUCCESS and moves AW, W and B by one each.
+* Polarity pair: entry 0 (allow_ns 0) and entry 1 (allow_ns 1) are deny entries over R with `src_id` 0, `write_allowed` 0 and `read_allowed` 1, one enabled at a time; exactly one of the two write probes answers DECERR and the other SUCCESS. Entry 1 keeps its FILTER_CONFIG reset value (`entry_enabled` 0, `filter_ctrl.rdl`) until the enable write. The refusing allow_ns value and the AxPROT of the admitted write are measured and logged only; the refusing entry alone stays enabled.
+* Write deny and read channel: the write to R answers DECERR with the AW, W and B counters and the responder byte unchanged, against the write outside R; with `write_allowed` 0 and `read_allowed` 1 the read of R answers SUCCESS with AR and R by one each and the responder word; with `read_allowed` 0 the read answers DECERR with AR and R unchanged. Every refusing entry carries `src_id` 0.
+* Refused copy: D1 is written over the destination, the descriptor is launched again with the deny entry active; the destination keeps D1, the AW and W counters keep their value and the AR handshakes at the source show the copy ran. The iDMA STATUS_0, DONE_0, the id and the polls used are measured and logged only; an expiry of that DONE poll, if it happens, is recorded as the measured outcome and is registered as such.
+* Granule and END: START R plus 1 and END R plus 2 (the `0x1001` and `0x1002` example of the granule table, with R as the granule) refuse the first and last byte of R and pass the byte below and the byte above; END raised by one granule refuses the address equal to END and passes the next granule.
+* Priority: entry 0 as the narrow deny inside entry 1 as the broad permit refuses the narrow write and passes a write elsewhere in the broad range; entry 0 rewritten to a narrow permit and entry 1 to a broad deny passes the narrow write while a write elsewhere in the broad range is refused, which shows the broad deny is active.
+* Source-ID sweep: entry 0 as the narrow deny with `src_id` 1 to 15 in turn, one write probe each, entry 1 disabled; at most one value refuses. The refusing count and value are measured and logged only.
+* Measured and logged only: the refusing allow_ns value, the AxPROT of the admitted write, the admitted read and the iDMA handshakes, the iDMA status after the refused copy, the refusing src_id values, the DONE polls each copy used and the per-step access counts. The JTAG2AXI poll count is not measured. No AxLEN, AxSIZE or AxPROT value is compared.
+* Out of scope: blocked burst responses, entries 2 to 15, the SEP egress master, output remapping, the source ID of an iDMA access and the inbound filter. The entries are not cleared at the end of the leaf. The iDMA registers left at their reset value (`dma_ctrl.rdl`: address and length high words, both strides, the high repetition word) are not written; a one-row copy below 4 GiB does not use them.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, check the JTAG2AXI gate is open, create the egress tap, write PS at the source page and D0 at R, and record the five counters.
+. With every outbound entry at reset program the copy, submit it, poll DONE and compare DONE, the destination bytes and the AR and AW handshake coverage.
+. Program entry 0 (allow_ns 0) and entry 1 (allow_ns 1) as deny entries over R, probe a write to R with only entry 0 enabled, enable entry 1 and disable entry 0, probe again, and compare that exactly one probe was refused; leave only the refusing entry enabled.
+. Probe the write to R and the write outside R, probe the read of R with `read_allowed` 1, clear `read_allowed` and probe the read again; compare statuses, counters and responder bytes.
+. Write D1 over R in the responder, submit the same copy, poll DONE for a bounded count, read STATUS_0 and compare the destination, the AW and W counters and the source reads.
+. Program START and END inside one granule, probe the first and last byte and the bytes below and above, raise END by one granule and probe the END address and the next granule.
+. Program the narrow deny and the broad permit and probe the narrow range and a write elsewhere in the broad range, rewrite entry 0 to a permit and entry 1 to a deny and probe both again.
+. Disable entry 1, then for `src_id` 1 to 15 write entry 0 as the narrow deny and probe one write, and compare that at most one value refused.
+. Check every JTAG2AXI poll and DONE poll has a finite bound and a recorded last state with no unexpected expiry, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OUTRULE-PERMIT-DEFAULT` |with every outbound entry at reset the iDMA copy completes with DONE equal to the launched id, the destination holds the source pattern PS (the D0 the bench placed there is logged only), the AR handshakes cover exactly the source page and the AW handshakes exactly the destination page, and with a deny entry over R the write outside R still moves AW, W and B by one each
+|`CHK-OUTRULE-WRITE-DENY` |with write_allowed 0 the JTAG2AXI write to R answers DECERR, the AW, W and B counters keep their value and the responder byte is unchanged, against the write outside R that answers SUCCESS, moves AW, W and B by one each and lands its byte
+|`CHK-OUTRULE-READ-CHANNEL` |with write_allowed 0 and read_allowed 1 the read of R answers SUCCESS with AR and R by one each and returns the responder word while the write answers DECERR; with read_allowed 0 the read answers DECERR and AR and R keep their value; every refusing entry carries src_id 0
+|`CHK-OUTRULE-PROT1-PAIR` |of the two single-entry write probes (allow_ns 0 and allow_ns 1) exactly one answers DECERR and the other SUCCESS with its counters and byte consistent with the status; the refusing allow_ns value is measured and logged only
+|`CHK-OUTRULE-DMA-DENY` |with the deny entry over R the second copy leaves the destination at D1 (the reset-state copy had replaced D0 with PS), the AW and W counters keep their value and the source reads show the copy ran; the iDMA status, DONE and the polls used are measured and logged only
+|`CHK-OUTRULE-GRANULE-END` |with START 0x1001 and END 0x1002 in one 4 KB granule its first and last byte answer DECERR and the bytes below and above answer SUCCESS; with END raised by one granule the address equal to END answers DECERR and the next granule SUCCESS
+|`CHK-OUTRULE-PRIORITY` |a narrow deny at entry 0 inside a broad permit at entry 1 refuses the narrow write and passes a write elsewhere in the broad range; a narrow permit at entry 0 inside a broad deny at entry 1 passes the narrow write while the write elsewhere in the broad range is refused
+|`CHK-OUTRULE-SRCID-SWEEP` |src_id 1 to 15 are each probed once and at most one value refuses, every probe with counters and byte consistent with its status; the refusing count and value are measured and logged only
+|`CHK-NONVAC` |ordered step fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS with strictly increasing stamps, the pass point two clk_smu_i cycles after S9, an access in each of S2..S8 and the egress counters sampled: reset-state copy, polarity pair, deny legs, refused copy, granule, priority, sweep
+|`CHK-TIMEOUT-PATHS` |every JTAG2AXI poll and iDMA DONE poll has a finite bound, a recorded last state and no unexpected expiry; the reset-state copy's DONE poll must finish and an expiry of the refused copy's DONE poll, if it happens, is recorded as the measured outcome; the JTAG2AXI poll count is not measured
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-200-smu_sep_out_filter_rule_matrix_test]]
+===== 200 `smu_sep_out_filter_rule_matrix_test`
+
+*Source Module*: `smu_sep_out_filter_rule_matrix_test` (`cocotb_wrapper/tests/`; the sequence `smu_sep_out_filter_rule_matrix_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP, the PTAP 3DCR selection of the SEP STAP and the SEP debug module's `dmi` register: `dmcontrol`, `dmstatus`, `sbcs`, `sbaddress0`, `sbdata0` and `sbdata1`; 4-byte and 1-byte probe accesses and 4-byte and 8-byte entry writes through the debug module's system bus, at most 67 system-bus accesses in all, 65 when the refusing allow_ns value is 0); a passive tap of the outbound boundary interface `u_axi_out_if` (the AW and AR address handshakes sampled on `clk_smu_i`); the bench responder memory `cfg.axi_out_mem` behind `smu_axi_out`, written and read by the bench only; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense`, the default SMC shadow preload and the TEST_DEV SEP shadow preload `sep_efuse_shadow_lc_test_dev.preload`, `+pll_sys_period_ns=10`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the entry addresses come from the generated `sep_addr.h`, the field masks from `hw/ip/axi_filter/regs/gen/c/filter_ctrl.h` and the SMU aperture from the `sep_cpu_ctrl` reset values of `SMU_GLOBAL_BASE_ADDR` and `SMU_REGION_SIZE`
+
+*Objective*: with every SEP outbound entry at reset a system-bus write and read toward the SMU aperture are refused; an admit pair, a deny pair, single-entry polarity probes, the 4 KB granule edges and the inclusive END, each entry index alone and the lower-index priority decide as the axi_filter chapter states, and the allow_ns value that matches the system bus is measured and logged.
+
+*Test Coverage*:
+
+* `hw/ip/axi_filter/doc/index.adoc` instance table and `hw/sys/sep/doc/fabric.adoc` "Filtering and Protection": the SEP outbound instance has 32 entries, blocks unmatched traffic and has no bypass, so SEP-scope debug being open leaves an unmatched access refused; the debug-open posture is the DUT's `lcc_dbg_disable_o` (`tb/tb_wrapper_top.sv`), sampled at 0 in the no-bypass compare. The debug module's system bus (RISC-V Debug Specification 0.13, "System Bus Access") reports a refused access as a non-zero `sbcs.sberror` and an admitted one as 0; the code is measured and logged only.
+* `hw/ip/axi_filter/doc/index.adoc` "Match, Then Permit" and `hw/ip/axi_filter/regs/filter_ctrl.rdl`: an entry matches when enabled, in range and with `prot[1]` equal to `allow_ns`, the lowest matching entry decides, `read_allowed` for AR and `write_allowed` for AW. Every entry carries `src_id` 0 and `allow_burst` 1; the system bus issues single-beat accesses, so `allow_burst` against `AxLEN` is not exercised.
+* Block by default and admit: the write and the read at one word of a 32 KB aligned window of the SMU aperture are refused with the responder AW and AR counts at zero and the byte unchanged; entries 30 (allow_ns 0) and 31 (allow_ns 1) over the whole 56-bit space then admit the write, which lands with one AW, and the read, which returns the word with one AR. A working system bus with the unmatched legs refused is the no-bypass evidence.
+* Permission per channel: a deny pair at entries 0 (allow_ns 0) and 1 (allow_ns 1) over the window's last 4 KB page; with `read_allowed` 0 and `write_allowed` 1 the write is admitted and the read refused, with `read_allowed` 1 and `write_allowed` 0 the write is refused and the read admitted, and a write outside the page is admitted by the admit pair.
+* Polarity pair: the deny entries are enabled one at a time and the write probe to the page is refused for exactly one of them. The refusing allow_ns value is measured and logged only; the refusing entry alone stays enabled and later steps use that allow_ns value.
+* Granule and END: START 0x1001 and END 0x1002 relative to the window's second page, a range that replaces the deny page the entry held, read back widened to 0x1000 and 0x1FFF (`hw/ip/axi_filter/doc/index.adoc` "Address Range Granule": a range inside one granule is written back widened) and refuse the first and last byte and admit the byte below and the byte above (the `0x1001`/`0x1002` row of the granule table); END raised to the next granule edge refuses the address equal to END and admits the following granule.
+* Index and priority: with every other entry disabled and the unmatched refusal shown again, each of entries 0, 15, 16 and 31 alone admits a write probe; entry 0 as a narrow deny over entry 31 as a broad permit refuses the narrow write and admits one elsewhere; entry 15 as a narrow permit over entry 16 as a broad deny admits the narrow write while a write elsewhere in the broad range is refused.
+* Measured and logged only: the sberror code of a refused access, the refusing allow_ns value, the polls and observation cycles each wait used and the per-step access counts. The debug module's retry bound and the posture settle bound are recorded with use not measured.
+* Out of scope: the burst leg of the term matrix, source ID values other than the wildcard, entries 2 to 14 and 17 to 29, the SEP inbound filter, output remapping and the alias remap. The entries are not cleared at the end of the leaf.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the debug module over the SEP STAP as in `smu_dtp_sep_dm_dmi_test`, create the egress tap and record the responder counters.
+. With every outbound entry at reset write and read one word of the window and compare sberror, the responder handshakes and the byte; program the admit pair and write and read again.
+. Program the deny pair over one page with `read_allowed` 0 and `write_allowed` 1, write and read the page, switch both entries to `read_allowed` 1 and `write_allowed` 0, write and read the page and write outside it.
+. Enable one deny entry at a time, write the page each time, compare that exactly one write was refused and leave only the refusing entry enabled.
+. Program START and END inside one granule, read both back, write the first and last byte and the bytes below and above, raise END by one granule and write the END address and the next granule.
+. Disable every entry and write the probe, enable each of entries 0, 15, 16 and 31 alone and write the probe, then program the narrow deny over the broad permit and the narrow permit over the broad deny and write the narrow and the other addresses.
+. Check every system-bus busy poll and responder observation has a finite bound and a recorded last state with no expiry, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEPOUT-BLOCK-DEFAULT` |with every outbound entry at reset the system-bus write and read answer with sberror non-zero, the responder AW and AR handshakes stay at zero and the byte is unchanged; after the admit pair at entries 30 and 31 the write lands with sberror 0 and one AW and the read returns the written word with one AR; the sberror code is measured and logged only
+|`CHK-SEPOUT-DEBUG-OPEN-NOBYPASS` |dmstatus reports debug specification version 2 with the DUT lcc_dbg_disable_o sampled at 0, and a system-bus write completes with sberror 0 after the admit pair, while the unmatched write and read had been refused with sberror non-zero, so SEP-scope debug being open does not bypass the outbound filter
+|`CHK-SEPOUT-PERM-CHANNEL` |with write_allowed 0 the write over the deny page is refused with no AW and the byte unchanged while the read is admitted with one AR; with read_allowed 0 and write_allowed 1 the write is admitted and lands while the read is refused with no AR; a write outside the page is admitted
+|`CHK-SEPOUT-PROT1-PAIR` |of the two single-entry write probes (allow_ns 0 and allow_ns 1) exactly one is refused with no AW and the byte unchanged and the other lands with one AW; the refusing allow_ns value is measured and logged only
+|`CHK-SEPOUT-GRANULE-END` |with START 0x1001 and END 0x1002 the registers read back widened to 0x1000 and 0x1FFF and the writes at 0x1000 and 0x1FFF are refused and the writes at 0x0FFF and 0x2000 are admitted; with END 0x2000 the write at 0x2000 is refused and the write at 0x3000 is admitted
+|`CHK-SEPOUT-INDEX-ALONE` |the unmatched write is refused with every entry at reset and again with every entry disabled, and each of entries 0, 15, 16 and 31 alone enabled admits a write with sberror 0, one AW and the word landed
+|`CHK-SEPOUT-PRIORITY` |entry 0 as a narrow deny over entry 31 as a broad permit refuses the narrow write and admits a write elsewhere; entry 15 as a narrow permit over entry 16 as a broad deny admits the narrow write while a write elsewhere in the broad range is refused
+|`CHK-NONVAC` |ordered step fence S1<S2<S3<S4<S5<S6<S7<PASS with strictly increasing clk_smu_i stamps, the pass point two clk_smu_i cycles after S7, a system-bus access in each of S2..S6 and the access count within the 67 access budget: block by default, admit, permission, polarity, granule, index and priority
+|`CHK-TIMEOUT-PATHS` |every bounded wait (system-bus busy poll, responder observation, debug module retries, posture settle) has a finite bound, a last state and no expiry; the busy poll and observation use are measured, the retry and posture settle use is not measured
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-201-smu_sep_output_remap_region_matrix_test]]
+===== 201 `smu_sep_output_remap_region_matrix_test`
+
+*Source Module*: `smu_sep_output_remap_region_matrix_test` (`cocotb_wrapper/tests/`; the sequence `smu_sep_output_remap_region_matrix_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_jtag_vip` (the primary TAP, the PTAP 3DCR selection of the SEP STAP and the SEP debug module's `dmi` register: `dmcontrol`, `dmstatus`, `sbcs`, `sbaddress0`, `sbdata0` and `sbdata1`; 8-byte remap register writes, 8-byte window writes and 4-byte and 8-byte outbound entry writes through the debug module's system bus, at most 74 system-bus accesses in all, 72 issued, no system-bus read of the remap windows); a passive tap of the outbound boundary interface `u_axi_out_if` (the AW and AR address handshakes sampled on `clk_smu_i`); the bench responder memory `cfg.axi_out_mem` behind `smu_axi_out`, filled with a sentinel and read by the bench only; the `smc_global_base_o` output sampled once to place the SMC aperture; `elaboration` firmware mode under the `sep_rtl` run mode; `+skip_fuse_sense`, the default SMC shadow preload and the TEST_DEV SEP shadow preload `sep_efuse_shadow_lc_test_dev.preload`, `+pll_sys_period_ns=10`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the remap register and window addresses come from the generated `sep_addr.h` and the field masks from `hw/ip/output_remap/regs/gen/c/output_remap.h`
+
+*Objective*: each of AP and STEE output remap regions 1 to 15, programmed with its own 512 KiB-aligned offset, translates a system-bus write at its window region to that offset; the two tables translate independently; and a write at a region that was never programmed or whose valid bit is cleared passes through at its unchanged address.
+
+*Test Coverage*:
+
+* `hw/ip/output_remap/regs/output_remap.rdl` REGION_ATTRS and `hw/sys/sep/doc/fabric.adoc` "Fabric Topology": the AP and STEE regions pass their output remaps, which replace the address with the programmed offset, before the outbound mux. A SEP region is 512 KiB, so the low 19 address bits are kept and the offset replaces the bits above; `sep_addr.h` gives 16 regions in windows of `SEP_TOP_AP_REGION_SIZE` and `SEP_TOP_STEE_REGION_SIZE` 0x80_0000 at `SEP_TOP_AP_REGION_BASE_ADDR` and `SEP_TOP_STEE_REGION_BASE_ADDR`.
+* Region translation: for k = 1 to 15 the AP region and then the STEE region are programmed with distinct 512 KiB-aligned offsets above 4 GiB, outside the SEP, SMC and SMU apertures and below 2^56, with valid set; one doubleword with a k-dependent pattern, distinct per table, is then written at the window base plus k times 512 KiB plus 0x40. The responder holds the pattern at the offset plus 0x40 with one AW at that address and no AR, the window address stays at the sentinel, no other region's translated address holds the pattern, and the AW count equals the 30 writes. An outbound admit pair (`allow_ns` 0 and 1) over the whole address space lets the writes leave.
+* Table independence: AP region k and STEE region k are programmed with different offsets before either write; each write lands at its own table's offset and the other table's offset keeps its sentinel or its own pattern.
+* Pass-through: region 0 of each table, never programmed, and region 7 of each table with valid cleared and the offset kept, land at the unchanged window address with sberror 0 and one AW. The translated valid leg of region 7 in the interleaved step is the positive control; a refused write or a translated address fails the check, and the sberror code of each pass-through write is measured and logged only.
+* Measured and logged only: the sberror codes, the polls and observation cycles each wait used, the SMC aperture bounds and the per-step access counts. The debug module's retry bound and the posture settle bound are recorded with use not measured.
+* Out of scope: the read leg of each region, region 0 translated, regions other than 7 invalidated, offsets below the 512 KiB granule, the SEP inbound filter and the alias remap. The remap registers and filter entries are not cleared at the end of the leaf.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the debug module over the SEP STAP as in `smu_dtp_sep_dm_dmi_test`, program the outbound admit pair, fill the responder with the sentinel at every translated and window address and record the responder counters.
+. For k = 1 to 15 program AP region k and STEE region k with their offsets and valid, write the pattern at the AP window region k and at the STEE window region k, and sample the responder for the landing address, the other table's offset and the window address.
+. Write one word at the region 0 window of each table, clear valid in region 7 of each table and write one word at its window.
+. Check every system-bus busy poll and responder observation has a finite bound and a recorded last state with no expiry, and that the steps ran in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEPREMAP-AP-REGIONS` |for each of AP output remap regions 1 to 15 programmed with its own 512 KiB-aligned offset and valid, the doubleword written at the window base plus the region index times 512 KiB plus 0x40 lands at the offset plus 0x40 with sberror 0, one AW at that address and no AR, the window address stays at the sentinel, no other region's translated address holds the pattern, and the AW count equals the 30 writes
+|`CHK-SEPREMAP-STEE-REGIONS` |for each of STEE output remap regions 1 to 15 programmed with its own 512 KiB-aligned offset and valid, the doubleword written at the window base plus the region index times 512 KiB plus 0x40 lands at the offset plus 0x40 with sberror 0, one AW at that address and no AR, the window address stays at the sentinel, no other region's translated address holds the pattern, and the AW count equals the 30 writes
+|`CHK-SEPREMAP-TABLE-INDEP` |with AP region k and STEE region k programmed with different offsets, the AP write lands at the AP offset and leaves the STEE offset at the sentinel, and the STEE write lands at the STEE offset and leaves the AP offset holding the AP pattern, for k = 1 to 15
+|`CHK-SEPREMAP-AP-INVALID` |the write at AP region 0, never programmed, and at AP region 7 after valid is cleared with the offset kept land at their unchanged window addresses with sberror 0 and one AW each, against the translated valid leg of region 7 that landed at its offset; a sberror non-zero or a translated address fails the check
+|`CHK-SEPREMAP-STEE-INVALID` |the write at STEE region 0, never programmed, and at STEE region 7 after valid is cleared with the offset kept land at their unchanged window addresses with sberror 0 and one AW each, against the translated valid leg of region 7 that landed at its offset; a sberror non-zero or a translated address fails the check
+|`CHK-NONVAC` |ordered fence S1 to S4 and PASS, each stamp on a clk_smu_i rising edge and strictly increasing with PASS two cycles after S4; the admit pair is programmed before the first valid write, all 30 valid translated writes precede each of the four unchanged-address writes, every access step issues system-bus accesses and the count stays within 74
+|`CHK-TIMEOUT-PATHS` |every bounded wait (DMI retry, posture settle, SBA busy poll, responder observation) reports a finite bound, its measured use or used: not measured, and its last state; none expired
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
 
 === Formal Verification Plan
 
@@ -8577,12 +8999,12 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |Group |Leaves |Notes
 |`fw_boot` |4 |The firmware boot smokes, the SMC firmware fabric leaf and the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
-|`fabric` |19 |The fabric and filter leaves; every member is in `hosted`
+|`fabric` |27 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |23 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |39 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |151 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |187 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |159 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |195 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
@@ -8703,6 +9125,14 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_otp_prod_error_resp_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-PROD-SMC-REFUSED`
 |`smu_lc_sigint_fail_closed_test` |F3 |dtp_under_smu, hosted |`CHK-LC-SIGINT-SMC-OTP-CLOSED`
 |`smu_smc_inbound_window_sweep_test` |F4 |fabric, hosted |`CHK-SMC-WINDOW-PROT`
+|`smu_sys_in_filter_src_id_rule_test` |F4 |fabric, hosted |`CHK-SRCID-MATCH-ADMIT`
+|`smu_base_config_corners_test` |F4 |fabric, hosted |`CHK-BASECFG-LOCAL-RO`
+|`smu_axi_in_random_id_stress_test` |F4 |fabric, hosted |`CHK-RANDID-ECHO`
+|`smu_alias_priority_overflow_test` |F4 |fabric, hosted |`CHK-ALIASPRI-HIT-TRANSLATE`
+|`smu_alias_dma_manager_test` |F4 |fabric, hosted |`CHK-ALIASDMA-NOREGION-PLACE`
+|`smu_out_filter_rule_matrix_test` |F4 |fabric, hosted |`CHK-OUTRULE-PERMIT-DEFAULT`
+|`smu_sep_out_filter_rule_matrix_test` |F4 |fabric, hosted |`CHK-SEPOUT-BLOCK-DEFAULT`
+|`smu_sep_output_remap_region_matrix_test` |F4 |fabric, hosted |`CHK-SEPREMAP-AP-REGIONS`
 |`smu_cla_action_test` |F6 |smc_under_smu, hosted |`CHK-CLA-CUSTOM-ACTION`
 |`smu_dtp_bsr_ijtag_scan_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-BSR-EXTEST-SELECT`
 |`smu_dtp_otp_smc_map_rw_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-SMC-MAP-RW`
