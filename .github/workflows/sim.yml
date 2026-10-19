@@ -97,9 +97,9 @@ jobs:
         # seconds of simulation, and none is a required context. regress.yml
         # runs their full groups nightly.
         #
-        # runner: the label this DUT's job runs on, and the only knob that sets
-        # build parallelism (--build-jobs "$(nproc)" follows it). Every row
-        # uses ubuntu-latest.
+        # runner: the label this DUT's job runs on; --build-jobs "$(nproc)"
+        # follows it unless the DUT config sets build_jobs. Every row uses
+        # ubuntu-latest except smu uvm.
         include:
           - dut: dtp
             framework: cocotb
@@ -126,10 +126,13 @@ jobs:
             framework: uvm
             label: uvm
             runner: ubuntu-latest
+          # The SMU UVM model is the largest in the tree: Verilator allocates
+          # about 9 GB before its C++ compile starts, more than half of the
+          # standard runner's 16 GB.
           - dut: smu
             framework: uvm
             label: uvm
-            runner: ubuntu-latest
+            runner: ubuntu-latest-16-cores
           - dut: smc
             framework: uvm
             label: uvm

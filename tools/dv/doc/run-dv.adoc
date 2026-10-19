@@ -290,15 +290,16 @@ present, is the oldest release the doctor accepts.
 registry to those four tools, with exactly `verilator` and `sby` license-free.
 
 |Host
-|The GitHub-hosted `ubuntu-latest` x86_64 image is the qualified host: every
-smoke, nightly, and weekly job runs on it, and the job log's `Operating
-System` group names the release the label resolved to. A Linux or macOS
+|GitHub-hosted x86_64 runners are the qualified host: every smoke, nightly,
+and weekly job runs on `ubuntu-latest`, except the `smu uvm` smoke, which
+runs on the 16-core `ubuntu-latest-16-cores`, and the job log's `Operating
+System` group names the release each label resolved to. A Linux or macOS
 developer host that meets the rows above is supported but not qualified: no
 hosted job runs there, so its evidence is its own doctor report and smoke
 run. No other host is supported.
 |The `runner` key of each matrix row in `sim.yml` and `regress.yml`.
 |The hosted jobs at head; the matrix tests hold every row's `runner` to
-`ubuntu-latest`.
+`ubuntu-latest` or `ubuntu-latest-16-cores`.
 
 |Firmware toolchain and container engine
 |A RISC-V toolchain that accepts `--specs=picolibc.specs`, named by
@@ -3378,7 +3379,8 @@ SEP, and SMU do not fit a hosted job.
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
 smoke matrix, so PR cost stays bounded by the smoke group. Every hosted row
-runs on `ubuntu-latest`.
+runs on `ubuntu-latest` except `smu uvm`, the largest model build in the
+tree, which runs on the 16-core `ubuntu-latest-16-cores` runner.
 
 [[runner-ci-smoke-scope]]
 === Which smoke checks a pull request runs

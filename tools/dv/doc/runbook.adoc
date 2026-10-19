@@ -73,7 +73,8 @@ serialized and never cancel one another.
 
 === Capacity
 
-Every row runs on the GitHub-hosted `ubuntu-latest` image. Each row's
+Every row runs on the GitHub-hosted `ubuntu-latest` runner except the
+`smu uvm` smoke, which runs on the 16-core `ubuntu-latest-16-cores`. Each row's
 duration is on its job in the Actions run; a row that approaches the cap is
 a pull request that names a smaller group. The coverage-instrumented
 Verilator models of `dtp`, `sep`, and `smu` do not fit a hosted job; the

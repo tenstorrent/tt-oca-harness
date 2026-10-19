@@ -340,9 +340,9 @@ developer-host flow: no formal job runs in hosted CI and no formal result
 reaches the dashboard.
 
 |Contributor host
-|The GitHub-hosted `ubuntu-latest` image, on which every smoke and
-regression job runs, and a Linux or macOS developer host that meets the
-same pins
+|The GitHub-hosted `ubuntu-latest` runner, on which every smoke and
+regression job runs except the `smu uvm` smoke on `ubuntu-latest-16-cores`,
+and a Linux or macOS developer host that meets the same pins
 (xref:run-dv.adoc#runner-environment-matrix[Supported environments]).
 |Licensed simulators run on self-hosted runners. The `sep` tree's private
 submodule is checked out in hosted CI with a repository secret; a public
