@@ -124,6 +124,11 @@ sources = [
 [frameworks.uvm.sim]
 args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
 
+# The SV-UVM shape of the harness has its own checker instances, so the view
+# grades against holes of its own; the scope file is the cocotb view's.
+[frameworks.uvm.coverage.verilator]
+policy_file = "hw/common/dv/vip/ocah_axi_vip/dv/cov/config/verilator/uvm_coverage_policy.toml"
+
 [frameworks.uvm.targets.default]
 description = "Shared AXI VIP SV-UVM default target"
 build_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build/uvm"

@@ -618,6 +618,12 @@ sources = [
 [frameworks.uvm.sim]
 args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
 
+# The SV-UVM leaves are not the set the cocotb policy's `user` floor is written
+# for, so the view grades against a policy without it; the scope file is the
+# cocotb view's.
+[frameworks.uvm.coverage.verilator]
+policy_file = "hw/sys/smc/dv/cov/config/verilator/uvm_coverage_policy.toml"
+
 [frameworks.uvm.targets.default]
 description = "SMC SV-UVM default target"
 build_dir = "hw/sys/smc/dv/build/uvm"

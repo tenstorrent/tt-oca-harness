@@ -784,3 +784,34 @@ run_modes = ["no_cpu"]
 tools = ["vcs"]
 target = "default"
 args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"]
+
+[[tests]]
+# The CPU LSU and the Secure DMA toward the outbound port, singly and together, under
+# seed-drawn responder READY and VALID delays: path, LSU/DMA requests outstanding at the
+# port at once, same-ID order, exactly-once B and R, response routing, AxUSER, AxPROT and
+# ID per initiator. The SMN inbound master issues alongside as the stimulus of the no-path
+# check (fabric.adoc, Routing: DECERR, nothing at the port). RANDCFG.
+name = "sep_outbound_contention_rand_test"
+module = "system.sep_outbound_contention_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["outbound", "fabric", "dma", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+sep_outbound_depth=64"]
+
+[[tests]]
+# Outbound target READY stall and B/R hold-then-release against the CPU LSU and the Secure
+# DMA, with the local crossbar outstanding limit reached under the held target: finite
+# stop, held request completes after a release, drain without deadlock, B and R
+# accounting. The outbound chain limit is printed, not graded. The SMN inbound master
+# issues alongside as the stimulus of the no-path check.
+name = "sep_outbound_stall_saturation_test"
+module = "system.sep_outbound_stall_saturation_test"
+seed = 1
+timeout_sec = 1800
+tags = ["outbound", "fabric", "dma", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+sep_outbound_depth=64"]

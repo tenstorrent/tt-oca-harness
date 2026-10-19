@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC Verilator coverage policy of the SV-UVM view (`--framework uvm`), which
+# `[frameworks.uvm.coverage.verilator]` in ../../../smc_sim_cfg.toml names as
+# that view's `policy_file`.
+#
+# It carries the same `scope_epoch` as coverage_policy.toml and the same
+# compile-time scope, smc_cov_scope.vlt. It carries no `[[thresholds]]` row: a
+# threshold rule scopes to a tool and a target, not to a framework, and the
+# SV-UVM leaves are not the coverage set that the cocotb policy's `user` floor
+# is written for. The runner reports every family's raw and effective figure
+# for this view and gates none of them; the `user` floor stays on
+# coverage_policy.toml, which the cocotb view grades against.
+
+schema_version = 1
+dut = "smc"
+scope_epoch = "smc-fcov-v1"

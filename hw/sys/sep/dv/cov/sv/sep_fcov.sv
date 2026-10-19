@@ -573,7 +573,48 @@ module sep_fcov (
   input wire                                esrc_whiten_push_i,
   input wire [11:0]                         esrc_decor_noise_i, // esrc_decor_noise_o
   input wire                                esrc_par_inj_i,    // esrc_fifo_parity_inject_i
-  input wire                                esrc_ptr_inj_i     // esrc_fifo_ptr_inject_i
+  input wire                                esrc_ptr_inj_i,    // esrc_fifo_ptr_inject_i
+
+  // eFuse, lifecycle and SEC_DIS taps (docs/SEP_FCOV.adoc, eFuse, lifecycle
+  // groups, Sampled signals): read-only, no force. TOKEN_PROC is the token
+  // processing block, EFUSE_CTRL the interface controller. Channel order of
+  // every per-channel tap: 0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS.
+  input sep_efuse_pkg::fuse_command_req_t   shim_cmd_i,      // sep efuse_shim_command_req_o
+  input sep_efuse_pkg::fuse_command_resp_t  shim_resp_i,     // sep efuse_shim_command_resp_i
+  input wire [sep_efuse_pkg::NumEfuseBits-1:0] efuse_shadow_i,   // efuse_shadow_probe_o (masked)
+  input wire [sep_efuse_pkg::NumEfuseBits-1:0] stored_shadow_i,  // EFUSE_CTRL shadow_efuse (unmasked)
+  input wire [63:0]                         feat_ctrl_i,     // lcc_feat_ctrl_probe_o
+  input wire                                lc_sigint_i,     // lcc_sigint_err_probe_o
+  input wire                                demote_lock_1_i, // lcc_demote_lock_1_probe_o
+  input wire                                demote_lock_2_i, // lcc_demote_lock_2_probe_o
+  input wire                                sep_fuse_dft_disable_i,
+  input wire                                smc_fuse_dft_disable_i,
+  input sep_efuse_pkg::efuse_axil_req_t     jtag_req_i,      // axil_sep_otp_jtag_req_i
+  input sep_efuse_pkg::efuse_axil_resp_t    jtag_resp_i,     // axil_sep_otp_jtag_resp_o
+  input wire                                irq_token_fault_i,  // PIC source 40 request line
+  input wire [5:0]                          tok_sip_i,       // ext_debug_bus_o[229:224]
+  input wire [5:0]                          tok_chp_i,       // ext_debug_bus_o[213:208]
+  input wire [5:0]                          tok_sdis_i,      // TOKEN_PROC sec_disable_token_match_q
+  input wire [2:0]                          tok_fault_i,     // TOKEN_PROC token_match_fault_sticky_q
+  input wire [2:0]                          token_go_i,      // TOKEN_PROC hash start pulses
+  input wire [2:0][7:0][31:0]               tok_words_i,     // TOKEN_PROC raw token arrays
+  input wire [255:0]                        sec_disable_expected_i,  // sec_disable_token_rev
+  input wire                                rd_addr_err_i,   // EFUSE_CTRL read_addr_error
+  input wire                                pg_addr_err_i,   // EFUSE_CTRL program_addr_error
+  input wire                                req_err_i,       // EFUSE_CTRL efuse_req_err
+  input wire [8:0]                          cmp_match_p_i,   // bit 3c+k: copy k of channel c
+  input wire [8:0]                          cmp_match_n_i,
+  input wire [2:0][255:0]                   latch_sticky_i,  // retained digest latch per channel
+  input wire [2:0]                          latch_valid_i,
+  input wire [2:0]                          latch_test_en_i,
+  input wire                                jtag_filt_sigint_i,  // jtag_filter_lc_sigint_err_probe_o
+  input wire [31:1]                         jtag_id_i,       // sep jtag_id_i
+  input wire                                efuse_read_error_i,
+  input wire                                efuse_read_done_i,
+  input wire                                efuse_read_busy_i,
+  input wire                                efuse_program_error_i,
+  input wire                                efuse_program_done_i,
+  input wire                                efuse_program_busy_i
 );
 
   import sep_top_addrmap_pkg::*;
@@ -22601,6 +22642,3313 @@ module sep_fcov (
         if (ev[k] && !cz_as_done[k]) cz_dlv(10, 3'(k));
       end
       cz_as_done <= cz_as_done | ev;
+    end
+  end
+
+  // =====================================================================
+  // eFuse, lifecycle, SEC_DIS and locked-field groups (docs/SEP_FCOV.adoc,
+  // eFuse, lifecycle groups). Every point samples only while graded_owner
+  // holds the code of a test that owns the point or the cell. Every point
+  // that reads shadow-derived state samples with fuse_sense_done_i high,
+  // except the SEC_DIS points the group rows name. The settle counts, windows
+  // and timeouts below are choices of the environment; the specification
+  // gives none.
+  // =====================================================================
+  wire ef_own_win = (graded_owner == FcovOwnSepEfuseWindowDecodeResetTest);
+  wire ef_own_fld = (graded_owner == FcovOwnSepEfuseFieldLayoutRandTest);
+  wire ef_own_cw = (graded_owner == FcovOwnSepLccStateCodewordRandTest);
+  wire ef_own_fc = (graded_owner == FcovOwnSepLccFeatCtrlStateMatrixRandTest);
+  wire ef_own_tr = (graded_owner == FcovOwnSepEfuseTransientRmaRandTest);
+  wire ef_own_tch = (graded_owner == FcovOwnSepEfuseTokenChannelRandTest);
+  wire ef_own_tf = (graded_owner == FcovOwnSepEfuseTokenFaultMatrixTest);
+  wire ef_own_ifs = (graded_owner == FcovOwnSepEfuseInterfaceStatusRandTest);
+  wire ef_own_lock = (graded_owner == FcovOwnSepEfuseLockSlotMatrixRandTest);
+  wire ef_own_stm = (graded_owner == FcovOwnSepEfuseSecureTmMatrixRandTest);
+  wire ef_own_jtag = (graded_owner == FcovOwnSepEfuseJtagAccessRandTest);
+  wire ef_own_sdt = (graded_owner == FcovOwnSepSecDisTimingRandTest);
+  wire ef_own_shim = (graded_owner == FcovOwnSepEfuseShimResponseFaultTest);
+
+  localparam int unsigned EfFeatSettle = 8;  // feature-change inputs stable
+  localparam int unsigned EfTokSettle = 8;  // token-change inputs stable (N)
+  localparam int unsigned EfTransWin = 256;  // x_transient outcome window N
+  localparam int unsigned EfWrSettle = 8;  // clocks from a write B to its effect
+  localparam int unsigned EfRelWin = 4;  // SEC_DIS high this close to a release counts as held
+  // Clocks from the B of a go before its idle or refusal outcome counts: a program
+  // or read command that has not reached the shim by then is "none".
+  localparam int unsigned EfReqWait = 64;
+  localparam int unsigned EfBothWin = 1024;  // both_enables sample after the go
+  localparam int unsigned EfProgN = 64;  // x_prog_lifecycle N
+  localparam int unsigned EfLatchWin = 4096;  // digest replacement after release
+
+  // Windows of 0x1093_0000 to 0x1093_FFFF (memory_map.adoc): shadow map,
+  // interface control, its unused tail, token registers, the span between the
+  // token registers and 0x1093_0600 (not declared), reserved.
+  localparam logic [2:0] EfWShadow = 3'd0;
+  localparam logic [2:0] EfWCtrlIn = 3'd1;
+  localparam logic [2:0] EfWCtrlPast = 3'd2;
+  localparam logic [2:0] EfWTokIn = 3'd3;
+  localparam logic [2:0] EfWTokGap = 3'd4;
+  localparam logic [2:0] EfWRsvd = 3'd5;
+  localparam logic [2:0] EfWNone = 3'd7;
+  localparam logic [31:0] EfMapBase = SEP_EFUSE_MAP_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] EfMapEnd = EfMapBase + SEP_EFUSE_MAP_REG_MAP_SIZE;
+  localparam logic [31:0] EfCtrlBase = EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] EfCtrlEnd = EfCtrlBase + EFUSE_INTERFACE_CTRL_REG_MAP_SIZE;
+  localparam logic [31:0] EfMmrBase = EFUSE_MMR_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] EfMmrEnd = EfMmrBase + EFUSE_MMR_REG_MAP_SIZE;
+  localparam logic [31:0] EfRsvdBase = EfMapBase + 32'h0000_0600;
+  localparam logic [31:0] EfRsvdHigh = EfMapBase + 32'h0000_1000;
+  localparam logic [31:0] EfWinEnd = EfMapBase + 32'h0001_0000;
+
+  function automatic logic [2:0] ef_win(input logic [31:0] a);
+    if (in_win(a, EfMapBase, EfMapEnd)) return EfWShadow;
+    if (in_win(a, EfCtrlBase, EfCtrlEnd)) return EfWCtrlIn;
+    if (in_win(a, EfCtrlEnd, EfMmrBase)) return EfWCtrlPast;
+    if (in_win(a, EfMmrBase, EfMmrEnd)) return EfWTokIn;
+    if (in_win(a, EfMmrEnd, EfRsvdBase)) return EfWTokGap;
+    if (in_win(a, EfRsvdBase, EfWinEnd)) return EfWRsvd;
+    return EfWNone;
+  endfunction
+
+  // Register addresses of the interface control and token blocks.
+  localparam logic [31:0] EfStatus = EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR;
+  localparam logic [31:0] EfPgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
+  localparam logic [31:0] EfRdCtrl = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR;
+  localparam logic [31:0] EfPgData = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR;
+  localparam logic [31:0] EfRdData = EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR;
+  localparam logic [31:0] EfRdTmo = EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR;
+  localparam logic [31:0] EfPgTmo = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR;
+  localparam logic [31:0] EfTokSip = EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR;
+  localparam logic [31:0] EfTokChip = EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR;
+  localparam logic [31:0] EfTokSec = EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR;
+  localparam logic [31:0] EfTokEop = EFUSE_MMR_TOKEN_EOP_REG_ADDR;
+  localparam logic [31:0] EfMatchSip = EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR;
+  localparam logic [31:0] EfMatchChip = EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR;
+  localparam logic [31:0] EfMatchSec = EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR;
+  localparam logic [31:0] EfMatchFault = EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR;
+  localparam logic [31:0] EfDemote1 = SEP_LIFECYCLE_CTRL_DEMOTE_1_REG_ADDR;
+  localparam logic [31:0] EfDemote2 = SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR;
+
+  // Field masks of the interface control registers (efuse_interface_ctrl.adoc).
+  localparam logic [31:0] EfPgAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK;
+  localparam logic [31:0] EfPgDataMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK;
+  localparam logic [31:0] EfPgGoMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK;
+  localparam logic [31:0] EfPgEnMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK;
+  localparam logic [31:0] EfRdAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK;
+  localparam logic [31:0] EfRdGoMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK;
+  localparam logic [31:0] EfRdEnMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_MASK;
+  localparam logic [31:0] EfReqErrMask =
+      EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_MASK;
+  localparam logic [31:0] EfRdAddrClrMask =
+      EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_MASK;
+  localparam logic [31:0] EfPgAddrClrMask =
+      EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_MASK;
+  localparam logic [31:0] EfReqErrClrMask =
+      EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_MASK;
+  localparam logic [31:0] EfPgTmoEnMask =
+      EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_MASK;
+  localparam logic [31:0] EfDemoteMask = 32'(SEP_LIFECYCLE_CTRL_DEMOTE_DEMOTE_MASK);
+  localparam logic [31:0] EfDemLockMask = 32'(SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_MASK);
+  // The fuse map is 8192 bits (otp_fuse_controller.adoc, Fuse Fields).
+  localparam int unsigned EfFuseBits = sep_efuse_pkg::NumEfuseBits;
+
+  // Shadow word index of each field: byte offset / 4 (sep_efuse_map.adoc).
+  localparam int unsigned EfWLocks = SEP_EFUSE_MAP_LOCKS_REG_OFFSET / 4;
+  localparam int unsigned EfWLocksSp = SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET / 4;
+  localparam int unsigned EfWLc = SEP_EFUSE_MAP_LC_STATE_REG_OFFSET / 4;
+  localparam int unsigned EfWSboot = SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET / 4;
+  localparam int unsigned EfWTrans = SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET / 4;
+  localparam int unsigned EfWSipDis = SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET / 4;
+  localparam int unsigned EfWSysDis = SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET / 4;
+  localparam int unsigned EfWSipDig = SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET / 4;
+  localparam int unsigned EfWChipDig = SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET / 4;
+  localparam int unsigned EfWRevoke = SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET / 4;
+  localparam int unsigned EfWBl1 = SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET / 4;
+  localparam int unsigned EfWBl2 = SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET / 4;
+  localparam int unsigned EfWStatusRpt = SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET / 4;
+  localparam int unsigned EfWRomCtl = SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET / 4;
+  localparam int unsigned EfWSysclk = SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET / 4;
+  localparam int unsigned EfWSigners = SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET / 4;
+  localparam int unsigned EfWAlgs = SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET / 4;
+  // CHIPLET_PUBK_REVOKE uses bits 25:0 (sep_efuse_map.adoc, CHIPLET_PUBK_REVOKE).
+  localparam logic [31:0] EfRevokeAll = 32'h03FF_FFFF;
+
+  // Lock slot n starts at EfSlotOff[n] and ends at EfSlotOff[n+1]
+  // (sep_efuse_map.adoc, LOCKS and LOCKS_SPARE: slot 0 LC_STATE to slot 40
+  // spare8, in RDL field order). The LOCKS words are not a slot.
+  localparam int unsigned EfSlots = 41;
+  localparam logic [10:0] EfSlotOff[42] = '{
+      11'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SIP_UID_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SYS_UID_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SPARE0_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SPARE1_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SPARE2_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SPARE3_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SPARE4_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SPARE5_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SPARE6_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SPARE7_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_SPARE8_REG_OFFSET),
+      11'(SEP_EFUSE_MAP_REG_MAP_SIZE)
+  };
+  localparam logic [5:0] EfNoSlot = 6'd63;
+  localparam logic [5:0] EfSlotSipDis = 6'd3;
+  localparam logic [5:0] EfSlotSysDis = 6'd4;
+  localparam logic [5:0] EfSlotClassKey = 6'd7;
+  localparam logic [5:0] EfSlotChipUid = 6'd11;
+  localparam logic [5:0] EfSlotSipUid = 6'd13;
+  localparam logic [5:0] EfSlotSysUid = 6'd15;
+  localparam logic [5:0] EfSlotSigners = 6'd21;
+  localparam logic [5:0] EfSlotAlgs = 6'd22;
+  localparam logic [5:0] EfSlotSpare0 = 6'd32;
+
+  function automatic logic [5:0] ef_slot_of(input logic [10:0] off);
+    for (int s = 0; s < EfSlots; s++) begin
+      if ((off >= EfSlotOff[s]) && (off < EfSlotOff[s+1])) return 6'(s);
+    end
+    return EfNoSlot;
+  endfunction
+
+  // Secret fields of the secure test mode mask (test_mode.adoc, Protection
+  // While Active): 0 CHIPLET_UID, 1 SIP_UID, 2 SYS_UID, 3 CLASS_KEY; 4 none.
+  function automatic logic [2:0] ef_secret_of(input logic [5:0] s);
+    case (s)
+      EfSlotChipUid: return 3'd0;
+      EfSlotSipUid: return 3'd1;
+      EfSlotSysUid: return 3'd2;
+      EfSlotClassKey: return 3'd3;
+      default: return 3'd4;
+    endcase
+  endfunction
+
+  // Lifecycle raw class (lifecycle_controller.adoc, Per-LC-state Feature
+  // Control Profile): 0 TEST_DEV, 1 PROD, 2 PROD_END, 3 RMA_SIP, 4
+  // RMA_CHIPLET, 5 INVALID.
+  localparam logic [2:0] EfTd = 3'd0;
+  localparam logic [2:0] EfProd = 3'd1;
+  localparam logic [2:0] EfPe = 3'd2;
+  localparam logic [2:0] EfRs = 3'd3;
+  localparam logic [2:0] EfRc = 3'd4;
+  localparam logic [2:0] EfInv = 3'd5;
+  function automatic logic [2:0] ef_cls(input logic [3:0] raw);
+    if (raw == 4'b0000) return EfTd;
+    if (raw == 4'b0001) return EfProd;
+    if (raw == 4'b1000) return EfPe;
+    if (raw[3:1] == 3'b001) return EfRs;
+    if (raw[3:1] == 3'b011) return EfRc;
+    return EfInv;
+  endfunction
+
+  // Disable vector groups (lifecycle_controller.adoc, Disable Vector Format):
+  // 0 DBG_1 [23:0], 1 DBG_2 [47:24], 2 Function [63:48].
+  function automatic logic [23:0] ef_grp(input logic [63:0] v, input int unsigned g);
+    case (g)
+      0: return v[23:0];
+      1: return v[47:24];
+      default: return {8'h00, v[63:48]};
+    endcase
+  endfunction
+  function automatic logic [23:0] ef_gmask(input int unsigned g);
+    return (g == 2) ? 24'h00_FFFF : 24'hFF_FFFF;
+  endfunction
+
+  // Profile rows of the feature control table: TEST_DEV 00/10/01/11 then
+  // SEC_DIS (0-4), PROD the same (5-9), PROD_END SEC_DIS 0/1 (10-11),
+  // RMA_SIP (12-13), RMA_CHIPLET (14), INVALID (15-16). Demotion is
+  // {DEMOTE_1, DEMOTE_2}.
+  function automatic logic [4:0] ef_row(input logic [2:0] c, input logic sd, input logic [1:0] dm);
+    case (c)
+      EfTd: return sd ? 5'd4 : 5'(dm == 2'b00 ? 0 : dm == 2'b10 ? 1 : dm == 2'b01 ? 2 : 3);
+      EfProd: return sd ? 5'd9 : 5'(dm == 2'b00 ? 5 : dm == 2'b10 ? 6 : dm == 2'b01 ? 7 : 8);
+      EfPe: return sd ? 5'd11 : 5'd10;
+      EfRs: return sd ? 5'd13 : 5'd12;
+      EfRc: return 5'd14;
+      default: return sd ? 5'd16 : 5'd15;
+    endcase
+  endfunction
+
+  // Class of a group in a profile row, as the table gives it: 0 T (all ones),
+  // 1 F (all zeros), 2 ~SIP_DIS, 3 ~(SIP_DIS | SYS_DIS).
+  function automatic logic [2:0] ef_prof_cls(input logic [4:0] row, input int unsigned g);
+    case (row)
+      5'd0: return 3'd3;
+      5'd1: return (g == 0) ? 3'd0 : 3'd3;
+      5'd2: return (g == 1) ? 3'd0 : 3'd3;
+      5'd3: return (g == 2) ? 3'd3 : 3'd0;
+      5'd5, 5'd10: return (g == 2) ? 3'd3 : 3'd1;
+      5'd6: return (g == 1) ? 3'd1 : 3'd3;
+      5'd7: return (g == 0) ? 3'd1 : 3'd3;
+      5'd8: return 3'd3;
+      5'd12: return 3'd2;
+      5'd15: return 3'd1;
+      default: return 3'd0;  // SEC_DIS rows and RMA_CHIPLET
+    endcase
+  endfunction
+
+  // Observed class of feature group g: 0 all ones, 1 all zeros, 2 ~SIP_DIS,
+  // 3 ~(SIP_DIS | SYS_DIS), 4 other.
+  function automatic logic [2:0] ef_obs_cls(input logic [63:0] f, input logic [63:0] sip,
+                                            input logic [63:0] sys, input int unsigned g);
+    logic [23:0] m, fv, sv, yv;
+    m  = ef_gmask(g);
+    fv = ef_grp(f, g);
+    sv = ef_grp(sip, g);
+    yv = ef_grp(sys, g);
+    if (fv == m) return 3'd0;
+    if (fv == 24'h0) return 3'd1;
+    if (fv == (~sv & m)) return 3'd2;
+    if (fv == (~(sv | yv) & m)) return 3'd3;
+    return 3'd4;
+  endfunction
+
+  // Token status codes (token_processing.adoc, Token Matching Mechanism).
+  localparam logic [5:0] EfCodeIdle = 6'h00;
+  localparam logic [5:0] EfCodeMatch = 6'h15;
+  localparam logic [5:0] EfCodeMismatch = 6'h2A;
+  localparam logic [5:0] EfCodeErr = 6'h3F;
+
+  // ---------------------------------------------------------------------
+  // Covergroups. Each sample carries one point; the valid bit is set only
+  // when the owner of the point or of the cell is in its window. A field
+  // named bad is 1 when the observed outcome is not the outcome the cell
+  // allows; those values are illegal_bins.
+  // ---------------------------------------------------------------------
+  typedef struct packed {
+    logic [2:0] wn;
+    logic wn_v;  // cp_window: window class
+    logic rz;
+    logic rz_v;  // cp_rsvd_zone: 0 low, 1 high
+    logic [5:0] wr;
+    logic wr_v;  // x_win_op_resp: {ignored, window, 0 rd / 1 wr, OKAY}
+    logic [3:0] sf;
+    logic sf_v;  // cp_shadow_field: register index
+    logic [1:0] ea;
+    logic ea_v;  // cp_edge_addr
+    logic [3:0] cr;
+    logic cr_v;  // x_ctrl_reg_op: register and op
+    logic [3:0] tb;
+    logic tb_v;  // x_token_blk_op: register and op
+    logic ji;
+    logic ji_v;  // cp_jtag_id_class: 1 nonzero
+  } ef_geo_t;
+
+  covergroup sep_efuse_map_geometry_cg with function sample (ef_geo_t s);
+    option.per_instance = 1;
+    option.name = "sep_efuse_map_geometry_cg";
+    // The span between the token registers and 0x1093_0600 is not declared.
+    cp_window: coverpoint s.wn iff (s.wn_v) {
+      bins shadow = {EfWShadow};
+      bins ctrl_in = {EfWCtrlIn};
+      bins ctrl_past = {EfWCtrlPast};
+      bins tok_in = {EfWTokIn};
+      bins rsvd = {EfWRsvd};
+    }
+    cp_rsvd_zone: coverpoint s.rz iff (s.rz_v) {bins low = {1'b0}; bins high = {1'b1};}
+    // Sampled with fuse_sense_done_i high, for the in-extent windows only.
+    // The ignored accesses are those whose response no source states: a
+    // shadow write, a read-locked shadow read, a STATUS write, a write to an
+    // access-R register and a read of TOKEN_EOP.
+    x_win_op_resp: coverpoint s.wr iff (s.wr_v) {
+      bins shadow_rd_okay = {6'b0_000_0_1};
+      bins ctrl_rd_okay = {6'b0_001_0_1};
+      bins ctrl_wr_okay = {6'b0_001_1_1};
+      bins tok_rd_okay = {6'b0_011_0_1};
+      bins tok_wr_okay = {6'b0_011_1_1};
+      illegal_bins in_extent_not_okay = {
+        6'b0_000_0_0, 6'b0_001_0_0, 6'b0_001_1_0, 6'b0_011_0_0, 6'b0_011_1_0
+      };
+      ignore_bins response_not_stated = {[6'b1_000_0_0 : 6'b1_111_1_1]};
+    }
+    cp_shadow_field: coverpoint s.sf iff (s.sf_v) {
+      bins lc_state = {4'd0};
+      bins sboot_dis = {4'd1};
+      bins transient_rma_en = {4'd2};
+      bins chiplet_pubk_revoke = {4'd3};
+      bins status_rpt = {4'd4};
+      bins rom_ctl = {4'd5};
+      bins sysclk_freq_mhz = {4'd6};
+      bins required_signers = {4'd7};
+      bins required_algs = {4'd8};
+    }
+    cp_edge_addr: coverpoint s.ea iff (s.ea_v) {
+      bins last_shadow_word = {2'd0};
+      bins last_ctrl_reg = {2'd1};
+      bins first_past_extent = {2'd2};
+      bins first_reserved = {2'd3};
+    }
+    // The write cells of the two timeout registers are not declared.
+    x_ctrl_reg_op: coverpoint s.cr iff (s.cr_v) {
+      bins status_rd = {4'd0};
+      bins status_wr = {4'd1};
+      bins program_ctrl_rd = {4'd2};
+      bins program_ctrl_wr = {4'd3};
+      bins read_ctrl_rd = {4'd4};
+      bins read_ctrl_wr = {4'd5};
+      bins read_req_timeout_rd = {4'd6};
+      bins program_req_timeout_rd = {4'd7};
+      bins program_if_read_data_rd = {4'd8};
+      bins read_if_read_data_rd = {4'd9};
+    }
+    // The TOKEN_MATCH_FAULT read is not declared.
+    x_token_blk_op: coverpoint s.tb iff (s.tb_v) {
+      bins sip_token_rd = {4'd0};
+      bins sip_token_wr = {4'd1};
+      bins chiplet_token_rd = {4'd2};
+      bins chiplet_token_wr = {4'd3};
+      bins sec_dis_token_rd = {4'd4};
+      bins sec_dis_token_wr = {4'd5};
+      bins sip_match_rd = {4'd6};
+      bins chiplet_match_rd = {4'd7};
+      bins sec_dis_match_rd = {4'd8};
+      bins token_eop_wr = {4'd9};
+    }
+    // The zero value is not declared.
+    cp_jtag_id_class: coverpoint s.ji iff (s.ji_v) {
+      bins nonzero = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic sb;
+    logic sb_v;  // cp_sboot_dis
+    logic [1:0] rs;
+    logic rs_v;  // cp_required_signers
+    logic [3:0] al;
+    logic al_v;  // x_algs_owner_value: owner * 4 + value
+    logic [1:0] sr;
+    logic sr_v;  // cp_status_rpt
+    logic [3:0] rc;
+    logic rc_v;  // cp_rom_ctl: {0, endianness} or {1, swap class}
+    logic [1:0] sc;
+    logic sc_v;  // cp_sysclk_class: 0 one, 1 middle, 2 max
+    logic [1:0] rv;
+    logic rv_v;  // cp_revoke_class
+    logic [2:0] vb;
+    logic vb_v;  // x_version_bit: field * 3 + index class
+  } ef_fld_t;
+
+  covergroup sep_efuse_field_value_cg with function sample (ef_fld_t s);
+    option.per_instance = 1;
+    option.name = "sep_efuse_field_value_cg";
+    cp_sboot_dis: coverpoint s.sb iff (s.sb_v) {bins zero = {1'b0}; bins one = {1'b1};}
+    cp_required_signers: coverpoint s.rs iff (s.rs_v) {bins value[] = {[2'd0 : 2'd3]};}
+    // Owner chiplet [3:0], SiP [7:4], system [11:8] x bits 1:0 of the nibble.
+    x_algs_owner_value: coverpoint s.al iff (s.al_v) {
+      bins chiplet[] = {[4'd0 : 4'd3]};
+      bins sip[] = {[4'd4 : 4'd7]};
+      bins system[] = {[4'd8 : 4'd11]};
+    }
+    cp_status_rpt: coverpoint s.sr iff (s.sr_v) {bins value[] = {[2'd0 : 2'd3]};}
+    // Swap class: 0 zero, 1 to 5 the single bit 1 to 5, 6 all five, 7 other.
+    cp_rom_ctl: coverpoint s.rc iff (s.rc_v) {
+      bins endian_0 = {4'b0_000};
+      bins endian_1 = {4'b0_001};
+      bins swap_zero = {4'b1_000};
+      bins swap_single[] = {[4'b1_001 : 4'b1_101]};
+      bins swap_all = {4'b1_110};
+      bins swap_other = {4'b1_111};
+    }
+    // Value 0 is "ignored" and is not drawn, so it has no bin.
+    cp_sysclk_class: coverpoint s.sc iff (s.sc_v) {
+      bins one = {2'd0}; bins middle = {2'd1}; bins max = {2'd2};
+    }
+    cp_revoke_class: coverpoint s.rv iff (s.rv_v) {
+      bins zero = {2'd0}; bins one_bit = {2'd1}; bins all_26 = {2'd2}; bins other = {2'd3};
+    }
+    // {BL1_VERSION, BL2_VERSION} x burned bit index {0, 1 to 254, 255}.
+    x_version_bit: coverpoint s.vb iff (s.vb_v) {
+      bins bl1[] = {[3'd0 : 3'd2]}; bins bl2[] = {[3'd3 : 3'd5]};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] sc;
+    logic sc_v;  // cp_state_class
+    logic [4:0] pr;
+    logic pr_v;  // cp_profile_row
+    logic [10:0] xr;
+    logic xr_v;  // x_row_group_class: {bad, row, group, class}
+    logic [2:0] oc;
+    logic oc_v;  // cp_or_class: {group, mixed}
+    logic rd;
+    logic rd_v;  // cp_rma_dis_nonzero: 0 RMA_SIP, 1 RMA_CHIPLET
+  } ef_prof_t;
+
+  covergroup sep_lc_feat_ctrl_profile_cg with function sample (ef_prof_t s);
+    option.per_instance = 1;
+    option.name = "sep_lc_feat_ctrl_profile_cg";
+    cp_state_class: coverpoint s.sc iff (s.sc_v) {
+      bins test_dev = {EfTd};
+      bins prod = {EfProd};
+      bins prod_end = {EfPe};
+      bins rma_sip = {EfRs};
+      bins rma_chiplet = {EfRc};
+      bins invalid = {EfInv};
+    }
+    cp_profile_row: coverpoint s.pr iff (s.pr_v) {bins row[] = {[5'd0 : 5'd16]};}
+    // 17 rows x 3 groups with the class of the table (51 cells). The class is
+    // in bits 2:0 of the cell; bad is 1 when the observed class is another.
+    x_row_group_class: coverpoint s.xr iff (s.xr_v) {
+      bins r0[] = {11'h003, 11'h00B, 11'h013};
+      bins r1[] = {11'h020, 11'h02B, 11'h033};
+      bins r2[] = {11'h043, 11'h048, 11'h053};
+      bins r3[] = {11'h060, 11'h068, 11'h073};
+      bins r4[] = {11'h080, 11'h088, 11'h090};
+      bins r5[] = {11'h0A1, 11'h0A9, 11'h0B3};
+      bins r6[] = {11'h0C3, 11'h0C9, 11'h0D3};
+      bins r7[] = {11'h0E1, 11'h0EB, 11'h0F3};
+      bins r8[] = {11'h103, 11'h10B, 11'h113};
+      bins r9[] = {11'h120, 11'h128, 11'h130};
+      bins r10[] = {11'h141, 11'h149, 11'h153};
+      bins r11[] = {11'h160, 11'h168, 11'h170};
+      bins r12[] = {11'h182, 11'h18A, 11'h192};
+      bins r13[] = {11'h1A0, 11'h1A8, 11'h1B0};
+      bins r14[] = {11'h1C0, 11'h1C8, 11'h1D0};
+      bins r15[] = {11'h1E1, 11'h1E9, 11'h1F1};
+      bins r16[] = {11'h200, 11'h208, 11'h210};
+      illegal_bins wrong_class = {[11'h400 : 11'h7FF]};
+    }
+    cp_or_class: coverpoint s.oc iff (s.oc_v) {
+      bins dbg_1_zero = {3'b00_0};
+      bins dbg_1_mixed = {3'b00_1};
+      bins dbg_2_zero = {3'b01_0};
+      bins dbg_2_mixed = {3'b01_1};
+      bins function_zero = {3'b10_0};
+      bins function_mixed = {3'b10_1};
+    }
+    cp_rma_dis_nonzero: coverpoint s.rd iff (s.rd_v) {
+      bins rma_sip = {1'b0}; bins rma_chiplet = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [3:0] nb;
+    logic nb_v;  // x_named_bit_value: {named bit, value}
+    logic [4:0] cb;
+    logic cb_v;  // x_closed_bit_owner: {bit index, 0 SIP_DIS / 1 SYS_DIS}
+    logic [4:0] dg;
+    logic dg_v;  // x_demote_group: {0 DEMOTE_1 / 1 DEMOTE_2, 0 TD / 1 PROD, groups}
+  } ef_bit_t;
+
+  covergroup sep_lc_feature_bit_semantics_cg with function sample (ef_bit_t s);
+    option.per_instance = 1;
+    option.name = "sep_lc_feature_bit_semantics_cg";
+    // Named bit 0 SEP_DBG, 1 CHIPLET_DBG, 2 SEP_FUSE_DBG, 3 SMC_FUSE_DBG,
+    // 4 SIP_DBG.
+    x_named_bit_value: coverpoint s.nb iff (s.nb_v) {
+      bins sep_dbg[] = {4'b000_0, 4'b000_1};
+      bins chiplet_dbg[] = {4'b001_0, 4'b001_1};
+      bins sep_fuse_dbg[] = {4'b010_0, 4'b010_1};
+      bins smc_fuse_dbg[] = {4'b011_0, 4'b011_1};
+      bins sip_dbg[] = {4'b100_0, 4'b100_1};
+    }
+    // Bit index k of {0, 1, 2, 3, 4, 23, 24, 25, 47, 48, 63} x owner.
+    x_closed_bit_owner: coverpoint s.cb iff (s.cb_v) {
+      bins cells[] = {[5'd0 : 5'd21]};
+    }
+    // DEMOTE_1 changes DBG_1 only and DEMOTE_2 changes DBG_2 only. Groups:
+    // bit 0 DBG_1, bit 1 DBG_2, bit 2 Function.
+    x_demote_group: coverpoint s.dg iff (s.dg_v) {
+      bins demote_1_test_dev = {5'b0_0_001};
+      bins demote_1_prod = {5'b0_1_001};
+      bins demote_2_test_dev = {5'b1_0_010};
+      bins demote_2_prod = {5'b1_1_010};
+      wildcard illegal_bins demote_1_other_group = {5'b0_?_?1?, 5'b0_?_1??};
+      wildcard illegal_bins demote_2_other_group = {5'b1_?_??1, 5'b1_?_1??};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] sp;
+    logic sp_v;  // x_sep_port: {Case 3, SEP_FUSE_DBG, other than all-open}
+    logic [2:0] mp;
+    logic mp_v;  // x_smc_port: {Case 2, SMC_FUSE_DBG, other than all-open}
+    logic [1:0] ns;
+    logic ns_v;  // cp_nesting
+  } ef_dtp_t;
+
+  covergroup sep_dtp_gating_ladder_cg with function sample (ef_dtp_t s);
+    option.per_instance = 1;
+    option.name = "sep_dtp_gating_ladder_cg";
+    // The port is Case 3 AND SEP_FUSE_DBG: same as the all-open cell only
+    // when both hold. No bin names the active level.
+    x_sep_port: coverpoint s.sp iff (s.sp_v) {
+      bins case3_fuse_same = {3'b11_0};
+      bins case3_nofuse_other = {3'b10_1};
+      bins nocase3_fuse_other = {3'b01_1};
+      bins nocase3_nofuse_other = {3'b00_1};
+      illegal_bins opposite = {3'b11_1, 3'b10_0, 3'b01_0, 3'b00_0};
+    }
+    x_smc_port: coverpoint s.mp iff (s.mp_v) {
+      bins case2_fuse_same = {3'b11_0};
+      bins case2_nofuse_other = {3'b10_1};
+      bins nocase2_fuse_other = {3'b01_1};
+      bins nocase2_nofuse_other = {3'b00_1};
+      illegal_bins opposite = {3'b11_1, 3'b10_0, 3'b01_0, 3'b00_0};
+    }
+    // Case 3 implies Case 2 by definition, so no reverse value can occur.
+    cp_nesting: coverpoint s.ns iff (s.ns_v) {
+      bins case1_only = {2'd1}; bins case2_not_case3 = {2'd2}; bins case3 = {2'd3};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [4:0] rs;
+    logic rs_v;  // x_raw16_sigint: {lc_sigint_i, raw}
+    logic [4:0] ss;
+    logic ss_v;  // x_sigint_state_secdis_out: {bad, state * 2 + SEC_DIS}
+  } ef_sig_t;
+
+  covergroup sep_lc_sigint_failclosed_cg with function sample (ef_sig_t s);
+    option.per_instance = 1;
+    option.name = "sep_lc_sigint_failclosed_cg";
+    x_raw16_sigint: coverpoint s.rs iff (s.rs_v) {
+      bins raw[] = {[5'd0 : 5'd15]}; illegal_bins sigint_at_sense_done = {[5'd16 : 5'd31]};
+    }
+    // State TEST_DEV, PROD, PROD_END, RMA_SIP, RMA_CHIPLET x SEC_DIS: SEC_DIS
+    // 0 gives all zeros, SEC_DIS 1 all ones. INVALID is not declared.
+    x_sigint_state_secdis_out: coverpoint s.ss iff (s.ss_v) {
+      bins cells[] = {[5'd0 : 5'd9]}; illegal_bins wrong_output = {[5'd16 : 5'd25]};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [5:0] tr;
+    logic tr_v;  // x_transient: {bad, (enable * 2 + channel) * 5 + old class}
+  } ef_trn_t;
+
+  covergroup sep_lc_illegal_transition_cg with function sample (ef_trn_t s);
+    option.per_instance = 1;
+    option.name = "sep_lc_illegal_transition_cg";
+    // Old class 0 TEST_DEV, 1 PROD, 2 RMA_SIP, 3 RMA_CHIPLET, 4 INVALID;
+    // channel 0 SIP, 1 CHIPLET. Updated is legal for enable 1 with SIP from
+    // TEST_DEV or PROD and with CHIPLET from RMA_SIP; unchanged elsewhere.
+    x_transient: coverpoint s.tr iff (s.tr_v) {
+      bins cells[] = {[6'd0 : 6'd19]}; illegal_bins wrong_outcome = {[6'd32 : 6'd51]};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [7:0] sp;
+    logic sp_v;  // x_slot_prog: {bad, (slot - 1) * 2 + write-lock}
+    logic [7:0] sr;
+    logic sr_v;  // x_slot_read: {bad, (slot - 1) * 2 + read-lock}
+    logic [3:0] ko;
+    logic ko_v;  // x_kind_op: {bad, kind * 2 + op}
+    logic [1:0] nf;
+    logic nf_v;  // x_neighbor_free: {0 previous / 1 next, 0 program / 1 read}
+    logic [1:0] ex;
+    logic ex_v;  // x_exempt: 0 LC_STATE, 1 LOCKS, 2 LOCKS_SPARE
+    logic sl;
+    logic sl_v;  // cp_sense_fills_locked: 0 secret, 1 other
+    logic [3:0] sw;
+    logic sw_v;  // x_shadow_write_lock: {bad, field * 2 + write-lock}
+    logic [1:0] lo;
+    logic lo_v;  // cp_lock_order
+    logic pv;
+    logic pv_v;  // cp_prog_visibility
+    logic [2:0] rc;
+    logic rc_v;  // cp_round_count
+    logic [2:0] lp;
+    logic lp_v;  // x_lc_prog_gate: {bit 2, other channel only, landed}
+  } ef_lock_t;
+
+  covergroup sep_efuse_lock_policy_cg with function sample (ef_lock_t s);
+    option.per_instance = 1;
+    option.name = "sep_efuse_lock_policy_cg";
+    // Lock clear: the program lands; lock set: it is refused.
+    x_slot_prog: coverpoint s.sp iff (s.sp_v) {
+      bins cells[] = {[8'd0 : 8'd79]}; illegal_bins wrong_outcome = {[8'd128 : 8'd207]};
+    }
+    // Lock clear: the frontdoor read returns the sensed word; lock set: the
+    // read-interface request sets efuse_req_error.
+    x_slot_read: coverpoint s.sr iff (s.sr_v) {
+      bins cells[] = {[8'd0 : 8'd79]}; illegal_bins wrong_outcome = {[8'd128 : 8'd207]};
+    }
+    // Kind 0 none, 1 write, 2 read, 3 write and read; op 0 program, 1 read.
+    x_kind_op: coverpoint s.ko iff (s.ko_v) {
+      bins cells[] = {[4'd0 : 4'd7]}; illegal_bins wrong_outcome = {[4'd8 : 4'd15]};
+    }
+    x_neighbor_free: coverpoint s.nf iff (s.nf_v) {
+      bins previous_program = {2'b0_0};
+      bins previous_read = {2'b0_1};
+      bins next_program = {2'b1_0};
+      bins next_read = {2'b1_1};
+    }
+    x_exempt: coverpoint s.ex iff (s.ex_v) {
+      bins lc_state = {2'd0}; bins locks = {2'd1}; bins locks_spare = {2'd2};
+    }
+    cp_sense_fills_locked: coverpoint s.sl iff (s.sl_v) {
+      bins secret_field = {1'b0}; bins other_field = {1'b1};
+    }
+    // Field 0 SIP_DIS, 1 SYS_DIS, 2 REQUIRED_SIGNERS, 3 REQUIRED_ALGS: lock
+    // clear changes the shadow (OR), lock set leaves it unchanged.
+    x_shadow_write_lock: coverpoint s.sw iff (s.sw_v) {
+      bins cells[] = {[4'd0 : 4'd7]}; illegal_bins wrong_outcome = {[4'd8 : 4'd15]};
+    }
+    cp_lock_order: coverpoint s.lo iff (s.lo_v) {
+      bins write_before_lock_lands = {2'd0};
+      bins write_after_lock_blocked = {2'd1};
+      bins zero_write_keeps_lock = {2'd2};
+    }
+    cp_prog_visibility: coverpoint s.pv iff (s.pv_v) {
+      bins shadow_unchanged_after_program = {1'b0}; bins resense_shows_program = {1'b1};
+    }
+    cp_round_count: coverpoint s.rc iff (s.rc_v) {bins k[] = {[3'd1 : 3'd4]};}
+    // (bit 2, other channel matched only) is not a bin.
+    x_lc_prog_gate: coverpoint s.lp iff (s.lp_v) {
+      bins bit1_own_landed = {3'b0_0_1};
+      bins bit1_other_refused = {3'b0_1_0};
+      bins bit2_own_landed = {3'b1_0_1};
+      illegal_bins wrong_outcome = {3'b0_0_0, 3'b0_1_1, 3'b1_0_0};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [4:0] sc;
+    logic sc_v;  // x_state_combo: state * 4 + {DEMOTE_1, DEMOTE_2}
+    logic ao;
+    logic ao_v;  // cp_assert_order: 0 DEMOTE_1 first, 1 DEMOTE_2 first
+    logic [3:0] rv;
+    logic rv_v;  // cp_reset_vector: {demote 1, lock 1, demote 2, lock 2}
+    logic [4:0] oi;
+    logic oi_v;  // x_otp_invariant: state * 4 + {DEMOTE_1, DEMOTE_2}
+    logic [1:0] ec;
+    logic ec_v;  // x_export_codeword: {register, non-complementary}
+    logic ex;
+    logic ex_v;  // cp_export_changes: register
+  } ef_dem_t;
+
+  covergroup sep_lc_demotion_cg with function sample (ef_dem_t s);
+    option.per_instance = 1;
+    option.name = "sep_lc_demotion_cg";
+    x_state_combo: coverpoint s.sc iff (s.sc_v) {bins cells[] = {[5'd0 : 5'd23]};}
+    cp_assert_order: coverpoint s.ao iff (s.ao_v) {
+      bins demote_1_first = {1'b0}; bins demote_2_first = {1'b1};
+    }
+    // A reset of a clear state has nothing to clear.
+    cp_reset_vector: coverpoint s.rv iff (s.rv_v) {
+      bins vector[] = {[4'd1 : 4'd15]}; ignore_bins clear_state = {4'd0};
+    }
+    // A change to demotion 00 needs a cleared DEMOTE register. Only a reset
+    // clears one, and the reset also ends the compare.
+    x_otp_invariant: coverpoint s.oi iff (s.oi_v) {
+      bins cells[] = {[5'd0 : 5'd23]};
+      ignore_bins to_undemoted = {5'd0, 5'd4, 5'd8, 5'd12, 5'd16, 5'd20};
+    }
+    // No bin names a polarity.
+    x_export_codeword: coverpoint s.ec iff (s.ec_v) {
+      bins demote_1_complementary = {2'b0_0};
+      bins demote_2_complementary = {2'b1_0};
+      illegal_bins non_complementary = {2'b0_1, 2'b1_1};
+    }
+    cp_export_changes: coverpoint s.ex iff (s.ex_v) {
+      bins demote_1 = {1'b0}; bins demote_2 = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [4:0] rl;
+    logic rl_v;  // x_reg_lock_write: {register, old lock, write, changed}
+    logic [3:0] cn;
+    logic cn_v;  // x_committed_next: {register, demote, 0 set / 1 zero, changed}
+    logic ci;
+    logic ci_v;  // cp_independence: register written while the other is locked
+    logic pu;
+    logic pu_v;  // cp_profile_unchanged: register
+  } ef_dlk_t;
+
+  covergroup sep_lc_demote_lock_cg with function sample (ef_dlk_t s);
+    option.per_instance = 1;
+    option.name = "sep_lc_demote_lock_cg";
+    // Write 0 set demote (0x1), 1 set lock (0x2), 2 zero. With lock 0, set
+    // demote and set lock change and zero is unchanged; with lock 1 every
+    // write is unchanged.
+    x_reg_lock_write: coverpoint s.rl iff (s.rl_v) {
+      bins r1_open_set_demote = {5'b0_0_00_1};
+      bins r1_open_set_lock = {5'b0_0_01_1};
+      bins r1_open_zero = {5'b0_0_10_0};
+      bins r1_locked_set_demote = {5'b0_1_00_0};
+      bins r1_locked_set_lock = {5'b0_1_01_0};
+      bins r1_locked_zero = {5'b0_1_10_0};
+      bins r2_open_set_demote = {5'b1_0_00_1};
+      bins r2_open_set_lock = {5'b1_0_01_1};
+      bins r2_open_zero = {5'b1_0_10_0};
+      bins r2_locked_set_demote = {5'b1_1_00_0};
+      bins r2_locked_set_lock = {5'b1_1_01_0};
+      bins r2_locked_zero = {5'b1_1_10_0};
+      wildcard illegal_bins change_while_locked = {5'b?_1_??_1};
+    }
+    x_committed_next: coverpoint s.cn iff (s.cn_v) {
+      bins unchanged[] = {4'd0, 4'd2, 4'd4, 4'd6, 4'd8, 4'd10, 4'd12, 4'd14};
+      illegal_bins changed = {4'd1, 4'd3, 4'd5, 4'd7, 4'd9, 4'd11, 4'd13, 4'd15};
+    }
+    cp_independence: coverpoint s.ci iff (s.ci_v) {
+      bins r2_write_while_r1_locked = {1'b1}; bins r1_write_while_r2_locked = {1'b0};
+    }
+    cp_profile_unchanged: coverpoint s.pu iff (s.pu_v) {
+      bins demote_1 = {1'b0}; bins demote_2 = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] cv;
+    logic cv_v;  // x_ch_verdict: {channel, 0 Match / 1 Mismatch}
+    logic [5:0] cd;
+    logic cd_v;  // cp_code
+    logic [4:0] cs;
+    logic cs_v;  // x_ch_shape: {bad, channel * 3 + shape}
+    logic [2:0] ph;
+    logic ph_v;  // x_rma_go_phase: {channel, 0 before / 1 after sense done}
+    logic [1:0] ci;
+    logic ci_v;  // cp_independence: channel
+    logic [1:0] hw;
+    logic hw_v;  // cp_hold_word_write: channel
+    logic [1:0] gi;
+    logic gi_v;  // cp_go_idle_first: channel
+    logic [1:0] rt;
+    logic rt_v;  // cp_retention
+  } ef_tch_t;
+
+  covergroup sep_token_channel_cg with function sample (ef_tch_t s);
+    option.per_instance = 1;
+    option.name = "sep_token_channel_cg";
+    // Channel 0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS.
+    x_ch_verdict: coverpoint s.cv iff (s.cv_v) {
+      bins rma_sip[] = {3'b00_0, 3'b00_1};
+      bins rma_chiplet[] = {3'b01_0, 3'b01_1};
+      bins sec_dis[] = {3'b10_0, 3'b10_1};
+    }
+    cp_code: coverpoint s.cd iff (s.cd_v) {
+      bins idle = {EfCodeIdle};
+      bins match = {EfCodeMatch};
+      bins mismatch = {EfCodeMismatch};
+      bins error = {EfCodeErr};
+      illegal_bins other = {[6'h01 : 6'h14], [6'h16 : 6'h29], [6'h2B : 6'h3E]};
+    }
+    // Shape 0 all zeros, 1 all ones, 2 the token words of another channel (the
+    // words of a go on that channel that gave Match since the last reset, with
+    // its array unchanged from the go to the result). The legal verdict is
+    // Mismatch. (SEC_DIS, all zeros) is not declared.
+    x_ch_shape: coverpoint s.cs iff (s.cs_v) {
+      bins cells[] = {5'd0, 5'd1, 5'd2, 5'd3, 5'd4, 5'd5, 5'd7, 5'd8};
+      illegal_bins match = {[5'd16 : 5'd24]};
+    }
+    x_rma_go_phase: coverpoint s.ph iff (s.ph_v) {
+      bins sip_before_sense_idle = {3'b00_0};
+      bins sip_after_sense_match = {3'b00_1};
+      bins chiplet_before_sense_idle = {3'b01_0};
+      bins chiplet_after_sense_match = {3'b01_1};
+    }
+    cp_independence: coverpoint s.ci iff (s.ci_v) {bins channel[] = {[2'd0 : 2'd2]};}
+    cp_hold_word_write: coverpoint s.hw iff (s.hw_v) {bins channel[] = {[2'd0 : 2'd2]};}
+    cp_go_idle_first: coverpoint s.gi iff (s.gi_v) {bins channel[] = {[2'd0 : 2'd2]};}
+    cp_retention: coverpoint s.rt iff (s.rt_v) {
+      bins words_kept = {2'd0}; bins idle_before_sense = {2'd1}; bins match_after_sense = {2'd2};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [4:0] kc;
+    logic kc_v;  // x_ch_kind_copy: channel * 6 + kind * 3 + copy
+    logic [1:0] cf;
+    logic cf_v;  // x_ch_common_flip: {sticky rose, 0 Match->Mismatch / 1 back}
+    logic [3:0] fe;
+    logic fe_v;  // x_ch_forced_err: {channel, sticky, interrupt}
+    logic [2:0] rt;
+    logic rt_v;  // x_ch_retry
+    logic [1:0] nc;
+    logic nc_v;  // cp_no_clear: channel
+    logic [1:0] rc;
+    logic rc_v;  // cp_reset_clear: channel
+    logic so;
+    logic so_v;  // cp_secdis_off_under_fault
+    logic [2:0] lf;
+    logic lf_v;  // x_ch_latch_freeze: {0 RMA_CHIPLET / 1 SEC_DIS, released, bad}
+    logic [2:0] il;
+    logic il_v;  // cp_irq_line: {sticky channel, line differs from the OR}
+  } ef_tf_t;
+
+  covergroup sep_token_fault_cg with function sample (ef_tf_t s);
+    option.per_instance = 1;
+    option.name = "sep_token_fault_cg";
+    // Kind 0 collapsed pair, 1 one copy dissents. The copy-0 collapsed cells
+    // and the copy-0 RMA_SIP dissent cell are not declared.
+    x_ch_kind_copy: coverpoint s.kc iff (s.kc_v) {
+      bins rma_sip[] = {5'd1, 5'd2, 5'd4, 5'd5};
+      bins rma_chiplet[] = {5'd7, 5'd8, 5'd9, 5'd10, 5'd11};
+      bins sec_dis[] = {5'd13, 5'd14, 5'd15, 5'd16, 5'd17};
+    }
+    // RMA_CHIPLET only: a unanimous legal flip with no go raises no sticky bit.
+    x_ch_common_flip: coverpoint s.cf iff (s.cf_v) {
+      bins match_to_mismatch = {2'b0_0};
+      bins mismatch_to_match = {2'b0_1};
+      illegal_bins sticky_rose = {2'b1_0, 2'b1_1};
+    }
+    x_ch_forced_err: coverpoint s.fe iff (s.fe_v) {
+      bins rma_sip = {4'b00_1_1};
+      bins rma_chiplet = {4'b01_1_1};
+      bins sec_dis = {4'b10_1_1};
+      wildcard illegal_bins error_without_sticky = {4'b??_0_?};
+    }
+    // 0 RMA_SIP Match, 1 RMA_SIP Mismatch, 2 RMA_CHIPLET Match, 3 RMA_CHIPLET
+    // Mismatch, 4 SEC_DIS Match. (SEC_DIS, Mismatch) is not declared.
+    x_ch_retry: coverpoint s.rt iff (s.rt_v) {
+      bins cells[] = {[3'd0 : 3'd4]};
+    }
+    cp_no_clear: coverpoint s.nc iff (s.nc_v) {bins channel[] = {[2'd0 : 2'd2]};}
+    cp_reset_clear: coverpoint s.rc iff (s.rc_v) {bins channel[] = {[2'd0 : 2'd2]};}
+    cp_secdis_off_under_fault: coverpoint s.so iff (s.so_v) {bins sec_dis_low = {1'b1};}
+    // Under the freeze the sticky digest and valid bit keep their values;
+    // after the release the digest is replaced. The RMA_SIP cells and the
+    // result code under the freeze are not declared.
+    x_ch_latch_freeze: coverpoint s.lf iff (s.lf_v) {
+      bins chiplet_frozen_kept = {3'b0_0_0};
+      bins chiplet_released_replaced = {3'b0_1_0};
+      bins sec_dis_frozen_kept = {3'b1_0_0};
+      bins sec_dis_released_replaced = {3'b1_1_0};
+      illegal_bins changed_under_freeze = {3'b0_0_1, 3'b1_0_1};
+    }
+    // Single-channel sticky values 001, 010, 100. Multi-channel values are
+    // not declared.
+    cp_irq_line: coverpoint s.il iff (s.il_v) {
+      bins sip_only = {3'b00_0};
+      bins chiplet_only = {3'b01_0};
+      bins sec_dis_only = {3'b10_0};
+      illegal_bins line_differs = {3'b00_1, 3'b01_1, 3'b10_1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] mp;
+    logic mp_v;  // cp_match_phase: 0 before, 1 during, 2 after sense
+    logic [2:0] vo;
+    logic vo_v;  // x_verdict_out: {0 Match / 1 Mismatch / 2 Error, sec_dis_i}
+    logic [4:0] df;
+    logic df_v;  // x_state_demote_forced: {bad, cell}
+  } ef_act_t;
+
+  covergroup sep_sec_dis_activation_cg with function sample (ef_act_t s);
+    option.per_instance = 1;
+    option.name = "sep_sec_dis_activation_cg";
+    cp_match_phase: coverpoint s.mp iff (s.mp_v) {
+      bins before_sense = {2'd0}; bins during_sense = {2'd1}; bins after_sense = {2'd2};
+    }
+    x_verdict_out: coverpoint s.vo iff (s.vo_v) {
+      bins match_on = {3'b00_1};
+      bins mismatch_off = {3'b01_0};
+      bins error_off = {3'b10_0};
+      illegal_bins wrong_output = {3'b00_0, 3'b01_1, 3'b10_1};
+    }
+    // Cells 0-3 TEST_DEV x {00, 10, 01, 11}, 4-7 PROD x the same, 8
+    // PROD_END, 9 RMA_SIP, 10 INVALID. The RMA_CHIPLET cell is not declared.
+    x_state_demote_forced: coverpoint s.df iff (s.df_v) {
+      bins cells[] = {[5'd0 : 5'd10]}; illegal_bins feat_not_all_ones = {[5'd16 : 5'd26]};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] dr;
+    logic dr_v;  // x_digest_replay: {channel, Match}
+    logic ss;
+    logic ss_v;  // cp_stops_sense: 0 match during sense, 1 before sense
+    logic [2:0] sf;
+    logic sf_v;  // x_state_strap_feat: state * 2 + strap
+    logic rv;
+    logic rv_v;  // cp_reset_values_hold
+  } ef_rob_t;
+
+  covergroup sep_sec_dis_robustness_cg with function sample (ef_rob_t s);
+    option.per_instance = 1;
+    option.name = "sep_sec_dis_robustness_cg";
+    x_digest_replay: coverpoint s.dr iff (s.dr_v) {
+      bins rma_sip_mismatch = {3'b00_0};
+      bins rma_chiplet_mismatch = {3'b01_0};
+      bins sec_dis_mismatch = {3'b10_0};
+      illegal_bins match = {3'b00_1, 3'b01_1, 3'b10_1};
+    }
+    cp_stops_sense: coverpoint s.ss iff (s.ss_v) {
+      bins match_during_sense = {1'b0}; bins match_before_sense = {1'b1};
+    }
+    // State 0 TEST_DEV, 1 PROD, 2 RMA_SIP.
+    x_state_strap_feat: coverpoint s.sf iff (s.sf_v) {
+      bins cells[] = {[3'd0 : 3'd5]};
+    }
+    // The LC_STATE word is excluded.
+    cp_reset_values_hold: coverpoint s.rv iff (s.rv_v) {
+      bins shadow_at_reset_values = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] ca;
+    logic ca_v;  // cp_case
+    logic [3:0] fl;
+    logic fl_v;  // cp_flags: {read_status, read_addr, program_addr, req}
+    logic [6:0] cf;
+    logic cf_v;  // x_case_flags: {case, flags}
+    logic [2:0] cc;
+    logic cc_v;  // x_case_cmd: {cell, forbidden command seen}
+    logic [1:0] fc;
+    logic fc_v;  // cp_flag_clear
+    logic ss;
+    logic ss_v;  // cp_sense_status_word
+    logic [1:0] pl;
+    logic pl_v;  // x_prog_lifecycle: {0 withheld / 1 released, bad}
+    logic at;
+    logic at_v;  // cp_accepted_twin: 0 read, 1 program
+  } ef_ifs_t;
+
+  covergroup sep_efuse_if_status_cg with function sample (ef_ifs_t s);
+    option.per_instance = 1;
+    option.name = "sep_efuse_if_status_cg";
+    cp_case: coverpoint s.ca iff (s.ca_v) {
+      bins pre_sense_prog = {3'd0};
+      bins read_no_enable = {3'd1};
+      bins read_oob = {3'd2};
+      bins prog_oob = {3'd3};
+      bins prog_wlocked = {3'd4};
+      bins read_rlocked = {3'd5};
+      bins both_enables = {3'd6};
+      bins prog_data0 = {3'd7};
+    }
+    // Sampled for read_no_enable, read_oob, prog_oob, prog_wlocked and the
+    // accepted twins.
+    cp_flags: coverpoint s.fl iff (s.fl_v) {
+      bins f0000 = {4'b0000};
+      bins f1000 = {4'b1000};
+      bins f1100 = {4'b1100};
+      bins f0010 = {4'b0010};
+      bins f0001 = {4'b0001};
+      illegal_bins other = {4'b0011, [4'b0100 : 4'b0111], [4'b1001 : 4'b1011], [4'b1101 : 4'b1111]};
+    }
+    // read_rlocked grades req_error only. The RDL does not state the flags of
+    // pre_sense_prog, both_enables and prog_data0.
+    x_case_flags: coverpoint s.cf iff (s.cf_v) {
+      bins read_no_enable_1000 = {7'b001_1000};
+      bins read_oob_1100 = {7'b010_1100};
+      bins prog_oob_0010 = {7'b011_0010};
+      bins prog_wlocked_0001 = {7'b100_0001};
+      wildcard bins read_rlocked_req = {7'b101_???1};
+      illegal_bins wrong_flags = {
+        [7'b001_0000 : 7'b001_0111], [7'b001_1001 : 7'b001_1111],
+        [7'b010_0000 : 7'b010_1011], [7'b010_1101 : 7'b010_1111],
+        [7'b011_0000 : 7'b011_0001], [7'b011_0011 : 7'b011_1111],
+        7'b100_0000, [7'b100_0010 : 7'b100_1111]
+      };
+      wildcard illegal_bins read_rlocked_no_req = {7'b101_???0};
+      ignore_bins flags_not_stated = {[7'b000_0000 : 7'b000_1111], [7'b110_0000 : 7'b111_1111]};
+    }
+    // Cell 0 pre_sense_prog with no program command, 1 read_rlocked and 2
+    // both_enables with no read command.
+    x_case_cmd: coverpoint s.cc iff (s.cc_v) {
+      bins pre_sense_prog_no_program = {3'b00_0};
+      bins read_rlocked_no_read = {3'b01_0};
+      bins both_enables_no_read = {3'b10_0};
+      illegal_bins forbidden_command = {3'b00_1, 3'b01_1, 3'b10_1};
+    }
+    cp_flag_clear: coverpoint s.fc iff (s.fc_v) {
+      bins read_addr_error = {2'd0}; bins program_addr_error = {2'd1}; bins req_error = {2'd2};
+    }
+    // Words 0 to 9 and 255 are not declared.
+    cp_sense_status_word: coverpoint s.ss iff (s.ss_v) {
+      bins word_10_to_254 = {1'b1};
+    }
+    // The outcome with the program timeout enabled is not a bin.
+    x_prog_lifecycle: coverpoint s.pl iff (s.pl_v) {
+      bins withheld = {2'b0_0};
+      bins released = {2'b1_0};
+      illegal_bins wrong_status = {2'b0_1, 2'b1_1};
+    }
+    cp_accepted_twin: coverpoint s.at iff (s.at_v) {
+      bins valid_read = {1'b0}; bins landed_program = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [4:0] pb;
+    logic pb_v;  // x_prog_block: {bad, class * 2 + strap}
+    logic [2:0] sp;
+    logic sp_v;  // x_secret_probe: {field, nonzero}
+    logic [1:0] sk;
+    logic sk_v;  // x_secret_read_kept: field
+  } ef_stm_t;
+
+  covergroup sep_efuse_secure_tm_cg with function sample (ef_stm_t s);
+    option.per_instance = 1;
+    option.name = "sep_efuse_secure_tm_cg";
+    // Class 0 256-bit field, 1 32-bit field, 2 DIS bit, 3 LOCKS bit, 4 spare
+    // word. Strap 0: the command reaches the shim; strap 1: none.
+    x_prog_block: coverpoint s.pb iff (s.pb_v) {
+      bins cells[] = {[5'd0 : 5'd9]}; illegal_bins wrong_outcome = {[5'd16 : 5'd25]};
+    }
+    // Field 0 CHIPLET_UID, 1 SIP_UID, 2 SYS_UID, 3 CLASS_KEY, at strap 1.
+    x_secret_probe: coverpoint s.sp iff (s.sp_v) {
+      bins chiplet_uid_zero = {3'b00_0};
+      bins sip_uid_zero = {3'b01_0};
+      bins sys_uid_zero = {3'b10_0};
+      bins class_key_zero = {3'b11_0};
+      illegal_bins nonzero = {3'b00_1, 3'b01_1, 3'b10_1, 3'b11_1};
+    }
+    x_secret_read_kept: coverpoint s.sk iff (s.sk_v) {
+      bins chiplet_uid = {2'd0};
+      bins sip_uid = {2'd1};
+      bins sys_uid = {2'd2};
+      bins class_key = {2'd3};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] st;
+    logic st_v;  // cp_state: 0 PROD, 1 RMA_SIP, 2 integrity error
+    logic [2:0] cl;
+    logic cl_v;  // cp_class
+    logic rp;
+    logic rp_v;  // cp_resp: 0 OKAY, 1 not OKAY
+    logic [5:0] so;
+    logic so_v;  // x_state_class_op: {bad, state * 8 + class-op}
+    logic gi;
+    logic gi_v;  // cp_gate_independent_of_feat: 0 PROD, 1 RMA_SIP
+  } ef_jtg_t;
+
+  covergroup sep_efuse_jtag_policy_cg with function sample (ef_jtg_t s);
+    option.per_instance = 1;
+    option.name = "sep_efuse_jtag_policy_cg";
+    cp_state: coverpoint s.st iff (s.st_v) {
+      bins prod = {2'd0}; bins rma_sip = {2'd1}; bins integrity_error = {2'd2};
+    }
+    // TOKEN_MATCH_FAULT is not declared.
+    cp_class: coverpoint s.cl iff (s.cl_v) {
+      bins shadow_word = {3'd0};
+      bins ctrl_reg = {3'd1};
+      bins token_word = {3'd2};
+      bins token_eop = {3'd3};
+      bins match_reg = {3'd4};
+    }
+    cp_resp: coverpoint s.rp iff (s.rp_v) {bins okay = {1'b0}; bins not_okay = {1'b1};}
+    // Class-op 0 token word read, 1 token word write, 2 TOKEN_EOP write,
+    // 3 match read (allowed, OKAY); 4 shadow read, 5 shadow write, 6 control
+    // read, 7 control write (denied, not OKAY). (PROD, token word read) and
+    // (PROD, token word write) are ignored.
+    x_state_class_op: coverpoint s.so iff (s.so_v) {
+      bins cells[] = {[6'd2 : 6'd23]};
+      ignore_bins prod_token_word = {6'd0, 6'd1, 6'd32, 6'd33};
+      illegal_bins wrong_response = {[6'd34 : 6'd55]};
+    }
+    cp_gate_independent_of_feat: coverpoint s.gi iff (s.gi_v) {
+      bins prod = {1'b0}; bins rma_sip = {1'b1};
+    }
+  endgroup
+
+  sep_efuse_map_geometry_cg       u_sep_efuse_map_geometry_cg       = new();
+  sep_efuse_field_value_cg        u_sep_efuse_field_value_cg        = new();
+  sep_lc_feat_ctrl_profile_cg     u_sep_lc_feat_ctrl_profile_cg     = new();
+  sep_lc_feature_bit_semantics_cg u_sep_lc_feature_bit_semantics_cg = new();
+  sep_dtp_gating_ladder_cg        u_sep_dtp_gating_ladder_cg        = new();
+  sep_lc_sigint_failclosed_cg     u_sep_lc_sigint_failclosed_cg     = new();
+  sep_lc_illegal_transition_cg    u_sep_lc_illegal_transition_cg    = new();
+  sep_efuse_lock_policy_cg        u_sep_efuse_lock_policy_cg        = new();
+  sep_lc_demotion_cg              u_sep_lc_demotion_cg              = new();
+  sep_lc_demote_lock_cg           u_sep_lc_demote_lock_cg           = new();
+  sep_token_channel_cg            u_sep_token_channel_cg            = new();
+  sep_token_fault_cg              u_sep_token_fault_cg              = new();
+  sep_sec_dis_activation_cg       u_sep_sec_dis_activation_cg       = new();
+  sep_sec_dis_robustness_cg       u_sep_sec_dis_robustness_cg       = new();
+  sep_efuse_if_status_cg          u_sep_efuse_if_status_cg          = new();
+  sep_efuse_secure_tm_cg          u_sep_efuse_secure_tm_cg          = new();
+  sep_efuse_jtag_policy_cg        u_sep_efuse_jtag_policy_cg        = new();
+
+  // ---------------------------------------------------------------------
+  // Common levels, decodes and snapshots.
+  // ---------------------------------------------------------------------
+  wire ef_live = !in_reset && !skip_fuse_sense_q;
+  wire ef_sensed = ef_live && (fuse_sense_done_i === 1'b1);
+  wire ef_sd = (sec_dis_i === 1'b1);
+  wire ef_sig = (lc_sigint_i === 1'b1);
+  wire [2:0] ef_lc = ef_cls(efuse_lc_raw_i);
+  wire ef_d1 = (demote_1_i == 2'b01);
+  wire ef_d2 = (demote_2_i == 2'b01);
+  wire [1:0] ef_dm = {ef_d1, ef_d2};
+  wire [63:0] ef_locks = efuse_shadow_i[32*EfWLocks+:64];
+  wire [31:0] ef_locks_sp = efuse_shadow_i[32*EfWLocksSp+:32];
+  wire [31:0] ef_lc_word = efuse_shadow_i[32*EfWLc+:32];
+  wire [63:0] ef_sip_dis = efuse_shadow_i[32*EfWSipDis+:64];
+  wire [63:0] ef_sys_dis = efuse_shadow_i[32*EfWSysDis+:64];
+  wire ef_trans_en = efuse_shadow_i[32*EfWTrans];
+  // Assigned lock bits: LOCKS [63:0] and LOCKS_SPARE [17:0] (sep_efuse_map.adoc).
+  wire ef_all_locked = (ef_locks == '1) && (ef_locks_sp[17:0] == '1);
+
+  function automatic logic ef_wlock(input logic [5:0] s);
+    if (s < 6'd32) return ef_locks[2*s];
+    if (s < 6'(EfSlots)) return ef_locks_sp[2*(s-6'd32)];
+    return 1'b0;
+  endfunction
+  function automatic logic ef_rlock(input logic [5:0] s);
+    if (s < 6'd32) return ef_locks[2*s+1];
+    if (s < 6'(EfSlots)) return ef_locks_sp[2*(s-6'd32)+1];
+    return 1'b0;
+  endfunction
+  function automatic logic [31:0] ef_word(input logic [9:0] byte_off);
+    return efuse_shadow_i[32*byte_off[9:2]+:32];
+  endfunction
+  function automatic logic ef_field_nz(input logic [5:0] s);
+    for (int w = int'(EfSlotOff[s][10:2]); w < int'(EfSlotOff[s+1][10:2]); w++) begin
+      if (efuse_shadow_i[32*w+:32] != 32'h0) return 1'b1;
+    end
+    return 1'b0;
+  endfunction
+
+  // Post-guard shim command (READ 2'b00, PROGRAM 2'b01, PROGRAM_READ_BACK
+  // 2'b10, interface.adoc Fuse Command Protocol) and response.
+  wire ef_cmd_v = (shim_cmd_i.valid === 1'b1);
+  wire ef_cmd_rd = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_READ);
+  // A program command is PROGRAM or PROGRAM_READ_BACK: the read-back flag of
+  // EFUSE_PROGRAM_CTRL selects the second, and both burn the bit.
+  wire ef_cmd_pg = ef_cmd_v && ((shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM) ||
+                                (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK));
+  wire [12:0] ef_cmd_addr = 13'(shim_cmd_i.address);
+  wire ef_resp_v = (shim_resp_i.valid === 1'b1);
+
+  // Frontdoor completions with any response (rd_okay and wr_okay are OKAY
+  // only). One outstanding single-beat transaction, as for the Phase 1 bins.
+  wire ef_wr_cmpl = !in_reset && b_hs && (aw_out_q == 4'd1) && (w_beats_q == 2'd1);
+  wire ef_rd_cmpl = rd_cmpl;
+  wire [2:0] ef_wr_win = ef_win(aw_addr_q);
+  wire [2:0] ef_rd_win = ef_win(ar_addr_q);
+
+  // State at the AW handshake of each write, before the write takes effect.
+  logic [EfFuseBits-1:0] ef_aw_shadow = '0;
+  logic [63:0] ef_aw_feat = '0;
+  logic [1:0] ef_aw_d1 = 2'b10, ef_aw_d2 = 2'b10;
+  logic ef_aw_l1 = 1'b0, ef_aw_l2 = 1'b0;
+  logic [2:0] ef_aw_fault = '0;
+  logic [2:0] ef_aw_flags = '0;  // {read_addr, program_addr, req} errors
+  logic ef_aw_flx = 1'b0;  // a status flag (read_status included) has an X or Z bit
+  logic ef_aw_rderr = 1'b0;  // read_status
+  logic ef_aw_dx = 1'b0;  // a DEMOTE or lock output has an X or Z bit
+  logic ef_aw_pcmd_v = 1'b0;  // a PROGRAM command reached the shim since the AW
+  logic [12:0] ef_aw_pcmd_addr = '0;
+  always @(posedge clk_i) begin
+    if (aw_hs) begin
+      ef_aw_shadow <= efuse_shadow_i;
+      ef_aw_feat <= feat_ctrl_i;
+      ef_aw_d1 <= demote_1_i;
+      ef_aw_d2 <= demote_2_i;
+      ef_aw_l1 <= (demote_lock_1_i === 1'b1);
+      ef_aw_l2 <= (demote_lock_2_i === 1'b1);
+      ef_aw_fault <= tok_fault_i;
+      ef_aw_flags <= {rd_addr_err_i === 1'b1, pg_addr_err_i === 1'b1, req_err_i === 1'b1};
+      ef_aw_flx <= $isunknown({efuse_read_error_i, rd_addr_err_i, pg_addr_err_i, req_err_i});
+      ef_aw_rderr <= (efuse_read_error_i === 1'b1);
+      ef_aw_dx <= $isunknown({demote_1_i, demote_2_i, demote_lock_1_i, demote_lock_2_i});
+      ef_aw_pcmd_v <= ef_cmd_pg;
+      ef_aw_pcmd_addr <= ef_cmd_addr;
+    end else if (ef_cmd_pg) begin
+      ef_aw_pcmd_v <= 1'b1;
+      ef_aw_pcmd_addr <= ef_cmd_addr;
+    end
+  end
+
+  // Program and read enables, as the last frontdoor write left them.
+  logic ef_pen_q = 1'b0;
+  logic ef_pg_tmo_en_q = 1'b0;
+  always @(posedge clk_i) begin
+    if (in_reset) begin
+      ef_pen_q <= 1'b0;
+      ef_pg_tmo_en_q <= 1'b0;
+    end else if (wr_okay && (aw_addr_q == EfPgCtrl)) begin
+      ef_pen_q <= |(wr_data & EfPgEnMask);
+    end else if (wr_okay && (aw_addr_q == EfPgTmo)) begin
+      ef_pg_tmo_en_q <= |(wr_data & EfPgTmoEnMask);
+    end
+  end
+
+  // Sense-done rise and the first reset-release clock.
+  logic ef_fuse_q = 1'b0;
+  logic ef_rst_q = 1'b1;
+  always @(posedge clk_i) begin
+    ef_fuse_q <= (fuse_sense_done_i === 1'b1);
+    ef_rst_q  <= in_reset;
+  end
+  wire ef_sense_rise = fuse_sense;  // rising edge, +skip_fuse_sense excluded
+  wire ef_rel = ef_rst_q && !in_reset;
+  wire ef_rst_fall = !ef_rst_q && in_reset;
+
+  // Feature change: any change of the profile inputs, sampled once they have
+  // been stable for EfFeatSettle clocks (the specification gives no decode
+  // latency). The sense-done rise also starts a settle. ef_fs_* is the state
+  // at the previous settled sample, for the points that compare two samples.
+  localparam int unsigned EfFvW = 4 + 1 + 2 + 2 + 64 + 64 + 64 + 1;
+  wire [EfFvW-1:0] ef_fv = {
+    efuse_lc_raw_i, sec_dis_i, demote_1_i, demote_2_i, ef_sip_dis, ef_sys_dis, feat_ctrl_i,
+    lc_sigint_i
+  };
+  logic [EfFvW-1:0] ef_fv_q = '0;
+  logic ef_sensed_q = 1'b0;
+  logic ef_fv_pend = 1'b0;
+  int unsigned ef_fv_cnt = 0;
+  wire ef_feat_ev = ef_sensed && ef_fv_pend && (ef_fv_cnt == EfFeatSettle) && (ef_fv === ef_fv_q);
+  always @(posedge clk_i) begin
+    ef_fv_q <= ef_fv;
+    ef_sensed_q <= ef_sensed;
+    if (!ef_sensed) begin
+      ef_fv_pend <= 1'b0;
+      ef_fv_cnt  <= 0;
+    end else if ((ef_fv !== ef_fv_q) || !ef_sensed_q) begin
+      ef_fv_pend <= 1'b1;
+      ef_fv_cnt  <= 0;
+    end else if (ef_fv_pend) begin
+      if (ef_fv_cnt == EfFeatSettle) ef_fv_pend <= 1'b0;
+      else ef_fv_cnt <= ef_fv_cnt + 1;
+    end
+  end
+  // The inputs that select a feature cell (state code, SEC_DIS, the demote
+  // outputs, the DIS vectors, the integrity error) are known. A cell is never
+  // chosen from an X or Z input; the profile output itself may be unknown and
+  // then counts as a wrong value.
+  wire ef_fin_k = !$isunknown(
+      {efuse_lc_raw_i, sec_dis_i, demote_1_i, demote_2_i, ef_sip_dis, ef_sys_dis, lc_sigint_i}
+  );
+  logic ef_fs_v = 1'b0;
+  logic [2:0] ef_fs_lc = '0;
+  logic ef_fs_sd = 1'b0, ef_fs_sig = 1'b0;
+  logic [1:0] ef_fs_d1 = 2'b10, ef_fs_d2 = 2'b10;
+  logic [63:0] ef_fs_feat = '0, ef_fs_sip = '0, ef_fs_sys = '0;
+  logic [31:0] ef_fs_lcw = '0;
+  logic [3:0] ef_fs_raw = '0;
+  always @(posedge clk_i) begin
+    if (!ef_sensed) begin
+      ef_fs_v <= 1'b0;
+    end else if (ef_feat_ev && !ef_fin_k) begin
+      ef_fs_v <= 1'b0;
+    end else if (ef_feat_ev) begin
+      ef_fs_v    <= 1'b1;
+      ef_fs_lc   <= ef_lc;
+      ef_fs_raw  <= efuse_lc_raw_i;
+      ef_fs_sd   <= ef_sd;
+      ef_fs_sig  <= ef_sig;
+      ef_fs_d1   <= demote_1_i;
+      ef_fs_d2   <= demote_2_i;
+      ef_fs_feat <= feat_ctrl_i;
+      ef_fs_sip  <= ef_sip_dis;
+      ef_fs_sys  <= ef_sys_dis;
+      ef_fs_lcw  <= ef_lc_word;
+    end
+  end
+
+  // Token change: a change of a status code, SEC_DIS, a sticky bit, the
+  // interrupt line or a go pulse, sampled once they have been stable for
+  // EfTokSettle clocks (N), so a cell that compares two of them samples at a
+  // settled point. ef_ts_* holds the previous settled sample.
+  localparam int unsigned EfTvW = 6 + 6 + 6 + 1 + 3 + 1 + 3;
+  wire ef_irq = (irq_token_fault_i === 1'b1);
+  wire [EfTvW-1:0] ef_tv = {
+    tok_sip_i, tok_chp_i, tok_sdis_i, sec_dis_i, tok_fault_i, irq_token_fault_i, token_go_i
+  };
+  logic [EfTvW-1:0] ef_tv_q = '0;
+  logic ef_tv_pend = 1'b0;
+  int unsigned ef_tv_cnt = 0;
+  wire ef_tok_ev = ef_live && ef_tv_pend && (ef_tv_cnt == EfTokSettle) && (ef_tv === ef_tv_q);
+  always @(posedge clk_i) begin
+    ef_tv_q <= ef_tv;
+    if (!ef_live) begin
+      ef_tv_pend <= 1'b0;
+      ef_tv_cnt  <= 0;
+    end else if (ef_tv !== ef_tv_q) begin
+      ef_tv_pend <= 1'b1;
+      ef_tv_cnt  <= 0;
+    end else if (ef_tv_pend) begin
+      if (ef_tv_cnt == EfTokSettle) ef_tv_pend <= 1'b0;
+      else ef_tv_cnt <= ef_tv_cnt + 1;
+    end
+  end
+  wire [2:0][5:0] ef_code = {tok_sdis_i, tok_chp_i, tok_sip_i};
+  logic ef_ts_v = 1'b0;
+  logic [2:0][5:0] ef_ts_code = '0;
+  logic [2:0] ef_ts_fault = '0;
+  always @(posedge clk_i) begin
+    if (!ef_live) ef_ts_v <= 1'b0;
+    else if (ef_tok_ev) begin
+      ef_ts_v     <= 1'b1;
+      ef_ts_code  <= ef_code;
+      ef_ts_fault <= tok_fault_i;
+    end
+  end
+
+  // One-point sample helpers.
+  task automatic ef_geo(input int unsigned which, input logic [5:0] v);
+    ef_geo_t e;
+    e = '0;
+    case (which)
+      0: begin
+        e.wn = v[2:0];
+        e.wn_v = 1'b1;
+      end
+      1: begin
+        e.rz = v[0];
+        e.rz_v = 1'b1;
+      end
+      2: begin
+        e.wr = v;
+        e.wr_v = 1'b1;
+      end
+      3: begin
+        e.sf = v[3:0];
+        e.sf_v = 1'b1;
+      end
+      4: begin
+        e.ea = v[1:0];
+        e.ea_v = 1'b1;
+      end
+      5: begin
+        e.cr = v[3:0];
+        e.cr_v = 1'b1;
+      end
+      6: begin
+        e.tb = v[3:0];
+        e.tb_v = 1'b1;
+      end
+      default: begin
+        e.ji = v[0];
+        e.ji_v = 1'b1;
+      end
+    endcase
+    u_sep_efuse_map_geometry_cg.sample(e);
+  endtask
+
+  task automatic ef_lk(input int unsigned which, input logic [7:0] v);
+    ef_lock_t e;
+    e = '0;
+    case (which)
+      0: begin
+        e.sp = v;
+        e.sp_v = 1'b1;
+      end
+      1: begin
+        e.sr = v;
+        e.sr_v = 1'b1;
+      end
+      2: begin
+        e.ko = v[3:0];
+        e.ko_v = 1'b1;
+      end
+      3: begin
+        e.nf = v[1:0];
+        e.nf_v = 1'b1;
+      end
+      4: begin
+        e.ex = v[1:0];
+        e.ex_v = 1'b1;
+      end
+      5: begin
+        e.sl = v[0];
+        e.sl_v = 1'b1;
+      end
+      6: begin
+        e.sw = v[3:0];
+        e.sw_v = 1'b1;
+      end
+      7: begin
+        e.lo = v[1:0];
+        e.lo_v = 1'b1;
+      end
+      8: begin
+        e.pv = v[0];
+        e.pv_v = 1'b1;
+      end
+      9: begin
+        e.rc = v[2:0];
+        e.rc_v = 1'b1;
+      end
+      default: begin
+        e.lp = v[2:0];
+        e.lp_v = 1'b1;
+      end
+    endcase
+    u_sep_efuse_lock_policy_cg.sample(e);
+  endtask
+
+  task automatic ef_tc(input int unsigned which, input logic [5:0] v);
+    ef_tch_t e;
+    e = '0;
+    case (which)
+      0: begin
+        e.cv = v[2:0];
+        e.cv_v = 1'b1;
+      end
+      1: begin
+        e.cd = v;
+        e.cd_v = 1'b1;
+      end
+      2: begin
+        e.cs = v[4:0];
+        e.cs_v = 1'b1;
+      end
+      3: begin
+        e.ph = v[2:0];
+        e.ph_v = 1'b1;
+      end
+      4: begin
+        e.ci = v[1:0];
+        e.ci_v = 1'b1;
+      end
+      5: begin
+        e.hw = v[1:0];
+        e.hw_v = 1'b1;
+      end
+      6: begin
+        e.gi = v[1:0];
+        e.gi_v = 1'b1;
+      end
+      default: begin
+        e.rt = v[1:0];
+        e.rt_v = 1'b1;
+      end
+    endcase
+    u_sep_token_channel_cg.sample(e);
+  endtask
+
+  task automatic ef_tfs(input int unsigned which, input logic [4:0] v);
+    ef_tf_t e;
+    e = '0;
+    case (which)
+      0: begin
+        e.kc = v;
+        e.kc_v = 1'b1;
+      end
+      1: begin
+        e.cf = v[1:0];
+        e.cf_v = 1'b1;
+      end
+      2: begin
+        e.fe = v[3:0];
+        e.fe_v = 1'b1;
+      end
+      3: begin
+        e.rt = v[2:0];
+        e.rt_v = 1'b1;
+      end
+      4: begin
+        e.nc = v[1:0];
+        e.nc_v = 1'b1;
+      end
+      5: begin
+        e.rc = v[1:0];
+        e.rc_v = 1'b1;
+      end
+      6: begin
+        e.so = v[0];
+        e.so_v = 1'b1;
+      end
+      7: begin
+        e.lf = v[2:0];
+        e.lf_v = 1'b1;
+      end
+      default: begin
+        e.il = v[2:0];
+        e.il_v = 1'b1;
+      end
+    endcase
+    u_sep_token_fault_cg.sample(e);
+  endtask
+
+  task automatic ef_ifs(input int unsigned which, input logic [6:0] v);
+    ef_ifs_t e;
+    e = '0;
+    case (which)
+      0: begin
+        e.ca = v[2:0];
+        e.ca_v = 1'b1;
+      end
+      1: begin
+        e.fl = v[3:0];
+        e.fl_v = 1'b1;
+      end
+      2: begin
+        e.cf = v;
+        e.cf_v = 1'b1;
+      end
+      3: begin
+        e.cc = v[2:0];
+        e.cc_v = 1'b1;
+      end
+      4: begin
+        e.fc = v[1:0];
+        e.fc_v = 1'b1;
+      end
+      5: begin
+        e.ss = v[0];
+        e.ss_v = 1'b1;
+      end
+      6: begin
+        e.pl = v[1:0];
+        e.pl_v = 1'b1;
+      end
+      default: begin
+        e.at = v[0];
+        e.at_v = 1'b1;
+      end
+    endcase
+    u_sep_efuse_if_status_cg.sample(e);
+  endtask
+
+  task automatic ef_act(input int unsigned which, input logic [4:0] v);
+    ef_act_t e;
+    e = '0;
+    case (which)
+      0: begin
+        e.mp = v[1:0];
+        e.mp_v = 1'b1;
+      end
+      1: begin
+        e.vo = v[2:0];
+        e.vo_v = 1'b1;
+      end
+      default: begin
+        e.df = v;
+        e.df_v = 1'b1;
+      end
+    endcase
+    u_sep_sec_dis_activation_cg.sample(e);
+  endtask
+
+  task automatic ef_rob(input int unsigned which, input logic [2:0] v);
+    ef_rob_t e;
+    e = '0;
+    case (which)
+      0: begin
+        e.dr = v;
+        e.dr_v = 1'b1;
+      end
+      1: begin
+        e.ss = v[0];
+        e.ss_v = 1'b1;
+      end
+      2: begin
+        e.sf = v;
+        e.sf_v = 1'b1;
+      end
+      default: begin
+        e.rv = v[0];
+        e.rv_v = 1'b1;
+      end
+    endcase
+    u_sep_sec_dis_robustness_cg.sample(e);
+  endtask
+
+  // ---------------------------------------------------------------------
+  // sep_efuse_map_geometry_cg: frontdoor completions in 0x1093_0000 to
+  // 0x1093_FFFF, and the JTAG ID at sense done.
+  // ---------------------------------------------------------------------
+  task automatic ef_geo_access(input logic [31:0] a, input logic wr, input logic ok,
+                               input logic [2:0] size);
+    logic [2:0] w;
+    logic [10:0] off;
+    logic ign;
+    w   = ef_win(a);
+    off = 11'(a - EfMapBase);
+    if (ef_own_win) begin
+      ef_geo(0, 6'(w));
+      if (w == EfWRsvd) ef_geo(1, 6'(a >= EfRsvdHigh));
+      if ((fuse_sense_done_i === 1'b1) && (w inside {EfWShadow, EfWCtrlIn, EfWTokIn})) begin
+        ign = ((w == EfWShadow) && wr) || ((w == EfWShadow) && !wr && ef_rlock(ef_slot_of(off))) ||
+            (wr && (a == EfStatus)) || (wr && (a inside {EfPgData, EfRdData, EfMatchSip,
+                                                         EfMatchChip, EfMatchSec, EfMatchFault})) ||
+            (!wr && (a == EfTokEop));
+        ef_geo(2, {ign, w, wr, ok});
+      end
+      if (a == EfMapEnd - 32'd4) ef_geo(4, 6'd0);
+      if (a == EfCtrlEnd - 32'd4) ef_geo(4, 6'd1);
+      if (a == EfCtrlEnd) ef_geo(4, 6'd2);
+      if (a == EfRsvdBase) ef_geo(4, 6'd3);
+      case (a)
+        EfStatus: ef_geo(5, wr ? 6'd1 : 6'd0);
+        EfPgCtrl: ef_geo(5, wr ? 6'd3 : 6'd2);
+        EfRdCtrl: ef_geo(5, wr ? 6'd5 : 6'd4);
+        EfRdTmo: if (!wr) ef_geo(5, 6'd6);
+        EfPgTmo: if (!wr) ef_geo(5, 6'd7);
+        EfPgData: if (!wr) ef_geo(5, 6'd8);
+        EfRdData: if (!wr) ef_geo(5, 6'd9);
+        default: ;
+      endcase
+      if (in_win(a, EfTokSip, EfTokChip)) ef_geo(6, wr ? 6'd1 : 6'd0);
+      if (in_win(a, EfTokChip, EfTokSec)) ef_geo(6, wr ? 6'd3 : 6'd2);
+      if (in_win(a, EfTokSec, EfTokEop)) ef_geo(6, wr ? 6'd5 : 6'd4);
+    end
+    if (ef_own_tch) begin
+      if (!wr && (a == EfMatchSip)) ef_geo(6, 6'd6);
+      if (!wr && (a == EfMatchChip)) ef_geo(6, 6'd7);
+      if (!wr && (a == EfMatchSec)) ef_geo(6, 6'd8);
+      if (wr && (a == EfTokEop)) ef_geo(6, 6'd9);
+    end
+    // The used-bit leg reads each narrow register with a 32-bit OKAY read.
+    if (ef_own_fld && !wr && ok && (size == 3'd2) && (fuse_sense_done_i === 1'b1)) begin
+      case (a)
+        SEP_EFUSE_MAP_LC_STATE_REG_ADDR: ef_geo(3, 6'd0);
+        SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR: ef_geo(3, 6'd1);
+        SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR: ef_geo(3, 6'd2);
+        SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR: ef_geo(3, 6'd3);
+        SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR: ef_geo(3, 6'd4);
+        SEP_EFUSE_MAP_ROM_CTL_REG_ADDR: ef_geo(3, 6'd5);
+        SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_ADDR: ef_geo(3, 6'd6);
+        SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_ADDR: ef_geo(3, 6'd7);
+        SEP_EFUSE_MAP_REQUIRED_ALGS_REG_ADDR: ef_geo(3, 6'd8);
+        default: ;
+      endcase
+    end
+  endtask
+
+  always @(posedge clk_i) begin
+    if (ef_wr_cmpl && (ef_wr_win != EfWNone)) begin
+      ef_geo_access(aw_addr_q, 1'b1, lsu_b_resp_i === AxiOkay, aw_size_q);
+    end
+    if (ef_rd_cmpl && (ef_rd_win != EfWNone)) begin
+      ef_geo_access(ar_addr_q, 1'b0, lsu_r_resp_i === AxiOkay, ar_size_q);
+    end
+    if (ef_sense_rise && ef_own_fld && (jtag_id_i !== '0) && !$isunknown(jtag_id_i)) begin
+      ef_geo(7, 6'd1);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_efuse_field_value_cg: narrow fields at sense done; x_version_bit
+  // from the new set bit of BL1_VERSION or BL2_VERSION at the first sense
+  // done after a program. The previous sensed copy survives the cold reset
+  // between the program and the resense.
+  // ---------------------------------------------------------------------
+  logic [511:0] ef_vb_prev = '0;
+  logic ef_vb_pv = 1'b0;
+  logic ef_vb_prog = 1'b0;
+  function automatic logic [1:0] ef_bitcls(input logic [255:0] v);
+    for (int i = 0; i < 256; i++) begin
+      if (v[i]) return (i == 0) ? 2'd0 : (i == 255) ? 2'd2 : 2'd1;
+    end
+    return 2'd0;
+  endfunction
+  always @(posedge clk_i) begin
+    ef_fld_t e;
+    logic [31:0] w;
+    logic [4:0] sw;
+    logic [10:0] clk;
+    logic [511:0] cur, gain;
+    if (ef_cmd_pg) ef_vb_prog <= 1'b1;
+    if (ef_sense_rise) begin
+      if (ef_own_fld) begin
+        e = '0;
+        e.sb = efuse_shadow_i[32*EfWSboot];
+        e.sb_v = 1'b1;
+        e.rs = efuse_shadow_i[32*EfWSigners+:2];
+        e.rs_v = 1'b1;
+        e.sr = efuse_shadow_i[32*EfWStatusRpt+:2];
+        e.sr_v = 1'b1;
+        w = efuse_shadow_i[32*EfWRevoke+:32];
+        e.rv = (w == 32'h0) ? 2'd0 : ($countones(w) == 1) ? 2'd1 : (w == EfRevokeAll) ? 2'd2 : 2'd3;
+        e.rv_v = 1'b1;
+        clk = efuse_shadow_i[32*EfWSysclk+:11];
+        e.sc = (clk == 11'd1) ? 2'd0 : (clk == 11'h7FF) ? 2'd2 : 2'd1;
+        e.sc_v = (clk != 11'd0);
+        w = efuse_shadow_i[32*EfWRomCtl+:32];
+        e.rc = {1'b0, 2'b00, w[0]};
+        e.rc_v = 1'b1;
+        u_sep_efuse_field_value_cg.sample(e);
+        sw = w[5:1];
+        e = '0;
+        e.rc = (sw == 5'd0) ? 4'b1_000 : (sw == 5'h1F) ? 4'b1_110 : 4'b1_111;
+        for (int i = 0; i < 5; i++) begin
+          if (sw == (5'd1 << i)) e.rc = {1'b1, 3'(i + 1)};
+        end
+        e.rc_v = 1'b1;
+        u_sep_efuse_field_value_cg.sample(e);
+        w = efuse_shadow_i[32*EfWAlgs+:32];
+        for (int o = 0; o < 3; o++) begin
+          e = '0;
+          e.al = 4'(o * 4) + 4'(w[4*o+:2]);
+          e.al_v = 1'b1;
+          u_sep_efuse_field_value_cg.sample(e);
+        end
+      end
+      cur = {efuse_shadow_i[32*EfWBl2+:256], efuse_shadow_i[32*EfWBl1+:256]};
+      gain = cur & ~ef_vb_prev;
+      if (ef_own_lock && ef_vb_pv && ef_vb_prog) begin
+        if ($countones(gain[255:0]) == 1) begin
+          e = '0;
+          e.vb = 3'(ef_bitcls(gain[255:0]));
+          e.vb_v = 1'b1;
+          u_sep_efuse_field_value_cg.sample(e);
+        end
+        if ($countones(gain[511:256]) == 1) begin
+          e = '0;
+          e.vb = 3'd3 + 3'(ef_bitcls(gain[511:256]));
+          e.vb_v = 1'b1;
+          u_sep_efuse_field_value_cg.sample(e);
+        end
+      end
+      ef_vb_prev <= cur;
+      ef_vb_pv   <= 1'b1;
+      ef_vb_prog <= 1'b0;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Feature-change points: sep_lc_feat_ctrl_profile_cg,
+  // sep_lc_feature_bit_semantics_cg, sep_dtp_gating_ladder_cg,
+  // x_sigint_state_secdis_out, the feature points of sep_lc_demotion_cg,
+  // x_state_demote_forced and x_state_strap_feat.
+  // ---------------------------------------------------------------------
+  // Bits of x_closed_bit_owner (in that order) and the named feature bits
+  // (lifecycle_controller.adoc, Disable Vector Format).
+  localparam int unsigned EfClosedBit[11] = '{0, 1, 2, 3, 4, 23, 24, 25, 47, 48, 63};
+  localparam int unsigned EfBitSepDbg = 0;
+  localparam int unsigned EfBitChipDbg = 1;
+  localparam int unsigned EfBitSepFuseDbg = 2;
+  localparam int unsigned EfBitSmcFuseDbg = 3;
+  localparam int unsigned EfBitSipDbg = 24;
+  localparam int unsigned EfNamedBit[5] = '{
+      EfBitSepDbg,
+      EfBitChipDbg,
+      EfBitSepFuseDbg,
+      EfBitSmcFuseDbg,
+      EfBitSipDbg
+  };
+  logic ef_dtp_ref_v = 1'b0;
+  logic ef_dtp_ref_sep = 1'b0, ef_dtp_ref_smc = 1'b0;
+
+  always @(posedge clk_i) begin
+    ef_prof_t pe;
+    ef_bit_t be;
+    ef_dtp_t de;
+    ef_sig_t se;
+    ef_dem_t me;
+    logic [4:0] row;
+    logic [2:0] oc;
+    logic [23:0] sg, yg, og, m;
+    logic c1, c2, c3, ao, all_open, sep_p, smc_p, ref_sep, ref_smc, ref_v;
+    logic [1:0] fs_dm;
+    logic [2:0] chg;
+    int unsigned b;
+    // x_export_codeword: an X or Z bit on a DEMOTE output is not a
+    // complementary codeword.
+    if (ef_feat_ev && ef_own_fc) begin
+      me = '0;
+      me.ec = {1'b0, $isunknown(demote_1_i) || !(demote_1_i inside {2'b10, 2'b01})};
+      me.ec_v = 1'b1;
+      u_sep_lc_demotion_cg.sample(me);
+      me = '0;
+      me.ec = {1'b1, $isunknown(demote_2_i) || !(demote_2_i inside {2'b10, 2'b01})};
+      me.ec_v = 1'b1;
+      u_sep_lc_demotion_cg.sample(me);
+    end
+    if (ef_feat_ev && ef_fin_k) begin
+      fs_dm = {ef_fs_d1 == 2'b01, ef_fs_d2 == 2'b01};
+      if (ef_own_fc) begin
+        // sep_lc_feat_ctrl_profile_cg. The row and class points need a state
+        // code that passes the integrity check.
+        row = ef_row(ef_lc, ef_sd, ef_dm);
+        pe = '0;
+        pe.sc = ef_lc;
+        pe.sc_v = 1'b1;
+        pe.pr = row;
+        pe.pr_v = !ef_sig;
+        pe.rd = (ef_lc == EfRc);
+        pe.rd_v = (ef_lc inside {EfRs, EfRc}) && ((ef_sip_dis | ef_sys_dis) != 64'h0);
+        u_sep_lc_feat_ctrl_profile_cg.sample(pe);
+        for (int g = 0; g < 3; g++) begin
+          m  = ef_gmask(g);
+          sg = ef_grp(ef_sip_dis, g);
+          yg = ef_grp(ef_sys_dis, g);
+          og = sg | yg;
+          pe = '0;
+          pe.oc = {2'(g), og != 24'h0};
+          pe.oc_v = (og != m);
+          // Guard: SIP_DIS slice nonzero, SYS_DIS has a bit outside SIP_DIS,
+          // OR neither zero nor all ones, so the four classes differ.
+          if (!ef_sig && (sg != 24'h0) && ((yg & ~sg) != 24'h0) && (og != 24'h0) && (og != m)) begin
+            oc = ef_obs_cls(feat_ctrl_i, ef_sip_dis, ef_sys_dis, g);
+            pe.xr = {oc != ef_prof_cls(row, g), row, 2'(g), oc};
+            pe.xr_v = 1'b1;
+          end
+          u_sep_lc_feat_ctrl_profile_cg.sample(pe);
+        end
+
+        // sep_lc_feature_bit_semantics_cg.
+        for (int k = 0; k < 5; k++) begin
+          be = '0;
+          be.nb = {3'(k), feat_ctrl_i[EfNamedBit[k]]};
+          be.nb_v = 1'b1;
+          u_sep_lc_feature_bit_semantics_cg.sample(be);
+        end
+        if (ef_fs_v && (ef_fs_lc == ef_lc) && (ef_fs_sd == ef_sd) && (ef_fs_sig == ef_sig) &&
+            (fs_dm == ef_dm)) begin
+          for (int k = 0; k < 11; k++) begin
+            b = EfClosedBit[k];
+            if (ef_fs_feat[b] && !feat_ctrl_i[b] && !(ef_fs_sip[b] || ef_fs_sys[b]) &&
+                (ef_sip_dis[b] || ef_sys_dis[b])) begin
+              be = '0;
+              be.cb = 5'(k * 2) + 5'(!(ef_sip_dis[b] && !ef_fs_sip[b]));
+              be.cb_v = 1'b1;
+              u_sep_lc_feature_bit_semantics_cg.sample(be);
+            end
+          end
+        end
+        if (ef_fs_v && (ef_fs_lc == ef_lc) && (ef_lc inside {EfTd, EfProd}) && (ef_fs_sd == ef_sd) &&
+            (ef_fs_sig == ef_sig) && (ef_fs_sip == ef_sip_dis) && (ef_fs_sys == ef_sys_dis) &&
+            (((fs_dm == 2'b00) && (ef_dm == 2'b10)) || ((fs_dm == 2'b00) && (ef_dm == 2'b01)) ||
+             ((fs_dm == 2'b01) && (ef_dm == 2'b11)) || ((fs_dm == 2'b10) && (ef_dm == 2'b11)))) begin
+          chg = {
+            ef_grp(ef_fs_feat, 2) != ef_grp(feat_ctrl_i, 2),
+            ef_grp(ef_fs_feat, 1) != ef_grp(feat_ctrl_i, 1),
+            ef_grp(ef_fs_feat, 0) != ef_grp(feat_ctrl_i, 0)
+          };
+          be = '0;
+          be.dg = {ef_d2 && (fs_dm[0] == 1'b0), ef_lc == EfProd, chg};
+          be.dg_v = 1'b1;
+          u_sep_lc_feature_bit_semantics_cg.sample(be);
+        end
+
+        // sep_dtp_gating_ladder_cg. The port value enters only as "same as"
+        // or "other than" its value in the all-open cell of the leaf. The
+        // all-open cell sets the reference and is not sampled into the port
+        // points, so a "same" cell fills only from another combination of the
+        // same class and never from a compare of the reference with itself.
+        c1 = feat_ctrl_i[EfBitSipDbg];
+        c2 = c1 && feat_ctrl_i[EfBitChipDbg];
+        c3 = c2 && feat_ctrl_i[EfBitSepDbg];
+        // A port with an X or Z value is "other than" the reference, and the
+        // reference is taken only from known port values.
+        sep_p = (sep_fuse_dft_disable_i === 1'b1);
+        smc_p = (smc_fuse_dft_disable_i === 1'b1);
+        ref_v = ef_dtp_ref_v;
+        ref_sep = ef_dtp_ref_sep;
+        ref_smc = ef_dtp_ref_smc;
+        all_open = c3 && feat_ctrl_i[EfBitSepFuseDbg] && feat_ctrl_i[EfBitSmcFuseDbg];
+        if (all_open && !$isunknown({sep_fuse_dft_disable_i, smc_fuse_dft_disable_i})) begin
+          ef_dtp_ref_v <= 1'b1;
+          ef_dtp_ref_sep <= sep_p;
+          ef_dtp_ref_smc <= smc_p;
+        end
+        de = '0;
+        de.sp = {
+          c3, feat_ctrl_i[EfBitSepFuseDbg], $isunknown(sep_fuse_dft_disable_i) || (sep_p != ref_sep)
+        };
+        de.sp_v = ref_v && !all_open;
+        de.mp = {
+          c2, feat_ctrl_i[EfBitSmcFuseDbg], $isunknown(smc_fuse_dft_disable_i) || (smc_p != ref_smc)
+        };
+        de.mp_v = ref_v && !all_open;
+        de.ns = c3 ? 2'd3 : c2 ? 2'd2 : 2'd1;
+        de.ns_v = c1;
+        u_sep_dtp_gating_ladder_cg.sample(de);
+
+        // sep_lc_demotion_cg feature points.
+        me = '0;
+        me.sc = 5'(ef_lc * 4) + 5'(ef_dm);
+        me.sc_v = 1'b1;
+        if (ef_fs_v && (fs_dm != ef_dm) && (ef_fs_raw == efuse_lc_raw_i) && (ef_fs_lcw == ef_lc_word)) begin
+          me.oi = 5'(ef_lc * 4) + 5'(ef_dm);
+          me.oi_v = 1'b1;
+        end
+        u_sep_lc_demotion_cg.sample(me);
+
+        // x_state_demote_forced: cells 0-3 TEST_DEV and 4-7 PROD in the
+        // order 00, 10, 01, 11 of {DEMOTE_1, DEMOTE_2}.
+        if (ef_sd && (ef_lc != EfRc)) begin
+          logic [3:0] dcell;
+          case (ef_lc)
+            EfTd: dcell = 4'(ef_dm == 2'b00 ? 0 : ef_dm == 2'b10 ? 1 : ef_dm == 2'b01 ? 2 : 3);
+            EfProd: dcell = 4'(ef_dm == 2'b00 ? 4 : ef_dm == 2'b10 ? 5 : ef_dm == 2'b01 ? 6 : 7);
+            EfPe: dcell = 4'd8;
+            EfRs: dcell = 4'd9;
+            default: dcell = 4'd10;
+          endcase
+          ef_act(2, {feat_ctrl_i !== '1, dcell});
+        end
+        // x_state_strap_feat: sampled with sec_dis_i 0.
+        if (!ef_sd && (ef_lc inside {EfTd, EfProd, EfRs}) && !$isunknown(secure_tm_i)) begin
+          ef_rob(2,
+                 3'((ef_lc == EfTd ? 0 : ef_lc == EfProd ? 1 : 2) * 2) + 3'(secure_tm_i === 1'b1));
+        end
+      end
+
+      // x_sigint_state_secdis_out: lc_sigint_i high, INVALID excluded.
+      if (ef_own_cw && ef_sig && (ef_lc != EfInv)) begin
+        oc = (feat_ctrl_i === 64'h0) ? 3'd0 : (feat_ctrl_i === '1) ? 3'd1 : 3'd2;
+        se = '0;
+        se.ss = {oc != {2'b00, ef_sd}, 4'(ef_lc * 2) + 4'(ef_sd)};
+        se.ss_v = 1'b1;
+        u_sep_lc_sigint_failclosed_cg.sample(se);
+      end
+    end
+  end
+
+  // x_raw16_sigint: a complementary state byte {~r, r} at sense done.
+  always @(posedge clk_i) begin
+    ef_sig_t se;
+    if (ef_sense_rise && ef_own_fc && !$isunknown(
+            ef_lc_word[7:0]
+        ) && (ef_lc_word[7:4] == ~ef_lc_word[3:0])) begin
+      se = '0;
+      // An X or Z on lc_sigint_i at sense done counts as the error.
+      se.rs = {lc_sigint_i !== 1'b0, ef_lc_word[3:0]};
+      se.rs_v = 1'b1;
+      u_sep_lc_sigint_failclosed_cg.sample(se);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // x_transient: a match code on RMA_SIP or RMA_CHIPLET, the old class at
+  // the match rise, and the LC_STATE word outcome within EfTransWin clocks
+  // (a sampler parameter at most the window W of the owning test).
+  // ---------------------------------------------------------------------
+  logic ef_tr_arm = 1'b0;
+  logic ef_tr_en = 1'b0, ef_tr_ch = 1'b0;
+  logic [2:0] ef_tr_cls = '0;
+  logic [31:0] ef_tr_lcw = '0;
+  int unsigned ef_tr_cnt = 0;
+  logic [5:0] ef_sip_q = '0, ef_chp_q = '0;
+  always @(posedge clk_i) begin
+    ef_trn_t e;
+    logic [2:0] ci;
+    logic upd, exp_upd, rise_s, rise_c;
+    ef_sip_q <= tok_sip_i;
+    ef_chp_q <= tok_chp_i;
+    rise_s = (tok_sip_i == EfCodeMatch) && (ef_sip_q != EfCodeMatch);
+    rise_c = (tok_chp_i == EfCodeMatch) && (ef_chp_q != EfCodeMatch);
+    if (!ef_sensed || !ef_own_tr) begin
+      ef_tr_arm <= 1'b0;
+    end else if (!ef_tr_arm && (rise_s || rise_c) && (ef_lc != EfPe) && !$isunknown(
+            {efuse_lc_raw_i, ef_trans_en, ef_lc_word}
+        )) begin
+      ef_tr_arm <= 1'b1;
+      ef_tr_en  <= ef_trans_en;
+      ef_tr_ch  <= !rise_s;
+      ef_tr_cls <= (ef_lc == EfTd) ? 3'd0 : (ef_lc == EfProd) ? 3'd1 : (ef_lc == EfRs) ? 3'd2 :
+          (ef_lc == EfRc) ? 3'd3 : 3'd4;
+      ef_tr_lcw <= ef_lc_word;
+      ef_tr_cnt <= 0;
+    end else if (ef_tr_arm) begin
+      // An X or Z bit in the LC_STATE word counts as an update and as a wrong
+      // outcome.
+      upd = (ef_lc_word !== ef_tr_lcw);
+      if (upd || (ef_tr_cnt == EfTransWin)) begin
+        exp_upd = ef_tr_en && ((!ef_tr_ch && (ef_tr_cls <= 3'd1)) || (ef_tr_ch && (ef_tr_cls == 3'd2)));
+        e = '0;
+        e.tr = {
+          (upd != exp_upd) || $isunknown(ef_lc_word),
+          5'((32'(ef_tr_en) * 2 + 32'(ef_tr_ch)) * 5 + 32'(ef_tr_cls))
+        };
+        e.tr_v = 1'b1;
+        u_sep_lc_illegal_transition_cg.sample(e);
+        ef_tr_arm <= 1'b0;
+      end else begin
+        ef_tr_cnt <= ef_tr_cnt + 1;
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Program and read requests: a frontdoor go on EFUSE_PROGRAM_CTRL or
+  // EFUSE_READ_CTRL. A program lands when a PROGRAM command to its bit
+  // address reaches the shim (shim_cmd_i) after the AW of the go.
+  // ---------------------------------------------------------------------
+  logic ef_pg_v = 1'b0;  // a program request is open
+  logic [15:0] ef_pg_addr = '0;
+  logic ef_pg_data = 1'b0, ef_pg_en = 1'b0, ef_pg_sensed = 1'b0, ef_pg_stm = 1'b0;
+  logic ef_pg_rqe = 1'b0;  // efuse_req_error at the AW of the go (X or Z counts as set)
+  logic ef_pg_stmk = 1'b0;  // secure_tm_i known at the go
+  logic ef_pg_clean = 1'b0;  // the four status flags known and 0 at the AW of the go
+  logic [1:0] ef_pg_tok = '0;  // {RMA_CHIPLET, RMA_SIP} matched at the go
+  logic ef_pg_seen = 1'b0;
+  logic [31:0] ef_pg_pre = '0;  // sensed word of the target before the program
+  logic ef_pg_lock_open = 1'b0;  // waits for the STATUS read that ends it
+  logic ef_pg_idle_open = 1'b0;  // waits for the idle interface
+  int unsigned ef_pg_cnt = 0;
+  logic ef_rg_v = 1'b0;
+  logic [15:0] ef_rg_addr = '0;
+  logic ef_rg_en = 1'b0, ef_rg_pen = 1'b0;
+  logic ef_rg_rqe = 1'b0;  // efuse_req_error at the AW of the go (X or Z counts as set)
+  logic ef_rg_clean = 1'b0;  // the four status flags known and 0 at the AW of the go
+  logic ef_rg_rcmd = 1'b0;  // a READ command reached the shim since the AW of the go
+  logic ef_rg_lock_open = 1'b0, ef_rg_idle_open = 1'b0, ef_rg_win_open = 1'b0;
+  int unsigned ef_rg_cnt = 0;
+  logic ef_aw_rcmd_v = 1'b0;
+  always @(posedge clk_i) begin
+    if (aw_hs) ef_aw_rcmd_v <= ef_cmd_rd;
+    else if (ef_cmd_rd) ef_aw_rcmd_v <= 1'b1;
+  end
+  wire ef_pg_go = wr_okay && (aw_addr_q == EfPgCtrl) && |(wr_data & EfPgGoMask);
+  wire ef_rg_go = wr_okay && (aw_addr_q == EfRdCtrl) && |(wr_data & EfRdGoMask);
+  wire ef_status_rd = rd_okay && (ar_addr_q == EfStatus);
+  wire ef_idle = (efuse_read_busy_i === 1'b0) && (efuse_program_busy_i === 1'b0);
+  // Observed flags {read_status, read_addr, program_addr, req}. A flag with an X or Z
+  // bit gives 4'b1110, which is a wrong value in every case of cp_flags and
+  // x_case_flags.
+  wire [3:0] ef_flags = $isunknown({efuse_read_error_i, rd_addr_err_i, pg_addr_err_i, req_err_i}) ?
+      4'b1110 : {efuse_read_error_i, rd_addr_err_i, pg_addr_err_i, req_err_i};
+
+  // Case of a request (efuse_interface_ctrl.adoc): 0 pre_sense_prog,
+  // 1 read_no_enable, 2 read_oob, 3 prog_oob, 4 prog_wlocked, 5
+  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 15 none.
+  function automatic logic [3:0] ef_pg_case(input logic [15:0] a, input logic d, input logic en,
+                                            input logic sensed);
+    if (!sensed) return 4'd0;
+    if (a >= 16'(EfFuseBits)) return 4'd3;
+    if (ef_wlock(ef_slot_of(11'(a[12:3])))) return 4'd4;
+    if (!d) return 4'd7;
+    if (en) return 4'd8;
+    return 4'd15;
+  endfunction
+  function automatic logic [3:0] ef_rg_case(input logic [15:0] a, input logic en, input logic pen);
+    if (!en) return 4'd1;
+    if (pen) return 4'd6;
+    if (a >= 16'(EfFuseBits)) return 4'd2;
+    if (ef_rlock(ef_slot_of(11'(a[12:3])))) return 4'd5;
+    return 4'd8;
+  endfunction
+  logic [3:0] ef_pg_cs = 4'd15, ef_rg_cs = 4'd15;
+
+  // Window of x_case_cmd for pre_sense_prog: reset release to sense done.
+  logic ef_ps_go = 1'b0, ef_ps_prog = 1'b0;
+  // both_enables: from the go to the next cold reset.
+  logic ef_be_arm = 1'b0, ef_be_rcmd = 1'b0;
+
+  // Lock policy, if-status and secure test mode sampling of a program end.
+  task automatic ef_prog_lock_end();
+    logic [5:0] s, sn;
+    logic wl, rl, landed;
+    logic [9:0] off;
+    off = ef_pg_addr[12:3];
+    s = ef_slot_of({1'b0, off});
+    landed = ef_pg_seen;
+    // A refusal cell fills only when the write-lock is the one cause left: the go
+    // carries program_enable, efuse_req_error is known 0 at the go, sense is done and
+    // secure test mode is known off. The outcome is taken at least EfReqWait clocks
+    // after the go, so a late program command still counts as landed.
+    if (ef_own_lock && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed && ef_pg_stmk &&
+        !ef_pg_stm &&
+        (ef_pg_addr < 16'(EfFuseBits)) && (s != EfNoSlot) && (s != 6'd0)) begin
+      wl = ef_wlock(s);
+      rl = ef_rlock(s);
+      ef_lk(0, {landed == wl, 7'((s - 6'd1) * 2) + 7'(wl)});
+      ef_lk(2, 8'({landed == wl, rl, wl, 1'b0}));
+      if (!wl && !rl && landed) begin
+        if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd0);
+        sn = s + 6'd1;
+        if ((sn < 6'(EfSlots)) && (ef_wlock(sn) || ef_rlock(sn))) ef_lk(3, 8'd2);
+      end
+      // cp_prog_visibility bin 0: the programmed bit was 0 before the program.
+      if (landed && !ef_pg_pre[ef_pg_addr[4:0]] && (ef_word(off) === ef_pg_pre)) ef_lk(8, 8'd0);
+    end
+    // x_lc_prog_gate: LC_STATE bit 1 is gated by the RMA_SIP match, bit 2 by
+    // the RMA_CHIPLET match (otp_fuse_controller.adoc, Fuse Programming and
+    // RMA Authorization).
+    // The same qualification: only the token gate can refuse the program.
+    if (ef_own_tr && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed && ef_pg_stmk &&
+        !ef_pg_stm) begin
+      if (ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 1)) begin
+        if (ef_pg_tok[0]) ef_lk(10, {5'd0, 1'b0, 1'b0, landed});
+        else if (ef_pg_tok[1]) ef_lk(10, {5'd0, 1'b0, 1'b1, landed});
+      end else if (ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 2)) begin
+        if (ef_pg_tok[1]) ef_lk(10, {5'd0, 1'b1, 1'b0, landed});
+      end
+    end
+  endtask
+
+  // cp_prog_visibility bin 1: the next sense done after a landed program of a bit
+  // that read 0 before the program.
+  logic ef_pv_pend = 1'b0;
+  logic [7:0] ef_pv_word = '0;
+  logic [4:0] ef_pv_bit = '0;
+  logic [31:0] ef_pv_pre = '0;
+
+  always @(posedge clk_i) begin
+    ef_stm_t te;
+    logic [5:0] s;
+    logic [9:0] off;
+    logic [2:0] cls;
+    if (in_reset) begin
+      ef_pg_v <= 1'b0;
+      ef_pg_lock_open <= 1'b0;
+      ef_pg_idle_open <= 1'b0;
+      ef_rg_v <= 1'b0;
+      ef_rg_lock_open <= 1'b0;
+      ef_rg_idle_open <= 1'b0;
+      ef_rg_win_open <= 1'b0;
+    end else begin
+      // Program go.
+      if (ef_pg_go) begin
+        ef_pg_v <= 1'b1;
+        ef_pg_addr <= 16'(wr_data & EfPgAddrMask);
+        ef_pg_data <= |(wr_data & EfPgDataMask);
+        ef_pg_en <= |(wr_data & EfPgEnMask);
+        ef_pg_sensed <= (fuse_sense_done_i === 1'b1);
+        ef_pg_stm <= (secure_tm_i === 1'b1);
+        ef_pg_stmk <= !$isunknown(secure_tm_i);
+        ef_pg_rqe <= ef_aw_flags[0] || ef_aw_flx;
+        ef_pg_clean <= !ef_aw_flx && !ef_aw_rderr && (ef_aw_flags == 3'b000);
+        ef_pg_tok <= {tok_chp_i == EfCodeMatch, tok_sip_i == EfCodeMatch};
+        ef_pg_seen <= ef_aw_pcmd_v && (13'(wr_data & EfPgAddrMask) == ef_aw_pcmd_addr) &&
+            ((wr_data & EfPgAddrMask) < 32'(EfFuseBits));
+        ef_pg_pre <= ef_aw_shadow[32*(wr_data[12:5])+:32];
+        ef_pg_lock_open <= 1'b1;
+        ef_pg_idle_open <= 1'b1;
+        ef_pg_cnt <= 0;
+        ef_pg_cs <= ef_pg_case(16'(wr_data & EfPgAddrMask), |(wr_data & EfPgDataMask),
+                               |(wr_data & EfPgEnMask), fuse_sense_done_i === 1'b1);
+        if (fuse_sense_done_i !== 1'b1) ef_ps_go <= 1'b1;
+      end else if (ef_pg_v) begin
+        if (ef_cmd_pg && (16'(ef_cmd_addr) == ef_pg_addr)) ef_pg_seen <= 1'b1;
+        if (ef_pg_cnt < EfBothWin) ef_pg_cnt <= ef_pg_cnt + 1;
+        // The STATUS read that ends the request counts only EfReqWait clocks or
+        // more after the go.
+        if (ef_pg_lock_open && ef_status_rd && (efuse_program_busy_i === 1'b0) &&
+            (ef_pg_cnt >= EfReqWait)) begin
+          ef_pg_lock_open <= 1'b0;
+          ef_prog_lock_end();
+          if (ef_own_lock && ef_pg_data && ef_pg_seen) begin
+            ef_pv_pend <= 1'b1;
+            ef_pv_word <= ef_pg_addr[12:5];
+            ef_pv_bit <= ef_pg_addr[4:0];
+            ef_pv_pre <= ef_pg_pre;
+          end
+        end
+        if (ef_pg_idle_open && (ef_pg_cnt >= EfReqWait) && ef_idle) begin
+          ef_pg_idle_open <= 1'b0;
+          // sep_efuse_if_status_cg program cases and twin. The flags are sampled
+          // only for a go whose four flags were known and 0 at its AW, so a flag
+          // left set by an earlier request never stands for this one.
+          if (ef_own_ifs && (ef_pg_cs != 4'd15)) begin
+            if (ef_pg_cs == 4'd8) begin
+              if (ef_pg_clean) begin
+                ef_ifs(1, 7'(ef_flags));
+                if (ef_pg_seen && (ef_flags == 4'b0000)) ef_ifs(7, 7'd1);
+              end
+            end else begin
+              ef_ifs(0, 7'(ef_pg_cs));
+              if (ef_pg_clean) begin
+                ef_ifs(2, {ef_pg_cs[2:0], ef_flags});
+                if (ef_pg_cs inside {4'd3, 4'd4}) ef_ifs(1, 7'(ef_flags));
+              end
+            end
+          end
+          // x_prog_block: program class at the strap of the go. LC_STATE is
+          // gated by the token and is not a class.
+          off = ef_pg_addr[12:3];
+          s = ef_slot_of({1'b0, off});
+          cls = 3'd7;
+          if (off < 10'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET)) cls = 3'd3;
+          else if (s inside {EfSlotSipDis, EfSlotSysDis}) cls = 3'd2;
+          else if ((s >= EfSlotSpare0) && (s < 6'(EfSlots))) cls = 3'd4;
+          else if ((s != 6'd0) && (s != EfNoSlot) && ((EfSlotOff[s+1] - EfSlotOff[s]) == 11'd32))
+            cls = 3'd0;
+          else if ((s != 6'd0) && (s != EfNoSlot) && ((EfSlotOff[s+1] - EfSlotOff[s]) == 11'd4))
+            cls = 3'd1;
+          // Only the strap can refuse the program: program_enable at the go, no
+          // efuse_req_error at the go and no write-lock on the slot.
+          if (ef_own_stm && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed && ef_pg_stmk &&
+              (ef_pg_addr < 16'(EfFuseBits)) && (cls != 3'd7) &&
+              ((s == EfNoSlot) || !ef_wlock(
+                  s
+              ))) begin
+            te = '0;
+            te.pb = {ef_pg_seen == ef_pg_stm, 4'(cls * 2) + 4'(ef_pg_stm)};
+            te.pb_v = 1'b1;
+            u_sep_efuse_secure_tm_cg.sample(te);
+          end
+        end
+        if (!ef_pg_lock_open && !ef_pg_idle_open) ef_pg_v <= 1'b0;
+      end
+
+      // Read go.
+      if (ef_rg_go) begin
+        ef_rg_v <= 1'b1;
+        ef_rg_addr <= 16'(wr_data & EfRdAddrMask);
+        ef_rg_en <= |(wr_data & EfRdEnMask);
+        ef_rg_pen <= ef_pen_q;
+        ef_rg_rqe <= ef_aw_flags[0] || ef_aw_flx;
+        ef_rg_clean <= !ef_aw_flx && !ef_aw_rderr && (ef_aw_flags == 3'b000);
+        ef_rg_rcmd <= ef_aw_rcmd_v;
+        ef_rg_lock_open <= 1'b1;
+        ef_rg_idle_open <= 1'b1;
+        ef_rg_win_open <= 1'b0;
+        ef_rg_cnt <= 0;
+        ef_rg_cs <= ef_rg_case(16'(wr_data & EfRdAddrMask), |(wr_data & EfRdEnMask), ef_pen_q);
+        if (ef_rg_case(
+                16'(wr_data & EfRdAddrMask), |(wr_data & EfRdEnMask), ef_pen_q
+            ) == 4'd6) begin
+          ef_be_arm <= 1'b1;
+          ef_be_rcmd <= ef_aw_rcmd_v;
+        end
+      end else if (ef_rg_v) begin
+        if (ef_cmd_rd) ef_rg_rcmd <= 1'b1;
+        if (ef_rg_cnt < EfBothWin) ef_rg_cnt <= ef_rg_cnt + 1;
+        // x_slot_read and x_kind_op, read-locked kind: the STATUS read that
+        // ends the request carries efuse_req_error. The flag is 0 at the go,
+        // so only this request can have set it.
+        if (ef_rg_lock_open && ef_status_rd && (efuse_read_busy_i === 1'b0)) begin
+          ef_rg_lock_open <= 1'b0;
+          s = ef_slot_of(11'(ef_rg_addr[12:3]));
+          if (ef_own_lock && ef_rg_en && !ef_rg_pen && !ef_rg_rqe && (ef_rg_addr < 16'(EfFuseBits)) &&
+              (s != EfNoSlot) && (s != 6'd0) && ef_rlock(
+                  s
+              )) begin
+            // Refused only on a known efuse_req_error of 1.
+            ef_lk(1, {(rd_data & EfReqErrMask) !== EfReqErrMask, 7'((s - 6'd1) * 2 + 1)});
+            ef_lk(2, 8'({(rd_data & EfReqErrMask) !== EfReqErrMask, 1'b1, ef_wlock(s), 1'b1}));
+          end
+        end
+        if (ef_rg_idle_open && (((ef_rg_cnt >= EfReqWait) && ef_idle && (ef_rg_cs != 4'd6)) ||
+                                ((ef_rg_cs == 4'd6) && (ef_rg_cnt == EfBothWin)))) begin
+          ef_rg_idle_open <= 1'b0;
+          ef_rg_win_open <= (ef_rg_cs == 4'd5);
+          ef_rg_cnt <= 0;
+          if (ef_own_ifs) begin
+            if (ef_rg_cs == 4'd8) begin
+              if (ef_rg_clean) begin
+                ef_ifs(1, 7'(ef_flags));
+                if ((efuse_read_done_i === 1'b1) && (efuse_read_error_i === 1'b0)) ef_ifs(7, 7'd0);
+              end
+            end else begin
+              ef_ifs(0, 7'(ef_rg_cs));
+              if (ef_rg_clean) begin
+                ef_ifs(2, {ef_rg_cs[2:0], ef_flags});
+                if (ef_rg_cs inside {4'd1, 4'd2}) ef_ifs(1, 7'(ef_flags));
+              end
+            end
+          end
+        end
+        // x_case_cmd read_rlocked: no READ command from the go to the first
+        // STATUS read after the idle sample. The owner makes that read at the end
+        // of the window W, so the sampled window covers W.
+        if (ef_rg_win_open && !ef_rg_idle_open && ef_status_rd) begin
+          ef_rg_win_open <= 1'b0;
+          if (ef_own_ifs) ef_ifs(3, {4'd0, 2'd1, ef_rg_rcmd || ef_cmd_rd});
+        end
+        if (!ef_rg_lock_open && !ef_rg_idle_open && !ef_rg_win_open) ef_rg_v <= 1'b0;
+      end
+    end
+  end
+
+  // x_case_cmd pre_sense_prog and both_enables windows; cp_prog_visibility
+  // bin 1. These span a reset, so they do not clear on it.
+  always @(posedge clk_i) begin
+    if (ef_rel) begin
+      ef_ps_go   <= 1'b0;
+      ef_ps_prog <= 1'b0;
+    end else if (!in_reset && ef_cmd_pg && (fuse_sense_done_i !== 1'b1)) begin
+      ef_ps_prog <= 1'b1;
+    end
+    if (ef_sense_rise) begin
+      if (ef_ps_go && ef_own_ifs) ef_ifs(3, {4'd0, 2'd0, ef_ps_prog});
+      if (ef_pv_pend && ef_own_lock) begin
+        if (!ef_pv_pre[ef_pv_bit] && (efuse_shadow_i[32*ef_pv_word+ef_pv_bit] === 1'b1) &&
+            ((efuse_shadow_i[32*ef_pv_word+:32] & ef_pv_pre) === ef_pv_pre)) begin
+          ef_lk(8, 8'd1);
+        end
+      end
+      ef_pv_pend <= 1'b0;
+    end
+    if (ef_be_arm) begin
+      if (ef_cmd_rd && !in_reset) ef_be_rcmd <= 1'b1;
+      if (ef_rst_fall) begin
+        if (ef_own_ifs) ef_ifs(3, {4'd0, 2'd2, ef_be_rcmd});
+        ef_be_arm <= 1'b0;
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Frontdoor reads of the shadow map: x_slot_read and x_kind_op (lock
+  // clear), x_neighbor_free (read), x_exempt, x_secret_probe and
+  // x_secret_read_kept.
+  // ---------------------------------------------------------------------
+  always @(posedge clk_i) begin
+    ef_stm_t te;
+    logic [10:0] off;
+    logic [5:0] s, sn;
+    logic [2:0] f;
+    logic bad;
+    if (ef_rd_cmpl && (ef_rd_win == EfWShadow) && (fuse_sense_done_i === 1'b1)) begin
+      off = 11'(ar_addr_q - EfMapBase);
+      s = ef_slot_of(off);
+      f = ef_secret_of(s);
+      // Lock leaf reads at strap 0, where the frontdoor and the sensed-shadow
+      // output carry the same word. A read that is not blocked earns its cell
+      // only on a known non-zero sensed word, because a blocked read that
+      // returns 0 equals a zero word. A known mismatch still reaches the
+      // wrong-outcome bins.
+      if (rd_okay && ef_own_lock && (secure_tm_i === 1'b0) && !$isunknown(
+              rd_data
+          ) && !$isunknown(
+              ef_word(off[9:0])
+          )) begin
+        if ((s != EfNoSlot) && (s != 6'd0) && !ef_rlock(s)) begin
+          bad = (rd_data != ef_word(off[9:0]));
+          if (bad || (ef_word(off[9:0]) != 32'h0)) begin
+            ef_lk(1, {bad, 7'((s - 6'd1) * 2)});
+            ef_lk(2, 8'({bad, 1'b0, ef_wlock(s), 1'b1}));
+            if (!ef_wlock(s) && !bad) begin
+              if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd1);
+              sn = s + 6'd1;
+              if ((sn < 6'(EfSlots)) && (ef_wlock(sn) || ef_rlock(sn))) ef_lk(3, 8'd3);
+            end
+          end
+        end
+        if (ef_all_locked && (ef_word(off[9:0]) != 32'h0) && (rd_data == ef_word(off[9:0]))) begin
+          if (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR) ef_lk(4, 8'd0);
+          if (ar_addr_q inside {SEP_EFUSE_MAP_LOCKS_REG_ADDR, SEP_EFUSE_MAP_LOCKS_REG_ADDR + 32'd4})
+            ef_lk(4, 8'd1);
+          if (ar_addr_q == SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR) ef_lk(4, 8'd2);
+        end
+      end
+      if (ef_own_stm && (secure_tm_i === 1'b1) && (f != 3'd4)) begin
+        te = '0;
+        // A probe word with an X or Z bit counts as nonzero.
+        if (stored_shadow_i[32*off[9:2]+:32] != 32'h0) begin
+          te.sp = {f[1:0], ef_word(off[9:0]) !== 32'h0};
+          te.sp_v = 1'b1;
+        end
+        if (rd_okay && !ef_rlock(s) && (rd_data != 32'h0)) begin
+          te.sk = f[1:0];
+          te.sk_v = 1'b1;
+        end
+        u_sep_efuse_secure_tm_cg.sample(te);
+      end
+    end
+  end
+
+  // cp_sense_fills_locked and cp_round_count at sense done. The previous
+  // sensed copy survives the cold reset between two senses.
+  logic [EfFuseBits-1:0] ef_rc_prev = '0;
+  logic ef_rc_pv = 1'b0;
+  int unsigned ef_rc_k = 0;
+  always @(posedge clk_i) begin
+    logic sec, oth;
+    int unsigned k;
+    if (ef_sense_rise) begin
+      sec = 1'b0;
+      oth = 1'b0;
+      for (int s = 1; s < EfSlots; s++) begin
+        if (ef_rlock(6'(s)) && ef_field_nz(6'(s))) begin
+          if (ef_secret_of(6'(s)) != 3'd4) sec = 1'b1;
+          else oth = 1'b1;
+        end
+      end
+      if (ef_own_lock && sec) ef_lk(5, 8'd0);
+      if (ef_own_lock && oth) ef_lk(5, 8'd1);
+      k = (ef_rc_pv && ((efuse_shadow_i & ~ef_rc_prev) != '0)) ? ef_rc_k + 1 : 0;
+      if (ef_own_lock && (k >= 1) && (k <= 4)) ef_lk(9, 8'(k));
+      ef_rc_k <= k;
+      ef_rc_prev <= efuse_shadow_i;
+      ef_rc_pv <= 1'b1;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Write effects, EfWrSettle clocks after the B of a frontdoor write, against
+  // the state at its AW: x_shadow_write_lock, cp_lock_order,
+  // cp_export_changes, sep_lc_demote_lock_cg, cp_no_clear and cp_flag_clear.
+  // A second write that completes inside the settle drops the first (a
+  // missed hit, never a false one).
+  // ---------------------------------------------------------------------
+  logic ef_pw_v = 1'b0;
+  int unsigned ef_pw_cnt = 0;
+  logic [31:0] ef_pw_addr = '0, ef_pw_data = '0;
+  logic ef_pw_ok = 1'b0;
+  logic [EfFuseBits-1:0] ef_pw_shadow = '0;
+  logic [63:0] ef_pw_feat = '0;
+  logic [1:0] ef_pw_d1 = 2'b10, ef_pw_d2 = 2'b10;
+  logic ef_pw_l1 = 1'b0, ef_pw_l2 = 1'b0;
+  logic [2:0] ef_pw_fault = '0, ef_pw_flags = '0;
+  logic ef_pw_flx = 1'b0, ef_pw_dx = 1'b0;
+
+  always @(posedge clk_i) begin
+    ef_dem_t me;
+    ef_dlk_t ke;
+    logic [10:0] off;
+    logic [5:0] s;
+    logic [31:0] pre, now, pre_l, now_l;
+    logic [1:0] f;
+    logic wl, wr_ok, chg, r, ol, od, nd, nl, l_other, d_other_pre, d_other_now, nx;
+    logic [23:0] dis_grp;
+    logic [1:0] wcls;
+    logic [2:0] clr, now_flags;
+    if (in_reset) begin
+      ef_pw_v <= 1'b0;
+    end else if (ef_wr_cmpl) begin
+      ef_pw_v <= 1'b1;
+      ef_pw_cnt <= 0;
+      ef_pw_addr <= aw_addr_q;
+      ef_pw_data <= wr_data;
+      ef_pw_ok <= (lsu_b_resp_i === AxiOkay);
+      ef_pw_shadow <= ef_aw_shadow;
+      ef_pw_feat <= ef_aw_feat;
+      ef_pw_d1 <= ef_aw_d1;
+      ef_pw_d2 <= ef_aw_d2;
+      ef_pw_l1 <= ef_aw_l1;
+      ef_pw_l2 <= ef_aw_l2;
+      ef_pw_fault <= ef_aw_fault;
+      ef_pw_flags <= ef_aw_flags;
+      ef_pw_flx <= ef_aw_flx;
+      ef_pw_dx <= ef_aw_dx;
+    end else if (ef_pw_v && (ef_pw_cnt < EfWrSettle)) begin
+      ef_pw_cnt <= ef_pw_cnt + 1;
+    end else if (ef_pw_v) begin
+      ef_pw_v <= 1'b0;
+      // Shadow writes (sensed shadow before and after).
+      if (ef_win(ef_pw_addr) == EfWShadow) begin
+        off = 11'(ef_pw_addr - EfMapBase);
+        s = ef_slot_of(off);
+        pre = ef_pw_shadow[32*off[9:2]+:32];
+        now = ef_word(off[9:0]);
+        // Write-lock as the LOCKS words of the shadow held at the AW.
+        wl = (s < 6'd32) ? ef_pw_shadow[32*EfWLocks+2*s] :
+            (s < 6'(EfSlots)) ? ef_pw_shadow[32*EfWLocksSp+2*(s-6'd32)] : 1'b0;
+        f = (s == EfSlotSipDis) ? 2'd0 : (s == EfSlotSysDis) ? 2'd1 : (s == EfSlotSigners) ? 2'd2 : 2'd3;
+        // An open write lands as the OR of the shadow and the write data; a locked
+        // write leaves the shadow unchanged. Any other value, or an X or Z bit
+        // after the write, is a wrong outcome for either lock value.
+        if (ef_own_lock && (s inside {EfSlotSipDis, EfSlotSysDis, EfSlotSigners, EfSlotAlgs}) &&
+            !$isunknown(
+                pre
+            ) && !$isunknown(
+                ef_pw_data
+            ) && ((ef_pw_data & ~pre) != 32'h0)) begin
+          wr_ok = wl ? (now === pre) : (now === (pre | ef_pw_data));
+          ef_lk(6, 8'({!wr_ok, f, wl}));
+          if (!wl && wr_ok) ef_lk(7, 8'd0);
+          if (wl && wr_ok) ef_lk(7, 8'd1);
+        end
+        // A write that clears a set lock bit leaves every set bit set.
+        if (ef_own_lock && (s == EfNoSlot) && (pre != 32'h0) && ((ef_pw_data & pre) != pre) &&
+            ((now & pre) == pre)) begin
+          ef_lk(7, 8'd2);
+        end
+      end
+      // DEMOTE_1 / DEMOTE_2 (sep_lifecycle_ctrl.adoc, DEMOTE_1: demote bit 0,
+      // lock bit 1).
+      // The demote and lock outputs are known at the AW. An X or Z output after
+      // the write counts as a change: a wrong outcome for a locked register, and
+      // no cell for an open one.
+      if (ef_pw_ok && !ef_pw_dx && (ef_pw_addr inside {EfDemote1, EfDemote2})) begin
+        r = (ef_pw_addr == EfDemote2);
+        od = r ? (ef_pw_d2 == 2'b01) : (ef_pw_d1 == 2'b01);
+        ol = r ? ef_pw_l2 : ef_pw_l1;
+        nd = r ? (demote_2_i == 2'b01) : (demote_1_i == 2'b01);
+        nl = r ? (demote_lock_2_i === 1'b1) : (demote_lock_1_i === 1'b1);
+        l_other = r ? ef_pw_l1 : ef_pw_l2;
+        d_other_pre = r ? (ef_pw_d1 == 2'b01) : (ef_pw_d2 == 2'b01);
+        d_other_now = r ? (demote_1_i == 2'b01) : (demote_2_i == 2'b01);
+        chg = (od != nd) || (ol != nl);
+        nx = r ? $isunknown({demote_2_i, demote_lock_2_i}) : $isunknown({demote_1_i, demote_lock_1_i});
+        if (nx) chg = 1'b1;
+        wcls = (ef_pw_data == EfDemoteMask) ? 2'd0 : (ef_pw_data == EfDemLockMask) ? 2'd1 :
+            (ef_pw_data == 32'h0) ? 2'd2 : 2'd3;
+        if (ef_own_fc) begin
+          if (|(ef_pw_data & EfDemoteMask) && !nx) begin
+            me = '0;
+            me.ex = r;
+            me.ex_v = r ? (demote_2_i != ef_pw_d2) : (demote_1_i != ef_pw_d1);
+            u_sep_lc_demotion_cg.sample(me);
+          end
+          ke = '0;
+          if ((wcls != 2'd3) && !((wcls == 2'd0) && od) && !(nx && !ol)) begin
+            ke.rl = {r, ol, wcls, chg};
+            ke.rl_v = 1'b1;
+          end
+          if (ol && (wcls inside {2'd0, 2'd2})) begin
+            ke.cn = {r, od, wcls == 2'd2, chg};
+            ke.cn_v = 1'b1;
+          end
+          if (!ol && chg && !nx && l_other) begin
+            ke.ci = r;
+            ke.ci_v = 1'b1;
+          end
+          // cp_profile_unchanged: a set-demote write to a locked register that would
+          // change the profile if the register were open. The old demote is 0,
+          // SEC_DIS is off and the state is TEST_DEV or PROD; the DIS group the
+          // register governs is non-zero in TEST_DEV (the demote forces it open) and
+          // not all ones in PROD (the demote relaxes it to the DIS vectors)
+          // (lifecycle_controller.adoc, Per-LC-state Feature Control Profile).
+          dis_grp = ef_grp(ef_pw_shadow[32*EfWSipDis+:64] | ef_pw_shadow[32*EfWSysDis+:64], r);
+          if (ol && |(ef_pw_data & EfDemoteMask) && !od && (sec_dis_i === 1'b0) && !$isunknown(
+                  efuse_lc_raw_i
+              ) && !$isunknown(
+                  feat_ctrl_i
+              ) && !$isunknown(
+                  dis_grp
+              ) && (feat_ctrl_i == ef_pw_feat) && (d_other_pre == d_other_now) &&
+                  (((ef_lc == EfTd) && (dis_grp != 24'h0)) ||
+                   ((ef_lc == EfProd) && (dis_grp != ef_gmask(
+                  int'(r)
+              ))))) begin
+            ke.pu = r;
+            ke.pu_v = 1'b1;
+          end
+          u_sep_lc_demote_lock_cg.sample(ke);
+        end
+      end
+      // TOKEN_MATCH_FAULT (efuse_mmr.adoc): an accepted (OKAY) write of 1 to a set
+      // bit. A write the bus refuses never reaches the register, so it shows no
+      // "no clear".
+      if ((ef_pw_addr == EfMatchFault) && ef_pw_ok && ef_own_tf) begin
+        if (|(ef_pw_data & EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_SIP_TOKEN_FAULT_MASK) && ef_pw_fault[0] &&
+            (tok_fault_i[0] === 1'b1))
+          ef_tfs(4, 5'd0);
+        if (|(ef_pw_data & EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_MASK) && ef_pw_fault[1] &&
+            (tok_fault_i[1] === 1'b1))
+          ef_tfs(4, 5'd1);
+        if (|(ef_pw_data & EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_MASK) &&
+            ef_pw_fault[2] && (tok_fault_i[2] === 1'b1))
+          ef_tfs(4, 5'd2);
+      end
+      // EFUSE_INTERFACE_CTRL_STATUS: one clear bit written over a set flag;
+      // the flag falls and the other flags keep their values.
+      if ((ef_pw_addr == EfStatus) && ef_own_ifs) begin
+        clr = {|(ef_pw_data & EfRdAddrClrMask), |(ef_pw_data & EfPgAddrClrMask),
+               |(ef_pw_data & EfReqErrClrMask)};
+        now_flags = {rd_addr_err_i === 1'b1, pg_addr_err_i === 1'b1, req_err_i === 1'b1};
+        // The flags are known at the AW and after the settle, so an X or Z never
+        // reads as a fall or as an unchanged flag.
+        if (($countones(
+                clr
+            ) == 1) && !ef_pw_flx && !$isunknown(
+                {rd_addr_err_i, pg_addr_err_i, req_err_i}
+            )) begin
+          if (clr[2] && ef_pw_flags[2] && !now_flags[2] && (now_flags[1:0] == ef_pw_flags[1:0]))
+            ef_ifs(4, 7'd0);
+          if (clr[1] && ef_pw_flags[1] && !now_flags[1] &&
+              ({now_flags[2], now_flags[0]} == {ef_pw_flags[2], ef_pw_flags[0]}))
+            ef_ifs(4, 7'd1);
+          if (clr[0] && ef_pw_flags[0] && !now_flags[0] && (now_flags[2:1] == ef_pw_flags[2:1]))
+            ef_ifs(4, 7'd2);
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_lc_demotion_cg clocked points: cp_assert_order and cp_reset_vector.
+  // The reset vector is taken on the last clock before rst_ni falls and
+  // checked at the next sense done, so the tracker does not clear on reset.
+  // ---------------------------------------------------------------------
+  logic [1:0] ef_ao_first = 2'd0;  // 1 DEMOTE_1 first, 2 DEMOTE_2 first
+  logic ef_ao_both_q = 1'b0;
+  logic [3:0] ef_rv_last = '0, ef_rv_vec = '0;
+  logic ef_rv_pend = 1'b0;
+  always @(posedge clk_i) begin
+    ef_dem_t me;
+    logic [3:0] vec;
+    // An X or Z demote or lock output keeps its unknown bit in the vector.
+    vec = {ef_d1, demote_lock_1_i, ef_d2, demote_lock_2_i};
+    if (!in_reset) begin
+      ef_rv_last <= vec;
+      ef_ao_both_q <= ef_d1 && ef_d2;
+      if (!ef_d1 && !ef_d2) ef_ao_first <= 2'd0;
+      else if ((ef_ao_first == 2'd0) && ef_d1 && !ef_d2) ef_ao_first <= 2'd1;
+      else if ((ef_ao_first == 2'd0) && ef_d2 && !ef_d1) ef_ao_first <= 2'd2;
+      if (ef_d1 && ef_d2 && !ef_ao_both_q && (ef_ao_first != 2'd0) && ef_own_fc && ef_sensed) begin
+        me = '0;
+        me.ao = (ef_ao_first == 2'd2);
+        me.ao_v = 1'b1;
+        u_sep_lc_demotion_cg.sample(me);
+      end
+    end else begin
+      ef_ao_first <= 2'd0;
+      ef_ao_both_q <= 1'b0;
+    end
+    if (ef_rst_fall) begin
+      // The reset starts inside the graded window of the owner.
+      ef_rv_pend <= ef_own_fc && !$isunknown(ef_rv_last);
+      ef_rv_vec  <= ef_rv_last;
+    end
+    if (ef_sense_rise && ef_rv_pend) begin
+      ef_rv_pend <= 1'b0;
+      if (ef_own_fc && (vec == 4'h0) && !$isunknown(
+              {demote_1_i, demote_2_i, demote_lock_1_i, demote_lock_2_i}
+          )) begin
+        me = '0;
+        me.rv = ef_rv_vec;
+        me.rv_v = 1'b1;
+        u_sep_lc_demotion_cg.sample(me);
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Token channels. A go on channel c arms a tracker; its verdict is the
+  // first non-idle code after the code has read idle at least once since
+  // the go (token_processing.adoc, Token Submission: a start clears digest
+  // validity, so the comparison reads idle until the new digest is there).
+  // Channel 0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS.
+  // ---------------------------------------------------------------------
+  logic [2:0] ef_go_arm = '0, ef_go_idle = '0, ef_go_busy0 = '0, ef_go_sensed = '0;
+  logic [2:0] ef_go_others_ok = '0, ef_go_fault = '0, ef_go_replay = '0;
+  logic [2:0][1:0] ef_go_shape = '0;
+  logic [2:0] ef_go_shape_v = '0;
+  logic [2:0] ef_pre_arm = '0, ef_pre_bad = '0;  // RMA go before sense done
+  // An RMA go before sense done whose code read idle until a reset ended the
+  // epoch with sense done still low: the result waits for a later sense.
+  logic [1:0] ef_pre_carry = '0, ef_pre_csd = '0;
+  // Token words of the last go of each channel, and the words of a go that
+  // gave Match since the last reset (the token of that channel, as the DUT
+  // itself judged it).
+  logic [2:0][7:0][31:0] ef_go_words = '0, ef_match_words = '0;
+  logic [2:0] ef_match_v = '0;
+  logic [2:0][5:0] ef_code_q = '0;
+  logic [2:0][7:0][31:0] ef_words_q = '0;
+  // Array c changed since its last go.
+  logic [2:0] ef_arr_dirty = '1;
+  logic [2:0] ef_hw_arm = '0;
+  logic [2:0][5:0] ef_hw_code = '0;
+  int unsigned ef_hw_cnt[3] = '{0, 0, 0};
+  logic [2:0] ef_fault_q = '0;
+  logic [7:0][31:0] ef_ret_words = '0, ef_last_sipw = '0;
+  logic [5:0] ef_last_sipc = '0;
+  logic ef_ret_pend = 1'b0, ef_ret_wait = 1'b0, ef_ret_nogo = 1'b0;
+  wire [2:0][255:0] ef_dig = {
+    sec_disable_expected_i, efuse_shadow_i[32*EfWChipDig+:256], efuse_shadow_i[32*EfWSipDig+:256]
+  };
+
+  // A code with an X or Z bit is neither idle nor non-idle.
+  function automatic logic ef_nonidle(input logic [5:0] c);
+    return (c != EfCodeIdle) && !$isunknown(c);
+  endfunction
+  function automatic logic ef_isidle(input logic [5:0] c);
+    return (c === EfCodeIdle);
+  endfunction
+  // Words equal to a 256-bit value, in either word order. An X or Z bit on
+  // either side is not equal, so an unwritten array never labels a replay.
+  function automatic logic ef_words_eq(input logic [7:0][31:0] w, input logic [255:0] d);
+    logic rev;
+    if ($isunknown(w) || $isunknown(d)) return 1'b0;
+    rev = 1'b1;
+    for (int i = 0; i < 8; i++) if (w[i] !== d[32*(7-i)+:32]) rev = 1'b0;
+    return (w === d) || rev;
+  endfunction
+
+  always @(posedge clk_i) begin
+    logic [5:0] code, v;
+    logic [1:0] o1, o2;
+    if (!ef_live) begin
+      ef_go_arm <= '0;
+      ef_pre_arm <= '0;
+      ef_hw_arm <= '0;
+      ef_match_v <= '0;
+      // A pre-sense go carries over a reset only while sense done is still low
+      // and the code has read idle since the go; a carried one stays carried.
+      if (ef_rst_fall) begin
+        for (int c = 0; c < 2; c++) begin
+          ef_pre_carry[c] <= (ef_pre_arm[c] && !ef_pre_bad[c]) || (ef_pre_carry[c] && !ef_pre_csd[c]);
+        end
+        ef_pre_csd <= '0;
+      end
+    end else begin
+      for (int c = 0; c < 3; c++) begin
+        code = ef_code[c];
+        o1 = 2'((c + 1) % 3);
+        o2 = 2'((c + 2) % 3);
+        // cp_code: every new status value of each channel.
+        if ((code !== ef_code_q[c]) && !$isunknown(code)) begin
+          if ((code == EfCodeErr) ? ef_own_tf : (ef_own_tch || ((code != EfCodeIdle) &&
+              (code != EfCodeMatch) && (code != EfCodeMismatch) && ef_own_tf))) begin
+            ef_tc(1, code);
+          end
+        end
+        if (token_go_i[c] === 1'b1) begin
+          ef_go_arm[c] <= 1'b1;
+          ef_go_idle[c] <= ef_isidle(code);
+          ef_go_busy0[c] <= ef_nonidle(code);
+          ef_go_sensed[c] <= (fuse_sense_done_i === 1'b1);
+          ef_go_others_ok[c] <= ef_nonidle(ef_code[o1]) && ef_nonidle(ef_code[o2]);
+          ef_go_fault[c] <= (tok_fault_i[c] === 1'b1);
+          ef_go_replay[c] <= ef_words_eq(tok_words_i[c], ef_dig[c]);
+          ef_go_words[c] <= tok_words_i[c];
+          ef_go_shape_v[c] <= 1'b1;
+          if (tok_words_i[c] == '0) ef_go_shape[c] <= 2'd0;
+          else if (tok_words_i[c] == '1) ef_go_shape[c] <= 2'd1;
+          else if ((ef_match_v[o1] && (tok_words_i[c] === ef_match_words[o1])) ||
+                   (ef_match_v[o2] && (tok_words_i[c] === ef_match_words[o2])))
+            ef_go_shape[c] <= 2'd2;
+          else ef_go_shape_v[c] <= 1'b0;
+          // A new go on an RMA channel ends a carried pre-sense go.
+          if (c < 2) ef_pre_carry[c] <= 1'b0;
+          if ((c < 2) && (fuse_sense_done_i !== 1'b1)) begin
+            ef_pre_arm[c] <= 1'b1;
+            ef_pre_bad[c] <= 1'b0;
+          end
+        end else if (ef_go_arm[c]) begin
+          if (ef_isidle(code)) ef_go_idle[c] <= 1'b1;
+          if ((ef_code[o1] !== ef_code_q[o1]) || (ef_code[o2] !== ef_code_q[o2]))
+            ef_go_others_ok[c] <= 1'b0;
+          if (ef_go_idle[c] && ef_nonidle(code)) begin
+            ef_go_arm[c] <= 1'b0;
+            if ((code == EfCodeMatch) && !ef_arr_dirty[c] && !$isunknown(ef_go_words[c])) begin
+              ef_match_v[c] <= 1'b1;
+              ef_match_words[c] <= ef_go_words[c];
+            end
+            if (ef_own_tch) begin
+              if (code inside {EfCodeMatch, EfCodeMismatch}) begin
+                ef_tc(0, {1'b0, 2'(c), code == EfCodeMismatch});
+                if (ef_go_shape_v[c] && !((c == 2) && (ef_go_shape[c] == 2'd0)))
+                  ef_tc(2, {1'b0, code == EfCodeMatch, 4'(c * 3) + 4'(ef_go_shape[c])});
+                if ((c < 2) && ef_go_sensed[c] && (code == EfCodeMatch))
+                  ef_tc(3, {3'd0, 2'(c), 1'b1});
+                if (ef_go_replay[c]) ef_rob(0, {2'(c), code == EfCodeMatch});
+              end
+              if (ef_go_others_ok[c] && (ef_code[o1] === ef_code_q[o1]) &&
+                  (ef_code[o2] === ef_code_q[o2]))
+                ef_tc(4, 6'(c));
+              if (ef_go_busy0[c]) ef_tc(6, 6'(c));
+            end
+            // x_ch_retry: a valid go after a fault, with the sticky bit and
+            // the interrupt line still high.
+            if (ef_own_tf && ef_go_fault[c] && (tok_fault_i[c] === 1'b1) && ef_irq &&
+                (code inside {EfCodeMatch, EfCodeMismatch}) && !((c == 2) && (code == EfCodeMismatch))) begin
+              ef_tfs(3, 5'(c * 2) + 5'(code == EfCodeMismatch));
+            end
+          end
+        end
+        // x_rma_go_phase, before sense: the code reads idle (known) on every clock
+        // until sense done.
+        if (ef_pre_arm[c] && (fuse_sense_done_i !== 1'b1) && !ef_isidle(code))
+          ef_pre_bad[c] <= 1'b1;
+        if (ef_pre_arm[c] && ef_sense_rise) begin
+          ef_pre_arm[c] <= 1'b0;
+          if (ef_own_tch && !ef_pre_bad[c] && ef_isidle(code)) ef_tc(3, {3'd0, 2'(c), 1'b0});
+        end
+        // x_rma_go_phase, before sense, carried over a reset: the first non-idle
+        // code after a later sense done, with no new go on the channel, is the
+        // Match of the retained digest. A code other than a known idle before
+        // sense done (an X or Z included), or a non-idle code other than Match
+        // after it, ends the carry with no sample.
+        if ((c < 2) && ef_pre_carry[c] && (token_go_i[c] !== 1'b1)) begin
+          if (fuse_sense_done_i === 1'b1) ef_pre_csd[c] <= 1'b1;
+          if ((fuse_sense_done_i !== 1'b1) && !ef_isidle(code)) begin
+            ef_pre_carry[c] <= 1'b0;
+          end else if (ef_nonidle(code)) begin
+            ef_pre_carry[c] <= 1'b0;
+            if (ef_own_tch && (fuse_sense_done_i === 1'b1) && (code == EfCodeMatch))
+              ef_tc(3, {3'd0, 2'(c), 1'b0});
+          end
+        end
+        // cp_hold_word_write: a token word changes while a non-idle code is
+        // held, and the code is unchanged EfTokSettle clocks later.
+        if ((tok_words_i[c] !== ef_words_q[c]) && ef_nonidle(code) && !ef_go_arm[c]) begin
+          ef_hw_arm[c] <= 1'b1;
+          ef_hw_code[c] <= code;
+          ef_hw_cnt[c] <= 0;
+        end else if (ef_hw_arm[c]) begin
+          if ((token_go_i[c] === 1'b1) || (code !== ef_hw_code[c])) begin
+            ef_hw_arm[c] <= 1'b0;
+          end else if (ef_hw_cnt[c] == EfTokSettle) begin
+            ef_hw_arm[c] <= 1'b0;
+            if (ef_own_tch) ef_tc(5, 6'(c));
+          end else begin
+            ef_hw_cnt[c] <= ef_hw_cnt[c] + 1;
+          end
+        end
+      end
+    end
+    ef_code_q <= ef_code;
+    ef_words_q <= tok_words_i;
+    for (int c = 0; c < 3; c++) begin
+      if (token_go_i[c] === 1'b1) ef_arr_dirty[c] <= 1'b0;
+      else if (tok_words_i[c] !== ef_words_q[c]) ef_arr_dirty[c] <= 1'b1;
+    end
+  end
+
+  // cp_retention: a cold reset with an RMA_SIP Match held. The words and the
+  // code are taken on the last clock before rst_ni falls. Bins 0 and 1 sample
+  // EfTokSettle clocks after the release, not on the release clock. Bin 2 waits
+  // for the first non-idle RMA_SIP code; a further reset that falls while the
+  // code still reads idle and sense done has stayed low carries the wait into
+  // the next epoch.
+  logic ef_ret_chk = 1'b0, ef_ret_sd = 1'b0;
+  int unsigned ef_ret_cnt = 0;
+  always @(posedge clk_i) begin
+    if (!in_reset) begin
+      ef_last_sipw <= tok_words_i[0];
+      ef_last_sipc <= tok_sip_i;
+    end
+    if (ef_rst_fall) begin
+      ef_ret_pend  <= ef_own_tch && (ef_last_sipc === EfCodeMatch);
+      ef_ret_words <= ef_last_sipw;
+      ef_ret_wait  <= ef_ret_wait && !ef_ret_sd && ef_isidle(ef_last_sipc);
+      ef_ret_chk   <= 1'b0;
+    end
+    if (ef_rel && ef_ret_pend) begin
+      ef_ret_pend <= 1'b0;
+      ef_ret_chk  <= 1'b1;
+      ef_ret_cnt  <= 0;
+      ef_ret_nogo <= 1'b1;
+    end else if (ef_ret_chk && !in_reset) begin
+      if (token_go_i[0] === 1'b1) ef_ret_nogo <= 1'b0;
+      if (ef_ret_cnt == EfTokSettle) begin
+        ef_ret_chk  <= 1'b0;
+        ef_ret_wait <= 1'b1;
+        ef_ret_sd   <= (fuse_sense_done_i === 1'b1);
+        if (ef_own_tch && !skip_fuse_sense_q) begin
+          if (tok_words_i[0] === ef_ret_words) ef_tc(7, 6'd0);
+          if (ef_isidle(tok_sip_i) && (fuse_sense_done_i === 1'b0)) ef_tc(7, 6'd1);
+        end
+      end else begin
+        ef_ret_cnt <= ef_ret_cnt + 1;
+      end
+    end else if (ef_ret_wait && !in_reset) begin
+      if (token_go_i[0] === 1'b1) ef_ret_nogo <= 1'b0;
+      if (fuse_sense_done_i === 1'b1) ef_ret_sd <= 1'b1;
+      if (ef_nonidle(tok_sip_i)) begin
+        ef_ret_wait <= 1'b0;
+        if (ef_own_tch && ef_ret_nogo && (token_go_i[0] !== 1'b1) && (fuse_sense_done_i === 1'b1) &&
+            (tok_sip_i == EfCodeMatch))
+          ef_tc(7, 6'd2);
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_token_fault_cg.
+  // ---------------------------------------------------------------------
+  logic ef_cf_arm = 1'b0, ef_cf_dir = 1'b0, ef_cf_go = 1'b0;
+  // cp_secdis_off_under_fault: sec_dis_i rose since the last reset release (the
+  // control that the output can rise), and is 0 from the SEC_DIS fault on.
+  logic ef_so_arm = 1'b0, ef_so_bad = 1'b0, ef_sd_seen = 1'b0;
+  logic [2:0] ef_rc_fault_last = '0;
+  logic [2:0] ef_rc_pend = '0;
+  logic ef_rc_chk = 1'b0;
+  int unsigned ef_rc_cnt = 0;
+  logic [1:0] ef_lf_te_q = '0, ef_lf_go = '0, ef_lf_chg = '0, ef_lf_rel = '0, ef_lf_rel_go = '0;
+  logic [1:0][255:0] ef_lf_dig = '0;
+  logic [1:0] ef_lf_vld = '0;
+  logic [1:0] ef_lf_own = '0;  // the freeze started inside the graded window
+  int unsigned ef_lf_cnt[2] = '{0, 0};
+
+  // Copy and kind of a fault on channel c from its gated rails: a collapsed
+  // pair is match_p[i] == match_n[i]; a dissent is one copy whose legal pair
+  // differs from the other two. 5'd31 when neither.
+  function automatic logic [4:0] ef_kind_copy(input int unsigned c);
+    logic [2:0] p, n, col;
+    p = cmp_match_p_i[3*c+:3];
+    n = cmp_match_n_i[3*c+:3];
+    col = ~(p ^ n);
+    for (int i = 0; i < 3; i++) begin
+      if (col == (3'b001 << i)) return 5'(c * 6 + i);
+    end
+    if (col == 3'b000) begin
+      for (int i = 0; i < 3; i++) begin
+        if ((p == (3'b001 << i)) || (p == ~(3'b001 << i))) return 5'(c * 6 + 3 + i);
+      end
+    end
+    return 5'd31;
+  endfunction
+
+  always @(posedge clk_i) begin
+    logic [4:0] kc;
+    int unsigned c1;
+    if (!in_reset) begin
+      ef_fault_q <= tok_fault_i;
+      ef_rc_fault_last <= tok_fault_i;
+    end
+    if (ef_live) begin
+      if (ef_sd) ef_sd_seen <= 1'b1;
+      if (ef_so_arm && (sec_dis_i !== 1'b0)) ef_so_bad <= 1'b1;
+      for (int c = 0; c < 3; c++) begin
+        if ((tok_fault_i[c] === 1'b1) && !ef_fault_q[c] && ef_own_tf) begin
+          kc = ef_kind_copy(c);
+          if (kc != 5'd31) ef_tfs(0, kc);
+          if ((c == 2) && ef_sd_seen && (sec_dis_i === 1'b0)) begin
+            ef_so_arm <= 1'b1;
+            ef_so_bad <= 1'b0;
+          end
+        end
+      end
+      // x_ch_common_flip on RMA_CHIPLET: a flip between Match and Mismatch with
+      // no go since the last code change, taken only while the RMA_CHIPLET sticky
+      // bit is known 0, so a sticky bit that rises at the flip can show.
+      if (token_go_i[1] === 1'b1) ef_cf_go <= 1'b1;
+      if (tok_chp_i != ef_chp_q) begin
+        ef_cf_go <= 1'b0;
+        if (ef_own_tf && !ef_cf_go && (token_go_i[1] !== 1'b1) && (ef_fault_q[1] === 1'b0) &&
+            (((ef_chp_q == EfCodeMatch) && (tok_chp_i == EfCodeMismatch)) ||
+             ((ef_chp_q == EfCodeMismatch) && (tok_chp_i == EfCodeMatch)))) begin
+          ef_cf_arm <= 1'b1;
+          ef_cf_dir <= (tok_chp_i == EfCodeMatch);
+        end
+      end
+      if (ef_tok_ev) begin
+        // An X or Z on the sticky bit counts as a rise.
+        if (ef_cf_arm) begin
+          ef_cf_arm <= 1'b0;
+          if (ef_own_tf) ef_tfs(1, {3'd0, tok_fault_i[1] !== 1'b0, ef_cf_dir});
+        end
+        if (ef_so_arm) begin
+          ef_so_arm <= 1'b0;
+          if (ef_own_tf && !ef_so_bad && (sec_dis_i === 1'b0)) ef_tfs(6, 5'd1);
+        end
+        if (ef_own_tf) begin
+          // x_ch_forced_err: the error code and the sticky bit are new since the
+          // previous settled sample (or since the reset release), so a sticky bit
+          // left by an earlier fault never stands for this error.
+          for (int c = 0; c < 3; c++) begin
+            if ((ef_code[c] == EfCodeErr) && (!ef_ts_v || ((ef_ts_fault[c] === 1'b0) &&
+                                                           (ef_ts_code[c] != EfCodeErr))))
+              ef_tfs(2, {1'b0, 2'(c), tok_fault_i[c] === 1'b1, ef_irq});
+          end
+          for (int c = 0; c < 3; c++) begin
+            if (tok_fault_i === (3'b001 << c)) ef_tfs(8, {2'b00, 2'(c), !ef_irq});
+          end
+        end
+      end
+    end else begin
+      ef_cf_arm <= 1'b0;
+      ef_so_arm <= 1'b0;
+      ef_sd_seen <= 1'b0;
+    end
+    // cp_reset_clear: the sticky bit and the line are 0 EfTokSettle clocks after
+    // the release of a reset that a set sticky bit entered.
+    if (ef_rst_fall) begin
+      ef_rc_pend <= ef_own_tf ? ef_rc_fault_last : 3'b000;
+      ef_rc_chk  <= 1'b0;
+    end
+    if (ef_rel) begin
+      ef_rc_chk <= (ef_rc_pend != '0);
+      ef_rc_cnt <= 0;
+    end else if (ef_rc_chk && ef_live) begin
+      if (ef_rc_cnt == EfTokSettle) begin
+        ef_rc_chk  <= 1'b0;
+        ef_rc_pend <= '0;
+        for (int c = 0; c < 3; c++) begin
+          if (ef_rc_pend[c] && ef_own_tf && (tok_fault_i[c] === 1'b0) && (irq_token_fault_i === 1'b0))
+            ef_tfs(5, 5'(c));
+        end
+      end else begin
+        ef_rc_cnt <= ef_rc_cnt + 1;
+      end
+    end else if (ef_rc_chk) begin
+      ef_rc_chk <= 1'b0;
+    end
+    // x_ch_latch_freeze on RMA_CHIPLET (index 0) and SEC_DIS (index 1).
+    for (int i = 0; i < 2; i++) begin
+      c1 = i + 1;
+      ef_lf_te_q[i] <= (latch_test_en_i[c1] === 1'b1);
+      if (in_reset) begin
+        ef_lf_rel[i] <= 1'b0;
+      end else if ((latch_test_en_i[c1] === 1'b1) && !ef_lf_te_q[i]) begin
+        ef_lf_dig[i] <= latch_sticky_i[c1];
+        ef_lf_vld[i] <= latch_valid_i[c1];
+        ef_lf_own[i] <= ef_own_tf;
+        ef_lf_go[i] <= 1'b0;
+        ef_lf_chg[i] <= 1'b0;
+        ef_lf_rel[i] <= 1'b0;
+      end else if (latch_test_en_i[c1] === 1'b1) begin
+        if ((token_go_i[c1] === 1'b1) && ef_lf_own[i]) ef_lf_go[i] <= 1'b1;
+        if ((latch_sticky_i[c1] !== ef_lf_dig[i]) || (latch_valid_i[c1] !== ef_lf_vld[i]))
+          ef_lf_chg[i] <= 1'b1;
+      end else if (ef_lf_te_q[i]) begin
+        if (ef_lf_go[i] && ef_own_tf) ef_tfs(7, {2'b00, 1'(i), 1'b0, ef_lf_chg[i]});
+        // The replaced cell compares with the digest at the release.
+        ef_lf_dig[i] <= latch_sticky_i[c1];
+        ef_lf_rel[i] <= ef_lf_go[i] && !$isunknown(latch_sticky_i[c1]);
+        ef_lf_rel_go[i] <= 1'b0;
+        ef_lf_cnt[i] <= 0;
+      end else if (ef_lf_rel[i]) begin
+        if (token_go_i[c1] === 1'b1) ef_lf_rel_go[i] <= 1'b1;
+        if (ef_lf_rel_go[i] && !$isunknown(
+                latch_sticky_i[c1]
+            ) && (latch_sticky_i[c1] !== ef_lf_dig[i])) begin
+          ef_lf_rel[i] <= 1'b0;
+          if (ef_own_tf) ef_tfs(7, {2'b00, 1'(i), 1'b1, 1'b0});
+        end else if (ef_lf_cnt[i] == EfLatchWin) begin
+          ef_lf_rel[i] <= 1'b0;
+        end else begin
+          ef_lf_cnt[i] <= ef_lf_cnt[i] + 1;
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_sec_dis_activation_cg: cp_match_phase and x_verdict_out.
+  // sep_sec_dis_robustness_cg: cp_stops_sense and cp_reset_values_hold.
+  // ---------------------------------------------------------------------
+  // cp_stops_sense bound (clk_i edges), outcome-bound rule of the graded
+  // window: sep_sec_dis_timing_rand_test writes its window W (three times
+  // the sense time it measures in the run) and writes 0 when its wait ends.
+  // The bin fills only for a hold of W clocks. Monitor-only; it gates a
+  // sample and is never a bin value.
+  int unsigned efuse_sdis_hold_bound = 0;
+  logic ef_sd_q = 1'b0;
+  logic ef_ss_arm = 1'b0, ef_ss_phase = 1'b0, ef_ss_bad = 1'b0;
+  logic [EfFuseBits-1:0] ef_ss_snap = '0;
+  int unsigned ef_ss_cnt = 0;
+  // Clocks since the last reset release; a SEC_DIS that is high within
+  // EfRelWin clocks of the release counts as held at the release.
+  int unsigned ef_since_rel = 0;
+  logic ef_mp_before_done = 1'b0;
+  wire ef_rel_win = !in_reset && (ef_since_rel <= EfRelWin);
+  always @(posedge clk_i) begin
+    if (in_reset) ef_since_rel <= 0;
+    else if (ef_since_rel <= EfRelWin) ef_since_rel <= ef_since_rel + 1;
+  end
+  localparam logic [EfFuseBits-1:0] EfLcWordMask = EfFuseBits'(32'hFFFF_FFFF) << (32 * EfWLc);
+  always @(posedge clk_i) begin
+    logic open;
+    ef_sd_q <= ef_sd && !in_reset;
+    open = ef_live && ef_sd && (fuse_sense_done_i !== 1'b1);
+    if (ef_live) begin
+      if (ef_rel) ef_mp_before_done <= 1'b0;
+      if (ef_rel_win && ef_sd && !ef_mp_before_done && (fuse_sense_done_i !== 1'b1)) begin
+        ef_mp_before_done <= 1'b1;
+        if (ef_own_sdt) ef_act(0, 5'd0);
+      end
+      if (!ef_rel_win && ef_sd && !ef_sd_q) begin
+        if ((fuse_sense_done_i !== 1'b1) && ef_own_sdt) ef_act(0, 5'd1);
+        if ((fuse_sense_done_i === 1'b1) && ef_own_fc) ef_act(0, 5'd2);
+      end
+      // x_verdict_out at a settled token change with a non-idle SEC_DIS code. An X
+      // or Z on sec_dis_i is the wrong output for every code.
+      if (ef_tok_ev) begin
+        if ((tok_sdis_i == EfCodeMatch) && ef_own_fc) ef_act(1, {2'b00, 2'd0, sec_dis_i === 1'b1});
+        if ((tok_sdis_i == EfCodeMismatch) && ef_own_fc)
+          ef_act(1, {2'b00, 2'd1, sec_dis_i !== 1'b0});
+        if ((tok_sdis_i == EfCodeErr) && ef_own_tf) ef_act(1, {2'b00, 2'd2, sec_dis_i !== 1'b0});
+      end
+    end
+    // cp_stops_sense: phase 0 from a SEC_DIS rise during sense, phase 1 from
+    // a reset release with SEC_DIS already high.
+    if (!open) begin
+      ef_ss_arm <= 1'b0;
+    end else if (!ef_ss_arm && !ef_sd_q) begin
+      ef_ss_arm <= 1'b1;
+      ef_ss_phase <= ef_rel_win;
+      ef_ss_bad <= 1'b0;
+      ef_ss_snap <= efuse_shadow_i;
+      ef_ss_cnt <= 0;
+    end else if (ef_ss_arm) begin
+      if (efuse_shadow_i !== ef_ss_snap) ef_ss_bad <= 1'b1;
+      ef_ss_cnt <= ef_ss_cnt + 1;
+      if ((efuse_sdis_hold_bound != 0) && (ef_ss_cnt + 1 == efuse_sdis_hold_bound)) begin
+        if (ef_own_sdt && !ef_ss_bad && (efuse_shadow_i === ef_ss_snap)) begin
+          ef_rob(1, {2'b00, ef_ss_phase});
+          // cp_reset_values_hold: at the end of the same bounded hold, in the
+          // window that starts at a reset release, when every shadow word
+          // except the LC_STATE word read 0 at the release and on every clock
+          // of the hold. A design that senses under the match loads a word
+          // inside the bound, so the bin cannot fill on the release clock.
+          if (ef_ss_phase && ((ef_ss_snap & ~EfLcWordMask) == '0)) ef_rob(3, 3'd1);
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_efuse_if_status_cg shim points: cp_sense_status_word and
+  // x_prog_lifecycle.
+  // ---------------------------------------------------------------------
+  // Word index of a sense response: the start word (bits [12:5] of the bit
+  // address) of the READ command that the response answers, plus the number
+  // of earlier responses to that command. The sense is one READ command at
+  // address 0 that streams one response per word, and the request holds
+  // valid high for the whole sense. So a READ command starts only on a clock
+  // where valid is known 1 and was not known 1 on the clock before.
+  logic [7:0] ef_ssw_base = '0;
+  logic ef_ssw_v_q = 1'b0;  // shim_cmd_i.valid known 1 on the previous clock
+  logic [8:0] ef_ssw_idx = '0;
+  logic ef_ssw_cv = 1'b0;  // a READ command with a known address in this epoch
+  logic ef_ssw_pend = 1'b0;
+  // The status response carried known non-zero data, so a shadow word left at 0
+  // shows the data was dropped and not that the image word was 0.
+  logic ef_ssw_nz = 1'b0;
+  logic [7:0] ef_ssw_w = '0;
+  typedef enum logic [1:0] {
+    EF_PL_IDLE,
+    EF_PL_WAIT,
+    EF_PL_HELD,
+    EF_PL_REL
+  } ef_pl_e;
+  ef_pl_e ef_pl_st = EF_PL_IDLE;
+  int unsigned ef_pl_cnt = 0;
+  logic ef_pl_done_seen = 1'b0, ef_pdone_q = 1'b0, ef_cmd_pg_q = 1'b0;
+  always @(posedge clk_i) begin
+    logic [8:0] w;
+    ef_pdone_q <= (efuse_program_done_i === 1'b1);
+    ef_cmd_pg_q <= ef_cmd_pg;
+    ef_ssw_v_q <= ef_cmd_v;
+    if (ef_rst_fall) begin
+      ef_ssw_pend <= 1'b0;
+      ef_ssw_cv   <= 1'b0;
+    end
+    if (ef_live && (fuse_sense_done_i !== 1'b1)) begin
+      // A response on the clock of a new READ command answers the earlier one.
+      if (ef_resp_v && ef_ssw_cv) begin
+        ef_ssw_idx <= ef_ssw_idx + 9'd1;
+        w = {1'b0, ef_ssw_base} + ef_ssw_idx;
+        if ((shim_resp_i.status === 1'b1) && (w >= 9'd10) && (w <= 9'd254)) begin
+          ef_ssw_pend <= 1'b1;
+          ef_ssw_w <= w[7:0];
+          ef_ssw_nz <= !$isunknown(shim_resp_i.data) && (shim_resp_i.data != '0);
+        end
+      end
+      if (ef_cmd_rd && !ef_ssw_v_q) begin
+        ef_ssw_base <= ef_cmd_addr[12:5];
+        ef_ssw_idx  <= '0;
+        ef_ssw_cv   <= !$isunknown(ef_cmd_addr);
+      end
+    end
+    if (ef_sense_rise && ef_ssw_pend) begin
+      ef_ssw_pend <= 1'b0;
+      if (ef_own_shim && ef_ssw_nz && (efuse_shadow_i[32*ef_ssw_w+:32] === 32'h0)) ef_ifs(5, 7'd1);
+    end
+    // x_prog_lifecycle: a PROGRAM command with the program timeout off.
+    if (in_reset) begin
+      ef_pl_st <= EF_PL_IDLE;
+    end else begin
+      case (ef_pl_st)
+        EF_PL_IDLE: begin
+          if (ef_cmd_pg && !ef_cmd_pg_q && !ef_pg_tmo_en_q) begin
+            ef_pl_st  <= EF_PL_WAIT;
+            ef_pl_cnt <= 0;
+          end
+        end
+        EF_PL_WAIT: begin
+          if (ef_resp_v) begin
+            ef_pl_st <= EF_PL_IDLE;
+          end else if (ef_pl_cnt == EfProgN) begin
+            if (ef_own_shim) begin
+              ef_ifs(
+                  6, {
+                  5'd0, 1'b0, !((efuse_program_busy_i === 1'b1) && (efuse_program_done_i === 1'b0))
+                  });
+            end
+            ef_pl_st <= EF_PL_HELD;
+          end else begin
+            ef_pl_cnt <= ef_pl_cnt + 1;
+          end
+        end
+        EF_PL_HELD: begin
+          if (ef_resp_v) begin
+            ef_pl_st <= EF_PL_REL;
+            ef_pl_done_seen <= 1'b0;
+            ef_pl_cnt <= 0;
+          end
+        end
+        default: begin
+          if (!ef_pl_done_seen) begin
+            if ((efuse_program_done_i === 1'b1) && !ef_pdone_q) ef_pl_done_seen <= 1'b1;
+          end else if (ef_pl_cnt == EfProgN) begin
+            if (ef_own_shim) begin
+              ef_ifs(6, {
+                     5'd0,
+                     1'b1,
+                     !((efuse_program_done_i === 1'b1) &&
+                                        (efuse_program_error_i === 1'b0) &&
+                                        (efuse_program_busy_i === 1'b0))
+                     });
+            end
+            ef_pl_st <= EF_PL_IDLE;
+          end else begin
+            ef_pl_cnt <= ef_pl_cnt + 1;
+          end
+        end
+      endcase
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_efuse_jtag_policy_cg: completion of a JTAG AXI-Lite access, class
+  // from the address. The policy before sense done is not declared.
+  // ---------------------------------------------------------------------
+  logic [31:0] ef_j_aw = '0, ef_j_ar = '0;
+  always @(posedge clk_i) begin
+    ef_jtg_t je;
+    logic [31:0] a;
+    logic wr, ok, rx, allowed, fire;
+    logic [2:0] cl, cop;
+    logic [1:0] st;
+    if ((jtag_req_i.aw_valid === 1'b1) && (jtag_resp_i.aw_ready === 1'b1))
+      ef_j_aw <= 32'(jtag_req_i.aw.addr);
+    if ((jtag_req_i.ar_valid === 1'b1) && (jtag_resp_i.ar_ready === 1'b1))
+      ef_j_ar <= 32'(jtag_req_i.ar.addr);
+    fire = 1'b0;
+    wr = 1'b0;
+    ok = 1'b0;
+    rx = 1'b0;
+    a = '0;
+    if ((jtag_resp_i.b_valid === 1'b1) && (jtag_req_i.b_ready === 1'b1)) begin
+      fire = 1'b1;
+      wr = 1'b1;
+      ok = (jtag_resp_i.b.resp === AxiOkay);
+      rx = $isunknown(jtag_resp_i.b.resp);
+      a = ef_j_aw;
+    end else if ((jtag_resp_i.r_valid === 1'b1) && (jtag_req_i.r_ready === 1'b1)) begin
+      fire = 1'b1;
+      ok = (jtag_resp_i.r.resp === AxiOkay);
+      rx = $isunknown(jtag_resp_i.r.resp);
+      a = ef_j_ar;
+    end
+    // The state needs a known filter integrity flag; a response with an X or Z bit
+    // is a wrong response in every cell.
+    if (fire && ef_sensed && !$isunknown(jtag_filt_sigint_i)) begin
+      cl = in_win(a, EfMapBase, EfMapEnd) ? 3'd0 : in_win(a, EfCtrlBase, EfCtrlEnd) ? 3'd1 :
+          in_win(a, EfTokSip, EfTokEop) ? 3'd2 : (a == EfTokEop) ? 3'd3 :
+          in_win(a, EfMatchSip, EfMatchFault) ? 3'd4 : 3'd7;
+      st = ((jtag_filt_sigint_i === 1'b1) && (ef_lc == EfTd)) ? 2'd2 :
+          (jtag_filt_sigint_i === 1'b1) ? 2'd3 : (ef_lc == EfProd) ? 2'd0 : (ef_lc == EfRs) ? 2'd1 : 2'd3;
+      case (cl)
+        3'd2: cop = wr ? 3'd1 : 3'd0;
+        3'd3: cop = 3'd2;  // TOKEN_EOP read is not declared
+        3'd4: cop = 3'd3;  // match write is not declared
+        3'd0: cop = wr ? 3'd5 : 3'd4;
+        3'd1: cop = wr ? 3'd7 : 3'd6;
+        default: cop = 3'd7;
+      endcase
+      allowed = (cop < 3'd4);
+      if ((cl != 3'd7) && (st != 2'd3) && ((st == 2'd2) ? ef_own_cw : ef_own_jtag)) begin
+        je = '0;
+        je.st = st;
+        je.st_v = 1'b1;
+        je.cl = cl;
+        je.cl_v = 1'b1;
+        je.rp = !ok;
+        je.rp_v = !rx;
+        if (!((cl == 3'd3) && !wr) && !((cl == 3'd4) && wr)) begin
+          je.so = {rx || (allowed ? !ok : ok), 5'(st * 8) + 5'(cop)};
+          je.so_v = 1'b1;
+        end
+        je.gi = st[0];
+        je.gi_v = allowed && ok && (st != 2'd2) && (feat_ctrl_i[47:0] == 48'h0);
+        u_sep_efuse_jtag_policy_cg.sample(je);
+      end
     end
   end
 

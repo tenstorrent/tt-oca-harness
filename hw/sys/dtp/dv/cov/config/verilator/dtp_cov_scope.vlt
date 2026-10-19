@@ -18,6 +18,9 @@
 // observation module it binds into every JTAG2AXI bridge.
 coverage_off -file "*hw/sys/dtp/dv/tb/*"
 
+// The SV-UVM environment, sequences and tests.
+coverage_off -file "*hw/sys/dtp/dv/uvm/*"
+
 // The shared VIP interfaces and protocol checkers and the open-drain wire
 // model the bench instantiates.
 coverage_off -file "*hw/common/dv/*"

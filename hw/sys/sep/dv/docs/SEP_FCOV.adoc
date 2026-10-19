@@ -971,7 +971,7 @@ seed-dependent bin. The SPI and DMA area writes the mark as the status
 |<<sep-fcov-p2-mailbox-irq-pic,Mailbox, IRQ, PIC>> |`cp_winner`, `cp_nmi_target` (the trampoline-copy bins), `x_case_taken` (cases b to d), `cp_vec_unchanged` (cases b and c), `cp_level_val` (the encodings 2 to 13), `x_level_class_order` (the interior cells), `cp_thresh_val` (the values 1, 6, 9 and other), `x_op_offset`
 |<<sep-fcov-p2-spi-dma,SPI and DMA>> |`cp_len` (bins `b64` to `b4096`), `cp_irq_x_enable`, `cp_len_x_kind`, `cp_csaat_x_dir`, `cp_clkdiv_x_speed`, `cp_mode8`, `cp_mode_x_dir`, `cp_clkdiv_class`, `cp_csn_class`, `cp_cpha_edge`, `x_width_dir_test` (the `pad_timing_cfg` cells), `cp_clear_form`, `cp_mode_x_width`, `cp_mode_x_chunkcount`, `cp_wrap_independence`, `cp_abort_phase`, `cp_inrange_pos_x_side`, `cp_msg_len_class`
 |<<sep-fcov-p2-mem-boot-reset,Memory, boot, reset>> |`cp_rst_release_sync`, `cp_aon_release_sync`, `cp_otf_reset_x_path`, `cp_independence_pair`
-|<<sep-fcov-p2-efuse-lifecycle,eFuse, lifecycle>> |Every coverpoint of `sep_efuse_field_value_cg`, `sep_lc_feat_ctrl_profile_cg`, `sep_lc_feature_bit_semantics_cg`, `sep_dtp_gating_ladder_cg`, `sep_lc_sigint_failclosed_cg`, `sep_lc_illegal_transition_cg`, `sep_efuse_lock_policy_cg`, `sep_lc_demotion_cg` and `sep_lc_demote_lock_cg`; `x_ch_kind_copy` and `x_ch_retry` of `sep_token_fault_cg`; `cp_match_phase`, `x_verdict_out` (the Match and Mismatch cells) and `x_state_demote_forced` of `sep_sec_dis_activation_cg`; `cp_stops_sense` (the two phase bins) and `x_state_strap_feat` of `sep_sec_dis_robustness_cg`; `cp_state`, `x_state_class_op` and `cp_gate_independent_of_feat` of `sep_efuse_jtag_policy_cg`
+|<<sep-fcov-p2-efuse-lifecycle,eFuse, lifecycle>> |Every coverpoint of `sep_efuse_field_value_cg`, `sep_lc_feat_ctrl_profile_cg`, `sep_lc_feature_bit_semantics_cg`, `sep_dtp_gating_ladder_cg`, `sep_lc_sigint_failclosed_cg`, `sep_lc_illegal_transition_cg`, `sep_efuse_lock_policy_cg`, `sep_lc_demotion_cg` and `sep_lc_demote_lock_cg`; `x_ch_kind_copy` and `x_ch_retry` of `sep_token_fault_cg`; `cp_match_phase` (the during-sense and after-sense bins), `x_verdict_out` (the Match and Mismatch cells) and `x_state_demote_forced` of `sep_sec_dis_activation_cg`; `cp_stops_sense` (the two phase bins), `x_state_strap_feat` and `cp_reset_values_hold` of `sep_sec_dis_robustness_cg`; `cp_state`, `x_state_class_op` and `cp_gate_independent_of_feat` of `sep_efuse_jtag_policy_cg`
 |<<sep-fcov-p2-key-manager,Key Manager>> |`cp_csr_isr_winner`, `cp_if_parity`, `cp_otp_read_through`, `cp_km_size_vs_width`, `cp_ex_mode_x_target`, `cp_smp_count_good`, `cp_fr_unrec_code`, `cp_fr_isr_disposition`, `cp_transfer_integrity`
 |===
 
@@ -1030,7 +1030,7 @@ count values, not behaviour.
 |`sep_efuse_transient_rma_rand_test` |Enable and start state |`sep_lc_illegal_transition_cg.x_transient`, seed-dependent
 |`sep_efuse_token_fault_matrix_test` |Fault cell of each channel |`sep_token_fault_cg.x_ch_kind_copy`, `x_ch_retry`, seed-dependent
 |`sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test` |Lifecycle state of the image |`sep_efuse_jtag_policy_cg.cp_state`, `x_state_class_op`, `cp_gate_independent_of_feat`, seed-dependent; no bin of `sep_efuse_secure_tm_cg` depends on the state
-|`sep_sec_dis_timing_rand_test` |Class B or C |`sep_sec_dis_activation_cg.cp_match_phase` and `sep_sec_dis_robustness_cg.cp_stops_sense` phase bins, seed-dependent
+|`sep_sec_dis_timing_rand_test` |Class B or C |`sep_sec_dis_activation_cg.cp_match_phase` during-sense bin, and `sep_sec_dis_robustness_cg.cp_stops_sense` phase bins and `cp_reset_values_hold`, seed-dependent
 |`sep_efuse_shim_response_fault_test` |Word class of the sense status |None: `cp_sense_status_word` has one bin for every word of 10 to 254, and CHK-SENSE-STATUS grades the drawn word
 |`sep_km_key_transfer_rand_test` |Size class of each non-witness engine |`sep_km_sideload_delivery_cg.cp_km_size_vs_width`, seed-dependent
 |`sep_km_boot_reset_rand_test` |Two warm-reset points of (i) to (iii) |None: no bin records the reset point
@@ -1718,8 +1718,9 @@ still samples a DUT signal, and the gate only enables the sample.
 * Outcome bounds. Where a row grades a DUT outcome inside a bound that the owner
 measures or derives in the same run, the owner writes that bound to a variable of
 the sampler through `u_sep_fcov`, under the rules of `graded_owner`, and writes 0
-when its wait ends: `alert_rise_bound` (clocks, `x_alert_source`) and
-`esrc_af_clear_bound` (strobes, `cp_any_fail`). The sampler then fills the bin only
+when its wait ends: `alert_rise_bound` (clocks, `x_alert_source`),
+`esrc_af_clear_bound` (strobes, `cp_any_fail`) and `efuse_sdis_hold_bound`
+(clocks, `cp_stops_sense` and `cp_reset_values_hold`). The sampler then fills the bin only
 inside the bound that the check grades, so an outcome that fails the check fills no
 bin. Each variable is monitor-only, drives nothing, gates a sample and is never a
 bin value.
@@ -5024,18 +5025,31 @@ Names of specification and register description files are relative to the
 `test_mode.adoc`, `reset_controller.adoc`, `interrupts.adoc` and
 `port_table.adoc` are in `sys/sep/doc/`. `sep_efuse_map.adoc` and
 `sep_lifecycle_ctrl.adoc` are in `sys/sep/regs/gen/adoc/blocks/`.
-`memory_map.adoc` is in `sys/sep/regs/gen/adoc/`. `efuse_mmr.adoc`,
-`efuse_interface_ctrl.adoc` and `architecture.adoc` are in
-`ip/efuse/regs/gen/adoc/` (the first two) and `ip/efuse/doc/` (the last). The
+`memory_map.adoc` is in `sys/sep/regs/gen/adoc/`. `efuse_mmr.adoc` and
+`efuse_interface_ctrl.adoc` are in `ip/efuse/regs/gen/adoc/`. `architecture.adoc`
+and `interface.adoc` are in `ip/efuse/doc/`. The
 RTL is read only to resolve a signal path. It never defines a bin.
 
 ===== Rules for every group
 
 * Every coverpoint samples DUT signals (nets, ports or hierarchical taps) at a
   clock edge. No coverpoint samples log text, a scoreboard count or a test
-  variable. A test-side expected value never enters a sampler. The one
-  test-side input is the graded-window gate of <<sep-fcov-graded-window>>: it
-  enables a sample and is never a sampled value.
+  variable. A test-side expected value never enters a sampler. The test-side
+  inputs are the graded-window gate of <<sep-fcov-graded-window>> and the
+  outcome bound `efuse_sdis_hold_bound` of that section: each enables a sample
+  and is never a sampled value.
+* Unknown values. An X or Z on a graded output (a status code, `sec_dis_i`, a
+  demote output, a fuse DFT gate port, a status flag, a response, a shadow word
+  read after a write) counts as the wrong value of that output: it fills a
+  wrong-outcome or `illegal_bins` cell or no legal cell, and never a legal cell.
+  A cell is never selected from an X or Z input (the raw state code, `sec_dis_i`,
+  the demote outputs, the DIS vectors, the integrity error, the strap, the status
+  flags at the go): a sample with such an input selects no cell.
+* Deferred samples. A coverpoint whose outcome is sampled after its event (the
+  reset vector, token retention, the sticky reset clear, the latch freeze, the
+  common-mode flip) needs the owner window at the event, not only at the sample:
+  the sampler records the owner at the reset fall, the freeze start or the flip,
+  and a sample whose event lies outside the window fills no cell.
 * A cell lists its legal outcome. An outcome that the specification or the RDL
   forbids is an `illegal_bins` entry. A cell that no stimulus can fill, or whose
   value the specification does not define, is not declared. It is listed in
@@ -5120,21 +5134,21 @@ that closed set (<<sep-fcov-parked>>); it blocks no cell. Each absent input is l
 |`cpu_reset_n_i`, `sep_reset_n_i`, `jtag_sep_reset_n_ovrd_i`, `jtag_sep_reset_n_val_i` |reset pair and IC_RESET override |reset release |In the sampler
 |Generated address constants `SEP_EFUSE_MAP_*`, `EFUSE_INTERFACE_CTRL_*`, `EFUSE_MMR_*`, `SEP_LIFECYCLE_CTRL_*` |`sep_reg.svh` |address decode |In the sampler (the sampler already uses constants of this family)
 |`shim_cmd_i.command` (READ `2'b00`, PROGRAM `2'b01`, PROGRAM_READ_BACK `2'b10`) and `.valid` |decode of the post-guard shim command |program or read at the shim |In the sampler; the input is the added tap `shim_cmd_i`
-|`efuse_shadow_probe_o` (masked `shadow_efuse_o`), words LOCKS 0 to 2, LC_STATE 3, TRANSIENT_RMA_EN 5, SIP_DIS 6 to 7, SYS_DIS 8 to 9, digests, secrets |sensed shadow words |DIS words, lock bits, field values |Approved probe. Not in the sampler
-|`feat_ctrl_i[63:0]` |`lcc_feat_ctrl_probe_o` (`SEP_CORE.feat_ctrl`) |64-bit feature control |Approved probe. Not in the sampler
-|`lc_sigint_i` |`lcc_sigint_err_probe_o` (`lc_sigint_err_o`) |lifecycle integrity error |Approved probe. Not in the sampler
-|`demote_lock_1_i`, `demote_lock_2_i` |`lcc_demote_lock_1_probe_o`, `lcc_demote_lock_2_probe_o` |demotion lock bits |Approved probe. Not in the sampler
-|`sep_fuse_dft_disable_i`, `smc_fuse_dft_disable_i` |`sep_fuse_dft_disable_o`, `smc_fuse_dft_disable_o` |fuse DFT gate ports |Approved port. Not in the sampler
-|`jtag_req_i`, `jtag_resp_i` |`j_axil_req_drive`, `j_axil_resp_w` (`axil_sep_otp_jtag_req_i`, `axil_sep_otp_jtag_resp_o`) |JTAG address class and response |Approved probe. Not in the sampler. Live only in the target that defines `SEP_JTAG_AXIL_LIVE` (`lsu_stub_all_live`)
-|`irq_token_fault_i` |`sep_internal_interrupts_probe_o[39]` (PIC source 40 request line) |token fault interrupt request |Approved probe. Not in the sampler. The CPU stub has no PIC, so the request line is sampled and not a PIC pending bit
-|`tok_sip_i[5:0]`, `tok_chp_i[5:0]` |`ext_debug_bus_o[229:224]`, `ext_debug_bus_o[213:208]` |RMA token match status codes |Approved path (DUT output `ext_debug_bus_o`). The code values come from `token_processing.adoc`. The bit positions are resolved from the RTL. Not in the sampler
-|`efuse_read_error_o`, `efuse_read_done_o`, `efuse_read_busy_o`, `efuse_program_error_o`, `efuse_program_done_o`, `efuse_program_busy_o` |interface status bits |read and program status, done, busy |Approved probes. Not in the sampler
-|`strap_i` |`test_en_strap_i` (DUT `secure_tm_req_i`) |TEST_EN strap level |Approved. Not in the sampler
+|`efuse_shadow_probe_o` (masked `shadow_efuse_o`), words LOCKS 0 to 2, LC_STATE 3, TRANSIENT_RMA_EN 5, SIP_DIS 6 to 7, SYS_DIS 8 to 9, digests, secrets |sensed shadow words |DIS words, lock bits, field values |Approved probe. In the sampler; the input is `efuse_shadow_i`
+|`feat_ctrl_i[63:0]` |`lcc_feat_ctrl_probe_o` (`SEP_CORE.feat_ctrl`) |64-bit feature control |Approved probe. In the sampler
+|`lc_sigint_i` |`lcc_sigint_err_probe_o` (`lc_sigint_err_o`) |lifecycle integrity error |Approved probe. In the sampler
+|`demote_lock_1_i`, `demote_lock_2_i` |`lcc_demote_lock_1_probe_o`, `lcc_demote_lock_2_probe_o` |demotion lock bits |Approved probe. In the sampler
+|`sep_fuse_dft_disable_i`, `smc_fuse_dft_disable_i` |`sep_fuse_dft_disable_o`, `smc_fuse_dft_disable_o` |fuse DFT gate ports |Approved port. In the sampler
+|`jtag_req_i`, `jtag_resp_i` |`j_axil_req_drive`, `j_axil_resp_w` (`axil_sep_otp_jtag_req_i`, `axil_sep_otp_jtag_resp_o`) |JTAG address class and response |Approved probe. In the sampler. Live only in the target that defines `SEP_JTAG_AXIL_LIVE` (`lsu_stub_all_live`)
+|`irq_token_fault_i` |`sep_internal_interrupts_probe_o[39]` (PIC source 40 request line) |token fault interrupt request |Approved probe. In the sampler. The CPU stub has no PIC, so the request line is sampled and not a PIC pending bit
+|`tok_sip_i[5:0]`, `tok_chp_i[5:0]` |`ext_debug_bus_o[229:224]`, `ext_debug_bus_o[213:208]` |RMA token match status codes |Approved path (DUT output `ext_debug_bus_o`). The code values come from `token_processing.adoc`. The bit positions are resolved from the RTL. In the sampler
+|`efuse_read_error_o`, `efuse_read_done_o`, `efuse_read_busy_o`, `efuse_program_error_o`, `efuse_program_done_o`, `efuse_program_busy_o` |interface status bits |read and program status, done, busy |Approved probes. In the sampler; the inputs are `efuse_read_error_i`, `efuse_read_done_i`, `efuse_read_busy_i`, `efuse_program_error_i`, `efuse_program_done_i` and `efuse_program_busy_i`
+|`strap_i` |`test_en_strap_i` (DUT `secure_tm_req_i`) |TEST_EN strap level |Approved. In the sampler
 |`shim_cmd_i` |`SEP_CORE.efuse_shim_command_req_o` (post-guard command: valid, command, address) |bank command that reaches the shim |Added tap. The existing probes `efuse_read_cmd_req_valid_o` and `efuse_program_cmd_req_valid_o` tap the interface output before the guard, so they cannot show a guard refusal.
-|`shim_resp_i.valid`, `.status` |`SEP_CORE.efuse_shim_command_resp_i` (shim response at the `sep` input, after the bench sense status inject and the response hold) |arrival and status of the response to a shim command |Added tap. The sampler input of `cp_sense_status_word` and `x_prog_lifecycle`
+|`shim_resp_i.valid`, `.status`, `.data` |`SEP_CORE.efuse_shim_command_resp_i` (shim response at the `sep` input, after the bench sense status inject and the response hold) |arrival, status and data of the response to a shim command |Added tap. The sampler input of `cp_sense_status_word` and `x_prog_lifecycle`
 |`tok_sdis_i` |`TOKEN_PROC.sec_disable_token_match_q` |SEC_DIS token match status |Added tap
 |`tok_fault_i[2:0]` |`TOKEN_PROC.token_match_fault_sticky_q` |sticky comparator fault bits (`TOKEN_MATCH_FAULT`) |Added tap
-|`jtag_id_i` |DUT port `jtag_id_i[31:1]` (`port_table.adoc`) |JTAG ID class |Approved port. Not in the sampler
+|`jtag_id_i` |DUT port `jtag_id_i[31:1]` (`port_table.adoc`) |JTAG ID class |Approved port. In the sampler, read through `jtag_id_probe_o`
 |`tok_words_i` |`TOKEN_PROC` raw token arrays (`sip_rma_token_raw_n0_scan[7:0]`, `chiplet_rma_token_raw_n0_scan[7:0]`, SEC_DIS token raw array) |token input words |Added tap
 |`token_go_i[2:0]` |`TOKEN_PROC.rma_sip_token_go`, `rma_chiplet_token_go`, `secure_disable_token_go` |hash start pulses |Added tap
 |`sec_disable_expected_i` |`TOKEN_PROC.sec_disable_token_rev` |SEC_DIS expected-digest constant |Added tap
@@ -5147,6 +5161,7 @@ that closed set (<<sep-fcov-parked>>); it blocks no cell. Each absent input is l
 |`jtag_id_i` drive, comparator copy select, `efuse_sense_status_inject_i`, `efuse_sense_status_word_i`, `efuse_shim_resp_hold_i`, `jtag_filter_lc_sigint_inject_i`, test-enable inject of the RMA_CHIPLET and SEC_DIS latches |bench hooks |stimulus |Added hooks: the drive of `jtag_id_i` is a top-port drive, and the others are error injects. They are never a coverpoint input
 |OTP image preload and direct OTP word read |bench |image staging at t=0 and a word read through the frontdoor read interface |Approved test-side checks. No coverpoint samples them
 |`otp_bank_probe_o` |OTP bank array, read only |image snapshot, bit diff and per-clock sample |Added tap. The bank loads once at t=0 and the bench has no rewrite hook. No coverpoint samples it
+|`efuse_sdis_hold_bound` |written by the owner through `u_sep_fcov` (outcome-bound rule of <<sep-fcov-graded-window>>) |hold length of `cp_stops_sense` and `cp_reset_values_hold`, in `clk_i` clocks |Monitor-only sampler variable. It gates a sample and is never a bin value
 |===
 
 Hierarchy roots in `tb_top.sv`: `SEP_CORE` is `u_dut.u_sep`. `EFUSE_CTRL` is
@@ -5333,8 +5348,8 @@ Gating"); `port_table.adoc` (rows `sep_fuse_dft_disable_o` and
 [cols="2,5,3",options="header"]
 |===
 |Coverpoint |Bins |Class
-|`x_sep_port` |Case 3 true (SIP_DBG and CHIPLET_DBG and SEP_DBG) x SEP_FUSE_DBG x value of `sep_fuse_dft_disable_i` relative to its value in the all-open cell of the same leaf {same, other}. 4 legal cells: (Case 3, SEP_FUSE_DBG) same; the other three combinations other. The four opposite pairs are `illegal_bins` (the port is Case 3 AND SEP_FUSE_DBG). No bin says which value is the active level |executable; seed-dependent
-|`x_smc_port` |Case 2 true (SIP_DBG and CHIPLET_DBG) x SMC_FUSE_DBG x value of `smc_fuse_dft_disable_i` relative to its value in the all-open cell of the same leaf {same, other}. 4 legal cells: (Case 2, SMC_FUSE_DBG) same; the other three combinations other. The four opposite pairs are `illegal_bins` (the port is Case 2 AND SMC_FUSE_DBG). No bin says which value is the active level |executable; seed-dependent
+|`x_sep_port` |Case 3 true (SIP_DBG and CHIPLET_DBG and SEP_DBG) x SEP_FUSE_DBG x value of `sep_fuse_dft_disable_i` relative to its value in the all-open cell of the same leaf {same, other}. 4 legal cells: (Case 3, SEP_FUSE_DBG) same; the other three combinations other. The four opposite pairs are `illegal_bins` (the port is Case 3 AND SEP_FUSE_DBG). No bin says which value is the active level. The all-open cell sets the reference from a known port value and is not sampled into this point, so the "same" cell fills only from another combination of its class. A port value with an X or Z bit is "other" |executable; seed-dependent
+|`x_smc_port` |Case 2 true (SIP_DBG and CHIPLET_DBG) x SMC_FUSE_DBG x value of `smc_fuse_dft_disable_i` relative to its value in the all-open cell of the same leaf {same, other}. 4 legal cells: (Case 2, SMC_FUSE_DBG) same; the other three combinations other. The four opposite pairs are `illegal_bins` (the port is Case 2 AND SMC_FUSE_DBG). No bin says which value is the active level. The all-open cell sets the reference from a known port value and is not sampled into this point, so the "same" cell fills only from another combination of its class. A port value with an X or Z bit is "other" |executable; seed-dependent
 |`cp_nesting` |Case 1 only, Case 2 not Case 3, Case 3. No `illegal_bins` entry: Case 3 implies Case 2 by the definition of the cases, so no sample can show the reverse |executable; seed-dependent
 |===
 
@@ -5350,6 +5365,9 @@ compares the port values of the cells with each other by case class. Every
 coverpoint is seed-dependent: a leg E leaf of the owning test walks six of the
 32 combinations, one for each count of set bits, from all open to all closed.
 `x_sep_port`, `x_smc_port` and `cp_nesting` close in about 6 regressions. The
+"same" cell of `x_sep_port` fills only in a leaf whose leg E order closes
+SMC_FUSE_DBG first, and that of `x_smc_port` only in a leaf whose leg E order
+closes SEP_DBG or SEP_FUSE_DBG first, so both cells depend on the drawn bit order. The
 32 combinations are not a coverpoint (see Bins not graded).
 
 ===== `sep_lc_sigint_failclosed_cg`
@@ -5371,7 +5389,7 @@ word 3 of `efuse_shadow_probe_o`.
 |===
 |Coverpoint |Bins |Class
 |`x_raw16_sigint` |Complementary byte `{~r, r}` with r in 0 to 15 (16 bins) x `lc_sigint_i` 0, sampled on sense done. 16 legal cells. `lc_sigint_i` 1 at sense done is an `illegal_bins` entry |executable; seed-dependent
-|`x_sigint_state_secdis_out` |State class of the sensed nibble `efuse_lc_raw_i` {TEST_DEV, PROD, PROD_END, RMA_SIP, RMA_CHIPLET} x SEC_DIS {0, 1} x output class of `feat_ctrl_i` {all zeros, all ones, other}. Legal: SEC_DIS 0 gives all zeros, SEC_DIS 1 gives all ones. `illegal_bins`: other. 10 legal cells |executable; seed-dependent
+|`x_sigint_state_secdis_out` |State class of the sensed nibble `efuse_lc_raw_i` {TEST_DEV, PROD, PROD_END, RMA_SIP, RMA_CHIPLET} x SEC_DIS {0, 1} x output class of `feat_ctrl_i` {all zeros, all ones, other}. Legal: SEC_DIS 0 gives all zeros, SEC_DIS 1 gives all ones. `illegal_bins`: every other output class for the cell (an X or Z output is "other"). 10 legal cells |executable; seed-dependent
 |===
 
 INVALID is not declared in `x_sigint_state_secdis_out`: its feature control is
@@ -5445,27 +5463,36 @@ Control", "Fuse Programming and RMA Authorization", "Fuse Fields");
 "LOCKS_SPARE"); `token_processing.adoc` (section "Post Token Matching
 Handling").
 
-*Sample event*: for a program, the frontdoor read of `EFUSE_INTERFACE_CTRL_STATUS`
-that ends the program wait W (a refused program can end without program done);
-the frontdoor read of `EFUSE_INTERFACE_CTRL_STATUS`
-that ends a read-interface request; frontdoor completion on a shadow read or write.
-The program result comes from the post-guard shim command (`shim_cmd_i`), not
-from the interface status.
+*Sample event*: for a program, the first OKAY frontdoor read of
+`EFUSE_INTERFACE_CTRL_STATUS` with `efuse_program_busy` known 0 that completes 64
+(`EfReqWait`) or more clocks after the go (a refused program can end without
+program done); the OKAY frontdoor read of `EFUSE_INTERFACE_CTRL_STATUS` with
+`efuse_read_busy` known 0 that ends a read-interface request; frontdoor completion
+on a shadow read or write. The program result comes from the post-guard shim
+command (`shim_cmd_i`), not from the interface status. A program cell (the program
+cells of `x_slot_prog`, `x_kind_op`, `x_neighbor_free` and `x_lc_prog_gate`) fills
+only when the lock or the token gate is the one cause left that can refuse the
+program: the go carries `program_enable` and non-zero data, `efuse_req_error` is
+known 0 at the AW of the go (an X or Z flag counts as set), sense is done at the
+go, and the strap is known 0 at the go. A read-locked cell (`x_slot_read` and the
+read cells of `x_kind_op` with a read-lock) fills only for a go with
+`read_enable` set, no `program_enable` and `efuse_req_error` known 0 at the AW of
+the go.
 
 [cols="2,5,3",options="header"]
 |===
 |Coverpoint |Bins |Class
 |`x_slot_prog` |Slot 1 to 40 x write-lock {0, 1} x outcome {landed (program command at the shim), refused (none)}. 80 legal cells: (0, landed), (1, refused). (1, landed) and (0, refused) are `illegal_bins` |executable; seed-dependent
-|`x_slot_read` |Slot 1 to 40 x read-lock {0, 1}. 80 legal cells: with the lock clear, a frontdoor read of the field returns the sensed shadow word at `efuse_shadow_probe_o`; with the lock set, a read-interface request on a bit of the field sets `efuse_req_error`, sampled from the frontdoor read of `EFUSE_INTERFACE_CTRL_STATUS` that ends the request, with the field taken from `efuse_addr` of the `EFUSE_READ_CTRL` go write (`otp_fuse_controller.adoc`, section "Shadow Register and JTAG Access Control": a read-lock blocks software reads of the fuse field and its shadow; `efuse_interface_ctrl.adoc`, field `efuse_req_error`). `illegal_bins`: lock clear with read data that differs from the sensed word; lock set with a request that ends with `efuse_req_error` 0. The response and the data of a frontdoor read that a read-lock blocks are not bins: the specification does not state them |executable; seed-dependent
-|`x_kind_op` |Lock kind {none, write, read, write and read} x op {program, read}. 8 legal cells: a write-lock refuses a program and not a read; a read-lock blocks a read and not a program. A read cell of a read-locked kind is a read-interface request that sets `efuse_req_error`; a read cell of another kind is a frontdoor read that returns the sensed word |executable; seed-dependent
-|`x_neighbor_free` |Target slot unlocked while slot minus 1 or slot plus 1 holds a lock {previous, next} x op {program landed, read not blocked}. 4 cells |executable; seed-dependent
-|`x_exempt` |Frontdoor OKAY read whose data equals the sensed word of the register at `efuse_shadow_probe_o`, for {`LC_STATE`, `LOCKS`, `LOCKS_SPARE`}, while every assigned lock bit of the `LOCKS` words at the probe is set. 3 bins. A write or program of `LOCKS` or `LOCKS_SPARE` is not declared: with every assigned lock bit set no new assigned bit can be written, and bits 31:18 of `LOCKS_SPARE` are reserved (`SPARE_LOCK_RSVD`) |executable; seed-dependent
+|`x_slot_read` |Slot 1 to 40 x read-lock {0, 1}. 80 legal cells: with the lock clear, a frontdoor OKAY read of the field at strap known 0 returns the known, non-zero sensed shadow word at `efuse_shadow_probe_o` (a zero word is no cell, because a blocked read that returns 0 equals it; a read with an X or Z bit in the data or the word is no cell); with the lock set, a read-interface request on a bit of the field sets `efuse_req_error`, sampled from the frontdoor read of `EFUSE_INTERFACE_CTRL_STATUS` that ends the request, with the field taken from `efuse_addr` of the `EFUSE_READ_CTRL` go write (`otp_fuse_controller.adoc`, section "Shadow Register and JTAG Access Control": a read-lock blocks software reads of the fuse field and its shadow; `efuse_interface_ctrl.adoc`, field `efuse_req_error`). `illegal_bins`: lock clear with known read data that differs from the known sensed word; lock set with a request that ends with `efuse_req_error` not known 1 (an X or Z flag counts as 0). The response and the data of a frontdoor read that a read-lock blocks are not bins: the specification does not state them |executable; seed-dependent
+|`x_kind_op` |Lock kind {none, write, read, write and read} x op {program, read}. 8 legal cells: a write-lock refuses a program and not a read; a read-lock blocks a read and not a program. A read cell of a read-locked kind is a read-interface request that sets `efuse_req_error`; a read cell of another kind is a frontdoor read that returns the known, non-zero sensed word. The program cells and the read cells take the qualification of `x_slot_prog` and `x_slot_read` |executable; seed-dependent
+|`x_neighbor_free` |Target slot unlocked while slot minus 1 or slot plus 1 holds a lock {previous, next} x op {program landed, read not blocked}. 4 cells. A program cell takes the qualification of `x_slot_prog`; a read cell is a frontdoor read at strap known 0 that returns the known, non-zero sensed word |executable; seed-dependent
+|`x_exempt` |Frontdoor OKAY read at strap known 0 whose known data equals the known, non-zero sensed word of the register at `efuse_shadow_probe_o`, for {`LC_STATE`, `LOCKS`, `LOCKS_SPARE`}, while every assigned lock bit of the `LOCKS` words at the probe is set. 3 bins. A write or program of `LOCKS` or `LOCKS_SPARE` is not declared: with every assigned lock bit set no new assigned bit can be written, and bits 31:18 of `LOCKS_SPARE` are reserved (`SPARE_LOCK_RSVD`) |executable; seed-dependent
 |`cp_sense_fills_locked` |At sense done, a read-locked field whose sensed words are nonzero: secret field {CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY}, other field. 2 bins |executable; seed-dependent
-|`x_shadow_write_lock` |Shadow-write field {SIP_DIS (slot 3), SYS_DIS (slot 4), REQUIRED_SIGNERS (slot 21), REQUIRED_ALGS (slot 22)} x write-lock {0, 1} x outcome {changed (OR), unchanged}. 8 legal cells. The write data is the shadow value OR one new bit, so the open write class of REQUIRED_SIGNERS does not change the outcome |executable; seed-dependent
-|`cp_lock_order` |Write before lock lands; write after lock blocked; zero write after lock keeps the lock. 3 bins |executable; seed-dependent
-|`cp_prog_visibility` |After a landed program the shadow word equals its value before the program (1 bin). At the next sense done the word has the programmed bit and every earlier bit (1 bin) |executable; seed-dependent
+|`x_shadow_write_lock` |Shadow-write field {SIP_DIS (slot 3), SYS_DIS (slot 4), REQUIRED_SIGNERS (slot 21), REQUIRED_ALGS (slot 22)} x write-lock {0, 1} x outcome {changed (OR), unchanged}. 8 legal cells. The write data is the shadow value OR one new bit, so the open write class of REQUIRED_SIGNERS does not change the outcome. The word before the write and the write data are known. The changed cell needs the shadow word after the write to equal the word before the write OR the write data, and the unchanged cell needs it to equal the word before the write. Any other value, or an X or Z bit after the write, is the wrong outcome for either lock value (`illegal_bins`) |executable; seed-dependent
+|`cp_lock_order` |Write before lock lands (the shadow word reads the word before the write OR the write data); write after lock blocked (the shadow word is unchanged); zero write after lock keeps the lock. 3 bins |executable; seed-dependent
+|`cp_prog_visibility` |After a landed program of a bit that is 0 in the shadow word before the program, the shadow word equals its value before the program (1 bin, at the program end, with the program cell qualification of `x_slot_prog`). At the next sense done the word has the programmed bit at 1 and every earlier bit (1 bin). Both compares are exact (`===`), so an X or Z bit fills no bin |executable; seed-dependent
 |`cp_round_count` |Round index k = the number of consecutive sense-done events, up to and including this one, at each of which the sensed shadow words (`efuse_shadow_probe_o`) gained at least one set bit against the previous sense-done; a sense-done with no gain resets k to 0. Sampled at sense done, bins k = 1, 2, 3, 4 (each round ends with a cold-reset sense). 4 bins |executable; seed-dependent
-|`x_lc_prog_gate` |`LC_STATE` bit {1, 2} x token state {own channel matched, other channel matched only} x outcome of the program at the shim. Legal: own match lands, other match is refused. 3 legal cells: (bit 1, own), (bit 1, other only), (bit 2, own). (bit 2, other channel matched only) is not a bin: it is a control of the owner, and `sep_efuse_rma_token_rand_test` grades that refusal (see Bins not graded) |executable; seed-dependent
+|`x_lc_prog_gate` |`LC_STATE` bit {1, 2} x token state {own channel matched, other channel matched only} x outcome of the program at the shim. Legal: own match lands, other match is refused. The program cell qualification of `x_slot_prog` applies, so only the token gate can refuse the program. 3 legal cells: (bit 1, own), (bit 1, other only), (bit 2, own). (bit 2, other channel matched only) is not a bin: it is a control of the owner, and `sep_efuse_rma_token_rand_test` grades that refusal (see Bins not graded) |executable; seed-dependent
 |===
 
 *Owning tests*: `sep_efuse_lock_slot_matrix_rand_test` (every coverpoint
@@ -5513,8 +5540,8 @@ Integration").
 |Coverpoint |Bins |Class
 |`x_state_combo` |State class (6) x demotion combination {00, 10, 01, 11}. 24 cells |executable; seed-dependent
 |`cp_assert_order` |DEMOTE_1 set first; DEMOTE_2 set first |executable; seed-dependent
-|`cp_reset_vector` |Before a cold reset, the vector (demote 1 as bit 3, lock 1, demote 2, lock 2 as bit 0): values 1 to 15. After the reset release and sense done all four read 0. 15 cells. `ignore_bins`: vector 0, because a reset of a clear state has nothing to clear |executable; seed-dependent
-|`x_otp_invariant` |State class (6: TEST_DEV, PROD, PROD_END, RMA_SIP, RMA_CHIPLET, INVALID) x demotion combination (4): the lifecycle raw nibble and the `LC_STATE` word are unchanged across the demotion. 24 cells. A program command at the shim is not part of the cell (CHK-DEMOTE-OTP grades that statement) |executable; seed-dependent
+|`cp_reset_vector` |Before a cold reset, the vector (demote 1 as bit 3, lock 1, demote 2, lock 2 as bit 0), known on the last clock before `rst_ni` falls: values 1 to 15. The reset starts inside the owner window. After the reset release and sense done all four outputs are known and read 0. 15 cells. `ignore_bins`: vector 0, because a reset of a clear state has nothing to clear |executable; seed-dependent
+|`x_otp_invariant` |State class (6: TEST_DEV, PROD, PROD_END, RMA_SIP, RMA_CHIPLET, INVALID) x demotion combination (4): the lifecycle raw nibble and the `LC_STATE` word are unchanged across the demotion. 24 cells, of which the 6 cells of demotion 00 are `ignore_bins` `to_undemoted` (not graded, see <<sep-fcov-p2-efuse-lifecycle-notdeclared>>). 18 graded cells. A program command at the shim is not part of the cell (CHK-DEMOTE-OTP grades that statement) |executable; seed-dependent
 |`x_export_codeword` |`lcc_demote_state_1_o` and `lcc_demote_state_2_o` x pair class {complementary, non-complementary}. 2 legal cells: complementary. The non-complementary class (`2'b00` and `2'b11`) is an `illegal_bins` entry. The specification states no polarity, so no bin names a value |executable; seed-dependent
 |`cp_export_changes` |Per register: the pair after the demote write differs from the pair before it. 2 bins |executable; seed-dependent
 |===
@@ -5543,9 +5570,12 @@ the two registers are independent.
 Debug Demotion", "Programming and Locking"); `sep_lifecycle_ctrl.adoc`
 (sections "SEP Lifecycle Control Address Map", "DEMOTE_1").
 
-*Sample event*: completion of a frontdoor write to `DEMOTE_1` or `DEMOTE_2`. Old
+*Sample event*: OKAY completion of a frontdoor write to `DEMOTE_1` or `DEMOTE_2`. Old
 and new (demote, lock) come from `demote_1_i`, `demote_2_i`, `demote_lock_1_i`
-and `demote_lock_2_i`.
+and `demote_lock_2_i`. The four outputs are known at the AW of the write; a
+write with an X or Z output at the AW is no sample. An X or Z output after the
+write counts as a change: an `illegal_bins` hit for a locked register, and no cell
+for an open one.
 
 [cols="2,5,3",options="header"]
 |===
@@ -5553,7 +5583,7 @@ and `demote_lock_2_i`.
 |`x_reg_lock_write` |Register {1, 2} x old lock {0, 1} x write {set demote (data `0x1`), set lock (`0x2`), zero} x result {changed, unchanged}. 12 legal cells: with lock 0, set demote and set lock change and zero is unchanged; with lock 1 every write is unchanged. A change with lock 1 is an `illegal_bins` entry. Guard for set demote: old demote 0 |executable; seed-dependent
 |`x_committed_next` |Register x committed demote {0, 1} (lock set) x next write {set demote, zero}. 8 legal cells, all unchanged |executable; seed-dependent
 |`cp_independence` |Register 1 locked, then a register 2 write is accepted; register 2 locked, then a register 1 write is accepted. 2 bins |executable; seed-dependent
-|`cp_profile_unchanged` |A write to a register whose old lock is 1, with `feat_ctrl_i` equal before and after, the other register's demote state unchanged and the shadow DIS word of the group that the register governs nonzero. Per register: 2 bins |executable; seed-dependent
+|`cp_profile_unchanged` |A set-demote write (demote bit 1) to a register whose old lock is 1 and old demote is 0, with `sec_dis_i` known 0, a known raw state and a known `feat_ctrl_i`, `feat_ctrl_i` equal before and after, and the other register's demote state unchanged. The write must change the profile if the register were open: in TEST_DEV the DIS group that the register governs (the OR of the shadow `SIP_DIS` and `SYS_DIS` words) is non-zero, and in PROD that group is not all ones. Other states fill no bin. Per register: 2 bins |executable; seed-dependent
 |===
 
 *Owning test*: `sep_lcc_feat_ctrl_state_matrix_rand_test` (the demotion leg).
@@ -5567,6 +5597,9 @@ register, a zero write after each set, and a later set and a later zero write on
 a committed demote of 0 and of 1), and the draw of A runs each register as A and
 as B over a merge of regressions. Every coverpoint of the group is
 seed-dependent, because a leg B leaf is one of the drawn leaf plans.
+`cp_profile_unchanged` fills only in a leg B leaf whose image is TEST_DEV or PROD,
+about 3 leaves in 88, so it closes over a larger merge of regressions than the
+other coverpoints of the group.
 
 ===== `sep_token_channel_cg`
 
@@ -5588,12 +5621,12 @@ Countermeasures", "Token Submission"); `security_disable.adoc` (section
 |Coverpoint |Bins |Class
 |`x_ch_verdict` |Channel {RMA_SIP, RMA_CHIPLET, SEC_DIS} x first non-idle code after a go {Match `0x15`, Mismatch `0x2a`}. 6 cells |executable
 |`cp_code` |Every observed status value in {`0x00`, `0x15`, `0x2a`, `0x3f`}. The other 60 six-bit values are `illegal_bins` |executable
-|`x_ch_shape` |Channel x shape of the presented words {all zeros, all ones, other channel's token}, classified from the token word registers. Legal verdict: Mismatch. 8 cells. Excluded on SEC_DIS: all zeros (the bound SEC_DIS token is zero and that token matches). The flip, swap and byte-swap shapes are not bins, because they need the bench token vectors, which are test-side values; the checker of the owning test grades them |executable
-|`x_rma_go_phase` |RMA channel {SIP, CHIPLET} x go while `fuse_sense_done_i` is low (code stays `0x00` until sense done) / go after sense done (Match). 4 bins |executable
+|`x_ch_shape` |Channel x shape of the presented words {all zeros, all ones, other channel's token}, classified from the token word registers at the go. The other channel's token is the words of a go on another channel that gave Match since the last reset, with that array unchanged from its go to its result: the token of that channel as the DUT judged it. Legal verdict: Mismatch. 8 cells. Excluded on SEC_DIS: all zeros (the bound SEC_DIS token is zero and that token matches). The flip, swap and byte-swap shapes are not bins, because they need the bench token vectors, which are test-side values; the checker of the owning test grades them |executable
+|`x_rma_go_phase` |RMA channel {SIP, CHIPLET} x go while `fuse_sense_done_i` is low / go after sense done (Match). 4 bins. The before-sense bin of a channel needs the code of that channel known `0x00` on every clock from the go while sense done is low. It scores at the rise of sense done in the same reset epoch. When a cold reset ends the epoch first, with sense done still low, the go carries over the reset: the bin then scores at the first non-idle code of the channel after a later sense done, when that code is Match and no go on the channel came after the carried go. A code that is not known `0x00` (an X or Z included) before that sense done, or a non-idle code other than Match after it, ends the carry with no sample |executable
 |`cp_independence` |Go on channel c {SIP, CHIPLET, SEC_DIS} while both other channels hold a non-idle code and keep it. 3 bins |executable
 |`cp_hold_word_write` |A token word write with a non-idle code held on the channel and the code unchanged. 3 bins (per channel) |executable
 |`cp_go_idle_first` |A `token_go_i` pulse of the channel while its code is non-idle, after which the code of the channel equals `0x00` on at least one clock before it next takes a non-idle value. 3 bins (per channel). The sampler reads `token_go_i` and the codes `tok_sip_i`, `tok_chp_i` and `tok_sdis_i` on every clock, so the bin does not depend on the read cadence of the leaf (`token_processing.adoc`, section Token Submission: a start clears digest validity, so the comparison returns idle while the new digest is unavailable) |executable
-|`cp_retention` |Cold reset with an RMA_SIP Match held: token words equal before and after (1); code `0x00` before sense done (1); code `0x15` after sense done with no new go (1). 3 bins |executable
+|`cp_retention` |Cold reset with an RMA_SIP Match held on the last clock before `rst_ni` falls, with the reset inside the owner window: token words equal before and after (1); code known `0x00` with sense done known low (1); code `0x15` after sense done with no new go (1). Bins 0 and 1 sample 8 (`EfTokSettle`) clocks after the reset release, not on the release clock. Bin 2 is the first non-idle RMA_SIP code after that sample. A further cold reset that falls while the code still reads `0x00` and sense done has stayed low since the first reset carries the wait into the next epoch, so a retention reset with sensing held off by a SEC_DIS match scores bin 2 after the reset that lets sensing run. 3 bins |executable
 |===
 
 *Owning tests*: `sep_efuse_token_channel_rand_test` (every coverpoint; bins
@@ -5605,13 +5638,14 @@ Countermeasures", "Token Submission"); `security_disable.adoc` (section
 *Status*: The status codes of RMA_SIP and RMA_CHIPLET sample the
 existing debug-bus path (`tok_sip_i`, `tok_chp_i`). The SEC_DIS cells sample
 the added tap `tok_sdis_i`; `x_ch_shape`, the word-write cell `cp_hold_word_write`
-and bin 1 of `cp_retention` sample the added tap `tok_words_i`; and
+and bin 0 (token words kept) of `cp_retention` sample the added tap `tok_words_i`; and
 `cp_go_idle_first` samples the added tap `token_go_i`.
 Constraint for `x_ch_shape` and `x_rma_go_phase`: the test uses 7
 mismatch shapes, and every leaf walks every legal (shape, channel) cell, with
 digest-as-token as one shape; it never uses the
-all-zero, swap or byte-swap shape on SEC_DIS; and it runs the go before sense done
-on RMA_CHIPLET as well as on RMA_SIP.
+all-zero, swap or byte-swap shape on SEC_DIS; each channel gives Match on its own
+token before the mismatch walk presents that token to another channel; and it runs
+the go before sense done on RMA_CHIPLET as well as on RMA_SIP.
 
 ===== `sep_token_fault_cg`
 
@@ -5634,13 +5668,13 @@ a status flip with no go. Copy and kind are classified from `cmp_match_p_i` and
 |===
 |Coverpoint |Bins |Class
 |`x_ch_kind_copy` |Channel (3) x kind {collapsed pair (`match_p[i] == match_n[i]`), one copy dissents} x copy i {0, 1, 2}. 14 cells. Copy 0: 2 cells (one copy dissents, on RMA_CHIPLET and on SEC_DIS). The copy-0 collapsed-pair cells of the three channels and the copy-0 dissent cell of RMA_SIP are not bins: the owner does not draw them (see Bins not graded). Copies 1 and 2: 12 cells, which need the added comparator copy select |executable; seed-dependent
-|`x_ch_common_flip` |RMA_CHIPLET x unanimous legal flip with no go {Match to Mismatch, Mismatch to Match}. No sticky bit rises. 2 cells. The RMA_SIP flip is not a cell of this group (see Bins not graded) |executable
-|`x_ch_forced_err` |Channel x (code `0x3f` with the channel's sticky bit set and `irq_token_fault_i` high). 3 cells. `0x3f` without the sticky bit is an `illegal_bins` entry |executable
+|`x_ch_common_flip` |RMA_CHIPLET x unanimous legal flip with no go {Match to Mismatch, Mismatch to Match}, inside the owner window, with the RMA_CHIPLET sticky bit known 0 on the clock before the flip. The RMA_CHIPLET sticky bit is not 1 at the settled sample (the bit is sticky, so a rise after the flip stays); an X or Z on the sticky bit counts as a rise. 2 cells. The RMA_SIP flip is not a cell of this group (see Bins not graded) |executable
+|`x_ch_forced_err` |Channel x (code `0x3f` with the channel's sticky bit set and `irq_token_fault_i` high). The `0x3f` code and the sticky bit are new since the previous settled sample (or since the reset release), so a sticky bit left by an earlier fault never fills a cell. 3 cells. `0x3f` without the sticky bit is an `illegal_bins` entry |executable
 |`x_ch_retry` |After a fault, a valid go gives {Match, Mismatch} while the channel's sticky bit and the interrupt line stay high. 5 cells: the RMA channels with both verdicts, SEC_DIS with Match |executable; seed-dependent
-|`cp_no_clear` |A write to `TOKEN_MATCH_FAULT` (`0x1093_0570`) with the channel's bit set, sticky bit unchanged at the next sample. 3 bins |executable
-|`cp_reset_clear` |Cold reset: the sticky bit and the interrupt line fall to 0. 3 bins (per channel). Token word retention over a cold reset is `cp_retention` of `sep_token_channel_cg`; the owner of this group logs the words and does not grade them |executable
-|`cp_secdis_off_under_fault` |SEC_DIS fault: `sec_dis_i` stays 0. 1 bin |executable
-|`x_ch_latch_freeze` |Channel {RMA_CHIPLET, SEC_DIS} x test enable at the digest latch {asserted, released} x token operation. Legal: under the freeze the sticky digest and the valid bit keep their values (2 cells); after the release the digest is replaced (2 cells). 4 cells. A change under the freeze is an `illegal_bins` entry. No cell names a result code under the freeze, because the specification states no effect on a match in progress. The RMA_SIP cells are not bins (see Bins not graded) |executable
+|`cp_no_clear` |An OKAY write to `TOKEN_MATCH_FAULT` (`0x1093_0570`) with the channel's bit set over a set sticky bit, sticky bit still known 1 at the next sample. A refused write never reaches the register and fills no bin. 3 bins |executable
+|`cp_reset_clear` |Cold reset that a set sticky bit enters, with the reset inside the owner window: the sticky bit and the interrupt line read known 0 at 8 (`EfTokSettle`) clocks after the reset release. 3 bins (per channel). Token word retention over a cold reset is `cp_retention` of `sep_token_channel_cg`; the owner of this group logs the words and does not grade them |executable
+|`cp_secdis_off_under_fault` |SEC_DIS fault: `sec_dis_i` stays 0. The bin arms only when `sec_dis_i` rose since the last reset release (the control that the output can rise) and is known 0 at the rise of the SEC_DIS sticky bit. Any clock with `sec_dis_i` not known 0 from that rise up to the settled sample kills the bin, and the sample needs `sec_dis_i` known 0. 1 bin |executable
+|`x_ch_latch_freeze` |Channel {RMA_CHIPLET, SEC_DIS} x test enable at the digest latch {asserted, released} x token operation. Legal: under the freeze the sticky digest and the valid bit keep their values (2 cells); after the release and a go, the known digest differs from its value at the release, within 4096 (`EfLatchWin`) clocks (2 cells). The freeze starts inside the owner window. 4 cells. A change under the freeze is an `illegal_bins` entry. No cell names a result code under the freeze, because the specification states no effect on a match in progress. The RMA_SIP cells are not bins (see Bins not graded) |executable
 |`cp_irq_line` |`irq_token_fault_i` equals the OR of the sticky bits for the single-channel values 001, 010, 100. 3 bins. Multi-channel values are not stimulated and are not declared |executable
 |===
 
@@ -5691,7 +5725,7 @@ not apply to it.
 [cols="2,5,3",options="header"]
 |===
 |Coverpoint |Bins |Class
-|`cp_match_phase` |Before sense (`sec_dis_i` high at reset release, sense not done); during sense (rises with `fuse_sense_done_i` low, no reset); after sense (rises with `fuse_sense_done_i` high). 3 bins |executable; seed-dependent
+|`cp_match_phase` |Before sense (`sec_dis_i` high at reset release or within 4 clocks after it, sense not done); during sense (rises more than 4 clocks after the reset release, with `fuse_sense_done_i` not 1); after sense (rises more than 4 clocks after the reset release, with `fuse_sense_done_i` high). 3 bins |executable; seed-dependent
 |`x_verdict_out` |SEC_DIS code {Match, Mismatch, Error} x `sec_dis_i` {0, 1}. Legal: (Match, 1), (Mismatch, 0), (Error, 0). The other 3 are `illegal_bins` |executable; seed-dependent
 |`x_state_demote_forced` |`sec_dis_i` 1 with `feat_ctrl_i` all ones x state x demotion. TEST_DEV and PROD each x 4 combinations (8 cells); PROD_END, RMA_SIP, INVALID with any demotion (3 cells). 11 cells. The RMA_CHIPLET cell is not a bin (see Bins not graded). `feat_ctrl_i` not all ones is an `illegal_bins` entry |executable; seed-dependent
 |===
@@ -5705,9 +5739,12 @@ not apply to it.
 
 *Status*: `x_verdict_out` samples the SEC_DIS code at the added tap `tok_sdis_i`. Its Match and Mismatch cells fill in leg C of `sep_lcc_feat_ctrl_state_matrix_rand_test`, in a state other than RMA_CHIPLET, where CHK-FEAT-CELL grades `security_disable_o` high at the `0x15` match and low after the `0x2a` mismatch. The before-sense and during-sense bins of `cp_match_phase` fill in `sep_sec_dis_timing_rand_test`, and the after-sense bin fills in the zero-token step of `sep_lcc_feat_ctrl_state_matrix_rand_test`. Constraint for
 `x_state_demote_forced`: `sep_lcc_feat_ctrl_state_matrix_rand_test` runs the match
-and the dropping mismatch at each demotion cell of its state. Seed-dependent:
-the before-sense and during-sense bins of `cp_match_phase` (one class of
-`sep_sec_dis_timing_rand_test` per leaf), the after-sense bin and the Match and Mismatch cells of `x_verdict_out` (a leg C leaf of
+and the dropping mismatch at each demotion cell of its state. The before-sense bin
+of `cp_match_phase` fills in both classes of `sep_sec_dis_timing_rand_test`: class C
+from its held match, and class B from its cold reset under the retained match, a
+window that CHK-SDIS-RESET-VALUES grades. Seed-dependent:
+the during-sense bin of `cp_match_phase` (class B of
+`sep_sec_dis_timing_rand_test` only), the after-sense bin and the Match and Mismatch cells of `x_verdict_out` (a leg C leaf of
 `sep_lcc_feat_ctrl_state_matrix_rand_test`) and `x_state_demote_forced` (drawn
 states).
 
@@ -5725,18 +5762,26 @@ Active"); `lifecycle_controller.adoc` (section "Overrides and Final Gates
 (SEC_DIS)").
 
 *Sample event*: token change on `tok_*_i` (`x_digest_replay`); change of `sec_dis_i` or `feat_ctrl_i`
-(`x_state_strap_feat`); each clock while `sec_dis_i` is high and `fuse_sense_done_i`
-is low (`cp_stops_sense`, `cp_reset_values_hold`). The guard
+(`x_state_strap_feat`); the end of a bounded hold in which `sec_dis_i` is high
+and `fuse_sense_done_i` is not 1 on every clock (`cp_stops_sense`,
+`cp_reset_values_hold`). The hold starts on the first clock with `sec_dis_i` high
+after a clock with `sec_dis_i` low or in reset: a start within 4 clocks of a reset
+release is the match-before-sense phase, a later start the match-during-sense
+phase. The hold ends after `efuse_sdis_hold_bound` clocks. The owner writes the bound through
+`u_sep_fcov` under the outcome-bound rule of <<sep-fcov-graded-window>>: the window
+W of `sep_sec_dis_timing_rand_test` (3 times the sense time it measures in the
+run) before the hold, and 0 when its wait ends. A hold that ends before the bound
+(sense done rises or `sec_dis_i` falls) fills no bin. The guard
 "`fuse_sense_done_i` high" does not apply to the last two coverpoints, because they
 sample the SEC_DIS-held window in which sense done stays low.
 
 [cols="2,5,3",options="header"]
 |===
 |Coverpoint |Bins |Class
-|`x_digest_replay` |Channel (3) x go with the token words equal to the channel's expected digest (RMA: the OTP digest words; SEC_DIS: the gate constant) x code {Mismatch legal, Match `illegal_bins`}. 3 legal cells |executable
-|`cp_stops_sense` |`sec_dis_i` 1 and `fuse_sense_done_i` 0 for a bound of 3 times the sense time measured in the run (the interval from the first reset release to sense done), which is the window W of `sep_sec_dis_timing_rand_test`. Phase {match during sense: the sensed shadow words (`efuse_shadow_probe_o`) stay unchanged from the rise of `sec_dis_i`; match before sense: the sensed shadow words stay at their reset values from reset release}. 2 bins |executable; seed-dependent
-|`x_state_strap_feat` |State {TEST_DEV, PROD, RMA_SIP} x strap {0, 1}, sampled on a feature change with `sec_dis_i` 0 (the value comparison belongs to the checker). 6 cells |executable; seed-dependent
-|`cp_reset_values_hold` |`sec_dis_i` 1 and `fuse_sense_done_i` 0 after a reset: every shadow word except the `LC_STATE` word reads 0. The `LC_STATE` word is excluded: the specification and the RDL differ on its reset value |executable
+|`x_digest_replay` |Channel (3) x go with the token words equal to the channel's expected digest (RMA: the OTP digest words; SEC_DIS: the gate constant) x code {Mismatch legal, Match `illegal_bins`}. A token word or a digest word with an X or Z bit is not equal. 3 legal cells |executable
+|`cp_stops_sense` |`sec_dis_i` 1 and `fuse_sense_done_i` not 1 on every clock of a hold of exactly `efuse_sdis_hold_bound` clocks, the window W of `sep_sec_dis_timing_rand_test` (3 times the sense time measured in the run, the interval from the first reset release to sense done). Phase {match during sense: the sensed shadow words (`efuse_shadow_probe_o`) stay unchanged from the rise of `sec_dis_i`; match before sense: the sensed shadow words stay unchanged from the start of the hold, within 4 clocks of the reset release}. A shadow bit that is not equal (`!==`, so an X or Z counts) on any clock of the hold fills no bin. 2 bins |executable; seed-dependent
+|`x_state_strap_feat` |State {TEST_DEV, PROD, RMA_SIP} x strap {0, 1}, sampled on a feature change with `sec_dis_i` 0, a known raw state and a known strap (the value comparison belongs to the checker). 6 cells |executable; seed-dependent
+|`cp_reset_values_hold` |At the end of a `cp_stops_sense` hold of the match-before-sense phase (the hold that starts within 4 clocks of a reset release): every shadow word except the `LC_STATE` word reads 0 on the first clock of the hold, and no shadow bit changes on any clock of the hold. The bin scores at the end of the bounded hold, not on its first clock, so a design that senses under the match loads a word inside the bound and fills no bin. The `LC_STATE` word is excluded: the specification and the RDL differ on its reset value |executable; seed-dependent
 |===
 
 *Owning tests*: `sep_efuse_token_channel_rand_test` (`x_digest_replay`);
@@ -5751,9 +5796,9 @@ completed control sense in the run: a run with no completed sense records no
 hit. Constraint for `x_digest_replay`: digest-as-token is one of
 the mismatch shapes of `sep_efuse_token_channel_rand_test`. It samples the added
 taps `tok_words_i` and `sec_disable_expected_i`. Seed-dependent: the two phase bins of
-`cp_stops_sense` (one class of `sep_sec_dis_timing_rand_test` per leaf) and
-`x_state_strap_feat` (drawn states). `cp_reset_values_hold` fills in both
-classes, on every seed.
+`cp_stops_sense` (one class of `sep_sec_dis_timing_rand_test` per leaf),
+`cp_reset_values_hold` (only a leaf of the match-before-sense class fills it) and
+`x_state_strap_feat` (drawn states).
 
 ===== `sep_efuse_if_status_cg`
 
@@ -5770,11 +5815,15 @@ Programming and RMA Authorization", "Fuse Fields": the fuse map is exactly
 8192 bits, end address `0x400`); `architecture.adoc` (section "Command-path
 ownership").
 
-*Sample event*: a go on `EFUSE_PROGRAM_CTRL` or `EFUSE_READ_CTRL`, then a sample
-once the interface is idle (`efuse_read_busy_o` and `efuse_program_busy_o`
-low). For the case `both_enables` the read may never complete, so that case is
-sampled a fixed number of clocks after the go (a sampler parameter) or at the next
-reset, whichever comes first. `cp_sense_status_word` and `x_prog_lifecycle` have their own
+*Sample event*: an OKAY go on `EFUSE_PROGRAM_CTRL` or `EFUSE_READ_CTRL`, then a
+sample at the first clock 64 (`EfReqWait`) or more clocks after the go at which
+the interface is idle (`efuse_read_busy_o` and `efuse_program_busy_o` known 0).
+`cp_flags`, `x_case_flags` and `cp_accepted_twin` sample only a go whose four
+flags were known 0 at its AW, so a flag left set by an earlier request never
+stands for this one. A flag with an X or Z bit reads as the flag value `1110`,
+which is a wrong value in every case. For the case `both_enables` the read may never complete, so `cp_case` and
+`x_case_flags` sample that case 1024 (`EfBothWin`) clocks after the go, and a
+reset before then gives no sample; `x_case_cmd` samples it at the next cold reset. `cp_sense_status_word` and `x_prog_lifecycle` have their own
 sample events, given in their rows.
 
 [cols="2,5,3",options="header"]
@@ -5783,11 +5832,11 @@ sample events, given in their rows.
 |`cp_case` |pre_sense_prog (go while `fuse_sense_done_i` is low); read_no_enable; read_oob (address of 8192 or more); prog_oob; prog_wlocked (the program address lies in a field whose write-lock bit is set in the LOCKS words of `efuse_shadow_probe_o`); read_rlocked (the read address lies in a field whose read-lock bit is set there); both_enables; prog_data0. 8 bins |executable
 |`cp_flags` |Observed `{read_status, read_addr_error, program_addr_error, req_error}`: 0000, 1000, 1100, 0010, 0001, sampled only for read_no_enable, read_oob, prog_oob and prog_wlocked, and 0000 for the accepted twins. Every other value in those cases is an `illegal_bins` entry. Not sampled for pre_sense_prog, prog_data0, both_enables and read_rlocked |executable
 |`x_case_flags` |read_no_enable gives 1000; read_oob gives 1100; prog_oob gives 0010; prog_wlocked gives 0001; read_rlocked gives `req_error` = 1 and the other flags are not graded; 5 legal cells. pre_sense_prog, prog_data0 and both_enables: the RDL does not state the flags (`architecture.adoc` states only that a read under `program_enable` does not reach the bank), so these cells are `ignore_bins`. The flags come from the added status taps `rd_addr_err_i`, `pg_addr_err_i` and `req_err_i` |executable
-|`x_case_cmd` |Case x commands at the shim during the window {none, read, program}. Legal: no program command for pre_sense_prog (window from reset release to sense done); no read command for read_rlocked (window from the go to the end of W) and both_enables (window from the go to the cold reset). pre_sense_prog allows read commands (sense). read_no_enable, read_oob and prog_oob are not declared: no document states that these requests issue no command (the register description states only their flags). prog_wlocked and prog_data0 are not cells (see Bins not graded). 3 cells |executable
-|`cp_flag_clear` |Write 1 to a clear bit: `efuse_read_addr_error` falls, `efuse_program_addr_error` falls, `efuse_req_error` falls, the other flags unchanged. 3 bins |executable
-|`cp_sense_status_word` |A sense response with its status bit set at a word w of 10 to 254. The response is a clock with `shim_resp_i.valid` and `shim_resp_i.status` both 1 while `fuse_sense_done_i` is 0. w is bits [12:5] of `shim_cmd_i.address` of the READ command that the response answers, the last READ command with `shim_cmd_i.valid` 1 before the response (the address is a bit address: `interface.adoc`, section Fuse Command Protocol). The bin scores at the next rise of `fuse_sense_done_i` when word w of `efuse_shadow_probe_o` equals its reset value `0x0`. 1 bin. Words 0 to 9 and 255 are not declared (see Bins not graded) |executable
-|`x_prog_lifecycle` |Program request with the program timeout disabled x phase {response withheld, response released}. The request is a PROGRAM command at the shim (`shim_cmd_i.valid` 1, command `2'b01`) while `program_req_timeout_enable` is 0: no frontdoor write to `EFUSE_PROGRAM_REQ_TIMEOUT` since reset (reset value 0), or the last such write, decoded from `lsu_aw_*` and `lsu_w_*`, wrote it 0. Withheld: sampled N clocks after the command (N a sampler parameter) when `shim_resp_i.valid` has stayed 0 since the command; legal is `efuse_program_busy_o` high and `efuse_program_done_o` low. Released: only for a command that scored the withheld cell, sampled N clocks after the first rise of `efuse_program_done_o` that follows the rise of `shim_resp_i.valid`; legal is done high, `efuse_program_error_o` low and busy low. 2 cells. The outcome with the timeout enabled is not a bin |executable
-|`cp_accepted_twin` |A valid read (`read_done` high, `read_status` low); a landed program (program command at the shim, flags 0). 2 bins |executable
+|`x_case_cmd` |Case x commands at the shim during the window {none, read, program}. Legal: no program command for pre_sense_prog (window from reset release to sense done); no read command for read_rlocked (window from the go to the first STATUS read after the idle sample, which the owning test makes at the end of W, so the window covers W) and both_enables (window from the go to the cold reset). pre_sense_prog allows read commands (sense). read_no_enable, read_oob and prog_oob are not declared: no document states that these requests issue no command (the register description states only their flags). prog_wlocked and prog_data0 are not cells (see Bins not graded). 3 cells |executable
+|`cp_flag_clear` |Write 1 to one clear bit over its set flag: `efuse_read_addr_error` falls, `efuse_program_addr_error` falls, `efuse_req_error` falls, the other flags unchanged. The three flags are known at the AW of the write and 8 clocks after it. 3 bins |executable
+|`cp_sense_status_word` |A sense response with its status bit set at a word w of 10 to 254. The response is a clock with `shim_resp_i.valid` and `shim_resp_i.status` both 1 while `fuse_sense_done_i` is 0. w is the start word of the READ command that the response answers plus the number of earlier responses to that command. The READ command that a response answers is the last READ command that starts before the response. A READ command starts on a clock where `shim_cmd_i.valid` is known 1 with the command READ and was not known 1 on the clock before. The sense READ holds valid at 1 for the whole sense, so the later clocks of that level start no new command and do not restart the count. The start word is bits [12:5] of `shim_cmd_i.address` (the address is a bit address and `access_length_words` is the transfer size in words: `interface.adoc`, section Fuse Command Protocol). The sense is one bulk READ command that covers the whole bank (`architecture.adoc`, section Shadow Register Subsystem), so w is the index of the response in the sense. The response also carries known non-zero `shim_resp_i.data`, so a shadow word left at 0 shows that the data was dropped and not that the image word was 0. The bin scores at the next rise of `fuse_sense_done_i` when word w of `efuse_shadow_probe_o` is exactly (`===`) its reset value `0x0`. 1 bin. Words 0 to 9 and 255 are not declared (see Bins not graded) |executable
+|`x_prog_lifecycle` |Program request with the program timeout disabled x phase {response withheld, response released}. The request is a PROGRAM command at the shim (`shim_cmd_i.valid` 1, command `2'b01`) while `program_req_timeout_enable` is 0: no frontdoor write to `EFUSE_PROGRAM_REQ_TIMEOUT` since reset (reset value 0), or the last such write, decoded from `lsu_aw_*` and `lsu_w_*`, wrote it 0. Withheld: sampled N clocks after the command (N a sampler parameter) when `shim_resp_i.valid` has stayed 0 since the command; legal is `efuse_program_busy_o` known 1 and `efuse_program_done_o` known 0. Released: only for a command that scored the withheld cell, sampled N clocks after the first rise of `efuse_program_done_o` that follows the rise of `shim_resp_i.valid`; legal is done known 1, `efuse_program_error_o` known 0 and busy known 0. An X or Z on any of these outputs is the wrong outcome. 2 cells. The outcome with the timeout enabled is not a bin |executable
+|`cp_accepted_twin` |A valid read (`read_done` known 1, `read_status` known 0); a landed program (program command at the shim, flags 0). Both twins sample only a go whose four flags were known 0 at its AW. 2 bins |executable
 |===
 
 *Owning tests*: `sep_efuse_interface_status_rand_test` (every coverpoint
@@ -5825,8 +5874,9 @@ Exit": the chiplet `TEST_EN` strap drives `secure_tm_req_i`). `test_en_strap_i`
 is the `tb_top` name of the strap signal.
 
 *Sample event*: frontdoor completion of a
-shadow read (`x_secret_read_kept`); a program go, then a sample
-once the interface is idle (`efuse_program_busy_o` low) (`x_prog_block`);
+shadow read (`x_secret_read_kept`); a program go, then a sample at the first clock
+64 (`EfReqWait`) or more clocks after the go at which the interface is idle
+(`efuse_read_busy_o` and `efuse_program_busy_o` known 0) (`x_prog_block`);
 frontdoor completion of a read
 of a secret field, sampled together with the sensed-shadow output of that field at
 the same edge (`x_secret_probe`).
@@ -5844,8 +5894,8 @@ This group declares no cell for the strap latch.
 [cols="2,5,3",options="header"]
 |===
 |Coverpoint |Bins |Class
-|`x_prog_block` |Program class {256-bit field, 32-bit field, DIS bit, `LOCKS` bit, spare word outside the five protection shadows} x strap x program command at the shim {seen, none}. Legal: strap 0 seen, strap 1 none. 10 legal cells |executable
-|`x_secret_probe` |Secret field {CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY} at strap 1 x sensed-shadow output class {zero, nonzero}, with the stored value nonzero at the frontdoor read. Legal: zero. `illegal_bins`: nonzero. 4 legal cells. The strap-0 cells and a strap-1 value that only differs from the staged value are not declared: `sep_efuse_lcc_lc_state_stitch_test` grades them, and the owning test credits only the exact zero |executable
+|`x_prog_block` |Program class {256-bit field, 32-bit field, DIS bit, `LOCKS` bit, spare word outside the five protection shadows} x strap x program command at the shim {seen, none}. Legal: strap 0 seen, strap 1 none. The strap is the known `secure_tm_i` at the go. Only the strap can refuse the program: the go carries `program_enable` and non-zero data, `efuse_req_error` is known 0 at the AW of the go (an X or Z flag counts as set), sense is done at the go, and the slot has no write-lock. 10 legal cells |executable
+|`x_secret_probe` |Secret field {CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY} at strap 1 x sensed-shadow output class {zero, nonzero}, with the stored value nonzero at the frontdoor read. Legal: zero. `illegal_bins`: nonzero; a sensed-shadow word with an X or Z bit counts as nonzero. 4 legal cells. The strap-0 cells and a strap-1 value that only differs from the staged value are not declared: `sep_efuse_lcc_lc_state_stitch_test` grades them, and the owning test credits only the exact zero |executable
 |`x_secret_read_kept` |Strap 1, frontdoor OKAY read of an unlocked secret field with nonzero data, per field. 4 bins |executable
 |===
 
@@ -5881,7 +5931,7 @@ the generated constants.
 |`cp_state` |PROD; RMA_SIP; integrity error (`jtag_filt_sigint_i` high, in TEST_DEV) |executable; seed-dependent
 |`cp_class` |Shadow word; interface-control register; token word; `TOKEN_EOP`; match register. `TOKEN_MATCH_FAULT` is not declared: the specification does not state the JTAG policy for it |executable
 |`cp_resp` |OKAY, not OKAY. The specification states only "an error response" for a denied access, so the code is not a bin |executable
-|`x_state_class_op` |State (3) x class and op: allowed (token word read, token word write, `TOKEN_EOP` write, match read) with response OKAY; denied (shadow read, shadow write, control read, control write) with a response that is not OKAY. 14 legal cells for PROD and RMA_SIP: (PROD, token word read) and (PROD, token word write) are `ignore_bins`, because the open test `sep_efuse_jtag_axil_el2_cpu_mux_test` grades them and the owning test only logs them. A denied class with OKAY, or an allowed class with an error, is an `illegal_bins` entry. `TOKEN_EOP` read and match write are not declared. The integrity-error state adds 8 cells of the same form (the allowed classes answer OKAY and the denied classes answer not OKAY, `lifecycle_controller.adoc`, section "Debug and Test Port Path Gating", row SEP OTP JTAG2AXIL path), so the coverpoint has 22 legal cells. The integrity-error cells need the added error inject `jtag_filter_lc_sigint_inject_i` at the JTAG lifecycle filter and sample the added tap `jtag_filt_sigint_i` |executable; seed-dependent
+|`x_state_class_op` |State (3) x class and op: allowed (token word read, token word write, `TOKEN_EOP` write, match read) with response OKAY; denied (shadow read, shadow write, control read, control write) with a response that is not OKAY. 14 legal cells for PROD and RMA_SIP: (PROD, token word read) and (PROD, token word write) are `ignore_bins`, because the open test `sep_efuse_jtag_axil_el2_cpu_mux_test` grades them and the owning test only logs them. (PROD, shadow read) and (PROD, control read) stay legal cells: the bin takes the DUT response, so an OKAY fills the `illegal_bins` entry and never a legal cell. The owning test grades the unchanged target of these reads and the response of the PROD read of every interface-control register other than `EFUSE_PROGRAM_CTRL`. It logs the response of the PROD shadow read and of the PROD `EFUSE_PROGRAM_CTRL` read, which `sep_efuse_jtag_axil_el2_cpu_mux_test` grades. A denied class with OKAY, or an allowed class with an error, is an `illegal_bins` entry. `TOKEN_EOP` read and match write are not declared. The integrity-error state adds 8 cells of the same form (the allowed classes answer OKAY and the denied classes answer not OKAY, `lifecycle_controller.adoc`, section "Debug and Test Port Path Gating", row SEP OTP JTAG2AXIL path), so the coverpoint has 22 legal cells. The integrity-error cells need the added error inject `jtag_filter_lc_sigint_inject_i` at the JTAG lifecycle filter and sample the added tap `jtag_filt_sigint_i` |executable; seed-dependent
 |`cp_gate_independent_of_feat` |State {PROD, RMA_SIP} x an allowed access that completes OKAY while `feat_ctrl_i` has every DBG_1 and DBG_2 bit closed. 2 bins |executable; seed-dependent
 |===
 
@@ -5958,6 +6008,7 @@ not define, is a dead bin. The groups above do not declare these cells.
 |Secure test mode JTAG write in PROD and RMA_SIP |The lifecycle gate refuses every JTAG shadow write, so a refusal and a control cannot differ
 |Secure test mode JTAG write of the four protection shadows in TEST_DEV, under each strap (no `x_jtag_write_block` coverpoint is declared) |A strap-1 cell counts only after the strap-0 JTAG write to the same target landed, and `sep_efuse_secure_tm_matrix_rand_test` runs its strap-1 epoch before its strap-0 epoch, so no strap-1 cell can fill at its sample. The strap-0 write is the control of CHK-STM-JTAG and fills no graded cell. CHK-STM-JTAG grades the strap-1 block
 |(SEC_DIS channel, all-zero shape) in `x_ch_shape` |The bound SEC_DIS token is zero, so that token matches
+|Demotion 00 of each state in `x_otp_invariant` (6 cells, `ignore_bins` `to_undemoted`) |The cell compares the sample after a demotion change with the sample before it. `DEMOTE_1` and `DEMOTE_2` are set-only, so a register goes back to 0 only at a reset, and the reset ends the compare. No stimulus reaches a change to demotion 00. CHK-DEMOTE-OTP and CHK-DEMOTE-RESET of `sep_lcc_feat_ctrl_state_matrix_rand_test` grade the `LC_STATE` word after each reset
 |(SEC_DIS channel, common-mode flip) in `x_ch_common_flip` |A flip of a SEC_DIS mismatch is a SEC_DIS match, and `sep_efuse_token_fault_matrix_test` never holds a SEC_DIS match while an injection is active
 |(SEC_DIS, Mismatch) in `x_ch_retry` |`sep_efuse_token_fault_matrix_test` holds only a SEC_DIS mismatch, and its retry presents the token of the opposite verdict, so the SEC_DIS retry gives a match
 |(RMA_SIP channel, common-mode flip) in `x_ch_common_flip` |`sep_efuse_rma_token_rand_test` drives the unanimous legal flip of the RMA_SIP comparator in both directions and grades the result, and `sep_efuse_token_fault_matrix_test` runs the flip on RMA_CHIPLET only
@@ -6775,17 +6826,12 @@ Names that do not resolve. Each is a permanent hole. The paths that resolve in t
 [[sep-fcov-p2-unresolved-efuse-lifecycle]]
 ===== eFuse, lifecycle, SEC_DIS, locked-field
 
-These names and inputs do not resolve in the testbench. The disposition of each is in its row.
+This name does not resolve in the testbench. Every other input of this area resolves: the sampler inputs, added taps and added hooks are in the sampled-signals table of the area.
 
 [cols="2,3,3,3",options="header"]
 |===
 |Signal |Source |Use |Disposition
-|`jtag_id_i` (stimulus) |DUT port `jtag_id_i` |JTAG ID value drive |Bench input missing: `tb_top.sv` ties the DUT port to `'0`. Added hook (top-port drive) that the owning test adds to the HDL Top port table of `docs/SEP_TB_ARCH.adoc`
-|`token_cmp_fault_copy_i` (stimulus) |comparator fault hook |copy select (0, 1, 2) |Bench input missing: the hook has a channel select and fixed vectors on copy 0 only. Added hook (error inject) that the owning test adds to the inject exceptions of `docs/SEP_TB_ARCH.adoc`
 |PIC source pending bit |none |PIC pending |Name not found in `tb_top.sv`. The CPU stub has no PIC. Use `irq_token_fault_i` (approved)
-|Existing bench probes without a sampler input: `efuse_shadow_probe_o`, `lcc_feat_ctrl_probe_o`, `lcc_sigint_err_probe_o`, `lcc_demote_lock_*_probe_o`, `sep_fuse_dft_disable_o`, `smc_fuse_dft_disable_o`, `j_axil_req_drive`, `j_axil_resp_w`, `sep_internal_interrupts_probe_o[39]`, `ext_debug_bus_o`, interface status bits, `test_en_strap_i` |`tb_top.sv` |Sampler inputs of the groups of this area |Approved probes, not in the sampler. A read-only sampler input with no DUT change
-|Nets without a tap: `SEP_CORE.efuse_shim_command_req_o`, `SEP_CORE.efuse_shim_command_resp_i`, `TOKEN_PROC` token match, fault, word, go and expected-digest nets, `EFUSE_CTRL` address-error flags and `stored_shadow`, the comparator match rails |`tb_top.sv` |Sampler inputs of the groups of this area |Added tap: a read-only hierarchical reference in `tb_top.sv`, with no force, that the owning test adds to the SEP_TB_ARCH observation-probe list. No bin reads `SEP_CORE.lc_state_o`
-|Bench hooks and drives without a port: `jtag_id_i` drive, comparator copy select, `efuse_sense_status_inject_i`, `efuse_sense_status_word_i`, `efuse_shim_resp_hold_i`, `jtag_filter_lc_sigint_inject_i`, test-enable inject of the RMA_CHIPLET and SEC_DIS latches |`tb_top.sv` |Stimulus of the tests of this area |Added hooks: the owning tests add the error injects to the inject exceptions and the drive of `jtag_id_i` to the HDL Top port table of `docs/SEP_TB_ARCH.adoc`. They block no bin and are never a coverpoint input
 |===
 
 [[sep-fcov-p2-unresolved-key-manager]]
