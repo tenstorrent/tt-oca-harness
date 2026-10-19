@@ -493,6 +493,9 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
     def _rom_count(self) -> int:
         return self.rd_known(cocotb.top.km_rom_req_count_o)
 
+    def _fetch_count(self) -> int:
+        return self.rd_known(cocotb.top.km_cpu_fetch_count_o)
+
     def _hmac_valid(self) -> int:
         vec = self.rd_known(cocotb.top.km_engine_key_valid_o, mask=1 << KM_VALID_HMAC_BIT)
         return (vec >> KM_VALID_HMAC_BIT) & 1
@@ -565,6 +568,21 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             if i == SETTLE_CLKS - 1:
                 rom0 = self._rom_count()
         return high, rom0, self._rom_count()
+
+    async def _fetch_hold_window(self) -> tuple[int, int, int, int]:
+        """(clocks with bit 30 high, CPU fetch count at the start, after the settle, at the end)."""
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        f_start = self._fetch_count()
+        high = 0
+        f_settle = None
+        for i in range(WINDOW_CLKS):
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            high += self._err()
+            if i == SETTLE_CLKS - 1:
+                f_settle = self._fetch_count()
+        return high, f_start, f_settle, self._fetch_count()
 
     async def _quiet_window(self) -> tuple[int, int, int]:
         """(clocks with bit 30 high, fetch count at the start, fetch count at the end)."""
@@ -1320,8 +1338,9 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             kp.disarm(),
             kp.jump(base),
         ]
+        f_pre = self._fetch_count()
         _, jw = await self._post_jump(ops)
-        high, rom0, rom1 = await self._hold_window()
+        high, f_start, f_settle, f_end = await self._fetch_hold_window()
         acc = self._rise(jw, IRQ_ROM_ACC_VIOL)
         self.logger.info(
             "LOG C4 region=%d snippet_marker=0x%08x rom_acc_viol_rise=%s err_rise=%s",
@@ -1335,11 +1354,22 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             f"{WINDOW_CLKS} clocks of the jump (at jump {jw.err_at_jump}); the ROM code ran "
             "with no trap"
         )
-        assert high == WINDOW_CLKS and rom0 == rom1, (
-            f"CHK-LOCKOUT-FETCH FAIL: C4: after the trap bit 30 high on {high} of {WINDOW_CLKS} "
-            f"clocks, km_rom_req_count_o {rom0} -> {rom1}"
+        assert f_start > f_pre, (
+            f"CHK-LOCKOUT-FETCH FAIL: C4: km_cpu_fetch_count_o did not move from before the "
+            f"jump ({f_pre}) to the window start ({f_start}); the halt check has no control"
         )
-        self.logger.info("CHK-LOCKOUT-FETCH PASS: trap=1 halted=1 region=%d", r)
+        assert high == WINDOW_CLKS and f_settle == f_end, (
+            f"CHK-LOCKOUT-FETCH FAIL: C4: after the trap bit 30 high on {high} of {WINDOW_CLKS} "
+            f"clocks, km_cpu_fetch_count_o {f_settle} -> {f_end}; the KM CPU kept fetching"
+        )
+        self.logger.info(
+            "CHK-LOCKOUT-FETCH PASS: trap=1 halted=1 region=%d fetch_pre=%d fetch_start=%d "
+            "fetch_end=%d",
+            r,
+            f_pre,
+            f_start,
+            f_end,
+        )
         assert jw.irq_at_jump & IRQ_ROM_ACC_VIOL == 0 and acc is not None, (
             f"CHK-LOCKOUT-ORDER FAIL: C4: ROM_ACCESS_VIOLATION at jump "
             f"{int(bool(jw.irq_at_jump & IRQ_ROM_ACC_VIOL))}, rise {acc}; no rise to order"

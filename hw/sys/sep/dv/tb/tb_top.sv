@@ -3295,7 +3295,7 @@ module sep_uvm_top
     // KM/OTBN memory activity counters from the wrapper-internal req nets.
     // KM SRAM gnt=1 and OTBN req=enable, so a count of the request strobe is
     // a count of accepted accesses (km uses .req/.we; otbn uses .enable/.write).
-    logic [31:0] km_rom_req_cnt_q, km_sram_req_cnt_q, km_sram_wr_cnt_q;
+    logic [31:0] km_rom_req_cnt_q, km_sram_req_cnt_q, km_sram_wr_cnt_q, km_cpu_fetch_cnt_q;
     logic [31:0] otbn_imem_req_cnt_q, otbn_imem_wr_cnt_q;
     logic [31:0] otbn_dmem_req_cnt_q, otbn_dmem_wr_cnt_q;
     always_ff @(posedge clk_i or negedge rst_n_int) begin
@@ -3303,12 +3303,19 @@ module sep_uvm_top
             km_rom_req_cnt_q    <= '0;
             km_sram_req_cnt_q   <= '0;
             km_sram_wr_cnt_q    <= '0;
+            km_cpu_fetch_cnt_q  <= '0;
             otbn_imem_req_cnt_q <= '0;
             otbn_imem_wr_cnt_q  <= '0;
             otbn_dmem_req_cnt_q <= '0;
             otbn_dmem_wr_cnt_q  <= '0;
         end else begin
             if (u_dut.km_rom_mem_req.req)  km_rom_req_cnt_q  <= km_rom_req_cnt_q + 32'd1;
+            // A KM CPU instruction fetch that completes, whatever its target. A ROM
+            // fetch that the lockout blocks reaches no ROM request but counts here.
+            if (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.mem_valid &&
+                `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.mem_ready &&
+                `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.mem_instr)
+                km_cpu_fetch_cnt_q <= km_cpu_fetch_cnt_q + 32'd1;
             if (u_dut.km_sram_mem_req.req) begin
                 km_sram_req_cnt_q <= km_sram_req_cnt_q + 32'd1;
                 if (u_dut.km_sram_mem_req.we) km_sram_wr_cnt_q <= km_sram_wr_cnt_q + 32'd1;
@@ -3328,6 +3335,7 @@ module sep_uvm_top
     assign km_rom_req_count_o      = km_rom_req_cnt_q;
     assign km_sram_req_count_o     = km_sram_req_cnt_q;
     assign km_sram_write_count_o   = km_sram_wr_cnt_q;
+    assign km_cpu_fetch_count_o    = km_cpu_fetch_cnt_q;
     assign otbn_imem_req_count_o   = otbn_imem_req_cnt_q;
     assign otbn_imem_write_count_o = otbn_imem_wr_cnt_q;
     assign otbn_dmem_req_count_o   = otbn_dmem_req_cnt_q;

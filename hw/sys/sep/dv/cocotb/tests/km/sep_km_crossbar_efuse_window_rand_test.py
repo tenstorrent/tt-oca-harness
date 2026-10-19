@@ -128,7 +128,7 @@ KM_SRAM_TOP = _ROW["main:sram"]["end"] - 3
 KM_EFUSE_MAP = _ROW["main:otp_efuse_map"]["base"]
 KM_EFUSE_CTRL = _ROW["main:otp_efuse_ctrl"]["base"]
 KM_EFUSE_MMR = _ROW["main:otp_efuse_mmr"]["base"]
-KM_EFUSE_WINDOW = 0x1000  # 4 KiB OTP/eFuse window (architecture.adoc, OTP Inputs and Readout)
+KM_EFUSE_WINDOW = 0x1000  # 4 KiB OTP/eFuse window (index.adoc, Memory Map)
 KM_IRQ_ENABLE = _ROW["main:kmcsr"]["base"] + _KM_CSR.IRQ_ENABLE_REG_ADDR
 KM_MBX_STATUS = _ROW["main:mailbox_km"]["base"] + _KM_MBX.KM_STATUS_REG_ADDR
 KM_DRBG_STATUS = _ROW["main:drbg_sampler"]["base"] + _KM_DRBG.STATUS_REG_ADDR
@@ -1275,7 +1275,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             problems.append(f"secure_tm_o={tm} after the strap-held cold reset")
         trace, aw = tm_res["trace"], tm_res["aw"]
         # Every KM write of this boot leaves the KM on efuse_req_o with bits
-        # [11:0] of its KM offset (architecture.adoc, OTP Inputs and Readout;
+        # [11:0] of its KM offset (architecture.adoc, Architecture; index.adoc, Memory Map;
         # memory_map.adoc: the three maps are Forwarded), in order.
         km_low = [a & 0xFFF for a, _ in trace["km"]]
         aw_low = [a & 0xFFF for a in aw]

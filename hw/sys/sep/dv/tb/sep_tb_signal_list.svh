@@ -480,6 +480,7 @@
 `SEP_TB_OUT(logic [31:0], km_rom_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_write_count_o)
+`SEP_TB_OUT(logic [31:0], km_cpu_fetch_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_word0_o)
 // KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
 // for km_rom_otp_id.S, which writes its results to those words.
