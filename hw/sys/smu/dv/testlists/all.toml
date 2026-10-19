@@ -1411,6 +1411,233 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
+[[tests]]
+# Thirty-three JTAG2AXI accesses program and reprogram entry 0; the external-master probes are
+# cheap, so the span is set by the JTAG period.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
+name = "smu_sys_in_filter_src_id_rule_test"
+module = "smu_sys_in_filter_src_id_rule_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["depth", "fabric", "no_sep"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
+]
+
+[[tests]]
+# Twenty JTAG2AXI accesses move GLOBAL_BASE and program entry 0; the
+# external-master reads are cheap, so the span is set by the JTAG period.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
+name = "smu_base_config_corners_test"
+module = "smu_base_config_corners_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["depth", "fabric", "no_sep"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
+]
+
+[[tests]]
+# Eight JTAG2AXI writes and five setup accesses run beside the stream; the external-master
+# traffic is cheap, so the span is set by the JTAG period.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
+name = "smu_axi_in_random_id_stress_test"
+module = "smu_axi_in_random_id_stress_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["depth", "fabric", "no_sep"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
+]
+
+[[tests]]
+# Thirty-three JTAG2AXI accesses program six alias regions and probe them; the span is set by
+# the JTAG period.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
+name = "smu_alias_priority_overflow_test"
+module = "smu_alias_priority_overflow_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["depth", "fabric", "no_sep"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
+]
+
+[[tests]]
+# Thirty JTAG2AXI accesses program the iDMA and two alias regions around three copies; the span
+# is set by the JTAG period.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
+name = "smu_alias_dma_manager_test"
+module = "smu_alias_dma_manager_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["depth", "fabric", "no_sep"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
+]
+
+[[tests]]
+# At most seventy-eight JTAG2AXI accesses program the outbound entries, probe them and launch two
+# iDMA copies; the span is set by the JTAG period.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
+name = "smu_out_filter_rule_matrix_test"
+module = "smu_out_filter_rule_matrix_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["depth", "fabric", "no_sep"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
+]
+
+[[tests]]
+# Every access is driven through the SEP debug module's system bus over JTAG DMI, and at most
+# sixty-seven of them program and probe the outbound entries, so the span is set by the JTAG period.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
+name = "smu_sep_out_filter_rule_matrix_test"
+module = "smu_sep_out_filter_rule_matrix_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 4000
+tags = ["depth", "dtp", "sep", "dmi", "sba", "fabric", "outbound"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: SEP debug open, so the debug module's system bus is reachable.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  "+pll_sys_period_ns=10",
+]
+
+[[tests]]
+# Every access is driven through the SEP debug module's system bus over JTAG DMI, and at most
+# seventy-four of them program the AP and STEE output remap regions and probe them, so the span is
+# set by the JTAG period.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
+name = "smu_sep_output_remap_region_matrix_test"
+module = "smu_sep_output_remap_region_matrix_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 4000
+tags = ["depth", "dtp", "sep", "dmi", "sba", "fabric", "outbound"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: SEP debug open, so the debug module's system bus is reachable.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  "+pll_sys_period_ns=10",
+]
+
 # The fabric leaves as one group; every one is also in `hosted` and `all`.
 [[groups]]
 name = "fabric"
@@ -1434,6 +1661,14 @@ tests = [
   "smu_axi_out_outstanding_test",
   "smu_axi_in_sep_aperture_test",
   "smu_smc_inbound_window_sweep_test",
+  "smu_sys_in_filter_src_id_rule_test",
+  "smu_base_config_corners_test",
+  "smu_axi_in_random_id_stress_test",
+  "smu_alias_priority_overflow_test",
+  "smu_alias_dma_manager_test",
+  "smu_out_filter_rule_matrix_test",
+  "smu_sep_out_filter_rule_matrix_test",
+  "smu_sep_output_remap_region_matrix_test",
 ]
 
 # SMC leaves, enrolled together so a failure names the batch.
@@ -2963,11 +3198,6 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-  # The JTAG sep_reset_n override this leaf drives resets the crypto engines
-  # without isolation, so an ungranted EDN request can drop with no endpoint
-  # cancel. tb_wrapper_top turns the crypto EDN request-hold checks off for
-  # it; the pool instance keeps its checks.
-  "+sep_edn_jtag_reset_waive",
   # Releasing km_jtag_rst_n takes the Key Manager out of its software reset.
   # An empty ROM returns X and the look-ahead read takes u_km_rom.req_i to X.
   # The image is the SEP Key Manager smoke ROM, which no stage of this leaf
@@ -4062,8 +4292,16 @@ tests = [
   "smu_xtrig_ctm_self_loop_test",
   "smu_sep_rma_token_match_test",
   "smu_smc_warm_reset_register_retention_test",
+  "smu_sys_in_filter_src_id_rule_test",
+  "smu_base_config_corners_test",
+  "smu_axi_in_random_id_stress_test",
+  "smu_alias_priority_overflow_test",
+  "smu_alias_dma_manager_test",
+  "smu_out_filter_rule_matrix_test",
+  "smu_sep_out_filter_rule_matrix_test",
+  "smu_sep_output_remap_region_matrix_test",
 ]
-expected_count = 151
+expected_count = 159
 
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
@@ -4260,8 +4498,16 @@ tests = [
   "smu_xtrig_ctm_self_loop_test",
   "smu_sep_rma_token_match_test",
   "smu_smc_warm_reset_register_retention_test",
+  "smu_sys_in_filter_src_id_rule_test",
+  "smu_base_config_corners_test",
+  "smu_axi_in_random_id_stress_test",
+  "smu_alias_priority_overflow_test",
+  "smu_alias_dma_manager_test",
+  "smu_out_filter_rule_matrix_test",
+  "smu_sep_out_filter_rule_matrix_test",
+  "smu_sep_output_remap_region_matrix_test",
 ]
-expected_count = 187
+expected_count = 195
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.

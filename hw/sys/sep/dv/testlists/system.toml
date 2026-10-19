@@ -69,7 +69,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_wdt_aon_timer_internals_test"
 module = "system.sep_wdt_aon_timer_internals_test"
 seed = 1
-reseed = 3
+# No reseed: the seed selects only thresholds and the prescaler under one contract.
 timeout_sec = 1800
 tags = ["wdt", "aon_timer", "reset", "regwen", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -107,7 +107,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_mailbox_datapath_walk_test"
 module = "system.sep_mailbox_datapath_walk_test"
 seed = 1
-reseed = 3
+# No reseed: every run walks every mailbox, bit and direction; the seed selects only strobe runs.
 timeout_sec = 1800
 tags = ["mailbox", "axil_mailbox", "fifo", "fabric", "inbound", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -133,7 +133,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 name = "sep_entropy_pool_aperture_test"
 module = "system.sep_entropy_pool_aperture_test"
 seed = 1
-reseed = 3
+# No reseed: the seed selects only the extra pop count.
 timeout_sec = 3600
 tags = ["entropy", "pool", "interrupt", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -204,7 +204,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_irq_ip_to_aggregator_test"
 module = { cocotb = "system.sep_irq_ip_to_aggregator_test", uvm = "sep_irq_ip_to_aggregator_test" }
 seed = 1
-reseed = 4
+# No reseed: every run walks every source and enable cell; the seed selects only two mixed masks.
 timeout_sec = 1800
 tags = ["interrupt", "aggregator", "csrng", "edn", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -311,7 +311,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_reg_bit_bash_rand_test"
 module = "system.sep_reg_bit_bash_rand_test"
 seed = 1
-reseed = 3
+# No reseed: every run bashes every register; the seed selects only order and values.
 timeout_sec = 3600
 tags = ["csr", "register", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -707,7 +707,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_cpu_ctrl_timeout_inert_rand_test"
 module = "system.sep_cpu_ctrl_timeout_inert_rand_test"
 seed = 1
-reseed = 3
+# No reseed: every run stalls every block; the seed selects only the order.
 timeout_sec = 3600
 tags = ["timeout", "irq", "fabric", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -777,7 +777,7 @@ args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive"]
 name = "sep_timer_clock_contract_test_dbg"
 module = "system.sep_timer_clock_contract_test"
 seed = 1
-reseed = 4
+# No reseed: the dbg_rstb_i cell is directed; the main entry carries the drawn values.
 timeout_sec = 3600
 tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem"]
 run_modes = ["no_cpu"]

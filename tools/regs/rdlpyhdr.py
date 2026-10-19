@@ -4,11 +4,15 @@
 
 """Generate a flat Python register header from a SystemRDL register space.
 
-Emits address/offset constants, reset values, field-access metadata, and optional
+Emits address/offset constants, the register type of every instance, each type's
+width, reset values and per-field access metadata, and optional
 `ctypes.Structure`/`Union` bitfield classes with `rsvd_N` gaps.
 
-Registers wider than 64 bits, or blocks with `--bitfields none`, get constants
-only (no ctypes classes).
+Each register type gets a `<TYPE>_REG_WIDTH` constant and a `<TYPE>_REG_FIELDS`
+tuple with one record per field, and every register instance names its type in
+`<INST>_REG_TYPE`, so a walker joins an address to its field contract without
+guessing names. Registers wider than 64 bits get no reset value and no ctypes
+classes; `--bitfields none` drops only the ctypes classes.
 """
 
 from __future__ import annotations
@@ -25,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common.rdlview import parse_rdl_params  # noqa: E402
 from common.regcollect import FieldCollector, build_struct_fields, compute_default  # noqa: E402
 
-SCRIPT_VERSION = "r2026-08-30"
+SCRIPT_VERSION = "r2026-10-16"
 
 CTYPE_BY_WIDTH = {8: "c_uint8", 16: "c_uint16", 32: "c_uint32", 64: "c_uint64"}
 
@@ -93,8 +97,8 @@ class PyListener(FieldCollector):
             )
             self.addr_lines.append(self.const(self.def_name(node) + "_MEM_SIZE", node.size))
 
-    def enter_Reg(self, node):
-        super().enter_Reg(node)
+    def exit_Reg(self, node):
+        super().exit_Reg(node)
         if not self.under_target:
             return
         if self.shorten_names:
@@ -110,42 +114,60 @@ class PyListener(FieldCollector):
         if not (node.is_array and isinstance(node.parent, MemNode)):
             self.addr_lines.append(self.const(fullname + "_REG_OFFSET", node.address_offset))
             self.addr_lines.append(self.const(fullname + "_REG_ADDR", node.absolute_address))
+            self.addr_lines.append(f"{fullname}_REG_TYPE = {self.curr_reg_inst.type_name!r}")
 
 
-def render_registers(
-    regs: dict, bitfields_enabled: bool, field_access_enabled: bool
-) -> tuple[str, set[str]]:
-    """Emit defaults and optional ctypes classes; return text and used ctypes names."""
+def render_tuple(name: str, rows) -> list[str]:
+    lines = [f"{name} = ("]
+    lines.extend(f"    {row!r}," for row in rows)
+    lines.extend((")", ""))
+    return lines
+
+
+def render_registers(regs: dict, bitfields_enabled: bool) -> tuple[str, set[str]]:
+    """Emit defaults, field records and optional ctypes classes; return text and used ctypes."""
     lines: list[str] = []
     used_ctypes: set[str] = set()
 
     for reg_name, reg in regs.items():
-        if reg.regwidth > 64:
-            continue
-
-        default = compute_default(reg.fields)
-        digits = -(reg.regwidth // -4)
-        default_line = f"{reg_name}_REG_DEFAULT = 0x{default:0{digits}X}"
-        lines.append(default_line)
-        if field_access_enabled:
-            lines.append(f"{reg_name}_REG_FIELD_ACCESS = (")
-            lines.extend(
-                "    "
-                + repr(
+        wide = reg.regwidth > 64
+        if not wide:
+            default = compute_default(reg.fields)
+            digits = -(reg.regwidth // -4)
+            default_line = f"{reg_name}_REG_DEFAULT = 0x{default:0{digits}X}"
+            lines.append(default_line)
+        lines.extend(
+            render_tuple(
+                f"{reg_name}_REG_FIELD_ACCESS",
+                (
+                    (field.name, field.sw, field.onwrite, field.onread, field.singlepulse)
+                    for field in reg.fields
+                ),
+            )
+        )
+        lines.append(f"{reg_name}_REG_WIDTH = {reg.regwidth}")
+        lines.extend(
+            render_tuple(
+                f"{reg_name}_REG_FIELDS",
+                (
                     (
                         field.name,
+                        field.low,
+                        field.high,
                         field.sw,
+                        field.hw,
                         field.onwrite,
                         field.onread,
                         field.singlepulse,
+                        field.volatile,
+                        field.reset,
                     )
-                )
-                + ","
-                for field in reg.fields
+                    for field in reg.fields
+                ),
             )
-            lines.extend((")", ""))
+        )
 
-        if not bitfields_enabled:
+        if wide or not bitfields_enabled:
             continue
 
         struct_fields = build_struct_fields(reg.fields)
@@ -220,7 +242,7 @@ def main():
     parser.add_argument(
         "--field-access",
         action="store_true",
-        help="emit per-field software access and side-effect metadata",
+        help="accepted for compatibility; field metadata is always emitted",
     )
     parser.add_argument(
         "-P",
@@ -243,11 +265,7 @@ def main():
     listener = PyListener(root, args)
     RDLWalker(unroll=True).walk(root, listener)
 
-    reg_text, used_ctypes = render_registers(
-        listener.regs,
-        args.bitfields != "none",
-        args.field_access,
-    )
+    reg_text, used_ctypes = render_registers(listener.regs, args.bitfields != "none")
 
     lines = [
         "# SPDX-License-Identifier: Apache-2.0",
@@ -256,10 +274,11 @@ def main():
         "# Auto-generated register header - do not edit by hand.",
         f"# Generated by {os.path.basename(sys.argv[0])} ({SCRIPT_VERSION}) "
         f"from {os.path.basename(args.input_rdl_file)}.",
+        "# *_REG_FIELD_ACCESS entries are: field, sw, onwrite, onread, singlepulse.",
+        "# *_REG_FIELDS entries are: field, lsb, msb, sw, hw, onwrite, onread, singlepulse,",
+        "# volatile, reset (None when the field has no constant reset value).",
+        "",
     ]
-    if args.field_access:
-        lines.append("# *_REG_FIELD_ACCESS entries are: field, sw, onwrite, onread, singlepulse.")
-    lines.append("")
     if used_ctypes:
         lines.append(f"from ctypes import {', '.join(sorted(used_ctypes))}")
         lines.append("")
