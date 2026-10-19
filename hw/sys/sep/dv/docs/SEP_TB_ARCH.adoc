@@ -301,7 +301,8 @@ Observation probe groups:
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
   `u_sep_fcov` port list (VCS only): the KM CPU AXI master and its error
-  pulses, the KM CPU memory bus, `cpu_trap`, `irq_active` and the CPU
+  pulses, the KM CPU memory bus, `cpu_trap`, `irq_active`, the PicoRV32
+  `dbg_insn_opcode` (the opcode of the instruction in execution) and the CPU
   interrupt lines, the error flags, the SRAM write-lock and violation bits,
   the scrambler enable and lock, `IRQ_ENTRY_ADDR` and `IRQ_ENTRY_LOCK`, the KPV
   scrambler registers, the depth, flags, handshakes, separators, error pulses

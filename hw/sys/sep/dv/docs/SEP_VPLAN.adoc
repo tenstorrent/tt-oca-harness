@@ -4531,7 +4531,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Key Manager FCOV sampler taps (`KM-COV`)
 |Sampler taps
-|Read-only nets `km_sram_lock`, `km_irq_entry`, `km_kpv_scrambler`, `km_mbx_fifo`, `km_mbx_regs`, `km_drbg_sampler`, `km_cpu_trap`, `km_cpu_irq_active`, `km_cpu_irq_lines`, `km_cpu_axi`, `km_axi_err`, `km_err_flags`, `km_wipe`, `km_otp_input`, `km_rom_rsp`, the `addr` field of `km_rom_req`, the `rdata` and `rparity` fields of `km_sram_mem_if`, and `efuse_req_err` (<<sep-vplan-km-proposed>>).
+|Read-only nets `km_sram_lock`, `km_irq_entry`, `km_kpv_scrambler`, `km_mbx_fifo`, `km_mbx_regs`, `km_drbg_sampler`, `km_cpu_trap`, `km_cpu_irq_active`, `km_cpu_insn_opcode`, `km_cpu_irq_lines`, `km_cpu_axi`, `km_axi_err`, `km_err_flags`, `km_wipe`, `km_otp_input`, `km_rom_rsp`, the `addr` field of `km_rom_req`, the `rdata` and `rparity` fields of `km_sram_mem_if`, and `efuse_req_err` (<<sep-vplan-km-proposed>>).
 |The owners of the groups of the Key Manager section of `SEP_FCOV.adoc`
 |===
 

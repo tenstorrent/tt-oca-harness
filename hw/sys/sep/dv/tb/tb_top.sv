@@ -5579,6 +5579,7 @@ module sep_uvm_top
                                  `FC_KM.cpu_rom_parity_err}),
         .km_trap_i             (`FC_KM.cpu_trap),
         .km_irq_active_i       (`FC_KM.u_cpu.u_picorv32.irq_active),
+        .km_insn_opcode_i      (`FC_KM.u_cpu.u_picorv32.dbg_insn_opcode),
         .km_cpu_irq_i          (`FC_KM.cpu_irq),
         .km_cpu_mbox_irq_i     (`FC_KM.cpu_mbox_irq),
         .km_cpu_sk_irq_i       (`FC_KM.abr_mlkem_sharedkey_irq_i),

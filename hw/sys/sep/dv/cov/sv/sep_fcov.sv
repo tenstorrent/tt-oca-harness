@@ -633,6 +633,7 @@ module sep_fcov (
   input wire [4:0]                          km_err_flags_i,
   input wire                                km_trap_i,        // KM cpu_trap
   input wire                                km_irq_active_i,  // PicoRV32 irq_active
+  input wire [31:0]                         km_insn_opcode_i, // PicoRV32 dbg_insn_opcode
   input wire                                km_cpu_irq_i,     // KM cpu_irq (KMCSR aggregate)
   input wire                                km_cpu_mbox_irq_i, // KM cpu_mbox_irq
   input wire                                km_cpu_sk_irq_i,  // KM abr_mlkem_sharedkey_irq_i
@@ -26380,7 +26381,6 @@ module sep_fcov (
   wire [4:0] km_mb_region = 5'((km_mem_addr_i - KmSramBase) >> 10);
   // Committed fetch: an instruction fetch that completes.
   wire km_fetch_done = km_mb_v && km_mb_rdy && km_mb_instr;
-  logic [31:0] km_last_fetch = '0;
   always @(posedge clk_i) begin
     if (!km_rst_warm_n || !km_rst_cold_n) begin
       km_mb_busy <= 1'b0;
@@ -26388,7 +26388,6 @@ module sep_fcov (
     end else begin
       if (km_mb_start && !km_mb_rdy) km_mb_busy <= 1'b1;
       else if (km_mb_v && km_mb_rdy) km_mb_busy <= 1'b0;
-      if (km_fetch_done) km_last_fetch <= km_mem_rdata_i;
       if (km_fetch_done && (km_sram_exec_mode_i === 1'b1) && km_mb_sram &&
           (km_sram_lock_i[km_mb_region] === 1'b1))
         km_engaged <= 1'b1;
@@ -27788,14 +27787,17 @@ module sep_fcov (
     end
 
     // ---- eFuse remap at the KM eFuse master (cp_if_efuse_remap) ----
-    if ((km_efuse_req_i.ar_valid === 1'b1) && (km_efuse_resp_i.ar_ready === 1'b1) && kx_rbusy &&
-        km_own_xbar) begin
-      logic [31:0] ea;
+    // The eFuse AR handshake can complete in the KM AR start cycle (no
+    // latency in the KM crossbar), before kx_rbusy and kx_raddr update.
+    if ((km_efuse_req_i.ar_valid === 1'b1) && (km_efuse_resp_i.ar_ready === 1'b1) &&
+        (kx_rbusy || kx_rstart) && km_own_xbar) begin
+      logic [31:0] ea, ka;
       logic [1:0] m;
       ea = 32'(km_efuse_req_i.ar.addr);
-      m = km_in(kx_raddr, KmEfMapBase, 32'h400) ? 2'd0 :
-          km_in(kx_raddr, KmEfCtrlBase, 32'h100) ? 2'd1 : 2'd2;
-      if (ea[11:0] == kx_raddr[11:0]) u_sep_km_integrity_fault_cg.sample(5'd3, 16'd0);
+      ka = kx_rstart ? 32'(km_axi_req_i.ar.addr) : kx_raddr;
+      m = km_in(ka, KmEfMapBase, 32'h400) ? 2'd0 :
+          km_in(ka, KmEfCtrlBase, 32'h100) ? 2'd1 : 2'd2;
+      if (ea[11:0] == ka[11:0]) u_sep_km_integrity_fault_cg.sample(5'd3, 16'd0);
       if ((km_remap_seen != 3'b000) && (ea[31:12] != km_remap_hi)) km_remap_bad <= 1'b1;
       km_remap_hi <= ea[31:12];
       km_remap_seen[m] <= 1'b1;
@@ -28351,7 +28353,9 @@ module sep_fcov (
         u_sep_km_fault_report_cg.sample(5'd0, (!km_rst_cold_n || !km_cold_q) ? 16'd4 : 16'd3);
       end
       if (trap_rise) begin
-        f = km_last_fetch;
+        // The opcode of the instruction that traps. The last fetch is the
+        // prefetched next word, not the trapping one.
+        f = km_insn_opcode_i;
         if (km_rav_seen) u_sep_km_exec_protection_cg.sample(5'd3, 16'd1);
         if ((f == 32'h0010_0073) || (f[15:0] == 16'h9002) || (f[31:16] == 16'h9002))
           u_sep_km_fault_report_cg.sample(5'd1, (km_irq_active_i === 1'b1) ? 16'd3 : 16'd0);
@@ -28543,7 +28547,9 @@ module sep_fcov (
     km_en5_q <= en;
     km_mask5_q <= src & en;
     km_mbox_irq_q <= (km_cpu_mbox_irq_i === 1'b1);
-    if (kw_ev && (kw_addr == KmMbxIrqStatus)) km_mbx_w1c_age <= 4'd1;
+    // The W1C commits at the W handshake; the aggregate falls on the next clock.
+    if (kx_w_hs && ((kx_wstart ? 32'(km_axi_req_i.aw.addr) : kx_waddr) == KmMbxIrqStatus))
+      km_mbx_w1c_age <= 4'd1;
     else if ((km_mbx_w1c_age != 4'd0) && (km_mbx_w1c_age != 4'd4))
       km_mbx_w1c_age <= km_mbx_w1c_age + 4'd1;
     else km_mbx_w1c_age <= '0;
@@ -28709,6 +28715,9 @@ module sep_fcov (
         km_to_slv <= 1'b0;
         if ((km_smp_sticky_i[0] === 1'b1) && !km_sticky_q[0])
           u_sep_km_drbg_fault_cg.sample(5'd2, 16'd1);
+        // IRQ_STATUS.DRBG_ERR sets on the same edge as the TIMEOUT entry.
+        if (!km_irqs_q[6] && (km_irq_status_i[6] === 1'b1))
+          u_sep_km_drbg_fault_cg.sample(5'd2, 16'd3);
       end else if (km_to_cnt != 4'd0) begin
         if (!km_sticky_q[0] && (km_smp_sticky_i[0] === 1'b1))
           u_sep_km_drbg_fault_cg.sample(5'd2, 16'd1);
