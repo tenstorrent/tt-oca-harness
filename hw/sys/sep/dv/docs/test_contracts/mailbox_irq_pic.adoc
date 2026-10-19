@@ -600,7 +600,7 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu`, real fuse sense (no `+skip_fuse_sense`), `LC_PROD`
+*Run mode*: `no_cpu`, real fuse sense (no `+skip_fuse_sense`), `LC_PROD`, 1 seed per regression, because the graded deny targets are fixed and the seed selects only the control spare and data
 
 *Source Module*: `sep_locked_field_access_irq_path_test` (`+secure_tm_lock`)
 

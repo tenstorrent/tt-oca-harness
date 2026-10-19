@@ -201,7 +201,7 @@ filter only ever sees `tx_len==0`.
 
 *Area*: Fabric and remap
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 1 seed per regression, because the seed selects only which region or entry index is probed under one contract
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 
 *Source Module*: `sep_fabric_remap_filter_csr_bank_test`
 

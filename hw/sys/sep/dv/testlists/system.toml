@@ -43,7 +43,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_fabric_remap_filter_csr_bank_test"
 module = "system.sep_fabric_remap_filter_csr_bank_test"
 seed = 1
-# No reseed: the seed selects only which region or entry index is probed under one contract.
+reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "remap", "filter", "csr", "system", "subsystem"]
 run_modes = ["no_cpu"]

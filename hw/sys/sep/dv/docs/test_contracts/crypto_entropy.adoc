@@ -1316,7 +1316,7 @@ a waiting write, and two masters writing the same register.
 
 *Area*: Crypto and entropy
 
-*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`, 1 seed per regression, because the seed selects only the extra pop count
 
 *Source Module*: `sep_entropy_pool_aperture_test`
 
@@ -2780,7 +2780,7 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *BFM / Model*: ocah_axi_vip with the CPU-LSU master readback of the KMAC `INTR_STATE`, `STATUS`, `ERR_CODE` and `STATE` registers (approved); `sep_kmac_golden` for the SHA3-256 digest (FIPS 202). No observation tap. No inject beyond the unsupported configuration writes of the scenario.
 
-*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the order of the 8 supported cells, the order of the 6 unsupported cells with `en_unsupported_modestrength` = 0, the order of the 6 unsupported cells with it set, one message of 0 to 100 bytes for the recovery hash of each blocked cell, and last the message of the SHA3-128 cell recovery. `reseed = 4` samples different orders and messages. The 21 cells and the SHA3-256 control are the same on every seed.
+*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the order of the 8 supported cells, the order of the 6 unsupported cells with `en_unsupported_modestrength` = 0, the order of the 6 unsupported cells with it set, one message of 0 to 100 bytes for the recovery hash of each blocked cell, and last the message of the SHA3-128 cell recovery. `reseed = 3` samples different orders and messages. The 21 cells and the SHA3-256 control are the same on every seed.
 
 *Objective*: SHAKE and cSHAKE accept only the strengths 128 and 256, and another strength gives an error when hashing starts. SHA3 with strength 128 is not one of the listed combinations and reports `UnexpectedModeStrength` (`vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/theory_of_operation.md:784-785`). With `en_unsupported_modestrength` = 0 KMAC does not propagate `CMD.start` to the SHA3 engine. With the bit set the engine moves forward. `CMD.err_processed` returns the state machine to its reset state. `ERR_CODE` resets to 0; bits 31:24 hold the error code (`kmac.adoc:344`), and `UnexpectedModeStrength` is 0x06 (`theory_of_operation.md:726`). Bits 23:0 have no stated value. Spec: `vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc` (`CFG_SHADOWED`, `CMD`, `INTR_STATE`, `STATUS`, `ERR_CODE`); `vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson` for the mode, strength and command codes; `vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/theory_of_operation.md` (`UnexpectedModeStrength`).
 
