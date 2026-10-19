@@ -3,7 +3,7 @@
 
 # Ordered SV compile manifest for the shared AXI VIP. Consumed by DUT sim configs via
 # [frameworks.uvm.build].source_lists — never hand-copy these paths into a DUT config, and
-# never add them to Bender or Verilator filelists. Order is load-bearing: interface and
+# never add them to Bender or cocotb filelists. Order is load-bearing: interface and
 # bind collateral first, the UVM package last (importers compile after it). The manifest is
 # the complete VIP layer — the struct bridge ships even when a DUT wires no struct port.
 description = "OCAH AXI VIP SV-UVM compile layer (interface and struct bridge, sva/cov, UVM package)"

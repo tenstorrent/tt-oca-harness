@@ -89,6 +89,11 @@ extra_ignore_patterns = [
 # reset release, which the first pattern below still catches on the
 # companion timestamped line. Narrowing its ignore in time would fail every
 # run rather than guard it.
+#
+# The wrapper bench's crypto EDN request-hold window (tb_wrapper_top.sv)
+# prints `crypto EDN request-hold window still open at end` from a `final`
+# block when the run ends inside the window, so a window that never closes
+# fails the run.
 extra_hard_fail_patterns = [
   'assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_trng\.(?!.*\.(AssertConnected_A|ValidDigestModeFlag_A):).*(: at time [1-9]|failed at [1-9])',
@@ -96,6 +101,7 @@ extra_hard_fail_patterns = [
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_io\.u_sep_ot_spi_wrap\.u_spi_host\..*: at time \d{10,}',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_key_manager_s3c_scan\..*(: at time|failed at) \d{10,}',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_dma_wrap\.(u_secure_dma|gen_alert_receivers)\b.*(: at time|failed at) \d{10,}',
+  'crypto EDN request-hold window still open at end',
 ]
 
 [native.stages.clean]
@@ -670,11 +676,11 @@ flags = [
 # tb/tb_wrapper_top.sv from the ported cocotb shape to the self-contained SV-UVM shape, which
 # `include`s uvm/tests/smu_tests.sv.
 [frameworks.uvm]
-description = "SMU SV-UVM flow on the smu_wrapper (VCS)"
-# The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on the
-# commercial simulators only (Verilator has no SV-UVM support), so the overlay restates them.
+description = "SMU SV-UVM flow on the smu_wrapper (VCS, Verilator)"
+# The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on VCS
+# and Verilator, so the overlay restates them.
 default_tool = "vcs"
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 
 [frameworks.uvm.build]
 # The shared framework library and the VIP SV-UVM layers come from their owned ordered

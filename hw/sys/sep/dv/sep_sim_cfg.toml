@@ -658,9 +658,9 @@ flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
 # a module declared twice). The tool allowlist is restated because the DUT's
 # top-level `tools` list would otherwise override the profile's.
 [frameworks.uvm]
-description = "SEP SV-UVM smoke flow (VCS)"
+description = "SEP SV-UVM smoke flow (VCS, Verilator)"
 default_tool = "vcs"
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 
 [frameworks.uvm.build]
 source_lists = [

@@ -54,7 +54,9 @@ flow:
   stages for both frameworks, and the UVM build and sim adapters inject the
   simulator's coverage instrumentation, so `--cov` on the UVM view collects,
   merges and reports coverage like the cocotb view; an adopter does not wire
-  coverage itself.
+  coverage itself. The Verilator build keeps the UVM library out of the
+  database, and the DUT's Verilator scope file, which both views share, drops
+  the bench's `dv/uvm/` tree with the rest of the bench.
 
 [[shared-uvm-conventions]]
 === Normative Conventions
@@ -104,7 +106,7 @@ flow:
   load-bearing (evidence base first, interface and module collateral, the
   UVM package last), manifests dedup-merge when several are consumed
   together, and library or VIP paths are never hand-copied into DUT configs,
-  Bender targets, or Verilator filelists.
+  Bender targets, or cocotb filelists.
 . *The sequence-API rule.* Tests and DUT sequences drive a VIP only through
   its `*_sequence` API classes. A missing operation is added to the VIP API
   (where every DUT inherits it), never inlined as raw driver or virtual
@@ -133,6 +135,21 @@ flow:
   scenario virtual sequences run on the `<dut>_virtual_sequencer` it
   declares. Test classes compile inside the top's module scope via
   `include "<dut>_tests.sv"`.
+. *One code base for VCS and Verilator.* Every view runs the same sources on
+  both tools, so the code keeps out of the constructs Verilator 5.052 rejects
+  or schedules differently:
+  * a task named after a `uvm_object` method (`record`, `print`, `copy`, and
+    the rest), which Verilator takes as an override, so every call of that
+    method in the UVM library may suspend;
+  * a fixed-size array passed to a queue argument, which Verilator cannot
+    convert; the argument takes a dynamic array instead;
+  * a function call inside a queue index, which stops Verilator with an
+    internal error; the index goes in a variable first;
+  * a comment line whose first word is `Verilator`, which Verilator reads as
+    a pragma;
+  * a nonblocking write a fork branch makes in the time step it finishes,
+    when `disable fork` runs in that time step: Verilator discards it, so the
+    parent repeats the write after `disable fork`.
 
 [[shared-uvm-bringup]]
 === Bring-Up Walkthrough
@@ -340,6 +357,9 @@ Deployment-side guidance lives in <<shared-vip-backend-deployment>>.
 * *The UVM shape does not select* — the `UVM` define is profile-owned;
   inspect the resolved view with `--list`/`--validate-configs` instead of
   adding a define to the DUT config.
+* *`Timing controls inside DPI-exported tasks` in `uvm_pkg` on Verilator* — a
+  class declares a task with a `uvm_object` method name, so every call to that
+  method in the UVM library may suspend; rename the task.
 * *Run fails although the banner says PASSED* — the `uvm-log` policy also
   fails a run on any `UVM_ERROR` line and on missing required patterns; a
   `CHK-* FAIL` reaches the verdict through `uvm_error`.

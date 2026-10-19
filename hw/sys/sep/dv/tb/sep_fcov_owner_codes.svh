@@ -44,6 +44,7 @@ localparam int unsigned FcovOwnSepDrbgCmdSequenceRandTest = 150;
 localparam int unsigned FcovOwnSepTrngExtStreamHandshakeRandTest = 151;
 localparam int unsigned FcovOwnSepTrngExtSinkResetRandTest = 152;
 localparam int unsigned FcovOwnSepDrbgSinkMixRandTest = 153;
+localparam int unsigned FcovOwnSepAesCfbOfbGcmRandTest = 154;
 
 // Fabric and remap.
 localparam int unsigned FcovOwnSepFabricInboundRebaseTest = 225;
@@ -108,3 +109,19 @@ localparam int unsigned FcovOwnSepCpuDemuxUnmappedFetchTest = 527;
 localparam int unsigned FcovOwnSepDebugMasterTargetMatrixTest = 528;
 localparam int unsigned FcovOwnSepCpuIsaPmpCsrTest = 529;
 localparam int unsigned FcovOwnSepCpuZbeExecTest = 530;
+localparam int unsigned FcovOwnSepScanModeStateHoldTest = 531;
+
+// eFuse, lifecycle and SEC_DIS.
+localparam int unsigned FcovOwnSepEfuseWindowDecodeResetTest = 618;
+localparam int unsigned FcovOwnSepEfuseFieldLayoutRandTest = 619;
+localparam int unsigned FcovOwnSepLccStateCodewordRandTest = 620;
+localparam int unsigned FcovOwnSepLccFeatCtrlStateMatrixRandTest = 621;
+localparam int unsigned FcovOwnSepEfuseTransientRmaRandTest = 622;
+localparam int unsigned FcovOwnSepEfuseTokenChannelRandTest = 623;
+localparam int unsigned FcovOwnSepEfuseTokenFaultMatrixTest = 624;
+localparam int unsigned FcovOwnSepEfuseInterfaceStatusRandTest = 625;
+localparam int unsigned FcovOwnSepEfuseLockSlotMatrixRandTest = 626;
+localparam int unsigned FcovOwnSepEfuseSecureTmMatrixRandTest = 627;
+localparam int unsigned FcovOwnSepEfuseJtagAccessRandTest = 628;
+localparam int unsigned FcovOwnSepSecDisTimingRandTest = 629;
+localparam int unsigned FcovOwnSepEfuseShimResponseFaultTest = 630;

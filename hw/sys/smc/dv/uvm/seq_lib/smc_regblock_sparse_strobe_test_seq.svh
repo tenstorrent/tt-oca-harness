@@ -16,9 +16,9 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
   localparam string ChkRestoreNonvac = "CHK-REGBLOCK-WIDE-RESTORE-NONVAC";
   localparam string ChkNoZeroerStart = "CHK-REGBLOCK-WIDE-NO-ZEROER-START";
   localparam string ChkBusyControl = "CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL";
-  // DEST and SIZE writes and their restores are catalogued-word comparisons.
-  localparam int unsigned ControlComparisons = 4;
-  localparam int unsigned ControlFixedAccesses = 6;
+  // DEST and SIZE setup/restore writes and restore reads are catalogued comparisons.
+  localparam int unsigned ControlComparisons = 6;
+  localparam int unsigned ControlFixedAccesses = 8;
   localparam int unsigned ControlPollBound = 4096;
   localparam bit [63:0] ControlTarget = SmcSpmBase + SmcSpmSize - SmcMemBytes;
   localparam string ChkLaneCoverage = "CHK-REGBLOCK-WIDE-LANE-COVERAGE";
@@ -195,6 +195,7 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       bit [63:0] data;
       bit [63:0] full_expected;
       bit [7:0] strb;
+      int unsigned pick;
       int unsigned rw_lane_count = $countones(entries[i].rw_lane_mask);
       int unsigned lane = rw_lane_at(entries[i].rw_lane_mask, loop_index % rw_lane_count);
 
@@ -228,7 +229,9 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       end
 
       valid_sparse_strobes(entries[i].rw_lane_mask, valid);
-      strb   = valid[int'(random_pattern(8)%valid.size())];
+      // A function call inside a queue index stops Verilator with an internal error.
+      pick   = int'(random_pattern(8) % valid.size());
+      strb   = valid[pick];
       data   = ~shadow;
       shadow = smc_regblock_merge_write(shadow, data, strb, entries[i].rw_mask);
       write_strobe(entries[i].addr, data, strb, $sformatf(
@@ -286,6 +289,10 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       mem_write(SmcZeroerSizeAddr, ZEROER_CTRL_SIZE_REG_DEFAULT, "Zeroer control size restore");
       mem_write(SmcZeroerDestAddr, ZEROER_CTRL_DEST_ADDR_REG_DEFAULT,
                 "Zeroer control destination restore");
+      mem_read_check(ChkRestore, SmcZeroerSizeAddr, ZEROER_CTRL_SIZE_REG_DEFAULT,
+                     "Zeroer control size restore readback");
+      mem_read_check(ChkRestore, SmcZeroerDestAddr, ZEROER_CTRL_DEST_ADDR_REG_DEFAULT,
+                     "Zeroer control destination restore readback");
       // The SPM model sees ingress writes, not Zeroer writes; leave the scratch word known.
       mem_write(ControlTarget, 0, "SPM control scratch word");
       predicted_accesses += ControlFixedAccesses + control_polls;

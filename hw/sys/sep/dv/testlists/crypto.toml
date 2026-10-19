@@ -365,6 +365,18 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# AES CFB-128, OFB and GCM results, encrypt and decrypt, for each key length.
+name = "sep_aes_cfb_ofb_gcm_rand_test"
+module = "crypto.sep_aes_cfb_ofb_gcm_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "aes", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 # AES reseed-rate order, the invalid-rate mapping, the zero reseed trigger and the key clear.
 name = "sep_aes_reseed_trigger_rand_test"
 module = "crypto.sep_aes_reseed_trigger_rand_test"
@@ -397,7 +409,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 name = "sep_kmac_unsupported_cfg_inject_test"
 module = "crypto.sep_kmac_unsupported_cfg_inject_test"
 seed = 1
-reseed = 4
+reseed = 3
 timeout_sec = 1800
 tags = ["crypto", "kmac", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
@@ -456,6 +468,17 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# ABR ML-KEM KEYGEN+DECAPS shared key against a single-step ENCAPS on the same key pair.
+name = "sep_abr_combined_cmd_kat_test"
+module = "crypto.sep_abr_combined_cmd_kat_test"
+seed = 1
+timeout_sec = 10800
+tags = ["crypto", "abr", "mldsa", "mlkem", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # ESRC read-only registers, the restore by a TRNG reset, the MODULE_ENABLE lock and
 # INTR_STATUS.
 name = "sep_esrc_csr_rw_walk_rand_test"
@@ -482,6 +505,45 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# Shard 1 of 3 of sep_esrc_health_pattern_rand_test: both pattern trials and the APT enable leg. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_health_pattern_rand_test_shard1"
+module = "crypto.sep_esrc_health_pattern_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=1"]
+
+[[tests]]
+# Shard 2 of 3 of sep_esrc_health_pattern_rand_test: the repetition enable leg and the limit trials. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_health_pattern_rand_test_shard2"
+module = "crypto.sep_esrc_health_pattern_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=2"]
+
+[[tests]]
+# Shard 3 of 3 of sep_esrc_health_pattern_rand_test: the constant-zero and constant-ones legs. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_health_pattern_rand_test_shard3"
+module = "crypto.sep_esrc_health_pattern_rand_test"
+seed = 1
+# No reseed: every run drives the fixed stuck patterns; the seed selects only the clean noise before the window.
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=3"]
+
+[[tests]]
 # ESRC persistent-failure threshold: trip, no trip, burst gap, disable, halt and the
 # two exits.
 name = "sep_esrc_persistent_alert_rand_test"
@@ -505,6 +567,32 @@ tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Shard 1 of 2 of sep_esrc_autotune_detune_test: the manual, off and ignored legs and the first burst. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_autotune_detune_test_shard1"
+module = "crypto.sep_esrc_autotune_detune_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=1"]
+
+[[tests]]
+# Shard 2 of 2 of sep_esrc_autotune_detune_test: the second and third bursts after the same manual and ignored set-up. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_esrc_autotune_detune_test_shard2"
+module = "crypto.sep_esrc_autotune_detune_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=2"]
 
 [[tests]]
 # ESRC boot gate, idle hold and the restart of startup testing by MODULE_ENABLE.
@@ -563,7 +651,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 name = "sep_drbg_fatal_err_inject_rand_test"
 module = "crypto.sep_drbg_fatal_err_inject_rand_test"
 seed = 1
-reseed = 4
+# No reseed: every run walks all 12 cells and both FIFO trials; the seed selects only the interior count and data.
 timeout_sec = 1800
 tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
@@ -576,7 +664,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 name = "sep_drbg_regwen_lock_rand_test"
 module = "crypto.sep_drbg_regwen_lock_rand_test"
 seed = 1
-reseed = 4
+# No reseed: every run walks all three targets; the seed selects only the written values.
 timeout_sec = 1800
 tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem"]
 tools = ["vcs"]

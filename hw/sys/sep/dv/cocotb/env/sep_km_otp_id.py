@@ -6,11 +6,14 @@ Importable from the pre-sim staging hook: no cocotb. ``SepKmOtpIdCfg(seed)`` is
 the seed-to-image map for the test and for ``dv_sim_prestage.py``.
 
 Each seed stages three public IDs and sets the eFuse read lock of exactly one of
-them, so every run grades one read-locked field and two unlocked ones.
+them, so every run grades one read-locked field and two unlocked ones. The four
+secret fields carry their fixed named vectors (``FIELD_VECTORS`` of
+``sep_efuse_plan``), each of eight distinct words that are non-zero and not all
+ones.
 
-The KM SRAM layout below is the one ``tests/km_fw/km_rom_otp_id.S`` writes. The
-KMCSR word order comes from the generated Key Manager map, the eFuse lock bits
-from the generated SEP map.
+The KM SRAM layout below is the one ``tests/km_fw/km_rom_otp_id.S`` writes, and
+it fits the 98 words of ``km_sram_probe_o``. The KMCSR word order comes from the
+generated Key Manager map, the eFuse lock bits from the generated SEP map.
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
+from sep_efuse_plan import DEFAULT_VECTOR, FIELD_VECTORS, SECRET_FIELDS, words_token
 from sep_reg_meta import RegBlock
 from sep_seeded_rng import SepSeededRng
 
@@ -28,13 +32,31 @@ WORD_BITS = 32
 WORD_MASK = (1 << WORD_BITS) - 1
 RAILS = ("VAL", "CPL")
 
+# KMCSR secret fields, in address order, and the eFuse field that feeds each.
+KM_SECRET_FIELDS = ("CHIPLET_UID", "SIP_UID", "SYS_UID", "CLASS_KEY")
+SECRET_WORDS = len(KM_SECRET_FIELDS) * ID_WORDS
+
 # KM SRAM word indices, from the KM SRAM base.
 DONE_WORD = 0
 DONE_MARKER = 0x1D1D_1D1D
 DUMP_WORDS = len(ID_FIELDS) * len(RAILS) * ID_WORDS
 OPEN_DUMP_WORD = 1
-LOCKED_DUMP_WORD = OPEN_DUMP_WORD + DUMP_WORDS
-LOCK_READBACK_WORD = LOCKED_DUMP_WORD + DUMP_WORDS
+LOCKED_OR_WORD = OPEN_DUMP_WORD + DUMP_WORDS  # OR of the 48 words after OTP_READ_LOCK
+LOCK_READBACK_WORD = LOCKED_OR_WORD + 1
+SECRET_VAL_WORD = LOCK_READBACK_WORD + 1  # the VAL words of the four secret fields
+SECRET_RAIL_WORD = SECRET_VAL_WORD + SECRET_WORDS  # per field: AND over k of VAL_k ^ CPL_k
+LIFE_CYCLE_WORD = SECRET_RAIL_WORD + len(KM_SECRET_FIELDS)
+DEMOTION_WORD = LIFE_CYCLE_WORD + 1
+LAST_WORD = DEMOTION_WORD
+PROBE_WORDS = 98  # km_sram_probe_o width in words (tb/sep_tb_signal_list.svh)
+if LAST_WORD >= PROBE_WORDS:
+    raise RuntimeError(
+        f"KM readout layout ends at word {LAST_WORD}, past the {PROBE_WORDS}-word probe"
+    )
+if (LOCKED_OR_WORD, SECRET_VAL_WORD, SECRET_RAIL_WORD, LIFE_CYCLE_WORD) != (49, 51, 83, 87):
+    raise RuntimeError("KM readout layout differs from tests/km_fw/km_rom_otp_id.S")
+# Valid zero of a dual-rail word (key_manager architecture.adoc, OTP Data Encoding).
+RAIL_ALL_ONES = 0xFFFF_FFFF
 
 # A draw that cannot find a fresh word in this many tries is a generator bug,
 # not bad luck: each try fails with probability below 2^-29.
@@ -79,6 +101,35 @@ def _check_window() -> None:
 
 
 _check_window()
+
+
+def _check_secret_window() -> None:
+    """Each secret field is VAL_0..7 then CPL_0..7, the four fields back to back."""
+    base = int(_KM_CSR.OTP_CHIPLET_UID_VAL_0_REG_OFFSET)
+    for i, f in enumerate(KM_SECRET_FIELDS):
+        for r, rail in enumerate(RAILS):
+            for k in range(ID_WORDS):
+                off = int(getattr(_KM_CSR, f"OTP_{f}_{rail}_{k}_REG_OFFSET"))
+                want = base + 4 * (i * 2 * ID_WORDS + r * ID_WORDS + k)
+                if off != want:
+                    raise RuntimeError(f"OTP_{f}_{rail}_{k} at 0x{off:x}, image reads 0x{want:x}")
+    if set(KM_SECRET_FIELDS) != set(SECRET_FIELDS):
+        raise RuntimeError(f"KM secret fields {KM_SECRET_FIELDS} differ from {SECRET_FIELDS}")
+
+
+_check_secret_window()
+
+# Fixed named vectors of the secret fields.
+SECRETS = {f: words_token(FIELD_VECTORS[DEFAULT_VECTOR[f]]) for f in KM_SECRET_FIELDS}
+
+
+def secret_val_words(secrets: dict[str, int]) -> list[int]:
+    """The 32 VAL words of the secret readout, field by field, word 0 first."""
+    return [id_word(secrets[f], k) for f in KM_SECRET_FIELDS for k in range(ID_WORDS)]
+
+
+def secret_label(slot: int) -> str:
+    return f"OTP_{KM_SECRET_FIELDS[slot // ID_WORDS]}_VAL_{slot % ID_WORDS}"
 
 
 def km_id_lock_mask() -> int:
@@ -160,7 +211,7 @@ class SepKmOtpIdCfg:
         self.locks = 1 << efuse_read_lock_bit(self.locked_field)
 
     def image_fixed(self) -> dict[str, int]:
-        return {**self.ids, "LOCKS": self.locks}
+        return {**self.ids, **SECRETS, "LOCKS": self.locks}
 
     def summary(self) -> str:
         ids = " ".join(f"{f}={self.ids[f]:#066x}" for f in ID_FIELDS)

@@ -311,6 +311,7 @@ single-byte writes.
 |`smc_dma_completion_status_test` |DONE_0 and STATUS_0 report reset, idle, no-data and held; the busy indication is measured.
 |`smc_dma_csr_config_test` |DMA descriptor registers and CONFIG hold, keep and alias their values.
 |`smc_dma_field_widths_test` |DMA fields drop bits above their effective widths and keep bits 55:32.
+|`smc_dma_invalid_descriptor_test` |ENABLED_ND-cleared and zero-length DMA commands move no data against a valid copy; their registers are measured.
 |`smc_dma_linear_copy_test` |Linear DMA copies match byte for byte across offsets and sizes.
 |`smc_zeroer_busy_outstanding_test` |Zeroer stays busy to the last B; over 32 bursts; AW/W in order.
 |`smc_zeroer_irq_test` |Zeroer completion pulse comes once, after the last B, only with INT_EN.
@@ -446,6 +447,10 @@ SEP_IN, SYS_IN and JTAG at both LOCAL_BASE and GLOBAL_BASE.
 |`smc_unit_extent_register_decode_test` |The base register of the mailbox, eFuse, timer and CLA
 apertures and the ROM and SPM words decode and answer OKAY from SEP_IN, SYS_IN and JTAG at both
 bases, and the last register of five units answers over SEP_IN at `LOCAL_BASE`.
+|`smc_axi_random_stress_test` |Seeded random AXI attributes, burst shapes, outstanding depths and
+SYS_OUT responder timing and error faults on SEP_IN, SYS_IN and JTAG all leave every access
+completing at its own port with its own ID and, where answered OKAY, returning the word of its own
+address.
 |===
 
 ==== RESET
@@ -462,6 +467,18 @@ bases, and the last register of five units answers over SEP_IN at `LOCAL_BASE`.
 |`smc_cold_reset_test` |Run the SMC OSS cold-reset / POR / cool scenario.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
 |`smc_cool_reset_zero_delay_test` |FLR cool reset with the pre-reset delay at 0: no cool while the hold counter is 0, cool inside the synchroniser allowance once it is not.
+|`smc_cool_reset_deglitch_window_test` |A pin low below 32 reference-clock samples is rejected, a
+high sample restarts the count, the release does not depend on the low duration, and pin segments
+inside the FLR hold neither shorten nor extend it.
+|`smc_cool_reset_pin_flr_overlap_test` |The FLR cool-reset fall and low duration follow the two
+programmed counts, the pin alone asserts primary reset without touching the cool-reset output or the
+cold resets, and a pin low inside the pre-reset count, outlasting the hold or released early
+combines with the FLR hold without changing its duration.
+|`smc_cool_reset_recovery_test` |After the pin collides with the FLR cool-reset hold the primary
+resets release and the warm reset follows, the cold resets stay deasserted, `SS_CONFIG` and
+`SS_COLD_RESET_N` return to their reset values while the isolation and FLR counter registers retain
+theirs, and `ISOLATE_REQ_SMC_REG` sets on the FLR edge, holds through the reset, clears on a write
+and sets with a zero hold count.
 |`smc_cool_reset_x_cold_reset_test` |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
 |`smc_cpu_reset_pulse_test` |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode.
 |`smc_cpu_reset_source_test` |SW core0 level reset; no Force drain / no FLR isolate_req_o.
@@ -675,6 +692,12 @@ in clk_ref_i cycles at two reference periods, in the ref4 cell (clk_ref_i / clk_
 |`smc_dfx_debug_ctrl_storage_test` |Every `DEBUG_CTRL` field stored and read back exactly.
 |`smc_dfx_status_smu_pulse_reset_test` |`STATUS_SMU` abort bits alone, pulsed and through resets.
 |`smc_jtag_dm_sbcs_haltsum_test` |`sbcs` capabilities fixed under writes and `haltsum` idle at 0.
+|`smc_jtag_dm_halt_progbuf_test` |A halted hart runs a program-buffer store through the Debug Module
+and the stored word reads back in `CPU_CTRL.SCRATCH[0]`.
+|`smc_jtag_dm_sba_scratchpad_test` |Debug Module system bus writes and reads the scratchpad at 8,
+16, 32 and 64 bits and the SEP_IN AXI driver sees the same words.
+|`smc_jtag_dm_abstractcs_lifecycle_test` |`abstractcs.busy` observed during a program-buffer loop
+and `cmderr` 1 and 2 set and cleared.
 |===
 
 ==== EFUSE
@@ -880,6 +903,13 @@ bit and releases the pad.
 |`smc_smbus_pmbus_linear11_read_test` |The I2C0 controller reads a two-byte word with a repeated
 START, delivering the bytes through `RDATA` in wire order, unchanged by `SMBUS_CTRL.SMBSUS` written
 mid-transfer and by a clear `I2C_CONTROLLER_MODE_EN`.
+|`smc_i2c_wire_timing_test` |I2C0 controller SCL, SDA, START, STOP and bus-free timing on the pads
+changes between TIMING0-TIMING4 programming sets by exactly the programmed difference, with the
+minimum set a completed transfer.
+|`smc_i2c_dual_concurrent_transfer_test` |Two I2C controllers, instances 0 and 1, run write
+transfers at the same time on separate pad pairs, each pad pair carries only its own instance's
+bytes with the programmed timing difference, and the register windows, FIFO levels, `CMD_COMPLETE`
+and NACK state stay per instance.
 |===
 
 ==== I3C
@@ -941,9 +971,12 @@ reset, access type and write-one-to-clear behaviour in each instance.
 |`smc_uart_log_engine_error_boundary_test` |Run log-engine CSR R/W depth as the error/boundary checker.
 |`smc_log_engine_abort_test` |A log-engine transfer on all four wrapper instances halted part-way by clearing CTRL.EN, then a shorter entry re-triggered and delivered in full.
 |`smc_log_engine_transfer_test` |A real log-engine transfer on all four wrapper instances: four logs fetched from the SPM log region and written to the wrapper UART in loopback, read back byte for byte.
+|`smc_log_engine_region_size_test` |Wrapper 0 log-engine slot start, capacity clamp, zero-capacity completion and LOG_LEN resubmission over region sizes 0x80, 0x200, 135, 143, 144, 271 and 127.
+|`smc_log_engine_round_robin_test` |Wrapper 0 log-engine arbitration: whole 16-byte messages, each slot exactly once, zero lengths skipped, LOG_LEN held and hardware cleared, and a second wave written while a message is in flight; the service order is measured.
 |`smc_uart_log_engine_field_sweep_test` |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
 |`smc_uart_loopback_test` |AXI-program UART0 THR and capture the byte on pad12 TX.
+|`smc_uart_pad_mux_enable_test` |UART0 THR frame on pad 12 with CTRL.UART_EN set, cleared (pad measured) and set again.
 |`smc_uart_sanity_test` |UART pad-cross byte exchange on pairs 0→3 and 1→2.
 |`smc_uart_spi_log_engine_test` |Run the UART/log-engine representative CSR precheck.
 |`smc_uart_fifo_control_depth_test` |UART0 FIFO enable change, depth, trigger fields and read order.
@@ -4996,6 +5029,127 @@ leave exactly the requested bytes zero, the egress job raises one pulse, the den
 untouched, every zeroer job ends with `STATUS` 0 and the DMA copy to the SRAM matches. The
 unmapped-target and denied-target response fields and the unmapped DMA copy results are reported
 only. Enrolled in: `all`, `dma`.
+
+'''''
+
+[[sec-528-smc_dma_invalid_descriptor_test]]
+===== 528 `smc_dma_invalid_descriptor_test`
+
+*Source Module*: `smc_dma_invalid_descriptor_test`
+
+*BFM / Model*: SEP_IN AXI sequencer (`env.sys_axi_agent`, no protocol VIP) for the DMA registers;
+the TB SYS_OUT output-fabric responder memory (`cfg.sys_out_mem`) preloaded and read back through
+its backdoor; TB input pin `tb_top.tb_output_axi_resp_hold` driven 0; passive probes
+`tb_output_axi_arvalid`, `tb_output_axi_arready`, `tb_output_axi_araddr`,
+`tb_output_axi_awvalid`, `tb_output_axi_awready`, `tb_output_axi_awaddr`, `tb_dma_busy` and bit 322
+of `tb_cpu_interrupts` sampled at every `clk_smc_i` rise; DMA registers `DONE_0`, `STATUS_0`,
+`NEXT_ID_0`, `CONFIG`, `NUM_REPETITIONS`, `SRC_ADDRESS`, `DST_ADDRESS`, `LENGTH`, `SRC_STRIDE`,
+`DST_STRIDE`
+
+*Objective*: A command with `CONFIG.ENABLED_ND` cleared and a zero-length command move no data and
+issue no AR or AW handshake, while the same descriptor with `ENABLED_ND` set and a nonzero length
+copies; the register-boundary results of the no-data commands are measured.
+
+*Test Coverage*:
+
+* Clearing `CONFIG.ENABLED_ND` forces a zero-repetition command that moves no data and still retires
+  its transfer ID (`dma.adoc`, Linear and Two-Dimensional Copies; `dma_ctrl.rdl`,
+  `CONFIG.ENABLED_ND`). `DONE_0` must differ from its pre-command value within 3000 reads, all 16
+  destination bytes must keep their 0xEE poison and no AR or AW handshake may occur between the
+  submit and the `DONE_0` change. Over the whole leaf the AR and AW counts must equal those of the
+  three copy legs, so no handshake occurs outside the copies.
+* The `NEXT_ID_0` value the submit returned, `DONE_0` before and after, `STATUS_0[9:0]` before and
+  after and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command are measured,
+  not compared, until tenstorrent/tt-oca-harness#2455 is resolved: that issue tracks the open
+  disagreement between `dma.adoc` and `dma_ctrl.rdl` on what `NEXT_ID_0` returns when no command
+  is set up.
+* Zero-length transfers are rejected (`dma.adoc`, Stream and Register Ownership, the DMA register
+  storage table): a linear command (`NUM_REPETITIONS_LO` 1) and a 2D command (`NUM_REPETITIONS_LO`
+  4, source stride 0x30, destination stride 0x28) with `LENGTH` 0 must leave 16 and 136 destination
+  bytes at 0xEE and produce no AR or AW handshake through the end of a 3000-read `DONE_0` poll.
+  Whether `DONE_0` changed, `STATUS_0[9:0]`, the returned `NEXT_ID_0` and the bit 322 pulse count
+  of both commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved.
+* Positive control (`dma.adoc`, Linear and Two-Dimensional Copies): the same descriptor with
+  `ENABLED_ND` set and `LENGTH_LO` 16 copies. A 2D copy with `NUM_REPETITIONS_LO` 4 and the strides
+  0x30 and 0x28 of the zero-length 2D command writes its four source rows over the 136-byte
+  destination span, the 72 bytes between rows staying 0xEE, with at least four AR and four AW
+  handshakes; a linear copy of one row equals its source with at least one AR and one AW
+  handshake. Every destination byte the no-data compares require to stay 0xEE is therefore shown
+  writable by a command of this leaf.
+* A 32-bit read of `NEXT_ID_0` at 0x48 launches exactly one command: `DONE_0` holds its new value on
+  six further reads. A 64-bit read at 0x48 launches one command as well and counts the same AR and
+  AW handshakes (`dma.adoc`, Stream and Register Ownership; `dma_ctrl.rdl`, `NEXT_ID_0`).
+* The DMA interrupt is a one-cycle pulse on a falling edge of combined busy, raw CPU vector bit 322
+  (`dma.adoc`, Submission and Completion): the valid copy gives exactly one pulse, one `clk_smc_i`
+  cycle wide, up to one rise after `tb_dma_busy` reads low.
+
+*Test Procedure*:
+
+[arabic]
+. Require the nine `tb_top` probes to exist, release the R and B hold, program the inbound and
+  outbound filter windows to pass all, start the sampler of AR and AW handshakes, bit 322 and
+  `tb_dma_busy`, read `DONE_0` and wait two `clk_smc_i` cycles.
+. Write a 16-byte source pattern and 16 bytes of 0xEE at the destination, program `CONFIG` 0, the
+  addresses, `LENGTH_LO` 16, nonzero strides and one repetition, read `DONE_0` and `STATUS_0`, read
+  `NEXT_ID_0` (32-bit) to submit, poll `DONE_0` until it differs (3000 reads), read `STATUS_0`,
+  take the handshake counts and bit 322 pulses, and read the destination.
+. Re-poison the destination, program `ENABLED_ND` set with `LENGTH` 0 and one repetition, submit,
+  poll `DONE_0` for 3000 reads or until it differs, and take the status, handshake, pulse and
+  destination readings.
+. Preload 0xEE over the 136-byte destination span, program `LENGTH` 0 with four repetitions and
+  strides 0x30 and 0x28, and repeat the readings of step 3.
+. Preload 0xEE over the 136-byte destination span, program the step-4 descriptor with
+  `ENABLED_ND` set and `LENGTH_LO` 16 (four rows, strides 0x30 and 0x28), submit with a 32-bit
+  read of `NEXT_ID_0`, poll `DONE_0` until it differs, read `DONE_0` six more times, wait for
+  `tb_dma_busy` low and read the 136-byte span. Then re-poison 16 bytes, program the leg-a
+  descriptor with `ENABLED_ND` set and one repetition, submit with a 32-bit read of `NEXT_ID_0`,
+  poll `DONE_0` until it differs, read `DONE_0` six more times, wait for `tb_dma_busy` low and the
+  following rise, then read the destination and take the counts and the bit 322 pulses.
+. Re-poison the destination, program the same descriptor, submit with a 64-bit read at 0x48, poll
+  `DONE_0`, read it six more times and read the destination.
+. Wait two `clk_smc_i` cycles after step 6, require the step stamps to strictly increase and the
+  step order to hold, and require the AR and AW counts accumulated since step 1 over the whole leaf
+  to equal the sums of the three copy legs' counts, so any extra handshake fails; record the
+  non-vacuity checker.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DMA-ND-CLEAR-NO-DATA` |After the `ENABLED_ND`-cleared command retires, all 16 destination
+  bytes read 0xEE and no AR or AW handshake occurs between the submit and the `DONE_0` change
+|`CHK-DMA-ND-CLEAR-DONE-ADVANCES` |`DONE_0` differs from its pre-command value within 3000 reads
+  after the `ENABLED_ND`-cleared command
+|`CHK-DMA-ND-CLEAR-MEASURED` |The returned `NEXT_ID_0`, `DONE_0`, `STATUS_0[9:0]` and bit 322 pulse
+  readings of the `ENABLED_ND`-cleared command are measured and printed without comparing them,
+  until tenstorrent/tt-oca-harness#2455 is resolved
+|`CHK-DMA-ZEROLEN-NO-DATA` |The linear and the 2D zero-length commands leave their 16 and 136
+  destination bytes at 0xEE with no AR or AW handshake through the end of the poll
+|`CHK-DMA-ZEROLEN-MEASURED` |The returned `NEXT_ID_0`, `DONE_0` change, `STATUS_0[9:0]` and bit 322
+  pulse readings of both zero-length commands are measured and printed without comparing them,
+  until tenstorrent/tt-oca-harness#2455 is resolved
+|`CHK-DMA-COPY-CONTROL` |The `ENABLED_ND`-set 2D copy of four 16-byte rows at strides 0x30 and
+  0x28 writes its source rows over the 136-byte destination span with the bytes between rows still
+  0xEE, after `DONE_0` differs, with at least four AR and four AW handshakes; the linear copy of 16
+  bytes equals its source after `DONE_0` differs, with at least one AR and one AW handshake
+|`CHK-DMA-SUBMIT-32BIT` |The 32-bit read of `NEXT_ID_0` launches one command: `DONE_0` changes and
+  holds on six further reads and the destination equals the source
+|`CHK-DMA-SUBMIT-64BIT` |The 64-bit read at 0x48 launches one command: the destination equals the
+  source, `DONE_0` changes and holds, and the AR and AW counts equal those of the 32-bit copy
+|`CHK-DMA-IRQ-PULSE-COPY` |The valid copy gives exactly one bit 322 pulse, one `clk_smc_i` cycle
+  wide, ending low one rise after `tb_dma_busy` reads low
+|`CHK-NONVAC` |The seven step stamps are strictly increasing in step order and the AR and AW counts
+  accumulated since setup equal the sums of the three copy legs' counts; any extra handshake fails
+|===
+
+*Pass Criteria*: all ten checkers hold and every sequence assert holds: the `ENABLED_ND`-cleared
+command retires its ID and both zero-length commands leave the destination at 0xEE with no bus
+traffic, the 2D copy writes the 136-byte span the zero-length 2D compare covers, the linear copy
+moves its 16 bytes through both a 32-bit and a 64-bit submit with equal handshake counts, and the
+linear copy raises one one-cycle interrupt pulse. The register-boundary results of the no-data
+commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved. Enrolled
+in: `all`, `dma`.
 
 ==== FABRIC
 
@@ -10279,6 +10433,202 @@ last-register reads, and at least 105 accesses are issued. Enrolled in: `all`, `
 
 '''''
 
+[[sec-540-smc_axi_random_stress_test]]
+===== 540 `smc_axi_random_stress_test`
+
+*Source Module*: `smc_axi_random_stress_test`
+
+*BFM / Model*: `ocah_axi_vip (AXI)` managers on SEP_IN (`env.sys_axi_agent`), SYS_IN
+(`env.sys_in_axi_agent`) and JTAG (`env.jtag_axi_agent`) driving AxID, AxLOCK, AxCACHE, AxQOS,
+AxREGION, AxUSER and AxPROT per access, as single accesses and as `SmcSysAxiGroupItem` groups
+under a per-group `AxiTimingProfile`; the VIP response-ID capture (`capture_resp_id`); passive
+`SmcAxiPortResponseRecorder` on the B and R handshakes of `s_axi_*`, `sys_axi_*` and
+`jtag_axi_*`, `SmcRawRStallWatch` on the raw R valid probes and `SmcOutputHandshakeSampler` on
+the AW, AR, B and RLAST handshakes and the AW and AR READY stalls of `u_output_axi_if`; the
+SYS_OUT responder (`cfg.sys_out_mem`, depth 8
+through `sys_out_max_outstanding`) with `set_response_delay`, `enable_backpressure` and
+`inject_error`; `env.output_axi_monitor` `allow_slverr` and `allow_decerr` and
+`env.axi_monitor.expected_decerr_addrs`; a per-port golden model keyed by byte address; every draw
+from a `random.Random` stream per step seeded from `RANDOM_SEED`
+
+*Objective*: Seeded random AXI attributes, burst shapes, outstanding depths and SYS_OUT responder
+timing and error faults on SEP_IN, SYS_IN and JTAG all leave every access completing at its own
+port with its own ID and, where answered OKAY, returning the word of its own address.
+
+*Test Coverage*:
+
+* Response IDs: on SYS_IN and SEP_IN 12 AxIDs (0x00, 0x3F, each single bit and four draws) and on
+  JTAG IDs 0 to 3 twice, every write answers OKAY with BID equal to its AWID and every read OKAY
+  with RID equal to its ARID and the word written (`fabric.adoc`, Interfaces / AXI ID Widths by
+  Fabric Stage).
+* Sideband attributes: 16 write-then-read pairs per port over AxCACHE 0 to 15 and drawn AxQOS,
+  AxREGION and AxUSER, half at the port's SPM window and half at its registers; every read after
+  an OKAY write answers OKAY and returns the word of its own address; the write code per knob
+  value is observed (`fabric.adoc`, Interfaces / AXI Interface Widths and Address Remapping).
+* AxLOCK: an exclusive read and an exclusive write per port are observed and the ordinary
+  write-then-read after each returns the fresh word.
+* Carriage to output_axi: eight JTAG writes and eight reads at OUT2 reach the responder at their
+  own address with the driven AxCACHE and with one AxUSER value whatever was driven; SYS_IN and
+  SEP_IN accesses at OUT0 and OUT1, inside neither the local nor the global aperture, answer
+  DECERR and never reach the responder (`fabric.adoc`, Routing / Outbound Traffic Flow;
+  `memmap.adoc`, Memory Map).
+* Shapes: AxSIZE 1 to 8 at SPM words and registers, INCR bursts of 2, 16, 256 and drawn lengths,
+  FIXED and WRAP bursts and narrow register bursts, then a mixed stream of 40 accesses per port
+  with every attribute, size, burst, length, direction and target drawn and up to 4 outstanding,
+  followed by the full-width reads of KNOWN words (after one aligned write when the stream left
+  none) that bring the stream's compare reads to two when the drawn ones fall short;
+  every OKAY read at a KNOWN byte returns the golden byte of that address, every read issued at
+  KNOWN bytes with AxPROT[1] clear answers OKAY, each beat count equals AxLEN+1 (`fabric.adoc`,
+  Interfaces / AXI Interface Widths and Topology).
+* Local concurrency: groups of depth 4, 8, 9, 16 and 24 per port, the AxID set {1, 2} on all three
+  ports at once and manager-side BREADY and RREADY holds; per port and AxID the recorded responses
+  equal the requests (`fabric.adoc`, Configuration Parameters / SMC Fabric Transaction Limits).
+* Output concurrency: JTAG groups of depth 1, 8 and 16 at OUT2, SYS_IN and SEP_IN accesses outside
+  the window while a JTAG group is outstanding, and a JTAG split between SPM2 and OUT2 with local
+  SYS_IN and SEP_IN traffic; the OUT2 handshakes equal the JTAG accesses issued (`fabric.adoc`,
+  Topology).
+* Responder timing and errors: response delays, AW and AR ready stalls and depth-8 reordering at
+  the responder, each profile shown on the wire; injected SLVERR and DECERR on writes and reads
+  alone, in a group of 24 and under delay and stall with local traffic outstanding, each code
+  answered unchanged at the JTAG port (`smu-smc.adoc`, AXI Interface Configuration).
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done` within 200000 `clk_smc_i` rises; print `RAND-SEED`; bind the
+SYS_OUT responder and require depth 8; require the ID space of each port to equal its BID width
+and the output windows to lie outside the local and global apertures of `SMC_BASE_CONFIG`; start
+the three port recorders and the output sampler; over
+SEP_IN program inbound and outbound filter entry 0 pass-all; write the four registers of each port
+(`SCRATCH_COLD(0..3)` for SYS_IN, `SCRATCH_COLD(4..7)` for SEP_IN, `SCRATCH_COLD_WARM(0..3)` for
+JTAG) with 4-byte words by address; preload each port's output window in the responder.
+. Per port, for each AxID of the list, write then read one SPM word with `capture_resp_id`; require
+OKAY, BID and RID equal to the request ID both through the VIP capture and the port recorder, and
+the read word equal to the write; print `CHK-RAND-ID-ECHO`.
+. Per port, 16 write-then-read pairs with AxCACHE k, drawn AxQOS, AxREGION, AxUSER and AxID, even
+k at the SPM window with 8 bytes and odd k at a register with 4 bytes, `allow_error` set; require
+every read after an OKAY write to answer OKAY and return the word written, with at least one such
+pair per port; print the OKAY and non-OKAY counts per port and `CHK-RAND-ATTR-OWN-WORD`.
+. Per port at one SPM word: write, exclusive read, write, read, exclusive write, write, read;
+require the two ordinary reads OKAY with the fresh word; print the exclusive responses and
+`CHK-RAND-LOCK-OBS`.
+. On JTAG, eight writes then reads at OUT2 with AxCACHE 0x0, 0xF, 0x3 and five draws and AxUSER
+draws; require one AW and one AR at the responder per access with the driven AxCACHE, the read word
+equal to the write, one `awuser` across the writes and one `aruser` across the reads; on SYS_IN and
+SEP_IN two pairs each at OUT0 and OUT1 with `allow_error`, each required to answer DECERR with no
+AW or AR sampled at the responder; print `CHK-RAND-OUT-SIDEBAND`.
+. Per port, 51 accesses: SPM write-then-read at AxSIZE 1, 2, 4, 8; register pairs at each size
+with the 4-byte pair compared and the others observed, each followed by a 4-byte re-arm; INCR
+bursts of 2, 16, 256 and two drawn lengths of 8-byte beats compared beat by beat; FIXED x4, x16 and
+WRAP x2, x4, x8, x16 observed and then a fresh word; four narrow INCR register reads each followed
+by a register read; require exactly 51 accesses per port and every compare read of the step to
+have compared.
+. Three tasks, one per port, each 10 groups of 4 disjoint accesses with every attribute, AxPROT,
+size, burst, length, direction and target drawn; observed where FIXED, WRAP, AxLOCK 1 or a narrow
+register access; require every read issued at KNOWN bytes with AxPROT[1] clear on each port to
+have answered OKAY and compared; print one `OBS-SHAPE` line per observed access, the
+`OBS-SHAPE-PROT` DECERR view and `CHK-RAND-SHAPE-BY-ADDR` with the compared byte count.
+. Groups of depth 4, 8, 9, 16 and 24 on the three ports together, a group of 8 per port under the
+AxID set {1, 2}, and a group of 16 per port under a seeded `AxiTimingProfile` run one port at a
+time; require per port and AxID the recorded B responses, R beats and R words to equal the
+requests and the b and r stall counts above 0 on every port; print `CHK-RAND-LOCAL-DEEP`.
+. JTAG groups of depth 1, 8 and 16 of reads then of writes at OUT2, with SYS_IN and SEP_IN
+presenting 8 accesses each at OUT0 and OUT1 during the depth-8 read group, then a three-task group
+of JTAG split between SPM2 and OUT2 with 16 local accesses on SYS_IN and SEP_IN; require the OUT2
+AW and AR handshakes and the responder counters to advance by exactly the JTAG accesses issued,
+and the SYS_IN and SEP_IN accesses at OUT0 and OUT1 to answer DECERR with no handshake at the
+responder; print `CHK-RAND-OUT-DEEP` and `CHK-RAND-OUT-OTHER-PORTS-DECERR`.
+. Four responder profiles (delay 1 to 8, delay 32 to 64, AW and AR stall 16, delay 0 to 64 with
+depth 8), each a JTAG group of 12 writes and 12 reads at OUT2; require the AW and AR address sets
+at the responder to equal the sets issued, the counters to advance by 12 and 12, the stall profile
+to have held AWREADY and ARREADY low with a request valid, and each delay profile's shortest
+AW-to-B and AR-to-RLAST at the responder to be at least its fewest delay cycles; print
+`CHK-RAND-RESP-TIMING`.
+. Set `allow_slverr` and `allow_decerr`; three rounds of one-shot SLVERR and DECERR injections on a
+write and on a read with `capture_resp_id`, each followed by an ordinary write-then-read; a JTAG
+group of 24 with a seeded third injected; the same under delay, ready stall and reorder with 12
+local accesses outstanding on each of SYS_IN and SEP_IN; require the response ID and the injected
+code of each one-shot at the JTAG port, the injected code on each injected group member and OKAY
+on the others, the monitor tally equal to the injected codes, the ordinary pairs OKAY with the
+word written and every local access OKAY; print `CHK-RAND-RESP-ERRORS-ECHO` and
+`CHK-RAND-RESP-COMBINED`.
+. Clear the monitor opt-ins, responder errors, backpressure and delays; restore inbound and
+outbound filter entry 0 to the RDL reset over SEP_IN; write `SCRATCH_COLD(0..7)` and
+`SCRATCH_COLD_WARM(0..3)` to 0; stop the recorders; print `CHK-TIMEOUT-PATHS`, then run the fence
+that prints `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-RAND-ID-ECHO` |On every port each write of the AxID list answered OKAY with BID equal to its
+AWID and each read OKAY with RID equal to its ARID and the word written, the IDs read both through
+the VIP capture and the passive port recorder.
+|`CHK-RAND-ATTR-OWN-WORD` |All 48 attribute pairs completed within the guard, every read after an
+OKAY write answered OKAY and returned the word of its own address, and on every port at least one
+such pair was issued; the write code per knob value is printed, not asserted.
+|`CHK-RAND-LOCK-OBS` |All 21 lock-leg accesses completed within the guard and on every port the
+ordinary write-then-read after the exclusive read and after the exclusive write answered OKAY with
+the fresh word; the exclusive responses are printed, not asserted.
+|`CHK-RAND-OUT-SIDEBAND` |All eight JTAG writes and reads reached the responder at their own OUT2
+address with `awcache` and `arcache` equal to the driven AxCACHE, the read word equal to the
+write, one `awuser` across the writes and one `aruser` across the reads; the SYS_IN and SEP_IN
+pairs at OUT0 and OUT1 answered DECERR with no AW or AR at the responder.
+|`CHK-RAND-SHAPE-BY-ADDR` |Every access of steps 6 and 7 completed within the guard, each beat
+count equals AxLEN+1, every OKAY read at a KNOWN byte returned the golden byte of its own address,
+every read of steps 6 and 7 issued at KNOWN bytes with AxPROT[1] clear answered OKAY and compared
+with at least one such read per port and step, and the recovery write-then-reads returned the
+fresh word; FIXED, WRAP, narrow register, AxLOCK 1 and AxPROT[1] responses are printed, not
+asserted.
+|`CHK-RAND-LOCAL-DEEP` |For depths 4, 8, 9, 16 and 24, the AxID set {1, 2} on all three ports and
+the manager stall profiles, per port and AxID the recorded B responses, R beats and R words equal
+the requests, and the b and r stall counts are above 0 on every port; the DUT-side stall counts
+and the response order are printed, not asserted.
+|`CHK-RAND-OUT-DEEP` |For the JTAG groups of depth 1, 8 and 16 and the JTAG split between SPM2 and
+OUT2 with local SYS_IN and SEP_IN traffic, per AxID the B count and returned words match the
+requests, every OKAY read word equals the responder word of its address, and the OUT2 handshakes
+and responder counters advanced by exactly the JTAG accesses issued.
+|`CHK-RAND-OUT-OTHER-PORTS-DECERR` |All 16 SYS_IN and SEP_IN accesses at OUT0 and OUT1 presented
+while the JTAG depth-8 group was outstanding answered DECERR within the guard at their own port
+with no AW or AR at the responder, the responder counters advanced by the 8 JTAG reads only, and
+the JTAG group still returned its own words and IDs.
+|`CHK-RAND-RESP-TIMING` |Under the four responder profiles all 96 JTAG accesses completed within the
+guard, per AxID the B count and returned words match the requests, the AW and AR address sets at
+the responder equal the sets issued, the counters advanced by 24 per profile, the stall profile
+held AWREADY and ARREADY low with a request valid, and each delay profile's shortest AW-to-B and
+AR-to-RLAST at the responder is at least its fewest delay cycles; the response order is printed,
+not asserted.
+|`CHK-RAND-RESP-ERRORS-ECHO` |The 12 one-shot injections and the injected third of the group of 24
+each completed at the JTAG port with its own ID and the injected code, the other members of the
+group answered OKAY, the responder monitor counted exactly the injected codes, and each ordinary
+write-then-read after an injection answered OKAY with the word written.
+|`CHK-RAND-RESP-COMBINED` |With delay, ready stall, reorder and injected errors on the JTAG group of
+24, all 24 SYS_IN and SEP_IN local accesses answered OKAY at their own port with the golden word of
+their own address, every JTAG access completed with its own ID and the code the responder
+returned, and every OKAY JTAG read word equals the responder word of its address.
+|`CHK-NONVAC` |The step stamps S1 to S12 are in increasing time order, the eleven checker lines
+above were printed in step order each after its own step, each port recorder saw at least one
+response and at least one AW handshake was sampled at the responder.
+|`CHK-TIMEOUT-PATHS` |Reports every bounded wait with its bound (the fuse-sense wait of 200000
+`clk_smc_i` rises and the 50 us driver guard per access); it is a printed report with no compare,
+each wait raising its own failure when its bound expires.
+|===
+
+*Pass Criteria*: `CHK-RAND-ID-ECHO`, `CHK-RAND-ATTR-OWN-WORD`, `CHK-RAND-LOCK-OBS`,
+`CHK-RAND-OUT-SIDEBAND`, `CHK-RAND-SHAPE-BY-ADDR`, `CHK-RAND-LOCAL-DEEP`, `CHK-RAND-OUT-DEEP`,
+`CHK-RAND-OUT-OTHER-PORTS-DECERR`, `CHK-RAND-RESP-TIMING`, `CHK-RAND-RESP-ERRORS-ECHO`,
+`CHK-RAND-RESP-COMBINED`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every access
+completes within the guard at its own port and answers OKAY unless it is allowed to error, every
+OKAY read of a KNOWN or responder address returns the word of that address, every read of steps
+3, 6 and 7 issued at KNOWN bytes with AxPROT[1] clear answers OKAY and compares, the response IDs
+echo the request IDs, SYS_IN and SEP_IN outside both apertures answer DECERR without reaching the
+responder, each injected code is answered unchanged at JTAG, each responder profile shows on the
+wire, and the OUT2 handshakes and responder counters match the JTAG accesses issued. Enrolled in:
+`all`, `fabric`.
+
+'''''
+
 
 
 
@@ -11608,6 +11958,337 @@ the leaf issues at least nine SEP_IN accesses. Enrolled in: `all`.
 
 '''''
 
+[[sec-532-smc_cool_reset_deglitch_window_test]]
+===== 532 `smc_cool_reset_deglitch_window_test`
+
+*Source Module*: `smc_cool_reset_deglitch_window_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN programming and reading `ISOLATE_REQ_FLR_COUNTER_VALUE`,
+`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` and `ISOLATE_REQ_SMC_REG`; the pin `rst_cool_ni` driven on
+`clk_ref_i` edges; the FLR request `tb_cfg_flr_pf_active` (`cfg_flr_pf_active_i`); the
+isolate-request pad held low through `tb_gpio_ext_drive_en` and `tb_gpio_ext_drive_value`; probes
+`rst_primary_smc_clk_no`, `rst_primary_ref_clk_no`, `tb_rst_cool_from_flr` (the FLR cool-reset
+output) and `tb_rst_warm_smc_clk_n`, each sampled on every `clk_ref_i` edge or, for the warm reset,
+on `clk_smc_i`; `tb_skip_mem_repair_o`; `clk_ref_i`, `clk_smc_i`
+
+*Objective*: A low pulse on `rst_cool_ni` shorter than 32 reference-clock samples is rejected, a
+high sample restarts the count, the release does not depend on the low duration, and pin segments
+inside the FLR hold do not shorten or extend it.
+
+*Test Coverage*:
+
+* Positive control: a 40-cycle low on `rst_cool_ni` asserts primary reset; the offsets from the
+  first low to the assertion and from the first high to the release are measured on both primary
+  outputs.
+* A 31-cycle low leaves both primary resets released at every sample from the first low until 64
+  cycles after the pin returned high.
+* Low 20, high 1, low 40 asserts primary reset at the same offset from the re-assert low as the
+  control does from its first low, and not before 32 consecutive lows.
+* A 100-cycle low releases at the same offset from the first high as the 40-cycle low, so the
+  release carries the filter and synchroniser offset only.
+* FLR alone gives the baseline for the cool-reset fall and rise and the primary reset assertion and
+  release.
+* Inside the FLR hold, three 20-cycle lows separated by single highs leave primary reset asserted at
+  every sample of the hold and release at the same offset from the cool-reset rise as FLR alone.
+* Inside the FLR hold, a 40-cycle low, a 10-cycle high and a 40-cycle low leave primary reset
+  asserted until the later of the two sources ends and release inside a bench bound of 256
+  reference-clock cycles afterwards.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, hold the isolate-request pad low, write the two FLR counters (pre-delay 0x20,
+  hold 0xC0), read them back, require both primary resets and the cool-reset output released, and
+  allow 64 reference-clock cycles for the counts to cross into the reference domain.
+. Drive `rst_cool_ni` low for 40 reference-clock cycles, then high, and wait for primary reset to
+  assert and release; record the assertion offset from the first low and the release offset from the
+  first high.
+. Drive the pin low for 31 cycles, then high, and sample both primary resets for 64 further cycles;
+  require every sample released.
+. Drive low 20, high 1, low 40, then high; wait for assertion and release; compare the assertion
+  offset from the re-assert low with step 2 and require it to be at least 32.
+. Drive the pin low for 100 cycles, then high; wait for release; compare the release offset from the
+  first high with step 2.
+. Pulse `cfg_flr_pf_active_i`, wait for the cool-reset output to fall and rise and both primary
+  resets to release, wait for the warm reset and clear the latched request; record the release
+  offset from the cool-reset rise.
+. Pulse `cfg_flr_pf_active_i`; once the cool-reset output is low drive low 20, high 1, low 20, high
+  1, low 20, then high; require every sample from the first assertion to the cool-reset rise
+  asserted and the release offset from the rise equal to step 6.
+. Pulse `cfg_flr_pf_active_i`; once the cool-reset output is low drive low 40, high 10, low 40, then
+  high; require no released sample from the first assertion until the later source ends and the
+  release inside the bench bound.
+. Print each checker after its compare, stamp the ordered fence two reference-clock cycles after the
+  last step, and print the bounded waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-COOLRST-GLITCH-REJECT` |After a 40-cycle low asserts primary reset, a 31-cycle low leaves
+  `rst_primary_smc_clk_no` and `rst_primary_ref_clk_no` released at every sample until 64 cycles
+  after the pin returned high; any asserted sample, an absent control assertion or an X sample fails
+  it
+|`CHK-COOLRST-REASSERT-RESTART` |After low 20, high 1, low 40 primary reset asserts at the same
+  offset from the re-assert low as in the control, on both outputs, and no earlier than 32 cycles
+  after it; a differing offset, an earlier assertion or a timeout fails it
+|`CHK-COOLRST-RELEASE-NO-EXTENSION` |The cycles from the first high to primary release are equal for
+  the 40-cycle and the 100-cycle low on both outputs, and are printed as measured; a differing
+  offset or a timeout fails it
+|`CHK-COOLRST-REASSERT-IN-HOLD` |With three sub-32 low segments in the FLR hold primary reset is
+  asserted at every sample of the hold and releases at the same offset from the cool-reset rise as
+  FLR alone, inside the bench bound; a released sample, a differing offset or a timeout fails it
+|`CHK-COOLRST-RELEASE-REASSERT-HOLD` |With a release and a re-assert of the pin inside the FLR hold
+  no sample is released before both sources end and release follows inside the bench bound; a
+  released sample, a release past the bound or a timeout fails it
+|`CHK-NONVAC` |The ordered fence holds: steps S1 to S8 in order with strictly increasing
+  simulation-time stamps and the five checker lines printed in order after the last step
+|`CHK-TIMEOUT-PATHS` |Every bounded wait (assertion 128, release 512, cool-reset fall 160,
+  cool-reset rise 320 reference-clock cycles, warm reset 50000 `clk_smc_i` cycles, latch clear 64
+  polls) is named with its bound and raises AssertionError with the last sampled levels on expiry
+|===
+
+*Pass Criteria*: `CHK-COOLRST-GLITCH-REJECT`, `CHK-COOLRST-REASSERT-RESTART`,
+`CHK-COOLRST-RELEASE-NO-EXTENSION`, `CHK-COOLRST-REASSERT-IN-HOLD`,
+`CHK-COOLRST-RELEASE-REASSERT-HOLD`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares;
+the offsets from a pin edge to a probe are measured and only the equalities and orderings above are
+compared. Enrolled in: `all`, `hosted`, `reset`.
+
+'''''
+
+[[sec-533-smc_cool_reset_pin_flr_overlap_test]]
+===== 533 `smc_cool_reset_pin_flr_overlap_test`
+
+*Source Module*: `smc_cool_reset_pin_flr_overlap_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN programming and reading `ISOLATE_REQ_FLR_COUNTER_VALUE`,
+`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` and `ISOLATE_REQ_SMC_REG`; the pin `rst_cool_ni` driven on
+`clk_ref_i` edges; the FLR request `tb_cfg_flr_pf_active` (`cfg_flr_pf_active_i`); the
+isolate-request pad held low through `tb_gpio_ext_drive_en` and `tb_gpio_ext_drive_value`; probes
+`rst_primary_smc_clk_no`, `rst_primary_ref_clk_no`, `tb_rst_cool_from_flr` (the FLR cool-reset
+output), `rst_cold_n_o`, `rst_cold_stable_ref_clk_no` and `tb_rst_warm_smc_clk_n`, each sampled on
+every `clk_ref_i` edge or, for the warm reset, on `clk_smc_i`; `tb_skip_mem_repair_o`; `clk_ref_i`,
+`clk_smc_i`
+
+*Objective*: The FLR cool-reset fall and low duration move by exactly the difference of the
+programmed counts, the pin alone asserts primary reset while the cool-reset output and the cold
+resets stay deasserted, and a pin low inside the pre-reset count, outlasting the hold or released
+early combines with the FLR hold without changing its duration.
+
+*Test Coverage*:
+
+* FLR alone with pre-reset count 0x20 and hold 0x60, then with 0x50 and 0xA0: the fall offset from
+  the FLR edge differs by exactly the pre-reset count difference and the low duration by exactly the
+  hold difference.
+* The cool-reset output is low from its fall to its rise in every FLR run and high at every other
+  sample, including the pin-alone window.
+* FLR alone asserts primary reset after the FLR edge and releases it after the cool-reset rise.
+* A 48-cycle low on `rst_cool_ni` asserts primary reset no earlier than 32 cycles after the first
+  low, with the cool-reset output high and both cold resets deasserted at every sample.
+* A pin low 8 cycles after the FLR edge, held past the end of the pre-reset count, asserts primary
+  reset before the cool-reset fall, which keeps its FLR-alone offset.
+* A pin low inside the hold and kept low 56 cycles past its end keeps primary reset asserted until
+  the pin release and releases at the pin-alone offset from it.
+* A pin low for 40 cycles inside the hold keeps primary reset asserted until the cool-reset rise and
+  releases at the FLR-alone offset from it.
+* The cool-reset low duration of the three overlap runs equals the FLR-alone duration.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, hold the isolate-request pad low, write the pre-reset count 0x20 and hold
+  0x60, read them back, allow 64 reference-clock cycles for the counts to cross into the reference
+  domain, and require both primary resets and the cool-reset output released.
+. Pulse `cfg_flr_pf_active_i`, wait for the cool-reset output to fall and rise and both primary
+  resets to release, wait for the warm reset and clear the latched request; program 0x50 and 0xA0,
+  read them back, wait 64 cycles and run the FLR sequence alone again.
+. Drive `rst_cool_ni` low for 48 reference-clock cycles, then high, and wait for primary reset to
+  assert and release; sample every probe on every cycle.
+. Pulse `cfg_flr_pf_active_i`, drive the pin low 8 cycles later and high 4 cycles after the
+  cool-reset fall; wait for the cool-reset rise, the primary release and the warm reset.
+. Pulse `cfg_flr_pf_active_i`, drive the pin low 4 cycles after the cool-reset fall and high 56
+  cycles after the cool-reset rise; wait for the primary release and the warm reset.
+. Pulse `cfg_flr_pf_active_i`, drive the pin low 4 cycles after the cool-reset fall and high 40
+  cycles later; wait for the cool-reset rise, the primary release and the warm reset.
+. Print each checker after its compare, stamp the ordered fence two reference-clock cycles after the
+  last step, and print the bounded waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-COOLRST-BP-LEVEL` |The cool-reset output is low at every sample from its fall to its rise in
+  the five FLR runs and high at every other sample, including the pin-alone window; a sample low
+  outside the FLR hold, a sample not low inside it or an X sample fails it
+|`CHK-COOLRST-COLD-STABLE` |`rst_cold_n_o` and `rst_cold_stable_ref_clk_no` read deasserted at every
+  sample of the pin-alone window and of the pre-count and hold overlap windows, with primary reset
+  asserted in the pin-alone window as the positive control; an asserted cold output, a missing
+  primary assertion or an X sample fails it
+|`CHK-COOLRST-COLLISION-HOLD` |With the pin outlasting the FLR hold primary reset stays asserted at
+  every sample until the pin release, after the cool-reset rise, and releases at the same offset
+  from the pin release as in the pin-alone run; a released sample, a differing offset or a timeout
+  fails it
+|`CHK-COOLRST-COLLISION-PRE` |With the pin low inside the pre-reset count primary reset asserts
+  before the cool-reset fall, the fall keeps the FLR-alone offset from the FLR edge, and release
+  follows the cool-reset rise, the later source, at the FLR-alone offset; a late assertion, a
+  differing offset or a timeout fails it
+|`CHK-COOLRST-FLR-ALONE-PRIMARY` |In the FLR-alone runs primary reset asserts after the FLR edge and
+  no later than the cool-reset fall, stays asserted until the cool-reset rise and releases at the
+  first released sample at or after it; the release offset from the rise is kept as the baseline of
+  the early-release run; a late or missing assertion, a released sample in the hold, a first release
+  before the cool-reset rise or a timeout fails it
+|`CHK-COOLRST-FLR-HOLD-COUNT` |The cool-reset low duration of the second count pair minus the first
+  equals the programmed hold difference exactly in reference-clock cycles, and the durations are
+  printed as measured; a differing delta or a timeout fails it
+|`CHK-COOLRST-FLR-PRE-COUNT` |The counters read back as written and the cool-reset fall offset from
+  the FLR edge of the second pair minus the first equals the programmed pre-reset difference
+  exactly; a differing delta, a readback mismatch or a timeout fails it
+|`CHK-COOLRST-HOLD-INVARIANT` |The cool-reset low duration of the three overlap runs equals the
+  FLR-alone duration exactly, and all four durations are printed; a differing duration fails it
+|`CHK-COOLRST-PIN-ALONE-PRIMARY` |After a 48-cycle low primary reset asserts no earlier than 32
+  cycles after the first low with the cool-reset output high at every sample, and releases after the
+  pin release; the offsets are printed as measured; an earlier assertion, a low cool-reset sample, a
+  release before the pin or a timeout fails it
+|`CHK-COOLRST-PIN-EARLY-RELEASE` |With the pin released at least 16 cycles before the hold ends
+  primary reset stays asserted until the cool-reset rise and releases at the same offset from it as
+  in the FLR-alone run; a released sample before the rise or a differing offset fails it
+|`CHK-NONVAC` |The ordered fence holds: steps S1 to S5 in order with strictly increasing
+  simulation-time stamps and the ten checker lines printed in order after the last step
+|`CHK-TIMEOUT-PATHS` |Every bounded wait (assertion 128, release 512, cool-reset fall 208,
+  cool-reset rise 288 reference-clock cycles, warm reset 50000 `clk_smc_i` cycles, latch clear 64
+  polls) is named with its bound and raises AssertionError with the last sampled levels on expiry
+|===
+
+*Pass Criteria*: `CHK-COOLRST-BP-LEVEL`, `CHK-COOLRST-COLD-STABLE`, `CHK-COOLRST-COLLISION-HOLD`,
+`CHK-COOLRST-COLLISION-PRE`, `CHK-COOLRST-FLR-ALONE-PRIMARY`, `CHK-COOLRST-FLR-HOLD-COUNT`,
+`CHK-COOLRST-FLR-PRE-COUNT`, `CHK-COOLRST-HOLD-INVARIANT`, `CHK-COOLRST-PIN-ALONE-PRIMARY`,
+`CHK-COOLRST-PIN-EARLY-RELEASE`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares;
+offsets from an edge to a probe are measured and only the deltas, equalities and orderings above are
+compared. Enrolled in: `all`, `hosted`, `reset`.
+
+'''''
+
+[[sec-534-smc_cool_reset_recovery_test]]
+===== 534 `smc_cool_reset_recovery_test`
+
+*Source Module*: `smc_cool_reset_recovery_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN reading and writing `SS_CONFIG`, `SS_COLD_RESET_N`,
+`ISOLATE_REQ_SMCEN_REG`, `ISOLATE_REQ_SMC_REG`, `ISOLATE_REQ_VIS`, `ISOLATE_REQ_FLR_COUNTER_VALUE`,
+`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, `I2C TIMING0` of instance 0, `CPU_CTRL.SCRATCH[0]` and
+`CPU_CTRL.RESET_VECTOR[0]` at the addresses of the generated address map (`smc_addr`,
+`reset_unit_u32`, `cpu_ctrl_u32`); the pin `rst_cool_ni` driven on `clk_ref_i` edges; the FLR
+request `tb_cfg_flr_pf_active` (`cfg_flr_pf_active_i`); the isolate-request pad held low through
+`tb_gpio_ext_drive_en` and `tb_gpio_ext_drive_value`; probes `rst_primary_smc_clk_no`,
+`rst_primary_ref_clk_no`, `tb_rst_warm_smc_clk_n`, `rst_cold_n_o`, `rst_cold_stable_ref_clk_no`,
+`tb_rst_cool_from_flr` (the FLR cool-reset output) and `tb_isolate_req_o`, each sampled on every
+`clk_ref_i` edge; `tb_skip_mem_repair_o`; `clk_ref_i`, `clk_smc_i`
+
+*Objective*: After the `rst_cool_ni` pin collides with the FLR cool-reset hold, both primary resets
+release after the last source ends, the warm reset follows the primary reset, the cold resets never
+assert, the reset-unit registers split into those the primary reset clears and those the cold reset
+retains, `ISOLATE_REQ_VIS` reads its reset levels, and the FLR isolation latch sets, holds, clears
+and sets again with a zero hold count.
+
+*Test Coverage*:
+
+* `SS_CONFIG` and `SS_COLD_RESET_N` read back nonzero patterns, `ISOLATE_REQ_SMCEN_REG` and both FLR
+  counters read back their programmed values, and the I2C timing, scratch and reset-vector words are
+  read before the collision.
+* The pin goes low 4 cycles after the cool-reset fall and high 56 cycles after its rise, so it is
+  low for at least 32 cycles inside the hold and ends after it; primary reset is asserted at every
+  sample until the pin release.
+* The warm reset is asserted at every sample at which `rst_primary_smc_clk_no` is asserted and
+  releases no earlier than it.
+* `rst_cold_n_o` and `rst_cold_stable_ref_clk_no` are deasserted at every sample of the collision
+  window, with primary reset asserted in the same window as the positive control.
+* After recovery `SS_CONFIG` and `SS_COLD_RESET_N` read their reset value 0 while
+  `ISOLATE_REQ_SMCEN_REG` and both FLR counters read the programmed values.
+* `ISOLATE_REQ_VIS.cool_reset_n_i` and `cool_reset_n_o` read their reset value 1 with `rst_cool_ni`
+  and the cool-reset output high; the pin bit, the I2C timing field, `CPU_CTRL.SCRATCH[0]` and
+  `CPU_CTRL.RESET_VECTOR[0]` are printed as measured.
+* `ISOLATE_REQ_SMC_REG` reads 0 before the FLR edge, 1 after it and 1 after the cool reset ended,
+  then 0 after a write of 0xFFFFFFFF with byte strobe 0x1.
+* With the hold counter at 0 an FLR edge sets the latch while no reset output asserts in a 384-cycle
+  window.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, hold the isolate-request pad low, write the pre-reset count 0x100 and hold
+  0x80, allow 64 reference-clock cycles for the counts to cross into the reference domain, write and
+  read back `SS_CONFIG` (0xA5A5A5A5), `SS_COLD_RESET_N` (0x5A5A5A5A), `ISOLATE_REQ_SMCEN_REG`
+  (0xFFFFFFFF), the I2C0 `TIMING0` THIGH field and `CPU_CTRL.SCRATCH[0]`, read both counters and
+  `CPU_CTRL.RESET_VECTOR[0]`, and require the resets released.
+. Read `ISOLATE_REQ_SMC_REG`, pulse `cfg_flr_pf_active_i` and poll the latch until it reads 1 before
+  the cool reset starts; wait for the cool-reset output to fall, drive `rst_cool_ni` low 4 cycles
+  later, wait for the cool-reset rise, drive the pin high 56 cycles after it, and sample every probe
+  each cycle until both primary resets release and the warm reset releases.
+. Read `SS_CONFIG`, `SS_COLD_RESET_N`, `ISOLATE_REQ_VIS`, `ISOLATE_REQ_SMCEN_REG`, both counters,
+  `ISOLATE_REQ_SMC_REG`, the I2C0 `TIMING0`, `CPU_CTRL.SCRATCH[0]` and `CPU_CTRL.RESET_VECTOR[0]`.
+. Read the latch, write `ISOLATE_REQ_SMC_REG` with 0xFFFFFFFF and byte strobe 0x1, and read it back.
+. Write `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` = 0 and allow 64 cycles; read the latch, pulse
+  `cfg_flr_pf_active_i`, watch every reset output for 384 reference-clock cycles, read the latch,
+  clear it and restore the hold counter to 0x80.
+. Print each checker after its compare, stamp the ordered fence two reference-clock cycles after the
+  last step, and print the bounded waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-COOLRST-COLD-STAYS` |`rst_cold_n_o` and `rst_cold_stable_ref_clk_no` read deasserted at every
+  sample of the collision window, with both primary outputs asserted at some samples of it as the
+  positive control; an asserted cold output, a missing primary assertion or an X sample fails it
+|`CHK-COOLRST-CSR-RECOVERY` |The pre-collision readbacks match the written values, `SS_CONFIG` and
+  `SS_COLD_RESET_N` read 0 after recovery, and `ISOLATE_REQ_SMCEN_REG` and both FLR counters read
+  the programmed values; a readback mismatch, a nonzero primary-reset register, a changed retained
+  register or an X read fails it
+|`CHK-COOLRST-ISOLATE-VIS` |After recovery with `rst_cool_ni` and the cool-reset output high,
+  `ISOLATE_REQ_VIS` bits 4 and 8 read 1, equal to their reset value, and bit 0 is printed as
+  measured; a 0 in either bit, a failed read or an X read fails it
+|`CHK-COOLRST-LATCH-CLEAR` |With the latch reading 1, a write of 0xFFFFFFFF with byte strobe 0x1
+  leaves it reading 0, and both words are printed; a latch reading 0 before the write or 1 after it
+  fails it
+|`CHK-COOLRST-LATCH-HOLD0` |With the hold counter at 0 the latch reads 0 before the FLR edge and 1
+  after it, every sample of the 384-cycle window has both primary outputs and the cool-reset output
+  released, and the latch clears and the hold counter restores; a latch reading 1 before or 0 after
+  the edge, a reset assertion in the window or a failed restore fails it
+|`CHK-COOLRST-LATCH-SET-HOLD` |The latch reads 0 before the FLR edge, 1 after it and 1 after the
+  cool reset ended with every reset output released; a latch reading 1 before the edge, 0 after the
+  edge or 0 after the cool reset fails it
+|`CHK-COOLRST-OTHER-CSR-MEASURED` |The I2C0 `TIMING0` and `CPU_CTRL.SCRATCH[0]` words before and
+  after the cool reset are printed as measured and compared with nothing; a missing line fails it
+|`CHK-COOLRST-PRIMARY-RELEASE` |Both primary outputs assert after the FLR edge, stay asserted at
+  every sample until the pin release, and release after both sources end; the release offsets are
+  printed as measured; a missing assertion, a released sample inside the collision, a release before
+  the pin or a timeout fails it
+|`CHK-COOLRST-RESET-VECTOR` |`CPU_CTRL.RESET_VECTOR[0]` read before the collision and after recovery
+  is printed next to the reset vector 0xC0040000 as measured and compared with nothing; a missing
+  line or a failed read fails it
+|`CHK-COOLRST-WARM-FOLLOWS` |`tb_rst_warm_smc_clk_n` is low at every sample at which
+  `rst_primary_smc_clk_no` is low, asserts with it and releases no earlier than it; the first
+  warm-high sample at or after the primary release is printed as measured; a released warm sample
+  while primary is asserted, an early warm release or a timeout fails it
+|`CHK-NONVAC` |The ordered fence holds: steps S1 to S5 in order with strictly increasing
+  simulation-time stamps and the ten checker lines printed in order after the last step
+|`CHK-TIMEOUT-PATHS` |Every bounded wait (cool-reset fall 384, cool-reset rise 256, primary release
+  512, warm release 50000 reference-clock cycles, latch set 64 polls, zero-hold watch 384
+  reference-clock cycles) is named with its bound and raises AssertionError with the last sampled
+  levels on expiry
+|===
+
+*Pass Criteria*: `CHK-COOLRST-COLD-STAYS`, `CHK-COOLRST-CSR-RECOVERY`, `CHK-COOLRST-ISOLATE-VIS`,
+`CHK-COOLRST-LATCH-CLEAR`, `CHK-COOLRST-LATCH-HOLD0`, `CHK-COOLRST-LATCH-SET-HOLD`,
+`CHK-COOLRST-PRIMARY-RELEASE`, `CHK-COOLRST-WARM-FOLLOWS`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold
+after their compares, and `CHK-COOLRST-OTHER-CSR-MEASURED` and `CHK-COOLRST-RESET-VECTOR` print
+their measured values; release offsets are measured and only the levels, orderings and register
+words above are compared. Enrolled in: `all`, `hosted`, `reset`.
+
+'''''
 
 
 ==== CLOCK
@@ -17638,8 +18319,336 @@ bounded and fail on expiry with the last readback
 `CHK-HALTSUM-WRITE-IGNORED` hold after their compares with `sbversion` 1, `sbasize` 56, `sbaccess`
 01111 and both halt summaries 0; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert
 holds. Enrolled in: `all`.
+
 '''''
 
+[[sec-535-smc_jtag_dm_halt_progbuf_test]]
+===== 535 `smc_jtag_dm_halt_progbuf_test`
+
+*Source Module*: `smc_jtag_dm_halt_progbuf_test`
+
+*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
+`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs; DMI
+addresses `data0`..`data3` 0x04..0x07, `dmcontrol` 0x10, `dmstatus` 0x11, `abstractcs` 0x16,
+`command` 0x17, `progbuf0`..`progbuf15` 0x20..0x2F and `haltsum0` 0x40, with `dtmcs` giving
+`abits` and the idle count; ocah_axi_vip (AXI) on SEP_IN reading and writing `CPU_CTRL.RESET_CTRL`
+(8 bytes, `debug_reset_n` at bit 24) and `CPU_CTRL.SCRATCH[0]` (8 bytes, address from the generated
+address map accessor `smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0)`, the local
+alias a hart store uses); hart 0 running from its reset vector; `clk_smc_i`
+
+*Objective*: A halted hart runs a program-buffer store through the Debug Module and the stored word
+reads back in `CPU_CTRL.SCRATCH[0]`.
+
+*Test Coverage*:
+
+* `CPU_CTRL.RESET_CTRL` `debug_reset_n` reads 0 before the release and is compared, with the
+  release readback of 1 as the paired positive control.
+* After the release and `dmcontrol.dmactive` = 1, `dmstatus` reads `version` 2 and `impebreak` 1,
+  `abstractcs` reads `progbufsize` 16 and `datacount` 4, `dmcontrol.hartsello` written 3 reads back
+  3 and a nonzero `hartselhi` reads back 0.
+* Positive control: before `haltreq` hart 0 runs (`allrunning` 1, `anyhalted` 0); after `haltreq`
+  within sixteen polls `dmstatus` has `allhalted` 1 and `anyrunning` 0, and `haltsum0` bits 3:0 read
+  0b0001. `dpc` is not compared.
+* With `hartsello` = 1 the other hart still runs (`allrunning` 1, `anyhalted` 0).
+* `data0`..`data3` read back four distinct patterns; an Access Register write of `x8` (64-bit) and
+  `x9` followed by an Access Register read of `x8` returns the pattern in `data0` and `data1`, with
+  `abstractcs.busy` 0 and `cmderr` 0 after each command.
+* `progbuf0`..`progbuf15` read back sixteen distinct words. `progbuf0` is then set to `sw x8, 0(x9)`
+  (0x0084A023) and the Access Register command with `transfer` 0 and `postexec` 1 runs the program
+  buffer with no explicit `ebreak`: `busy` returns to 0 and `cmderr` reads 0, so the implicit
+  `ebreak` returned the hart to the Debug ROM. The other fifteen words are `addi x0, x0, k`.
+* `CPU_CTRL.SCRATCH[0]` reads a sentinel before the run and the low 32 bits of `x8` after it; the
+  sentinel differs from that value and from the register reset value 0, so only the hart store can
+  change it.
+
+*Test Procedure*:
+
+[arabic]
+. Read `CPU_CTRL.RESET_CTRL` over AXI-Lite and take `debug_reset_n` (bit 24), which holds the Debug
+  Module in reset; require 0 and print the word.
+. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64 `clk_smc_i` cycles, read it back and
+  require bit 24 set. Create the TAP, reset it with `tb_cpu_jtag_reset` while TCK steps, read
+  IDCODE, activate the Debug Module (`dmactive` plus a bounded wait on `dmstatus`), read `dtmcs`
+  for `abits` and the idle count, then read `dmstatus` (require `version` 2, `impebreak` 1) and
+  `abstractcs` (require `progbufsize` 16, `datacount` 4). Write `dmcontrol` with `hartsello` 3 and
+  require it to read back 3, write a nonzero `hartselhi` and require it to read back 0, then write
+  `dmcontrol` with `dmactive` only.
+. Read `dmstatus` and require `allrunning` 1 and `anyhalted` 0.
+. Write `dmcontrol.haltreq`, poll `dmstatus` until `allhalted` is 1 (sixteen reads at most), clear
+  `haltreq`, read `dmstatus` and `haltsum0`; require `allhalted` 1, `anyrunning` 0 and `haltsum0`
+  bits 3:0 equal to 0b0001.
+. Select `hartsello` 1, read `dmstatus` and require `allrunning` 1 and `anyhalted` 0; restore
+  `hartsello` 0.
+. Write `data0`..`data3` with four distinct patterns and read all four back. Write `x8` (64-bit
+  pattern) and `x9` (the `CPU_CTRL.SCRATCH[0]` address) with Access Register commands, clear
+  `data0` and `data1`, read `x8` back with an Access Register command and require the pattern in
+  `data0` and `data1`; each command waits for `busy` 0 (sixteen reads at most) and requires
+  `cmderr` 0.
+. Write `progbuf0`..`progbuf15` with sixteen distinct words and read all sixteen back, then write
+  `progbuf0` with 0x0084A023. Write the sentinel to `CPU_CTRL.SCRATCH[0]` over AXI-Lite and read
+  it back.
+. Write `command` with `transfer` 0 and `postexec` 1, read `abstractcs` until `busy` is 0 (sixteen
+  reads at most) and require `cmderr` 0.
+. Read `CPU_CTRL.SCRATCH[0]` over AXI-Lite and require the low 32 bits of the `x8` pattern.
+. Write `dmcontrol.resumereq`, poll `dmstatus` until `allresumeack` and `allrunning` are 1
+  (sixteen reads at most), clear `resumereq`, wait two `clk_smc_i` cycles.
+. Require the steps in order with increasing stamps and each checker line after its step, print the
+  ordered-fence line and the bounded waits (DMI busy retries, four at most; `dmactive` wait, `halt`
+  wait, `busy` wait and `resume` wait, sixteen reads each).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DM-ACT-RESET-HELD` |`debug_reset_n` reads 0 before the release, compared, with the release
+readback of 1 as the positive control; a nonzero read before the release, a clear bit after it or
+a failed read fails it
+|`CHK-DM-ACT-DMSTATUS` |After the release and `dmactive` = 1, `dmstatus.version` reads 2 and
+`impebreak` reads 1; any other value, a stalled scan or a busy response beyond the retry bound fails
+it
+|`CHK-DM-CAP-READBACK` |`abstractcs.progbufsize` reads 16 and `datacount` 4, `hartsello` written 3
+reads back 3 and a nonzero `hartselhi` reads back 0; any difference fails it
+|`CHK-DM-HART-HALT` |Before `haltreq` `dmstatus` has `allrunning` 1 and `anyhalted` 0, within the
+bound after it `allhalted` 1 and `anyrunning` 0; a failed control, a missing halt or a timeout fails
+it
+|`CHK-DM-HALTSUM0` |With hart 0 halted `haltsum0` bits 3:0 read 0b0001; bit 0 clear or any of bits
+3:1 set fails it
+|`CHK-DM-OTHER-HART-RUNS` |With `hartsello` 1 `dmstatus` has `allrunning` 1 and `anyhalted` 0 while
+hart 0 is halted; a halted or absent hart fails it
+|`CHK-DM-GPR-DATA` |`data0`..`data3` read back the four patterns and the 64-bit `x8` read returns
+the written pattern with `busy` 0 and `cmderr` 0 after each command; any difference or a nonzero
+`cmderr` fails it
+|`CHK-DM-PROGBUF-REGS` |`progbuf0`..`progbuf15` read back the sixteen distinct words written; any
+difference fails it
+|`CHK-DM-PROGBUF-STORE` |`CPU_CTRL.SCRATCH[0]` reads the sentinel before the program buffer runs and
+the low 32 bits of `x8` after it; any other value fails it
+|`CHK-DM-PROGBUF-IMPEBREAK` |With no explicit `ebreak` `abstractcs.busy` returns to 0 within the
+bound and `cmderr` reads 0 after the `postexec` command; busy at the bound or a nonzero `cmderr`
+fails it
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow their steps; a missing or misordered term fails it
+|`CHK-TIMEOUT-PATHS` |The DMI busy retries (four at most) and the sixteen-read `dmactive`, halt,
+busy and resume waits are bounded and fail on expiry with the last `dmstatus`, `abstractcs` and DMI
+response
+|===
+
+*Pass Criteria*: `CHK-DM-ACT-RESET-HELD`, `CHK-DM-ACT-DMSTATUS`, `CHK-DM-CAP-READBACK`,
+`CHK-DM-HART-HALT`, `CHK-DM-HALTSUM0`, `CHK-DM-OTHER-HART-RUNS`, `CHK-DM-GPR-DATA`,
+`CHK-DM-PROGBUF-REGS`, `CHK-DM-PROGBUF-STORE` and `CHK-DM-PROGBUF-IMPEBREAK` hold after their
+compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in:
+`all`, `hosted`, `jtag`.
+
+'''''
+
+[[sec-536-smc_jtag_dm_sba_scratchpad_test]]
+===== 536 `smc_jtag_dm_sba_scratchpad_test`
+
+*Source Module*: `smc_jtag_dm_sba_scratchpad_test`
+
+*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
+`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs; DMI
+addresses `data0` 0x04, `sbcs` 0x38, `sbaddress0` 0x39, `sbaddress1` 0x3A, `sbdata0` 0x3C and
+`sbdata1` 0x3D, the not-implemented `data4` 0x08, `hartinfo` 0x12, `confstrptr0` 0x19, `nextdm`
+0x1D, `authdata` 0x30, `haltsum2` 0x34, `sbaddress2` 0x3B and `sbdata2` 0x3E, with `dtmcs` giving
+`abits` and the idle count; `sbcs` layout `sbversion` bits 31:29, `sbbusy` bit 21, `sbreadonaddr`
+bit 20, `sbaccess` bits 19:17, `sberror` bits 14:12 (write 1 to clear), `sbasize` bits 11:5 and
+`sbaccess128`..`sbaccess8` bits 4:0; ocah_axi_vip (AXI) on SEP_IN reading and writing
+`CPU_CTRL.RESET_CTRL` (8 bytes, `debug_reset_n` at bit 24) and the scratchpad words (4 and 8 bytes,
+addresses from the generated address map accessor `SPM_MEMORY_BASE`, the local alias); `clk_smc_i`
+
+*Objective*: The Debug Module system bus writes and reads the scratchpad at 8, 16, 32 and 64 bits
+and the SEP_IN AXI driver sees the same words.
+
+*Test Coverage*:
+
+* After the debug reset release and `dmcontrol.dmactive` = 1, `sbcs` reads `sbversion` 1, `sbasize`
+  56, `sbaccess8`, `sbaccess16`, `sbaccess32` and `sbaccess64` 1 and `sbaccess128` 0.
+* The not-implemented DMI registers `data4`, `hartinfo`, `confstrptr0`, `nextdm`, `authdata`,
+  `haltsum2`, `sbaddress2` and `sbdata2` read 0 before and after a write of 0xFFFFFFFF; `data0`
+  reads back its written pattern as the positive control.
+* Two 32-bit system bus writes at distinct scratchpad word addresses end with `sbbusy` 0 and
+  `sberror` 0 and `sbaddress0` reads back each address; `sbaddress1` (written 0 by the sequence)
+  is printed and not compared.
+* System bus reads with `sbreadonaddr` of both words return the two distinct patterns.
+* Width-specific writes at 8, 16, 32 and 64 bits into four distinct doublewords with a known
+  background read back at the same width, and the 64-bit read of the doubleword equals the
+  background with only the written bytes replaced.
+* A 64-bit write with `sbdata1` loaded before `sbdata0` reads back with `sbdata0` the low word and
+  `sbdata1` the high word.
+* The AXI driver reads the words the system bus wrote, and the system bus reads a word the AXI
+  driver wrote.
+
+*Test Procedure*:
+
+[arabic]
+. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64 `clk_smc_i` cycles, read it back and
+  require bit 24 set. Create the TAP, reset it with `tb_cpu_jtag_reset` while TCK steps, read
+  IDCODE, activate the Debug Module (`dmactive` plus a bounded wait on `dmstatus`), read `dtmcs`
+  for `abits` and the idle count, then read `sbcs` and require `sbversion`, `sbasize` and the
+  `sbaccess` capability bits listed above.
+. Read each not-implemented DMI register, write 0xFFFFFFFF, read it again and require 0 both
+  times; write `data0` with a pattern and require it to read back.
+. Write `sbcs` with `sbaccess` 2 and `sberror` cleared, write `sbaddress1` 0 and `sbaddress0` with
+  the first word address, write `sbdata0` to start the access, read `sbcs` until `sbbusy` is 0
+  (sixteen reads at most) and require `sberror` 0; read `sbaddress0` back. Repeat at the second
+  word address with a different pattern and read `sbaddress0` and `sbaddress1`.
+. Write `sbcs` with `sbreadonaddr` and `sbaccess` 2, write `sbaddress0` with each word address in
+  turn, wait for `sbbusy` 0 and `sberror` 0, read `sbdata0` and require the written pattern.
+. For each of `sbaccess` 0, 1, 2 and 3 write a known 64-bit background into a doubleword, write
+  the width-specific pattern at a byte lane inside it, read it at the same width and read the
+  doubleword at 64 bits; require the pattern at the width and the background with only the written
+  bytes replaced.
+. Write `sbcs` with `sbaccess` 3, `sbaddress0`, `sbdata1` and then `sbdata0`; wait for `sbbusy` 0
+  and `sberror` 0, read the location back with `sbreadonaddr` and read `sbdata0` and `sbdata1`;
+  require the low and high words as written.
+. Read the words of steps 3 and 5 and the 64-bit location of step 6 with the SEP_IN AXI driver and
+  require each to equal the system bus value; write a new pattern at a fresh word with the AXI
+  driver, wait two `clk_smc_i` cycles and read it with a system bus read.
+. Require the steps in order with increasing stamps and each checker line after its step, print the
+  ordered-fence line and the bounded waits (DMI busy retries, four at most; `dmactive` wait and
+  `sbbusy` wait, sixteen reads each).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DM-SBCS-CAPS` |`sbcs` reads `sbversion` 1, `sbasize` 56, `sbaccess8`..`sbaccess64` 1 and
+`sbaccess128` 0; any other field value or a stalled scan fails it
+|`CHK-DM-NOT-IMPL-DMI` |Each listed not-implemented DMI register reads 0 before and after a write
+of 0xFFFFFFFF and `data0` reads back its pattern; a nonzero read or a failed control fails it
+|`CHK-DM-SBA-WRITE` |After each 32-bit system bus write `sbbusy` reads 0 within the bound and
+`sberror` 0 and `sbaddress0` reads back the written address, and `sbaddress1` (written 0 by the
+sequence) is printed and not compared; a busy bit at the bound, a nonzero `sberror` or an address
+difference fails it
+|`CHK-DM-SBA-READ` |A system bus read of each written word returns its own pattern with `sbbusy` 0
+and `sberror` 0; a different word, an aliased word or a nonzero `sberror` fails it
+|`CHK-DM-SBA-WIDTHS` |Each of the 8-, 16-, 32- and 64-bit writes reads back its pattern at its width
+and the doubleword keeps its background outside the written bytes; any difference fails it
+|`CHK-DM-SBA-64BIT` |A 64-bit write started by `sbdata0` with `sbdata1` loaded first reads back
+`sbdata0` as the low word and `sbdata1` as the high word; a difference or swapped words fails it
+|`CHK-DM-SBA-VISIBLE` |The AXI reads of the words the system bus wrote equal the written values and
+the system bus read of the word the AXI driver wrote equals it; any difference fails it
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow their steps; a missing or misordered term fails it
+|`CHK-TIMEOUT-PATHS` |The DMI busy retries (four at most), the sixteen-read `dmactive` wait and the
+sixteen-read `sbbusy` wait are bounded and fail on expiry with the last `sbcs` and DMI response
+|===
+
+*Pass Criteria*: `CHK-DM-SBCS-CAPS`, `CHK-DM-NOT-IMPL-DMI`, `CHK-DM-SBA-WRITE`, `CHK-DM-SBA-READ`,
+`CHK-DM-SBA-WIDTHS`, `CHK-DM-SBA-64BIT` and `CHK-DM-SBA-VISIBLE` hold after their compares;
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`,
+`hosted`, `jtag`.
+
+'''''
+
+[[sec-537-smc_jtag_dm_abstractcs_lifecycle_test]]
+===== 537 `smc_jtag_dm_abstractcs_lifecycle_test`
+
+*Source Module*: `smc_jtag_dm_abstractcs_lifecycle_test`
+
+*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
+`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs (10 ns
+period); DMI addresses `data0` 0x04, `data1` 0x05, `dmcontrol` 0x10, `dmstatus` 0x11, `abstractcs`
+0x16, `command` 0x17 and `progbuf0`..`progbuf15` 0x20..0x2F, with `dtmcs` giving `abits` and the
+idle count; `abstractcs` fields `busy` bit 12 and `cmderr` bits 10:8 (write 1 to clear); Access
+Register fields `aarsize`, `postexec`, `transfer`, `write` and `regno` 0x1000..0x101F for
+`x0`..`x31` and the Quick Access command type 1; ocah_axi_vip (AXI) on SEP_IN reading and writing
+`CPU_CTRL.RESET_CTRL` (8 bytes, `debug_reset_n` at bit 24); hart 0 halted by `haltreq` and running
+the program-buffer loop; `clk_smc_i` measured by the leaf to size the loop count
+
+*Objective*: `abstractcs.busy` is observed while a program-buffer loop runs, and command misuse sets
+`cmderr` 1 and 2 without executing anything and clears on a write of 1s.
+
+*Test Coverage*:
+
+* Before any command `abstractcs` reads `busy` 0 and `cmderr` 0; after a postexec command with
+  `transfer` clear, `busy` reads 1 at least once while the loop runs (positive control that busy is
+  observable) and later 0 with `cmderr` 0.
+* A command written while `busy` is 1 does not execute (`x6` unchanged) and leaves `cmderr` 1; the
+  wait for `busy` 0 is a bench bound, not a specification value.
+* With `cmderr` 1 held and `busy` 0, a Quick Access write replaces the held code with 2; a write of
+  1s then reads `cmderr` 0.
+* With `cmderr` 0, a Quick Access command, an Access Register command with `transfer` set,
+  `aarsize` 3 and `regno` 0x1020, and one with `transfer` set, `aarsize` 1 and `regno` 0x1008 each
+  leave `cmderr` 2; the same operands with `transfer` clear leave `cmderr` 0.
+* A command written with `busy` 0 and `cmderr` 2 replaces the stored command and leaves `cmderr` 2;
+  it does not execute, so `x8` still reads its earlier pattern after the clear.
+* After the clear a 32-bit Access Register write and read of `x8` execute with `cmderr` 0.
+
+*Test Procedure*:
+
+[arabic]
+. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64 `clk_smc_i` cycles and read it back.
+  Create the TAP, reset it with `tb_cpu_jtag_reset` while TCK steps, read IDCODE and `dtmcs`, write
+  `dmcontrol.dmactive` and wait (sixteen reads at most) for `dmstatus` to answer, set `haltreq` and
+  wait (sixteen reads at most) for `allhalted`. Read `abstractcs` and require `busy` 0 and `cmderr`
+  0, then write `x8` with pattern A.
+. Measure the `clk_smc_i` period, compute the loop count from the TCK period, the DMI access cost
+  and two clocks per iteration, print it, and write `x5` with it. Write `progbuf0` `addi x5, x5, -1`
+  (0xFFF28293), `progbuf1` `bne x5, x0, -4` (0xFE029EE3) and `nop` into `progbuf2`..`progbuf15`,
+  printing each word.
+. Write the postexec command with `transfer` clear and read `abstractcs` until `busy` reads 0
+  (sixty-four reads at most); require a `busy` 1 read, then `busy` 0 and `cmderr` 0.
+. Write `x6`, re-arm `x5`, load the `x6` busy-write data, write the postexec command and read
+  `abstractcs` until `busy` reads 1; write the `x6` Access Register command, wait for `busy` 0
+  (sixty-four reads at most) and require `cmderr` 1; write a Quick Access command and require
+  `cmderr` 2; write 1s to `cmderr`, require 0 and read `x6`, requiring the earlier value.
+. Issue in turn, clearing `cmderr` after each rejected leg and reading `abstractcs` after each: the
+  Quick Access command, the `transfer` set `aarsize` 3 `regno` 0x1020 command, the `transfer` set
+  `aarsize` 1 `regno` 0x1008 command, and the `transfer` clear `aarsize` 1 `regno` 0x1020 command.
+. Load pattern B in `data0` and `data1`, write a Quick Access command to make `cmderr` 2, write the
+  Access Register command that writes `x8`, read `command` back and `abstractcs`, write 1s to
+  `cmderr` and read `x8` with a command, requiring pattern A.
+. Wait two `clk_smc_i` cycles, write a 32-bit Access Register write of `x8` with pattern C and a
+  32-bit read, reading `abstractcs` after each and `data0` after the read.
+. Require the steps in order with increasing stamps and each checker line after its step, print the
+  ordered-fence line and the bounded waits (DMI busy retries, four at most; the `dmactive`, halt and
+  idle waits of sixteen reads; the loop, busy-observe and busy-write waits of sixty-four reads).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DM-BUSY-LIFECYCLE` |`abstractcs` reads `busy` 0 and `cmderr` 0 before any command, `busy` 1 at
+least once during the loop and `busy` 0 with `cmderr` 0 after it; no busy read, a busy read at the
+bound or a nonzero `cmderr` fails it
+|`CHK-DM-BUSY-WRITE` |A command written while `busy` is 1 leaves `cmderr` 1 with `busy` 0 within the
+bench bound, `x6` unchanged and `cmderr` 0 after a write of 1s; any other value fails it
+|`CHK-DM-CMDERR-CMDTYPE` |A Quick Access command leaves `cmderr` 2 and `busy` 0; any other value
+fails it
+|`CHK-DM-CMDERR-REGNO` |An Access Register command with `transfer` set, `aarsize` 3 and `regno`
+0x1020 leaves `cmderr` 2; any other value fails it
+|`CHK-DM-CMDERR-AARSIZE` |An Access Register command with `transfer` set, `regno` 0x1008 and
+`aarsize` 1 leaves `cmderr` 2; any other value fails it
+|`CHK-DM-CMDERR-NOTRANSFER` |The operands rejected with `transfer` set leave `cmderr` 0 and `busy` 0
+with `transfer` clear, and the two rejected legs read `cmderr` 2; any other value fails it
+|`CHK-DM-CMDERR-STORE` |A command written with `busy` 0 and `cmderr` 2 reads back from `command` as
+written and leaves `cmderr` 2; the earlier value or another `cmderr` fails it
+|`CHK-DM-CMDERR-REPLACE` |With `cmderr` 1 held and `busy` 0 a Quick Access write leaves `cmderr` 2;
+`cmderr` 1 or any other value fails it
+|`CHK-DM-CMDERR-NOEXEC` |`x8` reads pattern A after the pattern-B write command issued with `cmderr`
+2; pattern B or any other value fails it
+|`CHK-DM-CMDERR-RECOVER-GPR32` |After the clear a 32-bit write of `x8` and a 32-bit read return
+`cmderr` 0 and `busy` 0 and the read returns pattern C; any other value fails it
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow their steps; a missing or misordered term fails it
+|`CHK-TIMEOUT-PATHS` |Seven bounded waits: the DMI busy retries (four at most), the sixteen-read
+`dmactive` and halt waits on `dmstatus`, the sixteen-read idle wait on `abstractcs` that every
+command (the GPR writes and reads, the rejected-command legs, the replace and store waits) and
+every `cmderr` clear use, and the sixty-four-read loop, busy-observe and busy-write waits; each
+fails on expiry with the last `dmstatus`, `abstractcs`, `command` and DMI response
+|===
+
+*Pass Criteria*: `CHK-DM-BUSY-LIFECYCLE`, `CHK-DM-BUSY-WRITE`, `CHK-DM-CMDERR-CMDTYPE`,
+`CHK-DM-CMDERR-REGNO`, `CHK-DM-CMDERR-AARSIZE`, `CHK-DM-CMDERR-NOTRANSFER`,
+`CHK-DM-CMDERR-STORE`, `CHK-DM-CMDERR-REPLACE`, `CHK-DM-CMDERR-NOEXEC` and
+`CHK-DM-CMDERR-RECOVER-GPR32` hold after their compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold
+and every sequence assert holds. Enrolled in: `all`, `hosted`, `jtag`.
+
+'''''
 
 ==== EFUSE
 
@@ -25032,6 +26041,257 @@ every sequence assert holds; `CHK-PMBUS-DECODE-LOG` records measurements only. E
 
 '''''
 
+[[sec-538-smc_i2c_wire_timing_test]]
+===== 538 `smc_i2c_wire_timing_test`
+
+*Source Module*: `smc_i2c_wire_timing_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` (0x50) on `tb_i2c0_scl` / `tb_i2c0_sda`; a clock-sampled measurer
+in the sequence that reads both pad nets on every `clk_periph_i` rising edge and keeps each edge
+as a cycle count; ocah_axi_vip (AXI) on SEP_IN writing and reading `TIMING0` to `TIMING4`,
+`FDATA`, `STATUS`, `HOST_FIFO_STATUS`, `RDATA`, `INTR_STATE`, `CTRL`, `OVRD`, `FIFO_CTRL` and
+`CONTROLLER_EVENTS` of I2C0, the I2C0 wrapper control register and `CLOCK_GATE_CONTROL`;
+`clk_periph_i` (the clock `clk_i` of the I2C core is gated from) and `clk_smc_i`; the peripheral
+clock period is read from the environment configuration
+
+*Objective*: The difference in the I2C0 controller's SCL, SDA, START, STOP and bus-free timing on
+the pads between two programming sets equals the difference in the `TIMING0` to `TIMING4` counts
+that were changed.
+
+*Test Coverage*:
+
+* All ten `TIMING0` to `TIMING4` fields read back the distinct nonzero value written at their
+  width, and a halfword-strobed rewrite of one field leaves its neighbour unchanged; the reset
+  readback is logged only (a stuck-at-zero reset cannot be told apart on a 2-state bench).
+* Set A is the Fast-mode-plus minimums of UM10204 Table 11 in `clk_i` cycles (`THD_DAT` at 1);
+  set B scales `THIGH`, `TLOW`, `TSU_DAT` and `THD_DAT` by 4 and set C by 10; the SCL high, low
+  and period differences between B or C and A equal the programmed differences on every clock
+  pulse of a write, repeated-START read and STOP transfer.
+* The SDA hold after an SCL fall of the bits the controller transmits, and the hold after the SCL
+  fall of the bit it not-acknowledges, change with `THD_DAT` by the programmed difference. The SDA
+  setup before the SCL rise of those bits is measured and printed next to `TSU_DAT` and
+  `TLOW` minus `THD_DAT` of each set, with no expectation.
+* With `TSU_STA`, `THD_STA` and `TSU_STO` each raised (set A3) the repeated-START setup and hold
+  and the STOP setup change by the programmed differences; with only `T_BUF` raised (set A4) the
+  bus-free time between a STOP and the next START changes by the programmed difference. The
+  measured bus-free time of each set is printed next to its programmed `T_BUF`, which `i2c.rdl`
+  states as the time between a STOP and START condition; a value below it is printed, not compared.
+* Raising `T_R` and `T_F`, and the hold of the first START, are measured and printed with no
+  expectation. Full-rate Standard-mode SCL is not run.
+* With `THIGH` and `TLOW` at 2 and every other field at 1 a transfer of START, address write and
+  STOP completes with one acknowledge and one STOP.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a controller with the EEPROM target on the pads, read `TIMING0` to `TIMING4`
+  before any write, write every field with a distinct value at its width and read the five
+  registers back, then rewrite each low and each high field with a halfword strobe and read back
+  the register.
+. Program set A. Queue transfer X (START, address write, one byte, repeated START, address read,
+  one byte with the controller not-acknowledging, STOP) and transfer Y (START, address write,
+  STOP) behind it, wait for the second STOP on the pads and `STATUS.HOSTIDLE`, and require the
+  byte read and the target's START, STOP and acknowledge counts. Reduce the pad edges to the
+  intervals under test.
+. Program set B and repeat.
+. Program set C and repeat.
+. Program set A2 (`T_R` and `T_F` raised by 6) and repeat.
+. Program set A3 (`TSU_STA`, `THD_STA` and `TSU_STO` raised by 8) and repeat, then program set A4
+  (only `T_BUF` raised by 8) and repeat.
+. Program the minimum set, clear `INTR_STATE`, run transfer Y alone and require the START, the
+  acknowledge, exactly one STOP, `STATUS.HOSTIDLE` and `INTR_STATE.CMD_COMPLETE`.
+. Compare the deltas against set A in order, print the checker lines, the ordered-fence line and
+  the bounded waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-WIRE-TIMING-FIELDS` |Each of the ten fields reads back its distinct written value and a
+rewrite of one field leaves its neighbour unchanged; a differing readback fails it, and the reset
+leg is printed only.
+|`CHK-I2C-WIRE-SCL-HIGH-DELTA` |The change in measured SCL high time on every clock pulse, B minus A
+and C minus A, equals the change in `THIGH` exactly in cycles; any other delta fails it.
+|`CHK-I2C-WIRE-SCL-LOW-DELTA` |The change in measured SCL low time on every low phase between clock
+pulses, B minus A and C minus A, equals the change in `TLOW` exactly; any other delta fails it.
+|`CHK-I2C-WIRE-SCL-PERIOD-DELTA` |The change in measured SCL period, B minus A and C minus A, equals
+the change in `THIGH` plus `TLOW` with `T_R` and `T_F` equal in all three sets; any other delta
+fails it.
+|`CHK-I2C-WIRE-MEASURED-ONLY` |Measured only: the period change with `T_R` and `T_F` raised, the
+first-START hold in A and A3 and the STOP-to-next-START time are printed; nothing is compared.
+|`CHK-I2C-WIRE-DATA-SETUP-MEASURED` |Measured only: the SDA setup before the SCL rise of the
+transmitted bits in sets A, B and C is printed with the programmed `TSU_DAT` and `TLOW` minus
+`THD_DAT`; nothing is compared and only a missing line or edge fails it.
+|`CHK-I2C-WIRE-DATA-HOLD-DELTA` |The change in SDA hold after the SCL fall of each transmitted bit,
+B minus A and C minus A, equals the change in `THD_DAT`; any other delta fails it.
+|`CHK-I2C-WIRE-NACK-HOLD-DELTA` |With SDA high in the controller's not-acknowledge pulse, the change
+in SDA hold after that pulse's SCL fall, B minus A and C minus A, equals the change in `THD_DAT`;
+a low SDA or any other delta fails it.
+|`CHK-I2C-WIRE-RSTART-DELTA` |The change in repeated-START setup (SCL rise to SDA fall) and hold
+(SDA fall to the next SCL fall), A3 minus A, equals the change in `TSU_STA` and `THD_STA`; any
+other delta fails it.
+|`CHK-I2C-WIRE-STOP-SETUP-DELTA` |The change in STOP setup (SCL rise to SDA rise), A3 minus A,
+equals the change in `TSU_STO`; any other delta fails it.
+|`CHK-I2C-WIRE-BUS-FREE-DELTA` |The change in time from the SDA rise of the STOP of X to the SDA
+fall of the START of Y, A4 minus A, equals the change in `T_BUF`; any other delta fails it. The
+measured bus-free time of each set is printed next to its programmed `T_BUF` (the time between a
+STOP and START condition per `i2c.rdl`); a value below it is printed, not compared.
+|`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 2 and the other fields at 1 transfer Y
+shows a START, an acknowledged address, one STOP, `HOSTIDLE` and `CMD_COMPLETE`; a missing START
+or acknowledge, another STOP count or either flag clear fails it.
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow them in order; a missing or misordered term fails it.
+|`CHK-TIMEOUT-PATHS` |The wait for the STOP edges, the `HOSTIDLE` poll, the LSIO ready poll and the
+AXI access are bounded and fail on expiry with the last `STATUS`, `HOST_FIFO_STATUS` and measurer
+state.
+|===
+
+*Pass Criteria*: `CHK-I2C-WIRE-TIMING-FIELDS`, `CHK-I2C-WIRE-SCL-HIGH-DELTA`,
+`CHK-I2C-WIRE-SCL-LOW-DELTA`, `CHK-I2C-WIRE-SCL-PERIOD-DELTA`,
+`CHK-I2C-WIRE-DATA-HOLD-DELTA`, `CHK-I2C-WIRE-NACK-HOLD-DELTA`, `CHK-I2C-WIRE-RSTART-DELTA`,
+`CHK-I2C-WIRE-STOP-SETUP-DELTA`, `CHK-I2C-WIRE-BUS-FREE-DELTA`, `CHK-I2C-WIRE-MIN-SET-RUN`,
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds;
+`CHK-I2C-WIRE-MEASURED-ONLY` and `CHK-I2C-WIRE-DATA-SETUP-MEASURED` record measurements only.
+Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-539-smc_i2c_dual_concurrent_transfer_test]]
+===== 539 `smc_i2c_dual_concurrent_transfer_test`
+
+*Source Module*: `smc_i2c_dual_concurrent_transfer_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` (0x50) and `SmcI2cBusMonitor` on `tb_i2c0_scl` / `tb_i2c0_sda`
+(`tb_i2c0_scl_ext_low`, `tb_i2c0_sda_ext_low`) and `SmcI2cEepromSlave` (0x2A) and
+`SmcI2cBusMonitor` on `tb_i2c1_scl` / `tb_i2c1_sda` (`tb_i2c1_scl_ext_low`,
+`tb_i2c1_sda_ext_low`), with `+smc_i2c_shared_bus` not passed and `+smc_i2c1_pads` passed, which
+makes the bench drive the resolved open-drain value onto pads 41 and 42; `tb_i2c1_scl` and
+`tb_i2c1_sda` are read from the padring outputs of those pads (`core2pad_en_o` and `core2pad_o`),
+that is after the `I2C_CTRL[1].I2C_EN` pad-function select; a clock-sampled recorder in the
+sequence that reads all four pad nets on every `clk_periph_i` rising edge and keeps each edge as a
+cycle count; ocah_axi_vip (AXI) on SEP_IN writing and reading `TIMING0` to `TIMING4`, `FDATA`,
+`STATUS`, `HOST_FIFO_STATUS`, `INTR_STATE`, `CONTROLLER_EVENTS`, `CTRL`, `OVRD`, `FIFO_CTRL` and
+`TARGET_ID` of I2C0 and I2C1 at the generated map's instance stride, `I2C_CTRL` of each instance
+and `CLOCK_GATE_CONTROL`; the GPIO `DATA_CTRL.LSIO_SELECT` of the I2C1 pads; `clk_periph_i` (the
+clock `clk_i` of the I2C cores is gated from) and `clk_smc_i`
+
+*Objective*: Two I2C controllers, instances 0 and 1, run write transfers at the same time on
+separate pad pairs, each pad pair carries only its own instance's bytes with the programmed timing
+difference, and the register windows, FIFO levels, `CMD_COMPLETE` and NACK state stay per
+instance.
+
+*Test Coverage*:
+
+* With `I2C_CTRL[1].I2C_EN` clear a write on instance 0 shows its START on the instance-0 pads,
+  and a write queued on instance 1 with its host enabled gives no edge on the instance-1 padring
+  outputs over a bounded window; with `I2C_EN` set the instance-1 write shows its START on the
+  instance-1 pads and no further edge on the instance-0 pads. The pad level with `I2C_EN` clear is
+  not compared.
+* One register written in the instance-1 window reads back there while the same register of the
+  instance-0 window keeps its value, and the reverse.
+* Instance 0 runs a write of an address byte, a pointer byte and four data bytes and instance 1,
+  programmed with `THIGH` and `TLOW` four times those of instance 0, a write of an address byte, a
+  pointer byte and two data bytes; the instance-1 START falls after the instance-0 START and
+  before the instance-0 STOP. Each pad pair shows START, the address byte with write, the data in
+  push order, an acknowledge per byte and a STOP, and only its own bytes.
+* The SCL high and low phases of the two instances differ by the programmed difference of `THIGH`
+  and `TLOW` on every phase index both transfers have whose edges lie inside the overlap window,
+  from the instance-1 START to the instance-0 STOP; the compared phase count is printed and must
+  be nonzero. The overlap and the absolute phases are printed as measured.
+* `HOST_FIFO_STATUS.FMTLVL` of an instance rises with its pushes while the other instance's
+  levels stay, in both orders; both format levels return to 0 with `STATUS.FMTEMPTY` and
+  `STATUS.HOSTIDLE` set. The levels are printed as measured.
+* `INTR_STATE.CMD_COMPLETE` of each instance is set after its STOP and a write of 1 to one
+  instance leaves the other instance's bit set. Each pad pair counts one STOP.
+* An address on instance 1 that no target acknowledges sets `CONTROLLER_EVENTS.NACK` and
+  `INTR_STATE.CONTROLLER_HALT` on instance 1 only while instance 0 completes its write; writing 1
+  to the instance-1 NACK event clears both.
+
+*Test Procedure*:
+
+[arabic]
+. Ungate the I2C clock, enable I2C0 as a controller, start a target and a monitor on each pad
+  pair, start the recorder, program the same five timing registers on both instances and clear
+  `I2C_CTRL[1]`. Enable the instance-0 host, push a write and wait for its STOP. Require one START
+  on the instance-0 pads. With `I2C_CTRL[1].I2C_EN` still clear, enable the instance-1 host, push a
+  write and require no edge on the instance-1 padring outputs for 4000 `clk_periph_i` cycles. Set
+  `I2C_CTRL[1].I2C_EN`, require a START on the instance-1 pads within 4000 cycles, with no LSIO
+  select made; wait for the STOP, require an unchanged instance-0 edge count, then select the I2C1
+  pads for LSIO for the later steps.
+. Read `TARGET_ID` of both instances, write a distinct value to instance 1, read both, write a
+  different value to instance 0 and read both.
+. Program instance 0 with the base timing set and instance 1 with the same set and `THIGH` and
+  `TLOW` multiplied by 4, and read every register back.
+. With both hosts disabled and the FIFOs reset, read `HOST_FIFO_STATUS` of both instances, push
+  the instance-0 write words and read both, push the instance-1 write words and read both. Enable
+  the instance-0 host, then two cycles later the instance-1 host, and poll `HOST_FIFO_STATUS` of
+  both until both pad pairs show a START.
+. Wait, bounded, until both instances show `STATUS.HOSTIDLE`, `STATUS.FMTEMPTY`,
+  `INTR_STATE.CMD_COMPLETE` and one more STOP on their pad pairs. Read `STATUS`,
+  `HOST_FIFO_STATUS` and `INTR_STATE` of both, write 1 to `CMD_COMPLETE` of instance 0 and read
+  both, write 1 to `CMD_COMPLETE` of instance 1 and read both.
+. Push a normal write on instance 0 and a write to an address nobody answers on instance 1, wait
+  for instance 0 to complete and for the instance-1 NACK event, read `CONTROLLER_EVENTS` and
+  `INTR_STATE` of both, write 1 to the instance-1 NACK event and read both again.
+. Reduce the overlapped-transfer pad edges of each instance to bytes, acknowledges and SCL phases
+  and compare the phase differences of the phases inside the overlap window with the programmed
+  `THIGH` and `TLOW` differences.
+. Compare and print the checker lines in order, then the ordered-fence line and the bounded waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-DUAL-PAD-ROUTE` |On the padring outputs of the instance pads, with `I2C_EN[1]` clear and
+an instance-1 write queued and its host enabled there is no edge on the instance-1 pads over the
+bounded window while the instance-0 write gives one START on the instance-0 pads; with `I2C_EN[1]`
+set the instance-1 write gives one START on the instance-1 pads and no edge on the instance-0
+pads. An edge on the clear pair, a START that does not follow `I2C_EN` alone within the window,
+or an X fails it.
+|`CHK-I2C-DUAL-REG-WINDOW` |A value written in one instance window reads back there and the other
+window keeps its value, in both directions, at the generated-map addresses; a changed other
+window, a differing readback or an X fails it.
+|`CHK-I2C-DUAL-WIRE-ORDER` |Each pad pair shows START, the address byte with write, the data in
+push order, an acknowledge per byte and a STOP, with only its own bytes, and the instance-1 START
+lies between the instance-0 START and STOP with a nonzero overlap printed; a missing, reordered or
+foreign byte, no overlap or a timeout fails it.
+|`CHK-I2C-DUAL-LIVENESS` |Both transfers reach `CMD_COMPLETE`, and the NACKed instance reports its
+event, within the bench bound; the elapsed cycles and the bound are printed, and an instance that
+does neither within the bound fails it.
+|`CHK-I2C-DUAL-TIMING-DIFF` |The difference in measured SCL high and low time, instance 1 minus
+instance 0, equals the difference in `THIGH` and `TLOW` exactly on every common phase index whose
+edges lie inside the overlap window, from the instance-1 START to the instance-0 STOP; any other
+difference, a programmed difference of 0 or no phase inside the window fails it.
+|`CHK-I2C-DUAL-FIFO-LEVELS` |`FMTLVL` of an instance rises with its pushes while the other
+instance's `FMTLVL` and both `RXLVL` stay, and both `FMTLVL` return to 0 with `FMTEMPTY` and
+`HOSTIDLE` set and `FMTFULL` clear; a moved level of the idle instance, a nonzero final level or
+a missing flag fails it, and the levels are printed.
+|`CHK-I2C-DUAL-CMD-COMPLETE` |`INTR_STATE.CMD_COMPLETE` of each instance is 1 after its STOP and 0
+after a write of 1 to it, and the other instance's bit survives the clear; a bit not set, still
+set after the clear or cleared by the other write fails it.
+|`CHK-I2C-DUAL-STOP-COUNT` |The bus monitor of each pad pair counts exactly 1 STOP in the
+overlapped transfers; any other count fails it.
+|`CHK-I2C-DUAL-NACK-ISOLATION` |The unanswered address sets `CONTROLLER_EVENTS.NACK` and
+`INTR_STATE.CONTROLLER_HALT` on instance 1 only, instance 0 completes with `CMD_COMPLETE` and no
+event, and writing 1 to the instance-1 NACK event clears both; a flag on instance 0, a flag not
+set on instance 1 or one that stays set fails it.
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow them in order; a missing or misordered term fails it.
+|`CHK-TIMEOUT-PATHS` |The transfer wait, the START wait, the NACK wait, the pad release wait, the
+LSIO ready poll and the AXI access are bounded and fail on expiry with the last register and
+recorder state.
+|===
+
+*Pass Criteria*: `CHK-I2C-DUAL-PAD-ROUTE`, `CHK-I2C-DUAL-REG-WINDOW`, `CHK-I2C-DUAL-WIRE-ORDER`,
+`CHK-I2C-DUAL-LIVENESS`, `CHK-I2C-DUAL-TIMING-DIFF`, `CHK-I2C-DUAL-FIFO-LEVELS`,
+`CHK-I2C-DUAL-CMD-COMPLETE`, `CHK-I2C-DUAL-STOP-COUNT`, `CHK-I2C-DUAL-NACK-ISOLATION`,
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 
 ==== I3C
 
@@ -27462,6 +28722,290 @@ delta bits and the `IER` bits above 4 are recorded and are not part of the claim
 
 '''''
 
+[[sec-529-smc_uart_pad_mux_enable_test]]
+===== 529 `smc_uart_pad_mux_enable_test`
+
+*Source Module*: `smc_uart_pad_mux_enable_test`
+
+*BFM / Model*: SEP_IN AXI sequencer writing and reading `CTRL.UART_EN` of wrapper 0, the UART0
+`THR`, `LSR.THRE` and `LSR.TEMT`, the pad-12 GPIO `DATA_CTRL` fields `interface_enable`,
+`enable_rx_tx` and `core2pad`, and `CLOCK_GATE_CONTROL` (`UART_CG_EN`); the UART0 pad VIP sink on
+`tb_uart0_tx_from_dut` (pad 12) decodes 8N1 frames at 115200 baud, and the same signal is also
+sampled on every `clk_smc_i` rise; `tb_uart0_rx_ext_drive` (pad 11) is bound by the VIP and left
+idle
+
+*Objective*: `THR` 0xA5 reaches pad 12 as one frame with `UART_EN` set, again after `UART_EN` is
+cleared and set, and the UART transmits with `UART_EN` clear while the pad is only measured.
+
+*Test Coverage*:
+
+* `CTRL.UART_EN` of wrapper 0 set: a `THR` write of 0xA5 produces exactly one 8N1 frame on pad 12
+  decoded as 0xA5 within the 5000 us capture bound (`uart_log_engine_ctrl.rdl` `CTRL.UART_EN`;
+  `ocah_gpio_table` pad 12 = `UART[0].TX`).
+* `UART_EN` cleared while idle: `LSR.TEMT` reads 0 after the `THR` write and `LSR.THRE` and
+  `LSR.TEMT` read 1 together after the byte is shifted out (`uart_16550_main.rdl` `LSR`), so the
+  UART itself transmitted.
+* The frames the pad VIP decodes on pad 12 within a window of 3 frame times and the minimum and
+  maximum pad level on every `clk_smc_i` rise are measured, not compared; the document does not
+  state the pad behaviour with `UART_EN` clear.
+* Pad-12 `DATA_CTRL` with `interface_enable` 1, `enable_rx_tx` 1 and `core2pad` 1 then 0: the
+  fields read back the written values (compared, `gpio_intf.rdl`); the pad level after each write
+  is measured, not compared, for the same reason.
+* `UART_EN` set again: the same `THR` write produces exactly one frame decoded as 0xA5, the
+  positive control that the stimulus and the pad decoder still work after the clear leg.
+
+*Test Procedure*:
+
+[arabic]
+. Read `CLOCK_GATE_CONTROL` and clear `UART_CG_EN`; program UART0 for 115200 baud 8N1 through
+  `LCR.DLAB`, `DLL` and `DLM`; read `LSR` requiring `TEMT` and `THRE` 1; bind the pad VIP; read
+  `CTRL` and the pad-12 `DATA_CTRL` as the restore values; stamp S1.
+. Write `UART_EN` 1 and read it back; write `THR` 0xA5; capture the frame within 5000 us; poll
+  `LSR` to idle and wait one frame time; require one frame decoded as 0xA5; stamp S2 and print
+  `CHK-UART-PADMUX-FRAME-ON`.
+. Read `LSR` (both bits 1), write `UART_EN` 0 and read it back, read `LSR` again, start the
+  `clk_smc_i` level sampler, write `THR` 0xA5 and read `LSR` repeatedly until `TEMT` and `THRE`
+  both read 1 within 5000 us, then complete the 3-frame-time window; stamp S3, print
+  `CHK-UART-PADMUX-OFF-TX-SHIFTED` after its compare and the measured
+  `CHK-UART-PADMUX-OFF-PAD-MEASURED`.
+. With `UART_EN` still 0 write pad-12 `DATA_CTRL` with `interface_enable`, `enable_rx_tx` 1 and
+  `core2pad` 1, sample the pad after the write and after the read-back, repeat with `core2pad` 0,
+  then write the saved `DATA_CTRL` back and read it; stamp S4 and print
+  `CHK-UART-PADMUX-GPIO-LEVEL-MEASURED`.
+. Write `UART_EN` 1 and read it back; write `THR` 0xA5; capture the frame, poll `LSR` to idle and
+  wait one frame time; require one frame decoded as 0xA5; stamp S5 and print
+  `CHK-UART-PADMUX-FRAME-RECOVER`.
+. Write the saved `CTRL` and `CLOCK_GATE_CONTROL`, wait two `clk_smc_i` cycles, stamp S6, check
+  the ordered fence and print `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-PADMUX-FRAME-ON` |With `UART_EN` read back 1 a `THR` write of 0xA5 yields exactly one
+  frame on pad 12 decoded as 0xA5 within 5000 us; no frame, another byte, a second frame or a
+  `UART_EN` read-back of 0 fails
+|`CHK-UART-PADMUX-OFF-TX-SHIFTED` |With `UART_EN` read back 0, `LSR.TEMT` reads 0 after the `THR`
+  write and `TEMT` and `THRE` read 1 together before 5000 us, after idle reads of 1 and 1 before
+  the write; a `TEMT` that never reads 0 or an idle that never returns fails
+|`CHK-UART-PADMUX-OFF-PAD-MEASURED` |Measured, not compared: frames decoded, their bytes and the
+  minimum and maximum pad-12 level over the 3-frame-time window; an X/Z sample or no sample fails
+|`CHK-UART-PADMUX-GPIO-LEVEL-MEASURED` |Pad-12 `DATA_CTRL` `interface_enable`, `enable_rx_tx` and
+  `core2pad` read back the written values (compared) and the saved value after the restore; the
+  pad level after each write is measured, not compared, and an X/Z sample fails
+|`CHK-UART-PADMUX-FRAME-RECOVER` |With `UART_EN` read back 1 again the same `THR` write yields
+  exactly one frame decoded as 0xA5 within 5000 us
+|`CHK-NONVAC` |Steps S1 to S6 ran in order with strictly increasing simulation-time stamps and the
+  five checker lines printed in order, each after its own step
+|===
+
+*Pass Criteria*: all checkers hold after their compares. The pad behaviour with `UART_EN` clear
+is observed and is not part of the claim. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-530-smc_log_engine_region_size_test]]
+===== 530 `smc_log_engine_region_size_test`
+
+*Source Module*: `smc_log_engine_region_size_test`
+
+*BFM / Model*: SEP_IN AXI sequencer writing and reading the SPM log window (tagged bytes, read
+back), the wrapper 0 log-engine registers `LOG_REGION_SIZE`, `LOG_REGION_ADDR`, `LOG_WRITE_ADDR`,
+`LOG_CTRL[i].LOG_LEN`, `CTRL.EN` and `INTR_STATUS`, the wrapper 0 UART `THR`, `RBR`, `LSR` and
+`MCR.LOOP`, and `CTRL.UART_EN`; the engine writes `THR` and the bytes return through the same
+UART's receiver, so no pad carries them
+
+*Objective*: Wrapper 0 delivers the bytes the slot-start formula, the capacity clamp and the
+zero-capacity rule name, for region sizes other than the one `smc_log_engine_transfer_test` uses.
+
+*Test Coverage*:
+
+* Slot start at the minimum size: `LOG_REGION_SIZE` 0x80, `LOG_LEN` 8 on each of the 16 slots, the
+  delivered bytes equal the window bytes at `LOG_REGION_ADDR + (LOG_REGION_SIZE / 16) * i`
+  (`log_engine/doc/architecture.adoc` "Memory Slots and Lengths").
+* Slot start at a mid size: `LOG_REGION_SIZE` 0x200, slots 0, 7 and 15 with `LOG_LEN` 0x20; the
+  window bytes differ above offset 0x100 so a start off by 0x100 fails.
+* Byte order: every compared message arrives at `RBR` in increasing address order, least
+  significant byte first in each fetched word, exactly `LOG_LEN` bytes and none beyond
+  (`architecture.adoc` "Arbitration and Data Transfer").
+* Resubmission: slot 0 at 0x200 takes `LOG_LEN` 0x20 a second time after hardware cleared it and
+  delivers the same 32 bytes (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl`
+  `LOG_CTRL`).
+* Capacity clamp: `LOG_REGION_SIZE` 135, 143, 144 and 271 on slots 0, 1 and 15; `LOG_LEN` at the
+  capacity (8, 8, 8 and 16 bytes) or below delivers 8 bytes, and `LOG_LEN` of capacity + 8 and the
+  largest multiple of eight the field holds (0xFFF8) each deliver exactly the capacity
+  (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl` `LOG_REGION_SIZE`).
+* The slot start of the unaligned sizes is measured, not compared; the compare is that every
+  delivered message is made of consecutive window offsets. The window byte names its offset only
+  below 0x100 (above it the byte is the offset XOR 0xA5, so a start off by 0x100 fails), so the
+  leaf also requires every delivered message of these sizes to end at or below offset 0x100; the
+  sizes and slots chosen keep them there (size 271, slot 15 ends exactly at 0x100).
+* Zero capacity: `LOG_REGION_SIZE` 127, `LOG_LEN` 8 on slots 0, 1 and 15 clears within 64 reads
+  with no byte at `RBR`; the delivering legs of the same leaf are the positive control.
+* `LOG_LEN` 9 and 7 at 0x200 is a measured leg: the count and values of the delivered bytes are
+  printed, measured, not compared; the hardware clear of `LOG_LEN` within 64 reads is compared, as
+  in every other leg.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense; arm the wrapper 0 UART (`CTRL.UART_EN` 1, 8N1, divisor 1, `MCR.LOOP`, FIFO
+  enable, `IER` 0); disable the engine, clear `INTR_STATUS`, `INTR_ENABLE` 0, `LOG_WRITE_ADDR` =
+  the `THR` address, `LOG_REGION_ADDR` = the SPM log window base; write 0x200 tagged bytes and read
+  them back; set `CTRL.EN`; stamp S1.
+. `LOG_REGION_SIZE` 0x80; for slots 0 to 15 in turn write `LOG_LEN` 8, drain `RBR` through `LSR.DR`
+  polls until the receiver is idle, read `LOG_CTRL[i]` until 0 within 64 reads, read
+  `INTR_STATUS`; stamp S2 and print `CHK-LOGENG-REGION-SLOT-START-MIN`.
+. `LOG_REGION_SIZE` 0x200; for slots 0, 7 and 15 write `LOG_LEN` 0x20 and drain 32 bytes; write
+  slot 0 again and drain the second delivery; stamp S3 and print
+  `CHK-LOGENG-REGION-SLOT-START-MID`, `CHK-LOGENG-REGION-RESUBMIT` and
+  `CHK-LOGENG-REGION-BYTE-ORDER`.
+. For `LOG_REGION_SIZE` 135, 143, 144 and 271 and slots 0, 1 and 15 write `LOG_LEN` 8, capacity +
+  8 and 0xFFF8, each after the previous message cleared and the receiver idled
+  (`LSR.TEMT` 1 and `LSR.DR` 0 on 32 consecutive polls); record every delivered message; stamp S4
+  and print `CHK-LOGENG-REGION-UNALIGNED-CAPACITY`, `CHK-LOGENG-REGION-UNALIGNED-BELOW-CAP` and
+  the measured `CHK-LOGENG-REGION-UNALIGNED-START-MEASURED`.
+. `LOG_REGION_SIZE` 127; for slots 0, 1 and 15 write `LOG_LEN` 8, apply the idle rule, read
+  `LOG_CTRL` until 0 within 64 reads, read `LSR` and `INTR_STATUS`; stamp S5 and print
+  `CHK-LOGENG-REGION-ZERO-CAPACITY`.
+. `LOG_REGION_SIZE` 0x200, slot 0, `LOG_LEN` 9 then 7, each followed by the idle rule and the
+  clear poll; stamp S6 and print the measured `CHK-LOGENG-REGION-LEN-NOT-MULT8-MEASURED`.
+. Clear `CTRL.EN`, `LOG_WRITE_ADDR`, `LOG_REGION_SIZE` and `LOG_REGION_ADDR`, restore the UART,
+  wait two `clk_smc_i` cycles, stamp S7, check the ordered fence and print `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOGENG-REGION-SLOT-START-MIN` |At `LOG_REGION_SIZE` 0x80 each of the 16 slots delivers the 8
+  window bytes at offset 8 * i and `INTR_STATUS` bits 0 and 4 read 0; a wrong first byte, a wrong
+  count or a clear that never comes fails
+|`CHK-LOGENG-REGION-SLOT-START-MID` |At 0x200 slots 0, 7 and 15 deliver the 32 window bytes at offset
+  0x20 * i, first bytes 0x00, 0xE0 and 0x45; a start off by any multiple of 8 fails
+|`CHK-LOGENG-REGION-BYTE-ORDER` |Every compared message arrives in increasing address order with
+  exactly `LOG_LEN` bytes and `LSR.DR` reads 0 after them; reversed or reordered bytes, a wrong
+  count or a trailing byte fails
+|`CHK-LOGENG-REGION-RESUBMIT` |Slot 0 at 0x200 delivers the same 32 bytes a second time after
+  `LOG_LEN` 0x20 is written again and `LOG_LEN` reads 0 afterwards
+|`CHK-LOGENG-REGION-UNALIGNED-CAPACITY` |For sizes 135, 143, 144 and 271 a `LOG_LEN` of capacity + 8
+  and of 0xFFF8, the largest multiple of eight the field holds, each deliver exactly the capacity
+  and nothing beyond on slots 0, 1 and 15, and `LOG_LEN` reads 0 afterwards
+|`CHK-LOGENG-REGION-UNALIGNED-BELOW-CAP` |`LOG_LEN` 8 delivers exactly 8 bytes at each of the four
+  unaligned sizes on slots 0, 1 and 15
+|`CHK-LOGENG-REGION-UNALIGNED-START-MEASURED` |The first fetched window offset of the slot 1 and 15
+  messages is printed, measured, not compared; every delivered message is consecutive window
+  offsets ending at or below offset 0x100 and none is empty
+|`CHK-LOGENG-REGION-ZERO-CAPACITY` |At size 127 `LOG_LEN` 8 on slots 0, 1 and 15 reads 0 within 64
+  reads, no byte reaches `RBR` and `INTR_STATUS` bits 0 and 4 read 0
+|`CHK-LOGENG-REGION-LEN-NOT-MULT8-MEASURED` |`LOG_LEN` 9 and 7 at 0x200: the delivered count and
+  values are printed, measured, not compared; the hardware clear of `LOG_LEN` within 64 reads is
+  compared
+|`CHK-NONVAC` |Steps S1 to S7 ran in order with strictly increasing simulation-time stamps and the
+  nine checker lines printed in order, each after its own step
+|===
+
+*Pass Criteria*: all checkers hold after their compares; the measured legs are observed and are
+not part of the claim. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-531-smc_log_engine_round_robin_test]]
+===== 531 `smc_log_engine_round_robin_test`
+
+*Source Module*: `smc_log_engine_round_robin_test`
+
+*BFM / Model*: SEP_IN AXI sequencer writing and reading the SPM log window (0x100 bytes, slot `s`
+byte `j` carrying `(s << 4) | j`), the wrapper 0 log-engine registers `LOG_REGION_SIZE`,
+`LOG_REGION_ADDR`, `LOG_WRITE_ADDR`, `LOG_CTRL[i].LOG_LEN`, `CTRL.EN` and `INTR_STATUS`, the
+wrapper 0 UART `THR`, `RBR`, `LSR` and `MCR.LOOP`, and `CTRL.UART_EN`; the engine writes `THR` and
+the bytes return through the same UART's receiver, so no pad carries them
+
+*Objective*: The wrapper 0 arbiter serves each pending slot as one whole message exactly once,
+skips zero lengths, and `LOG_LEN` holds the submitted value until hardware clears it.
+
+*Test Coverage*:
+
+* Atomic messages: with four, sixteen and five slots pending, every message arrives at `RBR` as 16
+  consecutive bytes of one slot in order, with no byte of another slot between them
+  (`log_engine/doc/architecture.adoc` "Arbitration and Data Transfer": scheduling is per message,
+  not per byte; `log_engine/doc/index.adoc`).
+* Exactly once: with all 16 entries pending the stream is 256 bytes holding each slot's message
+  once and nothing after the last (`log_engine.rdl` `LOG_CTRL`; `architecture.adoc` "Arbitration
+  and Data Transfer").
+* Zero lengths: entries 0 and 11 written with `LOG_LEN` 0 beside four pending entries deliver no
+  byte and read 0 (`architecture.adoc` "Memory Slots and Lengths": only a nonzero length makes a
+  slot pending).
+* Hold and clear: `LOG_CTRL` reads taken right after the first wave's writes return the submitted
+  16 or 0, never a count; in every wave the `LOG_CTRL` element of the slot whose message is
+  arriving, read after its fourth byte left `RBR`, still reads 16 (the engine is paced one
+  character at a time, so a remaining-byte counter reads at most 12 there); and every entry reads 0
+  within 64 reads after its message arrived; the clear poll does not wait on `LSR.TEMT`
+  (`architecture.adoc` "Memory Slots and Lengths"; `log_engine.rdl` `LOG_CTRL`).
+* A second wave: at the first byte read from `RBR` the `LOG_CTRL` element of that byte's slot is
+  read and must still hold 16, so its message is in flight at the engine; two entries written then
+  deliver their messages once each, after the message in flight completed.
+* The service order of the slots is measured, not compared.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense; arm the wrapper 0 UART (`CTRL.UART_EN` 1, 8N1, divisor 1, `MCR.LOOP`, FIFO
+  enable, `IER` 0); disable the engine, clear `INTR_STATUS`, `INTR_ENABLE` 0, `LOG_REGION_SIZE`
+  0x100, `LOG_WRITE_ADDR` = the `THR` address, `LOG_REGION_ADDR` = the SPM log window base; write
+  the 0x100 tagged bytes and read them back; set `CTRL.EN`; stamp S1.
+. Wave A: write `LOG_LEN` 0 to entries 0 and 11 and 16 to entries 1, 4, 9 and 14 back to back; read
+  those four `LOG_CTRL` elements once; read 64 bytes from `RBR` through `LSR.DR` polls (400 reads
+  per byte), reading the `LOG_CTRL` element of the first message's slot after its fourth byte;
+  apply the idle rule (`LSR.TEMT` 1 and `LSR.DR` 0 on 32 consecutive polls); read each
+  `LOG_CTRL` until 0 within 64 reads; read `INTR_STATUS`; stamp S2 and print
+  `CHK-LOGENG-RR-ZERO-SKIPPED`, `CHK-LOGENG-LEN-ZERO-NOT-PENDING` and
+  `CHK-LOGENG-LEN-HOLD-SUBMITTED`.
+. Wave B: write `LOG_LEN` 16 to all 16 entries back to back; read 256 bytes with the same
+  mid-message `LOG_CTRL` read; apply the idle rule; poll all 16 entries to 0; read `INTR_STATUS`;
+  stamp S3 and print `CHK-LOGENG-RR-EXACTLY-ONCE`.
+. Wave C: write `LOG_LEN` 16 to entries 3, 6 and 12; at the first byte read from `RBR` read the
+  `LOG_CTRL` element of that byte's slot, then write 16 to entries 2 and 13; read 80 bytes with
+  the same mid-message `LOG_CTRL` read; apply the idle rule; poll the five entries to 0; read
+  `INTR_STATUS`; stamp S4 and print `CHK-LOGENG-RR-IN-FLIGHT`, `CHK-LOGENG-RR-ATOMIC`,
+  `CHK-LOGENG-LEN-HWCLEAR` and the measured `CHK-LOGENG-RR-ORDER-MEASURED`.
+. Clear `CTRL.EN`, `LOG_WRITE_ADDR`, `LOG_REGION_SIZE` and `LOG_REGION_ADDR`, restore the UART,
+  wait two `clk_smc_i` cycles, stamp S5, check the ordered fence and print `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOGENG-RR-ATOMIC` |In all three waves every message is 16 consecutive bytes `(slot << 4) | 0`
+  to `(slot << 4) | 15` and `INTR_STATUS` bits 0 and 4 read 0; a foreign byte inside a message, a
+  short or long message or reordered bytes fails
+|`CHK-LOGENG-RR-EXACTLY-ONCE` |With all 16 entries pending the stream is 256 bytes holding each
+  slot's message exactly once and no byte follows the last under the idle rule
+|`CHK-LOGENG-LEN-HWCLEAR` |Every entry written 16 in the three waves reads 0 within 64 `LOG_CTRL`
+  reads after its message, the mid-message read of each wave returned 16, and no zero write reaches
+  a pending entry
+|`CHK-LOGENG-RR-ZERO-SKIPPED` |In wave A no byte tagged outside slots 1, 4, 9 and 14 arrives and the
+  entries never written read 0 afterwards
+|`CHK-LOGENG-LEN-ZERO-NOT-PENDING` |Entries 0 and 11, written 0 before wave A, deliver no byte and
+  read 0
+|`CHK-LOGENG-RR-IN-FLIGHT` |In wave C the `LOG_CTRL` element of the first message's slot still reads
+  16 at the first byte, before entries 2 and 13 are written, that message completes its 16 bytes
+  before any other, and entries 2 and 13 each deliver once, starting at stream position 16 or later
+|`CHK-LOGENG-LEN-HOLD-SUBMITTED` |The wave A `LOG_CTRL` reads right after the writes return 16 or 0,
+  never a count, at least one returns 16, and the element of the slot whose message is arriving
+  reads 16 after the fourth byte left `RBR`, where a remaining-byte counter reads at most 12
+|`CHK-LOGENG-RR-ORDER-MEASURED` |The service order of the slots in each wave is printed, measured, not
+  compared
+|`CHK-NONVAC` |Steps S1 to S5 ran in order with strictly increasing simulation-time stamps and the
+  eight checker lines printed in order, each after its own step
+|===
+
+*Pass Criteria*: all checkers hold after their compares; the measured order is observed and is not
+part of the claim. Enrolled in: `all`, `hosted`.
+
+'''''
 
 ==== OCCP
 
@@ -31974,9 +33518,10 @@ restore operations to each catalogued word, requires no Zeroer busy or unknown
 value sampled on a rising SMC clock edge from before the first catalogued
 operation through the final status read, checks Zeroer state and lane
 coverage, runs a real one-word Zeroer command to SPM after the no-start check
-and requires the busy sample count to increase, waits with a bound for all
-predicted comparisons, then checks
-scoreboard results and access counts.
+and requires the busy sample count to increase. It reads back DEST_ADDR and
+SIZE after their control restore writes in every pass, waits with a bound
+for all predicted comparisons, then checks scoreboard results and access
+counts.
 
 *Checkers*:
 
@@ -32007,7 +33552,8 @@ After the absence check, a bounded positive control uses the last aligned SPM
 word as scratch. No CPU or other initiator may use that word during the pass.
 It is left zero through a SEP_IN write that also updates the SPM model; its
 initial SRAM contents are not read or restored. DEST_ADDR and SIZE return to
-their reset values. The control does not grade the Zeroer's zeroed payload.
+their reset values and are read back within the same pass. The control does
+not grade the Zeroer's zeroed payload.
 It excludes registers whose writes change decode, gating, reset, lock or other
 operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
 because a later core reset that does not also assert warm reset can consume a
@@ -32019,7 +33565,8 @@ handles a real error response; the error-read path has no directed run here.
 
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
-comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
+read comparisons: 59 read mismatches per pass, with writes unaffected.
+`+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
 full-write, no-start and busy-control expectations and must fail seven
 `CHK-REGBLOCK-WIDE-FULL-RW` records and one
 `CHK-REGBLOCK-WIDE-NO-ZEROER-START` record and one
@@ -32029,9 +33576,10 @@ while the scoreboard records no mismatch.
 write responses to SLVERR and must fail every catalogued write comparison and
 no read comparison: 54 write mismatches per pass (35 base writes, 15 fixed
 sparse writes and four positive-control writes).
-The positive run requires 111 comparisons per pass (57 reads and 54 writes).
+The positive run requires 113 comparisons per pass (59 reads and 54 writes).
 With 16 passes, the sequence negative requires 144 checker failures and the
-response negative requires 864 write mismatches. A separate local mutation
+response negative requires 864 write mismatches; the scoreboard negative
+requires 944 read mismatches. A separate local mutation
 holding the busy tap or sample counter at zero must fail the busy-control
 check even with the sequence negative disabled. Control completion and
 safe-state prerequisites are outside the expectation-inverting negative.
@@ -32137,6 +33685,99 @@ RATE and WINDOW remain unmodified in the negative run: they establish valid
 measurement conditions, and a failed condition records FAIL then terminates
 the pass with a fatal error.
 The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
+
+'''''
+
+[[sec-smc_mailbox_cool_reset_recovery_test]]
+====== `smc_mailbox_cool_reset_recovery_test`
+
+*Source Module*: `smc_mailbox_cool_reset_recovery_test` (SV-UVM only)
+
+*Objective*: A cool reset clears occupied mailbox FIFO state, sticky errors,
+interrupt enables, thresholds and latched interrupt status; fresh traffic
+recovers without returning a pre-reset word.
+
+*BFM / Model*: Existing SEP_IN `ocah_axi_vip` and required `mailbox_fifo`
+feature. The request-derived model predicts paired queues, ERROR, IRQEN,
+thresholds, STATUS and read/write responses. IRQS data is checked by the
+sequence at designated milestones, not predicted by the model.
+
+*Test Coverage*: Two distinct mailbox pairs per pass, including pair 0 and
+the last pair in fixed pass slots. A holds two forward words and one reverse
+word; B holds one forward word. Overflow on A-out and underflow on B-in set
+errors. IRQEN differs from reset on A-out/B-in and both thresholds differ
+on A-out. IRQS on A-out is required non-zero. Other ports' default readbacks
+are consistency checks, not discriminating reset evidence.
+
+*Expectation Sources*: `axil_mailbox.rdl` supplies field masks, defaults,
+read-clear ERROR, threshold clamping and write-one-clear IRQS.
+`hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc` defines paired FIFO
+semantics, SLVERR on full writes/empty reads, and reset clearing queues,
+thresholds, errors and interrupt state/enables. `clk_rst.adoc` defines
+cool reset as a primary-reset source. Integration evidence for mailbox
+primary reset is `smc_internal_regs.sv`, `u_smc_axil_mailbox.rst_ni`;
+this reset-domain connection is taken from RTL, not independently specified
+for the mailbox by name. Geometry comes from `smc_pkg` and generated addresses.
+
+*Test Procedure*: Require the mailbox gate disabled and six-register default
+baselines on both ports of both pairs. Fill A's forward queue, provoke the
+overflow and underflow, and read ERROR as a positive control; recreate both
+errors without reading ERROR again, then load A's reverse and B's forward
+queues. Program/read back IRQEN and clamped thresholds; require populated
+STATUS and non-zero IRQS. Drain comparisons, pulse cool reset and wait for
+primary/warm release and fuse readiness. Read six default registers on all
+four ports before three formerly occupied directions are probed empty.
+Transfer four fresh words, check their identity and modeled full payload,
+then flush, clear errors, restore IRQEN/thresholds, acknowledge IRQS and
+read back all six registers. Bounds are bench limits, not device latency contracts.
+
+*Checkers*:
+
+[cols="1,2",options="header"]
+|===
+|Checker |Description
+|`CHK-MBX-RST-PRE` |Default baseline, clock-gate scope and discriminating pre-reset DUT state hold; failures stop the run
+|`CHK-MBX-RST-ASSERTED`, `CHK-MBX-RST-RELEASED` |Primary and warm reset reach both requested levels within bounds
+|`CHK-MBX-RST-EPOCH` |One cool reset and no cold reset occur
+|`CHK-MBX-RST-DEFAULTS` |Six generated defaults match on all four ports after reset
+|`CHK-MBX-RST-EMPTY` |Three formerly occupied queues return one known SLVERR response without timeout
+|`CHK-MBX-RST-RECOVERY` |Four fresh returned words carry the expected identity or payload
+|`CHK-MBX-RST-CLEAN` |Six register defaults match on all four ports after cleanup
+|`CHK-MBX-RST-SCOREBOARD` |No new mailbox comparison mismatch
+|`CHK-SB-MAILBOX-FIFO` |Required feature has activity, no mismatch and no unpaired item
+|`CHK-NONVAC` |141 mailbox memory accesses/comparisons and one clock-gate CSR read per pass
+|`CHK-SB-MIN-ACTIVITY`, `CHK-MEM-RESP`, `CHK-CSR-RESP`, `CHK-FUSE-SENSE-DONE` |Prior-pass activity, access responses and bring-up complete
+|===
+
+*Known Limitations*: No AXI transaction remains outstanding through reset.
+Only sequential aligned full-width/full-strobe accesses from SEP_IN are
+supported; another mailbox accessor is excluded. Unsupported accesses in the
+mailbox window stop the required feature. Mailbox clock gating, cold-only or
+warm-only reset, FLR and interrupt wires are not exercised. IRQS exact bits
+and timing before reset are not modeled; only non-zero pre-reset and default
+post-reset/cleanup values are checked by the sequence. The last pre-reset
+ERROR state is inferred from a repeated SLVERR access after its read-clear
+positive control, not read directly. Thresholds and IRQEN are discriminating
+only on the stated ports. FIFO occupancy evidence combines accepted pushes
+and STATUS, which has no numeric level field. Data X/Z is checked through
+the active read helper, not the passive model.
+The cleanup flush acts on FIFOs that recovery has already drained. Its response
+is checked, but its state-clearing effect and the model's flush behavior are
+not independently validated by this scenario.
+
+*Pass Criteria*: All required checks pass. Used alone,
+`+SMC_MAILBOX_RESET_SEQUENCE_NEGATIVE` changes 24 DEFAULTS, three EMPTY and
+four RECOVERY expectations per pass: 31 failures/pass or 496 for sixteen
+passes, without model mismatch or UVM_FATAL. PRE, reset transitions/epoch,
+CLEAN, NONVAC and response-validity prerequisites are not corrupted.
+Used alone, `+SMC_MAILBOX_FIFO_SCOREBOARD_NEGATIVE` corrupts every emitted
+mailbox prediction's response (OKAY and SLVERR exchange), and defined
+successful read data, without modifying shadow. It must produce 141
+mismatches/pass, one scenario scoreboard failure/pass and one final
+`CHK-SB-MAILBOX-FIFO` failure: 2273 errors for sixteen passes. The two
+negative controls are mutually exclusive. Reset-shadow mutation is a local,
+uncommitted validation experiment, not an enrolled test or persistent knob.
+The leaf runs only on demand in `mailbox_uvm_extended`.
 
 '''''
 
@@ -33466,6 +35107,7 @@ to make; its *Closes when* cell names the ruling that closes it.
 [cols="2,1,3,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
+|`smc_mailbox_cool_reset_recovery_test` |`mailbox_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_fabric_reg_clock_gate_test` |`cg_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf

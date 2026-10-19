@@ -36,6 +36,7 @@ package smc_env_pkg;
   `include "smc_regblock_wide_ref_model.svh"
   `include "smc_wdt_csr_ref_model.svh"
   `include "smc_fabric_reg_ref_model.svh"
+  `include "smc_mailbox_fifo_ref_model.svh"
   `include "smc_scoreboard.svh"
   `include "smc_env.svh"
 

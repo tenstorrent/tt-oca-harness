@@ -508,9 +508,8 @@ the selected backend is absent. A DUT selects a backend only through its
 formal configuration (`<name>_formal_cfg.toml`).
 
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
-maintainer flow whose tool allowlist is VCS only; it carries
-`license = "required-commercial"`, so `--list` marks it `(licensed)` and the
-launcher says so when the simulator is absent. The UVM library is an
+maintainer flow whose tool allowlist is VCS, the default, and Verilator. The
+UVM library is an
 Accellera release tree checked in unmodified under
 `vendor/accellera/uvm-core/upstream/`, which the profile's
 `[frameworks.uvm.build]` `uvm_library` names, and
@@ -527,8 +526,17 @@ the model. The run-level `result.json` records the compiled library under
 The build compiles its `uvm_pkg.sv` ahead of every user source and links its
 DPI layer. A sim config's `[build.vcs].uvm_lib` selects a simulator-supplied
 library through `-ntb_opts` instead (uvm-1.2 or later;
-VCS's bare `uvm` is uvm-1.1). Tests are selected with
-`+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
+VCS's bare `uvm` is uvm-1.1). On Verilator, one `verilator --binary` build
+verilates the library and the view's filelist into the model
+`<work_dir>/verilator/V<top>` and compiles the DPI layer with `--vpi`. The
+profile's `[frameworks.uvm.build.verilator]` `timescale` gives every source
+that declares none the `1ns/1ps` the VCS build uses, and its `extra_args`
+pass `--x-initial-edge`, so a reset asserted at time 0 makes the X-to-0 edge a
+four-state simulator sees. Each test runs the model with
+`+verilator+seed+<seed>` and `+ntb_random_seed=<seed>`, and the Verilator
+build dumps no waves. A `--cov` build adds a scope file that keeps the UVM
+library and Verilator's `std` package out of the coverage database. Tests are
+selected with `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
 the `uvm-log` parse policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium
 and Questa are not in the allowlist. The reference consumer is the
 DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter
@@ -2748,6 +2756,14 @@ them in automation.
 |Set scheduler fan-out. Default: `1`; must be at least `1`. On a cluster
 executor it is the number of attempts queued or running at once, bounded by
 the executor's `limits.max_in_flight`.
+
+|`--leaf-order-from RESULT_JSON`
+|On a cluster executor, submit the leaves longest first, keyed by the longest
+`sim` duration of each item in an earlier `result.json`. A relative path
+resolves against the repository root. A leaf whose item has no duration there
+starts first, in testlist order. Leaf ids and seeds do not change. An
+unreadable file stops the run. Without the option the leaves go in testlist
+order.
 
 |`--build-jobs N`
 |Set backend/model build concurrency when configuration does not supply it;

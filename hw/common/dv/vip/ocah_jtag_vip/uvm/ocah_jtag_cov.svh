@@ -7,8 +7,7 @@
 // reference model) and, when a scan reconstruction source is connected to
 // scan_export, per reconstructed IR/DR scan. Built by ocah_jtag_master_env only when
 // cfg.en_cov is set; the TB instantiates ocah_jtag_cov_if and publishes it as
-// "jtag_cov_vif". Commercial-simulator only (never in Verilator filelists),
-// like the interface it samples.
+// "jtag_cov_vif".
 
 `uvm_analysis_imp_decl(_ocah_jtag_scan)
 

@@ -70,6 +70,10 @@
 `SMC_TB_OUT(logic, tb_i2c0_sda)
 `SMC_TB_OUT(logic, tb_i2c0_scl_dut_low)
 `SMC_TB_OUT(logic, tb_i2c0_sda_dut_low)
+`SMC_TB_IN(logic, tb_i2c1_scl_ext_low)
+`SMC_TB_IN(logic, tb_i2c1_sda_ext_low)
+`SMC_TB_OUT(logic, tb_i2c1_scl)
+`SMC_TB_OUT(logic, tb_i2c1_sda)
 // I2C0 SMBALERT#: active-low; pullup-high when DUT OE released.
 `SMC_TB_OUT(logic, tb_i2c0_smbalert)
 // LSIO enable + controller-side sense (CDC'd). Host traffic must wait until

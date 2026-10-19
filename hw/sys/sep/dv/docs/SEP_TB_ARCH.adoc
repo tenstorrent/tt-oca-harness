@@ -13,9 +13,9 @@
 |Bare core |`sep` (`hw/sys/sep/rtl/sep.sv`)
 |Repository |`tt-oca-harness`
 |Project |OCAH
-|Framework |PyUVM on cocotb; SystemVerilog UVM smoke set on the same top (`--framework uvm`, VCS)
+|Framework |PyUVM on cocotb; SystemVerilog UVM smoke set on the same top (`--framework uvm`, VCS or Verilator)
 |Primary simulator |Verilator
-|Supported simulator matrix |cocotb on `verilator` (default), `vcs` and `xcelium`; SV-UVM on `vcs` only, because Verilator has no SV-UVM support
+|Supported simulator matrix |cocotb on `verilator` (default), `vcs` and `xcelium`; SV-UVM on `vcs` (default) and `verilator`
 |Commercial simulator use |VCS / Xcelium for development iteration; VCS for graded coverage and the SV-UVM realization. Verilator is pre-merge acceptance
 |How to run |`README.md` (`tools/dv/run_dv.py --dut sep`)
 |===
@@ -136,9 +136,10 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
 |DMI enables |Added hook (top-port drive). `tb_top` drives the `sep` inputs `dmi_core_enable_i` and `dmi_uncore_enable_i` (wrapper ports `dmi_core_enable`, `dmi_uncore_enable`) from the TB inputs of the same name; a value other than 1 drives 0. `dmi_uncore_rdata` is held at 0. Owner: `sep_debug_master_target_matrix_test`.
 |Core JTAG TAP pins |Added hook (top-port drive). With `jtag_bench_own_i` = 1 the TB inputs `jtag_tck_i`, `jtag_tms_i`, `jtag_tdi_i` and `jtag_trst_n_i` drive the core TAP, and cocotb shifts it (`env/sep_jtag_dmi.py` on `OcahJtagMasterDriver`). Any other value keeps the pins on the `tb_top` registers that the `+cpu_boot` reset-vector TDR task drives. TRST of those registers starts high and falls at 1 ps, so the TAP and its reset-vector TDR take their reset values on a four-state simulator, and stays low outside that task. Owners: `sep_cpu_reset_entry_test`, `sep_debug_master_target_matrix_test`.
-|JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`.
+|JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
 |Reset vector |Existing bench hook. `rst_vec_i` drives the wrapper input `rst_vec`, which `sep_wrapper` does not connect further. At a non-zero value under `+cpu_boot`, `tb_top` also shifts the value into the reset-vector TDR (IR 0x18) while `rst_ni` is low. User: `sep_cpu_reset_entry_test`.
-|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`.
+|JTAG ID |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `jtag_id` (`jtag_id_i[31:1]` of `sep`) from the TB input `jtag_id_i`; an undriven or unknown value drives 0. Readback: `jtag_id_probe_o`. Owner: `sep_efuse_field_layout_rand_test` (CHK-JTAGID).
+|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar ports for `OcahSpiFlash` and `OcahSpiMonitor`: `spi_cs_n_o`, `spi_sck_o`, `spi_mosi_o` (`sep_io_spi_req_o.sd[0]`) and `spi_miso_i` (`sep_io_spi_rsp_i.sd[1]`). Monitor-only taps of the DUT output struct `sep_io_spi_req_o`: `spi_sd_o[3:0]` (`sd`), `spi_sd_oe_o[3:0]` (`sd_oe`), `spi_cs_oe_o` (`cs_oe`) and `spi_sck_oe_o` (`sck_oe`); `env/sep_spi_wire_monitor.py` attaches them to `OcahSpiMonitor`, which grades the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment"). SEP top-port drive: `spi_sd_i[3:0]` drives all four response lanes of `sep_io_spi_rsp_i.sd` in a run with `+sep_spi_four_lane`; otherwise lane 1 is `spi_miso_i` and lanes 0, 2 and 3 are 0. `sep_base_test` holds `spi_sd_i` at 0. Monitor-only tap `spi_sd_rsp_o[3:0]`: the four lanes the DUT receives, which `env/sep_spi_wire_monitor.py` gives the monitor as its input lanes.
@@ -227,6 +228,43 @@ Observation probe groups:
 * EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`,
   `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`).
 * RMA-SIP token-digest latch probes (`token_digest_*`).
+* eFuse and lifecycle taps (read-only, no force). `efuse_shim_cmd_*_o`, the
+  post-guard fuse command at the `sep` output `efuse_shim_command_req_o`
+  (valid, command, bit address, program data, word count); the request valids
+  of the read and program interfaces sit before the guard and cannot show a
+  refusal. `efuse_shim_resp_{valid,status,data}_o`, the shim response at the
+  `sep` input `efuse_shim_command_resp_i`, after the sense-status inject.
+  `otp_bank_probe_o`, the 256 bank words that SEP reaches
+  (`EFUSE_BANK_REG[0..255]` of the bank model), for the snapshot, bit diff
+  and per-clock sample; the bench has no bank write hook.
+  `token_{sip,chiplet,sdis}_words_o`, the 24 token word registers, which have
+  no reset. `token_digest_{chiplet,sdis}_{sticky,valid,test_en}_o`, the
+  retained digest latch of RMA_CHIPLET and SEC_DIS. `token_cmp_match_{p,n}_o`,
+  the nine gated comparator rails after the comparator fault inject (bit 3c+k
+  is copy k of channel c: 0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS).
+  `jtag_filter_lc_sigint_err_probe_o`, the integrity-error flag of the JTAG
+  lifecycle filter decoder; `lcc_sigint_err_probe_o` stays 0 under a
+  filter-side inject. `jtag_id_probe_o`, the `sep` input `jtag_id_i`. `sec_dis_digest_probe_o`, the SEC_DIS
+  expected digest that the bench binds to `SEP_SEC_DISABLE_TOKEN`. Owners:
+  `sep_lcc_feat_ctrl_state_matrix_rand_test`,
+  `sep_efuse_transient_rma_rand_test`, `sep_efuse_token_channel_rand_test`,
+  `sep_efuse_token_fault_matrix_test`, `sep_efuse_interface_status_rand_test`,
+  `sep_efuse_lock_slot_matrix_rand_test`,
+  `sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test`,
+  `sep_sec_dis_timing_rand_test`, `sep_lcc_state_codeword_rand_test`,
+  `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`.
+* eFuse and lifecycle FCOV sampler taps (read-only XMR inputs of `u_sep_fcov`,
+  VCS only): `tok_sdis_i` (SEC_DIS token status), `tok_fault_i` (sticky
+  comparator fault bits), `token_go_i` (hash start pulses),
+  `sec_disable_expected_i` (SEC_DIS expected digest), `rd_addr_err_i`,
+  `pg_addr_err_i` and `req_err_i` (the `EFUSE_INTERFACE_CTRL_STATUS` error
+  flags), `stored_shadow_i` (the unmasked stored shadow), `shim_resp_i` (valid,
+  status and data of the shim response at the `sep` input
+  `efuse_shim_command_resp_i`) and `shim_cmd_i` (the post-guard fuse command).
+  The sampler also reads `cmp_match_p_i` and `cmp_match_n_i`, `tok_words_i`,
+  the digest latch inputs and `jtag_filt_sigint_i` from the taps above. No
+  check reads them. Users: the owners of the eFuse and lifecycle groups of
+  `docs/SEP_FCOV.adoc`.
 * KM OTP ID probes (`km_otp_sep_*_id_o`).
 * SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`).
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
@@ -302,8 +340,8 @@ Observation probe groups:
    `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`,
    `sep_cpu_demux_unmapped_fetch_test`.
    Its replies (monitor PR-OUT-RSP): B (`resp`, `id`) and R (`resp`, `id`,
-   `last`) on `smn_outbound_axi_resp_i`, with READY from the request net.
-   Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST),
+   `last`, `data`) on `smn_outbound_axi_resp_i`, with READY from the request net.
+   Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST, CHK-DMA-HOST-HOLD),
    `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-STALL-REAL).
 ** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, same fields. Owners:
    `sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test`.
@@ -411,6 +449,13 @@ Observation probe groups:
   sampler variable that the mailbox leaf writes under the rules of
   `graded_owner` (`env/sep_fcov_gate.py`, `set_quiet_window`). It drives
   nothing and touches no DUT net. Owner: `sep_mailbox_fifo_model_rand_test`.
+* The outcome bound `u_sep_fcov.efuse_sdis_hold_bound` of the eFuse and
+  lifecycle sampler: a sampler variable in `clk_i` clocks that the owner writes
+  under the rules of `graded_owner` (`env/sep_fcov_gate.py`,
+  `set_efuse_sdis_hold_bound`), the window W before the hold and 0 when its wait
+  ends. It gates `cp_stops_sense` and `cp_reset_values_hold`, is never a bin
+  value, drives nothing and touches no DUT net. Owner:
+  `sep_sec_dis_timing_rand_test`.
 * Mailbox, IRQ and PIC FCOV sampler taps (`cov/sv/sep_fcov.sv`, mailbox,
   IRQ and PIC groups): read-only references from the `u_sep_fcov`
   connection block to the PIC (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`),
@@ -535,7 +580,45 @@ Exceptions (a closed set):
   code on every clock; a register read samples a status once. Read-only; no
   force.
 * *LC differential / token-comparator fault inject* — fail-closed paths with no
-  legal OTP frontdoor.
+  legal OTP frontdoor. `token_cmp_fault_copy_i` selects the comparator copy
+  (0, 1 or 2) of a collapse or disagree pattern; 0, also when undriven, is
+  copy 0, and 3 forces nothing. The common-mode patterns force all three
+  copies. The forces and releases run on the falling edge of `clk_i`. Drain
+  clock: on the first falling edge after the inject drops, the rails of the
+  comparator that was forced are forced to the value of their own driver
+  (`{3{compute_comparison_vld_i}} & match_*_raw`) for one clock and then
+  released, so the value that a release keeps is the driver value and not the
+  injected pattern. A user places no graded read inside the drain clock. A
+  cell releases the inject (select 0, pattern off) before it selects another
+  comparator. Users: `sep_efuse_token_fault_matrix_test`,
+  `sep_efuse_rma_token_rand_test`, `sep_efuse_token_match_fault_pic_test`,
+  `sep_lcc_lc_state_w1s_prod_test`. Owner of copies 1 and 2:
+  `sep_efuse_token_fault_matrix_test`.
+* *JTAG lifecycle filter integrity inject* — `jtag_filter_lc_sigint_inject_i`
+  forces both rails of the byte at the decoder input of the JTAG lifecycle
+  filter (`u_lc_state_jtag_dec.data_i`) to 0. The `LC_STATE` shadow and the
+  lifecycle controller decoder are not forced, so `lc_sigint_inject_i` and
+  this inject act on different decoders. Default 0; the force is released
+  when the input drops. Readback: `jtag_filter_lc_sigint_err_probe_o`. Owner:
+  `sep_lcc_state_codeword_rand_test`.
+* *eFuse sense status inject* — while `efuse_sense_status_inject_i` is 1,
+  during fuse sense only, the bank model APB response to the READ of word
+  `efuse_sense_status_word_i` carries `pslverr` = 1 at the shim (the force is
+  on the shim read-path copy of the response), so the shim returns that
+  sense response with its status bit set. The force covers the APB access
+  phase of that word. Data and ready are not forced. A healthy bank never
+  returns an error, so the sense status path has no frontdoor. Default 0;
+  released when the input drops or sense ends. Owner:
+  `sep_efuse_shim_response_fault_test`.
+* *eFuse shim response hold* — while `efuse_shim_resp_hold_i` is 1 and a
+  program command is at the post-guard port, the `valid` of the shim response
+  at the `sep` input `efuse_shim_command_resp_i` is forced to 0. Sense and
+  read responses are not held. A healthy shim always answers, so a late
+  program response has no frontdoor. While held the program command stays
+  valid at the post-guard port (one command at the tap), the shim repeats its
+  bank write, and the first response after the release completes the
+  request. Default 0.
+  Owner: `sep_efuse_shim_response_fault_test`.
 * *eFuse read/program FSM state inject* — `efuse_read_state_inject_i` /
   `efuse_program_state_inject_i` with their enables force `read_state_q` /
   `program_state_q` for one cycle at a time. The only legal encodings are
@@ -549,6 +632,13 @@ Exceptions (a closed set):
   targets that input only. Token commands, digest capture, and the fault
   flags the checker reads stay frontdoor. Owner:
   `sep_efuse_digest_latch_fault_test`.
+* *RMA_CHIPLET and SEC_DIS digest test-enable inject* —
+  `token_digest_chiplet_test_en_inject_i` and
+  `token_digest_sdis_test_en_inject_i` force the `test_en_i` input of the
+  retained digest latch of that channel. The production DFT input is tied low,
+  so the freeze has no frontdoor. Token commands, digest capture and the match
+  registers stay frontdoor. Default 0; the force is released when the input
+  drops. Owner: `sep_efuse_token_fault_matrix_test`.
 * *DMA host-path command-integrity inject* — `dma_host_intg_inject_i` forces
   the host-adapter command-integrity checker input to 0 so the checker
   asserts on the next DMA command. Software cannot emit a broken command
@@ -631,15 +721,27 @@ Exceptions (a closed set):
   `sep_pic_pending_map_walk_rand_test`, `sep_pic_reg_rand_test`,
   `sep_cpu_bridge_fault_matrix_rand_test`.
 * *Outbound responder response control* — error inject on the `sep` input
-  `smn_outbound_axi_resp_i`. `smn_outbound_resp_hold_i` holds the B and R
-  responses of `tb/sep_outbound_mbx.sv` while the requests are still accepted;
+  `smn_outbound_axi_resp_i`. `smn_outbound_resp_hold_i` keeps
+  `tb/sep_outbound_mbx.sv` from raising a B or R response (one already on
+  offer completes) while the requests are still accepted;
   `smn_outbound_rd_slverr_i`, sampled at the AR handshake, makes that read
   answer SLVERR. Both are 0 by default, and the responder then answers OKAY at
   once. A held response also holds a firmware console store, so no CPU leaf
   raises the hold. The responder state and the DUT nets the checkers read are
   not forced. Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST,
-  CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
+  CHK-DMA-HOST-HOLD, CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
   (CHK-STALL-REAL, CHK-TO-INERT).
+  Request-side hooks, both 0 by default: `smn_outbound_ready_stall_i`
+  (3 bits) holds AW READY (bit 0), W READY (bit 1) and AR READY (bit 2) of the
+  responder low while the bit is high, and `smn_outbound_rd_addr_data_i`
+  returns `{~a, a}` on every R beat, `a` being the low 32 bits of the
+  8-byte-aligned beat address. With both at 0 the responder behaves as
+  above. `+sep_outbound_depth=<n>` (1 to 64) sets the responder's queued
+  write bursts, pending B responses and queued reads each to `n`; without it
+  they are 16, 16 and 1. Owners: `sep_outbound_contention_rand_test`
+  (CHK-LSU-PATH, CHK-ID-ORDER, CHK-RESP-ROUTE),
+  `sep_outbound_stall_saturation_test` (CHK-DELAYS, CHK-HOLD-DRAIN,
+  CHK-CHAIN-LIMIT); both leaves run with the plusarg.
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
   AXI interconnect (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`,
@@ -677,6 +779,10 @@ The CPU is held off (`mpc_reset_run_req=0`). Two masters can drive the DUT:
   not a `force`. This path has no inbound filter. On a full-CPU VCS
   `--target default` elaboration, a no_cpu test force-splices the same
   post-remap node (see the exceptions under <<sep-hdl-top>>).
+  The LSU demux of the stub runs on the SEP CPU reset `sep_cpu_reset_n`, so
+  no frontdoor access of a no_cpu leaf spans a release of that reset. A leaf
+  that lets sense complete during the leaf waits, bounded, for
+  `dbg_sep_reset_n_o` to read 1 before its next frontdoor access.
 * *SMN-inbound (`m_axi_*`).* A second `SepAxiAgent` on the real
   `smn_inbound` port. It is idle unless the test starts an external sequence.
   This path goes through `u_inbound_filter`, which blocks by default (DECERR
@@ -712,9 +818,103 @@ tests declare `firmware = { name = "rom_main", mode = "km_rom_main" }`
 run mode. A test that does not need fuse content may add `+skip_fuse_sense`
 to the `args` of its testlist entry to bypass the slow sense path; it must then
 grade no fuse- or LC-derived value. <<sep-standin-skip-fuse-sense>> records the
-claim and scope of this bypass for the leaves it lists. Real eFuse
+claim and scope of this bypass for every leaf that uses it. Real eFuse
 tests omit that bypass and let the RTL fuse-sense FSM finish against the
 generic eFuse model.
+
+[[sep-deferred-disposition]]
+=== Bench Stand-ins and Exceptions
+
+A stand-in is anything that answers in place of the mechanism a claim is
+about. Each entry has three fields: the claim that is accepted with the
+stand-in in place, why the real path is not needed, and the exact scope. Who
+approved an entry, against which revision, and when it is next reviewed are
+recorded in the pull request that adds or changes it. A test outside
+the scope of an entry is graded as if the stand-in were undeclared. Each entry
+has one command in <<sep-standin-recheck>> that shows it is still true of the
+tree.
+
+[[sep-standin-skip-fuse-sense]]
+==== `+skip_fuse_sense` on leaves that grade no fuse- or LC-derived state
+
+[cols="1,4"]
+|===
+|Claim accepted
+|With `+skip_fuse_sense`, the RTL raises `sep_fuse_sense_done_o` without
+sensing the OTP. The eFuse shadow and the LC decode stay at reset
+(`FEAT_CTRL` reads 0). The real sense path and the shadow content are not
+proven by these leaves. Each claim of a leaf in the scope holds at that reset
+decode, because no graded value of the leaf comes from fuse or LC state: the
+graded values are seeded stimulus, RDL reset values, firmware console lines,
+direct register reads or SEP top inputs that the testbench drives
+(`tb/tb_top.sv`). A leaf that needs a decoded control at 0, for example
+`feat_ctrl.sep_debug` at the inbound filter (`hw/sys/sep/rtl/sep.sv`,
+`inbound_filter_skip_i`), relies on the reset decode that `+skip_fuse_sense`
+leaves in place.
+
+|Why the real path is not needed
+|A test that does not need fuse content may use `+skip_fuse_sense`. The real
+sense path and the shadow are graded by the eFuse and LCC tests, which run
+without the plusarg.
+
+|Scope
+|Each SEP DV testlist entry (`hw/sys/sep/dv/testlists/*.toml`) that carries
+`+skip_fuse_sense` in its `args` and grades no fuse- or LC-derived value. A
+test that needs fuse or LC content omits the plusarg and states real sense in
+its contract.
+|===
+
+[[sep-standin-test-en-inventory]]
+==== Committed `test_en_i` pin inventory as the graded set of `sep_test_en_pin_reach_test`
+
+[cols="1,4"]
+|===
+|Claim accepted
+|`sep_test_en_pin_reach_test` grades the "every such input" reading of
+`hw/sys/sep/doc/port_table.adoc` (`test_en_i`: "Drives clock-gater test ports
+and AXI cell test inputs.") on the pins of the committed inventory
+`GRADED_PINS` (`cocotb/tests/system/sep_test_en_pin_inventory.py`), not on a
+set that the bench derives from the RTL when it runs. Selection rule (the
+SEP-owned boundary): the test inputs of the clock-gater and AXI cell instances
+that OCAH RTL instantiates, without the pins inside `sep_cpu`, on the
+`lsu_stub_all_live` build. Pins inside vendor IP or a third-party library are
+not graded. The expected value of each pin comes from the `port_table.adoc`
+sentence; the inventory sets only which pins are graded.
+
+|Why the real path is not needed
+|The specification names the two pin classes and no list of instances, so the
+graded set is a bench decision: the SEP-owned boundary. A committed list keeps the graded set independent of a source
+scan at run time: the hierarchy walk finds each inventory pin, an inventory
+pin that the walk does not find fails CTL-PIN-WALK by name, and the source
+ownership scan of `cocotb/env/sep_test_en_walk.py` only labels the walked pins
+in the log. The inventory changes only by a reviewed edit.
+
+|Scope
+|`GRADED_PINS` (172 pins: 1 clock gater, 171 AXI cells) as the graded set of
+CHK-TEST-EN-PINS and CTL-PIN-WALK in `sep_test_en_pin_reach_test`
+(`testlists/system.toml`). No other test grades these pins.
+|===
+
+[[sep-standin-recheck]]
+==== Re-confirming a stand-in
+
+[cols="2,3,3",options="header"]
+|===
+|Stand-in |Command |Expected
+
+|`+skip_fuse_sense` on leaves that grade no fuse- or LC-derived state
+|`++awk '/^name = /{n=$3} /^args = .*\+skip_fuse_sense/{print FILENAME ": " n}' hw/sys/sep/dv/testlists/*.toml++`,
+then `grep -n 'BRINGUP LOG: feat_ctrl'` in any log of
+`sep_fabric_smc_route_test`
+|Each listed test grades no fuse- or LC-derived value (its contract states
+real sense where it needs fuse content), and
+`feat_ctrl=0x0000000000000000`, the reset decode.
+
+|`test_en_i` pin inventory
+|`python3 -c 'import sys; sys.path.insert(0, "hw/sys/sep/dv/cocotb"); from tests.system.sep_test_en_pin_inventory import GRADED_PINS as G; print(len(G), sum(c == "clock_gater" for _, c in G))'`,
+then `grep -n 'CTL-PIN-WALK:'` in any log of `sep_test_en_pin_reach_test`
+|`172 1`, and `CTL-PIN-WALK: graded=172 inventory=172 missing=0 class_mismatch=0`.
+|===
 
 === Environment Components
 

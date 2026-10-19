@@ -31,21 +31,31 @@ Checkers:
   CHK-AES-RESEED-RATE     count(PER_1) > count(PER_64) > count(PER_8K) over N blocks
                           (rises of ``crypto_edn_ack_o[0]``).
   CHK-AES-RESEED-INVALID  3'b000 and the multi-hot value each map to PER_1
-                          (aes.adoc:109): each count equals count(PER_1) of the
-                          same key and plaintexts. Control: each count is above
+                          (aes.adoc:109): written over a committed PER_8K, each
+                          count equals count(PER_1) of the same key and plaintexts. Control: each count is above
                           count(PER_64).
   CHK-AES-RESEED-TRIG     no acknowledge in 4 x t_r clocks after a TRIGGER write
                           of 0 on an idle unit. Control: a PRNG_RESEED write is
                           acknowledged in a window of the same length.
+  CHK-AES-IDLE-RESEED     STATUS.IDLE reads 0 on a sample between the
+                          PRNG_RESEED write and the return to idle. Control:
+                          STATUS.IDLE reads 1 before that write. A register
+                          clear returns to idle before the STATUS read that
+                          follows the trigger write, so that clause of the
+                          same sentence is not a sample.
   CHK-AES-CLEAR-KEY       after KEY_IV_DATA_IN_CLEAR and a reload of a key row
                           that differs from the key loaded before the clear,
                           the ciphertext equals the golden of the reloaded key.
                           Control: the IV read before the clear equals the
                           written IV.
   CHK-AES-RATE-CT         every block of the five rate runs equals the golden.
-The value of DATA_OUT after DATA_OUT_CLEAR has no stated value: the leaf logs
-``OBS-BLOCKED CHK-AES-CLEAR-OUT`` and ``OBS-AES-CLEAR-OUT`` and grades nothing
-there. The IV after the clear is logged as ``OBS-AES-CLEAR-IV``.
+DATA_OUT after DATA_OUT_CLEAR has no exact form: ``aes.hjson``:909-913 states only
+"clear those registers with pseudo-random data", and no value, status bit or
+read effect. A check that the value differs from the output before the clear
+fails a healthy DUT with probability 2^-128 and passes a partial clear, so it is
+not a check. The leaf logs ``OBS-BLOCKED CHK-AES-CLEAR-OUT`` and
+``OBS-AES-CLEAR-OUT`` and grades nothing there. The IV after the clear is logged
+as ``OBS-AES-CLEAR-IV``.
 """
 
 from __future__ import annotations
@@ -201,6 +211,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
         "CHK-AES-RESEED-RATE",
         "CHK-AES-RESEED-INVALID",
         "CHK-AES-RESEED-TRIG",
+        "CHK-AES-IDLE-RESEED",
         "CHK-AES-CLEAR-KEY",
         "CHK-AES-RATE-CT",
     )
@@ -251,7 +262,9 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
                 await self._clear_key_trial()
         close_graded_window(self.logger)
 
-        self.chk.blocked("CHK-AES-CLEAR-OUT", "DATA_OUT value after clear not stated")
+        self.chk.blocked(
+            "CHK-AES-CLEAR-OUT", "no exact form: aes.hjson:909-913 states pseudo-random data only"
+        )
         await self.stop_fifo_drain()
         assert self.drbg_sb.report()
         await self.clk.stop()
@@ -329,6 +342,10 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         bad = 0
         try:
+            if run not in LEGAL_RATE:
+                # The reset value is PER_1, so commit PER_8K first: a DUT that ignores
+                # the invalid write then keeps PER_8K and its count differs from PER_1.
+                await self._ctrl(self._ctrl_word(PER_8K))
             await self._ctrl(self._ctrl_word(value))
             mark = self.ack.mark()
             await self._key_and_clear()
@@ -393,31 +410,59 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
         acks0 = None
         ctrl_acks = None
         reason = ""
+        idle_reason = ""
+        idle_before = False
+        busy = 0
+        n_status = 0
         try:
             await self._ctrl(self._ctrl_word(LEGAL_RATE[plan.trig_rate]))
             await self.aes.write_key(plan.key)
             await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_key")
+            pre = await self.aes._rd(AES_STATUS)
+            idle_before = bool(pre & ST_IDLE)
             m = self.ack.mark()
+            open_graded_window(TEST, self.logger)
             await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
             t_resp = self.ack.clk
-            rise = await self.ack.wait_rise(m, WAIT_LIMIT, "aes")
-            t_r = max(1, rise - t_resp)
-            await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_reseed")
-            window = TRIG_WINDOW_FACTOR * t_r
-            open_graded_window(TEST, self.logger)
-            m0 = self.ack.mark()
-            await self.aes._wr(AES_TRIGGER, 0)
-            await ClockCycles(cocotb.top.clk_i, window)
-            acks0 = self.ack.rises_since(m0, "aes")
+            samples = await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_reseed")
             close_graded_window(self.logger)
-            m1 = self.ack.mark()
-            await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
-            await ClockCycles(cocotb.top.clk_i, window)
-            ctrl_acks = self.ack.rises_since(m1, "aes")
-            await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_ctrl_reseed")
+            n_status = len(samples)
+            busy = sum(1 for _, st in samples[:-1] if not (st & ST_IDLE))
+            rises = self.ack.rise_clks_since(m, "aes")
+            if rises:
+                t_r = max(1, rises[0] - t_resp)
+            else:
+                reason = "timeout:aes ack did not rise before STATUS.IDLE returned"
         except (TrialTimeout, BitWatchTimeout) as exc:
             close_graded_window(self.logger)
-            reason = f"timeout:{exc} bound={WAIT_LIMIT}"
+            idle_reason = f"timeout:{exc} bound={WAIT_LIMIT}"
+            reason = idle_reason
+        self.chk.ctrl("AES-IDLE-RESEED", idle_before, status_idle_before=int(idle_before))
+        idle_fields = {
+            "busy_samples": busy,
+            "status_reads": n_status,
+            "status_idle_before": int(idle_before),
+        }
+        if idle_reason:
+            idle_fields["reason"] = idle_reason
+        self.chk.ok("AES-IDLE-RESEED", not idle_reason and idle_before and busy >= 1, **idle_fields)
+        if t_r is not None:
+            try:
+                window = TRIG_WINDOW_FACTOR * t_r
+                open_graded_window(TEST, self.logger)
+                m0 = self.ack.mark()
+                await self.aes._wr(AES_TRIGGER, 0)
+                await ClockCycles(cocotb.top.clk_i, window)
+                acks0 = self.ack.rises_since(m0, "aes")
+                close_graded_window(self.logger)
+                m1 = self.ack.mark()
+                await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
+                await ClockCycles(cocotb.top.clk_i, window)
+                ctrl_acks = self.ack.rises_since(m1, "aes")
+                await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_ctrl_reseed")
+            except (TrialTimeout, BitWatchTimeout) as exc:
+                close_graded_window(self.logger)
+                reason = f"timeout:{exc} bound={WAIT_LIMIT}"
         window = TRIG_WINDOW_FACTOR * t_r if t_r else 0
         self.chk.ctrl("AES-RESEED-TRIG", bool(ctrl_acks), ctrl_acks_after_write=ctrl_acks)
         fields = {
@@ -433,7 +478,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
 
     # --- clear trials -------------------------------------------------------------
     async def _clear_out_trial(self) -> None:
-        """DATA_OUT_CLEAR: values logged only (no stated value after the clear)."""
+        """DATA_OUT_CLEAR: values logged only (aes.hjson:909-913 gives no exact form)."""
         plan = self.plan
         await self._pulse_aes()
         try:

@@ -21,7 +21,7 @@ name = "sep_spi_ot_flash_cmd_rand_test"
 module = "spi.sep_spi_ot_flash_cmd_rand_test"
 firmware = "spi_ot_flash_cmd_test"
 seed = 1
-reseed = 3
+# No reseed: the seed selects only address, word count and data inside one page.
 timeout_sec = 3600
 tags = ["boot", "cpu", "spi", "flash", "subsystem"]
 run_modes = ["cpu"]
@@ -129,7 +129,7 @@ args = ["+sep_spi_four_lane"]
 name = "sep_spi_pad_oe_rules_test"
 module = "spi.sep_spi_pad_oe_rules_test"
 seed = 1
-reseed = 3
+# No reseed: every run walks every output-enable window; the seed selects only timing and data.
 timeout_sec = 1800
 tags = ["spi", "pad", "reset", "subsystem"]
 run_modes = ["no_cpu"]

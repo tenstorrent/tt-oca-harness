@@ -80,6 +80,15 @@ class FieldPropsTest(unittest.TestCase):
         self.assertFalse(props.singlepulse)
         self.assertFalse(props.woclr)
 
+    def test_hw_access_and_volatile(self):
+        # Hardware writes and singlepulse self-clearing make a field volatile.
+        for name in ("shorthand_clr", "read_clr"):
+            props = self.props(name)
+            self.assertEqual(props.hw, "w")
+            self.assertTrue(props.volatile)
+        self.assertEqual((self.props("pulse").hw, self.props("pulse").volatile), ("r", True))
+        self.assertEqual((self.props("plain").hw, self.props("plain").volatile), ("r", False))
+
     def test_access_shorthand_rendering(self):
         cases = {
             "shorthand_clr": "RW1C",

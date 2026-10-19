@@ -3,7 +3,7 @@
 """Unit tests for the formal backend registry: the `sby` entry as the only checked-in formal
 backend, the `native-formal` profile, a site-supplied licensed backend selected like a checked-in
 one, the --doctor / --list views of the free default beside it, and the `(licensed)` marking of a
-simulator the site layer adds to an open view.
+simulator the site layer adds to an open view and of a framework view.
 
 Run from the repository root:
 
@@ -285,6 +285,41 @@ class ListFlowsMarkingTest(RegistryFixture):
         self.assertRegex(row, r"\bcocotb\s+verilator/")
         self.assertIn("simtool (licensed)", row)
         self.assertEqual(flow.default_tool, "verilator")
+
+    def uvm_row(self, tools: list[str], license: str) -> str:
+        flow = Dut(
+            name="unit_uvm",
+            kind="dv",
+            description="unit-test SV-UVM view",
+            framework="uvm",
+            visibility="maintainer",
+            runnability="maintainer",
+            license=license,
+            root=".",
+            default_tool="vcs",
+            tools=tools,
+            path=Path("unit_uvm_sim_cfg.toml"),
+            raw={},
+            frameworks=["uvm"],
+            default_framework="uvm",
+        )
+        out = io.StringIO()
+        with redirect_stdout(out):
+            cli.list_flows({flow.name: flow}, self.simulators)
+        return next(
+            line
+            for line in ANSI_RE.sub("", out.getvalue()).splitlines()
+            if line.startswith("unit_uvm")
+        )
+
+    def test_a_framework_is_marked_from_its_view_not_from_the_registry(self) -> None:
+        self.assertIn("uvm", self.simulators["verilator"]["frameworks"])
+        self.assertRegex(
+            self.uvm_row(["vcs"], "required-commercial"), r"\buvm \(licensed\)\s+vcs \(licensed\)"
+        )
+        self.assertRegex(
+            self.uvm_row(["vcs", "verilator"], "none"), r"\buvm\s+vcs \(licensed\)/verilator\b"
+        )
 
 
 if __name__ == "__main__":
