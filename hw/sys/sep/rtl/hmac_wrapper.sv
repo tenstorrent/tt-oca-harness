@@ -29,6 +29,9 @@ module hmac_wrapper (
                                                               // the HMAC key CSR block.
   output sep_pkg::sep_32_32_axil_resp_t hmac_key_axil_resp_o,  // Response from the HMAC key CSR
                                                                // block to the Key Manager.
+  input  logic wipe_pulse_i,                  // Key Manager wipe pulse; clears both key shares and
+                                              // KEY_CTRL.key_valid ahead of a same-cycle Key
+                                              // Manager write.
 
   output logic intr_hmac_done_o,              // HMAC done interrupt.
   output logic intr_fifo_empty_o,             // HMAC message FIFO empty interrupt.
@@ -107,17 +110,21 @@ module hmac_wrapper (
   // ============================================================================
 
   // HW interface wires for the generated CSR block
+  hmac_wrapper_key_reg_pkg::hmac_wrapper_key__in_t  key_csr_hwif_in;
   hmac_wrapper_key_reg_pkg::hmac_wrapper_key__out_t key_csr_hwif_out;
 
   // Build the keymgr_pkg::hw_key_req_t struct from CSR outputs
   keymgr_pkg::hw_key_req_t hmac_keymgr_key;
 
   assign hmac_keymgr_key.valid = key_csr_hwif_out.KEY_CTRL.key_valid.value;
+  assign key_csr_hwif_in.KEY_CTRL.key_valid.hwclr = wipe_pulse_i;
 
   // Map CSR key share words to the packed key vector
   for (genvar i = 0; i < 8; i++) begin : gen_key_share_map
     assign hmac_keymgr_key.key[0][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE0[i].data.value;
     assign hmac_keymgr_key.key[1][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE1[i].data.value;
+    assign key_csr_hwif_in.KEY_SHARE0[i].data.hwclr = wipe_pulse_i;
+    assign key_csr_hwif_in.KEY_SHARE1[i].data.hwclr = wipe_pulse_i;
   end
 
   // Instantiate the PeakRDL-generated HMAC key CSR register block
@@ -157,6 +164,7 @@ module hmac_wrapper (
     .s_axil_rresp   (hmac_key_axil_resp_o.r.resp),
 
     // HW interface
+    .hwif_in  (key_csr_hwif_in),
     .hwif_out (key_csr_hwif_out)
   );
 

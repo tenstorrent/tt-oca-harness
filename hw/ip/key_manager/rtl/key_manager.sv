@@ -135,10 +135,13 @@ module key_manager
 
   input  km_otp_data_t otp_data_i,  // Differentially encoded SEP OTP data.
 
-  input  logic    wipe_state_i,  // Wipe state. A rising edge sets IRQ_STATUS.WIPE_STATE and
-                                 // zeros the entire KPV on the next cycle. It is ORed with
-                                 // the CPU trap before edge detection, so a CPU trap wipes
-                                 // the same way and masks this input while it lasts.
+  input  logic    wipe_state_i,  // Wipe state. A rising edge sets IRQ_STATUS.WIPE_STATE,
+                                 // zeros the entire KPV on the next cycle and pulses
+                                 // wipe_pulse_o. It is ORed with the CPU trap before edge
+                                 // detection, so a CPU trap wipes the same way and masks
+                                 // this input while it lasts.
+  output logic    wipe_pulse_o,  // One-cycle pulse that triggers the KPV wipe, for clearing
+                                 // the keys delivered to the crypto accelerators.
 
   input  logic   test_en_i,   // DFT test-enable, active-high; selects scan_rst_ni for both
                               // conditioned resets and drives the crossbar and mailbox test
@@ -282,6 +285,7 @@ module key_manager
   assign wipe_event = wipe_state_i | cpu_trap;
   `OCAH_FF(wipe_event_d, wipe_event, 1'b0, clk_i, rst_cold_aasd_n)
   assign wipe_pulse = wipe_event & ~wipe_event_d;
+  assign wipe_pulse_o = wipe_pulse;
 
   //=========================================================================
   // CPU Wrapper Instance

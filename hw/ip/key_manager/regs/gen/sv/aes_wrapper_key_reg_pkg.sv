@@ -11,6 +11,28 @@ package aes_wrapper_key_reg_pkg;
     localparam AES_WRAPPER_KEY_REG_SIZE = 'h44;
 
     typedef struct {
+        logic hwclr;
+    } aes_wrapper_key__key_word_reg__data__in_t;
+
+    typedef struct {
+        aes_wrapper_key__key_word_reg__data__in_t data;
+    } aes_wrapper_key__key_word_reg__in_t;
+
+    typedef struct {
+        logic hwclr;
+    } aes_wrapper_key__key_ctrl_reg__key_valid__in_t;
+
+    typedef struct {
+        aes_wrapper_key__key_ctrl_reg__key_valid__in_t key_valid;
+    } aes_wrapper_key__key_ctrl_reg__in_t;
+
+    typedef struct {
+        aes_wrapper_key__key_word_reg__in_t KEY_SHARE0[8];
+        aes_wrapper_key__key_word_reg__in_t KEY_SHARE1[8];
+        aes_wrapper_key__key_ctrl_reg__in_t KEY_CTRL;
+    } aes_wrapper_key__in_t;
+
+    typedef struct {
         logic [31:0] value;
     } aes_wrapper_key__key_word_reg__data__out_t;
 

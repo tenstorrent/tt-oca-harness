@@ -474,6 +474,9 @@ module sep_crypto #(
   assign trng_entropy_clear_o = trng_reset_active;
 
 
+  // Key Manager wipe pulse (driven by the Key Manager; consumed by every engine wrapper).
+  logic km_wipe_pulse;
+
   //////////////////
   // HMAC Wrapper //
   //////////////////
@@ -485,6 +488,7 @@ module sep_crypto #(
     .hmac_axil_resp_o        (hmac_axil_isolated_resp),
     .hmac_key_axil_req_i     (hmac_key_axil_isolated_req),
     .hmac_key_axil_resp_o    (hmac_key_axil_isolated_resp),
+    .wipe_pulse_i            (km_wipe_pulse),
     .intr_hmac_done_o        (intr_hmac_done_o),
     .intr_fifo_empty_o       (intr_hmac_fifo_empty_o),
     .intr_hmac_err_o         (intr_hmac_err_o),
@@ -507,6 +511,7 @@ module sep_crypto #(
     .otbn_axil_resp_o             (otbn_axil_isolated_resp),
     .otbn_key_axil_req_i          (otbn_key_axil_isolated_req),
     .otbn_key_axil_resp_o         (otbn_key_axil_isolated_resp),
+    .wipe_pulse_i                 (km_wipe_pulse),
     .edn_rnd_req_o                (crypto_edn_req[2]),
     .edn_rnd_rsp_i                (crypto_edn_rsp[2]),
     .edn_urnd_req_o               (crypto_edn_req[3]),
@@ -534,6 +539,7 @@ module sep_crypto #(
     .aes_axil_resp_o     (aes_axil_isolated_resp),
     .aes_key_axil_req_i  (aes_key_axil_isolated_req),
     .aes_key_axil_resp_o (aes_key_axil_isolated_resp),
+    .wipe_pulse_i        (km_wipe_pulse),
     .edn_req_o           (crypto_edn_req[0]),
     .edn_rsp_i           (crypto_edn_rsp[0]),
     .alert_rx_i          (crypto_alert_rx[4:3]),
@@ -555,6 +561,7 @@ module sep_crypto #(
     .kmac_axil_resp_o        (kmac_axil_isolated_resp),
     .kmac_key_axil_req_i     (kmac_key_axil_isolated_req),
     .kmac_key_axil_resp_o    (kmac_key_axil_isolated_resp),
+    .wipe_pulse_i            (km_wipe_pulse),
     .edn_req_o               (crypto_edn_req[1]),
     .edn_rsp_i               (crypto_edn_rsp[1]),
     .intr_kmac_done_o        (intr_kmac_done_o),
@@ -617,6 +624,7 @@ module sep_crypto #(
     // Key path: KM private AXI4-Lite key bus (CSR block lives in the wrapper)
     .abr_key_axil_req_i    (abr_key_axil_isolated_req),
     .abr_key_axil_resp_o   (abr_key_axil_isolated_resp),
+    .wipe_pulse_i          (km_wipe_pulse),
     // AB internal SRAMs (tech macros in sep_ip_integration; threaded up)
     .abr_mem_req_o         (abr_mem_req_o),
     .abr_mem_rsp_i         (abr_mem_rsp_i),
@@ -1077,8 +1085,10 @@ module sep_crypto #(
     // OTP data — assembled from efuse shadow registers and lifecycle ctrl
     .otp_data_i          (km_otp_data),
 
-    // Wipe state — rising edge zeroes the KPV and sets the KM WIPE_STATE IRQ
+    // Wipe state — rising edge zeroes the KPV, sets the KM WIPE_STATE IRQ and pulses
+    // km_wipe_pulse, which clears every engine's delivered key
     .wipe_state_i        (km_wipe_state_i),
+    .wipe_pulse_o        (km_wipe_pulse),
 
     // Test/DFT
     .test_en_i           (test_en_i),

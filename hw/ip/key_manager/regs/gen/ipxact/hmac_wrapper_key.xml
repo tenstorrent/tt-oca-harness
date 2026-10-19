@@ -32,6 +32,7 @@ No reset; powers up with undefined value.</ipxact:description>
             <ipxact:description>32-bit key data word. Write-only for security.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>write-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -49,6 +50,7 @@ No reset; powers up with undefined value.</ipxact:description>
             <ipxact:description>32-bit key data word. Write-only for security.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>write-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -71,6 +73,7 @@ Write 0 to invalidate the current key.</ipxact:description>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
