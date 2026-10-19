@@ -233,6 +233,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         self.cfg.reset_done.set()
         for port in ("dbg_sep_reset_n_o", "sep_cpu_reset_n_o"):
             n = await wait_bit(self, port, 1, TAP_BOUND)
+            await RisingEdge(dut.clk_i)
             assert n is not None, f"{port} did not read 1 within {TAP_BOUND} clk_i cycles"
         n = await wait_bit(self, "secure_tm_o", strap, STM_BOUND)
         await RisingEdge(dut.clk_i)
@@ -474,6 +475,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         code, reads = await sec_dis_go(self.fd, TOKEN_ZERO, CODE_MATCH, max_reads=MATCH_READS)
         rose = await wait_bit(self, "lcc_security_disable_probe_o", 1, SDIS_BOUND)
+        await RisingEdge(dut.clk_i)
         await ReadOnly()
         after = self._sample()
         await RisingEdge(dut.clk_i)

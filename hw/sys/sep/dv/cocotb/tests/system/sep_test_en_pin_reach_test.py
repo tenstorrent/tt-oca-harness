@@ -28,7 +28,10 @@ Checkers:
                     no instantiating module is unresolved.
   CHK-TEST-EN-PINS  every graded pin equals test_en_i PIN_BOUND clk_i cycles
                     after each edge. A FAIL names every pin that does not
-                    (path, class, cell, instantiating module, edge).
+                    (path, class, cell, instantiating module, edge). A pin
+                    that holds 0 on both edges equals test_en_i after the 1
+                    to 0 edge, so it fails the 0 to 1 edge only; the FAIL line
+                    counts it in fail_pins and in stuck_0.
 
 The graded window (owner code of this test) is open from the 0 to 1 edge to
 the end of the hold after the 1 to 0 edge.
@@ -63,11 +66,14 @@ class sep_test_en_pin_reach_test(sep_base_test):
 
     required_evidence = ("CHK-TEST-EN-PINS",)
 
-    async def _edge(self, pins: list[TestEnPin], value: int) -> tuple[list[TestEnPin], int]:
+    async def _edge(
+        self, pins: list[TestEnPin], value: int
+    ) -> tuple[list[TestEnPin], int, dict[str, int | None]]:
         """Drive test_en_i to ``value`` and read the pins PIN_BOUND cycles later.
 
-        Returns the pins that do not equal ``value`` at that edge and the count
-        that equal it on the first clk_i edge after the drive.
+        Returns the pins that do not equal ``value`` at that edge, the count
+        that equal it on the first clk_i edge after the drive, and the value of
+        each pin at the PIN_BOUND read.
         """
         dut = cocotb.top
         await RisingEdge(dut.clk_i)
@@ -78,9 +84,10 @@ class sep_test_en_pin_reach_test(sep_base_test):
         await ClockCycles(dut.clk_i, PIN_BOUND - 1)
         await ReadOnly()
         bad = pins_not_equal(pins, value)
+        vals = {p.path: pin_value(p) for p in pins}
         await RisingEdge(dut.clk_i)
         await ClockCycles(dut.clk_i, H)
-        return bad, first
+        return bad, first, vals
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -135,8 +142,8 @@ class sep_test_en_pin_reach_test(sep_base_test):
         )
 
         open_graded_window(TEST, self.logger)
-        rise_bad, rise_first = await self._edge(graded, 1)
-        fall_bad, fall_first = await self._edge(graded, 0)
+        rise_bad, rise_first, rise_val = await self._edge(graded, 1)
+        fall_bad, fall_first, fall_val = await self._edge(graded, 0)
         close_graded_window(self.logger)
 
         failing: list[tuple[TestEnPin, str]] = [(p, "0to1") for p in rise_bad]
@@ -152,10 +159,15 @@ class sep_test_en_pin_reach_test(sep_base_test):
         for name in parents:
             n = sum(1 for p, _e in failing if f"{p.parent}.{p.cell}" == name)
             self.logger.info("TEST-EN-PINS group: parent.cell=%s failing_edges=%d", name, n)
+        fail_pins = {p.path for p, _e in failing}
+        stuck = {
+            v: sum(1 for x in fail_pins if rise_val[x] == v and fall_val[x] == v) for v in (0, 1)
+        }
         counts = (
             f"graded={len(graded)} "
             + " ".join(f"{c}={n}" for c, n in per_class.items())
-            + f" fail_0to1={len(rise_bad)} fail_1to0={len(fall_bad)}"
+            + f" fail_pins={len(fail_pins)} stuck_0={stuck[0]} stuck_1={stuck[1]}"
+            f" fail_0to1={len(rise_bad)} fail_1to0={len(fall_bad)}"
             f" follow_first_edge_0to1={rise_first} follow_first_edge_1to0={fall_first}"
             f" pin_bound={PIN_BOUND}"
         )
