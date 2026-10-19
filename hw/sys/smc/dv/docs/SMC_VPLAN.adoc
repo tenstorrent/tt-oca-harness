@@ -33318,9 +33318,10 @@ restore operations to each catalogued word, requires no Zeroer busy or unknown
 value sampled on a rising SMC clock edge from before the first catalogued
 operation through the final status read, checks Zeroer state and lane
 coverage, runs a real one-word Zeroer command to SPM after the no-start check
-and requires the busy sample count to increase, waits with a bound for all
-predicted comparisons, then checks
-scoreboard results and access counts.
+and requires the busy sample count to increase. It reads back DEST_ADDR and
+SIZE after their control restore writes in every pass, waits with a bound
+for all predicted comparisons, then checks scoreboard results and access
+counts.
 
 *Checkers*:
 
@@ -33351,7 +33352,8 @@ After the absence check, a bounded positive control uses the last aligned SPM
 word as scratch. No CPU or other initiator may use that word during the pass.
 It is left zero through a SEP_IN write that also updates the SPM model; its
 initial SRAM contents are not read or restored. DEST_ADDR and SIZE return to
-their reset values. The control does not grade the Zeroer's zeroed payload.
+their reset values and are read back within the same pass. The control does
+not grade the Zeroer's zeroed payload.
 It excludes registers whose writes change decode, gating, reset, lock or other
 operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
 because a later core reset that does not also assert warm reset can consume a
@@ -33363,7 +33365,8 @@ handles a real error response; the error-read path has no directed run here.
 
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
-comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
+read comparisons: 59 read mismatches per pass, with writes unaffected.
+`+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
 full-write, no-start and busy-control expectations and must fail seven
 `CHK-REGBLOCK-WIDE-FULL-RW` records and one
 `CHK-REGBLOCK-WIDE-NO-ZEROER-START` record and one
@@ -33373,9 +33376,10 @@ while the scoreboard records no mismatch.
 write responses to SLVERR and must fail every catalogued write comparison and
 no read comparison: 54 write mismatches per pass (35 base writes, 15 fixed
 sparse writes and four positive-control writes).
-The positive run requires 111 comparisons per pass (57 reads and 54 writes).
+The positive run requires 113 comparisons per pass (59 reads and 54 writes).
 With 16 passes, the sequence negative requires 144 checker failures and the
-response negative requires 864 write mismatches. A separate local mutation
+response negative requires 864 write mismatches; the scoreboard negative
+requires 944 read mismatches. A separate local mutation
 holding the busy tap or sample counter at zero must fail the busy-control
 check even with the sequence negative disabled. Control completion and
 safe-state prerequisites are outside the expectation-inverting negative.
