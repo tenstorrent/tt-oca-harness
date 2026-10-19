@@ -356,7 +356,7 @@ class sep_km_handover_rand_test(sep_base_test):
     async def _wmap_clear(self) -> None:
         """KM-WMAP: clear the distinct-word counts for one clock."""
         cocotb.top.km_sram_wmap_clr_i.value = 1
-        await RisingEdge(self.clk)
+        await RisingEdge(cocotb.top.clk_i)
         cocotb.top.km_sram_wmap_clr_i.value = 0
 
     def _wmap_regions(self) -> list[int]:
