@@ -381,6 +381,11 @@ one-line intent.
 |`smu_dtp_sep_ic_reset_effect_test` |wrapper |The `sep_reset_n` pair of the `IC_RESET` SEP slice (bits 13 and 14), written reset_control first, holds `sep_reset_n_o` low and clears SEP cold scratch word 0 written over the SEP debug system bus, leaves the external slice, `rst_primary_smc_clk_no` and the SMC fabric untouched, survives Test-Logic-Reset only with `reset_hold` 0, and restores the SEP when released reset_enable first.
 |`smu_dtp_jtag2axi_ratio_floor_test` |wrapper |The SMC fabric JTAG2AXI bridge completes a four-word series write and four single-load series reads with the documented data, `SERIES_CTRL.op` 0 and AW and B counters up by 4 at TCK 40 ns and 48 ns against a `clk_smu_i` whose measured period and bench period are compared with the 10 ns system clock setting, and again at 40 ns after `SERIES_CTRL.reset`; the 32 ns and 20 ns legs are measured and logged only, except that every `SERIES_CTRL.op` capture there is 0 or 3.
 |`smu_dtp_smc_dm_dmi_test` |wrapper |The SMC debug module, reached through the SMC STAP and the SMC cluster debug transport module, leaves reset when the fabric write sets `RESET_CTRL` bit 24, reads the `dmstatus` and `sbcs` capability fields and `dmactive` after the release, writes and reads a `CPU_CTRL` `SCRATCH` word over its system bus beside a fabric-written neighbour, and leaves the DTP-to-SMC launch counters flat across the system-bus traffic; while the module is held the dmi reads of `dmcontrol` and `dmstatus` do not answer op 0 with `dmactive` 1 or `version` 2, and after the release they do.
+|`smu_sep_external_irq_pins_test` |wrapper |Each of the 212 external SEP interrupt pins, driven one at a time, raises the PIC pending bit of its own source 44 to 255 and the matching core request-port bit, and clears them when it returns low.
+|`smu_sep_wdt_bite_to_smc_reset_test` |wrapper |A SEP watchdog bite programmed over the SEP debug system bus drops the SMC watchdog-term and warm resets while the primary and cold resets stay released and the request holds, and the cool-reset pin then drops the request and releases every net.
+|`smu_xtrig_ctm_self_loop_test` |wrapper |A CT_SRC mask that selects its own wire-OR CTP lane makes one external assertion re-trigger the lane request output, writing the mask to 0 ends it, and with the mask 0 the assertion produces no request-output rise.
+|`smu_sep_rma_token_match_test` |wrapper |With the SEP eFuse image holding the RMA digests of two known tokens, each token written over the SEP debug system bus and started with its own `TOKEN_EOP` bit reads match on its own lane and a token one bit off reads mismatch, a lane reads idle until started, and the two result registers do not affect each other.
+|`smu_smc_warm_reset_register_retention_test` |wrapper |After the CORE0 watchdog is armed with `WDOGRSTEN` and its second timeout asserts the SMC warm reset, `SS_CONFIG`, `SS_COLD_RESET_N`, `SS_WARM_RESET_N`, `ISOLATE_REQ_REG` and the FLR counter keep their non-reset values while CORE0 `CMP` and `CTRL` read their reset values; the primary and cold outputs stay released and two scratch words are measured and logged only.
 |===
 
 [[smu-test-procedures]]
@@ -8288,6 +8293,270 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-189-smu_sep_external_irq_pins_test]]
+===== 189 `smu_sep_external_irq_pins_test`
+
+*Source Module*: `smu_sep_external_irq_pins_test` (`cocotb_wrapper/tests/`; the sequence `smu_sep_external_irq_pins_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the bench wire `tb_sep_ext_interrupts`, connected to the wrapper input `sep_ext_interrupts_i` (`tb/tb_wrapper_top.sv`; idle `'0`) and deposited by the leaf one lane at a time; read-only probes from the `smu` instance, never forced, of the PIC per-source pending vector `gen_sep.u_sep.u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst.extintsrc_req_gw` (bit N is source N, the value `meip` returns) and the core external-request port `gen_sep.u_sep.u_sep_cpu.extintsrc_req_i` (vector bit N is source N + 1); sampled on `obs_sep_clk_o`, with the step stamps on `clk_smu_i`; `elaboration` firmware mode under the `sep_rtl` run mode; `+expected_sep=1`, `+skip_fuse_sense` with the default SMC and SEP shadow preloads, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; no JTAG master, no firmware and no PIC register access
+
+*Objective*: with the PIC gateways at their reset configuration, each external SEP interrupt pin raises the pending bit of its own source and the core request-port bit of that source and no other external source, and returns both to 0 when the pin returns low.
+
+*Test Coverage*:
+
+* The external band is PIC slots 44 to 255, so 212 lanes; lane i is source 44 + i (`hw/sys/sep/doc/interrupts.adoc`, "SEP CPU Interrupt Vector Map"), which is bit i + 43 of the vector driven to the core ("Sources and Routing": bit i of the vector is source i + 1). The lane count and the all-low baseline are bench values and are logged only.
+* Pending: source N is bit N % 32 of `meip[N / 32]` (`interrupts.adoc`, "Software Handling"; `hw/sys/sep/regs/blocks/el2_pic/el2_pic.rdl`, MEIP `intpend`). For every lane in ascending order the pending bit reads 0 before the pin is driven and 1 within a bounded wait after it (`CHK-SEP-EXTIRQ-RISE`); the external-band bitmap is then the one-hot value at the lane (`CHK-SEP-EXTIRQ-ONEHOT`) and the core request-port bit equals the pending bit, with the port's external band the same one-hot value (`CHK-SEP-EXTIRQ-CORE-PORT`).
+* Release: the gateway reset configuration is polarity 0 and level type (`el2_pic.rdl`, MEIGWCTRL), so with the pin low and no gateway or clear register written the pending bit reads 0 within a bounded wait (`CHK-SEP-EXTIRQ-FALL`) and the external band is all-zero (`CHK-SEP-EXTIRQ-ZERO`); the same lane read 1 earlier in the leaf.
+* Measured and logged only: the lane count and the all-low baseline, the pin-to-pending cycles of every lane and the pending-to-zero cycles of every lane, in `obs_sep_clk_o` cycles, and the walk accounting (lanes walked, most lanes high together); the pending-wait bounds are bench constants.
+* Out of scope: the internal sources 1 to 43, the PIC enable, priority and threshold registers, edge-type gateways and the core's interrupt response.
+
+*Test Procedure*:
+
+[arabic]
+. After bring-up, require every pin low and read the lane count, the pending vector and the core request port.
+. Log the lane count and the all-low baseline.
+. For each lane in ascending order, sample its pending bit, drive the pin high and wait for the pending bit to read 1.
+. With the lane high, compare the external-band pending bitmap and the core request-port bit and band.
+. Drive the lane low and wait for the pending bit to read 0.
+. Compare the external-band pending bitmap all-zero.
+. After the last lane, log the walk accounting.
+. Stamp PASS two `clk_smu_i` cycles later; check every wait finished inside its bound with its last state, the number of wait sites of each kind, and the order of the steps.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-EXTIRQ-RISE` |for every lane the pending bit of source 44+i reads 0 before the pin is driven and 1 within the bounded wait; the pin-to-pending cycles are measured and logged only
+|`CHK-SEP-EXTIRQ-ONEHOT` |with only lane i high the external-band pending bitmap is the one-hot value at source 44+i
+|`CHK-SEP-EXTIRQ-CORE-PORT` |the core external-request port bit of source 44+i equals the pending bit, both 1, and the port's external band is the same one-hot value
+|`CHK-SEP-EXTIRQ-FALL` |after lane i returns low its pending bit reads 0 within the bounded wait with no gateway or clear register written; the fall cycles are measured and logged only
+|`CHK-SEP-EXTIRQ-ZERO` |after lane i showed 1 and every lane is low the external-band pending bitmap is all-zero
+|`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8; the PASS stamp is two clk_smu_i cycles after S7
+|`CHK-TIMEOUT-PATHS` |bounded pending-rise and pending-fall waits, 212 sites each, none expired, with the last state recorded
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-190-smu_sep_wdt_bite_to_smc_reset_test]]
+===== 190 `smu_sep_wdt_bite_to_smc_reset_test`
+
+*Source Module*: `smu_sep_wdt_bite_to_smc_reset_test` (`cocotb_wrapper/tests/`; the sequence `smu_sep_wdt_bite_to_smc_reset_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the `ocah_jtag_vip` primary TAP and the SEP debug STAP system bus (the debug-module bring-up of `smu_dtp_sep_dm_dmi_test` and the system-bus accessors of `smu_dtp_sep_dm_sba_test`), writing the SEP watchdog registers `SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD`, `_WDOG_BITE_THOLD`, `_WDOG_COUNT` and `_WDOG_CTRL` named in `hw/sys/sep/regs/gen/c/sep_addr.h` through `seq_lib.smu_addr_map`, with the `WDOG_CTRL` enable bit from the generated `aon_timer.h`; the bench input `tb_cool_reset_pin` (`tb/tb_wrapper_top.sv`, deposited by the leaf; high asserts the cool reset); the read pins `tb_smc_wdt_second_timeout`, `tb_ss_warm_reset_n`, `obs_sep_rst_n_o`, `rst_primary_smc_clk_n_o` and `rst_cold_n_o`, and the clocks `clk_smu_i` and `clk_ref_i`; read-only probes from the `smu` instance, never forced: `sep_wdt_timer_rst_req` (the bite request), `u_smc.rst_wdt_smc_clk_no` (the watchdog-term output of `smc_reset_sync`) and `u_smc.rst_warm_smc_clk_n` (the warm output net); eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload` through `+sep_shadow_reg_preload` with `+skip_fuse_sense` and the default SMC shadow preload; run mode `sep_rtl`, `elaboration` firmware mode, `+expected_sep=1`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images
+
+*Objective*: a SEP watchdog bite raises the bite request, which drops the SMC watchdog-term and warm resets while the SMC primary and cold resets stay released and the request holds; the cool-reset pin then asserts the primary reset, which clears the request, and releasing the pin returns every net to released with the request low.
+
+*Test Coverage*:
+
+* Request: the watchdog second stage raises `wdt_timer_rst_req_o` (`hw/sys/sep/doc/watchdog.adoc`, "Bark Interrupt and Bite Reset"). The request reads 0 at the baseline sample before `WDOG_CTRL` is written and 1 within a bounded wait after the enable write, and falls to 0 only once the primary reset asserted (`CHK-SEP-WDT-SMC-REQ`); the bite cycles are measured and logged only.
+* Assertion: the watchdog reset is `rst_ext_wdt_ni AND NOT smc_wdt_second_timeout_i` and the warm reset is `rst_primary_n AND rst_wdt_n AND fuse_reset_ni`, each output of `smc_reset_sync` asserting asynchronously (`hw/sys/smc/doc/clk_rst.adoc`, reset equations and "Reset synchronization domains"). After the request first reads 1 the watchdog-term net and the warm net each read 0 within their bounded waits (`CHK-SEP-WDT-SMC-ASSERT`); the cycles from the request to each fall are measured and logged only.
+* Terms: both nets read 1 at the baseline and 0 at the settled sample, with the request 1 (`CHK-SEP-WDT-SMC-TERM-WARM`); the SMC watchdog second timeout at the settled sample is logged, the SMC watchdog never being armed by the leaf.
+* Primary and cold: the primary reset is the AND of the stable cold reset, the de-glitched cool-reset pin and the FLR cool reset, and carries no watchdog term (`clk_rst.adoc`), so `rst_primary_smc_clk_n_o` and `rst_cold_n_o` read 1 at every sample of a hold window that began after the request and both nets changed (`CHK-SEP-WDT-SMC-PRIMARY-COLD`). The primary reset reads 0 later in the leaf, under the cool-reset pin.
+* Hold: `wdt_rst_ni` resets only the EL2 core and warm scratch, and the watchdog and its request are reset by `rst_ni` (`hw/sys/sep/doc/reset_controller.adoc`, the `sep_cpu_reset_no` item and the `rst_ni` paragraph of "SEP Reset Controller"), so the request reads 1 at every hold sample while both nets read 0 (`CHK-SEP-WDT-SMC-HOLD`); the request reads 0 later in the leaf, after the primary reset asserts.
+* Release: with the cool-reset pin held above its 32-cycle de-glitcher (`clk_rst.adoc`) the primary reset reads 0 and the request falls; after the pin is released the primary, watchdog-term and warm nets each read 1 within their bounded waits (`CHK-SEP-WDT-SMC-RELEASE`). The release order and cycles are measured and logged only.
+* Order: the warm reset includes the watchdog reset term (`clk_rst.adoc`), so from the request's first 1 sample to the end of the release no sample has the warm net 1 while the watchdog-term net is 0 and no sample is skipped; the watchdog-term net reads 0 across the hold window (`CHK-SEP-WDT-SMC-ORDER`).
+* Convergence: in a closing window after the release the request stays 0 and every reset net reads 1, and the request rose exactly once from the baseline; the request read 1 at the settled and hold samples (`CHK-SEP-WDT-SMC-CONVERGE`).
+* Measured and logged only: the request rise cycles after the enable write, the cycles from the request to each net assertion, the primary assertion and request fall cycles, the release order and cycles, the SMC watchdog second timeout at the settled sample, and the levels of `tb_ss_warm_reset_n` (`SS_WARM_RESET_N`, which the leaf never writes; `clk_rst.adoc`, "Reset Architecture", places it in `u_reset_unit_reg` under the primary reset) and `obs_sep_rst_n_o` at the baseline, over the hold window and over the closing window; the thresholds, the window lengths, the pin hold and every wait bound are bench constants.
+* Out of scope: the SMC watchdog second-timeout path, the SEP CPU response to the bite, per-subsystem warm-reset fan-out values, the fuse reset timing and the cold reset.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the SEP debug module with the TEST_DEV image and enable the system bus.
+. Sample the baseline: the request, the two SMC nets, the primary and cold resets, the warm vector and `obs_sep_rst_n_o`.
+. Write the bark and bite thresholds and the count over the SEP system bus, then the watchdog enable last.
+. Wait for the request to read 1, then for the watchdog-term net and the warm net each to read 0.
+. Take a settled sample of the request, the two nets and the second timeout.
+. Sample every `clk_smu_i` cycle of a hold window and compare the primary, cold, request and net levels.
+. Drive `tb_cool_reset_pin` high for a fixed count of `clk_ref_i` cycles and wait for the primary reset to read 0.
+. Wait for the request to read 0.
+. Drive the pin low and wait for the primary, watchdog-term and warm nets each to read 1.
+. Evaluate the ordering of the warm and watchdog-term nets over every sample since the request rose.
+. Sample every cycle of a closing window and compare the levels and the request rise count.
+. Stamp PASS two `clk_smu_i` cycles later; check every wait finished inside its bound with its last state, the number of wait sites of each kind, and the order of the steps.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-WDT-SMC-REQ` |the SEP watchdog request reads 0 before the enable write and 1 within the bounded wait after it, and falls to 0 only once the SMC primary reset asserted; bite cycles are measured and logged only
+|`CHK-SEP-WDT-SMC-ASSERT` |after the request first reads 1 the SMC watchdog-term net and the warm net each read 0 within their bounded waits; the cycles to each fall are measured and logged only
+|`CHK-SEP-WDT-SMC-TERM-WARM` |watchdog-term and warm nets read 1 at the baseline and 0 at the settled sample after the bite, with the request 1; the SMC watchdog second timeout is logged
+|`CHK-SEP-WDT-SMC-PRIMARY-COLD` |the SMC primary reset and the stable cold reset read 1 at every sample of the hold window that began after the request and both nets changed
+|`CHK-SEP-WDT-SMC-HOLD` |while the watchdog-term and warm nets read 0 the request reads 1 at every sample of the hold window
+|`CHK-SEP-WDT-SMC-RELEASE` |the held cool-reset pin drives the primary reset to 0 and the request to 0; after the pin is released primary, watchdog-term and warm nets each read 1; the order and cycles are measured and logged only
+|`CHK-SEP-WDT-SMC-ORDER` |from the request's first 1 sample to the end of the release no sample has the warm net 1 while the watchdog-term net is 0, with no sampling gap
+|`CHK-SEP-WDT-SMC-CONVERGE` |in the closing window the request stays 0 and every reset net 1, and the request rose exactly once from the baseline
+|`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11<S12; the PASS stamp is two clk_smu_i cycles after S11
+|`CHK-TIMEOUT-PATHS` |eight bounded waits in five kinds (request rise 1, assert 2, primary assert 1, request fall 1, release 3), none expired, with the last state recorded
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-191-smu_xtrig_ctm_self_loop_test]]
+===== 191 `smu_xtrig_ctm_self_loop_test`
+
+*Source Module*: `smu_xtrig_ctm_self_loop_test` (`cocotb_wrapper/tests/`; the sequence `smu_xtrig_ctm_self_loop_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the `ocah_jtag_vip` primary TAP and the SMC JTAG2AXI bridge to the DTP CSR window (`tb_smc_jtag2axi_security_disable` read as open), reaching CONFIG, STATUS and STRETCH_MULT of CTP lane 3 and `CT_SRC[3].CONFIG_0` at the addresses of the generated cross-trigger headers (`cross_trigger_network_addr.h`, `cross_trigger_port_addr.h`, `cross_trigger_matrix_addr.h`) read through `seq_lib.smu_boundary_regs`; the bench pin `tb_xtrig_ctp_wire_ext_assert[3]` (`tb/tb_wrapper_top.sv`, deposited by the leaf for 2 `clk_smu_i` cycles and then released to the board pull), the read pins `tb_xtrig_ctp_wire_pull[3]`, `tb_xtrig_ctp_wire_group[3]`, `tb_xtrig_ctp_req_out_dout_en[3]`, `tb_xtrig_ctp_req_out_din[3]` and `tb_xtrig_ctp_ct_dst[3]`, and the clock `clk_smu_i`; no new probe (`tb_xtrig_ctp_ct_dst` is a read-only bench tap of the port's ct_dst output) and no firmware; run mode `sep_rtl`, `elaboration` firmware mode, `+expected_sep=1`, `+skip_fuse_sense` with the default SMC and SEP shadow preloads, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images
+
+*Objective*: a CT_SRC mask that selects its own wire-OR CTP lane makes one external assertion re-trigger the lane request output, and writing the mask to 0 ends the re-triggering; with the mask 0 the same assertion reaches the port without any request-output rise.
+
+*Test Coverage*:
+
+* Control: `CT_SRC[n].CONFIG_0.CT_DST_SELECT` all-zero disables that output (`hw/ip/cross_trigger/cross_trigger_matrix/regs/cross_trigger_matrix.rdl`), so with the mask 0 one external assertion makes `ct_dst[3]` rise once and `req_out_dout_en[3]` has zero rises over a fixed 32-cycle window (`CHK-XT-SELFLOOP-CONTROL`). The `ct_dst` rise is the positive control; its latency is measured and logged only.
+* Read-back: `CT_DST_SELECT` is software read-write, so `CT_SRC[3].CONFIG_0` reads back the written 1<<3 and 0, and CONFIG reads back the written RESET bit and 0 (`cross_trigger_matrix.rdl`, `cross_trigger_port.rdl`); every register write of the leaf is read back (`CHK-XT-SELFLOOP-READBACK`). The restore writes follow non-zero read-backs.
+* Re-trigger: a wire-OR port receives the falling edge it drives and a mask selecting its own lane forwards it again (`hw/ip/cross_trigger/cross_trigger_network/doc/architecture.adoc`, wire-OR echo; `cross_trigger_matrix/doc/architecture.adoc`, "CTM routing stages"). The first request-output pulse is STRETCH_MULT+1 = 1 `clk_smu_i` cycle wide (`cross_trigger_port.rdl` STRETCH_MULT; `cross_trigger_port/doc/architecture.adoc`, "Pulse Stretcher Operation") and a second rise follows after that pulse ended within a bounded wait of 48 cycles from the assertion; the first-pulse width and the gap are logged (`CHK-XT-SELFLOOP-RETRIGGER`).
+* Liveness: a request-output rise occurs in the last 32 cycles of a fixed 128-cycle window that starts at the first rise (`CHK-XT-SELFLOOP-ALIVE`); the total rise count is measured and logged only.
+* Stop: a background sampler reads the request output on every `clk_smu_i` edge from the first assertion of the re-trigger leg until the mask-clear write is issued, and a rise occurs in the last 12 samples before the issue, so the loop is running when the mask is cleared. After the mask is written 0 and read back 0 and the last pulse has ended within a bounded wait of 16 cycles, the request output has zero rises over a 64-cycle quiet window; the loop rises are the positive control (`CHK-XT-SELFLOOP-STOP`).
+* Measured and logged only: the S2 reads of CONFIG, STRETCH_MULT and `CT_SRC[3].CONFIG_0`, the total rise count of the loop window, the STATUS BUSY, REQ_OUT and ACK_OUT sample, and the request-output rises over 64 cycles after CONFIG.RESET is written on the running loop. The lane index, the assertion width, the window lengths and every wait bound are bench constants.
+* Out of scope: a loop guard or a bound on the loop length (not claimed), other lanes, point-to-point mode and the internal cross-trigger lanes.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for reset done, require the external assertions idle and every wire at its board pull, bring up the TAP, read IDCODE and require the JTAG2AXI gate open.
+. Read CONFIG, STRETCH_MULT and `CT_SRC[3].CONFIG_0` of lane 3 and log them.
+. With the mask 0, assert the shared wire of lane 3 for 2 cycles, wait for `ct_dst[3]` to rise within its bound, then sample 32 cycles and count the rises of `ct_dst[3]` and `req_out_dout_en[3]`.
+. Write `CT_SRC[3].CONFIG_0` = 1<<3 and read it back.
+. Assert the wire again, sample every cycle, and wait within the bound for a second request-output rise; record the first-pulse width and the gap.
+. Continue the sampling to 128 cycles from the first rise, count the rises, take the rises of the last 32 cycles and read STATUS of lane 3 once.
+. Write `CT_SRC[3].CONFIG_0` = 0 and read it back.
+. Wait within the bound for the request output to be low, then sample a 64-cycle quiet window and count the rises.
+. Rewrite the mask with read-back, assert the wire again, write CONFIG.RESET on lane 3 with read-back, sample 64 cycles and log the rises.
+. Write CONFIG and `CT_SRC[3].CONFIG_0` back to 0, reading each back.
+. Stamp PASS two `clk_smu_i` cycles later; check every wait finished inside its bound with its last state, the number of wait sites of each kind and the number of JTAG2AXI accesses, and the order of the steps.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-XT-SELFLOOP-READBACK` |every CT_SRC[n].CONFIG_0 and CONFIG write of the leaf reads back as written, the mask 1<<n and RESET set included, and the restore writes read 0
+|`CHK-XT-SELFLOOP-CONTROL` |with the mask 0 one external assertion makes ct_dst[n] rise once and the lane request-output enable has zero rises over the window
+|`CHK-XT-SELFLOOP-RETRIGGER` |with the mask 1<<n the first request-output pulse is STRETCH_MULT+1 = 1 clk_smu_i cycle wide and a second rise follows within the bounded wait; width and gap are logged
+|`CHK-XT-SELFLOOP-ALIVE` |a request-output rise occurs in the last sub-window of the fixed loop window; the total rise count is measured and logged only
+|`CHK-XT-SELFLOOP-STOP` |the request output is sampled every cycle from the first loop rise to the S7 write issue and rises within the last 12 cycles before it; the mask written 0 reads back 0, the last pulse ends within the bounded wait and the quiet window has zero rises
+|`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11; the PASS stamp is two clk_smu_i cycles after S10
+|`CHK-TIMEOUT-PATHS` |three bounded waits, one each for the ct_dst rise, the second rise and the last pulse end, and every JTAG2AXI poll, none expired, with the last state recorded
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-192-smu_sep_rma_token_match_test]]
+===== 192 `smu_sep_rma_token_match_test`
+
+*Source Module*: `smu_sep_rma_token_match_test` (`cocotb_wrapper/tests/`; the sequence `smu_sep_rma_token_match_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the `ocah_jtag_vip` primary TAP and the SEP debug STAP system bus (the debug-module bring-up of `smu_dtp_sep_dm_dmi_test` and the system-bus accessors of `smu_dtp_sep_dm_sba_test`), reaching the registers named in `hw/sys/sep/regs/gen/c/sep_addr.h` through `seq_lib.smu_addr_map`: `SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(i)`, `SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_BASE_ADDR(i)`, `SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR`, `SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR`, `SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR`, `SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR` and `SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR` (first and last word), with the `TOKEN_EOP` start bits and the result mask from the generated `efuse_mmr.h`; the read pin `sep_fuse_sense_done_o` and the clock `clk_smu_i` (`tb/tb_wrapper_top.sv`); the eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev_rma_tokens.preload` (a copy of `sep_efuse_shadow_lc_test_dev.preload` whose `RMA_SIP_TOKEN_DIGEST` and `RMA_CHIPLET_TOKEN_DIGEST` words hold the SHA-256 of two distinct known 256-bit tokens, the message being the 32-byte big-endian token and bits [31:0] of the digest sitting in the lowest word) through `+sep_shadow_reg_preload` with `+skip_fuse_sense` and the default SMC shadow preload; run mode `sep_rtl`, `elaboration` firmware mode, `+expected_sep=1`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; no probe, force or deposit
+
+*Objective*: with the SEP eFuse image holding the RMA digests of two known tokens, each eight-word token written over the SEP debug system bus and started with its own `TOKEN_EOP` bit reads match (0x15) on its own lane when it equals the fused token and mismatch (0x2a) when one bit off, a lane reads idle (0x00) until started, and the two result registers do not affect each other.
+
+*Test Coverage*:
+
+* Submission: index 0 of an input array holds `token[31:0]`, a write of 1 to `TOKEN_EOP` bit 0 starts the SIP lane and bit 8 the chiplet lane, and writing the words alone does not launch a comparison (`hw/sys/sep/doc/token_processing.adoc`, "Token Submission"; `hw/ip/efuse/regs/efuse_mmr.rdl`, `TOKEN_EOP`). The SIP result reads 0x00 with eight SIP words written and no `TOKEN_EOP`, and the chiplet result reads 0x00 while the SIP result holds its match (`CHK-SEP-RMA-IDLE`); the chiplet result read right after the `TOKEN_EOP` 0x1 write is 0x00 and the SIP result read right after the `TOKEN_EOP` 0x100 write is 0x15, each bit starting its own lane only (`CHK-SEP-RMA-START`).
+* Results: the encodings are idle 0x00, match 0x15 and mismatch 0x2a, the six-bit `TOKEN_MATCH_STATUS` field (`token_processing.adoc`, "Token result encodings"; `efuse_mmr.rdl`, `TOKEN_MATCH`). The SIP token reads 0x15 (`CHK-SEP-RMA-SIP-MATCH`), the chiplet token one bit off reads 0x2a (`CHK-SEP-RMA-CHIP-MISMATCH`) and the correct chiplet token reads 0x15 (`CHK-SEP-RMA-CHIP-MATCH`); the matches are the positive controls of the mismatch and the idle reads are the controls of the matches.
+* Independence: the SIP result still reads 0x15 after the chiplet lane changed from idle to mismatch to match (`CHK-SEP-RMA-INDEP`; `efuse_mmr.rdl`, `RMA_SIP_TOKEN_MATCH` and `RMA_CHIPLET_TOKEN_MATCH`).
+* Settling: in each of the three started legs the result leaves 0x00 within a bounded poll count, each poll a recorded wait site (`CHK-TIMEOUT-PATHS`); the polls used are logged and no cycle count is compared.
+* Measured and logged only: `sep_fuse_sense_done_o` before the first token write, a value `+skip_fuse_sense` supplies; the first and last word of `RMA_SIP_TOKEN_DIGEST` (`sep_efuse_map.rdl`, a 256-bit field), read back and logged against the image words, bench image values that are not compared, with only the SIP digest read back; `TOKEN_MATCH_FAULT` after the last leg; the polls used per leg and the system-bus access count. The token values, the poll bound and the preload image words are bench constants.
+* Out of scope: the error encoding 0x3f, the security-disable token, a start written while a hash is in flight, the half before fuse sensing completes, reset retention of the digest and lifecycle transitions on a match.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the SEP debug module with the RMA token image and enable the system bus.
+. Read `sep_fuse_sense_done_o` and the first and last word of `RMA_SIP_TOKEN_DIGEST`.
+. Write the eight SIP token words and read the SIP result before any `TOKEN_EOP` write.
+. Write `TOKEN_EOP` 0x1, read the chiplet result once, then poll the SIP result, within a bound, until it leaves 0x00.
+. Read the chiplet result while the SIP result holds its match.
+. Write the eight chiplet words of the token with bit 0 flipped, write `TOKEN_EOP` 0x100, read the SIP result once, then poll the chiplet result, within a bound, until it leaves 0x00.
+. Write the eight chiplet words of the correct token, write `TOKEN_EOP` 0x100 and poll the chiplet result, within a bound, until it leaves 0x00.
+. Re-read the SIP result.
+. Read `TOKEN_MATCH_FAULT` and log it.
+. Stamp PASS two `clk_smu_i` cycles later; check every poll finished inside its bound with its last value, the number of poll sites of each kind and the order of the steps.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-RMA-IDLE` |the SIP result reads 0x00 with eight words written and no TOKEN_EOP, and the chiplet result reads 0x00 while the SIP result holds its match
+|`CHK-SEP-RMA-START` |the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read right after TOKEN_EOP 0x100 is 0x15, each lane starting its own hash only
+|`CHK-SEP-RMA-SIP-MATCH` |after the eight words of the SIP token and TOKEN_EOP 0x1 the SIP result reads 0x15, having read 0x00 before TOKEN_EOP
+|`CHK-SEP-RMA-CHIP-MISMATCH` |the chiplet token one bit off, written and started, reads 0x2a, having read 0x00 before
+|`CHK-SEP-RMA-CHIP-MATCH` |the correct chiplet token written and started reads 0x15, having read 0x2a in the leg before
+|`CHK-SEP-RMA-INDEP` |the SIP result reads 0x15 again after the chiplet mismatch and match legs while the chiplet result changed
+|`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10; the PASS stamp is two clk_smu_i cycles after S9
+|`CHK-TIMEOUT-PATHS` |three bounded result polls, one each for the SIP match, the chiplet mismatch and the chiplet match, none expired, with the poll bound, polls used and last value recorded
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-193-smu_smc_warm_reset_register_retention_test]]
+===== 193 `smu_smc_warm_reset_register_retention_test`
+
+*Source Module*: `smu_smc_warm_reset_register_retention_test` (`cocotb_wrapper/tests/`; the sequence `smu_smc_warm_reset_register_retention_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the `ocah_jtag_vip` primary TAP and the SMC fabric JTAG2AXI bridge (`tb_smc_jtag2axi_security_disable` read as open), reaching the registers named in `hw/sys/smc/regs/gen/c/smc_addr.h` through `seq_lib.smu_addr_map`: `SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR`, `_SS_COLD_RESET_N_BASE_ADDR`, `_SS_WARM_RESET_N_BASE_ADDR`, `_ISOLATE_REQ_REG_BASE_ADDR`, `_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR`, `SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR`, `_WDT_CMP_BASE_ADDR`, `_WDT_CTRL_BASE_ADDR`, `SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0)` and `SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR(0)`, with the reset values and masks read from the generated `reset_unit.h` and `wdt.h`; the read pins `tb_smc_wdt_second_timeout`, `rst_primary_smc_clk_n_o` and `rst_cold_n_o` and the clock `clk_smu_i`; the read-only probe `u_smc.rst_warm_smc_clk_n` from the `smu` instance, never forced; default SMC and SEP eFuse shadow preloads with `+skip_fuse_sense`; run mode `sep_rtl`, `elaboration` firmware mode, `+expected_sep=1`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the SEP debug bus, the RMA registers and the SEP paths are not touched
+
+*Objective*: after the CORE0 watchdog is armed over JTAG2AXI with `WDOGRSTEN`, its second timeout rises and the SMC warm reset asserts while the primary and stable cold resets stay released; the reset-unit configuration, cold-reset and warm-reset registers and the isolation request and FLR counter registers keep their non-reset values across it, and the CORE0 watchdog compare and control registers read their reset values.
+
+*Test Coverage*:
+
+* Primary-domain registers: `SS_CONFIG` and `SS_COLD_RESET_N` are reset by the primary reset, which carries no watchdog term (`hw/sys/smc/doc/clk_rst.adoc`, "Reset Architecture" and the reset equations; `hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl`, reset value 0x0), and `SS_WARM_RESET_N` sits in `u_reset_unit_reg`, which the same chapter resets by `rst_primary_smc_clk_no` ("Reset Architecture"; `reset_unit.rdl`, reset value 0xFFFFFFFF), so each reads its pattern before and after the warm reset, and the value read back before the event differs from the register's reset value (`CHK-WARM-RET-SSCFG`, `CHK-WARM-RET-SSCOLD`, `CHK-WARM-RET-SSWARM`).
+* Cold-domain registers: the isolation registers and FLR counters are reset only by the stable cold reset (`clk_rst.adoc`, "Isolation Controls" and "Timing and Recovery"; `reset_unit.rdl`, reset value 0x0), so `ISOLATE_REQ_REG` and `ISOLATE_REQ_FLR_COUNTER_VALUE` each read their non-zero value before and after the warm reset, and each value read back before the event differs from the reset value (`CHK-WARM-RET-ISO`). The pin-enable, SMC-enable and reset-counter registers are not compared.
+* Returned registers: the warm reset covers the per-core watchdog timers (`clk_rst.adoc`, "Warm Reset"), so CORE0 `CMP` reads the armed value, not the 0x1000 reset value, and `CTRL` reads the `WDOGRSTEN`, `WDOGENALWAYS` and `WDOGZEROCMP` bits before the event, then `CMP` reads 0x1000 and `CTRL` reads 0 (`hw/sys/smc/regs/blocks/wdt/wdt.rdl`, read through the generated `wdt.h`) (`CHK-WARM-RET-WDT-RETURN`). `CMP` and `CTRL` are the positive control: registers written away from reset that read their reset values after the event.
+* Event: with `WDOGRSTEN` set the watchdog drives a sticky reset signal to the top level, so after the arming `tb_smc_wdt_second_timeout` reads 1 and the warm reset probe reads 0 within their bounded waits, both at idle just before the arming (`wdt.rdl`; `clk_rst.adoc`, "Watchdog Timeout" and the reset equations) (`CHK-WARM-RET-EVENT`).
+* Primary and cold stay released: `rst_primary_smc_clk_n_o` and `rst_cold_n_o` read 1 at every `clk_smu_i` sample from the end of the retained-register writes to the last post-event read, with no sampling gap, while the warm reset reads 0 inside that window (`clk_rst.adoc`, reset equations) (`CHK-WARM-RET-PRIMARY-STAY`).
+* Release waits: the return of the warm reset probe to 1 and of the second timeout to 0 are bounded waits, each a recorded wait site whose release cycle is logged; a wait that expires fails the leaf with its bound, cycles used and last state, so the retained and returned registers are read only after the warm reset released (`CHK-TIMEOUT-PATHS`).
+* Measured and logged only: one CPU_CTRL `SCRATCH` word and one `SCRATCH_COLD_WARM` word are logged before and after the event and never compared, because no chapter names the reset domain of `cpu_ctrl.rdl` `SCRATCH` or `misc_wrap.rdl` `SCRATCH_COLD_WARM`; the release cycles, the wait bounds and the pattern values are bench constants or logged values.
+* Out of scope: the pin-enable, SMC-enable and reset-counter registers, the PLIC and CLINT registers, the SEP debug bus, the RMA registers and the SEP paths.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, read the IDCODE, require the JTAG2AXI gate open and start sampling `rst_primary_smc_clk_n_o` and `rst_cold_n_o` on every `clk_smu_i` edge.
+. Write a non-reset pattern to `SS_CONFIG`, `SS_COLD_RESET_N`, `SS_WARM_RESET_N`, `ISOLATE_REQ_REG` and `ISOLATE_REQ_FLR_COUNTER_VALUE` and read each back.
+. Write the measured-only patterns to one CPU_CTRL `SCRATCH` word and one `SCRATCH_COLD_WARM` word, read each back and log it.
+. Arm CORE0 with the key then `CMP`, read it back, then the key then `CTRL` with `WDOGRSTEN`, `WDOGENALWAYS` and `WDOGZEROCMP`, and read it back.
+. Wait for `tb_smc_wdt_second_timeout` to read 1 and then for the warm reset probe to read 0, logging both cycles.
+. Compare the primary and cold output samples between the end of step 2 and the end of step 10.
+. Wait for the warm reset probe to return to 1 and for the second timeout to return to 0, each within its bound; an expired wait fails the leaf with its last state.
+. Read the five retained registers.
+. Read CORE0 `CMP` and `CTRL`.
+. Read the two measured-only registers and log each before and after value.
+. Stamp PASS two `clk_smu_i` cycles later; check every wait finished inside its bound, every probe sample resolved, the number of wait sites of each kind, and the order of the steps.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-WARM-RET-SSCFG` |SS_CONFIG reads its non-zero pattern before and after the CORE0 watchdog warm reset, and the value read before differs from the reset value 0
+|`CHK-WARM-RET-SSCOLD` |SS_COLD_RESET_N reads its non-zero pattern before and after the warm reset, and the value read before differs from the reset value 0
+|`CHK-WARM-RET-SSWARM` |SS_WARM_RESET_N reads its pattern before and after the warm reset, and the value read before differs from the reset value 0xFFFFFFFF
+|`CHK-WARM-RET-ISO` |ISOLATE_REQ_REG and ISOLATE_REQ_FLR_COUNTER_VALUE each read their non-zero value before and after the warm reset, and each value read before differs from the reset value 0
+|`CHK-WARM-RET-WDT-RETURN` |CORE0 CMP reads the armed value and CTRL the WDOGRSTEN, WDOGENALWAYS and WDOGZEROCMP bits before the event; after it CMP reads 0x1000 and CTRL reads 0
+|`CHK-WARM-RET-EVENT` |after arming, the second timeout reads 1 and the warm reset probe reads 0 within their bounded waits, with both at idle just before arming
+|`CHK-WARM-RET-PRIMARY-STAY` |rst_primary_smc_clk_n_o and rst_cold_n_o read 1 at every clk_smu_i sample from S2 to S10 with no sampling gap, while the warm reset reads 0 inside the window
+|`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S7<S8<S9<S10<S11; the PASS stamp is two clk_smu_i cycles after S10
+|`CHK-TIMEOUT-PATHS` |four bounded waits in two kinds (event 2, release 2), none expired, with the bound, cycles used and last state recorded, no unresolved probe sample
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+'''''
+
 
 === Formal Verification Plan
 
@@ -8312,8 +8581,8 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |`smc_under_smu` |23 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |39 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |86 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |122 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |151 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |187 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
@@ -8475,6 +8744,11 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_sep_ic_reset_effect_test` |F3 |hosted |`CHK-DBG-IC-SEP-SETUP`, `CHK-DBG-IC-SEP-POSITION`, `CHK-DBG-IC-SEP-QUIESCE`, `CHK-DBG-IC-SEP-ISOLATION`, `CHK-DBG-IC-SEP-HOLD-TLR`, `CHK-DBG-IC-SEP-RELEASE`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |`smu_dtp_jtag2axi_ratio_floor_test` |F3 |hosted |`CHK-DBG-RATIO-SETUP`, `CHK-DBG-RATIO-COMPLETE-4P0`, `CHK-DBG-RATIO-COMPLETE-4P8`, `CHK-DBG-RATIO-OP3-RULE`, `CHK-DBG-RATIO-RECOVERY`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
 |`smu_dtp_smc_dm_dmi_test` |F3 |hosted |`CHK-DBG-SMC-DM-SETUP`, `CHK-DBG-SMC-DM-RESET-HELD`, `CHK-DBG-SMC-DM-RELEASE`, `CHK-DBG-SMC-DM-DMACTIVE`, `CHK-DBG-SMC-DM-DMSTATUS`, `CHK-DBG-SMC-DM-RESET-CONTRAST`, `CHK-DBG-SMC-DM-SBCS`, `CHK-DBG-SMC-DM-SBA-WRITE`, `CHK-DBG-SMC-DM-SBA-READ`, `CHK-DBG-SMC-DM-SBA-PATH`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`
+|`smu_sep_external_irq_pins_test` |F3 |hosted |`CHK-SEP-EXTIRQ-RISE`
+|`smu_sep_wdt_bite_to_smc_reset_test` |F1 |hosted |`CHK-SEP-WDT-SMC-ASSERT`, `CHK-SEP-WDT-SMC-HOLD`, `CHK-SEP-WDT-SMC-RELEASE`
+|`smu_xtrig_ctm_self_loop_test` |F6 |hosted |`CHK-XT-SELFLOOP-RETRIGGER`, `CHK-XT-SELFLOOP-ALIVE`, `CHK-XT-SELFLOOP-STOP`
+|`smu_sep_rma_token_match_test` |F3 |hosted |`CHK-SEP-RMA-SIP-MATCH`, `CHK-SEP-RMA-CHIP-MISMATCH`, `CHK-SEP-RMA-CHIP-MATCH`, `CHK-SEP-RMA-INDEP`
+|`smu_smc_warm_reset_register_retention_test` |F1 |hosted |`CHK-WARM-RET-SSCFG`, `CHK-WARM-RET-SSCOLD`, `CHK-WARM-RET-SSWARM`, `CHK-WARM-RET-ISO`, `CHK-WARM-RET-WDT-RETURN`
 |===
 
 [[smu-out-and-wrapper]]

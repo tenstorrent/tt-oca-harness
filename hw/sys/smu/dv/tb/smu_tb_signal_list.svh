@@ -384,6 +384,8 @@
 `SMU_TB_OUT(logic [smc_config_pkg::NumTelemetryReceivers-1:0], tb_telemetry_afvalid)
 // SMC boundary inputs, and the outputs they and the SMC CSRs drive.
 `SMU_TB_IN(logic [smc_4core_cpu_pkg::NumExtInterrupts-1:0], tb_smc_ext_interrupts)
+// SEP boundary input: one external interrupt lane per external PIC source.
+`SMU_TB_IN(logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0], tb_sep_ext_interrupts)
 `SMU_TB_IN(logic [3:0], tb_smc_ndmreset_request)
 `SMU_TB_IN(logic, tb_cfg_flr_pf_active)
 `SMU_TB_IN(logic, tb_mem_repair_abort)
