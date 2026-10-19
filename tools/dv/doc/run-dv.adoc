@@ -3334,11 +3334,11 @@ change can never alter the pull-request gate:
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
 |`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, once
 under cocotb and once under `--framework uvm`; 60-minute budget per job.
-The job names `verilator-smoke (<dut>)` and `verilator-smoke (<dut> uvm)`
-are the stable check contexts. Every job runs for every change, so the
-contexts report; on a pull request a job prints one line and skips the
-simulation when the diff is documentation-only or changes none of its
-inputs (<<runner-ci-smoke-scope>>).
+The job names `verilator-smoke (<dut> cocotb)` and
+`verilator-smoke (<dut> uvm)` are the stable check contexts. Every job runs
+for every change, so the contexts report; on a pull request a job prints one
+line and skips the simulation when the diff is documentation-only or changes
+none of its inputs (<<runner-ci-smoke-scope>>).
 
 |`qualify`
 |`slurm-qualify.yml`: `workflow_dispatch` only, with `dut`, `items` and
@@ -3466,10 +3466,10 @@ tiers only)
 |Hosted `sim` and `regress` matrices. Smoke runs on every pull request and
 push to `main`; the nightly and weekly tiers run each DUT's
 regression group (`all` / `cpu_stub` / `hosted`) under cocotb. Main
-protection requires the four cocotb smoke contexts, `verilator-smoke (<dut>)`;
-a failed, cancelled, or missing one blocks merge. The
-`verilator-smoke (<dut> uvm)` contexts report without blocking, and the
-IP-level benches are enrolled in the regression tiers only.
+protection requires the four cocotb smoke contexts,
+`verilator-smoke (<dut> cocotb)`; a failed, cancelled, or missing one blocks
+merge. The `verilator-smoke (<dut> uvm)` contexts report without blocking,
+and the IP-level benches are enrolled in the regression tiers only.
 
 |Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow

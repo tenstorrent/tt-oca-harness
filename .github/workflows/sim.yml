@@ -70,11 +70,10 @@ jobs:
             --view dtp:uvm --view sep:uvm --view smu:uvm --view smc:uvm >> "$GITHUB_OUTPUT"
 
   verilator-smoke:
-    # The name is the row's check context: `verilator-smoke (<dut>)` for the
-    # cocotb row, which main protection requires, and
-    # `verilator-smoke (<dut> <label>)` for a labelled one. The explicit name
-    # keeps them stable if the matrix gains another axis.
-    name: verilator-smoke (${{ matrix.dut }}${{ matrix.label && format(' {0}', matrix.label) || '' }})
+    # The name is the row's check context, `verilator-smoke (<dut> <framework>)`;
+    # main protection requires the cocotb ones. The explicit name keeps them
+    # stable if the matrix gains another axis.
+    name: verilator-smoke (${{ matrix.dut }} ${{ matrix.framework }})
     runs-on: ${{ matrix.runner }}
     needs: [diff-class]
     # Budget per DUT: a Verilator cache miss (from-source build) plus the
@@ -87,10 +86,10 @@ jobs:
         # One artifact and one run_dv.py invocation per CI-qualified DUT,
         # framework and tool. Extend this list only with combinations proven
         # Verilator-clean at head; see "Continuous integration" in
-        # tools/dv/doc/run-dv.adoc. A row other than cocotb carries `label`,
-        # which names its context and its artifact
-        # (dv-run-<dut>-verilator-smoke-<label>). A new row also needs its
-        # `<dut>:<framework>` in the smoke-scope step's --view list.
+        # tools/dv/doc/run-dv.adoc. The framework names the row's context and
+        # its artifact (dv-run-<dut>-verilator-smoke-<framework>). A new row
+        # also needs its `<dut>:<framework>` in the smoke-scope step's --view
+        # list.
         #
         # The single-IP benches (cross_trigger, axi_hang_detector) are not in
         # the gate: their smoke cost is one job of runner setup each for
@@ -120,19 +119,15 @@ jobs:
             runner: ubuntu-latest
           - dut: dtp
             framework: uvm
-            label: uvm
             runner: ubuntu-latest
           - dut: sep
             framework: uvm
-            label: uvm
             runner: ubuntu-latest
           - dut: smu
             framework: uvm
-            label: uvm
             runner: ubuntu-latest
           - dut: smc
             framework: uvm
-            label: uvm
             runner: ubuntu-latest
     env:
       # A required context must report, so this job always runs;
@@ -176,7 +171,7 @@ jobs:
           framework: ${{ matrix.framework }}
           tool: verilator
           tier: smoke
-          label: ${{ matrix.label || '' }}
+          label: ${{ matrix.framework }}
           items: ${{ matrix.items || 'smoke' }}
           sim-jobs: 2
           run-dir: build/ci/runs/${{ matrix.dut }}/verilator/smoke/${{ github.run_id }}
