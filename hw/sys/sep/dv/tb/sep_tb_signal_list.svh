@@ -166,12 +166,19 @@
 // pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
 `SEP_TB_IN(logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0], sep_ext_interrupts_i)
 // Outbound responder response control (tb/sep_outbound_mbx.sv), default 0.
-// smn_outbound_resp_hold_i=1 holds every B and R response of the responder;
-// the requests are still accepted. smn_outbound_rd_slverr_i=1 at the AR
-// handshake makes every R beat of that read answer SLVERR. Error inject,
-// docs/SEP_TB_ARCH.adoc.
+// smn_outbound_resp_hold_i=1 keeps the responder from raising a B or R
+// response; one already on offer completes, and the requests are still
+// accepted. smn_outbound_rd_slverr_i=1 at the AR handshake makes every R beat
+// of that read answer SLVERR. Error inject, docs/SEP_TB_ARCH.adoc.
 `SEP_TB_IN(logic, smn_outbound_resp_hold_i)
 `SEP_TB_IN(logic, smn_outbound_rd_slverr_i)
+// Outbound responder request-side control (tb/sep_outbound_mbx.sv), default 0.
+// Bit 0, 1 and 2 of smn_outbound_ready_stall_i hold AW READY, W READY and AR
+// READY of the responder low while the bit is high. smn_outbound_rd_addr_data_i=1
+// returns {~a, a} on every R beat, a being the low 32 bits of the 8-byte-aligned
+// beat address. docs/SEP_TB_ARCH.adoc.
+`SEP_TB_IN(logic [2:0], smn_outbound_ready_stall_i)
+`SEP_TB_IN(logic, smn_outbound_rd_addr_data_i)
 // DFT pins of sep (top-port drive, docs/SEP_TB_ARCH.adoc). test_en_i other
 // than 1 drives 0 and scan_rst_ni_i other than 0 drives 1, which is the
 // functional mode.
@@ -779,6 +786,7 @@
 `SEP_TB_OUT(logic, pr_out_rready_o)
 `SEP_TB_OUT(logic [1:0], pr_out_rresp_o)
 `SEP_TB_OUT(logic [7:0], pr_out_rid_o)
+`SEP_TB_OUT(logic [63:0], pr_out_rdata_o)
 `SEP_TB_OUT(logic, pr_out_rlast_o)
 // PR-SMC: sep_ext_to_smc_axi_req_o (the net ext_to_smc_req_w).
 `SEP_TB_OUT(logic, pr_smc_awvalid_o)

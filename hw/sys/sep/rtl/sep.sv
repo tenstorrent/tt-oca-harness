@@ -1259,7 +1259,7 @@ NumSramDemuxPorts
                       == 16)
   `OCAH_ASSERT_STATIC(ExtDebugChipletTokenLaneWidth_A, $bits
                       ({10'b0, sep_efuse_token_match_chiplet_debug}) == 16)
-  `OCAH_ASSERT_STATIC(ExtDebugRemapLaneWidth_A, $bits({8'b0, local_masters_remap_debug}) == 16)
+  `OCAH_ASSERT_STATIC(ExtDebugRemapLaneWidth_A, $bits({6'b0, local_masters_remap_debug}) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugOutboundFilterLaneWidth_A, $bits
                       ({{(16 - 2 * $clog2(sep_pkg::OutboundFilterNumFilters)
                        ) {1'b0}}, outbound_write_filter_hit_debug, outbound_read_filter_hit_debug})
@@ -1341,8 +1341,8 @@ NumSramDemuxPorts
     sep_efuse_token_match_chiplet_debug,  // [213:208]
 
     // [207:192] Local masters address-remap hit debug
-    8'b0,  // [207:200] Reserved padding
-    local_masters_remap_debug,  // [199:192]
+    6'b0,  // [207:202] Reserved padding
+    local_masters_remap_debug,  // [201:192]
 
     // [191:176] Outbound filter hit debug
     {(16 - 2 * $clog2(

@@ -153,8 +153,25 @@ class Commands(unittest.TestCase):
             {"repo_root": str(REPO_ROOT)},
         )
         top = argv.index("--top-module")
-        self.assertEqual(argv[top - len(configured) : top], configured)
+        self.assertEqual(argv[top - len(configured) - 1 : top - 1], configured)
         self.assertTrue(argv[argv.index("-Mdir") + 1].endswith("/build/uvm/verilator-coverage"))
+
+    def test_a_coverage_build_leaves_the_library_out_of_the_database(self):
+        argv = self.build(self.args("--cov"))
+        build_dir = argv[argv.index("-Mdir") + 1]
+        self.assertEqual(
+            argv[argv.index("--top-module") - 1], f"{build_dir}/uvm_coverage_scope.vlt"
+        )
+        self.assertEqual(
+            stages._verilator_uvm_coverage_scope(UVM_SRC).splitlines(),
+            [
+                "`verilator_config",
+                f'coverage_off -file "{UVM_SRC}/*"',
+                'coverage_off -file "*verilated_std.sv"',
+            ],
+        )
+        plain = self.build(self.args())
+        self.assertFalse([arg for arg in plain if arg.endswith("uvm_coverage_scope.vlt")])
 
     def test_the_sim_runs_the_model_with_the_test_and_both_seeds(self):
         argv = self.sim(self.args(), ["+knob=1"])

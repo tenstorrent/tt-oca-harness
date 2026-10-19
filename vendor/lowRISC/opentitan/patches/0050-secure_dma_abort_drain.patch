@@ -1,0 +1,76 @@
+diff --git a/hw/ip/dma/rtl/secure_dma.sv b/hw/ip/dma/rtl/secure_dma.sv
+index 1642d09b0..ac861a762 100644
+--- a/hw/ip/dma/rtl/secure_dma.sv
++++ b/hw/ip/dma/rtl/secure_dma.sv
+@@ -110,8 +110,28 @@ module secure_dma
+   //   (Note: in use `write_rsp_error` must be qualified with `write_rsp_valid`)
+   logic write_rsp_error;
+ 
++  // An abort stays in effect until every granted host request has had its response, so
++  // STATUS.ABORTED is not set while a write can still land and a stale response cannot be taken
++  // by the next transfer.
++  localparam int unsigned HostReqCntW = $clog2(NUM_MAX_OUTSTANDING_REQS + 1);
++  logic [HostReqCntW-1:0] host_reqs_q, host_reqs_d;
++  logic abort_pending_q, abort_pending_d;
++  logic host_drained;
++
+   logic cfg_abort_en;
+-  assign cfg_abort_en = reg2hw.control.abort.q;
++  assign cfg_abort_en = reg2hw.control.abort.q | abort_pending_q;
++
++  always_comb begin
++    host_reqs_d = host_reqs_q;
++    if ((dma_host_tlul_req_valid && dma_host_tlul_gnt) && !dma_host_tlul_rsp_valid) begin
++      host_reqs_d = host_reqs_q + 1'b1;
++    end else if (!(dma_host_tlul_req_valid && dma_host_tlul_gnt) && dma_host_tlul_rsp_valid) begin
++      host_reqs_d = host_reqs_q - 1'b1;
++    end
++  end
++
++  assign host_drained    = (host_reqs_d == '0);
++  assign abort_pending_d = cfg_abort_en && !host_drained;
+ 
+   logic cfg_handshake_en;
+ 
+@@ -159,6 +179,7 @@ module secure_dma
+   logic gated_clk_en, gated_clk;
+   assign gated_clk_en = reg2hw.control.go.q       ||
+                         (ctrl_state_q != DmaIdle) ||
++                        abort_pending_q           ||
+                         sw_reg_wr_extended;
+ 
+   prim_clock_gating #(
+@@ -170,6 +191,15 @@ module secure_dma
+     .clk_o    ( gated_clk    )
+   );
+ 
++  prim_flop #(
++    .Width(HostReqCntW + 1)
++  ) u_abort_drain (
++    .clk_i ( gated_clk                      ),
++    .rst_ni( rst_ni                         ),
++    .d_i   ( {host_reqs_d, abort_pending_d} ),
++    .q_o   ( {host_reqs_q, abort_pending_q} )
++  );
++
+   logic reg_intg_error;
+   // SEC_CM: BUS.INTEGRITY
+   // SEC_CM: RANGE.CONFIG.REGWEN_MUBI
+@@ -1295,7 +1325,7 @@ module secure_dma
+     hw2reg.status.error.de = (ctrl_state_d == DmaError) | clear_status;
+     hw2reg.status.error.d  = clear_status? 1'b0 : 1'b1;
+ 
+-    hw2reg.status.aborted.de = cfg_abort_en | clear_status;
++    hw2reg.status.aborted.de = (cfg_abort_en && host_drained) | clear_status;
+     hw2reg.status.aborted.d  = clear_status? 1'b0 : 1'b1;
+ 
+     hw2reg.status.sha2_digest_valid.de = sha2_digest_set | clear_sha_status;
+@@ -1367,7 +1397,7 @@ module secure_dma
+     hw2reg.error_code.asid_error.d         = clear_status? '0 : next_error[DmaAsidErr];
+ 
+     // Clear the `control.abort` bit once we have handled the abort request
+-    hw2reg.control.abort.de = hw2reg.status.aborted.de;
++    hw2reg.control.abort.de = cfg_abort_en | clear_status;
+     hw2reg.control.abort.d  = 1'b0;
+ 
+     // Clear the SHA2 digests if the SHA2 valid flag is cleared (RW1C)
