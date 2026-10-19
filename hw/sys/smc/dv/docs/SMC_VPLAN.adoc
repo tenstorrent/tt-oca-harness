@@ -32267,11 +32267,12 @@ cycle count and the four singlepulse WDT_TIMEOUT_RESET controls. `wdt.rdl`
 defines rst-enable, always-count, compare and register reset values.
 `hw/sys/smc/doc/clk_rst.adoc`, Primary and Warm Reset, defines second timeout
 as a watchdog/warm-reset source and distinguishes it from primary reset.
-The SMC owner's
-https://github.com/tenstorrent/tt-oca-harness/issues/3049#issuecomment-6225951037[reset clarification]
-explicitly includes per-core watchdog timers in warm reset. The quoted list
-is absent from the current `clk_rst.adoc`; this check relies on that clarification
-for reset scope and on `wdt.rdl` for register defaults.
+The SMC owner has confirmed that warm reset resets the per-core watchdog
+timers. `clk_rst.adoc` states that warm reset drives the CPU cluster's
+interrupt and timer logic, and `hw/sys/smc/doc/watchdog.adoc` defers reset
+effects to that section, but neither names the watchdogs; this check relies
+on the owner's confirmation for reset scope and on `wdt.rdl` for register
+defaults.
 Addresses, masks and core count come from the existing generated collateral
 and SMC types. Timing allowances below are bench measurement bounds, not new
 software-visible register semantics.
