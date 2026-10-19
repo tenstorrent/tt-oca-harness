@@ -607,6 +607,12 @@
 // count of completed reads since the bench reset.
 `SEP_TB_OUT(logic [7:0], km_sram_rd_lat_o)
 `SEP_TB_OUT(logic [31:0], km_sram_rd_done_count_o)
+// KM-WMAP: per SRAM write-lock region r (256 words) at [9*r +: 9], the count
+// of distinct logical words written with we at 1 on the sep output
+// km_sram_mem_req_o since the bench reset or the last clock with
+// km_sram_wmap_clr_i at 1 (bench state only; default 0).
+`SEP_TB_IN(logic, km_sram_wmap_clr_i)
+`SEP_TB_OUT(logic [32*9-1:0], km_sram_wmap_region_o)
 // HK-OTP and HK-STRM state: the OTP input is held by the inject; the
 // withdrawal pulse has been driven since the arm, and the sink TREADY in the
 // pulse clock; the sampler sink TVALID after the inject.

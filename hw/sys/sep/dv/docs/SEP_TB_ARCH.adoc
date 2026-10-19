@@ -328,6 +328,13 @@ Observation probe groups:
    idle): the latency of the last completed read and the count of completed
    reads since the bench reset. User: `sep_km_fault_inject_rand_test`
    (CHK-LAT, CHK-LAT-VAR).
+** KM-WMAP (`km_sram_wmap_region_o[32*9-1:0]`, clear `km_sram_wmap_clr_i`):
+   for each SRAM write-lock region of 256 words, the count of distinct
+   logical word addresses (the KM CPU store address before the scrambler)
+   written with `we` at 1 on the `sep` output `km_sram_mem_req_o` since the
+   bench reset or the last clear. A write to a locked region leaves the port
+   with `we` at 0 and does not count. The clear resets bench state only. User:
+   `sep_km_handover_rand_test` (CHK-HO-SRAM).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
   `u_sep_fcov` port list (VCS only): the KM CPU AXI master and its error

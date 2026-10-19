@@ -496,6 +496,7 @@ class sep_base_test(uvm_test):
             "km_par_n_i",
             "km_sram_lat_en_i",
             "km_sram_lat_i",
+            "km_sram_wmap_clr_i",
         ):
             self._set_if_exists(dut, pin, 0)
         # Boundary PIC input and outbound responder control: idle (0) unless a

@@ -3634,6 +3634,36 @@ module sep_uvm_top
     assign km_sram_rd_lat_o        = km_lat_last_q;
     assign km_sram_rd_done_count_o = km_lat_done_q;
 
+    // KM-WMAP: per SRAM write-lock region (256 words each, region r holds
+    // the logical word addresses 256*r to 256*r+255), the count of distinct
+    // words written since the bench reset or the last clock with
+    // km_sram_wmap_clr_i at 1. A write counts when it leaves the sep output
+    // km_sram_mem_req_o with we at 1, so a write to a locked region (dropped,
+    // we at 0) does not count. The word is the logical address of the KM CPU
+    // store (u_sram_if.word_addr), before the scrambler. km_sram_wmap_clr_i
+    // clears bench state only. Region r is at [9*r +: 9].
+    logic [8191:0]     km_wmap_q;
+    logic [31:0][8:0]  km_wmap_cnt_q;
+    logic              km_wmap_wr;
+    logic [12:0]       km_wmap_addr;
+    assign km_wmap_wr   = (u_dut.km_sram_mem_req.req === 1'b1) &&
+                          (u_dut.km_sram_mem_req.we === 1'b1) &&
+                          !$isunknown(`KM_TAP.u_cpu.u_sram_if.word_addr);
+    assign km_wmap_addr = 13'(`KM_TAP.u_cpu.u_sram_if.word_addr);
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_wmap_q     <= '0;
+            km_wmap_cnt_q <= '0;
+        end else if (km_sram_wmap_clr_i === 1'b1) begin
+            km_wmap_q     <= '0;
+            km_wmap_cnt_q <= '0;
+        end else if (km_wmap_wr && !km_wmap_q[km_wmap_addr]) begin
+            km_wmap_q[km_wmap_addr]           <= 1'b1;
+            km_wmap_cnt_q[km_wmap_addr[12:8]] <= km_wmap_cnt_q[km_wmap_addr[12:8]] + 9'd1;
+        end
+    end
+    assign km_sram_wmap_region_o = km_wmap_cnt_q;
+
     // ------------------------------------------------------------------
     // HK-OTP: KM OTP input rail flip (docs/SEP_TB_ARCH.adoc, inject
     // exceptions). No legal fuse image presents a broken dual-rail word: the
@@ -4539,6 +4569,7 @@ module sep_uvm_top
     assign km_par_n_i               = '0;
     assign km_sram_lat_en_i         = 1'b0;
     assign km_sram_lat_i            = '0;
+    assign km_sram_wmap_clr_i       = 1'b0;
     assign ext_trng_drive_en_i      = '0;
     assign ext_trng_tvalid_i        = '0;
     assign ext_trng_tdata_i         = '0;

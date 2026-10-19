@@ -484,11 +484,21 @@ def grade_sideload_bus(writes: set[tuple[int, int]], exp: PassExp) -> tuple[bool
     }
 
 
-def grade_sram(rep: imgh.ImgHReport, exp: PassExp, writes_delta: int) -> tuple[bool, Fields]:
-    """CHK-HO-SRAM. The store and violation readbacks are logged with control=1."""
+def grade_sram(
+    rep: imgh.ImgHReport, exp: PassExp, writes_delta: int, wmap: list[int]
+) -> tuple[bool, Fields]:
+    """CHK-HO-SRAM. The store and violation readbacks are logged with control=1.
+
+    ``wmap`` is KM-WMAP: the distinct words written in each write-lock region
+    over the handover. The scramble writes every word of every unlocked region,
+    so each unlocked region reads REGION_WORDS. Locked regions are logged only.
+    """
     locked_regions = bin(exp.sram_lock).count("1")
     min_unlocked = SRAM_WORDS - REGION_WORDS * locked_regions
-    ok = rep.sram_lock == exp.sram_lock and writes_delta >= min_unlocked
+    unlocked = [r for r in range(N_REGIONS) if not (exp.sram_lock >> r) & 1]
+    short = [r for r in unlocked if wmap[r] != REGION_WORDS]
+    words_unlocked = sum(wmap[r] for r in unlocked)
+    ok = rep.sram_lock == exp.sram_lock and not short
     own_bit = 1 << rep.own_region
     r31_bit = 1 << rep.r31_region
     return ok, {
@@ -503,6 +513,9 @@ def grade_sram(rep: imgh.ImgHReport, exp: PassExp, writes_delta: int) -> tuple[b
         "own_region": rep.own_region,
         "writes_delta": writes_delta,
         "min_unlocked": min_unlocked,
+        "words_unlocked": words_unlocked,
+        "regions_short": len(short),
+        "first_short": f"{short[0]}:{wmap[short[0]]}" if short else "-",
         "locked_regions": locked_regions,
     }
 

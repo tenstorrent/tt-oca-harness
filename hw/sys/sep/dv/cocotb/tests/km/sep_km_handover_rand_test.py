@@ -353,6 +353,17 @@ class sep_km_handover_rand_test(sep_base_test):
     def _sram_writes(self) -> int:
         return self.rd_known(cocotb.top.km_sram_write_count_o)
 
+    async def _wmap_clear(self) -> None:
+        """KM-WMAP: clear the distinct-word counts for one clock."""
+        cocotb.top.km_sram_wmap_clr_i.value = 1
+        await RisingEdge(self.clk)
+        cocotb.top.km_sram_wmap_clr_i.value = 0
+
+    def _wmap_regions(self) -> list[int]:
+        """KM-WMAP: the distinct words written in each SRAM write-lock region."""
+        v = self.rd_known(cocotb.top.km_sram_wmap_region_o)
+        return [(v >> (9 * r)) & 0x1FF for r in range(md.N_REGIONS)]
+
     def _bank_valid(self) -> int:
         return self.rd_known(cocotb.top.km_engine_key_valid_o)
 
@@ -754,6 +765,7 @@ class sep_km_handover_rand_test(sep_base_test):
         if via_load:
             seq = await self.km.send_command(KM_CMD_SRAM_LOAD_EXEC, [len(image)])
             rc, arg = await self.km.recv_resp_cmd(KM_CMD_SRAM_LOAD_EXEC, seq)
+            await self._wmap_clear()
             base = self._sram_writes()
             bus.start()
             await self._post(imgh.stream_words(image))
@@ -762,6 +774,7 @@ class sep_km_handover_rand_test(sep_base_test):
         else:
             # The handover begins when the ROM sends the confirmation, so the
             # baseline and the bus record start before the command.
+            await self._wmap_clear()
             base = self._sram_writes()
             bus.start()
             seq = await self.km.send_command(KM_CMD_SRAM_EXEC, [])
@@ -811,6 +824,7 @@ class sep_km_handover_rand_test(sep_base_test):
             )
         rep = imgh.decode_report([first] + rest)
         delta = (self._sram_writes() - base) & md.WORD
+        wmap = self._wmap_regions()
         await self._graded(False)
 
         self.logger.info(
@@ -843,7 +857,7 @@ class sep_km_handover_rand_test(sep_base_test):
             ("HO-KPV-LOCK", md.grade_kpv_lock, (rep, exp)),
             ("HO-SIDELOAD", md.grade_sideload, (rep, exp)),
             ("HO-SIDELOAD-BUS", md.grade_sideload_bus, (bus.writes, exp)),
-            ("HO-SRAM", md.grade_sram, (rep, exp, delta)),
+            ("HO-SRAM", md.grade_sram, (rep, exp, delta, wmap)),
             ("HO-MBOX", md.grade_mbox, (rep, exp)),
         ):
             ok, f = grade(*args)

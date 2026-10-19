@@ -429,6 +429,7 @@ class _FatalWatch:
                     "keyvalid": t.rd(top.km_engine_key_valid_o, allow_unknown=True),
                     "kv_unknown": int(_bitstr(top.km_engine_key_valid_o).strip("01") != ""),
                     "shared": t.rd(top.km_abr_sk_valid_o, allow_unknown=True),
+                    "sk_unknown": int(_bitstr(top.km_abr_sk_valid_o).strip("01") != ""),
                     "kpv_words_nonzero": words_nz,
                     "kpv_words_unknown": words_unk,
                     "kpv_ctrl_nonzero": ctrl_nz + ctrl_unk,
@@ -729,7 +730,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         return rom, sram
 
     def _csr_status(self) -> int:
-        return self.rd(cocotb.top.km_csr_irq_status_o, allow_unknown=True)
+        # An X bit fails the leaf: a graded 0 must be a driven 0.
+        return self.rd_known(cocotb.top.km_csr_irq_status_o)
 
     def _kpv(self) -> tuple[int, int, int]:
         """KM-KPV: (non-zero words, unknown words, non-zero or unknown CTRL)."""
@@ -1235,6 +1237,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 and f is not None
                 and kv_at == 0
                 and not f["kv_unknown"]
+                and not f["sk_unknown"]
                 and sk_at == 0
             )
             self.chk.ok("SHRED-FIRST", ok, **fields)
