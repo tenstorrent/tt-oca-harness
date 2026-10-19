@@ -1182,6 +1182,7 @@ module smu #(
     ) u_sep_otp_axil_err_slv (
       .clk_i       (clk_ref_i),
       .rst_ni      (rst_primary_ref_clk_no),
+      .test_en_i   (test_en_i),
       .axil_req_i  (dtp_axil_sep_otp_jtag_req),
       .axil_resp_o (dtp_axil_sep_otp_jtag_resp)
     );

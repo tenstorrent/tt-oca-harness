@@ -171,6 +171,7 @@ module gpio_shim
   ) u_axil_err_slv (
     .clk_i(clk_i),
     .rst_ni(rst_primary_ni),
+    .test_en_i(test_en_i),
     .axil_req_i(axil_reqs_demuxed[1]),
     .axil_resp_o(axil_resps_demuxed[1])
   );

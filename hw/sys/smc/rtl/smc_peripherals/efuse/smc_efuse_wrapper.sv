@@ -183,6 +183,7 @@ module smc_efuse_wrapper (
   ) u_prim_axi_lite_err_slv_jtag_access_ctrl (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
+    .test_en_i  (test_en_i),
     .axil_req_i (axil_smc_otp_jtag_req_filtered[1]),
     .axil_resp_o(axil_smc_otp_jtag_resp_filtered[1])
   );

@@ -394,6 +394,7 @@ module key_manager
   ) u_otp_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_warm_sync_n),
+    .test_en_i   (test_en_i),
     .axil_req_i  (otp_port_req[OtpRefused]),
     .axil_resp_o (otp_port_resp[OtpRefused])
   );

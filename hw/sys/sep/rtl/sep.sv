@@ -415,6 +415,7 @@ module sep #(
   sep_local_axi_xbar_wrapper u_sep_local_axi_xbar_wrapper (
     .clk_i                              (clk_i),
     .rst_ni                             (rst_ni),
+    .test_i                             (test_en_i),
 
     // AXI4 Slave Interfaces
     .ifu_sram_axi_req_i                 (ifu_sram_axi_req),

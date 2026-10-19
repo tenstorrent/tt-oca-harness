@@ -588,6 +588,7 @@ module sep_system_csr (
     ) u_err_slv (
       .clk_i       (clk_i),
       .rst_ni      (rst_ni),
+      .test_en_i   (test_en_i),
       .axil_req_i  (locked_reg_req),
       .axil_resp_o (locked_reg_resp)
     );
@@ -703,6 +704,7 @@ module sep_system_csr (
     ) u_err_slv (
       .clk_i       (clk_i),
       .rst_ni      (rst_ni),
+      .test_en_i   (test_en_i),
       .axil_req_i  (locked_reg_req),
       .axil_resp_o (locked_reg_resp)
     );
@@ -936,6 +938,7 @@ module sep_system_csr (
   ) u_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),
+    .test_en_i   (test_en_i),
     .axil_req_i  (sep_system_csr_axil_reqs[sep_pkg::ERR_SLV]),
     .axil_resp_o (sep_system_csr_axil_resps[sep_pkg::ERR_SLV])
   );

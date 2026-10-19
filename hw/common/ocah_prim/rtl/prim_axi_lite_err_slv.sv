@@ -27,6 +27,7 @@ module prim_axi_lite_err_slv #(
 ) (
   input  logic        clk_i,  // AXI-Lite clock.
   input  logic        rst_ni,  // Async reset, active-low.
+  input  logic        test_en_i,  // DFT test mode to axi_err_slv.
 
   input  axil_req_t   axil_req_i,  // AXI-Lite request from the manager.
   output axil_resp_t  axil_resp_o  // AXI-Lite error response to the manager.
@@ -99,7 +100,7 @@ module prim_axi_lite_err_slv #(
   ) u_axi_err_slv (
     .clk_i,
     .rst_ni,
-    .test_i     (1'b0),
+    .test_i     (test_en_i),
     .slv_req_i  (axi_req),
     .slv_resp_o (axi_resp)
   );

@@ -30,7 +30,7 @@ module smc_local_xbar
   input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
                                         // clock.
   input  logic test_i,                  // Scan test mode enable, forwarded to the test input of the
-                                        // AXI crossbar.
+                                        // AXI crossbar and the AXI-to-AXI-Lite converters.
 
   input  axi64_req_t  system_req_i,     // System request from the input fabric, rebased into
                                         // the local SMC aperture.
@@ -261,7 +261,7 @@ module smc_local_xbar
   ) u_local_reg_a2l_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .test_i     (1'b0),
+    .test_i     (test_i),
     .slv_req_i  (xbar_out_local_reg_req),
     .slv_resp_o (xbar_out_local_reg_resp),
     .mst_req_o  (local_reg_req),
@@ -332,7 +332,7 @@ module smc_local_xbar
   ) u_periph_reg_a2l_2 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .test_i     (1'b0),
+    .test_i     (test_i),
     .slv_req_i  (periph_reg_stage1_req),
     .slv_resp_o (periph_reg_stage1_resp),
     .mst_req_o  (periph_reg_req),
@@ -405,7 +405,7 @@ module smc_local_xbar
   ) u_smc_dfd_reg_a2l_2 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .test_i     (1'b0),
+    .test_i     (test_i),
     .slv_req_i  (smc_dfd_reg_stage1_req),
     .slv_resp_o (smc_dfd_reg_stage1_resp),
     .mst_req_o  (smc_dfd_reg_stage2_req),
