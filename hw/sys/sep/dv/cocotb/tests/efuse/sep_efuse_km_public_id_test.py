@@ -63,6 +63,8 @@ Logged, not graded: OBS-KM-OTHER-TM1 (the KM port public-ID taps at strap 1,
 
 from __future__ import annotations
 
+from typing import Any
+
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
@@ -180,7 +182,7 @@ class sep_efuse_km_public_id_test(sep_base_test):
 
     async def _wait_km_done(self, leg: str) -> None:
         """Wait for word 0 to leave the marker (the image clears it first), then for it."""
-        dut = cocotb.top
+        dut: Any = cocotb.top
         cleared = None
         for cycle in range(1, _MAX_KM_CYCLES + 1):
             await RisingEdge(dut.clk_i)
@@ -293,7 +295,7 @@ class sep_efuse_km_public_id_test(sep_base_test):
         other0 = (sram[LIFE_CYCLE_WORD], sram[DEMOTION_WORD])
 
         # Strap-1 leg: cold reset with the strap at 1, second real sense.
-        dut = cocotb.top
+        dut: Any = cocotb.top
         await rst_pulse(self, strap=1)
         await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         self.cfg.reset_done.set()

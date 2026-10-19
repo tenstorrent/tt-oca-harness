@@ -51,6 +51,8 @@ and for the Key Manager release.
 
 from __future__ import annotations
 
+from typing import Any
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
@@ -134,7 +136,8 @@ class sep_scan_reset_override_test(sep_base_test):
 
     def _walk(self) -> dict[str, list[tuple[str, object]]]:
         """Read-only walk of the DUT for the test pins of each class (logged only)."""
-        walk = walk_test_en_pins(cocotb.top.u_dut, "u_dut")
+        top: Any = cocotb.top
+        walk = walk_test_en_pins(top.u_dut, "u_dut")
         found: dict[str, list[tuple[str, object]]] = {"clock_gater": [], "axi_cell": []}
         for p in walk.pins:
             found[p.cls].append((f"{p.path} ({p.cell})", p))

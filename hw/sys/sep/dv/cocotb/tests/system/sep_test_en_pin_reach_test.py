@@ -50,6 +50,8 @@ The test owns no functional coverage and opens no graded window.
 
 from __future__ import annotations
 
+from typing import Any
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
@@ -89,7 +91,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
         that equal it on the first clk_i edge after the drive, and the value of
         each pin at the PIN_BOUND read.
         """
-        dut = cocotb.top
+        dut: Any = cocotb.top
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = value
         await RisingEdge(dut.clk_i)
@@ -124,7 +126,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
         self.logger.info("CFG pin_bound=%d hold=%d (no draw)", PIN_BOUND, H)
-        dut = cocotb.top
+        dut: Any = cocotb.top
         dut.test_en_i.value = 0
         dut.scan_rst_ni_i.value = 1
         await self.bring_up_no_cpu(max_cycles=SENSE_BOUND)

@@ -74,6 +74,7 @@ The graded window (owner code of this test) is open for each session only.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 import cocotb
 import pyuvm
@@ -204,7 +205,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
     # -- sampler ---------------------------------------------------------------
 
     def _sample(self) -> dict:
-        dut = cocotb.top
+        dut: Any = cocotb.top
         nets = []
         for _n, port, b in NETS:
             nets.append(_bit(sig_bits(getattr(dut, port)), b))
@@ -230,8 +231,9 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         }
 
     async def _sampler(self, rec: list, stop: dict) -> None:
+        top: Any = cocotb.top
         while not stop["v"]:
-            await RisingEdge(cocotb.top.clk_i)
+            await RisingEdge(top.clk_i)
             await ReadOnly()
             rec.append(self._sample())
 
@@ -239,7 +241,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
 
     async def _boot(self, strap: int, first: bool) -> None:
         """Cold boot with real fuse sense and the strap stable from before the release."""
-        dut = cocotb.top
+        dut: Any = cocotb.top
         close_graded_window(self.logger)
         if first:
             self.drive_idle_defaults(dut, cpu_run=False)
@@ -275,7 +277,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
                 self.logger.info("DEMOTE LOG: reg=DEMOTE_%d op=%s resp=%d", reg, op, resp)
 
     async def _release_km(self) -> None:
-        dut = cocotb.top
+        dut: Any = cocotb.top
         swrst = SepSwReset(self)
         swrst.value = await swrst.read_back()
         await swrst.release("km")
@@ -292,7 +294,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
 
     async def _shadow_write_obs(self) -> None:
         """OBS-SCAN-SHADOW-WR: a SIP_DIS shadow write with test_en_i = 1 at strap 0."""
-        dut = cocotb.top
+        dut: Any = cocotb.top
         addr = shadow_addr("SIP_DIS")
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = 1
@@ -319,7 +321,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
 
     async def _hold_flip(self, leg: str, at: dict[int, int], where: str) -> None:
         """Hold H clk_i cycles and drive the strap to ``at[n]`` after cycle ``n``."""
-        dut = cocotb.top
+        dut: Any = cocotb.top
         for n in range(1, H + 1):
             await RisingEdge(dut.clk_i)
             if n in at:
@@ -337,7 +339,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         ``strap`` after the session. No cold reset and no fuse sense occur in the
         session, so none of these moves is a sampling event.
         """
-        dut = cocotb.top
+        dut: Any = cocotb.top
         cfg = self.tcfg
         period_ps = self.sys_ps
         rec: list[dict] = []
@@ -350,14 +352,14 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         t_te_rise = int(get_sim_time("ps"))
         await self._hold_flip(leg, {cfg.f1: 1 - strap}, "before_pulse")
         await RisingEdge(dut.clk_i)
-        await Timer(cfg.phase * period_ps // 100, units="ps")
+        await Timer(cfg.phase * period_ps // 100, unit="ps")
         dut.scan_rst_ni_i.value = 0
         t_fall = int(get_sim_time("ps"))
         for _ in range(cfg.w):
             await RisingEdge(dut.clk_i)
         await ReadOnly()
         last_edge = int(get_sim_time("ps"))
-        await Timer(cfg.phase * period_ps // 100, units="ps")
+        await Timer(cfg.phase * period_ps // 100, unit="ps")
         dut.scan_rst_ni_i.value = 1
         t_rise = int(get_sim_time("ps"))
         await self._hold_flip(leg, {cfg.f2: strap, cfg.f3: 1 - strap}, "after_pulse")
@@ -442,7 +444,8 @@ class sep_scan_mode_state_hold_test(sep_base_test):
     def _obs_class1_names(self) -> None:
         from cocotb.handle import HierarchyArrayObject, HierarchyObject
 
-        crypto = cocotb.top.u_dut.u_sep.u_sep_crypto
+        top: Any = cocotb.top
+        crypto = top.u_dut.u_sep.u_sep_crypto
         found: list[str] = []
 
         def visit(h, path: str, depth: int) -> None:
@@ -522,7 +525,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             )
 
     async def _secdis_leg(self) -> None:
-        dut = cocotb.top
+        dut: Any = cocotb.top
         leg = "secdis"
         await self._boot(0, False)
         await self._demote_and_lock()

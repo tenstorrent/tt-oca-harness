@@ -85,6 +85,8 @@ the seed draws ``c`` (8 to 200) and the order of the leg B events.
 
 from __future__ import annotations
 
+from typing import Any
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ReadOnly, RisingEdge
@@ -154,7 +156,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
     # -- sampler -------------------------------------------------------------
 
     async def _sampler(self) -> None:
-        dut = cocotb.top
+        dut: Any = cocotb.top
         while True:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
