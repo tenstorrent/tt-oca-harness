@@ -22,13 +22,13 @@ module prim_sync_reset #(
 
 );
 
+  `include "ocah_assert.svh"
+
   localparam int unsigned SyncStages = (WIDTH < 4) ? WIDTH : 4;
 
   logic [WIDTH-1:SyncStages-1] sync_reg;
 
-  if (WIDTH < 2) begin : gen_width_check
-    $error("prim_sync_reset: WIDTH must be at least 2");
-  end
+  `OCAH_ASSERT_STATIC(WidthCheck_A, WIDTH >= 2, "WIDTH must be at least 2")
 
   if (SyncStages == 2) begin : gen_sync
     prim_flop_2sync #(
