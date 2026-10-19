@@ -11448,6 +11448,8 @@ module sep_fcov (
   wire mr_own_stm = (graded_owner == FcovOwnSepSecureTmStrapSamplingTest);
   wire mr_own_ccreg = (graded_owner == FcovOwnSepCpuCtrlRegShapeTest);
   wire mr_own_tmr = (graded_owner == FcovOwnSepTimerClockContractTest);
+  wire mr_own_hold = (graded_owner == FcovOwnSepScanModeStateHoldTest);
+  wire mr_own_pin = (graded_owner == FcovOwnSepTestEnPinReachTest);
 
   localparam realtime MrEdgeTol = 1.0;  // 1 ps with `timescale 1ps/1fs
   localparam int unsigned MrHeldK = 401;  // cp_release_order K, from 401 to 514
@@ -11782,13 +11784,30 @@ module sep_fcov (
   covergroup sep_static_tieoff_cg with function sample (mr_tie_t s);
     option.per_instance = 1;
     option.name = "sep_static_tieoff_cg";
+    // The sampled clock gater sits inside vendor IP, outside the graded set of
+    // sep_test_en_pin_reach_test, so its two cells are not graded.
     cp_test_en_consumer: coverpoint s.tc iff (s.tc_v) {
-      option.weight = 0;
-      bins te0_clock_gater = {2'b00};
       bins te0_axi_cell = {2'b01};
-      bins te1_clock_gater = {2'b10};
       bins te1_axi_cell = {2'b11};
+      ignore_bins clock_gater = {2'b00, 2'b10};
     }
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] ev;
+    logic tm;
+    logic ev_v;  // {event, secure_tm_o}
+  } mr_hold_t;
+
+  // Scan session events against the held SECURE_TM value.
+  covergroup sep_scan_hold_cg with function sample (mr_hold_t s);
+    option.per_instance = 1;
+    option.name = "sep_scan_hold_cg";
+    cp_event: coverpoint s.ev iff (s.ev_v) {
+      bins test_en_rise = {2'd0}; bins test_en_fall = {2'd1}; bins scan_pulse_te1 = {2'd2};
+    }
+    cp_secure_tm: coverpoint s.tm iff (s.ev_v) {bins tm0 = {1'b0}; bins tm1 = {1'b1};}
+    cx_event_tm: cross cp_event, cp_secure_tm;
   endgroup
 
   typedef struct packed {
@@ -12309,6 +12328,7 @@ module sep_fcov (
   sep_clk_domain_cg            u_sep_clk_domain_cg            = new();
   sep_boot_milestone_cg        u_sep_boot_milestone_cg        = new();
   sep_static_tieoff_cg         u_sep_static_tieoff_cg         = new();
+  sep_scan_hold_cg             u_sep_scan_hold_cg             = new();
   sep_reset_sw_ctrl_cg         u_sep_reset_sw_ctrl_cg         = new();
   sep_wdt_config_bark_cg       u_sep_wdt_config_bark_cg       = new();
   sep_wdt_wakeup_timer_cg      u_sep_wdt_wakeup_timer_cg      = new();
@@ -13177,7 +13197,7 @@ module sep_fcov (
     // cp_test_en_consumer: every pin of a class equals test_en_i after the
     // settle.
     mr_te_st <= (mr_te != mr_te_q) ? 0 : ((mr_te_st < MrTeSettle + 1) ? mr_te_st + 1 : mr_te_st);
-    if (mr_own_scan && (mr_te_st == MrTeSettle)) begin
+    if (mr_own_pin && (mr_te_st == MrTeSettle)) begin
       for (int c = 0; c < 2; c++) begin
         if (mr_te ? te_pins_one_i[c] : te_pins_zero_i[c]) begin
           mr_tie_t e;
@@ -13186,6 +13206,31 @@ module sep_fcov (
           e.tc_v = 1'b1;
           u_sep_static_tieoff_cg.sample(e);
         end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_scan_hold_cg: a test_en_i edge, or a scan_rst_ni rise with test_en_i
+  // = 1, sampled with the secure_tm_o value at that clk_i edge.
+  // ---------------------------------------------------------------------
+  always @(posedge clk_i) begin
+    if (mr_own_hold && !$isunknown(secure_tm_i)) begin
+      mr_hold_t e;
+      e      = '0;
+      e.tm   = mr_stm;
+      e.ev_v = 1'b1;
+      if (mr_te && !mr_te_q) begin
+        e.ev = 2'd0;
+        u_sep_scan_hold_cg.sample(e);
+      end
+      if (!mr_te && mr_te_q) begin
+        e.ev = 2'd1;
+        u_sep_scan_hold_cg.sample(e);
+      end
+      if (mr_te && mr_scan && !mr_scan_q) begin
+        e.ev = 2'd2;
+        u_sep_scan_hold_cg.sample(e);
       end
     end
   end
