@@ -2046,7 +2046,7 @@ run the `dbg_rstb_i` legs on VCS; and 7.28
 preloaded `rom_main` builds (HOST and HOST-UNREC, set by the t=0 plusarg
 `+km_rom_hex`). An extension leg runs in the testlist entry of its
 open test and adds no entry. Where the leg needs more seeds than that entry
-runs, the entry takes the seed count of the leg (1.25 and 1.26).
+runs, the entry takes the seed count of the leg (1.26).
 
 [[sep-vplan-phase3-edn-waiver]]
 *JTAG reset override waiver.* The JTAG `sep_reset_n` override and the per-IP

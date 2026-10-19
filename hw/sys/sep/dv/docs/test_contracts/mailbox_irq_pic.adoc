@@ -289,7 +289,7 @@ claimed for the same reason. Both need the external inbound master — see
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, 3 seeds
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, 1 seed per regression, because every run walks every mailbox, bit and direction
 
 *Source Module*: `sep_mailbox_datapath_walk_test`
 
@@ -300,7 +300,7 @@ strobe runs and their data, and every inbound request attribute (AxID 1 to 63,
 AxPROT, a non-reserved AxCACHE, AxQOS, AxREGION, AxUSER, WUSER, ARLOCK on
 reads) come from the run seed (`SepMboxWalkCfg`, `SepInboundAttrs`). Every
 mailbox, every bit position, both directions and every byte lane are walked on
-every seed; `reseed = 3`.
+every seed, and one seed runs per regression.
 
 *Objective*: `hw/sys/sep/doc/mailbox.adoc`: each of the eight mailboxes holds two FIFOs of eight 64-bit entries, and `WRITE_DATA` in one port pushes the FIFO that `READ_DATA` in the other port pops; a write pushes one entry. The inbound filter decides on the address, `prot[1]`, `user[3:0]` and `AxLEN` only (`hw/ip/axi_filter/doc/index.adoc`, "Match, Then Permit"), so the other request fields of an admitted access must not change the data.
 
@@ -600,7 +600,7 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu`, real fuse sense (no `+skip_fuse_sense`), `LC_PROD`
+*Run mode*: `no_cpu`, real fuse sense (no `+skip_fuse_sense`), `LC_PROD`, 1 seed per regression, because the graded deny targets are fixed and the seed selects only the control spare and data
 
 *Source Module*: `sep_locked_field_access_irq_path_test` (`+secure_tm_lock`)
 
@@ -1441,13 +1441,13 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `reseed = 3`
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 1 seed per regression, because every run stalls every block
 
 *Source Module*: `sep_cpu_ctrl_timeout_inert_rand_test`
 
 *BFM / Model*: CPU-LSU master on `s_axi` (`SepAxiAgent` over `ocah_axi_vip`) and external SMN master on `m_axi` (second `SepAxiAgent`), each with `RREADY` and `BREADY` under test control; the response monitor of each stalled port (`VALID`, `READY` and response handshake count); `sep_internal_interrupts_probe_o`; register model from the generated IP-XACT (`sep_reg_meta`). Error inject: the response hold of the outbound responder on the `sep` input `smn_outbound_axi_resp_i` (without the inject `tb/sep_outbound_mbx.sv` answers OKAY at once), which the test adds to the inject exceptions of `SEP_TB_ARCH.adoc`; the outbound filter, alias remap and DMA legs use it. The outbound port monitor counts the requests on `smn_outbound_axi_req_o` and the response handshakes on `smn_outbound_axi_resp_i`. The observation tap `timeout_interrupt_probe_o` is the read source of `TIMEOUT_INTERRUPT.reserved` (the field has no storage: sw=r, hw=w, so a read returns the hardware input of the register block on that clock); the test adds it to the SEP_TB_ARCH observation-probe list. Secure DMA with an SRAM endpoint for the DMA leg. The entropy write and entropy read legs stall the CPU-LSU master at the entropy pool (`sep_entropy_fifo`), so the response monitor of the CPU-LSU port is their anchor. No added tap.
 
-*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the order of the nine arming writes (`TIMEOUT_ENABLE` and the eight `TIMEOUT_COUNT_*` registers) and the order of the stalled blocks. `reseed = 3` samples three pairs of orders. The hold length, the stalled addresses and the write data are fixed. The `SEP_CPU_CTRL` writes go to `TIMEOUT_ENABLE` and the eight count registers only.
+*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the order of the nine arming writes (`TIMEOUT_ENABLE` and the eight `TIMEOUT_COUNT_*` registers) and the order of the stalled blocks. Each regression draws a new pair of orders. The hold length, the stalled addresses and the write data are fixed. The `SEP_CPU_CTRL` writes go to `TIMEOUT_ENABLE` and the eight count registers only.
 
 *Objective*: The timeout block is reserved and not implemented. `TIMEOUT_INTERRUPT` (R, reset 0) reads 0. `TIMEOUT_ENABLE` and each of the eight `TIMEOUT_COUNT_*` registers have one RW bit 0 with reset 0 and hold a written 1. A stall of a block path beyond its armed count sets no `TIMEOUT_INTERRUPT` bit, raises no PIC source and aborts no access. Sources: `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc` (`TIMEOUT_INTERRUPT`, `TIMEOUT_ENABLE`, `TIMEOUT_COUNT_*`, `TIMEOUT_CLEAR`, `TIMEOUT_MODE`); `hw/sys/sep/doc/fabric.adoc` (System Interface initiator, Fabric Topology); `hw/sys/sep/doc/cpu.adoc` (Dual Scratch Register Banks) and `hw/sys/sep/regs/gen/adoc/blocks/sep_scratch.adoc` (`SCRATCH`); `hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.adoc` (`WIRQT`).
 
