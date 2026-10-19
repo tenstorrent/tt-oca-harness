@@ -222,7 +222,7 @@ module sep_system_peripherals_xbar
   ) u_mailbox_a2l_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .test_i     (1'b0),
+    .test_i     (test_i),
     .slv_req_i  (xbar_out_mailbox_req),
     .slv_resp_o (xbar_out_mailbox_resp),
     .mst_req_o  (mailbox_req),
@@ -264,7 +264,7 @@ module sep_system_peripherals_xbar
   ) u_system_csr_a2l_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .test_i     (1'b0),
+    .test_i     (test_i),
     .slv_req_i  (xbar_out_system_csr_req),
     .slv_resp_o (xbar_out_system_csr_resp),
     .mst_req_o  (system_csr_req),

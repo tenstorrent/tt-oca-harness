@@ -118,7 +118,7 @@ tags = ["uvm", "csr", "wdt"]
 run_modes = ["smoke"]
 
 [[tests]]
-# Checks correct-core second-stage service, wrong-core service and warm-reset recovery.
+# Checks second-stage service, wrong-core service, warm-reset recovery and watchdog reset values.
 name = "smc_wdt_second_stage_reset_test"
 module = { uvm = "smc_wdt_second_stage_reset_test" }
 seed = 1

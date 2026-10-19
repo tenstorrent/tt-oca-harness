@@ -24,6 +24,8 @@ module prim_refclk_count_w_cdc #(
   input logic refclk_i,  // Reference clock.
   input logic prst_ni,  // Async reset in the reference domain, active-low.
   input logic out_clk_i,  // Destination clock for the CDC'd count and clock of cnt_update_i.
+  input logic test_en_i,  // Test mode; selects scan_rst_ni for both synchronized resets.
+  input logic scan_rst_ni,  // DFT scan reset, active-low.
 
   input logic cnt_en_i,  // Enables counting on refclk_i; asynchronous, synchronized into refclk_i.
   input logic cnt_update_i,  // Single-cycle update strobe in the out_clk_i domain.
@@ -67,8 +69,8 @@ module prim_refclk_count_w_cdc #(
   ) u_prst_wr_clk_domain_sync (
     .clk_i(out_clk_i),
     .rst_ni(prst_ni),
-    .test_mode_i(1'b0),
-    .scan_rst_ni(1'b0),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
     .sync_rst_no(prstb_synced_write)
   );
   prim_sync_reset #(
@@ -76,8 +78,8 @@ module prim_refclk_count_w_cdc #(
   ) u_prst_rd_clk_domain_sync (
     .clk_i(refclk_i),
     .rst_ni(prst_ni),
-    .test_mode_i(1'b0),
-    .scan_rst_ni(1'b0),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
     .sync_rst_no(prstb_synced_rd)
   );
 

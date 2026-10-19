@@ -125,6 +125,7 @@ module entropy_source_tb_top (
   entropy_source u_dut (
     .clk_i                 (clk),
     .rst_ni                (rst_n),
+    .test_en_i             (1'b0),
     .s_axil_awvalid_i      (axil_awvalid),
     .s_axil_awready_o      (axil_awready),
     .s_axil_awaddr_i       (axil_awaddr[8:0]),

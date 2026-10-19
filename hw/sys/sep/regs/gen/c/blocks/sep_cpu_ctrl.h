@@ -437,8 +437,10 @@ typedef union {
 // resetting the DMA), so a bit read as set immediately after boot may describe
 // a fault from before that reset rather than a new one.
 // Register-path bus error: a CPU access to a Secure DMA register returned
-// a TL-UL error response (unmapped or misaligned offset). The faulting
-// access also received SLVERR synchronously.
+// a TL-UL error response (an unmapped offset, or a partial write: a byte
+// strobe that misses a byte the register owns). The faulting access also
+// received SLVERR synchronously. A narrow read inside a register returns
+// OKAY.
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_bm 0x1
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_bp 0
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_bw 1
@@ -454,8 +456,10 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         // Register-path bus error: a CPU access to a Secure DMA register returned
-        // a TL-UL error response (unmapped or misaligned offset). The faulting
-        // access also received SLVERR synchronously.
+        // a TL-UL error response (an unmapped offset, or a partial write: a byte
+        // strobe that misses a byte the register owns). The faulting access also
+        // received SLVERR synchronously. A narrow read inside a register returns
+        // OKAY.
         uint64_t reg_path_err :1;
         // DMA-master-path fault: either the fabric returned a non-OKAY AXI response
         // to a DMA transfer, or a TL-UL command-integrity check failed on a command
@@ -488,9 +492,10 @@ typedef union {
 // reg - sep_cpu_ctrl::PERIPH_BUS_ERR_STATUS
 // Peripheral register-bridge fault status, one bit per block. Each bit latches
 // when a CPU access to that block's registers returned a TL-UL error response
-// (unmapped or misaligned offset), and is held until the matching
-// PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also received
-// SLVERR synchronously.
+// (an unmapped offset, or a partial write: a byte strobe that misses a byte the
+// register owns), and is held until the matching PERIPH_BUS_ERR_CLEAR bit is
+// written. The faulting access also received SLVERR synchronously. A narrow
+// read inside a register returns OKAY.
 // All bits OR together into a single PIC source, so read this register to
 // identify which block faulted.
 // No bit is cleared by a CPU-only reset (the WDT resets the CPU without

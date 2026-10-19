@@ -111,6 +111,7 @@ module gpio_filter
   ) u_filter_err_slv (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
+    .test_en_i(test_en_i),
     .axil_req_i(axil_reqs_filtered[0]),
     .axil_resp_o(axil_resps_filtered[0])
   );

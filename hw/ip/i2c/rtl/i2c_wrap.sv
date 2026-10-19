@@ -47,6 +47,7 @@ module i2c_wrap #(
 ) (
   input  logic                clk_i,                        // System clock.
   input  logic                rst_ni,                       // Async reset, active-low.
+  input  logic                test_en_i,                    // DFT test mode to the AXI cells.
 
   input  i2c_wrap_pkg::axil_req_t           axil_req_i,     // Shared AXI-Lite request.
   output i2c_wrap_pkg::axil_resp_t          axil_resp_o,    // Shared AXI-Lite response.
@@ -181,7 +182,7 @@ module i2c_wrap #(
   ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i          (1'b0),
+    .test_i          (test_en_i),
     .slv_req_i       (axil_req_i),
     .slv_aw_select_i (axil_aw_select),
     .slv_ar_select_i (axil_ar_select),
@@ -202,6 +203,7 @@ module i2c_wrap #(
   ) u_prim_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
+    .test_en_i,
 
     .axil_req_i     (axil_reqs [UndefinedRegMap]),
     .axil_resp_o    (axil_resps[UndefinedRegMap])

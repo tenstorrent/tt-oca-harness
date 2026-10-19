@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 VNCHIP LABS
 //
-// Checks per-core second-stage watchdog service, expiry and warm-reset recovery.
+// Checks second-stage service, expiry and watchdog state after warm reset.
 
 class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
   `uvm_object_utils(smc_wdt_second_stage_reset_test_seq)
@@ -15,6 +15,8 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
   localparam string ChkRecovery = "CHK-WDT-STAGE2-RECOVERY";
   localparam string ChkScope = "CHK-WDT-STAGE2-SCOPE";
   localparam string ChkNonvac = "CHK-NONVAC";
+  localparam string ChkWdtReset = "CHK-WDT-STAGE2-WDT-RESET";
+  localparam string ChkScoreboard = "CHK-WDT-STAGE2-SCOREBOARD";
   localparam int unsigned Stage1Compare = 2048;
   localparam int unsigned Stage2Cycles = 6144;
   localparam int unsigned ServiceIntervalCycles = Stage2Cycles / 6;
@@ -29,9 +31,12 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
   localparam int unsigned WrongCoreStopCycles = Stage2Cycles - ServiceIntervalCycles;
   localparam int unsigned WatcherBoundCycles = 16;
   localparam int unsigned FunctionalResetsPerPass = 2;
-  // Initial reads, two recovery baselines, two arms and timeout configuration/restore.
-  localparam int unsigned FixedCsrAccesses =
-      2 * SmcWdtCores + FunctionalResetsPerPass * (13 * SmcWdtCores + 1) + 18 + 7;
+  // Each arm has nine selected-core accesses and three per other-core CMP marker.
+  // Recovery has fourteen accesses per core; CPU_CTRL adds one read per reset
+  // and seven configuration/restore accesses, apart from dynamic service writes.
+  localparam int unsigned WdtAccessesPerPass = 2 * SmcWdtCores +
+      FunctionalResetsPerPass * (14 * SmcWdtCores + 9 + 3 * (SmcWdtCores - 1));
+  localparam int unsigned FixedCsrAccesses = WdtAccessesPerPass + FunctionalResetsPerPass + 7;
   localparam bit [31:0] WdtConfig = WDT_CTRL_WDOGENALWAYS_MASK | WDT_CTRL_WDOGRSTEN_MASK;
   localparam bit [63:0] TimeoutAddr =
       smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_BASE_ADDR;
@@ -189,6 +194,15 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
                       compare_value,
                       Stage1Compare
                       ));
+    for (int unsigned selected = 0; selected < SmcWdtCores; selected++) begin
+      if (selected == core) continue;
+      // An inactive WDT needs a non-reset marker to distinguish reset from retention.
+      recovery_write(selected, WDT_CMP, Stage1Compare);
+      csr_read(smc_wdt_addr(selected, WDT_CMP), compare_value, "WDT marker CMP");
+      require_condition(
+          ChkConfig, compare_value == Stage1Compare, "marker CMP readback", 1'b0, $sformatf(
+          "core=%0d cmp=%0h expected_cmp=%0h", selected, compare_value, Stage1Compare));
+    end
     start_watch();
     wdt_write(WDT_CTRL, WdtConfig);
     csr_read(smc_wdt_addr(core, WDT_CTRL), ctrl, "WDT armed CTRL");
@@ -217,19 +231,22 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
     `uvm_info(get_type_name(),
               $sformatf("OBS-WDT-STAGE2-RETAINED seed=%0d core=%0d leg=%s timeout=0x%08h",
                         scenario_seed, core, leg, timeout_value), UVM_LOW)
-    `uvm_info(get_type_name(), {"OBS-BLOCKED CHK-WDT-STAGE2-WDT-RESET reason=watchdog CSR reset ",
-                                "values after warm reset are not explicitly defined"}, UVM_LOW)
     for (int unsigned selected = 0; selected < SmcWdtCores; selected++) begin
-      csr_read(smc_wdt_addr(selected, WDT_CTRL), ctrl, "WDT warm CTRL observation");
-      csr_read(smc_wdt_addr(selected, WDT_COUNT), count_value, "WDT warm COUNT observation");
-      `uvm_info(get_type_name(), $sformatf(
-                "OBS-WDT-STAGE2-STATE seed=%0d core=%0d leg=%s ctrl=0x%08h count=0x%08h",
-                scenario_seed,
-                selected,
-                leg,
-                ctrl,
-                count_value
-                ), UVM_LOW)
+      csr_read(smc_wdt_addr(selected, WDT_CTRL), ctrl, "WDT post-warm CTRL");
+      csr_read(smc_wdt_addr(selected, WDT_COUNT), count_value, "WDT post-warm COUNT");
+      csr_read(smc_wdt_addr(selected, WDT_CMP), compare_value, "WDT post-warm CMP");
+      check_evidence(ChkWdtReset, "watchdog reset values after warm reset",
+                     64'(ctrl == WDT_CTRL_REG_DEFAULT && count_value == WDT_COUNT_REG_DEFAULT &&
+                         compare_value == WDT_CMP_REG_DEFAULT),
+                     64'(!negative), $sformatf(
+                     "seed=%0d core=%0d leg=%s ctrl=0x%08h count=0x%08h cmp=0x%08h",
+                     scenario_seed,
+                     selected,
+                     leg,
+                     ctrl,
+                     count_value,
+                     compare_value
+                     ));
       recovery_write(selected, WDT_CTRL, 32'(WDT_CTRL_REG_DEFAULT));
       recovery_write(selected, WDT_COUNT, 32'(WDT_COUNT_REG_DEFAULT));
       recovery_write(selected, WDT_CMP, 32'(WDT_CMP_REG_DEFAULT));
@@ -341,15 +358,20 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
   task body();
     bit [31:0] baseline, readback;
     int unsigned other_core;
+    int unsigned compare_before, mismatch_before;
     real service_begin, stop_deadline, preceding_return, remaining;
 
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkConfig, ChkFirst, ChkService, ChkHeld,
-                    ChkExpires, ChkWrong, ChkRecovery, ChkScope, ChkNonvac});
+                    ChkExpires, ChkWrong, ChkRecovery, ChkScope, ChkNonvac, ChkWdtReset,
+                    ChkScoreboard, ChkSbMinAct});
     wait_fuse_sense_done();
     core = loop_index % SmcWdtCores;
     other_core = (core + 1) % SmcWdtCores;
     negative = env_cfg.wdt_stage2_sequence_negative;
+    compare_before = scoreboard.compare_count(SmcFeatureWdtCsr);
+    mismatch_before = scoreboard.mismatch_count(SmcFeatureWdtCsr);
+    check_min_activity(SmcFeatureWdtCsr, WdtAccessesPerPass);
     warm_assertions = 0;
     service_pulses = 0;
     wrong_pulses = 0;
@@ -415,6 +437,14 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
                    "service_pulses=%0d wrong_pulses=%0d", service_pulses, wrong_pulses));
     check_evidence(ChkNonvac, "sep_in_csr_accesses", csr_accesses,
                    FixedCsrAccesses + service_pulses + wrong_pulses);
+    for (int unsigned cycle = 0; cycle < WatcherBoundCycles; cycle++) begin
+      if (scoreboard.compare_count(SmcFeatureWdtCsr) >= compare_before + WdtAccessesPerPass) break;
+      wait_smc_cycles(1);
+    end
+    check_evidence(ChkNonvac, "passive watchdog comparisons", scoreboard.compare_count(
+                   SmcFeatureWdtCsr) - compare_before, WdtAccessesPerPass);
+    check_evidence(ChkScoreboard, "new watchdog mismatches", scoreboard.mismatch_count(
+                   SmcFeatureWdtCsr) - mismatch_before, 0);
     finalize_evidence();
   endtask
 endclass : smc_wdt_second_stage_reset_test_seq

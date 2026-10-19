@@ -464,6 +464,7 @@ module smc_ip_integration (
     ) u_gpio_ctrl_err_slv (
         .clk_i      (clk_sys),
         .rst_ni     (rst_primary_smc_clk_ni),
+        .test_en_i  (test_en_i),
         .axil_req_i (ext_req[ExtGpioCtrl]),
         .axil_resp_o(ext_resp[ExtGpioCtrl])
     );
@@ -480,6 +481,7 @@ module smc_ip_integration (
     ) u_ext_unmapped_err_slv (
         .clk_i      (clk_sys),
         .rst_ni     (rst_primary_smc_clk_ni),
+        .test_en_i  (test_en_i),
         .axil_req_i (ext_req[ExtUnmapped]),
         .axil_resp_o(ext_resp[ExtUnmapped])
     );

@@ -38,6 +38,7 @@ module uart_wrap #(
 ) (
   input  logic                                 clk_i,  // System clock.
   input  logic                                 rst_ni,  // Active-low reset.
+  input  logic                                 test_en_i,  // DFT test mode to the AXI cells.
 
   input  uart_wrap_pkg::csr_axil_req_t                        csr_axil_req_i,  // Register-port request, decoded onto the instance windows.
   output uart_wrap_pkg::csr_axil_resp_t                       csr_axil_resp_o,  // Csr AXI-Lite resp.
@@ -143,7 +144,7 @@ module uart_wrap #(
   ) u_csr_axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i          (1'b0),
+    .test_i          (test_en_i),
     .slv_req_i       (csr_axil_req_i),
     .slv_aw_select_i (csr_axil_aw_select),
     .slv_ar_select_i (csr_axil_ar_select),
@@ -164,6 +165,7 @@ module uart_wrap #(
   ) u_csr_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
+    .test_en_i,
 
     .axil_req_i     (csr_axil_reqs [UndefinedRegMap]),
     .axil_resp_o    (csr_axil_resps[UndefinedRegMap])
@@ -196,7 +198,7 @@ module uart_wrap #(
   ) u_log_fetch_axi_lite_mux (
     .clk_i,
     .rst_ni,
-    .test_i      (1'b0),
+    .test_i      (test_en_i),
     .slv_reqs_i  (log_fetch_axil_reqs),
     .slv_resps_o (log_fetch_axil_resps),
     .mst_req_o   (log_fetch_axil_req_o),
@@ -227,6 +229,7 @@ module uart_wrap #(
       // Global Interface
       .clk_i,
       .rst_ni,
+      .test_en_i,
 
       // AXI4-Lite Register Interface
       .csr_axil_req_i        (uart_log_engine_wrap_csr_axil_req),
