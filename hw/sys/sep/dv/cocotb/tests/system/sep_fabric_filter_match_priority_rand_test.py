@@ -30,10 +30,11 @@ Legs:
 * leg 1, match and priority: (entry state, attribute) cells on a seeded entry
   stack, and the corner cells fall-through (a), permission block (b), burst
   fall-through (c, inbound), disabled lowest entry (d), read and write that
-  choose different entries (e) and no match (g);
+  choose different entries (e, inbound; an outbound path sets NS from the
+  address) and no match (g);
 * leg 2, source ID: exact, mismatch, wildcard, fall-through and upper AxUSER
-  bits inbound; OTHERS against the AP and STEE remaps and the exact and
-  mismatch cells on the SMU aperture outbound;
+  bits inbound; OTHERS against the AP and STEE remaps and SEP's source ID
+  in the exact and mismatch cells on the SMU aperture outbound;
 * leg 4, granule: seven (granule, shape, instance) cells probed at the widened
   edges.
 
@@ -61,7 +62,7 @@ from dataclasses import dataclass, replace
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_common import RESP_DECERR, RESP_OKAY
+from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, outbound_ns, outbound_user
 from env.sep_fabric_common import RESP_NAME as _RESP
 from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -160,6 +161,11 @@ class Probe:
     fuser: int = 0  # AxUSER[3:0] at the filter
     axlen: int = 0
     nbytes: int = 8
+
+    @property
+    def fns(self) -> int:
+        """AxPROT[1] at the filter: as issued inbound, as the path sets it outbound."""
+        return self.prot1 if self.inst == "in" else outbound_ns(self.cls, self.faddr)
 
     @property
     def dir(self) -> str:
@@ -298,7 +304,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
 
     def _verdict(self, p: Probe) -> FilterVerdict:
         return self._bank(p.inst).model.verdict(
-            p.faddr, write=p.write, prot1=p.prot1, user=p.fuser, axlen=p.axlen
+            p.faddr, write=p.write, prot1=p.fns, user=p.fuser, axlen=p.axlen
         )
 
     def _target_mark(self) -> tuple[int, int, int]:
@@ -387,7 +393,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 mon.release_expected_decerr(1)
             target_seen, out_seen = self._seen(mark, p)
             data = None if p.write else seq.rdata
-            tag = f"inst=out cls={p.cls} dir={p.dir} addr=0x{p.addr:08x} faddr=0x{p.faddr:x} prot1={p.prot1} user=0x{p.user:x}"
+            tag = f"inst=out cls={p.cls} dir={p.dir} addr=0x{p.addr:08x} faddr=0x{p.faddr:x} prot1={p.prot1} ns={p.fns} user=0x{p.user:x}"
             assert resp == (RESP_OKAY if v.allowed else RESP_DECERR), (
                 f"{self._chk} FAIL: probe {tag}: resp={_RESP.get(resp)} model={v.summary()}"
             )
@@ -503,7 +509,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
     ) -> Probe:
         if cls == "smu":
             a = addr if addr is not None else self.smu_word
-            return Probe("out", cls, a, a, write, prot1, user, user & 0xF, 0, 4)
+            return Probe("out", cls, a, a, write, prot1, user, outbound_user("smu"), 0, 4)
         base, off = (AP_REGION_BASE, AP_OFFSET) if cls == "ap" else (STEE_REGION_BASE, STEE_OFFSET)
         a = addr if addr is not None else base + self.ap_intra
         return Probe("out", cls, a, remap_target(off, a, base), write, prot1, user, 0, 0, 4)
@@ -554,7 +560,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             enabled=enabled,
             read_allowed=rd,
             write_allowed=wr,
-            allow_ns=bool(p.prot1 if ns is None else ns),
+            allow_ns=bool(p.fns if ns is None else ns),
             allow_burst=burst,
             src_id=src,
             group_id=self.rng.randrange(16),
@@ -577,14 +583,14 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             elif kind == 1:
                 out[i] = self._entry(p, self._cover(p, False), enabled=False)
             else:
-                out[i] = self._entry(p, self._cover(p, False), ns=1 - p.prot1)
+                out[i] = self._entry(p, self._cover(p, False), ns=1 - p.fns)
         return out
 
     def _verdict_of(self, inst: str, entries: dict[int, FilterEntry], p: Probe) -> FilterVerdict:
         m = FilterModel(len(self._bank(inst).model.entries), inst)
         for i, e in entries.items():
             m.set(i, e)
-        return m.verdict(p.faddr, write=p.write, prot1=p.prot1, user=p.fuser, axlen=p.axlen)
+        return m.verdict(p.faddr, write=p.write, prot1=p.fns, user=p.fuser, axlen=p.axlen)
 
     # ------------------------------------------------------------------
     # Logging helpers
@@ -595,7 +601,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         perm = r.perm
         data = r.data if r.data is not None else 0
         return (
-            f"inst={p.inst} dir={p.dir} prot1={p.prot1} len={p.axlen} winner={winner} perm={perm} "
+            f"inst={p.inst} dir={p.dir} prot1={p.prot1} ns={p.fns} len={p.axlen} winner={winner} perm={perm} "
             f"expect={v.resp} got={_RESP.get(r.resp)} data=0x{data:x} "
             f"target_seen={r.target_seen if p.inst == 'in' else r.out_seen} control_seen={control_seen}"
         )
@@ -749,8 +755,12 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         for prot1 in (0, 1):
             for inst in ("in", "out"):
                 bank = self._bank(inst)
+                if inst == "in":
+                    ns = prot1
+                else:
+                    (ns,) = {self._p_out(c, False, prot1).fns for c in ("smu", "ap")}
                 k = self.rng.choice(
-                    [i for i in range(bank.n) if int(bank.model.entries[i].allow_ns) == prot1]
+                    [i for i in range(bank.n) if int(bank.model.entries[i].allow_ns) == ns]
                 )
                 await bank.set_enabled(k, True)
                 if inst == "in":
@@ -1031,7 +1041,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             p = mk(write, self.rng.getrandbits(1))
             lo, hi, nz = self._lh(inst, self.rng.randrange(1, 5))
             noise = self._noise(p, nz, below_ok=False)
-            low = self._entry(p, self._cover(p, False), ns=1 - p.prot1)
+            low = self._entry(p, self._cover(p, False), ns=1 - p.fns)
             high = self._entry(p, self._cover(p, False))
             await self._pair(
                 inst,
@@ -1099,6 +1109,10 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 inst, p, noise, {**noise, hi: self._entry(p, self._cover(p, False))}, "g_no_match"
             )
         # e: one address, the read and the write carry different prot[1] and pick different entries.
+        # Inbound only: an outbound path sets NS from the address, so a read and a write
+        # of one address reach the outbound filter with the same NS.
+        if inst == "out":
+            return
         pr = self.rng.getrandbits(1)
         pw = 1 - pr
         rd_p = self._p_in(cls, False, pr) if inst == "in" else self._p_out(cls, False, pr)
@@ -1222,15 +1236,17 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 good = {idx2: self._entry(p, self._cover(p, False), src=0)}
                 await self._src_pair("out", p, p, bad, good, "mismatch", s)
                 await self._src_pair("out", p, p, good, bad, "wildcard", 0)
-        # Outbound exact and mismatch on the SMU aperture with the LSU AxUSER.
+        # Outbound exact and mismatch on the SMU aperture: the SMU path replaces the LSU
+        # AxUSER u with SEP's source ID.
+        sep = outbound_user("smu")
         for write in (False, True):
-            u = self.rng.randrange(1, 16)
-            v = self.rng.choice([x for x in range(1, 16) if x != u])
+            u = self.rng.choice([x for x in range(1, 16) if x != sep])
+            v = self.rng.choice([x for x in range(1, 16) if x != sep])
             p = self._p_out("smu", write, self.rng.getrandbits(1), user=u)
             idx = self.rng.randrange(n_out)
-            ok = {idx: self._entry(p, self._cover(p, False), src=u)}
+            ok = {idx: self._entry(p, self._cover(p, False), src=sep)}
             bad = {idx: replace(ok[idx], src_id=v)}
-            await self._src_pair("out", p, p, ok, bad, "exact", u)
+            await self._src_pair("out", p, p, ok, bad, "exact", sep)
             await self._src_pair("out", p, p, bad, ok, "mismatch", v)
         await self._clear("in")
         await self._clear("out")
@@ -1272,7 +1288,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             enabled=True,
             read_allowed=True,
             write_allowed=True,
-            allow_ns=bool(prot1),
+            allow_ns=bool(mk(start, False).fns),
             allow_burst=burst,
             src_id=0,
             group_id=self.rng.randrange(16),
@@ -1399,7 +1415,8 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         for inst in ("in", "out"):
             s = self.stats[inst]
             line = " ".join(f"{k}={v}" for k, v in s.items())
-            zero = [k for k in s if s[k] == 0]
+            # Corner cell e runs inbound only.
+            zero = [k for k in s if s[k] == 0 and (inst, k) != ("out", "ar_aw_diverge")]
             assert not zero, (
                 f"CTL-FILTER-RAND FAIL: seed={self.random_seed()} inst={inst} zero={zero} {line}"
             )

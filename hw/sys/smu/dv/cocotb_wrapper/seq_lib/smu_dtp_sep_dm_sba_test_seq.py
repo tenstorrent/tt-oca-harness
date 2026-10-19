@@ -114,12 +114,14 @@ OUTBOUND_START_ADDR = _indexed_addr(
     "SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", OUTBOUND_ENTRY
 )
 OUTBOUND_END_ADDR = _indexed_addr("SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", OUTBOUND_ENTRY)
-# Secure read and write, enabled, bursts allowed; ALLOW_NS stays clear because
-# the match on prot[1] is exact and the debug module's system bus is secure.
+# Non-secure read and write, enabled, bursts allowed. The match on prot[1] is
+# exact, and the SEP outbound path delivers EGRESS_ADDR, whose bit 55 is clear,
+# non-secure whatever the debug module's system bus issues.
 OUTBOUND_CFG_OPEN = (
     c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm")
     | c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm")
     | c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm")
+    | c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm")
     | c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm")
 )
 # One page of the SEP map that is neither SEP-local (``memory_map.adoc``: the

@@ -74,7 +74,6 @@ from seq_lib.sep_outbound_contention_seq import (
     DMA_DST,
     DMA_PROT,
     DMA_SRC,
-    DMA_USER,
     IDLE_CLOCKS,
     INITS,
     LSU_PROT,
@@ -87,6 +86,7 @@ from seq_lib.sep_outbound_contention_seq import (
     PinWatch,
     ResponderDelay,
     Txn,
+    out_attr,
     port_view,
     run_all,
 )
@@ -510,7 +510,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         return done, total, max(0.0, (t_last - t_rel) / 1000.0)
 
     def _expect_attr(self) -> dict:
-        return {"lsu": (self.c.lsu_user, LSU_PROT), "dma": (DMA_USER, DMA_PROT)}
+        return {"lsu": out_attr(LSU_PROT), "dma": out_attr(DMA_PROT)}
 
     def _check_session_requests(self, s, chk: str) -> None:
         beats = self.out.beats[s.meter.out0 :]

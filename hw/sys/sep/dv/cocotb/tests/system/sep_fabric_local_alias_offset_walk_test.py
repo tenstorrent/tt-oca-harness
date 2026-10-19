@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_common import outbound_ns
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -239,7 +240,7 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
                 win = exact_window(target)
                 await outf.program_window(e, *win)
                 await outf.check_window(e, "alias-exact")
-                await outf.set_enabled(e, True)
+                await outf.set_enabled(e, True, ns=outbound_ns("smu", target))
                 await alias.program(r, p.hit_start, end, offset, True)
                 await self._hit(p, target, win)
                 counts["HIT"] += 1

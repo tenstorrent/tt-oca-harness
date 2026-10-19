@@ -536,6 +536,7 @@ static void out_entry_check(uint32_t i, uint64_t start, uint64_t endv, uint32_t 
      FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm)
 #define CFG_NS FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm
 #define CFG_SRC(s) ((uint32_t)(s) << FILTER_CTRL__FILTER_CONFIG__SRC_ID_bp)
+#define SEP_SRC_ID 15u // sep_pkg::SepSourceId, set by the SMU path
 
 static uint64_t ap_out_addr(void) {
     uint64_t off = ((uint64_t)g_p[PAP_OFF_HI] << 32) | g_p[PAP_OFF_LO];
@@ -600,7 +601,8 @@ static void outbound_legs(void) {
 
 // ---- Step 7: source-ID stack over the SMU window word ----
 // The stack covers the mailbox entry too, so nothing is printed from the
-// first entry write until entry 0 is restored.
+// first entry write until entry 0 is restored. Every entry admits the write
+// except entry 29, SEP's source ID with NS 1, the attributes the SMU path sets.
 static void stack_leg(void) {
     uint64_t smu = g_p[PSMU];
     stage_src(SRAM + B_OUT + 0x20u, 2u, 0x52u);
@@ -609,18 +611,20 @@ static void stack_leg(void) {
     g_frb_rng = 0;
     g_frb_sum = FNV0;
     for (uint32_t i = 0; i < 15u; i++) out_entry(i, smu, smu + 7u, CFG_RW_EN | CFG_SRC(i + 1u));
-    for (uint32_t i = 0; i < 15u; i++)
+    for (uint32_t i = 0; i < 14u; i++)
         out_entry(15u + i, smu, smu + 7u, CFG_RW_EN | CFG_NS | CFG_SRC(i + 1u));
     uint32_t ro =
         FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm;
-    out_entry(30, smu, smu + 7u, ro);
-    out_entry(31, smu, smu + 7u, ro | CFG_NS);
+    out_entry(29, smu, smu + 7u, ro | CFG_NS | CFG_SRC(SEP_SRC_ID));
+    out_entry(30, smu, smu + 7u, CFG_RW_EN);
+    out_entry(31, smu, smu + 7u, CFG_RW_EN | CFG_NS);
     for (uint32_t i = 0; i < 15u; i++)
         out_entry_check(i, smu, smu + 7u, CFG_RW_EN | CFG_SRC(i + 1u));
-    for (uint32_t i = 0; i < 15u; i++)
+    for (uint32_t i = 0; i < 14u; i++)
         out_entry_check(15u + i, smu, smu + 7u, CFG_RW_EN | CFG_NS | CFG_SRC(i + 1u));
-    out_entry_check(30, smu, smu + 7u, ro);
-    out_entry_check(31, smu, smu + 7u, ro | CFG_NS);
+    out_entry_check(29, smu, smu + 7u, ro | CFG_NS | CFG_SRC(SEP_SRC_ID));
+    out_entry_check(30, smu, smu + 7u, CFG_RW_EN);
+    out_entry_check(31, smu, smu + 7u, CFG_RW_EN | CFG_NS);
     uint32_t rb1_bad = g_frb_bad, rb1_sum = g_frb_sum, rng1 = g_frb_rng;
     uint32_t bad_idx = g_frb_idx, bad_c = g_frb_c;
 
@@ -647,10 +651,8 @@ static void stack_leg(void) {
     g_frb_bad = 0;
     g_frb_rng = 0;
     g_frb_sum = FNV0;
-    out_entry(30, smu, smu + 7u, CFG_RW_EN);
-    out_entry(31, smu, smu + 7u, CFG_RW_EN | CFG_NS);
-    out_entry_check(30, smu, smu + 7u, CFG_RW_EN);
-    out_entry_check(31, smu, smu + 7u, CFG_RW_EN | CFG_NS);
+    out_entry(29, smu, smu + 7u, CFG_RW_EN | CFG_NS | CFG_SRC(SEP_SRC_ID));
+    out_entry_check(29, smu, smu + 7u, CFG_RW_EN | CFG_NS | CFG_SRC(SEP_SRC_ID));
     uint32_t rb2_bad = g_frb_bad, rb2_sum = g_frb_sum, rng2 = g_frb_rng;
     uint32_t st2 = dma_run(SRAM + B_OUT + 0x20u, (uint32_t)smu, 8u, 1, 1);
     uint32_t pre2 = g_pre;

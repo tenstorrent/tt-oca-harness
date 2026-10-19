@@ -5128,9 +5128,10 @@ module sep_fcov (
   // sep_fabric_outbound_route_cg
   // ---------------------------------------------------------------------
   // cp_route_class_dir code {class, dir}. cp_out_attr codes: 1..6 route
-  // {smu, ap, stee} x prot[1] {0, 1} with AxPROT as issued; 7 ap and 8 stee
-  // with AxUSER 0 while the LSU drove non-zero; 9 smu with the issued
-  // non-zero AxUSER; 10 DMA on smu with AxUSER 0.
+  // {smu, ap, stee} x issued prot[1] {0, 1} with the AxPROT its path sets
+  // (NS 1 for ap, the inverse of address bit 55 for smu and stee); 7 ap and
+  // 8 stee with AxUSER 0 while the LSU drove non-zero; 9 smu with SEP's ID
+  // while the LSU drove another value; 10 DMA on smu with SEP's ID.
   covergroup sep_fabric_outbound_route_cg with function sample (
       logic [3:0] cls_dir,
       logic own_cls,
@@ -5141,7 +5142,7 @@ module sep_fcov (
       logic smc_ready,
       logic [3:0] attr,
       logic own_attr,
-      logic [2:0] hibit,
+      logic [4:0] hibit,
       logic own_hibit
   );
     option.per_instance = 1;
@@ -5184,20 +5185,33 @@ module sep_fcov (
       bins stee_prot1_1 = {4'd6};
       bins ap_user_others = {4'd7};
       bins stee_user_others = {4'd8};
-      bins smu_user_kept = {4'd9};
-      bins dma_smu_user_zero = {4'd10};
+      bins smu_user_sep = {4'd9};
+      bins dma_smu_user_sep = {4'd10};
     }
-    // {class 0 AP with output address bit 55 set, 1 STEE with bit 55 clear,
-    // AxPROT[1], dir}: AxPROT leaves the port as issued.
+    // {path (0 ap, 1 smu, 2 stee), output address bit 55, issued AxPROT[1],
+    // dir}, each with the AxPROT its path sets: ap at bit 55 set, where NS
+    // stays 1, and smu and stee at bit 55 clear (NS 1) and set (NS 0).
     cp_out_hibit: coverpoint hibit iff (own_hibit) {
-      bins ap_b55_prot1_0_r = {3'b0_0_0};
-      bins ap_b55_prot1_0_w = {3'b0_0_1};
-      bins ap_b55_prot1_1_r = {3'b0_1_0};
-      bins ap_b55_prot1_1_w = {3'b0_1_1};
-      bins stee_prot1_0_r = {3'b1_0_0};
-      bins stee_prot1_0_w = {3'b1_0_1};
-      bins stee_prot1_1_r = {3'b1_1_0};
-      bins stee_prot1_1_w = {3'b1_1_1};
+      bins ap_b55_1_prot1_0_r = {5'b00_1_0_0};
+      bins ap_b55_1_prot1_0_w = {5'b00_1_0_1};
+      bins ap_b55_1_prot1_1_r = {5'b00_1_1_0};
+      bins ap_b55_1_prot1_1_w = {5'b00_1_1_1};
+      bins smu_b55_0_prot1_0_r = {5'b01_0_0_0};
+      bins smu_b55_0_prot1_0_w = {5'b01_0_0_1};
+      bins smu_b55_0_prot1_1_r = {5'b01_0_1_0};
+      bins smu_b55_0_prot1_1_w = {5'b01_0_1_1};
+      bins smu_b55_1_prot1_0_r = {5'b01_1_0_0};
+      bins smu_b55_1_prot1_0_w = {5'b01_1_0_1};
+      bins smu_b55_1_prot1_1_r = {5'b01_1_1_0};
+      bins smu_b55_1_prot1_1_w = {5'b01_1_1_1};
+      bins stee_b55_0_prot1_0_r = {5'b10_0_0_0};
+      bins stee_b55_0_prot1_0_w = {5'b10_0_0_1};
+      bins stee_b55_0_prot1_1_r = {5'b10_0_1_0};
+      bins stee_b55_0_prot1_1_w = {5'b10_0_1_1};
+      bins stee_b55_1_prot1_0_r = {5'b10_1_0_0};
+      bins stee_b55_1_prot1_0_w = {5'b10_1_0_1};
+      bins stee_b55_1_prot1_1_r = {5'b10_1_1_0};
+      bins stee_b55_1_prot1_1_w = {5'b10_1_1_1};
     }
   endgroup
 
@@ -5333,7 +5347,11 @@ module sep_fcov (
     }
     cp_src_id_class: cross cp_inst, cp_src iff (own_m);
     cp_ar_aw: coverpoint ar_aw_div iff (own_m) {option.weight = 0; bins winner_differs = {1'b1};}
-    cp_ar_aw_independent: cross cp_inst, cp_ar_aw iff (own_m);
+    cp_ar_aw_independent: cross cp_inst, cp_ar_aw iff (own_m) {
+      // An outbound path sets NS from the address, so the read and the write of
+      // one address reach the outbound filter with the same NS.
+      ignore_bins out_same_ns = binsof (cp_inst.out);
+    }
     // 1 lowest_allow, 2 perm_block, 3 perm_block_hides_allow,
     // 4 fallthrough_allow, 5 no_match.
     cp_win: coverpoint winner iff (own_m) {
@@ -6292,27 +6310,30 @@ module sep_fcov (
                                                 ((c == 3'd1) && (smu_base_i == FSmuResetBase) && (smu_size_i == FSmuResetSize))
                 ? ((oa[55:3] == smu_base_i[55:3]) ? 2'd1 :
                    (oa[55:3] == (smu_base_i + smu_size_i - 56'd1) >> 3) ? 2'd2 : 2'd0) : 2'd0,
-                                                own_route, 4'd0, 1'b0, 1'b0, 4'd0, 1'b0, 3'd0,
+                                                own_route, 4'd0, 1'b0, 1'b0, 4'd0, 1'b0, 5'd0,
                                                 1'b0);
           at = 4'd0;
-          if ((c inside {3'd1, 3'd3, 3'd4}) && (op == t.prot) && (t.init == INIT_LSU)) begin
-            at = (c == 3'd1) ? 4'd1 : (c == 3'd3) ? 4'd3 : 4'd5;
-            at = at + 4'(op[1]);
+          if ((c inside {3'd1, 3'd2, 3'd3, 3'd4}) && (t.init == INIT_LSU) &&
+              (op == {t.prot[2], (c == 3'd3) || !oa[55], t.prot[0]})) begin
+            logic [1:0] path;
+            path = (c == 3'd3) ? 2'd0 : (c == 3'd4) ? 2'd2 : 2'd1;
+            if (c != 3'd2) at = ((c == 3'd1) ? 4'd1 : (c == 3'd3) ? 4'd3 : 4'd5) + 4'(t.prot[1]);
             u_sep_fabric_outbound_route_cg.sample(
-                4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, at, own_route, {(c == 3'd4), op[1], w},
-                own_route && (c != 3'd1) && (oa[55] == (c == 3'd3)));
+                4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, at, own_route && (at != 4'd0),
+                {path, oa[55], t.prot[1], w}, own_route);
           end
           if ((c inside {3'd3, 3'd4}) && (t.init == INIT_LSU) && (t.user[3:0] != 4'd0) && (ou == 12'd0)) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0,
-                                                  (c == 3'd3) ? 4'd7 : 4'd8, own_route, 3'd0, 1'b0);
+                                                  (c == 3'd3) ? 4'd7 : 4'd8, own_route, 5'd0, 1'b0);
           end
-          if ((c == 3'd1) && (t.init == INIT_LSU) && (t.user != 12'd0) && (ou == t.user)) begin
+          if ((c == 3'd1) && (t.init == INIT_LSU) && (t.user[3:0] != sep_pkg::SepSourceId) &&
+              (ou == 12'(sep_pkg::SepSourceId))) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd9,
-                                                  own_route, 3'd0, 1'b0);
+                                                  own_route, 5'd0, 1'b0);
           end
-          if ((c == 3'd1) && (t.init == INIT_DMA) && (ou == 12'd0)) begin
+          if ((c == 3'd1) && (t.init == INIT_DMA) && (ou == 12'(sep_pkg::SepSourceId))) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd10,
-                                                  own_dma, 3'd0, 1'b0);
+                                                  own_dma, 5'd0, 1'b0);
           end
           if (c inside {3'd3, 3'd4}) begin
             logic [3:0] rg;
@@ -6345,7 +6366,7 @@ module sep_fcov (
         end
         u_sep_fabric_outbound_route_cg.sample(
             (smc_wr_cls == 3'd5 || smc_rd_cls == 3'd5) ? {3'd5, w} : 4'd0, own_smc, 2'd0, 1'b0, sc,
-            own_smc, (smc_fuse_done_i === 1'b1), 4'd0, 1'b0, 3'd0, 1'b0);
+            own_smc, (smc_fuse_done_i === 1'b1), 4'd0, 1'b0, 5'd0, 1'b0);
         if (t.init == INIT_DMA) begin
           logic [11:0] su;
           logic [7:0]  sl;

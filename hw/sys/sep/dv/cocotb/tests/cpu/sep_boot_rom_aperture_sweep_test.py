@@ -154,10 +154,12 @@ NMI_VEC_ADDR = _CPU_CTRL.addr("SEP_NMI_VEC")
 
 # Outbound mailbox (tb/sep_outbound_mbx.sv, the SMU_GLOBAL_BASE_ADDR reset value).
 MBX = _CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR") & _CPU_CTRL.mask("SMU_GLOBAL_BASE_ADDR")
+# The mailbox address has bit 55 clear, so the SMU path delivers it non-secure.
 FILTER_CFG_OPEN = (
     _OUTF.field_mask("FILTER_CONFIG", "read_allowed")
     | _OUTF.field_mask("FILTER_CONFIG", "write_allowed")
     | _OUTF.field_mask("FILTER_CONFIG", "entry_enabled")
+    | _OUTF.field_mask("FILTER_CONFIG", "allow_ns")
     | _OUTF.field_mask("FILTER_CONFIG", "allow_burst")
     | (_OUTF.reset("FILTER_CONFIG") & _OUTF.field_mask("FILTER_CONFIG", "data_bus_width"))
 )

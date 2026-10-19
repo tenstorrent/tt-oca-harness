@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.sep_fabric_common import outbound_ns, outbound_user
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_filter_model import FilterEntry
 from env.sep_seeded_rng import SepSeededRng
@@ -65,12 +66,18 @@ ASID_RESET = _D.reset32("ADDR_SPACE_ID")
 OUT_ENTRY = 4
 IN_ENTRY = 0
 # AxPROT of the LSU (hw/sys/sep/doc/cpu.adoc, AxPROT table) and of the SMN
-# inbound master; the Secure DMA master leaves AxUSER at zero and issues
-# AxPROT 0b001 (hw/sys/sep/doc/fabric.adoc, hw/sys/sep/doc/dma.adoc, master path).
+# inbound master; the Secure DMA master issues AxPROT 0b001
+# (hw/sys/sep/doc/fabric.adoc, hw/sys/sep/doc/dma.adoc, master path).
 LSU_PROT = 0b001
 SYS_PROT = 0b000
 DMA_PROT = 0b001
-DMA_USER = 0
+
+
+def out_attr(prot: int) -> tuple[int, int]:
+    """(AxUSER, AxPROT) of a request to PAGE as the SMU path delivers it to PR-OUT."""
+    return outbound_user("smu"), (prot & 0b101) | (outbound_ns("smu", PAGE) << 1)
+
+
 IDLE_CLOCKS = 256
 # The bus carrying each initiator's own accesses, and the lowest AXI ID the
 # outbound traffic of that bus uses. s_axi ID 0 is the CSR traffic of the DMA
@@ -752,7 +759,7 @@ class OutboundLeaf:
                 enabled=True,
                 read_allowed=True,
                 write_allowed=True,
-                allow_ns=False,
+                allow_ns=bool(outbound_ns("smu", PAGE)),
                 allow_burst=True,
                 src_id=0,
             ),

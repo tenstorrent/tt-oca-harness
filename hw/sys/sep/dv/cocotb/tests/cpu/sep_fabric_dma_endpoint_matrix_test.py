@@ -18,9 +18,10 @@ model of the staged data and the fabric taps:
                   word reaches PR-EXT at 0x3FFF_FFF8, the port answers DECERR and
                   the DMA reports a bus error.
 * CHK-DMA-USER    the source-ID stack over the SMU window word refuses the DMA
-                  write and its permission flip admits it; every DMA beat on
-                  PR-OUT carries AxUSER 0 and the routed address; the CPU store
-                  carries a non-zero source ID (SEP's ID, not OTHERS).
+                  write only at SEP's source ID with NS 1, and its permission
+                  flip admits it; every DMA beat on PR-OUT carries the routed
+                  address and the source ID of its path, OTHERS (0) on the AP
+                  path and SEP's ID on the SMU path, as does the CPU store.
 * CHK-DMA-EP-REG  SCRATCH[0], SPI CSID and SEP_SW_DEBUG at a fixed address in
                   both directions; the SW_RESET_N read.
 * CHK-DMA-EP-FILT the DMA read of inbound entry 0 FILTER_CONFIG.
@@ -53,7 +54,7 @@ from cocotb.utils import get_sim_time
 from env.sep_bh_smc import aperture_plusargs
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
-from env.sep_fabric_common import RESP_DECERR
+from env.sep_fabric_common import RESP_DECERR, outbound_user
 from env.sep_fabric_tap import (
     AXPROT_DMA,
     SepFabricTap,
@@ -720,12 +721,14 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
 
         _, r, text = self._one("STACK")
+        sep_src = outbound_user("smu") << F_SRC_ID_LSB
         stack = [(rw_en | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(15)]
-        stack += [(rw_en | ns | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(15)]
+        stack += [(rw_en | ns | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(14)]
         ro_en = F_READ_ALLOWED | F_ENTRY_ENABLED
-        stack += [(ro_en, smu, smu + 7), (ro_en | ns, smu, smu + 7)]
+        stack += [(ro_en | ns | sep_src, smu, smu + 7)]
+        stack += [(rw_en, smu, smu + 7), (rw_en | ns, smu, smu + 7)]
         exp1 = self._filter_sum(stack)
-        exp2 = self._filter_sum([(rw_en, smu, smu + 7), (rw_en | ns, smu, smu + 7)])
+        exp2 = self._filter_sum([(rw_en | ns | sep_src, smu, smu + 7)])
         self.logger.info(
             "OBS-FILTER-RANGE: stack START/END read-back differences=%d, after the flip=%d (logged)",
             r["rng1_diff"],
@@ -747,36 +750,37 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         self._recovery_after("stack")
 
-        # PR-OUT: every DMA beat carries AxUSER 0 and the routed address.
+        # PR-OUT: every DMA beat carries the source ID of its path and the routed address.
         legs = (
-            ("out_ap", [self.ep.ap_out, self.ep.ap_out + 4]),
-            ("out_smu", [smu, smu + 4]),
-            ("stack", [smu, smu + 4]),
+            ("out_ap", "ap", [self.ep.ap_out, self.ep.ap_out + 4]),
+            ("out_smu", "smu", [smu, smu + 4]),
+            ("stack", "smu", [smu, smu + 4]),
         )
-        for leg, exp_addrs in legs:
+        for leg, path, exp_addrs in legs:
             leg_i = self._leg_index(leg)
+            want = outbound_user(path)
             aws = [b for b in self._beats("PR-OUT", leg_i, "aw") if b.addr != STDOUT]
-            bad = [b.fmt() for b in aws if b.user != 0]
+            bad = [b.fmt() for b in aws if b.user != want]
             addrs = [b.addr for b in aws]
             assert not bad and addrs == exp_addrs, (
-                f"CHK-DMA-USER FAIL: PR-OUT in {leg}: beats {[b.fmt() for b in aws]}; expected AxUSER 0 at "
-                f"{[hex(a) for a in exp_addrs]}"
+                f"CHK-DMA-USER FAIL: PR-OUT in {leg}: beats {[b.fmt() for b in aws]}; expected "
+                f"AxUSER {want} at {[hex(a) for a in exp_addrs]}"
             )
             self.logger.info(
-                "CHK-DMA-USER PASS: probe=PR-OUT leg=%s beats=%d user_nonzero=0 addr=%s",
+                "CHK-DMA-USER PASS: probe=PR-OUT leg=%s path=%s beats=%d user=%d addr=%s",
                 leg,
+                path,
                 len(aws),
+                want,
                 ",".join(f"0x{a:x}" for a in addrs),
             )
         leg_i = self._leg_index("out_cpu")
         cpu = [b for b in self._beats("PR-OUT", leg_i, "aw") if b.addr == smu]
         assert cpu, "CHK-DMA-USER FAIL: the CPU store to the SMU window word shows no PR-OUT beat"
-        # The CPU masters drive SEP's source ID, not OTHERS (0); the number is
-        # not stated, so the value is logged.
         cpu_ids = [None if b.user is None else b.user & SRC_ID for b in cpu]
-        assert all(i not in (None, 0) for i in cpu_ids), (
+        assert all(i == outbound_user("smu") for i in cpu_ids), (
             f"CHK-DMA-USER FAIL: the CPU store to the SMU window carries source ID {cpu_ids}; "
-            "expected SEP's ID, not OTHERS (0)"
+            f"expected SEP's ID {outbound_user('smu')}"
         )
         self.logger.info(
             "OBS-CPU-SRC-ID: cpu_store_to_smu user=%s (value logged)", [b.user for b in cpu]

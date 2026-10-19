@@ -10,13 +10,15 @@
 // Local-master requests are widened from 32 to 56 address bits, pass the 16-region alias
 // remap and a register cut, and are decoded in priority order: the SMC aperture to
 // sep_ext_to_smc_axi_req_o unfiltered; the SMU aperture or any address at or above
-// 0x1_0000_0000 to the outbound filter; the AP and STEE regions through output remaps that
-// set AxUSER to OthersSourceId, then to the outbound filter; everything else to the
-// peripheral xbar. SMN inbound requests pass an axi_cut and the inbound filter, have SEP_GLOBAL_BASE_ADDR
-// within SEP_REGION_SIZE rebased to 0, and enter the same xbar. The xbar serves the mailbox
-// and system CSR windows and forwards other addresses below 0x4000_0000, truncated to 32
-// address bits with a 3-bit ID, on smn_inbound_to_sep_axi_req_o. Both filters block by
-// default and check the 4-bit source ID and the non-secure bit.
+// 0x1_0000_0000 to the outbound filter with AxUSER set to SepSourceId and AxPROT[1] set to the
+// inverse of address bit 55; the AP and STEE regions through output remaps that set AxUSER to
+// OthersSourceId and AxPROT[1] to 1 (AP) or to the inverse of bit 55 of the remapped address
+// (STEE), then to the outbound filter; everything else to the peripheral xbar. No path changes
+// address bit 55. SMN inbound requests pass an axi_cut and the inbound filter, have
+// SEP_GLOBAL_BASE_ADDR within SEP_REGION_SIZE rebased to 0, and enter the same xbar. The xbar
+// serves the mailbox and system CSR windows and forwards other addresses below 0x4000_0000,
+// truncated to 32 address bits with a 3-bit ID, on smn_inbound_to_sep_axi_req_o. Both filters
+// block by default and check the 4-bit source ID and the non-secure bit.
 
 module sep_system_peripherals (
   input  logic clk_i,                         // System clock.
@@ -111,6 +113,7 @@ module sep_system_peripherals (
   sep_pkg::sep_system_peripherals_internal_axi_req_t [sep_pkg::AddressRemapDemuxPorts-1:0]  sep_system_peripheral_56_remapped_from_demux_axi_reqs;
   sep_pkg::sep_system_peripherals_internal_axi_resp_t [sep_pkg::AddressRemapDemuxPorts-1:0] sep_system_peripheral_56_remapped_from_demux_axi_resps;
 
+  sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_ext_to_smu_axi_req;
   sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_ap_remapped_axi_req;
   sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_ap_remapped_axi_resp;
   sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_stee_remapped_axi_req;
@@ -319,7 +322,9 @@ module sep_system_peripherals (
     .REGION_BASE        (sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR),
     .IDX_START          (sep_pkg::AP_OUTPUT_REMAP_IDX_START),
     .USER_OVERRIDE_EN   (1'b1),
-    .USER_OVERRIDE_VAL  (sep_pkg::OthersSourceId)
+    .USER_OVERRIDE_VAL  (sep_pkg::OthersSourceId),
+    .PROT_NS_OVERRIDE_EN (1'b1),
+    .PROT_NS_OVERRIDE_VAL(1'b1)
   ) u_ap_remap (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
@@ -346,7 +351,8 @@ module sep_system_peripherals (
     .REGION_BASE        (sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_BASE_ADDR),
     .IDX_START          (sep_pkg::STEE_OUTPUT_REMAP_IDX_START),
     .USER_OVERRIDE_EN   (1'b1),
-    .USER_OVERRIDE_VAL  (sep_pkg::OthersSourceId)
+    .USER_OVERRIDE_VAL  (sep_pkg::OthersSourceId),
+    .PROT_NS_FROM_ADDR_EN(1'b1)
   ) u_stee_remap (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
@@ -359,6 +365,19 @@ module sep_system_peripherals (
     .axi_remapped_req_o (sep_stee_remapped_axi_req),
     .axi_remapped_resp_i(sep_stee_remapped_axi_resp)
   );
+
+  ////////////////////////////////
+  // SMU Path AxUSER and AxPROT //
+  ////////////////////////////////
+
+  always_comb begin
+    sep_ext_to_smu_axi_req            = sep_system_peripheral_56_remapped_from_demux_axi_reqs[sep_pkg::SEP_EXT_TO_SMU];
+    sep_ext_to_smu_axi_req.aw.user    = sep_pkg::sep_56_64_6_12_axi_user_t'(sep_pkg::SepSourceId);
+    sep_ext_to_smu_axi_req.w.user     = sep_pkg::sep_56_64_6_12_axi_user_t'(sep_pkg::SepSourceId);
+    sep_ext_to_smu_axi_req.ar.user    = sep_pkg::sep_56_64_6_12_axi_user_t'(sep_pkg::SepSourceId);
+    sep_ext_to_smu_axi_req.aw.prot[1] = ~sep_ext_to_smu_axi_req.aw.addr[55];
+    sep_ext_to_smu_axi_req.ar.prot[1] = ~sep_ext_to_smu_axi_req.ar.addr[55];
+  end
 
   ////////////////////////////////
   // AXI Mux to Outbound Filter //
@@ -391,7 +410,7 @@ module sep_system_peripherals (
     .clk_i                       (clk_i),
     .rst_ni                      (rst_ni),
     .test_i                      (test_en_i),
-    .slv_reqs_i                  ({sep_ap_remapped_axi_req, sep_stee_remapped_axi_req, sep_system_peripheral_56_remapped_from_demux_axi_reqs[sep_pkg::SEP_EXT_TO_SMU]}),
+    .slv_reqs_i                  ({sep_ap_remapped_axi_req, sep_stee_remapped_axi_req, sep_ext_to_smu_axi_req}),
     .slv_resps_o                 ({sep_ap_remapped_axi_resp, sep_stee_remapped_axi_resp, sep_system_peripheral_56_remapped_from_demux_axi_resps[sep_pkg::SEP_EXT_TO_SMU]}),
     .mst_req_o                   (pre_outbound_filter_axi_req),
     .mst_resp_i                  (pre_outbound_filter_axi_resp)

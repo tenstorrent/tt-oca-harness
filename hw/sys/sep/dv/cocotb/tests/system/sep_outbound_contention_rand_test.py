@@ -59,7 +59,8 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     accepted read, and none after the idle window.
   CHK-RESP-ROUTE    every response reaches the initiator that issued it.
   CHK-ATTR-USER, CHK-ATTR-PROT
-                    AxUSER and AxPROT of every PR-OUT request per initiator.
+                    AxUSER and AxPROT of every PR-OUT request per initiator, as
+                    the SMU path sets them: SEP's source ID and NS 1 for both.
   CHK-ATTR-ID-DISTINCT
                     at least one LSU request and one DMA request outstanding
                     at the port at once, and no such pair shares an ID.
@@ -77,7 +78,6 @@ from seq_lib.sep_outbound_contention_seq import (
     DMA_DST,
     DMA_PROT,
     DMA_SRC,
-    DMA_USER,
     IDLE_CLOCKS,
     INITS,
     LSU_PROT,
@@ -92,6 +92,7 @@ from seq_lib.sep_outbound_contention_seq import (
     Txn,
     id_overlap,
     max_outstanding,
+    out_attr,
     port_view,
     r_word,
     run_all,
@@ -774,8 +775,8 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         whole = port_view(self.layout, self.out.since(self.m0[0]), self.rsp.since(self.m0[1]))
         reqs = [r for r in whole.reqs if r.init is not None]
         exp = {
-            "lsu": (c.lsu_user, LSU_PROT),
-            "dma": (DMA_USER, DMA_PROT),
+            "lsu": out_attr(LSU_PROT),
+            "dma": out_attr(DMA_PROT),
             "sysif": (c.sys_user, SYS_PROT),
         }
         seen_u = {i: [] for i in INITS}
