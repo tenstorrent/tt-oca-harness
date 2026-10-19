@@ -33688,6 +33688,99 @@ The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
 
 '''''
 
+[[sec-smc_mailbox_cool_reset_recovery_test]]
+====== `smc_mailbox_cool_reset_recovery_test`
+
+*Source Module*: `smc_mailbox_cool_reset_recovery_test` (SV-UVM only)
+
+*Objective*: A cool reset clears occupied mailbox FIFO state, sticky errors,
+interrupt enables, thresholds and latched interrupt status; fresh traffic
+recovers without returning a pre-reset word.
+
+*BFM / Model*: Existing SEP_IN `ocah_axi_vip` and required `mailbox_fifo`
+feature. The request-derived model predicts paired queues, ERROR, IRQEN,
+thresholds, STATUS and read/write responses. IRQS data is checked by the
+sequence at designated milestones, not predicted by the model.
+
+*Test Coverage*: Two distinct mailbox pairs per pass, including pair 0 and
+the last pair in fixed pass slots. A holds two forward words and one reverse
+word; B holds one forward word. Overflow on A-out and underflow on B-in set
+errors. IRQEN differs from reset on A-out/B-in and both thresholds differ
+on A-out. IRQS on A-out is required non-zero. Other ports' default readbacks
+are consistency checks, not discriminating reset evidence.
+
+*Expectation Sources*: `axil_mailbox.rdl` supplies field masks, defaults,
+read-clear ERROR, threshold clamping and write-one-clear IRQS.
+`hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc` defines paired FIFO
+semantics, SLVERR on full writes/empty reads, and reset clearing queues,
+thresholds, errors and interrupt state/enables. `clk_rst.adoc` defines
+cool reset as a primary-reset source. Integration evidence for mailbox
+primary reset is `smc_internal_regs.sv`, `u_smc_axil_mailbox.rst_ni`;
+this reset-domain connection is taken from RTL, not independently specified
+for the mailbox by name. Geometry comes from `smc_pkg` and generated addresses.
+
+*Test Procedure*: Require the mailbox gate disabled and six-register default
+baselines on both ports of both pairs. Fill A's forward queue, provoke the
+overflow and underflow, and read ERROR as a positive control; recreate both
+errors without reading ERROR again, then load A's reverse and B's forward
+queues. Program/read back IRQEN and clamped thresholds; require populated
+STATUS and non-zero IRQS. Drain comparisons, pulse cool reset and wait for
+primary/warm release and fuse readiness. Read six default registers on all
+four ports before three formerly occupied directions are probed empty.
+Transfer four fresh words, check their identity and modeled full payload,
+then flush, clear errors, restore IRQEN/thresholds, acknowledge IRQS and
+read back all six registers. Bounds are bench limits, not device latency contracts.
+
+*Checkers*:
+
+[cols="1,2",options="header"]
+|===
+|Checker |Description
+|`CHK-MBX-RST-PRE` |Default baseline, clock-gate scope and discriminating pre-reset DUT state hold; failures stop the run
+|`CHK-MBX-RST-ASSERTED`, `CHK-MBX-RST-RELEASED` |Primary and warm reset reach both requested levels within bounds
+|`CHK-MBX-RST-EPOCH` |One cool reset and no cold reset occur
+|`CHK-MBX-RST-DEFAULTS` |Six generated defaults match on all four ports after reset
+|`CHK-MBX-RST-EMPTY` |Three formerly occupied queues return one known SLVERR response without timeout
+|`CHK-MBX-RST-RECOVERY` |Four fresh returned words carry the expected identity or payload
+|`CHK-MBX-RST-CLEAN` |Six register defaults match on all four ports after cleanup
+|`CHK-MBX-RST-SCOREBOARD` |No new mailbox comparison mismatch
+|`CHK-SB-MAILBOX-FIFO` |Required feature has activity, no mismatch and no unpaired item
+|`CHK-NONVAC` |141 mailbox memory accesses/comparisons and one clock-gate CSR read per pass
+|`CHK-SB-MIN-ACTIVITY`, `CHK-MEM-RESP`, `CHK-CSR-RESP`, `CHK-FUSE-SENSE-DONE` |Prior-pass activity, access responses and bring-up complete
+|===
+
+*Known Limitations*: No AXI transaction remains outstanding through reset.
+Only sequential aligned full-width/full-strobe accesses from SEP_IN are
+supported; another mailbox accessor is excluded. Unsupported accesses in the
+mailbox window stop the required feature. Mailbox clock gating, cold-only or
+warm-only reset, FLR and interrupt wires are not exercised. IRQS exact bits
+and timing before reset are not modeled; only non-zero pre-reset and default
+post-reset/cleanup values are checked by the sequence. The last pre-reset
+ERROR state is inferred from a repeated SLVERR access after its read-clear
+positive control, not read directly. Thresholds and IRQEN are discriminating
+only on the stated ports. FIFO occupancy evidence combines accepted pushes
+and STATUS, which has no numeric level field. Data X/Z is checked through
+the active read helper, not the passive model.
+The cleanup flush acts on FIFOs that recovery has already drained. Its response
+is checked, but its state-clearing effect and the model's flush behavior are
+not independently validated by this scenario.
+
+*Pass Criteria*: All required checks pass. Used alone,
+`+SMC_MAILBOX_RESET_SEQUENCE_NEGATIVE` changes 24 DEFAULTS, three EMPTY and
+four RECOVERY expectations per pass: 31 failures/pass or 496 for sixteen
+passes, without model mismatch or UVM_FATAL. PRE, reset transitions/epoch,
+CLEAN, NONVAC and response-validity prerequisites are not corrupted.
+Used alone, `+SMC_MAILBOX_FIFO_SCOREBOARD_NEGATIVE` corrupts every emitted
+mailbox prediction's response (OKAY and SLVERR exchange), and defined
+successful read data, without modifying shadow. It must produce 141
+mismatches/pass, one scenario scoreboard failure/pass and one final
+`CHK-SB-MAILBOX-FIFO` failure: 2273 errors for sixteen passes. The two
+negative controls are mutually exclusive. Reset-shadow mutation is a local,
+uncommitted validation experiment, not an enrolled test or persistent knob.
+The leaf runs only on demand in `mailbox_uvm_extended`.
+
+'''''
+
 [[sec-smc_fabric_reg_clock_gate_test]]
 ====== `smc_fabric_reg_clock_gate_test`
 
@@ -34993,6 +35086,7 @@ to make; its *Closes when* cell names the ruling that closes it.
 [cols="2,1,3,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
+|`smc_mailbox_cool_reset_recovery_test` |`mailbox_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_fabric_reg_clock_gate_test` |`cg_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf

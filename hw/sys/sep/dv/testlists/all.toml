@@ -38,7 +38,7 @@ tests = ["sep_axi_smoke_test"]
 # the size. `rom_fw` is not a member: it runs a third RTL target and states
 # firmware rather than hardware contracts. `all` is the coverage set.
 #
-# Sixteen members are pinned to one simulator, so a single-simulator run of `all`
+# Eighteen members are pinned to one simulator, so a single-simulator run of `all`
 # logs the members pinned to the other simulator as skipped_wrong_tool:
 # - sep_crypto_shadow_update_err_rand_test, VCS only (crypto.toml). It grades that the
 #   reads after an AES reset carry no X, which only a four-state simulator shows.
@@ -52,6 +52,9 @@ tests = ["sep_axi_smoke_test"]
 #   state after rst_ni, and Verilator is two-state.
 # - sep_cold_reset_phase_test and sep_scan_reset_override_test, VCS only
 #   (system.toml). They grade sub-cycle reset phases and walk the hierarchy.
+# - sep_scan_mode_state_hold_test and sep_test_en_pin_reach_test, VCS only
+#   (system.toml). The nets can hold X across the scan pulse, and the second
+#   walks the hierarchy.
 # - sep_cpu_reset_retention_test_dbg (memory.toml),
 #   sep_timer_clock_contract_test_dbg (system.toml) and
 #   sep_secure_tm_strap_sampling_test_dbg (efuse_lcc.toml), VCS only on the
@@ -72,7 +75,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml), as its run mode states. It
 #   grades the KM OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 256
+expected_count = 258
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -282,6 +285,8 @@ tests = [
     "sep_sw_reset_isolation_matrix_test",
     "sep_ip_reset_override_matrix_test",
     "sep_scan_reset_override_test",
+    "sep_scan_mode_state_hold_test",
+    "sep_test_en_pin_reach_test",
     "sep_cpu_reset_entry_test",
     "sep_cpu_reset_entry_test_real_sense",
     "sep_secure_tm_strap_sampling_test",
@@ -558,6 +563,8 @@ tests = [
     "sep_sw_reset_isolation_matrix_test",
     "sep_ip_reset_override_matrix_test",
     "sep_scan_reset_override_test",
+    "sep_scan_mode_state_hold_test",
+    "sep_test_en_pin_reach_test",
     "sep_secure_tm_strap_sampling_test",
     "sep_cpu_ctrl_reg_shape_test",
     "sep_timer_clock_contract_test",
@@ -879,7 +886,7 @@ tests = [
 # entries, sep_tcm_dma_aperture_ecc_test and
 # sep_debug_master_target_matrix_test_sba).
 name = "phase3_memory_boot_reset"
-expected_count = 24
+expected_count = 26
 tests = [
     "sep_boot_release_terms_test",
     "sep_boot_release_terms_test_smc_hold",
@@ -889,6 +896,8 @@ tests = [
     "sep_sw_reset_isolation_matrix_test",
     "sep_ip_reset_override_matrix_test",
     "sep_scan_reset_override_test",
+    "sep_scan_mode_state_hold_test",
+    "sep_test_en_pin_reach_test",
     "sep_cpu_reset_entry_test",
     "sep_cpu_reset_entry_test_real_sense",
     "sep_secure_tm_strap_sampling_test",

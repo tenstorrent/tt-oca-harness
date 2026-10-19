@@ -109,6 +109,7 @@ localparam int unsigned FcovOwnSepCpuDemuxUnmappedFetchTest = 527;
 localparam int unsigned FcovOwnSepDebugMasterTargetMatrixTest = 528;
 localparam int unsigned FcovOwnSepCpuIsaPmpCsrTest = 529;
 localparam int unsigned FcovOwnSepCpuZbeExecTest = 530;
+localparam int unsigned FcovOwnSepScanModeStateHoldTest = 531;
 
 // eFuse, lifecycle and SEC_DIS.
 localparam int unsigned FcovOwnSepEfuseWindowDecodeResetTest = 618;

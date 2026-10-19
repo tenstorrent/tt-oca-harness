@@ -115,6 +115,9 @@ localparam string SmcFeatureRegblockWide = "regblock_wide";
 localparam string SmcFeatureWdtCsr = "wdt_csr";
 
 localparam string SmcFeatureFabricReg = "fabric_reg";
+localparam string SmcFeatureMailboxFifo = "mailbox_fifo";
+
+`include "smc_mailbox_types.svh"
 
 // smc-clock-distribution.svg names the domains clocked by these gates.
 typedef enum int unsigned {
