@@ -822,6 +822,138 @@ claim and scope of this bypass for the leaves it lists. Real eFuse
 tests omit that bypass and let the RTL fuse-sense FSM finish against the
 generic eFuse model.
 
+[[sep-deferred-disposition]]
+=== Bench Stand-ins and Exceptions
+
+A stand-in is anything that answers in place of the mechanism a claim is
+about. Each entry has three fields: the claim that is accepted with the
+stand-in in place, why the real path is not needed, and the exact scope. Who
+approved an entry, against which revision, and when it is next reviewed are
+recorded in the pull request that adds or changes it. A test outside
+the scope of an entry is graded as if the stand-in were undeclared. Each entry
+has one command in <<sep-standin-recheck>> that shows it is still true of the
+tree.
+
+[[sep-standin-skip-fuse-sense]]
+==== `+skip_fuse_sense` on leaves that grade no fuse- or LC-derived state
+
+[cols="1,4"]
+|===
+|Claim accepted
+|With `+skip_fuse_sense`, the RTL raises `sep_fuse_sense_done_o` without
+sensing the OTP. The eFuse shadow and the LC decode stay at reset
+(`FEAT_CTRL` reads 0). The real sense path and the shadow content are not
+proven by these leaves. Each claim of a leaf in the scope holds at that reset
+decode, because no graded value of the leaf comes from fuse or LC state: the
+graded values are seeded stimulus, RDL reset values, firmware console lines
+or direct register reads. The `smc_fuse_sense_done` value that
+`sep_fabric_smc_route_test` and `sep_fabric_dma_endpoint_matrix_test` read is
+a testbench-driven SEP top input (`tb/tb_top.sv`), not SEP OTP data. The CPU
+local-alias remap that `sep_cpu_lsu_alias_window_twin_test` and
+`sep_cpu_ifu_lsu_alias_remap_matrix_test` grade takes only
+`SEP_LOCAL_BASE_ADDR` and fixed window constants
+(`hw/sys/sep/rtl/sep_cpu.sv`, `u_lsu_local_alias_remap`,
+`u_ifu_local_alias_remap`); `SEP_LOCAL_BASE_ADDR` is a plain `sw = rw`
+register (`hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl`), and the
+IFU AxPROT is a core output; no LC or fuse input reaches them. The SPI host
+and the secure DMA that `sep_spi_pad_speed_dir_matrix_test`,
+`sep_spi_pad_timing_cfg_rand_test`, `sep_spi_fifo_stall_watermark_rand_test`,
+`sep_spi_ot_host_csr_irq_rand_test` and `sep_dma_transfer_matrix_rand_test`
+grade take no LC or fuse input
+(`hw/sys/sep/rtl/sep_ot_spi_wrap.sv`, `hw/sys/sep/rtl/sep_dma_wrap.sv`). The
+mailboxes, the PIC, the bridge-fault and timeout registers of `SEP_CPU_CTRL`
+and the NMI vector that the eleven mailbox, IRQ and PIC leaves of the scope
+grade take no fuse content. The outbound port traffic, the responder delays
+and the crossbar limits that `sep_outbound_contention_rand_test` and
+`sep_outbound_stall_saturation_test` grade take no LC or fuse input; the
+outbound and inbound filter entries they program are plain registers. The
+inbound filter that these leaves program takes
+`feat_ctrl.sep_debug` (`hw/sys/sep/rtl/sep.sv`, `inbound_filter_skip_i`), and
+each of these leaves needs it at 0, the reset decode that `+skip_fuse_sense`
+leaves in place. Each clock-gater test port and AXI cell test input that
+`sep_test_en_pin_reach_test` grades is driven by `test_en_i`, by a constant or
+by the test input port of the module that contains it (`hw/sys/sep/rtl`); no
+LC or fuse input reaches these pins.
+
+|Why the real path is not needed
+|A test that does not need fuse content may use `+skip_fuse_sense`. The real
+sense path and the shadow are graded by the eFuse and LCC tests, which run
+without the plusarg.
+
+|Scope
+|The `+skip_fuse_sense` entry in the testlist `args` of these twenty-nine tests:
+`sep_fabric_alias_remap_attr_rand_test`, `sep_fabric_smc_route_test`,
+`sep_dma_transfer_matrix_rand_test`, `sep_mailbox_fifo_model_rand_test`,
+`sep_mailbox_access_error_inject_test`, `sep_mailbox_filter_type_matrix_test`,
+`sep_mailbox_reset_clear_test`, `sep_cpu_bridge_fault_matrix_rand_test`,
+`sep_cpu_ctrl_timeout_inert_rand_test`, `sep_outbound_contention_rand_test`,
+`sep_outbound_stall_saturation_test`, `sep_test_en_pin_reach_test`
+(`testlists/system.toml`);
+`sep_cpu_lsu_alias_window_twin_test`,
+`sep_fabric_dma_endpoint_matrix_test`, `sep_dma_basic_test`,
+`sep_cpu_ifu_lsu_alias_remap_matrix_test`,
+`sep_pic_irq_source_map_delivery_test`, `sep_pic_reg_rand_test`,
+`sep_pic_priority_gate_rand_test`,
+`sep_pic_pending_map_walk_rand_test`, `sep_nmi_vector_bark_rand_test`
+(`testlists/cpu.toml`);
+`sep_spi_ot_dma_tx_test`, `sep_spi_ot_flash_cmd_rand_test`,
+`sep_spi_pad_speed_dir_matrix_test`, `sep_spi_pad_timing_cfg_rand_test`,
+`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_ot_host_csr_irq_rand_test`,
+`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_dma_rx_test`
+(`testlists/spi.toml`).
+|===
+
+[[sep-standin-test-en-inventory]]
+==== Committed `test_en_i` pin inventory as the graded set of `sep_test_en_pin_reach_test`
+
+[cols="1,4"]
+|===
+|Claim accepted
+|`sep_test_en_pin_reach_test` grades the "every such input" reading of
+`hw/sys/sep/doc/port_table.adoc` (`test_en_i`: "Drives clock-gater test ports
+and AXI cell test inputs.") on the pins of the committed inventory
+`GRADED_PINS` (`cocotb/tests/system/sep_test_en_pin_inventory.py`), not on a
+set that the bench derives from the RTL when it runs. Selection rule (the
+SEP-owned boundary): the test inputs of the clock-gater and AXI cell instances
+that OCAH RTL instantiates, without the pins inside `sep_cpu`, on the
+`lsu_stub_all_live` build. Pins inside vendor IP or a third-party library are
+not graded. The expected value of each pin comes from the `port_table.adoc`
+sentence; the inventory sets only which pins are graded.
+
+|Why the real path is not needed
+|The specification names the two pin classes and no list of instances, so the
+graded set is a bench decision: the SEP-owned boundary. A committed list keeps the graded set independent of a source
+scan at run time: the hierarchy walk finds each inventory pin, an inventory
+pin that the walk does not find fails CTL-PIN-WALK by name, and the source
+ownership scan of `cocotb/env/sep_test_en_walk.py` only labels the walked pins
+in the log. The inventory changes only by a reviewed edit.
+
+|Scope
+|`GRADED_PINS` (172 pins: 1 clock gater, 171 AXI cells) as the graded set of
+CHK-TEST-EN-PINS and CTL-PIN-WALK in `sep_test_en_pin_reach_test`
+(`testlists/system.toml`). No other test grades these pins.
+|===
+
+[[sep-standin-recheck]]
+==== Re-confirming a stand-in
+
+[cols="2,3,3",options="header"]
+|===
+|Stand-in |Command |Expected
+
+|`+skip_fuse_sense` on the twenty-nine leaves
+|`grep -A9 'name = "<test>"' hw/sys/sep/dv/testlists/*.toml` for each test of
+the scope, then `grep -n 'BRINGUP LOG: feat_ctrl'` in any log of
+`sep_fabric_smc_route_test`
+|`+skip_fuse_sense` in the `args` of each of the twenty-nine entries, and
+`feat_ctrl=0x0000000000000000`, the reset decode.
+
+|`test_en_i` pin inventory
+|`python3 -c 'import sys; sys.path.insert(0, "hw/sys/sep/dv/cocotb"); from tests.system.sep_test_en_pin_inventory import GRADED_PINS as G; print(len(G), sum(c == "clock_gater" for _, c in G))'`,
+then `grep -n 'CTL-PIN-WALK:'` in any log of `sep_test_en_pin_reach_test`
+|`172 1`, and `CTL-PIN-WALK: graded=172 inventory=172 missing=0 class_mismatch=0`.
+|===
+
 === Environment Components
 
 ==== `SepEnv` / `SepEnvCfg`

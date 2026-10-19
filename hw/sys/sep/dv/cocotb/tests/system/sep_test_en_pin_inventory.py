@@ -9,7 +9,7 @@ clock-gater and AXI cell instances that OCAH RTL instantiates (clock gater:
 port ``test_en_i``; AXI cell: port ``test_i``), without the pins inside
 ``sep_cpu``. Pins inside vendor IP or a third-party library are not entries.
 The inventory changes only by a reviewed edit; the record of the scope is
-``hw/sys/sep/dv/docs/SEP_DEFERRED_DISPOSITION.adoc``
+``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``
 (``sep-standin-test-en-inventory``). The leaf grades every entry: an entry
 that the hierarchy walk does not find, or finds with another class, fails
 CTL-PIN-WALK by name. The inventory sets the scope of the "every such input"
