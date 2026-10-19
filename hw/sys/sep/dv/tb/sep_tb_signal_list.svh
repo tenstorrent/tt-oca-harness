@@ -193,6 +193,47 @@
 // km_sram_peek_o shows. A select of the read-only tap; it drives nothing in
 // the DUT. Default 0.
 `SEP_TB_IN(logic [12:0], km_sram_peek_addr_i)
+// Key Manager KMCSR IRQ_SET pulse (HK-IRQSET). Default 0. At the first falling
+// edge with km_irqset_arm_i at 1 and a non-zero km_irqset_mask_i, the IRQ_SET
+// field of each set mask bit (bit i is IRQ_STATUS bit i) is high for one clock.
+// One pulse per arm. Error inject, docs/SEP_TB_ARCH.adoc. See the force block
+// in tb_top.sv.
+`SEP_TB_IN(logic, km_irqset_arm_i)
+`SEP_TB_IN(logic [11:0], km_irqset_mask_i)
+// Key Manager CPU internal IRQ lines (HK-CPUIRQ). Default 0. At the first
+// falling edge with km_cpuirq_arm_i at 1 and a non-zero km_cpuirq_lines_i, bit
+// 0 drives PicoRV32 irq line 1 (EBREAK or illegal instruction) and bit 1 drives
+// line 2 (bus error) high for one clock. One pulse per arm. Error inject,
+// docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, km_cpuirq_arm_i)
+`SEP_TB_IN(logic [1:0], km_cpuirq_lines_i)
+// Key Manager KPV read-data bit flip (HK-KPV). Default 0. While
+// km_kpv_flip_en_i is 1, every KM-port read of the logical word index
+// km_kpv_flip_index_i (slot x 16 + word) returns the read data after the
+// descrambler with bit km_kpv_flip_bit_i inverted. The stored word does not
+// change. Error inject, docs/SEP_TB_ARCH.adoc. See the force block in
+// tb_top.sv.
+`SEP_TB_IN(logic, km_kpv_flip_en_i)
+`SEP_TB_IN(logic [9:0], km_kpv_flip_index_i)
+`SEP_TB_IN(logic [4:0], km_kpv_flip_bit_i)
+// Key Manager macro response parity flip (HK-PAR). Default 0. While
+// km_par_arm_i is 1, the N-th read response (N = km_par_n_i, from 1) since the
+// arm of the ROM (km_par_mem_i 0) or the SRAM (km_par_mem_i 1) reaches the KM
+// with parity bit km_par_lane_i inverted, for one clock. One flip per arm; N of
+// 0 leaves the hook idle. Error inject on the sep inputs km_rom_mem_rsp_i and
+// km_sram_mem_rsp_i, docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, km_par_arm_i)
+`SEP_TB_IN(logic, km_par_mem_i)
+`SEP_TB_IN(logic [1:0], km_par_lane_i)
+`SEP_TB_IN(logic [7:0], km_par_n_i)
+// Key Manager SRAM response latency (HK-LAT). Default 0. While
+// km_sram_lat_en_i is 1, a SRAM read response reaches the KM km_sram_lat_i
+// clocks after the accepted request, for a value of 2 or more sampled when the
+// macro answers; 0 and 1 keep the macro latency of 1. Top-port drive of the sep
+// input km_sram_mem_rsp_i, docs/SEP_TB_ARCH.adoc. See the force block in
+// tb_top.sv.
+`SEP_TB_IN(logic, km_sram_lat_en_i)
+`SEP_TB_IN(logic [3:0], km_sram_lat_i)
 // External TRNG stream driver (top-port drive of the sep input
 // ext_trng_axis_req_i[2:0], docs/SEP_TB_ARCH.adoc). Default 0. While bit i of
 // ext_trng_drive_en_i is 1, stream i carries tvalid ext_trng_tvalid_i[i], tdata
@@ -549,6 +590,23 @@
 `SEP_TB_OUT(logic, km_efuse_aw_valid_o)
 `SEP_TB_OUT(logic, km_efuse_aw_ready_o)
 `SEP_TB_OUT(logic [31:0], km_efuse_aw_addr_o)
+// KM-BUS (key-path part): the requests on the five KM key-path ports of the
+// crypto interconnect, ahead of the isolation stages: AR and AW valid, ready
+// and address. Index i (address at [32*i +: 32]) is bench isolate stage 8 + i:
+// 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
+`SEP_TB_OUT(logic [4:0], km_key_ar_valid_o)
+`SEP_TB_OUT(logic [4:0], km_key_ar_ready_o)
+`SEP_TB_OUT(logic [5*32-1:0], km_key_ar_addr_o)
+`SEP_TB_OUT(logic [4:0], km_key_aw_valid_o)
+`SEP_TB_OUT(logic [4:0], km_key_aw_ready_o)
+`SEP_TB_OUT(logic [5*32-1:0], km_key_aw_addr_o)
+// KM-OUTFIFO: fill level of the outbound FIFO of the KM mailbox, every clock.
+`SEP_TB_OUT(logic [8:0], km_outfifo_depth_o)
+// KM-LAT: the latency of the last completed KM SRAM read at the sep input
+// km_sram_mem_rsp_i, in clocks from the accepted request to rvalid, and the
+// count of completed reads since the bench reset.
+`SEP_TB_OUT(logic [7:0], km_sram_rd_lat_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_done_count_o)
 // HK-OTP and HK-STRM state: the OTP input is held by the inject; the
 // withdrawal pulse has been driven since the arm, and the sink TREADY in the
 // pulse clock; the sampler sink TVALID after the inject.
@@ -556,6 +614,21 @@
 `SEP_TB_OUT(logic, km_strm_wd_fired_o)
 `SEP_TB_OUT(logic, km_strm_wd_tready_o)
 `SEP_TB_OUT(logic, km_strm_sink_tvalid_o)
+// HK-IRQSET, HK-CPUIRQ, HK-KPV, HK-PAR and HK-LAT state: the IRQ_SET pulse has
+// been driven since the arm; the CPU IRQ line pulse has been driven since the
+// arm, and the PicoRV32 pending bits 2:1; the count of corrupted KPV reads
+// since the enable rose; the parity flip has been driven since the arm, the
+// read responses counted since the arm, and the byte lanes that the KM
+// interface parity-checks on the flipped response; the count of SRAM responses
+// that HK-LAT delayed since the bench reset.
+`SEP_TB_OUT(logic, km_irqset_fired_o)
+`SEP_TB_OUT(logic, km_cpuirq_fired_o)
+`SEP_TB_OUT(logic [1:0], km_cpuirq_pending_o)
+`SEP_TB_OUT(logic [31:0], km_kpv_flip_count_o)
+`SEP_TB_OUT(logic, km_par_fired_o)
+`SEP_TB_OUT(logic [7:0], km_par_resp_count_o)
+`SEP_TB_OUT(logic [3:0], km_par_rstrb_o)
+`SEP_TB_OUT(logic [31:0], km_sram_lat_delayed_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)

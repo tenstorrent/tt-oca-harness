@@ -23,12 +23,14 @@ ROMS += km_rom_scr
 RV32E_ROMS += km_rom_scr
 ROMS += km_rom_mbox_km
 RV32E_ROMS += km_rom_mbox_km
+ROMS += km_img_h
+RV32E_ROMS += km_img_h
 ARCH_FLAGS = -march=rv32i -mabi=ilp32
 $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(RV32E_ROMS))): \
         ARCH_FLAGS := -march=rv32e -mabi=ilp32e
 PARHEX := $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(ROMS)))
 
-.PHONY: all clean rom_main verify
+.PHONY: all clean rom_main rom_main_default rom_main_unrec verify
 
 all: $(PARHEX)
 
@@ -96,6 +98,24 @@ rom_main:
 	    OCAH_ROOT=$(OCH_ROOT) KM_BOOT_WIPE=0 KM_UNREC_WIPE=0
 	@test -s $(FW_BUILD_DIR)/rom_main.rom.parhex
 	@echo "[km_fw] built rom_main.rom.parhex -> $(FW_BUILD_DIR)/rom_main.rom.parhex"
+
+# rom_main_default and rom_main_unrec: the same KM application ROM with the wipe
+# knobs named in the target. rom_main_default keeps the shipped defaults
+# (KM_BOOT_WIPE=1 KM_UNREC_WIPE=1). rom_main_unrec turns the boot wipe off and
+# keeps the unrecoverable-fault wipe on (KM_BOOT_WIPE=0 KM_UNREC_WIPE=1).
+# [c_build.km_rom_main_default] and [c_build.km_rom_main_unrec] in
+# sep_sim_cfg.toml drive them. Each leaves its own image name in FW_BUILD_DIR:
+# $(FW_BUILD_DIR)/rom_main_default.rom.parhex and
+# $(FW_BUILD_DIR)/rom_main_unrec.rom.parhex.
+rom_main_default rom_main_unrec:
+	@test -n "$(FW_BUILD_DIR)" || { echo "$@: set FW_BUILD_DIR to a private build directory" >&2; exit 1; }
+	$(MAKE) -C $(KM_APPROM_DIR) build BUILD_DIR=$(FW_BUILD_DIR) \
+	    OCAH_ROOT=$(OCH_ROOT) $(KM_WIPE_KNOBS_$@)
+	@test -s $(FW_BUILD_DIR)/rom_main.rom.parhex
+	cp $(FW_BUILD_DIR)/rom_main.rom.parhex $(FW_BUILD_DIR)/$@.rom.parhex
+	@echo "[km_fw] built $@.rom.parhex -> $(FW_BUILD_DIR)/$@.rom.parhex"
+KM_WIPE_KNOBS_rom_main_default := KM_BOOT_WIPE=1 KM_UNREC_WIPE=1
+KM_WIPE_KNOBS_rom_main_unrec := KM_BOOT_WIPE=0 KM_UNREC_WIPE=1
 
 # The images take their KM register addresses from the generated map rather
 # than hand-typed literals: .S files run through the C preprocessor, so the

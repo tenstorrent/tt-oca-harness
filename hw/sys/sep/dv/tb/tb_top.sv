@@ -3575,6 +3575,64 @@ module sep_uvm_top
     assign km_efuse_aw_valid_o = `KM_TAP.efuse_req_o.aw_valid;
     assign km_efuse_aw_ready_o = `KM_TAP.efuse_resp_i.aw_ready;
     assign km_efuse_aw_addr_o = `KM_TAP.efuse_req_o.aw.addr;
+    // KM-BUS (key-path part): the requests on the five Key Manager key-path
+    // ports of the crypto interconnect, ahead of the isolation stages: AR and
+    // AW valid, ready and address. Index i is bench isolate stage 8 + i: 0
+    // OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
+`define KM_IC `KM_CRY.u_sep_crypto_axi_interconnect
+`define KM_KEY_BUS(i, req_, rsp_) \
+    assign km_key_ar_valid_o[i] = `KM_IC.req_.ar_valid; \
+    assign km_key_ar_ready_o[i] = `KM_IC.rsp_.ar_ready; \
+    assign km_key_ar_addr_o[32*i +: 32] = 32'(`KM_IC.req_.ar.addr); \
+    assign km_key_aw_valid_o[i] = `KM_IC.req_.aw_valid; \
+    assign km_key_aw_ready_o[i] = `KM_IC.rsp_.aw_ready; \
+    assign km_key_aw_addr_o[32*i +: 32] = 32'(`KM_IC.req_.aw.addr);
+    `KM_KEY_BUS(0, otbn_key_axil_req_i, otbn_key_axil_resp_o)
+    `KM_KEY_BUS(1, aes_key_axil_req_i, aes_key_axil_resp_o)
+    `KM_KEY_BUS(2, hmac_key_axil_req_i, hmac_key_axil_resp_o)
+    `KM_KEY_BUS(3, kmac_key_axil_req_i, kmac_key_axil_resp_o)
+    `KM_KEY_BUS(4, abr_key_axil_req_i, abr_key_axil_resp_o)
+`undef KM_KEY_BUS
+`undef KM_IC
+    // KM-OUTFIFO: fill level of the outbound FIFO of the KM mailbox, every
+    // clock.
+    assign km_outfifo_depth_o = 9'(`KM_TAP.u_mailbox.outbound_depth);
+    // KM-LAT: KM SRAM read latency at the sep input km_sram_mem_rsp_i, after
+    // HK-LAT: the clocks from the accepted read request to the rvalid of its
+    // response (1 while HK-LAT is idle). km_sram_rd_lat_o holds the latency of
+    // the last completed read; km_sram_rd_done_count_o counts the completed
+    // reads since the bench reset.
+    logic km_lat_acc, km_lat_rvalid, km_lat_pend_q;
+    logic [7:0] km_lat_cnt_q, km_lat_last_q;
+    logic [31:0] km_lat_done_q;
+    assign km_lat_acc = (u_dut.km_sram_mem_req.req === 1'b1) &&
+                        (u_dut.km_sram_mem_req.we === 1'b0) &&
+                        (`SEP_CORE.km_sram_mem_rsp_i.gnt === 1'b1);
+    assign km_lat_rvalid = (`SEP_CORE.km_sram_mem_rsp_i.rvalid === 1'b1);
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_lat_pend_q <= 1'b0;
+            km_lat_cnt_q  <= '0;
+            km_lat_last_q <= '0;
+            km_lat_done_q <= '0;
+        end else begin
+            if (km_lat_pend_q) begin
+                if (km_lat_rvalid) begin
+                    km_lat_pend_q <= 1'b0;
+                    km_lat_last_q <= km_lat_cnt_q;
+                    km_lat_done_q <= km_lat_done_q + 32'd1;
+                end else if (km_lat_cnt_q != 8'hFF) begin
+                    km_lat_cnt_q <= km_lat_cnt_q + 8'd1;
+                end
+            end
+            if (km_lat_acc) begin
+                km_lat_pend_q <= 1'b1;
+                km_lat_cnt_q  <= 8'd1;
+            end
+        end
+    end
+    assign km_sram_rd_lat_o        = km_lat_last_q;
+    assign km_sram_rd_done_count_o = km_lat_done_q;
 
     // ------------------------------------------------------------------
     // HK-OTP: KM OTP input rail flip (docs/SEP_TB_ARCH.adoc, inject
@@ -3680,6 +3738,276 @@ module sep_uvm_top
     assign km_strm_wd_tready_o   = km_strm_tready_q;
     assign km_strm_sink_tvalid_o = `KM_SMP.tvalid;
 `undef KM_SMP
+
+    // ------------------------------------------------------------------
+    // HK-IRQSET: KMCSR IRQ_SET pulse (docs/SEP_TB_ARCH.adoc, inject
+    // exceptions). The force point is the single-pulse IRQ_SET field outputs
+    // of the KMCSR register block (hwif_out.IRQ_SET.<source>_set.value), the
+    // path that a software write to IRQ_SET drives into the IRQ_STATUS hwset.
+    // At the first falling edge with km_irqset_arm_i at 1 and a non-zero
+    // km_irqset_mask_i, the bench drives the IRQ_SET field of each set mask
+    // bit high for one clock (mask bit i is IRQ_STATUS bit i, km_csr.adoc),
+    // so all sources of the mask set in one clock. One pulse per arm: a drop
+    // of the arm re-arms. km_irqset_fired_o shows the pulse since the arm.
+    // Default 0: no force.
+    // ------------------------------------------------------------------
+    logic [11:0] km_irqset_drv;
+    logic km_irqset_fired_q;
+    initial begin
+        km_irqset_drv     = '0;
+        km_irqset_fired_q = 1'b0;
+    end
+`define KM_IRQSET(b, f) \
+    if (km_irqset_drv[b]) force `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value = 1'b1; \
+    else release `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value;
+    always @(negedge clk_i) begin
+        km_irqset_drv = '0;
+        if (km_irqset_arm_i !== 1'b1) begin
+            km_irqset_fired_q = 1'b0;
+        end else if (!km_irqset_fired_q && !$isunknown(km_irqset_mask_i) &&
+                     (km_irqset_mask_i != '0)) begin
+            km_irqset_drv     = km_irqset_mask_i;
+            km_irqset_fired_q = 1'b1;
+            $display("[tb] KM IRQ_SET pulse: mask 0x%03h", km_irqset_mask_i);
+        end
+        `KM_IRQSET(0, rom_parity_err_set)
+        `KM_IRQSET(1, sram_parity_err_set)
+        `KM_IRQSET(2, rom_write_err_set)
+        `KM_IRQSET(3, sram_write_lock_err_set)
+        `KM_IRQSET(4, axi_slverr_set)
+        `KM_IRQSET(5, axi_decerr_set)
+        `KM_IRQSET(6, drbg_err_set)
+        `KM_IRQSET(7, wipe_state_set)
+        `KM_IRQSET(8, otp_change_set)
+        `KM_IRQSET(9, otp_sigint_set)
+        `KM_IRQSET(10, exec_violation_set)
+        `KM_IRQSET(11, rom_access_violation_set)
+    end
+`undef KM_IRQSET
+    assign km_irqset_fired_o = km_irqset_fired_q;
+
+    // ------------------------------------------------------------------
+    // HK-CPUIRQ: KM CPU internal IRQ lines (docs/SEP_TB_ARCH.adoc, inject
+    // exceptions). The force point is bits 1 and 2 of the irq input of the
+    // PicoRV32 core in the KM CPU wrapper: the lines of the internal causes
+    // (1 EBREAK or illegal instruction, 2 bus error). The wrapper drives them
+    // 0 and the core sets their pending bits itself; the core latches both
+    // lines, so a one-clock high level raises the interrupt. At the first
+    // falling edge with km_cpuirq_arm_i at 1 and a non-zero
+    // km_cpuirq_lines_i, the bench drives line 1 (mask bit 0) and line 2
+    // (mask bit 1) high for one clock. Bits 3 to 5 keep their live value. One
+    // pulse per arm: a drop of the arm re-arms. km_cpuirq_fired_o shows the
+    // pulse since the arm, and km_cpuirq_pending_o the core pending bits 2:1,
+    // so a test can show that the core took the line. Default 0: no force.
+    // ------------------------------------------------------------------
+`define KM_CPU `KM_TAP.u_cpu
+    logic [1:0] km_cpuirq_drv;
+    logic km_cpuirq_fired_q;
+    initial begin
+        km_cpuirq_drv     = '0;
+        km_cpuirq_fired_q = 1'b0;
+    end
+    always @(negedge clk_i) begin
+        km_cpuirq_drv = '0;
+        if (km_cpuirq_arm_i !== 1'b1) begin
+            km_cpuirq_fired_q = 1'b0;
+        end else if (!km_cpuirq_fired_q && !$isunknown(km_cpuirq_lines_i) &&
+                     (km_cpuirq_lines_i != '0)) begin
+            km_cpuirq_drv     = km_cpuirq_lines_i;
+            km_cpuirq_fired_q = 1'b1;
+            $display("[tb] KM CPU IRQ line pulse: lines 0x%0h", {km_cpuirq_lines_i, 1'b0});
+        end
+        // The core irq port is an input net; Verilator flags a force on it as
+        // an assignment to an input (ASSIGNIN) and simulates it as written.
+        /* verilator lint_off ASSIGNIN */
+        if (km_cpuirq_drv[0]) force `KM_CPU.u_picorv32.irq[1] = 1'b1;
+        else release `KM_CPU.u_picorv32.irq[1];
+        if (km_cpuirq_drv[1]) force `KM_CPU.u_picorv32.irq[2] = 1'b1;
+        else release `KM_CPU.u_picorv32.irq[2];
+        /* verilator lint_on ASSIGNIN */
+    end
+    assign km_cpuirq_fired_o   = km_cpuirq_fired_q;
+    assign km_cpuirq_pending_o = `KM_CPU.u_picorv32.irq_pending[2:1];
+
+    // ------------------------------------------------------------------
+    // HK-KPV: KPV KM-port read-data bit flip (docs/SEP_TB_ARCH.adoc, inject
+    // exceptions). The force point is the KM-port read data of the KPV after
+    // the descrambler (km_ext_rd_data of u_kpv). While km_kpv_flip_en_i is 1,
+    // every KM-port read of the logical word index km_kpv_flip_index_i (slot
+    // x 16 + word, the address ahead of the scrambler) returns the live read
+    // data with bit km_kpv_flip_bit_i inverted. A read of a slot with
+    // lock_use set and the eraser words are not touched, and the stored word
+    // does not change. The live value is rebuilt from the descrambler output,
+    // the register-file data and the scrambler enable, so the forced net is
+    // never its own source. Set on every falling edge (Verilator snapshots a
+    // force RHS). km_kpv_flip_count_o counts the corrupted reads since the
+    // enable rose. Default 0: no force.
+    // ------------------------------------------------------------------
+`define KM_KPV `KM_TAP.u_kpv
+    logic [31:0] km_kpv_flip_val, km_kpv_flip_cnt_q;
+    logic km_kpv_flip_hit;
+    initial begin
+        km_kpv_flip_val   = '0;
+        km_kpv_flip_cnt_q = '0;
+    end
+    assign km_kpv_flip_hit =
+        (km_kpv_flip_en_i === 1'b1) && !$isunknown(km_kpv_flip_index_i) &&
+        !$isunknown(km_kpv_flip_bit_i) && (`KM_KPV.km_ext_active === 1'b1) &&
+        (`KM_KPV.km_ext_is_wr === 1'b0) && (`KM_KPV.erase_busy === 1'b0) &&
+        (`KM_KPV.km_ext_lock_use === 1'b0) &&
+        ({`KM_KPV.km_ext_slot, `KM_KPV.km_ext_word} == km_kpv_flip_index_i);
+    always @(negedge clk_i) begin
+        if (km_kpv_flip_en_i !== 1'b1) km_kpv_flip_cnt_q = '0;
+        if (km_kpv_flip_hit) begin
+            km_kpv_flip_val = ((`KM_KPV.kpv_scrambler_enable === 1'b1) ?
+                               `KM_KPV.km_scrambler_read_out : `KM_KPV.rf_rd_data) ^
+                              (32'd1 << km_kpv_flip_bit_i);
+            km_kpv_flip_cnt_q = km_kpv_flip_cnt_q + 32'd1;
+            force `KM_KPV.km_ext_rd_data = km_kpv_flip_val;
+        end else begin
+            release `KM_KPV.km_ext_rd_data;
+        end
+    end
+    assign km_kpv_flip_count_o = km_kpv_flip_cnt_q;
+`undef KM_KPV
+
+    // ------------------------------------------------------------------
+    // HK-PAR (error inject) and HK-LAT (top-port drive) on the KM ROM and
+    // SRAM macro responses at the sep inputs km_rom_mem_rsp_i and
+    // km_sram_mem_rsp_i (docs/SEP_TB_ARCH.adoc, inject exceptions and HDL Top
+    // ports). The live response comes from inside the integration wrapper,
+    // ahead of the forced inputs: the ROM read data and rvalid and the SRAM
+    // read data of sep_ip_integration, and the SRAM rvalid as a bench flop of
+    // the accepted SRAM read (the macro answers one clock after the request).
+    // A force is set on every falling edge (Verilator snapshots a force RHS),
+    // and an input is released in every clock that no hook drives it.
+    //
+    // HK-LAT. While km_sram_lat_en_i is 1, a SRAM read response with a
+    // latency value L = km_sram_lat_i of 2 or more, sampled in the clock in
+    // which the macro answers, reaches the KM L clocks after the accepted
+    // request in place of 1: the bench holds rvalid low and presents the
+    // captured word with rvalid high in the L-th clock. L of 0 or 1, or an
+    // unknown value, leaves the response as the macro gives it; the macro
+    // cannot answer in the clock of the request. The KM issues no new SRAM
+    // read while one is outstanding, so the delayed responses keep their
+    // order. A KM cold reset or the bench reset drops a delayed response.
+    // km_sram_lat_delayed_count_o counts the delayed responses since the
+    // bench reset; KM-LAT shows the latency that the KM sees.
+    //
+    // HK-PAR. While km_par_arm_i is 1, the bench counts the read responses
+    // (rvalid at the sep input) of the memory km_par_mem_i (0 ROM, 1 SRAM)
+    // from the rise of the arm, and on the N-th response, N = km_par_n_i
+    // from 1, inverts parity bit km_par_lane_i of that response for one
+    // clock. The data bits are not touched. One flip per arm: a drop of the
+    // arm re-arms. km_par_fired_o shows the flip since the arm,
+    // km_par_resp_count_o the responses counted since the arm, and
+    // km_par_rstrb_o the byte lanes that the KM interface parity-checks on
+    // the flipped response (the CPU read strobe), so a test can show that the
+    // flipped lane was checked. N of 0 or an unknown control leaves the hook
+    // idle.
+    // ------------------------------------------------------------------
+    km_intf_pkg::km_sram_mem_rsp_t km_sram_rsp_drv;
+    km_intf_pkg::km_rom_mem_rsp_t km_rom_rsp_drv;
+    logic km_sram_raw_rvalid_q, km_sram_drive, km_rom_drive, km_mem_rst_ok, km_par_ok;
+    logic [3:0] km_lat_k, km_lat_l;
+    logic [35:0] km_lat_word;
+    logic [31:0] km_lat_delayed_cnt;
+    logic [7:0] km_par_cnt;
+    logic km_par_fired;
+    logic [3:0] km_par_rstrb;
+    initial begin
+        km_sram_rsp_drv    = '0;
+        km_rom_rsp_drv     = '0;
+        km_sram_drive      = 1'b0;
+        km_rom_drive       = 1'b0;
+        km_lat_k           = '0;
+        km_lat_l           = '0;
+        km_lat_word        = '0;
+        km_lat_delayed_cnt = '0;
+        km_par_cnt         = '0;
+        km_par_fired       = 1'b0;
+        km_par_rstrb       = '0;
+    end
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_sram_raw_rvalid_q <= 1'b0;
+        end else begin
+            km_sram_raw_rvalid_q <= (u_dut.km_sram_mem_req.req === 1'b1) &&
+                                    (u_dut.km_sram_mem_req.we === 1'b0);
+        end
+    end
+    always @(negedge clk_i) begin
+        km_mem_rst_ok = (rst_n_int === 1'b1) && (`KM_TAP.rst_cold_aasd_n === 1'b1);
+        km_sram_drive = 1'b0;
+        km_rom_drive = 1'b0;
+        km_sram_rsp_drv.gnt = 1'b1;
+        km_sram_rsp_drv.rvalid = km_sram_raw_rvalid_q;
+        km_sram_rsp_drv.rdata = `SEP_IPI.km_sram_rdata[31:0];
+        km_sram_rsp_drv.rparity = `SEP_IPI.km_sram_rdata[35:32];
+        km_rom_rsp_drv.gnt = 1'b1;
+        km_rom_rsp_drv.rvalid = `SEP_IPI.km_rom_rvalid;
+        km_rom_rsp_drv.rdata = `SEP_IPI.km_rom_rdata[31:0];
+        km_rom_rsp_drv.parity = `SEP_IPI.km_rom_rdata[35:32];
+        // HK-LAT.
+        if (rst_n_int !== 1'b1) km_lat_delayed_cnt = '0;
+        if (!km_mem_rst_ok) begin
+            km_lat_k = '0;
+        end else if (km_sram_raw_rvalid_q && (km_lat_k == '0) &&
+                     (km_sram_lat_en_i === 1'b1) && !$isunknown(km_sram_lat_i) &&
+                     (km_sram_lat_i > 4'd1)) begin
+            km_lat_k = 4'd1;
+            km_lat_l = km_sram_lat_i;
+            km_lat_word = `SEP_IPI.km_sram_rdata;
+            km_lat_delayed_cnt = km_lat_delayed_cnt + 32'd1;
+        end else if (km_lat_k != '0) begin
+            km_lat_k = km_lat_k + 4'd1;
+        end
+        if (km_lat_k != '0) begin
+            km_sram_drive = 1'b1;
+            km_sram_rsp_drv.rvalid = (km_lat_k == km_lat_l);
+            km_sram_rsp_drv.rdata = km_lat_word[31:0];
+            km_sram_rsp_drv.rparity = km_lat_word[35:32];
+            if (km_lat_k == km_lat_l) km_lat_k = '0;
+        end
+        // HK-PAR.
+        km_par_ok = km_mem_rst_ok && !$isunknown(km_par_mem_i) && !$isunknown(km_par_lane_i) &&
+                    !$isunknown(km_par_n_i) && (km_par_n_i != '0);
+        if (km_par_arm_i !== 1'b1) begin
+            km_par_cnt   = '0;
+            km_par_fired = 1'b0;
+        end else if (km_par_ok && !km_par_fired) begin
+            if ((km_par_mem_i === 1'b1) && km_sram_rsp_drv.rvalid) begin
+                km_par_cnt = km_par_cnt + 8'd1;
+                if (km_par_cnt == km_par_n_i) begin
+                    km_sram_rsp_drv.rparity = km_sram_rsp_drv.rparity ^ (4'd1 << km_par_lane_i);
+                    km_sram_drive = 1'b1;
+                    km_par_fired = 1'b1;
+                    km_par_rstrb = `KM_CPU.u_sram_if.read_pending_rstrb_q;
+                end
+            end else if ((km_par_mem_i === 1'b0) && km_rom_rsp_drv.rvalid) begin
+                km_par_cnt = km_par_cnt + 8'd1;
+                if (km_par_cnt == km_par_n_i) begin
+                    km_rom_rsp_drv.parity = km_rom_rsp_drv.parity ^ (4'd1 << km_par_lane_i);
+                    km_rom_drive = 1'b1;
+                    km_par_fired = 1'b1;
+                    km_par_rstrb = `KM_CPU.u_rom_if.current_rsp_rstrb;
+                end
+            end
+            if (km_par_fired) begin
+                $display("[tb] KM %s parity flip: response %0d lane %0d",
+                         (km_par_mem_i === 1'b1) ? "SRAM" : "ROM", km_par_cnt, km_par_lane_i);
+            end
+        end
+        if (km_sram_drive) force `SEP_CORE.km_sram_mem_rsp_i = km_sram_rsp_drv;
+        else release `SEP_CORE.km_sram_mem_rsp_i;
+        if (km_rom_drive) force `SEP_CORE.km_rom_mem_rsp_i = km_rom_rsp_drv;
+        else release `SEP_CORE.km_rom_mem_rsp_i;
+    end
+    assign km_sram_lat_delayed_count_o = km_lat_delayed_cnt;
+    assign km_par_fired_o              = km_par_fired;
+    assign km_par_resp_count_o         = km_par_cnt;
+    assign km_par_rstrb_o              = km_par_rstrb;
+`undef KM_CPU
 `undef KM_CRY
 `undef KM_TAP
 
@@ -4198,6 +4526,19 @@ module sep_uvm_top
     assign km_strm_wd_arm_i         = 1'b0;
     assign km_strm_wd_mode_i        = 1'b0;
     assign km_sram_peek_addr_i      = '0;
+    assign km_irqset_arm_i          = 1'b0;
+    assign km_irqset_mask_i         = '0;
+    assign km_cpuirq_arm_i          = 1'b0;
+    assign km_cpuirq_lines_i        = '0;
+    assign km_kpv_flip_en_i         = 1'b0;
+    assign km_kpv_flip_index_i      = '0;
+    assign km_kpv_flip_bit_i        = '0;
+    assign km_par_arm_i             = 1'b0;
+    assign km_par_mem_i             = 1'b0;
+    assign km_par_lane_i            = '0;
+    assign km_par_n_i               = '0;
+    assign km_sram_lat_en_i         = 1'b0;
+    assign km_sram_lat_i            = '0;
     assign ext_trng_drive_en_i      = '0;
     assign ext_trng_tvalid_i        = '0;
     assign ext_trng_tdata_i         = '0;

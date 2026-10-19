@@ -483,6 +483,19 @@ class sep_base_test(uvm_test):
             "km_strm_wd_arm_i",
             "km_strm_wd_mode_i",
             "km_sram_peek_addr_i",
+            "km_irqset_arm_i",
+            "km_irqset_mask_i",
+            "km_cpuirq_arm_i",
+            "km_cpuirq_lines_i",
+            "km_kpv_flip_en_i",
+            "km_kpv_flip_index_i",
+            "km_kpv_flip_bit_i",
+            "km_par_arm_i",
+            "km_par_mem_i",
+            "km_par_lane_i",
+            "km_par_n_i",
+            "km_sram_lat_en_i",
+            "km_sram_lat_i",
         ):
             self._set_if_exists(dut, pin, 0)
         # Boundary PIC input and outbound responder control: idle (0) unless a

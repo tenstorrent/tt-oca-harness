@@ -418,40 +418,48 @@ def _resolve_preload(path: str, cwd, root) -> Path:
     raise FileNotFoundError(f"+sep_efuse_preload={path} not found (tried: {tried})")
 
 
-# KM production ROM built by [c_build.km_rom_main] (sep_sim_cfg.toml). c_compile
-# builds it in <run_dir>/stages/c_compile/rom_main/<item>/, a directory private
-# to that run and test, and declares no output, so this hook stages it.
-_KM_ROM_MAIN = "rom_main.rom.parhex"
-_KM_ROM_MAIN_ARG = f"+km_rom_hex={_KM_ROM_MAIN}"
+# KM production ROM images built by [c_build.km_rom_main] (bench build),
+# [c_build.km_rom_main_default] (shipped default) and [c_build.km_rom_main_unrec]
+# (sep_sim_cfg.toml). c_compile builds each in
+# <run_dir>/stages/c_compile/rom_main/<item>/, a directory private to that run
+# and test, and declares no output, so this hook stages it.
+_KM_ROM_MAIN_IMAGES = (
+    "rom_main.rom.parhex",
+    "rom_main_default.rom.parhex",
+    "rom_main_unrec.rom.parhex",
+)
 
 
 def _stage_km_rom_main(item: str, cwd, sim_args) -> bool:
     """Copy this run's KM rom_main image into the sim directory.
 
-    Applies to a leaf whose plusargs carry ``+km_rom_hex=rom_main.rom.parhex``.
+    Applies to a leaf whose plusargs carry ``+km_rom_hex=<image>`` for one of
+    the images in ``_KM_ROM_MAIN_IMAGES``.
     The run directory is the nearest ancestor of ``cwd`` that holds this
     item's c_compile build directory (``cwd`` is ``<run_dir>/<item>``, or
     ``<run_dir>/<item>/seed_<n>/attempt_<m>`` in a regression). The copy is
     written to a temporary name, then moved into place. A missing image raises, so a sim
     never boots an image from another run or an earlier build.
     """
-    if _KM_ROM_MAIN_ARG not in (sim_args or []):
+    args = sim_args or []
+    img = next((i for i in _KM_ROM_MAIN_IMAGES if f"+km_rom_hex={i}" in args), None)
+    if img is None:
         return False
     cwd = Path(cwd).resolve()
-    rel = Path("stages") / "c_compile" / "rom_main" / item / _KM_ROM_MAIN
+    rel = Path("stages") / "c_compile" / "rom_main" / item / img
     for base in (cwd, *cwd.parents):
         src = base / rel
         if src.parent.is_dir():
             break
     else:
         raise FileNotFoundError(
-            f"{item}: no c_compile build of {_KM_ROM_MAIN} for this run "
+            f"{item}: no c_compile build of {img} for this run "
             f"(looked for <run_dir>/{rel} above {cwd}); run c_compile first"
         )
     if not src.is_file() or src.stat().st_size == 0:
-        raise FileNotFoundError(f"{item}: c_compile left no {_KM_ROM_MAIN} at {src}")
-    dst = cwd / _KM_ROM_MAIN
-    tmp = cwd / f".{_KM_ROM_MAIN}.tmp.{os.getpid()}"
+        raise FileNotFoundError(f"{item}: c_compile left no {img} at {src}")
+    dst = cwd / img
+    tmp = cwd / f".{img}.tmp.{os.getpid()}"
     shutil.copyfile(src, tmp)
     os.replace(tmp, dst)
     print(f"[dv_sim_prestage] staged {item} KM ROM {src} -> {dst}", flush=True)
