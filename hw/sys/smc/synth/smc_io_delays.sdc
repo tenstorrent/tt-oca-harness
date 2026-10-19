@@ -251,8 +251,8 @@ set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jt
 set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_part_number_i*}] -add_delay
 set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_version_i*}] -add_delay
 
-cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i.val*}] -add_delay
-cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i.ovrd*}] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i*val*}] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i*ovrd*}] -add_delay
 
 }
 # end of block-top-only smc_io_delays
