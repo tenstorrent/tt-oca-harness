@@ -176,6 +176,19 @@ def set_alert_rise_bound(clocks: int, log=None) -> bool:
     return _set_bound("alert_rise_bound", clocks, "FCOV-ALERT-RISE-BOUND", log)
 
 
+def set_efuse_sdis_hold_bound(clocks: int, log=None) -> bool:
+    """Write ``u_sep_fcov.efuse_sdis_hold_bound`` (clk_i clocks, or 0 for none).
+
+    The SEC_DIS timing leaf writes its hold window W (a multiple of the sense time
+    it measures) before the hold under the SEC_DIS match and 0 when the wait ends.
+    ``sep_sec_dis_robustness_cg.cp_stops_sense`` samples only a hold of exactly that
+    many clocks with the sensed shadow unchanged, the window the leaf grades
+    (docs/SEP_FCOV.adoc). Same rules as ``graded_owner``: a no-op that returns False
+    on Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("efuse_sdis_hold_bound", clocks, "FCOV-EFUSE-SDIS-HOLD-BOUND", log)
+
+
 def close_graded_window(log=None) -> bool:
     """Write 0 (no window open). Returns True when written."""
     gate = _gate_handle()

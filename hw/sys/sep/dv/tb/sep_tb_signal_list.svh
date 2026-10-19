@@ -101,9 +101,31 @@
 // Which token comparator the inject hits. Default 0.
 //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
 `SEP_TB_IN(logic [1:0], token_cmp_fault_sel_i)
+// Which comparator copy a collapse (3'b001) or disagree (3'b010) pattern
+// hits: 2'b00 copy 0, 2'b01 copy 1, 2'b10 copy 2. Default 0; an undriven or
+// unknown value is copy 0, and 2'b11 forces nothing. The common-mode patterns
+// force all three copies and ignore this select.
+`SEP_TB_IN(logic [1:0], token_cmp_fault_copy_i)
 // RMA_SIP digest test-enable inject. The production test input is tied
 // low in this testbench, so the latch-freeze path has no frontdoor.
 `SEP_TB_IN(logic, token_digest_test_en_inject_i)
+// RMA_CHIPLET and SEC_DIS digest test-enable injects, one per retained digest
+// latch. Default 0; the force is released when the input drops.
+`SEP_TB_IN(logic, token_digest_chiplet_test_en_inject_i)
+`SEP_TB_IN(logic, token_digest_sdis_test_en_inject_i)
+// JTAG lifecycle filter integrity inject. Default 0. When 1, tb forces both
+// rails of the byte at the decoder input of the JTAG lifecycle filter to 0.
+// The LC_STATE shadow and the lifecycle controller decoder are not forced.
+`SEP_TB_IN(logic, jtag_filter_lc_sigint_inject_i)
+// eFuse sense status inject. Default 0. While 1, during fuse sense only, the
+// bank model APB response to the READ of word efuse_sense_status_word_i
+// carries pslverr = 1. Data and ready are not forced.
+`SEP_TB_IN(logic, efuse_sense_status_inject_i)
+`SEP_TB_IN(logic [7:0], efuse_sense_status_word_i)
+// eFuse shim response hold. Default 0. While 1 and a PROGRAM or
+// PROGRAM_READ_BACK command is at the post-guard port, the valid of the shim
+// response at the sep input efuse_shim_command_resp_i is forced to 0.
+`SEP_TB_IN(logic, efuse_shim_resp_hold_i)
 // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
 // broken codeword onto the host-adapter command-integrity decoder input
 // (software cannot emit a bad TL-UL user code). The checker
@@ -361,6 +383,9 @@
 // ------------------------------------------------------------------
 // Desired reset PC[31:1], driven to the wrapper's rst_vec input.
 `SEP_TB_IN(logic [31:1], rst_vec_i)
+// JTAG IDCODE bits [31:1], driven to the sep_wrapper input jtag_id (sep
+// jtag_id_i). Default 0; an undriven or unknown value drives 0.
+`SEP_TB_IN(logic [31:1], jtag_id_i)
 `SEP_TB_IN(logic, i_cpu_run_req_i)  // async run request to the core
 `SEP_TB_IN(logic, tcm_load_i)  // strobe: backdoor-load TCM image
 // WDT reset INPUT to the DUT (a real sep primary input). Default-driven 1
@@ -1130,6 +1155,43 @@
 `SEP_TB_OUT(logic, token_digest_valid_en_pre_o)
 `SEP_TB_OUT(logic, token_digest_latch_en_o)
 `SEP_TB_OUT(logic, token_digest_valid_en_o)
+// RMA_CHIPLET and SEC_DIS retained digest latches: sticky digest, valid bit
+// and test enable. Read-only taps.
+`SEP_TB_OUT(logic [255:0], token_digest_chiplet_sticky_o)
+`SEP_TB_OUT(logic, token_digest_chiplet_valid_o)
+`SEP_TB_OUT(logic, token_digest_chiplet_test_en_o)
+`SEP_TB_OUT(logic [255:0], token_digest_sdis_sticky_o)
+`SEP_TB_OUT(logic, token_digest_sdis_valid_o)
+`SEP_TB_OUT(logic, token_digest_sdis_test_en_o)
+// The 24 token word registers (8 words per channel). The arrays have no
+// reset, so they read X until the first write on VCS. Read-only taps.
+`SEP_TB_OUT(logic [7:0][31:0], token_sip_words_o)
+`SEP_TB_OUT(logic [7:0][31:0], token_chiplet_words_o)
+`SEP_TB_OUT(logic [7:0][31:0], token_sdis_words_o)
+// Gated comparator rails after the comparator fault inject: bit 3c+k is
+// copy k of channel c (0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS). Read-only taps.
+`SEP_TB_OUT(logic [8:0], token_cmp_match_p_o)
+`SEP_TB_OUT(logic [8:0], token_cmp_match_n_o)
+// Integrity-error flag at the decoder output of the JTAG lifecycle filter.
+// Read-only tap.
+`SEP_TB_OUT(logic, jtag_filter_lc_sigint_err_probe_o)
+// The sep input jtag_id_i as the DUT receives it. Read-only tap.
+`SEP_TB_OUT(logic [31:1], jtag_id_probe_o)
+// Post-guard fuse command at the sep output efuse_shim_command_req_o: valid,
+// command, bit address, program data and word count. Read-only taps.
+`SEP_TB_OUT(logic, efuse_shim_cmd_valid_o)
+`SEP_TB_OUT(efuse_pkg::fuse_command_e, efuse_shim_cmd_command_o)
+`SEP_TB_OUT(sep_efuse_pkg::efuse_addr_bit_t, efuse_shim_cmd_address_o)
+`SEP_TB_OUT(logic, efuse_shim_cmd_program_data_o)
+`SEP_TB_OUT(sep_efuse_pkg::efuse_word_counter_t, efuse_shim_cmd_len_o)
+// Shim response at the sep input efuse_shim_command_resp_i: valid, status and
+// data. Read-only taps.
+`SEP_TB_OUT(logic, efuse_shim_resp_valid_o)
+`SEP_TB_OUT(logic, efuse_shim_resp_status_o)
+`SEP_TB_OUT(sep_efuse_pkg::efuse_data_t, efuse_shim_resp_data_o)
+// The 256 OTP bank words that SEP reaches (words 0..255 of the bank model).
+// Read-only tap; the bench has no bank write hook.
+`SEP_TB_OUT(logic [255:0][31:0], otp_bank_probe_o)
 
 // eFuse read/program FSM fail-closed observability and fault injection.
 // `efuse_read_interface` and `efuse_program_interface` each hold a two-bit
