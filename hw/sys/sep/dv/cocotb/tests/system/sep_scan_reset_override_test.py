@@ -14,9 +14,9 @@ Contract (``hw/sys/sep/doc/port_table.adoc``, ``test_en_i``, ``scan_rst_ni``,
 Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
 ``hw/sys/sep/doc/test_mode.adoc``, Entry and Exit):
 
-* While ``test_en_i`` is high, ``scan_rst_ni`` replaces the 11 nets
-  ``sep_reset_n``, ``sep_cpu_reset_n``, ``ip_rst_n[6:1]``, ``aon_rst_n`` and
-  ``km_cond_rst[1:0]``. ``sep_reset_n`` and ``aon_rst_n`` rise before the next
+* While ``test_en_i`` is high, ``scan_rst_ni`` replaces the 12 nets
+  ``sep_reset_n``, ``sep_cpu_reset_n``, ``ip_rst_n[6:0]`` (each scan bypass
+  mux), ``aon_rst_n`` and ``km_cond_rst[1:0]``. ``sep_reset_n`` and ``aon_rst_n`` rise before the next
   edge of their own clock after the ``scan_rst_ni`` rise (the synchronizer is
   not in the path). With ``test_en_i`` low, ``scan_rst_ni`` has no effect.
 * ``test_en_i`` and ``secure_tm_req_i`` are separate ports: ``secure_tm_o``
@@ -28,9 +28,9 @@ falls on a ``clk_i`` edge or on the drawn release point. The hold interval H
 (32 ``clk_i`` cycles, at least two ``clk_wdt_i`` periods) is a test parameter.
 
 Checkers:
-  CHK-SCAN-IDLE     test_en_i=0: the 11 nets stay high on every clk_i edge from
+  CHK-SCAN-IDLE     test_en_i=0: the 12 nets stay high on every clk_i edge from
                     the scan_rst_ni fall to the end of the hold after its rise.
-  CHK-SCAN-REPLACE  test_en_i=1: the 11 nets are low on every clk_i edge
+  CHK-SCAN-REPLACE  test_en_i=1: the 12 nets are low on every clk_i edge
                     while scan_rst_ni is low and high with scan_rst_ni=1;
                     sep_reset_n and aon_rst_n rise before the next clk_i and
                     clk_wdt_i edge. Other rise offsets: OBS-SCAN-OFFSET.
@@ -64,11 +64,12 @@ from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_scan_reset_override_test"
 
-# The 11 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
+# The 12 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
 # rst_warm_sync_n, bit 1 rst_cold_aasd_n).
 NETS: tuple[tuple[str, str, int | None], ...] = (
     ("sep_reset_n", "dbg_sep_reset_n_o", None),
     ("sep_cpu_reset_n", "sep_cpu_reset_n_o", None),
+    ("ip_rst_n[0]", "km_gated_rst_n_probe_o", None),
     ("ip_rst_n[1]", "otbn_gated_rst_n_probe_o", None),
     ("ip_rst_n[2]", "aes_gated_rst_n_probe_o", None),
     ("ip_rst_n[3]", "hmac_gated_rst_n_probe_o", None),
@@ -138,10 +139,13 @@ class sep_scan_reset_override_test(sep_base_test):
         for p in walk.pins:
             found[p.cls].append((f"{p.path} ({p.cell})", p))
         self.logger.info(
-            "TEST-EN-WALK LOG: scopes=%d %s",
+            "TEST-EN-WALK LOG: scopes=%d %s unwalkable=%d",
             walk.scopes,
             " ".join(f"{c}={len(v)}" for c, v in found.items()),
+            len(walk.unwalkable),
         )
+        for u in walk.unwalkable:
+            self.logger.info("OBS-TEST-EN-UNWALKABLE: %s", u.label())
         for cls, pins in found.items():
             for path, _pin in pins:
                 self.logger.info("TEST-EN-PIN LOG: class=%s pin=%s", cls, path)

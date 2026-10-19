@@ -32,6 +32,13 @@ Logged groups (not graded), each printed with its pin count:
   ``vendor`` directory.
 * ``unresolved``: the name is declared nowhere in the scanned tree. A leaf
   that grades the walk requires this group to be empty.
+
+Unwalkable scopes. A scope whose children the simulator cannot iterate is
+recorded with its path and the owner of the module that the scope belongs to
+(the definition name of the scope, or the instantiating module of a generate
+block). The walk cannot see a pin below such a scope, so a leaf that grades
+the walk requires no unwalkable scope with an OCAH-owned, ambiguous or
+unresolved owner, and logs the others by name.
 """
 
 from __future__ import annotations
@@ -135,6 +142,23 @@ class TestEnPin:
         return f"{self.path} class={self.cls} cell={self.cell} parent={self.parent}"
 
 
+@dataclass(frozen=True)
+class UnwalkableScope:
+    """One scope whose children the simulator cannot iterate."""
+
+    path: str
+    module: str  # definition name of the scope, or of the instantiating module
+    owner: str  # OWNER_OCAH, OWNER_CPU, a vendor library, ambiguous or unresolved
+
+    @property
+    def blocks_grading(self) -> bool:
+        """True when a pin below the scope can belong to the graded set."""
+        return self.owner in (OWNER_OCAH, OWNER_AMBIGUOUS, OWNER_UNRESOLVED)
+
+    def label(self) -> str:
+        return f"{self.path} module={self.module} owner={self.owner}"
+
+
 @dataclass
 class TestEnWalk:
     """Result of one walk."""
@@ -143,6 +167,7 @@ class TestEnWalk:
     scopes: int
     pins: list[TestEnPin]
     index: ModuleIndex
+    unwalkable: list[UnwalkableScope] = field(default_factory=list)
 
     @property
     def graded(self) -> list[TestEnPin]:
@@ -172,7 +197,17 @@ def walk_test_en_pins(root: Any, root_path: str) -> TestEnWalk:
 
     index = module_index()
     pins: list[TestEnPin] = []
+    unwalkable: list[UnwalkableScope] = []
     scopes = 0
+
+    def items(scope: Any, path: str, module: str, in_cpu: bool) -> list[Any]:
+        """Children of ``scope``; an unwalkable scope is recorded and yields none."""
+        try:
+            return list(scope)
+        except Exception:  # noqa: BLE001 - a scope the simulator cannot iterate
+            owner = OWNER_CPU if in_cpu else index.owner(module)
+            unwalkable.append(UnwalkableScope(path, module, owner))
+            return []
 
     def visit(h: Any, path: str, parent: str, in_cpu: bool) -> None:
         nonlocal scopes
@@ -186,20 +221,16 @@ def walk_test_en_pins(root: Any, root_path: str) -> TestEnWalk:
                     pins.append(TestEnPin(f"{path}.{port}", cls, defn, parent, owner, pin))
         below = defn or parent
         cpu_below = in_cpu or defn == CPU_MACRO
-        try:
-            children = list(h)
-        except Exception:  # noqa: BLE001 - a scope the simulator cannot iterate
-            return
-        for child in children:
+        for child in items(h, path, below, cpu_below):
             name = getattr(child, "_name", "?")
             if isinstance(child, HierarchyArrayObject):
-                for sub in child:
+                for sub in items(child, f"{path}.{name}", below, cpu_below):
                     visit(sub, f"{path}.{getattr(sub, '_name', name)}", below, cpu_below)
             elif isinstance(child, HierarchyObject):
                 visit(child, f"{path}.{name}", below, cpu_below)
 
     visit(root, root_path, _def_name(root), _def_name(root) == CPU_MACRO)
-    return TestEnWalk(root_path, scopes, pins, index)
+    return TestEnWalk(root_path, scopes, pins, index, unwalkable)
 
 
 def pin_value(pin: TestEnPin) -> int | None:

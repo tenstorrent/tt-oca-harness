@@ -38,7 +38,7 @@ Contract:
   hash completion.
 
 Checkers:
-  CTL-SCAN-REACH        each pulse drives all 11 replaced reset nets low on
+  CTL-SCAN-REACH        each pulse drives all 12 replaced reset nets low on
                         every clk_i edge with scan_rst_ni low (the nets of
                         sep_scan_reset_override_test, all high before).
   CHK-SCAN-TM-HOLD      secure_tm_o keeps the leg strap value (0 and 1) on
@@ -106,11 +106,12 @@ from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_scan_mode_state_hold_test"
 
-# The 11 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
+# The 12 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
 # rst_warm_sync_n, bit 1 rst_cold_aasd_n), as sep_scan_reset_override_test reads them.
 NETS: tuple[tuple[str, str, int], ...] = (
     ("sep_reset_n", "dbg_sep_reset_n_o", 0),
     ("sep_cpu_reset_n", "sep_cpu_reset_n_o", 0),
+    ("ip_rst_n[0]", "km_gated_rst_n_probe_o", 0),
     ("ip_rst_n[1]", "otbn_gated_rst_n_probe_o", 0),
     ("ip_rst_n[2]", "aes_gated_rst_n_probe_o", 0),
     ("ip_rst_n[3]", "hmac_gated_rst_n_probe_o", 0),

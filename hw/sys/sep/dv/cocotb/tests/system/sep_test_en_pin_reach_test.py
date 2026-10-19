@@ -22,12 +22,20 @@ Graded set: ``env/sep_test_en_walk.py`` walks ``u_dut`` and grades a pin when
 the module that instantiates its cell is OCAH-owned (the SEP-owned boundary).
 Pins nested inside vendor IP or a third-party library, and every pin inside
 ``sep_cpu`` (a different module on the CPU-stub and the full-CPU build), are
-logged with a count per group and not graded. ``PIN_BOUND`` is a bench bound:
-the specification states no latency.
+logged with a count per group and not graded. The graded set must equal the
+committed inventory ``GRADED_PINS`` (``sep_test_en_pin_inventory.py``, path
+and class of each pin). The inventory is bench configuration that sets the
+scope of the "every such input" reading, not a behaviour golden. ``PIN_BOUND``
+is a bench bound: the specification states no latency.
 
 Checkers:
-  CTL-PIN-WALK      the walk finds at least one graded pin of each class, and
-                    no instantiating module is unresolved.
+  CTL-PIN-WALK      the graded set equals the inventory: a FAIL names every
+                    inventory pin that is not walked and graded (with its
+                    group when walked), every graded pin not in the
+                    inventory, and every class mismatch. It also fails on an
+                    unresolved instantiating module and on a scope that the
+                    simulator cannot iterate below an OCAH-owned, ambiguous
+                    or unresolved module (the others are logged by name).
   CHK-TEST-EN-PINS  every graded pin equals test_en_i PIN_BOUND clk_i cycles
                     after each edge. A FAIL names every pin that does not
                     (path, class, cell, instantiating module, edge). A pin
@@ -49,11 +57,14 @@ from env.sep_test_en_walk import (
     CLASS_NAMES,
     PIN_BOUND,
     TestEnPin,
+    TestEnWalk,
     pin_value,
     pins_not_equal,
     walk_test_en_pins,
 )
 from sep_base_test import sep_base_test
+
+from tests.system.sep_test_en_pin_inventory import GRADED_PINS
 
 TEST = "sep_test_en_pin_reach_test"
 
@@ -92,6 +103,30 @@ class sep_test_en_pin_reach_test(sep_base_test):
         await ClockCycles(dut.clk_i, H)
         return bad, first, vals
 
+    @staticmethod
+    def _inventory_problems(walk: TestEnWalk) -> list[str]:
+        """Every difference between the walk and the graded-pin inventory."""
+        expected = dict(GRADED_PINS)
+        walked = {p.path: p for p in walk.pins}
+        graded = {p.path: p for p in walk.graded}
+        problems = []
+        for path, cls in expected.items():
+            p = walked.get(path)
+            if p is None:
+                problems.append(f"missing {path} class={cls} (not walked)")
+            elif not p.graded:
+                problems.append(f"missing {path} class={cls} (walked, group={p.owner})")
+            elif p.cls != cls:
+                problems.append(f"class {path} inventory={cls} walked={p.cls}")
+        for path in sorted(graded.keys() - expected.keys()):
+            problems.append(f"extra {graded[path].label()} (graded, not in the inventory)")
+        for p in walk.unresolved():
+            problems.append(f"unresolved {p.label()}")
+        for u in walk.unwalkable:
+            if u.blocks_grading:
+                problems.append(f"unwalkable {u.label()}")
+        return problems
+
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
@@ -107,12 +142,13 @@ class sep_test_en_pin_reach_test(sep_base_test):
         walk = walk_test_en_pins(dut.u_dut, "u_dut")
         graded = walk.graded
         self.logger.info(
-            "TEST-EN-WALK LOG: root=%s scopes=%d pins=%d graded=%d index_files=%d",
+            "TEST-EN-WALK LOG: root=%s scopes=%d pins=%d graded=%d index_files=%d unwalkable=%d",
             walk.root,
             walk.scopes,
             len(walk.pins),
             len(graded),
             walk.index.files,
+            len(walk.unwalkable),
         )
         for p in walk.pins:
             self.logger.info(
@@ -121,19 +157,27 @@ class sep_test_en_pin_reach_test(sep_base_test):
         logged = walk.logged_counts()
         for owner, n in logged.items():
             self.logger.info("OBS-TEST-EN-UNGRADED: group=%s pins=%d", owner, n)
+        for u in walk.unwalkable:
+            self.logger.info(
+                "OBS-TEST-EN-UNWALKABLE: %s blocks_grading=%d", u.label(), int(u.blocks_grading)
+            )
         per_class = {c: walk.graded_count(c) for c in CLASS_NAMES}
-        unresolved = walk.unresolved()
-        for p in unresolved:
-            self.logger.info("CTL-PIN-WALK unresolved: %s", p.label())
-        assert all(n > 0 for n in per_class.values()) and not unresolved, (
-            "CTL-PIN-WALK FAIL: graded "
-            + " ".join(f"{c}={n}" for c, n in per_class.items())
-            + f" unresolved={len(unresolved)} (each class needs a graded pin and every "
-            "instantiating module must resolve)"
+        problems = self._inventory_problems(walk)
+        for line in problems:
+            self.logger.info("CTL-PIN-WALK mismatch: %s", line)
+        assert not problems, (
+            f"CTL-PIN-WALK FAIL: graded={len(graded)} inventory={len(GRADED_PINS)} "
+            f"problems={len(problems)}: "
+            + "; ".join(problems[:FAIL_LINES])
+            + (" ..." if len(problems) > FAIL_LINES else "")
         )
         self.logger.info(
-            "CTL-PIN-WALK: graded %s unresolved=0 logged=%s",
+            "CTL-PIN-WALK: graded=%d inventory=%d missing=0 extra=0 class_mismatch=0 %s "
+            "unresolved=0 unwalkable=%d unwalkable_owned=0 logged=%s",
+            len(graded),
+            len(GRADED_PINS),
             " ".join(f"{c}={n}" for c, n in per_class.items()),
+            len(walk.unwalkable),
             ",".join(f"{k}:{v}" for k, v in logged.items()) or "none",
         )
 

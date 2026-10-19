@@ -1394,13 +1394,13 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu, real fuse sense, VCS only
 |LSU master, strap and `rst_ni` drive, `test_en_i` and `scan_rst_ni` top-port drives (added hook), `secure_tm_o`, eFuse shadow, lifecycle and SEC_DIS digest taps, reset taps
-|Proves that a scan session (a `test_en_i` rise, a `scan_rst_ni` pulse with `test_en_i` high and a `test_en_i` fall) keeps `secure_tm_o` at its sampled value at strap 0 and at strap 1, keeps the four secret shadow outputs at zero while `SECURE_TM` is 1, and keeps `security_disable_o`, the SEC_DIS digest and its valid bit after a match. Each pulse is shown to reach the 11 scan-replaced reset nets. The fuse-sense, feature-control, DEMOTE and `LC_STATE` values under the scan reset, a shadow write and a token go with `test_en_i` high, and the `_n0_scan` storage names are logged only. Extends the open scan-reset and `SECURE_TM` tests with the scan-session cells only.
+|Proves that a scan session (a `test_en_i` rise, a `scan_rst_ni` pulse with `test_en_i` high and a `test_en_i` fall) keeps `secure_tm_o` at its sampled value at strap 0 and at strap 1, keeps the four secret shadow outputs at zero while `SECURE_TM` is 1, and keeps `security_disable_o`, the SEC_DIS digest and its valid bit after a match. Each pulse is shown to reach the 12 scan-replaced reset nets. The fuse-sense, feature-control, DEMOTE and `LC_STATE` values under the scan reset, a shadow write and a token go with `test_en_i` high, and the `_n0_scan` storage names are logged only. Extends the open scan-reset and `SECURE_TM` tests with the scan-session cells only.
 
 |<<sep_test_en_pin_reach_test,`sep_test_en_pin_reach_test`>>
 |3
 |no_cpu, skip-sense plusarg, VCS only
 |`test_en_i` top-port drive (added hook), hierarchy walk of the test pins (observation taps)
-|Proves that every clock-gater test port and AXI cell test input that an OCAH-owned module instantiates equals `test_en_i` after its rise and after its fall. The specification sentence is read as every such input, and the ticket that this reading opens may end as a specification fix. Fails on the current design (<<known-limitations>>). Pins inside vendor libraries and inside `sep_cpu` are logged only.
+|Proves that every clock-gater test port and AXI cell test input that an OCAH-owned module instantiates equals `test_en_i` after its rise and after its fall. The specification sentence is read as every such input, and the ticket that this reading opens may end as a specification fix. The graded set must equal a committed pin inventory (bench configuration), so a pin that leaves or joins the set fails by name. Fails on the current design (<<known-limitations>>). Pins inside vendor libraries and inside `sep_cpu` are logged only.
 
 |<<sep_cpu_reset_entry_test,`sep_cpu_reset_entry_test`>>
 |3
@@ -4405,7 +4405,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`ip_rst_n[0]` (`KM-RST`)
 |Read-only tap
 |The Key Manager warm reset net `km_sw_rst_n`: bit 0 of `sep_crypto_gated_rst_no`, index 0 of the `ip_rst_n` vector.
-|`sep_sw_reset_isolation_matrix_test` (Key Manager leg, CHK-ISO-ORDER and CHK-ISO-REL), `sep_km_kmcsr_reset_rand_test` (CHK-HOLD)
+|`sep_sw_reset_isolation_matrix_test` (Key Manager leg, CHK-ISO-ORDER and CHK-ISO-REL), `sep_km_kmcsr_reset_rand_test` (CHK-HOLD), `sep_scan_reset_override_test` (CHK-SCAN-IDLE, CHK-SCAN-REPLACE), `sep_scan_mode_state_hold_test` (CTL-SCAN-REACH)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>; <<sep-vplan-phase3-key-manager,Key Manager>>
 |Isolate request and isolate-complete vectors
 |Read-only tap
