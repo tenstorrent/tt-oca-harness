@@ -761,8 +761,8 @@ target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive"]
 
 [[tests]]
-# test_en_i reaches every clock-gater test port and AXI cell test input that an
-# OCAH-owned module instantiates, on both edges.
+# test_en_i reaches every clock-gater test port and AXI cell test input of the
+# committed SEP-owned pin inventory, on both edges.
 name = "sep_test_en_pin_reach_test"
 module = "system.sep_test_en_pin_reach_test"
 seed = 1

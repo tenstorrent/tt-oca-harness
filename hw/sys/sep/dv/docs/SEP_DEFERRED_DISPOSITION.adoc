@@ -78,6 +78,38 @@ without the plusarg.
 (`testlists/spi.toml`).
 |===
 
+[[sep-standin-test-en-inventory]]
+== Committed `test_en_i` pin inventory as the graded set of `sep_test_en_pin_reach_test`
+
+[cols="1,4"]
+|===
+|Claim accepted
+|`sep_test_en_pin_reach_test` grades the "every such input" reading of
+`hw/sys/sep/doc/port_table.adoc` (`test_en_i`: "Drives clock-gater test ports
+and AXI cell test inputs.") on the pins of the committed inventory
+`GRADED_PINS` (`cocotb/tests/system/sep_test_en_pin_inventory.py`), not on a
+set that the bench derives from the RTL when it runs. Selection rule (the
+SEP-owned boundary): the test inputs of the clock-gater and AXI cell instances
+that OCAH RTL instantiates, without the pins inside `sep_cpu`, on the
+`lsu_stub_all_live` build. Pins inside vendor IP or a third-party library are
+not graded. The expected value of each pin comes from the `port_table.adoc`
+sentence; the inventory sets only which pins are graded.
+
+|Why the real path is not needed
+|The specification names the two pin classes and no list of instances, so the
+graded set is a bench decision. The DV owner chose the SEP-owned boundary on
+2026-10-19. A committed list keeps the graded set independent of a source
+scan at run time: the hierarchy walk finds each inventory pin, an inventory
+pin that the walk does not find fails CTL-PIN-WALK by name, and the source
+ownership scan of `cocotb/env/sep_test_en_walk.py` only labels the walked pins
+in the log. The inventory changes only by a reviewed edit.
+
+|Scope
+|`GRADED_PINS` (172 pins: 1 clock gater, 171 AXI cells) as the graded set of
+CHK-TEST-EN-PINS and CTL-PIN-WALK in `sep_test_en_pin_reach_test`
+(`testlists/system.toml`). No other test grades these pins.
+|===
+
 [[sep-standin-recheck]]
 == Re-confirming a stand-in
 
@@ -91,4 +123,9 @@ the scope, then `grep -n 'BRINGUP LOG: feat_ctrl'` in any log of
 `sep_fabric_smc_route_test`
 |`+skip_fuse_sense` in the `args` of each of the twenty-nine entries, and
 `feat_ctrl=0x0000000000000000`, the reset decode.
+
+|`test_en_i` pin inventory
+|`python3 -c 'import sys; sys.path.insert(0, "hw/sys/sep/dv/cocotb"); from tests.system.sep_test_en_pin_inventory import GRADED_PINS as G; print(len(G), sum(c == "clock_gater" for _, c in G))'`,
+then `grep -n 'CTL-PIN-WALK:'` in any log of `sep_test_en_pin_reach_test`
+|`172 1`, and `CTL-PIN-WALK: graded=172 inventory=172 missing=0 class_mismatch=0`.
 |===

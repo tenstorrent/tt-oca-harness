@@ -6,7 +6,8 @@ RAND-REP, no_cpu on ``lsu_stub_all_live`` with real fuse sense, VCS only (the
 nets can hold X across the scan pulse). The seed draws the low width ``w`` of
 ``scan_rst_ni`` (4 to 64 ``clk_i`` cycles; the floor is an environment
 choice), its fall and release ``phase`` (10 to 90 percent of the ``clk_i``
-period after a ``clk_i`` rising edge) and the order of the two strap legs.
+period after a ``clk_i`` rising edge), the order of the two strap legs and
+the three strap-flip cycles ``f1``, ``f2`` < ``f3`` (1 to H-1).
 Every run runs the strap-0 leg, the strap-1 leg and the SEC_DIS leg (last).
 ``clk_wdt_i`` runs at ``P_W`` ``clk_i`` periods with its rising edge ``WDT_PHASE_PCT``
 percent of a ``clk_i`` period after a ``clk_i`` rising edge (environment choice), so
@@ -16,8 +17,13 @@ bound after each cold boot and no ``clk_wdt_i`` edge meets a ``clk_i`` sample.
 Each leg: a cold boot with real fuse sense at the leg strap, DEMOTE_1 and
 DEMOTE_2 set and locked, the Key Manager released, then the scan session:
 ``test_en_i`` 0 to 1, a hold, a ``scan_rst_ni`` pulse of ``w`` cycles with
-``test_en_i`` = 1, a hold, ``test_en_i`` 1 to 0, a hold. Every probe is
-sampled on every ``clk_i`` rising edge of the session.
+``test_en_i`` = 1, a hold, ``test_en_i`` 1 to 0, a hold. With ``test_en_i`` = 1
+the strap ``test_en_strap_i`` moves to the opposite of the leg strap at cycle
+``f1`` of the first hold (it stays there through the pulse), back at cycle
+``f2`` of the second hold and to the opposite value again at cycle ``f3``, so it
+is opposite at the ``scan_rst_ni`` release and at the ``test_en_i`` fall. It is
+set back after the session. Every probe is sampled on every ``clk_i`` rising
+edge of the session.
 
 Contract:
 
@@ -42,7 +48,10 @@ Checkers:
                         every clk_i edge with scan_rst_ni low (the nets of
                         sep_scan_reset_override_test, all high before).
   CHK-SCAN-TM-HOLD      secure_tm_o keeps the leg strap value (0 and 1) on
-                        every sample of the session.
+                        every sample of the session while the strap moves
+                        (no cold reset and no fuse-sense completion, so no
+                        sampling event). Control: at least 3 samples with
+                        test_en_i = 1 and the strap opposite per session.
   CHK-SCAN-SECRET-ZERO  at strap 1 the 32 secret shadow words read 0 on every
                         sample of the session. Control: at strap 0 they read
                         the staged words before the session.
@@ -159,6 +168,11 @@ class _Cfg:
         order = [0, 1]
         rng.shuffle(order)
         self.straps = tuple(order)
+        # Strap flips with test_en_i = 1, in clk_i cycles: f1 into the hold before
+        # the scan_rst_ni pulse, f2 < f3 into the hold after it.
+        self.f1 = rng.randrange(1, H)
+        self.f2 = rng.randrange(1, H - 1)
+        self.f3 = rng.randrange(self.f2 + 1, H)
 
 
 def _bit(bits: str, idx: int = 0) -> int | None:
@@ -199,6 +213,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             "t": int(get_sim_time("ps")),
             "te": _bit(sig_bits(dut.test_en_i)),
             "scan": _bit(sig_bits(dut.scan_rst_ni_i)),
+            "strap": _bit(sig_bits(dut.test_en_strap_i)),
             "stm": _bit(sig_bits(dut.secure_tm_o)),
             "nets": nets,
             "secret": [probe_word(shadow, idx) for _f, idx in SECRET_WORDS],
@@ -302,8 +317,26 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             wresp,
         )
 
-    async def _session(self, leg: str) -> dict:
-        """test_en_i 0 to 1, scan_rst_ni pulse, test_en_i 1 to 0, every edge sampled."""
+    async def _hold_flip(self, leg: str, at: dict[int, int], where: str) -> None:
+        """Hold H clk_i cycles and drive the strap to ``at[n]`` after cycle ``n``."""
+        dut = cocotb.top
+        for n in range(1, H + 1):
+            await RisingEdge(dut.clk_i)
+            if n in at:
+                dut.test_en_strap_i.value = at[n]
+                self.strap_flips.append(
+                    f"leg={leg} strap->{at[n]} t={int(get_sim_time('ps'))} test_en_i=1 {where}"
+                )
+
+    async def _session(self, leg: str, strap: int) -> dict:
+        """test_en_i 0 to 1, scan_rst_ni pulse, test_en_i 1 to 0, every edge sampled.
+
+        With test_en_i = 1 the strap moves to the opposite value before the pulse
+        (it stays there through the pulse), back to ``strap`` after the pulse and
+        to the opposite value again before the test_en_i fall. It is set back to
+        ``strap`` after the session. No cold reset and no fuse sense occur in the
+        session, so none of these moves is a sampling event.
+        """
         dut = cocotb.top
         cfg = self.tcfg
         period_ps = self.sys_ps
@@ -315,7 +348,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = 1
         t_te_rise = int(get_sim_time("ps"))
-        await ClockCycles(dut.clk_i, H)
+        await self._hold_flip(leg, {cfg.f1: 1 - strap}, "before_pulse")
         await RisingEdge(dut.clk_i)
         await Timer(cfg.phase * period_ps // 100, units="ps")
         dut.scan_rst_ni_i.value = 0
@@ -327,7 +360,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         await Timer(cfg.phase * period_ps // 100, units="ps")
         dut.scan_rst_ni_i.value = 1
         t_rise = int(get_sim_time("ps"))
-        await ClockCycles(dut.clk_i, H)
+        await self._hold_flip(leg, {cfg.f2: strap, cfg.f3: 1 - strap}, "after_pulse")
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = 0
         await ClockCycles(dut.clk_i, H)
@@ -336,6 +369,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         stop["v"] = True
         await task
         await RisingEdge(dut.clk_i)
+        dut.test_en_strap_i.value = strap
         close_graded_window(self.logger)
         assert rec and rec[-1]["t"] >= t_end, f"{leg}: sampler did not sample to the session end"
         pre = [s for s in rec if s["t"] < t_te_rise]
@@ -361,7 +395,14 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             t_rise,
         )
         assert len(pre) >= PRE - 1 and win, f"{leg}: too few samples (pre={len(pre)})"
-        return {"pre": pre, "win": win, "t_rise": t_rise}
+        flipped = sum(1 for x in win if x["strap"] == 1 - strap and x["te"] == 1)
+        assert flipped >= 3, (
+            f"CHK-SCAN-TM-HOLD FAIL: control: leg={leg} strap at {1 - strap} with test_en_i=1 "
+            f"on {flipped} samples"
+        )
+        for line in self.strap_flips[-3:]:
+            self.logger.info("STRAP-FLIP LOG: %s", line)
+        return {"pre": pre, "win": win, "t_rise": t_rise, "flipped": flipped}
 
     # -- logged items ----------------------------------------------------------
 
@@ -444,7 +485,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             await self._shadow_write_obs()
         await self._demote_and_lock()
         await self._release_km()
-        s = await self._session(leg)
+        s = await self._session(leg, strap)
         self._obs_hold(leg, strap, s)
         win = s["win"]
         bad = [(x["t"], x["stm"]) for x in win if x["stm"] != strap]
@@ -452,7 +493,10 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             f"CHK-SCAN-TM-HOLD FAIL: leg={leg} secure_tm_o left {strap} during the scan "
             f"session (w={self.tcfg.w}): {bad[:4]}"
         )
-        self.tm_pass.append(f"strap={strap} secure_tm_o={strap} samples={len(win)} w={self.tcfg.w}")
+        self.tm_pass.append(
+            f"strap={strap} secure_tm_o={strap} samples={len(win)} w={self.tcfg.w} "
+            f"strap_flips=3 opposite_strap_samples={s['flipped']}"
+        )
         if strap == 1:
             nz = [
                 (x["t"], SECRET_WORDS[i][0], _hex(v))
@@ -508,7 +552,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             and after["digest"] == bound
         ), f"CTL-SECDIS-SET FAIL: {line}"
         self.logger.info("CTL-SECDIS-SET: %s", line)
-        s = await self._session(leg)
+        s = await self._session(leg, 0)
         self._obs_hold(leg, 0, s)
         win = s["win"]
         bad = [
@@ -531,7 +575,10 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
         tm_bad = [(x["t"], x["stm"]) for x in win if x["stm"] != 0]
         assert not tm_bad, f"CHK-SCAN-TM-HOLD FAIL: leg={leg} secure_tm_o left 0: {tm_bad[:4]}"
-        self.tm_pass.append(f"strap=0 sec_dis=1 secure_tm_o=0 samples={len(win)}")
+        self.tm_pass.append(
+            f"strap=0 sec_dis=1 secure_tm_o=0 samples={len(win)} strap_flips=3 "
+            f"opposite_strap_samples={s['flipped']}"
+        )
 
         # OBS-SCAN-SECDIS-GO: a mismatch go with test_en_i = 1.
         await RisingEdge(dut.clk_i)
@@ -567,10 +614,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         self.logger.info("SEED seed=%d", seed)
         self.tcfg = cfg = _Cfg(seed)
         self.logger.info(
-            "DRAW w=%d phase=%d strap_order=%s",
+            "DRAW w=%d phase=%d strap_order=%s strap_flip=%d,%d,%d",
             cfg.w,
             cfg.phase,
             ",".join(str(s) for s in cfg.straps),
+            cfg.f1,
+            cfg.f2,
+            cfg.f3,
         )
         self.sys_ps = int(round(self.cfg.sys_clk_period_ns * 1000))
         self.cfg.wdt_clk_period_ns = P_W * self.cfg.sys_clk_period_ns
@@ -593,6 +643,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         self.write_efuse_image(img)
         self.fd = SepEfuseFd(self)
         self.tm_pass: list[str] = []
+        self.strap_flips: list[str] = []
         self.secret1 = 0
         self.secret0 = (0, 0, 0)
         orient = {

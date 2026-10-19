@@ -1,17 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Expected graded-pin inventory of ``sep_test_en_pin_reach_test``.
+"""Graded-pin inventory of ``sep_test_en_pin_reach_test``.
 
 Bench configuration, not a behaviour golden. Each entry is the hierarchy path
 of one test pin below ``u_dut`` on the ``lsu_stub_all_live`` build and its pin
-class. The walk of ``env/sep_test_en_walk.py`` classifies each pin by the
-ownership rule, and this inventory fixes which pins that rule selects: a
-graded pin that leaves the walk (a cell moved under ``vendor``, given another
-name or removed) or a new graded pin fails CTL-PIN-WALK by name, so a change
-to the graded set needs a deliberate edit here. The inventory sets the scope
-of the "every such input" reading of ``hw/sys/sep/doc/port_table.adoc``
-(``test_en_i``); the expected value of each pin comes from that sentence, not
-from this file.
+class. Selection rule (the SEP-owned boundary): the test inputs of the
+clock-gater and AXI cell instances that OCAH RTL instantiates (clock gater:
+port ``test_en_i``; AXI cell: port ``test_i``), without the pins inside
+``sep_cpu``. Pins inside vendor IP or a third-party library are not entries.
+The inventory changes only by a reviewed edit; the record of the scope is
+``hw/sys/sep/dv/docs/SEP_DEFERRED_DISPOSITION.adoc``
+(``sep-standin-test-en-inventory``). The leaf grades every entry: an entry
+that the hierarchy walk does not find, or finds with another class, fails
+CTL-PIN-WALK by name. The inventory sets the scope of the "every such input"
+reading of ``hw/sys/sep/doc/port_table.adoc`` (``test_en_i``); the expected
+value of each pin comes from that sentence, not from this file.
 """
 
 from __future__ import annotations

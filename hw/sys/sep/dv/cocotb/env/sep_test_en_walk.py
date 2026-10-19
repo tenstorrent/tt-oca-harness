@@ -4,7 +4,9 @@
 
 ``hw/sys/sep/doc/port_table.adoc`` (``test_en_i``): "Drives clock-gater test
 ports and AXI cell test inputs." The walk collects every pin of the two classes
-below the walk root and sorts each pin into the graded set or a logged group.
+below the walk root and labels each pin with a group. The walk selects no
+graded pin: a leaf that grades pins takes its graded set from a committed
+inventory and looks each inventory path up in the walk.
 
 Pin classes (definition name of the cell instance, test port):
 
@@ -13,32 +15,24 @@ Pin classes (definition name of the cell instance, test port):
 * ``axi_cell``: a definition name that starts with ``axi_`` or is ``axi``;
   port ``test_i``.
 
-Graded set (the SEP-owned boundary). A pin is graded when the module that
-instantiates its cell is OCAH-owned: its definition name is declared by a
-``module`` statement in a source file under ``hw/`` of this repository that has
-no ``vendor``, ``dv`` or ``build`` path component. The instantiating module is
-the nearest scope above the cell that has a definition name (a generate block
-has none). The simulator gives no source file of a scope, so the rule reads the
-module declarations of the source tree when the walk runs.
+Groups (for the log only). The group of a pin comes from the module that
+instantiates its cell: the nearest scope above the cell that has a definition
+name (a generate block has none). The simulator gives no source file of a
+scope, so the walk reads the module declarations of the source tree:
 
-Logged groups (not graded), each printed with its pin count:
-
-* ``sep_cpu``: every pin inside an instance of ``sep_cpu``. The CPU-stub
-  build and the full-CPU build use different ``sep_cpu`` modules under the same
-  name, so the graded set does not depend on the build.
-* ``<org>/<library>``: the instantiating module is declared only under a
-  ``vendor`` directory (for example ``pulp-platform/axi``).
-* ``ambiguous``: the name is declared both in an OCAH-owned file and under a
+* ``ocah``: the name is declared by a ``module`` statement in a source file
+  under ``hw/`` of this repository that has no ``vendor``, ``dv`` or ``build``
+  path component.
+* ``sep_cpu``: every pin inside an instance of ``sep_cpu``.
+* ``<org>/<library>``: the name is declared only under a ``vendor`` directory
+  (for example ``pulp-platform/axi``).
+* ``ambiguous``: the name is declared both in an ``ocah`` file and under a
   ``vendor`` directory.
-* ``unresolved``: the name is declared nowhere in the scanned tree. A leaf
-  that grades the walk requires this group to be empty.
+* ``unresolved``: the name is declared nowhere in the scanned tree.
 
 Unwalkable scopes. A scope whose children the simulator cannot iterate is
-recorded with its path and the owner of the module that the scope belongs to
-(the definition name of the scope, or the instantiating module of a generate
-block). The walk cannot see a pin below such a scope, so a leaf that grades
-the walk requires no unwalkable scope with an OCAH-owned, ambiguous or
-unresolved owner, and logs the others by name.
+recorded with its path and the group of the module that the scope belongs to.
+The walk cannot see a pin below such a scope.
 """
 
 from __future__ import annotations
@@ -118,8 +112,6 @@ def module_index(root: str = str(_REPO_ROOT)) -> ModuleIndex:
                     vendor.setdefault(n, set()).add(lib)
             else:
                 owned.update(names)
-    if not owned:
-        raise RuntimeError(f"no OCAH-owned module declaration found under {base / 'hw'}")
     return ModuleIndex(frozenset(owned), {k: frozenset(v) for k, v in vendor.items()}, files)
 
 
@@ -131,12 +123,8 @@ class TestEnPin:
     cls: str  # pin class
     cell: str  # definition name of the cell
     parent: str  # definition name of the instantiating module
-    owner: str  # OWNER_OCAH, OWNER_CPU, a vendor library, ambiguous or unresolved
+    owner: str  # group: OWNER_OCAH, OWNER_CPU, a vendor library, ambiguous or unresolved
     handle: Any = field(compare=False, repr=False)
-
-    @property
-    def graded(self) -> bool:
-        return self.owner == OWNER_OCAH
 
     def label(self) -> str:
         return f"{self.path} class={self.cls} cell={self.cell} parent={self.parent}"
@@ -148,12 +136,7 @@ class UnwalkableScope:
 
     path: str
     module: str  # definition name of the scope, or of the instantiating module
-    owner: str  # OWNER_OCAH, OWNER_CPU, a vendor library, ambiguous or unresolved
-
-    @property
-    def blocks_grading(self) -> bool:
-        """True when a pin below the scope can belong to the graded set."""
-        return self.owner in (OWNER_OCAH, OWNER_AMBIGUOUS, OWNER_UNRESOLVED)
+    owner: str  # group: OWNER_OCAH, OWNER_CPU, a vendor library, ambiguous or unresolved
 
     def label(self) -> str:
         return f"{self.path} module={self.module} owner={self.owner}"
@@ -169,19 +152,13 @@ class TestEnWalk:
     index: ModuleIndex
     unwalkable: list[UnwalkableScope] = field(default_factory=list)
 
-    @property
-    def graded(self) -> list[TestEnPin]:
-        return [p for p in self.pins if p.graded]
+    def by_path(self) -> dict[str, TestEnPin]:
+        return {p.path: p for p in self.pins}
 
-    def graded_count(self, cls: str) -> int:
-        return sum(1 for p in self.pins if p.graded and p.cls == cls)
-
-    def logged_counts(self) -> dict[str, int]:
-        """Pin count of each logged group (every pin that is not graded)."""
-        return dict(sorted(Counter(p.owner for p in self.pins if not p.graded).items()))
-
-    def unresolved(self) -> list[TestEnPin]:
-        return [p for p in self.pins if p.owner == OWNER_UNRESOLVED]
+    @staticmethod
+    def group_counts(pins: list[TestEnPin]) -> dict[str, int]:
+        """Pin count of each group in ``pins``."""
+        return dict(sorted(Counter(p.owner for p in pins).items()))
 
 
 def _def_name(h: Any) -> str:
