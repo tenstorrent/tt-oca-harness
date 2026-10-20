@@ -11,6 +11,28 @@ package otbn_wrapper_key_reg_pkg;
     localparam OTBN_WRAPPER_KEY_REG_SIZE = 'h64;
 
     typedef struct {
+        logic hwclr;
+    } otbn_wrapper_key__key_word_reg__data__in_t;
+
+    typedef struct {
+        otbn_wrapper_key__key_word_reg__data__in_t data;
+    } otbn_wrapper_key__key_word_reg__in_t;
+
+    typedef struct {
+        logic hwclr;
+    } otbn_wrapper_key__key_ctrl_reg__key_valid__in_t;
+
+    typedef struct {
+        otbn_wrapper_key__key_ctrl_reg__key_valid__in_t key_valid;
+    } otbn_wrapper_key__key_ctrl_reg__in_t;
+
+    typedef struct {
+        otbn_wrapper_key__key_word_reg__in_t KEY_SHARE0[12];
+        otbn_wrapper_key__key_word_reg__in_t KEY_SHARE1[12];
+        otbn_wrapper_key__key_ctrl_reg__in_t KEY_CTRL;
+    } otbn_wrapper_key__in_t;
+
+    typedef struct {
         logic [31:0] value;
     } otbn_wrapper_key__key_word_reg__data__out_t;
 

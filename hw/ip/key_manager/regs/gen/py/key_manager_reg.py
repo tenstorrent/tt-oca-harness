@@ -8173,7 +8173,7 @@ OTBN_WRAPPER_KEY_KEY_WORD_REG_REG_FIELD_ACCESS = (
 
 OTBN_WRAPPER_KEY_KEY_WORD_REG_REG_WIDTH = 32
 OTBN_WRAPPER_KEY_KEY_WORD_REG_REG_FIELDS = (
-    ('data', 0, 31, 'w', 'r', '', '', False, False, None),
+    ('data', 0, 31, 'w', 'r', '', '', False, True, None),
 )
 
 class OTBN_WRAPPER_KEY_KEY_WORD_REG_reg_t(Structure):
@@ -8211,7 +8211,7 @@ OTBN_WRAPPER_KEY_KEY_CTRL_REG_REG_FIELD_ACCESS = (
 
 OTBN_WRAPPER_KEY_KEY_CTRL_REG_REG_WIDTH = 32
 OTBN_WRAPPER_KEY_KEY_CTRL_REG_REG_FIELDS = (
-    ('key_valid', 0, 0, 'rw', 'r', '', '', False, False, 0),
+    ('key_valid', 0, 0, 'rw', 'r', '', '', False, True, 0),
     ('rsvd', 1, 31, 'r', 'na', '', '', False, False, 0),
 )
 
@@ -8250,7 +8250,7 @@ AES_WRAPPER_KEY_KEY_WORD_REG_REG_FIELD_ACCESS = (
 
 AES_WRAPPER_KEY_KEY_WORD_REG_REG_WIDTH = 32
 AES_WRAPPER_KEY_KEY_WORD_REG_REG_FIELDS = (
-    ('data', 0, 31, 'w', 'r', '', '', False, False, None),
+    ('data', 0, 31, 'w', 'r', '', '', False, True, None),
 )
 
 class AES_WRAPPER_KEY_KEY_WORD_REG_reg_t(Structure):
@@ -8288,7 +8288,7 @@ AES_WRAPPER_KEY_KEY_CTRL_REG_REG_FIELD_ACCESS = (
 
 AES_WRAPPER_KEY_KEY_CTRL_REG_REG_WIDTH = 32
 AES_WRAPPER_KEY_KEY_CTRL_REG_REG_FIELDS = (
-    ('key_valid', 0, 0, 'rw', 'r', '', '', False, False, 0),
+    ('key_valid', 0, 0, 'rw', 'r', '', '', False, True, 0),
     ('rsvd', 1, 31, 'r', 'na', '', '', False, False, 0),
 )
 
@@ -8327,7 +8327,7 @@ KMAC_WRAPPER_KEY_KEY_WORD_REG_REG_FIELD_ACCESS = (
 
 KMAC_WRAPPER_KEY_KEY_WORD_REG_REG_WIDTH = 32
 KMAC_WRAPPER_KEY_KEY_WORD_REG_REG_FIELDS = (
-    ('data', 0, 31, 'w', 'r', '', '', False, False, None),
+    ('data', 0, 31, 'w', 'r', '', '', False, True, None),
 )
 
 class KMAC_WRAPPER_KEY_KEY_WORD_REG_reg_t(Structure):
@@ -8365,7 +8365,7 @@ KMAC_WRAPPER_KEY_KEY_CTRL_REG_REG_FIELD_ACCESS = (
 
 KMAC_WRAPPER_KEY_KEY_CTRL_REG_REG_WIDTH = 32
 KMAC_WRAPPER_KEY_KEY_CTRL_REG_REG_FIELDS = (
-    ('key_valid', 0, 0, 'rw', 'r', '', '', False, False, 0),
+    ('key_valid', 0, 0, 'rw', 'r', '', '', False, True, 0),
     ('rsvd', 1, 31, 'r', 'na', '', '', False, False, 0),
 )
 
@@ -8404,7 +8404,7 @@ HMAC_WRAPPER_KEY_KEY_WORD_REG_REG_FIELD_ACCESS = (
 
 HMAC_WRAPPER_KEY_KEY_WORD_REG_REG_WIDTH = 32
 HMAC_WRAPPER_KEY_KEY_WORD_REG_REG_FIELDS = (
-    ('data', 0, 31, 'w', 'r', '', '', False, False, None),
+    ('data', 0, 31, 'w', 'r', '', '', False, True, None),
 )
 
 class HMAC_WRAPPER_KEY_KEY_WORD_REG_reg_t(Structure):
@@ -8442,7 +8442,7 @@ HMAC_WRAPPER_KEY_KEY_CTRL_REG_REG_FIELD_ACCESS = (
 
 HMAC_WRAPPER_KEY_KEY_CTRL_REG_REG_WIDTH = 32
 HMAC_WRAPPER_KEY_KEY_CTRL_REG_REG_FIELDS = (
-    ('key_valid', 0, 0, 'rw', 'r', '', '', False, False, 0),
+    ('key_valid', 0, 0, 'rw', 'r', '', '', False, True, 0),
     ('rsvd', 1, 31, 'r', 'na', '', '', False, False, 0),
 )
 
@@ -8481,7 +8481,7 @@ ABR_SEED_RF_KEY_WORD_REG_REG_FIELD_ACCESS = (
 
 ABR_SEED_RF_KEY_WORD_REG_REG_WIDTH = 32
 ABR_SEED_RF_KEY_WORD_REG_REG_FIELDS = (
-    ('data', 0, 31, 'w', 'r', '', '', False, False, None),
+    ('data', 0, 31, 'w', 'r', '', '', False, True, None),
 )
 
 class ABR_SEED_RF_KEY_WORD_REG_reg_t(Structure):
@@ -8519,7 +8519,7 @@ ABR_SEED_RF_SEED_CTRL_REG_REG_FIELD_ACCESS = (
 
 ABR_SEED_RF_SEED_CTRL_REG_REG_WIDTH = 32
 ABR_SEED_RF_SEED_CTRL_REG_REG_FIELDS = (
-    ('key_valid', 0, 0, 'rw', 'r', '', '', False, False, 0),
+    ('key_valid', 0, 0, 'rw', 'r', '', '', False, True, 0),
     ('rsvd', 1, 31, 'r', 'na', '', '', False, False, 0),
 )
 

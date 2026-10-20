@@ -11,6 +11,28 @@ package abr_wrapper_key_reg_pkg;
     localparam ABR_WRAPPER_KEY_REG_SIZE = 'h42c;
 
     typedef struct {
+        logic hwclr;
+    } abr_wrapper_key__key_word_reg__data__in_t;
+
+    typedef struct {
+        abr_wrapper_key__key_word_reg__data__in_t data;
+    } abr_wrapper_key__key_word_reg__in_t;
+
+    typedef struct {
+        logic hwclr;
+    } abr_wrapper_key__seed_ctrl_reg__key_valid__in_t;
+
+    typedef struct {
+        abr_wrapper_key__seed_ctrl_reg__key_valid__in_t key_valid;
+    } abr_wrapper_key__seed_ctrl_reg__in_t;
+
+    typedef struct {
+        abr_wrapper_key__key_word_reg__in_t KEY_SHARE0[8];
+        abr_wrapper_key__key_word_reg__in_t KEY_SHARE1[8];
+        abr_wrapper_key__seed_ctrl_reg__in_t KEY_CTRL;
+    } abr_wrapper_key__abr_seed_rf__in_t;
+
+    typedef struct {
         logic [31:0] next;
         logic we;
         logic hwclr;
@@ -21,6 +43,7 @@ package abr_wrapper_key_reg_pkg;
     } abr_wrapper_key__sk_word_reg__in_t;
 
     typedef struct {
+        logic hwclr;
         logic hwset;
     } abr_wrapper_key__sk_ctrl_reg__key_valid__in_t;
 
@@ -44,6 +67,10 @@ package abr_wrapper_key_reg_pkg;
     } abr_wrapper_key__abr_sharedkey_rf__in_t;
 
     typedef struct {
+        abr_wrapper_key__abr_seed_rf__in_t MLDSA_SEED;
+        abr_wrapper_key__abr_seed_rf__in_t MLKEM_SEED_D;
+        abr_wrapper_key__abr_seed_rf__in_t MLKEM_SEED_Z;
+        abr_wrapper_key__abr_seed_rf__in_t MLKEM_MSG;
         abr_wrapper_key__abr_sharedkey_rf__in_t MLKEM_SHARED_KEY;
     } abr_wrapper_key__in_t;
 

@@ -53,6 +53,9 @@ module sep_crypto_abr_wrapper
                                                                // CSR block (u_abr_key_csr).
   output      km_intf_pkg::km_axil_resp_t abr_key_axil_resp_o,  // Response from the Adams Bridge
                                                                 // key CSR block to the Key Manager.
+  input  wire logic wipe_pulse_i,             // Key Manager wipe pulse; clears every seed and
+                                              // message share, the ML-KEM shared key and their
+                                              // key_valid bits through sep_abr_kv_shim.
 
   output      abr_mem_req_t abr_mem_req_o,    // abr_top requests to its external SRAM macros, which
                                               // live in sep_ip_integration, packed into one struct
@@ -265,6 +268,7 @@ module sep_crypto_abr_wrapper
   sep_abr_kv_shim u_sep_abr_kv_shim (
     .hwif_i       (abr_key_hwif_out),
     .hwif_o       (abr_key_hwif_in),
+    .wipe_pulse_i (wipe_pulse_i),
     .kv_read_i    (ab_kv_read),
     .kv_rd_resp_o (ab_kv_rd_resp),
     .kv_write_i   (ab_kv_write),

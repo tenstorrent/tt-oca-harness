@@ -42,6 +42,8 @@ addrmap hmac_wrapper_key {
             desc = "32-bit key data word. Write-only for security.";
             sw = w;
             hw = r;
+            hwclr = true;
+            precedence = hw;
             // No reset: key data should power up random/undefined
         } data[31:0];
     };
@@ -68,6 +70,8 @@ addrmap hmac_wrapper_key {
                     Write 0 to invalidate the current key.";
             sw = rw;
             hw = r;
+            hwclr = true;
+            precedence = hw;
             reset = 1'b0;
         } key_valid[0:0];
 
