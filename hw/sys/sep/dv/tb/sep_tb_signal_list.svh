@@ -613,6 +613,13 @@
 // km_sram_wmap_clr_i at 1 (bench state only; default 0).
 `SEP_TB_IN(logic, km_sram_wmap_clr_i)
 `SEP_TB_OUT(logic [32*9-1:0], km_sram_wmap_region_o)
+// KM-WMAP-JUMP: the KM-WMAP counts captured in the clock of the first
+// completed KM CPU instruction fetch at 0x8000 since the bench reset or the
+// last clear, km_sram_write_count_o in the same clock, and the flag that the
+// capture took place.
+`SEP_TB_OUT(logic [32*9-1:0], km_sram_wmap_jump_o)
+`SEP_TB_OUT(logic [31:0], km_sram_wmap_jump_wr_o)
+`SEP_TB_OUT(logic, km_sram_wmap_jump_seen_o)
 // HK-OTP and HK-STRM state: the OTP input is held by the inject; the
 // withdrawal pulse has been driven since the arm, and the sink TREADY in the
 // pulse clock; the sampler sink TVALID after the inject.

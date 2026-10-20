@@ -3664,6 +3664,38 @@ module sep_uvm_top
     end
     assign km_sram_wmap_region_o = km_wmap_cnt_q;
 
+    // KM-WMAP-JUMP: the KM-WMAP counts in the clock of the first completed KM
+    // CPU instruction fetch at 0x8000 (the SRAM image entry) since the bench
+    // reset or the last clock with km_sram_wmap_clr_i at 1, the KM-SRAMWR count
+    // in the same clock, and a flag set by that capture. Stores of the image
+    // after the jump are not in the capture.
+    logic [31:0][8:0]  km_wmap_jump_q;
+    logic [31:0]       km_wmap_jump_wr_q;
+    logic              km_wmap_jump_seen_q;
+    logic              km_wmap_jump_fetch;
+    assign km_wmap_jump_fetch = (`KM_TAP.u_cpu.mem_valid === 1'b1) &&
+                                (`KM_TAP.u_cpu.mem_ready === 1'b1) &&
+                                (`KM_TAP.u_cpu.mem_instr === 1'b1) &&
+                                (`KM_TAP.u_cpu.mem_addr === 32'h0000_8000);
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_wmap_jump_q      <= '0;
+            km_wmap_jump_wr_q   <= '0;
+            km_wmap_jump_seen_q <= 1'b0;
+        end else if (km_sram_wmap_clr_i === 1'b1) begin
+            km_wmap_jump_q      <= '0;
+            km_wmap_jump_wr_q   <= '0;
+            km_wmap_jump_seen_q <= 1'b0;
+        end else if (km_wmap_jump_fetch && !km_wmap_jump_seen_q) begin
+            km_wmap_jump_q      <= km_wmap_cnt_q;
+            km_wmap_jump_wr_q   <= km_sram_wr_cnt_q;
+            km_wmap_jump_seen_q <= 1'b1;
+        end
+    end
+    assign km_sram_wmap_jump_o      = km_wmap_jump_q;
+    assign km_sram_wmap_jump_seen_o = km_wmap_jump_seen_q;
+    assign km_sram_wmap_jump_wr_o   = km_wmap_jump_wr_q;
+
     // ------------------------------------------------------------------
     // HK-OTP: KM OTP input rail flip (docs/SEP_TB_ARCH.adoc, inject
     // exceptions). No legal fuse image presents a broken dual-rail word: the

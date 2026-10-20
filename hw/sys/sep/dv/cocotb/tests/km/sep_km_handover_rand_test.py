@@ -59,8 +59,8 @@ Checks:
                       pass that hands over with the shared key pending.
   CHK-HO-SIDELOAD-BUS every (share, word) address of the eight bank windows is
                       written after the handover command, also in empty banks.
-  CHK-HO-SRAM         SRAM_LOCK = 0x80000001 and the SRAM write count rises by
-                      at least the unlocked word count.
+  CHK-HO-SRAM         SRAM_LOCK = 0x80000001 and every word of every unlocked
+                      region is written before the jump (KM-WMAP-JUMP).
   CHK-HO-MBOX         KM_STATUS.inbound_empty = 1 at the jump.
 
 Controls: PIC bit 30 reads 0 in a quiet window before the corrupted load and
@@ -370,6 +370,14 @@ class sep_km_handover_rand_test(sep_base_test):
         v = self.rd_known(cocotb.top.km_sram_wmap_region_o)
         return [(v >> (9 * r)) & 0x1FF for r in range(md.N_REGIONS)]
 
+    def _wmap_jump(self) -> tuple[int, int, list[int]]:
+        """KM-WMAP-JUMP: the capture flag, the SRAM write count and the KM-WMAP
+        counts at the jump."""
+        seen = self.rd_known(cocotb.top.km_sram_wmap_jump_seen_o)
+        wr = self.rd_known(cocotb.top.km_sram_wmap_jump_wr_o)
+        v = self.rd_known(cocotb.top.km_sram_wmap_jump_o)
+        return seen, wr, [(v >> (9 * r)) & 0x1FF for r in range(md.N_REGIONS)]
+
     def _bank_valid(self) -> int:
         return self.rd_known(cocotb.top.km_engine_key_valid_o)
 
@@ -377,7 +385,7 @@ class sep_km_handover_rand_test(sep_base_test):
         return self.rd_known(cocotb.top.km_abr_sk_valid_o)
 
     def _sk_words(self) -> list[int]:
-        v = self.rd(cocotb.top.km_abr_sk_key_o, allow_unknown=True)
+        v = self.rd_known(cocotb.top.km_abr_sk_key_o)
         return [(v >> (32 * i)) & 0xFFFF_FFFF for i in range(8)]
 
     async def _quiet_pic30(self, clks: int) -> int:
@@ -832,8 +840,18 @@ class sep_km_handover_rand_test(sep_base_test):
                 f"(SEP_STATUS=0x{st:08x})"
             )
         rep = imgh.decode_report([first] + rest)
-        delta = (self._sram_writes() - base) & md.WORD
-        wmap = self._wmap_regions()
+        writes_end = self._sram_writes()
+        delta = (writes_end - base) & md.WORD
+        wmap_end = self._wmap_regions()
+        jump_seen, jump_wr, wmap = self._wmap_jump()
+        self.logger.info(
+            "LOG pass=%d KM-WMAP-JUMP seen=%d r30_jump=%d r30_end=%d writes_after_jump=%d",
+            exp.no,
+            jump_seen,
+            wmap[30],
+            wmap_end[30],
+            (writes_end - jump_wr) & md.WORD,
+        )
         await self._graded(False)
 
         self.logger.info(
@@ -866,7 +884,7 @@ class sep_km_handover_rand_test(sep_base_test):
             ("HO-KPV-LOCK", md.grade_kpv_lock, (rep, exp)),
             ("HO-SIDELOAD", md.grade_sideload, (rep, exp)),
             ("HO-SIDELOAD-BUS", md.grade_sideload_bus, (bus.writes, exp)),
-            ("HO-SRAM", md.grade_sram, (rep, exp, delta, wmap)),
+            ("HO-SRAM", md.grade_sram, (rep, exp, delta, wmap, jump_seen, wmap_end)),
             ("HO-MBOX", md.grade_mbox, (rep, exp)),
         ):
             ok, f = grade(*args)

@@ -333,7 +333,12 @@ Observation probe groups:
    logical word addresses (the KM CPU store address before the scrambler)
    written with `we` at 1 on the `sep` output `km_sram_mem_req_o` since the
    bench reset or the last clear. A write to a locked region leaves the port
-   with `we` at 0 and does not count. The clear resets bench state only. User:
+   with `we` at 0 and does not count. The clear resets bench state only.
+   KM-WMAP-JUMP (`km_sram_wmap_jump_o[32*9-1:0]`, `km_sram_wmap_jump_wr_o`,
+   `km_sram_wmap_jump_seen_o`): the KM-WMAP counts and `km_sram_write_count_o`
+   captured in the clock of the first completed KM CPU instruction fetch at
+   0x8000 since the bench reset or the last clear, and a flag that the capture
+   took place; stores after that fetch are not in the capture. User:
    `sep_km_handover_rand_test` (CHK-HO-SRAM).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
