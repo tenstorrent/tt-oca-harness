@@ -25,7 +25,10 @@ Checkers:
   CHK-WALK-ALLOW     windows [S, E] and [S, ~E] with S <= X <= E, ~E answer
                      OKAY with the staged value.
   CHK-WALK-EXACT     the one granule that holds X answers OKAY with the
-                     staged value; the next granule answers DECERR.
+                     staged value; the next granule (X+8, SEP_NMI_VEC, staged
+                     with its own value) answers DECERR without it. Control:
+                     the one granule that holds X+8 answers OKAY with the X+8
+                     value on the same entry.
   CHK-WALK-ABOVE     windows starting at S_B and ~S_B, both above X, answer
                      DECERR without the staged value.
   CHK-WALK-BELOW     a window ending below X answers DECERR without the
@@ -36,7 +39,11 @@ Checkers:
                      cold scratch words, chosen per bit): a compare that
                      ignores bit k of either bound flips the answer. For
                      k >= 32 the deciding bound is the one-hot 1<<k. Every
-                     such window is read back (CHK-WALK-READBACK).
+                     such window is read back (CHK-WALK-READBACK). Control:
+                     on the same entry, each probe word that a deny leg uses
+                     answers OKAY with its staged value through the one
+                     granule that holds it, so the external master reaches
+                     every probe word through the filter.
 """
 
 from __future__ import annotations
@@ -46,6 +53,7 @@ import pyuvm
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import SEP_CPU_CTRL
 from seq_lib.sep_fabric_csr_bank_seq import INFILT_BASE
 from seq_lib.sep_fabric_entry_walk_seq import (
     ADDR_MASK,
@@ -75,6 +83,12 @@ X = TARGET_ADDR
 # through the inbound filter and which differ from X and each other in bits [5:3].
 PROBE_ADDRS = [X] + [SCRATCH_COLD_0 + j * SCRATCH_STRIDE for j in range(SCRATCH_N)]
 BIT_LEGS = list(bit_legs(PROBE_ADDRS))
+# Probe words with a deny bit leg; each gets an allow control on every entry.
+DENY_PROBES = sorted({i for _k, _f, _w, allow, i in BIT_LEGS if not allow})
+# The granule after X (SEP_NMI_VEC, a pure-RW field nmi_vec[31:1]) is the
+# EXACT deny probe; it is staged so that its allow control returns a known value.
+X_NEXT = X + GRANULE_BYTES
+X_NEXT_FIELD = SEP_CPU_CTRL.field_mask("SEP_NMI_VEC", "nmi_vec")
 if granule(X) == 0 or X > (ADDR_MASK >> 1):
     raise RuntimeError(f"target 0x{X:x} leaves no room below or above it")
 
@@ -150,14 +164,15 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
         drv = SepInboundFilter(self)
         await drv.disable_all()
         probe_vals = [staged] + [rng.getrandbits(32) | 0x1 for _ in PROBE_ADDRS[1:]]
-        for addr, val in zip(PROBE_ADDRS, probe_vals):
+        next_val = (rng.getrandbits(32) | 0x2) & X_NEXT_FIELD
+        for addr, val in [*zip(PROBE_ADDRS, probe_vals), (X_NEXT, next_val)]:
             await drv.stage_target(addr, val)
             got = await drv.read_cpu(addr)
             assert got == val, f"staged probe 0x{addr:08x}=0x{got:08x} != 0x{val:08x}"
         filt = SepFilterEntryWalker(
             self, bank_base=INFILT_BASE, bank="INFILT", n_entries=INFILT_N_ENTRIES
         )
-        counts = dict.fromkeys(("ALLOW", "EXACT", "ABOVE", "BELOW", "BIT"), 0)
+        counts = dict.fromkeys(("ALLOW", "EXACT", "ABOVE", "BELOW", "BIT", "BIT_CTL"), 0)
 
         for p in plans:
             e = p.entry
@@ -184,7 +199,11 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
             await filt.program_window(e, *exact_window(X))
             win = await filt.check_window(e, "exact")
             await self._expect_allow("CHK-WALK-EXACT", e, X, win, staged)
-            await self._expect_deny("CHK-WALK-EXACT", e, X + GRANULE_BYTES, win, staged)
+            await self._expect_deny("CHK-WALK-EXACT", e, X_NEXT, win, next_val)
+            # Control: the granule that holds X+8 admits it on the same entry.
+            await filt.program_window(e, *exact_window(X_NEXT))
+            win = await filt.check_window(e, "exact-next")
+            await self._expect_allow("CHK-WALK-EXACT", e, X_NEXT, win, next_val)
 
             for k, field, bwin, bit_allow, i in BIT_LEGS:
                 await filt.program_window(e, *bwin)
@@ -195,10 +214,18 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
                 else:
                     await self._expect_deny(chk, e, PROBE_ADDRS[i], bwin, probe_vals[i])
                 counts["BIT"] += 1
+            # Control: each deny-leg probe word is reachable through this entry.
+            for i in DENY_PROBES:
+                await filt.program_window(e, *exact_window(PROBE_ADDRS[i]))
+                cwin = await filt.check_window(e, f"probe{i}-exact")
+                await self._expect_allow(
+                    "CHK-WALK-BIT control", e, PROBE_ADDRS[i], cwin, probe_vals[i]
+                )
+                counts["BIT_CTL"] += 1
 
             await filt.restore(e)
             counts["ALLOW"] += 2
-            counts["EXACT"] += 2
+            counts["EXACT"] += 3
             counts["BELOW"] += 1
             self.logger.info(
                 "entry %d: allow=0x%014x..0x%014x/~end above=0x%014x/~ below=..0x%014x",
@@ -221,8 +248,11 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
             staged,
         )
         self.logger.info(
-            "CHK-WALK-EXACT PASS: %d exact-granule reads (OKAY at X, DECERR at the next granule)",
+            "CHK-WALK-EXACT PASS: %d exact-granule reads (OKAY at X, DECERR at the next "
+            "granule 0x%08x, OKAY with 0x%08x through its own granule)",
             counts["EXACT"],
+            X_NEXT,
+            next_val,
         )
         self.logger.info(
             "CHK-WALK-ABOVE PASS: %d windows starting above X answered DECERR", counts["ABOVE"]
@@ -232,6 +262,9 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
         )
         self.logger.info(
             "CHK-WALK-BIT PASS: %d single-bit windows (every bit above the granule, START "
-            "and END, on every entry) decided the response",
+            "and END, on every entry) decided the response; control: %d exact-granule reads "
+            "of the deny-leg probes %s answered OKAY with their staged values",
             counts["BIT"],
+            counts["BIT_CTL"],
+            ",".join(f"0x{PROBE_ADDRS[i]:08x}" for i in DENY_PROBES),
         )

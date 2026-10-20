@@ -18,8 +18,11 @@ Contents:
   is 1).
 * ``Txn``, ``DmaJob``: one TB-master access and one Secure DMA copy.
 * ``PinWatch``: every AW/B/AR/R handshake on the pins of one TB master, sampled
-  in the read-only phase of each clock; an X or Z field on a handshake is
-  recorded for the leaf to fail on.
+  in the read-only phase of each clock; an X or Z field on a handshake, and an
+  X or Z on a VALID or on the READY that VALID waits on, is recorded for the
+  leaf to fail on.
+* ``PortStall``: the VALID-without-READY clocks at the outbound port, with the
+  same X or Z record.
 * ``ResponderDelay``: the per-cycle drive of the responder READY stall mask and
   of ``smn_outbound_resp_hold_i`` from a seeded stream.
 * ``port_view``, ``id_overlap``, ``max_outstanding``: the attribution, the
@@ -36,6 +39,7 @@ from dataclasses import dataclass, field
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.sep_fabric_common import outbound_ns
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_filter_model import FilterEntry
 from env.sep_seeded_rng import SepSeededRng
@@ -65,12 +69,22 @@ ASID_RESET = _D.reset32("ADDR_SPACE_ID")
 OUT_ENTRY = 4
 IN_ENTRY = 0
 # AxPROT of the LSU (hw/sys/sep/doc/cpu.adoc, AxPROT table) and of the SMN
-# inbound master; the Secure DMA master leaves AxUSER at zero and issues
-# AxPROT 0b001 (hw/sys/sep/doc/fabric.adoc, hw/sys/sep/doc/dma.adoc, master path).
+# inbound master; the Secure DMA master issues AxPROT 0b001
+# (hw/sys/sep/doc/fabric.adoc, hw/sys/sep/doc/dma.adoc, master path).
 LSU_PROT = 0b001
 SYS_PROT = 0b000
 DMA_PROT = 0b001
-DMA_USER = 0
+
+
+def out_prot(prot: int) -> int:
+    """AxPROT of a request to PAGE as the SMU path delivers it to PR-OUT.
+
+    The SMU path sets SEP's source ID in AxUSER; its number is not stated, so
+    callers grade AxUSER with ``env.sep_fabric_common.SepSrcIdGrade``.
+    """
+    return (prot & 0b101) | (outbound_ns("smu", PAGE) << 1)
+
+
 IDLE_CLOCKS = 256
 # The bus carrying each initiator's own accesses, and the lowest AXI ID the
 # outbound traffic of that bus uses. s_axi ID 0 is the CSR traffic of the DMA
@@ -181,11 +195,12 @@ class DmaJob:
         return [r_lane32(self.out_addr + 4 * i) for i in range(self.words)]
 
 
-def _bit(sig) -> bool:
+def _ctl(sig) -> int | None:
+    """A VALID or READY as 0 or 1, ``None`` for an X or Z."""
     try:
-        return bool(int(sig.value))
+        return int(sig.value) & 1
     except ValueError:
-        return False
+        return None
 
 
 def _int(sig) -> int | None:
@@ -201,8 +216,14 @@ class PinWatch:
 
     Samples in the read-only phase after each rising edge, as the fabric taps
     do. A handshake whose id, resp, data or last is X or Z is recorded in
-    ``xz`` with its fields as ``None``; the leaf fails on ``xz`` at its
-    accounting.
+    ``xz`` with its fields as ``None``. An X or Z on a VALID, or on a READY
+    while its VALID is 1, is recorded in ``xz`` with the signal name and the
+    time, and that clock counts no handshake and no stall. The leaf fails on
+    ``xz`` before it grades a count of handshakes or stall clocks.
+
+    Each AW or AR clock of VALID without READY is kept with the ID and the
+    address on offer (``aw_stalls``, ``ar_stalls``), so a counter can attribute
+    a stall clock to the initiator whose request it holds.
     """
 
     NAMES = (
@@ -234,8 +255,8 @@ class PinWatch:
         self.ar: list[tuple] = []
         self.r: list[tuple] = []  # (cycle, id, resp, data, last)
         self.xz: list[str] = []
-        self.aw_stall = 0
-        self.ar_stall = 0
+        self.aw_stalls: list[tuple] = []  # (cycle, id, addr) of each stalled clock
+        self.ar_stalls: list[tuple] = []
         self._task = None
 
     def start(self) -> "PinWatch":
@@ -249,8 +270,24 @@ class PinWatch:
 
     def _take(self, ch: str, rec: list, fields: tuple) -> None:
         if any(v is None for v in fields):
-            self.xz.append(f"bus={self.bus} ch={ch} cycle={self.cycles} fields={fields}")
+            self.xz.append(
+                f"bus={self.bus} ch={ch} cycle={self.cycles} t_ps={int(get_sim_time('ps'))} "
+                f"fields={fields}"
+            )
         rec.append((self.cycles, *fields))
+
+    def _hs(self, ch: str, s: dict) -> tuple[int, int] | None:
+        """(VALID, READY) of channel ``ch``; ``None`` and an ``xz`` record on an X or Z."""
+        valid = _ctl(s[f"{ch}valid"])
+        ready = _ctl(s[f"{ch}ready"]) if valid != 0 else 0
+        if valid is None or ready is None:
+            sig = f"{ch}valid" if valid is None else f"{ch}ready"
+            self.xz.append(
+                f"bus={self.bus} ch={ch} cycle={self.cycles} t_ps={int(get_sim_time('ps'))} "
+                f"signal={self.bus}_{sig} value={s[sig].value} (VALID/READY X or Z)"
+            )
+            return None
+        return valid, ready
 
     async def _run(self) -> None:
         dut = cocotb.top
@@ -259,19 +296,20 @@ class PinWatch:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             self.cycles += 1
-            if _bit(s["awvalid"]):
-                if _bit(s["awready"]):
+            aw, ar, b, r = (self._hs(ch, s) for ch in ("aw", "ar", "b", "r"))
+            if aw is not None and aw[0]:
+                if aw[1]:
                     self._take("aw", self.aw, (_int(s["awid"]), _int(s["awaddr"])))
                 else:
-                    self.aw_stall += 1
-            if _bit(s["arvalid"]):
-                if _bit(s["arready"]):
+                    self.aw_stalls.append((self.cycles, _int(s["awid"]), _int(s["awaddr"])))
+            if ar is not None and ar[0]:
+                if ar[1]:
                     self._take("ar", self.ar, (_int(s["arid"]), _int(s["araddr"])))
                 else:
-                    self.ar_stall += 1
-            if _bit(s["bvalid"]) and _bit(s["bready"]):
+                    self.ar_stalls.append((self.cycles, _int(s["arid"]), _int(s["araddr"])))
+            if b == (1, 1):
                 self._take("b", self.b, (_int(s["bid"]), _int(s["bresp"])))
-            if _bit(s["rvalid"]) and _bit(s["rready"]):
+            if r == (1, 1):
                 self._take(
                     "r",
                     self.r,
@@ -306,10 +344,16 @@ class PinWatch:
 
 
 class PortStall:
-    """Clocks of VALID without READY on AW, W and AR at the outbound port (tap PR-OUT)."""
+    """Clocks of VALID without READY on AW, W and AR at the outbound port (tap PR-OUT).
+
+    An X or Z on a VALID, or on a READY while its VALID is 1, is recorded in
+    ``xz`` with the signal name and the time, and that clock counts no stall.
+    The leaf fails on ``xz`` before it grades the stall count.
+    """
 
     def __init__(self) -> None:
         self.n = {"aw": 0, "w": 0, "ar": 0}
+        self.xz: list[str] = []
         self._task = None
 
     def start(self) -> "PortStall":
@@ -327,13 +371,24 @@ class PortStall:
     async def _run(self) -> None:
         dut = cocotb.top
         sig = {
-            ch: (getattr(dut, f"pr_out_{ch}valid_o"), getattr(dut, f"pr_out_{ch}ready_o"))
+            ch: (
+                (f"pr_out_{ch}valid_o", getattr(dut, f"pr_out_{ch}valid_o")),
+                (f"pr_out_{ch}ready_o", getattr(dut, f"pr_out_{ch}ready_o")),
+            )
             for ch in self.n
         }
         while True:
             await RisingEdge(dut.clk_i)
-            for ch, (v, r) in sig.items():
-                if _bit(v) and not _bit(r):
+            for ch, ((vn, v), (rn, r)) in sig.items():
+                valid = _ctl(v)
+                ready = _ctl(r) if valid != 0 else 0
+                if valid is None or ready is None:
+                    name, bad = (vn, v) if valid is None else (rn, r)
+                    self.xz.append(
+                        f"tap=PR-OUT ch={ch} t_ps={int(get_sim_time('ps'))} "
+                        f"signal={name} value={bad.value} (VALID/READY X or Z)"
+                    )
+                elif valid and not ready:
                     self.n[ch] += 1
 
 
@@ -536,13 +591,28 @@ def port_view(layout: Layout, out_beats, rsp_beats) -> PortView:
     )
 
 
-def id_overlap(view: PortView) -> tuple[int, int, dict[str, set[int]]]:
+def _require_answered(reqs: list[Req], chk: str) -> None:
+    """Fails ``chk`` on a request of ``reqs`` with no response at PR-OUT-RSP."""
+    open_reqs = [r for r in reqs if r.t_done_ps == float("inf")]
+    if open_reqs:
+        r = open_reqs[0]
+        addr = "x" if r.addr is None else hex(r.addr)
+        raise AssertionError(
+            f"{chk} FAIL: {len(open_reqs)}/{len(reqs)} measured requests have no response "
+            f"at PR-OUT-RSP first: init={r.init} kind={r.kind} id={r.id} addr={addr} "
+            f"t_ps={r.t_ps}"
+        )
+
+
+def id_overlap(view: PortView, chk: str) -> tuple[int, int, dict[str, set[int]]]:
     """(LSU/DMA request pairs outstanding at the port at once, those sharing an ID, ID sets).
 
     A request is outstanding from its acceptance at PR-OUT to its last
-    response beat at PR-OUT-RSP.
+    response beat at PR-OUT-RSP. A measured request with no response fails
+    ``chk``.
     """
     reqs = [r for r in view.reqs if r.init in ("lsu", "dma")]
+    _require_answered(reqs, chk)
     pairs = collisions = 0
     for i, a in enumerate(reqs):
         for b in reqs[i + 1 :]:
@@ -559,12 +629,13 @@ def id_overlap(view: PortView) -> tuple[int, int, dict[str, set[int]]]:
     return pairs, collisions, ids
 
 
-def max_outstanding(reqs: list[Req]) -> int:
-    """The most of ``reqs`` outstanding at the port at one time."""
-    events = sorted(
-        [(r.t_ps, 1) for r in reqs]
-        + [(r.t_done_ps, -1) for r in reqs if r.t_done_ps != float("inf")]
-    )
+def max_outstanding(reqs: list[Req], chk: str) -> int:
+    """The most of ``reqs`` outstanding at the port at one time.
+
+    A request of ``reqs`` with no response fails ``chk``.
+    """
+    _require_answered(reqs, chk)
+    events = sorted([(r.t_ps, 1) for r in reqs] + [(r.t_done_ps, -1) for r in reqs])
     live = peak = 0
     for _, d in events:
         live += d
@@ -637,6 +708,7 @@ class OutboundTraffic:
             ) from exc
         t.t1_ps = self._now_ps()
         t.c1 = watch.cycles if watch is not None else 0
+        self.test._wait_used("txn", t.latency_ns, self.timeout_ns)
         t.resp = int(res.resp)
         if t.op == "rd":
             t.words = tuple(res.data_words)
@@ -676,6 +748,7 @@ class OutboundTraffic:
         job.status_done = res.status.done
         job.status_error = res.status.error
         self.dma_polls_max = max(self.dma_polls_max, res.polls)
+        self.test._wait_used("dma_done", res.polls, self.dma.done_bound(total))
         job.done = True
         return job
 
@@ -718,12 +791,21 @@ class OutboundLeaf:
     line after its comparison and one ``CHK-<NAME> PASS`` line once every
     comparison it serves is done, so a run never carries a PASS and a FAIL of
     one checker.
+
+    Waits come in two kinds. A bounded wait (``_wait_bound``) ends early on
+    its condition and raises on expiry with the initiator, the transaction and
+    the last port state; each use records the amount it used against its
+    limit (``_wait_used``). A fixed window (``_wait_window``) always runs its
+    full length, cannot expire and is no timeout path; it is logged as
+    ``OBS-WAIT`` only. ``_emit_timeout_paths`` grades the bounded waits.
     """
 
     async def bench_start(self) -> None:
         self.dut_clk = cocotb.top.clk_i
         self.fence_seen: list[str] = []
-        self.waits_logged: set[str] = set()
+        self.waits_logged: dict[str, str] = {}
+        self.windows_logged: dict[str, str] = {}
+        self.wait_use: dict[str, tuple] = {}
         self.out = SepFabricTap("PR-OUT").start()
         self.rsp = SepFabricTap("PR-OUT-RSP").start()
         self.pin_s = PinWatch("s_axi").start()
@@ -752,7 +834,7 @@ class OutboundLeaf:
                 enabled=True,
                 read_allowed=True,
                 write_allowed=True,
-                allow_ns=False,
+                allow_ns=bool(outbound_ns("smu", PAGE)),
                 allow_burst=True,
                 src_id=0,
             ),
@@ -773,11 +855,13 @@ class OutboundLeaf:
         await self.tr.dma.program_range(0x0, 0xFFFF_FFFF, valid=True)
         await self.tr.dma.wr(_D.addr("ADDR_SPACE_ID"), ASID_RESET)
         self.logger.info(
-            "SETUP outbound_entry=%d inbound_entry=%d page=0x%x lsu_user=%d sysif_user=%d",
+            "SETUP outbound_entry=%d inbound_entry=%d page=0x%x lsu_users=0x%03x,0x%03x "
+            "sysif_user=%d",
             OUT_ENTRY,
             IN_ENTRY,
             PAGE,
-            c.lsu_user,
+            c.lsu_users[0],
+            c.lsu_users[1],
             c.sys_user,
         )
 
@@ -816,19 +900,66 @@ class OutboundLeaf:
         )
 
     def _wait_bound(self, kind: str, bound: str) -> None:
+        """Log a bounded wait once: its bound, and that its expiry raises."""
         if kind in self.waits_logged:
             return
-        self.waits_logged.add(kind)
+        self.waits_logged[kind] = bound
         self.logger.info(
-            "CHK-TIMEOUT-PATHS: wait=%s bound=%s "
-            "on_expiry=fail_with_initiator_txn_and_last_port_state last_port_state=%s",
+            "CHK-TIMEOUT-PATHS: wait=%s kind=bounded bound=%s "
+            "on_expiry=raises_with_initiator_txn_and_last_port_state last_port_state=%s",
             kind,
             bound,
             self._port_state(),
         )
 
+    def _wait_window(self, kind: str, length: str) -> None:
+        """Log a fixed window once; it runs its full length and cannot expire."""
+        if kind in self.windows_logged:
+            return
+        self.windows_logged[kind] = length
+        self.logger.info(
+            "OBS-WAIT: wait=%s kind=window length=%s (a fixed window, not a timeout path)",
+            kind,
+            length,
+        )
+
+    def _wait_used(self, kind: str, used: float, limit: float) -> None:
+        """Keep, per bounded wait, the use closest to its limit."""
+        prev = self.wait_use.get(kind)
+        if prev is None or used * prev[1] > prev[0] * limit:
+            self.wait_use[kind] = (used, limit)
+
+    def _emit_timeout_paths(self, extra: str) -> None:
+        """CHK-TIMEOUT-PATHS over the bounded waits of the run.
+
+        Every bounded wait logged has at least one measured use, and its use
+        closest to its limit is within that limit (the wait ended on its
+        condition, not on expiry). A run with no bounded wait logs OBS-TIMEOUT-PATHS and no PASS.
+        """
+        chk = "CHK-TIMEOUT-PATHS"
+        windows = ",".join(f"{k}:{v}" for k, v in sorted(self.windows_logged.items()))
+        if not self.waits_logged:
+            self._obs_row(
+                chk, f"bounded_waits=0 windows={{{windows}}} {extra} (nothing to compare)"
+            )
+            return
+        rows = []
+        for kind, bound in sorted(self.waits_logged.items()):
+            use = self.wait_use.get(kind)
+            if use is None:
+                self._fail(chk, f"wait={kind} bound={bound} has no measured use")
+            used, limit = use
+            if used > limit:
+                self._fail(chk, f"wait={kind} used={used} limit={limit}: past its bound")
+            fmt = f"{used:.1f}" if isinstance(used, float) else str(used)
+            rows.append(f"{kind}:closest_use={fmt}/limit={limit}")
+        self._emit(
+            chk,
+            f"bounded={{{','.join(rows)}}} on_expiry=raises windows={{{windows}}} {extra}",
+        )
+
     def _check_pin_xz(self, b_chk: str, r_chk: str) -> None:
-        """Fail on any X or Z field a pin watch recorded on a handshake."""
+        """Fail on any X or Z a pin watch recorded on a handshake field, a VALID or a READY."""
         for pw in (self.pin_s, self.pin_m):
             for entry in pw.xz:
                 self._fail(r_chk if " ch=r " in entry or " ch=ar " in entry else b_chk, entry)

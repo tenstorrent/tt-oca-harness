@@ -15,6 +15,11 @@ Contents:
 * ``RespCtl``: drive of the hold and the READY stall mask, and the release of
   one response beat per channel.
 * ``Meter``: the counts of one window at the master pins and at the port.
+  A master's accepted requests and its AW and AR stall clocks count only an
+  initiator's own outbound traffic: an ID at or above the bus's outbound floor
+  (``MIN_ID``) and an address in the initiator's slot. Any other stall clock on
+  that bus (the DMA CSR traffic on ``s_axi`` ID 0, for one) is counted apart as
+  ``aw_stall_other`` and ``ar_stall_other``.
 * ``altered_requests``: PR-OUT requests that differ from what was issued.
 """
 
@@ -24,6 +29,7 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.sep_fabric_common import SepSrcIdGrade
 
 from seq_lib.sep_outbound_contention_seq import INITS, MIN_ID, Layout
 
@@ -76,8 +82,8 @@ class Meter:
         self.s0 = bench.pin_s.mark()
         self.m0 = bench.pin_m.mark()
         self.stall0 = {
-            "lsu": (bench.pin_s.aw_stall, bench.pin_s.ar_stall),
-            "sysif": (bench.pin_m.aw_stall, bench.pin_m.ar_stall),
+            "lsu": (len(bench.pin_s.aw_stalls), len(bench.pin_s.ar_stalls)),
+            "sysif": (len(bench.pin_m.aw_stalls), len(bench.pin_m.ar_stalls)),
         }
 
     def read(self) -> dict:
@@ -91,13 +97,22 @@ class Meter:
             def known(x, floor=floor):
                 return all(v is not None for v in x[1:]) and x[1] >= floor
 
-            aw = [x for x in pw.aw[mark[0] :] if known(x) and lo <= x[2] < hi]
-            ar = [x for x in pw.ar[mark[2] :] if known(x) and lo <= x[2] < hi]
+            def own(x, known=known, lo=lo, hi=hi):
+                return known(x) and lo <= x[2] < hi
+
+            aw = [x for x in pw.aw[mark[0] :] if own(x)]
+            ar = [x for x in pw.ar[mark[2] :] if own(x)]
+            aw_st = pw.aw_stalls[self.stall0[init][0] :]
+            ar_st = pw.ar_stalls[self.stall0[init][1] :]
+            aw_own = sum(1 for x in aw_st if own(x))
+            ar_own = sum(1 for x in ar_st if own(x))
             res["mst"][init] = {
                 "aw": len(aw),
                 "ar": len(ar),
-                "aw_stall": pw.aw_stall - self.stall0[init][0],
-                "ar_stall": pw.ar_stall - self.stall0[init][1],
+                "aw_stall": aw_own,
+                "ar_stall": ar_own,
+                "aw_stall_other": len(aw_st) - aw_own,
+                "ar_stall_other": len(ar_st) - ar_own,
                 "b": sum(1 for x in pw.b[mark[1] :] if known(x)),
                 "r": sum(1 for x in pw.r[mark[3] :] if known(x)),
             }
@@ -133,14 +148,27 @@ class Meter:
         )
 
 
-def altered_requests(layout: Layout, out_beats, issued: dict, expect_attr: dict) -> tuple[int, int]:
+def altered_requests(
+    layout: Layout,
+    out_beats,
+    issued: dict,
+    expect_prot: dict,
+    grade: SepSrcIdGrade,
+    issued_user: dict,
+) -> tuple[int, int]:
     """(requests that differ from what was issued, issued requests never seen) at PR-OUT.
 
-    ``issued`` maps ``(init, kind)`` to the list of addresses issued; ``expect_attr``
-    maps an initiator to its ``(user, prot)``, or is absent for an initiator whose
-    attributes are not graded here. A request differs when its address is not an
-    issued one, its AxLEN is not 0 or its attributes are not the issued ones.
+    ``issued`` maps ``(init, kind)`` to the list of addresses issued;
+    ``expect_prot`` maps an initiator to the AxPROT the SMU path delivers, or is
+    absent for an initiator whose attributes are not graded here. A request
+    differs when its address is not an issued one, its AxLEN is not 0, its
+    AxPROT is not the expected one, or ``grade`` refuses its AxUSER (the SMU
+    path sets SEP's ID, which has no stated number). A request at an issued
+    address past the number of times that address was issued (a duplicate)
+    also differs. ``issued_user`` maps an address to the AxUSER the bench
+    issued at it.
     """
+    want = {k: Counter(v) for k, v in issued.items()}
     seen: dict = {k: Counter() for k in issued}
     altered = 0
     for beat in out_beats:
@@ -154,18 +182,20 @@ def altered_requests(layout: Layout, out_beats, issued: dict, expect_attr: dict)
             altered += 1
             continue
         seen[key][addr] += 1
+        if seen[key][addr] > want[key][addr]:
+            altered += 1
+            continue
         if beat.fields.get("len") != 0:
             altered += 1
             continue
-        if (
-            init in expect_attr
-            and (beat.fields.get("user"), beat.fields.get("prot")) != expect_attr[init]
-        ):
-            altered += 1
+        if init in expect_prot:
+            bad_prot = beat.fields.get("prot") != expect_prot[init]
+            bad_user = grade.note(beat.fields.get("user"), issued_user.get(addr)) is not None
+            if bad_prot or bad_user:
+                altered += 1
     missing = 0
-    for key, addrs in issued.items():
-        want = Counter(addrs)
-        for addr, n in want.items():
+    for key, counts in want.items():
+        for addr, n in counts.items():
             if seen[key][addr] < n:
                 missing += n - seen[key][addr]
     return altered, missing

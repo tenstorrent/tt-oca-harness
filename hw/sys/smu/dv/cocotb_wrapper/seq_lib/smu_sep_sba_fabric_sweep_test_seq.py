@@ -12,7 +12,9 @@ S4: the SMU aperture. A SEP address in ``[SMU_GLOBAL_BASE_ADDR,
     SMU_GLOBAL_BASE_ADDR + SMU_REGION_SIZE)`` (``sep_cpu_ctrl`` reset values)
     goes to the outbound filter and then to the SMN (``hw/sys/sep/doc/
     fabric.adoc``), whose crossbar sends it to ``ext_out``. With outbound
-    filter entry 1 open over the whole 56-bit space, every access size at
+    filter entries 1 (non-secure) and 2 (secure) open over the whole 56-bit
+    space, since the SMU path sends an address with bit 55 set secure and
+    every other address non-secure, every access size at
     every aligned offset of one doubleword, and a write and read at every
     address bit the aperture leaves free, are held by the bench responder and
     read back.
@@ -95,6 +97,17 @@ _SMC_ADDR_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "smc_ad
 SMU_BASE = c_header_u32(_SEP_CPU_CTRL_H, "SEP_CPU_CTRL__SMU_GLOBAL_BASE_ADDR__ADDR_reset")
 SMU_SIZE = c_header_u32(_SEP_CPU_CTRL_H, "SEP_CPU_CTRL__SMU_REGION_SIZE__SIZE_reset")
 ADDR_MASK = (1 << c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__END_ADDR__END_ADDR_bw")) - 1
+# Entry 1 admits the non-secure traffic of the whole space, entry 2 the secure
+# traffic, which the SMU path sends for an address with bit 55 set.
+SECURE_ENTRY = 2
+SECURE_FILTER_CONFIG = _indexed_addr(
+    "SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", SECURE_ENTRY
+)
+SECURE_START_ADDR = _indexed_addr("SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", SECURE_ENTRY)
+SECURE_END_ADDR = _indexed_addr("SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", SECURE_ENTRY)
+OUTBOUND_CFG_SECURE = OUTBOUND_CFG_OPEN & ~c_header_u32(
+    _FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm"
+)
 
 REMAP_REGION = _indexed_addr("SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_BASE_ADDR", 0)
 REMAP_START = REMAP_REGION + c_header_u32(
@@ -265,6 +278,9 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         await self._sb_ok(jtag, OUTBOUND_START_ADDR, 3, 0)
         await self._sb_ok(jtag, OUTBOUND_END_ADDR, 3, ADDR_MASK)
         await self._sb_ok(jtag, OUTBOUND_FILTER_CONFIG, 2, OUTBOUND_CFG_OPEN)
+        await self._sb_ok(jtag, SECURE_START_ADDR, 3, 0)
+        await self._sb_ok(jtag, SECURE_END_ADDR, 3, ADDR_MASK)
+        await self._sb_ok(jtag, SECURE_FILTER_CONFIG, 2, OUTBOUND_CFG_SECURE)
         cells = self._size_cells(SMU_PROBE, 0)
         top = (SMU_SIZE - 1).bit_length()
         for bit in range(3, top):

@@ -21,22 +21,33 @@ page, so a PR-OUT request is attributed to its initiator by address; the
 responder answers in request order, so a PR-OUT-RSP beat is attributed to the
 initiator of the request it answers by order. The responder returns ``{~a, a}``
 as read data (``smn_outbound_rd_addr_data_i``), so every read carries data of
-its own address. The seed draws the delay profile, the AxUSER of the LSU and of
-the System Interface, the transaction counts, the start offsets, the read and
+its own address. The seed draws the delay profile, the two AxUSER values of the
+LSU (12 bits, ``[11:4]`` non-zero, ``[3:0]`` non-zero and distinct; the LSU
+alternates them), the AxUSER of the System Interface, the transaction counts, the start offsets, the read and
 write mix and the burst length. Each concurrent phase opens with the hold up
 for a bounded lead (the start-offset range plus the DMA programming latency),
 so the requests of that phase are outstanding at the port together; the
 responder queues 64 of each, so every stop in a lead is the DUT's.
 
 The SMN inbound master has no route to the outbound port:
-``hw/sys/sep/doc/fabric.adoc`` (Routing) states that the peripheral crossbar
+``hw/sys/sep/doc/fabric.adoc`` (Fabric Topology) states that the peripheral crossbar
 answers any inbound address at or above ``0x4000_0000`` with DECERR, and the
 outbound window lies above it. Every access that master issues, in every phase,
 is stimulus of the one no-path check CHK-SYSIF-NO-OUTBOUND-PATH; no other
-checker counts it.
+checker counts it. Inbound filter entry 0 admits those accesses (their window,
+AxUSER source ID and NS), and the PR-INFLT tap (the request out of the inbound
+filter) shows each of them, so the DECERR comes from the routing decode past
+the filter and not from the filter.
+
+A PR-OUT request outside the three slots of the page has no initiator; any such
+request fails the checker of its phase and CHK-SYSIF-NO-OUTBOUND-PATH, so a
+request the DUT leaks or adds at another address cannot drop out of the
+per-initiator counts.
 
 Printed as measured and never compared: the completion order of same-ID
-writes, the completion latency of each phase, the outbound ID encoding, and
+writes, the completion latency of each phase, the outbound ID encoding, the
+AxID of LSU and DMA requests outstanding at the port together
+(OBS-ATTR-ID-SHARE; no spec sentence states whether they must differ), and
 the acceptance point of a request the filters answer themselves.
 
 Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
@@ -44,11 +55,16 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-LSU-PATH, CHK-DMA-PATH
                     the LSU and the DMA alone: one request per access at
                     PR-OUT, AxLEN 0 for a single beat, one B or ARLEN+1 R
-                    beats with RLAST on the last, DMA STATUS DONE then cleared.
+                    beats with RLAST on the last, DMA STATUS DONE then cleared,
+                    and no PR-OUT request outside the slots of the page.
   CHK-SYSIF-NO-OUTBOUND-PATH
                     every single and burst access of the SMN inbound master
                     answers DECERR with one B or its R beats, RLAST on the
-                    last, and none reaches PR-OUT.
+                    last, and none reaches PR-OUT (no request in the SMN slot
+                    and no request outside the slots). Attribution: each of them
+                    leaves the inbound filter (one PR-INFLT AW per write and
+                    one AR per read, each at an address of the SMN slot), so
+                    the filter admitted it and the DECERR is the decode's.
   CHK-CONC-ALL      every transaction of every initiator completes in the
                     write, read, mixed and pair phases, and the drawn delays
                     met a request at the port.
@@ -58,26 +74,36 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     exactly one B per accepted write, exactly its beats per
                     accepted read, and none after the idle window.
   CHK-RESP-ROUTE    every response reaches the initiator that issued it.
-  CHK-ATTR-USER, CHK-ATTR-PROT
-                    AxUSER and AxPROT of every PR-OUT request per initiator.
-  CHK-ATTR-ID-DISTINCT
+  CHK-ATTR-USER     AxUSER[3:0] of every LSU and DMA request at PR-OUT is
+                    known, is not OTHERS (0) and is the same on every request,
+                    although the LSU issues two distinct non-zero values and
+                    the DMA issues OTHERS: the SMU path sets SEP's ID. The
+                    number is logged (OBS-ATTR-SRC-ID), with AxUSER[11:4].
+  CHK-ATTR-PROT     AxPROT of every LSU and DMA request at PR-OUT: bits 0
+                    and 2 as issued, NS 1 (the inverse of address bit 55).
+  CHK-LSU-DMA-OVERLAP
                     at least one LSU request and one DMA request outstanding
-                    at the port at once, and no such pair shares an ID.
+                    at the port at once (the reach of the concurrent phases);
+                    whether such a pair shares an AxID is logged only.
   CHK-NONVAC        the ordered fence of the phases.
-  CHK-TIMEOUT-PATHS the bound of each wait.
+  CHK-TIMEOUT-PATHS each bounded wait (a transaction, a DMA DONE wait) logs
+                    its bound and raises on expiry; every one has a measured
+                    use and each use is within its bound. Fixed windows
+                    cannot expire and are logged as OBS-WAIT only.
 """
 
 from __future__ import annotations
 
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_fabric_common import SepSrcIdGrade, draw_src_users
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_outbound_contention_seq import (
     DMA_DST,
     DMA_PROT,
     DMA_SRC,
-    DMA_USER,
     IDLE_CLOCKS,
     INITS,
     LSU_PROT,
@@ -92,6 +118,7 @@ from seq_lib.sep_outbound_contention_seq import (
     Txn,
     id_overlap,
     max_outstanding,
+    out_prot,
     port_view,
     r_word,
     run_all,
@@ -128,7 +155,7 @@ CHECKS = (
     "CHK-RESP-ROUTE",
     "CHK-ATTR-USER",
     "CHK-ATTR-PROT",
-    "CHK-ATTR-ID-DISTINCT",
+    "CHK-LSU-DMA-OVERLAP",
     "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
@@ -140,8 +167,9 @@ class _Cfg:
     def __init__(self, seed: int) -> None:
         rng = SepSeededRng(seed)
         self.seed = seed
-        self.lsu_user = rng.randrange(1, 16)
-        self.sys_user = rng.choice([u for u in range(1, 16) if u != self.lsu_user])
+        self.lsu_users = draw_src_users(rng)
+        lsu_ids = {u & 0xF for u in self.lsu_users}
+        self.sys_user = rng.choice([u for u in range(1, 16) if u not in lsu_ids])
         self.p_stall = (rng.randrange(0, 41), rng.randrange(0, 41), rng.randrange(0, 41))
         self.p_hold = rng.randrange(0, 9)
         self.hold_max = rng.randrange(2, 25)
@@ -164,7 +192,8 @@ class _Cfg:
 
     def draw_lines(self) -> list[str]:
         return [
-            f"lsu_user={self.lsu_user} lsu_prot=0b{LSU_PROT:03b}",
+            f"lsu_users=0x{self.lsu_users[0]:03x},0x{self.lsu_users[1]:03x} "
+            f"lsu_prot=0b{LSU_PROT:03b}",
             f"sysif_user={self.sys_user} sysif_prot=0b{SYS_PROT:03b}",
             f"ready_stall_percent aw={self.p_stall[0]} w={self.p_stall[1]} ar={self.p_stall[2]}",
             f"resp_hold_percent={self.p_hold} hold_max_clocks={self.hold_max}",
@@ -182,6 +211,14 @@ def _setfmt(vals) -> str:
 
 def _listfmt(vals) -> str:
     return "[" + ",".join(str(v) for v in vals) + "]"
+
+
+def _unattributed(view) -> str:
+    """The PR-OUT requests of ``view`` outside every slot, for a fail message."""
+    off = [r for r in view.reqs if r.init is None]
+    return "; ".join(
+        f"{r.kind} id={r.id} addr={'x' if r.addr is None else hex(r.addr)}" for r in off[:4]
+    )
 
 
 @pyuvm.test()
@@ -207,13 +244,17 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         wdata = b""
         if op == "wr":
             wdata = b"".join(w.to_bytes(4, "little") for w in self._words(2 * beats))
+        addr = self.layout.alloc(init, 8 * beats)
+        user = c.lsu_users[len(self.lsu_issued) % 2] if init == "lsu" else c.sys_user
+        if init == "lsu":
+            self.lsu_issued[addr] = user
         return Txn(
             init=init,
             op=op,
-            addr=self.layout.alloc(init, 8 * beats),
+            addr=addr,
             beats=beats,
             axi_id=axi_id,
-            user=c.lsu_user if init == "lsu" else c.sys_user,
+            user=user,
             prot=LSU_PROT if init == "lsu" else SYS_PROT,
             wdata=wdata,
             name=f"{init}_{op}_{self.n_made}",
@@ -344,6 +385,12 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         st: dict = {}
         if view.unknown:
             self._fail(chk, f"phase={name} x_or_z_beats={view.unknown}")
+        if view.unattributed:
+            self._fail(
+                chk,
+                f"phase={name} {view.unattributed} PR-OUT request(s) outside the slots of "
+                f"the page: {_unattributed(view)}",
+            )
         for init in ("lsu", "sysif"):
             txns = plan.get(init, [])
             wr = [t for t in txns if t.op == "wr"]
@@ -648,7 +695,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         view, marks = await self._run_phase(f"conc_{phase}", plan, hold_lead=self.c.hold_lead)
         st = self._account("CHK-CONC-ALL", f"conc_{phase}", plan, view, marks)
         self._tally(st)
-        pairs, _, _ = id_overlap(view)
+        pairs, _, _ = id_overlap(view, "CHK-CONC-ALL")
         self._conc_line(phase, plan, st, pairs, extra)
         return plan, st
 
@@ -676,6 +723,8 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
     def _check_delays_exercised(self) -> None:
         """The drawn READY stalls met a request at the port, else the delay claim is vacuous."""
         c = self.c
+        for entry in self.pstall.xz:
+            self._fail("CHK-CONC-ALL", entry)
         total_stall = sum(self.pstall.snap().values())
         if any(c.p_stall) and total_stall == 0:
             self._fail(
@@ -734,7 +783,9 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             conf = sum(1 for t in plan_r["lsu"] for w in t.words if w in other)
             if conf:
                 self._fail(chk, f"id={c.same_id} cross_initiator_confusions={conf}")
-            depth = max_outstanding([r for r in view_r.reqs if r.init == "lsu" and r.kind == "rd"])
+            depth = max_outstanding(
+                [r for r in view_r.reqs if r.init == "lsu" and r.kind == "rd"], chk
+            )
             if depth < 2:
                 self._fail(
                     chk,
@@ -763,7 +814,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self.delay.stop()
         idle = (self.rsp.mark(), self.pin_s.mark(), self.pin_m.mark())
         await ClockCycles(self.dut_clk, IDLE_CLOCKS)
-        self._wait_bound("idle_window", f"clocks={IDLE_CLOCKS}")
+        self._wait_window("idle_window", f"clocks={IDLE_CLOCKS}")
         rsp_idle = self.rsp.since(idle[0])
         extra_b = sum(1 for b in rsp_idle if b.ch == "b")
         extra_r = sum(1 for b in rsp_idle if b.ch == "r")
@@ -773,48 +824,57 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
 
         whole = port_view(self.layout, self.out.since(self.m0[0]), self.rsp.since(self.m0[1]))
         reqs = [r for r in whole.reqs if r.init is not None]
-        exp = {
-            "lsu": (c.lsu_user, LSU_PROT),
-            "dma": (DMA_USER, DMA_PROT),
-            "sysif": (c.sys_user, SYS_PROT),
-        }
+        exp_p = {"lsu": out_prot(LSU_PROT), "dma": out_prot(DMA_PROT), "sysif": SYS_PROT}
         seen_u = {i: [] for i in INITS}
         seen_p = {i: [] for i in INITS}
-        cross_u = cross_p = 0
+        cross_p = 0
+        # The SMU path sets SEP's ID, whose number is not stated: the grade is
+        # not OTHERS, one value on every request, and a replacement visible
+        # over the two LSU values and the DMA's OTHERS (SepSrcIdGrade).
+        grade = SepSrcIdGrade("ATTR")
         for r in reqs:
             if r.unknown:
                 self._fail("CHK-ATTR-USER", f"X/Z on a PR-OUT request addr=0x{r.addr or 0:x}")
             seen_u[r.init].append(r.user)
             seen_p[r.init].append(r.prot)
-            eu, ep = exp[r.init]
-            others_u = {exp[i][0] for i in INITS if i != r.init}
-            others_p = {exp[i][1] for i in INITS if i != r.init}
-            if r.user != eu and r.user in others_u:
-                cross_u += 1
+            ep = exp_p[r.init]
+            others_p = {exp_p[i] for i in INITS if i != r.init}
             if r.prot != ep and r.prot in others_p:
                 cross_p += 1
+            if r.init in ("lsu", "dma"):
+                # The DMA master drives OTHERS (hw/sys/sep/doc/fabric.adoc,
+                # Transaction Routing).
+                issued = self.lsu_issued.get(r.addr) if r.init == "lsu" else 0
+                why = grade.note(r.user, issued)
+                if why is not None:
+                    self._fail(
+                        "CHK-ATTR-USER",
+                        f"init={r.init} addr=0x{r.addr or 0:x} user_seen={r.user} "
+                        f"user_issued={issued}: {why}",
+                    )
         for init in ("lsu", "dma"):
-            if any(u != exp[init][0] for u in seen_u[init]):
-                self._fail(
-                    "CHK-ATTR-USER",
-                    f"init={init} user_seen={_setfmt(seen_u[init])} want={exp[init][0]}",
-                )
-            if any(p != exp[init][1] for p in seen_p[init]):
+            if any(p != exp_p[init] for p in seen_p[init]):
                 self._fail(
                     "CHK-ATTR-PROT",
-                    f"init={init} prot_seen={_setfmt(seen_p[init])} want=0b{exp[init][1]:03b}",
+                    f"init={init} prot_seen={_setfmt(seen_p[init])} want=0b{exp_p[init]:03b}",
                 )
         for init in ("lsu", "dma"):
             if not seen_u[init]:
                 self._fail("CHK-ATTR-USER", f"init={init} no request at PR-OUT")
-        if cross_u:
-            self._fail("CHK-ATTR-USER", f"crossings={cross_u}")
+        why = grade.finish(min_nonzero_issued=2)
+        if why is not None:
+            self._fail(
+                "CHK-ATTR-USER",
+                f"{why}; lsu_user_seen={_setfmt(seen_u['lsu'])} "
+                f"dma_user_seen={_setfmt(seen_u['dma'])}",
+            )
         if cross_p:
             self._fail("CHK-ATTR-PROT", f"crossings={cross_p}")
+        self.logger.info("%s", grade.obs_line())
         self._emit(
             "CHK-ATTR-USER",
-            f"lsu_user_issued={c.lsu_user} lsu_user_seen={_setfmt(seen_u['lsu'])} "
-            f"dma_user_seen={_setfmt(seen_u['dma'])} crossings={cross_u}",
+            f"lsu_users_issued=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} "
+            f"dma_user_issued=0 {grade.summary()}",
         )
 
         def pf(vals):
@@ -829,30 +889,26 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             f"lsu_awprot={pf(lsu_aw)} lsu_arprot={pf(lsu_ar)} dma_awprot={pf(dma_aw)} "
             f"dma_arprot={pf(dma_ar)} crossings={cross_p}",
         )
-        pairs, collisions, ids = id_overlap(whole)
-        shared = [
-            (a, b, sorted(ids[a] & ids[b]))
-            for i, a in enumerate(INITS)
-            for b in INITS[i + 1 :]
-            if ids[a] & ids[b]
-        ]
+        pairs, collisions, ids = id_overlap(whole, "CHK-LSU-DMA-OVERLAP")
         idline = (
             f"lsu_dma_outstanding_pairs={pairs} lsu_ids={_setfmt(ids['lsu'])} "
             f"dma_ids={_setfmt(ids['dma'])} hold_lead_clocks={c.hold_lead}"
         )
         if pairs == 0:
             self._fail(
-                "CHK-ATTR-ID-DISTINCT",
+                "CHK-LSU-DMA-OVERLAP",
                 f"{idline}: no LSU request and DMA request were outstanding at the port at "
                 "once, so the concurrent-initiator contract is not exercised",
             )
-        if collisions or shared:
-            self._fail(
-                "CHK-ATTR-ID-DISTINCT",
-                f"{idline} id_collisions={collisions}/{pairs} sysif_ids={_setfmt(ids['sysif'])} "
-                f"shared_ids={shared}",
-            )
-        self._emit("CHK-ATTR-ID-DISTINCT", f"{idline} id_collisions={collisions}/{pairs}")
+        # No spec sentence states whether concurrent LSU and DMA requests carry
+        # distinct AxIDs after the outbound ID widening; logged only.
+        self._obs_row(
+            "ATTR-ID-SHARE",
+            f"lsu_dma_outstanding_pairs={pairs} same_id_pairs={collisions} "
+            f"lsu_ids={_setfmt(ids['lsu'])} dma_ids={_setfmt(ids['dma'])} "
+            f"ids_in_both={_setfmt(ids['lsu'] & ids['dma'])}",
+        )
+        self._emit("CHK-LSU-DMA-OVERLAP", idline)
         self._pass("CHK-RESP-ROUTE")
 
         self._check_pin_xz("CHK-B-COUNT", "CHK-R-COUNT")
@@ -897,8 +953,26 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         reached = whole.n_req("sysif", "wr") + whole.n_req("sysif", "rd")
         if reached:
             self._fail(chk, f"sysif requests at PR-OUT={reached}")
+        if whole.unattributed:
+            self._fail(
+                chk,
+                f"{whole.unattributed} PR-OUT request(s) outside the slots of the page: "
+                f"{_unattributed(whole)}",
+            )
         if n["issued"] < floor or n["decerr"] != n["issued"]:
             self._fail(chk, f"issued={n['issued']} floor={floor} decerr={n['decerr']}")
+        # The filter admitted every SMN inbound access: one PR-INFLT AW per
+        # write and one AR per read, each in the SMN slot of the page.
+        inflt_aw = [b for b in self.inflt.beats if b.ch == "aw"]
+        inflt_ar = [b for b in self.inflt.beats if b.ch == "ar"]
+        off_slot = [b.fmt() for b in inflt_aw + inflt_ar if self.layout.owner(b.addr) != "sysif"]
+        if len(inflt_aw) != n["writes"] or len(inflt_ar) != n["reads"] or off_slot:
+            self._fail(
+                chk,
+                f"inbound filter output (PR-INFLT) aw={len(inflt_aw)} writes={n['writes']} "
+                f"ar={len(inflt_ar)} reads={n['reads']} off_slot={off_slot[:3]}: the DECERR "
+                "is not shown to come from the routing decode past the filter",
+            )
         if (
             whole_m["b"] != n["writes"]
             or whole_m["r"] != n["beats"]
@@ -912,6 +986,8 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self._emit(
             chk,
             f"issued={n['issued']} floor={floor} decerr={n['decerr']} reached_pr_out={reached} "
+            f"outside_slots={whole.unattributed} "
+            f"inflt_aw={len(inflt_aw)} inflt_ar={len(inflt_ar)} "
             f"b_at_master={whole_m['b']} writes={n['writes']} r_at_master={whole_m['r']} "
             f"beats={n['beats']} rlast={whole_m['rlast']} reads={n['reads']}",
         )
@@ -923,6 +999,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self.c = c = _Cfg(seed)
         self.rng = SepSeededRng(seed ^ 0x0C0FFEE)
         self.n_made = self.n_jobs = 0
+        self.lsu_issued: dict[int, int] = {}
         self.max_lat = 0.0
         self.sys_neg = {"issued": 0, "decerr": 0, "writes": 0, "reads": 0, "beats": 0}
         self.tot = {i: {} for i in INITS}
@@ -933,6 +1010,10 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         await self.bring_up_no_cpu()
         self.suppress_host_axi_transaction_info()
         await self.bench_start()
+        # PR-INFLT: the request out of the inbound filter. Only the SMN inbound
+        # master passes the inbound filter, so every beat here is one of its
+        # accesses that the filter admitted.
+        self.inflt = SepFabricTap("PR-INFLT").start()
         self.delay = ResponderDelay(SepSeededRng(seed ^ 0x5EED5), c.p_stall, c.p_hold, c.hold_max)
         self.pstall = PortStall().start()
         self._stall0 = (self.pstall.snap(), 0)
@@ -957,12 +1038,11 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             self.delay.hold_clocks,
         )
         self.pstall.stop()
+        await self.inflt.stop()
         await self.bench_stop()
         self._check_fence(FENCE)
-        self._emit(
-            "CHK-TIMEOUT-PATHS",
-            f"waits={_setfmt(sorted(self.waits_logged))} txn_bound_ns={self.tr.timeout_ns} "
-            f"idle_clocks={IDLE_CLOCKS} max_latency_ns={self.max_lat:.1f} "
-            f"dma_polls_max={self.tr.dma_polls_max}",
+        self._emit_timeout_paths(
+            f"txn_bound_ns={self.tr.timeout_ns} idle_clocks={IDLE_CLOCKS} "
+            f"max_latency_ns={self.max_lat:.1f} dma_polls_max={self.tr.dma_polls_max}"
         )
         self.result_pass(TEST, seed, len(CHECKS))

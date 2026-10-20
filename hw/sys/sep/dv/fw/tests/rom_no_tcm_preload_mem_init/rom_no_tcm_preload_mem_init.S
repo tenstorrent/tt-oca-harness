@@ -40,7 +40,7 @@
 .equ FILTER_CONFIG_OFF,         0x0
 .equ FILTER_START_OFF,          0x8
 .equ FILTER_END_OFF,            0x10
-.equ FILTER_CFG_OPEN_LO,        0x01000013
+.equ FILTER_CFG_OPEN_LO,        0x01000113
 .equ FILTER_CFG_OPEN_HI,        0x1
 
 .section .text.init

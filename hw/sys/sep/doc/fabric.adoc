@@ -174,9 +174,11 @@ crossbar sends to `sep_system_peripherals`. The address is zero-extended from
 the route demux. The demux takes the first match in the order shown: the SMC
 aperture, supplied by the SMC, goes straight to the SMC without filtering; the
 SMU aperture from `SMU_GLOBAL_BASE_ADDR` and `SMU_REGION_SIZE`, and any address
-at or above `0x1_0000_0000`, goes to the outbound mux; the AP and STEE regions
-pass their output remaps, which replace the address with the programmed region
-offset and set the source ID to `OTHERS`, before the same mux; and every other
+at or above `0x1_0000_0000`, goes to the outbound mux with the source ID set to
+SEP and NS set to the inverse of address bit 55; the AP and STEE regions pass
+their output remaps, which replace the address with the programmed region
+offset, set the source ID to `OTHERS` and set NS to 1 (AP) or to the inverse of
+bit 55 of the remapped address (STEE), before the same mux; and every other
 address returns to the peripheral crossbar of the input fabric. The outbound mux
 widens the ID from 6 to 8 bits, and the outbound filter, which has no bypass,
 guards the path to the system interconnect.
@@ -299,12 +301,28 @@ SMN system NoC, either through the AP- or STEE-controlled remappers, which
 external software such as the Ascalon AP controls, or through the direct SMN
 path.
 
-SEP outbound traffic carries a source ID in AxUSER. Both AP- and STEE-controlled
-remappers replace it with `OTHERS`. Other traffic retains the initiator's ID:
-the CPU masters drive SEP's ID, while the secure DMA master leaves AxUSER at
-zero (`OTHERS`). AxPROT, including NS, passes unchanged; the initiators' values
-are in <<sep-cpu-axprot-table>>. The outbound filter
-checks address, NS and source ID after remapping. The Programmer's Guide
+SEP outbound traffic carries a source ID in AxUSER and its security state in
+AxPROT[1] (NS). <<sep-outbound-attributes-table>> gives the values each outbound
+path sets.
+
+[[sep-outbound-attributes-table]]
+.Source ID and NS of SEP outbound traffic
+[cols="3,2,3",options="header"]
+|===
+|Path |Source ID (AxUSER) |NS (AxPROT[1])
+|SMU aperture, or an address at or above `0x1_0000_0000` |SEP |Inverse of address bit 55
+|AP region, through the AP-controlled remapper |`OTHERS` |1
+|STEE region, through the STEE-controlled remapper |`OTHERS` |Inverse of bit 55 of the remapped address
+|SMC aperture |Initiator's |Initiator's
+|===
+
+On the SMC path the CPU masters drive SEP's ID and the secure DMA master drives
+`OTHERS` (AxUSER zero), and every master drives NS 0
+(<<sep-cpu-axprot-table>>). No path changes address bit 55 or the other AxPROT
+bits, so bit 55 selects the security state of a direct or STEE-remapped access:
+an alias remap or STEE remap offset with bit 55 set issues a secure access. The
+outbound filter checks address, NS and source ID after these changes. The
+Programmer's Guide
 describes how to
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[select the outbound path and restrict `OTHERS` traffic].

@@ -319,11 +319,11 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Every local-master alias-remap region at full 56-bit START/END/offset width. RANDCFG.
+# Every local-master alias-remap region: each 56-bit offset bit, START/END at the drawn bounds. RANDCFG.
 name = "sep_fabric_local_alias_offset_walk_test"
 module = "system.sep_fabric_local_alias_offset_walk_test"
 seed = 1
-# One seed: every walked bit steps both ways and decides a response at any seed.
+# One seed: every offset bit steps both ways and decides the landing address at any seed.
 timeout_sec = 3600
 tags = ["fabric", "remap", "filter", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -820,7 +820,7 @@ args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"
 # seed-drawn responder READY and VALID delays: path, LSU/DMA requests outstanding at the
 # port at once, same-ID order, exactly-once B and R, response routing, AxUSER, AxPROT and
 # ID per initiator. The SMN inbound master issues alongside as the stimulus of the no-path
-# check (fabric.adoc, Routing: DECERR, nothing at the port). RANDCFG.
+# check (fabric.adoc, Fabric Topology: DECERR, nothing at the port). RANDCFG.
 name = "sep_outbound_contention_rand_test"
 module = "system.sep_outbound_contention_rand_test"
 seed = 1
@@ -833,9 +833,9 @@ args = ["+skip_fuse_sense", "+sep_outbound_depth=64"]
 
 [[tests]]
 # Outbound target READY stall and B/R hold-then-release against the CPU LSU and the Secure
-# DMA, with the local crossbar outstanding limit reached under the held target: finite
-# stop, held request completes after a release, drain without deadlock, B and R
-# accounting. The outbound chain limit is printed, not graded. The SMN inbound master
+# DMA, with the LSU master stopped under the held target: finite stop, held request
+# completes after a release, drain without deadlock, B and R accounting. The number of
+# accepted requests before the stop is printed, not graded. The SMN inbound master
 # issues alongside as the stimulus of the no-path check.
 name = "sep_outbound_stall_saturation_test"
 module = "system.sep_outbound_stall_saturation_test"
