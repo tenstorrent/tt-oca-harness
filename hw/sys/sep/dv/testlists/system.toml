@@ -820,7 +820,7 @@ args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"
 # seed-drawn responder READY and VALID delays: path, LSU/DMA requests outstanding at the
 # port at once, same-ID order, exactly-once B and R, response routing, AxUSER, AxPROT and
 # ID per initiator. The SMN inbound master issues alongside as the stimulus of the no-path
-# check (fabric.adoc, Routing: DECERR, nothing at the port). RANDCFG.
+# check (fabric.adoc, Fabric Topology: DECERR, nothing at the port). RANDCFG.
 name = "sep_outbound_contention_rand_test"
 module = "system.sep_outbound_contention_rand_test"
 seed = 1

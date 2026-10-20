@@ -588,7 +588,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 exp0,
             )
 
-        # Extension port: one beat each way; the response is logged only.
+        # Extension port: one beat each way; the port DECERR and the DMA bus error are graded.
         for d, leg, ch in (("R", "ext_r", "ar"), ("W", "ext_w", "aw")):
             leg_i = self._leg_index(leg)
             _, r, text = self._one("EXT", dir=d)

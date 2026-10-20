@@ -30,7 +30,7 @@ so the requests of that phase are outstanding at the port together; the
 responder queues 64 of each, so every stop in a lead is the DUT's.
 
 The SMN inbound master has no route to the outbound port:
-``hw/sys/sep/doc/fabric.adoc`` (Routing) states that the peripheral crossbar
+``hw/sys/sep/doc/fabric.adoc`` (Fabric Topology) states that the peripheral crossbar
 answers any inbound address at or above ``0x4000_0000`` with DECERR, and the
 outbound window lies above it. Every access that master issues, in every phase,
 is stimulus of the one no-path check CHK-SYSIF-NO-OUTBOUND-PATH; no other
