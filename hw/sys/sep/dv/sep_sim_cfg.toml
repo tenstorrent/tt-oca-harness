@@ -372,6 +372,7 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build/oca_rom_key4_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_rom_key5_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "hw/sys/sep/bootrom/prod/build/oca_smc_mem_misaligned.hex",
   "hw/sys/sep/bootrom/prod/build/invalid_class_key.bin",
 ]
 

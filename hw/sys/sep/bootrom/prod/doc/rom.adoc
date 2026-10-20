@@ -1712,6 +1712,14 @@ tabulated in <<sec:security_inventory>>.
 * *Bounds:* manifest (4096 B) plus payload must fit in SEP SRAM; `payload_offset` must be
   positive and place the payload beyond the manifest (no overlap); all arithmetic is
   overflow-checked.
+* [[req-SEP-ROM-MAN-070]]*[SEP-ROM-MAN-070]* *Storage alignment:* Before its first storage
+  read, the ROM shall require the resolved manifest source address to be 8-byte aligned.
+  After resolving `payload_offset` and before the payload storage read, it shall require the
+  resolved payload source address to be 8-byte aligned. This applies to both SPI and SMC-SRAM
+  boot sources. A misaligned manifest source shall fail the slot with
+  `OCA_BOOT_ERR_MANIFEST_ALIGNMENT`; a misaligned payload source shall fail it with
+  `OCA_FAIL_PAYLOAD_LOCATION`. The fixed SPI slot geometry shall enforce the same alignment
+  at compile time.
 * *Usage constraints:* `selector_bits` enables per-word identity comparisons against the SEP
   efuse map (`SEP_CHIPLET_ID` / `SEP_SIP_ID` / `SEP_SYS_ID`, <<tbl:fuse_fields>>) and
   lifecycle/version-range windows. The device's LC state
@@ -3111,6 +3119,8 @@ regions, or the DMA copy of BL1 or its ICCM pad failed.
 `IMAGE_OOB`.
 |`OCA_BOOT_ERR_FLASH_READ` |`0x00030107` |The OpenTitan SPI driver failed a read (OpenTitan
 build only); its `SPI_OT_*` code is reported as the status.
+|`OCA_BOOT_ERR_MANIFEST_ALIGNMENT` |`0x00030108` |The resolved manifest source address is not
+8-byte aligned; rejected before the first manifest read.
 |===
 
 Manifest-path failures use the `MANIFEST_ERR_*` namespace and map from `oca_result_t`; the
@@ -3513,6 +3523,9 @@ post-self-check |<<sec:pmp>>
 |<<req-SEP-ROM-MAN-060,SEP-ROM-MAN-060>> |Placement validated against a permitted execution
 region (ICCM always; SRAM per `BL1_SRAM_EXEC_ENABLE`, default on), entry < length; copy after
 validation only |<<sec:manifest>>
+|<<req-SEP-ROM-MAN-070,SEP-ROM-MAN-070>> |Manifest and resolved payload storage sources are
+8-byte aligned before their first reads; fixed SPI geometry is checked at compile time
+|<<sec:manifest>>
 |<<req-SEP-ROM-SB-010,SEP-ROM-SB-010>> |PROD/PROD_END enforce secure boot
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-020,SEP-ROM-SB-020>> |TEST_DEV/RMA_SiP (debug open), RMA_CHIPLET: either

@@ -130,6 +130,7 @@ The default `build/` may also contain:
 |---|---|
 | `oca_<name>.bin` / `.spi_preload` | Flash image for each entry in `OCA_IMAGES`, with the bundle at both boot slots, as raw binary and Verilog hex. For example, `oca_non_secure_boot` is unsigned, `oca_secure_boot` is RSA-3072 signed, and `oca_encrypted_boot` is signed and AES-CBC encrypted. |
 | `oca_smc_mem.hex` | `oca_non_secure_boot.bin` rebased to the SEP-visible SMC SRAM address. |
+| `oca_smc_mem_misaligned.hex` | The complete non-secure SMC image shifted by four bytes for the manifest-source alignment test. |
 | `oca_smc_bundle.bin` | Bare signed bundle the virtual platform stages in SMC SRAM. |
 | `invalid_class_key.bin` | Decryption negative image, from `decrypt_negative_images`. |
 
@@ -158,7 +159,7 @@ the host.
 A test selects an image with `firmware = { name = "boot_rom", mode = "boot_rom" }`
 and receives it through plusargs. `hw/sys/sep/dv/testlists/rom_fw.toml` passes
 `+sep_boot_rom_hex` and `+sep_smc_mem_hex` pointing at `build/boot_rom.vmem` and
-`build/oca_smc_mem.hex`. Those outputs are gitignored, so a plain `run_dv.py`
+one of the SMC-memory images. Those outputs are gitignored, so a plain `run_dv.py`
 invocation builds what it needs, with one exception: the manifest-packer
 submodule above, which a build step must not initialize because it would mutate
 git state.
