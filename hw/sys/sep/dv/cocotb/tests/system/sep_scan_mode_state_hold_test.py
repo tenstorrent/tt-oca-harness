@@ -292,6 +292,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             await ReadOnly()
             if self.rd(dut.km_cond_rst_probe_o, allow_unknown=True) == 0x3:
                 break
+        # The clk_ref_i side of the reference counter releases 16 clk_ref_i
+        # cycles after sep_reset_n.
+        for _ in range(TAP_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.refcnt_rst_n_probe_o, allow_unknown=True) == 0x3:
+                break
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         base = [n for n, v in zip([x[0] for x in NETS], self._sample()["nets"]) if v != 1]
