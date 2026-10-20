@@ -22,6 +22,15 @@
 <marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
 <marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
 <marker id="m-bus" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#b2566c"/></marker>
+<marker id="m-pri" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#103525"/></marker>
+<marker id="m-warm" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#e69f00"/></marker>
+<marker id="m-cold" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2ca02c"/></marker>
+<marker id="m-fuse" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#d62728"/></marker>
+<marker id="m-unc" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#7b3fa0"/></marker>
+<marker id="m-core" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#1f77b4"/></marker>
+<marker id="m-dbg" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#e377c2"/></marker>
+<marker id="m-jt" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#17becf"/></marker>
+<marker id="m-in" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#5b6670"/></marker>
 <style>
 text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .t { fill: #484848; }
@@ -79,6 +88,25 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .a-bus { fill: none; stroke: #b2566c; stroke-width: 3; marker-end: url(#m-bus); }
 .n-dash { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; }
 .a-dash { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-slate); }
+.n-pri { fill: none; stroke: #103525; stroke-width: 3.2; }
+.a-pri { fill: none; stroke: #103525; stroke-width: 3.2; marker-end: url(#m-pri); }
+.n-warm { fill: none; stroke: #e69f00; stroke-width: 2.4; }
+.a-warm { fill: none; stroke: #e69f00; stroke-width: 2.4; marker-end: url(#m-warm); }
+.n-cold { fill: none; stroke: #2ca02c; stroke-width: 2.4; }
+.a-cold { fill: none; stroke: #2ca02c; stroke-width: 2.4; marker-end: url(#m-cold); }
+.n-fuse { fill: none; stroke: #d62728; stroke-width: 2.4; }
+.a-fuse { fill: none; stroke: #d62728; stroke-width: 2.4; marker-end: url(#m-fuse); }
+.n-unc { fill: none; stroke: #7b3fa0; stroke-width: 2.4; }
+.a-unc { fill: none; stroke: #7b3fa0; stroke-width: 2.4; marker-end: url(#m-unc); }
+.n-core { fill: none; stroke: #1f77b4; stroke-width: 3.6; }
+.a-core { fill: none; stroke: #1f77b4; stroke-width: 3.6; marker-end: url(#m-core); }
+.n-dbg { fill: none; stroke: #e377c2; stroke-width: 2.4; }
+.a-dbg { fill: none; stroke: #e377c2; stroke-width: 2.4; marker-end: url(#m-dbg); }
+.n-jt { fill: none; stroke: #17becf; stroke-width: 2.4; }
+.a-jt { fill: none; stroke: #17becf; stroke-width: 2.4; marker-end: url(#m-jt); }
+.n-in { fill: none; stroke: #5b6670; stroke-width: 2.0; }
+.a-in { fill: none; stroke: #5b6670; stroke-width: 2.0; marker-end: url(#m-in); }
+.a-indash { fill: none; stroke: #5b6670; stroke-width: 2.0; stroke-dasharray: 6 4; marker-end: url(#m-in); }
 </style>
 </defs>
 <rect width="1040" height="1476" fill="#ffffff"/>
@@ -86,49 +114,49 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect class="core" x="262" y="24" width="518" height="200" rx="6"/>
 <text class="bs" x="272" y="44" text-anchor="start">u_smc_peripherals.u_smc_reset_unit</text>
 <text class="s" x="14" y="56" text-anchor="start">powergood_i</text>
-<path class="a-slate" d="M17,62 L258,62"/>
+<path class="a-in" d="M17,62 L258,62"/>
 <text class="s" x="14" y="78" text-anchor="start">rst_cold_ni</text>
-<path class="a-slate" d="M17,84 L258,84"/>
+<path class="a-in" d="M17,84 L258,84"/>
 <text class="s" x="14" y="100" text-anchor="start">rst_cool_n_from_pin_i</text>
-<path class="a-slate" d="M17,106 L258,106"/>
+<path class="a-in" d="M17,106 L258,106"/>
 <text class="s" x="14" y="122" text-anchor="start">sep_wdt_reset_n_i</text>
-<path class="a-slate" d="M17,128 L258,128"/>
+<path class="a-in" d="M17,128 L258,128"/>
 <text class="s" x="14" y="144" text-anchor="start">cfg_flr_pf_active_i</text>
 <path class="sigo" d="M17,150 L258,150"/>
 <text class="s" x="14" y="166" text-anchor="start">jtag_reset_ctrl_i</text>
-<path class="a-jtag" d="M17,172 L258,172"/>
+<path class="a-jt" d="M17,172 L258,172"/>
 <text class="s" x="14" y="188" text-anchor="start">scan_rst_ni</text>
-<path class="a-slate" d="M17,194 L258,194"/>
+<path class="a-in" d="M17,194 L258,194"/>
 <text class="s" x="14" y="206" text-anchor="start">test_en_i</text>
-<path class="a-dash" d="M17,212 L258,212"/>
+<path class="a-indash" d="M17,212 L258,212"/>
 <text class="s" x="772" y="67" text-anchor="end">rst_primary_smc_clk_no</text>
-<path class="n-smu" d="M780,62 L880,62"/>
+<path class="n-pri" d="M780,62 L880,62"/>
 <text class="s" x="772" y="119" text-anchor="end">rst_warm_smc_clk_no</text>
-<path class="n-per" d="M780,114 L840,114"/>
+<path class="n-warm" d="M780,114 L840,114"/>
 <text class="s" x="772" y="145" text-anchor="end">rst_cold_stable_smc_clk_no</text>
-<path class="n-ref" d="M780,140 L820,140"/>
+<path class="n-cold" d="M780,140 L820,140"/>
 <text class="s" x="772" y="171" text-anchor="end">rst_primary_periph_clk_no</text>
-<path class="n-smu" d="M780,166 L800,166"/>
+<path class="n-pri" d="M780,166 L800,166"/>
 <text class="s" x="772" y="93" text-anchor="end">fuse_reset_ni</text>
-<path class="a-wdt" d="M860,88 L786,88"/>
+<path class="a-fuse" d="M860,88 L786,88"/>
 <rect class="core" x="262" y="248" width="518" height="356" rx="6"/>
 <text class="bs" x="272" y="268" text-anchor="start">u_smc_peripherals</text>
 <rect class="core" x="282" y="280" width="438" height="28" rx="4"/>
 <text class="s" x="292" y="299" text-anchor="start">u_i2c_wrap, u_uart_wrap, u_i3ccore_wrapper</text>
 <text class="s" x="712" y="299" text-anchor="end">rst_ni</text>
-<path class="a-smu" d="M800,294 L726,294"/>
+<path class="a-pri" d="M800,294 L726,294"/>
 <rect class="core" x="282" y="316" width="438" height="28" rx="4"/>
 <text class="s" x="292" y="335" text-anchor="start">u_avsbus_controller</text>
 <text class="s" x="712" y="335" text-anchor="end">rst_reg_ni</text>
-<path class="a-smu" d="M800,330 L726,330"/>
+<path class="a-pri" d="M800,330 L726,330"/>
 <rect class="core" x="282" y="352" width="438" height="28" rx="4"/>
 <text class="s" x="292" y="371" text-anchor="start">u_smc_peripherals_cdc</text>
 <text class="s" x="712" y="371" text-anchor="end">rst_periph_clk_ni</text>
-<path class="a-smu" d="M800,366 L726,366"/>
+<path class="a-pri" d="M800,366 L726,366"/>
 <rect class="core" x="282" y="388" width="438" height="28" rx="4"/>
 <text class="s" x="292" y="407" text-anchor="start">u_ext_boot_seq_done_qual</text>
 <text class="s" x="712" y="407" text-anchor="end">rst_ni</text>
-<path class="a-ref" d="M820,402 L726,402"/>
+<path class="a-cold" d="M820,402 L726,402"/>
 <text class="s" x="14" y="396" text-anchor="start">ext_boot_seq_done_i</text>
 <path class="sigo" d="M17,402 L278,402"/>
 <text class="si" x="388" y="431" text-anchor="start">ext_boot_seq_done_qual</text>
@@ -136,34 +164,34 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="292" y="457" text-anchor="start">u_smc_efuse_wrapper, u_fuse_reset_stall_and</text>
 <text class="s" x="712" y="457" text-anchor="end">fuse_reset_n</text>
 <path class="sigo" d="M380,416 L380,434"/>
-<path class="n-wdt" d="M720,452 L860,452"/>
+<path class="n-fuse" d="M720,452 L860,452"/>
 <rect class="core" x="282" y="474" width="438" height="28" rx="4"/>
 <text class="s" x="292" y="493" text-anchor="start">u_smc_padring.gen_gpio_intf[*].u_gpio_interface</text>
 <text class="s" x="712" y="493" text-anchor="end">rst_cold_ni</text>
-<path class="a-ref" d="M820,488 L726,488"/>
+<path class="a-cold" d="M820,488 L726,488"/>
 <rect class="core" x="282" y="510" width="438" height="28" rx="4"/>
 <text class="s" x="292" y="529" text-anchor="start">u_smc_misc_wrap.u_smc_scratch_reg_cold_warm</text>
 <text class="s" x="712" y="529" text-anchor="end">arst_n</text>
-<path class="a-per" d="M840,524 L726,524"/>
+<path class="a-warm" d="M840,524 L726,524"/>
 <rect class="core" x="282" y="546" width="438" height="28" rx="4"/>
 <text class="s" x="501" y="565" text-anchor="middle">u_telemetry_receiver_wrap</text>
 <text class="s" x="290" y="565" text-anchor="start">rst_telemetry_ni</text>
 <text class="s" x="14" y="554" text-anchor="start">rst_telemetry_ni</text>
-<path class="a-slate" d="M17,560 L278,560"/>
+<path class="a-in" d="M17,560 L278,560"/>
 <text class="s" x="618" y="592" text-anchor="end">All other logic</text>
 <text class="s" x="772" y="592" text-anchor="end">rst_primary_smc_clk_no</text>
-<path class="a-smu" d="M880,587 L786,587"/>
+<path class="a-pri" d="M880,587 L786,587"/>
 <rect class="core" x="262" y="628" width="518" height="662" rx="6"/>
 <text class="bs" x="272" y="648" text-anchor="start">u_smc_cpu_wrapper</text>
 <text class="s" x="618" y="649" text-anchor="end">All other logic</text>
 <text class="s" x="772" y="649" text-anchor="end">rst_primary_smc_clk_ni</text>
-<path class="a-smu" d="M880,644 L786,644"/>
+<path class="a-pri" d="M880,644 L786,644"/>
 <rect class="core" x="282" y="660" width="438" height="164" rx="4"/>
 <text class="bs" x="292" y="680" text-anchor="start">u_smc_cpu_ctrl_wrap</text>
 <rect class="fabric" x="302" y="690" width="398" height="28" rx="4"/>
 <text class="s" x="312" y="709" text-anchor="start">RESET_CTRL, pulse and drain logic</text>
 <text class="s" x="692" y="709" text-anchor="end">rst_primary_ni</text>
-<path class="a-smu" d="M880,704 L706,704"/>
+<path class="a-pri" d="M880,704 L706,704"/>
 <rect class="fabric" x="350" y="752" width="120" height="28" rx="4"/>
 <text class="s" x="360" y="771" text-anchor="start">Core reset flops</text>
 <rect class="fabric" x="530" y="752" width="130" height="28" rx="4"/>
@@ -173,9 +201,9 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M560,718 L560,748"/>
 <text class="si" x="568" y="737" text-anchor="start">uncore reset request</text>
 <text class="s" x="712" y="796" text-anchor="end">rst_warm_smc_clk_ni</text>
-<path class="n-per" d="M840,802 L500,802 L500,766"/>
-<path class="a-per" d="M500,766 L476,766"/>
-<path class="a-per" d="M500,766 L524,766"/>
+<path class="n-warm" d="M840,802 L500,802 L500,766"/>
+<path class="a-warm" d="M500,766 L476,766"/>
+<path class="a-warm" d="M500,766 L524,766"/>
 <rect class="core" x="420" y="832" width="300" height="28" rx="4"/>
 <text class="s" x="428" y="851" text-anchor="start">rst_i</text>
 <text class="s" x="472" y="851" text-anchor="start">u_tilelink_to_rom_memory_convert</text>
@@ -185,14 +213,14 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="430" y="921" text-anchor="start">u_l2_frontend_axi_isolate,</text>
 <text class="s" x="430" y="937" text-anchor="start">u_mmio_axi_isolate</text>
 <text class="s" x="732" y="929" text-anchor="end">rst_ni</text>
-<path class="a-smu" d="M880,924 L746,924"/>
+<path class="a-pri" d="M880,924 L746,924"/>
 <rect class="fabric" x="420" y="954" width="320" height="28" rx="4"/>
 <text class="s" x="430" y="973" text-anchor="start">Boundary isolation delay, cluster_ded_o flop</text>
 <rect class="fabric" x="420" y="990" width="320" height="44" rx="4"/>
 <text class="s" x="430" y="1009" text-anchor="start">Scratch RAM zero-fill</text>
 <text class="s" x="430" y="1025" text-anchor="start">init_mem_complete</text>
 <text class="s" x="732" y="1009" text-anchor="end">mem_init_reset_ni</text>
-<path class="a-wdt" d="M860,1004 L746,1004"/>
+<path class="a-fuse" d="M860,1004 L746,1004"/>
 <rect class="core" x="420" y="1046" width="320" height="224" rx="4"/>
 <text class="bs" x="430" y="1066" text-anchor="start">u_digital_top</text>
 <text class="s" x="430" y="1091" text-anchor="start">All other logic</text>
@@ -210,17 +238,17 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="442" y="1251" text-anchor="start">debug_systemjtag_reset</text>
 <text class="s" x="720" y="1251" text-anchor="end">dtm, tlDM DMI side</text>
 <text class="s" x="14" y="1240" text-anchor="start">smc_cpu_jtag_reset_i, active-high</text>
-<path class="a-jtag" d="M17,1246 L430,1246"/>
+<path class="a-jt" d="M17,1246 L430,1246"/>
 <path class="fabric" d="M364,1136 L370,1136 A18,18 0 0 1 370,1172 L364,1172 Z"/>
-<path class="n-tel" d="M550,814 L340,814 L340,1086"/>
-<path class="a-tel" d="M340,846 L416,846"/>
-<path class="a-tel" d="M340,968 L416,968"/>
-<path class="a-tel" d="M340,1086 L416,1086"/>
-<path class="n-bus" d="M350,766 L320,766 L320,1154 L360,1154"/>
-<path class="a-bus" d="M358,1154 L362,1154"/>
-<path class="n-pg" d="M302,704 L292,704 L292,1210"/>
-<path class="a-pg" d="M292,1210 L430,1210"/>
-<path class="a-bus" d="M388,1154 L428,1154"/>
+<path class="n-unc" d="M550,814 L340,814 L340,1086"/>
+<path class="a-unc" d="M340,846 L416,846"/>
+<path class="a-unc" d="M340,968 L416,968"/>
+<path class="a-unc" d="M340,1086 L416,1086"/>
+<path class="n-core" d="M350,766 L320,766 L320,1154 L360,1154"/>
+<path class="a-core" d="M358,1154 L362,1154"/>
+<path class="n-dbg" d="M302,704 L292,704 L292,1210"/>
+<path class="a-dbg" d="M292,1210 L430,1210"/>
+<path class="a-core" d="M388,1154 L428,1154"/>
 <path class="sigo" d="M400,1114 L430,1114"/>
 <path class="sigplain" d="M420,1020 L350,1020"/>
 <path class="sigo" d="M350,1143 L362,1143"/>
@@ -230,42 +258,42 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect class="core" x="262" y="1314" width="518" height="32" rx="6"/>
 <text class="bs" x="272" y="1334" text-anchor="start">u_smc_base</text>
 <text class="s" x="772" y="1335" text-anchor="end">rst_primary_smc_clk_ni</text>
-<path class="a-smu" d="M880,1330 L786,1330"/>
+<path class="a-pri" d="M880,1330 L786,1330"/>
 <text class="b" x="238" y="1370" text-anchor="start">smc</text>
-<path class="n-smu" d="M800,166 L800,366"/>
-<path class="n-ref" d="M820,140 L820,447 M820,457 L820,488"/>
-<path class="n-per" d="M840,114 L840,447 M840,457 L840,582 M840,592 L840,639 M840,649 L840,699 M840,709 L840,802"/>
-<path class="n-wdt" d="M860,88 L860,582 M860,592 L860,639 M860,649 L860,699 M860,709 L860,919 M860,929 L860,1004"/>
-<path class="n-smu" d="M880,62 L880,1330"/>
-<path class="n-tel" d="M550,780 L550,797 M550,807 L550,814"/>
+<path class="n-pri" d="M800,166 L800,366"/>
+<path class="n-cold" d="M820,140 L820,447 M820,457 L820,488"/>
+<path class="n-warm" d="M840,114 L840,447 M840,457 L840,582 M840,592 L840,639 M840,649 L840,699 M840,709 L840,802"/>
+<path class="n-fuse" d="M860,88 L860,582 M860,592 L860,639 M860,649 L860,699 M860,709 L860,919 M860,929 L860,1004"/>
+<path class="n-pri" d="M880,62 L880,1330"/>
+<path class="n-unc" d="M550,780 L550,797 M550,807 L550,814"/>
 <path class="sigplain" d="M400,1114 L400,1154"/>
 <path class="sigplain" d="M350,1020 L350,1081 M350,1091 L350,1143"/>
-<circle cx="860" cy="452" r="4" fill="#77736b"/>
-<circle cx="500" cy="766" r="4" fill="#937027"/>
-<circle cx="340" cy="846" r="4" fill="#664488"/>
-<circle cx="340" cy="968" r="4" fill="#664488"/>
-<circle cx="400" cy="1154" r="4" fill="#b2566c"/>
-<circle cx="800" cy="294" r="4" fill="#103525"/>
-<circle cx="800" cy="330" r="4" fill="#103525"/>
-<circle cx="820" cy="402" r="4" fill="#2f7f79"/>
-<circle cx="840" cy="524" r="4" fill="#937027"/>
-<circle cx="880" cy="587" r="4" fill="#103525"/>
-<circle cx="880" cy="644" r="4" fill="#103525"/>
-<circle cx="880" cy="704" r="4" fill="#103525"/>
-<circle cx="880" cy="924" r="4" fill="#103525"/>
-<path class="n-smu" d="M14,1406 L48,1406"/>
+<circle cx="860" cy="452" r="4.5" fill="#d62728"/>
+<circle cx="500" cy="766" r="4.5" fill="#e69f00"/>
+<circle cx="340" cy="846" r="4.5" fill="#7b3fa0"/>
+<circle cx="340" cy="968" r="4.5" fill="#7b3fa0"/>
+<circle cx="400" cy="1154" r="4.5" fill="#1f77b4"/>
+<circle cx="800" cy="294" r="4.5" fill="#103525"/>
+<circle cx="800" cy="330" r="4.5" fill="#103525"/>
+<circle cx="820" cy="402" r="4.5" fill="#2ca02c"/>
+<circle cx="840" cy="524" r="4.5" fill="#e69f00"/>
+<circle cx="880" cy="587" r="4.5" fill="#103525"/>
+<circle cx="880" cy="644" r="4.5" fill="#103525"/>
+<circle cx="880" cy="704" r="4.5" fill="#103525"/>
+<circle cx="880" cy="924" r="4.5" fill="#103525"/>
+<path class="n-pri" d="M14,1406 L48,1406"/>
 <text class="s" x="56" y="1411" text-anchor="start">rst_primary_smc_clk_no, rst_primary_periph_clk_no</text>
-<path class="n-per" d="M442.8,1406 L476.8,1406"/>
+<path class="n-warm" d="M442.8,1406 L476.8,1406"/>
 <text class="s" x="484.8" y="1411" text-anchor="start">rst_warm_smc_clk_no</text>
-<path class="n-ref" d="M655.6,1406 L689.6,1406"/>
+<path class="n-cold" d="M655.6,1406 L689.6,1406"/>
 <text class="s" x="697.6" y="1411" text-anchor="start">rst_cold_stable_smc_clk_no</text>
-<path class="n-wdt" d="M14,1430 L48,1430"/>
+<path class="n-fuse" d="M14,1430 L48,1430"/>
 <text class="s" x="56" y="1435" text-anchor="start">fuse_reset_n</text>
-<path class="n-tel" d="M176.4,1430 L210.4,1430"/>
+<path class="n-unc" d="M176.4,1430 L210.4,1430"/>
 <text class="s" x="218.4" y="1435" text-anchor="start">cluster_uncore_reset_n</text>
-<path class="n-bus" d="M410.8,1430 L444.8,1430"/>
+<path class="n-core" d="M410.8,1430 L444.8,1430"/>
 <text class="s" x="452.8" y="1435" text-anchor="start">core_reset_n[3:0], int_rst_core_n[3:0]</text>
-<path class="n-pg" d="M760.4000000000001,1430 L794.4000000000001,1430"/>
+<path class="n-dbg" d="M760.4000000000001,1430 L794.4000000000001,1430"/>
 <text class="s" x="802.4" y="1435" text-anchor="start">debug_reset_n</text>
 <rect class="core" x="14" y="1445" width="40" height="18" rx="4"/>
 <text class="s" x="62" y="1459" text-anchor="start">Instance</text>
