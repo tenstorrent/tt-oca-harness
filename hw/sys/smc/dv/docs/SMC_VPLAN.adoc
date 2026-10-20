@@ -154,6 +154,441 @@ is in `hosted` but not `smoke`, and receives no feature credit.
   (`smc_cold_reset_test`, `smc_powergood_glitch_test`,
   `smc_multi_reset_csr_persistence_test`).
 
+[[smc-feature-denominator]]
+==== Feature denominator
+
+The denominator is the set of behaviour features in the SMC architecture
+chapters: the chapters `hw/sys/smc/doc/index.adoc` lists in its reading order
+(clocks and resets, CPU, boot ROM, interconnect, interrupts, peripherals with
+the DMA engine, zeroer and watchdog pages, design-for-debug, eFuse scan
+protection, memory map), the rows of the peripheral summary table in
+`hw/sys/smc/doc/periphs.adoc`, and the TRM and integrator statements that
+constrain the SMC (`doc/trm/src/clock_domains.adoc`, `doc/trm/src/reset.adoc`,
+`doc/trm/src/memory_map.adoc`, `doc/integrator/src/smu-smc.adoc`). Each feature
+has one row: its spec source, the live leaves that own it (every name is a
+test entry under `hw/sys/smc/dv/testlists/` and is in `all` unless the
+cell says otherwise), representative `cov/sv` points from
+`hw/sys/smc/dv/docs/SMC_FCOV.adoc`, and its credit. The feature-credit matrix
+that follows is the sign-off subset of this table: it carries only canonical
+scenarios, one leaf per row with a cocotb `CHK-*` checker that can fail and a
+`cov/sv` point group, so a row there is a claim the regression's PASS proves.
+A feature with leaves and points but no credit row is exercised by the
+regression and graded by its leaves' cards; it is not a sign-off claim, and
+its Credit cell says why.
+
+Credit values:
+
+* `YES`: a feature-credit row below carries it; the cell names the row's leaf.
+* `OUT`: a Verification Scope row keeps it out; the cell names the row.
+* `NO`: a `NO` row below; runnable by name, not credited.
+* `REGRESSION`: enrolled leaves and collected points, no credit row; the cell
+  states why the scenario is not a canonical credit row.
+* `DECODE-ONLY`: the collected points reach only the feature's CSR decode.
+* `NO POINT`: enrolled leaves, no `cov/sv` point.
+
+[cols="1,3,4,5,5,4",options="header",]
+|===
+|ID |Feature |Spec source |Owning tests |Representative `cov/sv` points |Credit
+|F01
+|Input clock domains (`clk_smc_i`, `clk_ref_i`, `clk_periph_i`, `clk_telemetry_i`) and their ratios
+|`clk_rst.adoc` Clock Architecture; `doc/trm/src/clock_domains.adoc` OCAH Clock Domains
+|`smc_clk_smc_slower_than_ref_test`, `smc_clk_multi_window_test`,
+`smc_clock_domain_connectivity_test`, `smc_clk_running_test`
+|`smc_clk_fcov` (`c_clk_ratio_smc_slower_than_ref`, `c_clk_ratio_periph_faster_than_smc`,
+`c_clk_periph_at_minimum_100mhz`); `smc_clk_domain_fcov` (`c_cpu_retires_on_clk_smc`,
+`c_uart_on_clk_periph`)
+|`REGRESSION`: a ratio sweep across many leaves, no single canonical scenario;
+`smc_clk_running_test` is a SAMPLE-only alias
+|F02
+|Clock gating: module gates, DMA and zeroer activity gates, DFT bypass
+|`clk_rst.adoc` Subsystem Controls and Clock Gating; `dma.adoc` Architecture and Configuration;
+`zeroer.adoc` Clock Gating
+|`smc_cg_ctrl_reg_access_test`, `smc_cg_dft_reset_bringup_test`, `smc_cg_test_mode_bypass_test`,
+`smc_dma_cg_activity_test`, `smc_zeroer_axiclk_cg_test`, `smc_zeroer_regclk_cg_test`
+|`smc_clk_fcov` (`c_module_gate_enabled`, `c_module_gate_disabled`, `c_cg_test_en_override`,
+`c_dma_gate_open_on_busy`, `c_zeroer_cg_closed`); `smc_zeroer_fcov` (`c_axi_clk_gated_when_idle`,
+`c_reg_clk_on_activity`)
+|`REGRESSION`: the I2C gate is credited on the I2C row (`c_i2c_cg_open`, `c_i2c_cg_closed`); the
+module, DMA and zeroer gates have no canonical scenario
+|F03
+|Power-good and cold reset bring-up
+|`clk_rst.adoc` Power-Good and Cold Reset; `doc/trm/src/reset.adoc` SMC reset synchronisation
+|`smc_canonical_smoke_test`, `smc_cold_reset_test`, `smc_powergood_glitch_test`,
+`smc_cold_reset_repeated_test`
+|`smc_reset_fcov` (`c_release_powergood_stable`, `c_release_primary_smc`,
+`c_reset_state_all_released`); `smc_rst_seq_fcov` (`c_powergood_rise_stretched`,
+`c_cold_reset_released_after_powergood`)
+|`YES`: `smc_canonical_smoke_test`
+|F04
+|Primary and warm reset, including the watchdog and SEP watchdog sources
+|`clk_rst.adoc` Primary and Warm Reset; `doc/trm/src/reset.adoc` SEP reset
+|`smc_multi_reset_csr_persistence_test`, `smc_wdt_timeout_pin_test`, `smc_sep_wdt_irq_level_test`
+|`smc_reset_fcov` (`c_reset_op_warm_asserted`, `c_release_warm_smc`, `c_reset_op_sep_wdt_asserted`);
+`smc_iso_fcov` (`c_warm_from_internal_wdt`, `c_warm_from_external_wdt`); `smc_rst_seq_fcov`
+(`c_warm_cascaded_from_primary`)
+|`YES`: `smc_multi_reset_csr_persistence_test`
+|F05
+|Function-level reset
+|`clk_rst.adoc` Function Level Reset and Isolation
+|`smc_flr_sanity_test`, `smc_flr_isolation_sources_test`, `smc_cool_reset_pin_flr_overlap_test`
+|`smc_iso_fcov` (`c_flr_isolate_enabled`, `c_flr_isolate_disabled`); `smc_reset_fcov`
+(`c_reset_op_flr_pf_active`, `c_reset_op_cool_from_flr`)
+|`YES`: `smc_flr_sanity_test`
+|F06
+|Cool reset and subsystem isolation from the pin, software and FLR sources
+|`clk_rst.adoc` Isolation Controls, Timing and Recovery; `doc/trm/src/reset.adoc` Downstream
+subsystem sequencing
+|`smc_cool_reset_from_pcie_test`, `smc_cool_reset_x_cold_reset_test`, `smc_cool_reset_recovery_test`
+, `smc_cool_reset_deglitch_window_test`, `smc_reset_unit_sanity_test`
+|`smc_iso_fcov` (`c_sw_isolate_per_subsystem`, `c_cool_reset_from_gpio_pin_61`,
+`c_single_sequence_per_rising_edge`); `smc_reset_fcov` (`c_reset_op_cool_asserted`)
+|`REGRESSION`: the cool-reset legs of the FLR and multi-reset rows are credited; the pin and
+software sources have no canonical scenario
+|F07
+|Reset-unit register interface, subsystem controls and locks
+|`clk_rst.adoc` Subsystem Controls and Clock Gating, Detailed Register Map
+|`smc_reset_unit_lock_test`, `smc_ss_reset_complete_test`, `smc_reset_unit_sanity_test`
+|`smc_map_fcov` (`c_reset_unit_decode`); `smc_rst_seq_fcov` (`c_config_registers_at_reset_value`,
+`c_ss_config_driven`); `smc_reset_fcov` (`c_reset_op_ss0_warm_asserted`)
+|`REGRESSION`: CSR sweeps with per-leaf checkers, no canonical scenario
+|F08
+|Cluster boot, reset vector and ROM fetch
+|`cpu.adoc` Reset and Boot; `rom.adoc` ROM Architecture, Boot Flow
+|`smc_fw_hello_world_test`, `smc_fw_hello_world_multicore_test` (`fw`, in `all`, not in `hosted`);
+`smc_cpu_ctrl_dummy_rom_test`
+|`smc_cpu_fcov` (`c_first_fetch_at_rom_vector`, `c_rom_req_issued`, `c_core0_retire`);
+`smc_map_fcov` (`c_rom_base_read`, `c_rom_top_read`)
+|`NO`: the ROM-boot row; the production ROM runs under `occp_rom` and
+<<smc-rom-dv-verification-plan>> grades it
+|F09
+|Memory repair and MBIST ordering after fuse sense
+|`cpu.adoc` Memory Repair; `doc/integrator/src/smu-smc.adoc` Memory Repair Integration
+|`smc_efuse_sense_sequence_test`; the failure legs (`smc_rom_mbist_fail_test`,
+`smc_rom_mem_repair_fail_test`, `smc_rom_mbist_timeout_test`) are `occp_rom`, outside `all`
+|`smc_cpu_fcov` (`c_ordered_powergood_fusesense_repair_mbist_release`); `smc_efuse_fcov`
+(`c_repair_triggered_by_fuse_sense_done`)
+|`REGRESSION`: the ordering is reached by the reset leaves; the failure legs are graded by
+<<smc-rom-dv-verification-plan>>
+|F10
+|CPU AXI isolation, drain handshake and timeout recovery
+|`cpu.adoc` CPU AXI Isolation, Drain Handshake, Timeout Recovery
+|`smc_cpu_l2_read_wedge_test`, `smc_cpu_l2_write_wedge_test`, `smc_cpuif_handshake_test`,
+`smc_cpuif_external_stall_test`; the `mmio_wedge` pair is in `all`, not in `hosted`
+|`smc_cpu_fcov` (`c_self_isolated_at_cold_boot`, `c_release_requires_init_done`,
+`c_release_requires_cores_out_of_reset`, `c_init_done_low_during_init`)
+|`REGRESSION`: wedge and handshake leaves with their own checkers, no canonical scenario
+|F11
+|CPU-control window and the SEP_IN path into the cluster
+|`cpu.adoc` System Interfaces; `fabric.adoc` Traffic Managers
+|`smc_cpu_to_sep_axi_test`, `smc_cpu_ctrl_scratch_window_test`, `smc_sep_in_axi_shape_test`
+|`smc_map_fcov` (`c_sep_axi_in_read`, `c_sep_axi_in_write`); `smc_cpu_fcov` (`c_cpu_to_sram_read`,
+`c_cpu_to_sram_write`, `c_mmio_write_peripheral`)
+|`YES`: `smc_cpu_to_sep_axi_test`
+|F12
+|Per-core watchdog timers
+|`watchdog.adoc` Operation; `cpu.adoc` Watchdog Interface
+|`smc_wdt_key_csr_test`, `smc_wdt_count_feed_test`, `smc_wdt_ip0_clear_test`,
+`smc_wdt_scale_zerocmp_test`, `smc_wdt_timeout_pin_test`
+|`smc_map_fcov` (`c_wdt0_decode`, `c_wdt3_decode`, `c_wdt_instance_3`, `c_wdt_region`);
+`smc_reset_fcov` (`c_reset_op_wdt_asserted`); `smc_iso_fcov` (`c_warm_from_internal_wdt`)
+|`REGRESSION`: the warm-reset leg is credited on the multi-reset row; the timer, feed and interrupt
+behaviour has no canonical scenario
+|F13
+|Bus-error units
+|`cpu.adoc` Bus Error Reporting; `interrupts.adoc` Bus Error Units
+|`smc_cluster_beu_test`, `smc_beu_csr_access_test`, `smc_beu_register_test`,
+`smc_region_size_plic_clint_beu_decode_test`
+|`smc_map_fcov` (`c_beu0_decode`, `c_beu3_decode`, `c_beu_instance_3`, `c_timer_buserror_region`)
+|`DECODE-ONLY`: no point observes an error capture or its interrupt
+|F14
+|JTAG: debug module and the JTAG-AXI manager
+|`cpu.adoc` Debug, Debug Module Configuration
+|`smc_ijtag_basic_test`, `smc_jtag_dmi_smoke_test`, `smc_jtag_dm_halt_progbuf_test`,
+`smc_jtag_dm_sba_scratchpad_test`, `smc_jtag_reset_ctrl_test`
+|`smc_map_fcov` (`c_jtag_axi_in_read`, `c_jtag_axi_in_write`); `smc_filt_fcov`
+(`c_jtag2axi_remapped`, `c_jtag2axi_filtered`); no point on the debug module itself
+|`YES`: `smc_ijtag_basic_test`; the debug-module leaves are graded by their cards only
+|F15
+|ECC on the local memories
+|`cpu.adoc` Local Memory
+|`smc_ecc_codeword_sec_test`, `smc_ecc_codeword_ded_test`, `smc_ecc_fault_inject_test`,
+`smc_cpu_ecc_lint_pint_depth_test`
+|none; the local-memory read-with-error cell of `cg_map_access` is Phase 2 in `SMC_FCOV.adoc`
+|`NO POINT`
+|F16
+|Local fabric CSRs and base configuration
+|`fabric.adoc` Configuration Parameters, Memory Map and Register Reference; `memmap.adoc` Base
+Config and DFX Status
+|`smc_input_output_fabric_wr_rd_test`, `smc_local_fabric_csr_depth_test`,
+`smc_clk_ratio_base_config_test`
+|`smc_map_fcov` (`c_config_reg_write`, `c_config_reg_read`, `c_base_config_read`,
+`c_global_base_readable`, `c_local_base_write_has_no_effect`)
+|`YES`: `smc_input_output_fabric_wr_rd_test`
+|F17
+|Alias remapping and output remapping
+|`fabric.adoc` Alias Remapping, Output Remapping
+|`smc_alias_remap_translate_test`, `smc_alias_remap_spare_block_decode_test`,
+`smc_outremap_window_translate_test`, `smc_remap_cla_test`, `smc_xvisor_remap_test`
+|`smc_map_fcov` (`c_alias_region_0_configured`, `c_alias_region_7_configured`,
+`c_local_alias_base_reaches_local_resource`, `c_transparent_at_reset`, `c_remap_region`);
+`smc_filt_fcov` (`c_jtag2axi_remapped`)
+|`REGRESSION`: the JTAG2AXI remap leg is credited on the outbound-filter row; the alias and output
+remap tables have no canonical scenario
+|F18
+|Inbound traffic filtering
+|`fabric.adoc` Inbound Filtering
+|`smc_filter_field_sweep_test`, `smc_filter_multi_entry_test`, `smc_filter_range_granule_test`,
+`smc_filter_lock_window_test`
+|`smc_filt_fcov` (`c_inbound_filter_admitted`, `c_inbound_filter_blocked`); `smc_map_fcov`
+(`c_inbound_entry_0`, `c_inbound_entry_15`)
+|`REGRESSION`: field and entry sweeps with per-leaf checkers, no canonical scenario
+|F19
+|Outbound filtering and AXI protection-bit matching
+|`fabric.adoc` Outbound Filtering, Protection Requirements
+|`smc_output_filter_remap_security_test`, `smc_outremap_prot_srcid_test`
+|`smc_filt_fcov` (`c_awprot_exact_match`, `c_arprot_one_bit_off`, `c_jtag2axi_filtered`);
+`smc_map_fcov` (`c_outbound_entry_0`, `c_outbound_entry_15`)
+|`YES`: `smc_output_filter_remap_security_test`
+|F20
+|Traffic managers (SEP_IN, SYS_IN, JTAG2AXI) and the SYS_OUT path
+|`fabric.adoc` Traffic Managers and Subordinates, Outbound Traffic Flow
+|`smc_sep_in_axi_shape_test`, `smc_sep_in_axi_flow_control_test`, `smc_sys_axi_in_port_test`,
+`smc_sys_out_aw_w_split_test`, `smc_sys_out_path_responder_control_test`, `smc_jtag_axi_shape_test`
+|`smc_fabric_fcov` (`c_sep_in_awburst_incr`, `c_sep_in_wstrb_partial`, `c_sys_out_aw_accept`,
+`c_sys_out_write_count_advanced`, `c_response_id_matches_request_port`); `smc_map_fcov`
+(`c_sys_axi_in_read`)
+|`REGRESSION`: per-port shape and flow-control leaves, no canonical scenario
+|F21
+|Error responses and unmapped address space
+|`memmap.adoc` Address Space Organization; `fabric.adoc` Traffic Subordinates
+|`smc_axi_error_response_depth_test`, `smc_deadspace_decode_test`, `smc_decode_hole_test`
+|`smc_axi_chan_fcov` (`c_bresp_decerr`, `c_bresp_slverr`, `c_rresp_decerr`, `c_rresp_slverr`);
+`smc_map_fcov` (`c_rom_just_above_top_not_rom`, `c_dma_just_above_top_not_dma`,
+`c_beyond_region_does_not`)
+|`REGRESSION`: decode sweeps with per-leaf checkers, no canonical scenario
+|F22
+|Address-space regions and the global aperture
+|`memmap.adoc` Memory Map, Address Space Organization; `doc/trm/src/memory_map.adoc` SMC global
+aperture
+|`smc_address_map_region_decode_test`, `smc_address_window_top_decode_test`,
+`smc_region_gated_units_decode_test`, `smc_region_zero_reset_recovery_test`
+|`smc_map_fcov` (`c_region_base_decodes`, `c_region_top_decodes`, `c_beyond_region_does_not`,
+`c_memory_region`, `c_peripheral_region`); `smc_rst_seq_fcov` (`c_region_size_reset_16mib`)
+|`REGRESSION`: decode sweeps with per-leaf checkers, no canonical scenario
+|F23
+|External AXI-Lite window (mandatory and supplementary regions)
+|`memmap.adoc` AXI-Lite External Window; `doc/integrator/src/smu-smc.adoc` Adopter Peripheral Window
+|`smc_peripheral_instance_decode_test`, `smc_external_window_pad_ctrl_decode_test`
+|`smc_map_fcov` (`c_axil_external_region`, `c_mandatory_region_base_decodes`, `c_per_pad_instance_0`
+, `c_per_pad_instance_64`, `c_supplementary_region_base_decodes`); `smc_fabric_fcov`
+(`c_axil_external_active`)
+|`OUT`: "Everything behind the mandatory external AXI-Lite window"; the decode into the window is
+`DECODE-ONLY`
+|F24
+|Scratch, chip config, NDM reset block and misc wrap CSRs
+|`memmap.adoc` Chip Config, Scratch, NDM Reset, and Misc Wrap
+|`smc_register_sanity_test`, `smc_default_reg_rd_test`, `smc_scratch_banks_test`,
+`smc_efuse_chip_config_read_test`
+|`smc_map_fcov` (`c_scratch_write_readback`, `c_scratch_all_ones`, `c_chip_config_read`,
+`c_chip_config_write`, `c_misc_wrap_top_decodes`, `c_ndm_reset_block_decode`)
+|`YES`: `smc_register_sanity_test`, `smc_default_reg_rd_test`
+|F25
+|Captured straps block
+|`memmap.adoc` External Window Reference Maps (straps map)
+|`smc_address_map_region_decode_test` reads the block; `smc_captured_straps_test` is retired in
+<<smc-deferred-disposition>> (`smc_wrapper` declares no straps input)
+|`smc_map_fcov` (`c_straps_lo_read`, `c_straps_hi_read`, `c_strap_write_has_no_effect`); the pattern
+points are Phase 2 in `SMC_FCOV.adoc`
+|`DECODE-ONLY`: no strap value reaches the wrapper
+|F26
+|Mailbox (32 pairs)
+|`periphs.adoc` SMC Peripheral Summary, Mailbox
+|`smc_mailbox_irq_test`, `smc_mailbox_multi_instance_test`, `smc_mailbox_pair_datapath_test`,
+`smc_mailbox_threshold_irqs_test`
+|`smc_periph_fcov` (`c_irq_mailbox`, `c_single_entry_message`, `c_two_entry_message`,
+`c_mailbox_count_32`, `c_mailbox_depth_2_full_at_two_entries`); `smc_map_fcov` (`c_mailbox_pair_0`,
+`c_mailbox_pair_31`)
+|`YES`: `smc_mailbox_irq_test`
+|F27
+|System timer OCTS
+|`periphs.adoc` SMC Peripheral Summary, System Timer OCTS; `clk_rst.adoc` Timer and Debug Timebases
+|`smc_fw_octs_p0_primary_test` (`fw`), `smc_octs_primary_count_test`, `smc_octs_primary_start_test`,
+`smc_octs_csr_access_test`, `smc_octs_clk_rate_test`; `smc_octs_dual_sync_test` is `sanity`, outside
+`all`
+|`smc_periph_fcov` (`c_octs_count_advances`, `c_octs_count_monotonic`); `smc_clk_domain_fcov`
+(`c_octs_tick_on_clk_ref`); `smc_map_fcov` (`c_octs_decode`, `c_octs_aperture_decode`)
+|`REGRESSION`: `smc_octs_sanity_test` is an AVS status proxy (<<smc-known-limitations>>); the OCTS
+leaves have no canonical scenario, and the timer-rate comparison is held out in
+<<smc-held-out-testcases>>
+|F28
+|eFuse controller, shim and OTP access
+|`periphs.adoc` SMC Peripheral Summary, eFuse; `doc/integrator/src/smu-smc.adoc` eFuse Interface
+|`smc_efuse_otp_clock_test`, `smc_efuse_jtag_lc_access_matrix_test`, `smc_efuse_lock_guard_test`,
+`smc_efuse_sense_sequence_test`, `smc_efuse_map_read_test`
+|`smc_efuse_fcov` (`c_bank_ctrl_read`, `c_shim_command_issued`, `c_fuse_sense_done_asserted`,
+`c_shadow_regs_reflect_sensed_values`, `c_jtag_otp_read`); `smc_fabric_fcov`
+(`c_efuse_jtag_bresp_decerr`); `smc_map_fcov` (`c_efuse_shim_decodes`)
+|`YES`: `smc_efuse_otp_clock_test`; the macro and lifecycle policy are `OUT`
+|F29
+|UART 16550 (4 instances)
+|`periphs.adoc` SMC Peripheral Summary, UART 16550; UART and Log Engine Wrapper Registers
+|`smc_uart_spi_log_engine_test`, `smc_uart_baud_word_parity_format_test`,
+`smc_uart_fifo_basic_trigger_reset_test`, `smc_uart_irq_sources_priority_test`,
+`smc_uart_loopback_test`, `smc_uart_char_loopback_test`
+|`smc_periph_fcov` (`c_tx_single_char`, `c_tx_multi_char`, `c_irq_uart`); `smc_clk_domain_fcov`
+(`c_uart_on_clk_periph`); `smc_map_fcov` (`c_uart_decode`, `c_uart_instance_0`, `c_uart_instance_3`)
+|`YES`: `smc_uart_spi_log_engine_test` (CSR); protocol loopback is the `NO` row
+|F30
+|Log engine (4 instances)
+|`periphs.adoc` SMC Peripheral Summary, Log Engine; `interrupts.adoc` Exact Indexed Map (log-engine
+sources)
+|`smc_log_engine_transfer_test`, `smc_log_engine_round_robin_test`, `smc_log_engine_abort_test`,
+`smc_log_engine_fetch_error_test`, `smc_uart_log_engine_reg_rw_test`,
+`smc_fw_uart_log_engine_single_entry_test` (`fw`)
+|none; no collector observes a log-engine transfer
+|`NO POINT`: the control CSR is on the UART/SPI/log-engine CSR row; the transfer path has no point
+|F31
+|I2C (3 instances): controller, target, SMBus
+|`periphs.adoc` SMC Peripheral Summary, I2C
+|`smc_i2c_master_target_test`, `smc_i2c2_controller_rdwr_test`,
+`smc_i2c0_target_fast_controller_test`, `smc_smbus_alert_irq_route_test`, `smc_fw_i2c_sanity_test`
+(`fw`)
+|`smc_periph_fcov` (`c_controller_write`, `c_controller_read`, `c_controller_repeated_start`,
+`c_target_write_received`, `c_target_read_served`, `c_i2c0_smbalert_asserted`,
+`c_i2c0_clock_stretch_by_dut`); `smc_clk_fcov` (`c_i2c_cg_open`)
+|`YES`: `smc_i2c_master_target_test`
+|F32
+|I3C (6 instances)
+|`periphs.adoc` SMC Peripheral Summary, I3C
+|`smc_i3c_to_fabric_test`, `smc_i3c_csr_sweep_core_test`, `smc_i3c_csr_sweep_ext_test`,
+`smc_i3c_dxt_table_test`, `smc_i3c_private_write_test`, `smc_i3c_clock_gate_window_test`
+|`smc_map_fcov` (`c_i3c_decode`, `c_i3c_instance_0`, `c_i3c_instance_5`, `c_i3c_count_6`);
+`smc_periph_fcov` (`c_i3c0_scl_falling`, `c_i3c0_sda_driven_by_dut`)
+|`NO`: the I3C window-decode and CCC/IBI rows; DAT/DCT state is `OUT` (<<smc-idle-boundaries>>)
+|F33
+|AVSBus controller
+|`periphs.adoc` SMC Peripheral Summary, AVSBus Controller
+|`smc_sideband_protocol_smoke_test`, `smc_avsbus_slave_reply_test`,
+`smc_avsbus_frame_transaction_test`, `smc_avsbus_interrupt_sources_test`,
+`smc_avsbus_retry_exhaust_test`
+|`smc_map_fcov` (`c_avsbus_decode`, `c_avsbus_aperture_decode`); `smc_periph_fcov` (`c_irq_avsbus`);
+`smc_clk_domain_fcov` (`c_avsbus_on_clk_periph`)
+|`YES`: `smc_sideband_protocol_smoke_test`
+|F34
+|GPIO (65 instances)
+|`periphs.adoc` SMC Peripheral Summary, GPIO; `doc/integrator/src/smu-smc.adoc` GPIO Pad Integration
+|`smc_gpio_irq_active_test`, `smc_gpio_ctrl_full_sweep_test`, `smc_gpio_irq_type_matrix_test`,
+`smc_gpio_pad_input_readback_test`, `smc_gpio_output_driveback_test`, `smc_gpio_boot_stall_test`
+|`smc_gpio_fcov` (`c_pad_output_low`, `c_per_instance_default_matches_map`,
+`c_default_input_count_62`); `smc_periph_fcov` (`c_irq_gpio`, `c_gpio_core2pad_active`,
+`c_gpio_pad2core_en_active`, `c_gpio_boot_stall_pad_high`); `smc_map_fcov` (`c_gpio_instance_0`,
+`c_gpio_instance_64`)
+|`YES`: `smc_gpio_irq_active_test`
+|F35
+|Telemetry receiver (3 instances) on `clk_telemetry_i`
+|`periphs.adoc` SMC Peripheral Summary, Telemetry Receiver; `clk_rst.adoc` Clock Architecture
+|`smc_telemetry_receiver_csr_test`, `smc_telemetry_atb_capture_test`,
+`smc_telemetry_buffer_overflow_test`, `smc_telemetry_irq_aggregate_test`,
+`smc_telemetry_receiver_isolation_test`
+|`smc_periph_fcov` (`c_atb_transfer_accepted`, `c_distinct_atid_values`, `c_receiver_0_decode`,
+`c_receiver_2_decode`, `c_irq_telemetry`); `smc_clk_fcov` (`c_atb_capture_on_clk_telemetry`);
+`smc_rst_seq_fcov` (`c_telemetry_reset_released`)
+|`REGRESSION`: ATB capture and CSR leaves with their own checkers, no canonical scenario
+|F36
+|SPI pad path (VPLAN area; no SMC chapter names it)
+|none in `hw/sys/smc/doc/`
+|`smc_spi_pad_bfm_test`
+|none
+|`NO POINT`: a bench pad BFM exercise with no spec feature behind it; nothing credits it
+|F37
+|PLIC and CLINT
+|`interrupts.adoc` PLIC Sources and Contexts, CLINT
+|`smc_fw_plic_claim_test` (`fw`), `smc_plic_register_test`, `smc_clint_register_test`,
+`smc_region_size_plic_clint_beu_decode_test`
+|`smc_int_fcov` (`c_claim_returns_highest_priority`, `c_claim_returns_zero_when_none_pending`,
+`c_delivery_after_full_initialization`); `smc_map_fcov` (`c_plic_base_access`,
+`c_priority_written_to_zero`, `c_clint_base_access`)
+|`OUT`: "The cluster PLIC register file from the external port"; the firmware claim path is
+`REGRESSION` with no canonical scenario
+|F38
+|Interrupt vector assembly and the indexed map
+|`interrupts.adoc` Raw Vector and PLIC Numbering, SMC CPU Interrupt Vector Map
+|`smc_ext_interrupts_pin_test`, `smc_irq_vector_assembly_test`, `smc_irq_multi_sample_test`,
+`smc_ext_irq_low_bits_test`, `smc_mbx_inbound_irq_vector_test`
+|`smc_int_fcov` (`c_bit0_source1`, `c_bit323_source324`, `c_arbitrary_bit_plus_one`);
+`smc_periph_fcov` (`c_irq_ext_interrupt_0`, `c_irq_multiple_concurrent`, `c_irq_sync`)
+|`REGRESSION`: vector and pin leaves with their own checkers, no canonical scenario
+|F39
+|AXI hang detectors (sys, sep, data)
+|`interrupts.adoc` Exact Indexed Map (index 286); `memmap.adoc` Base Config and DFX Status
+|`smc_hang_detector_sanity_test`, `smc_hang_detector_timeout_test`,
+`smc_hang_detector_sys_timeout_test`, `smc_hang_detector_data_timeout_test`,
+`smc_hang_detector_disable_test`, `smc_hang_detector_plic_route_test`, `smc_hang_irq_or_matrix_test`
+|`smc_int_fcov` (`c_hang_or_bit286`); `smc_periph_fcov` (`c_irq_axi_hang_any`, `c_irq_axi_hang_sys`,
+`c_irq_axi_hang_sep`, `c_irq_axi_hang_data`); `smc_map_fcov` (`c_hang_det_control_fields_present`)
+|`REGRESSION`: per-detector timeout leaves with their own checkers, no canonical scenario
+|F40
+|NDM reset request path
+|`memmap.adoc` Chip Config, Scratch, NDM Reset, and Misc Wrap; `interrupts.adoc` Exact Indexed Map
+(NDM sources); `doc/integrator/src/smu-smc.adoc` External CPU cluster NDM reset
+|`smc_ndm_reset_test`, `smc_ndm_irq_or_test`, `smc_ndm_process_extra_bits_test`
+|`smc_int_fcov` (`c_ndm_request_synchronized`, `c_ndm_request_cleared`, `c_ndm_or_reduced_to_bit267`
+, `c_sync_bit_set`); `smc_reset_fcov` (`c_reset_op_ndm_requested`, `c_reset_op_ndm_processed`,
+`c_reset_op_ndm_irq`)
+|`REGRESSION`: the block decode is credited on the misc-wrap and ECC/DFD/DBS rows; the request path
+has no canonical scenario
+|F41
+|DMA engine
+|`dma.adoc` Architecture and Configuration, Transfer Configuration, Submission and Completion
+|`smc_dma_sanity_test`, `smc_dma_linear_copy_test`, `smc_dma_2d_copy_test`,
+`smc_dma_decouple_rw_test`, `smc_dma_reserved_stream_banks_test`, `smc_dma_backpressure_test`
+|`smc_dma_fcov` (`c_next_id_0_launches_transfer`, `c_dest_contents_match`,
+`c_done0_set_on_completion`, `c_len_multi_burst`, `c_shared_registers_consumed`); `smc_map_fcov`
+(`c_dma_aperture_base`, `c_all_16_banks_decode`)
+|`REGRESSION`: copy and status leaves with their own checkers, no canonical scenario
+|F42
+|Zeroer
+|`zeroer.adoc` Architecture, Operation Details
+|`smc_zeroer_dma_timeout_test`, `smc_zeroer_sanity_test`, `smc_zeroer_multi_burst_test`,
+`smc_zeroer_unaligned_test`, `smc_zeroer_size_corners_test`
+|`smc_zeroer_fcov` (`c_trigger_write_starts_operation`, `c_every_beat_is_zero`,
+`c_busy_cleared_on_completion`, `c_zeroer_multi_beat_burst`); `smc_map_fcov`
+(`c_zeroer_aperture_base`)
+|`YES`: `smc_zeroer_dma_timeout_test`
+|F43
+|Design-for-debug: debug bus, CLA, cross-trigger actions, trace
+|`dfd.adoc` Debug Bus, Core Logic Analyzer, Actions and Cross-Triggering, Trace
+|`smc_ecc_dfd_dbs_sanity_test`, `smc_dfd_cla_event_type_sweep_test`,
+`smc_dfd_cla_snapshot_capture_test`, `smc_dfd_trace_sink_readout_test`,
+`smc_dfd_trace_writeout_phase_test`, `smc_remap_cla_test`
+|`smc_map_fcov` (`c_cla_decode`, `c_cla_region`, `c_cla_base_decodes`, `c_dfx_status_decode`);
+`smc_cpu_fcov` (`c_custom_action_output_driven`); no trace, trigger or debug-bus point
+|`YES`: `smc_ecc_dfd_dbs_sanity_test`; trace, trigger and debug bus are `DECODE-ONLY`
+|F44
+|eFuse shadow-register scan protection and the `LOCKS` path
+|`scan_protection.adoc` Implementation, Downstream Lock Path, Verification
+|`smc_efuse_lock_guard_test`, `smc_efuse_map_locks_register_test`,
+`smc_efuse_map_lock_field_enforce_test`, `smc_efuse_locked_access_interrupt_test`; the chapter names
+`smc_efuse_shadow_lock_matrix_test`, a catalog-only name in <<smc-deferred-disposition>>
+|`smc_efuse_fcov` (`c_locks_set_access_refused`, `c_locks_cleared_access_permitted`,
+`c_write_locked_field_unchanged`, `c_read_locked_field_masked`); `smc_periph_fcov`
+(`c_irq_efuse_locked_access`)
+|`REGRESSION`: lock leaves with their own checkers, no canonical scenario
+|F45
+|PLL and PVT
+|`pll.adoc` (placeholder); `overview.adoc` (PLL, PVT and strap models behind `smc_external`)
+|none; `smc_pll_pvt_clock_config_test` and `smc_pll_dvfs_depth_test` are retired in
+<<smc-deferred-disposition>>
+|`smc_map_fcov` (`c_pll_wrapper_decodes`, `c_pvt_wrapper_decode`, `c_pvt_wrapper_decodes`): OKAY+0
+placeholder wraps
+|`OUT`: "The adopter's PLL and PVT blocks"; the PLL/PVT clock config row is `NO`
+|===
+
+The remaining Verification Scope rows (the DTP CSR and raw OTP windows, the
+eFuse macro and lifecycle policy, the SMU integration) sit behind the
+`smc_wrapper` boundary or belong to another plan and are not behaviour
+features of these chapters; the DTP CSR port keeps its `NO` row below.
+
 [[smc-traceability-matrix]]
 ==== Matrix (feature-credit subset)
 
