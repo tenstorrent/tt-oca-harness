@@ -75,7 +75,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml), as its run mode states. It
 #   grades the KM OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 267
+expected_count = 270
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -231,7 +231,10 @@ tests = [
     "sep_km_key_bank_register_rand_test",
     "sep_km_sram_scrambler_key_rand_test",
     "sep_km_command_protocol_rand_test",
-    "sep_km_key_transfer_rand_test",
+    "sep_km_key_transfer_rand_test_shard1",
+    "sep_km_key_transfer_rand_test_shard2",
+    "sep_km_key_transfer_rand_test_shard3",
+    "sep_km_key_transfer_rand_test_shard4",
     "sep_km_handover_rand_test",
     "sep_km_boot_reset_rand_test",
     "sep_km_fault_inject_rand_test",
@@ -526,7 +529,10 @@ tests = [
     "sep_km_key_bank_register_rand_test",
     "sep_km_sram_scrambler_key_rand_test",
     "sep_km_command_protocol_rand_test",
-    "sep_km_key_transfer_rand_test",
+    "sep_km_key_transfer_rand_test_shard1",
+    "sep_km_key_transfer_rand_test_shard2",
+    "sep_km_key_transfer_rand_test_shard3",
+    "sep_km_key_transfer_rand_test_shard4",
     "sep_km_handover_rand_test",
     "sep_km_boot_reset_rand_test",
     "sep_km_fault_inject_rand_test",
@@ -1018,7 +1024,7 @@ tests = [
 # Convenience group of the Key Manager hardware tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_key_manager"
-expected_count = 28
+expected_count = 31
 tests = [
     "sep_km_kmcsr_reset_rand_test",
     "sep_km_kpv_rand_test",
@@ -1030,7 +1036,10 @@ tests = [
     "sep_km_key_bank_register_rand_test",
     "sep_km_sram_scrambler_key_rand_test",
     "sep_km_command_protocol_rand_test",
-    "sep_km_key_transfer_rand_test",
+    "sep_km_key_transfer_rand_test_shard1",
+    "sep_km_key_transfer_rand_test_shard2",
+    "sep_km_key_transfer_rand_test_shard3",
+    "sep_km_key_transfer_rand_test_shard4",
     "sep_km_handover_rand_test",
     "sep_km_boot_reset_rand_test",
     "sep_km_fault_inject_rand_test",

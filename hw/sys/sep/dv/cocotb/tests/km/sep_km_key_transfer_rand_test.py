@@ -59,6 +59,14 @@ Checks:
 The rounds below the share width, the short-key repeat, the four repeated
 transfers, the share-write records of a single-engine transfer and shred, and
 the revoke leg serve only planned checks and do not run.
+
+The regression runs the leaf as four shards (``+sep_shard``, ``env/sep_shard.py``),
+each from its own seed and its own boot: shard 1 the AES rounds and shard 2 the
+HMAC rounds of the delivery leg; shard 3 the rounds of KMAC, OTBN and the ML-DSA
+seed and the AES round at the share width; shard 4 the AES round at the share
+width (the first AES output of the shard, which sets W), the warm reset and the
+policy leg. Each shard grades CHK-BANKS over its own transfers and shreds.
+Without the plusarg the leaf runs every round and both legs, as one boot.
 """
 
 from __future__ import annotations
@@ -72,6 +80,7 @@ from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import LC_PROD
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_hmac_golden import hmac_sha256_words
+from env.sep_shard import sep_shard
 from km import sep_km_key_transfer_rand_plan as pl
 from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_OUTPUT_VALID, SepAes
@@ -185,6 +194,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
+        self.shard = sep_shard(self, pl.SHARD_EVIDENCE)
         self.chk = SepChkLog(self, TEST, seed)
         self.seed = seed
         self.plan = pl.draw_plan(seed)
@@ -234,9 +244,12 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         await self._delivery_leg()
         close_graded_window(self.logger)
-        await self._warm_reset()
+        policy = self.shard in (None, pl.POLICY_SHARD)
+        if policy:
+            await self._warm_reset()
         open_graded_window(TEST, self.logger)
-        await self._policy_leg()
+        if policy:
+            await self._policy_leg()
         self._grade_banks()
         close_graded_window(self.logger)
 
@@ -463,6 +476,11 @@ class sep_km_key_transfer_rand_test(sep_base_test):
                     i,
                     name,
                     r.size,
+                )
+                continue
+            if not pl.in_shard(self.shard, r):
+                self.logger.info(
+                    "LOG round%d eng=%s size=%d runs in another shard", i, name, r.size
                 )
                 continue
             # Step 5: shred every bank; every key_valid reads 0.
@@ -702,6 +720,11 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         bad = [f"{lbl}:{_h(got)}!={_h(exp)}" for lbl, got, exp in self.banks if got != exp]
         by = {lbl: got for lbl, got, _exp in self.banks}
         p = self.plan
+
+        def seen(label: str) -> str:
+            # A shard without the policy leg has no reading of its labels.
+            return _h(by[label]) if label in by else "-"
+
         self.chk.ok(
             "BANKS",
             not bad and len(self.banks) > 0,
@@ -709,10 +732,10 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             mismatches=",".join(bad) or "-",
             p1=_h(p.p1),
             x=_h(p.x),
-            refused_keyvalid=_h(by.get("refused", 0)),
+            refused_keyvalid=seen("refused"),
             v=_h(p.v),
             s=_h(p.s),
-            keyvalid=_h(by.get("shred_leg_after_s", 0)),
-            all_bank_keyvalid=_h(by.get("all_bank", 0)),
-            all_bank_after_shred=_h(by.get("all_bank_after_shred", 0)),
+            keyvalid=seen("shred_leg_after_s"),
+            all_bank_keyvalid=seen("all_bank"),
+            all_bank_after_shred=seen("all_bank_after_shred"),
         )

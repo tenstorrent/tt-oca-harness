@@ -488,16 +488,60 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+erro
 # KM key transfer: keys of 17 to 128 words, multi-engine masks, mixed-mask refusal, subset shred,
 # engine write order (rom_main). The leaf resets the KM while its CPU runs; the raised Verilator
 # error limit keeps it running.
-name = "sep_km_key_transfer_rand_test"
+# Shard 1 of 4 of sep_km_key_transfer_rand_test: the AES rounds of the delivery leg. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_key_transfer_rand_test_shard1"
 module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 3
-timeout_sec = 7200
+timeout_sec = 3600
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=1"]
+
+[[tests]]
+# Shard 2 of 4 of sep_km_key_transfer_rand_test: the HMAC rounds of the delivery leg. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_key_transfer_rand_test_shard2"
+module = "km.sep_km_key_transfer_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=2"]
+
+[[tests]]
+# Shard 3 of 4 of sep_km_key_transfer_rand_test: the KMAC, OTBN and ML-DSA seed rounds and the AES round at the share width.
+# The regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_key_transfer_rand_test_shard3"
+module = "km.sep_km_key_transfer_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=3"]
+
+[[tests]]
+# Shard 4 of 4 of sep_km_key_transfer_rand_test: the AES round at the share width, the warm reset and the policy leg.
+# The regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_key_transfer_rand_test_shard4"
+module = "km.sep_km_key_transfer_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=4"]
 
 [[tests]]
 # KM image load refusals, the fw_crc fault and the KM state at the handover jump (IMG-H, rom_main).

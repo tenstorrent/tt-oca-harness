@@ -311,6 +311,34 @@ def draw_plan(seed: int) -> Plan:
     )
 
 
+# Shards of the leaf (``env/sep_shard.py``). Shard 1 runs the AES rounds and shard 2
+# the HMAC rounds of the delivery leg. Shard 3 runs the rounds of the engines with no
+# witness. Shard 4 runs the warm reset and the policy leg. Shards 3 and 4 also run the
+# AES round at the share width: in shard 4 its AES read is the first AES output of the
+# shard, which sets W; in shard 3 it gives a CHK-POLICY line on every seed.
+SHARD_EVIDENCE = {
+    1: ("CHK-GOLD", "CHK-POLICY", "CHK-BANKS"),
+    2: ("CHK-GOLD", "CHK-POLICY", "CHK-BANKS"),
+    3: ("CHK-POLICY", "CHK-BANKS"),
+    4: ("CHK-POLICY", "CHK-REFUSE", "CHK-SHRED-SUBSET", "CHK-BANKS", "CHK-ENG-ORDER"),
+}
+POLICY_SHARD = 4
+
+
+def in_shard(shard: int | None, r: Round) -> bool:
+    """True when the delivery round ``r`` runs in ``shard`` (None: the whole leaf)."""
+    if shard is None:
+        return True
+    aes_width = r.eng == AES and r.size == WIDTH[AES]
+    if shard == 1:
+        return r.eng == AES
+    if shard == 2:
+        return r.eng == HMAC
+    if shard == 3:
+        return r.eng in NO_WITNESS or aes_width
+    return aes_width
+
+
 def _words(ws: tuple[int, ...]) -> str:
     return "[" + ",".join(f"0x{w:08x}" for w in ws) + "]"
 

@@ -2021,7 +2021,7 @@ Every test runs in run mode `no_cpu`, target `lsu_stub_all_live`, and joins the 
 
 *Area*: Key Manager vault
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), vehicle HOST (Key Manager image `rom_main`, real fuse sense, `+esrc_noise_force`, `+km_rom_hex=rom_main.rom.parhex`), every engine out of reset, 3 seeds, Verilator and VCS. Testlist: groups `all` and `cpu_stub`, `hw/sys/sep/dv/testlists/km.toml`.
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), vehicle HOST (Key Manager image `rom_main`, real fuse sense, `+esrc_noise_force`, `+km_rom_hex=rom_main.rom.parhex`), every engine out of reset, 3 seeds, Verilator and VCS. Testlist: groups `all`, `cpu_stub` and `phase3_key_manager`, `hw/sys/sep/dv/testlists/km.toml`, as four shards (`+sep_shard`, `env/sep_shard.py`, entries `sep_km_key_transfer_rand_test_shard1` to `_shard4`), each from its own seed and its own boot, and each runs steps 1 to 4: shard 1 runs the AES rounds and shard 2 the HMAC rounds of the delivery leg (steps 5 to 8 and 11) and grades CHK-GOLD, CHK-POLICY and CHK-BANKS; shard 3 runs the KMAC, OTBN and ABR ML-DSA seed rounds and the AES round at the share width and grades CHK-POLICY and CHK-BANKS; shard 4 runs the AES round at the share width (whose AES read is the first AES output of the shard and sets W), then the warm reset and the policy leg (steps 12 to 18), and grades CHK-POLICY, CHK-REFUSE, CHK-SHRED-SUBSET, CHK-BANKS and CHK-ENG-ORDER. Each shard grades CHK-BANKS over its own transfers and shreds. The shards together grade every check of the leaf; without `+sep_shard` the module runs every round and both legs in one boot.
 
 *Source Module*: `sep_km_key_transfer_rand_test`
 
