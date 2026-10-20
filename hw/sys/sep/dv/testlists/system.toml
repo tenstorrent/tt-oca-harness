@@ -833,9 +833,9 @@ args = ["+skip_fuse_sense", "+sep_outbound_depth=64"]
 
 [[tests]]
 # Outbound target READY stall and B/R hold-then-release against the CPU LSU and the Secure
-# DMA, with the local crossbar outstanding limit reached under the held target: finite
-# stop, held request completes after a release, drain without deadlock, B and R
-# accounting. The outbound chain limit is printed, not graded. The SMN inbound master
+# DMA, with the LSU master stopped under the held target: finite stop, held request
+# completes after a release, drain without deadlock, B and R accounting. The number of
+# accepted requests before the stop is printed, not graded. The SMN inbound master
 # issues alongside as the stimulus of the no-path check.
 name = "sep_outbound_stall_saturation_test"
 module = "system.sep_outbound_stall_saturation_test"
