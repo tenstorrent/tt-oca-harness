@@ -221,7 +221,7 @@ module sep_dma_wrap #(
   ) u_axi_to_axi_lite_reg (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),
-    .test_i      (1'b0),
+    .test_i      (test_en_i),
     .slv_req_i   (axi32_slv_req_offset),
     .slv_resp_o  (axi32_slv_resp),
     .mst_req_o   (axi_lite_slv_req),

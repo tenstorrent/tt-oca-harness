@@ -28,6 +28,7 @@ module entropy_source
 (
     input       logic        clk_i,     // System clock.
     input       logic        rst_ni,    // Active-low asynchronous reset.
+    input       logic        test_en_i, // DFT test mode; forces the health-test clock gate open.
 
     input       logic        s_axil_awvalid_i,  // AXI-Lite write-address valid.
     output      logic        s_axil_awready_o,  // AXI-Lite write-address ready.
@@ -359,7 +360,7 @@ module entropy_source
     prim_clock_gating u_health_test_clk_gate (
         .clk_i  (clk_i),
         .en_i   (health_test_enable),
-        .test_en_i (1'b0),
+        .test_en_i (test_en_i),
         .clk_o  (health_test_clk)
     );
 

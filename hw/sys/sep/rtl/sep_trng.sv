@@ -31,6 +31,7 @@ module sep_trng #(
                                               // trng_reset_active_o synchronizer.
   input logic rst_ni,                         // Active-low local reset for entropy_source and the
                                               // DRBG.
+  input logic test_en_i,                      // DFT test mode to entropy_source.
   input logic entropy_rosc_sample_clk_i,      // Ring-oscillator sample clock for entropy_source;
                                               // asynchronous to clk_i.
 
@@ -99,6 +100,7 @@ module sep_trng #(
   entropy_source u_entropy_source_s3c_scan (
     .clk_i                (clk_i),
     .rst_ni               (rst_ni),
+    .test_en_i            (test_en_i),
     .s_axil_awvalid_i     (esrc_axil_req_i.aw_valid),
     .s_axil_awready_o     (esrc_axil_resp_o.aw_ready),
     .s_axil_awaddr_i      (esrc_axil_req_i.aw.addr[8:0]),

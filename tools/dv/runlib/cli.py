@@ -1894,7 +1894,7 @@ def list_flows_json(
 ) -> None:
     """Machine-readable enumeration: one entry per (DUT, framework) view plus one per formal view.
 
-    CI matrices consume this instead of hardcoding DUT names — e.g. a licensed UVM job selects
+    CI matrices consume this instead of hardcoding DUT names — e.g. a UVM job selects
     `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need;
     a formal job selects `.duts[] | select(.mode == "formal" and .available)`.
     An alias adds no entry of its own, so a matrix never runs one DUT twice; every entry

@@ -4,7 +4,7 @@
 // Adapt sep_pkg AXI structs to the local crossbar request and response types.
 //
 // Initiator (slave-into-xbar) ports use 3-bit ID masters. Target (master-from-xbar) ports
-// use 6-bit ID slaves. The crossbar test mode is tied to 0.
+// use 6-bit ID slaves.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -13,6 +13,7 @@
 module sep_local_axi_xbar_wrapper (
   input  logic                                clk_i,  // System clock.
   input  logic                                rst_ni,  // Active-low reset.
+  input  logic                                test_i,  // DFT test mode to axi_xbar.
 
   input  sep_pkg::sep_32_64_3_12_axi_req_t     ifu_sram_axi_req_i,  // IFU fetch request for SEP SRAM addresses from
                                                                     // sep_cpu; reaches only the sram target.
@@ -202,7 +203,7 @@ module sep_local_axi_xbar_wrapper (
   sep_local_axi_xbar u_sep_local_axi_xbar (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .test_i (1'b0),
+    .test_i (test_i),
 
     // Initiator ports
     .ifu_sram_req_i  (ifu_sram_req),

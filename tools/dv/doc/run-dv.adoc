@@ -290,15 +290,16 @@ present, is the oldest release the doctor accepts.
 registry to those four tools, with exactly `verilator` and `sby` license-free.
 
 |Host
-|The GitHub-hosted `ubuntu-latest` x86_64 image is the qualified host: every
-smoke, nightly, and weekly job runs on it, and the job log's `Operating
-System` group names the release the label resolved to. A Linux or macOS
+|GitHub-hosted x86_64 runners are the qualified host: every smoke, nightly,
+and weekly job runs on `ubuntu-latest`, except the `smu uvm` smoke, which
+runs on the 16-core `ubuntu-latest-16-cores`, and the job log's `Operating
+System` group names the release each label resolved to. A Linux or macOS
 developer host that meets the rows above is supported but not qualified: no
 hosted job runs there, so its evidence is its own doctor report and smoke
 run. No other host is supported.
 |The `runner` key of each matrix row in `sim.yml` and `regress.yml`.
 |The hosted jobs at head; the matrix tests hold every row's `runner` to
-`ubuntu-latest`.
+`ubuntu-latest` or `ubuntu-latest-16-cores`.
 
 |Firmware toolchain and container engine
 |A RISC-V toolchain that accepts `--specs=picolibc.specs`, named by
@@ -3332,12 +3333,13 @@ change can never alter the pull-request gate:
 
 |`smoke`
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
-|`--items smoke --sim-jobs 2` for `dtp`, `sep`, and `smc`, and
-`--items hosted_smoke` for `smu`, whose own `smoke` group reaches firmware
-tests the hosted runner cannot build; 60-minute budget per job. The job
-names `verilator-smoke (<dut>)` are the stable check contexts. Every job
-runs for a documentation-only change too, so the contexts report; each job
-then prints one line and skips the simulation.
+|`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, once
+under cocotb and once under `--framework uvm`; 60-minute budget per job.
+The job names `verilator-smoke (<dut>)` and `verilator-smoke (<dut> uvm)`
+are the stable check contexts. Every job runs for every change, so the
+contexts report; on a pull request a job prints one line and skips the
+simulation when the diff is documentation-only or changes none of its
+inputs (<<runner-ci-smoke-scope>>).
 
 |`qualify`
 |`slurm-qualify.yml`: `workflow_dispatch` only, with `dut`, `items` and
@@ -3377,7 +3379,28 @@ SEP, and SMU do not fit a hosted job.
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
 smoke matrix, so PR cost stays bounded by the smoke group. Every hosted row
-runs on `ubuntu-latest`.
+runs on `ubuntu-latest` except `smu uvm`, the largest model build in the
+tree, which runs on the 16-core `ubuntu-latest-16-cores` runner.
+
+[[runner-ci-smoke-scope]]
+=== Which smoke checks a pull request runs
+
+On a pull request, the `diff-class` job of `sim.yml` runs
+`scripts/ci/smoke_scope.py`, which skips each smoke check that no changed
+file reaches. A check's inputs come from the runner: the compile filelists
+`--stage flist` writes for each of the DUT's build targets, the commands a
+`--dry-run` of its `smoke` group prints, and the repository paths the TOML
+values of the DUT's DV tree name. An HDL change runs only the checks whose
+compile reaches the file: a change under `hw/sys/dtp/dv/uvm/env` runs
+`dtp uvm` and `smu uvm`, whose bench compiles that environment, and no
+cocotb check. A script can build a path to any file, so a check whose smoke
+runs one reads every DV tree; every cocotb check does, and so does
+`smu uvm`, whose smoke builds its preload images in Python. A change to the
+runner, its configuration, `sim.yml`, the `dv-run` action, `Bender.yml`,
+`pyproject.toml` or `uv.lock` runs every check, and so does any failure of
+the classifier. The script's docstring lists every rule, and the job summary
+names, for each check, the first changed input or that none changed. A push
+to `main` and a dispatch run every check.
 
 [[runner-ci-budgets]]
 === Budgets, concurrency, and retention
@@ -3436,24 +3459,24 @@ symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp`, `sep`, `smu`, `smc` + Verilator; the IP-level benches
+|`dtp`, `sep`, `smu`, `smc` + Verilator, under cocotb and under
+`--framework uvm` (smoke only); the IP-level benches
 `cross_trigger_port`, `cross_trigger_matrix`, `cross_trigger_network`,
 `uart_16550`, `log_engine`, `uart_log_engine_wrap`, `uart_wrap`,
 `system_timer_octs`, `scrambler`, `axi_lite_to_ahb` + Verilator (regression
 tiers only)
 |Hosted `sim` and `regress` matrices. Smoke runs on every pull request and
 push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `cpu_stub` / `hosted`). Main protection
-requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
-pull-request contexts. A failed,
-cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
-run in the same matrix but are not required contexts; the IP-level benches
-are enrolled in the regression tiers only.
+regression group (`all` / `cpu_stub` / `hosted`) under cocotb. Main
+protection requires the four cocotb smoke contexts, `verilator-smoke (<dut>)`;
+a failed, cancelled, or missing one blocks merge. The
+`verilator-smoke (<dut> uvm)` contexts report without blocking, and the
+IP-level benches are enrolled in the regression tiers only.
 
 |Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
-|Valid configs that hosted CI does not run; the UVM views need licensed
-tools. A pair joins the workflow matrix only with a qualifying run at head.
+|Valid configs that hosted CI does not run; VCS needs a license. A pair
+joins the workflow matrix only with a qualifying run at head.
 
 |Unsupported in hosted CI
 |VCS/Xcelium anywhere; formal mode; the `smu_wrapper` SEP firmware set
@@ -3470,11 +3493,11 @@ on a single-node Slurm it installs (<<runner-cluster-dispatch>>).
 
 === Framework-aware CI matrices
 
-Hosted invocations omit `--framework`, so every DUT runs its default
-framework (cocotb) — adding a second framework to a DUT changes
-nothing for existing jobs. The canonical invocation for a licensed SV-UVM
-job selects a group under the UVM view, and the group runs whatever subset
-of its members is bound to `uvm`, whether the rest declare `uvm = false` or
+The regression tiers omit `--framework`, so every DUT runs its default
+framework (cocotb) there, and adding a second framework to a DUT changes
+nothing for those jobs; each smoke row names its framework. An SV-UVM job
+selects a group under the UVM view, and the group runs whatever subset of
+its members is bound to `uvm`, whether the rest declare `uvm = false` or
 carry no `uvm` entry:
 
 [source,bash]
@@ -3490,7 +3513,7 @@ Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT
 resolved with that framework selected. CI matrices should enumerate views
 from configuration instead of hardcoding DUT names: `--list --json` emits one
 entry per view with its tool set, default tool, and license need, so
-a licensed UVM job selects `.duts[] | select(.framework == "uvm")` and a DUT
+a UVM job selects `.duts[] | select(.framework == "uvm")` and a DUT
 joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
 — no CI edit. Every entry carries `mode` (`sim` or `formal`) and
 `available`; a simulation or formal view whose site-named config is absent

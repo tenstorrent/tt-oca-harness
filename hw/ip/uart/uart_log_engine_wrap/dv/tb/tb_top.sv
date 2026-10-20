@@ -172,6 +172,7 @@ module uart_log_engine_wrap_tb_top
   ) u_dut (
     .clk_i                 (clk),
     .rst_ni                (rst_n),
+    .test_en_i             (1'b0),
 
     .csr_axil_req_i        (csr_axil_req),
     .csr_axil_resp_o       (csr_axil_resp),

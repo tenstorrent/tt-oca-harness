@@ -33891,20 +33891,29 @@ does not postpone the selected core's timeout and warm-reset recovery.
 
 *BFM / Model*: SEP_IN `ocah_axi_vip`; bounded sequence checks against live
 per-core and aggregate timeout taps, WDT reset, warm reset and primary reset.
-The scenario uses the shared WDT base helpers, not a watchdog CSR model.
+The required `wdt_csr` feature independently predicts CTRL (IP masked), KEY
+and CMP readbacks and in-scope responses from passive SEP_IN traffic. COUNT
+data is graded by the sequence, not by the model.
 
 *Test Coverage*: All four cores rotate by pass. The timeout is programmed to
 0x1800, distinct from reset. Correct-core service spans two configured
 intervals; wrong-core pulses end before the expected reset window. Two warm
-resets occur per pass. No CSR access overlaps reset. Post-warm CSR values are
-observed without grading; watchdogs are explicitly configured idle and the
-timeout is reprogrammed before the next leg and restored at the end.
+resets occur per pass. No CSR access overlaps reset. Non-reset CMP markers
+on every core distinguish warm reset from retention. CTRL, COUNT and CMP
+defaults are checked before explicit idle configuration after each reset.
+The timeout is reprogrammed before the next leg and restored at the end.
 
 *Expectation Sources*: `cpu_ctrl.rdl` defines WDT_TIMEOUT as the second-stage
 cycle count and the four singlepulse WDT_TIMEOUT_RESET controls. `wdt.rdl`
 defines rst-enable, always-count, compare and register reset values.
 `hw/sys/smc/doc/clk_rst.adoc`, Primary and Warm Reset, defines second timeout
 as a watchdog/warm-reset source and distinguishes it from primary reset.
+The SMC owner has confirmed that warm reset resets the per-core watchdog
+timers. `clk_rst.adoc` states that warm reset drives the CPU cluster's
+interrupt and timer logic, and `hw/sys/smc/doc/watchdog.adoc` defers reset
+effects to that section, but neither names the watchdogs; this check relies
+on the owner's confirmation for reset scope and on `wdt.rdl` for register
+defaults.
 Addresses, masks and core count come from the existing generated collateral
 and SMC types. Timing allowances below are bench measurement bounds, not new
 software-visible register semantics.
@@ -33912,12 +33921,13 @@ software-visible register semantics.
 *Test Procedure*: Require all cores released and WDTs in reset state. Save and
 program WDT_TIMEOUT. Before each arm, read back COUNT=0 and CMP=0x800,
 distinct from CMP reset, while counting is disabled. These are configuration
-prerequisites, not a precise first-stage timing check. Start the bounded
+prerequisites, not a precise first-stage timing check. Program and read back
+the same non-reset CMP marker on each other, disabled watchdog. Start the bounded
 watcher before enabling the selected WDT and service it periodically. Require no expiry
 during service, then stop CSR traffic and observe expiry and recovery. Re-arm
 and service a different core, requiring expiry at the unserviced deadline.
-Check reset scope. After each recovery, log timeout and watchdog CSR values
-without requiring retention or reset values, then explicitly configure and
+Check reset scope. After each recovery, observe timeout retention without
+grading it and check watchdog CTRL, COUNT and CMP defaults, then explicitly configure and
 verify idle CTRL, COUNT and CMP readbacks on every core. Reprogram the timeout
 before the wrong-core leg; restore the timeout and check exact CSR-access
 accounting.
@@ -33935,7 +33945,11 @@ accounting.
 |`CHK-WDT-STAGE2-WRONG-CORE` |A different core is serviced and cannot defer selected-core expiry
 |`CHK-WDT-STAGE2-RECOVERY` |WDT/warm reset assert and release within bounds; fuse/warm readiness precedes further CSR access
 |`CHK-WDT-STAGE2-SCOPE` |No primary reset, unknown observable or initially isolated core; timeout taps are idle and resets released after explicit rebaseline
-|`CHK-NONVAC` |Two warm-reset assertions are observed and CSR accesses equal 139 fixed accesses plus all service writes
+|`CHK-WDT-STAGE2-WDT-RESET` |CTRL, COUNT and CMP match RDL defaults on every core after each warm reset, before reconfiguration
+|`CHK-WDT-STAGE2-SCOREBOARD` |The pass adds no watchdog model mismatch
+|`CHK-SB-WDT-CSR` |The required watchdog feature has comparisons, no mismatch and no unpaired item
+|`CHK-SB-MIN-ACTIVITY` |Prior passes meet the passive watchdog comparison floor
+|`CHK-NONVAC` |Two warm resets, 165 fixed CSR accesses plus service writes, and exactly 156 passive watchdog comparisons per pass
 |`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP` |Bring-up and frontdoor responses complete
 |===
 
@@ -33945,19 +33959,26 @@ clock negedges; sub-cycle transitions are not graded. The unserviced timing
 allowance is two cycles; the serviced allowance is two cycles after the last
 write response. Recovery bounds of 4096 assertion and 16384 release cycles are
 conservative bench limits, not latency guarantees. No CSR remains outstanding
-across reset. The scenario does not validate a general watchdog reference model.
+across reset. CMP differs from reset on every core before each reset; CTRL
+and COUNT differ only on the selected core. At least four passes are needed
+to exercise the latter fields on all cores. The scenario does not validate
+a general watchdog reference model or individual-core reset retention.
 `CHK-WDT-STAGE2-TIMEOUT-RETAINED` is blocked by the undocumented CPU_CTRL
-WDT_TIMEOUT retention across warm reset. `CHK-WDT-STAGE2-WDT-RESET` is blocked
-by the undocumented watchdog CSR reset values after warm reset. Both are
-logged as observations, excluded from the verdict, and replaced by explicit
-configuration before subsequent stimulus.
+WDT_TIMEOUT retention across warm reset. It is logged as an observation,
+excluded from the verdict, and replaced by explicit configuration before
+subsequent stimulus.
 Idle timeout taps after explicit rebaseline are a prerequisite for the next
 measurement, not a claim about automatic warm-reset state clearing.
 
 *Pass Criteria*: Every required checker passes. Used alone,
-`+SMC_WDT_STAGE2_SEQUENCE_NEGATIVE` changes five expectations per pass:
+`+SMC_WDT_STAGE2_SEQUENCE_NEGATIVE` changes thirteen expectations per pass:
 configured timeout, HELD, serviced EXPIRES, serviced RECOVERY and WRONG-CORE
-expiry. It must produce five failures per pass without UVM_FATAL. Other
+expiry, plus eight post-warm watchdog-state records. It must produce thirteen
+failures per pass (208 for sixteen passes) without UVM_FATAL and without model
+mismatches. Used alone, `+SMC_WDT_CSR_SCOREBOARD_NEGATIVE` must produce 134
+mismatches per pass (46 reads and 88 writes), one scenario scoreboard failure
+per pass and one final `CHK-SB-WDT-CSR` failure: 2161 errors for sixteen passes.
+The 22 COUNT comparisons per pass grade responses only and remain passing. Other
 checks establish stimulus/observation validity and remain unchanged; invalid
 conditions record failure and stop the run. Enrolled on demand in
 `wdt_uvm_extended`, not the scheduled hosted tiers.

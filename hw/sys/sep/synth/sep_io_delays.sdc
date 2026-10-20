@@ -56,8 +56,8 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports cpu_run_req_i] -add_delay
 
 # JTAG SEP reset control overrides (TCK domain)
-cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports {jtag_sep_reset_ctrl_i.val*}] -add_delay
-cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports {jtag_sep_reset_ctrl_i.ovrd*}] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports {jtag_sep_reset_ctrl_i*val*}] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports {jtag_sep_reset_ctrl_i*ovrd*}] -add_delay
 
 # Test
 cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports test_en_i] -add_delay

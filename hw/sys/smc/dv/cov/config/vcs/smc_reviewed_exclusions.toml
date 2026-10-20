@@ -2019,7 +2019,7 @@ instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_apb_
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
 list = 1
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_apb_clk_reset_sync.u_sync_dffr"
+instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_apb_clk_reset_sync.gen_sync.u_sync"
 
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
@@ -2029,7 +2029,7 @@ instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_avs_
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
 list = 1
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_avs_clk_reset_sync.u_sync_dffr"
+instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_avs_clk_reset_sync.gen_sync.u_sync"
 
 [[unit]]
 class = "T11-AVS-PORTS-ONLY"
@@ -2054,12 +2054,7 @@ instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_avsb
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
 list = 1
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clear_avs_slave_int_resync.u_dest.u_src_reset_n_sync.gen_rst_sync_stage[*].u_sync_dffr"
-
-[[unit]]
-class = "T10-CDC-SYNC-PORTS-ONLY"
-list = 1
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clear_avs_slave_int_resync.u_dest.u_src_reset_n_sync.u_sync_dffr"
+instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clear_avs_slave_int_resync.u_dest.u_src_reset_n_sync.gen_sync.u_sync"
 
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
@@ -2069,12 +2064,7 @@ instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clea
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
 list = 1
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clear_slave_unresponsive_int_resync.u_dest.u_src_reset_n_sync.gen_rst_sync_stage[*].u_sync_dffr"
-
-[[unit]]
-class = "T10-CDC-SYNC-PORTS-ONLY"
-list = 1
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clear_slave_unresponsive_int_resync.u_dest.u_src_reset_n_sync.u_sync_dffr"
+instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clear_slave_unresponsive_int_resync.u_dest.u_src_reset_n_sync.gen_sync.u_sync"
 
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
@@ -2099,7 +2089,7 @@ instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clk_
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
 list = 1
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clk_div.u_reset_sync.u_sync_dffr"
+instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_clk_div.u_reset_sync.gen_sync.u_sync"
 
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
@@ -2169,7 +2159,7 @@ instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_pre_
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
 list = 1
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_pre_div_clk_reset_sync.u_sync_dffr"
+instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_pre_div_clk_reset_sync.gen_sync.u_sync"
 
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
@@ -2294,7 +2284,7 @@ instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_res
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"
 list = 1
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_reset_ctrl.u_powergood_stretcher_n0_scan.u_sync_dffr"
+instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_reset_ctrl.u_powergood_stretcher_n0_scan.gen_sync.u_sync"
 
 [[unit]]
 class = "T10-CDC-SYNC-PORTS-ONLY"

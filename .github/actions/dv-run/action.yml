@@ -15,11 +15,15 @@
 # hang on a stalled apt mirror or a runaway build are wrapped in `timeout`;
 # the job-level timeout-minutes the caller sets is the overall backstop.
 name: 'Run DV tier'
-description: 'Set up the Verilator toolchain, run one DUT/tool/tier through run_dv.py, gate on the native result.json, and upload the run tree'
+description: 'Set up the Verilator toolchain, run one DUT/framework/tool/tier through run_dv.py, gate on the native result.json, and upload the run tree'
 inputs:
   dut:
     required: true
     description: 'DUT name, as run_dv.py --dut'
+  framework:
+    required: false
+    default: ''
+    description: 'Test framework, as run_dv.py --framework; empty runs the DUT default framework'
   tool:
     required: false
     default: 'verilator'
@@ -148,22 +152,29 @@ runs:
         # verilation, so it is slow to discover. Installed unconditionally so
         # the runner never depends on which DUT the matrix is running.
         #
+        # z3: the SMT solver a Verilator model starts (`z3 --in`, or
+        # VERILATOR_SOLVER) to solve a constrained randomize(). Without it every
+        # such call returns 0, and a bench that checks the result stops at
+        # time 0.
+        #
         # Acquire options: same stall-into-error rationale as the Verilator
         # build step above.
         timeout 10m sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
         timeout 10m sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
-          install -y --no-install-recommends libfl2 ccache
+          install -y --no-install-recommends libfl2 ccache z3
 
     - name: Check environment
       shell: bash
       env:
         DV_DUT: ${{ inputs.dut }}
+        DV_FRAMEWORK: ${{ inputs.framework }}
         DV_TOOL: ${{ inputs.tool }}
         DV_EXECUTOR: ${{ inputs.executor }}
       run: |
         verilator --version
         python3 tools/dv/run_dv.py --validate-configs
-        python3 tools/dv/run_dv.py --doctor --dut "$DV_DUT" --tool "$DV_TOOL" --executor "$DV_EXECUTOR"
+        python3 tools/dv/run_dv.py --doctor --dut "$DV_DUT" \
+          ${DV_FRAMEWORK:+--framework "$DV_FRAMEWORK"} --tool "$DV_TOOL" --executor "$DV_EXECUTOR"
 
     # The explicit --run-dir keeps every tier's tree separate and means
     # run_dv.py never creates a `latest` symlink. A group item already runs
@@ -177,6 +188,7 @@ runs:
       shell: bash
       env:
         DV_DUT: ${{ inputs.dut }}
+        DV_FRAMEWORK: ${{ inputs.framework }}
         DV_TOOL: ${{ inputs.tool }}
         DV_ITEMS: ${{ inputs.items }}
         DV_RESEED: ${{ inputs.reseed }}
@@ -191,6 +203,9 @@ runs:
           sim_jobs="$(nproc)"
         fi
         tier_args=()
+        if [ -n "$DV_FRAMEWORK" ]; then
+          tier_args+=(--framework "$DV_FRAMEWORK")
+        fi
         if [ "$DV_RESEED" -gt 1 ]; then
           tier_args+=(--reseed "$DV_RESEED")
         fi
@@ -224,6 +239,7 @@ runs:
       shell: bash
       env:
         DV_DUT: ${{ inputs.dut }}
+        DV_FRAMEWORK: ${{ inputs.framework }}
         DV_TOOL: ${{ inputs.tool }}
         DV_COVERAGE: ${{ inputs.coverage }}
         DV_RUN_DIR: ${{ inputs.run-dir }}
@@ -235,11 +251,13 @@ runs:
         fi
         jq -e \
           --arg flow "$DV_DUT" \
+          --arg framework "$DV_FRAMEWORK" \
           --arg tool "$DV_TOOL" \
           --arg executor "$DV_EXECUTOR" \
           --argjson require_coverage "$require_coverage" \
           '.schema_version == 1
            and .flow == $flow
+           and ($framework == "" or .framework == $framework)
            and .tool == $tool
            and .executor == $executor
            and .status == "PASS"

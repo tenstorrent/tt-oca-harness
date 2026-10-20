@@ -528,6 +528,7 @@ module smc_internal_regs #(
     ) u_err_slv (
       .clk_i          (outbound_filter_clk),
       .rst_ni         (rst_primary_smc_clk_ni),
+      .test_en_i      (test_en_i),
       .axil_req_i     (locked_reg_req),
       .axil_resp_o    (locked_reg_resp)
     );
@@ -721,6 +722,7 @@ module smc_internal_regs #(
     ) u_err_slv (
       .clk_i       (inbound_filter_clk),
       .rst_ni      (rst_primary_smc_clk_ni),
+      .test_en_i   (test_en_i),
       .axil_req_i  (locked_reg_req),
       .axil_resp_o (locked_reg_resp)
     );

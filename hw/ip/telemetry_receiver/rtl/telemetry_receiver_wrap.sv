@@ -43,7 +43,8 @@ module telemetry_receiver_wrap #(
   input  logic rst_telemetry_ni,                            // ATB-domain async reset, active-low.
 
   input  logic test_en_i,                                   // Scan test mode, active-high; selects
-                                                            // scan_rst_ni for the ATB FIFO resets.
+                                                            // scan_rst_ni for the ATB FIFO resets
+                                                            // and drives the AXI cell test inputs.
   input  logic scan_rst_ni,                                 // Scan reset, active-low.
 
   input  telemetry_receiver_wrap_pkg::axil_req_t  axil_req_i, // Shared AXI-Lite request.
@@ -114,7 +115,7 @@ module telemetry_receiver_wrap #(
   ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i          (1'b0),
+    .test_i          (test_en_i),
     .slv_req_i       (axil_req_i),
     .slv_aw_select_i (axil_aw_select),
     .slv_ar_select_i (axil_ar_select),
@@ -135,6 +136,7 @@ module telemetry_receiver_wrap #(
   ) u_prim_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
+    .test_en_i,
 
     .axil_req_i     (axil_reqs [UndefinedRegMap]),
     .axil_resp_o    (axil_resps[UndefinedRegMap])

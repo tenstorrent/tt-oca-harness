@@ -41,8 +41,9 @@ HOSTED_WORKFLOWS = (
     REPO_ROOT / ".github/workflows/sim.yml",
     REPO_ROOT / ".github/workflows/regress.yml",
 )
-# Every hosted matrix row runs on the standard GitHub-hosted image.
-HOSTED_RUNNER_RE = re.compile(r"^ubuntu-latest$")
+# Every hosted matrix row runs on a GitHub-hosted x86_64 runner: the standard one or the
+# 16-core larger one.
+HOSTED_RUNNER_RE = re.compile(r"^ubuntu-latest(-16-cores)?$")
 
 # The two tools a bare clone runs with no license: the open simulator and the open formal backend.
 LICENSE_FREE_TOOLS = {"verilator", "sby"}
@@ -192,13 +193,12 @@ class RegistryFloorTest(unittest.TestCase):
 
 
 class HostedMatrixTest(unittest.TestCase):
-    """Hosted CI is Verilator on the GitHub-hosted image, or on the larger label the repository
-    variable names, through the composite action alone."""
+    """Hosted CI is Verilator on GitHub-hosted runners, through the composite action alone."""
 
-    def test_action_runs_verilator_by_default_and_selects_no_framework(self) -> None:
+    def test_action_runs_verilator_and_the_default_framework_by_default(self) -> None:
         action = DV_RUN_ACTION.read_text()
         self.assertEqual(action_input_default(action, "tool"), "verilator")
-        self.assertNotRegex(action, r"^  framework:", re.M)
+        self.assertEqual(action_input_default(action, "framework"), "")
 
     def test_every_hosted_row_passes_verilator(self) -> None:
         for workflow in HOSTED_WORKFLOWS:

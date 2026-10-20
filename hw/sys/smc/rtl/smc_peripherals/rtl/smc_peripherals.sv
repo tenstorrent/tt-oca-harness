@@ -1059,6 +1059,7 @@ module smc_peripherals #(
   ) u_i2c_wrap (
     .clk_i                    (gated_clk_periph_i2c),
     .rst_ni                   (rst_primary_periph_clk_n),
+    .test_en_i                (test_en_i),
 
     .axil_req_i               (axil_i2c_req_periph_clk),
     .axil_resp_o              (axil_i2c_resp_periph_clk),
@@ -1146,6 +1147,7 @@ module smc_peripherals #(
   ) u_uart_wrap (
     .clk_i                  (gated_clk_periph_uart),
     .rst_ni                 (rst_primary_periph_clk_n),
+    .test_en_i              (test_en_i),
     .csr_axil_req_i         (axil_uart_req_periph_clk),
     .csr_axil_resp_o        (axil_uart_resp_periph_clk),
     .log_fetch_axil_req_o   (axil_log_engine_req_periph_clk),
@@ -1410,6 +1412,7 @@ module smc_peripherals #(
   ) u_i3ccore_wrapper (
     .clk_i              (gated_clk_periph_i3c),
     .rst_ni             (rst_primary_periph_clk_n),
+    .test_en_i          (test_en_i),
 
     // AXI4-Lite Write Address Channel
     .awvalid_i          (axil_i3c_req_periph_clk.aw_valid),
