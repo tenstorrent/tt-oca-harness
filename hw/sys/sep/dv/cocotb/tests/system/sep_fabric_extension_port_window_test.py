@@ -284,8 +284,9 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CHK-EXT-PORT FAIL: {tag} PR-EXT {b.fmt()}; expected addr=0x{c['addr']:x} "
             f"size={c['size']} len=0"
         )
-        # Exactly one reply beat on the port, the seeded reply, before the
-        # initiator's response.
+        # Exactly one reply beat on the port, before the initiator's response.
+        # The beat's code and word are the bench responder's own output, so
+        # that comparison is a bench control (CTL-EXT-RSP-DRIVE), not a DUT check.
         rep = c["reply"]
         assert len(rep) == 1, (
             f"CHK-EXT-PORT FAIL: {tag} PR-EXT reply beats={len(rep)}, expected 1: "
@@ -293,17 +294,13 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         )
         r = rep[0]
         want_word = c["word"] if c["op"] is SepAxiOp.READ else None
-        ok = (
-            not r.has_unknown()
-            and r.resp == c["code"]
-            and (want_word is None or r.data == want_word)
-            and r.t_ps < c["t_init"]
-        )
-        assert ok, (
+        assert not r.has_unknown() and r.t_ps < c["t_init"], (
             f"CHK-EXT-PORT FAIL: {tag} port reply {r.fmt()} t_port={r.t_ps}ps "
-            f"t_init={c['t_init']}ps; expected resp={RESP_NAME[c['code']]}"
-            + ("" if want_word is None else f" data=0x{want_word:x}")
-            + " before the initiator response"
+            f"t_init={c['t_init']}ps; expected one known reply beat before the initiator response"
+        )
+        assert r.resp == c["code"] and (want_word is None or r.data == want_word), (
+            f"CTL-EXT-RSP-DRIVE FAIL: {tag} port reply {r.fmt()}; the responder was set to "
+            f"resp={RESP_NAME[c['code']]}" + ("" if want_word is None else f" data=0x{want_word:x}")
         )
         strb = _strb(c["addr"], c["size"])
         data_ok = "na"
@@ -621,12 +618,16 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             + f"; expected AW addr=0x{wr_burst_addr:x} len=3 size=3 and beats "
             + ",".join(f"0x{v:016x}" for v in want_beats)
         )
-        # One B on the port, the seeded code, before the initiator's response.
-        assert len(wb_rep) == 1 and wb_rep[0].resp == wb_code and wb_rep[0].t_ps < wb_t, (
+        # One B on the port before the initiator's response. Its code is the
+        # responder's own output (bench control CTL-EXT-RSP-DRIVE).
+        assert len(wb_rep) == 1 and wb_rep[0].t_ps < wb_t, (
             "CHK-EXT-BURST FAIL: dir=W admitted port reply "
             + "; ".join(r.fmt() for r in wb_rep)
-            + f" t_init={wb_t}ps; expected one {RESP_NAME[wb_code]} B on PR-EXT before the "
-            "initiator response"
+            + f" t_init={wb_t}ps; expected one B on PR-EXT before the initiator response"
+        )
+        assert wb_rep[0].resp == wb_code, (
+            f"CTL-EXT-RSP-DRIVE FAIL: dir=W burst port reply {wb_rep[0].fmt()}; the responder "
+            f"was set to {RESP_NAME[wb_code]}"
         )
         assert wd.resp_code == RESP_DECERR and not wd_x, (
             f"CHK-EXT-BURST FAIL: dir=W denied resp={RESP_NAME.get(wd.resp_code)} "
@@ -651,20 +652,26 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             len(wb_rep),
         )
 
-        # CHK-EXT-BURST, read. Eight R beats on the port with the seeded codes
-        # and words, RLAST on the eighth only, before the initiator's response.
+        # CHK-EXT-BURST, read. Eight R beats on the port, RLAST on the eighth
+        # only, before the initiator's response. The codes and words are the
+        # responder's own output (bench control CTL-EXT-RSP-DRIVE).
         assert (
             len(rb_rep) == 8
             and all(not r.has_unknown() for r in rb_rep)
-            and [r.resp for r in rb_rep] == list(rb_codes)
-            and [r.data for r in rb_rep] == list(rb_words)
             and [r.last for r in rb_rep] == [0] * 7 + [1]
             and all(r.t_ps < rb_t for r in rb_rep)
         ), (
             "CHK-EXT-BURST FAIL: dir=R admitted port reply "
             + "; ".join(r.fmt() for r in rb_rep)
-            + f" t_init={rb_t}ps; expected 8 R beats on PR-EXT with the seeded codes and words, "
-            "RLAST on beat 8, before the initiator response"
+            + f" t_init={rb_t}ps; expected 8 R beats on PR-EXT, RLAST on beat 8, before the "
+            "initiator response"
+        )
+        assert [r.resp for r in rb_rep] == list(rb_codes) and [r.data for r in rb_rep] == list(
+            rb_words
+        ), (
+            "CTL-EXT-RSP-DRIVE FAIL: dir=R burst port reply "
+            + "; ".join(r.fmt() for r in rb_rep)
+            + "; the responder was set to the seeded codes and words"
         )
         assert rb_x == [rd_burst_addr], (
             f"CHK-EXT-BURST FAIL: dir=R admitted xbar={[hex(a) for a in rb_x if a is not None]}, "
