@@ -15,7 +15,8 @@ module, two testlist entries. The entry is the ``rom_main`` build that the
 
 The testbench LSU master is the SEP host. It reaches the KM only through
 ``km_mailbox_sep`` and writes ``SEP_CPU_CTRL.KM_WIPE_CTRL``,
-``SEP_CPU_CTRL.EXT_TRNG_SRC_SEL`` and ``SW_RESET_N`` (legal host writes). The
+``SEP_CPU_CTRL.EXT_TRNG_SRC_SEL`` and ``SW_RESET_N`` (legal host writes); the
+DRBG stall point drives the external KM stream (``env/sep_ext_trng_stream.py``). The
 frame model and every golden come from ``hw/ip/key_manager/doc/firmware.adoc``
 ("Error Recovery", "Interrupt Priority", the fault-code tables, "Key
 Management", "Command Message Reference"), ``architecture.adoc`` ("Parameters",
@@ -84,12 +85,13 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import LC_PROD
+from env.sep_ext_trng_stream import SepExtTrngStream
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_hmac_golden import hmac_sha256_words
 from env.sep_reg_meta import SEP_CPU_CTRL
@@ -261,6 +263,8 @@ W_FACTOR = 8  # AES window = 8 x the duration of the first AES output of the lea
 AES_FIRST_BOUND = 80_000
 AES_POLL_GAP = 20
 DRBG_REQ_WORDS = 128  # CMD_KEY_GENERATE size of the DRBG stall point
+EXT_KM = 0  # external stream and EXT_TRNG_SRC_SEL bit of the KM path
+EXT_DRAIN_BOUND = 20_000  # clocks for the last offered external beat to transfer
 KPV_INDEX_MAX = pl.SLOT_WORDS * 64
 
 # Fixed witness stimulus. The second message differs from the first, so a
@@ -382,6 +386,62 @@ class _Frame:
 
 def _ids(frames: list[_Frame]) -> str:
     return ",".join(_h2(f.resp_id) for f in frames) or "-"
+
+
+class _ExtFeed:
+    """External source of the KM stream for the DRBG stall point.
+
+    Until a beat transfers with the KM out of reset it holds one beat, because
+    the ROM waits for TVALID before its first DATA read. After that it offers a
+    beat only in a clock in which the KM sink shows TREADY with no beat
+    pending, so a beat that it offers is always taken by a request of the
+    sampler, and the stream stops with no beat waiting (AXI-Stream: TVALID
+    stays high until the handshake). The words are a fixed Weyl sequence.
+    """
+
+    def __init__(self, ext: SepExtTrngStream, released) -> None:
+        self.ext = ext
+        self.released = released
+        self.offered = 0
+        self._on = False
+
+    def _offer(self) -> None:
+        self.offered += 1
+        self.ext.send(EXT_KM, [(0x9E37_79B9 * self.offered) & 0xFFFF_FFFF])
+
+    def start(self) -> None:
+        self._on = True
+        self._offer()
+        cocotb.start_soon(self._run())
+
+    async def stop(self) -> int:
+        """Offer no more beats; wait for the last offered beat to transfer.
+        Returns the number of beats offered."""
+        self._on = False
+        await self.ext.wait_sent(EXT_KM, bound=EXT_DRAIN_BOUND)
+        return self.offered
+
+    async def _run(self) -> None:
+        top = cocotb.top
+        eager = True
+        held_released = False  # a beat was held in a clock with the KM released
+        while self._on:
+            await FallingEdge(top.clk_i)
+            await ReadOnly()
+            if not self._on:
+                break
+            pending = self.ext.pending(EXT_KM)
+            if eager:
+                if pending and self.released():
+                    held_released = True
+                if pending:
+                    continue
+                if not held_released:
+                    self._offer()
+                    continue
+                eager = False
+            if not pending and (int(top.ext_trng_tready_o.value) >> EXT_KM) & 1:
+                self._offer()
 
 
 class _FatalWatch:
@@ -1968,24 +2028,59 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self._boot("main-context point")
 
     # ================================================================ step 21 (HOST)
-    async def _drbg_stall_point(self) -> None:
+    async def _drbg_stall_stop(self):
+        """Select the external input for the KM stream with the KM held, feed the
+        boot, and stop the stream with no beat waiting. Returns the coroutine
+        function that restores the internal source while the KM is held."""
         top = cocotb.top
-        await self._fresh("before the DRBG stall point")
         sel = await self._cpu_ctrl_rd("EXT_TRNG_SRC_SEL")
-        stop = sel | 1  # sel bit 0: the KM stream takes the external input
-        await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", stop)
+        stop = sel | (1 << EXT_KM)  # the KM stream takes the external input
+        ext = SepExtTrngStream(top, logger=self.logger).start(streams=(EXT_KM,))
+        feed = _ExtFeed(ext, lambda: self.rd_known(top.km_cpu_rst_n_o))
+
+        async def switch() -> None:
+            # The sampler is in the KM warm-reset domain, so the source changes
+            # while the KM is held (architecture.adoc, "Errors and reset").
+            await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", stop)
+            feed.start()
+
+        await self._boot("the DRBG stall source switch", parked=switch)
+        self.fresh = False
+        offered = await feed.stop()
         self.chk.obs(
             "DRBG-STALL-STOP",
             control="EXT_TRNG_SRC_SEL.sel_bit0",
             sel_before=_hx(sel),
             sel_stop=_hx(stop),
-            ext_stream="idle",
+            ext_beats=offered,
+            ext_pending=ext.pending(EXT_KM),
         )
+
+        async def restore() -> None:
+            await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", sel)
+            await ext.stop()
+
+        return restore
+
+    async def _drbg_stall_point(self) -> None:
+        top = cocotb.top
+        restore = await self._drbg_stall_stop()
+        drbg_bit = 1 << pl.IRQ_BIT["drbg_err"]
         seen = 0
         for _ in range(TVALID_WINDOW):
             await RisingEdge(top.clk_i)
             await ReadOnly()
             seen |= self.rd_known(top.km_entropy_tvalid_o)
+        irq = self._csr_status()
+        b = self._b30()
+        self.chk.ctrl(
+            "DRBG-STALL-QUIET",
+            seen == 0 and not irq & drbg_bit and b == 0,
+            tvalid_seen=seen,
+            irq_status=_hx(irq),
+            drbg_err=int(bool(irq & drbg_bit)),
+            err_o=b,
+        )
         await RisingEdge(top.clk_i)
         watch = _FatalWatch(self)
         watch.start()
@@ -1999,20 +2094,21 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.chk.ok(
             "DRBG-STALL",
             seen == 0
+            and not irq & drbg_bit
             and rose
             and one
             and frames[0].is_fault(KM_RESP_UNRECOVERABLE_FAULT, pl.CODE["drbg_err"])
             and high == TRAP_SAMPLES,
             req_words=DRBG_REQ_WORDS,
             tvalid_seen=seen,
+            drbg_err_before=int(bool(irq & drbg_bit)),
             code=_hx(code),
             frames=len(frames),
             err_o=int(rose),
             samples_high=high,
             stat_answered_logged=answered,
         )
-        await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", sel)
-        await self._boot("DRBG stall")
+        await self._boot("DRBG stall", parked=restore)
 
     # ================================================================ step 22 (HOST)
     async def _keypath_point(self) -> None:
