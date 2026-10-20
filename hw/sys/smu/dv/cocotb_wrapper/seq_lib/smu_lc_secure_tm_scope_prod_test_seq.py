@@ -106,8 +106,9 @@ class SecureTmResetProbe:
     """``tb_secure_tm`` on every ``clk_smu_i`` edge until ``sep_fuse_sense_done_o`` rises.
 
     Started before the clocks, so the samples under the SEP reset are the ones the leaf checks.
-    On a four-state simulator ``tb_secure_tm`` is X until its first clock under the reset; those
-    samples are counted as unknown and are neither highs nor graded samples.
+    On a four-state simulator ``tb_secure_tm`` is X until its first clock under the reset; the
+    samples before the first resolvable one are counted as unknown and are neither highs nor
+    graded samples. An X after that is counted as a high, so a strap that goes X mid-reset fails.
     """
 
     def __init__(self, dut) -> None:
@@ -115,6 +116,7 @@ class SecureTmResetProbe:
         self.reset_samples = 0
         self.reset_highs = 0
         self.reset_unknown = 0
+        self.reset_unknown_late = 0
         self.strap_low_samples = 0
         self.cycles = 0
         self.done = False
@@ -134,11 +136,15 @@ class SecureTmResetProbe:
                 return
             if self._bit(dut.obs_sep_rst_n_o) == 0:
                 secure_tm = self._bit(dut.tb_secure_tm)
-                if secure_tm is None:
+                if secure_tm is None and self.reset_samples == 0:
                     self.reset_unknown += 1
                     continue
                 self.reset_samples += 1
-                self.reset_highs += secure_tm != SECURE_TM_CLEAR
+                if secure_tm is None:
+                    self.reset_unknown_late += 1
+                    self.reset_highs += 1
+                else:
+                    self.reset_highs += secure_tm != SECURE_TM_CLEAR
                 self.strap_low_samples += self._bit(dut.tb_secure_tm_req) != 1
 
 
@@ -310,7 +316,8 @@ class smu_lc_secure_tm_scope_prod_test_seq(smu_lc_sec_dis_over_sigint_prod_test_
         self._check(
             "CHK-LC-SECTM-PROD-PROFILE",
             f"under reset samples={probe.reset_samples} highs={probe.reset_highs} "
-            f"unknown={probe.reset_unknown} strap_low_samples={probe.strap_low_samples}; "
+            f"unknown_leading={probe.reset_unknown} unknown_late={probe.reset_unknown_late} "
+            f"strap_low_samples={probe.strap_low_samples}; "
             f"after sense done tb_secure_tm="
             f"{secure_tm_done} strap={strap_profile} lcc_feat_ctrl_o=0x{feat_profile:016x} "
             f"want=0x{FEAT_CTRL_FUNCTION_ONLY:016x} sense_done={done}",

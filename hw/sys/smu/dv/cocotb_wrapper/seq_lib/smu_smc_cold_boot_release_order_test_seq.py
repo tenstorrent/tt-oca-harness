@@ -415,7 +415,8 @@ class smu_smc_cold_boot_release_order_test_seq:
             b0, b1 = b_hold_start[idx], b_hold_end[idx]
             first_cold0 = next((k for k in range(b_fall[idx], b1) if rec["cold"][k] == 0), None)
             self._log(
-                f"CHK-{token.replace('_', '-')}: assert_latency_edges={b0 - b_fall[idx]} "
+                f"CHK-{token.replace('_', '-')}: assert_latency_edges_A={a0 - a_fall[idx]} "
+                f"assert_latency_edges={b0 - b_fall[idx]} "
                 f"vs_exported_pin={None if first_cold0 is None else b0 - first_cold0} "
                 "(measured, not compared)"
             )
