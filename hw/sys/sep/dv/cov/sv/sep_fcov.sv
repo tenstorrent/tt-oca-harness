@@ -12266,6 +12266,8 @@ module sep_fcov (
     logic ps_v;  // pool level non-zero at the window start and 0 at its end
     logic [3:0] cc;
     logic cc_v;  // {ack in the window, client, 0 pending in the window / 1 ack after release}
+    logic [3:0] ca;
+    logic ca_v;  // {client, clocks from its last adapter acknowledge to the window rise}
     logic [2:0] re;
     logic re_v;  // reset evidence kind
   } mr_crst_t;
@@ -12330,6 +12332,19 @@ module sep_fcov (
       bins otbn_urnd_pending = {4'b0_11_0};
       bins otbn_urnd_ack_after = {4'b0_11_1};
       wildcard illegal_bins ack_in_window = {4'b1_??_?};
+    }
+    // Client 1 KMAC, 2 OTBN RND, 3 OTBN URND x the window rises 1, 2 or 3
+    // clocks after the last adapter acknowledge of the client.
+    cp_clear_after_ack: coverpoint s.ca iff (s.ca_v) {
+      bins kmac_1 = {4'b01_01};
+      bins kmac_2 = {4'b01_10};
+      bins kmac_3 = {4'b01_11};
+      bins otbn_rnd_1 = {4'b10_01};
+      bins otbn_rnd_2 = {4'b10_10};
+      bins otbn_rnd_3 = {4'b10_11};
+      bins otbn_urnd_1 = {4'b11_01};
+      bins otbn_urnd_2 = {4'b11_10};
+      bins otbn_urnd_3 = {4'b11_11};
     }
     cp_reset_evidence: coverpoint s.re iff (s.re_v) {
       bins csrng_err_code = {3'd0};
@@ -20362,6 +20377,10 @@ module sep_fcov (
         e.cc   = v;
         e.cc_v = 1'b1;
       end
+      6: begin
+        e.ca   = v;
+        e.ca_v = 1'b1;
+      end
       default: begin
         e.re   = v[2:0];
         e.re_v = 1'b1;
@@ -22407,6 +22426,9 @@ module sep_fcov (
   logic [3:0] cz_cc_pend = '0;
   logic [3:0] cz_cc_ack = '0;
   logic [3:0] cz_cc_after = '0;
+  // Clocks since the last adapter acknowledge of each client: 1 on the clock
+  // after the acknowledge, saturating at 255 (also with no acknowledge yet).
+  logic [7:0] cz_ca_age[4] = '{default: 8'hFF};
   localparam logic [31:0] CzPoolLvlMask = 32'(SEP_ENTROPY_POOL_STATUS_FIFO_LEVEL_MASK);
   localparam logic [31:0] CzSelMask = 32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_SEL_MASK);
   localparam logic [31:0] CzLockMask = 32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_LOCK_MASK);
@@ -22484,6 +22506,18 @@ module sep_fcov (
         if (cy_own_xrst) cz_crst(4, {1'b0, 2'(c), 1'b1});
         cz_cc_after[c] <= 1'b0;
       end
+    end
+
+    // cp_clear_after_ack: the window rises 1, 2 or 3 clocks after the last
+    // adapter acknowledge of KMAC, OTBN RND or OTBN URND: inside the three
+    // clocks in which the client synchronizer hands that word to the client.
+    for (int c = 0; c < 4; c++) begin
+      if (cz_trng_rise && cy_own_xrst && (c >= 1) && (cz_ca_age[c] >= 8'd1) &&
+          (cz_ca_age[c] <= 8'd3)) begin
+        cz_crst(6, {2'(c), 2'(cz_ca_age[c])});
+      end
+      if (cy_ack[c]) cz_ca_age[c] <= 8'd1;
+      else if (cz_ca_age[c] != 8'hFF) cz_ca_age[c] <= cz_ca_age[c] + 8'd1;
     end
 
     // cp_reset_evidence esrc_regs: every listed register read a value that

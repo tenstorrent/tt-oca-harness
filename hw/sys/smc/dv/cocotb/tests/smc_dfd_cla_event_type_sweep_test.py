@@ -57,8 +57,8 @@ class smc_dfd_cla_event_type_sweep_test(smc_base_test):
             min_csr_accesses=CLA_EVENT_TYPE_MIN_CSR_ACCESSES,
             proxy=False,
             details=(
-                f"{seq.selector_values} selector values driven over nodes "
-                f"{seq.nodes_visited}, live event indices "
+                f"{seq.selector_values} selector values driven, CurrentNode read back "
+                f"{seq.node_readbacks} after the node moves, live event indices "
                 + ", ".join(
                     f"node{node}.{name}:{sorted(v)}"
                     for node, by_selector in seq.live_events.items()
