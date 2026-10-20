@@ -692,6 +692,10 @@
 // The two Key Manager reset conditioner outputs: bit 1 rst_cold_aasd_n, bit 0
 // rst_warm_sync_n (u_key_manager_s3c_scan).
 `SEP_TB_OUT(logic [1:0], km_cond_rst_probe_o)
+// The two synchronized resets of the reference counter: bit 1 the clk_ref_i
+// side, bit 0 the clk_i side
+// (u_sep_system_csr.u_reference_counter_counter.prstb_synced_rd/_write).
+`SEP_TB_OUT(logic [1:0], refcnt_rst_n_probe_o)
 // IP-interrupt aggregator: observation-only mirror of the NUM_INTERNAL_IRQS-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
@@ -1189,6 +1193,8 @@
 `SEP_TB_OUT(logic, efuse_shim_resp_valid_o)
 `SEP_TB_OUT(logic, efuse_shim_resp_status_o)
 `SEP_TB_OUT(sep_efuse_pkg::efuse_data_t, efuse_shim_resp_data_o)
+// APB select of the shim request to the OTP bank model. Read-only tap.
+`SEP_TB_OUT(logic, efuse_bank_psel_o)
 // The 256 OTP bank words that SEP reaches (words 0..255 of the bank model).
 // Read-only tap; the bench has no bank write hook.
 `SEP_TB_OUT(logic [255:0][31:0], otp_bank_probe_o)

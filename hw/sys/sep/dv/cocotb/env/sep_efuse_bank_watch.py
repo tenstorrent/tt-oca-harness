@@ -12,11 +12,15 @@ observation probes):
   at the ``sep`` output ``efuse_shim_command_req_o``, after the guard. The request
   valids of the read and program interfaces sit before the guard and cannot show a
   refusal; this tap can.
+* ``efuse_bank_psel_o`` -- the APB ``psel`` of the shim request to the bank model.
 
 ``SepEfuseBank`` takes a snapshot and diffs a later read against it, bit by bit.
 ``SepEfuseBankWatch`` compares the bank with a reference on every clock and records
 each clock on which it differs (the "no bank bit changes before sense done" window,
-and ``t_land`` of a program). ``SepShimCmdMonitor`` records every command at the tap.
+and ``t_land`` of a program). ``SepShimCmdMonitor`` records every command at the tap
+and, built with ``psel=True``, also every clock with ``psel`` 1; ``pulses_between``
+counts the clocks with post-guard valid 1 and with ``psel`` 1 between two marks, so a
+pulse of one clock is counted.
 
 Command record rule: a command is recorded on the first clock of a valid run, and
 again on a clock where valid stays 1 and the command, address, data or length
@@ -35,6 +39,7 @@ The decode and diff functions at module level are pure and need no simulator.
 from __future__ import annotations
 
 import logging
+from bisect import bisect_right
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -66,6 +71,7 @@ CMD_TAPS = {
     "data": "efuse_shim_cmd_program_data_o",
     "length": "efuse_shim_cmd_len_o",
 }
+PSEL_TAP = "efuse_bank_psel_o"
 
 
 class BankWatchXZError(AssertionError):
@@ -217,6 +223,15 @@ def select_commands(
 
 
 @dataclass(frozen=True)
+class PulseCount:
+    """Clocks sampled between two marks, and those with post-guard valid 1 and psel 1."""
+
+    edges: int
+    valid: int
+    psel: int
+
+
+@dataclass(frozen=True)
 class WatchMark:
     """A point in a watcher record: the clock, the record length and the run epoch."""
 
@@ -320,13 +335,19 @@ class SepEfuseBankWatch:
 
 
 class SepShimCmdMonitor:
-    """Records every fuse command at the post-guard tap ``efuse_shim_cmd_*_o``."""
+    """Records every fuse command at the post-guard tap ``efuse_shim_cmd_*_o``.
 
-    def __init__(self, dut: Any = None) -> None:
+    With ``psel=True`` it also samples ``efuse_bank_psel_o``; an X or Z on it raises.
+    """
+
+    def __init__(self, dut: Any = None, *, psel: bool = False) -> None:
         self.dut: Any = dut if dut is not None else cocotb.top
         self.sigs = {k: getattr(self.dut, v) for k, v in CMD_TAPS.items()}
+        self.psel_sig: Any = getattr(self.dut, PSEL_TAP) if psel else None
         self.clk = 0
         self.cmds: list[ShimCmd] = []
+        self.valid_clks: list[int] = []
+        self.psel_clks: list[int] = []
         self._prev: tuple[int, int, int, int, int] | None = None
         self._task: Any = None
         self.life = MonitorLife("SHIM-CMD", lambda: self.clk)
@@ -362,6 +383,25 @@ class SepShimCmdMonitor:
     def reads_since(self, mark: WatchMark, address: int | None = None) -> list[ShimCmd]:
         return self.commands_since(mark, program=False, address=address)
 
+    def pulses_between(self, start: WatchMark, end: WatchMark) -> PulseCount:
+        """Counts over the clocks after ``start`` up to and including ``end``.
+
+        Both marks must be from the open run, with at least one clock between them.
+        """
+        if self.psel_sig is None:
+            raise ValueError("pulses_between needs a monitor built with psel=True")
+        self.life.check(start.epoch)
+        self.life.check(end.epoch)
+        if end.clk <= start.clk:
+            raise BankWatchIdleError(
+                f"SHIM-CMD FAIL: no sample between the marks (start={start.clk} end={end.clk})"
+            )
+
+        def _n(clks: list[int]) -> int:
+            return bisect_right(clks, end.clk) - bisect_right(clks, start.clk)
+
+        return PulseCount(end.clk - start.clk, _n(self.valid_clks), _n(self.psel_clks))
+
     def _sample(self) -> tuple[int, int, int, int, int]:
         vals = {k: decode_bits(_binstr(s.value), CMD_TAPS[k]) for k, s in self.sigs.items()}
         return vals["valid"], vals["command"], vals["address"], vals["data"], vals["length"]
@@ -374,6 +414,10 @@ class SepShimCmdMonitor:
             self.clk += 1
             # Only valid must be known on every clock; the payload is decoded when valid is 1.
             valid = decode_bits(_binstr(self.sigs["valid"].value), CMD_TAPS["valid"])
+            if valid:
+                self.valid_clks.append(self.clk)
+            if self.psel_sig is not None and decode_bits(_binstr(self.psel_sig.value), PSEL_TAP):
+                self.psel_clks.append(self.clk)
             cur = self._sample() if valid else (0, 0, 0, 0, 0)
             if is_command_edge(self._prev, cur):
                 self.cmds.append(ShimCmd(self.clk, *cur[1:]))
