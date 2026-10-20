@@ -4,46 +4,57 @@
 
 Contract (``hw/sys/sep/doc/fabric.adoc``, "Top Level AXI4" and "Fabric
 Topology", local fabric; ``hw/sys/sep/doc/memory_map.adoc``, "External Window
-Reference Model"; ``hw/sys/sep/doc/port_table.adoc``):
+Reference Model" and the SEP External row of the address map;
+``doc/trm/src/memory_map.adoc``, "Decode Response Codes";
+``hw/sys/sep/doc/port_table.adoc``):
 
 * The extension port serves ``0x2000_0000`` to ``0x3FFF_FFFF`` except the first
   ``EFUSE_SHIM_SIZE`` bytes (default ``0x4``), for the LSU and for the System
   Interface (SI). The shim window goes to the eFuse controller, not to the port.
 * The SI may issue bursts.
-* A request that leaves on the port gets the response that the port returns. The
-  port table ties an unused port to DECERR, and the bench port answers DECERR.
-  The fabric also answers DECERR for its own errors, so the leaf grades that the
-  port replies once, DECERR, before the initiator response, and that the
-  initiator receives DECERR; it does not grade that the initiator response is
-  the port's beat and not a DECERR that the fabric makes after it forwards the
-  request. That link is logged (OBS-EXT-REPLY-SOURCE), not graded.
+* The SEP External row answers "Adopter-defined": the adopter's implementation
+  answers. A request that leaves on the port gets the response code and read
+  data that the port returns, beat for beat. The bench responder
+  (``+sep_ext_port_responder``) answers each access with a seeded reply, OKAY or
+  SLVERR with seeded read data. It never answers DECERR, so a DECERR at the
+  initiator is a response that the fabric makes.
 * A burst that the inbound filter refuses answers DECERR and never reaches the
   local crossbar (``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions").
 
 Checks:
 
+* CHK-EXT-REPLY: the initiator receives the seeded port reply. For each LSU and
+  SI single beat, the response code is the seeded code and the read data is
+  the seeded word on the issued byte lanes. For the admitted SI bursts, the B
+  code is the seeded code, and each of the eight R beats carries its seeded
+  RRESP and RDATA. A fabric that forwards the request and answers with a
+  response of its own fails.
 * CHK-EXT-REACH: each SI single beat shows one PR-XEXT handshake with the issued
-  address, and the SI receives the port DECERR. PR-XEXT is the anchor, because
-  the fabric also answers DECERR for its own errors.
+  address.
 * CHK-EXT-PORT: each LSU and SI single beat leaves on PR-EXT once, with the
-  issued address, AxSIZE, AxLEN 0, strobe and write data, the port returns
-  exactly one reply beat (PR-EXT B or R), DECERR, before the initiator's
-  response, and the initiator receives DECERR. A fabric that drops the request,
-  forwards it twice or answers before the port fails; a fabric that ignores the
-  port reply and makes its own DECERR after it is not told apart
-  (OBS-EXT-REPLY-SOURCE).
+  issued address, AxSIZE, AxLEN 0, strobe and write data, and the port returns
+  exactly one reply beat (PR-EXT B or R) with the seeded code and, on a read,
+  the seeded word, before the initiator's response. A fabric that drops the
+  request, forwards it twice or answers before the port fails.
 * CHK-EXT-SHIM: the first and last byte of the shim window give no PR-EXT
   capture for either initiator and direction. Control: the first word above the
   shim gives a capture in the same leaf. The shim responses are logged only.
 * CHK-EXT-BURST: an SI INCR write burst (AxLEN 3) and read burst (AxLEN 7)
   through an entry with ``allow_burst`` 1 reach PR-XEXT and PR-EXT with the
-  issued AxLEN, AxSIZE and write beats; with the entry disabled each answers
-  DECERR with PR-XEXT silent.
+  issued AxLEN, AxSIZE and write beats, and the port returns one B, or eight R
+  beats with RLAST on the eighth, with the seeded codes and words, before the
+  initiator response. With the entry disabled each burst answers DECERR on
+  every beat with PR-XEXT and PR-EXT silent: the fabric DECERR, which the port
+  never gives.
 
 Run mode: no_cpu, ``lsu_stub_all_live``, real PROD fuse sense (the inbound filter
-is active). RAND-REP: the seed draws the middle word, the AxSIZE of each single
-beat, the write data and the burst page offsets; the initiators, directions and
-address classes are fixed loops.
+is active), ``+sep_ext_port_responder``. RAND-REP: the seed draws the middle
+word, the AxSIZE of each single beat, the write data, the burst page offsets
+and the port replies. For each initiator and direction the three single beats
+carry OKAY, SLVERR and one seeded code, in seeded order, so each seed gives
+both codes in both directions. The burst B code and the code and word of each
+burst R beat are seeded. The initiators, directions and address classes are
+fixed loops.
 """
 
 from __future__ import annotations
@@ -51,7 +62,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_common import RESP_DECERR, RESP_NAME
+from env.sep_fabric_common import RESP_DECERR, RESP_NAME, RESP_OKAY, RESP_SLVERR
 from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
 from env.sep_filter_model import FilterEntry
@@ -82,6 +93,9 @@ PAGE = 0x1000
 # SI requests are non-secure data accesses; the entry takes allow_ns = AxPROT[1].
 SI_PROT = 0b010
 BUS_BYTES = 8
+WORD_MASK = (1 << 64) - 1
+# The codes the bench responder answers; DECERR stays the fabric's own.
+PORT_CODES = (RESP_OKAY, RESP_SLVERR)
 
 # Pinned PROD image: DBG_1 bit 0 clear in both disable vectors, SEC_DIS 0.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0E
@@ -103,11 +117,36 @@ def _lane_data(addr: int, size: int, data: int) -> int:
     return (data & ((1 << (8 << size)) - 1)) << (8 * (addr % BUS_BYTES))
 
 
+def _lane_word(addr: int, size: int, word: int) -> int:
+    """The bytes of a 64-bit read beat that a read of ``size`` at ``addr`` returns."""
+    return (word >> (8 * (addr % BUS_BYTES))) & ((1 << (8 << size)) - 1)
+
+
+def _program(op: SepAxiOp, codes: tuple[int, ...], words: tuple[int, ...] = ()) -> None:
+    """Set the reply of the bench responder for the next access of ``op``.
+
+    A write takes ``codes[0]`` as its B code. R beat k of a read takes
+    ``codes[k]`` and ``words[k]``.
+    """
+    top = cocotb.top
+    if op is SepAxiOp.WRITE:
+        top.ext_port_rsp_bresp_i.value = codes[0]
+        return
+    top.ext_port_rsp_rresp_i.value = sum(c << (2 * k) for k, c in enumerate(codes))
+    top.ext_port_rsp_rdata_i.value = sum(w << (64 * k) for k, w in enumerate(words))
+
+
 @pyuvm.test()
 class sep_fabric_extension_port_window_test(sep_base_test):
     """LSU and SI reach the extension window; the shim window stays off the port."""
 
-    required_evidence = ("CHK-EXT-REACH", "CHK-EXT-PORT", "CHK-EXT-SHIM", "CHK-EXT-BURST")
+    required_evidence = (
+        "CHK-EXT-REPLY",
+        "CHK-EXT-REACH",
+        "CHK-EXT-PORT",
+        "CHK-EXT-SHIM",
+        "CHK-EXT-BURST",
+    )
 
     async def _access(
         self,
@@ -118,12 +157,11 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         *,
         data: int = 0,
         nbeats: int = 1,
-        expect_decerr: bool = True,
-        ungraded: bool = False,
     ) -> SepAxiAccessSeq:
+        # The caller grades the response code of every access.
         kw: dict = {}
         if op is SepAxiOp.READ:
-            kw["allow_ungraded_read_resp"] = ungraded
+            kw["allow_ungraded_read_resp"] = True
         else:
             kw["allow_unverified_write_resp"] = True
         if nbeats > 1:
@@ -135,17 +173,15 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             wdata=data,
             length=(1 << size) * nbeats,
             size=size,
-            # Only the s_axi scoreboard reads expect_error; the SI response is
-            # graded by the caller.
-            expect_error=init != "SI" and expect_decerr and not ungraded,
             prot=SI_PROT if init == "SI" else None,
             **kw,
         )
         if init == "SI":
             await self.start_ext_seq(seq)
             return seq
-        # The s_axi monitor fails an unannounced DECERR beat; a probe that
-        # expects or logs one announces it and returns an unused credit.
+        # The s_axi monitor fails an unannounced DECERR beat. Each probe
+        # announces one and returns the credit when its beat carries another
+        # code, so the caller's check reports a wrong code.
         self.env.axi_monitor.arm_expected_decerr(1)
         await self.start_seq(seq)
         if seq.resp_code != RESP_DECERR:
@@ -171,8 +207,17 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         return self.taps[tap].since(m[tap], ch)
 
     async def _single(
-        self, init: str, op: SepAxiOp, cls: str, addr: int, size: int, data: int
+        self,
+        init: str,
+        op: SepAxiOp,
+        cls: str,
+        addr: int,
+        size: int,
+        data: int,
+        code: int,
+        word: int,
     ) -> dict:
+        _program(op, (code,), (word,))
         m = self._mark()
         seq, t_init = await self._timed(init, op, addr, size, data=data)
         ch = "aw" if op is SepAxiOp.WRITE else "ar"
@@ -183,7 +228,10 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "addr": addr,
             "size": size,
             "data": data,
+            "code": code,
+            "word": word,
             "resp": seq.resp_code,
+            "rdata": seq.rdata,
             "resp_list": seq.resp_list,
             "xext": [b.addr for b in self._since(m, "PR-XEXT", ch)],
             "ext": self._since(m, "PR-EXT", ch),
@@ -193,13 +241,39 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "t_init": t_init,
         }
 
+    def _check_reply(self, c: dict) -> None:
+        d = "W" if c["op"] is SepAxiOp.WRITE else "R"
+        tag = f"init={c['init']} dir={d} class={c['cls']} issued=0x{c['addr']:08x}"
+        assert c["resp"] == c["code"], (
+            f"CHK-EXT-REPLY FAIL: {tag} init_resp={RESP_NAME.get(c['resp'], c['resp'])}, "
+            f"expected {RESP_NAME[c['code']]}, the seeded port reply"
+        )
+        want = "na"
+        got = "na"
+        if c["op"] is SepAxiOp.READ:
+            exp = _lane_word(c["addr"], c["size"], c["word"])
+            assert c["rdata"] == exp, (
+                f"CHK-EXT-REPLY FAIL: {tag} size={c['size']} init_rdata=0x{c['rdata']:x}, "
+                f"expected 0x{exp:x}, the seeded port word 0x{c['word']:016x} on the issued lanes"
+            )
+            want, got = f"0x{exp:x}", f"0x{c['rdata']:x}"
+        self.logger.info(
+            "CHK-EXT-REPLY PASS: init=%s dir=%s class=%s issued=0x%08X size=%d port_reply=%s "
+            "init_resp=%s want_rdata=%s init_rdata=%s",
+            c["init"],
+            d,
+            c["cls"],
+            c["addr"],
+            c["size"],
+            RESP_NAME[c["code"]],
+            RESP_NAME.get(c["resp"], c["resp"]),
+            want,
+            got,
+        )
+
     def _check_port(self, c: dict) -> None:
         d = "W" if c["op"] is SepAxiOp.WRITE else "R"
         tag = f"init={c['init']} dir={d} class={c['cls']} issued=0x{c['addr']:08x}"
-        assert c["resp"] == RESP_DECERR, (
-            f"CHK-EXT-PORT FAIL: {tag} init_resp={RESP_NAME.get(c['resp'], c['resp'])}, expected "
-            "DECERR, the response of the bench port"
-        )
         assert len(c["ext"]) == 1, (
             f"CHK-EXT-PORT FAIL: {tag} PR-EXT {d} captures={len(c['ext'])}, expected 1: "
             + "; ".join(b.fmt() for b in c["ext_all"])
@@ -210,19 +284,26 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CHK-EXT-PORT FAIL: {tag} PR-EXT {b.fmt()}; expected addr=0x{c['addr']:x} "
             f"size={c['size']} len=0"
         )
-        # Exactly one reply beat on the port, DECERR, before the initiator's
-        # response. The bench port and the fabric answer the same code, so this
-        # does not show which of them made the initiator's DECERR.
+        # Exactly one reply beat on the port, the seeded reply, before the
+        # initiator's response.
         rep = c["reply"]
         assert len(rep) == 1, (
             f"CHK-EXT-PORT FAIL: {tag} PR-EXT reply beats={len(rep)}, expected 1: "
             + "; ".join(r.fmt() for r in rep)
         )
         r = rep[0]
-        assert r.resp == RESP_DECERR and r.t_ps < c["t_init"], (
-            f"CHK-EXT-PORT FAIL: {tag} port_resp={RESP_NAME.get(r.resp, 'X')} "
-            f"t_port={r.t_ps}ps t_init={c['t_init']}ps; expected a DECERR port reply "
-            "before the initiator response"
+        want_word = c["word"] if c["op"] is SepAxiOp.READ else None
+        ok = (
+            not r.has_unknown()
+            and r.resp == c["code"]
+            and (want_word is None or r.data == want_word)
+            and r.t_ps < c["t_init"]
+        )
+        assert ok, (
+            f"CHK-EXT-PORT FAIL: {tag} port reply {r.fmt()} t_port={r.t_ps}ps "
+            f"t_init={c['t_init']}ps; expected resp={RESP_NAME[c['code']]}"
+            + ("" if want_word is None else f" data=0x{want_word:x}")
+            + " before the initiator response"
         )
         strb = _strb(c["addr"], c["size"])
         data_ok = "na"
@@ -247,7 +328,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             seen_strb = f"0x{w.strb:02x}"
         self.logger.info(
             "CHK-EXT-PORT PASS: init=%s dir=%s issued=0x%08X seen=0x%08X size=%d len=0 strb=%s "
-            "data_ok=%s port_resp=%s t_port=%dps t_init=%dps init_resp=%s",
+            "data_ok=%s port_resp=%s port_rdata=%s t_port=%dps t_init=%dps",
             c["init"],
             d,
             c["addr"],
@@ -256,19 +337,9 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             seen_strb,
             data_ok,
             RESP_NAME.get(r.resp, r.resp),
+            "na" if want_word is None else f"0x{r.data:016x}",
             r.t_ps,
             c["t_init"],
-            RESP_NAME.get(c["resp"], c["resp"]),
-        )
-        self.logger.info(
-            "OBS-EXT-REPLY-SOURCE: init=%s dir=%s issued=0x%08X port_resp=%s init_resp=%s "
-            "(the bench port and the fabric both answer DECERR; the source of the initiator "
-            "response is not graded)",
-            c["init"],
-            d,
-            c["addr"],
-            RESP_NAME.get(r.resp, r.resp),
-            RESP_NAME.get(c["resp"], c["resp"]),
         )
 
     def _check_reach(self, c: dict) -> None:
@@ -278,17 +349,12 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CHK-EXT-REACH FAIL: {tag} PR-XEXT {d} handshakes "
             f"{[('X' if a is None else hex(a)) for a in c['xext']]}, expected exactly [0x{c['addr']:x}]"
         )
-        assert c["resp"] == RESP_DECERR, (
-            f"CHK-EXT-REACH FAIL: {tag} init_resp={RESP_NAME.get(c['resp'], c['resp'])}, expected "
-            "DECERR, the response of the bench port"
-        )
         self.logger.info(
-            "CHK-EXT-REACH PASS: dir=%s class=%s issued=0x%08X xbar_seen=0x%08X init_resp=%s",
+            "CHK-EXT-REACH PASS: dir=%s class=%s issued=0x%08X xbar_seen=0x%08X",
             d,
             c["cls"],
             c["addr"],
             c["xext"][0],
-            RESP_NAME.get(c["resp"], c["resp"]),
         )
 
     async def _bring_up(self) -> None:
@@ -311,11 +377,22 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "the bring-up does not leave the inbound filter active"
         )
 
+    def _check_responder(self) -> None:
+        on = self.rd_known(cocotb.top.ext_port_rsp_on_o)
+        self.logger.info("CTL-EXT-RESPONDER LOG: on=%d", on)
+        assert on == 1, (
+            "CTL-EXT-RESPONDER FAIL: the bench responder of the extension port is off; the "
+            "leaf runs with +sep_ext_port_responder"
+        )
+
     async def run_scenario(self) -> None:
         rng = SepSeededRng(self.random_seed())
         close_graded_window()
         self.csr = _Csr(self)
+        _program(SepAxiOp.WRITE, (RESP_OKAY,))
+        _program(SepAxiOp.READ, (RESP_OKAY,), (0,))
         await self._bring_up()
+        self._check_responder()
         self.inf = SepFilterBank(self, "in")
         self.taps = start_taps("PR-EXT", "PR-EXT-RSP", "PR-XEXT")
 
@@ -354,6 +431,19 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         rd_off = rng.randrange(0, (PAGE - 8 * BUS_BYTES) // BUS_BYTES + 1) * BUS_BYTES
         wr_burst_addr, rd_burst_addr = BURST_PAGE + wr_off, BURST_PAGE + rd_off
         wr_burst_data = rng.getrandbits(4 * 64)
+        # Port replies: for each initiator and direction, the three single
+        # beats carry OKAY, SLVERR and one seeded code, in seeded order.
+        replies: dict[tuple[str, SepAxiOp, str], tuple[int, int]] = {}
+        for init in ("SI", "LSU"):
+            for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+                codes = [RESP_OKAY, RESP_SLVERR, rng.choice(PORT_CODES)]
+                rng.shuffle(codes)
+                for cls, code in zip(("first", "mid", "last"), codes):
+                    word = rng.getrandbits(64) if op is SepAxiOp.READ else 0
+                    replies[(init, op, cls)] = (code, word)
+        wb_code = rng.choice(PORT_CODES)
+        rb_codes = tuple(rng.choice(PORT_CODES) for _ in range(8))
+        rb_words = tuple(rng.getrandbits(64) for _ in range(8))
         self.logger.info(
             "DRAW LOG: mid_raw=0x%08x probes=%s wr_burst=0x%08x rd_burst=0x%08x",
             mid_raw,
@@ -361,12 +451,27 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             wr_burst_addr,
             rd_burst_addr,
         )
+        self.logger.info(
+            "DRAW LOG: port_replies=%s wr_burst_b=%s rd_burst_r=%s",
+            [
+                f"{i}/{o.value}/{c}/{RESP_NAME[r]}/0x{w:016x}"
+                for (i, o, c), (r, w) in replies.items()
+            ],
+            RESP_NAME[wb_code],
+            [f"{RESP_NAME[r]}/0x{w:016x}" for r, w in zip(rb_codes, rb_words)],
+        )
 
         open_graded_window(TEST, self.logger)
         # Step 4: SI single beats.
-        si_cells = [await self._single("SI", op, cls, a, s, d) for cls, op, a, s, d in probes]
+        si_cells = [
+            await self._single("SI", op, cls, a, s, d, *replies[("SI", op, cls)])
+            for cls, op, a, s, d in probes
+        ]
         # Step 5: LSU single beats to the same classes.
-        lsu_cells = [await self._single("LSU", op, cls, a, s, d) for cls, op, a, s, d in probes]
+        lsu_cells = [
+            await self._single("LSU", op, cls, a, s, d, *replies[("LSU", op, cls)])
+            for cls, op, a, s, d in probes
+        ]
 
         # Step 6: shim window, both initiators and directions. Responses logged.
         shim = []
@@ -375,9 +480,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
                 for op in (SepAxiOp.READ, SepAxiOp.WRITE):
                     m = self._mark()
                     try:
-                        seq = await self._access(
-                            init, op, addr, 0, data=SHIM_RESET_BYTE[addr], ungraded=True
-                        )
+                        seq = await self._access(init, op, addr, 0, data=SHIM_RESET_BYTE[addr])
                     except Exception as exc:
                         raise AssertionError(
                             f"CHK-EXT-SHIM FAIL: init={init} addr=0x{addr:08x} op={op.value}: no "
@@ -396,6 +499,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
                     shim.append((init, op, addr, len(ext)))
 
         # Steps 7 and 8: admitted SI bursts.
+        _program(SepAxiOp.WRITE, (wb_code,))
         m = self._mark()
         wb, wb_t = await self._timed(
             "SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=wr_burst_data, nbeats=4
@@ -404,6 +508,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         wb_x = [b.addr for b in self._since(m, "PR-XEXT", "aw")]
         wb_aw = self._since(m, "PR-EXT", "aw")
         wb_w = self._since(m, "PR-EXT", "w")
+        _program(SepAxiOp.READ, rb_codes, rb_words)
         m = self._mark()
         self.env.ext_axi_monitor.start_beat_capture()
         rb, rb_t = await self._timed("SI", SepAxiOp.READ, rd_burst_addr, 3, nbeats=8)
@@ -435,6 +540,39 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         close_graded_window(self.logger)
         await stop_taps(self.taps)
 
+        # CHK-EXT-REPLY, single beats.
+        for c in si_cells + lsu_cells:
+            self._check_reply(c)
+
+        # CHK-EXT-REPLY, admitted bursts.
+        assert wb.resp_code == wb_code, (
+            f"CHK-EXT-REPLY FAIL: dir=W admitted burst init_resp="
+            f"{RESP_NAME.get(wb.resp_code, wb.resp_code)}, expected {RESP_NAME[wb_code]}, the "
+            "seeded port reply"
+        )
+        rb_got = [(rb.rdata >> (64 * k)) & WORD_MASK for k in range(8)]
+        assert list(rb_beats) == list(rb_codes) and rb_got == list(rb_words), (
+            "CHK-EXT-REPLY FAIL: dir=R admitted burst init beats "
+            + ",".join(
+                f"{RESP_NAME.get(r, r)}/0x{w:016x}"
+                for r, w in zip(list(rb_beats) + [None] * (8 - len(rb_beats)), rb_got)
+            )
+            + "; expected the seeded port reply "
+            + ",".join(f"{RESP_NAME[r]}/0x{w:016x}" for r, w in zip(rb_codes, rb_words))
+        )
+        self.logger.info(
+            "CHK-EXT-REPLY PASS: init=SI dir=W burst len=3 port_reply=%s init_resp=%s",
+            RESP_NAME[wb_code],
+            RESP_NAME.get(wb.resp_code, wb.resp_code),
+        )
+        self.logger.info(
+            "CHK-EXT-REPLY PASS: init=SI dir=R burst len=7 beats=%d port_reply=%s init_beats=%s "
+            "data_ok=1",
+            len(rb_beats),
+            ",".join(RESP_NAME[r] for r in rb_codes),
+            ",".join(RESP_NAME.get(r, str(r)) for r in rb_beats),
+        )
+
         # CHK-EXT-REACH and CHK-EXT-PORT.
         for c in si_cells:
             self._check_reach(c)
@@ -459,7 +597,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         )
 
         # CHK-EXT-BURST, write.
-        want_beats = [(wr_burst_data >> (64 * i)) & ((1 << 64) - 1) for i in range(4)]
+        want_beats = [(wr_burst_data >> (64 * i)) & WORD_MASK for i in range(4)]
         w_ok = (
             len(wb_w) == 4
             and all(not b.has_unknown() for b in wb_w)
@@ -467,10 +605,9 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             and all(b.strb == 0xFF for b in wb_w)
             and [b.last for b in wb_w] == [0, 0, 0, 1]
         )
-        assert wb.resp_code == RESP_DECERR and wb_x == [wr_burst_addr], (
-            f"CHK-EXT-BURST FAIL: dir=W admitted resp={RESP_NAME.get(wb.resp_code)} "
-            f"xbar={[hex(a) for a in wb_x if a is not None]}, expected DECERR and one PR-XEXT AW "
-            f"at 0x{wr_burst_addr:08x}"
+        assert wb_x == [wr_burst_addr], (
+            f"CHK-EXT-BURST FAIL: dir=W admitted xbar={[hex(a) for a in wb_x if a is not None]}, "
+            f"expected one PR-XEXT AW at 0x{wr_burst_addr:08x}"
         )
         assert (
             len(wb_aw) == 1
@@ -484,12 +621,12 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             + f"; expected AW addr=0x{wr_burst_addr:x} len=3 size=3 and beats "
             + ",".join(f"0x{v:016x}" for v in want_beats)
         )
-        # One B on the port, DECERR, before the initiator's response (the
-        # source of the initiator's DECERR is not graded; see the module text).
-        assert len(wb_rep) == 1 and wb_rep[0].resp == RESP_DECERR and wb_rep[0].t_ps < wb_t, (
+        # One B on the port, the seeded code, before the initiator's response.
+        assert len(wb_rep) == 1 and wb_rep[0].resp == wb_code and wb_rep[0].t_ps < wb_t, (
             "CHK-EXT-BURST FAIL: dir=W admitted port reply "
             + "; ".join(r.fmt() for r in wb_rep)
-            + f" t_init={wb_t}ps; expected one DECERR B on PR-EXT before the initiator response"
+            + f" t_init={wb_t}ps; expected one {RESP_NAME[wb_code]} B on PR-EXT before the "
+            "initiator response"
         )
         assert wd.resp_code == RESP_DECERR and not wd_x, (
             f"CHK-EXT-BURST FAIL: dir=W denied resp={RESP_NAME.get(wd.resp_code)} "
@@ -510,32 +647,28 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             len(wb_w),
             int(w_ok),
             len(wd_ext),
-            ",".join(sorted({RESP_NAME.get(r.resp, str(r.resp)) for r in wb_rep})),
+            ",".join(RESP_NAME.get(r.resp, str(r.resp)) for r in wb_rep),
             len(wb_rep),
         )
 
-        # CHK-EXT-BURST, read.
-        assert len(rb_beats) == 8 and all(r == RESP_DECERR for r in rb_beats), (
-            f"CHK-EXT-BURST FAIL: dir=R admitted R beats {rb_beats}, expected 8, DECERR on every beat"
-        )
-        # Eight R beats on the port, all DECERR, RLAST on the eighth only,
-        # before the initiator's response (the source of the initiator's
-        # DECERR is not graded; see the module text).
+        # CHK-EXT-BURST, read. Eight R beats on the port with the seeded codes
+        # and words, RLAST on the eighth only, before the initiator's response.
         assert (
             len(rb_rep) == 8
-            and all(r.resp == RESP_DECERR for r in rb_rep)
+            and all(not r.has_unknown() for r in rb_rep)
+            and [r.resp for r in rb_rep] == list(rb_codes)
+            and [r.data for r in rb_rep] == list(rb_words)
             and [r.last for r in rb_rep] == [0] * 7 + [1]
             and all(r.t_ps < rb_t for r in rb_rep)
         ), (
             "CHK-EXT-BURST FAIL: dir=R admitted port reply "
             + "; ".join(r.fmt() for r in rb_rep)
-            + f" t_init={rb_t}ps; expected 8 DECERR R beats on PR-EXT, RLAST on beat 8, before "
-            "the initiator response"
+            + f" t_init={rb_t}ps; expected 8 R beats on PR-EXT with the seeded codes and words, "
+            "RLAST on beat 8, before the initiator response"
         )
-        assert rb.resp_code == RESP_DECERR and rb_x == [rd_burst_addr], (
-            f"CHK-EXT-BURST FAIL: dir=R admitted resp={RESP_NAME.get(rb.resp_code)} "
-            f"xbar={[hex(a) for a in rb_x if a is not None]}, expected DECERR and one PR-XEXT AR "
-            f"at 0x{rd_burst_addr:08x}"
+        assert rb_x == [rd_burst_addr], (
+            f"CHK-EXT-BURST FAIL: dir=R admitted xbar={[hex(a) for a in rb_x if a is not None]}, "
+            f"expected one PR-XEXT AR at 0x{rd_burst_addr:08x}"
         )
         assert (
             len(rb_ar) == 1
@@ -557,16 +690,16 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "a refused burst never reaches the port"
         )
         self.logger.info(
-            "CHK-EXT-BURST PASS: dir=R len=7 xbar_seen=%d init_resp=%s denied_resp=%s "
-            "denied_xbar_seen=%d beats_seen=na data_ok=na admitted_beats=%d denied_beats=%d "
-            "denied_ext_seen=%d port_reply=%s port_reply_beats=%d",
+            "CHK-EXT-BURST PASS: dir=R len=7 xbar_seen=%d init_beats=%s denied_resp=%s "
+            "denied_xbar_seen=%d admitted_beats=%d denied_beats=%d denied_ext_seen=%d "
+            "port_reply=%s port_reply_beats=%d",
             len(rb_x),
-            RESP_NAME.get(rb.resp_code, rb.resp_code),
+            ",".join(RESP_NAME.get(r, str(r)) for r in rb_beats),
             ",".join(sorted({RESP_NAME.get(r, str(r)) for r in denied_r})),
             len(rd_x),
             len(rb_beats),
             len(denied_r),
             len(rd_ext),
-            ",".join(sorted({RESP_NAME.get(r.resp, str(r.resp)) for r in rb_rep})),
+            ",".join(RESP_NAME.get(r.resp, str(r.resp)) for r in rb_rep),
             len(rb_rep),
         )

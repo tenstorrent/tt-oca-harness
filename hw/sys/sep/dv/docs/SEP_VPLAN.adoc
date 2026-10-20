@@ -1027,9 +1027,9 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 
 |<<sep_fabric_extension_port_window_test,`sep_fabric_extension_port_window_test`>>
 |3
-|no_cpu, real PROD fuse sense
-|LSU and System Interface masters, extension port probe (observation tap)
-|Proves that the extension port serves `0x2000_0000` to `0x3FFF_FFFF` except the eFuse shim window, for LSU and System Interface, and that a filter-denied burst never reaches it.
+|no_cpu, real PROD fuse sense, `+sep_ext_port_responder`
+|LSU and System Interface masters, extension port responder (added hook, top-port drive), extension port request and reply probes (observation taps)
+|Proves that the extension port serves `0x2000_0000` to `0x3FFF_FFFF` except the eFuse shim window, for LSU and System Interface, that the initiator receives the port's reply (a seeded OKAY or SLVERR code and seeded read data, beat for beat), and that a filter-denied burst never reaches the port and answers the fabric's DECERR.
 
 |<<sep_fabric_row_response_matrix_test,`sep_fabric_row_response_matrix_test`>>
 |3
@@ -3709,10 +3709,10 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |ACCEPT-PROBE
 |PR-OUT is an observation tap. The always-ready outbound responder answers OKAY and shows nothing of the request. Checks that use it: CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT and CHK-OUT-NOEXTRA of `sep_fabric_outbound_route_attr_test`, the supplement and the SMU source ID of CHK-FILTER-SRC of `sep_fabric_filter_match_priority_rand_test`, CHK-DMA-USER and CHK-DMA-PAIR of `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`, and CHK-IFU-NEVER of `sep_cpu_demux_unmapped_fetch_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
-|Extension port request at `axi_extension_axi_req_o`
-|Address, AxSIZE, AxLEN, strobe and data of the extension port request
+|Extension port request at `axi_extension_axi_req_o` and reply at `axi_extension_axi_resp_i`
+|Address, AxSIZE, AxLEN, strobe and data of the extension port request; code, read data and RLAST of each reply beat
 |ACCEPT-PROBE
-|PR-EXT is an observation tap. The wrapper net is `u_dut.axi_extension_axi_req`. Checks that use it: CHK-EXT-PORT, CHK-EXT-SHIM and the PR-EXT part of CHK-EXT-BURST of `sep_fabric_extension_port_window_test`, the extension-window cells of `sep_fabric_filter_match_priority_rand_test` (leg 3), and the alias destination `0xFFFF_FFF8` and the extension-port beats of `sep_fabric_dma_endpoint_matrix_test`, and CHK-IFU-NEVER of `sep_cpu_demux_unmapped_fetch_test`.
+|PR-EXT and PR-EXT-RSP are observation taps. The wrapper nets are `u_dut.axi_extension_axi_req` and `u_dut.axi_extension_axi_resp`. Checks that use them: CHK-EXT-PORT, CHK-EXT-SHIM and the PR-EXT part of CHK-EXT-BURST of `sep_fabric_extension_port_window_test`, the extension-window cells of `sep_fabric_filter_match_priority_rand_test` (leg 3), and the alias destination `0xFFFF_FFF8` and the extension-port beats of `sep_fabric_dma_endpoint_matrix_test`, and CHK-IFU-NEVER of `sep_cpu_demux_unmapped_fetch_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |SRAM macro request at `sep_sram_req_o`
 |The request to the SRAM macro (address and write data) and its response `sep_sram_rsp_i`
@@ -4319,7 +4319,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-EXT
 |Read-only probe
-|Address, AxSIZE, AxLEN, strobe and data of `axi_extension_axi_req_o`.
+|Address, AxSIZE, AxLEN, strobe and data of `axi_extension_axi_req_o`; with PR-EXT-RSP, the code, read data and RLAST of each beat of `axi_extension_axi_resp_i`.
 |`sep_fabric_extension_port_window_test`, `sep_fabric_filter_match_priority_rand_test` (leg 3), `sep_fabric_dma_endpoint_matrix_test`, `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-NEVER)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-SRAM
@@ -4630,6 +4630,12 @@ use it" names the entries whose checks need the hook.
 |A drive of `smc_global_base_addr_i` and `smc_region_size_i`, from plusargs or from the leaf before reset release, and an SMC responder on `sep_ext_to_smc_axi`, in the `lsu_stub_all_live` target and in the `cpu` run mode of `sep_fabric_dma_endpoint_matrix_test`. The default bench ties the aperture inputs to 0.
 |`smc_global_base_addr_i`, `smc_region_size_i`, `sep_ext_to_smc_axi_resp_i`
 |`sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-SMC)
+|<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
+|Extension port responder
+|Top-port drive
+|A responder on the `sep` input `sep_external_axi_resp_i` in a run with `+sep_ext_port_responder`. It answers each access with the reply that the leaf sets before the request: a B code, or an RRESP and an RDATA word per R beat. Without the plusarg the integration wrapper answers DECERR with `0xBADCAB1E`.
+|`sep_external_axi_resp_i` (the `sep_wrapper` net `axi_extension_axi_resp`)
+|`sep_fabric_extension_port_window_test` (CHK-EXT-REPLY, CHK-EXT-PORT, CHK-EXT-BURST)
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Drive of `sep_ext_interrupts_i`
 |Top-port drive

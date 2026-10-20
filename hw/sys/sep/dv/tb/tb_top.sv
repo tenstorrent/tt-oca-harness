@@ -1940,6 +1940,105 @@ module sep_uvm_top
     assign pr_ext_rresp_o  = u_dut.axi_extension_axi_resp.r.resp;
     assign pr_ext_rid_o    = u_dut.axi_extension_axi_resp.r.id;
     assign pr_ext_rlast_o  = u_dut.axi_extension_axi_resp.r.last;
+    assign pr_ext_rdata_o  = u_dut.axi_extension_axi_resp.r.data;
+
+    // ------------------------------------------------------------------
+    // AXI Extension port responder (top-port drive).
+    // ------------------------------------------------------------------
+    // The integration wrapper answers the sep extension port from an error
+    // slave (DECERR, read data 0xBADCAB1E, hw/top/sep_ip_integration.sv). In a
+    // run with +sep_ext_port_responder the responder below answers instead:
+    // tb_top forces the wrapper net u_dut.axi_extension_axi_resp (the sep
+    // input sep_external_axi_resp_i) from it, re-issued on every falling edge
+    // (Verilator snapshots a force RHS), so the port sees registered outputs.
+    // Without the plusarg the responder stays in reset and the net is never
+    // forced.
+    //   * One write burst and one read burst in flight. AW, W and AR are
+    //     accepted one burst at a time, and B and R carry the request ID.
+    //   * The B response is ext_port_rsp_bresp_i, sampled at the AW handshake.
+    //   * R beat k answers RRESP ext_port_rsp_rresp_i[2k +: 2] and RDATA
+    //     ext_port_rsp_rdata_i[64k +: 64], sampled at the AR handshake; beat 8 of a
+    //     longer burst wraps to entry 0.
+    // The leaf sets the three inputs before it issues each access.
+    logic ext_port_rsp_on;
+    initial ext_port_rsp_on = $test$plusargs("sep_ext_port_responder");
+    assign ext_port_rsp_on_o = ext_port_rsp_on;
+
+    sep_pkg::sep_32_64_6_12_axi_req_t  ext_port_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t ext_port_resp_drive;
+    assign ext_port_req = u_dut.axi_extension_axi_req;
+
+    logic                                 ext_w_data_q;
+    logic                                 ext_b_valid_q;
+    logic [1:0]                           ext_b_resp_q;
+    logic [$bits(ext_port_req.aw.id)-1:0] ext_b_id_q;
+    logic                                 ext_r_valid_q;
+    logic [$bits(ext_port_req.ar.id)-1:0] ext_r_id_q;
+    logic [7:0]                           ext_r_left_q;
+    logic [2:0]                           ext_r_beat_q;
+    logic [15:0]                          ext_r_resp_q;
+    logic [511:0]                         ext_r_data_q;
+
+    always_comb begin
+        ext_port_resp_drive          = '0;
+        ext_port_resp_drive.aw_ready = !ext_w_data_q && !ext_b_valid_q;
+        ext_port_resp_drive.w_ready  = ext_w_data_q;
+        ext_port_resp_drive.b_valid  = ext_b_valid_q;
+        ext_port_resp_drive.b.id     = ext_b_id_q;
+        ext_port_resp_drive.b.resp   = ext_b_resp_q;
+        ext_port_resp_drive.ar_ready = !ext_r_valid_q;
+        ext_port_resp_drive.r_valid  = ext_r_valid_q;
+        ext_port_resp_drive.r.id     = ext_r_id_q;
+        ext_port_resp_drive.r.resp   = ext_r_resp_q[2*ext_r_beat_q+:2];
+        ext_port_resp_drive.r.data   = ext_r_data_q[64*ext_r_beat_q+:64];
+        ext_port_resp_drive.r.last   = (ext_r_left_q == 8'd0);
+    end
+
+    always @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            ext_w_data_q  <= 1'b0;
+            ext_b_valid_q <= 1'b0;
+            ext_b_resp_q  <= '0;
+            ext_b_id_q    <= '0;
+            ext_r_valid_q <= 1'b0;
+            ext_r_id_q    <= '0;
+            ext_r_left_q  <= '0;
+            ext_r_beat_q  <= '0;
+            ext_r_resp_q  <= '0;
+            ext_r_data_q  <= '0;
+        end else if (ext_port_rsp_on) begin
+            if (!ext_w_data_q && !ext_b_valid_q && (ext_port_req.aw_valid === 1'b1)) begin
+                ext_w_data_q <= 1'b1;
+                ext_b_id_q   <= ext_port_req.aw.id;
+                ext_b_resp_q <= ext_port_rsp_bresp_i;
+            end
+            if (ext_w_data_q && (ext_port_req.w_valid === 1'b1) &&
+                (ext_port_req.w.last === 1'b1)) begin
+                ext_w_data_q  <= 1'b0;
+                ext_b_valid_q <= 1'b1;
+            end
+            if (ext_b_valid_q && (ext_port_req.b_ready === 1'b1)) ext_b_valid_q <= 1'b0;
+            if (!ext_r_valid_q && (ext_port_req.ar_valid === 1'b1)) begin
+                ext_r_valid_q <= 1'b1;
+                ext_r_id_q    <= ext_port_req.ar.id;
+                ext_r_left_q  <= ext_port_req.ar.len;
+                ext_r_beat_q  <= '0;
+                ext_r_resp_q  <= ext_port_rsp_rresp_i;
+                ext_r_data_q  <= ext_port_rsp_rdata_i;
+            end else if (ext_r_valid_q && (ext_port_req.r_ready === 1'b1)) begin
+                if (ext_r_left_q == 8'd0) begin
+                    ext_r_valid_q <= 1'b0;
+                end else begin
+                    ext_r_left_q <= ext_r_left_q - 8'd1;
+                    ext_r_beat_q <= ext_r_beat_q + 3'd1;
+                end
+            end
+        end
+    end
+
+    always @(negedge clk_i) begin
+        if (ext_port_rsp_on) force u_dut.axi_extension_axi_resp = ext_port_resp_drive;
+    end
     // PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
     assign pr_dmacsr_awvalid_o = `SEP_CORE.dma_csr_req.aw_valid;
     assign pr_dmacsr_awready_o = `SEP_CORE.dma_csr_rsp.aw_ready;
@@ -4023,6 +4122,9 @@ module sep_uvm_top
     assign ext_trng_tdata_i         = '0;
     assign ext_trng_tstrb_i         = '0;
     assign ext_trng_irq_drive_i     = 1'b0;
+    assign ext_port_rsp_bresp_i     = '0;
+    assign ext_port_rsp_rresp_i     = '0;
+    assign ext_port_rsp_rdata_i     = '0;
     assign sep_ext_interrupts_i     = '0;
     assign smn_outbound_resp_hold_i = 1'b0;
     assign smn_outbound_rd_slverr_i = 1'b0;

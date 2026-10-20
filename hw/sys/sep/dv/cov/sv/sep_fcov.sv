@@ -4473,6 +4473,8 @@ module sep_fcov (
   wire smc_ar_hs = !in_reset && (smc_req_i.ar_valid === 1'b1) && (smc_resp_i.ar_ready === 1'b1);
   wire ext_aw_hs = !in_reset && (ext_req_i.aw_valid === 1'b1) && (ext_resp_i.aw_ready === 1'b1);
   wire ext_ar_hs = !in_reset && (ext_req_i.ar_valid === 1'b1) && (ext_resp_i.ar_ready === 1'b1);
+  wire ext_b_hs  = !in_reset && (ext_resp_i.b_valid === 1'b1) && (ext_req_i.b_ready === 1'b1);
+  wire ext_r_hs  = !in_reset && (ext_resp_i.r_valid === 1'b1) && (ext_req_i.r_ready === 1'b1);
   wire dq_aw_hs = !in_reset && (dma_req_i.aw_valid === 1'b1) && (dma_resp_i.aw_ready === 1'b1);
   wire [31:0] dq_req_a = dq_aw_hs ? dma_req_i.aw.addr : dma_req_i.ar.addr;
   wire dq_ar_hs = !in_reset && (dma_req_i.ar_valid === 1'b1) && (dma_resp_i.ar_ready === 1'b1);
@@ -5462,7 +5464,9 @@ module sep_fcov (
       logic own_tcm,
       logic [3:0] tri_cell,
       logic tri_v,
-      logic eri_v
+      logic eri_v,
+      logic [2:0] ext_rep,
+      logic ext_rep_v
   );
     option.per_instance = 1;
     option.name = "sep_fabric_dedicated_port_cg";
@@ -5478,6 +5482,14 @@ module sep_fcov (
     }
     cp_ext_burst: coverpoint ext_burst iff (own_ext_s) {
       bins si_incr_write_len3 = {2'd1}; bins si_incr_read_len7 = {2'd2};
+    }
+    // {dir (1 W), code} of a B or R beat on the port. The bench responder of
+    // the owning leaf answers OKAY or SLVERR, never DECERR.
+    cp_ext_port_reply: coverpoint ext_rep iff (own_ext_s && ext_rep_v) {
+      bins okay_r = {3'b0_00};
+      bins slverr_r = {3'b0_10};
+      bins okay_w = {3'b1_00};
+      bins slverr_w = {3'b1_10};
     }
     // {dir, range (0 ICCM, 1 DCCM)}.
     cp_tcm_dma_dir_range: coverpoint tcm_cell iff (own_tcm) {
@@ -6406,11 +6418,18 @@ module sep_fcov (
         if ((ei == INIT_SI) && (eb == axi_pkg::BURST_INCR) && !w && (el == 8'd7)) ebu = 2'd2;
         u_sep_fabric_dedicated_port_cg.sample(
             (ei == INIT_LSU) ? {2'd1, w} : (ei == INIT_SI) ? {2'd2, w} : (ei == INIT_DMA) ? {2'd3, w} : 3'd0,
-            own_ext, own_dma, ecls, ebu, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0);
+            own_ext, own_dma, ecls, ebu, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 3'd0, 1'b0);
       end
+      // Extension port replies, one sample per B or R beat.
+      if (ext_b_hs)
+        u_sep_fabric_dedicated_port_cg.sample(3'd0, own_ext, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0,
+                                              1'b0, 1'b0, {1'b1, ext_resp_i.b.resp}, 1'b1);
+      if (ext_r_hs)
+        u_sep_fabric_dedicated_port_cg.sample(3'd0, own_ext, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0,
+                                              1'b0, 1'b0, {1'b0, ext_resp_i.r.resp}, 1'b1);
       if (tcm_hit)
         u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, tcm_cell_q, own_tcm_dma,
-                                              4'd0, 1'b0, 1'b0);
+                                              4'd0, 1'b0, 1'b0, 3'd0, 1'b0);
       // Alias remap input.
       if (al_ar_hs || al_aw_hs) begin
         logic    w;
@@ -16006,7 +16025,7 @@ module sep_fcov (
         if (mm_eu_on && (ifu_rid_i == mm_eu_id)) begin
           if (mm_own_demux && !mm_eu_leak && !mm_eu_hit)
             u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0,
-                                                  1'b0, 1'b1);
+                                                  1'b0, 1'b1, 3'd0, 1'b0);
           mm_eu_on <= 1'b0;
         end
       end else if (mm_eu_on && mm_eu_hit) mm_eu_leak <= 1'b1;
@@ -16073,7 +16092,7 @@ module sep_fcov (
           mm_cq_req[c] <= 1'b1;
           if ((c != 0) && ({ra[31:2], 2'b00} == mm_cq_a[c])) begin
             u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, {
-                                                  1'b1, 3'(c)}, 1'b1, 1'b0);
+                                                  1'b1, 3'(c)}, 1'b1, 1'b0, 3'd0, 1'b0);
             mm_cq_on[c] <= 1'b0;
           end
         end
@@ -16081,7 +16100,7 @@ module sep_fcov (
           mm_cq_on[c] <= 1'b0;
           if (!mm_cq_req[c] && !mm_ct_req) begin
             u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, {
-                                                  1'b0, 3'(c)}, 1'b1, 1'b0);
+                                                  1'b0, 3'(c)}, 1'b1, 1'b0, 3'd0, 1'b0);
             if (c == 0) mm_ap(4'd8, 5'd0);
             if (c >= 3) mm_ap(4'd8, 5'd1);
           end

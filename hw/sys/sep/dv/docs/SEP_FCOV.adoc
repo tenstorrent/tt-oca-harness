@@ -2559,7 +2559,7 @@ Each tap is a read-only reference. No tap forces a signal. Paths start at `sep_u
 |`in_resp` |`u_dut.smn_inbound_axi_resp_o` (`m_axi_b*`, `m_axi_r*`) |`resp`, `last`: yes. `rdata`, `rid`: no |approved for `resp`, `last`. Added tap for `rdata`, `rid`
 |`out_req` |`smn_outbound_req_w` = `u_dut.smn_outbound_axi_req_o` |No. The always-ready outbound responder answers OKAY and serves every capture cell |Added tap (PR-OUT)
 |`smc_req` |`ext_to_smc_req_w` = `u_dut.sep_ext_to_smc_axi_req_o` |No. The net exists in every build |Added tap (PR-SMC)
-|`ext_req` |`u_dut.axi_extension_axi_req` |No. The port response is a testbench-driven input, so no coverpoint samples it |Added tap (PR-EXT)
+|`ext_req` |`u_dut.axi_extension_axi_req`, and `u_dut.axi_extension_axi_resp` for the reply |`b.resp` and `r.resp` of each B and R handshake: yes, for `cp_ext_port_reply`. The reply is a testbench-driven input: the extension port responder of the owning test sets it (`+sep_ext_port_responder`) |Added tap (PR-EXT, PR-EXT-RSP)
 |`sram_req` |`u_dut.sep_sram_req` |No |Added tap (PR-SRAM)
 |`rom_req` |`u_dut.sep_boot_rom_req` |No |Added tap (PR-ROM)
 |`tcm_req` |`u_dut.sep_cpu_tcm_req` |No. A partial testbench tap exists (ICCM and DCCM active, ICCM bank 0 address only). The tap carries no initiator identity: the initiator rule attributes it with `dma_req` |Added tap (PR-TCM) for `wren` and the DCCM address
@@ -2718,7 +2718,7 @@ Reach values (<<sep-fcov-parked>>). "executable": the owner fills every bin as w
 
 ===== `sep_fabric_dedicated_port_cg`
 
-*Description*: The dedicated ports: the AXI Extension port by initiator, address class and burst shape, and the DMA access to the CPU TCM.
+*Description*: The dedicated ports: the AXI Extension port by initiator, address class, burst shape and reply code, and the DMA access to the CPU TCM.
 
 *Tool*: VCS. *Class*: executable.
 
@@ -2728,6 +2728,7 @@ Reach values (<<sep-fcov-parked>>). "executable": the owner fills every bin as w
 |`cp_ext_init_dir_ls`, `cp_ext_init_dir_dma` |Initiator {`LSU`, `SI`, `DMA`} x direction. 6 cells: four in `cp_ext_init_dir_ls` (LSU, SI), two in `cp_ext_init_dir_dma` (DMA). The initiator follows the initiator rule. CPU DBG has no stimulus path. (`fabric.adoc`, Top Level AXI4 and Fabric Topology) |- |`ext_req` handshake; `lsu_req`, `xbar_ext_req`, `dma_req` |`sep_fabric_extension_port_window_test` (LSU, SI), `sep_fabric_dma_endpoint_matrix_test` (DMA) |executable. The DMA cells also need `dma_ext_read_leg`
 |`cp_ext_addr_class` |`first_word_above_shim` (0x2000_0000 + `EFUSE_SHIM_SIZE`, 0x2000_0004 at the default, AxSIZE 0 to 2), `mid`, `top_word` (0x3FFF_FFF8). The class 0x2000_0000 has no bin: the shim window does not leave on the port. (`memory_map.adoc`, External Window Reference Model; `fabric.adoc`, Fabric Topology) |Class 0x2000_0000: ignored, see Unreachable bins |`ext_req` address |`sep_fabric_extension_port_window_test` |executable
 |`cp_ext_burst` |SI INCR write with AxLEN 3, SI INCR read with AxLEN 7. 2 bins. (`fabric.adoc`, Top Level AXI4) |- |`ext_req` len, burst, wlast |`sep_fabric_extension_port_window_test` |executable
+|`cp_ext_port_reply` |Port reply code {`OKAY`, `SLVERR`} x direction {R, W}, one sample per B and R handshake on the port. 4 bins: `okay_r`, `slverr_r`, `okay_w`, `slverr_w`. The bench responder answers OKAY or SLVERR and never DECERR; the fabric DECERR of a refused request is the bin `sil_ext_filter_deny` of `sep_fabric_port_silence_cp`. Every bin fills on every seed: for each initiator and direction the leaf gives its three single beats OKAY, SLVERR and one drawn code, in a seeded order. (`memory_map.adoc`, SEP External row, Adopter-defined; `doc/trm/src/memory_map.adoc`, Decode Response Codes) |- |`ext_req` B and R handshake, `b.resp`, `r.resp` |`sep_fabric_extension_port_window_test` |executable
 |`cp_tcm_dma_dir_range` |Initiator DMA x direction x range {ICCM 0xC000_0000-0xC003_FFFF, DCCM 0xC004_0000-0xC005_FFFF}. 4 cells. The DMA master address selects the range. The `tcm_req` activity confirms the access (read = `clken` and no `wren`, write = `clken` and `wren`). (`fabric.adoc`, Top Level AXI4; address map table) |- |`dma_req` address; `tcm_req` clken, wren |`sep_tcm_dma_aperture_ecc_test` |executable
 |===
 
