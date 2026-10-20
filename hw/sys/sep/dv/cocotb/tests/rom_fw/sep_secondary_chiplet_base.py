@@ -58,6 +58,7 @@ class sep_secondary_chiplet_base(sep_base_test):
 
     # Must match +sep_smc_scratch8; the default offset needs no plusarg.
     manifest_offset: int = DEFAULT_MANIFEST_OFFSET
+    image_manifest_offset: int = DEFAULT_MANIFEST_OFFSET
     expect_boot: bool = True
     expected_error: int = 0
     extra_required: tuple[str, ...] = ()
@@ -154,33 +155,34 @@ class sep_secondary_chiplet_base(sep_base_test):
             )
             return row[k : k + 4]
 
-        default = word_at(DEFAULT_MANIFEST_OFFSET)
-        assert default == MANIFEST_MAGIC, (
-            f"the packed SMC image carries {default!r} at 0x{DEFAULT_MANIFEST_OFFSET:x}, "
-            f"not {MANIFEST_MAGIC!r}: this pair is about WHICH offset the SMC "
-            f"publishes, so the image must hold a real manifest somewhere"
+        image_manifest = word_at(self.image_manifest_offset)
+        assert image_manifest == MANIFEST_MAGIC, (
+            f"the packed SMC image carries {image_manifest!r} at declared manifest "
+            f"offset 0x{self.image_manifest_offset:x}, not {MANIFEST_MAGIC!r}: the "
+            f"image must supply a real manifest before this test can grade the "
+            f"published source address"
         )
         published = word_at(self.manifest_offset)
-        if self.expect_boot:
+        if self.manifest_offset == self.image_manifest_offset:
             assert published == MANIFEST_MAGIC, (
                 f"published offset 0x{self.manifest_offset:x} holds {published!r}, "
-                f"not {MANIFEST_MAGIC!r}: this member expects a bootable manifest "
-                f"there"
+                f"not {MANIFEST_MAGIC!r}: this member declares the valid manifest there"
             )
         else:
             assert published != MANIFEST_MAGIC, (
                 f"published offset 0x{self.manifest_offset:x} holds "
-                f"{MANIFEST_MAGIC!r}: the invalid member would be handed a valid "
-                f"manifest and would boot"
+                f"{MANIFEST_MAGIC!r}, but the valid manifest is declared at "
+                f"0x{self.image_manifest_offset:x}"
             )
         self.logger.info(
-            "CHK-SMC-IMAGE: %s covers %d bytes from 0x%08x; 0x%x holds %r and the "
+            "CHK-SMC-IMAGE: %s covers %d bytes from 0x%08x; manifest offset "
+            "0x%x holds %r and the "
             "published offset 0x%x holds %r",
             path,
             span,
             SMC_SRAM_BASE,
-            DEFAULT_MANIFEST_OFFSET,
-            default,
+            self.image_manifest_offset,
+            image_manifest,
             self.manifest_offset,
             published,
         )
@@ -206,6 +208,9 @@ class sep_secondary_chiplet_base(sep_base_test):
             SMC_SRAM_BASE + self.manifest_offset,
         )
 
+    def prepare_smc_mem(self) -> None:
+        pass
+
     def build_efuse_image(self):
         # The SMC image is unsigned, so a secure-boot lifecycle would reject it.
         image = SepEfuseImage()
@@ -217,6 +222,7 @@ class sep_secondary_chiplet_base(sep_base_test):
 
         self.check_plusarg_agreement()
         self.check_smc_image()
+        self.prepare_smc_mem()
 
         image = self.build_efuse_image()
         self.write_efuse_image(image)

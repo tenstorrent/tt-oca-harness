@@ -64,18 +64,22 @@ inputs; they do not supersede the format the library consumes on BL0's behalf.
 
 For each selected slot, BL0 performs this sequence:
 
-. Read the fixed manifest header into SEP SRAM.
-. Validate the identifier, major version, manifest length, alignment, payload
-  offset and length, SRAM bounds, and non-overlap.
-. Verify the manifest hash.
-. Decide whether secure boot is active and apply selected lifecycle, chiplet
-  ID, and package ID usage constraints.
-. Read any permitted manifest extension and stage the payload.
-. Under secure boot, check rollback, authorize and check the root key, verify
-  RSA-3072, verify the payload hash, and decrypt an encrypted payload.
-  Without secure boot, still verify the payload hash.
-. Validate the TOC, image count, image order and bounds, per-image hashes, and
-  the presence and placement of SEP BL1.
+. Resolve the manifest source and reject it unless it is 8-byte aligned, before
+  reading any manifest byte. The fixed SPI slot offsets and stride carry
+  compile-time assertions for the same constraint.
+. Read the fixed manifest header into SEP SRAM, determine the body size, and
+  reject an unsupported header or a body that exceeds the staging area.
+. Read the body and run manifest validation: verify its hash, determine the
+  secure-boot state, apply selected lifecycle and identity constraints, check
+  rollback and root-key authorization/revocation, and verify RSA-3072 when
+  secure boot is active.
+. Resolve and bounds-check the untrusted payload offset, reject the resolved
+  source unless it is 8-byte aligned, then stage the payload.
+. Verify the stored payload hash, decrypt an encrypted payload, and verify the
+  plaintext hash chain and per-image hashes. Cleartext payloads receive the
+  same hash checks.
+. Validate the TOC, image count, image order and bounds, and the presence and
+  placement of SEP BL1.
 
 An encrypted payload is authenticated as ciphertext before decryption. The TOC
 inside it is interpreted only after decryption.

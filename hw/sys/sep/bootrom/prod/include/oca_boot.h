@@ -34,6 +34,7 @@
 #define OCA_BOOT_ERR_READ_OUT_OF_BOUNDS \
     0x00030106u                             // storage read refused by boot_flash_bounds_ok()
 #define OCA_BOOT_ERR_FLASH_READ 0x00030107u // flash transport reported a failed read
+#define OCA_BOOT_ERR_MANIFEST_ALIGNMENT 0x00030108u // manifest source is not 8-byte aligned
 
 // Load, authenticate and stage a manifest + payload into SEP SRAM.
 //

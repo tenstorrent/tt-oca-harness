@@ -60,12 +60,19 @@
 #ifndef BOOT_SLOT_MANIFEST_OFFSET
 #define BOOT_SLOT_MANIFEST_OFFSET 0x1000u
 #endif
+#define BOOT_STORAGE_ALIGNMENT 8u
 
 _Static_assert(BOOT_SLOT_SIZE <= (uint32_t)SEP_TOP_SEP_SRAM_SIZE,
                "BOOT_SLOT_SIZE exceeds SEP SRAM; the ROM stages manifest+payload into SRAM, so "
                "a slot cannot usefully be larger than it");
 _Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
                "BOOT_SLOT_MANIFEST_OFFSET must place the manifest inside its own slot");
+_Static_assert((BOOT_STORAGE_ALIGNMENT & (BOOT_STORAGE_ALIGNMENT - 1u)) == 0u,
+               "BOOT_STORAGE_ALIGNMENT must be a power of two");
+_Static_assert((BOOT_SLOT_SIZE % BOOT_STORAGE_ALIGNMENT) == 0u,
+               "BOOT_SLOT_SIZE must preserve manifest source alignment between slots");
+_Static_assert((BOOT_SLOT_MANIFEST_OFFSET % BOOT_STORAGE_ALIGNMENT) == 0u,
+               "BOOT_SLOT_MANIFEST_OFFSET must be storage aligned");
 
 #ifndef PRIMARY_MANIFEST_OFFSET
 #define PRIMARY_MANIFEST_OFFSET (0u * BOOT_SLOT_SIZE + BOOT_SLOT_MANIFEST_OFFSET)
@@ -73,6 +80,10 @@ _Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
 #ifndef BACKUP_MANIFEST_OFFSET
 #define BACKUP_MANIFEST_OFFSET (1u * BOOT_SLOT_SIZE + BOOT_SLOT_MANIFEST_OFFSET)
 #endif
+_Static_assert((PRIMARY_MANIFEST_OFFSET % BOOT_STORAGE_ALIGNMENT) == 0u,
+               "PRIMARY_MANIFEST_OFFSET must be storage aligned");
+_Static_assert((BACKUP_MANIFEST_OFFSET % BOOT_STORAGE_ALIGNMENT) == 0u,
+               "BACKUP_MANIFEST_OFFSET must be storage aligned");
 
 #if BOOT_SPI_CONTROLLER_OT
 #include "sep_ot_spi.h"
