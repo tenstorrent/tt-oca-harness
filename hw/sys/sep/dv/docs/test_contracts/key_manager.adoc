@@ -2718,7 +2718,7 @@ Every test runs in run mode `no_cpu`, target `lsu_stub_all_live`, and joins the 
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Known limitation*: A leaf can fail, with every checker passing, on the AXI reset assertions of the Key Manager CPU port (`OCAH_AXI_AR_VALID_RESET_LOW`, `OCAH_AXI_AW_VALID_RESET_LOW`, `OCAH_AXI_W_VALID_RESET_LOW`) when a KM reset of the leaf lands on a clock with a CPU request pending; that depends on the seed (<<sep_km_boot_reset_rand_test>> grades it on every seed).
+*Known limitation*: A leaf can fail, with every checker passing, on the AXI reset assertions of the Key Manager CPU port (`OCAH_AXI_AR_VALID_RESET_LOW`, `OCAH_AXI_AW_VALID_RESET_LOW`, `OCAH_AXI_W_VALID_RESET_LOW`) when a KM reset of the leaf lands on a clock with a CPU request pending, which happens on most seeds of this leaf (<<sep_km_boot_reset_rand_test>> grades it on every seed).
 
 *Issue*: #3170
 
