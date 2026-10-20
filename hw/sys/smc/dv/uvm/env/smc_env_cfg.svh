@@ -38,6 +38,7 @@ class smc_env_cfg extends ocah_env_cfg;
   bit mailbox_reset_sequence_negative;
   bit extreg_lane_sequence_negative;
   bit narrow_side_effect_sequence_negative;
+  bit ingress_reset_sequence_negative;
   bit mailbox_fifo_scoreboard_negative;
   // Backing memory of the SYS_OUT responder, in bytes (addresses wrap).
   int unsigned sys_out_mem_bytes = 32'h8000_0000;
@@ -69,6 +70,7 @@ class smc_env_cfg extends ocah_env_cfg;
     c.mailbox_reset_sequence_negative = t.mailbox_reset_sequence_negative;
     c.extreg_lane_sequence_negative = t.extreg_lane_sequence_negative;
     c.narrow_side_effect_sequence_negative = t.narrow_side_effect_sequence_negative;
+    c.ingress_reset_sequence_negative = t.ingress_reset_sequence_negative;
     c.mailbox_fifo_scoreboard_negative = t.mailbox_fifo_scoreboard_negative;
     c.required_features       = t.required_features;
     return c;
