@@ -602,6 +602,8 @@
 `SEP_TB_OUT(logic [5*32-1:0], km_key_aw_addr_o)
 // KM-OUTFIFO: fill level of the outbound FIFO of the KM mailbox, every clock.
 `SEP_TB_OUT(logic [8:0], km_outfifo_depth_o)
+// KM-INFIFO: head word of the inbound FIFO of the KM mailbox, {separator, data}.
+`SEP_TB_OUT(logic [32:0], km_infifo_head_o)
 // KM-LAT: the latency of the last completed KM SRAM read at the sep input
 // km_sram_mem_rsp_i, in clocks from the accepted request to rvalid, and the
 // count of completed reads since the bench reset.

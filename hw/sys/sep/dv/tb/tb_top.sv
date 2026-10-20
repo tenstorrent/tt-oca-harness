@@ -3635,6 +3635,9 @@ module sep_uvm_top
     // KM-OUTFIFO: fill level of the outbound FIFO of the KM mailbox, every
     // clock.
     assign km_outfifo_depth_o = 9'(`KM_TAP.u_mailbox.outbound_depth);
+    // KM-INFIFO: the head word of the inbound FIFO of the KM mailbox
+    // ({separator, data}; 0 while the FIFO is empty), every clock.
+    assign km_infifo_head_o = 33'(`KM_TAP.u_mailbox.inbound_rdata);
     // KM-LAT: KM SRAM read latency at the sep input km_sram_mem_rsp_i, after
     // HK-LAT: the clocks from the accepted read request to the rvalid of its
     // response (1 while HK-LAT is idle). km_sram_rd_lat_o holds the latency of

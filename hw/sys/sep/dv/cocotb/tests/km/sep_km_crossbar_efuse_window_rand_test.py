@@ -1132,14 +1132,18 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             )
             r["line"] = line
             bad = []
+            done_bad = []
             if r["req_err_before"]:
                 bad.append("efuse_req_error read 1 after its clear (control)")
             if not r["waited"] or not otp["waited"]:
                 bad.append("the bounded wait ran out")
             if r["fresh"] and r["done_before"] != 0:
-                bad.append("program_done read 1 before the first program since the reset")
+                done_bad.append("program_done read 1 before the first program since the reset")
             if r["fresh"] and r["done"] != 1:
-                bad.append("program_done != 1")
+                done_bad.append("program_done != 1")
+            # program_done is graded on the first program of the pair, on
+            # either path; the other host fields are the twin (control=1).
+            problems += [f"{b}: {line}" for b in done_bad]
             if r["status"] != 0:
                 bad.append("program_status is 1")
             if r["req_err"] != 0:
@@ -1149,7 +1153,9 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             if path == "km":
                 problems += [f"{b}: {line}" for b in bad]
             else:
-                self.logger.info("CTL-EFW-PROG %s control=1 match=%d", line, int(not bad))
+                self.logger.info(
+                    "CTL-EFW-PROG %s control=1 match=%d", line, int(not bad and not done_bad)
+                )
         # program_status and efuse_req_error belong to each program (see
         # above); program_done only to the first one.
         keys = ("status", "req_err")
@@ -1167,11 +1173,15 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         if km_tuple != host_tuple:
             problems.append(f"KM tuple {km_tuple} != host tuple {host_tuple}")
         self._fail("CHK-EFW-PROG", problems)
+        first = out[order[0]]
         self.logger.info(
-            "CHK-EFW-PROG PASS %s host_tuple_equal=1 tuple_fields=%s done_graded_path=%s",
+            "CHK-EFW-PROG PASS %s host_tuple_equal=1 tuple_fields=%s done_graded_path=%s "
+            "done_graded_before=%d done_graded_after=%d",
             out["km"]["line"],
             ",".join(keys),
             order[0],
+            first["done_before"],
+            first["done"],
         )
         return out
 

@@ -42,8 +42,8 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-RST-WARM      SOFT and PARK reset the warm witnesses, keep the cold and data ones
   CHK-RST-COLD      a cold reset clears both domains and the mailbox word
   CHK-RST-WRONG     a wrong SOFT_RST_CODE takes no reset
-  CHK-HOLD          the first ROM fetch after the km_sw_rst_n rise is at least
-                    MIN_RESET_CYCLES (10) clocks later
+  CHK-HOLD          the KM warm reset rises at least MIN_RESET_CYCLES (10)
+                    clocks after the km_sw_rst_n rise
   CHK-ISO           the three KM isolation probes stay 0 during a SOFT reset
 
 Controls: the VERSION read before the write; the W1C of the other bits next to
@@ -116,13 +116,14 @@ def _h(v: int | None) -> str:
 class _Smp:
     cyc: int
     rst: int | None
+    wrst: int | None
     iso: tuple[int | None, int | None, int | None]
     cnt: int | None
     aw: bool
 
 
 class _ResetWatch:
-    """Per-clock samples of KM-RST, KM-ISO, KM-COUNT and the SW_RESET_N AW start."""
+    """Per-clock samples of KM-RST, the KM warm reset, KM-ISO, KM-COUNT and the SW_RESET_N AW start."""
 
     def __init__(self, test: sep_base_test, period_ps: int) -> None:
         dut = cocotb.top
@@ -130,6 +131,7 @@ class _ResetWatch:
         self.period_ps = period_ps
         self.clk = dut.clk_i
         self.rst = dut.km_gated_rst_n_probe_o
+        self.wrst = dut.km_cpu_rst_n_o
         self.isos = (
             dut.hmac_km_isolated_probe_o,
             dut.kmac_km_isolated_probe_o,
@@ -176,6 +178,7 @@ class _ResetWatch:
             s = _Smp(
                 self.cyc(),
                 self._bit(self.rst),
+                self._bit(self.wrst),
                 tuple(self._bit(p) for p in self.isos),
                 self._bit(self.cnt),
                 aw,
@@ -199,6 +202,15 @@ class _ResetWatch:
 
     def first_rise(self, after: int) -> int | None:
         return self._edge(after, 0, 1)
+
+    def first_warm_rise(self, after: int) -> int | None:
+        """The first clock after ``after`` at which the KM warm reset reads 1 after 0."""
+        prev = None
+        for s in self.rec:
+            if s.cyc > after and prev is not None and prev.wrst == 0 and s.wrst == 1:
+                return s.cyc
+            prev = s
+        return None
 
     def first_count_change(self, at: int) -> int | None:
         base = self.by_cyc[at].cnt
@@ -836,6 +848,8 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             "w_act": a_rel - fall,
             "rise": rise,
             "first_fetch": cnt_at - rise - 1,
+            "warm_rise": w.first_warm_rise(rise - 1),
+            "warm_low": any(x.wrst == 0 for x in hold_win),
             "after_fall": a_rel > fall,
             "iso_at_rel": s_rel is not None and s_rel.iso == (1, 1, 1),
             # The KM is held when the ROM fetch count settles before the reset
@@ -859,7 +873,11 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
     def _grade_hold(self, r: dict, exact: bool) -> None:
         self.chk.ctrl(
             "HOLD-PRE",
-            r["after_fall"] and r["iso_at_rel"] and r["cnt_stable"] and r["known"],
+            r["after_fall"]
+            and r["iso_at_rel"]
+            and r["cnt_stable"]
+            and r["known"]
+            and r["warm_low"],
             park=r["label"],
             fall=r["fall"],
             release_aw=r["a_rel"],
@@ -869,14 +887,17 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             rise=r["rise"],
             hold_fetches=r["hold_fetches"],
             known=r["known"],
+            warm_low=r["warm_low"],
         )
         if exact:
             self.chk.ctrl("HOLD-W", r["w_act"] == r["hold"], w=r["hold"], w_act=r["w_act"])
+        warm_hold = None if r["warm_rise"] is None else r["warm_rise"] - r["rise"]
         self.chk.ok(
             "HOLD",
-            r["first_fetch"] >= pl.MIN_RESET_CYCLES,
+            warm_hold is not None and warm_hold >= pl.MIN_RESET_CYCLES,
             w=r["hold"],
             w_act=r["w_act"],
+            warm_hold_after_release=warm_hold,
             first_fetch_after_release=r["first_fetch"],
             bound=pl.MIN_RESET_CYCLES,
             fall_delay=r["fall_delay"],

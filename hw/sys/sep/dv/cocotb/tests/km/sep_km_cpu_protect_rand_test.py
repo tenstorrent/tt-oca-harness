@@ -765,6 +765,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         await self.poke.mbox.post_raw_words([w.mbox])
         depth_before = await self._mbox_depth()
         await ReadOnly()
+        head_before = self.rd_known(cocotb.top.km_infifo_head_o)
         err_at_push = self._err()
         wipe_at_push = self._irq() & IRQ_WIPE_STATE
         sram_before = self.poke.word(kp.W_DATA)
@@ -779,6 +780,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         sram_after = self.poke.word(kp.W_DATA)
         depth_after = await self._mbox_depth()
         await ReadOnly()
+        head_after = self.rd_known(cocotb.top.km_infifo_head_o)
         valid_after = self._hmac_valid()
         irq_after = self._irq()
 
@@ -817,20 +819,27 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             irq_after,
         )
 
-        assert sram_before == w.sram and depth_before == 1, (
+        mbox_word = (1 << 32) | w.mbox  # the separator is on the one pushed word
+        assert sram_before == w.sram and depth_before == 1 and head_before == mbox_word, (
             f"CHK-TRAP-SCOPE FAIL: kind={kind}: witnesses before the trap: SRAM word "
             f"0x{sram_before:08x} (expected 0x{w.sram:08x}), mailbox depth {depth_before} "
-            "(expected 1); the control is not met"
+            f"(expected 1), inbound head 0x{head_before:09x} (expected 0x{mbox_word:09x}); "
+            "the control is not met"
         )
         assert sram_after == w.sram, (
             f"CHK-TRAP-SCOPE FAIL: kind={kind}: SRAM result word 0x{sram_after:08x} after the "
             f"trap, expected the witness 0x{w.sram:08x}"
         )
-        assert depth_after == 1, (
-            f"CHK-TRAP-SCOPE FAIL: kind={kind}: SEP_STATUS inbound depth {depth_after} after the "
-            "trap, expected the 1 pushed word"
+        assert depth_after == 1 and head_after == mbox_word, (
+            f"CHK-TRAP-SCOPE FAIL: kind={kind}: SEP_STATUS inbound depth {depth_after} and "
+            f"inbound head 0x{head_after:09x} after the trap, expected the 1 pushed word "
+            f"0x{mbox_word:09x}"
         )
-        self.logger.info("CHK-TRAP-SCOPE PASS: kind=%s sram_same=1 mbox_depth=1", kind)
+        self.logger.info(
+            "CHK-TRAP-SCOPE PASS: kind=%s sram_same=1 mbox_depth=1 mbox_word=0x%09x",
+            kind,
+            head_after,
+        )
 
         assert ctl["control_w0"] == 0 and ctl["control_w1"] == 1, (
             f"CHK-TRAP-ENGINE FAIL: kind={kind}: KM-VALID HMAC showed {ctl['control_w0']} after "

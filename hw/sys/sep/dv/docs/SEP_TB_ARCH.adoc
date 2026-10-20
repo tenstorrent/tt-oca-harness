@@ -339,6 +339,10 @@ Observation probe groups:
 ** KM-OUTFIFO (`km_outfifo_depth_o[8:0]`): the fill level of the outbound
    FIFO of the Key Manager mailbox, on every clock. User:
    `sep_km_fault_inject_rand_test` (CHK-SHRED-FIRST).
+** KM-INFIFO (`km_infifo_head_o[32:0]`): the head word of the inbound FIFO of
+   the Key Manager mailbox, `{separator, data}`, on every clock; 0 while the
+   FIFO is empty. Read-only. User: `sep_km_cpu_protect_rand_test`
+   (CHK-TRAP-SCOPE).
 ** KM-LAT (`km_sram_rd_lat_o[7:0]`, `km_sram_rd_done_count_o`): the KM SRAM
    read latency at the `sep` input `km_sram_mem_rsp_i`, after HK-LAT, in
    clocks from the accepted read request to `rvalid` (1 while HK-LAT is

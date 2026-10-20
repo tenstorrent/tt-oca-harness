@@ -623,7 +623,18 @@ class sep_km_kpv_rand_test(sep_base_test):
                         rd_slv=rd_slv,
                     )
                 else:
-                    kept = self._tap_kept(self.group_taps[2][0], s)
+                    first = self.group_taps[2][0]
+                    kept = self._tap_kept(first, s)
+                    # The tap slice of slot s holds the words just stored there,
+                    # so the kept compare reads slot s and not another range.
+                    lo, hi = s * m.N_WORDS, (s + 1) * m.N_WORDS
+                    self.chk.ctrl(
+                        "KPV-TAP-SLOT",
+                        self.taps[first][lo:hi] == list(rec),
+                        slot=s,
+                        tap_w0=_h(self.taps[first][lo]),
+                        stored_w0=_h(rec[0]),
+                    )
                     graded = wr_slv == 1 and kept and rd == 0 and rd_slv == 1
                 fields = {"wr_slv": wr_slv}
                 if st == "WR":

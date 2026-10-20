@@ -344,7 +344,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         written = sum(
             sum(1 for w in plan.shares[bit][s] if w) for (bit, s), ok in wr_ok.items() if ok
         )
-        zero = nonzero = resp_err = 0
+        zero = nonzero = resp_err = resp_slv = resp_dec = 0
         bad: list[str] = []
         for (bit, s), (data, flags) in sorted(reads.items()):
             for i, (d, f) in enumerate(zip(data, flags, strict=True)):
@@ -356,7 +356,18 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
                         bad.append(f"{pl.BANKS[bit].name}.s{s}[{i}]={_h(d)}")
                 if not _flags_ok(f):
                     resp_err += 1
-        self.chk.obs("SHARE-READ-RESP", reads=zero + nonzero, resp_flagged=resp_err)
+                if f is not None:
+                    resp_slv += f.slv
+                    resp_dec += f.dec
+        # The specification states the read data of a share word (0) and not its
+        # response, so the response is logged and not graded.
+        self.chk.obs(
+            "SHARE-READ-RESP",
+            reads=zero + nonzero,
+            resp_flagged=resp_err,
+            slv=resp_slv,
+            dec=resp_dec,
+        )
         self.chk.ctrl(
             "SHARE-WRITES",
             written == pl.N_SHARE_WORDS and all(wr_ok.values()),
