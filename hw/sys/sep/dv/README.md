@@ -36,13 +36,6 @@ python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke     # the SV-
   given. Set both from `nproc`. Keep the
   firmware classes near 8, because the threaded VeeR EL2 model can stall near
   reset.
-* A long `no_cpu` leaf runs faster on a threaded model. Add
-  `--comp-arg=--threads --comp-arg=8 --comp-arg=-CFLAGS --comp-arg=-O2`, and
-  give each leaf 8 cores: `--cores 8` with an LSF executor, or `--sim-jobs`
-  times 8 no more than `nproc` on one host. A leaf on fewer cores than model
-  threads runs slower than on the single-threaded model. The threaded model is
-  a separate entry in the build cache, and a seed gives the same check lines on
-  both models.
 * `all` contains the `cpu` firmware tests, so it needs a picolibc-enabled
   RISC-V GCC (see [Prerequisites](#prerequisites)). `smoke` needs no firmware
   toolchain.
