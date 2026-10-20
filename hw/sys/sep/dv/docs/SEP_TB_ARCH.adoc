@@ -222,6 +222,10 @@ Observation probe groups:
   `km_cond_rst_probe_o`, the two Key Manager reset conditioner outputs (bit 1
   `rst_cold_aasd_n`, bit 0 `rst_warm_sync_n` of `u_key_manager_s3c_scan`);
   owner `sep_scan_reset_override_test`.
+  `refcnt_rst_n_probe_o`, the two reset synchronizer outputs of the reference
+  counter (bit 1 `prstb_synced_rd` on `clk_ref_i`, bit 0 `prstb_synced_write`
+  on `clk_i`, of `u_sep_system_csr.u_reference_counter_counter`); owner
+  `sep_scan_reset_override_test`.
 * Core JTAG and DMI outputs: `jtag_tdo_o` (core TAP TDO), `dmi_uncore_en_o`
   and `dmi_uncore_wr_en_o` (wrapper ports `dmi_uncore_en`,
   `dmi_uncore_wr_en`). Owner: `sep_debug_master_target_matrix_test`.
@@ -242,6 +246,9 @@ Observation probe groups:
   of the read and program interfaces sit before the guard and cannot show a
   refusal. `efuse_shim_resp_{valid,status,data}_o`, the shim response at the
   `sep` input `efuse_shim_command_resp_i`, after the sense-status inject.
+  `efuse_bank_psel_o`, the APB `psel` of the shim request to the bank model
+  (`efuse_model_otp_req` in `sep_ip_integration`), sampled every clock to show
+  that a request the guard blocks starts no bank access.
   `otp_bank_probe_o`, the 256 bank words that SEP reaches
   (`EFUSE_BANK_REG[0..255]` of the bank model), for the snapshot, bit diff
   and per-clock sample; the bench has no bank write hook.

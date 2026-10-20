@@ -354,6 +354,7 @@ module sep_fcov (
   input wire [13:0]          iso_ack_i,         // sep_crypto_isolated, bench index
   input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_n
   input wire [1:0]           km_cond_rst_n_i,   // {rst_cold_aasd_n, rst_warm_sync_n}
+  input wire [1:0]           refcnt_rst_n_i,    // reference counter {clk_ref_i, clk_i} reset
   input sep_pkg::jtag_sep_reset_ctrl_t jtag_rst_ctrl_i,  // after the pin-or-TDR mux
   input wire [30:0]          dmi_rst_vec_i,     // reset-vector TDR, bits 31:1
   // u_sep_wdt_wrap adapter stages.
@@ -11814,12 +11815,13 @@ module sep_fcov (
       bins scan1_te1 = {2'b11};
     }
     // Net: 0 sep_reset_n, 1 sep_cpu_reset_n, 2..7 ip_rst_n[1..6],
-    // 8 aon_rst_n, 9 Key Manager cold, 10 Key Manager warm. Case 0 keeps
-    // its value (test_en_i 0), 1 low before the rise (test_en_i 1), 2 the
-    // release of net 0 or 8 off the clock edge.
+    // 8 aon_rst_n, 9 Key Manager cold, 10 Key Manager warm, 11 ip_rst_n[0],
+    // 12 reference counter clk_ref_i reset, 13 reference counter clk_i reset.
+    // Case 0 keeps its value (test_en_i 0), 1 low before the rise
+    // (test_en_i 1), 2 the release of net 0 or 8 off the clock edge.
     cp_scan_net_effect: coverpoint s.sn iff (s.sn_v) {
-      bins te0_keeps[] = {[6'd0 : 6'd10]};
-      bins te1_low[] = {[6'd16 : 6'd26]};
+      bins te0_keeps[] = {[6'd0 : 6'd13]};
+      bins te1_low[] = {[6'd16 : 6'd29]};
       bins sep_reset_n_release_bypassed = {6'd32};
       bins aon_rst_n_release_bypassed = {6'd40};
     }
@@ -12971,9 +12973,9 @@ module sep_fcov (
   logic mr_ro_arm = 1'b0;
   logic mr_ro_low = 1'b0;
   logic mr_ro_bad_q = 1'b0;
-  logic [10:0] mr_sn_snap = '0;
-  logic [10:0] mr_sn_keep = '0;
-  logic [10:0] mr_sn_now_q = '0;
+  logic [13:0] mr_sn_snap = '0;
+  logic [13:0] mr_sn_keep = '0;
+  logic [13:0] mr_sn_now_q = '0;
   logic mr_sn_on = 1'b0;
   logic mr_sn_te = 1'b0;
   logic mr_sn_te_ok = 1'b0;
@@ -12984,7 +12986,10 @@ module sep_fcov (
   int unsigned mr_mp_tog = 0;
   logic mr_mp_rel = 1'b0;
   int unsigned mr_mp_cnt = 0;
-  wire [10:0] mr_sn_now = {
+  wire [13:0] mr_sn_now = {
+    refcnt_rst_n_i[0] === 1'b1,
+    refcnt_rst_n_i[1] === 1'b1,
+    ip_rst_n_i[0] === 1'b1,
     km_cond_rst_n_i[0] === 1'b1,
     km_cond_rst_n_i[1] === 1'b1,
     aon_rst_n_i === 1'b1,
@@ -13069,7 +13074,7 @@ module sep_fcov (
       u_sep_reset_source_cg.sample(e);
     end
 
-    // cp_scan_net_effect, the 22 net cells
+    // cp_scan_net_effect, the 28 net cells
     if (mr_scan_q && !mr_scan) begin
       mr_sn_on    <= mr_own_scan;
       mr_sn_snap  <= mr_sn_now_q;
@@ -13084,7 +13089,7 @@ module sep_fcov (
     end else if (mr_sn_on && !mr_scan_q && mr_scan) begin
       mr_sn_on <= 1'b0;
       if (mr_own_scan && mr_sn_te_ok && (mr_sn_w >= MrScanMinW)) begin
-        for (int n = 0; n < 11; n++) begin
+        for (int n = 0; n < 14; n++) begin
           if (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n]) begin
             mr_src_t e;
             e      = '0;

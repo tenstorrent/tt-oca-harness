@@ -16,6 +16,11 @@ and Test-Mode Protection, Fuse Fields, Anti-Rollback Security-Version Flags);
 ``SIP_DIS``, ``SYS_DIS``); ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc``
 (``EFUSE_PROGRAM_CTRL``, ``EFUSE_READ_CTRL``, ``EFUSE_INTERFACE_CTRL_STATUS``);
 ``hw/sys/sep/doc/lifecycle_controller.adoc`` (Per-LC-state Feature Control Profile).
+``hw/sys/sep/doc/otp_fuse_controller.adoc`` states "`efuse_guard` filters every
+command before it reaches the shim" and "A write-lock blocks fuse programming and
+shadow writes; a read-lock blocks software and JTAG reads of both the fuse field and
+its shadow"; ``hw/ip/efuse/doc/architecture.adoc`` (Access Permissions and Security)
+states that lock state is enforced by the eFuse guard.
 
 The seed draws one leaf kind and its t=0 image through ``sep_efuse_plan.plan``
 (the pre-sim hook stages the same image): the lock leg 4, the single-bit image 1,
@@ -34,6 +39,13 @@ Checkers:
                     unlocked field it lands exactly its bit with one program command
                     at its address; a shadow write is
                     blocked under a write-lock and ORs the new bit without one.
+  CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
+                    read-interface request on a read-locked field, a program on a
+                    write-locked field): from the go write to the disable write, the
+                    post-guard ``efuse_shim_cmd_valid_o`` and the bank APB
+                    ``efuse_bank_psel_o``, sampled on every rising clock edge, are 0 on
+                    every edge, so no pulse of even one clock reaches the shim or the
+                    bank.
   CHK-LOCK-EXEMPT   exempt cell: ``LC_STATE``, ``LOCKS`` and ``LOCKS_SPARE`` read their
                     staged values with every assigned lock bit burned.
   CHK-LOCK-ORDER    order cell: a shadow write lands only before the lock, the lock bit
@@ -48,8 +60,10 @@ Checkers:
 
 Controls: the unlocked neighbours of the target slot are the accepted read and
 landed program twins of the lock leg (``CTRL-LOCK-CELL-RD-TWIN``,
-``CTRL-LOCK-CELL-PROG-TWIN``); an unlocked shadow-write field is the twin of a
-blocked shadow write (``CTRL-LOCK-CELL-WR-TWIN``; the plan trap filter leaves at
+``CTRL-LOCK-CELL-PROG-TWIN``); every accepted read and landed program of the same
+leaf, sampled in the same window by the same sampler, shows valid and ``psel`` 1 on
+at least one edge (``CTRL-GUARD-NOPULSE-LIVE``, one line per request kind); an
+unlocked shadow-write field is the twin of a blocked shadow write (``CTRL-LOCK-CELL-WR-TWIN``; the plan trap filter leaves at
 least one of slots 3, 4, 21 and 22 without a write-lock in every lock leaf); the single-bit image has its own
 twin slot; the exempt cell has the ``CLASS_KEY`` blocked request and the ``LOCKS``
 accepted request (``CTRL-LOCK-EXEMPT-RL``, ``CTRL-LOCK-EXEMPT-TWIN``); the order cell
@@ -78,7 +92,14 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
-from env.sep_efuse_bank_watch import SepEfuseBank, SepShimCmdMonitor, diff_is_exactly, diff_log
+from env.sep_efuse_bank_watch import (
+    PulseCount,
+    SepEfuseBank,
+    SepShimCmdMonitor,
+    WatchMark,
+    diff_is_exactly,
+    diff_log,
+)
 from env.sep_efuse_plan import (
     LOCK_SLOT_FIELD,
     PROGRAM_CTRL_ADDR,
@@ -139,8 +160,8 @@ _SHADOW_WRITE_FIELDS = ("SIP_DIS", "SYS_DIS", "REQUIRED_SIGNERS", "REQUIRED_ALGS
 
 # Checks per leaf kind (checkers table of the entry). No check runs on every seed.
 _EVIDENCE = {
-    "lock_leg": ("CHK-LOCK-CELL",),
-    "single_bit": ("CHK-LOCK-CELL",),
+    "lock_leg": ("CHK-LOCK-CELL", "CHK-GUARD-NOPULSE"),
+    "single_bit": ("CHK-LOCK-CELL", "CHK-GUARD-NOPULSE"),
     "exempt": ("CHK-LOCK-EXEMPT",),
     "order": ("CHK-LOCK-ORDER",),
     "chain": ("CHK-PROG-ROUND", "CHK-PROG-VERSION"),
@@ -251,12 +272,14 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         graded on a flag that was already set cannot pass.
         """
         pre = await self._req_err_now()
+        start = self._pulse_mark()
         await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit_addr))
         await ClockCycles(cocotb.top.clk_i, self.w)
         ctrl = await self._rd32(READ_CTRL_ADDR)
         st = await self._rd32(STATUS_ADDR)
         await self._wr(READ_CTRL_ADDR, 0)
         r = {
+            "pulses": self._pulses(start),
             "busy": _bit(ctrl, _RD_BUSY),
             "done": _bit(ctrl, _RD_DONE),
             "status": _bit(ctrl, _RD_STATUS),
@@ -272,6 +295,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         """Program bit ``bit_addr`` (data 1): go, full W, command tap, bank diff, status."""
         snap = self.bank.snapshot()
         mark = self.shim.mark() if watch else None
+        start = self._pulse_mark() if watch else None
         await program_go_no_wait(self._wr, bit_addr, read_back=read_back)
         await ClockCycles(cocotb.top.clk_i, self.w)
         progs = self.shim.programs_since(mark) if mark is not None else None
@@ -280,6 +304,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         st = await self._rd32(STATUS_ADDR)
         await self._wr(PROGRAM_CTRL_ADDR, 0)
         r = {
+            "pulses": self._pulses(start),
             "busy": _bit(ctrl, _PG_BUSY),
             "done": _bit(ctrl, _PG_DONE),
             "prog_status": _bit(ctrl, _PG_STATUS),
@@ -291,6 +316,51 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         if r["req_err"]:
             r["clr_req_err"] = await self._clear_status()
         return r
+
+    def _pulse_mark(self) -> WatchMark | None:
+        """Start of a request window, when the command monitor runs (lock leg, single bit)."""
+        return self.shim.mark() if self.pulse_watch else None
+
+    def _pulses(self, start: WatchMark | None) -> PulseCount | None:
+        """Valid and ``psel`` clocks from ``start`` to now; raises if no edge was sampled."""
+        return None if start is None else self.shim.pulses_between(start, self.shim.mark())
+
+    def _guard_nopulse(self, req: str, r: dict, blocked: bool, **fields: Any) -> None:
+        """CHK-GUARD-NOPULSE on a blocked request; an accepted one feeds the live control."""
+        pc: PulseCount | None = r["pulses"]
+        if pc is None:
+            return
+        if blocked:
+            self.chk.ok(
+                "GUARD-NOPULSE",
+                pc.valid == 0 and pc.psel == 0,
+                req=req,
+                **fields,
+                edges=pc.edges,
+                valid_pulses=pc.valid,
+                psel_pulses=pc.psel,
+            )
+            self.blocked_reqs[req] += 1
+        else:
+            self.live_reqs[req].append(pc)
+
+    def _guard_live_ctrl(self) -> None:
+        """Each request kind with a blocked request has accepted twins that all show
+        valid and ``psel`` on the same sampler."""
+        for req, n_blocked in self.blocked_reqs.items():
+            if not n_blocked:
+                continue
+            live = self.live_reqs[req]
+            self.chk.ctrl(
+                "GUARD-NOPULSE-LIVE",
+                bool(live) and all(pc.valid >= 1 and pc.psel >= 1 for pc in live),
+                req=req,
+                blocked=n_blocked,
+                accepted=len(live),
+                edges=",".join(str(pc.edges) for pc in live),
+                valid_pulses=",".join(str(pc.valid) for pc in live),
+                psel_pulses=",".join(str(pc.psel) for pc in live),
+            )
 
     @staticmethod
     def _landed(r: dict, bit_addr: int) -> bool:
@@ -345,8 +415,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         )
         self.bank = SepEfuseBank()
         # The post-guard command tap anchors the lock leg and the single-bit image only.
-        self.shim = SepShimCmdMonitor()
-        if kind in ("lock_leg", "single_bit"):
+        self.shim = SepShimCmdMonitor(psel=True)
+        self.pulse_watch = kind in ("lock_leg", "single_bit")
+        if self.pulse_watch:
             self.shim.start()
         await ClockCycles(cocotb.top.clk_i, 2)
 
@@ -414,6 +485,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             f["rd_clr_req_err"] = r["clr_req_err"]
             f["rd_bit_addr"] = read_bit["addr"]
             f["rd_flags"] = f"busy{r['busy']}/done{r['done']}/st{r['status']}"
+            self._guard_nopulse("read", r, rl, slot=slot, field=name, bit_addr=read_bit["addr"])
             if rl:
                 ok &= (
                     r["pre_req_err"] == 0
@@ -439,6 +511,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             )
             f["shim_cmd"] = len(r["progs"])
             f["pg_flags"] = f"busy{r['busy']}/done{r['done']}/st{r['prog_status']}"
+            self._guard_nopulse("program", r, wl, slot=slot, field=name, bit_addr=a)
             if wl:
                 f["prog"] = "blocked"
                 ok &= self._refused(r)
@@ -476,6 +549,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         self.landed_progs = 0
         self.or_writes = 0
         self.blocked_writes = 0
+        self.blocked_reqs = {"read": 0, "program": 0}
+        self.live_reqs: dict[str, list[PulseCount]] = {"read": [], "program": []}
 
     async def _lock_leg(self) -> None:
         leg = self.plan.leg
@@ -513,6 +588,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             landed_with_shim_cmd=self.landed_progs,
             blocked=blocked_progs,
         )
+        self._guard_live_ctrl()
         if self.blocked_writes:
             self.chk.ctrl(
                 "LOCK-CELL-WR-TWIN",
@@ -550,6 +626,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         self.chk.ok("LOCK-CELL", res["ok"], image="single_bit", **res["fields"])
         self.chk.ok("LOCK-CELL", tw["ok"], image="single_bit", role="twin", **tw["fields"])
         self.chk.ctrl("LOCK-CELL-SINGLE-TWIN", twin_ok, slot=slot, kind=lk, twin=twin)
+        self._guard_live_ctrl()
 
     # --- exempt cell (entry step 8) ---------------------------------------------
     async def _exempt(self) -> None:
