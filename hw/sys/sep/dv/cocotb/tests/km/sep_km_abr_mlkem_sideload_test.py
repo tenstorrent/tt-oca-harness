@@ -182,7 +182,7 @@ _POLL_ITERS = 20000
 _POLL_GAP = 200
 
 # CHK-KEM-SK-REARM. q, the count of CMD_HW_VER frames queued before the host
-# reads the re-arm notification, is drawn in [0, _REARM_MAX_Q].
+# reads the re-arm notification, is drawn in [1, _REARM_MAX_Q].
 _REARM_MAX_Q = 3
 # Bound on the wait for each re-arm leg frame, in 20-cycle mailbox polls.
 _REARM_FRAME_POLLS = 50_000

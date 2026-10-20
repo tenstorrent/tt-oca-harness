@@ -72,8 +72,8 @@ tests = ["sep_axi_smoke_test"]
 #   needs X on the unreset token flops, which only a four-state simulator shows.
 # - sep_sec_dis_timing_rand_test, VCS only (efuse_lcc.toml). Its reset-value checks of
 #   the unreset shadow words under the SEC_DIS match need X.
-# - sep_km_otp_interface_rand_test, VCS only (km.toml), as its run mode states. It
-#   grades the KM OTP integrity legs through the HK-OTP inject.
+# - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
+#   OTP integrity legs through the HK-OTP inject.
 name = "all"
 expected_count = 270
 tests = [

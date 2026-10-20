@@ -62,8 +62,9 @@ SPEC_CMD_IDS = frozenset(
 )
 INVALID_CMD_IDS = tuple(i for i in range(0x100) if i not in SPEC_CMD_IDS)
 
-# The five commands that reach their handlers while RECOVERABLE_ERR is set
-# ("Error Recovery"); every other valid command is gated.
+# The four status commands that reach their handlers while RECOVERABLE_ERR is
+# set ("Error Recovery"), besides CMD_RECOV_ACK, which clears the bit; every
+# other valid command is gated.
 ADMITTED = (CMD_HW_VER, CMD_ROM_VER, CMD_SRAM_VER, CMD_STAT)
 GATED = (
     CMD_KEY_GENERATE,

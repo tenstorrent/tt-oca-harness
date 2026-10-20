@@ -10,7 +10,7 @@ IDs from the command summary table of "Command Message Reference", the return
 codes from the return-code table of "0x00 - RESP_CMD", the response IDs from
 the headings of the response sections ("0x00 - RESP_CMD", "0x55 - RESP_KM_READY"),
 and the frame layout from "Command Message Reference". The FIFO depth is the
-depth of the ``km_mailbox_sep`` FIFOs (``hw/ip/key_manager/doc/km_mailbox_sep.adoc``).
+depth of the ``km_mailbox_sep`` FIFOs (``hw/ip/key_manager/regs/gen/adoc/km_mailbox_sep.adoc``).
 The CRC goldens are ``env/sep_crc_golden.py``, pinned to published check values.
 """
 

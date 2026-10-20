@@ -392,6 +392,8 @@ target = "lsu_stub_all_live"
 # limit keeps the leaf running after an assertion error, so its own checks still
 # grade; any assertion error still fails the leaf.
 args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
 
 [[tests]]
 # KM-side mailbox registers, words, errors, flush and the KM CPU interrupt route. IMG-MBOX-KM image, prestaged parameter block.
@@ -437,7 +439,7 @@ tools = ["vcs"]
 tags = ["km", "otp", "efuse", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+args = ["+km_rom_hex=km_rom_poke.parhex"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
 
