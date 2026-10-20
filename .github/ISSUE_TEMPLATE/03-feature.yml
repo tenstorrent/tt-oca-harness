@@ -82,7 +82,7 @@ body:
       label: Target release
       description: Project board. Pick Future if this is unscheduled. Do not set a GitHub milestone.
       options:
-        - v0.5.0
+        - v1.0.0
         - Future
         - Not planned
       default: 1
