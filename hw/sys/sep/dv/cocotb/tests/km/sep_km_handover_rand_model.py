@@ -312,6 +312,7 @@ class PassExp:
     registered: int  # KPV slots of the registered keys
     keyvalid_before: int  # OR of the completed-engine masks of the transfers
     shared_before: int  # KM-VALID shared-key key_valid before the handover
+    sk_words_before: list[int]  # the eight shared-key KEY words before the handover
     junk: int  # inbound words posted after the trailer
     sram_lock: int  # expected SRAM_LOCK
     staged_secret_val0: dict[str, int]  # staged word 0 of each secret field
@@ -458,6 +459,21 @@ def grade_sideload(rep: imgh.ImgHReport, exp: PassExp) -> tuple[bool, Fields]:
         "shared_before": exp.shared_before,
         "shared_valid": sk,
         "control_kmac_rd": f"{rd_set},{rd_clr}",
+    }
+
+
+def grade_sk_words(words: list[int], exp: PassExp) -> tuple[bool, Fields]:
+    """CHK-HO-SK-WORDS: the eight shared-key KEY words read 0 at the jump.
+
+    Graded in the pass that hands over with the shared key pending, so the
+    words hold the key before the handover.
+    """
+    ok = all(w == 0 for w in words)
+    return ok, {
+        "pass": exp.no,
+        "words_before_nonzero": sum(1 for w in exp.sk_words_before if w),
+        "words_nonzero": sum(1 for w in words if w),
+        "words": ",".join(_h(w) for w in words),
     }
 
 

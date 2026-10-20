@@ -55,6 +55,8 @@ Checks:
   CHK-HO-KPV-LOCK     every registered slot has lock_use and reads 0 with
                       AXI_SLVERR; every other slot has CTRL 0.
   CHK-HO-SIDELOAD     no bank key_valid and no shared-key key_valid at the jump.
+  CHK-HO-SK-WORDS     the eight shared-key KEY words read 0 at the jump of the
+                      pass that hands over with the shared key pending.
   CHK-HO-SIDELOAD-BUS every (share, word) address of the eight bank windows is
                       written after the handover command, also in empty banks.
   CHK-HO-SRAM         SRAM_LOCK = 0x80000001 and the SRAM write count rises by
@@ -65,14 +67,15 @@ Controls: PIC bit 30 reads 0 in a quiet window before the corrupted load and
 after the good load; the good size n1 gets the confirmation; the read path of
 each locked-slot read shows AXI_SLVERR; the free-slot word and the KMAC
 KEY_CTRL write and readback show a live read path; pass 1 posts 6 junk words;
-pass 2 has six banks with no key; the pass 1 shared key is pending before the
-handover. The cells that ``sep_km_handover_test`` grades (the code of FW_WORDS
+pass 2 has six banks with no key; the pass 1 shared key is pending and its KEY
+words are non-zero before the handover. The cells that ``sep_km_handover_test`` grades (the code of FW_WORDS
 0, CMD_SRAM_EXEC after a good load) run here as controls with ``control=1``.
 
 Logged only: the response to the mid size (``OBS-SIZE-MID``), the shared-key
-words at the jump (``OBS-HO-SK-WORDS``), the VAL_0 reads of the OTP fields, the
+words at the jump of each pass (``OBS-HO-SK-WORDS``), the VAL_0 reads of the OTP fields, the
 SRAM store and violation readbacks, the demotion lock bit and the full CPU IRQ
-mask. CHK-HO-NOIRQ can fail on this DUT (contract, "Known limitation").
+mask. CHK-HO-NOIRQ and CHK-HO-SK-WORDS can fail on this DUT (contract, "Known
+limitation").
 """
 
 from __future__ import annotations
@@ -340,6 +343,7 @@ class sep_km_handover_rand_test(sep_base_test):
         "CHK-HO-OTP",
         "CHK-HO-KPV-LOCK",
         "CHK-HO-SIDELOAD",
+        "CHK-HO-SK-WORDS",
         "CHK-HO-SIDELOAD-BUS",
         "CHK-HO-SRAM",
         "CHK-HO-MBOX",
@@ -800,6 +804,9 @@ class sep_km_handover_rand_test(sep_base_test):
         await bus.stop()
         ok, f = md.grade_first(first, confirm_ok, exp)
         self.chk.ok("HO-FIRST", ok, **f)
+        if exp.shared_before:
+            ok, f = md.grade_sk_words(sk_words, exp)
+            self.chk.ok("HO-SK-WORDS", ok, **f)
         self.logger.info(
             "OBS-HO-SK-WORDS LOG pass=%d seed=%d words=%s",
             exp.no,
@@ -878,15 +885,22 @@ class sep_km_handover_rand_test(sep_base_test):
         if no == 1:
             await self._kem_encaps_pending(ek)
         shared = self._sk_valid()
+        sk_before = self._sk_words()
         if no == 1:
             # Pass 1 hands over with the shared key pending.
-            self.chk.ctrl("HO-SHARED-PENDING", shared == 1, shared_before=shared)
+            self.chk.ctrl(
+                "HO-SHARED-PENDING",
+                shared == 1 and any(sk_before),
+                shared_before=shared,
+                words_before_nonzero=sum(1 for w in sk_before if w),
+            )
         registered = sum(md.slots_of(n) for n, _ in plan_keys)
         exp = md.PassExp(
             no=no,
             registered=registered,
             keyvalid_before=done,
             shared_before=shared,
+            sk_words_before=sk_before,
             junk=md.JUNK_WORDS if no == 1 else 0,
             sram_lock=md.image_lock_mask(len(imgh.read_image())),
             staged_secret_val0=self._staged_val0(OTP_DUAL_RAIL_FIELDS[:4]),
