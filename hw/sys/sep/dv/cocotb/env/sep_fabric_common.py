@@ -66,7 +66,10 @@ OUTBOUND_MBX_MAGIC: tuple[int, ...] = _outbound_mbx_magic()
 
 
 # AxUSER[3:0] carries the source ID that the filters match against src_id
-# (hw/ip/axi_filter/doc/index.adoc, "Match, Then Permit").
+# (hw/ip/axi_filter/doc/index.adoc, "Match, Then Permit", names the source ID;
+# hw/sys/smc/doc/assets/smc-traffic-filters.svg names AxUSER[3:0], the approved
+# exception "Source ID carrier" in
+# hw/sys/sep/dv/docs/test_contracts/fabric_remap.adoc).
 SRC_ID_MASK: int = 0xF
 # OTHERS is AxUSER zero (hw/sys/sep/doc/fabric.adoc, Transaction Routing).
 OTHERS_SOURCE_ID: int = 0

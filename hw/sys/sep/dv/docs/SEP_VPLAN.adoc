@@ -1406,7 +1406,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |cpu, skip-sense plusarg; the second testlist entry `sep_cpu_reset_entry_test_real_sense` runs real fuse sense of the PROD preload
 |CPU trace port, JTAG TAP pins and DTM shifter (added hook)
-|Proves that the first CPU fetch is at the boot ROM base by default, that no instruction retires before both resets are high, and that a reset-vector TDR value redirects the first fetch, persists through CPU resets and is restored only by the TAP reset, which resets neither the SEP nor the CPU and, with real fuse sense, does not drop `sep_fuse_sense_done_o`. Extends the open boot ROM tests with those cells only.
+|Proves that the first CPU fetch is at the boot ROM base by default, that no instruction retires before both resets are high, and that a reset-vector TDR value redirects the first fetch, persists through CPU resets and is restored only by the TAP reset, which resets neither the SEP nor the CPU and, with real fuse sense, does not drop `sep_fuse_sense_done_o`. The length of the TDR is not stated, so the TDO samples of a 64-bit TDR scan are logged (OBS-RSTVEC-SHIFT) and only the vector that the scan leaves is graded. Extends the open boot ROM tests with those cells only.
 
 |<<sep_secure_tm_strap_sampling_test,`sep_secure_tm_strap_sampling_test`>>
 |3
@@ -2732,7 +2732,7 @@ the test does.
 |-
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Source of inbound traffic
-|Which masters drive `smn_inbound_axi_req_i`, and which `AxUSER` value does each master carry? The carrier of the source ID is not open: `hw/sys/smc/doc/assets/smc-traffic-filters.svg` (the decode of `axi_filter_wrap`) compares `src_id` with `AxUSER[3:0]`, and `hw/ip/axi_filter/doc/index.adoc` says the decode is identical in every instance. The fabric cells of `sep_fabric_filter_match_priority_rand_test` are graded on that figure.
+|Which masters drive `smn_inbound_axi_req_i`, and which `AxUSER` value does each master carry? The carrier of the source ID is not open: `hw/sys/smc/doc/assets/smc-traffic-filters.svg` (the decode of `axi_filter_wrap`) compares `src_id` with `AxUSER[3:0]`, and `hw/ip/axi_filter/doc/index.adoc` says the decode is identical in every instance. The fabric cells of `sep_fabric_filter_match_priority_rand_test` are graded on that figure (approved exception "Source ID carrier", row "Source ID carrier of an inbound request").
 |`sep_fabric_filter_match_priority_rand_test` drives the AxUSER value itself and grades no assumption about which master carries which value
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Local address below `0x1_0000_0000` outside the SMC, SMU, AP and STEE windows
@@ -2768,7 +2768,7 @@ the test does.
 |-
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Source ID carrier of an inbound request
-|Which signal of the inbound AXI request carries the transaction source ID that the filter compares with `src_id`? (`hw/ip/axi_filter/doc/index.adoc`, "Match, Then Permit" says "the transaction's source ID"; `hw/sys/sep/doc/fabric.adoc` names `AxUSER` for outbound traffic only.) For the filter decode, `hw/sys/smc/doc/assets/smc-traffic-filters.svg` compares `src_id` with `AxUSER[3:0]` (the same figure as the fabric section). The SEP chapters do not state it.
+|Which signal of the inbound AXI request carries the transaction source ID that the filter compares with `src_id`? (`hw/ip/axi_filter/doc/index.adoc`, "Match, Then Permit" says "the transaction's source ID"; `hw/sys/sep/doc/fabric.adoc` names `AxUSER` for outbound traffic only.) For the filter decode, `hw/sys/smc/doc/assets/smc-traffic-filters.svg` compares `src_id` with `AxUSER[3:0]` (the same figure as the fabric section). The SEP chapters do not state it. Approved exception "Source ID carrier": the figure `hw/sys/smc/doc/assets/smc-traffic-filters.svg` (TRM doc tree) is the accepted source for "the filter compares `src_id` with AxUSER[3:0]" until a TRM sentence states it. Approved by the DV owner on 2026-10-19. The source-ID cells of `sep_fabric_filter_match_priority_rand_test` are graded on it. The record is also in `hw/sys/sep/dv/docs/test_contracts/fabric_remap.adoc`.
 |`sep_mailbox_filter_type_matrix_test` uses the source ID driver of the open inbound-filter matrix test
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Pending visibility against enable and priority
@@ -2978,6 +2978,10 @@ the test does.
 |JTAG IDCODE and TDR capture
 |What is the IDCODE opcode, does the IDCODE word carry `jtag_id_i[31:1]`, and what does Capture-DR return from the reset-vector TDR? (`hw/sys/sep/doc/port_table.adoc` gives only "JTAG ID value"; `hw/sys/sep/doc/cpu.adoc`, Reset Vector, describes only the shift-in.)
 |`sep_cpu_reset_entry_test` grades the first fetch only
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|Reset-vector TDR length
+|How many bits long is the reset-vector TDR between `jtag_tdi_i` and `jtag_tdo_o`? (`hw/sys/sep/doc/cpu.adoc`, Reset Vector, states that the TDR stores address bits [31:1] and that bit 0 is zero, which fits a 31-bit or a 32-bit register.)
+|`sep_cpu_reset_entry_test` logs the TDO samples of a 64-bit scan as `OBS-RSTVEC-SHIFT` and grades the vector that the scan leaves (CHK-RSTVEC)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Watchdog alert aggregate
 |What does PIC source 13 ("WDT alert") aggregate, and does an `ALERT_TEST` write change any status or output? (`hw/sys/sep/doc/watchdog.adoc` leaves the alert outputs unconnected; `aon_timer.adoc` says the write triggers one alert event.)

@@ -11,8 +11,9 @@ and AxPROT table; ``hw/sys/sep/doc/dma.adoc``, master path): the CPU LSU (the
 TB master on ``s_axi``) and the Secure DMA (programmed over that master) issue
 to one outbound window while the responder (``tb/sep_outbound_mbx.sv``) delays
 AW, W and AR READY, delays or holds B and R VALID, and is then released; the
-local crossbar stops accepting at its outstanding limit and every request
-completes after the release. The SMN inbound master (``m_axi``) issues toward
+outbound path stops accepting at a finite count and every request completes
+after the release. No specification states the outstanding limit of the local
+crossbar or of the outbound chain, so the count is logged and not compared. The SMN inbound master (``m_axi``) issues toward
 the same window alongside them; it has no route to the outbound port, so its
 accesses are the stimulus of one no-path check and never contend at the port.
 
@@ -23,8 +24,8 @@ observation only. The responder queues ``+sep_outbound_depth`` write bursts,
 pending B responses and reads, which the leaf requires to be at least the
 requests it issues in one hold, so every finite stop it grades at the port is
 the DUT's, not the responder's. The LSU master stops at the same count whether
-or not the port accepts, so the outbound chain limit is not separable from the
-crossbar limit at the pins: the three-initiator hold at that stop is reported
+or not the port accepts, so at the pins the stop of the outbound chain is not
+separable from a stop upstream of it: the three-initiator hold at that stop is reported
 as OBS-CHAIN-HELD and the finite stop and the drain of the chain are graded by
 CHK-CHAIN-LIMIT.
 
@@ -43,9 +44,15 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
 ``CHK-<NAME> PASS`` once every comparison of that checker is done):
   CHK-DELAYS        zero-delay baseline, one-channel and all-channel delays.
   CHK-HOLD-DRAIN    requests accepted in a hold, no response in it, drain.
-  CHK-XBAR-LIMITS   master-side crossbar limit count for writes and reads, and
-                    the drain of every limit session.
-  CHK-XBAR-HELD     a request at the crossbar limit is held, then completes.
+  CHK-OUT-STOP      the LSU master meets a finite stop on the outbound path:
+                    for writes and for reads, the master stalls (AW or AR
+                    stall cycles > 0) with fewer than the 20 issued requests
+                    accepted, and every limit session drains. The accepted
+                    count is logged (OBS-LIMIT), not compared: it is measured
+                    at the LSU master, downstream stages included, and no
+                    specification states a limit at that point.
+  CHK-XBAR-HELD     a request at the stop of CHK-OUT-STOP is held, then
+                    completes.
   CHK-XBAR-POSTDRAIN fresh transactions after the saturation drains.
   CHK-CHAIN-LIMIT   finite outbound acceptance of writes and reads, drain;
                     the writes-and-reads hold under both limits drains.
@@ -112,9 +119,6 @@ DMA_WORDS = 16
 ONE_RELEASE_POLLS = LSU_ISSUE + DMA_WORDS
 ONE_RELEASE_WAIT = 48
 MAX_ID = 7
-# The MaxTrans parameter of the SEP crossbar instance (hw/sys/sep/rtl/sep.sv);
-# printed beside the measured count, never compared.
-RTL_MAX_TRANS = 4
 # SMN inbound accesses of the baseline, channel, all-channel and hold phases.
 SYSIF_ISSUE_FLOOR = 13
 
@@ -134,7 +138,7 @@ FENCE = (
 CHECKS = (
     "CHK-DELAYS",
     "CHK-HOLD-DRAIN",
-    "CHK-XBAR-LIMITS",
+    "CHK-OUT-STOP",
     "CHK-XBAR-HELD",
     "CHK-XBAR-POSTDRAIN",
     "CHK-CHAIN-LIMIT",
@@ -593,7 +597,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
 
     # ---- S6, S7 --------------------------------------------------------------------------------
     async def _s6_mst(self) -> None:
-        chk = "CHK-XBAR-LIMITS"
+        chk = "CHK-OUT-STOP"
         res = {}
         for op, kw in (("wr", {"lsu_w": LSU_ISSUE}), ("rd", {"lsu_r": LSU_ISSUE})):
             s = await self._open(f"mst_{op}", **kw)
@@ -607,11 +611,11 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                     f"stall_cycles={stall}",
                 )
             self.logger.info(
-                "OBS-LIMIT: mst_%s_accepted_before_stall=%d rtl_max_trans=%d stall_cycles=%d "
-                "port_accepted=%d (the count is printed, not compared)",
+                "OBS-LIMIT: mst_%s_accepted_before_stall=%d stall_cycles=%d "
+                "port_accepted=%d (value logged: the stop of the outbound path at the LSU "
+                "master; no specification states its count)",
                 op,
                 acc,
-                RTL_MAX_TRANS,
                 stall,
                 snap["port_aw"] + snap["port_ar"],
             )
@@ -622,7 +626,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self._fence("MST_LIMIT")
 
     async def _s7_slv(self) -> None:
-        chk = "CHK-XBAR-LIMITS"
+        chk = "CHK-OUT-STOP"
         slv_lsu = max(1, self.mst_n // 2)
         for name, kw in (
             ("slv_from_2", {"lsu_w": slv_lsu, "dma": ("wr", DMA_WORDS)}),
@@ -641,14 +645,13 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             )
             self.logger.info(
                 "OBS-LIMIT: session=%s accepted_at_port=%d demand=%d per_init=%s "
-                "rtl_max_trans=%d (the LSU and DMA total at the port; the DMA issues one "
+                "(value logged: the LSU and DMA total at the port; the DMA issues one "
                 "write at a time on its held B, so this stop is the DMA's issue policy, not "
                 "a slave-port limit)",
                 name,
                 acc,
                 slv_lsu + DMA_WORDS,
                 {i: snap["port"][i]["aw"] for i in INITS},
-                RTL_MAX_TRANS,
             )
             self.drain_acc.append(await self._drain(s, chk))
         done = sum(d[0] for d in self.drain_acc)
@@ -683,10 +686,10 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         return 0, beats
 
     async def _held(self, name: str, *, lsu_w=0, dma_words=0, sys_w=0, graded: bool) -> None:
-        """One hold at the crossbar limit with one extra request per initiator.
+        """One hold at the stop of CHK-OUT-STOP with one extra request per initiator.
 
         Graded for CHK-XBAR-HELD; the three-initiator session is reported as
-        OBS-CHAIN-HELD, since its stop is the same crossbar stop.
+        OBS-CHAIN-HELD, since its stop is the same stop.
         """
         chk = "CHK-XBAR-HELD"
         kw = {"lsu_w": lsu_w, "sys_w": sys_w}
@@ -765,7 +768,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             self._obs_row(
                 "CHAIN-HELD",
                 f"session={name} port_accepted_writes={before['port_aw']} "
-                f"responder_wr_limit={self.c.depth} (the chain stop is the crossbar stop; "
+                f"responder_wr_limit={self.c.depth} (the chain stop is the LSU master stop; "
                 "the chain limit is not separable at the pins)",
             )
 
@@ -830,14 +833,14 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         m = snap["mst"]["lsu"]
         xbar = int(m["aw_stall"] > 0 or m["ar_stall"] > 0)
         if not xbar:
-            self._fail(chk, "session=both crossbar limit not reached in the hold")
+            self._fail(chk, "session=both LSU master stop not reached in the hold")
         done, total, to_last = await self._drain(s, chk)
         self._obs_row(
             "BOTH-LIMITS",
             f"xbar_reached={xbar} chain_reached=not_separable_from_xbar port_aw={snap['port_aw']} "
             f"port_ar={snap['port_ar']} responder_wr_limit={self.c.depth} "
             f"responder_rd_limit={self.c.depth} drained={done}/{total} "
-            f"release_to_last_ns={to_last:.1f} deadlock=0 (the crossbar stall and the drain "
+            f"release_to_last_ns={to_last:.1f} deadlock=0 (the LSU master stall and the drain "
             "are graded by CHK-CHAIN-LIMIT; the chain limit is not separable at the pins)",
         )
         self._pass(chk)

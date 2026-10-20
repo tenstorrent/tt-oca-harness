@@ -30,6 +30,9 @@ Checks:
   CHK-RSTVEC         : after the TDR (IR 0x18) is shifted with ``A1`` and then
                        ``A2`` while the CPU is in reset, the first retired PC is
                        that vector and the marker is the one planted there.
+                       ``A2`` arrives in a 64-bit scan whose low word is
+                       ~``A2``; the TDO samples of that scan are logged as
+                       OBS-RSTVEC-SHIFT (cpu.adoc states no TDR length).
   CHK-RSTVEC-PERSIST : after a ``wdt_rst_ni`` CPU reset the first retired PC is
                        ``A1`` again.
   CHK-RSTVEC-TAPRST  : after a TAP reset (``jtag_trst_ni`` or Test-Logic-Reset)
@@ -987,27 +990,39 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
 
     async def _program_wide(self, vector: int) -> None:
-        """A 64-bit shift through IR 0x18: TDI bits 0..31 come back on TDO.
+        """A 64-bit shift through IR 0x18: bits 31:0 are ~``vector``, bits 63:32 ``vector``.
 
-        The low word is the complement of ``vector``, so every returned bit differs
-        from the vector bit at that position. The TDR keeps the last 32 bits, the
-        vector, which the following CPU reset grades.
+        The TDR keeps the last bits shifted in, which hold ``vector[31:1]`` for a
+        TDR of 31 or 32 bits, and the following CPU reset grades that vector
+        (CHK-RSTVEC). cpu.adoc (Reset Vector) states the stored address bits
+        [31:1] and bit 0 at zero, not the length of the TDR, so the TDO samples
+        are logged and not graded (OBS-RSTVEC-SHIFT): the head and tail words,
+        whether the tail equals the head (a 32-bit TDR), and the smallest TDR
+        length that the TDO samples fit.
         """
         from env.sep_jtag_dmi import IR_RSTVEC, IR_WIDTH, RSTVEC_BITS
 
+        bits = 2 * RSTVEC_BITS
         head = ~vector & 0xFFFF_FFFF
+        scan = (vector << RSTVEC_BITS) | head
         await self.dmi.tap.shift_ir(IR_RSTVEC, IR_WIDTH, back_to_rti=False)
-        cap = int(
-            await self.dmi.tap.shift_dr(
-                (vector << RSTVEC_BITS) | head, 2 * RSTVEC_BITS, back_to_rti=True
-            )
-        )
+        cap = int(await self.dmi.tap.shift_dr(scan, bits, back_to_rti=True))
         tail = cap >> RSTVEC_BITS
-        self._grade(
-            "CHK-RSTVEC-SHIFT",
-            tail == head,
-            f"IR=0x{IR_RSTVEC:02x} bits={2 * RSTVEC_BITS} tdi_head=0x{head:08x} "
-            f"tdo_tail=0x{tail:08x} vector=0x{vector:08x}",
+        # A TDR of length n returns TDI bit k - n on TDO bit k, for k >= n.
+        fit = next(
+            (n for n in range(1, bits) if ((cap >> n) ^ scan) & ((1 << (bits - n)) - 1) == 0),
+            None,
+        )
+        self.logger.info(
+            "OBS-RSTVEC-SHIFT: IR=0x%02x bits=%d tdi_head=0x%08x tdo_tail=0x%08x "
+            "tail_eq_head=%d tdr_len_fit=%s vector=0x%08x (value logged)",
+            IR_RSTVEC,
+            bits,
+            head,
+            tail,
+            int(tail == head),
+            "none" if fit is None else str(fit),
+            vector,
         )
 
     async def _scope_leg(self, via: str, tdr: str, cur_mark: int) -> int:

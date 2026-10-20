@@ -10,8 +10,12 @@ reference model ``env.sep_filter_model``, written from
 "Address Range Granule", "Blocked Transactions"),
 ``hw/ip/axi_filter/regs/gen/adoc/filter_ctrl.adoc`` and
 ``hw/sys/smc/doc/assets/smc-traffic-filters.svg`` (``src_id`` against
-AxUSER[3:0]). The model reads only the programmed entry fields and the probe
-attributes.
+AxUSER[3:0]). No TRM sentence names the source-ID carrier; that figure is the
+approved source for it (approved exception "Source ID carrier", recorded in
+``hw/sys/sep/dv/docs/test_contracts/fabric_remap.adoc`` and in the
+specification-question row "Source ID carrier of an inbound request" of
+``hw/sys/sep/dv/docs/SEP_VPLAN.adoc``). The model reads only the programmed
+entry fields and the probe attributes.
 
 Address sources:
 
