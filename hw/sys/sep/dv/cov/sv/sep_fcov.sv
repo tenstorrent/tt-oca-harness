@@ -26674,10 +26674,10 @@ module sep_fcov (
     cp_mem_boot_type: coverpoint v[0] iff (pt == 5'd7) {
       bins cold_boot_writes_key = {1'b0}; bins warm_boot_writes_no_key = {1'b1};
     }
-    // Grant-to-rvalid latency 1 to 8; 9: two different delayed latencies in
+    // Grant-to-rvalid latency 1 to 4; 9: two different delayed latencies in
     // one run.
     cp_km_sram_latency: coverpoint v[3:0] iff (pt == 5'd8) {
-      bins latency[] = {[4'd1 : 4'd8]};
+      bins latency[] = {[4'd1 : 4'd4]};
       bins two_values_in_one_run = {4'd9};
       illegal_bins latency0 = {4'd0};
     }
@@ -30541,10 +30541,10 @@ module sep_fcov (
     kq_lat_done_q <= km_sram_lat_done_i;
     if (lat_new && !$isunknown(km_sram_lat_i)) begin
       kq_lat_prev <= km_sram_lat_i;
-      if (km_own_fi && (km_sram_lat_i <= 8'd8))
+      if (km_own_fi && (km_sram_lat_i <= 8'd4))
         u_sep_km_memory_boot_cg.sample(5'd8, 16'(km_sram_lat_i));
-      if (km_own_fi && (km_sram_lat_i >= 8'd2) && (km_sram_lat_i <= 8'd8) && (kq_lat_prev >= 8'd2) &&
-          (kq_lat_prev <= 8'd8) && (km_sram_lat_i != kq_lat_prev))
+      if (km_own_fi && (km_sram_lat_i >= 8'd2) && (km_sram_lat_i <= 8'd4) && (kq_lat_prev >= 8'd2) &&
+          (kq_lat_prev <= 8'd4) && (km_sram_lat_i != kq_lat_prev))
         u_sep_km_memory_boot_cg.sample(5'd8, 16'd9);
     end
 

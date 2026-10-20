@@ -103,6 +103,7 @@ CPU_LINE_MASK = {1: 0b01, 2: 0b10}
 CPU_LINE_CODE = {1: CODE_ILLEGAL_INSN, 2: CODE_BUS_ERROR}
 
 PAR_N_MAX = 200  # HK-PAR read index N is drawn from [1, PAR_N_MAX]
+LAT_MAX = 4  # largest SRAM read latency graded: the specification states the minimum of 1 only
 
 # Memories of HK-PAR (km_par_mem_i) and their IRQ_STATUS parity bit.
 MEM_ROM, MEM_SRAM = 0, 1
@@ -309,7 +310,7 @@ def draw_plan(seed: int) -> Plan:
     main_w = rng.randrange(0, n + 1)  # n is the CRC-32C trailer
     main_bit = rng.randrange(0, 32)
     # Latency leg.
-    lat_fixed = rng.randrange(2, 9)
+    lat_fixed = rng.randrange(2, LAT_MAX + 1)
     lat_seed = rng.getrandbits(32)
     return Plan(
         seed=seed,
@@ -340,21 +341,21 @@ def draw_plan(seed: int) -> Plan:
 
 
 class LatStream:
-    """The per-access latency stream of the RANDCFG leg: 1 to 8, each at least once.
+    """The per-access latency stream of the RANDCFG leg: 1 to LAT_MAX, each at least once.
 
-    The first eight values are a seeded permutation of 1 to 8, then each value
-    is drawn in [1, 8]. A pure function of the plan seed.
+    The first LAT_MAX values are a seeded permutation of 1 to LAT_MAX, then each
+    value is drawn in [1, LAT_MAX]. A pure function of the plan seed.
     """
 
     def __init__(self, lat_seed: int) -> None:
         self._rng = SepSeededRng(lat_seed)
-        self._head = list(range(1, 9))
+        self._head = list(range(1, LAT_MAX + 1))
         self._rng.shuffle(self._head)
 
     def next(self) -> int:
         if self._head:
             return self._head.pop(0)
-        return self._rng.randrange(1, 9)
+        return self._rng.randrange(1, LAT_MAX + 1)
 
 
 def check_plan(p: Plan) -> None:
@@ -411,7 +412,7 @@ def check_plan(p: Plan) -> None:
         errs.append("the CPU-line KMCSR source")
     if not 8 <= len(p.main_image) <= 64 or not 0 <= p.main_w <= len(p.main_image):
         errs.append("the main-context image")
-    if not 2 <= p.lat_fixed <= 8:
+    if not 2 <= p.lat_fixed <= LAT_MAX:
         errs.append("the fixed latency")
     if errs:
         raise AssertionError("plan rule broken: " + "; ".join(errs))

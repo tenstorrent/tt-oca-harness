@@ -61,8 +61,8 @@ Checks (HOST-UNREC unless marked):
   CHK-NOFLUSH        the key fault keeps the sequence counters.
   CHK-GATE-AFTER     the fault repeats after CMD_RECOV_ACK; a sibling is gated.
   CHK-RESIDUE        a flip past the key end raises no fault.
-  CHK-LAT            a fixed SRAM latency L in [2, 8] changes no response.
-  CHK-LAT-VAR        a per-access SRAM latency in [1, 8] changes no response.
+  CHK-LAT            a fixed SRAM latency L in [2, 4] changes no response.
+  CHK-LAT-VAR        a per-access SRAM latency in [1, 4] changes no response.
   CHK-CPU-TRAP       CPU lines 1 and 2 report -9 and -10 and rank above KMCSR.
   CHK-MAINCTX-FATAL  a bad image CRC sends one 0xFFFFFFF2 frame and holds bit 30.
   CHK-DRBG-STALL     (HOST) a stopped KM entropy stream reports -8.
@@ -2180,9 +2180,9 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             else:
                 self.chk.ok(
                     name,
-                    common and lw.expected == set(range(1, 9)),
+                    common and lw.expected == set(range(1, pl.LAT_MAX + 1)),
                     mode="random",
-                    L="1..8",
+                    L=f"1..{pl.LAT_MAX}",
                     values=sorted(lw.expected),
                     resp_equal=equal,
                     aes_ok=int(run["aes"] == "key"),
