@@ -35,6 +35,9 @@ module sep_crypto_otbn_wrapper (
                                                               // interface.
   output sep_pkg::sep_32_32_axil_resp_t otbn_key_axil_resp_o,  // Response from the OTBN key CSR
                                                                // block to the Key Manager.
+  input  logic wipe_pulse_i,                  // Key Manager wipe pulse; clears both key shares and
+                                              // KEY_CTRL.key_valid ahead of a same-cycle Key
+                                              // Manager write.
 
   output edn_pkg::edn_req_t edn_rnd_req_o,    // OTBN RND entropy request; in sep_crypto, a native
                                               // EDN client of the crypto EDN adapter.
@@ -97,15 +100,19 @@ module sep_crypto_otbn_wrapper (
   // OpenTitan OTBN core.
   // ========================================================================
 
+  otbn_wrapper_key_reg_pkg::otbn_wrapper_key__in_t  key_csr_hwif_in;
   otbn_wrapper_key_reg_pkg::otbn_wrapper_key__out_t key_csr_hwif_out;
 
   keymgr_pkg::otbn_key_req_t otbn_keymgr_key;
 
   assign otbn_keymgr_key.valid = key_csr_hwif_out.KEY_CTRL.key_valid.value;
+  assign key_csr_hwif_in.KEY_CTRL.key_valid.hwclr = wipe_pulse_i;
 
   for (genvar i = 0; i < 12; i++) begin : gen_key_share_map
     assign otbn_keymgr_key.key[0][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE0[i].data.value;
     assign otbn_keymgr_key.key[1][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE1[i].data.value;
+    assign key_csr_hwif_in.KEY_SHARE0[i].data.hwclr = wipe_pulse_i;
+    assign key_csr_hwif_in.KEY_SHARE1[i].data.hwclr = wipe_pulse_i;
   end
 
   localparam int unsigned OtbnKeyCsrAddrWidth = otbn_wrapper_key_reg_pkg::OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH;
@@ -138,6 +145,7 @@ module sep_crypto_otbn_wrapper (
     .s_axil_rdata   (otbn_key_axil_resp_o.r.data),
     .s_axil_rresp   (otbn_key_axil_resp_o.r.resp),
 
+    .hwif_in  (key_csr_hwif_in),
     .hwif_out (key_csr_hwif_out)
   );
 

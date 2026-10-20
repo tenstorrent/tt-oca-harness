@@ -49,6 +49,8 @@ addrmap abr_wrapper_key {
             desc = "32-bit key data word. Write-only for security.";
             sw = w;
             hw = r;
+            hwclr = true;
+            precedence = hw;
         } data[31:0];
     };
 
@@ -67,6 +69,8 @@ addrmap abr_wrapper_key {
                     Write 0 to invalidate and allow a new seed to be written.";
             sw = rw;
             hw = r;
+            hwclr = true;
+            precedence = hw;
             reset = 1'b0;
         } key_valid[0:0];
 
@@ -120,6 +124,7 @@ addrmap abr_wrapper_key {
             sw = rw;
             hw = r;
             hwset = true;
+            hwclr = true;
             onwrite = wzc;
             reset = 1'b0;
         } key_valid[0:0];

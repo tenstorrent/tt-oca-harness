@@ -558,7 +558,10 @@ module abr_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.MLDSA_SEED.KEY_SHARE0[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.MLDSA_SEED.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.MLDSA_SEED.KEY_SHARE0[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.MLDSA_SEED.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.MLDSA_SEED.KEY_SHARE0[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -579,7 +582,10 @@ module abr_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.MLDSA_SEED.KEY_SHARE1[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.MLDSA_SEED.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.MLDSA_SEED.KEY_SHARE1[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.MLDSA_SEED.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.MLDSA_SEED.KEY_SHARE1[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -599,7 +605,10 @@ module abr_wrapper_key_reg (
         automatic logic load_next_c;
         next_c = field_storage.MLDSA_SEED.KEY_CTRL.key_valid.value;
         load_next_c = '0;
-        if(decoded_reg_strb.MLDSA_SEED.KEY_CTRL && decoded_req_is_wr) begin // SW write
+        if(hwif_in.MLDSA_SEED.KEY_CTRL.key_valid.hwclr) begin // HW Clear
+            next_c = '0;
+            load_next_c = '1;
+        end else if(decoded_reg_strb.MLDSA_SEED.KEY_CTRL && decoded_req_is_wr) begin // SW write
             next_c = (field_storage.MLDSA_SEED.KEY_CTRL.key_valid.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
@@ -623,7 +632,10 @@ module abr_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.MLKEM_SEED_D.KEY_SHARE0[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.MLKEM_SEED_D.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.MLKEM_SEED_D.KEY_SHARE0[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.MLKEM_SEED_D.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.MLKEM_SEED_D.KEY_SHARE0[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -644,7 +656,10 @@ module abr_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.MLKEM_SEED_D.KEY_SHARE1[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.MLKEM_SEED_D.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.MLKEM_SEED_D.KEY_SHARE1[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.MLKEM_SEED_D.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.MLKEM_SEED_D.KEY_SHARE1[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -664,7 +679,10 @@ module abr_wrapper_key_reg (
         automatic logic load_next_c;
         next_c = field_storage.MLKEM_SEED_D.KEY_CTRL.key_valid.value;
         load_next_c = '0;
-        if(decoded_reg_strb.MLKEM_SEED_D.KEY_CTRL && decoded_req_is_wr) begin // SW write
+        if(hwif_in.MLKEM_SEED_D.KEY_CTRL.key_valid.hwclr) begin // HW Clear
+            next_c = '0;
+            load_next_c = '1;
+        end else if(decoded_reg_strb.MLKEM_SEED_D.KEY_CTRL && decoded_req_is_wr) begin // SW write
             next_c = (field_storage.MLKEM_SEED_D.KEY_CTRL.key_valid.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
@@ -688,7 +706,10 @@ module abr_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.MLKEM_SEED_Z.KEY_SHARE0[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.MLKEM_SEED_Z.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.MLKEM_SEED_Z.KEY_SHARE0[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.MLKEM_SEED_Z.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.MLKEM_SEED_Z.KEY_SHARE0[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -709,7 +730,10 @@ module abr_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.MLKEM_SEED_Z.KEY_SHARE1[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.MLKEM_SEED_Z.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.MLKEM_SEED_Z.KEY_SHARE1[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.MLKEM_SEED_Z.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.MLKEM_SEED_Z.KEY_SHARE1[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -729,7 +753,10 @@ module abr_wrapper_key_reg (
         automatic logic load_next_c;
         next_c = field_storage.MLKEM_SEED_Z.KEY_CTRL.key_valid.value;
         load_next_c = '0;
-        if(decoded_reg_strb.MLKEM_SEED_Z.KEY_CTRL && decoded_req_is_wr) begin // SW write
+        if(hwif_in.MLKEM_SEED_Z.KEY_CTRL.key_valid.hwclr) begin // HW Clear
+            next_c = '0;
+            load_next_c = '1;
+        end else if(decoded_reg_strb.MLKEM_SEED_Z.KEY_CTRL && decoded_req_is_wr) begin // SW write
             next_c = (field_storage.MLKEM_SEED_Z.KEY_CTRL.key_valid.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
@@ -753,7 +780,10 @@ module abr_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.MLKEM_MSG.KEY_SHARE0[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.MLKEM_MSG.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.MLKEM_MSG.KEY_SHARE0[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.MLKEM_MSG.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.MLKEM_MSG.KEY_SHARE0[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -774,7 +804,10 @@ module abr_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.MLKEM_MSG.KEY_SHARE1[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.MLKEM_MSG.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.MLKEM_MSG.KEY_SHARE1[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.MLKEM_MSG.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.MLKEM_MSG.KEY_SHARE1[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -794,7 +827,10 @@ module abr_wrapper_key_reg (
         automatic logic load_next_c;
         next_c = field_storage.MLKEM_MSG.KEY_CTRL.key_valid.value;
         load_next_c = '0;
-        if(decoded_reg_strb.MLKEM_MSG.KEY_CTRL && decoded_req_is_wr) begin // SW write
+        if(hwif_in.MLKEM_MSG.KEY_CTRL.key_valid.hwclr) begin // HW Clear
+            next_c = '0;
+            load_next_c = '1;
+        end else if(decoded_reg_strb.MLKEM_MSG.KEY_CTRL && decoded_req_is_wr) begin // SW write
             next_c = (field_storage.MLKEM_MSG.KEY_CTRL.key_valid.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
@@ -850,6 +886,9 @@ module abr_wrapper_key_reg (
             load_next_c = '1;
         end else if(hwif_in.MLKEM_SHARED_KEY.KEY_CTRL.key_valid.hwset) begin // HW Set
             next_c = '1;
+            load_next_c = '1;
+        end else if(hwif_in.MLKEM_SHARED_KEY.KEY_CTRL.key_valid.hwclr) begin // HW Clear
+            next_c = '0;
             load_next_c = '1;
         end
         field_combo.MLKEM_SHARED_KEY.KEY_CTRL.key_valid.next = next_c;
