@@ -86,7 +86,10 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     at the port at once (the reach of the concurrent phases);
                     whether such a pair shares an AxID is logged only.
   CHK-NONVAC        the ordered fence of the phases.
-  CHK-TIMEOUT-PATHS the bound of each wait.
+  CHK-TIMEOUT-PATHS each bounded wait (a transaction, a DMA DONE wait) logs
+                    its bound and raises on expiry; every one has a measured
+                    use and each use is within its bound. Fixed windows
+                    cannot expire and are logged as OBS-WAIT only.
 """
 
 from __future__ import annotations
@@ -811,7 +814,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self.delay.stop()
         idle = (self.rsp.mark(), self.pin_s.mark(), self.pin_m.mark())
         await ClockCycles(self.dut_clk, IDLE_CLOCKS)
-        self._wait_bound("idle_window", f"clocks={IDLE_CLOCKS}")
+        self._wait_window("idle_window", f"clocks={IDLE_CLOCKS}")
         rsp_idle = self.rsp.since(idle[0])
         extra_b = sum(1 for b in rsp_idle if b.ch == "b")
         extra_r = sum(1 for b in rsp_idle if b.ch == "r")
@@ -1038,10 +1041,8 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         await self.inflt.stop()
         await self.bench_stop()
         self._check_fence(FENCE)
-        self._emit(
-            "CHK-TIMEOUT-PATHS",
-            f"waits={_setfmt(sorted(self.waits_logged))} txn_bound_ns={self.tr.timeout_ns} "
-            f"idle_clocks={IDLE_CLOCKS} max_latency_ns={self.max_lat:.1f} "
-            f"dma_polls_max={self.tr.dma_polls_max}",
+        self._emit_timeout_paths(
+            f"txn_bound_ns={self.tr.timeout_ns} idle_clocks={IDLE_CLOCKS} "
+            f"max_latency_ns={self.max_lat:.1f} dma_polls_max={self.tr.dma_polls_max}"
         )
         self.result_pass(TEST, seed, len(CHECKS))

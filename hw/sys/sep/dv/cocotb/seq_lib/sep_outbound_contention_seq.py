@@ -220,6 +220,10 @@ class PinWatch:
     while its VALID is 1, is recorded in ``xz`` with the signal name and the
     time, and that clock counts no handshake and no stall. The leaf fails on
     ``xz`` before it grades a count of handshakes or stall clocks.
+
+    Each AW or AR clock of VALID without READY is kept with the ID and the
+    address on offer (``aw_stalls``, ``ar_stalls``), so a counter can attribute
+    a stall clock to the initiator whose request it holds.
     """
 
     NAMES = (
@@ -251,8 +255,8 @@ class PinWatch:
         self.ar: list[tuple] = []
         self.r: list[tuple] = []  # (cycle, id, resp, data, last)
         self.xz: list[str] = []
-        self.aw_stall = 0
-        self.ar_stall = 0
+        self.aw_stalls: list[tuple] = []  # (cycle, id, addr) of each stalled clock
+        self.ar_stalls: list[tuple] = []
         self._task = None
 
     def start(self) -> "PinWatch":
@@ -297,12 +301,12 @@ class PinWatch:
                 if aw[1]:
                     self._take("aw", self.aw, (_int(s["awid"]), _int(s["awaddr"])))
                 else:
-                    self.aw_stall += 1
+                    self.aw_stalls.append((self.cycles, _int(s["awid"]), _int(s["awaddr"])))
             if ar is not None and ar[0]:
                 if ar[1]:
                     self._take("ar", self.ar, (_int(s["arid"]), _int(s["araddr"])))
                 else:
-                    self.ar_stall += 1
+                    self.ar_stalls.append((self.cycles, _int(s["arid"]), _int(s["araddr"])))
             if b == (1, 1):
                 self._take("b", self.b, (_int(s["bid"]), _int(s["bresp"])))
             if r == (1, 1):
@@ -704,6 +708,7 @@ class OutboundTraffic:
             ) from exc
         t.t1_ps = self._now_ps()
         t.c1 = watch.cycles if watch is not None else 0
+        self.test._wait_used("txn", t.latency_ns, self.timeout_ns)
         t.resp = int(res.resp)
         if t.op == "rd":
             t.words = tuple(res.data_words)
@@ -743,6 +748,7 @@ class OutboundTraffic:
         job.status_done = res.status.done
         job.status_error = res.status.error
         self.dma_polls_max = max(self.dma_polls_max, res.polls)
+        self.test._wait_used("dma_done", res.polls, self.dma.done_bound(total))
         job.done = True
         return job
 
@@ -785,12 +791,21 @@ class OutboundLeaf:
     line after its comparison and one ``CHK-<NAME> PASS`` line once every
     comparison it serves is done, so a run never carries a PASS and a FAIL of
     one checker.
+
+    Waits come in two kinds. A bounded wait (``_wait_bound``) ends early on
+    its condition and raises on expiry with the initiator, the transaction and
+    the last port state; each use records the amount it used against its
+    limit (``_wait_used``). A fixed window (``_wait_window``) always runs its
+    full length, cannot expire and is no timeout path; it is logged as
+    ``OBS-WAIT`` only. ``_emit_timeout_paths`` grades the bounded waits.
     """
 
     async def bench_start(self) -> None:
         self.dut_clk = cocotb.top.clk_i
         self.fence_seen: list[str] = []
-        self.waits_logged: set[str] = set()
+        self.waits_logged: dict[str, str] = {}
+        self.windows_logged: dict[str, str] = {}
+        self.wait_use: dict[str, tuple] = {}
         self.out = SepFabricTap("PR-OUT").start()
         self.rsp = SepFabricTap("PR-OUT-RSP").start()
         self.pin_s = PinWatch("s_axi").start()
@@ -885,15 +900,62 @@ class OutboundLeaf:
         )
 
     def _wait_bound(self, kind: str, bound: str) -> None:
+        """Log a bounded wait once: its bound, and that its expiry raises."""
         if kind in self.waits_logged:
             return
-        self.waits_logged.add(kind)
+        self.waits_logged[kind] = bound
         self.logger.info(
-            "CHK-TIMEOUT-PATHS: wait=%s bound=%s "
-            "on_expiry=fail_with_initiator_txn_and_last_port_state last_port_state=%s",
+            "CHK-TIMEOUT-PATHS: wait=%s kind=bounded bound=%s "
+            "on_expiry=raises_with_initiator_txn_and_last_port_state last_port_state=%s",
             kind,
             bound,
             self._port_state(),
+        )
+
+    def _wait_window(self, kind: str, length: str) -> None:
+        """Log a fixed window once; it runs its full length and cannot expire."""
+        if kind in self.windows_logged:
+            return
+        self.windows_logged[kind] = length
+        self.logger.info(
+            "OBS-WAIT: wait=%s kind=window length=%s (a fixed window, not a timeout path)",
+            kind,
+            length,
+        )
+
+    def _wait_used(self, kind: str, used: float, limit: float) -> None:
+        """Keep, per bounded wait, the use closest to its limit."""
+        prev = self.wait_use.get(kind)
+        if prev is None or used * prev[1] > prev[0] * limit:
+            self.wait_use[kind] = (used, limit)
+
+    def _emit_timeout_paths(self, extra: str) -> None:
+        """CHK-TIMEOUT-PATHS over the bounded waits of the run.
+
+        Every bounded wait logged has at least one measured use, and its use
+        closest to its limit is within that limit (the wait ended on its
+        condition, not on expiry). A run with no bounded wait logs OBS-TIMEOUT-PATHS and no PASS.
+        """
+        chk = "CHK-TIMEOUT-PATHS"
+        windows = ",".join(f"{k}:{v}" for k, v in sorted(self.windows_logged.items()))
+        if not self.waits_logged:
+            self._obs_row(
+                chk, f"bounded_waits=0 windows={{{windows}}} {extra} (nothing to compare)"
+            )
+            return
+        rows = []
+        for kind, bound in sorted(self.waits_logged.items()):
+            use = self.wait_use.get(kind)
+            if use is None:
+                self._fail(chk, f"wait={kind} bound={bound} has no measured use")
+            used, limit = use
+            if used > limit:
+                self._fail(chk, f"wait={kind} used={used} limit={limit}: past its bound")
+            fmt = f"{used:.1f}" if isinstance(used, float) else str(used)
+            rows.append(f"{kind}:closest_use={fmt}/limit={limit}")
+        self._emit(
+            chk,
+            f"bounded={{{','.join(rows)}}} on_expiry=raises windows={{{windows}}} {extra}",
         )
 
     def _check_pin_xz(self, b_chk: str, r_chk: str) -> None:
