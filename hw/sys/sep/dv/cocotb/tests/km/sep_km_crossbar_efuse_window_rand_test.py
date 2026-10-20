@@ -26,7 +26,8 @@ Checks (anchor):
   CHK-XBAR-RSV    reserved rows outside the eFuse window answer DECERR, data
                   0xBADCAB1E, by read and write (POKE result + IRQ_STATUS)
   CHK-XBAR-EFUSE  eFuse window offsets outside its three maps answer SLVERR,
-                  data 0xBADCAB1E, by read and write (POKE result + IRQ_STATUS)
+                  data 0xBADCAB1E, by read and write, and reach no efuse_req_o
+                  handshake (POKE result + IRQ_STATUS + KM-BUS)
   CHK-XBAR-SIZE   ROM top, SRAM base and top, the SRAM top store and the first
                   and last decoded word of each row answer clean (POKE result)
   CHK-EFW-RD      40 KM reads of the eFuse maps equal the host reads of the same
@@ -330,6 +331,7 @@ class _Walk:
     """Results of the decode walk, graded after the in-map controls ran."""
 
     cells: list[tuple[Cell, kp.PokeResult]] = field(default_factory=list)
+    ops: list[kp.PokeOp] = field(default_factory=list)
 
 
 @pyuvm.test()
@@ -510,6 +512,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
 
         open_graded_window(TEST, self.logger)
         walk = await self._decode_walk(rng)
+        fwd = await self._efuse_forward_probe(walk)
         size = await self._size_boundaries(rng)
         vrom = (await self._run([kp.rd(KM_VROM_PROBE)], allow_unknown=True))[0]
         clean = await self._run(
@@ -517,6 +520,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         )
         rd1 = await self._efw_reads(rng, model, tm=0, bus=True)
         self._grade_walk(seed, walk, size, vrom, clean, rd1)
+        self._grade_forward(seed, fwd)
         self._grade_efw_rd(seed, rd1, tm=0, tm_seen=tm0)
         self._grade_remap(rd1)
 
@@ -564,7 +568,43 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 self._draw(f"walk.wdata.0x{cell.addr:05x}", data)
                 ops.append(kp.wr(cell.addr, data))
         results = await self._run_chunked(ops)
-        return _Walk(list(zip(cells, results, strict=True)))
+        return _Walk(list(zip(cells, results, strict=True)), ops)
+
+    async def _efuse_forward_probe(self, walk: _Walk) -> dict:
+        """KM-BUS: replay the graded eFuse-gap accesses with efuse_req_o watched.
+
+        memory_map.adoc note [2]: the eFuse window answers an offset outside its
+        register maps itself, so none of these accesses reaches efuse_req_o. The
+        control read of the first eFuse map word shows the same watch sees a
+        forwarded read.
+        """
+        gap = [
+            op
+            for (cell, _res), op in zip(walk.cells, walk.ops, strict=True)
+            if cell.chk == "CHK-XBAR-EFUSE" and not cell.control
+        ]
+        ar: list[int] = []
+        aw: list[int] = []
+        mons = [
+            cocotb.start_soon(self._efuse_ar_monitor(ar, "ar")),
+            cocotb.start_soon(self._efuse_ar_monitor(aw, "aw")),
+        ]
+        await self._run_chunked(gap)
+        await ClockCycles(cocotb.top.clk_i, 4)
+        gap_ar, gap_aw = list(ar), list(aw)
+        await self._run([kp.rd(KM_EFUSE_MAP)], allow_unknown=True)
+        await ClockCycles(cocotb.top.clk_i, 4)
+        for mon in mons:
+            if hasattr(mon, "cancel"):
+                mon.cancel()
+            else:
+                mon.kill()
+        return {
+            "gap_ops": len(gap),
+            "gap_ar": gap_ar,
+            "gap_aw": gap_aw,
+            "control_ar": len(ar) - len(gap_ar),
+        }
 
     async def _size_boundaries(self, rng: SepSeededRng) -> list[kp.PokeResult]:
         data = rng.randrange(1, 1 << WORD_BITS)
@@ -792,6 +832,32 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             await ReadOnly()
             if self.rd(valid, allow_unknown=True) and self.rd(ready, allow_unknown=True):
                 sink.append(self.rd(addr))
+
+    def _grade_forward(self, seed: int, fwd: dict) -> None:
+        """CHK-XBAR-EFUSE: no graded eFuse-gap access reaches efuse_req_o."""
+        if fwd["control_ar"] < 1:
+            self._fail(
+                "CHK-XBAR-EFUSE",
+                ["control: the eFuse map read showed no efuse_req_o read handshake"],
+            )
+        problems = (
+            [
+                f"{fwd['gap_ops']} eFuse-gap accesses gave efuse_req_o handshakes "
+                f"ar={[hex(a) for a in fwd['gap_ar']]} aw={[hex(a) for a in fwd['gap_aw']]}"
+            ]
+            if fwd["gap_ar"] or fwd["gap_aw"]
+            else []
+        )
+        if fwd["gap_ops"] == 0:
+            problems.append("no graded eFuse-gap access")
+        self._fail("CHK-XBAR-EFUSE", problems)
+        self.logger.info(
+            "CHK-XBAR-EFUSE PASS seed=%d forward=none gap_ops=%d efuse_req_ar=0 efuse_req_aw=0 "
+            "control_map_rd_ar=%d",
+            seed,
+            fwd["gap_ops"],
+            fwd["control_ar"],
+        )
 
     def _grade_efw_rd(
         self,
