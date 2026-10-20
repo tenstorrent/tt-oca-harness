@@ -16,9 +16,7 @@ Contract (``hw/sys/sep/doc/reset_controller.adoc``, Resetting the TRNG;
   * A word that the crypto adapter acknowledges to a client just before the clear
     is the word that the client takes: native requests receive no acknowledgement
     during the clear (``trng.adoc``), the EDN asserts the acknowledge with fresh
-    values on the bus (OpenTitan ``edn/README.md``), and the destination does not
-    change the data while the client synchronizer waits for the source to latch it
-    (``prim_sync_reqack_data.sv``, DST-to-SRC data). OTBN RND takes its value
+    values on the bus (OpenTitan ``edn/README.md``). OTBN RND takes its value
     directly from the EDN (``otbn/doc/theory_of_operation.md``), and every external
     word carries FIPS provenance 1 into ``edn_fips`` (``trng.adoc``, FIPS
     Provenance), so OTBN RND sets no ``rnd_fips_chk_fail`` across the clear.
@@ -192,6 +190,11 @@ ERR_RND_FIPS = OTBN.field_mask("ERR_BITS", "rnd_fips_chk_fail")
 
 def _le_words(data: bytes) -> list[int]:
     return [int.from_bytes(data[i : i + 4], "little") for i in range(0, len(data), 4)]
+
+
+def _golden_field(client: str, res: dict) -> int | str:
+    """AES and KMAC have a golden compare; OTBN RND and URND have none (``na``)."""
+    return int(res["golden_ok"]) if client in ("aes", "kmac") else "na"
 
 
 def _kill(task) -> None:
@@ -781,7 +784,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
                 "client": client,
                 "words_in_sent_set": f"{members}/{len(checked)}",
                 "acks": len(words),
-                "result==golden": int(res["golden_ok"]),
+                "result==golden": _golden_field(client, res),
             }
             if reason:
                 fields["reason"] = reason
@@ -1178,7 +1181,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             "words_from_post_reset": int(fresh),
             "post_words": len(words),
             "rnd_words": len(rnd_words),
-            "result==golden": int(res["golden_ok"]),
+            "result==golden": _golden_field(client, res),
             "clear_clk": len(clear),
             "ctrl_ack_before": int(ctrl >= 1),
             "attempt": attempt,
