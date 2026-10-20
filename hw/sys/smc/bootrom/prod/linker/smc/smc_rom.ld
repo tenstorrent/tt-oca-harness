@@ -99,7 +99,7 @@ SECTIONS
         *(.srodata .srodata.*)
     } >rom AT>rom :rom =0x00100073
 
-    .text : {
+    .text : ALIGN(8) {
         *(.text.unlikely .text.unlikely.*)
         *(.text.startup .text.startup.*)
         *(.text .text.*)
