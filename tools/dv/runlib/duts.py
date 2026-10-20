@@ -25,7 +25,7 @@ and the runner agree on what counts as a DUT root.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from .config import as_str_list, load_dut, load_simulators, load_toml
 from .models import ConfigError, Dut
@@ -37,7 +37,7 @@ from .site import SiteLayer
 _DIRECT_HW_EXCLUDES = {"common", "dv", "ip", "comp", "periph", "sys"}
 # Grouping dirs whose children may carry a dv/ root.
 _NESTED_HW_GROUPS = ("sys", "ip", "comp", "periph")
-_REGISTRY_KEYS = {"root", "sim_cfg", "formal_cfg", "alias_of"}
+_REGISTRY_KEYS = {"root", "sim_cfg", "formal_cfg", "alias_of", "config_root"}
 
 
 def registry_path(root: Path) -> Path:
@@ -65,6 +65,11 @@ def load_dut_registry(root: Path) -> dict[str, dict]:
             raise ConfigError(f"{path}: [duts.{name}] `alias_of` must be a non-empty string")
         if alias == name:
             raise ConfigError(f"{path}: [duts.{name}] `alias_of` cannot point at itself")
+        config_root = entry.get("config_root")
+        if config_root is not None and not _is_repo_relative(config_root):
+            raise ConfigError(
+                f"{path}: [duts.{name}] `config_root` must be a normalized repository-relative path"
+            )
         out[name] = entry
     for name, entry in out.items():
         alias = entry.get("alias_of")
@@ -76,6 +81,14 @@ def load_dut_registry(root: Path) -> dict[str, dict]:
                 "point both at the canonical DUT instead"
             )
     return out
+
+
+def _is_repo_relative(value: object) -> bool:
+    """Return True for a non-empty, normalized, relative POSIX path that stays in the repository."""
+    if not isinstance(value, str) or not value:
+        return False
+    path = PurePosixPath(value)
+    return not path.is_absolute() and ".." not in path.parts and path.as_posix() == value
 
 
 def discover_dut_roots(root: Path) -> dict[str, Path]:
@@ -240,6 +253,7 @@ def resolve_dut(
         root=root,
         name=canonical,
         root_rel=str(repo_rel(root, dv_root)),
+        config_root=entry.get("config_root"),
         framework=framework,
         adopter_overlay=adopter_overlay,
     )

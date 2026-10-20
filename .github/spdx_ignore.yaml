@@ -15,8 +15,6 @@ ignore:
     - vendor/lowRISC/
     - vendor/pulp-platform/
     - vendor/tenstorrent/aou/
-    # A link into vendor/tenstorrent/aou/dv/, which the checker follows.
-    - hw/ip/aou/dv/
     - vendor/tenstorrent/tt-picorv32/
     - vendor/tenstorrent/tt-hw-debug/patches/
     - build/

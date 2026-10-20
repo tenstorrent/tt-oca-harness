@@ -17,6 +17,10 @@
 # `alias_of = "<canonical>"` is the second of those: the name resolves to the canonical
 # DUT's config and identity, so both names share one build cache and one build manifest
 # instead of compiling the same model twice. Aliases are one hop deep.
+#
+# `config_root` names the DV root that a vendored bench's sim config names in the bench's
+# own repository. Each string in the config that is that path, or a path under it,
+# resolves under `root` instead.
 
 schema_version = 1
 
@@ -90,14 +94,21 @@ root = "hw/ip/uart/uart_log_engine_wrap/dv"
 [duts.uart_wrap]
 root = "hw/ip/uart/uart_wrap/dv"
 
-# AoU bridge benches beside `aou`, the T1 bench the convention finds: the
-# register bench and the DUT-free L3 and AXI self-tests are further sim configs
-# in the same hw/ip/aou/dv root, so each is registered here.
+# AoU bridge benches: `aou` is the T1 bench, and the register bench and the
+# DUT-free L3 and AXI self-tests are further sim configs in its root. Their
+# configs name the hw/ip/aou/dv paths the bench has in its own repository.
+[duts.aou]
+root = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv"
+config_root = "hw/ip/aou/dv"
+
 [duts.aou_reg]
-root = "hw/ip/aou/dv"
+root = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv"
+config_root = "hw/ip/aou/dv"
 
 [duts.aou_l3_unit]
-root = "hw/ip/aou/dv"
+root = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv"
+config_root = "hw/ip/aou/dv"
 
 [duts.aou_axi_selftest]
-root = "hw/ip/aou/dv"
+root = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv"
+config_root = "hw/ip/aou/dv"
