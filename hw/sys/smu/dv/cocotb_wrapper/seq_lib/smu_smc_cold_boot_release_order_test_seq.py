@@ -11,7 +11,8 @@ The assertion latencies and the clk_smu_i samples where the SMC primary reset re
 stable cold reset reads 0 are logged and not compared. The primary outputs are compared for
 holding 0 while the cold reset is asserted and for releasing within the bounded wait, and the
 clk_ref_i primary reset for reading 0 at every clk_ref_i sample where the stable cold reset
-reads 0.
+reads 0. Each hold window starts at the first sample where that primary output reads 0: the
+sample before it is the assertion latency, which is measured and not compared.
 """
 
 from __future__ import annotations
@@ -32,6 +33,8 @@ SAMPLER_BOUND = 40000
 TAP_RESET_PULSES = 16
 SITE_NAMES = (
     "S1_assert",
+    "S1_smc_assert",
+    "S1_ref_assert",
     "S3_pg_stable_rise",
     "S4_cold_release",
     "S5_cold_release_after_reassert",
@@ -195,7 +198,7 @@ class smu_smc_cold_boot_release_order_test_seq:
                 "rst_primary_ref_clk_no",
             )
         )
-        a_hold_start = (len(self.smc["prim"]), len(self.ref["prim"]))
+        a_fall = (len(self.smc["prim"]), len(self.ref["prim"]))
         dut.powergood_i.value = 0
         dut.rst_cold_ni.value = 0
         dut.jtag_trst.value = 0
@@ -237,6 +240,10 @@ class smu_smc_cold_boot_release_order_test_seq:
         # S3: power-good rise to the stable power-good rise.
         self._mark("S3", "powergood_i rise, count to obs_powergood_stable_o")
         a_hold_end = (len(self.smc["prim"]), len(self.ref["prim"]))
+        a_hold_start = (
+            self._first_zero("S1_smc_assert", self.smc, a_fall[0], a_hold_end[0]),
+            self._first_zero("S1_ref_assert", self.ref, a_fall[1], a_hold_end[1]),
+        )
         dut.powergood_i.value = 1
         dut.jtag_trst.value = 1
         tap_task = cocotb.start_soon(self.test.jtag_tap_reset(TAP_RESET_PULSES))
@@ -494,6 +501,8 @@ class smu_smc_cold_boot_release_order_test_seq:
             sorted(
                 [
                     "S1_assert",
+                    "S1_smc_assert",
+                    "S1_ref_assert",
                     "S3_pg_stable_rise",
                     "S4_cold_release",
                     "S5_cold_release_after_reassert",
