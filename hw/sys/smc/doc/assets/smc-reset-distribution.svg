@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1408" viewBox="0 0 1040 1408" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1432" viewBox="0 0 1040 1432" role="img" aria-labelledby="title desc">
 <title id="title">SMC reset distribution</title>
-<desc id="desc">Reset distribution inside the SMC. Boundary inputs enter on the left. u_smc_reset_unit, in u_smc_peripherals, builds rst_primary_smc_clk_no, rst_primary_periph_clk_no, rst_warm_smc_clk_no and rst_cold_stable_smc_clk_no from powergood_i, rst_cold_ni, rst_cool_n_from_pin_i, sep_wdt_reset_n_i, cfg_flr_pf_active_i, the JTAG overrides and fuse_reset_n, which u_smc_efuse_wrapper releases once fuse sensing completes and any boot stall ends. rst_primary_smc_clk_no resets u_smc_base, most of u_smc_peripherals, the CPU_CTRL registers in u_smc_cpu_ctrl_wrap, the front-port demux and the cluster AXI isolates. rst_primary_periph_clk_no resets the I2C, UART, I3C and AVSBus register logic and the peripheral-clock side of u_smc_peripherals_cdc. rst_warm_smc_clk_no resets the core and uncore reset outputs of u_smc_cpu_ctrl_wrap and the warm scratch register. rst_cold_stable_smc_clk_no resets u_ext_boot_seq_done_qual and disables the GPIO outputs. fuse_reset_n resets the scratch RAM zero-fill sequencer. u_smc_cpu_ctrl_wrap drives cluster_uncore_reset_n, which resets the uncore of u_digital_top including the four watchdogs and, through rom_domain, u_tilelink_to_rom_memory_convert, and the cluster boundary isolation delay and cluster_ded_o flops in u_smc_cpu, core_reset_n[3:0], which, ANDed with zero-fill completion and the inverted debug hart reset request, resets each Rocket tile, and debug_reset_n, which resets the debug module. The gated core reset reaches each watchdog's wdt_n_corerst only as a count-enable gate, not as a reset. smc_cpu_jtag_reset_i resets the debug transport module and rst_telemetry_ni the telemetry side of u_telemetry_receiver_wrap.</desc>
+<desc id="desc">Reset distribution inside the SMC. Boundary inputs enter on the left. u_smc_reset_unit, in u_smc_peripherals, builds rst_primary_smc_clk_no, rst_primary_periph_clk_no, rst_warm_smc_clk_no and rst_cold_stable_smc_clk_no from the boundary resets and fuse_reset_n, which u_smc_efuse_wrapper releases once fuse sensing completes and u_ext_boot_seq_done_qual reports the external boot sequence done. rst_primary_smc_clk_no resets u_smc_base, the rest of u_smc_peripherals, u_smc_cpu_wrapper, the CPU_CTRL registers in u_smc_cpu_ctrl_wrap and the cluster AXI isolates, through u_smc_cpu rst_isolate_ni. rst_primary_periph_clk_no resets the I2C, UART, I3C and AVSBus register logic and the peripheral-clock side of u_smc_peripherals_cdc. rst_warm_smc_clk_no resets the warm scratch register and the core and uncore output flops in u_smc_cpu_ctrl_wrap, which register the core and uncore reset requests from the RESET_CTRL logic. rst_cold_stable_smc_clk_no resets u_ext_boot_seq_done_qual and the GPIO interfaces. fuse_reset_n resets the scratch RAM zero-fill. The output flops drive cluster_uncore_reset_n, which resets u_tilelink_to_rom_memory_convert, the uncore of u_digital_top, the cluster boundary flops and the four watchdogs, and core_reset_n[3:0], which, ANDed with zero-fill completion and the inverted hart reset request into int_rst_core_n[3:0], resets each Rocket tile. The RESET_CTRL logic drives debug_reset_n, which resets the debug module. The gated core reset int_rst_core_n reaches each watchdog's wdt_n_corerst as a status input, not as a reset. smc_cpu_jtag_reset_i resets the debug transport module and rst_telemetry_ni the telemetry side of u_telemetry_receiver_wrap.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -79,30 +79,28 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .a-bus { fill: none; stroke: #b2566c; stroke-width: 3; marker-end: url(#m-bus); }
 .n-dash { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; }
 .a-dash { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-slate); }
-.n-smut { fill: none; stroke: #103525; stroke-width: 1.5; }
-.a-smut { fill: none; stroke: #103525; stroke-width: 1.5; marker-end: url(#m-smu); }
 </style>
 </defs>
-<rect width="1040" height="1408" fill="#ffffff"/>
-<rect class="smu" x="226" y="14" width="674" height="1298" rx="8"/>
-<rect class="core" x="262" y="24" width="518" height="226" rx="6"/>
+<rect width="1040" height="1432" fill="#ffffff"/>
+<rect class="smu" x="226" y="14" width="674" height="1322" rx="8"/>
+<rect class="core" x="262" y="24" width="518" height="200" rx="6"/>
 <text class="bs" x="272" y="44" text-anchor="start">u_smc_peripherals.u_smc_reset_unit</text>
 <text class="s" x="14" y="56" text-anchor="start">powergood_i</text>
 <path class="a-slate" d="M17,62 L258,62"/>
-<text class="s" x="14" y="82" text-anchor="start">rst_cold_ni</text>
-<path class="a-slate" d="M17,88 L258,88"/>
-<text class="s" x="14" y="108" text-anchor="start">rst_cool_n_from_pin_i</text>
-<path class="a-slate" d="M17,114 L258,114"/>
-<text class="s" x="14" y="134" text-anchor="start">sep_wdt_reset_n_i</text>
-<path class="a-slate" d="M17,140 L258,140"/>
-<text class="s" x="14" y="160" text-anchor="start">cfg_flr_pf_active_i</text>
-<path class="sigo" d="M17,166 L258,166"/>
-<text class="s" x="14" y="186" text-anchor="start">jtag_reset_ctrl_i</text>
-<path class="a-jtag" d="M17,192 L258,192"/>
-<text class="s" x="14" y="212" text-anchor="start">scan_rst_ni</text>
-<path class="a-slate" d="M17,218 L258,218"/>
-<text class="s" x="14" y="232" text-anchor="start">test_en_i</text>
-<path class="a-dash" d="M17,238 L258,238"/>
+<text class="s" x="14" y="78" text-anchor="start">rst_cold_ni</text>
+<path class="a-slate" d="M17,84 L258,84"/>
+<text class="s" x="14" y="100" text-anchor="start">rst_cool_n_from_pin_i</text>
+<path class="a-slate" d="M17,106 L258,106"/>
+<text class="s" x="14" y="122" text-anchor="start">sep_wdt_reset_n_i</text>
+<path class="a-slate" d="M17,128 L258,128"/>
+<text class="s" x="14" y="144" text-anchor="start">cfg_flr_pf_active_i</text>
+<path class="sigo" d="M17,150 L258,150"/>
+<text class="s" x="14" y="166" text-anchor="start">jtag_reset_ctrl_i</text>
+<path class="a-jtag" d="M17,172 L258,172"/>
+<text class="s" x="14" y="188" text-anchor="start">scan_rst_ni</text>
+<path class="a-slate" d="M17,194 L258,194"/>
+<text class="s" x="14" y="206" text-anchor="start">test_en_i</text>
+<path class="a-dash" d="M17,212 L258,212"/>
 <text class="s" x="772" y="67" text-anchor="end">rst_primary_smc_clk_no</text>
 <path class="n-smu" d="M780,62 L880,62"/>
 <text class="s" x="772" y="119" text-anchor="end">rst_warm_smc_clk_no</text>
@@ -110,160 +108,168 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="772" y="145" text-anchor="end">rst_cold_stable_smc_clk_no</text>
 <path class="n-ref" d="M780,140 L820,140"/>
 <text class="s" x="772" y="171" text-anchor="end">rst_primary_periph_clk_no</text>
-<path class="n-smut" d="M780,166 L800,166"/>
+<path class="n-smu" d="M780,166 L800,166"/>
 <text class="s" x="772" y="93" text-anchor="end">fuse_reset_ni</text>
 <path class="a-wdt" d="M860,88 L786,88"/>
-<text class="si" x="272" y="208" text-anchor="start">smc_wdt_second_timeout_i comes from u_smc_cpu_ctrl_wrap.</text>
-<text class="si" x="272" y="226" text-anchor="start">Gates and the outputs that leave the SMC: see the SMC reset unit figure</text>
-<rect class="core" x="262" y="274" width="518" height="372" rx="6"/>
-<text class="bs" x="272" y="294" text-anchor="start">u_smc_peripherals</text>
-<rect class="core" x="282" y="306" width="438" height="92" rx="4"/>
-<text class="s" x="292" y="325" text-anchor="start">u_i2c_wrap, u_uart_wrap, u_i3ccore_wrapper</text>
-<text class="s" x="292" y="341" text-anchor="start">u_smc_peripherals_cdc</text>
-<text class="s" x="292" y="357" text-anchor="start">u_avsbus_controller</text>
-<text class="s" x="292" y="373" text-anchor="start">rst_ref_ni: rst_primary_ref_clk_no</text>
-<text class="s" x="292" y="389" text-anchor="start">rst_clk_div_ni: powergood_stable</text>
-<text class="s" x="712" y="325" text-anchor="end">rst_ni</text>
-<path class="a-smut" d="M800,320 L726,320"/>
-<text class="s" x="712" y="341" text-anchor="end">rst_periph_clk_ni</text>
-<path class="a-smut" d="M800,336 L726,336"/>
-<text class="s" x="712" y="357" text-anchor="end">rst_reg_ni</text>
-<path class="a-smut" d="M800,352 L726,352"/>
-<rect class="core" x="282" y="406" width="438" height="28" rx="4"/>
-<text class="s" x="292" y="425" text-anchor="start">u_ext_boot_seq_done_qual</text>
-<text class="s" x="712" y="425" text-anchor="end">rst_ni</text>
-<path class="a-ref" d="M820,420 L726,420"/>
-<text class="s" x="14" y="414" text-anchor="start">ext_boot_seq_done_i</text>
-<path class="sigo" d="M17,420 L278,420"/>
-<rect class="core" x="282" y="448" width="438" height="44" rx="4"/>
-<text class="s" x="292" y="467" text-anchor="start">u_smc_efuse_wrapper, u_fuse_reset_stall_and</text>
-<text class="si" x="292" y="483" text-anchor="start">Release: fuse sensing done, boot stall ended</text>
-<text class="s" x="712" y="475" text-anchor="end">fuse_reset_n</text>
-<path class="sigo" d="M380,434 L380,444"/>
-<path class="n-wdt" d="M720,470 L860,470"/>
-<rect class="core" x="282" y="500" width="438" height="44" rx="4"/>
-<text class="s" x="292" y="519" text-anchor="start">u_smc_padring.gen_gpio_intf[*].u_gpio_interface</text>
-<text class="si" x="292" y="535" text-anchor="start">Outputs disabled while rst_cold_ni is low</text>
-<text class="s" x="712" y="527" text-anchor="end">rst_cold_ni</text>
-<path class="a-ref" d="M820,522 L726,522"/>
-<rect class="core" x="282" y="552" width="438" height="28" rx="4"/>
-<text class="s" x="292" y="571" text-anchor="start">u_smc_misc_wrap.u_smc_scratch_reg_cold_warm</text>
-<text class="s" x="712" y="571" text-anchor="end">arst_n</text>
-<path class="a-per" d="M840,566 L726,566"/>
-<rect class="core" x="282" y="588" width="438" height="28" rx="4"/>
-<text class="s" x="501" y="607" text-anchor="middle">u_telemetry_receiver_wrap</text>
-<text class="s" x="290" y="607" text-anchor="start">rst_telemetry_ni</text>
-<text class="s" x="14" y="596" text-anchor="start">rst_telemetry_ni</text>
-<path class="a-slate" d="M17,602 L278,602"/>
-<text class="s" x="272" y="634" text-anchor="start">All other logic</text>
-<text class="s" x="772" y="634" text-anchor="end">rst_primary_smc_clk_no</text>
-<path class="a-smu" d="M880,629 L786,629"/>
-<rect class="core" x="262" y="670" width="518" height="552" rx="6"/>
-<text class="bs" x="272" y="690" text-anchor="start">u_smc_cpu_wrapper</text>
-<text class="s" x="772" y="691" text-anchor="end">rst_primary_smc_clk_ni</text>
-<path class="a-smu" d="M880,686 L786,686"/>
-<text class="s" x="272" y="710" text-anchor="start">u_tilelink_to_rom_memory_convert: rom_domain reset, from cluster_uncore_reset_n</text>
-<rect class="core" x="282" y="722" width="438" height="76" rx="4"/>
-<text class="s" x="292" y="741" text-anchor="start">u_smc_cpu_ctrl_wrap</text>
-<text class="s" x="292" y="757" text-anchor="start">Core and uncore reset outputs</text>
-<text class="s" x="292" y="773" text-anchor="start">CPU_CTRL registers, including WDT_TIMEOUT</text>
-<text class="si" x="292" y="789" text-anchor="start">wdt_second_timeout_o to u_smc_reset_unit</text>
-<text class="s" x="712" y="757" text-anchor="end">rst_warm_smc_clk_ni</text>
-<path class="a-per" d="M840,752 L726,752"/>
-<text class="s" x="712" y="773" text-anchor="end">rst_primary_ni</text>
-<path class="a-smu" d="M880,768 L726,768"/>
-<rect class="core" x="282" y="822" width="478" height="390" rx="6"/>
-<text class="bs" x="360" y="842" text-anchor="start">u_smc_cpu</text>
-<text class="s" x="752" y="843" text-anchor="end">rst_isolate_ni</text>
-<path class="a-smu" d="M880,838 L766,838"/>
-<text class="s" x="360" y="862" text-anchor="start">u_l2_frontend_axi_isolate, u_mmio_axi_isolate</text>
-<rect class="core" x="420" y="876" width="300" height="76" rx="4"/>
-<text class="s" x="430" y="895" text-anchor="start">u_digital_top uncore: {s,m,c,p,f}bus,</text>
-<text class="s" x="430" y="911" text-anchor="start">coh_wrapper, clint_domain, plic_domain,</text>
-<text class="s" x="430" y="927" text-anchor="start">rom_domain, tlDM bus side</text>
-<text class="s" x="430" y="943" text-anchor="start">Boundary isolation delay, cluster_ded_o</text>
-<rect class="core" x="420" y="960" width="300" height="44" rx="4"/>
-<text class="s" x="430" y="979" text-anchor="start">u_digital_top.wdtClockDomainWrapper*</text>
-<text class="si" x="430" y="995" text-anchor="start">wdt_n_corerst pauses counting; it is not a reset</text>
-<rect class="core" x="420" y="1012" width="300" height="44" rx="4"/>
-<text class="s" x="430" y="1031" text-anchor="start">Scratch RAM zero-fill</text>
-<text class="s" x="430" y="1047" text-anchor="start">init_mem_complete</text>
-<text class="s" x="712" y="1031" text-anchor="end">mem_init_reset_ni</text>
-<path class="a-wdt" d="M860,1026 L726,1026"/>
-<rect class="core" x="420" y="1064" width="300" height="34" rx="4"/>
-<text class="s" x="430" y="1083" text-anchor="start">tile_prci_domain{,_1,_2,_3}: Rocket tiles</text>
-<rect class="core" x="420" y="1106" width="300" height="60" rx="4"/>
-<text class="s" x="430" y="1125" text-anchor="start">hartResetReq[n]</text>
-<text class="s" x="430" y="1141" text-anchor="start">u_digital_top.tlDM debug domain,</text>
-<text class="s" x="430" y="1157" text-anchor="start">u_sync_debug_active, clock_en flop</text>
-<rect class="core" x="420" y="1174" width="300" height="28" rx="4"/>
-<text class="s" x="430" y="1193" text-anchor="start">u_digital_top.dtm and the tlDM DMI side</text>
-<text class="s" x="14" y="1182" text-anchor="start">smc_cpu_jtag_reset_i, active-high</text>
-<path class="a-jtag" d="M17,1188 L416,1188"/>
-<path class="fabric" d="M364,1063 L370,1063 A18,18 0 0 1 370,1099 L364,1099 Z"/>
-<path class="n-tel" d="M340,798 L340,974"/>
-<path class="a-tel" d="M340,914 L416,914"/>
-<path class="a-tel" d="M340,974 L416,974"/>
-<path class="n-bus" d="M320,798 L320,1081 L360,1081"/>
-<path class="a-bus" d="M358,1081 L362,1081"/>
-<path class="n-pg" d="M300,798 L300,1152"/>
-<path class="a-pg" d="M300,1152 L416,1152"/>
-<path class="a-bus" d="M388,1081 L414,1081"/>
-<path class="sigo" d="M400,990 L416,990"/>
-<path class="sigplain" d="M420,1042 L350,1042 L350,1070"/>
-<path class="sigo" d="M350,1070 L362,1070"/>
-<path class="sigplain" d="M420,1120 L350,1120 L350,1092"/>
-<path class="sigo" d="M350,1092 L355,1092"/>
-<circle class="fabric" cx="360" cy="1092" r="4"/>
-<rect class="core" x="262" y="1246" width="518" height="32" rx="6"/>
-<text class="bs" x="272" y="1266" text-anchor="start">u_smc_base</text>
-<text class="s" x="772" y="1267" text-anchor="end">rst_primary_smc_clk_ni</text>
-<path class="a-smu" d="M880,1262 L786,1262"/>
-<text class="b" x="238" y="1302" text-anchor="start">smc</text>
-<path class="n-smut" d="M800,166 L800,352"/>
-<path class="n-ref" d="M820,140 L820,465 M820,475 L820,522"/>
-<path class="n-per" d="M840,114 L840,465 M840,475 L840,624 M840,634 L840,681 M840,691 L840,752"/>
-<path class="n-wdt" d="M860,88 L860,624 M860,634 L860,681 M860,691 L860,763 M860,773 L860,833 M860,843 L860,1026"/>
-<path class="n-smu" d="M880,62 L880,1262"/>
-<path class="sigplain" d="M400,990 L400,1037 M400,1047 L400,1081"/>
-<circle cx="860" cy="470" r="4" fill="#77736b"/>
-<circle cx="340" cy="914" r="4" fill="#664488"/>
-<circle cx="400" cy="1081" r="4" fill="#b2566c"/>
-<circle cx="800" cy="320" r="4" fill="#103525"/>
-<circle cx="800" cy="336" r="4" fill="#103525"/>
-<circle cx="820" cy="420" r="4" fill="#2f7f79"/>
-<circle cx="840" cy="566" r="4" fill="#937027"/>
-<circle cx="880" cy="629" r="4" fill="#103525"/>
-<circle cx="880" cy="686" r="4" fill="#103525"/>
-<circle cx="880" cy="768" r="4" fill="#103525"/>
-<circle cx="880" cy="838" r="4" fill="#103525"/>
-<path class="n-smu" d="M14,1338 L48,1338"/>
-<text class="s" x="56" y="1343" text-anchor="start">rst_primary_smc_clk_no</text>
-<path class="n-smut" d="M248.4,1338 L282.4,1338"/>
-<text class="s" x="290.4" y="1343" text-anchor="start">rst_primary_periph_clk_no</text>
-<path class="n-per" d="M504.4,1338 L538.4,1338"/>
-<text class="s" x="546.4" y="1343" text-anchor="start">rst_warm_smc_clk_no</text>
-<path class="n-ref" d="M717.2,1338 L751.2,1338"/>
-<text class="s" x="759.2" y="1343" text-anchor="start">rst_cold_stable_smc_clk_no</text>
-<path class="n-wdt" d="M14,1362 L48,1362"/>
-<text class="s" x="56" y="1367" text-anchor="start">fuse_reset_n</text>
-<path class="n-tel" d="M176.4,1362 L210.4,1362"/>
-<text class="s" x="218.4" y="1367" text-anchor="start">cluster_uncore_reset_n</text>
-<path class="n-bus" d="M410.8,1362 L444.8,1362"/>
-<text class="s" x="452.8" y="1367" text-anchor="start">core_reset_n[3:0]</text>
-<path class="n-pg" d="M609.2,1362 L643.2,1362"/>
-<text class="s" x="651.2" y="1367" text-anchor="start">debug_reset_n</text>
-<rect class="core" x="14" y="1377" width="40" height="18" rx="4"/>
-<text class="s" x="62" y="1391" text-anchor="start">Instance</text>
-<path class="fabric" d="M140,1376 L146,1376 A10,10 0 0 1 146,1396 L140,1396 Z"/>
-<text class="s" x="166" y="1391" text-anchor="start">AND</text>
-<path class="sigo" d="M220,1386 L256,1386"/>
-<text class="s" x="264" y="1391" text-anchor="start">Control or status</text>
-<path class="sigplain" d="M410,1386 L450,1386"/>
-<path class="sigplain" d="M430,1386 L430,1398"/>
-<circle cx="430" cy="1386" r="3.5" fill="#5b6670"/>
-<text class="s" x="460" y="1391" text-anchor="start">Fan-out</text>
-<path class="sigplain" d="M540,1386 L580,1386"/>
-<path class="sigplain" d="M560,1374 L560,1381 M560,1391 L560,1398"/>
-<text class="s" x="592" y="1391" text-anchor="start">Crossing, not connected</text>
+<rect class="core" x="262" y="248" width="518" height="356" rx="6"/>
+<text class="bs" x="272" y="268" text-anchor="start">u_smc_peripherals</text>
+<rect class="core" x="282" y="280" width="438" height="28" rx="4"/>
+<text class="s" x="292" y="299" text-anchor="start">u_i2c_wrap, u_uart_wrap, u_i3ccore_wrapper</text>
+<text class="s" x="712" y="299" text-anchor="end">rst_ni</text>
+<path class="a-smu" d="M800,294 L726,294"/>
+<rect class="core" x="282" y="316" width="438" height="28" rx="4"/>
+<text class="s" x="292" y="335" text-anchor="start">u_avsbus_controller</text>
+<text class="s" x="712" y="335" text-anchor="end">rst_reg_ni</text>
+<path class="a-smu" d="M800,330 L726,330"/>
+<rect class="core" x="282" y="352" width="438" height="28" rx="4"/>
+<text class="s" x="292" y="371" text-anchor="start">u_smc_peripherals_cdc</text>
+<text class="s" x="712" y="371" text-anchor="end">rst_periph_clk_ni</text>
+<path class="a-smu" d="M800,366 L726,366"/>
+<rect class="core" x="282" y="388" width="438" height="28" rx="4"/>
+<text class="s" x="292" y="407" text-anchor="start">u_ext_boot_seq_done_qual</text>
+<text class="s" x="712" y="407" text-anchor="end">rst_ni</text>
+<path class="a-ref" d="M820,402 L726,402"/>
+<text class="s" x="14" y="396" text-anchor="start">ext_boot_seq_done_i</text>
+<path class="sigo" d="M17,402 L278,402"/>
+<text class="si" x="388" y="431" text-anchor="start">ext_boot_seq_done_qual</text>
+<rect class="core" x="282" y="438" width="438" height="28" rx="4"/>
+<text class="s" x="292" y="457" text-anchor="start">u_smc_efuse_wrapper, u_fuse_reset_stall_and</text>
+<text class="s" x="712" y="457" text-anchor="end">fuse_reset_n</text>
+<path class="sigo" d="M380,416 L380,434"/>
+<path class="n-wdt" d="M720,452 L860,452"/>
+<rect class="core" x="282" y="474" width="438" height="28" rx="4"/>
+<text class="s" x="292" y="493" text-anchor="start">u_smc_padring.gen_gpio_intf[*].u_gpio_interface</text>
+<text class="s" x="712" y="493" text-anchor="end">rst_cold_ni</text>
+<path class="a-ref" d="M820,488 L726,488"/>
+<rect class="core" x="282" y="510" width="438" height="28" rx="4"/>
+<text class="s" x="292" y="529" text-anchor="start">u_smc_misc_wrap.u_smc_scratch_reg_cold_warm</text>
+<text class="s" x="712" y="529" text-anchor="end">arst_n</text>
+<path class="a-per" d="M840,524 L726,524"/>
+<rect class="core" x="282" y="546" width="438" height="28" rx="4"/>
+<text class="s" x="501" y="565" text-anchor="middle">u_telemetry_receiver_wrap</text>
+<text class="s" x="290" y="565" text-anchor="start">rst_telemetry_ni</text>
+<text class="s" x="14" y="554" text-anchor="start">rst_telemetry_ni</text>
+<path class="a-slate" d="M17,560 L278,560"/>
+<text class="s" x="618" y="592" text-anchor="end">All other logic</text>
+<text class="s" x="772" y="592" text-anchor="end">rst_primary_smc_clk_no</text>
+<path class="a-smu" d="M880,587 L786,587"/>
+<rect class="core" x="262" y="628" width="518" height="618" rx="6"/>
+<text class="bs" x="272" y="648" text-anchor="start">u_smc_cpu_wrapper</text>
+<text class="s" x="618" y="649" text-anchor="end">All other logic</text>
+<text class="s" x="772" y="649" text-anchor="end">rst_primary_smc_clk_ni</text>
+<path class="a-smu" d="M880,644 L786,644"/>
+<rect class="core" x="282" y="660" width="438" height="120" rx="4"/>
+<text class="bs" x="292" y="680" text-anchor="start">u_smc_cpu_ctrl_wrap</text>
+<rect class="fabric" x="302" y="690" width="398" height="28" rx="4"/>
+<text class="s" x="312" y="709" text-anchor="start">RESET_CTRL, pulse and drain logic</text>
+<text class="s" x="692" y="709" text-anchor="end">rst_primary_ni</text>
+<path class="a-smu" d="M880,704 L706,704"/>
+<rect class="fabric" x="310" y="742" width="110" height="28" rx="4"/>
+<text class="s" x="365" y="761" text-anchor="middle">Output flops</text>
+<text class="s" x="712" y="750" text-anchor="end">rst_warm_smc_clk_ni</text>
+<path class="a-per" d="M840,756 L426,756"/>
+<path class="sigo" d="M380,718 L380,738"/>
+<text class="si" x="388" y="734" text-anchor="start">core and uncore reset requests</text>
+<rect class="core" x="420" y="788" width="300" height="28" rx="4"/>
+<text class="s" x="428" y="807" text-anchor="start">rst_i</text>
+<text class="s" x="472" y="807" text-anchor="start">u_tilelink_to_rom_memory_convert</text>
+<rect class="core" x="282" y="826" width="478" height="410" rx="6"/>
+<text class="bs" x="360" y="846" text-anchor="start">u_smc_cpu</text>
+<rect class="core" x="420" y="858" width="320" height="44" rx="4"/>
+<text class="s" x="430" y="877" text-anchor="start">u_l2_frontend_axi_isolate,</text>
+<text class="s" x="430" y="893" text-anchor="start">u_mmio_axi_isolate</text>
+<text class="s" x="732" y="885" text-anchor="end">rst_ni</text>
+<path class="a-smu" d="M880,880 L746,880"/>
+<rect class="fabric" x="420" y="910" width="320" height="28" rx="4"/>
+<text class="s" x="430" y="929" text-anchor="start">Boundary isolation delay, cluster_ded_o flop</text>
+<rect class="fabric" x="420" y="946" width="320" height="44" rx="4"/>
+<text class="s" x="430" y="965" text-anchor="start">Scratch RAM zero-fill</text>
+<text class="s" x="430" y="981" text-anchor="start">init_mem_complete</text>
+<text class="s" x="732" y="965" text-anchor="end">mem_init_reset_ni</text>
+<path class="a-wdt" d="M860,960 L746,960"/>
+<rect class="core" x="420" y="1002" width="320" height="224" rx="4"/>
+<text class="bs" x="430" y="1022" text-anchor="start">u_digital_top</text>
+<text class="s" x="430" y="1047" text-anchor="start">All other logic</text>
+<rect class="core" x="434" y="1056" width="294" height="28" rx="4"/>
+<text class="s" x="442" y="1075" text-anchor="start">wdt_n_corerst</text>
+<text class="s" x="720" y="1075" text-anchor="end">wdtClockDomainWrapper*</text>
+<rect class="core" x="434" y="1092" width="294" height="36" rx="4"/>
+<text class="s" x="442" y="1115" text-anchor="start">core_n_reset</text>
+<text class="s" x="720" y="1115" text-anchor="end">tile_prci_domain*</text>
+<rect class="core" x="434" y="1136" width="294" height="44" rx="4"/>
+<text class="s" x="442" y="1155" text-anchor="start">hartResetReq[n]</text>
+<text class="s" x="442" y="1171" text-anchor="start">debug_reset</text>
+<text class="s" x="720" y="1155" text-anchor="end">tlDM</text>
+<rect class="core" x="434" y="1188" width="294" height="28" rx="4"/>
+<text class="s" x="442" y="1207" text-anchor="start">debug_systemjtag_reset</text>
+<text class="s" x="720" y="1207" text-anchor="end">dtm, tlDM DMI side</text>
+<text class="s" x="14" y="1196" text-anchor="start">smc_cpu_jtag_reset_i, active-high</text>
+<path class="a-jtag" d="M17,1202 L430,1202"/>
+<path class="fabric" d="M364,1092 L370,1092 A18,18 0 0 1 370,1128 L364,1128 Z"/>
+<path class="n-tel" d="M340,770 L340,1042"/>
+<path class="a-tel" d="M340,802 L416,802"/>
+<path class="a-tel" d="M340,924 L416,924"/>
+<path class="a-tel" d="M340,1042 L416,1042"/>
+<path class="n-bus" d="M320,770 L320,1110 L360,1110"/>
+<path class="a-bus" d="M358,1110 L362,1110"/>
+<path class="n-pg" d="M302,704 L292,704 L292,1166"/>
+<path class="a-pg" d="M292,1166 L430,1166"/>
+<path class="a-bus" d="M388,1110 L428,1110"/>
+<path class="sigo" d="M400,1070 L430,1070"/>
+<path class="sigplain" d="M420,976 L350,976"/>
+<path class="sigo" d="M350,1099 L362,1099"/>
+<path class="sigplain" d="M434,1150 L350,1150 L350,1121"/>
+<path class="sigo" d="M350,1121 L355,1121"/>
+<circle class="fabric" cx="360" cy="1121" r="4"/>
+<rect class="core" x="262" y="1270" width="518" height="32" rx="6"/>
+<text class="bs" x="272" y="1290" text-anchor="start">u_smc_base</text>
+<text class="s" x="772" y="1291" text-anchor="end">rst_primary_smc_clk_ni</text>
+<path class="a-smu" d="M880,1286 L786,1286"/>
+<text class="b" x="238" y="1326" text-anchor="start">smc</text>
+<path class="n-smu" d="M800,166 L800,366"/>
+<path class="n-ref" d="M820,140 L820,447 M820,457 L820,488"/>
+<path class="n-per" d="M840,114 L840,447 M840,457 L840,582 M840,592 L840,639 M840,649 L840,699 M840,709 L840,756"/>
+<path class="n-wdt" d="M860,88 L860,582 M860,592 L860,639 M860,649 L860,699 M860,709 L860,875 M860,885 L860,960"/>
+<path class="n-smu" d="M880,62 L880,1286"/>
+<path class="sigplain" d="M400,1070 L400,1110"/>
+<path class="sigplain" d="M350,976 L350,1037 M350,1047 L350,1099"/>
+<circle cx="860" cy="452" r="4" fill="#77736b"/>
+<circle cx="340" cy="802" r="4" fill="#664488"/>
+<circle cx="340" cy="924" r="4" fill="#664488"/>
+<circle cx="400" cy="1110" r="4" fill="#b2566c"/>
+<circle cx="800" cy="294" r="4" fill="#103525"/>
+<circle cx="800" cy="330" r="4" fill="#103525"/>
+<circle cx="820" cy="402" r="4" fill="#2f7f79"/>
+<circle cx="840" cy="524" r="4" fill="#937027"/>
+<circle cx="880" cy="587" r="4" fill="#103525"/>
+<circle cx="880" cy="644" r="4" fill="#103525"/>
+<circle cx="880" cy="704" r="4" fill="#103525"/>
+<circle cx="880" cy="880" r="4" fill="#103525"/>
+<path class="n-smu" d="M14,1362 L48,1362"/>
+<text class="s" x="56" y="1367" text-anchor="start">rst_primary_smc_clk_no, rst_primary_periph_clk_no</text>
+<path class="n-per" d="M442.8,1362 L476.8,1362"/>
+<text class="s" x="484.8" y="1367" text-anchor="start">rst_warm_smc_clk_no</text>
+<path class="n-ref" d="M655.6,1362 L689.6,1362"/>
+<text class="s" x="697.6" y="1367" text-anchor="start">rst_cold_stable_smc_clk_no</text>
+<path class="n-wdt" d="M14,1386 L48,1386"/>
+<text class="s" x="56" y="1391" text-anchor="start">fuse_reset_n</text>
+<path class="n-tel" d="M176.4,1386 L210.4,1386"/>
+<text class="s" x="218.4" y="1391" text-anchor="start">cluster_uncore_reset_n</text>
+<path class="n-bus" d="M410.8,1386 L444.8,1386"/>
+<text class="s" x="452.8" y="1391" text-anchor="start">core_reset_n[3:0], int_rst_core_n[3:0]</text>
+<path class="n-pg" d="M760.4000000000001,1386 L794.4000000000001,1386"/>
+<text class="s" x="802.4" y="1391" text-anchor="start">debug_reset_n</text>
+<rect class="core" x="14" y="1401" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="1415" text-anchor="start">Instance</text>
+<rect class="fabric" x="140" y="1401" width="40" height="18" rx="4"/>
+<text class="s" x="188" y="1415" text-anchor="start">Reset logic</text>
+<path class="sigo" d="M300,1410 L336,1410"/>
+<text class="s" x="344" y="1415" text-anchor="start">Control or status</text>
+<path class="sigplain" d="M490,1410 L530,1410"/>
+<path class="sigplain" d="M510,1410 L510,1422"/>
+<circle cx="510" cy="1410" r="3.5" fill="#5b6670"/>
+<text class="s" x="540" y="1415" text-anchor="start">Fan-out</text>
+<path class="sigplain" d="M620,1410 L660,1410"/>
+<path class="sigplain" d="M640,1398 L640,1405 M640,1415 L640,1422"/>
+<text class="s" x="672" y="1415" text-anchor="start">Crossing, not connected</text>
 </svg>

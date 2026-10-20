@@ -144,43 +144,54 @@ the resets.
 image::smc-reset-distribution.svg[alt="SMC reset distribution from the boundary reset inputs through the reset unit and the CPU control block to each instance",width=100%,pdfwidth=100%]
 
 Boundary reset inputs enter on the left. The reset-unit outputs and
-`fuse_reset_n` run in the channel on the right, each net in its own colour,
-with the port it drives named at the instance edge. A reset that ends at a
-block's edge reaches everything in that block not drawn with a reset of its
-own. The resets that `u_smc_cpu_ctrl_wrap` builds for the CPU cluster run in a
-second channel on the left of `u_smc_cpu`.
+`fuse_reset_n` run in the channel on the right, each reset family in its own
+colour, with the port it drives named at the instance edge. A reset that ends
+at a block's edge reaches everything in that block not drawn with a reset of
+its own. The resets that `u_smc_cpu_ctrl_wrap` builds for the CPU cluster run
+in a second channel on the left of `u_smc_cpu`.
 
 * `rst_primary_smc_clk_no` resets `u_smc_base`, most of `u_smc_peripherals`,
-  the CPU control registers and the cluster AXI isolation blocks. The DFD block
-  resynchronises it to `clk_ref_i` for its reference counter.
+  the CPU control registers, the front-port logic of `u_smc_cpu_wrapper` and
+  the cluster AXI isolation blocks. The DFD block resynchronises it to
+  `clk_ref_i` for its reference counter.
 * `rst_primary_periph_clk_no` resets the I2C, UART, I3C and AVSBus register
-  logic and the peripheral-clock side of `u_smc_peripherals_cdc`.
-* `rst_warm_smc_clk_no` resets the core and uncore reset outputs of
-  `u_smc_cpu_ctrl_wrap` and the warm scratch register. The CPU control
-  registers, including `RESET_CTRL`, `RESET_VECTOR` and `WDT_TIMEOUT`, are on
-  the primary reset and keep their values across a warm reset.
+  logic and the peripheral-clock side of `u_smc_peripherals_cdc`. The AVSBus
+  reference-clock logic takes `rst_primary_ref_clk_no` and its clock divider
+  takes `powergood_stable`.
+* `rst_warm_smc_clk_no` resets the warm scratch register and, inside
+  `u_smc_cpu_ctrl_wrap`, the output flops that drive `core_reset_n` and
+  `cluster_uncore_reset_n`. The CPU control registers, including `RESET_CTRL`,
+  `RESET_VECTOR` and `WDT_TIMEOUT`, are on the primary reset and keep their
+  values across a warm reset. The output flops register the core and uncore
+  reset requests from `RESET_CTRL`, so a warm reset holds the cores and uncore
+  in reset, and once it releases they follow `RESET_CTRL` again.
 * `rst_cold_stable_smc_clk_no` resets `u_ext_boot_seq_done_qual` and disables
-  the GPIO outputs while it is low.
-* `fuse_reset_n` holds the warm reset and resets the scratch RAM zero-fill
-  sequencer.
+  the GPIO outputs while it is low. `u_ext_boot_seq_done_qual` synchronises
+  `ext_boot_seq_done_i` and holds it set until the next cold reset.
+* `fuse_reset_n` releases once fuse sensing completes, the qualified
+  `ext_boot_seq_done_i` is set and any boot stall ends. It holds the warm reset
+  and resets the scratch RAM zero-fill sequencer.
 * `cluster_uncore_reset_n` resets the uncore of the generated cluster: its
   buses, coherence manager, CLINT, PLIC, boot ROM interface, the bus side of
   the debug module and the four watchdogs. It also resets the delay that holds
   the cluster AXI isolation after reset and the `cluster_ded_o` flop.
-* Each bit of `core_reset_n[3:0]` resets one Rocket tile and its L1 caches.
-  The cluster also holds the tile in reset until the scratch RAM zero-fill
-  completes and while the debug module requests a reset of that hart.
-* `debug_reset_n` resets the debug module. `RESET_CTRL` resets it to 0, so the
-  debug module stays in reset until software releases it.
+* `u_smc_cpu` ANDs each bit of `core_reset_n[3:0]` with scratch RAM zero-fill
+  completion and the inverted hart reset request from the debug module. The
+  result, `int_rst_core_n[3:0]`, resets one Rocket tile and its L1 caches and
+  reaches that core's watchdog on `wdt_n_corerst`.
+* `debug_reset_n` comes directly from `RESET_CTRL` and resets the debug module
+  and its clock-enable logic. `RESET_CTRL` resets it to 0, so the debug module
+  stays in reset until software releases it.
 * `smc_cpu_jtag_reset_i`, which is active-high, resets the JTAG debug transport
   module and the DMI side of the debug module. `rst_telemetry_ni` resets the
   telemetry-clock side of `u_telemetry_receiver_wrap`.
 
-Each watchdog receives its core's reset on `wdt_n_corerst` as a status input,
-not as a reset. The watchdog synchronises it and, while `wdogcoreawake` is set
-and `wdogenalways` is clear, stops counting while the core is in reset. A
-per-core reset therefore leaves the watchdog's `COUNT` and configuration
-unchanged. Only the uncore reset clears them, whether warm reset or the
+NOTE: Each watchdog gets its core's reset on `wdt_n_corerst` as a status
+input, not as a reset, which can be seen in <<smc-reset-distribution-figure>>.
+The watchdog synchronises it and, while `wdogcoreawake` is set and
+`wdogenalways` is clear, stops counting while the core is in reset. Resetting
+a core therefore does not clear its watchdog's `COUNT` or configuration
+registers. Only the uncore reset clears them, whether warm reset or the
 `RESET_CTRL` uncore bit asserts it.
 
 [[smc-reset-unit-figure]]
