@@ -56,7 +56,7 @@ Checks (HOST-UNREC unless marked):
   CHK-STATUS-HELD    (both) the IRQ_STATUS bits of the set stay set after the trap.
   CHK-KPV-TRAP       (control) the KPV words and CTRL read 0 after the trap.
   CHK-PARITY         a parity flip sets the memory's parity bit and reports -2 or -3.
-  CHK-PARITY-VAC     a flip that the CPU did not check is redrawn, at most 4 times.
+  CHK-PARITY-VAC     a flip that the CPU did not check is redrawn, at most 8 times.
   CHK-KEYCRC         a corrupt key word gives 0xFE key_slot_crc, then failure.
   CHK-CRC-FIRST      the CRC fault precedes the policy refusal.
   CHK-NOFLUSH        the key fault keeps the sequence counters.
