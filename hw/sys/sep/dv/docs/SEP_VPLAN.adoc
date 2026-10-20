@@ -2758,6 +2758,10 @@ the test does.
 |AxCACHE pass-through from the alias remap output to `smn_outbound_axi_req_o`
 |Does AxCACHE pass unchanged from the alias remap output to `smn_outbound_axi_req_o`? The specification states pass-through only for AxPROT bits 0 and 2. (`hw/sys/sep/doc/fabric.adoc`, "Transaction Routing".)
 |`sep_fabric_alias_remap_attr_rand_test` (CHK-ALIAS-CACHE) grades AxCACHE at PR-ALIAS (the input and output requests of the alias remap), an observation tap the test adds to the SEP_TB_ARCH observation-probe list. The check does not read AxCACHE at PR-OUT
+|<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
+|AxID of concurrent LSU and DMA requests on the outbound port
+|Must concurrent LSU and DMA requests on the outbound port carry distinct AXI IDs after widening? The specification states only that the outbound mux widens the ID from 6 to 8 bits. (`hw/sys/sep/doc/fabric.adoc`, "Fabric Topology".)
+|`sep_outbound_contention_rand_test` grades that an LSU request and a DMA request are outstanding at the port at once (CHK-LSU-DMA-OVERLAP) and logs the pairs that share an ID as `OBS-ATTR-ID-SHARE`. CHK-RESP-ROUTE grades that every response reaches the initiator that issued it
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Tie-break among equal-priority enabled sources
 |Which source wins among equal-priority enabled sources? (`hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc`, `meipl` states no tie-break.)

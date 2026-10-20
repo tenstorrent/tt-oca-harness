@@ -66,14 +66,18 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-SYSIF-NO-OUTBOUND-PATH
                     every access of the SMN inbound master answers DECERR with
                     one B or its R beats, and none reaches PR-OUT.
-  CHK-ATTR-USER     AxUSER[3:0] of every LSU and DMA request at PR-OUT is
-                    known, is not OTHERS (0) and is the same on every request
-                    of the leaf, although the LSU alternates two distinct
-                    non-zero values and the DMA issues OTHERS: the SMU path
-                    sets SEP's ID. A request that breaks the first two counts
-                    as altered in the check of its session, as does an AxPROT
-                    other than bits 0 and 2 as issued with NS 1. The number is
-                    logged (OBS-SAT-SRC-ID), with AxUSER[11:4].
+  CHK-ATTR-USER     over the whole PR-OUT window from bring-up to the end of
+                    the leaf, every LSU and DMA request the leaf issues (every
+                    phase, not only the hold sessions) matches exactly one
+                    PR-OUT request at its address, and no PR-OUT request is
+                    left unmatched: graded == issued, none lost, none extra.
+                    Each matched request has AxLEN 0, AxPROT bits 0 and 2 as
+                    issued with NS 1, and AxUSER[3:0] known and not OTHERS (0);
+                    AxUSER[3:0] is the same on every request of the leaf,
+                    although the LSU alternates two distinct non-zero values
+                    and the DMA issues OTHERS: the SMU path sets SEP's ID. A
+                    hold session also fails its own checker on such a request.
+                    The number is logged (OBS-SAT-SRC-ID), with AxUSER[11:4].
   CHK-NONVAC        the ordered fence of the phases.
   CHK-TIMEOUT-PATHS the bound of each wait.
 """
@@ -557,7 +561,12 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             )
         issued = {k: v for k, v in s.issued.items() if k[0] != "sysif"}
         alt, miss = altered_requests(
-            self.layout, beats, issued, self._expect_prot(), self.src_grade, self._issued_user()
+            self.layout,
+            beats,
+            issued,
+            self._expect_prot(),
+            SepSrcIdGrade("SAT-SESSION"),
+            self._issued_user(),
         )
         if alt or miss:
             self._fail(chk, f"session={s.name} altered={alt} lost={miss} at PR-OUT")
@@ -971,8 +980,28 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         )
 
     def _chk_attr_user(self) -> None:
-        """CHK-ATTR-USER over every LSU and DMA request the sessions graded."""
+        """CHK-ATTR-USER over every LSU and DMA request the leaf issued.
+
+        The whole PR-OUT window is matched against the full issued set: each
+        issued request needs one PR-OUT request at its address, and a PR-OUT
+        request at no issued address (or past the issued count) counts as
+        altered, so graded == issued holds only for an exact match.
+        """
         g = self.src_grade
+        chk = "CHK-ATTR-USER"
+        issued = {k: v for k, v in self.issued_all.items() if k[0] in ("lsu", "dma")}
+        n_issued = sum(len(v) for v in issued.values())
+        beats = self.out.beats[self.m0[0] :]
+        alt, miss = altered_requests(
+            self.layout, beats, issued, self._expect_prot(), g, self._issued_user()
+        )
+        graded = len(g.observed)
+        if alt or miss or graded != n_issued:
+            self._fail(
+                chk,
+                f"graded={graded} issued={n_issued} altered={alt} lost={miss} over the whole "
+                "PR-OUT window",
+            )
         why = g.finish(min_nonzero_issued=2)
         if why is not None:
             self._fail("CHK-ATTR-USER", why)
@@ -981,7 +1010,8 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self._emit(
             "CHK-ATTR-USER",
             f"lsu_users_issued=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} "
-            f"dma_user_issued=0 {g.summary()}",
+            f"dma_user_issued=0 graded={graded} issued={n_issued} altered={alt} lost={miss} "
+            f"{g.summary()}",
         )
 
     # ---- scenario --------------------------------------------------------------------------------

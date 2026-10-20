@@ -39,8 +39,15 @@ AxUSER source ID and NS), and the PR-INFLT tap (the request out of the inbound
 filter) shows each of them, so the DECERR comes from the routing decode past
 the filter and not from the filter.
 
+A PR-OUT request outside the three slots of the page has no initiator; any such
+request fails the checker of its phase and CHK-SYSIF-NO-OUTBOUND-PATH, so a
+request the DUT leaks or adds at another address cannot drop out of the
+per-initiator counts.
+
 Printed as measured and never compared: the completion order of same-ID
-writes, the completion latency of each phase, the outbound ID encoding, and
+writes, the completion latency of each phase, the outbound ID encoding, the
+AxID of LSU and DMA requests outstanding at the port together
+(OBS-ATTR-ID-SHARE; no spec sentence states whether they must differ), and
 the acceptance point of a request the filters answer themselves.
 
 Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
@@ -48,11 +55,13 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-LSU-PATH, CHK-DMA-PATH
                     the LSU and the DMA alone: one request per access at
                     PR-OUT, AxLEN 0 for a single beat, one B or ARLEN+1 R
-                    beats with RLAST on the last, DMA STATUS DONE then cleared.
+                    beats with RLAST on the last, DMA STATUS DONE then cleared,
+                    and no PR-OUT request outside the slots of the page.
   CHK-SYSIF-NO-OUTBOUND-PATH
                     every single and burst access of the SMN inbound master
                     answers DECERR with one B or its R beats, RLAST on the
-                    last, and none reaches PR-OUT. Attribution: each of them
+                    last, and none reaches PR-OUT (no request in the SMN slot
+                    and no request outside the slots). Attribution: each of them
                     leaves the inbound filter (one PR-INFLT AW per write and
                     one AR per read, each at an address of the SMN slot), so
                     the filter admitted it and the DECERR is the decode's.
@@ -72,9 +81,10 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     number is logged (OBS-ATTR-SRC-ID), with AxUSER[11:4].
   CHK-ATTR-PROT     AxPROT of every LSU and DMA request at PR-OUT: bits 0
                     and 2 as issued, NS 1 (the inverse of address bit 55).
-  CHK-ATTR-ID-DISTINCT
+  CHK-LSU-DMA-OVERLAP
                     at least one LSU request and one DMA request outstanding
-                    at the port at once, and no such pair shares an ID.
+                    at the port at once (the reach of the concurrent phases);
+                    whether such a pair shares an AxID is logged only.
   CHK-NONVAC        the ordered fence of the phases.
   CHK-TIMEOUT-PATHS the bound of each wait.
 """
@@ -142,7 +152,7 @@ CHECKS = (
     "CHK-RESP-ROUTE",
     "CHK-ATTR-USER",
     "CHK-ATTR-PROT",
-    "CHK-ATTR-ID-DISTINCT",
+    "CHK-LSU-DMA-OVERLAP",
     "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
@@ -198,6 +208,14 @@ def _setfmt(vals) -> str:
 
 def _listfmt(vals) -> str:
     return "[" + ",".join(str(v) for v in vals) + "]"
+
+
+def _unattributed(view) -> str:
+    """The PR-OUT requests of ``view`` outside every slot, for a fail message."""
+    off = [r for r in view.reqs if r.init is None]
+    return "; ".join(
+        f"{r.kind} id={r.id} addr={'x' if r.addr is None else hex(r.addr)}" for r in off[:4]
+    )
 
 
 @pyuvm.test()
@@ -364,6 +382,12 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         st: dict = {}
         if view.unknown:
             self._fail(chk, f"phase={name} x_or_z_beats={view.unknown}")
+        if view.unattributed:
+            self._fail(
+                chk,
+                f"phase={name} {view.unattributed} PR-OUT request(s) outside the slots of "
+                f"the page: {_unattributed(view)}",
+            )
         for init in ("lsu", "sysif"):
             txns = plan.get(init, [])
             wr = [t for t in txns if t.op == "wr"]
@@ -862,30 +886,26 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             f"lsu_awprot={pf(lsu_aw)} lsu_arprot={pf(lsu_ar)} dma_awprot={pf(dma_aw)} "
             f"dma_arprot={pf(dma_ar)} crossings={cross_p}",
         )
-        pairs, collisions, ids = id_overlap(whole, "CHK-ATTR-ID-DISTINCT")
-        shared = [
-            (a, b, sorted(ids[a] & ids[b]))
-            for i, a in enumerate(INITS)
-            for b in INITS[i + 1 :]
-            if ids[a] & ids[b]
-        ]
+        pairs, collisions, ids = id_overlap(whole, "CHK-LSU-DMA-OVERLAP")
         idline = (
             f"lsu_dma_outstanding_pairs={pairs} lsu_ids={_setfmt(ids['lsu'])} "
             f"dma_ids={_setfmt(ids['dma'])} hold_lead_clocks={c.hold_lead}"
         )
         if pairs == 0:
             self._fail(
-                "CHK-ATTR-ID-DISTINCT",
+                "CHK-LSU-DMA-OVERLAP",
                 f"{idline}: no LSU request and DMA request were outstanding at the port at "
                 "once, so the concurrent-initiator contract is not exercised",
             )
-        if collisions or shared:
-            self._fail(
-                "CHK-ATTR-ID-DISTINCT",
-                f"{idline} id_collisions={collisions}/{pairs} sysif_ids={_setfmt(ids['sysif'])} "
-                f"shared_ids={shared}",
-            )
-        self._emit("CHK-ATTR-ID-DISTINCT", f"{idline} id_collisions={collisions}/{pairs}")
+        # No spec sentence states whether concurrent LSU and DMA requests carry
+        # distinct AxIDs after the outbound ID widening; logged only.
+        self._obs_row(
+            "ATTR-ID-SHARE",
+            f"lsu_dma_outstanding_pairs={pairs} same_id_pairs={collisions} "
+            f"lsu_ids={_setfmt(ids['lsu'])} dma_ids={_setfmt(ids['dma'])} "
+            f"ids_in_both={_setfmt(ids['lsu'] & ids['dma'])}",
+        )
+        self._emit("CHK-LSU-DMA-OVERLAP", idline)
         self._pass("CHK-RESP-ROUTE")
 
         self._check_pin_xz("CHK-B-COUNT", "CHK-R-COUNT")
@@ -930,6 +950,12 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         reached = whole.n_req("sysif", "wr") + whole.n_req("sysif", "rd")
         if reached:
             self._fail(chk, f"sysif requests at PR-OUT={reached}")
+        if whole.unattributed:
+            self._fail(
+                chk,
+                f"{whole.unattributed} PR-OUT request(s) outside the slots of the page: "
+                f"{_unattributed(whole)}",
+            )
         if n["issued"] < floor or n["decerr"] != n["issued"]:
             self._fail(chk, f"issued={n['issued']} floor={floor} decerr={n['decerr']}")
         # The filter admitted every SMN inbound access: one PR-INFLT AW per
@@ -957,6 +983,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self._emit(
             chk,
             f"issued={n['issued']} floor={floor} decerr={n['decerr']} reached_pr_out={reached} "
+            f"outside_slots={whole.unattributed} "
             f"inflt_aw={len(inflt_aw)} inflt_ar={len(inflt_ar)} "
             f"b_at_master={whole_m['b']} writes={n['writes']} r_at_master={whole_m['r']} "
             f"beats={n['beats']} rlast={whole_m['rlast']} reads={n['reads']}",
