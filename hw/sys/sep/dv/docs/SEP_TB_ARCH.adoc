@@ -214,6 +214,10 @@ Observation probe groups:
   `km_cond_rst_probe_o`, the two Key Manager reset conditioner outputs (bit 1
   `rst_cold_aasd_n`, bit 0 `rst_warm_sync_n` of `u_key_manager_s3c_scan`);
   owner `sep_scan_reset_override_test`.
+  `refcnt_rst_n_probe_o`, the two reset synchronizer outputs of the reference
+  counter (bit 1 `prstb_synced_rd` on `clk_ref_i`, bit 0 `prstb_synced_write`
+  on `clk_i`, of `u_sep_system_csr.u_reference_counter_counter`); owner
+  `sep_scan_reset_override_test`.
 * Core JTAG and DMI outputs: `jtag_tdo_o` (core TAP TDO), `dmi_uncore_en_o`
   and `dmi_uncore_wr_en_o` (wrapper ports `dmi_uncore_en`,
   `dmi_uncore_wr_en`). Owner: `sep_debug_master_target_matrix_test`.

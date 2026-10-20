@@ -2352,10 +2352,6 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Scope limit*: The depth at full is a logged value and is not an expected value, because the specification does not state it. `STATUS.hmac_idle` is logged (`OBS-HMAC-IDLE seed=<n> phase=<p> idle=<i>`) and not graded during or after a hash: the register text gives only its reset value 1 and the rule that context writes are legal while it is 1. The second round of HMAC mode, and a `fifo_empty` with `hash_process` or `hash_stop` already written, have no stimulus here, so the unmet conditions of the interrupt rule are not claimed. The open owner (`sep_hmac_sha_variant_rand_test`) keeps the digest cells of 1 to 16 words. The HMAC key and message order are claimed only through the digest golden. The `WIPE_SECRET` overwrite of the intermediate hash and of the message schedule has no read path other than the digest registers and is not claimed apart from the digest. The index of the held beat after `fifo_full` reads 1 is logged and not graded (CHK-HMAC-BACKPRESSURE is blocked). The narrow-write leg grades one fixed message; it does not walk every lane and width with every digest size.
 
-*Known limitation*: CHK-HMAC-NARROW-WRITE fails on this DUT. A write of 8 or 16 bits at byte lane 1, 2 or 3 of the `MSG_FIFO` window answers SLVERR, and its bytes do not join the message, although `hmac.hjson` (`MSG_FIFO`, `byte-write: "true"`) states that any write to the window is appended. The leaf stays failed on this check, and the other checks of the leaf grade before it.
-
-*Issue*: #3131
-
 '''''
 
 [[sep_hmac_swap_context_rand_test]]
@@ -2881,10 +2877,6 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Known limitation*: CHK-KMAC-NARROW-WRITE fails on this DUT. An 8-bit write at byte lane 1, 2 or 3, or a 16-bit write at byte lane 2, of the `MSG_FIFO` window answers SLVERR, against `kmac.hjson` (`MSG_FIFO`, `byte-write: "true"`). The register bridge (`hw/common/axi/axi_lite_to_tlul.sv`) sends a 4-byte request at the unaligned address, and the register block (`hw/common/tlul/rtl/tlul_err.sv`) refuses it. The cells write their messages at byte lane 0, so the other checks of the leaf grade on a path that answers OKAY.
-
-*Issue*: #3131
-
 *Scope limit*: This test grades the stages, the endianness bits, the length corners, `run`, the idle state, the configuration lock in the absorb stage, the `kmac_done` line and the narrow-lane message writes for SHA3 and SHAKE with `kmac_en` = 0. The value of `CFG_REGWEN` in the squeeze stage and the clock at which it returns to 1 are not stated and are not graded. The following are not claimed. `msg_mask` and `entropy_fast_process` act only in KMAC mode, and the keyed digest belongs to `sep_kmac_mode_strength_rand_test`. The cSHAKE cells are not driven, because their golden needs an encoded prefix that this test does not write. Whether `kmac_done` rises again after `run` or `done` is not stated: the leaf grades no value of the bit from the clear of step 12 to the clear of step 15, and the idle window of the next cell follows the clear of step 15. The `INTR_TEST` walk of the `kmac_done` line with the enable set belongs to `sep_irq_ip_to_aggregator_test` and `sep_irq_simultaneous_fanin_no_alias_test`. The enable clear, the enable flip and the write-one clear of the line belong to the extension leg of `sep_irq_ip_to_aggregator_test`. The `fifo_empty` lines belong to `sep_pic_pending_map_walk_rand_test`, and the `kmac_err` line belongs to the extension leg of `sep_irq_ip_to_aggregator_test` and to `sep_kmac_unsupported_cfg_inject_test`. The `STATUS` fields `fifo_depth`, `fifo_empty` and `fifo_full` and the two alert bits are not graded, and the effect of `msg_mask` and `entropy_fast_process` has no stated observation (see <<sep-vplan-phase3-blocked,Blocked features>>).
 
 '''''
@@ -3359,7 +3351,7 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Issue*: #3140, #3149
 
-*Scope limit*: This test grades only the cells of its Test Coverage; `sep_esrc_alert_delivery_test` keeps the trip at threshold 3 with its alert bookkeeping and the write-one clear after leaving AlertHang, and `sep_reg_bit_bash_rand_test` keeps the power-on value of `ALERT_THRESHOLD`. The trip latency is logged as `OBS-PF-TRIP-LATENCY` and is not graded until the text states it (#3140). Not claimed: the OR of the ESRC status bits onto interrupt source 16 (the leaf logs vector bit 15 as `OBS-PIC16` and does not grade it).
+*Scope limit*: This test grades only the cells of its Test Coverage; `sep_esrc_alert_delivery_test` keeps the trip at threshold 3 with its alert bookkeeping and the write-one clear after leaving AlertHang, and `sep_reg_bit_bash_rand_test` keeps the power-on value of `ALERT_THRESHOLD`. The trip latency is logged as `OBS-PF-TRIP-LATENCY` and is not graded until the text states it. Not claimed: the OR of the ESRC status bits onto interrupt source 16 (the leaf logs vector bit 15 as `OBS-PIC16` and does not grade it).
 
 '''''
 

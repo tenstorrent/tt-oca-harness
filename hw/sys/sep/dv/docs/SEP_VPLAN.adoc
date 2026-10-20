@@ -2860,7 +2860,7 @@ the test does.
 |Graded leg: Period ratio in core clocks (`sep_spi_pad_timing_cfg_rand_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI FIFO depths
-|`spi.adoc` (Features) states no depth number. The SEP SPI host is the unmodified OpenTitan IP, whose parameters are TxDepth 72, RxDepth 64 and CmdDepth 4 (`spi_host.hjson:93-107`; `sep-programming.adoc:784`). Does the SEP build keep them?
+|`spi.adoc` (Features) states no depth number. The SEP SPI host is the unmodified OpenTitan IP, whose parameters are TxDepth 72, RxDepth 64 and CmdDepth 4 (`spi_host.hjson:93-107`; `sep-programming.adoc:784`), and the SEP build keeps them. At which CMDQD does READY stay 0, and how many RX words land past RXFULL?
 |Graded leg: TX 73 words before TXFULL, RXFULL and RXQD 64 at an idle 64-word Rx segment (`sep_spi_fifo_stall_watermark_rand_test`, CHK-SPI-DEPTH-TX, CHK-SPI-DEPTH-RX). CMDQD at 4 or below while the leaf writes COMMANDs behind a held segment, each after a STATUS read with READY=1, until READY stays 0 for 20000 core clocks (CHK-SPI-CMDQD-DEPTH; CmdDepth 4, `spi_host.hjson:103-106`, CMDQD `spi_host.hjson:318-319`). The RX words past RXFULL, the CMDQD at which READY stays 0 and the head-segment count are logged (`OBS-SPI-RX-EXTRA`, `OBS-SPI-CMDQD-FULL`): `theory_of_operation.md:620`, `:373` and `programmers_guide.md:143-144` give no single point at which READY stays 0. Gated leg: the RX watermark crossing at the reset value 0x7F (the FCOV Bins-not-graded table, `cp_rxwm_reset`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI CSIDINVAL at CSID=1
@@ -2921,7 +2921,7 @@ the test does.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI byte order inside a word
 |Which byte of a TXDATA word goes on the wire first, and where does the first received byte land in RXDATA? `spi_controller.adoc` (STATUS.BYTEORDER) gives a read-only field with reset 0x0, while the SEP SPI host is the unmodified OpenTitan IP with its register map authoritative (`doc/trm/src/revision.adoc`, revision 0.5.34) and the OpenTitan parameter `ByteOrder` defaults to 1 (`spi_host.hjson`; theory of operation, "Input and Output Byte Ordering"), and the wrapper sets no override. The open point is the 0x0 reset in `spi_controller.adoc`.
-|Graded leg: Lane data at x1, x2 and x4 against `ByteOrder = 1` (the SPI tests of <<sep-spi-lane-coverage>>). The lane map, the bit order and the output enables come from `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment") and are graded. A `STATUS.BYTEORDER` readback is never the golden. The FULLCYC sampling point is graded at CPHA=0 (entry 4.8) and not at CPHA=1
+|Graded leg: Lane data at x1, x2 and x4 against `ByteOrder = 1` (the SPI tests of <<sep-spi-lane-coverage>>). The lane map, the bit order and the output enables come from `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment") and are graded. A `STATUS.BYTEORDER` readback is never the golden. The FULLCYC sampling point is graded at CPHA=0 and at CPHA=1 (entry 4.8)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI ALERT_TEST
 |Where does SPI ALERT_TEST go (`spi_controller.adoc`, ALERT_TEST)?
@@ -3006,10 +3006,6 @@ the test does.
 |`fast_*_en` bits
 |What drives the `fast_*_en` bits and what do they change? What does `fast_spi_en` do (`sep_cpu_ctrl.adoc`)?
 |Graded leg: None
-|<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|SPI `STATUS.BYTEORDER` reports the ByteOrder parameter so that firmware can confirm the configuration (reset 0).
-|What ByteOrder value does the OCAH build set, and what byte packing of `RXDATA` and `TXDATA` words does it mean? Source: `vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc` (`STATUS`).
-|No entry grades the bit or the packing.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA source and destination addresses must have the same alignment (field text of `SRC_ADDR_HI`, `DST_ADDR_LO` and `DST_ADDR_HI`). Every Phase 3 entry uses addresses that are aligned to the transfer width with the same alignment.
 |What does 'same alignment' mean for two addresses that are each aligned to the transfer width, and which `ERROR_CODE` bit (`SRC_ADDR_ERROR`, `DST_ADDR_ERROR` or both) does a mismatch raise? Source: `vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc` (`SRC_ADDR_LO`, `DST_ADDR_LO`).
@@ -4411,6 +4407,11 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |The two Key Manager reset conditioner outputs.
 |`sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test` (CTL-SCAN-REACH)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|`refcnt_rst[1:0]`
+|Read-only tap
+|The two reset synchronizer outputs of the reference counter (`u_sep_system_csr.u_reference_counter_counter`): bit 0 the `clk_i` side, bit 1 the `clk_ref_i` side.
+|`sep_scan_reset_override_test` (CHK-SCAN-IDLE, CHK-SCAN-REPLACE), `sep_scan_mode_state_hold_test` (CTL-SCAN-REACH)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`ip_rst_n[0]` (`KM-RST`)
 |Read-only tap
 |The Key Manager warm reset net `km_sw_rst_n`: bit 0 of `sep_crypto_gated_rst_no`, index 0 of the `ip_rst_n` vector.
@@ -5374,15 +5375,9 @@ defect. Behaviour that this plan does not claim at all is in
 |Lifecycle codes with no owner. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`). The `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set.
 |The encodings are closed. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset. From a given image only a W1S superset is reachable in one leaf.
 
-|KMAC message-window narrow write (hardware gap). The KMAC `MSG_FIFO` window takes byte writes at any address of the window (`vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson`, `MSG_FIFO`, `byte-write: "true"`; the low 12 address bits are ignored). On this DUT an 8-bit write at byte lane 1, 2 or 3 or a 16-bit write at byte lane 2 of the window answers SLVERR: the register bridge (`hw/common/axi/axi_lite_to_tlul.sv`) sends a 4-byte request at the unaligned address, and the register block (`hw/common/tlul/rtl/tlul_err.sv`) refuses it. *Issue*: #3131
-|`sep_kmac_stream_cfg_rand_test` CHK-KMAC-NARROW-WRITE fails on this DUT (<<sep_kmac_stream_cfg_rand_test>>). The drawn cells of the leaf write their messages at byte lane 0, so the other checks of the leaf grade on a path that answers OKAY. Firmware must write the window at byte lane 0.
-
-|HMAC message-window narrow write (hardware gap). The HMAC `MSG_FIFO` window takes byte writes (`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson`, `MSG_FIFO`, `byte-write: "true"`). On this DUT an 8-bit write at byte lane 1, 2 or 3 or a 16-bit write at byte lane 2 of the window answers SLVERR, through the same register bridge as the KMAC row above. *Issue*: #3131
-|`sep_hmac_fifo_stream_rand_test` CHK-HMAC-NARROW-WRITE fails on this DUT (<<sep_hmac_fifo_stream_rand_test>>). The leaf runs the narrow-lane leg last, so the other checks of the leaf grade on writes at byte lane 0. Firmware must write the window at byte lane 0.
-
 |ESRC persistent-failure alert one window late (spec-vs-design difference, spec update pending). `hw/ip/entropy_source/doc/architecture.adoc` (persistent-failure path) states that the main state machine goes to the alert state when `ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT` reaches `ALERT_THRESHOLD.THRESHOLD`. On this DUT the state machine acts at the end of the next health window, so entropy output continues for one window after the count reaches the threshold, and `ANY_FAIL_COUNT` reads the threshold plus 1 at the trip when that window also fails. The text states no trip timing in windows. *Issue*: #3140
 
-|CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD fail on this DUT (#3149). `sep_esrc_persistent_alert_rand_test` grades the failing-window count (T trips, T - 1 does not, a clean window after window T does not cancel the trip) and logs the trip latency as `OBS-PF-TRIP-LATENCY` without grading it (<<sep_esrc_persistent_alert_rand_test>>).
+|`sep_esrc_persistent_alert_rand_test` grades the failing-window count (T trips, T - 1 does not, a clean window after window T does not cancel the trip) and logs the trip latency as `OBS-PF-TRIP-LATENCY` without grading it (<<sep_esrc_persistent_alert_rand_test>>).
 
 |DMA `CONTROL.GO` at `TOTAL_DATA_SIZE` in hardware handshake operation (spec-vs-design difference, spec update pending). `vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc` (`CONTROL.GO`) states that in hardware handshake operation the engine does not clear GO and that firmware clears it to stop. On this DUT the engine clears GO and sets `STATUS.DONE` once `TOTAL_DATA_SIZE` bytes have moved; it keeps GO set between chunks. The register text states no clear at the total. *Issue*: #3130
 |`sep_spi_dma_handshake_rand_test` grades GO between chunks (CHK-HS-GO) and logs GO and `STATUS.DONE` at the total as `OBS-HS-GO-TOTAL` and `OBS-HS-DONE` without grading them (<<sep_spi_dma_handshake_rand_test>>).
@@ -5398,4 +5393,10 @@ defect. Behaviour that this plan does not claim at all is in
 
 |Key Manager CPU AXI master valid in reset (hardware gap). AXI (IHI0022, A3.1.2) requires a master to drive ARVALID, AWVALID and WVALID low during reset, and `hw/ip/key_manager/doc/architecture.adoc` names the CPU port an AXI4-Lite master with an asynchronous cold reset. On this DUT the PicoRV32 master clears its request only on the next clock edge, so a read that waits for `ARREADY` when the cold reset asserts keeps `ARVALID` high for one clock. *Issue*: #3170
 |`sep_drbg_sink_mix_rand_test` fails on VCS on `OCAH_AXI_AR_VALID_RESET_LOW` of the Key Manager CPU port when its `rst_ni` pulse lands on such a clock, which depends on the seed; its checkers pass (<<sep_drbg_sink_mix_rand_test>>). Verilator compiles the AXI assertions out. Other leaves that pulse `rst_ni` while the Key Manager firmware runs can fail the same way.
+
+|CPU AXI ports across a watchdog CPU reset (hardware gap). AXI requires each response to match an outstanding request (AMBA AXI protocol, channel handshake dependencies). On this DUT a `wdt_rst_ni` pulse resets the CPU but not the local AXI crossbar, with no isolate or drain step, so the response of a CPU access outstanding at the pulse reaches the CPU port after the reset has cleared the outstanding state of that port. *Issue*: #2744
+|`sep_cpu_reset_retention_test` CHK-WDT-INFLIGHT and CHK-OVL fail on this DUT (<<sep_cpu_reset_retention_test>>). On the full-CPU leaf under VCS the `cnt_underflow` assertion of the CPU port `axi_demux` also fires.
+
+|Isolated read on a 64-bit host path (hardware gap). `hw/sys/sep/doc/reset_controller.adoc` (Isolation and Reset Sequencing) states that a new transaction on an isolated path completes with SLVERR and read data `0x1501A7ED`. On this DUT the isolates of the 64-bit Adams Bridge, CSRNG and EDN host paths return `64'h0000_0000_1501_A7ED`, so an isolated read of the upper 32-bit lane returns 0. *Issue*: #3120
+|`sep_sw_reset_isolation_matrix_test` CHK-ISO-RESP fails on this DUT (<<sep_sw_reset_isolation_matrix_test>>). The 32-bit isolated paths and the lower lane of the 64-bit paths answer as stated.
 |===
