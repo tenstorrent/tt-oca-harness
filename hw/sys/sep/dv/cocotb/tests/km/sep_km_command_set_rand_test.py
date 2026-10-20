@@ -56,7 +56,8 @@ Checkers:
   CHK-CLOSED  the generated handle transfers to AES (rc=0, handle and dest
               echoed) just before the revoke, and the same transfer on the
               REVOKED handle is refused RC_FAILURE: revoke fails closed
-  CHK-NULL    CMD_KEY_REVOKE of the reserved null handle is refused
+  CHK-NULL    CMD_KEY_REVOKE of the reserved null handle is refused with
+              RC_INVALID_ARG or RC_FAILURE; the code is logged as OBS-NULL
   CHK-ILLEGAL every seeded undefined command ID returns RC_INVALID_CMD (-4)
   CHK-LEN     a defined command carrying the wrong payload length returns
               RC_INVALID_LEN (-5)
@@ -548,14 +549,17 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self._check_alive("post-revoked-transfer")
 
         # --- CHK-NULL: the reserved handle is never a target ------------------
-        # The null handle is rejected by argument validation, before any
-        # registry work, so this one is RC_INVALID_ARG.
+        # The specification gives two refusal codes, invalid_arg for an invalid
+        # argument and failure for an unavailable handle, and does not say which
+        # one the null handle gets, so the check accepts either and the code is
+        # logged as OBS-NULL.
         rc, _ = await self.km.key_revoke(handle=KM_KEY_HANDLE_NULL)
-        assert rc == KM_RC_INVALID_ARG, (
+        self.logger.info("OBS-NULL LOG rc=%d", rc)
+        assert rc in (KM_RC_INVALID_ARG, KM_RC_FAILURE), (
             f"CHK-NULL FAIL: CMD_KEY_REVOKE of the null handle returned rc={rc}, "
-            f"expected {KM_RC_INVALID_ARG} (RC_INVALID_ARG)"
+            f"expected {KM_RC_INVALID_ARG} (RC_INVALID_ARG) or {KM_RC_FAILURE} (RC_FAILURE)"
         )
-        self.logger.info("CHK-NULL PASS: revoke of the null handle refused with RC_INVALID_ARG")
+        self.logger.info("CHK-NULL PASS: revoke of the null handle refused with rc=%d", rc)
         await self._check_alive("post-null-revoke")
 
         # --- CHK-ILLEGAL: undefined command IDs -------------------------------
