@@ -42,6 +42,8 @@
 |After sense-done the same `FEAT_CTRL` equals the image golden and is not 0, so the guard actually opened.
 |CHK-OTP-DIRECT
 |The first and last burned bits read back as one directly from the array, before any re-sense, and their whole words match the golden. The remaining burned bits are covered only after the re-sense, by CHK-W1S-PERSIST.
+|CHK-W1S-NOCLOBBER
+|After the second bit of step 5 is programmed into the word that holds the first, a direct read of that word shows both bits as one, so the second program reaches its own bit and leaves the first set. The overwrite failure mode is not representable on this bench (see *Model honesty*).
 |CHK-W1S-PERSIST
 |After cold re-sense the shadow equals the original image plus exactly the burned bits — all twelve, the ten random ones and the two from step 5.
 |CHK-NONVAC

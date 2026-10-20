@@ -1069,6 +1069,10 @@ A drawn overlap run of the band between can place the pulse while the `SW_RESET_
 
 *Scope limit*: The reset value of a `SW_RESET_N` field other than `hmac_sw_rst_n` after the cold reset is not graded here, because the leaf holds those fields at their reset value before the reset. Which reset boundary clears the `sep_cpu_ctrl` registers beyond the items that the specification states (scratch banks, DMA and peripheral status, watchdog, `SECURE_TM`, software reset requests) is not claimed. The scratch clear and retain belong to `sep_warm_cold_reset_scratch_test`. The content of the SEP SRAM across a cold reset is not claimed. The read data of a 1-, 2- or 8-byte isolated read is graded in `sep_sw_reset_isolation_matrix_test` (CHK-ISO-RESP). The held value of `mpc_run_sync` is not claimed. The reset taps across a `dbg_rstb_i` pulse are graded in `sep_debug_master_target_matrix_test`, and the watchdog registers across every reset event in `sep_timer_clock_contract_test`.
 
+*Known limitation*: CHK-WDT-INFLIGHT and CHK-OVL fail on this DUT. A `wdt_rst_ni` pulse resets the CPU but not the local AXI crossbar, so the B of a CPU-LSU write that is outstanding at the pulse still reaches the CPU port after the `sep_cpu_reset_n` tap falls (a late B). On the full-CPU leaf under VCS the `cnt_underflow` assertion of the CPU port `axi_demux` also fires, because that response arrives after the per-ID counters are cleared.
+
+*Issue*: #2744
+
 '''''
 
 [[sep_sw_reset_isolation_matrix_test]]
@@ -1137,6 +1141,10 @@ A drawn overlap run of the band between can place the pulse while the `SW_RESET_
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Scope limit*: Byte-lane partial strobes on `SW_RESET_N` have no stated result and are not driven. The `SOFT_RST_CODE` isolation bypass and a Key Manager reset in the middle of a command or a key transfer belong to the Key Manager area.
+
+*Known limitation*: CHK-ISO-RESP fails on this DUT. The isolates of the 64-bit Adams Bridge, CSRNG and EDN host paths return `64'h0000_0000_1501_A7ED`, so an isolated read of the upper 32-bit lane returns 0 and not `0x1501A7ED`. The 32-bit isolated paths and the lower lane of the 64-bit paths answer as stated.
+
+*Issue*: #3120
 
 '''''
 
@@ -1531,7 +1539,7 @@ A drawn overlap run of the band between can place the pulse while the `SW_RESET_
 |CHK-WKUP-WIDE
 |The expired status reads 0 before enable and while the count is below the threshold, and 1 after expiry with the count at or above the threshold, including across the 32-bit boundary (`aon_timer.adoc`, `WKUP_THOLD_HI`, `WKUP_THOLD_LO`, `WKUP_COUNT_HI`, `WKUP_COUNT_LO`, `INTR_STATE`). Concretely, in run 1 and run 2, no pass shows the status set while the count read after it is below the threshold - `A` (the allowance for the count copy that lags; step 1), and the count read of the pass before the first pass that shows the status set is below the threshold + `A` + `D_pass` (the late bound; `D_pass` as in CHK-WDT-ORDER). A DUT that compares only the low half expires at the wrong count, far below the threshold. A DUT whose comparator fires late shows a count read at or above the late bound before the status sets. Anchor: the real status and count reads (approved). Control: the status reads 0 before enable and 1 after expiry in the control run of the same leaf. Evidence: `CHK-WKUP-WIDE PASS: p=<p> run=<1\|2> class=CROSS32 thr=0x<hi>_<lo> preload=0x<hi>_<lo> allowance=<A> status_before=0 count_at_expiry=0x<..> passes=<n> half_order=<o> late_bound=<A + D_pass>`. Control line: `CTL-WKUP-SMALL: p=<p> thr=0x0_<Ts> preload=0x0_<Ts-g> status_before=0 status_after=1`.
 |CHK-WKUP-LATER
-|The run with gap 2r expires later in count than the run with gap r: the count read at the expiry of run 2 is at or above (1, 2r) - `A`, and so above the count read at the expiry of run 1 (`aon_timer.adoc`, `WKUP_THOLD_LO`, `INTR_STATE`). The expiry of each run is taken from `INTR_STATE.wkup_timer_expired` polled with back-to-back reads from the enable, and the status is cleared and read as 0 between the runs. A DUT that ignores the new threshold expires near (1, r), reads far below (1, 2r) - `A` (`r` is at least 32), and fails. The expiry times are logged as `OBS-WKUP-TIME` and are not graded. Anchor: the count and status reads (approved). Control: the status reads 0 between the runs, so the second expiry is a new event. Evidence: `CHK-WKUP-LATER PASS: p=<p> r=<r> n1=0x<..> n2=0x<..> allowance=<A> status_between=0`.
+|The run with gap 2r expires later in count than the run with gap r: the count read at the expiry of run 2 is at or above (1, 2r) - `A`, and so above the count read at the expiry of run 1 (`aon_timer.adoc`, `WKUP_THOLD_LO`, `INTR_STATE`). The expiry of each run is taken from `INTR_STATE.wkup_timer_expired` polled with back-to-back reads from the enable, and the status is cleared and read as 0 between the runs. A DUT that ignores the new threshold expires near (1, r), reads far below (1, 2r) - `A` (`r` is at least 32), and fails. Anchor: the count and status reads (approved). Control: the status reads 0 between the runs, so the second expiry is a new event. Evidence: `CHK-WKUP-LATER PASS: p=<p> r=<r> n1=0x<..> n2=0x<..> allowance=<A> status_between=0`.
 |CHK-WKUP-TIME
 |With `WKUP_CTRL.enable` = 1 and prescaler `p`, the wakeup count advances by 1 per `p` + 1 `clk_wdt_i` periods (`vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:31-32`: "The number of cycles per tick is one more than the 12-bit WKUP_CTRL.prescaler field."). In each wakeup run, `|dcount x (p + 1) - E_wdt| <= p + A`, and `dcount x (p + 1)` is above 2 x (`p` + `A`) (`p` covers the tick phase at the two reads). A DUT that ignores the prescaler, or counts at another rate, fails. Anchor: the count reads and the `clk_wdt_i` edge count (approved). Control: CTL-WKUP-SMALL (the status reads 0 before the threshold). Evidence: `CHK-WKUP-TIME PASS: seed=<n> run=wkup_run<k> p=<p> dcount=<d> E_wdt=<e> abs_diff=<x> bound=<p+A> reads=<k>`.
 |CHK-WDT-SHAPE
