@@ -1190,6 +1190,8 @@
 `SEP_TB_OUT(logic, efuse_shim_resp_valid_o)
 `SEP_TB_OUT(logic, efuse_shim_resp_status_o)
 `SEP_TB_OUT(sep_efuse_pkg::efuse_data_t, efuse_shim_resp_data_o)
+// APB select of the shim request to the OTP bank model. Read-only tap.
+`SEP_TB_OUT(logic, efuse_bank_psel_o)
 // The 256 OTP bank words that SEP reaches (words 0..255 of the bank model).
 // Read-only tap; the bench has no bank write hook.
 `SEP_TB_OUT(logic [255:0][31:0], otp_bank_probe_o)

@@ -4,10 +4,11 @@
 #-----------------------------------------------------------------------------
 # SEP entropy_source ripple-divider clocks.
 #
-# Not shared with the closed block flow: every lookup is by hierarchical
-# instance path and by cell reference name, both of which differ per
-# entropy_source implementation and per target library. A flow with a different
-# entropy_source stamps its own tree instead of sourcing this file.
+# Every lookup is by hierarchical instance path and by cell reference name, both
+# of which differ per entropy_source implementation and per target library. A
+# flow with a different entropy_source stamps its own tree instead of sourcing
+# this file. After the hierarchy is flattened the lookups find nothing and the
+# section is skipped.
 #
 # Sourced after sep_clocks.sdc, which stamps the ENTROPY_ROSC_CLK port clock
 # these reference.

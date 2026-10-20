@@ -2561,6 +2561,9 @@ module sep_uvm_top
     assign efuse_shim_resp_valid_o = `SEP_CORE.efuse_shim_command_resp_i.valid;
     assign efuse_shim_resp_status_o = `SEP_CORE.efuse_shim_command_resp_i.status;
     assign efuse_shim_resp_data_o = `SEP_CORE.efuse_shim_command_resp_i.data;
+    // The APB select of the shim request to the bank model (efuse_model_otp_req in
+    // sep_ip_integration): a request that the guard blocks starts no bank access.
+    assign efuse_bank_psel_o = `SEP_IPI.efuse_model_otp_req.psel;
     // The 256 bank words that SEP reaches: the bank model decodes paddr[9:0],
     // so words 256..1023 of its register block are unreachable. One assign per
     // word.
