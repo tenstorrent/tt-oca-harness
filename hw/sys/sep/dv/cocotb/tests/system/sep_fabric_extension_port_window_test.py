@@ -29,21 +29,23 @@ Checks:
   code is the seeded code, and each of the eight R beats carries its seeded
   RRESP and RDATA. A fabric that forwards the request and answers with a
   response of its own fails.
+* CTL-EXT-RSP-DRIVE (bench control): each port reply beat carries the code and
+  word the leaf set on the responder. The bench drives that net, so the DUT
+  cannot fail it; it runs before CHK-EXT-REPLY.
 * CHK-EXT-REACH: each SI single beat shows one PR-XEXT handshake with the issued
   address.
 * CHK-EXT-PORT: each LSU and SI single beat leaves on PR-EXT once, with the
   issued address, AxSIZE, AxLEN 0, strobe and write data, and the port returns
-  exactly one reply beat (PR-EXT B or R) with the seeded code and, on a read,
-  the seeded word, before the initiator's response. A fabric that drops the
-  request, forwards it twice or answers before the port fails.
+  exactly one known reply beat (PR-EXT B or R) before the initiator's
+  response. A fabric that drops the request, forwards it twice or answers
+  before the port fails.
 * CHK-EXT-SHIM: the first and last byte of the shim window give no PR-EXT
   capture for either initiator and direction. Control: the first word above the
   shim gives a capture in the same leaf. The shim responses are logged only.
 * CHK-EXT-BURST: an SI INCR write burst (AxLEN 3) and read burst (AxLEN 7)
   through an entry with ``allow_burst`` 1 reach PR-XEXT and PR-EXT with the
   issued AxLEN, AxSIZE and write beats, and the port returns one B, or eight R
-  beats with RLAST on the eighth, with the seeded codes and words, before the
-  initiator response. With the entry disabled each burst answers DECERR on
+  beats with RLAST on the eighth, before the initiator response. With the entry disabled each burst answers DECERR on
   every beat with PR-XEXT and PR-EXT silent: the fabric DECERR, which the port
   never gives.
 
@@ -537,39 +539,6 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         close_graded_window(self.logger)
         await stop_taps(self.taps)
 
-        # CHK-EXT-REPLY, single beats.
-        for c in si_cells + lsu_cells:
-            self._check_reply(c)
-
-        # CHK-EXT-REPLY, admitted bursts.
-        assert wb.resp_code == wb_code, (
-            f"CHK-EXT-REPLY FAIL: dir=W admitted burst init_resp="
-            f"{RESP_NAME.get(wb.resp_code, wb.resp_code)}, expected {RESP_NAME[wb_code]}, the "
-            "seeded port reply"
-        )
-        rb_got = [(rb.rdata >> (64 * k)) & WORD_MASK for k in range(8)]
-        assert list(rb_beats) == list(rb_codes) and rb_got == list(rb_words), (
-            "CHK-EXT-REPLY FAIL: dir=R admitted burst init beats "
-            + ",".join(
-                f"{RESP_NAME.get(r, r)}/0x{w:016x}"
-                for r, w in zip(list(rb_beats) + [None] * (8 - len(rb_beats)), rb_got)
-            )
-            + "; expected the seeded port reply "
-            + ",".join(f"{RESP_NAME[r]}/0x{w:016x}" for r, w in zip(rb_codes, rb_words))
-        )
-        self.logger.info(
-            "CHK-EXT-REPLY PASS: init=SI dir=W burst len=3 port_reply=%s init_resp=%s",
-            RESP_NAME[wb_code],
-            RESP_NAME.get(wb.resp_code, wb.resp_code),
-        )
-        self.logger.info(
-            "CHK-EXT-REPLY PASS: init=SI dir=R burst len=7 beats=%d port_reply=%s init_beats=%s "
-            "data_ok=1",
-            len(rb_beats),
-            ",".join(RESP_NAME[r] for r in rb_codes),
-            ",".join(RESP_NAME.get(r, str(r)) for r in rb_beats),
-        )
-
         # CHK-EXT-REACH and CHK-EXT-PORT.
         for c in si_cells:
             self._check_reach(c)
@@ -709,4 +678,40 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             len(rd_ext),
             ",".join(RESP_NAME.get(r.resp, str(r.resp)) for r in rb_rep),
             len(rb_rep),
+        )
+
+        # CHK-EXT-REPLY runs last, after CTL-EXT-RSP-DRIVE (in CHK-EXT-PORT and
+        # CHK-EXT-BURST) has shown that the port gave the seeded reply, so a
+        # responder fault reports as the control and not as a DUT failure.
+        # CHK-EXT-REPLY, single beats.
+        for c in si_cells + lsu_cells:
+            self._check_reply(c)
+
+        # CHK-EXT-REPLY, admitted bursts.
+        assert wb.resp_code == wb_code, (
+            f"CHK-EXT-REPLY FAIL: dir=W admitted burst init_resp="
+            f"{RESP_NAME.get(wb.resp_code, wb.resp_code)}, expected {RESP_NAME[wb_code]}, the "
+            "seeded port reply"
+        )
+        rb_got = [(rb.rdata >> (64 * k)) & WORD_MASK for k in range(8)]
+        assert list(rb_beats) == list(rb_codes) and rb_got == list(rb_words), (
+            "CHK-EXT-REPLY FAIL: dir=R admitted burst init beats "
+            + ",".join(
+                f"{RESP_NAME.get(r, r)}/0x{w:016x}"
+                for r, w in zip(list(rb_beats) + [None] * (8 - len(rb_beats)), rb_got)
+            )
+            + "; expected the seeded port reply "
+            + ",".join(f"{RESP_NAME[r]}/0x{w:016x}" for r, w in zip(rb_codes, rb_words))
+        )
+        self.logger.info(
+            "CHK-EXT-REPLY PASS: init=SI dir=W burst len=3 port_reply=%s init_resp=%s",
+            RESP_NAME[wb_code],
+            RESP_NAME.get(wb.resp_code, wb.resp_code),
+        )
+        self.logger.info(
+            "CHK-EXT-REPLY PASS: init=SI dir=R burst len=7 beats=%d port_reply=%s init_beats=%s "
+            "data_ok=1",
+            len(rb_beats),
+            ",".join(RESP_NAME[r] for r in rb_codes),
+            ",".join(RESP_NAME.get(r, str(r)) for r in rb_beats),
         )
