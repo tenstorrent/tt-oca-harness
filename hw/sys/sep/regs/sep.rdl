@@ -170,6 +170,8 @@ addrmap sep_top #(
     // =========================================================================
     // EL2 CPU Resources (0xC000_0000 - 0xCFFF_FFFF)
     // =========================================================================
+    
+`ifndef EXCLUDE_CORE_LOCAL_RESOURCES
 
     // ITCM
     external sep_iccm          sep_iccm                  @BASE_ADDR + 0xC000_0000;
@@ -179,6 +181,8 @@ addrmap sep_top #(
 
     // PIC
     el2_pic                    pic                       @BASE_ADDR + 0xC008_0000;
+
+`endif
 
 `ifdef OCAH_DOC_MEMORY_MAP
     sep_boot_rom->desc = "BL0 immutable instruction memory.";
@@ -248,8 +252,10 @@ addrmap sep_top #(
     spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     spi_controller->desc = "External I/O SPI controller bridge.";
     sep_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
+`ifndef EXCLUDE_CORE_LOCAL_RESOURCES
     pic->ocah_aperture_size = 0x8000;
     pic->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY};
+`endif
 `endif
 
 };
