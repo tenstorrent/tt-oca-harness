@@ -174,7 +174,7 @@ safe-outputs:
     target: "*"
     target-repo: tenstorrent/tt-oca-harness
     allowed:
-      - "v0.5.0 (TT)"
+      - "v1.0.0"
     max: 100
 ---
 
@@ -343,8 +343,8 @@ Set milestone only under the milestone backstop rule below.
 Never change labels, type, state, or parent/sub-issues.
 Never close, reopen, or create issues.
 
-If the issue has Target release = v0.5.0, no milestone, and a clearly TT-owned author (not in
-protection.authors, not NONFREE workstream): assign milestone `v0.5.0 (TT)` via assign_milestone.
+If the issue has Target release = v1.0.0, no milestone, and a clearly TT-owned author (not in
+protection.authors, not NONFREE workstream): assign milestone `v1.0.0` via assign_milestone.
 If ownership is ambiguous or appears to be lowRISC-owned, set Curation state = Needs review
 instead. Never guess between TT and lowRISC milestones.
 
