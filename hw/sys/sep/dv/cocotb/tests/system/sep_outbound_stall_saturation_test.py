@@ -54,8 +54,12 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-XBAR-HELD     a request at the stop of CHK-OUT-STOP is held, then
                     completes.
   CHK-XBAR-POSTDRAIN fresh transactions after the saturation drains.
-  CHK-CHAIN-LIMIT   finite outbound acceptance of writes and reads, drain;
-                    the writes-and-reads hold under both limits drains.
+  CHK-CHAIN-LIMIT   finite acceptance of writes and of reads with the DMA and
+                    the SMN inbound master issuing alongside: the LSU master
+                    stalls (AW or AR stall cycles > 0) with fewer than its 20
+                    requests accepted, and the session drains; the
+                    writes-and-reads hold under both limits drains. The port
+                    totals are logged (OBS-CHAIN-LIMIT), not compared.
   CHK-SAT-B-COUNT, CHK-SAT-R-COUNT
                     exactly one B per accepted write, the beats of each
                     accepted read, and none after the idle window.
@@ -787,6 +791,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         acc = {}
         done = total = 0
         demand = LSU_ISSUE + DMA_WORDS
+        lsu_acc = {}
         for op, kw in (
             ("write", {"lsu_w": LSU_ISSUE, "dma": ("wr", DMA_WORDS), "sys_w": LSU_ISSUE}),
             ("read", {"lsu_r": LSU_ISSUE, "dma": ("rd", DMA_WORDS), "sys_r": LSU_ISSUE}),
@@ -794,17 +799,26 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             s = await self._open(f"chain_{op}", **kw)
             snap = await self._window(s, chk)
             n = snap["port_aw"] if op == "write" else snap["port_ar"]
-            if n >= demand:
+            # The finite stop is graded at the LSU master: it stalls with fewer
+            # than its LSU_ISSUE requests accepted. The port total is logged; no
+            # specification or bench setting bounds it more tightly than the
+            # demand, which the DMA's one-at-a-time issue keeps out of reach.
+            m = snap["mst"]["lsu"]
+            m_acc, m_stall = (m["aw"], m["aw_stall"]) if op == "write" else (m["ar"], m["ar_stall"])
+            if m_stall == 0 or m_acc >= LSU_ISSUE:
                 self._fail(
                     chk,
-                    f"session={s.name} chain_accepted_{op}={n} >= {op} demand {demand} "
-                    f"(lsu {LSU_ISSUE} + dma {DMA_WORDS}): no finite stop",
+                    f"session={s.name} no finite stop at the LSU master: "
+                    f"lsu_accepted_{op}={m_acc} issued={LSU_ISSUE} stall_cycles={m_stall}",
                 )
             acc[op] = n
+            lsu_acc[op] = (m_acc, m_stall)
             self.logger.info(
-                "OBS-CHAIN-LIMIT: %s_accepted=%d per_init=%s (the count is printed, not compared)",
+                "OBS-CHAIN-LIMIT: %s_accepted=%d demand=%d per_init=%s (the port count is "
+                "printed, not compared)",
                 op,
                 n,
+                demand,
                 {i: snap["port"][i] for i in INITS},
             )
             d, t, _ = await self._drain(s, chk)
@@ -812,8 +826,10 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             total += t
         self._line(
             chk,
-            f"chain_accepted_write={acc['write']} chain_accepted_read={acc['read']} "
-            f"demand={demand} drained={done}/{total} deadlock=0 "
+            f"lsu_accepted_write={lsu_acc['write'][0]} lsu_stall_write={lsu_acc['write'][1]} "
+            f"lsu_accepted_read={lsu_acc['read'][0]} lsu_stall_read={lsu_acc['read'][1]} "
+            f"lsu_issued={LSU_ISSUE} chain_accepted_write={acc['write']} "
+            f"chain_accepted_read={acc['read']} drained={done}/{total} deadlock=0 "
             f"responder_wr_limit={self.c.depth} responder_rd_limit={self.c.depth} "
             "responder_limit_reached=0 chain_stop_cause=not_separable_from_xbar",
         )

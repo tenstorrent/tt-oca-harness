@@ -9,16 +9,19 @@
 * ``OUTBOUND_MBX_MAGIC``: the console and verdict magic words that the bench
   outbound responder decodes, read from ``tb/sep_outbound_mbx.sv`` so the two
   cannot drift.
-* ``OTHERS_SOURCE_ID``: the AxUSER source ID that the AP and STEE paths set
+* ``OTHERS_SOURCE_ID``: the AxUSER value of ``OTHERS``, the whole field zero
   (``hw/sys/sep/doc/fabric.adoc``, Transaction Routing: "``OTHERS`` (AxUSER
   zero)").
 * ``outbound_ns`` and ``outbound_user``: AxPROT[1] of a request as it leaves on
-  the SMU, AP or STEE path, and the AxUSER source ID of the AP and STEE paths
+  the SMU, AP or STEE path, and the whole AxUSER of the AP and STEE paths
   (``hw/sys/sep/doc/fabric.adoc``, ``sep-outbound-attributes-table``).
 * ``SepSrcIdGrade`` and ``draw_src_users``: the grade of the SMU-path source
   ID, and the issued AxUSER pair that makes it visible. The specification
   names the ID SEP's ID (``SepSourceId`` in ``hw/sys/sep/doc/cpu.adoc``) and gives
-  no number, so no check compares it with a number.
+  no number, so no check compares it with a number. The grade reads
+  AxUSER[3:0] under the "Source ID carrier" record
+  (``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``, ``sep-standin-src-id-carrier``);
+  AxUSER[11:4] of these beats has no stated value and is logged.
 """
 
 from __future__ import annotations
@@ -67,11 +70,11 @@ OUTBOUND_MBX_MAGIC: tuple[int, ...] = _outbound_mbx_magic()
 
 # AxUSER[3:0] carries the source ID that the filters match against src_id
 # (hw/ip/axi_filter/doc/index.adoc, "Match, Then Permit", names the source ID;
-# hw/sys/smc/doc/assets/smc-traffic-filters.svg names AxUSER[3:0], the approved
-# exception "Source ID carrier" in
-# hw/sys/sep/dv/docs/test_contracts/fabric_remap.adoc).
+# hw/sys/smc/doc/assets/smc-traffic-filters.svg names AxUSER[3:0], the
+# "Source ID carrier" record in hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc).
 SRC_ID_MASK: int = 0xF
-# OTHERS is AxUSER zero (hw/sys/sep/doc/fabric.adoc, Transaction Routing).
+# OTHERS is AxUSER zero, every bit of the field (hw/sys/sep/doc/fabric.adoc,
+# Transaction Routing).
 OTHERS_SOURCE_ID: int = 0
 
 
@@ -88,10 +91,11 @@ def outbound_ns(path: str, addr: int) -> int:
 
 
 def outbound_user(path: str) -> int:
-    """AxUSER[3:0] of a request leaving on ``path`` ("ap" or "stee").
+    """The whole AxUSER of a request leaving on ``path`` ("ap" or "stee").
 
-    The SMU path sets SEP's ID, which has no stated number: grade it with
-    ``SepSrcIdGrade``.
+    Both paths set ``OTHERS``, AxUSER zero, so a check compares every AxUSER
+    bit with it. The SMU path sets SEP's ID, which has no stated number: grade
+    it with ``SepSrcIdGrade``.
     """
     if path in ("ap", "stee"):
         return OTHERS_SOURCE_ID
@@ -113,7 +117,10 @@ class SepSrcIdGrade:
       equal SEP's ID, so no draw has to avoid an unknown number. An issued
       OTHERS (0) shows the replacement on its own, because the output is not 0.
 
-    The observed number is logged by ``obs_line`` and never graded.
+    The source ID is AxUSER[3:0] (the "Source ID carrier" record,
+    ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``). The specification states no value
+    for AxUSER[11:4] on the SMU path. The observed number and AxUSER[11:4] of
+    the beats are logged by ``obs_line`` and never graded.
     """
 
     def __init__(self, tag: str) -> None:

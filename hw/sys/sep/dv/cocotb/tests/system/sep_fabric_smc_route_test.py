@@ -44,11 +44,13 @@ Checks:
   reach PR-SMC and not PR-OUT; the SMU-window word outside the aperture reaches
   PR-OUT and not PR-SMC.
 * CHK-SMC-ATTR (both configurations): the AW and AR beat of each aperture word
-  on PR-SMC carries the AxPROT and AxUSER[3:0] the LSU issued. X or Z fails.
-  AxUSER[11:4] is logged, not graded (the specification names the source ID
-  only). Control: the issued values change between accesses, so each direction
-  carries both AxPROT[1] values and two distinct non-zero AxUSER[3:0] values;
-  a path that forces any constant AxPROT[1] or source ID fails one beat.
+  on PR-SMC carries the AxPROT and the whole AxUSER (all 12 bits) the LSU
+  issued: the SMC path keeps the initiator's source ID and the specification
+  names no AxUSER bit that the path changes. X or Z fails. Control: the issued
+  values change between accesses, so each direction carries both AxPROT[1]
+  values and two distinct non-zero AxUSER[3:0] values, with AxUSER[11:4]
+  drawn non-zero; a path that forces any constant AxPROT[1] or AxUSER fails
+  one beat.
 
 Read data with an X or Z bit fails the read in the AXI master (VCS; Verilator is
 2-state).
@@ -178,7 +180,7 @@ class sep_fabric_smc_route_test(sep_base_test):
         return prot, user
 
     def _chk_attr(self, addr: int, smc_beats: list, issued: dict) -> None:
-        """CHK-SMC-ATTR: each PR-SMC beat keeps the issued AxPROT and AxUSER[3:0]."""
+        """CHK-SMC-ATTR: each PR-SMC beat keeps the issued AxPROT and the whole AxUSER."""
         for ch, (prot, user) in issued.items():
             beats = [b for b in smc_beats if b.ch == ch]
             assert len(beats) == 1, (
@@ -189,22 +191,11 @@ class sep_fabric_smc_route_test(sep_base_test):
                 f"addr=0x{addr:08x} ch={ch} prot_issued=0b{prot:03b} "
                 f"prot_seen={_bits3(b.prot)} user_issued=0x{user:03x} user_seen={_hx(b.user)}"
             )
-            ok = (
-                b.prot is not None
-                and b.user is not None
-                and b.prot == prot
-                and (b.user & SRC_ID_MASK) == (user & SRC_ID_MASK)
+            ok = b.prot is not None and b.user is not None and b.prot == prot and b.user == user
+            assert ok, (
+                f"CHK-SMC-ATTR FAIL: {line}; expected the issued AxPROT and AxUSER (all 12 bits)"
             )
-            assert ok, f"CHK-SMC-ATTR FAIL: {line}; expected the issued AxPROT and AxUSER[3:0]"
             self.logger.info("CHK-SMC-ATTR PASS: %s", line)
-            self.logger.info(
-                "OBS-SMC-USER-HI: addr=0x%08x ch=%s user_issued_11_4=0x%02x user_seen_11_4=0x%02x "
-                "(value logged)",
-                addr,
-                ch,
-                user >> 4,
-                b.user >> 4,
-            )
             self.attr_seen.setdefault(ch, set()).add(((prot >> 1) & 1, user & SRC_ID_MASK))
 
     async def _edge_word(self, chk: str, addr: int, marker: int) -> dict:

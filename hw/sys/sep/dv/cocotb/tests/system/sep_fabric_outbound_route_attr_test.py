@@ -26,7 +26,7 @@ Routing" and its ``sep-outbound-attributes-table``, "Filtering and Protection";
   leave on ``smn_outbound_axi_req_o`` through the outbound filter; a local
   scratch or system-CSR request does not;
 * the AP and STEE remaps rewrite the address to ``{O[55:19], a[18:0]}`` and set
-  the source ID in AxUSER[3:0] to OTHERS (zero); a STEE region with its valid
+  the source ID to OTHERS (AxUSER zero, every bit); a STEE region with its valid
   bit clear passes the address unchanged (``output_remap.adoc``, ``valid``) and
   still leaves through the STEE remapper with OTHERS; the SMU path sets SEP's
   ID, which no specification gives as a number;
@@ -62,15 +62,16 @@ Checkers:
                     seeded value staged in the register field.
   CHK-OUT-CAPTURE   each PR-OUT capture carries the predicted address, the
                     issued AxPROT with bit 1 replaced by the NS of its path,
-                    the issued W data and strobe, and AxUSER[3:0] 0 on the AP
-                    and STEE paths. On the SMU path (aperture and >= 4 GiB)
+                    the issued W data and strobe, and AxUSER 0 (all 12 bits,
+                    OTHERS) on the AP and STEE paths. On the SMU path (aperture and >= 4 GiB)
                     AxUSER[3:0] is not OTHERS (0) and is the same on every
                     capture of the leaf, over two distinct issued values: SEP's
                     ID replaces the initiator's. X or Z on any captured field,
                     W user included, fails (VCS).
                     Logged, not graded (no stated value): the SMU-path number
-                    (OBS-OUT-SRC-ID), AxUSER[11:4] of every capture and the W
-                    user of SMU-path writes (OBS-OUT-WUSER).
+                    (OBS-OUT-SRC-ID), AxUSER[11:4] of every capture (graded
+                    as zero on the AP and STEE paths) and the W user of
+                    SMU-path writes (OBS-OUT-WUSER).
   CHK-OUT-HIBIT     each path has passing captures in both directions at
                     issued AxPROT[1] 0 and 1 for each address bit 55 value:
                     AP with bit 55 set and clear (NS 1 for both), the SMU
@@ -442,8 +443,9 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             user_ok = why is None
             user_expect = f"SEP's ID ({why})" if why else "SEP's ID"
         else:
-            user_ok = b.user is not None and (b.user & SRC_ID_MASK) == outbound_user(path)
-            user_expect = f"[3:0]={outbound_user(path)}"
+            # OTHERS is AxUSER zero: every AxUSER bit is graded.
+            user_ok = b.user is not None and b.user == outbound_user(path)
+            user_expect = f"0x{outbound_user(path):03x}"
         ok = (
             not unknown
             and b.addr == pred
@@ -457,8 +459,9 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             + (" X/Z" if unknown else "")
         )
         self.logger.info("CHK-OUT-CAPTURE PASS: %s prot_issued=0x%x", line, prot)
-        # The specification states only the source ID, AxUSER[3:0]; the upper
-        # bits and the W user are logged.
+        # AxUSER[11:4] has a stated value only on the AP and STEE paths (OTHERS,
+        # graded above); the upper bits of every capture and the W user are
+        # logged.
         self.logger.info(
             "OBS-OUT-USER-HI: class=%s dir=%s user_issued_11_4=0x%02x user_seen_11_4=0x%02x "
             "(value logged)",

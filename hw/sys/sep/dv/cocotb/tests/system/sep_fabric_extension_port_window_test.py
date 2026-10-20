@@ -12,6 +12,11 @@ Reference Model"; ``hw/sys/sep/doc/port_table.adoc``):
 * The SI may issue bursts.
 * A request that leaves on the port gets the response that the port returns. The
   port table ties an unused port to DECERR, and the bench port answers DECERR.
+  The fabric also answers DECERR for its own errors, so the leaf grades that the
+  port replies once, DECERR, before the initiator response, and that the
+  initiator receives DECERR; it does not grade that the initiator response is
+  the port's beat and not a DECERR that the fabric makes after it forwards the
+  request. That link is logged (OBS-EXT-REPLY-SOURCE), not graded.
 * A burst that the inbound filter refuses answers DECERR and never reaches the
   local crossbar (``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions").
 
@@ -21,9 +26,12 @@ Checks:
   address, and the SI receives the port DECERR. PR-XEXT is the anchor, because
   the fabric also answers DECERR for its own errors.
 * CHK-EXT-PORT: each LSU and SI single beat leaves on PR-EXT once, with the
-  issued address, AxSIZE, AxLEN 0, strobe and write data, and the port returns
+  issued address, AxSIZE, AxLEN 0, strobe and write data, the port returns
   exactly one reply beat (PR-EXT B or R), DECERR, before the initiator's
-  response. So the DECERR the initiator receives is the port's reply.
+  response, and the initiator receives DECERR. A fabric that drops the request,
+  forwards it twice or answers before the port fails; a fabric that ignores the
+  port reply and makes its own DECERR after it is not told apart
+  (OBS-EXT-REPLY-SOURCE).
 * CHK-EXT-SHIM: the first and last byte of the shim window give no PR-EXT
   capture for either initiator and direction. Control: the first word above the
   shim gives a capture in the same leaf. The shim responses are logged only.
@@ -202,8 +210,9 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CHK-EXT-PORT FAIL: {tag} PR-EXT {b.fmt()}; expected addr=0x{c['addr']:x} "
             f"size={c['size']} len=0"
         )
-        # The DECERR the initiator receives is the port's reply: exactly one
-        # reply beat on the port, DECERR, before the initiator's response.
+        # Exactly one reply beat on the port, DECERR, before the initiator's
+        # response. The bench port and the fabric answer the same code, so this
+        # does not show which of them made the initiator's DECERR.
         rep = c["reply"]
         assert len(rep) == 1, (
             f"CHK-EXT-PORT FAIL: {tag} PR-EXT reply beats={len(rep)}, expected 1: "
@@ -249,6 +258,16 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             RESP_NAME.get(r.resp, r.resp),
             r.t_ps,
             c["t_init"],
+            RESP_NAME.get(c["resp"], c["resp"]),
+        )
+        self.logger.info(
+            "OBS-EXT-REPLY-SOURCE: init=%s dir=%s issued=0x%08X port_resp=%s init_resp=%s "
+            "(the bench port and the fabric both answer DECERR; the source of the initiator "
+            "response is not graded)",
+            c["init"],
+            d,
+            c["addr"],
+            RESP_NAME.get(r.resp, r.resp),
             RESP_NAME.get(c["resp"], c["resp"]),
         )
 
@@ -465,8 +484,8 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             + f"; expected AW addr=0x{wr_burst_addr:x} len=3 size=3 and beats "
             + ",".join(f"0x{v:016x}" for v in want_beats)
         )
-        # The DECERR the initiator receives is the port's reply: one B on the
-        # port, DECERR, before the initiator's response.
+        # One B on the port, DECERR, before the initiator's response (the
+        # source of the initiator's DECERR is not graded; see the module text).
         assert len(wb_rep) == 1 and wb_rep[0].resp == RESP_DECERR and wb_rep[0].t_ps < wb_t, (
             "CHK-EXT-BURST FAIL: dir=W admitted port reply "
             + "; ".join(r.fmt() for r in wb_rep)
@@ -499,8 +518,9 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         assert len(rb_beats) == 8 and all(r == RESP_DECERR for r in rb_beats), (
             f"CHK-EXT-BURST FAIL: dir=R admitted R beats {rb_beats}, expected 8, DECERR on every beat"
         )
-        # The DECERR is the port's reply: eight R beats on the port, all
-        # DECERR, RLAST on the eighth only, before the initiator's response.
+        # Eight R beats on the port, all DECERR, RLAST on the eighth only,
+        # before the initiator's response (the source of the initiator's
+        # DECERR is not graded; see the module text).
         assert (
             len(rb_rep) == 8
             and all(r.resp == RESP_DECERR for r in rb_rep)

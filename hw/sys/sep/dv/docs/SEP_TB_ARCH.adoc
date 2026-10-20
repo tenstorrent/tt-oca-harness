@@ -415,7 +415,8 @@ Observation probe groups:
    (`u_inbound_filter`, net `smn_inbound_filtered_axi_req`), before the
    global-to-local remap: AW and AR address, global. Owners:
    `sep_fabric_inbound_rebase_test`,
-   `sep_fabric_filter_match_priority_rand_test`.
+   `sep_fabric_filter_match_priority_rand_test`,
+   `sep_outbound_contention_rand_test` (CHK-SYSIF-NO-OUTBOUND-PATH).
 ** PR-CPU (`pr_cpu_lsu_*`, `pr_cpu_ifu_*`): AxPROT of the raw CPU LSU (AR, AW)
    and IFU (AR) requests in `u_sep_cpu` (`lsu_axi_req_raw`, `ifu_axi_req_raw`),
    before any remap; tied to 0 on the CPU stub build. Graded against
@@ -831,7 +832,8 @@ A stand-in is anything that answers in place of the mechanism a claim is
 about. Each entry has three fields: the claim that is accepted with the
 stand-in in place, why the real path is not needed, and the exact scope. Who
 approved an entry, against which revision, and when it is next reviewed are
-recorded in the pull request that adds or changes it. A test outside
+recorded in the pull request that adds or changes it, or in the entry's own
+"Approved against" and "Review and expiry" rows when it has them. A test outside
 the scope of an entry is graded as if the stand-in were undeclared. Each entry
 has one command in <<sep-standin-recheck>> that shows it is still true of the
 tree.
@@ -897,6 +899,58 @@ CHK-TEST-EN-PINS and CTL-PIN-WALK in `sep_test_en_pin_reach_test`
 (`testlists/system.toml`). No other test grades these pins.
 |===
 
+[[sep-standin-src-id-carrier]]
+==== Source ID carrier: the filter compares `src_id` with AxUSER[3:0]
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The source ID that an `axi_filter` instance compares with `src_id` is
+AxUSER[3:0] of the request. The figure
+`hw/sys/smc/doc/assets/smc-traffic-filters.svg` (TRM doc tree, description of
+`axi_filter_wrap`: `src_id` is 0 or equals the source ID in AxUSER[3:0]) is the
+accepted source for this until a TRM sentence states it.
+`hw/ip/axi_filter/doc/index.adoc` ("Match, Then Permit") names "the
+transaction's source ID" and states that the decode is the same in every
+instance, and `hw/sys/sep/doc/fabric.adoc` ("Transaction Routing") states that
+SEP outbound traffic carries the source ID in AxUSER, with no bit range.
+
+|Why the real path is not needed
+|The record replaces a missing sentence, not a missing mechanism: the DUT
+filter decides every graded cell, and the figure is the only document that
+names the bits. The open specification question "Source ID carrier of an
+inbound request" (`SEP_VPLAN.adoc`, specification questions) stays open until
+a TRM sentence answers it.
+
+|Scope
+|The checks that read the source ID as AxUSER[3:0]:
+the inbound and outbound source-ID cells (CHK-FILTER-SRC) of
+`sep_fabric_filter_match_priority_rand_test`, through the filter reference
+model `cocotb/env/sep_filter_model.py`; the source-ID driver of
+`sep_mailbox_filter_type_matrix_test`, which sets AxUSER[3:0] of the external
+master to the admitted or refused source ID; and the SMU-path source-ID grade
+`SepSrcIdGrade` (`cocotb/env/sep_fabric_common.py`) in
+`sep_fabric_filter_match_priority_rand_test`,
+`sep_fabric_outbound_route_attr_test`, `sep_fabric_dma_endpoint_matrix_test`,
+`sep_outbound_contention_rand_test` and `sep_outbound_stall_saturation_test`,
+which grades AxUSER[3:0] and logs AxUSER[11:4]. A check that compares the
+whole AxUSER with a stated value (OTHERS, AxUSER zero, on the AP and STEE
+paths and from the secure DMA; the initiator's AxUSER on the SMC path) does
+not use this record.
+
+|Approved against
+|`hw/sys/smc/doc/assets/smc-traffic-filters.svg` at commit `566ac589f`,
+`hw/ip/axi_filter/doc/index.adoc` at commit `ebd7951f8` and
+`hw/sys/sep/doc/fabric.adoc` at commit `ea25c9b44`. Recorded 2026-10-19; the
+dated record is the approval.
+
+|Review and expiry
+|Review again when a later commit changes any of the three files above.
+Remove the record, and grade the source ID on the bits that the sentence
+names, when a TRM sentence (`.adoc` or RDL) states the carrier of the source
+ID.
+|===
+
 [[sep-standin-recheck]]
 ==== Re-confirming a stand-in
 
@@ -916,6 +970,13 @@ real sense where it needs fuse content), and
 |`python3 -c 'import sys; sys.path.insert(0, "hw/sys/sep/dv/cocotb"); from tests.system.sep_test_en_pin_inventory import GRADED_PINS as G; print(len(G), sum(c == "clock_gater" for _, c in G))'`,
 then `grep -n 'CTL-PIN-WALK:'` in any log of `sep_test_en_pin_reach_test`
 |`172 1`, and `CTL-PIN-WALK: graded=172 inventory=172 missing=0 class_mismatch=0`.
+
+|Source ID carrier
+|`for f in hw/sys/smc/doc/assets/smc-traffic-filters.svg hw/ip/axi_filter/doc/index.adoc hw/sys/sep/doc/fabric.adoc; do git log -1 --format=%h -- $f; done`,
+then `grep -n 'AxUSER\[3:0\]' hw/sys/smc/doc/assets/smc-traffic-filters.svg`
+|`566ac589f`, `ebd7951f8` and `ea25c9b44` (a different hash is the review
+trigger of the entry), and the `axi_filter_wrap` description names
+AxUSER[3:0].
 |===
 
 === Environment Components

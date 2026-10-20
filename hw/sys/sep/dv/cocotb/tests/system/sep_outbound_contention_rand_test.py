@@ -34,7 +34,10 @@ The SMN inbound master has no route to the outbound port:
 answers any inbound address at or above ``0x4000_0000`` with DECERR, and the
 outbound window lies above it. Every access that master issues, in every phase,
 is stimulus of the one no-path check CHK-SYSIF-NO-OUTBOUND-PATH; no other
-checker counts it.
+checker counts it. Inbound filter entry 0 admits those accesses (their window,
+AxUSER source ID and NS), and the PR-INFLT tap (the request out of the inbound
+filter) shows each of them, so the DECERR comes from the routing decode past
+the filter and not from the filter.
 
 Printed as measured and never compared: the completion order of same-ID
 writes, the completion latency of each phase, the outbound ID encoding, and
@@ -49,7 +52,10 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-SYSIF-NO-OUTBOUND-PATH
                     every single and burst access of the SMN inbound master
                     answers DECERR with one B or its R beats, RLAST on the
-                    last, and none reaches PR-OUT.
+                    last, and none reaches PR-OUT. Attribution: each of them
+                    leaves the inbound filter (one PR-INFLT AW per write and
+                    one AR per read, each at an address of the SMN slot), so
+                    the filter admitted it and the DECERR is the decode's.
   CHK-CONC-ALL      every transaction of every initiator completes in the
                     write, read, mixed and pair phases, and the drawn delays
                     met a request at the port.
@@ -78,6 +84,7 @@ from __future__ import annotations
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_fabric_common import SepSrcIdGrade, draw_src_users
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_outbound_contention_seq import (
@@ -921,6 +928,18 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             self._fail(chk, f"sysif requests at PR-OUT={reached}")
         if n["issued"] < floor or n["decerr"] != n["issued"]:
             self._fail(chk, f"issued={n['issued']} floor={floor} decerr={n['decerr']}")
+        # The filter admitted every SMN inbound access: one PR-INFLT AW per
+        # write and one AR per read, each in the SMN slot of the page.
+        inflt_aw = [b for b in self.inflt.beats if b.ch == "aw"]
+        inflt_ar = [b for b in self.inflt.beats if b.ch == "ar"]
+        off_slot = [b.fmt() for b in inflt_aw + inflt_ar if self.layout.owner(b.addr) != "sysif"]
+        if len(inflt_aw) != n["writes"] or len(inflt_ar) != n["reads"] or off_slot:
+            self._fail(
+                chk,
+                f"inbound filter output (PR-INFLT) aw={len(inflt_aw)} writes={n['writes']} "
+                f"ar={len(inflt_ar)} reads={n['reads']} off_slot={off_slot[:3]}: the DECERR "
+                "is not shown to come from the routing decode past the filter",
+            )
         if (
             whole_m["b"] != n["writes"]
             or whole_m["r"] != n["beats"]
@@ -934,6 +953,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self._emit(
             chk,
             f"issued={n['issued']} floor={floor} decerr={n['decerr']} reached_pr_out={reached} "
+            f"inflt_aw={len(inflt_aw)} inflt_ar={len(inflt_ar)} "
             f"b_at_master={whole_m['b']} writes={n['writes']} r_at_master={whole_m['r']} "
             f"beats={n['beats']} rlast={whole_m['rlast']} reads={n['reads']}",
         )
@@ -956,6 +976,10 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         await self.bring_up_no_cpu()
         self.suppress_host_axi_transaction_info()
         await self.bench_start()
+        # PR-INFLT: the request out of the inbound filter. Only the SMN inbound
+        # master passes the inbound filter, so every beat here is one of its
+        # accesses that the filter admitted.
+        self.inflt = SepFabricTap("PR-INFLT").start()
         self.delay = ResponderDelay(SepSeededRng(seed ^ 0x5EED5), c.p_stall, c.p_hold, c.hold_max)
         self.pstall = PortStall().start()
         self._stall0 = (self.pstall.snap(), 0)
@@ -980,6 +1004,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             self.delay.hold_clocks,
         )
         self.pstall.stop()
+        await self.inflt.stop()
         await self.bench_stop()
         self._check_fence(FENCE)
         self._emit(

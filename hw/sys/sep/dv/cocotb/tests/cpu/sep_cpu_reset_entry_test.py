@@ -956,7 +956,10 @@ class sep_cpu_reset_entry_test(sep_base_test):
         """Step 7: a TAP reset, then a CPU reset; the core starts at the ROM base.
 
         Test-Logic-Reset leg: the instruction is 0x18 before the TAP reset, and a
-        32-bit DR shift of A1 follows it. Test-Logic-Reset restores the default
+        32-bit DR shift of A1 follows it while the CPU is held in reset, the
+        condition under which cpu.adoc (Reset Vector) states that a TDR shift
+        redirects the fetch (step 8 is the control: the same shift under IR
+        0x18 redirects to A1). Test-Logic-Reset restores the default
         instruction, so that shift does not reach the TDR and the core starts at
         the ROM base. A TAP that keeps 0x18 loads A1 and the core starts at A1.
         """
@@ -970,11 +973,11 @@ class sep_cpu_reset_entry_test(sep_base_test):
             await self.dmi.tap.shift_ir(IR_RSTVEC, IR_WIDTH, back_to_rti=True)
         await self._tap_reset(via)
         if via == "TLR":
-            await self.dmi.tap.shift_dr(self.a1, RSTVEC_BITS, back_to_rti=True)
-            extra = f"ir_before=0x{IR_RSTVEC:02x} dr_after=0x{self.a1:08x} "
+            extra = f"ir_before=0x{IR_RSTVEC:02x} dr_after=0x{self.a1:08x} dr_in_reset=1 "
 
             async def _stage() -> None:
                 self._stage_sram()
+                await self.dmi.tap.shift_dr(self.a1, RSTVEC_BITS, back_to_rti=True)
 
             during = _stage
         ep, mark = await self._cpu_reset(during)

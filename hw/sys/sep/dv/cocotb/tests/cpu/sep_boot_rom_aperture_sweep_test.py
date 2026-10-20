@@ -1000,7 +1000,9 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         t_first = first.t_ps if first is not None else None
         # A word-1 request from the clock the CPU reset is seen low up to the first
         # request after the release is a replay of the abandoned fetch: the core
-        # issues no fetch in that window.
+        # issues no fetch in that window. A request in that window whose address
+        # is X or Z (recorded as None) counts as a replay, so an unknown address
+        # fails the check.
         replay = (
             -1
             if first is None
@@ -1009,8 +1011,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 for b in beats
                 if b.ch == "req"
                 and cpu_low < b.t_ps < t_first
-                and b.addr is not None
-                and b.addr >> 3 == 1
+                and (b.addr is None or b.addr >> 3 == 1)
             )
         )
         before = (
