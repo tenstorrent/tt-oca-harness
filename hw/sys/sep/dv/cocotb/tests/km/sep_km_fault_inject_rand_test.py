@@ -238,7 +238,10 @@ FRAME_POLLS = 20_000  # polls for one response frame
 READY_POLLS = 20_000  # polls for RESP_KM_READY after a release
 INBOUND_POLLS = 20_000  # polls for inbound FIFO space while posting
 RISE_BOUND = 4_000_000  # clocks from an injection to the PIC bit 30 rise
-MAIN_RISE_BOUND = 200_000  # clocks from the main-context trailer to the PIC bit 30 rise
+# Clocks from the main-context trailer to the PIC bit 30 rise. The fatal path
+# with the SRAM wipe takes about 2M clocks, and about 4M when the ROM runs it a
+# second time (contract, "Known limitation").
+MAIN_RISE_BOUND = 8_000_000
 KEM_POLLS = 20_000
 KEM_GAP = 200
 QUIET_FACTOR = 10  # w_clk = 10 x ctrl_stat_clk
