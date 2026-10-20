@@ -1646,25 +1646,6 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
         data["adopter_overlay_env"] = overlay_env
 
 
-def rebase_config_paths(value: Any, config_root: str, root_rel: str) -> Any:
-    """Return ``value`` with each string that is ``config_root``, or a path under it, moved to
-    ``root_rel``.
-
-    Strings elsewhere, and paths that only share a prefix with ``config_root``, are unchanged.
-    """
-    if isinstance(value, str):
-        if value == config_root or value.startswith(config_root + "/"):
-            return root_rel + value[len(config_root) :]
-        return value
-    if isinstance(value, dict):
-        return {
-            key: rebase_config_paths(item, config_root, root_rel) for key, item in value.items()
-        }
-    if isinstance(value, list):
-        return [rebase_config_paths(item, config_root, root_rel) for item in value]
-    return value
-
-
 def load_dut(
     path: Path,
     cfg_dir: Path,
@@ -1672,7 +1653,6 @@ def load_dut(
     root: Path,
     name: str,
     root_rel: str,
-    config_root: str | None = None,
     framework: str | None = None,
     adopter_overlay: Path | None = None,
 ) -> Dut:
@@ -1681,13 +1661,9 @@ def load_dut(
     The file carries the DUT's own keys (``name``/``kind``/``description``/``[testlist]``/stage
     overrides) plus the build/cocotb/coverage/targets tables, and opts into a shared stage graph
     with ``profile = "<name>"``. ``name`` is the bare DUT name and ``root_rel`` the repo-relative
-    DUT DV root, both supplied by the resolver. ``config_root``, from the registry entry, is the
-    DV root the file's own paths name; those paths resolve under ``root_rel``
-    (:func:`rebase_config_paths`).
+    DUT DV root, both supplied by the resolver.
     """
     data = load_toml(path)
-    if config_root:
-        data = rebase_config_paths(data, config_root, root_rel)
 
     implemented_frameworks: list[str] = []
     default_framework = ""

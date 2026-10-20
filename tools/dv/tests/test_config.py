@@ -31,12 +31,11 @@ from runlib.config import (  # noqa: E402
     apply_adopter_overlay,
     load_dut,
     load_test_catalog,
-    rebase_config_paths,
     selected_run_mode,
     target_flags,
     validate_run_mode_request,
 )
-from runlib.duts import load_dut_registry, resolve_dut  # noqa: E402
+from runlib.duts import load_dut_registry  # noqa: E402
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
 from runlib.results import result_payload  # noqa: E402
 
@@ -762,86 +761,6 @@ class DutRegistryAliases(unittest.TestCase):
                 'schema_version = 1\n[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = ""\n'
             )
         self.assertIn("non-empty string", str(ctx.exception))
-
-
-VENDORED_ROOT = "vendor/acme/widget/upstream/hw/ip/widget/dv"
-
-VENDORED_SIM_CFG = """
-name = "widget"
-kind = "dv"
-default_tool = "verilator"
-tools = ["verilator"]
-
-[build]
-top_file = "hw/ip/widget/dv/tb/tb_top.sv"
-work_dir = "hw/ip/widget/dv/build"
-incdirs = ["hw/ip/widget/dv/env", "hw/ip/widgetry/env", "hw/common/dv/vip"]
-sources = ["hw/ip/widget/dv/env/widget_pkg.sv"]
-
-[targets.default]
-build_dir = "hw/ip/widget/dv/build/default"
-description = "hw/ip/widget/dv bench"
-"""
-
-
-class DutRegistryConfigRoot(unittest.TestCase):
-    """`config_root` resolves a vendored bench's own paths under its registered root."""
-
-    def write(self, root: Path, rel: str, text: str) -> None:
-        path = root / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
-
-    def registry(self, config_root: str) -> dict:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            self.write(
-                root,
-                "hw/common/dv/configs/duts.toml",
-                f'schema_version = 1\n[duts.widget]\nroot = "{VENDORED_ROOT}"\n'
-                f'config_root = "{config_root}"\n',
-            )
-            return load_dut_registry(root)
-
-    def test_registered_bench_paths_resolve_under_the_vendored_root(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            self.write(
-                root,
-                "hw/common/dv/configs/duts.toml",
-                f'schema_version = 1\n[duts.widget]\nroot = "{VENDORED_ROOT}"\n'
-                'config_root = "hw/ip/widget/dv"\n',
-            )
-            self.write(root, f"{VENDORED_ROOT}/widget_sim_cfg.toml", VENDORED_SIM_CFG)
-            flow = resolve_dut(root, "widget")
-        self.assertEqual(flow.root, VENDORED_ROOT)
-        build = flow.raw["build"]
-        self.assertEqual(build["top_file"], f"{VENDORED_ROOT}/tb/tb_top.sv")
-        self.assertEqual(build["work_dir"], f"{VENDORED_ROOT}/build")
-        self.assertEqual(
-            build["incdirs"],
-            [f"{VENDORED_ROOT}/env", "hw/ip/widgetry/env", "hw/common/dv/vip"],
-        )
-        self.assertEqual(build["sources"], [f"{VENDORED_ROOT}/env/widget_pkg.sv"])
-        target = flow.raw["targets"]["default"]
-        self.assertEqual(target["build_dir"], f"{VENDORED_ROOT}/build/default")
-        self.assertEqual(target["description"], "hw/ip/widget/dv bench")
-
-    def test_rebase_moves_only_the_root_and_paths_under_it(self):
-        value = {"a": ["hw/x/dv", "hw/x/dv/f.sv", "hw/x/dvx/f.sv", "{run_dir}"], "b": 3}
-        self.assertEqual(
-            rebase_config_paths(value, "hw/x/dv", "vendor/x/dv"),
-            {"a": ["vendor/x/dv", "vendor/x/dv/f.sv", "hw/x/dvx/f.sv", "{run_dir}"], "b": 3},
-        )
-
-    def test_config_root_must_be_a_normalized_relative_path(self):
-        self.assertEqual(
-            self.registry("hw/ip/widget/dv")["widget"]["config_root"], "hw/ip/widget/dv"
-        )
-        for bad in ("", "/hw/ip/widget/dv", "hw/ip/widget/dv/", "./hw/ip/widget/dv", "../widget"):
-            with self.subTest(config_root=bad), self.assertRaises(ConfigError) as ctx:
-                self.registry(bad)
-            self.assertIn("`config_root` must be", str(ctx.exception))
 
 
 if __name__ == "__main__":

@@ -443,14 +443,6 @@ python3 tools/dv/run_dv.py --help
 `hw/comp/<name>/dv`, `hw/periph/<name>/dv`, and
 `hw/common/prim/<name>/dv`.
 
-A registry entry may also set `config_root`, the DV root that a vendored
-bench's sim config names in the bench's own repository. Each string in that
-config that is `config_root`, or a path under it, resolves under the entry's
-`root` instead. The AoU benches are registered at
-`vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv` with
-`config_root = "hw/ip/aou/dv"`, so their `hw/ip/aou/dv/...` sources, include
-directories and build directories all land in the vendored tree.
-
 Each mode loads the first config named by the site layer's `[duts.<name>]`
 pointer (<<runner-site-layer>>), the registry's override of the same name, or
 the naming convention. Simulation mode, the default, reads `sim_cfg` and then
