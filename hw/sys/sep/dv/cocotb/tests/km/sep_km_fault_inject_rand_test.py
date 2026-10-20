@@ -279,6 +279,7 @@ SHARD_EVIDENCE_UNREC = {
 # Bounded waits. Each expiry fails the leaf with a named message, or fails the
 # check of the step with timeout=1.
 SEP_RESET_BOUND = 20_000  # clocks for dbg_sep_reset_n_o after the fuse sense
+KM_HELD_BOUND = 1_000  # clocks for the KM warm reset to assert after a park
 POLL = 20  # clocks between two mailbox status polls
 FRAME_POLLS = 20_000  # polls for one response frame
 READY_POLLS = 20_000  # polls for RESP_KM_READY after a release
@@ -2041,8 +2042,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         )
         watch = _FatalWatch(self)
         watch.start()
-        await self._post(frame[:-1])
-        await self._post(frame[-1:])
+        await self._post(frame)
         trailer = watch.cyc
         wr_tail_base: int | None = None
         for i in range(MAIN_RISE_BOUND // 64):
@@ -2110,6 +2110,19 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         )
         await self._boot("main-context point")
 
+    async def _km_held(self, what: str) -> None:
+        """Wait (bounded) until the KM CPU warm reset reads asserted (KM-AXIV)."""
+        top = cocotb.top
+        for i in range(KM_HELD_BOUND):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            if self.rd_known(top.km_cpu_rst_n_o) == 0:
+                self.logger.info("LOG %s: KM warm reset asserted after %d clocks", what, i + 1)
+                return
+        raise AssertionError(
+            f"{what}: the KM warm reset did not assert within {KM_HELD_BOUND} clocks"
+        )
+
     # ================================================================ step 21 (HOST)
     async def _drbg_stall_stop(self):
         """Select the external input for the KM stream with the KM held, feed the
@@ -2124,6 +2137,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         async def switch() -> None:
             # The sampler is in the KM warm-reset domain, so the source changes
             # while the KM is held (architecture.adoc, "Errors and reset").
+            await self._km_held("the DRBG stall source switch")
             await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", stop)
             feed.start()
 
@@ -2140,6 +2154,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         )
 
         async def restore() -> None:
+            await self._km_held("the DRBG stall source restore")
             await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", sel)
             await ext.stop()
 
