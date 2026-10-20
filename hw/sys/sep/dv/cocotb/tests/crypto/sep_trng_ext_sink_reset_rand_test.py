@@ -13,6 +13,13 @@ Contract (``hw/sys/sep/doc/reset_controller.adoc``, Resetting the TRNG;
     independently of the internal generators.
   * A client request (AES, KMAC, OTBN RND, OTBN URND) pending during the clear gets
     no acknowledge, stays asserted and is served with fresh data afterwards.
+  * A word that the crypto adapter acknowledges to a client just before the clear
+    is the word that the client takes: native requests receive no acknowledgement
+    during the clear (``trng.adoc``), the EDN asserts the acknowledge with fresh
+    values on the bus (OpenTitan ``edn/README.md``). OTBN RND takes its value
+    directly from the EDN (``otbn/doc/theory_of_operation.md``), and every external
+    word carries FIPS provenance 1 into ``edn_fips`` (``trng.adoc``, FIPS
+    Provenance), so OTBN RND sets no ``rnd_fips_chk_fail`` across the clear.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``, no noise force.
 Baseline ``SW_RESET_N`` = 0x36 (TRNG, KMAC, AES and OTBN released; Key Manager,
@@ -28,7 +35,20 @@ stimulus): the reset moment (a fraction of the pool fill time), the extra reset
 hold (0 to 200 clocks), N (4 to 24 pairs), M (2 to 8 pairs), the client order of the
 pre-reset leg and of the trials, the trial delay (0 to 32 clocks), the unique
 non-zero beat words, the AES key row, plaintext and block count, the KMAC message,
-and the OTBN read counts.
+and the OTBN read counts. The adapter-clear leg is fixed: every seed runs the same
+sweep of write delays; only the beat words come from the seed.
+
+Adapter-clear leg (after the consumer trials), for each client in (KMAC, OTBN RND,
+OTBN URND) and each write delay d in 0 to 9 clocks: the client starts an entropy
+burst (KMAC ``CMD.entropy_req``; OTBN RND 16 whole-WSR RND reads, each stored to
+DMEM, DMEM filled with a sentinel first; OTBN URND the URND reseed at EXECUTE)
+while stream 1 offers unique words. The SEP_RESET_CTRL write that puts only the
+TRNG in reset (0x36 to 0x16) issues d clocks after the first adapter acknowledge
+of the client, with no other bus access from that acknowledge to the clear. The
+write-to-clear latency is fixed and the client is acknowledged about every ten
+clocks, so the sweep places the clear at every phase of one acknowledge period.
+The phase of a trial is the clocks from the last adapter acknowledge of the client
+to the rise of ``trng_reset_active_probe_o``.
 
 Checkers:
   CHK-XRST-POOL    a pool STATUS read issued and answered inside the clear returns
@@ -56,6 +76,18 @@ Checkers:
                    acknowledged in the pre-reset leg, the held beat shows on at
                    least one clock of the clear, and at least one stale word is
                    buffered at the set-up clear.
+  CHK-ADAPTER-CLEAR-HOLD  per adapter-clear trial: on every clock with
+                   ``src_req_i && src_ack_o`` of a client synchronizer, the word the
+                   client takes (``crypto_edn_sync_data_o``) equals the word that
+                   the adapter acknowledged to that client (``crypto_edn_ack_o``
+                   with ``crypto_edn_bus_o``), and that word is a sent word; no
+                   handshake without an acknowledged word. Controls per client: a
+                   trial with phase 1 to 3 exists, and a trial with phase 5 to 9
+                   passes.
+  CHK-ADAPTER-CLEAR-RND   per OTBN RND trial of the leg: the program ends with
+                   ``ERR_BITS`` 0 and all 128 DMEM words are sent words (no
+                   sentinel left). Controls: a trial with phase 1 to 3 exists, and
+                   a trial with phase 5 to 9 passes.
 """
 
 from __future__ import annotations
@@ -71,7 +103,7 @@ from env.sep_crypto_kat_rows import AES_KEY_ROWS, KMAC_SAMPLE_KEY_ROW
 from env.sep_ext_trng_stream import SepExtTrngStream
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_kmac_golden import kmac_family_words
-from env.sep_reg_meta import KMAC, SEP_CPU_CTRL
+from env.sep_reg_meta import KMAC, OTBN, SEP_CPU_CTRL
 from env.sep_rv32_asm import A0, ECALL, T1, addi, csrr, sw
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -131,9 +163,38 @@ HOLD_SHOW_CAP = 16
 # rise and has room for the beat held in the clear.
 POOL_LEG_S1_BEATS = 1
 
+# Adapter-clear leg. Each client gets one trial per write delay of AC_DELAYS, one
+# acknowledge period of a client that keeps requesting, so whatever the fixed
+# write-to-clear latency is, some delay puts the clear 1 to 3 clocks after an
+# acknowledge (AC_WINDOW) and some delay puts it well away from one (AC_AWAY).
+AC_CLIENTS = ("kmac", "otbn_rnd", "otbn_urnd")
+AC_DELAYS = tuple(range(10))
+AC_WINDOW = (1, 2, 3)
+AC_AWAY = (5, 6, 7, 8, 9)
+# Clocks the TRNG reset is held after the rise of the probe.
+AC_HOLD = 16
+# Bound of the wait for the first adapter acknowledge of the client in a trial.
+AC_TRIGGER_CAP = 200_000
+# OTBN RND: whole-WSR reads of RND, each stored to DMEM, so every EDN word of every
+# RND value is read back, and the requests last well past the clear.
+AC_RND_FETCHES = 16
+AC_RND_WORDS = 8 * AC_RND_FETCHES
+AC_SENTINEL_BASE = 0x5A5A_A5A5
+# bn.wsrr w0, RND: scheme wcsr (``otbn/data/enc-schemes.yml``), WSR 1 is RND
+# (``otbn/data/wsr.yml``).
+BN_WSRR_W0_RND = 0x0010_700B
+# bn.sid x2, 0(x6): DMEM[x6] = the WDR that x2 names (the key-dump program encoding).
+BN_SID_X2_X6 = 0x0023_500B
+ERR_RND_FIPS = OTBN.field_mask("ERR_BITS", "rnd_fips_chk_fail")
+
 
 def _le_words(data: bytes) -> list[int]:
     return [int.from_bytes(data[i : i + 4], "little") for i in range(0, len(data), 4)]
+
+
+def _golden_field(client: str, res: dict) -> int | str:
+    """AES and KMAC have a golden compare; OTBN RND and URND have none (``na``)."""
+    return int(res["golden_ok"]) if client in ("aes", "kmac") else "na"
 
 
 def _kill(task) -> None:
@@ -150,6 +211,25 @@ def otbn_csr_prog(csr: int, reads: int) -> tuple[int, ...]:
     for k in range(reads):
         prog += [csrr(A0, csr), sw(A0, T1, 4 * k)]
     return tuple(prog + [ECALL])
+
+
+def otbn_rnd_wsr_prog(fetches: int) -> tuple[int, ...]:
+    """OTBN program: x2 = 0 (WDR w0), x6 = 0; per fetch w0 = RND, DMEM[x6] = w0,
+    x6 += 32; then ecall."""
+    prog = [addi(2, 0, 0), addi(6, 0, 0)]
+    for _ in range(fetches):
+        prog += [BN_WSRR_W0_RND, BN_SID_X2_X6, addi(6, 6, 32)]
+    return tuple(prog + [ECALL])
+
+
+def ac_sentinel(words) -> int:
+    """DMEM fill value of the OTBN RND trials: the first value from AC_SENTINEL_BASE
+    up that is no plan word, so a sentinel left in DMEM is never a sent word."""
+    used = set(words)
+    v = AC_SENTINEL_BASE
+    while v in used:
+        v += 1
+    return v
 
 
 # ----------------------------------------------------------------------------- plan
@@ -341,6 +421,149 @@ def acked(rows: list[Row], client: int) -> list[int | None]:
     return [_word(r.cbus, client) for r in rows if _bit(r.cack, client) == 1]
 
 
+class _ClearHoldMon:
+    """Per-clock record, after each falling edge, of the adapter side and the client
+    side of the four crypto EDN clients, for the adapter-clear leg.
+
+    Adapter side: ``crypto_edn_ack_o[i]`` with the word ``crypto_edn_bus_o``. Client
+    side: the synchronizer handshake ``crypto_edn_sync_req_o[i] &&
+    crypto_edn_sync_ack_o[i]`` with the word ``crypto_edn_sync_data_o``. One adapter
+    acknowledge gives one client handshake, in order, so each handshake takes the
+    oldest acknowledged word of its client. While a trial is armed, a handshake that
+    takes another word, a word that is not a sent word, a handshake with no
+    acknowledged word, or an X/Z request or acknowledge of the armed client is a
+    recorded failure.
+    """
+
+    def __init__(self, dut, sent: set[int]) -> None:
+        self.dut = dut
+        self.sent = sent
+        self.clk = 0
+        self.prev_ta = 0
+        self.last_ack: list[int | None] = [None] * len(CLIENTS)
+        self.pending: list[list[int | None]] = [[] for _ in CLIENTS]
+        self.armed: int | None = None
+        self.life = MonitorLife("ADAPTER-CLEAR-MON", lambda: self.clk)
+        self._clear_trial()
+
+    def _clear_trial(self) -> None:
+        self.arm_clk = self.clk
+        self.trig_clk: int | None = None
+        self.write_clk: int | None = None
+        self.rise_clk: int | None = None
+        self.phase: int | None = None
+        self.ack_clks: list[int] = []
+        self.handshakes = 0
+        self.armed_handshakes = 0
+        self.bad: list[str] = []
+        self.zero_taken = 0
+        self.unmatched = 0
+        self.xz = 0
+
+    def start(self) -> "_ClearHoldMon":
+        self.life.start(self._run())
+        return self
+
+    async def stop(self) -> None:
+        await self.life.stop()
+
+    def arm(self, client: str) -> None:
+        self._clear_trial()
+        self.armed = CLIENT_BIT[client]
+
+    def disarm(self) -> dict:
+        self.life.check()
+        pre = [c for c in self.ack_clks if self.rise_clk is None or c < self.rise_clk]
+        gaps = [b - a for a, b in zip(pre, pre[1:])]
+        out = {
+            "phase": self.phase,
+            "clear_seen": int(self.rise_clk is not None),
+            "latency": (
+                self.rise_clk - self.write_clk
+                if self.rise_clk is not None and self.write_clk is not None
+                else None
+            ),
+            "eff_d": (
+                self.write_clk - self.trig_clk
+                if self.write_clk is not None and self.trig_clk is not None
+                else None
+            ),
+            "ack_period": min(gaps) if gaps else None,
+            "acks_before_clear": len(pre),
+            "handshakes": self.handshakes,
+            "armed_handshakes": self.armed_handshakes,
+            "bad": list(self.bad),
+            "zero_taken": self.zero_taken,
+            "unmatched": self.unmatched,
+            "xz": self.xz,
+        }
+        self.armed = None
+        return out
+
+    async def _run(self) -> None:
+        d = self.dut
+        while True:
+            await FallingEdge(d.clk_i)
+            await ReadOnly()
+            self.clk += 1
+            armed = self.armed
+            # Per-lane decode: an X/Z on one client does not hide the others.
+            ack = _bitstr(d.crypto_edn_ack_o)
+            bus = _bitstr(d.crypto_edn_bus_o)
+            sreq = _bitstr(d.crypto_edn_sync_req_o)
+            sack = _bitstr(d.crypto_edn_sync_ack_o)
+            sdata = _bitstr(d.crypto_edn_sync_data_o)
+            ta = _known(d.trng_reset_active_probe_o)
+            if armed is not None and (
+                _lane(sreq, armed, 1) is None or _lane(sack, armed, 1) is None
+            ):
+                self.xz += 1
+            for c in range(len(CLIENTS)):
+                if _lane(sreq, c, 1) == 1 and _lane(sack, c, 1) == 1:
+                    taken = _lane(sdata, c, 32)
+                    if armed is None:
+                        if self.pending[c]:
+                            self.pending[c].pop(0)
+                        continue
+                    self.handshakes += 1
+                    self.armed_handshakes += int(c == armed)
+                    self.zero_taken += int(taken == 0)
+                    if not self.pending[c]:
+                        self.unmatched += 1
+                        self.bad.append(f"{CLIENTS[c]}:taken={_hx(taken)}:acked=none")
+                        continue
+                    want = self.pending[c].pop(0)
+                    if taken is None or taken != want or want not in self.sent:
+                        self.bad.append(f"{CLIENTS[c]}:taken={_hx(taken)}:acked={_hx(want)}")
+                if _lane(ack, c, 1) == 1:
+                    self.pending[c].append(_lane(bus, c, 32))
+                    self.last_ack[c] = self.clk
+                    if c == armed:
+                        self.ack_clks.append(self.clk)
+                        if self.trig_clk is None:
+                            self.trig_clk = self.clk
+            if armed is not None and ta == 1 and self.prev_ta != 1 and self.rise_clk is None:
+                self.rise_clk = self.clk
+                last = self.last_ack[armed]
+                self.phase = None if last is None or last < self.arm_clk else self.clk - last
+            self.prev_ta = ta if ta is not None else 0
+
+
+def _lane(bits: str, i: int, width: int) -> int | None:
+    """Field ``[width*i +: width]`` of a bit string, MSB first (None = X/Z there)."""
+    lo = len(bits) - width * (i + 1)
+    field = bits[lo : lo + width] if lo >= 0 else ""
+    return int(field, 2) if field and all(c in "01" for c in field) else None
+
+
+def _hx(v: int | None) -> str:
+    return "X" if v is None else f"0x{v:08x}"
+
+
+def _na(v) -> str:
+    return "na" if v is None else str(v)
+
+
 # ----------------------------------------------------------------------------- leaf
 class _Reg(SepAxiRegDriver):
     _DRIVER_TAG = "XRST"
@@ -357,6 +580,8 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         "CHK-XRST-STALE",
         "CHK-XRST-CLIENT",
         "CHK-XRST-OTBN",
+        "CHK-ADAPTER-CLEAR-HOLD",
+        "CHK-ADAPTER-CLEAR-RND",
     )
 
     async def run_scenario(self) -> None:
@@ -390,6 +615,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             await self._client_leg()
             await self._pool_leg()
             await self._trials()
+            await self._adapter_clear_leg()
         finally:
             close_graded_window(self.logger)
             await self._stop_feeders()
@@ -558,7 +784,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
                 "client": client,
                 "words_in_sent_set": f"{members}/{len(checked)}",
                 "acks": len(words),
-                "result==golden": int(res["golden_ok"]),
+                "result==golden": _golden_field(client, res),
             }
             if reason:
                 fields["reason"] = reason
@@ -955,7 +1181,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             "words_from_post_reset": int(fresh),
             "post_words": len(words),
             "rnd_words": len(rnd_words),
-            "result==golden": int(res["golden_ok"]),
+            "result==golden": _golden_field(client, res),
             "clear_clk": len(clear),
             "ctrl_ack_before": int(ctrl >= 1),
             "attempt": attempt,
@@ -977,6 +1203,161 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             **fields,
         )
         return False
+
+    # --- adapter-clear leg --------------------------------------------------------------
+    async def _adapter_clear_leg(self) -> None:
+        """CHK-ADAPTER-CLEAR-HOLD and CHK-ADAPTER-CLEAR-RND: per client, a TRNG reset
+        written d clocks after its first adapter acknowledge, for every d of AC_DELAYS."""
+        await self._silence(1)
+        await self._trng_reset()
+        sentinel = ac_sentinel(self.plan.words)
+        self.ac_mon = _ClearHoldMon(cocotb.top, self.sent_s).start()
+        results: dict[str, list[dict]] = {c: [] for c in AC_CLIENTS}
+        try:
+            # One KMAC operation with stream 1 on sets the KMAC entropy configuration
+            # that a later CMD.entropy_req reseeds from.
+            self._start_feeder(1, self.sent_s)
+            warm = await self._op_caught("kmac")
+            await self._silence(1)
+            self.chk.obs("ADAPTER-CLEAR-WARMUP", client="kmac", golden_ok=int(warm["golden_ok"]))
+            for client in AC_CLIENTS:
+                for d in AC_DELAYS:
+                    results[client].append(await self._ac_trial(client, d, sentinel))
+        finally:
+            await self._stop_feeders()
+            await self.ac_mon.stop()
+        # Controls: the sweep put the clear 1 to 3 clocks after an acknowledge, and a
+        # trial with the clear well away from an acknowledge passes the same check.
+        for client in AC_CLIENTS:
+            res = results[client]
+            window = [r["d"] for r in res if r["phase"] in AC_WINDOW]
+            away = [r["d"] for r in res if r["phase"] in AC_AWAY and r["hold_ok"]]
+            self.chk.ctrl(
+                "ADAPTER-CLEAR-HOLD", bool(window), client=client, window_d=window or "none"
+            )
+            self.chk.ctrl(
+                "ADAPTER-CLEAR-HOLD", bool(away), client=client, clean_away_d=away or "none"
+            )
+        res = results["otbn_rnd"]
+        window = [r["d"] for r in res if r["phase"] in AC_WINDOW]
+        away = [r["d"] for r in res if r["phase"] in AC_AWAY and r["rnd_ok"]]
+        self.chk.ctrl("ADAPTER-CLEAR-RND", bool(window), window_d=window or "none")
+        self.chk.ctrl("ADAPTER-CLEAR-RND", bool(away), clean_away_d=away or "none")
+
+    async def _ac_start_op(self, client: str, sentinel: int) -> None:
+        """The bus accesses that start the entropy burst of the client. No bus access
+        follows until the TRNG reset write of the trial."""
+        if client == "kmac":
+            await self.kmac._wait_idle("pre-entropy-req")
+            await self.kmac._wr(KMAC_CMD, CMD_ENTROPY_REQ)
+            return
+        await self.otbn.wait_idle("pre-load")
+        if client == "otbn_rnd":
+            for i in range(AC_RND_WORDS):
+                await self.otbn.write_dmem(4 * i, sentinel)
+            await self.otbn.load_program(otbn_rnd_wsr_prog(AC_RND_FETCHES))
+        else:
+            await self.otbn.load_program(otbn_csr_prog(CSR_URND, 1))
+        await self.otbn.start_execute()
+
+    async def _ac_finish_op(self, client: str) -> dict:
+        """Complete the client operation after the release; an error is returned."""
+        try:
+            if client == "kmac":
+                return await self._op("kmac")
+            await self.otbn.wait_idle("post-execute")
+            err = await self.otbn.read_errbits()
+            words = []
+            if client == "otbn_rnd":
+                words = await self.otbn.read_dmem_words(0, AC_RND_WORDS)
+            return {"golden_ok": True, "err_bits": err, "rnd_words": words}
+        except AssertionError as exc:
+            return {"golden_ok": False, "error": str(exc)}
+
+    async def _ac_trial(self, client: str, d: int, sentinel: int) -> dict:
+        """One adapter-clear trial: the TRNG reset write issues d clocks after the first
+        adapter acknowledge of the client while stream 1 keeps offering words."""
+        dut = cocotb.top
+        mon = self.ac_mon
+        await self._silence(1)
+        mon.life.require_running()
+        open_graded_window(TEST, self.logger)
+        mon.arm(client)
+        self._start_feeder(1, self.sent_s)
+        await self._ac_start_op(client, sentinel)
+        # No bus access from the first acknowledge to the rise of the clear, so the
+        # write-to-clear latency is the same in every trial.
+        if await self._until(lambda: mon.trig_clk is not None, AC_TRIGGER_CAP) is None:
+            raise AssertionError(
+                f"adapter-clear {client} d={d}: no adapter acknowledge in {AC_TRIGGER_CAP} clocks"
+            )
+        target = mon.trig_clk + d
+        if await self._until(lambda: mon.clk >= target, d + 64) is None:
+            raise AssertionError(f"adapter-clear {client} d={d}: write delay not reached")
+        mon.write_clk = mon.clk
+        await self.swrst.park("trng")
+        await self._wait_probe(1, "trng reset rise")
+        await RisingEdge(dut.clk_i)
+        await ClockCycles(dut.clk_i, AC_HOLD)
+        await self.swrst.release("trng")
+        await self._wait_probe(0, "trng reset fall")
+        await RisingEdge(dut.clk_i)
+        task = cocotb.start_soon(self._ac_finish_op(client))
+        if await self._until(lambda: task.done(), OP_CAP) is None:
+            _kill(task)
+            res: dict = {"golden_ok": False, "error": f"timeout:client_done bound={OP_CAP}"}
+        else:
+            res = task.result()
+        await self._stop_feeders()
+        close_graded_window(self.logger)
+        pr = mon.disarm()
+        phase = pr["phase"]
+        self.chk.obs(
+            "ADAPTER-CLEAR-TRIAL", client=client, d=d, phase=_na(phase),
+            latency_write_to_clear=_na(pr["latency"]), eff_d=_na(pr["eff_d"]),
+            ack_period=_na(pr["ack_period"]), acks_before_clear=pr["acks_before_clear"],
+            golden_ok=int(res.get("golden_ok", False)),
+        )  # fmt: skip
+        hold_ok = bool(
+            pr["clear_seen"]
+            and pr["armed_handshakes"] >= 1
+            and not pr["bad"]
+            and pr["xz"] == 0
+            and "error" not in res
+        )
+        fields = {
+            "client": client, "d": d, "phase": _na(phase), "clear_seen": pr["clear_seen"],
+            "handshakes": pr["handshakes"], "armed_handshakes": pr["armed_handshakes"],
+            "mismatches": len(pr["bad"]), "zero_taken": pr["zero_taken"],
+            "unmatched": pr["unmatched"], "xz": pr["xz"],
+            "first_bad": pr["bad"][0] if pr["bad"] else "none",
+        }  # fmt: skip
+        if "error" in res:
+            fields["reason"] = f"client_error:{res['error']}"
+        self.chk.ok("ADAPTER-CLEAR-HOLD", hold_ok, **fields)
+        rnd_ok = False
+        if client == "otbn_rnd":
+            words = list(res.get("rnd_words", []))
+            err = res.get("err_bits")
+            members = sum(1 for w in words if w in self.sent_s)
+            rnd_ok = (
+                "error" not in res
+                and err == 0
+                and len(words) == AC_RND_WORDS
+                and members == AC_RND_WORDS
+            )
+            rfields = {
+                "d": d, "phase": _na(phase),
+                "err_bits": "X" if err is None else f"0x{err:08x}",
+                "rnd_fips_chk_fail": int(err is not None and bool(err & ERR_RND_FIPS)),
+                "words_in_sent_set": f"{members}/{AC_RND_WORDS}",
+                "sentinel_left": sum(1 for w in words if w == sentinel),
+                "zero_words": sum(1 for w in words if w == 0),
+            }  # fmt: skip
+            if "error" in res:
+                rfields["reason"] = f"client_error:{res['error']}"
+            self.chk.ok("ADAPTER-CLEAR-RND", rnd_ok, **rfields)
+        return {"d": d, "phase": phase, "hold_ok": hold_ok, "rnd_ok": rnd_ok}
 
 
 class _UrndPacer:

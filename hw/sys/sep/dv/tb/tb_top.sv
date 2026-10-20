@@ -3212,6 +3212,34 @@ module sep_uvm_top
     `CRYPTO_EDN_TAP(0); `CRYPTO_EDN_TAP(1); `CRYPTO_EDN_TAP(2); `CRYPTO_EDN_TAP(3);
 `undef CRYPTO_EDN_TAP
 
+    // Client-side EDN synchronizer taps: the prim_sync_reqack_data instance of
+    // each native client (AES, KMAC, OTBN RND inside prim_edn_req, OTBN URND).
+    // The client takes data_o on the clock with src_req_i && src_ack_o.
+    // data_o[31:0] is edn_bus; the OTBN instances carry edn_fips in data_o[32],
+    // which is not tapped.
+`define EDN_SYNC_AES  `SEP_CORE.u_sep_crypto.u_aes_wrapper_s3c_scan.u_tt_aes
+`define EDN_SYNC_KMAC `SEP_CORE.u_sep_crypto.u_kmac_wrapper_s3c_scan.u_tt_kmac.gen_entropy
+`define EDN_SYNC_OTBN `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn
+    assign crypto_edn_sync_req_o[0]       = `EDN_SYNC_AES.u_prim_sync_reqack_data.src_req_i;
+    assign crypto_edn_sync_ack_o[0]       = `EDN_SYNC_AES.u_prim_sync_reqack_data.src_ack_o;
+    assign crypto_edn_sync_data_o[31:0]   = `EDN_SYNC_AES.u_prim_sync_reqack_data.data_o[31:0];
+    assign crypto_edn_sync_req_o[1]       = `EDN_SYNC_KMAC.u_prim_sync_reqack_data.src_req_i;
+    assign crypto_edn_sync_ack_o[1]       = `EDN_SYNC_KMAC.u_prim_sync_reqack_data.src_ack_o;
+    assign crypto_edn_sync_data_o[63:32]  = `EDN_SYNC_KMAC.u_prim_sync_reqack_data.data_o[31:0];
+    assign crypto_edn_sync_req_o[2]       =
+        `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.src_req_i;
+    assign crypto_edn_sync_ack_o[2]       =
+        `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.src_ack_o;
+    assign crypto_edn_sync_data_o[95:64]  =
+        `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.data_o[31:0];
+    assign crypto_edn_sync_req_o[3]       = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.src_req_i;
+    assign crypto_edn_sync_ack_o[3]       = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.src_ack_o;
+    assign crypto_edn_sync_data_o[127:96] =
+        `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.data_o[31:0];
+`undef EDN_SYNC_AES
+`undef EDN_SYNC_KMAC
+`undef EDN_SYNC_OTBN
+
     // ------------------------------------------------------------------
     // External TRNG stream driver and interrupt (top-port drives).
     // ------------------------------------------------------------------

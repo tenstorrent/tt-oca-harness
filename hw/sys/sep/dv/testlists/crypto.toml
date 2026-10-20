@@ -699,7 +699,8 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
 # The TRNG reset with an external source: adapter and pool clear, traffic pause and
-# resume, and the crypto client requests pending across the clear.
+# resume, the crypto client requests pending across the clear, and the word a client
+# takes when the clear rises just after the adapter acknowledged it.
 name = "sep_trng_ext_sink_reset_rand_test"
 module = "crypto.sep_trng_ext_sink_reset_rand_test"
 seed = 1

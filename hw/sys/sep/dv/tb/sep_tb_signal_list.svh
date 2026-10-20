@@ -597,6 +597,13 @@
 `SEP_TB_OUT(logic [3:0], crypto_edn_ack_o)  // bit i = crypto_edn_rsp[i].edn_ack
 `SEP_TB_OUT(logic [127:0], crypto_edn_bus_o)  // word i = crypto_edn_rsp[i].edn_bus ([32*i +: 32])
 `SEP_TB_OUT(logic [3:0], crypto_edn_fips_o)  // bit i = crypto_edn_rsp[i].edn_fips
+// Client side of the EDN synchronizer (prim_sync_reqack_data, data from DST to
+// SRC) inside each native crypto client, same client index as crypto_edn_*_o.
+// The client takes data_o on the clock with src_req_i && src_ack_o.
+// Read-only XMR, no force.
+`SEP_TB_OUT(logic [3:0], crypto_edn_sync_req_o)  // bit i = src_req_i of client i
+`SEP_TB_OUT(logic [3:0], crypto_edn_sync_ack_o)  // bit i = src_ack_o of client i
+`SEP_TB_OUT(logic [127:0], crypto_edn_sync_data_o)  // word i = data_o[31:0] (edn_bus)
 // CHK5 per-sink ROUTING golden tap (AXIS1): the crypto-leg EDN word stream
 // POST the KM/crypto mux but PRE the drbg_axis_edn_adapter fan-out
 // (sep_crypto.entropy_muxed_req[1]). This is the authoritative ordered word

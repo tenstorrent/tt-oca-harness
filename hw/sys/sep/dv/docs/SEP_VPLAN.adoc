@@ -859,8 +859,8 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |<<sep_trng_ext_sink_reset_rand_test,`sep_trng_ext_sink_reset_rand_test`>>
 |3
 |no_cpu, `+skip_fuse_sense`
-|CPU-LSU master, `trng_reset_active_probe_o`, `crypto_edn_*`, `axis1_*`, `axis2_*`, `km_entropy_*` probes; external stream driver (added hook, top-port drive); external stream response monitor (observation tap)
-|Proves that a TRNG reset clears the post-mux adapters and the pool even with external inputs selected, that external traffic pauses during the clear and resumes without internal set-up, and that a waiting consumer is served with fresh data.
+|CPU-LSU master, `trng_reset_active_probe_o`, `crypto_edn_*`, `axis1_*`, `axis2_*`, `km_entropy_*` probes; external stream driver (added hook, top-port drive); external stream response monitor and client-side EDN synchronizer taps (observation taps)
+|Proves that a TRNG reset clears the post-mux adapters and the pool even with external inputs selected, that external traffic pauses during the clear and resumes without internal set-up, and that a waiting consumer is served with fresh data. Its fixed adapter-clear leg writes the TRNG reset at every phase of one acknowledge period of KMAC, OTBN RND and OTBN URND, and grades that each client takes the word the adapter acknowledged to it and that OTBN RND completes with no error (<<known-limitations,Known Limitations>>).
 
 |<<sep_drbg_sink_mix_rand_test,`sep_drbg_sink_mix_rand_test`>>
 |3
@@ -4272,6 +4272,11 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Read-only tap
 |Monitor on `ext_trng_axis_rsp_o[2:0]`, the response of the three external TRNG streams.
 |`sep_trng_ext_stream_handshake_rand_test`, `sep_trng_ext_sink_reset_rand_test`, the external Key Manager leg of `sep_drbg_sink_mix_rand_test`
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|Client-side EDN synchronizer taps (`crypto_edn_sync_req_o`, `crypto_edn_sync_ack_o`, `crypto_edn_sync_data_o`)
+|Read-only probe
+|`src_req_i`, `src_ack_o` and `data_o[31:0]` of the `prim_sync_reqack_data` instance in each native crypto client (AES, KMAC, OTBN RND, OTBN URND): the word that a client takes on its handshake clock. No register shows that word for KMAC or OTBN URND.
+|`sep_trng_ext_sink_reset_rand_test` (CHK-ADAPTER-CLEAR-HOLD)
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>; <<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Alert receiver probe (`crypto_alert_pulse_probe_o`)
 |Read-only probe
@@ -5395,4 +5400,7 @@ defect. Behaviour that this plan does not claim at all is in
 
 |Isolated read on a 64-bit host path (hardware gap). `hw/sys/sep/doc/reset_controller.adoc` (Isolation and Reset Sequencing) states that a new transaction on an isolated path completes with SLVERR and read data `0x1501A7ED`. On this DUT the isolates of the 64-bit Adams Bridge, CSRNG and EDN host paths return `64'h0000_0000_1501_A7ED`, so an isolated read of the upper 32-bit lane returns 0. *Issue*: #3120
 |`sep_sw_reset_isolation_matrix_test` CHK-ISO-RESP fails on this DUT (<<sep_sw_reset_isolation_matrix_test>>). The 32-bit isolated paths and the lower lane of the 64-bit paths answer as stated.
+
+|Acknowledged EDN word withdrawn by the adapter clear (hardware gap). `hw/sys/sep/doc/trng.adoc` (Reset and Recovery Boundaries) states that native requests receive no acknowledgement during adapter clear and can resume after fresh data arrives; OpenTitan `edn/README.md` states that the acknowledge signals fresh values on the bus. On this DUT the crypto post-mux adapter (`drbg_axis_edn_adapter`, `u_axis_edn_crypto_s3c_scan`) forces `edn_bus` and `edn_fips` to 0 from the first clock of the clear, also for a word it acknowledged one to three clocks earlier; the client synchronizer hands the client that word three clocks after the acknowledge, so the client takes 0. KMAC and OTBN URND use the zero word with no error; OTBN RND sets `ERR_BITS.rnd_fips_chk_fail` and stores no value. AES has the same path. *Issue*: #3252
+|`sep_trng_ext_sink_reset_rand_test` CHK-ADAPTER-CLEAR-HOLD (KMAC, OTBN RND and OTBN URND) and CHK-ADAPTER-CLEAR-RND fail on this DUT on every seed (<<sep_trng_ext_sink_reset_rand_test>>), and the leaf stays red until the adapter holds an acknowledged word across the clear. On VCS the synchronizer assertions `SyncReqAckDataHoldDst2SrcA` and `SyncReqAckDataHoldDst2SrcB` of those clients also fire; `SyncReqAckDataHoldDst2SrcB` fires in trials where the clear meets an acknowledge on the same clock, which the checks do not grade. The other checks of the leaf, and the trials with the clear away from an acknowledge, pass.
 |===

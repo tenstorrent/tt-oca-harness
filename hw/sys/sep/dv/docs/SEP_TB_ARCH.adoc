@@ -231,6 +231,16 @@ Observation probe groups:
   only. Owner: `sep_scan_reset_override_test`.
 * EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`,
   `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`).
+* Client-side EDN synchronizer taps (read-only, no force).
+  `crypto_edn_sync_req_o[i]`, `crypto_edn_sync_ack_o[i]` and
+  `crypto_edn_sync_data_o[32*i +: 32]` are `src_req_i`, `src_ack_o` and
+  `data_o[31:0]` of the `prim_sync_reqack_data` instance in client i (0 AES
+  `u_tt_aes.u_prim_sync_reqack_data`, 1 KMAC
+  `u_tt_kmac.gen_entropy.u_prim_sync_reqack_data`, 2 OTBN RND
+  `u_otbn.u_prim_edn_rnd_req.u_prim_sync_reqack_data`, 3 OTBN URND
+  `u_otbn.u_prim_sync_reqack_data_urnd`): the word the client takes on its
+  handshake clock. No register shows that word for KMAC or OTBN URND. Owner:
+  `sep_trng_ext_sink_reset_rand_test`.
 * RMA-SIP token-digest latch probes (`token_digest_*`).
 * eFuse and lifecycle taps (read-only, no force). `efuse_shim_cmd_*_o`, the
   post-guard fuse command at the `sep` output `efuse_shim_command_req_o`
