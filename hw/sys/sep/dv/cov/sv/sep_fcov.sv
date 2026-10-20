@@ -6318,9 +6318,9 @@ module sep_fcov (
             logic [1:0] path;
             path = (c == 3'd3) ? 2'd0 : (c == 3'd4) ? 2'd2 : 2'd1;
             if (c != 3'd2) at = ((c == 3'd1) ? 4'd1 : (c == 3'd3) ? 4'd3 : 4'd5) + 4'(t.prot[1]);
-            u_sep_fabric_outbound_route_cg.sample(
-                4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, at, own_route && (at != 4'd0),
-                {path, oa[55], t.prot[1], w}, own_route);
+            u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, at,
+                                                  own_route && (at != 4'd0), {
+                                                  path, oa[55], t.prot[1], w}, own_route);
           end
           if ((c inside {3'd3, 3'd4}) && (t.init == INIT_LSU) && (t.user[3:0] != 4'd0) && (ou == 12'd0)) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0,
