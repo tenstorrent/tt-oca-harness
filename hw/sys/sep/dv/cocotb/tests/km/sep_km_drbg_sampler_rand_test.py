@@ -271,13 +271,16 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         raise AssertionError(f"dbg_sep_reset_n_o did not read 1 within {_SEP_RESET_BOUND} clocks")
 
     async def _wait_tvalid(self, bound: int = _TVALID_BOUND) -> tuple[int, int] | None:
-        """Wait (bounded) for ``km_entropy_tvalid_o`` = 1; return (tvalid, tready) of that clock."""
+        """Wait (bounded) for ``km_entropy_tvalid_o`` = 1; return (tvalid, tready) of that clock.
+
+        TREADY of that clock is read known, so an X fails the leaf.
+        """
         dut = cocotb.top
         for _ in range(bound):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             if self.rd(dut.km_entropy_tvalid_o, allow_unknown=True):
-                return 1, self.rd(dut.km_entropy_tready_o, allow_unknown=True)
+                return 1, self.rd_known(dut.km_entropy_tready_o)
         return None
 
     async def _entropy_init(self, *, reset_trng: bool, what: str) -> None:

@@ -1012,6 +1012,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             kp.rd(m.SCR_CTRL),
             kp.rd(m.HMAC_KEY_CTRL),
             *[kp.rd(a) for a in p.sram_addrs],
+            kp.rd(m.IRQ_STATUS),
             kp.rdloop(m.KPV_BASE, m.N_KPV_WORDS),
             kp.delay(_WIPE_WINDOW_DELAY),
         ]
@@ -1027,7 +1028,8 @@ class sep_km_kpv_rand_test(sep_base_test):
         for r in pre:
             self._check_result(r)
         sram_pre = [pre[7 + i].value for i in range(m.N_SRAM_WORDS)]
-        loop_pre = pre[7 + m.N_SRAM_WORDS]
+        irq_pre = self._irq(pre[7 + m.N_SRAM_WORDS].value)
+        loop_pre = pre[8 + m.N_SRAM_WORDS]
         hmac_pre = pre[6].value & m.HMAC_KEY_CTRL_FIELDS
 
         # The pushed mailbox word is the header of the read-back list, so the image
@@ -1075,6 +1077,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             and self._ctrl(pre[4].value) == m.RETIRED
             and self._scr(pre[5].value) == both
             and loop_pre.data[0] >= 2 * m.N_WORDS
+            and irq_pre == 0
         )
         self.controls["wipe_pre_vault"] = self.chk.ctrl(
             "WIPE-KPV-PRE",
@@ -1084,6 +1087,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             retired_ctrl=_h(self._ctrl(pre[4].value)),
             scr=_h(self._scr(pre[5].value)),
             words_nonzero=loop_pre.data[0],
+            wipe_state_before=irq_pre,
         )
         scope_pre = (
             sram_pre == p.sram_values

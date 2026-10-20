@@ -165,6 +165,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         self.r = 0  # next expected response sequence number
         self.n_resp = 0
         self.resp_seq_err: list[str] = []
+        self.resp_seq_graded = False
 
         # Step 1: PROD fuse image sensed for real, every engine out of reset
         # (SW_RESET_N reset value 0x7E), entropy up with noise forced.
@@ -207,6 +208,9 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             monotonic=int(not self.resp_seq_err),
             mismatches=self.resp_seq_err[:4],
         )
+        # A frame that the response reader reads after this point fails the leaf
+        # on a sequence mismatch.
+        self.resp_seq_graded = True
 
         await self._oflow_pend_leg()
 
@@ -338,6 +342,11 @@ class sep_km_command_protocol_rand_test(sep_base_test):
                 )
         self.n_resp += 1
         if seq != self.r:
+            if self.resp_seq_graded:
+                raise AssertionError(
+                    f"[{tag}] response sequence {seq}, model expects {self.r} "
+                    "(a frame read after CHK-RESPSEQ)"
+                )
             self.resp_seq_err.append(f"{tag}:exp={self.r}:got={seq}")
             self.logger.error("[%s] response sequence %d, model expects %d", tag, seq, self.r)
         self.r = (seq + 1) & 0xFF
@@ -956,19 +965,25 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         fault = await self._apply_cause(hd.source, hd.oflow_words, tag)
         fault_ok = fault.rid == pl.RESP_RECOVERABLE_FAULT and fault.seq == 0
         gated = await self._cmd(c, pay, f"{tag} gated")
+        st_before = await self._cmd(pl.CMD_STAT, (), f"{tag} CMD_STAT before reset")
         pic_before = await self._pic31()
 
         await self._warm_reset(f"{tag} clear")
         st = await self._cmd(pl.CMD_STAT, (), f"{tag} CMD_STAT after reset")
         pic = await self._pic31()
-        # Control: the probe reads 1 before the reset, so a 0 after it is the reset.
+        # Control: CMD_STAT bit 0 and the probe read 1 before the reset, so a 0
+        # after it is the reset.
+        stat_before_ok = (
+            st_before.code == 0 and st_before.arg is not None and (st_before.arg & 1) == 1
+        )
         self.chk.ok(
             "RESET-CLR",
-            st.code == 0 and st.arg == 0 and pic == 0 and pic_before == 1,
+            st.code == 0 and st.arg == 0 and pic == 0 and pic_before == 1 and stat_before_ok,
             cmd=f"0x{c:02x}",
             source=hd.source,
             stat=_a(st.arg),
             err_o=pic,
+            control_stat_before=_a(st_before.arg),
             control_err_o_before=pic_before,
         )
 

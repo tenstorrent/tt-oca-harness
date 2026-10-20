@@ -130,13 +130,18 @@ CLR_GOOD_FULL = status_write(COUNT_GOOD=COUNT_GOOD_MAX)
 # --- test parameters ---------------------------------------------------------------
 FORCED_STALLED_T = (1, 2, 3, TIMEOUT_MAX)
 GRADED_STALLED_T = frozenset(FORCED_STALLED_T)
-RESET_T = 256  # the CFG.TIMEOUT reset value (km_drbg_sampler.adoc, "CFG")
+# The CFG.TIMEOUT reset value (km_drbg_sampler.adoc, "CFG"), from the RDL reset.
+RESET_T = (CFG_RESET & _f(KM_SMP, "CFG_REG", "TIMEOUT")["bm"]) >> _f(KM_SMP, "CFG_REG", "TIMEOUT")[
+    "bp"
+]
 DRAWN_T_RANGE = (4, 400)
 FED_T = (0, TIMEOUT_MAX)
 PREFETCH_T = 8
 PREFETCH_WINDOW_CLKS = 1024
-BAD_LOOP_READS = 258
-GOOD_LOOP_READS = 65540
+# Read loops that run each counter to saturation and past it: 3 and 5 reads
+# more than the field maximum.
+BAD_LOOP_READS = COUNT_BAD_MAX + 3
+GOOD_LOOP_READS = COUNT_GOOD_MAX + 5
 EXTRA_READS = 2
 GOOD_SAT_ONE_IN = 3
 STRM_CASES = (("b", RESET_T), ("c", 1), ("d", 2))
