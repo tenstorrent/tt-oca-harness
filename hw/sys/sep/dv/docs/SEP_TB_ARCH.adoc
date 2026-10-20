@@ -234,6 +234,9 @@ Observation probe groups:
   of the read and program interfaces sit before the guard and cannot show a
   refusal. `efuse_shim_resp_{valid,status,data}_o`, the shim response at the
   `sep` input `efuse_shim_command_resp_i`, after the sense-status inject.
+  `efuse_bank_psel_o`, the APB `psel` of the shim request to the bank model
+  (`efuse_model_otp_req` in `sep_ip_integration`), sampled every clock to show
+  that a request the guard blocks starts no bank access.
   `otp_bank_probe_o`, the 256 bank words that SEP reaches
   (`EFUSE_BANK_REG[0..255]` of the bank model), for the snapshot, bit diff
   and per-clock sample; the bench has no bank write hook.
