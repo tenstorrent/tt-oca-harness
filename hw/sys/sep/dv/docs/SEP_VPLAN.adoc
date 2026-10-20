@@ -4407,6 +4407,11 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |The two Key Manager reset conditioner outputs.
 |`sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test` (CTL-SCAN-REACH)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|`refcnt_rst[1:0]`
+|Read-only tap
+|The two reset synchronizer outputs of the reference counter (`u_sep_system_csr.u_reference_counter_counter`): bit 0 the `clk_i` side, bit 1 the `clk_ref_i` side.
+|`sep_scan_reset_override_test` (CHK-SCAN-IDLE, CHK-SCAN-REPLACE), `sep_scan_mode_state_hold_test` (CTL-SCAN-REACH)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`ip_rst_n[0]` (`KM-RST`)
 |Read-only tap
 |The Key Manager warm reset net `km_sw_rst_n`: bit 0 of `sep_crypto_gated_rst_no`, index 0 of the `ip_rst_n` vector.

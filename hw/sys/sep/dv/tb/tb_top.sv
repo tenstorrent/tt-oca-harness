@@ -1752,6 +1752,12 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.rst_cold_aasd_n,
         `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.rst_warm_sync_n
     };
+    // The two synchronized resets of the reference counter: bit 1 the clk_ref_i
+    // side, bit 0 the clk_i side. Read-only XMRs.
+    assign refcnt_rst_n_probe_o = {
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.u_reference_counter_counter.prstb_synced_rd,
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.u_reference_counter_counter.prstb_synced_write
+    };
     // Output of the CPU run-request synchronizer; the CPU stub has none.
 `ifndef SEP_CPU_STUB
     assign mpc_run_sync_probe_o = `SEP_CORE.u_sep_cpu.mpc_reset_run_req_sync;
@@ -5132,6 +5138,7 @@ module sep_uvm_top
         .iso_ack_i         (crypto_isolated_probe_o),
         .aon_rst_n_i       (aon_rst_n_probe_o),
         .km_cond_rst_n_i   (km_cond_rst_probe_o),
+        .refcnt_rst_n_i    (refcnt_rst_n_probe_o),
         .jtag_rst_ctrl_i   (jtag_sep_reset_ctrl_drive),
         .dmi_rst_vec_i     (fcov_dmi_rst_vec),
         .wdt_axi_req_i     (`SEP_CORE.u_sep_wdt_wrap.sep_wdt_tlul_axi_req),
