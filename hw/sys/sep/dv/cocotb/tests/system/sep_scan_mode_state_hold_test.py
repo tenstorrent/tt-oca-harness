@@ -30,9 +30,11 @@ Contract:
 * ``hw/sys/sep/doc/test_mode.adoc`` (Entry and Exit): only a cold reset, the
   early capture under SEC_DIS and the fuse-sense completion sample the strap;
   otherwise ``SECURE_TM`` keeps its value. ``hw/sys/sep/doc/reset_controller.adoc``
-  (SEP Reset Controller): ``scan_rst_ni`` replaces only the outputs of
+  (SEP Reset Controller): ``scan_rst_ni`` replaces the outputs of
   ``u_sep_reset_sync``, the scan bypass muxes, ``u_rst_wdt_sync`` and the Key
-  Manager reset conditioners. ``scan_rst_ni`` is not a cold reset
+  Manager reset conditioners; ``hw/sys/sep/doc/port_table.adoc``
+  (``scan_rst_ni``): it bypasses the reset synchronizers, which include the two
+  of the reference counter. ``scan_rst_ni`` is not a cold reset
   (``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture).
 * ``hw/sys/sep/doc/test_mode.adoc`` (Protection While Active) and
   ``hw/sys/sep/doc/otp_fuse_controller.adoc``: while ``SECURE_TM`` = 1 the
@@ -44,7 +46,7 @@ Contract:
   hash completion.
 
 Checkers:
-  CTL-SCAN-REACH        each pulse drives all 12 replaced reset nets low on
+  CTL-SCAN-REACH        each pulse drives all 14 replaced reset nets low on
                         every clk_i edge with scan_rst_ni low (the nets of
                         sep_scan_reset_override_test, all high before).
   CHK-SCAN-TM-HOLD      secure_tm_o keeps the leg strap value (0 and 1) on
@@ -116,8 +118,10 @@ from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_scan_mode_state_hold_test"
 
-# The 12 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
-# rst_warm_sync_n, bit 1 rst_cold_aasd_n), as sep_scan_reset_override_test reads them.
+# The 14 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
+# rst_warm_sync_n, bit 1 rst_cold_aasd_n; bit 0 of refcnt_rst_n_probe_o is the
+# clk_i side of the reference counter, bit 1 the clk_ref_i side), as
+# sep_scan_reset_override_test reads them.
 NETS: tuple[tuple[str, str, int], ...] = (
     ("sep_reset_n", "dbg_sep_reset_n_o", 0),
     ("sep_cpu_reset_n", "sep_cpu_reset_n_o", 0),
@@ -131,6 +135,8 @@ NETS: tuple[tuple[str, str, int], ...] = (
     ("aon_rst_n", "aon_rst_n_probe_o", 0),
     ("km_cond_rst[0]", "km_cond_rst_probe_o", 0),
     ("km_cond_rst[1]", "km_cond_rst_probe_o", 1),
+    ("refcnt_rst[0]", "refcnt_rst_n_probe_o", 0),
+    ("refcnt_rst[1]", "refcnt_rst_n_probe_o", 1),
 )
 N_NETS = len(NETS)
 
