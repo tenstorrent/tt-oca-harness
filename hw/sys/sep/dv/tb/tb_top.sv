@@ -3909,8 +3909,11 @@ module sep_uvm_top
     // ahead of the forced inputs: the ROM read data and rvalid and the SRAM
     // read data of sep_ip_integration, and the SRAM rvalid as a bench flop of
     // the accepted SRAM read (the macro answers one clock after the request).
-    // A force is set on every falling edge (Verilator snapshots a force RHS),
-    // and an input is released in every clock that no hook drives it.
+    // A force is set on every falling edge (Verilator snapshots a force RHS).
+    // A released input keeps its forced value until its driver next
+    // evaluates, after the next rising edge has sampled it, so an input is
+    // released only in a clock in which the live response equals the value
+    // forced last; until then the bench forces the live response.
     //
     // HK-LAT. While km_sram_lat_en_i is 1, a SRAM read response with a
     // latency value L = km_sram_lat_i of 2 or more, sampled in the clock in
@@ -3936,9 +3939,10 @@ module sep_uvm_top
     // flipped lane was checked. N of 0 or an unknown control leaves the hook
     // idle.
     // ------------------------------------------------------------------
-    km_intf_pkg::km_sram_mem_rsp_t km_sram_rsp_drv;
-    km_intf_pkg::km_rom_mem_rsp_t km_rom_rsp_drv;
+    km_intf_pkg::km_sram_mem_rsp_t km_sram_rsp_drv, km_sram_rsp_forced;
+    km_intf_pkg::km_rom_mem_rsp_t km_rom_rsp_drv, km_rom_rsp_forced;
     logic km_sram_raw_rvalid_q, km_sram_drive, km_rom_drive, km_mem_rst_ok, km_par_ok;
+    logic km_sram_forced, km_rom_forced;
     logic [3:0] km_lat_k, km_lat_l;
     logic [35:0] km_lat_word;
     logic [31:0] km_lat_delayed_cnt;
@@ -3950,6 +3954,10 @@ module sep_uvm_top
         km_rom_rsp_drv     = '0;
         km_sram_drive      = 1'b0;
         km_rom_drive       = 1'b0;
+        km_sram_rsp_forced = '0;
+        km_rom_rsp_forced  = '0;
+        km_sram_forced     = 1'b0;
+        km_rom_forced      = 1'b0;
         km_lat_k           = '0;
         km_lat_l           = '0;
         km_lat_word        = '0;
@@ -4028,10 +4036,24 @@ module sep_uvm_top
                          (km_par_mem_i === 1'b1) ? "SRAM" : "ROM", km_par_cnt, km_par_lane_i);
             end
         end
-        if (km_sram_drive) force `SEP_CORE.km_sram_mem_rsp_i = km_sram_rsp_drv;
-        else release `SEP_CORE.km_sram_mem_rsp_i;
-        if (km_rom_drive) force `SEP_CORE.km_rom_mem_rsp_i = km_rom_rsp_drv;
-        else release `SEP_CORE.km_rom_mem_rsp_i;
+        // With no hook drive, km_sram_rsp_drv and km_rom_rsp_drv hold the live
+        // response.
+        if (km_sram_forced && (km_sram_rsp_drv !== km_sram_rsp_forced)) km_sram_drive = 1'b1;
+        if (km_rom_forced && (km_rom_rsp_drv !== km_rom_rsp_forced)) km_rom_drive = 1'b1;
+        if (km_sram_drive) begin
+            force `SEP_CORE.km_sram_mem_rsp_i = km_sram_rsp_drv;
+            km_sram_rsp_forced = km_sram_rsp_drv;
+        end else begin
+            release `SEP_CORE.km_sram_mem_rsp_i;
+        end
+        km_sram_forced = km_sram_drive;
+        if (km_rom_drive) begin
+            force `SEP_CORE.km_rom_mem_rsp_i = km_rom_rsp_drv;
+            km_rom_rsp_forced = km_rom_rsp_drv;
+        end else begin
+            release `SEP_CORE.km_rom_mem_rsp_i;
+        end
+        km_rom_forced = km_rom_drive;
     end
     assign km_sram_lat_delayed_count_o = km_lat_delayed_cnt;
     assign km_par_fired_o              = km_par_fired;
