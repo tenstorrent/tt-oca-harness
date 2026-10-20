@@ -3748,33 +3748,54 @@ module sep_uvm_top
     // SEP drives each field to the KM as {~value, value}. At the rise of
     // km_otp_flip_en_i the bench captures the KM input otp_data_i, XORs
     // km_otp_flip_mask_i into it and holds the KM input at that value while
-    // the input stays 1; the release restores the live value. The force
-    // value is a bench variable, captured once, so the forced net is never
-    // its own source. Re-issued on every falling edge (Verilator snapshots a
-    // force RHS). Default 0: no force.
+    // the input stays 1. The live value is the OTP word of sep_crypto ahead of
+    // the KM port. The force value is a bench variable, captured once, so the
+    // forced net is never its own source. Re-issued on every falling edge
+    // (Verilator snapshots a force RHS). A released net keeps its forced value
+    // until its driver changes, so after the drop the bench forces the live
+    // value and releases the input only in a clock in which the live value
+    // equals the value forced last; one falling edge after the release the
+    // input must equal the live value, else the bench reports an error.
+    // km_otp_input_live_o is 1 while the KM input equals the live value.
+    // Default 0: no force.
     // ------------------------------------------------------------------
-    km_intf_pkg::km_otp_data_t km_otp_flip_val;
-    logic km_otp_flip_on;
+    km_intf_pkg::km_otp_data_t km_otp_flip_val, km_otp_live;
+    logic km_otp_flip_on, km_otp_forced, km_otp_rel_chk;
+    assign km_otp_live = `SEP_CORE.u_sep_crypto.km_otp_data;
     initial begin
         km_otp_flip_on  = 1'b0;
+        km_otp_forced   = 1'b0;
+        km_otp_rel_chk  = 1'b0;
         km_otp_flip_val = '0;
     end
     always @(negedge clk_i) begin
+        if (km_otp_rel_chk && (`KM_TAP.otp_data_i !== km_otp_live))
+            $error("[tb] HK-OTP: KM OTP input differs from the live value after the release");
+        km_otp_rel_chk = 1'b0;
         if (km_otp_flip_en_i === 1'b1) begin
             if (!km_otp_flip_on) begin
                 km_otp_flip_on  = 1'b1;
-                km_otp_flip_val = `KM_TAP.otp_data_i ^
+                km_otp_flip_val = km_otp_live ^
                     ($isunknown(km_otp_flip_mask_i) ? '0 : km_otp_flip_mask_i);
                 $display("[tb] KM OTP rail flip: %0d mask bits", $countones(
                          $isunknown(km_otp_flip_mask_i) ? '0 : km_otp_flip_mask_i));
             end
             force `KM_TAP.otp_data_i = km_otp_flip_val;
+            km_otp_forced = 1'b1;
         end else begin
             km_otp_flip_on = 1'b0;
-            release `KM_TAP.otp_data_i;
+            if (km_otp_forced && (km_otp_flip_val !== km_otp_live)) begin
+                km_otp_flip_val = km_otp_live;
+                force `KM_TAP.otp_data_i = km_otp_flip_val;
+            end else if (km_otp_forced) begin
+                release `KM_TAP.otp_data_i;
+                km_otp_forced  = 1'b0;
+                km_otp_rel_chk = 1'b1;
+            end
         end
     end
     assign km_otp_flip_active_o = km_otp_flip_on;
+    assign km_otp_input_live_o  = (`KM_TAP.otp_data_i === km_otp_live);
 
     // ------------------------------------------------------------------
     // HK-STRM: DRBG sampler TVALID withdrawal (docs/SEP_TB_ARCH.adoc, inject
@@ -3788,21 +3809,46 @@ module sep_uvm_top
     //     until the state is idle again, then released.
     // The sink TREADY of the pulse clock is kept on km_strm_wd_tready_o. The
     // value is set on every falling edge (Verilator snapshots a force RHS).
-    // A drop of the arm releases the force. Default 0: no force.
+    // A drop of the arm ends the force. A released net keeps its forced value
+    // until its driver changes, so the bench ends a force by forcing the live
+    // TVALID (the KM stream TVALID of sep_crypto, ahead of the KM port) and
+    // releases the net only in a clock in which the live value equals the
+    // value forced last; one falling edge after the release the net must
+    // equal the live value, else the bench reports an error. Default 0: no
+    // force.
     // ------------------------------------------------------------------
 `define KM_SMP `KM_TAP.u_drbg_sampler
     logic [1:0] km_strm_ph;
     logic km_strm_fired_q, km_strm_tready_q;
+    logic km_strm_live, km_strm_fv, km_strm_forced, km_strm_rel_chk;
+    assign km_strm_live = `SEP_CORE.u_sep_crypto.entropy_muxed_req[0].tvalid;
     initial begin
         km_strm_ph       = 2'd0;
         km_strm_fired_q  = 1'b0;
         km_strm_tready_q = 1'b0;
+        km_strm_fv       = 1'b0;
+        km_strm_forced   = 1'b0;
+        km_strm_rel_chk  = 1'b0;
+    end
+`define KM_STRM_FORCE(v) \
+    begin km_strm_fv = (v); km_strm_forced = 1'b1; force `KM_SMP.tvalid = km_strm_fv; end
+`define KM_STRM_END \
+    if (km_strm_forced && (km_strm_fv !== km_strm_live)) begin \
+        km_strm_fv = km_strm_live; \
+        force `KM_SMP.tvalid = km_strm_fv; \
+    end else if (km_strm_forced) begin \
+        release `KM_SMP.tvalid; \
+        km_strm_forced  = 1'b0; \
+        km_strm_rel_chk = 1'b1; \
     end
     always @(negedge clk_i) begin
+        if (km_strm_rel_chk && (`KM_SMP.tvalid !== km_strm_live))
+            $error("[tb] HK-STRM: sampler TVALID differs from the live value after the release");
+        km_strm_rel_chk = 1'b0;
         if (km_strm_wd_arm_i !== 1'b1) begin
             km_strm_ph      = 2'd0;
             km_strm_fired_q = 1'b0;
-            release `KM_SMP.tvalid;
+            `KM_STRM_END
         end else begin
             unique case (km_strm_ph)
                 2'd0: begin
@@ -3813,22 +3859,24 @@ module sep_uvm_top
                         km_strm_tready_q = (`KM_SMP.drbg_axis_resp_o.tready === 1'b1);
                         km_strm_fired_q  = 1'b1;
                         km_strm_ph       = 2'd1;
-                        force `KM_SMP.tvalid = 1'b1;
+                        `KM_STRM_FORCE(1'b1)
                     end
                 end
                 2'd1: begin
                     km_strm_ph = 2'd2;
-                    force `KM_SMP.tvalid = 1'b0;
+                    `KM_STRM_FORCE(1'b0)
                 end
                 2'd2: begin
                     if ((km_strm_wd_mode_i === 1'b1) && (3'(`KM_SMP.state_q) != 3'd0)) begin
-                        force `KM_SMP.tvalid = 1'b0;
+                        `KM_STRM_FORCE(1'b0)
                     end else begin
                         km_strm_ph = 2'd3;
-                        release `KM_SMP.tvalid;
+                        `KM_STRM_END
                     end
                 end
-                default: release `KM_SMP.tvalid;
+                default: begin
+                    `KM_STRM_END
+                end
             endcase
         end
     end
@@ -3845,6 +3893,8 @@ module sep_uvm_top
     assign km_strm_wd_fired_o    = km_strm_fired_q;
     assign km_strm_wd_tready_o   = km_strm_tready_q;
     assign km_strm_sink_tvalid_o = `KM_SMP.tvalid;
+`undef KM_STRM_FORCE
+`undef KM_STRM_END
 `undef KM_SMP
 
     // ------------------------------------------------------------------
@@ -3857,17 +3907,54 @@ module sep_uvm_top
     // bit high for one clock (mask bit i is IRQ_STATUS bit i, km_csr.adoc),
     // so all sources of the mask set in one clock. One pulse per arm: a drop
     // of the arm re-arms. km_irqset_fired_o shows the pulse since the arm.
-    // Default 0: no force.
+    // A released field output keeps its forced value until its driver (the
+    // IRQ_SET field storage of the register block) changes, so after the
+    // pulse the bench forces the live field value and releases the output
+    // only in a clock in which the live value equals the value forced last;
+    // one falling edge after the release the output must equal the live
+    // value, else the bench reports an error. Default 0: no force.
     // ------------------------------------------------------------------
-    logic [11:0] km_irqset_drv;
+    logic [11:0] km_irqset_drv, km_irqset_live, km_irqset_fv, km_irqset_forced, km_irqset_chk;
     logic km_irqset_fired_q;
     initial begin
         km_irqset_drv     = '0;
+        km_irqset_fv      = '0;
+        km_irqset_forced  = '0;
+        km_irqset_chk     = '0;
         km_irqset_fired_q = 1'b0;
     end
+`define KM_IRQSET_FS `KM_TAP.u_kmcsr.u_km_csr_reg.field_storage.IRQ_SET
+    assign km_irqset_live = {`KM_IRQSET_FS.rom_access_violation_set.value,
+                             `KM_IRQSET_FS.exec_violation_set.value,
+                             `KM_IRQSET_FS.otp_sigint_set.value,
+                             `KM_IRQSET_FS.otp_change_set.value,
+                             `KM_IRQSET_FS.wipe_state_set.value,
+                             `KM_IRQSET_FS.drbg_err_set.value,
+                             `KM_IRQSET_FS.axi_decerr_set.value,
+                             `KM_IRQSET_FS.axi_slverr_set.value,
+                             `KM_IRQSET_FS.sram_write_lock_err_set.value,
+                             `KM_IRQSET_FS.rom_write_err_set.value,
+                             `KM_IRQSET_FS.sram_parity_err_set.value,
+                             `KM_IRQSET_FS.rom_parity_err_set.value};
+`undef KM_IRQSET_FS
 `define KM_IRQSET(b, f) \
-    if (km_irqset_drv[b]) force `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value = 1'b1; \
-    else release `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value;
+    if (km_irqset_chk[b] && \
+        (`KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value !== km_irqset_live[b])) \
+        $error("[tb] HK-IRQSET: IRQ_SET bit %0d differs from the live value after the release", b); \
+    km_irqset_chk[b] = 1'b0; \
+    if (km_irqset_drv[b]) begin \
+        km_irqset_fv[b] = 1'b1; \
+        km_irqset_forced[b] = 1'b1; \
+        force `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value = 1'b1; \
+    end else if (km_irqset_forced[b] && (km_irqset_fv[b] !== km_irqset_live[b])) begin \
+        km_irqset_fv[b] = km_irqset_live[b]; \
+        if (km_irqset_live[b] === 1'b1) force `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value = 1'b1; \
+        else force `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value = 1'b0; \
+    end else if (km_irqset_forced[b]) begin \
+        release `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value; \
+        km_irqset_forced[b] = 1'b0; \
+        km_irqset_chk[b] = 1'b1; \
+    end
     always @(negedge clk_i) begin
         km_irqset_drv = '0;
         if (km_irqset_arm_i !== 1'b1) begin
@@ -3906,14 +3993,40 @@ module sep_uvm_top
     // (mask bit 1) high for one clock. Bits 3 to 5 keep their live value. One
     // pulse per arm: a drop of the arm re-arms. km_cpuirq_fired_o shows the
     // pulse since the arm, and km_cpuirq_pending_o the core pending bits 2:1,
-    // so a test can show that the core took the line. Default 0: no force.
+    // so a test can show that the core took the line. A released line keeps
+    // its forced value until its driver (the irq vector of the wrapper)
+    // changes, so after the pulse the bench forces the live line and releases
+    // it only in a clock in which the live value equals the value forced
+    // last; one falling edge after the release the line must equal the live
+    // value, else the bench reports an error. Default 0: no force.
     // ------------------------------------------------------------------
 `define KM_CPU `KM_TAP.u_cpu
-    logic [1:0] km_cpuirq_drv;
+    logic [1:0] km_cpuirq_drv, km_cpuirq_live, km_cpuirq_fv, km_cpuirq_forced, km_cpuirq_chk;
     logic km_cpuirq_fired_q;
+    assign km_cpuirq_live = `KM_CPU.irq_vector[2:1];
     initial begin
         km_cpuirq_drv     = '0;
+        km_cpuirq_fv      = '0;
+        km_cpuirq_forced  = '0;
+        km_cpuirq_chk     = '0;
         km_cpuirq_fired_q = 1'b0;
+    end
+`define KM_CPUIRQ(b) \
+    if (km_cpuirq_chk[b-1] && (`KM_CPU.u_picorv32.irq[b] !== km_cpuirq_live[b-1])) \
+        $error("[tb] HK-CPUIRQ: CPU IRQ line %0d differs from the live value after the release", b); \
+    km_cpuirq_chk[b-1] = 1'b0; \
+    if (km_cpuirq_drv[b-1]) begin \
+        km_cpuirq_fv[b-1] = 1'b1; \
+        km_cpuirq_forced[b-1] = 1'b1; \
+        force `KM_CPU.u_picorv32.irq[b] = 1'b1; \
+    end else if (km_cpuirq_forced[b-1] && (km_cpuirq_fv[b-1] !== km_cpuirq_live[b-1])) begin \
+        km_cpuirq_fv[b-1] = km_cpuirq_live[b-1]; \
+        if (km_cpuirq_live[b-1] === 1'b1) force `KM_CPU.u_picorv32.irq[b] = 1'b1; \
+        else force `KM_CPU.u_picorv32.irq[b] = 1'b0; \
+    end else if (km_cpuirq_forced[b-1]) begin \
+        release `KM_CPU.u_picorv32.irq[b]; \
+        km_cpuirq_forced[b-1] = 1'b0; \
+        km_cpuirq_chk[b-1] = 1'b1; \
     end
     always @(negedge clk_i) begin
         km_cpuirq_drv = '0;
@@ -3928,12 +4041,11 @@ module sep_uvm_top
         // The core irq port is an input net; Verilator flags a force on it as
         // an assignment to an input (ASSIGNIN) and simulates it as written.
         /* verilator lint_off ASSIGNIN */
-        if (km_cpuirq_drv[0]) force `KM_CPU.u_picorv32.irq[1] = 1'b1;
-        else release `KM_CPU.u_picorv32.irq[1];
-        if (km_cpuirq_drv[1]) force `KM_CPU.u_picorv32.irq[2] = 1'b1;
-        else release `KM_CPU.u_picorv32.irq[2];
+        `KM_CPUIRQ(1)
+        `KM_CPUIRQ(2)
         /* verilator lint_on ASSIGNIN */
     end
+`undef KM_CPUIRQ
     assign km_cpuirq_fired_o   = km_cpuirq_fired_q;
     assign km_cpuirq_pending_o = `KM_CPU.u_picorv32.irq_pending[2:1];
 
@@ -3949,14 +4061,24 @@ module sep_uvm_top
     // the register-file data and the scrambler enable, so the forced net is
     // never its own source. Set on every falling edge (Verilator snapshots a
     // force RHS). km_kpv_flip_count_o counts the corrupted reads since the
-    // enable rose. Default 0: no force.
+    // enable rose. A released net keeps its forced value until its driver
+    // changes, so after a corrupted read the bench forces the live read data
+    // and releases the net only in a clock in which the live value equals the
+    // value forced last; one falling edge after the release the net must
+    // equal the live value, else the bench reports an error. Default 0: no
+    // force.
     // ------------------------------------------------------------------
 `define KM_KPV `KM_TAP.u_kpv
-    logic [31:0] km_kpv_flip_val, km_kpv_flip_cnt_q;
-    logic km_kpv_flip_hit;
+    logic [31:0] km_kpv_flip_val, km_kpv_flip_cnt_q, km_kpv_live;
+    logic km_kpv_flip_hit, km_kpv_forced, km_kpv_rel_chk;
+    assign km_kpv_live = (`KM_KPV.km_ext_lock_use === 1'b1) ? '0 :
+                         (`KM_KPV.kpv_scrambler_enable === 1'b1) ? `KM_KPV.km_scrambler_read_out :
+                                                                   `KM_KPV.rf_rd_data;
     initial begin
         km_kpv_flip_val   = '0;
         km_kpv_flip_cnt_q = '0;
+        km_kpv_forced     = 1'b0;
+        km_kpv_rel_chk    = 1'b0;
     end
     assign km_kpv_flip_hit =
         (km_kpv_flip_en_i === 1'b1) && !$isunknown(km_kpv_flip_index_i) &&
@@ -3965,15 +4087,22 @@ module sep_uvm_top
         (`KM_KPV.km_ext_lock_use === 1'b0) &&
         ({`KM_KPV.km_ext_slot, `KM_KPV.km_ext_word} == km_kpv_flip_index_i);
     always @(negedge clk_i) begin
+        if (km_kpv_rel_chk && (`KM_KPV.km_ext_rd_data !== km_kpv_live))
+            $error("[tb] HK-KPV: KPV read data differs from the live value after the release");
+        km_kpv_rel_chk = 1'b0;
         if (km_kpv_flip_en_i !== 1'b1) km_kpv_flip_cnt_q = '0;
         if (km_kpv_flip_hit) begin
-            km_kpv_flip_val = ((`KM_KPV.kpv_scrambler_enable === 1'b1) ?
-                               `KM_KPV.km_scrambler_read_out : `KM_KPV.rf_rd_data) ^
-                              (32'd1 << km_kpv_flip_bit_i);
+            km_kpv_flip_val = km_kpv_live ^ (32'd1 << km_kpv_flip_bit_i);
             km_kpv_flip_cnt_q = km_kpv_flip_cnt_q + 32'd1;
+            km_kpv_forced = 1'b1;
             force `KM_KPV.km_ext_rd_data = km_kpv_flip_val;
-        end else begin
+        end else if (km_kpv_forced && (km_kpv_flip_val !== km_kpv_live)) begin
+            km_kpv_flip_val = km_kpv_live;
+            force `KM_KPV.km_ext_rd_data = km_kpv_flip_val;
+        end else if (km_kpv_forced) begin
             release `KM_KPV.km_ext_rd_data;
+            km_kpv_forced  = 1'b0;
+            km_kpv_rel_chk = 1'b1;
         end
     end
     assign km_kpv_flip_count_o = km_kpv_flip_cnt_q;

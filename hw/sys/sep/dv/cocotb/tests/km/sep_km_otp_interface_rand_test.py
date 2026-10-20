@@ -737,20 +737,27 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         dut.km_otp_flip_en_i.value = 1
         active = 0
+        held = 0
         for _ in range(FLIP_CYCLES):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             active += self.rd(dut.km_otp_flip_active_o)
+            held += 1 - self.rd_known(dut.km_otp_input_live_o)
         await RisingEdge(dut.clk_i)
         dut.km_otp_flip_en_i.value = 0
-        await ClockCycles(dut.clk_i, 2)
+        await ClockCycles(dut.clk_i, 4)
         await ReadOnly()
         still = self.rd(dut.km_otp_flip_active_o)
+        live = self.rd_known(dut.km_otp_input_live_o)
         await RisingEdge(dut.clk_i)
         dut.km_otp_flip_mask_i.value = 0
-        if active == 0 or still:
+        # The KM input differs from the live OTP word while the flip holds it
+        # and equals it again after the release.
+        if active == 0 or held == 0 or still or not live:
             raise AssertionError(
-                f"HK-OTP hold did not follow the enable: active clocks={active}, after release={still}"
+                f"HK-OTP hold did not follow the enable: active clocks={active}, "
+                f"input off the live value for {held} clocks, after release active={still} "
+                f"input live={live}"
             )
         return active
 

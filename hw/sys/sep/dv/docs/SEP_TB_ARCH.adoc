@@ -699,8 +699,9 @@ Exceptions (a closed set):
   legal value change, and bits of several fields change them together. The SEP drives
   every field to the KM as a dual-rail pair, so no fuse image presents a
   broken pair or changes a field after the sense. Both inputs are 0 by
-  default, and the force is released when the enable drops; the readback
-  `km_otp_flip_active_o` shows the hold. The KMCSR registers the checkers
+  default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the OTP word of `sep_crypto` ahead of the KM port) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readbacks:
+  `km_otp_flip_active_o` shows the hold, and `km_otp_input_live_o` is 1 while
+  the KM input equals the live OTP word. The KMCSR registers the checkers
   read stay frontdoor. User: `sep_km_otp_interface_rand_test` (CHK-OTP-SIG,
   CHK-OTP-CHG).
 * *Key Manager DRBG sampler TVALID withdrawal* (HK-STRM) — while
@@ -711,8 +712,8 @@ Exceptions (a closed set):
   which a DATA read starts (the sampler leaves its idle state on the next
   edge), then holds it low until the read ends. TDATA and TSTRB are not
   driven. A live stream does not withdraw a beat, so the stream error has no
-  frontdoor. Both inputs are 0 by default, and the force is released at the
-  end of the drive and when the arm drops. Readbacks: `km_strm_wd_fired_o`,
+  frontdoor. Both inputs are 0 by default; the drive ends at its last clock and
+  when the arm drops. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the KM stream TVALID of `sep_crypto`, ahead of the KM port) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readbacks: `km_strm_wd_fired_o`,
   `km_strm_wd_tready_o` (the sink TREADY in the pulse clock) and
   `km_strm_sink_tvalid_o`. While the arm is 1 the bench turns off the sampler
   assertion `KmDrbgTvalidStability_A`, which the withdrawal breaks by design;
@@ -726,7 +727,7 @@ Exceptions (a closed set):
   clock. One pulse per arm; a drop of the arm re-arms. A KM CPU write to
   IRQ_SET drives the same path, but the host has no write path to the KMCSR
   and no source event sets several bits in one clock. Both inputs are 0 by
-  default. Readback: `km_irqset_fired_o`. The `IRQ_STATUS` the checkers read
+  default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the IRQ_SET field storage of the register block) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readback: `km_irqset_fired_o`. The `IRQ_STATUS` the checkers read
   is not forced. User: `sep_km_fault_inject_rand_test` (CHK-FATAL-SET,
   CHK-STATUS-HELD, CHK-CPU-TRAP).
 * *Key Manager CPU internal IRQ lines* (HK-CPUIRQ) — at the first falling
@@ -738,7 +739,7 @@ Exceptions (a closed set):
   latches both lines, so a one-clock level raises the interrupt. The
   production ROM executes no faulting instruction and makes no bad access, so
   the two sources have no frontdoor. One pulse per arm; a drop of the arm
-  re-arms. Both inputs are 0 by default. Readbacks: `km_cpuirq_fired_o` and
+  re-arms. Both inputs are 0 by default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the irq vector of the wrapper) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readbacks: `km_cpuirq_fired_o` and
   `km_cpuirq_pending_o` (the core pending bits 2:1). User:
   `sep_km_fault_inject_rand_test` (CHK-CPU-TRAP).
 * *Key Manager KPV read-data flip* (HK-KPV) — while `km_kpv_flip_en_i` is 1,
@@ -748,7 +749,7 @@ Exceptions (a closed set):
   `km_kpv_flip_bit_i[4:0]` inverted. A read of a slot with `lock_use` set and
   the reads of an erase are not changed, and the stored word does not change.
   No software path stores a word that reads back wrong, so the key CRC check
-  has no frontdoor. All inputs are 0 by default. Readback:
+  has no frontdoor. All inputs are 0 by default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the read-data mux of `u_kpv`: zero for `lock_use`, else the descrambler output or the register-file data) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readback:
   `km_kpv_flip_count_o`, the count of changed reads since the enable rose.
   User: `sep_km_fault_inject_rand_test` (CHK-KEYCRC, CHK-NOFLUSH,
   CHK-CRC-FIRST, CHK-GATE-AFTER, CHK-RESIDUE).
