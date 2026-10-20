@@ -159,12 +159,13 @@ in a second channel on the left of `u_smc_cpu`.
   reference-clock logic takes `rst_primary_ref_clk_no` and its clock divider
   takes `powergood_stable`.
 * `rst_warm_smc_clk_no` resets the warm scratch register and, inside
-  `u_smc_cpu_ctrl_wrap`, the output flops that drive `core_reset_n` and
-  `cluster_uncore_reset_n`. The CPU control registers, including `RESET_CTRL`,
-  `RESET_VECTOR` and `WDT_TIMEOUT`, are on the primary reset and keep their
-  values across a warm reset. The output flops register the core and uncore
-  reset requests from `RESET_CTRL`, so a warm reset holds the cores and uncore
-  in reset, and once it releases they follow `RESET_CTRL` again.
+  `u_smc_cpu_ctrl_wrap`, the core reset flops that drive `core_reset_n` and the
+  uncore reset flop that drives `cluster_uncore_reset_n`. The CPU control
+  registers, including `RESET_CTRL`, `RESET_VECTOR` and `WDT_TIMEOUT`, are on
+  the primary reset and keep their values across a warm reset. These flops
+  register the core and uncore reset requests from `RESET_CTRL`, so a warm reset
+  holds the cores and uncore in reset, and once it releases they follow
+  `RESET_CTRL` again.
 * `rst_cold_stable_smc_clk_no` resets `u_ext_boot_seq_done_qual` and disables
   the GPIO outputs while it is low. `u_ext_boot_seq_done_qual` synchronises
   `ext_boot_seq_done_i` and holds it set until the next cold reset.
