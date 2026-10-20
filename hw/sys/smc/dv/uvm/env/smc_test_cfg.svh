@@ -47,6 +47,7 @@ class smc_test_cfg extends ocah_test_cfg;
   bit wdt_stage2_sequence_negative;  // +SMC_WDT_STAGE2_SEQUENCE_NEGATIVE
   bit mailbox_reset_sequence_negative;  // +SMC_MAILBOX_RESET_SEQUENCE_NEGATIVE
   bit extreg_lane_sequence_negative;  // +SMC_EXTREG_LANE_SEQUENCE_NEGATIVE
+  bit ingress_reset_sequence_negative;  // +SMC_INGRESS_RESET_SEQUENCE_NEGATIVE
   bit mailbox_fifo_scoreboard_negative;  // +SMC_MAILBOX_FIFO_SCOREBOARD_NEGATIVE
 
   function new(string name = "smc_test_cfg");
@@ -78,6 +79,7 @@ class smc_test_cfg extends ocah_test_cfg;
     wdt_stage2_sequence_negative = ocah_knobs::is_set("SMC_WDT_STAGE2_SEQUENCE_NEGATIVE");
     mailbox_reset_sequence_negative = ocah_knobs::is_set("SMC_MAILBOX_RESET_SEQUENCE_NEGATIVE");
     extreg_lane_sequence_negative = ocah_knobs::is_set("SMC_EXTREG_LANE_SEQUENCE_NEGATIVE");
+    ingress_reset_sequence_negative = ocah_knobs::is_set("SMC_INGRESS_RESET_SEQUENCE_NEGATIVE");
     mailbox_fifo_scoreboard_negative = ocah_knobs::is_set("SMC_MAILBOX_FIFO_SCOREBOARD_NEGATIVE");
   endfunction
 
