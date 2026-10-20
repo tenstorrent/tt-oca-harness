@@ -75,7 +75,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml), as its run mode states. It
 #   grades the KM OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 258
+expected_count = 267
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -240,6 +240,15 @@ tests = [
     "sep_km_fault_inject_rand_test_unrec_shard3",
     "sep_km_fault_inject_rand_test_unrec_shard4",
     "sep_km_fault_inject_rand_test_unrec_shard5",
+    "sep_km_fault_inject_rand_test_unrec_shard6",
+    "sep_km_fault_inject_rand_test_unrec_shard7",
+    "sep_km_fault_inject_rand_test_unrec_shard8",
+    "sep_km_fault_inject_rand_test_unrec_shard9",
+    "sep_km_fault_inject_rand_test_unrec_shard10",
+    "sep_km_fault_inject_rand_test_unrec_shard11",
+    "sep_km_fault_inject_rand_test_unrec_shard12",
+    "sep_km_fault_inject_rand_test_unrec_shard13",
+    "sep_km_fault_inject_rand_test_unrec_shard14",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
@@ -526,6 +535,15 @@ tests = [
     "sep_km_fault_inject_rand_test_unrec_shard3",
     "sep_km_fault_inject_rand_test_unrec_shard4",
     "sep_km_fault_inject_rand_test_unrec_shard5",
+    "sep_km_fault_inject_rand_test_unrec_shard6",
+    "sep_km_fault_inject_rand_test_unrec_shard7",
+    "sep_km_fault_inject_rand_test_unrec_shard8",
+    "sep_km_fault_inject_rand_test_unrec_shard9",
+    "sep_km_fault_inject_rand_test_unrec_shard10",
+    "sep_km_fault_inject_rand_test_unrec_shard11",
+    "sep_km_fault_inject_rand_test_unrec_shard12",
+    "sep_km_fault_inject_rand_test_unrec_shard13",
+    "sep_km_fault_inject_rand_test_unrec_shard14",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
@@ -1000,7 +1018,7 @@ tests = [
 # Convenience group of the Key Manager hardware tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_key_manager"
-expected_count = 19
+expected_count = 28
 tests = [
     "sep_km_kmcsr_reset_rand_test",
     "sep_km_kpv_rand_test",
@@ -1021,4 +1039,13 @@ tests = [
     "sep_km_fault_inject_rand_test_unrec_shard3",
     "sep_km_fault_inject_rand_test_unrec_shard4",
     "sep_km_fault_inject_rand_test_unrec_shard5",
+    "sep_km_fault_inject_rand_test_unrec_shard6",
+    "sep_km_fault_inject_rand_test_unrec_shard7",
+    "sep_km_fault_inject_rand_test_unrec_shard8",
+    "sep_km_fault_inject_rand_test_unrec_shard9",
+    "sep_km_fault_inject_rand_test_unrec_shard10",
+    "sep_km_fault_inject_rand_test_unrec_shard11",
+    "sep_km_fault_inject_rand_test_unrec_shard12",
+    "sep_km_fault_inject_rand_test_unrec_shard13",
+    "sep_km_fault_inject_rand_test_unrec_shard14",
 ]

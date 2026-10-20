@@ -74,13 +74,16 @@ Logged only: OBS-AES-NOKEY, OBS-KEYPATH-CODE, the shared-key transfer after each
 boot, the frames of the ML-KEM notify, the SRAM write count of the HOST fatal
 path, the KPV and KM-VALID samples at the first fault word, the IRQ_STATUS bits
 outside the graded set, and VACUOUS parity draws. CHK-MAINCTX-FATAL can fail on
-this DUT (contract, "Known limitation"); the point runs after every other fatal
-point of the leaf.
+this DUT (contract, "Known limitation"); in the whole leaf the point runs after
+every other fatal point. The regression runs the HOST-UNREC entry as fourteen
+shards (SHARD_POINTS_UNREC).
 """
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 
 import cocotb
@@ -202,12 +205,30 @@ EVIDENCE_UNREC = (
 )
 # Shards of the HOST-UNREC entry (env/sep_shard.py). Each fatal point of this
 # build shreds the SRAM (about 2,000,000 clocks), so the regression runs the
-# fault groups in parallel. Every shard boots, runs the clean boot and the
-# real-wipe point (the AES and key references of the later points), then its
-# own group.
-SHARD_EVIDENCE_UNREC = {
-    1: (
-        "CHK-PARITY-CLEAN",
+# points in parallel: every shard boots and runs the clean boot, then the point
+# or points that SHARD_POINTS_UNREC names for it, in leaf order. The points are
+# independent: each one starts from its own boot, and only the real-wipe point
+# and the latency leg read the AES timing reference, which the first AES read
+# of the shard measures (the real-wipe point in shard 1).
+SHARD_POINTS_UNREC = {
+    1: ("real_wipe", "keycrc", "lat"),
+    2: ("single0",),
+    3: ("single1",),
+    4: ("single2",),
+    5: ("multi0",),
+    6: ("multi1",),
+    7: ("multi2",),
+    8: ("parity0",),
+    9: ("parity1",),
+    10: ("parity2",),
+    11: ("cpu0",),
+    12: ("cpu1",),
+    13: ("cpu2",),
+    14: ("mainctx",),
+}
+# The checks that each kind of point grades; a point name is its kind plus an index.
+POINT_EVIDENCE_UNREC = {
+    "real_wipe": (
         "CHK-FATAL-WIPE",
         "CHK-FLUSH-FIRST",
         "CHK-SRAM-SHRED",
@@ -216,12 +237,17 @@ SHARD_EVIDENCE_UNREC = {
         "CHK-STATUS-HELD",
         "CHK-SHRED-FIRST",
         "CHK-RESTORE",
-        "CHK-FATAL-SET",
-        "CHK-KPV-TRAP",
     ),
-    2: ("CHK-FATAL-SET", "CHK-STATUS-HELD", "CHK-SHRED-FIRST", "CHK-KPV-TRAP", "CHK-RESTORE"),
-    3: ("CHK-PARITY", "CHK-PARITY-VAC", "CHK-PARITY-CLEAN", "CHK-RESTORE"),
-    4: (
+    "single": (
+        "CHK-FATAL-SET",
+        "CHK-STATUS-HELD",
+        "CHK-SHRED-FIRST",
+        "CHK-KPV-TRAP",
+        "CHK-RESTORE",
+    ),
+    "multi": ("CHK-FATAL-SET", "CHK-STATUS-HELD", "CHK-SHRED-FIRST", "CHK-KPV-TRAP", "CHK-RESTORE"),
+    "parity": ("CHK-PARITY", "CHK-PARITY-VAC", "CHK-PARITY-CLEAN", "CHK-RESTORE"),
+    "keycrc": (
         "CHK-KEYCRC",
         "CHK-CRC-FIRST",
         "CHK-NOFLUSH",
@@ -229,7 +255,25 @@ SHARD_EVIDENCE_UNREC = {
         "CHK-RESIDUE",
         "CHK-RESTORE",
     ),
-    5: ("CHK-CPU-TRAP", "CHK-LAT", "CHK-LAT-VAR", "CHK-MAINCTX-FATAL", "CHK-RESTORE"),
+    "cpu": ("CHK-CPU-TRAP", "CHK-RESTORE"),
+    "lat": ("CHK-LAT", "CHK-LAT-VAR"),
+    "mainctx": ("CHK-MAINCTX-FATAL", "CHK-RESTORE"),
+}
+
+
+def _shard_evidence(points: tuple[str, ...], clean_boot: bool) -> tuple[str, ...]:
+    """The CHK IDs a shard grades: those of its points, and the clean boot's if it owns it."""
+    out: list[str] = ["CHK-PARITY-CLEAN"] if clean_boot else []
+    for name in points:
+        for check in POINT_EVIDENCE_UNREC[name.rstrip("0123456789")]:
+            if check not in out:
+                out.append(check)
+    return tuple(out)
+
+
+# Shard 1 owns the clean-boot CHK-PARITY-CLEAN; every shard still runs the clean boot.
+SHARD_EVIDENCE_UNREC = {
+    k: _shard_evidence(points, clean_boot=k == 1) for k, points in SHARD_POINTS_UNREC.items()
 }
 
 # Bounded waits. Each expiry fails the leaf with a named message, or fails the
@@ -240,10 +284,12 @@ FRAME_POLLS = 20_000  # polls for one response frame
 READY_POLLS = 20_000  # polls for RESP_KM_READY after a release
 INBOUND_POLLS = 20_000  # polls for inbound FIFO space while posting
 RISE_BOUND = 4_000_000  # clocks from an injection to the PIC bit 30 rise
-# Clocks from the main-context trailer to the PIC bit 30 rise. The fatal path
-# with the SRAM wipe takes about 2M clocks, and about 4M when the ROM runs it a
-# second time (contract, "Known limitation").
-MAIN_RISE_BOUND = 8_000_000
+# Clocks from the main-context trailer to the PIC bit 30 rise. One fatal path
+# with the SRAM wipe raises bit 30 after about 2.2M clocks (the engine-key shred
+# and one SRAM shred); a second pass of the path (contract, "Known limitation")
+# is still shredding at the bound.
+MAIN_RISE_BOUND = 3_000_000
+MAIN_TAIL = 100_000  # last clocks of the wait over which the SRAM write count is logged
 KEM_POLLS = 20_000
 KEM_GAP = 200
 QUIET_FACTOR = 10  # w_clk = 10 x ctrl_stat_clk
@@ -698,32 +744,44 @@ class sep_km_fault_inject_rand_test(sep_base_test):
 
         await self._bring_up()
         await self._clean_run(self.plan.max_parity_n, None, "clean_boot")  # step 2
-        await self._real_wipe_point()  # steps 3 to 9
         if self.unrec:
-            if shard in (None, 1):
-                for name in self.plan.singles:  # step 10
-                    await self._irqset_point((name,))
-            if shard in (None, 2):
-                for names in self.plan.multis:  # step 11
-                    await self._irqset_point(names)
-            if shard in (None, 3):
-                for mem, lane, n in self.plan.parity:  # step 12
-                    await self._parity_point(mem, lane, n)
-            if shard in (None, 4):
-                await self._keycrc_leg()  # steps 13 to 18
-            if shard in (None, 5):
-                await self._cpu_point(2, None)  # step 19
-                await self._cpu_point(1, None)
-                await self._cpu_point(2, self.plan.cpu_src)
-                await self._lat_leg()  # step 23
-                await self._mainctx_point()  # step 20, after every other fatal point
+            for name, point in self._unrec_points():
+                if shard is None or name in SHARD_POINTS_UNREC[shard]:
+                    await point()
         else:
+            await self._real_wipe_point()  # steps 3 to 9
             await self._drbg_stall_point()  # step 21
             await self._keypath_point()  # step 22
         await self._fresh("end of leaf")  # step 24: km_sw_rst_n ends high
         await self._graded(False)
         await self.stop_fifo_drain()
         self.chk.finish()
+
+    def _unrec_points(self) -> list[tuple[str, Callable[[], Awaitable[None]]]]:
+        """The HOST-UNREC points in leaf order, named as in SHARD_POINTS_UNREC."""
+        p = self.plan
+        points: list[tuple[str, Callable[[], Awaitable[None]]]] = [
+            ("real_wipe", self._real_wipe_point)  # steps 3 to 9
+        ]
+        # Steps 10, 11 and 12.
+        points += [
+            (f"single{i}", partial(self._irqset_point, (n,))) for i, n in enumerate(p.singles)
+        ]
+        points += [(f"multi{i}", partial(self._irqset_point, ns)) for i, ns in enumerate(p.multis)]
+        points += [(f"parity{i}", partial(self._parity_point, *c)) for i, c in enumerate(p.parity)]
+        points.append(("keycrc", self._keycrc_leg))  # steps 13 to 18
+        points += [
+            ("cpu0", partial(self._cpu_point, 2, None)),  # step 19
+            ("cpu1", partial(self._cpu_point, 1, None)),
+            ("cpu2", partial(self._cpu_point, 2, p.cpu_src)),
+        ]
+        points.append(("lat", self._lat_leg))  # step 23
+        points.append(("mainctx", self._mainctx_point))  # step 20, after every other fatal point
+        names = [name for name, _ in points]
+        mapped = [name for group in SHARD_POINTS_UNREC.values() for name in group]
+        if sorted(mapped) != sorted(names):
+            raise AssertionError(f"shard map {sorted(mapped)} is not the point list {names}")
+        return points
 
     def _entry(self) -> str:
         arg = cocotb.plusargs.get("km_rom_hex")
@@ -1986,7 +2044,30 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self._post(frame[:-1])
         await self._post(frame[-1:])
         trailer = watch.cyc
-        rose = await self._wait_rise(watch, "main-context fatal", bound=MAIN_RISE_BOUND)
+        wr_tail_base: int | None = None
+        for i in range(MAIN_RISE_BOUND // 64):
+            if watch.rise is not None:
+                break
+            if i == (MAIN_RISE_BOUND - MAIN_TAIL) // 64:
+                wr_tail_base = self._wr_count()
+            await ClockCycles(cocotb.top.clk_i, 64)
+        rose = watch.rise is not None
+        depth_at_bound: int | None = None
+        wr_tail: int | None = None
+        if not rose:
+            # At the bound: the outbound depth (a report waiting) and the SRAM
+            # writes over the last MAIN_TAIL clocks (a shred still running).
+            depth_at_bound = self.rd_known(cocotb.top.km_outfifo_depth_o)
+            if wr_tail_base is not None:
+                wr_tail = (self._wr_count() - wr_tail_base) & 0xFFFF_FFFF
+            self.logger.error(
+                "main-context fatal: PIC bit 30 did not rise within %d clocks of the trailer "
+                "(outbound depth %d, %s SRAM writes in the last %d clocks)",
+                MAIN_RISE_BOUND,
+                depth_at_bound,
+                wr_tail,
+                MAIN_TAIL,
+            )
         frames: list[_Frame] = []
         window = 0
         if rose:
@@ -2024,6 +2105,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             window_clk=window,
             low_in_window=watch.low_after_rise,
             frame_list=[f.text() for f in frames] or "-",
+            depth_at_bound="-" if depth_at_bound is None else depth_at_bound,
+            wr_tail="-" if wr_tail is None else wr_tail,
         )
         await self._boot("main-context point")
 
