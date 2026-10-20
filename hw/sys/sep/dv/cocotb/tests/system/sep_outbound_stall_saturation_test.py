@@ -493,6 +493,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         a = s.meter.read()
         await ClockCycles(self.dut_clk, WINDOW)
         b = s.meter.read()
+        self._check_pin_xz(chk, chk)
         if Meter.key(a) != Meter.key(b):
             self._fail(
                 chk,
@@ -716,6 +717,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             extra = self._launch(s, "lsu", "wr", 1)
             await ClockCycles(self.dut_clk, WINDOW)
             now = s.meter.read()
+            self._check_pin_xz(chk, chk)
             stall = now["mst"]["lsu"]["aw_stall"] - before["mst"]["lsu"]["aw_stall"]
             if stall == 0 or now["mst"]["lsu"]["aw"] != before["mst"]["lsu"]["aw"]:
                 self._fail(

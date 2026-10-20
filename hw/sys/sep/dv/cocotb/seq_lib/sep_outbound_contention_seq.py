@@ -18,8 +18,11 @@ Contents:
   is 1).
 * ``Txn``, ``DmaJob``: one TB-master access and one Secure DMA copy.
 * ``PinWatch``: every AW/B/AR/R handshake on the pins of one TB master, sampled
-  in the read-only phase of each clock; an X or Z field on a handshake is
-  recorded for the leaf to fail on.
+  in the read-only phase of each clock; an X or Z field on a handshake, and an
+  X or Z on a VALID or on the READY that VALID waits on, is recorded for the
+  leaf to fail on.
+* ``PortStall``: the VALID-without-READY clocks at the outbound port, with the
+  same X or Z record.
 * ``ResponderDelay``: the per-cycle drive of the responder READY stall mask and
   of ``smn_outbound_resp_hold_i`` from a seeded stream.
 * ``port_view``, ``id_overlap``, ``max_outstanding``: the attribution, the
@@ -192,11 +195,12 @@ class DmaJob:
         return [r_lane32(self.out_addr + 4 * i) for i in range(self.words)]
 
 
-def _bit(sig) -> bool:
+def _ctl(sig) -> int | None:
+    """A VALID or READY as 0 or 1, ``None`` for an X or Z."""
     try:
-        return bool(int(sig.value))
+        return int(sig.value) & 1
     except ValueError:
-        return False
+        return None
 
 
 def _int(sig) -> int | None:
@@ -212,8 +216,10 @@ class PinWatch:
 
     Samples in the read-only phase after each rising edge, as the fabric taps
     do. A handshake whose id, resp, data or last is X or Z is recorded in
-    ``xz`` with its fields as ``None``; the leaf fails on ``xz`` at its
-    accounting.
+    ``xz`` with its fields as ``None``. An X or Z on a VALID, or on a READY
+    while its VALID is 1, is recorded in ``xz`` with the signal name and the
+    time, and that clock counts no handshake and no stall. The leaf fails on
+    ``xz`` before it grades a count of handshakes or stall clocks.
     """
 
     NAMES = (
@@ -260,8 +266,24 @@ class PinWatch:
 
     def _take(self, ch: str, rec: list, fields: tuple) -> None:
         if any(v is None for v in fields):
-            self.xz.append(f"bus={self.bus} ch={ch} cycle={self.cycles} fields={fields}")
+            self.xz.append(
+                f"bus={self.bus} ch={ch} cycle={self.cycles} t_ps={int(get_sim_time('ps'))} "
+                f"fields={fields}"
+            )
         rec.append((self.cycles, *fields))
+
+    def _hs(self, ch: str, s: dict) -> tuple[int, int] | None:
+        """(VALID, READY) of channel ``ch``; ``None`` and an ``xz`` record on an X or Z."""
+        valid = _ctl(s[f"{ch}valid"])
+        ready = _ctl(s[f"{ch}ready"]) if valid != 0 else 0
+        if valid is None or ready is None:
+            sig = f"{ch}valid" if valid is None else f"{ch}ready"
+            self.xz.append(
+                f"bus={self.bus} ch={ch} cycle={self.cycles} t_ps={int(get_sim_time('ps'))} "
+                f"signal={self.bus}_{sig} value={s[sig].value} (VALID/READY X or Z)"
+            )
+            return None
+        return valid, ready
 
     async def _run(self) -> None:
         dut = cocotb.top
@@ -270,19 +292,20 @@ class PinWatch:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             self.cycles += 1
-            if _bit(s["awvalid"]):
-                if _bit(s["awready"]):
+            aw, ar, b, r = (self._hs(ch, s) for ch in ("aw", "ar", "b", "r"))
+            if aw is not None and aw[0]:
+                if aw[1]:
                     self._take("aw", self.aw, (_int(s["awid"]), _int(s["awaddr"])))
                 else:
                     self.aw_stall += 1
-            if _bit(s["arvalid"]):
-                if _bit(s["arready"]):
+            if ar is not None and ar[0]:
+                if ar[1]:
                     self._take("ar", self.ar, (_int(s["arid"]), _int(s["araddr"])))
                 else:
                     self.ar_stall += 1
-            if _bit(s["bvalid"]) and _bit(s["bready"]):
+            if b == (1, 1):
                 self._take("b", self.b, (_int(s["bid"]), _int(s["bresp"])))
-            if _bit(s["rvalid"]) and _bit(s["rready"]):
+            if r == (1, 1):
                 self._take(
                     "r",
                     self.r,
@@ -317,10 +340,16 @@ class PinWatch:
 
 
 class PortStall:
-    """Clocks of VALID without READY on AW, W and AR at the outbound port (tap PR-OUT)."""
+    """Clocks of VALID without READY on AW, W and AR at the outbound port (tap PR-OUT).
+
+    An X or Z on a VALID, or on a READY while its VALID is 1, is recorded in
+    ``xz`` with the signal name and the time, and that clock counts no stall.
+    The leaf fails on ``xz`` before it grades the stall count.
+    """
 
     def __init__(self) -> None:
         self.n = {"aw": 0, "w": 0, "ar": 0}
+        self.xz: list[str] = []
         self._task = None
 
     def start(self) -> "PortStall":
@@ -338,13 +367,24 @@ class PortStall:
     async def _run(self) -> None:
         dut = cocotb.top
         sig = {
-            ch: (getattr(dut, f"pr_out_{ch}valid_o"), getattr(dut, f"pr_out_{ch}ready_o"))
+            ch: (
+                (f"pr_out_{ch}valid_o", getattr(dut, f"pr_out_{ch}valid_o")),
+                (f"pr_out_{ch}ready_o", getattr(dut, f"pr_out_{ch}ready_o")),
+            )
             for ch in self.n
         }
         while True:
             await RisingEdge(dut.clk_i)
-            for ch, (v, r) in sig.items():
-                if _bit(v) and not _bit(r):
+            for ch, ((vn, v), (rn, r)) in sig.items():
+                valid = _ctl(v)
+                ready = _ctl(r) if valid != 0 else 0
+                if valid is None or ready is None:
+                    name, bad = (vn, v) if valid is None else (rn, r)
+                    self.xz.append(
+                        f"tap=PR-OUT ch={ch} t_ps={int(get_sim_time('ps'))} "
+                        f"signal={name} value={bad.value} (VALID/READY X or Z)"
+                    )
+                elif valid and not ready:
                     self.n[ch] += 1
 
 
@@ -547,13 +587,28 @@ def port_view(layout: Layout, out_beats, rsp_beats) -> PortView:
     )
 
 
-def id_overlap(view: PortView) -> tuple[int, int, dict[str, set[int]]]:
+def _require_answered(reqs: list[Req], chk: str) -> None:
+    """Fails ``chk`` on a request of ``reqs`` with no response at PR-OUT-RSP."""
+    open_reqs = [r for r in reqs if r.t_done_ps == float("inf")]
+    if open_reqs:
+        r = open_reqs[0]
+        addr = "x" if r.addr is None else hex(r.addr)
+        raise AssertionError(
+            f"{chk} FAIL: {len(open_reqs)}/{len(reqs)} measured requests have no response "
+            f"at PR-OUT-RSP first: init={r.init} kind={r.kind} id={r.id} addr={addr} "
+            f"t_ps={r.t_ps}"
+        )
+
+
+def id_overlap(view: PortView, chk: str) -> tuple[int, int, dict[str, set[int]]]:
     """(LSU/DMA request pairs outstanding at the port at once, those sharing an ID, ID sets).
 
     A request is outstanding from its acceptance at PR-OUT to its last
-    response beat at PR-OUT-RSP.
+    response beat at PR-OUT-RSP. A measured request with no response fails
+    ``chk``.
     """
     reqs = [r for r in view.reqs if r.init in ("lsu", "dma")]
+    _require_answered(reqs, chk)
     pairs = collisions = 0
     for i, a in enumerate(reqs):
         for b in reqs[i + 1 :]:
@@ -570,12 +625,13 @@ def id_overlap(view: PortView) -> tuple[int, int, dict[str, set[int]]]:
     return pairs, collisions, ids
 
 
-def max_outstanding(reqs: list[Req]) -> int:
-    """The most of ``reqs`` outstanding at the port at one time."""
-    events = sorted(
-        [(r.t_ps, 1) for r in reqs]
-        + [(r.t_done_ps, -1) for r in reqs if r.t_done_ps != float("inf")]
-    )
+def max_outstanding(reqs: list[Req], chk: str) -> int:
+    """The most of ``reqs`` outstanding at the port at one time.
+
+    A request of ``reqs`` with no response fails ``chk``.
+    """
+    _require_answered(reqs, chk)
+    events = sorted([(r.t_ps, 1) for r in reqs] + [(r.t_done_ps, -1) for r in reqs])
     live = peak = 0
     for _, d in events:
         live += d
@@ -841,7 +897,7 @@ class OutboundLeaf:
         )
 
     def _check_pin_xz(self, b_chk: str, r_chk: str) -> None:
-        """Fail on any X or Z field a pin watch recorded on a handshake."""
+        """Fail on any X or Z a pin watch recorded on a handshake field, a VALID or a READY."""
         for pw in (self.pin_s, self.pin_m):
             for entry in pw.xz:
                 self._fail(r_chk if " ch=r " in entry or " ch=ar " in entry else b_chk, entry)

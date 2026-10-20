@@ -668,7 +668,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         view, marks = await self._run_phase(f"conc_{phase}", plan, hold_lead=self.c.hold_lead)
         st = self._account("CHK-CONC-ALL", f"conc_{phase}", plan, view, marks)
         self._tally(st)
-        pairs, _, _ = id_overlap(view)
+        pairs, _, _ = id_overlap(view, "CHK-CONC-ALL")
         self._conc_line(phase, plan, st, pairs, extra)
         return plan, st
 
@@ -696,6 +696,8 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
     def _check_delays_exercised(self) -> None:
         """The drawn READY stalls met a request at the port, else the delay claim is vacuous."""
         c = self.c
+        for entry in self.pstall.xz:
+            self._fail("CHK-CONC-ALL", entry)
         total_stall = sum(self.pstall.snap().values())
         if any(c.p_stall) and total_stall == 0:
             self._fail(
@@ -754,7 +756,9 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             conf = sum(1 for t in plan_r["lsu"] for w in t.words if w in other)
             if conf:
                 self._fail(chk, f"id={c.same_id} cross_initiator_confusions={conf}")
-            depth = max_outstanding([r for r in view_r.reqs if r.init == "lsu" and r.kind == "rd"])
+            depth = max_outstanding(
+                [r for r in view_r.reqs if r.init == "lsu" and r.kind == "rd"], chk
+            )
             if depth < 2:
                 self._fail(
                     chk,
@@ -858,7 +862,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             f"lsu_awprot={pf(lsu_aw)} lsu_arprot={pf(lsu_ar)} dma_awprot={pf(dma_aw)} "
             f"dma_arprot={pf(dma_ar)} crossings={cross_p}",
         )
-        pairs, collisions, ids = id_overlap(whole)
+        pairs, collisions, ids = id_overlap(whole, "CHK-ATTR-ID-DISTINCT")
         shared = [
             (a, b, sorted(ids[a] & ids[b]))
             for i, a in enumerate(INITS)

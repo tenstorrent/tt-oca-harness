@@ -630,9 +630,9 @@ and STEE output-remap banks.
 
 *BFM / Model*: ocah_axi_vip (CPU-LSU master); `tb/sep_outbound_mbx.sv` (outbound responder: OKAY at any address)
 
-*Randomization*: RANDCFG — the seed selects every target, bound and the staged word. Every region runs at each seed; one seed per regression, because the bit coverage does not depend on the seed.
+*Randomization*: RANDCFG — the seed selects every target, bound and the staged word. Every region runs at each seed; one seed per regression, because the offset bit coverage does not depend on the seed.
 
-*Objective*: Every local-master alias region matches and translates with all 56 address bits on live traffic.
+*Objective*: Every local-master alias region translates with all 56 offset bits on live traffic, and its START/END compare decides a response at the drawn bounds. Each offset bit decides the landing address. START and END are graded at the source page, at S and ~S, and at E and ~E; no single START or END bit is shown to decide a response.
 
 *Test Coverage*: All 16 alias regions (`alias_remap.rdl` start_addr[55:12], end_addr[55:12], offset[55:12], valid[63]). The source beat is a staged START_ADDR low word of the last inbound-filter entry, which stays disabled. A hit targets an address at or above `0x1_0000_0000`, which the routing demux sends (`hw/sys/sep/doc/fabric.adoc`) to the SMU path and through the block-by-default outbound filter.
 
