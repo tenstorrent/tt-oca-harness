@@ -58,8 +58,7 @@ endif::backend-pdf[]
 defines them and their codes.
 
 An address between unit apertures reaches no unit. A read there answers `DECERR`
-with data `0xBADCAB1E`, and a write answers `DECERR`, except from
-`BASE + 0x001_7000` through `BASE + 0x001_7FFF`, where it answers `SLVERR`.
+with data `0xBADCAB1E`, and a write answers `DECERR`.
 
 An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
