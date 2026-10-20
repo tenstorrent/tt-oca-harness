@@ -808,6 +808,24 @@ selection; it does not seed expected data from a DUT read. Unsupported access
 shapes stop a required feature. Other writers and reset with outstanding
 catalogued traffic are not supported.
 
+`smc_ingress_reset_observer` samples SEP_IN through `mon_cb`, counts AW/W/AR
+and B/R handshakes and tracks pending traffic separately for each direction.
+Response predicates use pending state from before the current sample.
+One effective primary-reset edge snapshots the held-response phase and
+abandons pending traffic; post-reset counters detect response VALID without
+pending work, including cycles with READY low. Recovery provides positive
+controls for both response directions. Orphan handshakes do not underflow
+pending counters. The sequence owns the observer and waits with bounds for
+startup and shutdown.
+
+The ingress-reset scenario uses two accepted, single-beat requests awaiting
+responses. The AXI master driver does not guarantee reset cancellation;
+the scenario requires request VALID low at reset and the old pipeline to
+terminate through its bounded timeout before issuing new work. Both SEP_IN
+interfaces share SMC primary reset in this bench. Interrupted SPM writes
+are overwritten by fresh monitored writes before readback, so the passive
+SPM model does not impose an undefined retention or commit expectation.
+
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
 subscribes to the SEP_IN monitor stream, rebuilds a shadow of the

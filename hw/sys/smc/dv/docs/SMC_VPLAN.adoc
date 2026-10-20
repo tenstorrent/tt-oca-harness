@@ -34161,6 +34161,75 @@ The leaf runs on demand in `wdt_uvm_extended`, not in `all`, `hosted` or `ci`.
 
 '''''
 
+[[sec-smc_ingress_reset_inflight_test]]
+====== `smc_ingress_reset_inflight_test`
+
+*Source Module*: `smc_ingress_reset_inflight_test` (SV-UVM)
+
+*BFM / Model*: SEP_IN AXI VIP, the required passive `spm_mem` feature and
+a single-beat observer with separate write and read pending state.
+
+*Objective*: Check cool reset with two accepted SPM requests and a held
+response, followed by same-ID recovery without orphan responses.
+
+*Expectation Sources*: `hw/sys/smc/doc/clk_rst.adoc` defines cool reset as
+a primary-reset source covering the functional fabric, without a general
+SRAM-retention guarantee. AXI reset and response-dependency rules require
+VALID low during reset and responses backed by accepted requests.
+The bench connects both SEP_IN interfaces to SMC primary reset.
+
+*Test Coverage*: Alternate write and read cells, two single-beat requests
+on one seeded ID. Baseline traffic checks all five channel counters.
+Recovery checks both BVALID and RVALID predicates with pending work.
+
+*Test Procedure*: Seed and read two SPM words. Clear observer counters and
+issue two same-ID operations while holding response READY low for 128
+reference-clock periods converted to SMC cycles. Require all requests
+accepted, request VALID low, no response received and a response presented
+at effective cool reset. Release reset, wait for fuse sensing and allow the
+old pipeline to time out without responses. Check no stale response before
+recovery. Write fresh data using the same ID, then read it back. Stop the
+observer and check exact request/response accounting and four SPM comparisons.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Claim
+|`CHK-RIF-BASELINE` |SPM geometry, baseline data and five-channel observer control are valid; failures terminate
+|`CHK-RIF-PHASE` |Both requests are accepted with request VALID low and response held at effective reset; old operations terminate without response; failures terminate
+|`CHK-RIF-ASSERTED`, `CHK-RIF-RELEASED` |Primary and warm reset reach each requested level within bounds; failures terminate
+|`CHK-RIF-EPOCH` |One cool and no cold reset occurs; failures terminate
+|`CHK-RIF-SVA` |Assertions remain enabled; failures terminate
+|`CHK-RIF-NO-STALE` |No stale VALID or response handshake before recovery
+|`CHK-RIF-RECOVERY` |Two writes and two reads return OKAY and the issued ID, reads have fresh data without X/Z, and accounting has no stale, orphan or malformed traffic
+|`CHK-NONVAC` |Four helper accesses, two old timeouts, two abandoned operations and four passive SPM comparisons per pass
+|`CHK-SB-SPM-MEM` |Required SPM feature has no mismatches or unpaired items
+|`CHK-SB-MIN-ACTIVITY` |Completed passes reach the passive SPM comparison floor
+|`CHK-MEM-RESP`, `CHK-FUSE-SENSE-DONE` |Baseline accesses and fuse-sense release complete
+|===
+
+*Known Limitations*: Only SEP_IN, SPM, cool-pin reset and single-beat
+operations are exercised. The bench resets the master with SMC, unlike an
+independently live SEP. The VIP assumes no reset during an item; this test
+restricts reset to accepted requests awaiting responses and qualifies that
+use through phase and timeout prerequisites, not VIP reset cancellation.
+Interrupted SPM writes are overwritten before readback; their commit and
+retention are not graded. An old same-ID response replacing a missing new
+response can evade accounting. SVA dependencies check response handshakes;
+the observer also checks VALID while READY is low. Wait bounds are bench
+limits, not architectural latency requirements.
+
+*Pass Criteria*: All checks pass with four SPM comparisons per pass.
+Used alone, `+SMC_INGRESS_RESET_SEQUENCE_NEGATIVE` reverses NO-STALE and
+five RECOVERY records: six failures per pass, 96 for sixteen, without SPM
+mismatch. `+SMC_SPM_MEM_SCOREBOARD_NEGATIVE` corrupts four read predictions
+per pass: 64 mismatches for sixteen, while sequence checks pass.
+Prerequisites and NONVAC are outside the sequence negative.
+Enrolled only in `reset_uvm_extended`, on demand.
+
+'''''
+
 [[smc-deferred-disposition]]
 ==== SMC deferred and OUT disposition
 
@@ -35108,6 +35177,7 @@ to make; its *Closes when* cell names the ruling that closes it.
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
 |`smc_mailbox_cool_reset_recovery_test` |`mailbox_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_ingress_reset_inflight_test` |`reset_uvm_extended` |SV-UVM only, VCS, on demand |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_fabric_reg_clock_gate_test` |`cg_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
