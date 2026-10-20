@@ -92,11 +92,20 @@ verify:
 OCH_ROOT ?= $(abspath $(CURDIR)/../../../../../../..)
 KM_APPROM_DIR := $(OCH_ROOT)/hw/ip/key_manager/approm/prod
 
+# The handover tests boot rom_main and stream the committed IMG-H blob
+# (km_img_h.parhex) as the SRAM image, and declare rom_main as their firmware,
+# so every rom_main target also runs `verify ROMS=km_img_h`: a stale IMG-H blob
+# fails the c_compile of every test that can load it. The verify uses the
+# toolchain of the ROM build: $(RISCV_TOOLCHAIN)/$(RISCV_PREFIX) when the
+# caller passes it, else GCC_PREFIX on PATH (the container).
+KM_VERIFY_PREFIX := $(if $(RISCV_TOOLCHAIN),$(RISCV_TOOLCHAIN)/$(patsubst %-,%,$(or $(RISCV_PREFIX),riscv64-unknown-elf-)),$(GCC_PREFIX))
+
 rom_main:
 	@test -n "$(FW_BUILD_DIR)" || { echo "rom_main: set FW_BUILD_DIR to a private build directory" >&2; exit 1; }
 	$(MAKE) -C $(KM_APPROM_DIR) build BUILD_DIR=$(FW_BUILD_DIR) \
 	    OCAH_ROOT=$(OCH_ROOT) KM_BOOT_WIPE=0 KM_UNREC_WIPE=0
 	@test -s $(FW_BUILD_DIR)/rom_main.rom.parhex
+	$(MAKE) --no-print-directory verify ROMS=km_img_h GCC_PREFIX=$(KM_VERIFY_PREFIX)
 	@echo "[km_fw] built rom_main.rom.parhex -> $(FW_BUILD_DIR)/rom_main.rom.parhex"
 
 # rom_main_default and rom_main_unrec: the same KM application ROM with the wipe
@@ -112,6 +121,7 @@ rom_main_default rom_main_unrec:
 	$(MAKE) -C $(KM_APPROM_DIR) build BUILD_DIR=$(FW_BUILD_DIR) \
 	    OCAH_ROOT=$(OCH_ROOT) $(KM_WIPE_KNOBS_$@)
 	@test -s $(FW_BUILD_DIR)/rom_main.rom.parhex
+	$(MAKE) --no-print-directory verify ROMS=km_img_h GCC_PREFIX=$(KM_VERIFY_PREFIX)
 	cp $(FW_BUILD_DIR)/rom_main.rom.parhex $(FW_BUILD_DIR)/$@.rom.parhex
 	@echo "[km_fw] built $@.rom.parhex -> $(FW_BUILD_DIR)/$@.rom.parhex"
 KM_WIPE_KNOBS_rom_main_default := KM_BOOT_WIPE=1 KM_UNREC_WIPE=1

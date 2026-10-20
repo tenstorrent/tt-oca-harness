@@ -191,6 +191,30 @@ class ImgParamReplayTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             P.plan("sep_not_a_km_test", 1)
 
+    def test_verify_block_accepts_every_drawn_block(self) -> None:
+        for item, block_id in ((P.T_SCR, P.BLOCK_SCR), (P.T_MBOX_KM, P.BLOCK_MBOX_KM)):
+            for seed in SEEDS:
+                P.verify_block(P.block_words(item, seed), block_id)
+
+    def test_verify_block_rejects_a_bad_check_word(self) -> None:
+        words = P.block_words(P.T_SCR, 1)
+        for bit in (0, 31):
+            bad = list(words)
+            bad[-1] ^= 1 << bit
+            with self.assertRaisesRegex(ValueError, "check word"):
+                P.verify_block(bad)
+
+    def test_verify_block_rejects_a_bad_header(self) -> None:
+        words = P.block_words(P.T_MBOX_KM, 1)
+        for idx, pattern in ((0, "magic"), (1, "version"), (2, "length")):
+            bad = list(words)
+            bad[idx] ^= 1
+            bad[-1] = P.check_word(bad[:-1])
+            with self.assertRaisesRegex(ValueError, pattern):
+                P.verify_block(bad, P.BLOCK_MBOX_KM)
+        with self.assertRaisesRegex(ValueError, "version"):
+            P.verify_block(words, P.BLOCK_SCR)
+
 
 class ScrPlanTest(unittest.TestCase):
     def test_keys(self) -> None:
@@ -313,6 +337,50 @@ class StageImgParamTest(unittest.TestCase):
         # Per-byte odd parity (bit i = ~^byte_i, tb_backdoor_mem): 0x13 has three ones.
         self.assertEqual(P.word_parity(0x0000_0013), 0xE)
         self.assertEqual(P.word_parity(0x0000_0000), 0xF)
+
+    def _template_path(self, tdir: str) -> Path:
+        path = Path(tdir) / "template.parhex"
+        path.write_text(TEMPLATE)
+        return path
+
+    def test_staged_block_reads_back_the_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tdir:
+            for item in P.TESTS:
+                text = P.staged_text(self._template_path(tdir), item, 7)
+                self.assertEqual(P.staged_block(text), P.block_words(item, 7))
+
+    def test_stage_rejects_a_staged_block_with_a_bad_check_word(self) -> None:
+        good = P.staged_text
+
+        def corrupt(template, item, seed):
+            lines = good(template, item, seed).splitlines()
+            w = int(lines[-1][1:], 16) ^ 1
+            lines[-1] = f"{P.word_parity(w):X}{w:08X}"
+            return "\n".join(lines) + "\n"
+
+        real_load = dv_sim_prestage._load_env_module
+
+        def load(modname, filename):
+            mod = real_load(modname, filename)
+            if modname == "sep_km_img_param":
+                mod.staged_text = corrupt
+            return mod
+
+        dv_sim_prestage._load_env_module = load
+        try:
+            with self.assertRaisesRegex(ValueError, "check word"):
+                self._stage(P.T_SCR, 1, TEMPLATE)
+        finally:
+            dv_sim_prestage._load_env_module = real_load
+
+    def test_staged_block_rejects_a_bad_parity_nibble(self) -> None:
+        with tempfile.TemporaryDirectory() as tdir:
+            text = P.staged_text(self._template_path(tdir), P.T_SCR, 1)
+        lines = text.splitlines()
+        nib = int(lines[-1][0], 16) ^ 1
+        lines[-1] = f"{nib:X}{lines[-1][1:]}"
+        with self.assertRaisesRegex(ValueError, "parity"):
+            P.staged_block("\n".join(lines) + "\n")
 
     def test_template_that_reaches_the_block_raises(self) -> None:
         overlong = TEMPLATE + f"@{P.PARAM_BASE_WORD:08X}\nF00000000\n"

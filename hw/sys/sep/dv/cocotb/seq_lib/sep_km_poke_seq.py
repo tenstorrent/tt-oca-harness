@@ -44,6 +44,7 @@ WORD_BITS = 32
 # bound for it.
 BOOT_TIMEOUT_CYCLES = 200_000
 LIST_TIMEOUT_CYCLES = 2_000_000
+POST_TIMEOUT_CYCLES = 200_000  # inbound FIFO stays full while a list is posted
 POLL_CYCLES = 16
 
 
@@ -176,13 +177,21 @@ class SepKmPoke:
             raise ValueError("post: ops differ from the reserved handle")
         words = kp.encode_list(handle.ops, handle.tag)
         pos = 1 if header_sent else 0
+        full_cycles = 0
         while pos < len(words):
             status = await self.mbox.read_status()
             depth = (status >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK
             free = MBOX_FIFO_WORDS - depth
             if free <= 0:
+                if full_cycles >= POST_TIMEOUT_CYCLES:
+                    raise AssertionError(
+                        f"POKE post tag={handle.tag}: the inbound FIFO stayed full for "
+                        f"{full_cycles} cycles at word {pos} of {len(words)}"
+                    )
                 await ClockCycles(cocotb.top.clk_i, POLL_CYCLES)
+                full_cycles += POLL_CYCLES
                 continue
+            full_cycles = 0
             chunk = words[pos : pos + free]
             await self.mbox.post_raw_words(chunk)
             pos += len(chunk)

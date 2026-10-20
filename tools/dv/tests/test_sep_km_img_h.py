@@ -25,6 +25,7 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -40,44 +41,75 @@ from sep_crc_golden import crc32c  # noqa: E402
 from sep_seeded_rng import SepSeededRng  # noqa: E402
 from test_sep_km_poke import PokeModel  # noqa: E402
 
+# The KM bus map and field masks come from the generated headers that
+# km_img_h.S includes, so a moved register fails here instead of passing on a
+# stale literal. A function-like define (a register array) gives its base.
+KM_REG_C = ROOT / "hw" / "ip" / "key_manager" / "regs" / "gen" / "c"
+_DEFINE = re.compile(r"#define\s+(\w+)(?:\([^)]*\))?\s+\(?(0x[0-9A-Fa-f]+)")
+
+
+def _defines() -> dict[str, int]:
+    out: dict[str, int] = {}
+    for header in sorted(KM_REG_C.glob("*.h")):
+        for line in header.read_text(encoding="utf-8").splitlines():
+            m = _DEFINE.match(line.strip())
+            if m:
+                out.setdefault(m.group(1), int(m.group(2), 16))
+    return out
+
+
+GEN = _defines()
+
+
+def km(name: str) -> int:
+    """KM bus address ``KEY_MANAGER_<name>`` of the generated map."""
+    return GEN["KEY_MANAGER_" + name]
+
+
+def key_ctrl(wrapper: str, reg: str = "KEY_CTRL") -> int:
+    """KM bus address of the KEY_CTRL register ``reg`` of a key wrapper block."""
+    return km(f"{wrapper}_WRAPPER_KEY_BASE_ADDR") + GEN[f"{wrapper}_WRAPPER_KEY_{reg}_BASE_ADDR"]
+
+
 M32 = 0xFFFF_FFFF
-SRAM = 0x8000
-MB_WDATA = 0x10000
-MB_WSEP = 0x10004
-MB_STATUS = 0x1000C
-OUT_FULL = 1 << 3
-IRQ_STATUS = 0x1400C
-VIOL = 0x14024
-KPV_WORD = 0x12000
-KPV_CTRL = 0x13000
-SRAM_WRITE_LOCK_ERR = 1 << 3
-KMAC_KEY_CTRL = 0x1A040
+SRAM = km("SRAM_BASE_ADDR")
+SRAM_END = SRAM + km("SRAM_SIZE")
+MB_WDATA = km("MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR")
+MB_WSEP = km("MAILBOX_KM_KM_WRITE_SEPARATOR_BASE_ADDR")
+MB_STATUS = km("MAILBOX_KM_KM_STATUS_BASE_ADDR")
+OUT_FULL = GEN["KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_bm"]
+IRQ_STATUS = km("KMCSR_IRQ_STATUS_BASE_ADDR")
+VIOL = km("KMCSR_SRAM_WRITE_LOCK_VIOLATION_BASE_ADDR")
+KPV_WORD = km("KPV_KEY_ENTRY_WORD_BASE_ADDR")
+KPV_CTRL = km("KPV_CTRL_BASE_ADDR")
+SRAM_WRITE_LOCK_ERR = GEN["KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bm"]
+KMAC_KEY_CTRL = key_ctrl("KMAC")
 TABLE_REGS = {  # report word -> KM address of the register the image reads
-    ih.W_IRQ_ENABLE: 0x14010,
-    ih.W_KM_IRQ_ENABLE: 0x10014,
-    ih.W_IRQ_ENTRY_ADDR: 0x140B8,
-    ih.W_IRQ_ENTRY_LOCK: 0x140BC,
-    ih.W_SRAM_EXEC_MODE: 0x14038,
-    ih.W_OTP_READ_LOCK: 0x14300,
-    ih.W_SECRET_VAL0 + 0: 0x14200,
-    ih.W_SECRET_VAL0 + 1: 0x14240,
-    ih.W_SECRET_VAL0 + 2: 0x14280,
-    ih.W_SECRET_VAL0 + 3: 0x142C0,
-    ih.W_PUBLIC_VAL0 + 0: 0x14400,
-    ih.W_PUBLIC_VAL0 + 1: 0x14440,
-    ih.W_PUBLIC_VAL0 + 2: 0x14480,
-    ih.W_SRAM_LOCK: 0x1401C,
+    ih.W_IRQ_ENABLE: km("KMCSR_IRQ_ENABLE_BASE_ADDR"),
+    ih.W_KM_IRQ_ENABLE: km("MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR"),
+    ih.W_IRQ_ENTRY_ADDR: km("KMCSR_IRQ_ENTRY_ADDR_BASE_ADDR"),
+    ih.W_IRQ_ENTRY_LOCK: km("KMCSR_IRQ_ENTRY_LOCK_BASE_ADDR"),
+    ih.W_SRAM_EXEC_MODE: km("KMCSR_SRAM_EXEC_MODE_BASE_ADDR"),
+    ih.W_OTP_READ_LOCK: km("KMCSR_OTP_READ_LOCK_BASE_ADDR"),
+    ih.W_SECRET_VAL0 + 0: km("KMCSR_OTP_CHIPLET_UID_VAL_0_BASE_ADDR"),
+    ih.W_SECRET_VAL0 + 1: km("KMCSR_OTP_SIP_UID_VAL_0_BASE_ADDR"),
+    ih.W_SECRET_VAL0 + 2: km("KMCSR_OTP_SYS_UID_VAL_0_BASE_ADDR"),
+    ih.W_SECRET_VAL0 + 3: km("KMCSR_OTP_CLASS_KEY_VAL_0_BASE_ADDR"),
+    ih.W_PUBLIC_VAL0 + 0: km("KMCSR_OTP_SEP_CHIPLET_ID_VAL_0_BASE_ADDR"),
+    ih.W_PUBLIC_VAL0 + 1: km("KMCSR_OTP_SEP_SIP_ID_VAL_0_BASE_ADDR"),
+    ih.W_PUBLIC_VAL0 + 2: km("KMCSR_OTP_SEP_SYS_ID_VAL_0_BASE_ADDR"),
+    ih.W_SRAM_LOCK: km("KMCSR_SRAM_LOCK_BASE_ADDR"),
 }
 KEY_CTRL_ADDRS = (
-    0x1B040,
+    key_ctrl("HMAC"),
     KMAC_KEY_CTRL,
-    0x19040,
-    0x18060,
-    0x1C040,
-    0x1C140,
-    0x1C240,
-    0x1C340,
-    0x1C420,
+    key_ctrl("AES"),
+    key_ctrl("OTBN"),
+    key_ctrl("ABR", "MLDSA_SEED_KEY_CTRL"),
+    key_ctrl("ABR", "MLKEM_SEED_D_KEY_CTRL"),
+    key_ctrl("ABR", "MLKEM_SEED_Z_KEY_CTRL"),
+    key_ctrl("ABR", "MLKEM_MSG_KEY_CTRL"),
+    key_ctrl("ABR", "MLKEM_SHARED_KEY_KEY_CTRL"),
 )
 
 
@@ -105,7 +137,7 @@ class ImgHModel(PokeModel):
         }
         self.regs = {a: 0xA000_0000 | w for w, a in TABLE_REGS.items()}
         self.regs.update({a: 0 for a in KEY_CTRL_ADDRS})
-        self.sram[0xFFFC] = 0x1234_5678
+        self.sram[SRAM_END - 4] = 0x1234_5678
         self.inbound_empty = 1
         self.status_reads = 0
         self.sep = 0
@@ -115,7 +147,7 @@ class ImgHModel(PokeModel):
     def load(self, addr: int) -> int:
         if addr % 4:
             raise AssertionError(f"misaligned load 0x{addr:x}")
-        if SRAM <= addr < 0x10000:
+        if SRAM <= addr < SRAM_END:
             return self.sram.get(addr, 0)
         if addr == MB_STATUS:
             self.status_reads += 1
@@ -137,7 +169,7 @@ class ImgHModel(PokeModel):
         value &= M32
         if addr % 4:
             raise AssertionError(f"misaligned store 0x{addr:x}")
-        if SRAM <= addr < 0x10000:
+        if SRAM <= addr < SRAM_END:
             region = (addr - SRAM) // 1024
             if self.lock >> region & 1:
                 self.viol |= 1 << region

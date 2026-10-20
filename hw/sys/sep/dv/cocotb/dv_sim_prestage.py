@@ -504,6 +504,12 @@ def _stage_km_img_param(item: str, seed: int, cwd) -> bool:
     tmp = cwd / f".{dst.name}.tmp.{os.getpid()}"
     tmp.write_text(text, encoding="ascii")
     os.replace(tmp, dst)
+    # The staged copy is read back, and its block must equal the block of the
+    # seed and pass the header and check-word rules, else the leaf fails here.
+    staged = mod.staged_block(dst.read_text(encoding="ascii"))
+    mod.verify_block(staged)
+    if staged != mod.block_words(item, seed):
+        raise ValueError(f"{item}: staged parameter block differs from the block of seed {seed}")
     print(
         f"[dv_sim_prestage] KM-IMG-PARAM item={item} seed={seed} template={src.name} "
         f"template_sha256={mod.identity(src.read_text(encoding='ascii'))} "

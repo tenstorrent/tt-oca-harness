@@ -317,12 +317,60 @@ def block_words(item: str, seed: int) -> list[int]:
     block_id = BLOCK_SCR if item == T_SCR else BLOCK_MBOX_KM
     payload = [w & WORD_MASK for w in p.payload()]
     words = [PARAM_MAGIC, (PARAM_VERSION << 16) | block_id, len(payload)] + payload
-    check = 0
-    for w in words:
-        check ^= w
-    words.append(check)
+    words.append(check_word(words))
     if len(words) > PARAM_MAX_WORDS:
         raise RuntimeError(f"{item}: block of {len(words)} words exceeds {PARAM_MAX_WORDS}")
+    return words
+
+
+def check_word(words: list[int]) -> int:
+    """The check word of a block: the XOR of its header and payload words."""
+    check = 0
+    for w in words:
+        check ^= w & WORD_MASK
+    return check
+
+
+def verify_block(words: list[int], block_id: int | None = None) -> None:
+    """Raise ``ValueError`` unless ``words`` is one well-formed parameter block.
+
+    The block layout is the module docstring's: magic, version and id, payload
+    length n, n payload words, and the check word, the XOR of words 0..n+2.
+    """
+    if len(words) < 4:
+        raise ValueError(f"parameter block of {len(words)} words: shorter than the header")
+    if words[0] != PARAM_MAGIC:
+        raise ValueError(f"parameter block magic {words[0]:#010x}, expected {PARAM_MAGIC:#010x}")
+    if words[1] >> 16 != PARAM_VERSION or (block_id is not None and words[1] & 0xFFFF != block_id):
+        raise ValueError(f"parameter block version and id {words[1]:#010x}")
+    if words[2] != len(words) - 4:
+        raise ValueError(f"parameter block length {words[2]}, block holds {len(words) - 4}")
+    if words[-1] != check_word(words[:-1]):
+        raise ValueError(
+            f"parameter block check word {words[-1]:#010x}, expected {check_word(words[:-1]):#010x}"
+        )
+
+
+def staged_block(text: str) -> list[int]:
+    """The parameter block words of a staged image text, parity nibbles checked.
+
+    The block is every word after the ``@{PARAM_BASE_WORD}`` address line. A
+    word whose parity nibble does not match ``word_parity`` raises ``ValueError``.
+    """
+    marker = f"@{PARAM_BASE_WORD:08X}"
+    lines = [ln.strip() for ln in text.splitlines()]
+    if marker not in lines:
+        raise ValueError(f"staged image has no parameter block address line {marker}")
+    words: list[int] = []
+    for tok in lines[lines.index(marker) + 1 :]:
+        if not tok or tok.startswith("//"):
+            continue
+        if tok.startswith("@") or len(tok) != 9:
+            raise ValueError(f"staged parameter block line {tok!r} is not one parhex word")
+        w = int(tok[1:], 16)
+        if int(tok[0], 16) != word_parity(w):
+            raise ValueError(f"staged parameter word {w:#010x}: parity nibble {tok[0]}")
+        words.append(w)
     return words
 
 
