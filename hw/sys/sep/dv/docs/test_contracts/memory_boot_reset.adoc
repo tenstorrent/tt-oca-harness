@@ -2167,7 +2167,7 @@ Logged items (not graded; the specification does not state these values under a 
 
 `CTL-PIN-WALK: graded=<n> inventory=<n> missing=0 class_mismatch=0 clock_gater=<a> axi_cell=<b> walked=<w> not_in_inventory=<k> unwalkable=<u> inventory_groups=<group:count,...> logged=<group:count,...>` is a control and not a checker. The leaf fails, naming each pin, when an inventory pin is not in the walk or has another class in the walk. A walked pin that is not in the inventory, the group of each pin and a scope that the simulator cannot iterate are logged and fail nothing; a pin hidden below an unwalkable scope is an inventory pin that the walk does not find, so it fails by name.
 
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0. On the current design CHK-TEST-EN-PINS fails (known limitation in SEP_VPLAN), and the leaf stays RED until the design or the specification changes.
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Scope limit*: Pins nested inside vendor IP or a third-party library, and every pin inside `sep_cpu`, are logged and not graded. The test does not grade a latency, the scan-chain effect of `test_en_i`, or any test input outside the two classes.
 
