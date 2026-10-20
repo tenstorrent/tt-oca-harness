@@ -47,7 +47,8 @@ Checks (HOST-UNREC unless marked):
                      the rise, no stale RESP_CMD.
   CHK-SRAM-SHRED     the SRAM write count rises by 8192 or more by the rise.
   CHK-SHRED-WITNESS  the HMAC witness shows no key after the report.
-  CHK-NOSHRED-HOST   (HOST) the HMAC witness keeps the delivered key.
+  CHK-NOSHRED-HOST   (HOST) with the ROM wipe off, the hardware wipe still clears
+                     the HMAC witness key.
   CHK-TRAP-HELD      (both) bit 30 stays high and a CMD_STAT gets no answer.
   CHK-RESTORE        (both, control) a warm reset restores CMD_STAT and bit 30 = 0.
   CHK-PARITY-CLEAN   (both, control) a clean run and each no-flip twin raise no fault.
@@ -1543,10 +1544,10 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             assert HMAC_MSG2 != HMAC_MSG
             self.chk.ok(
                 "NOSHRED-HOST",
-                pre.hmac == "key" and rose and fault_frames >= 1 and hmac_after == "key",
+                pre.hmac == "key" and rose and fault_frames >= 1 and hmac_after == "nokey",
                 km_unrec_wipe=0,
                 hmac_before="golden" if pre.hmac == "key" else pre.hmac,
-                hmac_after="golden" if hmac_after == "key" else hmac_after,
+                hmac_after=hmac_after,
                 msg_changed=1,
                 writes_delta_logged="none" if delta is None else delta,
             )

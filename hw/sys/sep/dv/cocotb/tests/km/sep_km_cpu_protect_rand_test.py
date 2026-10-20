@@ -36,8 +36,8 @@ Checks:
   CHK-TRAP-CLR       PIC bit 30 reads 0 after the warm or cold reset.
   CHK-TRAP-CTRL      control: one handler entry for a normal interrupt and the
                      three legal CRC encodings run with no trap.
-  CHK-TRAP-ENGINE    the HMAC key_valid stays 1 over a trap; the tap shows 0
-                     and 1 after the two control writes.
+  CHK-TRAP-ENGINE    a trap clears the HMAC key_valid (the trap is a wipe event);
+                     the tap shows 0 and 1 after the two control writes.
   CHK-TRAP-STATUS    KM-CSR IRQ_STATUS.WIPE_STATE is 1 after a trap, 0 before.
   CHK-EXEC           C1, C3, C5, C6: EXEC_VIOLATION is 0 at the jump and rises
                      in the window; ROM_ACCESS_VIOLATION stays 0.
@@ -845,12 +845,12 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             f"CHK-TRAP-ENGINE FAIL: kind={kind}: KM-VALID HMAC showed {ctl['control_w0']} after "
             f"KEY_CTRL=0 and {ctl['control_w1']} after KEY_CTRL=1; the tap control is not met"
         )
-        assert valid_after == 1, (
+        assert valid_after == 0, (
             f"CHK-TRAP-ENGINE FAIL: kind={kind}: HMAC key_valid {valid_after} after the trap; "
-            "the trap cleared an accelerator sideload register"
+            "the wipe event of the trap did not clear the accelerator sideload register"
         )
         self.logger.info(
-            "CHK-TRAP-ENGINE PASS: kind=%s control_w0=0 control_w1=1 keyvalid_hmac=1", kind
+            "CHK-TRAP-ENGINE PASS: kind=%s control_w0=0 control_w1=1 keyvalid_hmac=0", kind
         )
 
         # The image never reads the mailbox again in this boot, and the FIFO

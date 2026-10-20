@@ -70,9 +70,9 @@ Checkers:
                    CTRL, the KPV scrambler key, enable and lock, sets
                    IRQ_STATUS.WIPE_STATE, and the KM CPU runs the next list.
                    Control: the vault before the wipe is non-zero.
-  CHK-WIPE-SCOPE   the wipe keeps the 8 SRAM words, the mailbox word
-                   (SEP_STATUS depth 1) and the HMAC key_valid. Control: each
-                   witness is non-zero before the wipe.
+  CHK-WIPE-SCOPE   the wipe keeps the 8 SRAM words and the mailbox word
+                   (SEP_STATUS depth 1) and clears the HMAC key_valid. Control:
+                   each witness is non-zero before the wipe.
   CHK-WIPE-EDGE2   a held level and a write of 1 while high set no second
                    WIPE_STATE over 200 host clocks; a 0-then-1 edge sets it again.
                    Control: the first rising edge sets it.
@@ -1143,7 +1143,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         sram_same = sum(1 for a, b in zip(sram_post, p.sram_values, strict=True) if a == b)
         self.chk.ok(
             "WIPE-SCOPE",
-            sram_same == m.N_SRAM_WORDS and depth_post == 1 and hmac == m.HMAC_KEY_VALID,
+            sram_same == m.N_SRAM_WORDS and depth_post == 1 and hmac == 0,
             sram_same=sram_same,
             mbox_depth=depth_post,
             keyvalid_hmac=hmac,
