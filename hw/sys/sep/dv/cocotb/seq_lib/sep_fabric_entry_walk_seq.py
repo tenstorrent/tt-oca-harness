@@ -69,8 +69,9 @@ if END_RESET != GRAN_MASK:
     raise RuntimeError(f"END_ADDR reset 0x{END_RESET:x} is not the {GRANULE_BYTES}-byte granule")
 
 # One read-allowed, write-allowed, any-source entry. src_id=0 is match-all
-# (filter_ctrl.rdl); allow_ns matches the NONSECURE masters. Never sets locked.
-ENTRY_CFG = F_ENTRY_ENABLED | F_READ_ALLOWED | F_WRITE_ALLOWED | F_ALLOW_NS
+# (filter_ctrl.rdl); set_enabled sets allow_ns to the NS that the requests carry
+# at the filter. Never sets locked.
+ENTRY_CFG = F_ENTRY_ENABLED | F_READ_ALLOWED | F_WRITE_ALLOWED
 
 
 def granule(addr: int) -> int:
@@ -151,10 +152,10 @@ class SepFilterEntryWalker(SepAxiRegDriver):
         self.readbacks += 1
         return got
 
-    async def set_enabled(self, entry: int, enabled: bool) -> None:
-        await self._wr(self._ebase(entry) + FILTER_CONFIG, ENTRY_CFG if enabled else 0)
+    async def set_enabled(self, entry: int, enabled: bool, *, ns: int = 1) -> None:
+        want = (ENTRY_CFG | (F_ALLOW_NS if ns else 0)) if enabled else 0
+        await self._wr(self._ebase(entry) + FILTER_CONFIG, want)
         got = await self._rd(self._ebase(entry) + FILTER_CONFIG)
-        want = ENTRY_CFG if enabled else 0
         # Every RW field of the low word must read back as written; the RO
         # data_bus_width field is outside FILTER_RW_MASK.
         assert (got & FILTER_RW_MASK) == (want & FILTER_RW_MASK), (

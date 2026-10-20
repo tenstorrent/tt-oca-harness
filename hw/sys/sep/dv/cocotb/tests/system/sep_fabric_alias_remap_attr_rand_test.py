@@ -44,7 +44,7 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_common import FILTER_ADDR_MASK, RESP_DECERR, RESP_OKAY, granule8
+from env.sep_fabric_common import FILTER_ADDR_MASK, RESP_DECERR, RESP_OKAY, granule8, outbound_ns
 from env.sep_fabric_common import resp_name as _rname
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -96,8 +96,9 @@ REGION_FLOOR = SMU_LO + 0x1000
 
 CACHE_VALUES = (0x0, 0x2, 0x3, 0xF)
 CLASSES = ("below", "start", "mid", "end_m1", "end", "above")
-# AxPROT of every probe: data, non-secure, unprivileged. The outbound entry
-# takes allow_ns = AxPROT[1].
+# AxPROT of every probe: data, non-secure, unprivileged. The SMU path replaces
+# AxPROT[1] with the inverse of address bit 55, so each outbound entry takes the
+# NS of the address it covers.
 PROBE_PROT = 0b010
 
 
@@ -294,7 +295,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             enabled=True,
             read_allowed=True,
             write_allowed=True,
-            allow_ns=bool(PROBE_PROT & 0b010),
+            allow_ns=bool(outbound_ns("smu", addr)),
             allow_burst=False,
             src_id=0,
         )

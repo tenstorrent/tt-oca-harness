@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="676" viewBox="0 0 1040 676" role="img" aria-labelledby="title desc">
 <title id="title">SEP system peripherals</title>
-<desc id="desc">Overview of sep_system_peripherals in both directions. Outbound, a local-master request from the SEP local crossbar is widened from 32 to 56 address bits, passes the 16-region alias remap and a register cut, and reaches the route demux. The demux sends the SMC aperture straight to the SMC without filtering; the SMU aperture and addresses at or above 0x1_0000_0000 to the outbound mux; the AP and STEE regions through their 16-region output remaps, which set the source ID to OTHERS, to the same mux; and every other address to the peripheral crossbar. The mux feeds the 32-entry outbound filter, whose output goes to the system interconnect. Inbound, a request from the system interconnect passes the 16-entry inbound filter and the global-to-local remap into the peripheral crossbar, which serves the 8-mailbox unit and the system CSRs and returns every other address below 0x4000_0000, converted to 32 address bits and a 3-bit ID, to the local crossbar. The mailbox unit raises inbound interrupts to the SEP CPU and outbound interrupts to the SMC; the system CSRs program the remaps, the filters and the apertures.</desc>
+<desc id="desc">Overview of sep_system_peripherals in both directions. Outbound, a local-master request from the SEP local crossbar is widened from 32 to 56 address bits, passes the 16-region alias remap and a register cut, and reaches the route demux. The demux sends the SMC aperture straight to the SMC without filtering; the SMU aperture and addresses at or above 0x1_0000_0000, with the source ID set to SEP and NS set to the inverse of address bit 55, to the outbound mux; the AP and STEE regions through their 16-region output remaps, which set the source ID to OTHERS and NS to 1 (AP) or to the inverse of bit 55 of the remapped address (STEE), to the same mux; and every other address to the peripheral crossbar. The mux feeds the 32-entry outbound filter, whose output goes to the system interconnect. Inbound, a request from the system interconnect passes the 16-entry inbound filter and the global-to-local remap into the peripheral crossbar, which serves the 8-mailbox unit and the system CSRs and returns every other address below 0x4000_0000, converted to 32 address bits and a 3-bit ID, to the local crossbar. The mailbox unit raises inbound interrupts to the SEP CPU and outbound interrupts to the SMC; the system CSRs program the remaps, the filters and the apertures.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -100,35 +100,38 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect class="network" x="382" y="128" width="40" height="44" rx="4"/>
 <text class="s" x="402" y="155" text-anchor="middle">cut</text>
 <path class="axi" d="M422,150 L440,150"/>
-<path class="fabric" d="M440,102.8 L474,80 L474,270 L440,247.2 Z"/>
+<path class="fabric" d="M440,102.8 L474,80 L474,296 L440,273.2 Z"/>
 <text class="s" x="457" y="72" text-anchor="middle">route demux</text>
 <text class="s" x="482" y="91" text-anchor="start">SMC</text>
-<text class="s" x="482" y="133" text-anchor="start">SMU, or &gt;= 0x1_0000_0000</text>
-<text class="s" x="482" y="175" text-anchor="start">AP</text>
-<text class="s" x="482" y="217" text-anchor="start">STEE</text>
-<text class="s" x="482" y="251" text-anchor="start">other addresses</text>
+<text class="s" x="482" y="116" text-anchor="start">SMU, or &gt;= 0x1_0000_0000</text>
+<text class="s" x="482" y="133" text-anchor="start">source ID set to SEP, NS = ~addr[55]</text>
+<text class="s" x="482" y="172" text-anchor="start">AP</text>
+<text class="s" x="482" y="228" text-anchor="start">STEE</text>
+<text class="s" x="482" y="277" text-anchor="start">other addresses</text>
 <path class="axi" d="M474,96 L930,96"/>
 <text class="t" x="900" y="80" text-anchor="start">to the SMC</text>
-<path class="axi" d="M474,180 L522,180"/>
-<path class="fabric" d="M532,161 L696,161 L706,180 L696,199 L532,199 L522,180 Z"/>
-<text class="s" x="614" y="178" text-anchor="middle">AP remap, 16 regions</text>
-<text class="s" x="614" y="192" text-anchor="middle">source ID set to OTHERS</text>
-<path class="axi" d="M706,180 L720,180"/>
-<path class="axi" d="M474,222 L522,222"/>
-<path class="fabric" d="M532,203 L696,203 L706,222 L696,241 L532,241 L522,222 Z"/>
-<text class="s" x="614" y="220" text-anchor="middle">STEE remap, 16 regions</text>
-<text class="s" x="614" y="234" text-anchor="middle">source ID set to OTHERS</text>
-<path class="axi" d="M706,222 L720,222"/>
+<path class="axi" d="M474,177 L522,177"/>
+<path class="fabric" d="M532,151 L696,151 L706,177 L696,203 L532,203 L522,177 Z"/>
+<text class="s" x="614" y="168" text-anchor="middle">AP remap, 16 regions</text>
+<text class="s" x="614" y="182" text-anchor="middle">source ID set to OTHERS</text>
+<text class="s" x="614" y="196" text-anchor="middle">NS = 1</text>
+<path class="axi" d="M706,177 L720,177"/>
+<path class="axi" d="M474,233 L522,233"/>
+<path class="fabric" d="M532,207 L696,207 L706,233 L696,259 L532,259 L522,233 Z"/>
+<text class="s" x="614" y="224" text-anchor="middle">STEE remap, 16 regions</text>
+<text class="s" x="614" y="238" text-anchor="middle">source ID set to OTHERS</text>
+<text class="s" x="614" y="252" text-anchor="middle">NS = ~addr[55]</text>
+<path class="axi" d="M706,233 L720,233"/>
 <path class="axi" d="M474,138 L720,138"/>
-<path class="fabric" d="M720,122 L750,151 L750,209 L720,238 Z"/>
-<text class="s" x="735" y="252" text-anchor="middle">outbound mux</text>
-<path class="axin" d="M750,180.0 L764,180.0"/>
-<path class="fabric" d="M773,152 L859,152 L868,161 L868,199 L859,208 L773,208 L764,199 L764,161 Z"/>
-<text class="s" x="816" y="177.5" text-anchor="middle">Outbound</text>
-<text class="s" x="816" y="192.5" text-anchor="middle">filter, 32</text>
-<path class="axi" d="M868,180.0 L930,180.0"/>
-<text class="t" x="900" y="147" text-anchor="start">to the system</text>
-<text class="t" x="900" y="164" text-anchor="start">interconnect</text>
+<path class="fabric" d="M720,120 L750,152 L750,228 L720,260 Z"/>
+<text class="s" x="735" y="274" text-anchor="middle">outbound mux</text>
+<path class="axin" d="M750,190.0 L764,190.0"/>
+<path class="fabric" d="M773,162 L859,162 L868,171 L868,209 L859,218 L773,218 L764,209 L764,171 Z"/>
+<text class="s" x="816" y="187.5" text-anchor="middle">Outbound</text>
+<text class="s" x="816" y="202.5" text-anchor="middle">filter, 32</text>
+<path class="axi" d="M868,190.0 L930,190.0"/>
+<text class="t" x="900" y="157" text-anchor="start">to the system</text>
+<text class="t" x="900" y="174" text-anchor="start">interconnect</text>
 <text class="t" x="900" y="320" text-anchor="start">from the system</text>
 <text class="t" x="900" y="337" text-anchor="start">interconnect</text>
 <text class="s" x="900" y="384" text-anchor="start">addr 56, ID 6</text>
@@ -145,7 +148,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="bs" x="440" y="350" text-anchor="middle">Peripheral</text>
 <text class="bs" x="440" y="367" text-anchor="middle">crossbar</text>
 <text class="s" x="440" y="384" text-anchor="middle">2 x 3</text>
-<path class="axi" d="M474,256 L500,256 L500,320"/>
+<path class="axi" d="M474,282 L500,282 L500,320"/>
 <path class="axi" d="M300,360 L284,360"/>
 <rect class="network" x="168" y="338" width="116" height="44" rx="4"/>
 <text class="s" x="226" y="357.5" text-anchor="middle">56 to 32 bits</text>
@@ -193,8 +196,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="pst" x="150" y="154.5" text-anchor="middle">S</text>
 <rect class="pm" x="879.0" y="87.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="890" y="100.5" text-anchor="middle">M</text>
-<rect class="pm" x="879.0" y="171.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="890" y="184.5" text-anchor="middle">M</text>
+<rect class="pm" x="879.0" y="181.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="890" y="194.5" text-anchor="middle">M</text>
 <rect class="ps" x="879.0" y="351.0" width="22" height="18" rx="4"/>
 <text class="pst" x="890" y="364.5" text-anchor="middle">S</text>
 <rect class="pm" x="139.0" y="351.0" width="22" height="18" rx="4"/>

@@ -235,8 +235,9 @@ static int bl1_test_locked_field_reads(void) {
 #define OBF_START_ADDR SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0)
 #define OBF_END_ADDR SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0)
 
-// Open outbound filter entry 0 over the DV mailbox window. The window bounds go
-// in before the configuration that enables the entry.
+// Open outbound filter entry 0 over the DV mailbox window, non-secure because the
+// mailbox address has bit 55 clear. The window bounds go in before the
+// configuration that enables the entry.
 static inline void bl1_outbound_filter_init(void) {
     mmio_write32(OBF_START_ADDR, 0x80000000u);
     mmio_write32(OBF_START_ADDR + 4, 0x00000000u);
@@ -246,7 +247,7 @@ static inline void bl1_outbound_filter_init(void) {
 
     __asm__ volatile("fence w, w" ::: "memory");
 
-    mmio_write32(OBF_CONFIG, 0x01000013u);
+    mmio_write32(OBF_CONFIG, 0x01000113u);
     mmio_write32(OBF_CONFIG + 4, 0x00000000u);
 
     __asm__ volatile("fence w, w" ::: "memory");

@@ -448,7 +448,8 @@ Observation probe groups:
   VALID, READY and request fields and, where named, the W beat
   (`env/sep_fabric_tap.py` records the handshakes):
 ** PR-OUT (`pr_out_*`): `smn_outbound_axi_req_o` (the net `smn_outbound_req_w`):
-   address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxSIZE, AxBURST and W beats.
+   address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxSIZE, AxBURST and W beats
+   (data, strobe, last and W user).
    Owners: `sep_fabric_outbound_route_attr_test`,
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`,
@@ -457,7 +458,8 @@ Observation probe groups:
    `last`, `data`) on `smn_outbound_axi_resp_i`, with READY from the request net.
    Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST, CHK-DMA-HOST-HOLD),
    `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-STALL-REAL).
-** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, same fields. Owners:
+** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, the same AW and AR fields
+   and W beats of data, strobe and last. Owners:
    `sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test`.
 ** PR-EXT (`pr_ext_*`): the AXI Extension port, wrapper net
    `u_dut.axi_extension_axi_req`, same fields; and its replies (monitor
@@ -527,7 +529,9 @@ Observation probe groups:
    (`u_inbound_filter`, net `smn_inbound_filtered_axi_req`), before the
    global-to-local remap: AW and AR address, global. Owners:
    `sep_fabric_inbound_rebase_test`,
-   `sep_fabric_filter_match_priority_rand_test`.
+   `sep_fabric_filter_match_priority_rand_test`,
+   `sep_outbound_contention_rand_test` (CHK-SYSIF-NO-OUTBOUND-PATH),
+   `sep_outbound_stall_saturation_test` (CHK-SYSIF-NO-OUTBOUND-PATH).
 ** PR-CPU (`pr_cpu_lsu_*`, `pr_cpu_ifu_*`): AxPROT of the raw CPU LSU (AR, AW)
    and IFU (AR) requests in `u_sep_cpu` (`lsu_axi_req_raw`, `ifu_axi_req_raw`),
    before any remap; tied to 0 on the CPU stub build. Graded against
@@ -921,7 +925,9 @@ Exceptions (a closed set):
   raises the hold. The responder state and the DUT nets the checkers read are
   not forced. Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST,
   CHK-DMA-HOST-HOLD, CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
-  (CHK-STALL-REAL, CHK-TO-INERT).
+  (CHK-STALL-REAL, CHK-TO-INERT), and `sep_outbound_contention_rand_test` and
+  `sep_outbound_stall_saturation_test` for `smn_outbound_resp_hold_i` (every
+  checker of each leaf, listed with the request-side hooks below).
   Request-side hooks, both 0 by default: `smn_outbound_ready_stall_i`
   (3 bits) holds AW READY (bit 0), W READY (bit 1) and AR READY (bit 2) of the
   responder low while the bit is high, and `smn_outbound_rd_addr_data_i`
@@ -929,10 +935,21 @@ Exceptions (a closed set):
   8-byte-aligned beat address. With both at 0 the responder behaves as
   above. `+sep_outbound_depth=<n>` (1 to 64) sets the responder's queued
   write bursts, pending B responses and queued reads each to `n`; without it
-  they are 16, 16 and 1. Owners: `sep_outbound_contention_rand_test`
-  (CHK-LSU-PATH, CHK-ID-ORDER, CHK-RESP-ROUTE),
-  `sep_outbound_stall_saturation_test` (CHK-DELAYS, CHK-HOLD-DRAIN,
-  CHK-CHAIN-LIMIT); both leaves run with the plusarg.
+  they are 16, 16 and 1. Owners: `sep_outbound_contention_rand_test` (every
+  checker: its seeded drive of `smn_outbound_ready_stall_i` and
+  `smn_outbound_resp_hold_i` and `smn_outbound_rd_addr_data_i` at 1 run from
+  bring-up to the end of the leaf: CHK-LSU-PATH, CHK-DMA-PATH,
+  CHK-SYSIF-NO-OUTBOUND-PATH, CHK-CONC-ALL, CHK-ID-ORDER, CHK-B-COUNT,
+  CHK-R-COUNT, CHK-RESP-ROUTE, CHK-ATTR-USER, CHK-ATTR-PROT,
+  CHK-LSU-DMA-OVERLAP, CHK-NONVAC, CHK-TIMEOUT-PATHS),
+  `sep_outbound_stall_saturation_test` (every checker: the READY stall mask and
+  the hold set the delays and the hold and limit sessions, and
+  `smn_outbound_rd_addr_data_i` is 1 for the whole leaf, so the read data of
+  every phase depends on it: CHK-DELAYS,
+  CHK-HOLD-DRAIN, CHK-OUT-STOP, CHK-XBAR-HELD, CHK-XBAR-POSTDRAIN,
+  CHK-CHAIN-LIMIT, CHK-SAT-B-COUNT, CHK-SAT-R-COUNT,
+  CHK-SYSIF-NO-OUTBOUND-PATH, CHK-ATTR-USER, CHK-NONVAC, CHK-TIMEOUT-PATHS);
+  both leaves run with the plusarg.
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
   AXI interconnect (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`,
@@ -1020,7 +1037,8 @@ A stand-in is anything that answers in place of the mechanism a claim is
 about. Each entry has three fields: the claim that is accepted with the
 stand-in in place, why the real path is not needed, and the exact scope. Who
 approved an entry, against which revision, and when it is next reviewed are
-recorded in the pull request that adds or changes it. A test outside
+recorded in the pull request that adds or changes it, or in the entry's own
+"Approved against" and "Review and expiry" rows when it has them. A test outside
 the scope of an entry is graded as if the stand-in were undeclared. Each entry
 has one command in <<sep-standin-recheck>> that shows it is still true of the
 tree.
@@ -1086,6 +1104,58 @@ CHK-TEST-EN-PINS and CTL-PIN-WALK in `sep_test_en_pin_reach_test`
 (`testlists/system.toml`). No other test grades these pins.
 |===
 
+[[sep-standin-src-id-carrier]]
+==== Source ID carrier: the filter compares `src_id` with AxUSER[3:0]
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The source ID that an `axi_filter` instance compares with `src_id` is
+AxUSER[3:0] of the request. The figure
+`hw/sys/smc/doc/assets/smc-traffic-filters.svg` (TRM doc tree, description of
+`axi_filter_wrap`: `src_id` is 0 or equals the source ID in AxUSER[3:0]) is the
+accepted source for this until a TRM sentence states it.
+`hw/ip/axi_filter/doc/index.adoc` ("Match, Then Permit") names "the
+transaction's source ID" and states that the decode is the same in every
+instance, and `hw/sys/sep/doc/fabric.adoc` ("Transaction Routing") states that
+SEP outbound traffic carries the source ID in AxUSER, with no bit range.
+
+|Why the real path is not needed
+|The record replaces a missing sentence, not a missing mechanism: the DUT
+filter decides every graded cell, and the figure is the only document that
+names the bits. The open specification question "Source ID carrier of an
+inbound request" (`SEP_VPLAN.adoc`, specification questions) stays open until
+a TRM sentence answers it.
+
+|Scope
+|The checks that read the source ID as AxUSER[3:0]:
+the inbound and outbound source-ID cells (CHK-FILTER-SRC) of
+`sep_fabric_filter_match_priority_rand_test`, through the filter reference
+model `cocotb/env/sep_filter_model.py`; the source-ID driver of
+`sep_mailbox_filter_type_matrix_test`, which sets AxUSER[3:0] of the external
+master to the admitted or refused source ID; and the SMU-path source-ID grade
+`SepSrcIdGrade` (`cocotb/env/sep_fabric_common.py`) in
+`sep_fabric_filter_match_priority_rand_test`,
+`sep_fabric_outbound_route_attr_test`, `sep_fabric_dma_endpoint_matrix_test`,
+`sep_outbound_contention_rand_test` and `sep_outbound_stall_saturation_test`,
+which grades AxUSER[3:0] and logs AxUSER[11:4]. A check that compares the
+whole AxUSER with a stated value (OTHERS, AxUSER zero, on the AP and STEE
+paths and from the secure DMA; the initiator's AxUSER on the SMC path) does
+not use this record.
+
+|Approved against
+|`hw/sys/smc/doc/assets/smc-traffic-filters.svg` at commit `566ac589f`,
+`hw/ip/axi_filter/doc/index.adoc` at commit `ebd7951f8` and
+`hw/sys/sep/doc/fabric.adoc` at commit `ea25c9b44`. Recorded 2026-10-19; the
+dated record is the approval.
+
+|Review and expiry
+|Review again when a later commit changes any of the three files above.
+Remove the record, and grade the source ID on the bits that the sentence
+names, when a TRM sentence (`.adoc` or RDL) states the carrier of the source
+ID.
+|===
+
 [[sep-standin-recheck]]
 ==== Re-confirming a stand-in
 
@@ -1105,6 +1175,13 @@ real sense where it needs fuse content), and
 |`python3 -c 'import sys; sys.path.insert(0, "hw/sys/sep/dv/cocotb"); from tests.system.sep_test_en_pin_inventory import GRADED_PINS as G; print(len(G), sum(c == "clock_gater" for _, c in G))'`,
 then `grep -n 'CTL-PIN-WALK:'` in any log of `sep_test_en_pin_reach_test`
 |`172 1`, and `CTL-PIN-WALK: graded=172 inventory=172 missing=0 class_mismatch=0`.
+
+|Source ID carrier
+|`for f in hw/sys/smc/doc/assets/smc-traffic-filters.svg hw/ip/axi_filter/doc/index.adoc hw/sys/sep/doc/fabric.adoc; do git log -1 --format=%h -- $f; done`,
+then `grep -n 'AxUSER\[3:0\]' hw/sys/smc/doc/assets/smc-traffic-filters.svg`
+|`566ac589f`, `ebd7951f8` and `ea25c9b44` (a different hash is the review
+trigger of the entry), and the `axi_filter_wrap` description names
+AxUSER[3:0].
 |===
 
 === Environment Components

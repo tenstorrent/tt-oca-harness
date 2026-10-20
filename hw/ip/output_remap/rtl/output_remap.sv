@@ -10,6 +10,9 @@
 // combinational.
 // When USER_OVERRIDE_EN is set, USER_OVERRIDE_VAL replaces the AW, AR and W user fields of every
 // transaction.
+// AxPROT[1] (NS) of every AW and AR becomes PROT_NS_OVERRIDE_VAL when PROT_NS_OVERRIDE_EN is set,
+// otherwise the inverse of bit 55 of the outgoing address when PROT_NS_FROM_ADDR_EN is set, and
+// passes unchanged when neither is set. The address keeps bit 55.
 
 module output_remap #(
   parameter type          axi_req_t         = logic,        // AXI request type.
@@ -26,6 +29,13 @@ module output_remap #(
   parameter bit           USER_OVERRIDE_EN  = 1'b1,         // Replace the AW, AR and W user fields
                                                             // on every transaction.
   parameter user_ovrd_t   USER_OVERRIDE_VAL = '0,           // AxUSER value when overriding.
+  parameter bit           PROT_NS_OVERRIDE_EN  = 1'b0,      // Replace AxPROT[1] of every AW and AR
+                                                            // with PROT_NS_OVERRIDE_VAL.
+  parameter bit           PROT_NS_OVERRIDE_VAL = 1'b0,      // AxPROT[1] value when overriding.
+  parameter bit           PROT_NS_FROM_ADDR_EN = 1'b0,      // Drive AxPROT[1] of every AW and AR as
+                                                            // the inverse of bit 55 of the outgoing
+                                                            // address; PROT_NS_OVERRIDE_EN takes
+                                                            // precedence.
 
   localparam int unsigned RemapIndexW       = $clog2(NUM_REGIONS) // Region-index width.
 ) (
@@ -101,13 +111,20 @@ module output_remap #(
   // AXI Translation //
   /////////////////////
 
-  // Apply the address remap; user-bit override and full req/resp passthrough
-  // are handled by prim_axi_user_override_struct below.
+  // Apply the address remap and the AxPROT[1] rule; user-bit override and full req/resp
+  // passthrough are handled by prim_axi_user_override_struct below.
   axi_req_t axi_req_remapped;
   always_comb begin
     axi_req_remapped         = axi_req_i;
     axi_req_remapped.aw.addr = remapped_aw_addr;
     axi_req_remapped.ar.addr = remapped_ar_addr;
+    if (PROT_NS_OVERRIDE_EN) begin
+      axi_req_remapped.aw.prot[1] = PROT_NS_OVERRIDE_VAL;
+      axi_req_remapped.ar.prot[1] = PROT_NS_OVERRIDE_VAL;
+    end else if (PROT_NS_FROM_ADDR_EN) begin
+      axi_req_remapped.aw.prot[1] = ~remapped_aw_addr[55];
+      axi_req_remapped.ar.prot[1] = ~remapped_ar_addr[55];
+    end
   end
 
   if (USER_OVERRIDE_EN) begin : gen_user_override
