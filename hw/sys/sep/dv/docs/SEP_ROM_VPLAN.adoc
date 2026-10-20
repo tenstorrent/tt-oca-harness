@@ -274,6 +274,7 @@ those tests.
 |`SEP-ROM-MAN-040` |Unavailable constraint input = failure |<<sep-rom-vplan-structural-fail>> |1
 |`SEP-ROM-MAN-050` |Launch BLSTAGE1 image at its TOC `load_addr`/`entry_point` |<<sep-rom-vplan-smc-sram-boot>>, <<sep-rom-vplan-ot-spi-boot>>, <<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-toc-order>> |7
 |`SEP-ROM-MAN-060` |Placement validated against a permitted execution region (ICCM always; SRAM per `BL1_SRAM_EXEC_ENABLE`, default on), entry < length; copy after validation only |<<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-bl1-image>> |3
+|`SEP-ROM-MAN-070` |Manifest and resolved payload storage sources are 8-byte aligned before their first reads |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-primary-fail-backup>> |2
 |`SEP-ROM-SB-010` |PROD/PROD_END enforce secure boot |<<sep-rom-vplan-backup-manifest-fail>> |2
 |`SEP-ROM-SB-020` |TEST_DEV/RMA_SiP (debug open), RMA_CHIPLET: either trigger enables |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-dbg-lock>>, <<sep-rom-vplan-fuse-lock>> |4
 |`SEP-ROM-SB-025` |TEST_DEV or RMA_SiP with CHIPLET_DBG disabled or its vector read-locked enforces secure boot |<<sep-rom-vplan-dbg-lock>> |7
@@ -338,6 +339,7 @@ holds the stimulus, the checkers and the requirements.
 |`sep_rsa_verify_redundant_compare_test` |<<sep-rom-vplan-secure-boot>> |One RSA_EXEC, RSA_CMP1 and RSA_CMP2 once each, in order RSA_EXEC, RSA_CMP1, RSA_CMP2, RSA_VERIFY_OK, MANIFEST_OK, PAYLOAD_OK on the primary only; boots.
 |`sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test` |<<sep-rom-vplan-secure-boot>> |Primary accepted in order OCA_BODY= .. BL1_JUMP=; one SPI read is exactly the body, no read falls outside body or payload, backup never read; boots BL1.
 |`sep_firmware_secondary_chiplet_bootcode_test` |<<sep-rom-vplan-secondary-chiplet>> |one attempt at 0x40061000 accepted: OCA_BODY=, MFST_VER=, MANIFEST_OK, PAYLOAD_OK, SBOOT_OFF, BL1_COPIED, BL1_JUMP=, BL1 FUSE_CHK in order; cold_scratch[0] PASS; no PUBK_\*/RSA_EXEC/MANIFEST_ERR=.
+|`sep_firmware_secondary_manifest_offset_misaligned_test` |<<sep-rom-vplan-secondary-chiplet>> |complete valid SMC image at 0x40061004 refused before OCA_BODY= with MANIFEST_ALIGN_FAIL and OCA_BOOT_ERR_MANIFEST_ALIGNMENT (0x00030108); one attempt, FAIL verdict, halt.
 |`sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test` |<<sep-rom-vplan-secondary-chiplet>> |one attempt at 0x40065000 refused MANIFEST_ERR=0x00030002, then MANIFEST_ALL_FAILED and MANIFEST_BOOT_FAIL=0x00030002; cold_scratch[1] ERROR word; FAIL verdict; halt.
 |===
 
@@ -438,6 +440,7 @@ holds the stimulus, the checkers and the requirements.
 |`sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_large_test` |<<sep-rom-vplan-primary-length>> |primary refused OCA_FAIL_MANIFEST_LENGTH (0x0003001c) before RSA; backup boots.
 |`sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test` |<<sep-rom-vplan-backup-length>> |Primary OCA_FAIL_MAGIC; backup OCA_FAIL_MANIFEST_LENGTH; cold_scratch[1]=0x0F010009, MANIFEST_ALL_FAILED, FAIL, halt.
 |`sep_firmware_primary_payload_invalid_payload_hash_length_test` |<<sep-rom-vplan-primary-fail-backup>> |Primary verifies RSA and is refused with OCA_FAIL_PAYLOAD_TOC (0x00030015) at payload stage without PAYLOAD_LOC_FAIL/PAYLOAD_TOO_LARGE/FLASH_READ_OOB/DECRYPT_OK; backup boots.
+|`sep_firmware_primary_payload_offset_misaligned_test` |<<sep-rom-vplan-primary-fail-backup>> |Primary payload bytes are unchanged but moved to 0x2004 and payload_offset is updated; after RSA the source is refused with PAYLOAD_LOC_FAIL / OCA_FAIL_PAYLOAD_LOCATION before any read starts there; backup boots.
 |`sep_firmware_payload_overlaps_manifest_test` |<<sep-rom-vplan-primary-fail-backup>> |Primary verifies RSA, prints PAYLOAD_LOC_FAIL and is refused with OCA_FAIL_PAYLOAD_LOCATION (0x0003001b); no SPI read begins at the overlap address; backup boots.
 |`sep_firmware_primary_payload_offset_into_backup_test` |<<sep-rom-vplan-primary-fail-backup>> |Primary verifies RSA, prints PAYLOAD_LOC_FAIL and is refused with OCA_FAIL_PAYLOAD_LOCATION (0x0003001b) with no PAYLOAD_OK; the only read at the backup payload address follows the backup manifest read; backup boots.
 |`sep_firmware_cleartext_image_corrupt_hash_test` |<<sep-rom-vplan-primary-fail-backup>> |Primary verifies RSA and is refused with OCA_FAIL_PAYLOAD_HASH (0x00030012) at payload stage; backup boots.
@@ -718,16 +721,16 @@ PASS record of its own.
 [[sep-rom-vplan-secondary-chiplet]]
 ===== Recovery and secondary-chiplet manifest path
 
-*Tests:* 3.
+*Tests:* 4.
 
-*Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_secondary_chiplet_base.py`, for `sep_firmware_secondary_chiplet_bootcode_test` and `sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test`. `sep_boot_recovery_test` runs the <<sep-rom-vplan-ot-spi-boot>> procedure with the recovery strap set and is judged by `CHK-ROM-PATH`, `CHK-VERDICT` and the checkers in its row.
+*Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_secondary_chiplet_base.py`, for `sep_firmware_secondary_chiplet_bootcode_test`, `sep_firmware_secondary_manifest_offset_misaligned_test` and `sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test`. `sep_boot_recovery_test` runs the <<sep-rom-vplan-ot-spi-boot>> procedure with the recovery strap set and is judged by `CHK-ROM-PATH`, `CHK-VERDICT` and the checkers in its row.
 
 *Objective:* With STRAPS_LO[25] clear, the ROM takes the secondary-chiplet arm, reads the SMC-published scratch[8] offset and makes exactly one manifest attempt from SMC SRAM.
 
 *Procedure:*
 
 . Cross-check +sep_smc_scratch8 against the member's manifest_offset (absent for the default 0x1000).
-. Parse +sep_smc_mem_hex (based at 0x40060000) and assert OCAC at 0x1000 and at (or not at) the published offset.
+. Parse +sep_smc_mem_hex (based at 0x40060000), assert OCAC at the member's declared image_manifest_offset, and cross-check whether that is the published offset.
 . Write a TEST_DEV zero eFuse image (the SMC image is unsigned); no +sep_boot_from_spi, so all straps are 0.
 . Release the CPU at the Boot ROM base; poll cold_scratch[0]/[1] and the console with a 2M-cycle stall detector and an 8M-cycle limit.
 . Assert required markers (STRAPS_LO=0x00000000, STRAP primary=0, recovery=0, BOOT_SECONDARY, MANIFEST_OFF=, SMC_MANIFEST_ADDR=, WAIT_SMC_MANIFEST, MANIFEST_PRIMARY, MANIFEST_SRC=) and forbid BOOT_SPI, BOOT_RECOVERY, MANIFEST_BACKUP, SMC_COORD_NOT_READY, SMC_MANIFEST_OFF_INVALID and SPI_INIT markers.
@@ -739,7 +742,7 @@ PASS record of its own.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|`CHK-SMC-IMAGE` |The packed SMC image is based at 0x40060000 and holds OCAC at 0x1000 and the expected content at the published offset.
+|`CHK-SMC-IMAGE` |The packed SMC image is based at 0x40060000, holds OCAC at the member's declared image_manifest_offset, and has the expected relationship between that and the published offset.
 |`CHK-STIMULUS-OFFSET` |+sep_smc_scratch8 agrees with the member's offset.
 |`CHK-SECONDARY-MARKERS` |Every required secondary-path marker appears.
 |`CHK-SECONDARY-FORBIDDEN` |No forbidden marker appears.
@@ -759,6 +762,7 @@ PASS record of its own.
 |Test |Stimulus |Expected |Checkers it adds |Requirements
 |`sep_boot_recovery_test` |Runs the base procedure of <<sep-rom-vplan-ot-spi-boot>>. +sep_straps_lo=00080000 (boot_recovery STRAPS_LO[19]) combined with +sep_boot_from_spi gives STRAPS_LO=0x02080000; +sep_smc_mem_hex staged; flash left bootable. |BOOT_RECOVERY arm: WAIT_SMC_MANIFEST, MANIFEST_SRC=0x40061000, MANIFEST_OK and BL1 FUSE_CHK, PASS verdict; BOOT_SPI, BOOT_SECONDARY, SPI_INIT markers absent and zero flash reads. |`CHK-STIMULUS-RECOVERY`, `CHK-RECOVERY-NO-SPI`, `CHK-RECOVERY-ORDER`, `CHK-ROM-PATH`, `CHK-VERDICT` |`SEP-ROM-STRAP-010`
 |`sep_firmware_secondary_chiplet_bootcode_test` |Default scratch[8] offset 0x1000 (no +sep_smc_scratch8), unsigned oca_smc_mem.hex, TEST_DEV OTP, straps all 0. |one attempt at 0x40061000 accepted: OCA_BODY=, MFST_VER=, MANIFEST_OK, PAYLOAD_OK, SBOOT_OFF, BL1_COPIED, BL1_JUMP=, BL1 FUSE_CHK in order; cold_scratch[0] PASS; no PUBK_\*/RSA_EXEC/MANIFEST_ERR=. |`CHK-SECONDARY-BOOT` |`SEP-ROM-STRAP-010`, `SEP-ROM-SMC-010`, `SEP-ROM-RETRY-010`
+|`sep_firmware_secondary_manifest_offset_misaligned_test` |oca_smc_mem_misaligned.hex prepends four bytes to the complete valid image, placing its OCAC manifest and payload bundle at offset 0x1004; +sep_smc_scratch8=00001004 publishes that address; one-shot SLVERR armed on its containing AXI beat at 0x40061000. |one attempt at 0x40061004 refused with MANIFEST_ALIGN_FAIL and MANIFEST_ERR=0x00030108 before OCA_BODY= or any downstream marker; MANIFEST_ALL_FAILED, FAIL verdict and halt. |`CHK-SMC-IMAGE`, `CHK-STIMULUS-OFFSET`, `CHK-STIMULUS-MANIFEST-READ-FAULT`, `CHK-MANIFEST-NO-READ`, `CHK-MANIFEST-SOURCE-ALIGN` |`SEP-ROM-MAN-070`, `SEP-ROM-RETRY-010`
 |`sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test` |+sep_smc_scratch8=00005000 (offset 0x5000 holds no OCAC in oca_smc_mem.hex); TEST_DEV OTP; straps all 0. |one attempt at 0x40065000 refused MANIFEST_ERR=0x00030002, then MANIFEST_ALL_FAILED and MANIFEST_BOOT_FAIL=0x00030002; cold_scratch[1] ERROR word; FAIL verdict; halt. |`CHK-INVALID-PUBLISHED-MANIFEST` |`SEP-ROM-SMC-010`, `SEP-ROM-RETRY-010`, `SEP-ROM-RETRY-050`
 |===
 
@@ -771,6 +775,9 @@ PASS record of its own.
 |`sep_boot_recovery_test` |`CHK-RECOVERY-NO-SPI` |The flash model served zero read transactions.
 |`sep_boot_recovery_test` |`CHK-RECOVERY-ORDER` |Console order is STRAPS_LO echo < BOOT_RECOVERY < WAIT_SMC_MANIFEST < SMC MANIFEST_SRC < MANIFEST_OK.
 |`sep_firmware_secondary_chiplet_bootcode_test` |`CHK-SECONDARY-BOOT` |Single accepted attempt at the published address in the required order, MANIFEST_OK < BL1_COPIED < BL1_JUMP= < FUSE_CHK, and fw_done with PASS.
+|`sep_firmware_secondary_manifest_offset_misaligned_test` |`CHK-STIMULUS-MANIFEST-READ-FAULT` |A one-shot SLVERR is armed on the 8-byte AXI beat containing the misaligned manifest source.
+|`sep_firmware_secondary_manifest_offset_misaligned_test` |`CHK-MANIFEST-NO-READ` |With the one-shot SLVERR armed on the containing beat, observing OCA_BOOT_ERR_MANIFEST_ALIGNMENT instead of OCA_BOOT_ERR_DMA proves the check ran before the first source read.
+|`sep_firmware_secondary_manifest_offset_misaligned_test` |`CHK-MANIFEST-SOURCE-ALIGN` |The packed image proves OCAC is present at the published 0x1004 offset; exactly one attempt reports MANIFEST_ALIGN_FAIL then OCA_BOOT_ERR_MANIFEST_ALIGNMENT before OCA_BODY=, followed by the generic terminal status, FAIL verdict and quiescence.
 |`sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test` |`CHK-INVALID-PUBLISHED-MANIFEST` |One attempt at the published address refused BAD_MAGIC with no body or downstream markers, MANIFEST_ERR= once, ordered src < err < ALL_FAILED < BOOT_FAIL, mapped ERROR word in cold_scratch[1], FAIL verdict.
 |===
 
@@ -1289,7 +1296,7 @@ PASS record of its own.
 [[sep-rom-vplan-primary-fail-backup]]
 ===== Primary refusal with backup boot
 
-*Tests:* 17.
+*Tests:* 18.
 
 *Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_primary_fail_backup_boot_base.py`.
 
@@ -1343,6 +1350,7 @@ PASS record of its own.
 |`sep_firmware_manifest_primary_missing_sepbl1_test` |Primary TOC BL1 entry type relabelled SEP_BL1 -> SEP_BL2 (only the type bytes change), slot re-sealed. DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim); the TB re-hashes/re-signs the mutated slot with the dev0 key |Primary verifies RSA and prints PAYLOAD_OK then NO_BL1_IMAGE, refused with OCA_BOOT_ERR_NO_BL1 (0x00030102) at placement stage without BL1_ADDR_RANGE/BL1_SIZE markers; backup boots. |`CHK-STIMULUS-MISSING-BL1` |`SEP-ROM-PL-020`, `SEP-ROM-MAN-060`, `SEP-ROM-RETRY-030`
 |`sep_firmware_primary_manifest_major_version_invalid_test` |Primary manifest_version_major 1 -> 2 (minor 0, manifest_length = body size, magic OCAC kept). DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim) |Primary refused with OCA_FAIL_FORMAT_VERSION_MISMATCH (0x00030004) before PUBK_SEL=; backup boots with BL1_COPIED/BL1_JUMP=. |`CHK-STIMULUS-VERSION`, `CHK-STIMULUS-SERVED` |`SEP-ROM-MAN-030`
 |`sep_firmware_primary_payload_invalid_payload_hash_length_test` |Primary payload_hashed_length -> 0 (cleartext payload), slot re-signed. DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim); the TB re-hashes/re-signs the mutated slot with the dev0 key |Primary verifies RSA and is refused with OCA_FAIL_PAYLOAD_TOC (0x00030015) at payload stage without PAYLOAD_LOC_FAIL/PAYLOAD_TOO_LARGE/FLASH_READ_OOB/DECRYPT_OK; backup boots. |`CHK-STIMULUS-HASHED-LEN`, `CHK-STIMULUS-SERVED` |`SEP-ROM-PL-040`
+|`sep_firmware_primary_payload_offset_misaligned_test` |Copy the unchanged sealed primary payload from 0x2000 to 0x2004 and update only the unsigned payload_offset from 0x1000 to 0x1004; assert payload bytes, manifest hash, signing key and seal remain valid. DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim). |Primary verifies RSA, then prints PAYLOAD_LOC_FAIL and is refused with OCA_FAIL_PAYLOAD_LOCATION (0x0003001b) before any SPI read starts at 0x2004; backup boots. |`CHK-STIMULUS-PAYLOAD-ALIGN`, `CHK-NO-READ`, `CHK-STIMULUS-SERVED` |`SEP-ROM-MAN-070`, `SEP-ROM-RETRY-030`
 |`sep_firmware_payload_overlaps_manifest_test` |Primary payload_offset (unsigned tail) set to a seeded-random 8-byte-aligned value in [MANIFEST_PEEK_MIN, manifest_length). DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim) |Primary verifies RSA, prints PAYLOAD_LOC_FAIL and is refused with OCA_FAIL_PAYLOAD_LOCATION (0x0003001b); no SPI read begins at the overlap address; backup boots. |`CHK-STIMULUS-PAYLOAD-OVERLAP`, `CHK-NO-READ`, `CHK-STIMULUS-SERVED` |`SEP-ROM-MAN-030`, `SEP-ROM-RETRY-030`
 |`sep_firmware_primary_payload_offset_into_backup_test` |Primary payload_offset (unsigned tail) rewritten so the payload resolves into the backup window; backup payload bytes asserted identical to the primary's. DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim) |Primary verifies RSA, prints PAYLOAD_LOC_FAIL and is refused with OCA_FAIL_PAYLOAD_LOCATION (0x0003001b) with no PAYLOAD_OK; the only read at the backup payload address follows the backup manifest read; backup boots. |`CHK-STIMULUS-PAYLOAD-INTO-BACKUP`, `CHK-NO-CROSS-SLOT-READ`, `CHK-STIMULUS-SERVED` |`SEP-ROM-RETRY-030`
 |`sep_firmware_cleartext_image_corrupt_hash_test` |Primary TOC entry 0 image digest set to 32 zero bytes; nothing re-sealed, so payload_hash is stale while manifest_hash and the signature still verify. DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim) |Primary verifies RSA and is refused with OCA_FAIL_PAYLOAD_HASH (0x00030012) at payload stage; backup boots. |`CHK-STIMULUS-IMAGE-HASH`, `CHK-STIMULUS-SERVED` |`SEP-ROM-PL-040`
@@ -1380,6 +1388,9 @@ PASS record of its own.
 |`sep_firmware_primary_manifest_major_version_invalid_test` |`CHK-STIMULUS-SERVED` |Asserts the flash served exactly major=2, minor=0, manifest_length=body size for the primary.
 |`sep_firmware_primary_payload_invalid_payload_hash_length_test` |`CHK-STIMULUS-HASHED-LEN` |Logged after asserting the zero length landed and the re-signed slot verifies.
 |`sep_firmware_primary_payload_invalid_payload_hash_length_test` |`CHK-STIMULUS-SERVED` |Asserts the flash served payload_hashed_length=0 for the primary.
+|`sep_firmware_primary_payload_offset_misaligned_test` |`CHK-STIMULUS-PAYLOAD-ALIGN` |Logged after asserting the source moved from an 8-byte-aligned address to 4 modulo 8, the copied payload bytes are unchanged, and the manifest/hash/key/seal remain valid.
+|`sep_firmware_primary_payload_offset_misaligned_test` |`CHK-NO-READ` |Asserts no SPI read began at the resolved misaligned payload source.
+|`sep_firmware_primary_payload_offset_misaligned_test` |`CHK-STIMULUS-SERVED` |Asserts the flash served the planted unsigned payload_offset bytes.
 |`sep_firmware_payload_overlaps_manifest_test` |`CHK-STIMULUS-PAYLOAD-OVERLAP` |Logged after asserting the seeded offset was written.
 |`sep_firmware_payload_overlaps_manifest_test` |`CHK-NO-READ` |Asserts no SPI read began at the overlapping payload address.
 |`sep_firmware_payload_overlaps_manifest_test` |`CHK-STIMULUS-SERVED` |Asserts the flash served the planted payload_offset bytes.

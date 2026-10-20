@@ -158,6 +158,13 @@ static void clear_sram_region(uint32_t addr, uint32_t size) {
     }
 }
 
+static bool storage_source_aligned(uint32_t addr) {
+    const bool aligned_first = (addr & (BOOT_STORAGE_ALIGNMENT - 1u)) == 0u;
+    const uint32_t addr_second = harden_u32(addr);
+    const bool aligned_second = (addr_second & (BOOT_STORAGE_ALIGNMENT - 1u)) == 0u;
+    return aligned_first && aligned_second;
+}
+
 // ---------------------------------------------------------------------------
 // Reporting
 // ---------------------------------------------------------------------------
@@ -240,6 +247,12 @@ static uint16_t status_for_result(oca_result_t r) {
 static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t region_base,
                                   int64_t region_limit) {
     uint8_t *const body = (uint8_t *)(uintptr_t)SRAM_BASE;
+
+    if (!storage_source_aligned(src_addr)) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_MANIFEST_LOAD_FAILED);
+        simputs("MANIFEST_ALIGN_FAIL\n");
+        return OCA_BOOT_ERR_MANIFEST_ALIGNMENT;
+    }
 
     // -- peek ---------------------------------------------------------------
     // The head has to be in RAM before the library sees it: on the OpenTitan
@@ -337,6 +350,11 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
         // A manifest with no payload cannot boot this device even though the
         // library considers it valid.
         return OCA_BOOT_ERR_NO_BL1;
+    }
+    if (!storage_source_aligned((uint32_t)payload_addr)) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH);
+        simputs("PAYLOAD_LOC_FAIL\n");
+        return OCA_BOOT_ERR_RESULT(OCA_FAIL_PAYLOAD_LOCATION);
     }
 
     // Stage the payload immediately after the body, 8-byte aligned.
