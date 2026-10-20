@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 VNCHIP LABS
 //
-// Measures watchdog core-reset gating and always-count priority through SEP_IN.
+// Measures watchdog core-reset gating, state retention and always-count priority through SEP_IN.
 
 class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
   `uvm_object_utils(smc_wdt_core_awake_gate_test_seq)
@@ -11,13 +11,14 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
   localparam string ChkRate = "CHK-WDT-AWAKE-RATE";
   localparam string ChkHeld = "CHK-WDT-AWAKE-HELD";
   localparam string ChkAlways = "CHK-WDT-AWAKE-ALWAYS";
+  localparam string ChkRetained = "CHK-WDT-AWAKE-RETAINED";
   localparam string ChkWindow = "CHK-WDT-AWAKE-WINDOW";
   localparam string ChkNonvac = "CHK-NONVAC";
   localparam int unsigned RateWindowCycles = 1024;
   localparam int unsigned HoldCycles = 8192;
   localparam int unsigned BoundaryPollCycles = 64;
-  // Nine keyed writes, six CTRL reads, eight COUNT reads and one CMP read.
-  localparam int unsigned WdtAccessesPerPass = 33;
+  // Nine keyed writes, six CTRL reads, eight COUNT reads and three CMP reads.
+  localparam int unsigned WdtAccessesPerPass = 35;
   localparam string ChkScoreboard = "CHK-WDT-AWAKE-SCOREBOARD";
   localparam int unsigned ResetApplyPolls = 64;
   localparam int unsigned ResetIntervalsPerPass = 2;
@@ -135,14 +136,14 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
   endtask
 
   task body();
-    bit [31:0] c0, c1, saved_compare, saved_count, saved_ctrl, restored_count;
+    bit [31:0] c0, c1, saved_compare, saved_count, saved_ctrl, restored_count, observed_compare;
     bit [63:0] timeout_word;
-    real t0, t1, rate, total, held, delta, margin, held_limit, always_limit;
+    real t0, t1, rate, total, held, delta, margin, held_limit, always_limit, estimated_advance;
     bit negative, predicate;
 
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkMemResp, ChkConfig, ChkReset, ChkRate, ChkHeld,
-                    ChkAlways, ChkWindow, ChkNonvac, ChkScoreboard, ChkSbMinAct});
+                    ChkAlways, ChkRetained, ChkWindow, ChkNonvac, ChkScoreboard, ChkSbMinAct});
     wait_fuse_sense_done();
     negative = env_cfg.wdt_coreawake_sequence_negative;
     core = loop_index % SmcWdtCores;
@@ -195,22 +196,24 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
       wdt_write(WDT_COUNT, CountStart);
       measure_interval(c0, c1, total, held);
       check_ctrl(mode == 0 ? AwakeConfig : AwakeConfig | AlwaysMask);
-      `uvm_info(get_type_name(), {
-                "OBS-BLOCKED CHK-WDT-AWAKE-RETAINED reason=COUNT retention across ",
-                "software core reset is not explicitly defined"
-                }, UVM_LOW)
-      `uvm_info(get_type_name(), $sformatf(
-                "OBS-WDT-AWAKE-COUNT seed=%0d core=%0d mode=%0d before=%0d after=%0d",
-                scenario_seed,
-                core,
-                mode,
-                c0,
-                c1
-                ), UVM_LOW)
       delta = real'(c1) - real'(c0);
       margin = rate * held / 4.0;
       held_limit = rate * (total - held) + margin;
       always_limit = rate * total - margin;
+      estimated_advance = rate * total + margin;
+      check_evidence(ChkWindow, "calibrated count stays below wrap",
+                     64'(real'(c0) + estimated_advance < real'(WDT_COUNT_WDOGCOUNT_MASK)), 64'h1,
+                     $sformatf("before=%0d estimated_advance=%0f", c0, estimated_advance));
+      if (real'(c0) + estimated_advance >= real'(WDT_COUNT_WDOGCOUNT_MASK)) begin
+        `uvm_fatal(get_type_name(), "Count measurement requires calibrated headroom below wrap")
+      end
+      if (mode == 0) begin
+        check_evidence(
+            ChkRetained, "COUNT across coreawake-only reset interval", 64'(c1 >= c0),
+            64'(!negative), $sformatf(
+            "seed=%0d core=%0d before=%0d after=%0d delta=%0f", scenario_seed, core, c0, c1, delta
+            ));
+      end
       check_evidence(ChkWindow, "integer count bounds are distinguishable",
                      64'(always_limit - held_limit >= 2.0), 64'h1, $sformatf(
                      "rate=%0f held=%0f low=%0f high=%0f separation=%0f",
@@ -239,6 +242,9 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
                      always_limit
                      ));
     end
+    csr_read(smc_wdt_addr(core, WDT_CMP), observed_compare, "CMP after core reset intervals");
+    check_evidence(ChkRetained, "CMP after both core reset intervals", observed_compare,
+                   negative ? CompareValue ^ 32'h1 : CompareValue);
     wdt_write(WDT_CTRL, saved_ctrl);
     check_ctrl(saved_ctrl);
     wdt_write(WDT_COUNT, saved_count);
@@ -247,6 +253,8 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
     check_reset_ctrl(reset_baseline);
     await_applied(1'b0);
     wdt_write(WDT_CMP, saved_compare);
+    csr_read(smc_wdt_addr(core, WDT_CMP), observed_compare, "CMP restored");
+    check_evidence(ChkConfig, "restored compare", observed_compare, saved_compare);
     for (int unsigned cycle = 0; cycle < BoundaryPollCycles; cycle++) begin
       if (scoreboard.compare_count(SmcFeatureWdtCsr) >= compare_before + WdtAccessesPerPass) break;
       wait_smc_cycles(1);

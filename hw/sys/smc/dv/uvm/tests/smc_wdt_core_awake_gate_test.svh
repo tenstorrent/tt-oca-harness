@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 VNCHIP LABS
 //
-// Runs watchdog count-gating and always-count priority checks across core reset.
+// Runs watchdog count-gating, state-retention and priority checks across core reset.
 
 class smc_wdt_core_awake_gate_test extends smc_base_test;
   `uvm_component_utils(smc_wdt_core_awake_gate_test)
