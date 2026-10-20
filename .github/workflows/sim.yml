@@ -67,7 +67,8 @@ jobs:
           python3 scripts/ci/smoke_scope.py --self-test
           python3 scripts/ci/smoke_scope.py --github-output --summary "$GITHUB_STEP_SUMMARY" \
             --view dtp:cocotb --view sep:cocotb --view smu:cocotb --view smc:cocotb \
-            --view dtp:uvm --view sep:uvm --view smu:uvm --view smc:uvm >> "$GITHUB_OUTPUT"
+            --view dtp:uvm --view sep:uvm --view smu:uvm --view smc:uvm --view aou:uvm \
+            >> "$GITHUB_OUTPUT"
 
   verilator-smoke:
     # The name is the row's check context: `verilator-smoke (<dut>)` for the
@@ -134,6 +135,10 @@ jobs:
             label: uvm
             runner: ubuntu-latest-16-cores
           - dut: smc
+            framework: uvm
+            label: uvm
+            runner: ubuntu-latest
+          - dut: aou
             framework: uvm
             label: uvm
             runner: ubuntu-latest

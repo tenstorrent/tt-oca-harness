@@ -535,7 +535,9 @@ that declares none the `1ns/1ps` the VCS build uses, and its `extra_args`
 pass `--x-initial-edge`, so a reset asserted at time 0 makes the X-to-0 edge a
 four-state simulator sees. Each test runs the model with
 `+verilator+seed+<seed>` and `+ntb_random_seed=<seed>`, and the Verilator
-build dumps no waves. A `--cov` build adds a scope file that keeps the UVM
+build dumps no waves. A test that calls `randomize()` needs an SMT solver at
+run time: the model starts `z3` from `PATH` unless `VERILATOR_SOLVER` names
+another solver command. A `--cov` build adds a scope file that keeps the UVM
 library and Verilator's `std` package out of the coverage database. Tests are
 selected with `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
 the `uvm-log` parse policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium
@@ -3334,7 +3336,8 @@ change can never alter the pull-request gate:
 |`smoke`
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
 |`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, once
-under cocotb and once under `--framework uvm`; 60-minute budget per job.
+under cocotb and once under `--framework uvm`, and for the UVM-only `aou`
+under `--framework uvm`; 60-minute budget per job.
 The job names `verilator-smoke (<dut>)` and `verilator-smoke (<dut> uvm)`
 are the stable check contexts. Every job runs for every change, so the
 contexts report; on a pull request a job prints one line and skips the
@@ -3355,17 +3358,17 @@ so it is not a tier and no pull request runs it.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the IP-level
-benches' `all` groups (the three `cross_trigger` benches, the four UART-family
-benches, `system_timer_octs`, `scrambler` and `axi_lite_to_ahb`). No coverage.
-Nightly is not a merge gate; a red nightly run is a triage signal.
+DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, AoU `smoke`, and the
+IP-level benches' `all` groups (the three `cross_trigger` benches, the four
+UART-family benches, `system_timer_octs`, `scrambler` and `axi_lite_to_ahb`).
+No coverage. Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
 |The regression the dashboard publishes, one random seed per test on every
 row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
-and the IP-level benches' `all` groups. A second SMC row
+AoU `smoke`, and the IP-level benches' `all` groups. A second SMC row
 (`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
 `expect_fail` (<<runner-expected-failures>>), so the row is green while the
 filed defects stand and red the week one is fixed. A second `axi_lite_to_ahb`
@@ -3460,21 +3463,24 @@ symlink.
 
 |CI-run
 |`dtp`, `sep`, `smu`, `smc` + Verilator, under cocotb and under
-`--framework uvm` (smoke only); the IP-level benches
+`--framework uvm` (smoke only); `aou` + Verilator; the IP-level benches
 `cross_trigger_port`, `cross_trigger_matrix`, `cross_trigger_network`,
 `uart_16550`, `log_engine`, `uart_log_engine_wrap`, `uart_wrap`,
 `system_timer_octs`, `scrambler`, `axi_lite_to_ahb` + Verilator (regression
 tiers only)
 |Hosted `sim` and `regress` matrices. Smoke runs on every pull request and
 push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `cpu_stub` / `hosted`) under cocotb. Main
+regression group (`all` / `cpu_stub` / `hosted`) under cocotb. AoU runs
+`smoke` in every tier, on its SV-UVM view: its larger groups hold leaves that
+fail on filed DUT bugs, which the bench marks as expected failures only in its
+own `expected_fail.yaml`, and the runner does not read that file. Main
 protection requires the four cocotb smoke contexts, `verilator-smoke (<dut>)`;
 a failed, cancelled, or missing one blocks merge. The
 `verilator-smoke (<dut> uvm)` contexts report without blocking, and the
 IP-level benches are enrolled in the regression tiers only.
 
 |Configured, not CI-run
-|`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
+|`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `aou` + VCS; `aou_reg`, `aou_l3_unit`, `aou_axi_selftest` + VCS or Verilator; `smu_wrapper` cocotb flow
 |Valid configs that hosted CI does not run; VCS needs a license. A pair
 joins the workflow matrix only with a qualifying run at head.
 
@@ -3494,11 +3500,11 @@ on a single-node Slurm it installs (<<runner-cluster-dispatch>>).
 === Framework-aware CI matrices
 
 The regression tiers omit `--framework`, so every DUT runs its default
-framework (cocotb) there, and adding a second framework to a DUT changes
-nothing for those jobs; each smoke row names its framework. An SV-UVM job
-selects a group under the UVM view, and the group runs whatever subset of
-its members is bound to `uvm`, whether the rest declare `uvm = false` or
-carry no `uvm` entry:
+framework there (cocotb, or SV-UVM for the UVM-only `aou`), and adding a
+second framework to a DUT changes nothing for those jobs; each smoke row
+names its framework. An SV-UVM job selects a group under the UVM view, and
+the group runs whatever subset of its members is bound to `uvm`, whether
+the rest declare `uvm = false` or carry no `uvm` entry:
 
 [source,bash]
 ----
