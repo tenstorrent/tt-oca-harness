@@ -4081,6 +4081,10 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
+*Known limitation*: CHK-ADAPTER-CLEAR-HOLD (KMAC, OTBN RND and OTBN URND) and CHK-ADAPTER-CLEAR-RND fail on this DUT in the trials with the clear 1 to 3 clocks after an acknowledge. The crypto post-mux adapter forces `edn_bus` and `edn_fips` to 0 from the first clock of the clear, also for a word it acknowledged, so the client takes 0; OTBN RND sets `rnd_fips_chk_fail` (`trng.adoc`, Reset and Recovery Boundaries; OpenTitan `edn/README.md` line 45). The checks stay graded, and every other check of the leaf passes.
+
+*Issue*: #3252
+
 *Scope limit*: The leaf does not claim the word order inside an OTBN RND value (sets are compared), the Key Manager stream (idle, with the Key Manager in reset), or the isolation phase before the reset: the clear window is the window of `trng_reset_active_probe_o`. `sep_trng_reset_recovery_test` keeps the reset with the internal source, the isolate and clear synchronizer timing, and the survival of a non-reset select across a TRNG reset. The source reset of the driver at the rise of the probe is the source's own reset together with the sink reset; the leaf does not claim a source that drops `tvalid` of a live beat. The adapter-clear leg grades the word that the client takes on its handshake clock; it does not grade a change of `data_o` on the clock after the handshake, the `edn_fips` bit of the OTBN synchronizers (OTBN RND grades it through `ERR_BITS`), the AES client (not driven in that leg), or the clear against an engine software reset (`endpoint_cancel_i`).
 
 '''''
