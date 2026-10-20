@@ -55,6 +55,14 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-SYSIF-NO-OUTBOUND-PATH
                     every access of the SMN inbound master answers DECERR with
                     one B or its R beats, and none reaches PR-OUT.
+  CHK-ATTR-USER     AxUSER[3:0] of every LSU and DMA request at PR-OUT is
+                    known, is not OTHERS (0) and is the same on every request
+                    of the leaf, although the LSU alternates two distinct
+                    non-zero values and the DMA issues OTHERS: the SMU path
+                    sets SEP's ID. A request that breaks the first two counts
+                    as altered in the check of its session, as does an AxPROT
+                    other than bits 0 and 2 as issued with NS 1. The number is
+                    logged (OBS-SAT-SRC-ID), with AxUSER[11:4].
   CHK-NONVAC        the ordered fence of the phases.
   CHK-TIMEOUT-PATHS the bound of each wait.
 """
@@ -68,6 +76,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
+from env.sep_fabric_common import SepSrcIdGrade, draw_src_users
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_outbound_contention_seq import (
@@ -86,7 +95,7 @@ from seq_lib.sep_outbound_contention_seq import (
     PinWatch,
     ResponderDelay,
     Txn,
-    out_attr,
+    out_prot,
     port_view,
     run_all,
 )
@@ -132,6 +141,7 @@ CHECKS = (
     "CHK-SAT-B-COUNT",
     "CHK-SAT-R-COUNT",
     "CHK-SYSIF-NO-OUTBOUND-PATH",
+    "CHK-ATTR-USER",
     "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
@@ -143,8 +153,9 @@ class _Cfg:
     def __init__(self, seed: int) -> None:
         rng = SepSeededRng(seed)
         self.seed = seed
-        self.lsu_user = rng.randrange(1, 16)
-        self.sys_user = rng.choice([u for u in range(1, 16) if u != self.lsu_user])
+        self.lsu_users = draw_src_users(rng)
+        lsu_ids = {u & 0xF for u in self.lsu_users}
+        self.sys_user = rng.choice([u for u in range(1, 16) if u not in lsu_ids])
         self.delay_max = rng.randrange(8, 33)
         self.p_stall = (rng.randrange(20, 51), rng.randrange(20, 51), rng.randrange(20, 51))
         self.p_hold = rng.randrange(3, 11)
@@ -154,7 +165,8 @@ class _Cfg:
     def draw_lines(self) -> list[str]:
         return [
             f"responder_depth={self.depth} (+{DEPTH_PLUSARG}) hold_demand={LSU_ISSUE + DMA_WORDS}",
-            f"lsu_user={self.lsu_user} lsu_prot=0b{LSU_PROT:03b}",
+            f"lsu_users=0x{self.lsu_users[0]:03x},0x{self.lsu_users[1]:03x} "
+            f"lsu_prot=0b{LSU_PROT:03b}",
             f"sysif_user={self.sys_user} sysif_prot=0b{SYS_PROT:03b}",
             f"one_channel_delay_cycles=1..{self.delay_max}",
             f"all_channels ready_stall_percent aw={self.p_stall[0]} w={self.p_stall[1]} "
@@ -180,13 +192,17 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         wdata = b""
         if op == "wr":
             wdata = b"".join(self.rng.getrandbits(32).to_bytes(4, "little") for _ in range(2))
+        addr = self.layout.alloc(init, 8)
+        user = c.lsu_users[len(self.lsu_issued) % 2] if init == "lsu" else c.sys_user
+        if init == "lsu":
+            self.lsu_issued[addr] = user
         t = Txn(
             init=init,
             op=op,
-            addr=self.layout.alloc(init, 8),
+            addr=addr,
             beats=1,
             axi_id=axi_id,
-            user=c.lsu_user if init == "lsu" else c.sys_user,
+            user=user,
             prot=LSU_PROT if init == "lsu" else SYS_PROT,
             wdata=wdata,
             name=f"{init}_{op}_{self.n_made}",
@@ -210,6 +226,8 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
 
     def _note_issue(self, init: str, op: str, addrs: list[int]) -> None:
         self.issued_all.setdefault((init, op), []).extend(addrs)
+        if init == "dma":
+            self.dma_addrs.update(addrs)
         sess = self.cur
         if sess is not None:
             sess.issued.setdefault((init, op), []).extend(addrs)
@@ -509,8 +527,13 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self.cur = None
         return done, total, max(0.0, (t_last - t_rel) / 1000.0)
 
-    def _expect_attr(self) -> dict:
-        return {"lsu": out_attr(LSU_PROT), "dma": out_attr(DMA_PROT)}
+    def _expect_prot(self) -> dict:
+        return {"lsu": out_prot(LSU_PROT), "dma": out_prot(DMA_PROT)}
+
+    def _issued_user(self) -> dict:
+        """AxUSER issued per address: the LSU draws, and OTHERS (0) for the DMA,
+        which drives OTHERS (hw/sys/sep/doc/fabric.adoc, Transaction Routing)."""
+        return {**{a: 0 for a in self.dma_addrs}, **self.lsu_issued}
 
     def _check_session_requests(self, s, chk: str) -> None:
         beats = self.out.beats[s.meter.out0 :]
@@ -524,7 +547,9 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 "CHK-SYSIF-NO-OUTBOUND-PATH", f"session={s.name} sysif requests at PR-OUT={reached}"
             )
         issued = {k: v for k, v in s.issued.items() if k[0] != "sysif"}
-        alt, miss = altered_requests(self.layout, beats, issued, self._expect_attr())
+        alt, miss = altered_requests(
+            self.layout, beats, issued, self._expect_prot(), self.src_grade, self._issued_user()
+        )
         if alt or miss:
             self._fail(chk, f"session={s.name} altered={alt} lost={miss} at PR-OUT")
 
@@ -672,7 +697,12 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         n_out = len(self.out.beats)
         issued_before = {k: list(v) for k, v in s.issued.items()}
         alt_before, _ = altered_requests(
-            self.layout, self.out.beats[s.meter.out0 : n_out], issued_before, self._expect_attr()
+            self.layout,
+            self.out.beats[s.meter.out0 : n_out],
+            issued_before,
+            self._expect_prot(),
+            SepSrcIdGrade("SAT-HELD"),
+            self._issued_user(),
         )
         rows = []
         if lsu_w:
@@ -919,12 +949,29 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             f"r_at_master={wm['r']} rlast={wm['rlast']} reads={sys_r}",
         )
 
+    def _chk_attr_user(self) -> None:
+        """CHK-ATTR-USER over every LSU and DMA request the sessions graded."""
+        g = self.src_grade
+        why = g.finish(min_nonzero_issued=2)
+        if why is not None:
+            self._fail("CHK-ATTR-USER", why)
+        self.logger.info("%s", g.obs_line())
+        c = self.c
+        self._emit(
+            "CHK-ATTR-USER",
+            f"lsu_users_issued=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} "
+            f"dma_user_issued=0 {g.summary()}",
+        )
+
     # ---- scenario --------------------------------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.c = c = _Cfg(seed)
         self.rng = SepSeededRng(seed ^ 0x0C0FFEE)
         self.n_made = self.n_jobs = 0
+        self.lsu_issued: dict[int, int] = {}
+        self.dma_addrs: set[int] = set()
+        self.src_grade = SepSrcIdGrade("SAT")
         self.sys_checked: set[str] = set()
         self.cur = None
         self.base: dict = {}
@@ -958,6 +1005,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         await self._s10_both()
         await self._s11_post()
         await self._final_accounting()
+        self._chk_attr_user()
 
         await self.bench_stop()
         self._check_fence(FENCE)

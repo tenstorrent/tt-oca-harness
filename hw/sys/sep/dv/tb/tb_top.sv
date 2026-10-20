@@ -1860,6 +1860,7 @@ module sep_uvm_top
     assign pr_out_wdata_o  = smn_outbound_req_w.w.data;
     assign pr_out_wstrb_o  = smn_outbound_req_w.w.strb;
     assign pr_out_wlast_o  = smn_outbound_req_w.w.last;
+    assign pr_out_wuser_o  = smn_outbound_req_w.w.user;
     // PR-OUT-RSP: the responses on smn_outbound_axi_resp_i.
     assign pr_out_bvalid_o = smn_outbound_resp_w.b_valid;
     assign pr_out_bready_o = smn_outbound_req_w.b_ready;

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The secure DMA reaches its fabric endpoints, passes the local alias remap, leaves AxUSER at 0 and reaches no not-connected target.
+"""The secure DMA reaches its fabric endpoints, passes the local alias remap, carries the source ID of its outbound path and reaches no not-connected target.
 
 Firmware ``dma_endpoint_matrix_test`` programs the DMA for every leg and prints
 what it read back (``R`` records); ``M G`` / ``M C`` lines announce each
@@ -18,10 +18,12 @@ model of the staged data and the fabric taps:
                   word reaches PR-EXT at 0x3FFF_FFF8, the port answers DECERR and
                   the DMA reports a bus error.
 * CHK-DMA-USER    the source-ID stack over the SMU window word refuses the DMA
-                  write only at SEP's source ID with NS 1, and its permission
-                  flip admits it; every DMA beat on PR-OUT carries the routed
-                  address and the source ID of its path, OTHERS (0) on the AP
-                  path and SEP's ID on the SMU path, as does the CPU store.
+                  write only at a non-zero source ID with NS 1, and its
+                  permission flip admits it; every DMA beat on PR-OUT carries
+                  the routed address and the source ID of its path: OTHERS (0)
+                  on the AP path; on the SMU path a value that is not OTHERS,
+                  the same on every DMA beat and on the CPU store (SEP's ID,
+                  which has no stated number; logged as OBS-CPU-SRC-ID).
 * CHK-DMA-EP-REG  SCRATCH[0], SPI CSID and SEP_SW_DEBUG at a fixed address in
                   both directions; the SW_RESET_N read.
 * CHK-DMA-EP-FILT the DMA read of inbound entry 0 FILTER_CONFIG.
@@ -54,7 +56,7 @@ from cocotb.utils import get_sim_time
 from env.sep_bh_smc import aperture_plusargs
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
-from env.sep_fabric_common import RESP_DECERR, outbound_user
+from env.sep_fabric_common import RESP_DECERR, SepSrcIdGrade, outbound_user
 from env.sep_fabric_tap import (
     AXPROT_DMA,
     SepFabricTap,
@@ -721,14 +723,17 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
 
         _, r, text = self._one("STACK")
-        sep_src = outbound_user("smu") << F_SRC_ID_LSB
-        stack = [(rw_en | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(15)]
-        stack += [(rw_en | ns | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(14)]
+        # Refused only at a non-zero source ID with NS 1, the attributes the
+        # SMU path sets; SEP's ID has no stated number, so the stack covers
+        # every non-zero ID. OTHERS (0) or NS 0 reaches an admitting entry.
         ro_en = F_READ_ALLOWED | F_ENTRY_ENABLED
-        stack += [(ro_en | ns | sep_src, smu, smu + 7)]
+        stack = [(rw_en | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(15)]
+        stack += [(ro_en | ns | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(15)]
         stack += [(rw_en, smu, smu + 7), (rw_en | ns, smu, smu + 7)]
         exp1 = self._filter_sum(stack)
-        exp2 = self._filter_sum([(rw_en | ns | sep_src, smu, smu + 7)])
+        exp2 = self._filter_sum(
+            [(rw_en | ns | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(15)]
+        )
         self.logger.info(
             "OBS-FILTER-RANGE: stack START/END read-back differences=%d, after the flip=%d (logged)",
             r["rng1_diff"],
@@ -750,7 +755,12 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         self._recovery_after("stack")
 
-        # PR-OUT: every DMA beat carries the source ID of its path and the routed address.
+        # PR-OUT: every DMA beat carries the source ID of its path and the
+        # routed address. The DMA master drives OTHERS (0) (fabric.adoc,
+        # Transaction Routing); the AP path keeps OTHERS in AxUSER[3:0], and the
+        # SMU path sets SEP's ID, which has no stated number: it is graded as
+        # not OTHERS and one value on every SMU-path beat (SepSrcIdGrade).
+        grade = SepSrcIdGrade("CPU")
         legs = (
             ("out_ap", "ap", [self.ep.ap_out, self.ep.ap_out + 4]),
             ("out_smu", "smu", [smu, smu + 4]),
@@ -758,33 +768,40 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         for leg, path, exp_addrs in legs:
             leg_i = self._leg_index(leg)
-            want = outbound_user(path)
             aws = [b for b in self._beats("PR-OUT", leg_i, "aw") if b.addr != STDOUT]
-            bad = [b.fmt() for b in aws if b.user != want]
+            if path == "smu":
+                bad = [f"{b.fmt()} ({why})" for b in aws if (why := grade.note(b.user, 0))]
+                want = "not OTHERS"
+            else:
+                want = f"[3:0]={outbound_user(path)}"
+                bad = [b.fmt() for b in aws if b.user is None or b.user & SRC_ID != 0]
             addrs = [b.addr for b in aws]
             assert not bad and addrs == exp_addrs, (
                 f"CHK-DMA-USER FAIL: PR-OUT in {leg}: beats {[b.fmt() for b in aws]}; expected "
-                f"AxUSER {want} at {[hex(a) for a in exp_addrs]}"
+                f"AxUSER {want} at {[hex(a) for a in exp_addrs]}; bad {bad}"
             )
             self.logger.info(
-                "CHK-DMA-USER PASS: probe=PR-OUT leg=%s path=%s beats=%d user=%d addr=%s",
+                "CHK-DMA-USER PASS: probe=PR-OUT leg=%s path=%s beats=%d user=%s addr=%s",
                 leg,
                 path,
                 len(aws),
-                want,
+                ",".join(f"0x{b.user:x}" for b in aws),
                 ",".join(f"0x{a:x}" for a in addrs),
             )
         leg_i = self._leg_index("out_cpu")
         cpu = [b for b in self._beats("PR-OUT", leg_i, "aw") if b.addr == smu]
         assert cpu, "CHK-DMA-USER FAIL: the CPU store to the SMU window word shows no PR-OUT beat"
-        cpu_ids = [None if b.user is None else b.user & SRC_ID for b in cpu]
-        assert all(i == outbound_user("smu") for i in cpu_ids), (
-            f"CHK-DMA-USER FAIL: the CPU store to the SMU window carries source ID {cpu_ids}; "
-            f"expected SEP's ID {outbound_user('smu')}"
+        bad = [f"{b.fmt()} ({why})" for b in cpu if (why := grade.note(b.user))]
+        assert not bad, (
+            f"CHK-DMA-USER FAIL: the CPU store to the SMU window carries {bad}; expected SEP's ID, "
+            "not OTHERS (0)"
         )
-        self.logger.info(
-            "OBS-CPU-SRC-ID: cpu_store_to_smu user=%s (value logged)", [b.user for b in cpu]
+        why = grade.finish(min_nonzero_issued=0)
+        assert why is None, (
+            f"CHK-DMA-USER FAIL: SMU-path source ID over the DMA beats and the CPU store: {why}"
         )
+        self.logger.info("%s", grade.obs_line())
+        self.logger.info("CHK-DMA-USER PASS: probe=PR-OUT path=smu src_id %s", grade.summary())
         self.logger.info(
             "CHK-DMA-USER PASS: dst=smu stack_bus_error=%d dma_status=0x%08x error_code=0x%08x "
             "control_complete=1 control_status=0x%08x",

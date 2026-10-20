@@ -334,7 +334,8 @@ Observation probe groups:
   VALID, READY and request fields and, where named, the W beat
   (`env/sep_fabric_tap.py` records the handshakes):
 ** PR-OUT (`pr_out_*`): `smn_outbound_axi_req_o` (the net `smn_outbound_req_w`):
-   address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxSIZE, AxBURST and W beats.
+   address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxSIZE, AxBURST and W beats
+   (data, strobe, last and W user).
    Owners: `sep_fabric_outbound_route_attr_test`,
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`,
@@ -343,7 +344,8 @@ Observation probe groups:
    `last`, `data`) on `smn_outbound_axi_resp_i`, with READY from the request net.
    Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST, CHK-DMA-HOST-HOLD),
    `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-STALL-REAL).
-** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, same fields. Owners:
+** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, the same AW and AR fields
+   and W beats of data, strobe and last. Owners:
    `sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test`.
 ** PR-EXT (`pr_ext_*`): the AXI Extension port, wrapper net
    `u_dut.axi_extension_axi_req`, same fields; and its replies (monitor

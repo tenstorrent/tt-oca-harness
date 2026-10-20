@@ -21,8 +21,9 @@ page, so a PR-OUT request is attributed to its initiator by address; the
 responder answers in request order, so a PR-OUT-RSP beat is attributed to the
 initiator of the request it answers by order. The responder returns ``{~a, a}``
 as read data (``smn_outbound_rd_addr_data_i``), so every read carries data of
-its own address. The seed draws the delay profile, the AxUSER of the LSU and of
-the System Interface, the transaction counts, the start offsets, the read and
+its own address. The seed draws the delay profile, the two AxUSER values of the
+LSU (12 bits, ``[11:4]`` non-zero, ``[3:0]`` non-zero and distinct; the LSU
+alternates them), the AxUSER of the System Interface, the transaction counts, the start offsets, the read and
 write mix and the burst length. Each concurrent phase opens with the hold up
 for a bounded lead (the start-offset range plus the DMA programming latency),
 so the requests of that phase are outstanding at the port together; the
@@ -58,9 +59,13 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     exactly one B per accepted write, exactly its beats per
                     accepted read, and none after the idle window.
   CHK-RESP-ROUTE    every response reaches the initiator that issued it.
-  CHK-ATTR-USER, CHK-ATTR-PROT
-                    AxUSER and AxPROT of every PR-OUT request per initiator, as
-                    the SMU path sets them: SEP's source ID and NS 1 for both.
+  CHK-ATTR-USER     AxUSER[3:0] of every LSU and DMA request at PR-OUT is
+                    known, is not OTHERS (0) and is the same on every request,
+                    although the LSU issues two distinct non-zero values and
+                    the DMA issues OTHERS: the SMU path sets SEP's ID. The
+                    number is logged (OBS-ATTR-SRC-ID), with AxUSER[11:4].
+  CHK-ATTR-PROT     AxPROT of every LSU and DMA request at PR-OUT: bits 0
+                    and 2 as issued, NS 1 (the inverse of address bit 55).
   CHK-ATTR-ID-DISTINCT
                     at least one LSU request and one DMA request outstanding
                     at the port at once, and no such pair shares an ID.
@@ -72,6 +77,7 @@ from __future__ import annotations
 
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_fabric_common import SepSrcIdGrade, draw_src_users
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_outbound_contention_seq import (
@@ -92,7 +98,7 @@ from seq_lib.sep_outbound_contention_seq import (
     Txn,
     id_overlap,
     max_outstanding,
-    out_attr,
+    out_prot,
     port_view,
     r_word,
     run_all,
@@ -141,8 +147,9 @@ class _Cfg:
     def __init__(self, seed: int) -> None:
         rng = SepSeededRng(seed)
         self.seed = seed
-        self.lsu_user = rng.randrange(1, 16)
-        self.sys_user = rng.choice([u for u in range(1, 16) if u != self.lsu_user])
+        self.lsu_users = draw_src_users(rng)
+        lsu_ids = {u & 0xF for u in self.lsu_users}
+        self.sys_user = rng.choice([u for u in range(1, 16) if u not in lsu_ids])
         self.p_stall = (rng.randrange(0, 41), rng.randrange(0, 41), rng.randrange(0, 41))
         self.p_hold = rng.randrange(0, 9)
         self.hold_max = rng.randrange(2, 25)
@@ -165,7 +172,8 @@ class _Cfg:
 
     def draw_lines(self) -> list[str]:
         return [
-            f"lsu_user={self.lsu_user} lsu_prot=0b{LSU_PROT:03b}",
+            f"lsu_users=0x{self.lsu_users[0]:03x},0x{self.lsu_users[1]:03x} "
+            f"lsu_prot=0b{LSU_PROT:03b}",
             f"sysif_user={self.sys_user} sysif_prot=0b{SYS_PROT:03b}",
             f"ready_stall_percent aw={self.p_stall[0]} w={self.p_stall[1]} ar={self.p_stall[2]}",
             f"resp_hold_percent={self.p_hold} hold_max_clocks={self.hold_max}",
@@ -208,13 +216,17 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         wdata = b""
         if op == "wr":
             wdata = b"".join(w.to_bytes(4, "little") for w in self._words(2 * beats))
+        addr = self.layout.alloc(init, 8 * beats)
+        user = c.lsu_users[len(self.lsu_issued) % 2] if init == "lsu" else c.sys_user
+        if init == "lsu":
+            self.lsu_issued[addr] = user
         return Txn(
             init=init,
             op=op,
-            addr=self.layout.alloc(init, 8 * beats),
+            addr=addr,
             beats=beats,
             axi_id=axi_id,
-            user=c.lsu_user if init == "lsu" else c.sys_user,
+            user=user,
             prot=LSU_PROT if init == "lsu" else SYS_PROT,
             wdata=wdata,
             name=f"{init}_{op}_{self.n_made}",
@@ -774,48 +786,57 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
 
         whole = port_view(self.layout, self.out.since(self.m0[0]), self.rsp.since(self.m0[1]))
         reqs = [r for r in whole.reqs if r.init is not None]
-        exp = {
-            "lsu": out_attr(LSU_PROT),
-            "dma": out_attr(DMA_PROT),
-            "sysif": (c.sys_user, SYS_PROT),
-        }
+        exp_p = {"lsu": out_prot(LSU_PROT), "dma": out_prot(DMA_PROT), "sysif": SYS_PROT}
         seen_u = {i: [] for i in INITS}
         seen_p = {i: [] for i in INITS}
-        cross_u = cross_p = 0
+        cross_p = 0
+        # The SMU path sets SEP's ID, whose number is not stated: the grade is
+        # not OTHERS, one value on every request, and a replacement visible
+        # over the two LSU values and the DMA's OTHERS (SepSrcIdGrade).
+        grade = SepSrcIdGrade("ATTR")
         for r in reqs:
             if r.unknown:
                 self._fail("CHK-ATTR-USER", f"X/Z on a PR-OUT request addr=0x{r.addr or 0:x}")
             seen_u[r.init].append(r.user)
             seen_p[r.init].append(r.prot)
-            eu, ep = exp[r.init]
-            others_u = {exp[i][0] for i in INITS if i != r.init}
-            others_p = {exp[i][1] for i in INITS if i != r.init}
-            if r.user != eu and r.user in others_u:
-                cross_u += 1
+            ep = exp_p[r.init]
+            others_p = {exp_p[i] for i in INITS if i != r.init}
             if r.prot != ep and r.prot in others_p:
                 cross_p += 1
+            if r.init in ("lsu", "dma"):
+                # The DMA master drives OTHERS (hw/sys/sep/doc/fabric.adoc,
+                # Transaction Routing).
+                issued = self.lsu_issued.get(r.addr) if r.init == "lsu" else 0
+                why = grade.note(r.user, issued)
+                if why is not None:
+                    self._fail(
+                        "CHK-ATTR-USER",
+                        f"init={r.init} addr=0x{r.addr or 0:x} user_seen={r.user} "
+                        f"user_issued={issued}: {why}",
+                    )
         for init in ("lsu", "dma"):
-            if any(u != exp[init][0] for u in seen_u[init]):
-                self._fail(
-                    "CHK-ATTR-USER",
-                    f"init={init} user_seen={_setfmt(seen_u[init])} want={exp[init][0]}",
-                )
-            if any(p != exp[init][1] for p in seen_p[init]):
+            if any(p != exp_p[init] for p in seen_p[init]):
                 self._fail(
                     "CHK-ATTR-PROT",
-                    f"init={init} prot_seen={_setfmt(seen_p[init])} want=0b{exp[init][1]:03b}",
+                    f"init={init} prot_seen={_setfmt(seen_p[init])} want=0b{exp_p[init]:03b}",
                 )
         for init in ("lsu", "dma"):
             if not seen_u[init]:
                 self._fail("CHK-ATTR-USER", f"init={init} no request at PR-OUT")
-        if cross_u:
-            self._fail("CHK-ATTR-USER", f"crossings={cross_u}")
+        why = grade.finish(min_nonzero_issued=2)
+        if why is not None:
+            self._fail(
+                "CHK-ATTR-USER",
+                f"{why}; lsu_user_seen={_setfmt(seen_u['lsu'])} "
+                f"dma_user_seen={_setfmt(seen_u['dma'])}",
+            )
         if cross_p:
             self._fail("CHK-ATTR-PROT", f"crossings={cross_p}")
+        self.logger.info("%s", grade.obs_line())
         self._emit(
             "CHK-ATTR-USER",
-            f"lsu_user_issued={c.lsu_user} lsu_user_seen={_setfmt(seen_u['lsu'])} "
-            f"dma_user_seen={_setfmt(seen_u['dma'])} crossings={cross_u}",
+            f"lsu_users_issued=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} "
+            f"dma_user_issued=0 {grade.summary()}",
         )
 
         def pf(vals):
@@ -924,6 +945,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self.c = c = _Cfg(seed)
         self.rng = SepSeededRng(seed ^ 0x0C0FFEE)
         self.n_made = self.n_jobs = 0
+        self.lsu_issued: dict[int, int] = {}
         self.max_lat = 0.0
         self.sys_neg = {"issued": 0, "decerr": 0, "writes": 0, "reads": 0, "beats": 0}
         self.tot = {i: {} for i in INITS}

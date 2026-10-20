@@ -6,12 +6,14 @@ RANDCFG. Real PROD fuse sense of a pinned image (PROD, SEC_DIS 0, fixed
 ``SIP_DIS`` and ``SYS_DIS`` whose DBG_1 bit 0 is clear), so the inbound filter
 is active, then one DEMOTE_1 write for the no-bypass leg. The seed draws the AP
 region ``i``, the STEE region ``j``, their offsets (bits 54:19, not the region
-identity), the AxPROT values, the direction order and the LSU AxUSER[3:0] ``u``
-(1 to 15 except SEP's ID, so the SMU path visibly replaces it). Offset bit 55 is
-fixed: 1 for AP, 0 for STEE; a second STEE pass sets it in the same region.
-Alias region 0 maps one SMU page to the same page with address bit 55 set. The
-SMU aperture stays at its reset pair (``0x8000_0000``, size ``0x4000_0000``);
-the test never writes it.
+identity), the AxPROT values, the direction order, the offset of the
+``>= 4 GiB`` alias (bits 54:32) and two LSU AxUSER values (12 bits, ``[11:4]``
+non-zero, ``[3:0]`` non-zero and distinct), which the LSU alternates. Offset
+bit 55 is fixed: 1 for AP, 0 for STEE; a second pass of each class flips it in
+the same region. Alias region 0 maps one SMU page to the same page with address
+bit 55 set, then to a page at or above 4 GiB with bit 55 clear. A third STEE
+pass clears the region valid bit. The SMU aperture stays at its reset pair
+(``0x8000_0000``, size ``0x4000_0000``); the test never writes it.
 
 Contract (``hw/sys/sep/doc/fabric.adoc``, "Fabric Topology", "Transaction
 Routing" and its ``sep-outbound-attributes-table``, "Filtering and Protection";
@@ -20,10 +22,14 @@ Routing" and its ``sep-outbound-attributes-table``, "Filtering and Protection";
 ``hw/ip/axi_alias_remap/regs/gen/adoc/alias_remap.adoc``; ``hw/ip/axi_filter/doc/index.adoc``,
 "Match, Then Permit", "Blocked Transactions"; ``hw/sys/smc/doc/assets/smc-traffic-filters.svg``):
 
-* the SMU aperture and the AP and STEE regions leave on ``smn_outbound_axi_req_o``
-  through the outbound filter; a local scratch or system-CSR request does not;
+* the SMU aperture, an address at or above 4 GiB and the AP and STEE regions
+  leave on ``smn_outbound_axi_req_o`` through the outbound filter; a local
+  scratch or system-CSR request does not;
 * the AP and STEE remaps rewrite the address to ``{O[55:19], a[18:0]}`` and set
-  the source ID in AxUSER to OTHERS (zero); the SMU path sets it to SEP's ID;
+  the source ID in AxUSER[3:0] to OTHERS (zero); a STEE region with its valid
+  bit clear passes the address unchanged (``output_remap.adoc``, ``valid``) and
+  still leaves through the STEE remapper with OTHERS; the SMU path sets SEP's
+  ID, which no specification gives as a number;
 * AxPROT[1] (NS) leaves as 1 on the AP path and as the inverse of bit 55 of the
   outgoing address on the SMU and STEE paths; AxPROT bits 0 and 2 and address
   bit 55 pass unchanged;
@@ -56,13 +62,22 @@ Checkers:
                     seeded value staged in the register field.
   CHK-OUT-CAPTURE   each PR-OUT capture carries the predicted address, the
                     issued AxPROT with bit 1 replaced by the NS of its path,
-                    AxUSER 0 for AP and STEE and SEP's ID for SMU, and the
-                    issued W data and strobe. X or Z fails (VCS).
+                    the issued W data and strobe, and AxUSER[3:0] 0 on the AP
+                    and STEE paths. On the SMU path (aperture and >= 4 GiB)
+                    AxUSER[3:0] is not OTHERS (0) and is the same on every
+                    capture of the leaf, over two distinct issued values: SEP's
+                    ID replaces the initiator's. X or Z on any captured field,
+                    W user included, fails (VCS).
+                    Logged, not graded (no stated value): the SMU-path number
+                    (OBS-OUT-SRC-ID), AxUSER[11:4] of every capture and the W
+                    user of SMU-path writes (OBS-OUT-WUSER).
   CHK-OUT-HIBIT     each path has passing captures in both directions at
-                    issued AxPROT[1] 0 and 1 for every address bit 55 value
-                    its NS rule distinguishes: AP with bit 55 set, where NS
-                    stays 1, and SMU and STEE with bit 55 clear (NS 1) and
-                    set (NS 0).
+                    issued AxPROT[1] 0 and 1 for each address bit 55 value:
+                    AP with bit 55 set and clear (NS 1 for both), the SMU
+                    aperture with bit 55 clear (NS 1), >= 4 GiB and STEE with
+                    bit 55 clear (NS 1) and set (NS 0), and the STEE region
+                    with its valid bit clear at the pass-through address (bit
+                    55 clear, NS 1).
 """
 
 from __future__ import annotations
@@ -75,7 +90,9 @@ from env.sep_fabric_common import (
     OUTBOUND_MBX_MAGIC,
     RESP_DECERR,
     RESP_OKAY,
-    SEP_SOURCE_ID,
+    SRC_ID_MASK,
+    SepSrcIdGrade,
+    draw_src_users,
     granule8,
     outbound_ns,
     outbound_user,
@@ -168,6 +185,21 @@ PAIR_LOCAL = (8, 9)
 PAIR_UNTRANSLATED = (10, 11)
 PAIR_SMU_HI = (12, 13)
 PAIR_STEE_HI = (14, 15)
+PAIR_GE4G_LO = (16, 17)
+PAIR_AP_LO = (18, 19)
+PAIR_STEE_INV = (20, 21)
+# Route class of a capture -> the outbound path whose rule it follows.
+PATH = {"smu": "smu", "ge4g": "smu", "ap": "ap", "stee": "stee", "stee_inv": "stee"}
+# CHK-OUT-HIBIT: the output address bit 55 values each route class reaches.
+# The SMU aperture sits below 4 GiB at reset, so bit 55 set is the >= 4 GiB
+# class; the STEE pass-through address is a local address (bit 55 clear).
+HIBIT_CELLS = (
+    ("ap", (0, 1)),
+    ("smu", (0,)),
+    ("ge4g", (0, 1)),
+    ("stee", (0, 1)),
+    ("stee_inv", (0,)),
+)
 
 
 class _Cls:
@@ -186,13 +218,19 @@ class _Cfg:
     def __init__(self, seed: int) -> None:
         rng = SepSeededRng(seed)
         self.seed = seed
-        self.u = rng.choice([v for v in range(1, 16) if v != SEP_SOURCE_ID])
+        # The LSU alternates two AxUSER values: with two distinct issued
+        # AxUSER[3:0], a constant SMU-path output is a visible replacement
+        # whatever SEP's ID is (SepSrcIdGrade).
+        self.users = draw_src_users(rng)
         self.ap = self._draw_class(rng, "ap", AP_REGION_BASE, AP_BASE, bit55=1)
         self.stee = self._draw_class(rng, "stee", STEE_REGION_BASE, STEE_BASE, bit55=0)
         self.stee_hi = _Cls(
             "stee", STEE_REGION_BASE, STEE_BASE, self.stee.region, self.stee.offset | BIT55
         )
+        self.ap_lo = _Cls("ap", AP_REGION_BASE, AP_BASE, self.ap.region, self.ap.offset & ~BIT55)
         self.dir_first_write = bool(rng.getrandbits(1))
+        # Alias offset to a page at or above 4 GiB with address bit 55 clear.
+        self.ge4g_off = rng.randrange(1, 1 << 23) << 32
         self.rng = rng
 
     @staticmethod
@@ -211,6 +249,10 @@ class _Cfg:
                 continue
             c = _Cls(name, region_base, csr_base, region, hi << IDX_START)
             if self._bad_target(c.translated) or self._bad_target(c.local):
+                continue
+            # The second pass flips bit 55 of the offset; that target too
+            # stays clear of the SMU aperture and the local window.
+            if self._bad_target(c.translated ^ BIT55):
                 continue
             # The two remapped words never share one granule, so a pair over
             # one never covers the other.
@@ -233,7 +275,8 @@ class _Cfg:
 
     def summary(self) -> str:
         return (
-            f"seed={self.seed} u={self.u} ap_region={self.ap.region} "
+            f"seed={self.seed} users=0x{self.users[0]:03x},0x{self.users[1]:03x} "
+            f"ge4g_off=0x{self.ge4g_off:x} ap_region={self.ap.region} "
             f"O_ap=0x{self.ap.offset:014x} ap_local=0x{self.ap.local:x} "
             f"ap_pred=0x{self.ap.translated:014x} stee_region={self.stee.region} "
             f"O_stee=0x{self.stee.offset:014x} stee_local=0x{self.stee.local:x} "
@@ -259,15 +302,15 @@ class _Remap(SepAxiRegDriver):
 
 
 class _Alias(SepAxiRegDriver):
-    """Program alias region 0 over ALIAS_PAGE; RDL-field read-back."""
+    """Program alias region 0 over ALIAS_PAGE (``offset`` added); RDL-field read-back."""
 
     _DRIVER_TAG = "ALIASREG"
 
-    async def program(self, valid: bool) -> None:
+    async def program(self, valid: bool, offset: int = BIT55) -> None:
         words = {
             ALIAS_START: ALIAS_PAGE,
             ALIAS_END: ALIAS_PAGE + 0x1000,
-            ALIAS_ATTRS: (BIT55 | ALIAS_VALID_FIELD) if valid else 0,
+            ALIAS_ATTRS: (offset | ALIAS_VALID_FIELD) if valid else 0,
         }
         for off, word in words.items():
             await self._wr(ALIAS_BASE + off, word & 0xFFFF_FFFF)
@@ -335,12 +378,16 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         expect_okay: bool,
         graded: bool,
         chk: str = "CHK-OUT-ROUTE",
+        user: int | None = None,
     ) -> tuple[int, list]:
         """One LSU access; returns (resp, PR-OUT beats of the access).
 
-        A response other than the expected one fails ``chk`` at once.
+        A response other than the expected one fails ``chk`` at once. Without
+        ``user``, the access takes the next of the two drawn AxUSER values.
         """
-        user = self.tcfg.u
+        if user is None:
+            user = self.tcfg.users[self.n_cell % 2]
+            self.n_cell += 1
         wdata = self.tcfg.wdata() if write else 0
         mark = self.out.mark()
         if graded:
@@ -354,7 +401,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         want = RESP_OKAY if expect_okay else RESP_DECERR
         assert seq.resp_code == want, (
             f"{chk} FAIL: class={cls} dir={'W' if write else 'R'} addr=0x{addr:x} "
-            f"prot=0x{prot:x} user={user} resp={_rname(seq.resp_code)} expect={_rname(want)} "
+            f"prot=0x{prot:x} user=0x{user:03x} resp={_rname(seq.resp_code)} expect={_rname(want)} "
             f"out_seen={len(beats)}"
         )
         if seq.resp_code == RESP_OKAY:
@@ -372,34 +419,63 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         addr_beats = [b for b in beats if b.ch == ch]
         w_beats = [b for b in beats if b.ch == "w"]
         other = [b for b in beats if b.ch not in (ch, "w")]
-        want_user = outbound_user(cls)
-        want_prot = (prot & 0b101) | (outbound_ns(cls, pred) << 1)
+        path = PATH[cls]
+        want_prot = (prot & 0b101) | (outbound_ns(path, pred) << 1)
         d = "W" if write else "R"
         assert len(addr_beats) == 1 and not other and (len(w_beats) == (1 if write else 0)), (
             f"CHK-OUT-CAPTURE FAIL: class={cls} dir={d} issued=0x{addr:x} beats="
             + " ".join(b.fmt() for b in beats)
         )
         b = addr_beats[0]
+        # W user is part of the W beat, so X or Z on it fails here as well.
         unknown = b.has_unknown() or any(x.has_unknown() for x in w_beats)
         seen_w = w_beats[0] if write else None
         line = (
             f"class={cls} dir={d} issued=0x{addr:x} seen={_hx(b.addr)} prot={_hx(b.prot)} "
-            f"user_issued={user} user_seen={_hx(b.user)} "
+            f"user_issued=0x{user:03x} user_seen={_hx(b.user)} "
             f"wdata={_hx(seen_w.data) if write else 'na'} wstrb={_hx(seen_w.strb) if write else 'na'}"
         )
+        if path == "smu":
+            # SEP's ID has no stated number: per capture it is known and not
+            # OTHERS; constancy and the replacement are graded over the leaf.
+            why = self.src_grade.note(b.user, user)
+            user_ok = why is None
+            user_expect = f"SEP's ID ({why})" if why else "SEP's ID"
+        else:
+            user_ok = b.user is not None and (b.user & SRC_ID_MASK) == outbound_user(path)
+            user_expect = f"[3:0]={outbound_user(path)}"
         ok = (
             not unknown
             and b.addr == pred
             and b.prot == want_prot
-            and b.user == want_user
+            and user_ok
             and (not write or (seen_w.data == wdata and seen_w.strb == 0xFF))
         )
         assert ok, (
             f"CHK-OUT-CAPTURE FAIL: {line} predicted=0x{pred:x} prot_issued=0x{prot:x} "
-            f"prot_expect=0x{want_prot:x} user_expect={want_user} wdata_issued=0x{wdata:x}"
+            f"prot_expect=0x{want_prot:x} user_expect={user_expect} wdata_issued=0x{wdata:x}"
             + (" X/Z" if unknown else "")
         )
         self.logger.info("CHK-OUT-CAPTURE PASS: %s prot_issued=0x%x", line, prot)
+        # The specification states only the source ID, AxUSER[3:0]; the upper
+        # bits and the W user are logged.
+        self.logger.info(
+            "OBS-OUT-USER-HI: class=%s dir=%s user_issued_11_4=0x%02x user_seen_11_4=0x%02x "
+            "(value logged)",
+            cls,
+            d,
+            user >> 4,
+            b.user >> 4,
+        )
+        if write and path == "smu":
+            self.logger.info(
+                "OBS-OUT-WUSER: class=%s dir=W wuser_issued=0x%03x wuser_seen=0x%03x "
+                "awuser_seen=0x%03x (value logged)",
+                cls,
+                user,
+                seen_w.user,
+                b.user,
+            )
         self.n_capture += 1
         self.hibit.setdefault(cls, set()).add(((b.addr >> 55) & 1, (prot >> 1) & 1, d))
 
@@ -497,7 +573,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._pair_enable(PAIR_SMU, True)
 
     async def _remap_leg(self, c: _Cls, pair: tuple[int, int]) -> None:
-        """Steps 8 to 10 for one remapped class."""
+        """Steps 9 to 11 for one remapped class (13 for STEE)."""
         lo, hi = granule8(c.translated)
         await self._program_pair(pair, lo, hi)
         on = {}
@@ -571,7 +647,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         self.logger.info("CHK-OUT-ROUTE PASS: %s", line)
 
     async def _bit55_leg(self, cls: str, local: int, pred: int, pair: tuple[int, int]) -> None:
-        """Steps 7 and 12: one path at an outgoing address with bit 55 set."""
+        """Steps 7, 8, 12, 14 and 15: one route class at one outgoing address bit 55 value."""
         lo, hi = granule8(pred)
         await self._program_pair(pair, lo, hi)
         for write in self.tcfg.dirs():
@@ -589,12 +665,12 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._pair_enable(pair, False)
 
     async def _stack_leg(self, c: _Cls) -> None:
-        """Steps 13 to 15 for one remapped class."""
+        """Steps 16 to 18 for one remapped class."""
         lo, hi = granule8(c.translated)
         p1 = self._stack_prot1[c.name]
         prot = self.tcfg.prot(p1)
         ns = outbound_ns(c.name, c.translated)
-        u = self.tcfg.u
+        u = self.tcfg.users[0]
         e0 = FilterEntry(
             start=lo,
             end=hi,
@@ -603,7 +679,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             write_allowed=False,
             allow_ns=bool(ns),
             allow_burst=False,
-            src_id=u,
+            src_id=u & SRC_ID_MASK,
         )
         e1 = FilterEntry(
             start=lo,
@@ -632,6 +708,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 expect_okay=True,
                 graded=True,
                 chk="CHK-OUT-USER",
+                user=u,
             )
             res[write] = r
         # Control: entry 0 with src_id 0 matches and refuses.
@@ -648,13 +725,15 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 expect_okay=False,
                 graded=False,
                 chk="CHK-OUT-USER",
+                user=u,
             )
             ctl[write] = r
         await self.filt.set_enabled(0, False)
         await self.filt.set_enabled(1, False)
         for write in self.tcfg.dirs():
             line = (
-                f"class={c.name} dir={'W' if write else 'R'} user_issued={u} resp={_rname(res[write])} "
+                f"class={c.name} dir={'W' if write else 'R'} user_issued=0x{u:03x} "
+                f"resp={_rname(res[write])} "
                 f"control_resp={_rname(ctl[write])}"
             )
             assert res[write] == RESP_OKAY and ctl[write] == RESP_DECERR, (
@@ -663,7 +742,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             self.logger.info("CHK-OUT-USER PASS: %s", line)
 
     async def _local_leg(self) -> None:
-        """Step 16."""
+        """Step 19."""
         await self._program_pair(PAIR_LOCAL, LOCAL_LO, LOCAL_HI)
         rng = self.tcfg.rng
         m_scratch = (rng.getrandbits(32) | 1) & SCRATCH_FIELD
@@ -735,7 +814,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         return seq.resp_code
 
     async def _nobypass_leg(self) -> None:
-        """Steps 17 to 21."""
+        """Steps 20 to 24."""
         feat0 = await self._rd64(LCC_FEAT_CTRL)
         self.logger.info("FEAT_CTRL LOG: before DEMOTE_1 feat_ctrl=0x%016x", feat0)
         await self._ext_read(LCC_FEAT_CTRL, "feat_ctrl_before_demote")
@@ -786,7 +865,9 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         self.logger.info("outbound route attr: %s", cfg.summary())
         self.n_capture = 0
         self.n_expect = 0
+        self.n_cell = 0
         self.hibit: dict[str, set] = {}
+        self.src_grade = SepSrcIdGrade("OUT")
         self._stack_prot1 = {"ap": cfg.rng.getrandbits(1), "stee": cfg.rng.getrandbits(1)}
 
         await self._bring_up()
@@ -799,12 +880,20 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._smu_leg()
         alias = _Alias(self)
         await alias.program(True)
-        await self._bit55_leg("smu", SMU_HI_LOCAL, SMU_HI_LOCAL | BIT55, PAIR_SMU_HI)
+        await self._bit55_leg("ge4g", SMU_HI_LOCAL, SMU_HI_LOCAL | BIT55, PAIR_SMU_HI)
+        await alias.program(True, cfg.ge4g_off)
+        await self._bit55_leg("ge4g", SMU_HI_LOCAL, SMU_HI_LOCAL + cfg.ge4g_off, PAIR_GE4G_LO)
         await alias.program(False)
         await self._remap_leg(cfg.ap, PAIR_AP)
+        await remap.program(cfg.ap_lo, True)
+        await self._bit55_leg("ap", cfg.ap_lo.local, cfg.ap_lo.translated, PAIR_AP_LO)
+        await remap.program(cfg.ap, True)
         await self._remap_leg(cfg.stee, PAIR_STEE)
         await remap.program(cfg.stee_hi, True)
         await self._bit55_leg("stee", cfg.stee_hi.local, cfg.stee_hi.translated, PAIR_STEE_HI)
+        # A STEE region with its valid bit clear passes the address unchanged.
+        await remap.program(cfg.stee, False)
+        await self._bit55_leg("stee_inv", cfg.stee.local, cfg.stee.local, PAIR_STEE_INV)
         await remap.program(cfg.stee, True)
         await self._stack_leg(cfg.ap)
         await self._stack_leg(cfg.stee)
@@ -817,23 +906,28 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             f"CHK-OUT-CAPTURE FAIL: {line}"
         )
         self.logger.info("OUT-CAPTURE-SUMMARY LOG: %s", line)
+        why = self.src_grade.finish(min_nonzero_issued=2)
+        self.logger.info("%s", self.src_grade.obs_line())
+        assert why is None, f"CHK-OUT-CAPTURE FAIL: path=smu src_id {why}"
+        self.logger.info("CHK-OUT-CAPTURE PASS: path=smu src_id %s", self.src_grade.summary())
         self._chk_hibit()
 
     def _chk_hibit(self) -> None:
         """CHK-OUT-HIBIT over the captures that CHK-OUT-CAPTURE passed."""
         ok = True
         parts = []
-        for cls, bits in (("ap", (1,)), ("smu", (0, 1)), ("stee", (0, 1))):
+        for cls, bits in HIBIT_CELLS:
             seen = self.hibit.get(cls, set())
             want = {(b, p1, d) for b in bits for p1 in (0, 1) for d in ("R", "W")}
             for b in bits:
                 cells = ",".join(f"p{p}{d}" for bb, p, d in sorted(seen) if bb == b)
-                parts.append(f"{cls}: bit55={b} ns={outbound_ns(cls, b << 55)} cells={cells}")
+                ns = outbound_ns(PATH[cls], b << 55)
+                parts.append(f"{cls}: bit55={b} ns={ns} cells={cells}")
             ok = ok and seen == want
         line = "; ".join(parts)
         assert ok, (
-            f"CHK-OUT-HIBIT FAIL: {line} -- each path needs R and W at issued AxPROT[1] 0 and 1 "
-            "for each bit-55 value"
+            f"CHK-OUT-HIBIT FAIL: {line} -- each route class needs R and W at issued AxPROT[1] "
+            "0 and 1 for each bit-55 value"
         )
         self.logger.info("CHK-OUT-HIBIT PASS: %s", line)
 

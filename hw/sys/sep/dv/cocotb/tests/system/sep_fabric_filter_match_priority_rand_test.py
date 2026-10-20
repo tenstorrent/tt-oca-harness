@@ -33,8 +33,12 @@ Legs:
   choose different entries (e, inbound; an outbound path sets NS from the
   address) and no match (g);
 * leg 2, source ID: exact, mismatch, wildcard, fall-through and upper AxUSER
-  bits inbound; OTHERS against the AP and STEE remaps and SEP's source ID
-  in the exact and mismatch cells on the SMU aperture outbound;
+  bits inbound; OTHERS against the AP and STEE remaps; on the SMU aperture
+  outbound, two wildcard probes with distinct LSU AxUSER values read SEP's
+  source ID off PR-OUT (graded as not OTHERS and one value for both, logged
+  as OBS-FILT-SRC-ID: no specification gives the number), and the exact and
+  mismatch cells then take that ID as stimulus, so they grade that the
+  outbound filter matches ``src_id`` against the replaced AxUSER[3:0];
 * leg 4, granule: seven (granule, shape, instance) cells probed at the widened
   edges.
 
@@ -62,7 +66,13 @@ from dataclasses import dataclass, replace
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, outbound_ns, outbound_user
+from env.sep_fabric_common import (
+    RESP_DECERR,
+    RESP_OKAY,
+    SepSrcIdGrade,
+    draw_src_users,
+    outbound_ns,
+)
 from env.sep_fabric_common import RESP_NAME as _RESP
 from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -508,8 +518,11 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         self, cls: str, write: bool, prot1: int, *, user: int = 0, addr: int | None = None
     ) -> Probe:
         if cls == "smu":
+            # AxUSER[3:0] at the filter is SEP's ID, read off PR-OUT in leg 2;
+            # None before that, when every outbound entry has src_id 0 and the
+            # model does not read it.
             a = addr if addr is not None else self.smu_word
-            return Probe("out", cls, a, a, write, prot1, user, outbound_user("smu"), 0, 4)
+            return Probe("out", cls, a, a, write, prot1, user, self.sep_id, 0, 4)
         base, off = (AP_REGION_BASE, AP_OFFSET) if cls == "ap" else (STEE_REGION_BASE, STEE_OFFSET)
         a = addr if addr is not None else base + self.ap_intra
         return Probe("out", cls, a, remap_target(off, a, base), write, prot1, user, 0, 0, 4)
@@ -1237,10 +1250,39 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 await self._src_pair("out", p, p, bad, good, "mismatch", s)
                 await self._src_pair("out", p, p, good, bad, "wildcard", 0)
         # Outbound exact and mismatch on the SMU aperture: the SMU path replaces the LSU
-        # AxUSER u with SEP's source ID.
-        sep = outbound_user("smu")
+        # AxUSER with SEP's source ID, which has no stated number. Wildcard probes
+        # with two distinct LSU AxUSER values read it off PR-OUT; the grade is not
+        # OTHERS and one value for both (SepSrcIdGrade). The exact and mismatch
+        # cells take the read ID as stimulus.
+        users = draw_src_users(self.rng)
+        grade = SepSrcIdGrade("FILT")
         for write in (False, True):
-            u = self.rng.choice([x for x in range(1, 16) if x != sep])
+            for u in users:
+                p = self._p_out("smu", write, self.rng.getrandbits(1), user=u)
+                await self._load(
+                    "out", {self.rng.randrange(n_out): self._entry(p, self._cover(p, False), src=0)}
+                )
+                ch = "aw" if write else "ar"
+                mark = self.taps["PR-OUT"].mark()
+                r = await self._run(p)
+                beats = self.taps["PR-OUT"].since(mark, ch)
+                assert r.resp == RESP_OKAY and len(beats) == 1, (
+                    f"CHK-FILTER-SRC FAIL: smu wildcard probe dir={p.dir} user=0x{u:03x} "
+                    f"resp={_RESP.get(r.resp)} beats={[b.fmt() for b in beats]}"
+                )
+                why = grade.note(beats[0].user, u)
+                assert why is None, (
+                    f"CHK-FILTER-SRC FAIL: smu dir={p.dir} user_issued=0x{u:03x} "
+                    f"user_seen={beats[0].fmt()}: {why}"
+                )
+        why = grade.finish(min_nonzero_issued=2)
+        assert why is None, f"CHK-FILTER-SRC FAIL: smu src_id {why}"
+        self.logger.info("%s", grade.obs_line())
+        self.logger.info("CHK-FILTER-SRC PASS: inst=out class=smu_src_id %s", grade.summary())
+        sep = grade.value()
+        self.sep_id = sep
+        for write in (False, True):
+            u = self.rng.choice(users)
             v = self.rng.choice([x for x in range(1, 16) if x != sep])
             p = self._p_out("smu", write, self.rng.getrandbits(1), user=u)
             idx = self.rng.randrange(n_out)
@@ -1375,6 +1417,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         )
         self.stats = {i: {k: 0 for k in keys} for i in ("in", "out")}
         self._chk = "CTL-FILTER-ACTIVE"
+        self.sep_id: int | None = None
         close_graded_window(self.logger)
 
         await self._bring_up()

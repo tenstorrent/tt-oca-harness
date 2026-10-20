@@ -801,6 +801,7 @@
 `SEP_TB_OUT(logic [63:0], pr_out_wdata_o)
 `SEP_TB_OUT(logic [7:0], pr_out_wstrb_o)
 `SEP_TB_OUT(logic, pr_out_wlast_o)
+`SEP_TB_OUT(logic [11:0], pr_out_wuser_o)
 // PR-OUT-RSP: the responses on smn_outbound_axi_resp_i (net
 // smn_outbound_resp_w), READY from the request net.
 `SEP_TB_OUT(logic, pr_out_bvalid_o)

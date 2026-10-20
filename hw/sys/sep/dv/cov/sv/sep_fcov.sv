@@ -5130,8 +5130,10 @@ module sep_fcov (
   // cp_route_class_dir code {class, dir}. cp_out_attr codes: 1..6 route
   // {smu, ap, stee} x issued prot[1] {0, 1} with the AxPROT its path sets
   // (NS 1 for ap, the inverse of address bit 55 for smu and stee); 7 ap and
-  // 8 stee with AxUSER 0 while the LSU drove non-zero; 9 smu with SEP's ID
-  // while the LSU drove another value; 10 DMA on smu with SEP's ID.
+  // 8 stee with AxUSER[3:0] 0 while the LSU drove non-zero; 9 smu with a
+  // source ID that is not OTHERS (0) and not the one the LSU drove; 10 DMA on
+  // smu with a source ID that is not OTHERS. SEP's ID has no stated number,
+  // so bins 9 and 10 sample its class, not a value.
   covergroup sep_fabric_outbound_route_cg with function sample (
       logic [3:0] cls_dir,
       logic own_cls,
@@ -6322,16 +6324,17 @@ module sep_fcov (
                                                   own_route && (at != 4'd0), {
                                                   path, oa[55], t.prot[1], w}, own_route);
           end
-          if ((c inside {3'd3, 3'd4}) && (t.init == INIT_LSU) && (t.user[3:0] != 4'd0) && (ou == 12'd0)) begin
+          if ((c inside {3'd3, 3'd4}) && (t.init == INIT_LSU) && (t.user[3:0] != 4'd0) &&
+              (ou[3:0] == 4'd0)) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0,
                                                   (c == 3'd3) ? 4'd7 : 4'd8, own_route, 5'd0, 1'b0);
           end
-          if ((c == 3'd1) && (t.init == INIT_LSU) && (t.user[3:0] != sep_pkg::SepSourceId) &&
-              (ou == 12'(sep_pkg::SepSourceId))) begin
+          if ((c == 3'd1) && (t.init == INIT_LSU) && (ou[3:0] != 4'd0) &&
+              (ou[3:0] != t.user[3:0])) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd9,
                                                   own_route, 5'd0, 1'b0);
           end
-          if ((c == 3'd1) && (t.init == INIT_DMA) && (ou == 12'(sep_pkg::SepSourceId))) begin
+          if ((c == 3'd1) && (t.init == INIT_DMA) && (ou[3:0] != 4'd0)) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd10,
                                                   own_dma, 5'd0, 1'b0);
           end

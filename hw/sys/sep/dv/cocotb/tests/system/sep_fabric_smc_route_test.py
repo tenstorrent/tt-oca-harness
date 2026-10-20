@@ -15,6 +15,8 @@ Contract (``hw/sys/sep/doc/fabric.adoc``, "Fabric Topology", output fabric, and
   reads 1 (``sep_cpu_ctrl.adoc``).
 * A request that no enabled outbound entry admits is answered DECERR
   (``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions").
+* The SMC path keeps the initiator's AxPROT and source ID
+  (``sep-outbound-attributes-table``, SMC aperture row).
 
 The seed draws configuration A (base ``0x4000_0000``) or configuration B (base
 ``0x9000_0000``, inside the reset SMU window), both with size ``0x0100_0000``.
@@ -41,12 +43,19 @@ Checks:
 * CHK-SMC-FIRST-MATCH (configuration B): the aperture words inside the SMU window
   reach PR-SMC and not PR-OUT; the SMU-window word outside the aperture reaches
   PR-OUT and not PR-SMC.
+* CHK-SMC-ATTR (both configurations): the AW and AR beat of each aperture word
+  on PR-SMC carries the AxPROT and AxUSER[3:0] the LSU issued. X or Z fails.
+  AxUSER[11:4] is logged, not graded (the specification names the source ID
+  only). Control: the issued values change between accesses, so each direction
+  carries both AxPROT[1] values and two distinct non-zero AxUSER[3:0] values;
+  a path that forces any constant AxPROT[1] or source ID fails one beat.
 
 Read data with an X or Z bit fails the read in the AXI master (VCS; Verilator is
 2-state).
 
 Run mode: no_cpu, ``lsu_stub_all_live``, ``+skip_fuse_sense``. RANDCFG: the
-configuration is the only draw. One run covers the checks of its configuration
+configuration, the issued AxPROT bits 0 and 2 and the issued AxUSER values are
+drawn. One run covers the checks of its configuration
 only. Both configurations are covered by seed draws over merged regressions; no
 testlist entry forces a configuration.
 """
@@ -58,7 +67,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bh_smc import drive_bh_smc
-from env.sep_fabric_common import RESP_DECERR, RESP_NAME, RESP_OKAY
+from env.sep_fabric_common import RESP_DECERR, RESP_NAME, RESP_OKAY, SRC_ID_MASK
 from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
 from env.sep_filter_model import FilterEntry
@@ -110,10 +119,14 @@ class sep_fabric_smc_route_test(sep_base_test):
         data: int = 0,
         expect_error: bool = False,
         ungraded: bool = False,
+        prot: int | None = None,
+        user: int = 0,
     ) -> SepAxiAccessSeq:
         """One 4-byte LSU access. ``ungraded`` lets the caller log a response that
         the specification does not state; a missing response still fails."""
         kw = {}
+        if prot is not None:
+            kw["prot"] = prot
         if op is SepAxiOp.READ:
             kw["allow_ungraded_read_resp"] = ungraded
         else:
@@ -126,6 +139,7 @@ class sep_fabric_smc_route_test(sep_base_test):
             length=4,
             size=2,
             expect_error=expect_error,
+            user=user,
             **kw,
         )
         # The s_axi monitor fails an unannounced DECERR beat; a refused or
@@ -150,11 +164,56 @@ class sep_fabric_smc_route_test(sep_base_test):
     def _mark(self) -> dict[str, int]:
         return {n: t.mark() for n, t in self.taps.items()}
 
+    def _next_attr(self) -> tuple[int, int]:
+        """AxPROT and AxUSER of the next aperture access.
+
+        Over each four accesses (write, read, write, read) the writes carry
+        AxPROT[1] 0 then 1, the reads 1 then 0, and both directions carry the
+        two drawn source IDs, so a path that forces a constant shows on a beat.
+        """
+        k = self.n_attr
+        self.n_attr += 1
+        prot = (self.rng.getrandbits(3) & 0b101) | ((((k // 2) + k) % 2) << 1)
+        user = (self.rng.randrange(1, 256) << 4) | self.src_ids[(k // 2) % 2]
+        return prot, user
+
+    def _chk_attr(self, addr: int, smc_beats: list, issued: dict) -> None:
+        """CHK-SMC-ATTR: each PR-SMC beat keeps the issued AxPROT and AxUSER[3:0]."""
+        for ch, (prot, user) in issued.items():
+            beats = [b for b in smc_beats if b.ch == ch]
+            assert len(beats) == 1, (
+                f"CHK-SMC-ATTR FAIL: addr=0x{addr:08x} ch={ch} beats={[b.fmt() for b in beats]}"
+            )
+            b = beats[0]
+            line = (
+                f"addr=0x{addr:08x} ch={ch} prot_issued=0b{prot:03b} "
+                f"prot_seen={_bits3(b.prot)} user_issued=0x{user:03x} user_seen={_hx(b.user)}"
+            )
+            ok = (
+                b.prot is not None
+                and b.user is not None
+                and b.prot == prot
+                and (b.user & SRC_ID_MASK) == (user & SRC_ID_MASK)
+            )
+            assert ok, f"CHK-SMC-ATTR FAIL: {line}; expected the issued AxPROT and AxUSER[3:0]"
+            self.logger.info("CHK-SMC-ATTR PASS: %s", line)
+            self.logger.info(
+                "OBS-SMC-USER-HI: addr=0x%08x ch=%s user_issued_11_4=0x%02x user_seen_11_4=0x%02x "
+                "(value logged)",
+                addr,
+                ch,
+                user >> 4,
+                b.user >> 4,
+            )
+            self.attr_seen.setdefault(ch, set()).add(((prot >> 1) & 1, user & SRC_ID_MASK))
+
     async def _edge_word(self, chk: str, addr: int, marker: int) -> dict:
         """Write then read one aperture word; return the counts and the readback."""
         m = self._mark()
-        wr = await self._lsu(SepAxiOp.WRITE, addr, data=marker)
-        rd = await self._lsu(SepAxiOp.READ, addr)
+        wprot, wuser = self._next_attr()
+        rprot, ruser = self._next_attr()
+        wr = await self._lsu(SepAxiOp.WRITE, addr, data=marker, prot=wprot, user=wuser)
+        rd = await self._lsu(SepAxiOp.READ, addr, prot=rprot, user=ruser)
         c = self._counts(m)
         smc_beats = self.taps["PR-SMC"].since(m["PR-SMC"])
         unknown = [b.fmt() for b in smc_beats if b.has_unknown()]
@@ -168,6 +227,7 @@ class sep_fabric_smc_route_test(sep_base_test):
             "the read did not return the written value"
         )
         assert not unknown, f"{chk} FAIL: addr=0x{addr:08x} X/Z on PR-SMC: {unknown}"
+        self._chk_attr(addr, smc_beats, {"aw": (wprot, wuser), "ar": (rprot, ruser)})
         self.logger.info(
             "%s LOG: addr=0x%08x smc_aw=%d smc_ar=%d out_aw=%d out_ar=%d rdata=0x%08x wr=0x%08x "
             "smc_addrs=%s",
@@ -378,13 +438,32 @@ class sep_fabric_smc_route_test(sep_base_test):
         for idx in (0, 1):
             await self.outf.set_enabled(idx, False)
 
+    def _ctl_attr(self) -> None:
+        """Control of CHK-SMC-ATTR: both AxPROT[1] values and two source IDs per direction."""
+        parts = []
+        for ch in ("aw", "ar"):
+            seen = self.attr_seen.get(ch, set())
+            ns = {n for n, _ in seen}
+            ids = {i for _, i in seen}
+            parts.append(f"{ch}: prot1={sorted(ns)} src_ids={sorted(ids)}")
+            assert ns == {0, 1} and len(ids) >= 2, (
+                f"CTL-SMC-ATTR FAIL: {'; '.join(parts)}; each direction needs both AxPROT[1] "
+                "values and two source IDs"
+            )
+        self.logger.info("CTL-SMC-ATTR LOG: %s", "; ".join(parts))
+
     async def run_scenario(self) -> None:
         rng = SepSeededRng(self.random_seed())
         cfg = rng.choice(("A", "B"))
         base = CFG[cfg]
+        self.rng = rng
+        a = rng.randrange(1, 16)
+        self.src_ids = (a, rng.choice([v for v in range(1, 16) if v != a]))
+        self.n_attr = 0
+        self.attr_seen: dict[str, set] = {}
         self.required_evidence = (
             ("CHK-SMC-ROUTE", "CHK-SMC-STATIC-ROW") if cfg == "A" else ("CHK-SMC-FIRST-MATCH",)
-        )
+        ) + ("CHK-SMC-ATTR",)
         self.logger.info("CFG-SMC cfg=%s base=0x%08X size=0x%08X", cfg, base, SMC_SIZE)
         drive_bh_smc(base, SMC_SIZE)
         close_graded_window()
@@ -423,6 +502,15 @@ class sep_fabric_smc_route_test(sep_base_test):
             await self._config_a(base)
         else:
             await self._config_b(base)
+        self._ctl_attr()
 
         close_graded_window(self.logger)
         await stop_taps(self.taps)
+
+
+def _hx(v) -> str:
+    return "X" if v is None else f"0x{v:x}"
+
+
+def _bits3(v) -> str:
+    return "X" if v is None else f"0b{v:03b}"

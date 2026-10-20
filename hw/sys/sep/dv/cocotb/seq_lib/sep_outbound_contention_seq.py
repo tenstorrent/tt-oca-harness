@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
-from env.sep_fabric_common import outbound_ns, outbound_user
+from env.sep_fabric_common import outbound_ns
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_filter_model import FilterEntry
 from env.sep_seeded_rng import SepSeededRng
@@ -73,9 +73,13 @@ SYS_PROT = 0b000
 DMA_PROT = 0b001
 
 
-def out_attr(prot: int) -> tuple[int, int]:
-    """(AxUSER, AxPROT) of a request to PAGE as the SMU path delivers it to PR-OUT."""
-    return outbound_user("smu"), (prot & 0b101) | (outbound_ns("smu", PAGE) << 1)
+def out_prot(prot: int) -> int:
+    """AxPROT of a request to PAGE as the SMU path delivers it to PR-OUT.
+
+    The SMU path sets SEP's source ID in AxUSER; its number is not stated, so
+    callers grade AxUSER with ``env.sep_fabric_common.SepSrcIdGrade``.
+    """
+    return (prot & 0b101) | (outbound_ns("smu", PAGE) << 1)
 
 
 IDLE_CLOCKS = 256
@@ -780,11 +784,13 @@ class OutboundLeaf:
         await self.tr.dma.program_range(0x0, 0xFFFF_FFFF, valid=True)
         await self.tr.dma.wr(_D.addr("ADDR_SPACE_ID"), ASID_RESET)
         self.logger.info(
-            "SETUP outbound_entry=%d inbound_entry=%d page=0x%x lsu_user=%d sysif_user=%d",
+            "SETUP outbound_entry=%d inbound_entry=%d page=0x%x lsu_users=0x%03x,0x%03x "
+            "sysif_user=%d",
             OUT_ENTRY,
             IN_ENTRY,
             PAGE,
-            c.lsu_user,
+            c.lsu_users[0],
+            c.lsu_users[1],
             c.sys_user,
         )
 

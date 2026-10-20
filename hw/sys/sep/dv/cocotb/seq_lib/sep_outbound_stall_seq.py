@@ -24,6 +24,7 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.sep_fabric_common import SepSrcIdGrade
 
 from seq_lib.sep_outbound_contention_seq import INITS, MIN_ID, Layout
 
@@ -133,13 +134,23 @@ class Meter:
         )
 
 
-def altered_requests(layout: Layout, out_beats, issued: dict, expect_attr: dict) -> tuple[int, int]:
+def altered_requests(
+    layout: Layout,
+    out_beats,
+    issued: dict,
+    expect_prot: dict,
+    grade: SepSrcIdGrade,
+    issued_user: dict,
+) -> tuple[int, int]:
     """(requests that differ from what was issued, issued requests never seen) at PR-OUT.
 
-    ``issued`` maps ``(init, kind)`` to the list of addresses issued; ``expect_attr``
-    maps an initiator to its ``(user, prot)``, or is absent for an initiator whose
-    attributes are not graded here. A request differs when its address is not an
-    issued one, its AxLEN is not 0 or its attributes are not the issued ones.
+    ``issued`` maps ``(init, kind)`` to the list of addresses issued;
+    ``expect_prot`` maps an initiator to the AxPROT the SMU path delivers, or is
+    absent for an initiator whose attributes are not graded here. A request
+    differs when its address is not an issued one, its AxLEN is not 0, its
+    AxPROT is not the expected one, or ``grade`` refuses its AxUSER (the SMU
+    path sets SEP's ID, which has no stated number). ``issued_user`` maps an
+    address to the AxUSER the bench issued at it.
     """
     seen: dict = {k: Counter() for k in issued}
     altered = 0
@@ -157,11 +168,11 @@ def altered_requests(layout: Layout, out_beats, issued: dict, expect_attr: dict)
         if beat.fields.get("len") != 0:
             altered += 1
             continue
-        if (
-            init in expect_attr
-            and (beat.fields.get("user"), beat.fields.get("prot")) != expect_attr[init]
-        ):
-            altered += 1
+        if init in expect_prot:
+            bad_prot = beat.fields.get("prot") != expect_prot[init]
+            bad_user = grade.note(beat.fields.get("user"), issued_user.get(addr)) is not None
+            if bad_prot or bad_user:
+                altered += 1
     missing = 0
     for key, addrs in issued.items():
         want = Counter(addrs)
