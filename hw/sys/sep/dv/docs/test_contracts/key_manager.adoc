@@ -2714,6 +2714,10 @@ Every test runs in run mode `no_cpu`, target `lsu_stub_all_live`, and joins the 
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
+*Known limitation*: A leaf can fail, with every checker passing, on the AXI reset assertions of the Key Manager CPU port (`OCAH_AXI_AR_VALID_RESET_LOW`, `OCAH_AXI_AW_VALID_RESET_LOW`, `OCAH_AXI_W_VALID_RESET_LOW`) when a KM reset of the leaf lands on a clock with a CPU request pending; that depends on the seed (<<sep_km_boot_reset_rand_test>> grades it on every seed).
+
+*Issue*: #3170
+
 *Scope limit*: An unmasked EBREAK outside a handler has no stated outcome and is not drawn. The outcome of a non-zero word with a major opcode outside the base set is logged only (`OBS-TRAP-OPC`), because no in-tree text states the KM CPU ISA. Whether the refused instructions of C1 execute is not stated and is not graded. The ROM store of the enable-0 case C0 is a control. The ROM data reads of C0 and of C2 before the lockout are graded by CHK-EXEC-OK and are not claimed as a lockout. The ROM store before the lockout belongs to `sep_km_rom_write_err_test`, the legal CRC encodings to `sep_km_crc_pcpi_kat_test`, the DECERR of a load at 0x1000_0000 to `sep_km_vrom_decerr_test`, and the KPV wipe and the held output on the trap kinds to this test. `sep_km_fault_inject_rand_test` grades the halt of the ROM fatal handler and runs the KPV wipe as a control. The open owners keep the cells that they grade. The SRAM words after a cold reset are not graded, because the specification states no array erase.
 
 '''''
@@ -2948,6 +2952,10 @@ Functional coverage: `sep_km_drbg_sampler_cg` (`cp_smp_read_service`, `cp_smp_tv
 |===
 
 *Pass Criteria*: Every named checker that is not blocked PASSes. UVM_ERROR == 0. CHK-SMP-PACK, CHK-SMP-TO-ASM and CHK-SMP-STRM-CTRL are blocked (they need `HK-STRM-PAT`): the leaf logs `OBS-BLOCKED <check> reason=HK-STRM-PAT` for each and does not count them.
+
+*Known limitation*: A leaf can fail, with every checker passing, on the AXI reset assertions of the Key Manager CPU port (`OCAH_AXI_AR_VALID_RESET_LOW`, `OCAH_AXI_AW_VALID_RESET_LOW`, `OCAH_AXI_W_VALID_RESET_LOW`) when a KM reset of the leaf lands on a clock with a CPU request pending; that depends on the seed (<<sep_km_boot_reset_rand_test>> grades it on every seed).
+
+*Issue*: #3170
 
 *Scope limit*: The test does not claim the behavior of a beat with TSTRB 0x0, the TIMEOUT_ERR value and the exact COUNT_BAD delta of a read that sees a withdrawal in its first active cycle (cases b, c and d; including the coincident cycle of case c; not stated; see <<sep-vplan-phase3-blocked,Blocked features>>), the exact length of the timeout in cycles (the leaf logs it), the placement of the packed bytes in the word beyond the beat-order rule of the text, or a TRNG reset while the KM runs (the host keeps the KM idle before a TRNG reset, the hardware does not enforce it, and the outcome is not stated; see <<sep-vplan-phase3-blocked,Blocked features>>). The open test `sep_km_drbg_sampler_timeout_reset_test` keeps the cells that it grades.
 
