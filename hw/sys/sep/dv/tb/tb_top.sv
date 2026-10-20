@@ -3696,6 +3696,14 @@ module sep_uvm_top
     assign km_sram_wmap_jump_seen_o = km_wmap_jump_seen_q;
     assign km_sram_wmap_jump_wr_o   = km_wmap_jump_wr_q;
 
+    // KM-AXIV: the request valids of the KM CPU AXI4-Lite master (the port the
+    // KM AXI SVA binds to), {ar_valid, aw_valid, w_valid}, and the warm reset
+    // of the KM CPU core (rst_warm_sync_n, the SVA aresetn), on every clock.
+    assign km_cpu_axi_valid_o = {`KM_TAP.cpu_axil_req.ar_valid,
+                                 `KM_TAP.cpu_axil_req.aw_valid,
+                                 `KM_TAP.cpu_axil_req.w_valid};
+    assign km_cpu_rst_n_o     = `KM_TAP.rst_warm_sync_n;
+
     // ------------------------------------------------------------------
     // HK-OTP: KM OTP input rail flip (docs/SEP_TB_ARCH.adoc, inject
     // exceptions). No legal fuse image presents a broken dual-rail word: the

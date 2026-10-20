@@ -22,8 +22,10 @@ Probes: ``HOST-MBX`` (``SEP_STATUS``, ``SEP_READ_DATA``, ``SEP_IRQ_STATUS``),
 ``KM-ISO`` (the three KM isolated probes), ``KM-COUNT`` (``km_rom_req_count_o``),
 ``dbg_sep_reset_n_o`` (in ``pulse_rst_ni``) and the read-only tap ``KM-CSR``
 (``km_csr_cold_boot_done_o``, ``km_csr_scrambler_key_wr_count_o``,
-``km_csr_scrambler_ctrl_o``). Injects: none. Every reset is a legal host
-stimulus: ``SW_RESET_N`` bit 0 for a warm reset, ``rst_ni`` for the cold reset.
+``km_csr_scrambler_ctrl_o``), and ``KM-AXIV`` (``km_cpu_axi_valid_o``, the KM
+CPU AXI master valids, and ``km_cpu_rst_n_o``, the KM CPU reset). Injects: none.
+Every reset is a legal host stimulus: ``SW_RESET_N`` bit 0 for a warm reset,
+``rst_ni`` for the cold resets.
 
 Checks:
   CHK-WIPE-READY  every boot of the leaf (two cold, five warm) puts the
@@ -42,8 +44,14 @@ Checks:
   CHK-FWSIZE      CMD_SRAM_EXEC returns -7 with no argument after the cold reset
                   and after the next warm reset
   CHK-SRAM-VER    CMD_SRAM_VER returns -1 with no argument with an image stored
+  CHK-RST-AXI-VALID
+                  at each AXI reset point (rst_ni driven low in the half clock
+                  of a pending KM CPU read, then of a pending write) the three
+                  KM CPU AXI valids read 0 in the first sample with the KM CPU
+                  reset at 0
 
-Controls: CHK-SEQ0 (``control=1``: RESP_KM_READY at response sequence 0 and the
+Controls: CTRL-RST-AXI-PENDING (the point's valid reads 1 in the sample before
+the KM CPU reset reads 0); CHK-SEQ0 (``control=1``: RESP_KM_READY at response sequence 0 and the
 first command at sequence 0 answered with success at response sequence 1, after
 the cold-boot reference and after each warm reset of the warm-reset leg); the
 CMD_SRAM_EXEC success with the image stored (``control_warm_exec`` of
@@ -66,7 +74,7 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, Timer
 from env import sep_km_img_h as imgh
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
@@ -111,6 +119,13 @@ DEPTH_POLLS = 50_000  # polls for a point depth (inbound 0, outbound min(6r, 16)
 FLUSH_POLLS = 50_000  # polls for FLUSHED_BY_KM after the image stream
 POP_MAX_WORDS = 64  # words one pop reads at most
 FRAME_MAX_PLEN = 8  # payload words of the longest frame this leaf reads
+AXI_ARM_BOUND = 200_000  # clocks from the KM release to a pending request of the point
+AXI_RST_BOUND = 16  # clocks from the rst_ni drive to the KM CPU reset reading 0
+
+# KM-AXIV bits of km_cpu_axi_valid_o: 2 ar_valid, 1 aw_valid, 0 w_valid. The AXI
+# reset points: the read point arms on ar_valid, the write point on aw_valid or
+# w_valid.
+AXI_POINTS = (("read", 0b100), ("write", 0b011))
 
 # The boots of one leaf: the cold-boot reference, three warm resets of the
 # warm-reset leg, and the warm, cold and warm boots of the cold-domain leg.
@@ -189,6 +204,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         "CHK-SCR-KEEP",
         "CHK-FWSIZE",
         "CHK-SRAM-VER",
+        "CHK-RST-AXI-VALID",
         "CHK-SEQ0",
     )
 
@@ -221,6 +237,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         await self.bring_up_no_cpu()
         self.swrst = SepSwReset(self)
         self.suppress_host_axi_transaction_info()
+        await self._wait_sep_reset_release()
+        for point, mask in AXI_POINTS:
+            await self._axi_point(point, mask)
         await self._entropy_up()
         self.watch = _Watch(self)
         self.watch.start()
@@ -761,6 +780,61 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         await self._entropy_up()
         await self._graded(True)
         return await self._cbd()
+
+    async def _axi_point(self, point: str, mask: int) -> None:
+        """Step 1, one AXI reset point: rst_ni low in the half clock of a pending request.
+
+        Runs before the entropy source comes up. The KM boots from the release;
+        at the first falling edge with a valid of ``mask`` at 1 the leaf drives
+        rst_ni low. CHK-RST-AXI-VALID grades the three valids in the first sample
+        with the KM CPU reset at 0; the sample before it must show the request
+        pending. The cold reset then completes with the KM held.
+        """
+        tag = f"axi-{point}"
+        await self.swrst.release("km")
+        for _ in range(AXI_ARM_BOUND):
+            await FallingEdge(self.clk)
+            await ReadOnly()
+            pending = self.rd_known(self.dut.km_cpu_axi_valid_o)
+            if pending & mask:
+                break
+        else:
+            raise AssertionError(
+                f"[{tag}] no KM CPU request on valid mask 0b{mask:03b} within "
+                f"{AXI_ARM_BOUND} clocks of the release"
+            )
+        await Timer(1, "step")
+        self.dut.rst_ni.value = 0
+        clks = 0
+        while True:
+            await ReadOnly()
+            valid = self.rd_known(self.dut.km_cpu_axi_valid_o)
+            rst_n = self.rd_known(self.dut.km_cpu_rst_n_o)
+            if rst_n == 0:
+                break
+            if clks == AXI_RST_BOUND:
+                raise AssertionError(
+                    f"[{tag}] the KM CPU reset did not read 0 within {AXI_RST_BOUND} clocks "
+                    "of the rst_ni drive"
+                )
+            pending = valid
+            clks += 1
+            await FallingEdge(self.clk)
+        self.chk.ctrl(
+            "RST-AXI-PENDING", bool(pending & mask), point=point, pending=f"0b{pending:03b}"
+        )
+        self.chk.ok(
+            "RST-AXI-VALID",
+            valid == 0,
+            point=point,
+            valid=f"0b{valid:03b}",
+            rst_n=rst_n,
+            pending=f"0b{pending:03b}",
+            clks=clks,
+        )
+        rec = await self.pulse_rst_ni(release_bound=SEP_RESET_BOUND)
+        self.swrst.value = SW_RESET_N_RESET_DEFAULT
+        self.logger.info("LOG %s release_clks=%d", tag, rec["release_clks"])
 
     async def _cold_domain_leg(self) -> None:
         """Steps 15 to 20 without the CMD_OTP_READ_LOCK_COLD commands."""

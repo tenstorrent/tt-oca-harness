@@ -340,6 +340,12 @@ Observation probe groups:
    0x8000 since the bench reset or the last clear, and a flag that the capture
    took place; stores after that fetch are not in the capture. User:
    `sep_km_handover_rand_test` (CHK-HO-SRAM).
+* Key Manager CPU AXI valid tap (KM-AXIV, `km_cpu_axi_valid_o[2:0]`,
+  `km_cpu_rst_n_o`): the request valids of the KM CPU AXI4-Lite master
+  `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1 `aw_valid`, bit 0
+  `w_valid`, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
+  the PicoRV32 core and the `aresetn` of the KM AXI SVA. Read only, on every
+  clock. User: `sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
   `u_sep_fcov` port list (VCS only): the KM CPU AXI master and its error

@@ -620,6 +620,10 @@
 `SEP_TB_OUT(logic [32*9-1:0], km_sram_wmap_jump_o)
 `SEP_TB_OUT(logic [31:0], km_sram_wmap_jump_wr_o)
 `SEP_TB_OUT(logic, km_sram_wmap_jump_seen_o)
+// KM-AXIV: the KM CPU AXI4-Lite master valids {ar_valid, aw_valid, w_valid}
+// and the KM CPU warm reset rst_warm_sync_n.
+`SEP_TB_OUT(logic [2:0], km_cpu_axi_valid_o)
+`SEP_TB_OUT(logic, km_cpu_rst_n_o)
 // HK-OTP and HK-STRM state: the OTP input is held by the inject; the
 // withdrawal pulse has been driven since the arm, and the sink TREADY in the
 // pulse clock; the sampler sink TVALID after the inject.
