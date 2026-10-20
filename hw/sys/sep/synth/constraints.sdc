@@ -9,9 +9,7 @@
 # match the current RTL with no renames.
 #
 # This file composes the sourced sections; the constraints themselves live in
-# the sibling files and in flows/synth/constraints. Everything except the
-# entropy clock tree is shared with the closed block flow, which sources the
-# same files rather than keeping a second copy.
+# the sibling files and in flows/synth/constraints.
 #
 # Known limitations, called out explicitly:
 #   - The entropy ripple-divider clocks below are created from the RTL
