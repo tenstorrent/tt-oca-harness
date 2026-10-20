@@ -84,8 +84,7 @@ class sep_firmware_secondary_manifest_offset_misaligned_test(sep_secondary_chipl
             absent=_DOWNSTREAM_TOKENS,
         )
         assert self._count(console, "MANIFEST_ERR=") == 1, (
-            f"expected one alignment rejection for the SMC path's only slot. "
-            f"Console: {console}"
+            f"expected one alignment rejection for the SMC path's only slot. Console: {console}"
         )
         assert i_src < i_align < i_err < i_all < i_fail, (
             f"rejection sequence is out of order: {src}@{i_src} -> "

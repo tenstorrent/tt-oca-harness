@@ -32,9 +32,7 @@ _EFUSE_PRELOAD = (
 
 
 @pyuvm.test()
-class sep_firmware_primary_payload_offset_misaligned_test(
-    sep_primary_fail_backup_boot_base
-):
+class sep_firmware_primary_payload_offset_misaligned_test(sep_primary_fail_backup_boot_base):
     """A valid primary payload at address 4 modulo 8 is refused before its fetch."""
 
     efuse_preload = _EFUSE_PRELOAD
