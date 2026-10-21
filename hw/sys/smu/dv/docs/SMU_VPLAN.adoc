@@ -69,7 +69,7 @@ One DUT, three scope tiers on one bench: cocotb / PyUVM on Verilator, the `compi
 
 |Phase 1
 |cocotb / PyUVM + Verilator, `compile_smu_chiplet`
-|Smoke plus per-area representatives: the `smoke` group, the smoke and sanity leaves of each area, the elaboration leaf, and the F1 cluster the Matrix (<<smu-traceability-matrix>>) names (`smu_smc_reset_ctrl_test`, `smu_smc_mailbox_sanity_test`, `smu_smc_wdt_sanity_test`, `smu_system_timer_octs_test`). Fewest tests that carry the most real behaviour through the wrapper.
+|Smoke plus per-area representatives: the `smoke` group, the smoke and sanity leaves of each area, the elaboration leaf, the F1 cluster the Matrix (<<smu-traceability-matrix>>) names (`smu_smc_reset_ctrl_test`, `smu_smc_mailbox_sanity_test`, `smu_smc_wdt_sanity_test`, `smu_system_timer_octs_test`), the boot bring-up leaves (`smu_smc_rom_boot_min_pass_test`, `smu_sep_boot_health_test`), the primary-TAP leaf (`smu_wrapper_jtag_ptap_test`) and the clock-stop coordination leaf (`smu_clock_stop_coordination_test`). Fewest tests that carry the most real behaviour through the wrapper.
 
 |Phase 2
 |Same bench
@@ -120,9 +120,9 @@ Checker contracts in this plan are written against these known ways a check can 
 
 Per-run logs and `result.json` land under `build/runs/`. PASS requires positive `results.xml` and the evidence gate of the base test; a clean simulator exit alone is not enough. A test passing is the entry condition for reading its checkers, never a substitute for them. A checker row exists only if a run can prove it. A log tag is not the proof.
 
-The gate is `cocotb_wrapper/tests/smu_base_test.py`. A leaf that scores through the shared `SmuScoreboard` (`use_shared_env`) runs `prove_mapped_features()` after its scenario: every `(CHK_ID, TOKEN, EXPECT)` row of `TEST_EVIDENCE` in `cocotb/env/smu_evidence_map.py` for that testcase must have been logged as `EVIDENCE: <TOKEN>` by a passing `expect_*` compare (<<smu-checking-strategy,SMU_TB_ARCH, Checking Strategy>>). A wrapper-native leaf runs `_prove_declared_evidence()` instead: the union of the `required_evidence` tuple on the test class, the `EVIDENCE` tuple its sequence declares through `declare_evidence()`, and its `TEST_EVIDENCE` rows is the required set, and every token of it must have reached the recorder as an `EVIDENCE: <TOKEN>` line, logged after the `CHK-<ID>` PASS line of the check that proved it. The base test prints one line per leaf, `EVIDENCE GATE <test>: required=N seen=N missing=N ids=...`, and fails the leaf on any missing token. A leaf whose required set is empty fails unless `NO_EVIDENCE_LEAVES` names it with a reason; that dictionary is empty, and a new entry hides a logging gap.
+The gate is `cocotb_wrapper/tests/smu_base_test.py`. A leaf that scores through the shared `SmuScoreboard` (`use_shared_env`) runs `prove_mapped_features()` after its scenario: every `(CHK_ID, TOKEN, EXPECT)` row of `TEST_EVIDENCE` in `cocotb/env/smu_evidence_map.py` for that testcase must have been logged as `EVIDENCE: <TOKEN>` by a passing `expect_*` compare (<<smu-checking-strategy,SMU_TB_ARCH, Checking Strategy>>). A wrapper-native leaf runs `_prove_declared_evidence()` instead: the union of the `required_evidence` tuple on the test class, the `EVIDENCE` tuple its sequence declares through `declare_evidence()`, and its `TEST_EVIDENCE` rows is the required set, and every token of it must have reached the recorder as an `EVIDENCE: <TOKEN>` line, logged after the `CHK-<ID>` PASS line of the check that proved it. The two gates log differently. A wrapper-native leaf prints one line, `EVIDENCE GATE <test>: required=N seen=N missing=N ids=...`, and fails on any missing token; a leaf whose required set is empty fails unless `NO_EVIDENCE_LEAVES` names it with a reason, and that dictionary is empty, so a new entry hides a logging gap. A `use_shared_env` leaf prints one `EVIDENCE TOKEN SEEN <CHK_ID> -> <TOKEN> (bound-by=...)` line per map row after every row has been logged, and fails on any missing token and on any row attached by check-name substring alone; a leaf with no map rows fails unless `UNMAPPED_TESTS` names it with a reason, and it then prints `EVIDENCE MAP UNMAPPED <test>` instead.
 
-For every enrolled test the three sets are the same set: the `CHK-<ID>` rows of the Checkers table of its entry, the tokens the gate requires (`required_evidence`, the sequence's `EVIDENCE` tuple and the `TEST_EVIDENCE` rows), and the `CHK-<ID>` PASS lines of its leaf log. A row in one and not the others is a drift to fix in the entry or the map, not a credit.
+The rule for every enrolled test is that three sets are the same set: the `CHK-<ID>` rows of the Checkers table of its entry, the tokens the gate requires, and the `CHK-<ID>` PASS lines of its leaf log. What the gate requires depends on the leaf kind: for a `use_shared_env` leaf it is the `TEST_EVIDENCE` rows alone; for a wrapper-native leaf it is `required_evidence`, the sequence's `EVIDENCE` tuple and the `TEST_EVIDENCE` rows. A Checkers row that the gate does not require is not proved by a PASS of the leaf and takes no credit, whatever the leaf log shows; a row the gate requires and the entry omits is an undocumented check. Either is a drift, and a drift is a defect of the entry or of the map, never a credit. At this revision the rule does not hold for 35 of the 165 `use_shared_env` entries: each lists Checkers rows that `TEST_EVIDENCE` does not carry (for example `smu_smc_mailbox_sanity_test` lists five `CHK-MBX-*` rows and the map requires `CHK-MBX-IRQEN` alone). Those rows are drift, open against the map, and take no credit until the map carries them.
 
 The gate proves that a check ran. It does not prove that the check was right.
 
@@ -235,10 +235,15 @@ runs its `hosted`. PASSes carry `DUT_TAG=WRAPPER`.
 * A feature takes credit once, at the earliest phase that proves it. A later
   test that also reaches the feature does not take the credit again. The
   phase of a test is its `*Phase*` field (<<smu-vplan-tiers>>).
-* A Phase 3 entry takes credit only when its test is in `all`, the named
-  evidence that its entry declares (the `CHK-<ID>` rows of its Checkers
-  table, <<smu-vplan-evidence-gate>>) is in the leaf log, and `results.xml`
-  is positive.
+* A Phase 3 entry takes contract credit (its residual contract counts as
+  graded, <<smu-vplan-phase3-lists>>) only when its test is in `all`, the
+  named evidence that its entry declares (the `CHK-<ID>` rows of its
+  Checkers table, <<smu-vplan-evidence-gate>>) is in the leaf log, and
+  `results.xml` is positive. Contract credit is not feature credit: feature
+  credit (F1-F7 of the Signoff Package) stays with the enrolled `hosted`
+  set above, and a Phase 3 test in `all` but not in `hosted` (every Phase 3
+  test at this revision, `smu_xbar_connectivity_matrix_test` among them)
+  takes contract credit and no feature credit.
 * [[smu-vplan-reserved-bits]]Every graded register compare of a Phase 3
   entry (an expected value from the RDL or a model, a read-back, a before
   and after compare, or a compare of two reads) uses the RDL field bits of
@@ -11694,7 +11699,7 @@ Each item is an added hook (an error inject or a top-port drive the bench did no
 |SMU_WRAPPER
 |`tb_sep_ext_interrupts`
 |Top-port drive (added through the signal list)
-|The wrapper input `sep_ext_interrupts_i`, one lane at a time; the bench tied the port to zero before.
+|The wrapper input `sep_ext_interrupts_i`, one lane at a time.
 |`smu_sep_external_irq_pins_test`
 |SMU_WRAPPER
 |`+lc_sigint_inject` LC_STATE pair fault inject
