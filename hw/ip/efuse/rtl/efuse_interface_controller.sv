@@ -550,7 +550,6 @@ module efuse_interface_controller #(
   ///////////////////////////////////////////////
 
   // Guard signals
-  logic secure_tm_blocked;
   logic program_locked, read_locked;
   logic program_blocked, read_blocked;
 
@@ -614,7 +613,7 @@ module efuse_interface_controller #(
     .program_addr_error_clear_i   (program_addr_error_clear),
 
     .efuse_req_err_i               (efuse_req_err),
-    .secure_tm_blocked_i           (secure_tm_blocked),
+    .secure_tm_blocked_i           (secure_tm_i),
 
     .program_req_timeout_en_i      (program_req_timeout_enable),
     .program_req_timeout_cycles_i  (program_req_timeout_cycles),
@@ -684,7 +683,7 @@ module efuse_interface_controller #(
     .read_addr_error_clear_i    (read_addr_error_clear),
 
     .efuse_req_err_i            (efuse_req_err),
-    .secure_tm_blocked_i        (secure_tm_blocked),
+    .secure_tm_blocked_i        (secure_tm_i),
 
     .read_req_timeout_en_i      (read_req_timeout_enable),
     .read_req_timeout_cycles_i  (read_req_timeout_cycles),
@@ -786,7 +785,6 @@ module efuse_interface_controller #(
   // Each source drives the request it wants on the SHIM in the next cycle, so registering the
   // selected one keeps the SHIM from seeing a request after its source has dropped it.
   fuse_command_req_t fuse_command_req_d, fuse_command_req_q;
-  fuse_command_resp_t fuse_command_resp_post_filter;
 
   always_comb begin : efuse_command_request_mux
 
@@ -797,13 +795,13 @@ module efuse_interface_controller #(
     // Fuse sensing into the shadow registers must be done first - will start automatic upon cold reset de-assertion
     priority if ((!fuse_sense_done) && (!security_disable_i)) begin : auto_sense_mode
       fuse_command_req_d = secure_tm_i ? FuseCommandReqDefault : fuse_command_req_shadow_regs;
-      fuse_command_resp_shadow_regs = fuse_command_resp_post_filter;
+      fuse_command_resp_shadow_regs = fuse_command_resp_i;
     end else if (reg_interface_program_enable) begin : program_mode
       fuse_command_req_d = fuse_command_req_interface_ctrl_w;
-      fuse_command_resp_interface_ctrl_w = fuse_command_resp_post_filter;
+      fuse_command_resp_interface_ctrl_w = fuse_command_resp_i;
     end else if (reg_interface_read_enable) begin : read_mode
       fuse_command_req_d = fuse_command_req_interface_ctrl_r;
-      fuse_command_resp_interface_ctrl_r = fuse_command_resp_post_filter;
+      fuse_command_resp_interface_ctrl_r = fuse_command_resp_i;
     end else begin : idle_mode
       fuse_command_req_d = FuseCommandReqDefault;
     end
@@ -819,7 +817,7 @@ module efuse_interface_controller #(
 
   assign fuse_command_req_o = fuse_command_req_q;
 
-  // The efuse guard checks program and read targets before they are issued and filters responses
+  // The efuse guard checks program and read targets against field locks before they are issued
   efuse_guard #(
     .EFUSE_ADDR_WIDTH(EfuseMapRegMapWidth),
     .HAS_LC_STATE(HAS_LC_STATE),
@@ -829,28 +827,20 @@ module efuse_interface_controller #(
     .TOKEN_MATCH_CODE(TokenMatchCode),
 
     .efuse_map_t(efuse_map_t),
-    .fuse_command_resp_t(fuse_command_resp_t),
 
     .efuse_addr_t(efuse_addr_t),
     .efuse_data_t(efuse_data_t)
   ) u_efuse_guard (
     .clk_i                     (clk_i),
     .rst_ni                    (rst_ni),
-    .secure_tm_i               (secure_tm_i),
 
     .efuse_field_map_i         (efuse_field_map_i),
 
     .rma_sip_token_match_i     (rma_sip_token_match),
     .rma_chiplet_token_match_i (rma_chiplet_token_match),
 
-    // Start refused by a lock - error signal from the guard to the efuse_interface_ctrl_reg
     .efuse_err_o               (efuse_req_err),
-    // A signal from the efuse_interface_ctrl_reg to clear the error
     .error_clear_i             (efuse_err_clear),
-
-    // Fuse command response from the efuse SHIM, needs to be filtered by the guard
-    .fuse_command_resp_i         (fuse_command_resp_i),
-    .fuse_command_resp_filtered_o(fuse_command_resp_post_filter),
 
     .shadow_regs_i             (shadow_regs),
     .program_addr_i            (reg_interface_program_addr),
@@ -859,13 +849,12 @@ module efuse_interface_controller #(
     .read_blocked_i            (read_blocked),
 
     .is_program_locked_o       (program_locked),
-    .is_read_locked_o          (read_locked),
-    .secure_tm_blocked_o       (secure_tm_blocked)
+    .is_read_locked_o          (read_locked)
   );
 
   assign is_program_locked_o = program_locked;
   assign is_read_locked_o = read_locked;
   assign is_efuse_req_err_o = efuse_req_err;
-  assign is_secure_tm_blocked_o = secure_tm_blocked;
+  assign is_secure_tm_blocked_o = secure_tm_i;
 
 endmodule : efuse_interface_controller

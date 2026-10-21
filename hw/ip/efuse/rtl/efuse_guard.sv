@@ -8,20 +8,15 @@
 // LC_STATE_BIT_POSITION and TOKEN_MATCH_CODE locate and encode token checks; the SIP and
 // chiplet token bit addresses are LC_STATE_BIT_POSITION+1 and +2.
 //
-// The program and read interfaces refuse a start whose target is locked or that arrives while
-// secure_tm_i is set, so a blocked command never reaches the SHIM.
-//
-// - Lock and secure-TM status are exported for that start check.
+// - is_program_locked_o and is_read_locked_o are sampled by the interfaces at start time;
+//   a blocked command never reaches the SHIM.
 // - efuse_err_o sets when an interface reports a lock-refused start and sticks until
 //   error_clear_i.
-// - The command response is passed through unmodified; secure_tm_i is static after boot
-//   so a command already in flight completes normally.
 
 module efuse_guard #(
   parameter int unsigned EFUSE_FIELDS     = 1,  // eFuse field-map entry count.
   parameter int unsigned EFUSE_ADDR_WIDTH = 12,  // eFuse byte-address width.
   parameter type         efuse_map_t      = logic,  // Shadow eFuse map type.
-  parameter type         fuse_command_resp_t      = logic,  // Fuse-command response type.
 
   parameter bit HAS_LC_STATE = 1'b0,    // Set for SEP: exempts field index 0 from locks and gates
                                         // the RMA token bits on token matches; clear for SMC.
@@ -41,8 +36,6 @@ module efuse_guard #(
 ) (
   input logic clk_i,                    // System clock.
   input logic rst_ni,                   // Active-low synchronous reset; clears efuse_err_o.
-  input logic secure_tm_i,              // Secure test mode, active-high; blocks all fuse traffic
-                                        // without raising the error. Static after boot.
 
   input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,  // Per-field byte ranges and lock
                                                                  // indices used to find the lock
@@ -59,10 +52,6 @@ module efuse_guard #(
   input  logic error_clear_i,           // Clears the sticky error; a same-cycle new error takes
                                         // priority.
 
-  input fuse_command_resp_t fuse_command_resp_i,  // Fuse command response from the SHIM.
-  output fuse_command_resp_t fuse_command_resp_filtered_o,  // Fuse command response to the
-                                                            // controller; passed through unmodified.
-
   input efuse_map_t shadow_regs_i,      // Shadow eFuse map supplying the per-field read and write
                                         // lock bits.
   input efuse_addr_t program_addr_i,    // Fuse bit address a program start would target.
@@ -71,9 +60,8 @@ module efuse_guard #(
   input logic read_blocked_i,           // One-cycle pulse: a read start was refused by a lock.
 
   output logic is_read_locked_o,        // High when read_addr_i falls in a read-locked field.
-  output logic is_program_locked_o,     // High when program_addr_i is write locked or is an RMA
+  output logic is_program_locked_o      // High when program_addr_i is write locked or is an RMA
                                         // token bit without a token match.
-  output logic secure_tm_blocked_o      // High while secure test mode blocks fuse traffic.
 );
 
   logic is_program_locked;
@@ -118,9 +106,6 @@ module efuse_guard #(
 
   assign is_program_locked_o = is_program_locked;
   assign is_read_locked_o = is_read_locked;
-  assign secure_tm_blocked_o = secure_tm_i;
-
-  assign fuse_command_resp_filtered_o = fuse_command_resp_i;
 
   always_ff @(posedge clk_i) begin
     if (!rst_ni) begin
