@@ -16013,7 +16013,7 @@ observed. Pattern classes repeat across locations, so aliasing between two locat
 same class is not distinguishable.
 
 *Pass Criteria*: `CHK-NONVAC`, `CHK-SPM-WALK-CORESIDENT`, `CHK-SPM-WALK-ENTRY0`,
-`CHK-SPM-WALK-POW2` hold after their compares. Enrolled in: `all`.
+`CHK-SPM-WALK-POW2` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-080-smc_occp_sanity_secure_error_test]]
