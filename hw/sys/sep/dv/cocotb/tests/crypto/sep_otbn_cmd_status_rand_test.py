@@ -16,7 +16,10 @@ source 30, OTBN done);
 ``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md``
 (``ToO`` below) and ``otbn.hjson`` / ``base-insns.yml`` in the same ``otbn`` tree
 for the reset wipe, the errors and the locked state; ``hw/sys/sep/doc/otbn.adoc``
-:66-70 (the FIPS tag that OTBN RND gets is tied high).
+:66-70 (the FIPS tag that OTBN RND gets is tied high);
+``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/registers.md`` (``registers.md``
+below) :173, :205-206, :246-247; ``hw/sys/sep/doc/crypto.adoc`` :141 (OTBN alert
+receivers ``[2:1]`` of the crypto alert pulse vector).
 
 Legs (one seed draws the plan, logged in one ``PLAN`` line):
   command    3 to 5 commands from EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM (each
@@ -27,6 +30,12 @@ Legs (one seed draws the plan, logged in one ``PLAN`` line):
              ``INTR_TEST`` sub-leg.
   busy write an ``RND`` read held by the TRNG reset keeps ``STATUS`` at 0x01;
              k ``CTRL`` writes and j ``CMD`` = SEC_WIPE_DMEM writes.
+  integrity  the compute program twice under ``+sep_otbn_intg_flip``: once with one
+             drawn bit (0 to 38) of every IMEM word that the core fetches inverted,
+             once with one drawn bit of a DMEM word that a ``lw`` of the program
+             reads (word 0 or 1 of the line, bit 0 to 38 of the word) inverted. The
+             flip is armed at the first clock that the OTBN status probe shows
+             BUSY_EXECUTE and dropped at LOCKED; then an OTBN reset.
   sw error   the ``unimp`` program (``CSRRW x0, 0xC00, x0`` then ``ecall``) with
              ``CTRL.software_errs_fatal`` = 1, a ``CMD`` write at LOCKED, an
              OTBN reset; then the same program with ``software_errs_fatal`` = 0.
@@ -116,6 +125,30 @@ Checkers:
                        value before the write (non-zero). "Unrecognized commands
                        are ignored." (``otbn.hjson`` :464); ``ERR_BITS`` is set at
                        the end of an operation (ToO:137).
+  CHK-OTBN-IMEM-INTG   the IMEM run ends with ``STATUS`` = LOCKED (0xFF) on the bus
+                       and on the OTBN status probe, ``done`` = 1 (read 0 before),
+                       ``ERR_BITS.imem_intg_violation`` (bit 16) and
+                       ``FATAL_ALERT_CAUSE.imem_intg_violation`` (bit 0) set, no
+                       pulse on crypto alert ``[2:1]`` from the program load to the
+                       ``CMD`` write and at least one pulse from the ``CMD`` write to
+                       the OTBN reset; after the reset the probe shows 0x04 then
+                       0x00, ``STATUS`` reads IDLE and ``FATAL_ALERT_CAUSE`` reads 0.
+                       IMEM_INTG_VIOLATION "Data read from the instruction memory
+                       failed the integrity checks." is fatal (ToO:261-263); "A
+                       fatal error is raised whenever a data integrity violation is
+                       detected" (ToO:371-373); ToO:180-189 (``ERR_BITS`` non-zero,
+                       ``done``, LOCKED, fatal alert); "A fatal alert is a
+                       continuously triggered alert" ... "can only be cleared by
+                       resetting OTBN" (ToO:311-314); ``registers.md`` :206
+                       (``ERR_BITS`` bit 16), :247 (``FATAL_ALERT_CAUSE`` bit 0),
+                       :173 (LOCKED 0xFF "must be reset to unlock it again");
+                       ``crypto.adoc`` :141 (OTBN receivers ``[2:1]``).
+  CHK-OTBN-DMEM-INTG   the same for the DMEM run, with ``ERR_BITS.dmem_intg_violation``
+                       (bit 17) and ``FATAL_ALERT_CAUSE.dmem_intg_violation`` (bit 1).
+                       DMEM_INTG_VIOLATION "Data read from the data memory failed
+                       the integrity checks." is fatal (ToO:266-268); ToO:371-373,
+                       :180-189, :311-314; ``registers.md`` :205, :246, :173;
+                       ``crypto.adoc`` :141.
 
 Controls: ``CTRL-OTBN-BUSYWR`` (the idle write reads back 1),
 ``CTRL-OTBN-DONE-LINE`` (enable-set ``INTR_TEST`` cell), ``CTRL-OTBN-CMD-IGNORE``
@@ -129,14 +162,24 @@ idle." ToO:98; "If OTBN is idle, the STATUS register is set to IDLE." ToO:104,
 compute run of the command leg ends with ``ERR_BITS`` = 0),
 ``CTRL-OTBN-LOCKED-HOLD`` (a recognised command at IDLE starts an operation),
 ``CTRL-OTBN-ERRCLR``, ``CTRL-OTBN-CMDIGN-ERR`` (``ERR_BITS`` is non-zero before the
-write), ``CTRL-OTBN-BUSYWR-ERR`` (the recoverable error run sets ``ERR_BITS``).
+write), ``CTRL-OTBN-BUSYWR-ERR`` (the recoverable error run sets ``ERR_BITS``),
+``CTRL-OTBN-IMEM-INTG`` and ``CTRL-OTBN-DMEM-INTG`` (the flip was armed during
+BUSY_EXECUTE and ``otbn_intg_flip_count_o`` is non-zero at LOCKED, so a corrupted
+read response reached the integrity check).
 Log-only: ``OBS-OTBN-STATUS-SEQ``; ``OBS-OTBN-INITDONE-DONE`` (``INTR_STATE.done``
 after the post-reset wipe: no sentence states its value); ``OBS-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
 program, a chance outcome); ``OBS-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of the recoverable run: no sentence states the bits other
-than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error).
+than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error);
+``OBS-OTBN-INTG-ALERT-IDX`` (the high clocks of each index of ``[2:1]``: no sentence
+names the fatal index), ``OBS-OTBN-INTG-CAUSE`` (the full ``ERR_BITS`` and
+``FATAL_ALERT_CAUSE`` of each integrity run: "a non-zero value that describes the
+error", ToO:186, does not fix the other bits; also the alert high clocks in a fixed
+window after the OTBN reset).
 
-Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense +esrc_noise_force``.
+Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense +esrc_noise_force
++sep_otbn_intg_flip``. The flip hook acts only while the leaf drives
+``otbn_intg_flip_en_i`` to 1.
 Bounds: ``_OUTER_CLK`` is the outer limit of the clean-time measurement of the
 command leg (logged ``bound=``); later waits use multiples of t_cmd.
 """
@@ -202,6 +245,19 @@ M_ERR_ILLEGAL = OTBN.field_mask("ERR_BITS", "illegal_insn")
 M_ERR_RND_REP = OTBN.field_mask("ERR_BITS", "rnd_rep_chk_fail")
 M_ERR_FATAL_SW = OTBN.field_mask("ERR_BITS", "fatal_software")
 M_FATAL_SW = OTBN.field_mask("FATAL_ALERT_CAUSE", "fatal_software")
+M_ERR_IMEM_INTG = OTBN.field_mask("ERR_BITS", "imem_intg_violation")
+M_ERR_DMEM_INTG = OTBN.field_mask("ERR_BITS", "dmem_intg_violation")
+M_FATAL_IMEM_INTG = OTBN.field_mask("FATAL_ALERT_CAUSE", "imem_intg_violation")
+M_FATAL_DMEM_INTG = OTBN.field_mask("FATAL_ALERT_CAUSE", "dmem_intg_violation")
+
+# OTBN alert receivers [2:1] of crypto_alert_pulse_probe_o (crypto.adoc:141).
+OTBN_ALERT_IDX = (1, 2)
+
+# Selector values of otbn_intg_flip_mem_i, and the 39-bit memory word of the bench
+# hook (32 data bits and 7 integrity bits; DMEM word w of the read line is bits 39w
+# to 39w+38).
+FLIP_IMEM, FLIP_DMEM = 0, 1
+INTG_WORD_BITS = 39
 
 # ``unimp`` (base-insns.yml :681-690): CSRRW x0, 0xC00, x0. 0xC00 is not an OTBN CSR
 # (csr.yml), so the instruction is an ILLEGAL_INSN software error. The ``ecall``
@@ -222,6 +278,7 @@ _DONE_WIN_MULT = 2  # enable-clear watch window of the done-line leg, in t_cmd
 _IGNORE_WIN_MULT = 4  # ignored-command window, in t_cmd (contract)
 _RST_BOUND_CLK = 1_000  # gated reset release wait
 _LINE_BOUND_CLK = 64  # vector bit 29 follow wait after a register write
+_ALERT_OBS_CLK = 256  # alert watch window after the integrity-run reset (log only)
 
 
 @dataclass(frozen=True)
@@ -238,6 +295,9 @@ class Plan:
     bad_cmd: int
     j: int
     errclr: int
+    imem_bit: int
+    dmem_word: int
+    dmem_bit: int
 
     def line(self, seed: int) -> str:
         return (
@@ -245,7 +305,8 @@ class Plan:
             f"gaps={','.join(map(str, self.gaps))} op={self.op} opa=0x{self.opa:08x} "
             f"opb=0x{self.opb:08x} a={self.a} b={self.b} "
             f"en_order={','.join(map(str, self.en_order))} k={self.k} "
-            f"bad_cmd=0x{self.bad_cmd:02x} j={self.j} errclr=0x{self.errclr:08x}"
+            f"bad_cmd=0x{self.bad_cmd:02x} j={self.j} errclr=0x{self.errclr:08x} "
+            f"imem_bit={self.imem_bit} dmem_word={self.dmem_word} dmem_bit={self.dmem_bit}"
         )
 
 
@@ -269,8 +330,26 @@ def draw_plan(seed: int) -> Plan:
     bad_cmd = rng.choice([c for c in range(256) if c not in COMMANDS])
     j = rng.randrange(1, 5)
     errclr = rng.getrandbits(32)
+    imem_bit = rng.randrange(0, INTG_WORD_BITS)
+    # The compute program loads DMEM words 0 (lw x10, 0(x6)) and 1 (lw x11, 4(x6)).
+    dmem_word = rng.randrange(0, 2)
+    dmem_bit = rng.randrange(0, INTG_WORD_BITS)
     return Plan(
-        tuple(seq), gaps, op, opa, opb, a, b, (en_order[0], en_order[1]), k, bad_cmd, j, errclr
+        tuple(seq),
+        gaps,
+        op,
+        opa,
+        opb,
+        a,
+        b,
+        (en_order[0], en_order[1]),
+        k,
+        bad_cmd,
+        j,
+        errclr,
+        imem_bit,
+        dmem_word,
+        dmem_bit,
     )
 
 
@@ -312,6 +391,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         "CHK-OTBN-ERRCLR",
         "CHK-OTBN-BUSYWR-ERR",
         "CHK-OTBN-CMDIGN-ERR",
+        "CHK-OTBN-IMEM-INTG",
+        "CHK-OTBN-DMEM-INTG",
     )
 
     # ------------------------------------------------------------- helpers
@@ -490,6 +571,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         await self._insn_leg(seed)
         await self._done_line_leg(seed)
         busy_ok = await self._busy_write_leg(seed)
+        await self._intg_leg(seed, FLIP_IMEM)
+        await self._intg_leg(seed, FLIP_DMEM)
         recov_err = await self._sw_error_leg(seed)
         await self._ignored_leg(seed)
         close_graded_window(self.logger)
@@ -979,6 +1062,132 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             )
         await self._reset_otbn("busywr-end")
         return busy
+
+    # ------------------------------------------------------ integrity legs
+    async def _arm_flip_on_busy(self, bound: int) -> int | None:
+        """Drive ``otbn_intg_flip_en_i`` to 1 at the first clock the status probe shows
+        BUSY_EXECUTE; return that clock count, or None after ``bound`` clocks."""
+        dut = cocotb.top
+        for i in range(bound):
+            await RisingEdge(dut.clk_i)
+            if self.rd(dut.otbn_status_probe_o, mask=M_STATUS) == ST_BUSY_EXECUTE:
+                dut.otbn_intg_flip_en_i.value = 1
+                return i
+        return None
+
+    def _alert_high(self, watch: SepBitWatch, mark: BitMark) -> dict[int, int]:
+        return {i: watch.high_clocks_since(mark, f"a{i}") for i in OTBN_ALERT_IDX}
+
+    async def _intg_leg(self, seed: int, mem: int) -> None:
+        """One EXECUTE of the compute program with one bit of each core read word of
+        ``mem`` inverted ahead of the integrity check; grade the fatal reaction."""
+        p = self.plan
+        dut = cocotb.top
+        if mem == FLIP_IMEM:
+            name, tag = "OTBN-IMEM-INTG", "imem"
+            flip_bit = p.imem_bit
+            m_err, m_fatal = M_ERR_IMEM_INTG, M_FATAL_IMEM_INTG
+        else:
+            name, tag = "OTBN-DMEM-INTG", "dmem"
+            flip_bit = INTG_WORD_BITS * p.dmem_word + p.dmem_bit
+            m_err, m_fatal = M_ERR_DMEM_INTG, M_FATAL_DMEM_INTG
+        dut.otbn_intg_flip_en_i.value = 0
+        dut.otbn_intg_flip_mem_i.value = mem
+        dut.otbn_intg_flip_bit_i.value = flip_bit
+        alert = SepBitWatch(
+            dut.crypto_alert_pulse_probe_o,
+            {f"a{i}": i for i in OTBN_ALERT_IDX},
+            name=f"otbn_alert_{tag}",
+        ).start()
+        m_pre = alert.mark()
+        await self._clear_done()
+        await self._stage_compute(otbn_compute_prog(p.op))
+        done0 = await self._rd(A_INTR_STATE, M_DONE)
+        pre_high = self._alert_high(alert, m_pre)
+        arm = cocotb.start_soon(self._arm_flip_on_busy(self.idle_bound))
+        m_cmd = alert.mark()
+        await self._wr(A_CMD, CMD_EXECUTE)
+        _, vals, clks = await self._poll_status(
+            lambda s: s in (ST_IDLE, ST_LOCKED), self.idle_bound
+        )
+        arm_clk = await arm
+        st = vals[-1]
+        st_probe = self.rd(dut.otbn_status_probe_o, mask=M_STATUS)
+        done = await self._rd(A_INTR_STATE, M_DONE)
+        err = await self._rd(A_ERR_BITS, M_ERR_BITS)
+        fatal = await self._rd(A_FATAL, M_FATAL)
+        flips = self.rd(dut.otbn_intg_flip_count_o)
+        post_high = self._alert_high(alert, m_cmd)
+        dut.otbn_intg_flip_en_i.value = 0
+        exit_ok, exit_arc = await self._reset_otbn(f"intg-{tag}-exit")
+        st_exit = await self._rd(A_STATUS, M_STATUS)
+        fatal_exit = await self._rd(A_FATAL, M_FATAL)
+        m_after = alert.mark()
+        await ClockCycles(dut.clk_i, _ALERT_OBS_CLK)
+        after_high = self._alert_high(alert, m_after)
+        await alert.stop()
+        self.chk.ctrl(
+            name,
+            arm_clk is not None and flips > 0,
+            seed=seed,
+            mem=tag,
+            flip_bit=flip_bit,
+            armed_clk_after_cmd="none" if arm_clk is None else arm_clk,
+            flip_count=flips,
+        )
+        cond = (
+            arm_clk is not None
+            and done0 == 0
+            and st == ST_LOCKED
+            and st_probe == ST_LOCKED
+            and done == 1
+            and bool(err & m_err)
+            and bool(fatal & m_fatal)
+            and sum(pre_high.values()) == 0
+            and sum(post_high.values()) > 0
+            and exit_ok
+            and st_exit == ST_IDLE
+            and fatal_exit == 0
+        )
+        self.chk.ok(
+            name,
+            cond,
+            seed=seed,
+            mem=tag,
+            flip_bit=flip_bit,
+            status=_runs(vals),
+            final=f"0x{st:02x}",
+            probe=f"0x{st_probe:02x}",
+            expect=f"0x{ST_LOCKED:02x}",
+            done=done,
+            pre_done=done0,
+            err_bit=int(bool(err & m_err)),
+            err_mask=f"0x{m_err:x}",
+            fatal_bit=int(bool(fatal & m_fatal)),
+            fatal_mask=f"0x{m_fatal:x}",
+            alert_high_before_cmd=sum(pre_high.values()),
+            alert_high_after_cmd=sum(post_high.values()),
+            reset_arc=exit_arc,
+            status_after_reset=f"0x{st_exit:02x}",
+            fatal_after_reset=f"0x{fatal_exit:x}",
+            clk=clks,
+            bound=self.idle_bound,
+        )
+        self.chk.obs(
+            "OTBN-INTG-ALERT-IDX",
+            seed=seed,
+            mem=tag,
+            **{f"a{i}_high_clk": post_high[i] for i in OTBN_ALERT_IDX},
+        )
+        self.chk.obs(
+            "OTBN-INTG-CAUSE",
+            seed=seed,
+            mem=tag,
+            err_bits=f"0x{err:x}",
+            fatal_cause=f"0x{fatal:x}",
+            alert_high_after_reset=sum(after_high.values()),
+            window_clk=_ALERT_OBS_CLK,
+        )
 
     # ---------------------------------------------------- software-error leg
     async def _run_unimp(self, fatal_cfg: int) -> tuple[int, int, list[int], int]:

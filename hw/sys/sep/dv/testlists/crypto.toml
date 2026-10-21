@@ -464,7 +464,7 @@ timeout_sec = 1800
 tags = ["crypto", "otbn", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense", "+esrc_noise_force"]
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_otbn_intg_flip"]
 
 [[tests]]
 # ABR combined commands park and re-arm, single-step results do not depend on order, and
