@@ -77,10 +77,10 @@ One DUT, three scope tiers on one bench: cocotb / PyUVM on Verilator, the `compi
 
 |Phase 3
 |Same bench. A check that reads state only a four-state simulator shows names VCS in its entry.
-|Residual contracts: the contracts of the specification and the register description that no Phase 1 or Phase 2 check grades. Corner and illegal cells, past-extent and gap responses, injected faults, reset, lock and retention behaviour, sticky status, timing and ratio matrices, register sweeps, concurrency and contention, and every test whose Objective states what no other test grades. A Phase 3 test never overlaps a Phase 1 or Phase 2 test; an entry that extends an open test names that test in its Objective. Every expected value comes from the specification and the register description, never from the RTL and never from another test. A check that rests on a PROPOSED internal drive is blocked and takes no credit. A read-only observation tap, an error inject and a drive of a wrapper port are not PROPOSED. A test with no executable check is parked (<<smu-credit-rules>>).
+|Residual contracts: the contracts of the specification and the register description that no Phase 1 or Phase 2 check grades. Corner and illegal cells, past-extent and gap responses, injected faults, reset, lock and retention behaviour, sticky status, timing and ratio matrices, register sweeps, concurrency and contention, and every test whose Objective states what no other test grades. A Phase 3 test never overlaps a Phase 1 or Phase 2 test; an entry that extends an open test names that test in its Objective. Every expected value comes from the specification and the register description, never from the RTL and never from another test. A check that rests on a PROPOSED internal drive is blocked and takes no credit. A read-only observation tap, an error inject and a drive of a wrapper port are not PROPOSED. A test with no executable check is parked (<<smu-credit-rules>>, <<smu-vplan-phase3-parked>>).
 |===
 
-Phase 1, Phase 2 and Phase 3 are scope tiers, not a schedule. Phase 1 is the bring-up and representative set. Phase 2 is the iconic, breadth and edge set. Phase 3 is the residual set. Each test entry names its tier in its `*Phase*` field and its section in `*Area*`, and each row of the Scenario-Expanded Test Summary carries the same phase. `SMU_FCOV.adoc` has its own Phase 1 / Phase 2 taxonomy (the collected points versus the named set that is not collected); an FCOV phase does not follow the phase of its owning test. A tier says what a test is asked to prove. It does not say when the test was written. A Phase 3 entry takes credit under the rules of <<smu-credit-rules>>. The contracts this plan does not claim are in the Verification Scope table above. The Phase 3 contracts that no test can grade, the observation taps and hooks the tests use, the PROPOSED drives and the out-of-scope features are listed in the Phase 3 Tests section of this plan, after the Test Procedures.
+Phase 1, Phase 2 and Phase 3 are scope tiers, not a schedule. Phase 1 is the bring-up and representative set. Phase 2 is the iconic, breadth and edge set. Phase 3 is the residual set. Each test entry names its tier in its `*Phase*` field and its section in `*Area*`, and each row of the Scenario-Expanded Test Summary carries the same phase. `SMU_FCOV.adoc` has its own Phase 1 / Phase 2 taxonomy (the collected points versus the named set that is not collected); an FCOV phase does not follow the phase of its owning test. A tier says what a test is asked to prove. It does not say when the test was written. A Phase 3 entry takes credit under the rules of <<smu-credit-rules>>. The contracts this plan does not claim are in the Verification Scope table above. The Phase 3 contracts that no test can grade are in <<smu-vplan-phase3-lists>>. The observation taps, the added hooks and the PROPOSED drives of the Phase 3 tests are in <<smu-vplan-phase3-proposed>>, and the parked-test rule of Phase 3 is in <<smu-vplan-phase3-parked>>.
 
 [[smu-vplan-random]]
 ==== Randomization classes
@@ -261,7 +261,7 @@ runs its `hosted`. PASSes carry `DUT_TAG=WRAPPER`.
    a DUT net, a passive monitor on a wrapper pin, or a hierarchical read of
    a DUT net. An observation tap is not PROPOSED and blocks no check or leg.
    A tap that `docs/SMU_TB_ARCH.adoc` and the signal list do not already
-   carry is an observation tap the test adds, and the Phase 3 lists name it.
+   carry is an observation tap the test adds, and <<smu-vplan-phase3-obs-taps>> names it.
 ** *Added hook*: an error inject or a top-port drive that
    `tb/tb_wrapper_top.sv` does not have and the signal list does not drive.
    An error inject is an inject or a force that puts a fault or an illegal
@@ -270,7 +270,8 @@ runs its `hosted`. PASSes carry `DUT_TAG=WRAPPER`.
    reset or boot-sequence pin, a JTAG, CTP, ATB or interrupt pin, an eFuse
    or memory-model response, or a port value a plusarg sets. An added hook
    is not PROPOSED and blocks no check or leg; the test that adds one adds
-   its row to the signal list or to the stand-in record.
+   its row to the signal list or to the stand-in record
+   (<<smu-vplan-phase3-added-hooks>>).
 ** *Existing bench hook*: a drive, a force, an inject or a time-0 plusarg
    that `tb/tb_wrapper_top.sv` already has or that the signal list already
    drives: the `+esrc_noise_force` lanes, the `+lc_sigint_inject` LC_STATE
@@ -281,7 +282,8 @@ runs its `hosted`. PASSes carry `DUT_TAG=WRAPPER`.
    check or leg. Its record is the stand-in table of
    `docs/SMU_DEFERRED_DISPOSITION.adoc`.
 ** *Blocked*: a check or leg that needs a PROPOSED item, or a value that the
-   specification or the register description does not state. An entry
+   specification or the register description does not state
+   (<<smu-vplan-phase3-blocked>>). An entry
    writes `Blocked: needs the PROPOSED drive x` or `Blocked: the
    specification does not state X` at the check or leg, or lists the item in
    its `*Scope limit*` field as measured and logged only. A blocked feature
@@ -11060,6 +11062,726 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+
+[[smu-vplan-phase3]]
+=== Phase 3 Tests
+
+Phase 3 tests prove the residual contracts of each area (<<smu-vplan-phase3-overview>>). Each area has its Phase 3 rows in the Scenario-Expanded Test Summary, marked `3` in the Phase column, and its Phase 3 entries in its section of Test Procedures, where every entry carries `*Phase*: 3`. The rows are for human readers and the entries are for tools and audits; the two name the same tests. An entry follows the field rules of Test Procedures and adds nothing an open entry lacks: the same Checkers table, the same evidence tokens, the same Pass Criteria. A Phase 3 test never overlaps a Phase 1 or Phase 2 test. An entry that extends an open test names that test in its Objective and lists only the cells that it adds. The Phase 3 contracts that no test can grade are in <<smu-vplan-phase3-lists>>. The randomization class of every Phase 3 test is in <<smu-vplan-phase3-random>>. No Phase 3 leaf drives a coverage window: the SMU functional-coverage collectors run on Verilator and VCS over the whole leaf (`SMU_FCOV.adoc`), and the phase of a coverage point does not follow the phase of its owning test (<<smu-vplan-tiers>>).
+
+[[smu-vplan-phase3-overview]]
+==== Phase 3 Overview
+
+[cols="2,2,8",options="header",]
+|===
+|Area |Test numbers |Scope
+|FABRIC
+|12, 17, 18, 129 to 133
+|Last writer on one map word over two bridges; several inbound transfers in flight and the refusal of unsupported burst types; DECERR on an address no aperture claims; alias remap transparency after reset and the AxCACHE of a hit and a miss; the filter and remap register sweeps; filter entry lock; past-extent, gap and remap-window responses of the SMC map.
+|RESET
+|21, 25, 30, 32, 134, 135, 137
+|Boot-stall precedence over IC_RESET; two IC_RESET domains in one data register; reset release on a domain clock edge; SRAM auto-initialisation held off; the clock-stop output under a primary reset; isolation and FLR retention across cool and cold resets; the reset-unit register sweep with random data, read-only and unmapped cells.
+|MISC
+|36, 138 to 150
+|JTAG2AXI against SMN on one CSR; the DEBUG_CONTROL data register; OCTS reset state and the secondary-mode hold; SEP mailbox thresholds and SMC scratch words over the bridges; SMC aperture, telemetry and cross-trigger reset states; SS_CONFIG lanes; telemetry queue ends and threshold; the cross-trigger register sweeps, select walk, cold-reset clear and CTP status and reset corners.
+|JTAG
+|48 to 51, 54, 56, 59, 62, 151 to 153
+|Bridge error responses and the recovery after them; write-strobe widths and the sticky partial merge; the reserved walk of the OTP map and the series error cell; TCK period reprogram; the OTP bridges under a closed fabric posture; the external IC_RESET slice under `reset_hold`, TRST and power-on reset; the IC_RESET layout and capability words; TRST and power-on reset of the primary TAP.
+|SEP
+|154, 155
+|The `secure_tm` latch window across a real second sense; a cold reset re-asserted inside a sense.
+|SMC
+|156 to 164
+|Reset states of the base configuration, CPU control, reset unit and mailbox apertures; cold-boot release order and stretch; the sensed shadow map at every offset; mailbox error responses, sticky flags and the threshold lane; the SRAM initialisation order against the first fetch.
+|SMU_WRAPPER
+|103 to 107, 112, 113, 115 to 123, 125, 127, 128, 167, 168, 183 to 201
+|Cool-reset pulse filter and strap pairing; the `ss_reset_ctrl` lane sweep and lock; the shadow image under cold reset; lane, attribute, aperture, address-bit, size and ID sweeps of every port that leaves the SMU; the PTAP instruction and state walk; SEP egress without firmware; lifecycle refusal cells of the OTP bridges; outstanding responses on the outbound port; the broken LC_STATE pair; burst routing on the first address; STAP hold and reset corners; the JTAG2AXI series, status, capability, error and ratio contracts; the IC_RESET SEP slice; the SMC debug module under reset; every external SEP interrupt pin; the watchdog bite to SMC reset chain; the self-selected cross-trigger lane; RMA token match; warm-reset retention; the inbound filter rule terms; base-configuration corners; the seeded ID stress; alias priority, overflow and DMA translation; the outbound filter rule matrices; the output remap region matrix.
+|===
+
+[[smu-vplan-phase3-parked]]
+==== Phase 3 Parked Tests
+
+A parked test has no graded check that runs without a PROPOSED item or an unstated value (<<smu-credit-rules>>). Its entry carries the field `*Needs*:`, its summary row reads "3, parked", it takes no credit and it is not in an executable total.
+
+No entry of this plan carries a `*Needs*:` field, so every Phase 3 test is executable: at least one of its graded checks is not blocked. A blocked leg of an executable test is named in its `*Scope limit*` field as measured and logged only, and <<smu-vplan-phase3-lists>> names the unstated value or the missing observation behind it. The scenarios that cannot run or cannot pass on this bench are not parked entries of this plan: they have no entry and no testlist membership, and `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` (<<smu-deferred-disposition>>) catalogues each with the condition it needs, among them the four dual-firmware leaves that wait for an SMC SRAM image a sys-inbound master can reach, the nine proofs that need the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration, the JTAG2AXI abort that needs a BUSY window the wrapper's eFuse model never gives, and the asynchronous cold-reset assertion.
+
+[[smu-vplan-phase3-random]]
+==== Phase 3 Randomization
+
+Every Phase 3 stimulus that has a legal matrix is a pure function of the run seed, and `--stage sim --seed N` replays the leaf (<<smu-vplan-random>>). The bench base test also draws its bring-up timing from the seed (the clock periods, the power-good and reset hold lengths and the idle TCK count of `smu_env_cfg.randomize_timing`); that draw sets the environment of every leaf and does not change the class of a leaf whose stimulus and expected values do not depend on it. The class of a test is `RAND-REP`, `RANDCFG` or `RAND-NONE` as its entry states; the Dimensions column repeats the drawn dimensions of a drawn class and the reason of a directed one.
+
+[cols="4,2,1,6",options="header",]
+|===
+|Test Case |Area |Class |Dimensions
+|`smu_otp_vs_fabric_map_race_test` (12)
+|FABRIC
+|RAND-NONE
+|none; directed: the stimulus is the fixed OTP and fabric patterns (PAT_O, PAT_F) written back to back to the one MAP SPARE[0] word and a fixed four-step ping-pong of index-derived patterns; nothing is drawn.
+|`smu_axi_in_burst_outstanding_test` (17)
+|FABRIC
+|RAND-NONE
+|none; directed: the trains are a fixed sixty-four transfers with index-derived IDs and payloads, the burst shapes and the SPM size and address-walk cells are fixed tables, and the leaf draws nothing from the seed.
+|`smu_xbar_connectivity_matrix_test` (18)
+|FABRIC
+|RAND-NONE
+|none; directed: the probed address is the first entry of a fixed candidate list that the live apertures do not cover and the IDs are fixed (ARID 0x2A, AWID 0x15 and 0xFF); nothing is drawn.
+|`smu_alias_cache_reset_test` (129)
+|FABRIC
+|RAND-NONE
+|none; directed: the leaf walks every REGION_ATTRS.cacheable value 0 to 15 on fixed window, target and miss addresses in every run; the seed is logged and nothing is drawn from it.
+|`smu_filter_cfg_register_map_test` (130)
+|FABRIC
+|RAND-NONE
+|none; directed: the leaf walks all 16 entries of both instances with values derived from the instance, register and entry index, and the field walks on the fixed entries 13 and 14, in every run; the seed selects nothing.
+|`smu_filter_lock_test` (131)
+|FABRIC
+|RAND-NONE
+|none; directed: the feature has one named lock cell (entry 5 of each instance, with the fixed neighbours 4 and 6 and fixed window and replacement values); nothing is drawn.
+|`smu_remap_cfg_register_map_test` (132)
+|FABRIC
+|RAND-NONE
+|none; directed: the leaf walks all 24 alias and 16 output remap registers with index-derived values and the bit walks on the fixed regions (alias 3, M-mode 2, Xvisor 5) in every run; the seed selects nothing.
+|`smu_smc_unmapped_response_test` (133)
+|FABRIC
+|RAND-NONE
+|none; directed: the leaf walks its whole fixed address set (the two between-unit addresses, the two exception addresses, the eleven past-extent cells and the two remap windows) in every run and the seed selects nothing.
+|`smu_boot_stall_vs_ic_reset_priority_test` (21)
+|RESET
+|RAND-NONE
+|none; directed: the body runs one fixed leg order (stall made sticky across a cold reset, IC_RESET warm then cold override, override released, TRST clear) with fixed port selections and bounds; nothing is drawn from the seed.
+|`smu_ic_reset_dual_domain_illegal_test` (25)
+|RESET
+|RAND-NONE
+|none; directed: the body walks its whole pair set (fuse+warm and cool+cold packed in one DR) and checks all four SMC domains after each in every run; the seed selects nothing.
+|`smu_reset_release_sync_test` (30)
+|RESET
+|RANDCFG
+|`random.Random(seed)` draws the phase of the cold-reset release inside the `clk_ref_i` period (one fifth to four fifths of the period); the leaf runs one release under it and the expected edge alignment is the same function of the domain clocks for every phase.
+|`smu_sram_auto_init_disabled_test` (32)
+|RESET
+|RAND-NONE
+|none; directed: the stimulus is the fixed `+smc_scratch_ram_hex` image that holds the enable high, one cold reset under it and one more after `tb_smc_sram_auto_init_restore` lowers it, with fixed quiet windows; nothing is drawn from the seed.
+|`smu_dtp_sysreset_stop_clks_test` (134)
+|RESET
+|RAND-NONE
+|none; directed: the feature has a single named handshake (`jtag_clock_stop` programmed in DEBUG_CONTROL against one cool-reset pulse held 64 `clk_ref_i` cycles) and the verdict the fixed 0 inside the reset and the third-edge return; nothing is drawn from the seed.
+|`smu_isolation_retention_test` (135)
+|RESET
+|RAND-NONE
+|none; directed: the registers are programmed with fixed patterns (0xA5A5_A5A5, 0x5A5A_5A5A and 0x3C3C_3C3C under their field masks, the FLR counters 5 and 7) and walked through the same cool-reset, cold-reset and GPIO 53 low/high legs in every run; nothing is drawn from the seed.
+|`smu_reset_csr_access_test` (137)
+|RESET
+|RAND-REP
+|`random.Random(seed)` draws the 32-bit write pattern of every writable register and one field bit of SS_CONFIG; the stated outcome of every point is the pattern read back under the register's writable mask.
+|`smu_jtag2axi_vs_smn_same_csr_race_test` (36)
+|MISC
+|RAND-NONE
+|none; directed: the race is a single named scenario (one J2A write of `0x17A6_0001` and one SMN write of `0x5A11_0002` to the same SCRATCH CSR, the SMN writer released on the J2A AW handshake) and nothing is drawn.
+|`smu_dtp_debug_control_fields_test` (138)
+|MISC
+|RAND-NONE
+|none; directed: the leaf walks every DEBUG_CONTROL bit (bits 0 to 3 written alone, bit 4 read-only under a lane request) and all three reset sources in every run; nothing is drawn.
+|`smu_octs_reset_and_secondary_hold_test` (139)
+|MISC
+|RAND-NONE
+|none; directed: the stimulus is the fixed strap drive and TIMER_START write sequence in SECONDARY and then PRIMARY mode with the preset the leaf programs; nothing is drawn.
+|`smu_sep_mailbox_sba_readback_test` (140)
+|MISC
+|RAND-NONE
+|none; directed: the leaf walks all sixteen mailbox ports with the fixed threshold `1 + (m % 7)` in every run and the seed selects nothing.
+|`smu_smc_aperture_reset_state_test` (141)
+|MISC
+|RAND-NONE
+|none; directed: the leaf only reads the fixed aperture and clock-gate registers and the region-size pin for their reset values; nothing is drawn.
+|`smu_smc_scratch_bridge_readback_test` (142)
+|MISC
+|RAND-NONE
+|none; directed: the leaf walks all sixteen SCRATCH registers with the fixed pattern `(0xA5A50000 ^ (n * 0x01010101))` in every run; nothing is drawn.
+|`smu_ss_config_lane_drive_test` (143)
+|MISC
+|RAND-NONE
+|none; directed: the leaf walks all 32 SS_CONFIG lanes plus the all-ones and zero words in every run and the seed selects nothing.
+|`smu_telemetry_queue_threshold_test` (144)
+|MISC
+|RAND-NONE
+|none; directed: the stimulus is the fixed eight-message fill with probe ids 1 to 8, the fixed thresholds 3 and 5 and a fixed pop order; nothing is drawn.
+|`smu_telemetry_reset_state_test` (145)
+|MISC
+|RAND-NONE
+|none; directed: the leaf only reads the registers of the three receivers for their reset values and writes nothing; nothing is drawn.
+|`smu_xtrig_cold_reset_clears_ctn_test` (146)
+|MISC
+|RAND-NONE
+|none; directed: the stimulus is the fixed register values `0x10`, `0x3` and `0x55` and the fixed cold-reset pulse in each of the three legs; the seed is logged and nothing is drawn from it.
+|`smu_xtrig_ctm_select_walk_test` (147)
+|MISC
+|RAND-NONE
+|none; directed: the leaf walks all 26 CT_DST_SELECT bits over the three fixed CT_SRC registers in every run; the seed is logged and nothing is drawn from it.
+|`smu_xtrig_ctn_csr_rw_test` (148)
+|MISC
+|RAND-NONE
+|none; directed: the stimulus is the fixed CONFIG, STRETCH_MULT and CT_SRC values on fixed ports (port 3, the 16-port walk, ports 0 and 15); the seed is logged and nothing is drawn from it.
+|`smu_xtrig_ctn_reset_values_test` (149)
+|MISC
+|RAND-NONE
+|none; directed: the leaf reads all 26 CT_SRC registers and the three registers of all 16 ports for their reset values in every run; the seed is logged and nothing is drawn from it.
+|`smu_xtrig_ctp_status_reset_test` (150)
+|MISC
+|RAND-NONE
+|none; directed: the stimulus is the fixed port 2, port 3 and port 4 configuration and pad sequence at both INVERT polarities; the seed is logged and nothing is drawn from it.
+|`smu_dtp_jtag2axi_back_to_back_error_ok_test` (48)
+|JTAG
+|RAND-NONE
+|none; directed: the stimulus is the fixed access set (VERSION_LO read, a read and a 0xDEAD_BEEF write at the SMC local-xbar unmapped gap, each followed by an immediate VERSION_LO re-read); nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_dtp_jtag2axi_smc_error_path_test` (49)
+|JTAG
+|RAND-NONE
+|none; directed: the stimulus is the fixed access set (VERSION_LO read, a read at the SMC local-xbar unmapped gap, the VERSION_LO recovery read, then a series DATA_INCR write and readback of 0x0102_0304_0506_0708 at SPM+0x40); nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_dtp_jtag2axi_smc_rw_matrix_test` (50)
+|JTAG
+|RAND-NONE
+|none; directed: the sequence walks its whole cell set in every run (the four AxSIZE windows 1/2/4/8 bytes with fixed payload and outer patterns, then the fixed partial writes WSTRB 0x55/0xAA at SPM+0x280/+0x290); nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_dtp_jtag2axi_wstrb_partial_sticky_test` (51)
+|JTAG
+|RAND-NONE
+|none; directed: the stimulus is the fixed pair of SPM words A (+0x300) and B (+0x308) preloaded with 0x1111_2222_3333_4444 and 0xAAAA_BBBB_CCCC_DDDD, then one partial write of 0xFFFF_0000_FFFF_0000 with WSTRB 0x55 to A (`SEED_A`/`SEED_B` are constants, not a random seed); nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_dtp_otp_smc_complete_rw_test` (54)
+|JTAG
+|RAND-NONE
+|none; directed: the leaf walks its whole cell set in every run (MAP SPARE[1..3] written with the fixed patterns 0xA11C_E001, 0xB22D_F112, 0xC33E_0223 and read back over the OTP, fabric and shadow paths, then the first of them rewritten with 0xD44F_1334 while the other two hold); nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_dtp_otp_smc_series_error_test` (56)
+|JTAG
+|RAND-NONE
+|none; directed: the stimulus is the fixed series NO_INCR write/readback of PATTERN_A 0xA5A5_5A5A to MAP SPARE[0] and the fixed SINGLE_OP reads of SPARE[0] and of the MAP_BASE+MAP_SIZE hole; nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_jtag_chain_enhanced_test` (59)
+|JTAG
+|RAND-NONE
+|none; directed: the sequence walks its whole cell set in every run (the required TCK periods 1000/200/100/50 ns, with IDCODE and the fixed BYPASS pattern 0xA5 at each); nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_otp_bridges_under_dbg_disable_test` (62)
+|JTAG
+|RAND-NONE
+|none; directed: the stimulus is the fixed eFuse image of the state plus the fixed spare-word patterns (SMC 0x1234_ABCD, SEP 0x5A5A_A5A5, EFUSE_BANK_INIT_TIME 0x0000_0040) and one fabric SINGLE_OP probe; nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_jtag_ic_reset_ext_override_test` (151)
+|JTAG
+|RAND-NONE
+|none; directed: the test module writes the enumerated IC_RESET images (every value of the reset_enable/reset_control pair, the single-0/single-1 walk, both `reset_hold` values) and applies the three named resets; nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_jtag_ic_reset_layout_caps_test` (152)
+|JTAG
+|RAND-NONE
+|none; directed: the test module shifts fixed markers and walks the enumerated IC_RESET bit positions (the six slice positions and the ten named ports) and the fixed JTAG_CAPS shift-ins; nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_jtag_trst_por_reset_test` (153)
+|JTAG
+|RAND-NONE
+|none; directed: the test module applies the enumerated reset shapes (POR alone, `TRST_n` with TCK at TMS 0, at TMS 1 and stopped, both resets in both release orders) and the seven prior instructions; nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
+|`smu_secure_tm_real_sense_window_test` (154)
+|SEP
+|RAND-NONE
+|none; directed: the two legs, the 64-cycle sample delay, the strap pulse at response strobes 100 and 180 and the 512 post-edge samples are fixed constants of the sequence; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_sep_cold_reassert_during_sense_test` (155)
+|SEP
+|RAND-NONE
+|none; directed: the abort triggers are the fixed strobe counts 1 and 128 and a near-255 count computed from the measured reset latency, not from the seed; the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_base_config_state_test` (156)
+|SMC
+|RAND-NONE
+|none; directed: the leaf reads the whole fixed register list of the block (the four aperture and clock-gate registers and the six HANG_DET registers) and compares reset values in every run; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_cold_boot_release_order_test` (157)
+|SMC
+|RAND-NONE
+|none; directed: the two cold boots use fixed edge counts (600-edge holds, a 64-edge release and a 64-edge pulse) and compare against the documented 32- and 255-cycle floors; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_cpu_ctrl_boot_state_test` (158)
+|SMC
+|RAND-NONE
+|none; directed: the leaf reads the whole fixed CPU_CTRL register list (RESET_VECTOR[0..3], RESET_CTRL, CORE_RESET_PULSE_COUNT, RESET_TIMEOUT, the two WDT registers, SCRATCH[0..15], SMC_ATTRIBUTES and the DUMMY_ROM words) in every run; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_efuse_shadow_map_readback_test` (159)
+|SMC
+|RAND-NONE
+|none; directed: the sixteen sampled map indices and the six named elements are a fixed tuple of the sequence and the expected words are the fixed `+smc_efuse_hex` image; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_mailbox_aperture_layout_test` (160)
+|SMC
+|RAND-NONE
+|none; directed: the offsets, the mailbox indices (0, 1, 31 and the inbound aperture of pair 0) and the written values (1, 5, 1, 2 and 1) are fixed in the sequence; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_mailbox_status_error_test` (161)
+|SMC
+|RAND-NONE
+|none; directed: the access list on outbound mailbox 0 (the three push words, the enable and acknowledge values, the flush and the four read-only writes) is fixed in the sequence; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_mailbox_threshold_lane_test` (162)
+|SMC
+|RAND-NONE
+|none; directed: the push word `0xA5A5A5A5`, the WIRQT value 5, the 64- and 256-sample windows and the enable, flush and acknowledge order are fixed in the sequence; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_reset_unit_state_test` (163)
+|SMC
+|RAND-NONE
+|none; directed: the leaf reads the whole fixed reset-unit register list and samples the three idle outputs in every run; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_sram_init_sequence_test` (164)
+|SMC
+|RAND-NONE
+|none; directed: the only stimulus is a second cold reset of fixed length (600 `clk_ref_i` edges) and the verdict is the sampler's record of the done rises and the two counters; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+|`smu_smc_cool_reset_pin_test` (103)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the pulse length (28 `clk_ref`), the hold and the strap order are constants of the sequence and the seed selects nothing.
+|`smu_smc_ss_reset_ctrl_sweep_test` (104)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks its whole cell set (all seven registers through the ten fixed lane-signature patterns, then the lock leg) in every run and the seed selects nothing.
+|`smu_smc_efuse_shadow_sense_reset_test` (105)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the stimulus is the fixed all-ones eFuse image `smc_efuse_all_ones.hex` and one cold-reset assertion, and the seed selects nothing.
+|`smu_smc_boundary_lane_sweep_test` (106)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks its whole cell set (every lane of every bus through the fixed all-ones, all-zeros and alternating patterns, every mailbox, every GPIO interface and every UART) in every run and the seed selects nothing.
+|`smu_axi_in_attribute_sweep_test` (107)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks its whole cell set (all eight AxPROT encodings, both values of AxREGION, AxQOS, AxCACHE and AxLOCK, AxSIZE `0`..`3`, the three AxLEN values and the three burst types) in every run and the seed selects nothing.
+|`smu_aperture_map_walk_test` (112)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks every REGION_SIZE from the smallest window above the inbound filter entry to 1 GiB with the fixed `0xAA..`/`0x55..` base patterns and the top-of-space setting in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+|`smu_axi_out_addr_len_size_test` (113)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the thirteen JTAG2AXI address and AxSIZE cells, the iDMA copies, the one-shot error responses, the zeroer run and the output remaps are a fixed list walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+|`smu_dtp_ptap_ir_walk_test` (115)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks its whole cell set (all 64 IR encodings and the four TAP states) in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+|`smu_axi_in_sep_aperture_test` (116)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: every S5..S11 cell (the fixed AxID, attribute, AxPROT, AxSIZE and burst lists, the 35 walked addresses, the trains and the 40 to 86 cycle collision sweep stepped by 2) is walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+|`smu_dtp_jtag2axi_address_walk_test` (117)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks every 2^k address of each window and bridge (44 adopter-window, 22 DTP CSR and 68 operations per OTP bridge) in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+|`smu_smc_gpio_pad_output_test` (118)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the per-pad codes are the fixed seven-bit words (pad index + 1) and all 65 pads run every receive and transmit phase in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+|`smu_sep_sba_fabric_sweep_test` (119)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the size sweep, the free address bits of each aperture and the 2^32 to 2^55 alias offsets are fixed lists walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+|`smu_sep_lsu_fabric_test` (120)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the stimulus is the fixed ICCM probe image (`sep_lsu_probe.itcm.hex`) run against a fixed list of apertures and the verdict its `ebreak` halt and register report; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and nothing is drawn from it.
+|`smu_efuse_command_test` (121)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the fuse bit addresses (bit 0, the middle of the array with each address bit set, the fresh words and one bit past the array) are fixed values from the generated headers walked on both blocks in every run, and the failing first program comes from the fixed plusargs; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+|`smu_smc_inbound_window_sweep_test` (122)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks all eight AxPROT encodings at each of its four targets, every AxSIZE and offset cell and the fixed ID trains in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+|`smu_sep_sba_peripheral_test` (123)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the stimulus is the fixed register programming of all eight mailboxes, the SPI host, the zero and one-bit-off tokens and the watchdog thresholds; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and nothing is drawn from it.
+|`smu_otp_prod_error_resp_test` (125)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the stimulus is the fixed eFuse image of the PROD state and a fixed list of named OTP bridge operations; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and nothing is drawn from it.
+|`smu_axi_out_outstanding_test` (127)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the seed draws only the per-response B and R delays of the bench responder (`random.Random(seed)` in `smu_axi_out_outstanding_test_seq`); the transaction set is fixed.
+|`smu_lc_sigint_fail_closed_test` (128)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the feature has a single named fault inject (`lc_sigint_inject_i` inverting the n rail of bit 0) applied once and released once, with a fixed list of OTP bridge operations around it; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and nothing is drawn from it.
+|`smu_sep_inbound_burst_extension_test` (167)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the stimulus is two fixed four-beat INCR burst shapes at two fixed SEP-local addresses (`0x2000_1000` and `0x2000_0000`), written and read once each; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and nothing is drawn from it.
+|`smu_sep_stap_hold_reset_test` (168)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf runs both TMS-Hold values and the fixed 3DCR words (`3'b111`, `3'b101`, `3'b100`) in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+|`smu_dtp_jtag2axi_series_contention_test` (183)
+|SMU_WRAPPER
+|RANDCFG
+|The bench draws the TCK period of the primary TAP from the seed (`randomize_timing`, raised to the four-to-one floor by `min_jtag_smu_ratio`) and the sequence logs it; the one series and contention scenario runs under that period, and the stated outcomes (the counter deltas, the read-back words and the op codes) are the same at every legal period.
+|`smu_dtp_jtag2axi_caps_single_op_test` (184)
+|SMU_WRAPPER
+|RANDCFG
+|The bench draws the TCK period of the primary TAP from the seed (`randomize_timing`) and logs it; the one capability and `SINGLE_OP` status scenario runs under that period, and the stated outcomes (the CAPS words, the op codes and the counter deltas) are the same at every legal period.
+|`smu_dtp_otp_sep_series_error_test` (185)
+|SMU_WRAPPER
+|RANDCFG
+|The bench draws the TCK period of the primary TAP from the seed (`randomize_timing`) and logs it; the one SEP OTP series and hole scenario runs under that period, and the stated outcomes (the read-back words, the op codes and the counter deltas) are the same at every legal period.
+|`smu_dtp_sep_ic_reset_effect_test` (186)
+|SMU_WRAPPER
+|RANDCFG
+|The bench draws the TCK period of the primary TAP from the seed (`randomize_timing`) and the sequence logs it; the one IC_RESET override scenario runs under that period, and the stated outcomes (the `sep_reset_n_o` levels, the captured images and the scratch read-backs) are the same at every legal period.
+|`smu_dtp_jtag2axi_ratio_floor_test` (187)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the sequence sets the TCK period of each leg itself (40, 48, 32, 20 and 40 ns, each on a fresh master) in place of the bench draw; nothing is drawn from the seed.
+|`smu_dtp_smc_dm_dmi_test` (188)
+|SMU_WRAPPER
+|RANDCFG
+|The bench draws the TCK period of the primary TAP from the seed (`randomize_timing`) and the sequence logs it; the one debug-module release scenario runs under that period, and the stated outcomes (the dmi answers, the capability fields and the counter deltas) are the same at every legal period.
+|`smu_sep_external_irq_pins_test` (189)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks every one of the 212 external lanes in ascending order in every run and the seed selects nothing.
+|`smu_sep_wdt_bite_to_smc_reset_test` (190)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the feature has a single named handshake (the watchdog bite request to the SMC reset nets and its clearing by the cool-reset pin) driven with fixed thresholds; nothing is drawn from the seed.
+|`smu_xtrig_ctm_self_loop_test` (191)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf drives the one fixed lane 3 with the fixed mask 1<<3 and fixed window lengths; nothing is drawn from the seed.
+|`smu_sep_rma_token_match_test` (192)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the stimulus is the two fixed tokens of the RMA eFuse image, the mismatch being the fixed flip of bit 0; nothing is drawn from the seed.
+|`smu_smc_warm_reset_register_retention_test` (193)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the stimulus is the fixed register patterns and the fixed CORE0 watchdog arming; nothing is drawn from the seed.
+|`smu_sys_in_filter_src_id_rule_test` (194)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks its whole cell set (AxUSER 5, 6 and 0 at both registers, every AxUSER value 0 to 15, the five term flips and every `prot` value 0 to 7 under both `allow_ns` values) in every run and the seed selects nothing.
+|`smu_base_config_corners_test` (195)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the stimulus is the fixed LOCAL_BASE write values and the fixed GLOBAL_BASE moves (the `0xAA..` pattern, the last window and the window past 2^56); nothing is drawn from the seed.
+|`smu_axi_in_random_id_stress_test` (196)
+|SMU_WRAPPER
+|RAND-REP
+|`random.Random(seed)` draws the IDs (sampled over the whole ID width), AxSIZE, burst length, byte offset, byte count and byte data of every stream access and the SPM fill; the stated outcome of every point is the response in request order per ID with the ID echoed and the bytes intact.
+|`smu_alias_priority_overflow_test` (197)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the seed is logged and nothing is drawn from it; the regions, offsets and write sizes are fixed.
+|`smu_alias_dma_manager_test` (198)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the seed is logged and nothing is drawn from it; the copy, the pages and the one region per leg are fixed.
+|`smu_out_filter_rule_matrix_test` (199)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks its whole cell set (both `allow_ns` polarities, the granule edges, both priority orders and `src_id` 1 to 15) in every run and the seed selects nothing.
+|`smu_sep_out_filter_rule_matrix_test` (200)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks its whole cell set (both `allow_ns` polarities, both permission settings, the granule edges, entries 0, 15, 16 and 31 alone and both priority orders) in every run and the seed selects nothing.
+|`smu_sep_output_remap_region_matrix_test` (201)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the leaf walks regions 1 to 15 of both tables and the two pass-through regions of each table in every run and the seed selects nothing.
+|===
+
+[[smu-vplan-phase3-lists]]
+==== Phase 3 Blocked Features, Observation Gaps and Scope
+
+Each item is listed once. The area column names the area that the item concerns. A blocked feature carries no Phase 3 credit. A feature with no observation point has no check that can fail on it. An out of scope feature is graded by an open Phase 1 or Phase 2 test, or has no stated pass or fail value, or belongs to another plan. The observation taps, the hooks and the PROPOSED drives that the tests use are in <<smu-vplan-phase3-proposed>>. A check that needs a PROPOSED item is blocked (<<smu-credit-rules>>). A check that needs only observation taps and added hooks is not blocked. Every item below is drawn from the entries of this plan, from the disposition record and from the open documents; where a document states a value and the bench observes another, the entry records the observed value and does not grade it, and the item says so.
+
+[[smu-vplan-phase3-blocked]]
+===== Blocked features
+
+A blocked feature has no check in Phase 3, because the specification or the register description does not state the value that a check needs, or because no stimulus on this bench can produce the condition. The question names what the specification must state, or what the bench must gain, before a check can fail on the feature. Where a test uses part of a blocked feature, the note says what the test does.
+
+[cols="2,5,6,5",options="header",]
+|===
+|Area |Feature |Open specification question |Note
+|SMU_WRAPPER
+|The encoding of the two-bit demotion state words `lcc_demote_state_1_o` and `lcc_demote_state_2_o` for each (demote, lock) combination.
+|Blocked: the specification does not state the code of each demotion state. `hw/sys/sep/doc/lifecycle_controller.adoc` names the two ports and the demote and lock bits of `DEMOTE_1` and `DEMOTE_2`; no chapter gives the two-bit code before demotion, after demotion and after the lock.
+|`smu_lc_demote_test_dev_test` compares transitions only (the code changes on the demote write and does not change on the lock write) and logs the absolute codes; `smu_dtp_sep_dm_sba_test` observes the demotion controls at the SMU boundary the same way.
+|SMU_WRAPPER
+|The lane packing of the 16-bit `lcc_dbg_disable_o` word: which lane carries which debug path.
+|Blocked: the specification does not state the lane order of the word. `hw/sys/sep/doc/lifecycle_controller.adoc` (DTP path feature-gates table) names the gated paths; the port table gives the width only.
+|The lifecycle leaves (`smu_lc_export_prod_test` and its siblings, `smu_sep_dbg_gating_prod_end_test`) compare the one lane the DTP consumes for the SMC fabric JTAG2AXI bridge, `dbg_disable.smc_jtag2axi`, and log the word.
+|SMU_WRAPPER
+|The security-disable override against an LC_STATE integrity error on the SMC OTP JTAG path.
+|Blocked: the specification states two outcomes. `hw/sys/sep/doc/lifecycle_controller.adoc` (debug path table) states that on an integrity error the SMC OTP path admits nothing; `hw/sys/sep/doc/security_disable.adoc` states that a security-disable match opens the shadow map. Which rule wins while both conditions hold is not stated.
+|`smu_lc_sec_dis_over_sigint_prod_test` holds the match and breaks the exported pair with the `+lc_sigint_inject` bench hook, records the SMC OTP read and write status, the read data and `lc_sigint_err_o`, and grades none of them; the SEP-side order of the two mechanisms is not observable on this bench (its Scope limit).
+|MISC
+|The response-output behaviour of a cross-trigger port whose `CT_SRC` mask selects its own wire-OR lane: whether the matrix or the port guards a mask that selects input n for output n, and how many request pulses of what length one external assertion produces.
+|Blocked: the specification does not state a guard, a pulse count or a pulse length. The cross-trigger chapter and `cross_trigger_port.rdl` give the routing equation and the wire-OR echo statement only.
+|`smu_xtrig_ctm_self_loop_test` grades the routing equation and the echo (one assertion re-triggers the lane, writing the mask to 0 ends it) and logs the total rise count and the `ct_dst` latency.
+|MISC
+|`CONFIG.RESET` of a cross-trigger port on a self-selected wire-OR lane.
+|Blocked: the specification does not state whether `CONFIG.RESET` applies to point-to-point mode only. `cross_trigger_port.rdl` describes `CONFIG.RESET` as discarding core-side pulses for transmission; on a wire-OR lane the request output kept pulsing after `RESET` read back 1, and clearing the destination select ended it.
+|`smu_xtrig_ctm_self_loop_test` records the reads of `CONFIG`, `STRETCH_MULT` and the `CT_SRC` register after the reset write and does not grade them; `smu_xtrig_ctp_status_reset_test` grades `CONFIG.RESET` in point-to-point mode only.
+|SMC
+|The reset domain of the two scratch banks across a CORE0 watchdog warm reset: `SCRATCH_COLD_WARM` of the misc wrap and `SCRATCH` of CPU control.
+|Blocked: the specification does not state which reset clears each bank. `hw/sys/smc/doc/clk_rst.adoc` ("Reset Architecture") names the resets of the reset-unit register block; no chapter names the domain of `cpu_ctrl.SCRATCH` or of `misc_wrap.SCRATCH_COLD_WARM`.
+|`smu_smc_warm_reset_register_retention_test` logs one word of each bank before and after the warm reset and never compares them; it grades `SS_CONFIG`, `SS_COLD_RESET_N`, `SS_WARM_RESET_N`, `ISOLATE_REQ_REG` and the FLR counter, whose block `clk_rst.adoc` places under the primary reset.
+|FABRIC
+|ATOP rejection on `smu_axi_in`.
+|Blocked: no stimulus. `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package has no ATOP driver, so no atomic transaction reaches the DUT; the Matrix carries F4 ATOP reject as NO credit.
+|`smu_axi_atomic_operation_test` grades the non-ATOP path only. An ATOP driver on the external AXI VIP would be an added hook, not a PROPOSED item (<<smu-vplan-phase3-noobs>>).
+|MISC
+|The four-phase cross-trigger matrix handshake and the core logic analyzer feedback loop.
+|Blocked: no stimulus. The full CTM handshake needs a DTP-driven `src_req` or `dst_ack`, and the CLA feedback and the concurrent CLA-with-CTM injection need glue the product pins and the front door do not reach; the disposition record waives the catalogue names for them.
+|`smu_xtrig_ctm_remap_test` grades the product-pin remap, `smu_xtrig_ctm_illegal_phase_test` the abort and double-request corners on product pins, and `smu_cla_action_test` the node 0 actions that reach SMU nets.
+|===
+
+[[smu-vplan-phase3-blocked-legs]]
+====== Blocked legs of tested features
+
+A tested feature can have one blocked leg. The test grades the rest of the feature, and the note says how the test treats the blocked leg.
+
+[cols="2,5,6,5",options="header",]
+|===
+|Area |Item |Blocked leg and open question |Note
+|SMU_WRAPPER
+|The SMC fabric JTAG2AXI bridge completes a series write and single-load series reads at TCK to `clk_smu_i` ratios of 4.0 and 4.8.
+|The behaviour below a four-to-one ratio. `hw/sys/dtp/doc/clk_rst.adoc` and the `jtag_ptap` chapter state no minimum TCK-to-`clk_smu_i` period ratio for a series operation to complete, while `doc/integrator/src/smu-dtp.adoc` gives a 10 to 50 MHz TCK range. State the ratio floor, or state that every TCK in the documented range completes a series.
+|`smu_dtp_jtag2axi_ratio_floor_test` grades the 4.0 and 4.8 legs and the 4.0 leg after `SERIES_CTRL.reset`, and records the 3.2 and 2.0 legs (every `SERIES_CTRL.op` capture there is 0 or 3) without grading them.
+|SMU_WRAPPER
+|A `SERIES_CTRL` read load followed by `SERIES_DATA_INCR` scans returns the words of the loaded region.
+|How many reads one `SERIES_CTRL` load serves, and what the first capture after a read load holds. `hw/ip/jtag/jtag_ptap/doc/architecture.adoc` (`*_AXI_SERIES_DATA_INCR`) states that a series read dumps contiguous regions and describes a marker in the first capture and the previous read's data; it does not state the number of reads served per load as a function of `pl_depth`, nor which of the two sentences governs the first capture. State both.
+|`smu_dtp_jtag2axi_series_contention_test` grades single-load reads (the word on capture 2) and records the eight-scan read stream, its AR counter delta, the first-capture beats and the marker payloads without grading them; `smu_dtp_otp_sep_series_error_test` does the same for the three-scan stream of the SEP OTP bridge.
+|SMU_WRAPPER
+|The `pl_depth` field of a `SERIES_CTRL` capture.
+|Whether the capture reports the configured depth or a pending indication. `hw/ip/jtag/jtag_ptap/doc/architecture.adoc` (`*_AXI_SERIES_CTRL`) describes the field as the pending indication; the captures return the configured value. State which the capture carries.
+|`smu_dtp_jtag2axi_series_contention_test`, `smu_dtp_jtag2axi_ratio_floor_test` and `smu_dtp_otp_sep_series_error_test` record the field of every capture and do not grade it.
+|SMU_WRAPPER
+|A `SINGLE_OP` issued before the previous one completed reports op 3 and is ignored.
+|Whether an "ignored" operation is launched. `hw/ip/jtag/jtag_ptap/doc/architecture.adoc` (`*_AXI_SINGLE_OP`, op 3) states that the attempt is ignored; the AR counter at the SMU boundary advances for an unspaced pair. State whether op 3 means not launched.
+|`smu_dtp_jtag2axi_series_contention_test` records the op field and the AR counter delta of each unspaced pair, and grades the retry after 64 Run-Test/Idle TCKs and the spaced control pairs.
+|SMU_WRAPPER
+|An in-span SEP eFuse address that owns no register answers SLVERR over the SEP OTP JTAG2AXIL bridge.
+|The read-data word of that answer and the window bases. `hw/sys/sep/doc/otp_fuse_controller.adoc` fixes SLVERR for an in-span address outside the windows but not the data word; the window bases are given only by the generated address header; `hw/ip/efuse/doc/architecture.adoc` fixes `0xBADCAB1E` only for lifecycle-blocked requests. State the data word of an unowned in-span read.
+|`smu_dtp_otp_sep_series_error_test` grades the SLVERR status as a `SINGLE_OP` op and as the latched series code, and records the data word without grading it.
+|SMU_WRAPPER
+|The DTM reports of the SMC cluster debug transport while the debug module is held in reset.
+|What `dtmcs.dmistat` and the dmi op status report while the module is held. The SMC CPU chapter names RISC-V External Debug 0.13 and gives neither the SMC cluster TAP instruction length, the `dtmcs` and `dmi` codes, the DMI address width, nor the held-reset reports. State them.
+|`smu_dtp_smc_dm_dmi_test` uses the 0.13 codes, reads the address width from `dtmcs` first, grades that the held reads do not answer op 0 with `dmactive` 1 or `version` 2 and that the released reads do, and records the `dtmcs` fields, the dmi write status and the op values without grading them.
+|SMU_WRAPPER
+|Alias regions 0 and 1 valid over the same input page: exactly one translation applies, the same on write and read.
+|Which region wins. `hw/sys/smc/regs/alias_remap.rdl` does not state the priority of overlapping regions; the lowest index translated in every run observed. State the priority in the register description.
+|`smu_alias_priority_overflow_test` grades that one offset applies and that it is the same on both channels, and records the winning region index without grading it.
+|SMU_WRAPPER
+|An alias remap offset that reaches the top of the 56-bit space lands exactly.
+|What an offset sum past bit 55 does. The register description does not state whether the sum wraps, saturates or errors; the sum truncated to 56 bits with an initiator success observed. State the carry behaviour.
+|`smu_alias_priority_overflow_test` grades the exact landing of an offset that reaches `0xFF_FFFF_F000` and records the leaving page and the initiator status of the carry case without grading them.
+|SMU_WRAPPER
+|On inbound filter entry 0 the external master's AxUSER must equal `src_id`, or `src_id` must be 0, for an access to be admitted.
+|Which bits of the 12-bit AxUSER field carry the 4-bit source ID on the SMU AXI input, and the numeric source ID table. `hw/ip/axi_filter/doc/index.adoc` ("Match, Then Permit") and the SMC fabric chapter state the rule and not the lane or the table. State both.
+|`smu_sys_in_filter_src_id_rule_test` drives `AxUSER[3:0]` with its positive control admitting and grades the rule on those bits; `smu_out_filter_rule_matrix_test` records the source-ID values that refuse.
+|SMU_WRAPPER
+|LC_STATE reads the INVALID word before the sense completes.
+|The reset value of the LC_STATE shadow register. `hw/sys/sep/regs/sep_efuse_map.rdl` gives LC_STATE a reset of `0xF0`; `hw/sys/sep/doc/lifecycle_controller.adoc` ("Lifecycle States") gives INVALID `0x0F` before sensing. State which the register holds before the first sense.
+|`smu_lc_export_rma_sip_0_test` and `smu_lc_export_rma_chiplet_0_test` grade that the exported word after the sense differs from the pre-sense INVALID word `0x0F` and do not grade the pre-sense word itself.
+|SMU_WRAPPER
+|The early-capture edge of `secure_tm_o`.
+|Whether the strap is captured on the second rising clock edge after the wrapper cold-reset release (`hw/sys/sep/doc/test_mode.adoc`) or one cycle after it (`hw/sys/sep/doc/security_disable.adoc`). State one edge.
+|`smu_sep_secure_tm_test` and `smu_secure_tm_real_sense_window_test` grade the latch at the fuse-sense completion and its clearing under a second cold reset, and do not distinguish the two edges.
+|===
+
+[[smu-vplan-phase3-unstated]]
+====== Unstated cells that block no feature
+
+FABRIC:
+
+* The response of a write in the window `BASE + 0x001_7000` to `BASE + 0x001_7FFF`. `hw/sys/smc/doc/memmap.adoc` states SLVERR for a write there; over the external AXI input and over the DTP JTAG2AXI bridge the window answers DECERR. `smu_smc_unmapped_response_test` grades the reads (DECERR with `0xBADCAB1E`) and records the write response; `smu_dtp_jtag2axi_series_contention_test` records the op field of a `SINGLE_OP` write there and uses a read of the window only as the positive control of its status bit. Neither grades the write.
+* The response of a write past the extent of the reset unit, misc wrap, GPIO interface, base configuration and alias remap units. `hw/sys/smc/regs/smc.rdl` declares SLVERR there and DECERR for the other units; `smu_smc_unmapped_response_test` grades the DECERR-declared writes and records the SLVERR-declared ones without grading them.
+* An `ext_in` access to a unit that lies beyond the programmed `REGION_SIZE`. `hw/sys/smc/regs/smc_base_config.rdl` (`REGION_SIZE`) and `hw/sys/smc/doc/memmap.adoc` describe the aperture window; whether a unit aperture that extends past `REGION_SIZE` is closed at the window edge is not stated in a way a check can rest on. `smu_smc_unmapped_response_test` states the units beyond the reset `REGION_SIZE` out of scope, and `smu_base_config_corners_test` records that a trial with `REGION_SIZE 0x2_0000` observed OKAY at a mailbox address past it and does not compare it.
+* The default inbound filter configuration. `hw/sys/smc/doc/fabric.adoc` ("Inbound Filtering") states that the default varies by chiplet type; `hw/ip/axi_filter/regs/filter_ctrl.rdl` resets every entry disabled. `smu_filter_cfg_register_map_test` grades the RDL reset value.
+* The ID width of the SMU AXI input and the port `smc_global_base_o`. `hw/sys/smu/doc/port_table.adoc` lists `smc_region_size_o` and not `smc_global_base_o`, and does not state the input ID width; `smu_axi_in_random_id_stress_test` takes the width from the bound signal and `smu_base_config_corners_test` observes `smc_global_base_o` as the port the GLOBAL_BASE field drives.
+
+JTAG and lifecycle:
+
+* The SMC OTP JTAG policy in PROD and RMA_SIP. `hw/sys/sep/doc/lifecycle_controller.adoc` (DTP feature-gates table, SMC OTP row) and `hw/ip/efuse/doc/architecture.adoc` ("eFuse lifecycle-based JTAG permissions", SMC) state the permitted reads two ways (the chiplet and package identifiers, or the public identity word only). `smu_otp_prod_error_resp_test` grades the eFuse chapter's reading.
+* The driver of the SEP OTP JTAG2AXIL disable field at the SMU. `hw/sys/sep/doc/lifecycle_controller.adoc` lists the SEP OTP bridge among the ungated paths and `hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc` gives the bridge its own disable field; which drives the field at the SMU (tied open, or a lifecycle bit) is not stated. `smu_otp_bridges_under_dbg_disable_test` grades that the bridge completes while the fabric bridge is closed.
+* The access of the SEP eFuse shadow registers. `hw/sys/sep/regs/sep_efuse_map.rdl` marks the shadow registers `sw=r`; the fuse-field table of `hw/sys/sep/doc/otp_fuse_controller.adoc` marks them software-writable. `smu_dtp_otp_sep_series_error_test`, `smu_otp_bridges_under_dbg_disable_test` and `smu_dtp_jtag2axi_address_walk_test` write and read back SPARE words and grade the chapter's reading.
+* The SMC cluster TAP instruction length, the `dtmcs` and `dmi` instruction codes and the DMI address width (see the blocked leg of `smu_dtp_smc_dm_dmi_test` above).
+
+SEP under SMU:
+
+* The mapping of the external SEP interrupt lanes to PIC sources. `hw/sys/sep/doc/interrupts.adoc` implies lane i is source 44 + i through its slot table and does not state it; `smu_sep_external_irq_pins_test` grades that mapping for all 212 lanes.
+* The watchdog reset statements. `doc/integrator/src/smu-sep.adoc` and the SEP port table call `wdt_rst_ni` the watchdog's reset; `hw/sys/sep/doc/reset_controller.adoc` states that it resets only the EL2 core and the warm scratch and that the watchdog is reset by `rst_ni`. `smu_sep_wdt_bite_to_smc_reset_test` grades the reset-controller statement.
+* The consequence of an SMC watchdog timeout. `hw/sys/smc/doc/cpu.adoc` reads as if a timeout is followed by a cold reset; `hw/sys/smc/doc/clk_rst.adoc` asserts only the watchdog term and the warm reset. `smu_sep_wdt_bite_to_smc_reset_test` and `smu_smc_warm_reset_register_retention_test` grade the `clk_rst.adoc` statement and record that the primary and cold resets stay released.
+* The destinations of `sep_wdt_reset_n_i`. The SMC port table routes it to the SMC CPU interrupts only; `hw/sys/smc/doc/clk_rst.adoc` and `doc/integrator/src/smu-composition.adoc` also name it as the reset unit's external watchdog reset input. `smu_sep_wdt_bite_to_smc_reset_test` grades the reset-unit path.
+* The wrapper input `sep_ext_interrupts_i`. `hw/sys/smu/doc/port_table.adoc` does not list it; `smu_sep_external_irq_pins_test` drives it through the bench signal list (<<smu-vplan-phase3-added-hooks>>).
+
+[[smu-vplan-phase3-noobs]]
+===== Features with no observation point
+
+A disposition says what is done about the missing observation. `ADD-PORT`: a testbench port, drive or hook that the bench lacks would give the observation, and the DUT does not change. `ACCEPT-PROBE`: a read-only probe, a public-scope variable or a bench observation output is the observation. `PERMANENT-HOLE`: no observation exists at the SMU boundary on this bench, so no check can fail on the contract. A read-only probe, tap or reference is an observation tap and is not PROPOSED. A port, drive, inject or hook that exists in `tb/tb_wrapper_top.sv` or in the signal list is not PROPOSED.
+
+[cols="2,5,2,7",options="header",]
+|===
+|Area |Feature |Disposition |What is done
+|SMU_WRAPPER
+|The SEP main reset held low by the IC_RESET SEP slice.
+|ACCEPT-PROBE
+|`obs_sep_rst_n_o` of `tb/tb_wrapper_top.sv` taps the SEP reset input upstream of the IC_RESET `sep_reset_n` override mux, so the hold is not directly observable there. `smu_dtp_sep_ic_reset_effect_test` observes it through the SEP trace port (`sep_trace_valid_o` goes quiet) and the cold scratch bank (word 0 clears) and records the `obs_sep_rst_n_o` samples without grading them. A tap on the sequenced reset would make the hold directly observable (ADD-PORT candidate).
+|SMU_WRAPPER
+|SEP lifecycle demotion in PROD.
+|PERMANENT-HOLE on the hosted set
+|The `DEMOTE_1` and `DEMOTE_2` registers are reachable only over the SEP debug system bus, and the SEP STAP is closed in PROD; without SEP firmware no master reaches them. `smu_sep_lcc_flow_test` (`sep_real_fw`, outside `hosted`) proves the DEMOTE lock from firmware; `smu_lc_demote_test_dev_test` proves the demotion in TEST_DEV, where the STAP is open.
+|FABRIC
+|ATOP rejection on `smu_axi_in`.
+|ADD-PORT
+|No ATOP driver exists and `aw.atop` is tied to `'0` in `tb/tb_wrapper_top.sv`. A driver of `aw.atop` on the external VIP is the hook that would give the observation; the Matrix carries the feature as NO credit until then.
+|FABRIC
+|Overlapping OTP and fabric JTAG2AXI writes to one map word.
+|PERMANENT-HOLE
+|Both writers are JTAG2AXI bridges behind the one primary TAP, so their data-register shifts are serialised by construction and the OTP operation completes before the fabric write launches. `smu_otp_vs_fabric_map_race_test` grades back-to-back coherence and says that the concurrency its name suggests has no stimulus here.
+|JTAG
+|A JTAG2AXI `SINGLE_OP` aborted while the OTP interface holds it BUSY.
+|PERMANENT-HOLE
+|The wrapper's SMC eFuse model answers a `SINGLE_OP` in tens of `clk_smu_i` cycles against a 39-bit data-register shift, so the BUSY window an abort needs never exists; the scenario is catalogued `not-runnable` in the disposition record.
+|RESET
+|The asynchronous assertion of the cold reset with every wrapper clock static.
+|PERMANENT-HOLE
+|`hw/sys/smu/doc/port_table.adoc` states an asynchronous assertion; the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch register, so with the clocks held no output moves and no check can fail. The scenario is catalogued in the disposition record with the ruling it waits on.
+|MISC
+|The four-phase cross-trigger matrix handshake, the CLA feedback loop and cross-trigger glue injection.
+|PERMANENT-HOLE
+|No product pin or front-door stimulus drives `src_req` or `dst_ack` from the DTP side, injects CLA feedback or injects into the cross-trigger glue; the disposition record waives the catalogue names.
+|SMU_WRAPPER
+|The SEP-side order of the integrity fail-closed and the security-disable override.
+|PERMANENT-HOLE
+|The bench inject breaks the exported LC_STATE pair at the SMU input that feeds the SMC eFuse wrapper and `lc_state_o` only, so the SEP-side order is not observable; `smu_lc_sec_dis_over_sigint_prod_test` states it out of scope.
+|===
+
+[[smu-vplan-phase3-proposed]]
+===== Observation taps, added hooks and proposed drives
+
+This section has three lists. <<smu-vplan-phase3-obs-taps>> lists the read-only observations that Phase 3 tests use beyond the `obs_*` outputs the signal list already carries. <<smu-vplan-phase3-added-hooks>> lists the error injects and the top-port drives that Phase 3 tests use, with the existing bench hooks of `tb/tb_wrapper_top.sv` and the stand-in record that they rest on. <<smu-vplan-phase3-proposed-drives>> lists the PROPOSED items. An observation tap, an added hook and an existing bench hook are not PROPOSED, so a check that needs only these is executable (<<smu-credit-rules>>).
+
+[[smu-vplan-phase3-obs-taps]]
+====== Observation taps that the tests add
+
+The column "Tests that use it" names the entries whose checks read the tap.
+
+[cols="2,3,2,5,4",options="header",]
+|===
+|Area |Name |Kind |What it observes |Tests that use it
+|SMU_WRAPPER
+|SEP PIC and core request-port variables of the Verilator public scope
+|Public-scope read (`public_flat_rw`, `tb/smu_wrapper_public_scope.vlt`)
+|The pending bit of each PIC source and the matching bit of the core request port, read through the public scope on `obs_sep_clk_o`.
+|`smu_sep_external_irq_pins_test`
+|SMU_WRAPPER
+|SEP trace port and cold scratch bank as a reset observation
+|Read-only tap (`sep_trace_valid_o`, SEP cold scratch word 0 over the SEP debug system bus)
+|Whether the SEP is held in reset by the IC_RESET SEP slice, which `obs_sep_rst_n_o` cannot show (<<smu-vplan-phase3-noobs>>).
+|`smu_dtp_sep_ic_reset_effect_test`
+|SMU_WRAPPER
+|Passive AR and R tap on the `ext_in` pins
+|Read-only monitor
+|Every AR handshake (ARID, ARADDR, ARLEN) and every R beat (RID, RRESP, RLAST) of the external AXI input, paired per ID, so a read into the SEP aperture is graded beat by beat.
+|`smu_axi_in_sep_aperture_test`
+|SMU_WRAPPER
+|DTP-to-SMC debug AXI launch counters and the fabric-bridge gate tap
+|Existing bench observation outputs (`dtp_smc_dbg_aw_count_o`, `dtp_smc_dbg_ar_count_o`, `dtp_smc_dbg_b_count_o`, `tb_smc_jtag2axi_security_disable`, `tb/tb_wrapper_top.sv`)
+|Whether a bridge operation launched on the SMC debug AXI port, and the open or closed posture of the SMC fabric bridge.
+|`smu_dtp_jtag2axi_series_contention_test`, `smu_dtp_jtag2axi_caps_single_op_test`, `smu_dtp_jtag2axi_ratio_floor_test`, `smu_dtp_smc_dm_dmi_test`, `smu_otp_bridges_under_dbg_disable_test`, the lifecycle leaves
+|SMU_WRAPPER
+|STAP host TMS and TDO-enable samplers
+|Existing bench observation outputs (`tb_stap_sep_tms`, `tb_stap_smc_tms`, the TDO-enable lanes)
+|The parked or following level of a secondary TAP's host TMS and its TDO enable while the primary TAP toggles.
+|`smu_sep_stap_hold_reset_test`, `smu_dtp_smc_dm_dmi_test`, the lifecycle leaves
+|===
+
+[[smu-vplan-phase3-added-hooks]]
+====== Hooks that the tests add
+
+Each item is an added hook (an error inject or a top-port drive the bench did not have) or an existing bench hook of `tb/tb_wrapper_top.sv` and the signal list that a Phase 3 test rests on. Neither is PROPOSED, and neither blocks a check or a leg. The stand-in record of `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` ("Bench stand-ins and exceptions") is the approval record of every existing bench hook on a proof path.
+
+[cols="2,3,2,5,4",options="header",]
+|===
+|Area |Name |Kind |Port or inject point |Tests that use it
+|SMU_WRAPPER
+|`tb_sep_ext_interrupts`
+|Top-port drive (added through the signal list)
+|The wrapper input `sep_ext_interrupts_i`, one lane at a time; the bench tied the port to zero before.
+|`smu_sep_external_irq_pins_test`
+|SMU_WRAPPER
+|`+lc_sigint_inject` LC_STATE pair fault inject
+|Existing bench hook, listed (error inject)
+|The exported LC_STATE pair at the SMU input, broken by `lc_sigint_inject_i`; the stand-in record names the two leaves.
+|`smu_lc_sigint_fail_closed_test`, `smu_lc_sec_dis_over_sigint_prod_test`
+|SMU_WRAPPER
+|`+esrc_noise_force` raw-noise lanes
+|Existing bench hook, listed (force)
+|The twelve ESRC raw-noise lanes of the SEP entropy source, driven by `esrc_noise.py`.
+|`smu_sep_entropy_test`, `smu_sep_modules_test`, `smu_sep_aes_test` (Phase 2; listed because the Phase 3 entropy aperture leaves share the bench)
+|SMU_WRAPPER
+|Per-state SEP eFuse image (`+sep_efuse_hex`, `sep_rtl_no_shadow`) and the shadow preloads (`+skip_fuse_sense`)
+|Existing bench hook, listed (time-0 plusargs)
+|The eFuse image or the shadow preload the leaf names in its `*Run mode*` field.
+|The lifecycle leaves, `smu_otp_prod_error_resp_test`, `smu_otp_bridges_under_dbg_disable_test`, `smu_sep_rma_token_match_test`, every leaf under `sep_rtl`
+|SMU_WRAPPER
+|`+smc_scratch_ram_hex` image
+|Existing bench hook (time-0 plusarg)
+|Holds `smc_disable_sram_auto_init_i` high for the run that proves no zeroing sweep starts.
+|`smu_sram_auto_init_disabled_test`
+|RESET
+|Cool-reset pin, cold-reset pin and the strap pins
+|Existing bench hook (top-port drives of the signal list)
+|`rst_cool_n_from_pin_i`, `rst_cold_ni`, `secure_tm_req_i`, the DFT done and pass straps and the boot-stall pins.
+|`smu_smc_cool_reset_pin_test`, `smu_sep_cold_reassert_during_sense_test`, `smu_secure_tm_real_sense_window_test`, `smu_isolation_retention_test`, `smu_smc_warm_reset_register_retention_test`
+|JTAG
+|Scan-chain loopbacks and CTP data-input tie-offs
+|Existing bench hook, listed (loopback and tie-off)
+|The five host scan chains and the STAP TDO-to-TDI returns; the `xtrig_ctp_*_din_i` bindings.
+|`smu_dtp_scan_chain_boundary_test`, `smu_xtrig_ctp_status_reset_test`
+|===
+
+[[smu-vplan-phase3-proposed-drives]]
+====== PROPOSED internal drives
+
+None. No Phase 3 check of this plan rests on a drive, force or deposit into a net inside `smu` beyond the two forces the stand-in record approves (`+esrc_noise_force` and `+lc_sigint_inject`, both existing bench hooks). The BFM Policy of this plan forbids a force or deposit outside that record, and a scenario that would need one is classified OUT in the disposition record instead of carded here. No Phase 3 check is blocked on a PROPOSED item.
+
+[[smu-vplan-phase3-oos]]
+===== Out of scope
+
+This section lists features outside Phase 3 credit. Each reason names the open test that owns the feature, or states why no pass or fail value exists, or names the plan that owns it.
+
+[cols="2,5,8",options="header",]
+|===
+|Area |Feature |Reason
+|SMU_WRAPPER
+|The SEP=0 composition (`smu #(.CFG(smu_pkg::NoSepCfg))`): the direct ID-width converters, the `lc_state` and demote tie-offs, the SEP=0 OTP error slave.
+|No target of this package elaborates it; the proofs that need it are `not-runnable` in the disposition record (Verification Scope).
+|SMU_WRAPPER
+|SEP boot and firmware execution, SMC and SEP mailbox challenge-response and the SEP-firmware lifecycle flow as feature credit.
+|Observe-only: the leaves run SEP DV firmware, need the RISC-V toolchain and sit in `fw_boot`, `sep_real_fw`, `sep_chain` and `sep_lifecycle`, which no workflow schedules (Credit rules, F2 and F5).
+|SMC
+|The SMC's internal behaviour: CSR semantics beyond the boundary registers, peripherals, firmware boot beyond the smoke images, the CPU, PLIC and multicore depth.
+|`hw/sys/smc/dv/docs/SMC_VPLAN.adoc` owns it; the names catalogued `child-TB-owned` in the disposition record stay there. This plan proves what crosses the SMU boundary and the SMC-under-SMU paths.
+|SEP
+|The SEP's internal behaviour, its crypto blocks, its lifecycle-controller policy and the SEP debug inbound filter policy.
+|`hw/sys/sep/dv/docs/SEP_VPLAN.adoc` owns it; this plan observes the SEP through the wrapper's boot, lifecycle and JTAG-gating outputs and the SEP debug system bus.
+|JTAG
+|DTP block-level behaviour: the TAP controller, JTAG2AXI bridge internals beyond the series and status contracts carded here, iJTAG instrument depth, STAP reset-vector and TDR depth, dual-CPU series depth.
+|`hw/sys/dtp/dv/docs/DTP_VPLAN.adoc` owns it (child-TB-owned names of the disposition record).
+|JTAG
+|Boundary-scan cells, adopter DFD and DFT scan chains, the DFD trace memory interface (`trace_mem_req_o` / `trace_mem_resp_i`).
+|No cells in the wrapper; the bench loops every host scan chain back on itself (a declared stand-in), and no enrolled leaf drives or reads the trace memory interface.
+|SEP
+|The eFuse macros.
+|`efuse_bank_model` answers every sense behind the shim (a declared stand-in).
+|MISC
+|The PLL observe leg of clock stop.
+|`hw/sys/smc/dv/models/pll_wrap.sv` is behavioural with no analog PLL, so no pass or fail value exists; `smu_clock_stop_coordination_test` owns clock-stop aggregation.
+|SMU_WRAPPER
+|The chip-level RAS aggregation output `sep_lockstep_status_o`.
+|No enrolled leaf observes it; the watchdog timeout outputs are owned by `smu_smc_wdt_boundary_timeout_test`.
+|SMU_WRAPPER
+|Toggle sweeps of the wrapper ports, the AXI buses, the internal nets and the memories.
+|Toggle is forbidden as a sole pass criterion and belongs to the VCS toggle collection (`SMU_COVERAGE_POLICY.adoc`); the catalogue names are waived in the disposition record.
+|FABRIC
+|Crossbar decode of the SMC aperture, the M-mode and Xvisor output remap region 0, GPIO interrupt lanes, SEP OTP map read and write, the SMC bridge error path, SEP STAP payload, ATB capture and the entropy stack.
+|Owned by the open tests the disposition record names for each waived catalogue name: `smu_xbar_connectivity_matrix_test` and `smu_aperture_map_walk_test`, `smu_axi_out_addr_len_size_test`, `smu_smc_boundary_lane_sweep_test` and `smu_smc_gpio_pad_output_test`, `smu_dtp_jtag2axi_address_walk_test` and `smu_otp_bridges_under_dbg_disable_test`, `smu_dtp_jtag2axi_smc_error_path_test` and `smu_dtp_jtag2axi_back_to_back_error_ok_test`, `smu_dtp_sep_dm_dmi_test`, `smu_telemetry_atb_capture_test`, `smu_sep_entropy_test`.
+|FABRIC
+|The GPIO strap feature (`captured_straps_i`).
+|`smc_wrapper` declares no such port and the generated SMC header carries no straps symbol, so the feature has no testcase in this package (Matrix F1 GPIO strap, NO).
+|===
 
 === Formal Verification Plan
 
