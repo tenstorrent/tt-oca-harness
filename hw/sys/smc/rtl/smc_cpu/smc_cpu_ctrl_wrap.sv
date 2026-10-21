@@ -82,10 +82,8 @@ module smc_cpu_ctrl_wrap #(
                                                                            // registered on clk_smc_i and low
                                                                            // while warm reset or the uncore
                                                                            // reset is asserted; a software
-                                                                           // assertion waits for the
-                                                                           // cluster to drain or, in timeout
-                                                                           // mode, for the RESET_TIMEOUT
-                                                                           // timeout.
+                                                                           // assertion applies without a
+                                                                           // drain.
   output logic [NUM_CPU_CORES-1:0][55:0]          core_reset_vector_o,  // Per-core boot address
                                                                         // from the RESET_VECTOR
                                                                         // registers; the default
@@ -106,10 +104,8 @@ module smc_cpu_ctrl_wrap #(
                                                                     // drain handshake.
 
   output logic                                    isolate_req_o,  // Drain request to the cluster:
-                                                                  // high while RESET_CTRL holds a
-                                                                  // core or the uncore in reset,
-                                                                  // or a core reset pulse is
-                                                                  // pending or in flight.
+                                                                  // high while RESET_CTRL holds the
+                                                                  // uncore in reset.
   input  logic                                    drained_i,  // High once the cluster boundary
                                                               // has drained and isolated;
                                                               // releases a withheld software
@@ -167,9 +163,8 @@ module smc_cpu_ctrl_wrap #(
 
   logic reg_uncore_reset_n;
 
-  // Drain-handshake gated software resets (assigns live in the Reset Control
-  // Logic section below, where the pulse signals they reference are declared).
-  logic [NUM_CPU_CORES-1:0] gated_core_reset_n;
+  // Drain-handshake gated uncore reset (assigned in the Reset Control Logic
+  // section below, with the handshake).
   logic                     gated_uncore_reset_n;
 
   // An uncore reset also resets every core: a core kept running across it would resume
@@ -180,7 +175,7 @@ module smc_cpu_ctrl_wrap #(
     .Width(NUM_CPU_CORES)
   ) u_uncore_core_reset_and (
     .in0_i ({NUM_CPU_CORES{gated_uncore_reset_n}}),
-    .in1_i (gated_core_reset_n),
+    .in1_i (int_core_reset_n[NUM_CPU_CORES-1:0]),
     .out_o (uncore_core_reset_n)
   );
 
@@ -440,12 +435,11 @@ module smc_cpu_ctrl_wrap #(
   end
 
 
-  // Software-reset drain handshake: one `withhold` holds off the software reset
-  // (level, uncore, pulse) until the cluster reports drained_i.
+  // Software-reset drain handshake: `withhold` holds off the software uncore reset
+  // until the cluster reports drained_i. Core resets apply directly; the cluster
+  // acks probes on behalf of a core in reset, so the boundary stays connected.
   logic                     sw_reset_req;
   logic                     withhold;
-  logic [NUM_CPU_CORES-1:0] pulse_start_req;
-  logic [NUM_CPU_CORES-1:0] pulse_start_pending;
 
   logic        pending;
   logic        force_apply;
@@ -460,21 +454,18 @@ module smc_cpu_ctrl_wrap #(
   cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_wr_data;
   cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_reg_value_n0_scan;
 
-  // Raw 1-cycle pulse-start request from the register write
+  // 1-cycle pulse-start request from the register write
   always_comb begin
     for (int core = 0; core < NUM_CPU_CORES; core++) begin
       // reset core if register at index "core" written high
       // pulse control starts at bit 4
-      pulse_start_req[core] = reset_ctrl_wr_en & external_wr_bit_mask[core+4] & external_wr_data[core+4];
+      core_resets_pulse_start[core] = reset_ctrl_wr_en & external_wr_bit_mask[core+4]
+                                    & external_wr_data[core+4];
     end
   end
 
-  // Drain request: a held level/uncore reset, a pending pulse start, or a pulse
-  // in flight all keep the cluster isolated.
-  assign sw_reset_req = ~(&reset_ctrl_reg_value_n0_scan[NUM_CPU_CORES-1:0]) // any core held in reset (register level)
-                    | ~reg_uncore_reset_n
-                    | (|pulse_start_pending)
-                    | ~(&core_reset_pulse_done[NUM_CPU_CORES-1:0]);       // any pulse in flight
+  // Drain request: a held uncore reset keeps the cluster isolated.
+  assign sw_reset_req = ~reg_uncore_reset_n;
 
   assign isolate_req_o = sw_reset_req;
 
@@ -493,31 +484,7 @@ module smc_cpu_ctrl_wrap #(
   assign hwif_in.RESET_TIMEOUT.reset_applied.next = reset_applied;
   assign hwif_in.RESET_TIMEOUT.reset_timeout.next = reset_timeout;
 
-  // Unified gate: hold off level, uncore, and the pulse start until drained.
-  always_comb begin
-    gated_uncore_reset_n = withhold ? 1'b1 : reg_uncore_reset_n;
-    for (int core = 0; core < NUM_CPU_CORES; core++) begin
-      gated_core_reset_n[core]      = withhold ? 1'b1 : int_core_reset_n[core];
-      // The pulse module sees its start only once drained.
-      core_resets_pulse_start[core] = pulse_start_pending[core] & ~withhold;
-    end
-  end
-
-  // Capture each pulse-start strobe until its gated start launches the pulse
-  // (a 1-cycle strobe would otherwise be lost while withholding).
-  always_ff @(posedge clk_smc_i or negedge rst_primary_ni) begin
-    if (~rst_primary_ni) begin
-      pulse_start_pending <= '0;
-    end else begin
-      for (int core = 0; core < NUM_CPU_CORES; core++) begin
-        if (pulse_start_req[core]) begin
-          pulse_start_pending[core] <= 1'b1;
-        end else if (core_resets_pulse_start[core]) begin
-          pulse_start_pending[core] <= 1'b0;
-        end
-      end
-    end
-  end
+  assign gated_uncore_reset_n = withhold ? 1'b1 : reg_uncore_reset_n;
 
   always_ff @(posedge clk_smc_i or negedge rst_primary_ni) begin
     if (~rst_primary_ni) begin
