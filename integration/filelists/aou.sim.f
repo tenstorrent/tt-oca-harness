@@ -42,6 +42,7 @@ vendor/tenstorrent/aou/upstream/RTL/AOU_AW_W_ALIGNER.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_TX_CORE_OUT_MUX.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_RX_CORE_IN_MUX.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_FDI_BRINGUP_CTRL.sv
+vendor/tenstorrent/aou/upstream/RTL/AOU_WRITE_TRANS_WDT.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_TOP.sv
 vendor/tenstorrent/aou/upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_TOP.v
 vendor/tenstorrent/aou/upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_256.v

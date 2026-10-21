@@ -18,7 +18,18 @@
 // +trdy=always|random|bursty|holes, +trdy_pct=N, +hole_pct=N, +burst_max=N the
 // Adapter's pl_trdy policy on every PHY (aou_fdi_cfg), over what the test sets;
 // the L1 stall and cancel knobs of aou_t1_env_cfg::l1_plusargs().
+// +remote_max_burst=2^n the remote die's splitter splits bursts past n beats
+// (default 256); +remote_max_burst_rand=1 re-picks it whenever the remote is idle;
+// +remote_wreq=awsize|upsize|dut_like how the remote die sizes its WriteReqs
+// (aou_t1_remote_mgr_driver; default awsize);
 // +remote_rp_count=N the remote die's RP count (default: the DUT's);
+// +sw_hold_on_deact=0 software keeps issuing requests after DEACTIVATE_START
+// (MAS 7.3.5 broken on purpose); +l3_deact_ack_hold=N the remote die holds its
+// DeactivateAck, and its own deactivation, for N received flits after the
+// DUT's DeactivateReq, still granting request credit meanwhile (with both, a
+// DUT that sends requests after its own DeactivateReq gets the credit to do so);
+// +v0p8 holds the DUT to the expectations only AoU v0.8 adds (aou_t1_env_cfg::v0p8;
+// today AOU-R6/AOU-R7, the 4.4 Misc placement);
 // +rx_fifo_slack=N messages aou_t1_rx_fifo_chk allows past an RX FIFO.
 class aou_base_test extends ocah_test;
   `uvm_component_utils(aou_base_test)
@@ -56,6 +67,7 @@ class aou_base_test extends ocah_test;
 
   function void build_phase(uvm_phase phase);
     string rb;
+    string v0p8;
     super.build_phase(phase);
     cfg = aou_t1_env_cfg::type_id::create("cfg");
     cfg.randomize_knobs();
@@ -65,10 +77,33 @@ class aou_base_test extends ocah_test;
     void'($value$plusargs("l3_cm0_deact=%d", cfg.l3_cm0_deact));
     void'($value$plusargs("remote_rp_count=%d", cfg.remote_rp_count));
     void'($value$plusargs("rx_fifo_slack=%d", cfg.rx_fifo_slack));
+    void'($value$plusargs("sysrst_on_linkdown=%d", cfg.sysrst_on_linkdown));
     // AOU_FDI_CHECKER knows only the DUT's RP_COUNT and would report the credits
-    // a larger remote die advertises for its own extra RPs (BUGS/018).
+    // a larger remote die advertises for its own extra RPs (BUGS/062).
     if (cfg.remote_rp_count > cfg.n_rp) cfg.fdi_chk_en = 1'b0;
+    void'($value$plusargs("sw_hold_on_deact=%d", cfg.sw_hold_on_deact));
+    if ($value$plusargs("v0p8%s", v0p8)) cfg.v0p8 = (v0p8 != "=0");  // +v0p8 or +v0p8=0|1
+    cfg.l3_cfg.v0p8 = cfg.v0p8;
+    `uvm_info(get_type_name(), cfg.v0p8 ? "DUT rules: AoU v0.8 (+v0p8)" :
+              "DUT rules: AoU v0.7.1 Misc placement", UVM_LOW)
+    void'($value$plusargs("l3_deact_ack_hold=%d", cfg.l3_cfg.deact_ack_hold));
     if ($value$plusargs("remote_bytes=%s", rb)) cfg.set_remote_bytes(rb);
+    void'($value$plusargs("remote_max_burst_rand=%d", cfg.remote_max_burst_rand));
+    if ($value$plusargs("remote_wreq=%s", rb)) begin
+      case (rb)
+        "awsize":   cfg.remote_wreq = AOU_RWREQ_AWSIZE;
+        "upsize":   cfg.remote_wreq = AOU_RWREQ_UPSIZE;
+        "dut_like": cfg.remote_wreq = AOU_RWREQ_DUT_LIKE;
+        default:
+          `uvm_fatal(get_type_name(), {"+remote_wreq: awsize, upsize or dut_like, not ", rb})
+      endcase
+      // expected_fail.yaml scopes entries to a mode with when_re on this line.
+      `uvm_info(get_type_name(), {"remote_wreq=", rb}, UVM_LOW)
+    end
+    if ($value$plusargs("remote_max_burst=%d", cfg.remote_max_burst) &&
+        !(cfg.remote_max_burst inside {1, 2, 4, 8, 16, 32, 64, 128, 256}))
+      `uvm_fatal(get_type_name(), $sformatf("+remote_max_burst=%0d is not 2^n up to 256",
+                                            cfg.remote_max_burst))
     cfg.l1_plusargs();
     if (AOU_T1_N_PHY > 1) begin
       cfg.lsm_cfg.active_phy = $urandom_range(AOU_T1_N_PHY - 1);

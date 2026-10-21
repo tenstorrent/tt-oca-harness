@@ -125,7 +125,7 @@ index 32032c7..c7e4777 100644
 +work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_l3_unit/default"
  defines = []
 diff --git a/hw/ip/aou/dv/aou_reg_sim_cfg.toml b/hw/ip/aou/dv/aou_reg_sim_cfg.toml
-index 1a58f0d..69bc504 100644
+index 243f26a..a22c690 100644
 --- a/hw/ip/aou/dv/aou_reg_sim_cfg.toml
 +++ b/hw/ip/aou/dv/aou_reg_sim_cfg.toml
 @@ -31,27 +31,27 @@ timeout_sec = 1800
@@ -169,7 +169,7 @@ index 1a58f0d..69bc504 100644
  ]
  
  
-@@ -85,105 +85,105 @@ defines = ["AOU_AXI_DATA_BYTES=64", "AOU_FDI_DATA_W=512"]
+@@ -85,125 +85,125 @@ defines = ["AOU_AXI_DATA_BYTES=64", "AOU_FDI_DATA_W=512"]
  # time. Standalone builds use the Makefile's build/<sim>-<tb>-<target> instead.
  [targets.1x512-sp64]
  description = "Default: one RP, the usual data path"
@@ -252,6 +252,32 @@ index 1a58f0d..69bc504 100644
  defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=512", "AOU_RP0_DATA_W=512", "AOU_RP1_DATA_W=512",
             "AOU_RP2_DATA_W=512", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=1", "AOU_PEER_MAX_W=512"]
  
+ [targets.1x512-sp64-nxt]
+ description = "TX_NXT_PACKING_EN 1: registered TX packer output stage"
+-build_dir = "hw/ip/aou/dv/build/uvm_reg/1x512-sp64-nxt"
+-work_dir = "hw/ip/aou/dv/build/uvm_reg/1x512-sp64-nxt"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/1x512-sp64-nxt"
++work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/1x512-sp64-nxt"
+ defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=512", "AOU_RP0_DATA_W=512", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=512", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=1", "AOU_TX_NXT_PACKING=1"]
+ [targets.4xmix4211-sp128-p512]
+ description = "AXI_PEER_DIE_MAX_DATA_WD 512 below a 1024-bit RP (plan 14.17)"
+-build_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128-p512"
+-work_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128-p512"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128-p512"
++work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128-p512"
+ defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=256", "AOU_FDI_CONFIG=2", "AOU_PEER_MAX_W=512"]
+ 
+ [targets.4xmix4211-sp128-p256]
+ description = "AXI_PEER_DIE_MAX_DATA_WD 256 below 1024- and 512-bit RPs (plan 14.17)"
+-build_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128-p256"
+-work_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128-p256"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128-p256"
++work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128-p256"
+ defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=256", "AOU_FDI_CONFIG=2", "AOU_PEER_MAX_W=256"]
+ 
  [targets.2xmix-sp64-rxf]
  description = "Non-default RX FIFO depths, RX_*_FIFO_RS_EN=0 (3.25)"
 -build_dir = "hw/ip/aou/dv/build/uvm_reg/2xmix-sp64-rxf"
@@ -306,7 +332,7 @@ index 1a58f0d..69bc504 100644
  defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
             "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=256", "AOU_FDI_CONFIG=2", "ASSERTION_ON"]
 diff --git a/hw/ip/aou/dv/aou_sim_cfg.toml b/hw/ip/aou/dv/aou_sim_cfg.toml
-index ac62b84..348327c 100644
+index cbe98e2..6dbebc8 100644
 --- a/hw/ip/aou/dv/aou_sim_cfg.toml
 +++ b/hw/ip/aou/dv/aou_sim_cfg.toml
 @@ -6,14 +6,14 @@ schema_version = 1
@@ -375,7 +401,7 @@ index ac62b84..348327c 100644
  ]
  # Compile order is load-bearing (each package imports the ones before it):
  # the generated register model (make ral) -> the rule ledger -> functional
-@@ -72,31 +72,31 @@ incdirs = [
+@@ -72,34 +72,34 @@ incdirs = [
  # checkers, aou_base_test_seq) -> the sequence library -> the FDI bring-up
  # tests -> tb_top.sv, which `include`s uvm/tests/aou_tests.sv under UVM.
  sources = [
@@ -400,6 +426,9 @@ index ac62b84..348327c 100644
 -  "hw/ip/aou/dv/tb/aou_status_if.sv",
 -  "hw/ip/aou/dv/tb/aou_irq_if.sv",
 -  "hw/ip/aou/dv/tb/aou_rst_if.sv",
+-  "hw/ip/aou/dv/tb/aou_axi4pc_ctl_if.sv",
+-  "hw/ip/aou/dv/tb/aou_axi4pc_gate.sv",
+-  "hw/ip/aou/dv/uvm/env/axi4pc/aou_axi4pc_pkg.sv",
 -  "hw/ip/aou/dv/uvm/env/aou_env_pkg.sv",
 -  "hw/ip/aou/dv/uvm/env/aou_t1_env_pkg.sv",
 -  "hw/ip/aou/dv/uvm/seq_lib/aou_seq_lib_pkg.sv",
@@ -425,6 +454,9 @@ index ac62b84..348327c 100644
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_status_if.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_irq_if.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_rst_if.sv",
++  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_axi4pc_ctl_if.sv",
++  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_axi4pc_gate.sv",
++  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/axi4pc/aou_axi4pc_pkg.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/aou_env_pkg.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/aou_t1_env_pkg.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/seq_lib/aou_seq_lib_pkg.sv",
@@ -432,7 +464,7 @@ index ac62b84..348327c 100644
  ]
  
  
-@@ -223,61 +223,61 @@ defines = ["AOU_AXI_DATA_BYTES=64", "AOU_FDI_DATA_W=512", "AOU_T1_AXI_AGENTS"]
+@@ -228,78 +228,78 @@ defines = ["AOU_AXI_DATA_BYTES=64", "AOU_FDI_DATA_W=512", "AOU_T1_AXI_AGENTS"]
  # their models coexist. Standalone builds use build/<sim>-<tb>-<target> instead.
  [targets.1x512-sp64]
  description = "Default: one RP, the usual data path"
@@ -497,6 +529,26 @@ index ac62b84..348327c 100644
  defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=512", "AOU_RP0_DATA_W=512", "AOU_RP1_DATA_W=512",
             "AOU_RP2_DATA_W=512", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=1", "AOU_PEER_MAX_W=512"]
  
+ [targets.1x512-sp64-nxt]
+ description = "TX_NXT_PACKING_EN 1: registered TX packer output stage"
+-build_dir = "hw/ip/aou/dv/build/uvm"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
+ defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=512", "AOU_RP0_DATA_W=512", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=512", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=1", "AOU_TX_NXT_PACKING=1"]
+ [targets.4xmix4211-sp128-p512]
+ description = "AXI_PEER_DIE_MAX_DATA_WD 512 below a 1024-bit RP (plan 14.17)"
+-build_dir = "hw/ip/aou/dv/build/uvm"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
+ defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=256", "AOU_FDI_CONFIG=2", "AOU_PEER_MAX_W=512"]
+ 
+ [targets.4xmix4211-sp128-p256]
+ description = "AXI_PEER_DIE_MAX_DATA_WD 256 below 1024- and 512-bit RPs (plan 14.17)"
+-build_dir = "hw/ip/aou/dv/build/uvm"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
+ defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=256", "AOU_FDI_CONFIG=2", "AOU_PEER_MAX_W=256"]
+ 
  [targets.2xmix-sp64-rxf]
  description = "Non-default RX FIFO depths, RX_*_FIFO_RS_EN=0 (3.25)"
 -build_dir = "hw/ip/aou/dv/build/uvm"
@@ -504,7 +556,7 @@ index ac62b84..348327c 100644
  defines = ["AOU_RP_COUNT=2", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=256",
             "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=1", "AOU_RX_FIFO_ALT"]
  
-@@ -285,30 +285,30 @@ defines = ["AOU_RP_COUNT=2", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_R
+@@ -307,30 +307,30 @@ defines = ["AOU_RP_COUNT=2", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_R
  # ASSERTION_ON regression covers).
  [targets.1x256-sp32-assert]
  description = "1x256-sp32 with the RTL's ASSERTION_ON checks"
