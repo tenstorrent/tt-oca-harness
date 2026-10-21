@@ -247,6 +247,16 @@
 // External TRNG interrupt (top-port drive of the sep input ext_trng_irq_i, PIC
 // source 17). Default 0, the tie-off of the integration wrapper.
 `SEP_TB_IN(logic, ext_trng_irq_drive_i)
+// AXI Extension port responder (top-port drive of the sep input
+// sep_external_axi_resp_i, docs/SEP_TB_ARCH.adoc). Live only in a run with
+// +sep_ext_port_responder, where ext_port_rsp_on_o reads 1. The B response of
+// a write is ext_port_rsp_bresp_i at its AW handshake. R beat k of a read
+// answers RRESP ext_port_rsp_rresp_i[2k +: 2] and RDATA
+// ext_port_rsp_rdata_i[64k +: 64], sampled at its AR handshake.
+`SEP_TB_IN(logic [1:0], ext_port_rsp_bresp_i)
+`SEP_TB_IN(logic [15:0], ext_port_rsp_rresp_i)
+`SEP_TB_IN(logic [511:0], ext_port_rsp_rdata_i)
+`SEP_TB_OUT(logic, ext_port_rsp_on_o)
 // Boundary interrupt input of the PIC (sep_wrapper sep_ext_interrupts_i,
 // extintsrc_req_i of sep). Default 0. A leaf drives one or two bits to raise a
 // pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
@@ -1059,6 +1069,7 @@
 `SEP_TB_OUT(logic [1:0], pr_ext_rresp_o)
 `SEP_TB_OUT(logic [5:0], pr_ext_rid_o)
 `SEP_TB_OUT(logic, pr_ext_rlast_o)
+`SEP_TB_OUT(logic [63:0], pr_ext_rdata_o)
 // PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
 `SEP_TB_OUT(logic, pr_dmacsr_awvalid_o)
 `SEP_TB_OUT(logic, pr_dmacsr_awready_o)
