@@ -215,6 +215,14 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_cpuif_handshake_instances_test"
+module = "smc_cpuif_handshake_instances_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_cpuif_ro_wo_edge_test"
 module = "smc_cpuif_ro_wo_edge_test"
 seed = 1

@@ -17,7 +17,8 @@ PR-OUT     ``pr_out``       aw, ar: addr id user cache prot len size burst;
                             w: data strb last user
 PR-SMC     ``pr_smc``       aw, ar as PR-OUT; w: data strb last
 PR-EXT     ``pr_ext``       as PR-SMC (32-bit address)
-PR-EXT-RSP ``pr_ext``       b: resp id; r: resp id last (the PR-EXT replies)
+PR-EXT-RSP ``pr_ext``       b: resp id; r: resp id last data (the PR-EXT
+                            replies)
 PR-OUT-RSP ``pr_out``       b: resp id; r: resp id last data (the PR-OUT replies,
                             from the outbound responder)
 PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
@@ -113,7 +114,7 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-OUT": ("pr_out", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS_USER}, "axi"),
     "PR-SMC": ("pr_smc", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
     "PR-EXT": ("pr_ext", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
-    "PR-EXT-RSP": ("pr_ext", {"b": ("resp", "id"), "r": ("resp", "id", "last")}, "axi"),
+    "PR-EXT-RSP": ("pr_ext", {"b": ("resp", "id"), "r": ("resp", "id", "last", "data")}, "axi"),
     "PR-OUT-RSP": (
         "pr_out",
         {"b": ("resp", "id"), "r": ("resp", "id", "last", "data")},
