@@ -128,9 +128,6 @@ _smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_enable
 _smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[0].I2C_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[1].I2C_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[2].I2C_EN.value/Q}
-_smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[0].SMBUS_EN.value/Q}
-_smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[1].SMBUS_EN.value/Q}
-_smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[2].SMBUS_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_enable_sync/u_sync3[0]/q_ddd/Q}
 _smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_enable_sync/u_sync3[1]/q_ddd/Q}
 _smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_enable_sync/u_sync3[2]/q_ddd/Q}
