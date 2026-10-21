@@ -4249,3 +4249,208 @@ A wait that times out in steps 2-7 logs each ML-KEM check not yet graded as FAIL
 *Scope limit*: This test grades only the shared key of KEYGEN+DECAPS, and only against the DUT's own ENCAPS. The following are not claimed. The shared key has no independent expected value, because no published vector chains a keyGen output into an encapsulation for the same key pair. Which key windows KEYGEN+DECAPS and KEYGEN+SIGN fill is not stated, so `MLKEM_ENCAPS_KEY`, `MLKEM_DECAPS_KEY` and `MLDSA_PUBKEY` are logged and not graded (see <<sep-vplan-phase3-blocked,Blocked features>>, the ABR combined-command row). The KEYGEN+SIGN signature and its verify are not read here; `sep_abr_command_matrix_rand_test` logs the verify. The park and re-arm of the combined commands belong to `sep_abr_command_matrix_rand_test`. The single-step ENCAPS is stimulus; `sep_abr_mlkem_kat_test` grades ENCAPS against ACVP. A ciphertext for which decapsulation rejects is not driven through KEYGEN+DECAPS. `STATUS.ERROR` is logged and not graded. The key-vault seed path and the ABR interrupt sources are not driven.
 
 '''''
+
+[[sep_abr_mldsa87_verify_test]]
+===== 1.56 `sep_abr_mldsa87_verify_test`
+
+*Phase*: 2
+
+*Area*: Crypto and entropy
+
+*Run mode*: `cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_mldsa87_verify_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW (`abr_mldsa87_verify_test`, which links the boot ROM's `abr_driver.c`)
+
+*Objective*: Proves the ML-DSA-87 verify sequence the boot ROM will use, run by
+the SEP core against the RTL: pure ML-DSA-87 with an empty context, the message
+streamed through `MLDSA_MSG[0]` with `MLDSA_MSG_STROBE`, and a verdict that holds
+only when the accelerator preloaded `~c~`, asked for the whole message, reported
+exactly one completion, read back the loaded key and c~, and produced c~. The
+vectors are a 5903-byte blob signed at build time with the test-only key, so the
+final message word ends with strobe `0x7`. The same image runs on the virtual
+platform; each case prints one line, so the two runs' lines can be compared.
+
+*Test Coverage*: One genuine verify of each final-strobe form (5903 bytes,
+strobe `0x7`; 5900 bytes, strobe `0x0` and a dummy word), nine rejections, an
+abort mid-stream, and identity.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `cpu` and load the image. With `+abr_case_mask=<hex>`, rewrite the
+  case mask in the firmware's `abr_case_params` block in the staged DCCM image so
+  only the selected cases run.
+. Case 0: read the ML-DSA name and version.
+. Cases 1, 2 and 13: verify the genuine signature over the blob and over its first
+  5900 bytes.
+. Cases 3 to 8: verify with a flipped blob byte, a flipped z byte, a flipped c~
+  byte, a wrong public key, a signature made with context `OCA`, and a signature
+  over SHA-512 of the blob.
+. Cases 9 and 10: a genuine c~ over a z coefficient at gamma1 - beta, and over a
+  hint whose indices do not increase.
+. Case 11: a c~ of zero, which the driver rejects without starting the accelerator.
+. Case 12: start a verify, stream half the blob, zeroize, then verify the genuine
+  signature.
+. The firmware returns 0 only when every selected case met its expectation.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-FW-CONSOLE
+|The console carries `abr_mldsa87_verify_test: PASS (0 failed)` and the firmware completes with PASS. Each case line carries the driver's status, the stage it ended in, the bytes streamed, whether VALID rose before `MSG_STREAM_READY`, whether `MLDSA_VERIFY_RES` was `~c~` or zero, and the command-done count. The genuine cases need status 0 with 5903 or 5900 bytes streamed and one done event. Cases 3 to 8 need a rejection after a complete stream, a non-zero result that is not `~c~`, and one done event. Case 9 needs VALID before `MSG_STREAM_READY` with the result `~c~`; case 10 needs a complete stream with the result `~c~`. Case 11 needs a rejection with no command issued and no done event.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope*: The verdict is the driver's, so a pass shows the RTL behaves as the
+driver requires on this flow, not every behaviour of the aperture. The message is
+streamed; the non-streamed and external-mu paths belong to
+<<sep_abr_mldsa_sign_verify_kat_test>>. Signatures are hedged, so they change on
+every build; only verdicts and diagnostics are graded.
+
+*Anti-vacuity*: cases 9 and 10 carry a genuine c~, so an accelerator that leaves
+`MLDSA_VERIFY_RES` at zero or at a stale value, rather than the `~c~` it must
+preload, fails them although the driver rejects either way. Case 12 is followed by
+a genuine verify, so an abort that leaves the accelerator unusable fails.
+
+*Not claimed*: the command-drop fault, which <<sep_abr_cmd_drop_test>> injects;
+ML-KEM; the key-vault seed path.
+
+'''''
+
+[[sep_abr_cmd_drop_test]]
+===== 1.57 `sep_abr_cmd_drop_test`
+
+*Phase*: 2
+
+*Area*: Crypto and entropy
+
+*Run mode*: `cpu`, `+skip_fuse_sense`, `+sep_abr_cmd_drop`
+
+*Source Module*: `sep_abr_cmd_drop_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW (`abr_mldsa87_verify_test`, genuine case only)
+
+*Objective*: Proves that the boot ROM's ML-DSA verify driver does not trust a
+verify the accelerator never ran. `+sep_abr_cmd_drop` holds the accelerator's
+decoded ML-DSA command at NONE, so the command write is dropped while ZEROIZE and
+the key, signature and message writes land: the effect of an instruction-skip
+glitch on the command store. Accepting VERIFY is what preloads `MLDSA_VERIFY_RES`
+with `~c~`, so the driver's preload check is where it must stop.
+
+*Test Coverage*: One genuine verify with the command dropped.
+
+*Test Procedure*:
+
+[arabic]
+. Require `+sep_abr_cmd_drop`; without it the testcase refuses to run.
+. Patch the firmware's case mask to the genuine case alone and boot in `cpu`.
+. Expect the firmware to report the genuine case as refused and to complete with FAIL.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-FW-CONSOLE
+|The console carries `case 1 genuine: FAIL status=-7 stage=5 written=0 early=0 inv=0 nz=0 done=0`: the driver returned `ABR_DRV_ERR_STATE` at its preload stage, streamed nothing and saw no command-done event. The firmware completes with FAIL, and no `case 1 genuine: PASS` line appears.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope*: One fault, the dropped command. The driver's other interlocks against a
+stale result -- the leading and trailing zeroize, the single command-done event,
+the key and c~ read-back -- are exercised by its host unit tests, which can script
+each fault on its own.
+
+*Anti-vacuity*: <<sep_abr_mldsa87_verify_test>> runs the same image without the
+fault and its genuine case passes, so the refusal here is caused by the dropped
+command and not by the image or the flow.
+
+'''''
+
+[[sep_abr_mldsa_hint_reject_kat_test]]
+===== 1.58 `sep_abr_mldsa_hint_reject_kat_test`
+
+*Phase*: 2
+
+*Area*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_mldsa_hint_reject_kat_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves that ML-DSA-87 VERIFY rejects a signature whose hint
+encoding FIPS 204 HintBitUnpack (Algorithm 21) rejects, on both interfaces the
+SEP drives: pure ML-DSA with a context, the message streamed through
+`MLDSA_MSG[0]` with `MLDSA_MSG_STROBE`, and external mu. A malformed hint the
+engine accepted would give one signature a second valid encoding. The vectors
+are every ML-DSA-87 sigVer case the NIST ACVP-Server (commit `15c0f3de`,
+RELEASE/v1.1.0.42) marks "modified signature - hint": tcIds 61, 64 and 71
+(pure, tgId 5) and 153, 159 and 163 (external mu, tgId 11). `gen_abr_nist_vectors.py --hint` checks
+each one independently of the ACVP verdict: every z coefficient is in range
+and the hint encoding is malformed, so the engine passes its z check and must
+reject at the hint decode.
+
+*Test Coverage*: Six malformed-hint rejections, and one pure-with-context
+verify that must pass (tcId 63).
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu`.
+. For each case, tcId 63 first: write `ZEROIZE` and wait for VALID to drop and
+  READY to rise. Write the public key and the signature.
+. For an external-mu case, write mu to `MLDSA_EXTERNAL_MU` and issue VERIFYING
+  with `MLDSA_CTRL.EXTERNAL_MU` set.
+. For a pure case, write the context length to `MLDSA_CTX_CONFIG` and the context
+  to `MLDSA_CTX`, issue VERIFYING with `MLDSA_CTRL.STREAM_MSG` set, and require
+  `MLDSA_VERIFY_RES` to read the inverted c~ (CHK-HINT-PRELOAD). Wait for
+  `MSG_STREAM_READY`, failing if VALID rises first, then write each message word
+  to `MLDSA_MSG[0]` after a `MLDSA_MSG_STROBE` of `0xF`, and end with the strobe
+  of the trailing bytes, or `0x0` and a dummy word for a whole-word message.
+. Wait for VALID with ERROR=0 and read `MLDSA_VERIFY_RES` (CHK-HINT-CONTROL,
+  CHK-HINT-REJECT).
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-HINT-PRELOAD
+|After VERIFYING with `STREAM_MSG` is accepted, before any message word, every
+word of `MLDSA_VERIFY_RES` is the inverse of the signature's c~.
+|CHK-HINT-CONTROL
+|tcId 63 completes VALID with ERROR=0 and `MLDSA_VERIFY_RES` equals c~: the
+streamed message and the context reach the engine intact.
+|CHK-HINT-REJECT
+|Each malformed-hint case completes VALID with ERROR=0, and every word of
+`MLDSA_VERIFY_RES` is the inverse of the signature's c~: not c~, which would be
+an accepted signature, and not a recomputed c~', which would mean the engine
+decoded the hint and finished the verify. For a pure case, `MSG_STREAM_READY`
+rose before VALID, so the engine consumed the message and rejected after it.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope*: The verdict is the engine's own result register; the command-done and
+error events are graded by <<sep_abr_mldsa87_verify_test>>. The pure cases carry
+contexts of 12 to 237 bytes and messages of 329 to 7927 bytes, so the context
+path and a stream that ends on a whole word and on each partial length are
+exercised as well.
+Pre-hash ML-DSA (tgId 6) and the internal interface without external mu
+(tgId 12) are not driven: the SEP uses neither.
+
+*Anti-vacuity*: tcId 63 runs first through the same stream and context path and
+must verify, so a broken stream or context fails on a known answer rather than
+passing as a reject. Each reject must be the inverted c~ specifically, so an
+engine that accepted the hint and computed a wrong c~' fails as surely as one
+that accepted the signature.
+
+'''''

@@ -3104,6 +3104,31 @@ module sep_uvm_top
     end
 `undef OTBN_CMD_QE
 
+    // +sep_abr_cmd_drop -- fault injection, off by default. Makes Adams Bridge
+    // ignore every ML-DSA command while ZEROIZE and every register write still
+    // land, the same "command store never landed" case as +sep_otbn_cmd_drop.
+    // The accelerator then never preloads MLDSA_VERIFY_RES with ~c~ and never
+    // raises its command-done event, which are the evidence the ML-DSA verify
+    // driver requires before it trusts a result.
+    logic abr_cmd_drop_on;
+    initial begin
+        abr_cmd_drop_on = $test$plusargs("sep_abr_cmd_drop");
+        if (abr_cmd_drop_on) begin
+            $display("[tb] *** FAULT INJECTION: +sep_abr_cmd_drop -- Adams Bridge ML-DSA");
+            $display("[tb] *** commands are dropped; no ML-DSA operation will start.");
+        end
+    end
+
+// mldsa_cmd_reg is the command abr_ctrl decodes from MLDSA_CTRL.CTRL in its RESET
+// state; ZEROIZE is a separate field, so holding the command at NONE drops commands
+// and nothing else.
+`define ABR_MLDSA_CMD \
+    `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_top.abr_ctrl_inst.mldsa_cmd_reg
+    always @(posedge clk_i) begin
+        if (abr_cmd_drop_on) force `ABR_MLDSA_CMD = abr_params_pkg::MLDSA_NONE;
+    end
+`undef ABR_MLDSA_CMD
+
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
     assign esrc_decor_bytes_o   = `SEP_ESRC.u_generator_complex.entropy_stream_uncompressed_o;
