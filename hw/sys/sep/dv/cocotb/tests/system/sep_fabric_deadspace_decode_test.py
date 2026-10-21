@@ -2,8 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Intra-block dead-space decode: a wrap past a block's extent must be refused.
 
-Run mode: no_cpu with +skip_fuse_sense. RANDCFG: known wrap-offset anchors every seed,
-plus seed-selected dead offsets inside each block window.
+Run mode: no_cpu with +skip_fuse_sense and +sep_ext_trng_axil_responder.
+RANDCFG: known wrap-offset anchors every seed, plus seed-selected dead offsets
+inside each block window; the TRNG passthrough legs draw their addresses, data,
+leg order, burst length and split-beat code pairs from the seed.
 
 A write or read past a block's allocated size must be refused (DECERR
 or SLVERR; the general probes grade refusal only, not the code; the TRNG
@@ -46,12 +48,50 @@ in the window snapshot, the write burst answers DECERR, and no armed register
 moves. A burst that times out fails. At least one window must answer a single
 beat at a burst address OKAY, which shows the refusal is the burst rule and
 not a dead address.
+
+TRNG window passthrough. Every check above runs with the reference DECERR slave
+on the TRNG AXI-Lite port. After them the bench TRNG responder answers that port
+(the SEP input ``ext_trng_axil_resp_i``, docs/SEP_TB_ARCH.adoc): the leaf sets
+the code of each port B and R handshake before an access and raises
+``ext_trng_axil_rsp_en_i`` once with the port idle; the responder then stays on
+to the end of the leaf. ``doc/integrator/src/smu-sep.adoc`` (TRNG path) states
+the reply contract and ``hw/sys/sep/doc/crypto.adoc`` ("Single-Beat Access
+Only") the burst contract. The PR-TRNG and PR-TRNG-RSP taps show the port.
+
+CTL-TRNG-RSP-DRIVE (bench control): the responder is on with both handshake
+counts at 0, and each reply beat on the port carries the code (and, for R, the
+data) that the leaf set for that handshake. Every reply check below compares
+the initiator code with the code seen at the port.
+
+CHK-TRNG-REPLY: a single-beat (AxSIZE 2) read and a single-beat write, each
+answered OKAY, SLVERR and DECERR at the port, reach the port as exactly one
+AXI-Lite access with exactly one reply beat, and the initiator receives the
+port code.
+
+CHK-TRNG-SPLIT-WR: a 64-bit single-beat write reaches the port as two AXI-Lite
+writes. With the first answered SLVERR and the last OKAY, the initiator
+receives SLVERR.
+
+CHK-TRNG-BURST: a read burst and a write burst (AxLEN above 0) with the port set
+to answer OKAY answer DECERR on every R beat and on the B, and no handshake of
+any channel occurs on the port.
+
+OBS-TRNG-SPLIT-PREC (logged only): the code the initiator receives for a 64-bit
+write whose last fragment errs and for a 64-bit read whose two halves answer
+different codes. The specification does not state that code.
 """
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles
+from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_tap import start_taps, stop_taps
+from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_deadspace_seq import (
     CRYPTO_HI,
     CRYPTO_LO,
@@ -76,6 +116,35 @@ _RESP_NAME = {
 # per channel (hw/sys/sep/doc/memory_map.adoc, TRNG aperture).
 TRNG_UNOWNED_RESP = {"r": RESP_DECERR, "w": RESP_DECERR}
 
+TEST = "sep_fabric_deadspace_decode_test"
+
+# Codes the bench TRNG responder answers in the passthrough legs.
+_TRNG_CODES = (RESP_OKAY, RESP_SLVERR, RESP_DECERR)
+# Fragment codes of a split 64-bit access that smu-sep.adoc does not resolve:
+# a write whose last fragment errs, and a read whose halves differ.
+_SPLIT_PREC_WR = (
+    (RESP_OKAY, RESP_SLVERR),
+    (RESP_OKAY, RESP_DECERR),
+    (RESP_SLVERR, RESP_DECERR),
+    (RESP_DECERR, RESP_SLVERR),
+)
+_SPLIT_PREC_RD = tuple((a, b) for a in _TRNG_CODES for b in _TRNG_CODES if a != b)
+# Handshake k of a channel answers entry k modulo 8 of the responder vectors.
+_TRNG_SLOTS = 8
+# Clocks after an access completes before its port record is read, so a beat
+# that leaks after the initiator response is still counted.
+_TRNG_SETTLE_CYCLES = 32
+# Clocks after the enable rises before the responder state is read.
+_TRNG_EN_CYCLES = 4
+# Separates the passthrough stream from the probe-set stream of the same seed.
+_TRNG_RNG_SALT = 0x5452_4E47
+
+
+def _rname(code) -> str:
+    if code is None:
+        return "X"
+    return _RESP_NAME.get(code, str(code))
+
 
 @pyuvm.test()
 class sep_fabric_deadspace_decode_test(sep_base_test):
@@ -84,6 +153,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
     async def run_scenario(self) -> None:
         cfg = SepDeadspaceCfg(self.random_seed())
         self.logger.info("deadspace config: %s", cfg.summary())
+        self._trng_drive_idle()
         assert not cfg.short_windows, (
             "CHK-DEADSPACE-RAND FAIL: window(s) short of the random-probe quota: "
             + ", ".join(
@@ -356,3 +426,417 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             ", ".join(controlled),
             ", ".join(not_graded) or "none",
         )
+
+        await self._trng_passthrough(cfg)
+
+    # ------------------------------------------------------------------
+    # TRNG window passthrough (bench TRNG responder on the AXI-Lite port).
+    # ------------------------------------------------------------------
+    def _trng_drive_idle(self) -> None:
+        """Drive every responder input to 0 (responder off, OKAY, data 0)."""
+        top = cocotb.top
+        top.ext_trng_axil_rsp_en_i.value = 0
+        top.ext_trng_axil_rsp_bresp_i.value = 0
+        top.ext_trng_axil_rsp_rresp_i.value = 0
+        top.ext_trng_axil_rsp_rdata_i.value = 0
+        self._trng_b = [RESP_OKAY] * _TRNG_SLOTS
+        self._trng_r = [RESP_OKAY] * _TRNG_SLOTS
+        self._trng_d = [0] * _TRNG_SLOTS
+
+    def _trng_load(
+        self, op: SepAxiOp, codes: tuple[int, ...], words: tuple[int, ...] = ()
+    ) -> tuple[int, list[int], list[int]]:
+        """Set the codes of the next port handshakes of ``op``.
+
+        Returns the first slot and the code and data sequence that the next
+        eight handshakes of that channel answer.
+        """
+        top = cocotb.top
+        if len(codes) > _TRNG_SLOTS:
+            raise ValueError(f"{len(codes)} codes exceed the {_TRNG_SLOTS} responder slots")
+        if op is SepAxiOp.WRITE:
+            first = self.rd_known(top.ext_trng_axil_rsp_bcnt_o) % _TRNG_SLOTS
+            for k, c in enumerate(codes):
+                self._trng_b[(first + k) % _TRNG_SLOTS] = c
+            top.ext_trng_axil_rsp_bresp_i.value = sum(
+                c << (2 * k) for k, c in enumerate(self._trng_b)
+            )
+            seq_c = [self._trng_b[(first + k) % _TRNG_SLOTS] for k in range(_TRNG_SLOTS)]
+            return first, seq_c, [0] * _TRNG_SLOTS
+        first = self.rd_known(top.ext_trng_axil_rsp_rcnt_o) % _TRNG_SLOTS
+        for k, c in enumerate(codes):
+            slot = (first + k) % _TRNG_SLOTS
+            self._trng_r[slot] = c
+            self._trng_d[slot] = words[k] if k < len(words) else 0
+        top.ext_trng_axil_rsp_rresp_i.value = sum(c << (2 * k) for k, c in enumerate(self._trng_r))
+        top.ext_trng_axil_rsp_rdata_i.value = sum(w << (32 * k) for k, w in enumerate(self._trng_d))
+        seq_c = [self._trng_r[(first + k) % _TRNG_SLOTS] for k in range(_TRNG_SLOTS)]
+        seq_d = [self._trng_d[(first + k) % _TRNG_SLOTS] for k in range(_TRNG_SLOTS)]
+        return first, seq_c, seq_d
+
+    async def _trng_access(
+        self,
+        leg: str,
+        op: SepAxiOp,
+        addr: int,
+        *,
+        size: int,
+        codes: tuple[int, ...],
+        words: tuple[int, ...] = (),
+        wdata: int = 0,
+        beats: int = 1,
+    ) -> dict:
+        """One access to the TRNG window; returns the initiator and port record."""
+        first, drive_c, drive_d = self._trng_load(op, codes, words)
+        mon = self.env.axi_monitor
+        marks = {n: t.mark() for n, t in self.trng_taps.items()}
+        is_rd = op is SepAxiOp.READ
+        # Every initiator response beat may be DECERR; credit each one and
+        # hand back what the fabric did not use. The checks below grade the code.
+        n_resp = beats if is_rd else 1
+        mon.arm_expected_decerr(n_resp)
+        if is_rd and beats > 1:
+            mon.start_beat_capture()
+        kw = {"allow_ungraded_read_resp": True} if is_rd else {"allow_unverified_write_resp": True}
+        seq = SepAxiAccessSeq(
+            f"trng_{leg}_0x{addr:08x}",
+            op=op,
+            addr=addr,
+            wdata=wdata,
+            length=(1 << size) * beats,
+            size=size,
+            **kw,
+        )
+        await self.start_seq(seq)
+        beat_resps: list[int | None] | None = None
+        if is_rd and beats > 1:
+            captured = mon.take_beat_capture()
+            usable = len(captured) == beats and all(r is not None for r in captured)
+            beat_resps = list(captured) if usable else []
+            used = (
+                sum(1 for r in captured if r == RESP_DECERR)
+                if usable
+                else sum(1 for r in seq.resp_list if r == RESP_DECERR)
+            )
+        else:
+            used = 1 if (not seq.timed_out and seq.resp_code == RESP_DECERR) else 0
+        if n_resp > used:
+            mon.release_expected_decerr(n_resp - used)
+        await ClockCycles(cocotb.top.clk_i, _TRNG_SETTLE_CYCLES)
+        req = self.trng_taps["PR-TRNG"].since(marks["PR-TRNG"])
+        rsp = self.trng_taps["PR-TRNG-RSP"].since(marks["PR-TRNG-RSP"])
+        return {
+            "leg": leg,
+            "op": op,
+            "d": "r" if is_rd else "w",
+            "addr": addr,
+            "size": size,
+            "beats": beats,
+            "codes": codes,
+            "first": first,
+            "drive_c": drive_c,
+            "drive_d": drive_d,
+            "resp": -1 if seq.timed_out else seq.resp_code,
+            "resp_list": list(seq.resp_list),
+            "rdata": seq.rdata,
+            "timed_out": seq.timed_out,
+            "beat_resps": beat_resps,
+            "req": req,
+            "rsp": rsp,
+            "addr_beats": [b for b in req if b.ch == ("ar" if is_rd else "aw")],
+            "w_beats": [b for b in req if b.ch == "w"],
+            "rep": [b for b in rsp if b.ch == ("r" if is_rd else "b")],
+        }
+
+    @staticmethod
+    def _trng_tag(c: dict) -> str:
+        return (
+            f"leg={c['leg']} op={c['d']} addr=0x{c['addr']:08x} size={c['size']} beats={c['beats']}"
+        )
+
+    @staticmethod
+    def _trng_rdata(beat) -> str:
+        data = beat.fields.get("data")
+        return "X" if data is None else f"0x{data:08x}"
+
+    @staticmethod
+    def _trng_port_fmt(c: dict) -> str:
+        return "; ".join(b.fmt() for b in c["req"] + c["rsp"]) or "none"
+
+    def _trng_ctl(self, c: dict, fails: list[str]) -> None:
+        """CTL-TRNG-RSP-DRIVE: each port reply beat carries the code set for it."""
+        for k, b in enumerate(c["rep"]):
+            slot = (c["first"] + k) % _TRNG_SLOTS
+            want_c = c["drive_c"][k % _TRNG_SLOTS]
+            want_d = c["drive_d"][k % _TRNG_SLOTS] if c["d"] == "r" else None
+            got_d = b.fields.get("data") if c["d"] == "r" else None
+            self.logger.info(
+                "CTL-TRNG-RSP-DRIVE LOG: %s ch=%s k=%d slot=%d set=%s port=%s set_data=%s "
+                "port_data=%s",
+                self._trng_tag(c),
+                b.ch,
+                k,
+                slot,
+                _rname(want_c),
+                _rname(b.resp),
+                "na" if want_d is None else f"0x{want_d:08x}",
+                "na" if want_d is None else ("X" if got_d is None else f"0x{got_d:08x}"),
+            )
+            if b.resp != want_c or (want_d is not None and got_d != want_d):
+                fails.append(
+                    f"{self._trng_tag(c)} port reply k={k} {b.fmt()}; the responder was set "
+                    f"to resp={_rname(want_c)}"
+                    + ("" if want_d is None else f" data=0x{want_d:08x}")
+                )
+
+    def _trng_raise(self, chk: str, fails: list[str], what: str) -> None:
+        for line in fails:
+            self.logger.error("%s FAIL: %s", chk, line)
+        if fails:
+            raise AssertionError(f"{chk} FAIL: {len(fails)} {what}")
+
+    async def _trng_passthrough(self, cfg: SepDeadspaceCfg) -> None:
+        """Turn the bench TRNG responder on and grade the passthrough contract."""
+        top = cocotb.top
+        win = cfg.windows["trng"]
+        span = win.window_end - win.base
+        assert span >= 0x40, f"TRNG window 0x{win.base:08x} spans only 0x{span:x} bytes"
+        rng = SepSeededRng(cfg.seed ^ _TRNG_RNG_SALT)
+        self.trng_taps = start_taps("PR-TRNG", "PR-TRNG-RSP")
+
+        # Port idle: every access above has completed. Raise the enable once.
+        top.ext_trng_axil_rsp_en_i.value = 1
+        await ClockCycles(top.clk_i, _TRNG_EN_CYCLES)
+        on = self.rd_known(top.ext_trng_axil_rsp_on_o)
+        bcnt = self.rd_known(top.ext_trng_axil_rsp_bcnt_o)
+        rcnt = self.rd_known(top.ext_trng_axil_rsp_rcnt_o)
+        self.logger.info("CTL-TRNG-RSP-DRIVE LOG: responder on=%d bcnt=%d rcnt=%d", on, bcnt, rcnt)
+        assert on == 1 and bcnt == 0 and rcnt == 0, (
+            f"CTL-TRNG-RSP-DRIVE FAIL: responder on={on} bcnt={bcnt} rcnt={rcnt}; expected on=1 "
+            "with both counts at 0 (the leaf runs with +sep_ext_trng_axil_responder)"
+        )
+        open_graded_window(TEST, self.logger)
+
+        def word_addr() -> int:
+            return win.base + 4 * rng.randrange(0, span // 4)
+
+        def dword_addr() -> int:
+            return win.base + 8 * rng.randrange(0, span // 8)
+
+        # Single beats: every code on a read and on a write, in a seeded order.
+        single = [(op, code) for op in (SepAxiOp.READ, SepAxiOp.WRITE) for code in _TRNG_CODES]
+        rng.shuffle(single)
+        singles = []
+        for op, code in single:
+            addr = word_addr()
+            word = rng.getrandbits(32)
+            singles.append(
+                await self._trng_access(
+                    f"single_{_rname(code).lower()}",
+                    op,
+                    addr,
+                    size=2,
+                    codes=(code,),
+                    words=(word,),
+                    wdata=rng.getrandbits(32),
+                )
+            )
+        # Split write: the first fragment SLVERR, the last OKAY.
+        split = await self._trng_access(
+            "split_wr",
+            SepAxiOp.WRITE,
+            dword_addr(),
+            size=3,
+            codes=(RESP_SLVERR, RESP_OKAY),
+            wdata=rng.getrandbits(64),
+        )
+        # Bursts with the port set to answer OKAY, so a beat that reaches the
+        # port answers OKAY and shows.
+        n_beats = rng.choice((2, 4, 8))
+        b_start = win.base + 4 * rng.randrange(0, (span - 4 * n_beats) // 4 + 1)
+        burst_rd = await self._trng_access(
+            "burst_rd",
+            SepAxiOp.READ,
+            b_start,
+            size=2,
+            codes=(RESP_OKAY,) * n_beats,
+            words=tuple(rng.getrandbits(32) for _ in range(n_beats)),
+            beats=n_beats,
+        )
+        burst_wr = await self._trng_access(
+            "burst_wr",
+            SepAxiOp.WRITE,
+            b_start,
+            size=2,
+            codes=(RESP_OKAY,),
+            wdata=(1 << (32 * n_beats)) - 1,
+            beats=n_beats,
+        )
+        close_graded_window(self.logger)
+
+        graded = singles + [split, burst_rd, burst_wr]
+        ctl_fails: list[str] = []
+        for c in graded:
+            self._trng_ctl(c, ctl_fails)
+        self._trng_raise("CTL-TRNG-RSP-DRIVE", ctl_fails, "port reply beat(s) off the set code")
+        self.logger.info(
+            "CTL-TRNG-RSP-DRIVE PASS: %d port reply beat(s) over %d access(es) carried the set "
+            "code",
+            sum(len(c["rep"]) for c in graded),
+            len(graded),
+        )
+
+        # CHK-TRNG-REPLY: one port access, one reply beat, initiator code = port code.
+        reply_fails: list[str] = []
+        port_codes: dict[str, set[int]] = {"r": set(), "w": set()}
+        for c in singles:
+            tag = self._trng_tag(c)
+            n_addr, n_w, n_rep = len(c["addr_beats"]), len(c["w_beats"]), len(c["rep"])
+            want_w = 0 if c["d"] == "r" else 1
+            own = ("ar", "r") if c["d"] == "r" else ("aw", "w", "b")
+            other = [b for b in c["req"] + c["rsp"] if b.ch not in own]
+            if c["timed_out"]:
+                reply_fails.append(f"{tag} timed out; port: {self._trng_port_fmt(c)}")
+                continue
+            if n_addr != 1 or n_w != want_w or n_rep != 1 or other:
+                reply_fails.append(
+                    f"{tag} port addr_beats={n_addr} w_beats={n_w} reply_beats={n_rep} "
+                    f"other_beats={len(other)}, expected 1/{want_w}/1/0: {self._trng_port_fmt(c)}"
+                )
+                continue
+            rep = c["rep"][0]
+            if rep.resp is None:
+                reply_fails.append(f"{tag} port reply carries X/Z: {rep.fmt()}")
+                continue
+            port_codes[c["d"]].add(rep.resp)
+            if c["resp"] != rep.resp:
+                reply_fails.append(
+                    f"{tag} driven={_rname(c['codes'][0])} port={_rname(rep.resp)} "
+                    f"init={_rname(c['resp'])}; smu-sep.adoc: the initiator receives the "
+                    "endpoint code verbatim"
+                )
+                continue
+            self.logger.info(
+                "CHK-TRNG-REPLY PASS: %s driven=%s port=%s init=%s port_addr=0x%s port_beats=%d "
+                "port_rdata=%s init_rdata=0x%016x",
+                tag,
+                _rname(c["codes"][0]),
+                _rname(rep.resp),
+                _rname(c["resp"]),
+                "X" if c["addr_beats"][0].addr is None else f"{c['addr_beats'][0].addr:08x}",
+                n_rep,
+                self._trng_rdata(rep) if c["d"] == "r" else "na",
+                c["rdata"],
+            )
+        for d in ("r", "w"):
+            if port_codes[d] != set(_TRNG_CODES):
+                reply_fails.append(
+                    f"op={d} port codes {sorted(_rname(x) for x in port_codes[d])} do not cover "
+                    "OKAY, SLVERR and DECERR"
+                )
+        self._trng_raise("CHK-TRNG-REPLY", reply_fails, "single-beat TRNG finding(s)")
+        self.logger.info(
+            "CHK-TRNG-REPLY PASS: %d single-beat accesses; read and write each answered OKAY, "
+            "SLVERR and DECERR at the port with one port access each, and the initiator "
+            "received the port code every time",
+            len(singles),
+        )
+
+        # CHK-TRNG-SPLIT-WR: two port writes, SLVERR then OKAY -> SLVERR.
+        tag = self._trng_tag(split)
+        split_port = [b.resp for b in split["rep"]]
+        split_fails: list[str] = []
+        if split["timed_out"]:
+            split_fails.append(f"{tag} timed out; port: {self._trng_port_fmt(split)}")
+        elif (
+            len(split["addr_beats"]) != 2
+            or len(split["w_beats"]) != 2
+            or split_port != [RESP_SLVERR, RESP_OKAY]
+        ):
+            split_fails.append(
+                f"{tag} port aw={len(split['addr_beats'])} w={len(split['w_beats'])} "
+                f"b={[_rname(x) for x in split_port]}, expected two writes answered "
+                f"SLVERR then OKAY: {self._trng_port_fmt(split)}"
+            )
+        elif split["resp"] != RESP_SLVERR:
+            split_fails.append(
+                f"{tag} port=[SLVERR,OKAY] init={_rname(split['resp'])}; smu-sep.adoc: an "
+                "earlier fragment erred and the last is OKAY, so the initiator receives SLVERR"
+            )
+        self._trng_raise("CHK-TRNG-SPLIT-WR", split_fails, "split-write finding(s)")
+        self.logger.info(
+            "CHK-TRNG-SPLIT-WR PASS: %s port_aw=%s port=[%s] init=%s",
+            tag,
+            ",".join("X" if b.addr is None else f"0x{b.addr:08x}" for b in split["addr_beats"]),
+            ",".join(_rname(x) for x in split_port),
+            _rname(split["resp"]),
+        )
+
+        # CHK-TRNG-BURST: DECERR on every beat, no handshake on the port.
+        burst_fails: list[str] = []
+        for c in (burst_rd, burst_wr):
+            tag = self._trng_tag(c)
+            if c["timed_out"]:
+                burst_fails.append(f"{tag} timed out; port: {self._trng_port_fmt(c)}")
+                continue
+            if c["req"] or c["rsp"]:
+                burst_fails.append(
+                    f"{tag} {len(c['req'])} request and {len(c['rsp'])} reply handshake(s) "
+                    f"reached the port, expected 0: {self._trng_port_fmt(c)}"
+                )
+            if c["d"] == "r":
+                br = c["beat_resps"] or []
+                if len(br) != c["beats"] or any(r != RESP_DECERR for r in br):
+                    burst_fails.append(
+                        f"{tag} per-beat RRESP {[_rname(r) for r in br]} (monitor), expected "
+                        f"DECERR on all {c['beats']} beats"
+                    )
+            elif c["resp"] != RESP_DECERR:
+                burst_fails.append(f"{tag} BRESP={_rname(c['resp'])}, expected DECERR")
+        self._trng_raise("CHK-TRNG-BURST", burst_fails, "TRNG burst finding(s)")
+        self.logger.info(
+            "CHK-TRNG-BURST PASS: read burst at 0x%08x answered [%s], write burst answered %s, "
+            "%d beats each with the port set to OKAY; port handshakes read=%d write=%d",
+            b_start,
+            ",".join(_rname(r) for r in burst_rd["beat_resps"] or []),
+            _rname(burst_wr["resp"]),
+            n_beats,
+            len(burst_rd["req"]) + len(burst_rd["rsp"]),
+            len(burst_wr["req"]) + len(burst_wr["rsp"]),
+        )
+
+        # OBS-TRNG-SPLIT-PREC: halves that differ in a way the spec does not resolve.
+        wr_pair = rng.choice(_SPLIT_PREC_WR)
+        rd_pair = rng.choice(_SPLIT_PREC_RD)
+        obs = [
+            await self._trng_access(
+                "prec_wr",
+                SepAxiOp.WRITE,
+                dword_addr(),
+                size=3,
+                codes=wr_pair,
+                wdata=rng.getrandbits(64),
+            ),
+            await self._trng_access(
+                "prec_rd",
+                SepAxiOp.READ,
+                dword_addr(),
+                size=3,
+                codes=rd_pair,
+                words=(rng.getrandbits(32), rng.getrandbits(32)),
+            ),
+        ]
+        for c in obs:
+            self.logger.info(
+                "OBS-TRNG-SPLIT-PREC: %s driven=[%s] port=[%s] port_beats=%d init=%s",
+                self._trng_tag(c),
+                ",".join(_rname(x) for x in c["codes"]),
+                ",".join(_rname(b.resp) for b in c["rep"]),
+                len(c["rep"]),
+                "TIMEOUT" if c["timed_out"] else _rname(c["resp"]),
+            )
+        obs_ctl: list[str] = []
+        for c in obs:
+            self._trng_ctl(c, obs_ctl)
+        self._trng_raise("CTL-TRNG-RSP-DRIVE", obs_ctl, "port reply beat(s) off the set code")
+        await stop_taps(self.trng_taps)

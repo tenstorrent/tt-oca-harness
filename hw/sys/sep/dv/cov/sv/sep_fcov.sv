@@ -5950,8 +5950,9 @@ module sep_fcov (
   // sep_fabric_trng_reply_cg: the reply that the LSU initiator receives for
   // an access to the TRNG window (TRNG_APERTURE_MEM) while the bench TRNG
   // responder answers the TRNG AXI-Lite port (trng_rsp_on_i), per access
-  // shape. One window write and one window read are tracked at a time. The
-  // port beats between the LSU request and its reply select the sample:
+  // shape, inside the graded window of sep_fabric_deadspace_decode_test. One
+  // window write and one window read are tracked at a time. The port beats
+  // between the LSU request and its reply select the sample:
   //   * single read or write (AxLEN 0, AxSIZE 2 or less): one port beat, and
   //     the initiator code equals the port code;
   //   * split write (AxLEN 0, AxSIZE 3): two port B beats, the first not
@@ -5995,8 +5996,9 @@ module sep_fcov (
       (lsu_resp_i.b.id == tq_w_id) && !$isunknown(lsu_resp_i.b.resp);
   wire tq_r = (lsu_resp_i.r_valid === 1'b1) && (lsu_req_i.r_ready === 1'b1) &&
       (lsu_resp_i.r.id == tq_r_id) && !$isunknown(lsu_resp_i.r.resp);
+  wire own_trng = (graded_owner == FcovOwnSepFabricDeadspaceDecodeTest);
   always @(posedge clk_i) begin
-    if (in_reset || (trng_rsp_on_i !== 1'b1)) begin
+    if (in_reset || !own_trng || (trng_rsp_on_i !== 1'b1)) begin
       tq_w_on <= 1'b0;
       tq_r_on <= 1'b0;
     end else begin

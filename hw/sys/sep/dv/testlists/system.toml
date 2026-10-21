@@ -340,7 +340,7 @@ timeout_sec = 1800
 tags = ["fabric", "decode", "negative", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_ext_trng_axil_responder"]
 
 [[tests]]
 # Reserved rows of hw/sys/sep/doc/memory_map.adoc between block windows are refused. The
