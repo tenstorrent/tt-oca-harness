@@ -22,8 +22,11 @@ non-zero word is loaded and before every one is. From the rise of
 again for W clocks after the IC_RESET TDR releases the SEP reset; sense done stays
 low (``hw/sys/sep/doc/security_disable.adoc``, section Fuse Sensing and the Shadow
 Map). Class C: a match held over a cold reset is present from reset release; for W
-clocks every probe word except ``LC_STATE`` reads 0 and no read command reaches the
-post-guard fuse port (``security_disable.adoc``, section Reset Persistence).
+clocks every probe bit of a field other than ``LC_STATE`` that declares a reset
+reads its RDL reset value (the same generated IP-XACT values as
+CHK-SDIS-RESET-VALUES; the other probe bits are logged as ``probe_unreset``) and no
+read command reaches the post-guard fuse port (``security_disable.adoc``, section
+Reset Persistence).
 
 Both classes: a cold reset under the match leaves every shadow field except
 ``LC_STATE`` at its reset value 0x0 with an OKAY response
@@ -131,6 +134,24 @@ def _reset_compare(name: str, k: int) -> tuple[int, int]:
     return mask, word_reset(word) & mask
 
 
+def _probe_reset() -> tuple[int, int]:
+    """(compared bits, reset value) of the whole shadow probe, ``LC_STATE`` left out.
+
+    Word ``field_word(name) + k`` of the probe carries shadow word k of ``name``;
+    each word takes its compared bits and reset value from ``_reset_compare``.
+    """
+    mask = exp = 0
+    for name in FIELD_NAMES:
+        if name == "LC_STATE":
+            continue
+        for k in range(field_n_words(name)):
+            m, e = _reset_compare(name, k)
+            shift = 32 * (field_word(name) + k)
+            mask |= m << shift
+            exp |= e << shift
+    return mask, exp
+
+
 class _Clk:
     """Free-running clk_i counter."""
 
@@ -152,7 +173,9 @@ class _HoldMonitor:
     probe there as S, then counts every later clock where sense done is not 0,
     security_disable_o is not 1 or the probe differs from S. Mode ``"zero"``
     (class C): from its first clock, counts every clock where sense done is not 0,
-    security_disable_o is not 1 or a probe word other than LC_STATE is not 0.
+    security_disable_o is not 1 or a compared probe bit (``_probe_reset``) is X/Z
+    or differs from its RDL reset value. The probe bits outside the compared set
+    and outside LC_STATE are ORed into ``unreset_seen`` and logged.
     """
 
     def __init__(self, mode: str) -> None:
@@ -167,6 +190,8 @@ class _HoldMonitor:
         self.bad_sd = 0
         self.bad_sdis = 0
         self.bad_probe = 0
+        self.unreset_seen = 0
+        self.r_mask, self.r_exp = _probe_reset() if mode == "zero" else (0, 0)
         cocotb.start_soon(self._run())
 
     async def _run(self) -> None:
@@ -190,7 +215,8 @@ class _HoldMonitor:
             if self.mode == "rise":
                 self.bad_probe += int(val != self.s_val or xm != self.s_x)
             else:
-                self.bad_probe += int((val | xm) & ~_LC_MASK != 0)
+                self.bad_probe += int(((val ^ self.r_exp) | xm) & self.r_mask != 0)
+                self.unreset_seen |= (val | xm) & ~self.r_mask & ~_LC_MASK
 
     async def until(self, n: int) -> None:
         clk = cocotb.top.clk_i
@@ -653,7 +679,13 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         mon.stop = True
         set_efuse_sdis_hold_bound(0, self.logger)
         await RisingEdge(dut.clk_i)
-        self.chk.obs("SDIS-CLASS-C", window=w, reads_in_window=reads)
+        self.chk.obs(
+            "SDIS-CLASS-C",
+            window=w,
+            reads_in_window=reads,
+            probe_reset_nonzero=f"0x{mon.r_exp:x}",
+            probe_unreset=f"0x{mon.unreset_seen:x}",
+        )
         return {
             "k_ctl": 1,
             "bad_sd": mon.bad_sd,

@@ -54,6 +54,9 @@ module sep_abr_kv_shim
   output      abr_wrapper_key__in_t  hwif_o,  // ABR sideload CSR hardware inputs for ML-KEM
                                               // shared-key writeback and its key_valid and
                                               // IRQ_STATUS set pulses.
+  input  wire logic            wipe_pulse_i,  // Key Manager wipe pulse; clears every seed and
+                                              // message share, the shared key and all five
+                                              // key_valid bits, ahead of a same-cycle KV write.
 
   input  wire kv_read_t    [2:0] kv_read_i,   // Adams Bridge Caliptra KV read commands: lane 0
                                               // ML-DSA seed, lane 1 ML-KEM seed D||Z, lane 2 ML-KEM
@@ -160,7 +163,28 @@ module sep_abr_kv_shim
 
   always_comb begin
     hwif_o = '{default: '0};
-    if (kv_write_i.write_en) begin
+    if (wipe_pulse_i) begin
+      for (int unsigned i = 0; i < SEED_DWORDS; i++) begin
+        hwif_o.MLDSA_SEED.KEY_SHARE0[i].data.hwclr   = 1'b1;
+        hwif_o.MLDSA_SEED.KEY_SHARE1[i].data.hwclr   = 1'b1;
+        hwif_o.MLKEM_SEED_D.KEY_SHARE0[i].data.hwclr = 1'b1;
+        hwif_o.MLKEM_SEED_D.KEY_SHARE1[i].data.hwclr = 1'b1;
+        hwif_o.MLKEM_SEED_Z.KEY_SHARE0[i].data.hwclr = 1'b1;
+        hwif_o.MLKEM_SEED_Z.KEY_SHARE1[i].data.hwclr = 1'b1;
+      end
+      for (int unsigned i = 0; i < MSG_DWORDS; i++) begin
+        hwif_o.MLKEM_MSG.KEY_SHARE0[i].data.hwclr = 1'b1;
+        hwif_o.MLKEM_MSG.KEY_SHARE1[i].data.hwclr = 1'b1;
+      end
+      for (int unsigned i = 0; i < SHARED_KEY_DWORDS; i++) begin
+        hwif_o.MLKEM_SHARED_KEY.KEY[i].data.hwclr = 1'b1;
+      end
+      hwif_o.MLDSA_SEED.KEY_CTRL.key_valid.hwclr       = 1'b1;
+      hwif_o.MLKEM_SEED_D.KEY_CTRL.key_valid.hwclr     = 1'b1;
+      hwif_o.MLKEM_SEED_Z.KEY_CTRL.key_valid.hwclr     = 1'b1;
+      hwif_o.MLKEM_MSG.KEY_CTRL.key_valid.hwclr        = 1'b1;
+      hwif_o.MLKEM_SHARED_KEY.KEY_CTRL.key_valid.hwclr = 1'b1;
+    end else if (kv_write_i.write_en) begin
       hwif_o.MLKEM_SHARED_KEY.KEY[sk_idx].data.next = kv_write_i.write_data;
       hwif_o.MLKEM_SHARED_KEY.KEY[sk_idx].data.we   = 1'b1;
       if (kv_write_i.write_offset == KV_ENTRY_SIZE_W'(SHARED_KEY_DWORDS - 1)) begin

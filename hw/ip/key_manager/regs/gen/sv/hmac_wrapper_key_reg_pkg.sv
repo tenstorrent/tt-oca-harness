@@ -11,6 +11,28 @@ package hmac_wrapper_key_reg_pkg;
     localparam HMAC_WRAPPER_KEY_REG_SIZE = 'h44;
 
     typedef struct {
+        logic hwclr;
+    } hmac_wrapper_key__key_word_reg__data__in_t;
+
+    typedef struct {
+        hmac_wrapper_key__key_word_reg__data__in_t data;
+    } hmac_wrapper_key__key_word_reg__in_t;
+
+    typedef struct {
+        logic hwclr;
+    } hmac_wrapper_key__key_ctrl_reg__key_valid__in_t;
+
+    typedef struct {
+        hmac_wrapper_key__key_ctrl_reg__key_valid__in_t key_valid;
+    } hmac_wrapper_key__key_ctrl_reg__in_t;
+
+    typedef struct {
+        hmac_wrapper_key__key_word_reg__in_t KEY_SHARE0[8];
+        hmac_wrapper_key__key_word_reg__in_t KEY_SHARE1[8];
+        hmac_wrapper_key__key_ctrl_reg__in_t KEY_CTRL;
+    } hmac_wrapper_key__in_t;
+
+    typedef struct {
         logic [31:0] value;
     } hmac_wrapper_key__key_word_reg__data__out_t;
 

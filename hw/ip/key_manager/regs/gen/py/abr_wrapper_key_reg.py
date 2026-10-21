@@ -265,7 +265,7 @@ ABR_SEED_RF_KEY_WORD_REG_REG_FIELD_ACCESS = (
 
 ABR_SEED_RF_KEY_WORD_REG_REG_WIDTH = 32
 ABR_SEED_RF_KEY_WORD_REG_REG_FIELDS = (
-    ('data', 0, 31, 'w', 'r', '', '', False, False, None),
+    ('data', 0, 31, 'w', 'r', '', '', False, True, None),
 )
 
 class ABR_SEED_RF_KEY_WORD_REG_reg_t(Structure):
@@ -303,7 +303,7 @@ ABR_SEED_RF_SEED_CTRL_REG_REG_FIELD_ACCESS = (
 
 ABR_SEED_RF_SEED_CTRL_REG_REG_WIDTH = 32
 ABR_SEED_RF_SEED_CTRL_REG_REG_FIELDS = (
-    ('key_valid', 0, 0, 'rw', 'r', '', '', False, False, 0),
+    ('key_valid', 0, 0, 'rw', 'r', '', '', False, True, 0),
     ('rsvd', 1, 31, 'r', 'na', '', '', False, False, 0),
 )
 

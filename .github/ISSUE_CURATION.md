@@ -12,7 +12,7 @@ Ingest (`.github/scripts/ingest_github.py`) is separate: it copies form
 fields on issue open or edit. When a bracket-prefix title (`[WS/SS]`) is
 present but the body has no form headings, it derives W/S/C from the title.
 It also assigns issues mechanically (explicit @mention or parent-issue
-assignee), sets the `v0.5.0 (TT)` milestone when Target release = v0.5.0 and
+assignee), sets the `v1.0.0` milestone when Target release = v1.0.0 and
 the author is not protected, assigns PR openers, and requests a reviewer on PR
 open or ready-for-review. The picker walks GitHub suggested reviewers, then the
 assignee of a linked closing issue, then recent committers on the touched
@@ -42,11 +42,11 @@ incomplete fields, missing assignee, non-house-style title/body, or a
 due reminder is processed; fully-managed items without pending reminders
 are skipped to bound credit use. It applies Project 291 fills,
 assignments, reviewer requests (same picker as ingest, when ingest found none),
-milestone backstop (`v0.5.0 (TT)` only for clearly TT-owned issues), and
+milestone backstop (`v1.0.0` only for clearly TT-owned issues), and
 title/body consistency. Issue titles keep `[WORKSTREAM/SUBSYSTEM]`. PR
 titles use a path-like scope (`hw/smc:`, `dv:`), or `treewide:`; PR
 bodies are normalized to Summary/Test plan/Closes/Notes. Reminders:
-due date (≤3 days, fed by milestone due date for v0.5.0 issues),
+due date (≤3 days, fed by milestone due date for v1.0.0 issues),
 approved-PR merge nudge (≥3 days), review pending (>1 business day),
 unreviewed PR (≥3 days, pings the assignee), draft open (>5 business days),
 changes-requested idle (>3 business days), and stale-assigned issue (≥21 days).

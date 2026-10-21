@@ -14,10 +14,11 @@ Taps:
 Name       Prefix           Channels and fields
 ========== ================ ==================================================
 PR-OUT     ``pr_out``       aw, ar: addr id user cache prot len size burst;
-                            w: data strb last
-PR-SMC     ``pr_smc``       as PR-OUT
-PR-EXT     ``pr_ext``       as PR-OUT (32-bit address)
-PR-EXT-RSP ``pr_ext``       b: resp id; r: resp id last (the PR-EXT replies)
+                            w: data strb last user
+PR-SMC     ``pr_smc``       aw, ar as PR-OUT; w: data strb last
+PR-EXT     ``pr_ext``       as PR-SMC (32-bit address)
+PR-EXT-RSP ``pr_ext``       b: resp id; r: resp id last data (the PR-EXT
+                            replies)
 PR-OUT-RSP ``pr_out``       b: resp id; r: resp id last data (the PR-OUT replies,
                             from the outbound responder)
 PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
@@ -96,6 +97,7 @@ from sep_monitor_life import MonitorLifeError as MonitorLifeError
 
 _AXI_FULL = ("addr", "id", "user", "cache", "prot", "len", "size", "burst")
 _W_FIELDS = ("data", "strb", "last")
+_W_FIELDS_USER = ("data", "strb", "last", "user")
 _AXI_SHAPE = ("addr", "id", "len", "size")
 _AXI_PORT = {
     "aw": _AXI_SHAPE,
@@ -109,10 +111,10 @@ _TCM_RSP = ("rdata", "recc")
 
 # name -> (prefix, {channel: fields}, kind)
 TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
-    "PR-OUT": ("pr_out", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
+    "PR-OUT": ("pr_out", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS_USER}, "axi"),
     "PR-SMC": ("pr_smc", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
     "PR-EXT": ("pr_ext", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
-    "PR-EXT-RSP": ("pr_ext", {"b": ("resp", "id"), "r": ("resp", "id", "last")}, "axi"),
+    "PR-EXT-RSP": ("pr_ext", {"b": ("resp", "id"), "r": ("resp", "id", "last", "data")}, "axi"),
     "PR-OUT-RSP": (
         "pr_out",
         {"b": ("resp", "id"), "r": ("resp", "id", "last", "data")},

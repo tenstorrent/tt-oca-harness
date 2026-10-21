@@ -1,9 +1,9 @@
 diff --git a/DOC/MAS/architecture.adoc b/DOC/MAS/architecture.adoc
-index 1068f640f..a0b3e1eb9 100644
+index 72ab63a..4c34655 100644
 --- a/DOC/MAS/architecture.adoc
 +++ b/DOC/MAS/architecture.adoc
-@@ -364,7 +364,14 @@ The [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++# register (one per RP: RP0 at [.m
- |WRITE_RESP_DONE |[14] |RO |1 when no write transactions are pending ([.monospaced]#++r_aw_cnt == 0++#).
+@@ -447,7 +447,14 @@ The [.monospaced]#++WRITE_EARLY_RESPONSE_WDT_CTL++# register ([.monospaced]#++0x
+ |WDT_THRESHOLD |[31:0] |RW |Watchdog threshold in I_CLK cycles. Reset [.monospaced]#++0xC3500++# (800000 cycles).
  |==============================================================================================
  
 -See the xref:software-operation.adoc#aou-sfr-setting[full register map] for the complete SFR listing.
@@ -18,12 +18,11 @@ index 1068f640f..a0b3e1eb9 100644
  
  [[aou-axi-aggregator]]
  === AXI Aggregator
- 
 diff --git a/DOC/MAS/software-operation.adoc b/DOC/MAS/software-operation.adoc
-index e1aa114fe..5af45ff20 100644
+index df66ad4..5811c2d 100644
 --- a/DOC/MAS/software-operation.adoc
 +++ b/DOC/MAS/software-operation.adoc
-@@ -360,7 +360,17 @@ image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Acce
+@@ -394,7 +394,17 @@ image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Acce
  
  When the early write-response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#) and the actual BRESP from the remote die carries an error for a transaction that already received an early OKAY, the error is reported via the [.monospaced]#++INT_EARLY_RESP_ERR++# interrupt. The failing transactionpass:[']s AXI ID and BRESP type are captured in [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++#. SW clears the error by writing 1 to [.monospaced]#++WRITE_RESP_ERR++# (W1C).
  
@@ -40,5 +39,5 @@ index e1aa114fe..5af45ff20 100644
 ++xref:ocah-docs:ROOT:aou-architecture.adoc#aou-write-early-response-controller-sfr-fields[SFR Fields].
 ++endif::backend-html5[]
  
- [[aou-activation-deactivation-flow]]
- === Activation & Deactivation Flow
+ [[aou-write-transaction-watchdog]]
+ ==== Write Transaction Watchdog

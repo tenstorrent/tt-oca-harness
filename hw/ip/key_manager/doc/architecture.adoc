@@ -503,8 +503,18 @@ control registers, and the KPV scrambler key and control registers.
 Hardware forms a wipe event from `wipe_state_i | cpu_trap` and detects its
 rising edge. The resulting pulse clears all 1024 KPV data words, all 64 slot
 CTRL registers, and KPV scrambler key/enable/lock state on the clock edge.
-It also records the KMCSR wipe event. This hardware action covers the KPV;
-it does not itself scrub SRAM, mailbox data or accelerator sideload registers.
+It also records the KMCSR wipe event and drives `wipe_pulse_o`. In SEP, that
+pulse clears both shares and `KEY_VALID` of every accelerator sideload register
+block, all four Adams Bridge seed blocks included, and clears the ML-KEM shared
+key and its `KEY_VALID`. The clear takes precedence over a KM write in the same
+cycle. Hardware does not scrub SRAM or mailbox data; the ROM fatal path in
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#km-seq-error-recovery[Error Recovery]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-seq-error-recovery[Error Recovery]
+endif::backend-pdf[]
+in the Programmer's Guide does.
 
 In SEP, `sep_cpu_ctrl.KM_WIPE_CTRL.wipe_state` drives the external input.
 Hold it high for at least one complete KM clock period. Return it to zero

@@ -28,6 +28,7 @@ module aes_wrapper_key_reg (
         output logic [31:0] s_axil_rdata,
         output logic [1:0] s_axil_rresp,
 
+        input aes_wrapper_key_reg_pkg::aes_wrapper_key__in_t hwif_in,
         output aes_wrapper_key_reg_pkg::aes_wrapper_key__out_t hwif_out
     );
 
@@ -318,7 +319,10 @@ module aes_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.KEY_SHARE0[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.KEY_SHARE0[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.KEY_SHARE0[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.KEY_SHARE0[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -339,7 +343,10 @@ module aes_wrapper_key_reg (
             automatic logic load_next_c;
             next_c = field_storage.KEY_SHARE1[i0].data.value;
             load_next_c = '0;
-            if(decoded_reg_strb.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
+            if(hwif_in.KEY_SHARE1[i0].data.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end else if(decoded_reg_strb.KEY_SHARE1[i0] && decoded_req_is_wr) begin // SW write
                 next_c = (field_storage.KEY_SHARE1[i0].data.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
@@ -359,7 +366,10 @@ module aes_wrapper_key_reg (
         automatic logic load_next_c;
         next_c = field_storage.KEY_CTRL.key_valid.value;
         load_next_c = '0;
-        if(decoded_reg_strb.KEY_CTRL && decoded_req_is_wr) begin // SW write
+        if(hwif_in.KEY_CTRL.key_valid.hwclr) begin // HW Clear
+            next_c = '0;
+            load_next_c = '1;
+        end else if(decoded_reg_strb.KEY_CTRL && decoded_req_is_wr) begin // SW write
             next_c = (field_storage.KEY_CTRL.key_valid.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end

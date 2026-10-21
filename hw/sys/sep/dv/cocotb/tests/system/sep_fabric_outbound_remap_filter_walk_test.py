@@ -44,6 +44,7 @@ Checkers:
 from __future__ import annotations
 
 import pyuvm
+from env.sep_fabric_common import outbound_ns
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import AP_BASE, OUTFILT_BASE, STEE_BASE
@@ -162,7 +163,7 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             allow = containing_window(p.rng, x1)
             await filt.program_window(e, *allow)
             win = await filt.check_window(e, "allow-1")
-            await filt.set_enabled(e, True)
+            await filt.set_enabled(e, True, ns=outbound_ns(p.bank.lower(), x1))
             await self._expect("CHK-WALK-ALLOW", p, p.access, x1, win, deny=False)
 
             ex = exact_window(x1)
@@ -187,6 +188,7 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             allow2 = containing_window(p.rng, x2)
             await filt.program_window(e, *allow2)
             win = await filt.check_window(e, "allow-2")
+            await filt.set_enabled(e, True, ns=outbound_ns(p.bank.lower(), x2))
             await self._expect("CHK-WALK-ALLOW", p, p.access, x2, win, deny=False)
 
             below_end = ~allow2[1] & ADDR_MASK
@@ -221,6 +223,7 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             own = exact_window(p.access)
             await filt.program_window(e, *own)
             win = await filt.check_window(e, "passthru-own")
+            await filt.set_enabled(e, True, ns=outbound_ns(p.bank.lower(), p.access))
             await self._expect("CHK-WALK-PASSTHRU", p, p.access, p.access, win, deny=False)
 
             await filt.restore(e)

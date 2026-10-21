@@ -44,11 +44,34 @@ A region with `REGION_ATTRS.valid` clear passes accesses through unchanged; set
 
 On the SEP outbound path, shared resources are reached through the AP- or
 STEE-controlled remappers, which external software programs, and private
-memory and system MMIO through the direct SMN path. Both remappers replace the
-AxUSER source ID with `OTHERS`, and the secure DMA drives `OTHERS` as well. The
-outbound filter checks the source ID after remapping, so configure it to keep
-`OTHERS` traffic away from M-mode assets, and restrict the STEE remapper to
-STEE access in the inbound filter.
+memory and system MMIO through the direct SMN path. Each path sets the AxUSER
+source ID and the NS bit, as the TRM's
+ifdef::backend-html5[]
+xref:ocah-docs:sep:fabric.adoc#sep-outbound-attributes-table[SEP outbound attribute table]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/fabric.html#sep-outbound-attributes-table[SEP outbound attribute table]
+endif::backend-pdf[]
+gives:
+
+* The direct SMN path carries SEP's source ID, from the secure DMA too, and NS
+  is the inverse of address bit 55. An access is secure only when its address
+  has bit 55 set, which a local master reaches through an alias remap region
+  whose offset sets it.
+* The AP remapper carries `OTHERS` and is always non-secure.
+* The STEE remapper carries `OTHERS`, and NS is the inverse of bit 55 of the
+  remapped address, so the STEE selects the security state through the offset.
+
+No path clears address bit 55. The SMC path keeps the initiator's source ID and
+NS: SEP's ID from the CPU masters, `OTHERS` from the secure DMA, and secure
+from every master.
+
+The outbound filter checks the source ID and NS after remapping, and an entry
+matches one security state only. Give each entry the NS that its path
+produces, `allow_ns = 1` for AP windows and for direct or STEE targets with
+address bit 55 clear. Configure the filter to keep `OTHERS` traffic away from
+M-mode assets, and restrict the STEE remapper to STEE access in the inbound
+filter.
 
 [[smc-xvisor-remap-example]]
 ==== Example: SMC Access to Hypervisor Memory
@@ -323,7 +346,9 @@ accounting for entry priority. The SMC GPIO's AXI-Lite access filter checks
 AxPROT instead: with `awprot_requirement` and `arprot_requirement` at `0x1`
 (data, secure, privileged) and both `write_filter_enable` and
 `read_filter_enable` set, only transactions whose three PROT bits equal `0x1`
-are allowed. The SEP load/store, debug and DMA masters all drive `0x1`.
+are allowed. The SEP load/store, debug and DMA masters all drive `0x1`, which
+reaches the SMC unchanged on SEP's SMC path. SEP traffic on the direct SMN path
+carries NS 1 unless its address has bit 55 set.
 
 [NOTE]
 ====

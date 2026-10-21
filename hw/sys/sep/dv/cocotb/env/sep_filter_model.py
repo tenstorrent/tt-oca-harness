@@ -93,6 +93,9 @@ class FilterEntry:
             fails.append(TERM_RANGE)
         if int(self.allow_ns) != (prot1 & 1):
             fails.append(TERM_NS)
+        # src_id is 0 or equals AxUSER[3:0] (smc-traffic-filters.svg; the
+        # "Source ID carrier" record, hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc,
+        # sep-standin-src-id-carrier).
         if self.src_id != 0 and self.src_id != (user & 0xF):
             fails.append(TERM_SRC)
         if not self.allow_burst and axlen != 0:

@@ -1,11 +1,11 @@
 diff --git a/DOC/MAS/software-operation.adoc b/DOC/MAS/software-operation.adoc
-index 1846174a0d..fe972f4c2f 100644
+index e3343a5..b993751 100644
 --- a/DOC/MAS/software-operation.adoc
 +++ b/DOC/MAS/software-operation.adoc
-@@ -529,3 +529,10 @@ Same as PM entry, before doing UCIE state transition, AOU_CORE need to Disabled
- If AOU_CORE faces uncorrectable error (ex. AOU SPEC violation), AOU_CORE sends LinkReset to CPU and D2D adapter. LinkReset indicates that an error has occurred which requires the Link to go down.
+@@ -580,3 +580,10 @@ If AOU_CORE faces uncorrectable error (ex. AOU SPEC violation), AOU_CORE sends L
  
  While handling LinkReset, SW needs to do AOU_CORE SW reset by setting AOU_CON0.AOU_SW_RESET.
+ Asserting [.monospaced]#++I_RESETN++# returns the configuration registers to the same reset values as [.monospaced]#++AOU_SW_RESET++#, and on [.monospaced]#++AOU_TOP++# it also returns the FDI bringup controller to Reset (xref:{aou-integration-xref}#aou-ig-reset-domains[Reset domains]).
 +
 +[[aou-core-reset]]
 +=== AoU Core Reset

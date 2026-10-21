@@ -11,8 +11,9 @@ and AxPROT table; ``hw/sys/sep/doc/dma.adoc``, master path): the CPU LSU (the
 TB master on ``s_axi``) and the Secure DMA (programmed over that master) issue
 to one outbound window while the responder (``tb/sep_outbound_mbx.sv``) delays
 AW, W and AR READY, delays or holds B and R VALID, and is then released; the
-local crossbar stops accepting at its outstanding limit and every request
-completes after the release. The SMN inbound master (``m_axi``) issues toward
+outbound path stops accepting at a finite count and every request completes
+after the release. No specification states the outstanding limit of the local
+crossbar or of the outbound chain, so the count is logged and not compared. The SMN inbound master (``m_axi``) issues toward
 the same window alongside them; it has no route to the outbound port, so its
 accesses are the stimulus of one no-path check and never contend at the port.
 
@@ -23,17 +24,26 @@ observation only. The responder queues ``+sep_outbound_depth`` write bursts,
 pending B responses and reads, which the leaf requires to be at least the
 requests it issues in one hold, so every finite stop it grades at the port is
 the DUT's, not the responder's. The LSU master stops at the same count whether
-or not the port accepts, so the outbound chain limit is not separable from the
-crossbar limit at the pins: the three-initiator hold at that stop is reported
+or not the port accepts, so at the pins the stop of the outbound chain is not
+separable from a stop upstream of it: the three-initiator hold at that stop is reported
 as OBS-CHAIN-HELD and the finite stop and the drain of the chain are graded by
 CHK-CHAIN-LIMIT.
 
 The SMN inbound master has no route to the outbound port:
-``hw/sys/sep/doc/fabric.adoc`` (Routing) states that the peripheral crossbar
+``hw/sys/sep/doc/fabric.adoc`` (Fabric Topology) states that the peripheral crossbar
 answers any inbound address at or above ``0x4000_0000`` with DECERR, and the
 outbound window lies above it. Every access that master issues, in every phase,
 is stimulus of the one no-path check CHK-SYSIF-NO-OUTBOUND-PATH; no other
-checker counts it.
+checker counts it. Inbound filter entry 0 admits those accesses (their window,
+AxUSER source ID and NS), and the PR-INFLT tap (the request out of the inbound
+filter) shows each of them, so the DECERR comes from the routing decode past
+the filter and not from the filter.
+
+The LSU stall clocks that CHK-OUT-STOP, CHK-XBAR-HELD and CHK-CHAIN-LIMIT grade
+count only clocks on which the ``s_axi`` request on offer is an LSU outbound
+request (AXI ID 1 or above, address in the LSU slot); any other stall clock on
+that bus, such as one of the DMA CSR accesses on ID 0, is logged apart as
+``stall_other_cycles``.
 
 Printed as measured and never compared: the limit counts, the completion
 latency, the response during a hold, the delay range, and the acceptance
@@ -43,20 +53,55 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
 ``CHK-<NAME> PASS`` once every comparison of that checker is done):
   CHK-DELAYS        zero-delay baseline, one-channel and all-channel delays.
   CHK-HOLD-DRAIN    requests accepted in a hold, no response in it, drain.
-  CHK-XBAR-LIMITS   master-side crossbar limit count for writes and reads, and
-                    the drain of every limit session.
-  CHK-XBAR-HELD     a request at the crossbar limit is held, then completes.
+  CHK-OUT-STOP      the LSU master meets a finite stop on the outbound path:
+                    for writes and for reads, the master stalls (AW or AR
+                    stall cycles > 0) with fewer than the 20 issued requests
+                    accepted, and every limit session drains. The accepted
+                    count is logged (OBS-LIMIT), not compared: it is measured
+                    at the LSU master, downstream stages included, and no
+                    specification states a limit at that point.
+  CHK-XBAR-HELD     a request at the stop of CHK-OUT-STOP is held, then
+                    completes; the LSU's held request and the DMA's next write
+                    are each admitted within the bounded one-beat releases.
   CHK-XBAR-POSTDRAIN fresh transactions after the saturation drains.
-  CHK-CHAIN-LIMIT   finite outbound acceptance of writes and reads, drain;
-                    the writes-and-reads hold under both limits drains.
+  CHK-CHAIN-LIMIT   finite acceptance of writes and of reads with the DMA and
+                    the SMN inbound master issuing alongside: the LSU master
+                    stalls (AW or AR stall cycles > 0) with fewer than its 20
+                    requests accepted, and the session drains; the
+                    writes-and-reads hold under both limits drains; in the
+                    three-initiator hold at the stop (OBS-CHAIN-HELD), the
+                    LSU's held request and the DMA's next write are each
+                    admitted within the bounded one-beat releases. The port
+                    totals are logged (OBS-CHAIN-LIMIT), not compared.
   CHK-SAT-B-COUNT, CHK-SAT-R-COUNT
                     exactly one B per accepted write, the beats of each
                     accepted read, and none after the idle window.
   CHK-SYSIF-NO-OUTBOUND-PATH
                     every access of the SMN inbound master answers DECERR with
-                    one B or its R beats, and none reaches PR-OUT.
+                    one B or its R beats, and none reaches PR-OUT. Attribution:
+                    each of them leaves the inbound filter (one PR-INFLT AW per
+                    write and one AR per read, each at an address of the SMN
+                    slot), so the filter admitted it and the DECERR is the
+                    decode's.
+  CHK-ATTR-USER     over the whole PR-OUT window from bring-up to the end of
+                    the leaf, every LSU and DMA request the leaf issues (every
+                    phase, not only the hold sessions) matches exactly one
+                    PR-OUT request at its address, and no PR-OUT request is
+                    left unmatched: graded == issued, none lost, none extra.
+                    Each matched request has AxLEN 0, AxPROT bits 0 and 2 as
+                    issued with NS 1, and AxUSER[3:0] known and not OTHERS (0);
+                    AxUSER[3:0] is the same on every request of the leaf,
+                    although the LSU alternates two distinct non-zero values
+                    and the DMA issues OTHERS: the SMU path sets SEP's ID. A
+                    hold session also fails its own checker on such a request.
+                    The number is logged (OBS-SAT-SRC-ID), with AxUSER[11:4].
   CHK-NONVAC        the ordered fence of the phases.
-  CHK-TIMEOUT-PATHS the bound of each wait.
+  CHK-TIMEOUT-PATHS each bounded wait (a transaction, a DMA DONE wait, a
+                    one-beat release loop) logs its bound and raises on
+                    expiry; every one has a measured use and each use is
+                    within its bound. Fixed windows (the hold and idle
+                    windows, a delayed release) cannot expire and are logged
+                    as OBS-WAIT only.
 """
 
 from __future__ import annotations
@@ -68,13 +113,14 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
+from env.sep_fabric_common import SepSrcIdGrade, draw_src_users
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_outbound_contention_seq import (
     DMA_DST,
     DMA_PROT,
     DMA_SRC,
-    DMA_USER,
     IDLE_CLOCKS,
     INITS,
     LSU_PROT,
@@ -87,6 +133,7 @@ from seq_lib.sep_outbound_contention_seq import (
     PinWatch,
     ResponderDelay,
     Txn,
+    out_prot,
     port_view,
     run_all,
 )
@@ -103,9 +150,6 @@ DMA_WORDS = 16
 ONE_RELEASE_POLLS = LSU_ISSUE + DMA_WORDS
 ONE_RELEASE_WAIT = 48
 MAX_ID = 7
-# The MaxTrans parameter of the SEP crossbar instance (hw/sys/sep/rtl/sep.sv);
-# printed beside the measured count, never compared.
-RTL_MAX_TRANS = 4
 # SMN inbound accesses of the baseline, channel, all-channel and hold phases.
 SYSIF_ISSUE_FLOOR = 13
 
@@ -125,13 +169,14 @@ FENCE = (
 CHECKS = (
     "CHK-DELAYS",
     "CHK-HOLD-DRAIN",
-    "CHK-XBAR-LIMITS",
+    "CHK-OUT-STOP",
     "CHK-XBAR-HELD",
     "CHK-XBAR-POSTDRAIN",
     "CHK-CHAIN-LIMIT",
     "CHK-SAT-B-COUNT",
     "CHK-SAT-R-COUNT",
     "CHK-SYSIF-NO-OUTBOUND-PATH",
+    "CHK-ATTR-USER",
     "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
@@ -143,8 +188,9 @@ class _Cfg:
     def __init__(self, seed: int) -> None:
         rng = SepSeededRng(seed)
         self.seed = seed
-        self.lsu_user = rng.randrange(1, 16)
-        self.sys_user = rng.choice([u for u in range(1, 16) if u != self.lsu_user])
+        self.lsu_users = draw_src_users(rng)
+        lsu_ids = {u & 0xF for u in self.lsu_users}
+        self.sys_user = rng.choice([u for u in range(1, 16) if u not in lsu_ids])
         self.delay_max = rng.randrange(8, 33)
         self.p_stall = (rng.randrange(20, 51), rng.randrange(20, 51), rng.randrange(20, 51))
         self.p_hold = rng.randrange(3, 11)
@@ -154,7 +200,8 @@ class _Cfg:
     def draw_lines(self) -> list[str]:
         return [
             f"responder_depth={self.depth} (+{DEPTH_PLUSARG}) hold_demand={LSU_ISSUE + DMA_WORDS}",
-            f"lsu_user={self.lsu_user} lsu_prot=0b{LSU_PROT:03b}",
+            f"lsu_users=0x{self.lsu_users[0]:03x},0x{self.lsu_users[1]:03x} "
+            f"lsu_prot=0b{LSU_PROT:03b}",
             f"sysif_user={self.sys_user} sysif_prot=0b{SYS_PROT:03b}",
             f"one_channel_delay_cycles=1..{self.delay_max}",
             f"all_channels ready_stall_percent aw={self.p_stall[0]} w={self.p_stall[1]} "
@@ -180,13 +227,17 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         wdata = b""
         if op == "wr":
             wdata = b"".join(self.rng.getrandbits(32).to_bytes(4, "little") for _ in range(2))
+        addr = self.layout.alloc(init, 8)
+        user = c.lsu_users[len(self.lsu_issued) % 2] if init == "lsu" else c.sys_user
+        if init == "lsu":
+            self.lsu_issued[addr] = user
         t = Txn(
             init=init,
             op=op,
-            addr=self.layout.alloc(init, 8),
+            addr=addr,
             beats=1,
             axi_id=axi_id,
-            user=c.lsu_user if init == "lsu" else c.sys_user,
+            user=user,
             prot=LSU_PROT if init == "lsu" else SYS_PROT,
             wdata=wdata,
             name=f"{init}_{op}_{self.n_made}",
@@ -210,6 +261,8 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
 
     def _note_issue(self, init: str, op: str, addrs: list[int]) -> None:
         self.issued_all.setdefault((init, op), []).extend(addrs)
+        if init == "dma":
+            self.dma_addrs.update(addrs)
         sess = self.cur
         if sess is not None:
             sess.issued.setdefault((init, op), []).extend(addrs)
@@ -289,7 +342,9 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 self.ctl.stall(CH_MASK[chan])
             else:
                 self.ctl.hold(True)
-            self._wait_bound("delay_release", f"cycles=baseline+delay (<= {self.c.delay_max}+path)")
+            self._wait_window(
+                "delay_release", f"cycles=baseline+delay (<= {self.c.delay_max}+path)"
+            )
             rel = cocotb.start_soon(self.ctl.release_after(lead + delay))
 
         if init == "dma":
@@ -462,11 +517,12 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
 
     async def _window(self, s, chk: str) -> dict:
         """Two observation windows under the hold; the accepted counts stop rising by the second."""
-        self._wait_bound("hold_window", f"clocks={2 * WINDOW}")
+        self._wait_window("hold_window", f"clocks={2 * WINDOW}")
         await ClockCycles(self.dut_clk, WINDOW)
         a = s.meter.read()
         await ClockCycles(self.dut_clk, WINDOW)
         b = s.meter.read()
+        self._check_pin_xz(chk, chk)
         if Meter.key(a) != Meter.key(b):
             self._fail(
                 chk,
@@ -509,8 +565,13 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self.cur = None
         return done, total, max(0.0, (t_last - t_rel) / 1000.0)
 
-    def _expect_attr(self) -> dict:
-        return {"lsu": (self.c.lsu_user, LSU_PROT), "dma": (DMA_USER, DMA_PROT)}
+    def _expect_prot(self) -> dict:
+        return {"lsu": out_prot(LSU_PROT), "dma": out_prot(DMA_PROT)}
+
+    def _issued_user(self) -> dict:
+        """AxUSER issued per address: the LSU draws, and OTHERS (0) for the DMA,
+        which drives OTHERS (hw/sys/sep/doc/fabric.adoc, Transaction Routing)."""
+        return {**{a: 0 for a in self.dma_addrs}, **self.lsu_issued}
 
     def _check_session_requests(self, s, chk: str) -> None:
         beats = self.out.beats[s.meter.out0 :]
@@ -524,7 +585,14 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 "CHK-SYSIF-NO-OUTBOUND-PATH", f"session={s.name} sysif requests at PR-OUT={reached}"
             )
         issued = {k: v for k, v in s.issued.items() if k[0] != "sysif"}
-        alt, miss = altered_requests(self.layout, beats, issued, self._expect_attr())
+        alt, miss = altered_requests(
+            self.layout,
+            beats,
+            issued,
+            self._expect_prot(),
+            SepSrcIdGrade("SAT-SESSION"),
+            self._issued_user(),
+        )
         if alt or miss:
             self._fail(chk, f"session={s.name} altered={alt} lost={miss} at PR-OUT")
 
@@ -568,26 +636,28 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
 
     # ---- S6, S7 --------------------------------------------------------------------------------
     async def _s6_mst(self) -> None:
-        chk = "CHK-XBAR-LIMITS"
+        chk = "CHK-OUT-STOP"
         res = {}
         for op, kw in (("wr", {"lsu_w": LSU_ISSUE}), ("rd", {"lsu_r": LSU_ISSUE})):
             s = await self._open(f"mst_{op}", **kw)
             snap = await self._window(s, chk)
             m = snap["mst"]["lsu"]
-            acc, stall = (m["aw"], m["aw_stall"]) if op == "wr" else (m["ar"], m["ar_stall"])
+            ch = "aw" if op == "wr" else "ar"
+            acc, stall, other = m[ch], m[f"{ch}_stall"], m[f"{ch}_stall_other"]
             if stall == 0 or acc >= LSU_ISSUE:
                 self._fail(
                     chk,
                     f"session={s.name} no finite stop: accepted={acc} issued={LSU_ISSUE} "
-                    f"stall_cycles={stall}",
+                    f"stall_cycles={stall} stall_other_cycles={other}",
                 )
             self.logger.info(
-                "OBS-LIMIT: mst_%s_accepted_before_stall=%d rtl_max_trans=%d stall_cycles=%d "
-                "port_accepted=%d (the count is printed, not compared)",
+                "OBS-LIMIT: mst_%s_accepted_before_stall=%d stall_cycles=%d "
+                "stall_other_cycles=%d port_accepted=%d (value logged: the stop of the "
+                "outbound path at the LSU master; no specification states its count)",
                 op,
                 acc,
-                RTL_MAX_TRANS,
                 stall,
+                other,
                 snap["port_aw"] + snap["port_ar"],
             )
             res[op] = acc
@@ -597,7 +667,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self._fence("MST_LIMIT")
 
     async def _s7_slv(self) -> None:
-        chk = "CHK-XBAR-LIMITS"
+        chk = "CHK-OUT-STOP"
         slv_lsu = max(1, self.mst_n // 2)
         for name, kw in (
             ("slv_from_2", {"lsu_w": slv_lsu, "dma": ("wr", DMA_WORDS)}),
@@ -616,14 +686,13 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             )
             self.logger.info(
                 "OBS-LIMIT: session=%s accepted_at_port=%d demand=%d per_init=%s "
-                "rtl_max_trans=%d (the LSU and DMA total at the port; the DMA issues one "
+                "(value logged: the LSU and DMA total at the port; the DMA issues one "
                 "write at a time on its held B, so this stop is the DMA's issue policy, not "
                 "a slave-port limit)",
                 name,
                 acc,
                 slv_lsu + DMA_WORDS,
                 {i: snap["port"][i]["aw"] for i in INITS},
-                RTL_MAX_TRANS,
             )
             self.drain_acc.append(await self._drain(s, chk))
         done = sum(d[0] for d in self.drain_acc)
@@ -637,11 +706,11 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self._fence("SLV_LIMIT")
 
     # ---- S8 ------------------------------------------------------------------------------------
-    async def _release_until(self, ok_fn) -> tuple[int, int]:
+    async def _release_until(self, ok_fn, chk: str, what: str) -> tuple[int, int]:
         """Release one beat per channel at a time until ``ok_fn`` holds.
 
-        Returns (releases used, response beats that left), (0, beats) when the
-        bound ran out.
+        Returns (releases used, response beats that left). Fails ``chk`` when
+        ``ok_fn`` still does not hold after ``ONE_RELEASE_POLLS`` releases.
         """
         self._wait_bound(
             "one_release", f"releases={ONE_RELEASE_POLLS} wait_clocks={ONE_RELEASE_WAIT} each"
@@ -652,18 +721,25 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             beats += got
             await ClockCycles(self.dut_clk, ONE_RELEASE_WAIT)
             if ok_fn():
+                self._wait_used("one_release", k, ONE_RELEASE_POLLS)
                 return k, beats
             if not got:
                 self.logger.info("OBS-RELEASE: release=%d no response beat left", k)
-        return 0, beats
+        self._fail(
+            chk,
+            f"TIMEOUT wait=one_release {what} not admitted after {ONE_RELEASE_POLLS} releases "
+            f"released_beats={beats}",
+        )
+        raise AssertionError("unreachable")
 
     async def _held(self, name: str, *, lsu_w=0, dma_words=0, sys_w=0, graded: bool) -> None:
-        """One hold at the crossbar limit with one extra request per initiator.
+        """One hold at the stop of CHK-OUT-STOP with one extra request per initiator.
 
         Graded for CHK-XBAR-HELD; the three-initiator session is reported as
-        OBS-CHAIN-HELD, since its stop is the same crossbar stop.
+        OBS-CHAIN-HELD, since its stop is the same stop.
         """
         chk = "CHK-XBAR-HELD"
+        rel_chk = chk if graded else "CHK-CHAIN-LIMIT"
         kw = {"lsu_w": lsu_w, "sys_w": sys_w}
         if dma_words:
             kw["dma"] = ("wr", dma_words)
@@ -672,28 +748,47 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         n_out = len(self.out.beats)
         issued_before = {k: list(v) for k, v in s.issued.items()}
         alt_before, _ = altered_requests(
-            self.layout, self.out.beats[s.meter.out0 : n_out], issued_before, self._expect_attr()
+            self.layout,
+            self.out.beats[s.meter.out0 : n_out],
+            issued_before,
+            self._expect_prot(),
+            SepSrcIdGrade("SAT-HELD"),
+            self._issued_user(),
         )
         rows = []
         if lsu_w:
             extra = self._launch(s, "lsu", "wr", 1)
             await ClockCycles(self.dut_clk, WINDOW)
             now = s.meter.read()
+            self._check_pin_xz(chk, chk)
             stall = now["mst"]["lsu"]["aw_stall"] - before["mst"]["lsu"]["aw_stall"]
+            other = now["mst"]["lsu"]["aw_stall_other"] - before["mst"]["lsu"]["aw_stall_other"]
             if stall == 0 or now["mst"]["lsu"]["aw"] != before["mst"]["lsu"]["aw"]:
                 self._fail(
                     chk,
-                    f"session={name} init=lsu stall_cycles={stall} "
+                    f"session={name} init=lsu stall_cycles={stall} stall_other_cycles={other} "
                     f"accepted_before={before['mst']['lsu']['aw']} "
                     f"accepted_now={now['mst']['lsu']['aw']}: the extra request met no limit",
                 )
+            self.logger.info(
+                "OBS-HELD-STALL: session=%s init=lsu stall_cycles=%d stall_other_cycles=%d",
+                name,
+                stall,
+                other,
+            )
             rel = await self._release_until(
-                lambda: s.meter.read()["mst"]["lsu"]["aw"] > before["mst"]["lsu"]["aw"]
+                lambda: s.meter.read()["mst"]["lsu"]["aw"] > before["mst"]["lsu"]["aw"],
+                rel_chk,
+                f"session={name} init=lsu held request",
             )
             rows.append(("lsu", stall, rel, extra))
         if dma_words:
             base_aw = s.meter.read()["port"]["dma"]["aw"]
-            rel = await self._release_until(lambda: s.meter.read()["port"]["dma"]["aw"] > base_aw)
+            rel = await self._release_until(
+                lambda: s.meter.read()["port"]["dma"]["aw"] > base_aw,
+                rel_chk,
+                f"session={name} init=dma next write",
+            )
             rows.append(("dma", "n/a", rel, None))
         if sys_w:
             extra = self._launch(s, "sysif", "wr", 1)
@@ -714,12 +809,6 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 comp = int(s.job.done)
                 note = " stall_src=not_observable_at_a_pin not_graded=observation_only"
             else:
-                if releases == 0:
-                    self._fail(
-                        chk,
-                        f"session={name} init=lsu held request never accepted after "
-                        f"{ONE_RELEASE_POLLS} releases released_beats={beats}",
-                    )
                 comp = int(all(t.done for t in extra))
                 note = ""
                 if not comp:
@@ -735,7 +824,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             self._obs_row(
                 "CHAIN-HELD",
                 f"session={name} port_accepted_writes={before['port_aw']} "
-                f"responder_wr_limit={self.c.depth} (the chain stop is the crossbar stop; "
+                f"responder_wr_limit={self.c.depth} (the chain stop is the LSU master stop; "
                 "the chain limit is not separable at the pins)",
             )
 
@@ -754,6 +843,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         acc = {}
         done = total = 0
         demand = LSU_ISSUE + DMA_WORDS
+        lsu_acc = {}
         for op, kw in (
             ("write", {"lsu_w": LSU_ISSUE, "dma": ("wr", DMA_WORDS), "sys_w": LSU_ISSUE}),
             ("read", {"lsu_r": LSU_ISSUE, "dma": ("rd", DMA_WORDS), "sys_r": LSU_ISSUE}),
@@ -761,26 +851,40 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             s = await self._open(f"chain_{op}", **kw)
             snap = await self._window(s, chk)
             n = snap["port_aw"] if op == "write" else snap["port_ar"]
-            if n >= demand:
+            # The finite stop is graded at the LSU master: it stalls with fewer
+            # than its LSU_ISSUE requests accepted. The port total is logged; no
+            # specification or bench setting bounds it more tightly than the
+            # demand, which the DMA's one-at-a-time issue keeps out of reach.
+            m = snap["mst"]["lsu"]
+            ch = "aw" if op == "write" else "ar"
+            m_acc, m_stall, m_other = m[ch], m[f"{ch}_stall"], m[f"{ch}_stall_other"]
+            if m_stall == 0 or m_acc >= LSU_ISSUE:
                 self._fail(
                     chk,
-                    f"session={s.name} chain_accepted_{op}={n} >= {op} demand {demand} "
-                    f"(lsu {LSU_ISSUE} + dma {DMA_WORDS}): no finite stop",
+                    f"session={s.name} no finite stop at the LSU master: "
+                    f"lsu_accepted_{op}={m_acc} issued={LSU_ISSUE} stall_cycles={m_stall} "
+                    f"stall_other_cycles={m_other}",
                 )
             acc[op] = n
+            lsu_acc[op] = (m_acc, m_stall)
             self.logger.info(
-                "OBS-CHAIN-LIMIT: %s_accepted=%d per_init=%s (the count is printed, not compared)",
+                "OBS-CHAIN-LIMIT: %s_accepted=%d demand=%d per_init=%s "
+                "lsu_stall_other_cycles=%d (the port count is printed, not compared)",
                 op,
                 n,
+                demand,
                 {i: snap["port"][i] for i in INITS},
+                m_other,
             )
             d, t, _ = await self._drain(s, chk)
             done += d
             total += t
         self._line(
             chk,
-            f"chain_accepted_write={acc['write']} chain_accepted_read={acc['read']} "
-            f"demand={demand} drained={done}/{total} deadlock=0 "
+            f"lsu_accepted_write={lsu_acc['write'][0]} lsu_stall_write={lsu_acc['write'][1]} "
+            f"lsu_accepted_read={lsu_acc['read'][0]} lsu_stall_read={lsu_acc['read'][1]} "
+            f"lsu_issued={LSU_ISSUE} chain_accepted_write={acc['write']} "
+            f"chain_accepted_read={acc['read']} drained={done}/{total} deadlock=0 "
             f"responder_wr_limit={self.c.depth} responder_rd_limit={self.c.depth} "
             "responder_limit_reached=0 chain_stop_cause=not_separable_from_xbar",
         )
@@ -799,15 +903,21 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         snap = await self._window(s, chk)
         m = snap["mst"]["lsu"]
         xbar = int(m["aw_stall"] > 0 or m["ar_stall"] > 0)
+        other = m["aw_stall_other"] + m["ar_stall_other"]
         if not xbar:
-            self._fail(chk, "session=both crossbar limit not reached in the hold")
+            self._fail(
+                chk,
+                f"session=both LSU master stop not reached in the hold stall_other_cycles={other}",
+            )
         done, total, to_last = await self._drain(s, chk)
         self._obs_row(
             "BOTH-LIMITS",
-            f"xbar_reached={xbar} chain_reached=not_separable_from_xbar port_aw={snap['port_aw']} "
+            f"xbar_reached={xbar} lsu_stall_cycles={m['aw_stall'] + m['ar_stall']} "
+            f"stall_other_cycles={other} chain_reached=not_separable_from_xbar "
+            f"port_aw={snap['port_aw']} "
             f"port_ar={snap['port_ar']} responder_wr_limit={self.c.depth} "
             f"responder_rd_limit={self.c.depth} drained={done}/{total} "
-            f"release_to_last_ns={to_last:.1f} deadlock=0 (the crossbar stall and the drain "
+            f"release_to_last_ns={to_last:.1f} deadlock=0 (the LSU master stall and the drain "
             "are graded by CHK-CHAIN-LIMIT; the chain limit is not separable at the pins)",
         )
         self._pass(chk)
@@ -844,7 +954,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self.ctl.clear()
         idle = (self.rsp.mark(), self.pin_s.mark(), self.pin_m.mark())
         await ClockCycles(self.dut_clk, IDLE_CLOCKS)
-        self._wait_bound("idle_window", f"clocks={IDLE_CLOCKS}")
+        self._wait_window("idle_window", f"clocks={IDLE_CLOCKS}")
         ps, pm = self.pin_s.since(idle[1]), self.pin_m.since(idle[2])
         rsp_idle = self.rsp.beats[idle[0] :]
         extra_b = sum(1 for b in rsp_idle if b.ch == "b") + ps["b"] + pm["b"]
@@ -912,11 +1022,60 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 f"sysif_b={wm['b']} writes={sys_w} sysif_r={wm['r']} rlast={wm['rlast']} "
                 f"reads={sys_r}",
             )
+        # The filter admitted every SMN inbound access: one PR-INFLT AW per
+        # write and one AR per read, each in the SMN slot of the page.
+        inflt_aw = [b for b in self.inflt.beats if b.ch == "aw"]
+        inflt_ar = [b for b in self.inflt.beats if b.ch == "ar"]
+        off_slot = [b.fmt() for b in inflt_aw + inflt_ar if self.layout.owner(b.addr) != "sysif"]
+        if len(inflt_aw) != sys_w or len(inflt_ar) != sys_r or off_slot:
+            self._fail(
+                chk,
+                f"inbound filter output (PR-INFLT) aw={len(inflt_aw)} writes={sys_w} "
+                f"ar={len(inflt_ar)} reads={sys_r} off_slot={off_slot[:3]}: the DECERR "
+                "is not shown to come from the routing decode past the filter",
+            )
         self._emit(
             chk,
             f"issued={sys_issued} floor={SYSIF_ISSUE_FLOOR} decerr={len(self.sys_checked)} "
-            f"reached_pr_out={sys_aw + sys_ar} b_at_master={wm['b']} writes={sys_w} "
+            f"reached_pr_out={sys_aw + sys_ar} inflt_aw={len(inflt_aw)} "
+            f"inflt_ar={len(inflt_ar)} b_at_master={wm['b']} writes={sys_w} "
             f"r_at_master={wm['r']} rlast={wm['rlast']} reads={sys_r}",
+        )
+
+    def _chk_attr_user(self) -> None:
+        """CHK-ATTR-USER over every LSU and DMA request the leaf issued.
+
+        The whole PR-OUT window is matched against the full issued set: each
+        issued request needs one PR-OUT request at its address, and a PR-OUT
+        request at no issued address, or a duplicate past the number of times
+        its address was issued, counts as altered, so graded == issued holds
+        only for an exact match.
+        """
+        g = self.src_grade
+        chk = "CHK-ATTR-USER"
+        issued = {k: v for k, v in self.issued_all.items() if k[0] in ("lsu", "dma")}
+        n_issued = sum(len(v) for v in issued.values())
+        beats = self.out.beats[self.m0[0] :]
+        alt, miss = altered_requests(
+            self.layout, beats, issued, self._expect_prot(), g, self._issued_user()
+        )
+        graded = len(g.observed)
+        if alt or miss or graded != n_issued:
+            self._fail(
+                chk,
+                f"graded={graded} issued={n_issued} altered={alt} lost={miss} over the whole "
+                "PR-OUT window",
+            )
+        why = g.finish(min_nonzero_issued=2)
+        if why is not None:
+            self._fail("CHK-ATTR-USER", why)
+        self.logger.info("%s", g.obs_line())
+        c = self.c
+        self._emit(
+            "CHK-ATTR-USER",
+            f"lsu_users_issued=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} "
+            f"dma_user_issued=0 graded={graded} issued={n_issued} altered={alt} lost={miss} "
+            f"{g.summary()}",
         )
 
     # ---- scenario --------------------------------------------------------------------------------
@@ -925,6 +1084,9 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self.c = c = _Cfg(seed)
         self.rng = SepSeededRng(seed ^ 0x0C0FFEE)
         self.n_made = self.n_jobs = 0
+        self.lsu_issued: dict[int, int] = {}
+        self.dma_addrs: set[int] = set()
+        self.src_grade = SepSrcIdGrade("SAT")
         self.sys_checked: set[str] = set()
         self.cur = None
         self.base: dict = {}
@@ -943,6 +1105,10 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self.suppress_host_axi_transaction_info()
         self.ctl = RespCtl()
         await self.bench_start()
+        # PR-INFLT: the request out of the inbound filter. Only the SMN inbound
+        # master passes the inbound filter, so every beat here is one of its
+        # accesses that the filter admitted.
+        self.inflt = SepFabricTap("PR-INFLT").start()
         await ClockCycles(self.dut_clk, 4)
         self.m0 = (self.out.mark(), self.rsp.mark(), self.pin_s.mark(), self.pin_m.mark())
         self._fence("BRINGUP_DONE")
@@ -958,13 +1124,13 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         await self._s10_both()
         await self._s11_post()
         await self._final_accounting()
+        self._chk_attr_user()
 
+        await self.inflt.stop()
         await self.bench_stop()
         self._check_fence(FENCE)
-        waits = "{" + ",".join(sorted(self.waits_logged)) + "}"
-        self._emit(
-            "CHK-TIMEOUT-PATHS",
-            f"waits={waits} txn_bound_ns={self.tr.timeout_ns} window_clocks={WINDOW} "
-            f"idle_clocks={IDLE_CLOCKS} dma_polls_max={self.tr.dma_polls_max}",
+        self._emit_timeout_paths(
+            f"txn_bound_ns={self.tr.timeout_ns} window_clocks={WINDOW} "
+            f"idle_clocks={IDLE_CLOCKS} dma_polls_max={self.tr.dma_polls_max}"
         )
         self.result_pass(TEST, seed, len(CHECKS))

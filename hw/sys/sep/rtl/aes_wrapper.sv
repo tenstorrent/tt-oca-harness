@@ -30,6 +30,9 @@ module aes_wrapper (
                                                              // the AES key CSR block.
   output sep_pkg::sep_32_32_axil_resp_t aes_key_axil_resp_o,  // Response from the AES key CSR block
                                                               // to the Key Manager.
+  input  logic wipe_pulse_i,                  // Key Manager wipe pulse; clears both key shares and
+                                              // KEY_CTRL.key_valid ahead of a same-cycle Key
+                                              // Manager write.
 
   output edn_pkg::edn_req_t edn_req_o,        // EDN request for PRNG reseeding entropy.
   input  edn_pkg::edn_rsp_t edn_rsp_i,        // EDN response for PRNG reseeding entropy.
@@ -84,18 +87,22 @@ module aes_wrapper (
   // ============================================================================
 
   // HW interface wires for the generated CSR block
+  aes_wrapper_key_reg_pkg::aes_wrapper_key__in_t  key_csr_hwif_in;
   aes_wrapper_key_reg_pkg::aes_wrapper_key__out_t key_csr_hwif_out;
 
   // Build the keymgr_pkg::hw_key_req_t struct from CSR outputs
   keymgr_pkg::hw_key_req_t aes_keymgr_key;
 
   assign aes_keymgr_key.valid = key_csr_hwif_out.KEY_CTRL.key_valid.value;
+  assign key_csr_hwif_in.KEY_CTRL.key_valid.hwclr = wipe_pulse_i;
 
   // Map CSR key share words to the packed key vector
   // keymgr_key_i.key[share][word*32 +: 32]
   for (genvar i = 0; i < 8; i++) begin : gen_key_share_map
     assign aes_keymgr_key.key[0][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE0[i].data.value;
     assign aes_keymgr_key.key[1][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE1[i].data.value;
+    assign key_csr_hwif_in.KEY_SHARE0[i].data.hwclr = wipe_pulse_i;
+    assign key_csr_hwif_in.KEY_SHARE1[i].data.hwclr = wipe_pulse_i;
   end
 
   // Instantiate the PeakRDL-generated AES key CSR register block
@@ -136,6 +143,7 @@ module aes_wrapper (
     .s_axil_rresp   (aes_key_axil_resp_o.r.resp),
 
     // HW interface
+    .hwif_in  (key_csr_hwif_in),
     .hwif_out (key_csr_hwif_out)
   );
 

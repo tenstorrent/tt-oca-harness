@@ -6,8 +6,10 @@ Spec: hw/sys/smc/doc/cpu.adoc Reset and Boot; hw/sys/smu/doc/port_table.adoc
 smc_init_mem_done_o and smc_disable_sram_auto_init_i rows.
 
 One sampler reads smc_init_mem_done_o, smc_scratch_write_count_dv_o and smc_rom_read_count_o on
-every clk_smu_i edge from before the shared bring-up. The only stimulus is a second cold reset on
-rst_cold_ni. The done level during that reset is logged and not compared.
+every clk_smu_i edge from before the shared bring-up. On a four-state simulator those pins are X
+until the first reset release, so edges before the first resolvable sample carry no record; an X
+after that is a failure. The only stimulus is a second cold reset on rst_cold_ni. The done level
+during that reset is logged and not compared.
 """
 
 from __future__ import annotations
@@ -27,6 +29,10 @@ def _rd(sig, name: str) -> int:
     if not val.is_resolvable:
         raise AssertionError(f"X/Z sample on {name}: {val}")
     return int(val)
+
+
+def _resolvable(*sigs) -> bool:
+    return all(sig.value.is_resolvable for sig in sigs)
 
 
 class smu_smc_sram_init_sampler:
@@ -56,6 +62,11 @@ class smu_smc_sram_init_sampler:
         prev = None
         for k in range(SAMPLER_BOUND):
             await RisingEdge(dut.clk_smu_i)
+            if prev is None and not _resolvable(
+                dut.smc_init_mem_done_o, dut.smc_scratch_write_count_dv_o, dut.smc_rom_read_count_o
+            ):
+                self.edges = k + 1
+                continue
             self.done = _rd(dut.smc_init_mem_done_o, "smc_init_mem_done_o")
             self.writes = _rd(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o")
             self.rom = _rd(dut.smc_rom_read_count_o, "smc_rom_read_count_o")

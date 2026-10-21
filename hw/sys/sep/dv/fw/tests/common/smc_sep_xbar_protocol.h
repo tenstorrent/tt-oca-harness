@@ -105,11 +105,11 @@
  * field. Each word carries data_bus_width at its reset value, so the written
  * word is also the value a readback returns. sep_outbound_filter.h checks
  * XBAR_SEP_OUTBOUND_CFG against the generated filter_ctrl.h field masks.
- *   OUTBOUND_CFG: read | write | entry_enabled | allow_burst
+ *   OUTBOUND_CFG: read | write | entry_enabled | allow_ns | allow_burst
  *   INBOUND_CFG0 / SMC_OUTBOUND_CFG: read | write | entry_enabled | src_id=3
  *   INBOUND_CFG1: INBOUND_CFG0 | allow_ns
  */
-#define XBAR_SEP_OUTBOUND_CFG 0x0000000001003013ULL
+#define XBAR_SEP_OUTBOUND_CFG 0x0000000001003113ULL
 #ifdef SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
 #define XBAR_SEP_INBOUND_START ((unsigned long long)SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
 #define XBAR_SEP_INBOUND_END \

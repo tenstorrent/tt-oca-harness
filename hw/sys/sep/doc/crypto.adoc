@@ -189,7 +189,8 @@ highest index is the most-significant.
 Both shares are always consumed. Delivering a value V therefore requires two
 shares whose XOR is V; writing a single share delivers V only because the
 unwritten share reads as zero. `KEY_CTRL.KEY_VALID` qualifies the delivered
-value, and while it is 0 the destination has no valid key or seed.
+value, and while it is 0 the destination has no valid key or seed. A Key
+Manager wipe clears `KEY_VALID` and both shares of every destination.
 
 The words per share, whether software must select the delivered key in
 preference to the accelerator's own software key registers, whether software

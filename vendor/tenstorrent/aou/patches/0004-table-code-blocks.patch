@@ -1,8 +1,8 @@
 diff --git a/DOC/MAS/software-operation.adoc b/DOC/MAS/software-operation.adoc
-index c778223b7..34753894b 100644
+index d5ef7af..98e07c3 100644
 --- a/DOC/MAS/software-operation.adoc
 +++ b/DOC/MAS/software-operation.adoc
-@@ -22,191 +22,191 @@ This section gives information about operation guide for the AOU_CORE.
+@@ -27,206 +27,206 @@ The SFR block decodes [.monospaced]#++PADDR[15:0]++# only: the offsets in xref:t
  [cols="<,<,<,<,<,<",options="header",]
  |==========================================================================
  |*Register* |*Offset* |*Bit field name* |*Bit field* |*Type* |*Reset value*
@@ -66,7 +66,8 @@ index c778223b7..34753894b 100644
 +| | |`DEACTIVATE_START` |[1] |RW |0x0
 +| | |`ACTIVATE_START` |[0] |RW |0x0
 +|`AOU_INTERRUPT_MASK` |0x000C | | | |
- | | |Rsvd |[31:9] |RO |0x0
+ | | |Rsvd |[31:10] |RO |0x0
+-| | |INT_EARLY_WDT_MASK |[9] |RW |0x0
 -| | |INT_REQ_LINKRESET_ACT_ACK_MASK |[8] |RW |0x0
 -| | |INT_REQ_LINKRESET_DEACT_ACK_MASK |[7] |RW |0x0
 -| | |INT_REQ_LINKRESET_INVALID_ACTMSG_MASK |[6] |RW |0x0
@@ -74,6 +75,7 @@ index c778223b7..34753894b 100644
 -| | |INT_EARLY_RESP_MASK |[4] |RW |0x0
 -| | |INT_MI0_ID_MISMATCH_MASK |[3] |RW |0x0
 -| | |INT_SI0_ID_MISMATCH_MASK |[2] |RW |0x0
++| | |`INT_EARLY_WDT_MASK` |[9] |RW |0x0
 +| | |`INT_REQ_LINKRESET_ACT_ACK_MASK` |[8] |RW |0x0
 +| | |`INT_REQ_LINKRESET_DEACT_ACK_MASK` |[7] |RW |0x0
 +| | |`INT_REQ_LINKRESET_INVALID_ACTMSG_MASK` |[6] |RW |0x0
@@ -117,10 +119,10 @@ index c778223b7..34753894b 100644
 +| | |`RP0_DEST` |[1:0] |RW |0x0
 +|`PRIOR_RP_AXI` |0x0018 | | | |
  | | |Rsvd |[31:28] |RO |0x0
--| | |AXI_QOS_TO_NP |[27:24] |RW |0xA
--| | |AXI_QOS_TO_HP |[23:20] |RW |0x5
-+| | |`AXI_QOS_TO_NP` |[27:24] |RW |0xA
-+| | |`AXI_QOS_TO_HP` |[23:20] |RW |0x5
+-| | |AXI_QOS_TO_NP |[27:24] |RW |0x5
+-| | |AXI_QOS_TO_HP |[23:20] |RW |0xA
++| | |`AXI_QOS_TO_NP` |[27:24] |RW |0x5
++| | |`AXI_QOS_TO_HP` |[23:20] |RW |0xA
  | | |Rsvd |[19:18] |RO |0x0
 -| | |RP3_PRIOR |[17:16] |RW |0x3
 +| | |`RP3_PRIOR` |[17:16] |RW |0x3
@@ -162,7 +164,10 @@ index c778223b7..34753894b 100644
 +| | |`SPLIT_BID_MISMATCH_ERR` |[1] |W1C |0x0
 +| | |`SPLIT_RID_MISMATCH_ERR` |[0] |W1C |0x0
 +|`WRITE_EARLY_RESPONSE_RP0` |0x0028 | | | |0x0
- | | |Rsvd |[31:15] |RO |0x0
+ | | |Rsvd |[31:18] |RO |0x0
+-| | |WDT_TRANS_TIMEOUT_ERR |[17] |W1C |0x0
+-| | |WDT_EN |[16] |RW |0x0
+-| | |EARLY_ALWAYS_EN |[15] |RW |0x0
 -| | |WRITE_RESP_DONE |[14] |RO |0x0
 -| | |WRITE_RESP_ERR |[13] |W1C |0x0
 -| | |WRITE_RESP_ERR_TYPE_INFO |[12:11] |RO |0x0
@@ -173,6 +178,9 @@ index c778223b7..34753894b 100644
 -|AXI_ERROR_INFO1_RP0 |0x0030 | | | |0x0
 -| | |DEBUG_LOWER_ADDR |[31:0] |RW |0x0
 -|AXI_SLV_ID_MISMATCH_ERR_RP0 |0x0034 | | | |
++| | |`WDT_TRANS_TIMEOUT_ERR` |[17] |W1C |0x0
++| | |`WDT_EN` |[16] |RW |0x0
++| | |`EARLY_ALWAYS_EN` |[15] |RW |0x0
 +| | |`WRITE_RESP_DONE` |[14] |RO |0x0
 +| | |`WRITE_RESP_ERR` |[13] |W1C |0x0
 +| | |`WRITE_RESP_ERR_TYPE_INFO` |[12:11] |RO |0x0
@@ -212,7 +220,10 @@ index c778223b7..34753894b 100644
 +| | |`SPLIT_BID_MISMATCH_ERR` |[1] |W1C |0x0
 +| | |`SPLIT_RID_MISMATCH_ERR` |[0] |W1C |0x0
 +|`WRITE_EARLY_RESPONSE_RP1` |0x0040 | | | |0x0
- | | |Rsvd |[31:15] |RO |0x0
+ | | |Rsvd |[31:18] |RO |0x0
+-| | |WDT_TRANS_TIMEOUT_ERR |[17] |W1C |0x0
+-| | |WDT_EN |[16] |RW |0x0
+-| | |EARLY_ALWAYS_EN |[15] |RW |0x0
 -| | |WRITE_RESP_DONE |[14] |RO |0x0
 -| | |WRITE_RESP_ERR |[13] |W1C |0x0
 -| | |WRITE_RESP_ERR_TYPE_INFO |[12:11] |RO |0x0
@@ -223,6 +234,9 @@ index c778223b7..34753894b 100644
 -|AXI_ERROR_INFO1_RP1 |0x0048 | | | |0x0
 -| | |DEBUG_LOWER_ADDR |[31:0] |RW |0x0
 -|AXI_SLV_ID_MISMATCH_ERR_RP1 |0x004C | | | |
++| | |`WDT_TRANS_TIMEOUT_ERR` |[17] |W1C |0x0
++| | |`WDT_EN` |[16] |RW |0x0
++| | |`EARLY_ALWAYS_EN` |[15] |RW |0x0
 +| | |`WRITE_RESP_DONE` |[14] |RO |0x0
 +| | |`WRITE_RESP_ERR` |[13] |W1C |0x0
 +| | |`WRITE_RESP_ERR_TYPE_INFO` |[12:11] |RO |0x0
@@ -262,7 +276,10 @@ index c778223b7..34753894b 100644
 +| | |`SPLIT_BID_MISMATCH_ERR` |[1] |W1C |0x0
 +| | |`SPLIT_RID_MISMATCH_ERR` |[0] |W1C |0x0
 +|`WRITE_EARLY_RESPONSE_RP2` |0x0058 | | | |0x0
- | | |Rsvd |[31:15] |RO |0x0
+ | | |Rsvd |[31:18] |RO |0x0
+-| | |WDT_TRANS_TIMEOUT_ERR |[17] |W1C |0x0
+-| | |WDT_EN |[16] |RW |0x0
+-| | |EARLY_ALWAYS_EN |[15] |RW |0x0
 -| | |WRITE_RESP_DONE |[14] |RO |0x0
 -| | |WRITE_RESP_ERR |[13] |W1C |0x0
 -| | |WRITE_RESP_ERR_TYPE_INFO |[12:11] |RO |0x0
@@ -273,6 +290,9 @@ index c778223b7..34753894b 100644
 -|AXI_ERROR_INFO1_RP2 |0x0060 | | | |0x0
 -| | |DEBUG_LOWER_ADDR |[31:0] |RW |0x0
 -|AXI_SLV_ID_MISMATCH_ERR_RP2 |0x0064 | | | |
++| | |`WDT_TRANS_TIMEOUT_ERR` |[17] |W1C |0x0
++| | |`WDT_EN` |[16] |RW |0x0
++| | |`EARLY_ALWAYS_EN` |[15] |RW |0x0
 +| | |`WRITE_RESP_DONE` |[14] |RO |0x0
 +| | |`WRITE_RESP_ERR` |[13] |W1C |0x0
 +| | |`WRITE_RESP_ERR_TYPE_INFO` |[12:11] |RO |0x0
@@ -293,7 +313,7 @@ index c778223b7..34753894b 100644
 +| | |`AXI_SLV_RID_MISMATCH_INFO` |[11:2] |RO |0x0
 +| | |`AXI_SLV_BID_MISMATCH_ERR` |[1] |W1C |0x0
 +| | |`AXI_SLV_RID_MISMATCH_ERR` |[0] |W1C |0x0
-+|`AXI_SPLIT_TR_RP3q |0x0068 | | | |0x00000F0F
++|`AXI_SPLIT_TR_RP3` |0x0068 | | | |0x00000F0F
  | | |Rsvd |[31:16] |RO |0x0
 -| | |MAX_AWBURSTLEN |[15:8] |RW |0xF
 -| | |MAX_ARBURSTLEN |[7:0] |RW |0xF
@@ -312,7 +332,10 @@ index c778223b7..34753894b 100644
 +| | |`SPLIT_BID_MISMATCH_ERR` |[1] |W1C |0x0
 +| | |`SPLIT_RID_MISMATCH_ERR` |[0] |W1C |0x0
 +|`WRITE_EARLY_RESPONSE_RP3` |0x0070 | | | |0x0
- | | |Rsvd |[31:15] |RO |0x0
+ | | |Rsvd |[31:18] |RO |0x0
+-| | |WDT_TRANS_TIMEOUT_ERR |[17] |W1C |0x0
+-| | |WDT_EN |[16] |RW |0x0
+-| | |EARLY_ALWAYS_EN |[15] |RW |0x0
 -| | |WRITE_RESP_DONE |[14] |RO |0x0
 -| | |WRITE_RESP_ERR |[13] |W1C |0x0
 -| | |WRITE_RESP_ERR_TYPE_INFO |[12:11] |RO |0x0
@@ -323,6 +346,9 @@ index c778223b7..34753894b 100644
 -|AXI_ERROR_INFO1_RP3 |0x0078 | | | |0x0
 -| | |DEBUG_LOWER_ADDR |[31:0] |RW |0x0
 -|AXI_SLV_ID_MISMATCH_ERR_RP3 |0x007C | | | |
++| | |`WDT_TRANS_TIMEOUT_ERR` |[17] |W1C |0x0
++| | |`WDT_EN` |[16] |RW |0x0
++| | |`EARLY_ALWAYS_EN` |[15] |RW |0x0
 +| | |`WRITE_RESP_DONE` |[14] |RO |0x0
 +| | |`WRITE_RESP_ERR` |[13] |W1C |0x0
 +| | |`WRITE_RESP_ERR_TYPE_INFO` |[12:11] |RO |0x0
@@ -338,10 +364,14 @@ index c778223b7..34753894b 100644
 -| | |AXI_SLV_RID_MISMATCH_INFO |[11:2] |RO |0x0
 -| | |AXI_SLV_BID_MISMATCH_ERR |[1] |W1C |0x0
 -| | |AXI_SLV_RID_MISMATCH_ERR |[0] |W1C |0x0
+-|WRITE_EARLY_RESPONSE_WDT_CTL |0x0080 | | | |0x000C3500
+-| | |WDT_THRESHOLD |[31:0] |RW |0x000C3500
 +| | |`AXI_SLV_BID_MISMATCH_INFO` |[21:12] |RO |0x0
 +| | |`AXI_SLV_RID_MISMATCH_INFO` |[11:2] |RO |0x0
 +| | |`AXI_SLV_BID_MISMATCH_ERR` |[1] |W1C |0x0
 +| | |`AXI_SLV_RID_MISMATCH_ERR` |[0] |W1C |0x0
++|`WRITE_EARLY_RESPONSE_WDT_CTL` |0x0080 | | | |0x000C3500
++| | |`WDT_THRESHOLD` |[31:0] |RW |0x000C3500
  |==========================================================================
  
  _Table 7. Register Map_

@@ -89,3 +89,18 @@ root = "hw/ip/uart/uart_log_engine_wrap/dv"
 
 [duts.uart_wrap]
 root = "hw/ip/uart/uart_wrap/dv"
+
+# AoU bridge benches, vendored outside the conventions: `aou` is the T1 bench,
+# and the register bench and the DUT-free L3 and AXI self-tests are further sim
+# configs in its root.
+[duts.aou]
+root = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv"
+
+[duts.aou_reg]
+root = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv"
+
+[duts.aou_l3_unit]
+root = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv"
+
+[duts.aou_axi_selftest]
+root = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv"

@@ -2753,6 +2753,24 @@ args = [
 ]
 
 [[tests]]
+# Primary payload_offset resolves to 4 modulo 8 and is refused before the payload read; the
+# backup boots.
+name = "sep_firmware_primary_payload_offset_misaligned_test"
+module = "rom_fw.sep_firmware_primary_payload_offset_misaligned_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 21600
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "error", "failover", "alignment", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
 # Primary payload_offset lies inside its manifest body and is refused (PAYLOAD_LOC_FAIL); the backup
 # boots.
 name = "sep_firmware_payload_overlaps_manifest_test"
@@ -2818,6 +2836,23 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# Secondary chiplet: scratch[8] points at a complete valid image shifted to 4 modulo 8; the
+# one-slot SMC path rejects it before parsing.
+name = "sep_firmware_secondary_manifest_offset_misaligned_test"
+module = "rom_fw.sep_firmware_secondary_manifest_offset_misaligned_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "secondary", "strap", "manifest", "alignment", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem_misaligned.hex",
+  "+sep_smc_scratch8=00001004",
 ]
 
 [[tests]]

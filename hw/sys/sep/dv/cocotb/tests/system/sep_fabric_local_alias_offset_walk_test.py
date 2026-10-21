@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Every local-master alias-remap region with full-width bounds and offsets.
+"""Every local-master alias-remap region with full-width offsets and drawn bounds.
 
 RANDCFG. The CPU-LSU source beat is a staged CSR word in the inbound-filter
 bank page (a pure-RW START_ADDR low word of the last inbound entry, which stays
@@ -18,8 +18,12 @@ disabled). For each of the N_REGIONS alias regions:
     offset ~O) does not translate either, so the END compare decides a beat.
   * Valid clear. The hit bounds with valid=0 do not translate either.
 
-So every alias START, END and offset bit takes a 0->1 and a 1->0 step, and
-the alias adder's upper bits decide where the beat lands.
+So every offset bit takes a 0->1 and a 1->0 step and decides where the beat
+lands. START and END are graded at the drawn bounds only: START at the source
+page (hit) and at S and ~S above it (miss), END at E and ~E above the source
+page (hit) and at the source page (miss). Each START and END bit takes both
+values in the readback, but no single START or END bit is shown to decide a
+response.
 
 The rewrite is ``{offset[55:12] + addr[55:12], addr[11:0]}`` modulo 2^56
 (``hw/ip/axi_alias_remap/regs/alias_remap.rdl``); the region matches when
@@ -43,6 +47,7 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_common import outbound_ns
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -157,7 +162,8 @@ class _Plan:
         # Hit bounds: start = src page < end, with END and ~END both above it.
         # Start cannot go lower: a live window also translates every CPU-LSU
         # beat to the pages below the source page, and the alias and outbound
-        # filter banks this test programs sit there. The miss cells walk START.
+        # filter banks this test programs sit there. The miss cells grade START
+        # at S and ~S.
         self.hit_start = SRC_PAGE
         self.hit_end = rng.randrange(SRC_PG + 1, PG_MASK - SRC_PG) << IDX_START
         # Miss bounds: start S and ~S both above the source page.
@@ -175,7 +181,7 @@ class _Plan:
 
 @pyuvm.test()
 class sep_fabric_local_alias_offset_walk_test(sep_base_test):
-    """All alias regions: full-width bounds and offsets, graded on live beats."""
+    """All alias regions: full-width offsets and drawn bounds, graded on live beats."""
 
     required_evidence = (
         "CHK-ALIAS-WALK-READBACK",
@@ -239,7 +245,7 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
                 win = exact_window(target)
                 await outf.program_window(e, *win)
                 await outf.check_window(e, "alias-exact")
-                await outf.set_enabled(e, True)
+                await outf.set_enabled(e, True, ns=outbound_ns("smu", target))
                 await alias.program(r, p.hit_start, end, offset, True)
                 await self._hit(p, target, win)
                 counts["HIT"] += 1

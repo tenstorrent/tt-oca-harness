@@ -127,6 +127,10 @@ import packet_def_pkg::*;
     parameter   S_RD_MO_CNT                 = 32,  // Outstanding reads on the AXI slave interface.
     parameter   S_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI slave interface.
 
+    parameter   TX_NXT_PACKING_EN           = 0,  // TX flit packer output stage: 0 combinational
+                                                  // from the current state, 1 registered from the
+                                                  // look-ahead state.
+
     parameter   M_RD_MO_CNT                 = 32,  // Outstanding reads on the AXI master interface.
     parameter   M_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI master
                                                    // interface.
@@ -295,15 +299,11 @@ import packet_def_pkg::*;
     output logic                                        INT_SI0_ID_MISMATCH,  // AXI slave ID mismatch interrupt.
     output logic                                        INT_MI0_ID_MISMATCH,  // AXI master ID mismatch interrupt.
     output logic                                        INT_EARLY_RESP_ERR,  // Early-response error interrupt.
+    output logic                                        INT_EARLY_WDT_ERR,  // Write-transaction watchdog timeout interrupt.
     output logic                                        INT_ACTIVATE_START,  // Activation start interrupt from the AOU core.
                                                                              // Also drives the bringup controller.
     output logic                                        INT_DEACTIVATE_START,  // Deactivation start interrupt from the AOU core.
                                                                                // Also drives the bringup controller.
-
-    input  logic                                        I_MST_BUS_CLEANY_COMPLETE,  // All responses to remote-die requests have completed.
-                                                                                    // Tie to 1 when BUS_CLEANY is not used.
-    input  logic                                        I_SLV_BUS_CLEANY_COMPLETE,  // All remote-die responses to local requests have arrived.
-                                                                                    // Tie to 1 when BUS_CLEANY is not used.
 
     input  logic                                        TIEL_DFT_MODESCAN  // DFT scan mode. Tie low for functional operation.
 );
@@ -421,6 +421,8 @@ import packet_def_pkg::*;
 
         .S_RD_MO_CNT               ( S_RD_MO_CNT                  ),
         .S_WR_MO_CNT               ( S_WR_MO_CNT                  ),
+
+        .TX_NXT_PACKING_EN         ( TX_NXT_PACKING_EN            ),
 
         .M_RD_MO_CNT               ( M_RD_MO_CNT                  ),
         .M_WR_MO_CNT               ( M_WR_MO_CNT                  )
@@ -557,12 +559,11 @@ import packet_def_pkg::*;
         .INT_SI0_ID_MISMATCH         ( INT_SI0_ID_MISMATCH           ),
         .INT_MI0_ID_MISMATCH         ( INT_MI0_ID_MISMATCH           ),
         .INT_EARLY_RESP_ERR          ( INT_EARLY_RESP_ERR            ),
+        .INT_EARLY_WDT_ERR           ( INT_EARLY_WDT_ERR             ),
         .INT_ACTIVATE_START          ( w_int_activate_start          ),
         .INT_DEACTIVATE_START        ( w_int_deactivate_start        ),
 
         .I_INT_FSM_IN_ACTIVE         ( w_int_fsm_in_active           ),
-        .I_MST_BUS_CLEANY_COMPLETE   ( I_MST_BUS_CLEANY_COMPLETE     ),
-        .I_SLV_BUS_CLEANY_COMPLETE   ( I_SLV_BUS_CLEANY_COMPLETE     ),
         .O_AOU_ACTIVATE_ST_DISABLED  ( w_aou_activate_st_disabled    ),
         .O_AOU_ACTIVATE_ST_ENABLED   ( w_aou_activate_st_enabled     ),
         .O_AOU_REQ_LINKRESET         ( w_aou_req_linkreset           ),
