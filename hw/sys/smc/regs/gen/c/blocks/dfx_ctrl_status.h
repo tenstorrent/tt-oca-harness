@@ -91,7 +91,8 @@ typedef union {
 #define DFX_CTRL_STATUS__DEBUG_CTRL__GPIO_EN_reset 0x0
 // DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
 // force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
-// reset.
+// reset. While the clock is stopped, CLA and DST register accesses complete
+// with an error and reads return 0xBADCAB1E.
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CG_EN_bm 0x8
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CG_EN_bp 3
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CG_EN_bw 1
@@ -134,7 +135,8 @@ typedef union {
         uint32_t gpio_en :1;
         // DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
         // force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
-        // reset.
+        // reset. While the clock is stopped, CLA and DST register accesses complete
+        // with an error and reads return 0xBADCAB1E.
         uint32_t cg_en :1;
         // Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
         // value of cg_en.

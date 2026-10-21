@@ -8298,7 +8298,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
               <ipxact:name>cg_en</ipxact:name>
               <ipxact:description>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
 force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
-reset.</ipxact:description>
+reset. While the clock is stopped, CLA and DST register accesses complete
+with an error and reads return 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
