@@ -2177,16 +2177,28 @@ module sep_uvm_top
     assign ext_trng_axil_rsp_bcnt_o = trng_rsp_bcnt_q;
     assign ext_trng_axil_rsp_rcnt_o = trng_rsp_rcnt_q;
 
-    // The same value is forced on the response output of the wrapper error
-    // slave (u_ext_trng_axil_err_slv.axil_resp_o). Its AXI-Lite valid-stable
-    // assertions then grade each request against the handshake the port
-    // completes with the responder.
     always @(negedge clk_i) begin
-        if (trng_rsp_on) begin
-            force u_dut.ext_trng_axil_resp = trng_axil_resp_drive;
-            force `SEP_IPI.u_ext_trng_axil_err_slv.axil_resp_o = trng_axil_resp_drive;
+        if (trng_rsp_on) force u_dut.ext_trng_axil_resp = trng_axil_resp_drive;
+    end
+    // While the responder answers the port, the wrapper error slave still sees
+    // every request but its reply does not reach the port, so its AXI-Lite
+    // valid-stable assertions (AwValidStable_A, WValidStable_A,
+    // ArValidStable_A) grade a handshake that does not occur. With
+    // +sep_trng_errslv_assert_waive, every assertion in that instance is off
+    // from the clock where the responder turns on. Before that clock the
+    // error slave answers the port and its assertions stay on. VCS only:
+    // Verilator compiles these assertions out.
+`ifndef VERILATOR
+    logic trng_errslv_waive_plusarg;
+    initial trng_errslv_waive_plusarg = $test$plusargs("sep_trng_errslv_assert_waive");
+    always @(posedge clk_i) begin
+        if (trng_errslv_waive_plusarg && trng_rsp_plusarg && !trng_rsp_on &&
+            (ext_trng_axil_rsp_en_i === 1'b1)) begin
+            $display("[tb] TRNG error-slave assertions off (+sep_trng_errslv_assert_waive)");
+            $assertoff(0, `SEP_IPI.u_ext_trng_axil_err_slv);
         end
     end
+`endif
     // PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
     assign pr_dmacsr_awvalid_o = `SEP_CORE.dma_csr_req.aw_valid;
     assign pr_dmacsr_awready_o = `SEP_CORE.dma_csr_rsp.aw_ready;
