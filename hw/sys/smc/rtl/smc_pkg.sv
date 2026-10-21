@@ -198,6 +198,7 @@ package smc_pkg;
   // ALL IDs, PER DIRECTION, for passive monitors (prim_axi_snoop via axi_cg_snoop, axi_hang_detector)
   localparam int unsigned FabricIdBuckets = 2 ** FabricIdLookupBits;
   localparam int unsigned FabricOutstandingTx = FabricIdBuckets * FabricMaxTrans;
+  localparam int unsigned InputFabricOutstandingTx = (2 ** InputFabricIdLookupBits) * FabricMaxTrans;
   // ALL IDs, to be used with axi_err_slv
   localparam int unsigned ErrSlvMaxTrans = 32;
 
