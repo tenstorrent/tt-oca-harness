@@ -150,9 +150,7 @@ module smu_xbar_fcov #(
     covergroup cg_sep_window with function sample (logic [1:0] prog_zero);
       option.per_instance = 1;
       cp_state: coverpoint prog_zero {
-        bins unprogrammed = {2'b00};
-        bins programmed = {2'b10};
-        bins programmed_zero = {2'b11};
+        bins unprogrammed = {2'b00}; bins programmed = {2'b10}; bins programmed_zero = {2'b11};
       }
     endgroup
 
