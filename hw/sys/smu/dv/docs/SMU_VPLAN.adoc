@@ -58,6 +58,74 @@ Checking is centralised in `SmuScoreboard`, which refuses a vacuous PASS and
 requires every mapped evidence token to have been proven by a real check. See
 the checking strategy in `SMU_TB_ARCH.adoc`.
 
+[[smu-vplan-tiers]]
+==== Scope tiers
+
+One DUT, three scope tiers on one bench: cocotb / PyUVM on Verilator, the `compile_smu_chiplet` profile (`SEP=1`, the real SEP core), the primary JTAG TAP as the front door through the DTP JTAG2AXI bridges, the shared AXI VIP on `smu_axi_in`, and the read-only probes the bench exposes: the `public_flat_rw` lines of the Verilator public scope (`tb/smu_wrapper_public_scope.vlt`) and the `obs_*` observation outputs of `tb/tb_wrapper_top.sv` (`tb/smu_tb_signal_list.svh`).
+
+[cols="1,2,3",options="header",]
+|===
+|Phase |Environment |Job
+
+|Phase 1
+|cocotb / PyUVM + Verilator, `compile_smu_chiplet`
+|Smoke plus per-area representatives: the `smoke` group, the smoke and sanity leaves of each area, the elaboration leaf, and the canonical tests the Matrix (<<smu-traceability-matrix>>) names. Fewest tests that carry the most real behaviour through the wrapper.
+
+|Phase 2
+|Same bench
+|Iconic feature coverage by area: the owning tests of the Matrix rows and the tests that prove a documented mode, command or lifecycle state end to end, plus the cross-block edges only the wrapper can see (SMC under SMU, DTP under SMU, SEP under SMU). Randomize when there is a legal matrix (`RAND-REP` / `RANDCFG`); keep directed (`RAND-NONE`) when there is not.
+
+|Phase 3
+|Same bench. A check that reads state only a four-state simulator shows names VCS in its entry.
+|Residual contracts: the contracts of the specification and the register description that no Phase 1 or Phase 2 check grades. Corner and illegal cells, past-extent and gap responses, injected faults, reset, lock and retention behaviour, sticky status, timing and ratio matrices, register sweeps, concurrency and contention, and every test whose Objective states what no other test grades. A Phase 3 test never overlaps a Phase 1 or Phase 2 test; an entry that extends an open test names that test in its Objective. Every expected value comes from the specification and the register description, never from the RTL and never from another test. A check that rests on a PROPOSED internal drive is blocked and takes no credit. A read-only observation tap, an error inject and a drive of a wrapper port are not PROPOSED. A test with no executable check is parked (<<smu-credit-rules>>).
+|===
+
+Phase 1, Phase 2 and Phase 3 are scope tiers, not a schedule. Phase 1 is the bring-up and representative set. Phase 2 is the iconic, breadth and edge set. Phase 3 is the residual set. Each test entry names its tier in its `*Phase*` field and its section in `*Area*`, and each row of the Scenario-Expanded Test Summary carries the same phase. `SMU_FCOV.adoc` has its own Phase 1 / Phase 2 taxonomy (the collected points versus the named set that is not collected); an FCOV phase does not follow the phase of its owning test. A tier says what a test is asked to prove. It does not say when the test was written. A Phase 3 entry takes credit under the rules of <<smu-credit-rules>>. The contracts this plan does not claim are in the Verification Scope table above. The Phase 3 contracts that no test can grade, the observation taps and hooks the tests use, the PROPOSED drives and the out-of-scope features are listed in the Phase 3 Tests section of this plan, after the Test Procedures.
+
+[[smu-vplan-random]]
+==== Randomization classes
+
+Every stimulus of an enrolled test that has a legal matrix is a pure function of the run seed (`RANDOM_SEED`, read by `random_seed()` of `cocotb_wrapper/tests/smu_base_test.py`), and `--stage sim --seed N` replays the leaf. The stream is not a CSPRNG and no drawn value is a key, a token or a lifecycle word. No document quotes a per-seed value as evidence. The class of a test is one of:
+
+* `RAND-REP`: the seed draws points from a legal matrix, and every point has a stated outcome.
+* `RANDCFG`: the seed draws a configuration, the test runs one scenario under it, and the expected outcome is a function of the configuration.
+* `RAND-NONE`: the stimulus is directed, for the reason the entry states.
+
+Each entry's `*Randomization*` field names its class, the drawn dimensions of a drawn class, and the reason of a directed class. The same values that program the DUT program the expectation. A test is pinned directed first and then upgraded to drawn; a one-point stand-in for a matrix is not shipped. Randomization is skipped only when the feature has no legal knob space: a strap, a single named handshake, a fixed firmware image, a fixed eFuse image of one lifecycle state, or a cell set the leaf walks whole in every run.
+
+[[smu-vplan-drawn]]
+*Drawn cells.* This is the contract for every new test and for every upgrade of a directed test to a drawn one. Regression seeds are random per leaf and a leaf does not know its run index, so no seed and no testlist entry pins a cell. A leaf draws its cells from its seed (`random.Random` seeded from `random_seed()` and salted per leaf, weighted toward the corners where the entry says so, with the constraint filters the entry states). A leaf walks a cell set in every run only when the set is cheap and contract-critical: a legal minimum or maximum, one representative of each leg, or the error-injection case itself, with no extra boot, no extra cold reset and no extra transfer of real size per cell. The coverage of drawn cells is seed-dependent and closes over a merge of regressions, never in one regression; for N equally likely cells and d draws per leaf the expected closure is about N * ln(N) / (d * reseed) regressions. The seed count of an entry stays small and is not raised to fill cells; an entry that runs more seeds states the reason. An entry whose leaf runs its whole cell set in every run, so that the seed selects only orders, values and timing, runs one seed per regression. Today every enrolled test runs `seed = 1` and the scheduled tiers run `reseed: 1` (<<smu-release-combinations>>), so each regression draws one seed per leaf. A test has one testlist entry; a second entry exists only when the run mode differs in a way one entry cannot carry (a time-0 bench plusarg, a different firmware image), never to pin a cell. Today every enrolled test has exactly one entry in `testlists/all.toml`, and each entry's `*Run mode*` field says so.
+
+[[smu-vplan-audit]]
+==== Audit catalogue
+
+Checker contracts in this plan are written against these known ways a check can pass while the DUT is unable to fail it.
+
+*An expectation that shares a source with the thing it measures.* A golden is pinned from the specification or the register description, never transcribed from the RTL, because a golden transcribed from the RTL cannot disagree with the RTL. `smu_dtp_scan_chain_boundary_test` states it as a rule of the entry ("Expected behaviour comes from the JTAG specification pages, not the RTL"), and `smu_smc_efuse_shadow_sense_reset_test` takes its expected image from the image file the leaf loads and from `smc_addr.h`, both DV-owned, so that no RTL package or module supplies a golden or a walk. Agreement with the RTL is corroboration, not the source.
+
+*Golden compared against golden.* An assert between a result already pinned bit-exact to its golden and another output of the same model holds with the simulator switched off. The degenerate case compares list lengths rather than domains. A compare of this plan pairs a DUT-produced value with a document-derived expectation; `smu_smc_boundary_io_test` states that rule for each of its legs, and `smu_smc_boundary_lane_sweep_test` compares every lane against the SMC register or interrupt vector that owns it.
+
+*A guard whose own constructor makes it unfalsifiable.* Non-vacuity must not rest on a relation the configuration builder already guarantees: a value required to differ from a pattern the builder constructs so that it always differs, or a non-zero check on a field the builder never sets to zero. `smu_filter_cfg_register_map_test` and `smu_remap_cfg_register_map_test` write a value unique to each register and require it back at its own address only, so a register stuck at another register's value fails rather than passes.
+
+*A stimulus with no fan-out.* Driving a pin that is unread in the configuration under test and asserting that two observables did not move is a DV-invented scenario, not a specification claim. `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package has no ATOP driver, so the Matrix carries F4 ATOP reject as NO credit instead of a check that "ATOP is refused"; and `smu_otp_vs_fabric_map_race_test` states that the concurrency its name suggests has no stimulus on this bench and grades only the last-writer contract it can produce.
+
+*A tolerance wider than the signal.* A post-event bound above the count the window actually reaches passes when the event is ignored. A wait bound is a termination bound, not a tolerance: `smu_dtp_sysreset_stop_clks_test` grades the return of `dtp_stop_clks_o` on the third `clk_smu_i` edge the documented request latency gives, not "within a bound", and the `CHK-TIMEOUT-PATHS` rows of the depth entries require every wait to finish inside its bound with the last state recorded.
+
+*A check that reads back nothing.* Walking a register through several encodings without reading it back cannot distinguish a register stuck at its reset value; a level sampled after a settle cannot distinguish an output that transitioned from one that was already there. `smu_sram_auto_init_done_test` requires `smc_init_mem_done_o` read high before the cold reset asserts, so the low read under reset is a 1 to 0 transition and not the bring-up value, and `smu_ext_boot_seq_gate_test` takes its negative control and its fence from DUT edges rather than from levels found after the settle.
+
+*Entailed guards.* The absence of a complementary-arm marker, or a deferred line, is not a checker; the owning test already fails if a forbidden marker appears. An SMU leaf that grades an absence (no sweep, no launch, no lane moving) pairs it with a positive control the same bench produces: `smu_sram_auto_init_done_test` names `smu_sram_auto_init_disabled_test` as its positive control, and the lifecycle leaves pair every "does not launch" compare with a launch on an open path of the same run.
+
+[[smu-vplan-evidence-gate]]
+==== Evidence gate
+
+Per-run logs and `result.json` land under `build/runs/`. PASS requires positive `results.xml` and the evidence gate of the base test; a clean simulator exit alone is not enough. A test passing is the entry condition for reading its checkers, never a substitute for them. A checker row exists only if a run can prove it. A log tag is not the proof.
+
+The gate is `cocotb_wrapper/tests/smu_base_test.py`. A leaf that scores through the shared `SmuScoreboard` (`use_shared_env`) runs `prove_mapped_features()` after its scenario: every `(CHK_ID, TOKEN, EXPECT)` row of `TEST_EVIDENCE` in `cocotb/env/smu_evidence_map.py` for that testcase must have been logged as `EVIDENCE: <TOKEN>` by a passing `expect_*` compare (<<smu-checking-strategy,SMU_TB_ARCH, Checking Strategy>>). A wrapper-native leaf runs `_prove_declared_evidence()` instead: the union of the `required_evidence` tuple on the test class, the `EVIDENCE` tuple its sequence declares through `declare_evidence()`, and its `TEST_EVIDENCE` rows is the required set, and every token of it must have reached the recorder as an `EVIDENCE: <TOKEN>` line, logged after the `CHK-<ID>` PASS line of the check that proved it. The base test prints one line per leaf, `EVIDENCE GATE <test>: required=N seen=N missing=N ids=...`, and fails the leaf on any missing token. A leaf whose required set is empty fails unless `NO_EVIDENCE_LEAVES` names it with a reason; that dictionary is empty, and a new entry hides a logging gap.
+
+For every enrolled test the three sets are the same set: the `CHK-<ID>` rows of the Checkers table of its entry, the tokens the gate requires (`required_evidence`, the sequence's `EVIDENCE` tuple and the `TEST_EVIDENCE` rows), and the `CHK-<ID>` PASS lines of its leaf log. A row in one and not the others is a drift to fix in the entry or the map, not a credit.
+
+The gate proves that a check ran. It does not prove that the check was right.
+
 === Naming Rules
 
 [cols=",",options="header",]
@@ -164,6 +232,69 @@ runs its `hosted`. PASSes carry `DUT_TAG=WRAPPER`.
   challenge-response (F5) are OUT.
 * Wrapper elaboration / reset is `smu_wrapper_elaboration_test`
   (wrapper `fw_boot` and `elaboration`).
+* A feature takes credit once, at the earliest phase that proves it. A later
+  test that also reaches the feature does not take the credit again. The
+  phase of a test is its `*Phase*` field (<<smu-vplan-tiers>>).
+* A Phase 3 entry takes credit only when its test is in `all`, the named
+  evidence that its entry declares (the `CHK-<ID>` rows of its Checkers
+  table, <<smu-vplan-evidence-gate>>) is in the leaf log, and `results.xml`
+  is positive.
+* [[smu-vplan-reserved-bits]]Every graded register compare of a Phase 3
+  entry (an expected value from the RDL or a model, a read-back, a before
+  and after compare, or a compare of two reads) uses the RDL field bits of
+  the register only. A reserved bit is graded only where the RDL or the
+  specification states its value. A reserved bit with no stated value is
+  masked out of the compare, and the PASS or FAIL line logs the masked bits
+  and the mask.
+* The Phase 3 entries and the Phase 3 lists use four class words and four
+  terms for bench items, with these meanings:
+** *PROPOSED*: a hook that drives, forces or deposits into a net or a state
+   inside `smu` or one of its sub-blocks (the SMC, the DTP, the SEP, the
+   crossbar) for a purpose other than error injection, and that is not in
+   `hw/sys/smu/dv/tb/tb_wrapper_top.sv` and not in the stand-in record that
+   `docs/SMU_TB_ARCH.adoc` ("Stimulus Strategy") names
+   (`docs/SMU_DEFERRED_DISPOSITION.adoc`, "Bench stand-ins and exceptions").
+** *Observation tap*: a read-only observation that drives nothing: a
+   `public_flat_rw` line of the Verilator public scope
+   (`tb/smu_wrapper_public_scope.vlt`), an `obs_*` observation output of
+   `tb/tb_wrapper_top.sv` (`tb/smu_tb_signal_list.svh`), a `tb_*` probe of
+   a DUT net, a passive monitor on a wrapper pin, or a hierarchical read of
+   a DUT net. An observation tap is not PROPOSED and blocks no check or leg.
+   A tap that `docs/SMU_TB_ARCH.adoc` and the signal list do not already
+   carry is an observation tap the test adds, and the Phase 3 lists name it.
+** *Added hook*: an error inject or a top-port drive that
+   `tb/tb_wrapper_top.sv` does not have and the signal list does not drive.
+   An error inject is an inject or a force that puts a fault or an illegal
+   condition into the DUT, at a net inside `smu` or outside it. A top-port
+   drive is a drive of a port of `smu_wrapper` by the bench: a strap, a
+   reset or boot-sequence pin, a JTAG, CTP, ATB or interrupt pin, an eFuse
+   or memory-model response, or a port value a plusarg sets. An added hook
+   is not PROPOSED and blocks no check or leg; the test that adds one adds
+   its row to the signal list or to the stand-in record.
+** *Existing bench hook*: a drive, a force, an inject or a time-0 plusarg
+   that `tb/tb_wrapper_top.sv` already has or that the signal list already
+   drives: the `+esrc_noise_force` lanes, the `+lc_sigint_inject` LC_STATE
+   pair fault inject, `+skip_fuse_sense` with the shadow preloads, the scan
+   chain loopbacks, the CTP data-input tie-offs and the `tb_*` stimulus
+   pins. It is existing DV infrastructure and is approved, whatever net it
+   drives: it is not PROPOSED, it is not an added hook, and it blocks no
+   check or leg. Its record is the stand-in table of
+   `docs/SMU_DEFERRED_DISPOSITION.adoc`.
+** *Blocked*: a check or leg that needs a PROPOSED item, or a value that the
+   specification or the register description does not state. An entry
+   writes `Blocked: needs the PROPOSED drive x` or `Blocked: the
+   specification does not state X` at the check or leg, or lists the item in
+   its `*Scope limit*` field as measured and logged only. A blocked feature
+   is a feature whose checks all need such a value. A blocked check or leg
+   takes no credit and is not in an executable total.
+** *Executable*: a Phase 3 test with at least one graded check that is not
+   blocked.
+** *Parked*: a Phase 3 test with no executable check. The entry of a parked
+   test has the field `*Needs*: <PROPOSED items or unstated values>`, its
+   summary row reads "3, parked", it takes no credit and it is not in an
+   executable total. No enrolled test is parked: a scenario that cannot
+   run or cannot pass on this bench has no entry here and is catalogued in
+   `docs/SMU_DEFERRED_DISPOSITION.adoc` instead.
 
 [[smu-traceability-matrix]]
 ==== Matrix (SPEC Features 1–7)
