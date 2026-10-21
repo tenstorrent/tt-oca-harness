@@ -777,7 +777,8 @@ Non-reset CMP markers on all cores make post-warm default readbacks
 discriminating; CTRL and COUNT are additionally exercised on the rotating
 selected core. Sequence checks grade CTRL/COUNT/CMP defaults before explicit
 rebaseline; the model independently grades CTRL/CMP and access responses.
-CPU_CTRL timeout retention remains an observation rather than a verdict.
+The sequence grades CPU_CTRL WDT_TIMEOUT retention after each warm reset;
+the watchdog model does not cover CPU_CTRL.
 Explicit watchdog configuration and timeout programming establish the next baseline.
 
 The fabric-register gate scenario reads eight pairs of `smc_tb_if.cg_clk_active`
