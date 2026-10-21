@@ -110,6 +110,22 @@ tags = ["ci", "reset"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_spm_access_core_reset_test"
+module = "smc_spm_access_core_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "cpu"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_beu_access_core_reset_test"
+module = "smc_beu_access_core_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "cpu"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_cpu_reset_source_test"
 module = "smc_cpu_reset_source_test"
 seed = 1
