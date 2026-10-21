@@ -351,6 +351,11 @@ typedef union {
 } cpu_ctrl__SMC_ATTRIBUTES_t;
 
 // reg - cpu_ctrl::MUTEX
+// A read of any size or alignment within this register attempts to acquire the mutex,
+// but the result is only returned in bit 0. A read that does not include byte 0, such as
+// a 32-bit read of the upper half or a byte read at a non-zero offset, returns 0 even when
+// it acquires the mutex, leaving it held with no owner until it is released. Read this
+// register with an access that includes byte 0.
 // HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.
 #define CPU_CTRL__MUTEX__MUTEX_bm 0x1
 #define CPU_CTRL__MUTEX__MUTEX_bp 0

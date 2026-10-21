@@ -36,7 +36,8 @@ addrmap zeroer_ctrl {
         regwidth = 64;
         accesswidth = 64;
 
-        desc = "Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.";
+        desc = "Any write to this register triggers the start of the zeroer, irrespective of WSTRB,
+                including a write with no byte lanes enabled. The start is ignored while SIZE is 0.";
 
         field {
             sw = rw;

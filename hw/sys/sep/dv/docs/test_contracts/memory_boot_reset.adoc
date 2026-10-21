@@ -1142,10 +1142,6 @@ A drawn overlap run of the band between can place the pulse while the `SW_RESET_
 
 *Scope limit*: Byte-lane partial strobes on `SW_RESET_N` have no stated result and are not driven. The `SOFT_RST_CODE` isolation bypass and a Key Manager reset in the middle of a command or a key transfer belong to the Key Manager area.
 
-*Known limitation*: CHK-ISO-RESP fails on this DUT. The isolates of the 64-bit Adams Bridge, CSRNG and EDN host paths return `64'h0000_0000_1501_A7ED`, so an isolated read of the upper 32-bit lane returns 0 and not `0x1501A7ED`. The 32-bit isolated paths and the lower lane of the 64-bit paths answer as stated.
-
-*Issue*: #3120
-
 '''''
 
 [[sep_ip_reset_override_matrix_test]]

@@ -719,6 +719,18 @@ jobs:
         if: steps.scope.outputs.run == 'true'
         run: uv run --locked --group dv python -m unittest discover tools/dv/tests
 
+  # Host unit tests for SEP ROM drivers. tests/host has its own Makefile because
+  # the ROM Makefile needs the tt-oca-manifest submodule just to parse.
+  rom-host-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run the ROM driver host tests
+        run: make -C hw/sys/sep/bootrom/prod/tests/host
+
   doc-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
