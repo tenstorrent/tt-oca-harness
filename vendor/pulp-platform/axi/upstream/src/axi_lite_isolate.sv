@@ -20,7 +20,7 @@
 ///
 /// If the `TerminateTransaction` parameter is set to `1'b1`, the module will return `SLVERR`
 /// responses for incoming transactions while the module isolates.  The data returned on the bus is
-/// `1501A7ED` (hexspeak for isolated).
+/// `1501A7ED` (hexspeak for isolated), repeated in every 32-bit lane.
 ///
 /// If `TerminateTransaction` is set to `1'b0`, the transaction will block indefinitely until the
 /// module is de-isolated again.
@@ -151,7 +151,7 @@ module axi_lite_isolate #(
 
     // Error slave for the isolated demux port: accepts one transaction per direction at a time
     // and responds with SLVERR.
-    localparam data_t IsolateErrorData = data_t'('h1501A7ED);
+    localparam data_t IsolateErrorData = data_t'({(AxiDataWidth + 31) / 32 {32'h1501A7ED}});
 
     axi_lite_resp_t isolate_err_rsp;
     logic aw_wait_d, aw_wait_q, w_wait_d, w_wait_q, ar_wait_d, ar_wait_q;
