@@ -38,7 +38,7 @@ tests = ["sep_axi_smoke_test"]
 # the size. `rom_fw` is not a member: it runs a third RTL target and states
 # firmware rather than hardware contracts. `all` is the coverage set.
 #
-# Seventeen members are pinned to one simulator, so a single-simulator run of `all`
+# Eighteen members are pinned to one simulator, so a single-simulator run of `all`
 # logs the members pinned to the other simulator as skipped_wrong_tool:
 # - sep_crypto_shadow_update_err_rand_test, VCS only (crypto.toml). It grades that the
 #   reads after an AES reset carry no X, which only a four-state simulator shows.
@@ -72,8 +72,10 @@ tests = ["sep_axi_smoke_test"]
 #   needs X on the unreset token flops, which only a four-state simulator shows.
 # - sep_sec_dis_timing_rand_test, VCS only (efuse_lcc.toml). Its reset-value checks of
 #   the unreset shadow words under the SEC_DIS match need X.
+# - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
+#   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 239
+expected_count = 270
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -219,6 +221,37 @@ tests = [
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
     "sep_km_drbg_sampler_timeout_reset_test",
+    "sep_km_kmcsr_reset_rand_test",
+    "sep_km_kpv_rand_test",
+    "sep_km_cpu_protect_rand_test",
+    "sep_km_crossbar_efuse_window_rand_test",
+    "sep_km_mailbox_km_side_rand_test",
+    "sep_km_drbg_sampler_rand_test",
+    "sep_km_otp_interface_rand_test",
+    "sep_km_key_bank_register_rand_test",
+    "sep_km_sram_scrambler_key_rand_test",
+    "sep_km_command_protocol_rand_test",
+    "sep_km_key_transfer_rand_test_shard1",
+    "sep_km_key_transfer_rand_test_shard2",
+    "sep_km_key_transfer_rand_test_shard3",
+    "sep_km_key_transfer_rand_test_shard4",
+    "sep_km_handover_rand_test",
+    "sep_km_boot_reset_rand_test",
+    "sep_km_fault_inject_rand_test",
+    "sep_km_fault_inject_rand_test_unrec_shard1",
+    "sep_km_fault_inject_rand_test_unrec_shard2",
+    "sep_km_fault_inject_rand_test_unrec_shard3",
+    "sep_km_fault_inject_rand_test_unrec_shard4",
+    "sep_km_fault_inject_rand_test_unrec_shard5",
+    "sep_km_fault_inject_rand_test_unrec_shard6",
+    "sep_km_fault_inject_rand_test_unrec_shard7",
+    "sep_km_fault_inject_rand_test_unrec_shard8",
+    "sep_km_fault_inject_rand_test_unrec_shard9",
+    "sep_km_fault_inject_rand_test_unrec_shard10",
+    "sep_km_fault_inject_rand_test_unrec_shard11",
+    "sep_km_fault_inject_rand_test_unrec_shard12",
+    "sep_km_fault_inject_rand_test_unrec_shard13",
+    "sep_km_fault_inject_rand_test_unrec_shard14",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
@@ -486,6 +519,37 @@ tests = [
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
     "sep_km_drbg_sampler_timeout_reset_test",
+    "sep_km_kmcsr_reset_rand_test",
+    "sep_km_kpv_rand_test",
+    "sep_km_cpu_protect_rand_test",
+    "sep_km_crossbar_efuse_window_rand_test",
+    "sep_km_mailbox_km_side_rand_test",
+    "sep_km_drbg_sampler_rand_test",
+    "sep_km_otp_interface_rand_test",
+    "sep_km_key_bank_register_rand_test",
+    "sep_km_sram_scrambler_key_rand_test",
+    "sep_km_command_protocol_rand_test",
+    "sep_km_key_transfer_rand_test_shard1",
+    "sep_km_key_transfer_rand_test_shard2",
+    "sep_km_key_transfer_rand_test_shard3",
+    "sep_km_key_transfer_rand_test_shard4",
+    "sep_km_handover_rand_test",
+    "sep_km_boot_reset_rand_test",
+    "sep_km_fault_inject_rand_test",
+    "sep_km_fault_inject_rand_test_unrec_shard1",
+    "sep_km_fault_inject_rand_test_unrec_shard2",
+    "sep_km_fault_inject_rand_test_unrec_shard3",
+    "sep_km_fault_inject_rand_test_unrec_shard4",
+    "sep_km_fault_inject_rand_test_unrec_shard5",
+    "sep_km_fault_inject_rand_test_unrec_shard6",
+    "sep_km_fault_inject_rand_test_unrec_shard7",
+    "sep_km_fault_inject_rand_test_unrec_shard8",
+    "sep_km_fault_inject_rand_test_unrec_shard9",
+    "sep_km_fault_inject_rand_test_unrec_shard10",
+    "sep_km_fault_inject_rand_test_unrec_shard11",
+    "sep_km_fault_inject_rand_test_unrec_shard12",
+    "sep_km_fault_inject_rand_test_unrec_shard13",
+    "sep_km_fault_inject_rand_test_unrec_shard14",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
@@ -956,4 +1020,43 @@ tests = [
     "sep_efuse_jtag_access_rand_test",
     "sep_sec_dis_timing_rand_test",
     "sep_efuse_shim_response_fault_test",
+]
+
+[[groups]]
+# Convenience group of the Key Manager hardware tests.
+# It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
+name = "phase3_key_manager"
+expected_count = 31
+tests = [
+    "sep_km_kmcsr_reset_rand_test",
+    "sep_km_kpv_rand_test",
+    "sep_km_cpu_protect_rand_test",
+    "sep_km_crossbar_efuse_window_rand_test",
+    "sep_km_mailbox_km_side_rand_test",
+    "sep_km_drbg_sampler_rand_test",
+    "sep_km_otp_interface_rand_test",
+    "sep_km_key_bank_register_rand_test",
+    "sep_km_sram_scrambler_key_rand_test",
+    "sep_km_command_protocol_rand_test",
+    "sep_km_key_transfer_rand_test_shard1",
+    "sep_km_key_transfer_rand_test_shard2",
+    "sep_km_key_transfer_rand_test_shard3",
+    "sep_km_key_transfer_rand_test_shard4",
+    "sep_km_handover_rand_test",
+    "sep_km_boot_reset_rand_test",
+    "sep_km_fault_inject_rand_test",
+    "sep_km_fault_inject_rand_test_unrec_shard1",
+    "sep_km_fault_inject_rand_test_unrec_shard2",
+    "sep_km_fault_inject_rand_test_unrec_shard3",
+    "sep_km_fault_inject_rand_test_unrec_shard4",
+    "sep_km_fault_inject_rand_test_unrec_shard5",
+    "sep_km_fault_inject_rand_test_unrec_shard6",
+    "sep_km_fault_inject_rand_test_unrec_shard7",
+    "sep_km_fault_inject_rand_test_unrec_shard8",
+    "sep_km_fault_inject_rand_test_unrec_shard9",
+    "sep_km_fault_inject_rand_test_unrec_shard10",
+    "sep_km_fault_inject_rand_test_unrec_shard11",
+    "sep_km_fault_inject_rand_test_unrec_shard12",
+    "sep_km_fault_inject_rand_test_unrec_shard13",
+    "sep_km_fault_inject_rand_test_unrec_shard14",
 ]
