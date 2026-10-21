@@ -284,6 +284,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
+args = ["+smc_i2c1_pads"]
 
 [[tests]]
 name = "smc_i2c_target_nack_timeout_test"
@@ -571,6 +572,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
 
 [[tests]]
 name = "smc_i2c_target_addr_gate_test"
@@ -662,3 +664,12 @@ timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c1_pads"]
+
+[[tests]]
+name = "smc_i2c1_target_ack_ctrl_test"
+module = "smc_i2c1_target_ack_ctrl_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
