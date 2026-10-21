@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_005 ANCHOR: smc_gpio_output_driveback_test
 # DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 2588af6e0f784bdfcb96f67b00532a7fe208f4c3ec4cddde01ad3a340df538bc
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 109 `smc_gpio_output_driveback_test` ENV: cocotb
 """SMC OSS GPIO register-driven output (core2pad) driveback and pad direction walk."""
 
 from __future__ import annotations

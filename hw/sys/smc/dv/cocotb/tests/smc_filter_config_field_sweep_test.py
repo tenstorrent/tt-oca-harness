@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_002 ANCHOR: smc_filter_config_field_sweep_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 17fb66a68ae906cb9def81735ba1b37a8b7a111eeb7a9f96a37086793dcd9682
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 199 `smc_filter_config_field_sweep_test` ENV: cocotb
 """FILTER_CONFIG field cycle, write-once lock and its cold-reset clear on all 32 filter entries.
 
 Drives every software-writable FILTER_CONFIG field of the 16 inbound and 16

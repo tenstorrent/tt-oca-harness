@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_011 ANCHOR: smc_efuse_sense_sequence_test
 # DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: 105f1cdf375d81c7f7bb3ce5e131696ec9fde34e522301505090a3d3c177a711
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL_2.md @ artifact_revision 3 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 467 `smc_efuse_sense_sequence_test` ENV: cocotb
 """Automatic fuse sense sequence after a deliberate cold reset.
 
 Sources: smu-smc.adoc (eFuse Interface), efuse_interface_ctrl.rdl, efuse architecture.adoc.

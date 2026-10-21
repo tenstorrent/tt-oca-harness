@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_003 ANCHOR: smc_infilt_attr_match_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 7662a0a2f29ee58ebcc45d7e779fac8325cfeb4c644db7fec2fcc1127be1af1c
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 364 `smc_infilt_attr_match_test` ENV: cocotb
 """The inbound filter matches AxPROT[1], the source ID, same-page ranges and entry-15 bursts."""
 
 from __future__ import annotations

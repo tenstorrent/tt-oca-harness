@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_007 ANCHOR: smc_hang_data_timeout_window_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: d9b71cae4533d0963caa8e51ebe1b76291b2af12f09b36945a6e6be8e677556e
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 480 `smc_hang_data_timeout_window_test` ENV: cocotb
 """DATA_ACCEL hang detector stalls below, beyond and at the timeout threshold, then CTRL gating."""
 
 from __future__ import annotations

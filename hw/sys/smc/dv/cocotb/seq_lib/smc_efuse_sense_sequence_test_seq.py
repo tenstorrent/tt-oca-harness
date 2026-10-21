@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_011 ANCHOR: smc_efuse_sense_sequence_test
 # DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: 105f1cdf375d81c7f7bb3ce5e131696ec9fde34e522301505090a3d3c177a711
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL_2.md @ artifact_revision 3 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 467 `smc_efuse_sense_sequence_test` ENV: cocotb
 """Automatic fuse sense sequence after a deliberate cold reset.
 
 Sources: smu-smc.adoc (eFuse Interface), efuse_interface_ctrl.rdl, efuse architecture.adoc
@@ -221,8 +221,8 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
     async def _status_stream(self) -> None:
         while not self._stop_reads:
-            if self._presense_armed and "PRESENSE" not in self._shadow:
-                await self._shadow_read("PRESENSE", allow_error=True)
+            if self._presense_armed and "PRE-SENSE" not in self._shadow:
+                await self._shadow_read("PRE-SENSE", allow_error=True)
                 continue
             issue = len(self._rec)
             item = await self._read(f"status_read[{len(self._reads)}]", _STATUS, False)
@@ -429,10 +429,10 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self._wait_until(
             "presense_read_wait",
             _READS_BOUND_CYCLES,
-            lambda: "PRESENSE" in self._shadow,
-            lambda: f"presense_reads={len(self._shadow.get('PRESENSE', []))}",
+            lambda: "PRE-SENSE" in self._shadow,
+            lambda: f"presense_reads={len(self._shadow.get('PRE-SENSE', []))}",
         )
-        pre_issue, pre_edge, pre_item = self._shadow["PRESENSE"][0]
+        pre_issue, pre_edge, pre_item = self._shadow["PRE-SENSE"][0]
         pre_k = sum(t[2] for t in rec[first_strobe:pre_issue])
         pre_done_now = self._sig("tb_fuse_sense_done")
         assert pre_k >= 1, f"R read issued at edge {pre_issue} before the first strobe"

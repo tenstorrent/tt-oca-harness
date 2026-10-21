@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_014 ANCHOR: smc_mailbox_irq_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: a6493973ba532cb271a89c12f02a49734e1ec711636622983e9c559f6292b8f0
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL_2.md @ artifact_revision 2 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 146 `smc_mailbox_irq_test` ENV: cocotb
 """Mailbox CSR and IRQ-control smoke over real SYS AXI, and the write and read
 threshold interrupts of every mailbox pair on the external mailbox interrupt output.
 

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_015 ANCHOR: smc_sys_axi_in_port_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: b8487c294b952d6c6c53680656a6f36caf23d95866abd0a4ab426ca790b108c8
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL_2.md @ artifact_revision 3 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 192 `smc_sys_axi_in_port_test` ENV: cocotb
 """sys_axi_in accepts a read and a write into a local register through the inbound filter.
 
 Inbound entry 0 is programmed over SEP_IN to admit (fabric.adoc, Inbound

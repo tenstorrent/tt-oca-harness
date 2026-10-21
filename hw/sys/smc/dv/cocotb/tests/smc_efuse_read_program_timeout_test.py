@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_010 ANCHOR: smc_efuse_read_program_timeout_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: d66adfdc2dbbb7005e02ef8ce713e0ee87f8ed3229bdaede8dd8e17bf012c4da
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL_2.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 98 `smc_efuse_read_program_timeout_test` ENV: cocotb
 """eFuse PROGRAM/READ timeout CSR vs recovery burn, address range and slot 8/31 locks.
 
 Reportable DUT-path claim: the ``EFUSE_PROGRAM_REQ_TIMEOUT`` /

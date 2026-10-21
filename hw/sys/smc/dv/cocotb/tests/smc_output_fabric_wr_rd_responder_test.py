@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_001 ANCHOR: smc_output_fabric_wr_rd_responder_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 1f097722d433b77c42d8cb41b777b906ec1eade0d8da9284d3b28f9b3703a07a
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 33 `smc_output_fabric_wr_rd_responder_test` ENV: cocotb
 """SMC OSS output-fabric responder-backed protocol test."""
 
 from __future__ import annotations

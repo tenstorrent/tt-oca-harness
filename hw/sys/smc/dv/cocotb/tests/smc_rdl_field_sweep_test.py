@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_009 ANCHOR: smc_rdl_field_sweep_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 9843278d346aa785a345c4b6004a82cec7c2f7903d43ba2e131be90be0c68200
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL_2.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 193 `smc_rdl_field_sweep_test` ENV: cocotb
 """RDL-contract sweep of the software-owned SMC CSR blocks over SEP_IN AXI.
 
 Drives every register of SCRATCH_COLD, SCRATCH_COLD_WARM, DFX_CTRL,

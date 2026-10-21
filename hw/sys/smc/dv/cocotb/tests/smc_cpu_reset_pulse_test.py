@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_004 ANCHOR: smc_cpu_reset_pulse_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 426814cd968fdd57c286773e76b962b2f0bf891ec8032cdee33428793e4c7cd4
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 262 `smc_cpu_reset_pulse_test` ENV: cocotb
 """SEP_IN core-reset pulses and level resets, the debug reset and the reset vectors.
 
 Pulses core 1 through `RESET_CTRL.core1_reset_pulse_start` with every level

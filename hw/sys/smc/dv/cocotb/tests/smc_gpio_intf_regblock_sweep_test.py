@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_012 ANCHOR: smc_gpio_intf_regblock_sweep_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: c065f43a6879651743934132e450ef015bf65d7ce0042c64a4b56be05b32063e
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL_2.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 198 `smc_gpio_intf_regblock_sweep_test` ENV: cocotb
 """GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycle on all 65 instances.
 
 Drives both registers to all-ones and all-zeros through half-register writes,
