@@ -31,9 +31,12 @@ void test_fixture_reset(void) {
     for (uint32_t i = 0; i < sizeof(s_msg); ++i) s_msg[i] = (uint8_t)(i * 3u + 9u);
     s_verdict = 0u;
     memset(&s_diag, 0xA5, sizeof(s_diag));
+    g_fake.signed_msg = s_msg;
+    g_fake.signed_len = MSG_LEN;
 }
 
 static int verify(uint32_t len) {
+    g_fake.signed_len = len;
     return abr_mldsa87_verify(s_pk, s_sig, s_msg, len, TOKEN, &s_verdict, &s_diag);
 }
 
@@ -109,6 +112,21 @@ TEST(all_zero_ctilde_never_starts_the_accelerator) {
     ASSERT_EQ_INT(s_diag.done_count, 0);
 }
 
+// ~c~ would be 0, what zeroize leaves, so the preload check could not tell them apart.
+TEST(all_ones_ctilde_never_starts_the_accelerator) {
+    memset(s_sig, 0xFF, ABR_MLDSA87_CTILDE_BYTES);
+    expect_reject(verify(MSG_LEN), ABR_DRV_ERR_SIG_INVALID);
+    ASSERT_EQ_INT(g_fake.verify_commands, 0);
+    ASSERT_EQ_INT(s_diag.stage, ABR_DRV_STAGE_ARGS);
+}
+
+TEST(wrong_identity_never_starts_the_accelerator) {
+    g_fake.identity_bad = 1;
+    expect_reject(verify(MSG_LEN), ABR_DRV_ERR_IDENTITY);
+    ASSERT_EQ_INT(g_fake.verify_commands, 0);
+    ASSERT_EQ_INT(s_diag.stage, ABR_DRV_STAGE_IDENTITY);
+}
+
 TEST(early_valid_rejects) {
     g_fake.early_valid = 1;
     g_fake.result = FAKE_RES_INVERSE;
@@ -131,12 +149,14 @@ TEST(error_while_waiting_for_stream_ready) {
     g_fake.error_in_stream_wait = 1;
     expect_reject(verify(MSG_LEN), ABR_DRV_ERR_HW);
     ASSERT_EQ_INT(s_diag.stage, ABR_DRV_STAGE_STREAM_WAIT);
+    ASSERT_EQ_INT(s_diag.status, 0x8u);
 }
 
 TEST(error_while_waiting_for_valid) {
     g_fake.error_in_complete_wait = 1;
     expect_reject(verify(MSG_LEN), ABR_DRV_ERR_HW);
     ASSERT_EQ_INT(s_diag.stage, ABR_DRV_STAGE_COMPLETE);
+    ASSERT_EQ_INT(s_diag.status, 0x8u);
 }
 
 TEST(zeroize_never_ready) {
@@ -157,6 +177,7 @@ TEST(stream_ready_timeout) {
     g_fake.never_stream_ready = 1;
     expect_reject(verify(MSG_LEN), ABR_DRV_ERR_TIMEOUT);
     ASSERT_EQ_INT(s_diag.stage, ABR_DRV_STAGE_STREAM_WAIT);
+    ASSERT_EQ_INT(s_diag.status, 0u);
 }
 
 TEST(valid_timeout) {
@@ -199,6 +220,22 @@ TEST(done_event_arm_not_confirmed) {
 
 TEST(stale_done_status_not_cleared) {
     g_fake.done_sts_sticks = 1;
+    expect_reject(verify(MSG_LEN), ABR_DRV_ERR_STATE);
+    ASSERT_EQ_INT(s_diag.stage, ABR_DRV_STAGE_ARM);
+    ASSERT_EQ_INT(g_fake.verify_commands, 0);
+}
+
+TEST(stale_error_status_not_cleared) {
+    g_fake.err_sts_sticks = 1;
+    expect_reject(verify(MSG_LEN), ABR_DRV_ERR_STATE);
+    ASSERT_EQ_INT(s_diag.stage, ABR_DRV_STAGE_ARM);
+    ASSERT_EQ_INT(g_fake.verify_commands, 0);
+}
+
+// The counter is cleared rather than compared with a baseline: once saturated, a
+// baseline would hide a new error.
+TEST(stale_error_count_not_cleared) {
+    g_fake.err_count_sticks = 1;
     expect_reject(verify(MSG_LEN), ABR_DRV_ERR_STATE);
     ASSERT_EQ_INT(s_diag.stage, ABR_DRV_STAGE_ARM);
     ASSERT_EQ_INT(g_fake.verify_commands, 0);
@@ -272,13 +309,42 @@ TEST(caller_ctilde_change_after_load_is_not_used) {
     ASSERT_EQ_INT(s_verdict, TOKEN);
 }
 
+TEST(public_key_change_after_load_rejects) {
+    abr_drv_ctx_t ctx;
+    abr_drv_ctx_init(&ctx);
+    ASSERT_EQ_INT(abr_drv_load(&ctx, s_pk, s_sig), ABR_DRV_OK);
+    s_pk[100] ^= 0x01u;
+    ASSERT_EQ_INT(abr_drv_start(&ctx), ABR_DRV_OK);
+    ASSERT_EQ_INT(abr_drv_stream_range(&ctx, s_msg, MSG_LEN, 1), ABR_DRV_OK);
+    expect_reject(abr_drv_finish(&ctx, s_pk, MSG_LEN, TOKEN, &s_verdict), ABR_DRV_ERR_FAULT);
+    ASSERT_EQ_INT(ctx.diag.stage, ABR_DRV_STAGE_READBACK);
+}
+
+// The signature also verifies over the shorter message, so only the byte count can
+// tell; a match over a message other than the caller's is a fault.
 TEST(short_stream_rejects) {
+    g_fake.signed_prefixes = 1;
     abr_drv_ctx_t ctx;
     abr_drv_ctx_init(&ctx);
     ASSERT_EQ_INT(abr_drv_load(&ctx, s_pk, s_sig), ABR_DRV_OK);
     ASSERT_EQ_INT(abr_drv_start(&ctx), ABR_DRV_OK);
     ASSERT_EQ_INT(abr_drv_stream_range(&ctx, s_msg, MSG_LEN - 4u, 1), ABR_DRV_OK);
-    expect_reject(abr_drv_finish(&ctx, s_pk, MSG_LEN, TOKEN, &s_verdict), ABR_DRV_ERR_SIG_INVALID);
+    expect_reject(abr_drv_finish(&ctx, s_pk, MSG_LEN, TOKEN, &s_verdict), ABR_DRV_ERR_FAULT);
+}
+
+// Zeroize leaves MSG_STROBE at 0, so a lost first strobe store ends the stream on
+// word 0 and every later MSG write is dropped; the byte counts still match.
+TEST(strobe_fault_ending_the_stream_early_is_caught) {
+    static const uint32_t values[] = {0x0u, 0x1u, 0x3u, 0x7u, 0xEu};
+    for (uint32_t k = 0; k < sizeof(values) / sizeof(values[0]); ++k) {
+        test_fixture_reset();
+        g_fake.signed_prefixes = 1;
+        g_fake.corrupt_strobe = 1u;
+        g_fake.corrupt_value = values[k];
+        expect_reject(verify(MSG_LEN), ABR_DRV_ERR_FAULT);
+        ASSERT_EQ_INT(s_diag.stage, ABR_DRV_STAGE_STREAM);
+        ASSERT_TRUE(g_fake.stream_len < MSG_LEN);
+    }
 }
 
 // Each byte count is checked on its own: either one disagreeing rejects.
@@ -293,7 +359,7 @@ static void expect_count_reject(int which) {
     } else {
         ctx.written_dup -= 4u;
     }
-    expect_reject(abr_drv_finish(&ctx, s_pk, MSG_LEN, TOKEN, &s_verdict), ABR_DRV_ERR_SIG_INVALID);
+    expect_reject(abr_drv_finish(&ctx, s_pk, MSG_LEN, TOKEN, &s_verdict), ABR_DRV_ERR_FAULT);
     ASSERT_EQ_INT(ctx.diag.stage, ABR_DRV_STAGE_VERDICT);
 }
 
@@ -342,8 +408,9 @@ TEST(bad_arguments) {
     ASSERT_EQ_INT(abr_mldsa87_verify(s_pk, s_sig, s_msg, MSG_LEN, 0xFFFFFFFFu, &s_verdict, NULL),
                   ABR_DRV_ERR_PARAM);
     // The verdict key: with it as the token, the first evaluation would cancel out.
-    ASSERT_EQ_INT(abr_mldsa87_verify(s_pk, s_sig, s_msg, MSG_LEN, 0xC3A5965Au, &s_verdict, NULL),
-                  ABR_DRV_ERR_PARAM);
+    ASSERT_EQ_INT(
+        abr_mldsa87_verify(s_pk, s_sig, s_msg, MSG_LEN, ABR_DRV_VERDICT_KEY, &s_verdict, NULL),
+        ABR_DRV_ERR_PARAM);
     ASSERT_EQ_INT(g_fake.verify_commands, 0);
 }
 
@@ -361,6 +428,84 @@ TEST(identity_mismatch) {
     ASSERT_EQ_INT(abr_drv_check_identity(), ABR_DRV_ERR_IDENTITY);
 }
 
+// A pass must mean the accelerator verified the caller's key, c~ and whole message.
+static void expect_pass_is_genuine(int rc, uint32_t len) {
+    if (rc != ABR_DRV_OK || s_verdict != TOKEN) {
+        ASSERT_EQ_INT(s_verdict, ~TOKEN);
+        return;
+    }
+    ASSERT_EQ_INT(g_fake.stream_len, len);
+    ASSERT_MEM_EQ(g_fake.stream, s_msg, len);
+    for (uint32_t i = 0; i < ABR_MLDSA87_PK_BYTES / 4u; ++i) {
+        uint32_t w;
+        memcpy(&w, s_pk + 4u * i, 4u);
+        ASSERT_EQ_INT(g_fake.verified_pubkey[i], w);
+    }
+    for (uint32_t i = 0; i < ABR_MLDSA87_CTILDE_BYTES / 4u; ++i) {
+        uint32_t w;
+        memcpy(&w, s_sig + 4u * i, 4u);
+        ASSERT_EQ_INT(g_fake.verified_ctilde[i], w);
+    }
+}
+
+#define SWEEP_LEN 23u
+
+// Every register write the driver makes, lost in turn, against a signature that also
+// verifies over every prefix of the message.
+TEST(no_single_lost_write_passes_a_different_input) {
+    test_fixture_reset();
+    ASSERT_EQ_INT(verify(SWEEP_LEN), ABR_DRV_OK);
+    const uint32_t writes = g_fake.write_count;
+    ASSERT_TRUE(writes > 1800u);
+    for (uint32_t k = 1; k <= writes; ++k) {
+        test_fixture_reset();
+        g_fake.signed_prefixes = 1;
+        g_fake.drop_write = k;
+        expect_pass_is_genuine(verify(SWEEP_LEN), SWEEP_LEN);
+    }
+}
+
+// Every MSG_STROBE write before the last, stored as every other value.
+TEST(no_single_corrupt_strobe_passes_a_different_input) {
+    test_fixture_reset();
+    ASSERT_EQ_INT(verify(SWEEP_LEN), ABR_DRV_OK);
+    const uint32_t strobes = g_fake.strobe_writes;
+    ASSERT_EQ_INT(strobes, SWEEP_LEN / 4u + 1u);
+    for (uint32_t n = 1; n < strobes; ++n) {
+        for (uint32_t v = 0; v < 16u; ++v) {
+            test_fixture_reset();
+            g_fake.signed_prefixes = 1;
+            g_fake.corrupt_strobe = n;
+            g_fake.corrupt_value = v;
+            expect_pass_is_genuine(verify(SWEEP_LEN), SWEEP_LEN);
+        }
+    }
+}
+
+// The last strobe must end the stream, and nothing readable says how many of its bytes
+// were taken, so a fault on it changes the final word's length and nothing else: a
+// message within three bytes of message_len, which no fixed-length signature covers.
+TEST(corrupt_final_strobe_changes_only_the_final_word) {
+    static const uint32_t lens[] = {20u, SWEEP_LEN};
+    for (uint32_t k = 0; k < sizeof(lens) / sizeof(lens[0]); ++k) {
+        const uint32_t len = lens[k];
+        const uint32_t whole = len & ~3u;
+        for (uint32_t v = 0; v < 16u; ++v) {
+            test_fixture_reset();
+            g_fake.signed_prefixes = 1;
+            g_fake.corrupt_strobe = len / 4u + 1u;
+            g_fake.corrupt_value = v;
+            const int rc = verify(len);
+            if (v == 0xFu) {
+                expect_reject(rc, ABR_DRV_ERR_TIMEOUT);
+                continue;
+            }
+            ASSERT_TRUE(g_fake.stream_len >= whole && g_fake.stream_len <= whole + 3u);
+            ASSERT_MEM_EQ(g_fake.stream, s_msg, whole);
+        }
+    }
+}
+
 int main(void) {
     RUN_TEST(valid_signature_verifies);
     RUN_TEST(diag_may_be_null);
@@ -368,6 +513,8 @@ int main(void) {
     RUN_TEST(inverse_result_rejects_and_is_reported);
     RUN_TEST(zero_result_rejects_and_is_reported);
     RUN_TEST(all_zero_ctilde_never_starts_the_accelerator);
+    RUN_TEST(all_ones_ctilde_never_starts_the_accelerator);
+    RUN_TEST(wrong_identity_never_starts_the_accelerator);
     RUN_TEST(early_valid_rejects);
     RUN_TEST(early_valid_with_matching_result_still_rejects);
     RUN_TEST(error_while_waiting_for_stream_ready);
@@ -382,6 +529,8 @@ int main(void) {
     RUN_TEST(second_evaluation_differs);
     RUN_TEST(done_event_arm_not_confirmed);
     RUN_TEST(stale_done_status_not_cleared);
+    RUN_TEST(stale_error_status_not_cleared);
+    RUN_TEST(stale_error_count_not_cleared);
     RUN_TEST(valid_without_a_done_event_is_a_stale_result);
     RUN_TEST(two_done_events_reject);
     RUN_TEST(done_status_clear_rejects);
@@ -391,7 +540,9 @@ int main(void) {
     RUN_TEST(trailing_zeroize_failure_after_a_pass_fails_closed);
     RUN_TEST(strobe_sequence_for_each_length);
     RUN_TEST(caller_ctilde_change_after_load_is_not_used);
+    RUN_TEST(public_key_change_after_load_rejects);
     RUN_TEST(short_stream_rejects);
+    RUN_TEST(strobe_fault_ending_the_stream_early_is_caught);
     RUN_TEST(byte_count_disagrees_rejects);
     RUN_TEST(duplicate_byte_count_disagrees_rejects);
     RUN_TEST(non_final_range_must_be_whole_words);
@@ -400,5 +551,8 @@ int main(void) {
     RUN_TEST(maximum_length_is_accepted);
     RUN_TEST(identity_matches);
     RUN_TEST(identity_mismatch);
+    RUN_TEST(no_single_lost_write_passes_a_different_input);
+    RUN_TEST(no_single_corrupt_strobe_passes_a_different_input);
+    RUN_TEST(corrupt_final_strobe_changes_only_the_final_word);
     return unit_report();
 }

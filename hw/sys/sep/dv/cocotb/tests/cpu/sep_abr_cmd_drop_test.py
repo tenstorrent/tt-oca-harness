@@ -42,8 +42,8 @@ _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 500_000
 
 # The driver's status, stage and diagnostics when the preload never appears:
-# ABR_DRV_ERR_STATE (-7) at ABR_DRV_STAGE_PRELOAD (5), nothing streamed, no done event.
-_REFUSED_LINE = "case 1 genuine: FAIL status=-7 stage=5 written=0 early=0 inv=0 nz=0 done=0"
+# ABR_DRV_ERR_STATE (-7) at ABR_DRV_STAGE_PRELOAD (6), nothing streamed, no done event.
+_REFUSED_LINE = "case 1 genuine: FAIL status=-7 stage=6 written=0 early=0 inv=0 nz=0 done=0"
 _ACCEPTED_LINE = "case 1 genuine: PASS"
 
 
