@@ -244,6 +244,10 @@ for the field (<<efuse-lock-field-encoding-table>>).
 
 The same permission semantics are reached through two independent
 mechanisms, and the guard enforces whichever is more restrictive (<<efuse-hardware-and-software-locks-table>>).
+The guard checks the target of a program or read when it is started: a
+locked target completes the operation with an error and sets the sticky
+`efuse_req_error` status without issuing a fuse command. A lock set after
+a command has been issued does not affect that command.
 
 [[efuse-hardware-and-software-locks-table]]
 [width="100%",cols="20%,40%,40%",options="header",]
@@ -382,8 +386,9 @@ is asserted.
 .eFuse secure-test behavior
 |=====================================================================================
 |Behavior |Description
-|Fuse Command Blocking |All fuse commands to the physical eFuse bank are blocked.
-The guard logic filters incoming requests and returns default responses.
+|Fuse Command Blocking |No fuse command is issued to the physical eFuse bank.
+Program and read starts complete with an error without issuing a command, the fuse sensing read is
+held back, and the guard returns default responses.
 
 |RMA Token Protection |RMA SOP and RMA Chiplet tokens are disconnected from
 shadow register outputs (set to zero), preventing token exposure during test.

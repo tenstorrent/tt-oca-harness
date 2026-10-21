@@ -7,9 +7,11 @@
 // program_read_back_enable_i requests post-program read-back.
 // program_addr_oob_i is computed upstream against the full-width CSR field because
 // casting to efuse_addr_t truncates upper bits.
-// Honors secure_tm_blocked_i, efuse_req_err_i, and optional program_req_timeout_* ;
-// sticky address errors clear with program_addr_error_clear_i.
-// is_programing_o and program_target_addr_o feed the guard while a program is active.
+// A start that secure_tm_blocked_i or program_locked_i refuses completes with an error without
+// issuing a command; a lock refusal also pulses program_blocked_o. An outstanding program ends
+// with an error on efuse_req_err_i, secure_tm_blocked_i, or the optional program_req_timeout_*.
+// Sticky address errors clear with program_addr_error_clear_i.
+// fuse_command_req_o is the request for the next cycle; the controller registers it.
 
 `include "prim_assert.sv"
 `include "ocah_registers.svh"
@@ -30,10 +32,9 @@ module efuse_program_interface #(
 
   input  logic        program_enable_i,  // Program operations allowed; a start while low completes
                                          // immediately with an error.
-  output logic        is_programing_o,  // High while a program command is outstanding, for the
-                                        // guard.
-  output efuse_addr_t program_target_addr_o,  // Fuse bit address of the outstanding program
-                                              // command; zero when idle.
+  input  logic        program_locked_i,  // program_addr_i is locked; a start then completes with an
+                                         // error.
+  output logic        program_blocked_o,  // One-cycle pulse when program_locked_i refuses a start.
 
   input efuse_addr_t program_addr_i,    // Fuse bit address to program, sampled on a start.
   input logic        program_data_in_i,  // Bit value to program; a start with zero is rejected with
@@ -58,15 +59,15 @@ module efuse_program_interface #(
 
   input logic efuse_req_err_i,          // Guard lock error; ends an outstanding program with an
                                         // error.
-  input logic secure_tm_blocked_i,      // Guard secure-test-mode block; ends an outstanding program
-                                        // with an error.
+  input logic secure_tm_blocked_i,      // Guard secure-test-mode block; refuses a start and ends an
+                                        // outstanding program with an error.
 
   input logic        program_req_timeout_en_i,  // Enables the response timeout for program
                                                 // operations.
   input logic [27:0] program_req_timeout_cycles_i,  // Response timeout in clock cycles.
 
-  output fuse_command_req_t  fuse_command_req_o,  // Program command to the guard; valid only while
-                                                  // waiting for the response.
+  output fuse_command_req_t  fuse_command_req_o,  // Program command for the next cycle; valid while
+                                                  // the next state waits for the response.
   input  fuse_command_resp_t fuse_command_resp_i,  // Filtered response to the program command.
 
   output logic is_program_timeout_debug_o  // One-cycle pulse when a program operation times out.
@@ -79,10 +80,11 @@ module efuse_program_interface #(
   logic [27:0] timeout_count_q, timeout_count_d;
   logic program_timeout_event;
 
-  fuse_command_req_t fuse_command_req_d, fuse_command_req_q;
+  logic program_req_valid;
 
   efuse_addr_t captured_program_addr;
   logic        captured_program_data;
+  logic        captured_program_read_back;
 
   // Program execution state machine
   typedef enum logic [1:0] {
@@ -92,17 +94,17 @@ module efuse_program_interface #(
 
 
   efuse_program_state_e program_state_q, program_state_d;
-  assign is_programing_o = (program_state_q == ST_PROGRAM_IDLE) ? 1'b0 : 1'b1;
-  assign program_target_addr_o = (program_state_q == ST_PROGRAM_IDLE) ? efuse_addr_t'(0) : captured_program_addr;
 
-  // Capture program address and data when idle
+  // Capture the program command when idle
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       captured_program_addr <= 'd0;
       captured_program_data <= 'd0;
+      captured_program_read_back <= 'd0;
     end else if (program_state_q == ST_PROGRAM_IDLE) begin
       captured_program_addr <= program_addr_i;
       captured_program_data <= program_data_in_i;
+      captured_program_read_back <= program_read_back_enable_i;
     end
   end
 
@@ -123,10 +125,11 @@ module efuse_program_interface #(
     program_done_d = program_done_q;
     program_busy_d = program_busy_q;
     program_read_back_data_d = program_read_back_data_q_n0_scan;
-    fuse_command_req_d = fuse_command_req_q;
+    program_req_valid = 1'b0;
 
     program_timeout_event = 1'b0;
     program_addr_error_d = 1'b0;  // Default: no address error
+    program_blocked_o = 1'b0;
 
     unique case (program_state_q)
       ST_PROGRAM_IDLE: begin
@@ -149,15 +152,16 @@ module efuse_program_interface #(
             program_done_d = 1'b1;
             program_err_d = 1'b1;
             program_addr_error_d = 1'b1;
+          end else if (secure_tm_blocked_i || program_locked_i) begin
+            program_state_d = ST_PROGRAM_IDLE;
+            program_busy_d = 1'b0;
+            program_done_d = 1'b1;
+            program_err_d = 1'b1;
+            program_blocked_o = !secure_tm_blocked_i;
           end else begin
             program_state_d = ST_WAIT_RESP;
             program_busy_d = 1'b1;
-            fuse_command_req_d.address = program_addr_i;
-            fuse_command_req_d.program_data = program_data_in_i;
-            fuse_command_req_d.command = program_read_back_enable_i ? efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK : efuse_pkg::FUSE_COMMAND_PROGRAM;
-            fuse_command_req_d.valid = 1'b1;
-            fuse_command_req_d.access_length_words = efuse_word_counter_t'(1);
-
+            program_req_valid = 1'b1;
           end
         end
       end
@@ -169,7 +173,6 @@ module efuse_program_interface #(
           program_done_d = 1'b1;
           program_busy_d = 1'b0;
           program_err_d = 1'b1;
-          fuse_command_req_d = FuseCommandReqDefault;
           program_state_d = ST_PROGRAM_IDLE;
 
         end else if (fuse_command_resp_i.valid) begin
@@ -177,7 +180,6 @@ module efuse_program_interface #(
           program_done_d = 1'b1;
           program_busy_d = 1'b0;
           program_err_d = fuse_command_resp_i.status;
-          fuse_command_req_d = FuseCommandReqDefault;
           program_state_d = ST_PROGRAM_IDLE;
 
           program_read_back_data_d = fuse_command_resp_i.data;
@@ -192,12 +194,14 @@ module efuse_program_interface #(
             program_done_d = 1'b1;
             program_busy_d = 1'b0;
             program_err_d = 1'b1;
-            fuse_command_req_d = FuseCommandReqDefault;
             program_state_d = ST_PROGRAM_IDLE;
 
             program_timeout_event = 1'b1;
-          end else if (program_req_timeout_en_i) begin
-            timeout_count_d = timeout_count_q + 1;
+          end else begin
+            program_req_valid = 1'b1;
+            if (program_req_timeout_en_i) begin
+              timeout_count_d = timeout_count_q + 1;
+            end
           end
         end
 
@@ -209,7 +213,6 @@ module efuse_program_interface #(
         program_done_d = 1'b1;
         program_err_d = 1'b1;
         program_read_back_data_d = EfuseProgramErrorData;
-        fuse_command_req_d = FuseCommandReqDefault;
       end
 
     endcase
@@ -223,11 +226,6 @@ module efuse_program_interface #(
   `OCAH_FF(program_read_back_data_q_n0_scan, program_read_back_data_d, efuse_data_t'(0), clk_i,
            rst_ni)
   `OCAH_FF(timeout_count_q, timeout_count_d, 'd0, clk_i, rst_ni)
-
-  // Fuse command output register: on the Class 2b secure scan chain
-  if (1'b1) begin : gen_fuse_cmd_req_s3c_scan
-    `OCAH_FF(fuse_command_req_q, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
-  end
 
   // Set-priority sticky latch: a new OOB pulse in the same cycle as a clear
   // wins (error is preserved). SW must read-then-clear.
@@ -247,10 +245,21 @@ module efuse_program_interface #(
   assign program_read_back_data_o = program_read_back_data_q_n0_scan;
   assign is_program_timeout_debug_o = program_timeout_event;
 
+  // A start issues the CSR command; a held command repeats the one captured at its start.
   always_comb begin
     fuse_command_req_o = FuseCommandReqDefault;
-    if (program_state_q == ST_WAIT_RESP) begin
-      fuse_command_req_o = fuse_command_req_q;
+    if (program_req_valid) begin
+      if (program_state_q == ST_PROGRAM_IDLE) begin
+        fuse_command_req_o.address = program_addr_i;
+        fuse_command_req_o.program_data = program_data_in_i;
+        fuse_command_req_o.command = program_read_back_enable_i ? efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK : efuse_pkg::FUSE_COMMAND_PROGRAM;
+      end else begin
+        fuse_command_req_o.address = captured_program_addr;
+        fuse_command_req_o.program_data = captured_program_data;
+        fuse_command_req_o.command = captured_program_read_back ? efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK : efuse_pkg::FUSE_COMMAND_PROGRAM;
+      end
+      fuse_command_req_o.valid = 1'b1;
+      fuse_command_req_o.access_length_words = efuse_word_counter_t'(1);
     end
   end
 
@@ -261,7 +270,11 @@ module efuse_program_interface #(
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       IllegalProgramStateFailsClosed_A,
-      ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |=> program_state_q == ST_PROGRAM_IDLE && !program_busy_o && program_done_o && program_error_o && !fuse_command_req_o.valid && program_read_back_data_o == EfuseProgramErrorData,
+      ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |=> program_state_q == ST_PROGRAM_IDLE && !program_busy_o && program_done_o && program_error_o && (program_go_i || !fuse_command_req_o.valid) && program_read_back_data_o == EfuseProgramErrorData,
+      clk_i, !rst_ni)
+  `OCAH_OT_ASSERT(
+      BlockedProgramIsNotIssued_A,
+      program_state_q == ST_PROGRAM_IDLE && program_go_i && (secure_tm_blocked_i || program_locked_i) |-> !fuse_command_req_o.valid ##1 program_state_q == ST_PROGRAM_IDLE && program_done_o && program_error_o,
       clk_i, !rst_ni)
   // verilog_format: on
 
