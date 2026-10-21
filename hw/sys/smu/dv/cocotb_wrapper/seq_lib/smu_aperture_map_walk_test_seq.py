@@ -38,9 +38,9 @@ S3: at each setting the first address of the window is forwarded to the SMC,
 S4: GLOBAL_BASE and REGION_SIZE written back to LOCAL_BASE and the RDL reset
     reach the ports and read back.
 
-A zero REGION_SIZE is not programmed: the crossbar rule it forms has
-``start == end``, which the address decoder's own map check rejects, and it
-closes the local window JTAG2AXI needs to reopen the aperture.
+A zero REGION_SIZE is not programmed here: it closes the local window JTAG2AXI
+needs to reopen the aperture. ``smu_xbar_zero_aperture_test`` drives the zero
+size of both apertures over the SEP debug bus.
 """
 
 from __future__ import annotations
