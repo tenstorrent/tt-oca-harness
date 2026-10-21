@@ -1360,7 +1360,7 @@ The frontdoor anchors are approved: the LSU and SI responses and read data, the 
 |PR-SMC |`sep_ext_to_smc_axi_req_o`. |observation tap
 |PR-DMACSR |The request at the DMA CSR target port. |observation tap
 |PR-ALIAS |The request at the input and at the output of the local-master alias remap: address and AxCACHE. |observation tap
-|PR-EXT-RSP |The B and R reply of the AXI Extension port: response, ID and, on R, RLAST. |observation tap
+|PR-EXT-RSP |The B and R reply of the AXI Extension port: response, ID and, on R, RLAST and data. |observation tap
 |PR-INFLT |The AW and AR address out of the inbound filter (`smn_inbound_filtered_axi_req`), before the global-to-local remap. |observation tap
 |PR-CPU |The AxPROT of the raw CPU LSU (AR, AW) and IFU (AR) requests in `u_sep_cpu`, before any remap. |observation tap
 |PR-DMA-RAW |The AxPROT of the raw secure DMA master request (`u_sep_dma_wrap.dma_axi_req_raw`), AR and AW. |observation tap
