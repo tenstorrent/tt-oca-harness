@@ -46526,6 +46526,81 @@ The leaf runs on demand in `wdt_uvm_extended`, not in `all`, `hosted` or `ci`.
 
 '''''
 
+[[sec-smc_external_reg_lane_test]]
+====== `smc_external_reg_lane_test`
+
+*Source Module*: `smc_external_reg_lane_test` (SV-UVM)
+
+*BFM / Model*: SEP_IN AXI VIP, a passive AW/W/B sampler and a sequence
+shadow derived from issued data and byte strobes. No new scoreboard feature.
+
+*Objective*: Check byte merges in six reset-unit external words, protection
+of the neighboring word and the resulting isolation output.
+
+*Expectation Sources*: `reset_unit.rdl` defines software-RW storage and
+reset values. `hw/sys/smc/doc/clk_rst.adoc`, Isolation Controls, defines
+REG OR (PINEN AND synchronized pin) OR (SMCEN AND FLR latch). Timing and
+Recovery distinguishes FLR counter readback from arrival in the reference
+domain. `doc/integrator/meta/ocah_gpio_table.csv` assigns Isolate Request to
+pad 53. Addresses, masks and defaults come from generated register collateral.
+
+*Test Coverage*: REG, PINEN, SS_CONFIG, SMCEN and both FLR counter words,
+with four single-byte strobes, two fixed sparse strobes, one seeded partial
+strobe and a null strobe. Nonstrobed neighbor lanes carry differing data.
+REG and PINEN exercise the isolation tap before the idle-source checks.
+
+*Test Procedure*: Require the FLR latch and SS_CONFIG lock clear, drive the
+isolation pin low, explicitly initialize PINEN to zero and read it back,
+then check the other reset baselines. Catalog readbacks must have known
+data on every inspected lane before value grading. For each word, issue eight
+writes, independently confirm AW/W/B geometry and payload, then compare
+readback with the byte-merge shadow. Check RW or lock neighbors and defined
+VIS fields. With REG or PINEN active, require the isolation output to reach
+the shadow and remain there for eight samples; PINEN uses the pin high,
+confirmed through VIS. For the other words, watch for any nonzero or unknown
+isolation output throughout the write/restore leg. Restore and read back each
+word and any RW neighbor. Require the FLR latch idle and no cool reset.
+Release the externally driven pad and stop the sampler with a bound.
+
+*Checkers*:
+
+[cols="1,2",options="header"]
+|===
+|Checker |Claim
+|`CHK-EXTREG-LANE` |Partial-write readback equals the byte-merge shadow
+|`CHK-EXTREG-NULL` |Null write leaves the target unchanged
+|`CHK-EXTREG-NEIGHBOR` |The RW or lock word on nonstrobed neighbor lanes remains unchanged
+|`CHK-EXTREG-VIS` |Defined VIS fields remain at idle while the FLR counter word is written
+|`CHK-EXTREG-EFFECT` |REG/PINEN isolation reaches the expected output within 32 SMC cycles and remains there for eight samples
+|`CHK-EXTREG-IDLE` |SS_CONFIG, SMCEN and FLR counter legs produce no isolation request, including transient or unknown values
+|`CHK-EXTREG-STIMULUS` |Exactly one AW/W/B is observed per matrix write with the issued address, size, payload, strobes, ID and valid response shape; failures terminate
+|`CHK-EXTREG-SETUP` |Baselines, pin synchronization, restores and reset scope hold; failures terminate
+|`CHK-NONVAC` |85 memory accesses and 39 fixed CSR accesses plus VIS polls complete; each word has successful readback of changes covering all four lanes
+|`CHK-MEM-RESP`, `CHK-CSR-RESP`, `CHK-FUSE-SENSE-DONE` |Bring-up and checked frontdoor accesses complete with OKAY
+|===
+
+*Known Limitations*: As `clk_rst.adoc`, Isolation Controls, specifies, PINEN
+clears on cold reset only while the synchronized isolation pin is low.
+The scenario takes ownership of the pin after cold reset, so its PINEN
+baseline is explicitly initialized, not evidence of the cold-reset value.
+FLR is not driven, so SMCEN is exercised only with its
+latch low. SS_CONFIG consumers and FLR countdown behavior are not graded.
+SMC-domain counter readback does not prove reference-domain arrival.
+Lock behavior and past-extent accesses are excluded. The last word is read
+and written with AxSIZE=2 to avoid the unmapped next word; all other matrix
+writes use aligned 64-bit beats. Null BRESP codes are observations only;
+completion, ID and response shape remain prerequisites. There is no burst
+or SYS_IN traffic. Wait and stability windows are bench measurement limits.
+
+*Pass Criteria*: All checks pass. Used alone,
+`+SMC_EXTREG_LANE_SEQUENCE_NEGATIVE` changes one expectation each for LANE,
+NULL, NEIGHBOR, VIS, EFFECT and IDLE per pass: six failures per pass, 96 for
+sixteen passes. STIMULUS, SETUP, NONVAC and response checks are unchanged.
+Enrolled on demand in
+`csr_uvm_extended`, not scheduled hosted tiers.
+
+'''''
+
 [[smc-deferred-disposition]]
 ==== SMC deferred and OUT disposition
 
@@ -47473,6 +47548,7 @@ to make; its *Closes when* cell names the ruling that closes it.
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
 |`smc_mailbox_cool_reset_recovery_test` |`mailbox_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_external_reg_lane_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_fabric_reg_clock_gate_test` |`cg_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf

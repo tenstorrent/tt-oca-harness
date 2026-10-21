@@ -809,6 +809,19 @@ selection; it does not seed expected data from a DUT read. Unsupported access
 shapes stop a required feature. Other writers and reset with outstanding
 catalogued traffic are not supported.
 
+The external-register lane scenario reads `smc_tb_if.isolate_req`, which
+mirrors `tb_isolate_req_o`, and drives only the Isolate Request pad through
+`gpio_ext_drive_en` and `gpio_ext_drive_value`. These controls default to zero
+and are restored after the scenario. Pin synchronization is observed through
+the RDL-defined VIS register, not a new internal synchronizer tap.
+The sequence-owned SEP_IN AW/W/B sampler confirms the address, size, data,
+strobes and response shape for sequential matrix writes through `mon_cb`.
+An event watcher records nonzero or unknown isolation output across each
+idle-source write/restore leg. REG/PINEN traffic provides positive controls
+for the same output tap. Readback is compared against a shadow computed from
+the issued data and strobes, independently of DUT readback. No shared
+scoreboard feature is added.
+
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
 subscribes to the SEP_IN monitor stream, rebuilds a shadow of the

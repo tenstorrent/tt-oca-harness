@@ -162,13 +162,24 @@ name = "mailbox_uvm_extended"
 expected_count = 1
 tests = ["smc_mailbox_cool_reset_recovery_test"]
 
+[[tests]]
+# External reset-unit byte lanes, neighbors and isolation effects; run on demand.
+name = "smc_external_reg_lane_test"
+module = { uvm = "smc_external_reg_lane_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "csr", "reset"]
+run_modes = ["smoke"]
+
 [[groups]]
-# Register-block CSR and pipelined lock scenarios.
+# Register-block CSR, pipelined lock and external-register lane scenarios.
 name = "csr_uvm_extended"
-expected_count = 2
+expected_count = 3
 tests = [
     "smc_regblock_sparse_strobe_test",
     "smc_lock_pipelined_write_test",
+    "smc_external_reg_lane_test",
 ]
 
 [[groups]]

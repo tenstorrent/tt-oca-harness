@@ -27,6 +27,9 @@ interface smc_tb_if;
   logic powergood  = 1'b0;
   logic rst_cold_n = 1'b0;
   logic rst_cool_n = 1'b1;
+  logic [31:0] isolate_req;
+  logic [smc_pkg::NumGpioWraps-1:0] gpio_ext_drive_en = '0;
+  logic [smc_pkg::NumGpioWraps-1:0] gpio_ext_drive_value = '0;
 
   // Reset-unit outputs (driven by the DUT top).
   logic powergood_stable;
