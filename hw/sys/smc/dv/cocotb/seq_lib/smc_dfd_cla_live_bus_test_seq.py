@@ -64,17 +64,26 @@ The actions are then driven with an activating pair:
 The CLA mux is then put in normal mode with ``Finegraintime`` set and moved
 to its identifier mode; the snapshot has to move with each.
 
-Last, node 0's other three pairs select the first match event under a
+Node 0's other three pairs then select the first match event under a
 relation the match phase measured activating on it, with the bus left in the
 state that event follows, and all four pairs of node 0 name destination 1,
 so the chain moves to node 1 with node 0's pairs still holding, and pairs
 whose relation holds sit on a node that is not current.
+
+Last, ``CDbgMuxSelLo`` is written with a distinct non-zero value in every
+field and read back, then with the complement of each field and read back;
+every field is read-write, so each readback is the written word. It is then
+written in toggle mode under identifier 0, the identifier its description
+gives the mode, read back, and the node 0 pair 0 snapshot is read 16 times.
+The toggle-mode bus content is not described, so those snapshots are logged
+and not compared.
 """
 
 from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from cocotb.utils import get_sim_time
 
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -110,6 +119,19 @@ _LOGIC_SWITCHES = 4
 _HALT_MASK_LOWEST = 0x1
 _LOW_BYTE = 0xFF
 _WORD = (1 << 64) - 1
+# dfd_cla.rdl CDbgMuxSelLo.Dbmmode: 3 is toggle mode.
+_DBM_MODE_TOGGLE = 3
+# CDbgMuxSelLo field values with every field non-zero and the eight segment
+# selects distinct; the second write is the complement of each field.
+_MUXSEL_FIELDS = {
+    **{f"Muxselseg{seg}": seg + 1 for seg in range(8)},
+    "Rsvd159": 0x55,
+    "Finegraintime": 1,
+    "Dbmid": 0x2A,
+    "Dbmmode": DBM_MODE_NORMAL,
+}
+_TOGGLE_SNAPSHOTS = 16
+_FENCE = ("EXISTING_LEGS", "FIELD_WRITE", "TOGGLE", "RESTORE")
 
 
 class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
@@ -126,7 +148,15 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         self.running_action = -1
         self.logic_results: dict[tuple[int, int], bool] = {}
         self.mux_snapshots: list[int] = []
+        self.toggle_snapshots: list[int] = []
         self.value_checks = 0
+        self.fence: list[tuple[str, int, int]] = []
+        self._fence_accesses = 0
+
+    def _mark(self, term: str) -> None:
+        """Close a fence term with its sim time and the accesses it issued."""
+        self.fence.append((term, int(get_sim_time("ps")), self.accesses - self._fence_accesses))
+        self._fence_accesses = self.accesses
 
     # -- register helpers -------------------------------------------------
 
@@ -494,6 +524,61 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         )
         self.value_checks += 1
 
+    async def _muxsel_fields(self) -> None:
+        """Write every CDbgMuxSelLo field, read it back, then the same with each field complemented."""
+        reg = cla_register("CDbgMuxSelLo")
+        complement = {
+            name: value ^ ((1 << cla_field(reg, name).width) - 1)
+            for name, value in _MUXSEL_FIELDS.items()
+        }
+        assert complement["Dbmmode"] == DBM_MODE_IDENTIFIER
+        pairs = []
+        for values, label in ((_MUXSEL_FIELDS, "fields"), (complement, "fields_inv")):
+            word = pack_fields(reg, values)
+            await self._write(reg, word, label)
+            readback = await self._read(reg, f"{label}_rb")
+            assert readback == word, (
+                f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word:016x}, every field "
+                f"read-write, reads 0x{readback:016x} (differing bits 0x{readback ^ word:016x})"
+            )
+            pairs.append((word, readback))
+            self.value_checks += 1
+        (w1, r1), (w2, r2) = pairs
+        cocotb.log.info(
+            "CHK-CLA-LIVE-MUXSEL-FIELDS: write1=0x%016x rb1=0x%016x; write2=0x%016x "
+            "rb2=0x%016x; every field of CDbgMuxSelLo, Muxselseg4..7 and Rsvd159 included, "
+            "read back as written; access width %d bytes, one access per write and per read",
+            w1,
+            r1,
+            w2,
+            r2,
+            reg.width_bytes,
+        )
+
+    async def _toggle_mode(self) -> None:
+        """CDbgMuxSelLo in toggle mode under identifier 0, then 16 snapshots."""
+        reg = cla_register("CDbgMuxSelLo")
+        word = pack_fields(reg, {"Dbmmode": _DBM_MODE_TOGGLE, "Dbmid": 0})
+        await self._write(reg, word, "toggle")
+        readback = await self._read(reg, "toggle_rb")
+        assert readback == word, (
+            f"{reg.path} @ 0x{reg.addr:08x}: wrote Dbmmode=3 Dbmid=0 and every other field 0 "
+            f"(0x{word:016x}), reads 0x{readback:016x}"
+        )
+        self.value_checks += 1
+        mode = cla_field(reg, "Dbmmode")
+        dbmid = cla_field(reg, "Dbmid")
+        for index in range(_TOGGLE_SNAPSHOTS):
+            self.toggle_snapshots.append(await traced_bus(self, f"toggle_snap{index}"))
+        cocotb.log.info(
+            "CHK-CLA-LIVE-TOGGLE-MODE: CDbgMuxSelLo rb Dbmmode=%d Dbmid=%d (0x%016x, every other "
+            "field 0); snapshots %s (observed, not compared: LINKED-ISSUE SF-020, SF-024)",
+            (readback & mode.mask) >> mode.offset,
+            (readback & dbmid.mask) >> dbmid.offset,
+            readback,
+            " ".join(f"{v & 0xFFFFFFFF:08x}:{v >> 32:08x}" for v in self.toggle_snapshots),
+        )
+
     # -- body -------------------------------------------------------------
 
     async def body(self) -> None:
@@ -570,6 +655,11 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
             "moved to node %d",
             self.node_after_move,
         )
+        self._mark("EXISTING_LEGS")
+        await self._muxsel_fields()
+        self._mark("FIELD_WRITE")
+        await self._toggle_mode()
+        self._mark("TOGGLE")
 
         restore = [cla_register(f"CDbgNode0Eap{e}") for e in range(_EAPS)]
         restore += [cla_register(f"CDbgClaCounter{i}Cfg") for i in range(_COUNTERS)]
@@ -600,3 +690,15 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         restore += [dfd_register("dfx_ctrl/DEBUG_BUS_MUX"), clk]
         for reg in restore:
             await self._write(reg, reg.reset_word, "restore")
+        self._mark("RESTORE")
+        terms = tuple(term for term, _, _ in self.fence)
+        times = [t for _, t, _ in self.fence]
+        assert terms == _FENCE, f"fence terms {terms}, expected {_FENCE}"
+        assert all(b > a for a, b in zip(times, times[1:])), f"fence times {self.fence}"
+        assert all(count > 0 for _, _, count in self.fence), f"fence counts {self.fence}"
+        cocotb.log.info(
+            "CHK-NONVAC: %s (%s); %d accesses",
+            "<".join(terms),
+            ", ".join(f"{term} count={count} t={t}ps" for term, t, count in self.fence),
+            self.accesses,
+        )
