@@ -337,7 +337,7 @@ name = "sep_fabric_deadspace_decode_test"
 module = "system.sep_fabric_deadspace_decode_test"
 seed = 1
 timeout_sec = 1800
-tags = ["fabric", "decode", "negative", "system", "subsystem"]
+tags = ["fabric", "decode", "negative", "system", "subsystem", "harness_dv_holes"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+sep_ext_trng_axil_responder"]
@@ -755,7 +755,7 @@ seed = 1
 # No reseed: every run runs the strap-0, strap-1 and SEC_DIS legs; the seed selects
 # only the pulse width, its phase and the strap-leg order.
 timeout_sec = 3600
-tags = ["reset", "dft", "scan", "efuse", "system", "subsystem", "scan_secure_tm"]
+tags = ["reset", "dft", "scan", "efuse", "system", "subsystem", "scan_secure_tm", "harness_dv_holes"]
 tools = ["vcs"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -797,7 +797,7 @@ module = "system.sep_timer_clock_contract_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem"]
+tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem", "harness_dv_holes"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive"]
@@ -810,7 +810,7 @@ module = "system.sep_timer_clock_contract_test"
 seed = 1
 # No reseed: the dbg_rstb_i cell is directed; the main entry carries the drawn values.
 timeout_sec = 3600
-tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem"]
+tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem", "harness_dv_holes"]
 run_modes = ["no_cpu"]
 tools = ["vcs"]
 target = "default"

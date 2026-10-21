@@ -465,7 +465,7 @@ module = "efuse.sep_efuse_secure_tm_matrix_rand_test"
 seed = 1
 reseed = 9
 timeout_sec = 3600
-tags = ["efuse", "secure_tm", "rand_rep", "subsystem"]
+tags = ["efuse", "secure_tm", "rand_rep", "subsystem", "harness_dv_holes"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
