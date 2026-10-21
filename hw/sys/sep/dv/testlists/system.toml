@@ -552,7 +552,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# AXI Extension port window for the LSU and the System Interface, the eFuse shim window and the SI bursts. Real PROD fuse sense.
+# AXI Extension port window for the LSU and the System Interface, the eFuse shim window and the SI bursts. Real PROD fuse sense. The bench responder answers the port with seeded replies.
 name = "sep_fabric_extension_port_window_test"
 module = "system.sep_fabric_extension_port_window_test"
 seed = 1
@@ -561,6 +561,7 @@ timeout_sec = 3600
 tags = ["fabric", "extension", "inbound_filter", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+args = ["+sep_ext_port_responder"]
 
 [[tests]]
 # Response code and data of every graded address-map row cell, the OTBN AxCACHE cells and the crypto-region burst refusal. Real PROD fuse sense.
