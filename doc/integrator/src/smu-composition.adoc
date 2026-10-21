@@ -136,6 +136,10 @@ rule. The apertures are driven as follows:
   boundaries as `smc_global_base_o` (56-bit) / `smc_region_size_o` (32-bit).
   `REGION_SIZE` resets to `0x0100_0000` (16 MiB).
 
+A region size of 0 disables that aperture: no address hits it, so its requests
+route as if it had no rule (`ext_out` for `sep_out` and `smc_out`, `DECERR` for
+`ext_in`). SEP BL0 relies on this around its DMA into ICCM.
+
 SEP, SMC, and `smu_axi_xbar` all run on `clk_smu_i`, so these
 quasi-static CSR fields need no clock-domain crossing. The crossbar's
 address arithmetic is done on 57-bit widened sums. For where unmatched

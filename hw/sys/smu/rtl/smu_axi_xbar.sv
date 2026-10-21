@@ -67,22 +67,30 @@ module smu_axi_xbar
   // not connected to ext_out, so its unmatched accesses still decode-error.
   smu_axi_xbar_pkg::addr_rule_t [smu_axi_xbar_pkg::NumAddrRules-1:0] addr_map;
 
-  // reject when sep_region_size_i is 0 by setting to an arbitrary all 1s start and end address
   function automatic smu_axi_xbar_pkg::addr_rule_t aperture_rule(
       int unsigned idx, logic [55:0] base, logic [31:0] size);
-    aperture_rule.idx = idx;
-    if (size == '0) begin
-      aperture_rule.start_addr = '1;
-      aperture_rule.end_addr   = 57'(56'('1));
-    end else begin
-      aperture_rule.start_addr = base;
-      aperture_rule.end_addr   = 57'(base) + 57'(size);
-    end
+    aperture_rule.idx        = idx;
+    aperture_rule.start_addr = base;
+    aperture_rule.end_addr   = 57'(base) + 57'(size);
   endfunction
 
+  // A zero-size aperture decodes as no rule, but addr_decode accepts no empty range (start < end,
+  // or end == '0 for "to the end"), and its last matching rule wins. So a zero-size aperture takes
+  // the other aperture's rule, which changes nothing, or, with both zero, the top byte routed to
+  // ext_out (idx 2), which decodes as no rule: sep_out and smc_out send every unmatched address
+  // there, and ext_in, not connected to it, gets DECERR.
+  smu_axi_xbar_pkg::addr_rule_t sep_rule, smc_rule, no_rule;
+
   always_comb begin
-    addr_map[0] = aperture_rule(32'd0, sep_global_base_addr_i, sep_region_size_i);
-    addr_map[1] = aperture_rule(32'd1, smc_global_base_addr_i, smc_region_size_i);
+    sep_rule           = aperture_rule(32'd0, sep_global_base_addr_i, sep_region_size_i);
+    smc_rule           = aperture_rule(32'd1, smc_global_base_addr_i, smc_region_size_i);
+    no_rule.idx        = 32'd2;
+    no_rule.start_addr = '1;
+    no_rule.end_addr   = 57'(56'('1)) + 57'd1;
+    addr_map[0] = (sep_region_size_i != '0) ? sep_rule :
+                  (smc_region_size_i != '0) ? smc_rule : no_rule;
+    addr_map[1] = (smc_region_size_i != '0) ? smc_rule :
+                  (sep_region_size_i != '0) ? sep_rule : no_rule;
   end
 
   // =========================================================================
