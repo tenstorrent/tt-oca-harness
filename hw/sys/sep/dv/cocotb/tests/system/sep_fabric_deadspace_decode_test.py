@@ -7,27 +7,28 @@ RANDCFG: known wrap-offset anchors every seed, plus seed-selected dead offsets
 inside each block window; the TRNG passthrough legs draw their addresses, data,
 leg order, burst length and split-beat code pairs from the seed.
 
-A write or read past a block's allocated size must be refused, and no live
-register in that block may change. Where the specification states the
-past-extent code, CHK-DEADSPACE-REFUSE grades it exactly: DECERR in the ABR
-window (``adams_bridge.adoc``, "abr-aperture-decode") and in the SPI controller
-window (``peripheral_subsystem.adoc``). Every probe uses the CPU-LSU splice
-(``s_axi``), not the SEP inbound AXI port. The Past Extent cells of the
-generated memory map (``regs/gen/adoc/memory_map.adoc``, included by
-``memory_map.adoc``) state the code and read data "as seen at its inbound AXI
-port" only, so they state no answer on this path. For every other window the
-probe therefore grades any error response (DECERR or SLVERR), and a read word
-only as not the value of a live register. The TRNG and crypto-burst checks
-below grade DECERR.
+A write or read past a block's allocated size must answer the past-extent
+response of its unit, and no live register in that block may change.
+CHK-DEADSPACE-REFUSE grades the response exactly in every window except TRNG:
+``hw/sys/sep/regs/sep.rdl`` sets ``<unit>->ocah_past_extent_resp`` to DECERR,
+``0xBADCAB1E`` / DECERR for secure_dma, wdt_timer, aes, otbn, abr, csrng, edn,
+entropy_source, sep_lifecycle_ctrl, km_mailbox_sep and the SPI controller, with
+no path qualifier. A read must answer DECERR with the word ``0xBADCAB1E``, and
+a write must answer DECERR. The values are read from the generated
+``regs/gen/py/sep_memory_map.py`` (built from ``sep.rdl``) through
+``env/sep_decode_resp.py``. For ABR (``adams_bridge.adoc``,
+"abr-aperture-decode") and the SPI controller (``peripheral_subsystem.adoc``)
+the prose also states DECERR, and the window build checks that the RDL agrees.
+Every probe uses the CPU-LSU splice (``s_axi``).
 
-OBS-DEADSPACE-CODE (logged only): the exact response code and read data of
-every past-extent probe, with the code the specification states for its
-window on this path, or ``none``. A checker that only inspects the
-response would pass the day the RTL starts answering DECERR while
-still writing the register, so every probe reads back the window's live
-registers as well. ``memory_map.adoc`` states the rule: the fabric refuses an
-address past the extent a unit allocates, and such an access never
-reaches a unit.
+OBS-DEADSPACE-CODE (logged only): the response code and read data of every
+TRNG-window probe. ``sep.rdl`` gives that window no past-extent response; its
+code is graded under CHK-TRNG-UNOWNED. A checker that only inspects the
+response would pass the day the RTL starts answering DECERR while still writing
+the register, so every probe reads back the window's live registers as well.
+The past extent is the part of the aperture that no register backs (Decoded
+Extent, generated memory map), so a probe that moves a live register has
+aliased onto it.
 
 Every probe in the set is asserted, the wrapping anchors included; the
 contract is not carried by a probe that is logged or waived.
@@ -222,8 +223,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         refused = 0
         aliased = 0
         accepted = 0
-        # Probes refused with a code other than the one the specification
-        # states for the window (SepDeadspace.probe(), "answered code").
+        # Probes that answered a code or read word other than the sep.rdl
+        # Past Extent response (SepDeadspace.probe(), "answered code").
         wrong_code = 0
         fails: list[str] = []
         # (op, addr, resp, refused) of every probe of an adopter window.
@@ -246,19 +247,22 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 fails.extend(hit)
                 if any("changed live" in f for f in hit):
                     aliased += 1
-                if any("resp=" in f for f in hit):
+                if any("resp=OKAY" in f for f in hit):
                     accepted += 1
-                if any("answered code" in f for f in hit):
+                elif any("answered code" in f for f in hit):
                     wrong_code += 1
                 for line in hit:
                     self.logger.error("CHK-DEADSPACE FAIL [%s]: %s", tag, line)
             else:
                 refused += 1
                 self.logger.info(
-                    "CHK-DEADSPACE-REFUSE PASS: %s %s 0x%08x refused (%s)",
+                    "CHK-DEADSPACE-REFUSE PASS: %s %s 0x%08x resp=%s rdata=%s expected=%s (%s)",
                     item.window,
                     item.op,
                     item.addr,
+                    _RESP_NAME.get(dead.last_resp, str(dead.last_resp)),
+                    "n/a" if dead.last_rdata is None else f"0x{dead.last_rdata:08x}",
+                    dead.last_expected,
                     tag,
                 )
 
@@ -342,17 +346,6 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             len(DEADSPACE_ANCHORS),
             cfg.seed,
         )
-        # Reported, not asserted: this test grades refusal only, not the code.
-        for line in dead.flavour_findings:
-            self.logger.info("DEADSPACE-FLAVOUR: %s", line)
-        if dead.flavour_findings:
-            self.logger.info(
-                "DEADSPACE-FLAVOUR: %d refusal(s) used an error response other "
-                "than DECERR. The access was refused, "
-                "which is the asserted contract.",
-                len(dead.flavour_findings),
-            )
-
         # Adjudicate refuse/no-alias first and log their verdicts, then the
         # burst contract, so a burst failure cannot stop the other two
         # summaries from reaching the log.
@@ -368,11 +361,13 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             )
             raise AssertionError(
                 f"CHK-DEADSPACE-REFUSE FAIL: {accepted} probe(s) accepted OKAY, "
-                f"{wrong_code} answered a code other than the stated one and "
+                f"{wrong_code} answered a code or read word other than the sep.rdl one and "
                 f"{aliased} aliased a live register"
             )
         self.logger.info(
-            "CHK-DEADSPACE-REFUSE PASS: all %d dead offsets were refused", len(cfg.probes)
+            "CHK-DEADSPACE-REFUSE PASS: all %d dead offsets answered the sep.rdl "
+            "past-extent response (TRNG: refused, code graded below)",
+            len(cfg.probes),
         )
         self.logger.info(
             "CHK-DEADSPACE-NO-ALIAS PASS: no allocated register moved across any probe"
