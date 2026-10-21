@@ -80,8 +80,9 @@ module smc_cpu_ctrl_wrap #(
   output logic [NUM_CPU_CORES-1:0]                core_reset_n_n0_scan_o,  // Active-low per-core reset from
                                                                            // RESET_CTRL or a reset pulse,
                                                                            // registered on clk_smc_i and low
-                                                                           // while warm reset is asserted; a
-                                                                           // software assertion waits for the
+                                                                           // while warm reset or the uncore
+                                                                           // reset is asserted; a software
+                                                                           // assertion waits for the
                                                                            // cluster to drain or, in timeout
                                                                            // mode, for the RESET_TIMEOUT
                                                                            // timeout.
@@ -171,13 +172,25 @@ module smc_cpu_ctrl_wrap #(
   logic [NUM_CPU_CORES-1:0] gated_core_reset_n;
   logic                     gated_uncore_reset_n;
 
+  // An uncore reset also resets every core: a core kept running across it would resume
+  // coherence transactions (e.g. a pending ProbeAck) that the reset system bus no longer tracks.
+  logic [NUM_CPU_CORES-1:0] uncore_core_reset_n;
+
+  prim_and2 #(
+    .Width(NUM_CPU_CORES)
+  ) u_uncore_core_reset_and (
+    .in0_i ({NUM_CPU_CORES{gated_uncore_reset_n}}),
+    .in1_i (gated_core_reset_n),
+    .out_o (uncore_core_reset_n)
+  );
+
   always_ff @(posedge clk_smc_i or negedge rst_warm_smc_clk_ni) begin
     // flop both to prevent glitches
     if (~rst_warm_smc_clk_ni) begin
       core_reset_n_n0_scan_o <= {(NUM_CPU_CORES){1'b0}};
       cluster_uncore_reset_n_n0_scan_o <= 1'b0;
     end else begin
-      core_reset_n_n0_scan_o <= gated_core_reset_n;
+      core_reset_n_n0_scan_o <= uncore_core_reset_n;
       cluster_uncore_reset_n_n0_scan_o <= gated_uncore_reset_n;
     end
   end
