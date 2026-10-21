@@ -9,7 +9,8 @@
 // casting to efuse_addr_t truncates upper bits.
 // A start that secure_tm_blocked_i or program_locked_i refuses completes with an error without
 // issuing a command; a lock refusal also pulses program_blocked_o. An outstanding program ends
-// with an error on efuse_req_err_i, secure_tm_blocked_i, or the optional program_req_timeout_*.
+// with an error on efuse_req_err_i or the optional program_req_timeout_*; secure_tm_i is static
+// after boot so a program already in flight completes normally.
 // Sticky address errors clear with program_addr_error_clear_i.
 // fuse_command_req_o is the request for the next cycle; the controller registers it.
 
@@ -59,8 +60,8 @@ module efuse_program_interface #(
 
   input logic efuse_req_err_i,          // Guard lock error; ends an outstanding program with an
                                         // error.
-  input logic secure_tm_blocked_i,      // Guard secure-test-mode block; refuses a start and ends an
-                                        // outstanding program with an error.
+  input logic secure_tm_blocked_i,      // Guard secure-test-mode block; refuses a start with an
+                                        // error but does not abort a program already in flight.
 
   input logic        program_req_timeout_en_i,  // Enables the response timeout for program
                                                 // operations.
@@ -167,8 +168,8 @@ module efuse_program_interface #(
       end
 
       ST_WAIT_RESP: begin
-        // If req is blocked from a shadow reg lock, or physical efuse returned error, or secure_tm blocked it
-        if (efuse_req_err_i || fuse_command_resp_i.status == 1'b1 || secure_tm_blocked_i) begin
+        // If req is blocked from a shadow reg lock, or physical efuse returned error
+        if (efuse_req_err_i || fuse_command_resp_i.status == 1'b1) begin
 
           program_done_d = 1'b1;
           program_busy_d = 1'b0;

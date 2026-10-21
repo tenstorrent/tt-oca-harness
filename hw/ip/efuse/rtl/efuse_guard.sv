@@ -14,7 +14,8 @@
 // - Lock and secure-TM status are exported for that start check.
 // - efuse_err_o sets when an interface reports a lock-refused start and sticks until
 //   error_clear_i.
-// - The command response is zeroed while secure_tm_i is set.
+// - The command response is passed through unmodified; secure_tm_i is static after boot
+//   so a command already in flight completes normally.
 
 module efuse_guard #(
   parameter int unsigned EFUSE_FIELDS     = 1,  // eFuse field-map entry count.
@@ -60,8 +61,7 @@ module efuse_guard #(
 
   input fuse_command_resp_t fuse_command_resp_i,  // Fuse command response from the SHIM.
   output fuse_command_resp_t fuse_command_resp_filtered_o,  // Fuse command response to the
-                                                            // controller; zero under secure test
-                                                            // mode.
+                                                            // controller; passed through unmodified.
 
   input efuse_map_t shadow_regs_i,      // Shadow eFuse map supplying the per-field read and write
                                         // lock bits.
@@ -120,9 +120,7 @@ module efuse_guard #(
   assign is_read_locked_o = is_read_locked;
   assign secure_tm_blocked_o = secure_tm_i;
 
-  localparam fuse_command_resp_t FuseCommandRespDefault = '0;
-
-  assign fuse_command_resp_filtered_o = secure_tm_i ? FuseCommandRespDefault : fuse_command_resp_i;
+  assign fuse_command_resp_filtered_o = fuse_command_resp_i;
 
   always_ff @(posedge clk_i) begin
     if (!rst_ni) begin
