@@ -1,23 +1,23 @@
 diff --git a/DOC/integration_guide/assets/.gitignore b/DOC/integration_guide/assets/.gitignore
 new file mode 100644
-index 000000000..b9ae69847
+index 0000000..b9ae698
 --- /dev/null
 +++ b/DOC/integration_guide/assets/.gitignore
 @@ -0,0 +1 @@
 +gen_*
 diff --git a/DOC/integration_guide/integrator.adoc b/DOC/integration_guide/integrator.adoc
-index 340730f7c..0c926c96b 100644
+index b77f7ec..487f413 100644
 --- a/DOC/integration_guide/integrator.adoc
 +++ b/DOC/integration_guide/integrator.adoc
-@@ -758,6 +758,7 @@ and capture.
+@@ -827,6 +827,7 @@ and capture.
  instance of [.monospaced]#++AOU_SOC_GFMUX_LVT++#) that selects the reset source for
  [.monospaced]#++AOU_CORE++#:
-
+ 
 +[ditaa, target=gen_aou_modescan.png]
  ....
                            TIEL_DFT_MODESCAN
                                  |
-@@ -766,7 +767,7 @@ instance of [.monospaced]#++AOU_SOC_GFMUX_LVT++#) that selects the reset source
+@@ -835,7 +836,7 @@ instance of [.monospaced]#++AOU_SOC_GFMUX_LVT++#) that selects the reset source
    ~r_sw_reset & I_RESETN |  I_A        |
    (functional SW reset)  |   GFMUX     |---> w_DFTED_sw_resetn ---> AOU_CORE.I_RESETN
                           |  I_B        |
@@ -25,19 +25,19 @@ index 340730f7c..0c926c96b 100644
 +  AOU_SOC_BUF(1'b0)      |             |
    (scan bypass: low)     +-------------+
  ....
-
-@@ -1415,6 +1416,7 @@ the test list.
- [[aou-ig-architecture]]
- === 7.1 Architecture
-
+ 
+@@ -1512,6 +1513,7 @@ One bench with four tops. The main top, [.monospaced]#++tb/tb_top.sv++# (T1), pu
+ are smaller benches for the register file alone, the L3 protocol model
+ against the FDI checker, and the AXI agents in loopback.
+ 
 +[ditaa, target=gen_aou_dataflow.png]
  ....
-                       AXI SI                              AXI MI
+                 AXI SI (per RP)                          AXI MI (per RP)
    +------------------+             +------------------+             +------------------+
-@@ -1591,6 +1593,7 @@ All register information lives in the SystemRDL source file
+@@ -1671,6 +1673,7 @@ All register information lives in the SystemRDL source file
  single file -- there is no separate register spreadsheet or
  hand-maintained IP-XACT register map.
-
+ 
 +[ditaa, target=gen_aou_register_generation.png]
  ....
  csr/aou-core.rdl  ──(peakrdl)──>  IP-XACT register map   (INTEG/ipxact/gen/)

@@ -36,7 +36,10 @@ class aou_pack_test extends aou_dp_base_test;
       "crossflit": begin
         k.sizes = '{5, 6, 7};
         k.lens = '{0, 1, 3};
-        k.n = 96;
+        // The DUT's ReadData256 crossing a flit (TX:span_R8) comes from its own
+        // packing, 1-9 times in 96 transactions, and none in one seed once the
+        // remote die's Activation travels alone (v0.8 4.4); 128 gives margin.
+        k.n = 128;
       end
       "mixed", "full": begin
         k.sizes = '{0, 2, 4, 6};
@@ -134,7 +137,10 @@ class aou_pack_test extends aou_dp_base_test;
         stats.req = '{"RX:span_R8"};
         if (max_b >= 64) stats.req.push_back("RX:span_R14");
         stats.req.push_back(has_512 ? "TX:span_W15" : "TX:span_wdata");
-        case (cfg.remote_bytes)
+        // The env limits the remote die to the DUT's AXI_PEER_DIE_MAX_DATA_WD
+        // (aou_t1_env_cfg::finalize(), after this), so the layouts follow that width.
+        case ((cfg.remote_bytes > AOU_T1_PEER_MAX_BYTES) ? AOU_T1_PEER_MAX_BYTES
+                                                         : cfg.remote_bytes)
           32:      stats.req = {stats.req, "RX:span_W8", "TX:span_R8"};
           128:     stats.req = {stats.req, "RX:span_W30", "TX:span_R27"};
           default: stats.req = {stats.req, "RX:span_W15", "TX:span_R14"};

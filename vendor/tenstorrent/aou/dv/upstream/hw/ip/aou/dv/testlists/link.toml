@@ -349,6 +349,17 @@ tags = ["link"]
 run_modes = ["link"]
 args = ["+credit=rdata", "+deact=1"]
 
+# WriteResp held for credit at deactivation: grant 2 leaves WriteResps queued
+# behind the credit check (8 granules would cover all 4).
+[[tests]]
+name = "aou_zero_credit_test.credit-wresp.deact-1.grant-2"
+module = { uvm = "aou_zero_credit_test" }
+seed = 1
+reseed = 2
+tags = ["link"]
+run_modes = ["link"]
+args = ["+credit=wresp", "+deact=1", "+grant=2"]
+
 [[tests]]
 name = "aou_zero_credit_test.credit-wresp.deact-1"
 module = { uvm = "aou_zero_credit_test" }
@@ -378,9 +389,44 @@ tags = ["link"]
 run_modes = ["link"]
 args = ["+mode=property"]
 
+# The remote die re-activates in the flit after its DeactivateAck (AoU 8.4). The
+# DUT's own FDI teardown after the deactivation splits that exchange
+# across a link reset: the DUT must give the training trigger on the remote's
+# request alone (FDI-R51); the system then resets both dies while the
+# link is down (D18), and they activate again from DISABLED.
+[[tests]]
+name = "aou_remote_react_test"
+module = { uvm = "aou_remote_react_test" }
+seed = 1
+reseed = 3
+tags = ["link"]
+run_modes = ["link"]
+
+# v0.8 4.4: credited messages waiting as the DUT sends an Activation message
+# (AOU-R6): requests held across an activation the DUT acks last, and responses
+# arriving at its DeactivateReq. The DUT implements v0.7.1, so these run with
+# +v0p8 (expected failures until it follows v0.8).
+[[tests]]
+name = "aou_act_flit_test.mode-act_req.v0p8"
+module = { uvm = "aou_act_flit_test" }
+seed = 1
+reseed = 3
+tags = ["link"]
+run_modes = ["link"]
+args = ["+mode=act_req", "+v0p8"]
+
+[[tests]]
+name = "aou_act_flit_test.mode-deact_rsp.v0p8"
+module = { uvm = "aou_act_flit_test" }
+seed = 1
+reseed = 3
+tags = ["link"]
+run_modes = ["link"]
+args = ["+mode=deact_rsp", "+v0p8"]
+
 [[groups]]
 name = "link"
-expected_count = 39
+expected_count = 42
 tests = [
   "aou_link_act_deact_test",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-0",
@@ -421,4 +467,7 @@ tests = [
   "aou_zero_credit_test.credit-wresp.deact-1",
   "aou_deact_ctrl_test.mode-tov",
   "aou_deact_ctrl_test.mode-property",
+  "aou_remote_react_test",
+  "aou_act_flit_test.mode-act_req.v0p8",
+  "aou_act_flit_test.mode-deact_rsp.v0p8",
 ]

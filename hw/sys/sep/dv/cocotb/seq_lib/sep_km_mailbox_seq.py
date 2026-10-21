@@ -96,7 +96,8 @@ KM_CTRL_FLUSH = _KM_MBOX("SEP_CTRL", "flush")
 KM_MBOX_DEPTH = 16
 
 # --- commands / responses / destinations ----------------------------------
-# rom_defs.h rom_km_cmd_id_t / rom_km_resp_id_t.
+# hw/ip/key_manager/doc/firmware.adoc: the command summary table of "Command
+# Message Reference" and the section headings of "Response Message Reference".
 KM_CMD_HW_VER = 0x00
 KM_CMD_ROM_VER = 0x01
 KM_CMD_SRAM_VER = 0x02
@@ -141,9 +142,9 @@ KM_VALID_CMD_IDS = (
 # stand-in for "a handle the key registry does not hold".
 KM_KEY_HANDLE_NULL = 0x00
 
-# Destination bitmask (`rom_defs.h` rom_km_dest_bits_t /
-# `hw/ip/key_manager/doc/firmware.adoc` DEST_VALID): bit0 HMAC, bit1 KMAC,
-# bit2 AES, bit3 OTBN, bit4 ABR ML-DSA seed, bits 5-7 ABR ML-KEM.
+# Destination bitmask (`hw/ip/key_manager/doc/firmware.adoc`, "0x22 -
+# CMD_KEY_GENERATE", key-generation destination policy table): bit0 HMAC,
+# bit1 KMAC, bit2 AES, bit3 OTBN, bit4 ABR ML-DSA seed, bits 5-7 ABR ML-KEM.
 KM_DEST_HMAC = 0x01
 KM_DEST_KMAC = 0x02
 KM_DEST_AES = 0x04
@@ -362,7 +363,7 @@ class SepKmMailbox:
         (return_code_signed, return_arg). recv_frame() has already checked header/
         payload CRCs and the response sequence; here we additionally require the
         frame to be a RESP_CMD that echoes our command's sequence and id (RESP_CMD
-        payload = [cmd_seq, cmd_id, rc, arg?], per rom_msg_rx.c send_resp_cmd).
+        payload = [cmd_seq, cmd_id, rc, arg?], per firmware.adoc "0x00 - RESP_CMD").
 
         RETURN_ARG is optional on the wire and reads as 0 when absent. A caller
         whose command the KM firmware specification defines with a return

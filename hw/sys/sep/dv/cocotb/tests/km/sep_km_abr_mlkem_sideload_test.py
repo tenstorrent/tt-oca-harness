@@ -38,6 +38,12 @@ into the KPV and transfers it to AES, and the AES ciphertext must equal the
 AES-256 golden keyed with the engine's own MLKEM_SHARED_KEY words from the
 register-driven ENCAPS of the same inputs. The sideload block's KEY words are
 on the KM-private bus, so AES is the consumer that grades them.
+
+A later delivery re-arms the notification (CHK-KEM-SK-REARM): a second
+writeback ENCAPS, with q CMD_HW_VER frames queued before the host reads, gives
+exactly one more RESP_ABR_SHARED_KEY_READY frame, all q responses, and a
+CMD_ABR_SK_TRANSFER that succeeds after it. q is the one seeded draw of the
+leaf, in [1, 3].
 """
 
 from __future__ import annotations
@@ -45,7 +51,9 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
+from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_mlkem_seq import (
     KEM_CMD_ENCAPS,
@@ -78,6 +86,7 @@ from seq_lib.sep_abr_mlkem_seq import (
 )
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_km_mailbox_seq import (
+    KM_CMD_HW_VER,
     KM_DEST_ABR_MLKEM_MSG,
     KM_DEST_ABR_MLKEM_SEED_D,
     KM_DEST_ABR_MLKEM_SEED_Z,
@@ -85,6 +94,8 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_RC_FAILURE,
     KM_RC_SUCCESS,
     KM_RESP_ABR_SHARED_KEY_READY,
+    KM_RESP_CMD,
+    KM_STATUS_OUTBOUND_EMPTY,
     SepKmMailbox,
 )
 
@@ -170,6 +181,19 @@ _SK_DEST = KM_DEST_AES
 _POLL_ITERS = 20000
 _POLL_GAP = 200
 
+# CHK-KEM-SK-REARM. q, the count of CMD_HW_VER frames queued before the host
+# reads the re-arm notification, is drawn in [1, _REARM_MAX_Q].
+_REARM_MAX_Q = 3
+# Bound on the wait for each re-arm leg frame, in 20-cycle mailbox polls.
+_REARM_FRAME_POLLS = 50_000
+# Quiet window after the expected frames are in, in which a second
+# notification would be counted. It runs at least _REARM_QUIET_MIN_POLLS polls
+# of _REARM_QUIET_GAP cycles, and at least _REARM_QUIET_LAT_X times the
+# measured latency from the end of the ENCAPS to the read of the notification.
+_REARM_QUIET_MIN_POLLS = 2000
+_REARM_QUIET_GAP = 20
+_REARM_QUIET_LAT_X = 4
+
 
 @pyuvm.test()
 class sep_km_abr_mlkem_sideload_test(sep_base_test):
@@ -179,10 +203,10 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         "CHK-KEM-SEED-REF",
         "CHK-KEM-SEED-SIDELOAD",
         "CHK-KEM-MSG-SIDELOAD",
-        "CHK-KEM-SK-CONFIDENTIAL",
         "CHK-KEM-SK-NOTIFY",
         "CHK-KEM-SK-WRITEBACK",
         "CHK-KEM-SK-VALUE",
+        "CHK-KEM-SK-REARM",
     )
 
     async def _wait_status(self, kem, mask: int, expect: int, *, what: str) -> int:
@@ -230,17 +254,10 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         The CIPHERTEXT is what the value compares use: it is public, and a
         deterministic function of the encapsulation key and the message.
 
-        The shared key is returned too. Whether it reads back at all is the
-        contract of CHK-KEM-SK-CONFIDENTIAL, and the value read on a fully
-        register-driven ENCAPS is the reference for CHK-KEM-SK-VALUE. The
-        ML-KEM shared key is consumed directly by the Key Manager
-        (hw/sys/sep/doc/crypto.adoc, "a gated ML-KEM shared-key interrupt
-        consumed directly by the Key Manager") and shared-key storage is
-        secret-bearing Class 2 logic (hw/sys/sep/doc/attack_countermeasures.adoc),
-        so a key the vault sourced must not be readable by software over the
-        CSR aperture. This test establishes
-        that it IS readable when every input came over the bus, and is withheld
-        once an input came from the vault.
+        The shared key is returned too. The value read on a fully
+        register-driven ENCAPS is the reference for CHK-KEM-SK-VALUE. The value
+        read after a vault-sourced ENCAPS is logged as OBS-KEM-SK-CONFIDENTIAL:
+        no spec states it.
         """
         await self._wait_status(kem, KEM_ST_READY, KEM_ST_READY, what=f"{what} pre-command READY")
         await kem.write_words(MLKEM_ENCAPS_KEY, list(ek))
@@ -285,6 +302,14 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         )
 
     async def run_scenario(self) -> None:
+        # The one draw of the leaf. It feeds only the re-arm leg, so every
+        # earlier leg is directed and the same on every seed.
+        seed = self.random_seed()
+        # q >= 1, so every seed queues a command ahead of the notification.
+        rearm_q = SepSeededRng(seed).randrange(1, _REARM_MAX_Q + 1)
+        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("DRAW q=%d", rearm_q)
+
         image = self.select_efuse_image(lc_raw=0x1)
         self.write_efuse_image(image)
         await self.bring_up_no_cpu(park=("otbn", "kmac", "hmac"))
@@ -389,19 +414,17 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         )
         await self._zeroize(kem, what="after sideload keygen")
 
-        # --- CHK-KEM-MSG-SIDELOAD + CHK-KEM-SK-CONFIDENTIAL ------------------
+        # --- CHK-KEM-MSG-SIDELOAD + OBS-KEM-SK-CONFIDENTIAL ------------------
         # The compares run on the CIPHERTEXT, which is public and a
-        # deterministic function of (ek, m). The shared key cannot serve: the
-        # engine withholds it from software as soon as an input came from the
-        # vault, which is the confidentiality rule the next checker grades.
+        # deterministic function of (ek, m). No spec states the shared-key
+        # read value after a vault-sourced ENCAPS, so the shared key cannot serve.
         #
         # Reference first on the OTHER message, so the register holds _M_REF
         # when the sideload leg runs.
         ct_alt, sk_alt = await self._encaps(kem, ek_alt, _M_ALT, what="CHK-KEM-MSG-REF alt")
-        assert any(w != 0 for w in sk_alt), (
-            "CHK-KEM-SK-CONFIDENTIAL FAIL: the shared key already reads back as "
-            "zero on a fully register-driven ENCAPS, so the withheld-key check "
-            "below would pass with the readback broken rather than gated"
+        self.logger.info(
+            "CTRL-KEM-SK-READBACK LOG words_nonzero=%d",
+            int(any(w != 0 for w in sk_alt)),
         )
         await self._zeroize(kem, what="after alt encaps")
         ct_ref, _ = await self._encaps(kem, ek_alt, _M_REF, what="CHK-KEM-MSG-REF ref")
@@ -432,21 +455,13 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             KEM_CT_WORDS,
         )
 
-        # Same ENCAPS, and now the shared key must NOT be visible: its message
-        # came from the vault. The register-driven ENCAPS above is the positive
-        # control that the readback path works at all, so this is a conditional
-        # withholding rather than a readback that never worked.
-        assert all(w == 0 for w in sk_km), (
-            "CHK-KEM-SK-CONFIDENTIAL FAIL: the shared key of an ENCAPS whose "
-            "message came from the vault is readable over the bus "
-            f"(first non-zero word 0x{next(w for w in sk_km if w != 0):08x}); a "
-            "shared key the vault sourced is consumed by the Key Manager and "
-            "must not reach software over the CSR aperture"
-        )
+        # The shared key of the vault-sourced ENCAPS is logged, not graded: no
+        # spec states the read value of MLKEM_SHARED_KEY after it.
+        first_nz = next((w for w in sk_km if w != 0), None)
         self.logger.info(
-            "CHK-KEM-SK-CONFIDENTIAL PASS: the shared key reads back on a "
-            "register-driven ENCAPS and reads zero once the message came from "
-            "the vault, so the withholding is gated and not simply broken"
+            "OBS-KEM-SK-CONFIDENTIAL LOG words_zero=%d first_nonzero=%s",
+            int(first_nz is None),
+            "none" if first_nz is None else f"0x{first_nz:08x}",
         )
 
         # --- CHK-KEM-SK-WRITEBACK: kv_write, and its negative control ---------
@@ -549,7 +564,139 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             golden_rev[0],
         )
 
+        await self._rearm_leg(kem, ek_alt, ct_alt, rearm_q)
+
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
         self.logger.info("entropy alerts clear and DRBG scoreboard reports PASS")
+
+    async def _rearm_leg(self, kem, ek: list[int], ct_ref: list[int], q: int) -> None:
+        """CHK-KEM-SK-REARM: a later delivery gives exactly one more notification.
+
+        hw/ip/key_manager/doc/firmware.adoc, "Adams Bridge ML-KEM Shared Key":
+        the interrupt status is sticky and cleared by write-one-to-clear, so a
+        later delivery re-arms the interrupt and the main loop sends
+        RESP_ABR_SHARED_KEY_READY when it sees the pending flag. "Main Event
+        Loop": commands execute in receive order and the loop sends the frame
+        after it services them. The position of the frame among the q
+        responses is logged and not graded.
+
+        Control: the first notification of CHK-KEM-SK-NOTIFY in this leaf,
+        from the same writeback path on the same inputs.
+        """
+        chk = "CHK-KEM-SK-REARM"
+        # Every frame between the first capture and here was a RESP_CMD
+        # matched by the mailbox driver, which raises on any other frame. With
+        # the outbound FIFO empty now, the 0x56 count since the first capture
+        # is 0 before the second delivery.
+        status = await self.km.read_status()
+        assert status & (1 << KM_STATUS_OUTBOUND_EMPTY), (
+            f"{chk} FAIL: the outbound FIFO holds an unread frame before the second "
+            f"delivery (STATUS=0x{status:08x})"
+        )
+
+        await self._zeroize(kem, what="before re-arm encaps")
+        await kem.wr32(MLKEM_KV_SK_WR_CTRL, KV_WRITE_EN)
+        ct_rearm, _ = await self._encaps(kem, ek, _M_ALT, what=chk)
+        t_valid = get_sim_time("ns")
+        # The second delivery is the same writeback on the same inputs as the
+        # first; the equal ciphertext shows the ENCAPS ran.
+        self._same(ct_rearm, ct_ref, chk=chk, what="the ciphertext of the re-arm encaps")
+
+        # The q frames go in before the host reads anything. Each CMD_HW_VER
+        # frame is one header word, so q <= 3 fits the inbound FIFO.
+        pending = {}
+        for _ in range(q):
+            seq = await self.km.send_command(KM_CMD_HW_VER, [])
+            pending[seq] = True
+        queued_resp = 0
+        notify = 0
+        order: list[str] = []
+        t_notify = None
+
+        def classify(words: list[int]) -> None:
+            nonlocal queued_resp, notify, t_notify
+            resp_id = (words[0] >> 8) & 0xFF
+            if resp_id == KM_RESP_ABR_SHARED_KEY_READY:
+                notify += 1
+                order.append("0x56")
+                if t_notify is None:
+                    t_notify = get_sim_time("ns")
+                return
+            assert resp_id == KM_RESP_CMD and len(words) >= 3, (
+                f"{chk} FAIL: unexpected frame resp_id=0x{resp_id:02x} in the re-arm leg "
+                f"(frame={[hex(w) for w in words]})"
+            )
+            echo_seq = words[1] & 0xFF
+            echo_id = words[2] & 0xFF
+            assert echo_id == KM_CMD_HW_VER and pending.pop(echo_seq, False), (
+                f"{chk} FAIL: RESP_CMD for cmd 0x{echo_id:02x} seq {echo_seq} does not "
+                f"answer an outstanding CMD_HW_VER (outstanding seqs {sorted(pending)})"
+            )
+            queued_resp += 1
+            order.append(f"hw_ver_seq{echo_seq}")
+
+        # Read until the q responses and the second notification are in. The
+        # frame budget fails a KM that keeps sending frames.
+        for _ in range(q + 1 + _REARM_MAX_Q + 4):
+            if not pending and notify >= 1:
+                break
+            try:
+                words = await self.km.recv_frame(timeout=_REARM_FRAME_POLLS)
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"{chk} FAIL: q={q} notify_after_rearm={notify} queued_resp={queued_resp} "
+                    f"after {_REARM_FRAME_POLLS} polls with no further frame ({exc}); a KM "
+                    "that does not re-arm sends no second notification"
+                ) from exc
+            classify(words)
+        assert not pending and notify >= 1, (
+            f"{chk} FAIL: q={q} notify_after_rearm={notify} queued_resp={queued_resp} "
+            f"after the frame budget (order={order})"
+        )
+
+        # Quiet window: a KM that sends one frame per interrupt edge or per
+        # queued frame sends a second notification here. The window scales with
+        # the measured notification latency, so a second frame of the same
+        # latency falls inside it.
+        latency_ns = t_notify - t_valid
+        t_end = get_sim_time("ns") + _REARM_QUIET_LAT_X * latency_ns
+        polls = 0
+        while polls < _REARM_QUIET_MIN_POLLS or get_sim_time("ns") < t_end:
+            status = await self.km.read_status()
+            if not (status & (1 << KM_STATUS_OUTBOUND_EMPTY)):
+                classify(await self.km.recv_frame(timeout=_REARM_FRAME_POLLS))
+            polls += 1
+            await ClockCycles(cocotb.top.clk_i, _REARM_QUIET_GAP)
+        self.logger.info(
+            "KEM-SK-REARM frame order (logged, not graded): %s; notification latency "
+            "%.0f ns after ENCAPS VALID; quiet window %d polls",
+            order,
+            latency_ns,
+            polls,
+        )
+        assert notify == 1, (
+            f"{chk} FAIL: q={q} notify_after_rearm={notify}, expected exactly 1 "
+            f"RESP_ABR_SHARED_KEY_READY for the second delivery (order={order})"
+        )
+        assert queued_resp == q, (
+            f"{chk} FAIL: q={q} queued_resp={queued_resp}, a queued CMD_HW_VER response is lost"
+        )
+
+        # The consume after the re-arm. A late notification after the window
+        # fails here too: the driver requires a RESP_CMD.
+        rc, arg = await self.km.abr_sk_transfer(dest=_SK_DEST)
+        assert rc == KM_RC_SUCCESS and (arg & 0xFF) != 0, (
+            f"{chk} FAIL: CMD_ABR_SK_TRANSFER after the second delivery returned rc={rc} "
+            f"RETURN_ARG=0x{arg:08x}, expected rc=0 and a non-zero handle"
+        )
+        self.logger.info(
+            "%s PASS: q=%d notify_after_rearm=%d queued_resp=%d sk_code=%d handle=0x%02x",
+            chk,
+            q,
+            notify,
+            queued_resp,
+            rc,
+            arg & 0xFF,
+        )

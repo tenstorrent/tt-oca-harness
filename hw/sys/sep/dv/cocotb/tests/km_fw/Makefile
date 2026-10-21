@@ -12,19 +12,25 @@ OUT_DIR := ..
 OBJ_DIR ?= $(CURDIR)
 ROMS := km_rom km_rom_entropy km_rom_coexist km_rom_vault km_rom_crc \
         km_rom_kpv_scrambler km_rom_iso km_rom_otp_id km_rom_bus_err km_rom_abr_absent \
-        km_rom_drbg_sampler
+        km_rom_drbg_sampler km_rom_poke
 
 # The KM PicoRV32 is built with ENABLE_REGS_16_31=0, so an image that runs on
 # it must be assembled for RV32E and may use x0-x15 only. Images that only feed
 # the tb keep the wider base ISA.
 RV32E_ROMS := km_rom km_rom_vault km_rom_crc km_rom_kpv_scrambler km_rom_iso km_rom_otp_id \
-              km_rom_bus_err km_rom_abr_absent km_rom_drbg_sampler
+              km_rom_bus_err km_rom_abr_absent km_rom_drbg_sampler km_rom_poke
+ROMS += km_rom_scr
+RV32E_ROMS += km_rom_scr
+ROMS += km_rom_mbox_km
+RV32E_ROMS += km_rom_mbox_km
+ROMS += km_img_h
+RV32E_ROMS += km_img_h
 ARCH_FLAGS = -march=rv32i -mabi=ilp32
 $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(RV32E_ROMS))): \
         ARCH_FLAGS := -march=rv32e -mabi=ilp32e
 PARHEX := $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(ROMS)))
 
-.PHONY: all clean rom_main verify
+.PHONY: all clean rom_main rom_main_default rom_main_unrec verify
 
 all: $(PARHEX)
 
@@ -86,12 +92,40 @@ verify:
 OCH_ROOT ?= $(abspath $(CURDIR)/../../../../../../..)
 KM_APPROM_DIR := $(OCH_ROOT)/hw/ip/key_manager/approm/prod
 
+# The handover tests boot rom_main and stream the committed IMG-H blob
+# (km_img_h.parhex) as the SRAM image, and declare rom_main as their firmware,
+# so every rom_main target also runs `verify ROMS=km_img_h`: a stale IMG-H blob
+# fails the c_compile of every test that can load it. The verify uses the
+# toolchain of the ROM build: $(RISCV_TOOLCHAIN)/$(RISCV_PREFIX) when the
+# caller passes it, else GCC_PREFIX on PATH (the container).
+KM_VERIFY_PREFIX := $(if $(RISCV_TOOLCHAIN),$(RISCV_TOOLCHAIN)/$(patsubst %-,%,$(or $(RISCV_PREFIX),riscv64-unknown-elf-)),$(GCC_PREFIX))
+
 rom_main:
 	@test -n "$(FW_BUILD_DIR)" || { echo "rom_main: set FW_BUILD_DIR to a private build directory" >&2; exit 1; }
 	$(MAKE) -C $(KM_APPROM_DIR) build BUILD_DIR=$(FW_BUILD_DIR) \
 	    OCAH_ROOT=$(OCH_ROOT) KM_BOOT_WIPE=0 KM_UNREC_WIPE=0
 	@test -s $(FW_BUILD_DIR)/rom_main.rom.parhex
+	$(MAKE) --no-print-directory verify ROMS=km_img_h GCC_PREFIX=$(KM_VERIFY_PREFIX)
 	@echo "[km_fw] built rom_main.rom.parhex -> $(FW_BUILD_DIR)/rom_main.rom.parhex"
+
+# rom_main_default and rom_main_unrec: the same KM application ROM with the wipe
+# knobs named in the target. rom_main_default keeps the shipped defaults
+# (KM_BOOT_WIPE=1 KM_UNREC_WIPE=1). rom_main_unrec turns the boot wipe off and
+# keeps the unrecoverable-fault wipe on (KM_BOOT_WIPE=0 KM_UNREC_WIPE=1).
+# [c_build.km_rom_main_default] and [c_build.km_rom_main_unrec] in
+# sep_sim_cfg.toml drive them. Each leaves its own image name in FW_BUILD_DIR:
+# $(FW_BUILD_DIR)/rom_main_default.rom.parhex and
+# $(FW_BUILD_DIR)/rom_main_unrec.rom.parhex.
+rom_main_default rom_main_unrec:
+	@test -n "$(FW_BUILD_DIR)" || { echo "$@: set FW_BUILD_DIR to a private build directory" >&2; exit 1; }
+	$(MAKE) -C $(KM_APPROM_DIR) build BUILD_DIR=$(FW_BUILD_DIR) \
+	    OCAH_ROOT=$(OCH_ROOT) $(KM_WIPE_KNOBS_$@)
+	@test -s $(FW_BUILD_DIR)/rom_main.rom.parhex
+	$(MAKE) --no-print-directory verify ROMS=km_img_h GCC_PREFIX=$(KM_VERIFY_PREFIX)
+	cp $(FW_BUILD_DIR)/rom_main.rom.parhex $(FW_BUILD_DIR)/$@.rom.parhex
+	@echo "[km_fw] built $@.rom.parhex -> $(FW_BUILD_DIR)/$@.rom.parhex"
+KM_WIPE_KNOBS_rom_main_default := KM_BOOT_WIPE=1 KM_UNREC_WIPE=1
+KM_WIPE_KNOBS_rom_main_unrec := KM_BOOT_WIPE=0 KM_UNREC_WIPE=1
 
 # The images take their KM register addresses from the generated map rather
 # than hand-typed literals: .S files run through the C preprocessor, so the
@@ -99,7 +133,8 @@ rom_main:
 # build error instead of a silently stale constant.
 KM_REG_INC := $(OCH_ROOT)/hw/ip/key_manager/regs/gen/c
 
-# Field MASKS live in km_csr.h / km_kpv.h / km_mailbox_km.h / km_drbg_sampler.h, C headers of structs and
+# Field MASKS live in km_csr.h / km_kpv.h / km_mailbox_km.h / km_drbg_sampler.h /
+# kmac_wrapper_key.h, C headers of structs and
 # static_asserts an .S cannot include. This target lifts the plain #define
 # lines an image needs into an assembler-safe include, so a field that moves
 # at the next RDL regeneration changes the mask instead of leaving a
@@ -109,17 +144,19 @@ KM_CSR_H := $(KM_REG_INC)/km_csr.h
 KM_KPV_H := $(KM_REG_INC)/km_kpv.h
 KM_MBOX_KM_H := $(KM_REG_INC)/km_mailbox_km.h
 KM_DRBG_H := $(KM_REG_INC)/km_drbg_sampler.h
+KMAC_KEY_H := $(KM_REG_INC)/kmac_wrapper_key.h
 KM_FIELD_INC := $(OBJ_DIR)/km_fields.inc
 KM_CSR_DEFS := KM_CSR__(IRQ_STATUS_REG__(AXI_SLVERR|AXI_DECERR|SRAM_WRITE_LOCK_ERR|DRBG_ERR|ROM_PARITY_ERR|SRAM_PARITY_ERR|ROM_WRITE_ERR)|OTP_READ_LOCK_REG__SEP_(CHIPLET|SIP|SYS)_ID|SCRAMBLER_CTRL_REG__ENABLE|BOOT_STATUS_REG__COLD_BOOT_DONE)_bm
 KM_KPV_DEFS := KM_KPV__(CTRL_REG__(LOCK_WRITE|LOCK_USE|ERASE|SEAL)|KPV_SCRAMBLER_CTRL_REG__(ENABLE|LOCK))_bm
 KM_MBOX_KM_DEFS := KM_MAILBOX_KM__(STATUS_REG__(INBOUND_EMPTY|OUTBOUND_FULL)|WRITE_SEPARATOR_REG__SET)_bm
 KM_DRBG_DEFS := KM_DRBG_SAMPLER__(STATUS_REG__DRBG_READY_bm|CFG_REG__TIMEOUT_bp)
+KMAC_KEY_DEFS := KMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bm
 
 # Written to a temporary name, then moved into place, so a reader never sees a partial file.
-$(KM_FIELD_INC): $(KM_CSR_H) $(KM_KPV_H) $(KM_MBOX_KM_H) $(KM_DRBG_H) Makefile
+$(KM_FIELD_INC): $(KM_CSR_H) $(KM_KPV_H) $(KM_MBOX_KM_H) $(KM_DRBG_H) $(KMAC_KEY_H) Makefile
 	@mkdir -p $(OBJ_DIR)
 	@tmp=$@.tmp.$$$$; \
-	printf '/* Generated from km_csr.h / km_kpv.h / km_mailbox_km.h / km_drbg_sampler.h by km_fw/Makefile. Do not edit. */\n' > $$tmp; \
+	printf '/* Generated from km_csr.h / km_kpv.h / km_mailbox_km.h / km_drbg_sampler.h / kmac_wrapper_key.h by km_fw/Makefile. Do not edit. */\n' > $$tmp; \
 	grep -E '^#define ($(KM_CSR_DEFS)) ' $(KM_CSR_H) >> $$tmp || { \
 	    echo "$(KM_CSR_H): expected field-mask defines matching $(KM_CSR_DEFS)" >&2; \
 	    rm -f $$tmp; exit 1; }; \
@@ -131,6 +168,9 @@ $(KM_FIELD_INC): $(KM_CSR_H) $(KM_KPV_H) $(KM_MBOX_KM_H) $(KM_DRBG_H) Makefile
 	    rm -f $$tmp; exit 1; }; \
 	grep -E '^#define ($(KM_DRBG_DEFS)) ' $(KM_DRBG_H) >> $$tmp || { \
 	    echo "$(KM_DRBG_H): expected field defines matching $(KM_DRBG_DEFS)" >&2; \
+	    rm -f $$tmp; exit 1; }; \
+	grep -E '^#define ($(KMAC_KEY_DEFS)) ' $(KMAC_KEY_H) >> $$tmp || { \
+	    echo "$(KMAC_KEY_H): expected field-mask defines matching $(KMAC_KEY_DEFS)" >&2; \
 	    rm -f $$tmp; exit 1; }; \
 	mv -f $$tmp $@
 
