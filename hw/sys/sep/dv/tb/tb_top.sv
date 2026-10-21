@@ -2177,8 +2177,15 @@ module sep_uvm_top
     assign ext_trng_axil_rsp_bcnt_o = trng_rsp_bcnt_q;
     assign ext_trng_axil_rsp_rcnt_o = trng_rsp_rcnt_q;
 
+    // The same value is forced on the response output of the wrapper error
+    // slave (u_ext_trng_axil_err_slv.axil_resp_o). Its AXI-Lite valid-stable
+    // assertions then grade each request against the handshake the port
+    // completes with the responder.
     always @(negedge clk_i) begin
-        if (trng_rsp_on) force u_dut.ext_trng_axil_resp = trng_axil_resp_drive;
+        if (trng_rsp_on) begin
+            force u_dut.ext_trng_axil_resp = trng_axil_resp_drive;
+            force `SEP_IPI.u_ext_trng_axil_err_slv.axil_resp_o = trng_axil_resp_drive;
+        end
     end
     // PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
     assign pr_dmacsr_awvalid_o = `SEP_CORE.dma_csr_req.aw_valid;
