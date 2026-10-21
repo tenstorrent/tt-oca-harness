@@ -81,7 +81,9 @@ of the scenarios that carry one (`--framework uvm`, `SMC_TB_ARCH.adoc`).
 Phase 1, Phase 2 and Phase 3 are scope tiers, not a schedule. Phase 1 is the
 bring-up and representative set. Phase 2 is the dense, breadth and fault set.
 Phase 3 is the residual set. Each test entry names its phase in its `*Phase*`
-field and its area in its `*Area*` field. `SMC_FCOV.adoc` keeps its own
+field and its area in its `*Area*` field; the four cards of
+<<smc-held-out-testcases>> are outside `all`, take no credit and carry neither
+field. `SMC_FCOV.adoc` keeps its own
 organisation by collector module; a cover point does not follow the phase of
 its owning test. A tier says what a test is asked to prove. It does not say
 when the test is written. A Phase 3 entry takes credit under the rules of
@@ -126,9 +128,12 @@ clock-cell families of `smc_ref_reset_cycles_test`,
 `+smc_efuse_image` entry), nineteen modules in all, plus the sixteen
 `smc_clk_*` modules that pin the three clock periods as module constants:
 fifteen Phase 3 cells and the owning leaf of the family,
-`smc_clk_smc_slower_than_ref_test`, which is Phase 2. They are directed
-(`RAND-NONE`) cells of a matrix that predates this contract, their entries say
-so, and this change leaves them as they are.
+`smc_clk_smc_slower_than_ref_test`, which is Phase 2. Thirty-four of these
+thirty-five modules are directed (`RAND-NONE`) cells, and their entries say so.
+The one exception is `smc_efuse_map_sense_image_random_test`, `RANDCFG` in its
+entry: the cell pins the image kind, and the module draws the image words and
+the write-lock bits of that kind from the seed
+(`cocotb/tests/smc_efuse_map_sense_image_test.py`).
 
 [[smc-vplan-audit]]
 Checker contracts in this plan are written against these known ways a check
@@ -3147,7 +3152,7 @@ at 1 one AVS_CMD frame appears on `avs_mdata` and its reply reaches AVS_READBACK
 
 *Pass Criteria*: `CHK-AVS-PAD-ENABLE-FOLLOWS`, `CHK-AVS-PAD-PROTOCOL`, `CHK-NONVAC` and
 `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. The `avs_mdata` and `avs_sdata` pad
-enables are reported only. Enrolled in: `all`, `power`.
+enables are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The output and input enable bits of the `avs_mdata` (50) and `avs_sdata` (51) pads
 are sampled and printed, not compared, because their pad numbers and polarity are not stated by the
@@ -3256,7 +3261,7 @@ commands once each in write order, and survives two back-to-back requests.
 
 *Pass Criteria*: all seven checkers hold and every sequence assert holds. The subframes launched
 before the request and the episode count after the double force are reported only (the double force
-is limited to one or two episodes). Enrolled in: `all`, `power`.
+is limited to one or two episodes). Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The count of master subframes launched before a force request is timing dependent
 and is printed, not compared. After two back-to-back force writes the episode count is printed,
@@ -3388,7 +3393,7 @@ probe stays one-hot, and the resync interval follows `AVS_CFG_0.RESYNC_INTERVAL`
 
 *Pass Criteria*: all twelve checkers hold and every sequence assert holds. The interval constancy,
 the interval 0 period, the rewrite times and the near-edge flag polls are reported only.
-Enrolled in: `all`, `power`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Status-flag polls taken near a probe edge are printed only. The all-zero probe
 samples of the in-reset run are counted and printed. Whether the interval residual is constant
@@ -3500,7 +3505,7 @@ registers, and the dwords past the map are recorded.
 |===
 
 *Pass Criteria*: all seven checkers hold and every sequence assert holds. The response codes of the
-read-only writes and the data and responses past the map are reported only. Enrolled in: `all`, `power`.
+read-only writes and the data and responses past the map are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response codes of the writes to the read-only registers are printed, not
 compared. The reads of the dwords at offsets 0x24 and 0x28 and the write at 0x24 are recorded with
@@ -3625,7 +3630,7 @@ carry and the 64-bit wrap.
 |===
 
 *Pass Criteria*: all ten checkers hold and every sequence assert holds. The reload index, the
-first-rise `RUNNING` value and the `STATUS` reads at the wrap are reported only. Enrolled in: `all`, `power`.
+first-rise `RUNNING` value and the `STATUS` reads at the wrap are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `RUNNING` read at the first rise and the first nonzero sample with its rise index are
 printed, because when the first nonzero sample appears is not specified (it must only be no higher
@@ -3743,7 +3748,7 @@ with recorded responses and disturb no receiver.
 |===
 
 *Pass Criteria*: all seven checkers hold and every sequence assert holds. The past-extent and
-unbacked responses and data are reported only. Enrolled in: `all`, `power`.
+unbacked responses and data are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The responses and data of the reads and writes past the third receiver (window
 offsets 0x300, 0x304, 0x380 and 0xFFC) and at the unbacked offsets (0x1C, 0x20 and 0x7C of receiver
@@ -3861,7 +3866,7 @@ registers change nothing.
 
 *Pass Criteria*: all eight checkers hold and every sequence assert holds. The pulse-bit read values,
 the bit 8 outcome, the `INTR_TEST` bit 0 read and the read-only write responses are reported only.
-Enrolled in: `all`, `power`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Whether a full-word `BUFFER_POP` write cancels the pending transmitter flush request
 (bit 8) is not specified and is printed. The pulse-bit reads of `CTRL` bits 0 and 4 are reported
@@ -3967,7 +3972,7 @@ each source working alone and masked sources staying quiet.
 |===
 
 *Pass Criteria*: all six checkers hold and every sequence assert holds. The cycle counts to each
-vector change and the packet count to `MISSING_LAST` are reported only. Enrolled in: `all`, `power`.
+vector change and the packet count to `MISSING_LAST` are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Platform interrupt identifiers and PLIC delivery are not observable here and are not
 stated by the specification. The packet count to `MISSING_LAST` and the cycle counts to each vector
@@ -4064,7 +4069,7 @@ alone or while the other two receive beats, leave the registers of the other rec
 |===
 
 *Pass Criteria*: all five checkers hold and every sequence assert holds. The interrupt aggregate
-values and the transmitter flush pin presence are reported only. Enrolled in: `all`, `power`.
+values and the transmitter flush pin presence are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The transmitter-flush pin presence on receivers 1 and 2 and `tb_telemetry_irq_any`
 before and after each operation are printed, not compared; whether those receivers expose the
@@ -4187,7 +4192,7 @@ MISSING_LAST interrupt untouched.
 |===
 
 *Pass Criteria*: all eight checkers hold and every sequence assert holds. The beat counts and
-`STATUS` in the beats-around step are reported only. Enrolled in: `all`, `power`.
+`STATUS` in the beats-around step are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The accepted-beat and stalled-cycle counts and `STATUS` after the 64 quiet cycles of
 the beats-around step are printed and not compared, because the specification does not state whether
@@ -4298,7 +4303,7 @@ receiver flush.
 |===
 
 *Pass Criteria*: all seven checkers hold and every sequence assert holds. The handshake cycle counts
-and the rewrite rise count are reported only. Enrolled in: `all`, `power`.
+and the rewrite rise count are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The handshake cycle counts of the ready-high step are ceilings, printed and not
 expected values, because the specification does not state the latency. The number of `afvalid_o`
@@ -4427,7 +4432,7 @@ level reset is released; the reads taken while that reset is held are measured.
 
 *Pass Criteria*: all eight checkers hold and every sequence assert holds. The both-clear behaviour,
 the written-value offset, the rollover value, the `KEY` read after the non-feed word and the
-hold-phase accesses are reported only. Enrolled in: `all`, `power`.
+hold-phase accesses are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: With both enables clear the three `COUNT` reads and their increase are printed,
 because the specification does not state whether the counter holds or counts. Whether the first read
@@ -4539,7 +4544,7 @@ once the count is below `CMP`.
 |===
 
 *Pass Criteria*: all seven checkers hold and every sequence assert holds. The set latency
-is reported only. Enrolled in: `all`, `power`.
+is reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The read at which `CTRL` bit 28 first reads 1 after `CMP` is lowered is printed,
 because the latency is not specified. The zero reset value of bit 28 is bench-limited: a 2-state
@@ -4630,7 +4635,7 @@ raw vector.
 |===
 
 *Pass Criteria*: all three checkers hold and every sequence assert holds. The `tb_plic_pending_331`
-count during the SEP indication and the post-clear levels are reported only. Enrolled in: `all`, `power`.
+count during the SEP indication and the post-clear levels are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The rises at which raw bit 282 and `tb_sep_wdt_irq_sync` return to 0 after the
 release are printed, because the latency and level-or-latch behaviour are not stated by the
@@ -4757,7 +4762,7 @@ write unlocks exactly one register write, and every register write re-locks it.
 
 *Pass Criteria*: all eight checkers hold and every sequence assert holds. The `KEY` read between
 repeated magic writes and the `COUNT` values after the 64-bit writes are reported only.
-Enrolled in: `all`, `power`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The `KEY` value read between the second magic write and the register write is
 printed, because the specification does not state whether it reads 1. `COUNT` after each 64-bit
@@ -4876,7 +4881,7 @@ right offsets, stay independent of each other, and the CTRL fields and the CMP w
 |===
 
 *Pass Criteria*: all nine checkers hold and every sequence assert holds. Bit 28 after the all-ones
-write is reported only. Enrolled in: `all`, `power`.
+write is reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Bit 28 (`wdogip0`) after the all-ones `CTRL` write is printed and not compared,
 because its value is not stated by the specification. How `COUNT` behaves with both enables clear
@@ -4982,7 +4987,7 @@ rising.
 |===
 
 *Pass Criteria*: all six checkers hold and every sequence assert holds. The wide `SCALED_COUNT`
-values, the `COUNT` maxima and the reads after `CMP` 0 are reported only. Enrolled in: `all`, `power`.
+values, the `COUNT` maxima and the reads after `CMP` 0 are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `SCALED_COUNT` after the wide `COUNT` writes is printed next to the shifted `COUNT`
 and nothing is compared, because the specification does not state whether a value wider than the
@@ -5109,7 +5114,7 @@ single-byte writes.
 |===
 
 *Pass Criteria*: all six checkers hold and every sequence assert holds. The `FEED`, `KEY`,
-`SCALED_COUNT` and `COUNT_HI` read values after narrow writes are reported only. Enrolled in: `all`, `power`.
+`SCALED_COUNT` and `COUNT_HI` read values after narrow writes are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: What `FEED`, `KEY`, `SCALED_COUNT` and `COUNT_HI` read after the narrow writes is
 reported only and not compared.
@@ -5203,7 +5208,7 @@ draws nothing from the seed.
 *Pass Criteria*: all four checkers hold and every sequence assert holds: the DMA copy and the zeroer
 job complete with the destination matching its seed and the region reading zero, every kept request
 is INCR, bit 1 of the DMA AxCACHE is set, each protection and user member is constant, and AxUSER is the same on all three kinds. The cache
-encodings and the protection and user values are reported only. Enrolled in: `all`, `dma`.
+encodings and the protection and user values are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The full ARCACHE and AWCACHE encodings and the numeric ARPROT, AWPROT and AxUSER
 values are measured and printed, not compared against an expected value, because the specification
@@ -5330,7 +5335,7 @@ first and last registers answer with their own content, hole and past-extent wor
 generated map gives, neighbour reads answer DECERR
 with 0xBADCAB1E, the reduced `REGION_SIZE` answers DECERR on reads and writes with the read data
 measured and printed without a compare, and the patterns survive the reduction. The read-only
-write effects are reported only. Enrolled in: `all`, `dma`.
+write effects are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The read data returned while `REGION_SIZE` is reduced is measured and printed
 without a compare. The responses to the writes of the read-only `STATUS_0`, `NEXT_ID_0`, `DONE_0`
@@ -5448,7 +5453,7 @@ draws nothing from the seed.
 *Pass Criteria*: all seven checkers hold and every sequence assert holds: each row of the
 independent-stride, row-count, unaligned and single-id jobs matches its source, the sentinel and
 source bytes are unchanged, and every job retires with its id. The destination bytes of the zero-destination-stride,
-short-stride and overlap cases and the 2^56 address behaviour are reported only. Enrolled in: `all`, `dma`.
+short-stride and overlap cases and the 2^56 address behaviour are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The destination bytes of the zero-destination-stride, short-stride and overlap
 cases are measured and printed, not compared, because the specification does not state the row
@@ -5555,7 +5560,7 @@ SYS_OUT channels and the AR, AW, W and R delays; the copies must land exact what
 *Pass Criteria*: all five checkers hold and every sequence assert holds: every payload matches byte
 for byte, every `DONE_0` poll reaches its id inside the poll bound, the outstanding AR count never
 exceeds 32 and `DONE_0` never advances during the hold. The plateau value and the outstanding AW
-maximum are reported. Enrolled in: `all`, `dma`.
+maximum are reported. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The outstanding AW maximum with only B delayed by 24 cycles is measured and printed,
 not compared, because the specification does not state the value. The outstanding AR plateau value
@@ -5678,7 +5683,7 @@ passive probes `tb_output_axi_arvalid`, `tb_output_axi_arready`, `tb_output_axi_
 
 *Pass Criteria*: all eight checkers hold and every sequence assert holds: every copy delivers its
 4096 bytes exactly with the guard bytes unchanged and every `DONE_0` poll reaches its id, and every
-AR and AW burst obeys the limit of its `CONFIG` mode. Enrolled in: `all`, `dma`.
+AR and AW burst obeys the limit of its `CONFIG` mode. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -5779,7 +5784,7 @@ draws nothing from the seed.
 *Pass Criteria*: all seven checkers hold and every sequence assert holds: `DONE_0` resets to 1, idle
 `STATUS_0` bits [7:0] are 0xFF with bit 9 clear, both no-data commands retire their id with no bus
 traffic and no byte moved, and `DONE_0` does not advance during the hold. The bit 8 timing is
-reported only. Enrolled in: `all`, `dma`.
+reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: When and for how long `STATUS_0` bit 8 rises during the eight-row copy is measured
 and printed, not compared, because the specification does not state the value.
@@ -5876,7 +5881,7 @@ and `DONE_0`; `CONFIG` bits [10:0] including `SRC_MAX_LLEN` [6:4] and `DST_MAX_L
 
 *Pass Criteria*: all six checkers hold and every sequence assert holds: every register reads back
 exactly what was written in all 32 bits ([10:0] for `CONFIG`), both copies retire and match, the
-configuration survives them, and the global alias reads and writes reach the same registers. Enrolled in: `all`, `dma`.
+configuration survives them, and the global alias reads and writes reach the same registers. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -5979,7 +5984,7 @@ draws nothing from the seed.
 
 *Pass Criteria*: all six checkers hold and every sequence assert holds: each copy retires with its
 id, each destination image equals the expected image including the guards, every B and R response is
-OKAY, and the issued AR and AW addresses equal the programmed effective addresses. Enrolled in: `all`, `dma`.
+OKAY, and the issued AR and AW addresses equal the programmed effective addresses. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -6082,7 +6087,7 @@ and the payload bytes.
 *Pass Criteria*: all seven checkers hold and every sequence assert holds: every compared copy is
 exact with guards and source unchanged, every `DONE_0` poll reaches its id inside the poll bound,
 the burst limits hold and the high addresses are issued unchanged. The overlap result bytes of the
-non-equal-address copies are reported only. Enrolled in: `all`, `dma`.
+non-equal-address copies are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The resulting bytes of the two overlapping copies whose destination differs from
 the source are measured and printed, not compared, because the specification does not state the
@@ -6219,7 +6224,7 @@ the per-beat stalls; the busy and ordering contracts hold whatever the timing.
 *Pass Criteria*: all nine checkers hold and every sequence assert holds: `STATUS` and
 `tb_zeroer_busy` follow the outstanding responses in every job, every range reads zero with its
 guards unchanged, the 96 KiB job exceeds 32 bursts and drains, and the AW and W channels stay in
-order. The maximum outstanding counts and the timeout indication fields are reported only. Enrolled in: `all`, `dma`.
+order. The maximum outstanding counts and the timeout indication fields are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The zeroer state transitions and outstanding count at the end of the 4096-rise hold
 are printed; the zeroer gives no software-visible timeout or error report and the specification does
@@ -6330,7 +6335,7 @@ draws nothing from the seed.
 *Pass Criteria*: all six checkers hold and every sequence assert holds: one pulse per job with
 `INT_EN` set and never earlier than the last B handshake, none with `INT_EN` clear, none for `SIZE`
 0, and every compared range reads zero. The pulse widths and the `INT_EN` write while busy are
-reported only. Enrolled in: `all`, `dma`.
+reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The pulse widths of the earlier jobs are measured and printed. The effect of
 clearing `INT_EN` while a held job is busy, with the `CTRL_STATUS` words and pulse counts, is
@@ -6433,7 +6438,7 @@ offsets and the poison pattern.
 
 *Pass Criteria*: all five checkers hold and every sequence assert holds: every job completes with
 `STATUS` back at 0, its range reads zero, its guards and the other regions keep their pattern, and
-the aligned job shows the expected AW and W beats. Enrolled in: `all`, `dma`.
+the aligned job shows the expected AW and W beats. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -6539,7 +6544,7 @@ draws nothing from the seed.
 *Pass Criteria*: all four checkers hold and every sequence assert holds: every injected-response job
 completes with `STATUS` 0 and the same burst list as the uninjected baseline, the monitor counts
 exactly the injected responses, and every burst that was not errored reads zero. The bytes left in
-errored bursts and the mixed-job interrupt count are reported only. Enrolled in: `all`, `dma`.
+errored bursts and the mixed-job interrupt count are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The bytes left in the errored bursts of every injected job and the interrupt count of
 the mixed job against its baseline are measured and printed, not compared; the zeroer does not check
@@ -6662,7 +6667,7 @@ draws nothing from the seed.
 leave exactly the requested bytes zero, the egress job raises one pulse, the denied region is
 untouched, every zeroer job ends with `STATUS` 0 and the DMA copy to the SRAM matches. The
 unmapped-target and denied-target response fields and the unmapped DMA copy results are reported
-only. Enrolled in: `all`, `dma`.
+only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: For the unmapped and denied zeroer jobs the `CTRL_STATUS` bits outside `STATUS`, the
 interrupt pulses, AW handshakes, B cycles and the SYS_OUT write count change are measured and
@@ -6802,15 +6807,15 @@ command retires its ID and both zero-length commands leave the destination at 0x
 traffic, the 2D copy writes the 136-byte span the zero-length 2D compare covers, the linear copy
 moves its 16 bytes through both a 32-bit and a 64-bit submit with equal handshake counts, and the
 linear copy raises one one-cycle interrupt pulse. The register-boundary results of the no-data
-commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved. Enrolled
-in: `all`, `dma`.
+commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved. Enrolled in: `all`, `hosted`.
+
+*Open issue*: tenstorrent/tt-oca-harness#2455, the disagreement between `dma.adoc` and
+`dma_ctrl.rdl` on what `NEXT_ID_0` returns when no command is set up.
 
 *Scope limit*: The returned `NEXT_ID_0`, `DONE_0` before and after, `STATUS_0[9:0]` before and after
 and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command, and the `DONE_0` change,
 `STATUS_0[9:0]`, returned `NEXT_ID_0` and bit 322 pulse count of both zero-length commands, are
-measured and not compared until tenstorrent/tt-oca-harness#2455 is resolved, which tracks the open
-disagreement between `dma.adoc` and `dma_ctrl.rdl` on what `NEXT_ID_0` returns when no command is
-set up.
+measured and not compared until the open issue above is resolved.
 
 [[smc-vplan-area-fabric]]
 ==== FABRIC
@@ -8159,8 +8164,7 @@ bounded polls themselves, so an expired bound raises before this line
 six queued entry-13 writes answer DECERR, locked entries read 0x8000_0000_0000_3000, 0x0 and 0x7,
 JTAG writes to R1 land and writes to R2 answer DECERR with the sentinel kept.
 `CHK-LOCK-WITH-FIELDS-OBSERVE` reports the combined write and is held only to its two consistency
-compares. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after the access floor of 79. Enrolled
-in: `all`, `fabric`.
+compares. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after the access floor of 79. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Whether a lock write also applies the fields other than `locked` is not stated in
 `filter_ctrl.rdl` or `index.adoc`, so the combined write 0x8000_0000_0023_0003 to outbound entry 12
@@ -8270,7 +8274,7 @@ assert, so an expired bound raises before this line
 0x1007), (0x1000, 0x1FFF) and (0x2000, 0x2FFF) on both banks, and the entries read the reset words
 after the restore. `CHK-GRANULE-WRITEBACK-OBSERVE` reports the START-only and cleared readings and
 is held only to its reset and `allow_burst` 1 compares. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are
-printed after all 94 accesses. Enrolled in: `all`, `fabric`.
+printed after all 94 accesses. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The responses to the writes of 0x0 and 0x7000 on `FILTER_CONFIG` are printed, not
 compared, because no document fixes the response to a write of a read-only field. The `START_ADDR` /
@@ -8390,7 +8394,7 @@ waits themselves, so an expired bound raises before this line
 entries and 0 for the remap registers, each programmed non-zero value reads back before the cold
 reset and the reset word after it, entry 12 reads locked before and unlocked after, and its
 post-reset write is OKAY. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after at least 82
-accesses. Enrolled in: `all`, `fabric`.
+accesses. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The documents do not say which reset clears the filter entries, so the leaf applies
 the cold reset and compares only the listed values. The `START_ADDR` 0x0 reset legs cannot fail on
@@ -8528,7 +8532,7 @@ raises before this line, and the hit watcher is a passive sampler with no wait
 its seeded word and the programmed entry's hit bit, every refused read is DECERR with a zero hit
 vector, and the fall-through read sets bit 3 and not bit 2. The isolate probes are printed with each
 read and not compared. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after the access floor of
-96. Enrolled in: `all`, `fabric`.
+96. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The `START_ADDR` and `END_ADDR` read-backs of the 8-byte granule case are printed,
 not compared. The downstream response of the read at 0x00AB_C006_5800 is printed, not compared. The
@@ -8657,8 +8661,7 @@ raises before this line, and the hit watcher is a passive sampler with no wait
 `CHK-INB-SRCID-NONZERO-VS-ZERO` and `CHK-INB-GROUPID-INERT` hold: every admitted access is OKAY with
 the seeded word and the programmed entry's hit bit, every refused access is DECERR with a zero hit
 vector, and the admitted write lands. The isolate probes are printed with each access and not
-compared. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after the access floor of 83. Enrolled
-in: `all`, `fabric`.
+compared. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after the access floor of 83. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The hit vector of the prot 0 read that matches the deny entry 2 is printed and not
 compared. Matching a non-zero source ID against a wildcard `src_id` 0 entry is not reachable here,
@@ -8810,7 +8813,7 @@ raises before this line, and the watcher is a passive sampler with no wait
 `CHK-INB-RECONFIG-OUTSTANDING` hold: SYS_IN is DECERR with a zero hit vector until an entry admits,
 SEP_IN is never refused, the admitted accesses carry exact data and hit bit 2, the 74 SYS_IN
 accesses of the run are all issued and every group completes inside its bound. `CHK-NONVAC` and
-`CHK-TIMEOUT-PATHS` are printed after the last compare. Enrolled in: `all`, `fabric`.
+`CHK-TIMEOUT-PATHS` are printed after the last compare. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The documents do not say from which point a reconfigured entry governs transactions
 already in flight, so which of the twelve outstanding writes the new entry governs is not required;
@@ -8955,7 +8958,7 @@ raises before this line, and the watcher is a passive sampler with no wait
 `CHK-INB-DENY-WRITE-BRESP` and `CHK-INB-DENY-CLASSES` hold: the lower-numbered entry decides every
 overlap, each channel follows its own permission bit and entry, every denied access ends in DECERR
 with the denied words unchanged, and the admitted accesses return their seeds. `CHK-NONVAC` and
-`CHK-TIMEOUT-PATHS` are printed after the access floor of 150. Enrolled in: `all`, `fabric`.
+`CHK-TIMEOUT-PATHS` are printed after the access floor of 150. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The read data of the denied single-beat and 4-beat reads, the W beats accepted
 before B on the denied writes, and the hit vector of the matching-deny class are printed and not
@@ -9091,7 +9094,7 @@ waits themselves, so an expired bound raises before this line
 a widened range is DECERR with the sentinel kept and the write count unchanged, every probe outside
 it or with the entry disabled is OKAY with its word landed, and the unaligned `START_ADDR` and
 `END_ADDR` of the last case read back unchanged. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed
-after both access floors. Enrolled in: `all`, `fabric`.
+after both access floors. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -9241,8 +9244,7 @@ waits themselves, so an expired bound raises before this line
 `CHK-OUT-BURST-FALLTHROUGH`, `CHK-OUT-SRCID-WILDCARD` and `CHK-OUT-GROUPID-INERT` hold: every
 matched write is DECERR with its sentinel kept, the write count unchanged and no SYS_OUT AW or W
 valid, and every unmatched write is OKAY, lands each beat and presents its driven `awprot` and
-`awlen`. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after both access floors. Enrolled in:
-`all`, `fabric`.
+`awlen`. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after both access floors. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -9380,8 +9382,7 @@ this line
 `CHK-OUT-DENY-ADMIT-SIMULTANEOUS` and `CHK-OUT-RECONFIG-OUTSTANDING` hold: every denied access is
 DECERR on every response beat with no SYS_OUT beat and its sentinels kept, the DMA payload lands
 while a denial is answered, and the twelve reconfigured writes never go from DECERR back to OKAY.
-`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after both access counts are met. Enrolled in:
-`all`, `fabric`.
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after both access counts are met. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The read data of the denied reads and the peak of outstanding JTAG writes (AW minus
 B handshakes) during the flood are printed and not compared. Which of the twelve in-flight writes
@@ -9519,7 +9520,7 @@ bounded waits themselves, so an expired bound raises before this line
 lowest-numbered matching entry decides every overlap, each channel follows its own permission bit
 and entry, every refusal is DECERR with the seed kept and no SYS_OUT beat, and every passed access
 presents its driven address, prot and AxCACHE. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed
-after both exact access counts. Enrolled in: `all`, `fabric`.
+after both exact access counts. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -9643,7 +9644,7 @@ hold: every access lands at its remapped or direct address, returns or lands its
 the driven AxPROT. The four source-ID checkers (`CHK-SRCID-DIRECT-OBSERVE`,
 `CHK-SRCID-MMODE-OBSERVE`, `CHK-SRCID-XVISOR-OBSERVE` and `CHK-VALID0-SRCID-OBSERVE`) report what
 was measured and are held only to resolvability and constancy per path. `CHK-NONVAC` and
-`CHK-TIMEOUT-PATHS` are printed after the access floor of 81. Enrolled in: `all`, `fabric`.
+`CHK-TIMEOUT-PATHS` are printed after the access floor of 81. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The `awuser` and `aruser` source IDs of the direct, M-mode and Xvisor paths are
 printed and held only to resolvability and constancy per path, because the documents do not state
@@ -9775,7 +9776,7 @@ waits themselves, so an expired bound raises before this line
 bits kept and exactly one AW handshake, the region registers read their reset words at the start and
 after the restore, and the twelve writes under a cleared `valid` land once each with at most one
 change of landing. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after the access floor of 83.
-Enrolled in: `all`, `fabric`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response to the write at 0xC0FF_FFF8, below the M-mode window, is printed and
 not compared, because the documents do not state the response to an address outside both windows.
@@ -9910,7 +9911,7 @@ expiry of any of them raises, so the line is a record and not a compare
 the miss keeps 0x3, the offset and upper half writes keep the other half and land at the shifted
 address with AWCACHE 0xB and 0x2, the JTAG and DMA traffic is translated by the same table and
 the 21 JTAG accesses and the access floor of 111 are met. `CHK-ALIAS-CACHE-ZERO-OBSERVE` records the
-cacheable-0 value without comparing it. Enrolled in: `all`, `fabric`.
+cacheable-0 value without comparing it. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: AWCACHE and ARCACHE of a hit on a valid region with cacheable 0 are measured and
 printed, each required only to be 0 or 0b0011, because the expected value is an owner value that is
@@ -10056,7 +10057,7 @@ raises, so the line is a record and not a compare
 translation on both channels with bits [11:0] kept, the span edges, the carry into bit 32, each
 open case landing at one of its allowed addresses, and the 30 JTAG accesses and the floor of 123.
 The overlap choice, the empty-region landing and the reprogramming switch point are recorded without
-a fixed expected value. Enrolled in: `all`, `fabric`.
+a fixed expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Where a write that hits overlapping regions 1 and 2 lands is not fixed by the
 register description, so one of three landings is required and which one, the response and the
@@ -10187,7 +10188,7 @@ raises, so the line is a record and not a compare
 `CHK-IPB-REJECT-RECOVERY` hold with exact word and beat compares and OKAY on every port, and the
 per-port access counts of 41, 14 and 14 match the scoreboard. `CHK-IPB-INCR-REG-OBS` and
 `CHK-IPB-REJECT-READ-OBS` record the register-island burst responses without comparing them.
-Enrolled in: `all`, `fabric`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response codes and beats of the 4-beat, 3-beat and block-crossing
 register-island reads and of the FIXED and WRAP reads are printed and not compared, because the
@@ -10330,7 +10331,7 @@ control-flow invariant that catches a truncated run, not a DUT-failable compare
 conditions of `CHK-SHIM-LAST-WORD-ROUTED`,
 `CHK-SHIM-PAST-RANGE-NOT-EFUSE` and `CHK-EXT-WINDOW-TOP` hold with the stated responses, data and
 probe levels. The measured SHIM extent and the responses printed by the observe legs are recorded
-without an expected value. Enrolled in: `all`, `fabric`.
+without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The SHIM extent is measured by scanning and printed, not compared with a stated
 size, because the memory map gives no value for `EFUSE_SHIM_SIZE`. The responses and data of the
@@ -10473,7 +10474,7 @@ timeout allowed); the expiry of any raises, so the line is a record and not a co
 write DECERR on all six port and base combinations, the window reads answer DECERR/0xBADCAB1E with
 equal write responses across combinations, the neighbour reads answer DECERR and OKAY as stated, and
 the access floor of 122 is met. The window and neighbour write responses are recorded, not compared
-with an expected code. Enrolled in: `all`, `fabric`.
+with an expected code. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The write responses of the window at offsets 0x1_7000 to 0x1_7FFF are printed and
 not compared, because the memory map states SLVERR while the register description declares DECERR
@@ -10609,7 +10610,7 @@ line is a record and not a compare
 value, or DECERR where the address is unmapped or outside the window, in every group and in every
 port combination, the read and write on SEP_IN complete, and the scoreboard books at least 115
 exact-value compares over at least 247 accesses. The stall cycles at each limit are recorded without
-an expected count. Enrolled in: `all`, `fabric`.
+an expected count. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The stall cycles at each outstanding limit are printed and not asserted; the limit
 itself is only observed, every read being required to complete with its own value or DECERR.
@@ -10733,7 +10734,7 @@ waits on nothing); the expiry of any raises, so the line is a record and not a c
 classes and in the M-mode and Xvisor regions answers DECERR on both ports at both bases, the
 in-window controls return the seeded pattern and `REGION_SIZE` returns 0x0100_0000, the output interface sees no
 request, and at least 90 accesses are issued. The last-word responses and every printed read
-data are recorded without an expected value. Enrolled in: `all`, `fabric`.
+data are recorded without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The read data of the DECERR accesses at `BASE + REGION_SIZE` and in the four
 outside-window classes is printed and not compared. The responses and read data of the last word
@@ -10865,7 +10866,7 @@ line is a record and not a compare
 window word and the middle SPM word behave as stated with no output request, the cross-base and
 cross-port patterns read back exactly, JTAG reads `REGION_SIZE` and its scratch word back at both
 bases, and at least 79 accesses are issued. The last-word responses and the remap hit vectors are
-recorded without an expected value. Enrolled in: `all`, `fabric`.
+recorded without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response and data of the last window word are printed and not compared, because
 the bench does not separate that answer from a region-demux DECERR. The remap hit vectors sampled
@@ -10983,7 +10984,7 @@ line is a record and not a compare
 *Pass Criteria*: every instance of every array reads back exactly its own pattern with all instances
 resident, no cross-block or cross-array pattern appears, every restore reads back its reset value,
 the three ports read back the 32-bit scratch word, and at least 700 accesses are issued with the
-scoreboard counting at least as many on each port as the sequence issued. Enrolled in: `all`, `fabric`.
+scoreboard counting at least as many on each port as the sequence issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -11090,8 +11091,7 @@ timeout allowed); the expiry of any raises, so the line is a record and not a co
 *Pass Criteria*: every probe in every run answers DECERR, every valid read after a run answers OKAY
 with its register description reset value or written word, the mixed run's reads return 0xBADCAB1E
 inside the guard, and at least 406 accesses are issued. The probe read data of the 1-, 32- and
-33-probe runs and the worst mixed-run latency are recorded without an expected value. Enrolled in:
-`all`, `fabric`.
+33-probe runs and the worst mixed-run latency are recorded without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The read data of the probes in the 1-, 32- and 33-probe runs is printed and not
 compared, because no document fixes it outside the mixed run; the worst measured latency of the
@@ -11238,8 +11238,7 @@ the expiry of any raises, so the line is a record and not a compare
 write answers OKAY and lands at its post-remap address, the alias-then-output landing is exact, the
 DMA and JTAG writes both land with the JTAG AW first, the second write is accepted while the first
 is pending, the post-reset write and read answer OKAY with the exact word, and at least 91 SEP_IN
-accesses are issued. The interrupted write's fate is recorded without an expected value. Enrolled
-in: `all`, `fabric`.
+accesses are issued. The interrupted write's fate is recorded without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The timeout, response and memory content of the write interrupted by the cold reset
 are printed and not compared, because no document states what an observer must see; the counters
@@ -11377,7 +11376,7 @@ line is a record and not a compare
 from SEP_IN and SYS_IN answers DECERR, the output interface stays silent, the widened units answer
 OKAY with their reset values where declared, every past-extent and aperture-top read answers
 DECERR with 0xBADCAB1E, `REGION_SIZE` is restored, and at least 157 accesses are issued. The JTAG
-responses and the undeclared reset values are recorded without an expected value. Enrolled in: `all`, `fabric`.
+responses and the undeclared reset values are recorded without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The read data of the DECERR accesses at the reset `REGION_SIZE` is printed and not
 compared. The JTAG responses at the first word of each remap region, with the output addresses and
@@ -11525,7 +11524,7 @@ line is a record and not a compare
 responder with the exact address, the registers and filter read their reset words after each cold
 reset, no read response or response without a request appears after the resets, and at least 44
 SEP_IN accesses are issued. The fates of accesses interrupted by a reset, the hit probe levels and
-the re-issued address are recorded without an expected value. Enrolled in: `all`, `fabric`.
+the re-issued address are recorded without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The inbound filter hit probe levels, the fates of the accesses outstanding when each
 cold reset is applied (they may end in any response or none), the `SCRATCH_COLD` words read
@@ -11640,7 +11639,7 @@ the line is a record and not a compare
 *Pass Criteria*: every read in every group, at and above the limits, completes OKAY with the word of
 its own address, the `CHIP_CONFIG` reads equal their first values, the mixed group's written words
 read back exactly, and at least 110 exact-value compares are booked over at least 170 accesses. The
-stall cycles around each limit are recorded without an expected count. Enrolled in: `all`, `fabric`.
+stall cycles around each limit are recorded without an expected count. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The stall cycles around each crossbar limit are printed and not asserted, because
 the document gives the limits but not whether an access past a limit stalls or errors.
@@ -11785,7 +11784,7 @@ report with no compare, each wait raising its own failure when its bound expires
 `CHK-TIMEOUT-PATHS` are all printed; every access on the three ports answers OKAY with the exact
 expected word, the AW-queue step shows at least two AW handshakes ahead of the first W, each port
 stalls B and R at least once, no watch sample is X/Z, and 257 accesses are booked by the
-scoreboard. Enrolled in: `all`, `fabric`.
+scoreboard. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The AW-to-W lead measured on each skewed write is printed without a compare.
 
@@ -11911,7 +11910,7 @@ printed report with no compare, each wait raising its own failure when its bound
 printed; every same-edge round answers OKAY with 0xC0DE_0A00 and zero ARVALID skew, the held read
 and the requests behind it all answer, the local read of the local-and-global pair returns
 0xC0DE_0A00, each of the six reset legs reads `VERSION_LO` 0x000100A0 OKAY afterwards, and exactly
-132 accesses are issued. Enrolled in: `all`, `fabric`.
+132 accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The inbound filter hit and isolate probes seen during the same-edge rounds are
 recorded and printed, not compared. The outcome of each access interrupted by the cool reset
@@ -12156,7 +12155,7 @@ printed; each of the five gated windows answers SLVERR (code 2) with 0xBADCAB1E 
 SLVERR on writes within the 400-cycle bound, each reads its reset word with OKAY after the enable
 clears, the four other windows and `CLOCK_GATE_CONTROL` stay reachable, `CLOCK_GATE_CONTROL` is
 restored to the value read at the start, and at least 130 SEP_IN accesses are issued.
-Enrolled in: `all`, `fabric`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The poll count and elapsed cycles until each gated window answers SLVERR are
 measured and printed, not compared against a figure. The response code and data of the SYS_IN read
@@ -12268,7 +12267,7 @@ printed report with no compare, each wait raising its own failure when its bound
 `CHK-EDGE-PAST-EXTENT-OBS`, `CHK-EDGE-RECOVERY`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all
 printed; `VERSION_LO` reads V0 after each of the three partial-strobe writes, every edge access
 completes within the guard, `SCRATCH_COLD(7)` reads 0xC0DE_0007 with OKAY after each of the four
-edge accesses, and exactly 18 accesses are issued. Enrolled in: `all`, `fabric`.
+edge accesses, and exactly 18 accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The write responses of the three partial-strobe writes at `VERSION_LO` are printed
 and not compared, because no document pins them. The read response and data of the write-only
@@ -12385,7 +12384,7 @@ when its bound expires.
 `CHK-DTS-PAGE-ALIGNED`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every copy lands
 byte for byte in the responder with a non-zero rising id and an exact `DONE_0` advance (one per
 single copy, four for the queue), `CONFIG` reads 0 after teardown, and at least 96 SEP_IN accesses
-are issued. Enrolled in: `all`, `fabric`.
+are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The order of AR, AW and W valid at the output port, the burst counts, the order of
 the four queued transfers, and the first AR address and burst addresses of the page-aligned copy
@@ -12490,7 +12489,7 @@ printed report with no compare, each wait raising its own failure when its bound
 *Pass Criteria*: `CHK-PAST-EXTENT-WDT`, `CHK-PAST-EXTENT-MAILBOX`, `CHK-PAST-EXTENT-DMA-ZEROER`,
 `CHK-PAST-EXTENT-DFX`, `CHK-PAST-EXTENT-CPU-CTRL`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all
 printed; every past-extent and last-word read answers DECERR with 0xBADCAB1E, every live register
-holds its value across the writes, and exactly 48 accesses are issued. Enrolled in: `all`, `fabric`.
+holds its value across the writes, and exactly 48 accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -12638,7 +12637,7 @@ printed report with no compare, each wait raising its own failure when its bound
 `CHK-PAST-EXTENT-PERIPH`, `CHK-PAST-EXTENT-CLA`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all
 printed; every past-extent, gap and last-word read of a unit with a declared response answers
 DECERR with 0xBADCAB1E, every live register holds its value across the writes, the CLA last word
-reads OKAY, and exactly 133 accesses are issued. Enrolled in: `all`, `fabric`.
+reads OKAY, and exactly 133 accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The write responses at every probed address are printed beside the SLVERR the
 register description declares and not compared. The UART and I3C windows declare no past-extent
@@ -12801,7 +12800,7 @@ JTAG, 1 SYS_IN and 12 SEP_IN accesses, at least 39 in all.
 JTAG addresses and data reach SYS_OUT unchanged, no response appears during the 200-cycle hold,
 the split writes keep their handshake order and answer OKAY, every plain access after an injected
 error answers OKAY, the local accesses are answered during the hold, no handshake probe sample is
-X/Z, and 26 JTAG, 1 SYS_IN and 12 SEP_IN accesses are booked. Enrolled in: `all`, `fabric`.
+X/Z, and 26 JTAG, 1 SYS_IN and 12 SEP_IN accesses are booked. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response and data that follow the release of the held JTAG read, the number of
 cycles with AW and W handshakes together and the first-valid offsets, the manager's response to
@@ -12963,7 +12962,7 @@ each wait raising its own failure when its bound expires.
 `CHK-CPU-CTRL-FIRST-REG-PORTS`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every
 register answers OKAY with its RDL reset word from each port and base the step names, the
 co-resident DMA and zeroer patterns read back, the DFX `STATUS` word is reported only, and at
-least 190 accesses are issued. Enrolled in: `all`, `fabric`.
+least 190 accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The DFX `STATUS` values are measured and printed with whether they equal the reset
 0, not compared. The watchdog `CTRL` and other 0 compares cannot fail on this two-state bench, so
@@ -13107,7 +13106,7 @@ expires.
 `CHK-TIMEOUT-PATHS` are all printed; every base-register read answers OKAY with one value across
 the three ports and two bases (the declared reset where there is one), the ROM words match across
 ports, the SPM patterns round-trip across bases and ports, the DMA and zeroer patterns survive the
-last-register reads, and at least 105 accesses are issued. Enrolled in: `all`, `fabric`.
+last-register reads, and at least 105 accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The outbound mailbox 0 `WRITE_DATA` readback, the eFuse interface control `STATUS`,
 inbound mailbox 31 `CTRL`, `LC_STATE` and `NDMRESET_CLUSTER_COUNT` are required only to answer
@@ -13324,8 +13323,7 @@ OKAY read of a KNOWN or responder address returns the word of that address, ever
 3, 6 and 7 issued at KNOWN bytes with AxPROT[1] clear answers OKAY and compares, the response IDs
 echo the request IDs, SYS_IN and SEP_IN outside both apertures answer DECERR without reaching the
 responder, each injected code is answered unchanged at JTAG, each responder profile shows on the
-wire, and the OUT2 handshakes and responder counters match the JTAG accesses issued. Enrolled in:
-`all`, `fabric`.
+wire, and the OUT2 handshakes and responder counters match the JTAG accesses issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The write code per sideband knob value, the exclusive (AxLOCK) responses, the
 responses of the FIXED, WRAP, narrow register, AxLOCK 1 and AxPROT[1] accesses, the DUT-side stall
@@ -23290,8 +23288,7 @@ response
 *Pass Criteria*: `CHK-DM-ACT-RESET-HELD`, `CHK-DM-ACT-DMSTATUS`, `CHK-DM-CAP-READBACK`,
 `CHK-DM-HART-HALT`, `CHK-DM-HALTSUM0`, `CHK-DM-OTHER-HART-RUNS`, `CHK-DM-GPR-DATA`,
 `CHK-DM-PROGBUF-REGS`, `CHK-DM-PROGBUF-STORE` and `CHK-DM-PROGBUF-IMPEBREAK` hold after their
-compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in:
-`all`, `hosted`, `jtag`.
+compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `dpc` is not compared.
 
@@ -23406,8 +23403,7 @@ sixteen-read `sbbusy` wait are bounded and fail on expiry with the last `sbcs` a
 
 *Pass Criteria*: `CHK-DM-SBCS-CAPS`, `CHK-DM-NOT-IMPL-DMI`, `CHK-DM-SBA-WRITE`, `CHK-DM-SBA-READ`,
 `CHK-DM-SBA-WIDTHS`, `CHK-DM-SBA-64BIT` and `CHK-DM-SBA-VISIBLE` hold after their compares;
-`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`,
-`hosted`, `jtag`.
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `sbaddress1`, written 0 by the sequence, is printed and not compared.
 
@@ -23535,7 +23531,7 @@ fails on expiry with the last `dmstatus`, `abstractcs`, `command` and DMI respon
 `CHK-DM-CMDERR-REGNO`, `CHK-DM-CMDERR-AARSIZE`, `CHK-DM-CMDERR-NOTRANSFER`,
 `CHK-DM-CMDERR-STORE`, `CHK-DM-CMDERR-REPLACE`, `CHK-DM-CMDERR-NOEXEC` and
 `CHK-DM-CMDERR-RECOVER-GPR32` hold after their compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold
-and every sequence assert holds. Enrolled in: `all`, `hosted`, `jtag`.
+and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The wait for `busy` to return to 0 after the command written while `busy` was 1 is a
 bench bound, not a specification value.
