@@ -122,7 +122,7 @@ module telemetry_receiver
 
   logic telemetry_receiver_flush;
 
-  logic last_packet_received;
+  logic end_of_message, last_packet_received;
 
   telemetry_receiver_pkg::telemetry_packet_t [MaxNumPacketsPerMessage-1:0]     received_telemetry_packets;
   telemetry_message_t                                  received_telemetry_message;
@@ -152,8 +152,7 @@ module telemetry_receiver
 
   assign telemetry_beat_received = atready_o && atvalid_i;
 
-  assembly_buffer_ptr_t
-      assembly_buffer_wr_ptr_q, assembly_buffer_wr_ptr, assembly_buffer_wr_ptr_next;
+  assembly_buffer_ptr_t assembly_buffer_wr_ptr, assembly_buffer_wr_ptr_next;
 
   telemetry_data_t [AssemblyBufferDepth-1:0] assembly_buffer, assembly_buffer_next;
 
@@ -165,14 +164,17 @@ module telemetry_receiver
 
   assign received_telemetry_packets = assembly_buffer;
 
-  logic end_of_packet, end_of_packet_q;
+  logic end_of_packet;
 
   assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(telemetry_receiver_pkg::NumBeatsPerPacket)-1:0] &&
                            telemetry_beat_received;
 
-  assign last_packet_received =
-        end_of_packet_q &&
-        received_telemetry_packets[(assembly_buffer_wr_ptr_q) / telemetry_receiver_pkg::NumBeatsPerPacket].last_packet;
+  // Reads the next-state buffer so the pointer resets on the beat that ends the message; the
+  // stored buffer only holds that beat a cycle later.
+  telemetry_receiver_pkg::telemetry_packet_t [MaxNumPacketsPerMessage-1:0] assembly_packets_next;
+  assign assembly_packets_next = assembly_buffer_next;
+  assign end_of_message = end_of_packet &&
+        assembly_packets_next[assembly_buffer_wr_ptr / telemetry_receiver_pkg::NumBeatsPerPacket].last_packet;
 
   assign missing_last_event = assembly_buffer_full_q && !last_packet_received;
 
@@ -185,7 +187,7 @@ module telemetry_receiver
     end
 
     // Handle pointer updates and resets
-    if (last_packet_received || assembly_buffer_full || telemetry_receiver_flush) begin
+    if (end_of_message || assembly_buffer_full || telemetry_receiver_flush) begin
       assembly_buffer_wr_ptr_next = assembly_buffer_ptr_t'(0);
     end else if (telemetry_beat_received) begin
       assembly_buffer_wr_ptr_next = assembly_buffer_wr_ptr + assembly_buffer_ptr_t'(1);
@@ -197,9 +199,8 @@ module telemetry_receiver
   `OCAH_FF(assembly_buffer, assembly_buffer_next, '0, clk_i, rst_ni)
   `OCAH_FF(assembly_buffer_wr_ptr, assembly_buffer_wr_ptr_next, assembly_buffer_ptr_t'(0), clk_i,
            rst_ni)
-  `OCAH_FF(assembly_buffer_wr_ptr_q, assembly_buffer_wr_ptr, assembly_buffer_ptr_t'(0), clk_i,
-           rst_ni)
-  `OCAH_FF(end_of_packet_q, end_of_packet, 1'b0, clk_i, rst_ni)
+  // The message is decoded and pushed a cycle later, once its last beat is in assembly_buffer.
+  `OCAH_FF(last_packet_received, end_of_message, 1'b0, clk_i, rst_ni)
   `OCAH_FF(assembly_buffer_full_q, assembly_buffer_full, 1'b0, clk_i, rst_ni)
 
 
