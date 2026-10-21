@@ -2384,12 +2384,6 @@ Toggle smc_end [16:0] "logic smc_end[56:0]"
 Toggle smc_region_size_i [16:0] "net smc_region_size_i[31:0]"
 Toggle smc_region_size_i [31] "net smc_region_size_i[31:0]"
 
-CHECKSUM: "1230605037 3576997940"
-MODULE: smu_axi_xbar
-
-ANNOTATION: "SMU-LINE-ZERO-APERTURE-REJECTED: the zero-size arm of the crossbar aperture rule. A zero region size forms a rule with start == end (smu_axi_xbar.sv 72-74), and the address decoder's map check accepts only start < end or end == 0 (addr_decode_dync.sv 150), so a zero-size SEP or SMC aperture cannot be programmed on this bench: the check fails the run. Retired by an aperture encoding the decoder accepts for zero size."
-Block 2 "2936951333" "aperture_rule.start_addr = '1;"
-
 CHECKSUM: "3127009390 626445231"
 MODULE: smu
 
@@ -2397,14 +2391,3 @@ ANNOTATION: "SMU-CONDITION-LC-SIGINT-ENCODED: the lifecycle signal-integrity err
 Condition 1 "2839476257" "(sep_lc_sigint_err | efuse_lc_sigint_err) 1 -1" (2 "01")
 Condition 1 "2839476257" "(sep_lc_sigint_err | efuse_lc_sigint_err) 1 -1" (3 "10")
 
-CHECKSUM: "1230605037 3183581356"
-MODULE: smu_axi_xbar
-
-ANNOTATION: "SMU-CONDITION-ZERO-APERTURE-REJECTED: the zero-size arm of the crossbar aperture rule. A zero region size forms a rule with start == end (smu_axi_xbar.sv 72-74), and the address decoder's map check accepts only start < end or end == 0 (addr_decode_dync.sv 150), so a zero-size SEP or SMC aperture cannot be programmed on this bench: the check fails the run. Retired by an aperture encoding the decoder accepts for zero size."
-Condition 1 "2282224133" "(size == '0) 1 -1" (2 "1")
-
-CHECKSUM: "1230605037 1769377088"
-MODULE: smu_axi_xbar
-
-ANNOTATION: "SMU-BRANCH-ZERO-APERTURE-REJECTED: the zero-size arm of the crossbar aperture rule. A zero region size forms a rule with start == end (smu_axi_xbar.sv 72-74), and the address decoder's map check accepts only start < end or end == 0 (addr_decode_dync.sv 150), so a zero-size SEP or SMC aperture cannot be programmed on this bench: the check fails the run. Retired by an aperture encoding the decoder accepts for zero size."
-Branch 0 "4085520657" "(size == '0)" (0) "(size == '0) 1"
