@@ -2186,8 +2186,8 @@ module sep_uvm_top
     // ArValidStable_A) grade a handshake that does not occur. With
     // +sep_trng_errslv_assert_waive, every assertion in that instance is off
     // from the clock where the responder turns on. Before that clock the
-    // error slave answers the port and its assertions stay on. VCS only:
-    // Verilator compiles these assertions out.
+    // error slave answers the port and its assertions stay on. This is VCS
+    // only, because a Verilator build compiles these assertions out.
 `ifndef VERILATOR
     logic trng_errslv_waive_plusarg;
     initial trng_errslv_waive_plusarg = $test$plusargs("sep_trng_errslv_assert_waive");
