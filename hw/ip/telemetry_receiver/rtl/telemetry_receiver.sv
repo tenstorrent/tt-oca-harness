@@ -165,14 +165,15 @@ module telemetry_receiver
   assign received_telemetry_packets = assembly_buffer;
 
   logic end_of_packet;
+  telemetry_receiver_pkg::telemetry_packet_t [MaxNumPacketsPerMessage-1:0] assembly_packets_next;
+
+  assign assembly_packets_next = assembly_buffer_next;
 
   assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(telemetry_receiver_pkg::NumBeatsPerPacket)-1:0] &&
                            telemetry_beat_received;
 
   // Reads the next-state buffer so the pointer resets on the beat that ends the message; the
   // stored buffer only holds that beat a cycle later.
-  telemetry_receiver_pkg::telemetry_packet_t [MaxNumPacketsPerMessage-1:0] assembly_packets_next;
-  assign assembly_packets_next = assembly_buffer_next;
   assign end_of_message = end_of_packet &&
         assembly_packets_next[assembly_buffer_wr_ptr / telemetry_receiver_pkg::NumBeatsPerPacket].last_packet;
 
