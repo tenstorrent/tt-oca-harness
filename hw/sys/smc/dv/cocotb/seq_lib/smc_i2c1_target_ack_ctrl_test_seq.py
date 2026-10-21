@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C1/I2C2 target ACK Control Mode against a DUT controller on the shared bus.
 
-Contract: SMC_I2C1_TARGET_ACK_CTRL in hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B3_VPLAN_DETAIL.md.
+Contract: the `smc_i2c1_target_ack_ctrl_test` card (section 541) of hw/sys/smc/dv/docs/SMC_VPLAN.adoc.
 Sources: hw/ip/i2c/regs/gen/adoc/i2c.adoc (CTRL.ACK_CTRL_EN, STATUS.ACK_CTRL_STRETCH,
 INTR_STATE.ACQ_STRETCH, ACQDATA.SIGNAL, TARGET_NACK_COUNT, TARGET_ACK_CTRL, ACQ_FIFO_NEXT_DATA,
 CONTROLLER_EVENTS), hw/sys/smc/doc/periphs.adoc (target RX FIFO depth).
