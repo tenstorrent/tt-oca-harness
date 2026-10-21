@@ -86,7 +86,13 @@ organisation by collector module; a cover point does not follow the phase of
 its owning test. A tier says what a test is asked to prove. It does not say
 when the test is written. A Phase 3 entry takes credit under the rules of
 <<smc-credit-rules>> and <<smc-vplan-blocked-taxonomy>>. The behaviours this
-plan does not claim are in <<smc-vplan-scope,Verification Scope>>.
+plan does not claim are in <<smc-vplan-scope,Verification Scope>>. The Phase 3
+tests of each area are listed in <<smc-vplan-phase3-overview>>. The Phase 3
+contracts that no test can grade are in <<smc-vplan-phase3-lists>>. The
+observation taps, the bench hooks and the PROPOSED drives of the Phase 3 tests
+are in <<smc-vplan-phase3-proposed>>. The parked-test rule of Phase 3 is in
+<<smc-vplan-phase3-parked>>, and the randomization class of every Phase 3 test
+is in <<smc-vplan-phase3-random>>.
 
 Randomization contract: the *same* configuration object programs the DUT and
 the golden. Pin the datapath directed first, then upgrade that test to
@@ -41667,6 +41673,2105 @@ Drive `smc_filter_lock_window_test_seq`. Each checker below is a named compare t
 '''''
 
 [[smc-formal-plan]]
+[[smc-vplan-phase3]]
+=== Phase 3 Tests
+
+Phase 3 tests prove the residual contracts of each area
+(<<smc-vplan-phase3-overview>>). Each Phase 3 test has a row in the
+Scenario-Expanded Test Summary, marked "3" in the Phase column, and its entry in
+the section of its area under Test Procedures, with `*Phase*: 3`. The rows are
+for human readers and the entries are for tools and audits. The two name the
+same tests. An entry follows the field rules of Test Procedures: `*Phase*`,
+`*Area*`, `*Run mode*`, `*Randomization*`, `*Scope limit*`, and the
+error-injection steps written as "Error injection. Point: ... Kind: ... Expected
+response: ...". A Phase 3 test never overlaps a Phase 1 or Phase 2 test. An
+entry that extends an open test names that test in its Objective. The Phase 3
+contracts that no test can grade are in <<smc-vplan-phase3-lists>>. The
+randomization class of every Phase 3 test is in <<smc-vplan-phase3-random>>. The
+observation taps, the hooks and the PROPOSED drives of the Phase 3 tests are in
+<<smc-vplan-phase3-proposed>>. The parked-test rule is in
+<<smc-vplan-phase3-parked>>. The class words and bench terms are defined in
+<<smc-vplan-blocked-taxonomy>>.
+
+[[smc-vplan-phase3-overview]]
+==== Phase 3 Overview
+
+The test numbers are the entry numbers of the area under Test Procedures; an entry number is unique
+inside its area.
+
+[cols="3,2,8",options="header"]
+|===
+|Area |Test numbers |Scope
+|<<smc-vplan-area-misc,MISC>>
+|8, 327
+|Register-boundary depth and the 24-island decode, extent and past-extent response sweep.
+|<<smc-vplan-area-power,POWER>>
+|10, 12, 184, 320, 328 to 331, 333, 334, 336 to 338, 341 to 343, 345 to 347, 349, 351 to 353, 355 to 359, 528
+|AVSBus clock-gate response, pad enable, forced and timed resync, clock divider and status decode; OCTS register decode; telemetry address map, control access, receiver isolation and the two flush paths; watchdog interrupt source ids, key relock, register map and write width; DMA and zeroer egress attributes and window decode, DMA back-pressure, completion status, descriptor and configuration storage, field widths and invalid descriptors; zeroer busy and outstanding limits, completion interrupt, job breadth, unchecked responses and SRAM initialisation.
+|<<smc-vplan-area-fabric,FABRIC>>
+|32, 36, 180, 181, 185, 195, 196, 360, 362 to 370, 375 to 397, 540
+|SYS_OUT error-response injection and the AW-versus-W split, window-top and spare-block decode, dual-base addressing, SEP_IN flow control and downstream concurrency, filter lock scope, reset words, inbound and outbound address, attribute, priority and default-liveness matches, outbound deny concurrency, port bursts, external-window routing, gap and outside-window responses, inbound concurrency limits, instance storage isolation, probe recovery, outbound stage order, region-gated and region-zero recovery, crossbar outstanding limits, channel timing and contested ports, write-side idle, clock-gated windows, read-only and write-only edges, DMA traffic shape, past-extent response classes, unit base and extent decode, and the seeded AXI stress.
+|<<smc-vplan-area-reset,RESET>>
+|43, 44, 47, 51, 55, 183, 189, 191, 326, 398 to 400, 532 to 534
+|Reset interactions and corners: cool-versus-cold, core reset sources, an interrupt during a power-good glitch, mixed boot stall, the recovery matrix, cold-boot chain order, primary reset scope, synchronizer edges, the override-mux walk, process extra bits, pin de-glitch, asynchronous assertion, the cool-reset de-glitch window, the pin-versus-FLR overlap and the collision recovery.
+|<<smc-vplan-area-clock,CLOCK>>
+|67, 305 to 319, 403, 404, 406 to 429
+|Zeroer clock-gate independence, the AVS configuration crossing, AVS clock select, base-configuration registers, handshake stalls, per-ID order and single responses across the clock domains, scratch storage at a pinned triple, and the fixed-cell families: the fifteen pinned-period ratio modules (the owning leaf of the family, `smc_clk_smc_slower_than_ref_test`, is Phase 2), the register-crossbar relation cells, the OCTS rate cells, the peripheral-floor round trips and the reference-period reset-cycle counts.
+|<<smc-vplan-area-cpu,CPU>>
+|70, 72, 78, 82, 430, 433, 435, 437 to 442, 445
+|CPU-control map depth, the ECC diagnostic depth and the ECC fault-inject hook, SPM boundaries and aperture, BEU access at the reset aperture, boot-time register reads, access rules, the MUTEX, SCRATCH and WDT register walks, write-back PC decode, the external-window aperture limit and the SPM region-size reach.
+|<<smc-vplan-area-jtag,JTAG>>
+|85, 210 to 219, 222 to 224, 253, 301 to 303, 323, 446 to 452, 537
+|DFX sticky abort bits through pulses and resets, Debug Module command replacement under a held error, the DFD register sweeps (CLA MMR, node event-action pairs, counters and edges, sink and funnel MMRs, read-only writes, byte lanes), trace accumulator fill, sink windows, concurrent sink readout, debug-bus mode lock, flush corners, trace reset and write-out phase, the dfx_ctrl aperture, storage and no-effect fields, fixed Debug Module capabilities and the abstract-command lifecycle.
+|<<smc-vplan-area-efuse,EFUSE>>
+|88, 91, 95, 98, 99, 101, 320 to 322, 453 to 456, 459 to 466
+|Boundary signals under a held external boot, the PROD deny paths, OTP clock and timing depth, read and program timeouts and their status, the fault-injected state encodings, the three image patterns, the bank-control window, map concurrency, layout decode, reset persistence, the six sensed-image variants and the SEP-side map writes.
+|<<smc-vplan-area-gpio,GPIO>>
+|102, 104, 111, 163, 186, 468 to 474, 476
+|Control and interface sweeps over all 65 instances, the interface-enable competitor, interrupt-enable de-assertion, the external-window extra blocks and per-pad control decode, DATA_CTRL enable fields, read-only status and reset write-back, interface decode without aliasing, and primary-reset clearing with an in-flight access.
+|<<smc-vplan-area-irq,IRQ>>
+|477, 479 to 487, 491, 493
+|External input hold and release and pulse sampling, the hang-detector windows, OR matrix, held-read control changes and threshold updates, register read-back and isolation, reserved bits at idle, the SEP mailbox vector walk and SYNC_REG isolation.
+|<<smc-vplan-area-i2c,I2C>>
+|120, 121, 123, 128, 132, 165, 494 to 497, 499 to 508, 510, 511, 513, 538, 539
+|Error and FIFO depth, FIFO full and empty status, multi-instance reset and co-resident addresses, the three-controller shared bus, stretch timeout, interrupt masking, the clock-gated window, write-one-to-clear events, NACK modes, the role gate, cross-instance events, the format-FIFO reset after a bus timeout, interrupt output and test state, pad override, access classes, target address gate, bus symbols, event flags, instance pairs, window decode, alert isolation and self-clear, wire timing and dual concurrent transfers.
+|<<smc-vplan-area-i3c,I3C>>
+|515 to 517
+|The clock-gated window and the core and extended register sweeps of all six instances.
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|140, 142, 147, 518 to 520, 522
+|Data and illegal-access responses, the readable-field sweep, every instance's status, access errors and channel overlap, flush status, interrupt acknowledge outputs and the 64-aperture register map with reset.
+|<<smc-vplan-area-uart,UART>>
+|151, 153, 154, 164, 524 to 527, 529, 530
+|Scratch and idle line status, log-engine error and boundary depth and register read-back, interrupt masking, FIFO control depth, THRE identification, the register map on four instances, reset and read-write isolation, the pad mux enable and the log-engine region-size rules.
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|172 to 174, 176 to 178, 193, 195 to 201, 204, 206, 209 to 218, 222 to 225, 227 to 229, 232, 234 to 236, 238 to 252, 255 to 257, 259 to 264, 280 to 291, 294, 295, 324, 327, 328
+|Firmware-driven FIFO depth, stretch-timeout recovery and FIFO fill, log-engine boundary back-pressure, mid-transfer disable and fetch error, the MMIO read and write wedges, narrow store lanes, the register-field, GPIO, filter, I2C, UART and peripheral sweeps, zero-delay cool reset, read-only and byte-enable refusals, mode selectors, FIFO reset pulses, region spans and bit walks, partial clears, single-field drives, alias attributes, target stretch and multi-instance stretch, protocol interruptions, bus timeouts, SDA interference, the clock divider, address-phase holds, acknowledge control, suppressed retries, NACK timeouts, fast controllers, controller stretch, control symbols, broken characters, controller exits, frame sequencing, instance variants, the register-block handshake, external stall and wrong direction, read aborts, SCL events, disable with STOP, buffer overflow, queue shapes, edge timing, target loopback, the output remap windows, event retention, THR paths, log fetch errors, credit expiry, the eFuse guard, partial writes, core reset pulses, bus corners, primary start, decode holes, zeroer size corners, hang-detector disable, uncore reset, DMA back-pressure, JTAG AXI shape, window landings, the filter lock window, unaligned zeroing and the GPIO interface and filter write sweeps.
+|===
+
+[[smc-vplan-phase3-parked]]
+==== Phase 3 Parked Tests
+
+A parked test has no graded check that runs without a PROPOSED item or an
+unstated value (<<smc-vplan-blocked-taxonomy>>). Its entry carries the field
+`*Needs*:`, its summary row reads "3, parked", it takes no credit and it is not
+in an executable total.
+
+No Phase 3 entry carries a `*Needs*:` field, so every Phase 3 test is
+executable: each is a member of `all` with a Checkers table whose tokens its
+leaf requires (<<smc-vplan-evidence-gate>>), and at least one of its graded
+checks is not blocked. The legs an entry leaves ungraded are named in its
+`*Scope limit*` field; the ones a document leaves unstated are collected in
+<<smc-vplan-phase3-lists>>. The cards the plan holds out of `all` are not parked
+Phase 3 tests: the weekly `rtl_issue` reproducer
+`smc_isolate_req_smc_lane_test`, the two ROM hold-outs
+`smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test`, and the
+firmware hold-out `smc_fw_i3c5_csr_access_test` are held-out cards under
+<<smc-held-out-testcases>> with their own closing conditions, and their summary
+rows read "held out". The three `sanity` leaves of the dual elaboration are
+Phase 1 cards held out of `all` for the elaboration reason that
+<<smc-held-out-testcases>> states, not parked.
+
+[[smc-vplan-phase3-random]]
+==== Phase 3 Randomization
+
+Every Phase 3 stimulus that has a legal matrix is a pure function of the run
+seed, and `--seed N` replays the leaf. The stream is not a CSPRNG and no drawn
+value is a key, a token or a nonce. No document quotes a per-seed value as
+evidence. The class of a test is one of:
+
+* `RAND-REP`: the seed draws points from a legal matrix, and every point has a stated outcome.
+* `RANDCFG`: the seed draws a configuration, the test runs one scenario under it, and the expected outcome is a function of the configuration.
+* `RAND-NONE`: the stimulus is directed, for the reason the entry states.
+
+The drawn-cell contract and the fixed-cell exception are stated in
+<<smc-vplan-drawn-cells>>. A row marked "fixed-cell variant" is a module of the
+clock-cell or image-kind families that pins its cell by a class attribute and a
+testlist entry. The Dimensions column repeats the draws or the reason of the
+entry's `*Randomization*` field.
+
+[cols="5,2,2,7",options="header"]
+|===
+|Test Case |Area |Class |Dimensions
+|`smc_register_boundary_depth_test`
+|<<smc-vplan-area-misc,MISC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_reg_island_boundary_sweep_test`
+|<<smc-vplan-area-misc,MISC>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_avsbus_clock_config_proxy_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_avsbus_status_depth_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dma_reserved_stream_banks_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_periph_cg_access_error_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_avsbus_pad_enable_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_avsbus_resync_force_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_avsbus_resync_timing_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_octs_csr_access_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_telemetry_address_map_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_telemetry_ctrl_access_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_telemetry_receiver_isolation_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_telemetry_rx_flush_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_telemetry_tx_flush_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the feature has no legal knob space (a strap, a single named handshake).
+|`smc_wdt_irq_source_ids_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_wdt_key_relock_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the stimulus is the named frame, command or sequence the specification states.
+|`smc_wdt_register_map_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_wdt_write_width_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_accel_egress_attrs_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_accel_window_decode_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dma_backpressure_breadth_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the seed selects only timing: the stall lengths of the held SYS_OUT channels and the AR, AW, W and R delays; the copies must land exact whatever the timing.
+|`smc_dma_completion_status_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dma_csr_config_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_dma_field_widths_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_zeroer_busy_outstanding_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, the seed selects only timing: the AW and W stall lengths and the per-beat stalls; the busy and ordering contracts hold whatever the timing.
+|`smc_zeroer_irq_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_zeroer_job_breadth_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-REP
+|the seed draws the bucket order, the alignment order, the job sizes, the offsets and the poison pattern.
+|`smc_zeroer_resp_unchecked_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_zeroer_sram_init_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dma_invalid_descriptor_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_output_fabric_slverr_inject_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_sys_out_aw_w_split_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_address_window_top_decode_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_alias_remap_spare_block_decode_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dual_base_addressing_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_sep_in_axi_flow_control_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_axil_downstream_concurrency_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_filter_lock_scope_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_filter_reset_word_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_infilt_addr_burst_match_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_infilt_attr_match_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_infilt_default_liveness_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_infilt_priority_deny_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-REP
+|the seed draws the overlap offsets and the channel (read or write) of the overlapping-entry probes.
+|`smc_outfilt_addr_match_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_outfilt_attr_match_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_outfilt_deny_concurrency_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_outfilt_priority_perm_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-REP
+|the seed draws the offsets and the channel of the priority probes.
+|`smc_axi_inbound_ports_burst_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_ext_window_routing_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_gap_decode_response_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_inbound_concurrency_limits_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_inbound_outside_window_decerr_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_inbound_window_port_matrix_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_instance_storage_isolation_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_invalid_probe_recovery_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_outstage_order_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_region_gated_units_decode_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_region_zero_reset_recovery_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_xbar_outstanding_limits_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_axi_channel_timing_ports_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, the seed selects only timing: the AW-to-W skew and the AR delays of the random step on each port; every access must complete once with its data whatever the timing.
+|`smc_axi_contested_ports_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_axil_write_side_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_clock_gated_window_slverr_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpuif_ro_wo_edge_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dma_traffic_shape_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_past_extent_decerr_units_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_past_extent_slverr_units_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_sys_out_path_responder_control_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_unit_base_register_port_matrix_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_unit_extent_register_decode_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_axi_random_stress_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-REP
+|the seed draws the AXI attributes, burst shapes, outstanding depths, transaction IDs, payload words and the SYS_OUT responder timing and error faults on SEP_IN, SYS_IN and JTAG; every drawn point has a stated response.
+|`smc_cool_reset_x_cold_reset_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpu_reset_source_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_irq_during_powergood_glitch_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_mixed_boot_stall_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_reset_recovery_matrix_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cold_boot_chain_order_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_primary_reset_scope_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_reset_sync_edge_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_jtag_reset_ovrd_walk_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_ndm_process_extra_bits_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_reset_pin_deglitch_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_reset_sync_async_assert_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cool_reset_deglitch_window_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cool_reset_pin_flr_overlap_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cool_reset_recovery_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_clk_smc_equal_ref_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_periph_slower_than_ref_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_slower_periph_slower_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_slower_periph_equal_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_slower_periph_much_faster_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_equal_periph_slower_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_equal_periph_faster_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_equal_periph_much_faster_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_faster_periph_slower_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_faster_periph_equal_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_faster_periph_faster_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_faster_periph_much_faster_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_much_faster_periph_equal_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_much_faster_periph_much_faster_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_clk_smc_much_faster_periph_faster_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the three clock periods are pinned by the module.
+|`smc_zeroer_cg_indep_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_avs_cfg_csr_cdc_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_avs_clock_select_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the seed selects only the order in which the walk visits the `AVS_CLOCK_SELECT` settings; every setting is visited and has its table period as the stated outcome.
+|`smc_clk_ratio_base_config_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_clk_ratio_handshake_stall_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_clk_ratio_order_per_id_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_clk_ratio_resp_once_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_clk_ratio_scratch_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_clk_relation_regxbar_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|`smc_clk_relation_regxbar_slowest_periph_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_clk_relation_regxbar_ref8_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_clk_relation_regxbar_periph3_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_clk_relation_regxbar_periph_slower_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_clk_relation_regxbar_smc_equal_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_clk_relation_regxbar_smc_slower_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_octs_clk_rate_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|`smc_octs_clk_rate_periph3_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_octs_clk_rate_ref8_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_octs_clk_rate_smc_fast_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_octs_clk_rate_smc_equal_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_octs_clk_rate_smc_slower_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_periph_cg_window_extent_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_periph_floor_roundtrip_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|`smc_periph_floor_roundtrip_periph5_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_periph_floor_roundtrip_periph3_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_ref_reset_cycles_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|`smc_ref_reset_cycles_ref4_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_cpu_ctrl_map_depth_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_cpu_ecc_lint_pint_depth_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_ecc_fault_inject_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_spm_mem_boundary_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_beu_csr_access_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpu_boot_regs_read_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_cpu_ctrl_access_rules_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpu_ctrl_mutex_all_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-REP
+|the seed draws the 64-bit value of the fourth release write.
+|`smc_cpu_ctrl_scratch_all_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_cpu_ctrl_sema_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpu_ctrl_wb_pc_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpu_ctrl_wdt_regs_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_ext_window_aperture_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_spm_aperture_region_size_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfx_status_abort_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_jtag_dm_cmderr_command_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_cla_mmr_sweep_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_dfd_cla_node_eap_sweep_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_dfd_trace_accumulator_fill_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_cla_counter_edge_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_dfd_trace_format_sweep_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_trace_sink_window_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_cla_event_type_sweep_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_dfd_trace_sink_readout_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_sink_mmr_sweep_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_dfd_ro_mmr_write_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_dfd_mmr_lane_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_dbm_mode_lock_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_dfd_trace_sink_concurrent_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_cla_snapshot_capture_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_trace_flush_corner_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_trace_reset_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_trace_writeout_phase_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_csr_field_access_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_dfx_aperture_extent_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfx_debug_bus_mux_storage_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_dfx_debug_ctrl_noeffect_gate_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfx_debug_ctrl_storage_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_dfx_status_smu_pulse_reset_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_jtag_dm_sbcs_haltsum_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_jtag_dm_abstractcs_lifecycle_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_jtag_lc_negative_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_otp_clock_config_depth_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_read_program_timeout_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_read_timeout_status_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_state_fault_inject_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_boundary_signals_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_image_alt55_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, the image fields and the lock set are fixed by the `alt55` pattern (a fixed-cell variant of the image-pattern family).
+|`smc_efuse_image_altaa_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, the image fields and the lock set are fixed by the `altaa` pattern (a fixed-cell variant of the image-pattern family).
+|`smc_efuse_image_random_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RANDCFG
+|the seed draws every field value of the sensed image and the write-locked subset of blocks; the expected map content is a function of the image.
+|`smc_efuse_bank_ctrl_window_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_fuse_reset_gate_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, the feature has no legal knob space (a strap, a single named handshake).
+|`smc_efuse_map_concurrency_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_map_layout_decode_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_map_reset_persistence_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_map_sense_image_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, the default eFuse image; the other image kinds run as fixed-cell variant modules.
+|`smc_efuse_map_sense_image_unique_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
+|`smc_efuse_map_sense_image_random_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RANDCFG
+|the seed draws the field words of the sensed image and the write-lock bits of its `LOCKS` words; a fixed-cell variant whose cell is the `random` image kind.
+|`smc_efuse_map_sense_image_walking_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
+|`smc_efuse_map_sense_image_ones_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
+|`smc_efuse_map_sense_image_zero_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
+|`smc_efuse_map_sep_write_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-REP
+|the seed draws the 32-bit values written, the 256-bit patterns and the element order of the map walk.
+|`smc_gpio_ctrl_full_sweep_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_gpio_intf_full_sweep_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_gpio_p0_mux_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_external_window_pad_ctrl_decode_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_gpio_irq_mask_deassert_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_gpio_data_ctrl_enable_fields_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_gpio_data_ctrl_ro_status_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_gpio_data_ctrl_rw_values_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_gpio_ext_extra_decode_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_gpio_filter_reg_fields_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_gpio_intf_decode_map_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_gpio_intf_reset_writeback_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_gpio_rst_primary_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_ext_irq_hold_release_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_ext_irq_pulse_sampling_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_hang_data_timeout_window_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_hang_irq_or_matrix_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_hang_sep_drop_controls_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-REP
+|the seed draws the control value written at each toggle of the held-read phase.
+|`smc_hang_sep_threshold_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, the seed selects only the order of the small-threshold walk; every threshold is walked.
+|`smc_hang_sep_timeout_window_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_hang_sys_timeout_window_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_irq_csr_readback_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_irq_reserved_idle_zero_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_sep_mbx_irq_vector_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_sync_irq_isolation_test`
+|<<smc-vplan-area-irq,IRQ>>
+|RAND-NONE
+|none; directed, the feature has no legal knob space (a strap, a single named handshake).
+|`smc_i2c_error_fifo_depth_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_fifo_full_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_multi_instance_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_p0_multictrl_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_p0_timeout_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_intr_mask_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_i2c_clock_gate_response_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, the feature has no legal knob space (a strap, a single named handshake).
+|`smc_i2c_ctrl_intr_w1c_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_ctrl_nack_modes_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_ctrl_role_gate_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_ctrl_xinst_events_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_fmtrst_repro_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_intr_output_path_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_intr_test_state_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_i2c_pad_override_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_reg_access_class_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, the seed selects only which instance is walked per leg; the access classes and the expected words are the same on every instance.
+|`smc_i2c_target_addr_gate_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_target_bus_symbol_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_target_event_flags_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_target_instance_pair_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_window_decode_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_smbus_alert_instance_isolation_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_smbus_alert_self_clear_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_wire_timing_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_dual_concurrent_transfer_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i3c_clock_gate_window_test`
+|<<smc-vplan-area-i3c,I3C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i3c_csr_sweep_core_test`
+|<<smc-vplan-area-i3c,I3C>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_i3c_csr_sweep_ext_test`
+|<<smc-vplan-area-i3c,I3C>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_mailbox_data_error_test`
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_mailbox_field_sweep_test`
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_mailbox_multi_instance_test`
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|RAND-NONE
+|none; directed, the leaf walks the whole cell set in one run.
+|`smc_mailbox_access_error_test`
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_mailbox_flush_status_test`
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_mailbox_irq_ack_output_test`
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_mailbox_register_map_reset_test`
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_extremes_misc_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_log_engine_error_boundary_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_log_engine_reg_rw_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_log_engine_intr_mask_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_fifo_control_depth_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_irq_thre_identify_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_log_engine_reg_map_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_uart_reg_reset_rw_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_uart_pad_mux_enable_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_log_engine_region_size_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_fw_i2c_p1_fifo_depth_xfer_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_fw_i2c_tx_stretch_timeout_recovery_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_fw_i2c_fifo_full_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_fw_uart_log_engine_boundary_backpressure_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_fw_uart_log_engine_disable_during_xfer_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_fw_uart_log_engine_fetch_err_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_rdl_field_sweep_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_cpu_l2_write_wedge_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpu_mmio_read_wedge_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpu_mmio_write_wedge_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_gpio_intf_regblock_sweep_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_gpio_intf_data_ctrl_write_sweep_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_filter_config_field_sweep_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_i2c_intr_reg_sweep_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_uart_log_engine_field_sweep_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_zeroer_unaligned_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cool_reset_zero_delay_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_periph_regblock_sweep_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_cpu_ctrl_read_only_write_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dma_reg_byte_enable_error_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_core_mode_select_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_config_regblock_sweep_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_i2c_fifo_reset_pulse_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_filter_region_span_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_filter_remap_bitwalk_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dma_decouple_rw_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_intr_status_partial_clear_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_gpio_data_ctrl_field_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_alias_remap_region_attrs_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_telemetry_atb_capture_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_target_acq_stretch_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_target_multi_instance_stretch_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_protocol_interruption_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_target_bus_timeout_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_bus_monitor_idle_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_controller_sda_interference_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c0_target_addr_stretch_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_avsbus_retry_suppressed_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_target_nack_timeout_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c0_target_fast_controller_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_controller_control_symbol_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_rbr_error_path_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_controller_exits_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_avsbus_frame_sequencing_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c1_target_addr_stretch_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c2_target_addr_stretch_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c1_target_fast_controller_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c2_target_fast_controller_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpuif_handshake_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpuif_external_stall_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpuif_wrong_direction_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_i2c_target_read_abort_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_controller_scl_events_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_controller_disable_stop_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_fw_narrow_store_lane_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_telemetry_buffer_overflow_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_controller_queue_shapes_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_controller_edge_timing_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_target_loopback_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_output_remap_window_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_event_retain_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_uart_thr_paths_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_log_engine_fetch_error_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_octs_credit_expired_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_efuse_guard_target_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_regblock_partial_write_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, the cells are the stated reset values and access classes of the register description.
+|`smc_cpu_reset_pulse_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_bus_corners_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_octs_primary_start_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_decode_hole_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_zeroer_size_corners_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_hang_detector_disable_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_cpu_uncore_reset_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dma_backpressure_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_jtag_axi_shape_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c_window_landing_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_window_landing_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_filter_lock_window_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|===
+
+[[smc-vplan-phase3-lists]]
+==== Phase 3 Blocked Features, Observation Gaps and Scope
+
+Each item is listed once. The area column names the area that the item concerns.
+A blocked feature carries no Phase 3 credit. A feature with no observation point
+has no check that can fail on it. An out of scope feature is graded by an open
+Phase 1 or Phase 2 test, or has no stated pass or fail value, or belongs to
+another plan. The observation taps, the hooks and the PROPOSED drives that the
+tests use are in <<smc-vplan-phase3-proposed>>. A check that needs a PROPOSED
+item is blocked (<<smc-credit-rules>>). A check that needs only observation taps
+and added hooks is not blocked. A row names the document section or the register
+that leaves the value unstated, what is unstated, and the enrolled tests that
+log the value; where a test logs the value without grading it, the row names the
+test and the log tag and does not report the value. A leg a test leaves ungraded
+by its own design (a bench bound, an undriven leg, a measured-only sentence) is
+stated in the entry's `*Scope limit*` field and is not listed here.
+
+[[smc-vplan-phase3-blocked]]
+===== Blocked features
+
+A blocked feature has no check in Phase 3, because the specification or the
+register description does not state the value that a check needs. The question
+names what the specification must state before a check can fail on the feature.
+Where a test uses part of a blocked feature, the note says what the test does.
+
+[cols="2,5,6,5",options="header"]
+|===
+|Area |Feature |Open specification question |Note
+|<<smc-vplan-area-jtag,JTAG>>
+|The CLA action encoding: `integration/rdl/smc/dfd_cla.rdl` gives each of `Action0` to `Action3` a 6-bit "Select an Action" field, and `hw/sys/smc/doc/interrupts.adoc` names `cpu_interrupts_o` bit 321 as the CLA interrupt.
+|Blocked: the specification does not state which action code selects which action (the debug interrupt, the trace triggers, the counter controls). Source: `integration/rdl/smc/dfd_cla.rdl` (`Action0` to `Action3`); `hw/sys/smc/doc/dfd.adoc`; `hw/sys/smc/doc/interrupts.adoc` (SMC CPU Interrupt Vector Map).
+|The CLA entries (`smc_dfd_cla_node_eap_sweep_test`, `smc_dfd_cla_counter_edge_test`, `smc_dfd_cla_live_bus_test`, `smc_dfd_cla_snapshot_capture_test`, `smc_dfd_trace_accumulator_fill_test`) program the action index and grade the pair activation, the clear and the counters; the mapping of an action code to its effect is not graded, and the sweeps over the action values log the outcome of each.
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|The mailbox clock gate closes during an idle gap while `CLOCK_GATE_CONTROL.mailbox_cg_en` is set.
+|Blocked: the specification does not state whether the gate closes on an idle gap with the enable set, nor after how many idle cycles. Source: `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`CLOCK_GATE_CONTROL.mailbox_cg_en`, "Clockgate enable for the mailbox"); `hw/sys/smc/doc/clk_rst.adoc` (Subsystem Controls and Clock Gating).
+|`smc_mailbox_register_map_reset_test` sets the enable and grades that every aperture still answers, and logs the completion latency of the first write after the idle gap; `smc_mailbox_irq_ack_output_test` holds the gate enabled through its 512-cycle idle window. The bench has no gated-clock observation for the mailbox, so no entry grades the gate itself.
+|<<smc-vplan-area-uart,UART>>
+|The effect of `CTRL.UART_EN` = 0 on the UART0 transmit pad.
+|Blocked: the specification does not state what the TX pad carries while `UART_EN` is clear (held idle, held at its last level, or released to the GPIO wrap). Source: `hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl.rdl` (`CTRL.UART_EN`); no chapter states the pad level.
+|`smc_uart_pad_mux_enable_test` grades the frame with `UART_EN` set, again after a clear and set, and logs the pad level and the decoded frames with `UART_EN` clear without grading them.
+|===
+
+[[smc-vplan-phase3-blocked-legs]]
+====== Blocked legs of tested features
+
+A tested feature can have a blocked leg. The test grades the rest of the
+feature, and the note says how the test treats the blocked leg. The rows are
+ordered by area.
+
+[cols="2,5,6,5",options="header"]
+|===
+|Area |Item |Blocked leg and open question |Note
+|<<smc-vplan-area-misc,MISC>>
+|A write past the decoded extent of a register island answers the response `hw/sys/smc/regs/smc.rdl` declares for that island (`ocah_past_extent_resp`).
+|Which code a past-extent write inside an island's aperture answers: `hw/sys/smc/regs/smc.rdl` declares `SLVERR` per island for the reset unit, the misc wrap, the GPIO interface, the base configuration, the alias remap, the eFuse map and the peripheral windows, and `hw/sys/smc/doc/memmap.adoc` (Address Space Organization) gives the decode responses of the fabric; the documents do not state which rule wins for a write. Source: `hw/sys/smc/regs/smc.rdl` (`ocah_past_extent_resp`); `hw/sys/smc/doc/memmap.adoc` (Address Space Organization); `hw/ip/i2c/regs/i2c_wrap.rdl` (`ocah_gap_resp`).
+|`smc_reg_island_boundary_sweep_test` grades the read response and data on all 48 words and the write response on the nine `DECERR`-declared islands; on the fifteen `SLVERR`-declared islands it accepts `SLVERR` or `DECERR`, counts the answers per island and logs the count without grading the code. `smc_past_extent_slverr_units_test`, `smc_gap_decode_response_test` and `smc_i2c_window_decode_test` log the write response the same way.
+|<<smc-vplan-area-power,POWER>>
+|`DMA STATUS_0` bit 8 reports midend activity.
+|When bit 8 reads 1, and for how long: during the copy, until retirement, or never once the midend has handed the transfer to the backend. Source: `hw/sys/smc/doc/dma.adoc` (Submission and Completion; "bit 8 indicates midend activity").
+|`smc_dma_completion_status_test` grades `DONE_0` and `STATUS_0` at reset, idle, no-data and held, samples bit 8 on every poll and logs the samples without grading them; `smc_dma_backpressure_breadth_test` logs it under a held transfer.
+|<<smc-vplan-area-power,POWER>>
+|The `NEXT_ID` and `DONE` reset values and the meaning of `DONE_0` after a command.
+|`hw/sys/smc/doc/dma.adoc` and the register description `integration/rdl/smc/dma_ctrl.rdl` state different reset values for `NEXT_ID` and `DONE` and a different meaning for `DONE` (the last retired id versus a cumulative count); which one is normative. Source: `hw/sys/smc/doc/dma.adoc` (Stream and Register Ownership); `integration/rdl/smc/dma_ctrl.rdl` (`NEXT_ID`, `DONE`); GitHub issue tenstorrent/tt-oca-harness#2455.
+|`smc_dma_invalid_descriptor_test` logs `NEXT_ID_0`, `DONE_0` and `STATUS_0[9:0]` for the `ENABLED_ND`-cleared and zero-length commands without comparing them until the issue is resolved; `smc_dma_completion_status_test` grades the values the chapter states.
+|<<smc-vplan-area-power,POWER>>
+|A DMA row address that steps past 2^56 wraps within 56 bits.
+|Whether the effective address wraps at bit 56, saturates or errors. Source: `hw/sys/smc/doc/dma.adoc` (Transfer Configuration; the register storage and effective field widths).
+|`smc_dma_2d_copy_test` places the rows so that later rows lie beyond 2^56, requires the command to retire with AR and AW handshakes, and logs the addresses issued without comparing them.
+|<<smc-vplan-area-power,POWER>>
+|A zeroer job aimed at an unmapped local address or at a write-blocked outbound filter region.
+|What such a job leaves in `CTRL_STATUS`, in the interrupt pulses, the AW handshakes, the B cycles and the SYS_OUT write count. Source: `hw/sys/smc/doc/zeroer.adoc` (Operation Details); `doc/programmer/src/smc-programming.adoc` (SRAM Initialization using Memory Zeroer).
+|`smc_zeroer_sram_init_test` requires `STATUS` 0 twice and the denied region unchanged, and logs the other fields without comparing them.
+|<<smc-vplan-area-power,POWER>>
+|Two ATB telemetry messages sent back to back are both queued.
+|The spacing a receiver needs between the last packet of one message and the first packet of the next. `hw/ip/telemetry_receiver/doc/architecture.adoc` (Assembly and Decode) states that a last-packet marker queues the message and that beats are accepted except during a receiver flush, and states no spacing. Source: the same chapter; `hw/ip/telemetry_receiver/doc/interface.adoc` (ATB Protocol Specifications, acceptance while `atready_o` is high).
+|`smc_telemetry_tx_flush_test` sends its messages eight idle cycles apart, as the other telemetry entries do, and states that the documents do not state a spacing; the back-to-back case is not graded.
+|<<smc-vplan-area-power,POWER>>
+|A receiver flush written while a message is in flight.
+|Whether in-flight ATB beats are held or dropped when `CTRL.TELEMETRY_RX_FLUSH` is written mid-message. Source: `hw/ip/telemetry_receiver/doc/architecture.adoc` (Reset and Flush); `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl` (`CTRL.TELEMETRY_RX_FLUSH`).
+|`smc_telemetry_rx_flush_test` requires every beat to be accepted within 64 cycles and logs the accepted-beat and stalled-cycle counts and `STATUS` after 64 quiet cycles without comparing them.
+|<<smc-vplan-area-power,POWER>>
+|A full-word `CTRL` write that sets only `BUFFER_POP`.
+|Whether such a write cancels a pending transmitter flush request (`CTRL.TELEMETRY_TX_FLUSH`). Source: `doc/programmer/src/smc-programming.adoc` (Telemetry Receiver, Buffer Management); `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl` (`CTRL`).
+|`smc_telemetry_ctrl_access_test` makes the write and logs the flush state without grading it.
+|<<smc-vplan-area-power,POWER>>
+|A second AVSBus resync request while one is pending.
+|Whether the second request gives one resync or two. Source: `hw/ip/avsbus_controller/doc/architecture.adoc` (AVS Protocol Engine).
+|`smc_avsbus_resync_force_test` requires one or two resync episodes and logs the count.
+|<<smc-vplan-area-power,POWER>>
+|The AVSBus resync interval.
+|Whether the residual between the programmed interval and the period is constant across `RESYNC_INTERVAL` values, and whether a rewrite of `RESYNC_INTERVAL` restarts or retargets the running interval. Source: `hw/ip/avsbus_controller/doc/architecture.adoc` (AVS Protocol Engine); `hw/ip/avsbus_controller/doc/interface.adoc` (Timing); `hw/ip/avsbus_controller/regs/avsbus_controller.rdl` (`RESYNC_INTERVAL`).
+|`smc_avsbus_resync_timing_test` logs the periods and residuals and the times from the previous end, from the write and from the first resync's end without comparing them.
+|<<smc-vplan-area-power,POWER>>
+|The first OCTS count sample after `TIMER_START` with preset 0.
+|When the first nonzero count sample appears; only an upper bound of 0x40 rises is stated by the entry. Source: `hw/ip/system_timer_octs/doc/architecture.adoc` (Counting and Synchronization).
+|`smc_octs_primary_count_test` requires the first nonzero sample within the bound and logs the sample, its rise index and `RUNNING` at the first rise.
+|<<smc-vplan-area-power,POWER>>
+|The watchdog `COUNT` register with both enables clear.
+|Whether `COUNT` holds or counts while `CTRL.wdogenalways` and `CTRL.wdogcoreawake` are both clear. Source: `hw/sys/smc/regs/blocks/wdt/wdt.rdl` (`CTRL.wdogenalways`, `CTRL.wdogcoreawake`); `hw/sys/smc/doc/watchdog.adoc` (Operation).
+|`smc_wdt_count_feed_test` requires only that the later both-clear window matches the earlier one and logs the three reads and their increase; `smc_wdt_register_map_test` brackets `SCALED_COUNT` between two `COUNT` reads shifted by the scale, which holds for either behaviour.
+|<<smc-vplan-area-power,POWER>>
+|The first `COUNT` read after a keyed write.
+|Whether the read returns the written value or the written value plus one. Source: `hw/sys/smc/regs/blocks/wdt/wdt.rdl` (`COUNT`).
+|`smc_wdt_count_feed_test` brackets the read between the written value and the written value plus twice the measured increase and logs the offset.
+|<<smc-vplan-area-power,POWER>>
+|The watchdog lock between keyed writes.
+|Whether a keyed `FEED` write of a non-feed word re-locks the watchdog, and whether `KEY` reads 1 between a second consecutive magic write and the following register write. Source: `hw/sys/smc/doc/watchdog.adoc` (Register Access); `hw/sys/smc/regs/blocks/wdt/wdt.rdl` (`KEY`, `FEED`).
+|`smc_wdt_count_feed_test` logs `KEY` after the non-feed word and re-locks with a `CTRL` write if `KEY` reads set; `smc_wdt_key_relock_test` requires the following register write to be accepted and `KEY` to read 0 afterwards, and logs the `KEY` value in between.
+|<<smc-vplan-area-power,POWER>>
+|The `wdogcoreawake` condition.
+|Which reset defines the core-awake condition. Source: `hw/sys/smc/regs/blocks/wdt/wdt.rdl` (`CTRL.wdogcoreawake`); `hw/sys/smc/doc/cpu.adoc` (Watchdog Interface).
+|`smc_wdt_count_feed_test` uses the core 1 level reset through `RESET_CTRL` and requires counting before and after it; no other reset is tried.
+|<<smc-vplan-area-power,POWER>>
+|A scaled watchdog value wider than `SCALED_COUNT.wdogs`.
+|Whether a scaled value wider than the 16-bit field truncates or saturates. Source: `hw/sys/smc/regs/blocks/wdt/wdt.rdl` (`SCALED_COUNT.wdogs`).
+|`smc_wdt_scale_zerocmp_test` logs `SCALED_COUNT` after `COUNT` 0x0001_2345 at scale 0 and 0x0002_4690 at scale 1 next to the shifted `COUNT` and compares nothing.
+|<<smc-vplan-area-fabric,FABRIC>>
+|A lock write to a filter entry that sets other fields together with `locked`.
+|Whether the fields written together with the lock bit are applied. Source: `hw/ip/axi_filter/regs/filter_ctrl.rdl` (`locked`); `hw/ip/axi_filter/doc/index.adoc` (Locking a Filter Entry).
+|`smc_filter_lock_scope_test` requires the two `FILTER_CONFIG` reads to agree and bit 63 to be set exactly when the write answered `OKAY`, and logs the response and the two reads.
+|<<smc-vplan-area-fabric,FABRIC>>
+|An access through a clear (`valid` 0) output remap region.
+|Which source ID the access carries. Source: `hw/ip/output_remap/regs/output_remap.rdl` (`REGION_ATTRS.valid`).
+|`smc_outremap_prot_srcid_test` logs `awuser` and `aruser` of the region 4 access beside the direct and M-mode values without comparing them.
+|<<smc-vplan-area-fabric,FABRIC>>
+|A write that hits overlapping alias regions 1 and 2.
+|Which region wins. Source: `hw/ip/axi_alias_remap/regs/alias_remap.rdl` (`REGION`, `REGION_ATTRS.valid`).
+|`smc_alias_remap_translate_test` requires one of the three possible landings and logs which, the response and the hit-probe level.
+|<<smc-vplan-area-fabric,FABRIC>>
+|The first address past the SHIM range of the external window.
+|Which block answers it. Source: `hw/sys/smc/doc/memmap.adoc` (AXI-Lite External Window).
+|`smc_ext_window_routing_test` requires the eFuse activity probe to stay low and logs the response, the data and whether an external request appeared.
+|<<smc-vplan-area-fabric,FABRIC>>
+|A read of a write-only register.
+|What a read of a write-only or unreadable register returns. Source: `hw/ip/uart/log_engine/regs/log_engine.rdl` (`INTR_TEST`); `hw/ip/avsbus_controller/regs/avsbus_controller.rdl` (`AVS_INTERRUPT_CLEAR`).
+|`smc_cpuif_ro_wo_edge_test` requires completion within the guard and the `SCRATCH_COLD` recovery read, and logs the response and data; `smc_uart_log_engine_reg_map_test` requires only that each `INTR_TEST` read answers, and logs the code and data at reset and after a write of 0x11.
+|<<smc-vplan-area-reset,RESET>>
+|`SS_CONFIG` is a read-write register.
+|Whether `SS_CONFIG` stores a software write or reflects an external value: `hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl` declares it `sw=rw`, and the write-side entry treats it as externally sourced. Source: `hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl` (`SS_CONFIG`).
+|`smc_axil_write_side_test` writes the value `SS_CONFIG` already holds and grades the response and the unchanged read-back; neither reading is distinguished.
+|<<smc-vplan-area-clock,CLOCK>>
+|A write refused by a gated peripheral window.
+|Whether a write that a gated window refuses with `SLVERR` may change peripheral state, and whether a write made under the gate lands or is dropped. Source: `hw/sys/smc/doc/clk_rst.adoc` (Subsystem Controls and Clock Gating); `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`CLOCK_GATE_CONTROL`).
+|`smc_periph_cg_window_extent_test` requires the `SLVERR` response and logs the register words before the write and after the enable is cleared; `smc_i2c_clock_gate_response_test` logs `HOST_NACK_HANDLER_TIMEOUT[0]` and `I2C_CTRL[2]` after the gated write; `smc_i3c_clock_gate_window_test` logs DAT slot 15 word 0 of each instance after a gated write and the gate clear. None compares the word.
+|<<smc-vplan-area-clock,CLOCK>>
+|An access the peripheral has already accepted finishes when a clock gate sets, and an access issued while a core is held in reset answers `SLVERR`.
+|What happens to a SEP_IN access accepted before `CLOCK_GATE_CONTROL` sets the peripheral gate, and to a read of a cluster watchdog register while its core is held in level reset: `hw/sys/smc/doc/clk_rst.adoc` says software quiesces first, `hw/sys/smc/doc/memmap.adoc` says a gated window answers `SLVERR` so software does not stall, and `hw/sys/smc/doc/cpu.adoc` says the cluster boundary stays isolated with `SLVERR` while a core is in reset; none states the fate of the in-flight access. Source: `hw/sys/smc/doc/clk_rst.adoc` (Subsystem Controls and Clock Gating); `hw/sys/smc/doc/memmap.adoc` (Access Control and Security); `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`CLOCK_GATE_CONTROL`); `hw/sys/smc/doc/cpu.adoc` (CPU AXI Isolation).
+|`smc_i2c_clock_gate_response_test` and `smc_i3c_clock_gate_window_test` grade the gated and ungated responses, and `smc_i3c_clock_gate_window_test` logs the accesses in flight around the gate write; `smc_wdt_count_feed_test` grades the watchdog with the cores released and logs the accesses made while core 1 is held in level reset.
+|<<smc-vplan-area-cpu,CPU>>
+|The self-isolate release comes four cycles after SRAM initialisation completes and the cores are out of reset.
+|Which clock edge starts the count of four. Source: `hw/sys/smc/doc/cpu.adoc` (CPU AXI Isolation, the self-isolate release on cold boot).
+|`smc_cpu_boot_release_sequence_test` measures the release in `clk_smc_i` rises and grades the order of the boot terms; the count itself is logged.
+|<<smc-vplan-area-jtag,JTAG>>
+|A disabled trace sink that still receives trace.
+|What the sink does with trace that arrives after its enable is cleared. Source: `integration/rdl/smc/dfd_dst.rdl` (`Trdstcontrol`).
+|`smc_dfd_trace_accumulator_fill_test` logs the write pointer after the sink enable is cleared and does not hold it to a value.
+|<<smc-vplan-area-jtag,JTAG>>
+|The CLA edge-detect select.
+|Which debug-bus signal each `CDbgSignalEdgeDetectCfg` select value names. Source: `integration/rdl/smc/dfd_cla.rdl` (`CDbgSignalEdgeDetectCfg`).
+|`smc_dfd_cla_counter_edge_test` grades the configuration surface only; no detected edge is claimed.
+|<<smc-vplan-area-efuse,EFUSE>>
+|A CSR read of a read-locked shadow register.
+|What the read returns: `hw/ip/efuse/doc/architecture.adoc` fixes `0xbadcab1e` only for the JTAG lifecycle-demux error slave. Source: `hw/ip/efuse/doc/architecture.adoc` (Access Permissions and Security; Hardware vs. Software Locks).
+|`smc_efuse_locked_access_interrupt_test` grades the interrupt pulse and non-disclosure of the locked word and does not compare the returned word.
+|<<smc-vplan-area-efuse,EFUSE>>
+|A write to a write-locked eFuse field.
+|Whether the guard refuses the write with an error response or ignores it. Source: `hw/ip/efuse/doc/architecture.adoc` (Hardware vs. Software Locks); `hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl` (`LOCKS`).
+|`smc_efuse_lock_guard_test` grades that the write did not land and logs the response.
+|<<smc-vplan-area-efuse,EFUSE>>
+|`EFUSE_BANK_INIT_TIME` across a cold reset.
+|Whether the field survives a cold reset, and so the release-to-first-command delay with the reset value and with 0x40. Source: `doc/integrator/src/smu-smc.adoc` (eFuse Interface; the SHIM control address window).
+|`smc_efuse_bank_ctrl_window_test` logs the two delays, their difference and whether the value survived, without comparing them.
+|<<smc-vplan-area-efuse,EFUSE>>
+|The shadow-register output port `shadow_regs_o`.
+|What the port shows for a locked field, for a read-locked word and beyond the stored words. Source: `hw/sys/smc/doc/port_table.adoc` (`shadow_regs_o`).
+|`smc_efuse_map_lock_field_enforce_test` grades only the port's stability across rejected writes and hidden reads; `smc_efuse_map_sense_image_test` logs the read-locked words without comparing them; `smc_efuse_map_sep_write_test` compares the stored words only, word n at bits 32n to 32n+31.
+|<<smc-vplan-area-gpio,GPIO>>
+|A GPIO interrupt is one clock-cycle pulse per detected edge.
+|Which clock the pulse is one cycle of: `hw/ip/gpio/doc/architecture.adoc` states the pulse and no SMC chapter names the GPIO wrap clock. Source: `hw/ip/gpio/doc/architecture.adoc` (Interrupts); `hw/sys/smc/doc/clk_rst.adoc` (Clock Architecture).
+|`smc_gpio_irq_or_test` and `smc_gpio_rst_primary_test` compare the line width against the raw vector width and log the width in `clk_smc_i` cycles.
+|<<smc-vplan-area-gpio,GPIO>>
+|`DATA_CTRL.lsio_enable` reports the hardware LSIO request after the disable gate.
+|Which wraps present a hardware LSIO request at reset: the pinned sources name a request only for the SPI pads and the permanently selected pads. Source: `hw/ip/gpio/regs/gpio_intf.rdl` (`DATA_CTRL.lsio_enable`); `doc/integrator/meta/ocah_gpio_table.csv`.
+|`smc_gpio_data_ctrl_ro_status_test` grades that software writes do not change the status bits and logs the per-wrap scan of `lsio_enable`; `smc_gpio_intf_regblock_sweep_test` accepts a reset word of 0 or the `lsio_enable` bit on every instance.
+|<<smc-vplan-area-irq,IRQ>>
+|The PLIC pending bit of the core 2 watchdog interrupt.
+|Whether the pending bit is level or latched. Source: `hw/sys/smc/doc/interrupts.adoc` (Raw Vector and PLIC Numbering).
+|`smc_wdt_irq_source_ids_test` logs core 2 `CTRL.wdogip0` and the pending level after the interrupt clear without grading them.
+|<<smc-vplan-area-irq,IRQ>>
+|A stall of exactly the programmed threshold.
+|Whether a stall of exactly `HANG_DET_TIMEOUT_THRESHOLD.value` rises fires the detector, and at which rise the interrupt first reads 1. Source: `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`HANG_DET_TIMEOUT_THRESHOLD`).
+|`smc_hang_sep_timeout_window_test`, `smc_hang_sys_timeout_window_test` and `smc_hang_data_timeout_window_test` grade the below-threshold and beyond-threshold stalls and log the at-threshold stall (`CHK-SEPWIN-AT-LOG`, `CHK-SYSWIN-AT-LOG`, `CHK-DATAWIN-AT-LOG`) without grading it.
+|<<smc-vplan-area-irq,IRQ>>
+|The SEP detector interrupt after a late enable.
+|How soon the interrupt returns after `irq_en` is set during a held read. Source: `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`HANG_DET_CTRL`).
+|`smc_hang_sep_drop_controls_test` logs the return time (`CHK-DROPCTL-REENABLE-LOG`) without grading it.
+|<<smc-vplan-area-irq,IRQ>>
+|`SMC_ATTRIBUTES` carries the interrupt and mailbox counts.
+|The register description gives `num_ext_interrupts`, `num_cpu_interrupts`, `mailbox_depth` and `num_mailboxes` no description that ties them to the 256 external and 328 CPU interrupts and the mailbox count the chapters state. Source: `hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl` (`SMC_ATTRIBUTES`); `hw/sys/smc/doc/interrupts.adoc` (the counts).
+|`smc_irq_csr_readback_test` reads the two interrupt fields and logs them (`CHK-ATTR-COUNTS-LOG`); `smc_mailbox_register_map_reset_test` requires the two mailbox fields to be resolvable and logs them raw; none is compared.
+|<<smc-vplan-area-i2c,I2C>>
+|The I2C timing registers program the bus timings in system clock cycles.
+|The absolute SCL period, high and low times, START and STOP setup and hold and the bus-free time have no formula in the pinned sources: `hw/ip/i2c/regs/i2c.rdl` gives each `TIMING` field in system clock cycles and cites the OpenTitan theory of operation only by URL. Source: `hw/ip/i2c/regs/i2c.rdl` (`TIMING0` to `TIMING4`); `hw/ip/i2c/doc/index.adoc`.
+|`smc_i2c_wire_timing_test` grades the difference in each timing between two programmed sets and logs the absolute values, the measured bus-free time next to the programmed `T_BUF` among them, without comparing them.
+|<<smc-vplan-area-i2c,I2C>>
+|The format FIFO reset recovers a controller halted by a bus timeout.
+|`hw/ip/i2c/regs/i2c.rdl` states `FIFO_CTRL.FMTRST` resets the format FIFO and `BUS_TIMEOUT` clears by a written 1; what the controller does with a transaction interrupted mid-byte when `CTRL.ENABLEHOST` stays set is not stated. Source: `hw/ip/i2c/regs/i2c.rdl` (`FIFO_CTRL`, `INTR_STATE.BUS_TIMEOUT`, `CTRL.ENABLEHOST`); `hw/ip/i2c/doc/index.adoc`.
+|`smc_i2c_fmtrst_repro_test` runs the recovery with `ENABLEHOST` left set and with an `ENABLEHOST` toggle, and logs the START, `CMD_COMPLETE` and FDATA consumption that follow each; no expected value is compared for the arm the register description leaves open.
+|<<smc-vplan-area-i2c,I2C>>
+|`INTR_STATE.UNEXP_STOP` in target mode.
+|Which bus positions raise the flag: after each early STOP, after each recovery write, and a second case-A STOP after a written 1. Source: `hw/ip/i2c/regs/i2c.rdl` (`INTR_STATE.UNEXP_STOP`).
+|`smc_i2c_target_bus_symbol_test` logs the flag at each position without comparing it.
+|<<smc-vplan-area-i2c,I2C>>
+|A controller pulse that raises the other symbol interrupt.
+|Whether a pulse the controller drives also reports `SDA_UNSTABLE`, or a pulse it receives also reports `SDA_INTERFERENCE`. Source: `hw/ip/i2c/doc/index.adoc` (the adopted theory of operation); `hw/ip/i2c/regs/i2c.rdl` (`INTR_STATE`).
+|`smc_i2c_controller_control_symbol_test` grades the interrupt the theory of operation names for each pulse and logs the whole `INTR_STATE` word each pulse left.
+|<<smc-vplan-area-i3c,I3C>>
+|A write of bit n to a TTI `INTERRUPT_FORCE` register sets bit n of `INTERRUPT_STATUS`.
+|Whether the force applies to the three threshold statuses whose level the hardware recomputes every cycle (`TX_DATA_THLD_STAT`, `TX_DESC_THLD_STAT`, `IBI_THLD_STAT`), and whether the enable gates the force of the error-interrupt register. Source: `vendor/chipsalliance/i3c-core/upstream/src/rdl/target_transaction_interface.rdl` (`INTERRUPT_FORCE`, `INTERRUPT_STATUS`, `TARGET_ERR_INTR_FORCE`).
+|`smc_i3c_csr_sweep_ext_test` grades the latch and the write-one-to-clear of every status its force sets, and logs per field whether the force set the status, without grading the fields the register description leaves open.
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|A `CTRL` write that sets both flush bits.
+|What a write of 0x3 (`wflush` and `rflush` together) does: its response and which FIFOs drain. Source: `hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox.rdl` (`CTRL`); `hw/ip/axi_lite_mailbox_unit/doc/interface.adoc` (Access Results).
+|`smc_mailbox_flush_status_test` grades the single-bit flushes and logs the both-bits write (`CHK-CTRL-BOTH-BITS-OBSERVED`) without grading it.
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|A word written in the same access group as a flush.
+|Whether the word is kept or discarded, and what a read grouped with a read flush returns. Source: `hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc` (Paired FIFOs).
+|`smc_mailbox_flush_status_test` logs the grouped write and the grouped read without grading them.
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|A `WIRQT` value above one byte.
+|How 0x100 and 0x10000 are held, and what `STATUS[2]` reads with one queued word under them. Source: `hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc` (Interrupts); `hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox.rdl` (`WIRQT`).
+|`smc_mailbox_threshold_irqs_test` logs the read-back and `STATUS[2]` (`CHK-THRESHOLD-WIDE-VALUE-OBSERVED`) without grading them.
+|<<smc-vplan-area-uart,UART>>
+|The 32-entry receive FIFO and the overrun indication `LSR.OE`.
+|How many characters the receive side holds before `LSR.OE` sets: the 32-entry FIFO plus the receive holding register may hold 33. Source: `hw/ip/uart/uart_16550/doc/index.adoc` (32-entry RX FIFO); `hw/ip/uart/uart_16550/doc/architecture.adoc` (FIFO Protection and Line Errors).
+|`smc_uart_fifo_control_depth_test` sends 33 characters with no read, grades that exactly the first 32 are readable in order and logs whether and when `OE` sets.
+|<<smc-vplan-area-uart,UART>>
+|A 33rd `THR` write with 32 characters queued, and a second `FCR.FIFO_ENABLE` write with characters held.
+|Whether the 33rd write is accepted or refused, and whether the second enable write keeps or discards the four held characters. Source: `hw/ip/uart/uart_16550/doc/architecture.adoc` (FIFO Protection and Line Errors; Transmit and Receive Paths).
+|`smc_uart_fifo_control_depth_test` issues the 33rd write and logs its response, the later `LSR` and the readable count; for the enable write it accepts either none or exactly the four in order with `DR` clear after the last, and logs which.
+|<<smc-vplan-area-uart,UART>>
+|The receive trigger level fires at the programmed level.
+|`doc/programmer/src/smc-programming.adoc` says the receive interrupt fires when the FIFO holds "more than" the trigger amount, and its trigger table reads at the level; which reading is normative. Source: `doc/programmer/src/smc-programming.adoc` (UART, the receive trigger).
+|`smc_uart_fifo_control_depth_test` logs the onset count for each trigger code and grades the ordering of the onsets, not the exact count.
+|<<smc-vplan-area-uart,UART>>
+|`IIR` with `IER.ETBEI` set on an already empty transmit buffer.
+|Whether `IIR` reports ID 1 at once. Source: `hw/ip/uart/uart_16550/doc/architecture.adoc` (Interrupt Priority and Service); `hw/ip/uart/uart_16550/regs/uart_16550_main.rdl` (`IER.ETBEI`).
+|`smc_uart_irq_thre_identify_test` requires `LSR.THRE` to read 1 and the up to 16 `IIR` reads to agree with one another, and logs them.
+|<<smc-vplan-area-uart,UART>>
+|`MSR` reads its reset value 0x00 after reset.
+|The CTS level at the SMC boundary is not stated, and the first `MSR` read after reset may report a modem-status delta with no transition. Source: `hw/ip/uart/uart_16550/regs/uart_16550_main.rdl` (`MSR`, reset 0x00; `DCTS` "changed since the last read"); `hw/sys/smc/doc/port_table.adoc` (the UART modem inputs).
+|`smc_uart_spi_log_engine_test` grades that the delta bits clear on the second read (`CHK-UART-MSR-DELTA-CLEAR`) and logs the first read; `smc_uart_reg_reset_rw_test` logs the first `MSR` read on all four instances.
+|<<smc-vplan-area-uart,UART>>
+|`IER` bits 31:5.
+|Whether the bits above the five interrupt enables read 0. Source: `hw/ip/uart/uart_16550/regs/uart_16550_main.rdl` (`IER`).
+|`smc_uart_reg_reset_rw_test` masks its `IER` read-back compare to bits 4:0 and logs the upper bits.
+|<<smc-vplan-area-uart,UART>>
+|A second `THR` write with the divisor at 0.
+|Whether the second write replaces the waiting character or is dropped. Source: `hw/ip/uart/uart_16550/regs/uart_16550_main.rdl` (`THR`, the divisor latches).
+|`smc_uart_thr_paths_test` requires exactly one character to arrive once the divisor is set and logs which.
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|The end of the probe-ID run that survives a telemetry buffer overflow.
+|Which end of the run survives when the message buffer is filled past full. Source: `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl` (`STATUS.BUFFER_FULL`); `hw/ip/telemetry_receiver/doc/architecture.adoc` (Message Queue and Readout).
+|`smc_telemetry_buffer_overflow_test` requires the drain to return exactly the depth's worth as one in-order run and logs which end survived.
+|===
+
+[[smc-vplan-phase3-unstated]]
+====== Unstated cells that block no feature
+
+Values that no document states and that no feature needs, which an entry records
+without grading. Each bullet names the silent document section and the entry
+that records the value.
+
+<<smc-vplan-area-power,POWER>>:
+
+* The SRAM size the zeroer clears: `doc/programmer/src/smc-programming.adoc` states 128 KiB and the generated memory map (`hw/sys/smc/regs/gen/py/smc_memory_map.py`, `spm_memory`) spans 1 MiB. `smc_zeroer_sram_init_test` clears the 128 KiB the programming guide states and grades nothing past it.
+* The AVSBus CRC-3 polynomial: no document in the tree states it; `hw/ip/avsbus_controller/doc/interface.adoc` (AVSBus Frame Format) gives the subframe layout only. `smc_avsbus_frame_transaction_test` excludes the CRC field from its `avs_mdata_o` compare; `smc_avsbus_slave_reply_test` sends each reply shape with each of the eight codes and requires that exactly one code updates `AVS_LATEST_SLAVE_SUBFRAME`.
+
+<<smc-vplan-area-fabric,FABRIC>>:
+
+* A unit whose aperture crosses `BASE + REGION_SIZE`: `hw/sys/smc/doc/memmap.adoc` states that the inbound port reaches a unit only while its whole aperture lies below the boundary, and no enrolled test places the boundary inside an aperture. `smc_region_gated_units_decode_test` and `smc_region_zero_reset_recovery_test` grade units wholly below or wholly above it.
+* The reset state of the sixteen inbound filter entries: `hw/sys/smc/doc/fabric.adoc` (Inbound Filtering) leaves the default to the chiplet integration and `hw/ip/axi_filter/regs/filter_ctrl.rdl` resets every entry disabled. `smc_sys_axi_in_port_test` issues its pre-admit SYS_IN read with the error response tolerated and logs the response.
+* The write response of the window at `BASE + 0x001_7000` to `BASE + 0x001_7FFF` and of the gap past the `SCRATCH_COLD` block: `hw/sys/smc/doc/memmap.adoc` (Address Space Organization) states `SLVERR` for a write there and `hw/sys/smc/regs/smc.rdl` (`ocah_gap_resp`) declares `DECERR`. `smc_gap_decode_response_test` requires only that the code is the same across its six port and base combinations and logs it; `smc_cpuif_ro_wo_edge_test` logs the response and data at the first address past the `SCRATCH_COLD` block.
+
+<<smc-vplan-area-i2c,I2C>>:
+
+* `CTRL.LLPBK` in controller mode, which `hw/ip/i2c/regs/i2c.rdl` states makes the internal logic see `smbalert_ni` as deasserted: `smc_i2c_controller_queue_shapes_test` grades that a transfer made with the bit set reaches the target unchanged, and `smc_i2c_target_loopback_test` grades the target-mode loopback; no enrolled test drives the alert pad with the bit set in controller mode.
+
+[[smc-vplan-phase3-noobs]]
+===== Features with no observation point
+
+A disposition says what is done about the missing observation. `ADD-PORT`: a
+testbench port, drive or hook that the bench lacks would give the observation,
+and the DUT does not change. `ACCEPT-PROBE`: a read-only probe, a `tb_*`
+observation signal, a public-scope line or a hierarchical reference is the
+observation. A probe that `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` does not list is
+an observation tap the test adds to the signal list, and a check on it is
+executable. `PERMANENT-HOLE`: no observation exists at the `smc_wrapper`
+boundary on this bench, so no check can fail on the contract. A read-only tap is
+not PROPOSED; a port, drive, inject or hook that `hw/sys/smc/dv/tb/tb_top.sv`
+has or that `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` lists is not PROPOSED
+(<<smc-vplan-blocked-taxonomy>>). The Why column names the tie-off, the bench
+net or the register that the observation would need.
+
+[cols="2,4,5,2,5",options="header"]
+|===
+|Area |Feature |Why there is no observation point |Disposition |Note
+|<<smc-vplan-area-power,POWER>>
+|The transmitter flush handshake of telemetry receivers 1 and 2 (`afvalid` / `afready`).
+|`hw/sys/smc/dv/tb/tb_top.sv` exports `tb_telemetry0_afvalid` and drives `tb_telemetry0_afready` for receiver 0 only; the `afready` of every other receiver is held high and its `afvalid` is not exported.
+|`ADD-PORT`
+|`smc_telemetry_receiver_isolation_test` grades the isolation on receiver 0's pins; `smc_telemetry_atb_capture_test` runs its transmitter-flush leg on receiver 0 only.
+|<<smc-vplan-area-power,POWER>>
+|The write responses the zeroer receives from the output fabric.
+|The signal list carries `tb_zeroer_bvalid` and no response code for the zeroer's B channel.
+|`ADD-PORT`
+|`smc_zeroer_sram_init_test` logs the register-visible fields of the unmapped and denied jobs instead.
+|<<smc-vplan-area-fabric,FABRIC>>
+|`smc_region_size_o` on the `SMC_DUAL` elaboration.
+|The port is left unconnected on both DUT instances of the dual bench in `hw/sys/smc/dv/tb/tb_top.sv`, so the pin-side effect of `REGION_SIZE` is not observable there.
+|`ADD-PORT`
+|`smc_dual_base_addressing_test` grades the register and the decode and does not claim the port.
+|<<smc-vplan-area-fabric,FABRIC>>
+|A SYS_IN access whose AxUSER carries a non-zero source ID.
+|Every SYS_IN master of the bench presents AxUSER 0, so a non-zero source ID matched against a wildcard `src_id` 0 entry is not reachable.
+|`ADD-PORT`
+|`smc_infilt_attr_match_test` grades the other attribute matches and does not claim the source-ID match (`hw/ip/axi_filter/regs/filter_ctrl.rdl`, `src_id`).
+|<<smc-vplan-area-fabric,FABRIC>>
+|The W, R and B channels of the external AXI-Lite port.
+|The signal list taps the external port's AW and AR channels only (`tb_axil_external_awvalid`, `tb_axil_external_awaddr`, `tb_axil_external_arvalid`, `tb_axil_external_araddr`).
+|`ADD-PORT`
+|`smc_ext_window_routing_test` grades the response and data at SEP_IN together with the AR address match on the port; `smc_ext_window_aperture_test` grades the AW request and its address and does not claim the write data and strobes.
+|<<smc-vplan-area-reset,RESET>>
+|A SEP_IN request presented inside the primary-reset window.
+|The SEP_IN AXI master of the bench takes `rst_primary_smc_clk_no` as its own reset and parks its request lines, so no request can be presented while the fabric is held.
+|`ADD-PORT`
+|`smc_primary_reset_scope_test` claims the outbound filter register reverting for the fabric half and logs the four SEP_IN tallies without grading them.
+|<<smc-vplan-area-reset,RESET>>
+|`rst_primary_periph_clk_no`.
+|The signal list carries no observation signal for the port.
+|`ADD-PORT`
+|`smc_reset_sync_edge_test` grades the other sequenced resets and does not claim this one.
+|<<smc-vplan-area-reset,RESET>>
+|The automatic SRAM zeroing on cold boot.
+|`smc_disable_sram_auto_init_i` is tied to 1 at both DUT instances in `hw/sys/smc/dv/tb/tb_top.sv`, so `smc_init_mem_done_o` rises as soon as the cluster reset releases.
+|`ADD-PORT`
+|`smc_cold_boot_chain_order_test` records the SRAM-init step as not closed (`CHK-COLD-BOOT-NOT-CLOSED`); the zeroer leaves prove the software-triggered sweep.
+|<<smc-vplan-area-clock,CLOCK>>
+|Any all-zero reset value on a Verilator run.
+|Verilator is a 2-state simulator: an unreset flop reads 0, so a compare of an all-zero reset value also passes on a flop that was never reset (Known Limitations).
+|`PERMANENT-HOLE`
+|Every all-zero reset compare of the plan carries this caveat; the entries that prove a clear from a programmed state (a non-zero write followed by the reset) are the ones that grade the reset.
+|<<smc-vplan-area-clock,CLOCK>>
+|A telemetry reset separate from the cold reset.
+|`rst_telemetry_ni` is driven from the cold reset at both DUT instances in `hw/sys/smc/dv/tb/tb_top.sv`.
+|`ADD-PORT`
+|`smc_clock_domain_connectivity_test` records the telemetry reset cell as not closed (`CHK-CLOCK-DOMAIN-NOT-CLOSED`).
+|<<smc-vplan-area-cpu,CPU>>
+|The DFX done and pass inputs (`mem_repair_done_i`, `mem_repair_success_i`, `mbist_done_i`, `mbist_pass_i`).
+|The four inputs are tied to 1 at the DUT instance in `hw/sys/smc/dv/tb/tb_top.sv`; only the two abort pins (`tb_mem_repair_abort`, `tb_mbist_abort`) are bench nets.
+|`ADD-PORT`
+|`smc_dfx_status_abort_test`, `smc_dfx_status_smu_pulse_reset_test` and `smc_dfx_debug_ctrl_noeffect_gate_test` take the register-description mask word as the idle expectation and exercise the two abort bits only; `smc_cold_boot_chain_order_test` records the repair step as not closed (`CHK-COLD-BOOT-NOT-CLOSED`).
+|<<smc-vplan-area-cpu,CPU>>
+|The boot strap word.
+|The boot straps are tied to zero by the bench, so the captured strap word is a constant.
+|`ADD-PORT`
+|`smc_cpu_boot_regs_read_test` compares the word against the tied value and says so (`CHK-BOOT-STRAP-WORD`).
+|<<smc-vplan-area-jtag,JTAG>>
+|The CLA cross-trigger input and the timestamp capture of `CDbgClaTimestampConfig`.
+|`xtrigger_ss_i` is tied to 0 at the DUT instance in `hw/sys/smc/dv/tb/tb_top.sv`, and the cross-trigger input is the only trigger of the capture bit (`integration/rdl/smc/dfd_cla.rdl`, `CDbgClaTimestampConfig`).
+|`ADD-PORT`
+|`smc_dfd_cla_mmr_sweep_test` sweeps the register and leaves the capture register and the capture bit unexercised.
+|<<smc-vplan-area-jtag,JTAG>>
+|The DFD clock gate (`DEBUG_CTRL.cg_en`, `force_clk_en`) and the cross-trigger outputs `xtrigger_ss_o`.
+|No bench net observes the DFD clock, and `xtrigger_ss_o` is left unconnected in `hw/sys/smc/dv/tb/tb_top.sv` (`hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl`, `DEBUG_CTRL`; `hw/sys/smc/doc/dfd.adoc`).
+|`ADD-PORT`
+|`smc_dfx_debug_ctrl_storage_test` grades the storage of the two fields only; `smc_dfx_debug_ctrl_noeffect_gate_test` grades the register accesses around the `cg_en` write and samples `tb_cla_clock_stop` and `tb_cla_halt_clock_global` with no positive control.
+|<<smc-vplan-area-jtag,JTAG>>
+|The trace accumulator's bank state, write offset and backpressure.
+|No register of `integration/rdl/smc/dfd_dst.rdl` reports them; `Trdstempty` does not distinguish a stream draining into a RAM-mode sink.
+|`PERMANENT-HOLE`
+|`smc_dfd_trace_sink_concurrent_test` produces the boundary stimulus and claims the `Trdstempty` flag, not the bank state or the backpressure.
+|<<smc-vplan-area-efuse,EFUSE>>
+|`feat_ctrl` bit 37 `SMC_FUSE_TEST`.
+|The bit is not consumed by SMC, so the lifecycle-gated JTAG eFuse matrix cannot observe it (Known Limitations).
+|`PERMANENT-HOLE`
+|`smc_efuse_jtag_lc_access_matrix_test` keeps the connection as a negative item.
+|<<smc-vplan-area-efuse,EFUSE>>
+|The eFuse sense bypass selected by `sep_security_disable_i`.
+|The pin is tied to 0 on both `smc_wrapper` instances (<<smc-bench-tie-offs>>), so the bypass path of `hw/ip/efuse/doc/architecture.adoc` (Security Disable Bypass Mechanism) is unreachable.
+|`ADD-PORT`
+|Every eFuse leaf proves the sensed path, which is the path a 0 selects; the tie-off row names the positive control that closes it.
+|<<smc-vplan-area-efuse,EFUSE>>
+|The raw OTP window and the eFuse macro.
+|The raw OTP window has no responder on `smc_wrapper`, and an `efuse_bank_model` answers the sense (Verification Scope, Known Limitations).
+|`PERMANENT-HOLE`
+|No testcase exercises a permission check at the raw OTP window; `smc_efuse_bank_ctrl_window_test` grades the shim window handshake counts.
+|<<smc-vplan-area-uart,UART>>
+|`INTR_STATUS.LOG_WRITE_ERR`.
+|The log-write AXI-Lite manager targets the wrapper's own `uart_16550` block, which ties write-error to 0 and answers every write OKAY, so no firmware-reachable stimulus raises the bit (Known Limitations).
+|`PERMANENT-HOLE`
+|`smc_fw_uart_log_engine_boundary_backpressure_test` logs the bit; `smc_log_engine_fetch_error_test` forces the status through `INTR_TEST` and grades the set, the interrupt line and the clear; `smc_fw_uart_log_engine_fetch_err_test` grades the fetch-error path, which has a stimulus.
+|<<smc-vplan-area-uart,UART>>
+|The modem-status inputs DSR, RI and DCD (`MSR` bits and their delta bits).
+|`doc/integrator/meta/ocah_gpio_table.csv` pins no pad for them, so the bench has no drive and no stated level (`hw/ip/uart/uart_16550/regs/uart_16550_main.rdl`, `MSR`).
+|`ADD-PORT`
+|`smc_uart_spi_log_engine_test` masks every `MSR` compare to CTS and DCTS and logs the other bits; `smc_uart_reg_reset_rw_test` logs the first `MSR` read on all four instances.
+|===
+
+[[smc-vplan-phase3-proposed]]
+===== Observation taps, added hooks and proposed drives
+
+The bench items of the Phase 3 tests, by kind (<<smc-vplan-blocked-taxonomy>>).
+An observation tap drives nothing. An added hook or an existing bench hook is an
+error inject or a top-port drive and blocks nothing. A PROPOSED internal drive
+blocks the check that needs it.
+
+[[smc-vplan-phase3-obs-taps]]
+====== Observation taps that the tests add
+
+The column "Tests that use it" names the entries whose checks read the tap. Every tap below is a
+`tb_*` signal of `hw/sys/smc/dv/tb/smc_tb_signal_list.svh`, a net of `hw/sys/smc/dv/tb/tb_top.sv`
+or a hierarchical read reference that `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` describes; the list
+names them for their Phase 3 users.
+
+[cols="2,3,2,5,5",options="header"]
+|===
+|Area |Name |Kind |What it observes |Tests that use it
+|<<smc-vplan-area-power,POWER>>
+|`tb_dma_busy`, `tb_dma_mst_awaddr`, `tb_dma_mst_bvalid`, `tb_dma_trans_complete`
+|Read-only tap (signal list)
+|The DMA busy indication, the egress AW address, the B handshake and the transfer-complete pulse at the SMC boundary.
+|`smc_dma_reserved_stream_banks_test`, `smc_zeroer_sram_init_test`, `smc_dma_invalid_descriptor_test`, `smc_dma_completion_status_test`
+|<<smc-vplan-area-power,POWER>>
+|`tb_telemetry_irq`, `tb_telemetry_irq_any`
+|Read-only tap (signal list)
+|The per-receiver telemetry interrupt lines and their aggregate.
+|`smc_telemetry_receiver_csr_test`, `smc_telemetry_irq_aggregate_test`, `smc_telemetry_rx_flush_test`
+|<<smc-vplan-area-irq,IRQ>>
+|`tb_cpu_interrupts`, `tb_mailbox_interrupts`, `tb_ext_mailbox_interrupts`, `tb_sync_irq`, `tb_plic_threshold0`
+|Read-only tap (signal list)
+|The raw 328-bit CPU interrupt vector, the mailbox interrupt vectors, the sync interrupt output and the context 0 PLIC threshold.
+|`smc_irq_vector_assembly_test`, `smc_irq_reserved_idle_zero_test`, `smc_sep_mbx_irq_vector_test`, `smc_mailbox_irq_ack_output_test`, `smc_sync_irq_isolation_test`, `smc_wdt_irq_source_ids_test`, `smc_plic_register_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|`tb_core2pad_o`, `tb_core2pad_en_o`, `tb_gpio_irq_any`
+|Read-only tap (signal list)
+|The raw pad-bus output and output-enable vectors and the GPIO interrupt aggregate.
+|`smc_5agent_observability_test`, `smc_gpio_output_driveback_test`, `smc_gpio_data_ctrl_ro_status_test`, `smc_gpio_irq_mask_deassert_test`
+|<<smc-vplan-area-i2c,I2C>>
+|`tb_i2c_host_enable`, `tb_i2c_target_enable`, `tb_i2c_irq`, the `tb_i2c0_scl`, `tb_i2c0_sda`, `tb_i2c1_scl` and `tb_i2c1_sda` pad probes
+|Read-only tap (signal list)
+|The per-instance role enables, interrupt lines and pad levels of the three I2C instances.
+|`smc_i2c_reg_access_class_test`, `smc_i2c_intr_output_path_test`, `smc_i2c_pad_override_test`, `smc_i2c_ctrl_role_gate_test`
+|<<smc-vplan-area-reset,RESET>>
+|`tb_chiplet_is_primary`, `tb_cpu_core_reset_n`
+|Read-only tap (signal list)
+|The chiplet role strap and the released state of the core resets.
+|`smc_octs_clk_rate_test` and its variants, `smc_cold_boot_chain_order_test`, `smc_primary_reset_scope_test`
+|<<smc-vplan-area-cpu,CPU>>
+|`tb_bfm_scratch_peek_offset`, `tb_bfm_scratch_peek_data`, `tb_bfm_scratch_peek_ecc` and their `tb_dut_scratch_peek_*` siblings
+|Hierarchical read reference (`hw/sys/smc/dv/tb/tb_top.sv`, `SMC_DUAL` elaboration)
+|The scratch SRAM bank entry and its ECC word at a given offset on each instance of the dual bench.
+|`smc_dual_axi_sram_probe_test`
+|===
+
+[[smc-vplan-phase3-added-hooks]]
+====== Hooks that the tests add
+
+Each item is an error inject or a top-port drive. An item of the kind "Existing
+bench hook" exists in `hw/sys/smc/dv/tb/tb_top.sv` (an inject or poke hook, a
+responder or channel hold, a pad or pin drive, or a time-0 plusarg) and is
+approved; where `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` does not list it, the test
+that uses it adds its row there. No Phase 3 entry adds a hook that `tb_top.sv`
+does not already have. An added hook and an existing bench hook are not PROPOSED
+and block no check or leg. The column "Port or inject point" names the
+`smc_wrapper` port of a top-port drive and the point of an error inject.
+
+[cols="2,3,2,4,3,5",options="header"]
+|===
+|Area |Name |Kind |What it does |Port or inject point |Tests that use it
+|<<smc-vplan-area-cpu,CPU>>
+|`tb_cpu_ecc_inject_*`, `tb_cpu_ecc_poke_*`
+|Existing bench hook
+|Flips one or two codeword bits of a scratch bank entry, or pokes an entry through the ECC mask, so the CPU reads a corrupted codeword.
+|The scratch-bank memory collateral bound in `hw/sys/smc/dv/tb/tb_top.sv`
+|`smc_ecc_fault_inject_test`, `smc_ecc_codeword_sec_test`, `smc_ecc_codeword_ded_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|`tb_efuse_read_state_inject*`, `tb_efuse_program_state_inject*`, `tb_zeroer_state_inject*`, `tb_efuse_read_error_inject`
+|Existing bench hook
+|Forces an unused encoding into the eFuse interface controller or the Zeroer state flop, or an error into the eFuse read path, so the block must fail closed and recover.
+|The state flops of the eFuse interface controller and the Zeroer; the eFuse read response
+|`smc_state_fault_inject_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|`tb_output_axi_resp_hold`
+|Existing bench hook
+|Holds or errors the SYS_OUT responder's channels so a transfer stalls, is back-pressured or sees a one-shot `SLVERR` or `DECERR`.
+|The SYS_OUT AXI responder
+|`smc_output_fabric_slverr_inject_test`, `smc_sys_out_path_responder_control_test`, `smc_dma_backpressure_breadth_test`, `smc_dma_backpressure_test`, `smc_dma_burst_shaping_test`, `smc_dma_completion_status_test`, `smc_dma_invalid_descriptor_test`, `smc_zeroer_busy_outstanding_test`, `smc_zeroer_resp_unchecked_test`, `smc_outstage_order_test`, `smc_region_zero_reset_recovery_test`, `smc_hang_data_timeout_window_test`, `smc_hang_detector_data_timeout_test`, `smc_log_engine_fetch_error_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|`tb_sep_axi_r_hold`, `tb_sep_axi_b_hold`, `tb_sys_axi_r_hold`
+|Existing bench hook
+|Holds `RREADY` or `BREADY` of the SEP_IN or SYS_IN manager so a response stays outstanding.
+|The SEP_IN and SYS_IN AXI ports of `smc_wrapper`
+|`smc_axi_channel_timing_ports_test`, `smc_sep_in_axi_flow_control_test`, `smc_region_zero_reset_recovery_test`, `smc_hang_detector_timeout_test`, `smc_hang_detector_sys_timeout_test`, `smc_hang_detector_disable_test`, `smc_hang_sep_drop_controls_test`, `smc_hang_sep_threshold_test`, `smc_hang_sep_timeout_window_test`, `smc_hang_sys_timeout_window_test`
+|<<smc-vplan-area-gpio,GPIO>>
+|`tb_gpio_ext_drive_en`, `tb_gpio_ext_drive_value`, `tb_pad_drive_en`, `tb_pad_drive_val`
+|Existing bench hook
+|Drives a GPIO pad from outside the DUT, including the cool-reset and FLR pads and the SMBus alert pads.
+|The pad inputs of `smc_wrapper`
+|`smc_gpio_pad_input_readback_test`, `smc_gpio_irq_or_test`, `smc_gpio_rst_primary_test`, `smc_gpio_irq_mask_deassert_test`, `smc_gpio_data_ctrl_ro_status_test`, `smc_gpio_intf_data_ctrl_write_sweep_test`, `smc_cool_reset_deglitch_window_test`, `smc_cool_reset_pin_flr_overlap_test`, `smc_cool_reset_recovery_test`, `smc_flr_isolation_sources_test`, `smc_smbus_alert_instance_isolation_test`
+|<<smc-vplan-area-uart,UART>>
+|`tb_uart0_rx_ext_drive`, `+smc_uart_cross_3to0`
+|Existing bench hook
+|Drives the UART0 receive pad from the bench, or crosses UART3 TX into UART0 RX at the pads.
+|The UART pad inputs of `smc_wrapper`
+|`smc_uart_baud_word_parity_format_test`, `smc_uart_pad_mux_enable_test`, `smc_uart_core_mode_select_test`, `smc_uart_error_conditions_test`, `smc_uart_rbr_error_path_test`, `smc_uart_sanity_test`
+|<<smc-vplan-area-i2c,I2C>>
+|`+smc_i2c_shared_bus`, `+smc_i2c1_pads`
+|Existing bench hook
+|Joins the three I2C instances on one open-drain bus, or adds the open-drain resolver on the I2C1 pads for a second independent bus.
+|The I2C pads of `smc_wrapper`
+|Every shared-bus I2C entry (its testlist entry carries `+smc_i2c_shared_bus`); `smc_i2c_dual_concurrent_transfer_test` (`+smc_i2c1_pads`)
+|<<smc-vplan-area-reset,RESET>>
+|`tb_hold_ext_boot`, `+smc_hold_cpu_boot`, `+smc_hold_ext_boot`, `tb_boot_stall_jtag_ovrd_i`
+|Existing bench hook
+|Holds the external boot term or the CPU boot stall from time 0, or drives the JTAG boot-stall override.
+|The boot-stall and external-boot inputs of `smc_wrapper`
+|`smc_cpu_boot_release_sequence_test`, `smc_efuse_fuse_reset_gate_test`, `smc_efuse_boundary_signals_test`, `smc_mixed_boot_stall_test`, `smc_jtag_boot_stall_sanity_test`, every firmware leaf (`+smc_hold_cpu_boot`)
+|<<smc-vplan-area-irq,IRQ>>
+|`tb_ext_interrupt_0_i`, `tb_ext_interrupts_hi_i`, `tb_temp_interrupt_i`, `tb_sep_mailbox_interrupts`
+|Existing bench hook
+|Drives the external interrupt lanes, the PVT temperature interrupt input and the SEP mailbox interrupt inputs.
+|The interrupt input ports of `smc_wrapper`
+|`smc_ext_irq_hold_release_test`, `smc_ext_irq_pulse_sampling_test`, `smc_ext_irq_low_bits_test`, `smc_sep_mbx_irq_vector_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|`+smc_front_port_r_arb_assertoff`
+|Existing bench hook
+|Turns off the front-port R arbiter assertion for the leaf that withdraws an R beat on purpose (Known Limitations).
+|A `hw/sys/smc/dv/tb/tb_top.sv` assertion control
+|`smc_cpu_l2_read_wedge_test`
+|===
+
+[[smc-vplan-phase3-proposed-drives]]
+====== PROPOSED internal drives
+
+A PROPOSED internal drive drives, forces or deposits into a net inside `smc` for
+a purpose other than error injection, and it is not in
+`hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` and not in `hw/sys/smc/dv/tb/tb_top.sv`. A
+check that needs one is blocked. No Phase 3 entry of this plan needs one: every
+force the suite uses is an error inject of <<smc-vplan-phase3-added-hooks>> (the
+state-encoding and ECC injects), and the Verification Strategy admits no other
+hierarchical write. The list is empty.
+
+[[smc-vplan-phase3-oos]]
+===== Out of scope
+
+This section lists features outside Phase 3 credit. Each reason names the open
+test that owns the feature, the plan that owns it, or states why no pass or fail
+value exists, with the Verification Scope, Credit rules or Known Limitations
+item it rests on.
+
+[cols="2,5,8",options="header"]
+|===
+|Area |Feature |Reason
+|<<smc-vplan-area-power,POWER>>
+|OCTS pad-level protocol.
+|`smc_octs_sanity_test` drives the AVSBus status CSR path and the sideband observability probe, a recorded substitute for a pad-level OCTS checker (Known Limitations); the OCTS register and count contracts are graded by `smc_octs_csr_access_test`, `smc_octs_primary_count_test` and the clock-rate cells.
+|<<smc-vplan-area-fabric,FABRIC>>
+|Everything behind the mandatory external AXI-Lite window (per-pad controls, the GPIO_CTRL window, the supplementary `gpio_extra_*` blocks, clock-observation and pad-bias blocks).
+|Adopter implementation; this plan proves only the decode into the window (`smc_peripheral_instance_decode_test`, `smc_external_window_pad_ctrl_decode_test`, `smc_ext_window_routing_test`, `smc_gpio_ctrl_full_sweep_test`, `smc_gpio_ext_extra_decode_test`).
+|<<smc-vplan-area-fabric,FABRIC>>
+|The DTP CSR window.
+|No responder on `smc_wrapper`; the bench leaves the DTP CSR AXI-Lite response idle rather than answered by a placeholder (Verification Scope). `smc_axil_burst_idle_test` and `smc_axil_idle_test` report `dtp_csr_active` without a positive control, and `smc_peripheral_instance_decode_test` names the window as a cell not closed.
+|<<smc-vplan-area-fabric,FABRIC>>
+|The PLIC, CLINT and bus-error-unit windows at the reset `REGION_SIZE`.
+|They lie outside the local and global apertures at the reset aperture and answer `DECERR` from the inbound port (`hw/sys/smc/doc/fabric.adoc`, Local and Remote Resource Access); `smc_region_size_plic_clint_beu_decode_test` reaches them after widening the aperture, and `smc_address_map_region_decode_test` and `smc_cluster_beu_test` take no credit for them.
+|<<smc-vplan-area-reset,RESET>>
+|The SMU integration of the SMC (`smu_wrapper` straps, the cool-reset pin at the SMU boundary, boundary I/O).
+|The SMU plan (`hw/sys/smu/dv/docs/SMU_VPLAN.adoc`).
+|<<smc-vplan-area-reset,RESET>>
+|A warm-only reset (`rst_warm_ni` dropped without `rst_primary_ni`) and the registers it leaves intact.
+|No enrolled test drops the warm reset alone (`hw/sys/smc/doc/clk_rst.adoc`, Primary and Warm Reset); `smc_multi_reset_csr_persistence_test` states it as not claimed and leaves it to a testcase with a warm-only source (`SS_WARM_RESET_N` or the SEP watchdog pin).
+|<<smc-vplan-area-reset,RESET>>
+|The `ISOLATE_REQ_SMC_REG` byte-lane clear.
+|An open RTL defect with a weekly `rtl_issue` reproducer (`smc_isolate_req_smc_lane_test`, held out of `all`); a Known Limitations row, not a Phase 3 credit.
+|<<smc-vplan-area-clock,CLOCK>>
+|The adopter's PLL and PVT blocks.
+|Placeholder RTL in this harness; there is no design behind the register interface (Verification Scope). The retired `smc_pll_*` and `smc_pvt_*` modules are listed in <<smc-deferred-disposition>>; `smc_temp_interrupt_test` proves the digital pin path only.
+|<<smc-vplan-area-cpu,CPU>>
+|The captured straps block.
+|`smc_wrapper` declares no `captured_straps_i`, so there is no tap to drive; `smc_address_map_region_decode_test` reads the block and `smc_captured_straps_test` is retired (<<smc-deferred-disposition>>).
+|<<smc-vplan-area-jtag,JTAG>>
+|iJTAG (IEEE 1687) transactions.
+|The bench has no iJTAG VIP; `smc_ijtag_basic_test` scans the CPU JTAG TAP and proves the surrounding CSR and AXI environment instead.
+|<<smc-vplan-area-jtag,JTAG>>
+|DFD fault injection from the DUT side.
+|The retired `smc_dfd_dbs_fault_inject_test` latched a hardcoded capture token in TB glue; the plan takes no DFD fault-injection credit until a DUT-side observable exists (<<smc-deferred-disposition>>).
+|<<smc-vplan-area-efuse,EFUSE>>
+|The eFuse macro, fuse programming and the SEP lifecycle policy behind `lc_state_i`.
+|An `efuse_bank_model` answers the sense, so a storage change shows only that the controller's command reached the bank; the lifecycle policy is SEP-level verification and the bench drives the resolved state (Verification Scope). The image leaves (`smc_efuse_image_alt55_test`, `smc_efuse_image_altaa_test`, `smc_efuse_image_random_test`) and `smc_efuse_otp_burn_shadow_test` take transport and lock-enforcement credit only.
+|<<smc-vplan-area-efuse,EFUSE>>
+|The second lifecycle encodings 0x3 and 0x7 of RMA_SOP and RMA_CHIPLET.
+|Not driven: `smc_efuse_jtag_lc_access_matrix_test` asserts the matrix on 0x0, 0x1, 0x2, 0x6, 0x8 and the integrity-error row, one encoding per state (`hw/ip/efuse/doc/architecture.adoc`, Lifecycle State (LC_STATE) Effects).
+|<<smc-vplan-area-irq,IRQ>>
+|The cluster PLIC register file from the external port.
+|The aperture accepts no writes from SEP_IN; PLIC programming is proven only by `smc_fw_plic_claim_test` on the CPU (Verification Scope, Known Limitations).
+|<<smc-vplan-area-i2c,I2C>>
+|The PMBus Linear11 data format.
+|No document in this tree states it. `smc_smbus_pmbus_test` grades the encode and decode as a sequence self-check with no bus traffic, and `smc_smbus_pmbus_linear11_read_test` logs the decode of both words without comparing it.
+|<<smc-vplan-area-i2c,I2C>>
+|Recovery of a controller after an SDA interference event.
+|Not claimed: `smc_i2c_controller_sda_interference_test` and `smc_i2c_controller_control_symbol_test` reset or re-enable both instances between injections and assert nothing about the transaction that follows an event (`hw/ip/i2c/doc/index.adoc`; `INTR_STATE.SDA_INTERFERENCE`).
+|<<smc-vplan-area-i3c,I3C>>
+|The I3C cores and the I3C protocol: CCC and IBI scenarios that need device-address-table state, the PIO and TTI queue ports and their action fields.
+|No DAT/DCT RAM in `tb_top`; block-level I3C DV owns the protocol (Verification Scope). `smc_i3c_to_fabric_test` is decode-only and takes no feature credit; `smc_i3c_dxt_table_test` credits the shell's table RAMs and the CSR-window path only; `smc_i3c_csr_sweep_core_test` and `smc_i3c_csr_sweep_ext_test` leave the queue ports and action fields at reset.
+|<<smc-vplan-area-uart,UART>>
+|UART protocol loopback and ROM firmware as feature credit.
+|Credit rules: `smc_uart_loopback_test` and `smc_uart_char_loopback_test` are graded, and the ROM boot runs under `occp_rom` and <<smc-rom-dv-verification-plan>>, but neither is a feature-credit row of the Matrix.
+|===
+
+
 === Formal Verification Plan
 
 Formal property checking is not part of the SMC DV package. Every row of this plan is credited by simulation alone, and
