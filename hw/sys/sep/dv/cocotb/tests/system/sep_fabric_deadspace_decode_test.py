@@ -11,15 +11,18 @@ A write or read past a block's allocated size must be refused, and no live
 register in that block may change. Where the specification states the
 past-extent code, CHK-DEADSPACE-REFUSE grades it exactly: DECERR in the ABR
 window (``adams_bridge.adoc``, "abr-aperture-decode") and in the SPI controller
-window (``peripheral_subsystem.adoc``). For every other window the exact code
-is not stated, so the probe grades any error response (DECERR or SLVERR). No
-window states the read data of a refused read, so a read word is graded only
-as not the value of a live register. The TRNG and crypto-burst checks below
-grade DECERR.
+window (``peripheral_subsystem.adoc``). Every probe uses the CPU-LSU splice
+(``s_axi``), not the SEP inbound AXI port. The Past Extent cells of the
+generated memory map (``regs/gen/adoc/memory_map.adoc``, included by
+``memory_map.adoc``) state the code and read data "as seen at its inbound AXI
+port" only, so they state no answer on this path. For every other window the
+probe therefore grades any error response (DECERR or SLVERR), and a read word
+only as not the value of a live register. The TRNG and crypto-burst checks
+below grade DECERR.
 
 OBS-DEADSPACE-CODE (logged only): the exact response code and read data of
 every past-extent probe, with the code the specification states for its
-window, or ``none``. A checker that only inspects the
+window on this path, or ``none``. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while
 still writing the register, so every probe reads back the window's live
 registers as well. ``memory_map.adoc`` states the rule: the fabric refuses an

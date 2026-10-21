@@ -16,11 +16,15 @@ probe there is graded against it:
   crossbar answers the rest of the SPI aperture with DECERR on reads and
   writes.
 
-For every other window the specification states no exact past-extent code,
-and no window states the read data of a refused read. There the probe grades
-the stated contract only: an error response, and a read word that is not the
-value of a live register. The OBS-DEADSPACE-CODE line logs the exact code and
-read data of every probe.
+Every probe here goes through the CPU-LSU splice (``s_axi``,
+``SepBaseTest.start_seq``), not the SEP inbound AXI port. The Past Extent
+column of the generated memory map (``hw/sys/sep/regs/gen/adoc/memory_map.adoc``,
+included by ``hw/sys/sep/doc/memory_map.adoc``) states the code and read data
+of an unbacked access "as seen at its inbound AXI port" only, so it states no
+answer on the LSU path. For every other window the probe therefore grades the
+stated contract only: an error response, and a read word that is not the value
+of a live register. The OBS-DEADSPACE-CODE line logs the exact code and read
+data of every probe.
 
 Allocated size comes from the generated export (or the OT/IP header for
 CSRNG / EDN / entropy_source). Window end comes from
@@ -702,10 +706,11 @@ class SepDeadspace:
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
         """Return failure strings. Empty means this probe matched the spec.
 
-        A window with ``stated_resp`` fails on any other code. Elsewhere the
-        exact code is not stated, so any error response passes the code check.
-        No window states the read data of a refused read, so a read passes the
-        data check unless it returns the value of a live register.
+        A window with ``stated_resp`` fails on any other code. Elsewhere no
+        code is stated for this path: the memory-map Past Extent cells state the
+        inbound-AXI answer only, and this probe uses the CPU-LSU splice. Any
+        error response then passes the code check, and a read passes the data
+        check unless it returns the value of a live register.
         """
         fails: list[str] = []
         rdata: int | None = None
@@ -771,10 +776,11 @@ class SepDeadspace:
                 f"(allocated ends at +0x{win.alloc:x})"
             )
         elif win.stated_resp is None and resp != RESP_DECERR and not win.adopter:
-            # No exact code is stated for this window, so the contract asserted
-            # here is that the access is REFUSED, and any error response
-            # satisfies it. A refusal in another flavour is reported rather
-            # than failed.
+            # No exact code is stated for this window on the CPU-LSU path (the
+            # memory-map cell states the inbound-AXI answer only), so the
+            # contract asserted here is that the access is REFUSED, and any
+            # error response satisfies it. A refusal in another flavour is
+            # reported rather than failed.
             self.flavour_findings.append(
                 f"{win.name} {item.op} 0x{item.addr:08x} refused with "
                 f"resp={resp}, not DECERR (allocated ends at +0x{win.alloc:x})"
