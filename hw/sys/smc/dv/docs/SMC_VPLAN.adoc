@@ -19510,7 +19510,7 @@ Drive `smc_efuse_shim_ctrl_test_seq`. Each checker below is a named compare the 
 on the state flops through the testbench's `tb_efuse_program_state_inject`,
 `tb_efuse_read_state_inject` and `tb_zeroer_state_inject` hooks (each with its
 `_en`); the read errors are forces through `tb_efuse_read_error_inject` on the
-eFuse interface response status, `efuse_req_err_i` and `secure_tm_blocked_i`;
+eFuse interface response status and `secure_tm_blocked_i`;
 and the SYS_OUT responder's observability counters (`tb_output_axi_write_count`,
 `tb_output_axi_last_addr`, `tb_output_axi_last_wdata`) for the Zeroer's fabric
 traffic
@@ -19585,8 +19585,9 @@ records that.
   request is suppressed in the same cycle, then confirm the same recovery and the
   same legal program afterwards.
 . Repeat both encodings on the read path, each followed by a legal read that
-  completes without error; inject a read error and confirm the status sets and
-  the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
+  completes without error; for each of the two in-flight error sources (physical
+  bank error and secure-test-mode block) inject a read error and confirm the
+  status sets and the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
 . For each of the four illegal Zeroer encodings, run its start control first:
   program the inbound/outbound output-fabric filters to pass all, confirm the
   Zeroer is in `IDLE` with `CTRL_STATUS` not reporting busy, program `DEST_ADDR`

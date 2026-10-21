@@ -8,8 +8,8 @@
 // to efuse_addr_t truncates upper bits.
 // A start that secure_tm_blocked_i or read_locked_i refuses completes with an error without
 // issuing a command; a lock refusal also pulses read_blocked_o. An outstanding read ends with an
-// error on efuse_req_err_i or the optional read_req_timeout_*; secure_tm_i is static after boot
-// so a read already in flight completes normally.
+// error on the optional read_req_timeout_* or a bad bank response; secure_tm_i is static after
+// boot so a read already in flight completes normally.
 // Sticky address errors clear with read_addr_error_clear_i.
 // fuse_command_req_o is the request for the next cycle; the controller registers it.
 
@@ -51,7 +51,6 @@ module efuse_read_interface #(
   input  logic read_addr_error_clear_i,  // Clears the sticky address error; a same-cycle new error
                                          // takes priority.
 
-  input logic efuse_req_err_i,          // Guard lock error; ends an outstanding read with an error.
   input logic secure_tm_blocked_i,      // Guard secure-test-mode block; refuses a start with an
                                         // error but does not abort a read already in flight.
 
@@ -154,8 +153,8 @@ module efuse_read_interface #(
 
       ST_WAIT_RESP: begin
 
-        if (efuse_req_err_i || fuse_command_resp_i.status == 1'b1) begin
-          // If req is blocked from a shadow reg lock, or physical efuse returned error
+        // Physical efuse returned error
+        if (fuse_command_resp_i.status == 1'b1) begin
           read_done_d = 1'b1;
           read_busy_d = 1'b0;
           read_err_d = 1'b1;
@@ -245,7 +244,7 @@ module efuse_read_interface #(
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadFailureSetsError_A,
-      read_state_q == ST_WAIT_RESP && (efuse_req_err_i || fuse_command_resp_i.status) |=> read_done_o && !read_busy_o && read_error_o && read_back_data_o == efuse_data_t'(0),
+      read_state_q == ST_WAIT_RESP && fuse_command_resp_i.status |=> read_done_o && !read_busy_o && read_error_o && read_back_data_o == efuse_data_t'(0),
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadTimeoutSetsError_A,
@@ -257,7 +256,7 @@ module efuse_read_interface #(
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadSuccessClearsError_A,
-      read_state_q == ST_WAIT_RESP && !efuse_req_err_i && !fuse_command_resp_i.status && fuse_command_resp_i.valid |=> read_done_o && !read_busy_o && !read_error_o,
+      read_state_q == ST_WAIT_RESP && !fuse_command_resp_i.status && fuse_command_resp_i.valid |=> read_done_o && !read_busy_o && !read_error_o,
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       IllegalReadStateFailsClosed_A,

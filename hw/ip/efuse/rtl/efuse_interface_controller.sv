@@ -612,7 +612,6 @@ module efuse_interface_controller #(
     .program_addr_error_o         (program_addr_error),
     .program_addr_error_clear_i   (program_addr_error_clear),
 
-    .efuse_req_err_i               (efuse_req_err),
     .secure_tm_blocked_i           (secure_tm_i),
 
     .program_req_timeout_en_i      (program_req_timeout_enable),
@@ -682,7 +681,6 @@ module efuse_interface_controller #(
     .read_addr_error_o          (read_addr_error),
     .read_addr_error_clear_i    (read_addr_error_clear),
 
-    .efuse_req_err_i            (efuse_req_err),
     .secure_tm_blocked_i        (secure_tm_i),
 
     .read_req_timeout_en_i      (read_req_timeout_enable),
@@ -786,24 +784,36 @@ module efuse_interface_controller #(
   // selected one keeps the SHIM from seeing a request after its source has dropped it.
   fuse_command_req_t fuse_command_req_d, fuse_command_req_q;
 
+  // Request mux: selects which source drives the SHIM in the next cycle.
+  // Enable-based priority ensures program blocks read at the start of a command;
+  // busy-based response routing below keeps the response path stable once in flight.
   always_comb begin : efuse_command_request_mux
+    // Fuse sensing into the shadow registers must be done first - will start automatic upon cold reset de-assertion
+    priority if ((!fuse_sense_done) && (!security_disable_i)) begin : auto_sense_mode
+      fuse_command_req_d = secure_tm_i ? FuseCommandReqDefault : fuse_command_req_shadow_regs;
+    end else if (reg_interface_program_enable) begin : program_mode
+      fuse_command_req_d = fuse_command_req_interface_ctrl_w;
+    end else if (reg_interface_read_enable) begin : read_mode
+      fuse_command_req_d = fuse_command_req_interface_ctrl_r;
+    end else begin : idle_mode
+      fuse_command_req_d = FuseCommandReqDefault;
+    end
+  end
 
+  // Response mux: routes the SHIM response back to the active interface.
+  // Uses busy rather than enable so that a lock refusal on the other interface
+  // (which sets efuse_req_err and drops enable) cannot starve an in-flight command.
+  always_comb begin : efuse_command_response_mux
     fuse_command_resp_shadow_regs = FuseCommandRespDefault;
     fuse_command_resp_interface_ctrl_w = FuseCommandRespDefault;
     fuse_command_resp_interface_ctrl_r = FuseCommandRespDefault;
 
-    // Fuse sensing into the shadow registers must be done first - will start automatic upon cold reset de-assertion
     priority if ((!fuse_sense_done) && (!security_disable_i)) begin : auto_sense_mode
-      fuse_command_req_d = secure_tm_i ? FuseCommandReqDefault : fuse_command_req_shadow_regs;
       fuse_command_resp_shadow_regs = fuse_command_resp_i;
-    end else if (reg_interface_program_enable) begin : program_mode
-      fuse_command_req_d = fuse_command_req_interface_ctrl_w;
+    end else if (efuse_program_busy) begin : program_mode
       fuse_command_resp_interface_ctrl_w = fuse_command_resp_i;
-    end else if (reg_interface_read_enable) begin : read_mode
-      fuse_command_req_d = fuse_command_req_interface_ctrl_r;
+    end else if (efuse_read_busy) begin : read_mode
       fuse_command_resp_interface_ctrl_r = fuse_command_resp_i;
-    end else begin : idle_mode
-      fuse_command_req_d = FuseCommandReqDefault;
     end
   end
 

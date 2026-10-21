@@ -257,7 +257,7 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             "successful read did not clear the in-flight illegal-state error"
         )
 
-        for selector, name in ((0b01, "PHYSICAL"), (0b10, "GUARD"), (0b11, "SECURE_TEST")):
+        for selector, name in ((0b01, "PHYSICAL"), (0b11, "SECURE_TEST")):
             dut.tb_efuse_read_error_inject.value = selector
             await self._read_once(f"READ_{name}_ERROR")
             assert int(dut.tb_efuse_read_error.value) == 1, (
