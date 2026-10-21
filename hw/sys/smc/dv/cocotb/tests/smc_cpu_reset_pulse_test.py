@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A SEP_IN core-reset pulse, and a withheld level reset under give-up timeout mode.
+# DV-TESTCASE-CONTRACT: SMC_COV_B4_004 ANCHOR: smc_cpu_reset_pulse_test
+# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 426814cd968fdd57c286773e76b962b2f0bf891ec8032cdee33428793e4c7cd4
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+"""SEP_IN core-reset pulses and level resets, the debug reset and the reset vectors.
 
 Pulses core 1 through `RESET_CTRL.core1_reset_pulse_start` with every level
 reset high and requires its `core_resets_done` bit to fall and return. It times
@@ -10,6 +13,11 @@ stay in reset throughout. Then it
 requests core 1's level reset with `RESET_TIMEOUT` in give-up mode (mode 0,
 value 1), and requires that a timed-out request is not applied, and that both
 status bits clear on release.
+
+Checks the reset values of `RESET_CTRL` and `RESET_VECTOR[1..3]` before any
+write, pulses cores 0, 2 and 3 with the reset pulse counts, holds cores 2 and
+3 in level reset and releases them, releases and re-asserts `debug_reset_n`,
+and sets and clears bit 17 of each of `RESET_VECTOR[1..3]`.
 """
 
 from __future__ import annotations
@@ -21,15 +29,23 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_cpu_reset_pulse_test(smc_base_test):
-    """Core-reset pulse from SEP_IN, and the give-up timeout on a withheld reset."""
+    """Core-reset pulses and level resets from SEP_IN, the give-up timeout on a withheld
+    reset, the debug reset, and the RESET_VECTOR reset value and storage."""
 
     required_evidence = (
+        "CHK-CPU-DBG-RST-REASSERT",
         "CHK-CPU-RST-GIVEUP",
+        "CHK-CPU-RST-LEVEL-CORES",
         "CHK-CPU-RST-PULSE",
+        "CHK-CPU-RST-PULSE-CORES",
         "CHK-CPU-RST-PULSE-HELD",
         "CHK-CPU-RST-PULSE-WIDTH",
+        "CHK-CPU-RST-VECTOR-BIT17",
+        "CHK-CPU-RST-VECTOR-RESET",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 4
+    min_evidence = 11
 
     auto_protocol_vip = False
 
@@ -40,3 +56,6 @@ class smc_cpu_reset_pulse_test(smc_base_test):
         assert seq.width_runs is not None, "the pulse-width leg did not run"
         assert seq.held_samples is not None, "the held-level leg did not run"
         assert seq.give_up is not None, "the give-up leg did not run"
+        assert sorted(seq.pulse_cores) == [0, 2, 3], "the core 0/2/3 pulse legs did not all run"
+        assert sorted(seq.level_cores) == [2, 3], "the core 2/3 level legs did not all run"
+        assert len(seq.fence) == 6, "the ordered fence did not record every term"

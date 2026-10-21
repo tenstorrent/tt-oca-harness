@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# DV-TESTCASE-CONTRACT: SMC_COV_B4_009 ANCHOR: smc_rdl_field_sweep_test
+# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 9843278d346aa785a345c4b6004a82cec7c2f7903d43ba2e131be90be0c68200
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL_2.md @ artifact_revision 1 ENV: cocotb
 """RDL-contract sweep of the software-owned SMC CSR blocks over SEP_IN AXI.
 
 Every address, reset value, field position and software-access type below comes
@@ -37,12 +40,32 @@ that carry a contract of their own are driven by ``_special_registers``.
 blocks and what driving it would do here; ``_assert_partition`` fails if a
 register of those blocks is in neither list, so a regenerated map cannot add one
 silently.
+
+After the generic cycle, the special registers and the straps, the strobe legs
+drive the CHIP_CONFIG and NDM_RESET registers of the miscellaneous wrapper with
+all-ones and single-lane writes, and ISOLATE_REQ_SMC_REG with a write whose
+WSTRB enables no lane:
+
+* CHIP_CONFIG (chip_config.adoc, every register `R`): each register reads its
+  pre-write value after an all-ones write and after each of the four single-lane
+  writes; VERSION_LO / VERSION_HI also read their documented 0x000100A0 /
+  0x00000000. CHIP_ID and LC_STATE are logged against their documented resets
+  (SF-023) and every BRESP is logged, not compared (SF-022).
+* NDMRESET_PROCESS (ndm_reset.adoc, `RW` 31:0): stores all ones and 0, and a
+  0xA5 written in lane b alone changes only byte b (SF-024).
+* NDMRESET_REQUEST / NDMRESET_CLUSTER_COUNT (`R`): unchanged by an all-ones
+  write and by 0xFF in each single lane; BRESP logged (SF-022).
+* ISOLATE_REQ_SMC_REG: the zero-strobe write must answer B within the driver's
+  bound; BRESP and the value before and after are logged and not compared
+  (SF-021, and an open RTL issue on this register's byte lanes).
 """
 
 from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from cocotb.utils import get_sim_time
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -51,6 +74,7 @@ from .smc_rdl_regmap import RdlReg, rdl_array, rdl_register, rdl_registers_under
 # Blocks this sequence owns. Every register instance under these prefixes has to
 # be accounted for by _SWEPT, _SPECIAL or _EXCLUDED.
 _BLOCKS: tuple[str, ...] = (
+    "smc_misc_wrap/chip_config",
     "smc_misc_wrap/scratch_cold",
     "smc_misc_wrap/scratch_cold_warm",
     "smc_misc_wrap/ndm_reset",
@@ -109,6 +133,19 @@ _SPECIAL: tuple[str, ...] = (
     "smc_cpu_ctrl/REFERENCE_COUNTER",
 )
 
+# Registers driven only by the strobe legs (_chip_config_legs, _ndm_legs and
+# _isolate_zero_strobe).
+_STROBE_LEGS: tuple[str, ...] = (
+    "smc_misc_wrap/chip_config/VERSION_LO",
+    "smc_misc_wrap/chip_config/VERSION_HI",
+    "smc_misc_wrap/chip_config/CHIP_ID",
+    "smc_misc_wrap/chip_config/LC_STATE",
+    "smc_misc_wrap/ndm_reset/NDMRESET_REQUEST",
+    "smc_misc_wrap/ndm_reset/NDMRESET_PROCESS",
+    "smc_misc_wrap/ndm_reset/NDMRESET_CLUSTER_COUNT",
+    "smc_reset_unit/ISOLATE_REQ_SMC_REG",
+)
+
 # Registers of the swept blocks this sequence leaves alone, and what driving
 # each one here would do.
 _EXCLUDED: dict[str, str] = {
@@ -124,9 +161,6 @@ _EXCLUDED: dict[str, str] = {
     "smc_cpu_ctrl/RESET_CTRL": (
         "per-core and uncore reset levels plus the four core reset-pulse starts"
     ),
-    "smc_misc_wrap/ndm_reset/NDMRESET_REQUEST": "driven by smc_ndm_reset_test",
-    "smc_misc_wrap/ndm_reset/NDMRESET_PROCESS": "driven by smc_ndm_reset_test",
-    "smc_misc_wrap/ndm_reset/NDMRESET_CLUSTER_COUNT": "driven by smc_ndm_reset_test",
     "smc_reset_unit/SS_CONFIG": "driven by smc_reset_unit_sanity_test",
     "smc_reset_unit/SS_CONFIG_LOCK": (
         "onwrite = woset and only a cold reset clears it, so the restore leg cannot put it back"
@@ -143,9 +177,6 @@ _EXCLUDED: dict[str, str] = {
     ),
     "smc_reset_unit/SS_FORCE_TO_REF_CLK": "driven by smc_reset_unit_sanity_test",
     "smc_reset_unit/ISOLATE_REQ_REG": "driven by smc_reset_unit_sanity_test",
-    "smc_reset_unit/ISOLATE_REQ_SMC_REG": (
-        "hardware-set on cfg_flr_pf_active and cleared by any software write"
-    ),
     "smc_reset_unit/ISOLATE_REQ_SMCEN_REG": "driven by smc_reset_unit_sanity_test",
     "smc_reset_unit/ISOLATE_REQ_VIS": "sw = r pin visibility; driven by smc_flr_sanity_test",
     "smc_reset_unit/ISOLATE_REQ_FLR_COUNTER_VALUE": "driven by smc_flr_sanity_test",
@@ -205,6 +236,28 @@ _STRAPS_WRITE_PATTERN = 0xFFFF_FFFF
 # readbacks fails.
 _REF_COUNTER_LOAD_POLLS = 16
 
+# chip_config.adoc: VERSION_LO / VERSION_HI are `R` with these values, and the
+# documented resets of CHIP_ID / LC_STATE, which are logged only (SF-023).
+_VERSION_DOC = {"VERSION_LO": 0x0001_00A0, "VERSION_HI": 0x0000_0000}
+_CHIPCFG_RESET_DOC = {"CHIP_ID": 0x0, "LC_STATE": 0xF}
+
+_LANES = 4
+_LANE_ONES = 0xFF
+_NDM_LANE_BYTE = 0xA5
+_ZERO_STROBE_WDATA = 0x0000_0001
+_RESP_NAMES = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
+
+# Ordered fence of CHK-NONVAC.
+_FENCE_TERMS = (
+    "EXISTING-SWEEP",
+    "CHIPCFG-ALLONES",
+    "CHIPCFG-LANES",
+    "NDM-ALLONES",
+    "NDM-LANES",
+    "NDM-RO",
+    "ISO-ZERO-STROBE",
+)
+
 
 def _straps_base() -> int:
     return smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR")
@@ -212,7 +265,7 @@ def _straps_base() -> int:
 
 def _assert_partition() -> None:
     """Every register of the swept blocks is swept, special, or excluded."""
-    accounted = set(_SWEPT) | set(_SPECIAL) | set(_EXCLUDED)
+    accounted = set(_SWEPT) | set(_SPECIAL) | set(_STROBE_LEGS) | set(_EXCLUDED)
     unaccounted = sorted(
         {reg.base_path for block in _BLOCKS for reg in rdl_registers_under(block)} - accounted
     )
@@ -232,6 +285,10 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
         self.registers_swept = 0
         self.write_groups = 0
         self.value_checks = 0
+        self.fence: list[tuple[str, int, int]] = []
+        self.waits: list[tuple[str, int, bool, bool, str]] = []
+        self.strobe_compares = 0
+        self.zero_strobe_wait: tuple[str, int, bool, bool, str] | None = None
 
     # -- checking --------------------------------------------------------
 
@@ -483,6 +540,244 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
             _STRAPS_WRITE_PATTERN,
         )
 
+    # -- strobe legs -----------------------------------------------------
+
+    def _mark(self, term: str, count: int) -> None:
+        assert count > 0, f"fence term {term} recorded with a zero count"
+        self.fence.append((term, count, int(get_sim_time("ps"))))
+
+    async def _access(
+        self,
+        name: str,
+        addr: int,
+        data: int | None = None,
+        wstrb: int | None = None,
+        allow_error: bool = False,
+    ) -> SmcSysAxiItem:
+        """One SEP_IN access whose bound and outcome are recorded in `waits`.
+
+        `allow_error` tolerates a non-OKAY response so a BRESP the contract
+        leaves open is logged instead of compared; a missing response always
+        fails, since `allow_timeout` stays False.
+        """
+        item = SmcSysAxiItem(f"{'rd' if data is None else 'wr'}_{name}")
+        item.op = SmcSysAxiOp.READ if data is None else SmcSysAxiOp.WRITE
+        item.addr = addr
+        item.length = 4
+        if data is not None:
+            item.wdata = data
+            item.wstrb = wstrb
+        item.allow_error = allow_error
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        bound = item.timeout_ns or self.cfg.axi_timeout_ns
+        last = f"resp={item.resp_code}" + ("" if data is not None else f" rdata=0x{item.rdata:x}")
+        self.waits.append((name, bound, item.allow_timeout, item.timed_out, last))
+        cocotb.log.info(
+            "wait %s: bound %d ns, allow_timeout=%s, timed_out=%s, last state %s",
+            name,
+            bound,
+            item.allow_timeout,
+            item.timed_out,
+            last,
+        )
+        assert not item.timed_out and item.resp_ok, (
+            f"{name} @ 0x{addr:08x}: no accepted response within {bound} ns "
+            f"(allow_timeout={item.allow_timeout} timed_out={item.timed_out} "
+            f"resp_code={item.resp_code})"
+        )
+        assert item.resp_code is not None, (
+            f"{name} @ 0x{addr:08x}: the response code did not resolve to 0/1 (X/Z)"
+        )
+        if data is None:
+            assert isinstance(item.rdata, int), f"{name}: readback unresolved {item.rdata!r}"
+        return item
+
+    async def _read(self, name: str, addr: int) -> int:
+        return (await self._access(name, addr)).rdata
+
+    async def _ro_write_unchanged(
+        self, reg: RdlReg, tag: str, data: int, wstrb: int, pre: int
+    ) -> int:
+        """Write a read-only register, log the BRESP and require it reads `pre`."""
+        name = reg.path.rsplit("/", 1)[-1]
+        w = await self._access(f"{name}:{tag}", reg.addr, data, wstrb=wstrb, allow_error=True)
+        self.write_groups += 1
+        after = await self._read(f"{name}:{tag}_rb", reg.addr)
+        assert after == pre, (
+            f"{reg.path} @ 0x{reg.addr:08x}: read-only, but after writing 0x{data:08x} with "
+            f"WSTRB 0x{wstrb:x} it reads 0x{after:08x} against 0x{pre:08x} before the write"
+        )
+        self.value_checks += 1
+        self.strobe_compares += 1
+        return w.resp_code
+
+    @staticmethod
+    def _resp_list(codes: list[int]) -> str:
+        return ",".join(_RESP_NAMES.get(c, str(c)) for c in codes)
+
+    async def _chip_config_legs(self) -> None:
+        regs = [
+            rdl_register(f"smc_misc_wrap/chip_config/{n}")
+            for n in ("VERSION_LO", "VERSION_HI", "CHIP_ID", "LC_STATE")
+        ]
+        pre: dict[str, int] = {}
+        bresp: list[int] = []
+        start = self.strobe_compares
+        for reg in regs:
+            name = reg.path.rsplit("/", 1)[-1]
+            pre[name] = await self._read(f"{name}:pre", reg.addr)
+            bresp.append(await self._ro_write_unchanged(reg, "ones", 0xFFFF_FFFF, 0xF, pre[name]))
+        for name, doc in _VERSION_DOC.items():
+            assert pre[name] == doc, (
+                f"chip_config/{name}: reads 0x{pre[name]:08x}, chip_config.adoc documents "
+                f"0x{doc:08x}"
+            )
+            self.value_checks += 1
+            self.strobe_compares += 1
+        self._mark("CHIPCFG-ALLONES", self.strobe_compares - start)
+        cocotb.log.info(
+            "CHK-RDL-CHIPCFG-ALLONES: VERSION_LO=0x%08X VERSION_HI=0x%X CHIP_ID=pre(0x%X) "
+            "LC_STATE=pre(0x%X) after 0xFFFFFFFF WSTRB 0xF; CHIP_ID doc reset 0x%X, LC_STATE "
+            "doc reset 0x%X (logged, SF-023); BRESP logged %s (SF-022)",
+            pre["VERSION_LO"],
+            pre["VERSION_HI"],
+            pre["CHIP_ID"],
+            pre["LC_STATE"],
+            _CHIPCFG_RESET_DOC["CHIP_ID"],
+            _CHIPCFG_RESET_DOC["LC_STATE"],
+            self._resp_list(bresp),
+        )
+
+        bresp = []
+        start = self.strobe_compares
+        for reg in regs:
+            name = reg.path.rsplit("/", 1)[-1]
+            for b in range(_LANES):
+                bresp.append(
+                    await self._ro_write_unchanged(
+                        reg, f"lane{b}", _LANE_ONES << (8 * b), 1 << b, pre[name]
+                    )
+                )
+        lanes = self.strobe_compares - start
+        assert lanes == len(regs) * _LANES, f"{lanes} single-lane compares ran"
+        self._mark("CHIPCFG-LANES", lanes)
+        cocotb.log.info(
+            "CHK-RDL-CHIPCFG-LANES: %d/%d single-lane writes, readback == pre-write; BRESP "
+            "logged %s (SF-022)",
+            lanes,
+            len(regs) * _LANES,
+            self._resp_list(bresp),
+        )
+
+    async def _ndm_legs(self) -> None:
+        proc = rdl_register("smc_misc_wrap/ndm_reset/NDMRESET_PROCESS")
+        start = self.strobe_compares
+        before = await self._read("NDMRESET_PROCESS:pre", proc.addr)
+        seen: list[int] = []
+        for word in (0xFFFF_FFFF, 0x0000_0000):
+            await self._access(f"NDMRESET_PROCESS:0x{word:08x}", proc.addr, word, wstrb=0xF)
+            self.write_groups += 1
+            rb = await self._read(f"NDMRESET_PROCESS:0x{word:08x}_rb", proc.addr)
+            assert rb == word, (
+                f"NDMRESET_PROCESS @ 0x{proc.addr:08x}: `RW` 31:0, wrote 0x{word:08x} and read "
+                f"back 0x{rb:08x}"
+            )
+            seen.append(rb)
+            self.value_checks += 1
+            self.strobe_compares += 1
+        self._mark("NDM-ALLONES", self.strobe_compares - start)
+        cocotb.log.info(
+            "CHK-RDL-NDM-ALLONES: PROCESS=0x%08X then 0x%08X (pre-write 0x%08X)",
+            seen[0],
+            seen[1],
+            before,
+        )
+
+        start = self.strobe_compares
+        model = 0
+        seen = []
+        for b in range(_LANES):
+            data = _NDM_LANE_BYTE << (8 * b)
+            await self._access(f"NDMRESET_PROCESS:lane{b}", proc.addr, data, wstrb=1 << b)
+            self.write_groups += 1
+            model |= data
+            rb = await self._read(f"NDMRESET_PROCESS:lane{b}_rb", proc.addr)
+            assert rb == model, (
+                f"NDMRESET_PROCESS @ 0x{proc.addr:08x}: after 0x{data:08x} with WSTRB "
+                f"0x{1 << b:x} it reads 0x{rb:08x}, expected 0x{model:08x}"
+            )
+            seen.append(rb)
+            self.value_checks += 1
+            self.strobe_compares += 1
+        await self._access("NDMRESET_PROCESS:restore", proc.addr, 0, wstrb=0xF)
+        self.write_groups += 1
+        restored = await self._read("NDMRESET_PROCESS:restore_rb", proc.addr)
+        assert restored == 0, (
+            f"NDMRESET_PROCESS @ 0x{proc.addr:08x}: reads 0x{restored:08x} after the restore of 0"
+        )
+        self.value_checks += 1
+        self.strobe_compares += 1
+        self._mark("NDM-LANES", self.strobe_compares - start)
+        cocotb.log.info(
+            "CHK-RDL-NDM-LANES: %s then 0x%X",
+            " ".join(f"0x{v:08X}" for v in seen),
+            restored,
+        )
+
+        start = self.strobe_compares
+        unchanged: dict[str, int] = {}
+        bresp: list[int] = []
+        for name in ("NDMRESET_REQUEST", "NDMRESET_CLUSTER_COUNT"):
+            reg = rdl_register(f"smc_misc_wrap/ndm_reset/{name}")
+            pre = await self._read(f"{name}:pre", reg.addr)
+            writes = [("ones", 0xFFFF_FFFF, 0xF)] + [
+                (f"lane{b}", _LANE_ONES << (8 * b), 1 << b) for b in range(_LANES)
+            ]
+            unchanged[name] = 0
+            for tag, data, wstrb in writes:
+                bresp.append(await self._ro_write_unchanged(reg, tag, data, wstrb, pre))
+                unchanged[name] += 1
+            cocotb.log.info("%s pre-write value 0x%08x", name, pre)
+        self._mark("NDM-RO", self.strobe_compares - start)
+        cocotb.log.info(
+            "CHK-RDL-NDM-RO: REQUEST %d/5 unchanged, CLUSTER_COUNT %d/5 unchanged; BRESP "
+            "logged %s (SF-022)",
+            unchanged["NDMRESET_REQUEST"],
+            unchanged["NDMRESET_CLUSTER_COUNT"],
+            self._resp_list(bresp),
+        )
+
+    async def _isolate_zero_strobe(self) -> None:
+        reg = rdl_register("smc_reset_unit/ISOLATE_REQ_SMC_REG")
+        pre = await self._read("ISOLATE_REQ_SMC_REG:pre", reg.addr)
+        item = await self._access(
+            "ISOLATE_REQ_SMC_REG:zero_strobe",
+            reg.addr,
+            _ZERO_STROBE_WDATA,
+            wstrb=0,
+            allow_error=True,
+        )
+        self.zero_strobe_wait = self.waits[-1]
+        post = await self._read("ISOLATE_REQ_SMC_REG:post", reg.addr)
+        self._mark("ISO-ZERO-STROBE", 1)
+        cocotb.log.info(
+            "CHK-RDL-ISO-ZERO-STROBE: wstrb=0 B received, BRESP=%s, ISOLATE_REQ_SMC_REG "
+            "pre=0x%X post=0x%X (observed only, SF-021)",
+            _RESP_NAMES.get(item.resp_code, str(item.resp_code)),
+            pre,
+            post,
+        )
+
+    def _nonvac(self) -> str:
+        terms = tuple(t for t, _, _ in self.fence)
+        assert terms == _FENCE_TERMS, f"fence terms {terms}, expected {_FENCE_TERMS}"
+        stamps = [ps for _, _, ps in self.fence]
+        assert all(b > a for a, b in zip(stamps, stamps[1:])), f"fence stamps not rising {stamps}"
+        assert all(n > 0 for _, n, _ in self.fence), f"zero-count fence term {self.fence}"
+        return " ".join(f"{t}(n={n}@{ps}ps)" for t, n, ps in self.fence)
+
     # -- body ------------------------------------------------------------
 
     async def body(self) -> None:
@@ -514,6 +809,30 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
         assert self.registers_swept == len(_swept_instances()), (
             f"the sweep drove {self.registers_swept} register instances, the swept list "
             f"declares {len(_swept_instances())}"
+        )
+        self._mark("EXISTING-SWEEP", self.value_checks)
+
+        await self._chip_config_legs()
+        await self._ndm_legs()
+        await self._isolate_zero_strobe()
+
+        assert self.zero_strobe_wait is not None, "the zero-strobe write did not run"
+        expired = [w for w in self.waits if w[3]]
+        assert not expired, f"bounded waits expired: {expired}"
+        cocotb.log.info(
+            "CHK-TIMEOUT-PATHS: %d bounded waits, bound/last-state per wait, %d expired; "
+            "bounds %s ns, allow_timeout %s; zero-strobe B: bound %d ns last %s; "
+            "an expiry raises in the driver with the address and bound",
+            len(self.waits),
+            len(expired),
+            sorted({w[1] for w in self.waits}),
+            sorted({w[2] for w in self.waits}),
+            self.zero_strobe_wait[1],
+            self.zero_strobe_wait[4],
+        )
+        cocotb.log.info(
+            "CHK-NONVAC: %s",
+            " < ".join(_FENCE_TERMS) + "; " + self._nonvac(),
         )
 
 

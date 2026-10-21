@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# DV-TESTCASE-CONTRACT: SMC_COV_B4_015 ANCHOR: smc_sys_axi_in_port_test
+# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: b8487c294b952d6c6c53680656a6f36caf23d95866abd0a4ab426ca790b108c8
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B4_VPLAN_DETAIL_2.md @ artifact_revision 3 ENV: cocotb
 """sys_axi_in accepts a read and a write into a local register through the inbound filter.
 
 Inbound entry 0 is programmed over SEP_IN to admit (fabric.adoc, Inbound
@@ -32,6 +35,7 @@ class smc_sys_axi_in_port_test(smc_base_test):
     """SYS_IN read/write into a local register once inbound entry 0 admits."""
 
     required_evidence = (
+        "CHK-NONVAC",
         "CHK-SYS-AXI-IN-BACKPRESSURE",
         "CHK-SYS-AXI-IN-BURST",
         "CHK-SYS-AXI-IN-DUPLEX",
@@ -39,9 +43,10 @@ class smc_sys_axi_in_port_test(smc_base_test):
         "CHK-SYS-AXI-IN-NOT-CLOSED",
         "CHK-SYS-AXI-IN-PORT",
         "CHK-SYS-AXI-IN-READ",
+        "CHK-SYS-AXI-IN-SLVERR-RO",
         "CHK-SYS-AXI-IN-WRITE",
     )
-    min_evidence = 8
+    min_evidence = 10
 
     auto_protocol_vip = False
 
