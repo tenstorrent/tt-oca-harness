@@ -192,6 +192,9 @@ package smc_pkg;
   localparam int unsigned FabricMaxTrans = 32;
   // For axi_demux.AxiLookBits
   localparam int unsigned FabricIdLookupBits = 3;
+  // For the input and output fabric address demuxes' axi_demux.AxiLookBits
+  localparam int unsigned InputFabricIdLookupBits = 6;
+  localparam int unsigned OutputFabricIdLookupBits = 6;
   // ALL IDs, PER DIRECTION, for passive monitors (prim_axi_snoop via axi_cg_snoop, axi_hang_detector)
   localparam int unsigned FabricIdBuckets = 2 ** FabricIdLookupBits;
   localparam int unsigned FabricOutstandingTx = FabricIdBuckets * FabricMaxTrans;

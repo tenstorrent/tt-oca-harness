@@ -759,7 +759,7 @@ module smc_base #(
   );
 
   axi_hang_detector #(
-    .OUTSTANDING_TX(smc_pkg::FabricOutstandingTx)
+    .OUTSTANDING_TX((2 ** smc_pkg::InputFabricIdLookupBits) * smc_pkg::FabricMaxTrans)
   ) u_hang_det_sep_axi (
     .clk_i            (clk_smc_i),
     .rst_ni           (rst_primary_smc_clk_ni),
