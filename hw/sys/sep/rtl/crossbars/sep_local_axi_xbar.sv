@@ -180,9 +180,8 @@ module sep_local_axi_xbar
           start_addr: 32'h40000000,
           end_addr: 33'hc0000000
       },
-      // sep_io.main: spi_controller register extent, not the 1 MiB spec aperture --
-      // sep_io converts to AXI-Lite before its own decode and answers every write error
-      // with SLVERR, so the rest of the aperture is refused here to read and write DECERR.
+      // sep_io.main: spi_controller register extent, not the 1 MiB spec aperture -- the
+      // rest of the aperture is refused here with DECERR.
       '{
           idx: 7,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR),
