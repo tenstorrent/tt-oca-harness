@@ -259,9 +259,6 @@ module efuse_shadow_regs
   logic is_lc_state_access;
   logic read_locked;
 
-  efuse_apb_req_t   apb_req_from_ac;
-  efuse_apb_resp_t  apb_resp_from_ac;
-
   // Extract the hardware lock vector from the unmasked shadow register.
   // Two bits per real field slot (write-lock at 2n, read-lock at 2n+1).
   // The LOCKS meta-field uses the fixed sentinel idx '1 (all-ones = 6'h3F)
@@ -286,40 +283,118 @@ module efuse_shadow_regs
       .EFUSE_ADDR_WIDTH (REG_ADDR_WIDTH),
       .EFUSE_FIELDS     (EFUSE_FIELDS),
       .HAS_LC_STATE     (HAS_LC_STATE),
-      .efuse_apb_req_t  (efuse_apb_req_t),
-      .efuse_apb_resp_t (efuse_apb_resp_t),
-      .efuse_addr_t     (efuse_addr_t),
-      .efuse_data_t     (efuse_data_t)
+      .efuse_addr_t     (efuse_addr_t)
   ) u_efuse_shadow_reg_access_control (
-      .clk_i(clk_i),
-      .rst_ni(rst_ni),
-
-      .secure_tm_i(secure_tm_i),
-
-      .efuse_field_map_i(efuse_field_map_i),
-
-      .apb_req_paddr_i         (apb_req_paddr_i),
-      .apb_req_pprot_i         (apb_req_pprot_i),
-      .apb_req_psel_i          (apb_req_psel_i),
-      .apb_req_penable_i       (apb_req_penable_i),
-      .apb_req_pwrite_i        (apb_req_pwrite_i),
-      .apb_req_pwdata_i        (apb_req_pwdata_i),
-      .apb_req_pstrb_i         (apb_req_pstrb_i),
-
-      .apb_resp_o(apb_resp_o),
-
-      .apb_req_from_ac_o(apb_req_from_ac),
-      .apb_resp_from_ac_i(apb_resp_from_ac),
-
-      .write_locked_o(write_locked),
-      .write_setup_only_o(write_setup_only),
-      .lc_state_access_o(is_lc_state_access),
-      .read_locked_o(read_locked),
-
-      .locks_i(lock_vector),
-
-      .locked_field_access_interrupt_o(locked_field_access_interrupt_o)
+      .secure_tm_i        (secure_tm_i),
+      .efuse_field_map_i  (efuse_field_map_i),
+      .locks_i            (lock_vector),
+      .addr_i             (apb_req_paddr_i),
+      .write_locked_o     (write_locked),
+      .read_locked_o      (read_locked),
+      .write_setup_only_o (write_setup_only),
+      .lc_state_access_o  (is_lc_state_access)
   );
+
+  ////////////////////////////////////////////////////////////////////////////
+  // APB Access
+  ////////////////////////////////////////////////////////////////////////////
+
+  // An access phase to a locked field completes at once with 0xBADCAB1E and no error, and
+  // touches no storage. Every other access phase is a bus access, answered from apb_resp_q.
+  logic apb_access_phase;
+  logic write_blocked;
+  logic read_blocked;
+  logic bus_access;
+
+  assign apb_access_phase = apb_req_psel_i && apb_req_penable_i;
+  assign write_blocked    = apb_access_phase && apb_req_pwrite_i && write_locked;
+  assign read_blocked     = apb_access_phase && !apb_req_pwrite_i && read_locked;
+  assign bus_access       = apb_access_phase && !write_blocked && !read_blocked;
+
+  assign locked_field_access_interrupt_o = write_blocked || read_blocked;
+
+  efuse_apb_resp_t apb_resp_q;
+
+  always_comb begin
+    apb_resp_o.pready  = 1'b0;
+    apb_resp_o.prdata  = efuse_data_t'(0);
+    apb_resp_o.pslverr = 1'b0;
+    if (write_blocked || read_blocked) begin
+      apb_resp_o.pready = 1'b1;
+      apb_resp_o.prdata = efuse_data_t'(32'hbadcab1e);
+    end else if (bus_access) begin
+      apb_resp_o = apb_resp_q;
+    end
+  end
+
+  // The shadow file takes bus accesses once it is loaded from the fuses, or from the preload
+  // file in simulation, and at once when security_disable_i skips sensing.
+  logic preloading;
+  logic sensing;
+  logic shadow_ready;
+
+  assign preloading   = sim_skip_fuse_sense && !fuse_sense_done;
+  assign sensing      = !preloading && !fuse_sense_done && !security_disable_i;
+  assign shadow_ready = !preloading && !sensing;
+
+  logic                        addr_out_of_range;
+  logic [ShadowEfuseWidth-1:0] word_sel;
+  logic                        word_is_class1;
+
+  assign addr_out_of_range = efuse_addr_t'(apb_req_paddr_i) > efuse_addr_t'(SHADOW_REG_BYTES - 4);
+  assign word_sel          = ShadowEfuseWidth'(apb_req_paddr_i >> 2);
+  assign word_is_class1    = efuse_pkg::shadow_range_map_contains_word(
+                                 CLASS1_SHADOW_RANGES, shadow_word_idx_t'(word_sel));
+
+  // A write commits in the first cycle of its access phase; apb_resp_q.pready holds it off for
+  // the rest of the phase.
+  logic wr_commit;
+  assign wr_commit = shadow_ready && bus_access && apb_req_pwrite_i && !addr_out_of_range &&
+                     !apb_resp_q.pready;
+
+  // The word a committed write leaves behind. Set-only fields OR the write data into the
+  // stored bits. In a set-only lifecycle-state field, byte 0 takes the encoder output, which
+  // applies the set-only rule and the token gates, and the upper bytes take the write data.
+  logic set_only_write;
+  logic lc_state_write;
+  logic [SHADOW_REG_WORD_WIDTH-1:0] wr_word;
+
+  assign set_only_write = write_setup_only && !is_lc_state_access;
+  assign lc_state_write = write_setup_only && is_lc_state_access;
+
+  always_comb begin
+    wr_word = shadow_efuse.values[word_sel];
+    for (int b = 0; b < 4; b++) begin
+      if (apb_req_pstrb_i[b]) begin
+        if (lc_state_write && (b == 0)) begin
+          wr_word[2*LcStateWidth-1:0] = lc_state_diff_d;
+        end else if (set_only_write) begin
+          wr_word[b*8+:8] = wr_word[b*8+:8] | apb_req_pwdata_i[b*8+:8];
+        end else begin
+          wr_word[b*8+:8] = apb_req_pwdata_i[b*8+:8];
+        end
+      end
+    end
+  end
+
+  // Bus accesses error with 0xBADCAB1E until the shadow file is ready, and beyond its last
+  // word.
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      apb_resp_q <= '0;
+    end else if (bus_access) begin
+      apb_resp_q.pready <= 1'b1;
+      if (!shadow_ready || addr_out_of_range) begin
+        apb_resp_q.pslverr <= 1'b1;
+        apb_resp_q.prdata  <= efuse_data_t'('hbadcab1e);
+      end else begin
+        apb_resp_q.pslverr <= 1'b0;
+        apb_resp_q.prdata  <= apb_req_pwrite_i ? efuse_data_t'(0) : shadow_efuse.values[word_sel];
+      end
+    end else if (shadow_ready) begin
+      apb_resp_q <= '0;
+    end
+  end
 
   efuse_word_counter_t current_word_num_q, current_word_num_d;
   efuse_word_counter_t words_received_q, words_received_d;
@@ -339,11 +414,11 @@ module efuse_shadow_regs
           lc_state_raw_d = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
           lc_state_candidate = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
           // If skip_fuse_sense is enabled, use the preload data for the LC state
-          if (sim_skip_fuse_sense && !fuse_sense_done) begin
+          if (preloading) begin
               lc_state_raw_d = shadow_reg_preload[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
           end
           // If fuse sense is not done and security is not disabled, use the fuse command response for the LC state
-          else if (!fuse_sense_done && !security_disable_i) begin
+          else if (sensing) begin
               // If the fuse command response is valid, not in error, and the response is targeting the LC state word, use the data for the LC state
               if (fuse_command_resp_i.valid && !fuse_command_resp_i.status &&
                   words_received_q < efuse_word_counter_t'(NumShadowWords) &&
@@ -365,20 +440,19 @@ module efuse_shadow_regs
               if (efuse_pkg::is_invalid_lc_state(lc_state_cur)) begin
                   lc_state_raw_d = lc_state_cur;
               end
-              // If there is a request to the shadow registers, check if the request is a write to the LC state
-              else if (apb_req_from_ac.psel) begin
-                  // If the request is a write to the LC state, check if the write is allowed
-                  if (apb_req_from_ac.pwrite && !write_locked &&
-                      write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) begin
-                      lc_state_candidate[0] = apb_req_from_ac.pwdata[0] | lc_state_cur[0];
+              // A bus access holds off the transient RMA update; only a write to byte 0 of a
+              // set-only lifecycle-state field changes the state.
+              else if (bus_access) begin
+                  if (apb_req_pwrite_i && lc_state_write && apb_req_pstrb_i[0]) begin
+                      lc_state_candidate[0] = apb_req_pwdata_i[0] | lc_state_cur[0];
                       lc_state_candidate[1] = (rma_sip_token_match_i == TOKEN_MATCH_CODE)
-                          ? (apb_req_from_ac.pwdata[1] | lc_state_cur[1])
+                          ? (apb_req_pwdata_i[1] | lc_state_cur[1])
                           : lc_state_cur[1];
                       lc_state_candidate[2] = (lc_state_cur[1] &&
                                                (rma_chiplet_token_match_i == TOKEN_MATCH_CODE))
-                          ? (apb_req_from_ac.pwdata[2] | lc_state_cur[2])
+                          ? (apb_req_pwdata_i[2] | lc_state_cur[2])
                           : lc_state_cur[2];
-                      lc_state_candidate[3] = apb_req_from_ac.pwdata[3] | lc_state_cur[3];
+                      lc_state_candidate[3] = apb_req_pwdata_i[3] | lc_state_cur[3];
                       lc_state_raw_d = lc_state_candidate;
                   end
               end else if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
@@ -510,9 +584,6 @@ module efuse_shadow_regs
         end
       end
 
-      apb_resp_from_ac.pready <= 1'b0;
-      apb_resp_from_ac.pslverr <= 1'b0;
-      apb_resp_from_ac.prdata <= efuse_data_t'(0);
       chiplet_state_change_completed_n0_scan <= 1'b0;
       sop_state_change_completed_n0_scan <= 1'b0;
 
@@ -520,7 +591,7 @@ module efuse_shadow_regs
       /////////////////////////////////////////
       // preload shadow registers - simulating
       /////////////////////////////////////////
-      if ((sim_skip_fuse_sense) && (!fuse_sense_done))begin : preload_shadow_regs
+      if (preloading) begin : preload_shadow_regs
         for (int i = 0; i < NumShadowWords; i++) begin : preload_shadow_registers
           if (efuse_pkg::shadow_range_map_contains_word(CLASS1_SHADOW_RANGES, i)) begin
             if (HAS_LC_STATE && (i == efuse_pkg::ShadowIdxLcState)) begin
@@ -537,17 +608,11 @@ module efuse_shadow_regs
                 shadow_reg_preload[i];
           end
         end
-        // If there is a request to the shadow registers before fuse sense is done, return bad cable
-        if (apb_req_from_ac.psel) begin
-          apb_resp_from_ac.pslverr <= 1'b1;
-          apb_resp_from_ac.pready  <= 1'b1;
-          apb_resp_from_ac.prdata  <= efuse_data_t'('hbadcab1e);
-        end
       end
       //////////////////////////////////////////////////////////////////////////////////
       // load shadow registers from streaming fuse command responses - regular operation
       //////////////////////////////////////////////////////////////////////////////////
-      else if ((!fuse_sense_done)&&(!security_disable_i)) begin : load_shadow_regs
+      else if (sensing) begin : load_shadow_regs
         if (fuse_command_resp_i.valid && (fuse_command_resp_i.status == 1'b0)) begin
           // Store the data at the current word index (before incrementing words_received)
           if (words_received_q < efuse_word_counter_t'(NumShadowWords)) begin
@@ -576,147 +641,21 @@ module efuse_shadow_regs
             end
           end
         end
-
-        // return error if a request to the shadow registers occur when sense is not complete
-        if (apb_req_from_ac.psel) begin
-          apb_resp_from_ac.pslverr <= 1'b1;
-          apb_resp_from_ac.pready  <= 1'b1;
-          apb_resp_from_ac.prdata  <= efuse_data_t'('hbadcab1e);
-        end
       end
 
       //////////////////////////////////////////////////////////////////////////////////
-      // apb access and transient rma en - regular operation
+      // apb writes and transient rma en - regular operation
       //////////////////////////////////////////////////////////////////////////////////
-      else begin : apb_access_and_transient_rma_en
-        if (apb_req_from_ac.psel) begin
-          // if address is out of range, return bad cable
-          if (apb_req_from_ac.paddr >
-              efuse_addr_t'(SHADOW_REG_BYTES - 4)) begin
-            apb_resp_from_ac.pslverr <= 1'b1;
-            apb_resp_from_ac.pready  <= 1'b1;
-            apb_resp_from_ac.prdata  <= efuse_data_t'('hbadcab1e);
-          end
-          // else if it is a write -> we check if write locked or write_setup_only
-          else if ((apb_req_from_ac.pwrite) && !(write_locked)) begin
-            // setup only and NOT LC_STATE access
-            if ((write_setup_only) && !(is_lc_state_access)) begin
-              if (efuse_pkg::shadow_range_map_contains_word(
-                  CLASS1_SHADOW_RANGES,
-                  shadow_word_idx_t'(
-                      (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))) begin
-                for (int b = 0; b < 4; b++) begin
-                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
-                    shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
-                        CLASS1_SHADOW_RANGES,
-                        shadow_word_idx_t'(
-                            (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))][b*8+:8] <=
-                        apb_req_from_ac.pwdata[b*8+:8] |
-                        shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][b*8+:8];
-                  end
-                end
-              end else begin
-                for (int b = 0; b < 4; b++) begin
-                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
-                    shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
-                        CLASS1_SHADOW_RANGES,
-                        shadow_word_idx_t'(
-                            (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))][b*8+:8] <=
-                        apb_req_from_ac.pwdata[b*8+:8] |
-                        shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][b*8+:8];
-                  end
-                end
-              end
-            // setup only and LC_STATE access
-            // LC_STATE is the first nibble of the shadow register
-            end else if ((write_setup_only) && (is_lc_state_access)) begin
-              // LC_STATE byte 0: use the differentially encoded value from the encoder,
-              // which applies set-only and token-gated logic on the raw [3:0] and produces
-              // the complement in [7:4] via synthesis-protected anchor buffers.
-              if (apb_req_from_ac.pstrb[0] && !apb_resp_from_ac.pready) begin
-                if (efuse_pkg::shadow_range_map_contains_word(
-                    CLASS1_SHADOW_RANGES,
-                    shadow_word_idx_t'(
-                        (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))) begin
-                  shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
-                      CLASS1_SHADOW_RANGES,
-                      shadow_word_idx_t'(
-                          (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))
-                  ][2*LcStateWidth-1:0] <=
-                      lc_state_diff_d;
-                end else begin
-                  shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
-                      CLASS1_SHADOW_RANGES,
-                      shadow_word_idx_t'(
-                          (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))
-                  ][2*LcStateWidth-1:0] <=
-                      lc_state_diff_d;
-                end
-              end
-              // Upper bytes: writable as before
-              if (efuse_pkg::shadow_range_map_contains_word(
-                  CLASS1_SHADOW_RANGES,
-                  shadow_word_idx_t'(
-                      (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))) begin
-                for (int b = 1; b < 4; b++) begin
-                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
-                    shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
-                        CLASS1_SHADOW_RANGES,
-                        shadow_word_idx_t'(
-                            (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))][b*8+:8] <=
-                        apb_req_from_ac.pwdata[b*8+:8];
-                  end
-                end
-              end else begin
-                for (int b = 1; b < 4; b++) begin
-                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
-                    shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
-                        CLASS1_SHADOW_RANGES,
-                        shadow_word_idx_t'(
-                            (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))][b*8+:8] <=
-                        apb_req_from_ac.pwdata[b*8+:8];
-                  end
-                end
-              end
-            end else begin  // not setup only and NOT write locked, so it is writable
-              if (efuse_pkg::shadow_range_map_contains_word(
-                  CLASS1_SHADOW_RANGES,
-                  shadow_word_idx_t'(
-                      (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))) begin
-                for (int b = 0; b < 4; b++) begin
-                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
-                    shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
-                        CLASS1_SHADOW_RANGES,
-                        shadow_word_idx_t'(
-                            (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))][b*8+:8] <=
-                        apb_req_from_ac.pwdata[b*8+:8];
-                  end
-                end
-              end else begin
-                for (int b = 0; b < 4; b++) begin
-                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
-                    shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
-                        CLASS1_SHADOW_RANGES,
-                        shadow_word_idx_t'(
-                            (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)))][b*8+:8] <=
-                        apb_req_from_ac.pwdata[b*8+:8];
-                  end
-                end
-              end
-            end
-            apb_resp_from_ac.pready  <= 1'b1;
-            apb_resp_from_ac.pslverr <= 1'b0;
-            apb_resp_from_ac.prdata  <= efuse_data_t'(0);
-          end
-
-          // if it is a read (read apb has already been filtered by access control)
-          else if (!apb_req_from_ac.pwrite) begin
-            apb_resp_from_ac.pready  <= 1'b1;
-            apb_resp_from_ac.pslverr <= 1'b0;
-            apb_resp_from_ac.prdata  <= shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)];
-          end
-        // LC_STATE access
-        end else if (HAS_LC_STATE) begin
+      else if (wr_commit) begin : apb_write
+        if (word_is_class1) begin
+          shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+              CLASS1_SHADOW_RANGES, shadow_word_idx_t'(word_sel))] <= wr_word;
+        end else begin
+          shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
+              CLASS1_SHADOW_RANGES, shadow_word_idx_t'(word_sel))] <= wr_word;
+        end
+      end else if (!bus_access) begin : transient_rma_en
+        if (HAS_LC_STATE) begin
           if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
             priority if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
                          !chiplet_state_change_completed_n0_scan) begin
@@ -730,36 +669,22 @@ module efuse_shadow_regs
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;
               sop_state_change_completed_n0_scan <= 1'b1;
-            end else begin
-              shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
-                  CLASS1_SHADOW_RANGES,
-                  efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <=
-                  shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
-                      CLASS1_SHADOW_RANGES,
-                      efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0];
             end
           end
-          apb_resp_from_ac.pready  <= 1'b0;
-          apb_resp_from_ac.pslverr <= 1'b0;
-          apb_resp_from_ac.prdata  <= efuse_data_t'(0);
         end else begin
-          // reset APB response channel in SMC case where HAS_LC_STATE=0
-          apb_resp_from_ac.pready  <= 1'b0;
-          apb_resp_from_ac.pslverr <= 1'b0;
-          apb_resp_from_ac.prdata  <= efuse_data_t'(0);
           // No chiplet state change in the SMC instance.
           chiplet_state_change_completed_n0_scan <= 1'b1;
           sop_state_change_completed_n0_scan <= 1'b1;
         end
-      end  // end of APB ACCESS_AND_TRANSIENT_RMA_EN condition
-    end  // end of (NOT RESET condition)
-  end  //end of always block
+      end
+    end
+  end
 
   assign shadow_efuse_o = shadow_efuse_masked;
   assign fuse_sense_done_o = fuse_sense_done;
 
   // debug ports
-  assign is_write_locked_o = write_locked;
+  assign is_write_locked_o = write_blocked;
   assign is_write_setup_only_o = write_setup_only;
   assign is_lc_state_access_o = is_lc_state_access;
   assign is_read_locked_o = read_locked;
