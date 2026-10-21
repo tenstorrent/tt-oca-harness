@@ -7,10 +7,19 @@ RANDCFG: known wrap-offset anchors every seed, plus seed-selected dead offsets
 inside each block window; the TRNG passthrough legs draw their addresses, data,
 leg order, burst length and split-beat code pairs from the seed.
 
-A write or read past a block's allocated size must be refused (DECERR
-or SLVERR; the general probes grade refusal only, not the code; the TRNG
-and crypto-burst checks below grade DECERR), and no live register in that
-block may change. A checker that only inspects the
+A write or read past a block's allocated size must be refused, and no live
+register in that block may change. Where the specification states the
+past-extent code, CHK-DEADSPACE-REFUSE grades it exactly: DECERR in the ABR
+window (``adams_bridge.adoc``, "abr-aperture-decode") and in the SPI controller
+window (``peripheral_subsystem.adoc``). For every other window the exact code
+is not stated, so the probe grades any error response (DECERR or SLVERR). No
+window states the read data of a refused read, so a read word is graded only
+as not the value of a live register. The TRNG and crypto-burst checks below
+grade DECERR.
+
+OBS-DEADSPACE-CODE (logged only): the exact response code and read data of
+every past-extent probe, with the code the specification states for its
+window, or ``none``. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while
 still writing the register, so every probe reads back the window's live
 registers as well. ``memory_map.adoc`` states the rule: the fabric refuses an
@@ -210,6 +219,9 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         refused = 0
         aliased = 0
         accepted = 0
+        # Probes refused with a code other than the one the specification
+        # states for the window (SepDeadspace.probe(), "answered code").
+        wrong_code = 0
         fails: list[str] = []
         # (op, addr, resp, refused) of every probe of an adopter window.
         adopter_probes: list[tuple[str, int, int, bool]] = []
@@ -233,6 +245,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     aliased += 1
                 if any("resp=" in f for f in hit):
                     accepted += 1
+                if any("answered code" in f for f in hit):
+                    wrong_code += 1
                 for line in hit:
                     self.logger.error("CHK-DEADSPACE FAIL [%s]: %s", tag, line)
             else:
@@ -342,15 +356,17 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         if fails:
             self.logger.error(
                 "CHK-DEADSPACE-REFUSE FAIL: %d fail line(s) on %d probes "
-                "(%d accepted OKAY, %d aliased a live register)",
+                "(%d accepted OKAY, %d wrong code, %d aliased a live register)",
                 len(fails),
                 len(cfg.probes),
                 accepted,
+                wrong_code,
                 aliased,
             )
             raise AssertionError(
-                f"CHK-DEADSPACE-REFUSE FAIL: {accepted} probe(s) accepted "
-                f"OKAY and {aliased} aliased a live register"
+                f"CHK-DEADSPACE-REFUSE FAIL: {accepted} probe(s) accepted OKAY, "
+                f"{wrong_code} answered a code other than the stated one and "
+                f"{aliased} aliased a live register"
             )
         self.logger.info(
             "CHK-DEADSPACE-REFUSE PASS: all %d dead offsets were refused", len(cfg.probes)

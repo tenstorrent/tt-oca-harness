@@ -4,11 +4,23 @@
 
 Each block owns a memory-map window and populates only ``REG_MAP_SIZE``
 of it. An access past that allocated size owns no register and must be
-refused -- DECERR or SLVERR. This walk grades refusal only; the past-extent
-code ``sep.rdl`` states per block (``ocah_resp``) is graded by
-``sep_unmapped_access_policy_test`` at the points that test probes.
-Truncating the address, wrapping it onto a live register and answering
-OKAY is what this sequence exists to catch.
+refused -- DECERR or SLVERR. Truncating the address, wrapping it onto a live
+register and answering OKAY is what this sequence exists to catch.
+
+Two windows have a past-extent code that the specification states, and each
+probe there is graded against it:
+
+* ABR: ``hw/sys/sep/doc/adams_bridge.adoc`` ("abr-aperture-decode") -- the
+  crypto demux answers every access past the register map with DECERR.
+* SPI controller: ``hw/sys/sep/doc/peripheral_subsystem.adoc`` -- the local
+  crossbar answers the rest of the SPI aperture with DECERR on reads and
+  writes.
+
+For every other window the specification states no exact past-extent code,
+and no window states the read data of a refused read. There the probe grades
+the stated contract only: an error response, and a read word that is not the
+value of a live register. The OBS-DEADSPACE-CODE line logs the exact code and
+read data of every probe.
 
 Allocated size comes from the generated export (or the OT/IP header for
 CSRNG / EDN / entropy_source). Window end comes from
@@ -109,6 +121,11 @@ class DeadWindow:
     # refusal flavour of every probe.
     adopter: bool = False
     watch_from: str = ""
+    # Past-extent response code the specification states for this window
+    # (both channels), or None where it states none. ``stated_ref`` names the
+    # spec file that states it.
+    stated_resp: int | None = None
+    stated_ref: str = ""
 
     @property
     def store_visible(self) -> frozenset[int]:
@@ -223,6 +240,8 @@ def dead_windows() -> tuple[DeadWindow, ...]:
             sym("ENTROPY_POOL_REG_MAP_BASE_ADDR"),
             block_size("ABR"),
             _sep_watch(_ABR, block_size("ABR")),
+            stated_resp=RESP_DECERR,
+            stated_ref="hw/sys/sep/doc/adams_bridge.adoc (abr-aperture-decode)",
         ),
         DeadWindow(
             "csrng",
@@ -291,6 +310,8 @@ def dead_windows() -> tuple[DeadWindow, ...]:
                 sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
                 block_size("SPI_CONTROLLER"),
             ),
+            stated_resp=RESP_DECERR,
+            stated_ref="hw/sys/sep/doc/peripheral_subsystem.adoc (SEP peripheral extension port)",
         ),
         DeadWindow(
             "trng",
@@ -416,8 +437,8 @@ class SepDeadspace:
     def __init__(self, test) -> None:
         self.test = test
         self.log = test.logger
-        # Refusals whose flavour is not DECERR. Reported, not failed: this walk
-        # grades refusal only.
+        # Refusals whose flavour is not DECERR in a window with no stated code.
+        # Reported, not failed: the specification states no exact code there.
         self.flavour_findings: list[str] = []
         # Response of the last probe(); -1 when it timed out.
         self.last_resp: int = -1
@@ -679,8 +700,15 @@ class SepDeadspace:
         return fails
 
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
-        """Return failure strings. Empty means this probe matched the spec."""
+        """Return failure strings. Empty means this probe matched the spec.
+
+        A window with ``stated_resp`` fails on any other code. Elsewhere the
+        exact code is not stated, so any error response passes the code check.
+        No window states the read data of a refused read, so a read passes the
+        data check unless it returns the value of a live register.
+        """
         fails: list[str] = []
+        rdata: int | None = None
         mon = self.test.env.axi_monitor
         # Arm one credit for a DECERR refuse. Hand it back unless this beat
         # was DECERR, so the monitor can consume it. Key off resp, not the
@@ -718,6 +746,16 @@ class SepDeadspace:
         if timed_out or resp != RESP_DECERR:
             mon.release_expected_decerr(1)
         self.last_resp = -1 if timed_out else resp
+        self.log.info(
+            "OBS-DEADSPACE-CODE: %s %s 0x%08x resp=%s rdata=%s stated=%s",
+            win.name,
+            item.op,
+            item.addr,
+            "TIMEOUT" if timed_out else resp,
+            "n/a" if rdata is None or timed_out else f"0x{rdata:08x}",
+            # The caller grades the adopter window against its own stated code.
+            "adopter" if win.adopter else ("none" if win.stated_resp is None else win.stated_resp),
+        )
         if timed_out:
             fails.append(f"{win.name} {item.op} 0x{item.addr:08x} timed out")
             return fails
@@ -726,11 +764,17 @@ class SepDeadspace:
                 f"{win.name} {item.op} 0x{item.addr:08x} resp=OKAY, "
                 f"expected refuse (allocated ends at +0x{win.alloc:x})"
             )
-        elif resp != RESP_DECERR and not win.adopter:
-            # The contract asserted here is that the access is REFUSED, and any
-            # error response satisfies it. A refusal in another flavour is
-            # reported rather than failed: the defect this walk exists to catch
-            # is OKAY plus aliasing.
+        elif win.stated_resp is not None and resp != win.stated_resp:
+            fails.append(
+                f"{win.name} {item.op} 0x{item.addr:08x} answered code {resp}, "
+                f"{win.stated_ref} states {win.stated_resp} past the extent "
+                f"(allocated ends at +0x{win.alloc:x})"
+            )
+        elif win.stated_resp is None and resp != RESP_DECERR and not win.adopter:
+            # No exact code is stated for this window, so the contract asserted
+            # here is that the access is REFUSED, and any error response
+            # satisfies it. A refusal in another flavour is reported rather
+            # than failed.
             self.flavour_findings.append(
                 f"{win.name} {item.op} 0x{item.addr:08x} refused with "
                 f"resp={resp}, not DECERR (allocated ends at +0x{win.alloc:x})"

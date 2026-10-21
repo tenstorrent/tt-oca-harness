@@ -53,14 +53,18 @@ Checkers:
                     equal the lane value.
   CHK-OBS-PACK      the first word after each lane change equals the lane value in all
                     32 bits.
-  CHK-OBS-FLUSH     no word from before a FLUSH or a lane change is popped after it.
+  CHK-OBS-FLUSH     no word from before a FLUSH or a lane change is popped after it;
+                    with the sample clock stopped across a FLUSH, LEVEL reads 0 right
+                    after the FLUSH (entropy_source.adoc:827: it discards the buffered
+                    words). A lane change lowers LEVEL.
   CHK-OBS-OVERFLOW  plateau D, overflow bit 1, LEVEL D after two fill times, W1C clears.
                     Control: the overflow bit reads 0 before the leg and 1 after
                     the drain, before the write-one.
   CHK-OBS-LOCK      locked at 1: L + 2 words delivered, last two noise words equal the
                     lane value; a FLUSH with old words of z and words of 1 - z buffered
-                    lowers LEVEL, and every word popped after it equals the word of
-                    1 - z (no kept word); locked at 0: LEVEL stays 0.
+                    and the sample clock stopped gives LEVEL 0, and every word popped
+                    after it equals the word of 1 - z (no kept word); locked at 0:
+                    LEVEL stays 0.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
                     both LEVELs read 0 after a hold of 256 strobes and at least 4 x
                     the measured first-word time of each FIFO (entropy_source.adoc:792,
@@ -73,7 +77,7 @@ Checkers:
                     RAW_ENABLE 1 before the first edge, the lane's synchronized bit holds
                     the preamble value.
   CHK-SYNC-DEPTH    same leg: at each sample edge k, counted in cocotb on ``clk_i``
-                    rising edges, ``esrc_noise_bit_o[lane]`` (``u_noise_source.noise_o``)
+                    rising edges, ``esrc_noise_bit_o[lane]`` (``u_generator.noise_bit``)
                     equals bit k at the 2nd ``clk_i`` rising edge after the edge, and
                     still holds the previous bit at the 1st where bit k differs from it
                     (architecture.adoc:75).
@@ -156,7 +160,9 @@ OFF_STROBES = 8 * 32
 # in the ungated trials of the same seed (test parameter).
 OFF_WORD_FACTOR = 4
 DRAW_TRIES = 16
-FIFO_DEPTH_MAX = 64  # bound of a drain loop: the RDL LEVEL field holds at most 64 words
+# Fail-safe bound of a drain loop, not a depth contract: more pops than this fail the
+# leaf. The RDL LEVEL field is 7 bits (6:0).
+FIFO_DEPTH_MAX = 64
 ALL_ONES = 0xFFFF_FFFF
 
 # Sample-clock sequence leg (test parameters).
@@ -443,7 +449,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         return await self._rd(FIFOS[fifo][2])
 
     async def _pop_to_empty(self, fifo: str) -> int:
-        """Pop until LEVEL reads 0 with capture off; more than the FIFO depth fails the leaf."""
+        """Pop until LEVEL reads 0 with capture off; more than FIFO_DEPTH_MAX pops fail the leaf."""
         pops = 0
         while True:
             level = await self._level(fifo)
@@ -454,6 +460,14 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                 pops += 1
             if pops > FIFO_DEPTH_MAX:
                 raise AssertionError(f"{fifo} observe FIFO not empty after {pops} pops")
+
+    async def _stop_samples(self) -> None:
+        """Stop the sample clock and let the last sample reach the observe FIFO."""
+        self.restart_clock(SCLK, self.cfg.entropy_clk_period_ns, SCLK_STOP_PS)
+        await ClockCycles(cocotb.top.clk_i, DRAIN_CLK)
+
+    def _start_samples(self) -> None:
+        self.restart_clock(SCLK, self.cfg.entropy_clk_period_ns)
 
     def _release_stuck(self) -> None:
         dut = cocotb.top
@@ -646,9 +660,11 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         self._drive(a, 1 - z)
         lc = await self._level("noise")
         ok_n, _, _ = await self._poll_level("noise", lambda x: x >= lc + FLUSH_NEW_WORDS, bound)
+        await self._stop_samples()
         before = await self._level("noise")
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, a, flush=1))
         after = await self._level("noise")
+        self._start_samples()
         ok_m, m, _ = await self._poll_level("noise", lambda x: x >= FLUSH_NEW_WORDS, bound)
         words = [await self._pop("noise") for _ in range(m)] if ok_m else []
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, a))
@@ -670,7 +686,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             fields["reason"] = f"timeout:level bound={bound}"
         self.chk.ok(
             "OBS-FLUSH",
-            ok_f and ok_n and ok_m and after < before and olds == 0 and others == 0 and words,
+            ok_f and ok_n and ok_m and after == 0 and olds == 0 and others == 0 and words,
             **fields,
         )
 
@@ -882,7 +898,9 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             # FLUSH under the lock (entropy_source.adoc:827: it discards the buffered
             # words). LOCK_FLUSH_WORDS words of z are buffered, then the lane changes to
             # 1 - z and FLUSH_NEW_WORDS more words are captured, so the FIFO holds old
-            # words of z and words of the new value at the FLUSH. Every word popped after
+            # words of z and words of the new value at the FLUSH. The sample clock is
+            # stopped across the FLUSH, so no word completes between the FLUSH and the
+            # LEVEL read, and LEVEL reads 0 after it. Every word popped after
             # the FLUSH completed after it, so it holds new samples only (the lane leg
             # grades the same: words 2 on of a change hold the new value); a word of z or
             # a mixed word popped after the FLUSH is a word the FLUSH kept.
@@ -891,16 +909,18 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             lc = await self._level(fifo)
             okc, _, _ = await self._poll_level(fifo, lambda x: x >= lc + FLUSH_NEW_WORDS, pop_bound)
             okf = okz and okc
+            await self._stop_samples()
             before = await self._level(fifo)
             await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0, flush=1))
             flush_after = await self._level(fifo)
+            self._start_samples()
             okn, m, _ = await self._poll_level(fifo, lambda x: x >= FLUSH_NEW_WORDS, pop_bound)
             post = [await self._pop(fifo) for _ in range(m)] if okn else []
             new, old = _word(1 - z), _word(z)
             olds = sum(1 for w in post if w == old)
             not_new = sum(1 for w in post if w != new)
             flush_ok = (
-                okf and okn and flush_after < before and bool(post) and olds == 0 and not_new == 0
+                okf and okn and flush_after == 0 and bool(post) and olds == 0 and not_new == 0
             )
             flush_fields = {
                 "noise_flush_level_before": before,

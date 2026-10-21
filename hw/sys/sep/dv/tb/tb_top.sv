@@ -3345,10 +3345,10 @@ module sep_uvm_top
         (`OTBN_U.u_dmem.rvalid_o === 1'b1);
     always @(negedge clk_i) begin
         if (otbn_imem_rel_chk && (`OTBN_U.imem_rdata_core !== otbn_imem_live))
-            $error("[tb] +sep_otbn_intg_flip: IMEM read data differs from the live value %s",
+            $fatal(1, "[tb] +sep_otbn_intg_flip: IMEM read data differs from the live value %s",
                    "after the release");
         if (otbn_dmem_rel_chk && (`OTBN_U.dmem_rdata !== otbn_dmem_live))
-            $error("[tb] +sep_otbn_intg_flip: DMEM read data differs from the live value %s",
+            $fatal(1, "[tb] +sep_otbn_intg_flip: DMEM read data differs from the live value %s",
                    "after the release");
         otbn_imem_rel_chk = 1'b0;
         otbn_dmem_rel_chk = 1'b0;

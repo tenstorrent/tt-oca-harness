@@ -35,7 +35,8 @@ Legs (one seed draws the plan, logged in one ``PLAN`` line):
              once with one drawn bit of a DMEM word that a ``lw`` of the program
              reads (word 0 or 1 of the line, bit 0 to 38 of the word) inverted. The
              flip is armed at the first clock that the OTBN status probe shows
-             BUSY_EXECUTE and dropped at LOCKED; then an OTBN reset.
+             BUSY_EXECUTE and dropped at LOCKED; OTBN then stays LOCKED for a
+             fixed window of 256 clocks before an OTBN reset.
   sw error   the ``unimp`` program (``CSRRW x0, 0xC00, x0`` then ``ecall``) with
              ``CTRL.software_errs_fatal`` = 1, a ``CMD`` write at LOCKED, an
              OTBN reset; then the same program with ``software_errs_fatal`` = 0.
@@ -130,8 +131,11 @@ Checkers:
                        ``ERR_BITS.imem_intg_violation`` (bit 16) and
                        ``FATAL_ALERT_CAUSE.imem_intg_violation`` (bit 0) set, no
                        pulse on crypto alert ``[2:1]`` from the program load to the
-                       ``CMD`` write and at least one pulse from the ``CMD`` write to
-                       the OTBN reset; after the reset the probe shows 0x04 then
+                       ``CMD`` write, at least one pulse from the ``CMD`` write to
+                       the LOCKED read, and at least one rise on ``[2:1]`` in the
+                       LOCKED window (after the LOCKED reads and the flip drop,
+                       before the OTBN reset), so the alert repeats after the error
+                       without new stimulus; after the reset the probe shows 0x04 then
                        0x00, ``STATUS`` reads IDLE and ``FATAL_ALERT_CAUSE`` reads 0.
                        IMEM_INTG_VIOLATION "Data read from the instruction memory
                        failed the integrity checks." is fatal (ToO:261-263); "A
@@ -139,7 +143,9 @@ Checkers:
                        detected" (ToO:371-373); ToO:180-189 (``ERR_BITS`` non-zero,
                        ``done``, LOCKED, fatal alert); "A fatal alert is a
                        continuously triggered alert" ... "can only be cleared by
-                       resetting OTBN" (ToO:311-314); ``registers.md`` :206
+                       resetting OTBN" (ToO:311-314); the receiver "pulses
+                       ``alert_o`` when the handshake starts" (``crypto.adoc``
+                       :125-126), so each repeat is a rise; ``registers.md`` :206
                        (``ERR_BITS`` bit 16), :247 (``FATAL_ALERT_CAUSE`` bit 0),
                        :173 (LOCKED 0xFF "must be reset to unlock it again");
                        ``crypto.adoc`` :141 (OTBN receivers ``[2:1]``).
@@ -171,8 +177,9 @@ after the post-reset wipe: no sentence states its value); ``OBS-OTBN-BUSYWR-RNDR
 program, a chance outcome); ``OBS-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of the recoverable run: no sentence states the bits other
 than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error);
-``OBS-OTBN-INTG-ALERT-IDX`` (the high clocks of each index of ``[2:1]``: no sentence
-names the fatal index), ``OBS-OTBN-INTG-CAUSE`` (the full ``ERR_BITS`` and
+``OBS-OTBN-INTG-ALERT-IDX`` (the high clocks of each index of ``[2:1]`` after the
+``CMD`` write and the rises of each index in the LOCKED window: no sentence names the
+fatal index or the repeat period), ``OBS-OTBN-INTG-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of each integrity run: "a non-zero value that describes the
 error", ToO:186, does not fix the other bits; also the alert high clocks in a fixed
 window after the OTBN reset).
@@ -279,6 +286,7 @@ _IGNORE_WIN_MULT = 4  # ignored-command window, in t_cmd (contract)
 _RST_BOUND_CLK = 1_000  # gated reset release wait
 _LINE_BOUND_CLK = 64  # vector bit 29 follow wait after a register write
 _ALERT_OBS_CLK = 256  # alert watch window after the integrity-run reset (log only)
+_ALERT_LOCKED_CLK = 256  # LOCKED window before the integrity-run reset (rise count)
 
 
 @dataclass(frozen=True)
@@ -1119,6 +1127,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         flips = self.rd(dut.otbn_intg_flip_count_o)
         post_high = self._alert_high(alert, m_cmd)
         dut.otbn_intg_flip_en_i.value = 0
+        m_locked = alert.mark()
+        await ClockCycles(dut.clk_i, _ALERT_LOCKED_CLK)
+        locked_rises = {i: alert.rises_since(m_locked, f"a{i}") for i in OTBN_ALERT_IDX}
         exit_ok, exit_arc = await self._reset_otbn(f"intg-{tag}-exit")
         st_exit = await self._rd(A_STATUS, M_STATUS)
         fatal_exit = await self._rd(A_FATAL, M_FATAL)
@@ -1145,6 +1156,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             and bool(fatal & m_fatal)
             and sum(pre_high.values()) == 0
             and sum(post_high.values()) > 0
+            and sum(locked_rises.values()) > 0
             and exit_ok
             and st_exit == ST_IDLE
             and fatal_exit == 0
@@ -1167,6 +1179,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             fatal_mask=f"0x{m_fatal:x}",
             alert_high_before_cmd=sum(pre_high.values()),
             alert_high_after_cmd=sum(post_high.values()),
+            alert_rises_locked=sum(locked_rises.values()),
+            locked_window_clk=_ALERT_LOCKED_CLK,
             reset_arc=exit_arc,
             status_after_reset=f"0x{st_exit:02x}",
             fatal_after_reset=f"0x{fatal_exit:x}",
@@ -1178,6 +1192,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             seed=seed,
             mem=tag,
             **{f"a{i}_high_clk": post_high[i] for i in OTBN_ALERT_IDX},
+            **{f"a{i}_rises_locked": locked_rises[i] for i in OTBN_ALERT_IDX},
         )
         self.chk.obs(
             "OTBN-INTG-CAUSE",

@@ -18,7 +18,10 @@ this order, over the CPU-LSU master on ``s_axi``:
   advances over one poll pass), a larger bark threshold barks later in
   count, thresholds near 2^32 do not wrap, and ``INTR_TEST`` forces the bark
   status without a bite (``hw/sys/sep/doc/watchdog.adoc``, Bark Interrupt and
-  Bite Reset; ``aon_timer.adoc``).
+  Bite Reset; ``aon_timer.adoc``). A write of 1 to ``ALERT_TEST`` gets a write
+  response within the bounded wait (CHK-WDT-ALERT-ACCESS). No spec sentence
+  states the response code of a backed register write, so OBS-WDT-ALERT-RESP
+  logs the ``BRESP`` code and does not grade it.
 * Leg H. The watchdog runs with ``clk_i`` held low past its bite threshold;
   OBS-WDT-CLKSTOP logs what the timer core does (no pass/fail).
 * Leg W. The wakeup expiry follows the 64-bit threshold across the 32-bit
@@ -210,7 +213,8 @@ CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX, CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART,
 CHK-WKUP-CARRY-READ. Controls (not counted): CTL-WDT-ENABLE, CTL-WDT-THOLD,
 CTL-WDT-PAUSE, CTL-WKUP-SMALL, CTL-WKUP-CAUSE, CTL-REGWEN-LOCKED,
 CTL-WDT-PET-BARK, CTL-WDT-THOLD-ZERO, CTL-WDT-THOLD-BELOW, CTL-WKUP-THOLD-ZERO,
-CTL-WKUP-CARRY, CTL-CLKI-STOPPED. Observations (not graded): OBS-WDT-CLKSTOP.
+CTL-WKUP-CARRY, CTL-CLKI-STOPPED. Observations (not graded): OBS-WDT-CLKSTOP,
+OBS-WDT-ALERT-RESP.
 
 The graded window (owner code of this test) opens at leg R and closes for the
 enable control run, leg H, the small wakeup control runs and the recovery resets
@@ -1063,8 +1067,16 @@ class sep_timer_clock_contract_test(sep_base_test):
             allow_unverified_write_resp=True,
         )
         await self.start_seq(seq)
-        assert not seq.timed_out, "CHK-WDT-ALERT-ACCESS FAIL: no response"
+        if seq.timed_out:
+            raise AssertionError("CHK-WDT-ALERT-ACCESS FAIL: no response")
         self.logger.info("CHK-WDT-ALERT-ACCESS PASS: response=%d", seq.resp_code)
+        # No spec sentence states the BRESP code of a backed register write, so the
+        # code is logged and not graded.
+        self.logger.info(
+            "OBS-WDT-ALERT-RESP: bresp=%d (%s)",
+            seq.resp_code,
+            {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}.get(seq.resp_code, "?"),
+        )
 
     # -- leg H ------------------------------------------------------------------
 
