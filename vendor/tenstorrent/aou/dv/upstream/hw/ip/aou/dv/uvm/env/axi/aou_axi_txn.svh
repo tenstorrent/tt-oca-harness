@@ -24,6 +24,8 @@ class aou_axi_txn extends uvm_sequence_item;
   bit [1:0]          rresp[];
   bit [1:0]          bresp;
   time               t_addr, t_done;
+  // Write: WLAST handshake (set by aou_axi_mgr_driver; 0 until then).
+  time               t_wlast;
   // Set when a reset ended the transaction before its response (reset_flush);
   // response fields are then meaningless.
   bit                aborted;
@@ -42,11 +44,21 @@ class aou_axi_txn extends uvm_sequence_item;
         ((({52'd0, addr[11:0]} >> size) + {56'd0, len}) < (64'd4096 >> size));
   }
 
-  // AXI4 A7.2.4: exclusive accesses are a power of two bytes up to 128, aligned
-  // to their total size, and at most 16 beats.
+  // AXI4 A4.4, table A4-5: an allocate bit (AxCACHE[3:2]) needs Modifiable (AxCACHE[1]);
+  // the six encodings that break this are reserved.
+  constraint c_axi4_cache {
+    (cache[3:2] != 2'b00) -> cache[1];
+  }
+  // The ten AxCACHE encodings c_axi4_cache allows, for sequences that set cache directly.
+  static const bit [3:0] LEGAL_CACHE[10] = '{4'h0, 4'h1, 4'h2, 4'h3, 4'h6, 4'h7, 4'hA, 4'hB,
+                                            4'hE, 4'hF};
+
+  // AXI4 A7.2.4: exclusive accesses are a power of two bytes, aligned to their
+  // total size, and at most 16 beats. AXI allows up to 128 bytes; this bench
+  // models at most 64, the project's limit.
   constraint c_exclusive {
     lock -> ((burst != AOU_AXI_FIXED) && (len inside {8'd0, 8'd1, 8'd3, 8'd7, 8'd15}) &&
-             ((({24'd0, len} + 32'd1) << size) <= 32'd128) &&
+             ((({24'd0, len} + 32'd1) << size) <= 32'd64) &&
              ((addr & (((64'd1 + {56'd0, len}) << size) - 64'd1)) == 64'd0));
   }
 
@@ -197,6 +209,7 @@ class aou_axi_txn extends uvm_sequence_item;
     bresp      = t.bresp;
     t_addr     = t.t_addr;
     t_done     = t.t_done;
+    t_wlast    = t.t_wlast;
     aborted    = t.aborted;
     reset_outstanding = t.reset_outstanding;
   endfunction

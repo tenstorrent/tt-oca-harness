@@ -22,6 +22,9 @@
 // time-out alone the interrupt stays pending, and since it can only rise
 // again once cleared, software still clears it when the state arrives later
 // by another path (the test's own activation, say), as 7.3.5 asks.
+// On INT_MI0_ID_MISMATCH software clears every RP's SPLIT_RID/BID_MISMATCH_ERR
+// with write 1 (MAS 7.2.2), which also ends the DUT's TX credit block on an ID
+// mismatch (937a8a8). service_id_mismatch = 0 leaves it to the test.
 class aou_t1_sw_isr extends uvm_component;
   `uvm_component_utils(aou_t1_sw_isr)
 
@@ -33,6 +36,9 @@ class aou_t1_sw_isr extends uvm_component;
   bit               hold_on_deact = 1'b1;
   bit               drain_before_deact = 1'b0;
   bit               held = 1'b0;
+  bit               service_id_mismatch = 1'b1;
+  int unsigned      n_rp = 1;
+  int unsigned      n_id_mismatch;
   int unsigned      state_timeout = 20000;
   int unsigned      n_act;
   int unsigned      n_deact;
@@ -115,13 +121,23 @@ class aou_t1_sw_isr extends uvm_component;
     s.start(null);
   endtask
 
-  // Waits for ENABLED (en=1) or DISABLED; ok_r[en] = 0 when cancelled, on
-  // INT_REQ_LINKRESET or after state_timeout cycles.
-  protected task wait_state(bit en, int unsigned g);
+  // The DUT has been ENABLED (en=1) or DISABLED since the service began
+  // (entries counted from n0). DISABLED can last only a few cycles when the
+  // remote die re-activates at once (AoU 8.4), less than the APB write that
+  // precedes the wait, so the level alone can miss it.
+  protected function bit reached(bit en, int unsigned n0);
+    return (en ? status.enabled : status.disabled) ||
+           (en ? status.n_enabled : status.n_disabled) != n0;
+  endfunction
+
+  // Waits for ENABLED (en=1) or DISABLED, reached since entry count n0;
+  // ok_r[en] = 0 when cancelled, on INT_REQ_LINKRESET or after state_timeout
+  // cycles.
+  protected task wait_state(bit en, int unsigned g, int unsigned n0);
     int unsigned n = 0;
     ok_r[en] = 1'b1;
     tmo_r[en] = 1'b0;
-    while ((en ? status.enabled : status.disabled) != 1'b1) begin
+    while (!reached(en, n0)) begin
       @(status.vif.mon_cb);
       if (g != gen || status.vif.mon_cb.int_req_linkreset === 1'b1 || ++n >= state_timeout) begin
         ok_r[en] = 1'b0;
@@ -133,8 +149,8 @@ class aou_t1_sw_isr extends uvm_component;
 
   // Clears the interrupt a timed-out service left pending once its state
   // arrives; a reset or LinkReset recovery (cancel()) ends the wait.
-  protected task late_clear(bit act, int unsigned g);
-    while ((act ? status.enabled : status.disabled) != 1'b1) begin
+  protected task late_clear(bit act, int unsigned g, int unsigned n0);
+    while (!reached(act, n0)) begin
       @(status.vif.mon_cb);
       if (g != gen) return;
     end
@@ -145,6 +161,7 @@ class aou_t1_sw_isr extends uvm_component;
 
   protected task service(bit act);
     int unsigned g = gen;
+    int unsigned n0 = act ? status.n_enabled : status.n_disabled;
     busy++;
     if (act) n_act++;
     else n_deact++;
@@ -155,7 +172,7 @@ class aou_t1_sw_isr extends uvm_component;
                 act ? "ACTIVATE_START" : "DEACTIVATE_START"), UVM_LOW)
       write_field(act ? rm.aou_init.activate_start : rm.aou_init.deactivate_start, 1);
     end
-    wait_state(act, g);
+    wait_state(act, g, n0);
     // Requests issued from here on wake the link again (7.3.5 INT_ACTIVATE_START
     // condition 2, 7.3.6).
     if (!act) hold_requests(1'b0);
@@ -167,14 +184,36 @@ class aou_t1_sw_isr extends uvm_component;
                 act ? "INT_ACTIVATE_START" : "INT_DEACTIVATE_START"), UVM_LOW)
       if (tmo_r[act])
         fork
-          late_clear(act, g);
+          late_clear(act, g, n0);
         join_none
     end
     done();
   endtask
 
+  // Clears the manager-side ID-mismatch errors of every RP until the
+  // interrupt stays low (bounded: a response the DUT keeps presenting re-sets
+  // the error after every clear).
+  protected task service_id_mismatch_irq();
+    int unsigned n = 0;
+    while (service_id_mismatch && status.vif.mon_cb.int_mi0_id_mismatch === 1'b1 && n++ < 16) begin
+      n_id_mismatch++;
+      `uvm_info(get_type_name(), "INT_MI0_ID_MISMATCH: clearing SPLIT_RID/BID_MISMATCH_ERR",
+                UVM_LOW)
+      for (int unsigned r = 0; r < n_rp; r++) begin
+        uvm_reg rg = rm.get_reg_by_name($sformatf("error_info_rp%0d", r));
+        write_field(rg.get_field_by_name("split_rid_mismatch_err"), 1);
+        write_field(rg.get_field_by_name("split_bid_mismatch_err"), 1);
+      end
+      repeat (4) @(status.vif.mon_cb);
+    end
+  endtask
+
   task run_phase(uvm_phase phase);
     fork
+      forever begin
+        status.mi0_id_mismatch_ev.wait_trigger();
+        service_id_mismatch_irq();
+      end
       forever begin
         status.act_start_ev.wait_trigger();
         if (enable) service(1'b1);

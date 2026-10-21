@@ -68,6 +68,9 @@ all configurations and the naming legend are in README "Build configurations"
 | 2xmix-tp64_128 | 2 | 512, 1024 | TP_64B_128B (TWO_PHY) | two-PHY FDI, 2 RPs, mixed widths |
 | 2x512-tp32_64 | 2 | 512 | TP_32B_64B (TWO_PHY) | two-PHY FDI with a 256-bit PHY0, 2 RPs at one width |
 | 1x512-sp64-p512 | 1 | 512 | SP_64B | AXI_PEER_DIE_MAX_DATA_WD 512 (remote die at most 512 bits) |
+| 1x512-sp64-nxt | 1 | 512 | SP_64B | TX_NXT_PACKING_EN 1 (registered TX packer output stage) |
+| 4xmix4211-sp128-p512 | 4 | 1024, 512, 256, 256 | SP_128B | AXI_PEER_DIE_MAX_DATA_WD 512 with a 1024-bit RP (remote die at most 512 bits; the DUT's own reads still get ReadData1024) |
+| 4xmix4211-sp128-p256 | 4 | 1024, 512, 256, 256 | SP_128B | AXI_PEER_DIE_MAX_DATA_WD 256 below the 1024- and 512-bit RPs (remote die at most 256 bits) |
 | 2xmix-sp64-rxf | 2 | 1024, 256 | SP_64B | non-default RX FIFO depths, RX FIFO register slices off |
 
 The configurations are a pairwise set rather than a cross product: every pair
@@ -75,7 +78,17 @@ of RP count (1, 2, 3, 4), local width (256, 512, 1024, mixed) and FDI width
 (256, 512, 1024, both two-PHY pairs) that matters appears in some build, and
 every RP is built at every local width. The remote die's width is a
 run-time choice (`+remote_bytes=N` or `N0,N1,..` per RP), so one build covers
-every upsize, downsize and bypass pairing. Unused RPs repeat RP0's width,
+every upsize, downsize and bypass pairing. The remote model converts like a
+real die of that width (`aou_t1_l4a_adapter`). A writer may raise the WriteReq
+size above AWSIZE, and WriteData may use any DLENGTH of at least max(the
+WriteReq size, 256 bits), so DLENGTH is self-describing. By default the model
+packs at AWSIZE, the minimal legal choice; `+remote_wreq=upsize` sends WriteReqs
+of its bus size, and `dut_like` keeps AWSIZE with WriteData at its bus width,
+as this DUT does. It maps a
+received request that fits its bus onto one AXI transaction, downsizes a wider
+one, splits bursts past `+remote_max_burst` (default 256 beats) like the DUT's
+splitter (MAS 3.6), and packs ReadData at the requester's ARSIZE (AoU 5.7).
+Unused RPs repeat RP0's width,
 because the DUT sizes the AXI data ports to the widest of all four parameters;
 a narrower RP uses the low bits of its slot. In two-PHY builds the remote die
 uses one PHY (`+active_phy=P`, random per seed by default) and AOU_FDI_CHECKER is
@@ -204,8 +217,10 @@ remote-die agent glue in env).
     a read gets `data[]` and `rresp[]` for every beat. Both follow `aou_mem`'s
     error-region and exclusive rules.
   - Fork one call per request. Responses come back out of order across IDs and
-    in call order within an ID, with reads and writes ordered independently. The
-    memory changes when the call returns.
+    in call order within an ID, with reads and writes ordered independently. A
+    write lands on the memory, and is judged by the exclusive monitor, when the
+    call is made (arrival order, as at a subordinate that has accepted AW and
+    W); only its B waits. A read's data is taken when the call returns.
 - **Publishing:** the model writes every response to its `ap`.
 
 `aou_scoreboard` (`aou_env_pkg`) has three analysis imps:
@@ -253,7 +268,7 @@ L3 API (`aou_l3_agent`, `aou_l3_cfg` set directly or via `uvm_config_db` key `"c
 | `cfg.l4a` (`aou_l4a_if_c`) | Responder callback: `task handle_write(aou_msg_wreq, aou_msg_wdata[$], output bresp)`, `task handle_read(aou_msg_rreq, output bit[1023:0] data[$], output bit[1:0] resp[$])`. L3 groups AWLEN+1 WriteData per WriteReq (per RP, in order), sets RP/RID/RLAST/DLENGTH (from ARSIZE) on ReadData, and sends WriteResp/ReadData through the packer. Dequeue to L4a frees the RX credits. `cfg.resp_fork` runs requests concurrently (ordered within an ID). With no `l4a`, DUT requests are consumed without a response. An env adapter implements this over `aou_remote_axi_model.execute()`. |
 | `cfg.spec_rev`, `rp_count`, `fdid`, `dest_rp[]` | v0.7 (default) or v0.8; RP count; FDId; DEST_RP map for responses. |
 | `cfg.rx_depth[]`, `ret_policy[]`, `ret_delay`, `tx_cred_max` | Modelled RX buffer per class (= credits advertised), return policy (immediate, on consume, delayed, withheld), TX saturation. |
-| `cfg.pol` (`aou_packer_policy`) | Layout: `set_dut_like/sparse/min_density/max_density/random`, `start_granule`, `split_at`, `hole_pct`, `max_msgs_per_flit`, `allow_span`, `random_order`, `cred_method`, `act_alone`, `hold_credited`, `prof_pct` (random PROF in AXI messages), `zero_grants` (extra zero-credit CrdtGrants). |
+| `cfg.pol` (`aou_packer_policy`) | Layout: `set_dut_like/sparse/min_density/max_density/random`, `start_granule`, `split_at`, `hole_pct`, `max_msgs_per_flit`, `allow_span`, `random_order`, `cred_method`, `misc_per_half_max` (v0.8 4.4: at most 2; an Activation always travels alone), `hold_credited`, `prof_pct` (random PROF in AXI messages), `zero_grants` (extra zero-credit CrdtGrants). |
 | `cfg.chk` (`aou_l3_rule_chk`) | Rule reporting: findings are `uvm_error` "AOU-R*n*: ..." unless `expect_rule()` declared them; `count(rule, src)`. |
 
 Error injection: `aou_msg.ignore_credits / ignore_state / flip_mask / len_adj / raw_g`,
@@ -340,7 +355,6 @@ this API goes through the integrator, because every ported test depends on it.
 | `rst` | reset agent driving `I_RESETN`/`I_PRESETN` through `aou_rst_if` (config_db key `rst`) |
 | `sb`, `status`, `fdi_chk`, `expect` | scoreboard, interrupt/status watcher, FDI checker adapter, expectation registry |
 | `dbg_chk` | `aou_t1_dbg_fifo_chk`: predicts each RP's response error debug FIFO and checks every debug-window read and pop |
-| `act_chk` | `aou_t1_act_chk`: every ActivateReq the DUT received is answered on FDI before lp_linkerror rises (T1-L30) |
 | `crd_rr`, `early_tbl` | `aou_t1_crd_rr_chk`: round-robin MsgCredit order in a window a test opens (T1-C03); `aou_t1_early_tbl_chk`: early-table backpressure on RPs with EARLY_BRESP_EN (FEAT-R15/R16) |
 | `crd_chk` | `aou_t1_crd_flow_chk`: an RP with credit and queued work is not held back by another RP without credit (T1-C01), and the DUT uses the credit it holds (T1-C02) |
 | `vseqr` | `aou_t1_vseqr`: sequencer handles for all of the above, plus `env` |

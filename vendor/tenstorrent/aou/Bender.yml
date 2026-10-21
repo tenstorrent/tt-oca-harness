@@ -55,6 +55,7 @@ sources:
       - upstream/RTL/AOU_TX_CORE_OUT_MUX.sv
       - upstream/RTL/AOU_RX_CORE_IN_MUX.sv
       - upstream/RTL/AOU_FDI_BRINGUP_CTRL.sv
+      - upstream/RTL/AOU_WRITE_TRANS_WDT.sv
       - upstream/RTL/AOU_TOP.sv
       # RTL/AXI4MUX_3X1/filelist.f
       - upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_TOP.v

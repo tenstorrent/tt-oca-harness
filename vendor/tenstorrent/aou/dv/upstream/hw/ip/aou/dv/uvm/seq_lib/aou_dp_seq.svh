@@ -15,10 +15,6 @@ class aou_dp_seq extends aou_axi_rand_seq;
   protected bit [9:0]    next_id;
   protected int unsigned n_attr[2] = '{0, 0};   // attr_sweep steps: writes, reads
 
-  // AXI4 A4.4 Table A4-5: the AxCACHE encodings that are not reserved.
-  static const bit [3:0] LEGAL_CACHE[10] = '{4'h0, 4'h1, 4'h2, 4'h3, 4'h6, 4'h7, 4'hA, 4'hB,
-                                              4'hE, 4'hF};
-
   function new(string name = "aou_dp_seq");
     super.new(name);
   endfunction
@@ -28,6 +24,7 @@ class aou_dp_seq extends aou_axi_rand_seq;
     aou_axi_txn t;
     int unsigned bsz;
     get_knobs();
+    small_plusargs();
     pick_slots();
     bsz = (knobs.batch == 0) ? num_slots : knobs.batch;
     if (bsz > num_slots) bsz = num_slots;
@@ -125,8 +122,19 @@ class aou_dp_seq extends aou_axi_rand_seq;
     int unsigned bytes;
     int unsigned off;
     bit wr = knobs.attr_sweep ? (n_shape % 2 == 0) : ($urandom_range(99) < wr_pct);
-    sz = knobs.full_size ? msz : pick(knobs.sizes, 0, msz);
+    bit [2:0] ssz;
+    bit [7:0] sln;
+    // Without a size list: 32 bytes up to the bus; small sizes come from
+    // +small_size_pct below (or a list that names them).
+    sz = knobs.full_size ? msz :
+         (knobs.sizes.size() > 0) ? pick(knobs.sizes, 0, msz) :
+         (msz < 5) ? msz : $urandom_range(msz, 5);
     ln = pick(knobs.lens, 0, (knobs.lens.size() > 0) ? 255 : int'(max_len));
+    // +small_size_pct (aou_axi_rand_seq): a register-like access instead.
+    if (!knobs.full_size && pick_small(ssz, sln)) begin
+      sz = 32'(ssz);
+      ln = 32'(sln);
+    end
     n_shape++;
     nb = 1 << sz;
     // Keep the burst inside the 4KB slot.
@@ -151,7 +159,7 @@ class aou_dp_seq extends aou_axi_rand_seq;
     if (knobs.attr_sweep) begin
       int unsigned k = n_attr[wr ? 0 : 1];
       n_attr[wr ? 0 : 1] = k + 1;
-      t.cache = LEGAL_CACHE[k % 10];
+      t.cache = aou_axi_txn::LEGAL_CACHE[k % 10];
       t.prot  = 3'(k);
       t.qos   = 4'(k);
     end

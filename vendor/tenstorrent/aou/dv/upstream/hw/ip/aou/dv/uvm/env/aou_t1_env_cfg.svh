@@ -12,6 +12,9 @@ class aou_t1_env_cfg extends uvm_object;
   int unsigned   rp_bytes[];               // DUT AXI data bytes per RP
   int unsigned   remote_bytes = 64;        // remote die's AXI data width (WriteData DLENGTH)
   int unsigned   rp_remote_bytes[];        // per RP; 0 = remote_bytes
+  aou_t1_rwreq_e remote_wreq = AOU_RWREQ_AWSIZE;  // remote WriteReq sizing (remote_mgr_driver)
+  int unsigned   remote_max_burst = 256;   // remote splitter's longest burst (2^n beats)
+  bit            remote_max_burst_rand = 1'b0;  // re-pick it while the remote is idle
   aou_spec_rev_e spec_rev = AOU_SPEC_V07;
   aou_fdi_enc_e  fdi_enc = AOU_FDI_ENC_RTL;
 
@@ -36,6 +39,18 @@ class aou_t1_env_cfg extends uvm_object;
   int unsigned   l1_gap_pct = 10;
   bit            l1_cancel_mix = 1'b0;     // cancel plans over every shape, repeats included
 
+  // System model on an FDI link-down (LinkReset, LinkError or Disabled,
+  // whoever started it, including the DUT's own teardown after a
+  // deactivation). The owners' documents assign AOU_SW_RESET only to the
+  // LinkReset AOU_CORE requests itself (MAS 7.3.6) and are silent on the
+  // rest; AoU v0.8 reads as the interface state not surviving an FDI reset.
+  // With this set, software or the system reset controller resets both dies
+  // (AOU_SW_RESET, the remote die's reset) while the link is down, unless
+  // both are cleanly DISABLED with no activation message pending or in
+  // flight; the dies then activate again from DISABLED.
+  // +sysrst_on_linkdown=0 turns it off (docs/DECISIONS.md D18).
+  bit            sysrst_on_linkdown = 1'b1;
+
   // Check enables
   bit            sb_en = 1'b1;
   // aou_t1_attr_chk: request attributes, exclusive responses and FLEX across the link.
@@ -49,6 +64,11 @@ class aou_t1_env_cfg extends uvm_object;
   // 0 only in a negative test that declares what follows. Drain: it also
   // waits for every response first.
   bit            sw_hold_on_deact = 1'b1;
+  // +v0p8: hold the DUT to expectations that only AoU v0.8 adds (the DUT
+  // implements v0.7.1). Today: the 4.4 Misc placement, AOU-R6 (an Activation
+  // message alone in its flit) and AOU-R7 (at most 2 other Misc per
+  // half-flit). Further v0.8-only DUT checks belong behind the same switch.
+  bit            v0p8;
   bit            sw_drain_before_deact = 1'b0;
   // With CREDIT_MANAGE=0 the remote die (L3) deactivates as a MAS partner
   // would (aou_l3_cfg::cm0_deact); 0 restores the AoU-only remote die.
@@ -75,11 +95,10 @@ class aou_t1_env_cfg extends uvm_object;
     lsm_cfg = aou_lsm_cfg::type_id::create("lsm_cfg");
     lsm_cfg.n_phy = AOU_T1_N_PHY;
     // T1 tests answer the DUT's LinkReset request themselves (recover():
-    // an Adapter LinkError, whose exit still checks FDI-R49). An immediate
-    // LinkError would close the mainband before the DUT's last messages,
-    // e.g. the ActivateAck to an invalid ActivateReq (T1-L15). Interim, until
-    // BUGS/037 (lp_linkerror rises before that Ack) is settled; errors.yaml
-    // runs that case with +react_linkerror=1 as an expected failure.
+    // an Adapter LinkError, whose exit still checks FDI-R49). The Adapter's
+    // own reaction to lp_linkerror is run by errors.toml with
+    // +react_linkerror=1. Turning it on for every T1 test changes when the
+    // link goes down in all of them and has not been measured.
     lsm_cfg.react_linkerror_en = 1'b0;
     foreach (fdi_cfg[p]) begin
       fdi_cfg[p] = aou_fdi_cfg::type_id::create($sformatf("fdi_cfg%0d", p));

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // *****************************************************************************
 //  Copyright (c) 2026 BOS Semiconductors
+//  Copyright (c) 2026 Tenstorrent USA Inc
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -186,17 +187,18 @@ import packet_def_pkg::*;
 
     input  logic    [3:0][1:0]                              I_RP_DEST_RP,
 
-    input  logic    [3:0]                                   I_PRIOR_RP_AXI_AXI_QOS_TO_NP    ,    
-    input  logic    [3:0]                                   I_PRIOR_RP_AXI_AXI_QOS_TO_HP    ,    
-    input  logic    [1:0]                                   I_PRIOR_RP_AXI_RP3_PRIOR        ,    
-    input  logic    [1:0]                                   I_PRIOR_RP_AXI_RP2_PRIOR        ,    
-    input  logic    [1:0]                                   I_PRIOR_RP_AXI_RP1_PRIOR        ,    
-    input  logic    [1:0]                                   I_PRIOR_RP_AXI_RP0_PRIOR        ,    
-    input  logic    [1:0]                                   I_PRIOR_RP_AXI_ARB_MODE         ,    
-    input  logic    [15:0]                                  I_PRIOR_TIMER_TIMER_RESOLUTION  ,    
-    input  logic    [15:0]                                  I_PRIOR_TIMER_TIMER_THRESHOLD   ,
+    input  logic    [3:0]                                   I_PRIOR_RP_AXI_AXI_QOS_TO_NP,    
+    input  logic    [3:0]                                   I_PRIOR_RP_AXI_AXI_QOS_TO_HP,    
+    input  logic    [1:0]                                   I_PRIOR_RP_AXI_RP3_PRIOR,    
+    input  logic    [1:0]                                   I_PRIOR_RP_AXI_RP2_PRIOR,    
+    input  logic    [1:0]                                   I_PRIOR_RP_AXI_RP1_PRIOR,    
+    input  logic    [1:0]                                   I_PRIOR_RP_AXI_RP0_PRIOR,    
+    input  logic    [1:0]                                   I_PRIOR_RP_AXI_ARB_MODE,    
+    input  logic    [15:0]                                  I_PRIOR_TIMER_TIMER_RESOLUTION,    
+    input  logic    [15:0]                                  I_PRIOR_TIMER_TIMER_THRESHOLD,
     
-    input  logic                                            I_AOU_WRITEFULL_MSGTYPE_EN
+    input  logic                                            I_AOU_WRITEFULL_MSGTYPE_EN,
+    output logic    [RP_CNT-1:0]                            O_AOU_TX_B_FIFO_SVALID
 
 );
 
@@ -418,10 +420,10 @@ assign w_aou_ar_port_qos = {w_aou_rp_port_qos[3], w_aou_rp_port_qos[2], w_aou_rp
 
 always_comb begin
     for (int unsigned i = 0; i < RP_CNT ; i++) begin
-        w_aou_aw_axi_qos[i] = (I_AOU_TX_S_AXI_AWQOS[i] > I_PRIOR_RP_AXI_AXI_QOS_TO_HP) ? 2'b11 :
-                              (I_AOU_TX_S_AXI_AWQOS[i] > I_PRIOR_RP_AXI_AXI_QOS_TO_NP) ? 2'b10 : 2'b01;
-        w_aou_ar_axi_qos[i] = (I_AOU_TX_S_AXI_ARQOS[i] > I_PRIOR_RP_AXI_AXI_QOS_TO_HP) ? 2'b11 :
-                              (I_AOU_TX_S_AXI_ARQOS[i] > I_PRIOR_RP_AXI_AXI_QOS_TO_NP) ? 2'b10 : 2'b01;
+        w_aou_aw_axi_qos[i] = (I_AOU_TX_S_AXI_AWQOS[i] >= I_PRIOR_RP_AXI_AXI_QOS_TO_HP) ? 2'b11 :
+                              (I_AOU_TX_S_AXI_AWQOS[i] >= I_PRIOR_RP_AXI_AXI_QOS_TO_NP) ? 2'b10 : 2'b01;
+        w_aou_ar_axi_qos[i] = (I_AOU_TX_S_AXI_ARQOS[i] >= I_PRIOR_RP_AXI_AXI_QOS_TO_HP) ? 2'b11 :
+                              (I_AOU_TX_S_AXI_ARQOS[i] >= I_PRIOR_RP_AXI_AXI_QOS_TO_NP) ? 2'b10 : 2'b01;
     end
 end
 
@@ -960,6 +962,7 @@ u_axi_master_b_fifo(
     .O_EMPTY_CNT                    (),
     .O_FULL_CNT                     ()
 );
+assign O_AOU_TX_B_FIFO_SVALID = w_granted_fifo_bvalid;
 
 assign w_writeresp_message_byteswap      = {MSG_WR_RESP, w_aou_tx_m_axi_b_rp, 2'b0, 4'b0, w_aou_writeresp_prof, w_aou_tx_m_axi_bid, w_aou_tx_m_axi_bresp, 4'b0};
 
