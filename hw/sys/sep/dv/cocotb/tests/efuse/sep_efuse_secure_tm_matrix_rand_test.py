@@ -3,7 +3,8 @@
 """Secure test mode: programs blocked, secret fields masked at the shadow output, JTAG writes blocked.
 
 RAND-REP. Run mode no_cpu (``lsu_stub_all_live``), real fuse sense. The seed draws
-the state of the t=0 image (TEST_DEV 2, PROD 1, RMA_SIP 1) and a filter-legal pair;
+the state of the t=0 image (TEST_DEV, PROD, PROD_END, RMA_SIP, RMA_CHIPLET, equal
+weights) and a filter-legal pair;
 ``dv_sim_prestage.py`` stages the image from ``env/sep_efuse_plan.py`` and the leaf
 builds the same plan. The plan also draws the order of the four protection targets
 (an unset ``LOCKS`` bit, an unset assigned ``LOCKS_SPARE`` bit, a ``SIP_DIS`` bit, a
@@ -39,15 +40,21 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     ``efuse_shadow_probe_o`` while the frontdoor read and the OTP word
                     keep the staged value. Control: the strap-0 probe shows the staged
                     words.
-  CHK-STM-JTAG      TEST_DEV: a strap-1 JTAG write of a new bit leaves each target
-                    unchanged. Control: the strap-0 JTAG write of the same target
-                    lands; a target whose control does not land logs
-                    ``CHK-STM-JTAG N/A``; a TEST_DEV leaf with no landed control fails
-                    with ``CHK-HOOK FAIL``. PROD and RMA_SIP log
+  CHK-STM-JTAG      TEST_DEV, PROD_END and RMA_CHIPLET: a strap-1 JTAG write of a new
+                    bit leaves each target unchanged.
+  CHK-STM-JTAG-CTL  TEST_DEV, PROD_END and RMA_CHIPLET: the strap-0 JTAG write of a
+                    new bit to each target lands (``after == before | bit``); JTAG
+                    reaches the shadow registers outside PROD and RMA_SIP, and the
+                    four targets are set-only in every state. PROD and RMA_SIP restrict
+                    JTAG to the token block and log
                     ``CHK-STM-JTAG N/A ... reason=lifecycle_gate``.
+  CTL-STM-STATE     logs the drawn state and ``jtag_leg`` (1 when CHK-STM-JTAG runs)
+                    of the seed. A control line, not a check.
 
 The status value of a blocked program and the response code of a blocked write are
 logged and not graded. No step writes ``LC_STATE`` and no SEC_DIS go runs at strap 1.
+In RMA_CHIPLET the profile row is all ones with or without SEC_DIS, so there the
+SEC_DIS control rests on ``security_disable_o`` and the match codes alone.
 """
 
 from __future__ import annotations
@@ -219,8 +226,9 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         jtag_leg = bool(p.leg["jtag_leg"])
+        self.logger.info("CTL-STM-STATE seed=%d state=%s jtag_leg=%d", seed, state, int(jtag_leg))
         if jtag_leg:
-            self.required_evidence = (*self.required_evidence, "CHK-STM-JTAG")
+            self.required_evidence = (*self.required_evidence, "CHK-STM-JTAG", "CHK-STM-JTAG-CTL")
         self.logger.info(
             "EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
         )
@@ -245,10 +253,12 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         feat1 = await self._feat()
         fd1 = {t: await self._target_write(targets[t][0], "fd") for t in order}
         feat1_after = await self._feat()
+        # The graded window holds the strap-1 JTAG writes, the strap-1 programs and
+        # the secret reads.
+        open_graded_window(TEST, self.logger)
         jt1 = {}
         if jtag_leg:
             jt1 = {t: await self._target_write(targets[t][1], "jtag") for t in order}
-        open_graded_window(TEST, self.logger)
         prog1 = await self._programs(progs, w_prog)
         secret1: dict[str, dict] = {}
         for f in SECRET_FIELDS:
@@ -297,18 +307,20 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 )
 
         if jtag_leg:
-            landed_any = False
             for t in order:
                 c = jt0[t]
-                if not c["landed"]:
-                    self.logger.info(
-                        "CHK-STM-JTAG N/A seed=%d target=%s ctl_landed=0 ctl_resp=%d",
-                        seed,
-                        t,
-                        c["resp"],
-                    )
-                    continue
-                landed_any = True
+                self.chk.ok(
+                    "STM-JTAG-CTL",
+                    c["landed"],
+                    target=t,
+                    strap=0,
+                    state=state,
+                    bit=f"{c['word']}:{c['bit']}",
+                    before=f"0x{c['before']:08x}",
+                    after=f"0x{c['after']:08x}",
+                    landed=int(c["landed"]),
+                    resp=c["resp"],
+                )
                 r = jt1[t]
                 self.chk.ok(
                     "STM-JTAG",
@@ -321,8 +333,6 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                     ctl_after=f"0x{c['after']:08x}",
                     ctl_before=f"0x{c['before']:08x}",
                 )
-            if not landed_any:
-                hook_fail(self.chk, reason="no strap-0 JTAG target write landed", state=state)
         else:
             self.logger.info("CHK-STM-JTAG N/A seed=%d state=%s reason=lifecycle_gate", seed, state)
 
