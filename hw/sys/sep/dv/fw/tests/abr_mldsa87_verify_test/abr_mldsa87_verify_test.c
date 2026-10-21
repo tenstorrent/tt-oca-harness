@@ -166,11 +166,18 @@ int main(void) {
     sep_outbound_filter_init();
     const uint32_t mask = abr_case_params[1];
     printf("abr_mldsa87_verify_test: case_mask=0x%04lx\n", (unsigned long)mask);
+    // A mask that selects nothing would otherwise report PASS having run no case.
+    if (mask == 0u || (mask & ~ALL_CASES) != 0u) {
+        printf("abr_mldsa87_verify_test: FAIL (case mask selects no case or an unknown one)\n");
+        return 1;
+    }
 
     unsigned failed = 0u;
+    unsigned run_count = 0u;
 #define CASE(n, expr) \
     do { \
         if ((mask >> (n)) & 1u) { \
+            ++run_count; \
             if (!(expr)) ++failed; \
         } \
     } while (0)
@@ -191,6 +198,7 @@ int main(void) {
     CASE(13, case_genuine(13, "genuine_repeat"));
 #undef CASE
 
-    printf("abr_mldsa87_verify_test: %s (%u failed)\n", failed == 0u ? "PASS" : "FAIL", failed);
+    printf("abr_mldsa87_verify_test: %s (%u failed, %u run)\n", failed == 0u ? "PASS" : "FAIL",
+           failed, run_count);
     return failed == 0u ? 0 : 1;
 }

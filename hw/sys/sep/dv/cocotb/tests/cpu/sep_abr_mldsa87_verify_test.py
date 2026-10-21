@@ -8,7 +8,9 @@ c~, a wrong key, a context, a pre-hash, a genuine c~ over an out-of-range z or a
 malformed hint, an all-zero c~, and a zeroize part-way through a stream. Each case
 prints one line with the driver's status and diagnostics; the same image runs on the
 virtual platform, so the two runs' case lines can be compared. The firmware returns
-0 only when every selected case met its expectation, which crt0.s reports as PASS.
+0 only when every selected case met its expectation, which crt0.s reports as PASS,
+and this test also requires a PASS line for every selected case, so a mask that ran
+fewer cases than it selected cannot pass.
 
 ``+abr_case_mask=<hex>`` selects cases by bit (bit n runs case n) by patching the
 firmware's case-parameter block in the staged DCCM image, so a subset runs from the
@@ -35,6 +37,7 @@ _DTCM_HEX = os.path.join(_FW_DIR, f"{_FW_NAME}.dtcm.hex")
 
 # abr_case_params in the firmware: the magic, then the case mask.
 _CASE_PARAM_MAGIC = 0xAB2D5A87
+_ALL_CASES = 0x3FFF
 
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # Fourteen verifies, each loading 7 KiB of key and signature and streaming up to
@@ -60,13 +63,16 @@ class sep_abr_mldsa87_verify_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         dtcm_hex = _DTCM_HEX
-        mask = cocotb.plusargs.get("abr_case_mask")
-        if mask is not None:
-            dtcm_hex = os.path.join(os.getcwd(), f"{_FW_NAME}.masked.dtcm.hex")
-            patch_param_block(
-                _DTCM_HEX, dtcm_hex, _CASE_PARAM_MAGIC, [_CASE_PARAM_MAGIC, int(str(mask), 16)]
+        mask = _ALL_CASES
+        plusarg = cocotb.plusargs.get("abr_case_mask")
+        if plusarg is not None:
+            mask = int(str(plusarg), 16)
+            assert mask != 0 and mask & ~_ALL_CASES == 0, (
+                f"+abr_case_mask=0x{mask:x} selects no case or an unknown one"
             )
-            self.logger.info("abr_case_mask=0x%s patched into %s", mask, dtcm_hex)
+            dtcm_hex = os.path.join(os.getcwd(), f"{_FW_NAME}.masked.dtcm.hex")
+            patch_param_block(_DTCM_HEX, dtcm_hex, _CASE_PARAM_MAGIC, [_CASE_PARAM_MAGIC, mask])
+            self.logger.info("abr_case_mask=0x%x patched into %s", mask, dtcm_hex)
 
         self.sb.expected_line = _PASS_LINE
         await self.boot_firmware(
@@ -78,3 +84,11 @@ class sep_abr_mldsa87_verify_test(sep_base_test):
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
         )
+        console = self.sb.console_text().splitlines()
+        for n in range(_ALL_CASES.bit_length()):
+            if (mask >> n) & 1:
+                lines = [line for line in console if line.startswith(f"case {n} ")]
+                assert lines and all(": PASS " in line for line in lines), (
+                    f"CHK-FW-CONSOLE FAIL: case {n} selected but its lines are {lines!r}"
+                )
+        self.logger.info("CHK-FW-CONSOLE PASS: every case in mask 0x%x printed PASS", mask)
