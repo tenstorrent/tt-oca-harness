@@ -28,6 +28,7 @@ cannot reach a feature, the testcase is not listed here as enrolled; it is
 recorded under Known Limitations with the reason, so this plan states what
 is verified rather than what was once intended.
 
+[[smc-vplan-strategy]]
 === Verification Strategy
 
 * *Frontdoor stimulus, frontdoor proof.* Stimulus is driven through product
@@ -54,6 +55,244 @@ is verified rather than what was once intended.
 * *Evidence tokens.* Each testcase emits `CHK-*` lines that name what was
   compared and against what, so a kept log can be read without the source.
 
+[[smc-vplan-scope-tiers]]
+==== Scope tiers
+
+One DUT. Three phases on cocotb over Verilator, plus the SV-UVM realizations
+of the scenarios that carry one (`--framework uvm`, `SMC_TB_ARCH.adoc`).
+
+[cols="1,2,3",options="header"]
+|===
+|Phase |Environment |Job
+
+|Phase 1
+|cocotb / PyUVM on Verilator: the SEP_IN AXI sequencer, the TB responders and the `tb_top` pins and plusargs
+|Smoke plus per-area representatives: the three leaves of `smoke`; the sanity, smoke, precheck, observability and bring-up leaves of each area (the SAMPLE-only names among them; `smc_occp_sanity_secure_error_test` injects a fault and is Phase 2); and the bring-up representatives the Matrix (<<smc-traceability-matrix>>) names: `smc_avsbus_sanity_test`, `smc_canonical_smoke_test`, `smc_clk_running_test`, `smc_cold_reset_test`, `smc_cpu_to_sep_axi_test`, `smc_dbs_idle_test`, `smc_ecc_dfd_dbs_sanity_test`, `smc_efuse_otp_clock_test`, `smc_flr_sanity_test`, `smc_gpio_irq_active_test`, `smc_gpio_observe_test`, `smc_i2c_cg_sanity_test`, `smc_i3c_to_fabric_test`, `smc_input_fabric_axi_wr_rd_test`, `smc_irq_observe_test`, `smc_mailbox_idle_test`, `smc_register_sanity_test`, `smc_sideband_protocol_smoke_test`, `smc_uart_spi_log_engine_test`. Fewest tests that carry the most real datapath behaviour.
+
+|Phase 2
+|Same cocotb environment
+|Iconic feature coverage by area: the other Matrix tests (`smc_default_reg_rd_test`, `smc_i2c_master_target_test`, `smc_ijtag_basic_test`, `smc_input_output_fabric_wr_rd_test`, `smc_mailbox_irq_test`, `smc_multi_reset_csr_persistence_test`, `smc_output_filter_remap_security_test`, `smc_zeroer_dma_timeout_test`), the owning tests of the feature denominator rows and the per-area tests that prove a documented mode, command or path end to end, plus the cross-area edges a per-block bench cannot see. Randomize when there is a legal matrix (`RAND-REP` / `RANDCFG`); keep directed (`RAND-NONE`) when there is not.
+
+|Phase 3
+|Same cocotb environment. A test whose evidence needs a four-state value carries `tools = ["vcs"]` on its testlist entry and runs on demand; no Phase 3 entry carries it today.
+|Residual contracts: the contracts of the specification and the register description that no Phase 1 or Phase 2 check grades. Corner and illegal cells, past-extent and gap responses, fault or error injection, reset, lock and retention behaviour, sticky status, timing and ratio matrices, register sweeps and islands, concurrency and contention, the fixed-cell variants, and every test whose Objective says it proves what no other test grades. A Phase 3 test never overlaps a Phase 1 or Phase 2 test. A test that extends an open test names that test in its Objective. Randomize when there is a legal matrix (`RAND-REP` / `RANDCFG`); keep directed (`RAND-NONE`) when there is not. Every expected value comes from the specification and the register description, never from the RTL and never from another test. A check that rests on a PROPOSED internal drive is blocked and takes no credit. A read-only observation tap, an error inject and a drive of an `smc_wrapper` port are not PROPOSED. A test with no executable check is parked (<<smc-vplan-blocked-taxonomy>>).
+|===
+
+Phase 1, Phase 2 and Phase 3 are scope tiers, not a schedule. Phase 1 is the
+bring-up and representative set. Phase 2 is the dense, breadth and fault set.
+Phase 3 is the residual set. Each test entry names its phase in its `*Phase*`
+field and its area in its `*Area*` field. `SMC_FCOV.adoc` keeps its own
+organisation by collector module; a cover point does not follow the phase of
+its owning test. A tier says what a test is asked to prove. It does not say
+when the test is written. A Phase 3 entry takes credit under the rules of
+<<smc-credit-rules>> and <<smc-vplan-blocked-taxonomy>>. The behaviours this
+plan does not claim are in <<smc-vplan-scope,Verification Scope>>.
+
+Randomization contract: the *same* configuration object programs the DUT and
+the golden. Pin the datapath directed first, then upgrade that test to
+randomized; do not ship a one-point stand-in for a matrix. Skip randomization
+only when the feature has no legal knob space (a strap, a single named
+handshake). The class of every test is one of:
+
+* `RAND-REP`: the seed draws points from a legal matrix, and every point has a stated outcome.
+* `RANDCFG`: the seed draws a configuration, the test runs one scenario under it, and the expected outcome is a function of the configuration.
+* `RAND-NONE`: the stimulus is directed, for the reason the entry states.
+
+[[smc-vplan-drawn-cells]]
+*Drawn cells.* This is the contract for a new test. Regression seeds are
+random per leaf, and a leaf does not know its run index, so no seed and no
+testlist entry pins a cell. A leaf draws its cells from its seed
+(`random.Random(seed)` with `RANDOM_SEED`, weighted toward the corners where
+the entry says so, with the constraint filters of the entry), and
+`--seed N` replays the leaf. The stream is not a CSPRNG and no drawn value is
+a key, a token or a nonce. No document quotes a per-seed value as evidence. A
+leaf walks a cell set in every run only when the set is cheap and
+contract-critical: a legal minimum or maximum, one representative of each leg,
+or the error-injection case itself. A test has one testlist entry; a second
+entry exists only when the run mode differs in a way that one entry cannot
+carry (a time-0 bench plusarg, a different target, a firmware image), never to
+pin a cell. The existing exception is the fixed-cell variant modules: the
+clock-cell families of `smc_ref_reset_cycles_test`,
+`smc_periph_floor_roundtrip_test`, `smc_octs_clk_rate_test` and
+`smc_clk_relation_regxbar_test` (fourteen variant modules, each pinned by a
+`+smc_cell` entry) and the image-kind family of
+`smc_efuse_map_sense_image_test` (five variant modules, each pinned by a
+`+smc_efuse_image` entry), nineteen modules in all, plus the sixteen
+`smc_clk_*` modules that pin the three clock periods as module constants:
+fifteen Phase 3 cells and the owning leaf of the family,
+`smc_clk_smc_slower_than_ref_test`, which is Phase 2. They are directed
+(`RAND-NONE`) cells of a matrix that predates this contract, their entries say
+so, and this change leaves them as they are.
+
+[[smc-vplan-audit]]
+Checker contracts in this plan are written against these known ways a check
+can pass while the DUT is unable to fail it.
+
+*An expectation that shares a source with the thing it measures.* A golden
+must not be a value the DUT returned earlier in the same run, and the
+agreement of the RTL with a document is corroboration rather than the source.
+This plan's rule is the second bullet of the
+<<smc-vplan-strategy,Verification Strategy>>: expectations come from the
+generated RDL reset values, the preloaded assets or the specification. Where an entry writes back the value it
+has just read (the identity write of `smc_reg_island_boundary_sweep_test`),
+the entry says that the write is a no-change control and not a golden.
+
+*Golden compared against golden.* An assert between a result already pinned
+to its golden and another output of the same model holds with the simulator
+switched off. The memory-model goldens of the DMA and zeroer leaves are
+TB-local and are compared against the SYS_OUT responder's memory, never
+against another field of the same model.
+
+*A guard whose own constructor makes it unfalsifiable.* Non-vacuity must not
+rest on a relation the configuration builder or the simulator already
+guarantees. `smc_5agent_observability_test` states the case: a SAMPLE gated
+only on `item.resolvable` has no FAIL path, because `resolvable` cannot be
+false under the 2-state simulator every retained run uses, so the GPIO leg is
+a pair of SAMPLEs whose expectation is stated on the raw pad-bus vectors.
+
+*A stimulus with no fan-out.* Driving a pin that nothing reads in the
+configuration under test and asserting that an observable did not move is a
+DV-invented scenario, not a specification claim. `feat_ctrl` bit 37
+`SMC_FUSE_TEST` is not consumed by SMC, so the lifecycle-gated JTAG eFuse
+matrix cannot observe it and Known Limitations keeps it as a negative item;
+the bench tie-offs of <<smc-bench-tie-offs>> record every constant input in
+the same way.
+
+*A tolerance wider than the signal.* A post-event bound above the count the
+window actually reaches passes when the event is ignored. The hang-detector
+window entries (`smc_hang_sep_timeout_window_test`,
+`smc_hang_sys_timeout_window_test`, `smc_hang_data_timeout_window_test`)
+stall below, at and beyond the threshold, so the bound is tight on both sides.
+
+*A check that reads back nothing.* Walking a register through several
+encodings without reading it back cannot distinguish a register stuck at its
+reset value. The rule is the second bullet of the Verification Strategy: a
+read that is printed but not compared is not evidence; a write-only leg reads
+back through the register or through an output the write must move.
+
+*Entailed guards.* The absence of a complementary-arm marker, or a deferred
+line, is not a checker; the owning test already fails if a forbidden marker
+appears. A negative check carries a positive control in the same run (third
+bullet of the Verification Strategy), and an aggregate the bench cannot back
+stays observed-only, as the `tb_gpio_*_any` aggregates of
+`smc_5agent_observability_test` do.
+
+[[smc-vplan-reserved-bits]]
+*Reserved bits.* Every graded register compare (an expected value from the
+RDL or a model, a read-back, a before-and-after compare, or a compare of two
+reads) uses the RDL field bits of the register only. A reserved bit is graded
+only where the RDL or the specification states its value. A reserved bit with
+no stated value is masked out of the compare. The entries that mask reserved
+bits today name the mask in their Test Coverage; a new entry also logs the
+masked bits and the mask on the PASS or FAIL line.
+
+[[smc-vplan-evidence-gate]]
+==== Evidence gate
+
+Per-run logs land under the runner's run tree (git-ignored). PASS/FAIL
+requires positive evidence from `results.xml`; a clean simulator exit alone is
+not enough (`SMC_TB_ARCH.adoc`, House rules). A test passing is the entry
+condition for reading its checkers, never a substitute for them. A checker row
+exists only if a run can prove it. A log tag is not the proof.
+
+Every graded contract is reported as a `CHK-<ID>:` line at the start of a log
+message. `smc_base_test` reads the IDs from the log records of the whole run
+(`_EvidenceRecorder`), and when the scenario returns it prints one line per
+test:
+
+----
+EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
+----
+
+`own` is the observed set less the IDs the base class emits itself
+(`CHK-BUILD-MODEL-IDENTITY` and the `CHK-PROBE-` positive controls of
+bring-up). A leaf whose `own` count is zero fails, unless
+`_EvidenceRecorder.NO_OWN_EVIDENCE` names it; that map is empty and held under
+a ceiling that never grows. A leaf declares `required_evidence = ("CHK-A",
+...)`, a sorted tuple of the IDs that must appear, and may set
+`min_evidence = N` as a floor on `own`. A run that never emits a required ID
+fails with `EVIDENCE FAIL`. A plain cocotb leaf over `SmcDualHarness` is
+registered through the `dual_test` decorator with the module's
+`REQUIRED_EVIDENCE`, and the decorator runs the same gate when the leaf
+returns.
+
+The tuple is the plan's list. `tools/dv/tests/test_smc_required_evidence.py`,
+run by CI with the other DV unit tests, reads every Test Procedures card of
+this file, imports every member of the `all` group, and requires that every
+member is a module attribute with a card of its own, that `required_evidence`
+is a sorted tuple of `CHK-` tokens, that every required token is declared in
+the card's Checkers table, and that every cocotb token the card declares is
+required by the leaf (a row marked `SV-UVM shape only` is the UVM shape's
+checker and is not expected from cocotb; a `<placeholder>` in a declared name
+makes it a template that concrete required names instantiate). No mismatch is
+tolerated today: the test's `PLAN_CODE_MISMATCH` map is empty, under a one-name
+ceiling that can only shrink.
+
+The gate proves that a check ran. It does not prove that the check was right.
+
+[[smc-vplan-blocked-taxonomy]]
+==== Blocked taxonomy
+
+The Phase 3 entries and the Phase 3 lists use four class words and four terms
+for bench items, with these meanings:
+
+* *PROPOSED*: a hook that drives, forces or deposits into a net or a state
+  inside `smc` (the `smc_wrapper` DUT and everything it instantiates) for a
+  purpose other than error injection, and that `hw/sys/smc/dv/tb/tb_top.sv`
+  and `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` do not already have.
+* *Observation tap*: a read-only observation that drives nothing: a `tb_*`
+  observation signal of the signal list `hw/sys/smc/dv/tb/smc_tb_signal_list.svh`,
+  a public-scope line of `hw/sys/smc/dv/tb/smc_public_scope.vlt`, an observation
+  `bind` or a hierarchical read reference of a DUT net. An observation tap is not
+  PROPOSED and blocks no check or leg. A tap that
+  `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` does not list is an observation tap the
+  test adds to the SMC_TB_ARCH signal list.
+* *Added hook*: an error inject or a top-port drive that
+  `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` does not list and that `hw/sys/smc/dv/tb/tb_top.sv` does not have. An error
+  inject is an inject or a force that puts a fault or an illegal condition into
+  the DUT, at a net inside `smc` or outside it. A top-port drive is a drive of
+  a port of `smc_wrapper` by the bench: a pad, a strap, a reset or power-good
+  pin, a SEP, SYS or JTAG port, an external interrupt lane, a memory-macro
+  response, or a port value that a plusarg sets. An added hook is not PROPOSED
+  and blocks no check or leg. The test adds it to the HDL Top section of
+  `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc`.
+* *Existing bench hook*: a drive, a force, an inject or a time-0 plusarg that
+  `hw/sys/smc/dv/tb/tb_top.sv` has: the inject and poke hooks
+  (`tb_cpu_ecc_inject_*`, `tb_cpu_ecc_poke_*`, `tb_cpu_scratch0_inject_fire`,
+  `tb_efuse_read_error_inject`, `tb_efuse_read_state_inject*`,
+  `tb_efuse_program_state_inject*`, `tb_zeroer_state_inject*`,
+  `tb_dfd_fault_inject`), the responder and channel holds
+  (`tb_output_axi_resp_hold`, `tb_sep_axi_b_hold`, `tb_sep_axi_r_hold`,
+  `tb_sys_axi_r_hold`), the pad and pin drives (`tb_pad_drive_*`,
+  `tb_gpio_ext_drive_*`, `tb_uart0_rx_ext_drive`, `tb_boot_stall_jtag_ovrd_i`,
+  `tb_plic_threshold0`, `tb_hold_cpu_boot`, `tb_hold_ext_boot`) and the plusargs
+  (`+smc_hold_cpu_boot`, `+smc_hold_ext_boot`, `+smc_i2c_shared_bus`,
+  `+smc_i2c1_pads`, `+smc_uart_cross_3to0`, `+smc_front_port_r_arb_assertoff`,
+  `+bfm_rom_hex`, `+bfm_rom_bin64`). It is existing DV infrastructure and is
+  approved, whatever net it drives and whatever its purpose: it is not
+  PROPOSED, it is not an added hook, and it blocks no check or leg. When
+  `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` does not list it, the test that uses it
+  adds its row there.
+* *Preload*: the content of a memory outside the checked path that the
+  approved t=0 image load of `tb_top.sv` puts in place before it is read: the
+  eFuse bank image (`+smc_efuse_hex`; the testlist arg `+smc_efuse_image` names
+  an image kind to the cocotb leaf, which renders it at the path `+smc_efuse_hex`
+  names), a ROM image (`+rom_hex`, `+rom_bin64`) or a scratch-RAM firmware image
+  (`+smc_scratch_ram_hex`). A preload is part of the approved t=0 image load.
+  It is not a hook, it is not PROPOSED, and it blocks no check or leg.
+* *Blocked*: a check or leg that needs a PROPOSED item, or a value that the
+  specification or the register description does not state. An entry writes
+  `Blocked: <item or value>` at the check or leg: "Blocked: needs the PROPOSED
+  drive `x`", or "Blocked: the specification does not state X". A blocked
+  feature is a feature whose checks all need such a value. A blocked check or
+  leg takes no credit and is not in an executable total.
+* *Executable*: a Phase 3 test with at least one graded check that is not
+  blocked.
+* *Parked*: a Phase 3 test with no executable check. The entry of a parked
+  test has the field `*Needs*: <PROPOSED items or unstated values>`, its
+  summary row reads "3, parked", and it takes no credit and is not in an
+  executable total.
+
 === Naming Rules
 
 * Testcases are `smc_<feature>_<scenario>_test`, lower snake case.
@@ -71,6 +310,7 @@ Bus terminators answer a port that a real integration fills with the
 adopter's CSRs. They are declared as terminators, never presented as
 verifying the block behind the port.
 
+[[smc-vplan-scope]]
 === Verification Scope
 
 This plan claims SMC behaviour at the `smc_wrapper` boundary and over the
@@ -153,6 +393,13 @@ is in `hosted` but not `smoke`, and receives no feature credit.
   carried by `smc_canonical_smoke_test` and the reset cluster
   (`smc_cold_reset_test`, `smc_powergood_glitch_test`,
   `smc_multi_reset_csr_persistence_test`).
+* A Phase 3 entry takes credit only when its test is in `all`, the named
+  evidence that its entry declares (`CHK-<ID>` lines, <<smc-vplan-evidence-gate>>)
+  is in the leaf log, and `results.xml` is positive. A blocked check or leg
+  and a parked test take no credit (<<smc-vplan-blocked-taxonomy>>). A feature
+  takes credit once, at the earliest phase that proves it; a later test that
+  also reaches the feature does not take the credit again. Every graded
+  register compare follows the reserved-bit rule of <<smc-vplan-reserved-bits>>.
 
 [[smc-feature-denominator]]
 ==== Feature denominator
