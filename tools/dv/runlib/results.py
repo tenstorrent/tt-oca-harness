@@ -17,6 +17,7 @@ from typing import Any
 
 from .buildcache import binary_version
 from .compat import UTC
+from .config import rerun_selection
 from .coverage_model import holes_summary_counts
 from .formal import formal_summary
 from .models import Flow, StageResult
@@ -524,7 +525,8 @@ def _rerun_command(flow: Flow, tool: str, job: dict[str, Any], args: Any | None)
         command.extend(["--mode", mode])
     elif flow.framework:
         command.extend(["--framework", flow.framework])
-    command.extend(["--items", str(job.get("item", "")), "--stage", stage, "--tool", tool])
+    command.extend(rerun_selection(str(job.get("item", "")), job.get("target"), args))
+    command.extend(["--stage", stage, "--tool", tool])
     seed = job.get("seed")
     if seed is not None and mode == "sim":
         command.extend(["--seed", str(seed)])
@@ -532,8 +534,6 @@ def _rerun_command(flow: Flow, tool: str, job: dict[str, Any], args: Any | None)
     if args is not None:
         if getattr(args, "run_mode", None):
             command.extend(["--run-mode", str(args.run_mode)])
-        if getattr(args, "target", None):
-            command.extend(["--target", str(args.target)])
         if getattr(args, "waves", None):
             command.extend(["--waves", str(args.waves)])
         if getattr(args, "waves_on_fail", None):
@@ -631,6 +631,7 @@ def _wave_replay_command(
     return same_seed_replay_command(
         flow_name=flow.name,
         item=str(item),
+        target=job.get("target"),
         seed=int(seed),
         tool=tool,
         wave_format=wave_format,
@@ -1005,6 +1006,10 @@ def result_payload(
     wrong_tool = list(getattr(args, "_skipped_wrong_tool", []) or []) if args is not None else []
     if wrong_tool:
         selection["skipped_wrong_tool"] = wrong_tool
+    # Tests no `--target` entry runs, each with the target it would run on otherwise.
+    wrong_target = list(getattr(args, "_skipped_target", []) or []) if args is not None else []
+    if wrong_target:
+        selection["skipped_target"] = wrong_target
     if any(selection.values()):
         payload["selection"] = selection
     if progress is not None:

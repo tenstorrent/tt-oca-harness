@@ -33,7 +33,6 @@ from .config import (
     as_str_list,
     cocotb_cfg,
     coverage_cfg,
-    default_target_name,
     flow_stages,
     load_executors,
     load_sim_cfg,
@@ -43,12 +42,15 @@ from .config import (
     parse_walltime_sec,
     resolved_target_name,
     selected_target,
+    target_instance_name,
     target_names,
+    target_pinned_only,
     target_run_on,
     targeted_sim_cfg,
     validate_native_config_shape,
     validate_run_mode_request,
     validate_target_redirects,
+    with_target_instances,
 )
 from .coverage import (
     COVERAGE_SUMMARIES,
@@ -296,11 +298,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     common.add_argument(
         "--target",
-        metavar="NAME",
+        metavar="NAME[,NAME...]",
         help=(
-            "Build target from the DUT sim config [targets.<name>]; "
-            "overrides every selected test's target (default: each test's own target)"
+            "Build targets from the DUT sim config [targets.<name>]: each selected test runs "
+            "on every listed target it can run on (a test that names no target on all of "
+            "them) and the rest are skipped (default: each test's own target)"
         ),
+    )
+    common.add_argument(
+        "--force-target",
+        metavar="NAME",
+        help="Run every selected test on build target NAME, whatever target it names",
     )
     common.add_argument(
         "--overlay",
@@ -625,6 +633,7 @@ _SIM_ONLY_FLAGS = {
     "max_failures": "--max-failures",
     "run_mode": "--run-mode",
     "target": "--target",
+    "force_target": "--force-target",
     "waves": "--waves",
     "waves_on_fail": "--waves-on-fail",
     "wave_start": "--wave-start",
@@ -3097,38 +3106,100 @@ def regression_seed_label(leaves: list[tuple[str, int]]) -> int | str:
     return "mixed"
 
 
+@dataclass(frozen=True)
+class TargetPlan:
+    """The targets a run's selected tests run on.
+
+    ``groups`` holds, per selected test, the names its leaves run under, `<test>@<target>`
+    for each target it runs on, which ``instances`` maps to its target. ``skipped`` names
+    each test no listed target runs, with the target it would run on otherwise.
+    """
+
+    groups: list[list[str]]
+    target_by_item: dict[str, str]
+    targets: list[str]
+    instances: dict[str, str]
+    skipped: list[dict[str, str]]
+
+    @property
+    def items(self) -> list[str]:
+        return [name for group in self.groups for name in group]
+
+
+def requested_targets(value: str | None) -> list[str]:
+    """The targets a `--target` list names, in order and each once."""
+    names = (name.strip() for name in (value or "").split(","))
+    return list(dict.fromkeys(name for name in names if name))
+
+
 def target_plan(
     catalog: TestCatalog,
     sim_cfg: dict[str, Any],
     items: list[str],
-    override: str | None = None,
+    targets: list[str] | None = None,
     *,
+    force: str | None = None,
     tool: str,
-) -> tuple[dict[str, str], list[str]]:
-    """Resolve a target per selected test and return first-seen unique target order.
+    by_target: bool = True,
+) -> TargetPlan:
+    """Resolve the targets each selected test runs on.
 
-    ``override`` (``--target``) maps every selected item onto that name.
-    Omitted, each test keeps its own target, or the default, unless that target's
-    `run_on` for ``tool`` names another. ``validate_target_plan`` rejects an unknown name.
+    ``force`` (``--force-target``) puts every test on that one target. ``targets``
+    (``--target``) runs a test that names a target on it, or on the one its `run_on`
+    names for ``tool``, when that one is listed, and a test that names none on every
+    listed target that is not `pinned_only`. With neither, each test runs on its own
+    target or the default, after that target's `run_on`. ``by_target`` names every leaf
+    `<test>@<target>`; without it each test runs on one target under its own name.
+    ``validate_target_plan`` rejects an unknown name.
     """
-    chosen = override.strip() if isinstance(override, str) and override.strip() else None
-    if not items:
-        target = chosen or target_run_on(sim_cfg, default_target_name(sim_cfg), tool)
-        return {}, [target]
 
+    def own_target(test: TestEntry | None) -> str:
+        return target_run_on(sim_cfg, resolved_target_name(sim_cfg, test), tool)
+
+    if not items:
+        planned = [force] if force else list(targets or []) or [own_target(None)]
+        return TargetPlan([], {}, planned, {}, [])
+
+    groups: list[list[str]] = []
     target_by_item: dict[str, str] = {}
-    ordered: list[str] = []
-    seen: set[str] = set()
+    instances: dict[str, str] = {}
+    skipped: dict[str, str] = {}
     for item in items:
         test = catalog.tests.get(item)
         if test is None:
             raise ConfigError(f"selected item `{item}` is not a test in the catalog")
-        target = chosen or target_run_on(sim_cfg, resolved_target_name(sim_cfg, test), tool)
-        target_by_item[item] = target
-        if target not in seen:
-            seen.add(target)
-            ordered.append(target)
-    return target_by_item, ordered
+        own = own_target(test)
+        if force:
+            chosen = [force]
+        elif targets and not test.target:
+            chosen = [name for name in targets if not target_pinned_only(sim_cfg, name)]
+        elif targets:
+            chosen = [name for name in (test.target, own) if name in targets][:1]
+        else:
+            chosen = [own]
+        if not chosen:
+            skipped.setdefault(item, own)
+            continue
+        if by_target:
+            names = {target_instance_name(item, name): name for name in chosen}
+            instances.update(names)
+        else:
+            names = {item: chosen[0]}
+        groups.append(list(names))
+        target_by_item.update(names)
+    if not groups:
+        own = ", ".join(sorted(set(skipped.values())))
+        raise ConfigError(
+            f"no selected test runs on --target {', '.join(targets or [])}: each names "
+            f"another target ({own})"
+        )
+    return TargetPlan(
+        groups,
+        target_by_item,
+        list(dict.fromkeys(target_by_item.values())),
+        instances,
+        [{"name": name, "target": target} for name, target in skipped.items()],
+    )
 
 
 def validate_target_plan(sim_cfg: dict[str, Any], targets: list[str]) -> None:
@@ -3325,19 +3396,6 @@ def run_flow(
                 insert_at = len(stages)
             stages.insert(insert_at, "c_compile")
 
-    scheduler = scheduler_requested(args, requested, items, catalog) if need_items else False
-    randomize_regression_seeds = scheduler and any(stage in {"sim", "regress"} for stage in stages)
-    validate_regression_seed_options(args, randomize_regression_seeds)
-    # Regression/group runs nest every test uniformly; a single explicit test stays flat.
-    nest = need_items and bool(items) and scheduler
-    label = run_label(catalog, requested, items)
-    target_by_item, build_targets = target_plan(
-        catalog,
-        sim_cfg,
-        items if need_items else [],
-        override=getattr(args, "target", None),
-        tool=tool,
-    )
     if flow.kind == "fv":
         explicit_targets = [item for item in items if catalog.tests[item].target]
         if explicit_targets:
@@ -3345,6 +3403,35 @@ def run_flow(
                 "per-test `target` selection is supported for simulation flows only; "
                 f"formal item(s) set target: {', '.join(explicit_targets)}"
             )
+    listed = requested_targets(getattr(args, "target", None))
+    force = (getattr(args, "force_target", None) or "").strip() or None
+    if listed and force:
+        raise ConfigError(
+            "--target and --force-target cannot be combined: --force-target runs every "
+            "selected test on one target"
+        )
+    validate_target_plan(sim_cfg, listed or ([force] if force else []))
+    plan = target_plan(
+        catalog,
+        sim_cfg,
+        items if need_items else [],
+        listed,
+        force=force,
+        tool=tool,
+        by_target=flow.kind != "fv",
+    )
+    label = run_label(catalog, requested, items)
+    catalog = with_target_instances(catalog, plan.instances)
+    if need_items:
+        items = plan.items
+    setattr(args, "_skipped_target", plan.skipped)
+    target_by_item, build_targets = plan.target_by_item, plan.targets
+
+    scheduler = scheduler_requested(args, requested, items, catalog) if need_items else False
+    randomize_regression_seeds = scheduler and any(stage in {"sim", "regress"} for stage in stages)
+    validate_regression_seed_options(args, randomize_regression_seeds)
+    # Regression/group runs nest every test uniformly; a single explicit test stays flat.
+    nest = need_items and bool(items) and scheduler
     validate_target_plan(sim_cfg, build_targets)
     multi_target = len(build_targets) > 1
     setattr(args, "_multi_target_run", multi_target)
@@ -3391,25 +3478,27 @@ def run_flow(
             continue
         seen_regression_seeds: set[int] = set()
         stage_plans: list[dict[str, Any]] = []
-        for item in items:
-            for seed in seed_plan(
+        for group in plan.groups if need_items else []:
+            seeds = seed_plan(
                 catalog,
                 sim_cfg,
                 args,
-                item,
+                group[0],
                 scheduler and stage in {"sim", "regress"},
                 seen_regression_seeds,
-            ):
-                identity = {
-                    "id": next_leaf_id,
-                    "stage": stage,
-                    "item": item,
-                    "target": target_by_item.get(item),
-                    "seed": seed,
-                }
-                stage_plans.append(identity)
-                expected_leaves.append(identity)
-                next_leaf_id += 1
+            )
+            for item in group:
+                for seed in seeds:
+                    identity = {
+                        "id": next_leaf_id,
+                        "stage": stage,
+                        "item": item,
+                        "target": target_by_item.get(item),
+                        "seed": seed,
+                    }
+                    stage_plans.append(identity)
+                    expected_leaves.append(identity)
+                    next_leaf_id += 1
         leaf_plans_by_stage[stage_index] = stage_plans
 
     replaying_coverage = existing_result is not None and replay_run_dir == run_dir
@@ -3448,6 +3537,25 @@ def run_flow(
             "selection",
             f"skipped_wrong_tool={len(skipped_wrong_tool)} tool={tool} "
             f"tests={','.join(skipped_wrong_tool)}",
+        )
+    if plan.skipped:
+        console.event(
+            "selection",
+            f"skipped_target={len(plan.skipped)} targets={','.join(listed)} tests="
+            + ",".join(f"{entry['name']}({entry['target']})" for entry in plan.skipped),
+        )
+        console.event(
+            "warning",
+            f"--target {','.join(listed)} skips {len(plan.skipped)} selected test(s) that run "
+            "on other targets; --force-target runs every selected test on one target",
+            force=True,
+        )
+    unused_targets = [name for name in listed if name not in build_targets]
+    if unused_targets:
+        console.event(
+            "warning",
+            f"--target {','.join(unused_targets)} runs none of the selected tests",
+            force=True,
         )
     run_started = time.monotonic()
     results: list[StageResult] = []
@@ -4430,8 +4538,11 @@ def run_flow(
                 run_leaf_stage(stage, leaves, parallel)
             else:
                 if stage == "c_compile" and items:
-                    for item in items:
-                        item_cfg = sim_cfg_for_item(item)
+                    # Firmware does not depend on the target, and its outputs are staged
+                    # under the test's testlist name: one build per selected test.
+                    for group in plan.groups:
+                        item_cfg = sim_cfg_for_item(group[0])
+                        item = catalog.tests[group[0]].name
                         seed = seed_for_item(catalog, item_cfg, args, item)
                         results.append(
                             run_stage(

@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from runlib.config import load_test_catalog
+from runlib.config import instance_test_name, load_test_catalog
 from runlib.duts import resolve_dut
 from runlib.models import ConfigError, Flow, TestCatalog, TestEntry
 from runlib.paths import dut_runs_root, dv_root, repo_path, repo_root
@@ -312,9 +312,10 @@ def _test_metadata(
 ) -> dict[str, Any]:
     if not item:
         return {"name": "", "module": "", "tags": [], "groups": [], "category": flow.name}
-    test: TestEntry | None = catalog.tests.get(item)
+    test_name = instance_test_name(item)
+    test: TestEntry | None = catalog.tests.get(test_name)
     tags = list(test.tags or []) if test else []
-    groups = groups_by_test.get(item, [])
+    groups = groups_by_test.get(test_name, [])
     category = next((tag for tag in _CATEGORY_PRIORITY if tag in tags), None)
     if category is None:
         category = groups[0] if groups else flow.name
