@@ -39,7 +39,7 @@
 <tr><td>6</td><td>dtb_ew_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
 <tr><td>5</td><td>dtb_ns_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
 <tr><td>4</td><td>force_clk_en</td><td>RW</td><td>0x0</td><td>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the<br>value of cg_en.</td></tr>
-<tr><td>3</td><td>cg_en</td><td>RW</td><td>0x0</td><td>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless<br>force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in<br>reset.</td></tr>
+<tr><td>3</td><td>cg_en</td><td>RW</td><td>0x0</td><td>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless<br>force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in<br>reset. While the clock is stopped, CLA and DST register accesses complete<br>with an error and reads return 0xBADCAB1E.</td></tr>
 <tr><td>2</td><td>gpio_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
 <tr><td>1:0</td><td>chiplet_enable</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
 </table>
