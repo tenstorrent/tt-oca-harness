@@ -44,9 +44,11 @@ from .config import (
     resolved_target_name,
     selected_target,
     target_names,
+    target_run_on,
     targeted_sim_cfg,
     validate_native_config_shape,
     validate_run_mode_request,
+    validate_target_redirects,
 )
 from .coverage import (
     COVERAGE_SUMMARIES,
@@ -881,6 +883,7 @@ def validate_flow(
             raise ConfigError(f"{flow.path}: native stage `{stage_name}` missing string `kind`")
     sim_cfg = load_sim_cfg(flow, root)
     validate_native_config_shape(flow, root)
+    validate_target_redirects(sim_cfg, flow.tools)
     validate_coverage_policies(flow, root, sim_cfg)
     if executors is not None:
         scheduler = flow.raw.get("scheduler", {})
@@ -3099,16 +3102,18 @@ def target_plan(
     sim_cfg: dict[str, Any],
     items: list[str],
     override: str | None = None,
+    *,
+    tool: str,
 ) -> tuple[dict[str, str], list[str]]:
     """Resolve a target per selected test and return first-seen unique target order.
 
     ``override`` (``--target``) maps every selected item onto that name.
-    Omitted, each test keeps its own target. ``validate_target_plan`` rejects
-    an unknown name.
+    Omitted, each test keeps its own target, or the default, unless that target's
+    `run_on` for ``tool`` names another. ``validate_target_plan`` rejects an unknown name.
     """
     chosen = override.strip() if isinstance(override, str) and override.strip() else None
     if not items:
-        target = chosen or default_target_name(sim_cfg)
+        target = chosen or target_run_on(sim_cfg, default_target_name(sim_cfg), tool)
         return {}, [target]
 
     target_by_item: dict[str, str] = {}
@@ -3118,7 +3123,7 @@ def target_plan(
         test = catalog.tests.get(item)
         if test is None:
             raise ConfigError(f"selected item `{item}` is not a test in the catalog")
-        target = chosen or resolved_target_name(sim_cfg, test)
+        target = chosen or target_run_on(sim_cfg, resolved_target_name(sim_cfg, test), tool)
         target_by_item[item] = target
         if target not in seen:
             seen.add(target)
@@ -3327,7 +3332,11 @@ def run_flow(
     nest = need_items and bool(items) and scheduler
     label = run_label(catalog, requested, items)
     target_by_item, build_targets = target_plan(
-        catalog, sim_cfg, items if need_items else [], override=getattr(args, "target", None)
+        catalog,
+        sim_cfg,
+        items if need_items else [],
+        override=getattr(args, "target", None),
+        tool=tool,
     )
     if flow.kind == "fv":
         explicit_targets = [item for item in items if catalog.tests[item].target]
