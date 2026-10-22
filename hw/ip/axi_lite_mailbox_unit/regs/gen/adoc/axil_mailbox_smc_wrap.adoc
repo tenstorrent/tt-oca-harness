@@ -16,9 +16,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 |===
 | Address | Name | Access | Description
 | 0x0 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-WRITE_DATA,outbound_mailbox_0.WRITE_DATA>> | W a| -
-| 0x8 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-READ_DATA,outbound_mailbox_0.READ_DATA>> | R a| -
+| 0x8 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-READ_DATA,outbound_mailbox_0.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x10 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-STATUS,outbound_mailbox_0.STATUS>> | R a| -
-| 0x18 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-ERROR_FLAGS,outbound_mailbox_0.ERROR_FLAGS>> | R a| -
+| 0x18 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-ERROR_FLAGS,outbound_mailbox_0.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x20 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-WIRQT,outbound_mailbox_0.WIRQT>> | RW a| -
 | 0x28 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-RIRQT,outbound_mailbox_0.RIRQT>> | RW a| -
 | 0x30 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-IRQS,outbound_mailbox_0.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -26,9 +32,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x40 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-IRQP,outbound_mailbox_0.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x48 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-CTRL,outbound_mailbox_0.CTRL>> | W a| -
 | 0x800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-WRITE_DATA,inbound_mailbox_0.WRITE_DATA>> | W a| -
-| 0x808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-READ_DATA,inbound_mailbox_0.READ_DATA>> | R a| -
+| 0x808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-READ_DATA,inbound_mailbox_0.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-STATUS,inbound_mailbox_0.STATUS>> | R a| -
-| 0x818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-ERROR_FLAGS,inbound_mailbox_0.ERROR_FLAGS>> | R a| -
+| 0x818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-ERROR_FLAGS,inbound_mailbox_0.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-WIRQT,inbound_mailbox_0.WIRQT>> | RW a| -
 | 0x828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-RIRQT,inbound_mailbox_0.RIRQT>> | RW a| -
 | 0x830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-IRQS,inbound_mailbox_0.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -36,9 +48,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-IRQP,inbound_mailbox_0.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-CTRL,inbound_mailbox_0.CTRL>> | W a| -
 | 0x1000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-WRITE_DATA,outbound_mailbox_1.WRITE_DATA>> | W a| -
-| 0x1008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-READ_DATA,outbound_mailbox_1.READ_DATA>> | R a| -
+| 0x1008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-READ_DATA,outbound_mailbox_1.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-STATUS,outbound_mailbox_1.STATUS>> | R a| -
-| 0x1018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-ERROR_FLAGS,outbound_mailbox_1.ERROR_FLAGS>> | R a| -
+| 0x1018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-ERROR_FLAGS,outbound_mailbox_1.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-WIRQT,outbound_mailbox_1.WIRQT>> | RW a| -
 | 0x1028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-RIRQT,outbound_mailbox_1.RIRQT>> | RW a| -
 | 0x1030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-IRQS,outbound_mailbox_1.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -46,9 +64,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-IRQP,outbound_mailbox_1.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-CTRL,outbound_mailbox_1.CTRL>> | W a| -
 | 0x1800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-WRITE_DATA,inbound_mailbox_1.WRITE_DATA>> | W a| -
-| 0x1808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-READ_DATA,inbound_mailbox_1.READ_DATA>> | R a| -
+| 0x1808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-READ_DATA,inbound_mailbox_1.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-STATUS,inbound_mailbox_1.STATUS>> | R a| -
-| 0x1818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-ERROR_FLAGS,inbound_mailbox_1.ERROR_FLAGS>> | R a| -
+| 0x1818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-ERROR_FLAGS,inbound_mailbox_1.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-WIRQT,inbound_mailbox_1.WIRQT>> | RW a| -
 | 0x1828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-RIRQT,inbound_mailbox_1.RIRQT>> | RW a| -
 | 0x1830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-IRQS,inbound_mailbox_1.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -56,9 +80,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-IRQP,inbound_mailbox_1.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-CTRL,inbound_mailbox_1.CTRL>> | W a| -
 | 0x2000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-WRITE_DATA,outbound_mailbox_2.WRITE_DATA>> | W a| -
-| 0x2008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-READ_DATA,outbound_mailbox_2.READ_DATA>> | R a| -
+| 0x2008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-READ_DATA,outbound_mailbox_2.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x2010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-STATUS,outbound_mailbox_2.STATUS>> | R a| -
-| 0x2018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-ERROR_FLAGS,outbound_mailbox_2.ERROR_FLAGS>> | R a| -
+| 0x2018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-ERROR_FLAGS,outbound_mailbox_2.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x2020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-WIRQT,outbound_mailbox_2.WIRQT>> | RW a| -
 | 0x2028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-RIRQT,outbound_mailbox_2.RIRQT>> | RW a| -
 | 0x2030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-IRQS,outbound_mailbox_2.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -66,9 +96,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x2040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-IRQP,outbound_mailbox_2.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x2048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-CTRL,outbound_mailbox_2.CTRL>> | W a| -
 | 0x2800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-WRITE_DATA,inbound_mailbox_2.WRITE_DATA>> | W a| -
-| 0x2808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-READ_DATA,inbound_mailbox_2.READ_DATA>> | R a| -
+| 0x2808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-READ_DATA,inbound_mailbox_2.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x2810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-STATUS,inbound_mailbox_2.STATUS>> | R a| -
-| 0x2818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-ERROR_FLAGS,inbound_mailbox_2.ERROR_FLAGS>> | R a| -
+| 0x2818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-ERROR_FLAGS,inbound_mailbox_2.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x2820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-WIRQT,inbound_mailbox_2.WIRQT>> | RW a| -
 | 0x2828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-RIRQT,inbound_mailbox_2.RIRQT>> | RW a| -
 | 0x2830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-IRQS,inbound_mailbox_2.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -76,9 +112,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x2840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-IRQP,inbound_mailbox_2.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x2848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-CTRL,inbound_mailbox_2.CTRL>> | W a| -
 | 0x3000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-WRITE_DATA,outbound_mailbox_3.WRITE_DATA>> | W a| -
-| 0x3008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-READ_DATA,outbound_mailbox_3.READ_DATA>> | R a| -
+| 0x3008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-READ_DATA,outbound_mailbox_3.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x3010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-STATUS,outbound_mailbox_3.STATUS>> | R a| -
-| 0x3018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-ERROR_FLAGS,outbound_mailbox_3.ERROR_FLAGS>> | R a| -
+| 0x3018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-ERROR_FLAGS,outbound_mailbox_3.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x3020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-WIRQT,outbound_mailbox_3.WIRQT>> | RW a| -
 | 0x3028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-RIRQT,outbound_mailbox_3.RIRQT>> | RW a| -
 | 0x3030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-IRQS,outbound_mailbox_3.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -86,9 +128,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x3040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-IRQP,outbound_mailbox_3.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x3048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-CTRL,outbound_mailbox_3.CTRL>> | W a| -
 | 0x3800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-WRITE_DATA,inbound_mailbox_3.WRITE_DATA>> | W a| -
-| 0x3808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-READ_DATA,inbound_mailbox_3.READ_DATA>> | R a| -
+| 0x3808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-READ_DATA,inbound_mailbox_3.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x3810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-STATUS,inbound_mailbox_3.STATUS>> | R a| -
-| 0x3818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-ERROR_FLAGS,inbound_mailbox_3.ERROR_FLAGS>> | R a| -
+| 0x3818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-ERROR_FLAGS,inbound_mailbox_3.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x3820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-WIRQT,inbound_mailbox_3.WIRQT>> | RW a| -
 | 0x3828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-RIRQT,inbound_mailbox_3.RIRQT>> | RW a| -
 | 0x3830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-IRQS,inbound_mailbox_3.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -96,9 +144,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x3840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-IRQP,inbound_mailbox_3.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x3848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-CTRL,inbound_mailbox_3.CTRL>> | W a| -
 | 0x4000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-WRITE_DATA,outbound_mailbox_4.WRITE_DATA>> | W a| -
-| 0x4008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-READ_DATA,outbound_mailbox_4.READ_DATA>> | R a| -
+| 0x4008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-READ_DATA,outbound_mailbox_4.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x4010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-STATUS,outbound_mailbox_4.STATUS>> | R a| -
-| 0x4018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-ERROR_FLAGS,outbound_mailbox_4.ERROR_FLAGS>> | R a| -
+| 0x4018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-ERROR_FLAGS,outbound_mailbox_4.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x4020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-WIRQT,outbound_mailbox_4.WIRQT>> | RW a| -
 | 0x4028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-RIRQT,outbound_mailbox_4.RIRQT>> | RW a| -
 | 0x4030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-IRQS,outbound_mailbox_4.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -106,9 +160,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x4040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-IRQP,outbound_mailbox_4.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x4048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-CTRL,outbound_mailbox_4.CTRL>> | W a| -
 | 0x4800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-WRITE_DATA,inbound_mailbox_4.WRITE_DATA>> | W a| -
-| 0x4808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-READ_DATA,inbound_mailbox_4.READ_DATA>> | R a| -
+| 0x4808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-READ_DATA,inbound_mailbox_4.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x4810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-STATUS,inbound_mailbox_4.STATUS>> | R a| -
-| 0x4818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-ERROR_FLAGS,inbound_mailbox_4.ERROR_FLAGS>> | R a| -
+| 0x4818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-ERROR_FLAGS,inbound_mailbox_4.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x4820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-WIRQT,inbound_mailbox_4.WIRQT>> | RW a| -
 | 0x4828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-RIRQT,inbound_mailbox_4.RIRQT>> | RW a| -
 | 0x4830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-IRQS,inbound_mailbox_4.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -116,9 +176,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x4840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-IRQP,inbound_mailbox_4.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x4848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-CTRL,inbound_mailbox_4.CTRL>> | W a| -
 | 0x5000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-WRITE_DATA,outbound_mailbox_5.WRITE_DATA>> | W a| -
-| 0x5008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-READ_DATA,outbound_mailbox_5.READ_DATA>> | R a| -
+| 0x5008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-READ_DATA,outbound_mailbox_5.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x5010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-STATUS,outbound_mailbox_5.STATUS>> | R a| -
-| 0x5018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-ERROR_FLAGS,outbound_mailbox_5.ERROR_FLAGS>> | R a| -
+| 0x5018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-ERROR_FLAGS,outbound_mailbox_5.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x5020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-WIRQT,outbound_mailbox_5.WIRQT>> | RW a| -
 | 0x5028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-RIRQT,outbound_mailbox_5.RIRQT>> | RW a| -
 | 0x5030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-IRQS,outbound_mailbox_5.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -126,9 +192,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x5040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-IRQP,outbound_mailbox_5.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x5048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-CTRL,outbound_mailbox_5.CTRL>> | W a| -
 | 0x5800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-WRITE_DATA,inbound_mailbox_5.WRITE_DATA>> | W a| -
-| 0x5808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-READ_DATA,inbound_mailbox_5.READ_DATA>> | R a| -
+| 0x5808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-READ_DATA,inbound_mailbox_5.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x5810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-STATUS,inbound_mailbox_5.STATUS>> | R a| -
-| 0x5818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-ERROR_FLAGS,inbound_mailbox_5.ERROR_FLAGS>> | R a| -
+| 0x5818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-ERROR_FLAGS,inbound_mailbox_5.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x5820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-WIRQT,inbound_mailbox_5.WIRQT>> | RW a| -
 | 0x5828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-RIRQT,inbound_mailbox_5.RIRQT>> | RW a| -
 | 0x5830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-IRQS,inbound_mailbox_5.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -136,9 +208,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x5840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-IRQP,inbound_mailbox_5.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x5848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-CTRL,inbound_mailbox_5.CTRL>> | W a| -
 | 0x6000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-WRITE_DATA,outbound_mailbox_6.WRITE_DATA>> | W a| -
-| 0x6008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-READ_DATA,outbound_mailbox_6.READ_DATA>> | R a| -
+| 0x6008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-READ_DATA,outbound_mailbox_6.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x6010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-STATUS,outbound_mailbox_6.STATUS>> | R a| -
-| 0x6018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-ERROR_FLAGS,outbound_mailbox_6.ERROR_FLAGS>> | R a| -
+| 0x6018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-ERROR_FLAGS,outbound_mailbox_6.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x6020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-WIRQT,outbound_mailbox_6.WIRQT>> | RW a| -
 | 0x6028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-RIRQT,outbound_mailbox_6.RIRQT>> | RW a| -
 | 0x6030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-IRQS,outbound_mailbox_6.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -146,9 +224,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x6040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-IRQP,outbound_mailbox_6.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x6048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-CTRL,outbound_mailbox_6.CTRL>> | W a| -
 | 0x6800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-WRITE_DATA,inbound_mailbox_6.WRITE_DATA>> | W a| -
-| 0x6808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-READ_DATA,inbound_mailbox_6.READ_DATA>> | R a| -
+| 0x6808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-READ_DATA,inbound_mailbox_6.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x6810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-STATUS,inbound_mailbox_6.STATUS>> | R a| -
-| 0x6818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-ERROR_FLAGS,inbound_mailbox_6.ERROR_FLAGS>> | R a| -
+| 0x6818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-ERROR_FLAGS,inbound_mailbox_6.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x6820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-WIRQT,inbound_mailbox_6.WIRQT>> | RW a| -
 | 0x6828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-RIRQT,inbound_mailbox_6.RIRQT>> | RW a| -
 | 0x6830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-IRQS,inbound_mailbox_6.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -156,9 +240,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x6840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-IRQP,inbound_mailbox_6.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x6848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-CTRL,inbound_mailbox_6.CTRL>> | W a| -
 | 0x7000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-WRITE_DATA,outbound_mailbox_7.WRITE_DATA>> | W a| -
-| 0x7008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-READ_DATA,outbound_mailbox_7.READ_DATA>> | R a| -
+| 0x7008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-READ_DATA,outbound_mailbox_7.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x7010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-STATUS,outbound_mailbox_7.STATUS>> | R a| -
-| 0x7018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-ERROR_FLAGS,outbound_mailbox_7.ERROR_FLAGS>> | R a| -
+| 0x7018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-ERROR_FLAGS,outbound_mailbox_7.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x7020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-WIRQT,outbound_mailbox_7.WIRQT>> | RW a| -
 | 0x7028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-RIRQT,outbound_mailbox_7.RIRQT>> | RW a| -
 | 0x7030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-IRQS,outbound_mailbox_7.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -166,9 +256,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x7040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-IRQP,outbound_mailbox_7.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x7048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-CTRL,outbound_mailbox_7.CTRL>> | W a| -
 | 0x7800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-WRITE_DATA,inbound_mailbox_7.WRITE_DATA>> | W a| -
-| 0x7808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-READ_DATA,inbound_mailbox_7.READ_DATA>> | R a| -
+| 0x7808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-READ_DATA,inbound_mailbox_7.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x7810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-STATUS,inbound_mailbox_7.STATUS>> | R a| -
-| 0x7818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-ERROR_FLAGS,inbound_mailbox_7.ERROR_FLAGS>> | R a| -
+| 0x7818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-ERROR_FLAGS,inbound_mailbox_7.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x7820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-WIRQT,inbound_mailbox_7.WIRQT>> | RW a| -
 | 0x7828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-RIRQT,inbound_mailbox_7.RIRQT>> | RW a| -
 | 0x7830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-IRQS,inbound_mailbox_7.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -176,9 +272,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x7840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-IRQP,inbound_mailbox_7.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x7848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-CTRL,inbound_mailbox_7.CTRL>> | W a| -
 | 0x8000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-WRITE_DATA,outbound_mailbox_8.WRITE_DATA>> | W a| -
-| 0x8008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-READ_DATA,outbound_mailbox_8.READ_DATA>> | R a| -
+| 0x8008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-READ_DATA,outbound_mailbox_8.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x8010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-STATUS,outbound_mailbox_8.STATUS>> | R a| -
-| 0x8018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-ERROR_FLAGS,outbound_mailbox_8.ERROR_FLAGS>> | R a| -
+| 0x8018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-ERROR_FLAGS,outbound_mailbox_8.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x8020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-WIRQT,outbound_mailbox_8.WIRQT>> | RW a| -
 | 0x8028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-RIRQT,outbound_mailbox_8.RIRQT>> | RW a| -
 | 0x8030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-IRQS,outbound_mailbox_8.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -186,9 +288,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x8040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-IRQP,outbound_mailbox_8.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x8048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-CTRL,outbound_mailbox_8.CTRL>> | W a| -
 | 0x8800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-WRITE_DATA,inbound_mailbox_8.WRITE_DATA>> | W a| -
-| 0x8808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-READ_DATA,inbound_mailbox_8.READ_DATA>> | R a| -
+| 0x8808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-READ_DATA,inbound_mailbox_8.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x8810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-STATUS,inbound_mailbox_8.STATUS>> | R a| -
-| 0x8818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-ERROR_FLAGS,inbound_mailbox_8.ERROR_FLAGS>> | R a| -
+| 0x8818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-ERROR_FLAGS,inbound_mailbox_8.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x8820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-WIRQT,inbound_mailbox_8.WIRQT>> | RW a| -
 | 0x8828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-RIRQT,inbound_mailbox_8.RIRQT>> | RW a| -
 | 0x8830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-IRQS,inbound_mailbox_8.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -196,9 +304,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x8840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-IRQP,inbound_mailbox_8.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x8848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-CTRL,inbound_mailbox_8.CTRL>> | W a| -
 | 0x9000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-WRITE_DATA,outbound_mailbox_9.WRITE_DATA>> | W a| -
-| 0x9008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-READ_DATA,outbound_mailbox_9.READ_DATA>> | R a| -
+| 0x9008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-READ_DATA,outbound_mailbox_9.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x9010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-STATUS,outbound_mailbox_9.STATUS>> | R a| -
-| 0x9018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-ERROR_FLAGS,outbound_mailbox_9.ERROR_FLAGS>> | R a| -
+| 0x9018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-ERROR_FLAGS,outbound_mailbox_9.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x9020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-WIRQT,outbound_mailbox_9.WIRQT>> | RW a| -
 | 0x9028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-RIRQT,outbound_mailbox_9.RIRQT>> | RW a| -
 | 0x9030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-IRQS,outbound_mailbox_9.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -206,9 +320,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x9040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-IRQP,outbound_mailbox_9.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x9048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-CTRL,outbound_mailbox_9.CTRL>> | W a| -
 | 0x9800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-WRITE_DATA,inbound_mailbox_9.WRITE_DATA>> | W a| -
-| 0x9808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-READ_DATA,inbound_mailbox_9.READ_DATA>> | R a| -
+| 0x9808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-READ_DATA,inbound_mailbox_9.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x9810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-STATUS,inbound_mailbox_9.STATUS>> | R a| -
-| 0x9818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-ERROR_FLAGS,inbound_mailbox_9.ERROR_FLAGS>> | R a| -
+| 0x9818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-ERROR_FLAGS,inbound_mailbox_9.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x9820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-WIRQT,inbound_mailbox_9.WIRQT>> | RW a| -
 | 0x9828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-RIRQT,inbound_mailbox_9.RIRQT>> | RW a| -
 | 0x9830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-IRQS,inbound_mailbox_9.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -216,9 +336,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x9840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-IRQP,inbound_mailbox_9.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x9848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-CTRL,inbound_mailbox_9.CTRL>> | W a| -
 | 0xA000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-WRITE_DATA,outbound_mailbox_10.WRITE_DATA>> | W a| -
-| 0xA008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-READ_DATA,outbound_mailbox_10.READ_DATA>> | R a| -
+| 0xA008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-READ_DATA,outbound_mailbox_10.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xA010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-STATUS,outbound_mailbox_10.STATUS>> | R a| -
-| 0xA018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-ERROR_FLAGS,outbound_mailbox_10.ERROR_FLAGS>> | R a| -
+| 0xA018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-ERROR_FLAGS,outbound_mailbox_10.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xA020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-WIRQT,outbound_mailbox_10.WIRQT>> | RW a| -
 | 0xA028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-RIRQT,outbound_mailbox_10.RIRQT>> | RW a| -
 | 0xA030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-IRQS,outbound_mailbox_10.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -226,9 +352,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xA040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-IRQP,outbound_mailbox_10.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xA048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-CTRL,outbound_mailbox_10.CTRL>> | W a| -
 | 0xA800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-WRITE_DATA,inbound_mailbox_10.WRITE_DATA>> | W a| -
-| 0xA808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-READ_DATA,inbound_mailbox_10.READ_DATA>> | R a| -
+| 0xA808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-READ_DATA,inbound_mailbox_10.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xA810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-STATUS,inbound_mailbox_10.STATUS>> | R a| -
-| 0xA818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-ERROR_FLAGS,inbound_mailbox_10.ERROR_FLAGS>> | R a| -
+| 0xA818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-ERROR_FLAGS,inbound_mailbox_10.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xA820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-WIRQT,inbound_mailbox_10.WIRQT>> | RW a| -
 | 0xA828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-RIRQT,inbound_mailbox_10.RIRQT>> | RW a| -
 | 0xA830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-IRQS,inbound_mailbox_10.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -236,9 +368,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xA840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-IRQP,inbound_mailbox_10.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xA848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-CTRL,inbound_mailbox_10.CTRL>> | W a| -
 | 0xB000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-WRITE_DATA,outbound_mailbox_11.WRITE_DATA>> | W a| -
-| 0xB008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-READ_DATA,outbound_mailbox_11.READ_DATA>> | R a| -
+| 0xB008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-READ_DATA,outbound_mailbox_11.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xB010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-STATUS,outbound_mailbox_11.STATUS>> | R a| -
-| 0xB018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-ERROR_FLAGS,outbound_mailbox_11.ERROR_FLAGS>> | R a| -
+| 0xB018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-ERROR_FLAGS,outbound_mailbox_11.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xB020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-WIRQT,outbound_mailbox_11.WIRQT>> | RW a| -
 | 0xB028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-RIRQT,outbound_mailbox_11.RIRQT>> | RW a| -
 | 0xB030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-IRQS,outbound_mailbox_11.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -246,9 +384,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xB040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-IRQP,outbound_mailbox_11.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xB048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-CTRL,outbound_mailbox_11.CTRL>> | W a| -
 | 0xB800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-WRITE_DATA,inbound_mailbox_11.WRITE_DATA>> | W a| -
-| 0xB808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-READ_DATA,inbound_mailbox_11.READ_DATA>> | R a| -
+| 0xB808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-READ_DATA,inbound_mailbox_11.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xB810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-STATUS,inbound_mailbox_11.STATUS>> | R a| -
-| 0xB818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-ERROR_FLAGS,inbound_mailbox_11.ERROR_FLAGS>> | R a| -
+| 0xB818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-ERROR_FLAGS,inbound_mailbox_11.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xB820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-WIRQT,inbound_mailbox_11.WIRQT>> | RW a| -
 | 0xB828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-RIRQT,inbound_mailbox_11.RIRQT>> | RW a| -
 | 0xB830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-IRQS,inbound_mailbox_11.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -256,9 +400,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xB840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-IRQP,inbound_mailbox_11.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xB848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-CTRL,inbound_mailbox_11.CTRL>> | W a| -
 | 0xC000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-WRITE_DATA,outbound_mailbox_12.WRITE_DATA>> | W a| -
-| 0xC008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-READ_DATA,outbound_mailbox_12.READ_DATA>> | R a| -
+| 0xC008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-READ_DATA,outbound_mailbox_12.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xC010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-STATUS,outbound_mailbox_12.STATUS>> | R a| -
-| 0xC018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-ERROR_FLAGS,outbound_mailbox_12.ERROR_FLAGS>> | R a| -
+| 0xC018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-ERROR_FLAGS,outbound_mailbox_12.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xC020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-WIRQT,outbound_mailbox_12.WIRQT>> | RW a| -
 | 0xC028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-RIRQT,outbound_mailbox_12.RIRQT>> | RW a| -
 | 0xC030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-IRQS,outbound_mailbox_12.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -266,9 +416,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xC040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-IRQP,outbound_mailbox_12.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xC048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-CTRL,outbound_mailbox_12.CTRL>> | W a| -
 | 0xC800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-WRITE_DATA,inbound_mailbox_12.WRITE_DATA>> | W a| -
-| 0xC808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-READ_DATA,inbound_mailbox_12.READ_DATA>> | R a| -
+| 0xC808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-READ_DATA,inbound_mailbox_12.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xC810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-STATUS,inbound_mailbox_12.STATUS>> | R a| -
-| 0xC818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-ERROR_FLAGS,inbound_mailbox_12.ERROR_FLAGS>> | R a| -
+| 0xC818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-ERROR_FLAGS,inbound_mailbox_12.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xC820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-WIRQT,inbound_mailbox_12.WIRQT>> | RW a| -
 | 0xC828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-RIRQT,inbound_mailbox_12.RIRQT>> | RW a| -
 | 0xC830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-IRQS,inbound_mailbox_12.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -276,9 +432,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xC840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-IRQP,inbound_mailbox_12.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xC848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-CTRL,inbound_mailbox_12.CTRL>> | W a| -
 | 0xD000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-WRITE_DATA,outbound_mailbox_13.WRITE_DATA>> | W a| -
-| 0xD008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-READ_DATA,outbound_mailbox_13.READ_DATA>> | R a| -
+| 0xD008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-READ_DATA,outbound_mailbox_13.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xD010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-STATUS,outbound_mailbox_13.STATUS>> | R a| -
-| 0xD018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-ERROR_FLAGS,outbound_mailbox_13.ERROR_FLAGS>> | R a| -
+| 0xD018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-ERROR_FLAGS,outbound_mailbox_13.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xD020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-WIRQT,outbound_mailbox_13.WIRQT>> | RW a| -
 | 0xD028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-RIRQT,outbound_mailbox_13.RIRQT>> | RW a| -
 | 0xD030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-IRQS,outbound_mailbox_13.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -286,9 +448,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xD040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-IRQP,outbound_mailbox_13.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xD048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-CTRL,outbound_mailbox_13.CTRL>> | W a| -
 | 0xD800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-WRITE_DATA,inbound_mailbox_13.WRITE_DATA>> | W a| -
-| 0xD808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-READ_DATA,inbound_mailbox_13.READ_DATA>> | R a| -
+| 0xD808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-READ_DATA,inbound_mailbox_13.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xD810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-STATUS,inbound_mailbox_13.STATUS>> | R a| -
-| 0xD818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-ERROR_FLAGS,inbound_mailbox_13.ERROR_FLAGS>> | R a| -
+| 0xD818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-ERROR_FLAGS,inbound_mailbox_13.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xD820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-WIRQT,inbound_mailbox_13.WIRQT>> | RW a| -
 | 0xD828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-RIRQT,inbound_mailbox_13.RIRQT>> | RW a| -
 | 0xD830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-IRQS,inbound_mailbox_13.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -296,9 +464,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xD840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-IRQP,inbound_mailbox_13.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xD848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-CTRL,inbound_mailbox_13.CTRL>> | W a| -
 | 0xE000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-WRITE_DATA,outbound_mailbox_14.WRITE_DATA>> | W a| -
-| 0xE008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-READ_DATA,outbound_mailbox_14.READ_DATA>> | R a| -
+| 0xE008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-READ_DATA,outbound_mailbox_14.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xE010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-STATUS,outbound_mailbox_14.STATUS>> | R a| -
-| 0xE018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-ERROR_FLAGS,outbound_mailbox_14.ERROR_FLAGS>> | R a| -
+| 0xE018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-ERROR_FLAGS,outbound_mailbox_14.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xE020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-WIRQT,outbound_mailbox_14.WIRQT>> | RW a| -
 | 0xE028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-RIRQT,outbound_mailbox_14.RIRQT>> | RW a| -
 | 0xE030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-IRQS,outbound_mailbox_14.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -306,9 +480,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xE040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-IRQP,outbound_mailbox_14.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xE048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-CTRL,outbound_mailbox_14.CTRL>> | W a| -
 | 0xE800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-WRITE_DATA,inbound_mailbox_14.WRITE_DATA>> | W a| -
-| 0xE808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-READ_DATA,inbound_mailbox_14.READ_DATA>> | R a| -
+| 0xE808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-READ_DATA,inbound_mailbox_14.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xE810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-STATUS,inbound_mailbox_14.STATUS>> | R a| -
-| 0xE818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-ERROR_FLAGS,inbound_mailbox_14.ERROR_FLAGS>> | R a| -
+| 0xE818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-ERROR_FLAGS,inbound_mailbox_14.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xE820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-WIRQT,inbound_mailbox_14.WIRQT>> | RW a| -
 | 0xE828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-RIRQT,inbound_mailbox_14.RIRQT>> | RW a| -
 | 0xE830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-IRQS,inbound_mailbox_14.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -316,9 +496,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xE840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-IRQP,inbound_mailbox_14.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xE848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-CTRL,inbound_mailbox_14.CTRL>> | W a| -
 | 0xF000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-WRITE_DATA,outbound_mailbox_15.WRITE_DATA>> | W a| -
-| 0xF008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-READ_DATA,outbound_mailbox_15.READ_DATA>> | R a| -
+| 0xF008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-READ_DATA,outbound_mailbox_15.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xF010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-STATUS,outbound_mailbox_15.STATUS>> | R a| -
-| 0xF018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-ERROR_FLAGS,outbound_mailbox_15.ERROR_FLAGS>> | R a| -
+| 0xF018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-ERROR_FLAGS,outbound_mailbox_15.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xF020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-WIRQT,outbound_mailbox_15.WIRQT>> | RW a| -
 | 0xF028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-RIRQT,outbound_mailbox_15.RIRQT>> | RW a| -
 | 0xF030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-IRQS,outbound_mailbox_15.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -326,9 +512,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xF040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-IRQP,outbound_mailbox_15.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xF048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-CTRL,outbound_mailbox_15.CTRL>> | W a| -
 | 0xF800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-WRITE_DATA,inbound_mailbox_15.WRITE_DATA>> | W a| -
-| 0xF808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-READ_DATA,inbound_mailbox_15.READ_DATA>> | R a| -
+| 0xF808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-READ_DATA,inbound_mailbox_15.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0xF810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-STATUS,inbound_mailbox_15.STATUS>> | R a| -
-| 0xF818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-ERROR_FLAGS,inbound_mailbox_15.ERROR_FLAGS>> | R a| -
+| 0xF818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-ERROR_FLAGS,inbound_mailbox_15.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0xF820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-WIRQT,inbound_mailbox_15.WIRQT>> | RW a| -
 | 0xF828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-RIRQT,inbound_mailbox_15.RIRQT>> | RW a| -
 | 0xF830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-IRQS,inbound_mailbox_15.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -336,9 +528,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0xF840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-IRQP,inbound_mailbox_15.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0xF848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-CTRL,inbound_mailbox_15.CTRL>> | W a| -
 | 0x10000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-WRITE_DATA,outbound_mailbox_16.WRITE_DATA>> | W a| -
-| 0x10008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-READ_DATA,outbound_mailbox_16.READ_DATA>> | R a| -
+| 0x10008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-READ_DATA,outbound_mailbox_16.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x10010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-STATUS,outbound_mailbox_16.STATUS>> | R a| -
-| 0x10018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-ERROR_FLAGS,outbound_mailbox_16.ERROR_FLAGS>> | R a| -
+| 0x10018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-ERROR_FLAGS,outbound_mailbox_16.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x10020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-WIRQT,outbound_mailbox_16.WIRQT>> | RW a| -
 | 0x10028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-RIRQT,outbound_mailbox_16.RIRQT>> | RW a| -
 | 0x10030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-IRQS,outbound_mailbox_16.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -346,9 +544,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x10040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-IRQP,outbound_mailbox_16.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x10048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-CTRL,outbound_mailbox_16.CTRL>> | W a| -
 | 0x10800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-WRITE_DATA,inbound_mailbox_16.WRITE_DATA>> | W a| -
-| 0x10808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-READ_DATA,inbound_mailbox_16.READ_DATA>> | R a| -
+| 0x10808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-READ_DATA,inbound_mailbox_16.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x10810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-STATUS,inbound_mailbox_16.STATUS>> | R a| -
-| 0x10818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-ERROR_FLAGS,inbound_mailbox_16.ERROR_FLAGS>> | R a| -
+| 0x10818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-ERROR_FLAGS,inbound_mailbox_16.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x10820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-WIRQT,inbound_mailbox_16.WIRQT>> | RW a| -
 | 0x10828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-RIRQT,inbound_mailbox_16.RIRQT>> | RW a| -
 | 0x10830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-IRQS,inbound_mailbox_16.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -356,9 +560,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x10840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-IRQP,inbound_mailbox_16.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x10848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-CTRL,inbound_mailbox_16.CTRL>> | W a| -
 | 0x11000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-WRITE_DATA,outbound_mailbox_17.WRITE_DATA>> | W a| -
-| 0x11008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-READ_DATA,outbound_mailbox_17.READ_DATA>> | R a| -
+| 0x11008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-READ_DATA,outbound_mailbox_17.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x11010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-STATUS,outbound_mailbox_17.STATUS>> | R a| -
-| 0x11018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-ERROR_FLAGS,outbound_mailbox_17.ERROR_FLAGS>> | R a| -
+| 0x11018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-ERROR_FLAGS,outbound_mailbox_17.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x11020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-WIRQT,outbound_mailbox_17.WIRQT>> | RW a| -
 | 0x11028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-RIRQT,outbound_mailbox_17.RIRQT>> | RW a| -
 | 0x11030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-IRQS,outbound_mailbox_17.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -366,9 +576,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x11040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-IRQP,outbound_mailbox_17.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x11048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-CTRL,outbound_mailbox_17.CTRL>> | W a| -
 | 0x11800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-WRITE_DATA,inbound_mailbox_17.WRITE_DATA>> | W a| -
-| 0x11808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-READ_DATA,inbound_mailbox_17.READ_DATA>> | R a| -
+| 0x11808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-READ_DATA,inbound_mailbox_17.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x11810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-STATUS,inbound_mailbox_17.STATUS>> | R a| -
-| 0x11818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-ERROR_FLAGS,inbound_mailbox_17.ERROR_FLAGS>> | R a| -
+| 0x11818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-ERROR_FLAGS,inbound_mailbox_17.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x11820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-WIRQT,inbound_mailbox_17.WIRQT>> | RW a| -
 | 0x11828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-RIRQT,inbound_mailbox_17.RIRQT>> | RW a| -
 | 0x11830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-IRQS,inbound_mailbox_17.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -376,9 +592,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x11840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-IRQP,inbound_mailbox_17.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x11848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-CTRL,inbound_mailbox_17.CTRL>> | W a| -
 | 0x12000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-WRITE_DATA,outbound_mailbox_18.WRITE_DATA>> | W a| -
-| 0x12008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-READ_DATA,outbound_mailbox_18.READ_DATA>> | R a| -
+| 0x12008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-READ_DATA,outbound_mailbox_18.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x12010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-STATUS,outbound_mailbox_18.STATUS>> | R a| -
-| 0x12018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-ERROR_FLAGS,outbound_mailbox_18.ERROR_FLAGS>> | R a| -
+| 0x12018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-ERROR_FLAGS,outbound_mailbox_18.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x12020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-WIRQT,outbound_mailbox_18.WIRQT>> | RW a| -
 | 0x12028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-RIRQT,outbound_mailbox_18.RIRQT>> | RW a| -
 | 0x12030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-IRQS,outbound_mailbox_18.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -386,9 +608,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x12040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-IRQP,outbound_mailbox_18.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x12048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-CTRL,outbound_mailbox_18.CTRL>> | W a| -
 | 0x12800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-WRITE_DATA,inbound_mailbox_18.WRITE_DATA>> | W a| -
-| 0x12808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-READ_DATA,inbound_mailbox_18.READ_DATA>> | R a| -
+| 0x12808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-READ_DATA,inbound_mailbox_18.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x12810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-STATUS,inbound_mailbox_18.STATUS>> | R a| -
-| 0x12818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-ERROR_FLAGS,inbound_mailbox_18.ERROR_FLAGS>> | R a| -
+| 0x12818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-ERROR_FLAGS,inbound_mailbox_18.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x12820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-WIRQT,inbound_mailbox_18.WIRQT>> | RW a| -
 | 0x12828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-RIRQT,inbound_mailbox_18.RIRQT>> | RW a| -
 | 0x12830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-IRQS,inbound_mailbox_18.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -396,9 +624,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x12840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-IRQP,inbound_mailbox_18.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x12848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-CTRL,inbound_mailbox_18.CTRL>> | W a| -
 | 0x13000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-WRITE_DATA,outbound_mailbox_19.WRITE_DATA>> | W a| -
-| 0x13008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-READ_DATA,outbound_mailbox_19.READ_DATA>> | R a| -
+| 0x13008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-READ_DATA,outbound_mailbox_19.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x13010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-STATUS,outbound_mailbox_19.STATUS>> | R a| -
-| 0x13018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-ERROR_FLAGS,outbound_mailbox_19.ERROR_FLAGS>> | R a| -
+| 0x13018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-ERROR_FLAGS,outbound_mailbox_19.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x13020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-WIRQT,outbound_mailbox_19.WIRQT>> | RW a| -
 | 0x13028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-RIRQT,outbound_mailbox_19.RIRQT>> | RW a| -
 | 0x13030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-IRQS,outbound_mailbox_19.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -406,9 +640,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x13040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-IRQP,outbound_mailbox_19.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x13048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-CTRL,outbound_mailbox_19.CTRL>> | W a| -
 | 0x13800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-WRITE_DATA,inbound_mailbox_19.WRITE_DATA>> | W a| -
-| 0x13808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-READ_DATA,inbound_mailbox_19.READ_DATA>> | R a| -
+| 0x13808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-READ_DATA,inbound_mailbox_19.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x13810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-STATUS,inbound_mailbox_19.STATUS>> | R a| -
-| 0x13818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-ERROR_FLAGS,inbound_mailbox_19.ERROR_FLAGS>> | R a| -
+| 0x13818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-ERROR_FLAGS,inbound_mailbox_19.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x13820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-WIRQT,inbound_mailbox_19.WIRQT>> | RW a| -
 | 0x13828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-RIRQT,inbound_mailbox_19.RIRQT>> | RW a| -
 | 0x13830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-IRQS,inbound_mailbox_19.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -416,9 +656,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x13840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-IRQP,inbound_mailbox_19.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x13848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-CTRL,inbound_mailbox_19.CTRL>> | W a| -
 | 0x14000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-WRITE_DATA,outbound_mailbox_20.WRITE_DATA>> | W a| -
-| 0x14008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-READ_DATA,outbound_mailbox_20.READ_DATA>> | R a| -
+| 0x14008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-READ_DATA,outbound_mailbox_20.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x14010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-STATUS,outbound_mailbox_20.STATUS>> | R a| -
-| 0x14018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-ERROR_FLAGS,outbound_mailbox_20.ERROR_FLAGS>> | R a| -
+| 0x14018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-ERROR_FLAGS,outbound_mailbox_20.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x14020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-WIRQT,outbound_mailbox_20.WIRQT>> | RW a| -
 | 0x14028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-RIRQT,outbound_mailbox_20.RIRQT>> | RW a| -
 | 0x14030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-IRQS,outbound_mailbox_20.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -426,9 +672,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x14040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-IRQP,outbound_mailbox_20.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x14048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-CTRL,outbound_mailbox_20.CTRL>> | W a| -
 | 0x14800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-WRITE_DATA,inbound_mailbox_20.WRITE_DATA>> | W a| -
-| 0x14808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-READ_DATA,inbound_mailbox_20.READ_DATA>> | R a| -
+| 0x14808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-READ_DATA,inbound_mailbox_20.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x14810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-STATUS,inbound_mailbox_20.STATUS>> | R a| -
-| 0x14818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-ERROR_FLAGS,inbound_mailbox_20.ERROR_FLAGS>> | R a| -
+| 0x14818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-ERROR_FLAGS,inbound_mailbox_20.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x14820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-WIRQT,inbound_mailbox_20.WIRQT>> | RW a| -
 | 0x14828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-RIRQT,inbound_mailbox_20.RIRQT>> | RW a| -
 | 0x14830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-IRQS,inbound_mailbox_20.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -436,9 +688,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x14840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-IRQP,inbound_mailbox_20.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x14848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-CTRL,inbound_mailbox_20.CTRL>> | W a| -
 | 0x15000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-WRITE_DATA,outbound_mailbox_21.WRITE_DATA>> | W a| -
-| 0x15008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-READ_DATA,outbound_mailbox_21.READ_DATA>> | R a| -
+| 0x15008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-READ_DATA,outbound_mailbox_21.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x15010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-STATUS,outbound_mailbox_21.STATUS>> | R a| -
-| 0x15018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-ERROR_FLAGS,outbound_mailbox_21.ERROR_FLAGS>> | R a| -
+| 0x15018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-ERROR_FLAGS,outbound_mailbox_21.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x15020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-WIRQT,outbound_mailbox_21.WIRQT>> | RW a| -
 | 0x15028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-RIRQT,outbound_mailbox_21.RIRQT>> | RW a| -
 | 0x15030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-IRQS,outbound_mailbox_21.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -446,9 +704,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x15040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-IRQP,outbound_mailbox_21.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x15048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-CTRL,outbound_mailbox_21.CTRL>> | W a| -
 | 0x15800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-WRITE_DATA,inbound_mailbox_21.WRITE_DATA>> | W a| -
-| 0x15808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-READ_DATA,inbound_mailbox_21.READ_DATA>> | R a| -
+| 0x15808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-READ_DATA,inbound_mailbox_21.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x15810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-STATUS,inbound_mailbox_21.STATUS>> | R a| -
-| 0x15818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-ERROR_FLAGS,inbound_mailbox_21.ERROR_FLAGS>> | R a| -
+| 0x15818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-ERROR_FLAGS,inbound_mailbox_21.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x15820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-WIRQT,inbound_mailbox_21.WIRQT>> | RW a| -
 | 0x15828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-RIRQT,inbound_mailbox_21.RIRQT>> | RW a| -
 | 0x15830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-IRQS,inbound_mailbox_21.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -456,9 +720,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x15840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-IRQP,inbound_mailbox_21.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x15848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-CTRL,inbound_mailbox_21.CTRL>> | W a| -
 | 0x16000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-WRITE_DATA,outbound_mailbox_22.WRITE_DATA>> | W a| -
-| 0x16008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-READ_DATA,outbound_mailbox_22.READ_DATA>> | R a| -
+| 0x16008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-READ_DATA,outbound_mailbox_22.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x16010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-STATUS,outbound_mailbox_22.STATUS>> | R a| -
-| 0x16018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-ERROR_FLAGS,outbound_mailbox_22.ERROR_FLAGS>> | R a| -
+| 0x16018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-ERROR_FLAGS,outbound_mailbox_22.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x16020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-WIRQT,outbound_mailbox_22.WIRQT>> | RW a| -
 | 0x16028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-RIRQT,outbound_mailbox_22.RIRQT>> | RW a| -
 | 0x16030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-IRQS,outbound_mailbox_22.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -466,9 +736,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x16040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-IRQP,outbound_mailbox_22.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x16048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-CTRL,outbound_mailbox_22.CTRL>> | W a| -
 | 0x16800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-WRITE_DATA,inbound_mailbox_22.WRITE_DATA>> | W a| -
-| 0x16808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-READ_DATA,inbound_mailbox_22.READ_DATA>> | R a| -
+| 0x16808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-READ_DATA,inbound_mailbox_22.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x16810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-STATUS,inbound_mailbox_22.STATUS>> | R a| -
-| 0x16818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-ERROR_FLAGS,inbound_mailbox_22.ERROR_FLAGS>> | R a| -
+| 0x16818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-ERROR_FLAGS,inbound_mailbox_22.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x16820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-WIRQT,inbound_mailbox_22.WIRQT>> | RW a| -
 | 0x16828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-RIRQT,inbound_mailbox_22.RIRQT>> | RW a| -
 | 0x16830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-IRQS,inbound_mailbox_22.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -476,9 +752,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x16840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-IRQP,inbound_mailbox_22.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x16848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-CTRL,inbound_mailbox_22.CTRL>> | W a| -
 | 0x17000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-WRITE_DATA,outbound_mailbox_23.WRITE_DATA>> | W a| -
-| 0x17008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-READ_DATA,outbound_mailbox_23.READ_DATA>> | R a| -
+| 0x17008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-READ_DATA,outbound_mailbox_23.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x17010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-STATUS,outbound_mailbox_23.STATUS>> | R a| -
-| 0x17018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-ERROR_FLAGS,outbound_mailbox_23.ERROR_FLAGS>> | R a| -
+| 0x17018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-ERROR_FLAGS,outbound_mailbox_23.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x17020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-WIRQT,outbound_mailbox_23.WIRQT>> | RW a| -
 | 0x17028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-RIRQT,outbound_mailbox_23.RIRQT>> | RW a| -
 | 0x17030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-IRQS,outbound_mailbox_23.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -486,9 +768,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x17040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-IRQP,outbound_mailbox_23.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x17048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-CTRL,outbound_mailbox_23.CTRL>> | W a| -
 | 0x17800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-WRITE_DATA,inbound_mailbox_23.WRITE_DATA>> | W a| -
-| 0x17808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-READ_DATA,inbound_mailbox_23.READ_DATA>> | R a| -
+| 0x17808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-READ_DATA,inbound_mailbox_23.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x17810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-STATUS,inbound_mailbox_23.STATUS>> | R a| -
-| 0x17818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-ERROR_FLAGS,inbound_mailbox_23.ERROR_FLAGS>> | R a| -
+| 0x17818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-ERROR_FLAGS,inbound_mailbox_23.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x17820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-WIRQT,inbound_mailbox_23.WIRQT>> | RW a| -
 | 0x17828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-RIRQT,inbound_mailbox_23.RIRQT>> | RW a| -
 | 0x17830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-IRQS,inbound_mailbox_23.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -496,9 +784,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x17840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-IRQP,inbound_mailbox_23.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x17848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-CTRL,inbound_mailbox_23.CTRL>> | W a| -
 | 0x18000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-WRITE_DATA,outbound_mailbox_24.WRITE_DATA>> | W a| -
-| 0x18008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-READ_DATA,outbound_mailbox_24.READ_DATA>> | R a| -
+| 0x18008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-READ_DATA,outbound_mailbox_24.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x18010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-STATUS,outbound_mailbox_24.STATUS>> | R a| -
-| 0x18018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-ERROR_FLAGS,outbound_mailbox_24.ERROR_FLAGS>> | R a| -
+| 0x18018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-ERROR_FLAGS,outbound_mailbox_24.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x18020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-WIRQT,outbound_mailbox_24.WIRQT>> | RW a| -
 | 0x18028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-RIRQT,outbound_mailbox_24.RIRQT>> | RW a| -
 | 0x18030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-IRQS,outbound_mailbox_24.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -506,9 +800,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x18040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-IRQP,outbound_mailbox_24.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x18048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-CTRL,outbound_mailbox_24.CTRL>> | W a| -
 | 0x18800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-WRITE_DATA,inbound_mailbox_24.WRITE_DATA>> | W a| -
-| 0x18808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-READ_DATA,inbound_mailbox_24.READ_DATA>> | R a| -
+| 0x18808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-READ_DATA,inbound_mailbox_24.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x18810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-STATUS,inbound_mailbox_24.STATUS>> | R a| -
-| 0x18818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-ERROR_FLAGS,inbound_mailbox_24.ERROR_FLAGS>> | R a| -
+| 0x18818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-ERROR_FLAGS,inbound_mailbox_24.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x18820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-WIRQT,inbound_mailbox_24.WIRQT>> | RW a| -
 | 0x18828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-RIRQT,inbound_mailbox_24.RIRQT>> | RW a| -
 | 0x18830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-IRQS,inbound_mailbox_24.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -516,9 +816,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x18840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-IRQP,inbound_mailbox_24.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x18848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-CTRL,inbound_mailbox_24.CTRL>> | W a| -
 | 0x19000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-WRITE_DATA,outbound_mailbox_25.WRITE_DATA>> | W a| -
-| 0x19008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-READ_DATA,outbound_mailbox_25.READ_DATA>> | R a| -
+| 0x19008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-READ_DATA,outbound_mailbox_25.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x19010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-STATUS,outbound_mailbox_25.STATUS>> | R a| -
-| 0x19018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-ERROR_FLAGS,outbound_mailbox_25.ERROR_FLAGS>> | R a| -
+| 0x19018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-ERROR_FLAGS,outbound_mailbox_25.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x19020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-WIRQT,outbound_mailbox_25.WIRQT>> | RW a| -
 | 0x19028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-RIRQT,outbound_mailbox_25.RIRQT>> | RW a| -
 | 0x19030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-IRQS,outbound_mailbox_25.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -526,9 +832,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x19040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-IRQP,outbound_mailbox_25.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x19048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-CTRL,outbound_mailbox_25.CTRL>> | W a| -
 | 0x19800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-WRITE_DATA,inbound_mailbox_25.WRITE_DATA>> | W a| -
-| 0x19808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-READ_DATA,inbound_mailbox_25.READ_DATA>> | R a| -
+| 0x19808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-READ_DATA,inbound_mailbox_25.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x19810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-STATUS,inbound_mailbox_25.STATUS>> | R a| -
-| 0x19818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-ERROR_FLAGS,inbound_mailbox_25.ERROR_FLAGS>> | R a| -
+| 0x19818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-ERROR_FLAGS,inbound_mailbox_25.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x19820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-WIRQT,inbound_mailbox_25.WIRQT>> | RW a| -
 | 0x19828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-RIRQT,inbound_mailbox_25.RIRQT>> | RW a| -
 | 0x19830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-IRQS,inbound_mailbox_25.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -536,9 +848,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x19840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-IRQP,inbound_mailbox_25.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x19848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-CTRL,inbound_mailbox_25.CTRL>> | W a| -
 | 0x1A000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-WRITE_DATA,outbound_mailbox_26.WRITE_DATA>> | W a| -
-| 0x1A008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-READ_DATA,outbound_mailbox_26.READ_DATA>> | R a| -
+| 0x1A008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-READ_DATA,outbound_mailbox_26.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1A010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-STATUS,outbound_mailbox_26.STATUS>> | R a| -
-| 0x1A018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-ERROR_FLAGS,outbound_mailbox_26.ERROR_FLAGS>> | R a| -
+| 0x1A018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-ERROR_FLAGS,outbound_mailbox_26.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1A020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-WIRQT,outbound_mailbox_26.WIRQT>> | RW a| -
 | 0x1A028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-RIRQT,outbound_mailbox_26.RIRQT>> | RW a| -
 | 0x1A030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-IRQS,outbound_mailbox_26.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -546,9 +864,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1A040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-IRQP,outbound_mailbox_26.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1A048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-CTRL,outbound_mailbox_26.CTRL>> | W a| -
 | 0x1A800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-WRITE_DATA,inbound_mailbox_26.WRITE_DATA>> | W a| -
-| 0x1A808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-READ_DATA,inbound_mailbox_26.READ_DATA>> | R a| -
+| 0x1A808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-READ_DATA,inbound_mailbox_26.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1A810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-STATUS,inbound_mailbox_26.STATUS>> | R a| -
-| 0x1A818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-ERROR_FLAGS,inbound_mailbox_26.ERROR_FLAGS>> | R a| -
+| 0x1A818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-ERROR_FLAGS,inbound_mailbox_26.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1A820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-WIRQT,inbound_mailbox_26.WIRQT>> | RW a| -
 | 0x1A828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-RIRQT,inbound_mailbox_26.RIRQT>> | RW a| -
 | 0x1A830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-IRQS,inbound_mailbox_26.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -556,9 +880,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1A840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-IRQP,inbound_mailbox_26.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1A848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-CTRL,inbound_mailbox_26.CTRL>> | W a| -
 | 0x1B000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-WRITE_DATA,outbound_mailbox_27.WRITE_DATA>> | W a| -
-| 0x1B008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-READ_DATA,outbound_mailbox_27.READ_DATA>> | R a| -
+| 0x1B008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-READ_DATA,outbound_mailbox_27.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1B010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-STATUS,outbound_mailbox_27.STATUS>> | R a| -
-| 0x1B018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-ERROR_FLAGS,outbound_mailbox_27.ERROR_FLAGS>> | R a| -
+| 0x1B018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-ERROR_FLAGS,outbound_mailbox_27.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1B020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-WIRQT,outbound_mailbox_27.WIRQT>> | RW a| -
 | 0x1B028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-RIRQT,outbound_mailbox_27.RIRQT>> | RW a| -
 | 0x1B030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-IRQS,outbound_mailbox_27.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -566,9 +896,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1B040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-IRQP,outbound_mailbox_27.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1B048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-CTRL,outbound_mailbox_27.CTRL>> | W a| -
 | 0x1B800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-WRITE_DATA,inbound_mailbox_27.WRITE_DATA>> | W a| -
-| 0x1B808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-READ_DATA,inbound_mailbox_27.READ_DATA>> | R a| -
+| 0x1B808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-READ_DATA,inbound_mailbox_27.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1B810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-STATUS,inbound_mailbox_27.STATUS>> | R a| -
-| 0x1B818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-ERROR_FLAGS,inbound_mailbox_27.ERROR_FLAGS>> | R a| -
+| 0x1B818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-ERROR_FLAGS,inbound_mailbox_27.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1B820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-WIRQT,inbound_mailbox_27.WIRQT>> | RW a| -
 | 0x1B828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-RIRQT,inbound_mailbox_27.RIRQT>> | RW a| -
 | 0x1B830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-IRQS,inbound_mailbox_27.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -576,9 +912,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1B840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-IRQP,inbound_mailbox_27.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1B848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-CTRL,inbound_mailbox_27.CTRL>> | W a| -
 | 0x1C000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-WRITE_DATA,outbound_mailbox_28.WRITE_DATA>> | W a| -
-| 0x1C008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-READ_DATA,outbound_mailbox_28.READ_DATA>> | R a| -
+| 0x1C008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-READ_DATA,outbound_mailbox_28.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1C010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-STATUS,outbound_mailbox_28.STATUS>> | R a| -
-| 0x1C018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-ERROR_FLAGS,outbound_mailbox_28.ERROR_FLAGS>> | R a| -
+| 0x1C018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-ERROR_FLAGS,outbound_mailbox_28.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1C020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-WIRQT,outbound_mailbox_28.WIRQT>> | RW a| -
 | 0x1C028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-RIRQT,outbound_mailbox_28.RIRQT>> | RW a| -
 | 0x1C030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-IRQS,outbound_mailbox_28.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -586,9 +928,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1C040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-IRQP,outbound_mailbox_28.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1C048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-CTRL,outbound_mailbox_28.CTRL>> | W a| -
 | 0x1C800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-WRITE_DATA,inbound_mailbox_28.WRITE_DATA>> | W a| -
-| 0x1C808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-READ_DATA,inbound_mailbox_28.READ_DATA>> | R a| -
+| 0x1C808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-READ_DATA,inbound_mailbox_28.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1C810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-STATUS,inbound_mailbox_28.STATUS>> | R a| -
-| 0x1C818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-ERROR_FLAGS,inbound_mailbox_28.ERROR_FLAGS>> | R a| -
+| 0x1C818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-ERROR_FLAGS,inbound_mailbox_28.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1C820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-WIRQT,inbound_mailbox_28.WIRQT>> | RW a| -
 | 0x1C828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-RIRQT,inbound_mailbox_28.RIRQT>> | RW a| -
 | 0x1C830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-IRQS,inbound_mailbox_28.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -596,9 +944,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1C840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-IRQP,inbound_mailbox_28.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1C848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-CTRL,inbound_mailbox_28.CTRL>> | W a| -
 | 0x1D000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-WRITE_DATA,outbound_mailbox_29.WRITE_DATA>> | W a| -
-| 0x1D008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-READ_DATA,outbound_mailbox_29.READ_DATA>> | R a| -
+| 0x1D008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-READ_DATA,outbound_mailbox_29.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1D010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-STATUS,outbound_mailbox_29.STATUS>> | R a| -
-| 0x1D018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-ERROR_FLAGS,outbound_mailbox_29.ERROR_FLAGS>> | R a| -
+| 0x1D018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-ERROR_FLAGS,outbound_mailbox_29.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1D020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-WIRQT,outbound_mailbox_29.WIRQT>> | RW a| -
 | 0x1D028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-RIRQT,outbound_mailbox_29.RIRQT>> | RW a| -
 | 0x1D030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-IRQS,outbound_mailbox_29.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -606,9 +960,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1D040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-IRQP,outbound_mailbox_29.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1D048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-CTRL,outbound_mailbox_29.CTRL>> | W a| -
 | 0x1D800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-WRITE_DATA,inbound_mailbox_29.WRITE_DATA>> | W a| -
-| 0x1D808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-READ_DATA,inbound_mailbox_29.READ_DATA>> | R a| -
+| 0x1D808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-READ_DATA,inbound_mailbox_29.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1D810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-STATUS,inbound_mailbox_29.STATUS>> | R a| -
-| 0x1D818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-ERROR_FLAGS,inbound_mailbox_29.ERROR_FLAGS>> | R a| -
+| 0x1D818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-ERROR_FLAGS,inbound_mailbox_29.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1D820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-WIRQT,inbound_mailbox_29.WIRQT>> | RW a| -
 | 0x1D828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-RIRQT,inbound_mailbox_29.RIRQT>> | RW a| -
 | 0x1D830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-IRQS,inbound_mailbox_29.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -616,9 +976,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1D840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-IRQP,inbound_mailbox_29.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1D848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-CTRL,inbound_mailbox_29.CTRL>> | W a| -
 | 0x1E000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-WRITE_DATA,outbound_mailbox_30.WRITE_DATA>> | W a| -
-| 0x1E008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-READ_DATA,outbound_mailbox_30.READ_DATA>> | R a| -
+| 0x1E008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-READ_DATA,outbound_mailbox_30.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1E010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-STATUS,outbound_mailbox_30.STATUS>> | R a| -
-| 0x1E018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-ERROR_FLAGS,outbound_mailbox_30.ERROR_FLAGS>> | R a| -
+| 0x1E018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-ERROR_FLAGS,outbound_mailbox_30.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1E020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-WIRQT,outbound_mailbox_30.WIRQT>> | RW a| -
 | 0x1E028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-RIRQT,outbound_mailbox_30.RIRQT>> | RW a| -
 | 0x1E030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-IRQS,outbound_mailbox_30.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -626,9 +992,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1E040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-IRQP,outbound_mailbox_30.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1E048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-CTRL,outbound_mailbox_30.CTRL>> | W a| -
 | 0x1E800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-WRITE_DATA,inbound_mailbox_30.WRITE_DATA>> | W a| -
-| 0x1E808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-READ_DATA,inbound_mailbox_30.READ_DATA>> | R a| -
+| 0x1E808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-READ_DATA,inbound_mailbox_30.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1E810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-STATUS,inbound_mailbox_30.STATUS>> | R a| -
-| 0x1E818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-ERROR_FLAGS,inbound_mailbox_30.ERROR_FLAGS>> | R a| -
+| 0x1E818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-ERROR_FLAGS,inbound_mailbox_30.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1E820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-WIRQT,inbound_mailbox_30.WIRQT>> | RW a| -
 | 0x1E828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-RIRQT,inbound_mailbox_30.RIRQT>> | RW a| -
 | 0x1E830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-IRQS,inbound_mailbox_30.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -636,9 +1008,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1E840 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-IRQP,inbound_mailbox_30.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1E848 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-CTRL,inbound_mailbox_30.CTRL>> | W a| -
 | 0x1F000 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-WRITE_DATA,outbound_mailbox_31.WRITE_DATA>> | W a| -
-| 0x1F008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-READ_DATA,outbound_mailbox_31.READ_DATA>> | R a| -
+| 0x1F008 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-READ_DATA,outbound_mailbox_31.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1F010 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-STATUS,outbound_mailbox_31.STATUS>> | R a| -
-| 0x1F018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-ERROR_FLAGS,outbound_mailbox_31.ERROR_FLAGS>> | R a| -
+| 0x1F018 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-ERROR_FLAGS,outbound_mailbox_31.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1F020 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-WIRQT,outbound_mailbox_31.WIRQT>> | RW a| -
 | 0x1F028 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-RIRQT,outbound_mailbox_31.RIRQT>> | RW a| -
 | 0x1F030 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-IRQS,outbound_mailbox_31.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -646,9 +1024,15 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x1F040 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-IRQP,outbound_mailbox_31.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
 | 0x1F048 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-CTRL,outbound_mailbox_31.CTRL>> | W a| -
 | 0x1F800 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-WRITE_DATA,inbound_mailbox_31.WRITE_DATA>> | W a| -
-| 0x1F808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-READ_DATA,inbound_mailbox_31.READ_DATA>> | R a| -
+| 0x1F808 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-READ_DATA,inbound_mailbox_31.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x1F810 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-STATUS,inbound_mailbox_31.STATUS>> | R a| -
-| 0x1F818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-ERROR_FLAGS,inbound_mailbox_31.ERROR_FLAGS>> | R a| -
+| 0x1F818 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-ERROR_FLAGS,inbound_mailbox_31.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x1F820 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-WIRQT,inbound_mailbox_31.WIRQT>> | RW a| -
 | 0x1F828 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-RIRQT,inbound_mailbox_31.RIRQT>> | RW a| -
 | 0x1F830 | <<reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-IRQS,inbound_mailbox_31.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -663,7 +1047,9 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-READ_DATA]
@@ -791,7 +1177,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-READ_DATA]
@@ -919,7 +1307,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-READ_DATA]
@@ -1047,7 +1437,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-READ_DATA]
@@ -1175,7 +1567,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-READ_DATA]
@@ -1303,7 +1697,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-READ_DATA]
@@ -1431,7 +1827,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-READ_DATA]
@@ -1559,7 +1957,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-READ_DATA]
@@ -1687,7 +2087,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-READ_DATA]
@@ -1815,7 +2217,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-READ_DATA]
@@ -1943,7 +2347,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-READ_DATA]
@@ -2071,7 +2477,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-READ_DATA]
@@ -2199,7 +2607,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-READ_DATA]
@@ -2327,7 +2737,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-READ_DATA]
@@ -2455,7 +2867,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-READ_DATA]
@@ -2583,7 +2997,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-READ_DATA]
@@ -2711,7 +3127,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-READ_DATA]
@@ -2839,7 +3257,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-READ_DATA]
@@ -2967,7 +3387,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-READ_DATA]
@@ -3095,7 +3517,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-READ_DATA]
@@ -3223,7 +3647,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-READ_DATA]
@@ -3351,7 +3777,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-READ_DATA]
@@ -3479,7 +3907,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-READ_DATA]
@@ -3607,7 +4037,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-READ_DATA]
@@ -3735,7 +4167,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-READ_DATA]
@@ -3863,7 +4297,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-READ_DATA]
@@ -3991,7 +4427,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-READ_DATA]
@@ -4119,7 +4557,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-READ_DATA]
@@ -4247,7 +4687,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-READ_DATA]
@@ -4375,7 +4817,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-READ_DATA]
@@ -4503,7 +4947,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-READ_DATA]
@@ -4631,7 +5077,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-READ_DATA]
@@ -4759,7 +5207,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-READ_DATA]
@@ -4887,7 +5337,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-READ_DATA]
@@ -5015,7 +5467,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-READ_DATA]
@@ -5143,7 +5597,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-READ_DATA]
@@ -5271,7 +5727,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-READ_DATA]
@@ -5399,7 +5857,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-READ_DATA]
@@ -5527,7 +5987,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-READ_DATA]
@@ -5655,7 +6117,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-READ_DATA]
@@ -5783,7 +6247,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-READ_DATA]
@@ -5911,7 +6377,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-READ_DATA]
@@ -6039,7 +6507,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-READ_DATA]
@@ -6167,7 +6637,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-READ_DATA]
@@ -6295,7 +6767,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-READ_DATA]
@@ -6423,7 +6897,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-READ_DATA]
@@ -6551,7 +7027,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-READ_DATA]
@@ -6679,7 +7157,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-READ_DATA]
@@ -6807,7 +7287,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-READ_DATA]
@@ -6935,7 +7417,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-READ_DATA]
@@ -7063,7 +7547,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-READ_DATA]
@@ -7191,7 +7677,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-READ_DATA]
@@ -7319,7 +7807,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-READ_DATA]
@@ -7447,7 +7937,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-READ_DATA]
@@ -7575,7 +8067,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-READ_DATA]
@@ -7703,7 +8197,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-READ_DATA]
@@ -7831,7 +8327,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-READ_DATA]
@@ -7959,7 +8457,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-READ_DATA]
@@ -8087,7 +8587,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-READ_DATA]
@@ -8215,7 +8717,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-READ_DATA]
@@ -8343,7 +8847,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-READ_DATA]
@@ -8471,7 +8977,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-READ_DATA]
@@ -8599,7 +9107,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-READ_DATA]
@@ -8727,7 +9237,9 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-READ_DATA]

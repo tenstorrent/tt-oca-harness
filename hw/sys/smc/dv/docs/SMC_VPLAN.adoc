@@ -1544,7 +1544,9 @@ recorded.
 with 0xBADCAB1E, and after it is cleared the window answers OKAY with every register and event kept.
 |`smc_i2c_ctrl_intr_w1c_test` |3 |Instance 0 `CMD_COMPLETE`, `SDA_UNSTABLE` and `SCL_INTERFERENCE` are
 set by their bus event, cleared by a written 1, and `SCL_INTERFERENCE` reaches `tb_i2c_irq` only
-once enabled.
+once enabled; on instances 1 and 2 the `INTR_STATE`, `CONTROLLER_EVENTS` and `TARGET_EVENTS` flags
+are set and cleared per written 1, `CMD_COMPLETE` is gated onto `tb_i2c_irq`, and `SMBUS_CTRL`
+drives and `SMBUS_STATUS` follows the shared SMBus suspend and alert lines.
 |`smc_i2c_ctrl_nack_modes_test` |3 |The I2C0 controller sets `NACK` and `CONTROLLER_HALT` on address
 and later data NACKs, honours `NAKOK` and the `HOST_NACK_HANDLER_TIMEOUT` enable, and every leg ends
 with the events cleared.
@@ -1608,6 +1610,10 @@ transfers at the same time on separate pad pairs, each pad pair carries only its
 bytes with the programmed timing difference, and the register windows, FIFO levels, `CMD_COMPLETE`
 and NACK state stay per instance.
 |`smc_i2c_intr_mask_test` |3 |The same interrupt-enable placement, on I2C: INTR_ENABLE must mask the output, not the set path.
+|`smc_i2c1_target_ack_ctrl_test` |3 |Targets I2C1 and I2C2, driven by the other instance on the
+shared bus, ACK exactly the bytes each `TARGET_ACK_CTRL.NBYTES` reload grants, hold with the pending
+byte in `ACQ_FIFO_NEXT_DATA`, and on a `TARGET_ACK_CTRL.NACK` write NACK the byte, record an error
+entry and count the transaction in `TARGET_NACK_COUNT`.
 |===
 
 ==== I3C
@@ -1663,7 +1669,7 @@ reset, access type and write-one-to-clear behaviour in each instance.
 |`smc_uart_baud_word_parity_format_test` |2 |UART0 divisor x frame-format sweep decoded on the TX pad and driven on the RX pad, with the parity and framing detectors shown to assert.
 |`smc_uart_char_loopback_test` |2 |Characters through every UART own loopback: THR to RBR, the write-only FCR read back through IIR, the interrupt identification, and the MSR levels and deltas the MCR outputs drive.
 |`smc_uart_core_mode_select_test` |3 |The UART mode selectors no other leaf moves: the receive path with the FIFOs off, DMA mode 1 with the reception timeout below the trigger level, and line loopback with a transmit FIFO burst.
-|`smc_uart_error_conditions_test` |2 |UART parity / overrun / break line-status proofs.
+|`smc_uart_error_conditions_test` |2 |UART0 parity / overrun / break and UART1-3 line status, loopback, THRE and FIFO access.
 |`smc_uart_extremes_misc_test` |3 |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |2 |UART0 IER gating, natural clears, and multi-source IIR priority.
 |`smc_uart_log_engine_error_boundary_test` |3 |Run log-engine CSR R/W depth as the error/boundary checker.
@@ -30697,12 +30703,18 @@ after the clear is printed.
 
 *Source Module*: `smc_i2c_ctrl_intr_w1c_test`
 
-*BFM / Model*: ocah_axi_vip (AXI) on SYS_IN (SEP_IN frontdoor); I2C protocol VIP EEPROM target at
-0x50 on the instance 0 pads (`tb_i2c0_scl`, `tb_i2c0_sda`, `tb_i2c0_scl_i`); a second I2C protocol
-VIP master used as a pad injector that pulls SCL or SDA low; the I2C wire monitor on the same pads;
-`tb_i2c_irq[2:0]` (instance 0 on bit 0); `clk_smc_i`; I2C0 registers CTRL, TIMING0-4, OVRD, FDATA,
-FIFO_CTRL, STATUS, CONTROLLER_EVENTS, INTR_STATE, INTR_ENABLE and the I2C0 wrapper control register;
-`SMC_BASE_CONFIG.CLOCK_GATE_CONTROL.i2c_cg_en`; I2C0 GPIO/LSIO pad routing armed by the sequence.
+*BFM / Model*: ocah_axi_vip (AXI) on SYS_IN (SEP_IN frontdoor); `+smc_i2c_shared_bus`, which joins
+the SCL, SDA, SMBus alert and SMBus suspend lines of instances 0, 1 and 2 on one open-drain bus; I2C
+protocol VIP EEPROM target at 0x50 on that bus (`tb_i2c0_scl`, `tb_i2c0_sda`, `tb_i2c0_scl_i`); a
+second I2C protocol VIP master used as a pad injector that pulls SCL or SDA low, and a third used as
+the bench controller that holds SCL low; the I2C wire monitor on the same bus; the shared SMBus line
+nets `tb_i2c_smbalert`, `tb_i2c_smbsus` and the per-instance pull nets
+`tb_i2c<i>_smbalert_dut_low`, `tb_i2c<i>_smbsus_dut_low`; `tb_i2c_irq[2:0]` (instance k on bit k);
+`clk_smc_i`; registers CTRL, TIMING0-4, OVRD, FDATA, FIFO_CTRL, STATUS, RDATA, TXDATA, ACQDATA,
+TARGET_ID, TIMEOUT_CTRL, HOST_NACK_HANDLER_TIMEOUT, CONTROLLER_EVENTS, TARGET_EVENTS, INTR_STATE,
+INTR_ENABLE, INTR_TEST, SMBUS_CTRL, SMBUS_STATUS of instances 0-2 and their wrapper control registers;
+`SMC_BASE_CONFIG.CLOCK_GATE_CONTROL.i2c_cg_en`; I2C0-I2C2 GPIO/LSIO pad routing armed by the
+sequence.
 
 *Run mode*: one testlist entry in `testlists/i2c.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
 `timeout_sec` 1800; tags `ci`, `i2c`; seed 1; tool Verilator (cocotb).
@@ -30712,7 +30724,9 @@ draws nothing from the seed.
 
 *Objective*: Instance 0 `CMD_COMPLETE`, `SDA_UNSTABLE` and `SCL_INTERFERENCE` are
 set by their bus event, cleared by a written 1, and `SCL_INTERFERENCE` reaches `tb_i2c_irq` only
-once enabled.
+once enabled; on instances 1 and 2 the `INTR_STATE`, `CONTROLLER_EVENTS` and `TARGET_EVENTS` flags
+are set and cleared per written 1, `CMD_COMPLETE` is gated onto `tb_i2c_irq`, and `SMBUS_CTRL`
+drives and `SMBUS_STATUS` follows the shared SMBus suspend and alert lines.
 
 *Test Coverage*:
 
@@ -30727,6 +30741,31 @@ once enabled.
 * `INTR_ENABLE.SCL_INTERFERENCE` gates the flag onto the instance 0 interrupt line: `tb_i2c_irq`
   stays 0b000 while the flag is set and the enable is clear, reads 0b001 once enabled and 0b000
   after the clear (`i2c.rdl`, `interrupts.adoc`).
+* On I2C1 and I2C2, `INTR_TEST` 0x000FE3E8 sets every write 1 pulse field of `INTR_STATE`, and the
+  partial writes 0x000AA2A0 and 0x00054148 clear only the written bits; each RW `INTR_TEST` field
+  (`FMT_THRESHOLD`, `RX_THRESHOLD`, `ACQ_THRESHOLD`, `CONTROLLER_HALT`, `TX_STRETCH`,
+  `TX_THRESHOLD`, `ACQ_STRETCH`) holds its status bit through a written 1 and releases it at
+  `INTR_TEST` 0 (`i2c.adoc`).
+* `INTR_ENABLE.CMD_COMPLETE` gates a forced `CMD_COMPLETE` of instance k onto `tb_i2c_irq` bit k
+  only (`i2c.adoc`, `interrupts.adoc`).
+* As controller each of I2C1 and I2C2 sets `CONTROLLER_EVENTS.NACK` and `CONTROLLER_HALT` on an
+  absent-address NACK without issuing the next entry, passes the same byte with `FDATA.NAKOK`, and
+  after an unserviced NACK past `HOST_NACK_HANDLER_TIMEOUT` reads `CONTROLLER_EVENTS` 0x3 and STOPs
+  the bus; the two flags clear one written 1 at a time, `CONTROLLER_HALT` holding until both are 0.
+* As target with `CTRL.TX_STRETCH_CTRL_EN` each instance sets `TARGET_EVENTS.TX_PENDING`,
+  `START_DETECT` and `TX_STRETCH` on a READ from the other instance and sends its byte only after
+  the written 1; `STOP_DETECT` records the STOP; a bench SCL hold of twice `TIMEOUT_CTRL.VAL` sets
+  `TARGET_EVENTS.BUS_TIMEOUT`, cleared by a written 1 (`i2c.adoc`); `INTR_STATE.TX_STRETCH` with the
+  flag set and after the clear is logged without an expected value.
+* `TARGET_EVENTS.ARBITRATION_LOST` after a lost arbitration between I2C0 and the other instance, and
+  `INTR_STATE.UNEXP_STOP` with the ACQ entries after a STOP sent before the target NACK, are logged
+  without an expected value; a written 1 clears each when it reads 1, and a normally terminated read
+  leaves `UNEXP_STOP` 0.
+* `SMBUS_CTRL.SMBSUS` of the controller-direction instance pulls the shared suspend line low and the
+  target-direction I2C1 reads `SMBUS_STATUS.SMBSUS` while it is held; `SMBUS_CTRL.SMBALERT` of a
+  target pulls the shared alert line low and clears itself when the other instance addresses it;
+  with `SMBUS_EN` the I2C1 controller sets `SMBUS_STATUS.SMBALERT` and `INTR_STATE.SMBALERT`, and
+  without it `INTR_STATE.SMBALERT` stays 0 (`i2c.adoc`, `i2c_ctrl.adoc`).
 
 *Test Procedure*:
 
@@ -30762,6 +30801,43 @@ once enabled.
   Then write `INTR_ENABLE.SCL_INTERFERENCE` and read it back; poll `tb_i2c_irq` bit 0 to 1 with bits
   2:1 at 0; write 1 to the flag, require it 0 and poll `tb_i2c_irq` to 0b000; halt and recover the
   bus.
+. Require `+smc_i2c_shared_bus`; clear the I2C0 `INTR_ENABLE`, arm the I2C1 and I2C2 pads, poll the
+  bus idle, program their TIMING0-4 as for I2C0, OVRD off, `INTR_ENABLE` 0, clear their FIFOs,
+  `CONTROLLER_EVENTS`, `TARGET_EVENTS` and `INTR_STATE`, and require `INTR_STATE` 0 and
+  `tb_i2c_irq[2:1]` 0b00.
+. For k = 1, 2 write `INTR_TEST` 0x000FE3E8 and read `INTR_STATE` of k and of the other instance,
+  then write `INTR_STATE` 0x000AA2A0 and 0x00054148, reading after each.
+. For k = 1, 2 and each RW `INTR_TEST` field f write `INTR_TEST` 1<<f, read, write `INTR_STATE`
+  1<<f, read, write `INTR_TEST` 0, read.
+. For k = 1, 2 write `INTR_TEST` 0x200, sample `tb_i2c_irq` twice 200 cycles apart, write
+  `INTR_ENABLE` 0x200 and poll `tb_i2c_irq` to 1<<k, write `INTR_STATE` 0x200 and poll it to 0b000.
+. For controller k = 1, 2 queue START + 0x51 write and a data byte, poll `CONTROLLER_EVENTS`, read
+  `INTR_STATE` and STATUS; reset the format FIFO and write `CONTROLLER_EVENTS` 0x1, read both; clear
+  `CMD_COMPLETE`, queue 0x51 with START, STOP and `NAKOK`, poll `CMD_COMPLETE` and HOSTIDLE and read
+  `CONTROLLER_EVENTS` and `INTR_STATE`.
+. For controller k = 1, 2 with `HOST_NACK_HANDLER_TIMEOUT` EN and VAL 256 queue the same write,
+  poll `CONTROLLER_EVENTS` and the wire monitor for `UNHANDLED_NACK_TIMEOUT` and a STOP within VAL
+  peripheral clocks plus 5 us; reset the format FIFO, write 0x1 and read, write 0x2 and read.
+. For target k = 1, 2 with `TX_STRETCH_CTRL_EN` and TXDATA 0xA7, the other instance reads one byte
+  with STOP; poll `TARGET_EVENTS`, read `TX_STRETCH` and the controller RX FIFO state, write 0x1,
+  poll and pop RDATA, poll the wire STOP, read `TARGET_EVENTS`, write 0x18 and read both.
+. For target k = 1, 2 with `TIMEOUT_CTRL` EN, MODE 1 and VAL of 8 us the bench controller reads
+  from k, clears `TX_PENDING` and clocks data bit 7, then holds SCL low for 2 VAL; poll
+  `TARGET_EVENTS.BUS_TIMEOUT`, log `TX_STRETCH`, write 0x2 and read both, recover the bus. Then
+  queue a READ of 0x3C / 0x3F (k's second address) on the other instance and of k's first address on
+  I2C0, enable both, release `TX_PENDING`, poll until each controller is idle or halted and log
+  `TARGET_EVENTS.ARBITRATION_LOST` and which controller lost; write 0x4 when it reads 1.
+. For target k = 1, 2 with `ACQ_START_STOP_EN` the other instance reads one byte with `RCONT` and
+  STOP; log `UNEXP_STOP` and drain ACQDATA, write `INTR_STATE` 0x2000 and read; repeat with a
+  normally terminated read and read `UNEXP_STOP`.
+. I2C1 controller: write `SMBSUS` 1 and 0, polling the shared suspend line to 0 and 1; I2C1 target
+  with I2C0 holding the suspend line: poll `SMBUS_STATUS.SMBSUS` to 1, release, poll to 0; I2C2
+  controller: write `SMBSUS` 1 and 0, reading back each and polling the line.
+. I2C1 target with `SMBALERT` 1: poll the alert line to 0, let I2C2 address I2C1, read `SMBUS_CTRL`
+  and poll the line to 1; I2C1 controller with `SMBUS_EN` and I2C0 holding the alert line: poll
+  `SMBUS_STATUS` and `INTR_STATE.SMBALERT`, release the line by I2C1 addressing the I2C0 target at
+  0x2A, write 0x8000 and read; repeat without
+  `SMBUS_EN`; I2C2 target with `SMBALERT` 1 addressed by I2C1: read `SMBUS_CTRL`.
 . Print the list of bounded waits and check the ordered fence.
 
 *Checkers*:
@@ -30783,17 +30859,54 @@ poll bound and a written 1 clears it.
 |`CHK-SCLI-GATE` |With `INTR_ENABLE.SCL_INTERFERENCE` clear and the flag set `tb_i2c_irq` reads
 0b000 at both samples, after the enable it reads 0b001 within the poll bound with bits 2:1 at 0, and
 after the written 1 it reads 0b000 within the poll bound.
+|`CHK-I2C12-INTR-TEST-W1C` |On I2C1 and I2C2 `INTR_STATE` & 0x000FE3E8 reads 0x000FE3E8 after the
+`INTR_TEST` write with the other instance at 0, 0x00054148 after the written 0x000AA2A0, and 0 after
+the written 0x00054148.
+|`CHK-I2C12-INTR-TEST-RW-HOLD` |For each RW `INTR_TEST` field f and k = 1, 2 `INTR_STATE` bit f
+reads 1 after `INTR_TEST` 1<<f, still 1 after a written 1, and 0 after `INTR_TEST` 0.
+|`CHK-I2C12-IRQ-LINE-GATE` |With `CMD_COMPLETE` set on instance k, `tb_i2c_irq` reads 0b000 at both
+samples while `INTR_ENABLE` is 0, exactly 1<<k within the poll bound after `INTR_ENABLE` 0x200, and
+0b000 within the poll bound after the written 0x200.
+|`CHK-I2C12-CTRL-NACK-HALT` |On controller k = 1, 2 the unanswered address sets `CONTROLLER_EVENTS`
+0x1 and `CONTROLLER_HALT` with FMTEMPTY 0; both read 0 after the written 0x1; the byte with `NAKOK`
+leaves `CONTROLLER_EVENTS` 0 and `CONTROLLER_HALT` 0 and reaches `CMD_COMPLETE` and HOSTIDLE.
+|`CHK-I2C12-CTRL-EVENTS-PARTIAL` |The unserviced NACK yields `CONTROLLER_EVENTS` 0x3 and a wire STOP
+within the bound (the elapsed time is logged); after the written 0x1 it reads 0x2 with
+`CONTROLLER_HALT` 1, after the written 0x2 it reads 0 with `CONTROLLER_HALT` 0.
+|`CHK-I2C12-TGT-TX-PENDING` |On target k the READ address sets `TARGET_EVENTS` 0x09 and `TX_STRETCH`
+with the controller RX FIFO empty; after the written 0x1 the controller pops 0xA7; after the STOP
+`STOP_DETECT` reads 1; after the written 0x18 `TARGET_EVENTS` reads 0 and `TX_STRETCH` 0.
+|`CHK-I2C12-TGT-ABNORMAL-END` |SCL held low for 2 VAL during the READ sets `TARGET_EVENTS.BUS_TIMEOUT`,
+which reads 0 after the written 0x2; `TX_STRETCH` in both states is logged (LINKED-ISSUE gate
+T_impl_i2c_w1c-s8-dut, SF-040); `TARGET_EVENTS.ARBITRATION_LOST` after the lost
+arbitration is logged with the losing controller (LINKED-ISSUE SF-017) and, when 1, reads 0 after
+the written 0x4.
+|`CHK-I2C12-UNEXP-STOP` |`UNEXP_STOP` and the ACQ entries after the early STOP are logged
+(LINKED-ISSUE SF-007); when the bit reads 1 the written 0x2000 returns it to 0, and after the
+normally terminated read `UNEXP_STOP` reads 0.
+|`CHK-I2C12-SMBSUS` |The shared suspend line reads 0 with only I2C1 pulling while I2C1
+`SMBSUS` is 1 and 1 after the written 0; the I2C1 target reads `SMBUS_STATUS.SMBSUS` 1 while the line
+is held and 0 after release; I2C2 `SMBSUS` reads back as written and its line reads 0 with only I2C2
+pulling, then 1.
+|`CHK-I2C12-SMBALERT` |The I2C1 target with `SMBALERT` 1 pulls the alert line to 0 and after I2C2
+addresses it `SMBUS_CTRL.SMBALERT` reads 0 and the line 1; the I2C1 controller with `SMBUS_EN` and
+the line held by the I2C0 target reads `SMBUS_STATUS.SMBALERT` 1 and `INTR_STATE.SMBALERT` 1,
+cleared by a written 0x8000 after I2C1 addresses the I2C0 target; without `SMBUS_EN` `INTR_STATE.SMBALERT` stays 0 (`SMBUS_STATUS` logged, SF-012); the I2C2
+target `SMBALERT` reads 0 after I2C1 addresses it.
 |`CHK-NONVAC` |The fence prints BRINGUP, CMDC_STOP, CMDC_REASSERT, CMDC_RS_OBS, SDAU_W1C, SCLI_W1C,
-SCLI_GATE in order with increasing time stamps, each checker line printed after its step.
+SCLI_GATE, I2C12_INTR_TEST_W1C, I2C12_RW_HOLD, I2C12_IRQ_GATE, I2C12_CTRL_NACK, I2C12_CTRL_PARTIAL,
+I2C12_TGT_TX_PENDING, I2C12_TGT_ABNORMAL, I2C12_UNEXP_STOP, I2C12_SMBSUS, I2C12_SMBALERT in order
+with increasing time stamps, each checker line printed after its step.
 |`CHK-TIMEOUT-PATHS` |Every bounded wait of the run (reset release, clock measure, bus release,
-flag, STOP, HOSTIDLE, injector edge and interrupt level polls, bus recovery) is satisfied within its
-bound, otherwise the run fails with the last observed state; the line lists each bound and last
-state.
+flag, STOP, HOSTIDLE, injector edge and interrupt level polls, bus recovery, event and status polls,
+RDATA pops, ACQ drains, SMBus line samples) is satisfied within its bound, otherwise the run fails
+with the last observed state; the line lists each bound and last state.
 |===
 
-*Pass Criteria*: `CHK-CMDC-STOP`, `CHK-CMDC-REASSERT`, `CHK-SDAU-W1C`, `CHK-SCLI-W1C`,
-`CHK-SCLI-GATE`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence
-assert holds; `CHK-CMDC-RS-OBS` records the counts without an expected value. Enrolled in: `all`.
+*Pass Criteria*: every checker above holds after its compares and every sequence assert holds;
+`CHK-CMDC-RS-OBS` records the counts without an expected value, and the arbitration value and
+`TX_STRETCH` of `CHK-I2C12-TGT-ABNORMAL-END` and the early-STOP values of `CHK-I2C12-UNEXP-STOP` are
+logged without one. Enrolled in: `all`.
 
 *Scope limit*: The wire monitor START, STOP and data byte counts at the first read that shows
 `CMD_COMPLETE` during the write, repeated START, read transaction are measured and printed without
@@ -33228,6 +33341,67 @@ printed as measured.
 
 '''''
 
+[[sec-543-smc_i2c1_target_ack_ctrl_test]]
+===== 543 `smc_i2c1_target_ack_ctrl_test`
+
+*Phase*: 3
+
+*Area*: FIRMWARE
+
+*Source Module*: `smc_i2c1_target_ack_ctrl_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); I2C1 and I2C2 on one open-drain bus (`+smc_i2c_shared_bus`), one the target and the other the controller; `SmcFwI2cWireMonitor` on `tb_i2c0_scl` / `tb_i2c0_sda`
+
+*Run mode*: one testlist entry in `testlists/i2c.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`, `i2c`; seed 1; args `+smc_i2c_shared_bus`; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: A DUT target in ACK Control Mode must ACK exactly the bytes software grants through `TARGET_ACK_CTRL.NBYTES` and NACK when software writes `TARGET_ACK_CTRL.NACK`, on instances 1 and 2.
+
+*Test Coverage*:
+
+* The instance-1 and instance-2 targets, driven by the other DUT instance as the controller; `smc_i2c_target_ack_ctrl_test` covers instance 0 against a bench controller.
+* The count is a counter: reloads of 3, 2 and 1 at successive holds each release exactly that many bytes, counted from the ACK bits on the wire, and `ACQ_FIFO_NEXT_DATA` names the pending byte at the hold.
+* The field range on I2C1: N = 1 and N = 64 each release exactly N bytes before the next hold, and 0x1FF reads back as written. The NBYTES read-backs between bytes and the ACK count of the 0x1FF leg are logged, not compared (SF-005).
+* The software NACK: the pending byte is NACKed on the wire, the controller halts with `CONTROLLER_EVENTS.NACK`, the acquisition FIFO ends with an error entry and `TARGET_NACK_COUNT` counts the transaction once.
+
+*Test Procedure*:
+
+[arabic]
+. Disable I2C0, make I2C1 a target at 0x26 with `CTRL.ACK_CTRL_EN` and `CTRL.ACQ_START_STOP_EN` and I2C2 a controller, require `STATUS.ACK_CTRL_STRETCH` clear and read `TARGET_NACK_COUNT` twice on both instances.
+. For target I2C1 (controller I2C2), then target I2C2 (controller I2C1): the controller writes 0xD0..0xD5; at the first hold write `NBYTES` = 3; at the second hold read `STATUS`, `INTR_STATE` and `ACQ_FIFO_NEXT_DATA`.
+. Read `NBYTES` after each byte the wire shows ACKed and count the ACKed bytes between consecutive holds.
+. At the second hold write `NBYTES` = 2, at the third `NBYTES` = 1, wait for the STOP and drain `ACQDATA`.
+. On target I2C1 for N = 1, 64 and 0x1FF: the controller writes N + 1 bytes while software feeds the format FIFO and drains `ACQDATA`; at the first hold write `NBYTES` = N and read it back; count the ACKed bytes before the next hold and log any `ACQFULL` polls.
+. For each target: the controller writes 0xE0..0xE3; at the first hold write `TARGET_ACK_CTRL.NACK`; read the wire ACK bits, poll `CONTROLLER_EVENTS` and `INTR_STATE`, end the transaction with `CTRL` = 0, write `CONTROLLER_EVENTS` = 0x1, drain `ACQDATA` and read `TARGET_NACK_COUNT` twice.
+. Every wait is a bounded poll that fails with its last state.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C1-ACKCTRL-NBYTES3` |After `NBYTES` = 3 bytes 0xD0..0xD2 are ACKed and the target holds with `STATUS.ACK_CTRL_STRETCH` = 1, `INTR_STATE.ACQ_STRETCH` = 1, `STATUS.ACQFULL` = 0 and `ACQ_FIFO_NEXT_DATA` = 0xD3, on both targets
+|`CHK-I2C1-ACKCTRL-DECREMENT` |The bytes ACKed between consecutive holds equal the reloads 3, 2, 1; the `NBYTES` read-backs between bytes are logged (LINKED-ISSUE SF-005)
+|`CHK-I2C1-ACKCTRL-RELOAD` |Each reload releases the hold and the pending byte is ACKed; the acquired stream is START/address, 0xD0..0xD5 in order, STOP
+|`CHK-I2C1-ACKCTRL-NBYTES-RANGE` |`NBYTES` written 0x1FF reads back 0x1FF; N = 1 and N = 64 release exactly N bytes; the 0x1FF ACK count and `ACQFULL` polls are logged (LINKED-ISSUE SF-005)
+|`CHK-I2C1-ACKCTRL-SW-NACK` |After the NACK write 0xE0 is NACKed on the wire, the controller reads `CONTROLLER_EVENTS` = 0x1 with `CONTROLLER_HALT` = 1, then 0x0 after the written 0x1, and no data entry carries 0xE0..0xE3
+|`CHK-I2C1-ACKCTRL-NACK-RECORD` |The drained acquisition stream ends with `SIGNAL` = 0x6 and `TARGET_NACK_COUNT` reads 1 then 0, on both targets
+|`CHK-NONVAC` |BRINGUP < I2C_ACKCTRL_NBYTES3 < I2C_ACKCTRL_DECREMENT < I2C_ACKCTRL_RELOAD < I2C_ACKCTRL_RANGE < I2C_ACKCTRL_SW_NACK are stamped in order with increasing simulation times, each after its checker lines
+|`CHK-TIMEOUT-PATHS` |The hold, release, STOP, transfer, drain, `CONTROLLER_EVENTS` and bus-release polls and the AXI access are bounded and fail on expiry with the last register and wire state
+|===
+
+*Pass Criteria*: `CHK-I2C1-ACKCTRL-NBYTES3`, `CHK-I2C1-ACKCTRL-DECREMENT`, `CHK-I2C1-ACKCTRL-RELOAD`,
+`CHK-I2C1-ACKCTRL-NBYTES-RANGE`, `CHK-I2C1-ACKCTRL-SW-NACK`, `CHK-I2C1-ACKCTRL-NACK-RECORD`,
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`, `i2c`.
+
+*Scope limit*: The `NBYTES` read-backs between bytes, the ACK count of the 0x1FF leg and the `ACQFULL` polls are logged, not compared (LINKED-ISSUE SF-005).
+
+'''''
+
 
 [[smc-vplan-area-i3c]]
 ==== I3C
@@ -35188,12 +35362,21 @@ and 8 with the 16 WLS/STB/PEN/EPS settings only.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: UART parity / overrun / break line-status proofs.
+*Objective*: UART0 parity / overrun / break and UART1-3 line status, loopback, THRE and FIFO access.
 
 *Test Coverage*:
 
 * UART0 parity mismatch, RX overrun, and break/framing.
-* Requires +smc_uart_cross_3to0.
+* Requires +smc_uart_cross_3to0; the UART1-3 legs use the cross-wired pairs UART1<->UART2 and UART3<->UART0, so each receiver's frames come from its peer.
+* UART1-3 receive break, parity and framing errors with IER.ELSI on and off: LSR BI / PE / FE on the first read and bits 4:2 = 0 once RBR is drained, IIR ID 0x3 only with ELSI=1 (IIR is polled once the sender reads LSR.TEMT=1 and before the receiver's first LSR read; the ELSI=0 legs enable ERBFI only and require IIR=0xC4, so the erroring character is shown received), no error on the instances not receiving. The second LSR read before the drain is logged, not compared (SF-041).
+* UART1-3 MCR.LOOP keeps the byte inside the instance and off its peer; with LOOP=0 the byte reaches the peer only.
+* UART1-3 IIR THRE lifecycle: set with the TX FIFO empty, cleared by the IIR read with LSR.THRE still 1, re-armed by a drained character, ranked below a pending parity error and reported again once RBR is drained and LSR read. The IIR read right after the first LSR read is logged, not compared (SF-041).
+* UART1-3 ITR.TTBEI forces IIR ID 0x1 while the TX FIFO is non-empty and releases it.
+* UART1-3 FCR.XMIT_FIFO_RESET discards the queued characters (at most the first leaves the line) and leaves the received byte in place.
+* UART1-3 THR writes past the FIFO depth inside one frame and an RBR read with the RX FIFO empty: LSR.DR stays 0; the bus responses, IIR, LSR, the combined interrupt line and the characters the peer receives are logged against SF-018.
+* The combined interrupt line `tb_uart_irq_combined` is logged at each error, OUT2, ITR and FIFO-access observation and never compared (SF-001).
+* UART1-3 MCR.OUT2 does not gate the interrupt: with ITR.TTBEI forcing, IIR reads 0xC2 after each OUT2 write.
+* Not covered: the MCR DTR / OUT1 / OUT2 pad levels (SF-042). `smc_peripherals` leaves `uart_dtr_no`, `uart_out1_no` and `uart_out2_no` unconnected and the bench has no probe for them; MCR=0x0D / 0x00 is written as stimulus only.
 
 *Test Procedure*:
 
@@ -35211,10 +35394,22 @@ Drive `smc_uart_error_conditions_test_seq`. Each checker below is a named compar
 |`CHK-UART-ERR-OE-NEG` |Named compare in `smc_uart_error_conditions_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-ERR-PE` |Named compare in `smc_uart_error_conditions_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-ERR-PE-NEG` |Named compare in `smc_uart_error_conditions_test_seq.py`; the run fails if it mismatches
+|`CHK-UART13-BREAK` |A two-frame break from the peer gives BI=1 on UART1-3, with ERROR_IN_RCVR_FIFO=1 and IIR=0xC6 under ELSI=1 and no ID 0x3 under ELSI=0; the other receivers read LSR bits 4:1 = 0; LSR bits 4:2 = 0 after the RBR drain
+|`CHK-UART13-PARITY` |Odd parity into an even-parity receiver gives PE=1, IIR=0xC6 under ELSI=1 and no ID 0x3 under ELSI=0; the other receivers read no line-status error; LSR bits 4:2 = 0 after the RBR drain
+|`CHK-UART13-FRAMING` |A 0 at the 5-bit receiver's stop position gives FE=1 with BI=0, IIR=0xC6 under ELSI=1 and no ID 0x3 under ELSI=0; LSR bits 4:2 = 0 after the RBR drain
+|`CHK-UART13-LSR-RC` |For every BI, PE and FE leg the first LSR read returns the error and the LSR read after the RBR drain returns bits 4:2 = 0; the second read before the drain is logged (LINKED-ISSUE SF-041)
+|`CHK-UART13-MCR-LOOP` |LOOP=1: the instance reads its byte back and the peer reads DR=0; LOOP=0: the peer reads the byte and the instance reads DR=0
+|`CHK-UART13-OUT2-IIR` |With ITR.TTBEI forcing, IIR reads 0xC2 after each MCR.OUT2 write; the combined line is logged (SF-001)
+|`CHK-UART13-IIR-THRE` |IIR 0xC2 then 0xC1 with LSR.THRE=1 on an empty TX FIFO, 0xC2 after a drained character, 0xC6 with a parity error also pending and 0xC2 after the RBR drain and an LSR read; the IIR read right after the first LSR read is logged (LINKED-ISSUE SF-041)
+|`CHK-UART13-ITR-THRE` |With the TX FIFO non-empty ITR.TTBEI=1 makes IIR read 0xC2 and ITR=0 makes it read 0xC1
+|`CHK-UART13-XMIT-RESET` |After FCR.XMIT_FIFO_RESET LSR.THRE=1, the peer receives at most the first queued character, and the received byte 0x6E stays readable
+|`CHK-UART13-FIFO-ACCESS-OBS` |LSR.DR=0 after an RBR read with the RX FIFO empty; the THR-overflow and RBR-underflow indications are logged (LINKED-ISSUE SF-018)
+|`CHK-NONVAC` |Ordered fence BRINGUP < UART13_BREAK < ... < UART13_FIFO_ACCESS after the UART0 legs, each step stamped after its checker lines
+|`CHK-TIMEOUT-PATHS` |One entry per bounded wait of the UART1-3 legs with its bound and last observed state (an expiry fails naming the UART and its last LSR, IIR and line), the fixed collection windows listed as windows, and the pre-existing UART0-leg waits with their bounds and expiry messages
 |===
 
 
-*Pass Criteria*: `CHK-UART-ERR-BASIC`, `CHK-UART-ERR-BI`, `CHK-UART-ERR-OE`, `CHK-UART-ERR-OE-NEG`, `CHK-UART-ERR-PE`, `CHK-UART-ERR-PE-NEG` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: `CHK-UART-ERR-BASIC`, `CHK-UART-ERR-BI`, `CHK-UART-ERR-OE`, `CHK-UART-ERR-OE-NEG`, `CHK-UART-ERR-PE`, `CHK-UART-ERR-PE-NEG`, `CHK-UART13-BREAK`, `CHK-UART13-PARITY`, `CHK-UART13-FRAMING`, `CHK-UART13-LSR-RC`, `CHK-UART13-MCR-LOOP`, `CHK-UART13-OUT2-IIR`, `CHK-UART13-IIR-THRE`, `CHK-UART13-ITR-THRE`, `CHK-UART13-XMIT-RESET`, `CHK-UART13-FIFO-ACCESS-OBS`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 
 *Scope limit*: None stated.
 '''''
@@ -35564,7 +35759,7 @@ pin table pins no pad for them and the bench has no specification for their leve
 
 *Source Module*: `smc_log_engine_intr_mask_test`
 
-*BFM / Model*: ocah_axi_vip (AXI); observation on `tb_uart_irq_combined[0]`
+*BFM / Model*: ocah_axi_vip (AXI); observation on `tb_uart_irq_combined[3:0]`
 
 *Run mode*: one testlist entry in `testlists/uart.toml`; groups `all`, `hosted`, `uart`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `uart`; seed 1; tool Verilator (cocotb).
@@ -35580,6 +35775,11 @@ draws nothing from the seed.
 * Both consequences of that contract: an interrupt held after the enable is cleared, and an interrupt dropped because it arrived while masked.
 * `INTR_TEST` is `sw = w, singlepulse`, so the stimulus is a one-cycle event on the same line as the real event and needs no bus traffic.
 * The IRQ is observed on `tb_uart_irq_combined[0]`, the slice of `peripheral_interrupts[21:18]` that `hw/sys/smc/doc/interrupts.adoc` (PLIC sources 274-277) gives the combined UART IRQ, UART error and log-engine interrupt of each instance.
+* Log engines 1-3 (UART1-3, addresses from the generated SMC map): `INTR_TEST` forcing of `LOG_FETCH_ERR` and `LOG_WRITE_ERR` with `INTR_ENABLE=0`, the written-1 clear and a 64-cycle re-read, with the two other engines required to stay 0x0.
+* On engines 1-3, each bit enabled, forced, masked and cleared: `INTR_STATUS` holds the bit while masked and clears on the written 1; the level of `tb_uart_irq_combined[N]` in each state is logged, not compared (LINKED-ISSUE SF-001, the combining function of the instance line is not in the pinned sources).
+* A real erroring fetch per engine 1-3 (`LOG_REGION_ADDR` at the I2C0 past-`SIZE` address `smc_log_engine_fetch_error_test` uses, UART in loopback so the write side drains) latches `LOG_FETCH_ERR` alone with `INTR_ENABLE=0`; `LOG_WRITE_ERR` is set through `INTR_TEST=0x10` because a real write-port error is not reachable on this bench (SF-039), and the two bits clear one written 1 at a time.
+* One more erroring fetch per engine with only `INTR_ENABLE.LOG_FETCH_ERR` set on that engine: `INTR_STATUS` reads 0x01 there and 0x0 on the other two; `tb_uart_irq_combined[3:0]` before submission, latched and after the clear is logged (LINKED-ISSUE SF-001).
+* Coverage target (stimulus only): the log-engine register, wrapper and interrupt rows of engines 1-3.
 
 *Test Procedure*:
 
@@ -35589,6 +35789,11 @@ draws nothing from the seed.
 . Clear INTR_ENABLE only and sample the IRQ.
 . W1C the status, prove it cleared, then pulse INTR_TEST with INTR_ENABLE=0 and set the enable afterwards.
 . Require INTR_STATUS to hold the event.
+. Engines 1-3: ungate the UART clock, write IER=0 and MCR=0, require INTR_STATUS=0x0, INTR_ENABLE=0x0 and `tb_uart_irq_combined[3:1]=0b000` (bounded poll).
+. Per engine: INTR_TEST=0x01 then 0x10, read all three INTR_STATUS after each; write 0x11, read, wait 64 cycles, read.
+. Per engine and bit: enable and force, sample the line; clear the enable, sample, read the status; enable, write the bit to INTR_STATUS, sample, read.
+. Per engine with INTR_ENABLE=0: LOG_REGION_SIZE=0x80 at the refusing address, LOG_CTRL[0].LOG_LEN=8, poll LOG_LEN to 0, read INTR_STATUS; INTR_TEST=0x10, read; write 0x10, read; write 0x01, read.
+. Per engine with INTR_ENABLE=0x01 on that engine only: submit one erroring fetch, poll INTR_STATUS bit 0, sample the line, write 0x01, read, sample again; restore the UARTs and the clock gate.
 
 *Checkers*:
 
@@ -35598,9 +35803,17 @@ draws nothing from the seed.
 |`CHK-LOG-ENGINE-INTR-MASK-ARM` |The set path, the status register and the probe are all alive
 |`CHK-LOG-ENGINE-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ, holds it de-asserted for the same span the arm leg holds it asserted, and leaves INTR_STATUS still carrying the bit -- the last is what separates an output mask from a DUT that simply clears the status
 |`CHK-LOG-ENGINE-INTR-MASK-LATCH` |An event arriving while masked is still latched and surfaces once the enable is set
+|`CHK-LOGENG13-TEST-FORCE` |On engines 1-3 INTR_STATUS reads 0x01 after INTR_TEST=0x01 and 0x11 after INTR_TEST=0x10 with INTR_ENABLE=0x0, the other engines read 0x0, a written 0x11 clears it and it still reads 0x0 after 64 cycles
+|`CHK-LOGENG13-LINE-MASK` |INTR_STATUS keeps the bit with the enable cleared and reads 0x0 after the written bit; the line level in the enabled, masked and cleared states is logged (LINKED-ISSUE SF-001)
+|`CHK-LOGENG13-FETCH-ERR` |A fetch from the refusing address returns LOG_LEN to 0 and latches INTR_STATUS=0x01 on that engine only, with INTR_ENABLE=0x0
+|`CHK-LOGENG13-WRITE-ERR-TEST` |INTR_TEST=0x10 sets LOG_WRITE_ERR with INTR_ENABLE=0x0 and the written 0x10 clears it; a real write-port error is not reachable here (SF-039)
+|`CHK-LOGENG13-PARTIAL-W1C` |With the fetch-latched bit 0 and the test-forced bit 4, INTR_STATUS reads 0x11, then 0x01 after the written 0x10, then 0x0 after the written 0x01
+|`CHK-LOGENG13-LINE-REAL` |After an erroring fetch with INTR_ENABLE=0x01, INTR_STATUS reads 0x01 on that engine and 0x0 on the others; `tb_uart_irq_combined[3:0]` before and after the clear is logged (LINKED-ISSUE SF-001)
+|`CHK-TIMEOUT-PATHS` |Every bounded wait of the engines 1-3 legs with its bound and last observed state; expiry fails the test
+|`CHK-NONVAC` |Ordered fence BRINGUP < LOGENG13_TEST_FORCE < LOGENG13_LINE_MASK < LOGENG13_FETCH_ERR_LATCH < LOGENG13_WRITE_ERR_TEST < LOGENG13_LINE_REAL, each after its step's checker lines with an increasing sim time
 |===
 
-*Pass Criteria*: `CHK-LOG-ENGINE-INTR-MASK-ARM`, `CHK-LOG-ENGINE-INTR-MASK-DEASSERT` and `CHK-LOG-ENGINE-INTR-MASK-LATCH` hold after their compares; the last two are measured before either raises, so neither hides the other. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: `CHK-LOG-ENGINE-INTR-MASK-ARM`, `CHK-LOG-ENGINE-INTR-MASK-DEASSERT` and `CHK-LOG-ENGINE-INTR-MASK-LATCH` hold after their compares; the last two are measured before either raises, so neither hides the other. Every engines 1-3 checker above prints after its compares hold, followed by `CHK-TIMEOUT-PATHS` and `CHK-NONVAC`. Enrolled in: `all`, `hosted`, `uart`.
 
 *Scope limit*: None stated.
 
@@ -38847,7 +39060,7 @@ Drive `smc_alias_remap_region_attrs_test_seq`. Each checker below is a named com
 
 *Source Module*: `smc_avsbus_frame_transaction_test`
 
-*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at the responding level by the bench
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at the responding level by the bench, then driven bit by bit by the `smc_avsbus_slave_reply_test` reply driver clocked on `tb_avs_clk_from_dut`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
@@ -38855,7 +39068,7 @@ Drive `smc_alias_remap_region_attrs_test_seq`. Each checker below is a named com
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Three queued AVS_CMD words walk the AVSBus command path against a responding pad and land one readback entry each.
+*Objective*: Three queued AVS_CMD words walk the AVSBus command path against a responding pad and land one readback entry each; CmdGroup 1 and 0 writes with non-zero data go out bit for bit, and a slave reply with StatusResponse bit 1 reaches the status registers only through the one CRC-3 code the check accepts.
 
 *Test Coverage*:
 
@@ -38864,6 +39077,11 @@ draws nothing from the seed.
 * The sdata pad is held low, which `interface.adoc` "AVSBus Slave Subframe" makes a valid frame with slave acknowledgment 0, so the controller takes the accept path rather than the retry path.
 * The single-cycle end-of-subframe and post-resync launch states are not directly observable: `cur_state_debug_o` reaches the bench through two handshake data synchronizers, which forward the value they hold when a transfer opens. Their effect is checked instead.
 * The slave response word is not compared: the readback register reads 0 both for the all-zero subframe and for an empty FIFO.
+* With the reply driver on sdata and `AVS_CFG_0.MAX_RETRIES` at 0, AVS_CMD 0x08052E18 and 0x18052E18 (CmdGroup 1, commit then hold write, CMD_DATA 0xA5C3) and 0x0002D1E0 (CmdGroup 0, CMD_DATA 0x5A3C) are captured on `avs_mdata_o`; the CRC-3 bits of the three subframes and the shift order are logged, since no pinned source gives the polynomial (SF-030).
+* A reply with slave acknowledgment 0, StatusResponse 0b00010 and data 0xFFFF is sent once with each of the eight CRC-3 codes against a broadcast commit write; `architecture.adoc` "CRC Verification Engine" lets exactly one pass the check and update `AVS_LATEST_SLAVE_SUBFRAME` and `AVS_SLAVE_STATUS`. `AVS_SLAVE_ISSUED_INTERRUPT` is logged after that reply and after `AVS_INTERRUPT_CLEAR` = 0x1, not compared (SF-028).
+* A StatusResponse-0 reply is swept over the codes until one is accepted, which clears `AVS_SLAVE_STATUS` bit 1.
+* With `MAX_RETRIES` at 1 a rejected code followed by the accepted one costs one retry of the same subframe, and only the retry reply updates the status latch.
+* Every wait is a bounded poll of `AVS_FIFOS_STATUS` or `AVS_LATEST_SLAVE_SUBFRAME` that fails with its last observed value.
 
 *Test Procedure*:
 
@@ -38880,9 +39098,17 @@ Drive `smc_avsbus_frame_transaction_test_seq`. Each checker below is a named com
 |`CHK-AVS-READBACK-FIFO-FILL` |AVS_FIFOS_STATUS reports exactly one readback entry per command and the matching vacant count, with AVS_NORMAL_STATUS READBACK_HAS_DATA set
 |`CHK-AVS-READBACK-POP` |Each AVS_READBACK read returned OKAY on a non-empty FIFO and advanced the occupancy by exactly one, ending at 0 with READBACK_HAS_DATA clear
 |`CHK-AVS-VALID-ACK-NO-RETRY` |TOTAL_RETRIES is 0, AVS_MASTER_IS_RETRYING is clear, and neither SLAVE_UNRESPONSIVE_INT nor MAX_RETRIES_ATTEMPTED_INT is raised; `smc_avsbus_retry_exhaust_test` drives all three to 1 on the same registers
+|`CHK-AVS-GRP1-SUBFRAME` |Both CmdGroup 1 master subframes carry `2'b01` in [31:30], bit 27 = 1, CMD_DATA 0xA5C3 in [18:3], command type 0 then 1 in [29:28], and [29:3] equal to the written AVS_CMD[29:3]; the most-significant-first shift order is logged (SF-030)
+|`CHK-AVS-GRP0-SUBFRAME` |The CmdGroup 0 master subframe carries `2'b01` in [31:30], bit 27 = 0, CMD_DATA 0x5A3C in [18:3] and [29:3] equal to AVS_CMD[29:3]
+|`CHK-AVS-SUBFRAME-CRC-OBS` |The CRC-3 bits [2:0] of the three captured 32-bit subframes are logged, not compared (SF-030)
+|`CHK-AVS-SLAVE-STATUS-BIT1` |Exactly one of the eight CRC-3 codes latches the StatusResponse-bit-1 reply into AVS_LATEST_SLAVE_SUBFRAME (bit 25 = 1), with AVS_SLAVE_STATUS 0x00000002 and AVS_READBACK [28:24] = 0b00010; the next accepted StatusResponse-0 reply leaves AVS_SLAVE_STATUS bit 1 at 0
+|`CHK-AVS-SLAVE-BAD-CRC` |Every rejected code leaves AVS_LATEST_SLAVE_SUBFRAME and AVS_SLAVE_STATUS at their prior values; with MAX_RETRIES = 1 a rejected reply costs one retry (TOTAL_RETRIES + 1, two identical master subframes) and the accepted retry reply updates LATEST
+|`CHK-AVS-SLAVE-INT-OBS` |AVS_INTERRUPT.AVS_SLAVE_ISSUED_INTERRUPT after the accepted StatusResponse-bit-1 reply and after AVS_INTERRUPT_CLEAR = 0x1 is logged, not compared (SF-028)
+|`CHK-TIMEOUT-PATHS` |Every bounded wait of the subframe and status legs is listed with its bound in `clk_smc_i` cycles and its last observed state; each fails the test on expiry
+|`CHK-NONVAC` |The fence BRINGUP < AVS_GRP1_SUBFRAME < AVS_GRP0_SUBFRAME < AVS_SLAVE_BIT1 < AVS_SLAVE_BIT1_CLEAR < AVS_SLAVE_BAD_CRC follows the three-command legs, with strictly increasing stamps and each checker line inside its own step
 |===
 
-*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all fourteen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The single-cycle end-of-subframe and post-resync launch states are not directly
 observable, because the debug state reaches the bench through two handshake data synchronizers;
@@ -38902,7 +39128,7 @@ polynomial.
 
 *Source Module*: `smc_avsbus_retry_exhaust_test`
 
-*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at its idle level by the bench
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at its idle level by the bench, then the `AvsReplyDriver` slave responder of `smc_avsbus_slave_reply_test`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
@@ -38910,7 +39136,7 @@ polynomial.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Two unanswered AVS_CMD words walk the AVSBus retry states and exhaust the programmed retry budget.
+*Objective*: Two unanswered AVS_CMD words walk the AVSBus retry states and exhaust the programmed retry budget; shaped slave replies then count retries for budgets of 8 and 10.
 
 *Test Coverage*:
 
@@ -38918,6 +39144,10 @@ draws nothing from the seed.
 * `AVS_CFG_0.MAX_RETRIES` is programmed to 2, so the retry countdown is walked rather than stepped straight to zero.
 * Two commands queued back to back separate the retry shapes: the reply to the first arrives while the second is on the wire, so the controller retries while still receiving before alternating transmit-only and receive-only retries.
 * The single-cycle end-of-subframe and buffered-reply retry states are not directly observable through the handshake-synchronised debug bus; the interrupt and retry-count checks stand in for them.
+* After those legs the responder answers each master subframe with a queued slave subframe. No pinned document gives the CRC-3 polynomial, so each reply shape is sent with all eight codes under `MAX_RETRIES` 0 and the one code that updates `AVS_LATEST_SLAVE_SUBFRAME` is used afterwards.
+* Budgets of 8 and 10 against SlaveAck 1 on every attempt, and 8 against SlaveAck 2, count the identical master subframes, `TOTAL_RETRIES` and `MAX_RETRIES_ATTEMPTED_INT`; they drive `TOTAL_RETRIES` past bit 3. The `AVS_READBACK` content after exhaustion is logged only (SF-032).
+* Success on retry 1 and retry 7 of a budget of 8, two back-to-back commands with the first retried twice (the held reply and the resync that ends the retries), and `MAX_RETRIES_ATTEMPTED_INT` on `tb_avsbus_irq` through `AVS_INTERRUPT_MASK` and `AVS_INTERRUPT_CLEAR`.
+* S4 needs the interrupt clear before it starts, so the line leg raises the flag again with the SlaveAck 2 stimulus before it samples.
 
 *Test Procedure*:
 
@@ -38932,9 +39162,16 @@ Drive `smc_avsbus_retry_exhaust_test_seq`. Each checker below is a named compare
 |`CHK-AVS-RETRY-IN-PROGRESS` |AVS_NORMAL_STATUS.AVS_MASTER_IS_RETRYING read back set on at least one poll taken while the burst was in flight, a register-path witness independent of the debug bus
 |`CHK-AVS-RETRY-BUDGET-EXHAUSTED` |AVS_NORMAL_STATUS.TOTAL_RETRIES reached at least the programmed budget and AVS_INTERRUPT carries both SLAVE_UNRESPONSIVE_INT and MAX_RETRIES_ATTEMPTED_INT
 |`CHK-AVS-RETRY-INT-W1C` |On an idle bus, AVS_INTERRUPT_CLEAR with both clear bits returned AVS_INTERRUPT to neither flag raised
+|`CHK-AVS-RETRY8-ACK1` |With MAX_RETRIES 8, then 10, and SlaveAck 1 on every attempt, exactly MAX_RETRIES + 1 identical master subframes go out, TOTAL_RETRIES rises by MAX_RETRIES and AVS_INTERRUPT bit 5 reads 1; the AVS_READBACK content is logged only (SF-032)
+|`CHK-AVS-RETRY8-ACK2` |With MAX_RETRIES 8 and SlaveAck 2 on every attempt, nine identical master subframes, TOTAL_RETRIES rises by 8 and AVS_INTERRUPT bit 5 reads 1
+|`CHK-AVS-RETRY-EARLY-SUCCESS` |Success on retry k of a budget of 8 raises TOTAL_RETRIES by exactly k, leaves AVS_INTERRUPT bit 5 at 0 and delivers the SlaveAck 0 reply, for k = 1 and 7
+|`CHK-AVS-RETRY-HELD-REPLY` |Two back-to-back commands, the first retried twice: AVS_READBACK pops the first command's reply (data 0x1111) then the second's (0x2222), and AVS_SLAVE_IS_IN_RESYNC reads 1 after the retries
+|`CHK-AVS-RETRY-INT-LINE` |With MAX_RETRIES_ATTEMPTED_INT set, `tb_avsbus_irq` is 1 with AVS_INTERRUPT_MASK 0x1DF and 0 with 0x1FF; after AVS_INTERRUPT_CLEAR 0x20 bit 5 reads 0 and the line holds 0 with 0x1DF
+|`CHK-TIMEOUT-PATHS` |Every bounded wait is listed with its bound and last observed state; each expiry fails the test
+|`CHK-NONVAC` |The fence BRINGUP < AVS_RETRY8_ACK1 < AVS_RETRY8_ACK2 < AVS_RETRY_EARLY < AVS_RETRY_HELD < AVS_RETRY_INT_LINE follows the existing legs, with strictly increasing stamps and each checker line inside its own step
 |===
 
-*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all eleven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The single-cycle end-of-subframe and buffered-reply retry states are not directly
 observable through the handshake-synchronised debug bus; the interrupt and retry-count checks
@@ -40638,7 +40875,7 @@ only to agree on every bit known in both, and an X matches anything.
 
 *Source Module*: `smc_telemetry_buffer_overflow_test`
 
-*BFM / Model*: the bench ATB beat driver on telemetry receiver 0 (`tb_telemetry0_*`), shared with `smc_telemetry_atb_capture_test`; observation on `STATUS`, `INTR_STATUS` and the message registers
+*BFM / Model*: the bench ATB beat driver on telemetry receivers 0, 1 and 2 (`tb_telemetry0_*`, `tb_telemetry1_*`, `tb_telemetry2_*`), shared with `smc_telemetry_atb_capture_test`; observation on `STATUS`, `INTR_STATUS`, `CTRL`, the message registers and `peripheral_interrupts_o[10:9]`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
@@ -40646,7 +40883,7 @@ only to agree on every bit known in both, and an X matches anything.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Drive telemetry receiver 0 past each of its two bounded stores, the message buffer and the assembly buffer, and check what the register documentation says happens at each bound.
+*Objective*: Drive telemetry receiver 0 past each of its two bounded stores, the message buffer and the assembly buffer, and check what the register documentation says happens at each bound. Then run the queue overflow, push-against-pop, transmitter flush, `MISSING_LAST` and `INTR_TEST` legs on receivers 1 and 2.
 
 *Test Coverage*:
 
@@ -40656,6 +40893,11 @@ draws nothing from the seed.
 * A message of exactly that many packets, the last one flagged. It fills the assembly buffer exactly, must not raise `MISSING_LAST`, and must reach the message buffer.
 * `CTRL.BUFFER_POP` written to an empty buffer, which the RDL says has no effect. The buffer must stay empty and not full, and the next message must read back its own probe ID.
 * One beat short of the most a message can hold, an unfinished message must complete nothing and raise no `MISSING_LAST`. A flush written while a beat is presented on the ATB port, and a second flush, must leave the next message reading back its own probe ID.
+* Receivers 1 and 2, queue full and overflow. Eight messages fill the `BUFFER_DEPTH` = 8 queue: `STATUS` reads 0x00 after each of the first seven and 0x10 after the eighth, with the first message in `TELEMETRY_PROBE_ID`. A ninth drops the oldest, the eight pops present the survivors in order, the empty queue reads `STATUS` = 0x01 and `PROBE_ID` = 0, and one more pop leaves both unchanged.
+* Receivers 1 and 2, a push meeting a pop. With the queue full, `CTRL.BUFFER_POP` is written at each offset from -4 to +4 `clk_periph_i` cycles around the last beat of one more message. The drain must be every message after the oldest, or one fewer, in order; which one each offset gives is logged, because the documents do not decide it (SF-027).
+* Receivers 1 and 2, `CTRL.TELEMETRY_TX_FLUSH` with three messages queued. The bench holds `afready_i` of these receivers high and does not publish their `afvalid_o`, so the flush runs with `afready_i` at that level: the request must self-clear within the poll bound, `STATUS` must read 0x00 with the first queued message in `TELEMETRY_PROBE_ID`, and the three messages must drain in order. The handshake with `afready_i` low is not reachable on this bench (SF-044).
+* Receivers 1 and 2, `MISSING_LAST`. Beats without the last-packet marker are sent one at a time until `INTR_STATUS.MISSING_LAST` sets, first with `INTR_ENABLE` = 0x00 and then 0x01. `peripheral_interrupts_o[8+r]` must stay 0 while disabled and rise while enabled, and a written one clears the status and the line. The next complete message must read back its own probe ID. The beat count is logged, not compared (SF-024).
+* Receivers 1 and 2, `INTR_TEST.MISSING_LAST`. It must raise `peripheral_interrupts_o[8+r]` with the enable on and leave it 0 with the enable off. `INTR_STATUS` after the test write is logged (SF-025).
 
 *Test Procedure*:
 
@@ -40666,6 +40908,12 @@ draws nothing from the seed.
 . Error injection. Point: the ATB port, into the assembly buffer. Kind: packets without the last-packet flag sent one at a time past the maximum a message can have. Expected response: `MISSING_LAST` sets on the first packet past the maximum, not before, and clears on a written one. Flush first; clear the flag afterwards.
 . Flush and send one message of that many packets with the last one flagged. Require no `MISSING_LAST` and a buffered message.
 . Flush, send one beat fewer than the assembly buffer holds without the last-packet flag, then flush with a beat held valid, flush again and send one message.
+. On receivers 1 and 2, flush and require `STATUS` = 0x01, `INTR_STATUS` = 0x00 and the interrupt line at 0.
+. Send eight messages, then a ninth; pop nine times, reading `STATUS` and `TELEMETRY_PROBE_ID` around each pop.
+. For each offset from -4 to +4, refill to full, send one more message with `CTRL.BUFFER_POP` written at that offset from its last beat, and drain.
+. Queue three messages and write `CTRL.TELEMETRY_TX_FLUSH` with `afready_i` high; poll the bit until it clears and drain.
+. With `INTR_ENABLE` off and then on, send beats without the last marker until `MISSING_LAST` sets, check the line and clear the status; send one complete message.
+. Write `INTR_TEST.MISSING_LAST` with `INTR_ENABLE` on and off and check the line.
 
 *Checkers*:
 
@@ -40678,9 +40926,17 @@ draws nothing from the seed.
 |`CHK-TELEMETRY-MISSING-LAST` |`MISSING_LAST` set on the first packet past the maximum a message can have, not before, and cleared on a written one
 |`CHK-TELEMETRY-FULL-MESSAGE` |A message of the maximum size with its last packet flagged reached the buffer without `MISSING_LAST`
 |`CHK-TELEMETRY-PARTIAL-FLUSH` |A message one beat short completed nothing and raised nothing, and after a flush with a beat presented the next message read back intact
+|`CHK-TELEM12-FULL` |On receivers 1 and 2, eight messages gave `STATUS` = 0x10 with the first probe ID visible, not before the eighth, and the first pop after the overflow gave `STATUS` = 0x00
+|`CHK-TELEM12-OVERFLOW-ORDER` |On receivers 1 and 2, the ninth message dropped the oldest; the eight pops presented the survivors in order, then `STATUS` = 0x01 and `PROBE_ID` = 0, which an extra pop left unchanged
+|`CHK-TELEM12-PUSH-POP-WINDOW` |On receivers 1 and 2, for every pop offset the drain was the no-drop or the one-drop run in order; which one is logged per offset (SF-027)
+|`CHK-TELEM12-TX-FLUSH` |On receivers 1 and 2, with `afready_i` at its bench level (high), `CTRL.TELEMETRY_TX_FLUSH` self-cleared within the bound, `STATUS` read 0x00 with the first queued probe ID, and the three queued messages drained in order; the `afready_i`-low handshake is not reachable on this bench (SF-044)
+|`CHK-TELEM12-MISSING-LAST` |On receivers 1 and 2, `MISSING_LAST` set with the line following `INTR_ENABLE`, a written one cleared status and line, and the next message read back intact; the beat count is logged (SF-024)
+|`CHK-TELEM12-INTR-TEST` |On receivers 1 and 2, `INTR_TEST.MISSING_LAST` raised the line with the enable on and left it 0 with the enable off; `INTR_STATUS` after the write is logged (SF-025)
+|`CHK-TIMEOUT-PATHS` |Every bounded wait of the receiver 1 and 2 legs is listed with its bound, its unit and the last state it saw
+|`CHK-NONVAC` |The receiver 1 and 2 steps ran in order with strictly increasing time stamps, each checker line inside its own step
 |===
 
-*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all fourteen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Which end of the run of probe IDs survived the overflow is recorded, not asserted,
 because no document states it. The buffer depth is read off `STATUS.BUFFER_FULL` rather than
@@ -40825,7 +41081,7 @@ whether `INTR_STATE.STRETCH_TIMEOUT` is set are recorded, not compared.
 
 *Source Module*: `smc_i2c_target_loopback_test`
 
-*BFM / Model*: `SmcI2cMasterVip` on the `tb_i2c0_*` pads as the external controller; observation on `STATUS`, `TARGET_FIFO_STATUS`, `ACQDATA` and the bytes read back
+*BFM / Model*: `SmcI2cMasterVip` on the `tb_i2c0_*` pads as the external controller; observation on `STATUS`, `TARGET_FIFO_STATUS`, `ACQDATA` and the bytes read back. For the instance-1 legs, `+smc_i2c1_pads` makes the bench drive the resolved open-drain value onto the I2C1 pads, read back as `tb_i2c1_scl` / `tb_i2c1_sda`; on that pair an `SmcI2cEepromSlave` at 0x50 preset to 0x00..0xFF, a bench controller that samples SDA at the SCL high of every bit it drives, and a pad injector on `tb_i2c1_scl_ext_low` / `tb_i2c1_sda_ext_low`; ocah_axi_vip on SEP_IN writing and reading the I2C1 registers at the generated map's instance stride
 
 *Run mode*: one testlist entry in `testlists/i2c.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
 `timeout_sec` 1800; tags `ci`, `i2c`; seed 1; tool Verilator (cocotb).
@@ -40833,7 +41089,7 @@ whether `INTR_STATE.STRETCH_TIMEOUT` is set are recorded, not compared.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: `CTRL.LLPBK` in target mode, which `i2c.rdl` describes as a target that "sends all received SDA data back out", driven against a transmit FIFO with one free entry.
+*Objective*: `CTRL.LLPBK` in target mode, which `i2c.rdl` describes as a target that "sends all received SDA data back out", driven against a transmit FIFO with one free entry; then the I2C1 core line controls on its own pads: `LLPBK`, `OVRD` / `VAL`, controller RX overflow and `RXRST`, `SCL_INTERFERENCE` and `SDA_UNSTABLE`.
 
 *Test Coverage*:
 
@@ -40845,6 +41101,12 @@ draws nothing from the seed.
 ** `TARGET_FIFO_STATUS.ACQLVL` must show exactly two entries.
 * A read cannot unblock this state. The target holds a read until the acquisition FIFO is empty, and the acquisition FIFO cannot empty into a full transmit FIFO. Software breaks the tie by reading `ACQDATA`, which must return the waiting byte as a data entry. The STOP entry must then leave on its own.
 * A read of the whole transmit FIFO must return the bytes loaded through `TXDATA`, in order, followed by the first written byte looped back. It must leave the acquisition FIFO empty.
+* I2C1 as a target at 0x26 with `ACQ_START_STOP_EN`: with `LLPBK=1` every SDA level sampled at the SCL high of each written data bit of 0x5A, 0xC3 must equal the driven bit; the acknowledge bits and acquisition entries are logged, not compared (SF-013). With `LLPBK=0` the acquisition FIFO must hold START with 0x26 << 1, 0x5A, 0xC3 and STOP.
+* I2C1 with `OVRD.TXOVRDEN=1` and each (`SCLVAL`, `SDAVAL`) pair: the pads must read the values (0 low, 1 released) and `VAL` bit 0 and bit 16 must equal the pads, also while the bench pulls each line low with both released. After `TXOVRDEN=0` an ordinary write of 0x20, 0x5C must land with `HOSTIDLE=1`. The full `VAL` is logged (SF-014).
+* A `READB` of 256 bytes with no `RDATA` pops must set `STATUS.RXFULL`; the bytes popped until `RXEMPTY=1` must be one in-order run of consecutive EEPROM bytes, and a written 0x8 must clear `RX_OVERFLOW`. Whether `RX_OVERFLOW` set, the level at full and the bytes retained are logged (SF-004). `FIFO_CTRL.RXRST` after a four-byte refill must leave `RXEMPTY=1` and `RXLVL=0`.
+* A clean write must leave `SCL_INTERFERENCE` clear; SCL pulled low for 100 ns inside the controller-driven high of the address acknowledge pulse must set it, and a written 0x20 must clear it.
+* A clean four-byte read must leave `SDA_UNSTABLE` clear; SDA pulled low inside the SCL high of a released read data bit must set it, and a written 0x100 must clear it.
+* The controller-mode half of `LLPBK`, which masks `smbalert_ni`, is not exercised: with `+smc_i2c1_pads` the bench has no driver for the I2C1 alert pad (SF-043).
 
 *Test Procedure*:
 
@@ -40852,6 +41114,12 @@ draws nothing from the seed.
 . Bring up I2C0 as a target, measure the transmit FIFO depth, reset it and load one entry fewer.
 . Set `LLPBK` and `ACQ_START_STOP_EN`, write two bytes from the external controller, and check `ACQLVL`.
 . Read `ACQDATA`, check that the acquisition FIFO empties, then read the full depth back.
+. Set `I2C_CTRL[1]` for target mode, select the I2C1 pads for LSIO, start the EEPROM, the bench controller and the injector on the I2C1 pads, wait for both pads high and program the I2C1 bring-up timing.
+. Program `TARGET_ID` with 0x26, write 0x5A, 0xC3 with `LLPBK=1` sampling SDA per bit, wait for `TARGETIDLE` and drain `ACQDATA`; repeat with `LLPBK=0` and compare the four entries.
+. Set `I2C_CTRL[1]` for controller mode, enable the host, write each `OVRD` pair and read `VAL` once the pads follow; with both released pull SCL, then SDA, low from the bench and read `VAL`; clear `OVRD` and write 0x20, 0x5C to the EEPROM.
+. Program a fast timing set, queue a 256-byte read, poll `RXFULL`, read `HOST_FIFO_STATUS` and `INTR_STATE`, pop `RDATA` until `RXEMPTY`, wait for `HOSTIDLE`, write 0x8 to `INTR_STATE`; restore the bring-up timing, read four bytes, write `RXRST` and read `STATUS` and `HOST_FIFO_STATUS`.
+. Write to the EEPROM cleanly, then again with the SCL pull; read `INTR_STATE`, write 0x20 and read it again.
+. Read four bytes cleanly, then again with the SDA pull; read `INTR_STATE`, write 0x100 and read it again. Print the bounded waits.
 
 *Checkers*:
 
@@ -40860,9 +41128,19 @@ draws nothing from the seed.
 |Checker |Description
 |`CHK-I2C-TGT-LOOPBACK-BLOCKED` |With one free transmit entry, the second written byte and its STOP waited in the acquisition FIFO, `ACQDATA` returned the byte as data, and the STOP then left
 |`CHK-I2C-TGT-LOOPBACK-ECHO` |The read returned the `TXDATA` bytes in order and then the first written byte, and left the acquisition FIFO empty
+|`CHK-I2C1-LLPBK-ECHO` |With I2C1 `LLPBK=1` each sampled SDA data bit equals the bit the bench drove, 16 of 16; the acquisition entries are logged (SF-013)
+|`CHK-I2C1-LLPBK-OFF` |With `LLPBK=0` the acquisition FIFO holds START/0x26 << 1, 0x5A, 0xC3, STOP (`SIGNAL` 0x1, 0x0, 0x0, 0x2)
+|`CHK-I2C1-OVRD-PADS` |For each (`SCLVAL`, `SDAVAL`) the pads read exactly those values; after `TXOVRDEN=0` the EEPROM receives 0x20, 0x5C and `STATUS.HOSTIDLE=1`
+|`CHK-I2C1-OVRD-VAL` |`VAL` bit 0 (`SCL_RX`) and bit 16 (`SDA_RX`) equal the pads for every override and each bench-driven low; the full `VAL` is logged (SF-014)
+|`CHK-I2C1-RX-OVERFLOW` |A 256-byte read without pops sets `RXFULL`, the popped bytes are one in-order run of consecutive EEPROM bytes ending with `RXEMPTY=1`, and a written 0x8 leaves `RX_OVERFLOW=0`; `RX_OVERFLOW`, the level at full and the retained bytes are logged (SF-004)
+|`CHK-I2C1-RXRST` |After `FIFO_CTRL.RXRST=1` on a refilled FIFO `STATUS.RXEMPTY=1` and `HOST_FIFO_STATUS.RXLVL=0`
+|`CHK-I2C1-SCL-INTERFERENCE` |A clean write leaves `SCL_INTERFERENCE=0`, the SCL pull inside a controller high sets it, and a written 0x20 clears it
+|`CHK-I2C1-SDA-UNSTABLE` |A clean read leaves `SDA_UNSTABLE=0`, the SDA edge inside the SCL high of a read data bit sets it, and a written 0x100 clears it
+|`CHK-NONVAC` |The ordered terms BRINGUP < I2C1_LLPBK_TGT < I2C1_OVRD < I2C1_RX_OVERFLOW < I2C1_SCL_INTERFERENCE < I2C1_SDA_UNSTABLE, after the I2C0 legs, each stamped after its own step and after its checker lines with increasing sim time
+|`CHK-TIMEOUT-PATHS` |One entry per bounded wait of the leaf, each with its bound, fail-on-expiry path and the last state its expiry reports: the SEP_IN access bound, and from the I2C0 legs the LSIO-ready poll, the `TXFULL` fill and the VIP SCL-release bound (in `smc_i2c_protocol_vip`). The I2C1 legs add pad level, pad edge, target idle, acquisition drain and level, transfer completion, `RXFULL`, RX drain and idle, `INTR_STATE`, bus recovery and their own VIP SCL-release bound. The fixed waits of the I2C0 legs are listed as fixed waits with no expiry
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: every checker holds after its compare and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
 
 *Scope limit*: None stated.
 
@@ -42053,8 +42331,8 @@ inside its area.
 |151, 153, 154, 164, 524 to 527, 529, 530
 |Scratch and idle line status, log-engine error and boundary depth and register read-back, interrupt masking, FIFO control depth, THRE identification, the register map on four instances, reset and read-write isolation, the pad mux enable and the log-engine region-size rules.
 |<<smc-vplan-area-firmware,FIRMWARE>>
-|172 to 174, 176 to 178, 193, 195 to 201, 204, 206, 209 to 218, 222 to 225, 227 to 229, 232, 234 to 236, 238 to 252, 255 to 257, 259 to 264, 280 to 291, 294, 295, 324, 327, 328
-|Firmware-driven FIFO depth, stretch-timeout recovery and FIFO fill, log-engine boundary back-pressure, mid-transfer disable and fetch error, the MMIO read and write wedges, narrow store lanes, the register-field, GPIO, filter, I2C, UART and peripheral sweeps, zero-delay cool reset, read-only and byte-enable refusals, mode selectors, FIFO reset pulses, region spans and bit walks, partial clears, single-field drives, alias attributes, target stretch and multi-instance stretch, protocol interruptions, bus timeouts, SDA interference, the clock divider, address-phase holds, acknowledge control, suppressed retries, NACK timeouts, fast controllers, controller stretch, control symbols, broken characters, controller exits, frame sequencing, instance variants, the register-block handshake, external stall and wrong direction, read aborts, SCL events, disable with STOP, buffer overflow, queue shapes, edge timing, target loopback, the output remap windows, event retention, THR paths, log fetch errors, credit expiry, the eFuse guard, partial writes, core reset pulses, bus corners, primary start, decode holes, zeroer size corners, hang-detector disable, uncore reset, DMA back-pressure, JTAG AXI shape, window landings, the filter lock window, unaligned zeroing and the GPIO interface and filter write sweeps.
+|172 to 174, 176 to 178, 193, 195 to 201, 204, 206, 209 to 218, 222 to 225, 227 to 229, 232, 234 to 236, 238 to 252, 255 to 257, 259 to 264, 280 to 291, 294, 295, 324, 327, 328, 543
+|Firmware-driven FIFO depth, stretch-timeout recovery and FIFO fill, log-engine boundary back-pressure, mid-transfer disable and fetch error, the MMIO read and write wedges, narrow store lanes, the register-field, GPIO, filter, I2C, UART and peripheral sweeps, zero-delay cool reset, read-only and byte-enable refusals, mode selectors, FIFO reset pulses, region spans and bit walks, partial clears, single-field drives, alias attributes, target stretch and multi-instance stretch, protocol interruptions, bus timeouts, SDA interference, the clock divider, address-phase holds, acknowledge control, suppressed retries, NACK timeouts, fast controllers, controller stretch, control symbols, broken characters, controller exits, frame sequencing, instance variants, the register-block handshake, external stall and wrong direction, read aborts, SCL events, disable with STOP, buffer overflow, queue shapes, edge timing, target loopback, the output remap windows, event retention, THR paths, log fetch errors, credit expiry, the eFuse guard, partial writes, core reset pulses, bus corners, primary start, decode holes, zeroer size corners, hang-detector disable, uncore reset, DMA back-pressure, JTAG AXI shape, window landings, the filter lock window, unaligned zeroing and the GPIO interface and filter write sweeps, and ACK Control Mode on the instance-1 and instance-2 targets.
 |===
 
 [[smc-vplan-phase3-parked]]
@@ -43342,6 +43620,10 @@ entry's `*Randomization*` field.
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_i2c2_target_fast_controller_test`
+|<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_i2c1_target_ack_ctrl_test`
 |<<smc-vplan-area-firmware,FIRMWARE>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
