@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Filter 16 inbound + 16 outbound CONFIG sweep."""
+"""Filter CONFIG sweep and the AXI-Lite handshakes of the filter, remap and peripheral blocks."""
 
 from __future__ import annotations
 
@@ -9,13 +9,25 @@ from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib.smc_filter_multi_entry_test_seq import smc_filter_multi_entry_test_seq
 from smc_base_test import smc_base_test
 
+REQUIRED = (
+    "CHK-FILTER-MULTI-ENTRY-SLOT-IDENTITY",
+    "CHK-HS-ALIAS-REGS",
+    "CHK-HS-FILTER-IB",
+    "CHK-HS-FILTER-OB",
+    "CHK-HS-ORMP-MMODE",
+    "CHK-HS-ORMP-XVISOR",
+    "CHK-HS-PXBAR",
+    "CHK-NONVAC",
+    "CHK-TIMEOUT-PATHS",
+)
+
 
 @pyuvm.test()
 class smc_filter_multi_entry_test(smc_base_test):
     """Filter 16 inbound + 16 outbound CONFIG sweep."""
 
-    required_evidence = ("CHK-FILTER-MULTI-ENTRY-SLOT-IDENTITY",)
-    min_evidence = 1
+    required_evidence = REQUIRED
+    min_evidence = len(REQUIRED)
 
     auto_protocol_vip = False
 

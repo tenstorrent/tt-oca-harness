@@ -21,7 +21,8 @@ Legs, in this order (the lock leg is last because the lock holds until reset):
 
 * Leg E, per TRANSFER_WIDTH encoding 2, 1, 0: a two-chunk fill of a 64-byte
   window whose last write ends at LIMIT, then GO=1 with INITIAL_TRANSFER=0 and
-  no other register write.
+  no other register write. ``hw/sys/sep/doc/dma.adoc``, Zero Fill: a start
+  with no bytes left ends in ERROR_CODE.SIZE_ERROR without a write.
 * Leg H: chunk 1 of a two-chunk fill with HARDWARE_HANDSHAKE_ENABLE=0, the SPI
   trigger held high (SPI CONTROL.TX_WATERMARK 1 with an empty TX FIFO,
   ``hw/sys/sep/doc/spi.adoc``, DMA Trigger), then CONTROL with
@@ -38,9 +39,12 @@ No inject.
 
 Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``; every leg is graded,
 and the leaf fails at the end when one or more checks fail):
-  CHK-DMA-ZERO-CONT-LIMIT  per width: after the continuation no write byte is
-                           outside BASE..LIMIT on the probe and the sentinel
-                           words after LIMIT read unchanged. Control
+  CHK-DMA-ZERO-CONT-LIMIT  per width: the continuation sets ERROR with
+                           ERROR_CODE equal to SIZE_ERROR alone and issues no
+                           write (``dma.adoc``, Zero Fill: a start with no
+                           bytes left ends in SIZE_ERROR without a write), no
+                           write byte is outside BASE..LIMIT on the probe and
+                           the sentinel words after LIMIT read unchanged. Control
                            (``CTRL ... PASS``): the fill before it writes the
                            whole window, its last write byte is LIMIT and the
                            guards read the sentinel, so the probe and the
@@ -111,6 +115,7 @@ WIDTH = {0: 1, 1: 2, 2: 4}
 
 DST_ERR = _D.field_mask("ERROR_CODE", "dst_addr_error")
 OPC_ERR = _D.field_mask("ERROR_CODE", "opcode_error")
+SIZE_ERR = _D.field_mask("ERROR_CODE", "size_error")
 HS_RESET = _D.reset32("HANDSHAKE_INTR_ENABLE")
 HS_TRIGGER0 = 1 << _D.field_lsb("HANDSHAKE_INTR_ENABLE", "mask")
 SPI_TX_WM = SPI_CONTROLLER.field_mask("CONTROL", "tx_watermark")
@@ -304,8 +309,9 @@ class sep_dma_zero_fill_continuation_test(sep_base_test):
         ]
         self._check(
             "CHK-DMA-ZERO-CONT-LIMIT",
-            not out and not changed,
+            bool(st.error) and ec == SIZE_ERR and not beats and not out and not changed,
             f"w={w} base=0x{base:08x} limit=0x{limit:08x} {st.fmt()} error_code=0x{ec:x} "
+            f"expect_error_code=0x{SIZE_ERR:x} "
             f"writes={_aw_list(beats)} bytes_outside={len(out)} "
             f"first_outside={f'0x{out[0]:08x}' if out else 'none'} guard_words_changed={changed}",
         )

@@ -946,7 +946,8 @@ extent and its declared error response past it.
 |`smc_zeroer_sanity_test` |1 |Run zeroer over output-fabric payload bytes and check the model.
 |`smc_avsbus_pad_enable_test` |3 |The `avs_clock` pad output enable follows
 `AVS_CONFIG.AVS_GPIO_ENABLE` through its reset value, a 0 write and a 1 write, and with the enable
-at 1 one AVS_CMD frame appears on `avs_mdata` and its reply reaches AVS_READBACK.
+at 1 one AVS_CMD frame appears on `avs_mdata` and its reply reaches AVS_READBACK. With the enable
+cleared, `DATA_CTRL.lsio_select` alone is written and read back on pads 49 to 51.
 |`smc_avsbus_resync_force_test` |3 |A forced slave resync (`AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION`)
 from idle gives one resync episode, lets in-flight frames and replies complete, launches queued
 commands once each in write order, and survives two back-to-back requests.
@@ -1069,7 +1070,8 @@ widened range, none when disabled, whole 56-bit addresses, and bursts only when 
 with a refused burst falling through to the next entry.
 |`smc_infilt_attr_match_test` |3 |Inbound filter entries match on AxPROT[1] equality in both
 polarities, fall through on a mismatch, decide each channel by its own AxPROT, match source ID 0
-against AxUSER 0 and not against 5, and ignore group_id.
+against AxUSER 0 and not against 5, and ignore group_id; entries 4 to 15 widen a same-page range to
+its 4 KB page and entry 15 decides INCR bursts by allow_burst, src_id and its permission bits.
 |`smc_infilt_default_liveness_test` |3 |With no entry programmed the inbound filter refuses SYS_IN and
 leaves SEP_IN alone, and once an entry admits it stays live across enable and disable, simultaneous
 ports, denied writes and a reconfiguration under load.
@@ -1130,7 +1132,8 @@ DECERR, a read at the first address past the decoded extent and at the last word
 answers DECERR with 0xBADCAB1E, and the unit's live registers are unchanged by the writes.
 |`smc_past_extent_slverr_units_test` |3 |For the units whose past-extent write response is declared
 SLVERR, the spare-block gaps, the peripheral windows and the CLA window, a read past the decoded
-extent answers DECERR with 0xBADCAB1E and the live registers are unchanged by the writes.
+extent answers DECERR with 0xBADCAB1E and the live registers are unchanged by the writes; the
+UART/log-engine wrapper holes and gaps answer a documented pair and leave `LOG_REGION_SIZE` intact.
 |`smc_sys_out_path_responder_control_test` |3 |JTAG accesses leave through SYS_OUT with address and
 data intact, tolerate split and stalled channels and injected error responses, and local accesses
 are still answered while an outbound read is held.
@@ -1175,7 +1178,7 @@ resets release and the warm reset follows, the cold resets stay deasserted, `SS_
 theirs, and `ISOLATE_REQ_SMC_REG` sets on the FLR edge, holds through the reset, clears on a write
 and sets with a zero hold count.
 |`smc_cool_reset_x_cold_reset_test` |3 |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
-|`smc_cpu_reset_pulse_test` |3 |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode.
+|`smc_cpu_reset_pulse_test` |3 |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode; pulses on cores 0, 2 and 3, level reset and release of cores 2 and 3, debug-module reset release and re-assertion, and the `RESET_VECTOR[1..3]` reset value and bit-17 storage.
 |`smc_cpu_reset_source_test` |3 |SW core0 level reset; no Force drain / no FLR isolate_req_o.
 |`smc_flr_sanity_test` |1 |Run the SMC OSS FLR post-release sanity scenario.
 |`smc_gpio_boot_stall_test` |2 |Pad-57 boot stall hold/release/sticky lockout.
@@ -1332,6 +1335,7 @@ in clk_ref_i cycles at two reference periods, in the ref4 cell (clk_ref_i / clk_
 |`smc_occp_sanity_secure_error_test` |2 |Secure program-fail completes and reports done; recovery burn programs bit0; signature positive gate.
 |`smc_reference_counter_test` |2 |64-bit refclk counter rate check; not the OCTS timer.
 |`smc_spm_mem_boundary_test` |3 |SPM first/next/last 64-bit word write/readback via SEP_IN AXI.
+|`smc_spm_bank_walk_test` |3 |Scratchpad entry 0 and every power-of-two entry of every bank, co-resident 64-bit write/readback via SEP_IN AXI.
 |`smc_beu_csr_access_test` |3 |BEU CSRs answer DECERR at the reset aperture, exact once widened.
 |`smc_beu_register_test` |2 |BEU reset values, bit storage, CAUSE and PHYS_ADDR on four instances.
 |`smc_clint_register_test` |2 |CLINT MSIP, MTIMECMP and MTIME register behaviour with probe checks.
@@ -1489,12 +1493,12 @@ recorded.
 |`smc_ext_irq_hold_release_test` |3 |Hold external inputs 0, 2..16 high 256 rises, then release.
 |`smc_ext_irq_low_bits_test` |2 |Drive external inputs 0 and 1 alone and together; compare vector.
 |`smc_ext_irq_pulse_sampling_test` |3 |Pulse external input 0 at set widths and phases; read bit 0.
-|`smc_hang_data_timeout_window_test` |3 |Stall a data-accelerator job below, beyond, at 0x40.
+|`smc_hang_data_timeout_window_test` |3 |Stall a data-accelerator job around 0x40; gate irq by enable, irq_en, irq_test.
 |`smc_hang_irq_or_matrix_test` |3 |Fire hang irq_test in pairs and orders; check bit 286 OR.
 |`smc_hang_sep_drop_controls_test` |3 |Change SEP hang controls during a held read; observe.
 |`smc_hang_sep_threshold_test` |3 |Update SEP hang threshold in held reads; measure irq rise.
 |`smc_hang_sep_timeout_window_test` |3 |Stall a SEP_IN read below, beyond, at threshold 0x40.
-|`smc_hang_sys_timeout_window_test` |3 |Stall a SYS_IN read below, beyond, at threshold 0x40.
+|`smc_hang_sys_timeout_window_test` |3 |Stall a SYS_IN read around threshold 0x40; gate irq by enable, irq_en, irq_test.
 |`smc_irq_csr_readback_test` |3 |Read back hang detector registers; check isolation; log counts.
 |`smc_irq_reserved_idle_zero_test` |3 |Sample the idle raw vector; reserved bits read 0.
 |`smc_irq_vector_assembly_test` |2 |Assert sources in every vector region; compare to baseline.
@@ -3092,7 +3096,7 @@ Drive `smc_periph_cg_access_error_test_seq` on the SEP_IN AXI sequencer: save CL
 *Source Module*: `smc_avsbus_pad_enable_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; pad enable probes `tb_core2pad_en_o` and
-`tb_pad2core_en_o` at bits 49 (`avs_clock`), 50 (`avs_mdata`) and 51 (`avs_sdata`); AVSBus pins
+`tb_pad2core_en_o`, and pad data probe `tb_core2pad_o`, at bits 49 (`avs_clock`), 50 (`avs_mdata`) and 51 (`avs_sdata`); AVSBus pins
 `tb_avs_clk_from_dut` and `tb_avs_mdata_from_dut` observed, and `tb_avs_sdata_ext` driven by a bench
 reply driver clocked on `tb_avs_clk_from_dut`; bench clock `clk_smc_i`
 
@@ -3104,7 +3108,8 @@ draws nothing from the seed.
 
 *Objective*: The `avs_clock` pad output enable follows
 `AVS_CONFIG.AVS_GPIO_ENABLE` through its reset value, a 0 write and a 1 write, and with the enable
-at 1 one AVS_CMD frame appears on `avs_mdata` and its reply reaches AVS_READBACK.
+at 1 one AVS_CMD frame appears on `avs_mdata` and its reply reaches AVS_READBACK. With the enable
+cleared, `DATA_CTRL.lsio_select` alone is written and read back on pads 49 to 51.
 
 *Test Coverage*:
 
@@ -3122,6 +3127,18 @@ at 1 one AVS_CMD frame appears on `avs_mdata` and its reply reaches AVS_READBACK
   and a good reply driven on `tb_avs_sdata_ext` must reach AVS_READBACK intact on the fields the
   leaf compares (bits 31:30, 29, 28:24 and 23:8 and the CRC bits 2:0), as laid out in
   `interface.adoc` (AVSBus Frame Format).
+* With `AVS_GPIO_ENABLE` cleared (`AVS_CONFIG` must read 0x0), `DATA_CTRL` of `GPIO_INTF[49]`,
+  `[50]` and `[51]` is written with `lsio_select` alone (`interface_enable`, `lsio_disable` and
+  `DATA_CTRL_ENABLE` at 0), the software-forced LSIO source of `hw/ip/gpio/doc/architecture.adoc`
+  (Data and Direction Ownership, priority 3). Each readback must equal the written word in its RW
+  fields with an OKAY response, and read 0 in its RW fields after the 0 write
+  (`gpio_intf.adoc`, DATA_CTRL). `AVS_CONFIG` must read 0x1 after the restore
+  (`avsbus_controller.adoc`, AVS_CONFIG).
+* `DATA_CTRL.lsio_enable`, `pad2core` and the pad output enable, input enable and data levels of
+  each pad with `lsio_select` 1 against the `lsio_select` 0 snapshot are measured and printed, not
+  compared: whether a cleared `AVS_GPIO_ENABLE` removes the hardware LSIO request on these pads,
+  and which pads carry `avs_cdata` and `avs_tdata`, are open (LINKED-ISSUE SF-015; pad enable
+  polarity SF-013).
 
 *Test Procedure*:
 
@@ -3137,6 +3154,11 @@ at 1 one AVS_CMD frame appears on `avs_mdata` and its reply reaches AVS_READBACK
   command to AVS_CMD, wait (bounded) for a master subframe on `tb_avs_mdata_from_dut`, poll
   `AVS_NORMAL_STATUS.READBACK_HAS_DATA`, pop AVS_READBACK and compare the reply fields. Require the
   expected master subframe among the captured ones, restore `AVS_CFG_0` and stop the reply driver.
+. Read-modify-write `AVS_GPIO_ENABLE` to 0 and require `AVS_CONFIG` to read 0x0; snapshot pads 49
+  to 51. For each of them read `DATA_CTRL_ENABLE` (0), write `DATA_CTRL` = `lsio_select`, read it
+  back (RW fields compared, `lsio_enable` and `pad2core` recorded), snapshot the pad probes, write
+  `DATA_CTRL` = 0 and read it back. Write `AVS_GPIO_ENABLE` back to 1 and require `AVS_CONFIG` to
+  read 0x1.
 . Report the bounded waits taken, require the step stamps and checker lines to be in order, and
   print the ordered fence.
 
@@ -3151,16 +3173,22 @@ at 1 one AVS_CMD frame appears on `avs_mdata` and its reply reaches AVS_READBACK
 |`CHK-AVS-PAD-PROTOCOL` |With `AVS_GPIO_ENABLE` at 1 the command's master subframe appears on
   `tb_avs_mdata_from_dut` and the bench reply reaches AVS_READBACK equal on the compared fields,
   with an OKAY response on each access
-|`CHK-NONVAC` |Ordered fence PADS_SAMPLED < ENABLE_SEQUENCE < PROTOCOL_ON_PADS: the step stamps S1
-  to S4 are strictly increasing and the checker lines were logged in order, each after its step
+|`CHK-AVS-LSIO-SW-SELECT` |`AVS_CONFIG` reads 0x0 after the clear and 0x1 after the restore; on
+  each of pads 49 to 51 the `DATA_CTRL` readback equals the written `lsio_select` word in its RW
+  fields with OKAY and reads 0 in its RW fields after the 0 write; `lsio_enable`, `pad2core` and the
+  pad enable and data levels are measured and printed (LINKED-ISSUE SF-015)
+|`CHK-NONVAC` |Ordered fence PADS_SAMPLED < ENABLE_SEQUENCE < PROTOCOL_ON_PADS < LSIO_SW_SELECT:
+  each term carries its own sim time and a non-zero measured count, the term times and the step
+  stamps are strictly increasing, and the checker lines were logged in order, each after its step
 |`CHK-TIMEOUT-PATHS` |Every wait (enable wait, frame wait, reply wait) is bounded in `clk_smc_i`
   cycles and raises with the last sampled pad enables on expiry; the line lists the bounded waits
   taken
 |===
 
-*Pass Criteria*: `CHK-AVS-PAD-ENABLE-FOLLOWS`, `CHK-AVS-PAD-PROTOCOL`, `CHK-NONVAC` and
-`CHK-TIMEOUT-PATHS` hold and every sequence assert holds. The `avs_mdata` and `avs_sdata` pad
-enables are reported only. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-AVS-LSIO-SW-SELECT`, `CHK-AVS-PAD-ENABLE-FOLLOWS`, `CHK-AVS-PAD-PROTOCOL`,
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. The `avs_mdata` and
+`avs_sdata` pad enables, and the LSIO-select `lsio_enable`, `pad2core` and pad levels, are reported
+only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The output and input enable bits of the `avs_mdata` (50) and `avs_sdata` (51) pads
 are sampled and printed, not compared, because their pad numbers and polarity are not stated by the
@@ -7126,6 +7154,12 @@ Drive `smc_filter_field_sweep_test_seq`. Each checker below is a named compare t
 * Here phase 2 programs all 32 slots without restoring any of them, and phase 3 reads all 32 back while all 32 are still resident -- so a read of slot i can only return sig_i if slot i has storage of its own.
 * Under total aliasing the register holds sig_31 when phase 3 starts and the very first readback fails; under any partial aliasing of two windows the later-written one overwrites the earlier and that slot's readback fails.
 * Phase 1 checks the RDL reset content of every window before anything is written, and phases 4/5 restore and re-confirm the RDL default, so the run also carries reset-value evidence.
+* Register sweep: `START_ADDR` and `END_ADDR` of the 32 filter entries and every register of the 8 alias, 8 M-mode and 8 Xvisor remap region blocks take a pattern unique to (family, instance, register) in RW field bits only (reserved bits 0, `valid` and `locked` never set; `FILTER_CONFIG` not written), all writes first, then every register read back (`filter_ctrl.rdl`, `alias_remap.rdl`, `output_remap.rdl`). A filter's `START_ADDR` and `END_ADDR` patterns lie in different granules, so the same-granule write-back of the filter document never applies.
+* Outstanding groups: per block one group of 8 writes and 8 reads kept outstanding together. The writes alternate distinct patterns into two registers of the block, each register's writes under one AXI ID so the last one sticks (an output-remap block's single `region_attrs` written 8 times). The reads alternate between a register the group does not write (`FILTER_CONFIG`, `region_attrs`, or for an output-remap block the previous region) and a register of the previous block (for an output-remap block, the region two back). A reads-only group of depth 2 follows. Every read returns the value its register held, and `FILTER_CONFIG` reads its RDL reset (`locked` 0, `data_bus_width` 0x3).
+* Overlapped pairs: per block a write and a read of one register presented together, the AW/AR skew rotating over AW first (`ar_delay` 4), AR first (`aw_delay` 4) and the same cycle; the read returns exactly the pre-write or the post-write word and the next read the post-write word.
+* Held ready: per block 16 reads of the block's registers with RREADY held 32 cycles (`AxiTimingProfile` `r_ready_delay`), then 16 write-backs of the values the registers hold with BREADY held 32 cycles, so the responses back up behind the internal CSR crossbar; each response arrives once with OKAY and the expected word.
+* Peripheral crossbar: reset unit, SMC scratch (miscellaneous wrapper), GPIO interface, AVSBus, I2C, UART, eFuse map, eFuse interface control, telemetry receiver, OCTS system timer, DFX control, I3C and the AXI-Lite extension window's straps word each take a read, a write-back of the value read and a second read, then one depth-16 group (8 reads, 8 write-backs) per target and two depth-16 groups spread over all targets mixing the peripheral-clock targets (AVSBus, I2C, UART, I3C) with non-crossing ones, an overlapped pair, and 16 reads with RREADY held 32 cycles followed by 16 write-backs with BREADY held 32 cycles. The DTP CSR window is excluded: its response channel is tied idle at this bench (SF-039). The target list, each register and each response code are logged (SF-012).
+* Restore: every touched register written back to its RDL reset in writes-only groups of depth 3 and 1 and read back. Every group's latency is logged against the per-access TB bound (SF-038).
 
 *Test Procedure*:
 
@@ -7138,10 +7172,18 @@ Drive `smc_filter_multi_entry_test_seq`. Each checker below is a named compare t
 |===
 |Checker |Description
 |`CHK-FILTER-MULTI-ENTRY-SLOT-IDENTITY` |Named compare in `smc_filter_multi_entry_test_seq.py`; the run fails if it mismatches
+|`CHK-HS-FILTER-IB` |The 16 inbound filter entry blocks: sweep readback equals the written word, every member of every 8W+8R and readback group answered once with OKAY and the expected word, overlapped reads pre- or post-write only, 16-read (RREADY held 32) and 16-write-back (BREADY held 32) groups answered once each, restore at the RDL reset (`START_ADDR` 0x0, `END_ADDR` 0x7)
+|`CHK-HS-FILTER-OB` |The same compares on the 16 outbound filter entry blocks
+|`CHK-HS-ALIAS-REGS` |The same compares on the 8 alias remap region blocks (`region_start`, `region_end`, `region_attrs`), restore 0x0
+|`CHK-HS-ORMP-MMODE` |The same compares on the 8 M-mode output remap region blocks (`region_attrs`), the last of eight same-ID writes sticking, restore 0x0
+|`CHK-HS-ORMP-XVISOR` |The same compares on the 8 Xvisor output remap region blocks
+|`CHK-HS-PXBAR` |Every responding peripheral-crossbar target's second read equals its first after the write-back, and every member of the depth-16 outstanding groups, the overlapped pairs and the two 16-deep held groups (RREADY, then BREADY, held 32 cycles) is answered once with that value; response codes logged per target
+|`CHK-TIMEOUT-PATHS` |Every single access and group member waits within the TB AXI bound and an expiry raises; the count, the bound, the longest group and the last state are printed, 0 expired
+|`CHK-NONVAC` |Ordered fence SETUP<CONFIG_SWEEP<REG_SWEEP<OUTSTANDING<OVERLAP<HELD<PXBAR_SINGLE<PXBAR_OUT<PXBAR_OVERLAP<PXBAR_HELD<RESTORE, every term after SETUP with a non-zero access count, with its count and sim time
 |===
 
 
-*Pass Criteria*: `CHK-FILTER-MULTI-ENTRY-SLOT-IDENTITY` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: every checker above holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 '''''
@@ -7345,10 +7387,11 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * SMC OSS output-fabric responder-backed protocol test.
+* **Response USER to the debug manager** -- the SYS_OUT responder draws BUSER/RUSER from a fixed seed (`randomize_resp_user`) before the JTAG-AXI write and read, so the 12-bit B and R USER sideband on the direct output path carries non-zero values. A passive sampler pairs each JTAG B/R beat with the SYS_OUT beat the responder drove for it and logs both USER values; their equality is measured and logged, not compared, while SF-001 is open.
 
 *Test Procedure*:
 
-Drive the JTAG-AXI write and read from the test module (`smc_output_fabric_wr_rd_responder_test.py`; this leaf has no sequence of its own). Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive the JTAG-AXI write and read from the test module (`smc_output_fabric_wr_rd_responder_test.py`); `smc_output_fabric_wr_rd_responder_test_seq.py` holds the responder USER seed and the passive B/R beat sampler. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -7356,11 +7399,15 @@ Drive the JTAG-AXI write and read from the test module (`smc_output_fabric_wr_rd
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-NONVAC` |Ordered fence USER-SEEDED < JTAG-WRITE < JTAG-READ < GOLDEN, each term with its own sim time and a non-zero count. Fails on a missing, zero-count or out-of-order term
 |`CHK-OUTPUT-FABRIC-WR-RD-GOLDEN` |A JTAG-AXI 64-bit write to 0x0200_0000 followed by a read through the output fabric advances the SYS_OUT responder write counter by exactly 1 and the read counter by at least 1, leaves last_addr/last_wdata equal to the write, and the read data matches the scoreboard memory-model golden (updates >= 1, checks >= 1). Fails on an extra or missing responder write beat, a missing read beat, a stale last_addr/last_wdata, an X/Z observability counter, a golden mismatch, or a read the scoreboard never checked
+|`CHK-RSP-USER-DBG-READ` |The JTAG-AXI read returns RRESP OKAY and RDATA 0x1122334455667788 at the manager, exactly one SYS_OUT R beat carrying that data precedes it, and the RUSER the responder drew for it is non-zero. Logs the seed, the responder RUSER and the RUSER the JTAG manager received with their equality (measured, LINKED-ISSUE SF-001). Fails on no R within the bound, RRESP not OKAY, an RDATA mismatch, a drawn RUSER of 0, or X/Z on either RUSER
+|`CHK-RSP-USER-DBG-WRITE` |The JTAG-AXI write returns BRESP OKAY at the manager, the SYS_OUT responder write counter advances by exactly 1 with exactly one SYS_OUT B beat before the manager's, and the BUSER the responder drew for it is non-zero. Logs the seed, the responder BUSER and the BUSER the JTAG manager received with their equality (measured, LINKED-ISSUE SF-001). Fails on no B within the bound, BRESP not OKAY, a drawn BUSER of 0, X/Z on either BUSER, or a write count other than +1
+|`CHK-TIMEOUT-PATHS` |Lists every bounded wait (JTAG B and R responses, the sampler catch-up for each, the two responder counter observations) with its bound and last observed state; each expiry raises with that state
 |===
 
 
-*Pass Criteria*: `CHK-OUTPUT-FABRIC-WR-RD-GOLDEN` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-NONVAC`, `CHK-OUTPUT-FABRIC-WR-RD-GOLDEN`, `CHK-RSP-USER-DBG-READ`, `CHK-RSP-USER-DBG-WRITE`, `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 '''''
@@ -7825,10 +7872,11 @@ draws nothing from the seed.
 * Every inbound port of this bench carries an agent, so the "unused port tied idle" cell cannot be driven here.
 * Through the admitted entry a 2-beat and a 16-beat INCR burst of full-width beats are written into the SPM and each read back in order as one burst, and a read of the last unmapped page below `mmode_region`, must answer DECERR, so the port carries bursts and decode errors, not only single-beat register accesses.
 * The write channel of the unimplemented region answers DECERR too; with GPIO0 ACCESS_FILTER armed over SEP_IN, an unprivileged `sys_axi_in` write is refused with an error response (reported) and took no effect, and an unprivileged read answers DECERR with the error-slave signature, and a read of the empty inbound mailbox answers SLVERR. Three passes of outstanding writes and then of reads over the eight scratch registers under a 64-cycle BREADY/RREADY hold stall the port's response channels and, with that many addresses queued, its address channels, measured per channel, and every read still returns the word its last write carried.
+* Before the filter entry is restored, `sys_axi_in` writes `0xA5A5A5A5A5A5A5A5` to each read-only register of inbound mailbox 0 (`READ_DATA`, `STATUS`, `ERROR_FLAGS`, `IRQP`), which the mailbox interface specification ignores with SLVERR: every write must answer BRESP SLVERR, and SEP_IN reads of `STATUS` and `IRQP` taken before and after the writes must agree. This drives the SLVERR write response on the SYS_IN channel.
 
 *Test Procedure*:
 
-Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_IN accesses issued as one-shots on the SYS_IN sequencer: pre-admit read, program and read back entry 0, SYS_IN read of `VERSION_LO`, SYS_IN scratch write, SEP_IN and SYS_IN readbacks, the interleaved write/read group over `sys_axi_in` with its seeds, readbacks and restores under a clocked observer on the filter decision, restore the scratch word and the filter entry, then require both access counts exactly. The leaf requires both SYS_IN read values to have been captured and books a protocol-VIP record carrying the measured SEP_IN and SYS_IN counts against their floors.
+Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_IN accesses issued as one-shots on the SYS_IN sequencer: pre-admit read, program and read back entry 0, SYS_IN read of `VERSION_LO`, SYS_IN scratch write, SEP_IN and SYS_IN readbacks, the interleaved write/read group over `sys_axi_in` with its seeds, readbacks and restores under a clocked observer on the filter decision, restore the scratch word, enable the mailbox clock, read inbound mailbox 0 `STATUS` and `IRQP` over SEP_IN, issue the four SYS_IN read-only-register writes, read `STATUS` and `IRQP` again, restore the mailbox clock and the filter entry, then require both access counts exactly and the ordered fence. The leaf requires both SYS_IN read values to have been captured and books a protocol-VIP record carrying the measured SEP_IN and SYS_IN counts against their floors.
 
 *Checkers*:
 
@@ -7843,9 +7891,11 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 |`CHK-SYS-AXI-IN-ERRORS` |The unimplemented-region write and the refused filter read are compared against DECERR, the refused read against the error-slave signature, the refused write against an error response, the empty-mailbox read against SLVERR, and the armed filter reads back unchanged
 |`CHK-SYS-AXI-IN-BURST` |The AxLEN=1 and AxLEN=15 INCR bursts written over `sys_axi_in` read back as exact scoreboard compares, and the unimplemented-region read is compared against DECERR by the sequence; the run fails if either mismatches
 |`CHK-SYS-AXI-IN-DUPLEX` |The interleaved write/read group over `sys_axi_in`: every read returned the word SEP_IN seeded and the write targets held the last pass, and the inbound filter was observed admitting both directions in at least one cycle -- both filter hits set with neither isolate -- so a run whose two channels never overlapped fails
+|`CHK-SYS-AXI-IN-SLVERR-RO` |The `sys_axi_in` writes to `READ_DATA`, `STATUS`, `ERROR_FLAGS` and `IRQP` of inbound mailbox 0 each answered BRESP SLVERR, and `STATUS` and `IRQP` read over SEP_IN after the writes equal their pre-write values; an OKAY or DECERR response, or a changed register, fails the run
+|`CHK-NONVAC` |Ordered fence EXISTING-LEGS < PRE-READ < SYSIN-RO-WRITES < POST-READ < FILTER-RESTORE, each term with its own sim time and a measured non-zero count. Fails on a missing, zero-count or out-of-order term
 |===
 
-*Pass Criteria*: the admitted `sys_axi_in` read matches the generated reset, the scratch write reads back exactly over both ports, the filter entry and the scratch register are restored, and the measured SEP_IN and SYS_IN access counts equal the expected ones. The pre-admit response and the tied-idle cell are recorded, not claimed, the write-channel error responses and the backpressure stalls hold. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: the admitted `sys_axi_in` read matches the generated reset, the scratch write reads back exactly over both ports, the filter entry and the scratch register are restored, and the measured SEP_IN and SYS_IN access counts equal the expected ones. The pre-admit response and the tied-idle cell are recorded, not claimed, the write-channel error responses and the backpressure stalls hold, the read-only mailbox writes answer SLVERR and leave `STATUS` and `IRQP` unchanged, and the ordered fence holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response of the pre-admit SYS_IN read is reported, not asserted, because the specification leaves the reset state of the sixteen inbound entries to the chiplet integration, so no verdict is claimed on it. The unused-port-tied-idle cell is recorded as a gap, not a compare, because every inbound port of this bench carries an agent. The error response of the refused unprivileged `sys_axi_in` write is reported; it is held only to being an error response that took no effect.
 
@@ -8562,8 +8612,10 @@ SYS_IN master presenting AxUSER 0, and `ocah_axi_vip` (AXI, SEP_IN) for the prog
 readbacks and cleanup; `tb_top` signals `sys_axi_arvalid` and `sys_axi_awvalid` with the inbound
 filter probes `tb_inb_read_hit`, `tb_inb_write_hit`, `tb_inb_isolate_read` and
 `tb_inb_isolate_write`, sampled at every `clk_smc_i` rise (bit i of a hit vector is inbound entry
-i); the scratchpad memory (SPM) page at its base plus 0x5_0000 (nine 8-byte words);
-`tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` after the fuse-sense wait
+i), and `sys_axi_rvalid`, `sys_axi_rready` and `sys_axi_rresp` for the RRESP of every burst beat;
+the scratchpad memory (SPM) page at its base plus 0x5_0000 (nine 8-byte words), one 4 KB page
+P_e = SPM base + 0x6_0000 + e x 0x2000 for each inbound entry e = 4 to 15 and the two pages from
+Q = SPM base + 0x8_0000 for entry 15; `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` after the fuse-sense wait
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
@@ -8573,7 +8625,9 @@ draws nothing from the seed.
 
 *Objective*: Inbound filter entries match on AxPROT[1] equality in both
 polarities, fall through on a mismatch, decide each channel by its own AxPROT, match source ID 0
-against AxUSER 0 and not against 5, and ignore group_id.
+against AxUSER 0 and not against 5, and ignore group_id; entries 4 to 15 widen a same-page range
+to the whole 4 KB page and admit only that page, and entry 15 decides SYS_IN INCR bursts by
+`allow_burst`, `src_id` and its permission bits.
 
 *Test Coverage*:
 
@@ -8598,7 +8652,26 @@ wildcard entry is not reachable here because every SYS_IN master presents AxUSER
 claimed.
 * `filter_ctrl.rdl` and `index.adoc` (instance table): `group_id` matching is not built, so an entry
 with `group_id` 10 still admits the read (OKAY, hit bit 2).
-* Entry 0 and every lock stay untouched, and entries 2 and 3 return to their reset words.
+* `index.adoc` (Address Range Granule) and `filter_ctrl.rdl` (`START_ADDR`, `END_ADDR`): with
+`allow_burst` 1 the granule is 4 KB and a range whose ends share one granule is written back
+widened. Each inbound entry e = 4 to 15, programmed alone over P_e + 0x100 to P_e + 0x2FF, reads
+back P_e and P_e + 0xFFF, admits SYS_IN reads at P_e + 0x000, + 0x800 and + 0xFF8 (OKAY, the seeded
+word, hit vector 1<<e) and refuses reads at P_e - 0x8 and P_e + 0x1000 (DECERR, zero hit vector,
+the SMC inbound unmatched-traffic policy).
+* With `allow_burst` 0 the granule is the 8-byte data bus width: entry 4 programmed over P_4 + 0x11
+to P_4 + 0x13 reads back P_4 + 0x10 and P_4 + 0x17.
+* `index.adoc` (Match, Then Permit) on the highest entry: entry 15 alone over Q to Q + 0x1FFF with
+`allow_burst` 1 admits SYS_IN INCR writes and reads of AxLEN 1, 3, 7 and 15 (OKAY, hit vector
+0x8000, every read beat OKAY and equal to its written beat in order); with `allow_burst` 0 an AxLEN
+3 read is refused on every beat with a zero hit vector while a single beat is admitted; with
+`src_id` 5 the burst presenting AxUSER 0 is refused with a zero hit vector and with `src_id` 0 it
+is admitted (only the zero-versus-five outcome is compared; the AxUSER bits that carry the source
+ID are not specified); with `read_allowed` 0 the read burst is refused and the write burst admitted,
+and with `write_allowed` 0 the write burst is refused, leaves its words unchanged over SEP_IN, and
+the read burst returns the words the admitted write landed. The hit vectors of the bursts refused
+by a clear permission bit are printed and not compared.
+* Entries 0 and 1 and every lock stay untouched, entries 2 and 3 return to their reset words, and
+entries 4 to 15 return to 0x3000, 0x0 and 0x7.
 
 *Test Procedure*:
 
@@ -8629,9 +8702,24 @@ readback of the new word.
 Kind: a SYS_IN read presenting AxUSER 0 against the non-zero `src_id`. Expected response: DECERR
 with a zero hit vector. Before it, program entry 2 with `src_id` 0 and read with AxUSER 0; after it,
 program entry 2 with `group_id` 10 (0x0000_0000_01A0_0013) and read again.
-. Restore `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` of entries 2 and 3 to 0x3000, 0x0 and 0x7,
-stop the watcher, require at least 83 SEP_IN and SYS_IN accesses and print the ordered-fence line
-and the wait record.
+. Restore `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` of entries 2 and 3 to 0x3000, 0x0 and 0x7.
+. Read inbound entries 0, 1 and 4 to 15 (`entry_enabled` clear; `START_ADDR` 0x0 and `END_ADDR` 0x7
+for 4 to 15), write a distinct seed word at P_e + 0x000, + 0x800 and + 0xFF8 for each e and at the
+first four words of Q and of Q + 0x100, and read each back.
+. For e = 4 to 15: write `START_ADDR` P_e + 0x100, `END_ADDR` P_e + 0x2FF and `FILTER_CONFIG`
+`entry_enabled | read_allowed | write_allowed | allow_burst`, read the range back, read the three
+seeded words over SYS_IN, read P_e - 0x8 and P_e + 0x1000, and restore the entry.
+. Program entry 4 with `entry_enabled | read_allowed` over P_4 + 0x11 to P_4 + 0x13, read the range
+back and restore it.
+. Require entries 0 to 14 disabled, program entry 15 over Q to Q + 0x1FFF with `entry_enabled |
+read_allowed | write_allowed | allow_burst`, write INCR bursts of AxLEN 1, 3, 7 and 15 at Q +
+0x1000, + 0x1100, + 0x1200 and + 0x1400, then read them back with bursts of the same lengths.
+. Clear `allow_burst`: AxLEN 3 read at Q, then a single-beat read at Q. Set `allow_burst` with
+`src_id` 5: AxLEN 3 read at Q; `src_id` 0: the same read.
+. With `write_allowed` only: AxLEN 3 read and AxLEN 3 write at Q. With `read_allowed` only: AxLEN 3
+write at Q + 0x100, SEP_IN readback of those four words, AxLEN 3 read at Q.
+. Restore entries 4 to 15 to 0x3000, 0x0 and 0x7 with readback, stop the watcher, require at least
+83 SEP_IN and SYS_IN accesses and print the ordered-fence line and the wait record.
 
 *Checkers*:
 
@@ -8656,19 +8744,50 @@ hit bit 2); the wildcard against a non-zero source ID is not exercised and not c
 |`CHK-INB-SRCID-NONZERO-VS-ZERO` |An entry with `src_id` 5 does not match the read presenting AxUSER
 0: DECERR and a zero hit vector
 |`CHK-INB-GROUPID-INERT` |An entry with `group_id` 10 still admits the read: OKAY with hit bit 2
+|`CHK-INB-PAGE-WIDEN` |For each entry e = 4 to 15 programmed over P_e + 0x100 to P_e + 0x2FF with
+`allow_burst` 1, `START_ADDR` reads back P_e and `END_ADDR` reads back P_e + 0xFFF (12 entries x 2
+compares)
+|`CHK-INB-PAGE-HIT` |For each entry e = 4 to 15 the reads at P_e + 0x000, + 0x800 and + 0xFF8 are
+OKAY with the seeded word and hit vector 1<<e (36 reads)
+|`CHK-INB-PAGE-OUTSIDE` |For each entry e = 4 to 15 the reads at P_e - 0x8 and P_e + 0x1000 are
+DECERR with a zero hit vector (24 reads)
+|`CHK-INB-GRANULE-WIDEN` |Entry 4 programmed over P_4 + 0x11 to P_4 + 0x13 with `allow_burst` 0
+reads back P_4 + 0x10 and P_4 + 0x17
+|`CHK-INB-E15-BURST-PERMIT` |The AxLEN 1, 3, 7 and 15 INCR writes through entry 15 are OKAY with
+hit vector 0x8000, and the reads of the same lengths return 30 OKAY beats equal to the written
+beats in order with hit vector 0x8000
+|`CHK-INB-E15-BURST-DISALLOWED` |With `allow_burst` 0 the AxLEN 3 read is DECERR on every beat with
+a zero hit vector, and the single-beat read of the same address is OKAY with the seeded word and
+hit vector 0x8000
+|`CHK-INB-E15-SRCID-MISMATCH` |With `src_id` 5 the AxLEN 3 read presenting AxUSER 0 is DECERR on
+every beat with a zero hit vector; with `src_id` 0 the same read is OKAY with hit vector 0x8000
+|`CHK-INB-E15-PERM-DENY` |With `read_allowed` 0 the read burst is DECERR on every beat and the write
+burst OKAY; with `write_allowed` 0 the write burst is DECERR, the SEP_IN readback shows its words
+unchanged, and the read burst is OKAY with the words the admitted write landed; the hit vectors of
+the refused bursts are printed and not compared
 |`CHK-NONVAC` |The step stamps S1 to S9 are recorded in order with strictly increasing time, each
-checker line is printed after its step in the fixed order, and the SEP_IN plus SYS_IN access count
-reaches the floor of 83; a control-flow invariant, not a DUT compare
-|`CHK-TIMEOUT-PATHS` |Records the fuse-sense bounds and the 50 us per-access bound of the SEP_IN and
-SYS_IN accesses as a line; the compares are the bounded accesses themselves, so an expired bound
-raises before this line, and the hit watcher is a passive sampler with no wait
+original checker line is printed after its step in the fixed order, then the terms EXISTING-S1..S9
+< PAGE-WALK < PAGE-OUTSIDE < GRANULE < E15-PERMIT < E15-NOBURST < E15-SRCID < E15-PERM < RESTORE
+complete in that order with a non-zero count and their own times (each entry's walk before its
+outside reads, before the next entry), each new checker line is printed after its term, and the
+SEP_IN plus SYS_IN access count reaches the floor of 83; a control-flow invariant, not a DUT compare
+|`CHK-TIMEOUT-PATHS` |The fuse-sense wait runs with its 200000 `clk_smc_i` bound passed in and every
+SEP_IN and SYS_IN access carries its 50 us bound on the item; each wait is logged as a
+`WAIT-RECORD[n]` line with the bound in force, its expiry path and its last observed state. The
+line counts the records, reads the bounds and the `allow_timeout` and `timed_out` flags from the
+items, and fails on any bound other than 50 us, any `allow_timeout`, or any expiry; the hit watcher
+is a passive sampler with no wait
 |===
 
 *Pass Criteria*: `CHK-INB-NS0-EQUALITY`, `CHK-INB-NS1-EQUALITY`, `CHK-INB-NS-FALLTHROUGH`,
 `CHK-INB-PROT-BITS-IGNORED`, `CHK-INB-NS-PER-CHANNEL`, `CHK-INB-SRCID-WILDCARD-ZERO`,
-`CHK-INB-SRCID-NONZERO-VS-ZERO` and `CHK-INB-GROUPID-INERT` hold: every admitted access is OKAY with
-the seeded word and the programmed entry's hit bit, every refused access is DECERR with a zero hit
-vector, and the admitted write lands. The isolate probes are printed with each access and not
+`CHK-INB-SRCID-NONZERO-VS-ZERO`, `CHK-INB-GROUPID-INERT`, `CHK-INB-PAGE-WIDEN`, `CHK-INB-PAGE-HIT`,
+`CHK-INB-PAGE-OUTSIDE`, `CHK-INB-GRANULE-WIDEN`, `CHK-INB-E15-BURST-PERMIT`,
+`CHK-INB-E15-BURST-DISALLOWED`, `CHK-INB-E15-SRCID-MISMATCH` and `CHK-INB-E15-PERM-DENY` hold:
+every admitted access is OKAY with the seeded or written data and the programmed entry's hit bit,
+every refused access is DECERR with a zero hit vector (except the permission-denied bursts, whose
+hit vectors are printed), the same-page and 8-byte ranges read back widened, and the admitted
+writes land. The isolate probes are printed with each access and not
 compared. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after the access floor of 83. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The hit vector of the prot 0 read that matches the deny entry 2 is printed and not
@@ -11416,7 +11535,9 @@ output responder counters `tb_output_axi_write_count` and `tb_output_axi_read_co
 responder memory (`sys_out_mem`); `tb_inb_read_hit` and `tb_inb_write_hit` bit 0 (printed);
 `tb_fuse_sense_done` (waited high, and low after each reset on `clk_ref_i`), `tb_fuse_reset_n` and
 `tb_rst_warm_smc_clk_n`; registers `GLOBAL_BASE`, `LOCAL_BASE` and `REGION_SIZE` of
-`SMC_BASE_CONFIG`, inbound filter entry 0 and `SCRATCH_COLD` words 0 to 3
+`SMC_BASE_CONFIG`, inbound filter entry 0 and `SCRATCH_COLD` words 0 to 3; for the size sweep the
+first word of each probed unit of the SMC Component Address Map, taken from the register
+description where one is declared at that offset
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`, `decode`; seed 1; tool Verilator (cocotb).
@@ -11424,7 +11545,8 @@ responder memory (`sys_out_mem`); `tb_inb_read_hit` and `tb_inb_write_hit` bit 0
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: REGION_SIZE zero collapse and cold reset recovery.
+*Objective*: REGION_SIZE zero collapse, the REGION_SIZE power-of-two sweep with its inbound aperture
+consequence, and cold reset recovery.
 
 *Test Coverage*:
 
@@ -11453,6 +11575,28 @@ draws nothing from the seed.
 * A reprogrammed window does not survive the reset: `GLOBAL_BASE` 0x8000_0000 and `REGION_SIZE`
   0x0200_0000 read back, and after a cold reset `GLOBAL_BASE`, `REGION_SIZE`, `LOCAL_BASE`, inbound
   filter entry 0 and `SCRATCH_COLD` words 0 to 3 read their reset words.
+* `REGION_SIZE` takes every power of two 1<<k, k = 0 to 31, over SEP_IN: each write answers OKAY;
+  for k = 17 to 30 the readback is exactly 1<<k, and for k = 0 to 16 the readback answers DECERR,
+  as the base configuration aperture (BASE+0x1_0000 to 0x1_1FFF) then extends past BASE+2^k
+  (`smc_base_config.rdl`, `REGION_SIZE`; `memory_map.adoc`). The k = 31 responses and data are
+  recorded without an expected value (SF-032).
+* At every k with a probe-eligible unit wholly beyond BASE+2^k, a read and a write of that unit's
+  first word (the write carrying its reset word) answer DECERR; at k = 24, the reset size, the
+  PLIC, CLINT and BEU0 to BEU3 answer DECERR to a read and a write (`memmap.adoc`). The
+  Debug Module Hart Interface and cluster error device (reached only by the harts) and the
+  forwarded `dtp_ctrl_reg`, M-mode and Xvisor regions are never probed.
+* A unit whose first word lies below BASE+2^k but whose aperture extends past it is documented to
+  answer DECERR: the mailbox at k = 17 and the scratch RAM at k = 19 and k = 20. The answer is
+  recorded without an expected value (LINKED-ISSUE SF-040).
+* At each k from 10 the highest probe-eligible unit wholly below BASE+2^k answers a read of its
+  first word with OKAY; for DFX, the outbound filter and the CLA the fields the register
+  description does not mark volatile read their reset values, and hardware-driven fields are
+  recorded. The PLIC read at k = 27 answers OKAY; the cluster unit answers at k = 28 to 30
+  (`REGION_SIZE` 0x1000_0000 and above) and every k = 31 probe are recorded without an expected
+  value (SF-035, SF-032).
+* After each of the 32 sweep steps a cold reset restores `REGION_SIZE`, `GLOBAL_BASE` and
+  `LOCAL_BASE` to 0x0100_0000, 0x4000_0000 and 0xC000_0000 with OKAY, the fuse sense completing
+  within its bound.
 
 *Test Procedure*:
 
@@ -11488,8 +11632,18 @@ draws nothing from the seed.
 . Write `GLOBAL_BASE` 0x8000_0000 and `REGION_SIZE` 0x0200_0000 with exact readbacks, apply a cold
   reset and wait for the fuse sense, then read `GLOBAL_BASE`, `REGION_SIZE`, `LOCAL_BASE`, inbound
   filter entry 0 `START_ADDR`, `END_ADDR` and `FILTER_CONFIG` and `SCRATCH_COLD` words 0 to 3, each
-  expecting its reset word; log the bounded waits and require the seven step stamps in increasing
-  order, the six checker lines in order and at least 44 SEP_IN accesses.
+  expecting its reset word.
+. For k = 0 to 31: write `REGION_SIZE` 1<<k (BRESP OKAY required for k up to 30) and read it
+  back (DECERR for k up to 16, 1<<k for k = 17 to 30, recorded for k = 31); read and write the
+  first word of the first unit wholly beyond BASE+2^k requiring DECERR (at k = 24 the PLIC, CLINT
+  and BEU0 to BEU3); at k = 17, 19 and 20 read the straddling mailbox or scratch RAM and record
+  its response and data; at k from 10 read the highest unit wholly below BASE+2^k requiring OKAY (and the reset
+  value of the non-volatile fields where pinned); apply a cold reset, wait for the fuse sense and read `REGION_SIZE`,
+  `GLOBAL_BASE` and `LOCAL_BASE` requiring their reset values. Each probe address is registered
+  with the AXI monitor as an expected DECERR address until that step's reset. Log the bounded
+  waits and require the nine step stamps in increasing order, the per-k terms in order for all
+  32 steps with every term issuing at least one access over the sweep, the twelve checker lines in
+  order and at least 295 SEP_IN accesses.
 
 *Checkers*:
 
@@ -11518,21 +11672,46 @@ fates are printed, not compared
 |`CHK-RESET-RESTORES-WINDOW` |After `GLOBAL_BASE` 0x8000_0000 and `REGION_SIZE` 0x0200_0000 and a
 cold reset, `GLOBAL_BASE` and `REGION_SIZE` read 0x4000_0000 and 0x0100_0000 and `LOCAL_BASE`,
 inbound filter entry 0 and `SCRATCH_COLD` words 0 to 3 read their reset words
-|`CHK-NONVAC` |The seven steps were stamped in strictly increasing time and each checker line was
-printed in order and no earlier than its step; a control-flow invariant that catches a truncated
-run, not a DUT-failable compare
+|`CHK-REGION-SIZE-READBACK` |For k = 17 to 30 the `REGION_SIZE` write of 1<<k answers OKAY and the
+readback is exactly 1<<k; the k = 31 write and read responses and data are recorded (LINKED-ISSUE
+SF-032)
+|`CHK-REGION-SIZE-SELF-DECERR` |For k = 0 to 16 the `REGION_SIZE` write answers OKAY and the
+readback answers DECERR; the read data is recorded (SF-011)
+|`CHK-REGION-SIZE-BEYOND` |At every k with a unit wholly beyond BASE+2^k, a read and a write of
+its first word answer DECERR; at k = 24 the PLIC, CLINT and BEU0 to BEU3 reads and writes answer
+DECERR; read data recorded
+|`CHK-REGION-SIZE-STRADDLE` |The mailbox read at k = 17 and the scratch RAM reads at k = 19 and
+k = 20 each complete with a resolved response; the response code and data are recorded beside the
+documented DECERR (LINKED-ISSUE SF-040)
+|`CHK-REGION-SIZE-BELOW` |At each k from 10 to 30 the highest unit wholly below BASE+2^k answers
+OKAY, and the non-volatile fields of DFX, the outbound filter and the CLA read their reset values
+(a unit whose fields are all volatile is recorded); the cluster unit answers at `REGION_SIZE`
+0x1000_0000 and above (LINKED-ISSUE SF-035) and the k = 31 probe are recorded
+|`CHK-REGION-SIZE-RECOVERY` |After each of the 32 sweep cold resets the fuse sense completes within
+its bound and `REGION_SIZE`, `GLOBAL_BASE` and `LOCAL_BASE` read 0x0100_0000, 0x4000_0000 and
+0xC000_0000 with OKAY
+|`CHK-NONVAC` |The nine stamps (S1, the six existing legs S2a to S2f, the sweep S3 closing at
+k = 30 and the top step S8) were taken in strictly increasing time, the six per-k terms (S3 write
+and read, S4 beyond, S5 straddle, S6 below, S7 reset) were stamped in order for each of the 32
+sweep steps with every term issuing an access over the sweep,
+and each checker line was printed in order and no earlier than its step; a control-flow invariant
+that catches a truncated run, not a DUT-failable compare
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits of the run (the fuse waits at 200 000 `clk_smc_i`
 cycles, the handshake polls at 200 cycles, the hold poll at 400 cycles, the 64-cycle windows, the
-reset asserted and released waits, the fuse-clear waits on `clk_ref_i` and each AXI access at 50 000
-ns, with timeouts allowed only on accesses interrupted by a reset); the expiry of any raises, so the
-line is a record and not a compare
+reset asserted and released waits of all 36 cold resets, the fuse-clear waits on `clk_ref_i` and each AXI
+access at 50 000 ns, no access allowed to time out; an access abandoned by a reset is accepted
+only when it ended with the reset asserted); the expiry of any raises, so the line is a record and
+not a compare
 |===
 
 *Pass Criteria*: every access at the collapsed apertures answers DECERR, the JTAG accesses reach the
 responder with the exact address, the registers and filter read their reset words after each cold
-reset, no read response or response without a request appears after the resets, and at least 44
-SEP_IN accesses are issued. The fates of accesses interrupted by a reset, the hit probe levels and
-the re-issued address are recorded without an expected value. Enrolled in: `all`, `hosted`.
+reset, no read response or response without a request appears after the resets, every
+`REGION_SIZE` up to 1<<30 reads back or answers DECERR as its aperture requires, every beyond
+unit answers DECERR, every straddling probe completes with a resolved response, every wholly-below unit outside the cluster answers OKAY, and at
+least 295 SEP_IN accesses are issued. The fates of accesses interrupted by a reset, the hit probe
+levels, the re-issued address, the k = 31 responses, the straddling answers and the cluster unit answers at `REGION_SIZE` 0x1000_0000 and above are
+recorded without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The inbound filter hit probe levels, the fates of the accesses outstanding when each
 cold reset is applied (they may end in any response or none), the `SCRATCH_COLD` words read
@@ -12519,8 +12698,10 @@ before and after each write: reset unit `SS_CONFIG`, eFuse map `SMC_CONFIG`, eFu
 control `EFUSE_READ_CTRL`, system timer `OCTS_CTRL`, base config `CLOCK_GATE_CONTROL`, instance 0
 of the alias, M-mode, Xvisor, inbound-filter and outbound-filter control arrays, `SCRATCH_COLD(0)`
 for the spare wrapper, and GPIO `DATA_CTRL_ENABLE`, AVSBus `AVS_CFG_0`, I2C `INTR_ENABLE` and
-telemetry receiver `INTR_ENABLE`; `tb_fuse_sense_done`, `tb_fuse_reset_n` and
-`tb_rst_warm_smc_clk_n`
+telemetry receiver `INTR_ENABLE`, and `LOG_REGION_SIZE` of each of the four UART/log-engine
+wrappers; for the UART and I3C aperture-end reads, the AR beat issued on the SEP_IN manager's AR
+channel and the R beat taken before any read data conversion, with `env.axi_monitor` counting the
+R beat; `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`, `decode`; seed 1; tool Verilator (cocotb).
@@ -12530,7 +12711,9 @@ draws nothing from the seed.
 
 *Objective*: For the units whose past-extent write response is declared
 SLVERR, the spare-block gaps, the peripheral windows and the CLA window, a read past the decoded
-extent answers DECERR with 0xBADCAB1E and the live registers are unchanged by the writes.
+extent answers DECERR with 0xBADCAB1E and the live registers are unchanged by the writes; inside
+the four UART/log-engine wrappers, a read at a hole or gap answers one of the two documented
+pairs and the wrappers' `LOG_REGION_SIZE` registers are unchanged by the writes.
 
 *Test Coverage*:
 
@@ -12547,7 +12730,16 @@ extent answers DECERR with 0xBADCAB1E and the live registers are unchanged by th
 * The GPIO, AVSBus, I2C and telemetry receiver windows answer the same DECERR and 0xBADCAB1E at
   the first address past their register extent and at the last word of their 0x1000 aperture. The
   UART and I3C windows declare no past-extent response, so only their aperture-end word is read
-  and written and the answers are printed, not compared.
+  and written and the response codes are printed, not compared; the read data of these two reads
+  is never converted, and the monitor counts exactly one R beat for each.
+* In each of the four UART/log-engine wrappers (BASE + 0x6000 + N * 0x400), the first word past
+  the 64-byte UART space (+0x140), the first word past the log-engine registers (+0x280) and the
+  first word of the gap the generated `uart_log_engine_wrap` map leaves after its control block
+  are read once and written once with 0xA5A5_5A5A. Each read answers either (OKAY, 0x0) or
+  (DECERR, 0xBADCAB1E) (`memory_map.adoc`, UART window row); which pair, and the write response
+  against the documented OKAY (hole) or SLVERR (gap), is printed per offset and not compared.
+* Each wrapper's `LOG_REGION_SIZE` (log-engine bank +0x200, offset 0x04) is written with
+  0x1000 + N, reads it back, and still reads 0x1000 + N after all twelve hole and gap writes.
 * A write of 0xA5A5_5A5A to every probed address completes; `smc.rdl` declares SLVERR for these
   units, and the observed code is printed beside the declared one and not compared.
 * The live register of each unit, read before its probes and after every write, holds the same
@@ -12594,8 +12786,14 @@ comparing them; print all six in `CHK-PAST-EXTENT-PERIPH`.
 past the window. Expected response: the read answers DECERR with 0xBADCAB1E and the write response
 is printed, not compared. Before it, read the last word of the window requiring OKAY; print
 `CHK-PAST-EXTENT-CLA`.
-. Require 133 accesses against the sequence's own count and the scoreboard's checked count, print
-`CHK-TIMEOUT-PATHS`, then run the fence that prints `CHK-NONVAC`.
+. UART/log-engine wrappers: add the twelve probed addresses to the monitor's expected-DECERR
+addresses; for N = 0..3 write `LOG_REGION_SIZE` with 0x1000 + N and read it back; read and write
++0x140, +0x280 and the generated-map gap word of each wrapper, requiring one of the two documented
+pairs; re-read all four `LOG_REGION_SIZE`; print `CHK-PAST-EXTENT-UARTWRAP` and
+`CHK-PAST-EXTENT-UARTWRAP-LIVE`.
+. Require 169 accesses: 167 against the sequence's own count and the scoreboard's checked count
+and the two unconverted reads, print `CHK-TIMEOUT-PATHS`, then run the fence that prints
+`CHK-NONVAC`.
 
 *Checkers*:
 
@@ -12627,14 +12825,21 @@ not compared.
 compared.
 |`CHK-PAST-EXTENT-PERIPH` |For GPIO, AVSBus, I2C and telemetry the reads past the extent and at
 the last word of the 0x1000 aperture answer DECERR with 0xBADCAB1E and the live register is
-unchanged after each write; for UART and I3C the aperture-end read and write complete and the leaf
-records the responses without comparing them; the write responses are measured and printed, not
-compared.
+unchanged after each write; for UART and I3C the aperture-end read and write complete, each read
+answers exactly one R beat, and the leaf records the response codes without converting the read
+data or comparing the codes; the write responses are measured and printed, not compared.
 |`CHK-PAST-EXTENT-CLA` |The last word of the CLA window reads OKAY and the first address past the
 window reads DECERR with 0xBADCAB1E, exact compares; the write response past the window is
 measured and printed, not compared.
-|`CHK-NONVAC` |The step stamps S1 to S9 are in increasing time order, the eight checker lines
-above were printed in step order each after its own step, and at least 133 accesses were issued.
+|`CHK-PAST-EXTENT-UARTWRAP` |Each of the twelve reads at +0x140, +0x280 and the gap word of the
+four UART/log-engine wrappers answers once with (OKAY, 0x0) or (DECERR, 0xBADCAB1E), an exact set
+compare; which pair each offset returns and the twelve write responses are measured and printed,
+not compared.
+|`CHK-PAST-EXTENT-UARTWRAP-LIVE` |Each wrapper's `LOG_REGION_SIZE` reads back 0x1000 + N with OKAY
+right after its write and still reads 0x1000 + N after all twelve hole and gap writes.
+|`CHK-NONVAC` |The step stamps S1 to S10 are in increasing time order, each fence term from SETUP
+to UARTWRAP has a non-zero count, the ten checker lines above were printed in step order each
+after its own step, and at least 169 accesses were issued.
 |`CHK-TIMEOUT-PATHS` |Reports each bounded wait with its bound and last observed value (the three
 fuse-sense waits of 200000 `clk_smc_i` rises and the 50 us guard of every SEP_IN access); it is a
 printed report with no compare, each wait raising its own failure when its bound expires.
@@ -12642,10 +12847,12 @@ printed report with no compare, each wait raising its own failure when its bound
 
 *Pass Criteria*: `CHK-PAST-EXTENT-RESET-UNIT`, `CHK-PAST-EXTENT-EFUSE`, `CHK-PAST-EXTENT-TIMER`,
 `CHK-PAST-EXTENT-BASE-CONFIG`, `CHK-PAST-EXTENT-FABRIC-CTRL`, `CHK-PAST-EXTENT-SPARE`,
-`CHK-PAST-EXTENT-PERIPH`, `CHK-PAST-EXTENT-CLA`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all
-printed; every past-extent, gap and last-word read of a unit with a declared response answers
-DECERR with 0xBADCAB1E, every live register holds its value across the writes, the CLA last word
-reads OKAY, and exactly 133 accesses are issued. Enrolled in: `all`, `hosted`.
+`CHK-PAST-EXTENT-PERIPH`, `CHK-PAST-EXTENT-CLA`, `CHK-PAST-EXTENT-UARTWRAP`,
+`CHK-PAST-EXTENT-UARTWRAP-LIVE`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every
+past-extent, gap and last-word read of a unit with a declared response answers DECERR with
+0xBADCAB1E, every UART wrapper hole or gap read answers one of the two documented pairs, every live
+register holds its value across the writes, the CLA last word reads OKAY, and exactly 169 accesses
+are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The write responses at every probed address are printed beside the SLVERR the
 register description declares and not compared. The UART and I3C windows declare no past-extent
@@ -19779,6 +19986,78 @@ replaced rather than merely re-read. Under `--framework uvm` the governing check
 
 '''''
 
+[[sec-544-smc_spm_bank_walk_test]]
+===== 544 `smc_spm_bank_walk_test`
+
+*Phase*: 3
+
+*Area*: CPU
+
+*Source Module*: `smc_spm_bank_walk_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; the scoreboard's 64-bit `expected=` compares.
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 900; tags `ci`, `mem`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: Every one of the 32 scratchpad banks stores zero, all-ones, 0xAAAA..., 0x5555... and
+walking-one 64-bit words at entry 0 and at every power-of-two entry, read back while the other
+words of the pass are resident.
+
+*Test Coverage*:
+
+* Entry 0 of every bank for every power-of-two interleave stride (set L0, 224 locations), five
+  rotating pattern passes.
+* Every power-of-two entry of every bank inside the window (set LP, 1248 locations), one pass.
+* 13 entry offsets (0 to 0x10000) at each of 8 regions x 4 slots of the window (set LX, 241
+  locations not already in L0 or LP), walked with L0 in the five passes.
+* Co-resident readback: no read returns the word of another location.
+
+*Expectation Sources*: `hw/sys/smc/doc/cpu.adoc` (scratchpad: 1 MiB in 32 banks, one 72-bit
+SECDED port per bank) and the generated memory map (`spm_memory`). Every expected word is the
+word the scenario wrote.
+
+*Test Procedure*:
+
+Drive `smc_spm_bank_walk_test_seq` after fuse sense completes. For each stride s = 8 B * 2^g
+(g = 0..12) the bank bases b*s (b = 0..31) form L0 and the entries b*s + 2^j*32*s (j = 0..11-g)
+inside the window, minus L0, form LP. LX is r*0x20000 + q*0x40 + o (r = 0..7, q = 0..3, o in
+{0, 8, 16, 32, 0x100, 0x200, ..., 0x10000}) minus L0 and LP. The leaf logs the counts and fails
+unless they are 224, 1248 and 241. Each of five passes c over L0 u LX (465 locations, ascending
+index i) writes location i with pattern class (i + c) mod 5 (walking one
+1 << ((i + 7c) mod 64)), then reads every location back, ascending on even passes and descending
+on odd ones. LP is then written once with class i mod 5 (walking one 1 << (i mod 64)) and read
+back once in descending order. Every access is a 64-bit single beat (AxSIZE = 3, all lanes
+strobed). A mismatching read is logged with its address, expected word, read word and the first
+other location of the pass written with the read word.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SPM-WALK-ENTRY0` |Every L0 u LX location returns the word written to it in each of the five passes (2325 scoreboard compares), every response OKAY. The bank and entry each address selects is not stated (LINKED-ISSUE SF-016)
+|`CHK-SPM-WALK-POW2` |Every LP location returns its own written word in the one LP pass, and every LX location at a non-zero entry offset (229) does so in each of the five passes (1248 + 1145 scoreboard compares), every response OKAY. The per-bank entry count behind the offsets is inferred (LINKED-ISSUE SF-017)
+|`CHK-SPM-WALK-CORESIDENT` |Every read of a pass starts after the pass's last write and returns its own location's word rather than another's: five L0 u LX passes (asc, desc, asc, desc, asc) and one LP pass (desc)
+|`CHK-NONVAC` |Ordered fence SETUP < ADDRESS_SET < per-pass (L0_LX_WRITE_ALL < L0_LX_READ_ALL) x5 < LP_WRITE_ALL < LP_READ_ALL, 7146 accesses, each term with its count and sim time
+|===
+
+*Known Limitations*: The bank/entry address mapping and the SECDED encoding are not documented,
+so the 72-bit bank port word is not predicted and which bank each address reaches is not
+observed. Pattern classes repeat across locations, so aliasing between two locations holding the
+same class is not distinguishable.
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-SPM-WALK-CORESIDENT`, `CHK-SPM-WALK-ENTRY0`,
+`CHK-SPM-WALK-POW2` hold after their compares. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The bank and entry address mapping and the SECDED encoding are not documented, so the
+72-bit bank port word is not predicted and which bank each address reaches is not observed; two
+locations holding the same pattern class are not distinguishable from each other.
+'''''
+
 [[sec-080-smc_occp_sanity_secure_error_test]]
 ===== 80 `smc_occp_sanity_secure_error_test`
 
@@ -22087,6 +22366,10 @@ draws nothing from the seed.
 * The read pointer is also placed on every 8-byte word inside the window's first 64-byte set, both on the empty buffer before the trace (with the write pointer moved to the same word) and after the fill, not only on set boundaries.
 * `Trdstrammode` at both values of its one-bit field, each written with the sink active and enabled and read back.
 * `Trdstramactive` taken from 1 to 0 with `Trdstramenable` held at 1, with a captured trace still in the window.
+* `Trdstramrplow` read before and after each empty-buffer `Trdstramdata` read.
+* The CLA debug-bus mux in toggle mode (`CDbgMuxSelLo` `Dbmmode` 3, `Dbmid` 0), uncompressed (`Trdstformat` 0), traced into a window spanning the whole 16 KiB of the eight trace RAMs until the `Trdstramwplow` samples show the write pointer past the midpoint and wrapped back, in a bounded poll; the trace is then stopped with the DST enable cleared.
+* All eight 2 KiB segments of that window read out through `Trdstramdata`, 512 reads each from the segment start, with `Trdstramrplow` sampled after each of the first 16 reads and after the last; the number of data-returning reads and the bits the words carry are logged.
+* `Trdstramrplow` placed on `Trdstramlimitlow` and one data read taking it back to `Trdstramstartlow`.
 
 *Test Procedure*:
 
@@ -22102,11 +22385,18 @@ Drive `smc_dfd_trace_sink_readout_test_seq`. Each checker below is a named compa
 |`CHK-DST-SINK-READOUT` |At least one of the words the RAM data port returned after the trace was captured is non-zero against that baseline, so the trace is readable back through the register interface; an all-zero read-out fails it
 |`CHK-DST-SINK-MODE` |The sink was armed and run at both values of `Trdstrammode`, each read back exactly; a value the register does not accept fails it
 |`CHK-DST-SINK-DEACTIVATE` |`Trdstramactive` went from 1 to 0 with the enable held and the change read back; a sink already inactive beforehand fails it
+|`CHK-DST-TOGGLE-EMPTY-RP` |On each of the 7 empty-buffer positions the `Trdstramrplow` reads before and after the `Trdstramdata` read, and the data read, each complete with a resolvable value; the pointer pair and the data word are logged beside the documented unchanged pointer, which the bench does not follow (observation only); a missing response, an X value or a timeout fails it
+|`CHK-DST-TOGGLE-FILL` |`CDbgMuxSelLo` reads back `Dbmmode` 3 and `Dbmid` 0 and `Trdstformat` reads back 0, and within the poll bound the `Trdstramwplow` samples show the write pointer at or beyond the 16 KiB window's midpoint 0x2000 and, at a later sample, below the highest position seen; every sample's pointer and wrap flag are logged, the flag never required since it stays set once an earlier leg has set it. A readback other than written, a pointer that never reaches the midpoint or never wraps back, or the poll bound running out fails it
+|`CHK-DST-TOGGLE-RP-ADVANCE` |In every segment each `Trdstramrplow` sample equals the segment start plus one word per data-returning read, wrapping from the limit to the start, the pointer does not move again once a read has left it in place, and the first read returns a word; any other pointer value, or a segment returning no word, fails it
+|`CHK-DST-TOGGLE-PAYLOAD` |Every segment returns more than one distinct 32-bit word, and `CDbgMuxSelLo` still reads `Dbmmode` 3, `Dbmid` 0 after the read-out; the bits seen at 1 and at 0 per segment are logged. A segment of one constant word or a changed mux readback fails it
+|`CHK-DST-TOGGLE-RP-WRAP` |After the data read with the read pointer on `Trdstramlimitlow`, `Trdstramrplow` reads `Trdstramstartlow` (0); any other value fails it
+|`CHK-TIMEOUT-PATHS` |The two bounded waits, the first fill in action sweeps and the toggle fill in write-pointer polls, log their bound and last state; an expiry fails the test
+|`CHK-NONVAC` |The ordered fence existing legs, empty-read pointer samples, toggle set-up, fill, read-out, wrap and restore, each with its own sim-time span and a non-zero access count; a term missing, empty or out of order fails it
 |===
 
 
 
-*Pass Criteria*: `CHK-DST-SINK-BASELINE`, `CHK-DST-SINK-DEACTIVATE`, `CHK-DST-SINK-MODE`, `CHK-DST-SINK-READOUT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DST-SINK-BASELINE`, `CHK-DST-SINK-DEACTIVATE`, `CHK-DST-SINK-MODE`, `CHK-DST-SINK-READOUT`, `CHK-DST-TOGGLE-EMPTY-RP`, `CHK-DST-TOGGLE-FILL`, `CHK-DST-TOGGLE-RP-ADVANCE`, `CHK-DST-TOGGLE-PAYLOAD`, `CHK-DST-TOGGLE-RP-WRAP`, `CHK-TIMEOUT-PATHS`, `CHK-NONVAC` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 '''''
@@ -22448,6 +22738,8 @@ draws nothing from the seed.
 * Each custom-action enable of pair 0 is set on its own and `Resync` is set with no cross trigger.
 * The CLA mux is put in normal mode with `Finegraintime` set and then in identifier mode, the snapshot read after each.
 * Node 0's other pairs are held on the first match event while all four pairs name destination 1, so the chain moves away from pairs whose relation holds.
+* `CDbgMuxSelLo` is written with a distinct non-zero value in every field (`Muxselseg0`..`Muxselseg7`, `Rsvd159`, `Finegraintime` 1, `Dbmid` 0x2A, `Dbmmode` 1) and read back, then with the complement of each field (`Dbmmode` 2) and read back; one access of the register's width per write and per read, logged.
+* `CDbgMuxSelLo` is put in toggle mode (`Dbmmode` 3) under identifier 0, every other field 0, and read back; the node 0 pair 0 snapshot is then read 16 times and logged, not compared, since the toggle-mode bus content is not described.
 
 *Test Procedure*:
 
@@ -22463,13 +22755,16 @@ Drive `smc_dfd_cla_live_bus_test_seq`. Each checker below is a named compare the
 |`CHK-CLA-LIVE-MATCH` |The four match-event registers read back exactly and node 0 pair 1 activates under at least one relation value with its events on the match events while the bus switches; no activation fails it
 |`CHK-CLA-LIVE-ACTIONS` |A running action is found, every stretch, counter and halt-mask write reads back exactly, and after the sweeps every counter reads at or below its target, as the description of `ResetOnTarget` makes it; no running action, a rejected write or a counter past its target fails it
 |`CHK-CLA-LIVE-MUXMODES` |The snapshot with the CLA mux in normal mode and `Finegraintime` set differs from the normal-mode state measured with it clear, and the identifier-mode snapshot differs from it in turn; a mode change that leaves the bus where it was fails it
+|`CHK-CLA-LIVE-MUXSEL-FIELDS` |Both `CDbgMuxSelLo` readbacks equal the written 64-bit word in every field, `Muxselseg4`..`Muxselseg7` and `Rsvd159` included, as their RW access makes them; a field reading back differently or a non-OKAY response fails it. The access width is logged (open question: how a 64-bit CLA register is accessed)
+|`CHK-CLA-LIVE-TOGGLE-MODE` |`CDbgMuxSelLo` reads back `Dbmmode` 3 and `Dbmid` 0 with every other field 0; another readback or a non-OKAY response fails it. The 16 snapshots taken in toggle mode are logged and not compared (open questions: the toggle-mode payload, and whether `DEBUG_BUS_MUX` must also be programmed)
+|`CHK-NONVAC` |The fence terms existing legs, field write, toggle and restore close in that order at increasing sim times, each with a non-zero access count, and the access count meets the floor the leaf derives from its table; a missing, empty or out-of-order term fails it
 |`CHK-CLA-LIVE-NODE` |Both custom-action enables and `Resync` read back exactly, and `CurrentNode` reads 1 within 8 polls after the move; a rejected write or a chain that stays on node 0 fails it
 |===
 
 *Known limitation*: the CLA timestamp input is tied to 0 in the SMC, so the time-match event can never fire, however the match value is programmed.
 
 
-*Pass Criteria*: `CHK-CLA-LIVE-ACTIONS`, `CHK-CLA-LIVE-BUS`, `CHK-CLA-LIVE-MATCH`, `CHK-CLA-LIVE-MUXMODES`, `CHK-CLA-LIVE-NODE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CLA-LIVE-ACTIONS`, `CHK-CLA-LIVE-BUS`, `CHK-CLA-LIVE-MATCH`, `CHK-CLA-LIVE-MUXMODES`, `CHK-CLA-LIVE-MUXSEL-FIELDS`, `CHK-CLA-LIVE-NODE`, `CHK-CLA-LIVE-TOGGLE-MODE`, `CHK-NONVAC` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The CLA timestamp input is tied to 0 in the SMC, so the time-match event can never fire, however the match value is programmed. The halt output does not gate the SMC's own clocks in this bench.
 '''''
@@ -24085,10 +24380,13 @@ draws nothing from the seed.
 * SPEC declares that block a stand-in: "The eFuse bank model (`efuse_bank_model.sv`) is a reference, simulation-only stand-in for the real foundry OTP macro ...
 * In a production integration it is replaced by the actual foundry macro driven by the SHIM" (`hw/ip/efuse/doc/architecture.adoc`), and its set-once semantics are `onwrite = woset` in the DV RDL `hw/ip/efuse/dv/models/regs/efuse_bank.rdl`.
 * The `OTP=...` observations below therefore show that the controller's command did or did not reach the bank model -- they are **not** proof that a fuse burns in silicon ([BEHAVIORAL-STUB-DECLARED]).
+* **Address range** (`efuse_interface_ctrl.adoc`, EFUSE_INTERFACE_CTRL_STATUS, EFUSE_PROGRAM_CTRL, EFUSE_READ_CTRL) -- a program and a read at bit address 0xFFFF set `efuse_program_addr_error` / `efuse_read_addr_error` (and `read_status` for the read); the bit-9 / bit-10 W1P write clears each, and an in-range request at bit 0 leaves it clear. The results at 0x2000 and 0x6000 and `program_status` / `program_done` of the out-of-range program are measured and logged (SF-025, SF-027). A program and a read at 0x1FFF complete within the poll bound; their address-error bits are logged (SF-025).
+* **Read data upper bits** (`efuse_interface_ctrl.adoc` READ_INTERFACE_READ_DATA, `architecture.adoc` capture and retention) -- bits 29, 30 and 31 of the first SPARE[0] word are burned, a read of that word completes with `read_status` 0 and returns `dout[31:29]` = 0b111, and a second read after three STATUS reads returns the same word (SF-031).
+* **LOCKS slots 8 and 31** (`smc_efuse_map.adoc` LOCKS, RW1S) -- the SPARE[4] and SPARE[27] write locks read 1 after the set and still read 1 after LOCKS is written 0; `efuse_req_error` after a program inside SPARE[4] is logged (SF-028). The two read locks read 1 after the set; the RRESP and RDATA of SEP_IN reads of SPARE[4] and SPARE[27] are logged (SF-029).
 
 *Test Procedure*:
 
-Drive `smc_efuse_read_program_timeout_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_efuse_read_program_timeout_test_seq`: the timeout legs, then the out-of-range program and its clear, the out-of-range read and its clear, the last in-range bit, the upper-ones read word, and the slot 8 / 31 write and read locks. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -24096,6 +24394,12 @@ Drive `smc_efuse_read_program_timeout_test_seq`. Each checker below is a named c
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-EFUSE-GUARD-HI-READ` |The SPARE[4] (bit 17) and SPARE[27] (bit 63) read locks read 1 after the set; SEP_IN reads of SPARE[4] and SPARE[27] complete within the agent bound and their RRESP and RDATA are logged (measured, LINKED-ISSUE SF-029, SF-028). Fails on a lock bit not setting or a read with no response
+|`CHK-EFUSE-GUARD-HI-WRITE` |The SPARE[4] (bit 16) and SPARE[27] (bit 62) write locks read 1 after the set and still read 1 after LOCKS is written 0; `efuse_req_error` after a program inside SPARE[4] is logged (measured, LINKED-ISSUE SF-028). Fails on a lock bit not setting or clearing without reset
+|`CHK-EFUSE-LAST-IN-RANGE` |A program and a read at bit address 0x1FFF each complete (busy low, done high) within the poll bound; both address-error bits are logged (measured, LINKED-ISSUE SF-025). Fails on a request that never completes
+|`CHK-EFUSE-OOR-PROG` |A program at bit address 0xFFFF sets `efuse_program_addr_error`; the bit-9 W1P write clears it and an in-range program of bit 0 leaves it clear. The 0x2000 / 0x6000 results and `program_status` / `program_done` are logged (measured, LINKED-ISSUE SF-025, SF-027). Fails on the error not setting, not clearing, setting in range, or a poll timeout
+|`CHK-EFUSE-OOR-READ` |A read at bit address 0xFFFF sets `efuse_read_addr_error` and `read_status`; the bit-10 W1P write clears the error and an in-range read of bit 0 leaves it clear. The 0x2000 / 0x6000 results are logged (measured, LINKED-ISSUE SF-025). Fails on either bit not setting, the error not clearing, setting in range, or a poll timeout
+|`CHK-EFUSE-RDATA-UPPER-ONES` |After bits 29 to 31 of the first SPARE[0] word are burned, a read of that word completes with `read_status` 0, `READ_INTERFACE_READ_DATA[31:29]` reads 0b111, and a re-read after three STATUS reads returns the identical word (alignment SF-031). Fails on any of those, or a poll timeout
 |`CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE` |Positive control for the `READ_STATUS == 0` compares: with `STATUS.EFUSE_REQ_ERROR` read clear first, the recovery read's command word minus `READ_ENABLE` sets `READ_STATUS` in `EFUSE_READ_CTRL`, the cause `efuse_interface_ctrl.rdl` names for the field; `READ_DATA` is logged, not asserted (`smc_efuse_read_program_timeout_test_seq.py`)
 |`CHK-EFUSE-TMO-BASIC` |Named compare in `smc_efuse_read_program_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-TMO-PROG` |Named compare in `smc_efuse_read_program_timeout_test_seq.py`; the run fails if it mismatches
@@ -24103,10 +24407,12 @@ Drive `smc_efuse_read_program_timeout_test_seq`. Each checker below is a named c
 |`CHK-EFUSE-TMO-PROG-SET` |Named compare in `smc_efuse_read_program_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-TMO-RD` |Named compare in `smc_efuse_read_program_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-TMO-RD-REC` |Named compare in `smc_efuse_read_program_timeout_test_seq.py`; the run fails if it mismatches
+|`CHK-NONVAC` |Ordered fence EXISTING-TIMEOUT-LEGS < OOR-PROG < PROG-CLEAR < OOR-READ < READ-CLEAR < LAST-IN-RANGE < UPPER-ONES < WRITE-LOCKS < READ-LOCKS, each term with its own sim time and its measured SEP_IN access count. Fails on a missing, zero-count or out-of-order term
+|`CHK-TIMEOUT-PATHS` |Lists every busy / done poll of the range and lock legs with its bound, expiry tolerance and last observed value, and the SEP_IN access bound; each expiry raises with the last observed state. Fails on an expired or expiry-tolerant wait
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE`, `CHK-EFUSE-TMO-BASIC`, `CHK-EFUSE-TMO-PROG`, `CHK-EFUSE-TMO-PROG-REC`, `CHK-EFUSE-TMO-PROG-SET`, `CHK-EFUSE-TMO-RD` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-EFUSE-GUARD-HI-READ`, `CHK-EFUSE-GUARD-HI-WRITE`, `CHK-EFUSE-LAST-IN-RANGE`, `CHK-EFUSE-OOR-PROG`, `CHK-EFUSE-OOR-READ`, `CHK-EFUSE-RDATA-UPPER-ONES`, `CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE`, `CHK-EFUSE-TMO-BASIC`, `CHK-EFUSE-TMO-PROG`, `CHK-EFUSE-TMO-PROG-REC`, `CHK-EFUSE-TMO-PROG-SET`, `CHK-EFUSE-TMO-RD`, `CHK-EFUSE-TMO-RD-REC`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The OTP word observations through the bank-model tap show that the controller's
 command did or did not reach the simulation-only bank model; they are not proof that a fuse burns in
@@ -26103,7 +26409,9 @@ not specified. The upper word of `OCCP_TRANSPORT_TIMEOUT` is printed by the rese
 
 *Source Module*: `smc_efuse_sense_sequence_test`
 
-*BFM / Model*: SEP_IN AXI driver (a continuous `STATUS` read stream); the reset agent (one cold
+*BFM / Model*: SEP_IN AXI driver (a continuous `STATUS` read stream, and three reads of one
+`SMC_EFUSE_MAP` shadow register R: the lowest-addressed map register whose first word is non-zero
+in the `+smc_efuse_hex` image, logged by name and address); the reset agent (one cold
 reset assert/release); a passive sampler on every `clk_smc_i` edge of `rst_primary_smc_clk_no`,
 `tb_efuse_shim_cmd_valid`, `tb_efuse_shim_resp_valid` and `tb_fuse_sense_done`; the eFuse bank
 behind the SHIM interface is the DV model; an EFUSE protocol-VIP record is booked at the end
@@ -26131,16 +26439,29 @@ handshake).
   and falls two cycles after the last strobe, with no further request or strobe afterwards
   (`smu-smc.adoc`, When `valid` falls).
 * The strobe spacing is logged only.
+* A SEP_IN read of R issued after the first strobe completes within
+  the AXI driver bound while `tb_fuse_sense_done` is still 0, so it overlaps the sense
+  (`hw/ip/efuse/doc/architecture.adoc`, shadow access without waiting for `fuse_sense_done`); its
+  response and data are logged without a compare (SF-030).
+* Before the cold reset and again after sense done, R reads its non-zero word of the loaded
+  `+smc_efuse_hex` image, OKAY after sense done: the shadow registers are populated from the bank
+  at each boot (`architecture.adoc`, Shadow Register Subsystem), and a shadow left at its reset
+  value cannot match a non-zero image word.
 
 *Test Procedure*:
 
 [arabic]
 . Wait up to 200000 clocks for `tb_fuse_sense_done`, start the sampler and let it take 4 samples.
+. Select R from the `+smc_efuse_hex` image and log it; read R over SEP_IN, require OKAY with sense
+  done 1 and the word equal to R's non-zero image word.
 . Send the cold reset assertion, check the reset state, wait for `rst_primary_smc_clk_no` low and
   require 8 samples with the reset low and `tb_fuse_sense_done` 0.
 . Send the release, start the `STATUS` read stream, wait for the release, for the first
   `tb_efuse_shim_cmd_valid` and for the first `tb_efuse_shim_resp_valid`; require exactly one rising
   edge of the request valid before the first strobe and record the release-to-request latency.
+. Have the `STATUS` stream issue one read of R after the first strobe and wait for it;
+  require sense done 0 at its completion and a resolvable response, and log the strobe index at
+  issue, the response and the data.
 . Count `tb_efuse_shim_resp_valid` strobes until 256 are seen, requiring sense done 0 on every
   edge on the way, then wait for the rise of `tb_fuse_sense_done`; require the rise after the last
   strobe and exactly 256 strobes before it, and record the strobe gaps.
@@ -26153,10 +26474,11 @@ handshake).
 . Wait for `tb_efuse_shim_cmd_valid` to fall and require it exactly two cycles after the last
   strobe; require the request valid and the strobe both 0 for 64 edges, and no strobe after the
   rise.
-. Require the six steps in order with increasing time stamps, strictly ordered fence edges (the
-  sense-done rise and the request-valid fall may be equal edges), the checker lines in the order
-  printed and the SEP_IN access count at or above the number of `STATUS` reads; print the fence and
-  the bounded waits.
+. Read R again; require OKAY and R's image word.
+. Require the nine steps in order with increasing time stamps, strictly ordered fence edges (the
+  sense-done rise and the request-valid fall may be equal edges), the contract fence terms
+  recorded with non-zero counts and ordered by event edge, the checker lines in the order printed and the SEP_IN access count at or above
+  the number of `STATUS` reads; print the fence and the bounded waits.
 
 *Checkers*:
 
@@ -26178,17 +26500,29 @@ offset is measured and printed, and four or more `STATUS` reads issued after the
 |`CHK-SENSE-REQ-HANDOVER` |`tb_efuse_shim_cmd_valid` falls exactly two cycles after the last strobe
 (`smu-smc.adoc`), stays 0 with `tb_efuse_shim_resp_valid` 0 for 64 edges while no command is issued,
 and no strobe follows the sense-done rise.
+|`CHK-SENSE-SHADOW-PRESENSE` |The read of R issued during the strobe stream completes within
+its bound with `tb_fuse_sense_done` 0 on its completion edge; the strobe index at issue, `RRESP`
+and `RDATA` are logged without a compare (SF-030).
+|`CHK-SENSE-SHADOW-POSTSENSE` |R's word in the loaded `+smc_efuse_hex` image is non-zero, the read of
+R before the cold reset equals it, and after sense done the read of R answers OKAY with that word.
 |`CHK-NONVAC` |The ordered fence (cold reset asserted, release, first request, first strobe, last
 strobe, sense done, request valid low, quiet window) as measured edges, with each checker line
-printed after its step completed.
-|`CHK-TIMEOUT-PATHS` |Every reset, request, strobe, sense-done and read wait is bounded and fails
-with an assertion on expiry; the bounds and last samples are logged.
+printed after its step completed; and the fence by event edge REFERENCE-READ < COLD-RESET < RELEASE <
+FIRST-STROBE < PRESENSE-READ < LAST-STROBE < SENSE-DONE \<= REQ-VALID-LOW < QUIET-WINDOW <
+POSTSENSE-READ with each term's edge, sim time and count.
+|`CHK-TIMEOUT-PATHS` |Every wait is named and bounded and fails on expiry: the bring-up sense-done
+waits, the cold-reset assert and release state waits, each `STATUS` read, the first-request,
+first-strobe, 256-strobe, sense-done, request-valid-fall and quiet-window waits, and the three
+reads of R. Each logs the bound in force, its expiry outcome and the last state read from its
+own mechanism; none expires on a passing run.
 |===
 
-*Pass Criteria*: all seven checkers hold: one request after the release, exactly 256 strobes
-before sense done, `STATUS.efuse_sense_done` 0 before the rise and 1 after it, and the request
-valid falling two cycles after the last strobe with a quiet interface afterwards. The
-release-to-request latency, the strobe gaps and the sense-done offset are recorded only. Enrolled
+*Pass Criteria*: all nine checkers hold: one request after the release, exactly 256 strobes
+before sense done, `STATUS.efuse_sense_done` 0 before the rise and 1 after it, the request
+valid falling two cycles after the last strobe with a quiet interface afterwards, a read of R
+completing during the sense, and R reading its non-zero image word before the cold reset and,
+with OKAY, after sense done. The release-to-request latency, the strobe gaps, the sense-done offset and the
+response and data of the read during the sense are recorded only. Enrolled
 in: `all`.
 
 *Scope limit*: The latency from the reset release to the first sense request is measured and printed
@@ -26547,10 +26881,17 @@ draws nothing from the seed.
 * bit0 core2pad register-driven value to the pad
 * bit[5:4] enable_rx_tx 2'b01 = TX enabled (drive pad)
 * bit16 interface_enable select register values to drive the pad
+* **Pad direction enables** -- every GPIO interface 0 to 64 except the bench-owned pads 27, 28 and 51, the boot-stall pad 57 and the cool-reset-in pad 61 (60 interfaces, the exclusions logged by name) is programmed alone with DATA_CTRL = interface_enable | lsio_disable | core2pad 1 and enable_rx_tx 01 (TX), 00, 11, then 0x0, so each pad's `core2pad_en_o` and `pad2core_en_o` toggle both ways (`gpio_intf.adoc` DATA_CTRL, `architecture.adoc` Data and Direction Ownership).
+* The absolute enable levels under TX and DATA_CTRL.pad2core under 11 are measured and logged, not compared, while SF-013 is open.
+* The `core2pad_o` data bits of the AVS-driven pads 49 (AVS.CLOCK) and 50 (AVS.MDATA) are logged, not compared, in every other-pads compare, because `AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE` resets to 0 and the AVS clock runs while the bus is idle; their enable bits stay compared.
 
 *Test Procedure*:
 
 Drive `smc_gpio_output_driveback_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+. Wait for fuse sense done and sample `tb_core2pad_en_o`, `tb_pad2core_en_o` and `tb_core2pad_o` as the baseline; run the wrap-0 TX-high / TX-low / disable leg.
+. For each walked interface w, one at a time with every other interface at reset: write and read back DATA_CTRL with enable_rx_tx 01, 00, 11 and then 0x0, sampling the three pad vectors after each readback.
+. Require the walk to cover 60 interfaces on 60 distinct pads, every access answered OKAY within the AXI driver bound, and print the ordered fence.
 
 
 *Checkers*:
@@ -26559,10 +26900,14 @@ Drive `smc_gpio_output_driveback_test_seq`. Each checker below is a named compar
 |===
 |Checker |Description
 |`CHK-GPIO-OUTPUT-DRIVEBACK` |Programming GPIO wrap 0 DATA_CTRL as TX raises exactly one new `core2pad_en_o` bit, that pad's `core2pad_o` follows core2pad 1 then 0 with the enable held, and the enable releases after interface disable; all 3 CSR writes reach the scoreboard. Fails on no new enable bit, more than one pad touched, a pad value that does not track the register, an enable that drops early or never releases, or a CSR write the scoreboard never saw
+|`CHK-GPIO-PAD-BOTH-DISABLED` |For each walked interface, under enable_rx_tx 00 `core2pad_en_o[p_w]` differs from its TX level and `pad2core_en_o[p_w]` equals its TX level (receive disabled in both words), with every other pad unchanged except the logged data bits of pads 49 and 50. Fails on a transmit enable that keeps its TX level, a receive enable that changes between 01 and 00, another pad's enable changing, a data bit of a pad other than p_w, 49 or 50 changing, or X
+|`CHK-GPIO-PAD-RESTORE` |For each walked interface, under enable_rx_tx 11 `core2pad_en_o[p_w]` returns to its TX level and `pad2core_en_o[p_w]` differs from its 00 level, and after the write of 0x0 both enables return to the baseline. DATA_CTRL.pad2core is logged per interface (LINKED-ISSUE SF-013), and so are the data bits of pads 49 and 50. Fails on an enable not returning to its TX level, a receive enable that does not follow, an enable off its baseline after the reset word, or X
+|`CHK-GPIO-PAD-TX-ENABLE` |For each of the 60 walked interfaces exactly one `core2pad_en_o` bit p_w differs between the TX and 00 samples, p_w is distinct across interfaces, no other pad's enable bit changes, no other pad's data bit changes except pads 49 and 50 (logged, not compared), and `core2pad_o[p_w]` reads 1 under TX; the absolute enable level is logged (SF-013). Fails on no enable bit following DATA_CTRL, more than one pad's enable changing, a data bit of a pad other than p_w, 49 or 50 changing, two interfaces on one pad, `core2pad_o[p_w]` not 1 under TX, or X on p_w
+|`CHK-NONVAC` |Ordered fence WRAP0-LEG < TX(w) < BOTH-OFF(w) < RESTORE(w) < RESET-WORD(w) for every walked w, each term with its own sim time and a measured count. Fails on a missing, zero-count or out-of-order term
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-OUTPUT-DRIVEBACK` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `gpio`.
+*Pass Criteria*: `CHK-GPIO-OUTPUT-DRIVEBACK`, `CHK-GPIO-PAD-BOTH-DISABLED`, `CHK-GPIO-PAD-RESTORE`, `CHK-GPIO-PAD-TX-ENABLE`, `CHK-NONVAC` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `gpio`.
 
 *Scope limit*: None stated.
 '''''
@@ -28318,7 +28663,8 @@ through `DMA_CTRL` (`CONFIG`, `SRC_ADDRESS`, `DST_ADDRESS`, `LENGTH`, strides, `
 `_awvalid`, `_awready` on SYS_OUT; observed `tb_top.tb_axi_hang_irq_data`,
 `tb_top.tb_axi_hang_irq_sys`, `tb_top.tb_axi_hang_irq_sep` and raw bit 286 of
 `tb_top.tb_cpu_interrupts` on `clk_smc_i`; registers `HANG_DET_DATA_ACCEL_CTRL`,
-`HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD`, `HANG_DET_SYS_AXI_CTRL` and `HANG_DET_SEP_AXI_CTRL`; fuse
+`HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD`, `HANG_DET_SYS_AXI_CTRL`, `HANG_DET_SEP_AXI_CTRL` and the
+`INBOUND0` and `OUTBOUND0` filter `START_ADDR`, `END_ADDR` and `FILTER_CONFIG` registers; fuse
 sense signals `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`.
 
 *Run mode*: one testlist entry in `testlists/irq.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
@@ -28327,7 +28673,8 @@ sense signals `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Stall a data-accelerator job below, beyond, at 0x40.
+*Objective*: Stall a data-accelerator job below, beyond, at 0x40, then clear `enable` or `irq_en`
+after a timeout and gate `irq_test` with each enable.
 
 *Test Coverage*:
 
@@ -28347,6 +28694,21 @@ draws nothing from the seed.
 * A stall of exactly 0x40 rises is measured: the rise at which the data interrupt first reads 1 is
   printed without a compare, because the document does not say whether a stall equal to the
   threshold fires; the specification does not state the value.
+* Clearing `enable` after a timeout with the stall still held drops the data interrupt, raw bit 286
+  and `HANG_DET_DATA_ACCEL_CTRL.irq`, and they stay 0 on every one of the next 0x80 held rises
+  (`smc_base_config.rdl`, `HANG_DET_CTRL.enable`: the counter reloads and `irq_o` is forced low;
+  `interrupts.adoc`, bit 286). The cycles from the write to the drop are measured and printed
+  without a compare; the specification does not state the value.
+* Clearing `irq_en` after a timeout with `enable` kept and the stall held drops the data interrupt
+  and raw bit 286 and keeps them 0 for 0x80 held rises, with `HANG_DET_DATA_ACCEL_CTRL.irq` = 0
+  (`HANG_DET_CTRL.irq_en`).
+* `irq_test` with `enable | irq_en` and no stall raises the data interrupt, raw bit 286 and
+  `HANG_DET_DATA_ACCEL_CTRL.irq`, and clearing `irq_test` drops them (`HANG_DET_CTRL.irq_test`).
+* `irq_test` with `enable` = 0, and `irq_test` with `irq_en` = 0, each keep the data interrupt and
+  raw bit 286 at 0 for 0x80 rises with `HANG_DET_DATA_ACCEL_CTRL.irq` = 0 (`irq_test` is gated by
+  both enables).
+* The `INBOUND0` and `OUTBOUND0` filters are set to pass all for the test and restored to their
+  register defaults.
 
 *Test Procedure*:
 
@@ -28381,9 +28743,28 @@ draws nothing from the seed.
   sampled rises is recorded, and after a write of 0 to `HANG_DET_DATA_ACCEL_CTRL` the data
   interrupt and raw bit 286 read 0 within 128 rises. Re-arm `HANG_DET_DATA_ACCEL_CTRL` and read it
   back before the job, poll `DONE_0` after the clear, then log the result.
-. Release the hold, write 0 to `HANG_DET_DATA_ACCEL_CTRL`, restore the threshold to 0x1000, check
-  the ordered step stamps S1 to S5, the three checker lines and four jobs started, then log the
-  bounded waits.
+. Disable after timeout: write 0 to the SYS and SEP control registers and `enable | irq_en` to
+  `HANG_DET_DATA_ACCEL_CTRL`, hold and start a fifth job, wait up to 128 rises after the SYS_OUT
+  handshake for the data interrupt and raw bit 286 to read 1, read `HANG_DET_DATA_ACCEL_CTRL` and
+  require `irq` = 1; with the stall held write `irq_en` alone (`enable` 0), wait up to 128 rises
+  for both to read 0, read the control register and require `irq` = 0, then require both at 0 on
+  each of 0x80 held rises. A per-rise watch from the write onwards records the drop rise and fails
+  on any re-assertion. Release and poll `DONE_0` until it increments.
+. `irq_en` clear after timeout: write `enable | irq_en`, hold and start a sixth job, wait up to 128
+  rises for the data interrupt, write `enable` alone with the stall held, wait up to 128 rises for
+  the data interrupt and raw bit 286 to read 0, require `irq` = 0 and both at 0 for 0x80 held
+  rises, release, poll `DONE_0` until it increments and write 0.
+. `irq_test` raise: with no stall write `enable | irq_en | irq_test`, wait up to 128 rises for the
+  data interrupt and raw bit 286 to read 1 and require `irq` = 1; write `enable | irq_en`, wait up
+  to 128 rises for both to read 0 and require `irq` = 0.
+. `irq_test` with `enable` = 0 (`irq_en | irq_test`), then with `irq_en` = 0 (`enable | irq_test`):
+  require the data interrupt and raw bit 286 at 0 on each of 0x80 rises and `irq` = 0, write 0,
+  then require the data interrupt and `irq` at 0.
+. Release the hold, write 0 to `HANG_DET_DATA_ACCEL_CTRL`, restore the threshold to 0x1000, restore
+  the `INBOUND0` and `OUTBOUND0` configuration, start and end registers to their register defaults
+  and read each configuration back; check the ordered step stamps S1 to S8, the fence terms with
+  their counts, the eight checker lines and six DMA jobs started, then log every bounded wait with
+  its bound, `allow_timeout`, `timed_out` and last observed state.
 
 *Checkers*:
 
@@ -28393,8 +28774,13 @@ draws nothing from the seed.
 |`CHK-DATAWIN-BELOW` |A 16-rise stall below 0x40 keeps data irq and bit 286 at 0 for 256 rises
 |`CHK-DATAWIN-BEYOND` |Stall past 0x40 raises data irq and bit 286, armed sys, sep 0, CTRL.irq 1; 0x80 shifts the rise by 0x40
 |`CHK-DATAWIN-AT-LOG` |Records the first data irq rise for a stall of 0x40 rises; no compare
-|`CHK-NONVAC` |Ordered step stamps, the three checker lines and four DMA jobs all occurred
-|`CHK-TIMEOUT-PATHS` |Logs the bounded waits taken; no compare of its own, the waits raise on expiry
+|`CHK-DATAWIN-DISABLE-AFTER-TIMEOUT` |enable=0 after a timeout drops data irq, bit 286, CTRL.irq for 0x80 held rises
+|`CHK-DATAWIN-IRQEN-CLEAR` |irq_en=0 after a timeout drops data irq and bit 286 for 0x80 held rises, CTRL.irq 0
+|`CHK-DATAWIN-IRQTEST-RAISE` |irq_test with enable and irq_en raises data irq, bit 286, CTRL.irq; clearing drops them
+|`CHK-DATAWIN-IRQTEST-DISABLED` |irq_test with enable=0 keeps data irq and bit 286 at 0 for 0x80 rises, CTRL.irq 0
+|`CHK-DATAWIN-IRQTEST-NOIRQEN` |irq_test with irq_en=0 keeps data irq and bit 286 at 0 for 0x80 rises, CTRL.irq 0
+|`CHK-NONVAC` |Ordered fence of the nine terms with counts, step stamps, eight checker lines, six DMA jobs
+|`CHK-TIMEOUT-PATHS` |Every bounded wait logs its bound, allow_timeout, timed_out, last state; none expired
 |===
 
 *Pass Criteria*: `CHK-DATAWIN-BELOW` and `CHK-DATAWIN-BEYOND` hold: the data interrupt and raw bit
@@ -28402,9 +28788,13 @@ draws nothing from the seed.
 past-threshold stall with `HANG_DET_DATA_ACCEL_CTRL.irq` = 1 and the armed SYS and SEP interrupts
 0, read 0 again within 128 rises of the release, and rise exactly 0x40 rises later when the
 threshold is 0x80. `CHK-DATAWIN-AT-LOG` records the measured rise without
-a compare. `CHK-NONVAC` holds when all five step stamps and the three checker lines appear in order
-and four DMA jobs were started; `CHK-TIMEOUT-PATHS` only logs the bounded waits. Five phases
-complete and at least 60 SEP_IN accesses are issued. Enrolled in: `all`.
+a compare. The five gating checkers hold: after a timeout, clearing `enable` or `irq_en` with the
+stall held drops the data interrupt and raw bit 286 within 128 rises and keeps them 0 for 0x80 held
+rises with `irq` = 0; `irq_test` raises them only with both enables set. `CHK-NONVAC` holds when
+the nine fence terms, eight step stamps and eight checker lines appear in order with non-zero
+counts and six DMA jobs were started; `CHK-TIMEOUT-PATHS` holds when no bounded wait or SEP_IN
+access expired or tolerates expiry. Eight phases complete and at least 60 SEP_IN accesses are
+issued. Enrolled in: `all`.
 
 *Scope limit*: The rise at which the data interrupt first reads 1 for a stall of exactly 0x40 rises
 is printed without a compare, because the document does not say whether a stall equal to the
@@ -28868,7 +29258,8 @@ registers; fuse sense signals `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rs
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Stall a SYS_IN read below, beyond, at threshold 0x40.
+*Objective*: Stall a SYS_IN read below, beyond, at threshold 0x40, then clear `enable` or `irq_en`
+after a timeout and gate `irq_test` with each enable.
 
 *Test Coverage*:
 
@@ -28890,6 +29281,19 @@ draws nothing from the seed.
 * The rise for a stall of exactly 0x40 rises is measured and printed without a compare, because the
   document does not say whether a stall equal to the threshold fires; the specification does not
   state the value.
+* Clearing `enable` after a timeout with the stall still held drops the SYS interrupt, raw bit 286
+  and `HANG_DET_SYS_AXI_CTRL.irq`, and they stay 0 on every one of the next 0x80 held rises
+  (`smc_base_config.rdl`, `HANG_DET_CTRL.enable`: the counter reloads and `irq_o` is forced low;
+  `interrupts.adoc`, bit 286). The cycles from the write to the drop are measured and printed
+  without a compare; the specification does not state the value.
+* Clearing `irq_en` after a timeout with `enable` kept and the stall held drops the SYS interrupt
+  and raw bit 286 and keeps them 0 for 0x80 held rises, with `HANG_DET_SYS_AXI_CTRL.irq` = 0
+  (`HANG_DET_CTRL.irq_en`).
+* `irq_test` with `enable | irq_en` and no stall raises the SYS interrupt, raw bit 286 and
+  `HANG_DET_SYS_AXI_CTRL.irq`, and clearing `irq_test` drops them (`HANG_DET_CTRL.irq_test`).
+* `irq_test` with `enable` = 0, and `irq_test` with `irq_en` = 0, each keep the SYS interrupt and raw
+  bit 286 at 0 for 0x80 rises with `HANG_DET_SYS_AXI_CTRL.irq` = 0 (`irq_test` is gated by both
+  enables).
 * The `INBOUND0` filter is set to pass all for the test and restored to its register defaults.
 
 *Test Procedure*:
@@ -28923,10 +29327,28 @@ draws nothing from the seed.
   none is required; the first rise of the SYS interrupt over 0x48 sampled rises is recorded, and
   after a write of 0 to `HANG_DET_SYS_AXI_CTRL` the interrupt clears within 128 rises. Wait for the
   read after the release, then log the result.
+. Disable after timeout: write 0 to the SEP and data control registers and `enable | irq_en` to
+  `HANG_DET_SYS_AXI_CTRL`, hold a fifth read, wait up to 128 rises after the AR handshake for the
+  SYS interrupt and raw bit 286 to read 1, read `HANG_DET_SYS_AXI_CTRL` and require `irq` = 1; with
+  the stall held write `irq_en` alone (`enable` 0), wait up to 128 rises for both to read 0, read
+  the control register and require `irq` = 0, then require both at 0 on each of 0x80 held rises. A
+  per-rise watch from the write onwards records the drop rise and fails on any re-assertion.
+  Release and require the read to complete OKAY.
+. `irq_en` clear after timeout: write `enable | irq_en`, hold a sixth read, wait up to 128 rises
+  for the SYS interrupt, write `enable` alone with the stall held, wait up to 128 rises for the SYS
+  interrupt and raw bit 286 to read 0, require `irq` = 0 and both at 0 for 0x80 held rises, release,
+  require the read to complete OKAY and write 0.
+. `irq_test` raise: with no stall write `enable | irq_en | irq_test`, wait up to 128 rises for the
+  SYS interrupt and raw bit 286 to read 1 and require `irq` = 1; write `enable | irq_en`, wait up
+  to 128 rises for both to read 0 and require `irq` = 0.
+. `irq_test` with `enable` = 0 (`irq_en | irq_test`), then with `irq_en` = 0 (`enable | irq_test`):
+  require the SYS interrupt and raw bit 286 at 0 on each of 0x80 rises and `irq` = 0, write 0, then
+  require the SYS interrupt and `irq` at 0.
 . Release the hold, write 0 to `HANG_DET_SYS_AXI_CTRL`, restore the threshold to 0x1000, restore the
   `INBOUND0` configuration, start and end registers to their register defaults and read the
-  configuration back; check the ordered step stamps S1 to S5, the three checker lines and four held
-  reads started, then log the bounded waits.
+  configuration back; check the ordered step stamps S1 to S8, the fence terms with their counts,
+  the eight checker lines and six held reads, then log every bounded wait with its bound,
+  `allow_timeout`, `timed_out` and last observed state.
 
 *Checkers*:
 
@@ -28936,8 +29358,13 @@ draws nothing from the seed.
 |`CHK-SYSWIN-BELOW` |A 16-rise stall below 0x40 keeps the sys irq and raw bit 286 at 0 for 256 rises
 |`CHK-SYSWIN-BEYOND` |Stall past 0x40 raises sys irq, bit 286; armed sep, data 0; 0x80 shifts rise by 0x40
 |`CHK-SYSWIN-AT-LOG` |Records the first sys irq rise for a stall of 0x40 rises; no compare
-|`CHK-NONVAC` |Ordered step stamps, the three checker lines and four held reads all occurred
-|`CHK-TIMEOUT-PATHS` |Logs the bounded waits taken; no compare of its own, the waits raise on expiry
+|`CHK-SYSWIN-DISABLE-AFTER-TIMEOUT` |enable=0 after a timeout drops sys irq, bit 286, CTRL.irq for 0x80 held rises
+|`CHK-SYSWIN-IRQEN-CLEAR` |irq_en=0 after a timeout drops sys irq and bit 286 for 0x80 held rises, CTRL.irq 0
+|`CHK-SYSWIN-IRQTEST-RAISE` |irq_test with enable and irq_en raises sys irq, bit 286, CTRL.irq; clearing drops them
+|`CHK-SYSWIN-IRQTEST-DISABLED` |irq_test with enable=0 keeps sys irq and bit 286 at 0 for 0x80 rises, CTRL.irq 0
+|`CHK-SYSWIN-IRQTEST-NOIRQEN` |irq_test with irq_en=0 keeps sys irq and bit 286 at 0 for 0x80 rises, CTRL.irq 0
+|`CHK-NONVAC` |Ordered fence of the nine terms with counts, step stamps, eight checker lines, six reads
+|`CHK-TIMEOUT-PATHS` |Every bounded wait logs its bound, allow_timeout, timed_out, last state; none expired
 |===
 
 *Pass Criteria*: `CHK-SYSWIN-BELOW` and `CHK-SYSWIN-BEYOND` hold: the SYS interrupt and raw bit 286
@@ -28945,9 +29372,12 @@ stay 0 for the whole sub-threshold window, rise within 128 rises of the AR hands
 past-threshold stall with the armed SEP and data interrupts 0 and `HANG_DET_SYS_AXI_CTRL.irq` = 1,
 read 0 again within 128 rises of the release, and rise exactly 0x40 rises later when the threshold
 is 0x80. `CHK-SYSWIN-AT-LOG` records the measured rise without
-a compare. `CHK-NONVAC` holds when all five step stamps and the three checker lines appear in order
-and four held reads were started; `CHK-TIMEOUT-PATHS` only logs the bounded waits. Five phases
-complete and at least 19 SEP_IN accesses are issued. Enrolled in: `all`.
+a compare. The five gating checkers hold: after a timeout, clearing `enable` or `irq_en` with the
+stall held drops the SYS interrupt and raw bit 286 within 128 rises and keeps them 0 for 0x80 held
+rises with `irq` = 0; `irq_test` raises them only with both enables set. `CHK-NONVAC` holds when
+the nine fence terms, eight step stamps and eight checker lines appear in order with non-zero
+counts and six held reads completed; `CHK-TIMEOUT-PATHS` holds when no bounded wait or AXI access
+expired or tolerates expiry. Eight phases complete and at least 41 SEP_IN accesses are issued. Enrolled in: `all`.
 
 *Scope limit*: The rise for a stall of exactly 0x40 rises is measured and printed without a compare,
 because the document does not say whether a stall equal to the threshold fires. `CHK-TIMEOUT-PATHS`
@@ -33601,7 +34031,8 @@ gate write. The 5 us and 10 us bounds are bench choices; the specification state
 
 *Source Module*: `smc_i3c_csr_sweep_core_test`
 
-*BFM / Model*: SEP_IN AXI driver (`SmcCsrSeq` 4-byte reads and writes, OKAY required) to the six I3C
+*BFM / Model*: SEP_IN AXI driver (`SmcCsrSeq` 4-byte reads and writes, and two 8-byte writes with
+an explicit write strobe, OKAY required) to the six I3C
 instance CSR windows (`I3C_CSR` base per instance from the generated map, instance count from the
 generated `NUM` symbol) at the register offsets of the generated I3C wrapper register map; the
 register table is parsed at run time from the I3C core's SystemRDL sources `base_registers.rdl`,
@@ -33644,6 +34075,16 @@ instance.
   read-write bits in instance n leaves the stable fields of the same register in the other five
   instances at their
   reset, and is then restored.
+* Full-lane write: one 8-byte write with write strobe 0xFF at an 8-byte aligned register pair R_lo
+  (offset 8k) and R_hi (offset 8k+4) of instance 0 answers OKAY and loads both 32-bit registers:
+  R_lo reads back what its pattern write read back in the read-write step, R_hi what its
+  complement write read back (the bus is 64 bits wide with one write strobe per byte lane,
+  `fabric.adoc`). The pair is the one whose fields are all hardware-stable and whose read-write
+  bits reach every byte lane of both registers, with the most read-write bits.
+* Upper-lane-only write: one 8-byte write with write strobe 0xF0 after it answers OKAY and leaves
+  R_lo exactly at its full-lane value although its lanes carry the complement; the R_hi value is
+  measured and printed against the word its enabled lanes carried and not compared (SF-019,
+  SF-024); both registers read their reset after 4-byte restores.
 
 *Test Procedure*:
 
@@ -33669,8 +34110,15 @@ instance.
 . For one register of each of the base, PIO and standby blocks and each instance n write a distinct
   pattern, read it back, require every other instance's stable fields at reset, restore and read
   back; stamp ISOLATION_SWEPT.
-. Require the six stamps strictly increasing, the five checker lines printed at their own steps and
-  print the fence line.
+. Pick the register pair; require each reference readback to differ from its reset; write
+  {R_hi complement word, R_lo pattern word} with write strobe 0xFF, require OKAY, read both back and
+  require them equal to the references; stamp FULL_LANE.
+. Read R_lo; write {R_hi pattern word, R_lo complement word} with write strobe 0xF0, require OKAY,
+  read both back, require R_lo unchanged and print R_hi; restore both to reset with 4-byte writes
+  and require the readbacks at reset; stamp UPPER_LANE.
+. Require the eight stamps strictly increasing with a non-zero count each (registers parsed, then
+  bus accesses per step), the seven checker lines printed at their own steps and print the fence
+  line.
 
 *Checkers*:
 
@@ -33692,15 +34140,21 @@ with the neighbouring bit kept, which then clears on its own write.
 |`CHK-I3C-SWEEP-INSTANCE-ISOLATION` |After a distinct pattern is written to one register of each
 block in instance n, the hardware-stable fields of the same register in each of the other five
 instances read their reset, for every n, and the pattern is restored.
-|`CHK-NONVAC` |The fence terms TABLE_PARSED, RESET_SWEPT, RO_SWEPT, RW_SWEPT, W1C_SWEPT and
-ISOLATION_SWEPT occur in order with strictly increasing stamps and each checker line prints at its
-own step.
+|`CHK-I3C-FULL-LANE-WRITE` |The 8-byte write with write strobe 0xFF answers OKAY, R_lo reads back
+its pattern readback of the read-write step and R_hi its complement readback.
+|`CHK-I3C-UPPER-LANE-ONLY` |The 8-byte write with write strobe 0xF0 answers OKAY and R_lo reads back
+exactly its full-lane value; R_hi is measured and printed against the written word (LINKED-ISSUE
+SF-019); both registers read their reset after the restore.
+|`CHK-NONVAC` |The fence terms TABLE_PARSED, RESET_SWEPT, RO_SWEPT, RW_SWEPT, W1C_SWEPT,
+ISOLATION_SWEPT, FULL_LANE and UPPER_LANE occur in order with strictly increasing stamps and a
+non-zero count each, and each checker line prints at its own step.
 |===
 
 *Pass Criteria*: `CHK-I3C-SWEEP-RESET-READ`, `CHK-I3C-SWEEP-RO-IGNORED`,
-`CHK-I3C-SWEEP-RW-ROUNDTRIP`, `CHK-I3C-SWEEP-W1C-CLEAR` and `CHK-I3C-SWEEP-INSTANCE-ISOLATION` hold
-after their compares, with `CHK-NONVAC` printed at the end; the values of hardware-updated fields
-and the `RESET_CONTROL` soft-reset behaviour are not claimed. Zero reset words cannot fail on an
+`CHK-I3C-SWEEP-RW-ROUNDTRIP`, `CHK-I3C-SWEEP-W1C-CLEAR`, `CHK-I3C-SWEEP-INSTANCE-ISOLATION`,
+`CHK-I3C-FULL-LANE-WRITE` and `CHK-I3C-UPPER-LANE-ONLY` hold after their compares, with
+`CHK-NONVAC` printed at the end; the values of hardware-updated fields, the R_hi value after the
+upper-lane-only write and the `RESET_CONTROL` soft-reset behaviour are not claimed. Zero reset words cannot fail on an
 unknown value under a two-state simulator. Enrolled in: `all`; also listed in `fabric.toml`
 (tags `ci`, `fabric`).
 
@@ -34151,10 +34605,21 @@ draws nothing from the seed.
 * Mailbox CSR and IRQ-control smoke over real SYS AXI.
 * Every address and bit on the proof path is imported by symbol from the generated PeakRDL headers (`smc_addr.h` for the register bases, `smc_base_config.h` for the clock-gate enable, `axil_mailbox_smc_wrap.h` for the mailbox field masks).
 * A regenerated map therefore moves this sequence with it instead of silently retargeting a still-passing decode smoke ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+* External mailbox interrupt outputs: the 32 outbound-port interrupts leave the SMC on `smc_ext_mailbox_interrupts_o`, observed as `tb_ext_mailbox_interrupts` (`axi_lite_mailbox_unit/doc/index.adoc`; `NumMailboxes` 32 in `periphs.adoc`). On the outbound aperture of every pair k = 0..31, `WIRQT` 0 with `IRQEN.wtirq` 1 and one word written to `WRITE_DATA` must raise exactly one bit of the vector with every other bit at its baseline and `IRQS.wtirq` 1; popping the word from the inbound `READ_DATA` and writing `IRQS` 0x1 returns the vector to its baseline with `IRQS.wtirq` 0. The read interrupt is the same with `RIRQT` 0, `IRQEN.rtirq` 1, a word written by the inbound partner and `IRQS` 0x2 (`axil_mailbox.adoc`, WIRQT, RIRQT, IRQS, IRQEN).
+* Which bit each pair drives is not specified (SF-032): the pair-to-bit map of each interrupt is printed, and only its one-hot shape and its distinctness across the 32 pairs are compared; a read bit that differs from the write bit of the same pair is listed, not failed. `IRQP` is read and printed.
+* Every vector poll is a per-cycle sample capped at 128 `clk_smc_i` cycles, a liveness ceiling and not a latency claim, and fails the leaf with the last sampled vector on expiry; X/Z on the vector fails the leaf.
 
 *Test Procedure*:
 
-Drive `smc_mailbox_irq_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_mailbox_irq_test_seq` and the SEP mailbox interrupt injection, then `smc_mailbox_ext_irq_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+[arabic]
+. Run the existing CSR, clamp and aggregate legs unchanged and stamp EXISTING-LEGS; set `MAILBOX_CG_EN` and read it back; sample `tb_ext_mailbox_interrupts` as the baseline (S1).
+. For pair k = 0..31 on the outbound aperture: write `WIRQT` 0 and `IRQEN` 0x1, write one word to `WRITE_DATA`, poll the vector until it differs from the baseline, require one rising bit, read `IRQS` and `IRQP`, and require `IRQS.wtirq` 1 and the vector unchanged (S2).
+. Pop the word from the inbound `READ_DATA`, write `IRQS` 0x1, poll the vector back to the baseline, require `IRQS.wtirq` 0, write `IRQEN` 0 (S3).
+. Write `RIRQT` 0 and `IRQEN` 0x2, write one word to the inbound `WRITE_DATA`, poll, require one rising bit, read `IRQS` and `IRQP`, and require `IRQS.rtirq` 1 (S4).
+. Pop the word from the outbound `READ_DATA`, write `IRQS` 0x2, poll back to the baseline, require `IRQS.rtirq` 0, write `IRQEN` 0 (S5).
+. Restore `CLOCK_GATE_CONTROL`; check both maps, the ordered fence and the bounded waits, each poll failing on expiry with its last vector (S6).
 
 
 *Checkers*:
@@ -34168,10 +34633,14 @@ Drive `smc_mailbox_irq_test_seq`. Each checker below is a named compare the DUT 
 |`CHK-MAILBOX-IRQ-SOURCE` |Named compare in `smc_mailbox_vip_utils.py`; the run fails if it mismatches
 |`CHK-MAILBOX-IRQT-CLAMP` |WIRQT and RIRQT writes at or above MailboxDepth read back `MailboxDepth - 1`, with MailboxDepth the SMC value of the peripheral parameter table in `hw/sys/smc/doc/periphs.adoc` and the depth `CPU_CTRL.SMC_ATTRIBUTES` publishes required to equal it
 |`CHK-MAILBOX-IRQT-IN-RANGE` |Named compare in `smc_mailbox_irq_test_seq.py`; the run fails if it mismatches
+|`CHK-MAILBOX-EXT-WIRQ` |For every pair the write threshold interrupt raises exactly one bit of `tb_ext_mailbox_interrupts` with `IRQS.wtirq` 1, and after the pop and the 0x1 acknowledge the vector is back at its baseline with `IRQS.wtirq` 0; the 32 bits are distinct and the map is printed (SF-032)
+|`CHK-MAILBOX-EXT-RIRQ` |For every pair the read threshold interrupt raises exactly one bit with `IRQS.rtirq` 1 and clears after the pop and the 0x2 acknowledge; distinct across pairs, map printed, pairs whose read bit differs from the write bit listed (SF-032)
+|`CHK-NONVAC` |Ordered fence EXISTING-LEGS < WIRQ-RAISE(k) < WIRQ-CLEAR(k) < RIRQ-RAISE(k) < RIRQ-CLEAR(k) for every pair, each term with a non-zero access count and a strictly increasing simulation time
+|`CHK-TIMEOUT-PATHS` |Lists every vector poll with its bound, use and last vector, and the SEP_IN access limit; none expired and none tolerates expiry
 |===
 
 
-*Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE`, `CHK-MAILBOX-EXT-WIRQ`, `CHK-MAILBOX-EXT-RIRQ`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. The pair-to-bit maps are recorded and are not part of the claim. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 '''''
@@ -37630,6 +38099,9 @@ the register description.
 * Fields whose readback the contract does not pin -- hardware-driven, `singlepulse`, `oneToSet`, read-side-effect -- are never written by the generic cycle. The four CPU_CTRL registers that carry a contract of their own (`WDT_TIMEOUT_RESET`, `MUTEX`, `SEMA`, `REFERENCE_COUNTER`) are driven against that contract instead.
 * `_EXCLUDED` in the sequence names every remaining software-writable register of those blocks and what driving it here would do; `_assert_partition` fails when a register of the blocks is in neither list, so a regenerated map cannot add one silently.
 * The adopter strap capture registers are the `sw = r` half: `hw/sys/smc/doc/memmap.adoc` places `STRAPS_LO` / `STRAPS_HI` at BASE + 0x040_3000 / 0x040_3004 in the mandatory region of the adopter external window, and straps.rdl makes both `sw = r; hw = w`. What they captured at cold reset is read once and held against the write, not predicted from the integration; the contract proven is that every undeclared bit reads 0 and a software write changes nothing.
+* CHIP_CONFIG (`VERSION_LO`, `VERSION_HI`, `CHIP_ID`, `LC_STATE`, all `R` in chip_config.adoc) takes a 0xFFFFFFFF write with WSTRB 0xF and then 0xFF in each single byte lane (WSTRB 1<<b), each followed by a readback; every BRESP is logged, not compared, while SF-022 is open, and `CHIP_ID` / `LC_STATE` are logged against their documented resets 0x0 / 0xF (SF-023).
+* `NDMRESET_PROCESS` (`RW` 31:0 in ndm_reset.adoc) stores 0xFFFFFFFF and 0, and from 0 a 0xA5 written in lane b alone changes only byte b (SF-024, compared); `NDMRESET_REQUEST` and `NDMRESET_CLUSTER_COUNT` (`R`) take the same all-ones and single-lane writes with BRESP logged.
+* `ISOLATE_REQ_SMC_REG` takes a write of 0x00000001 with WSTRB 0x0. Its B response must arrive within the driver's bound; BRESP and the register value before and after are logged and not compared (SF-021, and the open RTL issue on this register's byte lanes held out as `smc_isolate_req_smc_lane_test`).
 
 *Test Procedure*:
 
@@ -37643,9 +38115,17 @@ Drive `smc_rdl_field_sweep_test_seq`. Each checker below is a named compare the 
 |`CHK-RDL-SWEEP-CYCLE` |Every swept register instance read its RDL reset with all undeclared bits 0, took the pattern its access type allows through half-register writes and the co-resident array pass, and read back its RDL reset after the restore
 |`CHK-RDL-SWEEP-SPECIAL` |CPU_CTRL `WDT_TIMEOUT_RESET` self-cleared its `singlepulse` fields, `MUTEX[0..3]` handed the mutex out once and released it on a write, `SEMA[0..3]` added and subtracted the signed written value, and `REFERENCE_COUNTER` dropped below its earlier sample once a software write of 0 had crossed into the reference-clock domain, then advanced again from the loaded value
 |`CHK-RDL-STRAPS-RO` |`STRAPS_LO` and `STRAPS_HI` read with every undeclared bit 0, and a software write of 0xffffffff left both unchanged
+|`CHK-RDL-CHIPCFG-ALLONES` |After a 0xFFFFFFFF write with WSTRB 0xF, `VERSION_LO` reads 0x000100A0, `VERSION_HI` 0x00000000, and `CHIP_ID` / `LC_STATE` their pre-write values, logged against the documented resets 0x0 / 0xF (SF-023); BRESP logged (LINKED-ISSUE SF-022). Fails on a read-only register taking a written bit, a version value other than the documented one, a missing B, or X
+|`CHK-RDL-CHIPCFG-LANES` |Each of the 16 single-lane writes (four registers, lanes 0 to 3) leaves its register reading its pre-write value; BRESP logged (LINKED-ISSUE SF-022). Fails on a lane write changing a read-only register, a missing B, or X
+|`CHK-RDL-NDM-ALLONES` |`NDMRESET_PROCESS` reads 0xFFFFFFFF after the all-ones write and 0x00000000 after the restore. Fails on any bit not stored, a restore not reading back, or X
+|`CHK-RDL-NDM-LANES` |From 0, `NDMRESET_PROCESS` reads 0x000000A5, 0x0000A5A5, 0x00A5A5A5 and 0xA5A5A5A5 after 0xA5 is written in lane 0, 1, 2 and 3 alone, then 0 after the restore. Fails on a masked lane changing, an enabled lane not taking, or X
+|`CHK-RDL-NDM-RO` |`NDMRESET_REQUEST` and `NDMRESET_CLUSTER_COUNT` each read their pre-write value after all five writes (all ones, then 0xFF in each single lane); BRESP logged (LINKED-ISSUE SF-022). Fails on a read-only register taking a written bit, a missing B, or X
+|`CHK-RDL-ISO-ZERO-STROBE` |The WSTRB 0x0 write to `ISOLATE_REQ_SMC_REG` answers B within the driver's bound; BRESP and the value before and after are logged and not compared (LINKED-ISSUE SF-021). Fails on no B within the bound, or X on BRESP or the readback
+|`CHK-NONVAC` |Ordered fence EXISTING-SWEEP < CHIPCFG-ALLONES < CHIPCFG-LANES < NDM-ALLONES < NDM-LANES < NDM-RO < ISO-ZERO-STROBE, each term with its own sim time and a non-zero count of compares. Fails on a missing, zero-count or out-of-order term
+|`CHK-TIMEOUT-PATHS` |Logs every SEP_IN access of the strobe legs as a bounded wait with the driver's bound, `allow_timeout`, `timed_out` and its last observed state, and requires none expired; an expiry raises in the driver with the address and bound
 |===
 
-*Pass Criteria*: all three checkers hold and the protocol-VIP record clears its 521-access floor. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all eleven checkers hold and the protocol-VIP record clears its 605-access floor. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Fields whose readback the contract does not pin (hardware-driven, `singlepulse`,
 `oneToSet`, read-side-effect) are never written by the generic cycle, and the registers named in
@@ -37880,6 +38360,8 @@ the register description.
 * DATA_CTRL_ENABLE takes the all-ones and all-zeros pattern of its three override fields through half-register writes, so the byte lanes over the other half are deasserted on every write.
 * ACCESS_FILTER drives both filter enables and both AxPROT requirement fields to all-ones and all-zeros in an order that keeps the register reachable: the read requirement first while nothing is gated, then the enables with the write requirement at 0, then the read requirement cleared, then the write requirement.
 * The armed state carries an AxPROT allow leg and an AxPROT deny leg on every instance.
+* In the armed state, after the read legs, a write with AWPROT=7 that would clear `write_filter_enable` must answer DECERR, and the ARPROT=7 readback must still carry the armed word.
+* An ordered fence holds DATA_CTRL_ENABLE cycle < armed write < read legs < refused write < restore for every instance, each term with its access count and sim time.
 * Both registers are restored to their generated RDL reset word.
 
 *Test Procedure*:
@@ -37894,9 +38376,11 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 |`CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP` |All 65 DATA_CTRL_ENABLE instances read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
 |`CHK-GPIO-INTF-ACCESS-FILTER-SWEEP` |All 65 ACCESS_FILTER instances took both filter enables and both AxPROT requirement fields to all-ones and all-zeros, matched the predicted word after every step, and returned to the RDL reset 0x0001_0100
 |`CHK-GPIO-INTF-ACCESS-FILTER-DENY` |On each of the 65 instances the armed read filter returned the programmed word to the matching-AxPROT read and refused the non-matching read of the same address with DECERR and the error-slave word, so the refusal is the AxPROT gate and not a dead window
+|`CHK-GPIO-INTF-ACCESS-FILTER-WRITE-DENY` |On each of the 65 instances the AWPROT=7 write in the armed state (write requirement 0) answered BRESP DECERR and the following ARPROT=7 readback equals the armed word with `write_filter_enable` still 1; the number of accesses between the armed write and the refused write is logged (SF-016)
+|`CHK-NONVAC` |Ordered fence DATA-CTRL-ENABLE-CYCLE < ARMED(i) < READ-LEGS(i) < WRITE-DENY(i) < RESTORE(i) for every instance i, every term with its measured access count and its own sim time, strictly rising
 |===
 
-*Pass Criteria*: `CHK-GPIO-INTF-ACCESS-FILTER-DENY`, `CHK-GPIO-INTF-ACCESS-FILTER-SWEEP`, `CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-GPIO-INTF-ACCESS-FILTER-DENY`, `CHK-GPIO-INTF-ACCESS-FILTER-SWEEP`, `CHK-GPIO-INTF-ACCESS-FILTER-WRITE-DENY`, `CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP`, `CHK-NONVAC` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -37966,14 +38450,16 @@ Drive `smc_gpio_intf_data_ctrl_write_sweep_test_seq`. Each checker below is a na
 *Randomization*: RAND-NONE: directed, the cells are the stated reset values and access classes of
 the register description.
 
-*Objective*: Cycle every FILTER_CONFIG field and the write-once lock on all 32 filter entries.
+*Objective*: Cycle every FILTER_CONFIG field and the write-once lock on all 32 filter entries, then clear the lock with a cold reset.
 
 *Test Coverage*:
 
 * Each of the 16 inbound and 16 outbound entries takes the all-ones and all-zeros pattern of every software-writable FILTER_CONFIG field through half-register writes and is restored to its RDL reset.
 * The ones pattern sets `entry_enabled` in the same write as `read_allowed` and `write_allowed`, and leaves `START_ADDR`/`END_ADDR` at their reset, so an armed entry admits rather than blocks.
 * The write-once `locked` field is set on every entry after all field cycles have completed, and the locked entry then answers both a write of 0 over that bit and a write of the other half with DECERR, the response `filter_ctrl.rdl` specifies for a write to a locked entry. The entry addresses are registered with the SEP_IN monitor only once the field cycles are over, so a DECERR during them still fails the leaf.
-* The sequence leaves all 32 entries locked; only a reset clears the field.
+* With all 32 entries reading `locked`=1, the bench reset agent applies one cold reset, and the first read of every entry after it shows `locked` clear.
+* After the cold reset every entry reads the documented resets of `filter_ctrl.adoc`: `data_bus_width` 0x3 and every other FILTER_CONFIG field 0, `START_ADDR[55:0]` 0x0 and `END_ADDR[55:0]` 0x7. The reserved bits are logged and not compared, since whether they read 0 is an open spec question.
+* Each previously locked entry then accepts an `allow_ns` write with OKAY, reads it back, and is restored to its reset.
 
 *Test Procedure*:
 
@@ -37986,9 +38472,14 @@ Drive `smc_filter_config_field_sweep_test_seq`. Each checker below is a named co
 |Checker |Description
 |`CHK-FILTER-CONFIG-FIELD-SWEEP` |All 32 entries read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, held the reset of the bits software cannot write, and returned to that reset
 |`CHK-FILTER-CONFIG-LOCK-WOSET` |On all 32 entries the write-once `locked` field went from clear to set on a write of 1 and the entry then refused both later configuration writes with DECERR while still reading the locked word, so the refused writes took no effect; the accepted writes of the field cycle on the same addresses are the live control
+|`CHK-FILTER-COLD-RESET-UNLOCK` |Every one of the 32 entries read `locked`=1 before the cold reset and `locked`=0 (FILTER_CONFIG bit 63) on its first read after it
+|`CHK-FILTER-COLD-RESET-WORDS` |After the cold reset each of the 32 entries read FILTER_CONFIG with `data_bus_width`=0x3 and every other field 0, `START_ADDR[55:0]`=0x0 and `END_ADDR[55:0]`=0x7, every 64-bit read OKAY; the reserved bits are logged
+|`CHK-FILTER-COLD-RESET-WRITABLE` |On each of the 32 previously locked entries an `allow_ns` write answered OKAY and read back with `allow_ns`=1 and every other field at its reset, and the restore read back the reset fields
+|`CHK-NONVAC` |Ordered fence FIELD-SWEEP < LOCK-ALL < COLD-RESET < RESET-WORDS < WRITABLE, every term with its own sim time and count
+|`CHK-TIMEOUT-PATHS` |The cold-reset assert and release handshakes and the fuse-sense wait after the reset each log a finite bound and the last observed state, and none expired
 |===
 
-*Pass Criteria*: `CHK-FILTER-CONFIG-FIELD-SWEEP`, `CHK-FILTER-CONFIG-LOCK-WOSET` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-FILTER-COLD-RESET-UNLOCK`, `CHK-FILTER-COLD-RESET-WORDS`, `CHK-FILTER-COLD-RESET-WRITABLE`, `CHK-FILTER-CONFIG-FIELD-SWEEP`, `CHK-FILTER-CONFIG-LOCK-WOSET`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -41267,6 +41758,10 @@ draws nothing from the seed.
 ** Entry 1 covers the hypervisor target for the same source and allows nothing. The hypervisor words must still land, which they can only do if entry 1 does not match `OTHER_ID`.
 ** Entry 0 is then re-armed to deny the M-mode targets for `MMODE_ID` and one more M-mode word is written through the window: it must be refused with DECERR (`fabric.adoc`: a matching deny entry routes the transaction to an error slave that returns a decode error) and its SYS_OUT target must keep its sentinel, which only a path carrying exactly `MMODE_ID` does.
 ** Both entries are read at their RDL reset first and restored to it afterwards.
+* **Every region's valid bit.** Each of the eight M-mode and eight Xvisor `region_attrs` registers is read at its reset (`valid` 0), written with `valid` set and a distinct 1 MB-aligned offset, and read back. With the region valid, a word through slot r of the window's local copy must land at the offset's bits [55:20] (`output_remap.adoc`: 36 MSBs for 8 x 1 MB regions) with the request's low 20 bits and leave the request address alone. The region is rewritten with the same offset and `valid` clear and read back; a second word at the same window address must land at the request address and leave the first word at the remapped address. Every word reads back through the window.
+* **Partial-lane writes.** Each region is written with WSTRB=0x0F (offset [31:0] on the enabled lanes, `valid` set on the disabled top lane), then with WSTRB=0x80 (`valid` set, another offset on the disabled lanes), and read back after each write. Whether a write honours its strobes is not stated (SF-027): both readbacks are logged, not compared. One word through slot r must then land where the second readback's `valid` and offset put it, and nowhere else.
+* **Alias cacheable field.** Each of the eight alias remap regions (`alias_remap.adoc`: `cacheable` 59:56, `offset` 55:12, `valid` 63) is read at its reset, written with `cacheable` 0xF and a distinct offset, then with `cacheable` 0x0 and the same offset, `valid` clear, and read back exactly after each write.
+* Every M-mode, Xvisor and alias region is restored to its reset and read back, and both filter entries are read at their reset.
 
 *Test Procedure*:
 
@@ -41278,6 +41773,12 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 |===
 |Checker |Description
 |`CHK-OUTPUT-REMAP-WINDOWS` |All seven words landed in SYS_OUT memory at the predicted address and nowhere else, each read back through the window it was written through, and the M-mode word written once entry 0 denied source `MMODE_ID` was refused with DECERR and left its target untouched
+|`CHK-ORMP-VALID-MMODE` |Each of the eight M-mode regions read `valid` 0 at reset, `valid` 1 with its offset after the set, and `valid` 0 with the same offset after the clear (exact)
+|`CHK-ORMP-VALID-XVISOR` |The same for the eight Xvisor regions
+|`CHK-ORMP-VALID-ROUTE` |For all sixteen regions, the word sent while valid landed at the remapped address with the request address untouched, the word sent once cleared landed at the request address with the first word kept at the remapped address, and both read back through the window
+|`CHK-ORMP-WSTRB` |For all sixteen regions, the readbacks after the WSTRB=0x0F and WSTRB=0x80 writes are logged (LINKED-ISSUE SF-027), and the word through slot r landed where the second readback's `valid` and offset put it and nowhere else
+|`CHK-ALIAS-CACHEABLE` |Each of the eight alias regions read `cacheable` 0xF after the first write and 0x0 after the second, with offset and `valid` as written (exact)
+|`CHK-NONVAC` |Ordered fence SETUP < EXISTING < MMODE_VALID < XVISOR_VALID < ROUTE < MMODE_WSTRB < XVISOR_WSTRB < ALIAS_CACHEABLE < RESTORE, each term with a non-zero count and a later sim time than the one before
 |===
 
 *Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -41642,7 +42143,7 @@ the 64-bit blocks the firmware leaf takes the safe lanes and the hazardous rows 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode.
+*Objective*: A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode; pulses and level resets on the other cores, the debug-module reset, and the `RESET_VECTOR[1..3]` reset value and storage.
 
 *Test Coverage*:
 
@@ -41651,6 +42152,12 @@ draws nothing from the seed.
 * **Pulse with the level reset held.** `core1_reset_n_n0_scan` is written 0 and core 1's cluster reset must assert. Core 1 is then pulsed. A 0 in `core1_reset_n_n0_scan` holds the core in reset for the whole pulse, so core 1's bit of `tb_cpu_core_resets_n` must read 0 at every `clk_smc_i` sample from the pulse write until `core_resets_done` returns, including the cycle where the pulse hands back to the level reset. The level is then released and core 1's reset must deassert.
 * **Give-up timeout.** Core 1's level reset is requested with `RESET_TIMEOUT` at `timeout_value` 1 and `timeout_mode` 0, and must read `reset_timeout` 1. It is then released, and both status bits must clear. `RESET_TIMEOUT` and `CORE_RESET_PULSE_COUNT` are restored and read back.
 * **Mode 0 applies the reset once the drain completes.** `cpu_ctrl.rdl` describes `timeout_mode` 0 as "give up and report error (stay withheld, do not apply)", while `smc_cpu_ctrl_wrap.sv` computes `withhold = pending & ~force_apply` with `pending = sw_reset_req & ~drained_i`, so once the drain completes the request is applied in either mode and `reset_applied` reads 1 beside `reset_timeout`. The leaf reports `reset_applied` and does not grade it.
+* **Reset values.** Before any write, `RESET_CTRL` must read `debug_reset_n_n0_scan` 0, `uncore_reset_n_n0_scan` 1, every `coreN_reset_n_n0_scan` 1 and every pulse start 0, and `RESET_VECTOR[1]`, `[2]` and `[3]` must each read 0xC0040000 in bits 55:0. Bits 63:56 are measured and logged (SF-011).
+* **Pulses on cores 0, 2 and 3.** With `CORE_RESET_PULSE_COUNT` at its reset (`pre_reset_count` 0x8, `post_reset_count` 0x10), `RESET_TIMEOUT` in force mode with `timeout_value` 0x40 and every level reset high, each of cores 0, 2 and 3 is pulsed alone. Its `core_resets_done` bit must fall and return within the poll bound while the other three read 1 on every poll, and its bit of `tb_cpu_core_resets_n`, sampled at every `clk_smc_i` edge, must read low for one run of exactly 17 cycles while the other cores stay out of reset. The delay from the write response to the first low sample is measured and logged (SF-012).
+* **Level reset on cores 2 and 3.** With force mode, `core2_reset_n_n0_scan` and then `core3_reset_n_n0_scan` are cleared and set again. After each clear `reset_applied` must read 1 and the core's cluster reset assert with the other cores out of reset; after each set `reset_applied` must read 0 and the core's cluster reset deassert.
+* **Debug-module reset.** `RESET_CTRL` is written with `debug_reset_n_n0_scan` 1 and then 0, every other field at its reset value, and read back after each write. Bit 24 must follow each write while bits 8 and 3:0 read 1 and bits 7:4 read 0.
+* **Reset-vector bit 17.** Each of `RESET_VECTOR[1..3]` is written 0xC0060000, all three are read, and the vector is written back to 0xC0040000 and read. The written vector must read 0xC0060000 and the other two 0xC0040000 in bits 55:0, and each restore must read 0xC0040000.
+* **Bounded waits.** Every poll of `core_resets_done` and `reset_applied` and every wait on `tb_cpu_core_resets_n` in these legs has a finite bound and fails with its last observed state; `RESET_TIMEOUT` is restored and read back at the end.
 
 *Test Procedure*:
 
@@ -41661,13 +42168,20 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-CPU-DBG-RST-REASSERT` |`RESET_CTRL` bit 24 read 0 after the cold reset, 1 after the release write and 0 after the re-assert write, with bits 8 and 3:0 at 1 and bits 7:4 at 0 on all three reads
 |`CHK-CPU-RST-GIVEUP` |Core 1's level reset under `timeout_mode` 0 and `timeout_value` 1 read `reset_timeout` 1, and both status bits cleared after the release
+|`CHK-CPU-RST-LEVEL-CORES` |For cores 2 and 3, `reset_applied` read 1 and the core's cluster reset asserted after its level reset was cleared, with the other cores out of reset, and both returned after it was set
 |`CHK-CPU-RST-PULSE` |Core 1's `core_resets_done` bit fell and returned after the pulse write, with the other cores' bits high throughout
+|`CHK-CPU-RST-PULSE-CORES` |Cores 0, 2 and 3 each pulsed with the reset pulse counts: the core's `core_resets_done` bit fell and returned with the other bits 1 on every poll, and its cluster reset read low for one run of 17 `clk_smc_i` cycles with the other cores out of reset; the pre-reset delay is logged (SF-012)
 |`CHK-CPU-RST-PULSE-HELD` |Core 1's cluster reset read 0 at every `clk_smc_i` sample of a pulse run with `core1_reset_n_n0_scan` held 0
 |`CHK-CPU-RST-PULSE-WIDTH` |With `post_reset_count` 3, core 1's cluster reset read low for one run of exactly 4 `clk_smc_i` cycles
+|`CHK-CPU-RST-VECTOR-BIT17` |Each of `RESET_VECTOR[1..3]` written 0xC0060000 read it back in bits 55:0 while the other two read 0xC0040000, and read 0xC0040000 after the restore (9 + 3 compares)
+|`CHK-CPU-RST-VECTOR-RESET` |`RESET_VECTOR[1]`, `[2]` and `[3]` read 0xC0040000 in bits 55:0 before any write; bits 63:56 are logged (SF-011)
+|`CHK-NONVAC` |Ordered fence RESET-VALUES < CORE1-LEGS < PULSE-0-2-3 < LEVEL-2-3 < DEBUG-RESET < VECTOR-BIT17, each term with its own sim time and a non-zero count. Fails on a missing, zero-count or out-of-order term
+|`CHK-TIMEOUT-PATHS` |Lists every bounded wait of the core 0/2/3 pulse and core 2/3 level legs with its bound, `allow_timeout`, `timed_out` and last observed state, and the SEP_IN access bound; each expiry raises with that state and none expires
 |===
 
-*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
+*Pass Criteria*: all eleven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
 
 *Scope limit*: `reset_applied` under `timeout_mode` 0 is reported and not graded: the register
 description says the request stays withheld, while the wrapper applies it once the drain completes.
@@ -42304,8 +42818,8 @@ inside its area.
 |67, 305 to 319, 403, 404, 406 to 429
 |Zeroer clock-gate independence, the AVS configuration crossing, AVS clock select, base-configuration registers, handshake stalls, per-ID order and single responses across the clock domains, scratch storage at a pinned triple, and the fixed-cell families: the fifteen pinned-period ratio modules (the owning leaf of the family, `smc_clk_smc_slower_than_ref_test`, is Phase 2), the register-crossbar relation cells, the OCTS rate cells, the peripheral-floor round trips and the reference-period reset-cycle counts.
 |<<smc-vplan-area-cpu,CPU>>
-|70, 72, 78, 82, 430, 433, 435, 437 to 442, 445
-|CPU-control map depth, the ECC diagnostic depth and the ECC fault-inject hook, SPM boundaries and aperture, BEU access at the reset aperture, boot-time register reads, access rules, the MUTEX, SCRATCH and WDT register walks, write-back PC decode, the external-window aperture limit and the SPM region-size reach.
+|70, 72, 78, 82, 430, 433, 435, 437 to 442, 445, 544
+|CPU-control map depth, the ECC diagnostic depth and the ECC fault-inject hook, SPM boundaries and aperture, BEU access at the reset aperture, boot-time register reads, access rules, the MUTEX, SCRATCH and WDT register walks, write-back PC decode, the external-window aperture limit and the SPM region-size reach, and the scratchpad bank walk.
 |<<smc-vplan-area-jtag,JTAG>>
 |85, 210 to 219, 222 to 224, 253, 301 to 303, 323, 446 to 452, 537
 |DFX sticky abort bits through pulses and resets, Debug Module command replacement under a held error, the DFD register sweeps (CLA MMR, node event-action pairs, counters and edges, sink and funnel MMRs, read-only writes, byte lanes), trace accumulator fill, sink windows, concurrent sink readout, debug-bus mode lock, flush corners, trace reset and write-out phase, the dfx_ctrl aperture, storage and no-effect fields, fixed Debug Module capabilities and the abstract-command lifecycle.
@@ -42916,6 +43430,10 @@ entry's `*Randomization*` field.
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_spm_mem_boundary_test`
+|<<smc-vplan-area-cpu,CPU>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_spm_bank_walk_test`
 |<<smc-vplan-area-cpu,CPU>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.

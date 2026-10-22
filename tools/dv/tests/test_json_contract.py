@@ -376,7 +376,20 @@ MANIFEST_KEYS = {
     "tool_version",
     "waivers",
 }
-MANIFEST_OPTIONAL_KEYS = {"combine"}
+# `targets` is written by the merge of a run whose leaves span several targets, one record per
+# target merge; `union_warnings` by every merge that unions databases (that one or
+# `--cov-combine`); `graded_summary` when the grade reads a report table other than the
+# hierarchy.
+MANIFEST_OPTIONAL_KEYS = {"combine", "graded_summary", "targets", "union_warnings"}
+MANIFEST_TARGET_KEYS = {
+    "build_fingerprint",
+    "design_db",
+    "inputs",
+    "log",
+    "merge_return_code",
+    "merged",
+    "target",
+}
 MANIFEST_INPUT_KEYS = {
     "attempt",
     "build_fingerprint",
@@ -706,6 +719,8 @@ class CoverageFiles(ContractCase):
         self.assert_keys(manifest["policy"], MANIFEST_POLICY_KEYS, where="manifest policy")
         for entry in manifest["inputs"]:
             self.assert_keys(entry, MANIFEST_INPUT_KEYS, where="manifest input")
+        for entry in manifest.get("targets", []):
+            self.assert_keys(entry, MANIFEST_TARGET_KEYS, where="manifest target merge")
 
     def test_report_summary_is_the_one_file_with_hole_samples(self):
         summary = read_json(self.report / "summary.json")
