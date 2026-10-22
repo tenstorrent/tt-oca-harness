@@ -252,12 +252,17 @@ module drbg_axis_edn_adapter
                                                     gen_ep[i].u_edn_ack_sm.u_state_regs, err_o)
   end
 
-  `OCAH_OT_ASSERT(AxisEdnStableDataWhenStall_A,
-                  !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready |=> clear_i || $stable
-                  (axis_req_i.tdata))
-  `OCAH_OT_ASSERT(AxisEdnStableStrbWhenStall_A,
-                  !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready |=> clear_i || $stable
-                  (axis_req_i.tstrb))
+  // A stalled beat that is still offered keeps its data and strobe. A source reset may drop
+  // the beat (tvalid low) before clear_i covers it: an internal source resets ahead of the
+  // synchronized clear, and an external source reset never reaches clear_i.
+  `OCAH_OT_ASSERT(
+      AxisEdnStableDataWhenStall_A,
+      !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready |=> clear_i || !axis_req_i.tvalid || $stable
+      (axis_req_i.tdata))
+  `OCAH_OT_ASSERT(
+      AxisEdnStableStrbWhenStall_A,
+      !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready |=> clear_i || !axis_req_i.tvalid || $stable
+      (axis_req_i.tstrb))
   `OCAH_OT_ASSERT_KNOWN(AxisEdnRspReadyKnown_A, axis_rsp_o.tready)
   `OCAH_OT_ASSERT(AxisEdnNoReadyDuringClear_A, clear_i |-> !axis_rsp_o.tready)
 
