@@ -133,10 +133,15 @@ The wrapper supplies these values to the generated cluster. While warm reset
 is asserted, it selects `0xC004_0000` instead of the programmed vectors.
 
 Individual core reset clears the core's private L1 cache and TileLink client
-state without resetting the shared coherence manager. The current SMC Rocket
-integration provides no reset-aware coherence mechanism to drain outstanding
-transactions or preserve dirty cache data. The AXI boundary drain described
-below does not remove this limitation.
+state without resetting the shared coherence manager. While a core is held in
+reset, the cluster answers the coherence manager's probes on the core's behalf
+and denies accesses to the core's tile, such as its bus error unit, with an
+error response, so other managers can still reach the scratchpad and the other
+tiles. Neither mechanism drains outstanding transactions or preserves dirty
+cache data, and a core reset requests no AXI boundary drain.
+
+An uncore reset also holds every core in reset, on the same clock edge, so no
+core keeps coherence state across a reset of the system bus it depends on.
 
 The scratchpad zero-fill sequencer starts when its memory-initialization reset
 releases. It writes zeros across the scratchpad banks and holds the cores in
@@ -232,13 +237,11 @@ outstanding transactions:
 The non-AXI status crossings (`wb_pc_valid`, `wb_reg_pc`, and the per-core
 `wdt_reset`) are clamped to constants over the same window so they cannot leak
 glitches either. The boundary also self-isolates on cold boot, releasing four
-cycles after SRAM initialization completes and the cores and uncore are out of
-reset.
+cycles after SRAM initialization completes and the uncore is out of reset.
 
-The boundary is shared by all cores and stays isolated while any core or the
-uncore is in reset. Holding one core in reset therefore also terminates the
-other cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until
-every core is released.
+The boundary is shared by all cores and stays isolated while the uncore is in
+reset. A core held in reset does not isolate it: the other cores' MMIO accesses
+and L2 frontend traffic continue while that core is held.
 
 === Drain Handshake
 
@@ -249,29 +252,33 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-core-reset-sequence[per-core reset sequence]
 endif::backend-pdf[]
-in the Programmer's Guide gives the firmware steps. A software reset through `CPU_CTRL.RESET_CTRL`, whether a core or uncore reset
-bit or a core reset pulse, proceeds as follows:
+in the Programmer's Guide gives the firmware steps. A software uncore reset
+through `CPU_CTRL.RESET_CTRL` proceeds as follows:
 
-. Firmware writes `RESET_CTRL`.
+. Firmware clears the uncore reset bit in `RESET_CTRL`.
 . The control logic (`smc_cpu_ctrl_wrap`) raises `isolate_req_i` and withholds
 the reset.
 . Both `axi_isolate` instances drain their outstanding transactions and
 isolate.
-. The cluster raises `drained_o`, and the control logic applies the reset.
-. `isolate_req_i` stays high until every reset bit is released and every pulse
-completes. The boundary then reconnects.
+. The cluster raises `drained_o`, and the control logic applies the uncore
+reset, holding every core in reset with it.
+. `isolate_req_i` stays high until the uncore reset bit is set again. The
+boundary then reconnects.
+
+A core reset bit or a core reset pulse requests no drain: the control logic
+applies it without waiting and leaves the boundary connected.
 
 === Timeout Recovery
 
-`CPU_CTRL.RESET_TIMEOUT` limits how long a software-requested reset waits for
-the drain handshake. A `timeout_value` of zero disables the timer. When the
+`CPU_CTRL.RESET_TIMEOUT` limits how long a software uncore reset waits for the
+drain handshake; core resets do not wait and do not affect it. A `timeout_value` of zero disables the timer. When the
 timer expires, `timeout_mode=0` reports the timeout and continues to withhold
 the reset until the drain completes, then applies it. `timeout_mode=1` forces
 the reset and flushes both AXI isolation blocks.
 
-`reset_timeout` remains high until the software reset request is removed,
+`reset_timeout` remains high until the uncore reset request is removed,
 including after a recovery flush completes. `reset_applied` is high once the
-reset is applied by a completed drain or a force-mode timeout.
+uncore reset is applied by a completed drain or a force-mode timeout.
 
 The flush clears outstanding-transaction records at the cluster boundary and
 discards late responses and write data until isolation is released. This lets
