@@ -3281,7 +3281,8 @@ module sep_uvm_top
 
 // mldsa_cmd_reg is the command abr_ctrl decodes from MLDSA_CTRL.CTRL in its RESET
 // state; ZEROIZE is a separate field, so holding the command at NONE drops commands
-// and nothing else.
+// while ZEROIZE and every register write still land. MLDSA_CTRL.CTRL.hwclr is
+// |mldsa_cmd_reg, so the hardware clear of MLDSA_CTRL.CTRL is also held at 0.
 `define ABR_MLDSA_CMD \
     `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_top.abr_ctrl_inst.mldsa_cmd_reg
     always @(posedge clk_i) begin
