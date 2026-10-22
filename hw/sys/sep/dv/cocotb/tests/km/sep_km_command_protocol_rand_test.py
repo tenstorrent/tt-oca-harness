@@ -91,7 +91,7 @@ from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_km_command_protocol_rand_test"
 
-# Probe bit 31 of sep_internal_interrupts_probe_o is km_recoverable_err_o
+# Probe bit 31 of sep_internal_interrupts_probe_o is sep_ras_o.km_correctable
 # (PIC source 32, hw/sys/sep/doc/interrupts.adoc).
 _KM_RECOV = agg_from_pic("KM recoverable error")
 

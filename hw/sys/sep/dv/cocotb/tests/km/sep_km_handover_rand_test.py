@@ -21,7 +21,7 @@ Policy Vault (KPV)", "Key Manager CPU Interrupt Processing") and the generated
 Key Manager register map.
 
 Probes: ``HOST-MBX`` (``SEP_STATUS``, ``SEP_READ_DATA``, ``SEP_IRQ_STATUS``),
-``PIC-IRQ`` bit 30 (``km_unrecoverable_err_o``), ``KM-COUNT``
+``PIC-IRQ`` bit 30 (``sep_ras_o.km_uncorrectable``), ``KM-COUNT``
 (``km_sram_write_count_o``), and the read-only taps ``KM-BUS``
 (``km_key_aw_*``) and ``KM-VALID`` (``km_engine_key_valid_o``,
 ``km_abr_sk_valid_o``, ``km_abr_sk_key_o``). No inject: the flipped image bit

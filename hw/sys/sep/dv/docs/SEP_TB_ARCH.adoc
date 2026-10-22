@@ -304,7 +304,7 @@ Observation probe groups:
   latched secure test mode. Users: `sep_km_crossbar_efuse_window_rand_test`
   (with `efuse_shadow_probe_o`) and `sep_km_otp_interface_rand_test` (with
   `sep_fuse_sense_done_o`).
-* Key Manager error outputs (`km_unrecoverable_err_o`, `km_recoverable_err_o`):
+* Key Manager error outputs (`sep_ras_o.km_uncorrectable`, `sep_ras_o.km_correctable`):
   the `sep_wrapper` outputs of the Key Manager unrecoverable and recoverable
   faults (`hw/sys/sep/doc/port_table.adoc`), read only. PIC vector bits 30 and
   31 carry the same faults. User: `sep_km_cpu_protect_rand_test` (the
@@ -406,7 +406,7 @@ Observation probe groups:
   `efuse_shadow_i`, and the unmasked sensed shadow through the port
   `stored_shadow_i`. The eFuse and lifecycle taps above define these three
   ports; the KM taps reuse them. The sampler reads the Key Manager error
-  output `km_unrecoverable_err_o` through the port `km_unrec_port_i`. Owners: the Key Manager groups of `docs/SEP_FCOV.adoc`.
+  output `sep_ras_o.km_uncorrectable` through the port `km_unrec_port_i`. Owners: the Key Manager groups of `docs/SEP_FCOV.adoc`.
 * SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`).
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
   of the KM SRAM macro array that carry the KM ROM images' result words.

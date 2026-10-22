@@ -1631,7 +1631,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu, real fuse sense
 |`lc_sigint_inject_i`, `lcc_feat_ctrl_probe_o`, JTAG master, JTAG lifecycle filter inject (added hook), `jtag_filter_lc_sigint_err_probe_o` and bound SEC_DIS digest tap (observation taps)
-|Proves that a non-complementary byte at the lifecycle decoder input raises `lc_sigint_err_o` and forces feature control to 0 in each open-profile nibble, unless SEC_DIS forces all ones, and, in a TEST_DEV leaf, that the JTAG port admits only the token block under an integrity error at the JTAG lifecycle filter.
+|Proves that a non-complementary byte at the lifecycle decoder input raises `sep_ras_o.lc_sigint_err` and forces feature control to 0 in each open-profile nibble, unless SEC_DIS forces all ones, and, in a TEST_DEV leaf, that the JTAG port admits only the token block under an integrity error at the JTAG lifecycle filter.
 
 |<<sep_lcc_feat_ctrl_state_matrix_rand_test,`sep_lcc_feat_ctrl_state_matrix_rand_test`>>
 |3
@@ -1865,7 +1865,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, POKE, +skip_fuse_sense
 |KM bus operation image with result words, host mailbox status, PIC interrupt probe (bit 30), KM ROM request counter, KM CPU fetch counter (observation tap), `KM-VALID`, `KM-KPV` and `KM-CSR` observation taps
-|Proves that each KM CPU trap kind asserts km_unrecoverable_err_o and wipes the KPV, and that the execute whitelist and the ROM lockout admit and refuse the stated fetches. The trap engine, trap status, execute refusal and lockout order checks read the taps.
+|Proves that each KM CPU trap kind asserts sep_ras_o.km_uncorrectable and wipes the KPV, and that the execute whitelist and the ROM lockout admit and refuse the stated fetches. The trap engine, trap status, execute refusal and lockout order checks read the taps.
 
 |<<sep_km_crossbar_efuse_window_rand_test,`sep_km_crossbar_efuse_window_rand_test`>>
 |3
@@ -4542,7 +4542,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`jtag_filter_lc_sigint_err_probe_o`
 |Read-only probe
-|The integrity-error flag at the decoder output of the JTAG lifecycle filter. The existing `lc_sigint_err_o` is on the lifecycle controller side and stays 0 under a filter-side injection.
+|The integrity-error flag at the decoder output of the JTAG lifecycle filter. The existing `sep_ras_o.lc_sigint_err` is on the lifecycle controller side and stays 0 under a filter-side injection.
 |`sep_lcc_state_codeword_rand_test` (CHK-JTAG-SIGINT)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`jtag_id_i` port tap (`jtag_id_probe_o`)
@@ -5106,7 +5106,7 @@ test that owns the feature, or states why no pass or fail value exists.
 |Graded whole by `sep_pic_irq_source_map_delivery_test`.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Key Manager error ports
-|The Key Manager error ports are Key Manager stimulus. The Key Manager bucket owns the stimulus and samples `km_unrecoverable_err_o` and `km_recoverable_err_o` next to vector bits 30 and 31 (`hw/sys/sep/doc/port_table.adoc`).
+|The Key Manager error ports are Key Manager stimulus. The Key Manager bucket owns the stimulus and samples `sep_ras_o.km_uncorrectable` and `sep_ras_o.km_correctable` next to vector bits 30 and 31 (`hw/sys/sep/doc/port_table.adoc`).
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Source 34
 |Graded whole by `sep_locked_field_access_irq_path_test` and `sep_efuse_secure_tm_write_lock_test`.

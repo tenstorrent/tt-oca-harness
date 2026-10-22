@@ -34,7 +34,7 @@ is not blocked by ``efuse_guard``.
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
 The test injects a broken pair at the LCC decoder input through the tb_top
 ``lc_sigint_inject_i`` port after the walk. Observation is the DUT
-``lc_sigint_err_o`` probe plus an AXI ``FEAT_CTRL`` readback of 0 (fail-closed),
+``sep_ras_o.lc_sigint_err`` probe plus an AXI ``FEAT_CTRL`` readback of 0 (fail-closed),
 then release and both restore.
 """
 
