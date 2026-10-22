@@ -44,7 +44,7 @@ Contract:
   remains Class 1) and ``hw/sys/sep/doc/lifecycle_controller.adoc`` (scan
   classes 1a and 1b): every word of the ``shadow_efuse_values_n0_scan`` storage
   array is a Class-1 shadow word. The Class-1 shadow words are the fields of
-  rows 1a and 1b at their ``sep_efuse_map.rdl`` offsets (``CLASS1_FIELDS``).
+  rows 1a and 1b at their ``sep_efuse_map.rdl`` word indices (``CLASS1_FIELDS``).
 * ``hw/sys/sep/doc/token_processing.adoc`` (Token Submission) and
   ``hw/sys/sep/doc/security_disable.adoc`` (Reset Persistence): the computed
   digest and its valid bit survive reset and change only at a new start or a
@@ -117,7 +117,6 @@ from env.sep_efuse_plan import (
     TOKEN_ZERO,
     feat_ctrl_profile,
     field_n_words,
-    field_offset,
     field_word,
     shadow_addr,
     words_token,
@@ -189,40 +188,29 @@ LC_WORD = field_word("LC_STATE")
 _CLASS1_NAME = re.compile(r"_n0_scan|demote|sense_done", re.I)
 
 # Class-1 shadow fields: rows 1a and 1b of the scan-class table in
-# hw/sys/sep/doc/lifecycle_controller.adoc, at their byte offset and width in
-# hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl. The other 1a/1b items
-# (the *_TOKEN_I registers, raw fuse read-back, the token-hash digest and valid
-# bit, the RMA match state) are not shadow words.
-CLASS1_FIELDS: tuple[tuple[str, int, int], ...] = (
-    # name, byte offset, width in bits
-    ("LOCKS", 0x000, 64),
-    ("LOCKS_SPARE", 0x008, 32),
-    ("LC_STATE", 0x00C, 32),
-    ("SIP_DIS", 0x018, 64),
-    ("SYS_DIS", 0x020, 64),
-    ("RMA_SIP_TOKEN_DIGEST", 0x028, 256),
-    ("RMA_CHIPLET_TOKEN_DIGEST", 0x048, 256),
-    ("CLASS_KEY", 0x068, 256),
-    ("CHIPLET_UID", 0x0CC, 256),
-    ("SIP_UID", 0x10C, 256),
-    ("SYS_UID", 0x14C, 256),
+# hw/sys/sep/doc/lifecycle_controller.adoc. Each word index comes from the
+# generated hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl geometry.
+# The other 1a/1b items (the *_TOKEN_I registers, raw fuse read-back, the
+# token-hash digest and valid bit, the RMA match state) are not shadow words.
+CLASS1_FIELDS: tuple[str, ...] = (
+    "LOCKS",
+    "LOCKS_SPARE",
+    "LC_STATE",
+    "SIP_DIS",
+    "SYS_DIS",
+    "RMA_SIP_TOKEN_DIGEST",
+    "RMA_CHIPLET_TOKEN_DIGEST",
+    "CLASS_KEY",
+    "CHIPLET_UID",
+    "SIP_UID",
+    "SYS_UID",
 )
 CLASS1_WORDS: tuple[tuple[str, int], ...] = tuple(
-    (f, off // 4 + k) for f, off, bits in CLASS1_FIELDS for k in range(bits // 32)
+    (f, field_word(f) + k) for f in CLASS1_FIELDS for k in range(field_n_words(f))
 )
 CLASS1_IDX = frozenset(i for _f, i in CLASS1_WORDS)
 SHADOW_REGS = "u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller"
 SHADOW_REGS += ".u_efuse_shadow_regs"
-
-
-def _check_class1_geometry() -> None:
-    """The environment field geometry agrees with the Class-1 table."""
-    bad = [
-        (f, hex(field_offset(f)), 32 * field_n_words(f), hex(off), bits)
-        for f, off, bits in CLASS1_FIELDS
-        if field_offset(f) != off or 32 * field_n_words(f) != bits
-    ]
-    assert not bad, f"test bug: eFuse field geometry differs from the Class-1 table: {bad}"
 
 
 def _n0_distinct_fixed(base: Any) -> tuple[dict[str, int], int]:
@@ -834,7 +822,6 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
         close_graded_window(self.logger)
         fixed = {"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS, "LOCKS": 0, **SECRETS}
-        _check_class1_geometry()
         base = self.select_efuse_image(lc_raw=LC_PROD, fixed=fixed)
         n0_fixed, stepped = _n0_distinct_fixed(base)
         img = self.select_efuse_image(lc_raw=LC_PROD, fixed={**fixed, **n0_fixed})
