@@ -45,6 +45,21 @@ localparam int unsigned FcovOwnSepTrngExtStreamHandshakeRandTest = 151;
 localparam int unsigned FcovOwnSepTrngExtSinkResetRandTest = 152;
 localparam int unsigned FcovOwnSepDrbgSinkMixRandTest = 153;
 localparam int unsigned FcovOwnSepAesCfbOfbGcmRandTest = 154;
+localparam int unsigned FcovOwnSepOtbnComputeRandTest = 738;
+localparam int unsigned FcovOwnSepKmIsolateTerminationTest = 739;
+localparam int unsigned FcovOwnSepDrbgAxilAdapterRefusalTest = 740;
+localparam int unsigned FcovOwnSepCryptoPerIpResetIsolationTest = 741;
+localparam int unsigned FcovOwnSepAbrAccessSizeTest = 742;
+localparam int unsigned FcovOwnSepEsrcFipsLockTest = 743;
+localparam int unsigned FcovOwnSepEsrcHtWatermarkArmingTest = 744;
+localparam int unsigned FcovOwnSepEntropyPoolApertureTest = 745;
+localparam int unsigned FcovOwnSepTrngResetRecoveryTest = 746;
+localparam int unsigned FcovOwnSepEsrcE2eSmokeTest = 747;
+localparam int unsigned FcovOwnSepCryptoCsrWideAccessTest = 748;
+localparam int unsigned FcovOwnSepAbrConcurrentRwTest = 750;
+localparam int unsigned FcovOwnSepDrbgAxilConcurrentCsrngAwThenArTest = 751;
+localparam int unsigned FcovOwnSepDrbgAxilConcurrentEdnAwThenArTest = 752;
+localparam int unsigned FcovOwnSepAbrMldsaKeygenKatTest = 753;
 
 // Fabric and remap.
 localparam int unsigned FcovOwnSepFabricInboundRebaseTest = 225;
@@ -57,6 +72,14 @@ localparam int unsigned FcovOwnSepFabricRowResponseMatrixTest = 231;
 localparam int unsigned FcovOwnSepCpuLsuAliasWindowTwinTest = 232;
 localparam int unsigned FcovOwnSepFabricDmaEndpointMatrixTest = 233;
 localparam int unsigned FcovOwnSepFabricDeadspaceDecodeTest = 234;
+localparam int unsigned FcovOwnSepUnmappedAccessPolicyTest = 755;
+localparam int unsigned FcovOwnSepFabricInboundFilterRuleMatrixTest = 757;
+localparam int unsigned FcovOwnSepAxiStrobeWindowTest = 758;
+localparam int unsigned FcovOwnSepAxiIdRoutingTest = 759;
+localparam int unsigned FcovOwnSepFabricOutboundRemapFilterWalkTest = 760;
+localparam int unsigned FcovOwnSepFabricInboundFilterWindowWalkTest = 761;
+localparam int unsigned FcovOwnSepFabricRemapFilterCsrBankTest = 762;
+localparam int unsigned FcovOwnSepFabricSlotCsrStrobeRandTest = 767;
 
 // Mailbox, IRQ and PIC.
 localparam int unsigned FcovOwnSepMailboxFifoModelRandTest = 313;
@@ -71,6 +94,8 @@ localparam int unsigned FcovOwnSepPicPendingMapWalkRandTest = 321;
 localparam int unsigned FcovOwnSepCpuBridgeFaultMatrixRandTest = 322;
 localparam int unsigned FcovOwnSepCpuCtrlTimeoutInertRandTest = 323;
 localparam int unsigned FcovOwnSepNmiVectorBarkRandTest = 324;
+localparam int unsigned FcovOwnSepPeriphBusErrMisalignedTest = 763;
+localparam int unsigned FcovOwnSepMailboxPlicTest = 780;
 
 // SPI and DMA.
 localparam int unsigned FcovOwnSepSpiPadSpeedDirMatrixTest = 407;
@@ -89,6 +114,7 @@ localparam int unsigned FcovOwnSepSpiOtFlashCmdRandTest = 419;
 localparam int unsigned FcovOwnSepSpiOtDmaTxTest = 420;
 localparam int unsigned FcovOwnSepDmaZeroFillContinuationTest = 421;
 localparam int unsigned FcovOwnSepDmaZeroTest = 422;
+localparam int unsigned FcovOwnSepDmaBasicTest = 765;
 
 // Memory, boot, reset, WDT and clock. SepTcmDmaApertureEccTest also owns
 // sep_fabric_dedicated_port_cg.cp_tcm_dma_dir_range.
@@ -111,6 +137,11 @@ localparam int unsigned FcovOwnSepDebugMasterTargetMatrixTest = 528;
 localparam int unsigned FcovOwnSepCpuIsaPmpCsrTest = 529;
 localparam int unsigned FcovOwnSepCpuZbeExecTest = 530;
 localparam int unsigned FcovOwnSepScanModeStateHoldTest = 531;
+localparam int unsigned FcovOwnSepCpuIfuLsuAliasRemapMatrixTest = 764;
+localparam int unsigned FcovOwnSepWdtAonTimerInternalsTest = 766;
+localparam int unsigned FcovOwnSepClockGateControlTest = 772;
+localparam int unsigned FcovOwnSepTestEnPinReachTest = 773;
+localparam int unsigned FcovOwnSepAxiPartialLaneReadTest = 774;
 
 // eFuse, lifecycle and SEC_DIS.
 localparam int unsigned FcovOwnSepEfuseWindowDecodeResetTest = 618;
@@ -126,6 +157,11 @@ localparam int unsigned FcovOwnSepEfuseSecureTmMatrixRandTest = 627;
 localparam int unsigned FcovOwnSepEfuseJtagAccessRandTest = 628;
 localparam int unsigned FcovOwnSepSecDisTimingRandTest = 629;
 localparam int unsigned FcovOwnSepEfuseShimResponseFaultTest = 630;
+localparam int unsigned FcovOwnSepLockedFieldAccessIrqPathTest = 754;
+localparam int unsigned FcovOwnSepEfuseImageTest = 768;
+localparam int unsigned FcovOwnSepLccDemoteFeatCtrlMatrixTest = 769;
+localparam int unsigned FcovOwnSepSecDisOverrideTest = 770;
+localparam int unsigned FcovOwnSepEfuseLccLcStateStitchTest = 771;
 
 // Key Manager.
 localparam int unsigned FcovOwnSepKmCommandProtocolRandTest = 722;
@@ -142,3 +178,8 @@ localparam int unsigned FcovOwnSepKmDrbgSamplerRandTest = 734;
 localparam int unsigned FcovOwnSepKmOtpInterfaceRandTest = 735;
 localparam int unsigned FcovOwnSepKmKeyBankRegisterRandTest = 736;
 localparam int unsigned FcovOwnSepKmSramScramblerKeyRandTest = 737;
+localparam int unsigned FcovOwnSepKmDrbgSamplerTimeoutResetTest = 775;
+localparam int unsigned FcovOwnSepKmHandoverTest = 776;
+localparam int unsigned FcovOwnSepKmCrcPcpiKatTest = 777;
+localparam int unsigned FcovOwnSepKmRomWriteErrTest = 778;
+localparam int unsigned FcovOwnSepEfuseKmPublicIdTest = 779;

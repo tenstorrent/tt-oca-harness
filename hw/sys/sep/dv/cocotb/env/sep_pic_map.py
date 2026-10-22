@@ -196,9 +196,10 @@ def usable(raw: int, priord: int) -> bool:
 def winner(raws: dict[int, int], priord: int) -> int:
     """The source with the highest effective priority among ``raws``.
 
-    ``raws`` maps source to raw ``meipl``. Every source must be usable, and the
-    effective priorities must differ: the specification states no tie-break, so
-    a tie is a stimulus error.
+    ``raws`` maps source to raw ``meipl``. Every source must be usable. On equal
+    effective priorities the source with the lowest ID wins: the PIC selects
+    "the highest-priority request with the lowest interrupt source ID" (VeeR EL2
+    PRM section 8.3.3; the manual is cited at ``hw/sys/sep/doc/cpu.adoc:22-23``).
     """
     if not raws:
         raise ValueError("winner of an empty set")
@@ -206,9 +207,7 @@ def winner(raws: dict[int, int], priord: int) -> int:
     for s, r in raws.items():
         if not usable(r, priord):
             raise ValueError(f"source {s} holds the never value {r} for priord={priord}")
-    if len(set(eff.values())) != len(eff):
-        raise ValueError(f"equal effective priorities {eff}: no tie-break is stated")
-    return max(eff, key=lambda s: eff[s])
+    return min(eff, key=lambda s: (-eff[s], s))
 
 
 def _selftest() -> None:
@@ -228,7 +227,10 @@ def _selftest() -> None:
     assert mirror(3) == 12 and effective(mirror(3), 1) == effective(3, 0)
     assert winner({1: 12, 8: 0, 21: 9}, priord=1) == 8
     assert winner({1: 3, 8: 15, 21: 6}, priord=0) == 8
-    for bad in ({1: 0, 2: 3}, {1: 5, 2: 5}):
+    assert winner({21: 5, 8: 5, 30: 2}, priord=0) == 8
+    assert winner({24: 9, 3: 9}, priord=1) == 3
+    assert winner({7: 4, 2: 4, 5: 11}, priord=1) == 2
+    for bad in ({1: 0, 2: 3}, {}):
         try:
             winner(bad, priord=0)
         except ValueError:

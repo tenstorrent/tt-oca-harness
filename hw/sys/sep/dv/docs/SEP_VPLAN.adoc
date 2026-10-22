@@ -1881,7 +1881,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |<<sep_km_drbg_sampler_rand_test,`sep_km_drbg_sampler_rand_test`>>
 |3
 |no_cpu, POKE, HK-STRM, +skip_fuse_sense, entropy noise forced
-|KM bus operation image with result words, KM entropy sink probe, host mailbox master, KM and TRNG reset probes, TRNG isolation probe, `HK-STRM` stream fault inject with its `km_strm_wd_*` readbacks (added hook), `HK-STRM-PAT` beat-pattern drive (proposed)
+|KM bus operation image with result words, KM entropy sink probe, host mailbox master, KM and TRNG reset probes, TRNG isolation probe, `HK-STRM` stream fault inject with its `km_strm_wd_*` readbacks (added hook), the `HK-STRM-PAT` partial-beat withdrawal inject with its `km_strm_pat_*` readbacks (added hook), `HK-STRM-PAT` beat-pattern drive (proposed)
 |Proves that the DRBG sampler times out a stalled read, flags a stream error, and that its counters, prefetch and write refusals follow the register text. The byte-packing, partial-beat timeout and handshake-control checks need the proposed beat-pattern drive and are blocked.
 
 |<<sep_km_otp_interface_rand_test,`sep_km_otp_interface_rand_test`>>
@@ -4616,7 +4616,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Key Manager FCOV sampler taps (`KM-COV`)
 |Sampler taps
-|Read-only nets `km_sram_lock`, `km_irq_entry`, `km_kpv_scrambler`, `km_mbx_fifo`, `km_mbx_regs`, `km_drbg_sampler`, `km_cpu_trap`, `km_cpu_irq_active`, `km_cpu_insn_opcode`, `km_cpu_irq_lines`, `km_cpu_axi`, `km_axi_err`, `km_err_flags`, `km_wipe`, `km_otp_input`, `km_rom_rsp`, the `addr` field of `km_rom_req`, the `rdata` and `rparity` fields of `km_sram_mem_if`, and `efuse_req_err` (<<sep-vplan-km-proposed>>). The sampler reads `efuse_req_err` through the `req_err_i` port of the eFuse and lifecycle sampler taps: the Key Manager adds no port for it.
+|Read-only nets `km_sram_lock`, `km_irq_entry`, `km_kpv_scrambler`, `km_mbx_fifo`, `km_mbx_regs`, `km_drbg_sampler`, `km_cpu_trap`, `km_cpu_irq_active`, `km_cpu_insn_opcode`, `km_cpu_irq_lines`, `km_cpu_axi`, `km_axi_err`, `km_err_flags`, `km_wipe`, `km_otp_input`, `km_rom_rsp`, the `addr` field of `km_rom_req`, the `rdata` and `rparity` fields of `km_sram_mem_if`, `km_smp_sink`, `km_cpu_pcpi`, `aes_sideload_key`, `km_err_out_port`, `efuse_shadow_sensed` and `efuse_req_err` (<<sep-vplan-km-proposed>>). The sampler reads `efuse_req_err` through the `req_err_i` port and `efuse_shadow_sensed` through the `stored_shadow_i` port of the eFuse and lifecycle sampler taps: the Key Manager adds no port for them.
 |The owners of the groups of the Key Manager section of `SEP_FCOV.adoc`
 |===
 
@@ -4852,6 +4852,12 @@ use it" names the entries whose checks need the hook.
 |`TVALID` of the DRBG sampler stream at the KM sink, inside `sep`; readbacks `km_strm_wd_fired_o`, `km_strm_wd_tready_o` and `km_strm_sink_tvalid_o`
 |`sep_km_drbg_sampler_rand_test` (CHK-SMP-STRM)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
+|`HK-STRM-PAT` (partial-beat withdrawal)
+|Error inject
+|While `km_strm_pat_arm_i` is 1 and `km_strm_wd_arm_i` is 0, drives `TVALID`, `TDATA` and `TSTRB` at the DRBG sampler sink once: one partial beat (`TSTRB` 0x1, `TDATA` `km_strm_pat_data_i`) in the first cycle with `TREADY` high, then `TVALID` low until a cycle with `TREADY` low, `TVALID` high in that cycle and low in the next (a withdrawal, the stream fault). While the arm is 1 the bench turns off the sampler assertion `KmDrbgTvalidStability_A`, which the withdrawal breaks by design. The legal beat patterns of `HK-STRM-PAT` are a PROPOSED drive (<<sep-vplan-phase3-proposed-drives>>).
+|`TVALID`, `TDATA` and `TSTRB` of the DRBG sampler stream at the KM sink, inside `sep`; readbacks `km_strm_pat_beat_o`, `km_strm_pat_fired_o` and `km_strm_sink_tvalid_o`
+|`sep_km_drbg_sampler_rand_test` (the withdrawal of a partial prefetch word)
+|<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-PAR`
 |Error inject
 |While `km_par_arm_i` is 1, inverts parity bit `km_par_lane_i[1:0]` of the N-th read response (N = `km_par_n_i[7:0]` from 1; 0 leaves the hook idle) of the ROM (`km_par_mem_i` 0) or the SRAM (1) for one clock, once per arm. The data bits do not change. Readbacks `km_par_fired_o`, `km_par_resp_count_o` and `km_par_rstrb_o`.
@@ -4879,7 +4885,7 @@ in `hw/sys/sep/dv/tb/tb_top.sv`. A check that needs one is blocked. The column
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-STRM-PAT`
 |Drive
-|`TVALID`, `TDATA` and `TSTRB` of the DRBG sampler stream at the KM sink, with legal beat patterns, in place of the live stream for one read: every non-zero `TSTRB` value, drawn byte values and drawn `TVALID` delays; a partial beat (`TSTRB` 0x1) followed by a stall; one-cycle `TVALID` pulses with `TREADY` high; a complete beat followed by a `TVALID` drop after the handshake.
+|`TVALID`, `TDATA` and `TSTRB` of the DRBG sampler stream at the KM sink, with legal beat patterns, in place of the live stream for one read: every non-zero `TSTRB` value, drawn byte values and drawn `TVALID` delays; a partial beat (`TSTRB` 0x1) followed by a stall; one-cycle `TVALID` pulses with `TREADY` high; a complete beat followed by a `TVALID` drop after the handshake. The partial beat followed by a withdrawal is an error inject, an added hook (<<sep-vplan-phase3-added-hooks>>), and is not part of this item.
 |`sep_km_drbg_sampler_rand_test` (CHK-SMP-PACK, CHK-SMP-TO-ASM, CHK-SMP-STRM-CTRL)
 |===
 

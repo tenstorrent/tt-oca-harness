@@ -732,8 +732,8 @@ module sep_uvm_top
         .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),
-        .km_unrecoverable_err_o       (),
-        .km_recoverable_err_o         (),
+        .km_unrecoverable_err_o       (km_unrecoverable_err_o),
+        .km_recoverable_err_o         (km_recoverable_err_o),
         .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
@@ -1687,6 +1687,12 @@ module sep_uvm_top
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.aes;
     assign otbn_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.otbn;
+    // Key Manager path isolate-completion bits of the AES and OTBN domains.
+    // Read-only XMR, same class as the HMAC and KMAC bits above.
+    assign aes_km_isolated_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_aes;
+    assign otbn_km_isolated_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_otbn;
     // Key Manager warm reset and the full isolate request and isolate-complete
     // vectors. Read-only XMRs, same class as the probes above. Bit x of each
     // vector is VPLAN bench isolate stage x, assigned from the isolate struct
@@ -2441,12 +2447,14 @@ module sep_uvm_top
     assign pr_dbg_sb_awid_o = `SEP_CORE.dbg_axi_req.aw.id;
     assign pr_dbg_sb_awlen_o = `SEP_CORE.dbg_axi_req.aw.len;
     assign pr_dbg_sb_awsize_o = `SEP_CORE.dbg_axi_req.aw.size;
+    assign pr_dbg_sb_awprot_o = `SEP_CORE.dbg_axi_req.aw.prot;
     assign pr_dbg_sb_arvalid_o = `SEP_CORE.dbg_axi_req.ar_valid;
     assign pr_dbg_sb_arready_o = `SEP_CORE.dbg_axi_resp.ar_ready;
     assign pr_dbg_sb_araddr_o = `SEP_CORE.dbg_axi_req.ar.addr;
     assign pr_dbg_sb_arid_o = `SEP_CORE.dbg_axi_req.ar.id;
     assign pr_dbg_sb_arlen_o = `SEP_CORE.dbg_axi_req.ar.len;
     assign pr_dbg_sb_arsize_o = `SEP_CORE.dbg_axi_req.ar.size;
+    assign pr_dbg_sb_arprot_o = `SEP_CORE.dbg_axi_req.ar.prot;
     assign pr_dbg_sb_wvalid_o = `SEP_CORE.dbg_axi_req.w_valid;
     assign pr_dbg_sb_wready_o = `SEP_CORE.dbg_axi_resp.w_ready;
     assign pr_dbg_sb_wdata_o = `SEP_CORE.dbg_axi_req.w.data;
@@ -3208,6 +3216,43 @@ module sep_uvm_top
 `undef ESRC_FIFO
 
     // ------------------------------------------------------------------
+    // ESRC health-test counter-copy inject.
+    // ------------------------------------------------------------------
+    // At the rise of esrc_cntr_inject_i the bench captures the secondary copy of
+    // the REPCNT_TOTAL_FAILS counter (u_entropy_src_cntr_reg_repcnt, a prim_count
+    // with a primary and a secondary copy) with bit esrc_cntr_inject_bit_i
+    // inverted, and holds that copy at that value while the input stays 1. The
+    // two copies then disagree, which is the counter integrity error that sets
+    // MAIN_SM_STATUS.ERR. Software cannot move one copy of a counter, so this
+    // error has no frontdoor. The counter flop reloads from its own next-state
+    // logic after the release, so the copies stay apart until the next ESRC
+    // reset. Re-issued on every falling edge for Verilator, released when the
+    // input drops. Default 0: no force.
+`define ESRC_CNTR_COPY \
+    `SEP_ESRC.u_entropy_src_cntr_reg_repcnt.u_prim_count_cntr_reg.gen_cnts[1].cnt_unforced_q
+    logic        esrc_cntr_inj_on;
+    logic [31:0] esrc_cntr_inj_val;
+    initial begin
+        esrc_cntr_inj_on  = 1'b0;
+        esrc_cntr_inj_val = '0;
+    end
+    always @(negedge clk_i) begin
+        if (esrc_cntr_inject_i === 1'b1) begin
+            if (!esrc_cntr_inj_on) begin
+                esrc_cntr_inj_on  = 1'b1;
+                esrc_cntr_inj_val = `ESRC_CNTR_COPY ^ (32'h1 << esrc_cntr_inject_bit_i);
+                $display("[tb] ESRC counter-copy inject: bit=%0d value=0x%08x",
+                         esrc_cntr_inject_bit_i, esrc_cntr_inj_val);
+            end
+            force `ESRC_CNTR_COPY = esrc_cntr_inj_val;
+        end else begin
+            esrc_cntr_inj_on = 1'b0;
+            release `ESRC_CNTR_COPY;
+        end
+    end
+`undef ESRC_CNTR_COPY
+
+    // ------------------------------------------------------------------
     // Crypto alert sender inject.
     // ------------------------------------------------------------------
     // While crypto_alert_inject_i is 1, the alert pair (alert_p, alert_n) at
@@ -3281,13 +3326,15 @@ module sep_uvm_top
 
 // mldsa_cmd_reg is the command abr_ctrl decodes from MLDSA_CTRL.CTRL in its RESET
 // state; ZEROIZE is a separate field, so holding the command at NONE drops commands
-// and nothing else.
+// and nothing else. A build without Adams Bridge has no such register.
+`ifdef SEP_ABR_EN
 `define ABR_MLDSA_CMD \
     `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_top.abr_ctrl_inst.mldsa_cmd_reg
     always @(posedge clk_i) begin
         if (abr_cmd_drop_on) force `ABR_MLDSA_CMD = abr_params_pkg::MLDSA_NONE;
     end
 `undef ABR_MLDSA_CMD
+`endif
 
     // +sep_otbn_intg_flip -- error injection, off by default
     // (docs/SEP_TB_ARCH.adoc, inject exceptions). In a run with the plusarg,
@@ -3436,6 +3483,16 @@ module sep_uvm_top
     assign drbg_genbits_data_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_data_o;
     assign drbg_genbits_fips_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_fips_o;
     assign drbg_gen_last_o      = `SEP_DRBG.u_csrng.u_csrng_core.gen_last_q;
+    // EDN hardware command port into CSRNG, the EDN endpoint acknowledges that
+    // push into the DRBG stream-adapter FIFOs, and the divided sample clock of
+    // ESRC lane 0. Read-only XMR taps.
+    assign edn_csrng_cmd_valid_o = `SEP_DRBG.edn_csrng_req.csrng_req_valid;
+    assign edn_csrng_cmd_ready_o = `SEP_DRBG.edn_csrng_rsp.csrng_req_ready;
+    assign edn_csrng_cmd_bus_o   = `SEP_DRBG.edn_csrng_req.csrng_req_bus;
+    assign drbg_adapter_push_o   = {`SEP_DRBG.edn_axis_endpoint_rsp[2].edn_ack,
+                                    `SEP_DRBG.edn_axis_endpoint_rsp[1].edn_ack,
+                                    `SEP_DRBG.edn_axis_endpoint_rsp[0].edn_ack};
+    assign esrc_sample_clk_lane0_o = `SEP_ESRC.u_generator_complex.u_sampler_clocks.sample_clk_o[0];
     // drbg_axil64_lane_adapter arbitration, sampled at each DUT adapter's
     // own AXI-Lite-64 port:
     // {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
@@ -4281,12 +4338,14 @@ module sep_uvm_top
         end
     end
     // The withdrawal breaks the AXI-Stream rule that the sampler assertion
-    // KmDrbgTvalidStability_A states, so that assertion is off while the arm is
-    // 1 and on otherwise. Every other assertion stays on. Verilator applies
-    // $assertoff to the whole design, so its builds keep the assertion on.
+    // KmDrbgTvalidStability_A states, so that assertion is off while the arm of
+    // HK-STRM or of HK-STRM-PAT is 1 and on otherwise. Every other assertion
+    // stays on. Verilator applies $assertoff to the whole design, so its builds
+    // keep the assertion on.
 `ifndef VERILATOR
-    always @(km_strm_wd_arm_i) begin
-        if (km_strm_wd_arm_i === 1'b1) $assertoff(0, `KM_SMP.KmDrbgTvalidStability_A);
+    always @(km_strm_wd_arm_i or km_strm_pat_arm_i) begin
+        if ((km_strm_wd_arm_i === 1'b1) || (km_strm_pat_arm_i === 1'b1))
+            $assertoff(0, `KM_SMP.KmDrbgTvalidStability_A);
         else $asserton(0, `KM_SMP.KmDrbgTvalidStability_A);
     end
 `endif
@@ -4295,6 +4354,122 @@ module sep_uvm_top
     assign km_strm_sink_tvalid_o = `KM_SMP.tvalid;
 `undef KM_STRM_FORCE
 `undef KM_STRM_END
+
+    // ------------------------------------------------------------------
+    // HK-STRM-PAT: DRBG sampler partial beat and withdrawal
+    // (docs/SEP_TB_ARCH.adoc, inject exceptions). The force points are the
+    // sampler sink TVALID, TDATA and TSTRB (the tvalid, tdata and tstrb nets
+    // of u_drbg_sampler). While km_strm_pat_arm_i is 1 and km_strm_wd_arm_i is
+    // not 1, the bench drives one sequence:
+    //   1. in the first clock with the sink TREADY high: TVALID high, TDATA
+    //      km_strm_pat_data_i and TSTRB 0x1, a partial beat that the sink takes;
+    //   2. TVALID low until a clock with the sink TREADY low, and in that clock
+    //      TVALID high with the TDATA and TSTRB of step 1;
+    //   3. TVALID low for one clock: a withdrawal (TVALID high with TREADY low,
+    //      then TVALID low);
+    //   4. the drive ends.
+    // km_strm_pat_beat_o reads 1 from the clock after step 1, and
+    // km_strm_pat_fired_o from the clock after step 3, until the arm drops.
+    // The value is set on every falling edge (Verilator snapshots a force RHS).
+    // A drop of the arm ends the force. A released net keeps its forced value
+    // until its driver changes, so the bench ends a force by forcing the live
+    // values (the KM stream of sep_crypto, ahead of the KM port) and releases
+    // the three nets only in a clock in which each live value equals the value
+    // forced last; one falling edge after the release each net must equal its
+    // live value, else the bench reports an error. Both arms at 1 is a bench
+    // error, and HK-STRM-PAT then drives nothing. Default 0: no force.
+    // ------------------------------------------------------------------
+    logic [1:0] km_pat_ph;
+    logic km_pat_beat_q, km_pat_fired_q, km_pat_forced, km_pat_rel_chk;
+    logic km_pat_fv;
+    logic [31:0] km_pat_fd;
+    logic [3:0] km_pat_fs;
+    logic km_pat_lv;
+    logic [31:0] km_pat_ld;
+    logic [3:0] km_pat_ls;
+    assign km_pat_lv = `SEP_CORE.u_sep_crypto.entropy_muxed_req[0].tvalid;
+    assign km_pat_ld = `SEP_CORE.u_sep_crypto.entropy_muxed_req[0].tdata;
+    assign km_pat_ls = `SEP_CORE.u_sep_crypto.entropy_muxed_req[0].tstrb;
+    initial begin
+        km_pat_ph      = 2'd0;
+        km_pat_beat_q  = 1'b0;
+        km_pat_fired_q = 1'b0;
+        km_pat_forced  = 1'b0;
+        km_pat_rel_chk = 1'b0;
+        km_pat_fv      = 1'b0;
+        km_pat_fd      = '0;
+        km_pat_fs      = '0;
+    end
+`define KM_PAT_FORCE(v) \
+    begin \
+        km_pat_fv = (v); \
+        km_pat_fd = km_strm_pat_data_i; \
+        km_pat_fs = 4'h1; \
+        km_pat_forced = 1'b1; \
+        force `KM_SMP.tvalid = km_pat_fv; \
+        force `KM_SMP.tdata = km_pat_fd; \
+        force `KM_SMP.tstrb = km_pat_fs; \
+    end
+`define KM_PAT_END \
+    if (km_pat_forced && ((km_pat_fv !== km_pat_lv) || (km_pat_fd !== km_pat_ld) || \
+                          (km_pat_fs !== km_pat_ls))) begin \
+        km_pat_fv = km_pat_lv; \
+        km_pat_fd = km_pat_ld; \
+        km_pat_fs = km_pat_ls; \
+        force `KM_SMP.tvalid = km_pat_fv; \
+        force `KM_SMP.tdata = km_pat_fd; \
+        force `KM_SMP.tstrb = km_pat_fs; \
+    end else if (km_pat_forced) begin \
+        release `KM_SMP.tvalid; \
+        release `KM_SMP.tdata; \
+        release `KM_SMP.tstrb; \
+        km_pat_forced  = 1'b0; \
+        km_pat_rel_chk = 1'b1; \
+    end
+    always @(negedge clk_i) begin
+        if (km_pat_rel_chk && ((`KM_SMP.tvalid !== km_pat_lv) || (`KM_SMP.tdata !== km_pat_ld) ||
+                               (`KM_SMP.tstrb !== km_pat_ls)))
+            $error("[tb] HK-STRM-PAT: sampler stream differs from the live value after the release");
+        km_pat_rel_chk = 1'b0;
+        if ((km_strm_pat_arm_i === 1'b1) && (km_strm_wd_arm_i === 1'b1))
+            $error("[tb] HK-STRM-PAT: km_strm_pat_arm_i and km_strm_wd_arm_i are both 1");
+        if ((km_strm_pat_arm_i !== 1'b1) || (km_strm_wd_arm_i === 1'b1)) begin
+            km_pat_ph      = 2'd0;
+            km_pat_beat_q  = 1'b0;
+            km_pat_fired_q = 1'b0;
+            `KM_PAT_END
+        end else begin
+            unique case (km_pat_ph)
+                2'd0: begin
+                    if (`KM_SMP.drbg_axis_resp_o.tready === 1'b1) begin
+                        km_pat_ph = 2'd1;
+                        `KM_PAT_FORCE(1'b1)
+                    end
+                end
+                2'd1: begin
+                    km_pat_beat_q = 1'b1;
+                    if (`KM_SMP.drbg_axis_resp_o.tready === 1'b0) begin
+                        km_pat_ph = 2'd2;
+                        `KM_PAT_FORCE(1'b1)
+                    end else begin
+                        `KM_PAT_FORCE(1'b0)
+                    end
+                end
+                2'd2: begin
+                    km_pat_ph = 2'd3;
+                    `KM_PAT_FORCE(1'b0)
+                end
+                default: begin
+                    km_pat_fired_q = 1'b1;
+                    `KM_PAT_END
+                end
+            endcase
+        end
+    end
+    assign km_strm_pat_beat_o  = km_pat_beat_q;
+    assign km_strm_pat_fired_o = km_pat_fired_q;
+`undef KM_PAT_FORCE
+`undef KM_PAT_END
 `undef KM_SMP
 
     // ------------------------------------------------------------------
@@ -5178,12 +5353,16 @@ module sep_uvm_top
     assign esrc_fifo_ptr_inject_i   = 1'b0;
     assign esrc_fifo_ptr_sel_i      = '0;
     assign esrc_fifo_ptr_bit_i      = '0;
+    assign esrc_cntr_inject_i       = 1'b0;
+    assign esrc_cntr_inject_bit_i   = '0;
     assign esrc_noise_stuck_en_i    = '0;
     assign esrc_noise_stuck_val_i   = '0;
     assign km_otp_flip_en_i         = 1'b0;
     assign km_otp_flip_mask_i       = '0;
     assign km_strm_wd_arm_i         = 1'b0;
     assign km_strm_wd_mode_i        = 1'b0;
+    assign km_strm_pat_arm_i        = 1'b0;
+    assign km_strm_pat_data_i       = '0;
     assign km_sram_peek_addr_i      = '0;
     assign km_irqset_arm_i          = 1'b0;
     assign km_irqset_mask_i         = '0;
@@ -5836,6 +6015,11 @@ module sep_uvm_top
     wire              fcov_tlu_take_nmi = `SEP_FCOV_TLU.take_nmi;
     wire              fcov_tlu_take_tmr = `SEP_FCOV_TLU.take_timer_int;
     wire              fcov_tlu_take_sw  = `SEP_FCOV_TLU.take_soft_int;
+    wire [3:0]        fcov_pic_meipt    = `SEP_FCOV_TLU.meipt;
+    wire [3:0]        fcov_pic_meicurpl = `SEP_FCOV_TLU.meicurpl;
+    wire [1:0]        fcov_tlu_take_itmr = {`SEP_FCOV_TLU.take_int_timer1_int,
+                                            `SEP_FCOV_TLU.take_int_timer0_int};
+    wire [31:0]       fcov_tlu_micect   = `SEP_FCOV_TLU.micect;
 `undef SEP_FCOV_PIC
 `undef SEP_FCOV_TLU
 `undef SEP_FCOV_LSU
@@ -5858,6 +6042,10 @@ module sep_uvm_top
     wire              fcov_tlu_take_nmi = 1'b0;
     wire              fcov_tlu_take_tmr = 1'b0;
     wire              fcov_tlu_take_sw  = 1'b0;
+    wire [3:0]        fcov_pic_meipt    = '0;
+    wire [3:0]        fcov_pic_meicurpl = '0;
+    wire [1:0]        fcov_tlu_take_itmr = '0;
+    wire [31:0]       fcov_tlu_micect   = '0;
 `endif
     // One explicit set of assigns per mailbox index.
     logic [7:0][1:0][3:0] fcov_mb_status;
@@ -6023,6 +6211,7 @@ module sep_uvm_top
     wire        fcov_dmi_en        = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_en;
     wire [6:0]  fcov_dmi_addr      = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_addr;
     wire        fcov_dmi_wr_en     = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_wr_en;
+    wire [31:0] fcov_dmi_rdata     = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_reg_rdata;
 `undef SEP_FCOV_TLU
 `undef SEP_FCOV_LSU
 `else
@@ -6044,6 +6233,7 @@ module sep_uvm_top
     wire        fcov_dmi_en        = 1'b0;
     wire [6:0]  fcov_dmi_addr      = '0;
     wire        fcov_dmi_wr_en     = 1'b0;
+    wire [31:0] fcov_dmi_rdata     = '0;
 `endif
 
     // Crypto and entropy sampler taps (docs/SEP_FCOV.adoc, crypto and entropy
@@ -6709,7 +6899,79 @@ module sep_uvm_top
         .km_par_fired_i        (km_par_fired_o),
         .km_par_mem_i          (km_par_mem_i),
         .km_par_lane_i         (km_par_lane_i),
-        .km_par_rstrb_i        (km_par_rstrb_o)
+        .km_par_rstrb_i        (km_par_rstrb_o),
+        .pic_meipt_i           (fcov_pic_meipt),
+        .pic_meicurpl_i        (fcov_pic_meicurpl),
+        .tlu_take_itmr_i       (fcov_tlu_take_itmr),
+        .tlu_micect_i          (fcov_tlu_micect),
+        .m_axi_arsize_i        (m_axi_arsize),
+        // SPI and DMA.
+        .spi_lsio_trig_i       (spi_lsio_trigger_probe_o),
+        // Crypto bus taps of the DRBG lane, ABR extent and Key Manager
+        // isolate points.
+        .drbg_csrng_chan_i     (drbg_csrng_axil_chan_o),
+        .drbg_edn_chan_i       (drbg_edn_axil_chan_o),
+        .drbg_csrng_fwd_i      (drbg_csrng_fwd_o),
+        .drbg_edn_fwd_i        (drbg_edn_fwd_o),
+        .iso_slv_b_hs_i        (iso_slv_b_hs_probe_o),
+        .iso_slv_r_hs_i        (iso_slv_r_hs_probe_o),
+        .iso_slv_bresp_i       (iso_slv_bresp_probe_o),
+        .iso_slv_rresp_i       (iso_slv_rresp_probe_o),
+        // Entropy taps of the EDN auto-mode sequence, the stream-adapter FIFO,
+        // the lane 0 sample-clock divider, the counter-copy inject, the
+        // conditioner output, the seed packer and the CSRNG seed handshake.
+        .edn_csrng_cmd_valid_i (edn_csrng_cmd_valid_o),
+        .edn_csrng_cmd_ready_i (edn_csrng_cmd_ready_o),
+        .edn_csrng_cmd_bus_i   (edn_csrng_cmd_bus_o),
+        .drbg_adapter_push_i   (drbg_adapter_push_o),
+        .esrc_rosc_clk_i       (entropy_rosc_sample_clk_i),
+        .esrc_sample_clk0_i    (esrc_sample_clk_lane0_o),
+        .esrc_cntr_inj_i       (esrc_cntr_inject_i === 1'b1),
+        .esrc_compress_data_i  (esrc_compress_data_o),
+        .seed_word_ready_i     (`SEP_DRBG.u_csrng_seed_adapter.csrng_word_ready_o),
+        .drbg_es_ack_i         (drbg_es_ack_o),
+        .drbg_es_bits_i        (drbg_es_bits_o),
+        .drbg_genbits_fips_i   (drbg_genbits_fips_o),
+        // The eleven dbg_disable outputs, bit order of x_path_case.
+        .dbg_dis_i             ({dbg_disable_sep_otp_jtag2axi_o, dbg_disable_smc_otp_jtag2axi_o,
+                                 dbg_disable_smc_jtag2axi_o, dbg_disable_dfd_o,
+                                 dbg_disable_dft_nonsecure_o, dbg_disable_dft_secure_o,
+                                 dbg_disable_stap_host_o, dbg_disable_stap_extra_o,
+                                 dbg_disable_stap_sep_o, dbg_disable_stap_smc_o,
+                                 dbg_disable_stap_io_o}),
+
+        // Fabric and CPU master taps of the fabric feature points.
+        .dbg_req_i             (`SEP_CORE.dbg_axi_req),
+        .dbg_resp_i            (`SEP_CORE.dbg_axi_resp),
+        .cpu_ifu_arvalid_i     (pr_cpu_ifu_arvalid_o),
+        .cpu_ifu_arready_i     (pr_cpu_ifu_arready_o),
+        .cpu_ifu_arprot_i      (pr_cpu_ifu_arprot_o),
+        .cpu_lsu_awvalid_i     (pr_cpu_lsu_awvalid_o),
+        .cpu_lsu_awready_i     (pr_cpu_lsu_awready_o),
+        .cpu_lsu_awprot_i      (pr_cpu_lsu_awprot_o),
+        .cpu_lsu_arvalid_i     (pr_cpu_lsu_arvalid_o),
+        .cpu_lsu_arready_i     (pr_cpu_lsu_arready_o),
+        .cpu_lsu_arprot_i      (pr_cpu_lsu_arprot_o),
+        .dma_raw_awready_i     (pr_dma_raw_awready_o),
+        .dma_raw_arready_i     (pr_dma_raw_arready_o),
+        .ifu_arlen_i           (pr_ifu_arlen_o),
+        .dmi_rdata_i           (fcov_dmi_rdata),
+        .lockstep_ctrl_i       (lockstep_ctrl_i),
+        .lockstep_status_i     (lockstep_status_o.corruption_detected),
+        .dbg_in_araddr_i       (pr_dbg_in_araddr_o),
+        // Key Manager taps of the feature points (docs/SEP_FCOV.adoc, Key
+        // Manager groups, Sampled signals): read-only, no force.
+        .km_unrec_port_i       (km_unrecoverable_err_o),
+        .km_smp_pf_bytes_i     (`FC_KSMP.prefetch_bytes_collected),
+        .km_smp_tdata_i        (`FC_KSMP.tdata),
+        .km_pcpi_valid_i       (`FC_KM.u_cpu.pcpi_valid),
+        .km_pcpi_insn_i        (`FC_KM.u_cpu.pcpi_insn),
+        .km_pcpi_rs1_i         (`FC_KM.u_cpu.pcpi_rs1),
+        .km_pcpi_rs2_i         (`FC_KM.u_cpu.pcpi_rs2),
+        .km_pcpi_ready_i       (`FC_KM.u_cpu.pcpi_ready),
+        .km_pcpi_rd_i          (`FC_KM.u_cpu.pcpi_rd),
+        .km_aes_key0_i         (`FC_CRY.u_aes_wrapper_s3c_scan.aes_keymgr_key.key[0]),
+        .km_aes_key1_i         (`FC_CRY.u_aes_wrapper_s3c_scan.aes_keymgr_key.key[1])
     );
 `undef FC_EFCTRL
 `undef FC_TOKEN
