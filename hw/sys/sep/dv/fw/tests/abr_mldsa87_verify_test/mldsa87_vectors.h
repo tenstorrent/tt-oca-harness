@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// Written by gen_mldsa87_vectors.py --out and checked by its --check in the
-// firmware build. Do not edit by hand.
+// Written by gen_mldsa87_vectors.py --out and checked by its --check. The
+// firmware build checks its SHA-256 against fw.mk. Do not edit by hand.
 // TEST-ONLY: signed with the committed ML-DSA-87 test key. Nothing here may
 // anchor or appear in a release image.
 //

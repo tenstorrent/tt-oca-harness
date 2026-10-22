@@ -18,10 +18,14 @@ firmware flips at run time:
 The header is committed. Signing uses the 'cryptography' package (hedged), so a
 new --out run writes different signature bytes; the test checks verdicts only.
 
-  --out HEADER    sign and write the header (run by hand, then commit it)
+  --out HEADER    sign and write the header (run by hand, then commit it), and
+                  print its SHA-256 for ABR_MLDSA87_VECTORS_SHA256 in fw.mk
   --check HEADER  parse the committed header and check it with 'cryptography'
-                  verify only; the firmware build runs this and fails on any
-                  mismatch
+                  verify only, and print its SHA-256
+
+Run --check by hand after any change to the header or to this script. The
+firmware build does not run this script: it checks only the header's SHA-256
+against ABR_MLDSA87_VECTORS_SHA256 in fw.mk, with the standard library.
 
 The check holds every fact the firmware relies on: the header is exactly what this
 script renders from its own parsed content; the keys and blob are the committed
@@ -203,8 +207,8 @@ def render(defines, arrays):
         "/* SPDX-License-Identifier: Apache-2.0 */",
         "/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */",
         "",
-        "// Written by gen_mldsa87_vectors.py --out and checked by its --check in the",
-        "// firmware build. Do not edit by hand.",
+        "// Written by gen_mldsa87_vectors.py --out and checked by its --check. The",
+        "// firmware build checks its SHA-256 against fw.mk. Do not edit by hand.",
         "// TEST-ONLY: signed with the committed ML-DSA-87 test key. Nothing here may",
         "// anchor or appear in a release image.",
         "//",
@@ -396,7 +400,8 @@ def main():
         with open(args.check, encoding="ascii") as f:
             text = f.read()
         check(text, key, serialization, mldsa, InvalidSignature)
-        print(f"gen_mldsa87_vectors: {args.check} checks out")
+        digest = hashlib.sha256(text.encode("ascii")).hexdigest()
+        print(f"gen_mldsa87_vectors: {args.check} checks out, sha256 {digest}")
         return
 
     blob = make_blob()
@@ -427,7 +432,8 @@ def main():
     text = render(defines, arrays)
     check(text, key, serialization, mldsa, InvalidSignature)
     write(args.out, text)
-    print(f"gen_mldsa87_vectors: wrote {args.out}")
+    digest = hashlib.sha256(text.encode("ascii")).hexdigest()
+    print(f"gen_mldsa87_vectors: wrote {args.out}, sha256 {digest}")
 
 
 if __name__ == "__main__":
