@@ -6,8 +6,9 @@
 // Stretches powergood by 32 reference clock cycles, de-glitches the cold reset and the
 // cool-reset pin over 32 reference clock cycles, and extends the cold-reset release by 255
 // cycles. The primary reset combines the cold, cool-pin and FLR cool resets; the warm
-// reset adds the watchdog and fuse resets. The outputs are not synchronized to any
-// destination clock.
+// reset adds the watchdog and fuse resets. The watchdog reset combines the external and SMC
+// watchdog requests and is held 32 reference clock cycles after both release. The outputs are
+// not synchronized to any destination clock.
 
 module smc_reset_ctrl (
   input  logic                                   clk_ref_i,  // Reference clock for the powergood
@@ -29,14 +30,14 @@ module smc_reset_ctrl (
                                                                  // DFT is complete; holds
                                                                  // the warm reset.
 
-  input  logic                                   rst_ext_wdt_ni,  // External watchdog reset,
+  input  logic                                   rst_ext_wdt_ni,  // External watchdog request,
                                                                   // active-low; asserts the
-                                                                  // WDT and warm resets.
+                                                                  // watchdog reset.
   input  logic                                   smc_wdt_first_timeout_i,  // SMC CPU watchdog first-timeout indication;
                                                                            // not used in this module.
-  input  logic                                   smc_wdt_second_timeout_i,  // SMC CPU watchdog second-timeout
-                                                                            // indication, active-high; asserts the WDT
-                                                                            // reset and, through it, the warm reset.
+  input  logic                                   smc_wdt_second_timeout_i,  // SMC watchdog request (CPU watchdog second
+                                                                            // timeout), active-high; asserts the watchdog
+                                                                            // reset.
 
   input  logic                                   rst_cool_from_pin_ni,  // Cool reset received by
                                                                         // secondary chiplets,
@@ -68,23 +69,26 @@ module smc_reset_ctrl (
   output logic                                   rst_warm_no,  // Warm reset, active-low: the
                                                                // primary, WDT and fuse resets
                                                                // combined.
-  output logic                                   rst_wdt_no,  // WDT reset, active-low, asserted
-                                                              // by rst_ext_wdt_ni or
-                                                              // smc_wdt_second_timeout_i;
-                                                              // combinational from its inputs.
+  output logic                                   rst_wdt_no,  // Watchdog reset, active-low:
+                                                              // either watchdog request,
+                                                              // held 32 reference clock
+                                                              // cycles after both release.
 
   input  logic                                   test_en_i,  // Scan test mode enable, active-high;
                                                              // selects scan_rst_ni in place of the
-                                                             // stretched powergood and the
-                                                             // de-glitched cold reset.
+                                                             // stretched powergood, the
+                                                             // de-glitched cold reset and the
+                                                             // stretched watchdog reset.
   input  logic                                   scan_rst_ni  // Scan reset, active-low, used in
-                                                              // place of the stretched powergood
-                                                              // and the de-glitched cold reset
-                                                              // while test_en_i is high.
+                                                              // place of the stretched powergood,
+                                                              // the de-glitched cold reset and the
+                                                              // stretched watchdog reset while
+                                                              // test_en_i is high.
 );
 
   // Reset de-glitcher parameters
   localparam int unsigned ResetDeglitchWidth = 32;
+  localparam int unsigned WdtResetHoldCycles = 32;
 
   logic powergood_stable;
   logic cold_rst_pre_extend;
@@ -187,9 +191,12 @@ module smc_reset_ctrl (
   // Final reset outputs
   logic smc_wdt_second_timeout_n;
   logic wdt_reset_n;
+  logic wdt_reset_stretched_n;
   logic rst_primary_cold_cool_n;
   logic rst_warm_wdt_primary_n;
 
+  // The watchdog reset combines the two watchdog requests. Each request is cleared by the
+  // reset it causes, so the stretcher sets the reset width.
   prim_inv u_smc_wdt_timeout_inv (
     .in_i  (smc_wdt_second_timeout_i),
     .out_o (smc_wdt_second_timeout_n)
@@ -201,6 +208,16 @@ module smc_reset_ctrl (
     .in0_i (rst_ext_wdt_ni),
     .in1_i (smc_wdt_second_timeout_n),
     .out_o (wdt_reset_n)
+  );
+
+  prim_sync_reset #(
+    .WIDTH(WdtResetHoldCycles)
+  ) u_wdt_reset_stretcher_n0_scan (
+    .clk_i      (clk_ref_i),
+    .rst_ni     (wdt_reset_n),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .sync_rst_no(wdt_reset_stretched_n)
   );
 
   prim_and2 #(
@@ -222,7 +239,7 @@ module smc_reset_ctrl (
   prim_and2 #(
     .Width(1)
   ) u_rst_warm_wdt_primary_and (
-    .in0_i (wdt_reset_n),
+    .in0_i (wdt_reset_stretched_n),
     .in1_i (rst_primary_no),
     .out_o (rst_warm_wdt_primary_n)
   );
@@ -235,7 +252,7 @@ module smc_reset_ctrl (
     .out_o (rst_warm_no)
   );
 
-  assign rst_wdt_no = wdt_reset_n;
+  assign rst_wdt_no = wdt_reset_stretched_n;
 
   assign stable_cold_rst_no = stable_cold_rst_n;
   assign powergood_stable_o = powergood_stable;

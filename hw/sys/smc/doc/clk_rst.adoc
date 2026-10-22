@@ -212,8 +212,9 @@ cold reset, after its JTAG override, must stay low for 32 reference clock
 cycles to pass the de-glitcher, and its release is extended by 255 cycles.
 The cool-reset pin passes its own 32-cycle de-glitcher. The primary reset is
 the AND of the stable cold reset, the de-glitched cool-reset pin and the FLR
-cool reset. The watchdog reset is the AND of `rst_ext_wdt_ni`, which comes
-from the SEP watchdog, and the inverted SMC watchdog second timeout;
+cool reset. The watchdog reset asserts with `rst_ext_wdt_ni`, which comes
+from the SEP watchdog, or with the SMC watchdog second timeout, and is held
+for 32 reference clock cycles after both release;
 `smc_wdt_first_timeout_i` does not reach the reset logic. The warm reset is
 the AND of the watchdog reset, the primary reset and the fuse reset, which
 the eFuse wrapper releases once fuse sensing completes and any boot stall
@@ -233,7 +234,8 @@ the isolation registers and FLR counters are reset only by the stable cold
 reset, so they survive a cool reset. The per-subsystem cold and warm resets
 leave `ss_reset_ctrl_o` unsynchronised, and each subsystem synchronises them.
 In test mode, `scan_rst_ni` replaces the stretched powergood, the
-de-glitched cold reset and every synchroniser output.
+de-glitched cold reset, the stretched watchdog reset and every synchroniser
+output.
 
 === Power-Good and Cold Reset
 
@@ -259,8 +261,9 @@ Functional cold reset alone does not reset that state.
 |FLR cool reset |Reference-domain timed reset feeds primary reset; isolation
 is controlled separately as described below.
 |External watchdog reset / second SMC watchdog timeout |Assert the watchdog
-reset term, which also asserts warm reset. The first-timeout input does not
-enter the reset equation in `smc_reset_ctrl`.
+reset term, which also asserts warm reset, for at least 32 reference clock
+cycles. The first-timeout input does not enter the reset equation in
+`smc_reset_ctrl`.
 |Fuse reset |Holds warm reset until released by the fuse-control path.
 |JTAG reset overrides |Select alternate fuse, cold, cool or warm reset values;
 normal functional equations below assume these overrides and scan mode are inactive.
@@ -283,9 +286,15 @@ In normal operation the active-low reset equations are:
 ----
 rst_primary_n = stable_cold_rst_n AND stable_cool_rst_n
                 AND rst_cool_from_flr_n
-rst_wdt_n     = rst_ext_wdt_ni AND NOT smc_wdt_second_timeout_i
+rst_wdt_n     = rst_ext_wdt_ni AND NOT smc_wdt_second_timeout_i,
+                released 32 reference clock cycles after both release
 rst_warm_n    = rst_primary_n AND rst_wdt_n AND fuse_reset_ni
 ----
+
+Both watchdog requests are cleared by the reset they cause: the SEP bite
+when `rst_wdt_smc_clk_no` resets the SEP watchdog, and the second timeout
+when warm reset restarts the CPU cluster. The 32-cycle hold therefore sets
+the width of the watchdog reset.
 
 Primary reset covers the main SMC functional fabric, peripheral control and
 configuration paths. Warm reset drives CPU core/uncore reset control, including

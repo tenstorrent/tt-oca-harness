@@ -20,11 +20,20 @@ The `sep_wdt_wrap` module integrates the OpenTitan `aon_timer` IP as the watchdo
 
 == Clock, Reset, and Debug Behavior
 
-The wrapper provides a dedicated watchdog clock input (`clk_wdt_i`) that is synchronized through a `prim_sync_reset` to produce the `rst_aon_ni` reset for the always-on timer domain. The `wdt_debug_sleep_mode_i` input controls whether the timer continues to count during debug halt. Life-cycle escalation is tied to its inactive state. Alert receivers are initialized to the idle encoding to avoid spurious integrity errors; alert outputs are left unconnected since the SEP aggregates watchdog events through the interrupt path.
+The register path described above is reset by cold reset (`rst_ni`), like the crossbar that drives it. The `aon_timer`, including its registers, and its alert receivers are reset by the SEP watchdog reset (`rst_wdt_ni`, driven by `sep_wdt_reset_no` of the SEP Reset Controller), which asserts on cold reset and on every watchdog reset. A `prim_sync_reset` synchronizes it to the dedicated watchdog clock (`clk_wdt_i`) to produce the `rst_aon_ni` reset for the timer domain. The `wdt_debug_sleep_mode_i` input controls whether the timer continues to count during debug halt. Life-cycle escalation is tied to its inactive state. Alert receivers are initialized to the idle encoding to avoid spurious integrity errors; alert outputs are left unconnected since the SEP aggregates watchdog events through the interrupt path.
 
 == Bark Interrupt and Bite Reset
 
 The wrapper exports two signals: `intr_wdog_timer_bark_o`, the watchdog bark interrupt that fires when the first timeout stage expires, and `wdt_timer_rst_req_o`, the bite reset request that fires when the second timeout stage expires and the system failed to respond to the bark.
+
+The SMC reset unit turns the bite into the shared watchdog reset, which returns to the SEP on `wdt_rst_ni`. It restarts the SEP CPU and resets the watchdog, which clears the bite. The
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:reset.adoc[Platform Reset]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-reset,Platform Reset>>
+endif::backend-pdf[]
+chapter describes the watchdog timeout.
 
 == Programming Reference
 

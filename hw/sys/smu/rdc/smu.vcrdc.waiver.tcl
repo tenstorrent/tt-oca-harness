@@ -12,8 +12,8 @@
 # =====================================================================================================================
 
 waive_violation -add {SMU_SETUP_RESET_ASSERT_MISSING_sep_wdt_loop} \
-    -comment {PRIMARY and its WDT-clock sync RST_WDT_N reach the SMC WDT reset synchronizer through the SEP watchdog request flop and the smu.sv inversion, arriving as "deasserted". Both consumers of the WDT reset (SMC warm reset, SEP CPU reset) are AND-ed with a PRIMARY-derived reset and so assert under PRIMARY on their own path.} \
-    -filter {((ReasonInfoList:ReasonInfo:ReasonCode == "WRONG_ASSERT_VALUE") OR (ReasonInfoList:ReasonInfo:ReasonCode == "BLOCKED_ASSERT_VALUE")) AND (SeqObject =~ "u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_reset_sync/u_rst_wdt_smc_sync/*") AND ((ResetInfoList:ResetInfo:ResetName == "PRIMARY_RESET_N") OR (ResetInfoList:ResetInfo:ResetName == "PRIMARY_RESET_N_SMC_CLK") OR (ResetInfoList:ResetInfo:ResetName == "RST_WDT_N"))} \
+    -comment {PRIMARY and its WDT-clock sync RST_WDT_N reach the SMC watchdog reset stretcher and synchronizer through the SEP watchdog request flop and the smu.sv inversion, arriving as "deasserted". Both consumers of the WDT reset (SMC warm reset, SEP CPU reset) are AND-ed with a PRIMARY-derived reset and so assert under PRIMARY on their own path.} \
+    -filter {((ReasonInfoList:ReasonInfo:ReasonCode == "WRONG_ASSERT_VALUE") OR (ReasonInfoList:ReasonInfo:ReasonCode == "BLOCKED_ASSERT_VALUE")) AND ((SeqObject =~ "u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_reset_sync/u_rst_wdt_smc_sync/*") OR (SeqObject =~ "u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_reset_ctrl/u_wdt_reset_stretcher_n0_scan/*")) AND ((ResetInfoList:ResetInfo:ResetName == "PRIMARY_RESET_N") OR (ResetInfoList:ResetInfo:ResetName == "PRIMARY_RESET_N_SMC_CLK") OR (ResetInfoList:ResetInfo:ResetName == "RST_WDT_N"))} \
     -app { rdc } -tag { SETUP_RESET_ASSERT_MISSING } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # =====================================================================================
@@ -54,6 +54,6 @@ waive_violation -add {SMU_SETUP_CLOCK_UNUSED_BOUNDARY_CLKS} \
 
 # Reset-tree edges that cross a block boundary, so neither block's RESET_OVERLAP class waiver owns them.
 waive_violation -add {SMU_SETUP_RESET_OVERLAP_CROSS_BLOCK_TREE} \
-    -comment {DTP trst_n_combined is passed through the PTAP TAP controller and the SMC STAP to smc_cpu_jtag_reset_i, where smu.sv inverts it into the active-high JTAG_RESET. SEP RST_WDT_N resets the watchdog request flop whose inverted output is a WARM_RESET_N AND-tree input. One declared reset reaching the root of another is the reset tree by construction.} \
-    -filter {((SrcRstInfo:ResetName == "trst_n_combined") AND (DesRstInfo:ResetName == "JTAG_RESET")) OR ((SrcRstInfo:ResetName == "RST_WDT_N") AND (DesRstInfo:ResetName == "WARM_RESET_N"))} \
+    -comment {DTP trst_n_combined is passed through the PTAP TAP controller and the SMC STAP to smc_cpu_jtag_reset_i, where smu.sv inverts it into the active-high JTAG_RESET. SEP RST_WDT_N resets the SEP watchdog request flop, whose inverted output feeds the SMC WDT_RESET_UNSTRETCHED_N and so WARM_RESET_N. One declared reset reaching the root of another is the reset tree by construction.} \
+    -filter {((SrcRstInfo:ResetName == "trst_n_combined") AND (DesRstInfo:ResetName == "JTAG_RESET")) OR ((SrcRstInfo:ResetName == "RST_WDT_N") AND ((DesRstInfo:ResetName == "WDT_RESET_UNSTRETCHED_N") OR (DesRstInfo:ResetName == "WARM_RESET_N")))} \
     -app { rdc } -tag { SETUP_RESET_OVERLAP } -user { nbetik } -timestamp { 17-09-2026 00:00:00 }

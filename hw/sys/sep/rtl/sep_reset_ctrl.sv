@@ -17,16 +17,20 @@
 // KM resets to 0 (held in reset) and the others to 1. The register block and the AXI
 // converter are reset by the SEP reset; the FSMs and synchronizers by rst_ni. Register map:
 // hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl.
+// The watchdog reset wdt_rst_ni resets the CPU directly and the watchdog timer through a
+// 2-flop capture on clk_i, which clears the SEP watchdog request.
 
 `include "prim_assert.sv"
 
 module sep_reset_ctrl (
   input  logic   clk_i,                       // System clock.
-  input logic    rst_ni,                      // Active-low reset of the isolation FSMs and the JTAG
-                                              // override synchronizers.
+  input logic    rst_ni,                      // Active-low reset of the isolation FSMs, the JTAG
+                                              // override synchronizers and the watchdog timer
+                                              // reset.
 
-  input  logic   wdt_rst_ni,                  // Aggregated WDT resets from SMC and SEP, active-low;
-                                              // resets only the CPU.
+  input  logic   wdt_rst_ni,                  // Watchdog reset, active-low: the SEP and SMC
+                                              // watchdog requests combined. Resets the CPU and
+                                              // the watchdog timer.
 
   input sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,  // JTAG IC_RESET override and value
                                                                // bits in the TCK domain. The per-IP
@@ -55,6 +59,9 @@ module sep_reset_ctrl (
 
   output logic   sep_cpu_reset_no,            // Active-low CPU reset: the SEP reset ANDed with
                                               // wdt_rst_ni, or scan_rst_ni in test mode.
+  output logic   sep_wdt_reset_no,            // Active-low watchdog timer reset: rst_ni, or
+                                              // wdt_rst_ni captured on clk_i (two cycles);
+                                              // scan_rst_ni in test mode.
 
   output sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req_o,  // Per-path isolation request to
                                                                   // sep_crypto's AXI interconnect,
@@ -89,6 +96,25 @@ module sep_reset_ctrl (
     .rst1_ni(scan_rst_ni),
     .sel_i  (test_en_i),
     .rst_no (sep_cpu_reset_no)
+  );
+
+  // This reset clears the SEP watchdog request; capturing wdt_rst_ni on clk_i keeps the
+  // request high for at least one full cycle.
+  logic sep_wdt_func_reset_n;
+  prim_flop_2sync #(
+    .Width(1)
+  ) u_wdt_rst_sync (
+    .clk_i (clk_i),
+    .rst_ni(rst_ni),
+    .d_i   (wdt_rst_ni),
+    .q_o   (sep_wdt_func_reset_n)
+  );
+
+  prim_rst_mux2_hf_n u_sep_wdt_rst_scan_bypass (
+    .rst0_ni(sep_wdt_func_reset_n),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_wdt_reset_no)
   );
 
   // =========================================================================

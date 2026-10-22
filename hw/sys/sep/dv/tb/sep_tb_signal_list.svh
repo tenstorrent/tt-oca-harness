@@ -861,7 +861,7 @@
 `SEP_TB_OUT(logic [13:0], iso_slv_r_hs_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_bresp_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_rresp_probe_o)
-// Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_n, rst_aon_ni of the AON
+// Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_aon_clk_n, rst_aon_ni of the AON
 // timer).
 `SEP_TB_OUT(logic, aon_rst_n_probe_o)
 // sep_reset_n override select at the SEP boundary

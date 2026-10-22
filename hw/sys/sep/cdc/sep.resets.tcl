@@ -29,7 +29,10 @@ create_reset -name SEP_RESET_N [cdc_inst "u_sep_reset_ctrl/sep_reset_no"] -both 
 # CPU reset = sep_reset_n & wdt_rst_ni
 create_reset -name SEP_CPU_RESET_N [cdc_inst "u_sep_reset_ctrl/sep_cpu_reset_no"] -both -type reset -value low -disable_assertions_db
 
-# WDT-clock reset sync of rst_ni
+# Watchdog timer reset: rst_ni, or the watchdog reset wdt_rst_ni captured on clk_i
+create_reset -name SEP_WDT_RESET_N [cdc_inst "u_sep_reset_ctrl/sep_wdt_reset_no"] -both -type reset -value low -disable_assertions_db
+
+# WDT-clock reset sync of the watchdog timer reset
 create_reset -name RST_WDT_N [cdc_inst "u_sep_wdt_wrap/u_rst_wdt_sync/sync_rst_no"] -both -type reset -value low -disable_assertions_db
 
 # Per-accelerator software resets
@@ -63,7 +66,8 @@ set_rdc_define_assertion_sequence -from_reset [cdc_rst {RST_NI}] -to_reset {SEP_
 set_rdc_define_assertion_sequence -from_reset {SEP_INTERMEDIATE_RESET_N} -to_reset {SEP_RESET_N}
 set_rdc_define_assertion_sequence -from_reset [cdc_rst {SEP_RESET_N WDT_RST_NI}] -to_reset {SEP_CPU_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {SEP_RESET_N} -to_reset {SEP_SW_RST_KM SEP_SW_RST_OTBN SEP_SW_RST_AES SEP_SW_RST_HMAC SEP_SW_RST_KMAC SEP_SW_RST_TRNG SEP_SW_RST_ABR}
-set_rdc_define_assertion_sequence -from_reset [cdc_rst {RST_NI}] -to_reset {RST_WDT_N}
+set_rdc_define_assertion_sequence -from_reset [cdc_rst {RST_NI WDT_RST_NI}] -to_reset {SEP_WDT_RESET_N}
+set_rdc_define_assertion_sequence -from_reset {SEP_WDT_RESET_N} -to_reset {RST_WDT_N}
 set_rdc_define_assertion_sequence -from_reset {SEP_RESET_N} -to_reset {KM_COLD_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {KM_COLD_RESET_N} -to_reset {KM_WARM_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {SEP_RESET_N} -to_reset {SEP_RESET_N_REFCNT_SEP_CLK SEP_RESET_N_REFCNT_REF_CLK}

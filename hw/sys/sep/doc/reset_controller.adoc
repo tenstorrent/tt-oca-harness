@@ -33,8 +33,9 @@ each reset reaches. <<sep-reset-ctrl-logic-diagram>> shows the logic inside
 
 `u_sep_efuse_wrapper`, part of `u_sep_crypto`, ANDs `rst_ni`,
 `ext_boot_seq_done_i` and fuse-sense done and synchronizes the result into
-`sep_intermediate_reset_n`. The Reset Controller builds its three outputs from
-it, as <<sep-reset-ctrl-logic-diagram>> shows. The stacked row repeats once for
+`sep_intermediate_reset_n`. The Reset Controller builds three of its outputs
+from it, as <<sep-reset-ctrl-logic-diagram>> shows, and the watchdog reset from
+`rst_ni` and `wdt_rst_ni`. The stacked row repeats once for
 each `SW_RESET_N` bit.
 
 [[sep-reset-ctrl-logic-diagram]]
@@ -50,6 +51,12 @@ image::sep-reset-ctrl-logic.svg[alt="Gates, muxes and synchronizers in the eFuse
 * `sep_cpu_reset_no`: `sep_reset_n` ANDed with `wdt_rst_ni`
   (`u_sep_cpu_rst_and`), then the scan bypass `u_sep_cpu_rst_scan_bypass`. It
   resets the EL2 core (`rst_l`) and the warm scratch registers.
+* `sep_wdt_reset_no`: `wdt_rst_ni` captured by the 2-flop `u_wdt_rst_sync`,
+  which `rst_ni` resets, then the scan bypass `u_sep_wdt_rst_scan_bypass`. It
+  resets the watchdog timer and its alert receivers. A SEP bite asserts
+  `wdt_rst_ni`, and this reset clears the bite. The capture holds the bite for
+  at least one `clk_i` cycle, so its width does not depend on gate delays
+  around that loop.
 * `sep_crypto_gated_rst_no[6:0]`: for each bit, the output of
   `u_<blk>_isolate_seq` ANDed with `sep_reset_n` (`u_<blk>_rst_and`), then the
   per-IP JTAG override mux `u_<blk>_rst_ovrd_mux`, then the scan bypass
@@ -58,14 +65,15 @@ image::sep-reset-ctrl-logic.svg[alt="Gates, muxes and synchronizers in the eFuse
   seven bits reset OTBN, AES, HMAC, KMAC, the TRNG, Adams Bridge and the Key
   Manager warm domain.
 
-`rst_ni` resets the isolation sequencers and the JTAG override synchronizers.
-It also resets, directly, the crypto interconnect, life cycle controller, eFuse
-shim mux, alert receivers, encoders and EDN AXIS adapters, the TRNG power-on
-reset `por_rst_ni`, the watchdog, the local crossbar, the eFuse shim demux and
-the entropy pool. When the build does not define `SEP_ABR_EN`, the Adams Bridge
-error responders take `rst_ni` in place of the Adams Bridge wrapper. The
-watchdog synchronizes `rst_ni` into `clk_wdt_i` for its counter, and its bite
-leaves the SEP on `wdt_timer_rst_req_o`. `dbg_rstb_i` resets the EL2 debug
+`rst_ni` resets the isolation sequencers, the JTAG override synchronizers and
+`u_wdt_rst_sync`. It also resets, directly, the crypto interconnect, life cycle
+controller, eFuse shim mux, alert receivers, encoders and EDN AXIS adapters, the
+TRNG power-on reset `por_rst_ni`, the watchdog register path, the local crossbar,
+the eFuse shim demux and the entropy pool. When the build does not define
+`SEP_ABR_EN`, the Adams Bridge error responders take `rst_ni` in place of the
+Adams Bridge wrapper. The watchdog synchronizes `sep_wdt_reset_no` into
+`clk_wdt_i` for its counter, and its bite leaves the SEP on
+`wdt_timer_rst_req_o`. `dbg_rstb_i` resets the EL2 debug
 module and `u_mpc_reset_run_req_sync`, and `jtag_trst_ni` resets the EL2 JTAG
 TAP. While `test_en_i` is high, `scan_rst_ni` replaces the outputs of
 `u_sep_reset_sync`, each scan bypass mux, `u_rst_wdt_sync` and both Key Manager

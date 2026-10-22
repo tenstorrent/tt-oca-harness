@@ -83,7 +83,7 @@ reference firmware keeps a runtime-writable handler pointer that the trampoline
 dispatches through, so the locked vector always targets the trampoline.
 
 If the watchdog bite threshold is also enabled, an unserviced bark still
-escalates to the watchdog reset path and resets the SEP. A mis-programmed
+escalates to the watchdog reset path and restarts the SEP CPU. A mis-programmed
 vector therefore degrades to a watchdog reset rather than a silent hang, but it
 does so only after the bite interval and without running any handler.
 
@@ -193,10 +193,9 @@ class key and public identities reload from the shadow bus.
 The TRNG bit resets the whole internal entropy chain. Follow
 <<sep-trng-recovery>> rather than toggling it on its own.
 
-A watchdog restart resets the SEP CPU but not the cryptographic engines or
-their `SW_RESET_N` requests. Recovery firmware must account for engine state
-that survived the restart, by resetting the engines or checking their state,
-before submitting new work.
+A watchdog restart resets the SEP CPU and the watchdog but not the
+cryptographic engines or their `SW_RESET_N` requests. Triage firmware that
+uses an engine after the restart must reset it or check its state first.
 
 [[sep-pic]]
 ==== Programmable Interrupt Controller (PIC)
@@ -664,8 +663,23 @@ periodically by resetting its count, proving that the SEP CPU is still making
 progress. If the count reaches the bark threshold, the watchdog raises the NMI,
 which jumps through `SEP_NMI_VEC`; program and lock that vector first, as
 <<sep-nmi-vector-programming>> describes. If the count reaches the bite
-threshold, the watchdog requests a SEP CPU reset. `wdt_debug_sleep_mode_i`
+threshold, the watchdog requests a watchdog reset. `wdt_debug_sleep_mode_i`
 selects whether the timer keeps counting while the CPU is halted in debug.
+
+A bite from the SEP or the SMC watchdog restarts both CPUs and returns the SEP
+watchdog to its reset values: disabled, and unlocked even if firmware cleared
+`WDOG_REGWEN`. Triage firmware that needs watchdog protection must program and
+lock it again. Transactions in flight when the reset asserts are not drained,
+so an access that hung and caused the timeout can also block the triage
+image's accesses on the same path. The
+ifdef::backend-html5[]
+xref:ocah-docs::reset.adoc#ocah-reset[Reset chapter]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/reset.html#ocah-reset[Reset chapter]
+endif::backend-pdf[]
+of the Technical Reference Manual describes the triage restart and the cold
+reset that follows it.
 
 .Watchdog example C definitions.
 [source,sourceCode,c]

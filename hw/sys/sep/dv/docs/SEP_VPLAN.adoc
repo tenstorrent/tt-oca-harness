@@ -3852,7 +3852,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Watchdog timer-domain reset
 |-
 |ACCEPT-PROBE
-|`aon_rst_n` tap on `rst_aon_ni` (`hw/sys/sep/doc/watchdog.adoc`, Clock, Reset, and Debug Behavior). Used in `sep_cold_reset_phase_test`. The `aon_rst_n` tap (`SEP_CORE.u_sep_wdt_wrap.rst_wdt_n`) is an observation tap the test adds to the SEP_TB_ARCH observation-probe list.
+|`aon_rst_n` tap on `rst_aon_ni` (`hw/sys/sep/doc/watchdog.adoc`, Clock, Reset, and Debug Behavior). Used in `sep_cold_reset_phase_test`. The `aon_rst_n` tap (`SEP_CORE.u_sep_wdt_wrap.rst_wdt_aon_clk_n`) is an observation tap the test adds to the SEP_TB_ARCH observation-probe list.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Engine reset outputs and `sep_reset_n`
 |-
@@ -4397,7 +4397,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`spi_tx_qd_probe_o`, `spi_lsio_trigger_probe_o` and `dma_busy_probe_o` exist, and `docs/SEP_TB_ARCH.adoc` names `sep_spi_ot_dma_tx_test` as their owner. The item adds the SPI and DMA tests as users, and adds read-only sampler ports for these three probes and for `sep_internal_interrupts_probe_o` bits 9, 10 and 13.
 |`sep_dma_transfer_matrix_rand_test`, `sep_dma_irq_error_lock_rand_test`, `sep_dma_abort_recovery_rand_test`, `sep_spi_dma_handshake_rand_test` and the owners of the sampled coverpoints
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
-|`aon_rst_n` tap (`SEP_CORE.u_sep_wdt_wrap.rst_wdt_n`)
+|`aon_rst_n` tap (`SEP_CORE.u_sep_wdt_wrap.rst_wdt_aon_clk_n`)
 |Read-only tap
 |The watchdog timer-domain reset.
 |`sep_cold_reset_phase_test` (CHK-AON-REL), `sep_ip_reset_override_matrix_test` (CHK-OVR-AND), `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test` (CTL-SCAN-REACH)

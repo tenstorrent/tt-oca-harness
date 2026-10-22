@@ -201,7 +201,7 @@ Observation probe groups:
   domain before its reset. No frontdoor shows the stage side of the fabric.
   Owner `sep_sw_reset_isolation_matrix_test`.
 * Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
-  (`u_sep_wdt_wrap.rst_wdt_n`, `rst_aon_ni` of the AON timer); owners
+  (`u_sep_wdt_wrap.rst_wdt_aon_clk_n`, `rst_aon_ni` of the AON timer); owners
   `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,
   `sep_scan_reset_override_test`. `jtag_sep_reset_n_ovrd_probe_o`, the
   `sep_reset_n` override select on the SEP input port

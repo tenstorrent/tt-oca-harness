@@ -5,8 +5,10 @@
 //
 // The 64-bit AXI4 slave is downsized to 32 bits, rebased by subtracting the WDT base
 // address, converted to AXI-Lite, and bridged to the aon_timer TL-UL port.
-// clk_wdt_i times the bark and bite counters; rst_ni is synchronized into that domain.
-// wdt_timer_rst_req_o requests a system reset bite.
+// clk_wdt_i times the bark and bite counters. rst_ni resets the register path; the SEP watchdog
+// reset rst_wdt_ni resets the timer and its alert receivers, and rst_wdt_aon_clk_n is its copy
+// synchronized into the clk_wdt_i domain.
+// wdt_timer_rst_req_o is the watchdog request (bite); it holds until rst_wdt_ni asserts.
 // wdt_alert_o aggregates the fatal alert pulse with integ_fail of all channels.
 // wdt_debug_sleep_mode_i pauses the watchdog in debug sleep.
 // RACL is compiled out, lifecycle escalation is tied off, and the wakeup timer outputs are
@@ -16,8 +18,10 @@ module sep_wdt_wrap (
   input  logic                         clk_i,  // System clock.
   input  logic                         clk_wdt_i,  // Watchdog counter clock, asynchronous to clk_i;
                                                    // 200 kHz in sep.
-  input  logic                         rst_ni,  // Active-low reset; also synchronized into the
-                                                // clk_wdt_i domain.
+  input  logic                         rst_ni,  // Active-low reset of the AXI to TL-UL register path.
+  input  logic                         rst_wdt_ni,  // SEP watchdog reset, active-low: resets the
+                                                    // timer and the alert receivers, and is
+                                                    // synchronized into the clk_wdt_i domain.
 
   input  logic                         test_en_i,  // DFT test-enable (scan-enable).
   input  logic                         scan_rst_ni,  // DFT scan reset, active-low; bypasses the
@@ -50,7 +54,7 @@ module sep_wdt_wrap (
 
   localparam int unsigned NumAlerts = aon_timer_reg_pkg::NumAlerts;
 
-  logic rst_wdt_n;
+  logic rst_wdt_aon_clk_n;
 
   prim_alert_pkg::alert_tx_t [NumAlerts-1:0] wdt_alert_tx;
   prim_alert_pkg::alert_rx_t [NumAlerts-1:0] wdt_alert_rx;
@@ -59,10 +63,10 @@ module sep_wdt_wrap (
 
   prim_sync_reset u_rst_wdt_sync (
     .clk_i       (clk_wdt_i),
-    .rst_ni      (rst_ni),
+    .rst_ni      (rst_wdt_ni),
     .test_mode_i (test_en_i),
     .scan_rst_ni (scan_rst_ni),
-    .sync_rst_no (rst_wdt_n)
+    .sync_rst_no (rst_wdt_aon_clk_n)
   );
 
   sep_pkg::sep_32_32_6_12_axi_req_t  sep_wdt_tlul_axi_req;
@@ -160,9 +164,9 @@ module sep_wdt_wrap (
     .RaclPolicySelVec ('{aon_timer_reg_pkg::NumRegs{0}})
   ) u_wdt_aon_timer (
     .clk_i                     (clk_i),
-    .rst_ni                    (rst_ni),
+    .rst_ni                    (rst_wdt_ni),
     .clk_aon_i                 (clk_wdt_i),
-    .rst_aon_ni                (rst_wdt_n),
+    .rst_aon_ni                (rst_wdt_aon_clk_n),
     .tl_i                      (tl_d_i),
     .tl_o                      (tl_d_o),
 
@@ -188,7 +192,7 @@ module sep_wdt_wrap (
       .SkewCycles(1)
     ) u_alert_receiver (
       .clk_i,
-      .rst_ni,
+      .rst_ni       (rst_wdt_ni),
       .init_trig_i  (prim_mubi_pkg::MuBi4False),
       .ping_req_i   (1'b0),
       .ping_ok_o    (),

@@ -352,7 +352,7 @@ module sep_fcov (
   input wire [6:0]           ip_rst_n_i,        // sep_crypto_gated_rst_n, SW_RESET_N order
   input wire [13:0]          iso_req_i,         // sep_crypto_isolate_req, bench index
   input wire [13:0]          iso_ack_i,         // sep_crypto_isolated, bench index
-  input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_n
+  input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_aon_clk_n
   input wire [1:0]           km_cond_rst_n_i,   // {rst_cold_aasd_n, rst_warm_sync_n}
   input wire [1:0]           refcnt_rst_n_i,    // reference counter {clk_ref_i, clk_i} reset
   input sep_pkg::jtag_sep_reset_ctrl_t jtag_rst_ctrl_i,  // after the pin-or-TDR mux

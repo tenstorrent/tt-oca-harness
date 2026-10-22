@@ -72,7 +72,7 @@ create_reset -name COOL_RESET_FROM_FLR_N [cdc_inst "${reset_unit_hier}/u_smc_coo
 # Final efuse-released reset after boot-stall processing inside u_smc_peripherals
 create_reset -name FUSE_RESET_N [cdc_inst "u_smc_peripherals/fuse_reset_n_o"] -both -type reset -value low -disable_assertions_db
 
-# assign rst_warm_no = wdt_reset_n && rst_primary_no && fuse_reset_ni;
+# assign rst_warm_no = wdt_reset_stretched_n && rst_primary_no && fuse_reset_ni;
 create_reset -name WARM_RESET_N [cdc_inst "${reset_unit_hier}/u_smc_reset_ctrl/rst_warm_no"] -async -type reset -value low -disable_assertions_db
 create_reset -name WARM_RESET_N_SMC_CLK [cdc_inst "${reset_unit_hier}/rst_warm_smc_clk_no"] -both -type reset -value low -disable_assertions_db
 
@@ -100,12 +100,15 @@ create_reset -name DM_HART_RESET_3 [cdc_inst "u_smc_cpu_wrapper/u_smc_cpu/u_digi
 # Mem Init Done
 create_reset -name MEM_INIT_DONE_N [cdc_inst "u_smc_cpu_wrapper/u_smc_cpu/init_mem_complete/Q"] -async -type reset -value low -disable_assertions_db
 
+# Watchdog reset: the two watchdog requests combined (WDT_RESET_UNSTRETCHED_N), then held
+# on REFCLK by u_wdt_reset_stretcher_n0_scan (WDT_RESET_N).
+create_reset -name WDT_RESET_UNSTRETCHED_N [cdc_inst "${reset_unit_hier}/u_smc_reset_ctrl/u_smc_wdt_reset_and/out_o"] -both -type reset -value low -disable_assertions_db
 create_reset -name WDT_RESET_N [cdc_inst "${reset_unit_hier}/u_smc_reset_ctrl/rst_wdt_no"] -both -type reset -value low -disable_assertions_db
 create_reset -name WDT_RESET_N_SMC_CLK [cdc_inst "${reset_unit_hier}/rst_wdt_smc_clk_no"] -both -type reset -value low -disable_assertions_db
 
 set_reset_groups \
     -name WDT_RESET_GROUP \
-    -group {WDT_RESET_N WDT_RESET_N_SMC_CLK}
+    -group {WDT_RESET_UNSTRETCHED_N WDT_RESET_N WDT_RESET_N_SMC_CLK}
 
 # BOOT_STALL_N: GPIO 60 drives the raw boot stall signal which is captured by 'boot_stall_sticky'.
 # This is intended to halt the regular boot process by holding fuse reset asserted until gpio 60 is deasserted.
@@ -203,7 +206,7 @@ set_rdc_define_assertion_sequence \
 
 # PRIMARY/WDT/FUSE => WARM: when primary, wdt, or fuse asserts, warm asserts.
 set_rdc_define_assertion_sequence \
-    -from_reset {PRIMARY_RESET_N PRIMARY_RESET_N_REF_CLK PRIMARY_RESET_N_SMC_CLK PRIMARY_RESET_N_PERIPH_CLK WDT_RESET_N WDT_RESET_N_SMC_CLK FUSE_RESET_N} \
+    -from_reset {PRIMARY_RESET_N PRIMARY_RESET_N_REF_CLK PRIMARY_RESET_N_SMC_CLK PRIMARY_RESET_N_PERIPH_CLK WDT_RESET_UNSTRETCHED_N WDT_RESET_N WDT_RESET_N_SMC_CLK FUSE_RESET_N} \
     -to_reset {WARM_RESET_N WARM_RESET_N_SMC_CLK}
 
 # WARM_SMC_CLK => per-core and cluster-uncore resets.
@@ -231,6 +234,11 @@ set_rdc_define_assertion_sequence \
 set_rdc_define_assertion_sequence \
     -from_reset {PRIMARY_RESET_N_SMC_CLK} \
     -to_reset {PRIMARY_RESET_N_REFCNT_SMC_CLK PRIMARY_RESET_N_REFCNT_REF_CLK}
+
+# Unstretched watchdog reset => the stretcher output and its SMCCLK sync.
+set_rdc_define_assertion_sequence \
+    -from_reset {WDT_RESET_UNSTRETCHED_N} \
+    -to_reset {WDT_RESET_N WDT_RESET_N_SMC_CLK}
 
 # PRIMARY_PERIPH_CLK => AVS APB/AVS/PRE_DIV clock reset syncs.
 # u_avsbus_controller.rst_ni = rst_primary_periph_clk_n (PRIMARY_RESET_N_PERIPH_CLK)

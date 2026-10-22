@@ -39,10 +39,15 @@ The reset hierarchy within the SMU proceeds as follows:
   SMC.
 
 . *SEP reset.* The SEP is held in reset by the same SMC primary reset
-  (`rst_primary_smc_clk_no`). The SEP watchdog timer also drives a shared
-  warm-reset path (`rst_wdt_n` at the SMU level); its blast radius is limited
-  to the SEP CPU and the SEP warm scratch registers, plus the parts of the SMC
-  that the SMC reset unit routes through the warm-reset path.
+  (`rst_primary_smc_clk_no`).
+
+. *Watchdog timeout.* A bite from the SMC or SEP watchdog asserts the shared
+  watchdog reset (`rst_wdt_n` at the SMU level), which resets both CPUs and
+  both watchdogs. Resetting the watchdog clears its bite, so the watchdog
+  reset is a pulse, which the SMC reset unit extends by 32 reference clock
+  cycles. Each CPU then restarts and can run a triage image that records why
+  the watchdog fired. It is not a recovery path: the platform must follow
+  every watchdog timeout with a cold reset (`rst_cold_ni`).
 
 . *Downstream subsystem sequencing.* The SMC sequences reset deassertion for
   up to 32 managed subsystems through `ss_reset_ctrl_o[31:0]` and isolation

@@ -22,8 +22,8 @@ endif::backend-html5[]
 |`clk_wdt_i` |`logic` |Input |1 |200 kHz clock for watchdog timer. |Low-frequency clock source |N/A
 |`rst_ni` |`logic` |Input |1 |Primary reset (active low). Asynchronous assertion, synchronous deassertion. |System reset |N/A
 |`dbg_rstb_i` |`logic` |Input |1 |EL2 debugger reset (active low). |JTAG debug infrastructure |N/A
-|`wdt_rst_ni` |`logic` |Input |1 |Watchdog timer reset from SMC (active low). |SMC reset unit |N/A
-|`wdt_timer_rst_req_o` |`logic` |Output |1 |WDT reset request output. Triggers memory interface reset in `sep_wrapper`. |SEP wrapper |N/A
+|`wdt_rst_ni` |`logic` |Input |1 |Aggregated SMC and SEP watchdog reset (active low). Resets the SEP CPU and the SEP watchdog. |SMC reset unit |N/A
+|`wdt_timer_rst_req_o` |`logic` |Output |1 |Watchdog bite reset request (active high). Holds until `wdt_rst_ni` resets the watchdog. |SMC reset unit |N/A
 
 |`jtag_tck_i` |`logic` |Input |1 |JTAG test clock. |JTAG pads (via DTP STAP) |N/A
 |`jtag_tms_i` |`logic` |Input |1 |JTAG test mode select. |JTAG pads (via DTP STAP) |N/A
