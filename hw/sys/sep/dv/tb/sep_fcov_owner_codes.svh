@@ -56,6 +56,7 @@ localparam int unsigned FcovOwnSepFabricExtensionPortWindowTest = 230;
 localparam int unsigned FcovOwnSepFabricRowResponseMatrixTest = 231;
 localparam int unsigned FcovOwnSepCpuLsuAliasWindowTwinTest = 232;
 localparam int unsigned FcovOwnSepFabricDmaEndpointMatrixTest = 233;
+localparam int unsigned FcovOwnSepFabricDeadspaceDecodeTest = 234;
 
 // Mailbox, IRQ and PIC.
 localparam int unsigned FcovOwnSepMailboxFifoModelRandTest = 313;
