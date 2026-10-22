@@ -2198,19 +2198,26 @@ hierarchy of the first design it reads.
 Every target's design database is resolved before the first merge, a target
 whose leaves record no model directory or one without its design database is
 refused, and a failed target merge stops the stage before the union. A tool
-without a `combine_cmd`, or a `[coverage.<tool>]` that names one `design_db`,
-cannot merge several targets. The union's manifest records no `target`, so a
-policy rule scoped to one target does not apply to it, and its
+without a `combine_cmd`, one whose `combine_cmd` uses `{design_db}` (`{inputs}`
+carries every target's design database), or a `[coverage.<tool>]` that names
+one `design_db`, cannot merge several targets. The union's manifest records no
+`target`, so a policy rule scoped to one target does not apply to it, and its
 `build_fingerprint` is a digest of every target's name and build fingerprint,
 so its `comparison_key` changes when a target joins, leaves or rebuilds. The
 inputs of a run on one target merge in one step against its design database.
+The stage runs on the first planned target's configuration, so inputs of one
+other target, as when a run plans several targets but only a later one leaves
+coverage, merge in that step against the design database in the model
+directory they recorded.
 
-Coverage-only replay of a run on one target resolves the current/default
-target rather than restoring an original non-default target; use replay only
-when target and build-affecting configuration still match. This is especially
-important for the VCS design coverage database. A replay of a run on several
-targets reads each target's design database from the model directory its
-leaves recorded.
+Coverage-only replay resolves the current/default target rather than
+restoring an original non-default target; use replay only when target and
+build-affecting configuration still match. The design database is the
+exception: a replay of a run on another target, or on several, reads each
+target's design database from the model directory its leaves recorded. A dry
+run does not read the leaves, so `--stage cov_merge --dry-run` renders one
+merge for the target it plans even where the replay itself merges each
+recorded target and unions them.
 
 The merge and report commands, the merged database name, and the input glob
 come from `[coverage.<tool>]`, layered as every other tool table is
@@ -2320,21 +2327,23 @@ differ in parameters or structure, so no input's hierarchy covers the others.
 `-lca`, and URG refuses the two together. On targets whose parameters differ,
 `code_union` can report fewer points than one target alone, so check a union's
 totals against each target's before relying on one. Mode names and their
-behaviour follow the URG release, so confirm them in the documentation of the
+behavior follow the URG release, so confirm them in the documentation of the
 release you run. Another tool's union takes that tool's own options: set its
-`combine_cmd` from the tool's documentation.
+`combine_cmd` from the tool's documentation. A `combine_cmd` for several
+targets takes their design databases through `{inputs}` and cannot use
+`{design_db}`.
 
 `summary` takes `hierarchy` (the default, URG's `Total Coverage Summary`) or
 `module_definition` (the `Total Module Definition Coverage Summary`), and
 `--cov-summary` overrides it for one run, including a report-only replay with
 `--stage cov_report`. Only the URG parser reads `module_definition`, and a run
 that selects it on another parser is refused before any simulator or merge
-command runs. URG prints
-covergroups in the hierarchy table only, so a `module_definition` grade takes
-its `group` figure from that table and scores the mean of its columns, as the
-hierarchy table does. A grade on that table records `graded_summary` in
-`cov/coverage.json`, and its `scope_fingerprint`, and with it the
-`comparison_key`, differs from a hierarchy grade of the same report.
+command runs. URG prints covergroups in the hierarchy table only, so a
+`module_definition` grade takes its `group` figure from that table and scores
+the mean of its columns, as the hierarchy table does. A grade on that table
+records `graded_summary` in `cov/coverage.json`, and its `scope_fingerprint`,
+and with it the `comparison_key`, differs from a hierarchy grade of the same
+report.
 
 [[runner-coverage-grading]]
 ==== How the grade forms

@@ -383,8 +383,8 @@ def parse_urg_details(
     scope_payload = "\n".join(
         f"{path}:{hashlib.sha256(path.read_bytes()).hexdigest()}" for path in detail_paths
     )
-    # One report graded from another table is another grade; the hierarchy table keeps the
-    # payload it has always hashed.
+    # A grade of another table hashes the table's name into its scope, so it never shares a
+    # comparison key with the hierarchy grade of the same report.
     if summary != "hierarchy":
         scope_payload += f"\nsummary:{summary}"
     details.scope_fingerprint = hashlib.sha256(scope_payload.encode()).hexdigest()

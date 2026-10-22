@@ -148,17 +148,17 @@ class TargetMerge(unittest.TestCase):
             "t2": [self.leaf("c", "t2", build_dir=t2)],
         }
 
-    def merge(self, cov: dict, args: Namespace | None = None) -> int:
-        # The run-level design database belongs to the first target's config; a merge of
-        # several targets reads each target's own from its leaves instead.
+    def merge(self, cov: dict, args: Namespace | None = None, design_db: Path | None = None) -> int:
+        # The stage runs on the first planned target's config, so the run-level design
+        # database is t1's; a merge of other targets reads each one's own from its leaves.
         with (
             mock.patch("runlib.stages._coverage_tool_version", return_value="vcs X"),
-            mock.patch("runlib.stages._coverage_design_db", return_value=None),
+            mock.patch("runlib.stages._coverage_design_db", return_value=design_db),
         ):
             return coverage_stage(
                 self.flow,
                 self.root,
-                {"coverage": {TOOL: cov}},
+                {"coverage": {TOOL: cov}, "defaults": {"target": "t1"}},
                 TOOL,
                 self.run_dir,
                 "merge",
@@ -253,30 +253,31 @@ class TargetMerge(unittest.TestCase):
 
     def test_one_target_keeps_the_single_merge(self):
         build_dir = self.model("t1")
-        self.leaf("a", "t1", build_dir=build_dir)
-        design_db = build_dir / "cov_build.vdb"
-        with mock.patch("runlib.stages._coverage_design_db", return_value=design_db):
-            with mock.patch("runlib.stages._coverage_tool_version", return_value="vcs X"):
-                rc = coverage_stage(
-                    self.flow,
-                    self.root,
-                    {"coverage": {TOOL: tool_cov()}},
-                    TOOL,
-                    self.run_dir,
-                    "merge",
-                    make_args(),
-                    self.stage_dir / "logs" / "cov_merge.log",
-                    self.stage_dir / "scripts" / "cov_merge.sh",
-                    self.stage_dir / "env" / "cov_merge.env",
-                    True,
-                )
-        self.assertEqual(rc, 0)
+        database = self.leaf("a", "t1", build_dir=build_dir)
+        self.assertEqual(self.merge(tool_cov(), design_db=build_dir / "cov_build.vdb"), 0)
         self.assertFalse((self.run_dir / "cov" / "targets").exists())
+        self.assertEqual(
+            self.recorded(self.run_dir / "cov" / "merged.vdb"),
+            [str(build_dir / "cov_build.vdb"), str(database)],
+        )
         manifest = self.manifest()
         self.assertEqual(manifest["target"], "t1")
         self.assertEqual(manifest["artifacts"]["design_db"], "build/t1/fp/cov_build.vdb")
         self.assertNotIn("targets", manifest)
         self.assertNotIn("union_warnings", manifest)
+
+    def test_the_one_target_that_left_coverage_merges_against_its_own_design_database(self):
+        t1, t2 = self.model("t1"), self.model("t2")
+        database = self.leaf("c", "t2", build_dir=t2)
+        self.assertEqual(self.merge(tool_cov(), design_db=t1 / "cov_build.vdb"), 0)
+        self.assertEqual(
+            self.recorded(self.run_dir / "cov" / "merged.vdb"),
+            [str(t2 / "cov_build.vdb"), str(database)],
+        )
+        manifest = self.manifest()
+        self.assertEqual(manifest["target"], "t2")
+        self.assertEqual(manifest["artifacts"]["design_db"], "build/t2/fp/cov_build.vdb")
+        self.assertNotIn("targets", manifest)
 
     def test_a_failed_target_merge_stops_before_the_union(self):
         self.two_targets()
@@ -295,6 +296,10 @@ class TargetMerge(unittest.TestCase):
         self.two_targets()
         with self.assertRaisesRegex(ConfigError, r"combine_cmd is required .*\(t1, t2\)"):
             self.merge(tool_cov(combine_cmd=None))
+        with self.assertRaisesRegex(
+            ConfigError, r"combine_cmd cannot use \{design_db\} to merge several targets"
+        ):
+            self.merge(tool_cov(combine_cmd=["urg", "-dir", "{design_db}", "-dir", "{inputs}"]))
 
     def test_one_named_design_database_cannot_serve_several_targets(self):
         self.two_targets()

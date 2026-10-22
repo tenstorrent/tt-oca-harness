@@ -3934,6 +3934,11 @@ def _combine_template(tool: str, tool_cov: dict[str, Any], targets: list[str]) -
             f"coverage.{tool}.combine_cmd is required to merge the coverage of several "
             f"targets ({', '.join(targets)})"
         )
+    if "{design_db}" in " ".join(template):
+        raise ConfigError(
+            f"coverage.{tool}.combine_cmd cannot use {{design_db}} to merge several targets "
+            f"({', '.join(targets)}): each target has its own, and {{inputs}} carries them all"
+        )
     return template
 
 
@@ -4239,6 +4244,13 @@ def coverage_stage(
         # database, then unions the merged databases as `--cov-combine` unions runs.
         target_groups = inputs_by_target(discovery.inputs) if run_plan is None else {}
         several_targets = len(target_groups) > 1
+        # The stage runs on the first planned target's config, so the inputs of another single
+        # target merge against the design database in their own model directory.
+        if len(target_groups) == 1 and "{design_db}" in " ".join(template):
+            [(only_target, members)] = target_groups.items()
+            if only_target != _target_name(sim_cfg):
+                design_db = _target_design_db(root, tool, tool_cov, only_target, members)
+                ctx["design_db"] = str(design_db)
         if run_plan is None and not several_targets and "{design_db}" in " ".join(template):
             if design_db is None or not artifact_ready(design_db):
                 raise CoverageError(
