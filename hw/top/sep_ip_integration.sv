@@ -333,8 +333,7 @@ module sep_ip_integration
 
   logic [sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0] otbn_imem_rdata;
 
-  assign sep_crypto_pka_imem_sram_rsp.rdata   = otbn_imem_rdata;
-  assign sep_crypto_pka_imem_sram_rsp.q_valid = 1'b0;
+  assign sep_crypto_pka_imem_sram_rsp.rdata = otbn_imem_rdata;
 
   prim_ram_1p #(
     .Width           (sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_WORD_WIDTH),
