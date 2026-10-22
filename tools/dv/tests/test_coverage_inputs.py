@@ -25,6 +25,7 @@ from runlib.coverage import (  # noqa: E402
     CoverageInput,
     _validate_compatibility,
     discover_coverage_inputs,
+    inputs_by_target,
     new_manifest,
 )
 from runlib.coverage_closure import coverage_fail_under  # noqa: E402
@@ -85,6 +86,7 @@ class RunTree(unittest.TestCase):
         debug_only=False,
         target="t1",
         fingerprint="fp1",
+        build_dir=None,
         flow=FLOW,
         tool=TOOL,
     ):
@@ -105,6 +107,8 @@ class RunTree(unittest.TestCase):
         }
         if target or fingerprint:
             record["target_build"] = {"target": target, "fingerprint": fingerprint}
+            if build_dir:
+                record["target_build"]["build_dir"] = build_dir
         (leaf_dir / "result.json").write_text(json.dumps(record))
         return str(database_path.relative_to(self.root))
 
@@ -152,11 +156,19 @@ class RunTree(unittest.TestCase):
         with self.assertRaisesRegex(CoverageCompatibilityError, "belongs to other/verilator"):
             self.discover()
 
-    def test_mixed_targets_or_build_fingerprints_are_refused(self):
+    def test_inputs_of_several_targets_group_by_target(self):
+        self.leaf("t_b", 1, target="t2", fingerprint="fp2")
         self.leaf("t_a", 1, target="t1")
-        self.leaf("t_b", 1, target="t2")
-        with self.assertRaisesRegex(CoverageCompatibilityError, "incompatible targets"):
-            self.discover()
+        self.leaf("t_c", 1, target="t1")
+        groups = inputs_by_target(self.discover().inputs)
+        self.assertEqual(list(groups), ["t1", "t2"])
+        self.assertEqual([entry.item for entry in groups["t1"]], ["t_a", "t_c"])
+        self.assertEqual([entry.item for entry in groups["t2"]], ["t_b"])
+
+    def test_one_target_with_mixed_build_fingerprints_is_refused(self):
+        self.leaf("t_a", 1)
+        self.leaf("t_b", 1, target="t2", fingerprint="fp2")
+        self.discover()
         shutil.rmtree(self.run_dir / "t_b")
         self.leaf("t_c", 1, fingerprint="fp2")
         with self.assertRaisesRegex(
@@ -183,6 +195,23 @@ class RunTree(unittest.TestCase):
         discovery = self.discover()
         self.assertEqual(len(discovery.inputs), 2)
         self.assertEqual({entry.target for entry in discovery.inputs}, {None})
+        self.assertEqual(inputs_by_target(discovery.inputs), {})
+
+    def test_the_model_directory_is_kept_but_not_recorded_as_an_input_field(self):
+        self.leaf("t_a", 1, build_dir="build/t1/fp1")
+        discovery = self.discover()
+        self.assertEqual(discovery.inputs[0].build_dir, "build/t1/fp1")
+        manifest = new_manifest(
+            flow=FLOW,
+            tool=TOOL,
+            parser="verilator_coverage",
+            supported_metrics=["line"],
+            discovery=discovery,
+            merged=self.run_dir / "cov" / "merged.dat",
+            root=self.root,
+            exclude_files=[],
+        )
+        self.assertNotIn("build_dir", manifest["inputs"][0])
 
     def test_leaf_records_are_the_authority_over_the_glob(self):
         self.leaf("t_a", 1)
@@ -241,6 +270,13 @@ class Compatibility(unittest.TestCase):
     def test_one_target_and_one_fingerprint(self):
         _validate_compatibility([provenance(), provenance()])
         _validate_compatibility([provenance(None, None), provenance(None, None)])
+
+    def test_each_target_carries_its_own_fingerprint(self):
+        _validate_compatibility([provenance("t1", "fp1"), provenance("t2", "fp2")])
+        with self.assertRaisesRegex(CoverageCompatibilityError, "fingerprints: fp1, fp3"):
+            _validate_compatibility(
+                [provenance("t1", "fp1"), provenance("t2", "fp2"), provenance("t1", "fp3")]
+            )
 
     def test_incomplete_provenance_is_refused_beside_complete_inputs(self):
         with self.assertRaisesRegex(CoverageCompatibilityError, "target provenance is incomplete"):

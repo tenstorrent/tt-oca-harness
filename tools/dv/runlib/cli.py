@@ -148,6 +148,7 @@ from .stages import (
     resolve_coverage_policy,
     run_stage,
     seed_for_item,
+    shared_model_dirs,
 )
 from .ui import Console
 from .waves import (
@@ -3119,6 +3120,24 @@ def validate_target_plan(sim_cfg: dict[str, Any], targets: list[str]) -> None:
             raise ConfigError(f"`targets.{target}.build_dir` must be a non-empty string")
 
 
+def validate_target_builds(
+    flow: Flow, root: Path, tool: str, target_cfgs: dict[str, dict[str, Any]]
+) -> None:
+    """Refuse a run on several targets when two of them would build into one directory."""
+    shared = shared_model_dirs(flow, root, tool, target_cfgs)
+    if shared:
+        raise ConfigError(
+            "; ".join(
+                "targets "
+                + ", ".join(f"`{target}`" for target in targets)
+                + f" build into one model directory, {repo_rel(root, path)}"
+                for path, targets in shared.items()
+            )
+            + ". Give each target its own build_dir, set [build.options] cache_enabled = "
+            "true, or pass --target NAME to build one target"
+        )
+
+
 def stage_needs_item(stage: str) -> bool:
     # Compile/elaboration may select test-specific targets and source sets. Keep
     # the selected item for stages that run no simulation.
@@ -3301,18 +3320,15 @@ def run_flow(
                 f"formal item(s) set target: {', '.join(explicit_targets)}"
             )
     validate_target_plan(sim_cfg, build_targets)
-    if args.cov and len(build_targets) > 1:
-        raise ConfigError(
-            "coverage merge accepts one build target; this selection plans "
-            + ", ".join(build_targets)
-            + ". Pass --target <name> to run every selected test on one elaboration"
-        )
     multi_target = len(build_targets) > 1
     setattr(args, "_multi_target_run", multi_target)
+    setattr(args, "_planned_targets", list(build_targets))
     target_cfgs = {
         target: targeted_sim_cfg(sim_cfg, target, force_target_filelist=multi_target)
         for target in build_targets
     }
+    if multi_target:
+        validate_target_builds(flow, root, tool, target_cfgs)
 
     def sim_cfg_for_item(item: str | None) -> dict[str, Any]:
         if item is not None:
@@ -4406,8 +4422,9 @@ def run_flow(
                             )
                         )
                 else:
-                    # The coverage stages read the model the one planned target built, so
-                    # they run on that target's config.
+                    # The coverage stages run on the first planned target's config. A merge
+                    # of several targets takes each target's design database from the model
+                    # directory its leaves recorded.
                     stage_cfg = sim_cfg_for_item(None) if stage in _COVERAGE_STAGES else sim_cfg
                     results.append(
                         run_stage(

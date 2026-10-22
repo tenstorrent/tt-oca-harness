@@ -2048,6 +2048,14 @@ on a model without one reports its own digest.
 The shared profile leaves `cache_enabled` off, so one directory per target
 and tool is rebuilt in place when its inputs change.
 
+Without `cache_enabled`, the UVM and Xcelium builds put a target's model in
+its `work_dir`, and the cocotb builds on Verilator and Xcelium in the run
+target's `build_dir`; the cocotb build on VCS adds a directory named for the
+target. A run whose tests plan several targets is refused before compile when
+two of them would build into one model directory, since their builds would
+overwrite each other's model. Giving each target its own `build_dir`, setting
+`cache_enabled = true`, or passing `--target NAME` lets it run.
+
 cocotb's VCS runner compiles every cocotb model with `-debug_access+all
 +acc+3`, which keeps every object in the design visible and writable and stops
 VCS from optimizing the DUT. A DUT whose cocotb bench needs less sets
@@ -2172,14 +2180,34 @@ is missing or empty are rejected with a recorded reason, and a fragment that
 records another flow or tool refuses the whole merge. A run directory without
 leaf records falls back to the tool's `input_glob`.
 
-The inputs must share one target and one build fingerprint. A multi-target
-run cannot be merged as one coverage database; pass `--target NAME` to
-compile every selected test on one elaboration. Inputs that all lack target
-and build-fingerprint provenance merge as one set, and a set that mixes
-recorded and missing provenance is refused. Coverage-only replay resolves the
-current/default target rather than restoring an original non-default target;
-use replay only when target and build-affecting configuration still match.
-This is especially important for the VCS design coverage database.
+The inputs of one target must share one build fingerprint. Inputs that all
+lack target and build-fingerprint provenance merge as one set, and a set that
+mixes recorded and missing provenance is refused.
+
+The inputs of a run whose tests plan several targets merge in two steps. Each
+target's inputs merge with `merge_cmd` against that target's design database,
+which `design_artifact` names in the model directory the target's leaves
+recorded, into `cov/targets/<target>/`; each merge has its own log, script and
+environment file named `cov_merge.<target>`. The tool's `combine_cmd` then
+unions the targets' design and merged databases into the run's merged
+database (`urg -flex_merge union` on VCS, since the targets' models differ in
+their parameters), and the report grades that union as it grades any run.
+Every target's design database is resolved before the first merge, a target
+whose leaves record no model directory or one without its design database is
+refused, and a failed target merge stops the stage before the union. A tool
+without a `combine_cmd`, or a `[coverage.<tool>]` that names one `design_db`,
+cannot merge several targets. The union's manifest records no `target`, so a
+policy rule scoped to one target does not apply to it, and its
+`build_fingerprint` is a digest of every target's name and build fingerprint,
+so its `comparison_key` changes when a target joins, leaves or rebuilds. The
+inputs of a run on one target merge in one step against its design database.
+
+Coverage-only replay of a run on one target resolves the current/default
+target rather than restoring an original non-default target; use replay only
+when target and build-affecting configuration still match. This is especially
+important for the VCS design coverage database. A replay of a run on several
+targets reads each target's design database from the model directory its
+leaves recorded.
 
 The merge and report commands, the merged database name, and the input glob
 come from `[coverage.<tool>]`, layered as every other tool table is
@@ -2188,7 +2216,13 @@ way on any host that has the tool. `cov/coverage.json` records the selection
 (<<runner-coverage-record>>): the selection policy and source, every input
 with its test, seed, attempt, status, target, and build fingerprint, every
 rejection with its reason, the exclusion files, and the policy file with its
-SHA-256 and `scope_epoch`.
+SHA-256 and `scope_epoch`. A merge of several targets adds `targets`, one
+record per target merge with its target, build fingerprint, design and merged
+databases, input count, log and return code, and `union_warnings`, the
+`Warning-[CODE]` lines of the union's log counted by code. URG's flexible
+union warns for each instance it cannot align across its inputs and leaves
+that input's coverage of the instance out of the union, so a union with
+warnings is a lower bound.
 
 [[runner-cov-combine]]
 ==== Combining finished runs
@@ -2672,8 +2706,9 @@ warning and records it in the run's wave metadata.
 
 |`--target NAME`
 |Override every selected test's build target. Omitted, each test keeps its
-own target. With `--cov`, a selection that still plans more than one target
-is refused before compile.
+own target; a run on several targets merges its coverage target by target
+(<<runner-coverage-inputs>>), and is refused before compile when two of its
+targets would build into one model directory.
 
 |`--overlay PATH`
 |Apply one adopter overlay config (append-only) on top of the merged DUT
@@ -2924,6 +2959,7 @@ leaf output:
 └── cov/
     ├── coverage.json
     ├── <tool-specific-merged-database>
+    ├── targets/<target>/           # a run on several targets: each target's merge
     └── report/
         ├── summary.json
         ├── coverage-details.json
@@ -3220,7 +3256,8 @@ fingerprints, and the merge and report return codes, with
 `artifacts.report_raw` when the
 report ran without its exclusion inputs as well. A combined run's manifest
 lists the runs as its inputs (`selection_source` of `run_dirs`) and carries
-the `combine` block (<<runner-cov-combine>>).
+the `combine` block (<<runner-cov-combine>>). The manifest of a run on several
+targets carries `targets` and `union_warnings` (<<runner-coverage-inputs>>).
 
 |`cov/report/summary.json`
 |`2`

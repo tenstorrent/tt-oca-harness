@@ -81,7 +81,11 @@ class CoverageReportError(CoverageError):
 
 @dataclass(frozen=True)
 class CoverageInput:
-    """One selected native coverage database and its simulation provenance."""
+    """One selected native coverage database and its simulation provenance.
+
+    ``build_dir`` is the model directory the leaf recorded; the merge of several targets
+    finds each target's design database there. It stays out of the manifest's input records.
+    """
 
     path: str
     item: str | None
@@ -92,6 +96,7 @@ class CoverageInput:
     build_fingerprint: str | None
     result_json: str | None
     source: str
+    build_dir: str | None = None
 
 
 @dataclass(frozen=True)
@@ -214,7 +219,9 @@ def _coverage_input_from_fragment(
             "reason": "coverage artifact missing or empty",
         }
 
-    target_build = data.get("target_build") if isinstance(data.get("target_build"), dict) else {}
+    target_build: dict[str, Any] = (
+        data["target_build"] if isinstance(data.get("target_build"), dict) else {}
+    )
     if not target_build and isinstance(metadata.get("target_build"), dict):
         target_build = metadata["target_build"]
     attempt_value = data.get("attempt", metadata.get("attempt"))
@@ -241,26 +248,35 @@ def _coverage_input_from_fragment(
         ),
         result_json=repo_rel(root, result_path),
         source="result_json",
+        build_dir=str(target_build.get("build_dir") or "") or None,
     ), None
 
 
 def _validate_compatibility(inputs: list[CoverageInput]) -> None:
+    """Refuse inputs whose provenance does not name one model per target.
+
+    Inputs of several targets merge target by target (`inputs_by_target`), so each target
+    must carry one build fingerprint, and provenance must be complete or absent throughout.
+    """
     targets = {entry.target for entry in inputs if entry.target}
     fingerprints = {entry.build_fingerprint for entry in inputs if entry.build_fingerprint}
-    if len(targets) > 1:
-        raise CoverageCompatibilityError(
-            "coverage inputs span incompatible targets: " + ", ".join(sorted(targets))
-        )
-    if len(fingerprints) > 1:
+    scopes: list[str | None] = [*sorted(targets)] if targets else [None]
+    for target in scopes:
+        members = [entry for entry in inputs if target is None or entry.target == target]
+        target_fingerprints = {
+            entry.build_fingerprint for entry in members if entry.build_fingerprint
+        }
+        if len(target_fingerprints) <= 1:
+            continue
         # The failure-bucket signature keeps only the start of this message, so the
         # fingerprints lead and the records that carry each one follow.
         carriers = {
             fingerprint: sorted(
                 str(entry.result_json or entry.path)
-                for entry in inputs
+                for entry in members
                 if entry.build_fingerprint == fingerprint
             )
-            for fingerprint in fingerprints
+            for fingerprint in target_fingerprints
         }
         detail = "; ".join(
             f"{fingerprint}: "
@@ -270,7 +286,7 @@ def _validate_compatibility(inputs: list[CoverageInput]) -> None:
         )
         raise CoverageCompatibilityError(
             "coverage inputs span incompatible build fingerprints: "
-            + ", ".join(sorted(fingerprints))
+            + ", ".join(sorted(target_fingerprints))
             + "; "
             + detail
         )
@@ -663,9 +679,44 @@ def discovery_payload(discovery: CoverageDiscovery) -> dict[str, Any]:
     return {
         "selection_policy": "final_non_debug_attempt_per_test_seed",
         "selection_source": discovery.selection_source,
-        "inputs": [asdict(entry) for entry in discovery.inputs],
+        "inputs": [
+            {key: value for key, value in asdict(entry).items() if key != "build_dir"}
+            for entry in discovery.inputs
+        ],
         "rejected": discovery.rejected,
     }
+
+
+def inputs_by_target(inputs: list[CoverageInput]) -> dict[str, list[CoverageInput]]:
+    """The inputs of each recorded target, keyed in target order.
+
+    Empty when no input records a target; `_validate_compatibility` has already refused a
+    set that mixes recorded and missing targets.
+    """
+    groups: dict[str, list[CoverageInput]] = {}
+    for entry in inputs:
+        if entry.target:
+            groups.setdefault(entry.target, []).append(entry)
+    return dict(sorted(groups.items()))
+
+
+_TOOL_WARNING = re.compile(r"^\s*Warning-\[([A-Za-z0-9_-]+)\]", re.MULTILINE)
+
+
+def merge_warning_counts(log_path: Path) -> dict[str, int]:
+    """Count the tool's `Warning-[CODE]` lines in a merge log, by code.
+
+    URG's flexible union warns for each instance it cannot align across its inputs, and
+    leaves that input's coverage of the instance out of the union.
+    """
+    try:
+        text = log_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {}
+    counts: dict[str, int] = {}
+    for code in _TOOL_WARNING.findall(text):
+        counts[code] = counts.get(code, 0) + 1
+    return dict(sorted(counts.items()))
 
 
 def new_manifest(
