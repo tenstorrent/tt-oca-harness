@@ -186,6 +186,10 @@ whatever the FIFO does.
 |`NOISE_OBS_CTRL.RAW_ENABLE` is set. The boot phase does not gate it.
 |===
 
+The two observe FIFOs use the same FIFO as the output FIFO, with the same byte
+parity and pointer-pair checks. A parity or pointer error in any of the three
+sets `INTR_STATUS.FIFO_ERROR`.
+
 While access is enabled, a read of a data register pops one word and the
 capture conditions above apply unchanged. While access is disabled:
 

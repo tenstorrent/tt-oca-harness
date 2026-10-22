@@ -2127,20 +2127,22 @@ module smu_wrapper_uvm_top
   // Under UVM the simulator reports an assertion failure through the UVM
   // report server, where it counts as an error of the run, so the SEP checks
   // the cocotb flow ignores through [pass_fail] in smu_sim_cfg.toml are held
-  // off here by the same names: the entropy source and the EDN endpoints, the
-  // key manager, the secure DMA and its alert receivers (blocks the wrapper
-  // leaves never program), the SPI host for the first microsecond of X before
-  // its reset completes, the ValidDigestModeFlag_A of the SHA-256-only
-  // prim_sha2_32 instances of the eFuse token processing, and otbn_rnd's
+  // off here by the same names: the key manager, the secure DMA and its alert
+  // receivers (blocks the wrapper leaves never program), the SPI host for the
+  // first microsecond of X before its reset completes, the
+  // ValidDigestModeFlag_A of the SHA-256-only prim_sha2_32 instances of the
+  // entropy source's whitener and the eFuse token processing, and otbn_rnd's
   // UrndNoReseedOnReset_A. Every other SEP assertion fails the run.
   `define SMU_TB_SEP u_dut.u_smu.gen_sep.u_sep
   `define SMU_TB_SEP_TOKEN_SHA(inst) \
     `SMU_TB_SEP.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller \
     .gen_mmr_reg.u_efuse_token_processing.inst.u_prim_sha2_32.gen_sha256_logic.u_prim_sha2_256
+  `define SMU_TB_SEP_WHITENER_SHA \
+    `SMU_TB_SEP.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_sha256_whitener.u_sha2 \
+    .gen_sha256_logic.u_prim_sha2_256
   initial begin
-    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_sep_trng);
-    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
-    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_axis_edn_pool_s3c_scan);
+    $assertoff(0, `SMU_TB_SEP_WHITENER_SHA.ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_WHITENER_SHA.u_pad.ValidDigestModeFlag_A);
     $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_key_manager_s3c_scan);
     $assertoff(0, `SMU_TB_SEP.u_sep_dma_wrap.u_secure_dma);
     $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_rma_sip_token).ValidDigestModeFlag_A);
@@ -2158,6 +2160,7 @@ module smu_wrapper_uvm_top
   for (genvar i = 0; i < secure_dma_reg_pkg::NumAlerts; i++) begin : gen_sep_dma_alert_off
     initial $assertoff(0, `SMU_TB_SEP.u_sep_dma_wrap.gen_alert_receivers[i].u_alert_receiver);
   end
+  `undef SMU_TB_SEP_WHITENER_SHA
   `undef SMU_TB_SEP_TOKEN_SHA
   `undef SMU_TB_SEP
 

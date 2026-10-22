@@ -41,14 +41,11 @@ extra_ignore_patterns = [
   'abr_reg\.sv.*assert_bad_ext_(wr|rd)_ack',
   'abr_reg\.sv", 6[79]: \S*\.abr_reg_inst\.unnamed\$\$_[01]: at time',
   'assert_bad_ext_(wr|rd)_ack: at time 0 [a-z]s$',
-  # SEP assertions the SEP bench itself scopes off (hw/sys/sep/dv/tb/tb_top.sv
-  # 205-210, 245-280, 301): the entropy source and the EDN endpoints, whose
-  # prim_count / sparse-FSM AssertConnected_A checks ask for an OpenTitan alert
-  # SEP does not have; ValidDigestModeFlag_A on the SHA-256-only prim_sha2_32
-  # instances of the eFuse token processing; and otbn_rnd's
+  # SEP assertions the SEP bench itself scopes off (hw/sys/sep/dv/tb/tb_top.sv):
+  # ValidDigestModeFlag_A on the SHA-256-only prim_sha2_32 instances of the
+  # entropy source's whitener and the eFuse token processing; and otbn_rnd's
   # UrndNoReseedOnReset_A.
-  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_trng\..*: at time',
-  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_axis_edn_(crypto|pool)_s3c_scan\..*: at time',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_trng\.u_entropy_source_s3c_scan\.u_sha256_whitener\.u_sha2\.gen_sha256_logic\.u_prim_sha2_256(\.u_pad)?\.ValidDigestModeFlag_A: at time',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_efuse_wrapper\.u_efuse_interface_controller\.gen_mmr_reg\.u_efuse_token_processing\.u_sha256_\w+\.u_prim_sha2_32\.gen_sha256_logic\.u_prim_sha2_256(\.u_pad)?\.ValidDigestModeFlag_A: at time',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_crypto_otbn_wrapper_s3c_scan\..*\.UrndNoReseedOnReset_A: at time',
   # The SPI host's checks, which fire only on the X of the first microsecond,
@@ -67,19 +64,13 @@ extra_ignore_patterns = [
 # (`tools/dv/runlib/logparse.py`), so a guard here overrides the ignore it pairs
 # with, and a firing outside the window fails the run.
 #
-# In the entropy source and the EDN endpoints any assertion firing after time 0
-# fails the run, except two that do so whatever the DUT does. AssertConnected_A
-# is an ASSERT_INIT_NET, an immediate assert after `#1ps` in an initial block,
-# so it reports at 1 ps. The entropy source's SHA-256 whitener is a SHA-256-only
-# prim_sha2_32, whose ValidDigestModeFlag_A fires whenever it hashes.
-#
 # The SPI host, key manager and secure DMA checks fire only on the X of the
 # first microsecond, so their guards start at ten digits of femtoseconds, where
 # the SPI host's ignore stops.
 #
-# The eFuse token processing's ValidDigestModeFlag_A and otbn_rnd's
-# UrndNoReseedOnReset_A have no guard: no window separates their firings from
-# a real event. The first fires whenever a SHA-256-only token instance hashes.
+# ValidDigestModeFlag_A and otbn_rnd's UrndNoReseedOnReset_A have no guard: no
+# window separates their firings from a real event. The first fires whenever a
+# SHA-256-only whitener or token instance hashes.
 # The second fires on every clock edge that asserts OTBN's flop-generated
 # reset, because its `disable iff` reads the current reset and its property
 # the sampled one.
@@ -96,8 +87,6 @@ extra_ignore_patterns = [
 # fails the run.
 extra_hard_fail_patterns = [
   'assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]',
-  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_trng\.(?!.*\.(AssertConnected_A|ValidDigestModeFlag_A):).*(: at time [1-9]|failed at [1-9])',
-  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_axis_edn_(crypto|pool)_s3c_scan\.(?!.*\.AssertConnected_A:).*(: at time [1-9]|failed at [1-9])',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_io\.u_sep_ot_spi_wrap\.u_spi_host\..*: at time \d{10,}',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_key_manager_s3c_scan\..*(: at time|failed at) \d{10,}',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_dma_wrap\.(u_secure_dma|gen_alert_receivers)\b.*(: at time|failed at) \d{10,}',

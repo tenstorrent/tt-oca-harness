@@ -1178,8 +1178,10 @@ resets release and the warm reset follows, the cold resets stay deasserted, `SS_
 theirs, and `ISOLATE_REQ_SMC_REG` sets on the FLR edge, holds through the reset, clears on a write
 and sets with a zero hold count.
 |`smc_cool_reset_x_cold_reset_test` |3 |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
-|`smc_cpu_reset_pulse_test` |3 |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode; pulses on cores 0, 2 and 3, level reset and release of cores 2 and 3, debug-module reset release and re-assertion, and the `RESET_VECTOR[1..3]` reset value and bit-17 storage.
-|`smc_cpu_reset_source_test` |3 |SW core0 level reset; no Force drain / no FLR isolate_req_o.
+|`smc_cpu_reset_pulse_test` |3 |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, a core level reset that applies without a drain, and a withheld uncore reset whose timeout fires in give-up mode; pulses on cores 0, 2 and 3, level reset and release of cores 2 and 3 without a drain, debug-module reset release and re-assertion, and the `RESET_VECTOR[1..3]` reset value and bit-17 storage.
+|`smc_cpu_reset_source_test` |3 |SW core0 level reset reaches core 0's cluster reset without a drain; no FLR isolate_req_o.
+|`smc_spm_access_core_reset_test` |3 |Scratchpad reads and writes over SEP_IN complete while each core, then every core, is held in reset.
+|`smc_beu_access_core_reset_test` |3 |A core's BEU answers SEP_IN with SLVERR, not a hang, while that core is held in reset; the other cores' BEUs still answer.
 |`smc_flr_sanity_test` |1 |Run the SMC OSS FLR post-release sanity scenario.
 |`smc_gpio_boot_stall_test` |2 |Pad-57 boot stall hold/release/sticky lockout.
 |`smc_irq_during_powergood_glitch_test` |3 |SMC OSS PyUVM IRQ-during-powergood-glitch test.
@@ -14052,11 +14054,13 @@ Drive `smc_cool_reset_x_cold_reset_test_seq`. Each checker below is a named comp
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: SW core0 level reset; no Force drain / no FLR isolate_req_o.
+*Objective*: SW core0 level reset reaches core 0's cluster reset without a drain; no FLR isolate_req_o.
 
 *Test Coverage*:
 
-* Does not claim drain withhold or isolate_req_o.
+* `core0_reset_n_n0_scan` written 0 drives core 0's bit of `tb_cpu_core_resets_n` low, and written 1 drives it high again; the bit still reads 0 immediately before the release write.
+* A core reset requests no drain, so `RESET_TIMEOUT.reset_applied` reads 0 at idle, while core 0 is held, and after the release.
+* Does not claim isolate_req_o.
 
 *Test Procedure*:
 
@@ -42143,18 +42147,19 @@ the 64-bit blocks the firmware leaf takes the safe lanes and the hazardous rows 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode; pulses and level resets on the other cores, the debug-module reset, and the `RESET_VECTOR[1..3]` reset value and storage.
+*Objective*: A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, a core level reset that applies without a drain, and a withheld uncore reset whose timeout fires in give-up mode; pulses and level resets on the other cores, the debug-module reset, and the `RESET_VECTOR[1..3]` reset value and storage.
 
 *Test Coverage*:
 
-* **Pulse.** `cpu_ctrl.rdl` gives each core a `RESET_CTRL.coreN_reset_pulse_start` field: a one there starts a reset pulse whose length comes from `CORE_RESET_PULSE_COUNT`, and `core_resets_done` reads low for the core while its pulse runs. Outside this leaf the firmware boot contract is the only writer. From SEP_IN, core 1 is pulsed with every level-reset field high, so the pending pulse and then the running pulse are each the only reset request. Core 1's `core_resets_done` bit must fall and come back, and the other cores' bits must stay high. `RESET_TIMEOUT` is set to force mode for this leg, as the boot contract does, so the pulse is applied whether or not the cluster drains.
+* **Pulse.** `cpu_ctrl.rdl` gives each core a `RESET_CTRL.coreN_reset_pulse_start` field: a one there starts a reset pulse whose length comes from `CORE_RESET_PULSE_COUNT`, and `core_resets_done` reads low for the core while its pulse runs. Outside this leaf the firmware boot contract is the only writer. From SEP_IN, core 1 is pulsed with every level-reset field high, so the pending pulse and then the running pulse are each the only reset request. Core 1's `core_resets_done` bit must fall and come back, and the other cores' bits must stay high. A core reset requests no drain, so the pulse starts on the write.
 * **Pulse width.** `CORE_RESET_PULSE_COUNT` is set to `pre_reset_count` 2 and `post_reset_count` 3, and core 1 is pulsed with every level-reset field high. `post_reset_count` gives the cycles, minus one, that the pulse holds the core in reset, so core 1's bit of `tb_cpu_core_resets_n`, sampled at every `clk_smc_i` edge, must read low for exactly one run of 4 cycles.
 * **Pulse with the level reset held.** `core1_reset_n_n0_scan` is written 0 and core 1's cluster reset must assert. Core 1 is then pulsed. A 0 in `core1_reset_n_n0_scan` holds the core in reset for the whole pulse, so core 1's bit of `tb_cpu_core_resets_n` must read 0 at every `clk_smc_i` sample from the pulse write until `core_resets_done` returns, including the cycle where the pulse hands back to the level reset. The level is then released and core 1's reset must deassert.
-* **Give-up timeout.** Core 1's level reset is requested with `RESET_TIMEOUT` at `timeout_value` 1 and `timeout_mode` 0, and must read `reset_timeout` 1. It is then released, and both status bits must clear. `RESET_TIMEOUT` and `CORE_RESET_PULSE_COUNT` are restored and read back.
+* **Core level reset without a drain.** With `RESET_TIMEOUT` at `timeout_value` 1 and `timeout_mode` 0, `core1_reset_n_n0_scan` is written 0. Core 1's bit of `tb_cpu_core_resets_n` must read 0, and 16 `clk_smc_i` cycles later `RESET_TIMEOUT` must read neither `reset_timeout` nor `reset_applied`: a core reset requests no drain. The level is then released and core 1's reset must deassert.
+* **Give-up timeout.** The uncore reset is requested with `RESET_TIMEOUT` at `timeout_value` 1 and `timeout_mode` 0, and must read `reset_timeout` 1. It is then released, and both status bits must clear. `RESET_TIMEOUT` and `CORE_RESET_PULSE_COUNT` are restored and read back.
 * **Mode 0 applies the reset once the drain completes.** `cpu_ctrl.rdl` describes `timeout_mode` 0 as "give up and report error (stay withheld, do not apply)", while `smc_cpu_ctrl_wrap.sv` computes `withhold = pending & ~force_apply` with `pending = sw_reset_req & ~drained_i`, so once the drain completes the request is applied in either mode and `reset_applied` reads 1 beside `reset_timeout`. The leaf reports `reset_applied` and does not grade it.
 * **Reset values.** Before any write, `RESET_CTRL` must read `debug_reset_n_n0_scan` 0, `uncore_reset_n_n0_scan` 1, every `coreN_reset_n_n0_scan` 1 and every pulse start 0, and `RESET_VECTOR[1]`, `[2]` and `[3]` must each read 0xC0040000 in bits 55:0. Bits 63:56 are measured and logged (SF-011).
 * **Pulses on cores 0, 2 and 3.** With `CORE_RESET_PULSE_COUNT` at its reset (`pre_reset_count` 0x8, `post_reset_count` 0x10), `RESET_TIMEOUT` in force mode with `timeout_value` 0x40 and every level reset high, each of cores 0, 2 and 3 is pulsed alone. Its `core_resets_done` bit must fall and return within the poll bound while the other three read 1 on every poll, and its bit of `tb_cpu_core_resets_n`, sampled at every `clk_smc_i` edge, must read low for one run of exactly 17 cycles while the other cores stay out of reset. The delay from the write response to the first low sample is measured and logged (SF-012).
-* **Level reset on cores 2 and 3.** With force mode, `core2_reset_n_n0_scan` and then `core3_reset_n_n0_scan` are cleared and set again. After each clear `reset_applied` must read 1 and the core's cluster reset assert with the other cores out of reset; after each set `reset_applied` must read 0 and the core's cluster reset deassert.
+* **Level reset on cores 2 and 3.** With force mode, `core2_reset_n_n0_scan` and then `core3_reset_n_n0_scan` are cleared and set again. After each clear the core's cluster reset must assert with the other cores out of reset, and after each set it must deassert. A core reset requests no drain, so `reset_applied` must read 0 at idle, while the core is held and after the release.
 * **Debug-module reset.** `RESET_CTRL` is written with `debug_reset_n_n0_scan` 1 and then 0, every other field at its reset value, and read back after each write. Bit 24 must follow each write while bits 8 and 3:0 read 1 and bits 7:4 read 0.
 * **Reset-vector bit 17.** Each of `RESET_VECTOR[1..3]` is written 0xC0060000, all three are read, and the vector is written back to 0xC0040000 and read. The written vector must read 0xC0060000 and the other two 0xC0040000 in bits 55:0, and each restore must read 0xC0040000.
 * **Bounded waits.** Every poll of `core_resets_done` and `reset_applied` and every wait on `tb_cpu_core_resets_n` in these legs has a finite bound and fails with its last observed state; `RESET_TIMEOUT` is restored and read back at the end.
@@ -42169,8 +42174,9 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 |===
 |Checker |Description
 |`CHK-CPU-DBG-RST-REASSERT` |`RESET_CTRL` bit 24 read 0 after the cold reset, 1 after the release write and 0 after the re-assert write, with bits 8 and 3:0 at 1 and bits 7:4 at 0 on all three reads
-|`CHK-CPU-RST-GIVEUP` |Core 1's level reset under `timeout_mode` 0 and `timeout_value` 1 read `reset_timeout` 1, and both status bits cleared after the release
-|`CHK-CPU-RST-LEVEL-CORES` |For cores 2 and 3, `reset_applied` read 1 and the core's cluster reset asserted after its level reset was cleared, with the other cores out of reset, and both returned after it was set
+|`CHK-CPU-RST-GIVEUP` |The uncore reset under `timeout_mode` 0 and `timeout_value` 1 read `reset_timeout` 1, and both status bits cleared after the release
+|`CHK-CPU-RST-LEVEL-CORES` |For cores 2 and 3, the core's cluster reset asserted after its level reset was cleared, with the other cores out of reset, and deasserted after it was set; `reset_applied` read 0 at idle, while held and after the release
+|`CHK-CPU-RST-LEVEL-DIRECT` |Core 1's level reset under `timeout_mode` 0 and `timeout_value` 1 asserted core 1's cluster reset with neither `RESET_TIMEOUT` status bit set, and deasserted it after the release
 |`CHK-CPU-RST-PULSE` |Core 1's `core_resets_done` bit fell and returned after the pulse write, with the other cores' bits high throughout
 |`CHK-CPU-RST-PULSE-CORES` |Cores 0, 2 and 3 each pulsed with the reset pulse counts: the core's `core_resets_done` bit fell and returned with the other bits 1 on every poll, and its cluster reset read low for one run of 17 `clk_smc_i` cycles with the other cores out of reset; the pre-reset delay is logged (SF-012)
 |`CHK-CPU-RST-PULSE-HELD` |Core 1's cluster reset read 0 at every `clk_smc_i` sample of a pulse run with `core1_reset_n_n0_scan` held 0
@@ -42181,7 +42187,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 |`CHK-TIMEOUT-PATHS` |Lists every bounded wait of the core 0/2/3 pulse and core 2/3 level legs with its bound, `allow_timeout`, `timed_out` and last observed state, and the SEP_IN access bound; each expiry raises with that state and none expires
 |===
 
-*Pass Criteria*: all eleven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
+*Pass Criteria*: all twelve checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
 
 *Scope limit*: `reset_applied` under `timeout_mode` 0 is reported and not graded: the register
 description says the request stays withheld, while the wrapper applies it once the drain completes.
@@ -42453,7 +42459,7 @@ draws nothing from the seed.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Request the CPU cluster's uncore reset on its own with every core released. The other CPU reset leaves request core level resets and core pulses, never the uncore reset alone.
+*Objective*: Request the CPU cluster's uncore reset on its own with every core released, in force mode. Of the other CPU reset leaves, only `smc_cpu_reset_pulse_test` requests the uncore reset, and only in give-up mode.
 
 *Test Coverage*:
 
@@ -42478,6 +42484,112 @@ draws nothing from the seed.
 *Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
+
+'''''
+
+[[sec-545-smc_spm_access_core_reset_test]]
+===== 545 `smc_spm_access_core_reset_test`
+
+*Phase*: 3
+
+*Area*: FIRMWARE
+
+*Source Module*: `smc_spm_access_core_reset_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); observation on `tb_cpu_core_resets_n` and the scratch RAM write counter `tb_cpu_scratch_write_count`
+
+*Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `hosted`, `reset`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`, `cpu`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: Scratchpad accesses over SEP_IN complete while CPU cores are held in reset.
+
+*Test Coverage*:
+
+* SEP_IN reaches the scratchpad through the cluster's L2 frontend port and its broadcast coherence manager, which probes every core's L1 before it completes an access. A core held in reset cannot answer, so the cluster answers the probe on the core's behalf, and a core reset requests no AXI boundary drain, so the frontend port stays connected.
+* With every core released, a 64-bit pattern written to the scratchpad reads back. Each core is then held alone through `RESET_CTRL.coreN_reset_n_n0_scan`, and finally all four together; each hold is confirmed on `tb_cpu_core_resets_n` before a pattern is written to a scratchpad word of its own and read back, so a read cannot pass on a value an earlier hold left.
+* Every write must advance the scratch RAM write counter, so the write is known to have reached the RAM and not another responder. A hang fails on the bench's AXI timeout.
+
+*Test Procedure*:
+
+[arabic]
+. Check that `RESET_CTRL` has every core released, write and read back a scratchpad word.
+. For each core alone, then all four: write the core reset bits low, wait for `tb_cpu_core_resets_n` to show the hold, write and read back the hold's scratchpad word, release, and wait for every core reset to deassert.
+. Read back `RESET_TIMEOUT` and `RESET_CTRL`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SPM-ACCESS-CORES-RELEASED` |With every core released, a scratchpad word took a pattern, advanced the scratch RAM write counter and read it back
+|`CHK-SPM-ACCESS-CORE-RESET-CORE0` |With core 0 held in reset, a scratchpad word took a pattern, advanced the scratch RAM write counter and read it back
+|`CHK-SPM-ACCESS-CORE-RESET-CORE1` |As above with core 1 held
+|`CHK-SPM-ACCESS-CORE-RESET-CORE2` |As above with core 2 held
+|`CHK-SPM-ACCESS-CORE-RESET-CORE3` |As above with core 3 held
+|`CHK-SPM-ACCESS-CORE-RESET-ALL_CORES` |As above with all four cores held
+|===
+
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
+
+*Scope limit*: Accesses from the cores themselves, and SEP_IN accesses during an uncore reset,
+are not claimed.
+
+'''''
+
+[[sec-546-smc_beu_access_core_reset_test]]
+===== 546 `smc_beu_access_core_reset_test`
+
+*Phase*: 3
+
+*Area*: FIRMWARE
+
+*Source Module*: `smc_beu_access_core_reset_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); observation on `tb_cpu_core_resets_n`
+
+*Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `hosted`, `reset`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`, `cpu`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: A core's bus error unit answers SEP_IN with SLVERR, not a hang, while the core is held in reset.
+
+*Test Coverage*:
+
+* Each core's BEU sits in that core's tile, in the core's reset domain. The cluster denies an access to a tile held in reset, and its AXI frontend port returns a denied access as SLVERR.
+* `REGION_SIZE` is widened to 256 MiB so SEP_IN reaches the BEU window. With every core released, every BEU `ENABLE` reads its reset value 0xE6 with OKAY.
+* Each core is held alone through `RESET_CTRL.coreN_reset_n_n0_scan`, confirmed on `tb_cpu_core_resets_n`. A read and a write of that core's BEU `ENABLE` must each complete with exactly SLVERR, and the next core's BEU `ENABLE` must still read 0xE6 with OKAY. After the release, the core's BEU `ENABLE` must read 0xE6 with OKAY again. A hang fails on the bench's AXI timeout.
+
+*Test Procedure*:
+
+[arabic]
+. Check that `RESET_CTRL` has every core released, widen `REGION_SIZE` to 256 MiB, and read every BEU `ENABLE`.
+. For each core: write its reset bit low and wait for `tb_cpu_core_resets_n` to show the hold, read and write its BEU `ENABLE`, read the next core's BEU `ENABLE`, release, wait for the reset to deassert, and read its BEU `ENABLE` again.
+. Restore `REGION_SIZE` and read back `REGION_SIZE` and `RESET_CTRL`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-BEU-ACCESS-CORES-RELEASED` |With every core released, BEU 0 to 3 `ENABLE` read 0xE6 with OKAY
+|`CHK-BEU-ACCESS-CORE-RESET-CORE0` |With core 0 held in reset, a read and a write of BEU 0 `ENABLE` each completed with SLVERR, and BEU 1 `ENABLE` read 0xE6 with OKAY
+|`CHK-BEU-ACCESS-CORE-RESET-CORE1` |As above for core 1, with BEU 2 still answering
+|`CHK-BEU-ACCESS-CORE-RESET-CORE2` |As above for core 2, with BEU 3 still answering
+|`CHK-BEU-ACCESS-CORE-RESET-CORE3` |As above for core 3, with BEU 0 still answering
+|`CHK-BEU-ACCESS-CORE-RELEASED-CORE0` |After core 0 was released, BEU 0 `ENABLE` read 0xE6 with OKAY
+|`CHK-BEU-ACCESS-CORE-RELEASED-CORE1` |As above for core 1
+|`CHK-BEU-ACCESS-CORE-RELEASED-CORE2` |As above for core 2
+|`CHK-BEU-ACCESS-CORE-RELEASED-CORE3` |As above for core 3
+|===
+
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
+
+*Scope limit*: BEU registers other than `ENABLE`, and BEU error reporting, are not claimed.
 
 '''''
 
@@ -46878,7 +46990,7 @@ member defined in `combined.toml`.
 |`smc_mixed_boot_stall_test` |`u_boot_stall_combined_sync` |downstream: GPIO gate, JTAG release, no re-stall
 |`smc_reset_unit_sanity_test` |`u_isolate_req_pin_sync`, `u_rst_cool_ni_sync_smc`, `u_rst_cool_no_sync_smc`, `u_reset_complete_sync` |downstream and CSR side: `tb_isolate_req_o` after an `ISOLATE_REQ_REG` write, and the `SS_*` and scratch CSRs across the SEP WDT pulse; it reads neither `ISOLATE_REQ_VIS` nor `SS_RESET_COMPLETE`. The SEP WDT pulse it drives resets the unit through `rst_ext_wdt_ni` directly; only the interrupt copy crosses `u_rst_ext_wdt_irq_sync`.
 |`smc_ndm_reset_test` |`u_ndmreset_request_sync` |reads the crossing (`tb_ndmreset_irq` is the OR of its output) and downstream (`NDMRESET_PROCESS`, `tb_ndmreset_process`)
-|`smc_cpu_reset_source_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` on the negative leg |CSR side only: `RESET_CTRL` and `RESET_TIMEOUT` across a software core reset; the card claims no `isolate_req_o` observation
+|`smc_cpu_reset_source_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` on the negative leg |CSR side and downstream: `RESET_CTRL` and `RESET_TIMEOUT` across a software core reset, and core 0's bit of `tb_cpu_core_resets_n`; the card claims no `isolate_req_o` observation
 |`smc_cool_reset_from_pcie_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` |downstream: FLR edge to `rst_cool_no`, `isolate_req_o`, skip-mem-repair
 |`smc_ss_reset_complete_test` |`u_reset_complete_sync` |reads the crossing: `SS_RESET_COMPLETE` bits 0 and 31 dropped from all-one, then every bit walked 0->1->0 alone
 |`smc_jtag_reset_ctrl_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref`, `u_rst_cool_ni_sync_smc`, `u_rst_cool_no_sync_smc` |downstream: pin-mux outcome on `tb_rst_cool_from_flr`; the card excludes the FLR and `rst_cool_ni` proxy claims

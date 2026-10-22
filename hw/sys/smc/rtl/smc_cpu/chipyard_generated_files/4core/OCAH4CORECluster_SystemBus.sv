@@ -123,6 +123,7 @@ module OCAH4CORECluster_SystemBus(	// @[generators/rocket-chip/src/main/scala/pr
   input  [63:0] auto_coupler_to_port_named_mmio_port_axi4_axi4buf_out_r_bits_data,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  [1:0]  auto_coupler_to_port_named_mmio_port_axi4_axi4buf_out_r_bits_resp,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_coupler_to_port_named_mmio_port_axi4_axi4buf_out_r_bits_last,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
+  input         auto_coupler_from_rockettile_probeAcker_tile_reset_in_3,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output        auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_ready,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_valid,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  [2:0]  auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_opcode,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
@@ -159,6 +160,7 @@ module OCAH4CORECluster_SystemBus(	// @[generators/rocket-chip/src/main/scala/pr
   output        auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_ready,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_valid,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  [1:0]  auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_bits_sink,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
+  input         auto_coupler_from_rockettile_probeAcker_tile_reset_in_2,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output        auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_ready,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_valid,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  [2:0]  auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_opcode,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
@@ -195,6 +197,7 @@ module OCAH4CORECluster_SystemBus(	// @[generators/rocket-chip/src/main/scala/pr
   output        auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_ready,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_valid,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  [1:0]  auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_bits_sink,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
+  input         auto_coupler_from_rockettile_probeAcker_tile_reset_in_1,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output        auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_ready,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_valid,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  [2:0]  auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_opcode,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
@@ -231,6 +234,7 @@ module OCAH4CORECluster_SystemBus(	// @[generators/rocket-chip/src/main/scala/pr
   output        auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_ready,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_valid,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  [1:0]  auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_bits_sink,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
+  input         auto_coupler_from_rockettile_probeAcker_tile_reset_in_0,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output        auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_ready,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_valid,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  [2:0]  auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_opcode,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
@@ -381,6 +385,150 @@ module OCAH4CORECluster_SystemBus(	// @[generators/rocket-chip/src/main/scala/pr
   wire        _coupler_to_port_named_mmio_port_axi4_auto_tl_in_d_bits_denied;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
   wire [63:0] _coupler_to_port_named_mmio_port_axi4_auto_tl_in_d_bits_data;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
   wire        _coupler_to_port_named_mmio_port_axi4_auto_tl_in_d_bits_corrupt;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_3_auto_tl_out_a_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_3_auto_tl_out_a_bits_opcode;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_3_auto_tl_out_a_bits_param;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [3:0]  _coupler_from_rockettile_3_auto_tl_out_a_bits_size;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [5:0]  _coupler_from_rockettile_3_auto_tl_out_a_bits_source;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [55:0] _coupler_from_rockettile_3_auto_tl_out_a_bits_address;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [7:0]  _coupler_from_rockettile_3_auto_tl_out_a_bits_mask;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [63:0] _coupler_from_rockettile_3_auto_tl_out_a_bits_data;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_3_auto_tl_out_a_bits_corrupt;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_3_auto_tl_out_b_ready;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_3_auto_tl_out_c_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_3_auto_tl_out_c_bits_opcode;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_3_auto_tl_out_c_bits_param;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [3:0]  _coupler_from_rockettile_3_auto_tl_out_c_bits_size;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [5:0]  _coupler_from_rockettile_3_auto_tl_out_c_bits_source;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [55:0] _coupler_from_rockettile_3_auto_tl_out_c_bits_address;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [63:0] _coupler_from_rockettile_3_auto_tl_out_c_bits_data;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_3_auto_tl_out_d_ready;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_3_auto_tl_out_e_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [1:0]  _coupler_from_rockettile_3_auto_tl_out_e_bits_sink;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_2_auto_tl_out_a_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_2_auto_tl_out_a_bits_opcode;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_2_auto_tl_out_a_bits_param;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [3:0]  _coupler_from_rockettile_2_auto_tl_out_a_bits_size;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [5:0]  _coupler_from_rockettile_2_auto_tl_out_a_bits_source;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [55:0] _coupler_from_rockettile_2_auto_tl_out_a_bits_address;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [7:0]  _coupler_from_rockettile_2_auto_tl_out_a_bits_mask;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [63:0] _coupler_from_rockettile_2_auto_tl_out_a_bits_data;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_2_auto_tl_out_a_bits_corrupt;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_2_auto_tl_out_b_ready;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_2_auto_tl_out_c_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_2_auto_tl_out_c_bits_opcode;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_2_auto_tl_out_c_bits_param;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [3:0]  _coupler_from_rockettile_2_auto_tl_out_c_bits_size;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [5:0]  _coupler_from_rockettile_2_auto_tl_out_c_bits_source;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [55:0] _coupler_from_rockettile_2_auto_tl_out_c_bits_address;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [63:0] _coupler_from_rockettile_2_auto_tl_out_c_bits_data;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_2_auto_tl_out_d_ready;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_2_auto_tl_out_e_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [1:0]  _coupler_from_rockettile_2_auto_tl_out_e_bits_sink;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_1_auto_tl_out_a_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_1_auto_tl_out_a_bits_opcode;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_1_auto_tl_out_a_bits_param;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [3:0]  _coupler_from_rockettile_1_auto_tl_out_a_bits_size;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [5:0]  _coupler_from_rockettile_1_auto_tl_out_a_bits_source;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [55:0] _coupler_from_rockettile_1_auto_tl_out_a_bits_address;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [7:0]  _coupler_from_rockettile_1_auto_tl_out_a_bits_mask;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [63:0] _coupler_from_rockettile_1_auto_tl_out_a_bits_data;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_1_auto_tl_out_a_bits_corrupt;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_1_auto_tl_out_b_ready;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_1_auto_tl_out_c_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_1_auto_tl_out_c_bits_opcode;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_1_auto_tl_out_c_bits_param;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [3:0]  _coupler_from_rockettile_1_auto_tl_out_c_bits_size;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [5:0]  _coupler_from_rockettile_1_auto_tl_out_c_bits_source;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [55:0] _coupler_from_rockettile_1_auto_tl_out_c_bits_address;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [63:0] _coupler_from_rockettile_1_auto_tl_out_c_bits_data;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_1_auto_tl_out_d_ready;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_1_auto_tl_out_e_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [1:0]  _coupler_from_rockettile_1_auto_tl_out_e_bits_sink;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_auto_tl_out_a_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_auto_tl_out_a_bits_opcode;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_auto_tl_out_a_bits_param;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [3:0]  _coupler_from_rockettile_auto_tl_out_a_bits_size;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [5:0]  _coupler_from_rockettile_auto_tl_out_a_bits_source;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [55:0] _coupler_from_rockettile_auto_tl_out_a_bits_address;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [7:0]  _coupler_from_rockettile_auto_tl_out_a_bits_mask;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [63:0] _coupler_from_rockettile_auto_tl_out_a_bits_data;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_auto_tl_out_a_bits_corrupt;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_auto_tl_out_b_ready;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_auto_tl_out_c_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_auto_tl_out_c_bits_opcode;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [2:0]  _coupler_from_rockettile_auto_tl_out_c_bits_param;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [3:0]  _coupler_from_rockettile_auto_tl_out_c_bits_size;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [5:0]  _coupler_from_rockettile_auto_tl_out_c_bits_source;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [55:0] _coupler_from_rockettile_auto_tl_out_c_bits_address;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [63:0] _coupler_from_rockettile_auto_tl_out_c_bits_data;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_auto_tl_out_d_ready;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _coupler_from_rockettile_auto_tl_out_e_valid;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire [1:0]  _coupler_from_rockettile_auto_tl_out_e_bits_sink;	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+  wire        _fixer_auto_anon_in_4_a_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_4_b_valid;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_4_b_bits_param;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [5:0]  _fixer_auto_anon_in_4_b_bits_source;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [55:0] _fixer_auto_anon_in_4_b_bits_address;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_4_c_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_4_d_valid;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [2:0]  _fixer_auto_anon_in_4_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_4_d_bits_param;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [3:0]  _fixer_auto_anon_in_4_d_bits_size;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [5:0]  _fixer_auto_anon_in_4_d_bits_source;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_4_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_4_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [63:0] _fixer_auto_anon_in_4_d_bits_data;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_4_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_4_e_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_3_a_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_3_b_valid;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_3_b_bits_param;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [5:0]  _fixer_auto_anon_in_3_b_bits_source;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [55:0] _fixer_auto_anon_in_3_b_bits_address;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_3_c_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_3_d_valid;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [2:0]  _fixer_auto_anon_in_3_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_3_d_bits_param;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [3:0]  _fixer_auto_anon_in_3_d_bits_size;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [5:0]  _fixer_auto_anon_in_3_d_bits_source;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_3_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_3_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [63:0] _fixer_auto_anon_in_3_d_bits_data;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_3_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_3_e_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_2_a_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_2_b_valid;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_2_b_bits_param;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [5:0]  _fixer_auto_anon_in_2_b_bits_source;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [55:0] _fixer_auto_anon_in_2_b_bits_address;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_2_c_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_2_d_valid;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [2:0]  _fixer_auto_anon_in_2_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_2_d_bits_param;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [3:0]  _fixer_auto_anon_in_2_d_bits_size;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [5:0]  _fixer_auto_anon_in_2_d_bits_source;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_2_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_2_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [63:0] _fixer_auto_anon_in_2_d_bits_data;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_2_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_2_e_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_1_a_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_1_b_valid;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_1_b_bits_param;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [5:0]  _fixer_auto_anon_in_1_b_bits_source;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [55:0] _fixer_auto_anon_in_1_b_bits_address;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_1_c_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_1_d_valid;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [2:0]  _fixer_auto_anon_in_1_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_1_d_bits_param;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [3:0]  _fixer_auto_anon_in_1_d_bits_size;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [5:0]  _fixer_auto_anon_in_1_d_bits_source;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [1:0]  _fixer_auto_anon_in_1_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_1_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire [63:0] _fixer_auto_anon_in_1_d_bits_data;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_1_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+  wire        _fixer_auto_anon_in_1_e_ready;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
   wire        _fixer_auto_anon_out_4_a_valid;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
   wire [2:0]  _fixer_auto_anon_out_4_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
   wire [2:0]  _fixer_auto_anon_out_4_a_bits_param;	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
@@ -831,150 +979,150 @@ module OCAH4CORECluster_SystemBus(	// @[generators/rocket-chip/src/main/scala/pr
   OCAH4CORECluster_TLFIFOFixer fixer (	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
     .clock                                            (_fixedClockNode_auto_anon_out_0_clock),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
     .reset                                            (_fixedClockNode_auto_anon_out_0_reset),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
-    .auto_anon_in_4_a_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_ready),
-    .auto_anon_in_4_a_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_valid),
-    .auto_anon_in_4_a_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_opcode),
-    .auto_anon_in_4_a_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_param),
-    .auto_anon_in_4_a_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_size),
-    .auto_anon_in_4_a_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_source),
-    .auto_anon_in_4_a_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_address),
-    .auto_anon_in_4_a_bits_mask                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_mask),
-    .auto_anon_in_4_a_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_data),
-    .auto_anon_in_4_a_bits_corrupt                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_corrupt),
-    .auto_anon_in_4_b_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_ready),
-    .auto_anon_in_4_b_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_valid),
-    .auto_anon_in_4_b_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_param),
-    .auto_anon_in_4_b_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_source),
-    .auto_anon_in_4_b_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_address),
-    .auto_anon_in_4_c_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_ready),
-    .auto_anon_in_4_c_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_valid),
-    .auto_anon_in_4_c_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_opcode),
-    .auto_anon_in_4_c_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_param),
-    .auto_anon_in_4_c_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_size),
-    .auto_anon_in_4_c_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_source),
-    .auto_anon_in_4_c_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_address),
-    .auto_anon_in_4_c_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_data),
-    .auto_anon_in_4_d_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_ready),
-    .auto_anon_in_4_d_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_valid),
-    .auto_anon_in_4_d_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_opcode),
-    .auto_anon_in_4_d_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_param),
-    .auto_anon_in_4_d_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_size),
-    .auto_anon_in_4_d_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_source),
-    .auto_anon_in_4_d_bits_sink                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_sink),
-    .auto_anon_in_4_d_bits_denied                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_denied),
-    .auto_anon_in_4_d_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_data),
-    .auto_anon_in_4_d_bits_corrupt                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_corrupt),
-    .auto_anon_in_4_e_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_ready),
-    .auto_anon_in_4_e_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_valid),
-    .auto_anon_in_4_e_bits_sink                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_bits_sink),
-    .auto_anon_in_3_a_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_ready),
-    .auto_anon_in_3_a_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_valid),
-    .auto_anon_in_3_a_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_opcode),
-    .auto_anon_in_3_a_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_param),
-    .auto_anon_in_3_a_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_size),
-    .auto_anon_in_3_a_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_source),
-    .auto_anon_in_3_a_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_address),
-    .auto_anon_in_3_a_bits_mask                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_mask),
-    .auto_anon_in_3_a_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_data),
-    .auto_anon_in_3_a_bits_corrupt                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_corrupt),
-    .auto_anon_in_3_b_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_ready),
-    .auto_anon_in_3_b_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_valid),
-    .auto_anon_in_3_b_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_param),
-    .auto_anon_in_3_b_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_source),
-    .auto_anon_in_3_b_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_address),
-    .auto_anon_in_3_c_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_ready),
-    .auto_anon_in_3_c_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_valid),
-    .auto_anon_in_3_c_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_opcode),
-    .auto_anon_in_3_c_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_param),
-    .auto_anon_in_3_c_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_size),
-    .auto_anon_in_3_c_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_source),
-    .auto_anon_in_3_c_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_address),
-    .auto_anon_in_3_c_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_data),
-    .auto_anon_in_3_d_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_ready),
-    .auto_anon_in_3_d_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_valid),
-    .auto_anon_in_3_d_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_opcode),
-    .auto_anon_in_3_d_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_param),
-    .auto_anon_in_3_d_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_size),
-    .auto_anon_in_3_d_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_source),
-    .auto_anon_in_3_d_bits_sink                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_sink),
-    .auto_anon_in_3_d_bits_denied                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_denied),
-    .auto_anon_in_3_d_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_data),
-    .auto_anon_in_3_d_bits_corrupt                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_corrupt),
-    .auto_anon_in_3_e_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_ready),
-    .auto_anon_in_3_e_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_valid),
-    .auto_anon_in_3_e_bits_sink                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_bits_sink),
-    .auto_anon_in_2_a_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_ready),
-    .auto_anon_in_2_a_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_valid),
-    .auto_anon_in_2_a_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_opcode),
-    .auto_anon_in_2_a_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_param),
-    .auto_anon_in_2_a_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_size),
-    .auto_anon_in_2_a_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_source),
-    .auto_anon_in_2_a_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_address),
-    .auto_anon_in_2_a_bits_mask                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_mask),
-    .auto_anon_in_2_a_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_data),
-    .auto_anon_in_2_a_bits_corrupt                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_corrupt),
-    .auto_anon_in_2_b_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_ready),
-    .auto_anon_in_2_b_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_valid),
-    .auto_anon_in_2_b_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_param),
-    .auto_anon_in_2_b_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_source),
-    .auto_anon_in_2_b_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_address),
-    .auto_anon_in_2_c_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_ready),
-    .auto_anon_in_2_c_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_valid),
-    .auto_anon_in_2_c_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_opcode),
-    .auto_anon_in_2_c_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_param),
-    .auto_anon_in_2_c_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_size),
-    .auto_anon_in_2_c_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_source),
-    .auto_anon_in_2_c_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_address),
-    .auto_anon_in_2_c_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_data),
-    .auto_anon_in_2_d_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_ready),
-    .auto_anon_in_2_d_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_valid),
-    .auto_anon_in_2_d_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_opcode),
-    .auto_anon_in_2_d_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_param),
-    .auto_anon_in_2_d_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_size),
-    .auto_anon_in_2_d_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_source),
-    .auto_anon_in_2_d_bits_sink                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_sink),
-    .auto_anon_in_2_d_bits_denied                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_denied),
-    .auto_anon_in_2_d_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_data),
-    .auto_anon_in_2_d_bits_corrupt                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_corrupt),
-    .auto_anon_in_2_e_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_ready),
-    .auto_anon_in_2_e_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_valid),
-    .auto_anon_in_2_e_bits_sink                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_bits_sink),
-    .auto_anon_in_1_a_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_ready),
-    .auto_anon_in_1_a_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_valid),
-    .auto_anon_in_1_a_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_opcode),
-    .auto_anon_in_1_a_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_param),
-    .auto_anon_in_1_a_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_size),
-    .auto_anon_in_1_a_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_source),
-    .auto_anon_in_1_a_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_address),
-    .auto_anon_in_1_a_bits_mask                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_mask),
-    .auto_anon_in_1_a_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_data),
-    .auto_anon_in_1_a_bits_corrupt                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_corrupt),
-    .auto_anon_in_1_b_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_ready),
-    .auto_anon_in_1_b_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_valid),
-    .auto_anon_in_1_b_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_param),
-    .auto_anon_in_1_b_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_source),
-    .auto_anon_in_1_b_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_address),
-    .auto_anon_in_1_c_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_ready),
-    .auto_anon_in_1_c_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_valid),
-    .auto_anon_in_1_c_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_opcode),
-    .auto_anon_in_1_c_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_param),
-    .auto_anon_in_1_c_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_size),
-    .auto_anon_in_1_c_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_source),
-    .auto_anon_in_1_c_bits_address                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_address),
-    .auto_anon_in_1_c_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_data),
-    .auto_anon_in_1_d_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_ready),
-    .auto_anon_in_1_d_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_valid),
-    .auto_anon_in_1_d_bits_opcode                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_opcode),
-    .auto_anon_in_1_d_bits_param                      (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_param),
-    .auto_anon_in_1_d_bits_size                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_size),
-    .auto_anon_in_1_d_bits_source                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_source),
-    .auto_anon_in_1_d_bits_sink                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_sink),
-    .auto_anon_in_1_d_bits_denied                     (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_denied),
-    .auto_anon_in_1_d_bits_data                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_data),
-    .auto_anon_in_1_d_bits_corrupt                    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_corrupt),
-    .auto_anon_in_1_e_ready                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_ready),
-    .auto_anon_in_1_e_valid                           (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_valid),
-    .auto_anon_in_1_e_bits_sink                       (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_bits_sink),
+    .auto_anon_in_4_a_ready                           (_fixer_auto_anon_in_4_a_ready),
+    .auto_anon_in_4_a_valid                           (_coupler_from_rockettile_3_auto_tl_out_a_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_a_bits_opcode                     (_coupler_from_rockettile_3_auto_tl_out_a_bits_opcode),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_a_bits_param                      (_coupler_from_rockettile_3_auto_tl_out_a_bits_param),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_a_bits_size                       (_coupler_from_rockettile_3_auto_tl_out_a_bits_size),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_a_bits_source                     (_coupler_from_rockettile_3_auto_tl_out_a_bits_source),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_a_bits_address                    (_coupler_from_rockettile_3_auto_tl_out_a_bits_address),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_a_bits_mask                       (_coupler_from_rockettile_3_auto_tl_out_a_bits_mask),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_a_bits_data                       (_coupler_from_rockettile_3_auto_tl_out_a_bits_data),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_a_bits_corrupt                    (_coupler_from_rockettile_3_auto_tl_out_a_bits_corrupt),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_b_ready                           (_coupler_from_rockettile_3_auto_tl_out_b_ready),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_b_valid                           (_fixer_auto_anon_in_4_b_valid),
+    .auto_anon_in_4_b_bits_param                      (_fixer_auto_anon_in_4_b_bits_param),
+    .auto_anon_in_4_b_bits_source                     (_fixer_auto_anon_in_4_b_bits_source),
+    .auto_anon_in_4_b_bits_address                    (_fixer_auto_anon_in_4_b_bits_address),
+    .auto_anon_in_4_c_ready                           (_fixer_auto_anon_in_4_c_ready),
+    .auto_anon_in_4_c_valid                           (_coupler_from_rockettile_3_auto_tl_out_c_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_c_bits_opcode                     (_coupler_from_rockettile_3_auto_tl_out_c_bits_opcode),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_c_bits_param                      (_coupler_from_rockettile_3_auto_tl_out_c_bits_param),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_c_bits_size                       (_coupler_from_rockettile_3_auto_tl_out_c_bits_size),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_c_bits_source                     (_coupler_from_rockettile_3_auto_tl_out_c_bits_source),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_c_bits_address                    (_coupler_from_rockettile_3_auto_tl_out_c_bits_address),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_c_bits_data                       (_coupler_from_rockettile_3_auto_tl_out_c_bits_data),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_d_ready                           (_coupler_from_rockettile_3_auto_tl_out_d_ready),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_d_valid                           (_fixer_auto_anon_in_4_d_valid),
+    .auto_anon_in_4_d_bits_opcode                     (_fixer_auto_anon_in_4_d_bits_opcode),
+    .auto_anon_in_4_d_bits_param                      (_fixer_auto_anon_in_4_d_bits_param),
+    .auto_anon_in_4_d_bits_size                       (_fixer_auto_anon_in_4_d_bits_size),
+    .auto_anon_in_4_d_bits_source                     (_fixer_auto_anon_in_4_d_bits_source),
+    .auto_anon_in_4_d_bits_sink                       (_fixer_auto_anon_in_4_d_bits_sink),
+    .auto_anon_in_4_d_bits_denied                     (_fixer_auto_anon_in_4_d_bits_denied),
+    .auto_anon_in_4_d_bits_data                       (_fixer_auto_anon_in_4_d_bits_data),
+    .auto_anon_in_4_d_bits_corrupt                    (_fixer_auto_anon_in_4_d_bits_corrupt),
+    .auto_anon_in_4_e_ready                           (_fixer_auto_anon_in_4_e_ready),
+    .auto_anon_in_4_e_valid                           (_coupler_from_rockettile_3_auto_tl_out_e_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_4_e_bits_sink                       (_coupler_from_rockettile_3_auto_tl_out_e_bits_sink),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_a_ready                           (_fixer_auto_anon_in_3_a_ready),
+    .auto_anon_in_3_a_valid                           (_coupler_from_rockettile_2_auto_tl_out_a_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_a_bits_opcode                     (_coupler_from_rockettile_2_auto_tl_out_a_bits_opcode),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_a_bits_param                      (_coupler_from_rockettile_2_auto_tl_out_a_bits_param),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_a_bits_size                       (_coupler_from_rockettile_2_auto_tl_out_a_bits_size),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_a_bits_source                     (_coupler_from_rockettile_2_auto_tl_out_a_bits_source),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_a_bits_address                    (_coupler_from_rockettile_2_auto_tl_out_a_bits_address),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_a_bits_mask                       (_coupler_from_rockettile_2_auto_tl_out_a_bits_mask),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_a_bits_data                       (_coupler_from_rockettile_2_auto_tl_out_a_bits_data),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_a_bits_corrupt                    (_coupler_from_rockettile_2_auto_tl_out_a_bits_corrupt),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_b_ready                           (_coupler_from_rockettile_2_auto_tl_out_b_ready),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_b_valid                           (_fixer_auto_anon_in_3_b_valid),
+    .auto_anon_in_3_b_bits_param                      (_fixer_auto_anon_in_3_b_bits_param),
+    .auto_anon_in_3_b_bits_source                     (_fixer_auto_anon_in_3_b_bits_source),
+    .auto_anon_in_3_b_bits_address                    (_fixer_auto_anon_in_3_b_bits_address),
+    .auto_anon_in_3_c_ready                           (_fixer_auto_anon_in_3_c_ready),
+    .auto_anon_in_3_c_valid                           (_coupler_from_rockettile_2_auto_tl_out_c_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_c_bits_opcode                     (_coupler_from_rockettile_2_auto_tl_out_c_bits_opcode),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_c_bits_param                      (_coupler_from_rockettile_2_auto_tl_out_c_bits_param),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_c_bits_size                       (_coupler_from_rockettile_2_auto_tl_out_c_bits_size),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_c_bits_source                     (_coupler_from_rockettile_2_auto_tl_out_c_bits_source),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_c_bits_address                    (_coupler_from_rockettile_2_auto_tl_out_c_bits_address),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_c_bits_data                       (_coupler_from_rockettile_2_auto_tl_out_c_bits_data),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_d_ready                           (_coupler_from_rockettile_2_auto_tl_out_d_ready),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_d_valid                           (_fixer_auto_anon_in_3_d_valid),
+    .auto_anon_in_3_d_bits_opcode                     (_fixer_auto_anon_in_3_d_bits_opcode),
+    .auto_anon_in_3_d_bits_param                      (_fixer_auto_anon_in_3_d_bits_param),
+    .auto_anon_in_3_d_bits_size                       (_fixer_auto_anon_in_3_d_bits_size),
+    .auto_anon_in_3_d_bits_source                     (_fixer_auto_anon_in_3_d_bits_source),
+    .auto_anon_in_3_d_bits_sink                       (_fixer_auto_anon_in_3_d_bits_sink),
+    .auto_anon_in_3_d_bits_denied                     (_fixer_auto_anon_in_3_d_bits_denied),
+    .auto_anon_in_3_d_bits_data                       (_fixer_auto_anon_in_3_d_bits_data),
+    .auto_anon_in_3_d_bits_corrupt                    (_fixer_auto_anon_in_3_d_bits_corrupt),
+    .auto_anon_in_3_e_ready                           (_fixer_auto_anon_in_3_e_ready),
+    .auto_anon_in_3_e_valid                           (_coupler_from_rockettile_2_auto_tl_out_e_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_3_e_bits_sink                       (_coupler_from_rockettile_2_auto_tl_out_e_bits_sink),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_a_ready                           (_fixer_auto_anon_in_2_a_ready),
+    .auto_anon_in_2_a_valid                           (_coupler_from_rockettile_1_auto_tl_out_a_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_a_bits_opcode                     (_coupler_from_rockettile_1_auto_tl_out_a_bits_opcode),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_a_bits_param                      (_coupler_from_rockettile_1_auto_tl_out_a_bits_param),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_a_bits_size                       (_coupler_from_rockettile_1_auto_tl_out_a_bits_size),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_a_bits_source                     (_coupler_from_rockettile_1_auto_tl_out_a_bits_source),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_a_bits_address                    (_coupler_from_rockettile_1_auto_tl_out_a_bits_address),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_a_bits_mask                       (_coupler_from_rockettile_1_auto_tl_out_a_bits_mask),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_a_bits_data                       (_coupler_from_rockettile_1_auto_tl_out_a_bits_data),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_a_bits_corrupt                    (_coupler_from_rockettile_1_auto_tl_out_a_bits_corrupt),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_b_ready                           (_coupler_from_rockettile_1_auto_tl_out_b_ready),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_b_valid                           (_fixer_auto_anon_in_2_b_valid),
+    .auto_anon_in_2_b_bits_param                      (_fixer_auto_anon_in_2_b_bits_param),
+    .auto_anon_in_2_b_bits_source                     (_fixer_auto_anon_in_2_b_bits_source),
+    .auto_anon_in_2_b_bits_address                    (_fixer_auto_anon_in_2_b_bits_address),
+    .auto_anon_in_2_c_ready                           (_fixer_auto_anon_in_2_c_ready),
+    .auto_anon_in_2_c_valid                           (_coupler_from_rockettile_1_auto_tl_out_c_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_c_bits_opcode                     (_coupler_from_rockettile_1_auto_tl_out_c_bits_opcode),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_c_bits_param                      (_coupler_from_rockettile_1_auto_tl_out_c_bits_param),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_c_bits_size                       (_coupler_from_rockettile_1_auto_tl_out_c_bits_size),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_c_bits_source                     (_coupler_from_rockettile_1_auto_tl_out_c_bits_source),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_c_bits_address                    (_coupler_from_rockettile_1_auto_tl_out_c_bits_address),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_c_bits_data                       (_coupler_from_rockettile_1_auto_tl_out_c_bits_data),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_d_ready                           (_coupler_from_rockettile_1_auto_tl_out_d_ready),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_d_valid                           (_fixer_auto_anon_in_2_d_valid),
+    .auto_anon_in_2_d_bits_opcode                     (_fixer_auto_anon_in_2_d_bits_opcode),
+    .auto_anon_in_2_d_bits_param                      (_fixer_auto_anon_in_2_d_bits_param),
+    .auto_anon_in_2_d_bits_size                       (_fixer_auto_anon_in_2_d_bits_size),
+    .auto_anon_in_2_d_bits_source                     (_fixer_auto_anon_in_2_d_bits_source),
+    .auto_anon_in_2_d_bits_sink                       (_fixer_auto_anon_in_2_d_bits_sink),
+    .auto_anon_in_2_d_bits_denied                     (_fixer_auto_anon_in_2_d_bits_denied),
+    .auto_anon_in_2_d_bits_data                       (_fixer_auto_anon_in_2_d_bits_data),
+    .auto_anon_in_2_d_bits_corrupt                    (_fixer_auto_anon_in_2_d_bits_corrupt),
+    .auto_anon_in_2_e_ready                           (_fixer_auto_anon_in_2_e_ready),
+    .auto_anon_in_2_e_valid                           (_coupler_from_rockettile_1_auto_tl_out_e_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_2_e_bits_sink                       (_coupler_from_rockettile_1_auto_tl_out_e_bits_sink),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_a_ready                           (_fixer_auto_anon_in_1_a_ready),
+    .auto_anon_in_1_a_valid                           (_coupler_from_rockettile_auto_tl_out_a_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_a_bits_opcode                     (_coupler_from_rockettile_auto_tl_out_a_bits_opcode),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_a_bits_param                      (_coupler_from_rockettile_auto_tl_out_a_bits_param),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_a_bits_size                       (_coupler_from_rockettile_auto_tl_out_a_bits_size),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_a_bits_source                     (_coupler_from_rockettile_auto_tl_out_a_bits_source),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_a_bits_address                    (_coupler_from_rockettile_auto_tl_out_a_bits_address),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_a_bits_mask                       (_coupler_from_rockettile_auto_tl_out_a_bits_mask),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_a_bits_data                       (_coupler_from_rockettile_auto_tl_out_a_bits_data),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_a_bits_corrupt                    (_coupler_from_rockettile_auto_tl_out_a_bits_corrupt),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_b_ready                           (_coupler_from_rockettile_auto_tl_out_b_ready),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_b_valid                           (_fixer_auto_anon_in_1_b_valid),
+    .auto_anon_in_1_b_bits_param                      (_fixer_auto_anon_in_1_b_bits_param),
+    .auto_anon_in_1_b_bits_source                     (_fixer_auto_anon_in_1_b_bits_source),
+    .auto_anon_in_1_b_bits_address                    (_fixer_auto_anon_in_1_b_bits_address),
+    .auto_anon_in_1_c_ready                           (_fixer_auto_anon_in_1_c_ready),
+    .auto_anon_in_1_c_valid                           (_coupler_from_rockettile_auto_tl_out_c_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_c_bits_opcode                     (_coupler_from_rockettile_auto_tl_out_c_bits_opcode),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_c_bits_param                      (_coupler_from_rockettile_auto_tl_out_c_bits_param),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_c_bits_size                       (_coupler_from_rockettile_auto_tl_out_c_bits_size),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_c_bits_source                     (_coupler_from_rockettile_auto_tl_out_c_bits_source),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_c_bits_address                    (_coupler_from_rockettile_auto_tl_out_c_bits_address),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_c_bits_data                       (_coupler_from_rockettile_auto_tl_out_c_bits_data),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_d_ready                           (_coupler_from_rockettile_auto_tl_out_d_ready),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_d_valid                           (_fixer_auto_anon_in_1_d_valid),
+    .auto_anon_in_1_d_bits_opcode                     (_fixer_auto_anon_in_1_d_bits_opcode),
+    .auto_anon_in_1_d_bits_param                      (_fixer_auto_anon_in_1_d_bits_param),
+    .auto_anon_in_1_d_bits_size                       (_fixer_auto_anon_in_1_d_bits_size),
+    .auto_anon_in_1_d_bits_source                     (_fixer_auto_anon_in_1_d_bits_source),
+    .auto_anon_in_1_d_bits_sink                       (_fixer_auto_anon_in_1_d_bits_sink),
+    .auto_anon_in_1_d_bits_denied                     (_fixer_auto_anon_in_1_d_bits_denied),
+    .auto_anon_in_1_d_bits_data                       (_fixer_auto_anon_in_1_d_bits_data),
+    .auto_anon_in_1_d_bits_corrupt                    (_fixer_auto_anon_in_1_d_bits_corrupt),
+    .auto_anon_in_1_e_ready                           (_fixer_auto_anon_in_1_e_ready),
+    .auto_anon_in_1_e_valid                           (_coupler_from_rockettile_auto_tl_out_e_valid),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .auto_anon_in_1_e_bits_sink                       (_coupler_from_rockettile_auto_tl_out_e_bits_sink),	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
     .auto_anon_in_0_a_ready                           (auto_coupler_from_bus_named_fbus_bus_xing_in_a_ready),
     .auto_anon_in_0_a_valid                           (auto_coupler_from_bus_named_fbus_bus_xing_in_a_valid),
     .auto_anon_in_0_a_bits_opcode                     (auto_coupler_from_bus_named_fbus_bus_xing_in_a_bits_opcode),
@@ -1173,6 +1321,314 @@ module OCAH4CORECluster_SystemBus(	// @[generators/rocket-chip/src/main/scala/pr
     .auto_anon_out_0_d_bits_denied                    (_system_bus_xbar_auto_anon_in_0_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:47:43]
     .auto_anon_out_0_d_bits_data                      (_system_bus_xbar_auto_anon_in_0_d_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:47:43]
     .auto_anon_out_0_d_bits_corrupt                   (_system_bus_xbar_auto_anon_in_0_d_bits_corrupt)	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:47:43]
+  );
+  OCAH4CORECluster_TLInterconnectCoupler_sbus_from_rockettile coupler_from_rockettile (	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .clock                                       (_fixedClockNode_auto_anon_out_0_clock),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
+    .reset                                       (_fixedClockNode_auto_anon_out_0_reset),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
+    .auto_probeAcker_tile_reset_in               (auto_coupler_from_rockettile_probeAcker_tile_reset_in_0),
+    .auto_tl_master_clock_xing_in_a_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_ready),
+    .auto_tl_master_clock_xing_in_a_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_valid),
+    .auto_tl_master_clock_xing_in_a_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_opcode),
+    .auto_tl_master_clock_xing_in_a_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_param),
+    .auto_tl_master_clock_xing_in_a_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_size),
+    .auto_tl_master_clock_xing_in_a_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_source),
+    .auto_tl_master_clock_xing_in_a_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_address),
+    .auto_tl_master_clock_xing_in_a_bits_mask    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_mask),
+    .auto_tl_master_clock_xing_in_a_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_data),
+    .auto_tl_master_clock_xing_in_a_bits_corrupt (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_corrupt),
+    .auto_tl_master_clock_xing_in_b_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_ready),
+    .auto_tl_master_clock_xing_in_b_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_valid),
+    .auto_tl_master_clock_xing_in_b_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_param),
+    .auto_tl_master_clock_xing_in_b_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_source),
+    .auto_tl_master_clock_xing_in_b_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_address),
+    .auto_tl_master_clock_xing_in_c_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_ready),
+    .auto_tl_master_clock_xing_in_c_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_valid),
+    .auto_tl_master_clock_xing_in_c_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_opcode),
+    .auto_tl_master_clock_xing_in_c_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_param),
+    .auto_tl_master_clock_xing_in_c_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_size),
+    .auto_tl_master_clock_xing_in_c_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_source),
+    .auto_tl_master_clock_xing_in_c_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_address),
+    .auto_tl_master_clock_xing_in_c_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_data),
+    .auto_tl_master_clock_xing_in_d_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_ready),
+    .auto_tl_master_clock_xing_in_d_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_valid),
+    .auto_tl_master_clock_xing_in_d_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_opcode),
+    .auto_tl_master_clock_xing_in_d_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_param),
+    .auto_tl_master_clock_xing_in_d_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_size),
+    .auto_tl_master_clock_xing_in_d_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_source),
+    .auto_tl_master_clock_xing_in_d_bits_sink    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_sink),
+    .auto_tl_master_clock_xing_in_d_bits_denied  (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_denied),
+    .auto_tl_master_clock_xing_in_d_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_data),
+    .auto_tl_master_clock_xing_in_d_bits_corrupt (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_corrupt),
+    .auto_tl_master_clock_xing_in_e_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_ready),
+    .auto_tl_master_clock_xing_in_e_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_valid),
+    .auto_tl_master_clock_xing_in_e_bits_sink    (auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_bits_sink),
+    .auto_tl_out_a_ready                         (_fixer_auto_anon_in_1_a_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_a_valid                         (_coupler_from_rockettile_auto_tl_out_a_valid),
+    .auto_tl_out_a_bits_opcode                   (_coupler_from_rockettile_auto_tl_out_a_bits_opcode),
+    .auto_tl_out_a_bits_param                    (_coupler_from_rockettile_auto_tl_out_a_bits_param),
+    .auto_tl_out_a_bits_size                     (_coupler_from_rockettile_auto_tl_out_a_bits_size),
+    .auto_tl_out_a_bits_source                   (_coupler_from_rockettile_auto_tl_out_a_bits_source),
+    .auto_tl_out_a_bits_address                  (_coupler_from_rockettile_auto_tl_out_a_bits_address),
+    .auto_tl_out_a_bits_mask                     (_coupler_from_rockettile_auto_tl_out_a_bits_mask),
+    .auto_tl_out_a_bits_data                     (_coupler_from_rockettile_auto_tl_out_a_bits_data),
+    .auto_tl_out_a_bits_corrupt                  (_coupler_from_rockettile_auto_tl_out_a_bits_corrupt),
+    .auto_tl_out_b_ready                         (_coupler_from_rockettile_auto_tl_out_b_ready),
+    .auto_tl_out_b_valid                         (_fixer_auto_anon_in_1_b_valid),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_param                    (_fixer_auto_anon_in_1_b_bits_param),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_source                   (_fixer_auto_anon_in_1_b_bits_source),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_address                  (_fixer_auto_anon_in_1_b_bits_address),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_c_ready                         (_fixer_auto_anon_in_1_c_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_c_valid                         (_coupler_from_rockettile_auto_tl_out_c_valid),
+    .auto_tl_out_c_bits_opcode                   (_coupler_from_rockettile_auto_tl_out_c_bits_opcode),
+    .auto_tl_out_c_bits_param                    (_coupler_from_rockettile_auto_tl_out_c_bits_param),
+    .auto_tl_out_c_bits_size                     (_coupler_from_rockettile_auto_tl_out_c_bits_size),
+    .auto_tl_out_c_bits_source                   (_coupler_from_rockettile_auto_tl_out_c_bits_source),
+    .auto_tl_out_c_bits_address                  (_coupler_from_rockettile_auto_tl_out_c_bits_address),
+    .auto_tl_out_c_bits_data                     (_coupler_from_rockettile_auto_tl_out_c_bits_data),
+    .auto_tl_out_d_ready                         (_coupler_from_rockettile_auto_tl_out_d_ready),
+    .auto_tl_out_d_valid                         (_fixer_auto_anon_in_1_d_valid),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_opcode                   (_fixer_auto_anon_in_1_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_param                    (_fixer_auto_anon_in_1_d_bits_param),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_size                     (_fixer_auto_anon_in_1_d_bits_size),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_source                   (_fixer_auto_anon_in_1_d_bits_source),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_sink                     (_fixer_auto_anon_in_1_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_denied                   (_fixer_auto_anon_in_1_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_data                     (_fixer_auto_anon_in_1_d_bits_data),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_corrupt                  (_fixer_auto_anon_in_1_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_e_ready                         (_fixer_auto_anon_in_1_e_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_e_valid                         (_coupler_from_rockettile_auto_tl_out_e_valid),
+    .auto_tl_out_e_bits_sink                     (_coupler_from_rockettile_auto_tl_out_e_bits_sink)
+  );
+  OCAH4CORECluster_TLInterconnectCoupler_sbus_from_rockettile coupler_from_rockettile_1 (	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .clock                                       (_fixedClockNode_auto_anon_out_0_clock),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
+    .reset                                       (_fixedClockNode_auto_anon_out_0_reset),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
+    .auto_probeAcker_tile_reset_in               (auto_coupler_from_rockettile_probeAcker_tile_reset_in_1),
+    .auto_tl_master_clock_xing_in_a_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_ready),
+    .auto_tl_master_clock_xing_in_a_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_valid),
+    .auto_tl_master_clock_xing_in_a_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_opcode),
+    .auto_tl_master_clock_xing_in_a_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_param),
+    .auto_tl_master_clock_xing_in_a_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_size),
+    .auto_tl_master_clock_xing_in_a_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_source),
+    .auto_tl_master_clock_xing_in_a_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_address),
+    .auto_tl_master_clock_xing_in_a_bits_mask    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_mask),
+    .auto_tl_master_clock_xing_in_a_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_data),
+    .auto_tl_master_clock_xing_in_a_bits_corrupt (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_corrupt),
+    .auto_tl_master_clock_xing_in_b_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_ready),
+    .auto_tl_master_clock_xing_in_b_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_valid),
+    .auto_tl_master_clock_xing_in_b_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_param),
+    .auto_tl_master_clock_xing_in_b_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_source),
+    .auto_tl_master_clock_xing_in_b_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_address),
+    .auto_tl_master_clock_xing_in_c_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_ready),
+    .auto_tl_master_clock_xing_in_c_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_valid),
+    .auto_tl_master_clock_xing_in_c_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_opcode),
+    .auto_tl_master_clock_xing_in_c_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_param),
+    .auto_tl_master_clock_xing_in_c_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_size),
+    .auto_tl_master_clock_xing_in_c_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_source),
+    .auto_tl_master_clock_xing_in_c_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_address),
+    .auto_tl_master_clock_xing_in_c_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_data),
+    .auto_tl_master_clock_xing_in_d_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_ready),
+    .auto_tl_master_clock_xing_in_d_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_valid),
+    .auto_tl_master_clock_xing_in_d_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_opcode),
+    .auto_tl_master_clock_xing_in_d_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_param),
+    .auto_tl_master_clock_xing_in_d_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_size),
+    .auto_tl_master_clock_xing_in_d_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_source),
+    .auto_tl_master_clock_xing_in_d_bits_sink    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_sink),
+    .auto_tl_master_clock_xing_in_d_bits_denied  (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_denied),
+    .auto_tl_master_clock_xing_in_d_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_data),
+    .auto_tl_master_clock_xing_in_d_bits_corrupt (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_corrupt),
+    .auto_tl_master_clock_xing_in_e_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_ready),
+    .auto_tl_master_clock_xing_in_e_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_valid),
+    .auto_tl_master_clock_xing_in_e_bits_sink    (auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_bits_sink),
+    .auto_tl_out_a_ready                         (_fixer_auto_anon_in_2_a_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_a_valid                         (_coupler_from_rockettile_1_auto_tl_out_a_valid),
+    .auto_tl_out_a_bits_opcode                   (_coupler_from_rockettile_1_auto_tl_out_a_bits_opcode),
+    .auto_tl_out_a_bits_param                    (_coupler_from_rockettile_1_auto_tl_out_a_bits_param),
+    .auto_tl_out_a_bits_size                     (_coupler_from_rockettile_1_auto_tl_out_a_bits_size),
+    .auto_tl_out_a_bits_source                   (_coupler_from_rockettile_1_auto_tl_out_a_bits_source),
+    .auto_tl_out_a_bits_address                  (_coupler_from_rockettile_1_auto_tl_out_a_bits_address),
+    .auto_tl_out_a_bits_mask                     (_coupler_from_rockettile_1_auto_tl_out_a_bits_mask),
+    .auto_tl_out_a_bits_data                     (_coupler_from_rockettile_1_auto_tl_out_a_bits_data),
+    .auto_tl_out_a_bits_corrupt                  (_coupler_from_rockettile_1_auto_tl_out_a_bits_corrupt),
+    .auto_tl_out_b_ready                         (_coupler_from_rockettile_1_auto_tl_out_b_ready),
+    .auto_tl_out_b_valid                         (_fixer_auto_anon_in_2_b_valid),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_param                    (_fixer_auto_anon_in_2_b_bits_param),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_source                   (_fixer_auto_anon_in_2_b_bits_source),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_address                  (_fixer_auto_anon_in_2_b_bits_address),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_c_ready                         (_fixer_auto_anon_in_2_c_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_c_valid                         (_coupler_from_rockettile_1_auto_tl_out_c_valid),
+    .auto_tl_out_c_bits_opcode                   (_coupler_from_rockettile_1_auto_tl_out_c_bits_opcode),
+    .auto_tl_out_c_bits_param                    (_coupler_from_rockettile_1_auto_tl_out_c_bits_param),
+    .auto_tl_out_c_bits_size                     (_coupler_from_rockettile_1_auto_tl_out_c_bits_size),
+    .auto_tl_out_c_bits_source                   (_coupler_from_rockettile_1_auto_tl_out_c_bits_source),
+    .auto_tl_out_c_bits_address                  (_coupler_from_rockettile_1_auto_tl_out_c_bits_address),
+    .auto_tl_out_c_bits_data                     (_coupler_from_rockettile_1_auto_tl_out_c_bits_data),
+    .auto_tl_out_d_ready                         (_coupler_from_rockettile_1_auto_tl_out_d_ready),
+    .auto_tl_out_d_valid                         (_fixer_auto_anon_in_2_d_valid),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_opcode                   (_fixer_auto_anon_in_2_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_param                    (_fixer_auto_anon_in_2_d_bits_param),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_size                     (_fixer_auto_anon_in_2_d_bits_size),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_source                   (_fixer_auto_anon_in_2_d_bits_source),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_sink                     (_fixer_auto_anon_in_2_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_denied                   (_fixer_auto_anon_in_2_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_data                     (_fixer_auto_anon_in_2_d_bits_data),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_corrupt                  (_fixer_auto_anon_in_2_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_e_ready                         (_fixer_auto_anon_in_2_e_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_e_valid                         (_coupler_from_rockettile_1_auto_tl_out_e_valid),
+    .auto_tl_out_e_bits_sink                     (_coupler_from_rockettile_1_auto_tl_out_e_bits_sink)
+  );
+  OCAH4CORECluster_TLInterconnectCoupler_sbus_from_rockettile coupler_from_rockettile_2 (	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .clock                                       (_fixedClockNode_auto_anon_out_0_clock),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
+    .reset                                       (_fixedClockNode_auto_anon_out_0_reset),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
+    .auto_probeAcker_tile_reset_in               (auto_coupler_from_rockettile_probeAcker_tile_reset_in_2),
+    .auto_tl_master_clock_xing_in_a_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_ready),
+    .auto_tl_master_clock_xing_in_a_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_valid),
+    .auto_tl_master_clock_xing_in_a_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_opcode),
+    .auto_tl_master_clock_xing_in_a_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_param),
+    .auto_tl_master_clock_xing_in_a_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_size),
+    .auto_tl_master_clock_xing_in_a_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_source),
+    .auto_tl_master_clock_xing_in_a_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_address),
+    .auto_tl_master_clock_xing_in_a_bits_mask    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_mask),
+    .auto_tl_master_clock_xing_in_a_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_data),
+    .auto_tl_master_clock_xing_in_a_bits_corrupt (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_corrupt),
+    .auto_tl_master_clock_xing_in_b_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_ready),
+    .auto_tl_master_clock_xing_in_b_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_valid),
+    .auto_tl_master_clock_xing_in_b_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_param),
+    .auto_tl_master_clock_xing_in_b_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_source),
+    .auto_tl_master_clock_xing_in_b_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_address),
+    .auto_tl_master_clock_xing_in_c_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_ready),
+    .auto_tl_master_clock_xing_in_c_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_valid),
+    .auto_tl_master_clock_xing_in_c_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_opcode),
+    .auto_tl_master_clock_xing_in_c_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_param),
+    .auto_tl_master_clock_xing_in_c_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_size),
+    .auto_tl_master_clock_xing_in_c_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_source),
+    .auto_tl_master_clock_xing_in_c_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_address),
+    .auto_tl_master_clock_xing_in_c_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_data),
+    .auto_tl_master_clock_xing_in_d_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_ready),
+    .auto_tl_master_clock_xing_in_d_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_valid),
+    .auto_tl_master_clock_xing_in_d_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_opcode),
+    .auto_tl_master_clock_xing_in_d_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_param),
+    .auto_tl_master_clock_xing_in_d_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_size),
+    .auto_tl_master_clock_xing_in_d_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_source),
+    .auto_tl_master_clock_xing_in_d_bits_sink    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_sink),
+    .auto_tl_master_clock_xing_in_d_bits_denied  (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_denied),
+    .auto_tl_master_clock_xing_in_d_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_data),
+    .auto_tl_master_clock_xing_in_d_bits_corrupt (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_corrupt),
+    .auto_tl_master_clock_xing_in_e_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_ready),
+    .auto_tl_master_clock_xing_in_e_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_valid),
+    .auto_tl_master_clock_xing_in_e_bits_sink    (auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_bits_sink),
+    .auto_tl_out_a_ready                         (_fixer_auto_anon_in_3_a_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_a_valid                         (_coupler_from_rockettile_2_auto_tl_out_a_valid),
+    .auto_tl_out_a_bits_opcode                   (_coupler_from_rockettile_2_auto_tl_out_a_bits_opcode),
+    .auto_tl_out_a_bits_param                    (_coupler_from_rockettile_2_auto_tl_out_a_bits_param),
+    .auto_tl_out_a_bits_size                     (_coupler_from_rockettile_2_auto_tl_out_a_bits_size),
+    .auto_tl_out_a_bits_source                   (_coupler_from_rockettile_2_auto_tl_out_a_bits_source),
+    .auto_tl_out_a_bits_address                  (_coupler_from_rockettile_2_auto_tl_out_a_bits_address),
+    .auto_tl_out_a_bits_mask                     (_coupler_from_rockettile_2_auto_tl_out_a_bits_mask),
+    .auto_tl_out_a_bits_data                     (_coupler_from_rockettile_2_auto_tl_out_a_bits_data),
+    .auto_tl_out_a_bits_corrupt                  (_coupler_from_rockettile_2_auto_tl_out_a_bits_corrupt),
+    .auto_tl_out_b_ready                         (_coupler_from_rockettile_2_auto_tl_out_b_ready),
+    .auto_tl_out_b_valid                         (_fixer_auto_anon_in_3_b_valid),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_param                    (_fixer_auto_anon_in_3_b_bits_param),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_source                   (_fixer_auto_anon_in_3_b_bits_source),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_address                  (_fixer_auto_anon_in_3_b_bits_address),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_c_ready                         (_fixer_auto_anon_in_3_c_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_c_valid                         (_coupler_from_rockettile_2_auto_tl_out_c_valid),
+    .auto_tl_out_c_bits_opcode                   (_coupler_from_rockettile_2_auto_tl_out_c_bits_opcode),
+    .auto_tl_out_c_bits_param                    (_coupler_from_rockettile_2_auto_tl_out_c_bits_param),
+    .auto_tl_out_c_bits_size                     (_coupler_from_rockettile_2_auto_tl_out_c_bits_size),
+    .auto_tl_out_c_bits_source                   (_coupler_from_rockettile_2_auto_tl_out_c_bits_source),
+    .auto_tl_out_c_bits_address                  (_coupler_from_rockettile_2_auto_tl_out_c_bits_address),
+    .auto_tl_out_c_bits_data                     (_coupler_from_rockettile_2_auto_tl_out_c_bits_data),
+    .auto_tl_out_d_ready                         (_coupler_from_rockettile_2_auto_tl_out_d_ready),
+    .auto_tl_out_d_valid                         (_fixer_auto_anon_in_3_d_valid),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_opcode                   (_fixer_auto_anon_in_3_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_param                    (_fixer_auto_anon_in_3_d_bits_param),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_size                     (_fixer_auto_anon_in_3_d_bits_size),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_source                   (_fixer_auto_anon_in_3_d_bits_source),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_sink                     (_fixer_auto_anon_in_3_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_denied                   (_fixer_auto_anon_in_3_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_data                     (_fixer_auto_anon_in_3_d_bits_data),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_corrupt                  (_fixer_auto_anon_in_3_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_e_ready                         (_fixer_auto_anon_in_3_e_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_e_valid                         (_coupler_from_rockettile_2_auto_tl_out_e_valid),
+    .auto_tl_out_e_bits_sink                     (_coupler_from_rockettile_2_auto_tl_out_e_bits_sink)
+  );
+  OCAH4CORECluster_TLInterconnectCoupler_sbus_from_rockettile coupler_from_rockettile_3 (	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
+    .clock                                       (_fixedClockNode_auto_anon_out_0_clock),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
+    .reset                                       (_fixedClockNode_auto_anon_out_0_reset),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
+    .auto_probeAcker_tile_reset_in               (auto_coupler_from_rockettile_probeAcker_tile_reset_in_3),
+    .auto_tl_master_clock_xing_in_a_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_ready),
+    .auto_tl_master_clock_xing_in_a_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_valid),
+    .auto_tl_master_clock_xing_in_a_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_opcode),
+    .auto_tl_master_clock_xing_in_a_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_param),
+    .auto_tl_master_clock_xing_in_a_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_size),
+    .auto_tl_master_clock_xing_in_a_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_source),
+    .auto_tl_master_clock_xing_in_a_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_address),
+    .auto_tl_master_clock_xing_in_a_bits_mask    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_mask),
+    .auto_tl_master_clock_xing_in_a_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_data),
+    .auto_tl_master_clock_xing_in_a_bits_corrupt (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_corrupt),
+    .auto_tl_master_clock_xing_in_b_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_ready),
+    .auto_tl_master_clock_xing_in_b_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_valid),
+    .auto_tl_master_clock_xing_in_b_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_param),
+    .auto_tl_master_clock_xing_in_b_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_source),
+    .auto_tl_master_clock_xing_in_b_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_address),
+    .auto_tl_master_clock_xing_in_c_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_ready),
+    .auto_tl_master_clock_xing_in_c_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_valid),
+    .auto_tl_master_clock_xing_in_c_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_opcode),
+    .auto_tl_master_clock_xing_in_c_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_param),
+    .auto_tl_master_clock_xing_in_c_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_size),
+    .auto_tl_master_clock_xing_in_c_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_source),
+    .auto_tl_master_clock_xing_in_c_bits_address (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_address),
+    .auto_tl_master_clock_xing_in_c_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_data),
+    .auto_tl_master_clock_xing_in_d_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_ready),
+    .auto_tl_master_clock_xing_in_d_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_valid),
+    .auto_tl_master_clock_xing_in_d_bits_opcode  (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_opcode),
+    .auto_tl_master_clock_xing_in_d_bits_param   (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_param),
+    .auto_tl_master_clock_xing_in_d_bits_size    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_size),
+    .auto_tl_master_clock_xing_in_d_bits_source  (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_source),
+    .auto_tl_master_clock_xing_in_d_bits_sink    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_sink),
+    .auto_tl_master_clock_xing_in_d_bits_denied  (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_denied),
+    .auto_tl_master_clock_xing_in_d_bits_data    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_data),
+    .auto_tl_master_clock_xing_in_d_bits_corrupt (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_corrupt),
+    .auto_tl_master_clock_xing_in_e_ready        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_ready),
+    .auto_tl_master_clock_xing_in_e_valid        (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_valid),
+    .auto_tl_master_clock_xing_in_e_bits_sink    (auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_bits_sink),
+    .auto_tl_out_a_ready                         (_fixer_auto_anon_in_4_a_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_a_valid                         (_coupler_from_rockettile_3_auto_tl_out_a_valid),
+    .auto_tl_out_a_bits_opcode                   (_coupler_from_rockettile_3_auto_tl_out_a_bits_opcode),
+    .auto_tl_out_a_bits_param                    (_coupler_from_rockettile_3_auto_tl_out_a_bits_param),
+    .auto_tl_out_a_bits_size                     (_coupler_from_rockettile_3_auto_tl_out_a_bits_size),
+    .auto_tl_out_a_bits_source                   (_coupler_from_rockettile_3_auto_tl_out_a_bits_source),
+    .auto_tl_out_a_bits_address                  (_coupler_from_rockettile_3_auto_tl_out_a_bits_address),
+    .auto_tl_out_a_bits_mask                     (_coupler_from_rockettile_3_auto_tl_out_a_bits_mask),
+    .auto_tl_out_a_bits_data                     (_coupler_from_rockettile_3_auto_tl_out_a_bits_data),
+    .auto_tl_out_a_bits_corrupt                  (_coupler_from_rockettile_3_auto_tl_out_a_bits_corrupt),
+    .auto_tl_out_b_ready                         (_coupler_from_rockettile_3_auto_tl_out_b_ready),
+    .auto_tl_out_b_valid                         (_fixer_auto_anon_in_4_b_valid),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_param                    (_fixer_auto_anon_in_4_b_bits_param),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_source                   (_fixer_auto_anon_in_4_b_bits_source),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_b_bits_address                  (_fixer_auto_anon_in_4_b_bits_address),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_c_ready                         (_fixer_auto_anon_in_4_c_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_c_valid                         (_coupler_from_rockettile_3_auto_tl_out_c_valid),
+    .auto_tl_out_c_bits_opcode                   (_coupler_from_rockettile_3_auto_tl_out_c_bits_opcode),
+    .auto_tl_out_c_bits_param                    (_coupler_from_rockettile_3_auto_tl_out_c_bits_param),
+    .auto_tl_out_c_bits_size                     (_coupler_from_rockettile_3_auto_tl_out_c_bits_size),
+    .auto_tl_out_c_bits_source                   (_coupler_from_rockettile_3_auto_tl_out_c_bits_source),
+    .auto_tl_out_c_bits_address                  (_coupler_from_rockettile_3_auto_tl_out_c_bits_address),
+    .auto_tl_out_c_bits_data                     (_coupler_from_rockettile_3_auto_tl_out_c_bits_data),
+    .auto_tl_out_d_ready                         (_coupler_from_rockettile_3_auto_tl_out_d_ready),
+    .auto_tl_out_d_valid                         (_fixer_auto_anon_in_4_d_valid),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_opcode                   (_fixer_auto_anon_in_4_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_param                    (_fixer_auto_anon_in_4_d_bits_param),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_size                     (_fixer_auto_anon_in_4_d_bits_size),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_source                   (_fixer_auto_anon_in_4_d_bits_source),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_sink                     (_fixer_auto_anon_in_4_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_denied                   (_fixer_auto_anon_in_4_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_data                     (_fixer_auto_anon_in_4_d_bits_data),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_d_bits_corrupt                  (_fixer_auto_anon_in_4_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_e_ready                         (_fixer_auto_anon_in_4_e_ready),	// @[generators/rocket-chip/src/main/scala/tilelink/FIFOFixer.scala:152:27]
+    .auto_tl_out_e_valid                         (_coupler_from_rockettile_3_auto_tl_out_e_valid),
+    .auto_tl_out_e_bits_sink                     (_coupler_from_rockettile_3_auto_tl_out_e_bits_sink)
   );
   OCAH4CORECluster_TLInterconnectCoupler_sbus_to_port_named_mmio_port_axi4 coupler_to_port_named_mmio_port_axi4 (	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyScope.scala:98:27]
     .clock                                       (_fixedClockNode_auto_anon_out_0_clock),	// @[generators/rocket-chip/src/main/scala/prci/ClockGroup.scala:115:114]
