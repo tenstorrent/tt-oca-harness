@@ -3957,11 +3957,17 @@ def _graded_summary(
     return summary
 
 
-def validate_graded_summary(sim_cfg: dict[str, Any], tool: str, args: argparse.Namespace) -> None:
-    """Refuse a graded summary the tool's parser cannot read before any simulator runs."""
+def validate_coverage_plan(
+    sim_cfg: dict[str, Any], tool: str, args: argparse.Namespace, merge_targets: list[str]
+) -> None:
+    """Refuse, before any simulator runs, a graded summary the tool's parser cannot read and,
+    when ``merge_targets`` names several, a `combine_cmd` that cannot union them."""
     tool_cov = coverage_cfg(sim_cfg).get(tool)
-    if isinstance(tool_cov, dict) and tool_cov:
-        _graded_summary(coverage_parser_name(tool_cov), tool, tool_cov, args)
+    if not isinstance(tool_cov, dict) or not tool_cov:
+        return
+    _graded_summary(coverage_parser_name(tool_cov), tool, tool_cov, args)
+    if len(merge_targets) > 1:
+        _combine_template(tool, tool_cov, merge_targets)
 
 
 def _tree_bytes(path: Path | None) -> int:
@@ -4245,10 +4251,11 @@ def coverage_stage(
         target_groups = inputs_by_target(discovery.inputs) if run_plan is None else {}
         several_targets = len(target_groups) > 1
         # The stage runs on the first planned target's config, so the inputs of another single
-        # target merge against the design database in their own model directory.
+        # target merge against the design database in their own model directory, unless
+        # `design_db` names it.
         if len(target_groups) == 1 and "{design_db}" in " ".join(template):
             [(only_target, members)] = target_groups.items()
-            if only_target != _target_name(sim_cfg):
+            if only_target != _target_name(sim_cfg) and not tool_cov.get("design_db"):
                 design_db = _target_design_db(root, tool, tool_cov, only_target, members)
                 ctx["design_db"] = str(design_db)
         if run_plan is None and not several_targets and "{design_db}" in " ".join(template):

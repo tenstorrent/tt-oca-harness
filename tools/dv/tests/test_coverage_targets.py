@@ -28,7 +28,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from runlib.cli import validate_target_builds  # noqa: E402
 from runlib.coverage import CoverageError, CoverageInput  # noqa: E402
 from runlib.models import ConfigError, Dut  # noqa: E402
-from runlib.stages import _union_fingerprint, coverage_stage, shared_model_dirs  # noqa: E402
+from runlib.stages import (  # noqa: E402
+    _union_fingerprint,
+    coverage_stage,
+    shared_model_dirs,
+    validate_coverage_plan,
+)
 from test_json_contract import MANIFEST_TARGET_KEYS  # noqa: E402
 
 DUT = "fixture"
@@ -279,6 +284,17 @@ class TargetMerge(unittest.TestCase):
         self.assertEqual(manifest["artifacts"]["design_db"], "build/t2/fp/cov_build.vdb")
         self.assertNotIn("targets", manifest)
 
+    def test_a_named_design_database_serves_a_lone_target_of_another_name(self):
+        named = self.model("named") / "cov_build.vdb"
+        database = self.leaf("c", "t2", build_dir=self.model("t2"))
+        self.assertEqual(self.merge(tool_cov(design_db=str(named)), design_db=named), 0)
+        self.assertEqual(
+            self.recorded(self.run_dir / "cov" / "merged.vdb"), [str(named), str(database)]
+        )
+        manifest = self.manifest()
+        self.assertEqual(manifest["target"], "t2")
+        self.assertEqual(manifest["artifacts"]["design_db"], "build/named/fp/cov_build.vdb")
+
     def test_a_failed_target_merge_stops_before_the_union(self):
         self.two_targets()
         self.assertEqual(self.merge(tool_cov(merge=FAILING_T2_STUB)), 3)
@@ -300,6 +316,18 @@ class TargetMerge(unittest.TestCase):
             ConfigError, r"combine_cmd cannot use \{design_db\} to merge several targets"
         ):
             self.merge(tool_cov(combine_cmd=["urg", "-dir", "{design_db}", "-dir", "{inputs}"]))
+
+    def test_a_run_that_cannot_union_its_targets_is_refused_before_it_simulates(self):
+        def plan(cov: dict, targets: list[str]) -> None:
+            validate_coverage_plan({"coverage": {TOOL: cov}}, TOOL, make_args(), targets)
+
+        plan(tool_cov(), ["t1", "t2"])
+        plan(tool_cov(combine_cmd=None), ["t1"])
+        plan(tool_cov(combine_cmd=None), [])
+        with self.assertRaisesRegex(ConfigError, r"combine_cmd is required .*\(t1, t2\)"):
+            plan(tool_cov(combine_cmd=None), ["t1", "t2"])
+        with self.assertRaisesRegex(ConfigError, r"combine_cmd cannot use \{design_db\}"):
+            plan(tool_cov(combine_cmd=["urg", "-dir", "{design_db}"]), ["t1", "t2"])
 
     def test_one_named_design_database_cannot_serve_several_targets(self):
         self.two_targets()

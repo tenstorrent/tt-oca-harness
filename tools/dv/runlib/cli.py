@@ -156,7 +156,7 @@ from .stages import (
     run_stage,
     seed_for_item,
     shared_model_dirs,
-    validate_graded_summary,
+    validate_coverage_plan,
 )
 from .ui import Console
 from .waves import (
@@ -3347,7 +3347,8 @@ def run_flow(
     if multi_target:
         validate_target_builds(flow, root, tool, target_cfgs)
     if "cov_merge" in stages or "cov_report" in stages:
-        validate_graded_summary(target_cfgs[build_targets[0]], tool, args)
+        merge_targets = list(build_targets) if "cov_merge" in stages else []
+        validate_coverage_plan(target_cfgs[build_targets[0]], tool, args, merge_targets)
 
     def sim_cfg_for_item(item: str | None) -> dict[str, Any]:
         if item is not None:

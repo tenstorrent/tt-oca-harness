@@ -2200,21 +2200,24 @@ whose leaves record no model directory or one without its design database is
 refused, and a failed target merge stops the stage before the union. A tool
 without a `combine_cmd`, one whose `combine_cmd` uses `{design_db}` (`{inputs}`
 carries every target's design database), or a `[coverage.<tool>]` that names
-one `design_db`, cannot merge several targets. The union's manifest records no
-`target`, so a policy rule scoped to one target does not apply to it, and its
-`build_fingerprint` is a digest of every target's name and build fingerprint,
-so its `comparison_key` changes when a target joins, leaves or rebuilds. The
-inputs of a run on one target merge in one step against its design database.
-The stage runs on the first planned target's configuration, so inputs of one
-other target, as when a run plans several targets but only a later one leaves
-coverage, merge in that step against the design database in the model
-directory they recorded.
+one `design_db`, cannot merge several targets; a run with `--cov` that plans
+several targets is refused for either `combine_cmd` case before any simulator
+runs. The union's manifest records no `target`, so a policy rule scoped to one
+target does not apply to it, and its `build_fingerprint` is a digest of every
+target's name and build fingerprint, so its `comparison_key` changes when a
+target joins, leaves or rebuilds. The inputs of a run on one target merge in
+one step against its design database. The stage runs on the first planned
+target's configuration, so inputs of one other target, as when a run plans
+several targets but only a later one leaves coverage, merge in that step
+against the design database in the model directory they recorded, unless
+`design_db` names it.
 
 Coverage-only replay resolves the current/default target rather than
 restoring an original non-default target; use replay only when target and
 build-affecting configuration still match. The design database is the
 exception: a replay of a run on another target, or on several, reads each
-target's design database from the model directory its leaves recorded. A dry
+target's design database from the model directory its leaves recorded, unless
+`design_db` names it. A dry
 run does not read the leaves, so `--stage cov_merge --dry-run` renders one
 merge for the target it plans even where the replay itself merges each
 recorded target and unions them.
