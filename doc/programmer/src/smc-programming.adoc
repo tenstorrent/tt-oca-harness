@@ -238,7 +238,7 @@ handshake and the associated risks.
 
 [WARNING]
 ====
-Do not reset a hart while any hart is performing coherent memory accesses.
+Do not reset a hart while it is performing memory accesses.
 ====
 
 A core reset through `CPU_CTRL.RESET_CTRL` applies without a drain and leaves
