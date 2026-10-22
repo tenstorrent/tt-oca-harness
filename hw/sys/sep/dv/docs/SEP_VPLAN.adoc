@@ -76,8 +76,9 @@ are in <<sep-vplan-phase3-proposed>>. The parked-test rule of Phase 3 is in
   VeeR EL2 firmware from ICCM. SPI flash uses `ocah_spi_vip`.
   A test whose target is `lsu_stub_all_live` runs on two builds.
   The Verilator build is `lsu_stub_all_live`: `shims/cpu/sep_cpu_stub.sv`
-  replaces `sep_cpu` and drives the LSU request. The VCS coverage build,
-  which produces the graded logs, is `--target default`: the full VeeR
+  replaces `sep_cpu` and drives the LSU request. The VCS build, which
+  produces the graded logs, is `default`, where `run_on` in
+  `[targets.lsu_stub_all_live.tools.vcs]` sends the test: the full VeeR
   core is held off and `tb/tb_top.sv` force-splices the VIP onto the same
   LSU request node (the no_cpu force-splice block). Both builds present
   the request at that node, so a test whose checked path is downstream of
