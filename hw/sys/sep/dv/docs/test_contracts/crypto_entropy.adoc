@@ -2002,7 +2002,7 @@ No leaf grades which index of the range pulses (see
 * Malformed alert: `hw/sys/sep/doc/crypto.adoc` (OpenTitan Alert Termination)
 states that a malformed encoding on the alert pair raises the integrity-fail of
 the receiver and that the Crypto alert source is the OR of every receiver pulse
-and integrity-fail. It does not list the malformed encodings. The leaf uses one:
+and integrity-fail and of the two EDN adapters' ack FSM faults. It does not list the malformed encodings. The leaf uses one:
 `alert_p` and `alert_n` at the same value, which is not a differential code.
 * Health-test limit trips: `HEALTH_TEST_CTRL.REPETITION_LIMIT` is the maximum
 allowed repetition count, `MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD` is the
