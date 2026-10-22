@@ -212,7 +212,8 @@ module sep_crypto #(
                                                               // alert pulses and integrity failures
                                                               // of the 11 OpenTitan alert receivers
                                                               // (HMAC, OTBN, AES, KMAC, CSRNG,
-                                                              // EDN).
+                                                              // EDN) and the EDN-adapter ack FSM
+                                                              // faults, which hold until reset.
 
   output logic [9:0]                         sep_efuse_debug_o,  // eFuse controller debug flags:
                                                                  // [0] shadow write locked, [1]
@@ -302,7 +303,10 @@ module sep_crypto #(
     );
   end
 
-  assign crypto_alert_o = (|crypto_alert_pulse) | (|crypto_alert_integ_fail);
+  logic axis_edn_crypto_err, axis_edn_pool_err;
+
+  assign crypto_alert_o = (|crypto_alert_pulse) | (|crypto_alert_integ_fail) |
+                          axis_edn_crypto_err | axis_edn_pool_err;
 
   // Native EDN wires: [0]=AES, [1]=KMAC, [2]=OTBN RND, [3]=OTBN URND — fed from mux1 via drbg_axis_edn_adapter
   edn_pkg::edn_req_t [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0] crypto_edn_req;
@@ -993,7 +997,8 @@ module sep_crypto #(
     .axis_req_i         (entropy_muxed_req[1]),
     .axis_rsp_o         (entropy_muxed_rsp[1]),
     .edn_req_i          (crypto_edn_req),
-    .edn_rsp_o          (crypto_edn_rsp)
+    .edn_rsp_o          (crypto_edn_rsp),
+    .err_o              (axis_edn_crypto_err)
   );
 
   //=========================================================================
@@ -1017,7 +1022,8 @@ module sep_crypto #(
     .axis_req_i         (entropy_muxed_req[2]),
     .axis_rsp_o         (entropy_muxed_rsp[2]),
     .edn_req_i          (pool_edn_req),
-    .edn_rsp_o          (pool_edn_rsp)
+    .edn_rsp_o          (pool_edn_rsp),
+    .err_o              (axis_edn_pool_err)
   );
 
   //=========================================================================

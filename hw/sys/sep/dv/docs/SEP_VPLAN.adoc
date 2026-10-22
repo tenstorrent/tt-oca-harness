@@ -2672,9 +2672,9 @@ the test does.
 |ESRC: define "alternation count" (the plan reads it as a change of bit value between words), and state whether the total-failure counters count generator failures, 32-bit failures or both. Source: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`MARKOV_TEST_PROB_THRESHOLDS`, `REPCNT_TOTAL_FAILS`).
 |`sep_esrc_health_pattern_rand_test` grades trips and pass cells of the limit trials and the constant-zero stream; counter values are graded as zero and non-zero only
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
-|The main FIFO of the ESRC has pointer copies and odd parity, and sets `INTR_STATUS.FIFO_ERROR` on an integrity failure. When a pointer-copy mismatch sets `FIFO_ERROR`, and the integrity error of the observe FIFOs, are not stated.
-|ESRC: does a pointer-copy mismatch set `FIFO_ERROR` at the next operation or at once, and what is the integrity error of the noise and BIW observe FIFOs? Source: `hw/ip/entropy_source/doc/architecture.adoc` (Output FIFO); `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`INTR_STATUS`).
-|`sep_esrc_fifo_flow_rand_test` (CHK-FIFO-INTEG-PARITY, CHK-FIFO-INTEG-PTR, CHK-FIFO-INTEG-W1C) uses the ESRC FIFO integrity inject, an added hook, and grades the pointer error within a bound of 16 times the clean pop time; the observe FIFOs have no integrity check
+|The main FIFO of the ESRC has pointer copies and odd parity, and sets `INTR_STATUS.FIFO_ERROR` on an integrity failure; the observe FIFOs have the same checks and set the same bit. When a pointer-copy mismatch sets `FIFO_ERROR` is not stated.
+|ESRC: does a pointer-copy mismatch set `FIFO_ERROR` at the next operation or at once? Source: `hw/ip/entropy_source/doc/architecture.adoc` (Output FIFO); `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`INTR_STATUS`).
+|`sep_esrc_fifo_flow_rand_test` (CHK-FIFO-INTEG-PARITY, CHK-FIFO-INTEG-PTR, CHK-FIFO-INTEG-W1C) uses the ESRC FIFO integrity inject, an added hook, and grades the pointer error within a bound of 16 times the clean pop time; no leaf grades the integrity error of the observe FIFOs
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |`SHA256_STATUS.INPUT_COUNT` counts the 32-bit words in the 512-bit input block. Its value at the block boundary is not stated.
 |ESRC: state whether `SHA256_STATUS.INPUT_COUNT` reaches 15 or 16 at the 512-bit block boundary. Source: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`SHA256_STATUS`).
