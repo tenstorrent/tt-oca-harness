@@ -4289,15 +4289,17 @@ compared.
 *Test Coverage*: One genuine verify of each final-strobe form (5903 bytes,
 strobe `0x7`; 5900 bytes, strobe `0x0` and a dummy word), a repeat of the
 5903-byte verify as the last case, eight rejections on the accelerator, one
-rejection in the driver alone, an abort mid-stream, and identity.
+rejection in the driver alone, and an abort mid-stream. The identity status is a
+diagnostic.
 
 *Test Procedure*:
 
 [arabic]
 . Bring up in `cpu` and load the image. With `+abr_case_mask=<hex>`, rewrite the
   case mask in the firmware's `abr_case_params` block in the staged DCCM image so
-  only the selected cases run. A mask that selects no case, or a case above 13,
-  fails the leaf before boot; the firmware refuses the same masks and reports FAIL.
+  only the selected cases run. A mask that selects no case other than case 0, or a
+  case above 13, fails the leaf before boot; the firmware refuses a mask that selects
+  no case, or a case above 13, and reports FAIL.
 . Case 0: read the ML-DSA name and version through the driver's identity check. No SEP or Adams Bridge document states the values, so the result follows `obs:` and is not graded.
 . Cases 1 and 13: verify the genuine signature over the blob; case 13 repeats it
   after every other case. Case 2: verify the genuine signature over the first
@@ -4321,7 +4323,7 @@ rejection in the driver alone, an abort mid-stream, and identity.
 |===
 |Checker |Contract
 |CHK-FW-CONSOLE
-|The console carries `abr_mldsa87_verify_test: case_mask=0x<mask>` with the mask the test selected, and `abr_mldsa87_verify_test: PASS (0 failed, <n> run)`, where n is the number of selected cases; the firmware completes with PASS. Every selected case has at least one line that starts `case <n> `, and every such line carries `: PASS `, so a firmware that ran fewer cases than selected fails. The firmware grades each case. Case 0 is a diagnostic. Cases 1, 2 and 13: status 0 at stage DONE, 5903 or 5900 bytes streamed, VALID not before `MSG_STREAM_READY`, a non-zero result that is not `~c~`, and one command-done event. Cases 3 to 10: status `ABR_DRV_ERR_SIG_INVALID` and a reject verdict; the stage, `early`, `inv`, `written`, `nz` and `done` values follow `obs:` on the case line and are diagnostics, not graded. Case 11: status `ABR_DRV_ERR_SIG_INVALID` at stage ARGS with nothing streamed and no done event; these are values of the driver alone, because the driver does not access the accelerator in this case. Case 12: the `case 12 zeroize_midstream_abort` line needs status 0 from the load, the start, the partial stream and the zeroize, and every word of `MLDSA_VERIFY_RES` at 0 after the zeroize (`res_or=0x00000000`); the `case 12 zeroize_midstream` line needs the result of a genuine case.
+|The console carries `abr_mldsa87_verify_test: case_mask=0x<mask>` with the mask the test selected, and `abr_mldsa87_verify_test: PASS (0 failed, <n> run)`, where n is the number of selected cases; the firmware completes with PASS. Every selected case has at least one line that starts `case <n> `, and every such line of a case other than case 0 carries `: PASS `, so a firmware that ran fewer cases than selected fails. The firmware grades each case. Case 0 is a diagnostic. Cases 1, 2 and 13: status 0 at stage DONE, 5903 or 5900 bytes streamed, VALID not before `MSG_STREAM_READY`, a non-zero result that is not `~c~`, and one command-done event. Cases 3 to 10: status `ABR_DRV_ERR_SIG_INVALID` and a reject verdict; the stage, `early`, `inv`, `written`, `nz` and `done` values follow `obs:` on the case line and are diagnostics, not graded. Case 11: status `ABR_DRV_ERR_SIG_INVALID` at stage ARGS with nothing streamed and no done event; these are values of the driver alone, because the driver does not access the accelerator in this case. Case 12: the `case 12 zeroize_midstream_abort` line needs status 0 from the load, the start, the partial stream and the zeroize, and every word of `MLDSA_VERIFY_RES` at 0 after the zeroize (`res_or=0x00000000`); the `case 12 zeroize_midstream` line needs the result of a genuine case.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

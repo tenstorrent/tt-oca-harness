@@ -10,8 +10,9 @@ zeroize part-way through a stream. Each case
 prints one line with the driver's status and diagnostics; the same image runs on the
 virtual platform, so the two runs' case lines can be compared. The firmware returns
 0 only when every selected case met its expectation, which crt0.s reports as PASS,
-and this test also requires a PASS line for every selected case, so a mask that ran
-fewer cases than it selected cannot pass. The firmware prints the case mask it runs;
+and this test also requires a PASS line for every selected case other than case 0,
+so a mask that ran fewer cases than it selected cannot pass. Case 0 prints the
+driver's identity status as a diagnostic; a mask must select at least one other case. The firmware prints the case mask it runs;
 that line must equal the mask this test selected, so the firmware's default mask and
 this test's ``_ALL_CASES`` cannot differ unnoticed.
 
@@ -41,6 +42,7 @@ _DTCM_HEX = os.path.join(_FW_DIR, f"{_FW_NAME}.dtcm.hex")
 # abr_case_params in the firmware: the magic, then the case mask.
 _CASE_PARAM_MAGIC = 0xAB2D5A87
 _ALL_CASES = 0x3FFF
+_IDENTITY_CASE = 0x1
 
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # Fourteen verifies, each loading 7 KiB of key and signature and streaming up to
@@ -70,8 +72,8 @@ class sep_abr_mldsa87_verify_test(sep_base_test):
         plusarg = cocotb.plusargs.get("abr_case_mask")
         if plusarg is not None:
             mask = int(str(plusarg), 16)
-            assert mask != 0 and mask & ~_ALL_CASES == 0, (
-                f"+abr_case_mask=0x{mask:x} selects no case or an unknown one"
+            assert mask & ~_IDENTITY_CASE != 0 and mask & ~_ALL_CASES == 0, (
+                f"+abr_case_mask=0x{mask:x} selects no graded case or an unknown one"
             )
             dtcm_hex = os.path.join(os.getcwd(), f"{_FW_NAME}.masked.dtcm.hex")
             patch_param_block(_DTCM_HEX, dtcm_hex, _CASE_PARAM_MAGIC, [_CASE_PARAM_MAGIC, mask])
@@ -97,7 +99,9 @@ class sep_abr_mldsa87_verify_test(sep_base_test):
         for n in range(_ALL_CASES.bit_length()):
             if (mask >> n) & 1:
                 lines = [line for line in console if line.startswith(f"case {n} ")]
-                assert lines and all(": PASS " in line for line in lines), (
+                # Case 0 prints the driver's identity status as a diagnostic only.
+                graded = n != 0
+                assert lines and (not graded or all(": PASS " in line for line in lines)), (
                     f"CHK-FW-CONSOLE FAIL: case {n} selected but its lines are {lines!r}"
                 )
-        self.logger.info("CHK-FW-CONSOLE PASS: every case in mask 0x%x printed PASS", mask)
+        self.logger.info("CHK-FW-CONSOLE PASS: every graded case in mask 0x%x printed PASS", mask)

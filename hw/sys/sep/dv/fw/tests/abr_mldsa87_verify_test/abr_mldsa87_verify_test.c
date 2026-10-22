@@ -94,7 +94,7 @@ static int report_reject(unsigned id, const char *name, const outcome_t *o) {
 // the driver's identity check result is a diagnostic, not a graded case.
 static int case_identity(void) {
     const int rc = abr_drv_check_identity();
-    printf("case 0 identity: PASS obs: status=%d\n", rc);
+    printf("case 0 identity: obs: status=%d\n", rc);
     return 1;
 }
 
