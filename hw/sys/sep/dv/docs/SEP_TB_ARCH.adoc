@@ -131,6 +131,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |SEP->SMC AXI |`rom_boot` target: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Every other target answers the port through the BH-SMC responder `u_smc_route_mem` (`tb/sep_smc_route_mem.sv`), which is idle unless BH-SMC is enabled; the decode check is not compiled there.
 |BH-SMC: SMC aperture inputs and SMC responder |Added hook (top-port drive) on every target without `SEP_SMC_MEM_MODEL`. `tb_top` drives `smc_global_base_addr_i` and `smc_region_size_i` from `bh_smc_base_i` and `bh_smc_size_i` when the leaf sets `bh_smc_en_i` to 1 before it releases reset (`env/sep_bh_smc.py`), or else from `+sep_smc_aperture_base=<hex>` and `+sep_smc_aperture_size=<hex>`; with neither, both inputs are 0. While the hook is on, `u_smc_route_mem` answers `sep_ext_to_smc_axi_resp_i`: OKAY with the request ID, one burst per channel in flight, written bytes stored and returned, and `{~a, a}` (`a` the low 32 bits of the 8-byte-aligned address) for a word no write touched. Owners: `sep_fabric_smc_route_test` (leaf drive), `sep_fabric_dma_endpoint_matrix_test` (plusargs).
 |AXI Extension port responder |Added hook (top-port drive). The integration wrapper answers the `sep` extension port (`sep_external_axi_resp_i`) from an error slave: DECERR, read data `0xBADCAB1E`. In a run with `+sep_ext_port_responder`, `tb_top` forces the wrapper net `axi_extension_axi_resp` from its own responder instead, re-issued on each falling edge of `clk_i`; without the plusarg the net is never forced and the responder stays in reset. The responder accepts one write burst and one read burst at a time and returns the request ID. The B code of a write is `ext_port_rsp_bresp_i` at the AW handshake. R beat k of a read answers RRESP `ext_port_rsp_rresp_i[2k +: 2]` and RDATA `ext_port_rsp_rdata_i[64k +: 64]`, sampled at the AR handshake, beat k modulo 8. `ext_port_rsp_on_o` reads 1 while the responder is on. Owner: `sep_fabric_extension_port_window_test` (CHK-EXT-REPLY, CHK-EXT-PORT, CHK-EXT-BURST), which sets the reply before each access.
+|TRNG AXI-Lite passthrough responder |Added hook (top-port drive). The integration wrapper answers the `sep` TRNG AXI-Lite port (`ext_trng_axil_resp_i`) from an error slave: DECERR. In a run with `+sep_ext_trng_axil_responder`, from the first clock with `ext_trng_axil_rsp_en_i` at 1, `tb_top` forces the wrapper net `ext_trng_axil_resp` from its own responder instead, re-issued on each falling edge of `clk_i`. The responder then stays on for the rest of the run and the net is never released. Without the plusarg the net is never forced. The responder accepts one write and one read at a time. B handshake k answers BRESP `ext_trng_axil_rsp_bresp_i[2j +: 2]`, sampled when B becomes valid, and R handshake k answers RRESP `ext_trng_axil_rsp_rresp_i[2j +: 2]` and RDATA `ext_trng_axil_rsp_rdata_i[32j +: 32]`, sampled at the AR handshake, with j = k modulo 8. k counts the handshakes of each channel from 0 at each rise of the enable and at the bench reset. `ext_trng_axil_rsp_on_o` reads 1 while the responder is on, and `ext_trng_axil_rsp_bcnt_o` and `ext_trng_axil_rsp_rcnt_o` read the two counts. All inputs are 0 by default. Users: the dead-space decode entry of the fabric and remap area of `docs/SEP_VPLAN.adoc`, which turns the responder on after its reference-slave legs, with the port idle.
 |Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN).
 |External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, and the DRBG stall point of `sep_km_fault_inject_rand_test`.
 |External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
@@ -141,7 +142,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Reset vector |Existing bench hook. `rst_vec_i` drives the wrapper input `rst_vec`, which `sep_wrapper` does not connect further. At a non-zero value under `+cpu_boot`, `tb_top` also shifts the value into the reset-vector TDR (IR 0x18) while `rst_ni` is low. User: `sep_cpu_reset_entry_test`.
 |JTAG ID |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `jtag_id` (`jtag_id_i[31:1]` of `sep`) from the TB input `jtag_id_i`; an undriven or unknown value drives 0. Readback: `jtag_id_probe_o`. Owner: `sep_efuse_field_layout_rand_test` (CHK-JTAGID).
 |Key Manager SRAM response latency (HK-LAT) |Added hook (top-port drive) on the `sep` input `km_sram_mem_rsp_i`. While `km_sram_lat_en_i` is 1, a KM SRAM read response with a latency L = `km_sram_lat_i[3:0]` of 2 or more, sampled when the macro answers, reaches the KM L clocks after the accepted request: `tb_top` holds `rvalid` low and presents the captured word with `rvalid` high in the L-th clock. L of 0 or 1, or an unknown value, leaves the macro latency of 1. The KM issues no new SRAM read while one is outstanding, so the responses keep their order; a KM cold reset or the bench reset drops a delayed response. The macro latency is fixed, so no frontdoor varies it. Default 0: no drive. Readback: `km_sram_lat_delayed_count_o`; KM-LAT shows the latency that the KM sees. User: `sep_km_fault_inject_rand_test` (CHK-LAT, CHK-LAT-VAR).
-|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
+|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_sec_dis_override_test`, `sep_sec_dis_reset_reach_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`. `+sep_trng_errslv_assert_waive` turns off every assertion of the wrapper TRNG error slave `u_ext_trng_axil_err_slv`, among them the AXI-Lite valid-stable assertions `AwValidStable_A`, `WValidStable_A` and `ArValidStable_A`, from the clock where the TRNG AXI-Lite passthrough responder turns on (first clock with `ext_trng_axil_rsp_en_i` at 1 under `+sep_ext_trng_axil_responder`) to the end of the run; before that clock they stay on. The responder replaces the error slave on the port, so the error slave sees requests whose handshake it does not complete, and its assertions grade a handshake that does not occur. VCS only: Verilator compiles these assertions out. User: `sep_fabric_deadspace_decode_test`.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar ports for `OcahSpiFlash` and `OcahSpiMonitor`: `spi_cs_n_o`, `spi_sck_o`, `spi_mosi_o` (`sep_io_spi_req_o.sd[0]`) and `spi_miso_i` (`sep_io_spi_rsp_i.sd[1]`). Monitor-only taps of the DUT output struct `sep_io_spi_req_o`: `spi_sd_o[3:0]` (`sd`), `spi_sd_oe_o[3:0]` (`sd_oe`), `spi_cs_oe_o` (`cs_oe`) and `spi_sck_oe_o` (`sck_oe`); `env/sep_spi_wire_monitor.py` attaches them to `OcahSpiMonitor`, which grades the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment"). SEP top-port drive: `spi_sd_i[3:0]` drives all four response lanes of `sep_io_spi_rsp_i.sd` in a run with `+sep_spi_four_lane`; otherwise lane 1 is `spi_miso_i` and lanes 0, 2 and 3 are 0. `sep_base_test` holds `spi_sd_i` at 0. Monitor-only tap `spi_sd_rsp_o[3:0]`: the four lanes the DUT receives, which `env/sep_spi_wire_monitor.py` gives the monitor as its input lanes.
@@ -214,6 +215,12 @@ Observation probe groups:
   (`u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l`), tied to 1 on the CPU stub
   build; owner `sep_timer_clock_contract_test`, which reads it only on the
   VCS full-CPU leaf.
+* Watchdog count tap (`wdt_wdog_count_o`): the `WDOG_COUNT` register of the
+  watchdog AON timer (`u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q`),
+  clocked by `clk_wdt_i`. A bus read of `WDOG_COUNT` needs `clk_i`, so no
+  frontdoor shows the count while `clk_i` is stopped. Read-only. Users: the
+  timer and clock contract entry of the memory, boot, reset, WDT and clock
+  area.
 * `TIMEOUT_INTERRUPT` read-source tap (`timeout_interrupt_probe_o`): the
   hardware input `sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.reserved.next` of
   the `SEP_CPU_CTRL` register block in `u_sep_system_csr`. The field has no
@@ -474,6 +481,12 @@ Observation probe groups:
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_fabric_dma_endpoint_matrix_test`,
    `sep_cpu_demux_unmapped_fetch_test`.
+** PR-TRNG (`pr_trng_*`): the TRNG AXI-Lite passthrough port, wrapper net
+   `u_dut.ext_trng_axil_req`: AW and AR address and AxPROT, and W data and
+   strobe; and its replies (monitor PR-TRNG-RSP): B (`resp`) and R (`resp`,
+   `data`) from `u_dut.ext_trng_axil_resp`, read after the force of the TRNG
+   AXI-Lite passthrough responder, with READY from the request net. Users: the
+   dead-space decode entry of the fabric and remap area.
 ** PR-SRAM (`pr_sram_*`) and PR-ROM (`pr_rom_*`): the SRAM and boot ROM macro
    requests (wrapper nets `u_dut.sep_sram_req`, `u_dut.sep_boot_rom_req`):
    request, grant, address, write enable, write data, strobe, read valid and
@@ -695,6 +708,22 @@ Exceptions (a closed set):
   default, and the force is released when the input drops. The interrupt
   vector the checker reads is not forced. Users: the shadow-update and alert
   entry of the crypto and entropy area.
+* *OTBN memory integrity flip* — in a run with `+sep_otbn_intg_flip`, while
+  `otbn_intg_flip_en_i` is 1, every read response that the OTBN core takes
+  from the memory that `otbn_intg_flip_mem_i` selects reaches the integrity
+  check with bit `otbn_intg_flip_bit_i[8:0]` of the read word inverted. The
+  force points are the read data after the descrambler and ahead of the
+  check: for IMEM (0), `imem_rdata_core`, the 39-bit fetch word of the core
+  (bit 0 to 38); for DMEM (1), `dmem_rdata`, the 312-bit word of eight 39-bit
+  words (word w in bits 39w to 39w+38) at the input of the DMEM integrity
+  decoders, which check only the words that the load reads. A response counts
+  while `imem_access_core` or `dmem_access_core` is 1. A bit index past the
+  word flips nothing. Bus reads and the stored word are not changed. No
+  frontdoor write of the bench stores a word that fails its integrity check,
+  so the integrity error has no frontdoor. All inputs are 0 by default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the descrambled read data, the write-collision forward and `rvalid_o` of the memory) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. `ERR_BITS`, `FATAL_ALERT_CAUSE`, `STATUS` and `INTR_STATE` stay frontdoor. Readback:
+  `otbn_intg_flip_count_o`, the count of changed responses since the enable
+  rose. Users: the OTBN command and status entry of the crypto and entropy
+  area.
 * *Key Manager OTP rail flip* (HK-OTP) — while `km_otp_flip_en_i` is 1, the
   KM OTP input `otp_data_i` of `u_key_manager_s3c_scan` is held at the value
   it had at the rise of the input XOR `km_otp_flip_mask_i` (layout and width
@@ -1243,8 +1272,9 @@ retirement ports; see <<env-cpu-trace>>.
 Before the boot, `RUN-IDENTITY-FW` logs the sha256 of both images and
 `CHK-FW-IDENTITY` checks where they came from. The firmware build (`fw/fw.mk`)
 compiles `FW-BUILD-ID:<digest>` into every image, with `<digest>` from
-`fw/fw_src_digest.py` over the firmware source directories, once in ICCM and
-once in DCCM. The test reads the string out of both loaded images and requires
+`fw/fw_src_digest.py` over the firmware sources and the boot ROM files the tests
+build from, once in ICCM and once in DCCM. The test reads the string out of both
+loaded images and requires
 each to equal the digest of the tree it runs from, which `RUN-IDENTITY` binds to a commit. An image built from other
 source, or left over from an older build, fails the check.
 

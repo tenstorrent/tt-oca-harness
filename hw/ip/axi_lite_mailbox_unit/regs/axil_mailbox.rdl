@@ -21,13 +21,21 @@ addrmap axil_mailbox {
             sw = w;
             hw = r;
             onwrite = wuser;
-            desc = "Write data to mailbox fifo";
+            desc = "Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+                    including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+                    pushed as 0.";
         } write_data [63:0] = 0x0;
     };
 
     reg READ_DATA {
         regwidth = 64;
         accesswidth = 64;
+
+        desc = "A read of any size or alignment within this register pops one whole 64-bit entry
+                from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+                read of either half therefore discards the other half of the entry; read this
+                register with 64-bit accesses.";
+
         field {
             sw = r;
             hw = w;
@@ -67,6 +75,12 @@ addrmap axil_mailbox {
     reg ERROR {
         regwidth = 64;
         accesswidth = 64;
+
+        desc = "A read of any size or alignment within this register clears every flag in it. The
+                flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+                returns 0 and still clears them; read this register with 64-bit accesses or at its
+                lower half.";
+
         field {
             sw = r;
             hw = w;

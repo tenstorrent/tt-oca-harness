@@ -52,8 +52,9 @@ vp = [
     "pyelftools>=0.29",
     # The boot ROM's key_digests.c is generated on the host from PEM files; the
     # bootrom Makefile refuses to build without it, and the RISC-V toolchain
-    # sandbox carries a bare python3.
-    "cryptography>=41.0",
+    # sandbox carries a bare python3. The SEP Adams Bridge firmware test signs its
+    # ML-DSA-87 vectors at build time, which needs the ML-DSA API added in 48.
+    "cryptography>=48.0",
 ]
 manifest = ["tt-oca-manifest"]
 

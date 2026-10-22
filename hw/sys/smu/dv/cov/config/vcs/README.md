@@ -107,12 +107,11 @@ field that stays uncovered is a stimulus gap for a leaf on this bench.
 ## Block exclusions
 
 `smu_toggle_exclusions.el` (`-elfile`, named by the policy's `[[native_files]]`)
-leaves out toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar`, the
-condition rows of the lifecycle integrity error, and the line block,
-condition row and branch arm of the crossbar's zero-size aperture rule, each
-for a stated fact. The file is written from urg's `-dump full_exclusions`
-templates of the merged database and the run's raw report, so every checksum
-and signature comes from urg:
+leaves out toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar` and the
+condition rows of the lifecycle integrity error, each for a stated fact. The
+file is written from urg's `-dump full_exclusions` templates of the merged
+database and the run's raw report, so every checksum and signature comes from
+urg:
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+cond+branch -report <dir>
 
@@ -171,7 +170,6 @@ the report covers none of its first line's statements. Fields
 | `SMC-EXTERNAL-WINDOW` | address bits [29:23] of the SMC external window: the SMC peripheral crossbar sends only `0xC040_0000`-`0xC07F_FFFF` there (`smc_periph_axi_lite_xbar.sv` 145-149) | an SMC external window that moves or grows past 4 MiB |
 | `XBAR-CONNECTIVITY` | the crossbar output ID carries the input port index in bits [9:8]; `smu_axi_xbar_pkg.sv` (127-133) routes ext_in (port 2) nowhere near `ext_out` and smc_out (port 1) nowhere near `smc_in`, so bit 9 on `ext_out` and past it, and bit 8 on `smc_in` and past it, stay 0 | a connectivity matrix that adds either route |
 | `APERTURE-ALIGNMENT` | `smc_base_config.rdl` (38) requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI reaches BASE_CONFIG through the local window, so no size below 128 KiB can be followed by another setting, and base, rule start and rule end bits [16:0] stay 0; LOCAL_BASE is fixed at `0xC000_0000`, so REGION_SIZE[31] is never legal. Takes only those bits | a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window |
-| `ZERO-APERTURE-REJECTED` | the zero-size arm of the aperture rule in `smu_axi_xbar.sv` (72-74), taken as its line block, the `size == '0` condition row and the branch arm: a zero region size forms a rule with `start == end`, and the address decoder's map check accepts only `start < end` or `end == 0` (`addr_decode_dync.sv` 150), so a zero-size SEP or SMC aperture cannot be programmed on this bench; the SEP point is Phase 2 in `SMU_FCOV.adoc` | an aperture encoding the decoder accepts for zero size |
 
 The SEP aperture takes no class: SEP firmware images program the region size
 and `smu_dtp_sep_dm_sba_test` walks the base and size. On the SEP's outbound

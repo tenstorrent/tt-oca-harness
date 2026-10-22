@@ -4075,6 +4075,38 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "unmatched ext_in read and write DECERR with the issued IDs and nothing reaches ext_out",
         ),
     ],
+    "smu_xbar_zero_aperture_test": [
+        (
+            "CHK-XBAR-ZERO-BASELINE",
+            "CHK-XBAR-ZERO-BASELINE",
+            "with both apertures programmed ext_in reaches SEP SRAM and the SMC, the top byte is "
+            "DECERR, and the system bus's write into the SEP window is refused",
+        ),
+        (
+            "CHK-XBAR-ZERO-SEP",
+            "CHK-XBAR-ZERO-SEP",
+            "a zero-size SEP aperture matches nothing at either base, sends the system bus's "
+            "write into it out on smu_axi_out, leaves the SMC route alone, and comes back when "
+            "restored",
+        ),
+        (
+            "CHK-XBAR-ZERO-SMC",
+            "CHK-XBAR-ZERO-SMC",
+            "a zero-size SMC aperture matches nothing from ext_in and leaves the SEP routes alone",
+        ),
+        (
+            "CHK-XBAR-ZERO-BOTH",
+            "CHK-XBAR-ZERO-BOTH",
+            "with both apertures at size 0 every ext_in probe is DECERR with no crossbar count "
+            "moving, and the system bus's write into the SEP window leaves on smu_axi_out",
+        ),
+        (
+            "CHK-XBAR-ZERO-COLD-RESET",
+            "CHK-XBAR-ZERO-COLD-RESET",
+            "a cold reset returns both apertures to their RDL reset values and ext_in reaches "
+            "the SEP and SMC ports again",
+        ),
+    ],
     "smu_xtrig_mode_composition_test": [
         (
             "CHK-SMU-XTRIG-MODE-S1",
