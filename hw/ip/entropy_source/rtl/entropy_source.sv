@@ -215,8 +215,9 @@ module entropy_source
     /* verilator lint_off UNUSEDSIGNAL */
     logic [5:0]  biw_obs_wptr, biw_obs_rptr;
     logic        biw_obs_underflow;
-    logic        biw_obs_parity_error, biw_obs_pointer_error, biw_obs_security_alert;
+    logic        biw_obs_parity_error, biw_obs_pointer_error;
     /* verilator lint_on UNUSEDSIGNAL */
+    logic        biw_obs_security_alert;  // drives INTR_STATUS.FIFO_ERROR
 
     // GetNoise raw per-lane observe FIFO (pre-decorrelator, packed copy-only
     // tap). This is the SP 800-90B raw noise source.
@@ -228,8 +229,9 @@ module entropy_source
     /* verilator lint_off UNUSEDSIGNAL */
     logic [5:0]  noise_obs_wptr, noise_obs_rptr;
     logic        noise_obs_underflow;
-    logic        noise_obs_parity_error, noise_obs_pointer_error, noise_obs_security_alert;
+    logic        noise_obs_parity_error, noise_obs_pointer_error;
     /* verilator lint_on UNUSEDSIGNAL */
+    logic        noise_obs_security_alert;  // drives INTR_STATUS.FIFO_ERROR
 
     // Raw per-lane tap datapath: lane mux, sample-clock edge detector, packer.
     // 16-wide zero-padded views of the 12-lane monitors so a 4-bit LANE_SEL
@@ -860,7 +862,8 @@ module entropy_source
     always_comb begin
         err_bus                     = '0;
         err_bus.health_test_failed  = |health_status;
-        err_bus.fifo_error          = fifo_error;
+        err_bus.fifo_error          = fifo_error | biw_obs_security_alert |
+                                      noise_obs_security_alert;
         err_bus.fifo_overflow       = fifo_overflow;
         err_bus.fifo_underflow      = fifo_underflow;
         err_bus.es_cntr_err         = es_cntr_err;
@@ -1303,5 +1306,88 @@ module entropy_source
     // ----------------------------------------------------------------------
     `OCAH_OT_ASSERT(FipsWindowFloor_A,
             fips_lock |-> (reg_out.HEALTH_TEST_WINDOW_SIZE.SIZE.value >= 16'd1024))
+
+    // ----------------------------------------------------------------------
+    // Hardened counter and FSM errors reach INTR_STATUS.
+    //
+    // Each prim_count and sparse FSM below requires one of these declarations;
+    // without it, its AssertConnected_A fails at time 0.
+    // ----------------------------------------------------------------------
+    for (genvar l = 0; l < NRings; l++) begin : gen_lane_ht_sec_cm
+        for (genvar b = 0; b < 8; b++) begin : gen_bit
+            `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(LaneRepcntCntErr_A,
+                u_generator_complex.gen_ecmplx[l].u_generator.u_health_test.u_repcnt_ht.gen_cntrs[b].u_prim_count_rep_cntr,
+                reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+            `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(LaneAdaptpCntErr_A,
+                u_generator_complex.gen_ecmplx[l].u_generator.u_health_test.u_adaptp_ht.gen_cntrs[b].u_prim_count_test_cnt,
+                reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+            `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(LaneMarkovCntErr_A,
+                u_generator_complex.gen_ecmplx[l].u_generator.u_health_test.u_markov_ht.gen_cntrs[b].u_prim_count_pair_cntr,
+                reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+        end
+    end
+
+    for (genvar b = 0; b < 32; b++) begin : gen_stream_ht_sec_cm
+        `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(StreamRepcntCntErr_A,
+            u_health_test.u_repcnt_ht.gen_cntrs[b].u_prim_count_rep_cntr,
+            reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+        `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(StreamAdaptpCntErr_A,
+            u_health_test.u_adaptp_ht.gen_cntrs[b].u_prim_count_test_cnt,
+            reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+        `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(StreamMarkovCntErr_A,
+            u_health_test.u_markov_ht.gen_cntrs[b].u_prim_count_pair_cntr,
+            reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    end
+
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(WindowCntErr_A,
+        u_generator_complex.u_window_cntr, reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(RepcntCntrRegErr_A,
+        u_entropy_src_cntr_reg_repcnt.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(AptHiCntrRegErr_A,
+        u_entropy_src_cntr_reg_apt_hi.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(AptLoCntrRegErr_A,
+        u_entropy_src_cntr_reg_apt_lo.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(MarkovHiCntrRegErr_A,
+        u_entropy_src_cntr_reg_markov_hi.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(MarkovLoCntrRegErr_A,
+        u_entropy_src_cntr_reg_markov_lo.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(AnyAlertFailsCntrRegErr_A,
+        u_entropy_src_cntr_reg_any_alert_fails.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(RepcntAlertCntrRegErr_A,
+        u_entropy_src_cntr_reg_repcnt_alert.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(AptHiAlertCntrRegErr_A,
+        u_entropy_src_cntr_reg_apt_hi_alert.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(AptLoAlertCntrRegErr_A,
+        u_entropy_src_cntr_reg_apt_lo_alert.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(MarkovHiAlertCntrRegErr_A,
+        u_entropy_src_cntr_reg_markov_hi_alert.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(MarkovLoAlertCntrRegErr_A,
+        u_entropy_src_cntr_reg_markov_lo_alert.u_prim_count_cntr_reg,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+
+    `OCAH_OT_ASSERT_PRIM_FSM_ERROR_TRIGGER_ALERT_IN(MainSmErr_A, u_main_sm.u_state_regs,
+        reg_out.INTR_STATUS.PERSISTENT_FAILURE.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(EntropyFifoWptrErr_A,
+        u_entropy_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, reg_out.INTR_STATUS.FIFO_ERROR.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(EntropyFifoRptrErr_A,
+        u_entropy_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, reg_out.INTR_STATUS.FIFO_ERROR.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(BiwObsFifoWptrErr_A,
+        u_biw_obs_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, reg_out.INTR_STATUS.FIFO_ERROR.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(BiwObsFifoRptrErr_A,
+        u_biw_obs_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, reg_out.INTR_STATUS.FIFO_ERROR.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(NoiseObsFifoWptrErr_A,
+        u_noise_obs_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, reg_out.INTR_STATUS.FIFO_ERROR.value)
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(NoiseObsFifoRptrErr_A,
+        u_noise_obs_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, reg_out.INTR_STATUS.FIFO_ERROR.value)
 
 endmodule
