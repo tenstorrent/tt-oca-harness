@@ -4332,14 +4332,16 @@ diagnostic.
 driver requires on this flow, not every behaviour of the aperture. The message is
 streamed; the non-streamed and external-mu paths belong to
 <<sep_abr_mldsa_sign_verify_kat_test>>. The vectors are a committed file, so
-every build and every seed runs the same bytes. The firmware build runs
-`gen_mldsa87_vectors.py --check` on the header
-(`hw/sys/sep/dv/fw/tests/abr_mldsa87_verify_test/gen_mldsa87_vectors.py`), and
-the build fails unless the genuine signatures verify with `cryptography`, each
-exact mutated input of cases 3 to 8 does not verify, and the signatures of cases
-9 to 11 decode as malformed.
+every build and every seed runs the same bytes.
+`gen_mldsa87_vectors.py --check`
+(`hw/sys/sep/dv/fw/tests/abr_mldsa87_verify_test/gen_mldsa87_vectors.py`) accepts
+the header only when the genuine signatures verify with `cryptography`, each exact
+mutated input of cases 3 to 8 does not verify, and the signatures of cases 9 to 11
+decode as malformed. It prints the header's SHA-256, which is pinned as
+`ABR_MLDSA87_VECTORS_SHA256` in `hw/sys/sep/dv/fw/fw.mk`; the firmware build fails
+unless the committed header has that SHA-256.
 
-*Anti-vacuity*: the build check proves each input of cases 3 to 8 fails a
+*Anti-vacuity*: the generator check proves each input of cases 3 to 8 fails a
 reference verify, so a reject on the RTL is never caused by a bad vector, and a
 genuine case that the RTL rejects fails. A reject case passes only on status
 `ABR_DRV_ERR_SIG_INVALID`, so an accelerator that accepts the input fails. Case
@@ -4457,8 +4459,8 @@ verify that must pass (tcId 63).
   `sep_abr_completion_cg` reject-class label to 3 (hint) before VERIFYING and
   clear it after the `MLDSA_VERIFY_RES` read.
 . For a pure case, write the context length to `MLDSA_CTX_CONFIG` and the context
-  to `MLDSA_CTX`, issue VERIFYING with `MLDSA_CTRL.STREAM_MSG` set, and require
-  `MLDSA_VERIFY_RES` to read the inverted c~ (CHK-HINT-PRELOAD). Wait for
+  to `MLDSA_CTX`, issue VERIFYING with `MLDSA_CTRL.STREAM_MSG` set, and log the
+  value `MLDSA_VERIFY_RES` reads (`OBS-HINT-PRELOAD`). Wait for
   `MSG_STREAM_READY` or VALID. If VALID rises first, the engine rejected before
   it asked for the message, and nothing is streamed. Otherwise write each message
   word to `MLDSA_MSG[0]` after a `MLDSA_MSG_STROBE` of `0xF`, and end with the
@@ -4474,10 +4476,9 @@ verify that must pass (tcId 63).
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-HINT-PRELOAD
-|For each pure case, after VERIFYING with `STREAM_MSG` is accepted, before any
-message word, every word of `MLDSA_VERIFY_RES` is the inverse of the signature's
-c~ (`hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc`, verify sequence).
+|CHK-HINT-VALID
+|For each case, `MLDSA_STATUS.VALID` rises after the VERIFYING command, from a
+VALID that the zeroize before it cleared.
 |CHK-HINT-CONTROL
 |tcId 63 completes VALID with ERROR=0 and `MLDSA_VERIFY_RES` equals c~: the
 streamed message and the context reach the engine intact.
@@ -4507,13 +4508,15 @@ Pre-hash ML-DSA (tgId 6) and the internal interface without external mu
 must verify, so a broken stream or context fails on a known answer rather than
 passing as a reject. The external-mu path has its accept control in
 <<sep_abr_mldsa_sign_verify_kat_test>>, which verifies an ACVP external-mu
-signature through `MLDSA_EXTERNAL_MU` with `MLDSA_CTRL.EXTERNAL_MU` set. CHK-HINT-PRELOAD runs before each pure reject, so a VERIFY
-command that did not land fails there rather than passing as a reject.
+signature through `MLDSA_EXTERNAL_MU` with `MLDSA_CTRL.EXTERNAL_MU` set. CHK-HINT-VALID runs before each reject comparison, so a
+VERIFY command that did not run fails there rather than passing as a reject.
 
 *Not claimed*: the stage at which the engine rejects a malformed hint, before or
 after the message stream, for each cause; no spec states it, so
 `OBS-HINT-REJECT-TIMING` logs it and nothing grades it (open spec question). The
 value `MLDSA_VERIFY_RES` holds after a reject; no spec states it, so
-`OBS-HINT-REJECT-RES` logs it and nothing grades it (open spec question).
+`OBS-HINT-REJECT-RES` logs it and nothing grades it (open spec question). The value
+`MLDSA_VERIFY_RES` holds right after VERIFYING is accepted; no hardware spec
+states it, so `OBS-HINT-PRELOAD` logs it and nothing grades it (open spec question).
 
 '''''

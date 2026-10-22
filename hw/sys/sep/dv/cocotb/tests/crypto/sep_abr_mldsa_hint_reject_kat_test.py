@@ -76,7 +76,7 @@ _REJECT_CLASS_HINT = 3
 class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
     """ML-DSA-87 VERIFY on the NIST malformed-hint cases, after one that must verify."""
 
-    required_evidence = ("CHK-HINT-PRELOAD", "CHK-HINT-CONTROL", "CHK-HINT-REJECT")
+    required_evidence = ("CHK-HINT-VALID", "CHK-HINT-CONTROL", "CHK-HINT-REJECT")
 
     async def _wait_status(self, abr: SepAbr, mask: int, expect: int, *, what: str) -> int:
         for _ in range(_POLL_ITERS):
@@ -154,23 +154,21 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
                 await abr.wr32(ABR_CTX_CONFIG, case.ctx_bytes)
                 await abr.write_words(ABR_CTX, case.ctx)
                 await abr.wr32(ABR_CTRL, CMD_VERIFY | CTRL_STREAM_MSG)
-                # The accelerator preloads MLDSA_VERIFY_RES with ~c~ when it accepts
-                # VERIFY, and with STREAM_MSG it waits for the message
-                # (hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc:70-72).
+                # No hardware spec states what MLDSA_VERIFY_RES holds once VERIFY is
+                # accepted, so the value is logged, not graded.
                 pre = await abr.read_words(ABR_VERIFY_RES, VERIFY_RES_WORDS)
-                assert pre == inverse, (
-                    f"CHK-HINT-PRELOAD FAIL: {what}: MLDSA_VERIFY_RES is not the "
-                    "inverted c~ after VERIFY was accepted, so the command did not land"
-                )
                 self.logger.info(
-                    "CHK-HINT-PRELOAD PASS: %s: MLDSA_VERIFY_RES equals ~c~ after VERIFY "
-                    "was accepted",
+                    "OBS-HINT-PRELOAD: %s: MLDSA_VERIFY_RES after VERIFY accept is %s",
                     what,
+                    "~c~" if pre == inverse else ("0" if not any(pre) else "other"),
                 )
                 streamed = await self._stream(abr, case.msg, case.msg_bytes, what=what)
 
+            # VALID rises only when the accelerator ran the command, so a VERIFY that
+            # did not land fails here rather than passing as a reject.
             st = await self._wait_status(abr, ST_VALID, ST_VALID, what=f"{what} VALID")
             assert not st & ST_ERROR, f"{what}: VALID with ERROR (0x{st:08x})"
+            self.logger.info("CHK-HINT-VALID PASS: %s: VALID rose after VERIFY", what)
             res = await abr.read_words(ABR_VERIFY_RES, VERIFY_RES_WORDS)
             if label:
                 set_abr_reject_class(0, self.logger)
