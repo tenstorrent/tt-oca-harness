@@ -105,10 +105,12 @@ def run_manifest(path: Path) -> int:
     from .cli import load_registries, parse_args, validate_flow
     from .config import (
         activate_adopter_overlay_env,
+        instance_test_name,
         load_sim_cfg,
         load_test_catalog,
         merge_simulator_defaults,
         targeted_sim_cfg,
+        with_target_instances,
     )
     from .duts import resolve_dut
 
@@ -141,6 +143,13 @@ def run_manifest(path: Path) -> int:
     activate_adopter_overlay_env(flow.raw)
     sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), registries.simulators, flow.tools)
     catalog = load_test_catalog(flow, root)
+    if (
+        not task.is_build
+        and task.target
+        and task.item not in catalog.tests
+        and instance_test_name(task.item) in catalog.tests
+    ):
+        catalog = with_target_instances(catalog, {task.item: task.target})
     if not task.is_build and task.item not in catalog.tests:
         raise WorkerError(f"test `{task.item}` is not in the catalog of DUT `{flow.name}`")
     target = task.target or None

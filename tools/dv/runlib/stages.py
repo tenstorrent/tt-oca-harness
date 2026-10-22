@@ -2471,7 +2471,7 @@ def cocotb_sim(
         _run_sim_prestage(
             root,
             cocotb_data,
-            item,
+            test.name,
             seed,
             item_dir,
             sim_args=_render_run_test_args(
@@ -5529,6 +5529,7 @@ def run_stage(
             root=root,
             flow_name=flow.name,
             item=item,
+            target=target_name,
             seed=seed,
             tool=tool,
             wave_format=wave_format,

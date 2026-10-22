@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import dataclasses
 import os
 import re
 from collections.abc import Mapping, MutableMapping
@@ -494,6 +495,9 @@ TARGET_KEYS = {
 }
 
 TARGET_TOOL_KEYS = {"flags"}
+# Joins a test's name and a target's into the name of that test's run on one of several
+# targets, so neither a test name nor a target name may contain it.
+TARGET_INSTANCE_SEP = "@"
 # `[target_defaults]` and adopter overlays refuse `run_on`.
 TARGET_RUN_TOOL_KEYS = TARGET_TOOL_KEYS | {"run_on"}
 RUN_MODE_KEYS = {"description", "timeout_sec", "args", "plusargs"}
@@ -1118,6 +1122,11 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
             for name, target in targets.items():
                 if not isinstance(target, dict):
                     raise ConfigError(f"{flow.path}: [{section_name}.{name}] must be a table")
+                if TARGET_INSTANCE_SEP in str(name):
+                    raise ConfigError(
+                        f"{flow.path}: target name `{name}` contains `{TARGET_INSTANCE_SEP}`, "
+                        "which names a test on one of several targets"
+                    )
                 validate_allowed_keys(target, TARGET_KEYS, f"{flow.path} [{section_name}.{name}]")
                 validate_placeholders_in_value(target, f"{flow.path} [{section_name}.{name}]")
                 tools = target.get("tools", {})
@@ -2020,6 +2029,40 @@ def target_run_on(sim_cfg: dict[str, Any], target: str, tool: str) -> str:
     return run_on
 
 
+def target_instance_name(test: str, target: str) -> str:
+    """The name of ``test``'s run on ``target`` in a run that puts it on several targets."""
+    return f"{test}{TARGET_INSTANCE_SEP}{target}"
+
+
+def instance_test_name(name: str) -> str:
+    """The testlist name of ``name``, which may name a test on one of several targets."""
+    return name.partition(TARGET_INSTANCE_SEP)[0]
+
+
+def rerun_selection(item: str, target: str | None, args: Any) -> list[str]:
+    """The options that select ``item``'s leaf, which ran on ``target``, for a rerun."""
+    options = ["--items", instance_test_name(item)]
+    if target and getattr(args, "force_target", None):
+        options += ["--force-target", target]
+    elif target and (getattr(args, "target", None) or item != instance_test_name(item)):
+        options += ["--target", target]
+    return options
+
+
+def with_target_instances(catalog: TestCatalog, instances: dict[str, str]) -> TestCatalog:
+    """``catalog`` with an entry under each ``instances`` name: a copy of that name's test,
+    keeping its testlist name and pinned to the mapped target."""
+    if not instances:
+        return catalog
+    tests = dict(catalog.tests)
+    for name, target in instances.items():
+        test = catalog.tests.get(instance_test_name(name))
+        if test is None:
+            raise ConfigError(f"`{name}` names no test in the catalog")
+        tests[name] = dataclasses.replace(test, target=target)
+    return dataclasses.replace(catalog, tests=tests)
+
+
 def validate_target_redirects(sim_cfg: dict[str, Any], tools: list[str]) -> None:
     """Resolve every target's `run_on` on each of ``tools``, so a bad one is refused before a
     run on that tool selects a test it redirects."""
@@ -2244,6 +2287,12 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
     if not isinstance(name, str) or not name:
         where = f"{source}: " if source else ""
         raise ConfigError(f"{where}test entry missing required string `name`")
+    if TARGET_INSTANCE_SEP in name:
+        where = f"{source}: " if source else ""
+        raise ConfigError(
+            f"{where}test name `{name}` contains `{TARGET_INSTANCE_SEP}`, which names a test "
+            "on one of several targets"
+        )
     firmware = entry.get("firmware")
     if firmware is not None and not isinstance(firmware, (str, dict)):
         where = f"{source}: " if source else ""
