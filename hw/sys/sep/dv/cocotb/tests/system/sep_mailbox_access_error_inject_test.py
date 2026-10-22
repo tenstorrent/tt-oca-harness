@@ -278,11 +278,13 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                 return v
 
     def _k4_word(self, live: dict) -> int:
-        bad8 = {v for (p, k), v in live.items() if k in ("WIRQT", "RIRQT")}
-        bad3 = {v for (p, k), v in live.items() if k == "IRQEN"}
+        thr = {v for (_, k), v in live.items() if k in ("WIRQT", "RIRQT")}
+        en = {v for (_, k), v in live.items() if k == "IRQEN"}
         while True:
             w = self.rng.getrandbits(32)
-            if w and (w & 0xFF) not in bad8 and (w & 0x7) not in bad3:
+            tw = min(w & FIELD["WIRQT"], MAILBOX_DEPTH - 1)
+            tr = min(w & FIELD["RIRQT"], MAILBOX_DEPTH - 1)
+            if w and tw not in thr and tr not in thr and (w & FIELD["IRQEN"]) not in en:
                 return w
 
     def _ro_value(self, live: dict) -> int:
