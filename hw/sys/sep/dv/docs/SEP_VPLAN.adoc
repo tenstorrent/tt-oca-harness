@@ -1143,7 +1143,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, mailbox error golden
-|Proves that an empty read, a full write, a read-only write, an in-aperture hole and a past-extent access each answer the documented code with no side effect. Also proves that the error cause drives its line only when `IRQEN.eirq` is set, and that a 32-bit read of the upper half of `ERROR_FLAGS` returns 0 and clears the flags.
+|Proves that an empty read, a full write, a read-only write, an in-aperture hole and a past-extent access each answer the documented code with no side effect. Also proves that the error cause drives its line only when `IRQEN.eirq` is set, and that a 32-bit read of the upper half of `ERROR_FLAGS` returns 0 and clears both flags.
 |<<sep_mailbox_filter_type_matrix_test,`sep_mailbox_filter_type_matrix_test`>>
 |3
 |no_cpu, +skip_fuse_sense

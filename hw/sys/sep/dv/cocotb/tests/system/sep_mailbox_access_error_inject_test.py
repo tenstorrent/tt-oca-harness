@@ -34,12 +34,13 @@ Mailbox Wrapper row; ``hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.ad
   size or alignment within the register clears every flag; the flags are
   returned only in the lower 32 bits, so a 32-bit read of the upper half
   (offset +4) returns 0 and still clears them. On one drawn port the leg
-  induces an empty read or a full write, sees the error by its SLVERR
-  response and by ``IRQS.eirq``, reads the upper half (expects 0) and then
-  reads the whole register with a 64-bit read (expects 0). A control on the
-  same port first induces the same error and reads the whole register with a
-  64-bit read, which must return the flag, so the last read of the leg can
-  see a flag that the upper-half read did not clear.
+  induces both an empty read and a full write in a drawn order, sees each
+  error by its own SLVERR response and by ``IRQS.eirq`` (read, then cleared
+  before the next error), reads the upper half (expects 0) and then reads the
+  whole register with a 64-bit read (expects 0, both flags cleared). A control
+  on the same port first induces the same two errors and reads the whole
+  register with a 64-bit read, which must return both flags, so the last read
+  of the leg can see any flag that the upper-half read did not clear.
 
 Expected values come from ``env/sep_mbox_pair_model.MboxSystem``, which holds
 the stimulus only. The outbound port is driven by the CPU-LSU master and the
@@ -369,10 +370,13 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         self.upper = (
             r.randrange(1, 8) if up == "out" else r.randrange(0, 8),
             up,
-            r.choice(["rd", "wr"]),
+            r.choice([("rd", "wr"), ("wr", "rd")]),
         )
         self.logger.info(
-            "DRAW upper_clear mbox=%d port=%s err=%s", self.upper[0], self.upper[1], self.upper[2]
+            "DRAW upper_clear mbox=%d port=%s order=%s",
+            self.upper[0],
+            self.upper[1],
+            ",".join(self.upper[2]),
         )
         self.logger.info(
             "DRAW n_extra=%d interior=0x%x both_mbox=%d both_port=%s line_mbox=%d",
@@ -905,56 +909,67 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         self.mbx[m].read_reg(p, "ERROR_FLAGS")
         return resp, data
 
+    async def _induce_both(
+        self, chk: str, m: int, p: str, order: tuple[str, str]
+    ) -> tuple[list[int], str, bool]:
+        """Both errors on ``p`` in ``order``. Each error is seen on its own by
+        its SLVERR response and by ``IRQS.eirq``, which is then cleared and read
+        back as 0 before the next error. Returns (the words queued by the full
+        write, the log fields, whether every observation matched)."""
+        words: list[int] = []
+        fields = []
+        ok = True
+        for kind in order:
+            resp, _, w = await self._induce(m, p, kind)
+            words += w
+            irqs = await self._rd(m, p, "IRQS")
+            await self._wr(m, p, "IRQS", IRQ_EIRQ)
+            after = await self._rd(m, p, "IRQS")
+            fields.append(
+                f"{kind}_resp={resp_name(resp)} exp=SLVERR {kind}_irqs_eirq={(irqs >> 2) & 1} "
+                f"exp=1 {kind}_eirq_after_w1c={(after >> 2) & 1} exp=0"
+            )
+            ok = ok and resp == RESP_SLVERR and irqs & IRQ_EIRQ and not after & IRQ_EIRQ
+        both = self.mbx[m].error_flags(p)
+        if both != ERR_READ | ERR_WRITE:
+            raise AssertionError(
+                f"test error: {chk} model flags 0x{both:x} after both errors, "
+                f"exp 0x{ERR_READ | ERR_WRITE:x}"
+            )
+        return words, " ".join(fields), bool(ok)
+
     async def _upper_clear(self) -> None:
-        m, p, kind = self.upper
-        mb = self.mbx[m]
-        # Control: the same error, then a 64-bit read returns the flag in the
-        # lower 32 bits and 0 above, and a second 64-bit read returns 0.
+        m, p, order = self.upper
+        both = ERR_READ | ERR_WRITE
+        ords = ",".join(order)
+        # Control: the same two errors, then a 64-bit read returns both flags in
+        # the lower 32 bits and 0 above, and a second 64-bit read returns 0.
         await self._flags_pre("CTL-UPPER-CLEAR", m, p)
-        cresp, cflag, cwords = await self._induce(m, p, kind)
-        exp_c = mb.error_flags(p)
+        cwords, cobs, cok = await self._induce_both("CTL-UPPER-CLEAR", m, p, order)
         r1, full1 = await self._rd_flags(m, p, upper=False)
         r2, full2 = await self._rd_flags(m, p, upper=False)
         await self._drain("CTL-UPPER-CLEAR", m, p, cwords)
-        await self._wr(m, p, "IRQS", IRQ_EIRQ)
         ctxt = (
-            f"mbox={m} port={p} err={kind} err_resp={resp_name(cresp)} "
-            f"full_read_resp={resp_name(r1)} full_read=0x{full1:016x} exp=0x{cflag:016x} "
+            f"mbox={m} port={p} order={ords} {cobs} "
+            f"full_read_resp={resp_name(r1)} full_read=0x{full1:016x} exp=0x{both:016x} "
             f"second_full_read_resp={resp_name(r2)} second_full_read=0x{full2:016x} exp=0x0"
         )
-        if (
-            cresp != RESP_SLVERR
-            or exp_c != cflag
-            or r1 != RESP_OKAY
-            or full1 != cflag
-            or r2 != RESP_OKAY
-            or full2 != 0
-        ):
+        if not cok or r1 != RESP_OKAY or full1 != both or r2 != RESP_OKAY or full2 != 0:
             self._fail("CTL-UPPER-CLEAR", ctxt)
         self.logger.info("CTL-UPPER-CLEAR LOG seed=%d %s", self.seed, ctxt)
-        # Graded leg: the same error, seen by its response and by IRQS.eirq,
-        # then the upper half, then the whole register.
+        # Graded leg: the same two errors, each seen by its response and by
+        # IRQS.eirq, then the upper half, then the whole register.
         await self._flags_pre("CHK-MBX-ERR-UPPER-CLEAR", m, p)
-        resp, flag, words = await self._induce(m, p, kind)
-        irqs = await self._rd(m, p, "IRQS")
+        words, obs, ok = await self._induce_both("CHK-MBX-ERR-UPPER-CLEAR", m, p, order)
         ur, upper = await self._rd_flags(m, p, upper=True)
         fr, full = await self._rd_flags(m, p, upper=False)
         await self._drain("CHK-MBX-ERR-UPPER-CLEAR", m, p, words)
-        await self._wr(m, p, "IRQS", IRQ_EIRQ)
         txt = (
-            f"mbox={m} port={p} err={kind} err_resp={resp_name(resp)} exp_err_resp=SLVERR "
-            f"irqs_eirq={(irqs >> 2) & 1} exp_irqs_eirq=1 flag_set=0x{flag:x} "
+            f"mbox={m} port={p} order={ords} {obs} flags_set=0x{both:x} "
             f"upper_read_resp={resp_name(ur)} upper_read=0x{upper:08x} exp=0x00000000 "
             f"full_read_resp={resp_name(fr)} full_read=0x{full:016x} exp=0x0000000000000000"
         )
-        if (
-            resp != RESP_SLVERR
-            or not irqs & IRQ_EIRQ
-            or ur != RESP_OKAY
-            or upper != 0
-            or fr != RESP_OKAY
-            or full != 0
-        ):
+        if not ok or ur != RESP_OKAY or upper != 0 or fr != RESP_OKAY or full != 0:
             self._fail("CHK-MBX-ERR-UPPER-CLEAR", txt)
         self._pass("CHK-MBX-ERR-UPPER-CLEAR", txt)
 

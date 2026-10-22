@@ -85,7 +85,7 @@ from typing import Any
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ReadOnly, RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_inbound_attr_seq import SepInboundAttrTally
 from seq_lib.sep_inbound_filter_rule_seq import (
@@ -132,7 +132,8 @@ class _WLaneFill:
     on the W-channel ``send`` edits the beat object just before it is queued:
     it sets WSTRB to ``strb`` when one is armed, and puts ``fill`` on every lane
     whose strobe is 0. ``beats`` holds (WSTRB, WDATA) of every W handshake seen
-    on the pins of ``prefix``.
+    on the pins of ``prefix``, sampled once per clock in the ReadOnly phase
+    after the rising edge, so each handshake gives exactly one entry.
     """
 
     def __init__(self, agent, prefix: str) -> None:
@@ -179,6 +180,7 @@ class _WLaneFill:
         data = getattr(dut, f"{self.prefix}_wdata")
         while True:
             await RisingEdge(dut.clk_i)
+            await ReadOnly()
             if valid.value != 1 or ready.value != 1:
                 continue
             self.beats.append((int(strb.value), int(data.value)))
