@@ -136,6 +136,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, and the DRBG stall point of `sep_km_fault_inject_rand_test`.
 |External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
+|CPU lockstep control |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `lockstep_ctrl_i` (`err_injection_en`, `disable_corruption_detection`) from the `tb_top` variable `lockstep_ctrl_i`, 0 from time 0, and observes `lockstep_status_o` in the variable of the same name. A leaf writes the variable through the `tb_top` handle. Owner: `sep_cpu_isa_pmp_csr_test`.
 |DMI enables |Added hook (top-port drive). `tb_top` drives the `sep` inputs `dmi_core_enable_i` and `dmi_uncore_enable_i` (wrapper ports `dmi_core_enable`, `dmi_uncore_enable`) from the TB inputs of the same name; a value other than 1 drives 0. `dmi_uncore_rdata` is held at 0. Owner: `sep_debug_master_target_matrix_test`.
 |Core JTAG TAP pins |Added hook (top-port drive). With `jtag_bench_own_i` = 1 the TB inputs `jtag_tck_i`, `jtag_tms_i`, `jtag_tdi_i` and `jtag_trst_n_i` drive the core TAP, and cocotb shifts it (`env/sep_jtag_dmi.py` on `OcahJtagMasterDriver`). Any other value keeps the pins on the `tb_top` registers that the `+cpu_boot` reset-vector TDR task drives. TRST of those registers starts high and falls at 1 ps, so the TAP and its reset-vector TDR take their reset values on a four-state simulator, and stays low outside that task. Owners: `sep_cpu_reset_entry_test`, `sep_debug_master_target_matrix_test`.
 |JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
@@ -303,6 +304,13 @@ Observation probe groups:
   latched secure test mode. Users: `sep_km_crossbar_efuse_window_rand_test`
   (with `efuse_shadow_probe_o`) and `sep_km_otp_interface_rand_test` (with
   `sep_fuse_sense_done_o`).
+* Key Manager error outputs (`km_unrecoverable_err_o`, `km_recoverable_err_o`):
+  the `sep_wrapper` outputs of the Key Manager unrecoverable and recoverable
+  faults (`hw/sys/sep/doc/port_table.adoc`), read only. PIC vector bits 30 and
+  31 carry the same faults. User: `sep_km_cpu_protect_rand_test` (the
+  unrecoverable output against vector bit 30, CHK-TRAP) and the sampler point
+  `sep_km_fault_report_cg.cp_fr_err_out`. No check reads the recoverable
+  output.
 * Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS, KM-OUTFIFO,
   KM-LAT of the Key Manager area of `docs/SEP_VPLAN.adoc`), read-only continuous reads of
   `u_key_manager_s3c_scan` and of the engine wrappers of `u_sep_crypto`:
@@ -387,11 +395,18 @@ Observation probe groups:
   `STATUS`, counters, prefetch word and DATA-read state, the wipe input and
   pulse, the KM OTP input, the ROM request, the SRAM macro request and
   response, the KM eFuse master, the KM CPU shared-key interrupt line, and the
-  four KM reset nets. The sampler reads the eFuse controller `efuse_req_err`
-  through the port `req_err_i`, and the sensed `LOCKS` and `LOCKS_SPARE` words
-  of `efuse_shadow_probe_o` through the port `efuse_shadow_i`. The eFuse and
-  lifecycle taps above define both ports; the KM taps reuse them and define no
-  port of their own. Owners: the Key Manager groups of `docs/SEP_FCOV.adoc`.
+  four KM reset nets, the byte count of the DRBG sampler prefetch path
+  (`prefetch_bytes_collected`) and the sampler sink TDATA, the PicoRV32 PCPI
+  request and result of the CRC co-processor (`pcpi_valid`, `pcpi_insn`,
+  `pcpi_rs1`, `pcpi_rs2`, `pcpi_ready`, `pcpi_rd` of `u_cpu`), and the two
+  key shares of the AES sideload key (`aes_keymgr_key.key` of
+  `u_aes_wrapper_s3c_scan`). The sampler reads the eFuse controller
+  `efuse_req_err` through the port `req_err_i`, the sensed `LOCKS` and
+  `LOCKS_SPARE` words of `efuse_shadow_probe_o` through the port
+  `efuse_shadow_i`, and the unmasked sensed shadow through the port
+  `stored_shadow_i`. The eFuse and lifecycle taps above define these three
+  ports; the KM taps reuse them. The sampler reads the Key Manager error
+  output `km_unrecoverable_err_o` through the port `km_unrec_port_i`. Owners: the Key Manager groups of `docs/SEP_FCOV.adoc`.
 * SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`).
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
   of the KM SRAM macro array that carry the KM ROM images' result words.
@@ -444,6 +459,26 @@ Observation probe groups:
   of lane i, the synchronized noise-source bit that the noise observe FIFO
   samples. It shows that the ESRC noise-source stuck-at inject reached the
   lane. Users: the ESRC observe-FIFO entry of the crypto and entropy area.
+* EDN command port probe (`edn_csrng_cmd_valid_o`, `edn_csrng_cmd_ready_o`,
+  `edn_csrng_cmd_bus_o`): the command request that EDN drives into the
+  hardware application port of CSRNG (`edn_csrng_req` and the ready of
+  `edn_csrng_rsp` in the DRBG). A command word transfers on a rising edge of
+  `clk_i` with valid and ready high; bits 2:0 are the acmd. Users: the EDN
+  auto-mode entry of the crypto and entropy area and the FCOV sampler
+  (`u_sep_fcov`, `sep_edn_mode_cg` `cp_auto_hw_cmd`).
+* DRBG stream-adapter push probe (`drbg_adapter_push_o`): bit i is the EDN
+  endpoint acknowledge that writes one word into the endpoint FIFO of
+  internal stream i of `drbg_edn_axis_adapter` (`edn_axis_endpoint_rsp[i].edn_ack`
+  in the DRBG). With `drbg_int_tvalid_o` and `drbg_int_tready_o` (the FIFO
+  output) it gives the FIFO occupancy. Users: the external stream hold entry
+  of the crypto and entropy area and the FCOV sampler
+  (`sep_entropy_delivery_cg` `cp_adapter_fifo_depth`).
+* ESRC lane 0 sample-clock probe (`esrc_sample_clk_lane0_o`): the sample clock
+  of lane 0 after the source mux and the ripple divider
+  (`u_generator_complex.u_sampler_clocks.sample_clk_o[0]`). Its period against
+  the period of `entropy_rosc_sample_clk_i` gives the division. Users: the ESRC
+  sample-clock divide entry of the crypto and entropy area and the FCOV
+  sampler (`sep_esrc_noise_gen_cg` `cp_div_ratio`).
 * PIC read-data probe (`pic_rd_data_probe_o`): `picm_rd_data` of the VeeR
   EL2 PIC with the registered read strobe and read address
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), four-state on VCS;
@@ -533,7 +568,10 @@ Observation probe groups:
    `sep_cpu_demux_unmapped_fetch_test`, `sep_tcm_dma_aperture_ecc_test`.
 ** PR-DBG-SB (`pr_dbg_sb_*`): the debug-module system-bus master after its
    local alias remap (`sep.sv` `dbg_axi_req` and `dbg_axi_resp`): the PR-LSU
-   fields plus W and R data. Owner: `sep_debug_master_target_matrix_test`.
+   fields plus W and R data, and the AR and AW AxPROT (`pr_dbg_sb_arprot_o`,
+   `pr_dbg_sb_awprot_o`, monitor only). Owner:
+   `sep_debug_master_target_matrix_test` (the AxPROT taps: the debug AxPROT
+   check of that leaf).
 ** PR-DBG-IN (`pr_dbg_in_*`) and PR-DBG-OUT (`pr_dbg_out_*`): the
    debug-module system-bus request at the input and at the output of the
    debug local alias remap (`sep_cpu.sv` `u_dbg_local_alias_remap`, nets
@@ -577,6 +615,14 @@ Observation probe groups:
   aperture, `SEP_LOCAL_BASE_ADDR`, the SMC aperture inputs,
   `smc_fuse_sense_done_i` and `feat_ctrl.sep_debug`. Owners: the owning tests
   of the fabric and remap groups.
+* Fabric feature FCOV sampler taps (`cov/sv/sep_fcov.sv`, fabric feature
+  points and `sep_master_axprot_cg`): the full request and response structs of
+  the debug-module system-bus master (`sep.sv` `dbg_axi_req`, `dbg_axi_resp`),
+  the PR-DBG-IN AR address, the PR-CPU and PR-DMA-RAW AxPROT with their valid
+  and ready, the PR-IFU AxLEN, the DMI read data of the debug module
+  (`u_el2_veer_wrapper.dmi_reg_rdata`, tied to 0 on the CPU stub build) and the
+  `tb_top` lockstep control and status. Read-only, no force. Owners: the owning
+  tests of those points.
 * The Phase 2 graded-window gate `u_sep_fcov.graded_owner`: a sampler variable
   that a leaf writes through the `u_sep_fcov` handle (`env/sep_fcov_gate.py`;
   codes in `tb/sep_fcov_owner_codes.svh`). It drives nothing and touches no
@@ -699,6 +745,18 @@ Exceptions (a closed set):
   default, and each force is released when its input drops. `INTR_STATUS`,
   `FIFO_STATUS` and the stream taps the checkers read stay frontdoor or
   read-only. Users: the ESRC FIFO entry of the crypto and entropy area.
+* *ESRC health-test counter-copy inject* — at the rise of `esrc_cntr_inject_i`
+  the bench takes the secondary copy of the `REPCNT_TOTAL_FAILS` counter
+  (`u_entropy_src_cntr_reg_repcnt`, a `prim_count` with a primary and a
+  secondary copy) with bit `esrc_cntr_inject_bit_i` (0 to 31) inverted and
+  holds that copy at that value while the input stays 1, so the two copies
+  disagree. That is the counter integrity error that latches
+  `MAIN_SM_STATUS.ERR`. Software cannot move one copy of a counter, so the
+  error has no frontdoor. Both inputs are 0 by default; the force is
+  released when the input drops, and the counter keeps the disagreeing copy
+  until the next entropy-source reset (the TRNG reset). `MAIN_SM_STATUS` and
+  the other registers the checkers read stay frontdoor. Users: the ESRC
+  persistent-alert entry of the crypto and entropy area.
 * *Crypto alert sender inject* — while `crypto_alert_inject_i` is 1, the alert
   pair (`alert_p`, `alert_n`) at the input of crypto alert receiver
   `crypto_alert_inject_idx_i` (0 to 10, the index order of
@@ -753,6 +811,25 @@ Exceptions (a closed set):
   assertion `KmDrbgTvalidStability_A`, which the withdrawal breaks by design;
   every other assertion stays on. User: `sep_km_drbg_sampler_rand_test`
   (CHK-SMP-STRM).
+* *Key Manager DRBG sampler partial beat and withdrawal* (HK-STRM-PAT) — while
+  `km_strm_pat_arm_i` is 1 and `km_strm_wd_arm_i` is 0, the bench drives the
+  sink TVALID, TDATA and TSTRB of the KM DRBG sampler (`u_drbg_sampler.tvalid`,
+  `.tdata`, `.tstrb`) once: in the first clock with the sink TREADY high, one
+  beat with TDATA `km_strm_pat_data_i` and TSTRB 0x1, which the sink takes as a
+  partial word; then TVALID low until a clock with the sink TREADY low; TVALID
+  high in that clock and low in the next, a withdrawal. A live stream does not
+  withdraw a beat, so the discard of a partial prefetch word on a stream error
+  has no frontdoor. Both inputs are 0 by default; the drive ends at its last
+  clock and when the arm drops, and both arms at 1 is a bench error with no
+  drive. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live values (the KM stream TVALID, TDATA and TSTRB of `sep_crypto`, ahead of the KM port) until each equals the value forced last and then releases the three nets; one falling edge after the release each net must equal its live value, else the bench reports an error. Readbacks:
+  `km_strm_pat_beat_o` (1 after the partial beat, until the arm drops),
+  `km_strm_pat_fired_o` (1 after the withdrawal, until the arm drops) and
+  `km_strm_sink_tvalid_o`. While the arm is 1
+  the bench turns off the sampler assertion `KmDrbgTvalidStability_A`, which
+  the withdrawal breaks by design; every other assertion stays on. This entry
+  is the error-inject use of the drive only; beat patterns of legal streams
+  are not part of it. User: `sep_km_drbg_sampler_rand_test` (the withdrawal
+  of a partial prefetch word with CFG.PREFETCH 1).
 * *Key Manager KMCSR IRQ_SET pulse* (HK-IRQSET) — at the first falling edge
   with `km_irqset_arm_i` at 1 and a non-zero `km_irqset_mask_i[11:0]`, the
   bench drives the single-pulse IRQ_SET field output of each set mask bit
@@ -804,11 +881,13 @@ Exceptions (a closed set):
   0 at bring-up.
 * *Crypto and entropy observation taps* — the external stream response
   monitor, the internal DRBG endpoint probe, the detune probe, the OTBN status
-  probe, the ESRC SHA-256 status tap and the ESRC noise-bit readback (see the
-  observation-probe list). No CSR shows a stream handshake, the internal DRBG
-  endpoint behind the source mux, the effective detune of a lane, or a state
-  code on every clock; a register read samples a status once. Read-only; no
-  force.
+  probe, the ESRC SHA-256 status tap, the ESRC noise-bit readback, the EDN
+  command port probe, the DRBG stream-adapter push probe and the ESRC lane 0
+  sample-clock probe (see the observation-probe list). No CSR shows a stream
+  handshake, the internal DRBG endpoint behind the source mux, the effective
+  detune of a lane, a state code on every clock, a hardware command that EDN
+  sends to CSRNG, a push into an endpoint FIFO, or a sample-clock period; a
+  register read samples a status once. Read-only; no force.
 * *LC differential / token-comparator fault inject* — fail-closed paths with no
   legal OTP frontdoor. `token_cmp_fault_copy_i` selects the comparator copy
   (0, 1 or 2) of a collapse or disagree pattern; 0, also when undriven, is
@@ -995,6 +1074,11 @@ Exceptions (a closed set):
   ABR tests. The Key Manager warm reset `km_gated_rst_n_probe_o` and the full
   14-bit vectors `crypto_isolate_req_probe_o` and `crypto_isolated_probe_o`
   are the same class; their owners are in the observation-probe list.
+  `aes_km_isolated_probe_o` and `otbn_km_isolated_probe_o` are the Key
+  Manager path bits of the AES and OTBN domains (`isolated_o.km_aes`,
+  `isolated_o.km_otbn` of `sep_crypto_axi_interconnect.sv`); a Key Manager
+  store into that destination is terminated while the bit is 1. Owner:
+  `sep_km_isolate_termination_test`.
 * *Adams Bridge ML-KEM seed Z probe* — `abr_mlkem_seed_z_probe_o` is a
   read-only XMR of the Z words the engine holds for ML-KEM KEYGEN. The
   encapsulation key depends on D only, software cannot read Z back, and after a
