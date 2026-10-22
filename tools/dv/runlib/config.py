@@ -494,6 +494,9 @@ TARGET_KEYS = {
 }
 
 TARGET_TOOL_KEYS = {"flags"}
+# Only a `[targets.<name>.tools.<tool>]` table redirects its target's tests: every target
+# inherits `[target_defaults]`, and an adopter overlay only adds.
+TARGET_RUN_TOOL_KEYS = TARGET_TOOL_KEYS | {"run_on"}
 RUN_MODE_KEYS = {"description", "timeout_sec", "args", "plusargs"}
 TESTLIST_KEYS = {"schema_version", "includes", "tests", "groups"}
 TEST_KEYS = {
@@ -1125,11 +1128,17 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
                             raise ConfigError(
                                 f"{flow.path}: [{section_name}.{name}.tools.{tool}] must be a table"
                             )
+                        tool_where = f"{flow.path} [{section_name}.{name}.tools.{tool}]"
                         validate_allowed_keys(
                             tool_cfg,
-                            TARGET_TOOL_KEYS,
-                            f"{flow.path} [{section_name}.{name}.tools.{tool}]",
+                            TARGET_RUN_TOOL_KEYS if section_name == "targets" else TARGET_TOOL_KEYS,
+                            tool_where,
                         )
+                        run_on = tool_cfg.get("run_on")
+                        if "run_on" in tool_cfg and (
+                            not isinstance(run_on, str) or not run_on.strip()
+                        ):
+                            raise ConfigError(f"{tool_where}.run_on must be a target name")
 
     for section_name in ("coverage", "c_build", "formal", "sim"):
         section = data.get(section_name, {})
@@ -1987,6 +1996,29 @@ def target_names(sim_cfg: dict[str, Any]) -> set[str]:
 
 def resolved_target_name(sim_cfg: dict[str, Any], test: TestEntry | None) -> str:
     return test.target if test and test.target else default_target_name(sim_cfg)
+
+
+def target_run_on(sim_cfg: dict[str, Any], target: str, tool: str) -> str:
+    """The target ``target``'s tests run on under ``tool``: the one its `run_on` names, else
+    itself. The named target must be defined and must not redirect again on ``tool``."""
+    targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
+    target_cfg = targets.get(target) if isinstance(targets, dict) else None
+    tools = target_cfg.get("tools") if isinstance(target_cfg, dict) else None
+    tool_cfg = tools.get(tool) if isinstance(tools, dict) else None
+    run_on = tool_cfg.get("run_on") if isinstance(tool_cfg, dict) else None
+    if run_on is None:
+        return target
+    where = f"targets.{target}.tools.{tool}.run_on"
+    if run_on == target:
+        raise ConfigError(f"{where} names its own target")
+    if run_on not in target_names(sim_cfg):
+        raise ConfigError(f"{where} names `{run_on}`, which is not defined in [targets]")
+    if target_run_on(sim_cfg, run_on, tool) != run_on:
+        raise ConfigError(
+            f"{where} names `{run_on}`, which redirects its own tests on {tool}; name the "
+            "target the tests run on"
+        )
+    return str(run_on)
 
 
 def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[str, Any]:

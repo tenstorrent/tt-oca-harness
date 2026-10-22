@@ -672,11 +672,39 @@ so the flip is visible as that group going red.
 === Targets and run modes
 
 Each selected test resolves a build target from its `target` field or the DUT
-default. Shared build stages run once per unique target, serially, before the
+default. A target's `[targets.<name>.tools.<tool>]` table can send its tests
+to another target on that tool with `run_on`, and `--target` overrides both
+for every selected test:
+
+[source,text]
+----
+--target
+  > [targets.<t>.tools.<tool>].run_on
+  > <t>: the test's target, else [defaults].target
+----
+
+The redirect keeps a tool-specific choice with the target that needs it. A
+CPU-stub target whose tests the full-CPU model also runs on VCS, for example,
+names that model for VCS and keeps its own model on the other tools:
+
+[source,toml]
+----
+[targets.lsu_stub_all_live.tools.vcs]
+run_on = "default"
+----
+
+A redirected test builds, runs and records the target it runs on. `run_on`
+must name another defined target that does not redirect on the same tool. Only
+a `[targets.<name>]` table carries it: every target inherits
+`[target_defaults]`, and an adopter overlay only adds. A run that selects no
+tests, such as a coverage-only replay, plans the default target after its
+redirect.
+
+Shared build stages run once per unique target, serially, before the
 test leaves execute. This permits one group to contain tests that consume
-different build images. A test `target` or a `--target` that names no
-`[targets.<name>]` entry is rejected when the run plans its builds, before
-any stage executes; `--validate-configs` does not check test targets
+different build images. A test `target`, a `run_on`, or a `--target` that
+names no `[targets.<name>]` entry is rejected when the run plans its builds,
+before any stage executes; `--validate-configs` does not check those names
 (<<runner-validation>>).
 
 Run-mode selection uses:
@@ -850,11 +878,11 @@ the file and the table or entry:
 . The flow's parser policy extensions are registered.
 
 Validation proves configuration consistency. It does not probe a tool or a
-license (`--doctor` does), it does not check test `target` references (the
-run does, when it plans its builds), and it does not check that a firmware
-name builds: the `c_compile` stage rejects a test whose `firmware` names no
-`[c_build.<mode>]` template, dry run included, and the build tool reports a
-target the template cannot build.
+license (`--doctor` does), it does not check test `target` or `run_on`
+references (the run does, when it plans its builds), and it does not check
+that a firmware name builds: the `c_compile` stage rejects a test whose
+`firmware` names no `[c_build.<mode>]` template, dry run included, and the
+build tool reports a target the template cannot build.
 
 [[runner-formal-templates]]
 === Formal launch templates
@@ -2785,8 +2813,10 @@ warning and records it in the run's wave metadata.
 |Override the test/default run mode.
 
 |`--target NAME`
-|Override every selected test's build target. Omitted, each test keeps its
-own target; a run on several targets merges its coverage target by target
+|Override every selected test's build target, a `run_on` redirect included.
+Omitted, each test keeps its own target or the one its target's `run_on`
+names for the tool (<<Targets and run modes>>); a run on several targets
+merges its coverage target by target
 (<<runner-coverage-inputs>>), and is refused before compile when two of its
 targets would build into one model directory.
 

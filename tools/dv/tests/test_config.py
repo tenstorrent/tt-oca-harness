@@ -33,6 +33,7 @@ from runlib.config import (  # noqa: E402
     load_test_catalog,
     selected_run_mode,
     target_flags,
+    validate_native_config_shape,
     validate_run_mode_request,
 )
 from runlib.duts import load_dut_registry  # noqa: E402
@@ -290,6 +291,7 @@ class AdopterOverlayLayer(unittest.TestCase):
             ('default_tool = "vcs"\n', "default_tool"),  # replacement keys are not appendable
             ('[build]\nfilelist = "x.f"\n', "filelist"),
             ('[target_defaults.default]\nbuild_dir = "x"\n', "build_dir"),
+            ('[targets.default.tools.vcs]\nrun_on = "stub"\n', "run_on"),
         ):
             with self.assertRaises(ConfigError) as ctx:
                 self.apply({"framework": "uvm"}, toml)
@@ -633,7 +635,7 @@ class RuntimeSelectionDefenses(unittest.TestCase):
     def test_target_plan_rejects_unknown_item(self):
         catalog = TestCatalog(None, {}, {})
         with self.assertRaises(ConfigError) as ctx:
-            target_plan(catalog, {}, ["missing_test"])
+            target_plan(catalog, {}, ["missing_test"], tool="vcs")
         self.assertIn("missing_test", str(ctx.exception))
 
     def test_target_override_wins_over_test_target(self):
@@ -652,7 +654,9 @@ class RuntimeSelectionDefenses(unittest.TestCase):
                 "lsu_stub_all_live": {"build_dir": "build/stub"},
             },
         }
-        by_item, ordered = target_plan(catalog, sim_cfg, ["t_stub", "t_cpu"], override="default")
+        by_item, ordered = target_plan(
+            catalog, sim_cfg, ["t_stub", "t_cpu"], override="default", tool="vcs"
+        )
         self.assertEqual(by_item, {"t_stub": "default", "t_cpu": "default"})
         self.assertEqual(ordered, ["default"])
 
@@ -663,10 +667,84 @@ class RuntimeSelectionDefenses(unittest.TestCase):
             {},
         )
         sim_cfg = {"targets": {"default": {"build_dir": "build/default"}}}
-        _by_item, ordered = target_plan(catalog, sim_cfg, ["t1"], override="nope")
+        _by_item, ordered = target_plan(catalog, sim_cfg, ["t1"], override="nope", tool="vcs")
         with self.assertRaises(ConfigError) as ctx:
             validate_target_plan(sim_cfg, ordered)
         self.assertIn("nope", str(ctx.exception))
+
+
+class TargetRunOn(unittest.TestCase):
+    """`[targets.<name>.tools.<tool>].run_on` runs a target's tests on another target."""
+
+    CATALOG = TestCatalog(
+        None,
+        {
+            "t_stub": TestEntry(name="t_stub", module="m", target="stub"),
+            "t_cpu": TestEntry(name="t_cpu", module="m"),
+        },
+        {},
+    )
+
+    def sim_cfg(self, **tools: dict) -> dict:
+        """`default`, `stub` and `other` targets, with ``tools`` tables keyed by target name."""
+        targets = {name: {"build_dir": f"build/{name}"} for name in ("default", "stub", "other")}
+        for name, table in tools.items():
+            targets[name]["tools"] = table
+        return {"defaults": {"target": "default"}, "targets": targets}
+
+    def plan(self, sim_cfg: dict, tool: str, **kwargs) -> tuple[dict, list]:
+        return target_plan(self.CATALOG, sim_cfg, ["t_stub", "t_cpu"], tool=tool, **kwargs)
+
+    def test_a_target_runs_its_tests_on_the_target_run_on_names_for_that_tool(self):
+        sim_cfg = self.sim_cfg(stub={"vcs": {"run_on": "default"}})
+        self.assertEqual(
+            self.plan(sim_cfg, "vcs"), ({"t_stub": "default", "t_cpu": "default"}, ["default"])
+        )
+        self.assertEqual(
+            self.plan(sim_cfg, "verilator"),
+            ({"t_stub": "stub", "t_cpu": "default"}, ["stub", "default"]),
+        )
+
+    def test_the_command_line_target_overrides_the_redirect(self):
+        sim_cfg = self.sim_cfg(stub={"vcs": {"run_on": "default"}})
+        self.assertEqual(
+            self.plan(sim_cfg, "vcs", override="stub"),
+            ({"t_stub": "stub", "t_cpu": "stub"}, ["stub"]),
+        )
+
+    def test_the_default_target_redirects_unpinned_tests_and_an_itemless_plan(self):
+        sim_cfg = self.sim_cfg(default={"verilator": {"run_on": "stub"}})
+        self.assertEqual(
+            self.plan(sim_cfg, "verilator"), ({"t_stub": "stub", "t_cpu": "stub"}, ["stub"])
+        )
+        self.assertEqual(target_plan(self.CATALOG, sim_cfg, [], tool="verilator"), ({}, ["stub"]))
+
+    def test_a_redirect_must_name_another_defined_target_that_does_not_redirect(self):
+        for tools, error in (
+            (
+                {"stub": {"vcs": {"run_on": "stub"}}},
+                r"targets\.stub\.tools\.vcs\.run_on names its own",
+            ),
+            (
+                {"stub": {"vcs": {"run_on": "nope"}}},
+                r"names `nope`, which is not defined in \[targets\]",
+            ),
+            (
+                {"stub": {"vcs": {"run_on": "other"}}, "other": {"vcs": {"run_on": "default"}}},
+                r"names `other`, which redirects its own tests on vcs",
+            ),
+        ):
+            with self.subTest(tools=tools), self.assertRaisesRegex(ConfigError, error):
+                self.plan(self.sim_cfg(**tools), "vcs")
+
+    def test_only_a_targets_table_carries_run_on(self):
+        target = {"build_dir": "build/stub", "tools": {"vcs": {"run_on": "default"}}}
+        validate_native_config_shape(make_dut({"targets": {"stub": target}}), Path("."))
+        with self.assertRaisesRegex(ConfigError, r"unsupported key\(s\): run_on"):
+            validate_native_config_shape(make_dut({"target_defaults": {"stub": target}}), Path("."))
+        blank = {"build_dir": "build/stub", "tools": {"vcs": {"run_on": " "}}}
+        with self.assertRaisesRegex(ConfigError, r"tools\.vcs\]\.run_on must be a target name"):
+            validate_native_config_shape(make_dut({"targets": {"stub": blank}}), Path("."))
 
 
 class RegressionReseedCount(unittest.TestCase):
