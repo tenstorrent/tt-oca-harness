@@ -908,6 +908,17 @@ Exceptions (a closed set):
   it tracks the request as a single-beat burst and checks every other rule; the
   DUT gets the WRAP burst. The SRAM response and the read-back the checkers read
   are not forced. Owner: `sep_sram_axi_shape_matrix_test`.
+* *Adams Bridge ML-DSA command drop* — `+sep_abr_cmd_drop` makes `tb_top`
+  hold `mldsa_cmd_reg` of `abr_ctrl_inst` in the Adams Bridge top at
+  `MLDSA_NONE` on every rising edge of `clk_i`. The decoded ML-DSA command is
+  lost; `MLDSA_CTRL.ZEROIZE` is a separate field, and the key, signature and
+  message writes land. The hardware clear of `MLDSA_CTRL.CTRL` follows the
+  decoded command, so it is also held at 0 while the force holds. The
+  accelerator never preloads `MLDSA_VERIFY_RES` with the inverted c~.
+  Software cannot make the command store drop a command that the accelerator
+  decoded, so the fault has no frontdoor. Without the plusarg the net is not
+  forced. `MLDSA_STATUS`, `MLDSA_VERIFY_RES` and the firmware console the
+  checkers read are not forced. Owner: `sep_abr_cmd_drop_test`.
 * *ROM bit-flip* — stored-bit error inject on the boot ROM macro array,
   outside `sep`, behind `sep_boot_rom_rsp_i`. A rising edge of `rom_flip_i`
   XORs `rom_flip_mask_i` into the stored 64-bit word `rom_flip_index_i`. The
