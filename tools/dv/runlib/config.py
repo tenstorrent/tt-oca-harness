@@ -13,6 +13,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import Any
 
+from .coverage import COVERAGE_SUMMARIES
 from .models import ConfigError, Dut, Flow, TestCatalog, TestEntry
 from .paths import configs_root, repo_path, repo_rel
 
@@ -533,6 +534,7 @@ COVERAGE_TOOL_KEYS = {
     "policy_file",
     "report_cmd",
     "sim_args",
+    "summary",
     "test_args",
 }
 COVERAGE_LIST_KEYS = {
@@ -922,6 +924,12 @@ def validate_formal_apps(formal: Any, where: str) -> None:
                 validate_formal_evidence_hook(tool_cfg["evidence"], f"{table_where}.evidence")
 
 
+def validate_coverage_summary(value: Any, where: str) -> str:
+    if value not in COVERAGE_SUMMARIES:
+        raise ConfigError(f"{where} must be one of: {', '.join(COVERAGE_SUMMARIES)}")
+    return str(value)
+
+
 def validate_coverage_tool_table(
     table: dict[str, Any],
     where: str,
@@ -950,6 +958,8 @@ def validate_coverage_tool_table(
             raise ConfigError(f"{where}.{key} must be a non-empty string")
     if "parser" in table and table.get("parser") not in COVERAGE_PARSERS:
         raise ConfigError(f"{where}.parser must be one of: {', '.join(sorted(COVERAGE_PARSERS))}")
+    if "summary" in table:
+        validate_coverage_summary(table["summary"], f"{where}.summary")
     if "fail_under" in table:
         try:
             threshold = float(table["fail_under"])

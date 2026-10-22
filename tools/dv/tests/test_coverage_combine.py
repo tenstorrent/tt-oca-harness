@@ -286,6 +286,11 @@ class MergePhaseWithPlan(unittest.TestCase):
         self.assertEqual(manifest["combine"]["frameworks"], ["cocotb", "uvm"])
         self.assertEqual(manifest["target"], "default")
         self.assertIsNone(manifest["build_fingerprint"])
+        self.assertEqual(manifest["union_warnings"], {})
+        self.assertNotIn("graded_summary", manifest)
+        self.assertEqual(self.merge({**tool_cov, "summary": "module_definition"}), 0)
+        manifest = json.loads((self.run_dir / "cov" / "coverage.json").read_text())
+        self.assertEqual(manifest["graded_summary"], "module_definition")
 
     def test_missing_combine_command_is_a_config_error(self):
         tool_cov = {
@@ -303,6 +308,7 @@ class CombineOptions(unittest.TestCase):
         base = ["--dut", DUT, "--cov-combine", "runs/a", "runs/b"]
         validate_combine_options(parse_args(base))
         validate_combine_options(parse_args([*base, "--fail-under", "90", "--dry-run"]))
+        validate_combine_options(parse_args([*base, "--cov-summary", "module_definition"]))
         for extra, flag in (
             (["--items", "t"], "--items"),
             (["--stage", "cov_merge"], "--stage"),
