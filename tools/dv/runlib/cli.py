@@ -3110,10 +3110,9 @@ def regression_seed_label(leaves: list[tuple[str, int]]) -> int | str:
 class TargetPlan:
     """The targets a run's selected tests run on.
 
-    ``groups`` holds, per selected test, the names its leaves run under: the test's own
-    name on the target it runs on without `--target`, and `<test>@<target>` on any other,
-    which ``instances`` maps to its target. ``skipped`` names each test no listed target
-    runs, with the target it would run on otherwise.
+    ``groups`` holds, per selected test, the names its leaves run under, `<test>@<target>`
+    for each target it runs on, which ``instances`` maps to its target. ``skipped`` names
+    each test no listed target runs, with the target it would run on otherwise.
     """
 
     groups: list[list[str]]
@@ -3141,6 +3140,7 @@ def target_plan(
     *,
     force: str | None = None,
     tool: str,
+    by_target: bool = True,
 ) -> TargetPlan:
     """Resolve the targets each selected test runs on.
 
@@ -3148,8 +3148,9 @@ def target_plan(
     (``--target``) runs a test that names a target on it, or on the one its `run_on`
     names for ``tool``, when that one is listed, and a test that names none on every
     listed target that is not `pinned_only`. With neither, each test runs on its own
-    target or the default, after that target's `run_on`. ``validate_target_plan``
-    rejects an unknown name.
+    target or the default, after that target's `run_on`. ``by_target`` names every leaf
+    `<test>@<target>`; without it each test runs on one target under its own name.
+    ``validate_target_plan`` rejects an unknown name.
     """
 
     def own_target(test: TestEntry | None) -> str:
@@ -3179,8 +3180,11 @@ def target_plan(
         if not chosen:
             skipped.setdefault(item, own)
             continue
-        names = {item if name == own else target_instance_name(item, name): name for name in chosen}
-        instances.update({name: target for name, target in names.items() if name != item})
+        if by_target:
+            names = {target_instance_name(item, name): name for name in chosen}
+            instances.update(names)
+        else:
+            names = {item: chosen[0]}
         groups.append(list(names))
         target_by_item.update(names)
     if not groups:
@@ -3408,7 +3412,13 @@ def run_flow(
         )
     validate_target_plan(sim_cfg, listed or ([force] if force else []))
     plan = target_plan(
-        catalog, sim_cfg, items if need_items else [], listed, force=force, tool=tool
+        catalog,
+        sim_cfg,
+        items if need_items else [],
+        listed,
+        force=force,
+        tool=tool,
+        by_target=flow.kind != "fv",
     )
     label = run_label(catalog, requested, items)
     catalog = with_target_instances(catalog, plan.instances)
