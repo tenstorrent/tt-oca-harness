@@ -75,6 +75,12 @@ waive_violation -add {SEP_INTEGRITY_SYNCRESET_CONST_DEASSERT_key_manager} \
     -app { cdc } -tag { INTEGRITY_SYNCRESET_CONST_DEASSERT } -user { nbetik } -timestamp { 16-09-2026 12:50:22 } \
     -filter [apply_prefix {(Tag == "INTEGRITY_SYNCRESET_CONST_DEASSERT") AND (InstanceName =~ "${PREFIX}u_sep_crypto/u_key_manager_s3c_scan/*")}]
 
+# u_wdt_rst_sync samples the watchdog reset as data, so it is constant while that reset is held deasserted.
+waive_violation -add {SEP_INTEGRITY_SYNCRESET_CONST_DEASSERT_wdt_rst_sync} \
+    -comment {u_wdt_rst_sync captures wdt_rst_ni on clk_i as data to form the watchdog timer reset; its output is constant when wdt_rst_ni is held deasserted.} \
+    -app { cdc } -tag { INTEGRITY_SYNCRESET_CONST_DEASSERT } -user { danielkim } -timestamp { 22-10-2026 17:30:00 } \
+    -filter [apply_prefix {(Tag == "INTEGRITY_SYNCRESET_CONST_DEASSERT") AND (InstanceName =~ "${PREFIX}u_sep_reset_ctrl/u_wdt_rst_sync/*")}]
+
 # =============================================================================
 # Warning-class dispositions
 # =============================================================================

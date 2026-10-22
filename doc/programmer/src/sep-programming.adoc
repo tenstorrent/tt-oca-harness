@@ -671,7 +671,11 @@ watchdog to its reset values: disabled, and unlocked even if firmware cleared
 `WDOG_REGWEN`. Triage firmware that needs watchdog protection must program and
 lock it again. Transactions in flight when the reset asserts are not drained,
 so an access that hung and caused the timeout can also block the triage
-image's accesses on the same path. The
+image's accesses on the same path. A SEP DMA, debug or SMN access to the SEP
+CPU's ICCM or DCCM that is in flight when the reset asserts, or issued while
+the CPU is held in reset, is never answered and leaves its requester hung until
+the cold reset. Either case can stop the triage image from completing, so
+record the most important state first. The
 ifdef::backend-html5[]
 xref:ocah-docs::reset.adoc#ocah-reset[Reset chapter]
 endif::backend-html5[]

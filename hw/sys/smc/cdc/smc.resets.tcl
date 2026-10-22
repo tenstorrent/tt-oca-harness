@@ -235,11 +235,6 @@ set_rdc_define_assertion_sequence \
     -from_reset {PRIMARY_RESET_N_SMC_CLK} \
     -to_reset {PRIMARY_RESET_N_REFCNT_SMC_CLK PRIMARY_RESET_N_REFCNT_REF_CLK}
 
-# Unstretched watchdog reset => the stretcher output and its SMCCLK sync.
-set_rdc_define_assertion_sequence \
-    -from_reset {WDT_RESET_UNSTRETCHED_N} \
-    -to_reset {WDT_RESET_N WDT_RESET_N_SMC_CLK}
-
 # PRIMARY_PERIPH_CLK => AVS APB/AVS/PRE_DIV clock reset syncs.
 # u_avsbus_controller.rst_ni = rst_primary_periph_clk_n (PRIMARY_RESET_N_PERIPH_CLK)
 # is the async input to all three chains. Any upstream reset that asserts

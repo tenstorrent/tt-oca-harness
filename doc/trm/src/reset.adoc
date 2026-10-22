@@ -46,8 +46,11 @@ The reset hierarchy within the SMU proceeds as follows:
   both watchdogs. Resetting the watchdog clears its bite, so the watchdog
   reset is a pulse, which the SMC reset unit extends by 32 reference clock
   cycles. Each CPU then restarts and can run a triage image that records why
-  the watchdog fired. It is not a recovery path: the platform must follow
-  every watchdog timeout with a cold reset (`rst_cold_ni`).
+  the watchdog fired. The watchdog reset does not reset the interconnect or
+  drain transactions on it, so a transaction lost or left hung across the
+  reset can stop the triage image from completing. Triage is therefore best
+  effort and not a recovery path: the platform must follow every watchdog
+  timeout with a cold reset (`rst_cold_ni`), which clears that state.
 
 . *Downstream subsystem sequencing.* The SMC sequences reset deassertion for
   up to 32 managed subsystems through `ss_reset_ctrl_o[31:0]` and isolation
