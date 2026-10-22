@@ -161,10 +161,7 @@ module smu_wrapper #(
   output logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afvalid_o,
   input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afready_i,
 
-  // DED/WDT
-  output logic  smc_cluster_ded_o,
-  output logic  smc_wdt_first_timeout_o,
-  output logic  smc_wdt_second_timeout_o,
+  output smc_pkg::smc_ras_t  smc_ras_o,
 
   output smc_pkg::smc_axi_addr_t                                   smc_global_base_o,
   output logic [31:0]                                              smc_region_size_o,
@@ -446,9 +443,7 @@ module smu_wrapper #(
     .telemetry_atvalid_i,
     .telemetry_afvalid_o,
     .telemetry_afready_i,
-    .smc_cluster_ded_o,
-    .smc_wdt_first_timeout_o,
-    .smc_wdt_second_timeout_o,
+    .smc_ras_o,
     .smc_global_base_o,
     .smc_region_size_o,
     .sep_global_base_o,

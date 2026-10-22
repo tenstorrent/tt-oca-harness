@@ -422,7 +422,8 @@ module smu_wrapper_uvm_top
   logic [SmuCfg.NUM_INT_TO_SMC-1:0] smc_ext_interrupts_w;
   logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_process_w;
   logic [31:0] isolate_req_w;
-  logic sync_irq_w, cluster_ded_w, wdt_first_timeout_w, wdt_second_timeout_w;
+  logic sync_irq_w;
+  smc_pkg::smc_ras_t smc_ras_w;
   logic secure_tm_w;
   logic [smc_pkg::NumGpioWraps-1:0]   gpio_interrupt_w;
   logic [smc_config_pkg::NumUart-1:0] uart_interrupt_w;
@@ -437,9 +438,9 @@ module smu_wrapper_uvm_top
   assign tb_ss_config              = ss_config_w;
   assign tb_sync_irq               = sync_irq_w;
   assign tb_skip_mem_repair        = skip_mem_repair_w;
-  assign tb_smc_cluster_ded        = cluster_ded_w;
-  assign tb_smc_wdt_first_timeout  = wdt_first_timeout_w;
-  assign tb_smc_wdt_second_timeout = wdt_second_timeout_w;
+  assign tb_smc_cluster_ded        = smc_ras_w.cluster_ded;
+  assign tb_smc_wdt_first_timeout  = smc_ras_w.wdt_first_timeout;
+  assign tb_smc_wdt_second_timeout = smc_ras_w.wdt_second_timeout;
   assign tb_gpio_interrupt         = gpio_interrupt_w;
   assign tb_uart_interrupt         = uart_interrupt_w;
 
@@ -1507,9 +1508,7 @@ module smu_wrapper_uvm_top
     .telemetry_afvalid_o (tel_afvalid_w),
     .telemetry_afready_i (tel_afready_w),
 
-    .smc_cluster_ded_o (cluster_ded_w),
-    .smc_wdt_first_timeout_o (wdt_first_timeout_w),
-    .smc_wdt_second_timeout_o (wdt_second_timeout_w),
+    .smc_ras_o (smc_ras_w),
 
     .smc_global_base_o (smc_global_base_o),
     .smc_region_size_o (smc_region_size_o),

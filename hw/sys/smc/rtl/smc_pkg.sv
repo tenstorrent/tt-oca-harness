@@ -494,6 +494,25 @@ package smc_pkg;
     jtag_smc_reset_ctrl_val_t val;
   } jtag_smc_reset_ctrl_t;
 
+  /////////
+  // RAS //
+  /////////
+
+  // SMC error and hang levels for chip-level RAS aggregation, all on the SMC clock.
+  // The AXI hang bits are the detector timeouts, independent of the hang interrupt enables.
+  typedef struct packed {
+    logic cluster_ded;         // CPU cluster uncorrectable ECC.
+    logic wdt_first_timeout;   // OR of the per-core watchdog first timeouts.
+    logic wdt_second_timeout;  // Watchdog second timeout; also the watchdog reset.
+    logic axi_hang_sys;        // Hang: system AXI stalled past its threshold.
+    logic axi_hang_sep;        // Hang: SEP AXI stalled past its threshold.
+    logic axi_hang_data;       // Hang: data-accelerator AXI stalled past its threshold.
+    logic lc_sigint_err;       // eFuse lifecycle differential-encoding error.
+    logic uart_intg_err;       // OR of the UART FIFO and holding-register
+                               // integrity errors; a parity error clears once the entry is read.
+    logic i2c_intg_err;        // OR of the I2C FIFO pointer and parity errors.
+  } smc_ras_t;
+
   function automatic logic is_pow2(input logic [31:0] value);
     return (value != '0) && ((value & (value - 32'd1)) == '0);
   endfunction

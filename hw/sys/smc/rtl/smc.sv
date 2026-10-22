@@ -271,15 +271,8 @@ module smc #(
                                                                                                                       // each telemetry
                                                                                                                       // source.
 
-  output logic smc_cluster_ded_o,       // Uncorrectable (double-error-detected) memory
-                                        // error from the SMC CPU cluster, registered on the
-                                        // SMC clock.
-
-  output logic smc_wdt_first_timeout_o,  // First-stage watchdog timeout: OR of the
-                                         // per-core CPU watchdog timeouts.
-  output logic smc_wdt_second_timeout_o,  // Second-stage watchdog timeout from the CPU
-                                          // control block, registered on the SMC clock;
-                                          // asserts the watchdog reset in the reset unit.
+  output smc_pkg::smc_ras_t smc_ras_o,  // Error, watchdog, AXI hang and lifecycle
+                                        // integrity levels for chip-level RAS aggregation.
 
   output smc_pkg::smc_axi_addr_t        smc_global_base_o,  // SMC global base address
                                                             // from the smc_base
@@ -324,9 +317,6 @@ module smc #(
                                                             // lifecycle state, used by the
                                                             // eFuse JTAG access filter and
                                                             // reported in chip_config.
-  output logic                                 lc_sigint_err_o,  // Integrity error from the
-                                                                 // differential decode of
-                                                                 // lc_state_i, active-high.
 
   input  logic [smc_config_pkg::CpuClusterCount - 1:0] smc_ndmreset_request_i,    // Asynchronous NDM reset
                                                                                   // request from each
@@ -546,9 +536,27 @@ module smc #(
   // ROM Flip Endianness bit from shadow registers
   logic rom_flip_endianness;
 
-  // Integrity error from efuse controller
   logic efuse_lc_sigint_err;
-  assign lc_sigint_err_o = efuse_lc_sigint_err;
+  logic smc_cluster_ded;
+  logic smc_wdt_first_timeout;
+  logic smc_wdt_second_timeout;
+  logic axi_hang_sys_timeout;
+  logic axi_hang_sep_timeout;
+  logic axi_hang_data_timeout;
+  logic uart_intg_err;
+  logic i2c_intg_err;
+
+  assign smc_ras_o = '{
+    cluster_ded:        smc_cluster_ded,
+    wdt_first_timeout:  smc_wdt_first_timeout,
+    wdt_second_timeout: smc_wdt_second_timeout,
+    axi_hang_sys:       axi_hang_sys_timeout,
+    axi_hang_sep:       axi_hang_sep_timeout,
+    axi_hang_data:      axi_hang_data_timeout,
+    lc_sigint_err:      efuse_lc_sigint_err,
+    uart_intg_err:      uart_intg_err,
+    i2c_intg_err:       i2c_intg_err
+  };
 
   // Reset signals
   logic rst_warm_smc_clk_n;
@@ -603,7 +611,7 @@ module smc #(
     .axil_peripherals_resp_i                (axil_peripherals_resp),
 
     // WDT
-    .wdt_first_timeout_o                    (smc_wdt_first_timeout_o),
+    .wdt_first_timeout_o                    (smc_wdt_first_timeout),
 
     // External interrupts
     .ext_interrupts_i                       (smc_ext_interrupts_i),
@@ -622,8 +630,8 @@ module smc #(
     .cpu_axi_mmio_port_resp_o               (cpu_axi_mmio_port_resp),
     .cpu_wb_reg_pc_i                        (cpu_wb_reg_pc),
     .cpu_wdt_timeout_cluster_i              (cpu_wdt_timeout_cluster),
-    .cpu_cluster_ded_i                      (smc_cluster_ded_o),
-    .wdt_second_timeout_i                   (smc_wdt_second_timeout_o),
+    .cpu_cluster_ded_i                      (smc_cluster_ded),
+    .wdt_second_timeout_i                   (smc_wdt_second_timeout),
 
     // SMC address window from smc_base_config (in u_smc_base)
     .smc_global_base_o                      (smc_global_base_o),
@@ -668,7 +676,10 @@ module smc #(
 
     // AXI hang detector fault output.
     // The OR'd fault is routed into smc_peripherals peripheral_interrupts[30] so PLIC can see it.
-    .axi_hang_irq_o                         (axi_hang_irq)
+    .axi_hang_irq_o                         (axi_hang_irq),
+    .axi_hang_sys_timeout_o                 (axi_hang_sys_timeout),
+    .axi_hang_sep_timeout_o                 (axi_hang_sep_timeout),
+    .axi_hang_data_timeout_o                (axi_hang_data_timeout)
   );
 
 
@@ -711,10 +722,10 @@ module smc #(
     .axi_mmio_port_resp_i               (cpu_axi_mmio_port_resp),
     .wb_reg_pc_o                        (cpu_wb_reg_pc),
     .wdt_timeout_cluster_o              (cpu_wdt_timeout_cluster),
-    .wdt_second_timeout_o               (smc_wdt_second_timeout_o),
+    .wdt_second_timeout_o               (smc_wdt_second_timeout),
 
     // DED output (goes to smc top-level port and smc_base debug bus)
-    .cluster_ded_o                      (smc_cluster_ded_o),
+    .cluster_ded_o                      (smc_cluster_ded),
 
     // CPU Memory Signals
     .rom_intf_req_o                     (smc_rom_intf_req_o),
@@ -870,8 +881,8 @@ module smc #(
     .rst_cold_stable_ref_clk_no            (rst_cold_stable_ref_clk_no),
     .powergood_stable_o                    (powergood_stable_o),
     .rst_ext_wdt_ni                        (sep_wdt_reset_n_i),
-    .smc_wdt_first_timeout_i               (smc_wdt_first_timeout_o),
-    .smc_wdt_second_timeout_i              (smc_wdt_second_timeout_o),
+    .smc_wdt_first_timeout_i               (smc_wdt_first_timeout),
+    .smc_wdt_second_timeout_i              (smc_wdt_second_timeout),
     .cfg_flr_pf_active_i                   (cfg_flr_pf_active_i),
     .isolate_req_o                         (isolate_req_o),
     .skip_mem_repair_o                     (skip_mem_repair_o),
@@ -895,6 +906,8 @@ module smc #(
 
     .gpio_interrupt_o                      (gpio_interrupt_o),
     .uart_interrupt_o                      (uart_interrupt_o),
+    .uart_intg_err_o                       (uart_intg_err),
+    .i2c_intg_err_o                        (i2c_intg_err),
 
     // I3C DAT/DCT memory interfaces
     .i3c_dat_mem_src_i                     (i3c_dat_mem_src_i),

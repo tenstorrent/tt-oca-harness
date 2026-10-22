@@ -88,10 +88,7 @@ module smc_wrapper (
   output logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_afvalid_o,
   input  logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_afready_i,
 
-  output logic smc_cluster_ded_o,
-
-  output logic smc_wdt_first_timeout_o,
-  output logic smc_wdt_second_timeout_o,
+  output smc_pkg::smc_ras_t smc_ras_o,
 
   output smc_pkg::smc_axi_addr_t smc_global_base_o,
   output logic [31:0]            smc_region_size_o,
@@ -109,7 +106,6 @@ module smc_wrapper (
   input  logic sep_security_disable_i,
 
   input  logic [2*smc_pkg::LcStateWidth-1:0]   lc_state_i,
-  output logic                                 lc_sigint_err_o,
 
   input  logic [smc_config_pkg::CpuClusterCount-1:0] smc_ndmreset_request_i,
   output logic [smc_config_pkg::CpuClusterCount-1:0] smc_ndmreset_process_o,
@@ -297,9 +293,7 @@ module smc_wrapper (
     .telemetry_atvalid_i,
     .telemetry_afvalid_o,
     .telemetry_afready_i,
-    .smc_cluster_ded_o,
-    .smc_wdt_first_timeout_o,
-    .smc_wdt_second_timeout_o,
+    .smc_ras_o,
     .smc_global_base_o,
     .smc_region_size_o,
     .smc_ext_interrupts_i,
@@ -311,7 +305,6 @@ module smc_wrapper (
     .ext_boot_seq_done_i,
     .sep_security_disable_i,
     .lc_state_i,
-    .lc_sigint_err_o,
     .smc_ndmreset_request_i,
     .smc_ndmreset_process_o,
     .smc_ext_mailbox_interrupts_o,

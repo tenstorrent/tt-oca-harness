@@ -97,10 +97,6 @@ set_input_delay  [expr $clock_periods(TELEMETRYCLK_PERIOD)*$io_budget(default)] 
 set_output_delay [expr $clock_periods(TELEMETRYCLK_PERIOD)*$io_budget(default)] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_afvalid_o*}] -add_delay
 set_input_delay  [expr $clock_periods(TELEMETRYCLK_PERIOD)*$io_budget(default)] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_afready_i*}] -add_delay
 
-# WDT
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports smc_wdt_first_timeout_o] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports smc_wdt_second_timeout_o] -add_delay
-
 # interrupts
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {smc_ext_interrupts_i*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports {smc_ext_mailbox_interrupts_o*}] -add_delay
@@ -123,7 +119,7 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports {lc_state_o*}] -add_delay
 
 # RAS
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports smc_cluster_ded_o] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports {smc_ras_o*}] -add_delay
 
 # NDM
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {smc_ndmreset_request_i*}] -add_delay

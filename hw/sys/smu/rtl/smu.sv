@@ -208,12 +208,8 @@ module smu #(
   output logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afvalid_o,  // ATB flush valid toward telemetry sources.
   input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afready_i,  // ATB flush ready from telemetry sources.
 
-  output logic  smc_cluster_ded_o,              // SMC CPU cluster uncorrectable
-                                                // (double-error-detected) memory error.
-  output logic  smc_wdt_first_timeout_o,        // SMC first-stage watchdog timeout, the OR of the
-                                                // per-core CPU watchdog timeouts.
-  output logic  smc_wdt_second_timeout_o,       // SMC second-stage watchdog timeout, which also
-                                                // asserts the SMC watchdog reset.
+  output smc_pkg::smc_ras_t  smc_ras_o,        // SMC error, watchdog, AXI hang and lifecycle
+                                                // integrity levels for chip-level RAS aggregation.
 
   output smc_pkg::smc_axi_addr_t                                   smc_global_base_o,  // SMC aperture base from the SMC
                                                                                        // GLOBAL_BASE register for external
@@ -249,7 +245,8 @@ module smu #(
   output logic                                  lc_sigint_err_o,  // Lifecycle signal-integrity
                                                                   // error, the OR of the SEP and
                                                                   // SMC eFuse differential-encoding
-                                                                  // errors.
+                                                                  // errors; the SMC half is also
+                                                                  // smc_ras_o.lc_sigint_err.
 
   input  logic [smc_config_pkg::CpuClusterCount - 1:0]  smc_ndmreset_request_i,  // Per-cluster NDM reset requests.
   output logic [smc_config_pkg::CpuClusterCount - 1:0]  smc_ndmreset_process_o,  // Per-cluster NDM reset in-progress.
@@ -503,9 +500,6 @@ module smu #(
   logic                        sep_spi_mem_rebar_opad;
   logic                        sep_spi_mem_rebar_iepad;
   logic                        sep_spi_mem_rebar_ipad;
-
-  // SMC efuse lifecycle integrity error (always driven by SMC)
-  logic  efuse_lc_sigint_err;
 
   // =========================================================================
   // SMU AXI Crossbar signals
@@ -771,9 +765,7 @@ module smu #(
     .telemetry_atvalid_i                 (telemetry_atvalid_i),
     .telemetry_afvalid_o                 (telemetry_afvalid_o),
     .telemetry_afready_i                 (telemetry_afready_i),
-    .smc_cluster_ded_o                   (smc_cluster_ded_o),
-    .smc_wdt_first_timeout_o             (smc_wdt_first_timeout_o),
-    .smc_wdt_second_timeout_o            (smc_wdt_second_timeout_o),
+    .smc_ras_o                           (smc_ras_o),
     .smc_global_base_o                   (smc_global_base_o),
     .smc_region_size_o                   (smc_region_size_o),
     .smc_ext_interrupts_i                (smc_ext_interrupts_padded),
@@ -789,7 +781,6 @@ module smu #(
     .ext_boot_seq_done_qual_o            (ext_boot_seq_done_qual),
     .sep_security_disable_i              (sep_security_disable),
     .lc_state_i                          (sep_lc_state),
-    .lc_sigint_err_o                     (efuse_lc_sigint_err),
     .smc_ndmreset_request_i              (smc_ndmreset_request_i),
     .smc_ndmreset_process_o              (smc_ndmreset_process_o),
     .smc_ext_mailbox_interrupts_o        (smc_ext_mailbox_interrupts_o),
@@ -1139,7 +1130,7 @@ module smu #(
     assign lc_state_o      = sep_lc_state;
 
     // differential encoding error reported by either the SEP or SMC efuse interface
-    assign lc_sigint_err_o = sep_lc_sigint_err | efuse_lc_sigint_err;
+    assign lc_sigint_err_o = sep_lc_sigint_err | smc_ras_o.lc_sigint_err;
 
     // ==================================================================
     // SEP SPI signal assignments (connect struct to intermediate signals)
@@ -1213,7 +1204,7 @@ module smu #(
     assign lc_state_o        = sep_lc_state;
 
     // differential encoding error reported by either the SEP or SMC efuse interface
-    assign lc_sigint_err_o   = sep_lc_sigint_err | efuse_lc_sigint_err;
+    assign lc_sigint_err_o   = sep_lc_sigint_err | smc_ras_o.lc_sigint_err;
 
     // ==================================================================
     // SEP mailbox and WDT tie-offs
