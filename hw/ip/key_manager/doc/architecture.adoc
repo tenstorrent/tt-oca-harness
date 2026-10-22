@@ -88,9 +88,10 @@ endif::backend-html5[]
 The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
 the read-data behaviour of its memories, and the address of the eFuse controller.
 The main KM SRAM is 32 KB (8192 × 32-bit words), implemented with the scrambler macro
-`scrambler_8192x32`. The SRAM macro must return read data (`rvalid`) at least one cycle
-after the cycle in which it grants the read, because the SRAM interface descrambles and
-parity-checks each response with the address and byte strobes it captures at the grant.
+`scrambler_8192x32`. The SRAM and ROM macros accept every request and must return read
+data on the clock after the request, because the SRAM interface descrambles and
+parity-checks each response with the address and byte strobes it captures with the
+request.
 
 ifdef::backend-html5[]
 The parameters of `key_manager` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/key_manager/key_manager.adoc[key_manager].

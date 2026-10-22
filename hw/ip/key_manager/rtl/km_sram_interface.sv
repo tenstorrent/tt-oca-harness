@@ -21,8 +21,8 @@
 // - Requests are held off for two cycles after reset release.
 // - PicoRV32 look-ahead prefetch support for pipelined SRAM.
 //
-// The SRAM must return rvalid at least one cycle after accepting a read: the response is
-// descrambled and parity-checked with the address and strobes captured at the accept.
+// The SRAM returns read data on the clock after the read: the response is descrambled and
+// parity-checked with the address and strobes captured with the request.
 
 `include "ocah_registers.svh"
 
@@ -124,51 +124,32 @@ module km_sram_interface
   logic [31:0] descrambled_read_data;
 
   ////////////////////////////////////////////////////////////////////////////
-  // Look-Ahead Request Tracking
+  // Read Response Tracking
   ////////////////////////////////////////////////////////////////////////////
 
-  // Track outstanding read requests to ensure we complete them
-  // This is critical for pipelined memory when the CPU may de-assert mem_valid
-  // before all responses arrive (e.g., second word of unaligned instruction)
-  // Support pipelined sequential reads: can accept new request in same cycle as response
-  logic read_pending_q;
+  // The SRAM answers every read on the next clock, so the response of a read is valid, and
+  // descrambled and checked with that read's address and strobe, exactly one clock later.
+  logic       rdata_valid_q;
   logic [1:0] req_squelch_q;
-  logic       req_enable;
 
-  // Determine if we should issue a new read request
-  // - On look-ahead read (prefetch for next cycle)
-  // - On regular read (when mem_valid is asserted)
-  // Don't issue new request if one is already pending
-  // EXCEPT: allow new request in same cycle as response (pipelined operation)
-  logic issue_la_read;
-  assign issue_la_read = mem_la_read_i && (!read_pending_q || sram_mem_rsp_i.rvalid);
-  assign req_enable = req_squelch_q[1];
-
-  // Track SRAM read handshakes/responses in shared pending bookkeeping.
-  logic read_accept;
-  logic read_complete;
+  logic read_req;
   logic [SRAM_ADDR_WIDTH-1:0] req_addr_for_scrambler;
-  logic [SRAM_ADDR_WIDTH-1:0] read_pending_addr_q;
+  logic [SRAM_ADDR_WIDTH-1:0] rdata_addr_q;
   logic [3:0]                 req_rstrb_for_scrambler;
-  logic [3:0]                 read_pending_rstrb_q;
-  assign read_accept = sram_mem_req_o.req && !sram_mem_req_o.we && sram_mem_rsp_i.gnt;
-  assign read_complete = sram_mem_rsp_i.rvalid;
+  logic [3:0]                 rdata_rstrb_q;
+  assign read_req = sram_mem_req_o.req && !sram_mem_req_o.we;
   // Writes must always use the current data-access address. Look-ahead is only
   // for read prefetching and must not redirect a concurrent write.
   assign req_addr_for_scrambler = is_write_request ? word_addr :
-                                    (issue_la_read ? la_word_addr : word_addr);
-  assign req_rstrb_for_scrambler = issue_la_read ? mem_la_rstrb_i : mem_rstrb_i;
+                                    (mem_la_read_i ? la_word_addr : word_addr);
+  assign req_rstrb_for_scrambler = mem_la_read_i ? mem_la_rstrb_i : mem_rstrb_i;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      read_pending_q <= 1'b0;
+      rdata_valid_q <= 1'b0;
       req_squelch_q <= '0;
     end else begin
-      if (read_accept) begin
-        read_pending_q <= 1'b1;
-      end else if (read_complete) begin
-        read_pending_q <= 1'b0;
-      end
+      rdata_valid_q <= read_req;
 
       // Hold req low for two cycles after reset release to avoid propagating
       // PicoRV32 startup X values into memory request assertions.
@@ -176,8 +157,8 @@ module km_sram_interface
     end
   end
 
-  `OCAH_FFL(read_pending_addr_q, req_addr_for_scrambler, read_accept, '0, clk_i, rst_ni)
-  `OCAH_FFL(read_pending_rstrb_q, req_rstrb_for_scrambler, read_accept, '0, clk_i, rst_ni)
+  `OCAH_FFL(rdata_addr_q, req_addr_for_scrambler, read_req, '0, clk_i, rst_ni)
+  `OCAH_FFL(rdata_rstrb_q, req_rstrb_for_scrambler, read_req, '0, clk_i, rst_ni)
 
   ////////////////////////////////////////////////////////////////////////////
   // Scrambler Instantiation
@@ -207,7 +188,7 @@ module km_sram_interface
     .DATA_WIDTH(32),
     .BYTE_WISE(1)
   ) u_rsp_descrambler (
-    .addr_i                (read_pending_addr_q),
+    .addr_i                (rdata_addr_q),
     .byte_mask_i           ('0),
     .scrambler_key_i       (scrambler_key_i),
     .scrambled_addr_o      (),
@@ -268,14 +249,13 @@ module km_sram_interface
 
   // Issue SRAM request:
   // - Write: complete directly with the CPU-provided byte enables.
-  // - Read: issue either a look-ahead prefetch or a regular read when no prior
-  //   read is pending, unless a read response is returning in the same cycle.
+  // - Read: issue either a look-ahead prefetch or a regular read.
   logic issue_request;
   assign issue_request = (is_write_request && !write_to_locked_region) ||
-                          issue_la_read ||
-                          (is_read_request && (!read_pending_q || sram_mem_rsp_i.rvalid));
+                          mem_la_read_i || is_read_request;
 
-  assign sram_mem_req_o.req     = req_enable && issue_request;
+  assign sram_mem_req_o.clk     = clk_i;
+  assign sram_mem_req_o.req     = req_squelch_q[1] && issue_request;
   assign sram_mem_req_o.we      = is_write_request && !write_to_locked_region;
   assign sram_mem_req_o.be      = mem_wstrb_i;
   // Address: use scrambled if enabled, select between look-ahead and regular access.
@@ -288,13 +268,10 @@ module km_sram_interface
   ////////////////////////////////////////////////////////////////////////////
 
   // Ready when:
-  // - Write: grant received, or write to locked region (drop write, still ack to CPU).
-  // - Read: data valid received AND mem_valid is asserted.
-  //
-  // For write to locked region: we drop the write but still assert mem_ready so the CPU
-  // does not hang (write has no effect, interface still completes).
-  assign mem_ready_o = ((is_write_request && (sram_mem_rsp_i.gnt || write_to_locked_region)) ||
-                          (mem_valid_i && sram_mem_rsp_i.rvalid));
+  // - Write: in the cycle it is presented; a write to a locked region is dropped but still
+  //   acknowledged so the CPU does not hang.
+  // - Read: read data valid AND mem_valid is asserted.
+  assign mem_ready_o = is_write_request || (mem_valid_i && rdata_valid_q);
 
   ////////////////////////////////////////////////////////////////////////////
   // Read Data Output
@@ -308,9 +285,9 @@ module km_sram_interface
   ////////////////////////////////////////////////////////////////////////////
 
   // Check parity on the byte lanes actually consumed by the CPU on this read response.
-  assign parity_error_o = read_complete ?
+  assign parity_error_o = rdata_valid_q ?
                             check_parity(cpu_rdata_final, sram_mem_rsp_i.rparity,
-                                         read_pending_rstrb_q) : 1'b0;
+                                         rdata_rstrb_q) : 1'b0;
 
   ////////////////////////////////////////////////////////////////////////////
   // Assertions
@@ -322,10 +299,6 @@ module km_sram_interface
 
   // mem_ready only asserts when mem_valid is also asserted
   `OCAH_OT_ASSERT(MemReadyOnlyWhenValid_A, mem_ready_o |-> mem_valid_i, clk_i, !rst_ni)
-
-  // SRAM reads only complete after a matching read request has been accepted.
-  `OCAH_OT_ASSERT(ReadCompletesAfterAccept_A, sram_mem_rsp_i.rvalid |-> read_pending_q, clk_i,
-                  !rst_ni)
 
 endmodule : km_sram_interface
 

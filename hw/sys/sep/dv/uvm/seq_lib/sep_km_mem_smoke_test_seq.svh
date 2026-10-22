@@ -27,7 +27,7 @@
 //     logical words; no written word is a plaintext; the macro array word at
 //     each row equals the written word (the control: the store landed); no
 //     probed SRAM word other than words 1..4 holds a plaintext;
-//   * KM-SRAM-RD-LAT: the read-latency monitor counts, logged and not graded.
+//   * KM-SRAM-RD: the SRAM read monitor counts, logged and not graded.
 // Expected values are the stimulus the image writes: the plaintexts, cell
 // offsets and marker are the literals of km_rom.S, mirrored in
 // cocotb/seq_lib/sep_km_mem_smoke_seq.py. No ciphertext or physical row is
@@ -154,7 +154,7 @@ class sep_km_mem_smoke_test_seq extends sep_base_test_seq;
     chk_km_mem();
     chk_scrambled_readback();
     chk_scrambled_store();
-    log_read_latency();
+    log_read_counts();
     finalize_evidence();
   endtask
 
@@ -305,17 +305,13 @@ class sep_km_mem_smoke_test_seq extends sep_base_test_seq;
                    ));
   endtask
 
-  function void log_read_latency();
+  function void log_read_counts();
     `uvm_info(get_type_name(), $sformatf(
               {
-                "KM-SRAM-RD-LAT (measured precondition, not graded): %0d KM SRAM reads accepted, ",
-                "%0d returned rvalid one cycle after the accept, %0d cycles where rvalid and the ",
-                "one-cycle-earlier accept disagree; rvalid cycles that also accepted a read of a ",
-                "different address: %0d"
+                "KM-SRAM-RD (measured, not graded): %0d KM SRAM reads; reads in the clock ",
+                "after a read of a different address: %0d"
               },
               tb_vif.km_sram_rd_accept_count,
-              tb_vif.km_sram_rd_lat1_count,
-              tb_vif.km_sram_rd_lat_err_count,
               tb_vif.km_sram_rd_b2b_diff_count
               ), UVM_LOW)
     `uvm_info(get_type_name(), $sformatf(

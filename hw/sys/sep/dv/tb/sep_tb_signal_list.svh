@@ -255,14 +255,6 @@
 `SEP_TB_IN(logic, km_par_mem_i)
 `SEP_TB_IN(logic [1:0], km_par_lane_i)
 `SEP_TB_IN(logic [7:0], km_par_n_i)
-// Key Manager SRAM response latency (HK-LAT). Default 0. While
-// km_sram_lat_en_i is 1, a SRAM read response reaches the KM km_sram_lat_i
-// clocks after the accepted request, for a value of 2 or more sampled when the
-// macro answers; 0 and 1 keep the macro latency of 1. Top-port drive of the sep
-// input km_sram_mem_rsp_i, docs/SEP_TB_ARCH.adoc. See the force block in
-// tb_top.sv.
-`SEP_TB_IN(logic, km_sram_lat_en_i)
-`SEP_TB_IN(logic [3:0], km_sram_lat_i)
 // External TRNG stream driver (top-port drive of the sep input
 // ext_trng_axis_req_i[2:0], docs/SEP_TB_ARCH.adoc). Default 0. While bit i of
 // ext_trng_drive_en_i is 1, stream i carries tvalid ext_trng_tvalid_i[i], tdata
@@ -581,11 +573,9 @@
 // KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
 // for km_rom_otp_id.S, which writes its results to those words.
 `SEP_TB_OUT(logic [98*32-1:0], km_sram_probe_o)
-// KM SRAM read-response timing counters at the wrapper port; see the monitor
-// in tb_top. Observation-only.
+// KM SRAM read counters at the wrapper port; see the monitor in tb_top.
+// Observation-only.
 `SEP_TB_OUT(logic [31:0], km_sram_rd_accept_count_o)
-`SEP_TB_OUT(logic [31:0], km_sram_rd_lat1_count_o)
-`SEP_TB_OUT(logic [31:0], km_sram_rd_lat_err_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_rd_b2b_diff_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_scr_rd_count_o)
 // KM SRAM writes accepted while the KM scrambler is enabled, at the wrapper
@@ -664,11 +654,6 @@
 `SEP_TB_OUT(logic [8:0], km_outfifo_depth_o)
 // KM-INFIFO: head word of the inbound FIFO of the KM mailbox, {separator, data}.
 `SEP_TB_OUT(logic [32:0], km_infifo_head_o)
-// KM-LAT: the latency of the last completed KM SRAM read at the sep input
-// km_sram_mem_rsp_i, in clocks from the accepted request to rvalid, and the
-// count of completed reads since the bench reset.
-`SEP_TB_OUT(logic [7:0], km_sram_rd_lat_o)
-`SEP_TB_OUT(logic [31:0], km_sram_rd_done_count_o)
 // KM-WMAP: per SRAM write-lock region r (256 words) at [9*r +: 9], the count
 // of distinct logical words written with we at 1 on the sep output
 // km_sram_mem_req_o since the bench reset or the last clock with
@@ -699,13 +684,12 @@
 // withdrawal has been driven since the arm.
 `SEP_TB_OUT(logic, km_strm_pat_beat_o)
 `SEP_TB_OUT(logic, km_strm_pat_fired_o)
-// HK-IRQSET, HK-CPUIRQ, HK-KPV, HK-PAR and HK-LAT state: the IRQ_SET pulse has
-// been driven since the arm; the CPU IRQ line pulse has been driven since the
-// arm, and the PicoRV32 pending bits 2:1; the count of corrupted KPV reads
-// since the enable rose; the parity flip has been driven since the arm, the
-// read responses counted since the arm, and the byte lanes that the KM
-// interface parity-checks on the flipped response; the count of SRAM responses
-// that HK-LAT delayed since the bench reset.
+// HK-IRQSET, HK-CPUIRQ, HK-KPV and HK-PAR state: the IRQ_SET pulse has been
+// driven since the arm; the CPU IRQ line pulse has been driven since the arm,
+// and the PicoRV32 pending bits 2:1; the count of corrupted KPV reads since the
+// enable rose; the parity flip has been driven since the arm, the read
+// responses counted since the arm, and the byte lanes that the KM interface
+// parity-checks on the flipped response.
 `SEP_TB_OUT(logic, km_irqset_fired_o)
 `SEP_TB_OUT(logic, km_cpuirq_fired_o)
 `SEP_TB_OUT(logic [1:0], km_cpuirq_pending_o)
@@ -713,7 +697,6 @@
 `SEP_TB_OUT(logic, km_par_fired_o)
 `SEP_TB_OUT(logic [7:0], km_par_resp_count_o)
 `SEP_TB_OUT(logic [3:0], km_par_rstrb_o)
-`SEP_TB_OUT(logic [31:0], km_sram_lat_delayed_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)

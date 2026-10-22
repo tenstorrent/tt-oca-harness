@@ -70,8 +70,10 @@ package km_intf_pkg;
     logic [KM_MEM_STRB_WIDTH-1:0]   parity;        // Byte parity bits.
   } km_rom_mem_rsp_t;
 
-  // SRAM memory request (CPU -> SRAM hard macro).
+  // SRAM memory request (CPU -> SRAM hard macro). The macro accepts every request and
+  // returns read data on the next rising edge of clk.
   typedef struct packed {
+    logic                              clk;           // Clock for the SRAM macro.
     logic                              req;           // Request valid.
     logic                              we;            // Write enable.
     logic [KM_MEM_STRB_WIDTH-1:0]      be;            // Byte enables.
@@ -82,8 +84,6 @@ package km_intf_pkg;
 
   // SRAM memory response (SRAM hard macro -> CPU).
   typedef struct packed {
-    logic                           gnt;           // Grant/ready.
-    logic                           rvalid;        // Read data valid.
     logic [KM_MEM_DATA_WIDTH-1:0]   rdata;         // Read data.
     logic [KM_MEM_STRB_WIDTH-1:0]   rparity;       // Read parity bits.
   } km_sram_mem_rsp_t;

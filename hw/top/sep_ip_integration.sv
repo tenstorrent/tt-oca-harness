@@ -297,7 +297,6 @@ module sep_ip_integration
   end
   assign km_sram_wmask[35:32] = km_sram_mem_req_i.be;
 
-  assign km_sram_mem_rsp_o.gnt     = 1'b1;
   assign km_sram_mem_rsp_o.rdata   = km_sram_rdata[31:0];
   assign km_sram_mem_rsp_o.rparity = km_sram_rdata[35:32];
 
@@ -306,7 +305,7 @@ module sep_ip_integration
     .Width       (KmSramWidth),
     .MemInitFile ("")
   ) u_km_sram (
-    .clk_i    (clk_i),
+    .clk_i    (km_sram_mem_req_i.clk),
     .rst_ni   (rst_ni),
     .req_i    (km_sram_mem_req_i.req),
     .write_i  (km_sram_mem_req_i.we),
@@ -314,7 +313,7 @@ module sep_ip_integration
     .wdata_i  (km_sram_wdata),
     .wmask_i  (km_sram_wmask),
     .rdata_o  (km_sram_rdata),
-    .rvalid_o (km_sram_mem_rsp_o.rvalid),
+    .rvalid_o (),
     .rerror_o (),
     .alert_o  (),
     .cfg_i    ('0),

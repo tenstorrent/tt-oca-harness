@@ -19,10 +19,9 @@ Checkers:
                      km_sram_interface descrambles a response with the address
                      of the read it accepted; a descramble with the address of
                      the previous read returns a different word. This image
-                     issues no read in the same cycle as a response to a read
-                     of a different word (KM-SRAM-RD-LAT logs that count), so
-                     a descramble that takes the address at response time is
-                     not exercised here
+                     issues no read in the clock after a read of a different
+                     word (KM-SRAM-RD logs that count), so a descramble that
+                     takes the address at response time is not exercised here
   CHK-KM-SRAM-SCR-STORED
                      with the scrambler enabled, a store does not leave its
                      plaintext in the SRAM array. The scrambler moves the
@@ -37,13 +36,8 @@ Checkers:
                      result words 1..4 holds a plaintext. A scrambler that
                      passes the data through writes a plaintext and fails
 
-KM-SRAM-RD-LAT is a measurement, not a checker. km_sram_interface descrambles a
-read response with the address it captures on the accepting edge, so the KM
-SRAM must answer at least one cycle after the accept. The km_sram_interface
-assertion ReadCompletesAfterAccept_A checks that requirement in
-assertion-enabled (non-Verilator) builds. The accept, one-cycle-later and
-mismatch counts are logged as the measured precondition. The data round trip in
-CHK-KM-SRAM-SCR-RT is the verdict.
+KM-SRAM-RD is a measurement, not a checker: the read and back-to-back read
+counts are logged. The data round trip in CHK-KM-SRAM-SCR-RT is the verdict.
 """
 
 from __future__ import annotations
@@ -120,7 +114,7 @@ class sep_km_mem_smoke_test(sep_base_test):
 
         self._chk_scrambled_readback()
         self._chk_scrambled_store()
-        self._log_read_latency()
+        self._log_read_counts()
 
     def _chk_scrambled_readback(self) -> None:
         dut = cocotb.top
@@ -218,19 +212,13 @@ class sep_km_mem_smoke_test(sep_base_test):
             count - 1,
         )
 
-    def _log_read_latency(self) -> None:
+    def _log_read_counts(self) -> None:
         dut = cocotb.top
         accepts = self.rd(dut.km_sram_rd_accept_count_o)
-        lat1 = self.rd(dut.km_sram_rd_lat1_count_o)
-        lat_err = self.rd(dut.km_sram_rd_lat_err_count_o)
         b2b_diff = self.rd(dut.km_sram_rd_b2b_diff_count_o)
         self.logger.info(
-            "KM-SRAM-RD-LAT (measured precondition, not graded): %d KM SRAM reads "
-            "accepted, %d returned rvalid one cycle after the accept, %d cycles where "
-            "rvalid and the one-cycle-earlier accept disagree; rvalid cycles that also "
-            "accepted a read of a different address: %d",
+            "KM-SRAM-RD (measured, not graded): %d KM SRAM reads; reads in the clock "
+            "after a read of a different address: %d",
             accepts,
-            lat1,
-            lat_err,
             b2b_diff,
         )

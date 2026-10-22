@@ -1845,8 +1845,8 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 
 |<<sep_km_fault_inject_rand_test,`sep_km_fault_inject_rand_test`>>
 |3
-|no_cpu, HOST and HOST-UNREC (two entries), HK-IRQSET, HK-CPUIRQ, HK-PAR, HK-KPV, HK-LAT
-|Host mailbox master, PIC interrupt probe (bits 30 and 31), KM SRAM write counter, KM entropy sink probe, KM isolation probes, AES and HMAC output witnesses, `HK-IRQSET`, `HK-CPUIRQ`, `HK-PAR` and `HK-KPV` injects, the `HK-LAT` latency drive, the `HOST-UNREC` `rom_main` build (preload), `KM-LAT`, `KM-VALID`, `KM-KPV`, `KM-CSR`, `KM-BUS` and `KM-OUTFIFO` observation taps
+|no_cpu, HOST and HOST-UNREC (two entries), HK-IRQSET, HK-CPUIRQ, HK-PAR, HK-KPV
+|Host mailbox master, PIC interrupt probe (bits 30 and 31), KM SRAM write counter, KM entropy sink probe, KM isolation probes, AES and HMAC output witnesses, `HK-IRQSET`, `HK-CPUIRQ`, `HK-PAR` and `HK-KPV` injects, the `HOST-UNREC` `rom_main` build (preload), `KM-VALID`, `KM-KPV`, `KM-CSR`, `KM-BUS` and `KM-OUTFIFO` observation taps
 |Proves that a fatal source makes the ROM shred, flush, report the first source in ISR order, shred SRAM and trap, that the CPU lines report -9 and -10 above every KMCSR source, that an organic DRBG stall reports -8, that a key-path error is fatal and stops the transfer, that a main-context fatal fault sends one report, that a corrupt key read from the KPV gives the key_slot_crc fault, and that a command result does not depend on the SRAM latency.
 
 |<<sep_km_kmcsr_reset_rand_test,`sep_km_kmcsr_reset_rand_test`>>
@@ -4595,11 +4595,6 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |The count of KM CPU instruction fetches that complete on the CPU memory bus (`mem_valid`, `mem_ready` and `mem_instr` high in one clock), whatever the target, since the bench reset. A ROM fetch that the lockout blocks moves this counter and not `km_rom_req_count_o`.
 |`sep_km_cpu_protect_rand_test` (CHK-LOCKOUT-FETCH)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
-|`KM-LAT`
-|Read-only tap
-|The SRAM read latency at the `sep` input `km_sram_mem_rsp_i`, from the accepted request to `rvalid`: `km_sram_rd_lat_o[7:0]` (the last completed read) and `km_sram_rd_done_count_o` (the completed reads since the bench reset).
-|`sep_km_fault_inject_rand_test` (CHK-LAT, CHK-LAT-VAR)
-|<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-WMAP` and `KM-WMAP-JUMP`
 |Read-only tap (bench clear `km_sram_wmap_clr_i`)
 |For each SRAM write-lock region of 256 words, the count of distinct logical word addresses written with `we` at 1 on the `sep` output `km_sram_mem_req_o` since the bench reset or the last clear (`km_sram_wmap_region_o`), and the same counts with `km_sram_write_count_o` captured in the clock of the first completed KM CPU instruction fetch at 0x8000, with a capture flag (`km_sram_wmap_jump_o`, `km_sram_wmap_jump_wr_o`, `km_sram_wmap_jump_seen_o`).
@@ -4863,12 +4858,6 @@ use it" names the entries whose checks need the hook.
 |Error inject
 |While `km_par_arm_i` is 1, inverts parity bit `km_par_lane_i[1:0]` of the N-th read response (N = `km_par_n_i[7:0]` from 1; 0 leaves the hook idle) of the ROM (`km_par_mem_i` 0) or the SRAM (1) for one clock, once per arm. The data bits do not change. Readbacks `km_par_fired_o`, `km_par_resp_count_o` and `km_par_rstrb_o`.
 |`km_rom_mem_rsp_i`, `km_sram_mem_rsp_i`
-|`sep_km_fault_inject_rand_test`
-|<<sep-vplan-phase3-key-manager,Key Manager>>
-|`HK-LAT`
-|Top-port drive
-|While `km_sram_lat_en_i` is 1, a SRAM read response reaches the KM L = `km_sram_lat_i[3:0]` clocks after the accepted request, for L in [2, 15]; L of 0 or 1 keeps the macro latency of 1. Readback `km_sram_lat_delayed_count_o`.
-|`km_sram_mem_rsp_i`
 |`sep_km_fault_inject_rand_test`
 |===
 

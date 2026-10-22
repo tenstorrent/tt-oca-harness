@@ -3754,36 +3754,27 @@ module sep_uvm_top
             u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[i][31:0];
     end
 
-    // KM SRAM read-response timing at the wrapper port (km_sram_mem_req/rsp,
-    // after the KM scrambler). km_sram_interface descrambles a response with
-    // the address it loaded on the accepting edge, so a response must arrive
-    // exactly one cycle after its accepted read. Counts:
-    //   rd_accept   accepted reads (req && !we && gnt)
-    //   rd_lat1     rvalid one cycle after an accepted read
-    //   rd_lat_err  rvalid with no accept one cycle earlier, or an accept one
-    //               cycle earlier with no rvalid (same-cycle, late or lost)
-    //   rd_b2b_diff rvalid in the same cycle as a new accepted read of a
-    //               different physical address (pipelined back-to-back reads)
+    // KM SRAM reads at the wrapper port (km_sram_mem_req, after the KM
+    // scrambler). The macro answers a read on the next clock. Counts:
+    //   rd_accept   reads (req && !we)
+    //   rd_b2b_diff a read in the clock after a read of a different physical
+    //               address (pipelined back-to-back reads)
     //   scr_rd      accepted reads while the KMCSR SRAM scrambler is enabled
     // Observation-only: continuous reads of the wrapper nets and of the KM
     // scrambler enable; drives nothing; outside the tb s_axi / m_axi
     // ready/valid cones. Reset to 0 by rst_n_int, so every leaf sees 0 or a
     // count, never X.
-    logic km_sram_rd_acc, km_sram_rd_acc_q, km_sram_rvalid;
+    logic km_sram_rd_acc, km_sram_rd_acc_q;
     logic [km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH-1:0] km_sram_rd_addr_q;
-    logic [31:0] km_sram_rd_acc_cnt_q, km_sram_rd_lat1_cnt_q, km_sram_rd_lat_err_cnt_q;
+    logic [31:0] km_sram_rd_acc_cnt_q;
     logic [31:0] km_sram_rd_b2b_diff_cnt_q, km_sram_scr_rd_cnt_q;
     assign km_sram_rd_acc = (u_dut.km_sram_mem_req.req === 1'b1) &&
-                            (u_dut.km_sram_mem_req.we === 1'b0) &&
-                            (u_dut.km_sram_mem_rsp.gnt === 1'b1);
-    assign km_sram_rvalid = (u_dut.km_sram_mem_rsp.rvalid === 1'b1);
+                            (u_dut.km_sram_mem_req.we === 1'b0);
     always_ff @(posedge clk_i or negedge rst_n_int) begin
         if (!rst_n_int) begin
             km_sram_rd_acc_q          <= 1'b0;
             km_sram_rd_addr_q         <= '0;
             km_sram_rd_acc_cnt_q      <= '0;
-            km_sram_rd_lat1_cnt_q     <= '0;
-            km_sram_rd_lat_err_cnt_q  <= '0;
             km_sram_rd_b2b_diff_cnt_q <= '0;
             km_sram_scr_rd_cnt_q      <= '0;
         end else begin
@@ -3794,18 +3785,12 @@ module sep_uvm_top
                 if (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.scrambler_enable === 1'b1)
                     km_sram_scr_rd_cnt_q <= km_sram_scr_rd_cnt_q + 32'd1;
             end
-            if (km_sram_rvalid && km_sram_rd_acc_q)
-                km_sram_rd_lat1_cnt_q <= km_sram_rd_lat1_cnt_q + 32'd1;
-            if (km_sram_rvalid != km_sram_rd_acc_q)
-                km_sram_rd_lat_err_cnt_q <= km_sram_rd_lat_err_cnt_q + 32'd1;
-            if (km_sram_rvalid && km_sram_rd_acc &&
+            if (km_sram_rd_acc_q && km_sram_rd_acc &&
                 (u_dut.km_sram_mem_req.addr != km_sram_rd_addr_q))
                 km_sram_rd_b2b_diff_cnt_q <= km_sram_rd_b2b_diff_cnt_q + 32'd1;
         end
     end
     assign km_sram_rd_accept_count_o   = km_sram_rd_acc_cnt_q;
-    assign km_sram_rd_lat1_count_o     = km_sram_rd_lat1_cnt_q;
-    assign km_sram_rd_lat_err_count_o  = km_sram_rd_lat_err_cnt_q;
     assign km_sram_rd_b2b_diff_count_o = km_sram_rd_b2b_diff_cnt_q;
     assign km_sram_scr_rd_count_o      = km_sram_scr_rd_cnt_q;
 
@@ -3825,7 +3810,6 @@ module sep_uvm_top
     logic [31:0] km_sram_scr_wr_data_q [KmSramScrWrSlots];
     assign km_sram_scr_wr = (u_dut.km_sram_mem_req.req === 1'b1) &&
                             (u_dut.km_sram_mem_req.we === 1'b1) &&
-                            (u_dut.km_sram_mem_rsp.gnt === 1'b1) &&
                             (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.scrambler_enable === 1'b1);
     always_ff @(posedge clk_i or negedge rst_n_int) begin
         if (!rst_n_int) begin
@@ -3998,43 +3982,6 @@ module sep_uvm_top
     // KM-INFIFO: the head word of the inbound FIFO of the KM mailbox
     // ({separator, data}; 0 while the FIFO is empty), every clock.
     assign km_infifo_head_o = 33'(`KM_TAP.u_mailbox.inbound_rdata);
-    // KM-LAT: KM SRAM read latency at the sep input km_sram_mem_rsp_i, after
-    // HK-LAT: the clocks from the accepted read request to the rvalid of its
-    // response (1 while HK-LAT is idle). km_sram_rd_lat_o holds the latency of
-    // the last completed read; km_sram_rd_done_count_o counts the completed
-    // reads since the bench reset.
-    logic km_lat_acc, km_lat_rvalid, km_lat_pend_q;
-    logic [7:0] km_lat_cnt_q, km_lat_last_q;
-    logic [31:0] km_lat_done_q;
-    assign km_lat_acc = (u_dut.km_sram_mem_req.req === 1'b1) &&
-                        (u_dut.km_sram_mem_req.we === 1'b0) &&
-                        (`SEP_CORE.km_sram_mem_rsp_i.gnt === 1'b1);
-    assign km_lat_rvalid = (`SEP_CORE.km_sram_mem_rsp_i.rvalid === 1'b1);
-    always_ff @(posedge clk_i or negedge rst_n_int) begin
-        if (!rst_n_int) begin
-            km_lat_pend_q <= 1'b0;
-            km_lat_cnt_q  <= '0;
-            km_lat_last_q <= '0;
-            km_lat_done_q <= '0;
-        end else begin
-            if (km_lat_pend_q) begin
-                if (km_lat_rvalid) begin
-                    km_lat_pend_q <= 1'b0;
-                    km_lat_last_q <= km_lat_cnt_q;
-                    km_lat_done_q <= km_lat_done_q + 32'd1;
-                end else if (km_lat_cnt_q != 8'hFF) begin
-                    km_lat_cnt_q <= km_lat_cnt_q + 8'd1;
-                end
-            end
-            if (km_lat_acc) begin
-                km_lat_pend_q <= 1'b1;
-                km_lat_cnt_q  <= 8'd1;
-            end
-        end
-    end
-    assign km_sram_rd_lat_o        = km_lat_last_q;
-    assign km_sram_rd_done_count_o = km_lat_done_q;
-
     // KM-WMAP: per SRAM write-lock region (256 words each, region r holds
     // the logical word addresses 256*r to 256*r+255), the count of distinct
     // words written since the bench reset or the last clock with
@@ -4590,51 +4537,35 @@ module sep_uvm_top
 `undef KM_KPV
 
     // ------------------------------------------------------------------
-    // HK-PAR (error inject) and HK-LAT (top-port drive) on the KM ROM and
-    // SRAM macro responses at the sep inputs km_rom_mem_rsp_i and
-    // km_sram_mem_rsp_i (docs/SEP_TB_ARCH.adoc, inject exceptions and HDL Top
-    // ports). The live response comes from inside the integration wrapper,
-    // ahead of the forced inputs: the ROM and SRAM read data of
-    // sep_ip_integration. The ROM response and the SRAM rvalid are bench flops
-    // of the ROM request and the accepted SRAM read (each macro answers one
-    // clock after the request).
+    // HK-PAR (error inject) on the KM ROM and SRAM macro responses at the sep
+    // inputs km_rom_mem_rsp_i and km_sram_mem_rsp_i (docs/SEP_TB_ARCH.adoc,
+    // inject exceptions and HDL Top ports). The live response comes from
+    // inside the integration wrapper, ahead of the forced inputs: the ROM and
+    // SRAM read data of sep_ip_integration. Each macro answers a read on the
+    // next clock, so a response is valid in the clock after a ROM request or
+    // an SRAM read.
     // A force is set on every falling edge (Verilator snapshots a force RHS).
     // A released input keeps its forced value until its driver next
     // evaluates, after the next rising edge has sampled it, so an input is
     // released only in a clock in which the live response equals the value
     // forced last; until then the bench forces the live response.
     //
-    // HK-LAT. While km_sram_lat_en_i is 1, a SRAM read response with a
-    // latency value L = km_sram_lat_i of 2 or more, sampled in the clock in
-    // which the macro answers, reaches the KM L clocks after the accepted
-    // request in place of 1: the bench holds rvalid low and presents the
-    // captured word with rvalid high in the L-th clock. L of 0 or 1, or an
-    // unknown value, leaves the response as the macro gives it; the macro
-    // cannot answer in the clock of the request. The KM issues no new SRAM
-    // read while one is outstanding, so the delayed responses keep their
-    // order. A KM cold reset or the bench reset drops a delayed response.
-    // km_sram_lat_delayed_count_o counts the delayed responses since the
-    // bench reset; KM-LAT shows the latency that the KM sees.
-    //
     // HK-PAR. While km_par_arm_i is 1, the bench counts the read responses
-    // (the clock after a ROM request, or rvalid at the sep input) of the
-    // memory km_par_mem_i (0 ROM, 1 SRAM) from the rise of the arm, and on
-    // the N-th response, N = km_par_n_i from 1, inverts parity bit
-    // km_par_lane_i of that response for one clock. The data bits are not
-    // touched. One flip per arm: a drop of the arm re-arms. km_par_fired_o
-    // shows the flip since the arm, km_par_resp_count_o the responses counted
-    // since the arm, and km_par_rstrb_o the byte lanes that the KM interface
-    // parity-checks on the flipped response (the CPU read strobe), so a test
-    // can show that the flipped lane was checked. N of 0 or an unknown
-    // control leaves the hook idle.
+    // (the clock after a ROM request or an SRAM read) of the memory
+    // km_par_mem_i (0 ROM, 1 SRAM) from the rise of the arm, and on the N-th
+    // response, N = km_par_n_i from 1, inverts parity bit km_par_lane_i of
+    // that response for one clock. The data bits are not touched. One flip
+    // per arm: a drop of the arm re-arms. km_par_fired_o shows the flip since
+    // the arm, km_par_resp_count_o the responses counted since the arm, and
+    // km_par_rstrb_o the byte lanes that the KM interface parity-checks on
+    // the flipped response (the CPU read strobe), so a test can show that the
+    // flipped lane was checked. N of 0 or an unknown control leaves the hook
+    // idle.
     // ------------------------------------------------------------------
     km_intf_pkg::km_sram_mem_rsp_t km_sram_rsp_drv, km_sram_rsp_forced;
     km_intf_pkg::km_rom_mem_rsp_t km_rom_rsp_drv, km_rom_rsp_forced;
-    logic km_sram_raw_rvalid_q, km_rom_rsp_valid_q, km_sram_drive, km_rom_drive, km_mem_rst_ok, km_par_ok;
+    logic km_sram_rsp_valid_q, km_rom_rsp_valid_q, km_sram_drive, km_rom_drive, km_mem_rst_ok, km_par_ok;
     logic km_sram_forced, km_rom_forced;
-    logic [3:0] km_lat_k, km_lat_l;
-    logic [35:0] km_lat_word;
-    logic [31:0] km_lat_delayed_cnt;
     logic [7:0] km_par_cnt;
     logic km_par_fired;
     logic [3:0] km_par_rstrb;
@@ -4647,20 +4578,16 @@ module sep_uvm_top
         km_rom_rsp_forced  = '0;
         km_sram_forced     = 1'b0;
         km_rom_forced      = 1'b0;
-        km_lat_k           = '0;
-        km_lat_l           = '0;
-        km_lat_word        = '0;
-        km_lat_delayed_cnt = '0;
         km_par_cnt         = '0;
         km_par_fired       = 1'b0;
         km_par_rstrb       = '0;
     end
     always_ff @(posedge clk_i or negedge rst_n_int) begin
         if (!rst_n_int) begin
-            km_sram_raw_rvalid_q <= 1'b0;
+            km_sram_rsp_valid_q  <= 1'b0;
             km_rom_rsp_valid_q   <= 1'b0;
         end else begin
-            km_sram_raw_rvalid_q <= (u_dut.km_sram_mem_req.req === 1'b1) &&
+            km_sram_rsp_valid_q  <= (u_dut.km_sram_mem_req.req === 1'b1) &&
                                     (u_dut.km_sram_mem_req.we === 1'b0);
             km_rom_rsp_valid_q   <= (u_dut.km_rom_mem_req.req === 1'b1);
         end
@@ -4669,33 +4596,10 @@ module sep_uvm_top
         km_mem_rst_ok = (rst_n_int === 1'b1) && (`KM_TAP.rst_cold_aasd_n === 1'b1);
         km_sram_drive = 1'b0;
         km_rom_drive = 1'b0;
-        km_sram_rsp_drv.gnt = 1'b1;
-        km_sram_rsp_drv.rvalid = km_sram_raw_rvalid_q;
         km_sram_rsp_drv.rdata = `SEP_IPI.km_sram_rdata[31:0];
         km_sram_rsp_drv.rparity = `SEP_IPI.km_sram_rdata[35:32];
         km_rom_rsp_drv.rdata = `SEP_IPI.km_rom_rdata[31:0];
         km_rom_rsp_drv.parity = `SEP_IPI.km_rom_rdata[35:32];
-        // HK-LAT.
-        if (rst_n_int !== 1'b1) km_lat_delayed_cnt = '0;
-        if (!km_mem_rst_ok) begin
-            km_lat_k = '0;
-        end else if (km_sram_raw_rvalid_q && (km_lat_k == '0) &&
-                     (km_sram_lat_en_i === 1'b1) && !$isunknown(km_sram_lat_i) &&
-                     (km_sram_lat_i > 4'd1)) begin
-            km_lat_k = 4'd1;
-            km_lat_l = km_sram_lat_i;
-            km_lat_word = `SEP_IPI.km_sram_rdata;
-            km_lat_delayed_cnt = km_lat_delayed_cnt + 32'd1;
-        end else if (km_lat_k != '0) begin
-            km_lat_k = km_lat_k + 4'd1;
-        end
-        if (km_lat_k != '0) begin
-            km_sram_drive = 1'b1;
-            km_sram_rsp_drv.rvalid = (km_lat_k == km_lat_l);
-            km_sram_rsp_drv.rdata = km_lat_word[31:0];
-            km_sram_rsp_drv.rparity = km_lat_word[35:32];
-            if (km_lat_k == km_lat_l) km_lat_k = '0;
-        end
         // HK-PAR.
         km_par_ok = km_mem_rst_ok && !$isunknown(km_par_mem_i) && !$isunknown(km_par_lane_i) &&
                     !$isunknown(km_par_n_i) && (km_par_n_i != '0);
@@ -4703,13 +4607,13 @@ module sep_uvm_top
             km_par_cnt   = '0;
             km_par_fired = 1'b0;
         end else if (km_par_ok && !km_par_fired) begin
-            if ((km_par_mem_i === 1'b1) && km_sram_rsp_drv.rvalid) begin
+            if ((km_par_mem_i === 1'b1) && km_sram_rsp_valid_q) begin
                 km_par_cnt = km_par_cnt + 8'd1;
                 if (km_par_cnt == km_par_n_i) begin
                     km_sram_rsp_drv.rparity = km_sram_rsp_drv.rparity ^ (4'd1 << km_par_lane_i);
                     km_sram_drive = 1'b1;
                     km_par_fired = 1'b1;
-                    km_par_rstrb = `KM_CPU.u_sram_if.read_pending_rstrb_q;
+                    km_par_rstrb = `KM_CPU.u_sram_if.rdata_rstrb_q;
                 end
             end else if ((km_par_mem_i === 1'b0) && km_rom_rsp_valid_q) begin
                 km_par_cnt = km_par_cnt + 8'd1;
@@ -4744,7 +4648,6 @@ module sep_uvm_top
         end
         km_rom_forced = km_rom_drive;
     end
-    assign km_sram_lat_delayed_count_o = km_lat_delayed_cnt;
     assign km_par_fired_o              = km_par_fired;
     assign km_par_resp_count_o         = km_par_cnt;
     assign km_par_rstrb_o              = km_par_rstrb;
@@ -5050,8 +4953,6 @@ module sep_uvm_top
     assign u_tb_if.km_sram_probe             = km_sram_probe_o;
     assign u_tb_if.km_sram_rd_accept_count   = km_sram_rd_accept_count_o;
     assign u_tb_if.km_sram_rd_b2b_diff_count = km_sram_rd_b2b_diff_count_o;
-    assign u_tb_if.km_sram_rd_lat1_count     = km_sram_rd_lat1_count_o;
-    assign u_tb_if.km_sram_rd_lat_err_count  = km_sram_rd_lat_err_count_o;
     assign u_tb_if.km_sram_req_count         = km_sram_req_count_o;
     assign u_tb_if.km_sram_scr_rd_count      = km_sram_scr_rd_count_o;
     assign u_tb_if.km_sram_scr_wr_addr       = km_sram_scr_wr_addr_o;
@@ -5282,8 +5183,6 @@ module sep_uvm_top
     assign km_par_mem_i             = 1'b0;
     assign km_par_lane_i            = '0;
     assign km_par_n_i               = '0;
-    assign km_sram_lat_en_i         = 1'b0;
-    assign km_sram_lat_i            = '0;
     assign km_sram_wmap_clr_i       = 1'b0;
     assign ext_trng_drive_en_i      = '0;
     assign ext_trng_tvalid_i        = '0;
@@ -6771,8 +6670,7 @@ module sep_uvm_top
         .km_wipe_i             ({`FC_KM.wipe_pulse, `FC_KM.wipe_state_i}),
         .km_otp_data_i         (`FC_KM.otp_data_i),
         .km_rom_req_i          (u_dut.km_rom_mem_req.req),
-        .km_sram_if_i          ({u_dut.km_sram_mem_rsp.rvalid, u_dut.km_sram_mem_rsp.gnt,
-                                 u_dut.km_sram_mem_req.we, u_dut.km_sram_mem_req.req}),
+        .km_sram_if_i          ({u_dut.km_sram_mem_req.we, u_dut.km_sram_mem_req.req}),
         .km_sram_addr_i        (u_dut.km_sram_mem_req.addr),
         .km_efuse_req_i        (`FC_KM.efuse_req_o),
         .km_efuse_resp_i       (`FC_KM.efuse_resp_i),
@@ -6791,13 +6689,11 @@ module sep_uvm_top
         .km_sk_irq_enable_i    (km_abr_sk_irq_enable_o),
         .km_sram_probe_i       (km_sram_probe_o),
         // Key Manager taps of the 7.22 to 7.28 points: KM-CSR, PIC bit 31,
-        // KM-OUTFIFO, KM-LAT, the KM-BUS key-path AW channel and the HK-KPV
+        // KM-OUTFIFO, the KM-BUS key-path AW channel and the HK-KPV
         // and HK-PAR stimulus readbacks.
         .km_recov_err_i        (km_csr_recov_err_o),
         .km_rec_pic_i          (sep_internal_interrupts_probe_o[31]),
         .km_outfifo_depth_i    (km_outfifo_depth_o),
-        .km_sram_lat_i         (km_sram_rd_lat_o),
-        .km_sram_lat_done_i    (km_sram_rd_done_count_o),
         .km_key_aw_valid_i     (km_key_aw_valid_o),
         .km_key_aw_ready_i     (km_key_aw_ready_o),
         .km_key_aw_addr_i      (km_key_aw_addr_o),

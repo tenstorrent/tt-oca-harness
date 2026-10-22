@@ -142,7 +142,6 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
 |Reset vector |Existing bench hook. `rst_vec_i` drives the wrapper input `rst_vec`, which `sep_wrapper` does not connect further. At a non-zero value under `+cpu_boot`, `tb_top` also shifts the value into the reset-vector TDR (IR 0x18) while `rst_ni` is low. User: `sep_cpu_reset_entry_test`.
 |JTAG ID |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `jtag_id` (`jtag_id_i[31:1]` of `sep`) from the TB input `jtag_id_i`; an undriven or unknown value drives 0. Readback: `jtag_id_probe_o`. Owner: `sep_efuse_field_layout_rand_test` (CHK-JTAGID).
-|Key Manager SRAM response latency (HK-LAT) |Added hook (top-port drive) on the `sep` input `km_sram_mem_rsp_i`. While `km_sram_lat_en_i` is 1, a KM SRAM read response with a latency L = `km_sram_lat_i[3:0]` of 2 or more, sampled when the macro answers, reaches the KM L clocks after the accepted request: `tb_top` holds `rvalid` low and presents the captured word with `rvalid` high in the L-th clock. L of 0 or 1, or an unknown value, leaves the macro latency of 1. The KM issues no new SRAM read while one is outstanding, so the responses keep their order; a KM cold reset or the bench reset drops a delayed response. The macro latency is fixed, so no frontdoor varies it. Default 0: no drive. Readback: `km_sram_lat_delayed_count_o`; KM-LAT shows the latency that the KM sees. User: `sep_km_fault_inject_rand_test` (CHK-LAT, CHK-LAT-VAR).
 |Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_sec_dis_override_test`, `sep_sec_dis_reset_reach_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`. `+sep_trng_errslv_assert_waive` turns off every assertion of the wrapper TRNG error slave `u_ext_trng_axil_err_slv`, among them the AXI-Lite valid-stable assertions `AwValidStable_A`, `WValidStable_A` and `ArValidStable_A`, from the clock where the TRNG AXI-Lite passthrough responder turns on (first clock with `ext_trng_axil_rsp_en_i` at 1 under `+sep_ext_trng_axil_responder`) to the end of the run; before that clock they stay on. The responder replaces the error slave on the port, so the error slave sees requests whose handshake it does not complete, and its assertions grade a handshake that does not occur. VCS only: Verilator compiles these assertions out. User: `sep_fabric_deadspace_decode_test`.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
@@ -311,8 +310,8 @@ Observation probe groups:
   unrecoverable output against vector bit 30, CHK-TRAP) and the sampler point
   `sep_km_fault_report_cg.cp_fr_err_out`. No check reads the recoverable
   output.
-* Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS, KM-OUTFIFO,
-  KM-LAT of the Key Manager area of `docs/SEP_VPLAN.adoc`), read-only continuous reads of
+* Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS, KM-OUTFIFO of
+  the Key Manager area of `docs/SEP_VPLAN.adoc`), read-only continuous reads of
   `u_key_manager_s3c_scan` and of the engine wrappers of `u_sep_crypto`:
 ** KM-VALID (`km_engine_key_valid_o`, `km_abr_sk_*_o`): `KEY_CTRL.key_valid`
    of the eight engine key banks in DEST_VALID bit order (0 HMAC, 1 KMAC, 2
@@ -359,12 +358,6 @@ Observation probe groups:
    the Key Manager mailbox, `{separator, data}`, on every clock; 0 while the
    FIFO is empty. Read-only. User: `sep_km_cpu_protect_rand_test`
    (CHK-TRAP-SCOPE).
-** KM-LAT (`km_sram_rd_lat_o[7:0]`, `km_sram_rd_done_count_o`): the KM SRAM
-   read latency at the `sep` input `km_sram_mem_rsp_i`, after HK-LAT, in
-   clocks from the accepted read request to `rvalid` (1 while HK-LAT is
-   idle): the latency of the last completed read and the count of completed
-   reads since the bench reset. User: `sep_km_fault_inject_rand_test`
-   (CHK-LAT, CHK-LAT-VAR).
 ** KM-WMAP (`km_sram_wmap_region_o[32*9-1:0]`, clear `km_sram_wmap_clr_i`):
    for each SRAM write-lock region of 256 words, the count of distinct
    logical word addresses (the KM CPU store address before the scrambler)

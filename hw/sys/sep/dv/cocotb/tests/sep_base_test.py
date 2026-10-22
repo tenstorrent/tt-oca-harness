@@ -498,8 +498,6 @@ class sep_base_test(uvm_test):
             "km_par_mem_i",
             "km_par_lane_i",
             "km_par_n_i",
-            "km_sram_lat_en_i",
-            "km_sram_lat_i",
             "km_sram_wmap_clr_i",
         ):
             self._set_if_exists(dut, pin, 0)
