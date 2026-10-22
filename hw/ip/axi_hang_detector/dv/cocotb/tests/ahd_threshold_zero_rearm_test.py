@@ -32,6 +32,7 @@ async def ahd_threshold_zero_rearm_test(dut) -> None:
     await set_irq_test(dut, 1)
     await ClockCycles(dut.clk, 2)
     assert dut.irq_o.value == 1, "irq_test should assert irq_o with threshold=0"
+    assert dut.timeout_o.value == 0, "irq_test should not raise timeout_o"
     await set_irq_test(dut, 0)
     await ClockCycles(dut.clk, 2)
     assert dut.irq_o.value == 0, "irq_o should drop when irq_test clears"

@@ -50,6 +50,10 @@ module axi_hang_detector #(
   output logic           bus_active_o,                      // Pass-through bus_active from the
                                                             // snoop.
 
+  output logic           timeout_o,                         // Hang level, independent of irq_en_i
+                                                            // and irq_test_i. High while enabled
+                                                            // and the stall counter sits at zero.
+
   output logic           irq_o                              // Hang interrupt as a direct
                                                             // combinational level. Asserts when
                                                             // enable_i and irq_en_i are set and
@@ -129,6 +133,7 @@ module axi_hang_detector #(
   // the counter sitting at 0 with nothing to count does not read as fired.
   logic timeout_active;
   assign timeout_active = enable_i && detect_armed_q && (stall_cnt_q == 20'd0);
+  assign timeout_o      = timeout_active;
 
 
   ///////////////////////////////
@@ -148,6 +153,7 @@ module axi_hang_detector #(
 
   `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
   `OCAH_OT_ASSERT_KNOWN(BusActiveKnownO_A, bus_active_o)
+  `OCAH_OT_ASSERT_KNOWN(TimeoutKnownO_A, timeout_o)
   `OCAH_ASSERT_STATIC(ParamOutstandingTx_A, OUTSTANDING_TX >= 1)
 
 endmodule
