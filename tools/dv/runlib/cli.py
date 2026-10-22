@@ -48,6 +48,7 @@ from .config import (
     targeted_sim_cfg,
     validate_native_config_shape,
     validate_run_mode_request,
+    validate_target_redirects,
 )
 from .coverage import (
     COVERAGE_SUMMARIES,
@@ -882,6 +883,7 @@ def validate_flow(
             raise ConfigError(f"{flow.path}: native stage `{stage_name}` missing string `kind`")
     sim_cfg = load_sim_cfg(flow, root)
     validate_native_config_shape(flow, root)
+    validate_target_redirects(sim_cfg, flow.tools)
     validate_coverage_policies(flow, root, sim_cfg)
     if executors is not None:
         scheduler = flow.raw.get("scheduler", {})

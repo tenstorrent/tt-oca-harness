@@ -35,6 +35,7 @@ from runlib.config import (  # noqa: E402
     target_flags,
     validate_native_config_shape,
     validate_run_mode_request,
+    validate_target_redirects,
 )
 from runlib.duts import load_dut_registry  # noqa: E402
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
@@ -722,6 +723,10 @@ class TargetRunOn(unittest.TestCase):
     def test_a_redirect_must_name_another_defined_target_that_does_not_redirect(self):
         for tools, error in (
             (
+                {"stub": {"vcs": {"run_on": " "}}},
+                r"targets\.stub\.tools\.vcs\.run_on must be a target name",
+            ),
+            (
                 {"stub": {"vcs": {"run_on": "stub"}}},
                 r"targets\.stub\.tools\.vcs\.run_on names its own",
             ),
@@ -733,18 +738,28 @@ class TargetRunOn(unittest.TestCase):
                 {"stub": {"vcs": {"run_on": "other"}}, "other": {"vcs": {"run_on": "default"}}},
                 r"names `other`, which redirects its own tests on vcs",
             ),
+            (
+                {"stub": {"vcs": {"run_on": "other"}}, "other": {"vcs": {"run_on": "stub"}}},
+                r"names `other`, which redirects its own tests on vcs",
+            ),
         ):
             with self.subTest(tools=tools), self.assertRaisesRegex(ConfigError, error):
                 self.plan(self.sim_cfg(**tools), "vcs")
 
-    def test_only_a_targets_table_carries_run_on(self):
+    def test_validation_resolves_every_redirect_on_each_of_the_tools(self):
+        sim_cfg = self.sim_cfg(other={"vcs": {"run_on": "nope"}})
+        validate_target_redirects(sim_cfg, ["verilator"])
+        with self.assertRaisesRegex(
+            ConfigError, r"targets\.other\.tools\.vcs\.run_on names `nope`"
+        ):
+            validate_target_redirects(sim_cfg, ["verilator", "vcs"])
+        validate_target_redirects(self.sim_cfg(stub={"vcs": {"run_on": "default"}}), ["vcs"])
+
+    def test_target_defaults_refuse_run_on(self):
         target = {"build_dir": "build/stub", "tools": {"vcs": {"run_on": "default"}}}
         validate_native_config_shape(make_dut({"targets": {"stub": target}}), Path("."))
         with self.assertRaisesRegex(ConfigError, r"unsupported key\(s\): run_on"):
             validate_native_config_shape(make_dut({"target_defaults": {"stub": target}}), Path("."))
-        blank = {"build_dir": "build/stub", "tools": {"vcs": {"run_on": " "}}}
-        with self.assertRaisesRegex(ConfigError, r"tools\.vcs\]\.run_on must be a target name"):
-            validate_native_config_shape(make_dut({"targets": {"stub": blank}}), Path("."))
 
 
 class RegressionReseedCount(unittest.TestCase):

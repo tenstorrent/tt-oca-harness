@@ -694,17 +694,20 @@ run_on = "default"
 ----
 
 A redirected test builds, runs and records the target it runs on. `run_on`
-must name another defined target that does not redirect on the same tool. Only
-a `[targets.<name>]` table carries it: every target inherits
-`[target_defaults]`, and an adopter overlay only adds. A run that selects no
+must name another defined target that does not redirect on the same tool. A
+`[targets.<name>]` table carries it, and so does a framework's
+`[frameworks.<fw>.targets.<name>]`, which redirects that framework's runs;
+`[target_defaults]` and an adopter overlay refuse it. A run that selects no
 tests, such as a coverage-only replay, plans the default target after its
 redirect.
 
 Shared build stages run once per unique target, serially, before the
 test leaves execute. This permits one group to contain tests that consume
-different build images. A test `target`, a `run_on`, or a `--target` that
-names no `[targets.<name>]` entry is rejected when the run plans its builds,
-before any stage executes; `--validate-configs` does not check those names
+different build images. A test `target` or a `--target` that names no
+`[targets.<name>]` entry is rejected when the run plans its builds, before any
+stage executes, and `--validate-configs` does not check test targets. Every
+`run_on` is checked on each of the DUT's tools wherever its configuration is
+validated, by `--validate-configs` and before every run
 (<<runner-validation>>).
 
 Run-mode selection uses:
@@ -864,6 +867,8 @@ the file and the table or entry:
   `kind` that stage accepts.
 . Every table of the sim config holds only the keys its schema allows, and
   every `{placeholder}` in a value is one the consuming stage defines.
+. On each tool in the flow's `tools` list, every target's `run_on` names
+  another defined target that does not redirect on that tool.
 . `[testlist].path` is relative, resolves inside the DUT DV root, and exists.
 . Each `[coverage.<tool>]` table is well formed and each coverage policy
   file loads.
@@ -878,11 +883,11 @@ the file and the table or entry:
 . The flow's parser policy extensions are registered.
 
 Validation proves configuration consistency. It does not probe a tool or a
-license (`--doctor` does), it does not check test `target` or `run_on`
-references (the run does, when it plans its builds), and it does not check
-that a firmware name builds: the `c_compile` stage rejects a test whose
-`firmware` names no `[c_build.<mode>]` template, dry run included, and the
-build tool reports a target the template cannot build.
+license (`--doctor` does), it does not check test `target` references (the
+run does, when it plans its builds), and it does not check that a firmware
+name builds: the `c_compile` stage rejects a test whose `firmware` names no
+`[c_build.<mode>]` template, dry run included, and the build tool reports a
+target the template cannot build.
 
 [[runner-formal-templates]]
 === Formal launch templates
