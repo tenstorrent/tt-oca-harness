@@ -30,6 +30,17 @@ Mailbox Wrapper row; ``hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.ad
   moves no FIFO. A 32-bit read returns the lane that address bit 2 selects,
   so the leg reads both halves in a drawn order: the low half is graded and
   the high half is logged.
+* ``hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox.rdl`` (ERROR): a read of any
+  size or alignment within the register clears every flag; the flags are
+  returned only in the lower 32 bits, so a 32-bit read of the upper half
+  (offset +4) returns 0 and still clears them. On one drawn port the leg
+  induces both an empty read and a full write in a drawn order, sees each
+  error by its own SLVERR response and by ``IRQS.eirq`` (read, then cleared
+  before the next error), reads the upper half (expects 0) and then reads the
+  whole register with a 64-bit read (expects 0, both flags cleared). A control
+  on the same port first induces the same two errors and reads the whole
+  register with a 64-bit read, which must return both flags, so the last read
+  of the leg can see any flag that the upper-half read did not clear.
 
 Expected values come from ``env/sep_mbox_pair_model.MboxSystem``, which holds
 the stimulus only. The outbound port is driven by the CPU-LSU master and the
@@ -43,8 +54,10 @@ rises, holds and drops while no other bit moves. Which port bit belongs to
 which mailbox is not graded: no text states the map.
 
 Checks: CHK-ERR-RD, CHK-ERR-WR, CHK-RO, CHK-HOLE, CHK-EXTENT,
-CHK-FLAGS-CLEAR, CHK-FLAGS-BOTH, CHK-ERR-LINE, CHK-WO-READ, CHK-TWIN.
-Controls: CTL-RESP (K6), CTRL-MISSING when a K4/K5 live value reads 0.
+CHK-FLAGS-CLEAR, CHK-FLAGS-BOTH, CHK-ERR-LINE, CHK-WO-READ, CHK-TWIN,
+CHK-MBX-ERR-UPPER-CLEAR.
+Controls: CTL-RESP (K6), CTL-UPPER-CLEAR, CTRL-MISSING when a K4/K5 live value
+reads 0.
 Log only: the high 32 bits of the empty-read and ``WRITE_DATA`` read data,
 and ``ERROR_FLAGS``/``IRQS`` after a hole access (``OBS-HOLE-FLAGS``).
 
@@ -89,6 +102,7 @@ from seq_lib.sep_mbox_port_ops import (
     RESP_OKAY,
     RESP_SLVERR,
     SIZE_4B,
+    SIZE_8B,
     port_base,
     ports,
     resp_name,
@@ -172,6 +186,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         "CHK-ERR-LINE",
         "CHK-WO-READ",
         "CHK-TWIN",
+        "CHK-MBX-ERR-UPPER-CLEAR",
     )
 
     # ------------------------------------------------------------------ log
@@ -263,11 +278,13 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                 return v
 
     def _k4_word(self, live: dict) -> int:
-        bad8 = {v for (p, k), v in live.items() if k in ("WIRQT", "RIRQT")}
-        bad3 = {v for (p, k), v in live.items() if k == "IRQEN"}
+        thr = {v for (_, k), v in live.items() if k in ("WIRQT", "RIRQT")}
+        en = {v for (_, k), v in live.items() if k == "IRQEN"}
         while True:
             w = self.rng.getrandbits(32)
-            if w and (w & 0xFF) not in bad8 and (w & 0x7) not in bad3:
+            tw = min(w & FIELD["WIRQT"], MAILBOX_DEPTH - 1)
+            tr = min(w & FIELD["RIRQT"], MAILBOX_DEPTH - 1)
+            if w and tw not in thr and tr not in thr and (w & FIELD["IRQEN"]) not in en:
                 return w
 
     def _ro_value(self, live: dict) -> int:
@@ -351,6 +368,18 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         self.line_mbox = r.randrange(0, 8)
         self.wo_first_half = {(m, p): r.randrange(0, 2) for m in range(8) for p in ("out", "in")}
         self.wo_words = {k: self._word64() for k in self.wo_first_half}
+        up = r.choice(["out", "in"])
+        self.upper = (
+            r.randrange(1, 8) if up == "out" else r.randrange(0, 8),
+            up,
+            r.choice([("rd", "wr"), ("wr", "rd")]),
+        )
+        self.logger.info(
+            "DRAW upper_clear mbox=%d port=%s order=%s",
+            self.upper[0],
+            self.upper[1],
+            ",".join(self.upper[2]),
+        )
         self.logger.info(
             "DRAW n_extra=%d interior=0x%x both_mbox=%d both_port=%s line_mbox=%d",
             n_extra,
@@ -846,6 +875,106 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             f"data_hi={','.join(f'0x{h:x}' for h in sorted(set(his)))} status_same={n} flags=0x0",
         )
 
+    async def _induce(self, m: int, p: str, kind: str) -> tuple[int, int, list[int]]:
+        """Empty read ("rd") or full write ("wr") on ``p``. Returns (response,
+        the flag the model expects, the words queued by a full write)."""
+        mb = self.mbx[m]
+        if kind == "rd":
+            assert mb.read_occ(p) == 0, "test error: the empty read needs an empty read FIFO"
+            resp, _ = await self.ops[m].pop(p)
+            mb.pop(p)
+            return resp, ERR_READ, []
+        assert mb.write_occ(p) == 0, "test error: the full write needs an empty write FIFO"
+        words = [self._word64() for _ in range(MAILBOX_DEPTH)]
+        for w in words:
+            await self._setup_push(m, p, w)
+        ninth = self._word64()
+        resp = await self.ops[m].push(p, ninth)
+        mb.push(p, ninth)
+        return resp, ERR_WRITE, words
+
+    async def _drain(self, chk: str, m: int, p: str, words: list[int]) -> None:
+        pops = [await self._pop_cmp(m, PEER[p]) for _ in words]
+        if not all(r == RESP_OKAY and g == w for (r, g, _), w in zip(pops, words)):
+            self._fail(chk, f"mbox={m} port={p} drain after the full write: {pops}")
+
+    async def _rd_flags(self, m: int, p: str, *, upper: bool) -> tuple[int, int]:
+        """ERROR_FLAGS read: 32 bits at +4 (``upper``) or 64 bits at +0. The
+        model applies the read (any read clears the flags)."""
+        o = self.ops[m]
+        if upper:
+            resp, data = await o.raw(
+                p, SepAxiOp.READ, o.addr(p, "ERROR_FLAGS", half=1), size=SIZE_4B
+            )
+        else:
+            resp, data = await o.raw(p, SepAxiOp.READ, o.addr(p, "ERROR_FLAGS"), size=SIZE_8B)
+        self.mbx[m].read_reg(p, "ERROR_FLAGS")
+        return resp, data
+
+    async def _induce_both(
+        self, chk: str, m: int, p: str, order: tuple[str, str]
+    ) -> tuple[list[int], str, bool]:
+        """Both errors on ``p`` in ``order``. Each error is seen on its own by
+        its SLVERR response and by ``IRQS.eirq``, which is then cleared and read
+        back as 0 before the next error. Returns (the words queued by the full
+        write, the log fields, whether every observation matched)."""
+        words: list[int] = []
+        fields = []
+        ok = True
+        for kind in order:
+            resp, _, w = await self._induce(m, p, kind)
+            words += w
+            irqs = await self._rd(m, p, "IRQS")
+            await self._wr(m, p, "IRQS", IRQ_EIRQ)
+            after = await self._rd(m, p, "IRQS")
+            fields.append(
+                f"{kind}_resp={resp_name(resp)} exp=SLVERR {kind}_irqs_eirq={(irqs >> 2) & 1} "
+                f"exp=1 {kind}_eirq_after_w1c={(after >> 2) & 1} exp=0"
+            )
+            ok = ok and resp == RESP_SLVERR and irqs & IRQ_EIRQ and not after & IRQ_EIRQ
+        both = self.mbx[m].error_flags(p)
+        if both != ERR_READ | ERR_WRITE:
+            raise AssertionError(
+                f"test error: {chk} model flags 0x{both:x} after both errors, "
+                f"exp 0x{ERR_READ | ERR_WRITE:x}"
+            )
+        return words, " ".join(fields), bool(ok)
+
+    async def _upper_clear(self) -> None:
+        m, p, order = self.upper
+        both = ERR_READ | ERR_WRITE
+        ords = ",".join(order)
+        # Control: the same two errors, then a 64-bit read returns both flags in
+        # the lower 32 bits and 0 above, and a second 64-bit read returns 0.
+        await self._flags_pre("CTL-UPPER-CLEAR", m, p)
+        cwords, cobs, cok = await self._induce_both("CTL-UPPER-CLEAR", m, p, order)
+        r1, full1 = await self._rd_flags(m, p, upper=False)
+        r2, full2 = await self._rd_flags(m, p, upper=False)
+        await self._drain("CTL-UPPER-CLEAR", m, p, cwords)
+        ctxt = (
+            f"mbox={m} port={p} order={ords} {cobs} "
+            f"full_read_resp={resp_name(r1)} full_read=0x{full1:016x} exp=0x{both:016x} "
+            f"second_full_read_resp={resp_name(r2)} second_full_read=0x{full2:016x} exp=0x0"
+        )
+        if not cok or r1 != RESP_OKAY or full1 != both or r2 != RESP_OKAY or full2 != 0:
+            self._fail("CTL-UPPER-CLEAR", ctxt)
+        self.logger.info("CTL-UPPER-CLEAR LOG seed=%d %s", self.seed, ctxt)
+        # Graded leg: the same two errors, each seen by its response and by
+        # IRQS.eirq, then the upper half, then the whole register.
+        await self._flags_pre("CHK-MBX-ERR-UPPER-CLEAR", m, p)
+        words, obs, ok = await self._induce_both("CHK-MBX-ERR-UPPER-CLEAR", m, p, order)
+        ur, upper = await self._rd_flags(m, p, upper=True)
+        fr, full = await self._rd_flags(m, p, upper=False)
+        await self._drain("CHK-MBX-ERR-UPPER-CLEAR", m, p, words)
+        txt = (
+            f"mbox={m} port={p} order={ords} {obs} flags_set=0x{both:x} "
+            f"upper_read_resp={resp_name(ur)} upper_read=0x{upper:08x} exp=0x00000000 "
+            f"full_read_resp={resp_name(fr)} full_read=0x{full:016x} exp=0x0000000000000000"
+        )
+        if not ok or ur != RESP_OKAY or upper != 0 or fr != RESP_OKAY or full != 0:
+            self._fail("CHK-MBX-ERR-UPPER-CLEAR", txt)
+        self._pass("CHK-MBX-ERR-UPPER-CLEAR", txt)
+
     # --------------------------------------------------------------- scenario
     async def run_scenario(self) -> None:
         self.seed = self.random_seed()
@@ -897,5 +1026,6 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         await self._flags_both()
         await self._err_line()
         await self._wo_read()
+        await self._upper_clear()
         close_graded_window(self.logger)
         self.result_pass(TEST, self.seed, self.n_checks)
