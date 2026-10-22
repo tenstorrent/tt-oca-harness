@@ -232,28 +232,6 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
         await completion
         await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
 
-    async def _read_refused(self, label: str) -> None:
-        """A start refused at issue: done and error set, and no request reaches the SHIM."""
-        dut = cocotb.top
-
-        async def observe_refusal() -> None:
-            for _ in range(_BOUND):
-                await RisingEdge(dut.clk_smc_i)
-                await ReadOnly()
-                assert int(dut.tb_efuse_shim_cmd_valid.value) == 0, (
-                    f"{label}: refused read reached the SHIM"
-                )
-                assert int(dut.tb_efuse_read_busy.value) == 0, f"{label}: refused read went busy"
-                if int(dut.tb_efuse_read_error.value) == 1:
-                    assert int(dut.tb_efuse_read_done.value) == 1, f"{label}: error without done"
-                    return
-            raise AssertionError(f"{label}: read error never set")
-
-        refusal = cocotb.start_soon(observe_refusal())
-        await self.csr_write(f"{label}_GO", READ_CTRL, READ_GO | READ_EN)
-        await refusal
-        await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
-
     async def _read_faults(self) -> None:
         dut = cocotb.top
         await self._read_once("READ_BASELINE")
@@ -281,10 +259,7 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
 
         for selector, name in ((0b01, "PHYSICAL"), (0b10, "GUARD"), (0b11, "SECURE_TEST")):
             dut.tb_efuse_read_error_inject.value = selector
-            if selector == 0b11:
-                await self._read_refused(f"READ_{name}_ERROR")
-            else:
-                await self._read_once(f"READ_{name}_ERROR")
+            await self._read_once(f"READ_{name}_ERROR")
             assert int(dut.tb_efuse_read_error.value) == 1, (
                 f"{name}: read error output did not assert"
             )

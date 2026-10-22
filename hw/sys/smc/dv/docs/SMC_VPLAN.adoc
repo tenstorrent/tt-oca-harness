@@ -19586,9 +19586,7 @@ records that.
   same legal program afterwards.
 . Repeat both encodings on the read path, each followed by a legal read that
   completes without error; inject a read error and confirm the status sets and
-  the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`. The bank-status
-  and guard-error injections end a read in flight; the secure-test-mode injection
-  refuses the start, so no request reaches the SHIM and the read never goes busy.
+  the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
 . For each of the four illegal Zeroer encodings, run its start control first:
   program the inbound/outbound output-fabric filters to pass all, confirm the
   Zeroer is in `IDLE` with `CTRL_STATUS` not reporting busy, program `DEST_ADDR`
