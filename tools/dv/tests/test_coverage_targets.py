@@ -4,7 +4,8 @@
 
 Each target's leaves merge against that target's design database, found in the model
 directory the leaves recorded, and the per-target databases then merge with the tool's
-`combine_cmd`. The models of a run's targets must not share one directory.
+`combine_cmd`, largest design database first. The models of a run's targets must not share
+one directory.
 
 Run from the repository root:
 
@@ -49,6 +50,7 @@ UNION_STUB = MERGE_STUB + (
     "print('Warning-[UCAPI-MAP-SHAPEMISMATCH] Shape mismatch')\n"
     "print('Note-[URG-RDG] Report directory generated')\n"
 )
+UNION_WARNINGS = {"UCAPI-INSTANCEMISMATCH": 2, "UCAPI-MAP-SHAPEMISMATCH": 1}
 
 
 def make_flow(root: Path, framework: str = "uvm", raw: dict | None = None) -> Dut:
@@ -213,10 +215,41 @@ class TargetMerge(unittest.TestCase):
         self.assertEqual(first["log"], "runs/multi/stages/cov_merge/logs/cov_merge.t1.log")
         self.assertTrue((self.stage_dir / "logs" / "cov_merge.t1.log").is_file())
         self.assertTrue((self.stage_dir / "scripts" / "cov_merge.t2.sh").is_file())
+        self.assertEqual(manifest["union_warnings"], UNION_WARNINGS)
+        self.assertNotIn("graded_summary", manifest)
+
+    def test_the_union_reads_the_largest_design_database_first(self):
+        self.two_targets()
+        (self.root / "build" / "t2" / "fp" / "cov_build.vdb" / "big").write_bytes(b"x" * 64)
+        self.assertEqual(self.merge(tool_cov()), 0)
+        cov = self.run_dir / "cov"
         self.assertEqual(
-            manifest["union_warnings"],
-            {"UCAPI-INSTANCEMISMATCH": 2, "UCAPI-MAP-SHAPEMISMATCH": 1},
+            self.recorded(cov / "merged.vdb"),
+            [
+                str(self.root / "build" / "t2" / "fp" / "cov_build.vdb"),
+                str(self.root / "build" / "t1" / "fp" / "cov_build.vdb"),
+                str(cov / "targets" / "t2" / "merged.vdb"),
+                str(cov / "targets" / "t1" / "merged.vdb"),
+            ],
         )
+        self.assertEqual([entry["target"] for entry in self.manifest()["targets"]], ["t2", "t1"])
+
+    def test_the_summary_setting_names_the_graded_table_and_the_command_line_overrides_it(self):
+        self.two_targets()
+        for summary, cli, graded in (
+            ("module_definition", None, "module_definition"),
+            ("module_definition", "hierarchy", None),
+            (None, "module_definition", "module_definition"),
+        ):
+            with self.subTest(summary=summary, cli=cli):
+                self.assertEqual(
+                    self.merge(tool_cov(summary=summary), make_args(cov_summary=cli)), 0
+                )
+                self.assertEqual(self.manifest().get("graded_summary"), graded)
+        with self.assertRaisesRegex(
+            ConfigError, r"the `module_definition` summary is a URG report table"
+        ):
+            self.merge(tool_cov(parser="imc", summary="module_definition"))
 
     def test_one_target_keeps_the_single_merge(self):
         build_dir = self.model("t1")

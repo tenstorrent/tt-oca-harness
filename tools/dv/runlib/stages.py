@@ -62,6 +62,7 @@ from .config import (
     selected_run_target,
     sim_global_args,
     target_flags,
+    validate_coverage_summary,
     validate_formal_argv_template,
 )
 from .coverage import (
@@ -3936,6 +3937,36 @@ def _combine_template(tool: str, tool_cov: dict[str, Any], targets: list[str]) -
     return template
 
 
+def _graded_summary(
+    parser: str, tool: str, tool_cov: dict[str, Any], args: argparse.Namespace
+) -> str:
+    """The report table a grade reads: `--cov-summary`, else `[coverage.<tool>] summary`,
+    else the hierarchy."""
+    requested = getattr(args, "cov_summary", None)
+    where = "--cov-summary" if requested else f"coverage.{tool}.summary"
+    summary = validate_coverage_summary(requested or tool_cov.get("summary") or "hierarchy", where)
+    if summary != "hierarchy" and parser != "urg":
+        raise ConfigError(
+            f"the `{summary}` summary is a URG report table; coverage.{tool}.parser is `{parser}`"
+        )
+    return summary
+
+
+def validate_graded_summary(sim_cfg: dict[str, Any], tool: str, args: argparse.Namespace) -> None:
+    """Refuse a graded summary the tool's parser cannot read before any simulator runs."""
+    tool_cov = coverage_cfg(sim_cfg).get(tool)
+    if isinstance(tool_cov, dict) and tool_cov:
+        _graded_summary(coverage_parser_name(tool_cov), tool, tool_cov, args)
+
+
+def _tree_bytes(path: Path | None) -> int:
+    if path is None:
+        return 0
+    if path.is_file():
+        return path.stat().st_size
+    return sum(entry.stat().st_size for entry in path.rglob("*") if entry.is_file())
+
+
 def _target_design_db(
     root: Path,
     tool: str,
@@ -4002,7 +4033,9 @@ def _merge_each_target(
 ) -> tuple[list[dict[str, Any]], int, str | None]:
     """Merge each target's leaves against its own design database, target by target.
 
-    Every target's design database is resolved before the first merge runs. Returns the
+    Every target's design database is resolved before the first merge runs. The targets
+    merge, and their records list, largest design database first, the order the union reads
+    them: a URG `union` merge keeps the first design's code-coverage hierarchy. Returns the
     manifest record of every merge run, then the return code and the error of the first
     that failed (0 and None when every target produced a merged database). The merges stop
     at the first failure.
@@ -4014,8 +4047,10 @@ def _merge_each_target(
         )
         for target, members in groups.items()
     }
+    order = sorted(groups, key=lambda target: (-_tree_bytes(design_dbs[target]), target))
     entries: list[dict[str, Any]] = []
-    for target, members in groups.items():
+    for target in order:
+        members = groups[target]
         design_db = design_dbs[target]
         target_merged = _target_merged_path(cov_dir, merged, target)
         target_merged.parent.mkdir(parents=True, exist_ok=True)
@@ -4237,6 +4272,9 @@ def coverage_stage(
             ],
             "legacy_waivers": [],
         }
+        graded_summary = _graded_summary(parser, tool, tool_cov, args)
+        if graded_summary != "hierarchy":
+            manifest["graded_summary"] = graded_summary
         merge_policy_args = [
             *native_policy_args(policy, tool=tool, phase="merge"),
             *_legacy_coverage_policy_args(
@@ -4301,7 +4339,7 @@ def coverage_stage(
         )
         manifest["status"] = "ERROR" if rc else "PASS"
         manifest["merge_return_code"] = rc
-        if several_targets:
+        if run_plan is not None or several_targets:
             manifest["union_warnings"] = merge_warning_counts(log_path)
         write_json(manifest_path, manifest)
         if rc != 0:
@@ -4318,6 +4356,12 @@ def coverage_stage(
         raise CoverageError("coverage manifest DUT/tool does not match the requested report stage")
     if not artifact_ready(merged):
         raise CoverageError(f"merged coverage database is missing or empty: {merged}")
+    if getattr(args, "cov_summary", None):
+        manifest.pop("graded_summary", None)
+        summary = _graded_summary(parser, tool, tool_cov, args)
+        if summary != "hierarchy":
+            manifest["graded_summary"] = summary
+        write_json(manifest_path, manifest)
     report_dir.mkdir(parents=True, exist_ok=True)
     report_policy_args = [
         *native_policy_args(policy, tool=tool, phase="report"),

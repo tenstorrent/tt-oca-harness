@@ -48,7 +48,14 @@ from .config import (
     validate_native_config_shape,
     validate_run_mode_request,
 )
-from .coverage import CoverageError, artifact_ready, json_text, load_manifest, write_json_text
+from .coverage import (
+    COVERAGE_SUMMARIES,
+    CoverageError,
+    artifact_ready,
+    json_text,
+    load_manifest,
+    write_json_text,
+)
 from .coverage_closure import (
     coverage_fail_under,
     coverage_merged_name,
@@ -149,6 +156,7 @@ from .stages import (
     run_stage,
     seed_for_item,
     shared_model_dirs,
+    validate_graded_summary,
 )
 from .ui import Console
 from .waves import (
@@ -528,6 +536,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     coverage.add_argument(
+        "--cov-summary",
+        choices=COVERAGE_SUMMARIES,
+        help=(
+            "URG report table the grade reads; overrides [coverage.<tool>] summary "
+            "(default: hierarchy)"
+        ),
+    )
+    coverage.add_argument(
         "--waive",
         nargs="?",
         const="",
@@ -618,6 +634,7 @@ _SIM_ONLY_FLAGS = {
     "fail_under": "--fail-under",
     "waive": "--waive",
     "cov_combine": "--cov-combine",
+    "cov_summary": "--cov-summary",
     "rebuild": "--rebuild",
     "define": "--define",
     "comp_arg": "--comp-arg",
@@ -2144,7 +2161,7 @@ def validate_waive_options(args: argparse.Namespace) -> None:
 
 # Options --cov-combine accepts besides --dut, --run-dir, --result, --tool, --framework,
 # --overlay, --verbose and --quiet.
-_COMBINE_COMPANIONS = {"cov_combine", "fail_under", "dry_run", "timeout"}
+_COMBINE_COMPANIONS = {"cov_combine", "cov_summary", "fail_under", "dry_run", "timeout"}
 
 
 def validate_combine_options(args: argparse.Namespace) -> None:
@@ -3329,6 +3346,8 @@ def run_flow(
     }
     if multi_target:
         validate_target_builds(flow, root, tool, target_cfgs)
+    if "cov_merge" in stages or "cov_report" in stages:
+        validate_graded_summary(target_cfgs[build_targets[0]], tool, args)
 
     def sim_cfg_for_item(item: str | None) -> dict[str, Any]:
         if item is not None:

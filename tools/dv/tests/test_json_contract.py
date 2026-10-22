@@ -376,9 +376,11 @@ MANIFEST_KEYS = {
     "tool_version",
     "waivers",
 }
-# `targets` and `union_warnings` are written by the merge of a run whose leaves span several
-# targets: one record per target merge, and the warning counts of their union.
-MANIFEST_OPTIONAL_KEYS = {"combine", "targets", "union_warnings"}
+# `targets` is written by the merge of a run whose leaves span several targets, one record per
+# target merge; `union_warnings` by every merge that unions databases (that one or
+# `--cov-combine`); `graded_summary` when the grade reads a report table other than the
+# hierarchy.
+MANIFEST_OPTIONAL_KEYS = {"combine", "graded_summary", "targets", "union_warnings"}
 MANIFEST_TARGET_KEYS = {
     "build_fingerprint",
     "design_db",

@@ -518,20 +518,45 @@ def _parse_text_table(text: str) -> tuple[dict[str, float], float | None]:
     return metrics, overall
 
 
-_URG_SUMMARY_TITLE_RE = re.compile(r"(?i)^\s*total\s+coverage\s+summary\s*:?\s*$")
+# The URG dashboard tables a coverage grade can read: `hierarchy` is the `Total Coverage
+# Summary`, whose code metrics follow the design hierarchy, and `module_definition` is the
+# `Total Module Definition Coverage Summary`, which counts each version of a module once.
+COVERAGE_SUMMARIES = ("hierarchy", "module_definition")
+_URG_SUMMARY_TITLE_RES = {
+    "hierarchy": re.compile(r"(?i)^\s*total\s+coverage\s+summary\s*:?\s*$"),
+    "module_definition": re.compile(
+        r"(?i)^\s*total\s+module\s+definition\s+coverage\s+summary\s*:?\s*$"
+    ),
+}
 
 
-def parse_urg_summary_table(text: str) -> dict[str, float]:
-    """Parse URG's authoritative `Total Coverage Summary` header/value table.
+def parse_urg_summary_table(text: str, summary: str = "hierarchy") -> dict[str, float]:
+    """Parse one of URG's summary header/value tables (`COVERAGE_SUMMARIES`).
 
     Returns lowercase native column names (score, line, cond, ...) mapped to
     their percentages. Columns reported as `--` are omitted. An empty dict
     means the table was not present in `text`.
+
+    The module-definition table carries code metrics only, so its `group` column comes from
+    the `Total Coverage Summary`, and its `score` is the mean of its metric columns, as URG
+    scores the `Total Coverage Summary`.
     """
 
+    table = _urg_table(text, _URG_SUMMARY_TITLE_RES[summary])
+    if summary == "module_definition" and table:
+        group = _urg_table(text, _URG_SUMMARY_TITLE_RES["hierarchy"]).get("group")
+        if group is not None:
+            table["group"] = group
+        values = [value for name, value in table.items() if name != "score"]
+        if values:
+            table["score"] = round(sum(values) / len(values), 2)
+    return table
+
+
+def _urg_table(text: str, title: re.Pattern[str]) -> dict[str, float]:
     lines = text.splitlines()
     for index, line in enumerate(lines):
-        if not _URG_SUMMARY_TITLE_RE.match(line):
+        if not title.match(line):
             continue
         rows = [row for row in lines[index + 1 : index + 6] if row.strip()]
         if len(rows) < 2:
@@ -556,7 +581,9 @@ def parse_urg_summary_table(text: str) -> dict[str, float]:
     return {}
 
 
-def _parse_urg_dashboard(report_dir: Path) -> tuple[dict[str, float], float | None]:
+def _parse_urg_dashboard(
+    report_dir: Path, summary: str = "hierarchy"
+) -> tuple[dict[str, float], float | None]:
     if not report_dir.is_dir():
         return {}, None
     for dashboard in sorted(report_dir.rglob("dashboard.txt")):
@@ -564,7 +591,7 @@ def _parse_urg_dashboard(report_dir: Path) -> tuple[dict[str, float], float | No
             text = dashboard.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        table = parse_urg_summary_table(text)
+        table = parse_urg_summary_table(text, summary)
         if not table:
             continue
         metrics: dict[str, float] = {}
@@ -596,8 +623,14 @@ def parse_coverage_report(
     report_dir: Path,
     merged: Path,
     log_path: Path | None = None,
+    summary: str = "hierarchy",
 ) -> tuple[dict[str, float], float]:
-    """Normalize supported vendor report output into scalar percentages."""
+    """Normalize supported vendor report output into scalar percentages.
+
+    ``summary`` names the URG dashboard table the figures come from (`COVERAGE_SUMMARIES`).
+    A report without the module-definition table is an error rather than a fallback to the
+    text sweep, which would grade another table.
+    """
 
     metrics: dict[str, float] = {}
     overall: float | None = None
@@ -618,11 +651,16 @@ def parse_coverage_report(
         # URG's dashboard summary is the one table whose columns are pure
         # percentages; the other report files interleave raw covered/total
         # counts that the generic table sweep misreads as percentages.
-        parsed_metrics, parsed_overall = _parse_urg_dashboard(report_dir)
+        parsed_metrics, parsed_overall = _parse_urg_dashboard(report_dir, summary)
         if parsed_metrics or parsed_overall is not None:
             metrics.update(parsed_metrics)
             overall = parsed_overall
             sweep_report_text = False
+        elif summary != "hierarchy":
+            raise CoverageReportError(
+                f"the URG report under {report_dir} has no `Total Module Definition Coverage "
+                "Summary` to grade"
+            )
 
     if sweep_report_text:
         for path in _report_text_files(report_dir, log_path):
