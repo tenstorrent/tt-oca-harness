@@ -232,6 +232,8 @@ tests = [
     "smc_cpu_reset_pulse_test",
     "smc_cpu_uncore_reset_test",
     "smc_cpu_reset_source_test",
+    "smc_spm_access_core_reset_test",
+    "smc_beu_access_core_reset_test",
     "smc_cool_reset_from_pcie_test",
     "smc_ss_reset_complete_test",
     "smc_jtag_reset_ctrl_test",

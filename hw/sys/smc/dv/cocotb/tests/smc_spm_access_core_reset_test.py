@@ -20,8 +20,13 @@ from smc_base_test import smc_base_test
 class smc_spm_access_core_reset_test(smc_base_test):
     """Hold each core, then every core, in reset and access the scratchpad."""
 
-    required_evidence = ("CHK-SPM-ACCESS-CORES-RELEASED",) + tuple(
-        f"CHK-SPM-ACCESS-CORE-RESET-{name.upper()}" for name, _ in HOLDS
+    required_evidence = (
+        "CHK-SPM-ACCESS-CORE-RESET-ALL_CORES",
+        "CHK-SPM-ACCESS-CORE-RESET-CORE0",
+        "CHK-SPM-ACCESS-CORE-RESET-CORE1",
+        "CHK-SPM-ACCESS-CORE-RESET-CORE2",
+        "CHK-SPM-ACCESS-CORE-RESET-CORE3",
+        "CHK-SPM-ACCESS-CORES-RELEASED",
     )
     min_evidence = len(HOLDS) + 1
 

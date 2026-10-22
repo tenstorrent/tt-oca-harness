@@ -21,9 +21,15 @@ class smc_beu_access_core_reset_test(smc_base_test):
     """Hold each core in reset and access its BEU and the next core's BEU."""
 
     required_evidence = (
-        ("CHK-BEU-ACCESS-CORES-RELEASED",)
-        + tuple(f"CHK-BEU-ACCESS-CORE-RESET-CORE{core}" for core in range(CORE_COUNT))
-        + tuple(f"CHK-BEU-ACCESS-CORE-RELEASED-CORE{core}" for core in range(CORE_COUNT))
+        "CHK-BEU-ACCESS-CORE-RELEASED-CORE0",
+        "CHK-BEU-ACCESS-CORE-RELEASED-CORE1",
+        "CHK-BEU-ACCESS-CORE-RELEASED-CORE2",
+        "CHK-BEU-ACCESS-CORE-RELEASED-CORE3",
+        "CHK-BEU-ACCESS-CORE-RESET-CORE0",
+        "CHK-BEU-ACCESS-CORE-RESET-CORE1",
+        "CHK-BEU-ACCESS-CORE-RESET-CORE2",
+        "CHK-BEU-ACCESS-CORE-RESET-CORE3",
+        "CHK-BEU-ACCESS-CORES-RELEASED",
     )
     min_evidence = 2 * CORE_COUNT + 1
 

@@ -917,6 +917,8 @@ and sets with a zero hold count.
 |`smc_cool_reset_x_cold_reset_test` |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
 |`smc_cpu_reset_pulse_test` |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, a core level reset that applies without a drain, and a withheld uncore reset whose timeout fires in give-up mode.
 |`smc_cpu_reset_source_test` |SW core0 level reset reaches core 0's cluster reset without a drain; no FLR isolate_req_o.
+|`smc_spm_access_core_reset_test` |Scratchpad reads and writes over SEP_IN complete while each core, then every core, is held in reset.
+|`smc_beu_access_core_reset_test` |A core's BEU answers SEP_IN with SLVERR, not a hang, while that core is held in reset; the other cores' BEUs still answer.
 |`smc_flr_sanity_test` |Run the SMC OSS FLR post-release sanity scenario.
 |`smc_gpio_boot_stall_test` |Pad-57 boot stall hold/release/sticky lockout.
 |`smc_irq_during_powergood_glitch_test` |SMC OSS PyUVM IRQ-during-powergood-glitch test.
@@ -33313,7 +33315,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 *BFM / Model*: none; observation on `RESET_CTRL` and `RESET_TIMEOUT`
 
-*Objective*: Request the CPU cluster's uncore reset on its own with every core released. The other CPU reset leaves request core level resets and core pulses, never the uncore reset alone.
+*Objective*: Request the CPU cluster's uncore reset on its own with every core released, in force mode. Of the other CPU reset leaves, only `smc_cpu_reset_pulse_test` requests the uncore reset, and only in give-up mode.
 
 *Test Coverage*:
 
@@ -33336,6 +33338,87 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 |===
 
 *Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-543-smc_spm_access_core_reset_test]]
+===== 543 `smc_spm_access_core_reset_test`
+
+*Source Module*: `smc_spm_access_core_reset_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); observation on `tb_cpu_core_resets_n` and the scratch RAM write counter `tb_cpu_scratch_write_count`
+
+*Objective*: Scratchpad accesses over SEP_IN complete while CPU cores are held in reset.
+
+*Test Coverage*:
+
+* SEP_IN reaches the scratchpad through the cluster's L2 frontend port and its broadcast coherence manager, which probes every core's L1 before it completes an access. A core held in reset cannot answer, so the cluster answers the probe on the core's behalf, and a core reset requests no AXI boundary drain, so the frontend port stays connected.
+* With every core released, a 64-bit pattern written to the scratchpad reads back. Each core is then held alone through `RESET_CTRL.coreN_reset_n_n0_scan`, and finally all four together; each hold is confirmed on `tb_cpu_core_resets_n` before a pattern is written to a scratchpad word of its own and read back, so a read cannot pass on a value an earlier hold left.
+* Every write must advance the scratch RAM write counter, so the write is known to have reached the RAM and not another responder. A hang fails on the bench's AXI timeout.
+
+*Test Procedure*:
+
+[arabic]
+. Check that `RESET_CTRL` has every core released, write and read back a scratchpad word.
+. For each core alone, then all four: write the core reset bits low, wait for `tb_cpu_core_resets_n` to show the hold, write and read back the hold's scratchpad word, release, and wait for every core reset to deassert.
+. Read back `RESET_TIMEOUT` and `RESET_CTRL`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SPM-ACCESS-CORES-RELEASED` |With every core released, a scratchpad word took a pattern, advanced the scratch RAM write counter and read it back
+|`CHK-SPM-ACCESS-CORE-RESET-CORE0` |With core 0 held in reset, a scratchpad word took a pattern, advanced the scratch RAM write counter and read it back
+|`CHK-SPM-ACCESS-CORE-RESET-CORE1` |As above with core 1 held
+|`CHK-SPM-ACCESS-CORE-RESET-CORE2` |As above with core 2 held
+|`CHK-SPM-ACCESS-CORE-RESET-CORE3` |As above with core 3 held
+|`CHK-SPM-ACCESS-CORE-RESET-ALL_CORES` |As above with all four cores held
+|===
+
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
+
+'''''
+
+[[sec-544-smc_beu_access_core_reset_test]]
+===== 544 `smc_beu_access_core_reset_test`
+
+*Source Module*: `smc_beu_access_core_reset_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); observation on `tb_cpu_core_resets_n`
+
+*Objective*: A core's bus error unit answers SEP_IN with SLVERR, not a hang, while the core is held in reset.
+
+*Test Coverage*:
+
+* Each core's BEU sits in that core's tile, in the core's reset domain. The cluster denies an access to a tile held in reset, and its AXI frontend port returns a denied access as SLVERR.
+* `REGION_SIZE` is widened to 256 MiB so SEP_IN reaches the BEU window. With every core released, every BEU `ENABLE` reads its reset value 0xE6 with OKAY.
+* Each core is held alone through `RESET_CTRL.coreN_reset_n_n0_scan`, confirmed on `tb_cpu_core_resets_n`. A read and a write of that core's BEU `ENABLE` must each complete with exactly SLVERR, and the next core's BEU `ENABLE` must still read 0xE6 with OKAY. After the release, the core's BEU `ENABLE` must read 0xE6 with OKAY again. A hang fails on the bench's AXI timeout.
+
+*Test Procedure*:
+
+[arabic]
+. Check that `RESET_CTRL` has every core released, widen `REGION_SIZE` to 256 MiB, and read every BEU `ENABLE`.
+. For each core: write its reset bit low and wait for `tb_cpu_core_resets_n` to show the hold, read and write its BEU `ENABLE`, read the next core's BEU `ENABLE`, release, wait for the reset to deassert, and read its BEU `ENABLE` again.
+. Restore `REGION_SIZE` and read back `REGION_SIZE` and `RESET_CTRL`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-BEU-ACCESS-CORES-RELEASED` |With every core released, BEU 0 to 3 `ENABLE` read 0xE6 with OKAY
+|`CHK-BEU-ACCESS-CORE-RESET-CORE0` |With core 0 held in reset, a read and a write of BEU 0 `ENABLE` each completed with SLVERR, and BEU 1 `ENABLE` read 0xE6 with OKAY
+|`CHK-BEU-ACCESS-CORE-RESET-CORE1` |As above for core 1, with BEU 2 still answering
+|`CHK-BEU-ACCESS-CORE-RESET-CORE2` |As above for core 2, with BEU 3 still answering
+|`CHK-BEU-ACCESS-CORE-RESET-CORE3` |As above for core 3, with BEU 0 still answering
+|`CHK-BEU-ACCESS-CORE-RELEASED-CORE0` |After core 0 was released, BEU 0 `ENABLE` read 0xE6 with OKAY
+|`CHK-BEU-ACCESS-CORE-RELEASED-CORE1` |As above for core 1
+|`CHK-BEU-ACCESS-CORE-RELEASED-CORE2` |As above for core 2
+|`CHK-BEU-ACCESS-CORE-RELEASED-CORE3` |As above for core 3
+|===
+
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
 
 '''''
 
