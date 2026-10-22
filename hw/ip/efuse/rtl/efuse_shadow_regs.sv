@@ -323,6 +323,7 @@ module efuse_shadow_regs
 
   efuse_word_counter_t current_word_num_q, current_word_num_d;
   efuse_word_counter_t words_received_q, words_received_d;
+  logic sense_req_valid;
   logic [LcStateWidth-1:0] lc_state_cur;
   logic [LcStateWidth-1:0] lc_state_candidate;
 
@@ -412,6 +413,7 @@ module efuse_shadow_regs
         efuse_sense_state_d = efuse_sense_state_q;
         words_received_d = words_received_q;
         current_word_num_d = current_word_num_q;
+        sense_req_valid = 1'b0;
 
         unique case (efuse_sense_state_q)
             ST_IDLE: begin
@@ -428,15 +430,18 @@ module efuse_shadow_regs
                 // Move to wait acknowledgment state
                 efuse_sense_state_d = ST_WAIT;
                 words_received_d = '0;
+                sense_req_valid = 1'b1;
             end
 
             // ST_WAIT: Wait for remaining streaming responses and store data
             ST_WAIT: begin
+                sense_req_valid = 1'b1;
 
                 if (fuse_command_resp_i.valid) begin
                     // Check if we've received all expected words
                     if (words_received_q >= efuse_word_counter_t'(NumShadowWords - 1)) begin
                         efuse_sense_state_d = ST_FINISHED;
+                        sense_req_valid = 1'b0;
                     end else begin
                         words_received_d = words_received_q + efuse_word_counter_t'(1);
                         current_word_num_d = current_word_num_q + efuse_word_counter_t'(1);
@@ -460,12 +465,10 @@ module efuse_shadow_regs
         endcase
     end
 
-    // One READ of the whole bank from bit address 0, valid until the last word arrives.
-    // Uses the registered state so that valid falls in the same cycle the FSM leaves ST_WAIT,
-    // and the controller's output register adds one cycle — two cycles after the last strobe.
+    // One READ of the whole bank from bit address 0, dropped in the cycle the last word arrives.
     always_comb begin
         fuse_command_req_o = FuseCommandReqDefault;
-        if (efuse_sense_state_q == ST_WAIT) begin
+        if (sense_req_valid) begin
             fuse_command_req_o.address = efuse_addr_t'(0);
             fuse_command_req_o.access_length_words = efuse_word_counter_t'(NumShadowWords);
             fuse_command_req_o.valid = 1'b1;

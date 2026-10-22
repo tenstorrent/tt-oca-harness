@@ -29,8 +29,8 @@ _NUM_WORDS = 256
 _HOLD_SAMPLES = 8
 _QUIET_WINDOW = 64
 _POST_RISE_READS = 4
-# doc/integrator/src/smu-smc.adoc, When valid falls: valid falls two cycles after the last strobe
-_HANDOVER_CYCLES = 2
+# doc/integrator/src/smu-smc.adoc, When valid falls: valid falls in the cycle after the last strobe
+_HANDOVER_CYCLES = 1
 _SENSE_BOUND_CYCLES = 200_000
 _RESET_BOUND_CYCLES = 2_000
 _RELEASE_BOUND_CYCLES = 20_000
@@ -50,8 +50,8 @@ _TERMS = (
     "FIRST_REQUEST",
     "FIRST_STROBE",
     "LAST_STROBE",
-    "SENSE_DONE",
     "VALID_LOW",
+    "SENSE_DONE",
     "HOLD_WINDOW_QUIET",
 )
 _CHK_STEP = {
@@ -354,7 +354,7 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
             fall + _QUIET_WINDOW - 1,
         )
         self.access_floor = len(reads)
-        self._finish((low, rel, first, first_strobe, last, rise, fall, fall + _QUIET_WINDOW - 1))
+        self._finish((low, rel, first, first_strobe, last, fall, rise, fall + _QUIET_WINDOW - 1))
         return stream
 
     def _finish(self, edges: tuple[int, ...]) -> None:
@@ -366,8 +366,8 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         for i, (a, b) in enumerate(zip(edges, edges[1:])):
             ok = a <= b if i == 5 else a < b
             assert ok, f"fence {_TERMS[i]}@{a} !< {_TERMS[i + 1]}@{b}: {edges}"
-        assert edges[6] - edges[4] == _HANDOVER_CYCLES and edges[5] - edges[4] >= 1, (
-            f"port offsets: sense done edge {edges[5]}, valid low edge {edges[6]}"
+        assert edges[5] - edges[4] == _HANDOVER_CYCLES and edges[6] - edges[4] >= 1, (
+            f"port offsets: valid low edge {edges[5]}, sense done edge {edges[6]}"
         )
         printed = [ident for kind, ident in self._events if kind == "chk"]
         assert printed == list(_CHK_STEP), f"checker lines printed {printed}"
@@ -378,7 +378,7 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 )
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s as measured event edges, strict < between adjacent "
-            "terms; SENSE_DONE@%d VALID_LOW@%d (shared edge allowed; not specified, measured); "
+            "terms; VALID_LOW@%d SENSE_DONE@%d (shared edge allowed; not specified, measured); "
             "checker lines %s; "
             "step stamps %s ps",
             " < ".join(f"{term}@{edge}" for term, edge in zip(_TERMS, edges)),

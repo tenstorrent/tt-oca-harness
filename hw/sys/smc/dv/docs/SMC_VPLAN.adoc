@@ -21041,8 +21041,8 @@ behind the SHIM interface is the DV model; an EFUSE protocol-VIP record is booke
   every read issued after it (`hw/ip/efuse/regs/efuse_interface_ctrl.rdl`).
 * The offset between the last strobe and the sense-done rise is measured and printed; the offset
   visible at the port is not specified.
-* After sensing, the request `valid` stays high until the sense-done hand-over to the firmware path
-  and falls two cycles after the last strobe, with no further request or strobe afterwards
+* After sensing, the request `valid` falls in the cycle after the last strobe, no later than the
+  sense-done hand-over to the firmware path, with no further request or strobe afterwards
   (`smu-smc.adoc`, When `valid` falls).
 * The strobe spacing is logged only.
 
@@ -21064,11 +21064,11 @@ behind the SHIM interface is the DV model; an EFUSE protocol-VIP record is booke
 . Require the rise at least one cycle after the last strobe, wait for four `STATUS` reads issued
   after the rise, stop the stream and require all of them to read 1; record the reads straddling the
   rise.
-. Wait for `tb_efuse_shim_cmd_valid` to fall and require it exactly two cycles after the last
+. Wait for `tb_efuse_shim_cmd_valid` to fall and require it exactly one cycle after the last
   strobe; require the request valid and the strobe both 0 for 64 edges, and no strobe after the
   rise.
 . Require the six steps in order with increasing time stamps, strictly ordered fence edges (the
-  sense-done rise and the request-valid fall may be equal edges), the checker lines in the order
+  request-valid fall and the sense-done rise may be equal edges), the checker lines in the order
   printed and the SEP_IN access count at or above the number of `STATUS` reads; print the fence and
   the bounded waits.
 
@@ -21089,11 +21089,11 @@ assertion to the last strobe, and every `STATUS` read that completes before the 
 |`CHK-SENSE-DONE-OFFSET` |`tb_fuse_sense_done` rises at least one cycle after the 256th strobe, the
 offset is measured and printed, and four or more `STATUS` reads issued after the rise all read
 `efuse_sense_done` 1; reads straddling the rise are printed without a compare.
-|`CHK-SENSE-REQ-HANDOVER` |`tb_efuse_shim_cmd_valid` falls exactly two cycles after the last strobe
+|`CHK-SENSE-REQ-HANDOVER` |`tb_efuse_shim_cmd_valid` falls exactly one cycle after the last strobe
 (`smu-smc.adoc`), stays 0 with `tb_efuse_shim_resp_valid` 0 for 64 edges while no command is issued,
 and no strobe follows the sense-done rise.
 |`CHK-NONVAC` |The ordered fence (cold reset asserted, release, first request, first strobe, last
-strobe, sense done, request valid low, quiet window) as measured edges, with each checker line
+strobe, request valid low, sense done, quiet window) as measured edges, with each checker line
 printed after its step completed.
 |`CHK-TIMEOUT-PATHS` |Every reset, request, strobe, sense-done and read wait is bounded and fails
 with an assertion on expiry; the bounds and last samples are logged.
@@ -21101,7 +21101,7 @@ with an assertion on expiry; the bounds and last samples are logged.
 
 *Pass Criteria*: all seven checkers hold: one request after the release, exactly 256 strobes
 before sense done, `STATUS.efuse_sense_done` 0 before the rise and 1 after it, and the request
-valid falling two cycles after the last strobe with a quiet interface afterwards. The
+valid falling one cycle after the last strobe with a quiet interface afterwards. The
 release-to-request latency, the strobe gaps and the sense-done offset are recorded only. Enrolled
 in: `all`.
 
