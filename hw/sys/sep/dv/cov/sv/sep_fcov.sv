@@ -178,6 +178,11 @@ module sep_fcov (
   input sep_pkg::sep_system_peripherals_internal_axi_resp_t smc_resp_i,
   input sep_pkg::sep_32_64_6_12_axi_req_t  ext_req_i,
   input sep_pkg::sep_32_64_6_12_axi_resp_t ext_resp_i,
+  // trng_req: the TRNG AXI-Lite passthrough port (PR-TRNG); trng_rsp_on: 1
+  // while the bench TRNG responder answers that port.
+  input sep_pkg::sep_32_32_axil_req_t      trng_req_i,
+  input sep_pkg::sep_32_32_axil_resp_t     trng_resp_i,
+  input wire                               trng_rsp_on_i,
   // dma_req after the DMA window remap, dma_req_raw before it, dma_csr_req
   // at the DMA CSR target (PR-DMACSR).
   input sep_pkg::sep_32_64_3_12_axi_req_t  dma_req_i,
@@ -5940,6 +5945,100 @@ module sep_fcov (
   sep_dma_endpoint_cg             u_sep_dma_endpoint_cg             = new();
   sep_aperture_reserved_access_cg u_sep_aperture_reserved_access_cg = new();
   sep_crypto_bus_access_cg        u_sep_crypto_bus_access_cg        = new();
+
+  // ---------------------------------------------------------------------
+  // sep_fabric_trng_reply_cg: the reply that the LSU initiator receives for
+  // an access to the TRNG window (TRNG_APERTURE_MEM) while the bench TRNG
+  // responder answers the TRNG AXI-Lite port (trng_rsp_on_i), per access
+  // shape, inside the graded window of sep_fabric_deadspace_decode_test. One
+  // window write and one window read are tracked at a time. The port beats
+  // between the LSU request and its reply select the sample:
+  //   * single read or write (AxLEN 0, AxSIZE 2 or less): one port beat, and
+  //     the initiator code equals the port code;
+  //   * split write (AxLEN 0, AxSIZE 3): two port B beats, the first not
+  //     OKAY and the last OKAY;
+  //   * burst (AxLEN above 0): no port beat; each R beat and the B.
+  // A 64-bit single read and every other fragment pattern give no sample.
+  // ---------------------------------------------------------------------
+  localparam logic [31:0] TqTrngLo = TRNG_APERTURE_MEM_BASE_ADDR;
+  localparam logic [31:0] TqTrngHi = TRNG_APERTURE_MEM_BASE_ADDR + TRNG_APERTURE_MEM_SIZE;
+  covergroup sep_fabric_trng_reply_cg with function sample (logic [4:0] rep);
+    option.per_instance = 1;
+    option.name = "sep_fabric_trng_reply_cg";
+    // {shape (0 single read, 1 single write, 2 split write, 3 burst), write,
+    // initiator code}.
+    cp_trng_port_reply: coverpoint rep {
+      bins single_read_okay = {5'b00_0_00};
+      bins single_read_slverr = {5'b00_0_10};
+      bins single_read_decerr = {5'b00_0_11};
+      bins single_write_okay = {5'b01_1_00};
+      bins single_write_slverr = {5'b01_1_10};
+      bins single_write_decerr = {5'b01_1_11};
+      bins split_write_slverr = {5'b10_1_10};
+      bins burst_read_decerr = {5'b11_0_11};
+      bins burst_write_decerr = {5'b11_1_11};
+      illegal_bins split_write_not_slverr = {5'b10_1_00, 5'b10_1_01, 5'b10_1_11};
+      wildcard illegal_bins burst_not_decerr = {5'b11_?_0?, 5'b11_?_10};
+    }
+  endgroup
+  sep_fabric_trng_reply_cg u_sep_fabric_trng_reply_cg = new();
+
+  logic tq_w_on = 1'b0, tq_r_on = 1'b0;
+  logic [1:0] tq_w_shape = '0, tq_r_shape = '0;
+  logic [2:0] tq_w_id = '0, tq_r_id = '0;
+  logic [1:0] tq_w_n = '0, tq_r_n = '0;  // port beats since the LSU request, saturating at 3
+  logic [1:0] tq_w_first = '0, tq_w_last = '0, tq_r_code = '0;
+  wire tq_aw = (lsu_req_i.aw_valid === 1'b1) && (lsu_resp_i.aw_ready === 1'b1) &&
+      in_win(32'(lsu_req_i.aw.addr), TqTrngLo, TqTrngHi);
+  wire tq_ar = (lsu_req_i.ar_valid === 1'b1) && (lsu_resp_i.ar_ready === 1'b1) &&
+      in_win(32'(lsu_req_i.ar.addr), TqTrngLo, TqTrngHi);
+  wire tq_b = (lsu_resp_i.b_valid === 1'b1) && (lsu_req_i.b_ready === 1'b1) &&
+      (lsu_resp_i.b.id == tq_w_id) && !$isunknown(lsu_resp_i.b.resp);
+  wire tq_r = (lsu_resp_i.r_valid === 1'b1) && (lsu_req_i.r_ready === 1'b1) &&
+      (lsu_resp_i.r.id == tq_r_id) && !$isunknown(lsu_resp_i.r.resp);
+  wire own_trng = (graded_owner == FcovOwnSepFabricDeadspaceDecodeTest);
+  always @(posedge clk_i) begin
+    if (in_reset || !own_trng || (trng_rsp_on_i !== 1'b1)) begin
+      tq_w_on <= 1'b0;
+      tq_r_on <= 1'b0;
+    end else begin
+      if (tq_w_on && (trng_resp_i.b_valid === 1'b1) && (trng_req_i.b_ready === 1'b1)) begin
+        if (tq_w_n == 2'd0) tq_w_first <= trng_resp_i.b.resp;
+        tq_w_last <= trng_resp_i.b.resp;
+        if (tq_w_n != 2'd3) tq_w_n <= tq_w_n + 2'd1;
+      end
+      if (tq_r_on && (trng_resp_i.r_valid === 1'b1) && (trng_req_i.r_ready === 1'b1)) begin
+        tq_r_code <= trng_resp_i.r.resp;
+        if (tq_r_n != 2'd3) tq_r_n <= tq_r_n + 2'd1;
+      end
+      if (!tq_w_on && tq_aw) begin
+        tq_w_on    <= 1'b1;
+        tq_w_id    <= lsu_req_i.aw.id;
+        tq_w_n     <= 2'd0;
+        tq_w_shape <= (lsu_req_i.aw.len != 8'd0) ? 2'd3 : (lsu_req_i.aw.size == 3'd3) ? 2'd2 : 2'd1;
+      end else if (tq_w_on && tq_b) begin
+        if (((tq_w_shape == 2'd1) && (tq_w_n == 2'd1) && (lsu_resp_i.b.resp == tq_w_last)) ||
+            ((tq_w_shape == 2'd2) && (tq_w_n == 2'd2) && (tq_w_first != AxiOkay) &&
+             (tq_w_last == AxiOkay)) ||
+            ((tq_w_shape == 2'd3) && (tq_w_n == 2'd0)))
+          u_sep_fabric_trng_reply_cg.sample({tq_w_shape, 1'b1, lsu_resp_i.b.resp});
+        tq_w_on <= 1'b0;
+      end
+      if (!tq_r_on && tq_ar) begin
+        tq_r_on    <= 1'b1;
+        tq_r_id    <= lsu_req_i.ar.id;
+        tq_r_n     <= 2'd0;
+        tq_r_shape <= (lsu_req_i.ar.len != 8'd0) ? 2'd3 : (lsu_req_i.ar.size == 3'd3) ? 2'd2 : 2'd0;
+      end else if (tq_r_on && tq_r) begin
+        if ((tq_r_shape == 2'd3) && (tq_r_n == 2'd0))
+          u_sep_fabric_trng_reply_cg.sample({2'd3, 1'b0, lsu_resp_i.r.resp});
+        if ((tq_r_shape == 2'd0) && (tq_r_n == 2'd1) && (lsu_resp_i.r.resp == tq_r_code) &&
+            (lsu_resp_i.r.last === 1'b1))
+          u_sep_fabric_trng_reply_cg.sample({2'd0, 1'b0, lsu_resp_i.r.resp});
+        if (lsu_resp_i.r.last === 1'b1) tq_r_on <= 1'b0;
+      end
+    end
+  end
 
   // ---------------------------------------------------------------------
   // Sample computation.
@@ -17457,6 +17556,8 @@ module sep_fcov (
     logic lh;
     logic lh_v;  // 0 CMD at LOCKED leaves LOCKED, 1 OTBN reset exits LOCKED to IDLE
     logic ec_v;  // ERR_BITS non-zero cleared by a write at IDLE
+    logic [1:0] iv;
+    logic iv_v;  // integrity end at LOCKED: 1 IMEM, 2 DMEM ({dmem, imem} cause)
   } cy_otbn_el_t;
 
   covergroup sep_otbn_err_lock_cg with function sample (cy_otbn_el_t s);
@@ -17470,6 +17571,12 @@ module sep_fcov (
       bins cmd_at_locked_ignored = {1'b0}; bins reset_exit_to_idle = {1'b1};
     }
     cp_err_bits_clear: coverpoint s.ec_v iff (s.ec_v) {bins nonzero_cleared_at_idle = {1'b1};}
+    // An EXECUTE ends at LOCKED with ERR_BITS.imem_intg_violation or
+    // dmem_intg_violation set and the matching FATAL_ALERT_CAUSE bit written
+    // since the OTBN reset.
+    cp_intg_violation_end: coverpoint s.iv iff (s.iv_v) {
+      bins imem_intg = {2'b01}; bins dmem_intg = {2'b10};
+    }
   endgroup
 
   typedef struct packed {
@@ -19282,8 +19389,12 @@ module sep_fcov (
   wire [$bits(otbn_hw2reg_i.err_bits)-1:0] cy_o_err = otbn_hw2reg_i.err_bits;
   wire cy_o_ill = cy_t(otbn_hw2reg_i.err_bits.illegal_insn.d);
   wire cy_o_fsw = cy_t(otbn_hw2reg_i.err_bits.fatal_software.d);
+  wire cy_o_iiv = cy_t(otbn_hw2reg_i.err_bits.imem_intg_violation.d);
+  wire cy_o_div = cy_t(otbn_hw2reg_i.err_bits.dmem_intg_violation.d);
   logic [7:0] cy_o_st_q = '0;
   logic cy_o_fac_fsw = 1'b0;   // FATAL_ALERT_CAUSE.fatal_software written since the OTBN reset
+  logic cy_o_fac_iiv = 1'b0;   // FATAL_ALERT_CAUSE.imem_intg_violation written since the OTBN reset
+  logic cy_o_fac_div = 1'b0;   // FATAL_ALERT_CAUSE.dmem_intg_violation written since the OTBN reset
   logic cy_se_exec = 1'b0;     // an EXECUTE accepted at IDLE, not yet at its end
   logic cy_pd_arm = 1'b0;      // set at an OTBN reset release, cleared by the first CMD
   logic [1:0] cy_lh_rst = '0;  // 1 OTBN reset taken at LOCKED, 2 then the post-reset wipe
@@ -19303,6 +19414,10 @@ module sep_fcov (
     cy_o_st_q   <= cy_o_st;
     if (!cy_ip[1]) cy_o_fac_fsw <= 1'b0;
     else if (cy_t(otbn_hw2reg_i.fatal_alert_cause.fatal_software.de)) cy_o_fac_fsw <= 1'b1;
+    if (!cy_ip[1]) cy_o_fac_iiv <= 1'b0;
+    else if (cy_t(otbn_hw2reg_i.fatal_alert_cause.imem_intg_violation.de)) cy_o_fac_iiv <= 1'b1;
+    if (!cy_ip[1]) cy_o_fac_div <= 1'b0;
+    else if (cy_t(otbn_hw2reg_i.fatal_alert_cause.dmem_intg_violation.de)) cy_o_fac_div <= 1'b1;
     if (aw_hs && (lsu_aw_addr_i == OTBN_ERR_BITS_REG_ADDR)) begin
       cy_ec_nz <= (cy_o_st == OtbnIdle) && (cy_o_err != '0);
     end
@@ -19342,6 +19457,13 @@ module sep_fcov (
         if ((cy_o_st == OtbnStLocked) && cy_o_fsw && cy_o_fac_fsw && cy_o_ef) begin
           el.se   = 1'b1;
           el.se_v = 1'b1;
+        end
+        // cp_intg_violation_end: one integrity cause, ERR_BITS and
+        // FATAL_ALERT_CAUSE agree.
+        if ((cy_o_st == OtbnStLocked) && (cy_o_iiv != cy_o_div) &&
+            (cy_o_iiv ? cy_o_fac_iiv : cy_o_fac_div)) begin
+          el.iv   = {cy_o_div, cy_o_iiv};
+          el.iv_v = 1'b1;
         end
         cy_se_exec <= 1'b0;
       end
@@ -19484,7 +19606,7 @@ module sep_fcov (
           (cy_o_ef == cy_cw_ef)) begin
         el.cw_v = 1'b1;
       end
-      if (el.cw_v || el.se_v || el.lh_v || el.ec_v) u_sep_otbn_err_lock_cg.sample(el);
+      if (el.cw_v || el.se_v || el.lh_v || el.ec_v || el.iv_v) u_sep_otbn_err_lock_cg.sample(el);
     end
     if (cy_ip_fall[1]) begin
       cy_ic_exec <= 1'b0;
@@ -23964,8 +24086,8 @@ module sep_fcov (
   endgroup
 
   typedef struct packed {
-    logic [1:0] st;
-    logic st_v;  // cp_state: 0 PROD, 1 RMA_SIP, 2 integrity error
+    logic [2:0] st;
+    logic st_v;  // cp_state: 0 PROD, 1 RMA_SIP, 2 integrity error, 3 PROD_END, 4 RMA_CHIPLET
     logic [2:0] cl;
     logic cl_v;  // cp_class
     logic rp;
@@ -23980,7 +24102,11 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_efuse_jtag_policy_cg";
     cp_state: coverpoint s.st iff (s.st_v) {
-      bins prod = {2'd0}; bins rma_sip = {2'd1}; bins integrity_error = {2'd2};
+      bins prod = {3'd0};
+      bins rma_sip = {3'd1};
+      bins integrity_error = {3'd2};
+      bins prod_end = {3'd3};
+      bins rma_chiplet = {3'd4};
     }
     // TOKEN_MATCH_FAULT is not declared.
     cp_class: coverpoint s.cl iff (s.cl_v) {
@@ -26129,7 +26255,7 @@ module sep_fcov (
     logic [31:0] a;
     logic wr, ok, rx, allowed, fire;
     logic [2:0] cl, cop;
-    logic [1:0] st;
+    logic [2:0] st;
     if ((jtag_req_i.aw_valid === 1'b1) && (jtag_resp_i.aw_ready === 1'b1))
       ef_j_aw <= 32'(jtag_req_i.aw.addr);
     if ((jtag_req_i.ar_valid === 1'b1) && (jtag_resp_i.ar_ready === 1'b1))
@@ -26157,8 +26283,10 @@ module sep_fcov (
       cl = in_win(a, EfMapBase, EfMapEnd) ? 3'd0 : in_win(a, EfCtrlBase, EfCtrlEnd) ? 3'd1 :
           in_win(a, EfTokSip, EfTokEop) ? 3'd2 : (a == EfTokEop) ? 3'd3 :
           in_win(a, EfMatchSip, EfMatchFault) ? 3'd4 : 3'd7;
-      st = ((jtag_filt_sigint_i === 1'b1) && (ef_lc == EfTd)) ? 2'd2 :
-          (jtag_filt_sigint_i === 1'b1) ? 2'd3 : (ef_lc == EfProd) ? 2'd0 : (ef_lc == EfRs) ? 2'd1 : 2'd3;
+      // 7: no cell (integrity error outside TEST_DEV, TEST_DEV, INVALID).
+      st = ((jtag_filt_sigint_i === 1'b1) && (ef_lc == EfTd)) ? 3'd2 :
+          (jtag_filt_sigint_i === 1'b1) ? 3'd7 : (ef_lc == EfProd) ? 3'd0 : (ef_lc == EfRs) ? 3'd1 :
+          (ef_lc == EfPe) ? 3'd3 : (ef_lc == EfRc) ? 3'd4 : 3'd7;
       case (cl)
         3'd2: cop = wr ? 3'd1 : 3'd0;
         3'd3: cop = 3'd2;  // TOKEN_EOP read is not declared
@@ -26168,7 +26296,16 @@ module sep_fcov (
         default: cop = 3'd7;
       endcase
       allowed = (cop < 3'd4);
-      if ((cl != 3'd7) && (st != 2'd3) && ((st == 2'd2) ? ef_own_cw : ef_own_jtag)) begin
+      // PROD_END and RMA_CHIPLET: cp_state only, for the secure test mode
+      // matrix owner. The class, response and cross points keep the
+      // restricted states and the integrity error.
+      if ((cl != 3'd7) && ((st == 3'd3) || (st == 3'd4)) && ef_own_stm) begin
+        je = '0;
+        je.st = st;
+        je.st_v = 1'b1;
+        u_sep_efuse_jtag_policy_cg.sample(je);
+      end
+      if ((cl != 3'd7) && (st <= 3'd2) && ((st == 3'd2) ? ef_own_cw : ef_own_jtag)) begin
         je = '0;
         je.st = st;
         je.st_v = 1'b1;
@@ -26181,7 +26318,7 @@ module sep_fcov (
           je.so_v = 1'b1;
         end
         je.gi = st[0];
-        je.gi_v = allowed && ok && (st != 2'd2) && (feat_ctrl_i[47:0] == 48'h0);
+        je.gi_v = allowed && ok && (st != 3'd2) && (feat_ctrl_i[47:0] == 48'h0);
         u_sep_efuse_jtag_policy_cg.sample(je);
       end
     end

@@ -363,6 +363,7 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_axi_out_outstanding_test` |fabric |3 |An SMC iDMA copy holds more than three writes and more than three reads in flight on `smu_axi_out` against a responder of depth 8, and every response pairs with the oldest outstanding request of its ID.
 |`smu_aperture_map_walk_test` |fabric |3 |The SMU crossbar decodes the SMC aperture at every base and size BASE_CONFIG admits and JTAG2AXI can follow.
 |`smu_xbar_connectivity_matrix_test` |fabric |3 |An `ext_in` access that matches neither programmed aperture is answered DECERR by the crossbar and never reaches `ext_out`.
+|`smu_xbar_zero_aperture_test` |fabric |3 |A zero-size SEP or SMC aperture, and both at once, matches no address whatever its base: `ext_in` traffic to it is DECERR and never reaches the port, `sep_out` traffic to the disabled SEP window leaves on `ext_out`, the other aperture keeps its route, and a cold reset restores both.
 |`smu_periph_ext_window_test` |fabric |2 |The SMC peripheral crossbar's macro AXI-Lite window is reachable over JTAG2AXI, decodes its sub-windows, and shrinks with the SMC aperture.
 |`smu_alias_cache_reset_test` |fabric |3 |An alias hit carries the programmed cacheable value as AxCACHE on both channels, the AxCACHE of a miss is measured, and the alias remap is transparent after reset.
 |`smu_filter_cfg_register_map_test` |fabric |3 |The filter control registers of all entries of both filter instances reset, store, read back and address as the RDL specifies.
@@ -1335,7 +1336,7 @@ row's EXPECT sentence is worth, read the check.
 
 * EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME, at the EFUSE_SHIM_CTRL block base the generated SMC map gives, is read at its RDL reset value over the eFuse bank-control AXI-Lite port, written, read back and restored, so the shim window is proven both ways.
 * The straps pair in the mandatory region answers, and the first word past it, which no block claims, returns DECERR.
-* REGION_SIZE shrunk so the local aperture ends exactly at the window sends the same shim read out of the chiplet instead, observed on the outbound boundary rather than inferred from the response alone. REGION_SIZE zero is not driven: `fabric.adoc` forbids firmware from programming it, and the crossbar's address decoder assumes every rule spans at least one byte, so a zero-size aperture is outside the design's contract rather than a state to prove.
+* REGION_SIZE shrunk so the local aperture ends exactly at the window sends the same shim read out of the chiplet instead, observed on the outbound boundary rather than inferred from the response alone. REGION_SIZE zero is not driven here: it closes the local window JTAG2AXI programs through; `smu_xbar_zero_aperture_test` drives it over the SEP debug bus.
 * Golden sources: the window base and size from `hw/sys/smc/regs/gen/c/smc_addr.h` (`SMC_TOP_SMC_EXTERNAL_*`) and the mandatory / supplementary split from `hw/sys/smc/doc/memmap.adoc` ("AXI-Lite External Window"); the EFUSE_SHIM_CTRL block base, both region bases and the allocated extent from the same `smc_addr.h`; the EFUSE_BANK_INIT_TIME offset and reset from the PeakRDL headers of `hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl`; the straps addresses transcribed from `hw/sys/smc/bootrom/prod/doc/hardware-initialization.adoc` ("Straps and eFuses"), with `straps.rdl` fixing STRAPS_HI at STRAPS_LO + 4; the REGION_SIZE and LOCAL_BASE resets from `smc_base_config.h`. The sequence refuses to run if these sources disagree about the window.
 * Specification gap: `hw/sys/smc/doc/memmap.adoc` leaves every placement inside the window to the adopter and `hw/ip/efuse/doc/memmap.adoc` says the SHIM sits at no fixed address, so the shim base rests on the reference placement in `smc_addr.h` (only the block base is taken from it, and the register inside follows `efuse_shim_ctrl.rdl`) and the straps address on the boot-ROM documentation. Neither is an SMC memory-map statement. The map passes the unallocated remainder through to the adopter external port without saying what answers it; `hw/sys/smu/doc/port_table.adoc` ties an unused port to DECERR, and the DV rule is that an address no source allocates must not be answered by a live register. `CHK-PERIPH-EXT-UNMAPPED` is graded against that rule, not against a decode boundary a document states.
 
@@ -7925,7 +7926,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * REGION_SIZE also sizes the SMC local alias window through which JTAG2AXI reaches BASE_CONFIG and the inbound filter, so the smallest size walked is the smallest power of two above the inbound filter entry; the RDL requires LOCAL_BASE, fixed at `0xC000_0000`, to be aligned to REGION_SIZE too, so the largest is 1 GiB. GLOBAL_BASE alternates between the `0xAA..` and `0x55..` patterns aligned to each size, so every base bit the alignment leaves free and every size bit walked is set in one setting and clear in the next, and a last setting puts the smallest window at the top of the 56-bit space, where the rule's end carries into bit 56 and there is no address past it to probe; every window lies above the SEP reset aperture `[0, 16 MiB)`, as the crossbar's overlap assertion requires.
 * At each setting the inbound filter entry is opened over the window first, then the aperture is moved onto it; VERSION_LO and SCRATCH_COLD are reached at the rebased addresses with ARID/AWID alternating between `0xAA` and `0x55`.
 * The decode edges are counted, not inferred from the response: the window's first address moves the crossbar-to-SMC AR count by one, and the word below the window and the first address past it move it by none and return DECERR. The window's last word is not read: its local offset, REGION_SIZE - 8, lands in SMC memories (mailbox, I3C, SPM) whose unwritten contents read X on a four-state simulator.
-* A zero REGION_SIZE is not programmed: the rule it forms has `start == end`, which the address decoder's map check rejects, and it closes the local window JTAG2AXI needs to reopen the aperture. The SEP aperture is programmed only by SEP firmware (`sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR), which this toolchain-free leaf does not load.
+* A zero REGION_SIZE is not programmed here: it closes the local window JTAG2AXI needs to reopen the aperture; `smu_xbar_zero_aperture_test` drives the zero size of both apertures over the SEP debug bus. The SEP aperture is programmed only by SEP firmware (`sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR), which this toolchain-free leaf does not load.
 
 *Test Procedure*:
 
@@ -11071,6 +11072,60 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-202-smu_xbar_zero_aperture_test]]
+===== 202 `smu_xbar_zero_aperture_test`
+
+*Phase*: 3
+
+*Area*: SMU_WRAPPER
+
+*Source Module*: `smu_xbar_zero_aperture_test` (`cocotb_wrapper/tests/`; the sequence extends the SEP debug-bus sequence for its system-bus access)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins and the bench responder on `smu_axi_out`; `ocah_jtag_vip` for the SEP debug module; the bench counters `sep_xbar_in_aw_count_o`, `smc_xbar_in_ar_count_o`, `smc_xbar_in_aw_count_o`, `smu_axi_out_write_count_o` and `smu_axi_out_read_count_o` and the four aperture ports; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `fabric`, `hosted`, `all`; `timeout_sec` 5400; tags `fabric`, `sep`, `sba`, `axi`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusarg `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`.
+
+*Randomization*: RAND-NONE: directed, the four aperture states, the two SEP bases, the four probes and the cold reset are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+
+*Objective*: a zero-size SEP aperture, a zero-size SMC aperture, and both at once match no address in the SMU crossbar whatever the base: `ext_in` traffic to the disabled window is DECERR and never reaches the port, `sep_out` traffic to the disabled SEP window leaves on `ext_out` where the enabled window refuses it, the other aperture keeps its route, and a cold reset restores both (`hw/sys/smu/rtl/smu_axi_xbar.sv`, "a zero size disables the aperture whatever its base"; `hw/sys/smu/doc/index.adoc`, "A region size of 0 disables its aperture"). SEP BL0 writes SEP_REGION_SIZE 0 around each DMA into ICCM (`hw/sys/sep/bootrom/prod/src/sep_dma.c`), so the zero size is a production state of the crossbar. Extends `smu_dtp_sep_dm_dmi_test`.
+
+*Test Coverage*:
+
+* S0..S3 are the steps of `smu_dtp_sep_dm_dmi_test`. With SEP-scope debug enabled the SEP inbound filter admits all inbound traffic.
+* S4: over the SEP debug module's system bus the SEP aperture becomes [0x8000_0000, +0x1100_0000), which puts SEP SRAM at global 0x9000_0000, the egress page of `smu_dtp_sep_dm_sba_test`, and lies clear of the SMC window at its reset [0x4000_0000, +16 MiB); the system bus opens SEP outbound filter entry 1 over that page and, through the SEP's view of the SMC window, SMC inbound filter entry 0 over the whole space. SEP traffic in the SMC window takes the dedicated SEP-to-SMC port and never reaches the crossbar (`hw/sys/sep/doc/fabric.adoc`, "Fabric Topology"), so the `sep_out` probe targets the SEP's own window. Four probes then take their baseline: an `ext_in` 8-byte write into SEP SRAM is OKAY and moves the crossbar-to-SEP AW count by one; an `ext_in` read of the SMC's VERSION_LO at its global address is OKAY with the RDL reset value and moves the crossbar-to-SMC AR count by one; an `ext_in` byte read of the top address 2^56 - 1 is DECERR and moves no crossbar count; a system-bus write into the SEP window on the egress page matches the SEP rule, which `sep_out` has no route to, so it reports `sberror` and leaves the `smu_axi_out` write count where it was. The four aperture ports carry the programmed and reset values.
+* S5: SEP_REGION_SIZE 0 with the SMC aperture unchanged. The SEP probe is DECERR and the crossbar-to-SEP AW count holds, with the base where it was and again with the base moved to 0x2000_0000; the system-bus write into the former SEP window now matches no rule and leaves on `smu_axi_out` with `sberror` 0, the write count moving and the responder holding the word; the SMC and top-byte probes read as the baseline. With the base and size restored the SEP probe reads as the baseline.
+* S6: SMC REGION_SIZE 0, written over the system bus through the SMC window as the last access that window admits, with the SEP aperture unchanged. The SMC probe is DECERR and the crossbar-to-SMC AR count holds; the SEP, top-byte and system-bus probes read as the baseline.
+* S7: both sizes 0. Every `ext_in` probe is DECERR with no crossbar count moving, and the system-bus write into the SEP window leaves on `smu_axi_out`.
+* S8: a cold reset on `rst_cold_ni` returns `sep_xbar_global_base_o`, `sep_xbar_region_size_o`, `smc_global_base_o` and `smc_region_size_o` to their RDL reset values, and an `ext_in` write into the reset SEP window and an `ext_in` read into the reset SMC window each move their crossbar count by one again. Their responses are recorded, not claimed: the SEP address is unowned and the SMC inbound filter is back at its reset.
+* No request is in flight across an aperture change, and no programmed window overlaps the other. A zero SMC REGION_SIZE is outside `smc_base_config`'s contract (a non-zero power of two) and closes the local window JTAG2AXI programs through, which is why S6 writes it over the system bus and S8 recovers it by reset; the crossbar's response to it is what S6 and S7 prove.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`, program the S4 SEP window and open SEP outbound filter entry 1 and SMC inbound filter entry 0 over the system bus, create the `ext_in` master, and take the baseline of the four probes.
+. Write SEP_REGION_SIZE 0 and probe; move SEP_GLOBAL_BASE_ADDR and probe the SEP window; restore the window and probe it.
+. Write SMC REGION_SIZE 0 through the SMC window and probe.
+. Write SEP_REGION_SIZE 0 again and probe.
+. Drive the cold reset, wait for the SEP and SMC resets to release, sample the four aperture ports, and probe both reset windows.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-XBAR-ZERO-BASELINE` |with both apertures programmed the SEP probe is OKAY and moves the SEP AW count by one, the SMC probe is OKAY with the VERSION_LO reset value and moves the SMC AR count by one, the top-byte probe is DECERR and moves no count, the system-bus write into the SEP window reports `sberror` and leaves the `smu_axi_out` write count and the responder untouched, and the four ports carry the programmed values
+|`CHK-XBAR-ZERO-SEP` |with SEP_REGION_SIZE 0 the SEP probe is DECERR and moves no SEP AW count at the kept base and at the moved base, the system-bus write into the former SEP window reports `sberror` 0, moves the `smu_axi_out` write count by one and lands in the responder, the SMC and top-byte probes read as the baseline, and with the window restored the ports and the SEP probe read as the baseline
+|`CHK-XBAR-ZERO-SMC` |with SMC REGION_SIZE 0 `smc_region_size_o` reads 0, the SMC probe is DECERR and moves no SMC AR count, and the SEP, top-byte and system-bus probes read as the baseline
+|`CHK-XBAR-ZERO-BOTH` |with both sizes 0 both size ports read 0, every `ext_in` probe is DECERR with no crossbar count moving, and the system-bus write into the SEP window leaves on `smu_axi_out`
+|`CHK-XBAR-ZERO-COLD-RESET` |after the cold reset the four aperture ports carry their RDL reset values and the SEP write and the SMC read each move their crossbar count by one
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+*Scope limit*: the baseline and the disabled states expect opposite values of the same probes, so a crossbar that routed a disabled window, or that stopped routing the enabled one, fails a checker. The pulp decoder assertions are compiled out on Verilator (`+define+ASSERTS_OFF`); this leaf grades the routing contract of a zero-size aperture, and the decoder's map-check acceptance of the encoding is graded on VCS.
+
+'''''
+
 
 [[smu-vplan-phase3]]
 === Phase 3 Tests
@@ -11361,6 +11416,10 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |SMU_WRAPPER
 |RAND-NONE
 |none; directed: every S5..S11 cell (the fixed AxID, attribute, AxPROT, AxSIZE and burst lists, the 35 walked addresses, the trains and the 40 to 86 cycle collision sweep stepped by 2) is walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+|`smu_xbar_zero_aperture_test` (202)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the four aperture states, the two SEP bases, the four probes and the cold reset are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
 |`smu_dtp_jtag2axi_address_walk_test` (117)
 |SMU_WRAPPER
 |RAND-NONE
@@ -11803,12 +11862,12 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |Group |Leaves |Notes
 |`fw_boot` |4 |The firmware boot smokes, the SMC firmware fabric leaf and the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
-|`fabric` |27 |The fabric and filter leaves; every member is in `hosted`
+|`fabric` |28 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |23 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |39 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |159 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |195 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |160 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |196 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
@@ -11902,6 +11961,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_ptap_ir_walk_test` |F3 |dtp_under_smu, hosted |`CHK-PTAP-IR-DECODE-WALK`
 |`smu_dtp_jtag2axi_address_walk_test` |F3 |dtp_under_smu, hosted |`CHK-J2A-WALK-SMC-OTP`
 |`smu_axi_in_sep_aperture_test` |F4 |fabric, hosted |`CHK-AXIIN-SEP-ROUND-TRIP`
+|`smu_xbar_zero_aperture_test` |F4 |fabric, hosted |`CHK-XBAR-ZERO-SEP`
 |`smu_xtrig_ctm_remap_test` |F6 |dtp_under_smu, hosted |`XT_CTM_REMAP`
 |`smu_sep_smoke_test` |F1 observe / F6 |fw_boot, all |`SEP_BOOT_ROM_OK` (SEP=1 wrapper; not F2 credit)
 |`smu_axi_id_width_conversion_test` |F4 |fabric, hosted |`AXI_ID_WIDTH_OK`

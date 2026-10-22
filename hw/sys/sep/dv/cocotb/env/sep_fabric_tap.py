@@ -21,6 +21,10 @@ PR-EXT-RSP ``pr_ext``       b: resp id; r: resp id last data (the PR-EXT
                             replies)
 PR-OUT-RSP ``pr_out``       b: resp id; r: resp id last data (the PR-OUT replies,
                             from the outbound responder)
+PR-TRNG    ``pr_trng``      aw, ar: addr prot; w: data strb (TRNG AXI-Lite
+                            passthrough port)
+PR-TRNG-   ``pr_trng``      b: resp; r: resp data (the PR-TRNG replies, after
+RSP                         the bench TRNG responder force)
 PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
 PR-CPU-LSU ``pr_cpu_lsu``   aw, ar: prot (raw CPU LSU request; graded)
 PR-CPU-IFU ``pr_cpu_ifu``   ar: prot (raw CPU IFU request; graded)
@@ -120,6 +124,12 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
         {"b": ("resp", "id"), "r": ("resp", "id", "last", "data")},
         "axi",
     ),
+    "PR-TRNG": (
+        "pr_trng",
+        {"aw": ("addr", "prot"), "ar": ("addr", "prot"), "w": ("data", "strb")},
+        "axi",
+    ),
+    "PR-TRNG-RSP": ("pr_trng", {"b": ("resp",), "r": ("resp", "data")}, "axi"),
     "PR-DMACSR": ("pr_dmacsr", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
     "PR-CPU-LSU": ("pr_cpu_lsu", {"aw": ("prot",), "ar": ("prot",)}, "axi"),
     "PR-CPU-IFU": ("pr_cpu_ifu", {"ar": ("prot",)}, "axi"),

@@ -1745,6 +1745,10 @@ module sep_uvm_top
     // Watchdog timer-domain reset and the two Key Manager reset conditioner
     // outputs. Read-only XMRs.
     assign aon_rst_n_probe_o = `SEP_CORE.u_sep_wdt_wrap.rst_wdt_n;
+    // Watchdog count register WDOG_COUNT of the AON timer (clk_wdt_i domain).
+    // Read-only XMR.
+    assign wdt_wdog_count_o =
+        `SEP_CORE.u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q;
     // sep_reset_n override select on the SEP input port. Read-only XMR.
     assign jtag_sep_reset_n_ovrd_probe_o =
         `SEP_CORE.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd;
@@ -2039,6 +2043,162 @@ module sep_uvm_top
     always @(negedge clk_i) begin
         if (ext_port_rsp_on) force u_dut.axi_extension_axi_resp = ext_port_resp_drive;
     end
+
+    // PR-TRNG: the TRNG AXI-Lite passthrough port, wrapper net
+    // u_dut.ext_trng_axil_req (the sep output ext_trng_axil_req_o).
+    assign pr_trng_awvalid_o = u_dut.ext_trng_axil_req.aw_valid;
+    assign pr_trng_awready_o = u_dut.ext_trng_axil_resp.aw_ready;
+    assign pr_trng_awaddr_o  = u_dut.ext_trng_axil_req.aw.addr;
+    assign pr_trng_awprot_o  = u_dut.ext_trng_axil_req.aw.prot;
+    assign pr_trng_wvalid_o  = u_dut.ext_trng_axil_req.w_valid;
+    assign pr_trng_wready_o  = u_dut.ext_trng_axil_resp.w_ready;
+    assign pr_trng_wdata_o   = u_dut.ext_trng_axil_req.w.data;
+    assign pr_trng_wstrb_o   = u_dut.ext_trng_axil_req.w.strb;
+    assign pr_trng_arvalid_o = u_dut.ext_trng_axil_req.ar_valid;
+    assign pr_trng_arready_o = u_dut.ext_trng_axil_resp.ar_ready;
+    assign pr_trng_araddr_o  = u_dut.ext_trng_axil_req.ar.addr;
+    assign pr_trng_arprot_o  = u_dut.ext_trng_axil_req.ar.prot;
+    // PR-TRNG reply: the B and R channels of the same port, wrapper net
+    // u_dut.ext_trng_axil_resp. The read sees the responder force below, so it
+    // shows the code that the port carries at each handshake.
+    assign pr_trng_bvalid_o  = u_dut.ext_trng_axil_resp.b_valid;
+    assign pr_trng_bready_o  = u_dut.ext_trng_axil_req.b_ready;
+    assign pr_trng_bresp_o   = u_dut.ext_trng_axil_resp.b.resp;
+    assign pr_trng_rvalid_o  = u_dut.ext_trng_axil_resp.r_valid;
+    assign pr_trng_rready_o  = u_dut.ext_trng_axil_req.r_ready;
+    assign pr_trng_rresp_o   = u_dut.ext_trng_axil_resp.r.resp;
+    assign pr_trng_rdata_o   = u_dut.ext_trng_axil_resp.r.data;
+
+    // ------------------------------------------------------------------
+    // TRNG AXI-Lite passthrough responder (top-port drive).
+    // ------------------------------------------------------------------
+    // The integration wrapper answers the sep TRNG AXI-Lite port
+    // (ext_trng_axil_resp_i) from an error slave (DECERR,
+    // hw/top/sep_ip_integration.sv). In a run with
+    // +sep_ext_trng_axil_responder, the responder below answers instead from
+    // the first clock with ext_trng_axil_rsp_en_i at 1: tb_top forces the
+    // wrapper net u_dut.ext_trng_axil_resp from it, re-issued on every falling
+    // edge (Verilator snapshots a force RHS), so the port sees registered
+    // outputs. Once on, the responder stays on for the rest of the run and the
+    // net is never released. Without the plusarg the net is never forced.
+    //   * One write and one read in flight. AW and W are each accepted once;
+    //     B is valid in the clock after both are in.
+    //   * trng_rsp_bcnt_q and trng_rsp_rcnt_q count the B and R handshakes
+    //     since the last rise of ext_trng_axil_rsp_en_i or the bench reset.
+    //   * B handshake k answers BRESP ext_trng_axil_rsp_bresp_i[2j +: 2],
+    //     sampled when B becomes valid. R handshake k answers RRESP
+    //     ext_trng_axil_rsp_rresp_i[2j +: 2] and RDATA
+    //     ext_trng_axil_rsp_rdata_i[32j +: 32], sampled at the AR handshake.
+    //     j is k modulo 8.
+    // The leaf sets the three code inputs and raises the enable with the port
+    // idle, so the count restarts at entry 0.
+    logic trng_rsp_plusarg;
+    logic trng_rsp_on = 1'b0;
+    initial trng_rsp_plusarg = $test$plusargs("sep_ext_trng_axil_responder");
+    always @(posedge clk_i) begin
+        if (trng_rsp_plusarg && (ext_trng_axil_rsp_en_i === 1'b1)) trng_rsp_on <= 1'b1;
+    end
+    assign ext_trng_axil_rsp_on_o = trng_rsp_on;
+
+    sep_pkg::sep_32_32_axil_req_t  trng_axil_req;
+    sep_pkg::sep_32_32_axil_resp_t trng_axil_resp_drive;
+    assign trng_axil_req = u_dut.ext_trng_axil_req;
+
+    logic        trng_rsp_en_q;
+    logic        trng_aw_q;
+    logic        trng_w_q;
+    logic        trng_b_valid_q;
+    logic [1:0]  trng_b_resp_q;
+    logic        trng_r_valid_q;
+    logic [1:0]  trng_r_resp_q;
+    logic [31:0] trng_r_data_q;
+    logic [31:0] trng_rsp_bcnt_q;
+    logic [31:0] trng_rsp_rcnt_q;
+
+    always_comb begin
+        trng_axil_resp_drive          = '0;
+        trng_axil_resp_drive.aw_ready = !trng_aw_q && !trng_b_valid_q;
+        trng_axil_resp_drive.w_ready  = !trng_w_q && !trng_b_valid_q;
+        trng_axil_resp_drive.b_valid  = trng_b_valid_q;
+        trng_axil_resp_drive.b.resp   = trng_b_resp_q;
+        trng_axil_resp_drive.ar_ready = !trng_r_valid_q;
+        trng_axil_resp_drive.r_valid  = trng_r_valid_q;
+        trng_axil_resp_drive.r.resp   = trng_r_resp_q;
+        trng_axil_resp_drive.r.data   = trng_r_data_q;
+    end
+
+    always @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            trng_rsp_en_q   <= 1'b0;
+            trng_aw_q       <= 1'b0;
+            trng_w_q        <= 1'b0;
+            trng_b_valid_q  <= 1'b0;
+            trng_b_resp_q   <= '0;
+            trng_r_valid_q  <= 1'b0;
+            trng_r_resp_q   <= '0;
+            trng_r_data_q   <= '0;
+            trng_rsp_bcnt_q <= '0;
+            trng_rsp_rcnt_q <= '0;
+        end else if (trng_rsp_on) begin
+            logic aw_in, w_in;
+            trng_rsp_en_q <= (ext_trng_axil_rsp_en_i === 1'b1);
+            aw_in = trng_aw_q ||
+                    (trng_axil_resp_drive.aw_ready && (trng_axil_req.aw_valid === 1'b1));
+            w_in  = trng_w_q ||
+                    (trng_axil_resp_drive.w_ready && (trng_axil_req.w_valid === 1'b1));
+            if (aw_in && w_in) begin
+                trng_aw_q      <= 1'b0;
+                trng_w_q       <= 1'b0;
+                trng_b_valid_q <= 1'b1;
+                trng_b_resp_q  <= ext_trng_axil_rsp_bresp_i[2*trng_rsp_bcnt_q[2:0]+:2];
+            end else begin
+                trng_aw_q <= aw_in;
+                trng_w_q  <= w_in;
+            end
+            if (trng_b_valid_q && (trng_axil_req.b_ready === 1'b1)) begin
+                trng_b_valid_q  <= 1'b0;
+                trng_rsp_bcnt_q <= trng_rsp_bcnt_q + 32'd1;
+            end
+            if (!trng_r_valid_q && (trng_axil_req.ar_valid === 1'b1)) begin
+                trng_r_valid_q <= 1'b1;
+                trng_r_resp_q  <= ext_trng_axil_rsp_rresp_i[2*trng_rsp_rcnt_q[2:0]+:2];
+                trng_r_data_q  <= ext_trng_axil_rsp_rdata_i[32*trng_rsp_rcnt_q[2:0]+:32];
+            end else if (trng_r_valid_q && (trng_axil_req.r_ready === 1'b1)) begin
+                trng_r_valid_q  <= 1'b0;
+                trng_rsp_rcnt_q <= trng_rsp_rcnt_q + 32'd1;
+            end
+            // A rise of the enable restarts both counts at entry 0.
+            if ((ext_trng_axil_rsp_en_i === 1'b1) && !trng_rsp_en_q) begin
+                trng_rsp_bcnt_q <= '0;
+                trng_rsp_rcnt_q <= '0;
+            end
+        end
+    end
+    assign ext_trng_axil_rsp_bcnt_o = trng_rsp_bcnt_q;
+    assign ext_trng_axil_rsp_rcnt_o = trng_rsp_rcnt_q;
+
+    always @(negedge clk_i) begin
+        if (trng_rsp_on) force u_dut.ext_trng_axil_resp = trng_axil_resp_drive;
+    end
+    // While the responder answers the port, the wrapper error slave still sees
+    // every request but its reply does not reach the port, so its AXI-Lite
+    // valid-stable assertions (AwValidStable_A, WValidStable_A,
+    // ArValidStable_A) grade a handshake that does not occur. With
+    // +sep_trng_errslv_assert_waive, every assertion in that instance is off
+    // from the clock where the responder turns on. Before that clock the
+    // error slave answers the port and its assertions stay on. This is VCS
+    // only, because a Verilator build compiles these assertions out.
+`ifndef VERILATOR
+    logic trng_errslv_waive_plusarg;
+    initial trng_errslv_waive_plusarg = $test$plusargs("sep_trng_errslv_assert_waive");
+    always @(posedge clk_i) begin
+        if (trng_errslv_waive_plusarg && trng_rsp_plusarg && !trng_rsp_on &&
+            (ext_trng_axil_rsp_en_i === 1'b1)) begin
+            $display("[tb] TRNG error-slave assertions off (+sep_trng_errslv_assert_waive)");
+            $assertoff(0, `SEP_IPI.u_ext_trng_axil_err_slv);
+        end
+    end
+`endif
     // PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
     assign pr_dmacsr_awvalid_o = `SEP_CORE.dma_csr_req.aw_valid;
     assign pr_dmacsr_awready_o = `SEP_CORE.dma_csr_rsp.aw_ready;
@@ -3128,6 +3288,119 @@ module sep_uvm_top
         if (abr_cmd_drop_on) force `ABR_MLDSA_CMD = abr_params_pkg::MLDSA_NONE;
     end
 `undef ABR_MLDSA_CMD
+
+    // +sep_otbn_intg_flip -- error injection, off by default
+    // (docs/SEP_TB_ARCH.adoc, inject exceptions). In a run with the plusarg,
+    // while otbn_intg_flip_en_i is 1, every read response that the OTBN core
+    // takes from the memory otbn_intg_flip_mem_i selects reaches the integrity
+    // check with bit otbn_intg_flip_bit_i of the read word inverted. The force
+    // points are the read data after the descrambler and ahead of the check:
+    //   * 0 IMEM: imem_rdata_core, the 39-bit fetch word of the core
+    //     (bit 0 to 38). A response is a core response while imem_access_core
+    //     is 1.
+    //   * 1 DMEM: dmem_rdata, the 312-bit word (eight 39-bit words, word w in
+    //     bits 39w to 39w+38) that feeds the DMEM integrity decoders (bit 0 to
+    //     311). A response is a core response while dmem_access_core is 1. The
+    //     decoders check only the 39-bit words that the load reads, so the bit
+    //     must be in one of them.
+    // A bit index past the word flips nothing. Bus reads and the stored word
+    // are not touched. The live value is rebuilt from the descrambled read
+    // data, the write-collision forward and rvalid of the memory, so the
+    // forced net is never its own source. Set on every falling edge
+    // (Verilator snapshots a force RHS). otbn_intg_flip_count_o counts the
+    // corrupted responses since the enable rose. A released net keeps its
+    // forced value until its driver changes, so after a corrupted response the
+    // bench forces the live value and releases the net only in a clock in
+    // which the live value equals the value forced last; one falling edge after
+    // the release the net must equal the live value, else the bench reports an
+    // error.
+`define OTBN_U `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn
+    localparam int unsigned OtbnDmemW = otbn_pkg::ExtWLEN;
+    localparam logic [OtbnDmemW-1:0] OtbnDmemOne = {{(OtbnDmemW - 1) {1'b0}}, 1'b1};
+    logic otbn_intg_flip_on;
+    initial begin
+        otbn_intg_flip_on = $test$plusargs("sep_otbn_intg_flip");
+        if (otbn_intg_flip_on) begin
+            $display("[tb] *** FAULT INJECTION: +sep_otbn_intg_flip -- OTBN memory read words");
+            $display("[tb] *** flip one bit while otbn_intg_flip_en_i is 1.");
+        end
+    end
+    logic [38:0]          otbn_imem_live, otbn_imem_val;
+    logic [OtbnDmemW-1:0] otbn_dmem_live, otbn_dmem_val;
+    logic                 otbn_imem_forced, otbn_dmem_forced;
+    logic                 otbn_imem_rel_chk, otbn_dmem_rel_chk;
+    logic [31:0]          otbn_intg_flip_cnt_q;
+    initial begin
+        otbn_imem_val        = '0;
+        otbn_dmem_val        = '0;
+        otbn_imem_forced     = 1'b0;
+        otbn_dmem_forced     = 1'b0;
+        otbn_imem_rel_chk    = 1'b0;
+        otbn_dmem_rel_chk    = 1'b0;
+        otbn_intg_flip_cnt_q = '0;
+    end
+    assign otbn_imem_live =
+        (`OTBN_U.u_imem.rvalid_o !== 1'b1) ? '0 :
+        (`OTBN_U.u_imem.wr_collision_o === 1'b1) ?
+            ((`OTBN_U.u_imem.wdata_q & `OTBN_U.u_imem.wmask_q) |
+             (`OTBN_U.u_imem.rdata & ~`OTBN_U.u_imem.wmask_q)) :
+            `OTBN_U.u_imem.rdata;
+    assign otbn_dmem_live =
+        (`OTBN_U.u_dmem.rvalid_o !== 1'b1) ? '0 :
+        (`OTBN_U.u_dmem.wr_collision_o === 1'b1) ?
+            ((`OTBN_U.u_dmem.wdata_q & `OTBN_U.u_dmem.wmask_q) |
+             (`OTBN_U.u_dmem.rdata & ~`OTBN_U.u_dmem.wmask_q)) :
+            `OTBN_U.u_dmem.rdata;
+    wire otbn_intg_flip_arm =
+        otbn_intg_flip_on && (otbn_intg_flip_en_i === 1'b1) &&
+        !$isunknown({otbn_intg_flip_mem_i, otbn_intg_flip_bit_i});
+    wire otbn_imem_flip_hit =
+        otbn_intg_flip_arm && (otbn_intg_flip_mem_i == 1'b0) &&
+        (32'(otbn_intg_flip_bit_i) < 32'd39) && (`OTBN_U.imem_access_core === 1'b1) &&
+        (`OTBN_U.u_imem.rvalid_o === 1'b1);
+    wire otbn_dmem_flip_hit =
+        otbn_intg_flip_arm && (otbn_intg_flip_mem_i == 1'b1) &&
+        (32'(otbn_intg_flip_bit_i) < OtbnDmemW) && (`OTBN_U.dmem_access_core === 1'b1) &&
+        (`OTBN_U.u_dmem.rvalid_o === 1'b1);
+    always @(negedge clk_i) begin
+        if (otbn_imem_rel_chk && (`OTBN_U.imem_rdata_core !== otbn_imem_live))
+            $fatal(1, "[tb] +sep_otbn_intg_flip: IMEM read data differs from the live value %s",
+                   "after the release");
+        if (otbn_dmem_rel_chk && (`OTBN_U.dmem_rdata !== otbn_dmem_live))
+            $fatal(1, "[tb] +sep_otbn_intg_flip: DMEM read data differs from the live value %s",
+                   "after the release");
+        otbn_imem_rel_chk = 1'b0;
+        otbn_dmem_rel_chk = 1'b0;
+        if (otbn_intg_flip_en_i !== 1'b1) otbn_intg_flip_cnt_q = '0;
+        if (otbn_imem_flip_hit) begin
+            otbn_imem_val = otbn_imem_live ^ (39'd1 << otbn_intg_flip_bit_i);
+            otbn_intg_flip_cnt_q = otbn_intg_flip_cnt_q + 32'd1;
+            otbn_imem_forced = 1'b1;
+            force `OTBN_U.imem_rdata_core = otbn_imem_val;
+        end else if (otbn_imem_forced && (otbn_imem_val !== otbn_imem_live)) begin
+            otbn_imem_val = otbn_imem_live;
+            force `OTBN_U.imem_rdata_core = otbn_imem_val;
+        end else if (otbn_imem_forced) begin
+            release `OTBN_U.imem_rdata_core;
+            otbn_imem_forced  = 1'b0;
+            otbn_imem_rel_chk = 1'b1;
+        end
+        if (otbn_dmem_flip_hit) begin
+            otbn_dmem_val = otbn_dmem_live ^ (OtbnDmemOne << otbn_intg_flip_bit_i);
+            otbn_intg_flip_cnt_q = otbn_intg_flip_cnt_q + 32'd1;
+            otbn_dmem_forced = 1'b1;
+            force `OTBN_U.dmem_rdata = otbn_dmem_val;
+        end else if (otbn_dmem_forced && (otbn_dmem_val !== otbn_dmem_live)) begin
+            otbn_dmem_val = otbn_dmem_live;
+            force `OTBN_U.dmem_rdata = otbn_dmem_val;
+        end else if (otbn_dmem_forced) begin
+            release `OTBN_U.dmem_rdata;
+            otbn_dmem_forced  = 1'b0;
+            otbn_dmem_rel_chk = 1'b1;
+        end
+    end
+    assign otbn_intg_flip_count_o = otbn_intg_flip_cnt_q;
+`undef OTBN_U
 
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
@@ -4934,6 +5207,13 @@ module sep_uvm_top
     assign ext_port_rsp_bresp_i     = '0;
     assign ext_port_rsp_rresp_i     = '0;
     assign ext_port_rsp_rdata_i     = '0;
+    assign ext_trng_axil_rsp_en_i    = 1'b0;
+    assign ext_trng_axil_rsp_bresp_i = '0;
+    assign ext_trng_axil_rsp_rresp_i = '0;
+    assign ext_trng_axil_rsp_rdata_i = '0;
+    assign otbn_intg_flip_en_i       = 1'b0;
+    assign otbn_intg_flip_mem_i      = 1'b0;
+    assign otbn_intg_flip_bit_i      = '0;
     assign sep_ext_interrupts_i     = '0;
     assign smn_outbound_resp_hold_i = 1'b0;
     assign smn_outbound_rd_slverr_i = 1'b0;
@@ -5931,6 +6211,9 @@ module sep_uvm_top
         .smc_resp_i        (ext_to_smc_resp_w),
         .ext_req_i         (u_dut.axi_extension_axi_req),
         .ext_resp_i        (u_dut.axi_extension_axi_resp),
+        .trng_req_i        (u_dut.ext_trng_axil_req),
+        .trng_resp_i       (u_dut.ext_trng_axil_resp),
+        .trng_rsp_on_i     (trng_rsp_on),
         .dma_req_i         (`SEP_CORE.dma_axi_req),
         .dma_resp_i        (`SEP_CORE.dma_axi_resp),
         .dma_raw_req_i     (`SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw),

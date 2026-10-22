@@ -1029,7 +1029,7 @@ count values, not behaviour.
 |`sep_lcc_state_codeword_rand_test` |Nibble of the state code word |`sep_lc_sigint_failclosed_cg.x_sigint_state_secdis_out` and the integrity-error cells of `sep_efuse_jtag_policy_cg`, seed-dependent
 |`sep_efuse_transient_rma_rand_test` |Enable and start state |`sep_lc_illegal_transition_cg.x_transient`, seed-dependent
 |`sep_efuse_token_fault_matrix_test` |Fault cell of each channel |`sep_token_fault_cg.x_ch_kind_copy`, `x_ch_retry`, seed-dependent
-|`sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test` |Lifecycle state of the image |`sep_efuse_jtag_policy_cg.cp_state`, `x_state_class_op`, `cp_gate_independent_of_feat`, seed-dependent; no bin of `sep_efuse_secure_tm_cg` depends on the state
+|`sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test` |Lifecycle state of the image (five states for the secure test mode matrix, 9 seeds) |`sep_efuse_jtag_policy_cg.cp_state`, `x_state_class_op`, `cp_gate_independent_of_feat`, seed-dependent; no bin of `sep_efuse_secure_tm_cg` depends on the state
 |`sep_sec_dis_timing_rand_test` |Class B or C |`sep_sec_dis_activation_cg.cp_match_phase` during-sense bin, and `sep_sec_dis_robustness_cg.cp_stops_sense` phase bins and `cp_reset_values_hold`, seed-dependent
 |`sep_efuse_shim_response_fault_test` |Word class of the sense status |None: `cp_sense_status_word` has one bin for every word of 10 to 254, and CHK-SENSE-STATUS grades the drawn word
 |`sep_km_key_transfer_rand_test` |Size class of each non-witness engine |`sep_km_sideload_delivery_cg.cp_km_size_vs_width`, seed-dependent
@@ -1735,7 +1735,7 @@ does not use the `in_reset` gate of Phase 1. The graded window still applies.
 |<<sep-fcov-p2-crypto-entropy,Crypto and entropy>>
 |`sep_crypto_bus_access_cg`, `sep_crypto_reset_cg`, `sep_crypto_intr_cg`, `sep_crypto_invalid_encoding_cg`, `sep_aes_cfg_cg`, `sep_aes_op_status_cg`, `sep_aes_fault_cg`, `sep_aes_cfb_ofb_gcm_cg`, `sep_crypto_reg_lock_cg`, `sep_crypto_alert_cg`, `sep_kmac_cfg_cmd_cg`, `sep_kmac_entropy_cg`, `sep_otbn_err_lock_cg`, `sep_hmac_cfg_op_cg`, `sep_otbn_op_cg`, `sep_abr_completion_cg`, `sep_esrc_noise_gen_cg`, `sep_esrc_startup_health_cg`, `sep_esrc_fault_alert_cg`, `sep_esrc_conditioning_cg`, `sep_drbg_err_inject_cg`, `sep_csrng_cmd_cg`, `sep_edn_mode_cg`, `sep_entropy_delivery_cg`
 |<<sep-fcov-p2-fabric-remap,Fabric and remap>>
-|`sep_fabric_inbound_aperture_cg`, `sep_fabric_outbound_route_cg`, `sep_remap_output_offset_cg`, `sep_remap_alias_cg`, `sep_filter_match_cg`, `sep_filter_range_granule_cg`, `sep_filter_default_policy_cg`, `sep_fabric_dedicated_port_cg`, `sep_dma_endpoint_cg`, `sep_aperture_reserved_access_cg`, `sep_crypto_bus_access_cg`, `sep_fabric_port_silence_cp`
+|`sep_fabric_inbound_aperture_cg`, `sep_fabric_outbound_route_cg`, `sep_remap_output_offset_cg`, `sep_remap_alias_cg`, `sep_filter_match_cg`, `sep_filter_range_granule_cg`, `sep_filter_default_policy_cg`, `sep_fabric_dedicated_port_cg`, `sep_fabric_trng_reply_cg`, `sep_dma_endpoint_cg`, `sep_aperture_reserved_access_cg`, `sep_crypto_bus_access_cg`, `sep_fabric_port_silence_cp`
 |<<sep-fcov-p2-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |`sep_pic_reg_map_cg`, `sep_pic_source_map_cg`, `sep_pic_enable_priority_cg`, `sep_pic_gateway_cg`, `sep_pic_delivery_cg`, `sep_pic_no_delivery_cg`, `sep_pic_fabric_isolation_cg`, `sep_cpu_nonpic_irq_cg`, `sep_nmi_vector_cfg_cg`, `sep_nmi_concurrency_cg`, `sep_fault_source_report_cg`, `sep_fault_source_ack_cg`, `sep_mbox_transfer_cg`, `sep_mbox_qualification_cg`, `sep_cpu_ctrl_timeout_inert_cg`, `sep_mbox_irq_line_cg`, `sep_mbox_fifo_model_cg`, `sep_mbox_reset_cg`, `sep_pic_alert_cg`, `sep_dma_host_fault_cg`
 |<<sep-fcov-p2-spi-dma,SPI and DMA>>
@@ -2201,7 +2201,7 @@ counter and automatic reseed. `OT` kmac (`CFG_SHADOWED`, `CMD`, `ENTROPY_PERIOD`
 
 ===== `sep_otbn_err_lock_cg`
 
-*Description*: OTBN control-register write legality, the reaction to a software error in each `software_errs_fatal` setting, the LOCKED hold and exit, and the `ERR_BITS` clear. `OT` otbn
+*Description*: OTBN control-register write legality, the reaction to a software error in each `software_errs_fatal` setting, the fatal reaction to an IMEM or DMEM integrity error, the LOCKED hold and exit, and the `ERR_BITS` clear. `OT` otbn
 (`CTRL`, `CMD`, `STATUS`, `ERR_BITS`, `FATAL_ALERT_CAUSE`); `SPEC` `otbn.adoc`,
 `BLK` `sep_reset_ctrl.adoc`.
 
@@ -2214,6 +2214,7 @@ counter and automatic reseed. `OT` kmac (`CFG_SHADOWED`, `CMD`, `ENTROPY_PERIOD`
 |`cp_sw_error_end` |An EXECUTE with an illegal instruction ends {at IDLE with `ERR_BITS.illegal_insn` = 1 and `software_errs_fatal` = 0, at LOCKED with `ERR_BITS.fatal_software` = 1 and `FATAL_ALERT_CAUSE.fatal_software` = 1 and `software_errs_fatal` = 1}. 2 bins. Sampled at the clock `STATUS` reaches the end code |`otbn_status`, `otbn_ctrl`, `otbn_err` |executable. Stimulus: Defined
 |`cp_locked_hold_exit` |{a recognised `CMD` write at LOCKED leaves `STATUS` at LOCKED 4 clocks after its response, an OTBN reset taken at LOCKED (`STATUS` one clock before the reset edge, because `STATUS` resets asynchronously to the wipe state) ends at IDLE}. 2 bins |`csr_lsu` (`OTBN_CMD`), `otbn_status`, `ip_rst` |executable. Stimulus: Defined
 |`cp_err_bits_clear` |A write to `ERR_BITS` at IDLE with `ERR_BITS` non-zero, followed by an OKAY read of 0. 1 bin |`csr_lsu` (`OTBN_ERR_BITS`), `otbn_err`, `otbn_status` |executable. Stimulus: Defined
+|`cp_intg_violation_end` |An EXECUTE ends at LOCKED with exactly one of `ERR_BITS.imem_intg_violation` and `ERR_BITS.dmem_intg_violation` set and the matching `FATAL_ALERT_CAUSE` bit written since the OTBN reset: {`imem_intg`, `dmem_intg`}. 2 bins. Sampled at the clock `STATUS` reaches LOCKED. The cause bits are the integrity causes only: the other fatal causes are not bins (see Bins not graded) |`otbn_status`, `otbn_err` |executable. Stimulus: Defined. The owner runs the IMEM leg and the DMEM leg on every seed; the drawn bit of the inverted word does not select a bin
 |===
 
 ===== `sep_hmac_cfg_op_cg`
@@ -2500,7 +2501,7 @@ no bin, for the reason given.
 |`sep_kmac_cfg_cmd_cg` |`msg_mask` x `entropy_fast_process` (they act only in KMAC mode; the keyed digest is graded by an open test); PREFIX, key length, key source, application interface, pass-through quirk, command x stage cells of `err_processed`, `hash_cnt_clr`, `entropy_req` |Open Phase 1 tests fill the PREFIX and key cells. No check for the rest
 |`sep_kmac_entropy_cg` |Wait timer "large"; threshold {1, maximum}; the number of reseeds per run and the hash at which the first reseed occurs; EDN-timeout escape; the fourth mode encoding; the values 0 and 5 of `cp_sw_seed_count` (`ignore_bins` `seeds0_no_absorb`, `seeds5_no_absorb`) |The owner sets the threshold to 0, to 2 to 4 or to a value above the hash count, and a timer of 1 to 8. The specification states a reseed after each threshold of messages and no count at the boundary. The register text (`OT` kmac, `ENTROPY_SEED`) does not state whether a `CMD.start` before six seed writes is refused or only gives no digest, so the owner runs the five-seed and zero-seed starts with the graded window closed and logs them as `OBS-BLOCKED CHK-KMAC-SWSEED-NEG`
 |`sep_otbn_op_cg` |`cp_post_reset_done` (`ignore_bins` `wipe_raises_done` and `unreachable_no_done`): `INTR_STATE.done` after the post-reset internal secure wipe |No sentence states the value of `done` when `STATUS` goes 0x04 to 0x00 after an OTBN reset (VPLAN Phase 3 Blocked features). The owner logs it as `OBS-OTBN-INITDONE-DONE`; `cp_post_reset_arc` bins the stated status arc. The `iff` term of the coverpoint makes the value 0 unreachable
-|`sep_otbn_err_lock_cg` |The six other software errors (`BAD_DATA_ADDR`, `BAD_INSN_ADDR`, `CALL_STACK`, `LOOP`, `KEY_INVALID`, `mai_software_error`); the eight fatal bits except `fatal_software`; FIPS and repetition checks; a write to `ERR_BITS` while OTBN is running; system-reset exit; `lifecycle_escalation` stays 0 |The owner drives one software error (an illegal instruction) in each `software_errs_fatal` setting. `mai_software_error` has no stated cause. The FIPS tag is tied high and the repetition check is a chance outcome. The escalation input has no control window
+|`sep_otbn_err_lock_cg` |The six other software errors (`BAD_DATA_ADDR`, `BAD_INSN_ADDR`, `CALL_STACK`, `LOOP`, `KEY_INVALID`, `mai_software_error`); the fatal bits other than `fatal_software`, `imem_intg_violation` and `dmem_intg_violation`; FIPS and repetition checks; a write to `ERR_BITS` while OTBN is running; system-reset exit; `lifecycle_escalation` stays 0 |The owner drives one software error (an illegal instruction) in each `software_errs_fatal` setting and one IMEM and one DMEM integrity error. `mai_software_error` has no stated cause. The FIPS tag is tied high and the repetition check is a chance outcome. The escalation input has no control window
 |`sep_esrc_noise_gen_cg` |Oscillator length, source and synchronizer cells; `SAMPLE_CLK_SELECT`; external clock presence; `SAMPLE_CLK_DIVIDE` 6 to 31; stored values of the ring-oscillator, sample-clock, decorrelator and generator divide fields; the generator divide reset order |The bench forces the noise after the oscillator. An open test grades the stored values and the reset values.
 |`sep_esrc_conditioning_cg` |Stream words while the FIFO is full; coupled divider axis; `SAMPLE_CLK_DIV` bins; BIW structure; degenerate BIW inputs; all-clear mask; parity format; `INPUT_COUNT` at the block boundary; a churn push after fewer than 32 pushes (`cp_churn_age`) |The spec states no BIW coefficient. The register text gives the count of words accumulated and no value at the block boundary. The integrity checks are bins of `sep_esrc_fault_alert_cg` `cp_fifo_integrity`. The word of a churn push after fewer than 32 pushes depends on stale entries, which the specification does not define
 |`sep_esrc_startup_health_cg` |Repetition limit bins 0, 1, 255; window 65535; APT and Markov limit bands; component-version bins beyond `COMPONENT_ID`; window synchronization; the pass cells of the two adaptive-proportion testers; the `ENABLE` value with the Markov bit cleared; the Markov high and adaptive-proportion high trips of the 32-bit instance; both values of `cp_disable_clears` (`ignore_bins` `reads_zero`, `reads_nonzero`) |The limits are leaf draws. The limit values have no spec bin beyond the trip and pass sides. The 32-bit statistic of a lane pattern other than the constant is not stated. The adaptive-proportion pass cells share status bit 3 with the trip of the other adaptive-proportion tester, so they cannot be seen. The repetition tester count after `HEALTH_TEST_CTRL.ENABLE` bit 0 is cleared is not stated (`ESRC_RDL`, `HEALTH_TEST_CTRL`: disabling a test clears its state, with no value), so the owner logs it as `OBS-BLOCKED` and grades only that the count falls below 100 and below its value before the write
@@ -2561,6 +2562,7 @@ Each tap is a read-only reference. No tap forces a signal. Paths start at `sep_u
 |`out_req` |`smn_outbound_req_w` = `u_dut.smn_outbound_axi_req_o` |No. The always-ready outbound responder answers OKAY and serves every capture cell |Added tap (PR-OUT)
 |`smc_req` |`ext_to_smc_req_w` = `u_dut.sep_ext_to_smc_axi_req_o` |No. The net exists in every build |Added tap (PR-SMC)
 |`ext_req` |`u_dut.axi_extension_axi_req`, and `u_dut.axi_extension_axi_resp` for the reply |`b.resp` and `r.resp` of each B and R handshake: yes, for `cp_ext_port_reply`. The reply is a testbench-driven input: the extension port responder of the owning test sets it (`+sep_ext_port_responder`) |Added tap (PR-EXT, PR-EXT-RSP)
+|`trng_req`, `trng_resp`, `trng_rsp_on` |`u_dut.ext_trng_axil_req`, `u_dut.ext_trng_axil_resp` for the reply, and the responder state `ext_trng_axil_rsp_on_o` |B and R handshakes and `resp` of each reply beat: yes, for `cp_trng_port_reply`. The reply is a testbench-driven input: the TRNG port responder of the owning test sets it (`+sep_ext_trng_axil_responder`) |Added tap (PR-TRNG, PR-TRNG-RSP)
 |`sram_req` |`u_dut.sep_sram_req` |No |Added tap (PR-SRAM)
 |`rom_req` |`u_dut.sep_boot_rom_req` |No |Added tap (PR-ROM)
 |`tcm_req` |`u_dut.sep_cpu_tcm_req` |No. A partial testbench tap exists (ICCM and DCCM active, ICCM bank 0 address only). The tap carries no initiator identity: the initiator rule attributes it with `dma_req` |Added tap (PR-TCM) for `wren` and the DCCM address
@@ -2733,6 +2735,18 @@ Reach values (<<sep-fcov-parked>>). "executable": the owner fills every bin as w
 |`cp_tcm_dma_dir_range` |Initiator DMA x direction x range {ICCM 0xC000_0000-0xC003_FFFF, DCCM 0xC004_0000-0xC005_FFFF}. 4 cells. The DMA master address selects the range. The `tcm_req` activity confirms the access (read = `clken` and no `wren`, write = `clken` and `wren`). (`fabric.adoc`, Top Level AXI4; address map table) |- |`dma_req` address; `tcm_req` clken, wren |`sep_tcm_dma_aperture_ecc_test` |executable
 |===
 
+===== `sep_fabric_trng_reply_cg`
+
+*Description*: The reply that the LSU initiator receives for an access to the TRNG window while the bench TRNG responder answers the TRNG AXI-Lite port, per access shape. `SPEC` `doc/integrator/src/smu-sep.adoc` (TRNG path), `hw/sys/sep/doc/crypto.adoc` (Single-Beat Access Only).
+
+*Tool*: VCS. *Class*: executable. The group samples only while `ext_trng_axil_rsp_on_o` is 1 and the graded window of its owner is open (owner code 234 in `tb/sep_fcov_owner_codes.svh`).
+
+[cols="2,6,3,3,3,2",options="header"]
+|===
+|Coverpoint |Bins and crosses |Illegal bins |Sampled signal |Owning tests |Reach
+|`cp_trng_port_reply` |Access shape x direction x initiator code. Single read (AxLEN 0, AxSIZE 2 or less) with the initiator code {OKAY, SLVERR, DECERR}: `single_read_okay`, `single_read_slverr`, `single_read_decerr`. Single write with the initiator code {OKAY, SLVERR, DECERR}: `single_write_okay`, `single_write_slverr`, `single_write_decerr`. Split write (AxLEN 0, AxSIZE 3, two port writes, the first not OKAY and the last OKAY): `split_write_slverr`. Burst (AxLEN above 0) with no port beat: `burst_read_decerr` (each R beat), `burst_write_decerr` (the B). 9 bins. A single access gives a sample only when the initiator code equals the code of its one port reply beat. A 64-bit single read and every other fragment pattern give no sample |Split write with an initiator code other than SLVERR (`split_write_not_slverr`). Burst with an initiator code other than DECERR (`burst_not_decerr`). The illegal bins are cells that the contract forbids and that the sampler can reach: a split write whose initiator code is not SLVERR, and a burst whose initiator code is not DECERR |`lsu_req`, `lsu_resp` (the TRNG window handshakes and the initiator code), `trng_req`, `trng_resp` (the port beats between the LSU request and its reply), `trng_rsp_on` |`sep_fabric_deadspace_decode_test` |executable. Stimulus: Defined. Every bin fills on every seed: the leaf issues the three codes on a read and on a write, the split write and the two bursts
+|===
+
 ===== `sep_dma_endpoint_cg`
 
 *Class*: executable (<<sep-fcov-parked>>).
@@ -2819,6 +2833,7 @@ Reach values (<<sep-fcov-parked>>). "executable": the owner fills every bin as w
 |`sep_filter_range_granule_cg` |`sep_fabric_filter_match_priority_rand_test`
 |`sep_filter_default_policy_cg` |`sep_fabric_filter_match_priority_rand_test`, `sep_fabric_outbound_route_attr_test`
 |`sep_fabric_dedicated_port_cg` |`sep_fabric_extension_port_window_test`, `sep_fabric_dma_endpoint_matrix_test`, `sep_tcm_dma_aperture_ecc_test`
+|`sep_fabric_trng_reply_cg` |`sep_fabric_deadspace_decode_test`
 |`sep_dma_endpoint_cg` |`sep_fabric_dma_endpoint_matrix_test`
 |`sep_aperture_reserved_access_cg` |`sep_fabric_row_response_matrix_test`
 |`sep_crypto_bus_access_cg` |`sep_fabric_row_response_matrix_test`
@@ -3563,7 +3578,7 @@ Phase 2 contract of this area.
 |`sep_fault_source_ack_cg` |Source 40 mask-only rows; source 40 contributor subsets |No owning test drives the source 40 rows
 |`sep_mbox_qualification_cg` |Type DTEE; the per-attribute rows for the confidential bit |DTEE is reserved
 |`sep_mbox_qualification_cg` |The response by outcome; the source ID value classes; the match regime; the response of the register write to a locked entry |The fabric section groups `sep_filter_match_cg` and `sep_filter_default_policy_cg` own the verdict classes, and the open inbound filter and CSR bank tests grade the rest
-|`sep_mbox_fifo_model_cg` |Zero fill of unstrobed lanes that carry non-zero data; the partial push after a full push (two entries, no merge) |The open AXI VIP drives unstrobed lanes to zero (see the Blocked features of the verification plan). `sep_mailbox_datapath_walk_test` grades the partial push
+|`sep_mbox_fifo_model_cg` |Zero fill of unstrobed lanes that carry non-zero data; the partial push after a full push (two entries, no merge) |The owning test drives no non-zero data on unstrobed lanes. `sep_mailbox_datapath_walk_test` grades the zero fill (CHK-MBX-ZERO-FILL) and the partial push
 |`sep_cpu_ctrl_timeout_inert_cg` |Reset value and read-back shape of the timeout registers except the six counts of `x_reg_dir`; writes of `TIMEOUT_CLEAR` and `TIMEOUT_MODE` |`sep_address_map_test` and `sep_reg_bit_bash_rand_test` (open) and `sep_cpu_ctrl_reg_shape_test` (Phase 3) grade them
 |`sep_mbox_irq_line_cg` |`x_gate` cells of the `eirq` cause (8 cells: {IRQS, IRQEN} x port) |`sep_mailbox_fifo_model_rand_test` pushes only below occupancy 8 and pops only above occupancy 0, so no access sets `eirq` (`axil_mailbox.adoc`, `IRQS.eirq`: error on a full-FIFO write or an empty-FIFO read). `cp_err_line` of `sep_mailbox_access_error_inject_test` bins the `eirq` gate
 |`sep_mbox_transfer_cg` |Mailbox `k` to port bit `j` of `smc_mailbox_interrupt_o` (64 cells) |The specification states no map from mailbox to port bit (Blocked features of the verification plan). `x_out_count` grades the number of high bits
@@ -5949,7 +5964,7 @@ the generated constants.
 [cols="2,5,3",options="header"]
 |===
 |Coverpoint |Bins |Class
-|`cp_state` |PROD; RMA_SIP; integrity error (`jtag_filt_sigint_i` high, in TEST_DEV) |executable; seed-dependent
+|`cp_state` |PROD; RMA_SIP; integrity error (`jtag_filt_sigint_i` high, in TEST_DEV); PROD_END; RMA_CHIPLET. The bins `prod_end` and `rma_chiplet` take any completed JTAG access in that state for `sep_efuse_secure_tm_matrix_rand_test` only, and no cross uses them: the class, response and cross coverpoints keep PROD, RMA_SIP and the integrity error |executable; seed-dependent
 |`cp_class` |Shadow word; interface-control register; token word; `TOKEN_EOP`; match register. `TOKEN_MATCH_FAULT` is not declared: the specification does not state the JTAG policy for it |executable
 |`cp_resp` |OKAY, not OKAY. The specification states only "an error response" for a denied access, so the code is not a bin |executable
 |`x_state_class_op` |State (3) x class and op: allowed (token word read, token word write, `TOKEN_EOP` write, match read) with response OKAY; denied (shadow read, shadow write, control read, control write) with a response that is not OKAY. 14 legal cells for PROD and RMA_SIP: (PROD, token word read) and (PROD, token word write) are `ignore_bins`, because the open test `sep_efuse_jtag_axil_el2_cpu_mux_test` grades them and the owning test only logs them. (PROD, shadow read) and (PROD, control read) stay legal cells: the bin takes the DUT response, so an OKAY fills the `illegal_bins` entry and never a legal cell. The owning test grades the unchanged target of these reads and the response of the PROD read of every interface-control register other than `EFUSE_PROGRAM_CTRL`. It logs the response of the PROD shadow read and of the PROD `EFUSE_PROGRAM_CTRL` read, which `sep_efuse_jtag_axil_el2_cpu_mux_test` grades. A denied class with OKAY, or an allowed class with an error, is an `illegal_bins` entry. `TOKEN_EOP` read and match write are not declared. The integrity-error state adds 8 cells of the same form (the allowed classes answer OKAY and the denied classes answer not OKAY, `lifecycle_controller.adoc`, section "Debug and Test Port Path Gating", row SEP OTP JTAG2AXIL path), so the coverpoint has 22 legal cells. The integrity-error cells need the added error inject `jtag_filter_lc_sigint_inject_i` at the JTAG lifecycle filter and sample the added tap `jtag_filt_sigint_i` |executable; seed-dependent
@@ -5957,7 +5972,8 @@ the generated constants.
 |===
 
 *Owning tests*: `sep_efuse_jtag_access_rand_test` (PROD and RMA_SIP cells);
-`sep_lcc_state_codeword_rand_test` (integrity-error cells).
+`sep_lcc_state_codeword_rand_test` (integrity-error cells);
+`sep_efuse_secure_tm_matrix_rand_test` (`cp_state` bins `prod_end` and `rma_chiplet`).
 
 *Tool*: VCS.
 
@@ -5977,7 +5993,7 @@ low under the filter-side injection, so it is not the sample of this state.
 `cp_state`, `x_state_class_op` and `cp_gate_independent_of_feat` are
 seed-dependent: each leaf of `sep_efuse_jtag_access_rand_test` draws one state,
 PROD or RMA_SIP, and leg C runs only in a leaf of
-`sep_lcc_state_codeword_rand_test` that draws the nibble `0000`. `cp_class` and
+`sep_lcc_state_codeword_rand_test` that draws the nibble `0000`. Each leaf of `sep_efuse_secure_tm_matrix_rand_test` draws one of five states with equal weight and fills `prod_end` or `rma_chiplet` when it draws that state; the bins close over merged regressions. `cp_class` and
 `cp_resp` fill in every leaf.
 
 ===== Owning tests
@@ -6001,7 +6017,7 @@ PROD or RMA_SIP, and leg C runs only in a leaf of
 |`sep_sec_dis_robustness_cg` |`sep_sec_dis_timing_rand_test`, `sep_efuse_token_channel_rand_test`, `sep_lcc_feat_ctrl_state_matrix_rand_test`
 |`sep_efuse_if_status_cg` |`sep_efuse_interface_status_rand_test`, `sep_efuse_shim_response_fault_test` (`cp_sense_status_word`, `x_prog_lifecycle`)
 |`sep_efuse_secure_tm_cg` |`sep_efuse_secure_tm_matrix_rand_test`
-|`sep_efuse_jtag_policy_cg` |`sep_efuse_jtag_access_rand_test`, `sep_lcc_state_codeword_rand_test` (integrity-error cells)
+|`sep_efuse_jtag_policy_cg` |`sep_efuse_jtag_access_rand_test`, `sep_lcc_state_codeword_rand_test` (integrity-error cells), `sep_efuse_secure_tm_matrix_rand_test` (`cp_state` bins `prod_end` and `rma_chiplet`)
 |===
 
 The owning tests also hit these Phase 1 groups. They add hits and no cells:
@@ -6027,7 +6043,7 @@ not define, is a dead bin. The groups above do not declare these cells.
 |Frontdoor write of the four protection shadows under each strap (no `x_write_block` coverpoint is declared) |`sep_efuse_secure_tm_write_lock_test` grades the frontdoor write block, and `sep_efuse_secure_tm_matrix_rand_test` runs those writes only as controls (CHK-STM-CTL)
 |RMA_CHIPLET cell of `x_state_demote_forced` |The RMA_CHIPLET profile row is all ones with and without SEC_DIS, so a forced match cannot differ from the row; `sep_lcc_feat_ctrl_state_matrix_rand_test` logs that cell as a control (`ctl=1`)
 |Secure test mode JTAG write in PROD and RMA_SIP |The lifecycle gate refuses every JTAG shadow write, so a refusal and a control cannot differ
-|Secure test mode JTAG write of the four protection shadows in TEST_DEV, under each strap (no `x_jtag_write_block` coverpoint is declared) |A strap-1 cell counts only after the strap-0 JTAG write to the same target landed, and `sep_efuse_secure_tm_matrix_rand_test` runs its strap-1 epoch before its strap-0 epoch, so no strap-1 cell can fill at its sample. The strap-0 write is the control of CHK-STM-JTAG and fills no graded cell. CHK-STM-JTAG grades the strap-1 block
+|Secure test mode JTAG write of the four protection shadows in TEST_DEV, PROD_END and RMA_CHIPLET, under each strap (no `x_jtag_write_block` coverpoint is declared) |A strap-1 cell counts only after the strap-0 JTAG write to the same target landed, and `sep_efuse_secure_tm_matrix_rand_test` runs its strap-1 epoch before its strap-0 epoch, so no strap-1 cell can fill at its sample. The strap-0 write is the control of CHK-STM-JTAG and fills no graded cell. CHK-STM-JTAG grades the strap-1 block
 |(SEC_DIS channel, all-zero shape) in `x_ch_shape` |The bound SEC_DIS token is zero, so that token matches
 |Demotion 00 of each state in `x_otp_invariant` (6 cells, `ignore_bins` `to_undemoted`) |The cell compares the sample after a demotion change with the sample before it. `DEMOTE_1` and `DEMOTE_2` are set-only, so a register goes back to 0 only at a reset, and the reset ends the compare. No stimulus reaches a change to demotion 00. CHK-DEMOTE-OTP and CHK-DEMOTE-RESET of `sep_lcc_feat_ctrl_state_matrix_rand_test` grade the `LC_STATE` word after each reset
 |(SEC_DIS channel, common-mode flip) in `x_ch_common_flip` |A flip of a SEC_DIS mismatch is a SEC_DIS match, and `sep_efuse_token_fault_matrix_test` never holds a SEC_DIS match while an injection is active
@@ -6035,7 +6051,7 @@ not define, is a dead bin. The groups above do not declare these cells.
 |(RMA_SIP channel, common-mode flip) in `x_ch_common_flip` |`sep_efuse_rma_token_rand_test` drives the unanimous legal flip of the RMA_SIP comparator in both directions and grades the result, and `sep_efuse_token_fault_matrix_test` runs the flip on RMA_CHIPLET only
 |Result code under a latch freeze in `x_ch_latch_freeze` |The specification names no test-enable signal and states no effect on a match in progress
 |Corruption distance of the integrity-error byte |The bench injection forces both rails of the byte to 0, so only one corrupt value exists
-|JTAG policy in TEST_DEV, PROD_END, RMA_CHIPLET, INVALID and before sense, and `TOKEN_MATCH_FAULT` over JTAG, in `sep_efuse_jtag_policy_cg` |The specification states the policy for PROD, RMA_SIP and the integrity error only
+|JTAG policy (class and response cells) in TEST_DEV, PROD_END, RMA_CHIPLET, INVALID and before sense, and `TOKEN_MATCH_FAULT` over JTAG, in `sep_efuse_jtag_policy_cg`. PROD_END and RMA_CHIPLET have `cp_state` bins and no class or response cell |The specification states the policy for PROD, RMA_SIP and the integrity error only. The write of a protection shadow over JTAG in PROD_END and RMA_CHIPLET is graded by `sep_efuse_secure_tm_matrix_rand_test`, not by a bin
 |(PROD, token word read) and (PROD, token word write) in `x_state_class_op` |The open test `sep_efuse_jtag_axil_el2_cpu_mux_test` grades the PROD token word write and readback, and `sep_efuse_jtag_access_rand_test` logs them without a grade
 |SEC_DIS held over a cold reset with `feat_ctrl_i` all ones before sense, the recovery sense after a Mismatch and a cold reset, and the OKAY shadow-map read with `sec_dis_i` 1 and sense not done (no `cp_cold_reset_retained`, `cp_recovery` or `cp_map_read` coverpoint is declared) |`sep_sec_dis_override_test` grades these cells and Phase 1 `sep_sec_dis_boot_cg.cp_map_resp` records the map read; `sep_sec_dis_timing_rand_test` only logs them as controls
 |Code of a denied JTAG response (SLVERR or DECERR) in `cp_resp` |The specification states only "an error response", and no owning test drives an address that could give another code
