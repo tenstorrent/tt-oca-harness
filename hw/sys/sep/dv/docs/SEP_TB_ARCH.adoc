@@ -918,7 +918,8 @@ Exceptions (a closed set):
   Software cannot make the command store drop a command that the accelerator
   decoded, so the fault has no frontdoor. Without the plusarg the net is not
   forced. `MLDSA_STATUS`, `MLDSA_VERIFY_RES` and the firmware console the
-  checkers read are not forced. Owner: `sep_abr_cmd_drop_test`.
+  checkers read are not forced. The hook exists only in a build with Adams Bridge
+  (`SEP_ABR_EN` defined). Owner: `sep_abr_cmd_drop_test`.
 * *ROM bit-flip* — stored-bit error inject on the boot ROM macro array,
   outside `sep`, behind `sep_boot_rom_rsp_i`. A rising edge of `rom_flip_i`
   XORs `rom_flip_mask_i` into the stored 64-bit word `rom_flip_index_i`. The

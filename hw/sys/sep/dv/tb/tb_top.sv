@@ -3264,6 +3264,7 @@ module sep_uvm_top
     end
 `undef OTBN_CMD_QE
 
+`ifdef SEP_ABR_EN
     // +sep_abr_cmd_drop -- fault injection, off by default. Makes Adams Bridge
     // ignore every ML-DSA command while ZEROIZE and every register write still
     // land, the same "command store never landed" case as +sep_otbn_cmd_drop.
@@ -3289,6 +3290,7 @@ module sep_uvm_top
         if (abr_cmd_drop_on) force `ABR_MLDSA_CMD = abr_params_pkg::MLDSA_NONE;
     end
 `undef ABR_MLDSA_CMD
+`endif
 
     // +sep_otbn_intg_flip -- error injection, off by default
     // (docs/SEP_TB_ARCH.adoc, inject exceptions). In a run with the plusarg,
