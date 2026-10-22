@@ -60,9 +60,7 @@ endif::backend-html5[]
 |`telemetry_atvalid_i` |`logic` |Input |`[NumTelemetryReceivers-1:0]` |ATB telemetry valid input. |ATB sources → Telemetry receivers |N/A
 |`telemetry_afvalid_o` |`logic` |Output |`[NumTelemetryReceivers-1:0]` |ATB flush valid output. |Telemetry receivers → ATB sources |N/A
 |`telemetry_afready_i` |`logic` |Input |`[NumTelemetryReceivers-1:0]` |ATB flush ready input. |ATB sources → Telemetry receivers |N/A
-|`smc_cluster_ded_o` |`logic` |Output |1 |Cluster double error detection output. |CPU cluster → External systems |N/A
-|`smc_wdt_first_timeout_o` |`logic` |Output |1 |First watchdog timeout signal. |CPU cluster WDT → Reset Unit |N/A
-|`smc_wdt_second_timeout_o` |`logic` |Output |1 |Second watchdog timeout signal. |Reset Unit → External systems |N/A
+|`smc_ras_o` |`smc_pkg::smc_ras_t` |Output |- |SMC RAS levels on the SMC clock: cluster uncorrectable ECC, watchdog first and second timeouts, system, SEP and data-accelerator AXI hang timeouts, the eFuse lifecycle differential-encoding error, and the UART and I2C FIFO integrity errors. The hang and integrity bits ignore the interrupt enables. |Chip-level RAS aggregation |N/A
 |`smc_region_size_o` |`logic` |Output |`[31:0]` |SMC address region size output. |SMC Internal Registers → External systems |N/A
 |`smc_ext_interrupts_i` |`logic` |Input |`[NumExtInterrupts-1:0]` |External interrupt inputs. Width is 256. Active-high level or a pulse long enough to be sampled on `clk_smc`. Synchronized to `clk_smc` (3-stage) in `smc_base`; a short asynchronous pulse can be lost. |External sources → Interrupt aggregator |N/A, tie to '0 if unused
 |`sep_mailbox_interrupts_i` |`logic` |Input |`[7:0]` |SEP → SMC mailbox interrupt inputs (8 channels). Routed to internal interrupts to the SMC CPU. |SEP → Interrupt aggregator |N/A, tie to '0 if unused

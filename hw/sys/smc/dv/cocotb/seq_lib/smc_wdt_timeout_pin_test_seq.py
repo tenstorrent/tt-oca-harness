@@ -7,9 +7,9 @@ The core-0 watchdog is armed over SEP_IN AXI with the magic-key protocol of
 compare drive the per-core ``wdt_reset`` output sticky, ``CTRL.wdogenalways``
 lets the counter run whatever the core is doing, and ``CMP`` sets how many
 scaled cycles elapse first. ``smc_base.sv`` ORs the four per-core outputs onto
-``smc_wdt_first_timeout_o``; ``smc_cpu_ctrl_wrap.sv`` then counts
+``smc_ras_o.wdt_first_timeout``; ``smc_cpu_ctrl_wrap.sv`` then counts
 ``CPU_CTRL.WDT_TIMEOUT`` (``cpu_ctrl.rdl``, reset ``0x4000``) further cycles
-while that stays high and raises ``smc_wdt_second_timeout_o``, which
+while that stays high and raises ``smc_ras_o.wdt_second_timeout``, which
 ``smc_reset_ctrl.sv`` folds into the warm reset.
 
 The sequence reads the two pins through the ``tb_wdt_*_seen`` latches of
@@ -225,9 +225,9 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
             f"stage-2 count of 0x{stage2:x} cycles could have run"
         )
         cocotb.log.info(
-            "CHK-WDT-TIMEOUT-FIRST: smc_wdt_first_timeout_o latched %d cycles "
+            "CHK-WDT-TIMEOUT-FIRST: smc_ras_o.wdt_first_timeout latched %d cycles "
             "after the core-%d arming readback (CMP=0x%x, CTRL=0x%x); "
-            "smc_wdt_second_timeout_o still 0",
+            "smc_ras_o.wdt_second_timeout still 0",
             first_cycles,
             WDT_CORE,
             WDT_CMP_FIRST,
@@ -252,7 +252,7 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
             f"WDT_TIMEOUT stage-2 count 0x{stage2:x} (+{SECOND_TIMEOUT_SLACK_CYCLES})"
         )
         cocotb.log.info(
-            "CHK-WDT-TIMEOUT-SECOND: smc_wdt_second_timeout_o latched %d cycles "
+            "CHK-WDT-TIMEOUT-SECOND: smc_ras_o.wdt_second_timeout latched %d cycles "
             "after the first (CPU_CTRL.WDT_TIMEOUT=0x%x)",
             gap,
             stage2,

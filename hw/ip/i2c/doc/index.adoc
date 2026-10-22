@@ -67,6 +67,12 @@ instance 0 drives. The DMA ready outputs are `controller_tx_ready_o`,
 leaves them unconnected. It routes `i2c_irq_o` to peripheral interrupts 23 to
 25.
 
+`i2c_fifo_intg_err_o` is the OR of an instance's four FIFO integrity errors: a
+pointer mismatch in a hardened FIFO counter, or a parity mismatch on the entry
+at the head of a FIFO. It is independent of `INTR_ENABLE`. The pointer error
+holds until the FIFO is cleared or reset; the parity error clears once that
+entry is read. The SMC ORs the instances into `smc_ras_o.i2c_intg_err`.
+
 ifdef::backend-html5[]
 include::partial$i2c/doc/memmap.adoc[]
 endif::backend-html5[]

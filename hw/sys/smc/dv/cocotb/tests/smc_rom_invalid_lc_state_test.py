@@ -4,7 +4,7 @@
 
 The lifecycle enum the ROM understands runs 0x0..0x8. This test drives one of the
 values above that range into the target before cold reset -- a well-formed
-{diff_n, diff_p} pair, so the wrapper's lc_sigint_err_o stays clear and the ROM sees a
+{diff_n, diff_p} pair, so the wrapper's smc_ras_o.lc_sigint_err stays clear and the ROM sees a
 structurally valid but semantically illegal state -- and requires the ROM to reach its
 POST error state rather than continue booting.
 

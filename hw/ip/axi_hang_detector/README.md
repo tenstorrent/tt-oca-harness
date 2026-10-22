@@ -9,6 +9,10 @@ OR'd into a single fault line for the safety island.
 `irq_o` is a direct combinational **level**: high while the bus is
 hung, dropping on its own once the bus makes progress (no software clear needed).
 
+`timeout_o` is the same hang level before `irq_en` and `irq_test`: high while `enable`
+is set and the stall counter has reached zero. The SMC exports it per master in
+`smc_ras_o`, so a hang is visible to chip-level RAS even with the interrupt masked.
+
 ## Registers (per detector, in `smc_base_config`)
 
 `HANG_DET_<master>_CTRL`

@@ -16,7 +16,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_wdt_timeout_pin_test(smc_base_test):
-    """A programmed first timeout raises smc_wdt_first_timeout_o; uncleared, the second follows."""
+    """A programmed first timeout raises smc_ras_o.wdt_first_timeout; uncleared, the second follows."""
 
     required_evidence = (
         "CHK-WDT-TIMEOUT-CORES",
@@ -65,8 +65,8 @@ class smc_wdt_timeout_pin_test(smc_base_test):
             proxy=False,
             details=(
                 f"core-0 WDT armed over SEP_IN (KEY, CMP, COUNT, CTRL); "
-                f"smc_wdt_first_timeout_o latched after {seq.first_seen_cycles} "
-                f"cycles, smc_wdt_second_timeout_o {seq.second_gap_cycles} cycles "
+                f"smc_ras_o.wdt_first_timeout latched after {seq.first_seen_cycles} "
+                f"cycles, smc_ras_o.wdt_second_timeout {seq.second_gap_cycles} cycles "
                 f"later (WDT_TIMEOUT=0x{seq.stage2_cycles:x}), rst_warm asserted "
                 f"{seq.warm_reset_cycles} cycles after that and released"
             ),

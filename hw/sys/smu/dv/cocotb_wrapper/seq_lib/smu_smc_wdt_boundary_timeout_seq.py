@@ -10,18 +10,18 @@ watchdog does not drive the SMU boundary.
 This leaf sets WDOGRSTEN as well and follows the timeout out to the two
 wrapper outputs:
 
-S1  With the watchdog disarmed, both ``smc_wdt_first_timeout_o`` and
-    ``smc_wdt_second_timeout_o`` read low and ``WDOGIP0`` is clear -- a
+S1  With the watchdog disarmed, both ``smc_ras_o.wdt_first_timeout`` and
+    ``smc_ras_o.wdt_second_timeout`` read low and ``WDOGIP0`` is clear -- a
     starting point the checks below can move away from.
 
-S2  ``smc_wdt_first_timeout_o`` is the CPU cluster watchdog's first timeout
+S2  ``smc_ras_o.wdt_first_timeout`` is the CPU cluster watchdog's first timeout
     (``hw/sys/smc/doc/port_table.adoc``), so arming CORE0 with WDOGRSTEN has
     to raise it, and ``WDOGIP0`` has to be set at the same time.
 
 S3  The second stage times out at the cycle count in ``CPU_CTRL.WDT_TIMEOUT``
     (``cpu_ctrl.rdl``: "Cycle count value that 2nd stage watchdog timer
     timeout should occur at"), so with the first timeout held
-    ``smc_wdt_second_timeout_o`` has to rise. A watchdog timeout is a warm
+    ``smc_ras_o.wdt_second_timeout`` has to rise. A watchdog timeout is a warm
     reset source (``hw/sys/smc/doc/clk_rst.adoc``, "Watchdog Timeout":
     "Internal or external watchdog expiration"; ``hw/sys/smc/doc/cpu.adoc``:
     "a Warm Reset from a watchdog timeout"), so the SMC warm reset has to
@@ -174,13 +174,13 @@ class smu_smc_wdt_boundary_timeout_seq:
             evidence="CHK-SMU-WDT-FIRST",
         )
         self.sb.expect_eq(
-            "smc_wdt_first_timeout_o low before the watchdog is armed",
+            "smc_ras_o.wdt_first_timeout low before the watchdog is armed",
             self._bit("tb_smc_wdt_first_timeout"),
             0,
             evidence="CHK-SMU-WDT-FIRST",
         )
         self.sb.expect_eq(
-            "smc_wdt_second_timeout_o low before the watchdog is armed",
+            "smc_ras_o.wdt_second_timeout low before the watchdog is armed",
             self._bit("tb_smc_wdt_second_timeout"),
             0,
             evidence="CHK-SMU-WDT-SECOND",
@@ -235,9 +235,9 @@ class smu_smc_wdt_boundary_timeout_seq:
             int(FIRST_TIMEOUT_BOUND_NS / self.cfg.smu_clk_period_ns),
             "first watchdog timeout",
         )
-        self.log.info("smc_wdt_first_timeout_o rose %d clk_smu after arming", cycles)
+        self.log.info("smc_ras_o.wdt_first_timeout rose %d clk_smu after arming", cycles)
         self.sb.expect_eq(
-            "arming CORE0 with WDOGRSTEN raises smc_wdt_first_timeout_o",
+            "arming CORE0 with WDOGRSTEN raises smc_ras_o.wdt_first_timeout",
             self._bit("tb_smc_wdt_first_timeout"),
             1,
             evidence="CHK-SMU-WDT-FIRST",
@@ -276,7 +276,7 @@ class smu_smc_wdt_boundary_timeout_seq:
                 f"in {second_bound} clk_smu cycles; {self._cpu_state()}"
             )
         self.log.info(
-            "OBSERVATION smc_wdt_second_timeout_o rose %s and the SMC warm reset fell %s "
+            "OBSERVATION smc_ras_o.wdt_second_timeout rose %s and the SMC warm reset fell %s "
             "clk_smu after the first timeout was confirmed",
             second_cycle,
             warm_cycle,

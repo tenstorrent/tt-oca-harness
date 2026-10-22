@@ -794,15 +794,13 @@ the SEP-to-SMC dedicated AXI connection.
 |`telemetry_afready_i` |input |[NumTelemetryReceivers-1:0] |SMU external port
 |===
 
-=== DED/WDT
+=== RAS
 
 [cols="<30%,<10%,<15%,<45%",options="header"]
 |===
 |Port |Direction |Width |SMU Connection
 
-|`smc_cluster_ded_o` |output |1 |SMU external port
-|`smc_wdt_first_timeout_o` |output |1 |SMU external port
-|`smc_wdt_second_timeout_o` |output |1 |SMU external port
+|`smc_ras_o` |output |`smc_pkg::smc_ras_t` |SMU external port
 |===
 
 === Region Size
@@ -854,7 +852,7 @@ the SEP-to-SMC dedicated AXI connection.
 |Port |Direction |Width |SMU Connection
 
 |`lc_state_o` |output |[2*LcStateWidth-1:0] |SEP lifecycle state when `CFG.SEP=1`, else `8'hf0`; ported through SMU
-|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when `CFG.SEP=1`) or the SMC efuse interface.
+|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when `CFG.SEP=1`) or the SMC efuse interface; the SMC half is also `smc_ras_o.lc_sigint_err`.
 |===
 
 === Mailbox Interrupts

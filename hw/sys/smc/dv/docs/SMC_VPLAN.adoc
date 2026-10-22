@@ -939,7 +939,7 @@ extent and its declared error response past it.
 |`smc_telemetry_atb_capture_test` |3 |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
 |`smc_telemetry_receiver_csr_test` |2 |TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
 |`smc_wdt_key_csr_test` |2 |WDT writes are gated by the KEY magic value, COUNT_HI re-locks, and narrow writes are dropped, proven per core.
-|`smc_wdt_timeout_pin_test` |2 |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
+|`smc_wdt_timeout_pin_test` |2 |A programmed first timeout raises `smc_ras_o.wdt_first_timeout`; uncleared, the second timeout raises `smc_ras_o.wdt_second_timeout` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |2 |Run zeroer over output-fabric payload bytes and check the model.
 |`smc_zeroer_multi_burst_test` |2 |Clear a region larger than one AXI burst and check the first and last word of each half, with a witness word past the end.
 |`smc_zeroer_unaligned_test` |3 |Run two in-page jobs that start partway into a word and check that exactly their bytes are zeroed, with the rest of each edge word and the guard words either side keeping their poison.
@@ -2862,13 +2862,13 @@ Drive `smc_wdt_key_csr_test_seq`. Each checker below is a named compare the DUT 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: A programmed first timeout raises `smc_wdt_first_timeout_o` at the DUT boundary; left uncleared, the stage-2 count in `CPU_CTRL.WDT_TIMEOUT` raises `smc_wdt_second_timeout_o`, and the reset unit turns that into the warm reset.
+*Objective*: A programmed first timeout raises `smc_ras_o.wdt_first_timeout` at the DUT boundary; left uncleared, the stage-2 count in `CPU_CTRL.WDT_TIMEOUT` raises `smc_ras_o.wdt_second_timeout`, and the reset unit turns that into the warm reset.
 
 *Test Coverage*:
 
 * core-0 WDT armed over SEP_IN with the magic-key protocol of `wdt.rdl` (`KEY` before each of `CMP`, `COUNT`, `CTRL`; `CTRL.wdogrsten | wdogenalways`);
-* `smc_wdt_first_timeout_o` latched within a bound of arming, with `smc_wdt_second_timeout_o` still 0 on that cycle;
-* `smc_wdt_second_timeout_o` latched `WDT_TIMEOUT` (`cpu_ctrl.rdl` reset `0x4000`) cycles after the first, within a stated slack;
+* `smc_ras_o.wdt_first_timeout` latched within a bound of arming, with `smc_ras_o.wdt_second_timeout` still 0 on that cycle;
+* `smc_ras_o.wdt_second_timeout` latched `WDT_TIMEOUT` (`cpu_ctrl.rdl` reset `0x4000`) cycles after the first, within a stated slack;
 * `rst_warm` still released on the cycle the first timeout latches, asserted after the second timeout, then released; both live pins read 0 afterwards while both sticky latches still read 1.
 * The stage-2 count is kept per core (`smc_cpu_ctrl_wrap.sv`), so after core 0's pass the same sequence runs on cores 1, 2 and 3 in turn, each after the previous warm reset has released. The sticky latches are already set by then, so each of those passes observes the live pins, which the warm reset clears again.
 
@@ -19583,7 +19583,7 @@ The DUT offers no frontdoor way to corrupt a stored codeword, so the sequence
 XORs two bits into scratch bank0 entry 0 through `tb_cpu_ecc_poke_en` /
 `tb_cpu_ecc_poke_entry` / `tb_cpu_ecc_poke_mask` before the CPU boot release;
 that pulse is the only write this leaf makes into DUT state. The reaction is
-observed frontdoor: `smc_cluster_ded_o` on the wrapper (held sticky in
+observed frontdoor: `smc_ras_o.cluster_ded` on the wrapper (held sticky in
 `tb_cluster_ded_seen`) must assert after the reset-vector fetch, and the bound
 module's scratch read counter must have advanced, so the DED came from a read
 of the poked word and not from a bench that never fetched.
@@ -19640,7 +19640,7 @@ XORs one bit into scratch bank0 entry 0 through `tb_cpu_ecc_poke_en` /
 `tb_cpu_ecc_poke_entry` / `tb_cpu_ecc_poke_mask` before the CPU boot release;
 that pulse is the only write this leaf makes into DUT state. The reaction is
 observed frontdoor: the bound module's scratch read counter must advance (the
-CPU fetched the poked word) and `smc_cluster_ded_o` on the wrapper, held sticky
+CPU fetched the poked word) and `smc_ras_o.cluster_ded` on the wrapper, held sticky
 in `tb_cluster_ded_seen`, must stay 0 for 20 000 further cycles. The paired
 `smc_ecc_codeword_ded_test` is the positive control that the same tap does
 assert on a two-bit fault.
