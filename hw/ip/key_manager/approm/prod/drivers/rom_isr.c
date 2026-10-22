@@ -388,6 +388,8 @@ void rom_isr_abr_sharedkey(void) {
  * @param[in] fault_code Fault identifier (ROM_KM_UFAULT_*).
  */
 __attribute__((noreturn, cold)) void rom_trigger_unrecoverable(int8_t fault_code) {
+    /* Mask IRQs to trap on ebreak. */
+    rom_picorv32_maskirq(0xFFFFFFFFu);
     int do_shred = rom_unrec_wipe_enabled();
 
     if (do_shred) {
