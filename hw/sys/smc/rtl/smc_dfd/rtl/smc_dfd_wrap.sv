@@ -4,7 +4,9 @@
 // Wrap the SMC design-for-debug logic: one CLA and one DST behind an APB register port.
 //
 // Reduces the 64-lane debug bus to 16 lanes through eight level-3 and four level-2 debug-bus
-// muxes, and runs the muxes and the DFD IP on a locally gated copy of clk_smc_i.
+// muxes, and runs the muxes and the DFD IP on a locally gated copy of clk_smc_i. While that
+// clock is stopped, each APB transfer completes with PSLVERR and 0xBADCAB1E read data instead
+// of reaching the DFD IP.
 // Generates the CLA time tick from clk_ref_i edges, masks the CLA cross-trigger and
 // halt-clock outputs, and leaves the trace sink RAMs outside the block.
 
@@ -40,7 +42,8 @@ module smc_dfd_wrap #(
                                                // clock unless dfd_force_clk_en is set; bit 0 of
                                                // xtrig_clk_halt_mask passes the CLA cross-trigger
                                                // and halt-clock outputs. The clock runs while
-                                               // rst_primary_ni is low.
+                                               // rst_primary_ni is low, and APB transfers
+                                               // complete with PSLVERR while it is stopped.
 
   output logic                                             external_action_debug_interrupt_o,  // Debug interrupt raised by a CLA
                                                                                                // external action.
@@ -102,6 +105,11 @@ module smc_dfd_wrap #(
 
   logic clk_gated_i;
 
+  logic apb_err_sel, apb_err_sel_q;
+
+  smc_pkg::smc_dfd_apb_req_t  [1:0] apb_dfd_reqs;
+  smc_pkg::smc_dfd_apb_resp_t [1:0] apb_dfd_resps;
+
   //////////////////
   // Clock Gating //
   //////////////////
@@ -118,6 +126,33 @@ module smc_dfd_wrap #(
     .te(test_en_i),
     .hyst(1'b0)
   );
+
+  ///////////////////////
+  // APB Access Gating //
+  ///////////////////////
+
+  // Sampled in the setup phase and held through the access phase, so a transfer stays on one
+  // port. A transfer already passed to the DFD IP still hangs if the clock stops before it
+  // completes.
+  assign apb_err_sel = apb_smc_dfd_reg_req_i.penable ? apb_err_sel_q :
+      dfd_enables_i.dfd_cg_en & ~dfd_enables_i.dfd_force_clk_en & ~test_en_i;
+  `OCAH_FF(apb_err_sel_q, apb_err_sel, 1'b0, clk_smc_i, rst_primary_ni)
+
+  apb_demux #(
+    .NoMstPorts (2),
+    .req_t      (smc_pkg::smc_dfd_apb_req_t),
+    .resp_t     (smc_pkg::smc_dfd_apb_resp_t)
+  ) u_apb_access_gate (
+    .slv_req_i  (apb_smc_dfd_reg_req_i),
+    .slv_resp_o (apb_smc_dfd_reg_resp_o),
+    .mst_req_o  (apb_dfd_reqs),
+    .mst_resp_i (apb_dfd_resps),
+    .select_i   (apb_err_sel)
+  );
+
+  assign apb_dfd_resps[1].pready  = 1'b1;
+  assign apb_dfd_resps[1].prdata  = 32'hBADCAB1E;
+  assign apb_dfd_resps[1].pslverr = 1'b1;
 
 
   ////////////////
@@ -193,15 +228,15 @@ module smc_dfd_wrap #(
     .i_rst_n                                (rst_primary_ni),
     .i_critical_signal_hold                 (1'b0),
 
-    .psel                                   (apb_smc_dfd_reg_req_i.psel),
-    .penable                                (apb_smc_dfd_reg_req_i.penable),
-    .pwrite                                 (apb_smc_dfd_reg_req_i.pwrite),
-    .paddr                                  (apb_smc_dfd_reg_req_i.paddr[22:0]),
-    .pwdata                                 (apb_smc_dfd_reg_req_i.pwdata),
-    .pstrb                                  (apb_smc_dfd_reg_req_i.pstrb),
-    .pready                                 (apb_smc_dfd_reg_resp_o.pready),
-    .prdata                                 (apb_smc_dfd_reg_resp_o.prdata),
-    .pslverr                                (apb_smc_dfd_reg_resp_o.pslverr),
+    .psel                                   (apb_dfd_reqs[0].psel),
+    .penable                                (apb_dfd_reqs[0].penable),
+    .pwrite                                 (apb_dfd_reqs[0].pwrite),
+    .paddr                                  (apb_dfd_reqs[0].paddr[22:0]),
+    .pwdata                                 (apb_dfd_reqs[0].pwdata),
+    .pstrb                                  (apb_dfd_reqs[0].pstrb),
+    .pready                                 (apb_dfd_resps[0].pready),
+    .prdata                                 (apb_dfd_resps[0].prdata),
+    .pslverr                                (apb_dfd_resps[0].pslverr),
 
     // JTAG-side MMR access (was JT_TR_SlvReq / TR_JT_SlvResp) - unused
     .i_jtag_mmr_req_vld                     ('0),
