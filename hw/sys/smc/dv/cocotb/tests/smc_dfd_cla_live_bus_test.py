@@ -6,8 +6,10 @@ Gives the CLA a debug bus that moves between two measured states, programs the
 edge, change, transition, comparator and LFSR generators from them, drives the
 action field with the cross-trigger stretch, clock halt and counter reset on
 target enabled, sweeps the actions again with the lowest clock-halt mask bit
-set, takes the CLA mux through fine-grain normal mode into identifier mode, and
-moves the node chain away from pairs whose relation holds.
+set, takes the CLA mux through fine-grain normal mode into identifier mode,
+moves the node chain away from pairs whose relation holds, then writes and
+reads back every field of the CLA mux select register and puts it in toggle
+mode.
 """
 
 from __future__ import annotations
@@ -45,11 +47,13 @@ from smc_base_test import smc_base_test
 #     64 writes back to normal mode                                         196
 #   leaving the node: one relation try (write, status read), 3 destination
 #     writes, the move write and one CurrentNode read                         7
+#   CDbgMuxSelLo fields: 2 x (write and readback)                            4
+#   toggle mode: write and readback, 16 two-word snapshots                  34
 #   restore: 4 pairs, 4 counters, 14 named registers, 8 comparator
 #     registers, DEBUG_BUS_MUX, DEBUG_CTRL                                   32
 #                                                                         ------
-#                                                                          1053
-CLA_LIVE_BUS_MIN_CSR_ACCESSES = 1053
+#                                                                          1091
+CLA_LIVE_BUS_MIN_CSR_ACCESSES = 1091
 
 
 @pyuvm.test()
@@ -61,9 +65,12 @@ class smc_dfd_cla_live_bus_test(smc_base_test):
         "CHK-CLA-LIVE-BUS",
         "CHK-CLA-LIVE-MATCH",
         "CHK-CLA-LIVE-MUXMODES",
+        "CHK-CLA-LIVE-MUXSEL-FIELDS",
         "CHK-CLA-LIVE-NODE",
+        "CHK-CLA-LIVE-TOGGLE-MODE",
+        "CHK-NONVAC",
     )
-    min_evidence = 5
+    min_evidence = 8
 
     auto_protocol_vip = False
 
@@ -80,6 +87,7 @@ class smc_dfd_cla_live_bus_test(smc_base_test):
                 f"mux {seq.sampled_mux}, states {[hex(v) for v in seq.states]}, "
                 f"{seq.action_values} action writes, counters {seq.counter_after}, "
                 f"node after move {seq.node_after_move}, "
-                f"CLA mux snapshots {[hex(v) for v in seq.mux_snapshots]}"
+                f"CLA mux snapshots {[hex(v) for v in seq.mux_snapshots]}, "
+                f"toggle-mode snapshots {[hex(v) for v in seq.toggle_snapshots]}"
             ),
         )

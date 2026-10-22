@@ -9,6 +9,11 @@ hypervisor window. Each word must land in SYS_OUT memory where `output_remap.rdl
 puts it, and read back through the same window. Outbound
 filter entries that match the M-mode source ID must allow the M-mode words and
 must not catch the hypervisor words. The entries are restored.
+
+Every M-mode and Xvisor region then has its valid bit set and cleared, with a
+word routed through it each time; each region takes two partial-lane writes
+and a word routed by what they left; every alias region's cacheable field is
+written all ones then zero. Every region ends at its reset.
 """
 
 from __future__ import annotations
@@ -17,13 +22,23 @@ import pyuvm
 from seq_lib.smc_output_remap_window_test_seq import _LEGS, smc_output_remap_window_test_seq
 from smc_base_test import smc_base_test
 
+REQUIRED = (
+    "CHK-ALIAS-CACHEABLE",
+    "CHK-NONVAC",
+    "CHK-ORMP-VALID-MMODE",
+    "CHK-ORMP-VALID-ROUTE",
+    "CHK-ORMP-VALID-XVISOR",
+    "CHK-ORMP-WSTRB",
+    "CHK-OUTPUT-REMAP-WINDOWS",
+)
+
 
 @pyuvm.test()
 class smc_output_remap_window_test(smc_base_test):
     """Outbound traffic through both copies of both remap windows lands where the entry says."""
 
-    required_evidence = ("CHK-OUTPUT-REMAP-WINDOWS",)
-    min_evidence = 1
+    required_evidence = REQUIRED
+    min_evidence = len(REQUIRED)
 
     auto_protocol_vip = False
 
@@ -33,3 +48,5 @@ class smc_output_remap_window_test(smc_base_test):
         assert seq.legs_checked == len(_LEGS), (
             f"{seq.legs_checked} of {len(_LEGS)} remap legs checked"
         )
+        missing = [n for n in REQUIRED if n not in seq.chk_seen]
+        assert not missing, f"missing CHK evidence tokens: {missing}"
