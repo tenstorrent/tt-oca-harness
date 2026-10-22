@@ -402,7 +402,7 @@ module smc_ip_integration (
             .Width       (TraceMemBankWidth),
             .MemInitFile ("")
         ) u_trace_mem_bank (
-            .clk_i     (clk_sys),
+            .clk_i     (trace_mem_req[i].mem_clk),
             .rst_ni    (rst_primary_smc_clk_ni),
             .req_i     (trace_mem_req[i].mem_chip_en),
             .write_i   (trace_mem_req[i].mem_wr_en),

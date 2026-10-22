@@ -12,6 +12,7 @@ package trace_mem_pkg;
   localparam TRC_RAM_INDEX_WIDTH = $clog2(TRC_RAM_INDEX);
 
   typedef struct packed {
+    logic                                  mem_clk;
     logic                                  mem_chip_en;
     logic                                  mem_wr_en;
     logic [TRC_RAM_INDEX_WIDTH-1:0]        mem_wr_addr;

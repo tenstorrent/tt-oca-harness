@@ -1636,6 +1636,7 @@ module trace_sink
 
   always_comb begin: always_blk_1
     for (int gc = 0; gc<TRC_RAM_INSTANCES; gc++) begin
+      SinkMemPktIn[gc].mem_clk        = clk;
       SinkMemPktIn[gc].mem_chip_en    = TraceWrEn_TS0[gc/2] | TraceRdEn_TS1[gc];
       SinkMemPktIn[gc].mem_wr_en      = TraceWrEn_TS0[gc/2];
       SinkMemPktIn[gc].mem_wr_addr    = TraceAddr_ANY[gc/2];
