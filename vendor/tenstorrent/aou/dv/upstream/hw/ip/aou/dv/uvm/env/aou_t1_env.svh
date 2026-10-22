@@ -29,16 +29,17 @@ class aou_t1_env extends uvm_env;
   aou_t1_status        status;
   aou_t1_sw_isr        sw_isr;
   aou_t1_orphan_chk    orphan;
+  aou_t1_axi4pc_ctl    axi4pc;
   aou_t1_mo_chk        mo_chk;
   aou_t1_sw_reset_chk  sw_rst_chk;
   aou_t1_dbg_fifo_chk  dbg_chk;
-  aou_t1_act_chk       act_chk;
   aou_t1_crd_flow_chk  crd_chk;
   aou_t1_crd_rr_chk    crd_rr;
   aou_t1_early_tbl_chk early_tbl;
   aou_t1_attr_chk      attr_chk;
   aou_t1_xfer_cov      xfer_cov;
   aou_t1_rx_fifo_chk   rx_fifo_chk;
+  aou_t1_rx_align_chk  rx_align;
   aou_fdi_chk_adapter  fdi_chk;
   aou_t1_expect        expects;   // "expect" is an SV keyword
   aou_t1_vseqr         vseqr;
@@ -84,6 +85,7 @@ class aou_t1_env extends uvm_env;
     remote.cfg = cfg.remote_cfg;
     l4a = aou_t1_l4a_adapter::type_id::create("l4a");
     l4a.remote = remote;
+    l4a.cfg = cfg;
     cfg.l3_cfg.l4a = l4a;
     l3 = aou_l3_agent::type_id::create("l3", this);
     l3.cfg = cfg.l3_cfg;
@@ -102,22 +104,25 @@ class aou_t1_env extends uvm_env;
     sw_isr.enable = cfg.sw_isr_en;
     sw_isr.hold_on_deact = cfg.sw_hold_on_deact;
     sw_isr.drain_before_deact = cfg.sw_drain_before_deact;
+    sw_isr.n_rp = cfg.n_rp;
     orphan = aou_t1_orphan_chk::type_id::create("orphan", this);
+    axi4pc = aou_t1_axi4pc_ctl::type_id::create("axi4pc", this);
     mo_chk = aou_t1_mo_chk::type_id::create("mo_chk", this);
     sw_rst_chk = aou_t1_sw_reset_chk::type_id::create("sw_rst_chk", this);
     dbg_chk = aou_t1_dbg_fifo_chk::type_id::create("dbg_chk", this);
     dbg_chk.cfg = cfg;
-    act_chk = aou_t1_act_chk::type_id::create("act_chk", this);
     crd_chk = aou_t1_crd_flow_chk::type_id::create("crd_chk", this);
     crd_chk.cfg = cfg;
     crd_rr = aou_t1_crd_rr_chk::type_id::create("crd_rr", this);
     crd_rr.n_rp = cfg.n_rp;
+    rx_align = aou_t1_rx_align_chk::type_id::create("rx_align", this);
     early_tbl = aou_t1_early_tbl_chk::type_id::create("early_tbl", this);
     early_tbl.cfg = cfg;
     xfer_cov = aou_t1_xfer_cov::type_id::create("xfer_cov", this);
     if (cfg.attr_chk_en) begin
       attr_chk = aou_t1_attr_chk::type_id::create("attr_chk", this);
       attr_chk.cov = xfer_cov;
+      attr_chk.l3_cfg = cfg.l3_cfg;
     end
     if (cfg.rx_fifo_chk_en) begin
       rx_fifo_chk = aou_t1_rx_fifo_chk::type_id::create("rx_fifo_chk", this);
@@ -138,7 +143,10 @@ class aou_t1_env extends uvm_env;
     end
     bridge.ap.connect(l3.rx_flit_imp);
     l3.ap_rx_msg.connect(rmgr.rx_imp);
-    foreach (rmgr.drv[r]) rmgr.drv[r].clk_vif = s_mgr[0].cfg.vif;
+    foreach (rmgr.drv[r]) begin
+      rmgr.drv[r].clk_vif = s_mgr[0].cfg.vif;
+      rmgr.drv[r].wreq_mode = cfg.remote_wreq;
+    end
     apb = regs.apb;
 
     if (cfg.sb_en) begin
@@ -163,11 +171,6 @@ class aou_t1_env extends uvm_env;
     rmgr.ap.connect(dbg_chk.remote_imp);
     dbg_chk.rm = regs.model;
     dbg_chk.clk_vif = m_sub[0].cfg.vif;
-    l3.ap_tx_msg.connect(act_chk.tx_msg_imp);
-    l3.ap_tx_flit.connect(act_chk.tx_flit_imp);
-    l3.ap_rx_msg.connect(act_chk.rx_msg_imp);
-    foreach (fdi[p]) fdi[p].mon.ap_rx.connect(act_chk.rx_flit_imp);
-    act_chk.vif = lsm_vif;
     l3.ap_rx_msg.connect(crd_chk.rx_msg_imp);
     crd_chk.model = l3.model;
     crd_chk.rm = regs.model;
@@ -181,11 +184,17 @@ class aou_t1_env extends uvm_env;
     bridge.ap.connect(crd_rr.dut_flit_imp);
     crd_rr.crd = l3.model.crd;
     crd_rr.clk_vif = s_mgr[0].cfg.vif;
+    fdi[cfg.lsm_cfg.active_phy].mon.ap_rx.connect(rx_align.rx_flit_imp);
+    rx_align.mb_vif = fdi[cfg.lsm_cfg.active_phy].vif;
     l3.ap_tx_msg.connect(early_tbl.rem_msg_imp);
     early_tbl.rm = regs.model;
     early_tbl.vif = new[cfg.n_rp];
     foreach (s_mgr[r]) early_tbl.vif[r] = s_mgr[r].cfg.vif;
     if (fdi_chk != null) fdi_chk.credit_manage = regs.model.aou_con0.credit_manage;
+    l3.model.credit_manage = regs.model.aou_con0.credit_manage;
+    lsm.mon.ap.connect(axi4pc.lsm_imp);
+    axi4pc.m_drv = new[cfg.n_rp];
+    foreach (m_sub[r]) axi4pc.m_drv[r] = m_sub[r].drv;
     orphan.vif = new[cfg.n_rp];
     foreach (m_sub[r]) orphan.vif[r] = m_sub[r].cfg.vif;
     mo_chk.vif = new[cfg.n_rp];
@@ -195,6 +204,13 @@ class aou_t1_env extends uvm_env;
     foreach (s_mgr[r]) xfer_cov.s_vif[r] = s_mgr[r].cfg.vif;
     foreach (m_sub[r]) xfer_cov.m_vif[r] = m_sub[r].cfg.vif;
     l3.ap_tx_msg.connect(xfer_cov.tb_fifo.analysis_export);
+    for (int unsigned r = 0; r < cfg.n_rp && r < 4; r++) begin
+      xfer_cov.dut_bytes[r] = cfg.rp_bytes[r];
+      xfer_cov.rem_bytes[r] = cfg.remote_bytes_of(r);
+    end
+    foreach (s_mgr[r]) s_mgr[r].ap.connect(xfer_cov.req_fifo.analysis_export);
+    rmgr.ap.connect(xfer_cov.req_fifo.analysis_export);
+    l4a.cov = xfer_cov;
     if (attr_chk != null) begin
       foreach (s_mgr[r]) s_mgr[r].ap.connect(attr_chk.loc_fifo.analysis_export);
       foreach (m_sub[r]) m_sub[r].ap.connect(attr_chk.sub_fifo.analysis_export);
@@ -205,6 +221,7 @@ class aou_t1_env extends uvm_env;
     sw_rst_chk.vif = new[cfg.n_rp];
     foreach (s_mgr[r]) sw_rst_chk.vif[r] = s_mgr[r].cfg.vif;
     sw_rst_chk.rst_vif = rst.vif;
+    rx_align.rst_vif = rst.vif;
     if (rx_fifo_chk != null) begin
       rx_fifo_chk.vif = new[cfg.n_rp];
       foreach (m_sub[r]) rx_fifo_chk.vif[r] = m_sub[r].cfg.vif;
@@ -259,7 +276,6 @@ class aou_t1_env extends uvm_env;
     mo_chk.clear();
     status.reset_flush();
     dbg_chk.reset_flush();
-    act_chk.reset_flush();
     crd_chk.reset_flush();
     early_tbl.reset_flush();
     foreach (s_mgr[r]) begin

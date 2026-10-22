@@ -168,7 +168,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "0ca386b3ea47669d5dd9314b8366300e3ff53746" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "88272276295f3156eea26fa70b91894029151dd5" }
     include_from_upstream:
       - "src"
       - "include"
@@ -333,7 +333,7 @@ vendor_package:
   # AXI-over-UCIe (AoU) bridge IP: RTL, CSR SystemRDL, and the MAS.
   - name: aou
     target_dir: "vendor/tenstorrent/aou/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "08863921a328579bc96f3141b05113c11d7ac84c" }
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "d8515cc9da2be57e881959483ab140095b3dcfc6" }
     include_from_upstream:
       - "RTL"
       - "csr"
@@ -345,7 +345,7 @@ vendor_package:
   # the patches move from upstream's hw/ip/aou/dv to this tree.
   - name: aou-dv
     target_dir: "vendor/tenstorrent/aou/dv/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "8ef393cfa69d54f96bc570f95c3a7fa22383a003" }
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "d8515cc9da2be57e881959483ab140095b3dcfc6" }
     include_from_upstream:
       - "hw/ip/aou/dv"
     patch_dir: "vendor/tenstorrent/aou/dv/patches"

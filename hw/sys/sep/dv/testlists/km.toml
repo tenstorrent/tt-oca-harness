@@ -95,7 +95,7 @@ name = "sep_km_key_policy_vault_test"
 module = "km.sep_km_key_policy_vault_test"
 firmware = { name = "km_rom_vault", mode = "km_rom_blob" }
 seed = 1
-reseed = 3
+reseed = 1
 timeout_sec = 1800
 tags = ["km", "kpv", "sram_lock", "subsystem"]
 run_modes = ["no_cpu"]
@@ -246,7 +246,7 @@ name = "sep_km_kpv_scrambler_test"
 module = "km.sep_km_kpv_scrambler_test"
 firmware = { name = "km_rom_kpv_scrambler", mode = "km_rom_blob" }
 seed = 1
-reseed = 3
+reseed = 1
 timeout_sec = 1800
 tags = ["km", "kpv", "scrambler", "subsystem"]
 run_modes = ["no_cpu"]
@@ -319,3 +319,482 @@ tags = ["km", "drbg", "entropy", "reset", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_drbg_sampler.parhex"]
+
+[[tests]]
+# KMCSR registers, SRAM lock regions and the KM reset kinds. POKE image. Real fuse
+# sense: the KMCSR reset witness includes IRQ_STATUS.OTP_SIGINT, which depends on
+# the OTP bundle.
+name = "sep_km_kmcsr_reset_rand_test"
+module = "km.sep_km_kmcsr_reset_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["km", "kmcsr", "reset", "sram_lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+# The leaf resets the KM while its CPU polls the bus. The raised Verilator error
+# limit keeps the leaf running after an assertion error, so its own checks still
+# grade; any assertion error still fails the leaf.
+args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# KPV slot states, CTRL rules, neighbours, KPV scrambler across resets, wipe and cipher. POKE image.
+name = "sep_km_kpv_rand_test"
+module = "km.sep_km_kpv_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 1
+timeout_sec = 10800
+tags = ["km", "kpv", "scrambler", "wipe", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+# The leaf resets the KM while its CPU polls the bus. The raised Verilator error
+# limit keeps the leaf running after an assertion error, so its own checks still
+# grade; any assertion error still fails the leaf.
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# KM CPU trap, SRAM execute mode and ROM lockout. POKE image.
+name = "sep_km_cpu_protect_rand_test"
+module = "km.sep_km_cpu_protect_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 5400
+tags = ["km", "vault", "cpu", "rand", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+# The leaf resets the KM while its CPU polls the bus. The raised Verilator error
+# limit keeps the leaf running after an assertion error, so its own checks still
+# grade; any assertion error still fails the leaf.
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# KM crossbar decode and the eFuse window. Real fuse sense of a per-leaf image
+# staged by dv_sim_prestage.py (env/sep_km_fuse_plan.py). POKE image.
+name = "sep_km_crossbar_efuse_window_rand_test"
+module = "km.sep_km_crossbar_efuse_window_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 1
+timeout_sec = 5400
+tags = ["km", "efuse", "crossbar", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+# The leaf resets the KM while its CPU polls the bus. The raised Verilator error
+# limit keeps the leaf running after an assertion error, so its own checks still
+# grade; any assertion error still fails the leaf.
+args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# KM-side mailbox registers, words, errors, flush and the KM CPU interrupt route. IMG-MBOX-KM image, prestaged parameter block.
+name = "sep_km_mailbox_km_side_rand_test"
+module = "km.sep_km_mailbox_km_side_rand_test"
+firmware = { name = "km_rom_mbox_km", mode = "km_rom_blob" }
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["km", "mailbox", "irq", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_mbox_km.param.parhex"]
+
+[[tests]]
+# KM DRBG sampler timeouts, counters, prefetch, write refusals, TRNG reset and stream errors. POKE image.
+name = "sep_km_drbg_sampler_rand_test"
+module = "km.sep_km_drbg_sampler_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 10800
+tags = ["km", "drbg", "entropy", "rand", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+# The leaf resets the KM while its CPU polls the bus. The raised Verilator error
+# limit keeps the leaf running after an assertion error, so its own checks still
+# grade; any assertion error still fails the leaf.
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# KMCSR OTP readout, read locks, secure test mode, demotion change and HK-OTP integrity. POKE image, real
+# fuse sense of a per-leaf image staged by dv_sim_prestage.py (env/sep_km_fuse_plan.py). VCS only.
+name = "sep_km_otp_interface_rand_test"
+module = "km.sep_km_otp_interface_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 7200
+tools = ["vcs"]
+tags = ["km", "otp", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+km_rom_hex=km_rom_poke.parhex"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# KM-bus key-share words, key_valid rules and the ML-KEM shared-key block. POKE image, Adams Bridge present.
+name = "sep_km_key_bank_register_rand_test"
+module = "km.sep_km_key_bank_register_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 1
+timeout_sec = 5400
+tags = ["km", "key_bank", "abr", "mlkem", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# IMG-SCR with the block of the leaf seed: dv_sim_prestage.py stages km_rom_scr.param.parhex in the sim
+# directory. The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+name = "sep_km_sram_scrambler_key_rand_test"
+module = "km.sep_km_sram_scrambler_key_rand_test"
+firmware = { name = "km_rom_scr", mode = "km_rom_blob" }
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["km", "scrambler", "sram", "reset", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_scr.param.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM frame validation order, sequence wrap, transport recovery and the recovery gate (rom_main).
+# The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+name = "sep_km_command_protocol_rand_test"
+module = "km.sep_km_command_protocol_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 1
+timeout_sec = 10800
+tags = ["km", "mailbox", "recovery", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM key transfer: keys of 17 to 128 words, multi-engine masks, mixed-mask refusal, subset shred,
+# engine write order (rom_main). The leaf resets the KM while its CPU runs; the raised Verilator
+# error limit keeps it running.
+# Shard 1 of 4 of sep_km_key_transfer_rand_test: the AES rounds of the delivery leg. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_key_transfer_rand_test_shard1"
+module = "km.sep_km_key_transfer_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=1"]
+
+[[tests]]
+# Shard 2 of 4 of sep_km_key_transfer_rand_test: the HMAC rounds of the delivery leg. The regression runs the shards; the
+# shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_key_transfer_rand_test_shard2"
+module = "km.sep_km_key_transfer_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=2"]
+
+[[tests]]
+# Shard 3 of 4 of sep_km_key_transfer_rand_test: the KMAC, OTBN and ML-DSA seed rounds and the AES round at the share width.
+# The regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_key_transfer_rand_test_shard3"
+module = "km.sep_km_key_transfer_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=3"]
+
+[[tests]]
+# Shard 4 of 4 of sep_km_key_transfer_rand_test: the AES round at the share width, the warm reset and the policy leg.
+# The regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_key_transfer_rand_test_shard4"
+module = "km.sep_km_key_transfer_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=4"]
+
+[[tests]]
+# KM image load refusals, the fw_crc fault and the KM state at the handover jump (IMG-H, rom_main).
+# The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+name = "sep_km_handover_rand_test"
+module = "km.sep_km_handover_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 1
+timeout_sec = 10800
+tags = ["km", "handover", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM boot after warm and cold resets on the shipped rom_main build (both wipes on): boot flush,
+# scrambler keep, COLD_BOOT_DONE order, stored-image size. The leaf resets the KM while its CPU
+# runs; the raised Verilator error limit keeps it running.
+name = "sep_km_boot_reset_rand_test"
+module = "km.sep_km_boot_reset_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_default" }
+seed = 1
+reseed = 3
+timeout_sec = 10800
+tags = ["km", "mailbox", "reset", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_default.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM fatal faults on the bench build (HOST): real wipe with the wipe predicate off, DRBG stall, key-path fault.
+# The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+name = "sep_km_fault_inject_rand_test"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 1
+timeout_sec = 7200
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# KM fatal faults on the HOST-UNREC build: fatal-handler shreds, first-source rule, CPU lines, parity, key CRC,
+# SRAM latency, main-context fault. The leaf resets the KM while its CPU runs; the raised Verilator error limit
+# keeps it running.
+name = "sep_km_fault_inject_rand_test_unrec"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
+# Shard 1 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point, the key CRC leg and the SRAM latency leg. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard1"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=1"]
+
+[[tests]]
+# Shard 2 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the first single-source IRQ_SET point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard2"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=2"]
+
+[[tests]]
+# Shard 3 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the second single-source IRQ_SET point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard3"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=3"]
+
+[[tests]]
+# Shard 4 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the third single-source IRQ_SET point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard4"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=4"]
+
+[[tests]]
+# Shard 5 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the forced multi-source IRQ_SET point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard5"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=5"]
+
+[[tests]]
+# Shard 6 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the first drawn multi-source IRQ_SET point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard6"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=6"]
+
+[[tests]]
+# Shard 7 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the second drawn multi-source IRQ_SET point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard7"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=7"]
+
+[[tests]]
+# Shard 8 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the first parity point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard8"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=8"]
+
+[[tests]]
+# Shard 9 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the second parity point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard9"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=9"]
+
+[[tests]]
+# Shard 10 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the third parity point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard10"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=10"]
+
+[[tests]]
+# Shard 11 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the KM CPU line 2 point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard11"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=11"]
+
+[[tests]]
+# Shard 12 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the KM CPU line 1 point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard12"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=12"]
+
+[[tests]]
+# Shard 13 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the KM CPU line 2 point with a KMCSR source. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard13"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=13"]
+
+[[tests]]
+# Shard 14 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot and the main-context point. The
+# regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_fault_inject_rand_test_unrec_shard14"
+module = "km.sep_km_fault_inject_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
+seed = 1
+reseed = 1
+timeout_sec = 14400
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=14"]

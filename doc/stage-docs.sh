@@ -185,10 +185,12 @@ case "$(basename "$PRODUCT")" in
 trm)
   mkdir -p "$MOD/aou/partials/pdf"
   for page in overview architecture interrupts-errors ppa-appendices; do
-    sed -E 's/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
+    # The page attributes name the specification's own files, which the TRM
+    # publishes under other names, so those links become anchor links.
+    sed -E 's/xref:\{aou-(overview|architecture|errors)-xref\}#/xref:/g; s/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
       >"$MOD/aou/partials/$page.adoc"
     # The PDF inherits book numbering instead of the standalone specification's numbers.
-    sed -E 's/^(={2,6}) [0-9]+(\.[0-9]+)*\. /\1 /; s/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
+    sed -E 's/^(={2,6}) [0-9]+(\.[0-9]+)*\. /\1 /; s/xref:\{aou-(overview|architecture|errors)-xref\}#/xref:/g; s/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
       >"$MOD/aou/partials/pdf/$page.adoc"
   done
   # The web appendices have separate pages; the PDF keeps the complete section.
@@ -236,10 +238,12 @@ integrator)
 programmer)
   mkdir -p $MOD/aou/partials $MOD/aou/partials/pdf
   # The guide publishes the software operation section alone, so its links into
-  # the architecture chapter resolve in the Technical Reference Manual.
+  # the architecture chapter resolve in the Technical Reference Manual and its
+  # links into the integration guide in the Integrator Guide.
   sed -E \
     -e "s/^== Appendix C\..*/== AoU Programming Guide/" \
     -e "s@xref:\\{aou-architecture-xref\\}#@xref:ocah-docs:ROOT:aou-architecture.adoc#@g" \
+    -e "s@xref:\\{aou-integration-xref\\}#@xref:ocah-integrator-guide:ROOT:aou.adoc#@g" \
     "$AOU_DOC/software-operation.adoc" \
     >"$MOD/aou/partials/software-operation.adoc"
   cp $MOD/aou/partials/software-operation.adoc $MOD/aou/partials/pdf/

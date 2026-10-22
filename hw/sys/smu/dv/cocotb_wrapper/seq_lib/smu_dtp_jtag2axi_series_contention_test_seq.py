@@ -59,9 +59,9 @@ from seq_lib.smu_jtag_helpers import (
 
 # hw/sys/smc/doc/memmap.adoc: LOCAL_BASE is 0xC000_0000.
 LOCAL_BASE = 0xC000_0000
-# hw/sys/smc/doc/memmap.adoc states that a write from BASE + 0x001_7000 through BASE + 0x001_7FFF
-# answers SLVERR; a read there is an address between unit apertures, which answers DECERR. The
-# response of a write over this bridge is logged and not compared.
+# hw/sys/smc/doc/memmap.adoc: BASE + 0x001_7000 through BASE + 0x001_7FFF lies between unit
+# apertures, which answer DECERR. The response of a write over this bridge is logged and not
+# compared.
 SLVERR_WINDOW = LOCAL_BASE + 0x001_7000
 WINDOW_WRITE_WORD = 0xDEAD_0001
 # hw/sys/smc/regs/gen/c/smc_addr.h: outbound mailbox 0 READ_DATA and STATUS.

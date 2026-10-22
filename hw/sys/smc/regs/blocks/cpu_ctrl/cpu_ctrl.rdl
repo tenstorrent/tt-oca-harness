@@ -276,6 +276,12 @@ addrmap cpu_ctrl {
         regwidth = 64;
         accesswidth = 64;
 
+        desc = "A read of any size or alignment within this register attempts to acquire the mutex,
+                but the result is only returned in bit 0. A read that does not include byte 0, such as
+                a 32-bit read of the upper half or a byte read at a non-zero offset, returns 0 even when
+                it acquires the mutex, leaving it held with no owner until it is released. Read this
+                register with an access that includes byte 0.";
+
         field {
             sw = rw;
             hw = w;

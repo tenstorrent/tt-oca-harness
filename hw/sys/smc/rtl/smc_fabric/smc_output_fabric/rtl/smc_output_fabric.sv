@@ -161,7 +161,7 @@ module smc_output_fabric #(
     axi_cg_snoop #(
       // ALL IDs, both directions: tracks the remap demux/mux below, which are sized by the
       // MAX_TRANS parameter of this module (per ID bucket) rather than by smc_pkg
-      .OUTSTANDING_TX(smc_pkg::FabricIdBuckets * MAX_TRANS),
+      .OUTSTANDING_TX((2 ** smc_pkg::OutputFabricIdLookupBits) * MAX_TRANS),
       .DENY_DELAY(1),
       .HYST_WIDTH(smc_pkg::CgHysteresisW)
     ) u_fabric_cg (
@@ -239,7 +239,7 @@ module smc_output_fabric #(
       .axi_resp_t         (smc_pkg::smc_56_64_6_12_axi_resp_t),
       .NoMstPorts         (3),
       .MaxTrans           (MAX_TRANS),
-      .AxiLookBits        (smc_pkg::FabricIdLookupBits),
+      .AxiLookBits        (smc_pkg::OutputFabricIdLookupBits),
       .UniqueIds          (1'b0),
       .SelHashIds         (1'b0),
       .SpillAw            (1'b0),

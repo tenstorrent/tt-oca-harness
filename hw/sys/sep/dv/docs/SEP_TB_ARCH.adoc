@@ -130,8 +130,9 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |SMN-inbound AXI |Flattens the real inbound port to `m_axi_*` for a second master agent. Traverses `u_inbound_filter`.
 |SEP->SMC AXI |`rom_boot` target: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Every other target answers the port through the BH-SMC responder `u_smc_route_mem` (`tb/sep_smc_route_mem.sv`), which is idle unless BH-SMC is enabled; the decode check is not compiled there.
 |BH-SMC: SMC aperture inputs and SMC responder |Added hook (top-port drive) on every target without `SEP_SMC_MEM_MODEL`. `tb_top` drives `smc_global_base_addr_i` and `smc_region_size_i` from `bh_smc_base_i` and `bh_smc_size_i` when the leaf sets `bh_smc_en_i` to 1 before it releases reset (`env/sep_bh_smc.py`), or else from `+sep_smc_aperture_base=<hex>` and `+sep_smc_aperture_size=<hex>`; with neither, both inputs are 0. While the hook is on, `u_smc_route_mem` answers `sep_ext_to_smc_axi_resp_i`: OKAY with the request ID, one burst per channel in flight, written bytes stored and returned, and `{~a, a}` (`a` the low 32 bits of the 8-byte-aligned address) for a word no write touched. Owners: `sep_fabric_smc_route_test` (leaf drive), `sep_fabric_dma_endpoint_matrix_test` (plusargs).
+|AXI Extension port responder |Added hook (top-port drive). The integration wrapper answers the `sep` extension port (`sep_external_axi_resp_i`) from an error slave: DECERR, read data `0xBADCAB1E`. In a run with `+sep_ext_port_responder`, `tb_top` forces the wrapper net `axi_extension_axi_resp` from its own responder instead, re-issued on each falling edge of `clk_i`; without the plusarg the net is never forced and the responder stays in reset. The responder accepts one write burst and one read burst at a time and returns the request ID. The B code of a write is `ext_port_rsp_bresp_i` at the AW handshake. R beat k of a read answers RRESP `ext_port_rsp_rresp_i[2k +: 2]` and RDATA `ext_port_rsp_rdata_i[64k +: 64]`, sampled at the AR handshake, beat k modulo 8. `ext_port_rsp_on_o` reads 1 while the responder is on. Owner: `sep_fabric_extension_port_window_test` (CHK-EXT-REPLY, CHK-EXT-PORT, CHK-EXT-BURST), which sets the reply before each access.
 |Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN).
-|External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
+|External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, and the DRBG stall point of `sep_km_fault_inject_rand_test`.
 |External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
 |DMI enables |Added hook (top-port drive). `tb_top` drives the `sep` inputs `dmi_core_enable_i` and `dmi_uncore_enable_i` (wrapper ports `dmi_core_enable`, `dmi_uncore_enable`) from the TB inputs of the same name; a value other than 1 drives 0. `dmi_uncore_rdata` is held at 0. Owner: `sep_debug_master_target_matrix_test`.
@@ -139,6 +140,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
 |Reset vector |Existing bench hook. `rst_vec_i` drives the wrapper input `rst_vec`, which `sep_wrapper` does not connect further. At a non-zero value under `+cpu_boot`, `tb_top` also shifts the value into the reset-vector TDR (IR 0x18) while `rst_ni` is low. User: `sep_cpu_reset_entry_test`.
 |JTAG ID |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `jtag_id` (`jtag_id_i[31:1]` of `sep`) from the TB input `jtag_id_i`; an undriven or unknown value drives 0. Readback: `jtag_id_probe_o`. Owner: `sep_efuse_field_layout_rand_test` (CHK-JTAGID).
+|Key Manager SRAM response latency (HK-LAT) |Added hook (top-port drive) on the `sep` input `km_sram_mem_rsp_i`. While `km_sram_lat_en_i` is 1, a KM SRAM read response with a latency L = `km_sram_lat_i[3:0]` of 2 or more, sampled when the macro answers, reaches the KM L clocks after the accepted request: `tb_top` holds `rvalid` low and presents the captured word with `rvalid` high in the L-th clock. L of 0 or 1, or an unknown value, leaves the macro latency of 1. The KM issues no new SRAM read while one is outstanding, so the responses keep their order; a KM cold reset or the bench reset drops a delayed response. The macro latency is fixed, so no frontdoor varies it. Default 0: no drive. Readback: `km_sram_lat_delayed_count_o`; KM-LAT shows the latency that the KM sees. User: `sep_km_fault_inject_rand_test` (CHK-LAT, CHK-LAT-VAR).
 |Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
@@ -152,6 +154,13 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 Observation probe groups:
 
 * eFuse shadow, scratch, and the KM and OTBN counters.
+* KM bus counters (`km_rom_req_count_o`, `km_sram_req_count_o`,
+  `km_sram_write_count_o`, `km_cpu_fetch_count_o`), reset with the bench reset.
+  `km_cpu_fetch_count_o` counts the KM CPU instruction fetches that complete
+  (`mem_valid`, `mem_ready` and `mem_instr` high in one clock), whatever the
+  target. A ROM fetch that the ROM lockout blocks moves this counter and not
+  `km_rom_req_count_o`. User of `km_cpu_fetch_count_o`:
+  `sep_km_cpu_protect_rand_test`.
 * KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`).
 * KM SRAM read-latency probes (`km_sram_rd_*`) and scrambled-write probes
   (`km_sram_scr_wr_*`).
@@ -283,6 +292,99 @@ Observation probe groups:
   check reads them. Users: the owners of the eFuse and lifecycle groups of
   `docs/SEP_FCOV.adoc`.
 * KM OTP ID probes (`km_otp_sep_*_id_o`).
+* Secure test mode output (`secure_tm_o`): the `sep` output that shows the
+  latched secure test mode. Users: `sep_km_crossbar_efuse_window_rand_test`
+  (with `efuse_shadow_probe_o`) and `sep_km_otp_interface_rand_test` (with
+  `sep_fuse_sense_done_o`).
+* Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS, KM-OUTFIFO,
+  KM-LAT of the Key Manager area of `docs/SEP_VPLAN.adoc`), read-only continuous reads of
+  `u_key_manager_s3c_scan` and of the engine wrappers of `u_sep_crypto`:
+** KM-VALID (`km_engine_key_valid_o`, `km_abr_sk_*_o`): `KEY_CTRL.key_valid`
+   of the eight engine key banks in DEST_VALID bit order (0 HMAC, 1 KMAC, 2
+   AES, 3 OTBN, 4 MLDSA_SEED, 5 MLKEM_SEED_D, 6 MLKEM_SEED_Z, 7 MLKEM_MSG),
+   and of the Adams Bridge shared key `KEY_CTRL.key_valid`, `KEY[0..7]`,
+   `IRQ_STATUS.key_valid` and `IRQ_ENABLE.key_valid_en`. The Adams Bridge
+   bits read 0 in the build without Adams Bridge. Users:
+   `sep_km_cpu_protect_rand_test`, `sep_km_command_protocol_rand_test`,
+   `sep_km_key_transfer_rand_test`, `sep_km_handover_rand_test`,
+   `sep_km_fault_inject_rand_test`.
+** KM-KPV (`km_kpv_ctrl_o`, `km_kpv_words_o`): the 64 KPV `CTRL` registers
+   (`CTRL[s]` at `[4*s +: 4]`, register bit order) and the 1024 stored KPV
+   words in stored order. The stored words have no reset. Users:
+   `sep_km_kpv_rand_test`, `sep_km_cpu_protect_rand_test`,
+   `sep_km_command_protocol_rand_test`, `sep_km_fault_inject_rand_test`.
+** KM-CSR (`km_csr_*_o`): `IRQ_STATUS`, `IRQ_ENABLE`, the interrupt
+   aggregate, `RECOVERABLE_ERR`, `BOOT_STATUS.COLD_BOOT_DONE`,
+   `SRAM_EXEC_MODE`, `OTP_READ_LOCK`, `OTP_READ_LOCK_COLD`,
+   `OTP_CHANGE_STATUS`, the `SCRAMBLER_KEY` register value, the count of KM
+   writes to `SCRAMBLER_KEY` and `SCRAMBLER_CTRL`, on every clock. Users:
+   `sep_km_cpu_protect_rand_test`, `sep_km_boot_reset_rand_test`,
+   `sep_km_fault_inject_rand_test`.
+** KM-SRAM (`km_sram_peek_o`): the word of the 8192-word KM SRAM array at
+   `km_sram_peek_addr_i`, in stored form `{parity, data}`. The address input
+   is a select of the tap and drives nothing in the DUT; it is 0 by default.
+   There is no write path. User: `sep_km_sram_scrambler_key_rand_test`.
+** KM-BUS, eFuse part (`km_efuse_ar_*_o`, `km_efuse_aw_*_o`): the AR and AW
+   VALID, READY and address of the KM eFuse master `efuse_req_o` after the
+   address remap, reached through `km_efuse_{ar,aw}_{valid,ready,addr}_o`.
+   User: `sep_km_crossbar_efuse_window_rand_test`.
+** KM-BUS, key-path part (`km_key_{ar,aw}_{valid,ready}_o[4:0]`,
+   `km_key_{ar,aw}_addr_o[159:0]`): the AR and AW VALID, READY and address of
+   the five Key Manager key-path ports of `u_sep_crypto_axi_interconnect`,
+   ahead of the isolation stages, read at `<engine>_key_axil_req_i` and
+   `<engine>_key_axil_resp_o`. Index i, address at `[32*i +: 32]`, is bench
+   isolate stage 8 + i: 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 Adams Bridge. Users:
+   `sep_km_key_transfer_rand_test` (CHK-ENG-ORDER),
+   `sep_km_handover_rand_test` (CHK-HO-SIDELOAD-BUS),
+   `sep_km_fault_inject_rand_test` (CHK-KEYCRC, CHK-XFER-STOP).
+** KM-OUTFIFO (`km_outfifo_depth_o[8:0]`): the fill level of the outbound
+   FIFO of the Key Manager mailbox, on every clock. User:
+   `sep_km_fault_inject_rand_test` (CHK-SHRED-FIRST).
+** KM-INFIFO (`km_infifo_head_o[32:0]`): the head word of the inbound FIFO of
+   the Key Manager mailbox, `{separator, data}`, on every clock; 0 while the
+   FIFO is empty. Read-only. User: `sep_km_cpu_protect_rand_test`
+   (CHK-TRAP-SCOPE).
+** KM-LAT (`km_sram_rd_lat_o[7:0]`, `km_sram_rd_done_count_o`): the KM SRAM
+   read latency at the `sep` input `km_sram_mem_rsp_i`, after HK-LAT, in
+   clocks from the accepted read request to `rvalid` (1 while HK-LAT is
+   idle): the latency of the last completed read and the count of completed
+   reads since the bench reset. User: `sep_km_fault_inject_rand_test`
+   (CHK-LAT, CHK-LAT-VAR).
+** KM-WMAP (`km_sram_wmap_region_o[32*9-1:0]`, clear `km_sram_wmap_clr_i`):
+   for each SRAM write-lock region of 256 words, the count of distinct
+   logical word addresses (the KM CPU store address before the scrambler)
+   written with `we` at 1 on the `sep` output `km_sram_mem_req_o` since the
+   bench reset or the last clear. A write to a locked region leaves the port
+   with `we` at 0 and does not count. The clear resets bench state only.
+   KM-WMAP-JUMP (`km_sram_wmap_jump_o[32*9-1:0]`, `km_sram_wmap_jump_wr_o`,
+   `km_sram_wmap_jump_seen_o`): the KM-WMAP counts and `km_sram_write_count_o`
+   captured in the clock of the first completed KM CPU instruction fetch at
+   0x8000 since the bench reset or the last clear, and a flag that the capture
+   took place; stores after that fetch are not in the capture. User:
+   `sep_km_handover_rand_test` (CHK-HO-SRAM).
+* Key Manager CPU AXI valid tap (KM-AXIV, `km_cpu_axi_valid_o[2:0]`,
+  `km_cpu_rst_n_o`): the request valids of the KM CPU AXI4-Lite master
+  `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1 `aw_valid`, bit 0
+  `w_valid`, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
+  the PicoRV32 core and the `aresetn` of the KM AXI SVA. Read only, on every
+  clock. User: `sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID).
+* Key Manager sampler taps (KM-COV): the KM nets that only the coverage
+  sampler `u_sep_fcov` reads, bound by hierarchical reference in the
+  `u_sep_fcov` port list (VCS only): the KM CPU AXI master and its error
+  pulses, the KM CPU memory bus, `cpu_trap`, `irq_active`, the PicoRV32
+  `dbg_insn_opcode` (the opcode of the instruction in execution) and the CPU
+  interrupt lines, the error flags, the SRAM write-lock and violation bits,
+  the scrambler enable and lock, `IRQ_ENTRY_ADDR` and `IRQ_ENTRY_LOCK`, the KPV
+  scrambler registers, the depth, flags, handshakes, separators, error pulses
+  and register fields of both KM mailbox FIFOs, the DRBG sampler `CFG`,
+  `STATUS`, counters, prefetch word and DATA-read state, the wipe input and
+  pulse, the KM OTP input, the ROM request, the SRAM macro request and
+  response, the KM eFuse master, the KM CPU shared-key interrupt line, and the
+  four KM reset nets. The sampler reads the eFuse controller `efuse_req_err`
+  through the port `req_err_i`, and the sensed `LOCKS` and `LOCKS_SPARE` words
+  of `efuse_shadow_probe_o` through the port `efuse_shadow_i`. The eFuse and
+  lifecycle taps above define both ports; the KM taps reuse them and define no
+  port of their own. Owners: the Key Manager groups of `docs/SEP_FCOV.adoc`.
 * SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`).
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
   of the KM SRAM macro array that carry the KM ROM images' result words.
@@ -366,7 +468,7 @@ Observation probe groups:
    `sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test`.
 ** PR-EXT (`pr_ext_*`): the AXI Extension port, wrapper net
    `u_dut.axi_extension_axi_req`, same fields; and its replies (monitor
-   PR-EXT-RSP): B (`resp`, `id`) and R (`resp`, `id`, `last`) from
+   PR-EXT-RSP): B (`resp`, `id`) and R (`resp`, `id`, `last`, `data`) from
    `u_dut.axi_extension_axi_resp`, with READY from the request net. Owners:
    `sep_fabric_extension_port_window_test`,
    `sep_fabric_filter_match_priority_rand_test`,
@@ -593,6 +695,84 @@ Exceptions (a closed set):
   default, and the force is released when the input drops. The interrupt
   vector the checker reads is not forced. Users: the shadow-update and alert
   entry of the crypto and entropy area.
+* *Key Manager OTP rail flip* (HK-OTP) — while `km_otp_flip_en_i` is 1, the
+  KM OTP input `otp_data_i` of `u_key_manager_s3c_scan` is held at the value
+  it had at the rise of the input XOR `km_otp_flip_mask_i` (layout and width
+  of `km_otp_data_t`, 3596 bits with `life_cycle`, `demotion_state_1` and
+  `demotion_state_2` at the top, each dual-rail field `{complement, value}`):
+  a mask bit on one rail is a single-rail flip, the same bit on both rails a
+  legal value change, and bits of several fields change them together. The SEP drives
+  every field to the KM as a dual-rail pair, so no fuse image presents a
+  broken pair or changes a field after the sense. Both inputs are 0 by
+  default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the OTP word of `sep_crypto` ahead of the KM port) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readbacks:
+  `km_otp_flip_active_o` shows the hold, and `km_otp_input_live_o` is 1 while
+  the KM input equals the live OTP word. The KMCSR registers the checkers
+  read stay frontdoor. User: `sep_km_otp_interface_rand_test` (CHK-OTP-SIG,
+  CHK-OTP-CHG).
+* *Key Manager DRBG sampler TVALID withdrawal* (HK-STRM) — while
+  `km_strm_wd_arm_i` is 1 the bench drives the sink TVALID of the KM DRBG
+  sampler (`u_drbg_sampler.tvalid`) once. With `km_strm_wd_mode_i` 0 it
+  drives TVALID high in the first clock with the sink TREADY low, then low for
+  one clock. With `km_strm_wd_mode_i` 1 it drives TVALID high in the clock in
+  which a DATA read starts (the sampler leaves its idle state on the next
+  edge), then holds it low until the read ends. TDATA and TSTRB are not
+  driven. A live stream does not withdraw a beat, so the stream error has no
+  frontdoor. Both inputs are 0 by default; the drive ends at its last clock and
+  when the arm drops. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the KM stream TVALID of `sep_crypto`, ahead of the KM port) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readbacks: `km_strm_wd_fired_o`,
+  `km_strm_wd_tready_o` (the sink TREADY in the pulse clock) and
+  `km_strm_sink_tvalid_o`. While the arm is 1 the bench turns off the sampler
+  assertion `KmDrbgTvalidStability_A`, which the withdrawal breaks by design;
+  every other assertion stays on. User: `sep_km_drbg_sampler_rand_test`
+  (CHK-SMP-STRM).
+* *Key Manager KMCSR IRQ_SET pulse* (HK-IRQSET) — at the first falling edge
+  with `km_irqset_arm_i` at 1 and a non-zero `km_irqset_mask_i[11:0]`, the
+  bench drives the single-pulse IRQ_SET field output of each set mask bit
+  (`hwif_out.IRQ_SET.<source>_set` of the KMCSR register block; bit i is
+  IRQ_STATUS bit i) high for one clock, so all sources of the mask set in one
+  clock. One pulse per arm; a drop of the arm re-arms. A KM CPU write to
+  IRQ_SET drives the same path, but the host has no write path to the KMCSR
+  and no source event sets several bits in one clock. Both inputs are 0 by
+  default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the IRQ_SET field storage of the register block) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readback: `km_irqset_fired_o`. The `IRQ_STATUS` the checkers read
+  is not forced. User: `sep_km_fault_inject_rand_test` (CHK-FATAL-SET,
+  CHK-STATUS-HELD, CHK-CPU-TRAP).
+* *Key Manager CPU internal IRQ lines* (HK-CPUIRQ) — at the first falling
+  edge with `km_cpuirq_arm_i` at 1 and a non-zero `km_cpuirq_lines_i[1:0]`,
+  the bench drives bit 1 (mask bit 0: EBREAK or illegal instruction) and bit
+  2 (mask bit 1: bus error) of the `irq` input of the PicoRV32 core in the KM
+  CPU wrapper high for one clock. The wrapper drives these two lines 0 and
+  the core raises them itself; bits 3 to 5 keep their live value. The core
+  latches both lines, so a one-clock level raises the interrupt. The
+  production ROM executes no faulting instruction and makes no bad access, so
+  the two sources have no frontdoor. One pulse per arm; a drop of the arm
+  re-arms. Both inputs are 0 by default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the irq vector of the wrapper) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readbacks: `km_cpuirq_fired_o` and
+  `km_cpuirq_pending_o` (the core pending bits 2:1). User:
+  `sep_km_fault_inject_rand_test` (CHK-CPU-TRAP).
+* *Key Manager KPV read-data flip* (HK-KPV) — while `km_kpv_flip_en_i` is 1,
+  every KM-port read of the logical KPV word index `km_kpv_flip_index_i[9:0]`
+  (slot x 16 + word, the address ahead of the scrambler) returns the read
+  data after the descrambler (`km_ext_rd_data` of `u_kpv`) with bit
+  `km_kpv_flip_bit_i[4:0]` inverted. A read of a slot with `lock_use` set and
+  the reads of an erase are not changed, and the stored word does not change.
+  No software path stores a word that reads back wrong, so the key CRC check
+  has no frontdoor. All inputs are 0 by default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the read-data mux of `u_kpv`: zero for `lock_use`, else the descrambler output or the register-file data) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readback:
+  `km_kpv_flip_count_o`, the count of changed reads since the enable rose.
+  User: `sep_km_fault_inject_rand_test` (CHK-KEYCRC, CHK-NOFLUSH,
+  CHK-CRC-FIRST, CHK-GATE-AFTER, CHK-RESIDUE).
+* *Key Manager memory response parity flip* (HK-PAR) — while `km_par_arm_i`
+  is 1, the bench counts the read responses of the memory `km_par_mem_i`
+  (0 ROM on the `sep` input `km_rom_mem_rsp_i`, 1 SRAM on
+  `km_sram_mem_rsp_i`) from the rise of the arm, and on the N-th response,
+  N = `km_par_n_i[7:0]` from 1, inverts parity bit `km_par_lane_i[1:0]` of
+  that response for one clock. The data bits are not touched. One flip per
+  arm; a drop of the arm re-arms; N of 0 or an unknown control leaves the
+  hook idle. The macros store correct parity, so the parity check has no
+  frontdoor. Readbacks: `km_par_fired_o`, `km_par_resp_count_o` and
+  `km_par_rstrb_o` (the byte lanes that the KM parity-checks on the flipped
+  response). User: `sep_km_fault_inject_rand_test` (CHK-PARITY,
+  CHK-PARITY-VAC).
+* Each Key Manager hook above is idle while its arm or enable input is 0 or
+  unknown, and `sep_base_test.drive_idle_defaults` drives every hook input to
+  0 at bring-up.
 * *Crypto and entropy observation taps* — the external stream response
   monitor, the internal DRBG endpoint probe, the detune probe, the OTBN status
   probe, the ESRC SHA-256 status tap and the ESRC noise-bit readback (see the
@@ -1063,8 +1243,9 @@ retirement ports; see <<env-cpu-trace>>.
 Before the boot, `RUN-IDENTITY-FW` logs the sha256 of both images and
 `CHK-FW-IDENTITY` checks where they came from. The firmware build (`fw/fw.mk`)
 compiles `FW-BUILD-ID:<digest>` into every image, with `<digest>` from
-`fw/fw_src_digest.py` over the firmware source directories, once in ICCM and
-once in DCCM. The test reads the string out of both loaded images and requires
+`fw/fw_src_digest.py` over the firmware sources and the boot ROM files the tests
+build from, once in ICCM and once in DCCM. The test reads the string out of both
+loaded images and requires
 each to equal the digest of the tree it runs from, which `RUN-IDENTITY` binds to a commit. An image built from other
 source, or left over from an older build, fails the check.
 
@@ -1150,8 +1331,10 @@ Other enrolled tests also run *real* fuse sense (no `+skip_fuse_sense`) for a
 different contract — lifecycle decode, inbound-filter `SEP_DBG` gating, public-ID
 delivery to the Key Manager — and do not replace the shadow-compare pair:
 `sep_efuse_lcc_lc_state_stitch_test`, `sep_lcc_uvm_inbound_filter_gating_test`,
-`sep_fabric_inbound_filter_rule_matrix_test`, `sep_efuse_km_public_id_test`. The
-last reads the Key Manager's OTP input from the `km_otp_sep_*_id_o` ports.
+`sep_fabric_inbound_filter_rule_matrix_test`, `sep_efuse_km_public_id_test`,
+`sep_km_kmcsr_reset_rand_test`. `sep_efuse_km_public_id_test` reads the Key
+Manager's OTP input from the `km_otp_sep_*_id_o` ports; `sep_km_kmcsr_reset_rand_test`
+grades IRQ_STATUS, including OTP_SIGINT, across the KM reset kinds.
 
 === Memory, eFuse, and SPI Models
 
@@ -1412,17 +1595,75 @@ so `c_compile` builds `hw/sys/sep/dv/cocotb/tests/rom_main.rom.parhex` from
 tracked `hw/ip/key_manager/approm/prod` source. The parhex is gitignored. The
 profile drives `make -C hw/sys/sep/dv/cocotb/tests/km_fw rom_main`, which
 builds the application ROM with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` into its own
-`build/sep_dv` directory. A default KM build wipes SRAM at boot and halts before
-`RESP_KM_READY`.
+`build/sep_dv` directory. A default KM build wipes the engine key banks at
+boot. In a leaf that holds OTBN, KMAC and HMAC in reset, those writes get
+SLVERR and the ROM sends an unrecoverable-fault frame in place of
+`RESP_KM_READY`, so such leaves use the build with both wipes off.
 
 `--stage sim` without that output fails with `firmware outputs missing`
 rather than hanging the KM. A named `+km_rom_hex` that does not resolve is
 a t=0 `$fatal` in `tb_top`.
 
+Two more profiles build the same application ROM with the wipe knobs named in
+the profile, each with its own image name and a cache key whose recipe names
+both knobs. `c_compile` builds each image in a directory private to the run
+and the test, and the prestage hook stages it into the sim directory when the
+leaf carries the matching `+km_rom_hex`.
+
+[cols="2,2,3,4",options="header"]
+|===
+|Profile |Knobs |Image |Testlist selection
+|`km_rom_main` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (bench build) |`rom_main.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main" }`, `+km_rom_hex=rom_main.rom.parhex`
+|`km_rom_main_default` |`KM_BOOT_WIPE=1 KM_UNREC_WIPE=1` (shipped default) |`rom_main_default.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_default" }`, `+km_rom_hex=rom_main_default.rom.parhex`. User: `sep_km_boot_reset_rand_test` (HOST-DEFAULT).
+|`km_rom_main_unrec` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=1` |`rom_main_unrec.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_unrec" }`, `+km_rom_hex=rom_main_unrec.rom.parhex`. User: the HOST-UNREC entry of `sep_km_fault_inject_rand_test`.
+|===
+
+The profiles drive the `rom_main`, `rom_main_default` and `rom_main_unrec`
+targets of `hw/sys/sep/dv/cocotb/tests/km_fw/Makefile`. A leaf of
+`sep_km_boot_reset_rand_test` or `sep_km_fault_inject_rand_test` logs
+`ROM-BUILD km_boot_wipe=<0/1> km_unrec_wipe=<0/1>`.
+
 The small committed `km_rom*.parhex` assembly images are a different class
 and stay tracked; they do not use this profile.
 
-Build the image by hand only when iterating on the KM firmware itself:
+[[_km_rom_param_blocks]]
+==== Key Manager Scripted Images and Parameter Blocks
+
+The scripted KM images IMG-SCR (`sep_km_sram_scrambler_key_rand_test`) and
+IMG-MBOX-KM (`sep_km_mailbox_km_side_rand_test`) read the drawn configuration
+of their leaf from a parameter block at KM ROM word `0xF00` (byte `0x3C00`).
+`cocotb/dv_sim_prestage.py` writes a copy of the committed image,
+`<image>.param.parhex`, into the sim directory before the simulator starts:
+the template lines, then the block at `@00000F00` in the `.parhex` format of
+`cocotb/tests/km_fw/gen_parhex.py`. The image load `tb_backdoor_mem` preloads the
+copy through `+km_rom_hex=<image>.param.parhex` at t=0, before the KM leaves
+reset, so no bench write changes the image after t=0. Block layout: the magic
+word `0x4B4D5052`, the version and block id, the payload length, the payload,
+and the XOR of the words before it. `cocotb/env/sep_km_img_param.py` draws the
+payload from the leaf seed with `SepSeededRng`; the test calls the same
+function at runtime for its golden, and the prestage log names the sha256 of
+the template and of the staged copy. The IMG-SCR block is the preload
+HK-IMG-PARAM of the Key Manager area of `docs/SEP_VPLAN.adoc`. A template that
+reaches the block address, or a missing template, stops the prestage.
+
+IMG-H (`sep_km_handover_rand_test`) is an SRAM image, not a ROM image: the
+host streams it with `CMD_SRAM_LOAD_EXEC` after the ROM confirmation, and the
+ROM hands over to it at SRAM `0x8000`. The source is
+`cocotb/tests/km_fw/km_img_h.S` (RV32E, position-independent), and the
+committed build is `cocotb/tests/km_img_h.parhex`, 168 words in SRAM region 0
+(`make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_img_h.parhex`). At the jump
+the image saves x5, x1 to x4 and x6 to x14 before any other instruction writes
+them (x15 is its store base register and is not reported), reads the KM state
+and sends one KM mailbox message of 263 words: first word `0x4B4D4948`, last
+word `0x4B4D4945` with the separator, and no response header. Then it spins.
+The header of `km_img_h.S` lists the layout, and `cocotb/env/sep_km_img_h.py`
+decodes it. The image grades nothing; every golden lives in the test. The same
+module builds the spin image (`spin_image`: word 0 is `jal x0, 0`, the other
+words are drawn from the leaf seed) and the image frame of either image
+(`stream_words`: the image words, then the CRC-32C trailer).
+
+Build the `rom_main` image by hand only when iterating on the KM firmware
+itself:
 
 [source,bash]
 ----

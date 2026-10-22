@@ -291,7 +291,7 @@ for timing closure.
 |AXI_PEER_DIE_MAX_DATA_WD |parameter |1024 |Maximum peer data width
 (bits).
 
-|APB_ADDR_WD |parameter |32 |APB address width.
+|APB_ADDR_WD |parameter |32 |APB address width. Only [.monospaced]#++PADDR[15:0]++# is decoded (xref:aou-ig-apb-slave-interface[]).
 
 |APB_DATA_WD |parameter |32 |APB data width.
 
@@ -299,9 +299,23 @@ for timing closure.
 
 |S_WR_MO_CNT |parameter |32 |Slave write outstanding count.
 
+|TX_NXT_PACKING_EN |parameter |0 |TX flit packer output stage in
+[.monospaced]#++AOU_TX_CORE++#. 0: each FDI chunk is driven combinationally from the
+granule ring and the current packing state. 1: the chunk is computed from the
+look-ahead (next) packing state and ring contents and registered before the
+FDI output mux, so the FDI TX data leaves a register.
+
 |M_RD_MO_CNT |parameter |32 |Master read outstanding count.
 
 |M_WR_MO_CNT |parameter |32 |Master write outstanding count.
+
+|RP0_AGG_WCH_FIFO_DEPTH ... RP3_AGG_WCH_FIFO_DEPTH |localparam in
+[.monospaced]#++AOU_CORE_TOP++# (parameter of [.monospaced]#++AOU_CORE++#) |16 |Depth of the per-RP
+W-channel FIFO that decouples AW from W inside the AXI Aggregator. It must be
+greater than the longest write burst the local bus issues to the AXI manager
+port (the aggregator issues an AW only once the FIFO can hold the whole
+recalculated burst). Fixed at 16 in [.monospaced]#++AOU_CORE_TOP++#; change the localparams
+there to integrate a longer-burst local bus.
 |=======================================================================
 
 [[aou-ig-fdi_config-values]]
@@ -367,10 +381,46 @@ supported by the design: [.monospaced]#++AOU_RX_CORE_IN_MUX++# requires
 |==============================================================
 |Signal |Direction |Width |Description
 |I_CLK |input |1 |Core system clock (AOU_CORE and AOU_FIFO_RP).
-|I_RESETN |input |1 |Active-low asynchronous reset.
+|I_RESETN |input |1 |Active-low asynchronous reset for the core clock domain. See xref:aou-ig-reset-domains[].
 |I_PCLK |input |1 |APB clock (slave side of async bridge).
-|I_PRESETN |input |1 |APB domain reset.
+|I_PRESETN |input |1 |Active-low reset for the APB-clock side of the async bridge. See xref:aou-ig-reset-domains[].
 |==============================================================
+
+[[aou-ig-reset-domains]]
+==== Reset domains
+
+[.monospaced]#++I_RESETN++# and [.monospaced]#++I_PRESETN++# are independent.
+Each may be asserted or released on its own.
+
+[.monospaced]#++I_RESETN++# is the core-clock reset. It returns the protocol
+engine, the configuration registers, and the activation state to their
+reset values. The activation FSM comes out of reset
+[.monospaced]#++DISABLED++#. It clears the RX FIFOs. On
+[.monospaced]#++AOU_TOP++#, it returns the FDI bringup controller to Reset,
+so the link must be trained again. In-flight AXI transactions and an FDI
+flit already in progress are abandoned. Software reprograms the
+configuration registers, brings the link up, and runs activation again.
+[.monospaced]#++AOU_SW_RESET++# is the software reset used in the LinkReset
+sequence (PM entry / LinkReset / LinkDisabled sequence in
+[.monospaced]#++DOC/MAS/software-operation.adoc++#).
+Scan muxing of that path is described in
+xref:aou-ig-tiel_dft_modescan-usage[].
+
+[.monospaced]#++I_PRESETN++# is the APB-clock reset. It resets only the
+APB-clock side of the asynchronous APB bridge. Configuration, activation
+state, AXI traffic, and the FDI link stay as they are. Assert
+[.monospaced]#++I_PRESETN++# or [.monospaced]#++I_RESETN++# only after the
+APB master is idle ([.monospaced]#++PSEL++# low, with no access waiting on
+[.monospaced]#++PREADY++#) and the bridge's request/done handshake has fully
+returned to idle in both clock domains. Keep both clocks running and
+[.monospaced]#++PSEL++# low while allowing the handshake to drain before an
+independent reset; master-visible completion alone is insufficient.
+A write still sitting in the bridge can complete after the reset and
+change a register that the reset just cleared.
+
+At power-on, hold both resets asserted while [.monospaced]#++I_CLK++# and
+[.monospaced]#++I_PCLK++# are running. Start APB or AXI traffic only after
+both resets have been released.
 
 [[aou-ig-apb-slave-interface]]
 === APB Slave Interface
@@ -380,16 +430,39 @@ supported by the design: [.monospaced]#++AOU_RX_CORE_IN_MUX++# requires
 |Signal |Direction |Width |Description
 |I_AOU_APB_SI0_PSEL |input |1 |APB select.
 |I_AOU_APB_SI0_PENABLE |input |1 |APB enable.
-|I_AOU_APB_SI0_PADDR |input |APB_ADDR_WD |APB address.
+|I_AOU_APB_SI0_PADDR |input |APB_ADDR_WD |APB address. Only bits [15:0] are decoded.
 |I_AOU_APB_SI0_PWRITE |input |1 |APB write.
 |I_AOU_APB_SI0_PWDATA |input |APB_DATA_WD |APB write data.
 |O_AOU_APB_SI0_PRDATA |output |APB_DATA_WD |APB read data.
-|O_AOU_APB_SI0_PREADY |output |1 |APB ready.
-|O_AOU_APB_SI0_PSLVERR |output |1 |APB slave error.
+|O_AOU_APB_SI0_PREADY |output |1 |APB ready. Tied high.
+|O_AOU_APB_SI0_PSLVERR |output |1 |APB slave error. Tied low.
 |=========================================================
+
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+*Note:* AOU_CORE_SFR decodes [.monospaced]#++PADDR[15:0]++# only; bits
+[.monospaced]#++[APB_ADDR_WD-1:16]++# are ignored, so the register map
+(offsets 0x0000 to 0x0080) repeats at every 64 KiB within the APB window.
+Size the APB window for 64 KiB and let the interconnect decode the upper
+address bits. Within the window, an offset that is not a defined register
+(including a non-word-aligned address) reads as 0x00000000 and ignores
+writes. [.monospaced]#++PREADY++# is tied high and
+[.monospaced]#++PSLVERR++# is tied low, so every access completes in one
+cycle without an error, mapped or not. The interface has no
+[.monospaced]#++PSTRB++#; writes are 32 bits wide.
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 [[aou-ig-axi-master-rx-ar-channel]]
 === AXI Master (RX) – AR Channel
+
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+*Note:* The AR and AW requests on the AXI Master (RX) ports are the remote
+die's ReadReq and WriteReq messages, forwarded after data-width conversion
+and burst splitting. AOU_CORE_TOP does not validate them against the AXI4
+rules (no burst crossing a 4 KB boundary, no burst exceeding
+Max_Transaction_Bytes). The system integrator must ensure that the remote
+die issues only AXI4-compliant requests; see Assumptions in the MAS
+([.monospaced]#++DOC/MAS/overview.adoc++#).
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 [cols="<,<,<,<",options="header",]
 |=======================================================================
@@ -685,6 +758,8 @@ multiplexing: 0 = PHY0, 1 = PHY1. See xref:aou-ig-phy-type-mux[].
 |INT_SI0_ID_MISMATCH |output |1 |Slave interface ID mismatch.
 |INT_MI0_ID_MISMATCH |output |1 |Master interface ID mismatch.
 |INT_EARLY_RESP_ERR |output |1 |Early response error.
+|INT_EARLY_WDT_ERR |output |1 |Early-response write-transaction watchdog
+expired on an RP (see xref:aou-ig-interrupts[]).
 |INT_ACTIVATE_START |output |1 |Activate start.
 |INT_DEACTIVATE_START |output |1 |Deactivate start.
 |=============================================================
@@ -706,10 +781,6 @@ ________________________________________________________________________________
 |I_INT_FSM_IN_ACTIVE |input |1 |Initialization done / FSM in active
 state indicator.
 
-|I_MST_BUS_CLEANY_COMPLETE |input |1 |Master bus cleany complete.
-
-|I_SLV_BUS_CLEANY_COMPLETE |input |1 |Slave bus cleany complete.
-
 |O_AOU_ACTIVATE_ST_DISABLED |output |1 |Activation state disabled.
 
 |O_AOU_ACTIVATE_ST_ENABLED |output |1 |Activation state enabled.
@@ -722,14 +793,12 @@ link up is complete. When starting the test, [.monospaced]#++I_INT_FSM_IN_ACTIVE
 should be 0, and when you want to activate AOU_CORE,
 [.monospaced]#++I_INT_FSM_IN_ACTIVE++# should be 1. When testing with IP standalone,
 you must force [.monospaced]#++I_INT_FSM_IN_ACTIVE++#.
-* [.monospaced]#++I_MST_BUS_CLEANY_COMPLETE++# is asserted when all responses to the
-remote diepass:[']s requests have been completed. The signal originates from
-the BUS_CLEANY. If the BUS_CLEANY feature is not used, the corresponding
-port must be tied to 1.
-* [.monospaced]#++I_SLV_BUS_CLEANY_COMPLETE++# is asserted when all responses from the
-remote die have been received for the requests sent by the local die.
-The signal originates from the BUS_CLEANY. If the BUS_CLEANY feature is
-not used, the corresponding port must be tied to 1.
+* Bus quiescence (whether every request sent to or received from the
+remote die has been answered) is tracked inside AOU_CORE and reported in
+[.monospaced]#++AOU_INIT.SLV_TR_COMPLETE++# / [.monospaced]#++AOU_INIT.MST_TR_COMPLETE++#; no external
+BUS_CLEANY inputs exist. [.monospaced]#++SLV_TR_COMPLETE++# also waits for the actual B
+responses of writes that received an early B response
+([.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_DONE++#).
 * After AOU_CORE deactivation, the activation status transitions to
 DISABLED, allowing the UCIe link to go down. Once deactivation
 completes, [.monospaced]#++O_AOU_ACTIVATE_ST_DISABLED++# is asserted to notify the
@@ -978,6 +1047,20 @@ Error. SW can check the ID and error type of the transaction in which
 the error occurred by reading AOU_CORE.WRITE_EARLY_RESPONSE SFR. The
 interrupt can be cleared by writing pass:[']1pass:['] to the
 AOU_CORE.WRITE_EARLY_RESPONSE.WRITE_RESP_ERR SFR.
+* *INT_EARLY_WDT_ERR* An interrupt that occurs when the write-transaction
+watchdog of an RP expires: with AOU_CORE.WRITE_EARLY_RESPONSE_RPn.WDT_EN
+set, no AW or B handshake occurred for
+AOU_CORE.WRITE_EARLY_RESPONSE_WDT_CTL.WDT_THRESHOLD I_CLK cycles (reset
+0xC3500) while the RP had writes outstanding, typically because the
+remote die stopped answering writes that already received an early
+OKAY. SW can find the RP by reading
+AOU_CORE.WRITE_EARLY_RESPONSE_RPn.WDT_TRANS_TIMEOUT_ERR; the interrupt is
+cleared by writing pass:[']1pass:['] to that bit and masked with
+AOU_CORE.AOU_INTERRUPT_MASK.INT_EARLY_WDT_MASK (bit 9). The watchdog of an
+RP fires once per reset: after a timeout it does not re-arm until I_RESETN or
+AOU_CON0.AOU_SW_RESET. See Write Transaction Watchdog in
+[.monospaced]#++DOC/MAS/software-operation.adoc++# for the recovery
+sequence.
 * *INT_REQ_LINKRESET* An interrupt that occurs when AOU_CORE receives a
 protocol violation. Refer to the _AOU_CORE Micro-Architecture
 Specification_ ([.monospaced]#++DOC/MAS/interrupts-errors.adoc++#) for debugging details.
@@ -1007,7 +1090,15 @@ state, at which point credited messages can be transmitted.
 
 Regardless of its own activation state, a die must send an ActivateAck
 in response to an ActivateReq from the other die, to acknowledge receipt
-of the request.
+of the request. Acknowledging the request does not make it legal once
+the activate handshake has completed. If the local activation FSM is
+ENABLED, or is in DEACTIVATE, that ActivateReq is also an invalid
+activation message (see LinkReset Error Reporting in
+[.monospaced]#++DOC/MAS/software-operation.adoc++#). It
+means the remote die has lost the activation state, for example because
+of a bug or a local reset. The local die requests LinkReset. Software
+resets AOU_CORE and both dies run activation again so they share one
+state. Sending ActivateAck does not start a second handshake.
 
 [[aou-ig-credit-management-type]]
 === Credit Management Type
@@ -1159,10 +1250,14 @@ is asserted because the local die is required to return a response to
 the remote die. When AOU_CON0.CREDIT_MANAGE is set to 1, this interrupt
 can also be asserted if a new request after the remote die has sent a
 DeactivateReq. There is a response to be received
-(I_SLV_BUS_CLEANY_COMPLETE == 0) When AOU_CON0.CREDIT_MANAGE is set to
+(AOU_INIT.SLV_TR_COMPLETE == 0) When AOU_CON0.CREDIT_MANAGE is set to
 0, this interrupt can be asserted if the local die issues new AXI
 requests after the remote die has sent a DeactivateReq. An ActivateReq
-message is received from the remote die.
+message is received from the remote die while the activation handshake
+has not yet completed (DISABLED or ACTIVATE). An ActivateReq received
+while ENABLED is an invalid activation message and requests LinkReset,
+not this interrupt. See LinkReset Error Reporting in
+[.monospaced]#++DOC/MAS/software-operation.adoc++#.
 
 |INT_DEACTIVATE_START |When AOU_CON0.CREDIT_MANAGE is set to 0, if the
 interrupt is detected, the master IP must stop sending new request
@@ -1391,162 +1486,145 @@ bringup FSM.
 [[aou-ig-verification-testbench]]
 == Verification Testbench
 
-The verification flow is built on https://www.cocotb.org/[cocotb] and
-https://github.com/alexforencich/cocotbext-axi[[.monospaced]#++cocotbext-axi++#]. All
-verification IP is fetched from PyPI at install time -- no commercial
-VIP is required and no AXI VIP source is vendored into this repository.
-The default simulator is https://verilator.org/[Verilator] (open
-source); Synopsys VCS is supported transparently for users with a
-commercial license.
+The verification environment is the SystemVerilog UVM testbench in
+[.monospaced]#++hw/ip/aou/dv/++#. It uses no commercial VIP: every model is the
+bench's own, and the base classes come from the OCAH library of
+https://github.com/tenstorrent/tt-oca-harness[tt-oca-harness], fetched
+by [.monospaced]#++make setup++# together with Accellera UVM-core at a pinned
+commit. Synopsys VCS is the default simulator when it is on
+[.monospaced]#++PATH++#; https://verilator.org/[Verilator] 5.052 is the open-source
+flow and the one CI builds ([.monospaced]#++.github/workflows/uvm-smoke.yml++#).
 
-The harness ([.monospaced]#++VERIF/aou_cocotb_top.sv++#) instantiates two [.monospaced]#++AOU_CORE_TOP++#
-cores back-to-back via their 32B (256b) single-PHY FDI interfaces. Each
-DUT is overridden with [.monospaced]#++.FDI_CONFIG(packet_def_pkg::FDI_CFG_SP_32B)++# and
-the build does not define [.monospaced]#pass:c[+define+TWO_PHY]#, so only the PHY0 ports are
-connected. The two DUT instances use different AXI data widths (512b and
-256b) to exercise the width-interoperability path. The four AXI buses
-and two APB slave buses are exposed as flat top-level ports using
-[.monospaced]#++cocotbext-axi++#pass:[']s canonical signal naming ([.monospaced]#++s_axi_d1_*++#, [.monospaced]#++m_axi_d1_*++#,
-[.monospaced]#++s_axi_d2_*++#, [.monospaced]#++m_axi_d2_*++#, [.monospaced]#++apb1_*++#, [.monospaced]#++apb2_*++#) so the Python tests can
-use [.monospaced]#++AxiBus.from_prefix(dut, "<prefix>")++# and
-[.monospaced]#++ApbBus.from_prefix(dut, "<prefix>")++# directly. Refer to
-link:../../VERIF/README.md[[.monospaced]#++VERIF/README.md++#] for setup, watchdogs, and
-the test list.
+The bench sits at [.monospaced]#++hw/ip/aou/dv++#, the
+[.monospaced]#++hw/<group>/<dut>/dv++# path the tt-oca-harness convention expects, so
+the same sources, sim configs and testlists serve the standalone
+[.monospaced]#++Makefile++# flow here and the harness runner once this repository is
+vendored there. Refer to
+link:../../hw/ip/aou/dv/README.md[[.monospaced]#++hw/ip/aou/dv/README.md++#] for setup,
+the build configurations, regressions, coverage and the test list, and to
+link:../../hw/ip/aou/dv/docs/AOU_TB_ARCH.adoc[[.monospaced]#++docs/AOU_TB_ARCH.adoc++#]
+for the testbench architecture.
 
 [[aou-ig-architecture]]
 === Architecture
 
+One bench with four tops. The main top, [.monospaced]#++tb/tb_top.sv++# (T1), puts
+[.monospaced]#++AOU_TOP++# against layered models of the remote die; the other three
+are smaller benches for the register file alone, the L3 protocol model
+against the FDI checker, and the AXI agents in loopback.
+
 [ditaa, target=gen_aou_dataflow.png]
 ....
-                      AXI SI                              AXI MI
+                AXI SI (per RP)                          AXI MI (per RP)
   +------------------+             +------------------+             +------------------+
-  | cocotb AxiMaster |  -------->  |  AOU_CORE_TOP    |  -------->  | cocotb AxiRam    |
-  | s_axi_d1 (512b)  |      .      |  u_dut1          |             | m_axi_d1 (512b)  |
-  +------------------+      .      |  (AXI 512b)      |             +------------------+
-  +------------------+      .      +------------------+
-  | cocotb ApbMaster |..APB.......         |     ^
-  | apb1 (32b)       |     FDI 32B (256b)  |     | FDI 32B (256b)
-  +------------------+                     v     |
-                                 +------------------+             +------------------+
-  +------------------+           |  AOU_CORE_TOP    |  -------->  | cocotb AxiRam    |
-  | cocotb AxiMaster |  -------> |  u_dut2          |             | m_axi_d2 (256b)  |
-  | s_axi_d2 (256b)  |      .    |  (AXI 256b)      |             +------------------+
-  +------------------+      .    +------------------+
-  +------------------+      .            ^
-  | cocotb ApbMaster |..APB....          |
-  | apb2 (32b)       |                   |
-  +------------------+    fdi_flit_decoder x2 (gated by FDI_LOG)
+  | L4 AXI master    |  -------->  |     AOU_TOP      |  -------->  | L4 AXI slave     |
+  | agents           |             |     (DUT)        |             | agents (memory)  |
+  +------------------+             |                  |             +------------------+
+  +------------------+             |                  |
+  | APB agent + RAL  |..APB.......>|                  |
+  +------------------+             +------------------+
+                                     FDI LP  |  ^  FDI PL
+                                             v  |
+                                   +------------------+
+                                   | L1 FDI agent     |  flit-level drive and monitor
+                                   | L2 link state    |  PL link-state machine, bring-up
+                                   | L3 AoU protocol  |  remote-die AoU model
+                                   | L4 remote AXI    |  the remote die's AXI side
+                                   +------------------+
+                                   AOU_FDI_CHECKER (passive, on the FDI)
 ....
 
-The data flow for a write transaction initiated on [.monospaced]#++u_dut1++#pass:[']s AXI slave
-interface is:
+The remote die is modelled in four layers: L1 plays the Flit-Die
+Interface, L2 the PL link-state machine and bring-up, L3 the AoU protocol
+(message packing, credits, ordering), and L4 the AXI traffic on the remote
+side. AXI traffic entering a local RP is checked end to end against what
+the L4 remote model receives, and in the reverse direction. A passive
+[.monospaced]#++AOU_FDI_CHECKER++# watches the FDI in both directions; its rules, and
+those of the AXI, APB and register checkers, are listed with their IDs in
+[.monospaced]#++uvm/env/checkers/rules.csv++#.
 
-1.  The cocotb [.monospaced]#++AxiMaster++# on [.monospaced]#++s_axi_d1++# issues a 512b write.
-2.  [.monospaced]#++u_dut1++# packs the AXI transaction into AOU flit(s) and transmits
-via the 32B (256b) PHY0 FDI port.
-3.  [.monospaced]#++u_dut2++# receives the FDI data, unpacks it, and presents the
-transaction on its AXI MI.
-4.  The cocotb [.monospaced]#++AxiRam++# on [.monospaced]#++m_axi_d2++# accepts the write into its
-internal memory model.
-5.  A subsequent read to the same address returns the stored data back
-through the reverse FDI path.
-6.  The Python test compares the read data against the originally
-written payload byte-for-byte.
-
-The reverse direction (initiated from [.monospaced]#++s_axi_d2++# to [.monospaced]#++m_axi_d1++#) operates
-symmetrically.
-
-A separate test ([.monospaced]#++test_csr_reset_values++#) reads every register defined
-in [.monospaced]#++csr/aou-core.rdl++# over APB on both DUTs immediately after reset and
-_before_ APB activation, verifying that every sw-readable, reset-bearing
-field matches its RDL-defined reset value. The expected values are built
-at runtime by [.monospaced]#++systemrdl-compiler++#, so the check self-updates whenever
-the RDL changes and surfaces RDL ↔ RTL drift on every run.
+The DUT parameters of a build are selected by [.monospaced]#++CONFIG++#
+([.monospaced]#++1x512-sp64++# by default: one RP at 512 bits, a 64-byte single-PHY
+FDI). The other configurations cover one to four RPs, mixed RP widths of
+256/512/1024 bits, 32/64/128-byte FDI, two-PHY FDI and the non-default
+RX FIFO depths; [.monospaced]#++make configs++# prints the table.
 
 [[aou-ig-components]]
 === Components
 
 [width="100%",cols="<34%,<33%,<33%",options="header",]
 |=======================================================================
-|Component |Instance / role |Description
-|[.monospaced]#++AOU_CORE_TOP++# |[.monospaced]#++u_dut1++# |DUT instance 1. AXI data width = 512b
-(default parameters). [.monospaced]#++FDI_CONFIG = FDI_CFG_SP_32B++# (256b PHY0; no
-TWO_PHY).
+|Component |Location |Description
+|[.monospaced]#++AOU_TOP++# |[.monospaced]#++tb/tb_top.sv++# |The DUT of the T1 bench, with the
+RP count, RP data widths and [.monospaced]#++FDI_CONFIG++# of the selected
+[.monospaced]#++CONFIG++#.
 
-|[.monospaced]#++AOU_CORE_TOP++# |[.monospaced]#++u_dut2++# |DUT instance 2. RP0-RP3 AXI data widths
-overridden to 256b. [.monospaced]#++FDI_CONFIG = FDI_CFG_SP_32B++#.
+|AXI agents (L4) |[.monospaced]#++uvm/env/axi/++# |AXI4 masters on the DUT's slave
+ports, memory-backed AXI4 slaves on its master ports, and the remote
+die's AXI side behind the L3 model; the protocol monitors and scoreboards
+check each transaction end to end.
 
-|[.monospaced]#++cocotbext.axi.AxiMaster++# |[.monospaced]#++s_axi_d1++#, [.monospaced]#++s_axi_d2++# |Drives AXI
-writes/reads on each DUTpass:[']s slave interface.
+|FDI agent (L1) and link-state agent (L2) |[.monospaced]#++uvm/env/fdi/l1/++#,
+[.monospaced]#++uvm/env/fdi/l2/++# |Drive and monitor the Flit-Die Interface; play the
+PL link-state machine and bring-up, link events and low-power entry.
 
-|[.monospaced]#++cocotbext.axi.AxiRam++# |[.monospaced]#++m_axi_d1++#, [.monospaced]#++m_axi_d2++# |Memory-backed AXI slave
-attached to each DUTpass:[']s master interface. Stores writes and serves reads.
+|AoU protocol model (L3) |[.monospaced]#++uvm/env/l3/++# |The remote die's AoU
+protocol: message packing and unpacking, credits, ordering.
 
-|[.monospaced]#++cocotbext.axi.ApbMaster++# |[.monospaced]#++apb1++#, [.monospaced]#++apb2++# |Drives the AOU activate
-write ([.monospaced]#++paddr=0x8++#, [.monospaced]#++pwdata=0x1++#) on each DUT after reset, and reads
-CSRs for the reset-value test.
+|APB agent and register model |[.monospaced]#++uvm/env/apb/++#,
+[.monospaced]#++uvm/env/gen/aou_core_csr_uvm_pkg.sv++# |Drives the APB port, activates
+the AOU, and reads and writes CSRs through the register model generated
+from [.monospaced]#++csr/aou-core.rdl++# (xref:aou-ig-ip-integration-collateral[]).
 
-|[.monospaced]#++fdi_flit_decoder++# |[.monospaced]#++u_fdi_dec1++#, [.monospaced]#++u_fdi_dec2++# |Passive FDI decoders.
-Log decoded flits to [.monospaced]#++dut1_fdi.log++# / [.monospaced]#++dut2_fdi.log++#. Built only when
-[.monospaced]#++FDI_LOG=1++# is passed to [.monospaced]#++make++#.
-|=======================================================================
+|[.monospaced]#++AOU_FDI_CHECKER++# and checkers |[.monospaced]#++uvm/env/checker/++#,
+[.monospaced]#++uvm/env/chk/++#, [.monospaced]#++uvm/env/perf/++# |Passive FDI protocol checker;
+the AXI, APB, register and performance checkers.
 
-Key testbench parameters:
+|Register bench |[.monospaced]#++tb/aou_reg_top.sv++# ([.monospaced]#++TB=reg++#)
+|[.monospaced]#++AOU_CORE_TOP++# with only its APB port driven; reset-value, bit-bash,
+access, reserved-field and alias tests against the register model.
 
-[cols="<,<,<",options="header",]
-|=======================================================================
-|Parameter |Value |Description
-|[.monospaced]#++CORE_CLK_PERIOD_NS++# |1 ns |Core clock period (AXI/FDI domain).
+|L3 unit bench, AXI self-test |[.monospaced]#++tb/aou_l3_unit_top.sv++#
+([.monospaced]#++TB=l3_unit++#), [.monospaced]#++tb/aou_axi_selftest_top.sv++#
+([.monospaced]#++TB=axi_selftest++#) |The L3 model and the FDI checker against each
+other without a DUT; the AXI agents in loopback.
 
-|[.monospaced]#++APB_CLK_PERIOD_NS++# |10 ns |APB clock period.
-
-|[.monospaced]#++D1_AXI_DATA_WIDTH++# |512 |[.monospaced]#++u_dut1++# AXI data width (bits).
-
-|[.monospaced]#++D2_AXI_DATA_WIDTH++# |256 |[.monospaced]#++u_dut2++# AXI data width (bits).
-
-|[.monospaced]#++AXI_ADDR_WIDTH++# |64 |AXI address width.
-
-|[.monospaced]#++AXI_ID_WIDTH++# |10 |AXI ID width.
-
-|[.monospaced]#++APB_ADDR_WIDTH++# / [.monospaced]#++APB_DATA_WIDTH++# |32 / 32 |APB widths on both DUT
-slaves.
-
-|[.monospaced]#++OVERALL_TIMEOUT_US++# |500 |Per-test sim-time backstop.
+|Testlists and grader |[.monospaced]#++testlists/++#, [.monospaced]#++scripts/run_list.py++#,
+[.monospaced]#++scripts/check_run.py++#, [.monospaced]#++expected_fail.yaml++# |TOML testlists
+(scenarios, seeds, groups such as [.monospaced]#++smoke++# and
+[.monospaced]#++functional++#); every run is graded, and failures caused by known DUT
+bugs are accepted as XFAIL when tied to the bug's GitHub issue.
 |=======================================================================
 
 [[aou-ig-running-the-testbench]]
 === Running the Testbench
 
-From the repository root, set up the Python environment once and then
-invoke the testbench:
+From the bench directory, fetch the pinned dependencies once and then
+build and run:
 
 [source,bash]
 ----
-cd VERIF
-bash setup_cocotb_env.sh        # creates VERIF/venv/, installs cocotb + deps
-source venv/bin/activate
-make                            # Verilator (default), 8 parallel C++ jobs
-make SIM=vcs                    # Synopsys VCS
-make WAVES=1                    # waveform dump (FST/VCD or FSDB/VPD)
-make FDI_LOG=1                  # enable fdi_flit_decoder logs
-make clean                      # remove sim_build/ and generated artefacts
+cd hw/ip/aou/dv
+make setup                                   # uvm-core, OCAH library, z3, PeakRDL, pywellen into .deps/
+make test                                    # build TB=t1 CONFIG=1x512-sp64, run aou_sanity_test
+make build SIM=verilator                     # or SIM=vcs (default when vcs is on PATH)
+make run TEST=aou_dp_random_test SEED=3 PLUSARGS='+dp_dir=both'
+make run TEST=aou_sanity_test WAVES=1        # waves into the run directory (FSDB/FST)
+make build TB=reg && make run TB=reg TEST=aou_reg_access_test
+python3 scripts/run_list.py --items smoke    # the bring-up gate (4 scenarios)
+python3 scripts/run_list.py --items functional -j 16 --rid nightly
+make check-config                            # sim configs, testlists, rules, RAL and docs freshness
+make lint                                    # check-config, then Verible and Verilator lint
 ----
 
-A successful run prints [.monospaced]#++*** SIMULATION PASSED ***++# and writes
-[.monospaced]#++results.xml++# (junit). Per-phase watchdogs (reset, APB activate, APB
-read, AXI write, AXI read) name the stuck phase explicitly on stalls and
-dump a snapshot of the relevant signal values so the simulator never
-spins silently.
-
-You can also drive the flow via [.monospaced]#++pytest++#, which calls cocotbpass:[']s [.monospaced]#++runner++#
-API and parametrises across every simulator on [.monospaced]#++PATH++#:
-
-[source,bash]
-----
-pytest -v                       # all available simulators
-pytest -v -k verilator          # only Verilator
-SIM=vcs pytest -v               # force Synopsys VCS
-----
+Each run ends with a verdict ([.monospaced]#++PASS++#, [.monospaced]#++XFAIL++# or
+[.monospaced]#++FAIL++#) written to its run directory under [.monospaced]#++out/++#;
+[.monospaced]#++run_list.py++# collects them into [.monospaced]#++results.csv++# and exits
+non-zero unless every run is PASS or XFAIL. Builds and runs go through LSF
+when [.monospaced]#++bsub++# is available ([.monospaced]#++LSF=0++# runs on the current
+host). CI runs [.monospaced]#++make check-config++#, builds the T1 and register
+benches on Verilator and runs the T1 bench's [.monospaced]#++ci++# group (smoke, the
+short lists and the datapath area) and the register bench's [.monospaced]#++smoke++#.
 
 [[aou-ig-ip-integration-collateral]]
 == IP Integration Collateral
@@ -1579,11 +1657,13 @@ only -- [.monospaced]#++memoryMaps++# element)
 (also linked from xref:aou-ig-register-map[])
 |=======================================================================
 
-Note: the xref:aou-ig-verification-testbench[in-repo cocotb testbench] does not consume the
-generated UVM package -- it parses [.monospaced]#++csr/aou-core.rdl++# directly via
-[.monospaced]#++systemrdl-compiler++# at runtime. The UVM package is shipped as
-collateral for integrators whose own verification environments are
-UVM-based.
+Note: the xref:aou-ig-verification-testbench[in-repo UVM testbench] generates its own copy of
+the same model with the same PeakRDL command
+([.monospaced]#++hw/ip/aou/dv/scripts/regen_ral.sh++#, [.monospaced]#++make ral++#) and commits
+it as [.monospaced]#++hw/ip/aou/dv/uvm/env/gen/aou_core_csr_uvm_pkg.sv++#, so a
+[.monospaced]#++make lint++# there fails when the RDL and the committed model drift
+apart. The [.monospaced]#++INTEG/uvm/++# package is the collateral for integrators'
+own UVM environments.
 
 [[aou-ig-single-source-of-truth]]
 === Single Source of Truth
@@ -1600,7 +1680,7 @@ csr/aou-core.rdl  ──(peakrdl)──>  IP-XACT register map   (INTEG/ipxact/g
                    ──(peakrdl)──>  Markdown                (DOC/csr/)
                    ──(peakrdl)──>  Interactive HTML         (DOC/csr/html/)
                    ──(peakrdl)──>  UVM register model      (INTEG/uvm/)
-                   ──(systemrdl-compiler, runtime)──>  CSR reset readback test (VERIF/)
+                   ──(peakrdl, make ral)──>  UVM register model of the testbench (hw/ip/aou/dv/uvm/env/gen/)
 ....
 
 To modify register definitions (addresses, field widths, access types,
@@ -1666,7 +1746,10 @@ Constraint files are located in [.monospaced]#++INTEG/constraints/++#.
 
 The SDC file defines timing constraints for synthesis and STA. All delay
 budget variables are declared at the top of the file and can be
-overridden by the integrating project.
+overridden by the integrating project. The port groups follow the
+current port list: [.monospaced]#++INT_EARLY_WDT_ERR++# is in the combinational
+interrupt-output group, and the former [.monospaced]#++I_*_BUS_CLEANY_COMPLETE++#
+inputs are gone.
 
 [[aou-ig-clock-definitions]]
 ==== Clock Definitions
@@ -1713,7 +1796,8 @@ mux.
 * *AXI Master inputs* (R/B data, READY feedback): Combinational -- feeds
 control logic and FIFO write.
 * *FDI TX outputs* (DATA, VALID, IRDY): Combinational. STALLACK outputs
-are registered.
+are registered. With [.monospaced]#++TX_NXT_PACKING_EN = 1++# the DATA output is driven from
+a register in [.monospaced]#++AOU_TX_CORE++# through the FDI output mux only.
 * *FDI RX inputs*: Combinational -- data/valid pass through an input
 mux. [.monospaced]#++FLIT_CANCEL++# drives both sequential and combinational logic.
 * *Interrupt/control signals*: Combinational.

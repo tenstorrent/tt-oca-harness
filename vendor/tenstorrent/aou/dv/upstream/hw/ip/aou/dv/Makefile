@@ -92,6 +92,21 @@ endif
 # RTL_ASSERT=1 compiles the RTL's own ASSERTION_ON checks (they $error and $finish, so a
 # firing assertion ends the run before the UVM report: FAIL), in a -assert build.
 RTL_ASSERT ?= 0
+# AXI4PC=1 binds Arm's AXI4 protocol checker (Axi4PC, BP063; README "Optional: Arm AXI4
+# protocol assertions") to every DUT AXI port of the T1 bench, compiled unmodified from
+# AXI4PC_DIR. On by default when BP063 is unpacked in .deps/BP063/ (make setup
+# AXI4PC_TGZ=<tarball>, scripts/get_axi4pc.sh); a -axi4pc build.
+# AXI4PC_MAXBURSTS sizes its outstanding-burst tracking (tests reach 512 outstanding reads).
+AXI4PC_ROOT ?= $(UVM_ROOT)/.deps/BP063
+AXI4PC_DIR ?= $(firstword $(wildcard $(AXI4PC_ROOT)/*/sva $(AXI4PC_ROOT)/sva))
+AXI4PC ?= $(if $(AXI4PC_DIR),1,0)
+AXI4PC_MAXBURSTS ?= 512
+AXI4PC_ON := $(and $(filter 1,$(AXI4PC)),$(filter t1,$(TB)))
+ifneq ($(AXI4PC_ON),)
+ifeq ($(wildcard $(AXI4PC_DIR)/Axi4PC.sv),)
+$(error AXI4PC=1 but there is no Axi4PC.sv in AXI4PC_DIR=$(AXI4PC_DIR))
+endif
+endif
 # ESCAPE=<id> builds against a copy of RTL/ with escape/<id>.patch applied,
 # re-introducing a bug fixed on main (bug-escape suite, testlists/escape.toml).
 # The copy lives in the build directory; the source tree is never modified.
@@ -109,7 +124,7 @@ ifeq ($(wildcard $(ESCAPE_PATCH)),)
 $(error no patch $(ESCAPE_PATCH))
 endif
 endif
-BUILD_NAME := $(SIM)-$(TB)$(if $(filter t1 reg,$(TB)),-$(CONFIG))$(if $(and $(filter t1,$(TB)),$(filter 0,$(T1_AXI))),-noaxi)$(if $(filter 1,$(COV)),-cov$(if $(filter 1,$(COV_FSM_RESET)),-fsmrst))$(if $(XPROP),-xprop-$(XPROP))$(if $(filter 1,$(RTL_ASSERT)),-assert)$(if $(filter 0,$(WAVES_BUILD)),-nowaves)$(if $(ESCAPE),-esc-$(ESCAPE))$(if $(RTL_PATCH),-fix-$(RTL_PATCH_NAME))
+BUILD_NAME := $(SIM)-$(TB)$(if $(filter t1 reg,$(TB)),-$(CONFIG))$(if $(and $(filter t1,$(TB)),$(filter 0,$(T1_AXI))),-noaxi)$(if $(filter 1,$(COV)),-cov$(if $(filter 1,$(COV_FSM_RESET)),-fsmrst))$(if $(XPROP),-xprop-$(XPROP))$(if $(filter 1,$(RTL_ASSERT)),-assert)$(if $(AXI4PC_ON),-axi4pc)$(if $(filter 0,$(WAVES_BUILD)),-nowaves)$(if $(ESCAPE),-esc-$(ESCAPE))$(if $(RTL_PATCH),-fix-$(RTL_PATCH_NAME))
 BUILD_DIR ?= $(UVM_ROOT)/build/$(BUILD_NAME)
 # Where RTL/ comes from: the repository, or the escape build's patched copy.
 RTL_HOME := $(if $(ESCAPE)$(RTL_PATCH),$(BUILD_DIR)/rtl,$(ROOT))
@@ -127,7 +142,8 @@ JOBS ?= 8
 # Builds and runs go to LSF (LSF=0 runs them on this host). Requests are sized from
 # build/metrics.jsonl, which records every job's CPU, peak memory and run time.
 # Measured on T1 builds: Verilator up to 3.1 GB per process (8 in parallel), VCS
-# 0.6 GB; simulations under 0.4 GB. Memory is in GB.
+# 0.6 GB; simulations under 0.4 GB. BUILD_MEM and RUN_MEM are numbers of GB, and the
+# request carries the unit (mem=<N>GB): some sites read a bare number as GB, others as MB.
 LSF ?= $(if $(shell command -v bsub 2>/dev/null),1,0)
 LSF_QUEUE ?= normal
 BUILD_MEM ?= $(if $(filter vcs,$(SIM)),2,4)
@@ -206,6 +222,7 @@ ifneq ($(SIM)$(filter t1 reg,$(TB)),vcs$(TB))
 $(error XPROP needs SIM=vcs and a bench with the DUT (TB=t1 or reg))
 endif
 endif
+FLISTS += $(if $(AXI4PC_ON),+incdir+$(AXI4PC_DIR) +incdir+$(UVM_ROOT)/tb $(UVM_ROOT)/tb/aou_axi4pc_arm.sv)
 # Simulators without a Tcl shell dump through tb/aou_waves.sv, bound into the top
 # by a file written at build time.
 ifneq ($(SIM),vcs)
@@ -216,6 +233,7 @@ DEFINES += AOU_WAVES_TOP=$(TOP)
 # UVM selects the SV-UVM harness block of the tops (the harness's uvm framework
 # overlay defines the same); this bench has no other framework.
 DEFINES += UVM
+DEFINES += $(if $(AXI4PC_ON),AOU_AXI4PC AOU_AXI4PC_MAXBURSTS=$(AXI4PC_MAXBURSTS))
 # AOU_TOP with an lp_linkerror output (BUGS/002), in RTL/ or added by RTL_PATCH.
 DEFINES += $(if $(shell grep -ls 'O_LP_LINKERROR' $(ROOT)/RTL/AOU_TOP.sv; \
   $(if $(RTL_PATCH),grep -ls '^+.*O_LP_LINKERROR' $(RTL_PATCH))),AOU_DUT_LP_LINKERROR)
@@ -364,11 +382,11 @@ endif
 
 # LSF resources per job type.
 ifeq ($(SIM),vcs)
-LSF_BUILD_RES := -n 2 -R "rusage[mem=$(BUILD_MEM)]" $(LSF_VCS_BUILD_OPTS)
+LSF_BUILD_RES := -n 2 -R "rusage[mem=$(BUILD_MEM)GB]" $(LSF_VCS_BUILD_OPTS)
 else
-LSF_BUILD_RES := -n $(JOBS) -R "span[hosts=1] rusage[mem=$(BUILD_MEM)]" $(LSF_VERILATOR_BUILD_OPTS)
+LSF_BUILD_RES := -n $(JOBS) -R "span[hosts=1] rusage[mem=$(BUILD_MEM)GB]" $(LSF_VERILATOR_BUILD_OPTS)
 endif
-LSF_RUN_RES := -n $(RUN_CPUS) -R "rusage[mem=$(RUN_MEM)]"
+LSF_RUN_RES := -n $(RUN_CPUS) -R "rusage[mem=$(RUN_MEM)GB]"
 
 # $(call submit,kind,name,lsf-resources,script,lsf-output): run a script through LSF
 # (or locally with LSF=0) and append its resource usage to $(METRICS).
@@ -393,7 +411,7 @@ endef
 STALE_CHECK ?= 1
 STALE_SOURCES = $(ROOT)/RTL $(ROOT)/csr/aou-core.rdl $(UVM_ROOT) $(SIM_CFG_FILE) $(if $(ESCAPE)$(RTL_PATCH),$(ESCAPE_PATCH)) \
   $(if $(filter 1,$(COV)),$(subst +, ,$(COV_HIER)))
-STALE_REBUILD = make build SIM=$(SIM) TB=$(TB)$(if $(filter t1 reg,$(TB)), CONFIG=$(CONFIG))$(if $(filter 1,$(COV)), COV=1)$(if $(filter 1,$(RTL_ASSERT)), RTL_ASSERT=1)$(if \
+STALE_REBUILD = make build SIM=$(SIM) TB=$(TB)$(if $(filter t1 reg,$(TB)), CONFIG=$(CONFIG))$(if $(filter 1,$(COV)), COV=1)$(if $(filter 1,$(RTL_ASSERT)), RTL_ASSERT=1)$(if $(AXI4PC_ON),,$(if $(AXI4PC_DIR),$(if $(filter t1,$(TB)), AXI4PC=0)))$(if \
   $(filter 0,$(WAVES_BUILD)), WAVES_BUILD=0)$(if $(filter 0,$(T1_AXI)), T1_AXI=0)$(if $(ESCAPE), ESCAPE=$(ESCAPE))$(if $(RTL_PATCH), RTL_PATCH=$(RTL_PATCH))
 STALE_CMD = python3 -I $(UVM_ROOT)/scripts/stale_build.py --build-dir $(BUILD_DIR) --simv '$(SIMV)' \
   --defines '$(DEFINES)' --rebuild '$(STALE_REBUILD)' $(STALE_SOURCES)
@@ -402,10 +420,11 @@ STALE_CMD = python3 -I $(UVM_ROOT)/scripts/stale_build.py --build-dir $(BUILD_DI
 TB_SOURCES = $(shell find $(UVM_ROOT) -path $(UVM_ROOT)/.deps -prune -o -path $(UVM_ROOT)/build -prune -o -path $(UVM_ROOT)/out -prune \
                -o -path $(UVM_ROOT)/uvm/env/gen -prune -o -type f \( -name '*.sv' -o -name '*.svh' \) -print | sort)
 
-.PHONY: help configs setup ral docs build run test cov_report fc_report check-config lint clean clean-out check-public plan_status compare escape rule_inventory perf_report perf_targets perf_check job-hooks stale-check
+.PHONY: help configs setup ral docs build run test cov_report fc_report check-config lint clean clean-out check-public plan_status compare escape rule_inventory perf_report perf_targets perf_check job-hooks stale-check build-name
 help:
 	@printf '%s\n' \
 	  'make setup                 Fetch the pinned UVM-core, OCAH library, z3, PeakRDL, pywellen' \
+	  '           [AXI4PC_TGZ=..]  and unpack a downloaded Arm BP063 tarball (Axi4PC) into .deps/BP063/' \
 	  'make ral                   Regenerate uvm/env/gen/aou_core_csr_uvm_pkg.sv from csr/aou-core.rdl' \
 	  'make docs                  Regenerate docs/gen/ (VPLAN tables, FCOV inventory) from the sources' \
 	  'make build [SIM=..]        Build (SIM: vcs if on PATH, else verilator; xcelium, questa)' \
@@ -440,6 +459,7 @@ help:
 	  'Add COV=1 to build/run/test to collect DUT code coverage (separate build dir).' \
 	  'XPROP=tmerge|xmerge builds VCS with X-propagation in the DUT (separate build dir).' \
 	  'RTL_ASSERT=1 compiles the RTL ASSERTION_ON checks (separate -assert build dir).' \
+	  'AXI4PC=1 (default when .deps/BP063/ holds Arm BP063) binds Axi4PC to the T1 AXI ports (-axi4pc).' \
 	  'Add WAVES=1 to run/test to dump waves into the run directory (no rebuild).' \
 	  'WAVES_BUILD=0 builds without wave support (lean; separate build dir).' \
 	  'Builds and runs go to LSF; LSF=0 runs locally. Usage: build/metrics.jsonl'
@@ -451,6 +471,7 @@ configs:
 setup:
 	@./scripts/get_uvm_core.sh
 	@./scripts/get_ocah_lib.sh
+	@AXI4PC_ROOT=$(AXI4PC_ROOT) AXI4PC_TGZ=$(AXI4PC_TGZ) ./scripts/get_axi4pc.sh
 	@PYTHON=$$(command -v python3.12 || command -v python3) ./scripts/get_z3.sh
 	@PYTHON=$$(command -v python3.12 || command -v python3) ./scripts/get_peakrdl.sh
 	@PYTHON=$$(command -v python3.12 || command -v python3) ./scripts/get_pywellen.sh
@@ -491,6 +512,9 @@ run:
 	  | tee $(RUN_DIR)/verdict.txt
 
 # Warn (stderr) when the build is older than its sources or its defines changed; never fails.
+build-name:
+	@echo $(BUILD_NAME)
+
 stale-check:
 	@$(STALE_CMD)
 
@@ -505,7 +529,8 @@ job-hooks:
 LINT_CFG = python3 -I $(UVM_ROOT)/scripts/sim_cfg.py --tb $(1)
 LINT_FLIST = $(if $(filter t1 reg,$(1)),-f $(ROOT)/RTL/filelist.f) +incdir+$(UVM_CORE_ROOT)/src \
   $(UVM_CORE_ROOT)/src/uvm_pkg.sv $(shell $(call LINT_CFG,$(1)) filelist)
-LINT_DEFINES = $(shell $(call LINT_CFG,$(1)) defines) AOU_WAVES_TOP=$(shell $(call LINT_CFG,$(1)) top) UVM
+LINT_DEFINES = $(shell $(call LINT_CFG,$(1)) defines) AOU_WAVES_TOP=$(shell $(call LINT_CFG,$(1)) top) UVM \
+  $(if $(filter t1 reg,$(1)),$(filter AOU_DUT_%,$(DEFINES)))
 # The configuration checks need Python (and PeakRDL from make setup) but no
 # simulator or linter; CI's smoke workflow runs them before building.
 check-config:
@@ -516,12 +541,19 @@ check-config:
 	python3 -I $(UVM_ROOT)/scripts/check_testlists.py
 	python3 -I $(UVM_ROOT)/scripts/check_bug_refs.py
 
+# The T1 top is linted twice: with the DUT's parameter defaults and with
+# AOU_TX_NXT_PACKING=1 (TX_NXT_PACKING_EN, the -nxt target), so both generate
+# arms of the TX packer's output stage are elaborated.
 lint: check-config
 	verible-verilog-lint --rules_config=$(UVM_ROOT)/.rules.verible_lint \
 	  --waiver_files=$(UVM_ROOT)/.verible_waivers $(TB_SOURCES)
 	$(foreach tb,reg axi_selftest l3_unit t1,verilator --lint-only -Wall --timing \
 	  --top-module $(shell $(call LINT_CFG,$(tb)) top) $(addprefix +define+,$(call LINT_DEFINES,$(tb))) \
 	  $(UVM_ROOT)/lint/verilator_lint.vlt $(call LINT_FLIST,$(tb)) &&) true
+	verilator --lint-only -Wall --timing \
+	  --top-module $(shell $(call LINT_CFG,t1) top) $(addprefix +define+,$(call LINT_DEFINES,t1) AOU_TX_NXT_PACKING=1) \
+	  $(UVM_ROOT)/lint/verilator_lint.vlt $(call LINT_FLIST,t1)
+	bash $(UVM_ROOT)/scripts/check_checker_elaboration.sh
 
 test: build
 	@$(MAKE) --no-print-directory run

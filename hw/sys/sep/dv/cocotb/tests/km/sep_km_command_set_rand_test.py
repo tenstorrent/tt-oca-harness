@@ -16,7 +16,8 @@ verdict on the command ID or its arguments, never on framing.
 Checkers:
   CHK0        rom_main boots on real entropy -> RESP_KM_READY
   CHK-HW-VER  CMD_HW_VER returns rc=0 and RETURN_ARG = KMCSR VERSION 1.0.0
-  CHK-ROM-VER CMD_ROM_VER returns rc=0 and the packed ROM 1.1.0 word
+  CHK-ROM-VER CMD_ROM_VER returns rc=0 with a return argument; the value is
+              logged as OBS-ROM-VER (no spec states it)
   CHK-SRAM-VER
               CMD_SRAM_VER returns RC_FAILURE: this image is ROM-only
   CHK-GEN     CMD_KEY_GENERATE returns rc=0 and a non-null handle, and its
@@ -55,7 +56,8 @@ Checkers:
   CHK-CLOSED  the generated handle transfers to AES (rc=0, handle and dest
               echoed) just before the revoke, and the same transfer on the
               REVOKED handle is refused RC_FAILURE: revoke fails closed
-  CHK-NULL    CMD_KEY_REVOKE of the reserved null handle is refused
+  CHK-NULL    CMD_KEY_REVOKE of the reserved null handle is refused with
+              RC_INVALID_ARG or RC_FAILURE; the code is logged as OBS-NULL
   CHK-ILLEGAL every seeded undefined command ID returns RC_INVALID_CMD (-4)
   CHK-LEN     a defined command carrying the wrong payload length returns
               RC_INVALID_LEN (-5)
@@ -64,8 +66,14 @@ Checkers:
               computed, a wrong sequence number returns RC_CMD_NOSEQ with the
               number it expected, and a corrupt payload CRC-32C returns
               RC_PAYLOAD_CRC
+  CHK-LEN-ARG the RC_INVALID_LEN response of the CHK-LEN frame carries the
+              payload length the KM received (2) as RETURN_ARG
+  CHK-PCRC-ARG
+              the RC_PAYLOAD_CRC response of the corrupt-CRC frame of
+              CHK-FRAME carries, as RETURN_ARG, the CRC-32C the KM computed
+              over the payload as sent, not the corrupt CRC in the frame
   CHK-OTP     CMD_OTP_READ_LOCK_COLD of one identity bit returns rc=0 with
-              that bit set in the echo; a reserved bit returns RC_INVALID_ARG;
+              an echo equal to that bit alone; a reserved bit returns RC_INVALID_ARG;
               a zero-length payload returns RC_INVALID_LEN
   CHK-RECOV   SEP CTRL.FLUSH raises RESP_RECOVERABLE_FAULT; CMD_STAT reports
               the latched bit; aggregator [31] is 1; CMD_RECOV_ACK clears both
@@ -108,7 +116,7 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_aes_golden import aes256_ecb_encrypt_words
-from env.sep_crc_golden import crc8_rohc
+from env.sep_crc_golden import crc8_rohc, crc32c
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic
 from sep_base_test import sep_base_test
@@ -142,16 +150,9 @@ from seq_lib.sep_km_mailbox_seq import (
     SepKmMailbox,
 )
 
-# CHK-ROM-VER expected word. The packing is the CMD_ROM_VER return argument in
-# hw/ip/key_manager/doc/firmware.adoc (km-cmd-rom-ver): patch[7:0], minor[15:8],
-# major[23:16], [31:24] reserved zero. The spec does not state a release
-# number, so 1.1.0 is the DV-owned value from the VPLAN CHK-ROM-VER contract.
-# It is packed here and not read from the KM firmware headers: the ROM builds
-# its reply from those headers, so a wrong version there must fail this check.
-_ROM_VER_MAJOR, _ROM_VER_MINOR, _ROM_VER_PATCH = 1, 1, 0
-KM_ROM_VER_1_1_0 = (_ROM_VER_MAJOR << 16) | (_ROM_VER_MINOR << 8) | _ROM_VER_PATCH
-
-# Identity lock bit 8 (rom_defs.h OTP lock bits [8:0]; secrets are 0-5).
+# Identity lock bit 8 (SsI) and reserved bit 9: firmware.adoc, "0x28 -
+# CMD_OTP_READ_LOCK_COLD", OTP cold-read-lock bit encoding (bits [8:0], [31:9]
+# reserved).
 _OTP_LOCK_IDENTITY = 1 << 8
 _OTP_LOCK_RESERVED = 1 << 9
 
@@ -168,7 +169,7 @@ _ABR_SEED = (
     0x600DF00D,
 )
 
-# rom_defs.h ROM_KM_RFAULT_FLUSHED_BY_SEP.
+# flushed_by_sep: firmware.adoc, "0xFE - RESP_RECOVERABLE_FAULT", fault-code table.
 _RFAULT_FLUSHED_BY_SEP = -5
 _KM_RECOV = agg_from_pic("KM recoverable error")
 
@@ -300,12 +301,14 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.logger.info("CHK-HW-VER PASS: rc=0 RETURN_ARG=0x%08x (KMCSR 1.0.0)", arg)
 
-        rc, arg = await self.km.send_raw_expect_rc(KM_CMD_ROM_VER, [])
-        assert rc == KM_RC_SUCCESS and arg == KM_ROM_VER_1_1_0, (
-            f"CHK-ROM-VER FAIL: rc={rc} arg=0x{arg:08x}, expected rc=0 "
-            f"arg=0x{KM_ROM_VER_1_1_0:08x} (ROM 1.1.0 packed)"
-        )
-        self.logger.info("CHK-ROM-VER PASS: rc=0 RETURN_ARG=0x%08x (ROM 1.1.0)", arg)
+        # hw/ip/key_manager/doc/firmware.adoc, "0x01 - CMD_ROM_VER": success and a
+        # return argument. No spec states the version value, so it is logged only.
+        seq = await self.km.send_command(KM_CMD_ROM_VER, [])
+        rc, arg = await self.km.recv_resp_cmd(KM_CMD_ROM_VER, seq, require_arg=True)
+        await self.km.check_outbound_empty("POST-ROM-VER")
+        assert rc == KM_RC_SUCCESS, f"CHK-ROM-VER FAIL: rc={rc}, expected rc=0"
+        self.logger.info("CHK-ROM-VER PASS: rc=0 with a RETURN_ARG")
+        self.logger.info("OBS-ROM-VER LOG ver=0x%08x", arg)
 
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_SRAM_VER, [])
         assert rc == KM_RC_FAILURE, (
@@ -546,14 +549,17 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self._check_alive("post-revoked-transfer")
 
         # --- CHK-NULL: the reserved handle is never a target ------------------
-        # The null handle is rejected by argument validation, before any
-        # registry work, so this one is RC_INVALID_ARG.
+        # The specification gives two refusal codes, invalid_arg for an invalid
+        # argument and failure for an unavailable handle, and does not say which
+        # one the null handle gets, so the check accepts either and the code is
+        # logged as OBS-NULL.
         rc, _ = await self.km.key_revoke(handle=KM_KEY_HANDLE_NULL)
-        assert rc == KM_RC_INVALID_ARG, (
+        self.logger.info("OBS-NULL LOG rc=%d", rc)
+        assert rc in (KM_RC_INVALID_ARG, KM_RC_FAILURE), (
             f"CHK-NULL FAIL: CMD_KEY_REVOKE of the null handle returned rc={rc}, "
-            f"expected {KM_RC_INVALID_ARG} (RC_INVALID_ARG)"
+            f"expected {KM_RC_INVALID_ARG} (RC_INVALID_ARG) or {KM_RC_FAILURE} (RC_FAILURE)"
         )
-        self.logger.info("CHK-NULL PASS: revoke of the null handle refused with RC_INVALID_ARG")
+        self.logger.info("CHK-NULL PASS: revoke of the null handle refused with rc=%d", rc)
         await self._check_alive("post-null-revoke")
 
         # --- CHK-ILLEGAL: undefined command IDs -------------------------------
@@ -578,12 +584,27 @@ class sep_km_command_set_rand_test(sep_base_test):
         # --- CHK-LEN: a defined command with the wrong payload length ---------
         # CMD_KEY_REVOKE takes exactly one payload word; two must be refused on
         # the length, not silently accepted with the surplus ignored.
-        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_KEY_REVOKE, [gen_handle2, 0])
+        len_payload = [gen_handle2, 0]
+        rc, len_arg = await self.km.send_raw_expect_rc(KM_CMD_KEY_REVOKE, len_payload)
         assert rc == KM_RC_INVALID_LEN, (
             f"CHK-LEN FAIL: CMD_KEY_REVOKE with a 2-word payload returned rc={rc}, "
             f"expected {KM_RC_INVALID_LEN} (RC_INVALID_LEN)"
         )
         self.logger.info("CHK-LEN PASS: over-long CMD_KEY_REVOKE payload returned RC_INVALID_LEN")
+
+        # --- CHK-LEN-ARG: RC_INVALID_LEN carries the received payload length --
+        # hw/ip/key_manager/doc/firmware.adoc, "0x00 - RESP_CMD", return-code
+        # table, invalid_len: the argument is the length of the received
+        # payload. The frame is self-consistent, so that is the PAYLOAD_LEN as
+        # sent. The argument word is compared whole. A response without an
+        # argument reads 0, and a KM that returns the required length returns
+        # 1, so neither can equal 2.
+        sent_plen = len(len_payload)
+        assert len_arg == sent_plen, (
+            f"CHK-LEN-ARG FAIL: RC_INVALID_LEN carried RETURN_ARG=0x{len_arg:08x}, "
+            f"expected the received payload length {sent_plen}"
+        )
+        self.logger.info("CHK-LEN-ARG PASS: plen=%d arg=%d", sent_plen, len_arg)
         await self._check_alive("post-bad-length")
 
         # --- CHK-FRAME: the three framing rejections --------------------------
@@ -625,20 +646,54 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         await self._check_alive("post-bad-seq")
 
-        rc, _ = await self.km.send_bad_payload_crc(KM_CMD_KEY_REVOKE, [gen_handle2])
+        # CHK-PCRC-ARG golden: the CRC-32C of the payload words as sent, from
+        # env/sep_crc_golden.py. send_bad_payload_crc sends the payload
+        # unchanged and flips bit 0 of the CRC word, so the corrupt CRC in the
+        # frame is golden ^ 1. The leaf asserts that the two differ before the
+        # frame goes out, so an echo of the sent CRC cannot match the golden,
+        # and that the golden is not 0, so a missing argument (read as 0)
+        # cannot match it either.
+        pcrc_payload = [gen_handle2]
+        pcrc_golden = crc32c(b"".join(w.to_bytes(4, "little") for w in pcrc_payload))
+        pcrc_sent = pcrc_golden ^ 0x0000_0001
+        assert pcrc_sent != pcrc_golden and pcrc_golden != 0, (
+            f"test construction error: CHK-PCRC-ARG golden 0x{pcrc_golden:08x} cannot be "
+            f"told apart from the sent CRC 0x{pcrc_sent:08x} or from a missing argument"
+        )
+        rc, pcrc_arg = await self.km.send_bad_payload_crc(KM_CMD_KEY_REVOKE, pcrc_payload)
         assert rc == KM_RC_PAYLOAD_CRC, (
             f"CHK-FRAME FAIL: a corrupt payload CRC-32C returned rc={rc}, expected "
             f"{KM_RC_PAYLOAD_CRC} (RC_PAYLOAD_CRC)"
         )
         self.logger.info("CHK-FRAME PASS: corrupt payload CRC-32C refused RC_PAYLOAD_CRC")
+
+        # --- CHK-PCRC-ARG: RC_PAYLOAD_CRC carries the CRC the KM computed -----
+        # firmware.adoc, "0x00 - RESP_CMD", return-code table, payload_crc, and
+        # the sentence below the table: both CRC return arguments carry the
+        # value that the KM computed. The argument word is compared whole.
+        assert pcrc_arg == pcrc_golden, (
+            f"CHK-PCRC-ARG FAIL: RC_PAYLOAD_CRC carried RETURN_ARG=0x{pcrc_arg:08x}, "
+            f"expected CRC-32C 0x{pcrc_golden:08x} of the payload as sent"
+            + (" (it echoes the corrupt CRC in the frame)" if pcrc_arg == pcrc_sent else "")
+        )
+        self.logger.info(
+            "CHK-PCRC-ARG PASS: arg=0x%08x golden=0x%08x sent=0x%08x",
+            pcrc_arg,
+            pcrc_golden,
+            pcrc_sent,
+        )
         await self._check_alive("post-bad-payload-crc")
 
         # --- CHK-OTP: cold OTP read-lock, one identity bit --------------------
         rc, arg = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_IDENTITY])
         assert rc == KM_RC_SUCCESS, f"CHK-OTP FAIL: lock identity bit rc={rc}"
-        assert (arg & _OTP_LOCK_IDENTITY) == _OTP_LOCK_IDENTITY, (
-            f"CHK-OTP FAIL: RETURN_ARG 0x{arg:08x} does not set identity bit "
-            f"0x{_OTP_LOCK_IDENTITY:x}"
+        # firmware.adoc, "0x28 - CMD_OTP_READ_LOCK_COLD": RETURN_ARG is the
+        # OTP_READ_LOCK_COLD value after the write. The register resets to 0 on
+        # a cold reset (km_csr.rdl) and this is the leaf's first lock, so the
+        # value is exactly the identity bit.
+        assert arg == _OTP_LOCK_IDENTITY, (
+            f"CHK-OTP FAIL: RETURN_ARG 0x{arg:08x}, expected 0x{_OTP_LOCK_IDENTITY:08x} "
+            "(only the identity bit, from a cold-reset 0)"
         )
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_RESERVED])
         assert rc == KM_RC_INVALID_ARG, (
@@ -649,8 +704,9 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"CHK-OTP FAIL: zero-length lock payload returned rc={rc}, expected {KM_RC_INVALID_LEN}"
         )
         self.logger.info(
-            "CHK-OTP PASS: identity bit locked and echoed; reserved bit RC_INVALID_ARG; "
-            "empty payload RC_INVALID_LEN"
+            "CHK-OTP PASS: lock_arg=0x%08x identity bit locked and echoed; reserved bit "
+            "RC_INVALID_ARG; empty payload RC_INVALID_LEN",
+            arg,
         )
         await self._check_alive("post-otp-lock")
 

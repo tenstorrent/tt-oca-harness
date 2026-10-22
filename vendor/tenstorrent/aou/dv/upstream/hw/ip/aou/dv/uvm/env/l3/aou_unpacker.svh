@@ -95,12 +95,15 @@ class aou_unpacker extends uvm_object;
     ledger_chk("AOU-R9");
     if (f.fdid != cfg.fdid)
       viol("AOU-R9", f, 0, $sformatf("FDId %0d, expected %0d", f.fdid, cfg.fdid));
-    // A header advertising nothing names no plane (BUGS/018 interim; the
-    // DUT puts RP3 in zero-credit headers during activation).
-    if (f.msg_credit[13:0] != 0) ledger_chk("AOU-R14");
-    if (f.msg_credit[13:0] != 0 && int'(f.msg_credit[15:14]) >= sender_rp_count())
+    // The RP field is bound in every header, including one that advertises
+    // nothing, which names RP0 (MAS 3.9).
+    ledger_chk("AOU-R14");
+    if (int'(f.msg_credit[15:14]) >= sender_rp_count())
       viol("AOU-R14", f, 0, $sformatf("MsgCredit names RP%0d of %0d", f.msg_credit[15:14],
                                       sender_rp_count()));
+    else if (f.msg_credit[13:0] == 0 && f.msg_credit[15:14] != 0)
+      viol("AOU-R14", f, 0, $sformatf("MsgCredit advertising nothing names RP%0d, not RP0",
+                                      f.msg_credit[15:14]));
 
     if (carry_g.size() > 0) begin
       int unsigned owed = carry_need - carry_g.size();
@@ -191,10 +194,18 @@ class aou_unpacker extends uvm_object;
       viol((req && ack) ? "AOU-R8" : "AOU-R6", f, acts[1],
            $sformatf("%0d Activation messages in one flit", acts.size()));
     end
-    if (cfg.spec_rev == AOU_SPEC_V08) begin
+    // v0.8 4.4 placement, independent of the wire format (spec_rev): the
+    // Activation alone in its flit, at most 2 other Misc per half-flit. Always
+    // on our own flits; on the DUT's only with cfg.v0p8 (+v0p8) or the v0.8
+    // wire format, since the DUT implements v0.7.1's rule.
+    if (dir == AOU_L3_TX || cfg.spec_rev == AOU_SPEC_V08 || cfg.v0p8) begin
       ledger_chk("AOU-R7");
-      if (acts.size() > 0 && f.num_starts() > acts.size())
-        viol("AOU-R6", f, acts[0], "Activation message shares its flit");
+      if (acts.size() > 0 && f.num_starts() > acts.size()) begin
+        string k = "";
+        foreach (done[j]) k = {k, " ", done[j].kind()};
+        if (carry_need != 0) k = {k, " (+1 continuing)"};
+        viol("AOU-R6", f, acts[0], {"Activation message shares its flit:", k});
+      end
       foreach (misc_half[h]) begin
         if (misc_half[h] > 2)
           viol("AOU-R7", f, h * AOU_HALF_G, $sformatf("%0d Misc messages in half %0d",

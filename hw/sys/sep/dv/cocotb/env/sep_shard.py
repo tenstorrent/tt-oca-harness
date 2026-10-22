@@ -6,7 +6,7 @@ A long randomized leaf draws its whole plan from the seed and then runs trials t
 each start from their own reset, or from the same register state. The regression can
 run such a leaf as several shards in parallel. ``+sep_shard=<k>`` selects shard k:
 the leaf still draws the whole plan, runs only the trials of group k, and requires
-only the evidence of group k. Every check of the leaf is in exactly one group, so
+only the evidence of group k. Every check of the leaf is in at least one group, so
 the shards together grade every check the whole leaf grades. Without the plusarg the
 leaf runs every group, as before.
 """

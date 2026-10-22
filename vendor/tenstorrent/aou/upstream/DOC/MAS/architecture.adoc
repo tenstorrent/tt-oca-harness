@@ -8,6 +8,9 @@ endif::[]
 ifndef::aou-integration-xref[]
 :aou-integration-xref: ../integration_guide/integrator.adoc
 endif::[]
+ifndef::aou-overview-xref[]
+:aou-overview-xref: overview.adoc
+endif::[]
 
 [[aou-architecture]]
 == Architecture
@@ -74,7 +77,7 @@ If multiple RPs have the same priority, arbitration among them is performed in a
 [[figure-6]]
 image::image6.png[Figure 6. Port QoS arbitration example]
 
-*AXI QoS (ARB_MODE = 2pass:[']b10):* For each RP, the QoS level is determined by the value of the AXI QoS field. Arbitration is performed based on the AXI QoS value. For the 4-bit AXI QoS field, boundary of High priority and Normal Priority can be configured by SFR setting. The port QoS is divided into three levels: *High*, *Normal*, and *Low* priority. By default, arbitration is performed in the order *High → Normal → Low*. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority. If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.
+*AXI QoS (ARB_MODE = 2pass:[']b10):* For each RP, the QoS level is determined by the value of the AXI QoS field. Arbitration is performed based on the AXI QoS value. For the 4-bit AXI QoS field, the High and Normal boundaries are the SFR fields [.monospaced]#++AXI_QOS_TO_HP++# and [.monospaced]#++AXI_QOS_TO_NP++#. A QoS value at or above [.monospaced]#++AXI_QOS_TO_HP++# is High, a value at or above [.monospaced]#++AXI_QOS_TO_NP++# and below [.monospaced]#++AXI_QOS_TO_HP++# is Normal, and a value below [.monospaced]#++AXI_QOS_TO_NP++# is Low. [.monospaced]#++AXI_QOS_TO_HP++# must be greater than [.monospaced]#++AXI_QOS_TO_NP++#; otherwise the Normal tier is empty. The reset pair is High [.monospaced]#++0xA++# and Normal [.monospaced]#++0x5++#, so QoS 10–15 is High, 5–9 is Normal, and 0–4 is Low. By default, arbitration is performed in the order *High → Normal → Low*. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority. If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.
 
 <<figure-7>> illustrates arbitration using the AXI QoS fields.
 
@@ -217,6 +220,8 @@ ________________________________________________________________________________
 
 The splitter uses internal address-generator submodules ([.monospaced]#++aou_axi_split_addrgen_ar++# for reads, [.monospaced]#++aou_axi_split_addrgen_aw++# for writes) to decompose a single long burst into multiple sub-bursts, each no longer than [.monospaced]#++MAX_AxBURSTLEN + 1++# beats. Addresses for each sub-burst are computed from the original base address, burst type, and size.
 
+The address generators recompute address bits [11:0] of each sub-burst; bits [ADDR_WD-1:12] are carried unchanged from the original request. This relies on the request not crossing a 4 KB boundary, which AXI4 guarantees (IHI 0022, A3.4.1). The splitter does not detect a request that crosses one; see xref:{aou-overview-xref}#aou-assumptions[Assumptions].
+
 The [.monospaced]#++MAX_AxBURSTLEN++# value must be of the form 2^n - 1. Legal values are:
 
 <<aou-burst-splitting-limits-table>> lists the supported maximum burst-length settings
@@ -247,7 +252,7 @@ and resulting beat counts.
 
 *Write path:* B responses from sub-bursts are merged. The splitter tracks outstanding write sub-bursts with [.monospaced]#++r_wr_pending_cnt++# and returns a single B response to the slave side once all sub-bursts have completed. If any sub-burst returns an error ([.monospaced]#++|I_M_BRESP_RS++#), the merged [.monospaced]#++BRESP_ERR++# flag is set, propagating the error to the slave-side response.
 
-*ID mismatch detection:* The splitter exports [.monospaced]#++DEST_TABLE_RID_ERR++# and [.monospaced]#++DEST_TABLE_BID_ERR++# signals that flag responses with IDs not matching any outstanding transaction. These feed the xref:aou-interrupt[INT_MI0_ID_MISMATCH] interrupt source via [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#.
+*ID mismatch detection:* The splitter exports [.monospaced]#++DEST_TABLE_RID_ERR++# and [.monospaced]#++DEST_TABLE_BID_ERR++# signals that flag responses with IDs not matching any outstanding transaction. These feed the xref:aou-4-interrupt[INT_MI0_ID_MISMATCH] interrupt source via [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#.
 
 [[aou-sfr-configuration]]
 ==== SFR Configuration
@@ -270,6 +275,8 @@ burst splitting.
 
 These SFRs must be configured before activation and must not be changed during normal operation.
 
+The SFR enforces the 2^n - 1 constraint in hardware. A write of any value other than 0, 1, 3, 7, 15, 31, 63, 127, or 255 to [.monospaced]#++MAX_AWBURSTLEN++# or [.monospaced]#++MAX_ARBURSTLEN++# is stored as [.monospaced]#++0xF++# (16 beats, the reset value). Software can confirm the accepted value by reading the field back.
+
 [[aou-write-early-response-controller]]
 === Write Early Response Controller
 
@@ -280,7 +287,7 @@ The [.monospaced]#++AOU_EARLY_BRESP_CTRL_AWCACHE++# module sits between the loca
 
 When enabled, the module returns an early B response ([.monospaced]#++BRESP = OKAY++#) to the local AXI manager as soon as both the write address (AW) and the last write data beat (W with WLAST) have been received at the AXI subordinate port \-- before the write is packed into AoU messages, transmitted over FDI, and completed on the remote die. This reduces the write latency seen by the local requester at the cost of deferred error reporting.
 
-Early response applies only to *bufferable* writes ([.monospaced]#++AWCACHE[0] = 1++#). Non-bufferable writes ([.monospaced]#++AWCACHE[0] = 0++#) pass through the module unchanged: the AW, W, and B channels are forwarded directly between the local AXI interface and the AOU TX datapath with no early response generated, and the actual BRESP from the remote die is returned to the local AXI manager as normal.
+Early response applies only to *bufferable* writes ([.monospaced]#++AWCACHE[0] = 1++#), or to every write when [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.EARLY_ALWAYS_EN++# is set: the controller treats a write as bufferable when [.monospaced]#++AWCACHE[0] = 1++# *or* [.monospaced]#++EARLY_ALWAYS_EN = 1++#. Writes that are not bufferable by this definition pass through the module unchanged: the AW, W, and B channels are forwarded directly between the local AXI interface and the AOU TX datapath with no early response generated, and the actual BRESP from the remote die is returned to the local AXI manager as normal. Exclusive writes ([.monospaced]#++AWLOCK = 1++#) are never answered early, whatever [.monospaced]#++AWCACHE[0]++# and [.monospaced]#++EARLY_ALWAYS_EN++# say: only the remote subordinate can decide between EXOKAY and OKAY, so an exclusive write always passes through and returns the remote die's actual BRESP.
 
 [[aou-transaction-flow----normal-case]]
 ==== Transaction Flow \-- Normal Case
@@ -325,7 +332,7 @@ outstanding write.
 |=======================================================================================================================================
 |Field |Purpose
 |[.monospaced]#++id++# |AXI write ID ([.monospaced]#++AWID++#)
-|[.monospaced]#++bufferable++# |[.monospaced]#++AWCACHE[0]++# flag
+|[.monospaced]#++bufferable++# |[.monospaced]#++(AWCACHE[0] OR EARLY_ALWAYS_EN) AND NOT AWLOCK++# flag
 |[.monospaced]#++pending++# |Transaction is in flight (AW accepted, B not yet received from remote)
 |[.monospaced]#++same_id_tr_cnt++# |Count of older pending transactions with the same AXI ID that have not yet been early-responded or actually responded
 |[.monospaced]#++early_go++# |Set when [.monospaced]#++same_id_tr_cnt++# reaches 0, indicating this entry is eligible for early response
@@ -337,7 +344,7 @@ The [.monospaced]#++early_go++# flag ensures that for transactions sharing the s
 [[aou-write-outstanding-queue-backpressure]]
 ==== Write-Outstanding Queue Backpressure
 
-The backpressure mechanism described in this section is only active when the early response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#). When disabled, the module is a transparent pass-through: all AW, W, and B signals are wired directly between the subordinate and manager interfaces with no outstanding-count gating, and write depth is bounded only by whatever the downstream AOU TX datapath can accept.
+The backpressure mechanism described in this section is only active when the early response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#). When disabled, the module is a pass-through: AW, W, and B signals are wired directly between the subordinate and manager interfaces with no outstanding-count gating, and write depth is bounded only by whatever the downstream AOU TX datapath can accept. The one ordering rule the pass-through keeps is that W data is accepted only for a write whose AW has been accepted (or is accepted in the same cycle): [.monospaced]#++WREADY++# stays low toward a manager that presents a W burst ahead of its AW until the AW arrives (AXI4 A3.3.1 allows a subordinate to wait for [.monospaced]#++AWVALID++# before asserting [.monospaced]#++WREADY++#).
 
 When enabled, the early table has [.monospaced]#++WR_MO_CNT++# entries (default 32, set by the [.monospaced]#++S_WR_MO_CNT++# parameter). Every write that enters the controller \-- bufferable or non-bufferable \-- occupies one table entry from the time WLAST is accepted until the *actual B response* arrives from the remote die and is consumed.
 
@@ -345,7 +352,9 @@ Issuing an early B does *not* free the table entry. The entry remains occupied (
 
 When [.monospaced]#++r_aw_cnt == WR_MO_CNT++#, [.monospaced]#++AWREADY++# and [.monospaced]#++WREADY++# are deasserted toward the local AXI manager, stalling both the AW and W channels. The AOU TX datapath and FDI link continue operating normally during this time \-- only new write acceptance is blocked. As actual B responses arrive from the remote die and table entries are freed, [.monospaced]#++AWREADY++# and [.monospaced]#++WREADY++# reassert and the manager may resume issuing writes.
 
-The [.monospaced]#++O_PENDING_CNT_OVER++# signal (exposed via the interrupt controller) fires if a write handshake is attempted while the counter is already at the limit, serving as a diagnostic for system-hang detection.
+The pending counter [.monospaced]#++r_aw_cnt++# is [.monospaced]#++PENDING_CNT_WD++# (10) bits wide and counts every accepted AW until its actual B is consumed, whether or not early response is enabled; the [.monospaced]#++WR_MO_CNT++# gating above applies only while it is enabled.
+
+A write-transaction watchdog ([.monospaced]#++AOU_WRITE_TRANS_WDT++#, one per RP inside the controller) serves as the diagnostic for system-hang detection. When [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WDT_EN = 1++#, it counts I_CLK cycles in which the RP has writes outstanding ([.monospaced]#++r_aw_cnt != 0++#) and neither an AW nor a B handshake occurs; either handshake restarts the count. When the count reaches [.monospaced]#++WRITE_EARLY_RESPONSE_WDT_CTL.WDT_THRESHOLD++# (shared by all RPs, reset 0xC3500 = 800000 cycles) the sticky status bit [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WDT_TRANS_TIMEOUT_ERR++# is set and the [.monospaced]#++INT_EARLY_WDT_ERR++# interrupt is raised unless masked by [.monospaced]#++AOU_INTERRUPT_MASK.INT_EARLY_WDT_MASK++#. Software clears the status bit (W1C); the count restarts only on a handshake, so a hung remote die keeps the bit set. See xref:aou-4-interrupt[Interrupt].
 
 <<aou-write-outstanding-backpressure-figure>> shows the write queue filling, stalling,
 and draining as tracking entries become available.
@@ -403,6 +412,10 @@ The [.monospaced]#++EARLY_BRESP_EN++# SFR may be written at any time, but the in
 2.  Set or clear [.monospaced]#++EARLY_BRESP_EN++# via APB write.
 3.  The internal register transitions on the next clock edge where [.monospaced]#++O_BRESP_DONE++# is asserted and no AW handshake is in progress. This guarantees that the mode change does not occur mid-transaction.
 
+The same rule applies to [.monospaced]#++EARLY_ALWAYS_EN++#: change it only while [.monospaced]#++WRITE_RESP_DONE = 1++#, since the bufferable flag is sampled when the AW is accepted.
+
+*Deactivation interaction.* [.monospaced]#++AOU_INIT.SLV_TR_COMPLETE++# is asserted only when, on every RP, no subordinate-side read or write is pending *and* [.monospaced]#++WRITE_RESP_DONE = 1++#. Deactivation therefore waits for the actual B responses of early-responded writes, not only for the responses the local AXI manager has seen. See xref:{aou-software-xref}#aou-activation-deactivation-flow[Activation & Deactivation Flow].
+
 [[aou-write-early-response-controller-sfr-fields]]
 ==== SFR Fields
 
@@ -416,11 +429,22 @@ controls.
 .AoU early-response SFR fields
 |==============================================================================================
 |Field |Bits |Access |Description
-|EARLY_BRESP_EN |[0] |RW |Enable early B response for bufferable writes on this RP.
+|EARLY_BRESP_EN |[0] |RW |Enable early B response for bufferable, non-exclusive writes on this RP.
 |WRITE_RESP_ERR_ID_INFO |[10:1] |RO |AXI ID of the transaction whose actual BRESP had an error.
 |WRITE_RESP_ERR_TYPE_INFO |[12:11] |RO |BRESP error type (2pass:[']b10 = SLVERR, 2pass:[']b11 = DECERR).
 |WRITE_RESP_ERR |[13] |W1C |Write 1 to clear the [.monospaced]#++INT_EARLY_RESP_ERR++# interrupt.
 |WRITE_RESP_DONE |[14] |RO |1 when no write transactions are pending ([.monospaced]#++r_aw_cnt == 0++#).
+|EARLY_ALWAYS_EN |[15] |RW |Return the early B response for every write, regardless of [.monospaced]#++AWCACHE[0]++#.
+|WDT_EN |[16] |RW |Enable the write-transaction watchdog of this RP.
+|WDT_TRANS_TIMEOUT_ERR |[17] |W1C |Set by hardware when the watchdog expires; source of [.monospaced]#++INT_EARLY_WDT_ERR++#. Write 1 to clear.
+|==============================================================================================
+
+The [.monospaced]#++WRITE_EARLY_RESPONSE_WDT_CTL++# register ([.monospaced]#++0x0080++#, shared by all RPs) contains:
+
+[width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+|==============================================================================================
+|Field |Bits |Access |Description
+|WDT_THRESHOLD |[31:0] |RW |Watchdog threshold in I_CLK cycles. Reset [.monospaced]#++0xC3500++# (800000 cycles).
 |==============================================================================================
 
 See the
@@ -447,19 +471,20 @@ When disabled via the per-RP [.monospaced]#++AOU_CON0.RPn_AXI_AGGREGATOR_EN++# S
 [[aou-write-aggregation]]
 ==== Write Aggregation
 
-Write aggregation is activated when *both* conditions are met:
+Write aggregation is activated when *all* of the following conditions are met:
 
 1.  [.monospaced]#++AWSIZE++# is narrower than the full bus width ([.monospaced]#++AXSIZE < $clog2(DATA_WD/8)++#).
 2.  [.monospaced]#++AWLEN++# is non-zero (multi-beat burst).
+3.  The write is *modifiable* ([.monospaced]#++AWCACHE[1] = 1++#) and not exclusive ([.monospaced]#++AWLOCK = 0++#). Non-modifiable and exclusive writes must reach the manager port with their original size and length (AXI4 A4.3.1), so they bypass aggregation.
 
 When activated, the aggregator:
 
 * Promotes [.monospaced]#++AWSIZE++# to the full bus width.
-* Recalculates [.monospaced]#++AWLEN++# based on the ratio between original and promoted sizes.
+* Recalculates [.monospaced]#++AWLEN++# based on the ratio between original and promoted sizes, including the start-address offset within the promoted beat; the computation keeps the carry so a burst whose promoted length would exceed the 8-bit [.monospaced]#++AWLEN++# field is handled without truncation.
 * OR-merges [.monospaced]#++WDATA++# and [.monospaced]#++WSTRB++# across consecutive narrow beats until a full-width beat is assembled, then emits the merged beat on the master W channel.
 * [.monospaced]#++AWBURST++# is passed through unchanged.
 
-A depth-16 synchronous FIFO decouples the AW and W channels. The AW is issued on the master side only after confirming that sufficient W FIFO space is available for the recalculated [.monospaced]#++AWLEN++#, preventing deadlocks when the downstream bus back-pressures the W channel.
+A synchronous FIFO of [.monospaced]#++RPn_AGG_WCH_FIFO_DEPTH++# entries (default 16; it must exceed the longest write burst the local bus issues) decouples the AW and W channels. The AW is issued on the master side only after confirming that sufficient W FIFO space is available for the recalculated [.monospaced]#++AWLEN++#, preventing deadlocks when the downstream bus back-pressures the W channel.
 
 <<figure-13>> shows narrow write beats merging into a wider downstream transfer.
 
@@ -471,7 +496,7 @@ image::write-aggregation.svg[Figure 13. Write Aggregation -- Narrow-to-Wide Beat
 [[aou-read-aggregation]]
 ==== Read Aggregation
 
-Read aggregation follows the same size-promotion logic as writes. [.monospaced]#++ARSIZE++# and [.monospaced]#++ARLEN++# are promoted to the full bus width, and [.monospaced]#++ARBURST++# is passed through (the aggregator does not restrict burst type to INCR).
+Read aggregation follows the same size-promotion logic as writes. [.monospaced]#++ARSIZE++# and [.monospaced]#++ARLEN++# are promoted to the full bus width, and [.monospaced]#++ARBURST++# is passed through (the aggregator does not restrict burst type to INCR). Unlike the write side, read aggregation is not gated on [.monospaced]#++ARCACHE[1]++# or [.monospaced]#++ARLOCK++#; non-modifiable and exclusive reads are promoted like any other read.
 
 The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR transactions. For each issued AR, it records the original burst geometry (size, length) so that when wide R data returns from the manager side, the module can regenerate the correct slave-side [.monospaced]#++RLAST++# at the original burst boundaries. Wide R beats are presented to the slave side multiple times (once per original narrow beat) with the appropriate byte-lane selection.
 
@@ -606,12 +631,13 @@ RX R MAX CREDIT = {RX R FIFO DEPTH / (AXI_DATA_WD / 256)} x AXI_DATA_WD RDATA Gr
 
 *Credit Advertisement Mechanism*
 
-Upon receipt of an ActivateReq from the remote die, AOU_CORE_TOP responds with an ActivateAck and, at the same time, advertises credit through a Misc CreditGrant Message. Only the initial credit advertisement is performed through this Misc message. Because only a single Resource Plane is implemented, after the initial advertisement, subsequent credit advertisements are carried by the Message Credit field within the protocol header. In multiple-RP configuration, credit advertisement is likewise delivered exclusively through the Message Credit field within the protocol header. Credits for multiple RPs are advertised in a round-robin manner. A grant is issued only when at least one of the credit fields - wreq, wdata, rreq, rdata, or wresp - contains a non-zero value to be advertised.
+Upon receipt of an ActivateReq from the remote die during the initial activation handshake, AOU_CORE_TOP responds with an ActivateAck and, at the same time, advertises credit through a Misc CreditGrant Message. An ActivateReq received after the local die is already ENABLED does not advertise credit again; it is the invalid activation message described in xref:{aou-software-xref}#aou-linkreset-error-reporting[LinkReset Error Reporting]. Only the initial credit advertisement is performed through this Misc message. Because only a single Resource Plane is implemented, after the initial advertisement, subsequent credit advertisements are carried by the Message Credit field within the protocol header. In multiple-RP configuration, credit advertisement is likewise delivered exclusively through the Message Credit field within the protocol header. Credits for multiple RPs are advertised in a round-robin manner. A grant is issued only when at least one of the credit fields - wreq, wdata, rreq, rdata, or wresp - contains a non-zero value to be advertised.
 
 *Definition of Tx Credit Consumption and Rx Credit Advertisement/Return Timing*
 
 * The Tx Credit is increased immediately upon receipt of a credit message from the Rx Core, within the updated value taking effect in the following cycle. Credit is decremented when the Tx Core packs a message and places it into the ring buffer. The consumption point is defined at the time of insertion into the per-RP Tx FIFO.
 * The AOU_RX_CRD_CTRL exchanges credit messages (PLP protocol header MsgCredit field, dedicated Misc message) with the Tx core through valid/ready signaling. Tx core asserts CRDTGRANT_READY when the Tx core can pack a Misc Credit Message or asserts MSGCREDIT_CRED_READY when a protocol header is required to be transmitted. A credit is considered advertised at the point when the credit message handshake (valid and ready both asserted) occurs. At that instant, the advertised credits are treated as already reserved for the RX FIFO. Accordingly, a credit is not considered returned when a message leaves the RX Core, but only when data is actually dequeued from the RX FIFO, releasing the previously reserved credit.
+* Every transmitted protocol header carries a MsgCredit field. When AOU_RX_CRD_CTRL has no credit to advertise, all credit subfields are zero and the RP subfield (MsgCredit[15:14]) is 0, so the header never names an RP the local die does not implement. The RP subfield is only meaningful when at least one credit subfield is non-zero.
 
 [[aou-rp-remapping]]
 === RP Remapping
