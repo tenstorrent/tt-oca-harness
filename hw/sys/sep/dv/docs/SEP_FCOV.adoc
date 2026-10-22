@@ -6294,8 +6294,8 @@ The table lists the nets that the testbench has or that a testbench probe covers
 |`secure_tm` |`secure_tm_o`, `sep_fuse_sense_done_o` |`hw/sys/sep/dv/tb/tb_top.sv` |approved
 |`km_sram_probe` |`km_sram_probe_o`, words 0 to 97 only. It is not the 8192-word array |`hw/sys/sep/dv/tb/tb_top.sv` |approved
 |`km_sram_mem_if` |`u_dut.km_sram_mem_req` and `u_dut.km_sram_mem_rsp` (`req`, `we`, `addr`, `wdata`, `gnt`, `rvalid`, `rdata`, `rparity`) |`hw/top/sep_wrapper.sv`, `hw/ip/key_manager/rtl/km_intf_pkg.sv` |approved for `req`, `we`, `addr`, `wdata`, `gnt` and `rvalid`, which `tb_top.sv` reads; added tap for `rdata` and `rparity`
-|`km_rom_req` |`u_dut.km_rom_mem_req.req`. The ROM request has `req` and `addr` only, with no write field |`hw/ip/key_manager/rtl/km_intf_pkg.sv` |approved for `req`, which `tb_top.sv` reads; added tap for `addr`
-|`km_rom_rsp` |`u_dut.km_rom_mem_rsp` (`gnt`, `rvalid`, `rdata`, `parity`) |`hw/top/sep_wrapper.sv` |added tap
+|`km_rom_req` |`u_dut.km_rom_mem_req.req`. The ROM request has `clk`, `req` and `addr` only, with no write field |`hw/ip/key_manager/rtl/km_intf_pkg.sv` |approved for `req`, which `tb_top.sv` reads; added tap for `addr`
+|`km_rom_rsp` |`u_dut.km_rom_mem_rsp` (`rdata`, `parity`) |`hw/top/sep_wrapper.sv` |added tap
 |`efuse_req_err` |eFuse controller `efuse_req_err`, read through the `req_err_i` port that the eFuse groups also use (one port, one tap) |`hw/ip/efuse/rtl/efuse_interface_controller.sv` |added tap
 |`efuse_locks` |`efuse_shadow_probe_o` bits 95:0, the sensed `LOCKS` and `LOCKS_SPARE` words of the shadow map, read through the `efuse_shadow_i` port that the eFuse groups also use |`hw/sys/sep/dv/tb/tb_top.sv` |approved (`efuse_shadow_probe_o`)
 |`test_en_strap` |Secure test strap `test_en_strap` to `secure_tm_req_i` |`hw/sys/sep/dv/tb/tb_top.sv` |approved (`test_en_strap_i` input)

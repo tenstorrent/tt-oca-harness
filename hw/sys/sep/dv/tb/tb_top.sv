@@ -4594,9 +4594,10 @@ module sep_uvm_top
     // SRAM macro responses at the sep inputs km_rom_mem_rsp_i and
     // km_sram_mem_rsp_i (docs/SEP_TB_ARCH.adoc, inject exceptions and HDL Top
     // ports). The live response comes from inside the integration wrapper,
-    // ahead of the forced inputs: the ROM read data and rvalid and the SRAM
-    // read data of sep_ip_integration, and the SRAM rvalid as a bench flop of
-    // the accepted SRAM read (the macro answers one clock after the request).
+    // ahead of the forced inputs: the ROM and SRAM read data of
+    // sep_ip_integration. The ROM response and the SRAM rvalid are bench flops
+    // of the ROM request and the accepted SRAM read (each macro answers one
+    // clock after the request).
     // A force is set on every falling edge (Verilator snapshots a force RHS).
     // A released input keeps its forced value until its driver next
     // evaluates, after the next rising edge has sampled it, so an input is
@@ -4616,20 +4617,20 @@ module sep_uvm_top
     // bench reset; KM-LAT shows the latency that the KM sees.
     //
     // HK-PAR. While km_par_arm_i is 1, the bench counts the read responses
-    // (rvalid at the sep input) of the memory km_par_mem_i (0 ROM, 1 SRAM)
-    // from the rise of the arm, and on the N-th response, N = km_par_n_i
-    // from 1, inverts parity bit km_par_lane_i of that response for one
-    // clock. The data bits are not touched. One flip per arm: a drop of the
-    // arm re-arms. km_par_fired_o shows the flip since the arm,
-    // km_par_resp_count_o the responses counted since the arm, and
-    // km_par_rstrb_o the byte lanes that the KM interface parity-checks on
-    // the flipped response (the CPU read strobe), so a test can show that the
-    // flipped lane was checked. N of 0 or an unknown control leaves the hook
-    // idle.
+    // (the clock after a ROM request, or rvalid at the sep input) of the
+    // memory km_par_mem_i (0 ROM, 1 SRAM) from the rise of the arm, and on
+    // the N-th response, N = km_par_n_i from 1, inverts parity bit
+    // km_par_lane_i of that response for one clock. The data bits are not
+    // touched. One flip per arm: a drop of the arm re-arms. km_par_fired_o
+    // shows the flip since the arm, km_par_resp_count_o the responses counted
+    // since the arm, and km_par_rstrb_o the byte lanes that the KM interface
+    // parity-checks on the flipped response (the CPU read strobe), so a test
+    // can show that the flipped lane was checked. N of 0 or an unknown
+    // control leaves the hook idle.
     // ------------------------------------------------------------------
     km_intf_pkg::km_sram_mem_rsp_t km_sram_rsp_drv, km_sram_rsp_forced;
     km_intf_pkg::km_rom_mem_rsp_t km_rom_rsp_drv, km_rom_rsp_forced;
-    logic km_sram_raw_rvalid_q, km_sram_drive, km_rom_drive, km_mem_rst_ok, km_par_ok;
+    logic km_sram_raw_rvalid_q, km_rom_rsp_valid_q, km_sram_drive, km_rom_drive, km_mem_rst_ok, km_par_ok;
     logic km_sram_forced, km_rom_forced;
     logic [3:0] km_lat_k, km_lat_l;
     logic [35:0] km_lat_word;
@@ -4657,9 +4658,11 @@ module sep_uvm_top
     always_ff @(posedge clk_i or negedge rst_n_int) begin
         if (!rst_n_int) begin
             km_sram_raw_rvalid_q <= 1'b0;
+            km_rom_rsp_valid_q   <= 1'b0;
         end else begin
             km_sram_raw_rvalid_q <= (u_dut.km_sram_mem_req.req === 1'b1) &&
                                     (u_dut.km_sram_mem_req.we === 1'b0);
+            km_rom_rsp_valid_q   <= (u_dut.km_rom_mem_req.req === 1'b1);
         end
     end
     always @(negedge clk_i) begin
@@ -4670,8 +4673,6 @@ module sep_uvm_top
         km_sram_rsp_drv.rvalid = km_sram_raw_rvalid_q;
         km_sram_rsp_drv.rdata = `SEP_IPI.km_sram_rdata[31:0];
         km_sram_rsp_drv.rparity = `SEP_IPI.km_sram_rdata[35:32];
-        km_rom_rsp_drv.gnt = 1'b1;
-        km_rom_rsp_drv.rvalid = `SEP_IPI.km_rom_rvalid;
         km_rom_rsp_drv.rdata = `SEP_IPI.km_rom_rdata[31:0];
         km_rom_rsp_drv.parity = `SEP_IPI.km_rom_rdata[35:32];
         // HK-LAT.
@@ -4710,13 +4711,13 @@ module sep_uvm_top
                     km_par_fired = 1'b1;
                     km_par_rstrb = `KM_CPU.u_sram_if.read_pending_rstrb_q;
                 end
-            end else if ((km_par_mem_i === 1'b0) && km_rom_rsp_drv.rvalid) begin
+            end else if ((km_par_mem_i === 1'b0) && km_rom_rsp_valid_q) begin
                 km_par_cnt = km_par_cnt + 8'd1;
                 if (km_par_cnt == km_par_n_i) begin
                     km_rom_rsp_drv.parity = km_rom_rsp_drv.parity ^ (4'd1 << km_par_lane_i);
                     km_rom_drive = 1'b1;
                     km_par_fired = 1'b1;
-                    km_par_rstrb = `KM_CPU.u_rom_if.current_rsp_rstrb;
+                    km_par_rstrb = `KM_CPU.u_rom_if.rdata_rstrb_q;
                 end
             end
             if (km_par_fired) begin

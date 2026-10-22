@@ -18,7 +18,6 @@
 //-----------------------------------------------------------------------------
 
 `include "ocah_assert.svh"
-`include "ocah_registers.svh"
 
 module sep_ip_integration
   import sep_pkg::sep_sram_req_t;
@@ -262,21 +261,16 @@ module sep_ip_integration
   localparam int unsigned KmRomWidth = 36;  // 32 data + 4 parity
 
   logic [KmRomWidth-1:0]   km_rom_rdata;
-  logic                    km_rom_rvalid;
 
-  assign km_rom_mem_rsp_o.gnt    = 1'b1;
-  assign km_rom_mem_rsp_o.rvalid = km_rom_rvalid;
   assign km_rom_mem_rsp_o.rdata  = km_rom_rdata[31:0];
   assign km_rom_mem_rsp_o.parity = km_rom_rdata[35:32];
-
-  `OCAH_FF(km_rom_rvalid, km_rom_mem_req_i.req, 1'b0, clk_i, rst_ni)
 
   prim_rom #(
     .Width       (KmRomWidth),
     .Depth       (KmRomDepth),
     .MemInitFile ("")
   ) u_km_rom (
-    .clk_i   (clk_i),
+    .clk_i   (km_rom_mem_req_i.clk),
     .rst_ni  (rst_ni),
     .req_i   (km_rom_mem_req_i.req),
     .addr_i  (km_rom_mem_req_i.addr[KmRomAw-1:0]),

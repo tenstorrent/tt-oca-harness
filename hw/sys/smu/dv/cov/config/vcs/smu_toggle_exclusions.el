@@ -1970,8 +1970,6 @@ Toggle sep_crypto_pka_dmem_sram_req.write "logic sep_crypto_pka_dmem_sram_req.wr
 Toggle sep_crypto_pka_dmem_sram_req.enable "logic sep_crypto_pka_dmem_sram_req.enable"
 Toggle km_rom_mem_req.addr "logic km_rom_mem_req.addr[11:0]"
 Toggle km_rom_mem_req.req "logic km_rom_mem_req.req"
-Toggle km_rom_mem_rsp.rvalid "logic km_rom_mem_rsp.rvalid"
-Toggle km_rom_mem_rsp.gnt "logic km_rom_mem_rsp.gnt"
 Toggle km_sram_mem_req.addr "logic km_sram_mem_req.addr[12:0]"
 Toggle km_sram_mem_req.we "logic km_sram_mem_req.we"
 Toggle km_sram_mem_req.req "logic km_sram_mem_req.req"

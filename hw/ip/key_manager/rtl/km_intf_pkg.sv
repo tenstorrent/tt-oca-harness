@@ -56,16 +56,16 @@ package km_intf_pkg;
 
   parameter int unsigned KM_SRAM_MEM_ADDR_WIDTH = 13;  // SRAM word-address width (13 bits = 8K words = 32 KB).
 
-  // ROM memory request (CPU -> ROM hard macro).
+  // ROM memory request (CPU -> ROM hard macro). The macro accepts every request and
+  // returns its read data on the next rising edge of clk.
   typedef struct packed {
+    logic                             clk;           // Clock for the ROM macro.
     logic                             req;           // Request valid.
     logic [KM_ROM_MEM_ADDR_WIDTH-1:0] addr;        // Word address.
   } km_rom_mem_req_t;
 
   // ROM memory response (ROM hard macro -> CPU).
   typedef struct packed {
-    logic                           gnt;           // Grant/ready.
-    logic                           rvalid;        // Read data valid.
     logic [KM_MEM_DATA_WIDTH-1:0]   rdata;         // Read data.
     logic [KM_MEM_STRB_WIDTH-1:0]   parity;        // Byte parity bits.
   } km_rom_mem_rsp_t;
