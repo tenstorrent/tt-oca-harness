@@ -103,10 +103,10 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(rom_rsp)]       -clock [get_clock SEPCLK] [get_ports {sep_boot_rom_rsp_i*}] -add_delay
 
 # Key Manager memory interfaces
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [get_ports {km_rom_mem_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [filter_collection [get_ports {km_rom_mem_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(rom_rsp)]       -clock [get_clock SEPCLK] [get_ports {km_rom_mem_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [get_ports {km_sram_mem_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [filter_collection [get_ports {km_sram_mem_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SEPCLK] [get_ports {km_sram_mem_rsp_i*}] -add_delay
 
 # Adams-Bridge crypto memory interface (request out to macros, response data back)

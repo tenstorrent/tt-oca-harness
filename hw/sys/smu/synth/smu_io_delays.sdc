@@ -171,7 +171,7 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SMUCLK] [get_ports {smc_l1_dcache_data_intf_rsp_i*}] -add_delay
 
 # Trace Memory
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [get_ports {trace_mem_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [filter_collection [get_ports {trace_mem_req_o*}] {full_name !~ ".*mem_clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SMUCLK] [get_ports {trace_mem_resp_i*}] -add_delay
 
 # OCTS
@@ -339,10 +339,10 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]      
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [filter_collection [get_ports {sep_crypto_pka_dmem_sram_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SMUCLK] [get_ports {sep_crypto_pka_dmem_sram_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [get_ports {sep_km_rom_mem_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [filter_collection [get_ports {sep_km_rom_mem_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(rom_rsp)]       -clock [get_clock SMUCLK] [get_ports {sep_km_rom_mem_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [get_ports {sep_km_sram_mem_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [filter_collection [get_ports {sep_km_sram_mem_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SMUCLK] [get_ports {sep_km_sram_mem_rsp_i*}] -add_delay
 
 # SEP eFuse Interface
