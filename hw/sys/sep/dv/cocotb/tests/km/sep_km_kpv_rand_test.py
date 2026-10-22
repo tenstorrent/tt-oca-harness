@@ -12,7 +12,8 @@ words 0 to 97 (``km_sram_probe_o``). The KM CPU does not see the AXI response,
 so each reporting operation clears IRQ_STATUS.AXI_SLVERR and AXI_DECERR before
 the access and reports them after it as ``slv`` and ``dec``. Every value that a
 check compares is a POKE readback of the DUT, a host readback of
-``SEP_STATUS``, or a snapshot of the KM-KPV tap (``km_kpv_words_o``).
+``SEP_STATUS``, a snapshot of the KM-KPV tap (``km_kpv_words_o``) or of the
+KM-VALID tap (``km_engine_key_valid_o``).
 
 Specification. ``hw/ip/key_manager/doc/architecture.adoc``, sections "Key and
 Policy Vault (KPV)", "KPV Scrambling", "Wipe State" and "Reset Conditioning";
@@ -71,8 +72,12 @@ Checkers:
                    IRQ_STATUS.WIPE_STATE, and the KM CPU runs the next list.
                    Control: the vault before the wipe is non-zero.
   CHK-WIPE-SCOPE   the wipe keeps the 8 SRAM words and the mailbox word
-                   (SEP_STATUS depth 1) and clears the HMAC key_valid. Control:
-                   each witness is non-zero before the wipe.
+                   (SEP_STATUS depth 1) and clears KEY_CTRL.key_valid of all
+                   eight accelerator sideload register blocks: the KM-VALID tap
+                   reads 0x00 right after the wipe and after the read-back, and
+                   each KEY_CTRL reads 0 on the KM port. Control: each witness is
+                   non-zero before the wipe (KM-VALID 0xFF, each KEY_CTRL reads
+                   key_valid).
   CHK-WIPE-EDGE2   a held level and a write of 1 while high set no second
                    WIPE_STATE over 200 host clocks; a 0-then-1 edge sets it again.
                    Control: the first rising edge sets it.
@@ -355,6 +360,15 @@ class sep_km_kpv_rand_test(sep_base_test):
         await self.start_seq(seq)
         if not seq.resp_ok:
             raise AssertionError(f"KM_WIPE_CTRL write {_h(value)} not OKAY")
+
+    @staticmethod
+    def _key_valid_sets() -> list[kp.PokeOp]:
+        """KEY_CTRL.key_valid = 1 in each of the eight sideload register blocks."""
+        return [kp.wr(b.ctrl, b.valid) for b in m.KEY_BANKS]
+
+    def _key_valid(self) -> int:
+        """KM-VALID tap: bit i is KEY_CTRL.key_valid of ``m.KEY_BANKS[i]``."""
+        return self.rd_known(cocotb.top.km_engine_key_valid_o, m.ALL_KEY_BANKS)
 
     async def _mbox_depth(self) -> int:
         st = await self.poke.mbox.read_status()
@@ -1007,7 +1021,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             kp.wrblk(m.word_addr(rs, 0), vc),
             kp.wr(m.ctrl_addr(rs), m.SEAL),
             *_erase_ops(rs),
-            kp.wr(m.HMAC_KEY_CTRL, m.HMAC_KEY_VALID),
+            *self._key_valid_sets(),
             *[kp.wr(a, v) for a, v in zip(p.sram_addrs, p.sram_values, strict=True)],
         ]
         sres = await self._run(setup)
@@ -1021,12 +1035,15 @@ class sep_km_kpv_rand_test(sep_base_test):
             kp.rd(m.ctrl_addr(ss)),
             kp.rd(m.ctrl_addr(rs)),
             kp.rd(m.SCR_CTRL),
-            kp.rd(m.HMAC_KEY_CTRL),
+            *[kp.rd(b.ctrl) for b in m.KEY_BANKS],
             *[kp.rd(a) for a in p.sram_addrs],
             kp.rd(m.IRQ_STATUS),
             kp.rdloop(m.KPV_BASE, m.N_KPV_WORDS),
             kp.delay(_WIPE_WINDOW_DELAY),
         ]
+        i_bank = 6
+        i_sram = i_bank + m.N_KEY_BANKS
+        i_irq = i_sram + m.N_SRAM_WORDS
         ha = await self.poke.post(reads)
         last = len(reads) - 1
         waited = 0
@@ -1038,10 +1055,11 @@ class sep_km_kpv_rand_test(sep_base_test):
         pre = self.poke.results(ha, partial=True, allow_unknown=True)
         for r in pre:
             self._check_result(r)
-        sram_pre = [pre[7 + i].value for i in range(m.N_SRAM_WORDS)]
-        irq_pre = self._irq(pre[7 + m.N_SRAM_WORDS].value)
-        loop_pre = pre[8 + m.N_SRAM_WORDS]
-        hmac_pre = pre[6].value & m.HMAC_KEY_CTRL_FIELDS
+        sram_pre = [pre[i_sram + i].value for i in range(m.N_SRAM_WORDS)]
+        irq_pre = self._irq(pre[i_irq].value)
+        loop_pre = pre[i_irq + 1]
+        bank_pre = [pre[i_bank + i].value & b.fields for i, b in enumerate(m.KEY_BANKS)]
+        bank_pre_ok = sum(1 for v, b in zip(bank_pre, m.KEY_BANKS, strict=True) if v == b.valid)
 
         # The pushed mailbox word is the header of the read-back list, so the image
         # takes it as its next list after the delay op ends.
@@ -1051,7 +1069,6 @@ class sep_km_kpv_rand_test(sep_base_test):
             kp.rd(m.SCR_KEY),
             kp.rd(m.SCR_CTRL),
             kp.rd(m.IRQ_STATUS),
-            kp.rd(m.HMAC_KEY_CTRL),
             *[kp.rd(a) for a in p.sram_addrs],
         ]
         hb = self.poke.reserve(opsb)
@@ -1059,6 +1076,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         await self.poke.post_header(hb)
         depth_pre = await self._mbox_depth()
 
+        kv_pre = self._key_valid()
         await self._wipe_ctrl(_KM_WIPE_BIT)
         await ClockCycles(cocotb.top.clk_i, p.wipe_hold)
         await self._wipe_ctrl(0)
@@ -1067,6 +1085,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         vec = self.rd(cocotb.top.sep_internal_interrupts_probe_o, 1 << _PIC_KM_UNREC)
         await RisingEdge(cocotb.top.clk_i)
         self.logger.info("LOG err_o=%d", (vec >> _PIC_KM_UNREC) & 1)
+        kv_wipe = self._key_valid()
         depth_post = await self._mbox_depth()
         if not (self.poke.state() == (kp.ST_RUN, ha.tag) and self.poke.progress()[0] == last):
             raise AssertionError(
@@ -1078,6 +1097,12 @@ class sep_km_kpv_rand_test(sep_base_test):
         post = self.poke.results(hb, allow_unknown=True)
         for r in post:
             self._check_result(r)
+        # KEY_CTRL of the eight blocks on the KM port, then the KM-VALID tap.
+        # No op between the wipe and these reads writes a KEY_CTRL.
+        bank_ops = [kp.rd(b.ctrl) for b in m.KEY_BANKS]
+        bres = await self._run(bank_ops)
+        bank_post = [r.value & b.fields for r, b in zip(bres, m.KEY_BANKS, strict=True)]
+        kv_post = self._key_valid()
 
         both = m.SCR_ENABLE | m.SCR_LOCK
         vault_pre = (
@@ -1102,7 +1127,8 @@ class sep_km_kpv_rand_test(sep_base_test):
         )
         scope_pre = (
             sram_pre == p.sram_values
-            and hmac_pre == m.HMAC_KEY_VALID
+            and bank_pre_ok == m.N_KEY_BANKS
+            and kv_pre == m.ALL_KEY_BANKS
             and depth0 == 0
             and depth_pre == 1
         )
@@ -1112,7 +1138,8 @@ class sep_km_kpv_rand_test(sep_base_test):
             sram_same=sum(1 for a, b in zip(sram_pre, p.sram_values, strict=True) if a == b),
             mbox_depth_before_push=depth0,
             mbox_depth=depth_pre,
-            keyvalid_hmac=hmac_pre,
+            keyvalid_tap=f"0x{kv_pre:02x}",
+            key_ctrl_set=bank_pre_ok,
         )
 
         loop, ctrls = post[0], post[1]
@@ -1120,8 +1147,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         key = post[2].value
         scr = self._scr(post[3].value)
         status = self._irq(post[4].value) != 0
-        hmac = post[5].value & m.HMAC_KEY_CTRL_FIELDS
-        sram_post = [post[6 + i].value for i in range(m.N_SRAM_WORDS)]
+        sram_post = [post[5 + i].value for i in range(m.N_SRAM_WORDS)]
         self.chk.ok(
             "WIPE-KPV",
             loop.data[0] == 0
@@ -1141,12 +1167,21 @@ class sep_km_kpv_rand_test(sep_base_test):
             W=p.wipe_hold,
         )
         sram_same = sum(1 for a, b in zip(sram_post, p.sram_values, strict=True) if a == b)
+        # architecture.adoc:506-508: the wipe pulse clears KEY_VALID of every
+        # accelerator sideload register block.
+        bank_set = [b.name for v, b in zip(bank_post, m.KEY_BANKS, strict=True) if v != 0]
         self.chk.ok(
             "WIPE-SCOPE",
-            sram_same == m.N_SRAM_WORDS and depth_post == 1 and hmac == 0,
+            sram_same == m.N_SRAM_WORDS
+            and depth_post == 1
+            and kv_wipe == 0
+            and kv_post == 0
+            and not bank_set,
             sram_same=sram_same,
             mbox_depth=depth_post,
-            keyvalid_hmac=hmac,
+            keyvalid_tap_wipe=f"0x{kv_wipe:02x}",
+            keyvalid_tap_after=f"0x{kv_post:02x}",
+            key_ctrl_set=bank_set or "none",
         )
 
     # Steps 17 and 18.

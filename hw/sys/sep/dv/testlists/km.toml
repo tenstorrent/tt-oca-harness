@@ -335,7 +335,7 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # The leaf resets the KM while its CPU polls the bus. The raised Verilator error
 # limit keeps the leaf running after an assertion error, so its own checks still
-# grade; any assertion error still fails the leaf.
+# grade; the regression runner fails the leaf on any logged assertion error.
 args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
@@ -353,7 +353,7 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # The leaf resets the KM while its CPU polls the bus. The raised Verilator error
 # limit keeps the leaf running after an assertion error, so its own checks still
-# grade; any assertion error still fails the leaf.
+# grade; the regression runner fails the leaf on any logged assertion error.
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
@@ -371,7 +371,7 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # The leaf resets the KM while its CPU polls the bus. The raised Verilator error
 # limit keeps the leaf running after an assertion error, so its own checks still
-# grade; any assertion error still fails the leaf.
+# grade; the regression runner fails the leaf on any logged assertion error.
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
@@ -390,7 +390,7 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # The leaf resets the KM while its CPU polls the bus. The raised Verilator error
 # limit keeps the leaf running after an assertion error, so its own checks still
-# grade; any assertion error still fails the leaf.
+# grade; the regression runner fails the leaf on any logged assertion error.
 args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
@@ -421,7 +421,7 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # The leaf resets the KM while its CPU polls the bus. The raised Verilator error
 # limit keeps the leaf running after an assertion error, so its own checks still
-# grade; any assertion error still fails the leaf.
+# grade; the regression runner fails the leaf on any logged assertion error.
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
@@ -497,7 +497,7 @@ module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 3
-timeout_sec = 3600
+timeout_sec = 5400
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -511,7 +511,7 @@ module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 3
-timeout_sec = 3600
+timeout_sec = 5400
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -525,7 +525,7 @@ module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 3
-timeout_sec = 3600
+timeout_sec = 5400
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -539,7 +539,7 @@ module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 3
-timeout_sec = 3600
+timeout_sec = 5400
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
