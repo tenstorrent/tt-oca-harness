@@ -12,6 +12,11 @@ RESET_CONTROL. A field is hardware-updated when its hw access can write it, or i
 hwclr or hwset; such fields are read and printed, never asserted. Action fields stay at reset
 in the read-write step. Fields that read with hw access na or r are asserted against the RDL
 reset in every instance.
+
+The byte-lane steps use the register pair R_lo (offset 8k) and R_hi (offset 8k+4) of
+instance 0 whose fields are all hardware-stable and whose read-write scope masks reach every
+byte lane, taking the pair with the most in-scope bits. Their references are the read-write
+step's own readbacks; the bus is 64 bits wide with one write strobe per byte (fabric.adoc).
 """
 
 from __future__ import annotations
@@ -23,6 +28,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.utils import get_sim_time
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -57,7 +63,7 @@ _ACTION = {
     ("STBY_CR_CONTROL", "CR_REQUEST_SEND"),
     ("STBY_CR_CONTROL", "HANDOFF_DEEP_SLEEP"),
 }
-_STEPS = ("S1", "S2", "S3", "S4", "S5", "S6")
+_STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8")
 _FENCE = {
     "S1": "TABLE_PARSED",
     "S2": "RESET_SWEPT",
@@ -65,9 +71,15 @@ _FENCE = {
     "S4": "RW_SWEPT",
     "S5": "W1C_SWEPT",
     "S6": "ISOLATION_SWEPT",
+    "S7": "FULL_LANE",
+    "S8": "UPPER_LANE",
 }
 _WORD = 0xFFFF_FFFF
 _PATTERN = 0x5555_5555
+_FULL_STROBE = 0xFF
+_UPPER_STROBE = 0xF0
+_BYTE_LANES = tuple(0xFF << (8 * k) for k in range(4))
+_AXI_OKAY = 0
 
 _FIELD_RE = re.compile(r"\bfield\s*\{([^{}]*)\}\s*(\w+)\s*(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*;")
 _TAIL_RE = re.compile(r"\s*(\w+)\s*(?:@\s*0x[0-9A-Fa-f]+)?\s*;")
@@ -233,10 +245,18 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
         self.table: list[Reg] = []
         self.excluded: list[tuple[str, str, str]] = []
         self.stamps: list[tuple[str, int]] = []
+        self.counts: dict[str, int] = {}
+        self.mark = 0
+        self.rw_words: dict[tuple[str, str], int] = {}
+        self.rw_reads: dict[tuple[str, str], int] = {}
+        self.pair: tuple[Reg, Reg] | None = None
         self.chk_order: list[tuple[str, str]] = []
         self.instances = 0
 
-    def _stamp(self, step: str) -> None:
+    def _stamp(self, step: str, count: int | None = None) -> None:
+        """Close ``step``; its count is ``count`` or the bus accesses issued since the last stamp."""
+        self.counts[step] = self.accesses - self.mark if count is None else count
+        self.mark = self.accesses
         self.stamps.append((step, int(get_sim_time("ps"))))
 
     def _chk(self, step: str, chk_id: str, text: str) -> None:
@@ -359,6 +379,9 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
                     word = base | sum(per_field(f) << f.lsb for f in scope)
                     await self._wr(f"RW_{phase}", n, reg, word)
                     got = await self._rd(n, reg)
+                    if n == 0:
+                        self.rw_words[(reg.name, phase)] = word
+                        self.rw_reads[(reg.name, phase)] = got
                     for f in scope:
                         want = per_field(f)
                         assert (got & f.mask) >> f.lsb == want, (
@@ -513,17 +536,112 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
             f"reset ({checked} cross reads), and the pattern was restored: {regs_text}"
         )
 
+    def _pick_pair(self) -> tuple[Reg, Reg]:
+        by_offset = {(r.offset, r.block): r for r in self.table}
+        pairs = []
+        for lo in self.table:
+            hi = by_offset.get((lo.offset + 4, lo.block))
+            if lo.offset % 8 or hi is None:
+                continue
+            if all(
+                all(f.stable for f in r.fields) and all(r.scope_mask & lane for lane in _BYTE_LANES)
+                for r in (lo, hi)
+            ):
+                pairs.append((lo, hi))
+        assert pairs, "no 8-byte aligned I3C register pair with stable, all-lane rw fields"
+        return max(pairs, key=lambda p: bin(p[0].scope_mask | p[1].scope_mask << 32).count("1"))
+
+    async def _wr64(self, tag: str, lo: Reg, data: int, wstrb: int) -> int:
+        item = SmcSysAxiItem(f"wr_{tag}_{lo.name}_I0")
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = self._addr(0, lo)
+        item.length = 8
+        item.wdata = data
+        item.wstrb = wstrb
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        assert item.resp_code == _AXI_OKAY, (
+            f"{tag}: 64-bit write wstrb 0x{wstrb:02x} at 0x{item.addr:08x} answered "
+            f"resp={item.resp_code}, want OKAY"
+        )
+        return item.resp_code
+
+    # S7
+    async def _full_lane(self) -> str:
+        lo, hi = self.pair = self._pick_pair()
+        ref_lo = self.rw_reads[(lo.name, "PAT")]
+        ref_hi = self.rw_reads[(hi.name, "CMP")]
+        for reg, ref in ((lo, ref_lo), (hi, ref_hi)):
+            assert ref != reg.reset_word, (
+                f"{reg.name}: reference 0x{ref:08x} equals its reset; the write cannot be told "
+                f"from no write"
+            )
+        data = self.rw_words[(hi.name, "CMP")] << 32 | self.rw_words[(lo.name, "PAT")]
+        await self._wr64("FULL_LANE", lo, data, _FULL_STROBE)
+        got_lo = await self._rd(0, lo)
+        got_hi = await self._rd(0, hi)
+        assert got_lo == ref_lo, (
+            f"FULL_LANE: {lo.name} reads 0x{got_lo:08x} after 64-bit data 0x{data:016x} "
+            f"wstrb 0x{_FULL_STROBE:02x}; reference (pattern readback) 0x{ref_lo:08x}"
+        )
+        assert got_hi == ref_hi, (
+            f"FULL_LANE: {hi.name} reads 0x{got_hi:08x} after 64-bit data 0x{data:016x} "
+            f"wstrb 0x{_FULL_STROBE:02x}; reference (complement readback) 0x{ref_hi:08x}"
+        )
+        return (
+            f"wstrb=0x{_FULL_STROBE:02X} BRESP OKAY, R_lo==ref_pattern, R_hi==ref_complement; "
+            f"I3C0 {lo.block}.{lo.name}@0x{lo.offset:03x} / {hi.name}@0x{hi.offset:03x} "
+            f"data=0x{data:016x} R_lo=0x{got_lo:08x} ref_pattern=0x{ref_lo:08x} "
+            f"R_hi=0x{got_hi:08x} ref_complement=0x{ref_hi:08x}"
+        )
+
+    # S8
+    async def _upper_lane(self) -> str:
+        assert self.pair is not None, "UPPER_LANE ran before FULL_LANE picked the pair"
+        lo, hi = self.pair
+        before_lo = await self._rd(0, lo)
+        written_hi = self.rw_words[(hi.name, "PAT")]
+        blocked_lo = self.rw_words[(lo.name, "CMP")]
+        assert blocked_lo & lo.scope_mask != before_lo & lo.scope_mask, (
+            f"{lo.name}: deasserted-lane data 0x{blocked_lo:08x} equals its value "
+            f"0x{before_lo:08x}; a lane leak cannot be seen"
+        )
+        data = written_hi << 32 | blocked_lo
+        await self._wr64("UPPER_LANE", lo, data, _UPPER_STROBE)
+        got_lo = await self._rd(0, lo)
+        observed_hi = await self._rd(0, hi)
+        assert got_lo == before_lo, (
+            f"UPPER_LANE: {lo.name} reads 0x{got_lo:08x} after 64-bit data 0x{data:016x} "
+            f"wstrb 0x{_UPPER_STROBE:02x} (its lanes deasserted); before 0x{before_lo:08x}"
+        )
+        restored = []
+        for reg in (lo, hi):
+            await self._wr("LANE_RESTORE", 0, reg, reg.reset_word)
+            back = await self._rd(0, reg)
+            assert back == reg.reset_word, (
+                f"LANE_RESTORE: {reg.name} reads 0x{back:08x}, reset 0x{reg.reset_word:08x}"
+            )
+            restored.append(f"{reg.name}=0x{back:08x}")
+        return (
+            f"wstrb=0x{_UPPER_STROBE:02X} BRESP OKAY, R_lo unchanged=0x{got_lo:08x}, "
+            f"R_hi observed=0x{observed_hi:08x} (written 0x{written_hi:08x}), restore at reset "
+            f"{' '.join(restored)}; R_hi not compared (measured, LINKED-ISSUE SF-019 / SF-024); "
+            f"data=0x{data:016x}"
+        )
+
     def _fence(self) -> None:
         steps = [s for s, _ in self.stamps]
         assert steps == list(_STEPS), f"fence steps {steps}, expected {list(_STEPS)}"
         times = [t for _, t in self.stamps]
         assert all(a < b for a, b in zip(times, times[1:])), f"fence stamps not increasing {times}"
+        assert all(self.counts[s] > 0 for s in _STEPS), f"fence term with zero count {self.counts}"
         printed = [c for _, c in self.chk_order]
         assert [s for s, _ in self.chk_order] == list(_STEPS[1:]), (
             f"checker lines printed at steps {self.chk_order}"
         )
         terms = " < ".join(_FENCE[s] for s in _STEPS)
-        stamped = " ".join(f"{_FENCE[s]}={t}ps" for s, t in self.stamps)
+        stamped = " ".join(f"{_FENCE[s]}={t}ps/count={self.counts[s]}" for s, t in self.stamps)
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
             terms,
@@ -535,7 +653,7 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
         self.instances = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM")
         self._build_table()
-        self._stamp("S1")
+        self._stamp("S1", len(self.table))
 
         text = await self._sweep_reset()
         self._stamp("S2")
@@ -556,5 +674,13 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
         text = await self._sweep_isolation()
         self._stamp("S6")
         self._chk("S6", "CHK-I3C-SWEEP-INSTANCE-ISOLATION", text)
+
+        text = await self._full_lane()
+        self._stamp("S7")
+        self._chk("S7", "CHK-I3C-FULL-LANE-WRITE", text)
+
+        text = await self._upper_lane()
+        self._stamp("S8")
+        self._chk("S8", "CHK-I3C-UPPER-LANE-ONLY", text)
 
         self._fence()

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""REGION_SIZE zero collapse and the reset-based recovery of the fabric."""
+"""REGION_SIZE zero collapse, the power-of-two size sweep and the reset-based recovery."""
 
 from __future__ import annotations
 
@@ -15,10 +15,16 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_region_zero_reset_recovery_test(smc_base_test):
-    """Write REGION_SIZE 0, then recover through cold resets, including resets mid-transaction."""
+    """Write REGION_SIZE 0 and every power of two, recovering each through a cold reset."""
 
     required_evidence = (
         "CHK-NONVAC",
+        "CHK-REGION-SIZE-BELOW",
+        "CHK-REGION-SIZE-BEYOND",
+        "CHK-REGION-SIZE-READBACK",
+        "CHK-REGION-SIZE-RECOVERY",
+        "CHK-REGION-SIZE-SELF-DECERR",
+        "CHK-REGION-SIZE-STRADDLE",
         "CHK-REGION-ZERO-DECERR",
         "CHK-REGION-ZERO-JTAG-OUTBOUND",
         "CHK-REGION-ZERO-RESET-RECOVERY",
@@ -27,7 +33,7 @@ class smc_region_zero_reset_recovery_test(smc_base_test):
         "CHK-RESET-RESTORES-WINDOW",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 8
+    min_evidence = 14
 
     auto_protocol_vip = False
 

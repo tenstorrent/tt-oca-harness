@@ -672,11 +672,42 @@ so the flip is visible as that group going red.
 === Targets and run modes
 
 Each selected test resolves a build target from its `target` field or the DUT
-default. Shared build stages run once per unique target, serially, before the
+default. A target's `[targets.<name>.tools.<tool>]` table can send its tests
+to another target on that tool with `run_on`, and `--target` overrides both
+for every selected test:
+
+[source,text]
+----
+--target
+  > [targets.<t>.tools.<tool>].run_on
+  > <t>: the test's target, else [defaults].target
+----
+
+The redirect keeps a tool-specific choice with the target that needs it. A
+CPU-stub target whose tests the full-CPU model also runs on VCS, for example,
+names that model for VCS and keeps its own model on the other tools:
+
+[source,toml]
+----
+[targets.lsu_stub_all_live.tools.vcs]
+run_on = "default"
+----
+
+A redirected test builds, runs and records the target it runs on. `run_on`
+must name another defined target that does not redirect on the same tool. A
+`[targets.<name>]` table carries it, and so does a framework's
+`[frameworks.<fw>.targets.<name>]`, which redirects that framework's runs;
+`[target_defaults]` and an adopter overlay refuse it. A run that selects no
+tests, such as a coverage-only replay, plans the default target after its
+redirect.
+
+Shared build stages run once per unique target, serially, before the
 test leaves execute. This permits one group to contain tests that consume
 different build images. A test `target` or a `--target` that names no
-`[targets.<name>]` entry is rejected when the run plans its builds, before
-any stage executes; `--validate-configs` does not check test targets
+`[targets.<name>]` entry is rejected when the run plans its builds, before any
+stage executes, and `--validate-configs` does not check test targets. Every
+`run_on` is checked on each of the DUT's tools wherever its configuration is
+validated, by `--validate-configs` and before every run
 (<<runner-validation>>).
 
 Run-mode selection uses:
@@ -836,6 +867,8 @@ the file and the table or entry:
   `kind` that stage accepts.
 . Every table of the sim config holds only the keys its schema allows, and
   every `{placeholder}` in a value is one the consuming stage defines.
+. On each tool in the flow's `tools` list, every target's `run_on` names
+  another defined target that does not redirect on that tool.
 . `[testlist].path` is relative, resolves inside the DUT DV root, and exists.
 . Each `[coverage.<tool>]` table is well formed and each coverage policy
   file loads.
@@ -2048,6 +2081,14 @@ on a model without one reports its own digest.
 The shared profile leaves `cache_enabled` off, so one directory per target
 and tool is rebuilt in place when its inputs change.
 
+Without `cache_enabled`, the UVM and Xcelium builds put a target's model in
+its `work_dir`, and the cocotb builds on Verilator and Xcelium in the run
+target's `build_dir`; the cocotb build on VCS adds a directory named for the
+target. A run whose tests plan several targets is refused before compile when
+two of them would build into one model directory, since their builds would
+overwrite each other's model. Giving each target its own `build_dir`, setting
+`cache_enabled = true`, or passing `--target NAME` lets it run.
+
 cocotb's VCS runner compiles every cocotb model with `-debug_access+all
 +acc+3`, which keeps every object in the design visible and writable and stops
 VCS from optimizing the DUT. A DUT whose cocotb bench needs less sets
@@ -2172,14 +2213,47 @@ is missing or empty are rejected with a recorded reason, and a fragment that
 records another flow or tool refuses the whole merge. A run directory without
 leaf records falls back to the tool's `input_glob`.
 
-The inputs must share one target and one build fingerprint. A multi-target
-run cannot be merged as one coverage database; pass `--target NAME` to
-compile every selected test on one elaboration. Inputs that all lack target
-and build-fingerprint provenance merge as one set, and a set that mixes
-recorded and missing provenance is refused. Coverage-only replay resolves the
-current/default target rather than restoring an original non-default target;
-use replay only when target and build-affecting configuration still match.
-This is especially important for the VCS design coverage database.
+The inputs of one target must share one build fingerprint. Inputs that all
+lack target and build-fingerprint provenance merge as one set, and a set that
+mixes recorded and missing provenance is refused.
+
+The inputs of a run whose tests plan several targets merge in two steps. Each
+target's inputs merge with `merge_cmd` against that target's design database,
+which `design_artifact` names in the model directory the target's leaves
+recorded, into `cov/targets/<target>/`; each merge has its own log, script and
+environment file named `cov_merge.<target>`. The tool's `combine_cmd` then
+unions the targets' design and merged databases into the run's merged
+database (`urg -flex_merge union` on VCS, since the targets' models differ in
+their parameters; <<runner-coverage-union>>), and the report grades that union
+as it grades any run. The targets merge, and the union reads them, largest
+design database first, because a URG `union` merge keeps the code-coverage
+hierarchy of the first design it reads.
+Every target's design database is resolved before the first merge, a target
+whose leaves record no model directory or one without its design database is
+refused, and a failed target merge stops the stage before the union. A tool
+without a `combine_cmd`, one whose `combine_cmd` uses `{design_db}` (`{inputs}`
+carries every target's design database), or a `[coverage.<tool>]` that names
+one `design_db`, cannot merge several targets; a run with `--cov` that plans
+several targets is refused for either `combine_cmd` case before any simulator
+runs. The union's manifest records no `target`, so a policy rule scoped to one
+target does not apply to it, and its `build_fingerprint` is a digest of every
+target's name and build fingerprint, so its `comparison_key` changes when a
+target joins, leaves or rebuilds. The inputs of a run on one target merge in
+one step against its design database. The stage runs on the first planned
+target's configuration, so inputs of one other target, as when a run plans
+several targets but only a later one leaves coverage, merge in that step
+against the design database in the model directory they recorded, unless
+`design_db` names it.
+
+Coverage-only replay resolves the current/default target rather than
+restoring an original non-default target; use replay only when target and
+build-affecting configuration still match. The design database is the
+exception: a replay of a run on another target, or on several, reads each
+target's design database from the model directory its leaves recorded, unless
+`design_db` names it. A dry
+run does not read the leaves, so `--stage cov_merge --dry-run` renders one
+merge for the target it plans even where the replay itself merges each
+recorded target and unions them.
 
 The merge and report commands, the merged database name, and the input glob
 come from `[coverage.<tool>]`, layered as every other tool table is
@@ -2188,7 +2262,14 @@ way on any host that has the tool. `cov/coverage.json` records the selection
 (<<runner-coverage-record>>): the selection policy and source, every input
 with its test, seed, attempt, status, target, and build fingerprint, every
 rejection with its reason, the exclusion files, and the policy file with its
-SHA-256 and `scope_epoch`.
+SHA-256 and `scope_epoch`. A merge of several targets adds `targets`, one
+record per target merge, in the order the union reads them, with its target,
+build fingerprint, design and merged databases, input count, log and return
+code. A merge that runs `combine_cmd`, over several targets or for
+`--cov-combine`, adds `union_warnings`, the `Warning-[CODE]` lines of the
+union's log counted by code. URG's flexible union warns for each instance it
+cannot align across its inputs and leaves that input's coverage of the
+instance out of the union, so a union with warnings is a lower bound.
 
 [[runner-cov-combine]]
 ==== Combining finished runs
@@ -2231,8 +2312,74 @@ directory, framework, commit, tool version and database under
 lands under the DUT's run tree with the label `combine`, and `latest` keeps
 pointing at the last simulation run, so the dashboard's default collection is
 unaffected and a combined run is collected by naming its directory.
-`--fail-under` and `--dry-run` apply; selection, seed, wave and build options
-do not.
+`--fail-under`, `--cov-summary` and `--dry-run` apply; selection, seed, wave
+and build options do not.
+
+[[runner-coverage-union]]
+==== Choosing the union's merge options
+
+The union of several targets and `--cov-combine` both run the tool's
+`combine_cmd` exactly as configured: the runner adds no merge options of its
+own, so the options a union needs, and their spelling for the tool and its
+version, belong in configuration. `simulators.toml` sets the VCS default,
+`urg -full64 -flex_merge union -dir {inputs} -dbname {merged}`. A DUT that
+needs another mode replaces `combine_cmd` in its own `[coverage.<tool>]`, and
+`summary` names the report table its grade reads:
+
+[source,toml]
+----
+[coverage.vcs]
+combine_cmd = [
+  "urg", "-full64", "-lca", "-flex_merge", "modules",
+  "-dir", "{inputs}", "-dbname", "{merged}",
+]
+summary = "module_definition"
+----
+
+The recommended URG settings for a union of targets or frameworks:
+
+[cols="<2,<3,<5,<2",options="header"]
+|===
+|Mode |`combine_cmd` options |What the union keeps |`summary`
+
+|`union` (default)
+|`-flex_merge union`
+|Covergroups and assertions from every input. Code coverage keeps the
+hierarchy of the first design database: an instance missing from it, or whose
+shape differs, keeps none of a later input's code coverage, and URG warns.
+Use it when the inputs elaborate one design, such as one target under two
+frameworks.
+|`hierarchy`
+
+|`modules`
+|`-lca -flex_merge modules`
+|Each input's hierarchy side by side, and in the module-definition table each
+version of a module once with the hits of every input. Use it when targets
+differ in parameters or structure, so no input's hierarchy covers the others.
+|`module_definition`
+|===
+
+`code_union` and `modules` are Limited Customer Availability features and need
+`-lca`, and URG refuses the two together. On targets whose parameters differ,
+`code_union` can report fewer points than one target alone, so check a union's
+totals against each target's before relying on one. Mode names and their
+behavior follow the URG release, so confirm them in the documentation of the
+release you run. Another tool's union takes that tool's own options: set its
+`combine_cmd` from the tool's documentation. A `combine_cmd` for several
+targets takes their design databases through `{inputs}` and cannot use
+`{design_db}`.
+
+`summary` takes `hierarchy` (the default, URG's `Total Coverage Summary`) or
+`module_definition` (the `Total Module Definition Coverage Summary`), and
+`--cov-summary` overrides it for one run, including a report-only replay with
+`--stage cov_report`. Only the URG parser reads `module_definition`, and a run
+that selects it on another parser is refused before any simulator or merge
+command runs. URG prints covergroups in the hierarchy table only, so a
+`module_definition` grade takes its `group` figure from that table and scores
+the mean of its columns, as the hierarchy table does. A grade on that table
+records `graded_summary` in `cov/coverage.json`, and its `scope_fingerprint`,
+and with it the `comparison_key`, differs from a hierarchy grade of the same
+report.
 
 [[runner-coverage-grading]]
 ==== How the grade forms
@@ -2671,9 +2818,12 @@ warning and records it in the run's wave metadata.
 |Override the test/default run mode.
 
 |`--target NAME`
-|Override every selected test's build target. Omitted, each test keeps its
-own target. With `--cov`, a selection that still plans more than one target
-is refused before compile.
+|Override every selected test's build target, a `run_on` redirect included.
+Omitted, each test keeps its own target or the one its target's `run_on`
+names for the tool (<<Targets and run modes>>); a run on several targets
+merges its coverage target by target
+(<<runner-coverage-inputs>>), and is refused before compile when two of its
+targets would build into one model directory.
 
 |`--overlay PATH`
 |Apply one adopter overlay config (append-only) on top of the merged DUT
@@ -2846,6 +2996,10 @@ coverage grade alone. See <<runner-waive>>.
 graded run directory (`--run-dir` names it); the runs must share the tool and
 the commit, and no simulator runs. Exits 0, 1, or 2 by the combined run's
 coverage grade. See <<runner-cov-combine>>.
+
+|`--cov-summary {hierarchy,module_definition}`
+|Grade the URG report's hierarchy or module-definition table; overrides
+`[coverage.<tool>] summary`. See <<runner-coverage-union>>.
 |===
 
 === Pass-through and formal options
@@ -2924,6 +3078,7 @@ leaf output:
 └── cov/
     ├── coverage.json
     ├── <tool-specific-merged-database>
+    ├── targets/<target>/           # a run on several targets: each target's merge
     └── report/
         ├── summary.json
         ├── coverage-details.json
@@ -3220,7 +3375,10 @@ fingerprints, and the merge and report return codes, with
 `artifacts.report_raw` when the
 report ran without its exclusion inputs as well. A combined run's manifest
 lists the runs as its inputs (`selection_source` of `run_dirs`) and carries
-the `combine` block (<<runner-cov-combine>>).
+the `combine` block (<<runner-cov-combine>>). The manifest of a run on several
+targets carries `targets`, and that of any union `union_warnings`
+(<<runner-coverage-inputs>>). `graded_summary` names the report table the
+grade read when it is not the hierarchy (<<runner-coverage-union>>).
 
 |`cov/report/summary.json`
 |`2`

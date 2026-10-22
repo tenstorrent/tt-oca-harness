@@ -28,6 +28,13 @@ class CoverageToolTable(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "must be a list of strings"):
             validate_coverage_tool_table({"exclude_files": "x.el"}, "coverage.vcs")
 
+    def test_summary_names_a_report_table(self):
+        validate_coverage_tool_table({"summary": "module_definition"}, "coverage.vcs")
+        with self.assertRaisesRegex(
+            ConfigError, "coverage.vcs.summary must be one of: hierarchy, module_definition"
+        ):
+            validate_coverage_tool_table({"summary": "modules"}, "coverage.vcs")
+
 
 class MergeManifest(unittest.TestCase):
     def test_waivers_key_is_present_and_empty(self):

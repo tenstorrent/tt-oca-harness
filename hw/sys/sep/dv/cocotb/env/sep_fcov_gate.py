@@ -189,6 +189,62 @@ def set_efuse_sdis_hold_bound(clocks: int, log=None) -> bool:
     return _set_bound("efuse_sdis_hold_bound", clocks, "FCOV-EFUSE-SDIS-HOLD-BOUND", log)
 
 
+def set_otbn_cap_kind(kind: int, log=None) -> bool:
+    """Write ``u_sep_fcov.otbn_cap_kind`` (1 to 5, or 0 for none).
+
+    The stimulus label of ``sep_otbn_op_cg.cp_capability``: the program class
+    that the OTBN compute leaf runs (1 loop, 2 branch, 3 call and return, 4
+    ``bn.addc`` carry, 5 ``bn.addm`` reduction). The leaf sets it before the
+    command write of the program and writes 0 after the DMEM compare of that
+    program. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    if not 0 <= kind <= 5:
+        raise ValueError(f"otbn_cap_kind {kind} is not 0 to 5")
+    return _set_bound("otbn_cap_kind", kind, "FCOV-OTBN-CAP-KIND", log)
+
+
+def set_rom_flip_bits(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.rom_flip_bits`` (1 or 2, or 0 for none).
+
+    The stimulus label of ``sep_mem_aperture_cg.cp_rom_noecc``: the number of
+    flipped bits of the stored boot ROM word that the leaf reads next. The leaf
+    sets it before the load and writes 0 after it. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    if not 0 <= bits <= 2:
+        raise ValueError(f"rom_flip_bits {bits} is not 0 to 2")
+    return _set_bound("rom_flip_bits", bits, "FCOV-ROM-FLIP-BITS", log)
+
+
+def set_dbg_axprot_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.dbg_axprot_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_master_axprot_cg`` channels 5 and 6. The sampler
+    holds each AxPROT value of a debug system-bus handshake inside the window
+    of the debug master leaf, and samples them only when this value rises. The
+    leaf writes 0 at the start of a leg and 1 after its AxPROT check of
+    PR-DBG-SB passes. Same rules as ``graded_owner``: a no-op that returns False
+    on Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("dbg_axprot_pass", int(bool(passed)), "FCOV-DBG-AXPROT-PASS", log)
+
+
+def set_dma_smc_cpu_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.dma_smc_cpu_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_dma_endpoint_cg.cp_dma_smc_beat`` bins
+    ``cpu_sep_id_prot001_r`` and ``cpu_sep_id_prot001_w``. The sampler holds a
+    CPU LSU beat on PR-SMC with the LSU source ID in AxUSER and AxPROT 0b001 as
+    pending, and samples it only when this value rises. The leaf writes 0 at
+    the start of the SMC leg and 1 after ``CHK-DMA-SMC`` grades that AxUSER and
+    that AxPROT. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("dma_smc_cpu_pass", int(bool(passed)), "FCOV-DMA-SMC-CPU-PASS", log)
+
+
 def close_graded_window(log=None) -> bool:
     """Write 0 (no window open). Returns True when written."""
     gate = _gate_handle()
