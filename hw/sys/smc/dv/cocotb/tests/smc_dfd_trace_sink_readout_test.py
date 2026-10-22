@@ -5,7 +5,10 @@
 Records an all-zero baseline from the sink RAM data port before any trace runs,
 captures a trace, walks `Trdstramrplow` across the window reading `Trdstramdata`
 at each position, then runs the sink at both values of `Trdstrammode` and takes
-`Trdstramactive` from 1 to 0 with the sink still enabled.
+`Trdstramactive` from 1 to 0 with the sink still enabled. A second leg traces
+the CLA debug-bus mux in toggle mode across the whole 16 KiB of trace RAM, reads
+all eight 2 KiB segments back with read-pointer samples, and wraps the read
+pointer from the window limit to its start.
 """
 
 from __future__ import annotations
@@ -25,8 +28,8 @@ from smc_base_test import smc_base_test
 #   sink armed for the baseline: off write, 6 window writes, enable
 #     write + readback                                                        9
 #   baseline: the seek write, its readback, the data read                     3
-#   empty buffer: 7 x (write-pointer write, read-pointer write, data read),
-#     then the two pointer restores                                          23
+#   empty buffer: 7 x (write-pointer write, read-pointer write, read-pointer
+#     read, data read, read-pointer read), then the two pointer restores     37
 #   DST enable write + readback                                               2
 #   CLA arm: EAP reset write, control write, 2 for the LogicalOp discovery    4
 #   fill: 64 action writes and the wrap-flag read, one sweep at least        65
@@ -35,11 +38,19 @@ from smc_base_test import smc_base_test
 #     first set                                                              72
 #   2 sink modes x (9 to re-arm the sink, 64 action writes)                 146
 #   deactivation: the active read, the write and its readback                 3
-#   restore: DST, EAP, CLA control, funnel, sink control, DEBUG_BUS_MUX,
-#     DEBUG_CTRL                                                              7
+#   toggle set-up: CDbgMuxSelLo write + readback, sink off write, 6 window
+#     writes, sink enable write + readback, armed write-pointer read, DST
+#     write + readback, 64 action writes                                     78
+#   toggle fill: one write-pointer poll at least                              1
+#   toggle stop: DST write + readback, write-pointer read                     3
+#   toggle read-out: 8 segments x (seek write, seek readback, 512 data
+#     reads, 17 read-pointer reads), then the CDbgMuxSelLo read            4249
+#   wrap: seek write, seek readback, data read, read-pointer read             4
+#   restore: CDbgMuxSelLo, sink start, limit, write and read pointers, DST,
+#     EAP, CLA control, funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL      12
 #                                                                         ------
-#                                                                            402
-TRACE_SINK_READOUT_MIN_CSR_ACCESSES = 402
+#                                                                          4756
+TRACE_SINK_READOUT_MIN_CSR_ACCESSES = 4756
 
 
 @pyuvm.test()
@@ -51,8 +62,15 @@ class smc_dfd_trace_sink_readout_test(smc_base_test):
         "CHK-DST-SINK-DEACTIVATE",
         "CHK-DST-SINK-MODE",
         "CHK-DST-SINK-READOUT",
+        "CHK-DST-TOGGLE-EMPTY-RP",
+        "CHK-DST-TOGGLE-FILL",
+        "CHK-DST-TOGGLE-PAYLOAD",
+        "CHK-DST-TOGGLE-RP-ADVANCE",
+        "CHK-DST-TOGGLE-RP-WRAP",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 4
+    min_evidence = 11
 
     auto_protocol_vip = False
 
@@ -67,6 +85,7 @@ class smc_dfd_trace_sink_readout_test(smc_base_test):
             proxy=False,
             details=(
                 f"{seq.nonzero_words} of {seq.words_read} words non-zero against baseline "
-                f"0x{seq.baseline:08x}, modes {sorted(set(seq.modes_programmed))}"
+                f"0x{seq.baseline:08x}, modes {sorted(set(seq.modes_programmed))}; "
+                f"toggle fill {seq.toggle_polls} polls, segment words {seq.segment_words}"
             ),
         )

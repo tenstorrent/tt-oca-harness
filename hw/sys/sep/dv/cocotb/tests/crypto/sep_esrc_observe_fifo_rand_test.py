@@ -29,7 +29,22 @@ Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the order of the 16 ``LANE_SEL`` values (every write changes the
 effective lane), z per lane change (both values, z = 1 at least once), the flush
 lane, its z and the words f before the flush, the words k at the lock moment,
-and z of each lock pass.
+z of each lock pass, and the lane and bits of the sample-clock sequence leg.
+
+Sample-clock sequence leg (``hw/ip/entropy_source/doc/architecture.adoc:75``: a
+flop on the sampling clock, then a two-stage synchronizer into ``clk_i``). The
+lane divides its sample clock by 1 (``GENERATOR_<lane>_SAMPLE_CLK_CONFIG`` = 0),
+so its sampling flop takes each rising edge of ``entropy_rosc_sample_clk_i``.
+The leaf stops that clock, sets ``RAW_ENABLE`` 1 on the lane, then restarts the
+clock at ``8 x clk_i + 2 ps`` (not a multiple of the ``clk_i`` period), so the
+first sample edge after the restart is bit 0 of the first word. Every sample edge
+lies 150 ps or more from each ``clk_i`` edge. The stuck-at inject drives bit k of
+the sequence for sample edge k: the leaf writes it after edge k - 1, and the
+inject takes it at the next ``clk_i`` falling edge, before edge k. The leaf stops
+the clock after the last edge. Sequence: 5 words of seeded bits, with bit 8 of
+each word the complement of bit 7 (the named pair ``SEQ_PAIR``) and bit 159 the
+complement of bit 158, so a single lost or repeated sample among samples 0 to 158
+changes a graded bit or the word count.
 
 Checkers:
   CHK-OBS-UNGATED   failing startup: BOOT_PHASE_DONE 0 and noise LEVEL > 0; control:
@@ -38,30 +53,51 @@ Checkers:
                     equal the lane value.
   CHK-OBS-PACK      the first word after each lane change equals the lane value in all
                     32 bits.
-  CHK-OBS-FLUSH     no word from before a FLUSH or a lane change is popped after it.
+  CHK-OBS-FLUSH     no word from before a FLUSH or a lane change is popped after it;
+                    with the sample clock stopped across a FLUSH, LEVEL reads 0 right
+                    after the FLUSH (entropy_source.adoc:827: it discards the buffered
+                    words). A lane change lowers LEVEL.
   CHK-OBS-OVERFLOW  plateau D, overflow bit 1, LEVEL D after two fill times, W1C clears.
                     Control: the overflow bit reads 0 before the leg and 1 after
                     the drain, before the write-one.
   CHK-OBS-LOCK      locked at 1: L + 2 words delivered, last two noise words equal the
                     lane value; a FLUSH with old words of z and words of 1 - z buffered
-                    lowers LEVEL, and every word popped after it equals the word of
-                    1 - z (no kept word); locked at 0: LEVEL stays 0.
+                    and the sample clock stopped gives LEVEL 0, and every word popped
+                    after it equals the word of 1 - z (no kept word); locked at 0:
+                    LEVEL stays 0.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
                     both LEVELs read 0 after a hold of 256 strobes and at least 4 x
                     the measured first-word time of each FIFO (entropy_source.adoc:792,
                     :828: ``RAW_ENABLE`` enables the capture).
                     Control: both fields and both LEVELs read 0 before the hold.
+  CHK-OBS-SEQ       sample-clock sequence leg: LEVEL is 5 after the last edge, and word w
+                    equals sequence bits 32w to 32w + 31, LSB first (entropy_source.adoc:851;
+                    one sample per sample edge, architecture.adoc:75).
+                    Controls: divide 0 and external clock on the lane, LEVEL 0 and
+                    RAW_ENABLE 1 before the first edge, the lane's synchronized bit holds
+                    the preamble value.
+  CHK-SYNC-DEPTH    same leg: at each sample edge k, counted in cocotb on ``clk_i``
+                    rising edges, ``esrc_noise_bit_o[lane]`` (``u_generator.noise_bit``)
+                    equals bit k at the 2nd ``clk_i`` rising edge after the edge, and
+                    still holds the previous bit at the 1st where bit k differs from it
+                    (architecture.adoc:75).
+                    Control: every sample edge lies at least 150 ps from each ``clk_i``
+                    rising and falling edge, measured.
 Logged only: ``OBS-BLOCKED CHK-OBS-MAIN`` (no stated rule that observe capture leaves
-the main chain rate unchanged); the main-chain leg logs its counts.
+the main chain rate unchanged); the main-chain leg logs its counts. ``OBS-OBS-FAST``
+logs the lost and repeated samples of a 64-bit sequence at a sample period of
+``2 x clk_i + 2 ps`` (no stated maximum sample rate).
 """
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, Event, First, NextTimeStep, ReadOnly, RisingEdge
+from cocotb.utils import get_sim_time
 from env.sep_chk_log import SepChkLog
 from env.sep_esrc_pattern_noise import (
     NUM_LANES,
@@ -124,8 +160,35 @@ OFF_STROBES = 8 * 32
 # in the ungated trials of the same seed (test parameter).
 OFF_WORD_FACTOR = 4
 DRAW_TRIES = 16
-FIFO_DEPTH_MAX = 64  # bound of a drain loop: the RDL LEVEL field holds at most 64 words
+# Fail-safe bound of a drain loop, not a depth contract: more pops than this fail the
+# leaf. The RDL LEVEL field is 7 bits (6:0).
+FIFO_DEPTH_MAX = 64
 ALL_ONES = 0xFFFF_FFFF
+
+# Sample-clock sequence leg (test parameters).
+SCLK = "entropy_rosc_sample_clk_i"
+SEQ_WORDS = 5
+SEQ_BITS = 32 * SEQ_WORDS
+# Word bit positions that always differ in every sequence word.
+SEQ_PAIR = (7, 8)
+FAST_BITS = 64
+SEQ_PERIOD_CLK = 8
+FAST_PERIOD_CLK = 2
+# Each sample period is the clk_i multiple plus this drift, so the sample edges
+# walk across the clk_i period by this step.
+SAMPLE_DRIFT_PS = 2
+# Offset of the first sample edge after a clk_i rising edge; the drift keeps every
+# graded edge in [SAMPLE_GUARD_PS, T/2 - SAMPLE_GUARD_PS].
+SAMPLE_GUARD_PS = 150
+# clk_i cycles from the alignment edge to the first sample edge, past the period.
+SAMPLE_LEAD_CLK = 4
+# Hold of a stopped sample clock; a later restart ends it.
+SCLK_STOP_PS = 10**12
+# The preamble runs the sample clock at the window period for this many sample
+# periods, plus PREAMBLE_CLK clk_i cycles.
+PREAMBLE_PERIODS = 3
+PREAMBLE_CLK = 8
+DRAIN_CLK = 16
 
 LAT_FACTOR = LATENCY_FACTOR
 # Outer cap of the first observe wait of a kind, in clk_i per observe word: 32
@@ -176,13 +239,59 @@ class Plan:
     k: int
     z_lock: tuple[int, ...]
     balanced: tuple[Balanced, ...]
+    seq_lane: int
+    seq: tuple[int, ...]
+    fast: tuple[int, ...]
 
     def describe(self) -> str:
         return (
             f"order={list(self.order)} z_lane={list(self.z_lane)} flush_lane={self.flush_lane} "
             f"flush_z={self.flush_z} f={self.f} k={self.k} z_lock={list(self.z_lock)} "
-            f"{describe(self.balanced)}"
+            f"{describe(self.balanced)} seq_lane={self.seq_lane} "
+            f"seq={[f'0x{w:08x}' for w in _words(self.seq)]} "
+            f"fast={[f'0x{w:08x}' for w in _words(self.fast)]}"
         )
+
+
+def _words(bits) -> list[int]:
+    """Full 32-bit words of ``bits``, LSB first."""
+    return [
+        sum(b << j for j, b in enumerate(bits[32 * w : 32 * w + 32]))
+        for w in range(len(bits) // 32)
+    ]
+
+
+def _draw_seq(rng: SepSeededRng, words: int) -> tuple[int, ...]:
+    """Seeded bits; bit SEQ_PAIR[1] of each word is the complement of bit SEQ_PAIR[0],
+    and the last bit is the complement of the bit before it."""
+    bits: list[int] = []
+    for _ in range(words):
+        word = [rng.getrandbits(1) for _ in range(32)]
+        word[SEQ_PAIR[1]] = 1 - word[SEQ_PAIR[0]]
+        bits += word
+    bits[-1] = 1 - bits[-2]
+    return tuple(bits)
+
+
+def _indel_align(got: list[int], want: tuple[int, ...]) -> tuple[int, int]:
+    """(lost, repeated) of the fewest deletions and insertions that align ``got`` with a
+    prefix of ``want``."""
+    inf = (len(got) + len(want) + 1, 0, 0)
+    prev = [(j, j, 0) for j in range(len(want) + 1)]
+    for i in range(1, len(got) + 1):
+        cur = [inf] * (len(want) + 1)
+        cur[0] = (i, 0, i)
+        for j in range(1, len(want) + 1):
+            c, lo, rp = prev[j]
+            best = (c + 1, lo, rp + 1)
+            c, lo, rp = cur[j - 1]
+            best = min(best, (c + 1, lo + 1, rp))
+            if got[i - 1] == want[j - 1]:
+                best = min(best, prev[j - 1])
+            cur[j] = best
+        prev = cur
+    _, lost, rep = min(prev)
+    return lost, rep
 
 
 def _lane_order(rng: SepSeededRng) -> list[int]:
@@ -221,7 +330,23 @@ def draw_plan(seed: int) -> Plan:
     k = rng.randrange(1, 5)
     z_lock = tuple(rng.getrandbits(1) for _ in range(4))
     balanced = tuple(balanced_lanes(rng))
-    return Plan(seed, tuple(order), tuple(z_lane), flush_lane, flush_z, f, k, z_lock, balanced)
+    seq_lane = rng.randrange(NUM_LANES)
+    seq = _draw_seq(rng, SEQ_WORDS)
+    fast = tuple(rng.getrandbits(1) for _ in range(FAST_BITS))
+    return Plan(
+        seed,
+        tuple(order),
+        tuple(z_lane),
+        flush_lane,
+        flush_z,
+        f,
+        k,
+        z_lock,
+        balanced,
+        seq_lane,
+        seq,
+        fast,
+    )
 
 
 class _EsrcRegs(SepAxiRegDriver):
@@ -242,6 +367,8 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         "CHK-OBS-OVERFLOW",
         "CHK-OBS-LOCK",
         "CHK-OBS-OFF",
+        "CHK-OBS-SEQ",
+        "CHK-SYNC-DEPTH",
     )
 
     async def run_scenario(self) -> None:
@@ -273,6 +400,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         for i, fifo in enumerate(("noise", "biw")):
             t_cap = await self._lock1(fifo, plan.z_lock[2 * i])
             await self._lock0(fifo, plan.z_lock[2 * i + 1], t_cap)
+        await self._seq_leg()
         close_graded_window(self.logger)
         self._release_stuck()
         await self.noise.stop()
@@ -321,7 +449,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         return await self._rd(FIFOS[fifo][2])
 
     async def _pop_to_empty(self, fifo: str) -> int:
-        """Pop until LEVEL reads 0 with capture off; more than the FIFO depth fails the leaf."""
+        """Pop until LEVEL reads 0 with capture off; more than FIFO_DEPTH_MAX pops fail the leaf."""
         pops = 0
         while True:
             level = await self._level(fifo)
@@ -332,6 +460,14 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                 pops += 1
             if pops > FIFO_DEPTH_MAX:
                 raise AssertionError(f"{fifo} observe FIFO not empty after {pops} pops")
+
+    async def _stop_samples(self) -> None:
+        """Stop the sample clock and let the last sample reach the observe FIFO."""
+        self.restart_clock(SCLK, self.cfg.entropy_clk_period_ns, SCLK_STOP_PS)
+        await ClockCycles(cocotb.top.clk_i, DRAIN_CLK)
+
+    def _start_samples(self) -> None:
+        self.restart_clock(SCLK, self.cfg.entropy_clk_period_ns)
 
     def _release_stuck(self) -> None:
         dut = cocotb.top
@@ -524,9 +660,11 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         self._drive(a, 1 - z)
         lc = await self._level("noise")
         ok_n, _, _ = await self._poll_level("noise", lambda x: x >= lc + FLUSH_NEW_WORDS, bound)
+        await self._stop_samples()
         before = await self._level("noise")
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, a, flush=1))
         after = await self._level("noise")
+        self._start_samples()
         ok_m, m, _ = await self._poll_level("noise", lambda x: x >= FLUSH_NEW_WORDS, bound)
         words = [await self._pop("noise") for _ in range(m)] if ok_m else []
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, a))
@@ -548,7 +686,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             fields["reason"] = f"timeout:level bound={bound}"
         self.chk.ok(
             "OBS-FLUSH",
-            ok_f and ok_n and ok_m and after < before and olds == 0 and others == 0 and words,
+            ok_f and ok_n and ok_m and after == 0 and olds == 0 and others == 0 and words,
             **fields,
         )
 
@@ -760,7 +898,9 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             # FLUSH under the lock (entropy_source.adoc:827: it discards the buffered
             # words). LOCK_FLUSH_WORDS words of z are buffered, then the lane changes to
             # 1 - z and FLUSH_NEW_WORDS more words are captured, so the FIFO holds old
-            # words of z and words of the new value at the FLUSH. Every word popped after
+            # words of z and words of the new value at the FLUSH. The sample clock is
+            # stopped across the FLUSH, so no word completes between the FLUSH and the
+            # LEVEL read, and LEVEL reads 0 after it. Every word popped after
             # the FLUSH completed after it, so it holds new samples only (the lane leg
             # grades the same: words 2 on of a change hold the new value); a word of z or
             # a mixed word popped after the FLUSH is a word the FLUSH kept.
@@ -769,16 +909,18 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             lc = await self._level(fifo)
             okc, _, _ = await self._poll_level(fifo, lambda x: x >= lc + FLUSH_NEW_WORDS, pop_bound)
             okf = okz and okc
+            await self._stop_samples()
             before = await self._level(fifo)
             await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0, flush=1))
             flush_after = await self._level(fifo)
+            self._start_samples()
             okn, m, _ = await self._poll_level(fifo, lambda x: x >= FLUSH_NEW_WORDS, pop_bound)
             post = [await self._pop(fifo) for _ in range(m)] if okn else []
             new, old = _word(1 - z), _word(z)
             olds = sum(1 for w in post if w == old)
             not_new = sum(1 for w in post if w != new)
             flush_ok = (
-                okf and okn and flush_after < before and bool(post) and olds == 0 and not_new == 0
+                okf and okn and flush_after == 0 and bool(post) and olds == 0 and not_new == 0
             )
             flush_fields = {
                 "noise_flush_level_before": before,
@@ -848,4 +990,268 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             level=level,
             capture_clk=t_cap if t_cap is not None else "none",
             wait_clk=wait,
+        )
+
+    # --- sample-clock sequence leg ---------------------------------------------------------
+    def _clk_ps(self) -> int:
+        t = round(self.cfg.sys_clk_period_ns * 1000)
+        if t % 2:
+            raise ValueError(f"clk_i period {t} ps is odd: no whole-ps falling edge")
+        return t
+
+    async def _seq_leg(self) -> None:
+        """CHK-OBS-SEQ and CHK-SYNC-DEPTH at a sample period of 8 x clk_i + 2 ps, then
+        OBS-OBS-FAST at 2 x clk_i + 2 ps."""
+        plan = self.plan
+        lane = plan.seq_lane
+        t = self._clk_ps()
+        last = SAMPLE_GUARD_PS + SAMPLE_DRIFT_PS * (SEQ_BITS - 1)
+        if last > t // 2 - SAMPLE_GUARD_PS:
+            raise ValueError(f"sample edge offset {last} ps leaves the guard of a {t} ps clk_i")
+        await self._setup(clean=False)
+        reg = f"GENERATOR_{lane}_SAMPLE_CLK_CONFIG"
+        addr = sym(f"ENTROPY_SOURCE_{reg}_REG_ADDR")
+        # entropy_source.adoc GENERATOR_<n>_SAMPLE_CLK_CONFIG: the divide of a lane
+        # changes only while its generator is disabled.
+        await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE", ENABLE=0))
+        await self._wr(addr, _val(reg, SAMPLE_CLK_DIVIDE=0))
+        await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE"))
+        div = _get(await self._rd(addr), reg, "SAMPLE_CLK_DIVIDE")
+        sel = _get(await self._rd(ESRC_RING_OSC_CTRL), "RING_OSC_CTRL", "SAMPLE_CLK_SELECT")
+        self.chk.ctrl(
+            "OBS-SEQ",
+            div == 0 and not (sel >> lane) & 1,
+            lane=lane,
+            sample_clk_divide=div,
+            sample_clk_select=f"0x{sel:03x}",
+        )
+        open_graded_window(TEST, self.logger)
+        slow = await self._seq_window(lane, plan.seq, SEQ_PERIOD_CLK, depth=True)
+        self._grade_seq(lane, plan.seq, slow)
+        fast = await self._seq_window(lane, plan.fast, FAST_PERIOD_CLK, depth=False)
+        close_graded_window(self.logger)
+        self.restart_clock(SCLK, self.cfg.entropy_clk_period_ns)
+        self._release_stuck()
+        got = [(w >> j) & 1 for w in fast["words"] for j in range(32)]
+        lost, rep = _indel_align(got, plan.fast)
+        self.chk.obs(
+            "OBS-FAST",
+            lane=lane,
+            period_ps=fast["period_ps"],
+            edges=fast["edges"],
+            expect_edges=len(plan.fast),
+            level=fast["level"],
+            bits_captured=len(got),
+            lost=lost,
+            repeated=rep,
+            words=[f"0x{w:08x}" for w in fast["words"]],
+            expect=[f"0x{w:08x}" for w in _words(plan.fast)],
+            **fast["pre"],
+        )
+
+    async def _seq_window(self, lane: int, bits, period_clk: int, *, depth: bool) -> dict:
+        """Drive ``bits`` on ``lane``, one bit per sample edge, from a stopped sample clock;
+        returns the edges driven, the edge times, the depth samples and the popped words."""
+        dut = cocotb.top
+        t = self._clk_ps()
+        period = period_clk * t + SAMPLE_DRIFT_PS
+        period_ns = period / 1000
+        n = len(bits)
+        window = "sync" if depth else "fast"
+        # Preamble: the lane carries the complement of bit 0 on the running clock, so
+        # sample edge 0 changes the synchronized bit.
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, lane))
+        await self._pop_to_empty("noise")
+        dut.esrc_noise_stuck_val_i.value = (1 - bits[0]) << lane
+        dut.esrc_noise_stuck_en_i.value = 1 << lane
+        self.restart_clock(SCLK, period_ns)
+        await ClockCycles(dut.clk_i, PREAMBLE_PERIODS * (period_clk + 1) + PREAMBLE_CLK)
+        self.restart_clock(SCLK, period_ns, SCLK_STOP_PS)
+        await ClockCycles(dut.clk_i, DRAIN_CLK)
+        pre_bit = (self.rd(dut.esrc_noise_bit_o, mask=1 << lane) >> lane) & 1
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, lane))
+        raw = await self._read_raw("noise")
+        level0 = await self._level("noise")
+        pre = {
+            "raw_enable": raw,
+            "level_before": level0,
+            "preamble_bit": pre_bit,
+            "expect_preamble_bit": 1 - bits[0],
+        }
+        if depth:
+            self.chk.ctrl(
+                "OBS-SEQ",
+                raw == 1 and level0 == 0 and pre_bit == 1 - bits[0],
+                window=window,
+                lane=lane,
+                period_ps=period,
+                **pre,
+            )
+        dut.esrc_noise_stuck_val_i.value = bits[0] << lane
+        times: list[int] = []
+        clk_times: list[int] = []
+        samples: list[tuple[int, int, int]] = []
+        done = Event()
+        watched = Event()
+
+        async def drive() -> None:
+            for k in range(n):
+                await RisingEdge(dut.entropy_rosc_sample_clk_i)
+                times.append(get_sim_time("ps"))
+                if k + 1 < n:
+                    dut.esrc_noise_stuck_val_i.value = bits[k + 1] << lane
+            self.restart_clock(SCLK, period_ns, SCLK_STOP_PS)
+            done.set()
+
+        async def watch(bound: int) -> None:
+            # Sample edge k is seen as a 0 -> 1 change of the pin between two clk_i
+            # rising edges; the bit is read at the 1st and the 2nd of them.
+            prev = self.rd(dut.entropy_rosc_sample_clk_i)
+            open_k: int | None = None
+            first = 0
+            k = 0
+            for _ in range(bound):
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                clk_times.append(get_sim_time("ps"))
+                lvl = self.rd(dut.entropy_rosc_sample_clk_i)
+                bit = (self.rd(dut.esrc_noise_bit_o, mask=1 << lane) >> lane) & 1
+                if open_k is not None:
+                    samples.append((open_k, first, bit))
+                    open_k = None
+                if prev == 0 and lvl == 1:
+                    open_k, first = k, bit
+                    k += 1
+                prev = lvl
+                if k >= n and open_k is None:
+                    break
+            await NextTimeStep()
+            watched.set()
+
+        await RisingEdge(dut.clk_i)
+        t_ref = get_sim_time("ps")
+        high = self.rd(dut.entropy_rosc_sample_clk_i)
+        # A clock restarts high: from a high pin its first rising edge is one period later.
+        lead = (period_clk + SAMPLE_LEAD_CLK) * t + SAMPLE_GUARD_PS
+        phase = lead - period if high else lead
+        bound = (n + 2) * (period_clk + 1) + period_clk + 2 * SAMPLE_LEAD_CLK
+        watcher = cocotb.start_soon(watch(bound)) if depth else None
+        self.restart_clock(SCLK, period_ns, phase)
+        driver = cocotb.start_soon(drive())
+        await First(done.wait(), ClockCycles(dut.clk_i, bound))
+        if not done.is_set():
+            driver.cancel()
+            self.restart_clock(SCLK, period_ns, SCLK_STOP_PS)
+        if watcher is not None:
+            await First(watched.wait(), ClockCycles(dut.clk_i, bound))
+        await ClockCycles(dut.clk_i, DRAIN_CLK)
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, lane))
+        level = await self._level("noise")
+        words = [await self._pop("noise") for _ in range(min(level, FIFO_DEPTH_MAX))]
+        self.logger.info(
+            "SEQ-WINDOW window=%s lane=%d period_ps=%d t_ref=%d phase_ps=%d edges=%d level=%d",
+            window,
+            lane,
+            period,
+            t_ref,
+            phase,
+            len(times),
+            level,
+        )
+        return {
+            "period_ps": period,
+            "edges": len(times),
+            "times": times,
+            "clk_times": clk_times,
+            "samples": samples,
+            "level": level,
+            "words": words,
+            "pre": pre,
+        }
+
+    def _edge_distance(self, times: list[int], clk_times: list[int]) -> int | None:
+        """Smallest distance (ps) of a sample edge from a clk_i rising or falling edge."""
+        t = self._clk_ps()
+        best: int | None = None
+        for ts in times:
+            i = bisect_right(clk_times, ts) - 1
+            if i < 0:
+                return None
+            ph = ts - clk_times[i]
+            d = min(ph, abs(ph - t // 2), t - ph)
+            best = d if best is None else min(best, d)
+        return best
+
+    def _grade_seq(self, lane: int, bits, res: dict) -> None:
+        n = len(bits)
+        timeout = res["edges"] != n
+        expect = _words(bits)
+        words = res["words"]
+        bad = [
+            w
+            for w in range(max(len(words), len(expect)))
+            if w >= len(words) or w >= len(expect) or words[w] != expect[w]
+        ]
+        fields = {
+            "lane": lane,
+            "period_ps": res["period_ps"],
+            "edges": res["edges"],
+            "level": res["level"],
+            "expect_level": SEQ_WORDS,
+            "pair": list(SEQ_PAIR),
+            "bad_words": bad,
+            "words": [f"0x{w:08x}" for w in words],
+            "expect": [f"0x{w:08x}" for w in expect],
+        }
+        if timeout:
+            fields["reason"] = f"timeout:sample_edges driven={res['edges']}"
+        self.chk.ok(
+            "OBS-SEQ",
+            not timeout and res["level"] == SEQ_WORDS and not bad,
+            **fields,
+        )
+        dist = self._edge_distance(res["times"], res["clk_times"])
+        self.chk.ctrl(
+            "SYNC-DEPTH",
+            dist is not None and dist >= SAMPLE_GUARD_PS and not timeout,
+            lane=lane,
+            edges=res["edges"],
+            min_edge_distance_ps=dist if dist is not None else "none",
+            guard_ps=SAMPLE_GUARD_PS,
+            drift_ps=SAMPLE_DRIFT_PS,
+        )
+        early = []
+        late = []
+        transitions = 0
+        for k, first, second in res["samples"]:
+            prev = bits[k - 1] if k else 1 - bits[0]
+            if bits[k] != prev:
+                transitions += 1
+                if first != prev:
+                    early.append(k)
+            if second != bits[k]:
+                late.append(k)
+        expect_tr = sum(1 for k in range(n) if bits[k] != (bits[k - 1] if k else 1 - bits[0]))
+        fields = {
+            "lane": lane,
+            "sample_edges": len(res["samples"]),
+            "expect_edges": n,
+            "transitions": transitions,
+            "expect_transitions": expect_tr,
+            "changed_at_edge1": len(early),
+            "wrong_at_edge2": len(late),
+            "first_early": early[0] if early else "none",
+            "first_late": late[0] if late else "none",
+        }
+        if timeout:
+            fields["reason"] = f"timeout:sample_edges driven={res['edges']}"
+        self.chk.ok(
+            "SYNC-DEPTH",
+            not timeout
+            and len(res["samples"]) == n
+            and transitions == expect_tr
+            and transitions > 0
+            and not early
+            and not late,
+            **fields,
         )

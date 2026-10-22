@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ..coverage_model import CoverageDetails
 from .imc import parse_imc_details
@@ -24,8 +25,9 @@ def parse_coverage_details(
     merged: Path,
     log_path: Path | None = None,
     raw_report_dir: Path | None = None,
+    summary: str = "hierarchy",
 ) -> CoverageDetails:
-    common = {
+    common: dict[str, Any] = {
         "dut": dut,
         "tool": tool,
         "target": target,
@@ -38,6 +40,7 @@ def parse_coverage_details(
             report_dir=report_dir,
             log_path=log_path,
             raw_report_dir=raw_report_dir,
+            summary=summary,
             **common,
         )
     if parser == "imc":

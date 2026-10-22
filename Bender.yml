@@ -168,7 +168,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "0ca386b3ea47669d5dd9314b8366300e3ff53746" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "88272276295f3156eea26fa70b91894029151dd5" }
     include_from_upstream:
       - "src"
       - "include"
@@ -1290,6 +1290,7 @@ sources:
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetRegVec_w4_i0.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetSynchronizerShiftReg_w1_d3_i0.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetSynchronizerShiftReg_w1_d3_i0_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetSynchronizerShiftReg_w1_d3_i1.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncValidSync.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Atomics.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_BTB.sv
@@ -1417,6 +1418,7 @@ sources:
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleE_a56d64s6k2z4c.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue3_BundleMap.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue4_BundleMap.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue4_ProbeInfo.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue8_AXI4BundleR.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue8_TLBroadcastData.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue9_BundleMap.sv
@@ -1464,6 +1466,7 @@ sources:
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDebugModuleInner.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDebugModuleInnerAsync.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDebugModuleOuter.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDenyDuringReset.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLError.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLError_1.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFIFOFixer.sv
@@ -1479,6 +1482,7 @@ sources:
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_clint.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_debug.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_plic.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_rockettile.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_fbus_from_debug_sb.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_fbus_from_port_named_slave_port_axi4.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_mbus_to_rom.sv
@@ -1486,8 +1490,10 @@ sources:
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_1.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_2.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_3.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_sbus_from_rockettile.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_sbus_to_port_named_mmio_port_axi4.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLPLIC.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLProbeAckDuringReset.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLRAM.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLToAXI4.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLWDT.sv
@@ -1526,6 +1532,7 @@ sources:
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x85.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x86.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_3x15.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_4x66.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_4x8.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_8x72.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_8x85.sv
@@ -1548,6 +1555,7 @@ sources:
       - hw/sys/smc/rtl/smc_cpu/smc_cpu_ctrl_wrap.sv
       - hw/sys/smc/rtl/smc_cpu/smc_cpu_wrapper.sv
       - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0.sv
+      - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i1.sv
       - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0.sv
       - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_NonSyncResetSynchronizerPrimitiveShiftReg_d3.sv
       - hw/sys/smc/rtl/smc_data_accelerator_wrap/rtl/smc_data_accelerator_wrap.sv

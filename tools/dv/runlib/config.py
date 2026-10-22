@@ -13,6 +13,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import Any
 
+from .coverage import COVERAGE_SUMMARIES
 from .models import ConfigError, Dut, Flow, TestCatalog, TestEntry
 from .paths import configs_root, repo_path, repo_rel
 
@@ -493,6 +494,8 @@ TARGET_KEYS = {
 }
 
 TARGET_TOOL_KEYS = {"flags"}
+# `[target_defaults]` and adopter overlays refuse `run_on`.
+TARGET_RUN_TOOL_KEYS = TARGET_TOOL_KEYS | {"run_on"}
 RUN_MODE_KEYS = {"description", "timeout_sec", "args", "plusargs"}
 TESTLIST_KEYS = {"schema_version", "includes", "tests", "groups"}
 TEST_KEYS = {
@@ -533,6 +536,7 @@ COVERAGE_TOOL_KEYS = {
     "policy_file",
     "report_cmd",
     "sim_args",
+    "summary",
     "test_args",
 }
 COVERAGE_LIST_KEYS = {
@@ -922,6 +926,12 @@ def validate_formal_apps(formal: Any, where: str) -> None:
                 validate_formal_evidence_hook(tool_cfg["evidence"], f"{table_where}.evidence")
 
 
+def validate_coverage_summary(value: Any, where: str) -> str:
+    if value not in COVERAGE_SUMMARIES:
+        raise ConfigError(f"{where} must be one of: {', '.join(COVERAGE_SUMMARIES)}")
+    return str(value)
+
+
 def validate_coverage_tool_table(
     table: dict[str, Any],
     where: str,
@@ -950,6 +960,8 @@ def validate_coverage_tool_table(
             raise ConfigError(f"{where}.{key} must be a non-empty string")
     if "parser" in table and table.get("parser") not in COVERAGE_PARSERS:
         raise ConfigError(f"{where}.parser must be one of: {', '.join(sorted(COVERAGE_PARSERS))}")
+    if "summary" in table:
+        validate_coverage_summary(table["summary"], f"{where}.summary")
     if "fail_under" in table:
         try:
             threshold = float(table["fail_under"])
@@ -1117,7 +1129,7 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
                             )
                         validate_allowed_keys(
                             tool_cfg,
-                            TARGET_TOOL_KEYS,
+                            TARGET_RUN_TOOL_KEYS if section_name == "targets" else TARGET_TOOL_KEYS,
                             f"{flow.path} [{section_name}.{name}.tools.{tool}]",
                         )
 
@@ -1977,6 +1989,43 @@ def target_names(sim_cfg: dict[str, Any]) -> set[str]:
 
 def resolved_target_name(sim_cfg: dict[str, Any], test: TestEntry | None) -> str:
     return test.target if test and test.target else default_target_name(sim_cfg)
+
+
+def _run_on(sim_cfg: dict[str, Any], target: str, tool: str) -> Any:
+    targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
+    target_cfg = targets.get(target) if isinstance(targets, dict) else None
+    tools = target_cfg.get("tools") if isinstance(target_cfg, dict) else None
+    tool_cfg = tools.get(tool) if isinstance(tools, dict) else None
+    return tool_cfg.get("run_on") if isinstance(tool_cfg, dict) else None
+
+
+def target_run_on(sim_cfg: dict[str, Any], target: str, tool: str) -> str:
+    """The target ``target``'s tests run on under ``tool``: the one its `run_on` names, else
+    itself. The named target must be defined and must not redirect again on ``tool``."""
+    run_on = _run_on(sim_cfg, target, tool)
+    if run_on is None:
+        return target
+    where = f"targets.{target}.tools.{tool}.run_on"
+    if not isinstance(run_on, str) or not run_on.strip():
+        raise ConfigError(f"{where} must be a target name")
+    if run_on == target:
+        raise ConfigError(f"{where} names its own target")
+    if run_on not in target_names(sim_cfg):
+        raise ConfigError(f"{where} names `{run_on}`, which is not defined in [targets]")
+    if _run_on(sim_cfg, run_on, tool) is not None:
+        raise ConfigError(
+            f"{where} names `{run_on}`, which redirects its own tests on {tool}; name the "
+            "target the tests run on"
+        )
+    return run_on
+
+
+def validate_target_redirects(sim_cfg: dict[str, Any], tools: list[str]) -> None:
+    """Resolve every target's `run_on` on each of ``tools``, so a bad one is refused before a
+    run on that tool selects a test it redirects."""
+    for target in sorted(target_names(sim_cfg)):
+        for tool in tools:
+            target_run_on(sim_cfg, target, tool)
 
 
 def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[str, Any]:

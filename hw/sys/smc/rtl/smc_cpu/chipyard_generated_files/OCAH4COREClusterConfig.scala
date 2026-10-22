@@ -5,6 +5,8 @@ class OCAH4CORECluster extends Config(
 
   // following must come after adding cores
   new freechips.rocketchip.subsystem.WithSeperateClockReset ++        // seperates tile clock and reset from the sbus interconnect
+  new freechips.rocketchip.subsystem.WithProbeAckDuringTileReset ++   // ack probes for cores held in reset so the broadcast hub does not hang
+  new freechips.rocketchip.subsystem.WithDenyDuringTileReset ++       // deny accesses to tiles held in reset instead of hanging
 
   new chipyard.config.WithL2TLBs(0) ++                                // remove TLBs
   new chipyard.config.WithNPerfCounters(4) ++                         // add 4 perf counters per core

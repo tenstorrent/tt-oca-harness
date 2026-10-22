@@ -145,15 +145,15 @@ def _cover_property_observations(paths: list[Path], tool: str) -> list[CoverageO
     return observations
 
 
-def _summary_metrics(paths: list[Path]) -> list[MetricRecord]:
+def _summary_metrics(paths: list[Path], summary: str = "hierarchy") -> list[MetricRecord]:
     values: dict[str, tuple[str, float]] = {}
-    # Prefer the dashboard's `Total Coverage Summary`: it is the only URG
+    # Prefer the dashboard's summary table (`summary` names which): it is the only URG
     # table guaranteed to hold pure percentages, whereas the loose scan below
     # can mistake covered/total counts in other report files for percentages.
     for path in paths:
         if path.name.lower() != "dashboard.txt":
             continue
-        for native, value in parse_urg_summary_table(_text(path)).items():
+        for native, value in parse_urg_summary_table(_text(path), summary).items():
             family = URG_METRIC_MAP.get(native)
             if family:
                 values.setdefault(family, (native, value))
@@ -306,7 +306,9 @@ def _report_files(report_dir: Path) -> list[Path]:
     return sorted(set(paths))
 
 
-def _apply_raw_report(metrics: list[MetricRecord], raw_report_dir: Path | None) -> list[str]:
+def _apply_raw_report(
+    metrics: list[MetricRecord], raw_report_dir: Path | None, summary: str = "hierarchy"
+) -> list[str]:
     """Take each family's raw percentage from the report URG wrote without exclusions.
 
     URG applies an exclusion file while it reports, so one report carries either the raw or
@@ -319,7 +321,7 @@ def _apply_raw_report(metrics: list[MetricRecord], raw_report_dir: Path | None) 
     if not raw_paths:
         return [f"raw URG report files were not found under {raw_report_dir}"]
     raw_values = {
-        record.metric_family: record.raw_percent for record in _summary_metrics(raw_paths)
+        record.metric_family: record.raw_percent for record in _summary_metrics(raw_paths, summary)
     }
     for record in metrics:
         if record.metric_family in raw_values:
@@ -336,6 +338,7 @@ def parse_urg_details(
     report_dir: Path,
     log_path: Path | None,
     raw_report_dir: Path | None = None,
+    summary: str = "hierarchy",
 ) -> CoverageDetails:
     report_paths: list[Path] = []
     detail_paths: list[Path] = []
@@ -364,8 +367,8 @@ def parse_urg_details(
         warnings.append("URG report files were not found")
     elif not details_available:
         warnings.append("URG scalar summary found, but detailed hole files are unavailable")
-    metrics = _summary_metrics(report_paths)
-    warnings.extend(_apply_raw_report(metrics, raw_report_dir))
+    metrics = _summary_metrics(report_paths, summary)
+    warnings.extend(_apply_raw_report(metrics, raw_report_dir, summary))
     details = CoverageDetails(
         dut=dut,
         tool=tool,
@@ -380,6 +383,10 @@ def parse_urg_details(
     scope_payload = "\n".join(
         f"{path}:{hashlib.sha256(path.read_bytes()).hexdigest()}" for path in detail_paths
     )
+    # A grade of another table hashes the table's name into its scope, so it never shares a
+    # comparison key with the hierarchy grade of the same report.
+    if summary != "hierarchy":
+        scope_payload += f"\nsummary:{summary}"
     details.scope_fingerprint = hashlib.sha256(scope_payload.encode()).hexdigest()
     details.finalize()
     return details
