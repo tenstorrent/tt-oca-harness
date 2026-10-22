@@ -126,7 +126,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 [cols=",",options="header"]
 |===
 |DUT Interface |`tb_top` Handling
-|CPU-LSU AXI |Flattens to `s_axi_*`. On the `lsu_stub_*` targets the no_cpu `sep_cpu` stub drives `lsu_axi_req` from these ports (`assign`, single driver). On the full-CPU VCS `--target default` build, which produces the graded cocotb coverage logs, a no_cpu leaf holds the core off and `tb_top` forces `u_sep_cpu.lsu_axi_req` from the same ports and holds `u_sep_cpu.lsu_axi_resp_raw` at zero; VIP addresses bypass `u_lsu_local_alias_remap`. Response XMR-read back into the flat bus on both builds.
+|CPU-LSU AXI |Flattens to `s_axi_*`. On the `lsu_stub_*` targets the no_cpu `sep_cpu` stub drives `lsu_axi_req` from these ports (`assign`, single driver). On the full-CPU `default` build, which runs the no_cpu tests on VCS and produces the graded cocotb coverage logs, a no_cpu leaf holds the core off and `tb_top` forces `u_sep_cpu.lsu_axi_req` from the same ports and holds `u_sep_cpu.lsu_axi_resp_raw` at zero; VIP addresses bypass `u_lsu_local_alias_remap`. Response XMR-read back into the flat bus on both builds.
 |SMN-inbound AXI |Flattens the real inbound port to `m_axi_*` for a second master agent. Traverses `u_inbound_filter`.
 |SEP->SMC AXI |`rom_boot` target: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Every other target answers the port through the BH-SMC responder `u_smc_route_mem` (`tb/sep_smc_route_mem.sv`), which is idle unless BH-SMC is enabled; the decode check is not compiled there.
 |BH-SMC: SMC aperture inputs and SMC responder |Added hook (top-port drive) on every target without `SEP_SMC_MEM_MODEL`. `tb_top` drives `smc_global_base_addr_i` and `smc_region_size_i` from `bh_smc_base_i` and `bh_smc_size_i` when the leaf sets `bh_smc_en_i` to 1 before it releases reset (`env/sep_bh_smc.py`), or else from `+sep_smc_aperture_base=<hex>` and `+sep_smc_aperture_size=<hex>`; with neither, both inputs are 0. While the hook is on, `u_smc_route_mem` answers `sep_ext_to_smc_axi_resp_i`: OKAY with the request ID, one burst per channel in flight, written bytes stored and returned, and `{~a, a}` (`a` the low 32 bits of the 8-byte-aligned address) for a word no write touched. Owners: `sep_fabric_smc_route_test` (leaf drive), `sep_fabric_dma_endpoint_matrix_test` (plusargs).
@@ -710,8 +710,9 @@ Exceptions (a closed set):
 
 * *CPU-LSU splice* — primary no_cpu stimulus (stub assign, not a `force`) on
   the `lsu_stub_*` targets.
-* *CPU-LSU force-splice* — primary no_cpu stimulus on the full-CPU VCS
-  `--target default` build (`tb_top` no_cpu force-splice block). Without
+* *CPU-LSU force-splice* — primary no_cpu stimulus on the full-CPU `default`
+  build, which runs the no_cpu tests on VCS (`tb_top` no_cpu force-splice
+  block). Without
   `+cpu_boot` it forces `u_sep_cpu.lsu_axi_req` from the flat `s_axi_*` ports
   and holds `u_sep_cpu.lsu_axi_resp_raw` at zero, so the halted core sees no
   beats it did not issue. The VIP request enters after
@@ -1103,9 +1104,9 @@ The CPU is held off (`mpc_reset_run_req=0`). Two masters can drive the DUT:
 * *LSU splice (`s_axi_*`).* The `lsu_stub_all_live` target swaps in
   `shims/cpu/sep_cpu_stub.sv`. The stub is the sole driver of `lsu_axi_req`
   and drives it from the `tb_top` net `lsu_req_drive` with a plain `assign`,
-  not a `force`. This path has no inbound filter. On a full-CPU VCS
-  `--target default` elaboration, a no_cpu test force-splices the same
-  post-remap node (see the exceptions under <<sep-hdl-top>>).
+  not a `force`. This path has no inbound filter. On the full-CPU `default`
+  elaboration, where VCS runs every no_cpu test, a no_cpu test force-splices
+  the same post-remap node (see the exceptions under <<sep-hdl-top>>).
   The LSU demux of the stub runs on the SEP CPU reset `sep_cpu_reset_n`, so
   no frontdoor access of a no_cpu leaf spans a release of that reset. A leaf
   that lets sense complete during the leaf waits, bounded, for
