@@ -1236,28 +1236,28 @@ NumSramDemuxPorts
   );
 
   assign sep_ras_o = '{
-    lc_sigint_err:      lc_sigint_err,
-    lockstep_err:       lockstep_status_o.corruption_detected,
-    wdt_bark:           intr_wdog_timer_bark,
-    wdt_bite:           wdt_bite_sync,
-    iccm_ecc_ce:        cpu_iccm_ecc_single_error,
-    iccm_ecc_ue:        cpu_iccm_ecc_double_error,
-    dccm_ecc_ce:        cpu_dccm_ecc_single_error,
-    dccm_ecc_ue:        cpu_dccm_ecc_double_error,
-    km_uncorrectable:   km_unrecoverable_err,
-    km_correctable:     km_recoverable_err,
-    dma_alert:          dma_alert,
-    dma_reg_bus_err:    dma_reg_bus_err,
-    dma_host_intg_err:  dma_host_intg_err,
-    periph_bus_err:     periph_bus_err,
-    csrng_fatal:        intr_cs_fatal_err,
-    edn_fatal:          intr_edn_fatal_err,
-    crypto_alert:       crypto_alert,
-    abr_err:            intr_abr_error,
-    entropy_fill_stall: entropy_pool_fill_stall,
-    entropy_pool_err:   entropy_pool_err,
-    token_match_fault:  token_match_fault
-  };
+          lc_sigint_err: lc_sigint_err,
+          lockstep_err: lockstep_status_o.corruption_detected,
+          wdt_bark: intr_wdog_timer_bark,
+          wdt_bite: wdt_bite_sync,
+          iccm_ecc_ce: cpu_iccm_ecc_single_error,
+          iccm_ecc_ue: cpu_iccm_ecc_double_error,
+          dccm_ecc_ce: cpu_dccm_ecc_single_error,
+          dccm_ecc_ue: cpu_dccm_ecc_double_error,
+          km_uncorrectable: km_unrecoverable_err,
+          km_correctable: km_recoverable_err,
+          dma_alert: dma_alert,
+          dma_reg_bus_err: dma_reg_bus_err,
+          dma_host_intg_err: dma_host_intg_err,
+          periph_bus_err: periph_bus_err,
+          csrng_fatal: intr_cs_fatal_err,
+          edn_fatal: intr_edn_fatal_err,
+          crypto_alert: crypto_alert,
+          abr_err: intr_abr_error,
+          entropy_fill_stall: entropy_pool_fill_stall,
+          entropy_pool_err: entropy_pool_err,
+          token_match_fault: token_match_fault
+      };
 
   `OCAH_ASSERT_STATIC(
       ExtDebugCpuStatusLaneWidth_A, $bits

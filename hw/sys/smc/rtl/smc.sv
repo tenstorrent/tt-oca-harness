@@ -547,16 +547,16 @@ module smc #(
   logic i2c_intg_err;
 
   assign smc_ras_o = '{
-    cluster_ded:        smc_cluster_ded,
-    wdt_first_timeout:  smc_wdt_first_timeout,
-    wdt_second_timeout: smc_wdt_second_timeout,
-    axi_hang_sys:       axi_hang_sys_timeout,
-    axi_hang_sep:       axi_hang_sep_timeout,
-    axi_hang_data:      axi_hang_data_timeout,
-    lc_sigint_err:      efuse_lc_sigint_err,
-    uart_intg_err:      uart_intg_err,
-    i2c_intg_err:       i2c_intg_err
-  };
+          cluster_ded: smc_cluster_ded,
+          wdt_first_timeout: smc_wdt_first_timeout,
+          wdt_second_timeout: smc_wdt_second_timeout,
+          axi_hang_sys: axi_hang_sys_timeout,
+          axi_hang_sep: axi_hang_sep_timeout,
+          axi_hang_data: axi_hang_data_timeout,
+          lc_sigint_err: efuse_lc_sigint_err,
+          uart_intg_err: uart_intg_err,
+          i2c_intg_err: i2c_intg_err
+      };
 
   // Reset signals
   logic rst_warm_smc_clk_n;
