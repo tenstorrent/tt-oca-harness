@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Check program and read target addresses against field locks, lifecycle-state rules, and RMA
-// token checks before a fuse command is issued.
+// Check program and read targets against field locks, lifecycle-state rules, and RMA token checks.
 //
 // HAS_LC_STATE distinguishes SEP (lifecycle field present) from SMC.
 // LC_STATE_BIT_POSITION and TOKEN_MATCH_CODE locate and encode token checks; the SIP and
 // chiplet token bit addresses are LC_STATE_BIT_POSITION+1 and +2.
 //
-// - is_program_locked_o and is_read_locked_o are sampled by the interfaces at start time;
-//   a blocked command never reaches the SHIM.
-// - efuse_err_o sets when an interface reports a lock-refused start and sticks until
-//   error_clear_i.
+// The program and read interfaces sample the lock and secure-TM status when firmware starts a
+// command and refuse a blocked start without issuing it; a command already issued completes.
+//
+// - efuse_err_o sets on a lock-refused start and sticks until error_clear_i.
+// - Lock and secure-TM status are exported.
 
 module efuse_guard #(
   parameter int unsigned EFUSE_FIELDS     = 1,  // eFuse field-map entry count.
@@ -36,6 +36,8 @@ module efuse_guard #(
 ) (
   input logic clk_i,                    // System clock.
   input logic rst_ni,                   // Active-low synchronous reset; clears efuse_err_o.
+  input logic secure_tm_i,              // Secure test mode, active-high; blocks every start
+                                        // without raising the error.
 
   input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,  // Per-field byte ranges and lock
                                                                  // indices used to find the lock
@@ -54,14 +56,16 @@ module efuse_guard #(
 
   input efuse_map_t shadow_regs_i,      // Shadow eFuse map supplying the per-field read and write
                                         // lock bits.
-  input efuse_addr_t program_addr_i,    // Fuse bit address a program start would target.
-  input efuse_addr_t read_addr_i,       // Fuse bit address a read start would target.
-  input logic program_blocked_i,        // One-cycle pulse: a program start was refused by a lock.
-  input logic read_blocked_i,           // One-cycle pulse: a read start was refused by a lock.
+  input efuse_addr_t program_target_addr_i,  // Fuse bit address a program start would target.
+  input efuse_addr_t read_target_addr_i,  // Fuse bit address a read start would target.
+  input logic program_blocked_i,        // One-cycle pulse: a lock refused a program start.
+  input logic read_blocked_i,           // One-cycle pulse: a lock refused a read start.
 
-  output logic is_read_locked_o,        // High when read_addr_i falls in a read-locked field.
-  output logic is_program_locked_o      // High when program_addr_i is write locked or is an RMA
-                                        // token bit without a token match.
+  output logic is_read_locked_o,        // High when the read target address falls in a read-locked
+                                        // field.
+  output logic is_program_locked_o,     // High when the program target address is write locked or
+                                        // is an RMA token bit without a token match.
+  output logic secure_tm_blocked_o      // High while secure test mode blocks fuse command starts.
 );
 
   logic is_program_locked;
@@ -73,18 +77,18 @@ module efuse_guard #(
 
   // If read or write is from programming interface or read interface
   always_comb begin
-    pro_read_intf_rd_index = find_efuse_field_index(efuse_byte_addr_t'(read_addr_i >> 3));     // need to shift since address is a bit address and the shadow registers are byte address
-    pro_read_intf_wr_index = find_efuse_field_index(efuse_byte_addr_t'(program_addr_i >> 3));  // need to shift since address is a bit address and the shadow registers are byte address
+    pro_read_intf_rd_index = find_efuse_field_index(efuse_byte_addr_t'(read_target_addr_i >> 3));     // need to shift since address is a bit address and the shadow registers are byte address
+    pro_read_intf_wr_index = find_efuse_field_index(efuse_byte_addr_t'(program_target_addr_i >> 3));  // need to shift since address is a bit address and the shadow registers are byte address
 
     pro_read_intf_rm_lc_state_write_lock = 1'b0; // In SEP, LC_STATE has write/read lock but even if their lock is set, it should not block the pro_read_interface
     pro_read_intf_rm_lc_state_read_lock = 1'b0;
     pro_read_intf_lock_lc_state_write = 1'b0;
     // LC State write lock
     if (HAS_LC_STATE) begin
-      if ((program_addr_i == SipTokenBitAddr) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) begin
+      if ((program_target_addr_i == SipTokenBitAddr) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) begin
         pro_read_intf_lock_lc_state_write = 1'b1;
       end
-      else if ((program_addr_i == ChipletTokenBitAddr) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) begin
+      else if ((program_target_addr_i == ChipletTokenBitAddr) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) begin
         pro_read_intf_lock_lc_state_write = 1'b1;
       end
     end
@@ -106,6 +110,7 @@ module efuse_guard #(
 
   assign is_program_locked_o = is_program_locked;
   assign is_read_locked_o = is_read_locked;
+  assign secure_tm_blocked_o = secure_tm_i;
 
   always_ff @(posedge clk_i) begin
     if (!rst_ni) begin

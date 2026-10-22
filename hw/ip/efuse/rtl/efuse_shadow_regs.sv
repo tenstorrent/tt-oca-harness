@@ -107,9 +107,9 @@ module efuse_shadow_regs
     input  logic [5:0]                          rma_sip_token_match_i,  // RMA SiP token-match code; a match permits
                                                                         // setting lifecycle-state bit 1.
 
-    output fuse_command_req_t                   fuse_command_req_o,  // Sense command for the next cycle: one READ
-                                                                     // from bit address 0 for every shadow word,
-                                                                     // valid until the last word arrives.
+    output fuse_command_req_t                   fuse_command_req_o,  // Registered sense command: one READ from bit
+                                                                     // address 0 for every shadow word; valid stays
+                                                                     // high once issued.
     input  fuse_command_resp_t                  fuse_command_resp_i,  // Streamed sense responses; each valid response
                                                                       // advances the shadow index, and one without
                                                                       // an error status is stored there.
@@ -323,7 +323,8 @@ module efuse_shadow_regs
 
   efuse_word_counter_t current_word_num_q, current_word_num_d;
   efuse_word_counter_t words_received_q, words_received_d;
-  logic sense_req_valid;
+  fuse_command_req_t fuse_command_req_d;
+
   logic [LcStateWidth-1:0] lc_state_cur;
   logic [LcStateWidth-1:0] lc_state_candidate;
 
@@ -413,7 +414,7 @@ module efuse_shadow_regs
         efuse_sense_state_d = efuse_sense_state_q;
         words_received_d = words_received_q;
         current_word_num_d = current_word_num_q;
-        sense_req_valid = 1'b0;
+        fuse_command_req_d = fuse_command_req_o;
 
         unique case (efuse_sense_state_q)
             ST_IDLE: begin
@@ -427,21 +428,26 @@ module efuse_shadow_regs
 
             // ST_READ: Send the fuse command to read entire OTP
             ST_READ: begin
+                // width-match the 9b word counter to the 13b bit-address field (clears W164b lint).
+                // NOTE: value is 0 here; .address is a BIT address, so a nonzero word count would be wrong (see commit note re: word-vs-bit).
+                fuse_command_req_d.address = efuse_addr_t'(current_word_num_q);
+                fuse_command_req_d.access_length_words =
+                    efuse_word_counter_t'(NumShadowWords);
+                fuse_command_req_d.valid = 1'b1;
+                fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
+
                 // Move to wait acknowledgment state
                 efuse_sense_state_d = ST_WAIT;
                 words_received_d = '0;
-                sense_req_valid = 1'b1;
             end
 
             // ST_WAIT: Wait for remaining streaming responses and store data
             ST_WAIT: begin
-                sense_req_valid = 1'b1;
 
                 if (fuse_command_resp_i.valid) begin
                     // Check if we've received all expected words
                     if (words_received_q >= efuse_word_counter_t'(NumShadowWords - 1)) begin
                         efuse_sense_state_d = ST_FINISHED;
-                        sense_req_valid = 1'b0;
                     end else begin
                         words_received_d = words_received_q + efuse_word_counter_t'(1);
                         current_word_num_d = current_word_num_q + efuse_word_counter_t'(1);
@@ -465,30 +471,11 @@ module efuse_shadow_regs
         endcase
     end
 
-    // One READ of the whole bank from bit address 0, dropped in the cycle the last word arrives.
-    always_comb begin
-        fuse_command_req_o = FuseCommandReqDefault;
-        if (sense_req_valid) begin
-            fuse_command_req_o.address = efuse_addr_t'(0);
-            fuse_command_req_o.access_length_words = efuse_word_counter_t'(NumShadowWords);
-            fuse_command_req_o.valid = 1'b1;
-            fuse_command_req_o.command = efuse_pkg::FUSE_COMMAND_READ;
-        end
-    end
-
     // Register the state
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            efuse_sense_state_q <= ST_IDLE;
-            current_word_num_q <= '0;
-            words_received_q <= efuse_word_counter_t'(0);
-
-        end else begin
-            efuse_sense_state_q <= efuse_sense_state_d;
-            current_word_num_q <= current_word_num_d;
-            words_received_q <= words_received_d;
-        end
-    end
+    `OCAH_FF(efuse_sense_state_q, efuse_sense_state_d, ST_IDLE, clk_i, rst_ni)
+    `OCAH_FF(current_word_num_q, current_word_num_d, '0, clk_i, rst_ni)
+    `OCAH_FF(words_received_q, words_received_d, efuse_word_counter_t'(0), clk_i, rst_ni)
+    `OCAH_FF(fuse_command_req_o, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -550,6 +537,7 @@ module efuse_shadow_regs
                 shadow_reg_preload[i];
           end
         end
+        // If there is a request to the shadow registers before fuse sense is done, return bad cable
         if (apb_req_from_ac.psel) begin
           apb_resp_from_ac.pslverr <= 1'b1;
           apb_resp_from_ac.pready  <= 1'b1;
@@ -590,7 +578,6 @@ module efuse_shadow_regs
         end
 
         // return error if a request to the shadow registers occur when sense is not complete
-        // If there is a request to the shadow registers before fuse sense is done, return bad cable
         if (apb_req_from_ac.psel) begin
           apb_resp_from_ac.pslverr <= 1'b1;
           apb_resp_from_ac.pready  <= 1'b1;

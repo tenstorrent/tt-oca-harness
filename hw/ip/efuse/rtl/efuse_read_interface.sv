@@ -8,10 +8,8 @@
 // to efuse_addr_t truncates upper bits.
 // A start that secure_tm_blocked_i or read_locked_i refuses completes with an error without
 // issuing a command; a lock refusal also pulses read_blocked_o. An outstanding read ends with an
-// error on the optional read_req_timeout_* or a bad bank response; secure_tm_i is static after
-// boot so a read already in flight completes normally.
-// Sticky address errors clear with read_addr_error_clear_i.
-// fuse_command_req_o is the request for the next cycle; the controller registers it.
+// error on efuse_req_err_i, a bad bank response or the optional read_req_timeout_*. Sticky
+// address errors clear with read_addr_error_clear_i.
 
 `include "prim_assert.sv"
 `include "ocah_registers.svh"
@@ -51,14 +49,15 @@ module efuse_read_interface #(
   input  logic read_addr_error_clear_i,  // Clears the sticky address error; a same-cycle new error
                                          // takes priority.
 
+  input logic efuse_req_err_i,          // Guard lock error; ends an outstanding read with an error.
   input logic secure_tm_blocked_i,      // Guard secure-test-mode block; refuses a start with an
-                                        // error but does not abort a read already in flight.
+                                        // error but does not end a read already issued.
 
   input logic        read_req_timeout_en_i,  // Enables the response timeout for read operations.
   input logic [27:0] read_req_timeout_cycles_i,  // Response timeout in clock cycles.
 
-  output fuse_command_req_t  fuse_command_req_o,  // Read command for the next cycle; valid while
-                                                  // the next state waits for the response.
+  output fuse_command_req_t  fuse_command_req_o,  // Read command to the guard; valid only while
+                                                  // waiting for the response.
   input  fuse_command_resp_t fuse_command_resp_i,  // Filtered response to the read command.
 
   output logic is_read_timeout_debug_o  // One-cycle pulse when a read operation times out.
@@ -72,7 +71,7 @@ module efuse_read_interface #(
   logic [27:0] timeout_count_q, timeout_count_d;
   logic read_timeout_event;
 
-  logic read_req_valid;
+  fuse_command_req_t fuse_command_req_d, fuse_command_req_q;
 
   efuse_addr_t captured_read_addr;
 
@@ -111,7 +110,7 @@ module efuse_read_interface #(
     read_done_d = read_done_q;
     read_busy_d = read_busy_q;
     read_back_data_d = read_back_data_q_n0_scan;
-    read_req_valid = 1'b0;
+    fuse_command_req_d = FuseCommandReqDefault;
 
     read_timeout_event = 1'b0;
     read_addr_error_d = 1'b0;  // Default: no address error
@@ -146,44 +145,49 @@ module efuse_read_interface #(
             read_state_d = ST_WAIT_RESP;
             read_busy_d = 1'b1;
             read_err_d = 1'b0;
-            read_req_valid = 1'b1;
+            fuse_command_req_d.address = read_addr_i;
+            fuse_command_req_d.program_data = '0;
+            fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
+            fuse_command_req_d.valid = 1'b1;
+            fuse_command_req_d.access_length_words = efuse_word_counter_t'(1);
           end
         end
       end
 
       ST_WAIT_RESP: begin
 
-        // Physical efuse returned error
-        if (fuse_command_resp_i.status == 1'b1) begin
+        if (efuse_req_err_i || fuse_command_resp_i.status == 1'b1) begin
+          // The guard refused a start on the other interface, or the physical efuse returned error
           read_done_d = 1'b1;
           read_busy_d = 1'b0;
           read_err_d = 1'b1;
           read_back_data_d = efuse_data_t'(0);
+          fuse_command_req_d = FuseCommandReqDefault;
           read_state_d = ST_READ_IDLE;
         end else if (fuse_command_resp_i.valid) begin
           read_done_d = 1'b1;
           read_busy_d = 1'b0;
           read_err_d = 1'b0;  // EFUSE_READ_OK
           read_back_data_d = fuse_command_resp_i.data;
+          fuse_command_req_d = FuseCommandReqDefault;
           read_state_d = ST_READ_IDLE;
         end else begin
           read_done_d = 1'b0;
           read_busy_d = 1'b1;
           read_back_data_d = read_back_data_q_n0_scan;
+          fuse_command_req_d = fuse_command_req_q;
 
           if (read_req_timeout_en_i && timeout_count_d >= read_req_timeout_cycles_i) begin
             read_done_d = 1'b1;
             read_busy_d = 1'b0;
             read_err_d = 1'b1;
             read_back_data_d = efuse_data_t'(0);
+            fuse_command_req_d = FuseCommandReqDefault;
             read_state_d = ST_READ_IDLE;
 
             read_timeout_event = 1'b1;
-          end else begin
-            read_req_valid = 1'b1;
-            if (read_req_timeout_en_i) begin
-              timeout_count_d = timeout_count_q + 1;
-            end
+          end else if (read_req_timeout_en_i) begin
+            timeout_count_d = timeout_count_q + 1;
           end
         end
 
@@ -194,6 +198,7 @@ module efuse_read_interface #(
         read_busy_d = 1'b0;
         read_done_d = 1'b1;
         read_err_d = 1'b1;
+        fuse_command_req_d = FuseCommandReqDefault;
         read_back_data_d = EfuseReadErrorData;
       end
 
@@ -202,6 +207,7 @@ module efuse_read_interface #(
 
   // Register the state
   `OCAH_FF(read_state_q, read_state_d, ST_READ_IDLE, clk_i, rst_ni)
+  `OCAH_FF(fuse_command_req_q, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
   `OCAH_FF(read_err_q, read_err_d, 1'b0, clk_i, rst_ni)
   `OCAH_FF(read_done_q, read_done_d, 1'b0, clk_i, rst_ni)
   `OCAH_FF(read_busy_q, read_busy_d, 1'b0, clk_i, rst_ni)
@@ -226,14 +232,10 @@ module efuse_read_interface #(
   assign read_back_data_o = read_back_data_q_n0_scan;
   assign is_read_timeout_debug_o = read_timeout_event;
 
-  // A start issues the CSR address; a held command repeats the one captured at its start.
   always_comb begin
     fuse_command_req_o = FuseCommandReqDefault;
-    if (read_req_valid) begin
-      fuse_command_req_o.address = (read_state_q == ST_READ_IDLE) ? read_addr_i : captured_read_addr;
-      fuse_command_req_o.command = efuse_pkg::FUSE_COMMAND_READ;
-      fuse_command_req_o.valid = 1'b1;
-      fuse_command_req_o.access_length_words = efuse_word_counter_t'(1);
+    if (read_state_q == ST_WAIT_RESP) begin
+      fuse_command_req_o = fuse_command_req_q;
     end
   end
 
@@ -244,7 +246,7 @@ module efuse_read_interface #(
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadFailureSetsError_A,
-      read_state_q == ST_WAIT_RESP && fuse_command_resp_i.status |=> read_done_o && !read_busy_o && read_error_o && read_back_data_o == efuse_data_t'(0),
+      read_state_q == ST_WAIT_RESP && (efuse_req_err_i || fuse_command_resp_i.status) |=> read_done_o && !read_busy_o && read_error_o && read_back_data_o == efuse_data_t'(0),
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadTimeoutSetsError_A,
@@ -256,15 +258,15 @@ module efuse_read_interface #(
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadSuccessClearsError_A,
-      read_state_q == ST_WAIT_RESP && !fuse_command_resp_i.status && fuse_command_resp_i.valid |=> read_done_o && !read_busy_o && !read_error_o,
+      read_state_q == ST_WAIT_RESP && !efuse_req_err_i && !fuse_command_resp_i.status && fuse_command_resp_i.valid |=> read_done_o && !read_busy_o && !read_error_o,
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       IllegalReadStateFailsClosed_A,
-      ($isunknown(read_state_q) || !(read_state_q inside {ST_READ_IDLE, ST_WAIT_RESP})) |=> read_state_q == ST_READ_IDLE && !read_busy_o && read_done_o && read_error_o && (read_go_i || !fuse_command_req_o.valid) && read_back_data_o == EfuseReadErrorData,
+      ($isunknown(read_state_q) || !(read_state_q inside {ST_READ_IDLE, ST_WAIT_RESP})) |=> read_state_q == ST_READ_IDLE && !read_busy_o && read_done_o && read_error_o && !fuse_command_req_o.valid && read_back_data_o == EfuseReadErrorData,
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       BlockedReadIsNotIssued_A,
-      read_state_q == ST_READ_IDLE && read_go_i && read_enable_i && !read_addr_oob_i && (secure_tm_blocked_i || read_locked_i) |-> !fuse_command_req_o.valid ##1 read_state_q == ST_READ_IDLE && read_done_o && read_error_o && read_back_data_o == efuse_data_t'(0),
+      read_state_q == ST_READ_IDLE && read_go_i && read_enable_i && !read_addr_oob_i && (secure_tm_blocked_i || read_locked_i) |=> read_state_q == ST_READ_IDLE && !fuse_command_req_o.valid && read_done_o && read_error_o && read_back_data_o == efuse_data_t'(0),
       clk_i, !rst_ni)
   // verilog_format: on
 

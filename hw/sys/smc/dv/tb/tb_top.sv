@@ -1557,6 +1557,11 @@ module smc_uvm_top
         end else begin
             release `SMC_EFUSE_IFC.fuse_command_resp_interface_ctrl_r.status;
         end
+        if (tb_efuse_read_error_inject === 2'b10) begin
+            force `SMC_EFUSE_READ.efuse_req_err_i = 1'b1;
+        end else begin
+            release `SMC_EFUSE_READ.efuse_req_err_i;
+        end
         if (tb_efuse_read_error_inject === 2'b11) begin
             force `SMC_EFUSE_READ.secure_tm_blocked_i = 1'b1;
         end else begin

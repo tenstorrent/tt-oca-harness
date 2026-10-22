@@ -427,9 +427,11 @@ byte addressing the macro uses; the reference SHIM shifts it right by three.
 holds `valid` and the whole request payload stable from the cycle it issues a
 command until it has received the response, so the SHIM may sample the payload
 at any point while the command runs.
-* *When `valid` falls.* `valid` falls in the cycle after the last response
-strobe of a command: the only strobe of a firmware read or program, and the
-final strobe of sensing. The controller also withdraws `valid` without waiting for a response in these
+* *When `valid` falls.* After a firmware read or program, `valid` falls in the
+cycle after the response strobe. After sensing it stays high until
+`fuse_sense_done` moves the arbiter to the firmware path, two cycles after the
+last strobe; do not treat that still-asserted request as a second read. The
+controller also withdraws `valid` without waiting for a response in these
 cases, and the SHIM must abandon the command it had started:
 ** a firmware read or program timeout expires{asterisk}
 ** firmware changes the read or program enable, where program takes priority
@@ -437,10 +439,10 @@ over read{asterisk}
 * *Errors.* Setting `status` ends a firmware read or program command with an
 error. The sense FSM counts only `valid` strobes, so a sensing error must still
 be followed by the remaining strobes.
-* *No access control.* The eFuse guard zeroes requests to locked fields, and
-every request while the SEP is in secure test mode, in the same cycle the
-request is issued. A blocked request therefore never reaches the SHIM:
-`valid` does not rise, and no response is expected. Secure test mode is
+* *No access control.* The controller refuses a firmware read or program of a
+locked field, and every firmware command while the SEP is in secure test mode,
+before it issues the request. A refused command therefore never reaches the
+SHIM: `valid` does not rise, and no response is expected. Secure test mode is
 latched once per cold boot, before any firmware command can be issued, so it
 cannot begin in the middle of a command. The SMC controller has no secure test mode.
 

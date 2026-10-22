@@ -387,8 +387,8 @@ is asserted.
 |=====================================================================================
 |Behavior |Description
 |Fuse Command Blocking |No fuse command is issued to the physical eFuse bank.
-Program and read starts complete with an error without issuing a command, the fuse sensing read is
-held back, and the guard returns default responses.
+Program and read starts complete with an error without issuing a command, and
+the fuse sensing read is held back.
 
 |RMA Token Protection |RMA SOP and RMA Chiplet tokens are disconnected from
 shadow register outputs (set to zero), preventing token exposure during test.
