@@ -702,31 +702,39 @@ redirect.
 `--target A[,B...]` runs the selected tests on the listed targets they can run
 on. A test that names a target runs on it when it is listed, or on the target
 its `run_on` names for the tool when that one is listed, and is skipped
-otherwise; a test that names no target runs on every listed target. One name
-means the same, so `--target default` runs the tests that run on `default` and
-skips the rest. The skipped tests are printed on the `selection` line and
+otherwise. A test that names no target runs on every listed target except one
+that sets `pinned_only = true` in its `[targets.<name>]` table: such a target
+runs only the tests that name it or reach it through `run_on`, as a CPU-stub
+model that cannot run the full CPU's tests does. The default target, which
+runs the tests that name no target, cannot set it. One name means the same, so
+`--target default` runs the tests that run on `default` and skips the rest.
+
+The skipped tests are printed on the `selection` line and in a warning, and
 recorded in `result.json` under `selection.skipped_target`, each with the
-target it would run on otherwise, and a listed target that runs none of the
+target it would run on otherwise; a listed target that runs none of the
 selected tests is named in a warning. A list that runs none of them is refused
 before any stage runs. `--force-target NAME` instead runs every selected test
-on `NAME`, whatever target it names, and cannot be combined with `--target`.
+on `NAME`, whatever target it names or `pinned_only` sets, and cannot be
+combined with `--target`.
 
-A test that runs on several targets in one run is named `<test>@<target>` on
-each of them: its leaves run in `<test>@<target>/seed_<seed>/attempt_<n>/`,
-and its records, JUnit testcases and dashboard rows carry that name. The
-simulator still runs the test's own entry point, and its firmware builds once,
-under the test's name. Its leaves on every target use the same seeds, so a
-failure on one target replays on the others. A test or target name therefore
-cannot contain `@`.
+A test keeps its name on the target it runs on without `--target`: its own,
+or the default, after `run_on`. On any other target it is named
+`<test>@<target>`, whichever targets the run lists: its leaves run in
+`<test>@<target>/seed_<seed>/attempt_<n>/`, and its records, JUnit testcases
+and dashboard rows carry that name, so a test's history on each target stays
+apart from run to run. The simulator still runs the test's own entry point,
+and its firmware builds once, under the test's name. Its leaves on every target
+use the same seeds, so a failure on one target replays on the others. A test
+or target name therefore cannot contain `@`.
 
 Shared build stages run once per unique target, serially, before the
 test leaves execute. This permits one group to contain tests that consume
 different build images. A test `target`, a `--target` entry or a
 `--force-target` that names no `[targets.<name>]` entry is rejected when the
 run plans its builds, before any stage executes, and `--validate-configs` does
-not check test targets. Every
-`run_on` is checked on each of the DUT's tools wherever its configuration is
-validated, by `--validate-configs` and before every run
+not check test targets. Every `run_on`, and that the default target is not
+`pinned_only`, is checked on each of the DUT's tools wherever its
+configuration is validated, by `--validate-configs` and before every run
 (<<runner-validation>>).
 
 Run-mode selection uses:
@@ -887,7 +895,8 @@ the file and the table or entry:
 . Every table of the sim config holds only the keys its schema allows, and
   every `{placeholder}` in a value is one the consuming stage defines.
 . On each tool in the flow's `tools` list, every target's `run_on` names
-  another defined target that does not redirect on that tool.
+  another defined target that does not redirect on that tool, and the target
+  the tests that name no target run on is not `pinned_only`.
 . `[testlist].path` is relative, resolves inside the DUT DV root, and exists.
 . Each `[coverage.<tool>]` table is well formed and each coverage policy
   file loads.
@@ -2686,15 +2695,15 @@ and reruns it with the same seed, which separates a deterministic failure
 from an intermittent one but explores nothing new. A test with three seeds
 under `--retry 1` is three leaves, each retried at most once.
 
-Each leaf runs in `<test>/seed_<seed>/attempt_<n>/`, where a test the run puts
-on several targets is `<test>@<target>` (<<Targets and run modes>>). The
+Each leaf runs in `<test>/seed_<seed>/attempt_<n>/`, where a test on a target
+other than its own is `<test>@<target>` (<<Targets and run modes>>). The
 `regression start` console line reports `seeds=<N>` when every selected test
 has the same count and `seeds=mixed` otherwise. The `summary` line counts
-leaves, while the `result` line's `tests=` counts tests, a test on several
-targets once for each. A nested run also writes a
-`<test>/result.json` rollup that lists the final attempt of each of the
-test's seeds and takes the worst of their statuses (`ERROR`, then `TIMEOUT`,
-`FAIL`, `UNKNOWN`, `PASS`), so one failing seed fails the test.
+leaves, while the `result` line's `tests=` counts tests, each
+`<test>@<target>` as one. A nested run also writes a `<test>/result.json`
+rollup that lists the final attempt of each of the test's seeds and takes the
+worst of their statuses (`ERROR`, then `TIMEOUT`, `FAIL`, `UNKNOWN`, `PASS`),
+so one failing seed fails the test.
 
 [[runner-regression-record]]
 === The regression record
@@ -2717,8 +2726,8 @@ attempt is the leaf's final result.
   `unknown` bucket carrying its `reason`), the `expected_fail` record when
   the entry carries one, and a `rerun` command that reproduces the final
   attempt with its framework and seed, and with its target when the run
-  named targets or put the test on several (`--force-target` when the run
-  forced one).
+  named targets or ran the test on a target other than its own
+  (`--force-target` when the run forced one).
 * `flaky_tests` lists every leaf whose final attempt is `PASS` after an
   earlier non-passing attempt: `flaky_reason` is `passed_after_retry`,
   `failing_attempts`, `first_fail_attempt`, `first_failure_reason`, and
@@ -2849,8 +2858,9 @@ refused before compile when two of its targets would build into one model
 directory.
 
 |`--force-target NAME`
-|Run every selected test on `NAME`, whatever target it names or redirects to;
-cannot be combined with `--target`.
+|Run every selected test on `NAME`, whatever target it names or redirects to
+and whether or not `NAME` is `pinned_only`; cannot be combined with
+`--target`.
 
 |`--overlay PATH`
 |Apply one adopter overlay config (append-only) on top of the merged DUT

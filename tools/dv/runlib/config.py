@@ -492,7 +492,10 @@ TARGET_KEYS = {
     "stubs",
     "exclude_files",
     "tools",
+    "pinned_only",
 }
+# Every target inherits `[target_defaults]`, so it cannot hold a key that limits one target.
+TARGET_DEFAULT_KEYS = TARGET_KEYS - {"pinned_only"}
 
 TARGET_TOOL_KEYS = {"flags"}
 # Joins a test's name and a target's into the name of that test's run on one of several
@@ -1127,7 +1130,15 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
                         f"{flow.path}: target name `{name}` contains `{TARGET_INSTANCE_SEP}`, "
                         "which names a test on one of several targets"
                     )
-                validate_allowed_keys(target, TARGET_KEYS, f"{flow.path} [{section_name}.{name}]")
+                validate_allowed_keys(
+                    target,
+                    TARGET_KEYS if section_name == "targets" else TARGET_DEFAULT_KEYS,
+                    f"{flow.path} [{section_name}.{name}]",
+                )
+                if not isinstance(target.get("pinned_only", False), bool):
+                    raise ConfigError(
+                        f"{flow.path}: [{section_name}.{name}].pinned_only must be true or false"
+                    )
                 validate_placeholders_in_value(target, f"{flow.path} [{section_name}.{name}]")
                 tools = target.get("tools", {})
                 if isinstance(tools, dict):
@@ -2063,12 +2074,28 @@ def with_target_instances(catalog: TestCatalog, instances: dict[str, str]) -> Te
     return dataclasses.replace(catalog, tests=tests)
 
 
+def target_pinned_only(sim_cfg: dict[str, Any], target: str) -> bool:
+    """Whether ``target`` runs only the tests that name it or reach it through `run_on`."""
+    targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
+    target_cfg = targets.get(target) if isinstance(targets, dict) else None
+    return bool(target_cfg.get("pinned_only")) if isinstance(target_cfg, dict) else False
+
+
 def validate_target_redirects(sim_cfg: dict[str, Any], tools: list[str]) -> None:
     """Resolve every target's `run_on` on each of ``tools``, so a bad one is refused before a
-    run on that tool selects a test it redirects."""
+    run on that tool selects a test it redirects, and refuse a `pinned_only` target where the
+    tests that name no target run."""
     for target in sorted(target_names(sim_cfg)):
         for tool in tools:
             target_run_on(sim_cfg, target, tool)
+    default = default_target_name(sim_cfg)
+    for tool in tools:
+        target = target_run_on(sim_cfg, default, tool)
+        if target_pinned_only(sim_cfg, target):
+            raise ConfigError(
+                f"targets.{target}.pinned_only: `{target}` runs the tests that name no target "
+                f"on {tool}, so it cannot be pinned_only"
+            )
 
 
 def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[str, Any]:

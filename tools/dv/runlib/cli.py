@@ -44,6 +44,7 @@ from .config import (
     selected_target,
     target_instance_name,
     target_names,
+    target_pinned_only,
     target_run_on,
     targeted_sim_cfg,
     validate_native_config_shape,
@@ -3110,8 +3111,8 @@ class TargetPlan:
     """The targets a run's selected tests run on.
 
     ``groups`` holds, per selected test, the names its leaves run under: the test's own
-    name, or `<test>@<target>` once for each target when it runs on several, which
-    ``instances`` maps to their targets. ``skipped`` names each test no listed target
+    name on the target it runs on without `--target`, and `<test>@<target>` on any other,
+    which ``instances`` maps to its target. ``skipped`` names each test no listed target
     runs, with the target it would run on otherwise.
     """
 
@@ -3146,8 +3147,9 @@ def target_plan(
     ``force`` (``--force-target``) puts every test on that one target. ``targets``
     (``--target``) runs a test that names a target on it, or on the one its `run_on`
     names for ``tool``, when that one is listed, and a test that names none on every
-    listed target. With neither, each test runs on its own target or the default, after
-    that target's `run_on`. ``validate_target_plan`` rejects an unknown name.
+    listed target that is not `pinned_only`. With neither, each test runs on its own
+    target or the default, after that target's `run_on`. ``validate_target_plan``
+    rejects an unknown name.
     """
 
     def own_target(test: TestEntry | None) -> str:
@@ -3165,22 +3167,20 @@ def target_plan(
         test = catalog.tests.get(item)
         if test is None:
             raise ConfigError(f"selected item `{item}` is not a test in the catalog")
+        own = own_target(test)
         if force:
             chosen = [force]
         elif targets and not test.target:
-            chosen = list(targets)
+            chosen = [name for name in targets if not target_pinned_only(sim_cfg, name)]
         elif targets:
-            chosen = [name for name in (test.target, own_target(test)) if name in targets][:1]
+            chosen = [name for name in (test.target, own) if name in targets][:1]
         else:
-            chosen = [own_target(test)]
+            chosen = [own]
         if not chosen:
-            skipped.setdefault(item, own_target(test))
+            skipped.setdefault(item, own)
             continue
-        if len(chosen) == 1:
-            names = {item: chosen[0]}
-        else:
-            names = {target_instance_name(item, name): name for name in chosen}
-            instances.update(names)
+        names = {item if name == own else target_instance_name(item, name): name for name in chosen}
+        instances.update({name: target for name, target in names.items() if name != item})
         groups.append(list(names))
         target_by_item.update(names)
     if not groups:
@@ -3533,6 +3533,12 @@ def run_flow(
             "selection",
             f"skipped_target={len(plan.skipped)} targets={','.join(listed)} tests="
             + ",".join(f"{entry['name']}({entry['target']})" for entry in plan.skipped),
+        )
+        console.event(
+            "warning",
+            f"--target {','.join(listed)} skips {len(plan.skipped)} selected test(s) that run "
+            "on other targets; --force-target runs every selected test on one target",
+            force=True,
         )
     unused_targets = [name for name in listed if name not in build_targets]
     if unused_targets:

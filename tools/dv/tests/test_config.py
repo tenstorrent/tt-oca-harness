@@ -659,7 +659,7 @@ class RuntimeSelectionDefenses(unittest.TestCase):
             },
         }
         plan = target_plan(catalog, sim_cfg, ["t_stub", "t_cpu"], force="default", tool="vcs")
-        self.assertEqual(plan.target_by_item, {"t_stub": "default", "t_cpu": "default"})
+        self.assertEqual(plan.target_by_item, {"t_stub@default": "default", "t_cpu": "default"})
         self.assertEqual(plan.targets, ["default"])
 
     def test_unknown_force_target_is_rejected(self):
@@ -713,11 +713,12 @@ class TargetRunOn(unittest.TestCase):
     def test_a_listed_target_overrides_the_redirect_and_force_target_overrides_both(self):
         sim_cfg = self.sim_cfg(stub={"vcs": {"run_on": "default"}})
         self.assertEqual(
-            self.plan(sim_cfg, "vcs", "stub"), ({"t_stub": "stub", "t_cpu": "stub"}, ["stub"])
+            self.plan(sim_cfg, "vcs", "stub"),
+            ({"t_stub@stub": "stub", "t_cpu@stub": "stub"}, ["stub"]),
         )
         self.assertEqual(
             self.plan(sim_cfg, "vcs", force="other"),
-            ({"t_stub": "other", "t_cpu": "other"}, ["other"]),
+            ({"t_stub@other": "other", "t_cpu@other": "other"}, ["other"]),
         )
 
     def test_the_default_target_redirects_unpinned_tests_and_an_itemless_plan(self):
@@ -795,11 +796,71 @@ class TargetLists(unittest.TestCase):
 
     def test_an_unpinned_test_runs_on_every_listed_target_under_a_name_for_each(self):
         plan = self.plan(["t_stub", "t_cpu"], ["default", "stub"])
-        self.assertEqual(plan.groups, [["t_stub"], ["t_cpu@default", "t_cpu@stub"]])
-        self.assertEqual(plan.items, ["t_stub", "t_cpu@default", "t_cpu@stub"])
+        self.assertEqual(plan.groups, [["t_stub"], ["t_cpu", "t_cpu@stub"]])
+        self.assertEqual(plan.items, ["t_stub", "t_cpu", "t_cpu@stub"])
         self.assertEqual(plan.targets, ["stub", "default"])
-        self.assertEqual(plan.instances, {"t_cpu@default": "default", "t_cpu@stub": "stub"})
+        self.assertEqual(plan.instances, {"t_cpu@stub": "stub"})
         self.assertEqual(plan.skipped, [])
+
+    def test_a_test_keeps_its_name_only_on_the_target_it_runs_on_without_target(self):
+        for items, targets, tool, force, named in (
+            (["t_cpu"], ["stub"], "verilator", None, {"t_cpu@stub": "stub"}),
+            (["t_stub"], ["stub"], "verilator", None, {"t_stub": "stub"}),
+            # On VCS the stub's tests run on default, so a listed stub is another target.
+            (["t_stub"], ["stub"], "vcs", None, {"t_stub@stub": "stub"}),
+            (["t_cpu", "t_stub"], [], "vcs", "default", {"t_cpu": "default", "t_stub": "default"}),
+            (
+                ["t_cpu", "t_stub"],
+                [],
+                "verilator",
+                "other",
+                {"t_cpu@other": "other", "t_stub@other": "other"},
+            ),
+        ):
+            with self.subTest(items=items, targets=targets, tool=tool, force=force):
+                plan = self.plan(items, targets, tool=tool, force=force)
+                self.assertEqual(plan.target_by_item, named)
+                self.assertEqual(
+                    plan.instances, {name: t for name, t in named.items() if "@" in name}
+                )
+
+    def test_a_pinned_only_target_runs_only_the_tests_that_reach_it(self):
+        sim_cfg = {
+            **self.SIM_CFG,
+            "targets": {
+                **self.SIM_CFG["targets"],
+                "stub": {"build_dir": "build/stub", "pinned_only": True},
+            },
+        }
+
+        def plan(items, targets, **kwargs):
+            return target_plan(self.CATALOG, sim_cfg, items, targets, tool="verilator", **kwargs)
+
+        both = plan(["t_stub", "t_cpu"], ["default", "stub"])
+        self.assertEqual(both.target_by_item, {"t_stub": "stub", "t_cpu": "default"})
+        stub_only = plan(["t_stub", "t_cpu"], ["stub"])
+        self.assertEqual(stub_only.target_by_item, {"t_stub": "stub"})
+        self.assertEqual(stub_only.skipped, [{"name": "t_cpu", "target": "default"}])
+        self.assertEqual(plan(["t_cpu"], [], force="stub").target_by_item, {"t_cpu@stub": "stub"})
+
+    def test_pinned_only_is_a_flag_of_one_target_and_not_of_the_default(self):
+        validate_native_config_shape(
+            make_dut({"targets": {"stub": {"build_dir": "b", "pinned_only": True}}}), Path(".")
+        )
+        for raw, error in (
+            ({"targets": {"stub": {"build_dir": "b", "pinned_only": "yes"}}}, "true or false"),
+            (
+                {"target_defaults": {"default": {"pinned_only": True}}},
+                r"unsupported key\(s\): pinned_only",
+            ),
+        ):
+            with self.subTest(raw=raw), self.assertRaisesRegex(ConfigError, error):
+                validate_native_config_shape(make_dut(raw), Path("."))
+        sim_cfg = {"targets": {"default": {"build_dir": "b", "pinned_only": True}}}
+        with self.assertRaisesRegex(
+            ConfigError, r"`default` runs the tests that name no target on vcs"
+        ):
+            validate_target_redirects(sim_cfg, ["vcs"])
 
     def test_a_pinned_test_runs_only_where_its_target_or_its_redirect_is_listed(self):
         plan = self.plan(["t_stub", "t_other", "t_cpu"], ["default"], tool="vcs")
