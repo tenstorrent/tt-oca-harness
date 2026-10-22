@@ -37,7 +37,7 @@
 <tr><td>0x180 - 0x1B8</td><td><a href="#WB_PC_CORE2_8_">WB_PC_CORE2[8]</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x1C0 - 0x1F8</td><td><a href="#WB_PC_CORE3_8_">WB_PC_CORE3[8]</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x200</td><td><a href="#SMC_ATTRIBUTES">SMC_ATTRIBUTES</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x240 - 0x258</td><td><a href="#MUTEX_4_">MUTEX[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x240 - 0x258</td><td><a href="#MUTEX_4_">MUTEX[4]</a></td><td>RW</td><td>A read of any size or alignment within this register attempts to acquire the mutex,<br>but the result is only returned in bit 0. A read that does not include byte 0, such as<br>a 32-bit read of the upper half or a byte read at a non-zero offset, returns 0 even when<br>it acquires the mutex, leaving it held with no owner until it is released. Read this<br>register with an access that includes byte 0.</td></tr>
 <tr><td>0x260 - 0x278</td><td><a href="#SEMA_4_">SEMA[4]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x280</td><td><a href="#DUMMY_ROM_0">DUMMY_ROM_0</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x288</td><td><a href="#DUMMY_ROM_1">DUMMY_ROM_1</a></td><td>RW</td><td>-</td></tr>

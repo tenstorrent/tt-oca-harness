@@ -16,7 +16,7 @@
 module efuse_token_digest_sha256 (
   input logic clk_i,                    // System clock.
   input logic rst_ni,                   // Active-low asynchronous reset of the feeder and the SHA
-                                        // engine; the digest and valid latches are not reset.
+                                        // engine; the sticky digest and valid retention flops are not reset.
 
   input logic test_en_i,                // DFT test-enable: freeze the retained digest.
 
@@ -24,11 +24,11 @@ module efuse_token_digest_sha256 (
                                         // idle; while high it also clears digest_vld_sticky_o.
   input logic [7:0][31:0] token_i,      // 256-bit token, MSW = token_i[7].
 
-  output logic         digest_vld_sticky_o,  // High when the retained digest is valid; cleared by
-                                             // start_i, set one cycle after the engine finishes,
-                                             // and held in a latch across reset.
+  output logic         digest_vld_sticky_o,  // High when the retained digest is valid; cleared on
+                                             // the clock edge after start_i, set one cycle after
+                                             // hash_done_q, and held across reset.
   output logic [255:0] sha_digest_sticky_o  // SHA-256 digest of the last hashed token, H0 in the
-                                            // MSBs; held in a latch across reset and frozen while
+                                            // MSBs; retained across reset and frozen while
                                             // test_en_i is high.
 );
 
@@ -151,24 +151,22 @@ module efuse_token_digest_sha256 (
   // final digest_o, so the updated digest_o is only visible the following cycle.
   `OCAH_FF(hash_done_q, hash_done, 1'b0, clk_i, rst_ni)
 
-  // Ungated latch controls. The digest is captured when hash_done_q marks digest_o valid.
-  // The sticky valid opens on either event, with start_i taking priority so that launching a
-  // new hash clears the valid bit rather than setting it, which stops the token match being
-  // evaluated while a digest is still being computed.
+  // Ungated retention controls. The digest captures on the clock edge after hash_done_q marks
+  // digest_o valid. The sticky valid updates on start_i or that capture; start_i clears the valid
+  // bit on the next edge so a new hash does not leave match enabled while the engine is still busy.
   always_comb begin
     digest_latch_en_pre = hash_done_q;
     vld_latch_en_pre    = start_i || hash_done_q;
     vld_latch_d         = ~start_i;
   end
 
-  // test_en_i holds both latches closed for the whole of scan test. The latches are off the
-  // scan chain, but their enables and the engine feeding them are not, so without this a
-  // shifted pattern could write through and forge or clobber a token digest.
+  // test_en_i forces both retention enables low for scan test. The _n0_scan flops stay off the
+  // scan chain, but their enables and the SHA engine feeding them are scannable, so without
+  // this gate a shifted pattern could still update the sticky digest or valid bit.
   //
   // The gate is an instantiated AND cell rather than inferred logic so synthesis cannot
-  // restructure test_en_i out of the final stage. test_en_i is then a controlling input and
-  // the enable is a hazard-free constant zero throughout test, which matters because these
-  // are level-sensitive.
+  // restructure test_en_i out of the final enable path. test_en_i is then a controlling
+  // input and the enable stays zero throughout test.
   prim_and2 #(
     .Width(1)
   ) u_digest_latch_en_d0nt_touch (
@@ -185,17 +183,21 @@ module efuse_token_digest_sha256 (
     .out_o(vld_latch_en)
   );
 
-  // Retain the digest so it persists across cold reset.
-  always_latch begin
+  // No reset: retain the digest across cold reset.
+  always_ff @(posedge clk_i) begin
     if (digest_latch_en) begin
       sha_digest_sticky_n0_scan <= sha_digest_formatted;
+    end else begin
+      sha_digest_sticky_n0_scan <= sha_digest_sticky_n0_scan;
     end
   end
 
-  // Sticky valid for the retained digest.
-  always_latch begin
+  // No reset: sticky valid for the retained digest.
+  always_ff @(posedge clk_i) begin
     if (vld_latch_en) begin
       digest_vld_sticky_n0_scan <= vld_latch_d;
+    end else begin
+      digest_vld_sticky_n0_scan <= digest_vld_sticky_n0_scan;
     end
   end
 
