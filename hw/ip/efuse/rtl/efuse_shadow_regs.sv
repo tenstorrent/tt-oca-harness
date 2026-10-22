@@ -315,6 +315,7 @@ module efuse_shadow_regs
 
   efuse_apb_resp_t apb_resp_q;
 
+  // Pass apb_resp back or intercept with badcab1e if blocked
   always_comb begin
     apb_resp_o.pready  = 1'b0;
     apb_resp_o.prdata  = efuse_data_t'(0);
@@ -362,12 +363,16 @@ module efuse_shadow_regs
   assign set_only_write = write_setup_only && !is_lc_state_access;
   assign lc_state_write = write_setup_only && is_lc_state_access;
 
+  // TODO: in the SR, we enforce LC state to be set-only, but we dont enforce it for other values in SR.
   always_comb begin
     wr_word = shadow_efuse.values[word_sel];
+    // For each byte:
     for (int b = 0; b < 4; b++) begin
       if (apb_req_pstrb_i[b]) begin
+        // If targetting LC state, and byte 0, use value calculated above
         if (lc_state_write && (b == 0)) begin
           wr_word[2*LcStateWidth-1:0] = lc_state_diff_d;
+        // Update the byte
         end else if (set_only_write) begin
           wr_word[b*8+:8] = wr_word[b*8+:8] | apb_req_pwdata_i[b*8+:8];
         end else begin
@@ -609,9 +614,9 @@ module efuse_shadow_regs
           end
         end
       end
-      //////////////////////////////////////////////////////////////////////////////////
-      // load shadow registers from streaming fuse command responses - regular operation
-      //////////////////////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////////
+      // load shadow registers from streaming fuse sense command responses
+      ////////////////////////////////////////////////////////////////////
       else if (sensing) begin : load_shadow_regs
         if (fuse_command_resp_i.valid && (fuse_command_resp_i.status == 1'b0)) begin
           // Store the data at the current word index (before incrementing words_received)
@@ -625,6 +630,7 @@ module efuse_shadow_regs
                   shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))] <=
                   {fuse_command_resp_i.data[31:2*LcStateWidth], lc_state_diff_d};
             end else begin
+              // Check if access belongs to class1 shadow range
               if (efuse_pkg::shadow_range_map_contains_word(
                   CLASS1_SHADOW_RANGES,
                   shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))) begin
