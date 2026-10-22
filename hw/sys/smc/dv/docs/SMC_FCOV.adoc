@@ -330,7 +330,7 @@ both SEP_IN ready terms are low for the whole hold
 cannot present a zero-strobe beat; the matching cover point is in
 <<smc-fcov-phase2>>
 |`smc_dma_fcov::cg_dma_burst` |`cp_strb` no byte |A transfer has a non-zero
-length (`dma.adoc`, zero-length transfers are rejected) and the backend
+length (`dma.adoc`, a length-0 command moves no data) and the backend
 writes only the bytes of the programmed range, so every beat carries one
 |`smc_map_fcov::cg_map_access` |CLA with an error |The CLA's decoded extent
 fills its region (`memory_map.adoc`), so no address in it is refused
@@ -389,12 +389,6 @@ smc_wrapper) |Collection on a bench that connects the SMC DTP CSR port to a
 DTP, as `smu.sv` does
 |`c_axil_dtp_csr_active` |`smc_fabric_fcov` |As above: an access the port
 carries never completes, so no leaf drives one |As above
-|`c_next_id_0_zero_on_invalid_setup` |`smc_dma_fcov` |`dma_ctrl.rdl` /
-`dma.adoc` have `NEXT_ID` return 0 for a command that was not set up
-correctly; the stream-0 frontend returns the transfer-id generator whatever
-the setup, so no stimulus reaches the point as written |Either the frontend
-returns 0 for a rejected command and a leaf issues one, or the specification
-drops the sentence and the point with it
 |`cg_map_access`, local memories × read × error |`smc_map_fcov` |The ROM and
 scratchpad fill their region, so a read of them is refused only for an
 uncorrectable ECC error, which the bench reaches only by fault injection |A
