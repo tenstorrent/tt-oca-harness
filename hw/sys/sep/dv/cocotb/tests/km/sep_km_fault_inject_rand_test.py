@@ -74,10 +74,9 @@ Checks (HOST-UNREC unless marked):
 Logged only: OBS-AES-NOKEY, OBS-KEYPATH-CODE, the shared-key transfer after each
 boot, the frames of the ML-KEM notify, the SRAM write count of the HOST fatal
 path, the KPV and KM-VALID samples at the first fault word, the IRQ_STATUS bits
-outside the graded set, and VACUOUS parity draws. CHK-MAINCTX-FATAL can fail on
-this DUT (contract, "Known limitation"); in the whole leaf the point runs after
-every other fatal point. The regression runs the HOST-UNREC entry as fourteen
-shards (SHARD_POINTS_UNREC).
+outside the graded set, and VACUOUS parity draws. In the whole leaf the
+CHK-MAINCTX-FATAL point runs after every other fatal point. The regression runs
+the HOST-UNREC entry as fourteen shards (SHARD_POINTS_UNREC).
 """
 
 from __future__ import annotations
@@ -288,8 +287,7 @@ INBOUND_POLLS = 20_000  # polls for inbound FIFO space while posting
 RISE_BOUND = 4_000_000  # clocks from an injection to the PIC bit 30 rise
 # Clocks from the main-context trailer to the PIC bit 30 rise. One fatal path
 # with the SRAM wipe raises bit 30 after about 2.2M clocks (the engine-key shred
-# and one SRAM shred); a second pass of the path (contract, "Known limitation")
-# is still shredding at the bound.
+# and one SRAM shred).
 MAIN_RISE_BOUND = 3_000_000
 MAIN_TAIL = 100_000  # last clocks of the wait over which the SRAM write count is logged
 KEM_POLLS = 20_000
