@@ -75,18 +75,20 @@ ocah_otbn_app_h   = $(OTBN_BUILD_ROOT)/$(1)/$(1)_otbn.h
 ocah_otbn_app_src = $(addprefix $(FW_DIR)/tests/$(OTBN_APP_DIR_$(1))/otbn_src/,$(OTBN_APP_SRCS_$(1)))
 
 # Adams Bridge ML-DSA-87 verify test. It drives the boot ROM's ABR driver, and its
-# vectors are signed at build time with the test-only key in the ROM tree by a
-# generator that needs Python cryptography with ML-DSA (the uv `vp` group).
+# vectors are the committed mldsa87_vectors.h, signed with the test-only key in the
+# ROM tree. The build checks the header with the generator's --check, which needs
+# Python cryptography with ML-DSA (the uv `vp` group); a header that fails the
+# check fails the build.
 ABR_MLDSA87_TEST    := abr_mldsa87_verify_test
 ABR_MLDSA87_KEY     := $(SEP_BOOTROM_DIR)/tests/signing_keys/mldsa87_test_private_key.pem
 ABR_MLDSA87_GEN     := $(FW_DIR)/tests/$(ABR_MLDSA87_TEST)/gen_mldsa87_vectors.py
-ABR_MLDSA87_GEN_DIR := $(FW_BUILD_DIR)/tests/$(ABR_MLDSA87_TEST)
-ABR_MLDSA87_VECTORS := $(ABR_MLDSA87_GEN_DIR)/mldsa87_vectors.h
+ABR_MLDSA87_VECTORS := $(FW_DIR)/tests/$(ABR_MLDSA87_TEST)/mldsa87_vectors.h
+ABR_MLDSA87_CHECKED := $(FW_BUILD_DIR)/tests/$(ABR_MLDSA87_TEST)/mldsa87_vectors.checked
 FW_SIGN_PYTHON      ?= $(UV) --directory "$(OCAH_ROOT)" run --locked --group vp python3
 
 # Must be set before compile.mk, which folds the extras into each test's sources.
 FW_TEST_EXTRA_SRCS_$(ABR_MLDSA87_TEST) := $(SEP_BOOTROM_DIR)/src/abr_driver.c
-FW_TEST_IMAGE_CFLAGS_$(ABR_MLDSA87_TEST) += -I$(ABR_MLDSA87_GEN_DIR) -DABR_DRV_EXPOSE_STEPS
+FW_TEST_IMAGE_CFLAGS_$(ABR_MLDSA87_TEST) += -DABR_DRV_EXPOSE_STEPS
 $(foreach t,$(OTBN_TESTS), \
   $(eval FW_TEST_EXTRA_SRCS_$(t) := $(foreach a,$(OTBN_TEST_APPS_$(t)),$(call ocah_otbn_app_c,$(a)))))
 FW_TEST_INCLUDES += $(foreach a,$(OTBN_APPS),-I$(OTBN_BUILD_ROOT)/$(a))
@@ -199,11 +201,13 @@ $(FW_TEST_BUILD_DIR)/$(1)/$(1).o: \
 endef
 $(foreach t,$(OTBN_TESTS),$(eval $(call ocah_otbn_test_header_dep,$(t))))
 
-$(ABR_MLDSA87_VECTORS): $(ABR_MLDSA87_GEN) $(ABR_MLDSA87_KEY)
-	$(FW_SIGN_PYTHON) "$(ABR_MLDSA87_GEN)" --key "$(ABR_MLDSA87_KEY)" --out "$@"
+$(ABR_MLDSA87_CHECKED): $(ABR_MLDSA87_VECTORS) $(ABR_MLDSA87_GEN) $(ABR_MLDSA87_KEY)
+	@mkdir -p "$(@D)"
+	$(FW_SIGN_PYTHON) "$(ABR_MLDSA87_GEN)" --key "$(ABR_MLDSA87_KEY)" --check "$<"
+	@touch "$@"
 
-# As with the OTBN apps: no depfile names the generated header on a clean build.
-$(FW_TEST_BUILD_DIR)/$(ABR_MLDSA87_TEST)/$(ABR_MLDSA87_TEST).o: $(ABR_MLDSA87_VECTORS)
+# The object compiles only after the committed header passes the check.
+$(FW_TEST_BUILD_DIR)/$(ABR_MLDSA87_TEST)/$(ABR_MLDSA87_TEST).o: $(ABR_MLDSA87_CHECKED)
 
 # The boot ROM links the RSA-3072 app too (secure-boot signature verification),
 # and it builds from its own Makefile rather than through this engine, so give
