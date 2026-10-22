@@ -424,6 +424,7 @@ module smu_wrapper_uvm_top
   logic [31:0] isolate_req_w;
   logic sync_irq_w;
   smc_pkg::smc_ras_t smc_ras_w;
+  sep_pkg::sep_ras_t sep_ras_w;
   logic secure_tm_w;
   logic [smc_pkg::NumGpioWraps-1:0]   gpio_interrupt_w;
   logic [smc_config_pkg::NumUart-1:0] uart_interrupt_w;
@@ -1509,6 +1510,7 @@ module smu_wrapper_uvm_top
     .telemetry_afready_i (tel_afready_w),
 
     .smc_ras_o (smc_ras_w),
+    .sep_ras_o (sep_ras_w),
 
     .smc_global_base_o (smc_global_base_o),
     .smc_region_size_o (smc_region_size_o),

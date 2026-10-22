@@ -24,8 +24,9 @@
 # corrupting the path. Only the length rule is disabled; the rest still apply.
 # tclint-disable line-length
 
-# ---- prim_sync2r (67 instances) ----
+# ---- prim_sync2r (68 instances) ----
 set_cdc_max_delay_prim_sync2 gen_sep.u_sep/u_sep_cpu/u_mpc_reset_run_req_sync SMUCLK
+set_cdc_max_delay_prim_sync2 gen_sep.u_sep/u_wdt_bite_sync SMUCLK
 set_cdc_max_delay_prim_sync2 u_dtp/u_jtag_intf_unit/u_jtag_ptap/gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi/u_axi_cdc/i_cdc_fifo_gray_clearable_ar/i_cdc_reset_ctrlr/i_cdc_reset_ctrlr_half_a/i_state_transition_cdc_dst/i_sync/gen_tt_sync2_async_clr.u_prim_sync2r JTAG_TCK
 set_cdc_max_delay_prim_sync2 u_dtp/u_jtag_intf_unit/u_jtag_ptap/gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi/u_axi_cdc/i_cdc_fifo_gray_clearable_ar/i_cdc_reset_ctrlr/i_cdc_reset_ctrlr_half_a/i_state_transition_cdc_src/i_sync/gen_tt_sync2_async_clr.u_prim_sync2r JTAG_TCK
 set_cdc_max_delay_prim_sync2 u_dtp/u_jtag_intf_unit/u_jtag_ptap/gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi/u_axi_cdc/i_cdc_fifo_gray_clearable_ar/i_cdc_reset_ctrlr/i_cdc_reset_ctrlr_half_b/i_state_transition_cdc_dst/i_sync/gen_tt_sync2_async_clr.u_prim_sync2r SMUCLK

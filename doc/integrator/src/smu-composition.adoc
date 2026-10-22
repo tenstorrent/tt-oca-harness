@@ -852,7 +852,7 @@ the SEP-to-SMC dedicated AXI connection.
 |Port |Direction |Width |SMU Connection
 
 |`lc_state_o` |output |[2*LcStateWidth-1:0] |SEP lifecycle state when `CFG.SEP=1`, else `8'hf0`; ported through SMU
-|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when `CFG.SEP=1`) or the SMC efuse interface; the SMC half is also `smc_ras_o.lc_sigint_err`.
+|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when `CFG.SEP=1`) or the SMC efuse interface: the OR of `sep_ras_o.lc_sigint_err` and `smc_ras_o.lc_sigint_err`.
 |===
 
 === Mailbox Interrupts

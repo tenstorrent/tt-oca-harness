@@ -162,6 +162,7 @@ module smu_wrapper #(
   input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afready_i,
 
   output smc_pkg::smc_ras_t  smc_ras_o,
+  output sep_pkg::sep_ras_t  sep_ras_o,
 
   output smc_pkg::smc_axi_addr_t                                   smc_global_base_o,
   output logic [31:0]                                              smc_region_size_o,
@@ -444,6 +445,7 @@ module smu_wrapper #(
     .telemetry_afvalid_o,
     .telemetry_afready_i,
     .smc_ras_o,
+    .sep_ras_o,
     .smc_global_base_o,
     .smc_region_size_o,
     .sep_global_base_o,

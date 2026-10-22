@@ -120,6 +120,7 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 
 # RAS
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports {smc_ras_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports {sep_ras_o*}] -add_delay
 
 # NDM
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {smc_ndmreset_request_i*}] -add_delay

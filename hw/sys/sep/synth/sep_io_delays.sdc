@@ -139,9 +139,8 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 # of the period is owed to its arrival.
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(async)]  -clock [get_clock ck_feedthru] [get_ports ext_trng_irq_i] -add_delay
 
-# Key Manager interfaces
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports km_unrecoverable_err_o] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports km_recoverable_err_o] -add_delay
+# RAS
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {sep_ras_o*}] -add_delay
 
 # Efuse interface
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {efuse_bank_ctrl_req_o*}] -add_delay
@@ -160,7 +159,6 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 
 # LC state
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {lc_state_o*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports lc_sigint_err_o] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports security_disable_o] -add_delay
 
 # Mailbox interrupts

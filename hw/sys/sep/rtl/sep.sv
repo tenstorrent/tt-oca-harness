@@ -192,9 +192,6 @@ module sep #(
                                               // no functional consumer, provided for DFT insertion.
   output logic smc_fuse_dft_disable_o,        // Disables the SMC fuse DFT access path, active-high;
                                               // no functional consumer, provided for DFT insertion.
-  output logic lc_sigint_err_o,               // Integrity error on the differentially encoded LC
-                                              // state; forces every feature enable off unless
-                                              // security is disabled.
   output logic security_disable_o,            // Security-disable status from eFuse token
                                               // processing, active-high.
   output logic secure_tm_o,                   // Latched secure test mode, active-high; captured on
@@ -224,11 +221,8 @@ module sep #(
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_global_base_addr_o,  // SEP global base address from sep_cpu_ctrl; SMU crossbar SEP-target rule.
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_region_size_o,  // SEP region size from sep_cpu_ctrl; SMU crossbar SEP-target rule.
 
-  output logic km_unrecoverable_err_o,        // Key Manager unrecoverable fault, active-high: its
-                                              // CPU is in the trap state and no longer executing;
-                                              // also PIC source 31.
-  output logic km_recoverable_err_o,          // Key Manager recoverable-fault indication; also PIC
-                                              // source 32.
+  output sep_pkg::sep_ras_t sep_ras_o,        // Error, watchdog and hang levels for chip-level
+                                              // RAS aggregation, on clk_i.
 
   output logic [383:0] ext_debug_bus_o        // 24 lanes of 16 bits: CPU trace and control status,
                                               // interrupts, reset and security status, eFuse, remap
@@ -398,6 +392,8 @@ module sep #(
   logic sep_reset_n; // Efuse sensing done signal (after JTAG override)
   logic sep_cpu_reset_n; // This is the reset signal for the CPU
   logic wdt_timer_rst_req; // This is the reset signal for the WDT timer (actitve high)
+  logic wdt_bite_sync;
+  logic lc_sigint_err;
   logic [2:0] ext_trng_src_sel; // External TRNG source selection from sep_cpu_ctrl
   logic km_wipe_state; // Key Manager emergency wipe control from sep_cpu_ctrl
   // Isolation handshake and sequenced resets between sep_reset_ctrl and sep_crypto
@@ -613,10 +609,6 @@ NumExtDemuxPorts
   end
 
   assign sep_interrupts = {extintsrc_req_i, sep_internal_interrupts};
-
-  // Expose KM error signals as output ports
-  assign km_unrecoverable_err_o = km_unrecoverable_err;
-  assign km_recoverable_err_o   = km_recoverable_err;
 
   /////////////
   // SEP CPU //
@@ -955,7 +947,7 @@ NumSramDemuxPorts
     .dbg_disable_o                          (dbg_disable_o),
     .sep_fuse_dft_disable_o                 (sep_fuse_dft_disable_o),
     .smc_fuse_dft_disable_o                 (smc_fuse_dft_disable_o),
-    .lc_sigint_err_o                        (lc_sigint_err_o),
+    .lc_sigint_err_o                        (lc_sigint_err),
     .shadow_regs_o                          (),
     .fuse_sense_done_o                      (sep_fuse_sense_done_o),
     .secure_tm_o                            (secure_tm_o),
@@ -1229,6 +1221,43 @@ NumSramDemuxPorts
 
   assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
   assign security_disable_o   = security_disable;
+
+  /////////
+  // RAS //
+  /////////
+
+  prim_flop_2sync #(
+    .Width(1)
+  ) u_wdt_bite_sync (
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
+    .d_i    (wdt_timer_rst_req),
+    .q_o    (wdt_bite_sync)
+  );
+
+  assign sep_ras_o = '{
+    lc_sigint_err:      lc_sigint_err,
+    lockstep_err:       lockstep_status_o.corruption_detected,
+    wdt_bark:           intr_wdog_timer_bark,
+    wdt_bite:           wdt_bite_sync,
+    iccm_ecc_ce:        cpu_iccm_ecc_single_error,
+    iccm_ecc_ue:        cpu_iccm_ecc_double_error,
+    dccm_ecc_ce:        cpu_dccm_ecc_single_error,
+    dccm_ecc_ue:        cpu_dccm_ecc_double_error,
+    km_uncorrectable:   km_unrecoverable_err,
+    km_correctable:     km_recoverable_err,
+    dma_alert:          dma_alert,
+    dma_reg_bus_err:    dma_reg_bus_err,
+    dma_host_intg_err:  dma_host_intg_err,
+    periph_bus_err:     periph_bus_err,
+    csrng_fatal:        intr_cs_fatal_err,
+    edn_fatal:          intr_edn_fatal_err,
+    crypto_alert:       crypto_alert,
+    abr_err:            intr_abr_error,
+    entropy_fill_stall: entropy_pool_fill_stall,
+    entropy_pool_err:   entropy_pool_err,
+    token_match_fault:  token_match_fault
+  };
 
   `OCAH_ASSERT_STATIC(
       ExtDebugCpuStatusLaneWidth_A, $bits

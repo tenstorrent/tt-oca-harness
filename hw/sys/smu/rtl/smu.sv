@@ -210,6 +210,9 @@ module smu #(
 
   output smc_pkg::smc_ras_t  smc_ras_o,        // SMC error, watchdog, AXI hang and lifecycle
                                                 // integrity levels for chip-level RAS aggregation.
+  output sep_pkg::sep_ras_t  sep_ras_o,        // SEP error, watchdog and hang levels for
+                                                // chip-level RAS aggregation; zero when CFG.SEP
+                                                // is 0.
 
   output smc_pkg::smc_axi_addr_t                                   smc_global_base_o,  // SMC aperture base from the SMC
                                                                                        // GLOBAL_BASE register for external
@@ -245,8 +248,8 @@ module smu #(
   output logic                                  lc_sigint_err_o,  // Lifecycle signal-integrity
                                                                   // error, the OR of the SEP and
                                                                   // SMC eFuse differential-encoding
-                                                                  // errors; the SMC half is also
-                                                                  // smc_ras_o.lc_sigint_err.
+                                                                  // errors, sep_ras_o.lc_sigint_err
+                                                                  // and smc_ras_o.lc_sigint_err.
 
   input  logic [smc_config_pkg::CpuClusterCount - 1:0]  smc_ndmreset_request_i,  // Per-cluster NDM reset requests.
   output logic [smc_config_pkg::CpuClusterCount - 1:0]  smc_ndmreset_process_o,  // Per-cluster NDM reset in-progress.
@@ -468,7 +471,6 @@ module smu #(
   // SEP lifecycle and mailbox signals
   logic [2*smc_pkg::LcStateWidth-1:0]    sep_lc_state;
   sep_lifecycle_ctrl_pkg::dbg_disable_t  sep_dbg_disable;
-  logic  sep_lc_sigint_err;
   logic [sep_pkg::NumMailboxes-1:0]  sep_mailbox_interrupts;
 
   // SEP security disable
@@ -1001,7 +1003,6 @@ module smu #(
       .dbg_disable_o                 (sep_dbg_disable),
       .sep_fuse_dft_disable_o        (sep_fuse_dft_disable_o),
       .smc_fuse_dft_disable_o        (smc_fuse_dft_disable_o),
-      .lc_sigint_err_o               (sep_lc_sigint_err),
       .security_disable_o            (sep_security_disable),
       .secure_tm_o                   (secure_tm_o),
 
@@ -1021,8 +1022,7 @@ module smu #(
       .sep_global_base_addr_o        (sep_global_base_o),
       .sep_region_size_o             (sep_region_size_o),
 
-      .km_unrecoverable_err_o        (),
-      .km_recoverable_err_o          (),
+      .sep_ras_o                     (sep_ras_o),
 
       .ext_debug_bus_o               (sep_ext_debug_bus)
     );
@@ -1130,7 +1130,7 @@ module smu #(
     assign lc_state_o      = sep_lc_state;
 
     // differential encoding error reported by either the SEP or SMC efuse interface
-    assign lc_sigint_err_o = sep_lc_sigint_err | smc_ras_o.lc_sigint_err;
+    assign lc_sigint_err_o = sep_ras_o.lc_sigint_err | smc_ras_o.lc_sigint_err;
 
     // ==================================================================
     // SEP SPI signal assignments (connect struct to intermediate signals)
@@ -1200,11 +1200,10 @@ module smu #(
     // ==================================================================
     assign sep_lc_state      = 8'hf0;
     assign sep_dbg_disable   = '0;
-    assign sep_lc_sigint_err = 1'b0;
     assign lc_state_o        = sep_lc_state;
 
     // differential encoding error reported by either the SEP or SMC efuse interface
-    assign lc_sigint_err_o   = sep_lc_sigint_err | smc_ras_o.lc_sigint_err;
+    assign lc_sigint_err_o   = sep_ras_o.lc_sigint_err | smc_ras_o.lc_sigint_err;
 
     // ==================================================================
     // SEP mailbox and WDT tie-offs
@@ -1297,6 +1296,7 @@ module smu #(
     assign sep_external_req_o          = '0;
     assign sep_cpu_trace_o                  = '0;
     assign sep_lockstep_status_o            = '0;
+    assign sep_ras_o                        = '0;
     assign lcc_demote_state_1_o             = '0;
     assign lcc_demote_state_2_o             = '0;
     assign sep_fuse_sense_done_o            = 1'b0;

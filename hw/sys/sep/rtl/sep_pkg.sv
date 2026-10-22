@@ -465,6 +465,36 @@ SEP_ROM_MUX_NUM_PORTS
     PERIPH_BUS_ERR_WDT   = 6
   } periph_bus_err_e;
 
+  /////////
+  // RAS //
+  /////////
+
+  // SEP error, watchdog and hang levels for chip-level RAS aggregation, all on clk_i.
+  typedef struct packed {
+    logic lc_sigint_err;       // eFuse lifecycle differential-encoding error.
+    logic lockstep_err;        // CPU lockstep corruption detected.
+    logic wdt_bark;            // Watchdog bark, also the CPU NMI.
+    logic wdt_bite;            // Watchdog bite, synchronized from clk_wdt_i.
+    logic iccm_ecc_ce;         // ICCM single-bit ECC error.
+    logic iccm_ecc_ue;         // ICCM double-bit ECC error.
+    logic dccm_ecc_ce;         // DCCM single-bit ECC error.
+    logic dccm_ecc_ue;         // DCCM double-bit ECC error.
+    logic km_uncorrectable;    // Key Manager CPU stopped in its trap state.
+    logic km_correctable;      // Key Manager recoverable fault.
+    logic dma_alert;           // DMA fatal alert or integrity failure.
+    logic dma_reg_bus_err;     // DMA register-bridge fault, sticky until cleared.
+    logic dma_host_intg_err;   // DMA host integrity fault, sticky until cleared.
+    logic [NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err;  // Sticky register-bridge
+                                                     // faults, indexed by periph_bus_err_e.
+    logic csrng_fatal;         // CSRNG fatal alert.
+    logic edn_fatal;           // EDN fatal alert.
+    logic crypto_alert;        // Aggregated crypto alert.
+    logic abr_err;             // Adams Bridge error.
+    logic entropy_fill_stall;  // Hang: entropy pool fill path not making progress.
+    logic entropy_pool_err;    // Entropy pool integrity error.
+    logic token_match_fault;   // Secure-disable token compare fault.
+  } sep_ras_t;
+
   /////////////////////////////////////////////
   // Alias + Output Remap parameters + types //
   /////////////////////////////////////////////
