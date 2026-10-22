@@ -19910,6 +19910,10 @@ module sep_fcov (
   wire cy_own_kent = (graded_owner == FcovOwnSepKmacEntropyModeRandTest);
   wire cy_own_otbn = (graded_owner == FcovOwnSepOtbnCmdStatusRandTest);
   wire cy_own_abr = (graded_owner == FcovOwnSepAbrCommandMatrixRandTest);
+  // cp_verify_outcome alone also samples for the malformed-hint leaf; the
+  // other ABR trackers stay on cy_own_abr.
+  wire cy_own_abr_vo = cy_own_abr ||
+                       (graded_owner == FcovOwnSepAbrMldsaHintRejectKatTest);
   wire cy_own_eswalk = (graded_owner == FcovOwnSepEsrcCsrRwWalkRandTest);
   wire cy_own_eshp = (graded_owner == FcovOwnSepEsrcHealthPatternRandTest);
   wire cy_own_espa = (graded_owner == FcovOwnSepEsrcPersistentAlertRandTest);
@@ -23343,8 +23347,6 @@ module sep_fcov (
       cy_ab_held  <= '0;
       cy_ab_zp    <= '0;
       cy_ab_rp    <= '0;
-      cy_ab_sig_m <= '0;
-      cy_ab_v_on  <= 1'b0;
     end else begin
       for (int b = 0; b < 2; b++) begin
         logic [31:0] ca;
@@ -23386,6 +23388,13 @@ module sep_fcov (
           end
         end
       end
+    end
+  end
+  always @(posedge clk_i) begin
+    if (!cy_own_abr_vo) begin
+      cy_ab_sig_m <= '0;
+      cy_ab_v_on  <= 1'b0;
+    end else begin
       // cp_verify_outcome: c~ is the first 16 words of the signature window
       // as written before VERIFYING; a reject is a VERIFY_RES that differs
       // from it in a word. The reason class is the stimulus label.

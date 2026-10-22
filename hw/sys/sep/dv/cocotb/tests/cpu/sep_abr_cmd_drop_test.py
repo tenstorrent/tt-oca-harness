@@ -7,9 +7,12 @@ every command write is dropped while ZEROIZE and every register write still land
 what an instruction-skip glitch on the command store produces. The
 abr_mldsa87_verify_test firmware then runs only its genuine case. The accelerator
 never preloads ``MLDSA_VERIFY_RES`` with the inverted c~, so the driver must stop at
-its preload check with ``ABR_DRV_ERR_STATE``, having seen no command-done event,
-and the firmware must report FAIL. A PASS line would mean the driver trusted a
-verify that never ran.
+its preload check with ``ABR_DRV_ERR_STATE`` before it streams any word, and the
+firmware must complete with FAIL. A PASS line would mean the driver trusted a verify
+that never ran.
+
+The driver stops before it reads the command-done counter, so the ``done=`` field of
+its case line is the driver's initial value and is logged only, never graded.
 
 The case runs from the same image as sep_abr_mldsa87_verify_test, with its case
 mask patched to the genuine case alone.
@@ -18,6 +21,7 @@ mask patched to the genuine case alone.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import cocotb
@@ -42,8 +46,9 @@ _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 500_000
 
 # The driver's status, stage and diagnostics when the preload never appears:
-# ABR_DRV_ERR_STATE (-7) at ABR_DRV_STAGE_PRELOAD (5), nothing streamed, no done event.
-_REFUSED_LINE = "case 1 genuine: FAIL status=-7 stage=5 written=0 early=0 inv=0 nz=0 done=0"
+# ABR_DRV_ERR_STATE (-7) at ABR_DRV_STAGE_PRELOAD (6), nothing streamed. The line
+# continues with ``done=``, which this test does not grade (see the module docstring).
+_REFUSED_LINE = "case 1 genuine: FAIL status=-7 stage=6 written=0 early=0 inv=0 nz=0"
 _ACCEPTED_LINE = "case 1 genuine: PASS"
 
 
@@ -52,7 +57,7 @@ class sep_abr_cmd_drop_test(sep_base_test):
     """A dropped ML-DSA command is refused at the preload check, never accepted."""
 
     build_env = False
-    required_evidence = ("CHK-FW-CONSOLE",)
+    required_evidence = ("CHK-FW-CONSOLE", "CHK-FW-DONE-FAIL")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -92,4 +97,22 @@ class sep_abr_cmd_drop_test(sep_base_test):
         )
         self.logger.info(
             "CHK-FW-CONSOLE PASS: the dropped command was refused at the preload check"
+        )
+        done_field = re.search(re.escape(_REFUSED_LINE) + r" done=(\S+)", console)
+        self.logger.info(
+            "driver done counter field (initial value, not graded): done=%s",
+            done_field.group(1) if done_field else "absent",
+        )
+        # The scoreboard only forbids a PASS here; this test also requires the
+        # firmware to report completion, so a hang after the case line fails.
+        assert self.sb.fw_done, (
+            "CHK-FW-DONE-FAIL FAIL: firmware never signaled completion after the refusal"
+        )
+        assert not self.sb.fw_pass, (
+            "CHK-FW-DONE-FAIL FAIL: firmware signaled PASS on a dropped ML-DSA command"
+        )
+        self.logger.info(
+            "CHK-FW-DONE-FAIL PASS: firmware completed with FAIL (fw_done=%d fw_pass=%d)",
+            int(self.sb.fw_done),
+            int(self.sb.fw_pass),
         )

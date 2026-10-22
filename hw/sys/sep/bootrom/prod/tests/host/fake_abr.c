@@ -61,12 +61,27 @@ static int in_range(uint32_t addr, uint32_t base, uint32_t words) {
     return addr >= base && addr < base + words * 4u;
 }
 
+// A signature verifies only over the message it was made over (or, with
+// signed_prefixes, over any prefix of it).
+static int stream_is_signed(void) {
+    const uint32_t len = g_fake.stream_len;
+    if (len > g_fake.signed_len || (!g_fake.signed_prefixes && len != g_fake.signed_len)) {
+        return 0;
+    }
+    return len == 0u || memcmp(g_fake.stream, g_fake.signed_msg, len) == 0;
+}
+
 static void raise_valid(void) {
     s_phase = PH_VALID;
     s_res_reads = 0;
+    memcpy(g_fake.verified_pubkey, g_fake.pubkey, sizeof(g_fake.verified_pubkey));
+    memcpy(g_fake.verified_ctilde, g_fake.signature, sizeof(g_fake.verified_ctilde));
     switch (g_fake.result) {
     case FAKE_RES_MATCH:
         memcpy(s_verify_res, g_fake.signature, sizeof(s_verify_res));
+        if (!stream_is_signed()) {
+            s_verify_res[0] ^= 0x1u;
+        }
         break;
     case FAKE_RES_MISMATCH:
         memcpy(s_verify_res, g_fake.signature, sizeof(s_verify_res));
@@ -203,6 +218,9 @@ void fake_mmio_write32(uint32_t addr, uint32_t value) {
         ++g_fake.out_of_window_accesses;
         return;
     }
+    if (++g_fake.write_count == g_fake.drop_write) {
+        return;
+    }
     const int ready = s_phase == PH_IDLE || s_phase == PH_STALE;
 
     if (addr == SEP_TOP_ABR_MLDSA_CTRL_BASE_ADDR) {
@@ -212,6 +230,8 @@ void fake_mmio_write32(uint32_t addr, uint32_t value) {
         }
         if (ready && (value & 0x7u) == 0x3u) {
             ++g_fake.verify_commands;
+            g_fake.stream_len = 0u;
+            g_fake.strobe_count = 0u;
             if (!g_fake.no_preload) {
                 for (uint32_t i = 0; i < 16u; ++i) s_verify_res[i] = ~g_fake.signature[i];
             }
@@ -233,6 +253,9 @@ void fake_mmio_write32(uint32_t addr, uint32_t value) {
         return;
     }
     if (addr == SEP_TOP_ABR_MLDSA_MSG_STROBE_BASE_ADDR) {
+        if (++g_fake.strobe_writes == g_fake.corrupt_strobe) {
+            value = g_fake.corrupt_value;
+        }
         if (s_phase == PH_STREAM) {
             s_strobe = value & 0xFu;
         } else {
@@ -262,11 +285,15 @@ void fake_mmio_write32(uint32_t addr, uint32_t value) {
         return;
     }
     if (addr == SEP_TOP_ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_R_BASE_ADDR) {
-        if ((value & 1u) != 0u) s_err_sts = 0u;
+        if ((value & 1u) != 0u && !g_fake.err_sts_sticks) s_err_sts = 0u;
         return;
     }
     if (addr == SEP_TOP_ABR_INTR_BLOCK_RF_NOTIF_CMD_DONE_INTR_COUNT_R_BASE_ADDR) {
         if (!g_fake.done_count_sticks) s_done_count = value;
+        return;
+    }
+    if (addr == SEP_TOP_ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_COUNT_R_BASE_ADDR) {
+        if (!g_fake.err_count_sticks) s_err_count = value;
         return;
     }
 }

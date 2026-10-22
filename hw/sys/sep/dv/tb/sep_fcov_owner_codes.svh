@@ -45,6 +45,7 @@ localparam int unsigned FcovOwnSepTrngExtStreamHandshakeRandTest = 151;
 localparam int unsigned FcovOwnSepTrngExtSinkResetRandTest = 152;
 localparam int unsigned FcovOwnSepDrbgSinkMixRandTest = 153;
 localparam int unsigned FcovOwnSepAesCfbOfbGcmRandTest = 154;
+localparam int unsigned FcovOwnSepAbrMldsaHintRejectKatTest = 155;
 localparam int unsigned FcovOwnSepOtbnComputeRandTest = 738;
 localparam int unsigned FcovOwnSepKmIsolateTerminationTest = 739;
 localparam int unsigned FcovOwnSepDrbgAxilAdapterRefusalTest = 740;
