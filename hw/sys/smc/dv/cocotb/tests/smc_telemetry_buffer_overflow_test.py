@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Telemetry receiver 0 driven past its message buffer and its assembly buffer."""
+"""Telemetry receivers driven past their message queue and assembly buffer."""
 
 from __future__ import annotations
 
@@ -13,17 +13,29 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_telemetry_buffer_overflow_test(smc_base_test):
-    """Overfill the message buffer, cross the threshold, and run a message past its end."""
+    """Overfill the message buffer, cross the threshold, and run a message past its end.
+
+    Receivers 1 and 2 then run queue overflow, push-against-pop, transmitter
+    flush, MISSING_LAST and INTR_TEST legs.
+    """
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-TELEM12-FULL",
+        "CHK-TELEM12-INTR-TEST",
+        "CHK-TELEM12-MISSING-LAST",
+        "CHK-TELEM12-OVERFLOW-ORDER",
+        "CHK-TELEM12-PUSH-POP-WINDOW",
+        "CHK-TELEM12-TX-FLUSH",
         "CHK-TELEMETRY-BUFFER-OVERFLOW",
         "CHK-TELEMETRY-FULL-MESSAGE",
         "CHK-TELEMETRY-MISSING-LAST",
         "CHK-TELEMETRY-PARTIAL-FLUSH",
         "CHK-TELEMETRY-POP-EMPTY",
         "CHK-TELEMETRY-THRESHOLD-INTR",
+        "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 6
+    min_evidence = 14
 
     auto_protocol_vip = False
 
