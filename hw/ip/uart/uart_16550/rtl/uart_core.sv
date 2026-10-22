@@ -874,17 +874,19 @@ module uart_core
   logic dsr, dsr_n;
   logic ri, ri_n;
   logic dcd, dcd_n;
+  logic modem_status_synced;
 
   // Modem status bits input synchronization. The bits can change asynchronously.
+  // modem_status_synced rises once the stages hold the pins rather than their reset value.
   prim_flop_2sync #(
-    .Width             (4),
-    .ResetValue        (4'hf),
+    .Width             (5),
+    .ResetValue        (5'h0f),
     .EnablePrimCdcRand (1'b1)
   ) u_flop_2sync_modem_status (
     .clk_i,
     .rst_ni,
-    .d_i               ({cts_ni, dsr_ni, ri_ni, dcd_ni}),
-    .q_o               ({cts_n,  dsr_n,  ri_n,  dcd_n})
+    .d_i               ({1'b1,                cts_ni, dsr_ni, ri_ni, dcd_ni}),
+    .q_o               ({modem_status_synced, cts_n,  dsr_n,  ri_n,  dcd_n})
   );
 
   // Modem status bits input mux
@@ -922,22 +924,33 @@ module uart_core
                                                        // register's first field
 
   logic dcd_last_rd_val, dsr_last_rd_val, cts_last_rd_val;
+  logic modem_status_synced_q;
+
+  // Load *_last_rd_val until it holds synchronized levels, so an input asserted at reset is no
+  // delta. Need one cycle delay because modem_status_synced would sample reset values
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (~rst_ni) begin
+      modem_status_synced_q <= 1'b0;
+    end else begin
+      modem_status_synced_q <= modem_status_synced;
+    end
+  end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
       dcd_last_rd_val <= 1'b0;
       dsr_last_rd_val <= 1'b0;
       cts_last_rd_val <= 1'b0;
-    end else if (msr_read) begin
+    end else if (msr_read || !modem_status_synced_q) begin
       dcd_last_rd_val <= dcd;
       dsr_last_rd_val <= dsr;
       cts_last_rd_val <= cts;
     end
   end
 
-  assign reg_in_o.main.MSR.DDCD.next = dcd != dcd_last_rd_val;
-  assign reg_in_o.main.MSR.DDSR.next = dsr != dsr_last_rd_val;
-  assign reg_in_o.main.MSR.DCTS.next = cts != cts_last_rd_val;
+  assign reg_in_o.main.MSR.DDCD.next = modem_status_synced_q && (dcd != dcd_last_rd_val);
+  assign reg_in_o.main.MSR.DDSR.next = modem_status_synced_q && (dsr != dsr_last_rd_val);
+  assign reg_in_o.main.MSR.DCTS.next = modem_status_synced_q && (cts != cts_last_rd_val);
 
   logic ri_q;
 

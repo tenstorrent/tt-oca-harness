@@ -1774,7 +1774,17 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
     return _make_plan(T_LOCK_SLOT, seed, d, LC_TEST_DEV, sip, sys_, img, leg)
 
 
-_STM_STATES = ((LC_TEST_DEV, 2), (LC_PROD, 1), (LC_RMA_SIP_0, 1))
+_STM_STATES = (
+    (LC_TEST_DEV, 1),
+    (LC_PROD, 1),
+    (LC_PROD_END, 1),
+    (LC_RMA_SIP_0, 1),
+    (LC_RMA_CHIP_0, 1),
+)
+# States where JTAG reaches the shadow registers: the JTAG restriction to the token
+# block holds in PROD and RMA_SIP only (otp_fuse_controller.adoc, Shadow Register
+# and JTAG Access Control).
+_STM_JTAG_STATES = (LC_TEST_DEV, LC_PROD_END, LC_RMA_CHIP_0)
 STM_TARGETS = ("LOCKS", "LOCKS_SPARE", "SIP_DIS", "SYS_DIS")
 STM_PROGRAM_CLASSES = ("wide", "narrow32", "dis", "locks", "spare")
 
@@ -1848,7 +1858,7 @@ def plan_secure_tm_matrix(seed: int) -> SepEfusePlan:
         "target_order": target_order,
         "programs": progs,
         "targets": targets,
-        "jtag_leg": raw == LC_TEST_DEV,
+        "jtag_leg": raw in _STM_JTAG_STATES,
     }
     return _make_plan(T_SECURE_TM, seed, d, raw, sip, sys_, img, leg)
 
