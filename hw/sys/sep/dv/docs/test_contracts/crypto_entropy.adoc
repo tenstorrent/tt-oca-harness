@@ -4298,7 +4298,7 @@ rejection in the driver alone, an abort mid-stream, and identity.
   case mask in the firmware's `abr_case_params` block in the staged DCCM image so
   only the selected cases run. A mask that selects no case, or a case above 13,
   fails the leaf before boot; the firmware refuses the same masks and reports FAIL.
-. Case 0: read the ML-DSA name and version.
+. Case 0: read the ML-DSA name and version through the driver's identity check. No SEP or Adams Bridge document states the values, so the result follows `obs:` and is not graded.
 . Cases 1 and 13: verify the genuine signature over the blob; case 13 repeats it
   after every other case. Case 2: verify the genuine signature over the first
   5900 bytes of the blob.
@@ -4321,7 +4321,7 @@ rejection in the driver alone, an abort mid-stream, and identity.
 |===
 |Checker |Contract
 |CHK-FW-CONSOLE
-|The console carries `abr_mldsa87_verify_test: case_mask=0x<mask>` with the mask the test selected, and `abr_mldsa87_verify_test: PASS (0 failed, <n> run)`, where n is the number of selected cases; the firmware completes with PASS. Every selected case has at least one line that starts `case <n> `, and every such line carries `: PASS `, so a firmware that ran fewer cases than selected fails. The firmware grades each case. Case 0: the identity check returns status 0. Cases 1, 2 and 13: status 0 at stage DONE, 5903 or 5900 bytes streamed, VALID not before `MSG_STREAM_READY`, a non-zero result that is not `~c~`, and one command-done event. Cases 3 to 10: status `ABR_DRV_ERR_SIG_INVALID` and a reject verdict; the stage, `early`, `inv`, `written`, `nz` and `done` values follow `obs:` on the case line and are diagnostics, not graded. Case 11: status `ABR_DRV_ERR_SIG_INVALID` at stage ARGS with nothing streamed and no done event; these are values of the driver alone, because the driver does not access the accelerator in this case. Case 12: the `case 12 zeroize_midstream_abort` line needs status 0 from the load, the start, the partial stream and the zeroize, and every word of `MLDSA_VERIFY_RES` at 0 after the zeroize (`res_or=0x00000000`); the `case 12 zeroize_midstream` line needs the result of a genuine case.
+|The console carries `abr_mldsa87_verify_test: case_mask=0x<mask>` with the mask the test selected, and `abr_mldsa87_verify_test: PASS (0 failed, <n> run)`, where n is the number of selected cases; the firmware completes with PASS. Every selected case has at least one line that starts `case <n> `, and every such line carries `: PASS `, so a firmware that ran fewer cases than selected fails. The firmware grades each case. Case 0 is a diagnostic. Cases 1, 2 and 13: status 0 at stage DONE, 5903 or 5900 bytes streamed, VALID not before `MSG_STREAM_READY`, a non-zero result that is not `~c~`, and one command-done event. Cases 3 to 10: status `ABR_DRV_ERR_SIG_INVALID` and a reject verdict; the stage, `early`, `inv`, `written`, `nz` and `done` values follow `obs:` on the case line and are diagnostics, not graded. Case 11: status `ABR_DRV_ERR_SIG_INVALID` at stage ARGS with nothing streamed and no done event; these are values of the driver alone, because the driver does not access the accelerator in this case. Case 12: the `case 12 zeroize_midstream_abort` line needs status 0 from the load, the start, the partial stream and the zeroize, and every word of `MLDSA_VERIFY_RES` at 0 after the zeroize (`res_or=0x00000000`); the `case 12 zeroize_midstream` line needs the result of a genuine case.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -4503,7 +4503,9 @@ Pre-hash ML-DSA (tgId 6) and the internal interface without external mu
 
 *Anti-vacuity*: tcId 63 runs first through the same stream and context path and
 must verify, so a broken stream or context fails on a known answer rather than
-passing as a reject. CHK-HINT-PRELOAD runs before each pure reject, so a VERIFY
+passing as a reject. The external-mu path has its accept control in
+<<sep_abr_mldsa_sign_verify_kat_test>>, which verifies an ACVP external-mu
+signature through `MLDSA_EXTERNAL_MU` with `MLDSA_CTRL.EXTERNAL_MU` set. CHK-HINT-PRELOAD runs before each pure reject, so a VERIFY
 command that did not land fails there rather than passing as a reject.
 
 *Not claimed*: the stage at which the engine rejects a malformed hint, before or
