@@ -254,98 +254,8 @@ module sep_uvm_top
         end
     end
 
-    // Assertion classes held off, and why each is not a DUT contract here.
-    //
-    // AssertConnected_A (every hardened counter under entropy_source,
-    // axis_edn_crypto and axis_edn_pool) asks whether the counter's err_o reaches
-    // an OpenTitan alert, so it cannot fail on DUT behaviour. It is
-    // ASSERT_INIT_NET -- an immediate assert in `initial #1ps`, with no clock and
-    // no reset -- so `disable iff` cannot gate it and the scope is the only knob.
-    //
-    // Where err_o is wired it reaches escalation and irq_o, and SEP's
-    // entropy_source has no alert output for the OT convention to test; the
-    // declarative escape there is EnableAlertTriggerSVA(0) at the instantiation.
-    //
-    // The remaining counters raise err_o into a net nothing reads, so a green run
-    // is NOT evidence that a glitched health-test counter would be reported. The
-    // SPI assertions in this subtree are armed only during reset, so they judge
-    // nothing after it.
-    //
-    // Scope is by subtree because these are generate-loop instances with no single
-    // name to target, which also disables every other assertion under those three
-    // blocks. The contracts re-armed by name are the EDN arbiter hold-until-grant
-    // assume and lock assert, the crypto EDN adapter's clear and per-endpoint
-    // cancel contracts, the pool EDN adapter's clear contracts, and
-    // FipsWindowFloor_A.
 `ifndef VERILATOR
     initial begin
-        // Scope-level $assertoff: these instances have no clock or reset for
-        // `disable iff` to gate. Re-arm by an assertion's own hierarchical
-        // name, never by re-enabling a parent instance.
-        $assertoff(0, `SEP_ESRC);
-        $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
-        $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan);
-        // The adapter waives the arbiter's request checks only on the first
-        // cycle of an endpoint flush, so these two stay live for every other
-        // request. The adapter scope stays off because AxisEdnEndpointCount_A
-        // is an immediate assert with no reset.
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .u_arbiter.ReqStaysHighUntilGranted0_M);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .u_arbiter.LockArbDecision_A);
-        // The adapter's own contracts for the shared clear. Without these the
-        // scope-level $assertoff above would leave the clear unpoliced: an ack
-        // leaking through it, or an ack state machine driven to Error by the
-        // one-cycle disable, would both pass silently.
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .AxisEdnAllAckSmHealthy_A);
-        // Unrolled: a generate-block index must resolve at elaboration, so a
-        // procedural loop variable cannot select gen_ep[]. One line per
-        // endpoint of SepCryptoAxisEdnClientCount (AES, KMAC, OTBN RND,
-        // OTBN URND).
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[0].AxisEdnNoAckDuringClear_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[1].AxisEdnNoAckDuringClear_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[2].AxisEdnNoAckDuringClear_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[3].AxisEdnNoAckDuringClear_A);
-        // The upstream side of the same clear: neither adapter takes an
-        // AXI-Stream beat while clear_i is high. The pool adapter's clear is
-        // the TRNG reset (trng_reset_active), so its single endpoint must not
-        // acknowledge during it either.
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .AxisEdnNoReadyDuringClear_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
-            .AxisEdnNoReadyDuringClear_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
-            .gen_ep[0].AxisEdnNoAckDuringClear_A);
-        // Per-endpoint cancel contracts. A cancelled endpoint neither requests,
-        // takes a word, nor acknowledges, and an ungranted request only drops
-        // under a flush of that endpoint.
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[0].AxisEdnCancelledEndpointIdle_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[1].AxisEdnCancelledEndpointIdle_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[2].AxisEdnCancelledEndpointIdle_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[3].AxisEdnCancelledEndpointIdle_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-            .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
-        // The pool adapter shares the same arbiter, so its arbiter contracts
-        // must be live for the same reason.
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
-            .u_arbiter.ReqStaysHighUntilGranted0_M);
-        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
-            .u_arbiter.LockArbDecision_A);
         // A JTAG reset override skips isolation, so an engine can drop an
         // ungranted EDN request with no cancel; no word is lost or misrouted.
         if ($test$plusargs("sep_edn_jtag_reset_waive")) begin
@@ -363,10 +273,6 @@ module sep_uvm_top
             $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
                 .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
         end
-        // entropy_source.sv FipsWindowFloor_A -- fips_lock |-> window >= 1024.
-        // sep_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
-        // out-of-spec window must fail rather than be swept up by the line above.
-        $asserton(0, `SEP_ESRC.FipsWindowFloor_A);
         // SHA-256-only prim_sha2_32 (MultimodeEn=0) ties inner digest_mode_i to
         // SHA2_None. ValidDigestModeFlag_A requires {SHA2_256, SHA2_384, SHA2_512}
         // on every hash beat, so it is not a contract on those instances. HMAC

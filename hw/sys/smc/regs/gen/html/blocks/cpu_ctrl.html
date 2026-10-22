@@ -58,7 +58,7 @@
 <tr><td>63:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>24</td><td>debug_reset_n_n0_scan</td><td>RW</td><td>0x0</td><td>Debug Module Reset, active low</td></tr>
 <tr><td>23:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>uncore_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.<br>WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.</td></tr>
+<tr><td>8</td><td>uncore_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Cluster Uncore Reset, active low. Resets the uncore portion of the chipyard cluster and holds every core in reset<br>with it. The reset waits for the cluster boundary to drain, bounded by RESET_TIMEOUT.<br>WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.</td></tr>
 <tr><td>7</td><td>core3_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
 <tr><td>6</td><td>core2_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
 <tr><td>5</td><td>core1_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
@@ -80,12 +80,12 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:37</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>36</td><td>reset_timeout</td><td>R</td><td>0x0</td><td>Status for the active software reset request: high after the request exceeds<br>timeout_value and remains high until the request is deasserted. Set in both modes.</td></tr>
+<tr><td>36</td><td>reset_timeout</td><td>R</td><td>0x0</td><td>Status for the active software uncore reset request: high after the request exceeds<br>timeout_value and remains high until the request is deasserted. Set in both modes.</td></tr>
 <tr><td>35:33</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>32</td><td>reset_applied</td><td>R</td><td>0x0</td><td>Live status: high while a requested software reset is applied at the cluster,<br>either after drain completes or after a force-mode timeout.</td></tr>
+<tr><td>32</td><td>reset_applied</td><td>R</td><td>0x0</td><td>Live status: high while a requested software uncore reset is applied at the cluster,<br>either after drain completes or after a force-mode timeout. Core resets are not reported.</td></tr>
 <tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>timeout_mode</td><td>RW</td><td>0x0</td><td>Timeout mode: 0 = report the timeout and keep withholding the reset until<br>the drain completes, then apply it; 1 = force the reset on timeout.</td></tr>
-<tr><td>15:0</td><td>timeout_value</td><td>RW</td><td>0x0</td><td>Cycles (clk_smc) a software reset may stay pending (withheld, waiting<br>for drain) before timeout. 0 = disabled, wait indefinitely.</td></tr>
+<tr><td>16</td><td>timeout_mode</td><td>RW</td><td>0x0</td><td>Timeout mode: 0 = report the timeout and keep withholding the uncore reset until<br>the drain completes, then apply it; 1 = force the uncore reset on timeout.</td></tr>
+<tr><td>15:0</td><td>timeout_value</td><td>RW</td><td>0x0</td><td>Cycles (clk_smc) a software uncore reset may stay pending (withheld, waiting<br>for drain) before timeout. 0 = disabled, wait indefinitely. Core resets do not wait.</td></tr>
 </table>
 <h3 id="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
 <table>
