@@ -99,6 +99,9 @@ module i2c_wrap #(
   output logic [NUM_I2CS-1:0] i2c_irq_o,                    // Per-instance level interrupt; OR of
                                                             // the enabled INTR_STATE sources.
 
+  output logic [NUM_I2CS-1:0] i2c_fifo_intg_err_o,          // Per-instance FIFO pointer or data
+                                                            // parity integrity error; see i2c_core.
+
   output logic [NUM_I2CS-1:0][3:0] i2c_debug_o              // Per-instance four-bit debug; see
                                                             // i2c_core.
 );
@@ -258,6 +261,7 @@ module i2c_wrap #(
 
       // Interrupt Interface
       .irq_o                    (i2c_irq_o[i]),
+      .fifo_intg_err_o          (i2c_fifo_intg_err_o[i]),
 
       // Debug Interface
       .debug_o                  (i2c_debug_o[i])
@@ -332,6 +336,7 @@ module i2c_wrap #(
   `OCAH_OT_ASSERT_KNOWN(TargetTxReadyKnownO_A, target_tx_ready_o)
   `OCAH_OT_ASSERT_KNOWN(TargetRxReadyKnownO_A, target_rx_ready_o)
   `OCAH_OT_ASSERT_KNOWN(I2cIrqKnownO_A, i2c_irq_o)
+  `OCAH_OT_ASSERT_KNOWN(I2cFifoIntgErrKnownO_A, i2c_fifo_intg_err_o)
   `OCAH_OT_ASSERT_KNOWN(I2cDebugKnownO_A, i2c_debug_o)
 
 endmodule

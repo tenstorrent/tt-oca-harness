@@ -82,6 +82,10 @@ module i2c_core
   output logic                             irq_o,           // Level interrupt; OR of the INTR_STATE
                                                             // sources masked by INTR_ENABLE.
 
+  output logic                             fifo_intg_err_o, // OR of the four FIFO pointer or data
+                                                            // parity integrity errors, independent
+                                                            // of INTR_ENABLE.
+
   output logic [3:0]                       debug_o          // [0] SDA and [1] SCL, each sampled
                                                             // once by clk_i; [2] target_idle; [3]
                                                             // OR of the NACK, arbitration-lost,
@@ -529,6 +533,9 @@ module i2c_core
     .err_o             (target_rx_fifo_error)
   );
 
+  assign fifo_intg_err_o = controller_tx_fifo_error || controller_rx_fifo_error ||
+                           target_tx_fifo_error || target_rx_fifo_error;
+
   prim_alert_pkg::alert_tx_t unused_alert_tx;
 
   prim_alert_sender #(
@@ -538,10 +545,7 @@ module i2c_core
     .clk_i,
     .rst_ni,
     .alert_test_i  (1'b0),
-    .alert_req_i   (controller_tx_fifo_error ||
-                        controller_rx_fifo_error ||
-                        target_tx_fifo_error ||
-                        target_rx_fifo_error),
+    .alert_req_i   (fifo_intg_err_o),
     .alert_ack_o   (/* UNUSED */),
     .alert_state_o (/* UNUSED */),
     .alert_rx_i    (prim_alert_pkg::ALERT_RX_DEFAULT),
