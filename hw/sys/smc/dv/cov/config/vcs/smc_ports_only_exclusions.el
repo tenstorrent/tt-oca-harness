@@ -7354,13 +7354,11 @@ CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[0].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[11].u_gpio_interface
@@ -7372,97 +7370,81 @@ CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[12].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[13].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[14].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[15].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[16].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[17].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[18].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[19].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[1].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[20].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[21].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[22].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[23].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[24].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[25].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[26].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface
@@ -7482,62 +7464,53 @@ CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[29].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[2].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[30].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[31].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[32].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[33].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[34].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[35].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
@@ -7550,83 +7523,61 @@ CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[39].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[3].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[40].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[41].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[42].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[43].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[44].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[45].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[46].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[47].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[48].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "928544494 4261098035"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[4].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "928544494 4261098035"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface
@@ -7638,21 +7589,18 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (3 "11")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[53].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[54].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[55].u_gpio_interface
@@ -7678,7 +7626,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (3 "11")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
 
 CHECKSUM: "928544494 4261098035"
@@ -7686,14 +7633,12 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (3 "11")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[5].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[60].u_gpio_interface
@@ -7707,53 +7652,45 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (3 "11")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[63].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[64].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[6].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[7].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[8].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[9].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "1126419757 2574745303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
@@ -7947,11 +7884,6 @@ Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.r
 Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
 Condition 61 "321101586" "(modem_status_synced_q && (dcd != dcd_last_rd_val)) 1 -1" (1 "01")
 Condition 63 "446727046" "(modem_status_synced_q && (dsr != dsr_last_rd_val)) 1 -1" (1 "01")
-
-CHECKSUM: "1695494083 1025963123"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 17 "3823956829" "(extra_stop_bit_i && (word_length_i != 4'd5)) 1 -1" (2 "10")
 
 CHECKSUM: "802650105 1094008715"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_tx
@@ -9083,7 +9015,6 @@ Block 90 "1036727875" "rx_fifo_threshold = rx_fifo_threshold_t'(14);"
 Block 92 "2940120817" "rx_fifo_threshold = rx_fifo_threshold_t'(64);"
 Block 93 "2027900998" "rx_fifo_threshold = rx_fifo_threshold_t'(128);"
 Block 94 "2008718133" "rx_fifo_threshold = rx_fifo_threshold_t'(256);"
-Block 95 "2687612903" "rx_fifo_threshold = rx_fifo_threshold_t'(512);"
 Block 96 "1834982481" "rx_fifo_threshold = rx_fifo_threshold_t'(1024);"
 Block 97 "2062889571" "rx_fifo_threshold = rx_fifo_threshold_t'(2048);"
 Block 98 "1709577418" "rx_fifo_threshold = rx_fifo_threshold_t'(4096);"

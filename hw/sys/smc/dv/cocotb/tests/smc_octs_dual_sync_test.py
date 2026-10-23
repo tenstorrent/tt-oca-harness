@@ -12,16 +12,25 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_octs_dual_sync_test(smc_base_test):
-    """U4-5: SECONDARY pad inject + PRIMARY sync/credit pad edges."""
+    """U4-5: SECONDARY start ignored and pad inject + PRIMARY start and sync/credit pad edges."""
 
-    required_evidence = ("CHK-OCTS-DUAL-SYNC",)
-    min_evidence = 1
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-OCTS-DUAL-SYNC",
+        "CHK-OCTS-PRI-START",
+        "CHK-OCTS-SEC-MODE",
+        "CHK-OCTS-SEC-START-IGNORED",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 6
 
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         seq = smc_octs_dual_sync_test_seq("octs_dual_sync_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
+        for token in self.required_evidence:
+            assert token in seq.chk_seen, f"missing CHK token {token} (seen={sorted(seq.chk_seen)})"
         await self.record_protocol_vip(
             SmcProtocolVipKind.SIDEBAND,
             type(self).__name__,

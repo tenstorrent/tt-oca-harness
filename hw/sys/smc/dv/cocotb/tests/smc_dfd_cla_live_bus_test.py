@@ -9,7 +9,9 @@ target enabled, sweeps the actions again with the lowest clock-halt mask bit
 set, takes the CLA mux through fine-grain normal mode into identifier mode,
 moves the node chain away from pairs whose relation holds, then writes and
 reads back every field of the CLA mux select register and puts it in toggle
-mode.
+mode. With the CLA back at its reset, the toggle-mode bus is then traced
+uncompressed into the trace sink until it wraps the 16 KiB of the eight trace
+RAMs, and every stored word is read back through Trdstramdata.
 """
 
 from __future__ import annotations
@@ -51,9 +53,24 @@ from smc_base_test import smc_base_test
 #   toggle mode: write and readback, 16 two-word snapshots                  34
 #   restore: 4 pairs, 4 counters, 14 named registers, 8 comparator
 #     registers, DEBUG_BUS_MUX, DEBUG_CTRL                                   32
+#   trace toggle set-up: CDbgMuxSelLo write and readback, Trdstcontrol
+#     read, write and readback                                                5
+#   sink set-up: DEBUG_CTRL and funnel, each write + readback, the sink off
+#     write, 6 window and pointer writes, the sink control write +
+#     readback, the empty read                                               14
+#   trace pair: the CLA control write, 2 CurrentNode reads, one relation
+#     try (write, status read)                                                5
+#   trace fill: DST enable write + readback, 64 action writes, one wrap
+#     poll, the stop write, one empty poll, 2 write-pointer reads, the
+#     sink control read                                                      72
+#   read-out: read-pointer write + readback, 4096 data reads, 64
+#     read-pointer samples                                                 4162
+#   content: CDbgMuxSelLo and Trdstcontrol reads                              2
+#   trace restore: CDbgMuxSelLo, Trdstcontrol, Trdstramcontrol and 8 sink
+#     pointers, each write + readback, then 4 reset writes                   26
 #                                                                         ------
-#                                                                          1091
-CLA_LIVE_BUS_MIN_CSR_ACCESSES = 1091
+#                                                                          5377
+CLA_LIVE_BUS_MIN_CSR_ACCESSES = 5377
 
 
 @pyuvm.test()
@@ -68,9 +85,14 @@ class smc_dfd_cla_live_bus_test(smc_base_test):
         "CHK-CLA-LIVE-MUXSEL-FIELDS",
         "CHK-CLA-LIVE-NODE",
         "CHK-CLA-LIVE-TOGGLE-MODE",
+        "CHK-CLA-TOGGLE-TRACE-DATA",
+        "CHK-CLA-TOGGLE-UNCOMP-CFG",
+        "CHK-CLA-TRACE-FILL",
+        "CHK-CLA-TRACE-READ",
         "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 8
+    min_evidence = 13
 
     auto_protocol_vip = False
 
@@ -88,6 +110,9 @@ class smc_dfd_cla_live_bus_test(smc_base_test):
                 f"{seq.action_values} action writes, counters {seq.counter_after}, "
                 f"node after move {seq.node_after_move}, "
                 f"CLA mux snapshots {[hex(v) for v in seq.mux_snapshots]}, "
-                f"toggle-mode snapshots {[hex(v) for v in seq.toggle_snapshots]}"
+                f"toggle-mode snapshots {[hex(v) for v in seq.toggle_snapshots]}, "
+                f"trace node {seq.trace_node} op {seq.trace_op}, "
+                f"{len(seq.wp_samples)} write-pointer samples, final WP 0x{seq.final_wp:x}, "
+                f"{len(seq.trace_words)} trace words, {len(seq.rp_samples)} read-pointer samples"
             ),
         )
