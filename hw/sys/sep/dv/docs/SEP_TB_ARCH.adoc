@@ -490,6 +490,7 @@ Observation probe groups:
   and of the two DMA latches (`reg_path_err`, `host_path_err`). Owner:
   `sep_cpu_bridge_fault_matrix_rand_test` (CHK-RACE).
 * Adams Bridge ML-KEM seed Z words (`abr_mlkem_seed_z_probe_o`).
+* Adams Bridge zeroize request and ready state (`abr_zeroize_ready_probe_o`).
 * Fabric-slot register-block W-channel counters (`fabric_slot_w_*`).
 * Fabric port taps, each a read-only copy of a DUT net with the AW and AR
   VALID, READY and request fields and, where named, the W beat
@@ -1098,6 +1099,11 @@ Exceptions (a closed set):
   KV seed read the decapsulation key reads as zero, so the Z a KV read delivered
   has no frontdoor. Observation only; it drives nothing. Owners:
   `sep_km_sideload_share_walk_test`, `sep_km_abr_mlkem_sideload_test`.
+* *Adams Bridge zeroize probe* — `abr_zeroize_ready_probe_o` is a read-only XMR
+  of the engine's zeroize request (bit 0) and its ready state, the sequencer at
+  RESET (bit 1). A STATUS read is a bus round trip, so it can only bound when the
+  sweep starts and ends; the probe times it to the cycle. Observation only; it
+  drives nothing. Owner: `sep_abr_zeroize_latency_test`.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
   `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
   reach that port. Protocol, not data.

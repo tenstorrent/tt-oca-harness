@@ -240,6 +240,18 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Adams Bridge ML-DSA ZEROIZE from idle, mid-stream and VALID returns STATUS to
+# READY; the sweep's length is measured and logged.
+name = "sep_abr_zeroize_latency_test"
+module = "crypto.sep_abr_zeroize_latency_test"
+seed = 1
+timeout_sec = 7200
+tags = ["crypto", "abr", "mldsa", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Adams Bridge ML-KEM-1024 keyGen / encaps / decaps NIST KAT.
 name = "sep_abr_mlkem_kat_test"
 module = "crypto.sep_abr_mlkem_kat_test"

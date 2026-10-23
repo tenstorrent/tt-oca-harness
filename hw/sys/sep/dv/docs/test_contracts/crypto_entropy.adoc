@@ -4519,3 +4519,77 @@ value `MLDSA_VERIFY_RES` holds after a reject; no spec states it, so
 states it, so `OBS-HINT-PRELOAD` logs it and nothing grades it (open spec question).
 
 '''''
+
+[[sep_abr_zeroize_latency_test]]
+===== 1.59 `sep_abr_zeroize_latency_test`
+
+*Phase*: 2
+
+*Area*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_zeroize_latency_test`
+
+*BFM / Model*: ocah_axi_vip, `abr_zeroize_ready_probe_o`
+
+*Objective*: Proves that an ML-DSA `ZEROIZE` returns `MLDSA_STATUS` to READY with
+VALID clear from each state an ML-DSA command leaves the engine in: idle, waiting
+for a streamed message, and parked at VALID after a completed VERIFY.
+`STATUS.READY` re-asserts only after a zeroize or a reset
+(`hw/sys/sep/doc/adams_bridge.adoc`), and `ZEROIZE` clears every internal
+register and memory (`abr_reg.rdl`, `MLDSA_CTRL.ZEROIZE`). The leaf also measures
+how long the zeroize takes, which no document states.
+
+*Test Coverage*: Three zeroizes, one from each state.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` and wait for READY.
+. Zeroize from idle.
+. Write the public key, signature, context length and context of the hint
+  table's pure-with-context accept case (tcId 63), issue VERIFYING with
+  `MLDSA_CTRL.STREAM_MSG` set, wait for `MSG_STREAM_READY`, and zeroize.
+. Write the public key, signature and mu of the ACVP external-mu sigVer accept
+  case, issue VERIFYING with `MLDSA_CTRL.EXTERNAL_MU` set, wait for VALID, and
+  zeroize.
+. For each zeroize: from the `ZEROIZE` write, poll `MLDSA_STATUS` back to back, and
+  watch `abr_zeroize_ready_probe_o` (the engine's zeroize request and its ready
+  state) on every `clk_i` edge until the sequencer is back at RESET. Then read
+  `MLDSA_STATUS` once (CHK-ABR-ZEROIZE-READY).
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ABR-ZEROIZE-READY
+|After each zeroize, once the engine is back at RESET, `MLDSA_STATUS` reads READY
+set and VALID clear.
+|===
+
+The leaf also logs one line per zeroize that no checker grades.
+`OBS-ABR-ZEROIZE-CYCLES` records `engine`, the `clk_i` edges from the zeroize
+request to the sequencer's return to RESET; `bus`, the cycles from the `ZEROIZE`
+write's completion to the first STATUS read that returns READY after one that
+did not; and `first`, whether the first STATUS read after the write still
+returned READY.
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope*: ML-DSA only; ML-KEM's zeroize is not driven. The streaming and VALID
+states are entered with NIST vectors whose outcome other tests grade
+(<<sep_abr_mldsa_hint_reject_kat_test>>, <<sep_abr_mldsa_sign_verify_kat_test>>).
+
+*Anti-vacuity*: The graded STATUS read is taken only after the probe has seen the
+zeroize request, the ready state fall and the ready state return, so a zeroize
+that never reached the engine, or a READY read before the sweep began, fails the
+wait rather than passing the check. The streaming and VALID states are each
+confirmed through STATUS before their zeroize.
+
+*Not claimed*: the zeroize latency; no document states it, so
+`OBS-ABR-ZEROIZE-CYCLES` logs it and nothing grades it. Whether the sweep clears
+every memory word; the readable windows read 0 until VALID whatever they hold.
+
+'''''
