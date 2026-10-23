@@ -1806,7 +1806,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
-|A KM CPU load from the VROM base `0x1000_0000` must complete with DECERR: the `key_manager.rdl` memory-map summary does not list VROM and maps every other address to DECERR. The KM CPU wrapper decodes the range only under the simulation-only `OCAH_KM_VROM` define, which SEP DV does not set, so the load reaches the AXI crossbar.
+|A KM CPU load from the VROM base `0x1000_0000` must complete with DECERR: the `key_manager.rdl` memory-map summary does not list VROM and maps every other address to DECERR. The KM CPU wrapper decodes the range only under the simulation-only `OCAH_KM_VROM` define, which SEP DV does not set, so the load reaches the AXI crossbar. `sep_km_crossbar_efuse_window_rand_test` grades a load and a store at the base and a store at a drawn word of the window as DECERR.
 |<<sep_km_command_protocol_rand_test,`sep_km_command_protocol_rand_test`>>
 |3
 |no_cpu, HOST
@@ -1858,8 +1858,8 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |<<sep_km_kpv_rand_test,`sep_km_kpv_rand_test`>>
 |3
 |no_cpu, POKE, +skip_fuse_sense
-|KM bus operation image with result words, host mailbox master, PIC interrupt probe (bit 30), `KM-KPV` observation tap
-|Proves that each KPV slot state answers read, write and erase as the register text states, that the scrambler keeps logical data across a warm reset, and that a wipe edge clears the KPV only. The scrambler cipher check reads the tap, and the erase retention is logged.
+|KM bus operation image with result words, host mailbox master, PIC interrupt probe (bit 30), `KM-KPV` and `KM-VALID` observation taps
+|Proves that each KPV slot state answers read, write and erase as the register text states, that the scrambler keeps logical data across a warm reset, and that a wipe edge clears the KPV and the key_valid of all eight sideload register blocks but no SRAM or mailbox data. The scrambler cipher check reads the KPV tap, the wipe scope check reads the key_valid tap, and the erase retention is logged.
 
 |<<sep_km_cpu_protect_rand_test,`sep_km_cpu_protect_rand_test`>>
 |3
@@ -1871,7 +1871,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, POKE, real fuse sense
 |KM bus operation image with result words, host mailbox master and host eFuse path, secure test mode and eFuse shadow probes, `KM-BUS` observation tap
-|Proves that the KM crossbar answers each hole, past-extent and reserved offset with the stated code and read data, and that the eFuse window gives the same read value, lock filtering and program result as the SEP host path. The address remap check reads the tap.
+|Proves that the KM crossbar answers each hole, past-extent and reserved offset with the stated code and read data, that a load and a store in the VROM window answer DECERR, and that the eFuse window gives the same read value, lock filtering and program result as the SEP host path. The address remap check reads the tap.
 
 |<<sep_km_mailbox_km_side_rand_test,`sep_km_mailbox_km_side_rand_test`>>
 |3
@@ -1883,13 +1883,13 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, POKE, HK-STRM, +skip_fuse_sense, entropy noise forced
 |KM bus operation image with result words, KM entropy sink probe, host mailbox master, KM and TRNG reset probes, TRNG isolation probe, `HK-STRM` stream fault inject with its `km_strm_wd_*` readbacks (added hook), the `HK-STRM-PAT` partial-beat withdrawal inject with its `km_strm_pat_*` readbacks (added hook), `HK-STRM-PAT` beat-pattern drive (proposed)
-|Proves that the DRBG sampler times out a stalled read, flags a stream error, and that its counters, prefetch and write refusals follow the register text. The byte-packing, partial-beat timeout and handshake-control checks need the proposed beat-pattern drive and are blocked.
+|Proves that the DRBG sampler times out a stalled read, flags a stream error, and that its counters, prefetch and write refusals follow the register text. A DATA read in progress takes the first beat ahead of the prefetch path, and a withdrawal discards a partial prefetch word. The byte-packing, partial-beat timeout and handshake-control checks need the proposed beat-pattern drive and are blocked.
 
 |<<sep_km_otp_interface_rand_test,`sep_km_otp_interface_rand_test`>>
 |3
 |no_cpu, POKE, real fuse sense, HK-OTP
-|KM bus operation image with result words, secure test mode and fuse sense probes, host mailbox master and host life-cycle path, `HK-OTP` rail flip inject with its `km_otp_flip_active_o` readback (added hook)
-|Proves that the OTP readout equals the staged fuse image in dual-rail form, that it reads zero under the read locks and in secure test mode, that a single-rail flip sets OTP_SIGINT, and that a two-rail change sets OTP_CHANGE.
+|KM bus operation image with result words, secure test mode and fuse sense probes, host mailbox master, host life-cycle path and host eFuse program path, `HK-OTP` rail flip inject with its `km_otp_flip_active_o` readback (added hook)
+|Proves that the OTP readout equals the staged fuse image in dual-rail form, that it reads zero under the read locks and in secure test mode, that a single-rail flip sets OTP_SIGINT, that a two-rail change sets OTP_CHANGE, and that programmed fuse fields outside the KM interface do not reach the readout.
 
 |<<sep_km_key_bank_register_rand_test,`sep_km_key_bank_register_rand_test`>>
 |3
@@ -3253,7 +3253,7 @@ the test does.
 |-
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Sampler read after a withdrawal in its first active cycle
-|Does a withdrawal whose TREADY-low cycle is the first cycle of a pending DATA read, before the sampler enters the request state, end that read through the stream-error state? Does a withdrawal in the cycle in which the timeout expires also set TIMEOUT_ERR, and does it add one or two to COUNT_BAD? The text returns SLVERR on a stream error only if the active FSM is requesting or assembling, and gives the stream error priority over the timeout. (hw/ip/key_manager/doc/architecture.adoc, sections "Errors and reset", "DRBG Sampler", table "Key Manager DRBG sampler states".) `sep_km_drbg_sampler_rand_test` (CHK-SMP-STRM) holds TVALID low until the read ends, grades STREAM_ERR, DRBG_ERR, SLVERR with data 0 and COUNT_BAD + 1 or more, and logs TIMEOUT_ERR and the exact COUNT_BAD delta.
+|Does a withdrawal whose TREADY-low cycle is the first cycle of a pending DATA read, before the sampler enters the request state, end that read through the stream-error state? Does a withdrawal in the cycle in which the timeout expires also set TIMEOUT_ERR, and does it add one or two to COUNT_BAD? The text returns SLVERR on a stream error only if the active FSM is requesting or assembling, and gives the stream error priority over the timeout. (hw/ip/key_manager/doc/architecture.adoc, sections "Errors and reset", "DRBG Sampler", table "Key Manager DRBG sampler states".) `sep_km_drbg_sampler_rand_test` (CHK-SMP-STRM) holds TVALID low until the read ends, grades STREAM_ERR, DRBG_ERR, SLVERR with data 0 and COUNT_BAD + 1 plus TIMEOUT_ERR (one count for each timeout and each stream error, TIMEOUT_ERR 0 before the read), and logs TIMEOUT_ERR. The withdrawal of a partial prefetch word in CHK-SMP-PRE-WITHDRAW is the same case for its first DATA read: the leaf grades COUNT_BAD + 1 plus TIMEOUT_ERR across that read, and logs the response and data of that read (`OBS-SMP-PRE-WITHDRAW-READ`) and does not grade them.
 |-
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |IRQ_SET read response
@@ -4563,7 +4563,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`KM-VALID`
 |Read-only tap
 |`KEY_CTRL.key_valid` of the eight engine key banks, the ABR shared-key `key_valid` and `KEY[0..7]` words, and the ABR shared-key `IRQ_STATUS.key_valid` and `IRQ_ENABLE.key_valid_en`.
-|`sep_km_command_protocol_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_cpu_protect_rand_test`
+|`sep_km_command_protocol_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_cpu_protect_rand_test`, `sep_km_kpv_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-KPV`
 |Read-only tap
@@ -4857,7 +4857,7 @@ use it" names the entries whose checks need the hook.
 |Error inject
 |While `km_strm_pat_arm_i` is 1 and `km_strm_wd_arm_i` is 0, drives `TVALID`, `TDATA` and `TSTRB` at the DRBG sampler sink once: one partial beat (`TSTRB` 0x1, `TDATA` `km_strm_pat_data_i`) in the first cycle with `TREADY` high, then `TVALID` low until a cycle with `TREADY` low, `TVALID` high in that cycle and low in the next (a withdrawal, the stream fault). While the arm is 1 the bench turns off the sampler assertion `KmDrbgTvalidStability_A`, which the withdrawal breaks by design. The legal beat patterns of `HK-STRM-PAT` are a PROPOSED drive (<<sep-vplan-phase3-proposed-drives>>).
 |`TVALID`, `TDATA` and `TSTRB` of the DRBG sampler stream at the KM sink, inside `sep`; readbacks `km_strm_pat_beat_o`, `km_strm_pat_fired_o` and `km_strm_sink_tvalid_o`
-|`sep_km_drbg_sampler_rand_test` (the withdrawal of a partial prefetch word)
+|`sep_km_drbg_sampler_rand_test` (CHK-SMP-PRE-WITHDRAW: the withdrawal of a partial prefetch word)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-PAR`
 |Error inject

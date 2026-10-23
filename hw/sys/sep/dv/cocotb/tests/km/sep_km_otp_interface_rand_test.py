@@ -38,6 +38,11 @@ Checks (anchor):
   CHK-OTP-COLD           a SEP cold reset restores the first-boot demotion state
   CHK-OTP-NOTKM          shadow writes of REQUIRED_ALGS / REQUIRED_SIGNERS leave
                          the KM OTP words and status unchanged (POKE + host readback)
+  CHK-OTP-NOTKM-CLASS    programmed bits of one field outside the KM interface
+                         (BL1/BL2_VERSION, an RMA token digest or a public-key
+                         hash), sensed by a SEP cold reset, leave every KM OTP
+                         readout word equal to the boot before and to the staged
+                         image (POKE readback; host program and shadow readback)
   CHK-OTP-SIG            a single-rail flip sets the sticky OTP_SIGINT (IRQ_STATUS)
   CHK-OTP-CHG            a two-rail flip sets the field change bit and
                          OTP_CHANGE, no OTP_SIGINT (POKE readback)
@@ -52,6 +57,10 @@ registers).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on a ``DRAW`` line.
+
+The fuse array changes in the simulation only through ``EFUSE_PROGRAM_CTRL``
+(host writes, staged image unlocked); the golden of every later sense is the
+staged image plus the programmed bits.
 """
 
 from __future__ import annotations
@@ -68,11 +77,13 @@ from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import WORD_MASK, SepEfuseImage
+from env.sep_efuse_plan import PROGRAM_CTRL_ADDR, program_ctrl_word
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_km_fuse_plan import OTP_SHADOW_WRITE_FIELDS, T_OTP_IFACE, KmFusePlan, plan
 from env.sep_seeded_rng import SepSeededRng
 from km import sep_km_otp_interface_rand_model as m
 from sep_base_test import sep_base_test
+from sep_reg_meta import EFUSE_INTERFACE_CTRL
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_km_poke_seq import SepKmPoke
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccDemoteSeq
@@ -89,8 +100,41 @@ QUIET = 256  # delay-op iterations of every "quiet window"
 FLIP_CYCLES = 8  # clocks the HK-OTP enable stays 1
 POLL_LOADS = 64  # KM loads of every bounded poll
 LIST_TIMEOUT = 4_000_000
+PROGRAM_POLLS = 1_000  # EFUSE_PROGRAM_CTRL reads of one program_done poll
+PROGRAM_GAP = 16  # clocks between two program_done reads
 
 _FN = m.FIELD_NAMES
+
+_PG_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
+_PG_BUSY = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_busy")
+_PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
+
+# Fuse fields that are not part of the Key Manager OTP interface, by class
+# (hw/sys/sep/doc/otp_fuse_controller.adoc:443-445: "BL1_VERSION, BL2_VERSION,
+# RMA token digests and public-key hashes are not part of that Key Manager
+# interface"). The second item is the class value of
+# sep_km_otp_readout_cg.cp_otp_notkm_class.
+NOTKM_CLASSES: tuple[tuple[str, int, tuple[str, ...]], ...] = (
+    ("arbc", 0, ("BL1_VERSION", "BL2_VERSION")),
+    ("rma_digest", 1, ("RMA_SIP_TOKEN_DIGEST", "RMA_CHIPLET_TOKEN_DIGEST")),
+    (
+        "pk_hash",
+        3,
+        (
+            "SIP_PUBK_HASH0",
+            "SIP_PUBK_HASH1",
+            "SYS_PUBK_HASH",
+            "CHIPLET_PUBK_HASH0",
+            "CHIPLET_PUBK_HASH1",
+            "CHIPLET_PUBK_PQC_HASH0",
+            "CHIPLET_PUBK_PQC_HASH1",
+            "SIP_PUBK_PQC_HASH0",
+            "SIP_PUBK_PQC_HASH1",
+            "SYS_PUBK_PQC_HASH",
+        ),
+    ),
+)
+NOTKM_MAX_BITS = 3  # programmed bits of the drawn class field: 1 to 3
 
 
 def _h(v: int) -> str:
@@ -140,6 +184,52 @@ class Leg:
     active: int = 0
 
 
+# One fuse bit to program: (eFuse field name, word in the field, bit in the word).
+FuseBit = tuple[str, int, int]
+
+
+@dataclass
+class ClassLeg:
+    """Draws of the fuse-class leg and its public-identity sensitivity twin."""
+
+    cls: str
+    cls_value: int
+    fuse_field: str
+    bits: list[FuseBit]
+    pub: FuseBit
+    pub_f: int
+    pub_word: int
+    pub_bit: int
+
+
+def _zero_bit(rng, words: list[int], name: str, taken: set[tuple[int, int]]) -> FuseBit:
+    """A bit of field ``name`` that reads 0 in ``words`` and is not in ``taken``."""
+    fld = SepEfuseImage.field(name)
+    order = list(range(fld.n_words))
+    rng.shuffle(order)
+    for w in order:
+        word = words[fld.word + w]
+        zeros = [b for b in range(32) if not (word >> b) & 1 and (w, b) not in taken]
+        if zeros:
+            return (name, w, int(rng.choice(zeros)))
+    raise AssertionError(f"{name} has no 0 bit left in the staged image")
+
+
+def draw_class_leg(rng, words: list[int]) -> ClassLeg:
+    """The class, field and bits to program, and the public-identity twin bit."""
+    cls, value, names = NOTKM_CLASSES[rng.randrange(len(NOTKM_CLASSES))]
+    name = str(rng.choice(names))
+    taken: set[tuple[int, int]] = set()
+    bits: list[FuseBit] = []
+    for _ in range(1 + rng.randrange(NOTKM_MAX_BITS)):
+        bit = _zero_bit(rng, words, name, taken)
+        taken.add((bit[1], bit[2]))
+        bits.append(bit)
+    pub_f = int(rng.choice(m.PUBLIC))
+    pub = _zero_bit(rng, words, m.efuse_name(pub_f), set())
+    return ClassLeg(cls, value, name, bits, pub, pub_f, pub[1], pub[2])
+
+
 class _Ops:
     """A POKE list whose result slots are looked up by name."""
 
@@ -169,6 +259,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         "CHK-OTP-SUPP",
         "CHK-OTP-COLD",
         "CHK-OTP-NOTKM",
+        "CHK-OTP-NOTKM-CLASS",
         "CHK-OTP-SIG",
         "CHK-OTP-CHG",
     )
@@ -400,7 +491,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         return out
 
     def _expected(self, eff: int, tm: int = 0) -> dict[m.Slot, int]:
-        return m.expected_readout(self.fp.otp_fields, self.fp.lc_raw, self.dem_record, eff, tm)
+        return m.expected_readout(self.otp_fields, self.fp.lc_raw, self.dem_record, eff, tm)
 
     # --- scenario -------------------------------------------------------------------
 
@@ -409,6 +500,9 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         self.logger.info("SEED seed=%d", seed)
         fp = plan(TEST, seed)
         self.fp = fp
+        # The KM OTP field values of the current fuse array: the staged plan
+        # plus every bit this leaf programs.
+        self.otp_fields = dict(fp.otp_fields)
         self.logger.info("DRAW fuse_plan %s", fp.summary())
         lc_name = {0x0: "TEST_DEV", 0x1: "PROD"}.get(fp.lc_raw, f"0x{fp.lc_raw:x}")
         self.logger.info("LC lc=%s", lc_name)
@@ -419,6 +513,15 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         self.rep = m.draw_rep(SepSeededRng(seed ^ (735 << 48)))
         for name, value in self.rep.draws:
             self._draw(name, value)
+        # The fuse-class leg draws from a third stream of the seed.
+        self.class_leg = draw_class_leg(SepSeededRng(seed ^ (735 << 48) ^ (1 << 32)), fp.words)
+        self._draw("notkm.class", f"{self.class_leg.cls}({self.class_leg.cls_value})")
+        self._draw("notkm.field", self.class_leg.fuse_field)
+        self._draw("notkm.bits", [f"w{w}.b{b}" for _, w, b in self.class_leg.bits])
+        self._draw(
+            "notkm.twin",
+            f"{self.class_leg.pub[0]}.w{self.class_leg.pub_word}.b{self.class_leg.pub_bit}",
+        )
         self._draw("quiet_window", QUIET)
         self._draw("flip_cycles", FLIP_CYCLES)
         for name in OTP_SHADOW_WRITE_FIELDS + ("LOCKS", "LOCKS_SPARE"):
@@ -466,6 +569,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         await self._cold_reset(0, "boot5")
         await self._step_cold()
         await self._step_notkm()
+        b = await self._step_notkm_class()
+        await self._step_notkm_twin(b)
         await self._step_tm()
         close_graded_window(self.logger)
         self.chk.finish()
@@ -1110,6 +1215,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             landed += int(rd_ok and got == want)
             host.append(f"{name}:{_h(staged)}->{_h(got)} wr_ok={int(wr_ok)} rd_ok={int(rd_ok)}")
         self.logger.info("LOG shadow writes %s", " ".join(host))
+        self.notkm_a = pre
         await self._run([kp.delay(QUIET)])
         post = await self._readout("boot5_post_shadow")
         same = sum(1 for s in m.READOUT_SLOTS if pre.words[s] == post.words[s])
@@ -1144,10 +1250,140 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             irq_same=int(irq_same),
         )
 
+    # --- fuse fields outside the KM interface, programmed and sensed ----------------------
+
+    async def _program(self, bit_addr: int) -> tuple[bool, int]:
+        """Program one fuse bit through ``EFUSE_PROGRAM_CTRL``; (done and clean, last read)."""
+        dut = cocotb.top
+        _, wr_ok = await self._host(SepAxiOp.WRITE, PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr))
+        pg, rd_ok = 0, False
+        for _ in range(PROGRAM_POLLS):
+            pg, rd_ok = await self._host(SepAxiOp.READ, PROGRAM_CTRL_ADDR)
+            if rd_ok and pg & _PG_DONE:
+                break
+            await ClockCycles(dut.clk_i, PROGRAM_GAP)
+        _, clr_ok = await self._host(SepAxiOp.WRITE, PROGRAM_CTRL_ADDR, 0)
+        ok = wr_ok and rd_ok and clr_ok and bool(pg & _PG_DONE) and not pg & (_PG_BUSY | _PG_STATUS)
+        return ok, pg
+
+    async def _program_bits(self, bits: list[FuseBit]) -> tuple[int, list[str]]:
+        """Program ``bits``; each clean program joins the golden of the next sense.
+
+        Returns the number of clean programs and one log entry per bit.
+        """
+        done = 0
+        info: list[str] = []
+        for name, w, b in bits:
+            fld = SepEfuseImage.field(name)
+            addr = 32 * (fld.word + w) + b
+            ok, pg = await self._program(addr)
+            info.append(f"{name}.w{w}.b{b}@{addr}:ok={int(ok)}:pg={_h(pg)}")
+            if not ok:
+                continue
+            done += 1
+            self.model.words[fld.word + w] |= 1 << b
+            if name in self.otp_fields:
+                self.otp_fields[name] |= 1 << (32 * w + b)
+        self.logger.info("LOG fuse program %s", " ".join(info))
+        return done, info
+
+    async def _shadow_bits(self, bits: list[FuseBit]) -> tuple[bool, list[str]]:
+        """Host shadow readback of each programmed word against the golden image."""
+        ok = True
+        info: list[str] = []
+        for name, w, b in bits:
+            fld = SepEfuseImage.field(name)
+            want = self.model.words[fld.word + w]
+            got, rd_ok = await self._host(SepAxiOp.READ, fld.shadow_addr + 4 * w)
+            ok = ok and rd_ok and got == want and bool((got >> b) & 1)
+            info.append(f"{name}.w{w}={_h(got)}/{_h(want)}")
+        return ok, info
+
+    async def _step_notkm_class(self) -> Readout:
+        """Boot B: the drawn class field gains programmed bits; the KM readout is unchanged.
+
+        Boot A is the boot-5 readout before the shadow writes. The SEP cold reset
+        between A and B senses the array again, so the shadow writes of
+        CHK-OTP-NOTKM are gone and the class bits are the only shadow difference.
+        Both readouts are taken before any KM read-lock write.
+        """
+        leg = self.class_leg
+        a = self.notkm_a
+        done, prog = await self._program_bits(leg.bits)
+        await self._cold_reset(0, "boot6")
+        b = await self._readout("boot6_notkm_class")
+        shadow_ok, shadow = await self._shadow_bits(leg.bits)
+        self.chk.ctrl(
+            "OTP-NOTKM-CLASS-PROG",
+            done == len(leg.bits) and shadow_ok,
+            cls=leg.cls,
+            field=leg.fuse_field,
+            programmed=f"{done}/{len(leg.bits)}",
+            shadow=shadow,
+        )
+        unlocked = a.lock == 0 and a.lock_cold == 0 and b.lock == 0 and b.lock_cold == 0
+        self.chk.ctrl(
+            "OTP-NOTKM-CLASS-UNLOCKED",
+            unlocked,
+            lock_a=_h(a.lock),
+            lock_cold_a=_h(a.lock_cold),
+            lock_b=_h(b.lock),
+            lock_cold_b=_h(b.lock_cold),
+        )
+        ref = dict(a.words)
+        exp = self._expected(0)
+        diff = self._diff(b, exp)
+        moved = [
+            f"{_FN[s[0]]}.{s[1]}{s[2]}={_h(b.words[s])}!={_h(ref[s])}"
+            for s in m.READOUT_SLOTS
+            if b.words[s] != ref[s]
+        ]
+        self.chk.ok(
+            "OTP-NOTKM-CLASS",
+            not a.bad and not b.bad and not moved and not any(diff.values()),
+            cls=leg.cls,
+            field=leg.fuse_field,
+            bits=[f"w{w}.b{bb}" for _, w, bb in leg.bits],
+            words=len(m.READOUT_SLOTS),
+            words_same=len(m.READOUT_SLOTS) - len(moved),
+            fields_model=sum(1 for d in diff.values() if not d),
+            bad=len(a.bad) + len(b.bad),
+            first=(a.bad + b.bad + moved + [f"{_FN[f]}:{d[0]}" for f, d in diff.items() if d])[:4],
+        )
+        return b
+
+    async def _step_notkm_twin(self, b: Readout) -> None:
+        """Sensitivity twin: one programmed public-identity bit moves its readout words."""
+        leg = self.class_leg
+        done, _prog = await self._program_bits([leg.pub])
+        await self._cold_reset(0, "boot7")
+        c = await self._readout("boot7_public_twin")
+        val = (leg.pub_f, "val", leg.pub_word)
+        cpl = (leg.pub_f, "cpl", leg.pub_word)
+        mask = 1 << leg.pub_bit
+        others = [s for s in m.READOUT_SLOTS if s not in (val, cpl) and c.words[s] != b.words[s]]
+        model = sum(1 for d in self._diff(c, self._expected(0)).values() if not d)
+        self.chk.ctrl(
+            "OTP-NOTKM-CLASS-SENS",
+            done == 1
+            and not c.bad
+            and c.words[val] == b.words[val] | mask
+            and c.words[cpl] == b.words[cpl] & ~mask & WORD_MASK
+            and not others
+            and model == m.N_FIELDS,
+            field=_FN[leg.pub_f],
+            word=leg.pub_word,
+            bit=leg.pub_bit,
+            val=f"{_h(b.words[val])}->{_h(c.words[val])}",
+            cpl=f"{_h(b.words[cpl])}->{_h(c.words[cpl])}",
+            others_moved=len(others),
+            fields_model=model,
+        )
+
     async def _step_tm(self) -> None:
-        tm = await self._cold_reset(1, "boot6")
-        sig_ctrl = await self._irq_set_ctrl("boot6")
-        ro = await self._readout("boot6_secure_tm")
+        tm = await self._cold_reset(1, "boot8")
+        sig_ctrl = await self._irq_set_ctrl("boot8")
+        ro = await self._readout("boot8_secure_tm")
         r = await self._run([kp.delay(QUIET), kp.rd(m.A_IRQ_STATUS), kp.rd(m.A_CHANGE)])
         exp = self._expected(0, tm=1)
         diff = self._diff(ro, exp)
