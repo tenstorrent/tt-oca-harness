@@ -38043,8 +38043,12 @@ module sep_fcov (
     // ---- SRAM read latency (cp_km_sram_latency) ----
     lat_new = (km_sram_lat_done_i !== kq_lat_done_q) && !$isunknown(km_sram_lat_done_i);
     kq_lat_done_q <= km_sram_lat_done_i;
+    // The previous latency holds only a read of the current graded run: it
+    // reads 0, outside 2 to 4, while km_lat_graded is 0, so the pair of
+    // two_values_in_one_run cannot span two runs.
+    if (km_lat_graded == 0) kq_lat_prev <= '0;
+    else if (lat_new && !$isunknown(km_sram_lat_i)) kq_lat_prev <= km_sram_lat_i;
     if (lat_new && !$isunknown(km_sram_lat_i)) begin
-      kq_lat_prev <= km_sram_lat_i;
       if (km_own_fi && (km_lat_graded != 0) && (km_sram_lat_i <= 8'd4))
         u_sep_km_memory_boot_cg.sample(5'd8, 16'(km_sram_lat_i));
       if (km_own_fi && (km_lat_graded != 0) && (km_sram_lat_i >= 8'd2) && (km_sram_lat_i <= 8'd4) &&
