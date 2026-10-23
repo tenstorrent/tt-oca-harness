@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SW RESET_CTRL.core0 to RESET_TIMEOUT.reset_applied."""
+"""SW RESET_CTRL.core0 to core 0's cluster reset, with no drain reported in RESET_TIMEOUT."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_cpu_reset_source_test(smc_base_test):
-    """SW core0 level reset; no Force drain / no FLR isolate_req_o."""
+    """SW core0 level reset applied without a drain; no FLR isolate_req_o."""
 
     required_evidence = (
         "CHK-CPU-RST-BASIC",
@@ -41,6 +41,10 @@ class smc_cpu_reset_source_test(smc_base_test):
             "RESET_TIMEOUT asserted": seq.tmo_asserted,
             "RESET_TIMEOUT hold": seq.tmo_hold,
             "RESET_TIMEOUT released": seq.tmo_released,
+            "core0 reset_n idle": seq.pin_idle,
+            "core0 reset_n asserted": seq.pin_asserted,
+            "core0 reset_n hold": seq.pin_hold,
+            "core0 reset_n released": seq.pin_released,
         }
         missing = [k for k, v in samples.items() if v is None]
         assert not missing, f"never sampled: {missing}"
@@ -55,15 +59,21 @@ class smc_cpu_reset_source_test(smc_base_test):
             f"(idle / SW-asserted / released); raw words "
             f"0x{seq.ctrl_idle:x} 0x{seq.ctrl_asserted:x} 0x{seq.ctrl_released:x}"
         )
+        pin = [seq.pin_idle, seq.pin_asserted, seq.pin_hold, seq.pin_released]
+        assert pin == [1, 0, 0, 1], (
+            f"core 0's cluster reset_n sequence was {pin}, expected [1, 0, 0, 1] "
+            f"(idle / SW-asserted / still held at the release write / released)"
+        )
+        # A core reset requests no drain, so reset_applied never sets.
         applied = [
             1 if (seq.tmo_idle & APPLIED) else 0,
             1 if (seq.tmo_asserted & APPLIED) else 0,
             1 if (seq.tmo_hold & APPLIED) else 0,
             1 if (seq.tmo_released & APPLIED) else 0,
         ]
-        assert applied == [0, 1, 1, 0], (
+        assert applied == [0, 0, 0, 0], (
             f"RESET_TIMEOUT.reset_applied sequence was {applied}, expected "
-            f"[0, 1, 1, 0] (idle / SW-asserted / still held at the release "
-            f"write / released); raw words 0x{seq.tmo_idle:x} "
+            f"[0, 0, 0, 0] (idle / SW-asserted / held at the release write / "
+            f"released); raw words 0x{seq.tmo_idle:x} "
             f"0x{seq.tmo_asserted:x} 0x{seq.tmo_hold:x} 0x{seq.tmo_released:x}"
         )

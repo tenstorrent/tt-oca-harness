@@ -178,7 +178,8 @@ not here; see <<sep-non-pic-paths>>.
 |Crypto alert
 |Combined OpenTitan crypto alert. SEP has no `alert_handler`; each
 accelerator has its own `prim_alert_receiver` channel(s) with ping
-disabled, and those pulses plus integrity-fails share this source. See
+disabled, and those pulses plus integrity-fails share this source with
+the EDN adapters' ack FSM faults, which hold until reset. See
 ifdef::backend-html5[]
 xref:sep:crypto.adoc#sep-crypto-alert-policy[OpenTitan Alert Termination].
 endif::backend-html5[]

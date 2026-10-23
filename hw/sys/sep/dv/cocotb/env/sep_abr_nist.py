@@ -26,20 +26,25 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 
 _HEADER = Path(__file__).resolve().parents[2] / "fw" / "tests" / "common" / "abr_nist_vectors.h"
-_TEXT = _HEADER.read_text(encoding="utf-8")
 
 
-def _load_u32_array(name: str) -> list[int]:
+@cache
+def _text(header: Path) -> str:
+    return header.read_text(encoding="utf-8")
+
+
+def _load_u32_array(name: str, header: Path = _HEADER) -> list[int]:
     m = re.search(
         rf"static const uint32_t {name}\[(\d+)\] = \{{(.*?)\}};",
-        _TEXT,
+        _text(header),
         re.S,
     )
     if not m:
-        raise RuntimeError(f"{name} not found in {_HEADER}")
+        raise RuntimeError(f"{name} not found in {header}")
     words = [int(tok, 16) for tok in re.findall(r"0x([0-9a-fA-F]+)u", m.group(2))]
     n = int(m.group(1))
     if len(words) != n:
@@ -47,17 +52,17 @@ def _load_u32_array(name: str) -> list[int]:
     return words
 
 
-def _load_define(name: str) -> int:
+def _load_define(name: str, header: Path = _HEADER) -> int:
     """One ``#define <name> <int>`` from the header."""
-    m = re.search(rf"^#define {name}\s+(\d+)\s*$", _TEXT, re.M)
+    m = re.search(rf"^#define {name}\s+(\d+)\s*$", _text(header), re.M)
     if not m:
-        raise RuntimeError(f"{name} not found in {_HEADER}")
+        raise RuntimeError(f"{name} not found in {header}")
     return int(m.group(1))
 
 
 def _load_string(name: str) -> str:
     """One ``#define <name> "<text>"`` from the header."""
-    m = re.search(rf'^#define {name}\s+"([^"\\]*)"\s*$', _TEXT, re.M)
+    m = re.search(rf'^#define {name}\s+"([^"\\]*)"\s*$', _text(_HEADER), re.M)
     if not m:
         raise RuntimeError(f"{name} not found in {_HEADER}")
     return m.group(1)
@@ -188,3 +193,50 @@ assert (_bad_rows[0].pk, _bad_rows[0].mu, _bad_rows[0].sig) == (
     NIST_SV_BAD_MU,
     NIST_SV_BAD_SIG,
 ), "NIST_SV_BAD_* differs from the tcId 151 row of the reject table"
+
+
+# sigVer cases NIST marks "modified signature - hint" (``abr_nist_hint_vectors.h``,
+# ``gen_abr_nist_vectors.py --hint``), on both interfaces: pure ML-DSA with a
+# context, whose message is streamed, and external mu. Case 0 is a pure case that
+# must verify. The generator checks every hint case has z in range and a malformed
+# hint encoding, so the core must reach the hint decode before it rejects.
+_HINT_HEADER = _HEADER.with_name("abr_nist_hint_vectors.h")
+
+
+class NistHintCase:
+    """One sigVer case: inputs as little-endian words, byte lengths for the stream."""
+
+    def __init__(self, i: int) -> None:
+        def arr(field: str) -> list[int]:
+            return _load_u32_array(f"nist_hr{i}_{field}", _HINT_HEADER)
+
+        def define(field: str) -> int:
+            return _load_define(f"NIST_HR{i}_{field}", _HINT_HEADER)
+
+        self.tcid = define("TCID")
+        self.verdict = define("VERDICT")
+        self.external_mu = bool(define("EXTERNAL_MU"))
+        self.pk = arr("pk")
+        self.sig = arr("sig")
+        if self.external_mu:
+            self.mu = arr("mu")
+            self.msg, self.msg_bytes, self.ctx, self.ctx_bytes = [], 0, [], 0
+        else:
+            self.mu = []
+            self.msg, self.msg_bytes = arr("msg"), define("MSG_BYTES")
+            self.ctx, self.ctx_bytes = arr("ctx"), define("CTX_BYTES")
+            assert len(self.msg) == (self.msg_bytes + 3) // 4, f"tcId {self.tcid} message"
+            assert len(self.ctx) == (self.ctx_bytes + 3) // 4, f"tcId {self.tcid} context"
+            assert 0 < self.ctx_bytes <= 255, f"tcId {self.tcid} context length"
+        assert len(self.pk) == 648 and len(self.sig) == 1157, f"tcId {self.tcid} shape"
+        assert any(self.sig[:16]), f"tcId {self.tcid} c~ is all zero"
+
+    @property
+    def interface(self) -> str:
+        return "external mu" if self.external_mu else "pure, context"
+
+
+NIST_HINT_CASES = [NistHintCase(i) for i in range(_load_define("NIST_HR_CASES", _HINT_HEADER))]
+assert NIST_HINT_CASES[0].verdict == 1 and not NIST_HINT_CASES[0].external_mu
+assert all(c.verdict == 0 for c in NIST_HINT_CASES[1:])
+assert {c.external_mu for c in NIST_HINT_CASES[1:]} == {False, True}

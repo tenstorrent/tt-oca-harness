@@ -25,11 +25,18 @@ observes an AXI error response only as the sticky ``IRQ_STATUS.AXI_SLVERR`` /
 
 Each row starts from a write-1-to-clear whose readback must show the watched
 bits clear, so a bit that a row reports belongs to that row's access.
+
+FCOV owner window (``env/sep_fcov_gate.py``): open from the KM release to
+CHK-KM-ROM-WRITE-NO-AXI-ERR. The ROM store is a fixed step of the image, so
+``cp_if_rom_write[rom_write_pre_lockout_dropped]`` samples it while the image
+runs, under the condition the three ROM rows grade (ROM_WRITE_ERR set from a
+clear status, no AXI error bit). A FAIL closes the window.
 """
 
 from __future__ import annotations
 
 import pyuvm
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_bus_err_seq import (
     IRQ_AXI_DECERR,
@@ -50,6 +57,8 @@ from seq_lib.sep_km_bus_err_seq import (
     irq_names,
 )
 
+TEST = "sep_km_rom_write_err_test"
+
 
 @pyuvm.test()
 class sep_km_rom_write_err_test(sep_base_test):
@@ -66,6 +75,14 @@ class sep_km_rom_write_err_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
         img = SepKmBusErr(self)
+        open_graded_window(TEST, self.logger)
+        try:
+            await self._graded_rows(img)
+        finally:
+            close_graded_window(self.logger)
+
+    async def _graded_rows(self, img: SepKmBusErr) -> None:
+        """Release the image, then grade the two control rows and the ROM-write rows."""
         await img.release()
         await img.wait_pre_marker()
         words = img.dump(W_VROM_CLEAN + 1)

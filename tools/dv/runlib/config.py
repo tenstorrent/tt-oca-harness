@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import ast
 import copy
+import dataclasses
 import os
 import re
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import Any
 
+from .coverage import COVERAGE_SUMMARIES
 from .models import ConfigError, Dut, Flow, TestCatalog, TestEntry
 from .paths import configs_root, repo_path, repo_rel
 
@@ -490,9 +492,17 @@ TARGET_KEYS = {
     "stubs",
     "exclude_files",
     "tools",
+    "pinned_only",
 }
+# Every target inherits `[target_defaults]`, so it cannot hold a key that limits one target.
+TARGET_DEFAULT_KEYS = TARGET_KEYS - {"pinned_only"}
 
 TARGET_TOOL_KEYS = {"flags"}
+# Joins a test's name and a target's into the name of that test's run on one of several
+# targets, so neither a test name nor a target name may contain it.
+TARGET_INSTANCE_SEP = "@"
+# `[target_defaults]` and adopter overlays refuse `run_on`.
+TARGET_RUN_TOOL_KEYS = TARGET_TOOL_KEYS | {"run_on"}
 RUN_MODE_KEYS = {"description", "timeout_sec", "args", "plusargs"}
 TESTLIST_KEYS = {"schema_version", "includes", "tests", "groups"}
 TEST_KEYS = {
@@ -533,6 +543,7 @@ COVERAGE_TOOL_KEYS = {
     "policy_file",
     "report_cmd",
     "sim_args",
+    "summary",
     "test_args",
 }
 COVERAGE_LIST_KEYS = {
@@ -922,6 +933,12 @@ def validate_formal_apps(formal: Any, where: str) -> None:
                 validate_formal_evidence_hook(tool_cfg["evidence"], f"{table_where}.evidence")
 
 
+def validate_coverage_summary(value: Any, where: str) -> str:
+    if value not in COVERAGE_SUMMARIES:
+        raise ConfigError(f"{where} must be one of: {', '.join(COVERAGE_SUMMARIES)}")
+    return str(value)
+
+
 def validate_coverage_tool_table(
     table: dict[str, Any],
     where: str,
@@ -950,6 +967,8 @@ def validate_coverage_tool_table(
             raise ConfigError(f"{where}.{key} must be a non-empty string")
     if "parser" in table and table.get("parser") not in COVERAGE_PARSERS:
         raise ConfigError(f"{where}.parser must be one of: {', '.join(sorted(COVERAGE_PARSERS))}")
+    if "summary" in table:
+        validate_coverage_summary(table["summary"], f"{where}.summary")
     if "fail_under" in table:
         try:
             threshold = float(table["fail_under"])
@@ -1106,7 +1125,20 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
             for name, target in targets.items():
                 if not isinstance(target, dict):
                     raise ConfigError(f"{flow.path}: [{section_name}.{name}] must be a table")
-                validate_allowed_keys(target, TARGET_KEYS, f"{flow.path} [{section_name}.{name}]")
+                if TARGET_INSTANCE_SEP in str(name):
+                    raise ConfigError(
+                        f"{flow.path}: target name `{name}` contains `{TARGET_INSTANCE_SEP}`, "
+                        "which names a test on one of several targets"
+                    )
+                validate_allowed_keys(
+                    target,
+                    TARGET_KEYS if section_name == "targets" else TARGET_DEFAULT_KEYS,
+                    f"{flow.path} [{section_name}.{name}]",
+                )
+                if not isinstance(target.get("pinned_only", False), bool):
+                    raise ConfigError(
+                        f"{flow.path}: [{section_name}.{name}].pinned_only must be true or false"
+                    )
                 validate_placeholders_in_value(target, f"{flow.path} [{section_name}.{name}]")
                 tools = target.get("tools", {})
                 if isinstance(tools, dict):
@@ -1117,7 +1149,7 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
                             )
                         validate_allowed_keys(
                             tool_cfg,
-                            TARGET_TOOL_KEYS,
+                            TARGET_RUN_TOOL_KEYS if section_name == "targets" else TARGET_TOOL_KEYS,
                             f"{flow.path} [{section_name}.{name}.tools.{tool}]",
                         )
 
@@ -1979,6 +2011,93 @@ def resolved_target_name(sim_cfg: dict[str, Any], test: TestEntry | None) -> str
     return test.target if test and test.target else default_target_name(sim_cfg)
 
 
+def _run_on(sim_cfg: dict[str, Any], target: str, tool: str) -> Any:
+    targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
+    target_cfg = targets.get(target) if isinstance(targets, dict) else None
+    tools = target_cfg.get("tools") if isinstance(target_cfg, dict) else None
+    tool_cfg = tools.get(tool) if isinstance(tools, dict) else None
+    return tool_cfg.get("run_on") if isinstance(tool_cfg, dict) else None
+
+
+def target_run_on(sim_cfg: dict[str, Any], target: str, tool: str) -> str:
+    """The target ``target``'s tests run on under ``tool``: the one its `run_on` names, else
+    itself. The named target must be defined and must not redirect again on ``tool``."""
+    run_on = _run_on(sim_cfg, target, tool)
+    if run_on is None:
+        return target
+    where = f"targets.{target}.tools.{tool}.run_on"
+    if not isinstance(run_on, str) or not run_on.strip():
+        raise ConfigError(f"{where} must be a target name")
+    if run_on == target:
+        raise ConfigError(f"{where} names its own target")
+    if run_on not in target_names(sim_cfg):
+        raise ConfigError(f"{where} names `{run_on}`, which is not defined in [targets]")
+    if _run_on(sim_cfg, run_on, tool) is not None:
+        raise ConfigError(
+            f"{where} names `{run_on}`, which redirects its own tests on {tool}; name the "
+            "target the tests run on"
+        )
+    return run_on
+
+
+def target_instance_name(test: str, target: str) -> str:
+    """The name of ``test``'s run on ``target`` in a run that puts it on several targets."""
+    return f"{test}{TARGET_INSTANCE_SEP}{target}"
+
+
+def instance_test_name(name: str) -> str:
+    """The testlist name of ``name``, which may name a test on one of several targets."""
+    return name.partition(TARGET_INSTANCE_SEP)[0]
+
+
+def rerun_selection(item: str, target: str | None, args: Any) -> list[str]:
+    """The options that select ``item``'s leaf, which ran on ``target``, for a rerun."""
+    options = ["--items", instance_test_name(item)]
+    if target and getattr(args, "force_target", None):
+        options += ["--force-target", target]
+    elif target and (getattr(args, "target", None) or item != instance_test_name(item)):
+        options += ["--target", target]
+    return options
+
+
+def with_target_instances(catalog: TestCatalog, instances: dict[str, str]) -> TestCatalog:
+    """``catalog`` with an entry under each ``instances`` name: a copy of that name's test,
+    keeping its testlist name and pinned to the mapped target."""
+    if not instances:
+        return catalog
+    tests = dict(catalog.tests)
+    for name, target in instances.items():
+        test = catalog.tests.get(instance_test_name(name))
+        if test is None:
+            raise ConfigError(f"`{name}` names no test in the catalog")
+        tests[name] = dataclasses.replace(test, target=target)
+    return dataclasses.replace(catalog, tests=tests)
+
+
+def target_pinned_only(sim_cfg: dict[str, Any], target: str) -> bool:
+    """Whether ``target`` runs only the tests that name it or reach it through `run_on`."""
+    targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
+    target_cfg = targets.get(target) if isinstance(targets, dict) else None
+    return bool(target_cfg.get("pinned_only")) if isinstance(target_cfg, dict) else False
+
+
+def validate_target_redirects(sim_cfg: dict[str, Any], tools: list[str]) -> None:
+    """Resolve every target's `run_on` on each of ``tools``, so a bad one is refused before a
+    run on that tool selects a test it redirects, and refuse a `pinned_only` target where the
+    tests that name no target run."""
+    for target in sorted(target_names(sim_cfg)):
+        for tool in tools:
+            target_run_on(sim_cfg, target, tool)
+    default = default_target_name(sim_cfg)
+    for tool in tools:
+        target = target_run_on(sim_cfg, default, tool)
+        if target_pinned_only(sim_cfg, target):
+            raise ConfigError(
+                f"targets.{target}.pinned_only: `{target}` runs the tests that name no target "
+                f"on {tool}, so it cannot be pinned_only"
+            )
+
+
 def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[str, Any]:
     """The active `[targets.<name>]` table (defines + per-tool flags + build_dir).
 
@@ -2195,6 +2314,12 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
     if not isinstance(name, str) or not name:
         where = f"{source}: " if source else ""
         raise ConfigError(f"{where}test entry missing required string `name`")
+    if TARGET_INSTANCE_SEP in name:
+        where = f"{source}: " if source else ""
+        raise ConfigError(
+            f"{where}test name `{name}` contains `{TARGET_INSTANCE_SEP}`, which names a test "
+            "on one of several targets"
+        )
     firmware = entry.get("firmware")
     if firmware is not None and not isinstance(firmware, (str, dict)):
         where = f"{source}: " if source else ""

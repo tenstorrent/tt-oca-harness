@@ -677,8 +677,7 @@ observable at all — the port stays live while its contents are invalidated.
 `ClearDropsRequest_A` / `ClearScrubs*` / `ClearResetsStall_A` /
 `NoEntropyAcceptedDuringClear_A` / `ClearScrubsPendingRead_A` assertions in
 `sep_entropy_fifo.sv`, the two `AxisEdnNo*DuringClear_A` in
-`drbg_axis_edn_adapter.sv` (re-armed by name in `tb/tb_top.sv` for both the
-crypto and the pool adapter, after the adapter-scope `$assertoff`), and `ResetOnlyWhenIsolated_A` /
+`drbg_axis_edn_adapter.sv`, and `ResetOnlyWhenIsolated_A` /
 `IsolateHeldThroughReset_A` in `sep_isolate_rst_seq.sv` all expand to nothing
 under Verilator, because `prim_assert.sv` and `ocah_assert.svh` both gate on
 `ifndef VERILATOR`. Verilator is the acceptance backend, so those ten assertions
@@ -2003,7 +2002,7 @@ No leaf grades which index of the range pulses (see
 * Malformed alert: `hw/sys/sep/doc/crypto.adoc` (OpenTitan Alert Termination)
 states that a malformed encoding on the alert pair raises the integrity-fail of
 the receiver and that the Crypto alert source is the OR of every receiver pulse
-and integrity-fail. It does not list the malformed encodings. The leaf uses one:
+and integrity-fail and of the two EDN adapters' ack FSM faults. It does not list the malformed encodings. The leaf uses one:
 `alert_p` and `alert_n` at the same value, which is not a differential code.
 * Health-test limit trips: `HEALTH_TEST_CTRL.REPETITION_LIMIT` is the maximum
 allowed repetition count, `MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD` is the
@@ -2962,17 +2961,17 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Area*: Crypto and entropy (OTBN)
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`, 4 seeds; testlist `crypto.toml`, groups `cpu_stub` and `all`; Verilator and VCS
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force +sep_otbn_intg_flip`, 4 seeds; testlist `crypto.toml`, groups `cpu_stub` and `all`; Verilator and VCS
 
 *Source Module*: `sep_otbn_cmd_status_rand_test`
 
-*BFM / Model*: ocah_axi_vip with the CPU-LSU master readback and write of the OTBN registers and memories (approved); `sep_internal_interrupts_probe_o` (approved, vector bit 29); the TRNG reset bit of `SW_RESET_N` (approved, holds the RND read); the compute program and the independent Python operator golden of the open `sep_otbn_compute_rand_test` helper. The OTBN status probe, a read-only probe on the operational state code (`status_q` of the OTBN core) sampled on every `clk_i`, is an observation tap the test adds to the SEP_TB_ARCH observation-probe list. It serves CHK-OTBN-CMD-BUSY and the reset arc of CHK-OTBN-INSN. No inject.
+*BFM / Model*: ocah_axi_vip with the CPU-LSU master readback and write of the OTBN registers and memories (approved); `sep_internal_interrupts_probe_o` (approved, vector bit 29); the TRNG reset bit of `SW_RESET_N` (approved, holds the RND read); the compute program and the independent Python operator golden of the open `sep_otbn_compute_rand_test` helper. The OTBN status probe, a read-only probe on the operational state code (`status_q` of the OTBN core) sampled on every `clk_i`, is an observation tap the test adds to the SEP_TB_ARCH observation-probe list. It serves CHK-OTBN-CMD-BUSY and the reset arc of CHK-OTBN-INSN. The crypto alert receiver probe `crypto_alert_pulse_probe_o` (an observation tap on the SEP_TB_ARCH observation-probe list) shows which receiver of the OTBN range `[2:1]` pulses (CHK-OTBN-IMEM-INTG, CHK-OTBN-DMEM-INTG). Added hook, error inject: the OTBN memory integrity flip (`+sep_otbn_intg_flip`, set by the testlist entry). While `otbn_intg_flip_en_i` is 1, it inverts one bit of every read word that the OTBN core takes from the memory that `otbn_intg_flip_mem_i` selects (IMEM or DMEM), after the descrambler and ahead of the integrity check; the stored word and the bus reads do not change. `otbn_intg_flip_count_o` counts the changed responses. The inject is off at every other time.
 
-*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the command sequence (3 to 5 commands from EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM, with each of the three commands at least once), the gap before each command (0 to 200 clocks), the program operation (ADD, XOR or AND) and its operands, the pair a and b (0 <= a < b <= 40 extra independent instructions), the order of the two enable runs of the done-line leg, the number k of busy `CTRL` writes (1 to 4), the unrecognised `CMD` value (an 8-bit `CMD.cmd` code other than 0xd8, 0xc3 and 0x1e, with bits 31:8 at 0) the number j of busy `CMD` writes (1 to 4) and last the 32-bit value written to `ERR_BITS` in the clear step. `reseed = 4` samples different sequences, gaps, operands, pairs, orders and counts. The legs are the same on every seed.
+*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the command sequence (3 to 5 commands from EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM, with each of the three commands at least once), the gap before each command (0 to 200 clocks), the program operation (ADD, XOR or AND) and its operands, the pair a and b (0 <= a < b <= 40 extra independent instructions), the order of the two enable runs of the done-line leg, the number k of busy `CTRL` writes (1 to 4), the unrecognised `CMD` value (an 8-bit `CMD.cmd` code other than 0xd8, 0xc3 and 0x1e, with bits 31:8 at 0) the number j of busy `CMD` writes (1 to 4) the bit of the IMEM word that the integrity leg inverts (0 to 38), the DMEM word that it inverts (word 0 or 1 of the line, which the two loads of the compute program read) with the bit of that word (0 to 38), and last the 32-bit value written to `ERR_BITS` in the clear step. `reseed = 4` samples different sequences, gaps, operands, pairs, orders, counts and flipped bits. The legs are the same on every seed.
 
-*Objective*: `CMD` accepts EXECUTE (0xd8), SEC_WIPE_DMEM (0xc3) and SEC_WIPE_IMEM (0x1e). Each command moves `STATUS` from IDLE (0x00) to its busy code (0x01, 0x02, 0x03), back to IDLE, and raises `INTR_STATE.done`. After an OTBN reset `STATUS` is BUSY_SEC_WIPE_INT (0x04) during the internal secure wipe and then IDLE (0x00). `ERR_BITS` reads 0 after a run that ends with `ecall`. An illegal instruction (`unimp`, a CSRRW of the CSR 0xC00 that OTBN does not have) is a software error: with `CTRL.software_errs_fatal` = 0 the run ends at IDLE with `done` = 1 and `ERR_BITS.illegal_insn` = 1; with `software_errs_fatal` = 1 it is a fatal error, so the run ends at LOCKED (0xFF) with `done` = 1, `ERR_BITS.fatal_software` and `FATAL_ALERT_CAUSE.fatal_software`. LOCKED ignores `CMD` and ends only with an OTBN reset. A write of any value to `ERR_BITS` at idle clears it. `INSN_CNT` is the number of executed instructions. The done line follows `INTR_ENABLE`. A `CTRL` write while OTBN is not idle is ignored, and the same write while OTBN is idle is stored. A `CMD` write while OTBN is not idle is ignored, and an unrecognised `CMD` value is ignored. An `RND` read stalls OTBN until a number arrives from the EDN (`vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/csr.yml`, `rnd`), and native requests get no acknowledgement during the TRNG adapter clear (`hw/sys/sep/doc/trng.adoc`, Reset and Recovery Boundaries); this holds OTBN busy for the busy-write leg. Spec: `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md` (Operational States, Software Execution, Errors, Reaction to Recoverable Errors, Reaction to Fatal Errors, List of Errors, Alerts); `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/base-insns.yml` (`csrrw`, `unimp`); `vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc` (`INTR_STATE`, `INTR_ENABLE`, `INTR_TEST`, `CTRL`, `CMD`, `STATUS`, `ERR_BITS`, `FATAL_ALERT_CAUSE`, `INSN_CNT`); `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson` (`CMD`: writes are ignored if OTBN is not idle, unrecognized commands are ignored; `ERR_BITS`: clear by a write of any value; `FATAL_ALERT_CAUSE`: does not change until OTBN is reset); `hw/sys/sep/doc/otbn.adoc` (OCAH Modifications); `hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc` (`SW_RESET_N`).
+*Objective*: `CMD` accepts EXECUTE (0xd8), SEC_WIPE_DMEM (0xc3) and SEC_WIPE_IMEM (0x1e). Each command moves `STATUS` from IDLE (0x00) to its busy code (0x01, 0x02, 0x03), back to IDLE, and raises `INTR_STATE.done`. After an OTBN reset `STATUS` is BUSY_SEC_WIPE_INT (0x04) during the internal secure wipe and then IDLE (0x00). `ERR_BITS` reads 0 after a run that ends with `ecall`. An illegal instruction (`unimp`, a CSRRW of the CSR 0xC00 that OTBN does not have) is a software error: with `CTRL.software_errs_fatal` = 0 the run ends at IDLE with `done` = 1 and `ERR_BITS.illegal_insn` = 1; with `software_errs_fatal` = 1 it is a fatal error, so the run ends at LOCKED (0xFF) with `done` = 1, `ERR_BITS.fatal_software` and `FATAL_ALERT_CAUSE.fatal_software`. LOCKED ignores `CMD` and ends only with an OTBN reset. A word that fails its integrity check when the core takes it from IMEM (a fetch) or from DMEM (a load) during EXECUTE is a fatal error: the run ends at LOCKED (0xFF) with `done` = 1, `ERR_BITS.imem_intg_violation` (bit 16) or `ERR_BITS.dmem_intg_violation` (bit 17), and the matching `FATAL_ALERT_CAUSE` bit (0 or 1); the fatal alert pulses on a receiver of the OTBN range `[2:1]` of the crypto alert vector until the OTBN reset, and after the OTBN reset `STATUS` leaves LOCKED. Sources: `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md` (List of Errors: IMEM_INTG_VIOLATION, DMEM_INTG_VIOLATION; Reaction to Fatal Errors; Alerts), `.../doc/registers.md` (`ERR_BITS`, `FATAL_ALERT_CAUSE`, `STATUS`), `hw/sys/sep/doc/crypto.adoc` (OTBN alert receivers). A write of any value to `ERR_BITS` at idle clears it. `INSN_CNT` is the number of executed instructions. The done line follows `INTR_ENABLE`. A `CTRL` write while OTBN is not idle is ignored, and the same write while OTBN is idle is stored. A `CMD` write while OTBN is not idle is ignored, and an unrecognised `CMD` value is ignored. An `RND` read stalls OTBN until a number arrives from the EDN (`vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/csr.yml`, `rnd`), and native requests get no acknowledgement during the TRNG adapter clear (`hw/sys/sep/doc/trng.adoc`, Reset and Recovery Boundaries); this holds OTBN busy for the busy-write leg. Spec: `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md` (Operational States, Software Execution, Errors, Reaction to Recoverable Errors, Reaction to Fatal Errors, List of Errors, Alerts); `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/base-insns.yml` (`csrrw`, `unimp`); `vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc` (`INTR_STATE`, `INTR_ENABLE`, `INTR_TEST`, `CTRL`, `CMD`, `STATUS`, `ERR_BITS`, `FATAL_ALERT_CAUSE`, `INSN_CNT`); `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson` (`CMD`: writes are ignored if OTBN is not idle, unrecognized commands are ignored; `ERR_BITS`: clear by a write of any value; `FATAL_ALERT_CAUSE`: does not change until OTBN is reset); `hw/sys/sep/doc/otbn.adoc` (OCAH Modifications); `hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc` (`SW_RESET_N`).
 
-*Test Coverage*: Command sequences of 3 to 5 commands that hold each of EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM at least once on every seed, with drawn gaps, each command issued at STATUS IDLE. Two programs of a and b instructions for `INSN_CNT`. The done line with the enable set and clear, and with `INTR_TEST.done`. The busy-write leg: OTBN held busy (STATUS 0x01) by an RND read that gets no acknowledge while the TRNG reset is held; k writes of `software_errs_fatal` = 1 while busy; the same write while idle after the chain returns. The busy-write leg also writes `CMD` = SEC_WIPE_DMEM j times while `STATUS` is 0x01. The software-error leg runs the `unimp` program with `software_errs_fatal` = 1, writes `CMD` = EXECUTE at LOCKED, resets OTBN, and runs the program again with `software_errs_fatal` = 0. The ignored-command leg writes one unrecognised `CMD` value at IDLE with `ERR_BITS` still non-zero from the software-error leg, then writes the drawn value to `ERR_BITS`. Error injection: a `CTRL` write while busy, a `CMD` write while busy, an unrecognised `CMD` value at IDLE, an illegal instruction in each `software_errs_fatal` setting and a `CMD` write at LOCKED. Extends `sep_otbn_compute_rand_test`, which runs EXECUTE of an ADD, XOR or AND program and grades `ERR_BITS` and a DMEM result. This entry grades only the wipe commands, the status sequence, `INSN_CNT`, the busy-write rule of `CTRL`, the ignored `CMD` writes, the status arc of the initial wipe, the software-error reactions, LOCKED and the `ERR_BITS` clear. The owner of the open test keeps the ADD, XOR and AND results. The done-line check extends `sep_pic_irq_source_map_delivery_test`, which raises OTBN done with `INTR_TEST` and brackets it with a write-one clear. This entry owns the OTBN line cells of the extension leg of `sep_irq_ip_to_aggregator_test`: the enable clear, the rise, the enable flip and the write-one clear with the enable clear, for the real completion event and for `INTR_TEST`. The enable-set `INTR_TEST` cell is a control, and the owner of the open test keeps its `INTR_TEST` walk. Functional coverage: `sep_otbn_op_cg` (`cp_cmd`, `x_cmd_first_busy`, `cp_cmd_ignored`, `cp_insn_cnt`, `cp_done_event`, `cp_post_reset_arc`; `cp_post_reset_done` is `ignore_bins`), Phase 1 `sep_otbn_execute_cg`, `sep_otbn_err_lock_cg` (`cp_ctrl_write_legality`, `cp_sw_error_end`, `cp_locked_hold_exit`, `cp_err_bits_clear`), `sep_otbn_op_cg` `cp_post_reset_done`, `cp_cmd_ignored_err`, `sep_crypto_intr_cg` (`x_line_gate`, `cp_hw_raise` otbn_done).
+*Test Coverage*: Command sequences of 3 to 5 commands that hold each of EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM at least once on every seed, with drawn gaps, each command issued at STATUS IDLE. Two programs of a and b instructions for `INSN_CNT`. The done line with the enable set and clear, and with `INTR_TEST.done`. The busy-write leg: OTBN held busy (STATUS 0x01) by an RND read that gets no acknowledge while the TRNG reset is held; k writes of `software_errs_fatal` = 1 while busy; the same write while idle after the chain returns. The busy-write leg also writes `CMD` = SEC_WIPE_DMEM j times while `STATUS` is 0x01. The integrity leg runs the compute program twice, once with one bit of every IMEM word that the core fetches inverted and once with one bit of a DMEM word that a load of the program reads inverted, each followed by an OTBN reset. The software-error leg runs the `unimp` program with `software_errs_fatal` = 1, writes `CMD` = EXECUTE at LOCKED, resets OTBN, and runs the program again with `software_errs_fatal` = 0. The ignored-command leg writes one unrecognised `CMD` value at IDLE with `ERR_BITS` still non-zero from the software-error leg, then writes the drawn value to `ERR_BITS`. Error injection: a `CTRL` write while busy, a `CMD` write while busy, an unrecognised `CMD` value at IDLE, an illegal instruction in each `software_errs_fatal` setting and a `CMD` write at LOCKED. Extends `sep_otbn_compute_rand_test`, which runs EXECUTE of an ADD, XOR or AND program and grades `ERR_BITS` and a DMEM result. This entry grades only the wipe commands, the status sequence, `INSN_CNT`, the busy-write rule of `CTRL`, the ignored `CMD` writes, the status arc of the initial wipe, the software-error reactions, LOCKED and the `ERR_BITS` clear. The owner of the open test keeps the ADD, XOR and AND results. The done-line check extends `sep_pic_irq_source_map_delivery_test`, which raises OTBN done with `INTR_TEST` and brackets it with a write-one clear. This entry owns the OTBN line cells of the extension leg of `sep_irq_ip_to_aggregator_test`: the enable clear, the rise, the enable flip and the write-one clear with the enable clear, for the real completion event and for `INTR_TEST`. The enable-set `INTR_TEST` cell is a control, and the owner of the open test keeps its `INTR_TEST` walk. Functional coverage: `sep_otbn_op_cg` (`cp_cmd`, `x_cmd_first_busy`, `cp_cmd_ignored`, `cp_insn_cnt`, `cp_done_event`, `cp_post_reset_arc`; `cp_post_reset_done` is `ignore_bins`), Phase 1 `sep_otbn_execute_cg`, `sep_otbn_err_lock_cg` (`cp_ctrl_write_legality`, `cp_sw_error_end`, `cp_locked_hold_exit`, `cp_err_bits_clear`), `sep_otbn_op_cg` `cp_post_reset_done`, `cp_cmd_ignored_err`, `sep_crypto_intr_cg` (`x_line_gate`, `cp_hw_raise` otbn_done).
 
 *Test Procedure*:
 
@@ -3000,6 +2999,7 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 . This is the error injection. Point: `CTRL`. Kind: `software_errs_fatal` = 1 at `STATUS` 0x01. Expected response: the write is ignored. Write `CTRL.software_errs_fatal` = 1, k times. After each write read `CTRL` and expect 0, and read `STATUS` and expect 0x01. This is a second error injection. Point: `CMD`. Kind: `CMD` = SEC_WIPE_DMEM (0xc3) at `STATUS` 0x01. Expected response: the write is ignored. Write `CMD` = 0xc3, j times. After each write read `STATUS` and expect 0x01 (CHK-OTBN-CMD-IGNORE).
 . Release the TRNG reset. Run the bring-up. Wait for `STATUS` = IDLE (a bounded wait). Read `ERR_BITS` and expect 0 in every bit except `rnd_rep_chk_fail` (CHK-OTBN-BUSYWR-ERR); log that bit as `OBS-OTBN-BUSYWR-RNDREP`. Read `STATUS` and expect it is not 0xFF.
 . Write `CTRL.software_errs_fatal` = 1 while OTBN is idle. Read `CTRL` and expect 1. Reset OTBN.
+. Integrity leg, run once for IMEM and once for DMEM. Start a watch on the OTBN alert receivers `[2:1]` (`crypto_alert_pulse_probe_o`). Write 1 to `INTR_STATE.done`. Load the compute program and its operands. Set the flip memory and bit (the drawn IMEM bit; for DMEM, the drawn bit of the drawn word) and keep `otbn_intg_flip_en_i` at 0. Read `INTR_STATE.done` as 0 and require no pulse on `[2:1]` since the watch began. This is the error injection. Point: the OTBN memory read word, ahead of the integrity check. Kind: one inverted bit. Expected response: a fatal error. Start the arming of the inject: the leaf drives `otbn_intg_flip_en_i` to 1 at the first clock that the status probe shows BUSY_EXECUTE. Write `CMD` = EXECUTE. Poll `STATUS` until it reads IDLE or LOCKED (a bounded wait of 8 x t_cmd). Read the status probe, `INTR_STATE.done`, `ERR_BITS`, `FATAL_ALERT_CAUSE` and `otbn_intg_flip_count_o`, and the pulses on `[2:1]` since the `CMD` write. Drop `otbn_intg_flip_en_i`, then count the rises of each index of `[2:1]` in a 256-clock window while OTBN stays LOCKED, with no new stimulus. Reset OTBN, read `STATUS` and `FATAL_ALERT_CAUSE`, and watch `[2:1]` for 256 clocks (CHK-OTBN-IMEM-INTG, CHK-OTBN-DMEM-INTG). Log the high clocks of each index of `[2:1]` after the `CMD` write and the rises of each index in the LOCKED window (`OBS-OTBN-INTG-ALERT-IDX`) and the full `ERR_BITS` and `FATAL_ALERT_CAUSE` (`OBS-OTBN-INTG-CAUSE`).
 . Software-error leg, fatal. Write 1 to `INTR_STATE.done`. Write `CTRL.software_errs_fatal` = 1 at IDLE and read it as 1. Load the `unimp` program (`CSRRW x0, 0xC00, x0`, then `ecall`). Read `INTR_STATE.done` as 0. This is the error injection. Point: the OTBN program. Kind: an illegal instruction with `software_errs_fatal` = 1. Expected response: a fatal error. Write `CMD` = EXECUTE. Poll `STATUS` until it reads IDLE or LOCKED (a bounded wait of 8 x t_cmd). Read `INTR_STATE.done`, `ERR_BITS` and `FATAL_ALERT_CAUSE` (CHK-OTBN-SWERR-FATAL).
 . LOCKED hold. This is the error injection. Point: `CMD`. Kind: EXECUTE at LOCKED. Expected response: the write is ignored. Write `CMD` = EXECUTE. Poll `STATUS` back to back for a window of 4 x t_cmd. Read `FATAL_ALERT_CAUSE`. Reset OTBN, wait for `STATUS` = IDLE and read `STATUS` and `FATAL_ALERT_CAUSE` (CHK-OTBN-LOCKED-HOLD).
 . Software-error leg, recoverable. Write 1 to `INTR_STATE.done`. Write `CTRL` = 0 and read it as 0. Load the `unimp` program and read `INTR_STATE.done` as 0. Write `CMD` = EXECUTE. Poll `STATUS` until it reads IDLE or LOCKED (a bounded wait). Read `INTR_STATE.done`, `ERR_BITS` and `FATAL_ALERT_CAUSE` (CHK-OTBN-SWERR-RECOV). Log `ERR_BITS` and `FATAL_ALERT_CAUSE` as `OBS-OTBN-SWERR-CAUSE`. Do not clear `ERR_BITS`.
@@ -3035,13 +3035,17 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 |At IDLE a write of the drawn 32-bit value to `ERR_BITS` makes it read 0 (`theory_of_operation.md`, Alerts: writing any value to `ERR_BITS` clears it to zero when OTBN is not running; `otbn.hjson`, `ERR_BITS`). A wrong DUT that keeps the bits or stores the written value shows a non-zero read. Anchor: `STATUS` and `ERR_BITS` readback. Control (`CTRL-OTBN-ERRCLR`): `ERR_BITS` reads non-zero before the write. Evidence: `CHK-OTBN-ERRCLR PASS: seed=<n> status=0x00 written=0x<v> err_bits_before=0x<e> err_bits_after=0x0`.
 |CHK-OTBN-BUSYWR-ERR
 |After the RND program of the busy-write leg ends at IDLE, `ERR_BITS` reads 0 in every bit except `rnd_rep_chk_fail` (`theory_of_operation.md`, Software Execution: `ERR_BITS` is 0 for a successful execution; the program ends with `ecall`; `hw/sys/sep/doc/otbn.adoc`: the FIPS tag is tied high, so `rnd_fips_chk_fail` does not set). `rnd_rep_chk_fail` sets when two EDN words are equal (List of Errors), a chance outcome, so it is logged as `OBS-OTBN-BUSYWR-RNDREP` and not graded. A wrong DUT that records an error for the ignored busy writes shows a non-zero bit. Anchor: `ERR_BITS` readback. Control (`CTRL-OTBN-BUSYWR-ERR`): the recoverable software-error run of the same seed reads `ERR_BITS` non-zero, so the register records errors. Evidence: `CHK-OTBN-BUSYWR-ERR PASS: seed=<n> idle_after_release=1 err_bits=0x<e> err_bits_without_rnd_rep=0x0 expect=0x0` and `OBS-OTBN-BUSYWR-RNDREP seed=<n> rnd_rep_chk_fail=<0 or 1>`.
+|CHK-OTBN-IMEM-INTG
+|With one bit of every IMEM word that the core fetches inverted ahead of the integrity check, the EXECUTE run ends with `STATUS` = LOCKED (0xFF) on the bus and on the OTBN status probe, `INTR_STATE.done` = 1 (read 0 before), `ERR_BITS.imem_intg_violation` (bit 16) set and `FATAL_ALERT_CAUSE.imem_intg_violation` (bit 0) set. No pulse occurs on crypto alert `[2:1]` from the program load to the `CMD` write, at least one pulse occurs from the `CMD` write to the LOCKED read, and at least one rise occurs on `[2:1]` in a 256-clock LOCKED window after the LOCKED reads and the flip drop and before the OTBN reset, so the alert repeats after the error with no new stimulus. After the OTBN reset the status probe shows 0x04 then 0x00, `STATUS` reads IDLE and `FATAL_ALERT_CAUSE` reads 0. Sources: `theory_of_operation.md` (IMEM_INTG_VIOLATION is a fatal error: "Data read from the instruction memory failed the integrity checks."; "A fatal error is raised whenever a data integrity violation is detected"; Reaction to Fatal Errors: `ERR_BITS` non-zero, `done` set, `STATUS` set to LOCKED, fatal alert; "A fatal alert is a continuously triggered alert" that "can only be cleared by resetting OTBN", `theory_of_operation.md:311-314`); `crypto.adoc:125-126` (the receiver pulses `alert_o` when the handshake starts, so each repeat is a rise); `registers.md` (`ERR_BITS` bit 16, `FATAL_ALERT_CAUSE` bit 0, LOCKED 0xFF must be reset to unlock); `crypto.adoc` (OTBN receivers `[2:1]`). The check grades the named `ERR_BITS` bit, the named cause bit a pulse on the range and a rise on the range in the LOCKED window; which index of `[2:1]` pulses, the repeat period, and the other bits of `ERR_BITS` and `FATAL_ALERT_CAUSE`, are logged only (`OBS-OTBN-INTG-ALERT-IDX`, `OBS-OTBN-INTG-CAUSE`), because no sentence names them. A wrong DUT that treats the error as recoverable ends at IDLE, one that sets no cause bit leaves it at 0, one that does not raise the alert shows no pulse, one that raises it once and does not repeat it shows no rise in the LOCKED window, and one that stays locked after the reset fails the exit. Anchor: `STATUS`, `INTR_STATE`, `ERR_BITS` and `FATAL_ALERT_CAUSE` readback, the status probe and the alert receiver probe. Control (`CTRL-OTBN-IMEM-INTG`): the inject was armed during BUSY_EXECUTE and `otbn_intg_flip_count_o` is non-zero at LOCKED, so a corrupted read response reached the integrity check; with no flip the compute runs of the command leg end with `ERR_BITS` = 0 and no `[2:1]` pulse (CHK-OTBN-CMD-END). Evidence: `CHK-OTBN-IMEM-INTG PASS seed=<n> mem=imem flip_bit=<b> status=<codes> final=0xff probe=0xff done=1 pre_done=0 err_bit=1 fatal_bit=1 alert_high_before_cmd=0 alert_high_after_cmd=<n> alert_rises_locked=<r> locked_window_clk=256 reset_arc=arc=0x04,0x00 status_after_reset=0x00 fatal_after_reset=0x0`.
+|CHK-OTBN-DMEM-INTG
+|The same effects for a DMEM word that a load of the program reads, inverted ahead of the integrity check of the DMEM: `STATUS` = LOCKED, `done` = 1, `ERR_BITS.dmem_intg_violation` (bit 17) and `FATAL_ALERT_CAUSE.dmem_intg_violation` (bit 1) set, no pulse on `[2:1]` before the `CMD` write, a pulse after it, a rise in the LOCKED window, and the exit after the OTBN reset. Sources: `theory_of_operation.md` (DMEM_INTG_VIOLATION is a fatal error: "Data read from the data memory failed the integrity checks."; the same fatal-error sections as CHK-OTBN-IMEM-INTG); `registers.md` (`ERR_BITS` bit 17, `FATAL_ALERT_CAUSE` bit 1); `crypto.adoc` (OTBN receivers `[2:1]`). The same logged-only values and the same control (`CTRL-OTBN-DMEM-INTG`). Evidence: `CHK-OTBN-DMEM-INTG PASS` with the fields of CHK-OTBN-IMEM-INTG and `mem=dmem`.
 |CHK-OTBN-CMDIGN-ERR
 |The unrecognised `CMD` value at IDLE leaves `ERR_BITS` at its value before the write (`otbn.hjson`, `CMD`: unrecognized commands are ignored; `theory_of_operation.md`, Software Execution: `ERR_BITS` is set at the end of an operation). A wrong DUT that starts an operation or clears `ERR_BITS` on the write reads another value. Anchor: `ERR_BITS` readback. Control (`CTRL-OTBN-CMDIGN-ERR`): `ERR_BITS` is non-zero before the write (the recoverable run), so a clear is visible. Evidence: `CHK-OTBN-CMDIGN-ERR PASS: seed=<n> cmd=0x<c> err_bits_before=0x<e> err_bits=0x<e>`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope limit*: This test grades the command and status sequence, the done line, `INSN_CNT`, the busy-write rule of `CTRL`, the status arc of the initial wipe, the reactions to an illegal instruction in both `software_errs_fatal` settings, the LOCKED hold and exit, the `ERR_BITS` value after an ignored `CMD` write and after a clean run, and the `ERR_BITS` clear. The following are not claimed. `INTR_STATE.done` after the post-reset wipe is logged only (the value is not stated). `rnd_rep_chk_fail` after the RND program is logged only (a chance outcome). The `ERR_BITS` bits other than `illegal_insn` and `FATAL_ALERT_CAUSE` after the recoverable error are logged only. The other software errors (`BAD_DATA_ADDR`, `BAD_INSN_ADDR`, `CALL_STACK`, `LOOP`, `KEY_INVALID`), the fatal errors other than `FATAL_SOFTWARE`, the alerts and a write to `ERR_BITS` while OTBN is running are not driven. The ADD, XOR and AND results belong to `sep_otbn_compute_rand_test`, the `INTR_TEST` walk of the done line with the enable set belongs to `sep_pic_irq_source_map_delivery_test`, and the line gate of the other sources belongs to the extension leg of `sep_irq_ip_to_aggregator_test`.
+*Scope limit*: This test grades the command and status sequence, the done line, `INSN_CNT`, the busy-write rule of `CTRL`, the status arc of the initial wipe, the reactions to an illegal instruction in both `software_errs_fatal` settings, the LOCKED hold and exit, the `ERR_BITS` value after an ignored `CMD` write and after a clean run, and the `ERR_BITS` clear. The following are not claimed. `INTR_STATE.done` after the post-reset wipe is logged only (the value is not stated). `rnd_rep_chk_fail` after the RND program is logged only (a chance outcome). The `ERR_BITS` bits other than `illegal_insn` and `FATAL_ALERT_CAUSE` after the recoverable error are logged only. The leaf grades the fatal reaction to an integrity error of one inverted bit in IMEM and in DMEM, not an error that the memory itself detects without a read. The other software errors (`BAD_DATA_ADDR`, `BAD_INSN_ADDR`, `CALL_STACK`, `LOOP`, `KEY_INVALID`), the fatal errors other than `FATAL_SOFTWARE`, `IMEM_INTG_VIOLATION` and `DMEM_INTG_VIOLATION`, and a write to `ERR_BITS` while OTBN is running are not driven. The index of the fatal alert within `[2:1]` and the `ERR_BITS` and `FATAL_ALERT_CAUSE` bits other than the named ones of the integrity runs are logged only. The ADD, XOR and AND results belong to `sep_otbn_compute_rand_test`, the `INTR_TEST` walk of the done line with the enable set belongs to `sep_pic_irq_source_map_delivery_test`, and the line gate of the other sources belongs to the extension leg of `sep_irq_ip_to_aggregator_test`.
 
 *Known limitation*: On VCS this leaf fails on each SEC_WIPE_DMEM and SEC_WIPE_IMEM command, with no failing checker. The SEP mock OTP scramble-key responder (`hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv`) holds `ack` one clock after `req` falls, and the vendored request synchronizer of OTBN asserts that an acknowledge needs a request (`vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sync_reqack.sv`, `SyncReqAckAckNeedsReq` and `SyncReqAckHoldReq`). Verilator compiles these assertions out, so the leaf passes there.
 
@@ -3668,13 +3672,13 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 
 *Source Module*: `sep_esrc_observe_fifo_rand_test`
 
-*BFM / Model*: ocah_axi_vip with the CPU-LSU master readback and writes of the ESRC registers (32-bit accesses, approved); the noise inject `esrc_noise_ext_i` (approved); the probe `esrc_compress_vld_o` (approved); `trng_reset_active_probe_o` and `trng_axi_isolated_probe_o` (approved, the release of the TRNG reset). Added hook: the ESRC noise-source stuck-at inject, an error inject that forces the output of the noise ring oscillator of each lane to a constant 0 or 1 (a stuck noise source). The constant reaches the pre-decorrelator samples that `NOISE_OBS_RDATA` returns (`entropy_source.adoc`, `NOISE_OBS_RDATA`); `esrc_noise_ext_i` forces only the decorrelator input, which the noise observe FIFO does not sample. The test adds the inject to the inject exceptions of `docs/SEP_TB_ARCH.adoc`. No PROPOSED item. Expected values come from the specification only: the selected lane and its constant noise value, the packing rule of an observe word, and the rules of flush, overflow and lock.
+*BFM / Model*: ocah_axi_vip with the CPU-LSU master readback and writes of the ESRC registers (32-bit accesses, approved); the noise inject `esrc_noise_ext_i` (approved); the probe `esrc_compress_vld_o` (approved); `trng_reset_active_probe_o` and `trng_axi_isolated_probe_o` (approved, the release of the TRNG reset). Added hook: the ESRC noise-source stuck-at inject, an error inject that forces the output of the noise ring oscillator of each lane to a constant 0 or 1 (a stuck noise source). The constant reaches the pre-decorrelator samples that `NOISE_OBS_RDATA` returns (`entropy_source.adoc`, `NOISE_OBS_RDATA`); `esrc_noise_ext_i` forces only the decorrelator input, which the noise observe FIFO does not sample. The test adds the inject to the inject exceptions of `docs/SEP_TB_ARCH.adoc`. The sample-clock sequence leg drives the stuck-at inject with one bit per sample-clock edge and the external sample clock `entropy_rosc_sample_clk_i` (a restartable bench clock), and reads the synchronizer output of the lane (`esrc_noise_bit_o[lane]`, the net `u_generator.noise_bit`, an approved observation tap). No PROPOSED item. Expected values come from the specification only: the selected lane and its constant noise value, the packing rule of an observe word, the sample sequence and the synchronizer depth, and the rules of flush, overflow and lock.
 
-*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the order of the 16 `LANE_SEL` values (constraint filter: the first value and the value before each of 0 and 12 to 15 come from 1 to 11, so every write changes the effective lane), the value z (0 or 1) that the effective lane carries at each lane change (both values among the lane changes of a seed), the lane a of the flush leg (0 to 11) and its value z, the number f of words buffered before the `FLUSH` (4 to 8), the number k of words buffered at the lock moment (1 to 4), and the value z of each of the four lock passes. `reseed = 4` samples different orders, values and moments. The plan shape is the same on every seed. The leaf logs the plan first (`PLAN seed=<n> ...`).
+*Randomization*: RAND-REP. `SepSeededRng` from the run seed: the order of the 16 `LANE_SEL` values (constraint filter: the first value and the value before each of 0 and 12 to 15 come from 1 to 11, so every write changes the effective lane), the value z (0 or 1) that the effective lane carries at each lane change (both values among the lane changes of a seed), the lane a of the flush leg (0 to 11) and its value z, the number f of words buffered before the `FLUSH` (4 to 8), the number k of words buffered at the lock moment (1 to 4), the value z of each of the four lock passes, the lane of the sample-clock sequence leg (0 to 11) and its 160 sequence bits (5 words; bit 8 of each word is the complement of bit 7 and the last bit is the complement of the one before, so a lost or repeated sample changes a graded bit or the word count), and the 64 bits of the fast-clock sequence. `reseed = 4` samples different orders, values, moments, lanes and sequences. The plan shape is the same on every seed. The leaf logs the plan first (`PLAN seed=<n> ...`).
 
-*Objective*: With `NOISE_OBS_CTRL.RAW_ENABLE` the samples of the selected lane pack LSB-first into 32-bit observe words, and each word holds 32 pre-decorrelator samples of the selected lane. `LANE_SEL` 0 to 11 selects the lane, and other values select lane 0. Changing lanes restarts packing and discards the buffered words, and a write of `FLUSH` discards the buffered words. The noise observe FIFO sees the stream before the boot gate. A word offered while the FIFO is full is discarded and sets `NOISE_OBS_OVERFLOW`. The BIW observe FIFO captures after startup completes and sets `BIW_OBS_OVERFLOW` the same way. Both `RAW_ENABLE` bits are held by `FIPS_LOCK`. Spec: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`NOISE_OBS_CTRL`, `NOISE_OBS_STATUS`, `NOISE_OBS_RDATA`, `BIW_OBS_CTRL`, `BIW_OBS_STATUS`, `BIW_OBS_RDATA`, `INTR_STATUS`, `FIPS_LOCK`); `hw/ip/entropy_source/doc/architecture.adoc` (Entropy Source, Debug Observation Pin).
+*Objective*: With `NOISE_OBS_CTRL.RAW_ENABLE` the samples of the selected lane pack LSB-first into 32-bit observe words, and each word holds 32 pre-decorrelator samples of the selected lane. `LANE_SEL` 0 to 11 selects the lane, and other values select lane 0. Changing lanes restarts packing and discards the buffered words, and a write of `FLUSH` discards the buffered words. The noise observe FIFO sees the stream before the boot gate. A word offered while the FIFO is full is discarded and sets `NOISE_OBS_OVERFLOW`. The BIW observe FIFO captures after startup completes and sets `BIW_OBS_OVERFLOW` the same way. Both `RAW_ENABLE` bits are held by `FIPS_LOCK`. The noise source of a lane is sampled by a flop on its sampling clock and then synchronized to `clk_i` by a two-stage synchronizer, so with a sample-clock divide of 1 each sample-clock edge gives one sample, in order, and the value that the sampling flop captures appears at the synchronizer output on the 2nd `clk_i` rising edge after the capture. Spec: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`NOISE_OBS_CTRL`, `NOISE_OBS_STATUS`, `NOISE_OBS_RDATA`, `BIW_OBS_CTRL`, `BIW_OBS_STATUS`, `BIW_OBS_RDATA`, `INTR_STATUS`, `FIPS_LOCK`); `hw/ip/entropy_source/doc/architecture.adoc` (Entropy Source, Debug Observation Pin).
 
-*Test Coverage*: Constant lane noise in which the effective lane carries z and every other lane carries the opposite value. A failing startup (stuck0 with BYPASS set on all lanes, `ALERT_THRESHOLD.THRESHOLD` = 0) with both observe paths on. On every seed all 16 `LANE_SEL` values in drawn order. The drawn order makes every write change the effective lane, so each value, 12 to 15 included, is graded on every seed. The first word after each lane change is graded for the packing restart, and the next seven words for the lane value. A write that keeps the effective lane (0 and 12 to 15 all select lane 0) is not driven, because whether it flushes is blocked (see <<sep-vplan-phase3-blocked,Blocked features>>). A `FLUSH` write after the lane noise changes. Overflow of the noise FIFO and of the BIW FIFO after startup. A main-chain leg that logs the stream word counts with the observe paths off and on (blocked, not graded). Lock legs for each `RAW_ENABLE` field on every seed: locked at 1 and locked at 0. The BIW observe FIFO has no `FLUSH`, so the flush after the lock runs on the noise FIFO only. Error injection: a full observe FIFO (point: no read of the observe FIFO; kind: overflow; expected response: the overflow bit); a stuck noise source on every lane (point: the ESRC noise-source stuck-at inject; kind: stuck-at 0 or 1 per lane; expected response: noise observe words of the stuck value of the selected lane). Extends `sep_esrc_fips_lock_test`, which grades that both `RAW_ENABLE` fields are held by the lock and that `LANE_SEL` stays writable under the lock (`CHK-OBS-LANE-SEL`). This test adds capture under the lock, `LEVEL` staying 0 when locked at 0, and `FLUSH` after the lock on the noise FIFO, and grades only those cells; the owner of the open test keeps the held fields and the writable `LANE_SEL`, which this test reads only as controls. Functional coverage: `sep_esrc_conditioning_cg` (`x_obs_capture`, `cp_obs_lane_sel`, `cp_obs_flush`, `cp_obs_overflow`, `cp_obs_lock`), `sep_crypto_reg_lock_cg` (`x_fips_field`), `sep_crypto_intr_cg` (`x_esrc_status_enable`, `cp_esrc_raise_path` hw bins).
+*Test Coverage*: Constant lane noise in which the effective lane carries z and every other lane carries the opposite value. A failing startup (stuck0 with BYPASS set on all lanes, `ALERT_THRESHOLD.THRESHOLD` = 0) with both observe paths on. On every seed all 16 `LANE_SEL` values in drawn order. The drawn order makes every write change the effective lane, so each value, 12 to 15 included, is graded on every seed. The first word after each lane change is graded for the packing restart, and the next seven words for the lane value. A write that keeps the effective lane (0 and 12 to 15 all select lane 0) is not driven, because whether it flushes is blocked (see <<sep-vplan-phase3-blocked,Blocked features>>). A `FLUSH` write after the lane noise changes. Overflow of the noise FIFO and of the BIW FIFO after startup. A main-chain leg that logs the stream word counts with the observe paths off and on (blocked, not graded). A sample-clock sequence leg on one lane: the lane divides its sample clock by 1, the leaf restarts the sample clock at a period that is not a multiple of the `clk_i` period (8 x `clk_i` + 2 ps), drives one seeded sequence bit per sample edge, and grades the words that `NOISE_OBS_RDATA` returns and the cycle on which each captured value reaches the synchronizer output. A second window at 2 x `clk_i` + 2 ps is logged only. Lock legs for each `RAW_ENABLE` field on every seed: locked at 1 and locked at 0. The BIW observe FIFO has no `FLUSH`, so the flush after the lock runs on the noise FIFO only. Error injection: a full observe FIFO (point: no read of the observe FIFO; kind: overflow; expected response: the overflow bit); a stuck noise source on every lane (point: the ESRC noise-source stuck-at inject; kind: stuck-at 0 or 1 per lane; expected response: noise observe words of the stuck value of the selected lane). Extends `sep_esrc_fips_lock_test`, which grades that both `RAW_ENABLE` fields are held by the lock and that `LANE_SEL` stays writable under the lock (`CHK-OBS-LANE-SEL`). This test adds capture under the lock, `LEVEL` staying 0 when locked at 0, and `FLUSH` after the lock on the noise FIFO, and grades only those cells; the owner of the open test keeps the held fields and the writable `LANE_SEL`, which this test reads only as controls. Functional coverage: `sep_esrc_conditioning_cg` (`x_obs_capture`, `cp_obs_lane_sel`, `cp_obs_flush`, `cp_obs_overflow`, `cp_obs_lock`), `sep_crypto_reg_lock_cg` (`x_fips_field`), `sep_crypto_intr_cg` (`x_esrc_status_enable`, `cp_esrc_raise_path` hw bins).
 
 *Test Procedure*:
 
@@ -3690,8 +3694,8 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 . Poll `LEVEL` until it reads at least 8 (a bounded wait; the leaf logs the wait). Pop 8 words.
 . Compare the first popped word with 0xFFFFFFFF if z is 1 and with 0x00000000 if z is 0 (CHK-OBS-PACK). Compare words 2 to 8 with the same value (CHK-OBS-LANE). Compare the level after the write with the level before. Count the popped words that equal the value of the old lane (CHK-OBS-FLUSH).
 . Flush leg. Run the set-up. Drive lane a with z and every other lane with the opposite value. Write `NOISE_OBS_CTRL.RAW_ENABLE` = 1 with `LANE_SEL` = a. Poll `NOISE_OBS_STATUS.LEVEL` until it reads at least f.
-. Drive lane a with the opposite value of z and every other lane with z. Poll `LEVEL` until it has risen by at least 2 words since the change. Read `LEVEL` as the level before the flush. Write `NOISE_OBS_CTRL.FLUSH` = 1 (with `RAW_ENABLE` = 1 and `LANE_SEL` = a).
-. Read `LEVEL` at once as the level after the flush. Poll `LEVEL` until it reads at least 2, read it as m, pop m words and compare each with the new value of lane a. Write `RAW_ENABLE` = 0.
+. Drive lane a with the opposite value of z and every other lane with z. Poll `LEVEL` until it has risen by at least 2 words since the change. Stop `entropy_rosc_sample_clk_i` and wait 16 `clk_i` cycles, so the last sample reaches the FIFO. Read `LEVEL` as the level before the flush. Write `NOISE_OBS_CTRL.FLUSH` = 1 (with `RAW_ENABLE` = 1 and `LANE_SEL` = a).
+. Read `LEVEL` at once as the level after the flush, then restart the sample clock at its bench period. Poll `LEVEL` until it reads at least 2, read it as m, pop m words and compare each with the new value of lane a. Write `RAW_ENABLE` = 0.
 . Overflow leg. Run the set-up. Drive lane 0 with 0 and every other lane with 1 (the word values are not graded). Read `INTR_STATUS` and require both overflow bits 0 (a control). Write `NOISE_OBS_CTRL.RAW_ENABLE` = 1 and `BIW_OBS_CTRL.RAW_ENABLE` = 1. Pop nothing. Poll `INTR_STATUS` until `NOISE_OBS_OVERFLOW` reads 1 (a bounded wait; a timeout fails the check). Read `NOISE_OBS_STATUS.LEVEL` as the depth D of the noise FIFO. Log the fill time. Do the same for `BIW_OBS_OVERFLOW` and `BIW_OBS_STATUS.LEVEL` as the depth of the BIW FIFO.
 . Wait for twice the longer of the two fill times. Read both levels and compare each with its depth.
 . Write `NOISE_OBS_CTRL.RAW_ENABLE` = 0 and `BIW_OBS_CTRL.RAW_ENABLE` = 0, so that no new word arrives and neither FIFO overflows again. For the noise FIFO and then the BIW FIFO: pop until its `LEVEL` reads 0 (the values are not graded); read `INTR_STATUS` and require its overflow bit 1 (a control: the drain does not clear the bit); write 1 to the overflow bit and read it as 0.
@@ -3699,10 +3703,11 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 . Measure W, the `clk_i` time in which `esrc_compress_vld_o` delivers 256 words with the observe paths off. Count the words over a second window of W with the observe paths off.
 . Write `NOISE_OBS_CTRL.RAW_ENABLE` = 1 and `BIW_OBS_CTRL.RAW_ENABLE` = 1. Pop nothing. Count the words over a window of W. Write both `RAW_ENABLE` fields to 0. Log `OBS-BLOCKED CHK-OBS-MAIN reason=observe_capture_vs_main_chain_unstated` and both counts. Nothing is graded.
 . Capture-off leg. Run the set-up. Read both `RAW_ENABLE` fields and both `LEVEL` fields as 0 (`CTRL-OBS-OFF`). Open the graded window. Hold for 256 strobes (eight observe words of 32 samples; a bounded wait, a timeout fails the check) and at least 4 times the longer of the two first-word times of the same seed: t_noise, the clocks from the `RAW_ENABLE` write to the first noise word in the failing ungated trial, and t_biw, the clocks to the first BIW word in the clean ungated trial (the leaf logs both and the hold). Read both `LEVEL` fields as 0 (CHK-OBS-OFF). Close the graded window.
+. Sample-clock sequence leg. Run the set-up. Write `GENERATOR_<lane>_SAMPLE_CLK_CONFIG` = 0 (divide by 1) and read it back, and read `RING_OSC_CTRL.SAMPLE_CLK_SELECT` for the lane (a clear bit selects the external clock; `CTRL-OBS-SEQ`). Stop `entropy_rosc_sample_clk_i`, write `NOISE_OBS_CTRL.RAW_ENABLE` = 1 with the lane, and restart the clock at 8 x `clk_i` + 2 ps with its first edge at least 150 ps from every `clk_i` edge, so that the sample edges drift across the `clk_i` period by 2 ps per edge and each lies 150 ps or more from every `clk_i` edge (measured, `CTRL-SYNC-DEPTH`). Sample edge k takes sequence bit k: the leaf writes bit k to the stuck-at inject after edge k - 1, and the inject takes it at the next `clk_i` falling edge, before edge k. Count `clk_i` rising edges in the leaf. At each sample edge k record the value of `esrc_noise_bit_o[lane]` at the 1st and at the 2nd `clk_i` rising edge after the edge. Stop the sample clock after the last edge. Read `NOISE_OBS_STATUS.LEVEL` and pop the words (CHK-OBS-SEQ, CHK-SYNC-DEPTH). Then repeat at 2 x `clk_i` + 2 ps with 64 seeded bits, align the captured bits with the driven bits, and log the lost and repeated bits (`OBS-OBS-FAST`). Restart the sample clock at its bench period and release the inject.
 . Lock leg, for each of the two FIFOs (noise and BIW), first locked at 1, then locked at 0, each pass with its own drawn z. Locked at 1: run the set-up. Drive lane 0 with z and every other lane with the opposite value. Write the `RAW_ENABLE` of the FIFO = 1 and read it back as 1. Poll `LEVEL` until it reads at least 2 and log the clock count from the `RAW_ENABLE` write as t_cap. The second word needs one whole word period after the first, so t_cap covers at least one word period whatever the phase of the first capture.
 . Poll `LEVEL` until it reads at least k. Write `FIPS_LOCK.LOCK` = 1 (`HEALTH_TEST_WINDOW_SIZE.SIZE` stays at its reset value, which is above the minimum of 1024 that the lock requires) and read the lock as 1. Read `LEVEL` as L (the words held at the lock). The lock holds `RAW_ENABLE` at 1, so capture cannot be stopped for a drain.
 . Pop L + 2 words. Before each pop, poll `LEVEL` until it reads above 0 (a bounded wait of 16 times t_cap; a timeout fails the check). The FIFO holds only L words at the lock, so the last 2 pops need words captured after the lock. For the noise FIFO compare the last 2 popped words with 0xFFFFFFFF if z is 1 and with 0x00000000 if z is 0. For the BIW FIFO compare no value: the L + 2 pops are the check.
-. For the noise FIFO only: poll `LEVEL` until it reads at least 4 (a bounded wait of 16 times t_cap), so the FIFO holds words of z. Drive lane 0 with 1 - z and every other lane with z. Poll `LEVEL` until it has risen by at least 2 words since the change. Read `LEVEL` as the level before the flush. Write `NOISE_OBS_CTRL.FLUSH` = 1 (with `RAW_ENABLE` = 1 and `LANE_SEL` = 0). Read `LEVEL` at once as the level after the flush. Poll `LEVEL` until it reads at least 2, read it as m, pop m words and compare each with the word of 1 - z (0xFFFFFFFF or 0x00000000). Each popped word completed after the flush and after the second word of the change, so it holds samples of 1 - z only; a word of z or a mixed word is a word that the flush kept.
+. For the noise FIFO only: poll `LEVEL` until it reads at least 4 (a bounded wait of 16 times t_cap), so the FIFO holds words of z. Drive lane 0 with 1 - z and every other lane with z. Poll `LEVEL` until it has risen by at least 2 words since the change. Stop `entropy_rosc_sample_clk_i` and wait 16 `clk_i` cycles. Read `LEVEL` as the level before the flush. Write `NOISE_OBS_CTRL.FLUSH` = 1 (with `RAW_ENABLE` = 1 and `LANE_SEL` = 0). Read `LEVEL` at once as the level after the flush, then restart the sample clock at its bench period. Poll `LEVEL` until it reads at least 2, read it as m, pop m words and compare each with the word of 1 - z (0xFFFFFFFF or 0x00000000). Each popped word completed after the flush and after the second word of the change, so it holds samples of 1 - z only; a word of z or a mixed word is a word that the flush kept.
 . Locked at 0: run the set-up. Drive lane 0 with z and every other lane with the opposite value. Read the `RAW_ENABLE` of the FIFO as 0. Write `FIPS_LOCK.LOCK` = 1 and read it as 1. Write the `RAW_ENABLE` of the FIFO = 1 and read it back as 0 (a control).
 . Wait for 4 times t_cap of the locked-at-1 pass of the same FIFO (the leaf logs both). Read `LEVEL` as 0.
 
@@ -3718,22 +3723,28 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 |CHK-OBS-LANE
 |After a write of `LANE_SEL` that changes the effective lane, `LEVEL` falls below its value before the write, and popped words 2 to 8 are all ones or all zeros as the selected lane noise is 1 or 0 (`entropy_source.adoc`, `NOISE_OBS_CTRL.LANE_SEL`: values 0 to 11 select the lane, other values select lane 0, changing lanes flushes; `NOISE_OBS_RDATA`: LSB-first samples of the selected lane). The effective lane carries z and every other lane carries the opposite value, both applied at the ring-oscillator output by the ESRC noise-source stuck-at inject, upstream of the pre-decorrelator samples, so a word from a wrong lane has the other value and fails. A DUT that maps a value from 12 to 15 to a lane other than lane 0 fails the same way. All 16 values run on every seed. The first word after the change is graded by CHK-OBS-PACK. Control: `LEVEL` reads at least 4 before each change and the effective lane changes, so the fall is visible (`CTRL-OBS-LANE`). Anchor: `NOISE_OBS_STATUS` and `NOISE_OBS_RDATA` readback. Evidence: `CHK-OBS-LANE PASS seed=<n> lane_sel=<s> lane=<l> z=<b> words=7 expect=0x<e> mismatches=0 level_before=<b> level_after_change=<c> popped=[...]`.
 |CHK-OBS-FLUSH
-|After a `FLUSH` write or an effective lane change, no word from before it is popped (`entropy_source.adoc`, `NOISE_OBS_CTRL.FLUSH`: write one to discard buffered words; `LANE_SEL`: changing lanes flushes). In the flush leg the buffered old words carry the old value and the new words carry the opposite value; `LEVEL` falls at the write, and every popped word equals the new value, so a DUT that does not discard the old words returns them first and fails. In the lane leg no popped word of the 8 equals the value of the old lane. Control: the noise value changes before the flush, so old and new words differ (`CTRL-OBS-FLUSH`). Anchor: `NOISE_OBS_RDATA`, and `LEVEL` below its value before the flush. Evidence: `CHK-OBS-FLUSH PASS seed=<n> via=flush lane=<a> level_before=<b> level_after=<c> old_words_after=0 not_new_words=0 words=<k>`, and one `CHK-OBS-FLUSH PASS seed=<n> via=lane lane_sel=<s> old_words_after=0 words=8 old=0x<o>` line per lane change.
+|After a `FLUSH` write or an effective lane change, no word from before it is popped (`entropy_source.adoc`, `NOISE_OBS_CTRL.FLUSH`: write one to discard buffered words; `LANE_SEL`: changing lanes flushes). In the flush leg the buffered old words carry the old value and the new words carry the opposite value. The sample clock is stopped across the write, so no word completes between the write and the next read: `LEVEL` reads 0 after the write, and every popped word equals the new value. A DUT that keeps any buffered word, old or new, fails. In the lane leg the capture runs, so `LEVEL` falls below its value before the write. In the lane leg no popped word of the 8 equals the value of the old lane. Control: the noise value changes before the flush, so old and new words differ (`CTRL-OBS-FLUSH`). Anchor: `NOISE_OBS_RDATA`, and `LEVEL` 0 after the flush (flush leg) or below its value before the change (lane leg). Evidence: `CHK-OBS-FLUSH PASS seed=<n> via=flush lane=<a> level_before=<b> level_after=0 old_words_after=0 not_new_words=0 words=<k>`, and one `CHK-OBS-FLUSH PASS seed=<n> via=lane lane_sel=<s> old_words_after=0 words=8 old=0x<o>` line per lane change.
 |CHK-OBS-OVERFLOW
 |Without pops `LEVEL` plateaus at a depth D, the overflow bit is 1, `LEVEL` stays D after twice the fill time, and a write of 1 clears the bit once capture is off and the FIFO is drained; the BIW FIFO shows the same plateau and bit after startup (`entropy_source.adoc`, `INTR_STATUS.NOISE_OBS_OVERFLOW` and `BIW_OBS_OVERFLOW`: a word is discarded while full; write one to clear). D is the `LEVEL` at the first read of the overflow bit, so a DUT with no overflow bit, or one that overwrites and keeps rising, fails. The leaf grades the plateau and the bit and not which word is discarded. Anchor: `NOISE_OBS_STATUS`, `BIW_OBS_STATUS` and `INTR_STATUS` readback. Control: both overflow bits read 0 before the fill (`CTRL-OBS-OVERFLOW overflow_before=0`), and each bit reads 1 after its drain and before its write-one (`CTRL-OBS-OVERFLOW overflow_before_w1c=1`), so the clear comes from the write. Evidence: `CHK-OBS-OVERFLOW PASS seed=<n> fifo=<noise or biw> depth=<D> overflow=1 level_after_two_fills=<D> w1c=0 fill_clk=<t> wait_clk=<w>`.
+|CHK-OBS-SEQ
+|With a seeded bit sequence on one lane's noise source, one bit per sample-clock edge, `NOISE_OBS_STATUS.LEVEL` is 5 after the last edge and word w of `NOISE_OBS_RDATA` equals sequence bits 32w to 32w + 31, LSB first, in order, with no sample lost or repeated (`entropy_source.adoc`, `NOISE_OBS_RDATA`: 32 LSB-first pre-decorrelator samples from the selected lane; `architecture.adoc`, Noise Generation: one sample per edge of the sampling clock). A DUT that drops or repeats a sample, packs MSB first, or takes the samples from another lane fails a word. Anchor: `NOISE_OBS_STATUS` and `NOISE_OBS_RDATA` readback against the driven sequence. Control (`CTRL-OBS-SEQ`): the divide is 0 and the external clock is selected on the lane, `LEVEL` is 0 and `RAW_ENABLE` is 1 before the first edge, and the synchronized bit of the lane holds the value of the preamble. Evidence: `CHK-OBS-SEQ PASS lane=<l> period_ps=<p> edges=160 level=5 expect_level=5 bad_words=[] words=[...] expect=[...]`.
+|CHK-SYNC-DEPTH
+|A value that the sampling flop captures at sample edge k reaches the synchronizer output `esrc_noise_bit_o[lane]` at the 2nd `clk_i` rising edge after the edge, and where bit k differs from bit k - 1 the output still holds bit k - 1 at the 1st (`architecture.adoc`, Noise Generation: "a two-stage synchronizer"). The sequence has transitions, and the check requires every sample edge to be seen. A wire in place of the synchronizer shows the new value at the 1st edge, and a third stage shows the old value at the 2nd. Anchor: the synchronizer output tap, counted on `clk_i` rising edges in the leaf. Control (`CTRL-SYNC-DEPTH`): every sample edge lies at least 150 ps from every `clk_i` rising and falling edge (measured), so no sample edge is a coincident or marginal case. The check makes no claim about metastability. Evidence: `CHK-SYNC-DEPTH PASS lane=<l> sample_edges=160 expect_edges=160 transitions=<t> expect_transitions=<t> changed_at_edge1=0 wrong_at_edge2=0`.
+|OBS-OBS-FAST
+|Logged only, no pass or fail. The lost and repeated bits of a 64-bit sequence at a sample period of 2 x `clk_i` + 2 ps. No sentence sets a maximum sample rate for the lane.
 |CHK-OBS-LOCK
-|With `RAW_ENABLE` set before the lock, capture continues after the lock: the FIFO delivers L + 2 words, where L is the `LEVEL` read at the lock, and for the noise FIFO the last two popped words equal the lane value; with it clear at the lock, a write of 1 leaves `LEVEL` at 0; for the noise FIFO a `FLUSH` after the lock, with old words of z and words of 1 - z buffered, lowers `LEVEL`, and every word popped after it equals the word of 1 - z (`entropy_source.adoc`, `NOISE_OBS_CTRL.RAW_ENABLE`, `BIW_OBS_CTRL.RAW_ENABLE`: `FIPS_LOCK.LOCK` prevents changes; `NOISE_OBS_CTRL.FLUSH` discards the buffered words). A DUT that stops capture at the lock, that lets a post-lock write enable capture, or whose flush under the lock keeps the oldest buffered words, fails. The locked-at-0 check is a "never" check: its control is the locked-at-1 pass of the same FIFO and seed with the same noise, which captures after t_cap, and the pass waits for 4 times t_cap. Control: the `RAW_ENABLE` readback and the lock readback (`CTRL-OBS-LOCK`). Anchor: `NOISE_OBS_STATUS`, `BIW_OBS_STATUS` and `NOISE_OBS_RDATA` readback. The held field and the writable `LANE_SEL` are read as controls only. Evidence: `CHK-OBS-LOCK PASS seed=<n> fifo=<noise or biw> locked_at=1 level_at_lock=<L> post_lock_pops=<L+2> expect_pops=<L+2> noise_flush_level_after=<f or n/a> [noise_flush_level_before=<b> flush_old_words_after=0 flush_not_new_words=0 flush_words=<m> flush_expect=<word>] capture_clk=<t> wait_clk=<w>` (the bracketed fields for the noise FIFO only) and `CHK-OBS-LOCK PASS seed=<n> fifo=<noise or biw> locked_at=0 level=0 capture_clk=<t> wait_clk=<w>`.
+|With `RAW_ENABLE` set before the lock, capture continues after the lock: the FIFO delivers L + 2 words, where L is the `LEVEL` read at the lock, and for the noise FIFO the last two popped words equal the lane value; with it clear at the lock, a write of 1 leaves `LEVEL` at 0; for the noise FIFO a `FLUSH` after the lock, with old words of z and words of 1 - z buffered and the sample clock stopped across the write, leaves `LEVEL` at 0, and every word popped after it equals the word of 1 - z (`entropy_source.adoc`, `NOISE_OBS_CTRL.RAW_ENABLE`, `BIW_OBS_CTRL.RAW_ENABLE`: `FIPS_LOCK.LOCK` prevents changes; `NOISE_OBS_CTRL.FLUSH` discards the buffered words). A DUT that stops capture at the lock, that lets a post-lock write enable capture, or whose flush under the lock keeps any buffered word, fails. The locked-at-0 check is a "never" check: its control is the locked-at-1 pass of the same FIFO and seed with the same noise, which captures after t_cap, and the pass waits for 4 times t_cap. Control: the `RAW_ENABLE` readback and the lock readback (`CTRL-OBS-LOCK`). Anchor: `NOISE_OBS_STATUS`, `BIW_OBS_STATUS` and `NOISE_OBS_RDATA` readback. The held field and the writable `LANE_SEL` are read as controls only. Evidence: `CHK-OBS-LOCK PASS seed=<n> fifo=<noise or biw> locked_at=1 level_at_lock=<L> post_lock_pops=<L+2> expect_pops=<L+2> noise_flush_level_after=<0 or n/a> [noise_flush_level_before=<b> flush_old_words_after=0 flush_not_new_words=0 flush_words=<m> flush_expect=<word>] capture_clk=<t> wait_clk=<w>` (the bracketed fields for the noise FIFO only) and `CHK-OBS-LOCK PASS seed=<n> fifo=<noise or biw> locked_at=0 level=0 capture_clk=<t> wait_clk=<w>`.
 |CHK-OBS-OFF
 |With both `RAW_ENABLE` fields 0 and the module running after the boot phase, neither observe FIFO takes a word: after a hold of 256 strobes and at least 4 times the longer first-word time of the two FIFOs in the same seed, both `LEVEL` fields read 0 (`entropy_source.adoc`, `NOISE_OBS_CTRL.RAW_ENABLE` and `BIW_OBS_CTRL.RAW_ENABLE` enable the capture). A DUT that captures with the field clear fails. The check is a "never" check: the strobes run over the hold (the wait counts them), the hold spans at least four first-word times of each FIFO, and the ungated trials of the same seed capture on both FIFOs with the fields set (they measure the first-word times). Control: the fields and the levels read 0 before the hold (`CTRL-OBS-OFF`). Anchor: `NOISE_OBS_STATUS` and `BIW_OBS_STATUS` readback. Evidence: `CHK-OBS-OFF PASS seed=<n> noise_level=0 biw_level=0 strobes=256 hold_clk=<h> expect_hold_clk_min=<4 x max(t_noise, t_biw)> t_noise_word_clk=<t_noise> t_biw_word_clk=<t_biw>`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Known limitation*: CHK-OBS-PACK fails on this DUT. The first noise observe word after an effective lane change carries a stale bit 0 and 31 samples of the new lane, not 32 samples of the new lane (`entropy_source.adoc`, `NOISE_OBS_CTRL.LANE_SEL` and `NOISE_OBS_RDATA`). The check stays graded, and every other check of the leaf passes on its own.
+*Known limitation*: CHK-OBS-SEQ fails on this DUT on every seed: the FIFO writes each word before its 32nd sample shifts in, so after a restart every word is offset by one sample and the first word has a 0 in bit 0. CHK-OBS-PACK fails on this DUT. The first noise observe word after an effective lane change carries a stale bit 0 and 31 samples of the new lane, not 32 samples of the new lane (`entropy_source.adoc`, `NOISE_OBS_CTRL.LANE_SEL` and `NOISE_OBS_RDATA`). The check stays graded, and every other check of the leaf passes on its own.
 
 *Issue*: #3141
 
-*Scope limit*: Only the new cells are graded; the owner of the open test keeps the rest. Not graded: which word an observe FIFO discards when it is full (blocked, see <<sep-vplan-phase3-blocked,Blocked features>>), whether a `LANE_SEL` write that keeps the effective lane flushes (blocked; not driven), whether observe capture leaves the main-chain word rate unchanged (blocked: no sentence states it; the main-chain leg logs `OBS-BLOCKED CHK-OBS-MAIN` and the two counts), and the word values of the BIW observe FIFO (the specification states no BIW coefficient). The held value of the `RAW_ENABLE` fields under the lock and the writable `LANE_SEL` belong to `sep_esrc_fips_lock_test`. The startup gate of the main FIFO and of the BIW observe FIFO belongs to `sep_esrc_startup_gate_rand_test`.
+*Scope limit*: Only the new cells are graded; the owner of the open test keeps the rest. Not graded: which word an observe FIFO discards when it is full (blocked, see <<sep-vplan-phase3-blocked,Blocked features>>), whether a `LANE_SEL` write that keeps the effective lane flushes (blocked; not driven), whether observe capture leaves the main-chain word rate unchanged (blocked: no sentence states it; the main-chain leg logs `OBS-BLOCKED CHK-OBS-MAIN` and the two counts), the loss or repeat of samples at a sample period near two `clk_i` periods (`OBS-OBS-FAST`: no stated maximum sample rate), and the word values of the BIW observe FIFO (the specification states no BIW coefficient). The sequence legs use sample-clock divide 1 and the external sample clock; other divide values and the shared internal clock are not driven. The held value of the `RAW_ENABLE` fields under the lock and the writable `LANE_SEL` belong to `sep_esrc_fips_lock_test`. The startup gate of the main FIFO and of the BIW observe FIFO belongs to `sep_esrc_startup_gate_rand_test`.
 
 '''''
 
@@ -4247,5 +4258,264 @@ A wait that times out in steps 2-7 logs each ML-KEM check not yet graded as FAIL
 *Pass Criteria*: Every named checker PASSes and no control is missing. The `OBS-*` lines are not counted and do not fail the leaf. UVM_ERROR == 0.
 
 *Scope limit*: This test grades only the shared key of KEYGEN+DECAPS, and only against the DUT's own ENCAPS. The following are not claimed. The shared key has no independent expected value, because no published vector chains a keyGen output into an encapsulation for the same key pair. Which key windows KEYGEN+DECAPS and KEYGEN+SIGN fill is not stated, so `MLKEM_ENCAPS_KEY`, `MLKEM_DECAPS_KEY` and `MLDSA_PUBKEY` are logged and not graded (see <<sep-vplan-phase3-blocked,Blocked features>>, the ABR combined-command row). The KEYGEN+SIGN signature and its verify are not read here; `sep_abr_command_matrix_rand_test` logs the verify. The park and re-arm of the combined commands belong to `sep_abr_command_matrix_rand_test`. The single-step ENCAPS is stimulus; `sep_abr_mlkem_kat_test` grades ENCAPS against ACVP. A ciphertext for which decapsulation rejects is not driven through KEYGEN+DECAPS. `STATUS.ERROR` is logged and not graded. The key-vault seed path and the ABR interrupt sources are not driven.
+
+'''''
+
+[[sep_abr_mldsa87_verify_test]]
+===== 1.56 `sep_abr_mldsa87_verify_test`
+
+*Phase*: 2
+
+*Area*: Crypto and entropy
+
+*Run mode*: `cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_mldsa87_verify_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW (`abr_mldsa87_verify_test`, which links the boot ROM's `abr_driver.c`)
+
+*Objective*: Proves the ML-DSA-87 verify sequence the boot ROM will use, run by
+the SEP core against the RTL: pure ML-DSA-87 with an empty context, the message
+streamed through `MLDSA_MSG[0]` with `MLDSA_MSG_STROBE`, and a verdict that holds
+only when the accelerator preloaded `~c~`, asked for the whole message, reported
+exactly one completion, read back the loaded key and c~, and produced c~. The
+vectors are a 5903-byte blob and its signatures, made with the test-only key and
+committed in `hw/sys/sep/dv/fw/tests/abr_mldsa87_verify_test/mldsa87_vectors.h`,
+so the final message word ends with strobe `0x7`. The same image runs on the
+virtual platform; each case prints one line, so the two runs' lines can be
+compared.
+
+*Test Coverage*: One genuine verify of each final-strobe form (5903 bytes,
+strobe `0x7`; 5900 bytes, strobe `0x0` and a dummy word), a repeat of the
+5903-byte verify as the last case, eight rejections on the accelerator, one
+rejection in the driver alone, and an abort mid-stream. The identity status is a
+diagnostic.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `cpu` and load the image. With `+abr_case_mask=<hex>`, rewrite the
+  case mask in the firmware's `abr_case_params` block in the staged DCCM image so
+  only the selected cases run. A mask that selects no case other than case 0, or a
+  case above 13, fails the leaf before boot; the firmware refuses a mask that selects
+  no case, or a case above 13, and reports FAIL.
+. Case 0: read the ML-DSA name and version through the driver's identity check. No SEP or Adams Bridge document states the values, so the result follows `obs:` and is not graded.
+. Cases 1 and 13: verify the genuine signature over the blob; case 13 repeats it
+  after every other case. Case 2: verify the genuine signature over the first
+  5900 bytes of the blob.
+. Cases 3 to 8: verify with a flipped blob byte, a flipped z byte, a flipped c~
+  byte, a wrong public key, a signature made with context `OCA`, and a signature
+  over SHA-512 of the blob.
+. Cases 9 and 10: a genuine c~ over a z coefficient at gamma1 - beta, and over a
+  hint whose indices do not increase.
+. Case 11: a c~ of zero, which the driver rejects at its argument check before
+  it accesses the accelerator.
+. Case 12: start a verify, stream half the blob, zeroize, read all 16 words of
+  `MLDSA_VERIFY_RES`, then verify the genuine signature.
+. The firmware prints the case mask it runs, one line per case (two for case 12)
+  and a final line, and returns 0 only when every selected case met its
+  expectation.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-FW-CONSOLE
+|The console carries `abr_mldsa87_verify_test: case_mask=0x<mask>` with the mask the test selected, and `abr_mldsa87_verify_test: PASS (0 failed, <n> run)`, where n is the number of selected cases; the firmware completes with PASS. Every selected case has at least one line that starts `case <n> `, and every such line of a case other than case 0 carries `: PASS `, so a firmware that ran fewer cases than selected fails. The firmware grades each case. Case 0 is a diagnostic. Cases 1, 2 and 13: status 0 at stage DONE, 5903 or 5900 bytes streamed, VALID not before `MSG_STREAM_READY`, a non-zero result that is not `~c~`, and one command-done event. Cases 3 to 10: status `ABR_DRV_ERR_SIG_INVALID` and a reject verdict; the stage, `early`, `inv`, `written`, `nz` and `done` values follow `obs:` on the case line and are diagnostics, not graded. Case 11: status `ABR_DRV_ERR_SIG_INVALID` at stage ARGS with nothing streamed and no done event; these are values of the driver alone, because the driver does not access the accelerator in this case. Case 12: the `case 12 zeroize_midstream_abort` line needs status 0 from the load, the start, the partial stream and the zeroize, and every word of `MLDSA_VERIFY_RES` at 0 after the zeroize (`res_or=0x00000000`); the `case 12 zeroize_midstream` line needs the result of a genuine case.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope*: The verdict is the driver's, so a pass shows the RTL behaves as the
+driver requires on this flow, not every behaviour of the aperture. The message is
+streamed; the non-streamed and external-mu paths belong to
+<<sep_abr_mldsa_sign_verify_kat_test>>. The vectors are a committed file, so
+every build and every seed runs the same bytes.
+`gen_mldsa87_vectors.py --check`
+(`hw/sys/sep/dv/fw/tests/abr_mldsa87_verify_test/gen_mldsa87_vectors.py`) accepts
+the header only when the genuine signatures verify with `cryptography`, each exact
+mutated input of cases 3 to 8 does not verify, and the signatures of cases 9 to 11
+decode as malformed. It prints the header's SHA-256, which is pinned as
+`ABR_MLDSA87_VECTORS_SHA256` in `hw/sys/sep/dv/fw/fw.mk`; the firmware build fails
+unless the committed header has that SHA-256.
+
+*Anti-vacuity*: the generator check proves each input of cases 3 to 8 fails a
+reference verify, so a reject on the RTL is never caused by a bad vector, and a
+genuine case that the RTL rejects fails. A reject case passes only on status
+`ABR_DRV_ERR_SIG_INVALID`, so an accelerator that accepts the input fails. Case
+12 reads `MLDSA_VERIFY_RES` after the zeroize and then runs a genuine verify, so
+a zeroize that leaves a result in the register, or leaves the accelerator
+unusable, fails. The case-mask line and the per-case PASS rule fail a run whose
+firmware default mask differs from the test's mask.
+
+*Not claimed*: the command-drop fault, which <<sep_abr_cmd_drop_test>> injects;
+ML-KEM; the key-vault seed path. Case 11 grades the driver only, not the
+accelerator. For cases 3 to 10, the stage at which the accelerator rejects for
+each cause, and the value `MLDSA_VERIFY_RES` holds after a reject: no spec states
+either, so the leaf logs them and does not grade them (open spec question).
+
+'''''
+
+[[sep_abr_cmd_drop_test]]
+===== 1.57 `sep_abr_cmd_drop_test`
+
+*Phase*: 2
+
+*Area*: Crypto and entropy
+
+*Run mode*: `cpu`, `+skip_fuse_sense`, `+sep_abr_cmd_drop`
+
+*Source Module*: `sep_abr_cmd_drop_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW (`abr_mldsa87_verify_test`, genuine case only)
+
+*Objective*: Proves that the boot ROM's ML-DSA verify driver does not trust a
+verify the accelerator never ran. `+sep_abr_cmd_drop` holds the accelerator's
+decoded ML-DSA command at NONE, so the command write is dropped while ZEROIZE and
+the key, signature and message writes land: the effect of an instruction-skip
+glitch on the command store. While the force holds, the hardware clear of the
+`MLDSA_CTRL.CTRL` field is also held at 0. Accepting VERIFY is what preloads
+`MLDSA_VERIFY_RES` with `~c~`, so the driver's preload check is where it must
+stop.
+
+*Test Coverage*: One genuine verify with the command dropped.
+
+*Test Procedure*:
+
+[arabic]
+. Require `+sep_abr_cmd_drop`; without it the testcase refuses to run.
+. Patch the firmware's case mask to the genuine case alone and boot in `cpu`.
+. Expect the firmware to report the genuine case as refused at the preload
+  check, before it streams a word, and to complete with FAIL.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-FW-CONSOLE
+|The console carries `case 1 genuine: FAIL status=-7 stage=6 written=0 early=0 inv=0 nz=0`: the driver returned `ABR_DRV_ERR_STATE` (-7) at `ABR_DRV_STAGE_PRELOAD` (6) and streamed nothing. No `case 1 genuine: PASS` line appears. The line continues with `done=<n>`; the driver stops before it reads the command-done counter, so that field is the driver's initial value, and the test logs it and does not grade it.
+|CHK-FW-DONE-FAIL
+|The firmware signals completion, and the completion is FAIL. A firmware that stops after the case line fails, and so does a firmware that signals PASS.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope*: One fault, the dropped command. The driver's other interlocks against a
+stale result -- the leading and trailing zeroize, the single command-done event,
+the key and c~ read-back -- are exercised by its host unit tests, which can script
+each fault on its own.
+
+*Anti-vacuity*: <<sep_abr_mldsa87_verify_test>> runs the same image without the
+fault and its genuine case passes, so the refusal here is caused by the dropped
+command and not by the image or the flow.
+
+*Not claimed*: whether the accelerator raises a command-done event for the
+dropped command. No check reads that event in this leaf.
+
+'''''
+
+[[sep_abr_mldsa_hint_reject_kat_test]]
+===== 1.58 `sep_abr_mldsa_hint_reject_kat_test`
+
+*Phase*: 2
+
+*Area*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_mldsa_hint_reject_kat_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves that ML-DSA-87 VERIFY rejects a signature whose hint
+encoding FIPS 204 HintBitUnpack (Algorithm 21) rejects, on both interfaces the
+SEP drives: pure ML-DSA with a context, the message streamed through
+`MLDSA_MSG[0]` with `MLDSA_MSG_STROBE`, and external mu. A malformed hint the
+engine accepted would give one signature a second valid encoding. The vectors
+are every ML-DSA-87 sigVer case the NIST ACVP-Server (commit `15c0f3de`,
+RELEASE/v1.1.0.42) marks "modified signature - hint": tcIds 61, 64 and 71
+(pure, tgId 5) and 153, 159 and 163 (external mu, tgId 11). `gen_abr_nist_vectors.py --hint` checks
+each one independently of the ACVP verdict: every z coefficient is in range
+and the hint encoding is malformed, so the malformed hint is the cause of the
+reject. The graded reject is the register contract: a signature verifies if and
+only if `MLDSA_VERIFY_RES` equals c~
+(`vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.rdl`,
+`MLDSA_VERIFY_RES`).
+
+*Test Coverage*: Six malformed-hint rejections, and one pure-with-context
+verify that must pass (tcId 63).
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu`.
+. For each case, tcId 63 first: write `ZEROIZE` and wait for VALID to drop and
+  READY to rise. Write the public key and the signature.
+. For an external-mu case, write mu to `MLDSA_EXTERNAL_MU` and issue VERIFYING
+  with `MLDSA_CTRL.EXTERNAL_MU` set. For an external-mu reject case, set the
+  `sep_abr_completion_cg` reject-class label to 3 (hint) before VERIFYING and
+  clear it after the `MLDSA_VERIFY_RES` read.
+. For a pure case, write the context length to `MLDSA_CTX_CONFIG` and the context
+  to `MLDSA_CTX`, issue VERIFYING with `MLDSA_CTRL.STREAM_MSG` set, and log the
+  value `MLDSA_VERIFY_RES` reads (`OBS-HINT-PRELOAD`). Wait for
+  `MSG_STREAM_READY` or VALID. If VALID rises first, the engine rejected before
+  it asked for the message, and nothing is streamed. Otherwise write each message
+  word to `MLDSA_MSG[0]` after a `MLDSA_MSG_STROBE` of `0xF`, and end with the
+  strobe of the trailing bytes, or `0x0` and a dummy word for a whole-word
+  message.
+. Wait for VALID with ERROR=0 and read `MLDSA_VERIFY_RES` (CHK-HINT-CONTROL,
+  CHK-HINT-REJECT).
+. After the last case, zeroize and require that the leaf ran every case of the
+  table.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-HINT-VALID
+|For each case, `MLDSA_STATUS.VALID` rises after the VERIFYING command, from a
+VALID that the zeroize before it cleared.
+|CHK-HINT-CONTROL
+|tcId 63 completes VALID with ERROR=0 and `MLDSA_VERIFY_RES` equals c~: the
+streamed message and the context reach the engine intact.
+|CHK-HINT-REJECT
+|Each malformed-hint case completes VALID with ERROR=0, and `MLDSA_VERIFY_RES`
+differs from c~ in at least one word: the engine did not accept the signature.
+|===
+
+The leaf also logs two lines per reject case that no checker grades.
+`OBS-HINT-REJECT-TIMING` (pure cases) records `timing=early` when VALID rose
+before `MSG_STREAM_READY` and `timing=late` when the whole message was streamed.
+`OBS-HINT-REJECT-RES` records the 16 words of `MLDSA_VERIFY_RES` and whether they
+are the inverted c~ (`res=preload`), all zero (`res=zero`) or another value
+(`res=other`).
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope*: The verdict is the engine's own result register; the command-done and
+error events are graded by <<sep_abr_mldsa87_verify_test>>. The pure cases carry
+contexts of 12 to 237 bytes and messages of 329 to 7927 bytes, so the context
+path and a stream that ends on a whole word and on each partial length are
+exercised as well.
+Pre-hash ML-DSA (tgId 6) and the internal interface without external mu
+(tgId 12) are not driven: the SEP uses neither.
+
+*Anti-vacuity*: tcId 63 runs first through the same stream and context path and
+must verify, so a broken stream or context fails on a known answer rather than
+passing as a reject. The external-mu path has its accept control in
+<<sep_abr_mldsa_sign_verify_kat_test>>, which verifies an ACVP external-mu
+signature through `MLDSA_EXTERNAL_MU` with `MLDSA_CTRL.EXTERNAL_MU` set. CHK-HINT-VALID runs before each reject comparison, so a
+VERIFY command that did not run fails there rather than passing as a reject.
+
+*Not claimed*: the stage at which the engine rejects a malformed hint, before or
+after the message stream, for each cause; no spec states it, so
+`OBS-HINT-REJECT-TIMING` logs it and nothing grades it (open spec question). The
+value `MLDSA_VERIFY_RES` holds after a reject; no spec states it, so
+`OBS-HINT-REJECT-RES` logs it and nothing grades it (open spec question). The value
+`MLDSA_VERIFY_RES` holds right after VERIFYING is accepted; no hardware spec
+states it, so `OBS-HINT-PRELOAD` logs it and nothing grades it (open spec question).
 
 '''''

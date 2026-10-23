@@ -33,8 +33,8 @@ from .config import (
     as_str_list,
     cocotb_cfg,
     coverage_cfg,
-    default_target_name,
     flow_stages,
+    instance_test_name,
     load_executors,
     load_sim_cfg,
     load_simulators,
@@ -43,12 +43,24 @@ from .config import (
     parse_walltime_sec,
     resolved_target_name,
     selected_target,
+    target_instance_name,
     target_names,
+    target_pinned_only,
+    target_run_on,
     targeted_sim_cfg,
     validate_native_config_shape,
     validate_run_mode_request,
+    validate_target_redirects,
+    with_target_instances,
 )
-from .coverage import CoverageError, artifact_ready, json_text, load_manifest, write_json_text
+from .coverage import (
+    COVERAGE_SUMMARIES,
+    CoverageError,
+    artifact_ready,
+    json_text,
+    load_manifest,
+    write_json_text,
+)
 from .coverage_closure import (
     coverage_fail_under,
     coverage_merged_name,
@@ -121,6 +133,7 @@ from .results import (
     result_payload,
     rollup_payload,
     run_is_complete,
+    selection_record,
     tool_versions,
     write_result,
 )
@@ -148,6 +161,8 @@ from .stages import (
     resolve_coverage_policy,
     run_stage,
     seed_for_item,
+    shared_model_dirs,
+    validate_coverage_plan,
 )
 from .ui import Console
 from .waves import (
@@ -285,11 +300,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     common.add_argument(
         "--target",
-        metavar="NAME",
+        metavar="NAME[,NAME...]",
         help=(
-            "Build target from the DUT sim config [targets.<name>]; "
-            "overrides every selected test's target (default: each test's own target)"
+            "Build targets from the DUT sim config [targets.<name>]: each selected test runs "
+            "on every listed target it can run on (a test that names no target on all of "
+            "them) and the rest are skipped (default: each test's own target)"
         ),
+    )
+    common.add_argument(
+        "--force-target",
+        metavar="NAME",
+        help="Run every selected test on build target NAME, whatever target it names",
     )
     common.add_argument(
         "--overlay",
@@ -527,6 +548,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     coverage.add_argument(
+        "--cov-summary",
+        choices=COVERAGE_SUMMARIES,
+        help=(
+            "URG report table the grade reads; overrides [coverage.<tool>] summary "
+            "(default: hierarchy)"
+        ),
+    )
+    coverage.add_argument(
         "--waive",
         nargs="?",
         const="",
@@ -606,6 +635,7 @@ _SIM_ONLY_FLAGS = {
     "max_failures": "--max-failures",
     "run_mode": "--run-mode",
     "target": "--target",
+    "force_target": "--force-target",
     "waves": "--waves",
     "waves_on_fail": "--waves-on-fail",
     "wave_start": "--wave-start",
@@ -617,6 +647,7 @@ _SIM_ONLY_FLAGS = {
     "fail_under": "--fail-under",
     "waive": "--waive",
     "cov_combine": "--cov-combine",
+    "cov_summary": "--cov-summary",
     "rebuild": "--rebuild",
     "define": "--define",
     "comp_arg": "--comp-arg",
@@ -863,6 +894,7 @@ def validate_flow(
             raise ConfigError(f"{flow.path}: native stage `{stage_name}` missing string `kind`")
     sim_cfg = load_sim_cfg(flow, root)
     validate_native_config_shape(flow, root)
+    validate_target_redirects(sim_cfg, flow.tools)
     validate_coverage_policies(flow, root, sim_cfg)
     if executors is not None:
         scheduler = flow.raw.get("scheduler", {})
@@ -1942,10 +1974,13 @@ def list_flows_json(
     print(json.dumps({"schema_version": 1, "duts": views}, indent=2))
 
 
-def list_flow_detail_json(flow: Flow, root: Path) -> None:
-    """Machine-readable DUT detail: the selected view plus the full scenario binding matrix."""
+def list_flow_detail_json(
+    flow: Flow, root: Path, simulators: dict[str, Any], args: argparse.Namespace
+) -> None:
+    """Machine-readable DUT detail: the selected view plus the full scenario binding matrix,
+    and with `--items` or `--tag` the plan of that selection."""
     catalog = load_test_catalog(flow, root)
-    payload = {"schema_version": 1, **_flow_view_dict(flow)}
+    payload: dict[str, Any] = {"schema_version": 1, **_flow_view_dict(flow)}
     payload["stages"] = list(flow_stages(flow))
     payload["total_scenarios"] = len(catalog.tests)
     payload["implemented"] = _implemented_counts(flow, catalog)
@@ -1959,6 +1994,10 @@ def list_flow_detail_json(flow: Flow, root: Path) -> None:
         for name, test in sorted(catalog.tests.items())
     }
     payload["groups"] = {name: list(members) for name, members in sorted(catalog.groups.items())}
+    if args.items or args.tag:
+        sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
+        tool = selected_tool(flow, args, simulators)
+        payload["selection"] = selection_preview(flow, catalog, sim_cfg, args, tool)
     print(json.dumps(payload, indent=2))
 
 
@@ -2143,7 +2182,7 @@ def validate_waive_options(args: argparse.Namespace) -> None:
 
 # Options --cov-combine accepts besides --dut, --run-dir, --result, --tool, --framework,
 # --overlay, --verbose and --quiet.
-_COMBINE_COMPANIONS = {"cov_combine", "fail_under", "dry_run", "timeout"}
+_COMBINE_COMPANIONS = {"cov_combine", "cov_summary", "fail_under", "dry_run", "timeout"}
 
 
 def validate_combine_options(args: argparse.Namespace) -> None:
@@ -2948,6 +2987,25 @@ def validate_item_tools(
     return kept
 
 
+def select_tests(
+    flow: Flow, catalog: TestCatalog, args: argparse.Namespace, tool: str
+) -> tuple[list[str], list[str]]:
+    """The names `--items` requests and the tests they select with `--tag`, less the ones
+    the framework does not implement or ``tool`` cannot run."""
+    if args.tag and not args.items:
+        # Tag-only selection starts from the whole catalog (in definition order).
+        requested, items = [], list(catalog.tests)
+    else:
+        requested = requested_items(catalog, args, flow.framework)
+        items = expand_items(catalog, requested, True, allow_duplicates=args.allow_duplicates)
+    if args.tag:
+        items = select_by_tags(catalog, items, args.tag)
+        if not items:
+            raise ConfigError(f"no tests match tag(s): {', '.join(args.tag)}")
+    items = validate_item_bindings(flow, catalog, items, args)
+    return requested, validate_item_tools(catalog, items, tool, args)
+
+
 def _unimplemented_message(flow: Flow, catalog: TestCatalog, blocking: list[str]) -> str:
     """Error text naming each explicitly selected scenario the framework does not implement."""
     fw = flow.framework
@@ -3076,36 +3134,102 @@ def regression_seed_label(leaves: list[tuple[str, int]]) -> int | str:
     return "mixed"
 
 
+@dataclass(frozen=True)
+class TargetPlan:
+    """The targets a run's selected tests run on.
+
+    ``groups`` holds, per selected test, the names its leaves run under, `<test>@<target>`
+    for each target it runs on, which ``instances`` maps to its target. ``skipped`` names
+    each test no listed target runs, with the target it would run on otherwise.
+    """
+
+    groups: list[list[str]]
+    target_by_item: dict[str, str]
+    targets: list[str]
+    instances: dict[str, str]
+    skipped: list[dict[str, str]]
+
+    @property
+    def items(self) -> list[str]:
+        return [name for group in self.groups for name in group]
+
+
+def requested_targets(value: str | None) -> list[str]:
+    """The targets a `--target` list names, in order and each once."""
+    names = (name.strip() for name in (value or "").split(","))
+    return list(dict.fromkeys(name for name in names if name))
+
+
 def target_plan(
     catalog: TestCatalog,
     sim_cfg: dict[str, Any],
     items: list[str],
-    override: str | None = None,
-) -> tuple[dict[str, str], list[str]]:
-    """Resolve a target per selected test and return first-seen unique target order.
+    targets: list[str] | None = None,
+    *,
+    force: str | None = None,
+    tool: str,
+    by_target: bool = True,
+    allow_empty: bool = False,
+) -> TargetPlan:
+    """Resolve the targets each selected test runs on.
 
-    ``override`` (``--target``) maps every selected item onto that name.
-    Omitted, each test keeps its own target. ``validate_target_plan`` rejects
-    an unknown name.
+    ``force`` (``--force-target``) puts every test on that one target. ``targets``
+    (``--target``) runs a test that names a target on it, or on the one its `run_on`
+    names for ``tool``, when that one is listed, and a test that names none on every
+    listed target that is not `pinned_only`. With neither, each test runs on its own
+    target or the default, after that target's `run_on`. ``by_target`` names every leaf
+    `<test>@<target>`; without it each test runs on one target under its own name.
+    A list that runs none of ``items`` is refused unless ``allow_empty`` is set.
+    ``validate_target_plan`` rejects an unknown name.
     """
-    chosen = override.strip() if isinstance(override, str) and override.strip() else None
-    if not items:
-        target = chosen or default_target_name(sim_cfg)
-        return {}, [target]
 
+    def own_target(test: TestEntry | None) -> str:
+        return target_run_on(sim_cfg, resolved_target_name(sim_cfg, test), tool)
+
+    if not items:
+        planned = [force] if force else list(targets or []) or [own_target(None)]
+        return TargetPlan([], {}, planned, {}, [])
+
+    groups: list[list[str]] = []
     target_by_item: dict[str, str] = {}
-    ordered: list[str] = []
-    seen: set[str] = set()
+    instances: dict[str, str] = {}
+    skipped: dict[str, str] = {}
     for item in items:
         test = catalog.tests.get(item)
         if test is None:
             raise ConfigError(f"selected item `{item}` is not a test in the catalog")
-        target = chosen or resolved_target_name(sim_cfg, test)
-        target_by_item[item] = target
-        if target not in seen:
-            seen.add(target)
-            ordered.append(target)
-    return target_by_item, ordered
+        own = own_target(test)
+        if force:
+            chosen = [force]
+        elif targets and not test.target:
+            chosen = [name for name in targets if not target_pinned_only(sim_cfg, name)]
+        elif targets:
+            chosen = [name for name in (test.target, own) if name in targets][:1]
+        else:
+            chosen = [own]
+        if not chosen:
+            skipped.setdefault(item, own)
+            continue
+        if by_target:
+            names = {target_instance_name(item, name): name for name in chosen}
+            instances.update(names)
+        else:
+            names = {item: chosen[0]}
+        groups.append(list(names))
+        target_by_item.update(names)
+    if not groups and not allow_empty:
+        own = ", ".join(sorted(set(skipped.values())))
+        raise ConfigError(
+            f"no selected test runs on --target {', '.join(targets or [])}: each names "
+            f"another target ({own})"
+        )
+    return TargetPlan(
+        groups,
+        target_by_item,
+        list(dict.fromkeys(target_by_item.values())),
+        instances,
+        [{"name": name, "target": target} for name, target in skipped.items()],
+    )
 
 
 def validate_target_plan(sim_cfg: dict[str, Any], targets: list[str]) -> None:
@@ -3117,6 +3241,86 @@ def validate_target_plan(sim_cfg: dict[str, Any], targets: list[str]) -> None:
         build_dir = target_cfg.get("build_dir")
         if not isinstance(build_dir, str) or not build_dir:
             raise ConfigError(f"`targets.{target}.build_dir` must be a non-empty string")
+
+
+def plan_targets(
+    flow: Flow,
+    catalog: TestCatalog,
+    sim_cfg: dict[str, Any],
+    items: list[str],
+    args: argparse.Namespace,
+    tool: str,
+    *,
+    allow_empty: bool = False,
+) -> tuple[list[str], TargetPlan]:
+    """The `--target` list and the plan of the targets each of ``items`` runs on."""
+    if flow.kind == "fv":
+        explicit_targets = [item for item in items if catalog.tests[item].target]
+        if explicit_targets:
+            raise ConfigError(
+                "per-test `target` selection is supported for simulation flows only; "
+                f"formal item(s) set target: {', '.join(explicit_targets)}"
+            )
+    listed = requested_targets(getattr(args, "target", None))
+    force = (getattr(args, "force_target", None) or "").strip() or None
+    if listed and force:
+        raise ConfigError(
+            "--target and --force-target cannot be combined: --force-target runs every "
+            "selected test on one target"
+        )
+    validate_target_plan(sim_cfg, listed or ([force] if force else []))
+    plan = target_plan(
+        catalog,
+        sim_cfg,
+        items,
+        listed,
+        force=force,
+        tool=tool,
+        by_target=flow.kind != "fv",
+        allow_empty=allow_empty,
+    )
+    return listed, plan
+
+
+def selection_preview(
+    flow: Flow,
+    catalog: TestCatalog,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    tool: str,
+) -> dict[str, Any]:
+    """What a run of the `--items` or `--tag` selection plans on ``tool``: the tests that run,
+    the targets it builds, the target of each test instance, and the tests it skips, as
+    `result.json` records them. A `--target` list that runs none of the tests leaves
+    ``tests`` empty."""
+    _, items = select_tests(flow, catalog, args, tool)
+    _, plan = plan_targets(flow, catalog, sim_cfg, items, args, tool, allow_empty=True)
+    setattr(args, "_skipped_target", plan.skipped)
+    return {
+        "tool": tool,
+        "tests": [instance_test_name(group[0]) for group in plan.groups],
+        "targets": plan.targets,
+        "instances": plan.target_by_item,
+        **selection_record(args),
+    }
+
+
+def validate_target_builds(
+    flow: Flow, root: Path, tool: str, target_cfgs: dict[str, dict[str, Any]]
+) -> None:
+    """Refuse a run on several targets when two of them would build into one directory."""
+    shared = shared_model_dirs(flow, root, tool, target_cfgs)
+    if shared:
+        raise ConfigError(
+            "; ".join(
+                "targets "
+                + ", ".join(f"`{target}`" for target in targets)
+                + f" build into one model directory, {repo_rel(root, path)}"
+                for path, targets in shared.items()
+            )
+            + ". Give each target its own build_dir, set [build.options] cache_enabled = "
+            "true, or pass --target NAME to build one target"
+        )
 
 
 def stage_needs_item(stage: str) -> bool:
@@ -3252,25 +3456,7 @@ def run_flow(
     requested: list[str] = []
     items: list[str] = []
     if need_items:
-        if args.items:
-            requested = list(args.items)
-            items = expand_items(
-                catalog, requested, need_items, allow_duplicates=args.allow_duplicates
-            )
-        elif args.tag:
-            # Tag-only selection starts from the whole catalog (in definition order).
-            items = list(catalog.tests)
-        else:
-            requested = requested_items(catalog, args, flow.framework)
-            items = expand_items(
-                catalog, requested, need_items, allow_duplicates=args.allow_duplicates
-            )
-        if args.tag:
-            items = select_by_tags(catalog, items, args.tag)
-            if not items:
-                raise ConfigError(f"no tests match tag(s): {', '.join(args.tag)}")
-        items = validate_item_bindings(flow, catalog, items, args)
-        items = validate_item_tools(catalog, items, tool, args)
+        requested, items = select_tests(flow, catalog, args, tool)
 
     if need_items and not args.stage and "c_compile" in flow_stages(flow):
         if any(catalog.tests[item].firmware is not None for item in items):
@@ -3284,35 +3470,32 @@ def run_flow(
                 insert_at = len(stages)
             stages.insert(insert_at, "c_compile")
 
+    listed, plan = plan_targets(flow, catalog, sim_cfg, items, args, tool)
+    label = run_label(catalog, requested, items)
+    catalog = with_target_instances(catalog, plan.instances)
+    if need_items:
+        items = plan.items
+    setattr(args, "_skipped_target", plan.skipped)
+    target_by_item, build_targets = plan.target_by_item, plan.targets
+
     scheduler = scheduler_requested(args, requested, items, catalog) if need_items else False
     randomize_regression_seeds = scheduler and any(stage in {"sim", "regress"} for stage in stages)
     validate_regression_seed_options(args, randomize_regression_seeds)
     # Regression/group runs nest every test uniformly; a single explicit test stays flat.
     nest = need_items and bool(items) and scheduler
-    label = run_label(catalog, requested, items)
-    target_by_item, build_targets = target_plan(
-        catalog, sim_cfg, items if need_items else [], override=getattr(args, "target", None)
-    )
-    if flow.kind == "fv":
-        explicit_targets = [item for item in items if catalog.tests[item].target]
-        if explicit_targets:
-            raise ConfigError(
-                "per-test `target` selection is supported for simulation flows only; "
-                f"formal item(s) set target: {', '.join(explicit_targets)}"
-            )
     validate_target_plan(sim_cfg, build_targets)
-    if args.cov and len(build_targets) > 1:
-        raise ConfigError(
-            "coverage merge accepts one build target; this selection plans "
-            + ", ".join(build_targets)
-            + ". Pass --target <name> to run every selected test on one elaboration"
-        )
     multi_target = len(build_targets) > 1
     setattr(args, "_multi_target_run", multi_target)
+    setattr(args, "_planned_targets", list(build_targets))
     target_cfgs = {
         target: targeted_sim_cfg(sim_cfg, target, force_target_filelist=multi_target)
         for target in build_targets
     }
+    if multi_target:
+        validate_target_builds(flow, root, tool, target_cfgs)
+    if "cov_merge" in stages or "cov_report" in stages:
+        merge_targets = list(build_targets) if "cov_merge" in stages else []
+        validate_coverage_plan(target_cfgs[build_targets[0]], tool, args, merge_targets)
 
     def sim_cfg_for_item(item: str | None) -> dict[str, Any]:
         if item is not None:
@@ -3346,25 +3529,27 @@ def run_flow(
             continue
         seen_regression_seeds: set[int] = set()
         stage_plans: list[dict[str, Any]] = []
-        for item in items:
-            for seed in seed_plan(
+        for group in plan.groups if need_items else []:
+            seeds = seed_plan(
                 catalog,
                 sim_cfg,
                 args,
-                item,
+                group[0],
                 scheduler and stage in {"sim", "regress"},
                 seen_regression_seeds,
-            ):
-                identity = {
-                    "id": next_leaf_id,
-                    "stage": stage,
-                    "item": item,
-                    "target": target_by_item.get(item),
-                    "seed": seed,
-                }
-                stage_plans.append(identity)
-                expected_leaves.append(identity)
-                next_leaf_id += 1
+            )
+            for item in group:
+                for seed in seeds:
+                    identity = {
+                        "id": next_leaf_id,
+                        "stage": stage,
+                        "item": item,
+                        "target": target_by_item.get(item),
+                        "seed": seed,
+                    }
+                    stage_plans.append(identity)
+                    expected_leaves.append(identity)
+                    next_leaf_id += 1
         leaf_plans_by_stage[stage_index] = stage_plans
 
     replaying_coverage = existing_result is not None and replay_run_dir == run_dir
@@ -3403,6 +3588,25 @@ def run_flow(
             "selection",
             f"skipped_wrong_tool={len(skipped_wrong_tool)} tool={tool} "
             f"tests={','.join(skipped_wrong_tool)}",
+        )
+    if plan.skipped:
+        console.event(
+            "selection",
+            f"skipped_target={len(plan.skipped)} targets={','.join(listed)} tests="
+            + ",".join(f"{entry['name']}({entry['target']})" for entry in plan.skipped),
+        )
+        console.event(
+            "warning",
+            f"--target {','.join(listed)} skips {len(plan.skipped)} selected test(s) that run "
+            "on other targets; --force-target runs every selected test on one target",
+            force=True,
+        )
+    unused_targets = [name for name in listed if name not in build_targets]
+    if unused_targets:
+        console.event(
+            "warning",
+            f"--target {','.join(unused_targets)} runs none of the selected tests",
+            force=True,
         )
     run_started = time.monotonic()
     results: list[StageResult] = []
@@ -4385,8 +4589,11 @@ def run_flow(
                 run_leaf_stage(stage, leaves, parallel)
             else:
                 if stage == "c_compile" and items:
-                    for item in items:
-                        item_cfg = sim_cfg_for_item(item)
+                    # Firmware does not depend on the target, and its outputs are staged
+                    # under the test's testlist name: one build per selected test.
+                    for group in plan.groups:
+                        item_cfg = sim_cfg_for_item(group[0])
+                        item = catalog.tests[group[0]].name
                         seed = seed_for_item(catalog, item_cfg, args, item)
                         results.append(
                             run_stage(
@@ -4406,8 +4613,9 @@ def run_flow(
                             )
                         )
                 else:
-                    # The coverage stages read the model the one planned target built, so
-                    # they run on that target's config.
+                    # The coverage stages run on the first planned target's config. A merge
+                    # of several targets takes each target's design database from the model
+                    # directory its leaves recorded.
                     stage_cfg = sim_cfg_for_item(None) if stage in _COVERAGE_STAGES else sim_cfg
                     results.append(
                         run_stage(
@@ -4642,7 +4850,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 validate_flow(flow, root, simulators, policies, executors)
                 if args.json:
-                    list_flow_detail_json(flow, root)
+                    list_flow_detail_json(flow, root, simulators, args)
                 else:
                     list_flow_detail(flow, root)
             elif args.json:

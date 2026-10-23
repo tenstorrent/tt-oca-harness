@@ -67,10 +67,9 @@ waive_violation -add {SEP_RDC_CORRUPT_VEER_DBG_DOMAIN} -comment {Debug-reset-onl
 waive_violation -add {SEP_RDC_CORRUPT_ENTROPY_SOURCE_BLACKBOX_PORTS} -comment {entropy_source is blackboxed; its input ports are modelled reset-less on a virtual clock (configure_unconstrained_ports virtual_sync_all).} -filter [apply_prefix {(DestObject =~ "${PREFIX}u_sep_crypto/u_sep_trng/u_entropy_source_s3c_scan/*") AND (DestObjectType == "black-box") AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'")}] -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # COVERAGE NOTE: the security-critical persistent state in this block is not
-# the token words but the digest / valid LATCHES in efuse_token_digest_sha256 (built as
-# latches so the unlock survives cold reset). Their enables (hash_done_q, start_i) and data
-# are RST_NI-reset flops, yet the tool reports no RDC record against them, i.e. it is not
-# treating these latches as corruption destinations
+# the token words but the digest / valid retention flops in efuse_token_digest_sha256
+# (reset-less so the unlock survives cold reset). Their enables (hash_done_q, start_i)
+# and data are RST_NI-reset flops.
 waive_violation -add {SEP_RDC_CORRUPT_EFUSE_TOKEN_SHADOW_NORESET} -comment {Deliberately reset-less software-written token shadow registers, written from the RST_NI-reset APB cpuif; a word disturbed by a write in flight at RST_NI assertion can only fail the next token compare and firmware must rewrite all words before every go.} -filter [apply_prefix {((RdcSourceResets:ResetName == "RST_NI") OR (RdcSourceResets:ResetName == "PRIMARY_RESET_N_SMC_CLK")) AND (DestObject =~ "${PREFIX}u_sep_crypto/u_sep_efuse_wrapper/u_efuse_interface_controller/*u_efuse_token_processing/*_token_raw_n0_scan/*") AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'")}] -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # =============================================================================

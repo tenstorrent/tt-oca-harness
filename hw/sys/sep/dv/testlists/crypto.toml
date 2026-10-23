@@ -228,6 +228,18 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Adams Bridge ML-DSA-87 VERIFY on every NIST sigVer case with a malformed hint,
+# pure with a streamed message and context, and external mu.
+name = "sep_abr_mldsa_hint_reject_kat_test"
+module = "crypto.sep_abr_mldsa_hint_reject_kat_test"
+seed = 1
+timeout_sec = 10800
+tags = ["crypto", "abr", "mldsa", "subsystem", "abr_mldsa87_dv"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Adams Bridge ML-KEM-1024 keyGen / encaps / decaps NIST KAT.
 name = "sep_abr_mlkem_kat_test"
 module = "crypto.sep_abr_mlkem_kat_test"
@@ -449,10 +461,10 @@ module = "crypto.sep_otbn_cmd_status_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 1800
-tags = ["crypto", "otbn", "rand_rep", "subsystem"]
+tags = ["crypto", "otbn", "rand_rep", "subsystem", "harness_dv_holes"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense", "+esrc_noise_force"]
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_otbn_intg_flip"]
 
 [[tests]]
 # ABR combined commands park and re-arm, single-step results do not depend on order, and
@@ -640,7 +652,7 @@ module = "crypto.sep_esrc_observe_fifo_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem", "harness_dv_holes"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]

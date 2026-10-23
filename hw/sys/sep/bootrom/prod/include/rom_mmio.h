@@ -23,3 +23,8 @@ static inline void mmio_write64(uint32_t addr, uint64_t value) {
 static inline uint32_t mmio_read32(uint32_t addr) {
     return *(volatile uint32_t *)addr;
 }
+
+// Orders the MMIO accesses before it against those after it.
+static inline void mmio_fence(void) {
+    __asm__ volatile("fence" ::: "memory");
+}

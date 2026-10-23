@@ -216,10 +216,10 @@ module smc_4core_cpu (
   logic [smc_4core_cpu_pkg::NumCpuCores-1:0][58-1:0] wb_reg_pc_raw;
   logic [smc_4core_cpu_pkg::NumCpuCores-1:0]         wdt_reset_raw;
 
-  // Ready to connect: mem init, cores+uncore out of reset (HW/cold-boot backstop),
+  // Ready to connect: mem init, uncore out of reset (HW/cold-boot backstop),
   // no isolate request -> immediate isolate, delayed de-isolate via shift below.
-  assign cluster_boundary_ready = init_mem_complete & (&rst_core_ni) & rst_uncore_ni
-                                  & ~isolate_req_i;
+  // A core held in reset does not isolate: the cluster acks probes on its behalf.
+  assign cluster_boundary_ready = init_mem_complete & rst_uncore_ni & ~isolate_req_i;
 
   // Delays de-isolation by ClusterIsolateCycles after the boundary is ready.
   `OCAH_FF(cluster_boundary_isolate_shift, {

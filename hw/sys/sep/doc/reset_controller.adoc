@@ -137,7 +137,8 @@ A software reset proceeds as follows:
 
 . Firmware writes `0` to the domain's `SW_RESET_N` bit.
 . The sequencer requests isolation on the domain's paths. New transactions on
-them complete with SLVERR and read data `0x1501A7ED`.
+them complete with SLVERR and read data `0x1501A7ED` in each 32-bit word of
+the data bus.
 . Each isolate unit drains its accepted transactions, then reports isolated.
 . Once all of the domain's paths report isolated, the domain's reset asserts.
 . Firmware writes `1`. Reset and isolation are released together.

@@ -1536,6 +1536,10 @@ class CoordinatorTest(unittest.TestCase):
     def leaf_statuses(self, summary: dict[str, Any]) -> dict[str, str]:
         return {leaf["item"]: leaf["status"] for leaf in self.leaves(summary)}
 
+    def leaf_name(self, item: str) -> str:
+        """The name the leaves of test ``item`` run under on the DUT's default target."""
+        return f"{item}@default"
+
     def junit_path(self, leaf: dict[str, Any], attempt: int, name: str = "results.xml") -> Path:
         seed_dir = self.run_dir / leaf["item"] / f"seed_{leaf['metadata']['seed']}"
         return seed_dir / f"attempt_{attempt}" / "results" / name
@@ -1558,7 +1562,9 @@ class CoordinatorTest(unittest.TestCase):
         code, summary = self.run_dv()
         self.assertEqual(code, 0, summary.get("status"))
         self.assertEqual(summary["status"], "PASS")
-        self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
+        self.assertEqual(
+            self.leaf_statuses(summary), {self.leaf_name(item): "PASS" for item in self.items}
+        )
         self.assertEqual(summary["tests"]["leaves_run"], 2)
         for leaf in self.leaves(summary):
             self.assertEqual(set(leaf["metadata"]["scheduler"]), {"job_id", "state"})
@@ -1658,7 +1664,9 @@ class CoordinatorTest(unittest.TestCase):
         )
         code, summary = self.run_dv()
         self.assertEqual(code, 2, summary.get("status"))
-        lost = next(leaf for leaf in self.leaves(summary) if leaf["item"] == self.items[1])
+        lost = next(
+            leaf for leaf in self.leaves(summary) if leaf["item"] == self.leaf_name(self.items[1])
+        )
         self.assertEqual(lost["status"], "ERROR")
         self.assertEqual(lost["metadata"]["scheduler"]["state"], "LOST")
         job_id = lost["metadata"]["scheduler"]["job_id"]
@@ -1685,7 +1693,7 @@ class CoordinatorTest(unittest.TestCase):
         self.assertEqual(error.get("type"), "environment_error")
         collected = collect_flow_result(REPO_ROOT, resolve_dut(REPO_ROOT, self.dut), self.run_dir)
         statuses = {detail["name"]: detail["status"] for detail in collected["tests_detail"]}
-        self.assertEqual(statuses[self.items[1]], "ERROR")
+        self.assertEqual(statuses[self.leaf_name(self.items[1])], "ERROR")
 
     def test_a_missing_interpreter_reaches_junit_from_the_graded_attempt(self) -> None:
         self.write_site(worker=[str(self.tmp / "missing" / "python3")], artifact_grace_sec=1)
@@ -1818,7 +1826,9 @@ class CoordinatorTest(unittest.TestCase):
         )
         code, summary = self.run_dv("--retry", "1")
         self.assertEqual(code, 0, summary.get("status"))
-        retried = next(leaf for leaf in self.leaves(summary) if leaf["item"] == self.items[1])
+        retried = next(
+            leaf for leaf in self.leaves(summary) if leaf["item"] == self.leaf_name(self.items[1])
+        )
         self.assertEqual((retried["status"], retried["metadata"]["attempt"]), ("PASS", 1))
         self.assertFalse(self.junit_path(retried, 0).exists())
         record = collect_flow_result(REPO_ROOT, resolve_dut(REPO_ROOT, self.dut), self.run_dir)
@@ -1885,7 +1895,9 @@ class CoordinatorTest(unittest.TestCase):
         self.assertTrue(list(jobs.glob("*.graded.json")), "the first run graded without results")
         code, summary = self.rerun()
         self.assertEqual(code, 0, summary.get("status"))
-        self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
+        self.assertEqual(
+            self.leaf_statuses(summary), {self.leaf_name(item): "PASS" for item in self.items}
+        )
         self.assertEqual(list(jobs.glob("*.graded.json")), [])
 
     def test_a_reused_run_dir_waits_for_a_result_that_lands_within_the_grace(self) -> None:
@@ -1900,7 +1912,9 @@ class CoordinatorTest(unittest.TestCase):
         )
         code, summary = self.rerun()
         self.assertEqual(code, 0, summary.get("status"))
-        self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
+        self.assertEqual(
+            self.leaf_statuses(summary), {self.leaf_name(item): "PASS" for item in self.items}
+        )
         # The detached workers write their completion records after the results the run read.
         records = [completion_path(self.run_dir, f"sim-{leaf:06d}-a0") for leaf in (0, 1)]
         deadline = time.monotonic() + 10
@@ -1909,7 +1923,7 @@ class CoordinatorTest(unittest.TestCase):
 
     def test_a_wave_debug_rerun_is_its_own_job(self) -> None:
         self.scenario()
-        failing = self.items[0]
+        failing = self.leaf_name(self.items[0])
         code, summary = self.run_dv("--waves-on-fail", "fst", statuses={failing: ["FAIL", "PASS"]})
         self.assertEqual(code, 1, summary.get("status"))
         self.assertEqual(summary["status"], "FAIL")
@@ -1939,7 +1953,7 @@ class CoordinatorTest(unittest.TestCase):
         worker.write_text(COCOTB_STAGE_WORKER, encoding="utf-8")
         self.write_site(worker=[sys.executable, str(worker), str(TESTS_DIR)])
         self.scenario()
-        failing = self.items[0]
+        failing = self.leaf_name(self.items[0])
         code, summary = self.run_dv("--waves-on-fail", "fst", statuses={failing: ["FAIL", "PASS"]})
         self.assertEqual(code, 1, summary.get("status"))
         leaves = {leaf["item"]: leaf for leaf in self.leaves(summary)}
@@ -2172,7 +2186,9 @@ class SchedulerBuildTest(CoordinatorTest):
         )
         self.assertEqual(leaf_manifest["target_build"]["target"], "default")
         self.assertEqual(leaf_manifest["target_build"]["fingerprint"], "fp-default")
-        self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
+        self.assertEqual(
+            self.leaf_statuses(summary), {self.leaf_name(item): "PASS" for item in self.items}
+        )
         for leaf in self.leaves(summary):
             record_path = Path(leaf["result_json"])
             record = json.loads(

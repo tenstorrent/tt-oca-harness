@@ -175,10 +175,10 @@ extra_args = ["-fno-dfg"]
 # the list rather than appending to it, then add the scope file.
 #
 # VCS-only because only this table applies the compile-time scope. A `--cov`
-# run on another simulator grades an unscoped denominator. Coverage runs take
-# `--target default` (one full-CPU elaboration; no_cpu force-splices the LSU
-# VIP). Edit `sep_cov_scope.hier` then `--rebuild` -- the file is not
-# fingerprinted.
+# run on another simulator grades an unscoped denominator. On VCS the no_cpu
+# and cpu tests share the full-CPU `default` elaboration (`run_on` in
+# [targets.lsu_stub_all_live.tools.vcs]; no_cpu force-splices the LSU VIP).
+# Edit `sep_cov_scope.hier` then `--rebuild` -- the file is not fingerprinted.
 #
 # Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
 # but still computes the headline score over the whole database, so the only way
@@ -594,8 +594,8 @@ args = ["+cpu_boot"]
 # `rom_fw` is not a member of `all`; it uses the `rom_boot` target below.
 #
 # `default` is the FALLBACK target. On VCS the full CPU supports both run modes:
-# no_cpu force-splices the LSU VIP. Verilator no_cpu still selects
-# lsu_stub_all_live. Coverage runs pass `--target default`.
+# no_cpu force-splices the LSU VIP, so lsu_stub_all_live runs its tests on
+# default there (`run_on`). Verilator no_cpu still runs on lsu_stub_all_live.
 [targets.default]
 description = "cpu_all_live: full VeeR EL2 CPU; m_axi + j_axi always live (fallback for all cpu tests)"
 build_dir = "hw/sys/sep/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
@@ -643,8 +643,9 @@ flags = [
 
 # CPU-stub model: SEP_CPU_STUB drops the VeeR EL2 core (shims/cpu/sep_cpu_stub.sv
 # reproduces the LSU ROM/xbar demux verbatim) so the cocotb AXI driver owns the CPU-LSU
-# splice. Runs every no_cpu test. m_axi + j_axi are always live here
-# too (tb_top), so inbound-filter tests run on this model. Cannot run cpu run-mode tests.
+# splice. Runs every no_cpu test on Verilator; on VCS they run on default. m_axi + j_axi
+# are always live here too (tb_top), so inbound-filter tests run on this model. Cannot
+# run cpu run-mode tests.
 [targets.lsu_stub_all_live]
 description = "lsu_stub_all_live: CPU stubbed (no VeeR EL2, LSU demux preserved); m_axi + j_axi live; for no_cpu tests"
 build_dir = "hw/sys/sep/dv/build/cocotb"
@@ -657,6 +658,9 @@ exclude_files = [
 sources = [
   "hw/sys/sep/dv/shims/cpu/sep_cpu_stub.sv",
 ]
+
+[targets.lsu_stub_all_live.tools.vcs]
+run_on = "default"
 
 [targets.lsu_stub_all_live.tools.verilator]
 flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
@@ -736,9 +740,10 @@ sources = [
 args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
 
 # The no_cpu scenarios select target = "lsu_stub_all_live" (CPU stubbed, the
-# stub is the sole LSU driver); the full-CPU default target force-splices the
-# LSU request on VCS. Both share one SV-UVM build tree, partitioned by input
-# fingerprint like the cocotb targets.
+# stub is the sole LSU driver); on VCS they run on the full-CPU default target,
+# which force-splices the LSU request (`run_on` in
+# [targets.lsu_stub_all_live.tools.vcs]). Both share one SV-UVM build tree,
+# partitioned by input fingerprint like the cocotb targets.
 [frameworks.uvm.targets.default]
 description = "SEP SV-UVM full-CPU target"
 build_dir = "hw/sys/sep/dv/build/uvm"

@@ -63,6 +63,31 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# ML-DSA-87 verify, through the boot ROM's ABR driver, of a blob signed with the test
+# key (committed vectors), and the rejected variants. +abr_case_mask=<hex> runs a subset
+# of the cases from the same image.
+name = "sep_abr_mldsa87_verify_test"
+module = "cpu.sep_abr_mldsa87_verify_test"
+firmware = "abr_mldsa87_verify_test"
+seed = 1
+timeout_sec = 7200
+tags = ["cpu", "crypto", "abr", "mldsa", "subsystem", "abr_mldsa87_dv"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge ignores every ML-DSA command (+sep_abr_cmd_drop); the verify driver must
+# refuse at its preload check rather than trust a result the accelerator never computed.
+name = "sep_abr_cmd_drop_test"
+module = "cpu.sep_abr_cmd_drop_test"
+firmware = "abr_mldsa87_verify_test"
+seed = 1
+timeout_sec = 3600
+tags = ["cpu", "crypto", "abr", "mldsa", "fault", "error", "subsystem", "abr_mldsa87_dv"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+sep_abr_cmd_drop"]
+
+[[tests]]
 # PIC source-id map and ISR delivery for the three required sources plus all eight
 # extras on every seed; the seed sets only the order of the extras.
 # timeout_sec: the bounded STORM_CHECK_ITERS loop (pic_irq_source_map_test.c) dominates the

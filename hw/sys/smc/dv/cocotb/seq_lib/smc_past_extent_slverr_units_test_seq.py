@@ -3,12 +3,14 @@
 """Past-extent and last-aperture-word response of the SLVERR-declared units over SEP_IN.
 
 Spec sources: smc.rdl ocah_past_extent_resp placements, misc_wrap.rdl ocah_gap_resp,
-memmap.adoc Address Space Organization.
+memmap.adoc Address Space Organization, memory_map.adoc UART window row,
+uart_log_engine_wrap.adoc, uart_16550 and log_engine memmap.adoc.
 """
 
 from __future__ import annotations
 
 import cocotb
+from cocotb.triggers import with_timeout
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
@@ -31,17 +33,33 @@ FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
 AXI_TIMEOUT_NS = 50_000
 _RESP_NAMES = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
-_STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
-_CHECKERS = (
-    "CHK-PAST-EXTENT-RESET-UNIT",
-    "CHK-PAST-EXTENT-EFUSE",
-    "CHK-PAST-EXTENT-TIMER",
-    "CHK-PAST-EXTENT-BASE-CONFIG",
-    "CHK-PAST-EXTENT-FABRIC-CTRL",
-    "CHK-PAST-EXTENT-SPARE",
-    "CHK-PAST-EXTENT-PERIPH",
-    "CHK-PAST-EXTENT-CLA",
+_STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")
+_TERMS = (
+    "SETUP",
+    "RESET_UNIT",
+    "EFUSE",
+    "TIMER",
+    "BASE_CONFIG",
+    "FABRIC_CTRL",
+    "SPARE",
+    "PERIPH",
+    "CLA",
+    "UARTWRAP",
 )
+# (checker, step after whose stamp it prints)
+_CHECKERS = (
+    ("CHK-PAST-EXTENT-RESET-UNIT", "S2"),
+    ("CHK-PAST-EXTENT-EFUSE", "S3"),
+    ("CHK-PAST-EXTENT-TIMER", "S4"),
+    ("CHK-PAST-EXTENT-BASE-CONFIG", "S5"),
+    ("CHK-PAST-EXTENT-FABRIC-CTRL", "S6"),
+    ("CHK-PAST-EXTENT-SPARE", "S7"),
+    ("CHK-PAST-EXTENT-PERIPH", "S8"),
+    ("CHK-PAST-EXTENT-CLA", "S9"),
+    ("CHK-PAST-EXTENT-UARTWRAP", "S10"),
+    ("CHK-PAST-EXTENT-UARTWRAP-LIVE", "S10"),
+)
+FUSE_WAITS = 3
 
 # (unit, tag, live register read before and after each write)
 _RESET_UNIT = ("smc_reset_unit", "RST", smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR"))
@@ -117,18 +135,36 @@ _PERIPH_UNITS = (
 _APERTURE_ONLY_UNITS = (("smc_uart_wrap", "UART"), ("oca_i3c_wrap", "I3C"))
 _CLA_UNIT = "smc_cla"
 
+# UART/log-engine wrappers: uart_log_engine_wrap.adoc places the UART at wrapper +0x100 and
+# instance N at N * 0x400; the UART 16550 decodes 64 bytes; LOG_REGION_SIZE is log-engine bank
+# offset 0x04 with the bank at +0x200; LOG_CTRL[15] at bank +0x7C is the last log-engine register.
+_UARTWRAP = "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP"
+UARTWRAP_COUNT = 4
+UARTWRAP_STRIDE = 0x400
+UARTWRAP_LOG_REGION_SIZE_OFF = 0x204
+UARTWRAP_PAST_UART_OFF = 0x140
+UARTWRAP_PAST_LOG_ENGINE_OFF = 0x280
+UARTWRAP_LIVE_BASE = 0x0000_1000
+UARTWRAP_HOLE_PAIR = (AXI_RESP_OKAY, 0x0000_0000)
+UARTWRAP_GAP_PAIR = (AXI_RESP_DECERR, PAST_EXTENT_RDATA)
+
 
 class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
     """Probe the past-extent and last-word addresses of each SLVERR-declared unit on SEP_IN."""
 
     def __init__(self, name: str = "smc_past_extent_slverr_units_test_seq") -> None:
         super().__init__(name)
-        self._stamps: list[tuple[str, int]] = []
+        self._stamps: list[tuple[str, int, int]] = []
         self._chk_marks: list[tuple[str, int]] = []
         self.fuse_state = "not waited"
+        self.unconverted_reads = 0
+
+    @property
+    def total_accesses(self) -> int:
+        return self.accesses + self.unconverted_reads
 
     def _mark_step(self, step_id: str) -> None:
-        self._stamps.append((step_id, int(get_sim_time("ps"))))
+        self._stamps.append((step_id, int(get_sim_time("ps")), self.total_accesses))
 
     def _log_chk(self, chk_id: str, text: str) -> None:
         cocotb.log.info("%s: %s", chk_id, text)
@@ -165,6 +201,64 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         self.accesses += 1
         assert item.resp_code is not None, f"{label} @ 0x{addr:08x}: no rresp recorded"
         return item.resp_code, item.rdata & 0xFFFF_FFFF
+
+    async def _read_unconverted(self, label: str, addr: int) -> tuple[int, bool, str]:
+        """One 4-byte read on SEP_IN whose R beat is taken before any data conversion.
+
+        The AR beat goes out on the SEP_IN manager's own AR channel under a fresh ARID, and
+        the R beat is taken from that ID's response context before the manager processes
+        it, so RDATA stays a logic vector. Returns (RRESP, RDATA resolvable, RDATA bits).
+        """
+        rif = self.env.sys_axi_agent.driver._vip.backend.read_if
+        timeout_ns = self.env.cfg.axi_timeout_ns
+        assert timeout_ns == AXI_TIMEOUT_NS, f"driver timeout {timeout_ns} ns"
+        defaults = SmcSysAxiItem(f"rd_{label}")
+        arid = rif.cur_id
+        rif.cur_id = (rif.cur_id + 1) % rif.id_count
+        ar = rif.ar_channel._transaction_obj()
+        ar.arid = arid
+        ar.araddr = addr
+        ar.arlen = 0
+        ar.arsize = 2
+        ar.arburst = defaults.burst
+        ar.arlock = defaults.axi_lock
+        ar.arcache = defaults.axi_cache
+        ar.arprot = defaults.prot
+        ar.arqos = defaults.axi_qos
+        ar.arregion = defaults.axi_region
+        ar.aruser = defaults.axi_user
+        manager = rif.tag_context_manager
+        context = manager._get_context(arid)
+        rif.in_flight_operations += 1
+        rif._idle.clear()
+        rif.active_id[arid] += 1
+        await rif.ar_channel.send(ar)
+        r = await with_timeout(context.get_resp(), timeout_ns, "ns")
+        rif.active_id[arid] -= 1
+        manager._set_idle(context)
+        rif.in_flight_operations -= 1
+        if rif.in_flight_operations == 0:
+            rif._idle.set()
+        self.unconverted_reads += 1
+        assert r.rid.is_resolvable and int(r.rid) == arid, (
+            f"{label} @ 0x{addr:08x}: rid {r.rid}, want 0x{arid:x}"
+        )
+        assert r.rlast.is_resolvable and int(r.rlast) == 1, (
+            f"{label} @ 0x{addr:08x}: rlast {r.rlast}"
+        )
+        assert r.rresp.is_resolvable, f"{label} @ 0x{addr:08x}: rresp {r.rresp} is X/Z"
+        rresp = int(r.rresp)
+        bits = str(r.rdata)
+        cocotb.log.info(
+            "unconverted read %s @ 0x%08x arid=0x%x rresp=%s rdata_resolvable=%s rdata_bits=%s",
+            label,
+            addr,
+            arid,
+            _RESP_NAMES.get(rresp, rresp),
+            r.rdata.is_resolvable,
+            bits,
+        )
+        return rresp, r.rdata.is_resolvable, bits
 
     async def _write_past(self, label: str, addr: int) -> int:
         item = SmcSysAxiItem(f"wr_{label}")
@@ -234,7 +328,8 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         live_txt = f"; live 0x{live_addr:08X}=0x{before:X} unchanged" if live_addr else ""
         head = (
             f"{unit} aperture 0x{LOCAL_BASE_RESET + first:08X}..0x{LOCAL_BASE_RESET + last:08X} "
-            f"extent 0x{generated_decoded_extent(unit):X}{live_txt}"
+            f"extent 0x{generated_decoded_extent(unit):X}{live_txt}; bresp measured, "
+            f"LINKED-ISSUE SF-001"
         )
         return head, parts
 
@@ -294,23 +389,116 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         await self._probe_cla()
         self._mark_step("S9")
 
+        hole_gap, live = await self._probe_uart_wrappers()
+        self._mark_step("S10")
+        self._log_chk("CHK-PAST-EXTENT-UARTWRAP", hole_gap)
+        self._log_chk("CHK-PAST-EXTENT-UARTWRAP-LIVE", live)
+
     async def _observe_aperture_end(self, unit: str, tag: str) -> str:
-        """UART and I3C declare no past-extent response: print the answers, assert nothing."""
+        """UART and I3C declare no past-extent response: record the codes, compare nothing.
+
+        The read data is never converted; the monitor's R-beat count corroborates that the
+        read answered exactly once.
+        """
         first, last = generated_window(unit)
         top = self._top_addr(unit)
         self.env.axi_monitor.expected_decerr_addrs.add(top)
-        rresp, rdata = await self._observe_read(f"{tag}_TOP", top)
+        beats_before = self.env.axi_monitor.r_beats
+        rresp, resolvable, bits = await self._read_unconverted(f"{tag}_TOP", top)
         bresp = await self._write_past(f"{tag}_TOP", top)
+        beats = self.env.axi_monitor.r_beats - beats_before
+        assert beats == 1, f"{tag}_TOP @ 0x{top:08x}: monitor saw {beats} R beats, want 1"
         rname = _RESP_NAMES.get(rresp, rresp)
         bname = _RESP_NAMES.get(bresp, bresp)
         cocotb.log.info(
             "island=%s addr=0x%08x bresp_declared=undeclared bresp_observed=%s", unit, top, bname
         )
         return (
-            f"{unit} aperture 0x{LOCAL_BASE_RESET + first:08X}..0x{LOCAL_BASE_RESET + last:08X} "
-            f"(generated_window, no past-extent response declared, not specified, measured); "
-            f"TOP@0x{top:08x} rresp={rname} rdata=0x{rdata:08X} bresp={bname}"
+            f"{tag}_TOP {unit} aperture 0x{LOCAL_BASE_RESET + first:08X}.."
+            f"0x{LOCAL_BASE_RESET + last:08X} @0x{top:08x} rresp={rname} bresp={bname} "
+            f"(data not converted; rdata_resolvable={resolvable} rdata_bits={bits}; "
+            f"monitor R beats={beats}; measured, LINKED-ISSUE SF-003, SF-004)"
         )
+
+    def _uart_wrapper_points(self, n: int) -> tuple[int, int, list[tuple[str, int, int]]]:
+        """(wrapper base, LOG_REGION_SIZE address, [(where, offset, address)]) of wrapper ``n``."""
+        base = smc_indexed_addr(f"{_UARTWRAP}_BASE_ADDR", n)
+        assert base == LOCAL_BASE_RESET + 0x6000 + n * UARTWRAP_STRIDE, (
+            f"wrapper {n}: generated base 0x{base:08x}"
+        )
+        lrs = smc_indexed_addr(f"{_UARTWRAP}_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR", n)
+        assert lrs == base + UARTWRAP_LOG_REGION_SIZE_OFF, (
+            f"wrapper {n}: generated LOG_REGION_SIZE 0x{lrs:08x}"
+        )
+        ctrl = smc_indexed_addr(f"{_UARTWRAP}_UART_LOG_ENGINE_CTRL_BASE_ADDR", n)
+        gap = ctrl + smc_addr(f"{_UARTWRAP}_UART_LOG_ENGINE_CTRL_SIZE") - base
+        assert gap % 4 == 0 and gap < smc_indexed_addr(f"{_UARTWRAP}_UART_BASE_ADDR", n) - base, (
+            f"wrapper {n}: generated map leaves no gap before the UART (first free +0x{gap:x})"
+        )
+        offsets = (
+            ("PAST_UART", UARTWRAP_PAST_UART_OFF),
+            ("PAST_LOG_ENGINE", UARTWRAP_PAST_LOG_ENGINE_OFF),
+            ("GAP", gap),
+        )
+        return base, lrs, [(where, off, base + off) for where, off in offsets]
+
+    async def _probe_uart_wrappers(self) -> tuple[str, str]:
+        count = smc_addr(f"{_UARTWRAP}_NUM")
+        assert count == UARTWRAP_COUNT, f"generated map has {count} UART wrappers, want 4"
+        wrappers = [self._uart_wrapper_points(n) for n in range(UARTWRAP_COUNT)]
+        for _, _, points in wrappers:
+            self.env.axi_monitor.expected_decerr_addrs.update(a for _, _, a in points)
+
+        written = []
+        for n, (_, lrs, _) in enumerate(wrappers):
+            value = UARTWRAP_LIVE_BASE + n
+            await self.csr_write(f"UARTWRAP{n}_LRS", lrs, value)
+            got = await self.csr_read(f"UARTWRAP{n}_LRS_RB", lrs, expected=value)
+            assert got == value, f"wrapper {n} LOG_REGION_SIZE 0x{got:x}, wrote 0x{value:x}"
+            written.append(value)
+
+        parts = []
+        allowed = {UARTWRAP_HOLE_PAIR: "hole", UARTWRAP_GAP_PAIR: "gap"}
+        for n, (_, _, points) in enumerate(wrappers):
+            for where, off, addr in points:
+                rresp, rdata = await self._observe_read(f"UARTWRAP{n}_{where}", addr)
+                pair = allowed.get((rresp, rdata))
+                assert pair is not None, (
+                    f"wrapper {n} +0x{off:x} @ 0x{addr:08x}: rresp "
+                    f"{_RESP_NAMES.get(rresp, rresp)} rdata 0x{rdata:08x} is neither "
+                    f"(OKAY, 0x0) nor (DECERR, 0xBADCAB1E)"
+                )
+                bresp = await self._write_past(f"UARTWRAP{n}_{where}", addr)
+                parts.append(
+                    f"wrapper {n} offset 0x{off:03X} {where}@0x{addr:08x} "
+                    f"rresp={_RESP_NAMES[rresp]} rdata=0x{rdata:08X} pair={pair} "
+                    f"bresp={_RESP_NAMES.get(bresp, bresp)}"
+                )
+
+        after = []
+        for n, (_, lrs, _) in enumerate(wrappers):
+            got = await self.csr_read(f"UARTWRAP{n}_LRS_POST", lrs, expected=written[n])
+            assert got == written[n], (
+                f"wrapper {n} LOG_REGION_SIZE 0x{got:x} after the hole/gap writes, "
+                f"wrote 0x{written[n]:x}"
+            )
+            after.append(got)
+
+        hole_gap = (
+            f"{len(parts)} reads each one of (OKAY, 0x00000000) / (DECERR, 0xBADCAB1E), "
+            f"{len(parts)} writes; documented bresp hole=OKAY gap=SLVERR, pair and bresp per "
+            f"offset measured, LINKED-ISSUE SF-003; " + "; ".join(parts)
+        )
+        live = (
+            "wrapper0..3 LOG_REGION_SIZE written="
+            + ",".join(f"0x{v:X}" for v in written)
+            + " readback="
+            + ",".join(f"0x{v:X}" for v in written)
+            + " after="
+            + ",".join(f"0x{v:X}" for v in after)
+            + " rresp=OKAY"
+        )
+        return hole_gap, live
 
     async def _probe_cla(self) -> None:
         first, last = generated_window(_CLA_UNIT)
@@ -331,32 +519,47 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
 
     def log_timeout_paths(self) -> None:
         cocotb.log.info(
-            "CHK-TIMEOUT-PATHS: wait_fuse_sense_done sub-waits tb_fuse_sense_done, "
-            "tb_fuse_reset_n, tb_rst_warm_smc_clk_n each bounded %d clk_smc_i rises, last "
-            "observed %s; %d AXI accesses each bounded by the driver timeout %d ns "
-            "(allow_timeout False), all answered; no other wait",
+            "CHK-TIMEOUT-PATHS: %d bounded waits, 0 expired; wait_fuse_sense_done sub-waits "
+            "tb_fuse_sense_done, tb_fuse_reset_n, tb_rst_warm_smc_clk_n each bounded %d "
+            "clk_smc_i rises, last observed %s; %d driver AXI accesses each bounded by the "
+            "driver timeout %d ns (allow_timeout False) and %d unconverted reads each bounded "
+            "by with_timeout %d ns, all answered; no other wait",
+            FUSE_WAITS + self.total_accesses,
             FUSE_WAIT_BOUND_SMC_CYCLES,
             self.fuse_state,
             self.accesses,
             AXI_TIMEOUT_NS,
+            self.unconverted_reads,
+            AXI_TIMEOUT_NS,
         )
 
     def nonvac_fence(self, floor: int) -> None:
-        ids = tuple(s for s, _ in self._stamps)
+        ids = tuple(s for s, _, _ in self._stamps)
         assert ids == _STEPS, f"step ids {ids}, want {_STEPS}"
-        times = [t for _, t in self._stamps]
+        times = [t for _, t, _ in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:])), f"step stamps not increasing: {times}"
         chk_ids = tuple(c for c, _ in self._chk_marks)
-        assert chk_ids == _CHECKERS, f"checker lines {chk_ids}, want {_CHECKERS}"
-        stamp_of = dict(self._stamps)
-        for (chk_id, when), step in zip(self._chk_marks, _STEPS[1:]):
+        want = tuple(c for c, _ in _CHECKERS)
+        assert chk_ids == want, f"checker lines {chk_ids}, want {want}"
+        stamp_of = {s: t for s, t, _ in self._stamps}
+        for (chk_id, when), (_, step) in zip(self._chk_marks, _CHECKERS):
             assert when >= stamp_of[step], f"{chk_id} printed before its step {step} stamp"
-        assert self.accesses >= floor, f"{self.accesses} accesses, floor {floor}"
+        counts = [FUSE_WAITS]
+        counts.extend(b - a for (_, _, a), (_, _, b) in zip(self._stamps, self._stamps[1:]))
+        assert all(c > 0 for c in counts), f"zero-count fence term: {dict(zip(_TERMS, counts))}"
+        assert self.total_accesses >= floor, f"{self.total_accesses} accesses, floor {floor}"
+        terms = ",".join(
+            f"{term}[{step} t={t}ps n={c}]"
+            for term, (step, t, _), c in zip(_TERMS, self._stamps, counts)
+        )
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence SETUP<RESET_UNIT<EFUSE<TIMER<BASE_CONFIG<FABRIC_CTRL<SPARE"
-            "<PERIPH<CLA; checker lines %s; accesses %d >= floor %d; stamps %s",
-            ",".join(chk_ids),
-            self.accesses,
+            "CHK-NONVAC: ordered fence %s, accesses %d >= %d (%d driver + %d unconverted); "
+            "checker lines %s; terms %s",
+            "<".join(_TERMS),
+            self.total_accesses,
             floor,
-            ",".join(f"{s}={t}" for s, t in self._stamps),
+            self.accesses,
+            self.unconverted_reads,
+            ",".join(chk_ids),
+            terms,
         )

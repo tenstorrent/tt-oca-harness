@@ -1323,6 +1323,7 @@ dv = [
     { name = "ocah-dv" },
 ]
 manifest = [
+    { name = "cryptography" },
     { name = "tt-oca-manifest" },
 ]
 vp = [
@@ -1367,9 +1368,12 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dv = [{ name = "ocah-dv", editable = "hw/common/dv" }]
-manifest = [{ name = "tt-oca-manifest", editable = "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest" }]
+manifest = [
+    { name = "cryptography", specifier = ">=48.0" },
+    { name = "tt-oca-manifest", editable = "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest" },
+]
 vp = [
-    { name = "cryptography", specifier = ">=41.0" },
+    { name = "cryptography", specifier = ">=48.0" },
     { name = "pexpect", specifier = ">=4.8" },
     { name = "pyelftools", specifier = ">=0.29" },
     { name = "pytest", specifier = ">=7.0" },
