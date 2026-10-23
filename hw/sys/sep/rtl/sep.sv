@@ -221,7 +221,7 @@ module sep #(
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_global_base_addr_o,  // SEP global base address from sep_cpu_ctrl; SMU crossbar SEP-target rule.
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_region_size_o,  // SEP region size from sep_cpu_ctrl; SMU crossbar SEP-target rule.
 
-  output sep_pkg::sep_ras_t sep_ras_o,        // Error, watchdog and hang levels for chip-level
+  output sep_pkg::sep_ras_t sep_ras_o,        // Error, watchdog and hang indications for chip-level
                                               // RAS aggregation, on clk_i.
 
   output logic [383:0] ext_debug_bus_o        // 24 lanes of 16 bits: CPU trace and control status,

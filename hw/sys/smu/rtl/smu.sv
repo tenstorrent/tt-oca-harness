@@ -210,7 +210,7 @@ module smu #(
 
   output smc_pkg::smc_ras_t  smc_ras_o,        // SMC error, watchdog, AXI hang and lifecycle
                                                // integrity levels for chip-level RAS aggregation.
-  output sep_pkg::sep_ras_t  sep_ras_o,        // SEP error, watchdog and hang levels for
+  output sep_pkg::sep_ras_t  sep_ras_o,        // SEP error, watchdog and hang indications for
                                                // chip-level RAS aggregation; zero when CFG.SEP
                                                // is 0.
 
