@@ -193,9 +193,10 @@ class key and public identities reload from the shadow bus.
 The TRNG bit resets the whole internal entropy chain. Follow
 <<sep-trng-recovery>> rather than toggling it on its own.
 
-A watchdog restart resets the SEP CPU and the watchdog but not the
-cryptographic engines or their `SW_RESET_N` requests. Triage firmware that
-uses an engine after the restart must reset it or check its state first.
+A watchdog restart resets the SEP CPU and the watchdog, but not the
+cryptographic engines or their `SW_RESET_N` requests. Triage firmware
+must account for engine state that survived the restart, by resetting
+the engines or checking their state.
 
 [[sep-pic]]
 ==== Programmable Interrupt Controller (PIC)
@@ -669,13 +670,19 @@ selects whether the timer keeps counting while the CPU is halted in debug.
 A bite from the SEP or the SMC watchdog restarts both CPUs and returns the SEP
 watchdog to its reset values: disabled, and unlocked even if firmware cleared
 `WDOG_REGWEN`. Triage firmware that needs watchdog protection must program and
-lock it again. Transactions in flight when the reset asserts are not drained,
-so an access that hung and caused the timeout can also block the triage
-image's accesses on the same path. A SEP DMA, debug or SMN access to the SEP
-CPU's ICCM or DCCM that is in flight when the reset asserts, or issued while
-the CPU is held in reset, is never answered and leaves its requester hung until
-the cold reset. Either case can stop the triage image from completing, so
-record the most important state first. The
+lock it again.
+
+Transactions in flight when the reset asserts are not drained, and each of
+these can leave an access hung until the cold reset:
+
+* An access that hung and caused the timeout still blocks its path.
+* A response to a SEP CPU access that arrives after the CPU leaves reset is
+  unexpected, and blocks the CPU's later accesses with the same AXI ID.
+* A SEP DMA, debug or SMN access to the SEP CPU's ICCM or DCCM that is in
+  flight when the reset asserts, or issued while the CPU is held in reset, is
+  never answered.
+
+Any of these can stop the triage image from completing. The
 ifdef::backend-html5[]
 xref:ocah-docs::reset.adoc#ocah-reset[Reset chapter]
 endif::backend-html5[]

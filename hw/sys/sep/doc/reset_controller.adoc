@@ -65,19 +65,23 @@ image::sep-reset-ctrl-logic.svg[alt="Gates, muxes and synchronizers in the eFuse
   seven bits reset OTBN, AES, HMAC, KMAC, the TRNG, Adams Bridge and the Key
   Manager warm domain.
 
-`rst_ni` resets the isolation sequencers, the JTAG override synchronizers and
-`u_wdt_rst_sync`. It also resets, directly, the crypto interconnect, life cycle
-controller, eFuse shim mux, alert receivers, encoders and EDN AXIS adapters, the
-TRNG power-on reset `por_rst_ni`, the watchdog register path, the local crossbar,
-the eFuse shim demux and the entropy pool. When the build does not define
-`SEP_ABR_EN`, the Adams Bridge error responders take `rst_ni` in place of the
-Adams Bridge wrapper. The watchdog synchronizes `sep_wdt_reset_no` into
-`clk_wdt_i` for its counter, and its bite leaves the SEP on
-`wdt_timer_rst_req_o`. `dbg_rstb_i` resets the EL2 debug
-module and `u_mpc_reset_run_req_sync`, and `jtag_trst_ni` resets the EL2 JTAG
-TAP. While `test_en_i` is high, `scan_rst_ni` replaces the outputs of
-`u_sep_reset_sync`, each scan bypass mux, `u_rst_wdt_sync` and both Key Manager
-reset conditioner paths.
+Within the Reset Controller, `rst_ni` resets the isolation sequencers, the JTAG
+override synchronizers and `u_wdt_rst_sync`. Outside it, `rst_ni` directly
+resets the local crossbar, the watchdog register path, the crypto interconnect,
+the life cycle controller, the eFuse shim mux and demux, the crypto alert
+receivers, encoders and EDN AXIS adapters, the entropy pool and the TRNG
+power-on reset `por_rst_ni`. When the build does not define `SEP_ABR_EN`, the
+Adams Bridge error responders take `rst_ni` in place of the Adams Bridge
+wrapper.
+
+Inside the watchdog, `u_rst_wdt_sync` synchronizes `sep_wdt_reset_no` into
+`clk_wdt_i` for the counter. The watchdog's bite leaves the SEP on
+`wdt_timer_rst_req_o`.
+
+`dbg_rstb_i` resets the EL2 debug module and `u_mpc_reset_run_req_sync`, and
+`jtag_trst_ni` resets the EL2 JTAG TAP. While `test_en_i` is high,
+`scan_rst_ni` replaces the outputs of `u_sep_reset_sync`, each scan bypass mux,
+`u_rst_wdt_sync` and both Key Manager reset conditioner paths.
 
 == Software Reset Register
 

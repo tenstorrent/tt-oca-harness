@@ -33,7 +33,7 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 <<ocah-reset,Platform Reset>>
 endif::backend-pdf[]
-chapter describes the watchdog timeout.
+chapter describes the watchdog timeout behaviour.
 
 == Programming Reference
 

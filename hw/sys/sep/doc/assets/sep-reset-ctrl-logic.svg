@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="624" viewBox="0 0 1040 624" role="img" aria-labelledby="title desc">
 <title id="title">SEP Reset Controller reset logic</title>
-<desc id="desc">Reset logic that builds the SEP resets. In u_sep_efuse_wrapper, part of u_sep_crypto, an AND gate combines rst_ni, ext_boot_seq_done_i and fuse-sense done, and a synchroniser turns the result into sep_intermediate_reset_n. In u_sep_reset_ctrl the JTAG IC_RESET override mux, selected by the .ovrd field of jtag_sep_reset_ctrl_i and taking its .val field on input 1, and the 2-flop u_sep_reset_sync turn it into sep_reset_no. An AND gate combines sep_reset_n with wdt_rst_ni and a scan bypass mux follows, giving sep_cpu_reset_no. A 2-flop synchroniser u_wdt_rst_sync, reset by rst_ni, captures wdt_rst_ni and a scan bypass mux follows, giving sep_wdt_reset_no. For each of the seven SW_RESET_N bits, an AND gate combines an isolate sequencer output with sep_reset_n, a JTAG IP override mux fed by synchronised override bits follows, then a scan bypass mux, forming sep_crypto_gated_rst_no. Each scan bypass mux selects scan_rst_ni while test_en_i is high. rst_ni resets the isolation sequencers, the JTAG IP override synchronisers and u_wdt_rst_sync.</desc>
+<desc id="desc">Reset logic that builds the SEP resets. In u_sep_efuse_wrapper, part of u_sep_crypto, an AND gate combines rst_ni, ext_boot_seq_done_i and fuse-sense done, and a synchroniser turns the result into sep_intermediate_reset_n. In u_sep_reset_ctrl the JTAG IC_RESET override mux, selected by the .ovrd field of jtag_sep_reset_ctrl_i and taking its .val field on input 1, and the 2-flop u_sep_reset_sync turn it into sep_reset_no. An AND gate combines sep_reset_n with wdt_rst_ni and a scan bypass mux follows, giving sep_cpu_reset_no. A 2-flop synchroniser u_wdt_rst_sync, a two-flop synchroniser reset by rst_ni, captures wdt_rst_ni and a scan bypass mux follows, giving sep_wdt_reset_no. For each of the seven SW_RESET_N bits, an AND gate combines an isolate sequencer output with sep_reset_n, a JTAG IP override mux fed by synchronised override bits follows, then a scan bypass mux, forming sep_crypto_gated_rst_no. Each scan bypass mux selects scan_rst_ni while test_en_i is high. rst_ni resets the isolation sequencers, the JTAG IP override synchronisers and u_wdt_rst_sync.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -135,11 +135,12 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <circle cx="300" cy="269" r="3.5" fill="#664488"/>
 <path class="n-tel" d="M300,269 L300,330"/>
 <path class="a-tel" d="M300,330 L316,330"/>
-<rect class="fabric" x="320" y="318" width="120" height="24" rx="4"/>
-<text class="s" x="380" y="335" text-anchor="middle">u_wdt_rst_sync</text>
-<circle cx="240" cy="354" r="4" fill="#103525"/>
-<path class="n-smu" d="M240,354 L380,354"/>
-<path class="a-smu" d="M380,354 L380,346"/>
+<rect class="fabric" x="320" y="310" width="120" height="40" rx="4"/>
+<text class="s" x="380" y="326" text-anchor="middle">u_wdt_rst_sync</text>
+<text class="s" x="380" y="343" text-anchor="middle">2FF</text>
+<circle cx="240" cy="362" r="4" fill="#103525"/>
+<path class="n-smu" d="M240,362 L380,362"/>
+<path class="a-smu" d="M380,362 L380,354"/>
 <path class="fabric" d="M730,320 L756,328 L756,352 L730,360 Z"/>
 <text class="s" x="738" y="335" text-anchor="middle">0</text>
 <text class="s" x="738" y="355" text-anchor="middle">1</text>
@@ -154,7 +155,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="700" y="287" text-anchor="end">scan_rst_ni</text>
 <path class="a-dash" d="M743.0,304 L743.0,292"/>
 <text class="s" x="737" y="306" text-anchor="end">test_en_i</text>
-<text class="s" x="282" y="376" text-anchor="start">×7, one per SW_RESET_N bit</text>
+<text class="s" x="282" y="382" text-anchor="start">×7, one per SW_RESET_N bit</text>
 <rect class="core" x="280" y="392" width="100" height="36" rx="4"/>
 <text class="s" x="330" y="407.5" text-anchor="middle">u_reg</text>
 <text class="s" x="330" y="422.5" text-anchor="middle">SW_RESET_N</text>
@@ -188,7 +189,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="a-jtag" d="M627.0,454 L627.0,440"/>
 <text class="s" x="600" y="449" text-anchor="start">.val</text>
 <text class="s" x="633" y="449" text-anchor="start">.ovrd</text>
-<path class="n-jtag" d="M270,212 L270,264 M270,274 L270,347 M270,357 L270,466"/>
+<path class="n-jtag" d="M270,212 L270,264 M270,274 L270,357 M270,367 L270,466"/>
 <path class="a-jtag" d="M270,466 L568,466"/>
 <path class="a-smu" d="M240,494 L627,494 L627,482"/>
 <circle cx="240" cy="494" r="4" fill="#103525"/>

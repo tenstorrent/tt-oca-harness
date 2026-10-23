@@ -88,6 +88,7 @@ module smc_reset_ctrl (
 
   // Reset de-glitcher parameters
   localparam int unsigned ResetDeglitchWidth = 32;
+  // Watchdog reset hold cycles
   localparam int unsigned WdtResetHoldCycles = 32;
 
   logic powergood_stable;
