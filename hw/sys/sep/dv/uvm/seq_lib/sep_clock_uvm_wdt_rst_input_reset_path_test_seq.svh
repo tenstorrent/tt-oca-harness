@@ -60,8 +60,8 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test_seq extends sep_base_test_seq;
     extra_hold = int'(random_pattern(ExtraHoldBits));
     `uvm_info(get_type_name(),
               $sformatf({"SEP SV-UVM WDT reset input: wdt_rst_ni_i drops sep_cpu_reset_n, ",
-                         "sep_reset_n isolated; scenario_seed=%0d extra_hold=%0d"},
-                        scenario_seed, extra_hold), UVM_LOW)
+                         "sep_reset_n isolated; scenario_seed=%0d extra_hold=%0d"}, scenario_seed,
+                          extra_hold), UVM_LOW)
 
     wait_fuse_sense_done();
 
