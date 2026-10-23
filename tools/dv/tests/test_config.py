@@ -21,6 +21,7 @@ from runlib.cli import (  # noqa: E402
     expand_items,
     regression_reseed_count,
     requested_targets,
+    selection_preview,
     target_plan,
     validate_item_tools,
     validate_target_plan,
@@ -878,6 +879,34 @@ class TargetLists(unittest.TestCase):
             r" \(other, stub\)",
         ):
             self.plan(["t_stub", "t_other"], ["default"])
+        empty = self.plan(["t_stub", "t_other"], ["default"], allow_empty=True)
+        self.assertEqual((empty.groups, empty.targets), ([], []))
+        self.assertEqual(
+            empty.skipped,
+            [{"name": "t_stub", "target": "stub"}, {"name": "t_other", "target": "other"}],
+        )
+
+    def test_a_list_preview_reports_the_plan_or_that_it_runs_nothing(self):
+        def preview(items, target):
+            args = Namespace(
+                items=items, tag=None, allow_duplicates=False, target=target, force_target=None
+            )
+            return selection_preview(make_dut({}), self.CATALOG, self.SIM_CFG, args, "verilator")
+
+        both = preview(["t_stub", "t_cpu"], "default,stub")
+        self.assertEqual(both["tests"], ["t_stub", "t_cpu"])
+        self.assertEqual(both["targets"], ["stub", "default"])
+        self.assertEqual(
+            both["instances"],
+            {"t_stub@stub": "stub", "t_cpu@default": "default", "t_cpu@stub": "stub"},
+        )
+        self.assertNotIn("skipped_target", both)
+        none = preview(["t_stub", "t_other"], "default")
+        self.assertEqual((none["tests"], none["targets"], none["instances"]), ([], [], {}))
+        self.assertEqual(
+            none["skipped_target"],
+            [{"name": "t_stub", "target": "stub"}, {"name": "t_other", "target": "other"}],
+        )
 
     def test_a_plan_without_tests_plans_the_listed_or_the_forced_targets(self):
         self.assertEqual(self.plan([], ["stub", "other"]).targets, ["stub", "other"])

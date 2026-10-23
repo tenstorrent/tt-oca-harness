@@ -3725,7 +3725,13 @@ adds no entry, so a matrix never selects one DUT twice; each entry lists
 the names that select its DUT under `aliases`. `--list --dut <dut>
 --json` additionally carries the per-scenario binding matrix
 (`tests.<name>.bindings`) and per-framework implemented counts for
-dashboards. `--validate-configs` validates every framework view a DUT
+dashboards. With `--items` or `--tag` it also carries `selection`, what a
+run of that selection plans on `--tool`, or the DUT's default tool, under
+`--target` or `--force-target`: the `tests` that run, the `targets` it
+builds, the target of each `<test>@<target>` under `instances`, and the
+`skipped_*` lists `result.json` records. A `--target` list that runs none of
+the tests gives an empty `tests` where a run would refuse; any other
+selection error stops the listing as it stops a run. `--validate-configs` validates every framework view a DUT
 implements and every available formal view, so a broken UVM overlay or
 formal config fails config validation even in cocotb-only CI.
 

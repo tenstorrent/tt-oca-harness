@@ -928,6 +928,26 @@ def regression_payload(
     return payload
 
 
+def selection_record(args: Any | None) -> dict[str, Any]:
+    """The selected tests a run skips, by reason."""
+    selection: dict[str, Any] = {
+        key: list(getattr(args, f"_{key}", []) or []) if args is not None else []
+        for key in ("skipped_unimplemented", "skipped_excluded")
+    }
+    # Scenarios this tool cannot run (per-test `tools`). Added only when non-empty,
+    # so a run with no tool restriction keeps the two-key payload shape the
+    # framework-bindings tests pin; recorded so a result that graded fewer items
+    # than the group lists says why.
+    wrong_tool = list(getattr(args, "_skipped_wrong_tool", []) or []) if args is not None else []
+    if wrong_tool:
+        selection["skipped_wrong_tool"] = wrong_tool
+    # Tests no `--target` entry runs, each with the target it would run on otherwise.
+    wrong_target = list(getattr(args, "_skipped_target", []) or []) if args is not None else []
+    if wrong_target:
+        selection["skipped_target"] = wrong_target
+    return selection
+
+
 def result_payload(
     *,
     flow: Flow,
@@ -995,21 +1015,7 @@ def result_payload(
     uvm_library = _uvm_library_record(args)
     if uvm_library:
         payload["uvm_library"] = uvm_library
-    selection: dict[str, Any] = {
-        key: list(getattr(args, f"_{key}", []) or []) if args is not None else []
-        for key in ("skipped_unimplemented", "skipped_excluded")
-    }
-    # Scenarios this tool cannot run (per-test `tools`). Added only when non-empty,
-    # so a run with no tool restriction keeps the two-key payload shape the
-    # framework-bindings tests pin; recorded so a result that graded fewer items
-    # than the group lists says why.
-    wrong_tool = list(getattr(args, "_skipped_wrong_tool", []) or []) if args is not None else []
-    if wrong_tool:
-        selection["skipped_wrong_tool"] = wrong_tool
-    # Tests no `--target` entry runs, each with the target it would run on otherwise.
-    wrong_target = list(getattr(args, "_skipped_target", []) or []) if args is not None else []
-    if wrong_target:
-        selection["skipped_target"] = wrong_target
+    selection = selection_record(args)
     if any(selection.values()):
         payload["selection"] = selection
     if progress is not None:
