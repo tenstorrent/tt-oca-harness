@@ -322,7 +322,7 @@ Observation probe groups:
    bits read 0 in the build without Adams Bridge. Users:
    `sep_km_cpu_protect_rand_test`, `sep_km_command_protocol_rand_test`,
    `sep_km_key_transfer_rand_test`, `sep_km_handover_rand_test`,
-   `sep_km_fault_inject_rand_test`.
+   `sep_km_fault_inject_rand_test`, `sep_km_kpv_rand_test` (CHK-WIPE-SCOPE).
 ** KM-KPV (`km_kpv_ctrl_o`, `km_kpv_words_o`): the 64 KPV `CTRL` registers
    (`CTRL[s]` at `[4*s +: 4]`, register bit order) and the 1024 stored KPV
    words in stored order. The stored words have no reset. Users:
@@ -829,8 +829,8 @@ Exceptions (a closed set):
   the bench turns off the sampler assertion `KmDrbgTvalidStability_A`, which
   the withdrawal breaks by design; every other assertion stays on. This entry
   is the error-inject use of the drive only; beat patterns of legal streams
-  are not part of it. User: `sep_km_drbg_sampler_rand_test` (the withdrawal
-  of a partial prefetch word with CFG.PREFETCH 1).
+  are not part of it. User: `sep_km_drbg_sampler_rand_test` (CHK-SMP-PRE-WITHDRAW:
+  the withdrawal of a partial prefetch word with CFG.PREFETCH 1).
 * *Key Manager KMCSR IRQ_SET pulse* (HK-IRQSET) — at the first falling edge
   with `km_irqset_arm_i` at 1 and a non-zero `km_irqset_mask_i[11:0]`, the
   bench drives the single-pulse IRQ_SET field output of each set mask bit

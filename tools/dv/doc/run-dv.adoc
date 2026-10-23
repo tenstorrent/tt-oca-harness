@@ -673,13 +673,11 @@ so the flip is visible as that group going red.
 
 Each selected test resolves a build target from its `target` field or the DUT
 default. A target's `[targets.<name>.tools.<tool>]` table can send its tests
-to another target on that tool with `run_on`, and `--target` overrides both
-for every selected test:
+to another target on that tool with `run_on`:
 
 [source,text]
 ----
---target
-  > [targets.<t>.tools.<tool>].run_on
+[targets.<t>.tools.<tool>].run_on
   > <t>: the test's target, else [defaults].target
 ----
 
@@ -701,13 +699,42 @@ must name another defined target that does not redirect on the same tool. A
 tests, such as a coverage-only replay, plans the default target after its
 redirect.
 
+`--target A[,B...]` runs the selected tests on the listed targets they can run
+on. A test that names a target runs on it when it is listed, or on the target
+its `run_on` names for the tool when that one is listed, and is skipped
+otherwise. A test that names no target runs on every listed target except one
+that sets `pinned_only = true` in its `[targets.<name>]` table: such a target
+runs only the tests that name it or reach it through `run_on`, as a CPU-stub
+model that cannot run the full CPU's tests does. The default target, which
+runs the tests that name no target, cannot set it. One name means the same, so
+`--target default` runs the tests that run on `default` and skips the rest.
+
+The skipped tests are printed on the `selection` line and in a warning, and
+recorded in `result.json` under `selection.skipped_target`, each with the
+target it would run on otherwise; a listed target that runs none of the
+selected tests is named in a warning. A list that runs none of them is refused
+before any stage runs. `--force-target NAME` instead runs every selected test
+on `NAME`, whatever target it names or `pinned_only` sets, and cannot be
+combined with `--target`.
+
+A simulation leaf is named `<test>@<target>` after the target it runs on,
+whether or not the run names targets: its directory is
+`<test>@<target>/seed_<seed>/attempt_<n>/`, and its records, JUnit testcases
+and dashboard rows carry that name, so a test's history on each target stays
+apart from run to run. `--items` still takes the test's name. The simulator
+runs the test's own entry point, and its firmware builds once, under the test's
+name. A test's leaves on every target use the same seeds, so a failure on one
+target replays on the others. A test or target name therefore cannot contain
+`@`. A formal flow has no targets, and its leaves keep the test's name.
+
 Shared build stages run once per unique target, serially, before the
 test leaves execute. This permits one group to contain tests that consume
-different build images. A test `target` or a `--target` that names no
-`[targets.<name>]` entry is rejected when the run plans its builds, before any
-stage executes, and `--validate-configs` does not check test targets. Every
-`run_on` is checked on each of the DUT's tools wherever its configuration is
-validated, by `--validate-configs` and before every run
+different build images. A test `target`, a `--target` entry or a
+`--force-target` that names no `[targets.<name>]` entry is rejected when the
+run plans its builds, before any stage executes, and `--validate-configs` does
+not check test targets. Every `run_on`, and that the default target is not
+`pinned_only`, is checked on each of the DUT's tools wherever its
+configuration is validated, by `--validate-configs` and before every run
 (<<runner-validation>>).
 
 Run-mode selection uses:
@@ -868,7 +895,8 @@ the file and the table or entry:
 . Every table of the sim config holds only the keys its schema allows, and
   every `{placeholder}` in a value is one the consuming stage defines.
 . On each tool in the flow's `tools` list, every target's `run_on` names
-  another defined target that does not redirect on that tool.
+  another defined target that does not redirect on that tool, and the target
+  the tests that name no target run on is not `pinned_only`.
 . `[testlist].path` is relative, resolves inside the DUT DV root, and exists.
 . Each `[coverage.<tool>]` table is well formed and each coverage policy
   file loads.
@@ -2123,11 +2151,11 @@ WRITE: <run>/stages/hdl_compile/scripts/hdl_compile.sh
 WRITE: <run>/stages/hdl_compile/env/hdl_compile.env
 stage      done name=hdl_compile item=- status=PASS elapsed=0.0s
 regression start total=6 sim_jobs=1 executor=local seeds=1 retry=0
-WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.py
-CMD  : <python> <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.py
-WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.sh
-WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/env/sim.env
-regression done index=1/6 status=PASS item=dtp_sanity_test seed=<seed> attempt=0 elapsed=0.0s
+WRITE: <run>/dtp_sanity_test@default/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test@default.py
+CMD  : <python> <run>/dtp_sanity_test@default/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test@default.py
+WRITE: <run>/dtp_sanity_test@default/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test@default.sh
+WRITE: <run>/dtp_sanity_test@default/seed_<seed>/attempt_0/env/sim.env
+regression done index=1/6 status=PASS item=dtp_sanity_test@default seed=<seed> attempt=0 elapsed=0.0s
 (each of the other five leaves repeats the five lines above, in group order)
 summary    passing=6 total=6 failing=0 skipped=0 elapsed=0.0s
 summary    status=PASS item=dtp_sanity_test seed=<seed> elapsed=0.0s
@@ -2589,13 +2617,14 @@ leaf seed as `RANDOM_SEED` and the directory its model was elaborated into as
 `OCAH_SIM_BUILD_DIR` (`<tool>-coverage` under the DUT build directory for a
 `--cov` run), so a test that records which model it simulated reads that
 variable instead of assuming the plain `<tool>` path. Reproduce a leaf as a
-single simulation with the recorded item and seed:
+single simulation with its test, the target it ran on and its seed:
 
 [source,bash]
 ----
 python3 tools/dv/run_dv.py \
   --dut smc \
   --items <failed-test> \
+  --target <recorded-target> \
   --stage sim \
   --tool <recorded-tool> \
   --seed <recorded-seed>
@@ -2667,13 +2696,14 @@ and reruns it with the same seed, which separates a deterministic failure
 from an intermittent one but explores nothing new. A test with three seeds
 under `--retry 1` is three leaves, each retried at most once.
 
-Each leaf runs in `<test>/seed_<seed>/attempt_<n>/`. The `regression start`
-console line reports `seeds=<N>` when every selected test has the same count
-and `seeds=mixed` otherwise. The `summary` line counts leaves, while the
-`result` line's `tests=` counts tests. A nested run also writes a
-`<test>/result.json` rollup that lists the final attempt of each of the
-test's seeds and takes the worst of their statuses (`ERROR`, then `TIMEOUT`,
-`FAIL`, `UNKNOWN`, `PASS`), so one failing seed fails the test.
+Each leaf runs in `<test>@<target>/seed_<seed>/attempt_<n>/`
+(<<Targets and run modes>>). The `regression start` console line reports
+`seeds=<N>` when every selected test has the same count and `seeds=mixed`
+otherwise. The `summary` line counts leaves, while the `result` line's
+`tests=` counts tests, each `<test>@<target>` as one. A nested run also writes
+a `<test>@<target>/result.json` rollup that lists the final attempt of each of
+the test's seeds and takes the worst of their statuses (`ERROR`, then
+`TIMEOUT`, `FAIL`, `UNKNOWN`, `PASS`), so one failing seed fails the test.
 
 [[runner-regression-record]]
 === The regression record
@@ -2685,7 +2715,7 @@ run-level `result.json`; both carry the run `status` and `exit_code`. Its
 `ended_at`, `log`, `failure_buckets`, `metadata` (the seed, the attempt,
 whether it is a wave-debug rerun, and on a cluster executor the `scheduler`
 job id and state), and `result_json`, the per-attempt
-`<test>/seed_<seed>/attempt_<n>/result.json` that holds the attempt's
+`<test>@<target>/seed_<seed>/attempt_<n>/result.json` that holds the attempt's
 artifacts, parser evidence, and build, coverage, and provenance metadata.
 Attempts of one `(item, seed, target)` leaf are grouped, and the highest
 attempt is the leaf's final result.
@@ -2695,7 +2725,8 @@ attempt is the leaf's final result.
   final failure buckets (a leaf without a classified bucket gets one
   `unknown` bucket carrying its `reason`), the `expected_fail` record when
   the entry carries one, and a `rerun` command that reproduces the final
-  attempt with its framework and seed.
+  attempt with its framework, seed and the target it ran on (`--force-target`
+  when the run forced one).
 * `flaky_tests` lists every leaf whose final attempt is `PASS` after an
   earlier non-passing attempt: `flaky_reason` is `passed_after_retry`,
   `failing_attempts`, `first_fail_attempt`, `first_failure_reason`, and
@@ -2817,13 +2848,18 @@ warning and records it in the run's wave metadata.
 |`--run-mode NAME`
 |Override the test/default run mode.
 
-|`--target NAME`
-|Override every selected test's build target, a `run_on` redirect included.
-Omitted, each test keeps its own target or the one its target's `run_on`
-names for the tool (<<Targets and run modes>>); a run on several targets
-merges its coverage target by target
-(<<runner-coverage-inputs>>), and is refused before compile when two of its
-targets would build into one model directory.
+|`--target NAME[,NAME...]`
+|Run each selected test on every listed target it can run on, and skip the
+rest (<<Targets and run modes>>). Omitted, each test keeps its own target or
+the one its target's `run_on` names for the tool. A run on several targets
+merges its coverage target by target (<<runner-coverage-inputs>>), and is
+refused before compile when two of its targets would build into one model
+directory.
+
+|`--force-target NAME`
+|Run every selected test on `NAME`, whatever target it names or redirects to
+and whether or not `NAME` is `pinned_only`; cannot be combined with
+`--target`.
 
 |`--overlay PATH`
 |Apply one adopter overlay config (append-only) on top of the merged DUT
@@ -3065,7 +3101,7 @@ leaf output:
 │   ├── hdl_compile/{scripts,env,logs}/
 │   ├── formal/{scripts,env,logs}/  # formal mode; sby tasks in <item>_<task>/
 │   └── regress/regression.json
-├── <test>/                         # flat single-test invocation
+├── <test>@<target>/                # flat single-test invocation
 │   ├── result.json
 │   ├── scripts/
 │   ├── env/
@@ -3073,7 +3109,7 @@ leaf output:
 │   ├── results/results.xml
 │   ├── coverage/
 │   └── waves/
-├── <test>/seed_<seed>/attempt_<n>/ # scheduler leaf
+├── <test>@<target>/seed_<seed>/attempt_<n>/ # scheduler leaf
 │   └── ...
 └── cov/
     ├── coverage.json
@@ -3086,7 +3122,7 @@ leaf output:
         └── policy-application.json
 ----
 
-Nested regressions also write `<test>/result.json` rollups. Most subprocess
+Nested regressions also write `<test>@<target>/result.json` rollups. Most subprocess
 stages emit replayable shell scripts; in-process cocotb HDL builds and `clean`
 are exceptions. Environment snapshots redact values when variable names
 indicate licenses, tokens, secrets, passwords, credentials, API keys, private
@@ -3689,7 +3725,13 @@ adds no entry, so a matrix never selects one DUT twice; each entry lists
 the names that select its DUT under `aliases`. `--list --dut <dut>
 --json` additionally carries the per-scenario binding matrix
 (`tests.<name>.bindings`) and per-framework implemented counts for
-dashboards. `--validate-configs` validates every framework view a DUT
+dashboards. With `--items` or `--tag` it also carries `selection`, what a
+run of that selection plans on `--tool`, or the DUT's default tool, under
+`--target` or `--force-target`: the `tests` that run, the `targets` it
+builds, the target of each `<test>@<target>` under `instances`, and the
+`skipped_*` lists `result.json` records. A `--target` list that runs none of
+the tests gives an empty `tests` where a run would refuse; any other
+selection error stops the listing as it stops a run. `--validate-configs` validates every framework view a DUT
 implements and every available formal view, so a broken UVM overlay or
 formal config fails config validation even in cocotb-only CI.
 

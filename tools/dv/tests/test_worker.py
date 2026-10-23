@@ -392,6 +392,18 @@ class WorkerMainTest(ManifestCase):
         self.assertEqual((done["task_id"], done["status"]), (task.task_id, "PASS"))
         self.assertEqual(done["result_json"], str(task.result_json.relative_to(REPO_ROOT)))
 
+    def test_a_test_on_one_of_several_targets_runs_its_entry_on_the_manifest_target(self) -> None:
+        name = f"{self.item}@default"
+        task = self.task(item=name)
+        path = self.write(task)
+        with mock.patch(
+            "runlib.executors.manifest.run_stage", return_value=stage_result(task)
+        ) as run:
+            self.assertEqual(run_worker(path), 0)
+        self.assertEqual(run.call_args.args[4:6], ("sim", name))
+        entry = run.call_args.args[3].tests[name]
+        self.assertEqual((entry.name, entry.target), (self.item, "default"))
+
     def test_a_leaf_takes_its_build_identity_from_the_manifest(self) -> None:
         for tool in ("verilator", "vcs"):
             with self.subTest(tool=tool):

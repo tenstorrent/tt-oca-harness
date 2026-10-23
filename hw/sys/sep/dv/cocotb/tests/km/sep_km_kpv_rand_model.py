@@ -136,6 +136,43 @@ _HKC_F = _bitfields(KM.HMAC_WRAPPER_KEY_KEY_CTRL_REG_reg_t)
 HMAC_KEY_VALID = _mask(_HKC_F, "key_valid")
 HMAC_KEY_CTRL_FIELDS = _defined(_HKC_F)
 
+
+@dataclass(frozen=True)
+class KeyBank:
+    """KEY_CTRL of one accelerator sideload register block."""
+
+    name: str
+    ctrl: int
+    valid: int
+    fields: int
+
+
+def _key_bank(name: str, prefix: str) -> KeyBank:
+    rtype = getattr(KM, f"{prefix}_KEY_CTRL_REG_TYPE")
+    f = _bitfields(getattr(KM, f"{rtype}_reg_t"))
+    return KeyBank(
+        name, int(getattr(KM, f"{prefix}_KEY_CTRL_REG_ADDR")), _mask(f, "key_valid"), _defined(f)
+    )
+
+
+# The eight sideload register blocks, in the bit order of the KM-VALID tap
+# km_engine_key_valid_o (docs/SEP_TB_ARCH.adoc, "KM-VALID"): bit i is
+# KEY_CTRL.key_valid of KEY_BANKS[i].
+KEY_BANKS = (
+    _key_bank("hmac", "HMAC_WRAPPER_KEY"),
+    _key_bank("kmac", "KMAC_WRAPPER_KEY"),
+    _key_bank("aes", "AES_WRAPPER_KEY"),
+    _key_bank("otbn", "OTBN_WRAPPER_KEY"),
+    _key_bank("mldsa_seed", "ABR_WRAPPER_KEY_MLDSA_SEED"),
+    _key_bank("mlkem_seed_d", "ABR_WRAPPER_KEY_MLKEM_SEED_D"),
+    _key_bank("mlkem_seed_z", "ABR_WRAPPER_KEY_MLKEM_SEED_Z"),
+    _key_bank("mlkem_msg", "ABR_WRAPPER_KEY_MLKEM_MSG"),
+)
+N_KEY_BANKS = len(KEY_BANKS)
+ALL_KEY_BANKS = (1 << N_KEY_BANKS) - 1
+if KEY_BANKS[0].ctrl != HMAC_KEY_CTRL or KEY_BANKS[1].name != "kmac":
+    raise RuntimeError("KEY_BANKS order does not match the KM-VALID tap")
+
 FIELD_NAME = {LOCK_WRITE: "lock_write", LOCK_USE: "lock_use", ERASE: "erase", SEAL: "seal"}
 
 # --- scrambler data path (scrambler architecture.adoc, "Data Scrambling Algorithm")

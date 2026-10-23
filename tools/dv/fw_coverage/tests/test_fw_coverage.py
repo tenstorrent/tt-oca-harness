@@ -155,6 +155,20 @@ firmware = { name = "boot_rom_pio", mode = "boot_rom_pio" }
             self.assertEqual(inputs[0].leaf_dir, good)
             self.assertEqual({entry.item for entry in skipped}, {"failed", "corrupt"})
 
+    def test_maps_each_target_leaf_to_its_test_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            leaves = [
+                self._write_leaf(run_dir, "rom_test@default"),
+                self._write_leaf(run_dir, "rom_test@rom_boot"),
+            ]
+
+            inputs, skipped = discover_trace_inputs(run_dir, {"rom_test": "boot_rom"})
+
+            self.assertEqual([entry.leaf_dir for entry in inputs], leaves)
+            self.assertEqual({entry.mode for entry in inputs}, {"boot_rom"})
+            self.assertEqual(skipped, [])
+
     def test_skips_trace_with_header_but_no_retired_pc(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = Path(temp_dir)
@@ -283,6 +297,14 @@ class ReportGenerationTest(unittest.TestCase):
             validate_variant_groups(
                 {"boot_rom": []},
                 {"items": ["default_test", "ot_test"]},
+                {"default_test": "boot_rom", "ot_test": "boot_rom_pio"},
+            )
+
+    def test_rejects_missing_variant_of_a_target_leaf(self):
+        with self.assertRaisesRegex(CoverageError, "boot_rom_pio"):
+            validate_variant_groups(
+                {"boot_rom": []},
+                {"items": ["default_test@rom_boot", "ot_test@rom_boot"]},
                 {"default_test": "boot_rom", "ot_test": "boot_rom_pio"},
             )
 
