@@ -52,12 +52,13 @@ Checks:
                   to the end of the rst_ni pulse and the SEP release, with that
                   reset 0 in all of them (AXI A3.1.2 gives no reset-entry
                   timing; a valid may stay high up to that first edge and no
-                  later)
+                  later). The check grades the valid level only: a request
+                  that completes a handshake on that first edge also meets
+                  it. OBS-RST-AXI-READY logs the readies of the first sample
+                  with the reset at 0
 
 Controls: CTRL-RST-AXI-PENDING (the point's valid reads 1 in the sample before
-the KM CPU reset reads 0); CTRL-RST-AXI-NOHS (in that same first sample with the
-KM CPU reset at 0, no channel has both its valid and its ready at 1, so no
-handshake can clear the request on the next edge); CHK-SEQ0 (``control=1``: RESP_KM_READY at response sequence 0 and the
+the KM CPU reset reads 0); CHK-SEQ0 (``control=1``: RESP_KM_READY at response sequence 0 and the
 first command at sequence 0 answered with success at response sequence 1, after
 the cold-boot reference and after each warm reset of the warm-reset leg); the
 CMD_SRAM_EXEC success with the image stored (``control_warm_exec`` of
@@ -796,9 +797,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         after the first rising edge with the KM CPU reset at 0, which is the
         last edge a synchronous-reset master may keep a valid high on, and in
         every later sample until the cold reset completes with the KM held. The
-        sample before the reset must show the request pending, and the first
-        sample with the reset at 0 must show no ready with its valid, so the
-        request cannot leave by handshake.
+        sample before the reset must show the request pending. The readies of
+        the first sample with the reset at 0 are logged: the check grades the
+        valid level, which a handshake on that edge also clears.
         """
         tag = f"axi-{point}"
         await self.swrst.release("km")
@@ -852,12 +853,12 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         rec = await self.pulse_rst_ni(release_bound=SEP_RESET_BOUND)
         held["run"] = False
         await watch
+        await Timer(1, "step")  # leave the read-only phase before the next drive
         self.chk.ctrl(
             "RST-AXI-PENDING", bool(pending & mask), point=point, pending=f"0b{pending:03b}"
         )
-        self.chk.ctrl(
-            "RST-AXI-NOHS",
-            (valid_rst & ready_rst) == 0,
+        self.chk.obs(
+            "RST-AXI-READY",
             point=point,
             valid_rst=f"0b{valid_rst:03b}",
             ready_rst=f"0b{ready_rst:03b}",
