@@ -115,7 +115,8 @@ args = ["+sep_smc_fuse_sense_hold"]
 [[tests]]
 # A wdt_rst_ni or dbg_rstb_i pulse leaves the software reset requests, the engine state,
 # the fault status, the SPI and DMA registers and a running DMA transfer intact. A cold
-# reset clears them.
+# reset clears them. A VCS coverage build runs this leaf on the full CPU, so it waives the
+# LSU demux counter assertions from a wdt_rst_ni pulse to the next cold reset.
 name = "sep_cpu_reset_retention_test"
 module = "system.sep_cpu_reset_retention_test"
 seed = 1
@@ -124,7 +125,7 @@ timeout_sec = 3600
 tags = ["reset", "cpu", "scratch", "dma", "memory", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_lsu_demux_underflow_waive"]
 
 [[tests]]
 # The same leaf on the full-CPU model: it adds the dbg_rstb_i sequence, the dbg_rstb_i
