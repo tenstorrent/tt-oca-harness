@@ -16,7 +16,7 @@
 // ANNOTATION before each block and README.md's class tables state the facts.
 //==================================================
 
-CHECKSUM: "1642113637 2272768170"
+CHECKSUM: "294228992 2272768170"
 ANNOTATION: "SMC-FSM-F2-DEFAULT: next_state = AVS_IDLE is the always_comb default of the protocol FSM, which the extractor lists as a transition from every state; every state has a case arm and every arm assigns next_state, so the default never fires. The three states whose own arm assigns AVS_IDLE reach it in the ordinary sequence and stay graded."
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: avsbus_controller
@@ -156,12 +156,11 @@ Transition TRANSMIT_HOLD->WAIT_FOR_STOP "10->13"
 Transition TRANSMIT_PULSE->ACQUIRE_START "9->1"
 Transition TRANSMIT_PULSE->IDLE "9->0"
 Transition TRANSMIT_SETUP->ACQUIRE_START "8->1"
-Transition TRANSMIT_SETUP->IDLE "8->0"
 Transition TRANSMIT_WAIT->ACQUIRE_START "7->1"
 Transition TRANSMIT_WAIT->IDLE "7->0"
 Transition TRANSMIT_WAIT->WAIT_FOR_STOP "7->13"
 
-CHECKSUM: "46423763 2698801009"
+CHECKSUM: "1137264511 2698801009"
 ANNOTATION: "SMC-FSM-B4-SRAM-AUTOINIT-BYPASSED: a property of this bench, not of the design. The CPU scratch SRAM is zeroed by a hardware sequence that runs after its reset unless smc_disable_sram_auto_init_i is high, and the SMC testbench top ties that input high, so the sequence goes from MEM_ZERO_IDLE straight to MEM_ZERO_DONE and MEM_ZERO_BUSY is never entered. A bench that deasserts the input runs the sequence and retires the class."
 MODULE: smc_4core_cpu
 Fsm state "2698801009"
@@ -176,7 +175,7 @@ MODULE: smc_cool_reset_wrap
 Fsm flr_counter_state "909361475"
 Transition COUNT_DOWN->IDLE "1->0"
 
-CHECKSUM: "3049458808 1131376063"
+CHECKSUM: "1126419757 1131376063"
 ANNOTATION: "SMC-FSM-F9-LOOP-INDEX-EXTRACTION: a property of the extraction, not of the design. block_index is a loop index local to an always_comb, set at the top of the block and walked by the for loop over the message's counters, with no flop behind it. The extractor reports it as an FSM because it is state-shaped, and the values and transitions it records are whichever it samples from that combinational loop; none of them is a state or a transition of the design. Only the points the report marks uncovered are written, so the sampled values it did record stay in the score."
 MODULE: telemetry_receiver
 Fsm block_index "1131376063"
@@ -242,7 +241,7 @@ ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states 
 Fsm cur_state "4062283189"
 Transition ST_ISSUE_ADDR->ST_IDLE "2->1"
 
-CHECKSUM: "46423763 2698801009"
+CHECKSUM: "1137264511 2698801009"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state "2698801009"
@@ -251,7 +250,39 @@ Transition MEM_ZERO_BUSY->MEM_ZERO_DONE "2->4"
 Transition MEM_ZERO_BUSY->MEM_ZERO_IDLE "2->1"
 Transition MEM_ZERO_IDLE->MEM_ZERO_BUSY "1->2"
 
-CHECKSUM: "1642113637 2272768170"
+CHECKSUM: "2855826940 3873519743"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile.denier
+ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+Fsm allocIdx "3873519743"
+State 'h2 "2"
+Transition 'h2->'h0 "2->0"
+Transition 'h2->'h1 "2->1"
+
+CHECKSUM: "2855826940 3873519743"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile_1.denier
+ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+Fsm allocIdx "3873519743"
+State 'h2 "2"
+Transition 'h2->'h0 "2->0"
+Transition 'h2->'h1 "2->1"
+
+CHECKSUM: "2855826940 3873519743"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile_2.denier
+ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+Fsm allocIdx "3873519743"
+State 'h2 "2"
+Transition 'h2->'h0 "2->0"
+Transition 'h2->'h1 "2->1"
+
+CHECKSUM: "2855826940 3873519743"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile_3.denier
+ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+Fsm allocIdx "3873519743"
+State 'h2 "2"
+Transition 'h2->'h0 "2->0"
+Transition 'h2->'h1 "2->1"
+
+CHECKSUM: "294228992 2272768170"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller
 ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm cur_state "2272768170"
@@ -393,7 +424,6 @@ Transition HOST_HOLD_BIT_ACK->IDLE "20->0"
 Transition HOST_HOLD_BIT_ACK->POP_FMT_FIFO "20->2"
 Transition POP_FMT_FIFO->CLOCK_STOP "2->8"
 Transition READ_CLOCK_LOW->IDLE "15->0"
-Transition READ_CLOCK_PULSE->IDLE "16->0"
 Transition READ_HOLD_BIT->IDLE "17->0"
 Transition SETUP_STOP->IDLE "6->0"
 
@@ -455,7 +485,6 @@ Transition TRANSMIT_PULSE->ACQUIRE_START "9->1"
 Transition TRANSMIT_PULSE->IDLE "9->0"
 Transition TRANSMIT_PULSE->WAIT_FOR_STOP "9->13"
 Transition TRANSMIT_SETUP->ACQUIRE_START "8->1"
-Transition TRANSMIT_SETUP->IDLE "8->0"
 Transition TRANSMIT_WAIT->ACQUIRE_START "7->1"
 Transition TRANSMIT_WAIT->IDLE "7->0"
 Transition TRANSMIT_WAIT->WAIT_FOR_STOP "7->13"
@@ -488,7 +517,6 @@ Transition POP_FMT_FIFO->CLOCK_STOP "2->8"
 Transition READ_CLOCK_LOW->IDLE "15->0"
 Transition READ_CLOCK_PULSE->IDLE "16->0"
 Transition READ_HOLD_BIT->IDLE "17->0"
-Transition SETUP_START->IDLE "3->0"
 Transition SETUP_STOP->IDLE "6->0"
 
 CHECKSUM: "331326766 4008718806"
@@ -550,8 +578,6 @@ Transition TRANSMIT_PULSE->ACQUIRE_START "9->1"
 Transition TRANSMIT_PULSE->IDLE "9->0"
 Transition TRANSMIT_PULSE->WAIT_FOR_STOP "9->13"
 Transition TRANSMIT_SETUP->ACQUIRE_START "8->1"
-Transition TRANSMIT_SETUP->IDLE "8->0"
-Transition TRANSMIT_SETUP->WAIT_FOR_STOP "8->13"
 Transition TRANSMIT_WAIT->ACQUIRE_START "7->1"
 Transition TRANSMIT_WAIT->IDLE "7->0"
 Transition TRANSMIT_WAIT->WAIT_FOR_STOP "7->13"
@@ -579,7 +605,7 @@ ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states 
 Fsm flr_counter_state "909361475"
 Transition COUNT_DOWN->IDLE "1->0"
 
-CHECKSUM: "3049458808 1131376063"
+CHECKSUM: "1126419757 1131376063"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver
 ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm block_index "1131376063"
@@ -587,7 +613,7 @@ State 'h0 "0"
 State 'h1 "1"
 Transition 'h0->'h1 "0->1"
 
-CHECKSUM: "3049458808 1131376063"
+CHECKSUM: "1126419757 1131376063"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
 ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm block_index "1131376063"
@@ -595,7 +621,7 @@ State 'h0 "0"
 State 'h1 "1"
 Transition 'h0->'h1 "0->1"
 
-CHECKSUM: "3049458808 1131376063"
+CHECKSUM: "1126419757 1131376063"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
 ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm block_index "1131376063"
