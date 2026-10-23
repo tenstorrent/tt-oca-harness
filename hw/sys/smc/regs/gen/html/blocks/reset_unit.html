@@ -107,7 +107,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>isolate_req_smc_reg</td><td>RW</td><td>0x0</td><td>Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw</td></tr>
+<tr><td>0</td><td>isolate_req_smc_reg</td><td>RW1C</td><td>0x0</td><td>Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1<br>to clear. A write of 0, or a write whose byte strobes do not select this field,<br>leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_SMCEN_REG">ISOLATE_REQ_SMCEN_REG</h3>
 <table>

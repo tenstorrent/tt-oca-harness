@@ -684,8 +684,8 @@ warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
 subsystem indices. The adopter's power controller drives `ss_reset_complete_i`
 high once the subsystem reset is complete; the SMC synchronizes this into the
 readable `SS_RESET_COMPLETE` register. Isolation remains asserted until cleared
-by software: SMC firmware must poll `SS_RESET_COMPLETE` and then write
-`ISOLATE_REQ_SMC_REG` to clear the FLR isolation latch. Do not assume isolation
+by software: SMC firmware must poll `SS_RESET_COMPLETE` and then write 1 to
+`ISOLATE_REQ_SMC_REG` bit 0 to clear the FLR isolation latch. Do not assume isolation
 releases automatically on `ss_reset_complete_i`.
 
 See `hw/top/smu_wrapper.sv` and `hw/top/smc_ip_integration.sv` for reference

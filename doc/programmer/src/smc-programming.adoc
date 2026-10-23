@@ -1966,10 +1966,10 @@ section of the Technical Reference Manual. To prepare and recover from an FLR:
   in cold reset. Release the subsystems as <<smc-subsystem-resets>> describes,
   re-establish the affected subsystem's state and satisfy its isolation-release
   requirements.
-. Write `ISOLATE_REQ_SMC_REG` to clear the FLR isolation latch; any write with a
-  byte strobe set clears it, whatever the data. The end of the cool reset does
-  not clear it, and clearing it does not cancel a request held by
-  `ISOLATE_REQ_REG` or by the isolation pin.
+. Write 1 to `ISOLATE_REQ_SMC_REG` bit 0 to clear the FLR isolation latch. A
+  write of 0, or one that does not strobe byte 0, leaves it set. The end of the
+  cool reset does not clear it, and clearing it does not cancel a request held
+  by `ISOLATE_REQ_REG` or by the isolation pin.
 
 To isolate subsystems without a cool reset, set their bits in `ISOLATE_REQ_REG`
 and clear them to release. Software cannot start the FLR counters, and this

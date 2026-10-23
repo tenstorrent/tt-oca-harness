@@ -300,7 +300,9 @@ module smc_cool_reset_wrap (
     end else begin
       if (cfg_flr_pf_active_sync_smc_posedge) begin
         isolate_req_smc_reg <= 1'b1; // Asserts isolate_req_smc_reg once cfg_flr_pf_active is asserted
-      end else if (isolate_req_smc_reg_wr_en && (|hwif_out_i.ISOLATE_REQ_SMC_REG.wr_biten)) begin
+      end else if (isolate_req_smc_reg_wr_en &&
+                   hwif_out_i.ISOLATE_REQ_SMC_REG.wr_biten.isolate_req_smc_reg &&
+                   hwif_out_i.ISOLATE_REQ_SMC_REG.wr_data.isolate_req_smc_reg) begin
         isolate_req_smc_reg <= 1'b0;  // De-assertion of isolate_req_smc_reg depends on SMC SW
       end
     end

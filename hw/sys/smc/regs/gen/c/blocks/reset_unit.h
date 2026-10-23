@@ -225,14 +225,18 @@ typedef union {
 } reset_unit__ISOLATE_REQ_PINEN_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_SMC_REG
-// Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw
+// Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+// to clear. A write of 0, or a write whose byte strobes do not select this field,
+// leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm 0x1
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bw 1
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw
+        // Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+        // to clear. A write of 0, or a write whose byte strobes do not select this field,
+        // leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
         uint32_t isolate_req_smc_reg :1;
         uint32_t :31;
     } f;
