@@ -4939,7 +4939,16 @@ module sep_uvm_top
     // This checks PROTOCOL, not data. A register that accepts a write, answers
     // OKAY and stores nothing breaks no rule here, so a green run is not
     // evidence that a KM register write landed.
+    //
+    // MASTER_SYNC_RESET=1: the picorv32 master clears its request on a clock
+    // edge, so ARVALID, AWVALID and WVALID may stay high on the first edge
+    // that samples the KM CPU reset low and must be low from the next edge
+    // on. The cold reset asserts asynchronously and the warm reset on a clock
+    // edge (hw/ip/key_manager/doc/architecture.adoc, Reset Conditioning); the
+    // AXI reset rule (IHI 0022, A3.1.2) gives no timing for reset entry.
+    // Issue: #3170
     bind key_manager ocah_axi_sva #(
+        .MASTER_SYNC_RESET (1'b1),
         .IS_LITE    (1'b1),
         .ADDR_WIDTH (32),
         .DATA_WIDTH (32),

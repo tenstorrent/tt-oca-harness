@@ -561,7 +561,11 @@ modules simply do not elaborate. Its contents:
   FIXED<=16, WRAP length+alignment, 4KB), WLAST/RLAST position, strobe
   lane-window, B/R ordering and ID matching, EXOKAY-exclusive, and the Lite
   response-legality rules. `IS_LITE` selects the subset; `en_i` is the
-  runtime suppress knob. The `dv/` harness binds it to every VIP-driven
+  runtime suppress knob. `MASTER_SYNC_RESET` (default 0) is for a master
+  that clears its requests with synchronous-reset flops: the AW, W and AR
+  reset rules then allow VALID high on the first clock edge that samples
+  `aresetn` low and require it low from the next edge on; every other rule
+  keeps the true reset. The `dv/` harness binds it to every VIP-driven
   bundle; the response-ID corruption bundles stay unbound because the
   ID-ordering rules fire there by design. Rules implement the IHI 0022 rule
   descriptions. Simulator capability selects between two trees. The two-state

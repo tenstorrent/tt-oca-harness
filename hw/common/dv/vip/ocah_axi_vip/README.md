@@ -95,7 +95,8 @@ ocah_axi_vip/
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
   interface/ocah_axi_struct_bridge.sv — places a pulp request/response struct
                                    port on an ocah_axi_if for the slave agent
-  sva/ocah_axi_sva.sv            — AXI protocol SVA derived from ARM IHI 0022
+  sva/ocah_axi_sva.sv            — AXI protocol SVA derived from ARM IHI 0022 (MASTER_SYNC_RESET=1:
+                                   master reset rules start one edge after reset entry)
   sva/ocah_axi_fv.sv             — the handshake, reset, burst and ordering rules in the
                                    boolean subset formal environments bind; both checkers
                                    assert or assume each side by parameter

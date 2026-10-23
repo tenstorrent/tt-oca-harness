@@ -13,7 +13,11 @@
 // scope next to flattened DUT nets (the DTP integration) or bound into a
 // hierarchy (`bind <module> ocah_axi_sva #(...) u_sva (...)`).
 // Set IS_LITE=1 for AXI4-Lite: burst/ID/exclusive rules are excluded and the
-// Lite response-legality rules are included. `en_i` is a runtime suppress
+// Lite response-legality rules are included. Set MASTER_SYNC_RESET=1 for a
+// master that clears its requests with synchronous-reset flops: the master
+// reset rules then let AWVALID, WVALID and ARVALID stay high on the first
+// clock edge that samples aresetn low, and require them low from the next
+// edge on (IHI 0022 A3.1.2 gives no timing for reset entry). `en_i` is a runtime suppress
 // knob (tie to 1'b1, or drive from a TB interface bit for suppression
 // windows); every concurrent rule is qualified by it.
 //
@@ -63,7 +67,8 @@ module ocah_axi_sva #(
   parameter int unsigned ID_WIDTH            = 4,
   parameter int unsigned MAX_OUTSTANDING     = 8,
   parameter bit          ASSUME_MASTER_RULES = 1'b0,
-  parameter bit          ASSUME_SLAVE_RULES  = 1'b0
+  parameter bit          ASSUME_SLAVE_RULES  = 1'b0,
+  parameter bit          MASTER_SYNC_RESET   = 1'b0
 ) (
   input wire logic                    aclk,
   input wire logic                    aresetn,
@@ -123,16 +128,22 @@ module ocah_axi_sva #(
   // ------------------------------------------------------------------
   // Reset behavior: VALID must be low while reset is asserted (A3.1.2).
   // Not reset-disabled (the rule checks reset itself); qualified on a
-  // resolved-low aresetn so an X reset at time zero cannot fire it.
+  // resolved-low aresetn so an X reset at time zero cannot fire it. With
+  // MASTER_SYNC_RESET the master rules start one edge later: a master with
+  // synchronous-reset flops first sees aresetn low on the edge where the
+  // rule would otherwise fire, and clears its request on that edge.
   // ------------------------------------------------------------------
   `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_VALID_RESET_LOW,
-                 (en_i && (aresetn === 1'b0)) |-> !awvalid, aclk, 1'b0)
+                 (en_i && (aresetn === 1'b0) &&
+                  (!MASTER_SYNC_RESET || ($past(aresetn) === 1'b0))) |-> !awvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_W_VALID_RESET_LOW,
-                 (en_i && (aresetn === 1'b0)) |-> !wvalid, aclk, 1'b0)
+                 (en_i && (aresetn === 1'b0) &&
+                  (!MASTER_SYNC_RESET || ($past(aresetn) === 1'b0))) |-> !wvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_B_VALID_RESET_LOW,
                  (en_i && (aresetn === 1'b0)) |-> !bvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_VALID_RESET_LOW,
-                 (en_i && (aresetn === 1'b0)) |-> !arvalid, aclk, 1'b0)
+                 (en_i && (aresetn === 1'b0) &&
+                  (!MASTER_SYNC_RESET || ($past(aresetn) === 1'b0))) |-> !arvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_R_VALID_RESET_LOW,
                  (en_i && (aresetn === 1'b0)) |-> !rvalid, aclk, 1'b0)
 

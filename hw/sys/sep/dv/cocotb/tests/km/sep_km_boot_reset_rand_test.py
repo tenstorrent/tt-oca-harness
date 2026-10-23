@@ -47,8 +47,10 @@ Checks:
   CHK-RST-AXI-VALID
                   at each AXI reset point (rst_ni driven low in the half clock
                   of a pending KM CPU read, then of a pending write) the three
-                  KM CPU AXI valids read 0 in the first sample with the KM CPU
-                  reset at 0
+                  KM CPU AXI valids read 0 in the sample after the first rising
+                  edge with the KM CPU reset at 0, with that reset still 0: the
+                  master clears its request with synchronous-reset flops, so a
+                  valid may stay high up to that edge and no later
 
 Controls: CTRL-RST-AXI-PENDING (the point's valid reads 1 in the sample before
 the KM CPU reset reads 0); CHK-SEQ0 (``control=1``: RESP_KM_READY at response sequence 0 and the
@@ -786,9 +788,11 @@ class sep_km_boot_reset_rand_test(sep_base_test):
 
         Runs before the entropy source comes up. The KM boots from the release;
         at the first falling edge with a valid of ``mask`` at 1 the leaf drives
-        rst_ni low. CHK-RST-AXI-VALID grades the three valids in the first sample
-        with the KM CPU reset at 0; the sample before it must show the request
-        pending. The cold reset then completes with the KM held.
+        rst_ni low. CHK-RST-AXI-VALID grades the three valids in the sample
+        after the first rising edge with the KM CPU reset at 0, which is the
+        last edge a synchronous-reset master may keep a valid high on; the
+        sample before the reset must show the request pending. The cold reset
+        then completes with the KM held.
         """
         tag = f"axi-{point}"
         await self.swrst.release("km")
@@ -820,14 +824,20 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             pending = valid
             clks += 1
             await FallingEdge(self.clk)
+        valid_rst = valid
+        await FallingEdge(self.clk)
+        await ReadOnly()
+        valid = self.rd_known(self.dut.km_cpu_axi_valid_o)
+        rst_n = self.rd_known(self.dut.km_cpu_rst_n_o)
         self.chk.ctrl(
             "RST-AXI-PENDING", bool(pending & mask), point=point, pending=f"0b{pending:03b}"
         )
         self.chk.ok(
             "RST-AXI-VALID",
-            valid == 0,
+            valid == 0 and rst_n == 0,
             point=point,
             valid=f"0b{valid:03b}",
+            valid_rst=f"0b{valid_rst:03b}",
             rst_n=rst_n,
             pending=f"0b{pending:03b}",
             clks=clks,
