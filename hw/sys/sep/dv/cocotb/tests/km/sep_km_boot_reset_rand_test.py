@@ -48,12 +48,16 @@ Checks:
                   at each AXI reset point (rst_ni driven low in the half clock
                   of a pending KM CPU read, then of a pending write) the three
                   KM CPU AXI valids read 0 in the sample after the first rising
-                  edge with the KM CPU reset at 0, with that reset still 0: the
-                  master clears its request with synchronous-reset flops, so a
-                  valid may stay high up to that edge and no later
+                  edge with the KM CPU reset at 0, and in every later sample up
+                  to the end of the rst_ni pulse and the SEP release, with that
+                  reset 0 in all of them (AXI A3.1.2 gives no reset-entry
+                  timing; a valid may stay high up to that first edge and no
+                  later)
 
 Controls: CTRL-RST-AXI-PENDING (the point's valid reads 1 in the sample before
-the KM CPU reset reads 0); CHK-SEQ0 (``control=1``: RESP_KM_READY at response sequence 0 and the
+the KM CPU reset reads 0); CTRL-RST-AXI-NOHS (in that same first sample with the
+KM CPU reset at 0, no channel has both its valid and its ready at 1, so no
+handshake can clear the request on the next edge); CHK-SEQ0 (``control=1``: RESP_KM_READY at response sequence 0 and the
 first command at sequence 0 answered with success at response sequence 1, after
 the cold-boot reference and after each warm reset of the warm-reset leg); the
 CMD_SRAM_EXEC success with the image stored (``control_warm_exec`` of
@@ -790,9 +794,11 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         at the first falling edge with a valid of ``mask`` at 1 the leaf drives
         rst_ni low. CHK-RST-AXI-VALID grades the three valids in the sample
         after the first rising edge with the KM CPU reset at 0, which is the
-        last edge a synchronous-reset master may keep a valid high on; the
-        sample before the reset must show the request pending. The cold reset
-        then completes with the KM held.
+        last edge a synchronous-reset master may keep a valid high on, and in
+        every later sample until the cold reset completes with the KM held. The
+        sample before the reset must show the request pending, and the first
+        sample with the reset at 0 must show no ready with its valid, so the
+        request cannot leave by handshake.
         """
         tag = f"axi-{point}"
         await self.swrst.release("km")
@@ -825,24 +831,50 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             clks += 1
             await FallingEdge(self.clk)
         valid_rst = valid
+        ready_rst = self.rd_known(self.dut.km_cpu_axi_ready_o)
         await FallingEdge(self.clk)
         await ReadOnly()
         valid = self.rd_known(self.dut.km_cpu_axi_valid_o)
         rst_n = self.rd_known(self.dut.km_cpu_rst_n_o)
+        # The rest of the reset: every later sample up to the end of the rst_ni
+        # pulse and the SEP release, with the KM CPU still held.
+        held = {"n": 0, "valid": 0, "rst_n": 0, "run": True}
+
+        async def _hold_watch() -> None:
+            while held["run"]:
+                await FallingEdge(self.clk)
+                await ReadOnly()
+                held["n"] += 1
+                held["valid"] |= self.rd_known(self.dut.km_cpu_axi_valid_o)
+                held["rst_n"] |= self.rd_known(self.dut.km_cpu_rst_n_o)
+
+        watch = cocotb.start_soon(_hold_watch())
+        rec = await self.pulse_rst_ni(release_bound=SEP_RESET_BOUND)
+        held["run"] = False
+        await watch
         self.chk.ctrl(
             "RST-AXI-PENDING", bool(pending & mask), point=point, pending=f"0b{pending:03b}"
         )
+        self.chk.ctrl(
+            "RST-AXI-NOHS",
+            (valid_rst & ready_rst) == 0,
+            point=point,
+            valid_rst=f"0b{valid_rst:03b}",
+            ready_rst=f"0b{ready_rst:03b}",
+        )
         self.chk.ok(
             "RST-AXI-VALID",
-            valid == 0 and rst_n == 0,
+            valid == 0 and rst_n == 0 and held["valid"] == 0 and held["rst_n"] == 0,
             point=point,
             valid=f"0b{valid:03b}",
             valid_rst=f"0b{valid_rst:03b}",
             rst_n=rst_n,
             pending=f"0b{pending:03b}",
             clks=clks,
+            held_clks=held["n"],
+            held_valid=f"0b{held['valid']:03b}",
+            held_rst_n=held["rst_n"],
         )
-        rec = await self.pulse_rst_ni(release_bound=SEP_RESET_BOUND)
         self.swrst.value = SW_RESET_N_RESET_DEFAULT
         self.logger.info("LOG %s release_clks=%d", tag, rec["release_clks"])
 

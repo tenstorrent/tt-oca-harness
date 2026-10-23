@@ -33,7 +33,8 @@
 // formal model elaborates them, and a simulator treats both kinds alike.
 //
 // Rules (OCAH_AXI_* assert, OCAH_AXI_C_* cover):
-//   Reset      : <CH>_VALID_RESET_LOW (VALID low while aresetn is low)
+//   Reset      : <CH>_VALID_RESET_LOW (VALID low while aresetn is low; with
+//                MASTER_SYNC_RESET the AW/W/AR rules start one edge later)
 //   Handshake  : <CH>_PAYLOAD_STABLE, <CH>_VALID_HELD (IHI 0022 A3.2.1/A3.2.2)
 //   X-hygiene  : <CH>_VALID_KNOWN, <CH>_READY_KNOWN, <CH>_PAYLOAD_KNOWN
 //   AW/AR      : BURST_LEGAL (A3.4.1 reserved encoding), SIZE_LEGAL (A3.4.1),

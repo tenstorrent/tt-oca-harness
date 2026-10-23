@@ -4099,11 +4099,15 @@ module sep_uvm_top
     assign km_sram_wmap_jump_wr_o   = km_wmap_jump_wr_q;
 
     // KM-AXIV: the request valids of the KM CPU AXI4-Lite master (the port the
-    // KM AXI SVA binds to), {ar_valid, aw_valid, w_valid}, and the warm reset
-    // of the KM CPU core (rst_warm_sync_n, the SVA aresetn), on every clock.
+    // KM AXI SVA binds to), {ar_valid, aw_valid, w_valid}, the readies of the
+    // same channels, and the warm reset of the KM CPU core (rst_warm_sync_n,
+    // the SVA aresetn), on every clock.
     assign km_cpu_axi_valid_o = {`KM_TAP.cpu_axil_req.ar_valid,
                                  `KM_TAP.cpu_axil_req.aw_valid,
                                  `KM_TAP.cpu_axil_req.w_valid};
+    assign km_cpu_axi_ready_o = {`KM_TAP.cpu_axil_resp.ar_ready,
+                                 `KM_TAP.cpu_axil_resp.aw_ready,
+                                 `KM_TAP.cpu_axil_resp.w_ready};
     assign km_cpu_rst_n_o     = `KM_TAP.rst_warm_sync_n;
 
     // ------------------------------------------------------------------

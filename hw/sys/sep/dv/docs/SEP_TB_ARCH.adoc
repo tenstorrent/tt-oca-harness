@@ -378,9 +378,10 @@ Observation probe groups:
    took place; stores after that fetch are not in the capture. User:
    `sep_km_handover_rand_test` (CHK-HO-SRAM).
 * Key Manager CPU AXI valid tap (KM-AXIV, `km_cpu_axi_valid_o[2:0]`,
-  `km_cpu_rst_n_o`): the request valids of the KM CPU AXI4-Lite master
-  `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1 `aw_valid`, bit 0
-  `w_valid`, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
+  `km_cpu_axi_ready_o[2:0]`, `km_cpu_rst_n_o`): the request valids of the KM
+  CPU AXI4-Lite master `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1
+  `aw_valid`, bit 0 `w_valid`, the readies of the same channels from
+  `cpu_axil_resp` in the same bit order, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
   the PicoRV32 core and the `aresetn` of the KM AXI SVA. Read only, on every
   clock. User: `sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
@@ -1099,8 +1100,11 @@ Exceptions (a closed set):
   has no frontdoor. Observation only; it drives nothing. Owners:
   `sep_km_sideload_share_walk_test`, `sep_km_abr_mlkem_sideload_test`.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
-  `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
-  reach that port. Protocol, not data.
+  `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`, with
+  `MASTER_SYNC_RESET` = 1: the AR, AW and W valids may be high on the first
+  edge that samples the reset low and must be low from the next edge on (AXI
+  A3.1.2 gives no reset-entry timing). No TB master can reach that port.
+  Protocol, not data.
 
 [[sep-run-modes]]
 === Run Modes and RTL Targets
