@@ -214,7 +214,7 @@ foreach mem {dat dct rlt} {
         set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*$io_budget(default)] -clock [get_clock PERIPHERALCLK] $i3c_mem_src_ports -add_delay
         puts "INFO: set_input_delay PERIPHERALCLK on i3c_${mem}_mem_src_i* ([sizeof_collection $i3c_mem_src_ports] ports)"
     }
-    set i3c_mem_sink_ports [get_ports -quiet "i3c_${mem}_mem_sink_o*"]
+    set i3c_mem_sink_ports [filter_collection [get_ports -quiet "i3c_${mem}_mem_sink_o*"] {full_name !~ ".*clk.*"}]
     if {[sizeof_collection $i3c_mem_sink_ports] > 0} {
         set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*$io_budget(default)] -clock [get_clock PERIPHERALCLK] $i3c_mem_sink_ports -add_delay
         puts "INFO: set_output_delay PERIPHERALCLK on i3c_${mem}_mem_sink_o* ([sizeof_collection $i3c_mem_sink_ports] ports)"

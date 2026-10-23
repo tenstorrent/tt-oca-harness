@@ -171,8 +171,8 @@ module smc_wrapper (
   input  logic [15:0] smc_cpu_jtag_part_number_i,
   input  logic [3:0]  smc_cpu_jtag_version_i,
 
-  // Gated I3C peripheral clock. The table memories it drives are absorbed by
-  // smc_ip_integration, so this leaves the wrapper for observation only.
+  // Gated I3C peripheral clock, for observation; the table memories take their
+  // clock from their requests.
   output logic                                                 gated_clk_periph_i3c_o,
 
   output logic [smc_pkg::NumGpioWraps-1:0]   gpio_interrupt_o,
@@ -402,7 +402,6 @@ module smc_wrapper (
     .clk_periph_o (clk_periph),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
-    .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
     .rst_primary_periph_clk_ni (rst_primary_periph_clk_no),
 
     .smc_external_req_i  (smc_external_req),

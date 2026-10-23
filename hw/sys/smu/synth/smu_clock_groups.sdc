@@ -15,10 +15,10 @@ if {![info exists smu_owns_child_copies]} {
 # under a SAM flow they are not defined here, and under a flat replay the child
 # that defines them registers them itself.
 set smu_refclk_async_grp {REFCLK}
-set smu_periph_async_grp {PERIPHERALCLK}
+set smu_periph_async_grp {PERIPHERALCLK PERIPHERALCLK_I3C_*}
 if {$smu_owns_child_copies} {
     set smu_refclk_async_grp {REFCLK AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLK_FROM_REFCLK AVS_CLK_DIV_CLK_O_FROM_REFCLK AVS_DIV_TOGGLE_FROM_REFCLK AVS_DIV_CLK_Q_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO AVS_CLK_FROM_REFCLK_GPIO}
-    set smu_periph_async_grp {PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK AVS_CLK_FROM_PERIPHERALCLK AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK AVS_DIV_TOGGLE_FROM_PERIPHERALCLK AVS_DIV_CLK_Q_FROM_PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO AVS_CLK_FROM_PERIPHERALCLK_GPIO}
+    set smu_periph_async_grp {PERIPHERALCLK PERIPHERALCLK_I3C_* AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK AVS_CLK_FROM_PERIPHERALCLK AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK AVS_DIV_TOGGLE_FROM_PERIPHERALCLK AVS_DIV_CLK_Q_FROM_PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO AVS_CLK_FROM_PERIPHERALCLK_GPIO}
 }
 
 # Asynchronous groups, declared with `-allow_paths` plus a loose default bound
@@ -44,6 +44,14 @@ if {[llength $smu_mem_gen_clks] > 0} {
     cdc_group_extra SMUCLK $smu_mem_gen_clks
 }
 unset -nocomplain smu_mem_gen_clks
+set smu_i3c_mem_gen_clks [list]
+foreach_in_collection c [get_clocks PERIPHERALCLK_I3C_* -quiet] {
+    lappend smu_i3c_mem_gen_clks [get_object_name $c]
+}
+if {[llength $smu_i3c_mem_gen_clks] > 0} {
+    cdc_group_extra PERIPHERALCLK $smu_i3c_mem_gen_clks
+}
+unset -nocomplain smu_i3c_mem_gen_clks
 set smu_tck_gen_clks {JTAG_STAP_IO_TCK JTAG_STAP_EXTRA_TCK JTAG_BSR_TCK JTAG_STAP_SCAN_TCK JTAG_DFD_TCK JTAG_DFT_SECURE_TCK JTAG_DFT_TCK}
 foreach_in_collection c [get_clocks JTAG_TCK_* -quiet] {
     lappend smu_tck_gen_clks [get_object_name $c]

@@ -166,6 +166,16 @@ foreach trace_mem_clk_port $trace_mem_clk_ports {
     create_generated_clock [get_ports $trace_mem_clk_port] -name SMUCLK_TRACE_MEM${trace_mem_clk_idx} -master_clock SMUCLK -divide_by 1 -source [get_ports "clk_smu_i"] -combinational
     incr trace_mem_clk_idx
 }
+
+# I3C DAT/DCT/RLT table memory clocks (the gated I3C peripheral clock)
+foreach mem {dat dct rlt} {
+    set i3c_mem_clk_ports [lsort -dictionary [get_object_name [get_ports -quiet "i3c_${mem}_mem_sink_o*clk"]]]
+    set i3c_mem_clk_idx 0
+    foreach i3c_mem_clk_port $i3c_mem_clk_ports {
+        create_generated_clock [get_ports $i3c_mem_clk_port] -name PERIPHERALCLK_I3C_[string toupper $mem]${i3c_mem_clk_idx} -master_clock PERIPHERALCLK -divide_by 1 -source [get_ports "clk_periph_i"] -combinational
+        incr i3c_mem_clk_idx
+    }
+}
 }
 
 if {$smu_owns_child_copies} {

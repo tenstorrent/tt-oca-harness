@@ -171,8 +171,10 @@ The macros that are needed for the SMC are the following:
 ** There are also several backing memories for each I3C instance. There is a
    single-port "DAT" and a "DCT" memory per I3C instance (implemented in the
    example by instances of `prim_ram_1p`). There is also a two-port RLT
-   (Retransmission Limit Timer) memory, which is implemented in the example with
-   an instance of `prim_ram_2p`.
+   (reverse lookup table, dynamic address to DAT index) memory, which is
+   implemented in the example with an instance of `prim_ram_2p`. Each request
+   carries the clock its memory runs on; the memory accepts every request and
+   returns read data on the next clock.
 
 ** Finally, there are multiple trace RAM instances that can be used to capture
    debug data. In the example, these are implemented with instances of

@@ -208,6 +208,7 @@ package i3c_pkg;
 
   // Memory port to DAT table
   typedef struct packed {
+    logic             clk;
     logic             req;
     logic             write;
     logic [DatAw-1:0] addr;
@@ -217,12 +218,11 @@ package i3c_pkg;
 
   typedef struct packed {
     logic [63:0] rdata;
-    logic        rvalid;
-    logic [1:0]  rerror;
   } dat_mem_src_t;
 
   // Memory port to DCT table
   typedef struct packed {
+    logic             clk;
     logic             req;
     logic             write;
     logic [DctAw-1:0] addr;
@@ -232,12 +232,11 @@ package i3c_pkg;
 
   typedef struct packed {
     logic [127:0] rdata;
-    logic         rvalid;
-    logic [1:0]   rerror;
   } dct_mem_src_t;
 
   // Memory port to reverse-lookup table (dynamic addr -> DAT index), dual-port
   typedef struct packed {
+    logic             clk;
     logic             a_req;
     logic             a_write;
     logic [6:0]       a_addr;

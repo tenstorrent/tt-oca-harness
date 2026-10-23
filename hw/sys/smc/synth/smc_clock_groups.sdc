@@ -43,6 +43,15 @@ if {[cdc_is_block_top]} {
         cdc_group_extra SMCCLK $_smc_mem_gen_clks
     }
     unset -nocomplain _smc_mem_gen_clks
+
+    set _smc_i3c_mem_gen_clks [list]
+    foreach_in_collection c [get_clocks PERIPHERALCLK_I3C_* -quiet] {
+        lappend _smc_i3c_mem_gen_clks [get_object_name $c]
+    }
+    if {[llength $_smc_i3c_mem_gen_clks] > 0} {
+        cdc_group_extra PERIPHERALCLK $_smc_i3c_mem_gen_clks
+    }
+    unset -nocomplain _smc_i3c_mem_gen_clks
 }
 
 if {[cdc_is_block_top]} {

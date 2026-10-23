@@ -33,8 +33,6 @@
 // substitute with their own vendor IP/macros.
 //-----------------------------------------------------------------------------
 
-`include "ocah_registers.svh"
-
 module smc_ip_integration (
     output logic clk_ref_o,
     output logic clk_sys_o,
@@ -42,8 +40,7 @@ module smc_ip_integration (
     input  logic rst_primary_smc_clk_ni,
 
     // The I3C table memories are the one block here that does not run on
-    // clk_smc: the core drives them from the gated I3C peripheral clock.
-    input logic gated_clk_periph_i3c_i,
+    // clk_smc: their requests carry the gated I3C peripheral clock.
     input logic rst_primary_periph_clk_ni,
 
     // Adopter external window (from smc.sv). One AXI-Lite port carrying the
@@ -501,11 +498,6 @@ module smc_ip_integration (
     // bring-up testbench (hw/ip/i3ccore_wrap/dv/tb/tb_i3ccore.sv), which
     // drives the identical interface. The core reads combinationally one cycle
     // after asserting req, which is exactly prim_ram_*'s latency.
-    //
-    // rvalid/rerror are outputs of the macro interface that the vendored I3C
-    // core never reads (only rdata is consumed). They are still driven
-    // honestly rather than tied off, so a waveform or a future consumer sees a
-    // truthful interface.
     //=========================================================================
 
     // Address widths are the core's; depths follow from them so the arrays
@@ -527,14 +519,12 @@ module smc_ip_integration (
         // DAT   //
         ///////////
 
-        logic dat_rvalid_q;
-
         prim_ram_1p #(
             .Width           (64),
             .Depth           (DatDepth),
             .DataBitsPerMask (I3cMaskGranularity)
         ) u_dat_mem (
-            .clk_i     (gated_clk_periph_i3c_i),
+            .clk_i     (i3c_dat_mem_sink_i[i].clk),
             .rst_ni    (rst_primary_periph_clk_ni),
             .req_i     (i3c_dat_mem_sink_i[i].req),
             .write_i   (i3c_dat_mem_sink_i[i].write),
@@ -546,23 +536,16 @@ module smc_ip_integration (
             .cfg_rsp_o ()
         );
 
-        `OCAH_FF(dat_rvalid_q, i3c_dat_mem_sink_i[i].req & ~i3c_dat_mem_sink_i[i].write, 1'b0, gated_clk_periph_i3c_i, rst_primary_periph_clk_ni)
-
-        assign i3c_dat_mem_src_o[i].rvalid = dat_rvalid_q;
-        assign i3c_dat_mem_src_o[i].rerror = '0;
-
         ///////////
         // DCT   //
         ///////////
-
-        logic dct_rvalid_q;
 
         prim_ram_1p #(
             .Width           (128),
             .Depth           (DctDepth),
             .DataBitsPerMask (I3cMaskGranularity)
         ) u_dct_mem (
-            .clk_i     (gated_clk_periph_i3c_i),
+            .clk_i     (i3c_dct_mem_sink_i[i].clk),
             .rst_ni    (rst_primary_periph_clk_ni),
             .req_i     (i3c_dct_mem_sink_i[i].req),
             .write_i   (i3c_dct_mem_sink_i[i].write),
@@ -573,11 +556,6 @@ module smc_ip_integration (
             .cfg_i     ('0),
             .cfg_rsp_o ()
         );
-
-        `OCAH_FF(dct_rvalid_q, i3c_dct_mem_sink_i[i].req & ~i3c_dct_mem_sink_i[i].write, 1'b0, gated_clk_periph_i3c_i, rst_primary_periph_clk_ni)
-
-        assign i3c_dct_mem_src_o[i].rvalid = dct_rvalid_q;
-        assign i3c_dct_mem_src_o[i].rerror = '0;
 
         ///////////
         // RLT   //
@@ -590,8 +568,8 @@ module smc_ip_integration (
             .Depth           (RltDepth),
             .DataBitsPerMask (1)
         ) u_rlt_mem (
-            .clk_a_i   (gated_clk_periph_i3c_i),
-            .clk_b_i   (gated_clk_periph_i3c_i),
+            .clk_a_i   (i3c_rlt_mem_sink_i[i].clk),
+            .clk_b_i   (i3c_rlt_mem_sink_i[i].clk),
 
             .a_req_i   (i3c_rlt_mem_sink_i[i].a_req),
             .a_write_i (i3c_rlt_mem_sink_i[i].a_write),

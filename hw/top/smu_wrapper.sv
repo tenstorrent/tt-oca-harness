@@ -250,8 +250,8 @@ module smu_wrapper #(
   // SEP straps
   input  logic                  secure_tm_req_i,
 
-  // Gated I3C peripheral clock. The table memories it drives are absorbed by
-  // smc_ip_integration, so this leaves the wrapper for observation only.
+  // Gated I3C peripheral clock, for observation; the table memories take their
+  // clock from their requests.
   output logic                                                  gated_clk_periph_i3c_o,
 
   // Debug bus
@@ -581,7 +581,6 @@ module smu_wrapper #(
     .clk_periph_o (clk_periph),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
-    .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
     .rst_primary_periph_clk_ni (rst_primary_periph_clk_no),
 
     .smc_external_req_i  (smc_external_req),
