@@ -86,14 +86,14 @@ typedef union {
 } dma_ctrl__STATUS_t;
 
 // reg - dma_ctrl::NEXT_ID
-// Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly
+// Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.
 #define DMA_CTRL__NEXT_ID__DATA_bm 0xffffffff
 #define DMA_CTRL__NEXT_ID__DATA_bp 0
 #define DMA_CTRL__NEXT_ID__DATA_bw 32
 #define DMA_CTRL__NEXT_ID__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly
+        // Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.
         uint32_t DATA :32;
     } f;
     uint32_t w;

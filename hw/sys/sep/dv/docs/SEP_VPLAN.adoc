@@ -471,9 +471,9 @@ they leave out; the checker table of each linked entry is the full set.
 |Dead-space decode |<<sep_fabric_deadspace_decode_test,`sep_fabric_deadspace_decode_test`>> |all, cpu_stub |None |Single-beat refuse and no-alias in every block window, and the crypto-region burst rule. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and requires DECERR on every beat of a read burst into the crypto region. `CHK-DEADSPACE-BURST` requires the write burst there to answer DECERR and move no register, and no read beat to return a live value. With a bench endpoint on the TRNG port, `CHK-TRNG-REPLY` requires a single-beat TRNG-window read or write to return the endpoint's OKAY, SLVERR or DECERR unchanged, `CHK-TRNG-SPLIT-WR` requires a split 64-bit write with an earlier error and a last OKAY to return SLVERR, and `CHK-TRNG-BURST` requires a burst to answer DECERR on every beat with no beat at the port. Bursts into other register regions are outside the specification and are not graded; see <<known-limitations>>. |YES for the claimed part; the evidence cell names the rest
 |Adams Bridge ML-DSA-87 keyGen |<<sep_abr_mldsa_keygen_kat_test,`sep_abr_mldsa_keygen_kat_test`>> |all, cpu_stub |`sep_abr_keygen_cg` |The key-vault seed path is a separate vehicle, `sep_km_abr_mldsa_kat_test`. ML-KEM is a separate vehicle, `sep_abr_mlkem_kat_test`. |YES
 |Adams Bridge ML-DSA-87 sigGen / sigVer |<<sep_abr_mldsa_sign_verify_kat_test,`sep_abr_mldsa_sign_verify_kat_test`>> |all, cpu_stub |`sep_abr_sign_cg` |Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair with `MLDSA_VERIFY_RES` compared against each signature's c~. `KEYGEN_SIGN` and the key-vault seed path are not claimed. |YES for the claimed part; the evidence cell names the rest
-|Adams Bridge ML-DSA-87 verify from the SEP core |<<sep_abr_mldsa87_verify_test,`sep_abr_mldsa87_verify_test`>> |all, cpu |None |The boot ROM's ABR driver, run by firmware, verifies a build-signed 5903-byte message streamed through `MLDSA_MSG` and rejects a tampered message, z and c~, a wrong key, a context, a pre-hash, a genuine c~ over an out-of-range z or a malformed hint, and an all-zero c~; a zeroize mid-stream publishes nothing. Each case line can be compared by hand with the virtual platform's. |YES
-|Adams Bridge ML-DSA-87 verify with the command dropped |<<sep_abr_cmd_drop_test,`sep_abr_cmd_drop_test`>> |all, cpu |None |With every ML-DSA command dropped (`+sep_abr_cmd_drop`), the boot ROM's ABR driver refuses the genuine verify at its preload check, with no command-done event, and never reports it valid. |YES
-|Adams Bridge ML-DSA-87 sigVer, malformed hint |<<sep_abr_mldsa_hint_reject_kat_test,`sep_abr_mldsa_hint_reject_kat_test`>> |all, cpu_stub |None |Every NIST ACVP ML-DSA-87 sigVer case with a modified hint, pure with a streamed message and context and with external mu, rejected with `MLDSA_VERIFY_RES` left at the inverted c~, after a pure-with-context case that must verify. |YES
+|Adams Bridge ML-DSA-87 verify from the SEP core |<<sep_abr_mldsa87_verify_test,`sep_abr_mldsa87_verify_test`>> |all, cpu |None |The boot ROM's ABR driver, run by firmware, verifies a 5903-byte message streamed through `MLDSA_MSG`, from committed vectors signed with the test-only key, and rejects a tampered message, z and c~, a wrong key, a context, a pre-hash, and a genuine c~ over an out-of-range z or a malformed hint; the driver alone rejects an all-zero c~. After a zeroize mid-stream, `MLDSA_VERIFY_RES` reads 0 and the next genuine verify passes. Each case line can be compared by hand with the virtual platform's. |YES
+|Adams Bridge ML-DSA-87 verify with the command dropped |<<sep_abr_cmd_drop_test,`sep_abr_cmd_drop_test`>> |all, cpu |None |With every ML-DSA command dropped (`+sep_abr_cmd_drop`), the boot ROM's ABR driver refuses the genuine verify at its preload check before it streams a word, never reports it valid, and the firmware completes with FAIL. The command-done event is not read. |YES
+|Adams Bridge ML-DSA-87 sigVer, malformed hint |<<sep_abr_mldsa_hint_reject_kat_test,`sep_abr_mldsa_hint_reject_kat_test`>> |all, cpu_stub |`sep_abr_completion_cg` |Every NIST ACVP ML-DSA-87 sigVer case with a modified hint, pure with a streamed message and context and with external mu, rejected with `MLDSA_VERIFY_RES` different from c~, after a pure-with-context case that must verify. The reject timing and the `MLDSA_VERIFY_RES` value after a reject are logged only. |YES
 |Adams Bridge ML-KEM-1024 |<<sep_abr_mlkem_kat_test,`sep_abr_mlkem_kat_test`>> |all, cpu_stub |`sep_abr_mlkem_cg`, `sep_crypto_isolate_cg` |KeyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. The same leaf grades the Adams Bridge `SW_RESET_N` domain on a live result — see `Per-IP SW_RESET_N isolation`. `KEYGEN+DECAPS` is on the row `Adams Bridge ML-KEM-1024 KEYGEN+DECAPS`; the key-vault seed path is not claimed. |YES for the claimed part; the evidence cell names the rest
 |Adams Bridge ML-KEM-1024 KEYGEN+DECAPS |<<sep_abr_combined_cmd_kat_test,`sep_abr_combined_cmd_kat_test`>> |all, cpu_stub |None |Self-consistency compare, not a golden: after KEYGEN+DECAPS on the seeds of an ACVP keyGen vector and the ciphertext of a single-step ENCAPS against that vector's ek, `MLKEM_SHARED_KEY` equals the K of the ENCAPS (FIPS 203 correctness). Both sides are DUT outputs; ENCAPS against ACVP is graded on `sep_abr_mlkem_kat_test`. With bit 0 of the seed d flipped, KEYGEN+DECAPS on the same z and ciphertext returns the FIPS 203 implicit-rejection key J(z‖c) = SHAKE256(z‖c), a computed golden. The key windows after KEYGEN+DECAPS and `MLDSA_PUBKEY` after KEYGEN+SIGN are logged only (see <<sep-vplan-phase3-blocked,Blocked features>>). No FCOV bin. |YES for the claimed part; the evidence cell names the rest
 |Adams Bridge host bus: pipelined reads, access sizes, concurrent masters |<<sep_abr_pipelined_read_test,`sep_abr_pipelined_read_test`>>, <<sep_abr_pipelined_read_matrix_test,`sep_abr_pipelined_read_matrix_test`>>, <<sep_abr_access_size_test,`sep_abr_access_size_test`>>, <<sep_abr_concurrent_rw_test,`sep_abr_concurrent_rw_test`>> |all, cpu_stub |`sep_smn_inbound_cg` |`sep_abr_pipelined_read_test` (up to eight reads of one register in flight on the SMN inbound master), `sep_abr_pipelined_read_matrix_test` (up to eight reads in flight per master, and both masters at once, each returning its own word), `sep_abr_access_size_test` (the ABR access-size rules of `adams_bridge.adoc` for 64-bit, narrow and partial-strobe accesses) and `sep_abr_concurrent_rw_test` (seeded concurrent reads and writes from both masters under response backpressure). The AHB transfer sequence itself is not observed; these grade what the host bus returns and what the registers hold. |YES for the claimed part; the evidence cell names the rest
@@ -629,17 +629,17 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|ML-DSA-87 verification of the NIST signatures with a malformed hint encoding, pure with a context and with external mu: each is rejected at the hint decode, leaving the inverted c~.
+|ML-DSA-87 verification of the NIST signatures with a malformed hint encoding, pure with a context and with external mu: each is rejected, with `MLDSA_VERIFY_RES` different from c~.
 |<<sep_abr_mldsa87_verify_test,`sep_abr_mldsa87_verify_test`>>
 |2
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
-|ML-DSA-87 verification driven by SEP firmware through the boot ROM's ABR driver: a streamed message signed at build time with the test-only key verifies, and each rejected variant fails closed with the accelerator's own result recorded.
+|ML-DSA-87 verification driven by SEP firmware through the boot ROM's ABR driver: a streamed message from committed vectors signed with the test-only key verifies, and each rejected variant fails closed with the accelerator's own result recorded.
 |<<sep_abr_cmd_drop_test,`sep_abr_cmd_drop_test`>>
 |2
 |cpu, +skip_fuse_sense, +sep_abr_cmd_drop
 |ocah_axi_vip, CPU FW
-|Fault injection on the ML-DSA command: the accelerator never runs, and the verify driver must refuse at its preload check rather than trust whatever `MLDSA_VERIFY_RES` holds.
+|Fault injection on the ML-DSA command: the accelerator never runs, and the verify driver must refuse at its preload check rather than trust whatever `MLDSA_VERIFY_RES` holds, and the firmware must complete with FAIL.
 |<<sep_abr_pipelined_read_test,`sep_abr_pipelined_read_test`>>
 |2
 |no_cpu, +skip_fuse_sense
@@ -1806,7 +1806,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
-|A KM CPU load from the VROM base `0x1000_0000` must complete with DECERR: the `key_manager.rdl` memory-map summary does not list VROM and maps every other address to DECERR. The KM CPU wrapper decodes the range only under the simulation-only `OCAH_KM_VROM` define, which SEP DV does not set, so the load reaches the AXI crossbar.
+|A KM CPU load from the VROM base `0x1000_0000` must complete with DECERR: the `key_manager.rdl` memory-map summary does not list VROM and maps every other address to DECERR. The KM CPU wrapper decodes the range only under the simulation-only `OCAH_KM_VROM` define, which SEP DV does not set, so the load reaches the AXI crossbar. `sep_km_crossbar_efuse_window_rand_test` grades a load and a store at the base and a store at a drawn word of the window as DECERR.
 |<<sep_km_command_protocol_rand_test,`sep_km_command_protocol_rand_test`>>
 |3
 |no_cpu, HOST
@@ -1858,8 +1858,8 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |<<sep_km_kpv_rand_test,`sep_km_kpv_rand_test`>>
 |3
 |no_cpu, POKE, +skip_fuse_sense
-|KM bus operation image with result words, host mailbox master, PIC interrupt probe (bit 30), `KM-KPV` observation tap
-|Proves that each KPV slot state answers read, write and erase as the register text states, that the scrambler keeps logical data across a warm reset, and that a wipe edge clears the KPV only. The scrambler cipher check reads the tap, and the erase retention is logged.
+|KM bus operation image with result words, host mailbox master, PIC interrupt probe (bit 30), `KM-KPV` and `KM-VALID` observation taps
+|Proves that each KPV slot state answers read, write and erase as the register text states, that the scrambler keeps logical data across a warm reset, and that a wipe edge clears the KPV and the key_valid of all eight sideload register blocks but no SRAM or mailbox data. The scrambler cipher check reads the KPV tap, the wipe scope check reads the key_valid tap, and the erase retention is logged.
 
 |<<sep_km_cpu_protect_rand_test,`sep_km_cpu_protect_rand_test`>>
 |3
@@ -1871,7 +1871,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, POKE, real fuse sense
 |KM bus operation image with result words, host mailbox master and host eFuse path, secure test mode and eFuse shadow probes, `KM-BUS` observation tap
-|Proves that the KM crossbar answers each hole, past-extent and reserved offset with the stated code and read data, and that the eFuse window gives the same read value, lock filtering and program result as the SEP host path. The address remap check reads the tap.
+|Proves that the KM crossbar answers each hole, past-extent and reserved offset with the stated code and read data, that a load and a store in the VROM window answer DECERR, and that the eFuse window gives the same read value, lock filtering and program result as the SEP host path. The address remap check reads the tap.
 
 |<<sep_km_mailbox_km_side_rand_test,`sep_km_mailbox_km_side_rand_test`>>
 |3
@@ -1883,13 +1883,13 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, POKE, HK-STRM, +skip_fuse_sense, entropy noise forced
 |KM bus operation image with result words, KM entropy sink probe, host mailbox master, KM and TRNG reset probes, TRNG isolation probe, `HK-STRM` stream fault inject with its `km_strm_wd_*` readbacks (added hook), the `HK-STRM-PAT` partial-beat withdrawal inject with its `km_strm_pat_*` readbacks (added hook), `HK-STRM-PAT` beat-pattern drive (proposed)
-|Proves that the DRBG sampler times out a stalled read, flags a stream error, and that its counters, prefetch and write refusals follow the register text. The byte-packing, partial-beat timeout and handshake-control checks need the proposed beat-pattern drive and are blocked.
+|Proves that the DRBG sampler times out a stalled read, flags a stream error, and that its counters, prefetch and write refusals follow the register text. A DATA read in progress takes the first beat ahead of the prefetch path, and a withdrawal discards a partial prefetch word. The byte-packing, partial-beat timeout and handshake-control checks need the proposed beat-pattern drive and are blocked.
 
 |<<sep_km_otp_interface_rand_test,`sep_km_otp_interface_rand_test`>>
 |3
 |no_cpu, POKE, real fuse sense, HK-OTP
-|KM bus operation image with result words, secure test mode and fuse sense probes, host mailbox master and host life-cycle path, `HK-OTP` rail flip inject with its `km_otp_flip_active_o` readback (added hook)
-|Proves that the OTP readout equals the staged fuse image in dual-rail form, that it reads zero under the read locks and in secure test mode, that a single-rail flip sets OTP_SIGINT, and that a two-rail change sets OTP_CHANGE.
+|KM bus operation image with result words, secure test mode and fuse sense probes, host mailbox master, host life-cycle path and host eFuse program path, `HK-OTP` rail flip inject with its `km_otp_flip_active_o` readback (added hook)
+|Proves that the OTP readout equals the staged fuse image in dual-rail form, that it reads zero under the read locks and in secure test mode, that a single-rail flip sets OTP_SIGINT, that a two-rail change sets OTP_CHANGE, and that programmed fuse fields outside the KM interface do not reach the readout.
 
 |<<sep_km_key_bank_register_rand_test,`sep_km_key_bank_register_rand_test`>>
 |3
@@ -3253,7 +3253,7 @@ the test does.
 |-
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Sampler read after a withdrawal in its first active cycle
-|Does a withdrawal whose TREADY-low cycle is the first cycle of a pending DATA read, before the sampler enters the request state, end that read through the stream-error state? Does a withdrawal in the cycle in which the timeout expires also set TIMEOUT_ERR, and does it add one or two to COUNT_BAD? The text returns SLVERR on a stream error only if the active FSM is requesting or assembling, and gives the stream error priority over the timeout. (hw/ip/key_manager/doc/architecture.adoc, sections "Errors and reset", "DRBG Sampler", table "Key Manager DRBG sampler states".) `sep_km_drbg_sampler_rand_test` (CHK-SMP-STRM) holds TVALID low until the read ends, grades STREAM_ERR, DRBG_ERR, SLVERR with data 0 and COUNT_BAD + 1 or more, and logs TIMEOUT_ERR and the exact COUNT_BAD delta.
+|Does a withdrawal whose TREADY-low cycle is the first cycle of a pending DATA read, before the sampler enters the request state, end that read through the stream-error state? Does a withdrawal in the cycle in which the timeout expires also set TIMEOUT_ERR, and does it add one or two to COUNT_BAD? The text returns SLVERR on a stream error only if the active FSM is requesting or assembling, and gives the stream error priority over the timeout. (hw/ip/key_manager/doc/architecture.adoc, sections "Errors and reset", "DRBG Sampler", table "Key Manager DRBG sampler states".) `sep_km_drbg_sampler_rand_test` (CHK-SMP-STRM) holds TVALID low until the read ends, grades STREAM_ERR, DRBG_ERR, SLVERR with data 0 and COUNT_BAD + 1 plus TIMEOUT_ERR (one count for each timeout and each stream error, TIMEOUT_ERR 0 before the read), and logs TIMEOUT_ERR. The withdrawal of a partial prefetch word in CHK-SMP-PRE-WITHDRAW is the same case for its first DATA read: the leaf grades COUNT_BAD + 1 plus TIMEOUT_ERR across that read, and logs the response and data of that read (`OBS-SMP-PRE-WITHDRAW-READ`) and does not grade them.
 |-
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |IRQ_SET read response
@@ -4563,7 +4563,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`KM-VALID`
 |Read-only tap
 |`KEY_CTRL.key_valid` of the eight engine key banks, the ABR shared-key `key_valid` and `KEY[0..7]` words, and the ABR shared-key `IRQ_STATUS.key_valid` and `IRQ_ENABLE.key_valid_en`.
-|`sep_km_command_protocol_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_cpu_protect_rand_test`
+|`sep_km_command_protocol_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_cpu_protect_rand_test`, `sep_km_kpv_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-KPV`
 |Read-only tap
@@ -4852,7 +4852,7 @@ use it" names the entries whose checks need the hook.
 |Error inject
 |While `km_strm_pat_arm_i` is 1 and `km_strm_wd_arm_i` is 0, drives `TVALID`, `TDATA` and `TSTRB` at the DRBG sampler sink once: one partial beat (`TSTRB` 0x1, `TDATA` `km_strm_pat_data_i`) in the first cycle with `TREADY` high, then `TVALID` low until a cycle with `TREADY` low, `TVALID` high in that cycle and low in the next (a withdrawal, the stream fault). While the arm is 1 the bench turns off the sampler assertion `KmDrbgTvalidStability_A`, which the withdrawal breaks by design. The legal beat patterns of `HK-STRM-PAT` are a PROPOSED drive (<<sep-vplan-phase3-proposed-drives>>).
 |`TVALID`, `TDATA` and `TSTRB` of the DRBG sampler stream at the KM sink, inside `sep`; readbacks `km_strm_pat_beat_o`, `km_strm_pat_fired_o` and `km_strm_sink_tvalid_o`
-|`sep_km_drbg_sampler_rand_test` (the withdrawal of a partial prefetch word)
+|`sep_km_drbg_sampler_rand_test` (CHK-SMP-PRE-WITHDRAW: the withdrawal of a partial prefetch word)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`HK-PAR`
 |Error inject
@@ -5459,9 +5459,6 @@ defect. Behaviour that this plan does not claim at all is in
 
 |Key Manager ROM handover status (firmware gap). `hw/ip/key_manager/doc/firmware.adoc` ("SRAM Firmware Handover", step "Disable IRQs and flush the mailbox") states that the ROM clears the sticky KMCSR status bits so that mutable firmware inherits no spurious interrupts. The handover scramble that follows writes the write-locked SRAM regions, which sets `IRQ_STATUS.sram_write_lock_err` and SRAM_WRITE_LOCK_VIOLATION whatever the enables are, so the image starts with both set. *Issue*: #3103
 |`sep_km_handover_rand_test` CHK-HO-NOIRQ can fail on this DUT (<<sep_km_handover_rand_test>>). The other handover checks read their own fields of the same report.
-
-|Key Manager ROM main-context fatal path (firmware gap). `hw/ip/key_manager/doc/firmware.adoc` (unrecoverable-fault code table, `fw_crc`; "Error Recovery") states one report followed by the SRAM shred and the trap. With the wipe predicate on, a fatal fault that the ROM raises in main context ends in the SRAM shred, whose final `ebreak` runs with the CPU interrupts unmasked; the core raises the EBREAK interrupt, and the ROM runs the fatal path again: a second report with code -11, a mailbox flush that can discard the first report, and a second SRAM shred. *Issue*: #3099
-|`sep_km_fault_inject_rand_test` CHK-MAINCTX-FATAL (HOST-UNREC entry) can fail on this DUT (<<sep_km_fault_inject_rand_test>>). The regression runs the point alone in shard 14 of that entry, so the checks of the other fatal points grade in their own shards. The HOST entry and `sep_km_handover_rand_test` run the bench build, whose fatal path traps without the SRAM shred.
 
 |Key Manager OTP integrity bit across a KM reset (hardware gap). `hw/ip/key_manager/regs/gen/adoc/km_csr.adoc` (`IRQ_STATUS.otp_sigint`, reset 0x0) and `hw/ip/key_manager/doc/architecture.adoc` ("Reset Conditioning": IRQ_STATUS is in the warm and cold reset domain) state that a KM reset returns the bit to 0 when the OTP rails are complementary. On this DUT the OTP captures clear to all-zero in the reset, and the KM decodes the cleared captures as a dual-rail violation on the first clock after it, so `OTP_SIGINT` reads 1 after every warm or cold reset. *Issue*: #3211
 |`sep_km_kmcsr_reset_rand_test` CHK-RST-WARM and CHK-RST-COLD fail on this DUT (<<sep_km_kmcsr_reset_rand_test>>). CHK-CSR-STATUS shows that IRQ_SET sets the bit and W1C clears it.

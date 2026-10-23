@@ -4279,32 +4279,42 @@ the SEP core against the RTL: pure ML-DSA-87 with an empty context, the message
 streamed through `MLDSA_MSG[0]` with `MLDSA_MSG_STROBE`, and a verdict that holds
 only when the accelerator preloaded `~c~`, asked for the whole message, reported
 exactly one completion, read back the loaded key and c~, and produced c~. The
-vectors are a 5903-byte blob signed at build time with the test-only key, so the
-final message word ends with strobe `0x7`. The same image runs on the virtual
-platform; each case prints one line, so the two runs' lines can be compared.
+vectors are a 5903-byte blob and its signatures, made with the test-only key and
+committed in `hw/sys/sep/dv/fw/tests/abr_mldsa87_verify_test/mldsa87_vectors.h`,
+so the final message word ends with strobe `0x7`. The same image runs on the
+virtual platform; each case prints one line, so the two runs' lines can be
+compared.
 
 *Test Coverage*: One genuine verify of each final-strobe form (5903 bytes,
-strobe `0x7`; 5900 bytes, strobe `0x0` and a dummy word), nine rejections, an
-abort mid-stream, and identity.
+strobe `0x7`; 5900 bytes, strobe `0x0` and a dummy word), a repeat of the
+5903-byte verify as the last case, eight rejections on the accelerator, one
+rejection in the driver alone, and an abort mid-stream. The identity status is a
+diagnostic.
 
 *Test Procedure*:
 
 [arabic]
 . Bring up in `cpu` and load the image. With `+abr_case_mask=<hex>`, rewrite the
   case mask in the firmware's `abr_case_params` block in the staged DCCM image so
-  only the selected cases run.
-. Case 0: read the ML-DSA name and version.
-. Cases 1, 2 and 13: verify the genuine signature over the blob and over its first
-  5900 bytes.
+  only the selected cases run. A mask that selects no case other than case 0, or a
+  case above 13, fails the leaf before boot; the firmware refuses a mask that selects
+  no case, or a case above 13, and reports FAIL.
+. Case 0: read the ML-DSA name and version through the driver's identity check. No SEP or Adams Bridge document states the values, so the result follows `obs:` and is not graded.
+. Cases 1 and 13: verify the genuine signature over the blob; case 13 repeats it
+  after every other case. Case 2: verify the genuine signature over the first
+  5900 bytes of the blob.
 . Cases 3 to 8: verify with a flipped blob byte, a flipped z byte, a flipped c~
   byte, a wrong public key, a signature made with context `OCA`, and a signature
   over SHA-512 of the blob.
 . Cases 9 and 10: a genuine c~ over a z coefficient at gamma1 - beta, and over a
   hint whose indices do not increase.
-. Case 11: a c~ of zero, which the driver rejects without starting the accelerator.
-. Case 12: start a verify, stream half the blob, zeroize, then verify the genuine
-  signature.
-. The firmware returns 0 only when every selected case met its expectation.
+. Case 11: a c~ of zero, which the driver rejects at its argument check before
+  it accesses the accelerator.
+. Case 12: start a verify, stream half the blob, zeroize, read all 16 words of
+  `MLDSA_VERIFY_RES`, then verify the genuine signature.
+. The firmware prints the case mask it runs, one line per case (two for case 12)
+  and a final line, and returns 0 only when every selected case met its
+  expectation.
 
 *Checkers*:
 
@@ -4312,7 +4322,7 @@ abort mid-stream, and identity.
 |===
 |Checker |Contract
 |CHK-FW-CONSOLE
-|The console carries `abr_mldsa87_verify_test: PASS (0 failed)` and the firmware completes with PASS. Each case line carries the driver's status, the stage it ended in, the bytes streamed, whether VALID rose before `MSG_STREAM_READY`, whether `MLDSA_VERIFY_RES` was `~c~` or zero, and the command-done count. The genuine cases need status 0 with 5903 or 5900 bytes streamed and one done event. Cases 3 to 8 need a rejection after a complete stream, a non-zero result that is not `~c~`, and one done event. Case 9 needs VALID before `MSG_STREAM_READY` with the result `~c~`; case 10 needs a complete stream with the result `~c~`. Case 11 needs a rejection with no command issued and no done event.
+|The console carries `abr_mldsa87_verify_test: case_mask=0x<mask>` with the mask the test selected, and `abr_mldsa87_verify_test: PASS (0 failed, <n> run)`, where n is the number of selected cases; the firmware completes with PASS. Every selected case has at least one line that starts `case <n> `, and every such line of a case other than case 0 carries `: PASS `, so a firmware that ran fewer cases than selected fails. The firmware grades each case. Case 0 is a diagnostic. Cases 1, 2 and 13: status 0 at stage DONE, 5903 or 5900 bytes streamed, VALID not before `MSG_STREAM_READY`, a non-zero result that is not `~c~`, and one command-done event. Cases 3 to 10: status `ABR_DRV_ERR_SIG_INVALID` and a reject verdict; the stage, `early`, `inv`, `written`, `nz` and `done` values follow `obs:` on the case line and are diagnostics, not graded. Case 11: status `ABR_DRV_ERR_SIG_INVALID` at stage ARGS with nothing streamed and no done event; these are values of the driver alone, because the driver does not access the accelerator in this case. Case 12: the `case 12 zeroize_midstream_abort` line needs status 0 from the load, the start, the partial stream and the zeroize, and every word of `MLDSA_VERIFY_RES` at 0 after the zeroize (`res_or=0x00000000`); the `case 12 zeroize_midstream` line needs the result of a genuine case.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -4320,16 +4330,30 @@ abort mid-stream, and identity.
 *Scope*: The verdict is the driver's, so a pass shows the RTL behaves as the
 driver requires on this flow, not every behaviour of the aperture. The message is
 streamed; the non-streamed and external-mu paths belong to
-<<sep_abr_mldsa_sign_verify_kat_test>>. Signatures are hedged, so they change on
-every build; only verdicts and diagnostics are graded.
+<<sep_abr_mldsa_sign_verify_kat_test>>. The vectors are a committed file, so
+every build and every seed runs the same bytes.
+`gen_mldsa87_vectors.py --check`
+(`hw/sys/sep/dv/fw/tests/abr_mldsa87_verify_test/gen_mldsa87_vectors.py`) accepts
+the header only when the genuine signatures verify with `cryptography`, each exact
+mutated input of cases 3 to 8 does not verify, and the signatures of cases 9 to 11
+decode as malformed. It prints the header's SHA-256, which is pinned as
+`ABR_MLDSA87_VECTORS_SHA256` in `hw/sys/sep/dv/fw/fw.mk`; the firmware build fails
+unless the committed header has that SHA-256.
 
-*Anti-vacuity*: cases 9 and 10 carry a genuine c~, so an accelerator that leaves
-`MLDSA_VERIFY_RES` at zero or at a stale value, rather than the `~c~` it must
-preload, fails them although the driver rejects either way. Case 12 is followed by
-a genuine verify, so an abort that leaves the accelerator unusable fails.
+*Anti-vacuity*: the generator check proves each input of cases 3 to 8 fails a
+reference verify, so a reject on the RTL is never caused by a bad vector, and a
+genuine case that the RTL rejects fails. A reject case passes only on status
+`ABR_DRV_ERR_SIG_INVALID`, so an accelerator that accepts the input fails. Case
+12 reads `MLDSA_VERIFY_RES` after the zeroize and then runs a genuine verify, so
+a zeroize that leaves a result in the register, or leaves the accelerator
+unusable, fails. The case-mask line and the per-case PASS rule fail a run whose
+firmware default mask differs from the test's mask.
 
 *Not claimed*: the command-drop fault, which <<sep_abr_cmd_drop_test>> injects;
-ML-KEM; the key-vault seed path.
+ML-KEM; the key-vault seed path. Case 11 grades the driver only, not the
+accelerator. For cases 3 to 10, the stage at which the accelerator rejects for
+each cause, and the value `MLDSA_VERIFY_RES` holds after a reject: no spec states
+either, so the leaf logs them and does not grade them (open spec question).
 
 '''''
 
@@ -4350,8 +4374,10 @@ ML-KEM; the key-vault seed path.
 verify the accelerator never ran. `+sep_abr_cmd_drop` holds the accelerator's
 decoded ML-DSA command at NONE, so the command write is dropped while ZEROIZE and
 the key, signature and message writes land: the effect of an instruction-skip
-glitch on the command store. Accepting VERIFY is what preloads `MLDSA_VERIFY_RES`
-with `~c~`, so the driver's preload check is where it must stop.
+glitch on the command store. While the force holds, the hardware clear of the
+`MLDSA_CTRL.CTRL` field is also held at 0. Accepting VERIFY is what preloads
+`MLDSA_VERIFY_RES` with `~c~`, so the driver's preload check is where it must
+stop.
 
 *Test Coverage*: One genuine verify with the command dropped.
 
@@ -4360,7 +4386,8 @@ with `~c~`, so the driver's preload check is where it must stop.
 [arabic]
 . Require `+sep_abr_cmd_drop`; without it the testcase refuses to run.
 . Patch the firmware's case mask to the genuine case alone and boot in `cpu`.
-. Expect the firmware to report the genuine case as refused and to complete with FAIL.
+. Expect the firmware to report the genuine case as refused at the preload
+  check, before it streams a word, and to complete with FAIL.
 
 *Checkers*:
 
@@ -4368,7 +4395,9 @@ with `~c~`, so the driver's preload check is where it must stop.
 |===
 |Checker |Contract
 |CHK-FW-CONSOLE
-|The console carries `case 1 genuine: FAIL status=-7 stage=5 written=0 early=0 inv=0 nz=0 done=0`: the driver returned `ABR_DRV_ERR_STATE` at its preload stage, streamed nothing and saw no command-done event. The firmware completes with FAIL, and no `case 1 genuine: PASS` line appears.
+|The console carries `case 1 genuine: FAIL status=-7 stage=6 written=0 early=0 inv=0 nz=0`: the driver returned `ABR_DRV_ERR_STATE` (-7) at `ABR_DRV_STAGE_PRELOAD` (6) and streamed nothing. No `case 1 genuine: PASS` line appears. The line continues with `done=<n>`; the driver stops before it reads the command-done counter, so that field is the driver's initial value, and the test logs it and does not grade it.
+|CHK-FW-DONE-FAIL
+|The firmware signals completion, and the completion is FAIL. A firmware that stops after the case line fails, and so does a firmware that signals PASS.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -4381,6 +4410,9 @@ each fault on its own.
 *Anti-vacuity*: <<sep_abr_mldsa87_verify_test>> runs the same image without the
 fault and its genuine case passes, so the refusal here is caused by the dropped
 command and not by the image or the flow.
+
+*Not claimed*: whether the accelerator raises a command-done event for the
+dropped command. No check reads that event in this leaf.
 
 '''''
 
@@ -4406,8 +4438,11 @@ are every ML-DSA-87 sigVer case the NIST ACVP-Server (commit `15c0f3de`,
 RELEASE/v1.1.0.42) marks "modified signature - hint": tcIds 61, 64 and 71
 (pure, tgId 5) and 153, 159 and 163 (external mu, tgId 11). `gen_abr_nist_vectors.py --hint` checks
 each one independently of the ACVP verdict: every z coefficient is in range
-and the hint encoding is malformed, so the engine passes its z check and must
-reject at the hint decode.
+and the hint encoding is malformed, so the malformed hint is the cause of the
+reject. The graded reject is the register contract: a signature verifies if and
+only if `MLDSA_VERIFY_RES` equals c~
+(`vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.rdl`,
+`MLDSA_VERIFY_RES`).
 
 *Test Coverage*: Six malformed-hint rejections, and one pure-with-context
 verify that must pass (tcId 63).
@@ -4419,34 +4454,44 @@ verify that must pass (tcId 63).
 . For each case, tcId 63 first: write `ZEROIZE` and wait for VALID to drop and
   READY to rise. Write the public key and the signature.
 . For an external-mu case, write mu to `MLDSA_EXTERNAL_MU` and issue VERIFYING
-  with `MLDSA_CTRL.EXTERNAL_MU` set.
+  with `MLDSA_CTRL.EXTERNAL_MU` set. For an external-mu reject case, set the
+  `sep_abr_completion_cg` reject-class label to 3 (hint) before VERIFYING and
+  clear it after the `MLDSA_VERIFY_RES` read.
 . For a pure case, write the context length to `MLDSA_CTX_CONFIG` and the context
-  to `MLDSA_CTX`, issue VERIFYING with `MLDSA_CTRL.STREAM_MSG` set, and require
-  `MLDSA_VERIFY_RES` to read the inverted c~ (CHK-HINT-PRELOAD). Wait for
-  `MSG_STREAM_READY`, failing if VALID rises first, then write each message word
-  to `MLDSA_MSG[0]` after a `MLDSA_MSG_STROBE` of `0xF`, and end with the strobe
-  of the trailing bytes, or `0x0` and a dummy word for a whole-word message.
+  to `MLDSA_CTX`, issue VERIFYING with `MLDSA_CTRL.STREAM_MSG` set, and log the
+  value `MLDSA_VERIFY_RES` reads (`OBS-HINT-PRELOAD`). Wait for
+  `MSG_STREAM_READY` or VALID. If VALID rises first, the engine rejected before
+  it asked for the message, and nothing is streamed. Otherwise write each message
+  word to `MLDSA_MSG[0]` after a `MLDSA_MSG_STROBE` of `0xF`, and end with the
+  strobe of the trailing bytes, or `0x0` and a dummy word for a whole-word
+  message.
 . Wait for VALID with ERROR=0 and read `MLDSA_VERIFY_RES` (CHK-HINT-CONTROL,
   CHK-HINT-REJECT).
+. After the last case, zeroize and require that the leaf ran every case of the
+  table.
 
 *Checkers*:
 
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-HINT-PRELOAD
-|After VERIFYING with `STREAM_MSG` is accepted, before any message word, every
-word of `MLDSA_VERIFY_RES` is the inverse of the signature's c~.
+|CHK-HINT-VALID
+|For each case, `MLDSA_STATUS.VALID` rises after the VERIFYING command, from a
+VALID that the zeroize before it cleared.
 |CHK-HINT-CONTROL
 |tcId 63 completes VALID with ERROR=0 and `MLDSA_VERIFY_RES` equals c~: the
 streamed message and the context reach the engine intact.
 |CHK-HINT-REJECT
-|Each malformed-hint case completes VALID with ERROR=0, and every word of
-`MLDSA_VERIFY_RES` is the inverse of the signature's c~: not c~, which would be
-an accepted signature, and not a recomputed c~', which would mean the engine
-decoded the hint and finished the verify. For a pure case, `MSG_STREAM_READY`
-rose before VALID, so the engine consumed the message and rejected after it.
+|Each malformed-hint case completes VALID with ERROR=0, and `MLDSA_VERIFY_RES`
+differs from c~ in at least one word: the engine did not accept the signature.
 |===
+
+The leaf also logs two lines per reject case that no checker grades.
+`OBS-HINT-REJECT-TIMING` (pure cases) records `timing=early` when VALID rose
+before `MSG_STREAM_READY` and `timing=late` when the whole message was streamed.
+`OBS-HINT-REJECT-RES` records the 16 words of `MLDSA_VERIFY_RES` and whether they
+are the inverted c~ (`res=preload`), all zero (`res=zero`) or another value
+(`res=other`).
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -4460,8 +4505,17 @@ Pre-hash ML-DSA (tgId 6) and the internal interface without external mu
 
 *Anti-vacuity*: tcId 63 runs first through the same stream and context path and
 must verify, so a broken stream or context fails on a known answer rather than
-passing as a reject. Each reject must be the inverted c~ specifically, so an
-engine that accepted the hint and computed a wrong c~' fails as surely as one
-that accepted the signature.
+passing as a reject. The external-mu path has its accept control in
+<<sep_abr_mldsa_sign_verify_kat_test>>, which verifies an ACVP external-mu
+signature through `MLDSA_EXTERNAL_MU` with `MLDSA_CTRL.EXTERNAL_MU` set. CHK-HINT-VALID runs before each reject comparison, so a
+VERIFY command that did not run fails there rather than passing as a reject.
+
+*Not claimed*: the stage at which the engine rejects a malformed hint, before or
+after the message stream, for each cause; no spec states it, so
+`OBS-HINT-REJECT-TIMING` logs it and nothing grades it (open spec question). The
+value `MLDSA_VERIFY_RES` holds after a reject; no spec states it, so
+`OBS-HINT-REJECT-RES` logs it and nothing grades it (open spec question). The value
+`MLDSA_VERIFY_RES` holds right after VERIFYING is accepted; no hardware spec
+states it, so `OBS-HINT-PRELOAD` logs it and nothing grades it (open spec question).
 
 '''''

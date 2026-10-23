@@ -31,6 +31,10 @@ Checkers:
   CHK-EXEC        CMD_SRAM_EXEC returns rc=0 after a warm reset. It grades the
                   firmware response only; the loaded image's execution is not
                   observed.
+
+FCOV owner window (``env/sep_fcov_gate.py``): open from the first CMD_EXEC_ROM
+of CHK-INHIBIT to CHK-INHIBIT-RST, so ``cp_ho_inhibit`` samples only the
+responses those two checks grade. A FAIL closes it.
 """
 
 from __future__ import annotations
@@ -38,6 +42,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_mailbox_seq import (
     KM_CMD_EXEC_ROM,
@@ -71,6 +76,8 @@ _MUTABLE_FW_BLOB_SMALL = (
     0x0000006F,
 )
 _FW_WORDS = len(_MUTABLE_FW_BLOB_SMALL)
+
+TEST = "sep_km_handover_test"
 
 
 def _blob_crc() -> int:
@@ -114,26 +121,11 @@ class sep_km_handover_test(sep_base_test):
             "CHK-ARG PASS: FW_WORDS=0 and reserved[31:16] each returned RC_INVALID_ARG"
         )
 
-        # --- CHK-INHIBIT: first EXEC_ROM commits this warm-reset epoch -------
-        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_EXEC_ROM, [])
-        assert rc == KM_RC_SUCCESS, f"CHK-INHIBIT FAIL: first CMD_EXEC_ROM rc={rc}"
-        for cmd, payload, name in (
-            (KM_CMD_SRAM_LOAD_EXEC, [_FW_WORDS], "CMD_SRAM_LOAD_EXEC"),
-            (KM_CMD_SRAM_EXEC, [], "CMD_SRAM_EXEC"),
-            (KM_CMD_EXEC_ROM, [], "CMD_EXEC_ROM"),
-        ):
-            rc, _ = await self.km.send_raw_expect_rc(cmd, payload)
-            assert rc == KM_RC_FAILURE, (
-                f"CHK-INHIBIT FAIL: {name} after EXEC_ROM rc={rc}, expected {KM_RC_FAILURE}"
-            )
-        self.logger.info(
-            "CHK-INHIBIT PASS: first CMD_EXEC_ROM rc=0; later 0x11/0x12/0x10 returned RC_FAILURE"
-        )
-
-        await self._warm_reset_km()
-        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_EXEC_ROM, [])
-        assert rc == KM_RC_SUCCESS, f"CHK-INHIBIT-RST FAIL: CMD_EXEC_ROM after warm reset rc={rc}"
-        self.logger.info("CHK-INHIBIT-RST PASS: warm reset cleared the inhibit; CMD_EXEC_ROM rc=0")
+        open_graded_window(TEST, self.logger)
+        try:
+            await self._inhibit_legs()
+        finally:
+            close_graded_window(self.logger)
 
         # New epoch so the load is not inhibited by the EXEC_ROM above.
         await self._warm_reset_km()
@@ -199,6 +191,29 @@ class sep_km_handover_test(sep_base_test):
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
         self.logger.info("entropy alerts clear and DRBG scoreboard reports PASS")
+
+    async def _inhibit_legs(self) -> None:
+        """CHK-INHIBIT and CHK-INHIBIT-RST."""
+        # --- CHK-INHIBIT: first EXEC_ROM commits this warm-reset epoch -------
+        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_EXEC_ROM, [])
+        assert rc == KM_RC_SUCCESS, f"CHK-INHIBIT FAIL: first CMD_EXEC_ROM rc={rc}"
+        for cmd, payload, name in (
+            (KM_CMD_SRAM_LOAD_EXEC, [_FW_WORDS], "CMD_SRAM_LOAD_EXEC"),
+            (KM_CMD_SRAM_EXEC, [], "CMD_SRAM_EXEC"),
+            (KM_CMD_EXEC_ROM, [], "CMD_EXEC_ROM"),
+        ):
+            rc, _ = await self.km.send_raw_expect_rc(cmd, payload)
+            assert rc == KM_RC_FAILURE, (
+                f"CHK-INHIBIT FAIL: {name} after EXEC_ROM rc={rc}, expected {KM_RC_FAILURE}"
+            )
+        self.logger.info(
+            "CHK-INHIBIT PASS: first CMD_EXEC_ROM rc=0; later 0x11/0x12/0x10 returned RC_FAILURE"
+        )
+
+        await self._warm_reset_km()
+        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_EXEC_ROM, [])
+        assert rc == KM_RC_SUCCESS, f"CHK-INHIBIT-RST FAIL: CMD_EXEC_ROM after warm reset rc={rc}"
+        self.logger.info("CHK-INHIBIT-RST PASS: warm reset cleared the inhibit; CMD_EXEC_ROM rc=0")
 
     async def _warm_reset_km(self) -> None:
         await self.swrst.park("km")

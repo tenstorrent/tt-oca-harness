@@ -5,7 +5,8 @@
 //
 // A verify that never ran cannot pass: VERIFY_RES is written only by the
 // command-accept preload (~c~), by the verify datapath (c~') and by zeroize (0), so
-// with an all-zero c~ rejected up front, only a computed c~' can equal c~. A stale c~'
+// with an all-zero c~ rejected up front, only a computed c~' can equal c~; an all-ones
+// c~ is rejected too, since its preload would read like a zeroize. A stale c~'
 // from an earlier verify of the same signature is the remaining way to see c~ without
 // computing it; the leading and trailing zeroize, the preload check and the single
 // command-done event each rule that out independently.
@@ -54,9 +55,6 @@
 #define ABR_POLL_COMPLETE 2000000u
 #define ABR_POLL_DONE_COUNT 1000u
 
-// Mixed into the verdict so that neither evaluation alone produces the pass token.
-#define ABR_VERDICT_KEY 0xC3A5965Au
-
 // The steps are static in the ROM, so nothing outside abr_mldsa87_verify() can call
 // one alone; tests that stop the sequence part-way define ABR_DRV_EXPOSE_STEPS.
 #ifdef ABR_DRV_EXPOSE_STEPS
@@ -77,15 +75,16 @@ ABR_DRV_STEP void abr_drv_ctx_init(abr_drv_ctx_t *ctx) {
     for (uint32_t i = 0; i < ABR_DRV_CTILDE_WORDS; ++i) {
         ctx->ct[i] = 0u;
     }
-    ctx->err_count = 0u;
     ctx->written = 0u;
     ctx->written_dup = 0u;
     ctx->streaming = 0u;
+    ctx->open_checks = 0u;
     ctx->diag.bytes_written = 0u;
     ctx->diag.early_valid = 0u;
     ctx->diag.res_inverse = 0u;
     ctx->diag.res_nonzero = 0u;
     ctx->diag.done_count = 0u;
+    ctx->diag.status = 0u;
     ctx->diag.stage = ABR_DRV_STAGE_ARGS;
 }
 
@@ -114,17 +113,25 @@ int abr_drv_zeroize(void) {
 ABR_DRV_STEP int abr_drv_load(abr_drv_ctx_t *ctx, const uint8_t *public_key,
                               const uint8_t *signature) {
     uint32_t any = 0u;
+    uint32_t all = 0xFFFFFFFFu;
     for (uint32_t i = 0; i < ABR_DRV_CTILDE_WORDS; ++i) {
         ctx->ct[i] = le_word(signature + 4u * i, 4u);
         any |= ctx->ct[i];
+        all &= ctx->ct[i];
     }
-    if (any == 0u) {
+    if (any == 0u || all == 0xFFFFFFFFu) {
         ctx->diag.stage = ABR_DRV_STAGE_ARGS;
         return ABR_DRV_ERR_SIG_INVALID;
     }
 
+    ctx->diag.stage = ABR_DRV_STAGE_IDENTITY;
+    int rc = abr_drv_check_identity();
+    if (rc != ABR_DRV_OK) {
+        return rc;
+    }
+
     ctx->diag.stage = ABR_DRV_STAGE_ZEROIZE;
-    const int rc = abr_drv_zeroize();
+    rc = abr_drv_zeroize();
     if (rc != ABR_DRV_OK) {
         return rc;
     }
@@ -155,9 +162,10 @@ ABR_DRV_STEP int abr_drv_start(abr_drv_ctx_t *ctx) {
     mmio_write32(ABR_DONE_STS, ABR_INTR_STS);
     mmio_write32(ABR_ERR_STS, ABR_INTR_STS);
     mmio_write32(ABR_DONE_COUNT, 0u);
-    ctx->err_count = mmio_read32(ABR_ERR_COUNT);
+    mmio_write32(ABR_ERR_COUNT, 0u);
+    mmio_fence();
     if (((mmio_read32(ABR_DONE_STS) | mmio_read32(ABR_ERR_STS)) & ABR_INTR_STS) != 0u ||
-        mmio_read32(ABR_DONE_COUNT) != 0u) {
+        (mmio_read32(ABR_DONE_COUNT) | mmio_read32(ABR_ERR_COUNT)) != 0u) {
         return ABR_DRV_ERR_STATE;
     }
 
@@ -191,11 +199,13 @@ static uint32_t read_done_count(void) {
 
 // Reads VERIFY_RES once and returns how it differs from c~; also records whether it
 // was ~c~ or zero, which tells a fail-closed rejection from a missing preload.
+// A comparison loop cut short reads as a difference.
 static uint32_t read_result(abr_drv_ctx_t *ctx) {
     uint32_t diff = 0u;
     uint32_t inv = 0u;
     uint32_t nonzero = 0u;
-    for (uint32_t w = 0; w < ABR_DRV_CTILDE_WORDS; ++w) {
+    uint32_t w = 0;
+    for (; w < ABR_DRV_CTILDE_WORDS; ++w) {
         const uint32_t r = mmio_read32(SEP_TOP_ABR_MLDSA_VERIFY_RES_BASE_ADDR(w));
         diff |= r ^ ctx->ct[w];
         inv |= r ^ ~ctx->ct[w];
@@ -203,7 +213,7 @@ static uint32_t read_result(abr_drv_ctx_t *ctx) {
     }
     ctx->diag.res_inverse = inv == 0u;
     ctx->diag.res_nonzero = nonzero != 0u;
-    return diff;
+    return diff | (harden_u32(w) ^ ABR_DRV_CTILDE_WORDS);
 }
 
 static void stream_word(abr_drv_ctx_t *ctx, uint32_t strobe, uint32_t word, uint32_t bytes) {
@@ -225,6 +235,7 @@ ABR_DRV_STEP int abr_drv_stream_range(abr_drv_ctx_t *ctx, const uint8_t *message
         ctx->diag.stage = ABR_DRV_STAGE_STREAM_WAIT;
         for (uint32_t i = 0; i < ABR_POLL_STREAM_READY && !ctx->streaming; ++i) {
             const uint32_t st = mmio_read32(ABR_STATUS);
+            ctx->diag.status = st;
             if ((st & ABR_STATUS_ERROR) != 0u) {
                 return ABR_DRV_ERR_HW;
             }
@@ -250,6 +261,19 @@ ABR_DRV_STEP int abr_drv_stream_range(abr_drv_ctx_t *ctx, const uint8_t *message
         stream_word(ctx, 0xFu, le_word(message + 4u * w, 4u), 4u);
     }
     if (final) {
+        // Zeroize leaves MSG_STROBE at 0, and once a strobe other than 0xF ends the
+        // stream the accelerator drops every later MSG write. A strobe store skipped
+        // or corrupted on the way would have ended the stream on a prefix of the
+        // message, which the byte counts cannot see; STATUS reads MSG_STREAM_READY
+        // alone only while the stream is still open.
+        mmio_fence();
+        const uint32_t st = mmio_read32(ABR_STATUS);
+        ctx->diag.status = st;
+        if (st != ABR_STATUS_MSG_STREAM_READY ||
+            harden_u32(mmio_read32(ABR_STATUS)) != ABR_STATUS_MSG_STREAM_READY) {
+            return ABR_DRV_ERR_FAULT;
+        }
+        ++ctx->open_checks;
         const uint32_t tail = len & 3u;
         stream_word(ctx, (1u << tail) - 1u, le_word(message + 4u * words, tail), tail);
     }
@@ -261,6 +285,7 @@ static int wait_complete(abr_drv_ctx_t *ctx) {
     ctx->diag.stage = ABR_DRV_STAGE_COMPLETE;
     for (uint32_t i = 0; i < ABR_POLL_COMPLETE; ++i) {
         const uint32_t st = mmio_read32(ABR_STATUS);
+        ctx->diag.status = st;
         if ((st & ABR_STATUS_ERROR) != 0u) {
             return ABR_DRV_ERR_HW;
         }
@@ -275,8 +300,7 @@ static int wait_complete(abr_drv_ctx_t *ctx) {
     // Exactly one hardware completion since the events were cleared.
     const uint32_t count = read_done_count();
     ctx->diag.done_count = count;
-    if ((mmio_read32(ABR_ERR_STS) & ABR_INTR_STS) != 0u ||
-        mmio_read32(ABR_ERR_COUNT) != ctx->err_count) {
+    if ((mmio_read32(ABR_ERR_STS) & ABR_INTR_STS) != 0u || mmio_read32(ABR_ERR_COUNT) != 0u) {
         return ABR_DRV_ERR_HW;
     }
     if (count != 1u || (mmio_read32(ABR_DONE_STS) & ABR_INTR_STS) == 0u) {
@@ -290,13 +314,15 @@ static int check_readback(abr_drv_ctx_t *ctx, const uint8_t *public_key) {
     // this key and this c~, not values a fault left behind.
     ctx->diag.stage = ABR_DRV_STAGE_READBACK;
     uint32_t diff = 0u;
-    for (uint32_t i = 0; i < PK_WORDS; ++i) {
+    uint32_t n = 0u;
+    for (uint32_t i = 0; i < PK_WORDS; ++i, ++n) {
         diff |= mmio_read32(SEP_TOP_ABR_MLDSA_PUBKEY_BASE_ADDR + 4u * i) ^
                 le_word(public_key + 4u * i, 4u);
     }
-    for (uint32_t i = 0; i < ABR_DRV_CTILDE_WORDS; ++i) {
+    for (uint32_t i = 0; i < ABR_DRV_CTILDE_WORDS; ++i, ++n) {
         diff |= mmio_read32(SEP_TOP_ABR_MLDSA_SIGNATURE_BASE_ADDR + 4u * i) ^ ctx->ct[i];
     }
+    diff |= harden_u32(n) ^ (PK_WORDS + ABR_DRV_CTILDE_WORDS);
     return harden_u32(diff) == 0u ? ABR_DRV_OK : ABR_DRV_ERR_FAULT;
 }
 
@@ -306,13 +332,16 @@ static int decide(abr_drv_ctx_t *ctx, uint32_t message_len, uint32_t pass_token,
 
     const uint32_t diff_a = read_result(ctx);
 
-    // Evaluation B reads VERIFY_RES again and compares laundered operands, so one
-    // fault cannot make both agree on a match.
+    // Evaluation B reads VERIFY_RES again, last word first, and compares laundered
+    // operands, so one fault cannot make both agree on a match and the same cut-short
+    // loop in both leaves different words unchecked.
     uint32_t diff_b = 0u;
-    for (uint32_t w = 0; w < ABR_DRV_CTILDE_WORDS; ++w) {
+    uint32_t n = 0u;
+    for (uint32_t w = ABR_DRV_CTILDE_WORDS; w-- > 0u; ++n) {
         diff_b |= harden_u32(mmio_read32(SEP_TOP_ABR_MLDSA_VERIFY_RES_BASE_ADDR(w))) ^
                   harden_u32(ctx->ct[w]);
     }
+    diff_b |= harden_u32(n) ^ ABR_DRV_CTILDE_WORDS;
 
     const int pass_a = diff_a == 0u;
     const int pass_b = harden_u32(diff_b) == 0u;
@@ -323,13 +352,16 @@ static int decide(abr_drv_ctx_t *ctx, uint32_t message_len, uint32_t pass_token,
         return ABR_DRV_ERR_SIG_INVALID;
     }
 
-    // The whole message reached the accelerator, counted twice.
-    if ((ctx->written ^ message_len) != 0u || (harden_u32(ctx->written_dup) ^ message_len) != 0u) {
-        return ABR_DRV_ERR_SIG_INVALID;
+    // The whole message was written, counted twice, into a stream seen still open
+    // before its end. A match over anything else means the accelerator verified a
+    // message other than this one: a fault, not a bad signature.
+    if ((ctx->written ^ message_len) != 0u || (harden_u32(ctx->written_dup) ^ message_len) != 0u ||
+        harden_u32(ctx->open_checks) != 1u) {
+        return ABR_DRV_ERR_FAULT;
     }
 
-    *verdict = (harden_u32(diff_a) == 0u ? (pass_token ^ ABR_VERDICT_KEY) : 0u) ^
-               (harden_u32(diff_b) == 0u ? ABR_VERDICT_KEY : 0u);
+    *verdict = (harden_u32(diff_a) == 0u ? (pass_token ^ ABR_DRV_VERDICT_KEY) : 0u) ^
+               (harden_u32(diff_b) == 0u ? ABR_DRV_VERDICT_KEY : 0u);
     return ABR_DRV_OK;
 }
 
@@ -368,7 +400,7 @@ int abr_mldsa87_verify(const uint8_t *public_key, const uint8_t *signature, cons
     *verdict = ~pass_token;
     if (public_key == NULL || signature == NULL || message == NULL ||
         message_len > ABR_MLDSA87_MAX_MSG_BYTES || pass_token == 0u || pass_token == 0xFFFFFFFFu ||
-        pass_token == ABR_VERDICT_KEY) {
+        pass_token == ABR_DRV_VERDICT_KEY) {
         return ABR_DRV_ERR_PARAM;
     }
 
@@ -401,6 +433,7 @@ int abr_mldsa87_verify(const uint8_t *public_key, const uint8_t *signature, cons
         diag->res_inverse = ctx.diag.res_inverse;
         diag->res_nonzero = ctx.diag.res_nonzero;
         diag->done_count = ctx.diag.done_count;
+        diag->status = ctx.diag.status;
         diag->stage = ctx.diag.stage;
     }
     return rc;

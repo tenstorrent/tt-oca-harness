@@ -63,14 +63,15 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# ML-DSA-87 verify of a build-signed blob through the boot ROM's ABR driver, and the
-# rejected variants. +abr_case_mask=<hex> runs a subset of the cases from the same image.
+# ML-DSA-87 verify, through the boot ROM's ABR driver, of a blob signed with the test
+# key (committed vectors), and the rejected variants. +abr_case_mask=<hex> runs a subset
+# of the cases from the same image.
 name = "sep_abr_mldsa87_verify_test"
 module = "cpu.sep_abr_mldsa87_verify_test"
 firmware = "abr_mldsa87_verify_test"
 seed = 1
 timeout_sec = 7200
-tags = ["cpu", "crypto", "abr", "mldsa", "subsystem"]
+tags = ["cpu", "crypto", "abr", "mldsa", "subsystem", "abr_mldsa87_dv"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -82,7 +83,7 @@ module = "cpu.sep_abr_cmd_drop_test"
 firmware = "abr_mldsa87_verify_test"
 seed = 1
 timeout_sec = 3600
-tags = ["cpu", "crypto", "abr", "mldsa", "fault", "error", "subsystem"]
+tags = ["cpu", "crypto", "abr", "mldsa", "fault", "error", "subsystem", "abr_mldsa87_dv"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+sep_abr_cmd_drop"]
 

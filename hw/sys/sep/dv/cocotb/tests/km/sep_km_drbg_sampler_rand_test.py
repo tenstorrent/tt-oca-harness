@@ -4,8 +4,8 @@
 
 no_cpu (``lsu_stub_all_live``) / ``+skip_fuse_sense`` / ``+esrc_noise_force`` /
 ``+km_rom_hex=km_rom_poke.parhex``. RAND-REP: the drawn timeout T, the order of
-the timeout legs, the COUNT_GOOD saturation leg (one seed in three) and the
-delay before the idle withdrawal.
+the timeout legs, the COUNT_GOOD saturation leg (one seed in three), the
+delay before the idle withdrawal and the TDATA of the partial beat.
 
 Vehicle. The POKE KM image (``tests/km_fw/km_rom_poke.S``) runs the KM bus
 operations that the host posts and reports what the DUT returned in KM SRAM
@@ -13,10 +13,13 @@ words 0 to 97 (``km_sram_probe_o``). Each reporting operation clears
 IRQ_STATUS.AXI_SLVERR and AXI_DECERR before its access and reports them after
 it as ``slv`` and ``dec``. Every value a check compares is a POKE readback of
 the DUT or a sample of the KM entropy stream taps (``km_entropy_tvalid_o``,
-``km_entropy_tready_o``). The stream is stalled (the entropy chain held at its
-reset) until the TRNG reset leg and live after it. The withdrawals of the
-stream-error leg come from the error inject ``HK-STRM`` at the sampler sink
-(``km_strm_wd_*``, ``docs/SEP_TB_ARCH.adoc``).
+``km_entropy_tready_o``, ``km_entropy_tdata_o``). The stream is stalled (the
+entropy chain not yet initialized) until the active-read leg, which starts the
+entropy initialization while a DATA read waits, and live after it. The
+withdrawals of the stream-error leg come from the error inject ``HK-STRM`` at
+the sampler sink (``km_strm_wd_*``); the partial beat and its withdrawal of the
+prefetch-withdrawal leg come from the error inject ``HK-STRM-PAT``
+(``km_strm_pat_*``), both in ``docs/SEP_TB_ARCH.adoc``.
 
 Specification. ``hw/ip/key_manager/doc/architecture.adoc``, sections "DRBG
 Sampler", "Reads, prefetch and register access", "Errors and reset" and table
@@ -28,7 +31,11 @@ masks and resets come from the generated RDL headers
 
 Checkers:
   CHK-SMP-TO      a stalled active DATA read at T = 1, 2, 3 and 65535 ends in a
-                  timeout: SLVERR, data 0, TIMEOUT_ERR 1, STREAM_ERR 0,
+                  timeout after exactly T active cycles: one TREADY run of T
+                  clocks with no handshake and no X/Z TREADY or TVALID
+                  clock (architecture.adoc, CFG.TIMEOUT:
+                  "times out after exactly TIMEOUT active cycles"); SLVERR,
+                  data 0, TIMEOUT_ERR 1, STREAM_ERR 0,
                   COUNT_BAD + 1, DRBG_ERR 1, DRBG_READY 0; the CFG readback is
                   the written value; a write of 0 keeps TIMEOUT_ERR and a write
                   of 1 clears it. The drawn T and T = 256 are controls. Control:
@@ -39,15 +46,43 @@ Checkers:
                   write of 0 keeps a counter, a non-zero write clears it from a
                   low value and from saturation. Control: each counter is
                   non-zero before each clear.
-  CHK-SMP-PRE     with a stalled stream and PREFETCH 1 no word is held and no
-                  timeout sets over 1024 clocks; with the live stream a word is
+  CHK-SMP-PRE     with a stalled stream and PREFETCH 1 the prefetch path holds
+                  TREADY high with no handshake and no X/Z TREADY or TVALID
+                  clock over the whole 1024-clock window, no word is held and
+                  no timeout sets; with the live
+                  stream a word is
                   held, PREFETCH_DATA reads it three times, DATA returns it
                   without a COUNT_GOOD count, and a handshake refills it;
                   PREFETCH 0 clears PREFETCHED and PREFETCH_DATA
-                  (architecture.adoc:812-816). Controls: a stalled active read
+                  (architecture.adoc:822-826). Controls: a stalled active read
                   at timeout 8 times out; each fed read pair takes a handshake;
                   DRBG_READY reads 1 while the held word blocks the stream.
-  CHK-SMP-WR      writes to DATA and PREFETCH_DATA answer SLVERR and leave STATUS
+  CHK-SMP-PRE-WITHDRAW
+                  with PREFETCH 1 on the stalled stream, the prefetch path takes
+                  a partial beat (TSTRB 0x1), and a withdrawal follows (TVALID 1
+                  with TREADY 0, then TVALID 0). STREAM_ERR reads 1, COUNT_BAD
+                  rises by exactly 1 plus TIMEOUT_ERR after the span, which
+                  reads 0 before it (the span includes the DATA read that
+                  gives the withdrawal its TREADY-low clock, which can time
+                  out; architecture.adoc:837, 839), DRBG_ERR changes from 0
+                  before the withdrawal to 1 and PREFETCHED reads 0
+                  (PREFETCHED also 0 after the partial beat); the next DATA read returns the first live beat
+                  and the next prefetched word (PREFETCH_DATA and DATA) is the
+                  second live beat, with no byte of the partial beat
+                  (architecture.adoc:851-855, 816-820, 825; trng.adoc:118 for
+                  the full live beats). Control: the same partial beat with no
+                  withdrawal (a TVALID drop after a completed handshake) leaves
+                  STREAM_ERR 0, COUNT_BAD and DRBG_ERR unchanged.
+  CHK-SMP-PRE-ACTIVE
+                  with PREFETCH 1, PREFETCHED 0 and a DATA read waiting on the
+                  stalled stream (timeout off), the first live beat goes to the
+                  read: OKAY, data equal to the first handshaken beat on
+                  KM-ENTROPY, COUNT_GOOD + 1 (architecture.adoc:881-882, 873-876,
+                  840). Controls: CFG reads PREFETCH 1 and timeout 0, STATUS reads
+                  PREFETCHED 0 before the read, TREADY is high before the read
+                  and the read start shows one TREADY-low clock before the
+                  entropy initialization starts.
+  CHK-SMP-WR     writes to DATA and PREFETCH_DATA answer SLVERR and leave STATUS
                   and PREFETCH_DATA unchanged, on the stalled stream and again
                   with a prefetched word held (a known PREFETCH_DATA value).
                   Control: AXI_SLVERR reads 0 after each clear before the write.
@@ -60,22 +95,32 @@ Checkers:
                   and it is high before and after the pulse. Control: before the
                   pulse the producer offers a beat (TVALID 1) that the held
                   sampler does not take (TREADY 0).
-  CHK-SMP-STRM    a withdrawal sets STREAM_ERR and DRBG_ERR with no read active
+  CHK-SMP-STRM    a withdrawal sets STREAM_ERR and DRBG_ERR (0 before the
+                  withdrawal, 1 after it) with no read active
                   (COUNT_BAD + 1) and in the first active cycle of a read at
-                  timeout 256, 1 and 2 (SLVERR, data 0, COUNT_BAD + 1 or more);
+                  timeout 256, 1 and 2 (SLVERR, data 0, TIMEOUT_ERR 0 before the
+                  read, COUNT_BAD + 1 plus TIMEOUT_ERR after the read);
                   a write of 0 keeps STREAM_ERR and a write of 1 clears it.
-                  Control: the stalled timeouts and the first read after the
-                  TRNG reset leave STREAM_ERR 0.
-  CHK-NONVAC      at least one true withdrawal was graded and every control of a
-                  "no effect" check above was seen.
+                  Controls: the stalled timeouts and the first read after the
+                  TRNG reset leave STREAM_ERR 0; the sink TREADY is low in the
+                  pulse clock of each case, so the pulse is a withdrawal and
+                  not a handshake (a case whose pulse meets TREADY high is
+                  CTRL-MISSING and is not graded, so no case can drop out of
+                  the check unseen).
+  CHK-NONVAC      the idle case and each of the three first-active-cycle cases
+                  were graded, and every control of a "no effect" check above
+                  was seen.
 
-Blocked (``HK-STRM-PAT`` is not in the bench): CHK-SMP-PACK, CHK-SMP-TO-ASM and
-CHK-SMP-STRM-CTRL log ``OBS-BLOCKED`` and grade nothing.
+Blocked (the bench drives no legal beat pattern; ``HK-STRM-PAT`` is an error
+inject only): CHK-SMP-PACK, CHK-SMP-TO-ASM and CHK-SMP-STRM-CTRL log
+``OBS-BLOCKED`` and grade nothing.
 
-Log only: ``OBS-SMP-TO-CYCLES`` (the TREADY-high clocks of each timeout leg),
+Log only: ``OBS-SMP-PRE-WITHDRAW-READ`` (the response of the DATA read whose
+start gives the withdrawal its TREADY-low clock: the text does not state
+whether that read ends through the stream error, so it is not graded; the
+line also carries the exact COUNT_BAD delta of CHK-SMP-PRE-WITHDRAW),
 ``OBS-SMP-STRM`` (TIMEOUT_ERR and the exact COUNT_BAD delta of a withdrawal in
-the first active cycle), ``OBS-RACE-MISSED`` (a first-active-cycle pulse that
-met TREADY high is a handshake and is not graded), ``OBS-SMP-NEXT-HELD``
+the first active cycle), ``OBS-SMP-NEXT-HELD``
 (whether the refilled word differs), ``OBS-SMP-LOOP`` (the read-loop data
 summary).
 """
@@ -88,7 +133,12 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_chk_log import SepChkLog
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_km_pwd_pass,
+    set_km_strm_pass,
+)
 from env.sep_reg_meta import EDN, ENTROPY_SOURCE, sym
 from env.sep_seeded_rng import SepSeededRng
 from km import sep_km_drbg_sampler_rand_plan as pl
@@ -114,6 +164,10 @@ _PREFETCH_POLL_LOADS = 4096
 _BAD_LOOP_CYCLES = 4_000_000
 _GOOD_LOOP_CYCLES = 60_000_000
 _STALLED_LIST_CYCLES = 2_000_000
+# The active-read list waits for the whole entropy initialization.
+_ACTIVE_LIST_CYCLES = 3_000_000
+_DIP_BOUND = 20_000
+_PAT_SETTLE_CLKS = 8
 
 _KM_BIT = 1 << SW_RESET_N_BIT["km"]
 # trng_axi_isolated_probe_o: the EDN, CSRNG and entropy-source host paths.
@@ -192,6 +246,8 @@ _REQUIRED = (
     "CHK-SMP-TO",
     "CHK-SMP-CNT",
     "CHK-SMP-PRE",
+    "CHK-SMP-PRE-WITHDRAW",
+    "CHK-SMP-PRE-ACTIVE",
     "CHK-SMP-WR",
     "CHK-SMP-TRNG",
     "CHK-SMP-STRM",
@@ -206,6 +262,18 @@ def _h(v: int) -> str:
 def _clear_ops() -> list[kp.PokeOp]:
     """Write 1 to the sticky STATUS bits and to IRQ_STATUS.DRBG_ERR (counters untouched)."""
     return [kp.wr(pl.A_STATUS, pl.ST_STICKY), kp.wr(pl.A_IRQ_STATUS, pl.IRQ_DRBG_ERR)]
+
+
+def _withdraw_bad_want(st_pre: int, st_post: int) -> int:
+    """COUNT_BAD delta of one withdrawal plus the one DATA read in the span.
+
+    COUNT_BAD counts each timeout and each stream error and saturates at 0xFF
+    (architecture.adoc, STATUS.COUNT_BAD). The span holds at most one DATA read,
+    so at most one timeout, and TIMEOUT_ERR reads 0 before it (the caller
+    grades that), so the sticky TIMEOUT_ERR after it is that timeout count.
+    """
+    pre = pl.st(st_pre, "COUNT_BAD")
+    return min(pre + 1 + pl.st(st_post, "TIMEOUT_ERR"), pl.COUNT_BAD_MAX) - pre
 
 
 @pyuvm.test()
@@ -228,12 +296,15 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         return res
 
     @staticmethod
-    def _acc(res: list[kp.PokeResult], err: set[int] = frozenset()) -> list[str]:
-        """Response faults: an op in ``err`` must answer SLVERR (slv 1, dec 0); every
-        other reporting op OKAY (slv 0, dec 0). Each needs a clean clear before it."""
+    def _acc(
+        res: list[kp.PokeResult], err: set[int] = frozenset(), skip: set[int] = frozenset()
+    ) -> list[str]:
+        """Response faults: an op in ``err`` must answer SLVERR (slv 1, dec 0); an op
+        in ``skip`` is not graded; every other reporting op OKAY (slv 0, dec 0). Each
+        graded op needs a clean clear before it."""
         out = []
         for r in res:
-            if not r.op.reports:
+            if not r.op.reports or r.index in skip:
                 continue
             want = 1 if r.index in err else 0
             if r.slv != want or r.dec or not r.clean:
@@ -347,6 +418,95 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         )
         return fired, tready
 
+    # --- HK-STRM-PAT --------------------------------------------------------------
+
+    def _pat(self, arm: int, data: int = 0) -> None:
+        dut = cocotb.top
+        dut.km_strm_pat_data_i.value = data & pl.WORD_MASK
+        dut.km_strm_pat_arm_i.value = arm
+
+    async def _pat_wait_beat(self) -> None:
+        """Wait (bounded) for ``km_strm_pat_beat_o`` = 1: the partial beat was driven."""
+        dut = cocotb.top
+        for _ in range(_FIRE_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.km_strm_pat_beat_o, allow_unknown=True):
+                await RisingEdge(dut.clk_i)
+                return
+        raise AssertionError(f"HK-STRM-PAT drove no partial beat within {_FIRE_BOUND} clocks")
+
+    async def _pat_drop(self) -> dict[str, int]:
+        """Drop the arm. The hook ends its force by forcing the live values and
+        releases the sink nets only in a clock in which each live value equals the
+        value it forced last. After ``_PAT_SETTLE_CLKS`` clocks: both readbacks
+        read 0 and the sink TVALID equals the live TVALID."""
+        dut = cocotb.top
+        self._pat(0)
+        await ClockCycles(dut.clk_i, _PAT_SETTLE_CLKS)
+        await ReadOnly()
+        out = {
+            "beat_after_drop": self.rd(dut.km_strm_pat_beat_o, allow_unknown=True),
+            "fired_after_drop": self.rd(dut.km_strm_pat_fired_o, allow_unknown=True),
+            "sink_eq_live": int(
+                self.rd(dut.km_strm_sink_tvalid_o, allow_unknown=True)
+                == self.rd(dut.km_entropy_tvalid_o, allow_unknown=True)
+            ),
+        }
+        await RisingEdge(dut.clk_i)
+        return out
+
+    @staticmethod
+    def _pat_dropped(d: dict[str, int]) -> bool:
+        return d["beat_after_drop"] == 0 and d["fired_after_drop"] == 0 and d["sink_eq_live"] == 1
+
+    async def _active_release(self, out: dict) -> None:
+        """Start the entropy initialization while a DATA read waits, and record the
+        first two handshakes on KM-ENTROPY.
+
+        Before the read the prefetch path requests (TREADY 1). A DATA read that
+        starts stops the prefetch path, and the read path enters its request
+        state one clock later (architecture.adoc:873, 881-882), so the read start
+        shows one TREADY-low clock and then TREADY high with the read waiting.
+        The entropy initialization starts after that clock. A handshake is a
+        clock with ``km_entropy_tvalid_o`` and ``km_entropy_tready_o`` both 1;
+        its word is ``km_entropy_tdata_o``.
+        """
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        out["tready_at_start"] = self.rd_known(dut.km_entropy_tready_o)
+        low = False
+        for n in range(_DIP_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            ready = self.rd_known(dut.km_entropy_tready_o)
+            if not low and ready == 0:
+                low = True
+            elif low and ready == 1:
+                out["read_start_clk"] = n
+                break
+        else:
+            raise AssertionError(
+                f"no TREADY-low clock and return to TREADY high within {_DIP_BOUND} clocks "
+                "after the active-read sync"
+            )
+        await RisingEdge(dut.clk_i)
+        if self.noise is None:
+            self.noise = self.start_esrc_noise_driver()
+        init = cocotb.start_soon(self._entropy_init(reset_trng=False, what="active_read"))
+        beats: list[int] = []
+        for _ in range(_TVALID_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd_known(dut.km_entropy_tready_o) and self.rd_known(dut.km_entropy_tvalid_o):
+                beats.append(self.rd_known(dut.km_entropy_tdata_o))
+                if len(beats) == 2:
+                    break
+        out["beats"] = beats
+        await RisingEdge(dut.clk_i)
+        await init
+
     # --- scenario ----------------------------------------------------------------
 
     async def run_scenario(self) -> None:
@@ -354,13 +514,15 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         self.logger.info("SEED seed=%d", seed)
         self.rng = SepSeededRng(seed)
         self.plan = pl.draw_plan(self.rng, seed)
-        for name, value in self.plan.draws:
+        self.pat_word = self.rng.getrandbits(32)
+        for name, value in [*self.plan.draws, ("pat_word", _h(self.pat_word))]:
             self.logger.info("DRAW %s=%s", name, value)
         self.chk = SepChkLog(self, TEST, seed)
         self.rsvd = {"STATUS": 0, "IRQ_STATUS": 0}
         self.controls: dict[str, bool] = {}
         self.marks: list[int] = []
         self.true_withdrawals = 0
+        self.first_active_graded = 0
         self.noise = None
         self.entropy_cfg = SepEntropyCfg(glen=_EDN_GLEN, reseed_interval=_EDN_RESEED_EVERY)
 
@@ -381,6 +543,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         await self._step_writes()
         await self._step_stalled_prefetch()
         await self._step_bad_counter()
+        await self._step_withdraw_and_active()
         await self._step_trng_reset()
         await self._step_first_read()
         await self._step_fed_twin()
@@ -430,7 +593,9 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 kp.wr(pl.A_IRQ_STATUS, pl.IRQ_DRBG_ERR),
             ]
             n0 = len(self.mon.runs)
+            self.mon.take_xz()
             res = await self._run(ops, timeout_cycles=_STALLED_LIST_CYCLES)
+            xz = self.mon.take_xz()
             runs = self.mon.runs[n0:]
             irq_pre, st_pre = self._irq(res[4].value), self._status(res[5].value)
             st, irq = self._status(res[7].value), self._irq(res[8].value)
@@ -446,9 +611,15 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             self.stalled_stream_err.append(pl.st(st, "STREAM_ERR"))
             self.stalled_bad_delta.append(delta)
             acc = self._acc(res, {6})
+            tready_clks = [r[1] for r in runs]
+            handshakes = sum(r[2] for r in runs)
             fields = dict(
                 t=t,
                 cfg_rd=_h(res[1].value),
+                tready_runs=len(runs),
+                tready_clks=tready_clks,
+                handshakes=handshakes,
+                xz_cycles=xz,
                 slv=res[6].slv,
                 dec=res[6].dec,
                 data=_h(res[6].value),
@@ -462,6 +633,9 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             )
             cond = (
                 res[1].value == pl.cfg(t, 0)
+                and tready_clks == [t]
+                and handshakes == 0
+                and xz == 0
                 and res[6].value == 0
                 and st & pl.ST_FLAGS == pl.ST_TIMEOUT_ERR
                 and delta == 1
@@ -474,13 +648,6 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 self.chk.ok("SMP-TO", cond, **fields)
             else:
                 self.chk.ctrl("SMP-TO-OPEN", cond, control=1, **fields)
-            self.chk.obs(
-                "SMP-TO-CYCLES",
-                t=t,
-                tready_runs=len(runs),
-                tready_clks=[r[1] for r in runs],
-                handshakes=sum(r[2] for r in runs),
-            )
 
     # Step 4.
     async def _step_writes(self) -> None:
@@ -559,10 +726,13 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             c0 = self.mon.cycle
             await ClockCycles(cocotb.top.clk_i, pl.PREFETCH_WINDOW_CLKS)
             self.window_cycles = self.mon.cycle - c0
+            self.window_span = (c0, self.mon.cycle)
             return None
 
         n0 = len(self.mon.runs)
+        self.mon.take_xz()
         res = await self._run(ops, on_sync=window)
+        xz = self.mon.take_xz()
         st_to, irq_to = self._status(res[4].value), self._irq(res[5].value)
         st_clr, irq_clr = self._status(res[8].value), self._irq(res[9].value)
         acc = self._acc(res, {3})
@@ -585,8 +755,15 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             cleared=int(pl.st(st_clr, "TIMEOUT_ERR") == 0 and not irq_clr & pl.IRQ_DRBG_ERR),
         )
         before, after = self._status(res[11].value), self._status(res[13].value)
+        runs = self.mon.runs[n0:]
+        # The prefetch path requests on the stalled stream: one TREADY run with
+        # no handshake covers every clock of the window.
+        c0, c1 = self.window_span
+        cover = [r for r in runs if r[0] <= c0 and r[0] + r[1] - 1 >= c1 and r[2] == 0]
         self.pre_stalled = {
-            "ok": pl.st(after, "PREFETCHED") == 0
+            "ok": len(cover) == 1
+            and xz == 0
+            and pl.st(after, "PREFETCHED") == 0
             and pl.st(after, "TIMEOUT_ERR") == 0
             and pl.st(before, "TIMEOUT_ERR") == 0
             and pl.st(after, "COUNT_BAD") == pl.st(before, "COUNT_BAD"),
@@ -596,8 +773,10 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             "bad_before": pl.st(before, "COUNT_BAD"),
             "bad_after": pl.st(after, "COUNT_BAD"),
             "acc": acc,
+            "tready_cover": f"{cover[0][0]}+{cover[0][1]}" if cover else "none",
+            "span": f"{c0}-{c1}",
+            "xz": xz,
         }
-        runs = self.mon.runs[n0:]
         self.logger.info(
             "LOG stalled prefetch window=%d status_before=%s status_after=%s tready_runs=%s",
             self.window_cycles,
@@ -652,6 +831,231 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             loop_slv=res[6].slv,
         )
 
+    # Step 6a: the withdrawal of a partial prefetch word (stalled stream), then
+    # the first live beats with a DATA read waiting.
+    async def _step_withdraw_and_active(self) -> None:
+        ops: list[kp.PokeOp] = []
+        at: dict[str, int] = {}
+
+        def add(name: str | None, *new: kp.PokeOp) -> None:
+            if name is not None:
+                at[name] = len(ops)
+            ops.extend(new)
+
+        # Control leg: the partial beat and then no withdrawal.
+        add(None, kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 1)), *_clear_ops())
+        add("tw_before", kp.rd(pl.A_STATUS))
+        add(None, kp.sync())
+        add("tw_after", kp.rd(pl.A_STATUS))
+        add("tw_irq", kp.rd(pl.A_IRQ_STATUS))
+        # Prefetch off and on: the partial word of the control leg is cleared.
+        add(None, kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)), kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 1)))
+        add(None, *_clear_ops())
+        # Withdrawal leg: the partial beat, then the DATA read whose start gives
+        # the TREADY-low clock of the withdrawal.
+        add("wd_pre", kp.rd(pl.A_STATUS))
+        add("wd_pre_irq", kp.rd(pl.A_IRQ_STATUS))
+        add(None, kp.sync())
+        add("wd_partial", kp.rd(pl.A_STATUS))
+        add("wd_read", kp.rd(pl.A_DATA))
+        add(None, kp.sync())
+        add("wd_post", kp.rd(pl.A_STATUS))
+        add("wd_irq", kp.rd(pl.A_IRQ_STATUS))
+        add(None, *_clear_ops())
+        # Active-read leg: timeout off, the entropy initialization starts while
+        # the read waits.
+        add(None, kp.wr(pl.A_CFG, pl.cfg(0, 1)))
+        add("ar_cfg", kp.rd(pl.A_CFG))
+        add("ar_before", kp.rd(pl.A_STATUS))
+        add(None, kp.sync())
+        add("ar_read", kp.rd(pl.A_DATA))
+        add("ar_after", kp.rd(pl.A_STATUS))
+        add(
+            "next_poll",
+            kp.poll(pl.A_STATUS, pl.ST_PREFETCHED, pl.ST_PREFETCHED, _PREFETCH_POLL_LOADS),
+        )
+        add("next_pdata", kp.rd(pl.A_PDATA))
+        add("next_read", kp.rd(pl.A_DATA))
+        add(None, kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)), *_clear_ops())
+
+        hook: dict[str, object] = {}
+        rel: dict = {}
+        tasks: list = []
+        await RisingEdge(cocotb.top.clk_i)
+        set_km_pwd_pass(False, self.logger)
+
+        async def on_sync(k: int) -> None:
+            if k == 0:
+                self._pat(1, self.pat_word)
+                await self._pat_wait_beat()
+                hook["twin_fired"] = self.rd(cocotb.top.km_strm_pat_fired_o, allow_unknown=True)
+                hook["twin_drop"] = await self._pat_drop()
+            elif k == 1:
+                self._pat(1, self.pat_word)
+                await self._pat_wait_beat()
+                hook["beat"] = 1
+            elif k == 2:
+                hook["fired"] = self.rd(cocotb.top.km_strm_pat_fired_o, allow_unknown=True)
+                hook["drop"] = await self._pat_drop()
+            else:
+                tasks.append(cocotb.start_soon(self._active_release(rel)))
+            return None
+
+        res = await self._run(ops, on_sync=on_sync, timeout_cycles=_ACTIVE_LIST_CYCLES)
+        if not tasks:
+            raise AssertionError("the active-read sync did not run")
+        await tasks[0]
+
+        def stv(name: str) -> int:
+            return self._status(res[at[name]].value)
+
+        acc = self._acc(res, skip={at["wd_read"]})
+        beats = rel.get("beats", [])
+        b1 = beats[0] if beats else None
+        b2 = beats[1] if len(beats) > 1 else None
+        partial_word = (
+            ((b2 << 8) | (self.pat_word & 0xFF)) & pl.WORD_MASK if b2 is not None else None
+        )
+
+        # Control: the partial beat alone is a completed handshake, not a withdrawal.
+        tw0, tw1 = stv("tw_before"), stv("tw_after")
+        tw_irq = self._irq(res[at["tw_irq"]].value)
+        twin_ok = (
+            hook.get("twin_fired") == 0
+            and self._pat_dropped(hook["twin_drop"])
+            and pl.st(tw0, "STREAM_ERR") == 0
+            and pl.st(tw1, "STREAM_ERR") == 0
+            and pl.st(tw1, "COUNT_BAD") == pl.st(tw0, "COUNT_BAD")
+            and not tw_irq & pl.IRQ_DRBG_ERR
+        )
+        self.controls["pre_withdraw_twin"] = bool(twin_ok)
+        self.chk.ctrl(
+            "SMP-PRE-WITHDRAW-TWIN",
+            twin_ok,
+            pattern_fired=hook.get("twin_fired"),
+            stream_err=pl.st(tw1, "STREAM_ERR"),
+            count_bad=[pl.st(tw0, "COUNT_BAD"), pl.st(tw1, "COUNT_BAD")],
+            drbg_err=int(bool(tw_irq & pl.IRQ_DRBG_ERR)),
+            **hook["twin_drop"],
+        )
+
+        # The read that gave the withdrawal its TREADY-low clock: logged only.
+        ra = res[at["wd_read"]]
+        st_pre, st_part, st_post = stv("wd_pre"), stv("wd_partial"), stv("wd_post")
+        wd_irq = self._irq(res[at["wd_irq"]].value)
+        wd_pre_irq = self._irq(res[at["wd_pre_irq"]].value)
+        self.chk.obs(
+            "SMP-PRE-WITHDRAW-READ",
+            slv=ra.slv,
+            dec=ra.dec,
+            data=_h(ra.value),
+            timeout_err=pl.st(st_post, "TIMEOUT_ERR"),
+            count_bad_delta=pl.st(st_post, "COUNT_BAD") - pl.st(st_pre, "COUNT_BAD"),
+        )
+
+        # Active read: setup controls.
+        ar_cfg = res[at["ar_cfg"]].value
+        st_b0, st_b1 = stv("ar_before"), stv("ar_after")
+        setup_ok = (
+            ar_cfg == pl.cfg(0, 1)
+            and pl.st(st_b0, "PREFETCHED") == 0
+            and pl.st(st_b0, "STREAM_ERR") == 0
+            and pl.st(st_b0, "TIMEOUT_ERR") == 0
+            and rel.get("tready_at_start") == 1
+            and "read_start_clk" in rel
+        )
+        self.controls["pre_active_setup"] = bool(setup_ok)
+        self.chk.ctrl(
+            "SMP-PRE-ACTIVE-SETUP",
+            setup_ok,
+            cfg=_h(ar_cfg),
+            cfg_want=_h(pl.cfg(0, 1)),
+            status_before=_h(st_b0),
+            tready_before_read=rel.get("tready_at_start"),
+            read_start_clk=rel.get("read_start_clk", "none"),
+        )
+        self.chk.ctrl(
+            "SMP-PRE-DISCRIM",
+            b1 is not None and b2 is not None and b1 != b2 and partial_word != b2,
+            beats=[_h(b) for b in beats],
+            partial_word=_h(partial_word) if partial_word is not None else "none",
+        )
+
+        rb, rc = res[at["ar_read"]], res[at["next_read"]]
+        good_delta = pl.st(st_b1, "COUNT_GOOD") - pl.st(st_b0, "COUNT_GOOD")
+        exp_b = b1
+        self.chk.ok(
+            "SMP-PRE-ACTIVE",
+            b1 is not None
+            and rb.slv == 0
+            and rb.dec == 0
+            and rb.value == exp_b
+            and good_delta == 1
+            and not acc,
+            data=_h(rb.value),
+            first_beat=_h(exp_b) if exp_b is not None else "none",
+            slv=rb.slv,
+            count_good_delta=good_delta,
+            handshakes_seen=len(beats),
+            bad_responses=",".join(acc) or "none",
+        )
+
+        poll = res[at["next_poll"]]
+        prefetched_next = pl.st(poll.data[0], "PREFETCHED")
+        pdata = res[at["next_pdata"]].value
+        exp_c = b2
+        bad_delta = pl.st(st_post, "COUNT_BAD") - pl.st(st_pre, "COUNT_BAD")
+        bad_want = _withdraw_bad_want(st_pre, st_post)
+        drop = hook.get("drop", {"beat_after_drop": -1, "fired_after_drop": -1, "sink_eq_live": 0})
+        wd_passed = self.chk.ok(
+            "SMP-PRE-WITHDRAW",
+            hook.get("beat") == 1
+            and hook.get("fired") == 1
+            and self._pat_dropped(drop)
+            and pl.st(st_pre, "STREAM_ERR") == 0
+            and pl.st(st_pre, "PREFETCHED") == 0
+            and pl.st(st_part, "PREFETCHED") == 0
+            and pl.st(st_post, "STREAM_ERR") == 1
+            and pl.st(st_pre, "TIMEOUT_ERR") == 0
+            and bad_delta == bad_want
+            and pl.st(st_post, "PREFETCHED") == 0
+            and not wd_pre_irq & pl.IRQ_DRBG_ERR
+            and wd_irq & pl.IRQ_DRBG_ERR
+            and b2 is not None
+            and rb.slv == 0
+            and rb.value == b1
+            and prefetched_next == 1
+            and pdata == exp_c
+            and rc.slv == 0
+            and rc.value == exp_c
+            and not acc,
+            pattern_beat=hook.get("beat", 0),
+            pattern_fired=hook.get("fired", 0),
+            partial_prefetched=pl.st(st_part, "PREFETCHED"),
+            stream_err=[pl.st(st_pre, "STREAM_ERR"), pl.st(st_post, "STREAM_ERR")],
+            count_bad_delta=bad_delta,
+            count_bad_delta_want=bad_want,
+            timeout_err=[pl.st(st_pre, "TIMEOUT_ERR"), pl.st(st_post, "TIMEOUT_ERR")],
+            prefetched_after=pl.st(st_post, "PREFETCHED"),
+            drbg_err_pre=int(bool(wd_pre_irq & pl.IRQ_DRBG_ERR)),
+            drbg_err=int(bool(wd_irq & pl.IRQ_DRBG_ERR)),
+            next_read=_h(rb.value),
+            next_prefetched=prefetched_next,
+            next_pdata=_h(pdata),
+            next_prefetch_read=_h(rc.value),
+            live_beats=[_h(b) for b in beats],
+            want_prefetch_word=_h(exp_c) if exp_c is not None else "none",
+            partial_word=_h(partial_word) if partial_word is not None else "none",
+            bad_responses=",".join(acc) or "none",
+            **drop,
+        )
+        if wd_passed:
+            await RisingEdge(cocotb.top.clk_i)
+            set_km_pwd_pass(True, self.logger)
+            await ClockCycles(cocotb.top.clk_i, 2)
+        await RisingEdge(cocotb.top.clk_i)
+        set_km_pwd_pass(False, self.logger)
+
     # Step 7.
     async def _step_trng_reset(self) -> None:
         dut = cocotb.top
@@ -662,7 +1066,10 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         await self.poke.mbox.flush()
         self.swrst.value = _SW_ALL
         await self.swrst.park("km")
-        self.noise = self.start_esrc_noise_driver()
+        if self.noise is None:
+            self.noise = self.start_esrc_noise_driver()
+        # The KM is held, so the TRNG reset of this initialization withdraws no
+        # beat that the sampler sees.
         await self._entropy_init(reset_trng=True, what="first")
         sample = await self._wait_tvalid()
         if sample is None:
@@ -919,6 +1326,9 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             and not acc,
             control_active_timeout_err=int(self.controls["pre_active_timeout"]),
             stalled_window_clks=ps["window"],
+            stalled_window_span=ps["span"],
+            stalled_tready_cover=ps["tready_cover"],
+            stalled_xz_cycles=ps["xz"],
             stalled_prefetched=ps["prefetched"],
             stalled_timeout_err=ps["timeout_err"],
             stalled_bad=[ps["bad_before"], ps["bad_after"]],
@@ -1024,6 +1434,8 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         graded = 0
         for case, t in cases:
             idle = t is None
+            await RisingEdge(cocotb.top.clk_i)
+            set_km_strm_pass(False, self.logger)
             head = [kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T if idle else t, 0))]
             head += [] if idle else [kp.rd(pl.A_CFG)]
             pre = [*_clear_ops(), kp.rd(pl.A_STATUS), kp.rd(pl.A_IRQ_STATUS)]
@@ -1064,25 +1476,33 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             if not hook.get("fired"):
                 raise AssertionError(f"HK-STRM case {case}: the withdrawal inject did not fire")
             st_pre = self._status(res[i_pre].value)
+            irq_pre = self._irq(res[i_pre + 1].value)
             st = self._status(res[i_post].value)
             irq = self._irq(res[i_post + 1].value)
             st_w0 = self._status(res[i_post + 3].value)
             st_w1 = self._status(res[i_post + 5].value)
             delta = pl.st(st, "COUNT_BAD") - pl.st(st_pre, "COUNT_BAD")
             acc = self._acc(res, set() if idle else {i_data})
-            if hook["tready"]:
-                self.chk.obs("RACE-MISSED", case=case, tready=1, status=_h(st))
+            # A pulse that meets TREADY high is a handshake, not a withdrawal:
+            # the case is not graded, and its missing control fails the leaf.
+            if not self.chk.ctrl(
+                "SMP-STRM-PULSE", not hook["tready"], case=case, tready_at_pulse=hook["tready"]
+            ):
                 continue
             self.true_withdrawals += 1
             graded += 1
+            if not idle:
+                self.first_active_graded += 1
             fields = dict(
                 case=case if idle else f"first_active_t{t}",
                 stream_err=pl.st(st, "STREAM_ERR"),
+                drbg_err_pre=int(bool(irq_pre & pl.IRQ_DRBG_ERR)),
                 drbg_err=int(bool(irq & pl.IRQ_DRBG_ERR)),
             )
             cond = (
                 pl.st(st_pre, "STREAM_ERR") == 0
                 and pl.st(st, "STREAM_ERR") == 1
+                and not irq_pre & pl.IRQ_DRBG_ERR
                 and irq & pl.IRQ_DRBG_ERR
                 and pl.st(st_w0, "STREAM_ERR") == 1
                 and pl.st(st_w1, "STREAM_ERR") == 0
@@ -1092,17 +1512,31 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 cond = cond and delta == 1
             else:
                 r = res[i_data]
-                cond = cond and r.value == 0 and delta >= 1
-                fields.update(slv=r.slv, data=_h(r.value))
+                bad_want = _withdraw_bad_want(st_pre, st)
+                cond = (
+                    cond
+                    and r.value == 0
+                    and pl.st(st_pre, "TIMEOUT_ERR") == 0
+                    and delta == bad_want
+                )
+                fields.update(
+                    slv=r.slv,
+                    data=_h(r.value),
+                    count_bad_delta_want=bad_want,
+                    timeout_err=[pl.st(st_pre, "TIMEOUT_ERR"), pl.st(st, "TIMEOUT_ERR")],
+                )
             fields.update(
                 count_bad_delta=delta,
-                timeout_err_logged=pl.st(st, "TIMEOUT_ERR"),
                 stream_err_w0=pl.st(st_w0, "STREAM_ERR"),
                 stream_err_w1c=pl.st(st_w1, "STREAM_ERR"),
                 tready_at_pulse=hook["tready"],
                 bad_responses=",".join(acc) or "none",
             )
-            self.chk.ok("SMP-STRM", cond, **fields)
+            passed = self.chk.ok("SMP-STRM", cond, **fields)
+            if passed and not idle:
+                await RisingEdge(cocotb.top.clk_i)
+                set_km_strm_pass(True, self.logger)
+                await ClockCycles(cocotb.top.clk_i, 2)
             if not idle:
                 self.chk.obs(
                     "SMP-STRM",
@@ -1111,12 +1545,15 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                     timeout_err=pl.st(st, "TIMEOUT_ERR"),
                     count_bad_delta=delta,
                 )
+        await RisingEdge(cocotb.top.clk_i)
+        set_km_strm_pass(False, self.logger)
         self.logger.info("LOG stream errors graded=%d of %d", graded, len(cases))
 
     # End of the leaf.
     async def _step_end(self) -> None:
         self._gate(False)
         self._strm(0)
+        self._pat(0)
         swrst = await self.swrst.read_back()
         if not swrst & _KM_BIT:
             self.swrst.value = swrst
@@ -1146,8 +1583,11 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             self.noise = None
         self.chk.ok(
             "NONVAC",
-            self.true_withdrawals >= 1 and all(self.controls.values()),
+            self.true_withdrawals == len(pl.STRM_CASES) + 1
+            and self.first_active_graded == len(pl.STRM_CASES)
+            and all(self.controls.values()),
             true_withdrawals=self.true_withdrawals,
+            first_active_graded=f"{self.first_active_graded}/{len(pl.STRM_CASES)}",
             controls=sorted(k for k, v in self.controls.items() if v),
             missing=sorted(k for k, v in self.controls.items() if not v) or "none",
         )

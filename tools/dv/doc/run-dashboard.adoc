@@ -1031,12 +1031,13 @@ recorded identity, sanitized, rather than the selected download path.
 native run's Git metadata).
 
 Each `tests_detail` entry carries: `name`, `category`, `seed`, `attempt`,
-`stage`, `status` (may be `SKIP`), `duration_sec`, and `reason`. A retried
-leaf appears once, as its highest `attempt`, which decides its status; the
-retry itself stays visible in `regression.failed_tests` and
-`regression.flaky_tests` through `attempt_count`. With `collect
---all-attempts`, a retried leaf appears once per `(name, seed, attempt)`
-combination.
+`stage`, `status` (may be `SKIP`), `duration_sec`, and `reason`. A
+simulation leaf's `name` is `<test>@<target>`, so per-test history keeps each
+target's results apart from run to run. A retried leaf appears once, as its
+highest `attempt`, which decides its status; the retry itself stays visible in
+`regression.failed_tests` and `regression.flaky_tests` through
+`attempt_count`. With `collect --all-attempts`, a retried leaf appears once
+per `(name, seed, attempt)` combination.
 
 === Aggregate summary: `summary.json` (schema `"0.2"`)
 

@@ -19911,6 +19911,10 @@ module sep_fcov (
   wire cy_own_kent = (graded_owner == FcovOwnSepKmacEntropyModeRandTest);
   wire cy_own_otbn = (graded_owner == FcovOwnSepOtbnCmdStatusRandTest);
   wire cy_own_abr = (graded_owner == FcovOwnSepAbrCommandMatrixRandTest);
+  // cp_verify_outcome alone also samples for the malformed-hint leaf; the
+  // other ABR trackers stay on cy_own_abr.
+  wire cy_own_abr_vo = cy_own_abr ||
+                       (graded_owner == FcovOwnSepAbrMldsaHintRejectKatTest);
   wire cy_own_eswalk = (graded_owner == FcovOwnSepEsrcCsrRwWalkRandTest);
   wire cy_own_eshp = (graded_owner == FcovOwnSepEsrcHealthPatternRandTest);
   wire cy_own_espa = (graded_owner == FcovOwnSepEsrcPersistentAlertRandTest);
@@ -23344,8 +23348,6 @@ module sep_fcov (
       cy_ab_held  <= '0;
       cy_ab_zp    <= '0;
       cy_ab_rp    <= '0;
-      cy_ab_sig_m <= '0;
-      cy_ab_v_on  <= 1'b0;
     end else begin
       for (int b = 0; b < 2; b++) begin
         logic [31:0] ca;
@@ -23387,6 +23389,13 @@ module sep_fcov (
           end
         end
       end
+    end
+  end
+  always @(posedge clk_i) begin
+    if (!cy_own_abr_vo) begin
+      cy_ab_sig_m <= '0;
+      cy_ab_v_on  <= 1'b0;
+    end else begin
       // cp_verify_outcome: c~ is the first 16 words of the signature window
       // as written before VERIFYING; a reject is a VERIFY_RES that differs
       // from it in a word. The reason class is the stimulus label.
@@ -34373,8 +34382,8 @@ module sep_fcov (
     }
     // 0: a DATA read with prefetch 1 and no prefetched word takes the first
     // handshaken beat, alone; 1: a withdrawal while the prefetch path holds a
-    // partial word discards it, and the next DATA read returns the next live
-    // beat.
+    // partial word discards it, the next DATA read returns the next live
+    // beat, and CHK-SMP-PRE-WITHDRAW passed (label km_pwd_pass).
     cp_smp_prefetch_active_read: coverpoint v[0] iff (pt == 5'd10) {
       bins active_read_took_beat = {1'b0}; bins withdraw_discards_prefetch = {1'b1};
     }
@@ -34651,9 +34660,14 @@ module sep_fcov (
       bins shared_key_none = {4'd10};
     }
     // A KM key-path write of the HMAC KEY_CTRL in the clock of an SEP wipe
-    // pulse: key_valid of the HMAC bank reads 0 after the write.
+    // pulse: key_valid of the HMAC bank reads 0 after the write. No open test
+    // aligns a KM write with the wipe clear in one cycle, so the point is not
+    // graded (docs/SEP_FCOV.adoc, Key Manager bins not graded). The sampler
+    // makes 0 unreachable, so every value is an ignore bin.
     cp_vw_sideload_clear: coverpoint v[0] iff (pt == 5'd6) {
-      bins km_write_same_cycle_loses = {1'b1};
+      option.weight = 0;
+      ignore_bins km_write_same_cycle_loses = {1'b1};
+      ignore_bins unreachable_no_clear = {1'b0};
     }
   endgroup
 
@@ -34718,6 +34732,16 @@ module sep_fcov (
   logic [19:0] km_remap_hi = '0;
   logic [2:0] km_remap_seen = '0;
   logic km_remap_bad = 1'b0;
+  // Pass label of the KM decode points of the crossbar owner (written by
+  // set_km_xbar_pass of env/sep_fcov_gate.py): [127:0] offset cells, [151:128]
+  // windows 0 to 23, [157:152] cp_if_decode_outcome values, [159:158]
+  // cp_if_vrom_outcome values (and the vrom bin of cp_if_window), [161:160]
+  // cp_if_efuse_remap values, [173:162] cp_efw_read_class values. Each
+  // sampler holds its seen cells and samples them on km_xbar_rise only.
+  logic [173:0] km_xbar_pass = '0;
+  logic km_xbar_pass_q = 1'b0;
+  wire km_xbar_rise = km_own_xbar && (km_xbar_pass != '0) && !km_xbar_pass_q;
+  logic [1:0] km_remap_ok = '0;
   initial begin
     for (int s = 0; s < 64; s++) begin
       km_tr_wmask[s] = '0;
@@ -35262,6 +35286,13 @@ module sep_fcov (
     end
 
     // ---- eFuse remap at the KM eFuse master (cp_if_efuse_remap) ----
+    // A value is held as seen and samples only on km_xbar_rise with its bit
+    // [160 + value] set, after CHK-REMAP-BUS passes.
+    if (km_xbar_rise) begin
+      for (int i = 0; i < 2; i++)
+      if (km_remap_ok[i] && km_xbar_pass[160+i]) u_sep_km_integrity_fault_cg.sample(5'd3, 16'(i));
+      km_remap_ok <= '0;
+    end
     // The eFuse AR handshake can complete in the KM AR start cycle (no
     // latency in the KM crossbar), before kx_rbusy and kx_raddr update.
     if ((km_efuse_req_i.ar_valid === 1'b1) && (km_efuse_resp_i.ar_ready === 1'b1) &&
@@ -35270,15 +35301,15 @@ module sep_fcov (
       logic [1:0] m;
       ea = 32'(km_efuse_req_i.ar.addr);
       ka = kx_rstart ? 32'(km_axi_req_i.ar.addr) : kx_raddr;
-      m = km_in(ka, KmEfMapBase, 32'h400) ? 2'd0 :
+      m = km_in(ka, KmEfMapBase, 32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_SIZE)) ? 2'd0 :
           km_in(ka, KmEfCtrlBase, 32'h100) ? 2'd1 : 2'd2;
-      if (ea[11:0] == ka[11:0]) u_sep_km_integrity_fault_cg.sample(5'd3, 16'd0);
+      if (ea[11:0] == ka[11:0]) km_remap_ok[0] <= 1'b1;
       if ((km_remap_seen != 3'b000) && (ea[31:12] != km_remap_hi)) km_remap_bad <= 1'b1;
       km_remap_hi <= ea[31:12];
       km_remap_seen[m] <= 1'b1;
       if (((km_remap_seen | (3'b001 << m)) == 3'b111) && !km_remap_bad &&
           ((km_remap_seen == 3'b000) || (ea[31:12] == km_remap_hi)))
-        u_sep_km_integrity_fault_cg.sample(5'd3, 16'd1);
+        km_remap_ok[1] <= 1'b1;
     end
   end
 
@@ -35286,9 +35317,12 @@ module sep_fcov (
   // KM memory-map rows and windows (memory_map.adoc). Row order of
   // cp_if_offset_class: 0 ROM, 1 SRAM, 2 mailbox, 3 eFuse map, 4 eFuse
   // control, 5 eFuse token, 6 KPV, 7 KMCSR, 8 DRBG, 9 OTBN, 10 AES, 11 KMAC,
-  // 12 HMAC, 13 ABR. Hole: the first word inside the decoded extent that no
-  // register decodes (KMCSR after SRAM_EXEC_MODE, ABR after MLDSA_SEED); 0
-  // when the row has none.
+  // 12 HMAC, 13 ABR. Span: the decoded aperture of the row, from the RDL
+  // size where the aperture equals it, else the RDL ocah_aperture_size
+  // (key_manager.rdl), which the address-map package does not export.
+  // Extent: the RDL size. Hole: the first word inside the decoded extent
+  // that no register decodes (KMCSR after SRAM_EXEC_MODE, ABR after
+  // MLDSA_SEED); 0 when the row has none.
   // ---------------------------------------------------------------------
   localparam int unsigned KmRows = 14;
   localparam logic [31:0] KmRowBase[KmRows] = '{
@@ -35308,15 +35342,15 @@ module sep_fcov (
       KmAbrBase
   };
   localparam logic [31:0] KmRowSpan[KmRows] = '{
-      32'h4000,
-      32'h8000,
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_ROM_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_SRAM_SIZE),
       32'h20,
-      32'h400,
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_SIZE),
       32'h100,
       32'h100,
       32'h2000,
       32'h800,
-      32'h10,
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_SIZE),
       32'h80,
       32'h80,
       32'h80,
@@ -35324,20 +35358,20 @@ module sep_fcov (
       32'h800
   };
   localparam logic [31:0] KmRowExt[KmRows] = '{
-      32'h4000,
-      32'h8000,
-      32'h1C,
-      32'h400,
-      32'h1C,
-      32'h74,
-      32'h1108,
-      32'h4C0,
-      32'h10,
-      32'h64,
-      32'h44,
-      32'h44,
-      32'h44,
-      32'h42C
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_ROM_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_SRAM_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_MAILBOX_KM_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_CTRL_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MMR_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTBN_WRAPPER_KEY_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_AES_WRAPPER_KEY_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMAC_WRAPPER_KEY_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_HMAC_WRAPPER_KEY_SIZE),
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_SIZE)
   };
   localparam logic [31:0] KmRowHole[KmRows] = '{
       32'h0,
@@ -35347,14 +35381,23 @@ module sep_fcov (
       32'h0,
       32'h0,
       32'h0,
-      32'h3C,
+      32'(km_csr_addrmap_pkg::KM_CSR_SRAM_EXEC_MODE_BASE_ADDR) + 32'd4,
       32'h0,
       32'h0,
       32'h0,
       32'h0,
       32'h0,
-      32'h44
+      32'(abr_wrapper_key_addrmap_pkg::ABR_WRAPPER_KEY_MLDSA_SEED_SIZE)
   };
+  // Hole ends: the next decoded register after the hole.
+  localparam logic [31:0] KmCsrHoleEnd = 32'(km_csr_addrmap_pkg::KM_CSR_IRQ_ENTRY_ADDR_BASE_ADDR);
+  localparam logic [31:0] KmAbrHoleEnd =
+      32'(abr_wrapper_key_addrmap_pkg::ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_BASE_ADDR);
+
+  // True when a is in [lo, hi).
+  function automatic logic km_rng(logic [31:0] a, logic [31:0] lo, logic [31:0] hi);
+    return (a >= lo) && (a < hi);
+  endfunction
 
   function automatic logic [3:0] km_row(logic [31:0] a);
     for (int r = 0; r < KmRows; r++) if (km_in(a, KmRowBase[r], KmRowSpan[r])) return 4'(r);
@@ -35382,16 +35425,18 @@ module sep_fcov (
       4'd13: return 5'd18;
       default: ;
     endcase
-    if (km_in(a, 32'h4000, 32'h4000)) return 5'd1;
-    if (km_in(a, 32'h10020, 32'hFE0)) return 5'd4;
-    if (km_in(a, 32'h11600, 32'hA00)) return 5'd8;
-    if (km_in(a, 32'h14800, 32'h800)) return 5'd11;
-    if (km_in(a, 32'h15010, 32'h2FF0)) return 5'd13;
-    if (km_in(a, 32'h18080, 32'hF80)) return 5'd19;
-    if (km_in(a, 32'h19080, 32'hF80)) return 5'd20;
-    if (km_in(a, 32'h1A080, 32'hF80)) return 5'd21;
-    if (km_in(a, 32'h1B080, 32'hF80)) return 5'd22;
-    if (km_in(a, 32'h1C800, 32'h800)) return 5'd23;
+    // Reserved windows: from the end of the span of one row to the base of
+    // the next. The KM aperture end has no package symbol.
+    if (km_rng(a, KmRomBase + KmRowSpan[0], KmSramBase)) return 5'd1;
+    if (km_rng(a, KmMbxBase + KmRowSpan[2], KmEfMapBase)) return 5'd4;
+    if (km_rng(a, KmEfMmrBase + KmRowSpan[5], KmKpvBase)) return 5'd8;
+    if (km_rng(a, KmCsrBase + KmRowSpan[7], KmSmpBase)) return 5'd11;
+    if (km_rng(a, KmSmpBase + KmRowSpan[8], KmOtbnBase)) return 5'd13;
+    if (km_rng(a, KmOtbnBase + KmRowSpan[9], KmAesBase)) return 5'd19;
+    if (km_rng(a, KmAesBase + KmRowSpan[10], KmKmacBase)) return 5'd20;
+    if (km_rng(a, KmKmacBase + KmRowSpan[11], KmHmacBase)) return 5'd21;
+    if (km_rng(a, KmHmacBase + KmRowSpan[12], KmAbrBase)) return 5'd22;
+    if (km_in(a, KmAbrBase + KmRowSpan[13], 32'h800)) return 5'd23;
     return 5'h1F;
   endfunction
 
@@ -35402,9 +35447,9 @@ module sep_fcov (
   // eFuse gap of an address: 1 0x1141C to 0x114FF, 2 0x11574 to 0x115FF,
   // 3 0x11600 to 0x11FFF, 0 none.
   function automatic logic [1:0] km_ef_gap(logic [31:0] a);
-    if (km_in(a, KmEfCtrlBase + 32'h1C, 32'hE4)) return 2'd1;
-    if (km_in(a, KmEfMmrBase + 32'h74, 32'h8C)) return 2'd2;
-    if (km_in(a, 32'h11600, 32'hA00)) return 2'd3;
+    if (km_rng(a, KmEfCtrlBase + KmRowExt[4], KmEfMmrBase)) return 2'd1;
+    if (km_rng(a, KmEfMmrBase + KmRowExt[5], KmEfMmrBase + KmRowSpan[5])) return 2'd2;
+    if (km_rng(a, KmEfMmrBase + KmRowSpan[5], KmKpvBase)) return 2'd3;
     return 2'd0;
   endfunction
 
@@ -35418,38 +35463,110 @@ module sep_fcov (
     if (o >= KmRowExt[r]) return 1'b1;
     // KMCSR and ABR holes inside the extent (register maps of km_csr.adoc
     // and abr_wrapper_key.adoc).
-    if ((r == 4'd7) && (o >= 32'h3C) && (o < 32'hB8)) return 1'b1;
-    if ((r == 4'd13) && (o[7:0] >= 8'h44) && (o < 32'h400)) return 1'b1;
+    if ((r == 4'd7) && (o >= KmRowHole[7]) && (o < KmCsrHoleEnd)) return 1'b1;
+    if ((r == 4'd13) && (o[7:0] >= KmRowHole[13][7:0]) && (o < KmAbrHoleEnd)) return 1'b1;
     return 1'b0;
+  endfunction
+
+  // Offset classes of offset o in row r of cp_if_offset_class: bit c is set
+  // when o is in class c.
+  function automatic logic [4:0] km_cls(logic [3:0] r, logic [31:0] o);
+    logic [4:0] c;
+    c[0] = (o == 32'h0);
+    c[1] = (o == KmRowExt[r] - 32'd4);
+    c[2] = (KmRowHole[r] != 32'h0) && (o == KmRowHole[r]);
+    c[3] = (KmRowExt[r] < KmRowSpan[r]) && (o == KmRowExt[r]);
+    c[4] = (o == KmRowSpan[r] - 32'd4);
+    return c;
   endfunction
 
   // ---------------------------------------------------------------------
   // Window, offset class and decode outcome (cp_if_window,
   // cp_if_offset_class, cp_if_decode_outcome, cp_efw_read_class).
+  //
+  // Window and offset class: a cell is seen when a KM data access completes
+  // in the owner window with the response that the owner grades for its
+  // address: DECERR in a reserved window outside the eFuse window, SLVERR
+  // with 0xBADCAB1E on a read in an eFuse gap, SLVERR with 0x0 on a read in
+  // a hole or past the extent of a non-eFuse row, OKAY at any other decoded
+  // word, and the completion on the KM CPU memory bus for ROM and SRAM. A
+  // seen cell samples only when the pass label km_xbar_pass rises inside
+  // the owner window, and only when the label holds the bit of that cell:
+  // sep_km_crossbar_efuse_window_rand_test writes 0 before its decode walk
+  // and, after CHK-XBAR, CHK-XBAR-RSV, CHK-XBAR-EFUSE and CHK-XBAR-SIZE pass,
+  // bit {row, class} of each graded offset cell in [127:0] and bit 128 + w
+  // of each graded window w in [151:128]. So housekeeping traffic of the
+  // owner (result words, IRQ_STATUS, status polls) fills no cell that the
+  // walk does not grade. The rise clears the seen cells. The label gates a
+  // sample; it is never a bin value and drives nothing.
+  //
+  // Decode outcome and eFuse read class: a value is seen at its DUT event
+  // (the response, then the IRQ_STATUS bit for the decode outcome), and
+  // samples only on the same rise with bit 152 + value
+  // (cp_if_decode_outcome) or 162 + value (cp_efw_read_class) set. The owner
+  // sets these bits only for the outcomes and read classes of the cells and
+  // reads that CHK-XBAR, CHK-XBAR-RSV, CHK-XBAR-EFUSE and CHK-EFW-RD graded;
+  // the rise comes after those checks, CHK-XBAR-SIZE and CHK-REMAP-BUS pass.
+  // The VROM bin and cp_if_vrom_outcome use bits [159:158], and
+  // cp_if_efuse_remap bits [161:160], in the same way (below and above).
   // ---------------------------------------------------------------------
   logic km_dec_pend = 1'b0;
   logic [1:0] km_dec_cls = '0;
   logic km_dec_wr = 1'b0;
+  logic [127:0] km_xb_cell_seen = '0;
+  logic [23:0] km_xb_win_seen = '0;
+  logic [7:0] km_dec_ok = '0;
+  logic [15:0] km_rc_ok = '0;
   always @(posedge clk_i) begin
     logic [3:0] r;
-    logic [31:0] o, a;
-    logic [4:0] win;
-    logic [1:0] gap;
+    logic [31:0] a;
+    logic [4:0] win, cm;
+    logic [1:0] gap, rsp;
+    logic ok;
     km_dec_pend <= 1'b0;
-    if (km_mb_start && !km_mb_instr && km_own_xbar && km_rst_warm_n) begin
+    km_xbar_pass_q <= (km_xbar_pass != '0);
+    if (km_xbar_rise) begin
+      for (int w = 0; w < 24; w++)
+      if (km_xb_win_seen[w] && km_xbar_pass[128+w])
+        u_sep_km_integrity_fault_cg.sample(5'd0, 16'(w));
+      for (int i = 0; i < 128; i++)
+      if (km_xb_cell_seen[i] && km_xbar_pass[i]) u_sep_km_integrity_fault_cg.sample(5'd2, 16'(i));
+      for (int i = 0; i < 6; i++)
+      if (km_dec_ok[i] && km_xbar_pass[152+i]) u_sep_km_integrity_fault_cg.sample(5'd1, 16'(i));
+      for (int i = 0; i < 12; i++)
+      if (km_rc_ok[i] && km_xbar_pass[162+i]) u_sep_km_otp_readout_cg.sample(5'd7, 16'(i));
+      km_xb_cell_seen <= '0;
+      km_xb_win_seen <= '0;
+      km_dec_ok <= '0;
+      km_rc_ok <= '0;
+    end
+    // ROM and SRAM: a data access that completes on the KM CPU memory bus.
+    if (km_mb_v && km_mb_rdy && !km_mb_instr && (km_mb_rom || km_mb_sram) && km_own_xbar &&
+        km_rst_warm_n) begin
       a = km_mem_addr_i;
       win = km_window(a);
-      if (win != 5'h1F) u_sep_km_integrity_fault_cg.sample(5'd0, 16'(win));
       r = km_row(a);
-      if (r != 4'hF) begin
-        o = a - KmRowBase[r];
-        if (o == 32'h0) u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd0}));
-        if (o == KmRowExt[r] - 32'd4) u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd1}));
-        if ((KmRowHole[r] != 32'h0) && (o == KmRowHole[r]))
-          u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd2}));
-        if ((KmRowExt[r] < KmRowSpan[r]) && (o == KmRowExt[r]))
-          u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd3}));
-        if (o == KmRowSpan[r] - 32'd4) u_sep_km_integrity_fault_cg.sample(5'd2, 16'({r, 3'd4}));
+      km_xb_win_seen[win] <= 1'b1;
+      cm = km_cls(r, a - KmRowBase[r]);
+      for (int c = 0; c < 5; c++) if (cm[c]) km_xb_cell_seen[{r, 3'(c)}] <= 1'b1;
+    end
+    // Other windows: a KM AXI access that completes with the graded response.
+    if ((kw_ev || kr_ev) && km_own_xbar) begin
+      a = kw_ev ? kw_addr : kr_addr;
+      rsp = kw_ev ? kw_resp : kr_resp;
+      win = km_window(a);
+      gap = km_ef_gap(a);
+      r = km_row(a);
+      if (km_rsv_window(win)) ok = (rsp == KmDecerr);
+      else if (gap != 2'd0) ok = (rsp == KmSlverr) && (kw_ev || (kr_data == KmBadcab));
+      else if (km_past(a)) ok = (rsp == KmSlverr) && (kw_ev || (kr_data == 32'h0));
+      else ok = (rsp == KmOkay);
+      if (ok && (win != 5'h1F) && !(r inside {4'd0, 4'd1})) begin
+        km_xb_win_seen[win] <= 1'b1;
+        if (r != 4'hF) begin
+          cm = km_cls(r, a - KmRowBase[r]);
+          for (int c = 0; c < 5; c++) if (cm[c]) km_xb_cell_seen[{r, 3'(c)}] <= 1'b1;
+        end
       end
     end
     // Decode outcome of a completed KM AXI access; the IRQ_STATUS bit is
@@ -35478,19 +35595,18 @@ module sep_fcov (
     if (km_dec_pend && km_own_xbar &&
         (((km_dec_cls == 2'd0) && (km_irq_status_i[5] === 1'b1)) ||
          ((km_dec_cls != 2'd0) && (km_irq_status_i[4] === 1'b1))))
-      u_sep_km_integrity_fault_cg.sample(5'd1, 16'({km_dec_cls, km_dec_wr}));
+      km_dec_ok[{km_dec_cls, km_dec_wr}] <= 1'b1;
     // eFuse read class.
-    if (kr_ev && km_own_xbar && km_in(kr_addr, KmEfMapBase, 32'h1000)) begin
+    if (kr_ev && km_own_xbar && km_rng(kr_addr, KmEfMapBase, KmKpvBase)) begin
       logic [2:0] cls;
       logic ok_rsp;
       gap = km_ef_gap(kr_addr);
-      cls = km_in(kr_addr, KmEfMapBase, 32'h400) ? 3'd0 :
+      cls = km_in(kr_addr, KmEfMapBase, KmRowSpan[3]) ? 3'd0 :
             (gap == 2'd1) ? 3'd3 : (gap == 2'd2) ? 3'd4 : (gap == 2'd3) ? 3'd5 :
-            km_in(kr_addr, KmEfCtrlBase, 32'h100) ? 3'd1 : 3'd2;
+            km_in(kr_addr, KmEfCtrlBase, KmRowSpan[4]) ? 3'd1 : 3'd2;
       ok_rsp = (kr_resp == KmOkay);
-      if (ok_rsp) u_sep_km_otp_readout_cg.sample(5'd7, 16'({cls, 1'b0}));
-      else if ((kr_resp == KmSlverr) && (kr_data == KmBadcab))
-        u_sep_km_otp_readout_cg.sample(5'd7, 16'({cls, 1'b1}));
+      if (ok_rsp) km_rc_ok[{cls, 1'b0}] <= 1'b1;
+      else if ((kr_resp == KmSlverr) && (kr_data == KmBadcab)) km_rc_ok[{cls, 1'b1}] <= 1'b1;
     end
   end
 
@@ -36080,6 +36196,19 @@ module sep_fcov (
   logic [3:0] km_se_cnt = '0;
   logic km_se_active = 1'b0, km_se_rd_pend = 1'b0;
   logic [7:0] km_se_bad = '0;
+  // Pass label of cp_df_offset_race and of the first-active-cycle bin of
+  // cp_df_stream_violation: sep_km_drbg_sampler_rand_test writes 0 through
+  // the u_sep_fcov handle at the start of a stream-error case and 1 after
+  // CHK-SMP-STRM passes on it. A first-active-cycle withdrawal whose read ends
+  // with SLVERR, data 0, STREAM_ERR 1, IRQ_STATUS.drbg_err 1 and a COUNT_BAD
+  // increment is held as pending and samples only when the label rises. The
+  // next withdrawal or a KM reset drops a pending case. It gates a sample; it
+  // is never a bin value and drives nothing.
+  int unsigned km_strm_pass = 0;
+  logic km_strm_pass_q = 1'b0;
+  logic km_or_race_v = 1'b0, km_or_race = 1'b0;  // timeout 1 or 2 at the withdrawal
+  logic km_or_pend_v = 1'b0, km_or_pend = 1'b0;  // its read ended as graded; waits for the label
+  logic km_sv_pend_v = 1'b0;  // first-active-cycle withdrawal ended as graded; waits for the label
   logic km_trng_armed = 1'b0;
   wire km_tv = (km_smp_tvalid_i === 1'b1);
   wire km_tr = (km_smp_tready_i === 1'b1);
@@ -36097,6 +36226,7 @@ module sep_fcov (
     km_good_q <= km_smp_count_good_i;
     km_bad_q <= km_smp_count_bad_i;
     km_sticky_q <= km_smp_sticky_i;
+    km_strm_pass_q <= (km_strm_pass != 0);
     if (!km_rst_warm_n || !km_rst_cold_n) begin
       km_wait_req <= 1'b0;
       km_prev_data_ok <= 1'b0;
@@ -36107,6 +36237,9 @@ module sep_fcov (
       km_to_cnt <= '0;
       km_se_cnt <= '0;
       km_se_rd_pend <= 1'b0;
+      km_or_race_v <= 1'b0;
+      km_or_pend_v <= 1'b0;
+      km_sv_pend_v <= 1'b0;
       km_stall_cnt <= '0;
       km_stall_done <= 1'b0;
     end else if (km_own_smp) begin
@@ -36214,6 +36347,9 @@ module sep_fcov (
       // Withdrawal with no read active and in the first active cycle.
       if (km_withdraw) begin
         km_se_bad <= km_bad_q;
+        km_or_race_v <= 1'b0;
+        km_or_pend_v <= 1'b0;
+        km_sv_pend_v <= 1'b0;
         if ((st == KmStIdle) && (km_smp_st_q == KmStIdle)) begin
           km_se_active <= 1'b0;
           km_se_cnt <= 4'd1;
@@ -36221,8 +36357,8 @@ module sep_fcov (
           km_se_active <= 1'b1;
           km_se_rd_pend <= 1'b1;
           km_se_cnt <= 4'd1;
-          if ((km_smp_cfg_i[16:1] == 16'd1) || (km_smp_cfg_i[16:1] == 16'd2))
-            u_sep_km_drbg_fault_cg.sample(5'd4, (km_smp_cfg_i[16:1] == 16'd2) ? 16'd1 : 16'd0);
+          km_or_race_v <= (km_smp_cfg_i[16:1] == 16'd1) || (km_smp_cfg_i[16:1] == 16'd2);
+          km_or_race <= (km_smp_cfg_i[16:1] == 16'd2);
         end
       end else if (km_se_cnt != 4'd0) begin
         if (!km_se_active && (km_se_cnt == 4'd4) && (km_smp_sticky_i[1] === 1'b1) &&
@@ -36232,9 +36368,23 @@ module sep_fcov (
       end
       if (km_data_rd && km_se_rd_pend) begin
         km_se_rd_pend <= 1'b0;
+        km_or_race_v <= 1'b0;
         if ((kr_resp == KmSlverr) && (kr_data == 32'h0) && (km_smp_sticky_i[1] === 1'b1) &&
-            (km_smp_count_bad_i > km_se_bad))
-          u_sep_km_drbg_fault_cg.sample(5'd3, 16'd1);
+            (km_irq_status_i[6] === 1'b1) && (km_smp_count_bad_i > km_se_bad)) begin
+          km_sv_pend_v <= 1'b1;
+          km_or_pend_v <= km_or_race_v;
+          km_or_pend <= km_or_race;
+        end
+      end
+      // The first-active-cycle withdrawal and the offset race sample only
+      // when CHK-SMP-STRM passed on their case.
+      if ((km_strm_pass != 0) && !km_strm_pass_q && km_sv_pend_v) begin
+        u_sep_km_drbg_fault_cg.sample(5'd3, 16'd1);
+        km_sv_pend_v <= 1'b0;
+      end
+      if ((km_strm_pass != 0) && !km_strm_pass_q && km_or_pend_v) begin
+        u_sep_km_drbg_fault_cg.sample(5'd4, 16'(km_or_pend));
+        km_or_pend_v <= 1'b0;
       end
     end
     // A TRNG reset while the KM is held, then the first DATA read.
@@ -36369,11 +36519,27 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // eFuse program by path (cp_efw_program): the class is the strap at the
   // go, else the write-lock state of the target field in the sensed shadow at
-  // the go. The cell samples when the program interface is idle again, and a
-  // non-strap cell only with the result that the class states: a program of
-  // an unlocked spare field raises no efuse_req_err, and a program of a
-  // write-locked field raises it (efuse_interface_ctrl.adoc,
-  // EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error).
+  // the go. Every cell is held as pending and samples only when its pass
+  // label rises inside the owner window; the label rise clears the pending
+  // cells of that label. A non-strap KM cell is held only when the program
+  // interface is idle again with the result that the class states: a program
+  // of an unlocked spare field shows program_busy, ends with program_busy 0
+  // and raises no efuse_req_err, and a program of a write-locked field raises
+  // it (efuse_interface_ctrl.adoc, EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error:
+  // the request was blocked by a program lock). A blocked KM program of a
+  // write-locked field shows no program_busy, so its wait ends when
+  // efuse_req_err rises with no busy seen, and the cell needs efuse_req_err
+  // clear at the start of the go write (the bit is sticky, so a bit left from
+  // an earlier request fills no cell). The end of the KmPgWin program window
+  // holds no cell. The non-strap label is km_efw_prog_pass:
+  // sep_km_crossbar_efuse_window_rand_test writes bit 0 after CHK-EFW-PROG
+  // passes (the KM program landed, efuse_req_error 0) and bit 1 after
+  // CHK-EFW-DENY passes (efuse_req_error 1 and the OTP word equal to the
+  // staged word), each written alone and then 0. A strap cell is held from
+  // its go write under the strap, and the label is km_efw_tm_pass: the leaf
+  // writes 0 before its secure test programs and 1 after CHK-EFW-TM passes
+  // (equal KM and host results, no fuse change and a zero read word). A label
+  // gates a sample; it is never a bin value and drives nothing.
   // ---------------------------------------------------------------------
   // Write-lock target of a program (cp_efw_program). Field n of the shadow map
   // spans the OTP bits from 8 times its REG_OFFSET to the next field, and its
@@ -36485,21 +36651,45 @@ module sep_fcov (
   logic km_pg_host = 1'b0, km_pg_tm = 1'b0, km_pg_busy_seen = 1'b0;
   logic [2:0] km_pg_tgt = '0;
   logic km_pg_err_seen = 1'b0;
+  logic km_pg_err_aw = 1'b0;  // efuse_req_err at the start of the last KM write
+  logic km_pg_err0 = 1'b0;  // efuse_req_err at the start of the go write
+  int unsigned km_efw_tm_pass = 0;
+  logic km_efw_tm_pass_q = 1'b0;
+  logic [1:0] km_pg_tm_pend = '0;  // {host, KM} strap program go seen; waits for the label
+  int unsigned km_efw_prog_pass = 0;  // bit 0 CHK-EFW-PROG, bit 1 CHK-EFW-DENY passed
+  logic km_efw_prog_pass_q = 1'b0;
+  logic [1:0] km_pg_np_pend = '0;  // {write-locked, unlocked spare} KM cell; waits for the label
   always @(posedge clk_i) begin
+    logic pg_idle, pg_blocked;
+    km_efw_tm_pass_q <= (km_efw_tm_pass != 0);
+    if (km_own_xbar && (km_efw_tm_pass != 0) && !km_efw_tm_pass_q) begin
+      if (km_pg_tm_pend[0]) u_sep_km_otp_readout_cg.sample(5'd8, 16'(3'b0_10));
+      if (km_pg_tm_pend[1]) u_sep_km_otp_readout_cg.sample(5'd8, 16'(3'b1_10));
+      km_pg_tm_pend <= '0;
+    end
+    km_efw_prog_pass_q <= (km_efw_prog_pass != 0);
+    if (km_own_xbar && (km_efw_prog_pass != 0) && !km_efw_prog_pass_q) begin
+      if (km_pg_np_pend[0] && km_efw_prog_pass[0])
+        u_sep_km_otp_readout_cg.sample(5'd8, 16'(3'b0_00));
+      if (km_pg_np_pend[1] && km_efw_prog_pass[1])
+        u_sep_km_otp_readout_cg.sample(5'd8, 16'(3'b0_01));
+      km_pg_np_pend <= '0;
+    end
+    if (kx_wstart) km_pg_err_aw <= (req_err_i === 1'b1);
     if (km_pg_cnt != 14'd0) begin
       if (km_efuse_pg_busy_i === 1'b1) km_pg_busy_seen <= 1'b1;
       if (req_err_i === 1'b1) km_pg_err_seen <= 1'b1;
-      if ((km_pg_busy_seen && (km_efuse_pg_busy_i === 1'b0) && (km_pg_cnt > 14'd2)) ||
-          (km_pg_cnt == 14'(KmPgWin))) begin
+      pg_idle = km_pg_busy_seen && (km_efuse_pg_busy_i === 1'b0) && (km_pg_cnt > 14'd2);
+      pg_blocked = !km_pg_host && !km_pg_tm && km_pg_tgt[2] && km_pg_tgt[0] && !km_pg_err0 &&
+          !km_pg_busy_seen && (km_efuse_pg_busy_i !== 1'b1) && (req_err_i === 1'b1);
+      if (pg_idle || pg_blocked || (km_pg_cnt == 14'(KmPgWin))) begin
         km_pg_cnt <= '0;
-        if (km_own_xbar) begin
-          if (km_pg_tm) u_sep_km_otp_readout_cg.sample(5'd8, 16'({km_pg_host, 2'd2}));
-          else if (!km_pg_host && km_pg_tgt[2]) begin
-            if (km_pg_tgt[0] && (km_pg_err_seen || (req_err_i === 1'b1)))
-              u_sep_km_otp_readout_cg.sample(5'd8, 16'(3'b0_01));
-            else if (!km_pg_tgt[0] && km_pg_tgt[1] && !km_pg_err_seen && (req_err_i !== 1'b1))
-              u_sep_km_otp_readout_cg.sample(5'd8, 16'(3'b0_00));
-          end
+        if (km_own_xbar && (km_efw_prog_pass == 0) && !km_pg_host && !km_pg_tm && km_pg_tgt[2] &&
+            (pg_idle || pg_blocked)) begin
+          if (km_pg_tgt[0] && !km_pg_err0 && (km_pg_err_seen || (req_err_i === 1'b1)))
+            km_pg_np_pend[1] <= 1'b1;
+          else if (pg_idle && !km_pg_tgt[0] && km_pg_tgt[1] && !km_pg_err_seen && (req_err_i !== 1'b1))
+            km_pg_np_pend[0] <= 1'b1;
         end
       end else km_pg_cnt <= km_pg_cnt + 14'd1;
     end
@@ -36508,8 +36698,11 @@ module sep_fcov (
       km_pg_cnt <= 14'd1;
       km_pg_host <= 1'b0;
       km_pg_tm <= (km_secure_tm_i === 1'b1);
+      if (km_own_xbar && (km_secure_tm_i === 1'b1) && (km_efw_tm_pass == 0))
+        km_pg_tm_pend[0] <= 1'b1;
       km_pg_busy_seen <= 1'b0;
       km_pg_err_seen <= 1'b0;
+      km_pg_err0 <= km_pg_err_aw;
       km_pg_tgt <= km_ef_target(16'((kw_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK) >>
                                     EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT),
                                 {ef_locks_sp, ef_locks});
@@ -36517,6 +36710,8 @@ module sep_fcov (
       km_pg_cnt <= 14'd1;
       km_pg_host <= 1'b1;
       km_pg_tm <= (km_secure_tm_i === 1'b1);
+      if (km_own_xbar && (km_secure_tm_i === 1'b1) && (km_efw_tm_pass == 0))
+        km_pg_tm_pend[1] <= 1'b1;
       km_pg_busy_seen <= 1'b0;
       km_pg_err_seen <= 1'b0;
       km_pg_tgt <= '0;
@@ -38080,6 +38275,7 @@ module sep_fcov (
   km_intf_pkg::km_otp_data_t km_nk_otp = '0;
   // cp_if_vrom_outcome: a DECERR in the VROM window waits for IRQ_STATUS.
   logic km_vr_pend = 1'b0, km_vr_wr = 1'b0;
+  logic [1:0] km_vr_ok = '0;
   // cp_if_rom_write: a ROM store before the lockout.
   logic [2:0] km_rp_cnt = '0;
   logic km_rp_clean = 1'b0, km_rp_bad = 1'b0;
@@ -38088,7 +38284,17 @@ module sep_fcov (
   logic [1:0] km_ar_hs = '0;
   logic [15:0] km_ar_good = '0;
   logic [31:0] km_ar_beat = '0;
-  // The withdrawal with a partial prefetch word.
+  // The withdrawal with a partial prefetch word. Pass label of the
+  // withdraw_discards_prefetch bin: sep_km_drbg_sampler_rand_test writes 0
+  // through the u_sep_fcov handle before its withdrawal leg and 1 after
+  // CHK-SMP-PRE-WITHDRAW passes, which grades the next prefetched word
+  // (PREFETCH_DATA and DATA) against the second live beat. A withdrawal whose
+  // next DATA read ended as below is held as pending and samples only when the
+  // label rises. A KM reset or the next such withdrawal drops a pending case.
+  // It gates a sample; it is never a bin value and drives nothing.
+  int unsigned km_pwd_pass = 0;
+  logic km_pwd_pass_q = 1'b0;
+  logic km_wd_pend = 1'b0;
   logic km_wd_on = 1'b0, km_wd_st = 1'b0, km_wd_bv = 1'b0, km_wd_full = 1'b0;
   logic [3:0] km_wd_cnt = '0;
   logic [7:0] km_wd_bad = '0;
@@ -38210,7 +38416,16 @@ module sep_fcov (
 
     // ---- cp_if_window[vrom] and cp_if_vrom_outcome: a KM access in the VROM
     // window completes with DECERR, and IRQ_STATUS.axi_decerr is set one clock
-    // later ----
+    // later. The outcome is held as seen and samples only on km_xbar_rise with
+    // its bit [158 + value] set, after CHK-XBAR-RSV passes ----
+    if (km_xbar_rise) begin
+      for (int i = 0; i < 2; i++)
+      if (km_vr_ok[i] && km_xbar_pass[158+i]) begin
+        u_sep_km_integrity_fault_cg.sample(5'd0, 16'd24);
+        u_sep_km_integrity_fault_cg.sample(5'd8, 16'(i));
+      end
+      km_vr_ok <= '0;
+    end
     km_vr_pend <= 1'b0;
     if ((kw_ev || kr_ev) && km_own_xbar) begin
       a = kw_ev ? kw_addr : kr_addr;
@@ -38219,10 +38434,7 @@ module sep_fcov (
         km_vr_wr <= kw_ev;
       end
     end
-    if (km_vr_pend && km_own_xbar && (km_irq_status_i[5] === 1'b1)) begin
-      u_sep_km_integrity_fault_cg.sample(5'd0, 16'd24);
-      u_sep_km_integrity_fault_cg.sample(5'd8, 16'(km_vr_wr));
-    end
+    if (km_vr_pend && km_own_xbar && (km_irq_status_i[5] === 1'b1)) km_vr_ok[km_vr_wr] <= 1'b1;
 
     // ---- cp_if_rom_write[rom_write_pre_lockout_dropped]: a ROM store with
     // the lockout not engaged sets IRQ_STATUS.rom_write_err within four
@@ -38246,10 +38458,12 @@ module sep_fcov (
     end
 
     // ---- DRBG sampler (owner of the sampler leaf) ----
+    km_pwd_pass_q <= (km_pwd_pass != 0);
     if (!km_rst_warm_n || !km_rst_cold_n) begin
       km_ar_on <= 1'b0;
       km_ar_chk <= 1'b0;
       km_wd_on <= 1'b0;
+      km_wd_pend <= 1'b0;
       km_pk_v <= 1'b0;
     end else begin
       // A DATA read with prefetch 1 and no prefetched word takes the first
@@ -38298,13 +38512,18 @@ module sep_fcov (
         if (km_data_rd && (kr_resp == KmOkay) && (km_wd_cnt == 4'd0)) begin
           km_wd_on <= 1'b0;
           if (km_own_smp && km_wd_st && km_wd_bv && km_wd_full && (kr_data == km_wd_beat))
-            u_sep_km_drbg_sampler_cg.sample(5'd10, 16'd1);
+            km_wd_pend <= 1'b1;
         end
+      end
+      if ((km_pwd_pass != 0) && !km_pwd_pass_q && km_wd_pend) begin
+        u_sep_km_drbg_sampler_cg.sample(5'd10, 16'd1);
+        km_wd_pend <= 1'b0;
       end
       if (km_withdraw && (km_smp_cfg_i[0] === 1'b1) && (km_smp_pf_bytes_i != 3'd0) && !$isunknown(
               km_smp_pf_bytes_i
           )) begin
         km_wd_on <= 1'b1;
+        km_wd_pend <= 1'b0;
         km_wd_cnt <= 4'd1;
         km_wd_st <= 1'b0;
         km_wd_bv <= 1'b0;

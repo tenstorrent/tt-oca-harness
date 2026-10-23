@@ -245,6 +245,119 @@ def set_dma_smc_cpu_pass(passed: bool, log=None) -> bool:
     return _set_bound("dma_smc_cpu_pass", int(bool(passed)), "FCOV-DMA-SMC-CPU-PASS", log)
 
 
+def set_km_strm_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.km_strm_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_km_drbg_fault_cg.cp_df_offset_race`` and of the
+    ``first_active_cycle_tready_low`` bin of ``cp_df_stream_violation``. The
+    sampler holds a first-active-cycle withdrawal whose read ended with SLVERR,
+    data 0, STREAM_ERR 1, IRQ_STATUS.drbg_err 1 and a COUNT_BAD increment as
+    pending, and samples it only when this value rises. The DRBG sampler leaf writes 0 at the
+    start of each stream-error case and 1 after ``CHK-SMP-STRM`` passes on that
+    case. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("km_strm_pass", int(bool(passed)), "FCOV-KM-STRM-PASS", log)
+
+
+def set_km_pwd_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.km_pwd_pass`` (1 after the check passes, else 0).
+
+    The pass label of the ``withdraw_discards_prefetch`` bin of
+    ``sep_km_drbg_sampler_cg.cp_smp_prefetch_active_read``. The sampler holds a
+    withdrawal of a partial prefetch word whose next OKAY DATA read returned the
+    first full beat after it as pending, and samples it only when this value
+    rises. The DRBG sampler leaf writes 0 before its withdrawal leg and 1 after
+    ``CHK-SMP-PRE-WITHDRAW`` passes (the next prefetched word is the second live
+    beat, with no byte of the partial beat). Same rules as ``graded_owner``: a
+    no-op that returns False on Verilator. On VCS a sampler without the variable
+    is a testbench error.
+    """
+    return _set_bound("km_pwd_pass", int(bool(passed)), "FCOV-KM-PWD-PASS", log)
+
+
+def set_km_efw_tm_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.km_efw_tm_pass`` (1 after the check passes, else 0).
+
+    The pass label of the ``km_strap_set`` and ``host_strap_set`` cells of
+    ``sep_km_otp_readout_cg.cp_efw_program``. The sampler holds each program
+    in secure test mode as pending when the program interface is idle again,
+    and samples it only when this value rises inside the owner window. The
+    crossbar leaf writes 0 before its secure test programs and 1 after
+    ``CHK-EFW-TM`` passes (equal KM and host results, no fuse change and a zero
+    read word). Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("km_efw_tm_pass", int(bool(passed)), "FCOV-KM-EFW-TM-PASS", log)
+
+
+# Bits of ``km_efw_prog_pass``: the ``km_unlocked_spare`` and ``km_write_locked``
+# cells of ``sep_km_otp_readout_cg.cp_efw_program``.
+KM_EFW_PROG_PASS_SPARE = 1 << 0
+KM_EFW_PROG_PASS_DENY = 1 << 1
+
+
+def set_km_efw_prog_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.km_efw_prog_pass`` (the passed program checks, or 0).
+
+    The pass label of the ``km_unlocked_spare`` (bit 0,
+    ``KM_EFW_PROG_PASS_SPARE``) and ``km_write_locked`` (bit 1,
+    ``KM_EFW_PROG_PASS_DENY``) cells of
+    ``sep_km_otp_readout_cg.cp_efw_program``. The sampler holds a KM program as
+    pending when the program interface is idle again with the result of its
+    class, and samples it only when this value rises inside the owner window
+    with the bit of that cell set. The crossbar leaf writes bit 0 after
+    ``CHK-EFW-PROG`` passes and bit 1 after ``CHK-EFW-DENY`` passes, each alone
+    and then 0. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    if bits >> 2:
+        raise ValueError(f"km_efw_prog_pass bits {bits:#x} are not 0 to 3")
+    return _set_bound("km_efw_prog_pass", bits, "FCOV-KM-EFW-PROG-PASS", log)
+
+
+def set_km_xbar_pass(cells: int, windows: int, log=None, outcomes: int = 0) -> bool:
+    """Write ``u_sep_fcov.km_xbar_pass`` (the graded decode cells, or 0).
+
+    The pass label of ``sep_km_integrity_fault_cg`` (``cp_if_window``,
+    ``cp_if_offset_class``, ``cp_if_decode_outcome``, ``cp_if_efuse_remap``,
+    ``cp_if_vrom_outcome``) and of ``sep_km_otp_readout_cg.cp_efw_read_class``.
+    Bit ``8 * row + class`` of ``cells`` is a graded offset cell of
+    ``cp_if_offset_class``; bit ``w`` of ``windows`` is a graded window ``w``
+    (0 to 23) of ``cp_if_window``. ``outcomes`` holds one bit per graded value:
+    bit ``v`` (0 to 5) a ``cp_if_decode_outcome`` value, bit ``6 + v`` a
+    ``cp_if_vrom_outcome`` value (and the ``vrom`` bin of ``cp_if_window``),
+    bit ``8 + v`` a ``cp_if_efuse_remap`` value, bit ``10 + v`` (``v`` 0 to 11)
+    a ``cp_efw_read_class`` value. The sampler holds each cell or value that a
+    KM access completed with as seen, and samples the seen ones whose bit is
+    set only when this value rises inside the owner window. The crossbar leaf
+    writes 0 before its decode walk and the masks after ``CHK-XBAR``,
+    ``CHK-XBAR-RSV``, ``CHK-XBAR-EFUSE``, ``CHK-XBAR-SIZE``, ``CHK-EFW-RD``
+    and ``CHK-REMAP-BUS`` pass. Same rules as ``graded_owner``: a no-op that
+    returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    if cells < 0 or cells >> 128 or windows < 0 or windows >> 24 or outcomes < 0 or outcomes >> 22:
+        raise ValueError(
+            f"km_xbar_pass masks out of range: cells={cells:#x} windows={windows:#x} "
+            f"outcomes={outcomes:#x}"
+        )
+    if _gate_handle() is None:
+        return False
+    fcov = cocotb.top.u_sep_fcov
+    if not hasattr(fcov, "km_xbar_pass"):
+        raise AttributeError("u_sep_fcov has no km_xbar_pass variable (cov/sv/sep_fcov.sv)")
+    fcov.km_xbar_pass.value = (outcomes << 152) | (windows << 128) | cells
+    if log is not None:
+        log.info(
+            "FCOV-KM-XBAR-PASS cells=0x%032x windows=0x%06x outcomes=0x%06x",
+            cells,
+            windows,
+            outcomes,
+        )
+    return True
+
+
 def close_graded_window(log=None) -> bool:
     """Write 0 (no window open). Returns True when written."""
     gate = _gate_handle()
