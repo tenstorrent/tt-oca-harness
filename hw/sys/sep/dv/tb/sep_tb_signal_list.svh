@@ -937,6 +937,14 @@
 // Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_aon_clk_n, rst_aon_ni of the AON
 // timer).
 `SEP_TB_OUT(logic, aon_rst_n_probe_o)
+// Watchdog reset at the output of the reset controller scan bypass
+// (sep_wdt_reset_n, u_sep_reset_ctrl.sep_wdt_reset_no): scan_rst_ni when test_en_i is
+// high, else the two-flop capture of wdt_rst_ni. Read-only.
+`SEP_TB_OUT(logic, sep_wdt_reset_n_probe_o)
+// Watchdog alert (wdt_alert, u_sep_wdt_wrap.wdt_alert_o) and bark interrupt
+// (intr_wdog_timer_bark, u_sep_wdt_wrap.intr_wdog_timer_bark_o). Read-only.
+`SEP_TB_OUT(logic, wdt_alert_probe_o)
+`SEP_TB_OUT(logic, wdt_bark_probe_o)
 // Watchdog count register WDOG_COUNT of the AON timer
 // (u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q, clocked by clk_wdt_i).
 // Read-only.

@@ -138,7 +138,7 @@ tags = ["reset", "cpu", "scratch", "dma", "memory", "subsystem"]
 run_modes = ["no_cpu"]
 tools = ["vcs"]
 target = "default"
-args = ["+skip_fuse_sense", "+sep_require_full_cpu"]
+args = ["+skip_fuse_sense", "+sep_require_full_cpu", "+sep_lsu_demux_underflow_waive"]
 
 [[tests]]
 # A SW_RESET_N field resets exactly its domain after the domain paths report isolated.

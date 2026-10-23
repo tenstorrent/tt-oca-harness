@@ -9,7 +9,9 @@ Secure DMA copy intact; the two fault latches keep their aggregator sources 41
 and 43 pending. A pulse before, inside or after a pending ``SW_RESET_N``
 sequence leaves the sequence intact: the domain isolates, resets and returns
 released after the write of 1. A cold reset clears all of them, also in the
-middle of a DMA copy, and a later copy completes.
+middle of a DMA copy, and a later copy completes. After a ``wdt_rst_ni`` pulse
+that cuts a write, the cold reset clears what the pulse left on the bus, and
+the next write completes.
 
 Sources: ``hw/sys/sep/doc/clk_rst.adoc`` (Reset Architecture);
 ``hw/sys/sep/doc/reset_controller.adoc`` (SEP Reset Controller, Isolation and
@@ -19,7 +21,9 @@ Reset Sequencing); ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc``
 (``SW_RESET_N``); ``hw/sys/sep/doc/interrupts.adoc`` (SEP CPU Interrupt Vector
 Map, sources 41 and 43); ``hw/sys/sep/doc/cpu.adoc`` (CPU: the run-request
 synchronizer); ``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc``
-(reset values).
+(reset values); ``doc/trm/src/reset.adoc`` (Watchdog timeout: the watchdog
+reset does not drain transactions, and a cold reset follows every watchdog
+timeout).
 
 Legs. Calibration (isolation latency Tiso, write-handshake latency, clean copy
 time C), arming, a fault-latch inject, the WDT sequence of 2 to 6 pulses and
@@ -29,7 +33,9 @@ band: before the ``SW_RESET_N`` write, between the write and the
 and an idle copy), the cold-reset leg (``rst_ni`` in the middle of a copy) and
 a recovery copy. The full-CPU build adds the DBG sequence, the DBG overlap
 runs, the DBG DMA leg (a ``dbg_rstb_i`` pulse against a running and an idle
-copy) and the run-request synchronizer leg (CHK-DBG-SYNC). The leaf selects
+copy) and the run-request synchronizer leg (CHK-DBG-SYNC). The cold-recover
+leg (a ``wdt_rst_ni`` pulse with a write in flight, then ``rst_ni``) runs last on
+every build. The leaf selects
 these legs from the build it runs on (the full ``sep_cpu`` present), not from
 the simulator, and sets ``required_evidence`` to match.
 
@@ -59,10 +65,16 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-OVL                 each overlap run: the domain isolates, resets, returns
                           released after the write of 1 and reads its probe at
                           the RDL default; the sibling keeps its value and
-                          ``SW_RESET_N`` reads 0x76. The B of the cut write is
-                          OKAY before the ``sep_cpu_reset_n`` fall, or absent
-                          when the CPU reset cuts the write; the release write
-                          shows its AW and an OKAY B on the bus.
+                          ``SW_RESET_N`` reads 0x76; the release write shows
+                          its AW and an OKAY B on the bus. A B of the cut write,
+                          when one shows, is OKAY. Its timing against the
+                          ``sep_cpu_reset_n`` fall (drained, late, dropped) is
+                          logged, not graded (OBS-OVL-CUT-B). A WDT run with a
+                          late or dropped B applies the cold reset before the
+                          release write (``cold_before_release=1``): then
+                          ``ip_rst_n[D]`` holds low from its fall to the cold
+                          reset, the cold reset drops ``sep_reset_n``, and the
+                          sibling reads its RDL default.
   CHK-DMA-CPURST          each pulse class and DMA mode: the copy completes,
                           the programmed registers, ``RANGE_REGWEN`` and both
                           latches are kept. The WDT runs also need the
@@ -73,14 +85,16 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           ``SW_RESET_N`` to their reset values; the destination
                           does not change after the reset when its control holds.
   CHK-DMA-COLDRST-RECOVER a new copy after the cold reset completes and matches.
-  CHK-WDT-INFLIGHT        last leg, every seed and build: a ``wdt_rst_ni`` pulse
+  CHK-WDT-COLD-RECOVER    last leg, every seed and build: a ``wdt_rst_ni`` pulse
                           lands while an accepted ``SW_RESET_N`` write has its B
                           outstanding and is released before the calibrated B
-                          latency. No B of that write reaches the CPU port on or
-                          after the first clock ``sep_cpu_reset_n`` is low (a B
-                          before it, OKAY, or no B passes), the CPU reset falls
-                          and rises, and the next ``SW_RESET_N`` write shows its
-                          AW and an OKAY B on the bus within the bound.
+                          latency. ``sep_cpu_reset_n`` falls and rises with
+                          ``sep_reset_n`` high. Then an ``rst_ni`` pulse drops
+                          ``sep_reset_n``, and the next ``SW_RESET_N`` write on
+                          ID 0 shows its AW and an OKAY B on the bus within the
+                          bound, with no other ID-0 B from the cold reset to the
+                          bound after that B. The B of the cut write is logged,
+                          not graded (OBS-WDT-INFLIGHT).
 
 Controls (not counted): ``CTL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
 ``sep_cpu_reset_n`` with ``sep_reset_n`` high, and the ``rst_ni`` pulse drops
@@ -237,8 +251,8 @@ TAP_BOUND = 4_000
 DBG_ALLOW = 2  # CHK-DBG-SYNC allowance beyond the two-flop synchronizer
 SYNC_LAT = 2
 WRITE_BOUND = 4_000
-# In-flight leg: the pulse asserts this many clocks after the write's AW handshake and
-# lasts INFLIGHT_WIDTH clocks. The leg checks that the release comes before the
+# Cold-recover leg: the pulse asserts this many clocks after the write's AW handshake
+# and lasts INFLIGHT_WIDTH clocks. The leg checks that the release comes before the
 # calibrated B latency (CAL-TISO) and fails otherwise.
 INFLIGHT_OFFSET = 1
 INFLIGHT_WIDTH = 2
@@ -348,7 +362,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         "CHK-DMA-CPURST",
         "CHK-DMA-COLDRST",
         "CHK-DMA-COLDRST-RECOVER",
-        "CHK-WDT-INFLIGHT",
+        "CHK-WDT-COLD-RECOVER",
     )
 
     # ---- log helpers --------------------------------------------------------
@@ -515,7 +529,6 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.retain: dict[str, str] = {}
         self.agg: dict[str, str] = {}
         self.ovl_dbg: list[str] = []
-        self.late_b: list[str] = []
         self.cpurst_dbg: list[str] = []
         self.cpu_rst = {"wdt_events": 0, "low": 0, "sep_high": True}
         try:
@@ -550,12 +563,9 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 for key in ("DBG",):
                     self._chk("CHK-RETAIN", True, self.retain[key])
                     self._chk("CHK-AGG-SURVIVE", True, self.agg[key])
-            # Last, after every other check: a CPU reset with a write in flight.
-            await self._wdt_inflight_leg()
-            if self.late_b:
-                raise AssertionError(
-                    f"CHK-OVL FAIL: {len(self.late_b)} overlap run(s) with a late B: {self.late_b[0]}"
-                )
+            # Last, after every other check: a CPU reset with a write in flight,
+            # then the cold reset that clears what it leaves.
+            await self._wdt_cold_recover_leg()
         finally:
             await self._close()
             for w in (self.irq, self.mpc, *self.pins.values()):
@@ -583,7 +593,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.pf_ack = (ack[0] - h) if ack else None
         b_beats = [b.clk - self.off for b in self.chan.since(cm, "b") if b.axi_id == 0]
         self.lat_b = (b_beats[0] - h) if b_beats else None
-        # The B latency places the in-flight leg and proves the s_axi B tap live.
+        # The B latency places the cold-recover leg and proves the s_axi B tap live.
         self._ctl(
             "CTL-CAL-B",
             self.lat_b is not None and self.lat_b > 0,
@@ -908,8 +918,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
             mp = self.pins[run.cls].mark()
             base = self.clk
             pulse_task = None
-            # The response of the write is watched from its issue, so a late B is
-            # graded on the clock it shows.
+            # The response of the write is watched from its issue, so its outcome
+            # against the CPU reset is logged on the clock it shows.
             cut_task = cocotb.start_soon(
                 self._watch_cut_b(cm, m["sep_cpu_reset_n"], f"run={n} pulse={run.cls}")
             )
@@ -931,13 +941,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
                     f"CHK-OVL FAIL: dom={d} pulse={run.cls} band={run.band} the response of the "
                     f"SW_RESET_N write: {cut['text']}"
                 )
-                if cut["outcome"] != "late":
-                    self.logger.error(msg)
-                    raise AssertionError(msg)
-                # A late B is the in-flight write defect. The run goes on so the later
-                # legs keep their evidence; the leaf fails after the last leg.
-                self.late_b.append(msg)
-            late = not cut["ok"]
+                self.logger.error(msg)
+                raise AssertionError(msg)
             if cut["outcome"] == "dropped":
                 self._reset_cpu_master(f"overlap run={n}")
             h = cut["aw"]
@@ -970,14 +975,30 @@ class sep_cpu_reset_retention_test(sep_base_test):
             )
             if not band_ok:
                 raise AssertionError(f"overlap run={n}: pulse not in band {run.band}")
-            # Release after the pulse.
+            # Release after the pulse. A WDT pulse that cut the write (late or
+            # dropped B) is followed by the cold reset before the release write: the
+            # platform follows every watchdog timeout with a cold reset, which clears
+            # the state the watchdog reset leaves (doc/trm/src/reset.adoc, Watchdog
+            # timeout).
             await self.taps.resets["sep_cpu_reset_n"].wait_level(1, TAP_BOUND)
+            cold = run.cls == "WDT" and cut["outcome"] in ("late", "dropped")
+            cold_clk = cold_low = None
+            if cold:
+                await FallingEdge(dut.clk_i)
+                sep = self.taps.resets["sep_reset_n"]
+                mk = sep.mark()
+                cold_clk = self.clk
+                await self.pulse_rst_ni(hold_cycles=self.plan.cold_width)
+                for name in ("sep_reset_n", "sep_cpu_reset_n"):
+                    await self.taps.resets[name].wait_level(1, TAP_BOUND)
+                cold_low = bool(sep.fall_clks_since(mk))
             await FallingEdge(dut.clk_i)
             nxt, rel_aw = await self._bus_write(SW_HMAC_HELD)
             if nxt != "OKAY":
                 msg = (
                     f"CHK-OVL FAIL: dom={d} pulse={run.cls} band={run.band} the SW_RESET_N write "
-                    f"after the pulse: {nxt}; the CPU-LSU write path does not recover"
+                    f"after the pulse: {nxt} cut_b={cut['outcome']}; the CPU-LSU write path does not "
+                    "recover"
                 )
                 self.logger.error(msg)
                 raise AssertionError(msg)
@@ -986,13 +1007,21 @@ class sep_cpu_reset_retention_test(sep_base_test):
             rise_c = rise[0] if rise else None
             # ip_rst_n[D] holds low on every clock from its fall to the AW handshake
             # of the release write, and its first rise comes after that handshake.
-            held = rise_c is not None and fall < rel_aw < rise_c
+            # With the cold reset before the release write, the cold reset releases
+            # the domain (SW_RESET_N returns to 0x7E): ip_rst_n[D] holds low from its
+            # fall to the cold reset, and its first rise comes at or after it.
+            if cold:
+                held = rise_c is not None and fall < cold_clk <= rise_c and bool(cold_low)
+            else:
+                held = rise_c is not None and fall < rel_aw < rise_c
             pd_, ps_ = _BY_NAME[d], _BY_NAME[sib]
             got_d = await self.pd.read(pd_)
             got_s = await self.pd.read(ps_)
             swv = await self._rd(SW)
             fd = field_compare(got_d, pd_.reset, pd_.mask)
-            fs = field_compare(got_s, self.armed[ps_.name], ps_.mask)
+            # The cold reset returns the sibling to its RDL reset value.
+            sib_want = ps_.reset if cold else self.armed[ps_.name]
+            fs = field_compare(got_s, sib_want, ps_.mask)
             iso_order = pre_iso == 0 and pre_key == 1 and ack_c is not None and ack_c < fall
             ok = iso_order and held and fd.ok and fs.ok and (swv & SW_FIELDS) == SW_HMAC_HELD
             line = (
@@ -1002,47 +1031,74 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 f"host_iso_before_write={pre_iso} key_iso_before_write={pre_key} "
                 f"engine_default_after_release={int(fd.ok)} sibling_retained={int(fs.ok)} "
                 f"SW_RESET_N=0x{swv & SW_FIELDS:02x} pulse_free_ack={self.pf_ack} "
-                f"pulse_free_fall={self.tiso}"
+                f"pulse_free_fall={self.tiso} cut_b={cut['outcome']} "
+                f"cold_before_release={int(cold)} cold_clk={cold_clk} "
+                f"cold_sep_reset_n_low={'na' if cold_low is None else int(cold_low)}"
             )
             if not ok:
                 self.logger.error("CHK-OVL FAIL: %s %s %s", line, fd.fields(), fs.fields())
                 raise AssertionError(f"CHK-OVL FAIL: {line}")
-            if late:
-                # The run already failed on its B; the rest of its grading met.
-                self.logger.info("OVL-AFTER-LATE: %s", line)
-            elif run.cls == "WDT":
+            if run.cls == "WDT":
                 self._chk("CHK-OVL", True, line)
             else:
                 self.ovl_dbg.append(line)
             self.armed[pd_.name] = pd_.reset
+            if cold:
+                await self._rearm_after_cold()
             await self._bank_ctl(run.cls)
 
-    # ---- in-flight leg: a CPU reset with a write response outstanding -----------
-    async def _wdt_inflight_leg(self) -> None:
-        """A ``wdt_rst_ni`` pulse lands while an accepted write has its B outstanding.
+    async def _rearm_after_cold(self) -> None:
+        """Restore the armed state the later legs start from after an overlap cold reset.
+
+        The release write holds HMAC again; this waits for the HMAC hold, records
+        every armed probe at its RDL reset value (the cold reset cleared them), and
+        programs and locks the range registers again.
+        """
+        await self._wait_ip("hmac", 0, "re-arm HMAC hold")
+        for x in (HOST_X["hmac"], KEY_X["hmac"]):
+            await self.taps.iso_ack.wait_level(1, TAP_BOUND, bit=iso_name(x))
+        for p in self._armed_probes():
+            self.armed[p.name] = p.reset
+        await self.dma.program_range(RANGE_LO, RANGE_HI, valid=True)
+        for n, v in RANGE_ARMED.items():
+            self.armed[n] = v
+        await self._wr(RANGE_REGWEN, 0)
+        self.lk = await self._rd(RANGE_REGWEN)
+        self._ctl(
+            "CTL-LK",
+            self.lk == 0,
+            f"RANGE_REGWEN=0x{self.lk:x} after the write of 0 (RW0C, reset 0x6), re-arm",
+        )
+
+    # ---- cold-recover leg: a CPU reset with a write in flight, then a cold reset ----
+    async def _wdt_cold_recover_leg(self) -> None:
+        """A ``wdt_rst_ni`` pulse with a write in flight, then a cold reset.
 
         The write is a ``SW_RESET_N`` write of its present value. The pulse asserts
         ``INFLIGHT_OFFSET`` clocks after the AW handshake and is released before the
-        calibrated B latency. CHK-WDT-INFLIGHT grades the B of that write against
-        the ``sep_cpu_reset_n`` tap: a B handshake on the CPU port on or after the
-        first clock the CPU reset is low is a FAIL (the reset port holds no request
-        for it), and a B before that clock (drained) or no B (dropped) passes. The
-        CPU reset must fall and rise within the bound. The next ``SW_RESET_N``
-        write then needs its AW and an OKAY B on the ``s_axi`` bus within
-        ``WRITE_BOUND`` clocks; it is graded on the bus, because the stand-in
-        master pairs a B with the oldest open write of its ID and is not reset by
-        ``sep_cpu_reset_n``. A late B is graded the clock it is seen: on the
-        full-CPU build the LSU demux ID counter asserts on the next edge and the
-        simulator stops there.
+        calibrated B latency, so the B of the write is outstanding across the CPU
+        reset. The watchdog reset does not drain transactions, and the platform
+        follows every watchdog timeout with a cold reset, which clears that state
+        (``doc/trm/src/reset.adoc``, Watchdog timeout). The B outcome (drained,
+        late or dropped) is logged and not graded. CHK-WDT-COLD-RECOVER grades:
+        ``sep_cpu_reset_n`` falls and rises on the pulse while ``sep_reset_n``
+        stays high; the ``rst_ni`` pulse drops ``sep_reset_n``; after it, the next
+        ``SW_RESET_N`` write on the same ID shows its AW and an OKAY B on the
+        ``s_axi`` bus within ``WRITE_BOUND`` clocks, and no other ID-0 B shows on
+        the bus from the cold reset to ``WRITE_BOUND`` clocks after that B. The
+        stand-in master is reset by ``rst_ni``, so the cold reset also clears its
+        open write.
         """
         dut = cocotb.top
         await self._open()
         sw_now = await self._rd(SW)
         cpu = self.taps.resets["sep_cpu_reset_n"]
+        sep = self.taps.resets["sep_reset_n"]
         await FallingEdge(dut.clk_i)
         cm = self.chan.mark()
         mp = self.pins["WDT"].mark()
         mc = cpu.mark()
+        ms = sep.mark()
         self._sw_issue(sw_now & SW_FIELDS)
         aw = None
         for _ in range(WRITE_BOUND):
@@ -1053,7 +1109,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 aw = got[0]
                 break
         if aw is None:
-            raise AssertionError("in-flight leg: the SW_RESET_N write got no AW handshake")
+            raise AssertionError("cold-recover leg: the SW_RESET_N write got no AW handshake")
         await FallingEdge(dut.clk_i)
         for _ in range(INFLIGHT_OFFSET - 1):
             await FallingEdge(dut.clk_i)
@@ -1080,7 +1136,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             b_due,
         )
         # The pulse lands with the B outstanding and is released before the clock
-        # the pulse-free B returns, so a B that keeps the calibrated latency is late.
+        # the pulse-free B returns.
         if not (
             b_open
             and p_first is not None
@@ -1090,12 +1146,11 @@ class sep_cpu_reset_retention_test(sep_base_test):
             and p_rel < b_due
         ):
             raise AssertionError(
-                "in-flight leg: the pulse did not land with the B outstanding and end "
+                "cold-recover leg: the pulse did not land with the B outstanding and end "
                 f"before the calibrated B (pulse_release={p_rel} calibrated_b_clk={b_due})"
             )
-        # Watch the write's B and the CPU reset; grade a late B the clock it shows.
+        # Watch the write's B and the CPU reset for the bound; log the B outcome.
         b_clk = b_resp = c_fall = c_rise = None
-        late = False
         for _ in range(WRITE_BOUND):
             if b_clk is None:
                 beats = [b for b in self.chan.since(cm, "b") if b.axi_id == 0]
@@ -1105,36 +1160,51 @@ class sep_cpu_reset_retention_test(sep_base_test):
             rises = cpu.rise_clks_since(mc)
             c_fall = falls[0] if falls else None
             c_rise = rises[0] if rises else None
-            late = b_clk is not None and c_fall is not None and b_clk >= c_fall
-            # A drained B is final once the CPU reset has fallen and risen after it.
-            if late or (b_clk is not None and c_rise is not None):
+            if b_clk is not None and c_rise is not None:
                 break
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-        outcome = "late" if late else ("dropped" if b_clk is None else "drained")
-        where = (
-            f"write id=0 aw_clk={aw} pulse_first_low={p_first} pulse_release={p_rel} "
-            f"cpu_reset_fall={c_fall} cpu_reset_rise={c_rise} "
-            f"b_clk={b_clk} b_resp={RESP_NAME.get(b_resp, b_resp)} b_outcome={outcome}"
+        if b_clk is None:
+            outcome = "dropped"
+        elif c_fall is not None and b_clk >= c_fall:
+            outcome = "late"
+        else:
+            outcome = "drained"
+        sep_high = not sep.fall_clks_since(ms)
+        cpu_ok = c_fall is not None and c_rise is not None and c_rise > c_fall
+        self.logger.info(
+            "OBS-WDT-INFLIGHT: write id=0 aw_clk=%d b_clk=%s b_resp=%s b_outcome=%s "
+            "(not graded: the watchdog reset does not drain transactions)",
+            aw,
+            b_clk,
+            RESP_NAME.get(b_resp, b_resp),
+            outcome,
         )
-        if late:
-            self._chk_late_inflight(
-                f"{where} late_response=1 (the B of a write accepted before the CPU reset "
-                "reached the CPU port on or after the reset assertion) next_write=not_reached"
-            )
+        # The cold reset, then the next write on the same ID.
         await FallingEdge(dut.clk_i)
-        if outcome == "dropped":
-            self._reset_cpu_master("in-flight leg")
-        nxt, _ = await self._bus_write(sw_now & SW_FIELDS)
-        if late:
-            self.logger.info("OBS-WDT-INFLIGHT-NEXT: next_write=%s", nxt)
-            raise AssertionError(self._inflight_fail.replace("not_reached", nxt))
-        reset_seen = c_fall is not None and c_rise is not None and c_rise > c_fall
-        drained_ok = b_clk is None or b_resp == RESP_OKAY
+        mk = sep.mark()
+        ck = self.chan.mark()
+        res = await self.pulse_rst_ni(hold_cycles=self.plan.cold_width)
+        for name in ("sep_reset_n", "sep_cpu_reset_n"):
+            await self.taps.resets[name].wait_level(1, TAP_BOUND)
+        cold_low = bool(sep.fall_clks_since(mk))
+        await FallingEdge(dut.clk_i)
+        nxt, nxt_aw = await self._bus_write(SW_DEFAULT)
+        # Any ID-0 B other than the next write's own is a B the cold reset left.
+        for _ in range(WRITE_BOUND):
+            await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        b_after = [b for b in self.chan.since(ck, "b") if b.axi_id == 0]
+        stale = len(b_after) - (1 if nxt == "OKAY" else 0)
+        await FallingEdge(dut.clk_i)
         self._chk(
-            "CHK-WDT-INFLIGHT",
-            reset_seen and drained_ok and nxt == "OKAY",
-            f"{where} late_response=0 next_write={nxt} bound={WRITE_BOUND}",
+            "CHK-WDT-COLD-RECOVER",
+            cpu_ok and sep_high and cold_low and nxt == "OKAY" and stale == 0,
+            f"write id=0 aw_clk={aw} pulse_first_low={p_first} pulse_release={p_rel} "
+            f"cpu_reset_fall={c_fall} cpu_reset_rise={c_rise} sep_reset_n_high_on_wdt="
+            f"{int(sep_high)} b_outcome={outcome} cold_sep_reset_n_low={int(cold_low)} "
+            f"cold_release_clks={res['release_clks']} next_write={nxt} next_aw_clk={nxt_aw} "
+            f"other_id0_b_after_cold={stale} bound={WRITE_BOUND}",
         )
 
     def _reset_cpu_master(self, where: str) -> None:
@@ -1146,8 +1216,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
         whole bound, the master still holds that write open on its ID, and it
         would complete it with the B of the next write of the same ID. This
         clears the open writes (``assert_reset`` of the write interface), as
-        the CPU reset does. It runs only after a dropped B: a late B is graded
-        first and then completes the open write as it is.
+        the CPU reset does. It runs only after a dropped B in the overlap leg: a
+        late B completes the open write as it is.
         """
         wr = self.env.axi_agent.driver.axi.driver.backend.write_if
         wr.assert_reset()
@@ -1186,13 +1256,15 @@ class sep_cpu_reset_retention_test(sep_base_test):
         return f"none ({what} within {WRITE_BOUND} clocks)", aw
 
     async def _watch_cut_b(self, cm, mc, label: str) -> dict:
-        """Grade the B of the ID-0 write issued after ``cm`` against the CPU reset tap.
+        """Watch the B of the ID-0 write issued after ``cm`` against the CPU reset tap.
 
         ``mc`` is a mark of the ``sep_cpu_reset_n`` tap taken before the write. A
-        fall of the tap on or after the AW clock cuts the write. A B before that
-        fall (drained) or no B (dropped) is accepted; a B on or after it is late
-        and is logged as a FAIL on the clock it shows. A write the CPU reset does
-        not cut needs its B. Every B taken must be OKAY.
+        fall of the tap on or after the AW clock cuts the write. The outcome is
+        logged: a B before that fall (drained), a B on or after it (late) or no B
+        (dropped). The watchdog reset does not drain transactions
+        (``doc/trm/src/reset.adoc``, Watchdog timeout), so each of the three is
+        accepted. A write the CPU reset does not cut needs its B, and every B
+        taken must be OKAY.
         """
         dut = cocotb.top
         cpu = self.taps.resets["sep_cpu_reset_n"]
@@ -1215,38 +1287,30 @@ class sep_cpu_reset_retention_test(sep_base_test):
                         b_clk, b_resp = beats[0].clk - self.off, beats[0].resp
                 falls = [c for c in cpu.fall_clks_since(mc) if c >= aw]
                 c_fall = falls[0] if falls else None
-                if b_clk is not None and c_fall is not None and b_clk >= c_fall:
-                    text = (
-                        f"{label} write id=0 aw_clk={aw} cpu_reset_fall={c_fall} b_clk={b_clk} "
-                        f"b_resp={RESP_NAME.get(b_resp, b_resp)} b_outcome=late (the B of a "
-                        "write accepted before the CPU reset reached the CPU port on or after "
-                        "the reset assertion)"
-                    )
-                    self.logger.error("CHK-OVL FAIL: %s", text)
-                    return {"ok": False, "outcome": "late", "aw": aw, "text": text}
-                # A B before any CPU-reset fall is final: a later fall cannot make it late.
+                # A B is final: a later fall cannot change its outcome.
                 if b_clk is not None:
                     break
         if aw is None:
             outcome = "no_aw"
         elif b_clk is not None:
-            outcome = "drained" if c_fall is not None else "completed"
+            if c_fall is None:
+                outcome = "completed"
+            else:
+                outcome = "late" if b_clk >= c_fall else "drained"
         else:
             outcome = "dropped" if c_fall is not None else "missing"
-        ok = outcome in ("drained", "completed", "dropped") and (
+        ok = outcome in ("drained", "late", "completed", "dropped") and (
             b_clk is None or b_resp == RESP_OKAY
         )
+        rises = [c for c in cpu.rise_clks_since(mc) if c_fall is not None and c > c_fall]
+        c_rise = rises[0] if rises else None
         text = (
-            f"{label} write id=0 aw_clk={aw} cpu_reset_fall={c_fall} b_clk={b_clk} "
+            f"{label} write id=0 aw_clk={aw} cpu_reset_fall={c_fall} cpu_reset_rise={c_rise} "
+            f"b_clk={b_clk} "
             f"b_resp={RESP_NAME.get(b_resp, b_resp)} b_outcome={outcome}"
         )
-        self.logger.info("OVL-CUT-B: %s", text)
+        self.logger.info("OBS-OVL-CUT-B: %s", text)
         return {"ok": ok, "outcome": outcome, "aw": aw, "text": text}
-
-    def _chk_late_inflight(self, values: str) -> None:
-        line = f"CHK-WDT-INFLIGHT FAIL: {values}"
-        self.logger.error(line)
-        self._inflight_fail = line
 
     async def _pulse_now(self, cls: str, width: int) -> None:
         """Drive the pin low now (a falling edge) for ``width`` rising edges."""

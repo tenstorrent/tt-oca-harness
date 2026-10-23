@@ -205,7 +205,14 @@ Observation probe groups:
 * Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
   (`u_sep_wdt_wrap.rst_wdt_aon_clk_n`, `rst_aon_ni` of the AON timer); owners
   `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,
-  `sep_scan_reset_override_test`. `jtag_sep_reset_n_ovrd_probe_o`, the
+  `sep_scan_reset_override_test`. `sep_wdt_reset_n_probe_o`, the watchdog
+  reset at the output of the reset controller scan bypass (`sep_wdt_reset_n`,
+  `u_sep_reset_ctrl.sep_wdt_reset_no`): `scan_rst_ni` when `test_en_i` is high,
+  else the two-flop capture of `wdt_rst_ni`; owner
+  `sep_scan_reset_override_test`. `wdt_alert_probe_o` and `wdt_bark_probe_o`,
+  the watchdog alert (`wdt_alert`) and bark interrupt (`intr_wdog_timer_bark`)
+  at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`.
+  `jtag_sep_reset_n_ovrd_probe_o`, the
   `sep_reset_n` override select on the SEP input port
   (`u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd`), the value SEP receives
   after the pin-or-TDR mux; owner `sep_ip_reset_override_matrix_test`.

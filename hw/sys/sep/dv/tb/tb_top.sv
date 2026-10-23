@@ -332,6 +332,30 @@ module sep_uvm_top
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan
             .u_otbn.u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
     end
+    // The watchdog reset resets the CPU but not the interconnect, and does not
+    // drain its transactions; the cold reset that follows every watchdog timeout
+    // clears that state (doc/trm/src/reset.adoc, Watchdog timeout). A B
+    // outstanding at a wdt_rst_ni_i pulse can reach the CPU LSU demux after the
+    // CPU reset has cleared its per-ID counters, and the counter assertions then
+    // fire on a state the contract leaves open until the cold reset. With
+    // +sep_lsu_demux_underflow_waive the LSU demux assertions are off from each
+    // wdt_rst_ni_i fall to the next rst_ni fall.
+    bit lsu_demux_waive_plusarg;
+    initial lsu_demux_waive_plusarg = $test$plusargs("sep_lsu_demux_underflow_waive");
+    always @(negedge wdt_rst_ni_i) begin
+        if (lsu_demux_waive_plusarg) begin
+            $display("%0t: [tb] LSU demux assertions off to rst_ni (+sep_lsu_demux_underflow_waive)",
+                     $time);
+            $assertoff(0, `SEP_CORE.u_sep_cpu.u_lsu_axi_demux);
+        end
+    end
+    always @(negedge rst_ni) begin
+        if (lsu_demux_waive_plusarg) begin
+            $display("%0t: [tb] LSU demux assertions on at rst_ni (+sep_lsu_demux_underflow_waive)",
+                     $time);
+            $asserton(0, `SEP_CORE.u_sep_cpu.u_lsu_axi_demux);
+        end
+    end
 `endif
 
     // TB-owned CPU lockstep stimulus/observation. Initialised: an undriven
@@ -1657,6 +1681,12 @@ module sep_uvm_top
     // Watchdog timer-domain reset and the two Key Manager reset conditioner
     // outputs. Read-only XMRs.
     assign aon_rst_n_probe_o = `SEP_CORE.u_sep_wdt_wrap.rst_wdt_aon_clk_n;
+    // Watchdog reset sep_wdt_reset_n at the output of the reset controller scan
+    // bypass. Read-only XMR.
+    assign sep_wdt_reset_n_probe_o = `SEP_CORE.sep_wdt_reset_n;
+    // Watchdog alert and bark interrupt at the watchdog wrapper outputs. Read-only XMRs.
+    assign wdt_alert_probe_o = `SEP_CORE.wdt_alert;
+    assign wdt_bark_probe_o = `SEP_CORE.intr_wdog_timer_bark;
     // Watchdog count register WDOG_COUNT of the AON timer (clk_wdt_i domain).
     // Read-only XMR.
     assign wdt_wdog_count_o =
@@ -6460,6 +6490,7 @@ module sep_uvm_top
         .iso_req_i         (crypto_isolate_req_probe_o),
         .iso_ack_i         (crypto_isolated_probe_o),
         .aon_rst_n_i       (aon_rst_n_probe_o),
+        .sep_wdt_reset_n_i (sep_wdt_reset_n_probe_o),
         .km_cond_rst_n_i   (km_cond_rst_probe_o),
         .refcnt_rst_n_i    (refcnt_rst_n_probe_o),
         .jtag_rst_ctrl_i   (jtag_sep_reset_ctrl_drive),

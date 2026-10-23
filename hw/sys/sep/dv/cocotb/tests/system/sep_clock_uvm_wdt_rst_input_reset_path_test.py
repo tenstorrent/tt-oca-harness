@@ -1,13 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""wdt_rst_ni resets the SEP CPU only; sep_reset_n stays released.
+"""wdt_rst_ni drops sep_cpu_reset_n; sep_reset_n stays released.
 
-Verifies the SEP WDT reset-input path:
+Verifies the SEP WDT reset-input path at the two reset outputs:
 
     wdt_rst_ni -> CPU warm reset, system reset isolated
 
 Driving the SEP primary input ``wdt_rst_ni_i`` drops and releases
-``sep_cpu_reset_n`` only; it has no fan-out to ``sep_reset_n``. The tb observes
+``sep_cpu_reset_n``; it has no fan-out to ``sep_reset_n``. The same input also
+resets the SEP watchdog timer (which clears the bite) through a 2-flop capture
+on clk_i; this test does not check that timer reset. The tb observes
 the ``sep_cpu_reset_n_o`` tb_top probe and the real ``sep_reset_n_o`` output
 (``dbg_sep_reset_n_o``).
 

@@ -14,10 +14,14 @@ Contract (``hw/sys/sep/doc/port_table.adoc``, ``test_en_i``, ``scan_rst_ni``,
 Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
 ``hw/sys/sep/doc/test_mode.adoc``, Entry and Exit):
 
-* While ``test_en_i`` is high, ``scan_rst_ni`` replaces the 14 nets
+* While ``test_en_i`` is high, ``scan_rst_ni`` replaces the 15 nets
   ``sep_reset_n``, ``sep_cpu_reset_n``, ``ip_rst_n[6:0]`` (each scan bypass
-  mux), ``aon_rst_n``, ``km_cond_rst[1:0]`` and ``refcnt_rst[1:0]``. The
-  reset controller section lists the first 12. ``refcnt_rst[1:0]`` are the
+  mux), ``aon_rst_n``, ``km_cond_rst[1:0]``, ``refcnt_rst[1:0]`` and
+  ``sep_wdt_reset_n``. The reset controller section
+  (``reset_controller.adoc:83``) lists all of them except ``refcnt_rst[1:0]``;
+  ``sep_wdt_reset_n`` is the output of the scan bypass
+  ``u_sep_wdt_rst_scan_bypass``, and with ``test_en_i`` low it is the 2-flop
+  capture of ``wdt_rst_ni``, which ``rst_ni`` resets. ``refcnt_rst[1:0]`` are the
   ``clk_i`` and ``clk_ref_i`` reset synchronizer outputs of the reference
   counter; the ``scan_rst_ni`` port row ("Bypasses reset synchronizers during
   DFT") covers them. Their input reset is ``sep_reset_n``, which the scan
@@ -35,9 +39,9 @@ falls on a ``clk_i`` edge or on the drawn release point. The hold interval H
 (32 ``clk_i`` cycles, at least two ``clk_wdt_i`` periods) is a test parameter.
 
 Checkers:
-  CHK-SCAN-IDLE     test_en_i=0: the 14 nets stay high on every clk_i edge from
+  CHK-SCAN-IDLE     test_en_i=0: the 15 nets stay high on every clk_i edge from
                     the scan_rst_ni fall to the end of the hold after its rise.
-  CHK-SCAN-REPLACE  test_en_i=1: the 14 nets are low on every clk_i edge
+  CHK-SCAN-REPLACE  test_en_i=1: the 15 nets are low on every clk_i edge
                     while scan_rst_ni is low and high with scan_rst_ni=1;
                     sep_reset_n and aon_rst_n rise before the next clk_i and
                     clk_wdt_i edge. Other rise offsets: OBS-SCAN-OFFSET.
@@ -73,7 +77,7 @@ from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_scan_reset_override_test"
 
-# The 14 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
+# The 15 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
 # rst_warm_sync_n, bit 1 rst_cold_aasd_n; bit 0 of refcnt_rst_n_probe_o is the
 # clk_i side of the reference counter, bit 1 the clk_ref_i side).
 NETS: tuple[tuple[str, str, int | None], ...] = (
@@ -91,6 +95,7 @@ NETS: tuple[tuple[str, str, int | None], ...] = (
     ("km_cond_rst[1]", "km_cond_rst_probe_o", 1),
     ("refcnt_rst[0]", "refcnt_rst_n_probe_o", 0),
     ("refcnt_rst[1]", "refcnt_rst_n_probe_o", 1),
+    ("sep_wdt_reset_n", "sep_wdt_reset_n_probe_o", None),
 )
 N_NETS = len(NETS)
 
