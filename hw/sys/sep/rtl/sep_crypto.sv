@@ -214,6 +214,10 @@ module sep_crypto #(
                                                               // (HMAC, OTBN, AES, KMAC, CSRNG,
                                                               // EDN) and the EDN-adapter ack FSM
                                                               // faults, which hold until reset.
+  output logic                               csrng_fatal_alert_o,  // CSRNG fatal alert receiver
+                                                                   // pulse, ungated by INTR_ENABLE.
+  output logic                               edn_fatal_alert_o,  // EDN fatal alert receiver pulse,
+                                                                 // ungated by INTR_ENABLE.
 
   output logic [9:0]                         sep_efuse_debug_o,  // eFuse controller debug flags:
                                                                  // [0] shadow write locked, [1]
@@ -307,6 +311,8 @@ module sep_crypto #(
 
   assign crypto_alert_o = (|crypto_alert_pulse) | (|crypto_alert_integ_fail) |
                           axis_edn_crypto_err | axis_edn_pool_err;
+  assign csrng_fatal_alert_o = crypto_alert_pulse[8];
+  assign edn_fatal_alert_o = crypto_alert_pulse[10];
 
   // Native EDN wires: [0]=AES, [1]=KMAC, [2]=OTBN RND, [3]=OTBN URND — fed from mux1 via drbg_axis_edn_adapter
   edn_pkg::edn_req_t [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0] crypto_edn_req;

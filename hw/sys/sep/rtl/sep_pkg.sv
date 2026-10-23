@@ -492,14 +492,12 @@ SEP_ROM_MUX_NUM_PORTS
     logic [NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err;  // Register-bridge faults indexed by
                                                      // periph_bus_err_e; each sticky until its
                                                      // PERIPH_BUS_ERR_CLEAR bit.
-    logic csrng_fatal;         // CSRNG fatal-error interrupt; held until its INTR_STATE bit is
-                               // cleared, and 0 while INTR_ENABLE is clear.
-    logic edn_fatal;           // EDN fatal-error interrupt; held until its INTR_STATE bit is
-                               // cleared, and 0 while INTR_ENABLE is clear.
+    logic csrng_fatal;         // Pulse per CSRNG fatal alert handshake; a fatal error repeats it
+                               // until reset, and ALERT_TEST sends one.
+    logic edn_fatal;           // Pulse per EDN fatal alert handshake; a fatal error repeats it
+                               // until reset, and ALERT_TEST sends one.
     logic crypto_alert;        // Pulse per crypto alert; a level while an alert pair fails its
                                // integrity check, and until reset once a crypto EDN adapter faults.
-    logic abr_err;             // Adams Bridge global error interrupt; held until its status is
-                               // cleared, and 0 while the interrupt is disabled.
     logic entropy_fill_stall;  // Hang: level from STALL_THRESH cycles without an EDN acknowledge
                                // until the next acknowledge.
     logic entropy_pool_err;    // Entropy pool integrity error; always 0, the pool has no hardened

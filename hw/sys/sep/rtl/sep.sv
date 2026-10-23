@@ -361,6 +361,8 @@ module sep #(
   logic km_unrecoverable_err;
   logic km_recoverable_err;
   logic crypto_alert;
+  logic csrng_fatal_alert;
+  logic edn_fatal_alert;
 
   // Entropy-pool FIFO: native EDN fill bundle (out of sep_crypto) + status IRQs
   edn_pkg::edn_req_t entropy_pool_edn_req;
@@ -997,6 +999,8 @@ NumSramDemuxPorts
     .abr_mem_rsp_i                          (abr_mem_rsp_i),
 
     .crypto_alert_o                         (crypto_alert),
+    .csrng_fatal_alert_o                    (csrng_fatal_alert),
+    .edn_fatal_alert_o                      (edn_fatal_alert),
 
     .sep_efuse_debug_o                      (sep_efuse_debug),
     .sep_efuse_token_match_sip_debug_o      (sep_efuse_token_match_sip_debug),
@@ -1250,10 +1254,9 @@ NumSramDemuxPorts
           dma_reg_bus_err: dma_reg_bus_err,
           dma_host_intg_err: dma_host_intg_err,
           periph_bus_err: periph_bus_err,
-          csrng_fatal: intr_cs_fatal_err,
-          edn_fatal: intr_edn_fatal_err,
+          csrng_fatal: csrng_fatal_alert,
+          edn_fatal: edn_fatal_alert,
           crypto_alert: crypto_alert,
-          abr_err: intr_abr_error,
           entropy_fill_stall: entropy_pool_fill_stall,
           entropy_pool_err: entropy_pool_err,
           token_match_fault: token_match_fault
