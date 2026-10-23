@@ -134,16 +134,16 @@ module ocah_axi_sva #(
   // rule would otherwise fire, and clears its request on that edge.
   // ------------------------------------------------------------------
   `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_VALID_RESET_LOW,
-                 (en_i && (aresetn === 1'b0) &&
-                  (!MASTER_SYNC_RESET || ($past(aresetn) === 1'b0))) |-> !awvalid, aclk, 1'b0)
+                 (en_i && (aresetn === 1'b0) && (!MASTER_SYNC_RESET || ($past(aresetn)
+                 === 1'b0))) |-> !awvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_W_VALID_RESET_LOW,
-                 (en_i && (aresetn === 1'b0) &&
-                  (!MASTER_SYNC_RESET || ($past(aresetn) === 1'b0))) |-> !wvalid, aclk, 1'b0)
+                 (en_i && (aresetn === 1'b0) && (!MASTER_SYNC_RESET || ($past(aresetn)
+                 === 1'b0))) |-> !wvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_B_VALID_RESET_LOW,
                  (en_i && (aresetn === 1'b0)) |-> !bvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_VALID_RESET_LOW,
-                 (en_i && (aresetn === 1'b0) &&
-                  (!MASTER_SYNC_RESET || ($past(aresetn) === 1'b0))) |-> !arvalid, aclk, 1'b0)
+                 (en_i && (aresetn === 1'b0) && (!MASTER_SYNC_RESET || ($past(aresetn)
+                 === 1'b0))) |-> !arvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_R_VALID_RESET_LOW,
                  (en_i && (aresetn === 1'b0)) |-> !rvalid, aclk, 1'b0)
 
