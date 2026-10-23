@@ -83,6 +83,8 @@ endif::backend-html5[]
 |`sep_crypto_pka_imem_sram_rsp_i` |`sep_crypto_pka_imem_sram_rsp_t` |Input |- |OTBN PKA instruction memory SRAM response. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_req_o` |`sep_crypto_pka_dmem_sram_req_t` |Output |- |OTBN PKA data memory SRAM request. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_rsp_i` |`sep_crypto_pka_dmem_sram_rsp_t` |Input |- |OTBN PKA data memory SRAM response. |SRAM macro |N/A
+|`abr_mem_req_o` |`sep_crypto_pkg::abr_mem_req_t` |Output |- |Adams Bridge working SRAM requests for every channel, with the macro clock. |SRAM macros |N/A
+|`abr_mem_rsp_i` |`sep_crypto_pkg::abr_mem_rsp_t` |Input |- |Adams Bridge working SRAM read data. Each channel's data must arrive exactly `ABR_SRAM_LATENCY` clocks after its `re`. |SRAM macros |N/A
 |`ext_trng_axil_req_o` |`sep_32_32_axil_req_t` |Output |- |External TRNG AXI-Lite passthrough request (to `sep_ip_integration`). |External TRNG shim |N/A
 |`ext_trng_axil_resp_i` |`sep_32_32_axil_resp_t` |Input |- |External TRNG AXI-Lite passthrough response. |External TRNG shim |N/A
 |`ext_trng_axis_req_i` |`ext_trng_axis_req_t` |Input |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream request array (from `sep_ip_integration`). |External TRNG shim |N/A

@@ -192,6 +192,8 @@
 |`sep_crypto_pka_imem_sram_rsp_i` |`sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t` |Input |- |SEP OTBN PKA instruction memory SRAM response passthrough. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_req_o` |`sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t` |Output |- |SEP OTBN PKA data memory SRAM request passthrough. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_rsp_i` |`sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t` |Input |- |SEP OTBN PKA data memory SRAM response passthrough. |SRAM macro |N/A
+|`abr_mem_req_o` |`sep_crypto_pkg::abr_mem_req_t` |Output |- |SEP Adams Bridge working SRAM requests for every channel, with the macro clock, passthrough. |SRAM macros |N/A
+|`abr_mem_rsp_i` |`sep_crypto_pkg::abr_mem_rsp_t` |Input |- |SEP Adams Bridge working SRAM read data, passthrough. Each channel's data must arrive exactly `CFG.SEP_ABR_SRAM_LATENCY` clocks after its `re`. |SRAM macros |N/A
 
 |`sep_km_rom_mem_req_o` |`km_intf_pkg::km_rom_mem_req_t` |Output |- |SEP Key Manager ROM memory request passthrough. |ROM macro |N/A
 |`sep_km_rom_mem_rsp_i` |`km_intf_pkg::km_rom_mem_rsp_t` |Input |- |SEP Key Manager ROM memory response passthrough. |ROM macro |N/A

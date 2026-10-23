@@ -324,7 +324,7 @@ module smu #(
   output sep_crypto_pkg::abr_mem_req_t                   abr_mem_req_o,  // Adams Bridge external SRAM request; the
                                                                          // technology macros live in
                                                                          // sep_ip_integration.
-  input  sep_crypto_pkg::abr_mem_rsp_t                   abr_mem_rsp_i,  // Adams Bridge external SRAM response.
+  input  sep_crypto_pkg::abr_mem_rsp_t                   abr_mem_rsp_i,  // Adams Bridge SRAM read data, CFG.SEP_ABR_SRAM_LATENCY clocks after each re.
 
   output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // External TRNG AXI-Lite
                                                                    // request.

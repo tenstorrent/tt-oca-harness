@@ -94,10 +94,17 @@ SRAM macros. Each request carries the macro clock; the macros accept every
 request and return read data on the next clock, which a registered-read macro
 meets.
 
-`abr_mem` connects the Adams Bridge working SRAM. On an idle cycle (`re` low),
-ABR expects the channel's read data to return 0 the following cycle.
-`SEP_ABR_SRAM_LATENCY` must equal the macros' native registered-read latency
-(default 1). Word-write channels are full-word `we` / `re` / address / data.
+`abr_mem` connects the Adams Bridge working SRAM. Unlike the other memory
+interfaces, its read latency is a parameter: `CFG.SEP_ABR_SRAM_LATENCY` (default
+1, at least 1) is the number of clocks from a channel's `re` to its read data on
+`abr_mem_rsp_i`. Adams Bridge delays its own read enables by that many clocks
+and samples the data then, adding no delay of its own, so every channel's read
+data must arrive exactly `CFG.SEP_ABR_SRAM_LATENCY` clocks after `re`; data
+early or late is used on the wrong cycle. Set the field to the macros' native
+registered-read latency, or pipeline the read data to the value chosen. The
+reference integration's `prim_ram_1r1w` macros answer in one clock and support
+only the default of 1. On an idle cycle (`re` low), ABR expects the channel's
+read data to return 0 the following cycle. Word-write channels are full-word `we` / `re` / address / data.
 `sig_z` and `pk` carry one-bit-per-byte `wstrobe`; map those to the macros'
 byte-write enables. `SEP_ABR_MASKING_EN` (default 1) selects 2-share DOM:
 thirteen 1R1W macros versus nine, plus a second NTT. This changes ABR internal

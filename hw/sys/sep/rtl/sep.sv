@@ -21,7 +21,7 @@ module sep #(
   parameter bit KM_LATCHED_MEM_RDATA = 1'b1,  // 1 if Key Manager ROM/SRAM latch read data for
                                               // look-ahead.
   parameter bit ABR_MASKING_EN = 1'b1,        // Enable Adams Bridge 2-share DOM masking.
-  parameter int unsigned ABR_SRAM_LATENCY = 1,  // Adams Bridge SRAM read latency in cycles.
+  parameter int unsigned ABR_SRAM_LATENCY = 1,  // Clocks from an abr_mem read enable to its rdata.
   parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports; must
                                                  // be 3, one per entropy mux leg.
   parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the eFuse shim CSR window
@@ -141,7 +141,7 @@ module sep #(
   input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp_i,  // OTBN DMEM SRAM response.
 
   output sep_crypto_pkg::abr_mem_req_t                  abr_mem_req_o,  // Adams Bridge external SRAM request; tech macros in sep_ip_integration.
-  input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp_i,  // Adams Bridge external SRAM response.
+  input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp_i,  // Adams Bridge SRAM read data, ABR_SRAM_LATENCY clocks after each re.
 
   output sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_o,  // External TRNG register request for
                                                               // 0x1091_7000-0x1091_7FFF, passed
