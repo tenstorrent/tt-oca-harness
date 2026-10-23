@@ -137,7 +137,7 @@ update atomically.
 |===
 |Field |CSR storage |Effective width |Use
 |`SRC_ADDRESS_LO/HI`, `DST_ADDRESS_LO/HI` |64 bits each |56 bits each |Byte addresses.
-|`LENGTH_LO/HI` |64 bits |56 bits |Bytes per linear copy or per 2D row. Zero-length transfers are rejected.
+|`LENGTH_LO/HI` |64 bits |56 bits |Bytes per linear copy or per 2D row. Must be nonzero.
 |`SRC_STRIDE_LO/HI`, `DST_STRIDE_LO/HI` |64 bits each |56 bits each |Address increment
 between consecutive row starts; source and destination increments are independent.
 |`NUM_REPETITIONS_LO/HI` |64 bits |32 bits |Number of rows, including the first.
@@ -161,10 +161,17 @@ A linear copy is one repetition with `CONFIG.ENABLED_ND` set; a 2D copy adds
 source/destination strides and a repetition count. Strides can gather or
 scatter evenly spaced rows; there is no linked-list walker.
 
-Clearing `CONFIG.ENABLED_ND` forces the midend repetition count to zero. A zero-repetition command produces an internal
-midend error response without data movement; that response still retires a
-transfer ID. The control aperture does not expose the error payload, so a
-retired ID alone is not proof that valid data was copied.
+The frontend does not validate the command. Every read of `NEXT_ID_0` submits
+the shared registers as they stand, including their reset values, and returns a
+transfer ID, never 0. Two commands move no data but still retire a transfer ID:
+
+* A command with zero repetitions. Clearing `CONFIG.ENABLED_ND` forces the
+midend repetition count to zero, so the reset state of the registers is such a
+command. The midend answers it with an internal error response.
+* A command with a length of 0. The backend answers it with an error response.
+
+The control aperture does not expose the error payload, so a retired ID alone
+is not proof that valid data was copied.
 
 The names above follow the published register map. The RTL frontend calls the
 configuration `conf`, the ND-enable field `enable_nd`, and the repetition pair

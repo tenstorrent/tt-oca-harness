@@ -27,12 +27,12 @@ transfer that dropped, duplicated or misplaced a row fails rather than passing
 quietly.
 
 **Two descriptors back to back.** `dma_ctrl.rdl` says of `NEXT_ID` that
-"Reading this register starts the DMA transfer. Returns an ID value for the
-cumulative number of transfers. Returns 0 if command was not set up correctly",
-and of `DONE` that it "Holds the cumulative number of completed transfers". So
-the second descriptor is programmed and submitted without waiting for the
-first, and the sequence requires both ids non-zero and rising, `DONE` to have
-advanced by two, and both destinations to hold their own payload.
+"Reading this register starts the DMA transfer and returns its transfer ID.
+IDs start at 2 and skip zero on wrap", and of `DONE` that it "Holds the
+cumulative number of completed transfers". So the second descriptor is
+programmed and submitted without waiting for the first, and the sequence
+requires both ids non-zero and rising, `DONE` to have advanced by two, and both
+destinations to hold their own payload.
 
 **Transfers into a stalled SYS_OUT.** The backend's legalizer gates every
 request it issues on the read and write request readies. Those readies come
@@ -318,11 +318,10 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
             await self.csr_write(f"DMA_{name}_{tag}", addr, value)
 
     async def _submit(self, tag: str) -> int:
-        """Reading NEXT_ID starts the transfer; 0 means it was not set up."""
+        """Reading NEXT_ID starts the transfer and returns its id, never 0."""
         transfer_id = await self.csr_read(f"DMA_NEXT_ID_{tag}", DMA_CTRL_NEXT_ID_0)
         assert transfer_id != 0, (
-            f"[{tag}] NEXT_ID returned 0; dma_ctrl.rdl gives that value the meaning "
-            f"'command was not set up correctly', so the descriptor was rejected"
+            f"[{tag}] NEXT_ID returned 0; dma_ctrl.rdl says a transfer ID is never 0"
         )
         return transfer_id
 
@@ -680,8 +679,7 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-DMA-QUEUED-DESCRIPTORS: a second descriptor was programmed and submitted "
             "without waiting for the first, both NEXT_ID reads returned a non-zero and "
-            "rising id rather than the 0 dma_ctrl.rdl gives a rejected command, DONE "
-            "advanced by %d, and each destination held its own payload",
+            "rising id, DONE advanced by %d, and each destination held its own payload",
             self.queued,
         )
         cocotb.log.info(
