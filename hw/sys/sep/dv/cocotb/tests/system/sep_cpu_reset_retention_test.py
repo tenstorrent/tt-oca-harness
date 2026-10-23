@@ -193,6 +193,8 @@ PERIPH_HOLE = {"kmac": kmac_reg_unmapped_addr(), "otbn": otbn_reg_unmapped_addr(
 DMA_HOLE = dma_reg_unmapped_addr()
 PERIPH_MASK = SEP_CPU_CTRL.mask32("PERIPH_BUS_ERR_STATUS")
 DMA_ST_MASK = SEP_CPU_CTRL.mask32("DMA_BUS_ERR_STATUS")
+PERIPH_RESET = SEP_CPU_CTRL.reset32("PERIPH_BUS_ERR_STATUS") & PERIPH_MASK
+DMA_ST_RESET = SEP_CPU_CTRL.reset32("DMA_BUS_ERR_STATUS") & DMA_ST_MASK
 HMAC_ISO_ADDR = HMAC.addr("CFG")
 
 # Secure DMA copy inside the SEP SRAM (memory_map.adoc: 0x1000_0000, 256 KiB).
@@ -1573,8 +1575,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
             self.logger.info("OBS-DMA-COLD-MEM: src_match=%d patB_match=%d", src_m, b_m)
         ok = (
             not mism
-            and (dst_st & DMA_ST_MASK) == 0
-            and (pst & PERIPH_MASK) == 0
+            and (dst_st & DMA_ST_MASK) == DMA_ST_RESET
+            and (pst & PERIPH_MASK) == PERIPH_RESET
             and (swv & SW_FIELDS) == SW_DEFAULT
             and (c["sw_pre"] & SW_FIELDS) == SW_HMAC_HELD
             and (unchanged or not dest_graded)

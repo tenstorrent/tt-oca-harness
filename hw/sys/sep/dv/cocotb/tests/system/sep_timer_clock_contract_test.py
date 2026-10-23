@@ -35,10 +35,11 @@ this order, over the CPU-LSU master on ``s_axi``:
 * Leg L. ``WDOG_REGWEN`` stays 0 after a write of 1, and ``regwen`` and the four
   thresholds keep their values over ``dbg_rstb_i`` (VCS, full-CPU build only), a
   software engine reset and a ``sep_reset_n`` override (CHK-REGWEN-HOLD). A
-  ``wdt_rst_ni`` pulse returns ``regwen`` and the four thresholds to their
-  register-description reset values (CHK-REGWEN-WDTRST), and the leg then
-  programs and locks them again, so each event of the drawn order starts
-  locked. The cold reset restores the defaults (CHK-REGWEN-COLD;
+  ``wdt_rst_ni`` pulse returns every watchdog timer register to its
+  register-description reset value and clears the bark interrupt
+  (CHK-REGWEN-WDTRST), and the leg then programs and locks the thresholds
+  again, so each event of the drawn order starts locked. The cold reset does
+  the same from a preloaded state (CHK-REGWEN-COLD;
   ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture). With ``WDOG_REGWEN`` = 0,
   a ``WDOG_CTRL`` write does not change it, and writes to ``WDOG_COUNT`` and the
   wakeup registers land.
@@ -180,8 +181,10 @@ edges in (t0, t1].
   the SEP reset clears the bite. At the end of the stay window the bark
   interrupt (tap ``wdt_bark_probe_o``) reads 0, as ``INTR_STATE`` resets to 0,
   and the watchdog alert (tap ``wdt_alert_probe_o``) reads 0 on every edge from
-  the edge before the pulse to the end of that window: the alert senders and
-  their receivers take the same reset (``watchdog.adoc:23``).
+  the edge before the pulse to the end of that window. A receiver that keeps
+  its state over the pulse while its sender resets raises no alert in this
+  window, so this clause does not show that the receivers take the watchdog
+  reset.
 * CHK-WKUP-PRESC-MAX. "The number of cycles per tick is one more than the
   12-bit WKUP_CTRL.prescaler field." (``<aon>/README.md:32``). At prescaler 4095
   the ``clk_wdt_i`` edges ``E`` over N = 32 consecutive count steps satisfy
@@ -811,8 +814,9 @@ class sep_timer_clock_contract_test(sep_base_test):
         release (``WDOG_CTRL.enable`` resets to 0). At the end of that window the
         bark interrupt (tap ``wdt_bark_probe_o``) reads 0, as ``INTR_STATE``
         resets to 0, and the watchdog alert (tap ``wdt_alert_probe_o``) reads 0 on
-        every edge from the edge before the pulse: the alert senders and their
-        receivers take the same reset (watchdog.adoc:23). The fall edge is logged
+        every edge from the edge before the pulse. A receiver that keeps its state
+        over the pulse while its sender resets raises no alert in this window, so
+        this clause does not show the receiver reset. The fall edge is logged
         as OBS-BITE-CLEAR-EDGE. Controls: ``sep_cpu_reset_n_o`` reads 0 in the
         pulse and ``dbg_sep_reset_n_o`` (the SEP reset) stays 1 over the pulse
         and the stay window (clk_rst.adoc:60).
@@ -1679,7 +1683,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         metadata, and the bark interrupt reads 0. The leg then programs and locks
         the thresholds again, so the next event starts locked.
         """
-        dut = cocotb.top
         seed = self.tcfg.seed
         regs = ("WDOG_REGWEN",) + THOLD_REGS
         st = await self._read_lock_state()
@@ -1689,23 +1692,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 f"CTRL-MISSING CHK-REGWEN-WDTRST: seed={seed} rep={rep} armed_before="
                 f"{armed}/{len(regs)} {st}"
             )
-        for name, v in WDTRST_PRELOAD.items():
-            await self._wr(AON[name][0], v)
-        await self._wr(INTR_TEST, BARK_BIT | WKUP_BIT)
-        pre = await self._read_all_aon()
-        await RisingEdge(dut.clk_i)
-        await ReadOnly()
-        bark_before = self.rd(dut.wdt_bark_probe_o)
-        preload = [
-            name
-            for name in (*WDTRST_PRELOAD, "INTR_STATE")
-            if (pre[name] & AON[name][1]) != (AON[name][2] & AON[name][1])
-        ]
-        if len(preload) != len(WDTRST_PRELOAD) + 1 or not bark_before:
-            raise AssertionError(
-                f"CTRL-MISSING CHK-REGWEN-WDTRST: seed={seed} rep={rep} preloaded={preload} "
-                f"bark_before={bark_before} {pre}"
-            )
+        preload, bark_before = await self._preload_aon("CHK-REGWEN-WDTRST", f"rep={rep}")
         self.logger.info(
             "CTL-REGWEN-WDTRST-ARMED: rep=%d armed_before=%d/%d preloaded=%s bark_before=%d",
             rep,
@@ -1718,19 +1705,8 @@ class sep_timer_clock_contract_test(sep_base_test):
         for when in ("first", "after_wait"):
             if when == "after_wait":
                 await self._wait_wdt(WDT_WAIT)
-            st = await self._read_all_aon()
-            for name in AON:
-                fc = field_compare(st[name], AON[name][2], AON[name][1])
-                assert fc.ok, (
-                    f"CHK-REGWEN-WDTRST FAIL: seed={seed} rep={rep} {when} reg={name} "
-                    f"after the wdt_rst_ni pulse {fc.fields()}"
-                )
-            await RisingEdge(dut.clk_i)
-            await ReadOnly()
-            bark = self.rd(dut.wdt_bark_probe_o)
-            assert bark == 0, (
-                f"CHK-REGWEN-WDTRST FAIL: seed={seed} rep={rep} {when} wdt_bark_probe_o={bark} "
-                "after the wdt_rst_ni pulse"
+            st = await self._grade_aon_reset(
+                "CHK-REGWEN-WDTRST", f"rep={rep} {when}", "after the wdt_rst_ni pulse"
             )
         self.logger.info(
             "CHK-REGWEN-WDTRST PASS: seed=%d rep=%d regs=%d reset_values=1 regwen=%d bark=0x%x "
@@ -1754,6 +1730,46 @@ class sep_timer_clock_contract_test(sep_base_test):
 
     async def _read_all_aon(self) -> dict[str, int]:
         return {name: await self._rd(AON[name][0]) for name in AON}
+
+    async def _preload_aon(self, chk: str, tag: str) -> tuple[list[str], int]:
+        """Write ``WDTRST_PRELOAD`` and set both ``INTR_STATE`` bits through
+        ``INTR_TEST``. Control: each of those registers reads unlike its reset
+        value and the bark interrupt (tap ``wdt_bark_probe_o``) reads 1."""
+        dut = cocotb.top
+        for name, v in WDTRST_PRELOAD.items():
+            await self._wr(AON[name][0], v)
+        await self._wr(INTR_TEST, BARK_BIT | WKUP_BIT)
+        pre = await self._read_all_aon()
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        bark_before = self.rd(dut.wdt_bark_probe_o)
+        preload = [
+            name
+            for name in (*WDTRST_PRELOAD, "INTR_STATE")
+            if (pre[name] & AON[name][1]) != (AON[name][2] & AON[name][1])
+        ]
+        if len(preload) != len(WDTRST_PRELOAD) + 1 or not bark_before:
+            raise AssertionError(
+                f"CTRL-MISSING {chk}: seed={self.tcfg.seed} {tag} preloaded={preload} "
+                f"bark_before={bark_before} {pre}"
+            )
+        return preload, bark_before
+
+    async def _grade_aon_reset(self, chk: str, tag: str, after: str) -> dict[str, int]:
+        """Every register of ``AON`` reads its reset value from the generated
+        register metadata, and the bark interrupt (tap ``wdt_bark_probe_o``)
+        reads 0."""
+        dut = cocotb.top
+        seed = self.tcfg.seed
+        st = await self._read_all_aon()
+        for name in AON:
+            fc = field_compare(st[name], AON[name][2], AON[name][1])
+            assert fc.ok, f"{chk} FAIL: seed={seed} {tag} reg={name} {after} {fc.fields()}"
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        bark = self.rd(dut.wdt_bark_probe_o)
+        assert bark == 0, f"{chk} FAIL: seed={seed} {tag} wdt_bark_probe_o={bark} {after}"
+        return st
 
     async def _event(self, ev: str) -> None:
         dut = cocotb.top
@@ -1935,15 +1951,14 @@ class sep_timer_clock_contract_test(sep_base_test):
             cfg.xl,
         )
 
-        # Cold reset. Control: the registers read their locked values just
-        # before it, whichever event of the drawn order came last.
+        # Cold reset. Controls: the registers read their locked values just
+        # before it, whichever event of the drawn order came last, and the
+        # preloaded registers and the bark interrupt read unlike their reset values.
         armed = self._armed(await self._read_lock_state())
         assert armed == 5, f"CHK-REGWEN-COLD FAIL: armed_before={armed}/5"
+        preload, _ = await self._preload_aon("CHK-REGWEN-COLD", "cold")
         await self.pulse_rst_ni(hold_cycles=PULSE_CYCLES, release_bound=RESET_BOUND)
-        st = await self._read_lock_state()
-        for name in ("WDOG_REGWEN",) + THOLD_REGS:
-            fc = field_compare(st[name], AON[name][2], AON[name][1])
-            assert fc.ok, f"CHK-REGWEN-COLD FAIL: reg={name} after the cold reset {fc.fields()}"
+        st = await self._grade_aon_reset("CHK-REGWEN-COLD", "cold", "after the cold reset")
         await self._wr(WDOG_BARK_THOLD, cfg.cold_bark)
         await self._poll_eq(
             "WDOG_BARK_THOLD",
@@ -1953,14 +1968,19 @@ class sep_timer_clock_contract_test(sep_base_test):
             "CHK-REGWEN-COLD",
         )
         self.logger.info(
-            "CHK-REGWEN-COLD PASS: regwen=%d bark=%d bite=%d wkup_hi=%d wkup_lo=%d write_lands=1 "
-            "armed_before=%d/5",
+            "CHK-REGWEN-COLD PASS: regs=%d reset_values=1 regwen=%d bark=%d bite=%d wkup_hi=%d "
+            "wkup_lo=%d wdog_count=0x%x intr_state=0x%x bark_irq=0 write_lands=1 armed_before=%d/5 "
+            "preloaded=%d",
+            len(AON),
             st["WDOG_REGWEN"] & REGWEN_FIELD,
             st["WDOG_BARK_THOLD"],
             st["WDOG_BITE_THOLD"],
             st["WKUP_THOLD_HI"],
             st["WKUP_THOLD_LO"],
+            st["WDOG_COUNT"],
+            st["INTR_STATE"],
             armed,
+            len(preload),
         )
 
     # -- leg P ------------------------------------------------------------------

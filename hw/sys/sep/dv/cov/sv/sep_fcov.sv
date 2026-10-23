@@ -15862,11 +15862,12 @@ module sep_fcov (
       u_sep_reset_source_cg.sample(e);
     end
 
-    // cp_scan_net_effect, the 30 net cells
+    // cp_scan_net_effect, the 30 net cells. A cell needs the net high on the
+    // last clk_i edge before the scan_rst_ni fall.
     if (mr_scan_q && !mr_scan) begin
       mr_sn_on    <= mr_own_scan;
       mr_sn_snap  <= mr_sn_now_q;
-      mr_sn_keep  <= ~(mr_sn_now ^ mr_sn_now_q);
+      mr_sn_keep  <= mr_sn_now_q & ~(mr_sn_now ^ mr_sn_now_q);
       mr_sn_te    <= mr_te;
       mr_sn_te_ok <= 1'b1;
       mr_sn_w     <= 1;
@@ -15878,7 +15879,7 @@ module sep_fcov (
       mr_sn_on <= 1'b0;
       if (mr_own_scan && mr_sn_te_ok && (mr_sn_w >= MrScanMinW)) begin
         for (int n = 0; n < 15; n++) begin
-          if (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n]) begin
+          if (mr_sn_snap[n] && (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n])) begin
             mr_src_t e;
             e      = '0;
             e.sn   = {1'b0, mr_sn_te, 4'(n)};
@@ -16688,10 +16689,11 @@ module sep_fcov (
   // 1 from a gate-open rst_ni rise to the first landed WDOG_BARK_THOLD write,
   // unless a WDOG_REGWEN write of 0 or a WDOG_REGWEN read of 0 comes first.
   logic mr_lk_cold = 1'b0;
-  // 1 from a gate-open wdt_rst_ni pulse that found regwen known 0 to the first
+  // 1 from a gate-open wdt_rst_ni pulse that found regwen read as 0 to the first
   // landed WDOG_BARK_THOLD write, unless a WDOG_REGWEN write of 0 or a
   // WDOG_REGWEN read of 0 comes first.
   logic mr_lk_wdt = 1'b0;
+  logic mr_rw_rd0 = 1'b0;  // the last WDOG_REGWEN read returned 0
   logic mr_bt_pend = 1'b0;
   logic [31:0] mr_bt_w = '0;
   logic [31:0] mr_bt_prev = '0;
@@ -16745,7 +16747,7 @@ module sep_fcov (
     // (clk_rst.adoc:62; watchdog.adoc:23), so the model forgets its register
     // state under either reset.
     if (!mr_rst || !mr_wdt) begin
-      mr_lk_wdt     <= mr_rst && (mr_lk_wdt || (mr_own_tmr && mr_rw_ok && !mr_rw));
+      mr_lk_wdt     <= mr_rst && (mr_lk_wdt || (mr_own_tmr && mr_rw_ok && !mr_rw && mr_rw_rd0));
       mr_wd_en_ok   <= 1'b0;
       mr_wd_bark_ok <= 1'b0;
       mr_wd_cnt_ok  <= 1'b0;
@@ -16754,6 +16756,7 @@ module sep_fcov (
       mr_bs_f0      <= 1'b0;
       mr_bs_f1      <= 1'b0;
       mr_rw_ok      <= 1'b0;
+      mr_rw_rd0     <= 1'b0;
       mr_lk_sticky  <= 1'b0;
       mr_bt_pend    <= 1'b0;
       mr_to_near    <= 1'b0;
@@ -16991,6 +16994,7 @@ module sep_fcov (
             mr_lk_sticky <= 1'b0;
             mr_rw        <= rd_data[0];
             mr_rw_ok     <= 1'b1;
+            mr_rw_rd0    <= !rd_data[0];
             if (!rd_data[0]) begin
               mr_lk_cold <= 1'b0;
               mr_lk_wdt  <= 1'b0;
