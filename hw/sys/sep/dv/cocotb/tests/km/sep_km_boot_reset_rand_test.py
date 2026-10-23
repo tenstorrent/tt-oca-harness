@@ -23,7 +23,8 @@ Probes: ``HOST-MBX`` (``SEP_STATUS``, ``SEP_READ_DATA``, ``SEP_IRQ_STATUS``),
 ``dbg_sep_reset_n_o`` (in ``pulse_rst_ni``) and the read-only tap ``KM-CSR``
 (``km_csr_cold_boot_done_o``, ``km_csr_scrambler_key_wr_count_o``,
 ``km_csr_scrambler_ctrl_o``), and ``KM-AXIV`` (``km_cpu_axi_valid_o``, the KM
-CPU AXI master valids, and ``km_cpu_rst_n_o``, the KM CPU reset). Injects: none.
+CPU AXI master valids, ``km_cpu_axi_ready_o``, the readies of the same
+channels, and ``km_cpu_rst_n_o``, the KM CPU reset). Injects: none.
 Every reset is a legal host stimulus: ``SW_RESET_N`` bit 0 for a warm reset,
 ``rst_ni`` for the cold resets.
 

@@ -4607,8 +4607,8 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-AXIV`
 |Read-only tap
-|The request valids of the KM CPU AXI4-Lite master on every clock, `km_cpu_axi_valid_o[2:0]` (bit 2 `ar_valid`, bit 1 `aw_valid`, bit 0 `w_valid`), and the KM CPU warm reset (`km_cpu_rst_n_o`).
-|`sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID)
+|The request valids of the KM CPU AXI4-Lite master on every clock, `km_cpu_axi_valid_o[2:0]` (bit 2 `ar_valid`, bit 1 `aw_valid`, bit 0 `w_valid`), the readies of the same channels in the same bit order (`km_cpu_axi_ready_o[2:0]`), and the KM CPU warm reset (`km_cpu_rst_n_o`).
+|`sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID, OBS-RST-AXI-READY)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-OUTFIFO`
 |Read-only tap
