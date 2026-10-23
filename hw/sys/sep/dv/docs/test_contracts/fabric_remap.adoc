@@ -1138,6 +1138,7 @@ reported as such rather than counted as a pass.
 . Prime a seed-random 64-bit SRAM word and its neighbour with the complement value.
 . Read every contiguous (offset, length) byte run of the primed word, re-reading each slice after a checked full-width read of the complement neighbour.
 . Read the primed word at every aligned narrow-ARSIZE cell (AxSIZE 0/1/2 at each legal lane offset), re-reading each cell after the same complement-neighbour disturb.
+. After the CSR walk has passed, write 0 to `SW_DEBUG` and read it back exact as a 4-byte read, outside the window. Then open the FCOV owner window, write all-ones to `SW_DEBUG` as one AxSIZE-2 beat with all four strobes, read it back once as one AxSIZE-2 beat, grade the read, and close the window.
 
 *Checkers*:
 
@@ -1148,11 +1149,15 @@ reported as such rather than counted as a pass.
 |Walked slice and ARSIZE counts equal the combinatorial floors (`36`, `14`), and the CSR walk starts with all-zeros then all-ones. Seed, word, addresses and counts are logged, so a shrunken walk fails rather than reporting PASS over fewer cells.
 |CHK-CSR-LANE
 |Each pattern reads back exactly and identically on the repeat, through a beat whose upper four lanes the CSR endpoint never drives. All-zeros always runs next to all-ones and random patterns on the same register, so a dead write path or a zero-filled read cannot pass the set.
+|CHK-CSR-LANE (window)
+|The in-window AxSIZE-2 read equals the all-ones word written in the window by an AxSIZE-2 write. The register holds 0 before the window (written and read back exact outside it), so a dropped window write reads 0 and fails on every seed. The window closes on the first FAIL.
 |CHK-SRAM-SLICE
 |Every byte-run slice equals the Python slice of the primed word, and re-reads it exactly after the disturbing read. An extraction that starts at the wrong byte, takes the wrong length, or depends on leftover channel payloads fails the compare; the disturbing read is itself compared against the complement word, so the disturbance is proven to have happened.
 |CHK-ARSIZE
 |Every aligned AxSIZE-0/1/2 cell returns exactly the addressed lanes of the primed word, and re-reads them identically after the complement-neighbour disturb, on beats where the responder legitimately drives nothing else.
 |===
+
+*Functional coverage*: `sep_cpu_ctrl_reg_cg.cp_sw_debug[lane_read_exact]`. Owner window: the single write and read after the CHK-CSR-LANE walk has passed. The bin samples only there, on every seed, so a failing run holds no sample.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
