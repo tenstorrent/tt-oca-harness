@@ -220,7 +220,7 @@ module sep_ip_integration
   localparam int unsigned KmRomAw = $clog2(KmRomDepth);
   localparam int unsigned KmRomWidth = 36;  // 32 data + 4 parity
 
-  logic [KmRomWidth-1:0]   km_rom_rdata;
+  logic [KmRomWidth-1:0] km_rom_rdata;
 
   assign km_rom_mem_rsp_o.rdata  = km_rom_rdata[31:0];
   assign km_rom_mem_rsp_o.parity = km_rom_rdata[35:32];
