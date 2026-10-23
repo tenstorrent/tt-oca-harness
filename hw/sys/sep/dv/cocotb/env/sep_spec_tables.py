@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from sep_reg_meta import sym
+
 _REPO = Path(__file__).resolve().parents[6]
 _ABR_RDL = (
     _REPO
@@ -707,8 +709,9 @@ def axi_lane_strobe(addr: int, access_bytes: int = 4, bus_bytes: int = AXI_BUS_B
 
 
 def _selftest() -> None:
-    assert window("ABR").base == 0x1094_0000
-    assert window("EPOOL").base == 0x1095_0000
+    # The register-block bases the transcribed windows carry are the RDL's.
+    assert window("ABR").base == sym("ABR_REG_MAP_BASE_ADDR")
+    assert window("EPOOL").base == sym("ENTROPY_POOL_REG_MAP_BASE_ADDR")
     assert pic("CSRNG command request done") == 24
     assert pic("KM mailbox IRQ") == 15
     assert agg_from_pic("KM mailbox IRQ") == 14
