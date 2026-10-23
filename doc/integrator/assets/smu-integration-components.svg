@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="790" viewBox="0 0 1040 790" role="img" aria-labelledby="title desc">
 <title id="title">SMU integration components</title>
-<desc id="desc">smu_wrapper is a reference top that joins the OCAH smu module to two reference integration modules. Inside smu, the SEP and SMC connect through the SMU AXI4 crossbar, which also carries the system AXI interface, smu_axi_in and smu_axi_out. sep_ip_integration holds an eFuse interface shim and eFuse bank for the SEP, the SRAM, ROM and TCM shims in front of the SEP memory macros, and the optional external TRNG and AXI extension interfaces. smc_ip_integration holds a second eFuse interface shim and eFuse bank for the SMC, the GPIO pads that carry SPI, UART, I3C, I2C, AVSBus and GPIO, an AXI-Lite demux in front of the PLL, PVT and strap models, and the CPU, trace and I3C memories. The SMU clocks and resets enter the wrapper, SoC reset control leaves it, and the JTAG ports pass through to adopter pads. Adopters replace the integration modules with their own technology IP; the smu module is unchanged.</desc>
+<desc id="desc">smu_wrapper is a reference top that joins the OCAH smu module to two reference integration modules. Inside smu, the SEP and SMC connect through the SMU AXI4 crossbar, which also carries the system AXI interface, smu_axi_in and smu_axi_out. sep_ip_integration holds an eFuse interface shim and eFuse bank for the SEP, the TCM shim in front of the SEP memory macros, and the optional external TRNG and AXI extension interfaces. smc_ip_integration holds a second eFuse interface shim and eFuse bank for the SMC, the GPIO pads that carry SPI, UART, I3C, I2C, AVSBus and GPIO, an AXI-Lite demux in front of the PLL, PVT and strap models, and the CPU, trace and I3C memories. The SMU clocks and resets enter the wrapper, SoC reset control leaves it, and the JTAG ports pass through to adopter pads. Adopters replace the integration modules with their own technology IP; the smu module is unchanged.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -88,8 +88,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="t" x="102" y="495" text-anchor="middle">(SEP instance)</text>
 <path class="sig" d="M220.0,269 L220.0,361"/>
 <rect class="fabric" x="164" y="364" width="112" height="48" rx="6"/>
-<text class="t" x="220" y="384" text-anchor="middle">SRAM, ROM</text>
-<text class="t" x="220" y="402" text-anchor="middle">and TCM shims</text>
+<text class="t" x="220" y="384" text-anchor="middle">TCM</text>
+<text class="t" x="220" y="402" text-anchor="middle">shim</text>
 <path class="sig" d="M220.0,415 L220.0,445"/>
 <rect class="smu" x="164" y="448" width="112" height="66" rx="6"/>
 <text class="t" x="220" y="477" text-anchor="middle">SEP memory</text>

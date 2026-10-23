@@ -34,11 +34,11 @@ PR-ALIAS   ``pr_alias_in``, aw, ar: addr cache prot (input and output of the
            ``pr_alias_out`` local-master alias remap)
 PR-XEXT    ``xbar_ext_in``  aw, ar: addr (approved probe)
 PR-CSR     ``sys_csr_axil`` aw, ar: addr (approved probe)
-PR-SRAM    ``pr_sram``      req: addr we wdata strb (req and gnt high);
-                            rsp: rdata (rvalid high)
+PR-SRAM    ``pr_sram``      req: addr we wdata strb (req high); rsp: rdata
+                            (rvalid high)
 PR-ROM     ``pr_rom``       as PR-SRAM
-PR-ROM-    ``pr_rom_macro`` req: addr (macro req high, after the ROM interface
-MACRO                       shim); rsp: rdata (the clock after a req beat)
+PR-ROM-    ``pr_rom_macro`` req: addr (macro req high, out of the memory_interface);
+MACRO                       rsp: rdata (the clock after a req beat)
 PR-TCM     ``pr_tcm``       iccm, dccm: clken wren addr wdata wecc (any clken
                             bit high); iccm_rsp, dccm_rsp: rdata recc (the
                             clock after a beat with a read bank, clken & ~wren)
@@ -305,7 +305,7 @@ class SepFabricTap:
                 flds = {n: getattr(self.dut, f"{prefix}_{ch}{n}_o") for n in names}
             elif ch == "req":
                 valid = getattr(self.dut, f"{prefix}_req_o")
-                ready = getattr(self.dut, f"{prefix}_gnt_o")
+                ready = None
                 flds = {n: getattr(self.dut, f"{prefix}_{n}_o") for n in names}
             else:
                 valid = getattr(self.dut, f"{prefix}_rvalid_o")

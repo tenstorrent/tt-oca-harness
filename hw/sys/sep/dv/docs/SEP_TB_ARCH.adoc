@@ -515,12 +515,14 @@ Observation probe groups:
    `data`) from `u_dut.ext_trng_axil_resp`, read after the force of the TRNG
    AXI-Lite passthrough responder, with READY from the request net. Users: the
    dead-space decode entry of the fabric and remap area.
-** PR-SRAM (`pr_sram_*`) and PR-ROM (`pr_rom_*`): the SRAM and boot ROM macro
-   requests (wrapper nets `u_dut.sep_sram_req`, `u_dut.sep_boot_rom_req`):
-   request, grant, address, write enable, write data, strobe, read valid and
-   read data. PR-ROM also carries the macro side of the ROM interface shim
-   (`pr_rom_macro_*`: `rom_macro_req`, `rom_macro_addr`, the 64-bit word
-   index, and `rom_macro_rdata` of `sep_ip_integration`; monitor PR-ROM-MACRO).
+** PR-SRAM (`pr_sram_*`) and PR-ROM (`pr_rom_*`): the byte-addressed request
+   stream inside `u_dut.u_sep.u_sram_memory_interface` and
+   `u_dut.u_sep.u_boot_rom_memory_interface`, ahead of the macro port:
+   request, address, write enable, write data, strobe, read valid and read
+   data. PR-ROM also carries the macro side of the boot ROM memory interface
+   (`pr_rom_macro_*`: `req` and `addr`, the 64-bit word index, of the wrapper
+   net `u_dut.sep_boot_rom_req`, and `rdata` of `u_dut.sep_boot_rom_rsp`;
+   monitor PR-ROM-MACRO).
    The PR-SRAM address (`pr_sram_addr_o`) is the byte offset of the request
    from the SRAM base `SEP_SRAM_MEM_BASE_ADDR`, not the bus address; a check
    compares it at 8-byte word granularity, the width of one SRAM word.
@@ -651,8 +653,7 @@ Observation probe groups:
   output of `u_el2_veer_wrapper` (`dmi_en`, `dmi_addr`, `dmi_wr_en`), the
   `sep.sv` nets `cpu_tcm_axi_req` and `cpu_tcm_axi_resp`, `ifu_rom_axi_req`,
   `ifu_sram_axi_req`, `lsu_rom_axi_req` and `lsu_xbar_axi_req` with their
-  responses, and `nmi_vec`, and the wrapper nets `u_dut.sep_sram_req` and
-  `u_dut.sep_sram_rsp`; the core taps are tied to 0 on the CPU stub build. The
+  responses, and `nmi_vec`, and the probe PR-SRAM; the core taps are tied to 0 on the CPU stub build. The
   sampler also reads the probes PR-TCM, PR-IFU and PR-ROM-MACRO, the CPU trace
   ports, `ext_debug_bus_o[367:364]`, the DMI enables and the uncore DMI
   outputs. Owners: `sep_boot_rom_aperture_sweep_test`,

@@ -302,9 +302,9 @@ module smu #(
 
   output sep_pkg::sep_sram_req_t     sep_sram_req_o,  // SEP SRAM request toward sep_ip_integration.
   input  sep_pkg::sep_sram_rsp_t     sep_sram_rsp_i,  // SEP SRAM response from sep_ip_integration.
-  output sep_pkg::sep_sram_req_t     sep_boot_rom_req_o,  // SEP boot-ROM request toward
-                                                          // sep_ip_integration.
-  input  sep_pkg::sep_sram_rsp_t     sep_boot_rom_rsp_i,  // SEP boot-ROM response from
+  output sep_pkg::sep_boot_rom_req_t sep_boot_rom_req_o,  // SEP boot-ROM request, with the macro
+                                                          // clock, toward sep_ip_integration.
+  input  sep_pkg::sep_boot_rom_rsp_t sep_boot_rom_rsp_i,  // SEP boot-ROM read data from
                                                           // sep_ip_integration.
   output sep_pkg::sep_cpu_tcm_req_t  sep_cpu_tcm_req_o,  // SEP CPU TCM request toward
                                                          // sep_ip_integration.

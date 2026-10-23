@@ -442,13 +442,13 @@ Branch 1 "844865755" "idx" (12) "idx default"
 
 CHECKSUM: "2097437693 2178003635"
 MODULE: axi_lite_to_tlul
-ANNOTATION: "AXI2TLUL-INTG-GEN-PARAM: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN default to 1 (hw/common/axi/axi_lite_to_tlul.sv:28-29); every SEP instance keeps the default or passes 1 (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from hw/sys/sep/rtl/sep.sv:1202 ENABLE_DATA_INTG_GEN=1), so the else arms at :251/:267 are elaboration-dead."
+ANNOTATION: "AXI2TLUL-INTG-GEN-PARAM: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN default to 1 (hw/common/axi/axi_lite_to_tlul.sv:28-29); every SEP instance keeps the default or passes 1 (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from hw/sys/sep/rtl/sep.sv:1201 ENABLE_DATA_INTG_GEN=1), so the else arms at :251/:267 are elaboration-dead."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 1300994536"
 MODULE: tlul_to_axi_lite
-ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1202, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:281/:296 are elaboration-dead."
+ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1201, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:281/:296 are elaboration-dead."
 Branch 4 "3993283767" "ENABLE_RSP_INTG_GEN" (1) "ENABLE_RSP_INTG_GEN 0"
 Branch 5 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
@@ -658,13 +658,13 @@ Condition 6 "4163802455" "(clear_i || endpoint_cancel_i[0]) 1 -1" (2 "01")
 
 CHECKSUM: "1557237986 1319700504"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1091 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. So filter_skip_i is 0 and the skip arm of the isolate_write/isolate_read ternaries (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224,234) cannot occur. NOT waived: the filter_skip_i = 0 vectors and the nested no-match/allow conditions, which filter traffic moves."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1090 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. So filter_skip_i is 0 and the skip arm of the isolate_write/isolate_read ternaries (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224,234) cannot occur. NOT waived: the filter_skip_i = 0 vectors and the nested no-match/allow conditions, which filter traffic moves."
 Condition 65 "1848364127" "(filter_skip_i ? 1'b0 : (no_write_filter_matches ? BLOCK_BY_DEFAULT : ((!allow_write[write_filter_hit_idx])))) 1 -1" (2 "1")
 Condition 67 "2709885922" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? BLOCK_BY_DEFAULT : ((!allow_read[read_filter_hit_idx])))) 1 -1" (2 "1")
 
 CHECKSUM: "1557237986 4093739576"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1091 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. So the filter_skip_i = 1 arm of hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224 and :234 is unreachable. NOT waived: the two filter_skip_i = 0 arms (no-match and hit), which filter traffic reaches."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1090 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. So the filter_skip_i = 1 arm of hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224 and :234 is unreachable. NOT waived: the two filter_skip_i = 0 arms (no-match and hit), which filter traffic reaches."
 Branch 0 "572651959" "filter_skip_i" (0) "filter_skip_i 1,-"
 Branch 1 "2652501629" "filter_skip_i" (0) "filter_skip_i 1,-"
 

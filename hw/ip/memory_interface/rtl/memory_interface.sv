@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Bridge an AXI memory port onto mem_req/mem_rsp banks and forward an AXI-Lite CSR port.
+// Bridge an AXI memory port onto a memory macro and forward an AXI-Lite CSR port.
 //
 // The two ports are independent; there is no address decode between them.
 // The memory port subtracts MEM_BASE_ADDR from AW and AR addresses and feeds axi_to_mem
-// with a buffer depth of 1 and NUM_BANKS banks.
+// with a buffer depth of 1. Every request is accepted at once and the macro must return read
+// data on the clock after the request; mem_req_o carries the clock the macro runs on.
+// With READ_ONLY set, writes are acknowledged but never reach the macro, and mem_req_t needs
+// only the clk, req and addr fields.
 // The CSR port subtracts CSR_BASE_ADDR from AW and AR addresses and forwards all traffic to
 // csr_out_*.
 // busy_o is the axi_to_mem busy status.
@@ -16,8 +19,11 @@ module memory_interface #(
   parameter int unsigned MEM_DATA_WIDTH   = 0,              // Memory AXI and bank data width; one
                                                             // of 32, 64, 128, 256, 512 or 1024.
   parameter int unsigned MEM_ID_WIDTH     = 0,              // Memory ID width.
-  parameter type mem_req_t                = logic,          // Memory request type.
-  parameter type mem_rsp_t                = logic,          // Memory response type.
+  parameter type mem_req_t                = logic,          // Macro request type: clk, req and
+                                                            // a word addr; we, wdata and a bit
+                                                            // wmask unless READ_ONLY.
+  parameter type mem_rsp_t                = logic,          // Macro response type: rdata.
+  parameter bit  READ_ONLY                = 1'b0,           // Never forward writes to the macro.
   parameter type mem_axi_req_t            = logic,          // AXI memory request type.
   parameter type mem_axi_resp_t           = logic,          // AXI memory response type.
 
@@ -31,12 +37,9 @@ module memory_interface #(
   parameter logic [31:0] CSR_BASE_ADDR    = 0,              // Subtracted from CSR AW and AR
                                                             // addresses; must be aligned to
                                                             // CSR_DATA_WIDTH/8 bytes.
-  parameter logic [31:0] MEM_BASE_ADDR    = 0,              // Subtracted from memory AW and AR
+  parameter logic [31:0] MEM_BASE_ADDR    = 0               // Subtracted from memory AW and AR
                                                             // addresses; must be aligned to
                                                             // MEM_DATA_WIDTH/8 bytes.
-
-  parameter int unsigned NUM_BANKS        = 1               // Number of banks axi_to_mem splits
-                                                            // each data word across; 1 to 16.
 ) (
   input   logic                           clk_i,            // System clock.
   input   logic                           rst_ni,           // Async reset, active-low.
@@ -54,8 +57,9 @@ module memory_interface #(
                                                               // AW and AR addresses.
   input  csr_axil_resp_t                  csr_out_axil_resp_i, // Forwarded CSR AXI-Lite response.
 
-  output mem_req_t                        mem_req_o,        // Bank memory request.
-  input  mem_rsp_t                        mem_rsp_i,        // Bank memory response.
+  output mem_req_t                        mem_req_o,        // Macro request.
+  input  mem_rsp_t                        mem_rsp_i,        // Macro read data, returned on the
+                                                            // clock after mem_req_o.req.
   output                                  busy_o            // High while axi_to_mem has a
                                                             // memory-port transaction in progress.
 );
@@ -124,8 +128,13 @@ module memory_interface #(
 
 
   // General Parameter Validation
-  `OCAH_ASSERT_STATIC(NumBanksCheck_A, NUM_BANKS >= 1 && NUM_BANKS <= 16,
-                      "NUM_BANKS must be 1 to 16")
+  localparam int unsigned WordOffset = $clog2(MEM_DATA_WIDTH / 8);
+  localparam int unsigned MacroAddrWidth = $bits(mem_req_o.addr);
+
+  `OCAH_ASSERT_STATIC(MacroAddrWidthCheck_A, MacroAddrWidth + WordOffset <= MEM_ADDR_WIDTH,
+                      "mem_req_o.addr is wider than the word address of the memory port")
+  `OCAH_ASSERT_STATIC(MemRspRDataWidth_A, $bits(mem_rsp_i.rdata) == MEM_DATA_WIDTH,
+                      "mem_rsp_i.rdata is not the correct width")
   `OCAH_ASSERT_STATIC(BaseAddrAlignCheck_A, (MEM_BASE_ADDR & ((1 << $clog2(MEM_DATA_WIDTH / 8)
                       ) - 1)) == 0, "MEM_BASE_ADDR must be aligned to the MEM_DATA_WIDTH bus width")
   `OCAH_ASSERT_STATIC(CsrBaseAddrAlignCheck_A, (CSR_BASE_ADDR & ((1 << $clog2(CSR_DATA_WIDTH / 8)
@@ -146,13 +155,20 @@ module memory_interface #(
     mem_axi_req_mem.ar.addr     = mem_axi_req_i.ar.addr - MEM_BASE_ADDR;
   end
 
+  logic                        mem_req;
+  logic                        mem_we;
+  logic [MEM_ADDR_WIDTH-1:0]   mem_addr;
+  logic [MEM_DATA_WIDTH-1:0]   mem_wdata;
+  logic [MEM_DATA_WIDTH/8-1:0] mem_strb;
+  logic                        mem_rvalid_q;
+
   axi_to_mem #(
     .axi_req_t      (mem_axi_req_t),
     .axi_resp_t     (mem_axi_resp_t),
     .AddrWidth      (MEM_ADDR_WIDTH),
     .DataWidth      (MEM_DATA_WIDTH),
     .IdWidth        (MEM_ID_WIDTH),
-    .NumBanks       (NUM_BANKS),
+    .NumBanks       (1),
     .BufDepth       (1)
   ) u_axi_to_mem (
     .clk_i          (clk_i),
@@ -163,16 +179,39 @@ module memory_interface #(
     .axi_req_i      (mem_axi_req_mem),
     .axi_resp_o     (mem_axi_resp_o),
 
-    .mem_req_o      (mem_req_o.req),
-    .mem_gnt_i      (mem_rsp_i.gnt),
-    .mem_addr_o     (mem_req_o.addr),
-    .mem_wdata_o    (mem_req_o.wdata),
-    .mem_strb_o     (mem_req_o.strb),
-    .mem_atop_o     (mem_req_o.atop),
-    .mem_we_o       (mem_req_o.wenable),
-    .mem_rvalid_i   (mem_rsp_i.rvalid),
-    .mem_rdata_i    (mem_rsp_i.rdata)   // rdata stands for response data (not read data)
+    .mem_req_o      (mem_req),
+    .mem_gnt_i      (1'b1),
+    .mem_addr_o     (mem_addr),
+    .mem_wdata_o    (mem_wdata),
+    .mem_strb_o     (mem_strb),
+    .mem_atop_o     (/* UNUSED */),
+    .mem_we_o       (mem_we),
+    .mem_rvalid_i   (mem_rvalid_q),
+    .mem_rdata_i    (mem_rsp_i.rdata)
   );
+
+  // axi_to_mem expects a response for writes as well as reads.
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      mem_rvalid_q <= 1'b0;
+    end else begin
+      mem_rvalid_q <= mem_req;
+    end
+  end
+
+  assign mem_req_o.clk  = clk_i;
+  assign mem_req_o.addr = mem_addr[WordOffset +: MacroAddrWidth];
+
+  if (READ_ONLY) begin : gen_read_only
+    assign mem_req_o.req = mem_req & ~mem_we;
+  end else begin : gen_read_write
+    assign mem_req_o.req   = mem_req;
+    assign mem_req_o.we    = mem_we;
+    assign mem_req_o.wdata = mem_wdata;
+    for (genvar i = 0; i < MEM_DATA_WIDTH / 8; i++) begin : gen_wmask
+      assign mem_req_o.wmask[8*i+:8] = {8{mem_strb[i]}};
+    end
+  end
 
   ///////////////////////////
   // CSR Port Translation //

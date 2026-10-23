@@ -34,12 +34,14 @@ if {[cdc_is_block_top]} {
     create_clock -add -name JTAG_TCK          -period $clock_periods(JTAG_TCK_PERIOD)              [get_ports "jtag_tck_i"]
 }
 
-# OTBN PKA, CPU TCM (ICCM/DCCM) and Key Manager memories (have clock output in request struct).
+# OTBN PKA, CPU TCM (ICCM/DCCM), SRAM, boot ROM and Key Manager memories (have clock output in request struct).
 # Level-independent: the master maps through cdc_clk and the source is the block clock
 # port at SEP top, or the u_sep/clk_i instance pin under a parent.
 create_generated_clock [get_ports sep_crypto_pka_imem_sram_req_o*clk] -name SEPCLK_PKA_IMEM -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
 create_generated_clock [get_ports sep_crypto_pka_dmem_sram_req_o*clk] -name SEPCLK_PKA_DMEM -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
 create_generated_clock [get_ports sep_cpu_tcm_req_o*clk]              -name SEPCLK_CPU_TCM  -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
+create_generated_clock [get_ports sep_sram_req_o*clk]                 -name SEPCLK_SRAM     -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
+create_generated_clock [get_ports sep_boot_rom_req_o*clk]             -name SEPCLK_BOOT_ROM -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
 # The leading * also matches the sep_km_* names these ports take at the SMU top.
 create_generated_clock [get_ports *km_rom_mem_req_o*clk]              -name SEPCLK_KM_ROM   -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
 create_generated_clock [get_ports *km_sram_mem_req_o*clk]             -name SEPCLK_KM_SRAM  -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational

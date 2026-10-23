@@ -580,7 +580,7 @@ Toggle tl_d_o.d_opcode [2:1] "logic tl_d_o.d_opcode[2:0]"
 
 CHECKSUM: "3519459534 3972236298"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap
-ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1204). host_tl_h_i comes from tlul_to_axi_lite.sv:151 and :262,264 (sep_dma_wrap.sv:266): d_param and d_sink 0, d_opcode ACCESS_ACK or ACCESS_ACK_DATA (d_opcode[2:1] 0). The TB host stall force (hw/sys/sep/dv/tb/tb_top.sv:1825-1826) drives the same fields to the same 0. NOT waived: address, data, mask, d_error, the response echo fields d_source and d_size, and the integrity fields."
+ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1203). host_tl_h_i comes from tlul_to_axi_lite.sv:151 and :262,264 (sep_dma_wrap.sv:266): d_param and d_sink 0, d_opcode ACCESS_ACK or ACCESS_ACK_DATA (d_opcode[2:1] 0). The TB host stall force (hw/sys/sep/dv/tb/tb_top.sv:1825-1826) drives the same fields to the same 0. NOT waived: address, data, mask, d_error, the response echo fields d_source and d_size, and the integrity fields."
 Toggle host_tl_h_o.a_user.instr_type "logic host_tl_h_o.a_user.instr_type[3:0]"
 Toggle host_tl_h_o.a_user.rsvd "logic host_tl_h_o.a_user.rsvd[9:0]"
 Toggle host_tl_h_o.a_address [1:0] "logic host_tl_h_o.a_address[31:0]"
@@ -595,7 +595,7 @@ Toggle host_tl_h_i.d_opcode [2:1] "logic host_tl_h_i.d_opcode[2:0]"
 
 CHECKSUM: "2470472206 1152219882"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1204); tl_i is host_tl_h_o (hw/sys/sep/rtl/sep_dma_wrap.sv:265). NOT waived: address, data, mask, the integrity fields and every tl_o response field."
+ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1203); tl_i is host_tl_h_o (hw/sys/sep/rtl/sep_dma_wrap.sv:265). NOT waived: address, data, mask, the integrity fields and every tl_o response field."
 Toggle tl_i.a_user.instr_type "logic tl_i.a_user.instr_type[3:0]"
 Toggle tl_i.a_user.rsvd "logic tl_i.a_user.rsvd[9:0]"
 Toggle tl_i.a_address [1:0] "logic tl_i.a_address[31:0]"
@@ -767,33 +767,33 @@ Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1202), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 39 "915842203" "cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1202), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 42 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1202), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 3216173326"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1202), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 43 "993725118" "rsp_intg = {tlul_pkg::D2H_RSP_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2470472206 3216173326"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1202), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 46 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2470472206 1300994536"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1202), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 4 "3993283767" "ENABLE_RSP_INTG_GEN" (1) "ENABLE_RSP_INTG_GEN 0"
 Branch 5 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
@@ -811,12 +811,12 @@ Toggle status_word [63:8] "logic status_word[63:0]"
 
 CHECKSUM: "1557237986 3866655258"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1091 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. NOT waived: every other filter port and the isolate nets."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1090 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. NOT waived: every other filter port and the isolate nets."
 Toggle filter_skip_i "logic filter_skip_i"
 
 CHECKSUM: "1951099644 1291595517"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1091 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. NOT waived: inbound_filter_skip_i, which feature control (sep_debug) drives at hw/sys/sep/rtl/sep.sv:1090."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1090 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. NOT waived: inbound_filter_skip_i, which feature control (sep_debug) drives at hw/sys/sep/rtl/sep.sv:1089."
 Toggle outbound_filter_skip_i "logic outbound_filter_skip_i"
 
 CHECKSUM: "4268271618 3948953717"
@@ -3498,7 +3498,7 @@ Toggle mailbox_from_csr_axil_resp.b.resp [0] "logic mailbox_from_csr_axil_resp.b
 
 CHECKSUM: "3432265777 778853912"
 INSTANCE: sep_uvm_top.u_dut.u_sep
-ANNOTATION: "SEP-ENTROPY-POOL-ERR-TIED: hw/sys/sep/rtl/sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and each non-secure arm of the vendored prim_fifo_sync ties err_o to 0. hw/sys/sep/rtl/sep_entropy_fifo.sv:210 and hw/sys/sep/rtl/sep.sv:1074,601,614 carry it to PIC source 39 (bit 38). NOT waived: entropy_pool_low, entropy_pool_fill_stall and every other interrupt bit."
+ANNOTATION: "SEP-ENTROPY-POOL-ERR-TIED: hw/sys/sep/rtl/sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and each non-secure arm of the vendored prim_fifo_sync ties err_o to 0. hw/sys/sep/rtl/sep_entropy_fifo.sv:210 and hw/sys/sep/rtl/sep.sv:1073,601,614 carry it to PIC source 39 (bit 38). NOT waived: entropy_pool_low, entropy_pool_fill_stall and every other interrupt bit."
 Toggle entropy_pool_err "logic entropy_pool_err"
 Toggle sep_internal_interrupts [38] "logic sep_internal_interrupts[42:0]"
 Toggle sep_interrupts [38] "logic sep_interrupts[254:0]"
@@ -3607,7 +3607,7 @@ Toggle req_opcode_d [1] "logic req_opcode_d[2:0]"
 
 CHECKSUM: "848773853 3826471955"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_boot_rom_memory_interface
-ANNOTATION: "SEP-MEMIF-CSR-TIED: hw/sys/sep/rtl/sep.sv:885,888 tie csr_in_axil_req_i and csr_out_axil_resp_i of u_boot_rom_memory_interface to '0, and hw/ip/memory_interface/rtl/memory_interface.sv:182-187 drive csr_in_axil_resp_o and csr_out_axil_req_o only from those tied inputs, so every bit of the four CSR AXI-Lite ports holds constant. NOT waived: the mem_axi request and response ports and the ROM memory port, which move with bus traffic."
+ANNOTATION: "SEP-MEMIF-CSR-TIED: hw/sys/sep/rtl/sep.sv:885,888 tie csr_in_axil_req_i and csr_out_axil_resp_i of u_boot_rom_memory_interface to '0, and hw/ip/memory_interface/rtl/memory_interface.sv:221-227 drive csr_in_axil_resp_o and csr_out_axil_req_o only from those tied inputs, so every bit of the four CSR AXI-Lite ports holds constant. NOT waived: the mem_axi request and response ports and the ROM memory port, which move with bus traffic."
 Toggle csr_in_axil_req_i.r_ready "logic csr_in_axil_req_i.r_ready"
 Toggle csr_in_axil_req_i.ar_valid "logic csr_in_axil_req_i.ar_valid"
 Toggle csr_in_axil_req_i.ar.prot "logic csr_in_axil_req_i.ar.prot[2:0]"
@@ -3649,7 +3649,7 @@ Toggle csr_out_axil_resp_i.aw_ready "logic csr_out_axil_resp_i.aw_ready"
 
 CHECKSUM: "848773853 452915742"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sram_memory_interface
-ANNOTATION: "SEP-MEMIF-CSR-TIED: hw/sys/sep/rtl/sep.sv:814,817 tie csr_in_axil_req_i and csr_out_axil_resp_i of u_sram_memory_interface to '0, and hw/ip/memory_interface/rtl/memory_interface.sv:182-187 drive csr_in_axil_resp_o and csr_out_axil_req_o only from those tied inputs, so every bit of the four CSR AXI-Lite ports holds constant. NOT waived: the mem_axi request and response ports and the SRAM memory port, which move with bus traffic."
+ANNOTATION: "SEP-MEMIF-CSR-TIED: hw/sys/sep/rtl/sep.sv:814,817 tie csr_in_axil_req_i and csr_out_axil_resp_i of u_sram_memory_interface to '0, and hw/ip/memory_interface/rtl/memory_interface.sv:221-227 drive csr_in_axil_resp_o and csr_out_axil_req_o only from those tied inputs, so every bit of the four CSR AXI-Lite ports holds constant. NOT waived: the mem_axi request and response ports and the SRAM memory port, which move with bus traffic."
 Toggle csr_in_axil_req_i.r_ready "logic csr_in_axil_req_i.r_ready"
 Toggle csr_in_axil_req_i.ar_valid "logic csr_in_axil_req_i.ar_valid"
 Toggle csr_in_axil_req_i.ar.prot "logic csr_in_axil_req_i.ar.prot[2:0]"
@@ -3691,13 +3691,13 @@ Toggle csr_out_axil_resp_i.aw_ready "logic csr_out_axil_resp_i.aw_ready"
 
 CHECKSUM: "848773853 3826471955"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_boot_rom_memory_interface
-ANNOTATION: "SEP-MEMIF-ADDR-ALIGNED: vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:834-836 (align_addr with 8 data bytes) and :873 clear address bits [2:0] of every bank request, and :896 is the only source of the memory address, so mem_req_o.addr[2:0] holds 0. NOT waived: mem_req_o.addr[31:3]."
-Toggle mem_req_o.addr [2:0] "logic mem_req_o.addr[31:0]"
+ANNOTATION: "SEP-MEMIF-ADDR-ALIGNED: vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:834-836 (align_addr with 8 data bytes) and :873 clear address bits [2:0] of every bank request, and :896 is the only source of the memory address, so mem_addr[2:0] holds 0. NOT waived: mem_addr[31:3]."
+Toggle mem_addr [2:0] "logic mem_addr[31:0]"
 
 CHECKSUM: "848773853 452915742"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sram_memory_interface
-ANNOTATION: "SEP-MEMIF-ADDR-ALIGNED: vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:834-836 (align_addr with 8 data bytes) and :873 clear address bits [2:0] of every bank request, and :896 is the only source of the memory address, so mem_req_o.addr[2:0] holds 0. NOT waived: mem_req_o.addr[31:3]."
-Toggle mem_req_o.addr [2:0] "logic mem_req_o.addr[31:0]"
+ANNOTATION: "SEP-MEMIF-ADDR-ALIGNED: vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:834-836 (align_addr with 8 data bytes) and :873 clear address bits [2:0] of every bank request, and :896 is the only source of the memory address, so mem_addr[2:0] holds 0. NOT waived: mem_addr[31:3]."
+Toggle mem_addr [2:0] "logic mem_addr[31:0]"
 
 CHECKSUM: "848773853 3826471955"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_boot_rom_memory_interface
@@ -3714,22 +3714,10 @@ Toggle mem_axi_resp_o.r.user "logic mem_axi_resp_o.r.user[11:0]"
 Toggle mem_axi_resp_o.r.resp [1] "logic mem_axi_resp_o.r.resp[1:0]"
 Toggle mem_axi_resp_o.b.user "logic mem_axi_resp_o.b.user[11:0]"
 Toggle mem_axi_resp_o.b.resp [1] "logic mem_axi_resp_o.b.resp[1:0]"
-
-CHECKSUM: "1295996371 1720929652"
-INSTANCE: sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_rom_interface_shim
-ANNOTATION: "SEP-ROM-SHIM-TIED: mem_req_i.addr[2:0] is the aligned bank address of u_boot_rom_memory_interface (vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:873,896), which holds 0; hw/sys/sep/rtl/sep_rom_interface_shim.sv:59 drives mem_rsp_o.gnt to 1'b1. NOT waived: mem_req_i.addr[31:3], mem_req_i.atop, mem_rsp_o.rvalid and mem_rsp_o.rdata."
-Toggle mem_req_i.addr [2:0] "logic mem_req_i.addr[31:0]"
-Toggle mem_rsp_o.gnt "logic mem_rsp_o.gnt"
-
-CHECKSUM: "1576759772 3635017905"
-INSTANCE: sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_sram_interface_shim
-ANNOTATION: "SEP-SRAM-SHIM-TIED: mem_req_i.addr[2:0] is the aligned bank address of u_sram_memory_interface (vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:873,896), which holds 0; hw/sys/sep/rtl/sep_sram_interface_shim.sv:72 drives mem_rsp_o.gnt to 1'b1. NOT waived: mem_req_i.addr[31:3], mem_rsp_o.rvalid and mem_rsp_o.rdata."
-Toggle mem_req_i.addr [2:0] "logic mem_req_i.addr[31:0]"
-Toggle mem_rsp_o.gnt "logic mem_rsp_o.gnt"
 
 CHECKSUM: "1185615089 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-IFU-ROM-RESP-NOERR: the only R source of the ROM mux is u_boot_rom_memory_interface (hw/sys/sep/rtl/sep.sv:861-892). There vendor/pulp-platform/axi/upstream/src/axi_to_mem.sv:111 ties mem_err_i to '0, so r.resp[1] holds 0, and vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:554 drives r.user to '0. ifu_demux_resp[0] is the same net (hw/sys/sep/rtl/sep_cpu.sv:624). NOT waived: r.resp[0], r.last, r.data and r.id of the ROM response, and every SRAM-side and merged IFU response field."
+ANNOTATION: "SEP-CPU-IFU-ROM-RESP-NOERR: the only R source of the ROM mux is u_boot_rom_memory_interface (hw/sys/sep/rtl/sep.sv:865-892). There vendor/pulp-platform/axi/upstream/src/axi_to_mem.sv:111 ties mem_err_i to '0, so r.resp[1] holds 0, and vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:554 drives r.user to '0. ifu_demux_resp[0] is the same net (hw/sys/sep/rtl/sep_cpu.sv:624). NOT waived: r.resp[0], r.last, r.data and r.id of the ROM response, and every SRAM-side and merged IFU response field."
 Toggle ifu_rom_axi_resp_i.r.user "logic ifu_rom_axi_resp_i.r.user[11:0]"
 Toggle ifu_rom_axi_resp_i.r.resp [1] "logic ifu_rom_axi_resp_i.r.resp[1:0]"
 Toggle ifu_demux_resp[0].r.user "logic ifu_demux_resp[0].r.user[11:0]"

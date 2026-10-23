@@ -2176,28 +2176,27 @@ module sep_uvm_top
     assign pr_alias_out_araddr_o  = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar.addr[55:0];
     assign pr_alias_out_arcache_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar.cache;
     assign pr_alias_out_arprot_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar.prot;
-    // PR-SRAM: the SRAM macro request (wrapper net u_dut.sep_sram_req) and response.
-    assign pr_sram_req_o = u_dut.sep_sram_req.req;
-    assign pr_sram_gnt_o = u_dut.sep_sram_rsp.gnt;
-    assign pr_sram_addr_o = u_dut.sep_sram_req.addr;
-    assign pr_sram_we_o = u_dut.sep_sram_req.wenable;
-    assign pr_sram_wdata_o = u_dut.sep_sram_req.wdata;
-    assign pr_sram_strb_o = u_dut.sep_sram_req.strb;
-    assign pr_sram_rvalid_o = u_dut.sep_sram_rsp.rvalid;
+    // PR-SRAM and PR-ROM: the byte-addressed request stream inside each
+    // memory_interface, ahead of the macro port, and its response.
+    assign pr_sram_req_o = `SEP_CORE.u_sram_memory_interface.mem_req;
+    assign pr_sram_addr_o = `SEP_CORE.u_sram_memory_interface.mem_addr;
+    assign pr_sram_we_o = `SEP_CORE.u_sram_memory_interface.mem_we;
+    assign pr_sram_wdata_o = `SEP_CORE.u_sram_memory_interface.mem_wdata;
+    assign pr_sram_strb_o = `SEP_CORE.u_sram_memory_interface.mem_strb;
+    assign pr_sram_rvalid_o = `SEP_CORE.u_sram_memory_interface.mem_rvalid_q;
     assign pr_sram_rdata_o = u_dut.sep_sram_rsp.rdata;
-    // PR-ROM: the boot ROM macro request (wrapper net u_dut.sep_boot_rom_req) and response.
-    assign pr_rom_req_o = u_dut.sep_boot_rom_req.req;
-    assign pr_rom_gnt_o = u_dut.sep_boot_rom_rsp.gnt;
-    assign pr_rom_addr_o = u_dut.sep_boot_rom_req.addr;
-    assign pr_rom_we_o = u_dut.sep_boot_rom_req.wenable;
-    assign pr_rom_wdata_o = u_dut.sep_boot_rom_req.wdata;
-    assign pr_rom_strb_o = u_dut.sep_boot_rom_req.strb;
-    assign pr_rom_rvalid_o = u_dut.sep_boot_rom_rsp.rvalid;
+    assign pr_rom_req_o = `SEP_CORE.u_boot_rom_memory_interface.mem_req;
+    assign pr_rom_addr_o = `SEP_CORE.u_boot_rom_memory_interface.mem_addr;
+    assign pr_rom_we_o = `SEP_CORE.u_boot_rom_memory_interface.mem_we;
+    assign pr_rom_wdata_o = `SEP_CORE.u_boot_rom_memory_interface.mem_wdata;
+    assign pr_rom_strb_o = `SEP_CORE.u_boot_rom_memory_interface.mem_strb;
+    assign pr_rom_rvalid_o = `SEP_CORE.u_boot_rom_memory_interface.mem_rvalid_q;
     assign pr_rom_rdata_o = u_dut.sep_boot_rom_rsp.rdata;
-    // PR-ROM macro side: the request after the ROM interface shim and the read data.
-    assign pr_rom_macro_req_o   = `SEP_IPI.rom_macro_req;
-    assign pr_rom_macro_addr_o  = `SEP_IPI.rom_macro_addr;
-    assign pr_rom_macro_rdata_o = `SEP_IPI.rom_macro_rdata;
+    // PR-ROM macro side: the boot ROM macro request (wrapper net
+    // u_dut.sep_boot_rom_req, out of the memory_interface) and the read data.
+    assign pr_rom_macro_req_o   = u_dut.sep_boot_rom_req.req;
+    assign pr_rom_macro_addr_o  = u_dut.sep_boot_rom_req.addr;
+    assign pr_rom_macro_rdata_o = u_dut.sep_boot_rom_rsp.rdata;
     // PR-TCM: the ICCM and DCCM macro request and response (wrapper nets
     // u_dut.sep_cpu_tcm_req and u_dut.sep_cpu_tcm_rsp), bank 0 in the low bits.
     assign pr_tcm_iccm_clken_o = u_dut.sep_cpu_tcm_req.iccm_clken;
@@ -6216,8 +6215,11 @@ module sep_uvm_top
         .dma_csr_req_i     (`SEP_CORE.dma_csr_req),
         .dma_csr_resp_i    (`SEP_CORE.dma_csr_rsp),
         .irq_dma_error_i   (sep_internal_interrupts_probe_o[10]),
-        .rom_req_i         (u_dut.sep_boot_rom_req),
-        .rom_rsp_i         (u_dut.sep_boot_rom_rsp),
+        .rom_req_i         (pr_rom_req_o),
+        .rom_we_i          (pr_rom_we_o),
+        .rom_addr_i        (pr_rom_addr_o),
+        .rom_rvalid_i      (pr_rom_rvalid_o),
+        .rom_rdata_i       (pr_rom_rdata_o),
         .iccm_clken_i      (|u_dut.sep_cpu_tcm_req.iccm_clken),
         .iccm_wren_i       (|u_dut.sep_cpu_tcm_req.iccm_wren_bank),
         .dccm_clken_i      (|u_dut.sep_cpu_tcm_req.dccm_clken),
@@ -6379,8 +6381,8 @@ module sep_uvm_top
         .cpu_trace_ecause_i (cpu_trace_ecause_o),
         .cpu_trace_tval_i   (cpu_trace_tval_o),
         .ecc_dbg_i          (ext_debug_bus_o[367:364]),
-        .sram_req_i         (u_dut.sep_sram_req),
-        .sram_rsp_i         (u_dut.sep_sram_rsp),
+        .sram_req_i         (pr_sram_req_o),
+        .sram_rvalid_i      (pr_sram_rvalid_o),
         .tcm_axi_req_i      (`SEP_CORE.cpu_tcm_axi_req),
         .tcm_axi_resp_i     (`SEP_CORE.cpu_tcm_axi_resp),
         .tcm_i_clken_i      (pr_tcm_iccm_clken_o),

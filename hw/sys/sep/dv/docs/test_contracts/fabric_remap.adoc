@@ -1368,8 +1368,8 @@ The frontdoor anchors are approved: the LSU and SI responses and read data, the 
 |PR-XEXT |The AW and AR handshakes and the low 32 address bits at the `ext` initiator of the local crossbar. It carries no data, ID or AxUSER. |approved: `xbar_ext_in_*_o`
 |PR-OUT |Every AW and AR handshake on `smn_outbound_axi_req_o` (address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxBURST) and every W beat. |observation tap: the net `smn_outbound_req_w` exists in `tb_top` and no port exports it
 |PR-EXT |`axi_extension_axi_req_o`: address, AxSIZE, AxLEN, strobe and data. |observation tap
-|PR-SRAM |`sep_sram_req_o`. |observation tap
-|PR-ROM |`sep_boot_rom_req_o`. |observation tap
+|PR-SRAM |The request stream inside `u_sram_memory_interface`, ahead of `sep_sram_req_o`. |observation tap
+|PR-ROM |The request stream inside `u_boot_rom_memory_interface`, ahead of `sep_boot_rom_req_o`. |observation tap
 |PR-SMC |`sep_ext_to_smc_axi_req_o`. |observation tap
 |PR-DMACSR |The request at the DMA CSR target port. |observation tap
 |PR-ALIAS |The request at the input and at the output of the local-master alias remap: address and AxCACHE. |observation tap

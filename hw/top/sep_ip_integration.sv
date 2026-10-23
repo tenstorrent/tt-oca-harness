@@ -45,8 +45,8 @@ module sep_ip_integration
   output sep_sram_rsp_t sep_sram_rsp,
 
   // Boot ROM interface (from sep.sv)
-  input  sep_sram_req_t sep_boot_rom_req,
-  output sep_sram_rsp_t sep_boot_rom_rsp,
+  input  sep_pkg::sep_boot_rom_req_t sep_boot_rom_req,
+  output sep_pkg::sep_boot_rom_rsp_t sep_boot_rom_rsp,
 
   // TCM interface (from sep.sv)
   input  sep_cpu_tcm_req_t sep_cpu_tcm_req_i,
@@ -153,32 +153,9 @@ module sep_ip_integration
   // SRAM External Module //
   //////////////////////////
 
-  localparam int unsigned SramNEntries = 256 * 1024 / 8;  // 256KB
-  localparam int unsigned SramAddrWidth = $clog2(SramNEntries);
   localparam int unsigned SramDataWidth = 64;
-
-  logic                       sram_macro_req;
-  logic                       sram_macro_write;
-  logic [SramAddrWidth-1:0]   sram_macro_addr;
-  logic [SramDataWidth-1:0]   sram_macro_wdata;
-  logic [SramDataWidth-1:0]   sram_macro_wmask;
-  logic [SramDataWidth-1:0]   sram_macro_rdata;
-  logic                       sram_macro_rvalid;
-
-  sep_sram_interface_shim #(
-    .SRAM_ADDR_WIDTH(SramAddrWidth)
-  ) u_sep_sram_interface_shim (
-    .clk_i          (clk_i),
-    .rst_ni         (rst_ni),
-    .mem_req_i      (sep_sram_req),
-    .mem_rsp_o      (sep_sram_rsp),
-    .macro_req_o    (sram_macro_req),
-    .macro_write_o  (sram_macro_write),
-    .macro_addr_o   (sram_macro_addr),
-    .macro_wdata_o  (sram_macro_wdata),
-    .macro_wmask_o  (sram_macro_wmask),
-    .macro_rdata_i  (sram_macro_rdata),
-    .macro_rvalid_i (sram_macro_rvalid)
+  localparam int unsigned SramNEntries = int'(
+      sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE / (SramDataWidth / 8)
   );
 
   prim_ram_1p_adv #(
@@ -186,15 +163,15 @@ module sep_ip_integration
     .Width       (SramDataWidth),
     .MemInitFile ("")
   ) u_sep_sram (
-    .clk_i     (clk_i),
+    .clk_i     (sep_sram_req.clk),
     .rst_ni    (rst_ni),
-    .req_i     (sram_macro_req),
-    .write_i   (sram_macro_write),
-    .addr_i    (sram_macro_addr),
-    .wdata_i   (sram_macro_wdata),
-    .wmask_i   (sram_macro_wmask),
-    .rdata_o   (sram_macro_rdata),
-    .rvalid_o  (sram_macro_rvalid),
+    .req_i     (sep_sram_req.req),
+    .write_i   (sep_sram_req.we),
+    .addr_i    (sep_sram_req.addr),
+    .wdata_i   (sep_sram_req.wdata),
+    .wmask_i   (sep_sram_req.wmask),
+    .rdata_o   (sep_sram_rsp.rdata),
+    .rvalid_o  (/* UNUSED */),
     .rerror_o  (),
     .alert_o   (),
     .cfg_i     ('0),
@@ -209,34 +186,17 @@ module sep_ip_integration
   localparam int unsigned RomNEntries = int'(
       sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE / (RomDataWidth / 8)
   );
-  localparam int unsigned RomAddrWidth = $clog2(RomNEntries);
-
-  logic                      rom_macro_req;
-  logic [RomAddrWidth-1:0]   rom_macro_addr;
-  logic [RomDataWidth-1:0]   rom_macro_rdata;
-
-  sep_rom_interface_shim #(
-    .ROM_ADDR_WIDTH(RomAddrWidth)
-  ) u_sep_rom_interface_shim (
-    .clk_i         (clk_i),
-    .rst_ni        (rst_ni),
-    .mem_req_i     (sep_boot_rom_req),
-    .mem_rsp_o     (sep_boot_rom_rsp),
-    .macro_req_o   (rom_macro_req),
-    .macro_addr_o  (rom_macro_addr),
-    .macro_rdata_i (rom_macro_rdata)
-  );
 
   prim_rom #(
     .Width       (RomDataWidth),
     .Depth       (RomNEntries),
     .MemInitFile ("")
   ) u_sep_boot_rom (
-    .clk_i   (clk_i),
+    .clk_i   (sep_boot_rom_req.clk),
     .rst_ni  (rst_ni),
-    .req_i   (rom_macro_req),
-    .addr_i  (rom_macro_addr),
-    .rdata_o (rom_macro_rdata),
+    .req_i   (sep_boot_rom_req.req),
+    .addr_i  (sep_boot_rom_req.addr),
+    .rdata_o (sep_boot_rom_rsp.rdata),
     .cfg_i   ('0)
   );
 

@@ -31,7 +31,7 @@ if {[info procs cdc_is_block_top] eq ""} {
 # Register the generated clocks SEP defines against their canonical domains, so a
 # parent run that replays these constraints merges them into its own grouping. The
 # registration is level-independent; only the grouping itself is block-top work.
-cdc_group_extra SEPCLK            {SEPCLK_PKA_IMEM SEPCLK_PKA_DMEM SEPCLK_CPU_TCM SEPCLK_KM_ROM SEPCLK_KM_SRAM}
+cdc_group_extra SEPCLK            {SEPCLK_PKA_IMEM SEPCLK_PKA_DMEM SEPCLK_CPU_TCM SEPCLK_SRAM SEPCLK_BOOT_ROM SEPCLK_KM_ROM SEPCLK_KM_SRAM}
 cdc_group_extra ENTROPY_ROSC_CLK  {ENTROPY_SCLK_FROM_ROSC_*}
 cdc_group_extra ENTROPY_SHARED_RO {ENTROPY_SCLK_FROM_SHARED_RO_*}
 

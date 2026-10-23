@@ -13,8 +13,8 @@
 
 # SEPCLK, REFCLK and WDTCLK are all create_clock, so their periods read back off
 # the clock objects - no ::cdc_clock_period entries needed here. The memory
-# clocks SEPCLK_PKA_*, SEPCLK_CPU_TCM and SEPCLK_KM_* are generated, but no CDC
-# element is clocked by them.
+# clocks SEPCLK_PKA_*, SEPCLK_CPU_TCM, SEPCLK_SRAM, SEPCLK_BOOT_ROM and
+# SEPCLK_KM_* are generated, but no CDC element is clocked by them.
 
 source [file join $ocah_sdc_dir sep_cdc_max_delay_generated.tcl]
 

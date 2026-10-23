@@ -4,8 +4,8 @@
 // Hold example ROM parameters for memory_interface bring-up.
 //
 // Supplies the 32-bit address, 64-bit data and 1-bit ID and user widths, the mem_req_t and
-// mem_rsp_t memory-port structs, and the AXI4, AXI4-Lite and APB4 typedefs used by the ROM
-// example binding.
+// mem_rsp_t macro-port structs for 1024 words, and the AXI4, AXI4-Lite and APB4 typedefs
+// used by the ROM example binding.
 
 package example_rom_pkg;
 
@@ -24,24 +24,18 @@ package example_rom_pkg;
   //////////////////////
   // Memory interface //
   //////////////////////
-  typedef logic [MemAddrWidth-1:0] mem_addr_t;
+  localparam int unsigned MemDepth = 1024;
+
+  typedef logic [$clog2(MemDepth)-1:0] mem_word_addr_t;
   typedef logic [MemDataWidth-1:0] mem_data_t;
-  typedef logic [MemDataWidth/8-1:0] mem_strb_t;
 
   typedef struct packed {
+    logic           clk;
     logic           req;
-    mem_addr_t      addr;
-    mem_data_t      wdata;
-    mem_strb_t      strb;
-    axi_pkg::atop_t atop;
-    logic           wenable;
+    mem_word_addr_t addr;
   } mem_req_t;
 
-  typedef struct packed {
-    logic           gnt;
-    logic           rvalid;
-    mem_data_t      rdata;
-  } mem_rsp_t;
+  typedef struct packed {mem_data_t rdata;} mem_rsp_t;
 
   ////////////////////
   // AXI4 interface //

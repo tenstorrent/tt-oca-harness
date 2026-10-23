@@ -114,13 +114,13 @@ module sep #(
   input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,  // Per-bank ICCM and DCCM read data and ECC
                                                         // from sep_tcm_wrapper.
 
-  output sep_pkg::sep_sram_req_t    sep_sram_req_o,  // Request from the SEP SRAM memory interface
-                                                     // to the SRAM macro.
-  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp_i,  // Read data from the SEP SRAM macro.
+  output sep_pkg::sep_sram_req_t    sep_sram_req_o,  // Read or write request, with the macro
+                                                     // clock, to the SRAM macro.
+  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp_i,  // SRAM read data, one clock later.
 
-  output sep_pkg::sep_sram_req_t    sep_boot_rom_req_o,  // Request from the boot ROM memory
-                                                         // interface to the ROM macro.
-  input  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp_i,  // Read data from the boot ROM macro.
+  output sep_pkg::sep_boot_rom_req_t sep_boot_rom_req_o,  // Read request, with the macro clock,
+                                                          // to the boot ROM macro.
+  input  sep_pkg::sep_boot_rom_rsp_t sep_boot_rom_rsp_i,  // Boot ROM read data, one clock later.
 
   output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,  // Outbound request to the SMN after the outbound filter.
   input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,  // Outbound response from the SMN.
@@ -805,8 +805,7 @@ NumSramDemuxPorts
     .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
     .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
     .CSR_BASE_ADDR    (32'h0),
-    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)),
-    .NUM_BANKS        (1)
+    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR))
   ) u_sram_memory_interface (
     .clk_i                (clk_i),
     .rst_ni               (sep_reset_n),
@@ -867,8 +866,9 @@ NumSramDemuxPorts
     .MEM_ADDR_WIDTH   (sep_pkg::SEP_MEM_ADDR_WIDTH),
     .MEM_DATA_WIDTH   (sep_pkg::SEP_MEM_DATA_WIDTH),
     .MEM_ID_WIDTH     (sep_pkg::SEP_32_64_4_12_ID_WIDTH),
-    .mem_req_t        (sep_pkg::sep_sram_req_t),
-    .mem_rsp_t        (sep_pkg::sep_sram_rsp_t),
+    .mem_req_t        (sep_pkg::sep_boot_rom_req_t),
+    .mem_rsp_t        (sep_pkg::sep_boot_rom_rsp_t),
+    .READ_ONLY        (1'b1),
     .mem_axi_req_t    (sep_pkg::sep_32_64_4_12_axi_req_t),
     .mem_axi_resp_t   (sep_pkg::sep_32_64_4_12_axi_resp_t),
     .CSR_ADDR_WIDTH   (sep_pkg::SEP_32_64_4_12_ADDR_WIDTH),
@@ -876,8 +876,7 @@ NumSramDemuxPorts
     .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
     .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
     .CSR_BASE_ADDR    (32'h0),
-    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)),
-    .NUM_BANKS        (1)
+    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR))
   ) u_boot_rom_memory_interface (
     .clk_i                (clk_i),
     .rst_ni               (sep_reset_n),

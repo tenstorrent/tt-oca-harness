@@ -95,11 +95,11 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SEPCLK] [get_ports {sep_cpu_tcm_rsp_i*}] -add_delay
 
 # Scratchpad SRAM interface
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [get_ports {sep_sram_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [filter_collection [get_ports {sep_sram_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SEPCLK] [get_ports {sep_sram_rsp_i*}] -add_delay
 
 # Boot ROM interface
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [get_ports {sep_boot_rom_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [filter_collection [get_ports {sep_boot_rom_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(rom_rsp)]       -clock [get_clock SEPCLK] [get_ports {sep_boot_rom_rsp_i*}] -add_delay
 
 # Key Manager memory interfaces

@@ -331,26 +331,39 @@ SystemCsrDemuxPorts
   typedef logic sep_private_io_req_t;
   typedef logic sep_private_io_rsp_t;
 
-  // Memory interface parameters (matches axi_to_mem output format)
+  // SRAM and boot ROM macro interfaces. Each macro accepts every request and returns read
+  // data on the next rising edge of clk.
   parameter int unsigned SEP_MEM_ADDR_WIDTH = 32;
   parameter int unsigned SEP_MEM_DATA_WIDTH = 64;
-  parameter int unsigned SEP_MEM_STRB_WIDTH = SEP_MEM_DATA_WIDTH / 8;
+  parameter int unsigned SEP_SRAM_ADDR_WIDTH = $clog2(
+      sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE / (SEP_MEM_DATA_WIDTH / 8)
+  );
+  parameter int unsigned SEP_BOOT_ROM_ADDR_WIDTH = $clog2(
+      sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE / (SEP_MEM_DATA_WIDTH / 8)
+  );
 
-  // SRAM memory interface (axi_to_mem format)
   typedef struct packed {
-    logic                           req;
-    logic [SEP_MEM_ADDR_WIDTH-1:0]  addr;
-    logic [SEP_MEM_DATA_WIDTH-1:0]  wdata;
-    logic [SEP_MEM_STRB_WIDTH-1:0]  strb;
-    axi_pkg::atop_t                 atop;
-    logic                           wenable;
+    logic                           clk;    // Clock for the SRAM macro.
+    logic                           req;    // Read or write request.
+    logic                           we;     // Write enable qualifying req.
+    logic [SEP_SRAM_ADDR_WIDTH-1:0] addr;   // 64-bit word address.
+    logic [SEP_MEM_DATA_WIDTH-1:0]  wdata;  // Write data.
+    logic [SEP_MEM_DATA_WIDTH-1:0]  wmask;  // Bit write mask.
   } sep_sram_req_t;
 
   typedef struct packed {
-    logic                           gnt;
-    logic                           rvalid;
-    logic [SEP_MEM_DATA_WIDTH-1:0]  rdata;
+    logic [SEP_MEM_DATA_WIDTH-1:0] rdata;  // Read data.
   } sep_sram_rsp_t;
+
+  typedef struct packed {
+    logic                               clk;   // Clock for the ROM macro.
+    logic                               req;   // Read request.
+    logic [SEP_BOOT_ROM_ADDR_WIDTH-1:0] addr;  // 64-bit word address.
+  } sep_boot_rom_req_t;
+
+  typedef struct packed {
+    logic [SEP_MEM_DATA_WIDTH-1:0] rdata;  // Read data.
+  } sep_boot_rom_rsp_t;
 
   // EL2 specific values (computed based on "pt" struct)
   // To use another core, modify the internals of these typedefs but keep the type names

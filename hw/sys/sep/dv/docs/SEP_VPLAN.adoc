@@ -3748,14 +3748,14 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |PR-TRNG and PR-TRNG-RSP are observation taps on the SEP_TB_ARCH observation-probe list. The wrapper nets are `u_dut.ext_trng_axil_req` and `u_dut.ext_trng_axil_resp`. The TRNG port responder is an added hook (top-port drive, `+sep_ext_trng_axil_responder`); without it the integration wrapper answers DECERR. Checks that use them: CHK-TRNG-REPLY, CHK-TRNG-SPLIT-WR and CHK-TRNG-BURST of `sep_fabric_deadspace_decode_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |SRAM macro request at `sep_sram_req_o`
-|The request to the SRAM macro (address and write data) and its response `sep_sram_rsp_i`
+|The SRAM memory-interface request stream inside `sep` (address and write data) ahead of the SRAM macro request `sep_sram_req_o`, and the read data `sep_sram_rsp_i`
 |ACCEPT-PROBE
-|PR-SRAM is an observation tap. The wrapper net is `u_dut.sep_sram_req`. Checks that use it: the address compare of CHK-TWIN in `sep_cpu_lsu_alias_window_twin_test`; the supplements of `sep_fabric_inbound_rebase_test` and `sep_fabric_filter_match_priority_rand_test`; CHK-SRAM-OTF-REPLAY of `sep_sram_axi_shape_matrix_test`; the SRAM-port checks of `sep_cpu_demux_unmapped_fetch_test`.
+|PR-SRAM is an observation tap. The nets are the request stream inside `u_dut.u_sep.u_sram_memory_interface` and the wrapper net `u_dut.sep_sram_rsp`. Checks that use it: the address compare of CHK-TWIN in `sep_cpu_lsu_alias_window_twin_test`; the supplements of `sep_fabric_inbound_rebase_test` and `sep_fabric_filter_match_priority_rand_test`; CHK-SRAM-OTF-REPLAY of `sep_sram_axi_shape_matrix_test`; the SRAM-port checks of `sep_cpu_demux_unmapped_fetch_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Boot ROM macro request at `sep_boot_rom_req_o`
-|The request to the boot ROM macro (`sep_boot_rom_req_o`) and its response (`sep_boot_rom_rsp_i`)
+|The boot ROM memory-interface request stream and response inside `sep`, and the request to the boot ROM macro (`sep_boot_rom_req_o`) and its read data (`sep_boot_rom_rsp_i`)
 |ACCEPT-PROBE
-|PR-ROM is an observation tap. The wrapper nets are `u_dut.sep_boot_rom_req` and `u_dut.sep_boot_rom_rsp`, and after the ROM interface shim `u_dut.u_sep_ip_integration.rom_macro_req` and `u_dut.u_sep_ip_integration.rom_macro_addr`. Checks that use it: the rom_dst leg of CHK-DMA-NOTCONN in `sep_fabric_dma_endpoint_matrix_test`, CHK-NO-EARLY-FETCH of `sep_cpu_reset_entry_test`, CHK-ROM-PORT, CHK-ROM-STORE-WE and CHK-ROM-OTF of `sep_boot_rom_aperture_sweep_test`, and CHK-IFU-DECERR of `sep_cpu_demux_unmapped_fetch_test`. The data anchor covers only the rom_src and dma_csr_src legs of CHK-DMA-NOTCONN. The rom_dst leg uses PR-ROM, and the LSU read of the boot ROM base word is its PR-ROM control.
+|PR-ROM is an observation tap. The nets are the request stream inside `u_dut.u_sep.u_boot_rom_memory_interface`, and out of it the wrapper nets `u_dut.sep_boot_rom_req` (`req`, `addr`) and `u_dut.sep_boot_rom_rsp`. Checks that use it: the rom_dst leg of CHK-DMA-NOTCONN in `sep_fabric_dma_endpoint_matrix_test`, CHK-NO-EARLY-FETCH of `sep_cpu_reset_entry_test`, CHK-ROM-PORT, CHK-ROM-STORE-WE and CHK-ROM-OTF of `sep_boot_rom_aperture_sweep_test`, and CHK-IFU-DECERR of `sep_cpu_demux_unmapped_fetch_test`. The data anchor covers only the rom_src and dma_csr_src legs of CHK-DMA-NOTCONN. The rom_dst leg uses PR-ROM, and the LSU read of the boot ROM base word is its PR-ROM control.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |CPU TCM request at `sep_cpu_tcm_req_o`
 |`clken`, `wren`, the address, the write data and the ECC fields of the CPU TCM request, and its response `sep_cpu_tcm_rsp_i`
@@ -4362,7 +4362,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-ROM
 |Read-only probe
-|The request to the boot ROM macro (`sep_boot_rom_req_o`) and its response (`sep_boot_rom_rsp_i`): read intent, write enable and response. The ROM macro request after the ROM interface shim (`rom_macro_req`, `rom_macro_addr`).
+|The boot ROM memory-interface request stream and response inside `sep`: read intent, write enable and response. The ROM macro request out of the memory interface (`sep_boot_rom_req_o`: `req`, `addr`).
 |`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN, rom_dst leg), `sep_cpu_reset_entry_test` (CHK-NO-EARLY-FETCH), `sep_boot_rom_aperture_sweep_test` (CHK-ROM-PORT, CHK-ROM-STORE-WE, CHK-ROM-OTF), `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-DECERR)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-TCM

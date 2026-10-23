@@ -324,10 +324,10 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 # SEP Memory Interfaces
 # set the outputs to lower delay, they should go direct to the memory macro
 # set the inputs to higher delay to emulate the access time of the memory
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [get_ports {sep_sram_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [filter_collection [get_ports {sep_sram_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SMUCLK] [get_ports {sep_sram_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [get_ports {sep_boot_rom_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [filter_collection [get_ports {sep_boot_rom_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(rom_rsp)]       -clock [get_clock SMUCLK] [get_ports {sep_boot_rom_rsp_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMUCLK] [remove_from_collection [get_ports {sep_cpu_tcm_req_o*}] [get_ports {sep_cpu_tcm_req_o*clk}]] -add_delay

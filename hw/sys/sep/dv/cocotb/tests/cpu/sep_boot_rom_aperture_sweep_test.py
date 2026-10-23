@@ -949,11 +949,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         for _ in range(ANCHOR_BOUND):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            if (
-                self.rd(dut.pr_rom_req_o)
-                and self.rd(dut.pr_rom_gnt_o)
-                and self.rd(dut.pr_rom_addr_o) >> 3 == 1
-            ):
+            if self.rd(dut.pr_rom_req_o) and self.rd(dut.pr_rom_addr_o) >> 3 == 1:
                 break
         else:
             raise AssertionError(f"CHK-ROM-OTF: no anchor fetch within {ANCHOR_BOUND} cycles")

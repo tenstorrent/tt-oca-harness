@@ -363,21 +363,18 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         while True:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            req, gnt, we = dut.pr_sram_req_o.value, dut.pr_sram_gnt_o.value, dut.pr_sram_we_o.value
-            # An X or Z on the handshake, or on WE or ADDR of a granted
-            # request, hides an SRAM write, so it fails the leaf.
-            if not (req.is_resolvable and gnt.is_resolvable):
-                msg = f"PR-SRAM X/Z FAIL: req={req} gnt={gnt} t={get_sim_time('ps')}ps"
+            req, we = dut.pr_sram_req_o.value, dut.pr_sram_we_o.value
+            # An X or Z on the request, or on WE or ADDR of a request, hides
+            # an SRAM write, so it fails the leaf.
+            if not req.is_resolvable:
+                msg = f"PR-SRAM X/Z FAIL: req={req} t={get_sim_time('ps')}ps"
                 self.logger.error(msg)
                 raise AssertionError(msg)
-            if not (int(req) and int(gnt)):
+            if not int(req):
                 continue
             addr = dut.pr_sram_addr_o.value
             if not (we.is_resolvable and addr.is_resolvable):
-                msg = (
-                    f"PR-SRAM X/Z FAIL: granted request we={we} addr={addr} "
-                    f"t={get_sim_time('ps')}ps"
-                )
+                msg = f"PR-SRAM X/Z FAIL: request we={we} addr={addr} t={get_sim_time('ps')}ps"
                 self.logger.error(msg)
                 raise AssertionError(msg)
             if not int(we):

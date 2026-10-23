@@ -66,10 +66,10 @@ endif::backend-html5[]
 
 |`sep_cpu_tcm_req_o` |`sep_cpu_tcm_req_t` |Output |- |CPU tightly-coupled memory (TCM) request (ICCM + DCCM). |SRAM macros |N/A
 |`sep_cpu_tcm_rsp_i` |`sep_cpu_tcm_rsp_t` |Input |- |CPU TCM response. |SRAM macros |N/A
-|`sep_sram_req_o` |`sep_sram_req_t` |Output |- |Scratch SRAM request. |SRAM macros |N/A
-|`sep_sram_rsp_i` |`sep_sram_rsp_t` |Input |- |Scratch SRAM response. |SRAM macros |N/A
-|`sep_boot_rom_req_o` |`sep_sram_req_t` |Output |- |Boot ROM (BL0) request. |ROM macro |N/A
-|`sep_boot_rom_rsp_i` |`sep_sram_rsp_t` |Input |- |Boot ROM (BL0) response. |ROM macro |N/A
+|`sep_sram_req_o` |`sep_sram_req_t` |Output |- |Scratch SRAM read or write request with the macro clock. |SRAM macros |N/A
+|`sep_sram_rsp_i` |`sep_sram_rsp_t` |Input |- |Scratch SRAM read data, one clock after the request. |SRAM macros |N/A
+|`sep_boot_rom_req_o` |`sep_boot_rom_req_t` |Output |- |Boot ROM (BL0) read request with the macro clock. |ROM macro |N/A
+|`sep_boot_rom_rsp_i` |`sep_boot_rom_rsp_t` |Input |- |Boot ROM (BL0) read data, one clock after the request. |ROM macro |N/A
 
 |`smn_outbound_axi_req_o` |`sep_system_peripherals_outbound_axi_req_t` |Output |- |SMN outbound AXI request (system bus master). |SMN fabric |N/A
 |`smn_outbound_axi_resp_i` |`sep_system_peripherals_outbound_axi_resp_t` |Input |- |SMN outbound AXI response. |SMN fabric |N/A

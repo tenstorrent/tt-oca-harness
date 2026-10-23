@@ -1210,27 +1210,25 @@
 `SEP_TB_OUT(logic [55:0], pr_alias_out_araddr_o)
 `SEP_TB_OUT(logic [3:0], pr_alias_out_arcache_o)
 `SEP_TB_OUT(logic [2:0], pr_alias_out_arprot_o)
-// PR-SRAM: the SRAM macro request (wrapper net u_dut.sep_sram_req) and response.
+// PR-SRAM and PR-ROM: the byte-addressed request stream inside each
+// memory_interface, ahead of the macro port, and its response.
 `SEP_TB_OUT(logic, pr_sram_req_o)
-`SEP_TB_OUT(logic, pr_sram_gnt_o)
 `SEP_TB_OUT(logic [31:0], pr_sram_addr_o)
 `SEP_TB_OUT(logic, pr_sram_we_o)
 `SEP_TB_OUT(logic [63:0], pr_sram_wdata_o)
 `SEP_TB_OUT(logic [7:0], pr_sram_strb_o)
 `SEP_TB_OUT(logic, pr_sram_rvalid_o)
 `SEP_TB_OUT(logic [63:0], pr_sram_rdata_o)
-// PR-ROM: the boot ROM macro request (wrapper net u_dut.sep_boot_rom_req) and response.
 `SEP_TB_OUT(logic, pr_rom_req_o)
-`SEP_TB_OUT(logic, pr_rom_gnt_o)
 `SEP_TB_OUT(logic [31:0], pr_rom_addr_o)
 `SEP_TB_OUT(logic, pr_rom_we_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_wdata_o)
 `SEP_TB_OUT(logic [7:0], pr_rom_strb_o)
 `SEP_TB_OUT(logic, pr_rom_rvalid_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_rdata_o)
-// PR-ROM macro side: the request after the ROM interface shim
-// (sep_ip_integration rom_macro_req, rom_macro_addr: the 64-bit word index)
-// and the macro read data.
+// PR-ROM macro side: the boot ROM macro request out of the memory_interface
+// (wrapper net u_dut.sep_boot_rom_req; addr is the 64-bit word index) and the
+// macro read data.
 `SEP_TB_OUT(logic, pr_rom_macro_req_o)
 `SEP_TB_OUT(logic [12:0], pr_rom_macro_addr_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_macro_rdata_o)

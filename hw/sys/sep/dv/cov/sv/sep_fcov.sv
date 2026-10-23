@@ -191,10 +191,14 @@ module sep_fcov (
   input sep_pkg::sep_32_64_6_12_axi_req_t  dma_csr_req_i,
   input sep_pkg::sep_32_64_6_12_axi_resp_t dma_csr_resp_i,
   input wire        irq_dma_error_i,
-  // rom_req: the boot ROM macro port (PR-ROM). tcm_*: the CPU TCM macro
-  // port enables of the ICCM and the DCCM, apart (the DMA TCM cells only).
-  input sep_pkg::sep_sram_req_t rom_req_i,
-  input sep_pkg::sep_sram_rsp_t rom_rsp_i,
+  // rom_*: the boot ROM memory-interface stream (PR-ROM), byte addressed.
+  // tcm_*: the CPU TCM macro port enables of the ICCM and the DCCM, apart (the
+  // DMA TCM cells only).
+  input wire        rom_req_i,
+  input wire        rom_we_i,
+  input wire [31:0] rom_addr_i,
+  input wire        rom_rvalid_i,
+  input wire [63:0] rom_rdata_i,
   input wire        iccm_clken_i,
   input wire        iccm_wren_i,
   input wire        dccm_clken_i,
@@ -383,8 +387,8 @@ module sep_fcov (
   input wire [4:0]           cpu_trace_ecause_i,
   input wire [31:0]          cpu_trace_tval_i,
   input wire [3:0]           ecc_dbg_i,         // ext_debug_bus_o[367:364]
-  input sep_pkg::sep_sram_req_t sram_req_i,     // u_dut.sep_sram_req
-  input sep_pkg::sep_sram_rsp_t sram_rsp_i,     // u_dut.sep_sram_rsp
+  input wire                 sram_req_i,        // PR-SRAM request
+  input wire                 sram_rvalid_i,     // PR-SRAM response valid
   // cpu_tcm_axi_req / resp: the crossbar backdoor into the core DMA port.
   input sep_pkg::sep_32_64_6_12_axi_req_t  tcm_axi_req_i,
   input sep_pkg::sep_32_64_6_12_axi_resp_t tcm_axi_resp_i,
@@ -422,7 +426,7 @@ module sep_fcov (
   input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_rom_resp_i,
   input sep_pkg::sep_32_64_3_12_axi_req_t  lsu_xbar_req_i,
   input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_xbar_resp_i,
-  // The ROM macro request after the ROM interface shim (word index).
+  // The ROM macro request out of the memory_interface (word index).
   input wire                 rom_macro_req_i,
   input wire [12:0]          rom_macro_addr_i,
   // veer.dec.tlu: trap cause, ECC counters and their requests, the counter
@@ -4945,7 +4949,7 @@ module sep_fcov (
                                  (dma_csr_resp_i.aw_ready === 1'b1)) ||
                                 ((dma_csr_req_i.ar_valid === 1'b1) &&
                                  (dma_csr_resp_i.ar_ready === 1'b1)));
-  wire rom_hs   = !in_reset && (rom_req_i.req === 1'b1) && (rom_rsp_i.gnt === 1'b1);
+  wire rom_hs   = !in_reset && (rom_req_i === 1'b1);
   wire out_hs   = out_aw_hs || out_ar_hs;
   wire smc_hs   = smc_aw_hs || smc_ar_hs;
   wire ext_hs   = ext_aw_hs || ext_ar_hs;
@@ -18513,7 +18517,7 @@ module sep_fcov (
   int unsigned mm_rn_cnt = 0;
   logic [63:0] mm_rn_mdata = '0;
   always @(posedge clk_i) begin
-    if (rom_rsp_i.rvalid === 1'b1) mm_rn_mdata <= rom_rsp_i.rdata;
+    if (rom_rvalid_i === 1'b1) mm_rn_mdata <= rom_rdata_i;
     if (in_reset || !mm_own_rom) begin
       mm_rn_arm <= 1'b0;
     end else if ((lsu_rom_resp_i.r_valid === 1'b1) && (lsu_rom_req_i.r_ready === 1'b1) &&
@@ -19072,10 +19076,10 @@ module sep_fcov (
   // cp_macro_if: request and response phases of the memory macro ports.
   // ---------------------------------------------------------------------
   always @(posedge clk_i) begin
-    if (mm_own_rom && (rom_req_i.req === 1'b1)) mm_ap(4'd2, 5'd0);
-    if (mm_own_rom && (rom_rsp_i.rvalid === 1'b1)) mm_ap(4'd2, 5'd1);
-    if (mm_own_sram && (sram_req_i.req === 1'b1)) mm_ap(4'd2, 5'd2);
-    if (mm_own_sram && (sram_rsp_i.rvalid === 1'b1)) mm_ap(4'd2, 5'd3);
+    if (mm_own_rom && (rom_req_i === 1'b1)) mm_ap(4'd2, 5'd0);
+    if (mm_own_rom && (rom_rvalid_i === 1'b1)) mm_ap(4'd2, 5'd1);
+    if (mm_own_sram && (sram_req_i === 1'b1)) mm_ap(4'd2, 5'd2);
+    if (mm_own_sram && (sram_rvalid_i === 1'b1)) mm_ap(4'd2, 5'd3);
     if (mm_own_tdma && ((|tcm_i_clken_i === 1'b1) || (|tcm_d_clken_i === 1'b1))) mm_ap(4'd2, 5'd4);
   end
 
@@ -19179,8 +19183,8 @@ module sep_fcov (
   logic mm_st_post = 1'b0;
   logic mm_st_post_r = 1'b0;
   wire [63:0] mm_ow_anchor = (mm_ow_awc > mm_ow_wc) ? mm_ow_awc : mm_ow_wc;
-  wire mm_rom_hs = (rom_req_i.req === 1'b1) && (rom_rsp_i.gnt === 1'b1);
-  wire mm_rom_rv = (rom_rsp_i.rvalid === 1'b1);
+  wire mm_rom_hs = (rom_req_i === 1'b1);
+  wire mm_rom_rv = (rom_rvalid_i === 1'b1);
   always @(posedge clk_i) begin
     if (in_reset) begin
       mm_or_pend <= 1'b0;
@@ -19712,7 +19716,7 @@ module sep_fcov (
 
   // ---------------------------------------------------------------------
   // cp_rom_write_master: a CPU store to the ROM aperture. A ROM macro
-  // request (after the interface shim) at the store word is a readback when
+  // request (out of the memory_interface) at the store word is a readback when
   // a read request for that word reached sep_boot_rom_req within
   // MmRomRdAge edges; the cell hits MmStoreQuiet edges after the store
   // response when every such request was a readback.
@@ -19726,8 +19730,7 @@ module sep_fcov (
   always @(posedge clk_i) begin
     int unsigned w;
     logic rb;
-    if ((rom_req_i.req === 1'b1) && (rom_req_i.wenable !== 1'b1))
-      mm_rrd[int'(rom_req_i.addr[15:3])] = mm_cyc;
+    if ((rom_req_i === 1'b1) && (rom_we_i !== 1'b1)) mm_rrd[int'(rom_addr_i[15:3])] = mm_cyc;
     if (mm_sw_on && (rom_macro_req_i === 1'b1) && (rom_macro_addr_i == mm_sw_word)) begin
       w  = int'(mm_sw_word);
       rb = mm_rrd.exists(w) && ((mm_cyc - mm_rrd[w]) <= MmRomRdAge);

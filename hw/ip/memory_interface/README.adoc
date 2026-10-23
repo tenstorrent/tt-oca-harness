@@ -10,13 +10,13 @@ around it.
 == Overview
 
 `memory_interface` is the OCAH-owned half of a memory block. It takes a system AXI4
-memory port and an AXI4-Lite config port, converts the AXI4 port into a simple
-request/response memory stream, and rebases both ports from system addresses to
-block-local offsets. It contains no memory macro and no registers of its own.
+memory port and an AXI4-Lite config port, drives a single-port memory macro from the AXI4
+port, and rebases both ports from system addresses to block-local offsets. It contains no
+memory macro and no registers of its own.
 
-Everything below it is adopter-owned: an _interface shim_ holding the CSR file and the
-translation from the memory stream to whatever the macro expects, and the _memory macro_
-itself. Together those form the memory wrapper.
+Everything below it is adopter-owned: an _interface shim_ holding the CSR file and any
+adaptation the macro needs, and the _memory macro_ itself. Together those form the memory
+wrapper.
 
 image::doc/memory_macros_wrapper.svg[Memory macro wrapper block diagram,width=700,align=center]
 
@@ -33,7 +33,7 @@ only supported shapes.
 |The bridge itself.
 
 |`rtl/examples/sram/example_sram_pkg.sv`, `rtl/examples/rom/example_rom_pkg.sv`
-|Example widths and type definitions: the memory stream structs, plus AXI4, AXI4-Lite and
+|Example widths and type definitions: the macro port structs, plus AXI4, AXI4-Lite and
 APB4 typedefs. Both set a 64-bit data width to match the SEP AXI bus.
 
 |`rtl/examples/rom/generate_rom_init.py`
@@ -80,7 +80,7 @@ output csr_axil_resp_t  csr_in_axil_resp_o,
 output csr_axil_req_t   csr_out_axil_req_o,
 input  csr_axil_resp_t  csr_out_axil_resp_i,
 
-// Memory stream out to the shim
+// Macro port, with the clock the macro runs on
 output mem_req_t        mem_req_o,
 input  mem_rsp_t        mem_rsp_i,
 output                  busy_o
@@ -88,7 +88,8 @@ output                  busy_o
 
 `busy_o` asserts while an AXI request is in flight.
 
-Every parameter defaults to `0` or `logic`, so all of them have to be overridden.
+Every parameter except `READ_ONLY` defaults to `0` or `logic`, so all of them have to be
+overridden.
 
 [cols="1,1,2"]
 |===
@@ -112,7 +113,12 @@ Every parameter defaults to `0` or `logic`, so all of them have to be overridden
 
 |`mem_req_t`, `mem_rsp_t`
 |—
-|Memory stream structs; see <<memory-stream>>.
+|Macro port structs; see <<macro-port>>.
+
+|`READ_ONLY`
+|Defaults to `0`
+|When set, writes are acknowledged on the AXI4 port but never reach the macro, and
+`mem_req_t` needs no write fields.
 
 |`CSR_ADDR_WIDTH`
 |`<= 64`
@@ -134,11 +140,6 @@ outbound side, so the shim's CSR file sees the system port's widths.
 |`CSR_BASE_ADDR`
 |Aligned to `CSR_DATA_WIDTH/8`
 |Base of the CSR region in system address space.
-
-|`NUM_BANKS`
-|`1`
-|Bank count passed to `axi_to_mem`. The assertion admits `1` to `16`, but `mem_req_t` and
-`mem_rsp_t` carry a single bank's signals, so only `1` connects correctly.
 |===
 
 == Address translation
@@ -151,40 +152,40 @@ checking and never generates an error response, so an address below its base wra
 Apart from that subtraction the config port is a pass-through, with
 `csr_in_axil_resp_o` driven straight from `csr_out_axil_resp_i`.
 
-[[memory-stream]]
-== Memory stream protocol
+[[macro-port]]
+== Macro port
 
-`mem_req_t` and `mem_rsp_t` are supplied by the integrator; the example packages define
-them as:
+`mem_req_t` and `mem_rsp_t` are supplied by the integrator; the SRAM example package
+defines them as:
 
 [source,systemverilog]
 ----
 typedef struct packed {
-  logic           req;      // Request valid
-  mem_addr_t      addr;     // Byte address, aligned to MEM_DATA_WIDTH/8
-  mem_data_t      wdata;    // Write data
-  mem_strb_t      strb;     // Byte strobe
-  axi_pkg::atop_t atop;     // Atomic operation type
-  logic           wenable;  // Write enable
+  logic           clk;    // Clock for the macro
+  logic           req;    // Read or write request
+  logic           we;     // Write enable qualifying req
+  mem_word_addr_t addr;   // Word address
+  mem_data_t      wdata;  // Write data
+  mem_data_t      wmask;  // Bit write mask
 } mem_req_t;
 
 typedef struct packed {
-  logic           gnt;      // Memory is ready to accept the request
-  logic           rvalid;   // Response valid
-  mem_data_t      rdata;    // Response data
+  mem_data_t      rdata;  // Read data
 } mem_rsp_t;
 ----
 
-Three constraints the shim has to respect:
+A read-only memory built with `READ_ONLY` needs only `clk`, `req` and `addr` in
+`mem_req_t`, as in the ROM example package.
 
-* `addr` is a *byte* address with its low `$clog2(MEM_DATA_WIDTH/8)` bits cleared. A macro
-  indexed by words needs the shim to shift it right by that amount.
-* `rvalid` is expected for *every* request, write as well as read, so the shim has to
-  acknowledge writes too. `rdata` is response data rather than read data for the same
-  reason.
-* The `axi_to_mem` instance fixes `BufDepth` at `1`, which upstream documents as the
-  memory's response latency. A macro that answers later than one cycle after the grant
-  needs that value raised.
+The macro has to respect three things:
+
+* It accepts a request on every rising edge of `clk`; there is no grant.
+* It returns read data on the rising edge after a read request, with no valid strobe.
+* It needs no reset. `memory_interface` holds the response state itself.
+
+`addr` is a word address: the byte address shifted right by
+`$clog2(MEM_DATA_WIDTH/8)`, truncated to the width of the `addr` field. `wmask` expands
+each AXI byte strobe to eight bits.
 
 == Parameter validation
 

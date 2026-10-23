@@ -32,8 +32,8 @@ sections.
 == Module Overview
 
 The module in `sep.sv` provides the complete SEP functionality with logic-level
-interfaces. Technology-specific components -- SRAM, ROM, and eFuse shims -- are
-instantiated by the adopter outside SEP, following the same vendor-neutral
+interfaces. Technology-specific components -- the memory macros and the eFuse
+shim -- are instantiated by the adopter outside SEP, following the same vendor-neutral
 philosophy used for the SMC.
 
 Separately, SEP exposes interfaces for supplementary peripherals an adopter may
@@ -79,8 +79,12 @@ SEP core. When unused, tie the response input to return DECERR.
 All SEP memory macros are instantiated externally and connected through
 dedicated request/response interfaces. The `sep_cpu_tcm` interface provides
 tightly-coupled memory (ICCM and DCCM) for the VeeR EL2 CPU. The `sep_sram`
-interface connects scratch SRAM used for firmware data. The `sep_boot_rom`
-interface provides the BL0 ROM containing the first-stage bootloader.
+interface connects scratch SRAM used for firmware data; its request carries the
+macro clock, a request, a write enable, the 64-bit word address, the write data
+and a bit write mask. The `sep_boot_rom` interface provides the BL0 ROM
+containing the first-stage bootloader; its request carries the macro clock, a
+read request and the 64-bit word address. Both macros accept every request and
+return read data on the next clock, and need no reset.
 
 The crypto subsystem requires additional memory interfaces.
 `sep_crypto_pka_imem_sram` and `sep_crypto_pka_dmem_sram` connect to the OTBN
