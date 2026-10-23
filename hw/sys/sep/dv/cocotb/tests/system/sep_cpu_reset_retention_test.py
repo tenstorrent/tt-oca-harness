@@ -82,7 +82,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           (full-CPU build) take credit only with CHK-DBG-SYNC.
   CHK-DMA-COLDRST         the cold reset in the middle of a copy returns every
                           moved Secure DMA register, both status registers and
-                          ``SW_RESET_N`` to their reset values; the destination
+                          ``SW_RESET_N`` to their reset values, and
+                          ``ADDR_SPACE_ID`` reads its reset value; the destination
                           does not change after the reset when its control holds.
   CHK-DMA-COLDRST-RECOVER a new copy after the cold reset completes and matches.
   CHK-WDT-COLD-RECOVER    last leg, every seed and build: a ``wdt_rst_ni`` pulse
@@ -1541,6 +1542,11 @@ class sep_cpu_reset_retention_test(sep_base_test):
             else:
                 unmoved.append(f"{r.name}={got:#x}{'' if fc.ok else '(!=reset)'}")
         self.logger.info("OBS-DMA-COLD-UNMOVED: %s", " ".join(unmoved))
+        # ADDR_SPACE_ID: the leaf never moves it, so its read grades the RDL reset
+        # value (0x77) after the cold reset and not the reset itself.
+        asid_r = DMA_REG_BY_NAME["ADDR_SPACE_ID"]
+        asid = await self.dma.rd(asid_r.addr)
+        asid_ok = field_compare(asid, asid_r.reset, asid_r.mask).ok
         # CONTROL (readable fields) and INTR_STATE are graded on every seed:
         # CTL-COLD-ARMED read both at a value other than their RDL reset.
         ctl = await self.dma.rd(CONTROL_ADDR)
@@ -1575,6 +1581,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             self.logger.info("OBS-DMA-COLD-MEM: src_match=%d patB_match=%d", src_m, b_m)
         ok = (
             not mism
+            and asid_ok
             and (dst_st & DMA_ST_MASK) == DMA_ST_RESET
             and (pst & PERIPH_MASK) == PERIPH_RESET
             and (swv & SW_FIELDS) == SW_DEFAULT
@@ -1585,7 +1592,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
             "CHK-DMA-COLDRST",
             ok,
             f"delay={self.copy_delay} regs={len(graded)} unmoved_logged={len(unmoved)} "
-            f"mismatch={len(mism)} bus_err_status_pre=0x{c['dst_pre'] & DMA_ST_MASK:02x} "
+            f"mismatch={len(mism)} ADDR_SPACE_ID=0x{asid & asid_r.mask:x} "
+            f"bus_err_status_pre=0x{c['dst_pre'] & DMA_ST_MASK:02x} "
             f"bus_err_status=0x{dst_st & DMA_ST_MASK:02x} "
             f"periph_status_pre=0x{c['pst_pre'] & PERIPH_MASK:02x} "
             f"periph_latch={self.plan.latch} periph_status=0x{pst & PERIPH_MASK:02x} "

@@ -152,11 +152,14 @@ edges in (t0, t1].
   ``:45``, ``:86``, ``:93``; the controls, counts, ``INTR_STATE`` and
   ``WKUP_CAUSE`` from the same file), and the bark interrupt (tap
   ``wdt_bark_probe_o``) reads 0. Control CTL-REGWEN-WDTRST-ARMED: just before
-  the pulse the five lock registers read their locked values; ``WKUP_CTRL``,
-  ``WKUP_COUNT_HI``, ``WKUP_COUNT_LO`` and ``WDOG_COUNT`` read the
-  ``WDTRST_PRELOAD`` values written with ``WDOG_REGWEN`` = 0, both
-  ``INTR_STATE`` bits read 1 after an ``INTR_TEST`` write, and the bark
-  interrupt reads 1; each register reads unlike its reset value.
+  the pulse the five lock registers read their locked values; ``WDOG_CTRL``
+  reads ``pause_in_sleep`` = 1 from the lock; ``WKUP_CAUSE`` reads 1 after one
+  wakeup expiry from the locked threshold (a write cannot set it);
+  ``WKUP_CTRL``, ``WKUP_COUNT_HI``, ``WKUP_COUNT_LO`` and ``WDOG_COUNT`` read
+  the ``WDTRST_PRELOAD`` values written with ``WDOG_REGWEN`` = 0; both
+  ``INTR_STATE`` bits read 1 after an ``INTR_TEST`` write; and the bark
+  interrupt reads 1. Every register of ``AON`` reads unlike its reset value.
+  CHK-REGWEN-COLD uses the same preload before the cold reset.
 * CHK-BITE-CLEAR (legs T, P and H, at each held bite request). "A SEP bite
   asserts `wdt_rst_ni`, and this reset clears the bite. The capture holds the
   bite for at least one `clk_i` cycle" (``hw/sys/sep/doc/reset_controller.adoc:56-58``);
@@ -1660,8 +1663,16 @@ class sep_timer_clock_contract_test(sep_base_test):
             fc = field_compare(st[name], w, AON[name][1])
             assert fc.ok, f"CHK-REGWEN-HOLD FAIL: event={ev} {when} reg={name} {fc.fields()}"
 
+    async def _lock_ctrl(self, chk: str) -> None:
+        """``WDOG_CTRL`` = ``pause_in_sleep`` only (the watchdog stays disabled), a
+        value unlike its reset value, before the lock."""
+        await self._wr(WDOG_CTRL, WDOG_PAUSE)
+        await self._poll_eq("WDOG_CTRL", WDOG_CTRL, WDOG_PAUSE, WDOG_CTRL_FIELDS, chk)
+
     async def _relock(self, chk: str) -> None:
-        """Program the four thresholds to their leg L values and clear ``WDOG_REGWEN``."""
+        """Program ``WDOG_CTRL`` and the four thresholds to their leg L values and
+        clear ``WDOG_REGWEN``."""
+        await self._lock_ctrl(chk)
         locked = self._locked()
         for name in THOLD_REGS:
             await self._wr(AON[name][0], locked[name])
@@ -1674,10 +1685,9 @@ class sep_timer_clock_contract_test(sep_base_test):
 
         A ``wdt_rst_ni_i`` pulse resets the watchdog timer and its registers
         (clk_rst.adoc:62; watchdog.adoc:23). Before the pulse the five lock
-        registers read their locked values, and the leg writes ``WDTRST_PRELOAD``
-        to the registers that a write changes with ``WDOG_REGWEN`` = 0 and sets
-        both ``INTR_STATE`` bits through ``INTR_TEST``; each then reads unlike its
-        reset value, and the bark interrupt (tap ``wdt_bark_probe_o``) reads 1.
+        registers read their locked values, and ``_preload_aon`` moves every
+        register of ``AON`` away from its reset value and sets the bark interrupt
+        (tap ``wdt_bark_probe_o``).
         The first reads after the pulse and the reads ``WDT_WAIT`` periods later
         give every register of ``AON`` its reset value from the generated register
         metadata, and the bark interrupt reads 0. The leg then programs and locks
@@ -1732,10 +1742,23 @@ class sep_timer_clock_contract_test(sep_base_test):
         return {name: await self._rd(AON[name][0]) for name in AON}
 
     async def _preload_aon(self, chk: str, tag: str) -> tuple[list[str], int]:
-        """Write ``WDTRST_PRELOAD`` and set both ``INTR_STATE`` bits through
-        ``INTR_TEST``. Control: each of those registers reads unlike its reset
-        value and the bark interrupt (tap ``wdt_bark_probe_o``) reads 1."""
+        """Move every register of ``AON`` away from its reset value. The lock
+        holds ``WDOG_REGWEN``, the thresholds and ``WDOG_CTRL`` (``_lock_ctrl``).
+        The wakeup timer runs one expiry from its locked threshold to set
+        ``WKUP_CAUSE``, which a write cannot set. The leg then writes
+        ``WDTRST_PRELOAD`` (``WKUP_CTRL`` first, which stops the wakeup timer)
+        and sets both ``INTR_STATE`` bits through ``INTR_TEST``. Control: every
+        register of ``AON`` reads unlike its reset value and the bark interrupt
+        (tap ``wdt_bark_probe_o``) reads 1."""
         dut = cocotb.top
+        cfg = self.tcfg
+        for name, val in (("WKUP_COUNT_HI", cfg.xh), ("WKUP_COUNT_LO", cfg.xl)):
+            await self._wr(AON[name][0], val)
+            await self._poll_eq(name, AON[name][0], val, AON[name][1], f"CTRL-MISSING {chk}")
+        await self._wr(WKUP_CTRL, WKUP_EN)
+        await self._poll_eq(
+            "WKUP_CAUSE", WKUP_CAUSE, CAUSE_FIELD, CAUSE_FIELD, f"CTRL-MISSING {chk}"
+        )
         for name, v in WDTRST_PRELOAD.items():
             await self._wr(AON[name][0], v)
         await self._wr(INTR_TEST, BARK_BIT | WKUP_BIT)
@@ -1744,11 +1767,9 @@ class sep_timer_clock_contract_test(sep_base_test):
         await ReadOnly()
         bark_before = self.rd(dut.wdt_bark_probe_o)
         preload = [
-            name
-            for name in (*WDTRST_PRELOAD, "INTR_STATE")
-            if (pre[name] & AON[name][1]) != (AON[name][2] & AON[name][1])
+            name for name in AON if (pre[name] & AON[name][1]) != (AON[name][2] & AON[name][1])
         ]
-        if len(preload) != len(WDTRST_PRELOAD) + 1 or not bark_before:
+        if len(preload) != len(AON) or not bark_before:
             raise AssertionError(
                 f"CTRL-MISSING {chk}: seed={self.tcfg.seed} {tag} preloaded={preload} "
                 f"bark_before={bark_before} {pre}"
@@ -1883,6 +1904,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         cfg = self.tcfg
         r0 = await self._rd(WDOG_REGWEN)
         assert r0 & REGWEN_FIELD, f"CHK-REGWEN-STICKY FAIL: regwen reads 0x{r0:x} before the clear"
+        await self._lock_ctrl("CHK-REGWEN-HOLD")
         for name, val in zip(THOLD_REGS, (cfg.xb, cfg.xd, cfg.xh, cfg.xl)):
             await self._wr(AON[name][0], val)
             await self._poll_eq(name, AON[name][0], val, AON[name][1], "CHK-REGWEN-HOLD")
