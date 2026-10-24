@@ -770,9 +770,26 @@ class sep_base_test(uvm_test):
         self.logger.info("Re-sensing: pulsing rst_ni")
         dut.rst_ni.value = 0
         await ClockCycles(dut.clk_i, hold_cycles)
+        await ReadOnly()
+        self._require_sense_restart()
+        await RisingEdge(dut.clk_i)
         dut.rst_ni.value = 1
         await self._wait_fuse_sense(max_cycles)
         self.cfg.reset_done.set()
+
+    def _require_sense_restart(self) -> None:
+        """Raise unless fuse-sense done reads 0 on the last clock of an ``rst_ni`` hold.
+
+        The bank is sensed again at each cold reset (hw/sys/sep/doc/otp_fuse_controller.adoc,
+        "At cold reset it senses the fuse bank"), so the next done must be a new 0 to 1 edge,
+        not a flag kept from the previous sense.
+        """
+        done = cocotb.top.sep_fuse_sense_done_o.value
+        if not done.is_resolvable or int(done) != 0:
+            raise AssertionError(
+                f"sep_fuse_sense_done_o={done} at the end of the rst_ni hold; a cold reset "
+                "restarts fuse sense, so done must read 0"
+            )
 
     async def pulse_rst_ni(
         self,
@@ -801,6 +818,7 @@ class sep_base_test(uvm_test):
         await ClockCycles(dut.clk_i, hold_cycles)
         await ReadOnly()
         held = self.rd(dut.dbg_sep_reset_n_o)
+        self._require_sense_restart()
         await RisingEdge(dut.clk_i)
         dut.rst_ni.value = 1
         release = None

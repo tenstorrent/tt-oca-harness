@@ -31,8 +31,8 @@ model of the staged data and the fabric taps:
                   directions, with the CPU beat as the control; the CPU beat
                   carries a non-zero source ID.
 * CHK-DMA-NOTCONN the boot ROM base and a DMA CSR word are not reached, and each
-                  transfer ends with STATUS.ERROR and ERROR_CODE.BUS_ERROR only.
-                  The bus response code of these cells is logged.
+                  transfer ends with a DMA interrupt. The end state (STATUS and
+                  ERROR_CODE) is logged as OBS-DMA-NOTCONN-RESP.
 
 The model of every expected value is the stimulus itself (the seeded words the
 firmware stages) and the RDL field layout; no expected value is read from the
@@ -1043,15 +1043,13 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             assert t_irq is not None, (
                 f"CHK-DMA-NOTCONN FAIL: {tgt} ended {end} with no DMA interrupt edge"
             )
-            # No DMA path reaches the boot ROM or the DMA CSR port, so the transfer
-            # ends in error with a bus error; the bus response code is logged.
-            assert end == "error" and self._bus_error(r), (
-                f"CHK-DMA-NOTCONN FAIL: {tgt} end={end} dma_status=0x{r['st']:08x} "
-                f"error_code=0x{r['ec']:08x}; expected STATUS.ERROR and ERROR_CODE.BUS_ERROR only"
-            )
+            # No DMA path reaches the boot ROM or the DMA CSR port; no spec sentence
+            # states the DMA outcome of such a request, so the end state is logged.
             self.logger.info(
-                "CTL-DMA-NOTCONN LOG: %s end=error dma_status=0x%08x error_code=0x%08x",
+                "OBS-DMA-NOTCONN-RESP: %s end=%s bus_error=%d dma_status=0x%08x error_code=0x%08x",
                 tgt,
+                end,
+                int(self._bus_error(r)),
                 r["st"],
                 r["ec"],
             )
