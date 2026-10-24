@@ -39,6 +39,9 @@ PR-SRAM    ``pr_sram``      req: addr we wdata strb (req high); rsp: rdata
 PR-ROM     ``pr_rom``       as PR-SRAM
 PR-ROM-    ``pr_rom_macro`` req: addr (macro req high, out of the memory_interface);
 MACRO                       rsp: rdata (the clock after a req beat)
+PR-SRAM-   `pr_sram_macro`  req: addr we wmask (macro req high, out of the
+MACRO                       memory_interface; addr is the word index, wmask the
+                            bit write mask)
 PR-TCM     ``pr_tcm``       iccm, dccm: clken wren addr wdata wecc (any clken
                             bit high); iccm_rsp, dccm_rsp: rdata recc (the
                             clock after a beat with a read bank, clken & ~wren)
@@ -150,6 +153,7 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-SRAM": ("pr_sram", {"req": ("addr", "we", "wdata", "strb"), "rsp": ("rdata",)}, "mem"),
     "PR-ROM": ("pr_rom", {"req": ("addr", "we", "wdata", "strb"), "rsp": ("rdata",)}, "mem"),
     "PR-ROM-MACRO": ("pr_rom_macro", {"req": ("addr",), "rsp": ("rdata",)}, "macro"),
+    "PR-SRAM-MACRO": ("pr_sram_macro", {"req": ("addr", "we", "wmask")}, "macro"),
     "PR-TCM": (
         "pr_tcm",
         {"iccm": _TCM_REQ, "iccm_rsp": _TCM_RSP, "dccm": _TCM_REQ, "dccm_rsp": _TCM_RSP},

@@ -2197,6 +2197,13 @@ module sep_uvm_top
     assign pr_rom_macro_req_o   = u_dut.sep_boot_rom_req.req;
     assign pr_rom_macro_addr_o  = u_dut.sep_boot_rom_req.addr;
     assign pr_rom_macro_rdata_o = u_dut.sep_boot_rom_rsp.rdata;
+    // PR-SRAM macro side: the SRAM macro request (wrapper net u_dut.sep_sram_req,
+    // out of the memory_interface); addr is the 64-bit word index and wmask the
+    // bit write mask.
+    assign pr_sram_macro_req_o   = u_dut.sep_sram_req.req;
+    assign pr_sram_macro_we_o    = u_dut.sep_sram_req.we;
+    assign pr_sram_macro_addr_o  = u_dut.sep_sram_req.addr;
+    assign pr_sram_macro_wmask_o = u_dut.sep_sram_req.wmask;
     // PR-TCM: the ICCM and DCCM macro request and response (wrapper nets
     // u_dut.sep_cpu_tcm_req and u_dut.sep_cpu_tcm_rsp), bank 0 in the low bits.
     assign pr_tcm_iccm_clken_o = u_dut.sep_cpu_tcm_req.iccm_clken;

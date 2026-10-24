@@ -1232,6 +1232,13 @@
 `SEP_TB_OUT(logic, pr_rom_macro_req_o)
 `SEP_TB_OUT(logic [12:0], pr_rom_macro_addr_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_macro_rdata_o)
+// PR-SRAM macro side: the SRAM macro request out of the memory_interface
+// (wrapper net u_dut.sep_sram_req; addr is the 64-bit word index, wmask the bit
+// write mask with each byte strobe widened to eight bits).
+`SEP_TB_OUT(logic, pr_sram_macro_req_o)
+`SEP_TB_OUT(logic, pr_sram_macro_we_o)
+`SEP_TB_OUT(logic [sep_pkg::SEP_SRAM_ADDR_WIDTH-1:0], pr_sram_macro_addr_o)
+`SEP_TB_OUT(logic [sep_pkg::SEP_MEM_DATA_WIDTH-1:0], pr_sram_macro_wmask_o)
 // PR-TCM: the ICCM and DCCM macro request (wrapper net u_dut.sep_cpu_tcm_req)
 // and response (u_dut.sep_cpu_tcm_rsp). Per-bank fields are packed with bank 0
 // in the low bits: ICCM 4 banks of row address [17:4], DCCM 2 banks of row
