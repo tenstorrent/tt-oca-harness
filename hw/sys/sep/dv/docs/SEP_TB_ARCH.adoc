@@ -404,6 +404,10 @@ Observation probe groups:
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
   of the KM SRAM macro array that carry the KM ROM images' result words.
 * SEP reset probes (`dbg_sep_reset_n_o` / `sep_cpu_reset_n_o`).
+* Memory-interface reset taps (`pr_sram_memif_rst_n_o` /
+  `pr_rom_memif_rst_n_o`): the `rst_ni` inputs of the SEP SRAM and boot ROM
+  memory interfaces (`u_sram_memory_interface`, `u_boot_rom_memory_interface`).
+  Monitor only. Owner: `sep_cpu_reset_entry_test` (OBS-MEMIF-WDT-RST).
 * The DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`).
 * SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`,
   `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`). Owner:

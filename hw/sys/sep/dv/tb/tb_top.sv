@@ -1260,6 +1260,8 @@ module sep_uvm_top
     // tests read them. Same XMR-probe style as above.
     assign dbg_sep_reset_n_o = `SEP_CORE.sep_reset_n;
     assign sep_cpu_reset_n_o = `SEP_CORE.sep_cpu_reset_n;
+    assign pr_sram_memif_rst_n_o = `SEP_CORE.u_sram_memory_interface.rst_ni;
+    assign pr_rom_memif_rst_n_o  = `SEP_CORE.u_boot_rom_memory_interface.rst_ni;
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources

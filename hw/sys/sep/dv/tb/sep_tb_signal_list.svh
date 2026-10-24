@@ -526,6 +526,10 @@
 `SEP_TB_OUT(logic, dbg_sep_reset_n_o)  // SEP internal reset released
 // CPU warm reset (sep_cpu_reset_n = sep_reset_n & wdt_rst_ni).
 `SEP_TB_OUT(logic, sep_cpu_reset_n_o)
+// Reset inputs (rst_ni) of the SEP SRAM and boot ROM memory interfaces
+// (u_sram_memory_interface, u_boot_rom_memory_interface). Monitor only.
+`SEP_TB_OUT(logic, pr_sram_memif_rst_n_o)
+`SEP_TB_OUT(logic, pr_rom_memif_rst_n_o)
 `SEP_TB_OUT(logic, dbg_cpu_trace_exc_o)  // retired-instruction exception flag
 `SEP_TB_OUT(logic, sep_fuse_sense_done_o)  // SEP fuse sense completed
 // Sensed eFuse shadow-register array, flattened to a top-level OUTPUT PORT

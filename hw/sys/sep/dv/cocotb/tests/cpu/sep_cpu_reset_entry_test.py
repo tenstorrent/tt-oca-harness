@@ -72,6 +72,13 @@ Checks:
                        to the pair after the write's B, and an R beat with
                        RRESP OKAY that carries the written value.
                        Graded last, after every other check.
+  OBS-MEMIF-WDT-RST  : logged, not graded. In each ``wdt_rst_ni`` CPU reset,
+                       on the last ``clk_i`` cycle with ``wdt_rst_ni`` low, the
+                       reset inputs of the SRAM and boot ROM memory interfaces
+                       and the ``sep_reset_n`` tap. ``port_table.adoc`` says
+                       the watchdog request resets the memory interfaces; the
+                       RTL resets them on ``sep_reset_n``. The contract is
+                       open.
 
 Every CPU reset is applied at a quiet point: after a pass-count store of the
 routine has its write response, while the core runs the routine spin loop in
@@ -792,11 +799,30 @@ class sep_cpu_reset_entry_test(sep_base_test):
         n = len(self.epochs)
         dut.wdt_rst_ni_i.value = 0
         ep = await self._new_epoch(n)
-        await ClockCycles(dut.clk_i, RST_HOLD)
+        await ClockCycles(dut.clk_i, RST_HOLD - 1)
+        await ReadOnly()
+        self._log_memif_wdt_rst(ep)
+        await RisingEdge(dut.clk_i)
         if during is not None:
             await during()
         dut.wdt_rst_ni_i.value = 1
         return ep, mark
+
+    def _log_memif_wdt_rst(self, ep: _Epoch) -> None:
+        """Log the SRAM and boot ROM memory-interface resets while wdt_rst_ni is low.
+
+        Logged, not graded: hw/sys/sep/doc/port_table.adoc says the watchdog
+        request resets the memory interfaces, and the RTL resets them on
+        sep_reset_n; the contract is open.
+        """
+        dut = cocotb.top
+        self.logger.info(
+            "OBS-MEMIF-WDT-RST epoch=%d sram_memif_rst_n=%s rom_memif_rst_n=%s sep_reset_n=%s",
+            ep.idx,
+            self._rd_or_none(dut.pr_sram_memif_rst_n_o),
+            self._rd_or_none(dut.pr_rom_memif_rst_n_o),
+            self._rd_or_none(dut.dbg_sep_reset_n_o),
+        )
 
     async def _entry(self, ep: _Epoch, mark: int, what: str) -> tuple[int | None, str, list]:
         """Wait for the tap rise, the first retirement and the marker of the run of ``ep``.
