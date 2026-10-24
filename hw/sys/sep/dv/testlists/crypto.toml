@@ -610,6 +610,35 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# Shard 2 of sep_esrc_persistent_alert_rand_test: the ALERT_THRESHOLD reset leg and the
+# MAIN_SM_STATUS.ERR leg. It runs no threshold block, so no ANY_FAIL_COUNT grade
+# runs in it. The entry without the plusarg runs every leg (env/sep_shard.py).
+name = "sep_esrc_persistent_alert_rand_test_shard2"
+module = "crypto.sep_esrc_persistent_alert_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=2"]
+
+[[tests]]
+# Shard 3 of sep_esrc_persistent_alert_rand_test: the ALERT_THRESHOLD reset leg and the
+# threshold blocks 0, 5 and 7 on every seed, with no no-trip leg. It grades every check
+# of those legs except CHK-PF-TRIP-HOLD, which shard 1 and the entry without the
+# plusarg grade (env/sep_shard.py).
+name = "sep_esrc_persistent_alert_rand_test_shard3"
+module = "crypto.sep_esrc_persistent_alert_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 10800
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=3"]
+
+[[tests]]
 # ESRC lane detune: the manual DETUNE mask, the auto-tune toggle and AUTOTUNE_FAIL.
 name = "sep_esrc_autotune_detune_test"
 module = "crypto.sep_esrc_autotune_detune_test"
@@ -622,8 +651,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Shard 1 of 2 of sep_esrc_autotune_detune_test: the manual, off and ignored legs and the first burst. The regression runs the shards; the
-# shards together grade every check of the whole leaf (env/sep_shard.py).
+# Shard 1 of 2 of sep_esrc_autotune_detune_test: the manual, off and ignored legs, the first burst and the sample-clock divide leg.
+# The regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_esrc_autotune_detune_test_shard1"
 module = "crypto.sep_esrc_autotune_detune_test"
 seed = 1
@@ -635,8 +664,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=1"]
 
 [[tests]]
-# Shard 2 of 2 of sep_esrc_autotune_detune_test: the second and third bursts after the same manual and ignored set-up. The regression runs the shards; the
-# shards together grade every check of the whole leaf (env/sep_shard.py).
+# Shard 2 of 2 of sep_esrc_autotune_detune_test: the first, second and third bursts after the same manual and ignored set-up.
+# The regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_esrc_autotune_detune_test_shard2"
 module = "crypto.sep_esrc_autotune_detune_test"
 seed = 1

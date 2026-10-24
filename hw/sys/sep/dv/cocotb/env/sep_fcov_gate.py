@@ -889,3 +889,225 @@ def close_graded_window(log=None) -> bool:
     if log is not None:
         log.info("FCOV-GATE closed")
     return True
+
+
+def set_esrc_e2e_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.esrc_e2e_pass`` (1 after every check passed, else 0).
+
+    The pass label of the end-to-end entropy leaf, both entries:
+    ``sep_esrc_conditioning_cg`` ``cp_biw_scored``, ``cp_seed_handshake``,
+    ``cp_genbits_fips[fips_1]``, ``cp_esrc_sink`` and ``cp_fifo_closed_seed``,
+    and ``sep_esrc_fault_alert_cg.cp_fifo_flags[underflow_set]``. The sampler
+    holds each event of those points inside the window of that leaf as
+    pending, and samples it only when this value rises. The leaf writes 0
+    before its window opens and 1 after every check of the run, the strict
+    scoreboard report included, passed. Same rules as ``graded_owner``: a
+    no-op that returns False on Verilator. On VCS a sampler without the
+    variable is a testbench error.
+    """
+    return _set_bound("esrc_e2e_pass", int(bool(passed)), "FCOV-ESRC-E2E-PASS", log)
+
+
+def set_trng_drain_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.trng_drain_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_reset_scope_retention_cg.cp_trng_drain`` and of
+    ``cp_iso_order_per_domain[trng_fall]``. The sampler holds each drain
+    answer (OKAY, SLVERR) of a TRNG CSR read outstanding when the three TRNG
+    paths report isolated, and the TRNG fall with those three paths isolated,
+    inside the window of the TRNG reset recovery leaf, and samples them only
+    when this value rises. The leaf writes 0 before its window opens and after
+    it closes, and 1 after CHK-TRNG-DRAIN passes, which it reaches only after
+    CHK-TRNG-ISOLATE-ALL and CHK-TRNG-CLEAR-SYNC passed. Same rules as ``graded_owner``: a no-op
+    that returns False on Verilator. On VCS a sampler without the variable is
+    a testbench error.
+    """
+    return _set_bound("trng_drain_pass", int(bool(passed)), "FCOV-TRNG-DRAIN-PASS", log)
+
+
+def set_drbg_fatal_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.drbg_fatal_pass`` (1 after the checks of a step pass, else 0).
+
+    The pass label of the forced-error leaf: ``sep_drbg_err_inject_cg``,
+    ``sep_edn_mode_cg.cp_auto_fifo_words`` and the CSRNG and EDN ``ERR_CODE``
+    cells of ``sep_crypto_reset_cg.cp_reset_evidence``. The sampler holds each
+    sample of those cells inside the window of the leaf as pending, and samples
+    it only when this value rises. The leaf writes 1 after every check of a
+    source-bit cell or a command FIFO trial passed, and 0 after. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    return _set_bound("drbg_fatal_pass", int(bool(passed)), "FCOV-DRBG-FATAL-PASS", log)
+
+
+def set_drbg_seq_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.drbg_seq_pass`` (1 after the checks of an instance pass, else 0).
+
+    The pass label of the DRBG command-sequence leaf: every sample that its
+    window takes in ``sep_csrng_cmd_cg``, ``sep_edn_mode_cg``,
+    ``sep_crypto_alert_cg.cp_csrng_recov_seq`` and the ``x_line_gate`` and
+    ``cp_hw_raise`` cells of ``sep_crypto_intr_cg``. The sampler holds each
+    such sample as pending and samples it only when this value rises; the
+    pending list clears when the window of the leaf opens. The leaf writes 1
+    after every check since its last write of 1 passed, and 0 after. Same
+    rules as ``graded_owner``: a no-op that returns False on Verilator. On VCS
+    a sampler without the variable is a testbench error.
+    """
+    return _set_bound("drbg_seq_pass", int(bool(passed)), "FCOV-DRBG-SEQ-PASS", log)
+
+
+def set_drbg_seq_drop(drop: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.drbg_seq_pass`` = 2 (drop) or 0.
+
+    The DRBG command-sequence leaf writes 2 and then 0 when a check or control
+    since its last write of ``drbg_seq_pass`` failed. The rise to 2 drops every
+    pending sample of that label, so a later pass cannot release a sample of a
+    failed instance. Same rules as ``graded_owner``: a no-op that returns False
+    on Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("drbg_seq_pass", 2 if drop else 0, "FCOV-DRBG-SEQ-DROP", log)
+
+
+# Bits of ``u_sep_fcov.esrc_tune_pass``.
+ESRC_TUNE_PASS_TUNING = 1 << 0  # the tuning legs passed
+ESRC_TUNE_PASS_SCLK = 1 << 1  # CHK-SCLK-DIV of the in-window instance passed (cp_div_ratio)
+
+
+def set_esrc_tune_pass(passed: bool, log=None, bits: int = ESRC_TUNE_PASS_TUNING) -> bool:
+    """Write ``u_sep_fcov.esrc_tune_pass`` (``bits`` after the checks pass, else 0).
+
+    The pass label of ``sep_esrc_noise_gen_cg`` ``cp_detune_mode`` and
+    ``cp_detune_lane``, of ``sep_esrc_fault_alert_cg.cp_autotune`` and of the
+    AUTOTUNE_FAIL cells of ``sep_crypto_intr_cg`` ``x_esrc_status_enable`` and
+    ``cp_esrc_raise_path``. The
+    sampler holds each hit of those bins inside the window of the autotune
+    detune leaf as pending, and samples them only when this value rises; the
+    opening of that window drops older pending hits. The leaf writes 0 before
+    its tuning legs and pulses bit 0 after every check and control of those legs
+    passed. Bit 1 (``ESRC_TUNE_PASS_SCLK``) is the label of
+    ``sep_esrc_noise_gen_cg.cp_div_ratio``: the leaf writes it after the
+    in-window CHK-SCLK-DIV instance of a divide value passes, and the sampler
+    samples the lane-period hits of that window only on its rise. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    if bits not in (ESRC_TUNE_PASS_TUNING, ESRC_TUNE_PASS_SCLK):
+        raise ValueError(f"esrc_tune_pass bits {bits:#x} are not one label bit")
+    return _set_bound("esrc_tune_pass", bits if passed else 0, "FCOV-ESRC-TUNE-PASS", log)
+
+
+def set_km_ss_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.km_ss_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_km_sideload_delivery_cg.cp_sd_single_share``. The
+    sampler holds the cell of a single-share AES delivery after a KM wipe as
+    pending from the KEY_VALID rise, and samples it only when this value rises.
+    The key-bank leaf writes 0 before each single-share instance and 1 after
+    ``CHK-SINGLE-SHARE`` passes on that instance (the sideload ciphertext equals
+    the AES-256 golden of the written key). Same rules as ``graded_owner``: a
+    no-op that returns False on Verilator. On VCS a sampler without the
+    variable is a testbench error.
+    """
+    return _set_bound("km_ss_pass", int(bool(passed)), "FCOV-KM-SS-PASS", log)
+
+
+# Bits of ``u_sep_fcov.km_sk_pass``, the shared-key pass label of the key-bank leaf.
+KM_SK_PASS_CONSUME = 1 << 0
+KM_SK_PASS_WORDS = 1 << 1
+KM_SK_PASS_IRQ = 1 << 2
+
+
+def set_km_sk_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.km_sk_pass`` (the passed shared-key checks, or 0).
+
+    The pass label of ``sep_km_abr_shared_key_cg``. The sampler holds the
+    ``cp_sk_write_dir`` cells from the ``MLKEM_SHARED_KEY.KEY_CTRL`` writes and
+    samples them on the rise of ``KM_SK_PASS_CONSUME``, which the key-bank leaf
+    writes after ``CHK-BANK-SK-CONSUME`` passes. It holds
+    ``cp_sk_delivery_state[firmware_consumes]`` and samples it on the rise of
+    ``KM_SK_PASS_WORDS``, written after ``CHK-BANK-SK-SW`` passes. It holds the
+    ``cp_sk_interrupt`` line cells and samples them on the rise of
+    ``KM_SK_PASS_IRQ``, written after ``CHK-BANK-SK-IRQ`` passes; any other
+    change of the label drops them. The leaf writes 0 before the consume step
+    and before the interrupt step. Same rules as ``graded_owner``: a no-op
+    that returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    return _set_bound("km_sk_pass", bits & 0b111, "FCOV-KM-SK-PASS", log)
+
+
+# Bits of ``u_sep_fcov.xhs_pass``, the pass label of the external stream handshake
+# leaf. Index 0 is the crypto stream (1), index 1 the pool stream (2); the depth
+# bits are indexed by the internal stream 0, 1, 2.
+XHS_PASS_FULL = (1 << 0, 1 << 1)
+XHS_PASS_PARTIAL = (1 << 2, 1 << 3)
+XHS_PASS_STALL = (1 << 4, 1 << 5)
+XHS_PASS_POOL_POP = 0b111 << 6
+XHS_PASS_FIFO_DEPTH = (1 << 9, 1 << 10, 1 << 11)
+XHS_PASS_WIDTH = 12
+
+
+def set_xhs_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.xhs_pass`` (the passed checks of the external stream leaf, or 0).
+
+    The pass label of ``sep_entropy_delivery_cg`` ``x_ext_beat`` (``XHS_PASS_FULL``,
+    ``XHS_PASS_PARTIAL``), ``cp_ext_stall`` (``XHS_PASS_STALL``), ``cp_pool_pop``
+    (``XHS_PASS_POOL_POP``: pop at level 2 to 31, pop at 32, feed at 31) and
+    ``cp_adapter_fifo_depth`` (``XHS_PASS_FIFO_DEPTH``). Inside the window of the
+    external stream handshake leaf the sampler holds each event of those cells as
+    pending, and samples it only when its bit rises; a closed window drops it, and a
+    broken hold drops a held depth cell. The leaf writes the bits after the check
+    that grades the cell passes, and 0 after. Same rules as ``graded_owner``: a no-op
+    that returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    if bits < 0 or bits >> XHS_PASS_WIDTH:
+        raise ValueError(f"xhs_pass bits {bits:#x} are not {XHS_PASS_WIDTH} bits")
+    return _set_bound("xhs_pass", bits, "FCOV-XHS-PASS", log)
+
+
+def set_iprst_edn_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.iprst_edn_pass`` (1 after the check passes, else 0).
+
+    The pass label of the legal cells of
+    ``sep_crypto_reset_cg.cp_sw_rst_edn_cancel``. The sampler holds each clean
+    cancel inside the window of the per-IP reset leaf as pending from the
+    reset release, and samples them only when this value rises. The leaf writes
+    0 at its start and 1 after CHK-EDN-DISCARD passes, then 0. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    return _set_bound("iprst_edn_pass", int(bool(passed)), "FCOV-IPRST-EDN-PASS", log)
+
+
+# Bits of ``u_sep_fcov.esrc_pa_pass``: one per check of the persistent-alert
+# leaf that releases held cells (the CzPa* localparams of cov/sv/sep_fcov.sv).
+ESRC_PA_RESET = 1 << 0  # CHK-PF-RESET
+ESRC_PA_TRIP_COUNT = 1 << 1  # CHK-PF-TRIP-COUNT
+ESRC_PA_NOTRIP = 1 << 2  # CHK-PF-NOTRIP
+ESRC_PA_CONSEC = 1 << 3  # CHK-PF-CONSEC
+ESRC_PA_DISABLE = 1 << 4  # CHK-PF-DISABLE
+ESRC_PA_HALT = 1 << 5  # CHK-PF-HALT
+ESRC_PA_RECOVER_E = 1 << 6  # CHK-PF-RECOVER, exit by MODULE_ENABLE
+ESRC_PA_RECOVER_R = 1 << 7  # CHK-PF-RECOVER, exit by TRNG reset
+ESRC_PA_SM_ERR = 1 << 8  # CHK-SM-ERR legs set and reset_clears (cp_sm_err, PERSISTENT_FAILURE)
+
+
+def set_esrc_pa_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.esrc_pa_pass`` (the passed check bits ``ESRC_PA_*``, or 0).
+
+    The pass label of the cells that ``sep_esrc_persistent_alert_rand_test``
+    owns in ``sep_esrc_fault_alert_cg`` (``cp_alert_threshold``, ``cp_any_fail``,
+    ``cp_alert_hang``, ``cp_sm_err``), ``sep_esrc_startup_health_cg`` (``cp_window_class``,
+    ``x_enable_boot``) and ``sep_crypto_intr_cg`` (the PERSISTENT_FAILURE cells
+    of ``x_esrc_status_enable`` and ``cp_esrc_raise_path``). The sampler holds
+    each event of those cells inside the window of the leaf as pending, clears
+    the pending cells when a window opens, and samples a cell only when a bit of
+    a check that grades it rises. The leaf writes the bit after that check
+    passes, holds it two clocks and writes 0. Same rules as ``graded_owner``: a
+    no-op that returns False on Verilator. On VCS a sampler without the variable
+    is a testbench error.
+    """
+    if bits >> 9 or bits < 0:
+        raise ValueError(f"esrc_pa_pass bits {bits:#x} are not 0 to 0x1ff")
+    return _set_bound("esrc_pa_pass", bits, "FCOV-ESRC-PA-PASS", log)
