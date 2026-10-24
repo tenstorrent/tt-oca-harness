@@ -101,11 +101,22 @@ class _EvidenceFilter(logging.Filter):
 
     # IDs excluded from `own`, which is what a floor grades; `observed` counts
     # them. These are the records the base class emits for every firmware boot
-    # (image identity and the firmware completion verdict), so a leaf whose own
-    # checks stopped running cannot pass on the boot alone. A leaf whose graded
+    # (image identity and the firmware completion verdict) and for its shared
+    # entropy and fuse-sense helpers, so a leaf whose own checks stopped running
+    # cannot pass on the boot or a shared helper alone. A leaf whose graded
     # contract is the firmware self-check names that ID in `required_evidence`;
     # a base ID named there counts as the leaf's own.
-    BASE_IDS: frozenset[str] = frozenset({"CHK-FW-IDENTITY", "CHK-FW-CONSOLE", "CHK-VERDICT"})
+    BASE_IDS: frozenset[str] = frozenset(
+        {
+            "CHK-FW-IDENTITY",
+            "CHK-FW-CONSOLE",
+            "CHK-VERDICT",
+            "CHK-ALERTS-ZERO",
+            "CHK-KM-SRAM",
+            "CHK-NOISE-FORCE",
+            "CHK-PRE-SENSE-FAIL-CLOSED",
+        }
+    )
 
     # Leaves allowed to pass with no own CHK record. A new entry hides a logging gap.
     NO_OWN_EVIDENCE: dict[str, str] = {}

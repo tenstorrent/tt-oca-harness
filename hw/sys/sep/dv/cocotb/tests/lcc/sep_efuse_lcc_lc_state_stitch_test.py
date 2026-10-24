@@ -470,17 +470,17 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     prev_raw=prev_raw,
                 )
                 # Second half: the same image, every KM-secret field, strap high.
-                # otp_fuse_controller.adoc names the four fields and the TEST_EN disconnect
-                # of fuse-bank outputs; it does not require a zero readback.
+                # The four fields "read as zero downstream while SECURE_TM is 1"
+                # (hw/sys/sep/doc/otp_fuse_controller.adoc).
                 for name in _SECRET_FIELDS:
                     blanked = self._sensed_secret(image, name)
-                    assert blanked != open_secrets[name], (
-                        f"{name} still reads the staged secret 0x{open_secrets[name]:x} "
-                        f"while secure_tm=1 (got 0x{blanked:x})"
+                    assert blanked == 0, (
+                        f"{name} reads 0x{blanked:x} while secure_tm=1, expected 0 "
+                        f"(staged 0x{open_secrets[name]:x})"
                     )
                     self.logger.info(
                         "CHK-SECRET-BLANK PASS: %s sensed 0x%x at secure_tm=0 and "
-                        "0x%x at secure_tm=1 (not the staged secret)",
+                        "0x%x at secure_tm=1",
                         name,
                         open_secrets[name],
                         blanked,

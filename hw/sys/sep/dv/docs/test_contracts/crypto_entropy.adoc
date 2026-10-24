@@ -98,6 +98,8 @@
 |Generated bits match golden. Generate segmentation is `sep_drbg_gen_segmentation_test`, not this `glen=32` budget.
 |CHK5
 |The Key Manager consumes an entropy word and it matches golden.
+|CHK-E2E-SCOREBOARD
+|The strict CHK1..CHK5 scoreboard report ends with no mismatch. This is the leaf's own evidence line; CHK-ALERTS-ZERO comes from a shared base helper.
 |CHK5_pool
 |Mux endpoint [2] (entropy-pool adapter): each post-adapter pool beat equals the next AXIS2 word, and `pool_edn_fips_o=1` on every completed beat, so the adapter forwarded the DRBG FIPS bit. Does not drain `0x1095_0000`.
 |===

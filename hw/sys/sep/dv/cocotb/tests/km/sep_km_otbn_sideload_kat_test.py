@@ -79,6 +79,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
     """OTBN dumps exactly the sideloaded known key, and its two shares are non-degenerate."""
 
     async def run_scenario(self) -> None:
+        self.required_evidence = ("CHK-A", "CHK-ISO", "CHK-B", "CHK-C", "CHK-D", "CHK-E", "CHK-F")
         # --- Boot the real KM firmware on real entropy -------------------------
         # Real fuse-sense with a valid PROD-lifecycle image (the KM firmware reads
         # OTP at boot); stage it before bring-up so sense populates the shadow.
@@ -124,7 +125,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # --- Frontdoor consume-proof: load known key -> transfer -> dump -------
         # CHK-A: provision the KNOWN key into a KPV handle over the frontdoor.
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_OTBN)
-        self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
+        self.logger.info("CHK-A PASS: CMD_KEY_LOAD known key staged, handle=0x%02x", handle)
 
         # The OTBN wrapper KEY_SHARE registers are in the otbn sw-reset domain, so
         # OTBN must be released before CMD_KEY_TRANSFER or the KM write never
@@ -148,7 +149,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
             f"OTBN not released before transfer (SW_RESET_N=0x{rst:08x})"
         )
         self.logger.info(
-            "CHK-ISO key-bus isolation PASS: only KM+OTBN released, "
+            "CHK-ISO PASS: key-bus isolation, only KM+OTBN released, "
             "AES/KMAC/HMAC parked (SW_RESET_N=0x%02x)",
             rst,
         )
@@ -156,14 +157,14 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # CHK-B: sideload the handle's key to the OTBN wrapper.
         rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_OTBN)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
-        self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to OTBN)")
+        self.logger.info("CHK-B PASS: CMD_KEY_TRANSFER rc=0 (key sideloaded to OTBN)")
 
         # CHK-C: OTBN runs the key-dump program cleanly (IDLE, no error bits).
         await self.otbn.load_program()
         await self.otbn.execute()  # wait_idle: fails on LOCKED or timeout
         errbits = await self.otbn.read_errbits()
         assert errbits == 0, f"OTBN ERR_BITS=0x{errbits:08x} after key-dump (expected 0)"
-        self.logger.info("CHK-C OTBN execute PASS: reached IDLE, ERR_BITS=0")
+        self.logger.info("CHK-C PASS: OTBN execute reached IDLE, ERR_BITS=0")
 
         # Read all key-dump outputs once via the seq's named DMEM offsets (the test
         # stays scenario-level; no raw addresses).
@@ -179,7 +180,8 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         assert all(w == 0 for w in key_pad), (
             f"OTBN result_hi padding words [4..7] not zero: {[hex(w) for w in key_pad]}"
         )
-        self.logger.info("CHK-D/E KM->OTBN sideload KAT PASS: DMEM == known 384b key, padding=0")
+        self.logger.info("CHK-D PASS: KM->OTBN sideload KAT, DMEM == known 384b key")
+        self.logger.info("CHK-E PASS: KM->OTBN sideload KAT, high-WDR padding == 0")
 
         # CHK-F: 2-share masking non-degeneracy (frontdoor). The keydump
         # also wrote OTBN's raw KEY_S0/S1 WSRs (the shares) to DMEM. Prove the
@@ -197,7 +199,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         assert s0 != s1, "shares identical -> masking defeated"
         assert len(set(s0)) > 1, f"SHARE0 (mask) degenerate (constant): {[hex(w) for w in s0]}"
         self.logger.info(
-            "CHK-F mask non-degeneracy PASS: shares non-trivial/distinct, neither==key, "
+            "CHK-F PASS: mask non-degeneracy, shares non-trivial/distinct, neither==key, "
             "share0^share1==K"
         )
 

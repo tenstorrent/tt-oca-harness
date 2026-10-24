@@ -97,6 +97,15 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
     """The sideloaded key drives AES to the golden ciphertext and a full ENC/DEC round trip."""
 
     async def run_scenario(self) -> None:
+        self.required_evidence = (
+            "CHK-A",
+            "CHK-NEG",
+            "CHK-B",
+            "CHK-ISO",
+            "CHK-F",
+            "CHK-RT",
+            "CHK-H",
+        )
         # --- Boot the real KM firmware on real entropy -------------------------
         # Real fuse-sense with a valid PROD-lifecycle image (the KM firmware reads
         # OTP at boot); stage it before bring-up so sense populates the shadow.
@@ -128,7 +137,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         # --- Frontdoor consume-proof: load known key -> transfer -> encrypt ----
         # CHK-A: provision the KNOWN key into a KPV handle over the frontdoor.
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_AES)
-        self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
+        self.logger.info("CHK-A PASS: CMD_KEY_LOAD known key staged, handle=0x%02x", handle)
 
         # CHK-NEG: negative reference. Encrypt with an unrelated DUMMY SW key BEFORE
         # the transfer. A real encryption, golden-checked, so ct_side !=
@@ -142,12 +151,12 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             "negative-ref AES(dummy) mismatch vs golden:\n"
             f"  got={[hex(w) for w in ct_dummy]} exp={[hex(w) for w in exp_dummy]}"
         )
-        self.logger.info("CHK-NEG dummy-key ECB PASS: ct_dummy == AES(dummy, PT) golden")
+        self.logger.info("CHK-NEG PASS: dummy-key ECB ct_dummy == AES(dummy, PT) golden")
 
         # CHK-B: sideload the handle's key to the AES wrapper KEY CSRs.
         rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_AES)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
-        self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to AES)")
+        self.logger.info("CHK-B PASS: CMD_KEY_TRANSFER rc=0 (key sideloaded to AES)")
 
         # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the five KM
         # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset
@@ -165,7 +174,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"AES not released for the transfer (SW_RESET_N=0x{rst:08x})"
         )
         self.logger.info(
-            "CHK-ISO key-bus isolation PASS: only KM+AES released, "
+            "CHK-ISO PASS: key-bus isolation, only KM+AES released, "
             "OTBN/KMAC/HMAC parked (SW_RESET_N=0x%02x)",
             rst,
         )
@@ -206,7 +215,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"  ct_side={[hex(w) for w in ct_side]}\n"
             f"  golden ={[hex(w) for w in golden]}"
         )
-        self.logger.info("CHK-F KM->AES sideload KAT PASS: ct_side == AES(known_key, PT) golden")
+        self.logger.info("CHK-F PASS: KM->AES sideload KAT ct_side == AES(known_key, PT) golden")
 
         # CHK-RT: decrypt ct_side with the SIDELOAD key and prove it
         # recovers the original plaintext -- the sideloaded key drives a full
@@ -221,7 +230,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"  pt_side_dec={[hex(w) for w in pt_side_dec]}\n"
             f"  expected PT={[hex(w) for w in AES_ECB_PT]}"
         )
-        self.logger.info("CHK-RT sideload round-trip PASS: DEC(ct_side) == original PT")
+        self.logger.info("CHK-RT PASS: sideload round-trip DEC(ct_side) == original PT")
 
         # CHK-H: write the KNOWN key through the SW KEY_SHARE path and prove
         # the SW-key ciphertext equals AES(known_key, PT) golden.
@@ -233,7 +242,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             "SW-key ciphertext != AES(known_key, PT) golden:\n"
             f"  ct_swref={[hex(w) for w in ct_swref]} golden={[hex(w) for w in golden]}"
         )
-        self.logger.info("CHK-H consume-proof PASS: ct_swref == AES(known_key, PT) golden")
+        self.logger.info("CHK-H PASS: consume-proof ct_swref == AES(known_key, PT) golden")
 
         # --- EOT: entropy health + clean shutdown ------------------------------
         await self.km.check_outbound_empty("EOT")

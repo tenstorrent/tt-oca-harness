@@ -50,7 +50,7 @@
 |The two raw shares are non-trivial and distinct, neither equals the key, and their exclusive-or reconstructs it — so the masking is real, not degenerate.
 |CHK0
 |Key Manager firmware boots and reports ready over the mailbox.
-|CHK-D/E
+|CHK-D, CHK-E
 |Data memory holds the exact known 384-bit key, and the high result word padding is zero — the known-answer test itself.
 |CHK1..CHK3
 |The entropy stack matches its golden model bit-exactly at the decorrelator, compress and seed stages, with zero mismatches.
