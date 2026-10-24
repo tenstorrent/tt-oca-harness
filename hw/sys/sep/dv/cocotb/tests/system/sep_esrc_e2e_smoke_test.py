@@ -128,11 +128,13 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
             cfg = SepEntropyCfg(fifo_enable=0, chk2_source="backdoor")
             self.required_evidence = (
                 "CHK-ALERTS-ZERO",
+                "CHK-E2E-SCOREBOARD",
                 "CHK-FIFO-CLOSED",
                 "CHK-FIFO-ENABLE-LOCKED",
             )
         else:
             cfg = SepEntropyCfg()
+            self.required_evidence = ("CHK-ALERTS-ZERO", "CHK-E2E-SCOREBOARD")
         self.logger.info(
             "entropy cfg: fifo_enable=%d fifo_ctrl=0x%08x chk2_source=%s",
             cfg.fifo_enable,
@@ -187,6 +189,9 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         else:
             await self.stop_fifo_drain()
         assert self.drbg_sb.report()
+        self.logger.info(
+            "CHK-E2E-SCOREBOARD PASS: strict CHK1..CHK5 entropy scoreboard report clean"
+        )
 
     # --- closed read path ----------------------------------------------------
     async def _open_read_path_window(self, tap: _SeedPortTap) -> dict:

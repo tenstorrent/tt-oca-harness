@@ -191,10 +191,14 @@ module sep_fcov (
   input sep_pkg::sep_32_64_6_12_axi_req_t  dma_csr_req_i,
   input sep_pkg::sep_32_64_6_12_axi_resp_t dma_csr_resp_i,
   input wire        irq_dma_error_i,
-  // rom_req: the boot ROM macro port (PR-ROM). tcm_*: the CPU TCM macro
-  // port enables of the ICCM and the DCCM, apart (the DMA TCM cells only).
-  input sep_pkg::sep_sram_req_t rom_req_i,
-  input sep_pkg::sep_sram_rsp_t rom_rsp_i,
+  // rom_*: the boot ROM memory-interface stream (PR-ROM), byte addressed.
+  // tcm_*: the CPU TCM macro port enables of the ICCM and the DCCM, apart (the
+  // DMA TCM cells only).
+  input wire        rom_req_i,
+  input wire        rom_we_i,
+  input wire [31:0] rom_addr_i,
+  input wire        rom_rvalid_i,
+  input wire [63:0] rom_rdata_i,
   input wire        iccm_clken_i,
   input wire        iccm_wren_i,
   input wire        dccm_clken_i,
@@ -379,8 +383,8 @@ module sep_fcov (
   input wire [4:0]           cpu_trace_ecause_i,
   input wire [31:0]          cpu_trace_tval_i,
   input wire [3:0]           ecc_dbg_i,         // ext_debug_bus_o[367:364]
-  input sep_pkg::sep_sram_req_t sram_req_i,     // u_dut.sep_sram_req
-  input sep_pkg::sep_sram_rsp_t sram_rsp_i,     // u_dut.sep_sram_rsp
+  input wire                 sram_req_i,        // PR-SRAM request
+  input wire                 sram_rvalid_i,     // PR-SRAM response valid
   // cpu_tcm_axi_req / resp: the crossbar backdoor into the core DMA port.
   input sep_pkg::sep_32_64_6_12_axi_req_t  tcm_axi_req_i,
   input sep_pkg::sep_32_64_6_12_axi_resp_t tcm_axi_resp_i,
@@ -418,7 +422,7 @@ module sep_fcov (
   input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_rom_resp_i,
   input sep_pkg::sep_32_64_3_12_axi_req_t  lsu_xbar_req_i,
   input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_xbar_resp_i,
-  // The ROM macro request after the ROM interface shim (word index).
+  // The ROM macro request out of the memory_interface (word index).
   input wire                 rom_macro_req_i,
   input wire [12:0]          rom_macro_addr_i,
   // veer.dec.tlu: trap cause, ECC counters and their requests, the counter
@@ -694,7 +698,7 @@ module sep_fcov (
   input wire [1:0]                          km_wipe_i,        // {wipe_pulse, wipe_state_i}
   input km_intf_pkg::km_otp_data_t          km_otp_data_i,    // KM otp_data_i
   input wire                                km_rom_req_i,     // km_rom_mem_req.req
-  input wire [3:0]                          km_sram_if_i,     // km_sram_mem_req/rsp {rvalid, gnt, we, req}
+  input wire [1:0]                          km_sram_if_i,     // km_sram_mem_req {we, req}
   input wire [12:0]                         km_sram_addr_i,   // km_sram_mem_req.addr
   input km_intf_pkg::km_axil_req_t          km_efuse_req_i,   // KM efuse_req_o (after the remap)
   input km_intf_pkg::km_axil_resp_t         km_efuse_resp_i,  // KM efuse_resp_i
@@ -716,8 +720,6 @@ module sep_fcov (
   input wire                                km_recov_err_i,   // km_csr_recov_err_o (KM-CSR)
   input wire                                km_rec_pic_i,     // PIC vector bit 31
   input wire [8:0]                          km_outfifo_depth_i, // km_outfifo_depth_o (KM-OUTFIFO)
-  input wire [7:0]                          km_sram_lat_i,    // km_sram_rd_lat_o (KM-LAT)
-  input wire [31:0]                         km_sram_lat_done_i, // km_sram_rd_done_count_o (KM-LAT)
   // KM-BUS key path, AW channel: port 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
   input wire [4:0]                          km_key_aw_valid_i,
   input wire [4:0]                          km_key_aw_ready_i,
@@ -4972,7 +4974,7 @@ module sep_fcov (
                                  (dma_csr_resp_i.aw_ready === 1'b1)) ||
                                 ((dma_csr_req_i.ar_valid === 1'b1) &&
                                  (dma_csr_resp_i.ar_ready === 1'b1)));
-  wire rom_hs   = !in_reset && (rom_req_i.req === 1'b1) && (rom_rsp_i.gnt === 1'b1);
+  wire rom_hs   = !in_reset && (rom_req_i === 1'b1);
   wire out_hs   = out_aw_hs || out_ar_hs;
   wire smc_hs   = smc_aw_hs || smc_ar_hs;
   wire ext_hs   = ext_aw_hs || ext_ar_hs;
@@ -18650,7 +18652,7 @@ module sep_fcov (
   int unsigned mm_rn_cnt = 0;
   logic [63:0] mm_rn_mdata = '0;
   always @(posedge clk_i) begin
-    if (rom_rsp_i.rvalid === 1'b1) mm_rn_mdata <= rom_rsp_i.rdata;
+    if (rom_rvalid_i === 1'b1) mm_rn_mdata <= rom_rdata_i;
     mm_rn_pass_q <= (rom_noecc_pass != 0);
     if (in_reset || !mm_own_rom) begin
       mm_rn_pend1 <= 0;
@@ -19239,10 +19241,10 @@ module sep_fcov (
   // cp_macro_if: request and response phases of the memory macro ports.
   // ---------------------------------------------------------------------
   always @(posedge clk_i) begin
-    if (mm_own_rom && (rom_req_i.req === 1'b1)) mm_ap_rom(4'd2, 5'd0);
-    if (mm_own_rom && (rom_rsp_i.rvalid === 1'b1)) mm_ap_rom(4'd2, 5'd1);
-    if (mm_own_sram && (sram_req_i.req === 1'b1)) mm_ap(4'd2, 5'd2);
-    if (mm_own_sram && (sram_rsp_i.rvalid === 1'b1)) mm_ap(4'd2, 5'd3);
+    if (mm_own_rom && (rom_req_i === 1'b1)) mm_ap_rom(4'd2, 5'd0);
+    if (mm_own_rom && (rom_rvalid_i === 1'b1)) mm_ap_rom(4'd2, 5'd1);
+    if (mm_own_sram && (sram_req_i === 1'b1)) mm_ap(4'd2, 5'd2);
+    if (mm_own_sram && (sram_rvalid_i === 1'b1)) mm_ap(4'd2, 5'd3);
     if (mm_own_tdma && ((|tcm_i_clken_i === 1'b1) || (|tcm_d_clken_i === 1'b1))) mm_ap(4'd2, 5'd4);
   end
 
@@ -19327,10 +19329,11 @@ module sep_fcov (
   // rst_ni falls: the offset is the clk_i edges after the request handshake
   // edge (AR, or the later of AW and W) and before the fall, against W, the
   // edges strictly between the handshake and the response of the last access
-  // of that path that completed alone. A ROM read in flight is the handshake
-  // on sep_boot_rom_req with no rvalid yet. After the release, the first R
-  // or B beat (rvalid for ROM) must follow a request issued after it. The
-  // tracking is ungated; the gate applies at the fall.
+  // of that path that completed alone. A ROM read in flight is a request on
+  // the boot ROM memory_interface stream (rom_req_i) with no rom_rvalid_i yet.
+  // After the release, the first R or B beat (rom_rvalid_i for ROM) must
+  // follow a request issued after it. The tracking is ungated; the gate
+  // applies at the fall.
   // ---------------------------------------------------------------------
   logic mm_or_pend = 1'b0;
   logic mm_ow_aw = 1'b0;
@@ -19346,8 +19349,8 @@ module sep_fcov (
   logic mm_st_post = 1'b0;
   logic mm_st_post_r = 1'b0;
   wire [63:0] mm_ow_anchor = (mm_ow_awc > mm_ow_wc) ? mm_ow_awc : mm_ow_wc;
-  wire mm_rom_hs = (rom_req_i.req === 1'b1) && (rom_rsp_i.gnt === 1'b1);
-  wire mm_rom_rv = (rom_rsp_i.rvalid === 1'b1);
+  wire mm_rom_hs = (rom_req_i === 1'b1);
+  wire mm_rom_rv = (rom_rvalid_i === 1'b1);
   always @(posedge clk_i) begin
     if (in_reset) begin
       mm_or_pend <= 1'b0;
@@ -19879,10 +19882,11 @@ module sep_fcov (
 
   // ---------------------------------------------------------------------
   // cp_rom_write_master: a CPU store to the ROM aperture. A ROM macro
-  // request (after the interface shim) at the store word is a readback when
-  // a read request for that word reached sep_boot_rom_req within
-  // MmRomRdAge edges; the cell hits MmStoreQuiet edges after the store
-  // response when every such request was a readback.
+  // request (out of the memory_interface) at the store word is a readback when
+  // a read request for that word is on the boot ROM memory_interface stream
+  // (rom_req_i with rom_we_i low) within MmRomRdAge edges; the cell hits
+  // MmStoreQuiet edges after the store response when every such request was
+  // a readback.
   // ---------------------------------------------------------------------
   longint unsigned mm_rrd[int unsigned];
   logic mm_sw_on = 1'b0;
@@ -19893,8 +19897,7 @@ module sep_fcov (
   always @(posedge clk_i) begin
     int unsigned w;
     logic rb;
-    if ((rom_req_i.req === 1'b1) && (rom_req_i.wenable !== 1'b1))
-      mm_rrd[int'(rom_req_i.addr[15:3])] = mm_cyc;
+    if ((rom_req_i === 1'b1) && (rom_we_i !== 1'b1)) mm_rrd[int'(rom_addr_i[15:3])] = mm_cyc;
     if (mm_sw_on && (rom_macro_req_i === 1'b1) && (rom_macro_addr_i == mm_sw_word)) begin
       w  = int'(mm_sw_word);
       rb = mm_rrd.exists(w) && ((mm_cyc - mm_rrd[w]) <= MmRomRdAge);
@@ -34731,13 +34734,6 @@ module sep_fcov (
     cp_mem_boot_type: coverpoint v[0] iff (pt == 5'd7) {
       bins cold_boot_writes_key = {1'b0}; bins warm_boot_writes_no_key = {1'b1};
     }
-    // Grant-to-rvalid latency 1 to 4; 9: two different delayed latencies in
-    // one run.
-    cp_km_sram_latency: coverpoint v[3:0] iff (pt == 5'd8) {
-      bins latency[] = {[4'd1 : 4'd4]};
-      bins two_values_in_one_run = {4'd9};
-      illegal_bins latency0 = {4'd0};
-    }
   endgroup
 
   covergroup sep_km_kpv_slot_cg with function sample (logic [4:0] pt, logic [15:0] v);
@@ -35658,8 +35654,7 @@ module sep_fcov (
       km_sk_irq_cleared <= 1'b0;
       km_nx_written <= '0;
     end
-    if ((km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) && (km_sram_if_i[2] === 1'b1) &&
-        (km_scr_en_i === 1'b1)) begin
+    if ((km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) && (km_scr_en_i === 1'b1)) begin
       km_scr_resident <= 1'b1;
       if (km_lock_en0_pend && (km_own_scr || km_own_br))
         u_sep_km_memory_boot_cg.sample(5'd2, 16'd6);
@@ -36465,10 +36460,8 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // Memory interface, SRAM stores, ROM and fetch protection.
   // ---------------------------------------------------------------------
-  wire km_sram_rd = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b0) &&
-      (km_sram_if_i[2] === 1'b1);
-  wire km_sram_wr = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) &&
-      (km_sram_if_i[2] === 1'b1);
+  wire km_sram_rd = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b0);
+  wire km_sram_wr = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1);
   logic [3:0] km_st_cnt = '0;
   logic [4:0] km_st_region = '0;
   logic [12:0] km_st_word = '0;
@@ -38499,13 +38492,6 @@ module sep_fcov (
   logic [1:0] kq_par_lane = '0;
   logic [3:0] kq_par_rstrb = '0;
   logic [1:0] kq_par_st_q = '0;
-  logic [31:0] kq_lat_done_q = '0;
-  logic [7:0] kq_lat_prev = '0;
-  // Sub-window of cp_km_sram_latency: sep_km_fault_inject_rand_test writes 1
-  // through the u_sep_fcov handle while its latency watcher grades the fixed
-  // and the random runs, and 0 before the watcher stops. It gates a sample;
-  // it is never a bin value and drives nothing.
-  int unsigned km_lat_graded = 0;
   logic [10:0] kq_sil = '0;  // clocks of silence after a frame sent while bit 30 is high
   logic kq_unrec_q = 1'b0;
   logic [11:0] kq_st_q = '0;
@@ -38539,7 +38525,7 @@ module sep_fcov (
   always @(posedge clk_i) begin
     logic [7:0] rc, id, msk, pol, sz, wid;
     logic [31:0] arg;
-    logic has_arg, valid, rcmd, jump, lat_new, gw, ofd;
+    logic has_arg, valid, rcmd, jump, gw, ofd;
     logic [2:0] ff, cls;
     logic [3:0] pr, r, rb;
     logic [11:0] st, hi_m, lo_m, ranked;
@@ -38884,22 +38870,6 @@ module sep_fcov (
     end
     if (km_rel_ev && !km_rel_cold && kq_rec_pre && !kq_recov && (km_own_cp || km_own_fi))
       u_sep_km_kmcsr_status_cg.sample(5'd8, 16'd2);
-
-    // ---- SRAM read latency (cp_km_sram_latency) ----
-    lat_new = (km_sram_lat_done_i !== kq_lat_done_q) && !$isunknown(km_sram_lat_done_i);
-    kq_lat_done_q <= km_sram_lat_done_i;
-    // The previous latency holds only a read of the current graded run: it
-    // reads 0, outside 2 to 4, while km_lat_graded is 0, so the pair of
-    // two_values_in_one_run cannot span two runs.
-    if (km_lat_graded == 0) kq_lat_prev <= '0;
-    else if (lat_new && !$isunknown(km_sram_lat_i)) kq_lat_prev <= km_sram_lat_i;
-    if (lat_new && !$isunknown(km_sram_lat_i)) begin
-      if (km_own_fi && (km_lat_graded != 0) && (km_sram_lat_i <= 8'd4))
-        u_sep_km_memory_boot_cg.sample(5'd8, 16'(km_sram_lat_i));
-      if (km_own_fi && (km_lat_graded != 0) && (km_sram_lat_i >= 8'd2) && (km_sram_lat_i <= 8'd4) &&
-          (kq_lat_prev >= 8'd2) && (kq_lat_prev <= 8'd4) && (km_sram_lat_i != kq_lat_prev))
-        u_sep_km_memory_boot_cg.sample(5'd8, 16'd9);
-    end
 
     // ---- HK-PAR parity flips (cp_if_parity): the lane that the hook
     // flipped and the KM checked, then the parity bit of that memory ----

@@ -410,20 +410,6 @@ def set_dma_smc_cpu_pass(passed: bool, log=None) -> bool:
     return _set_bound("dma_smc_cpu_pass", int(bool(passed)), "FCOV-DMA-SMC-CPU-PASS", log)
 
 
-def set_km_lat_graded(on: bool, log=None) -> bool:
-    """Write ``u_sep_fcov.km_lat_graded`` (1 while the latency watcher grades, else 0).
-
-    The sub-window of ``sep_km_memory_boot_cg.cp_km_sram_latency``. The KM fault
-    leaf writes 1 after its latency watcher starts on the fixed and the random
-    latency runs, and 0 before the watcher stops. The bins sample only while it
-    is 1 inside the owner window, so a read that no latency check grades (the
-    L = 1 control run, the fatal points, a boot) fills no bin. Same rules as
-    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
-    without the variable is a testbench error.
-    """
-    return _set_bound("km_lat_graded", int(bool(on)), "FCOV-KM-LAT-GRADED", log)
-
-
 def set_km_strm_pass(passed: bool, log=None) -> bool:
     """Write ``u_sep_fcov.km_strm_pass`` (1 after the check passes, else 0).
 
