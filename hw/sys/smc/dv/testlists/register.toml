@@ -46,6 +46,15 @@ tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
+# Sub-word reads of 133 register-block instances, strobed FILTER_CONFIG writes, window sweeps.
+name = "smc_regblock_subword_strobe_sweep_test"
+module = "smc_regblock_subword_strobe_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_periph_regblock_sweep_test"
 module = "smc_periph_regblock_sweep_test"
 seed = 1

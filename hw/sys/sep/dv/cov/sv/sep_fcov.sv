@@ -374,10 +374,6 @@ module sep_fcov (
   input sep_pkg::sep_32_32_axil_resp_t     wdt_axil_resp_i,
   input tlul_pkg::tl_h2d_t                 wdt_tl_h2d_i,
   input tlul_pkg::tl_d2h_t                 wdt_tl_d2h_i,
-  // test_en_i consumer pins, bit 0 the clock gater, bit 1 the AXI cells:
-  // every pin of the class at 1, every pin of the class at 0.
-  input wire [1:0]           te_pins_one_i,
-  input wire [1:0]           te_pins_zero_i,
 
   // Memory, boot, reset taps of the CPU path, the memory macros and the
   // debug interface (docs/SEP_FCOV.adoc, memory, boot, reset groups,
@@ -591,6 +587,8 @@ module sep_fcov (
   // every per-channel tap: 0 RMA_SIP, 1 RMA_CHIPLET, 2 SEC_DIS.
   input sep_efuse_pkg::fuse_command_req_t   shim_cmd_i,      // sep efuse_shim_command_req_o
   input sep_efuse_pkg::fuse_command_resp_t  shim_resp_i,     // sep efuse_shim_command_resp_i
+  input wire                                sense_fsm_resp_v_i,  // efuse_shadow_resp_valid_o
+  input wire                                sense_fsm_done_i,    // efuse_shadow_sense_done_o
   input wire [sep_efuse_pkg::NumEfuseBits-1:0] efuse_shadow_i,   // efuse_shadow_probe_o (masked)
   input wire [sep_efuse_pkg::NumEfuseBits-1:0] stored_shadow_i,  // EFUSE_CTRL shadow_efuse (unmasked)
   input wire [63:0]                         feat_ctrl_i,     // lcc_feat_ctrl_probe_o
@@ -4403,6 +4401,17 @@ module sep_fcov (
   // records the LC_STATE read response while sensing is still open.
   // reach records an OKAY SW_RESET_N read in that window.
   wire sdo_own_ovr = (graded_owner == FcovOwnSepSecDisOverrideTest);
+  // Pass label of the SEC_DIS override leaf: bit 0 cp_alone[override_open],
+  // bit 1 x_secdis_stm_feat[secure_tm_0]. The leaf writes a bit after the
+  // check that grades that point passes (CHK-OVR-AFTER, CHK-OVERRIDE-TM0) and
+  // 0 after. Each event inside the window of the leaf is held as pending and
+  // samples only on the rise of its bit; a closed window drops it. It gates a
+  // sample; it is never a DUT value and drives nothing.
+  int unsigned ovr_pass = 0;
+  logic [1:0] ovr_pass_q = '0;
+  wire [1:0] ovr_pass_rise = 2'(ovr_pass) & ~ovr_pass_q;
+  always @(posedge clk_i) ovr_pass_q <= 2'(ovr_pass);
+  logic sdo_alone_pend;
 
   covergroup sep_sec_dis_boot_cg with function sample (
       logic hold,
@@ -4411,7 +4420,8 @@ module sep_fcov (
       logic sec_dis,
       logic [1:0] map_resp,
       logic map_hit,
-      logic reach
+      logic reach,
+      logic alone_open
   );
     option.per_instance = 1;
     option.name = "sep_sec_dis_boot_cg";
@@ -4419,8 +4429,9 @@ module sep_fcov (
     cp_release: coverpoint released {bins override_releases = {1'b1};}
     cp_rehold: coverpoint rehold {bins override_reholds = {1'b1};}
     // The override release sampled with SEC_DIS off (feature control stays
-    // closed), and in the window of the override leaf with SEC_DIS on.
-    cp_alone: coverpoint sec_dis iff (released && (!sec_dis || sdo_own_ovr)) {
+    // closed). override_open is the held release of the override leaf with
+    // SEC_DIS on, sampled on the rise of ovr_pass bit 0 (alone_open).
+    cp_alone: coverpoint sec_dis iff ((released && !sec_dis) || alone_open) {
       bins override_closed = {1'b0}; bins override_open = {1'b1};
     }
     // A refused read is an error path that this group does not grade, so only
@@ -4615,7 +4626,19 @@ module sep_fcov (
       if (sec_dis_hold_ev || sec_dis_release_ev || sec_dis_rehold_ev || sec_dis_map_rd ||
           sec_dis_reach_rd) begin
         u_sep_sec_dis_boot_cg.sample(sec_dis_hold_ev, sec_dis_release_ev, sec_dis_rehold_ev,
-                                     sec_dis_on, lsu_r_resp_i, sec_dis_map_rd, sec_dis_reach_rd);
+                                     sec_dis_on, lsu_r_resp_i, sec_dis_map_rd, sec_dis_reach_rd,
+                                     1'b0);
+      end
+      // cp_alone[override_open]: an override release with SEC_DIS on inside the
+      // window of the override leaf is held, and samples on the rise of
+      // ovr_pass bit 0.
+      if (!sdo_own_ovr) begin
+        sdo_alone_pend <= 1'b0;
+      end else if (ovr_pass_rise[0] && sdo_alone_pend) begin
+        u_sep_sec_dis_boot_cg.sample(1'b0, 1'b0, 1'b0, 1'b1, 2'b00, 1'b0, 1'b0, 1'b1);
+        sdo_alone_pend <= 1'b0;
+      end else if (sec_dis_release_ev && sec_dis_on) begin
+        sdo_alone_pend <= 1'b1;
       end
       if (dma_copy_done || dma_hash_done) begin
         u_sep_dma_completion_route_cg.sample(dma_irq_done, dma_hs_q);
@@ -4629,6 +4652,8 @@ module sep_fcov (
         if (mbox_ch_raise[ch]) u_sep_mailbox_channel_cg.sample(3'(ch), 1'b0);
         if (mbox_ch_clear[ch]) u_sep_mailbox_channel_cg.sample(3'(ch), 1'b1);
       end
+    end else begin
+      sdo_alone_pend <= 1'b0;
     end
   end
 
@@ -14119,6 +14144,18 @@ module sep_fcov (
   wire mr_own_cgate = (graded_owner == FcovOwnSepClockGateControlTest);
   wire mr_own_lane = (graded_owner == FcovOwnSepAxiPartialLaneReadTest);
   wire mr_own_efimg = (graded_owner == FcovOwnSepEfuseImageTest);
+  // Pass label of the sep_efuse_image_test bins cp_presense_feat
+  // [invalid_profile_zero] and cp_sense_surface[status1_port1]: each legal
+  // outcome inside the window is held as pending and samples only when
+  // efimg_pass rises. The leaf writes 1 after the owning check passes and 0
+  // before its next graded step. It gates a sample; it is never a DUT value
+  // and drives nothing. An illegal outcome samples at once.
+  int unsigned efimg_pass = 0;
+  logic efimg_pass_q = 1'b0;
+  logic mr_ss1_pend = 1'b0;
+  logic ef_pz_pend = 1'b0;
+  wire efimg_pass_rise = (efimg_pass != 0) && !efimg_pass_q;
+  always @(posedge clk_i) efimg_pass_q <= (efimg_pass != 0);
 
   localparam realtime MrEdgeTol = 1.0;  // 1 ps with `timescale 1ps/1fs
   localparam int unsigned MrHeldK = 401;  // cp_release_order K, from 401 to 514
@@ -14137,7 +14174,6 @@ module sep_fcov (
   localparam int unsigned MrStmSenseWin = 8;  // cycles after the sense-done rise
   localparam int unsigned MrStmHold = 64;  // hold after a strap change
   localparam int unsigned MrStmSettle = 8;  // hold after a non-sampling event
-  localparam int unsigned MrTeSettle = 2;  // test_en_i to consumer pins
   localparam int unsigned MrRcReads = 16;  // reads that a REFERENCE_COUNTER arm waits
   localparam int unsigned MrRcCarryReads = 64;  // reads that a carry arm waits
   localparam longint unsigned MrRcSpan = 64'h10_0000;  // a read in [W, W + 2^20) took W
@@ -14454,10 +14490,11 @@ module sep_fcov (
       bins other_address = {2'd1};
       illegal_bins retired_in_reset = {2'd2};
     }
-    // SEP_FUSE_SENSE_STATUS bit 0 read with the port at 0, or with the port
-    // at 1 for MrSenseSettle cycles.
+    // SEP_FUSE_SENSE_STATUS bit 0 read with the port at 1 for MrSenseSettle
+    // cycles. A read with the port at 0 has no specified answer (the register
+    // block is in the sep_reset_n domain), so status0_port0 is not graded.
     cp_sense_surface: coverpoint s.ss iff (s.ss_v) {
-      bins status0_port0 = {2'b00};
+      ignore_bins status0_port0 = {2'b00};
       bins status1_port1 = {2'b11};
       illegal_bins status_differs = {2'b01, 2'b10};
     }
@@ -14747,7 +14784,8 @@ module sep_fcov (
       bins spaced_8 = {1'b0}; bins spaced_9_to_12 = {1'b1};
     }
     // CLOCK_GATE_CTRL: the next read after a write returns the written
-    // pka_cg_enable bit and 0 in every other bit.
+    // pka_cg_enable bit. The Reserved bits 63:1 have no stated read value and
+    // do not take part.
     cp_clock_gate_ctrl: coverpoint s.cg iff (s.cg_v) {
       bins write1_reads1 = {1'b1}; bins write0_reads0 = {1'b0};
     }
@@ -16021,7 +16059,17 @@ module sep_fcov (
   logic mr_ta_on = 1'b0;
   logic mr_ta_clean = 1'b0;
   logic mr_ta_arm = 1'b0;
-  int unsigned mr_te_st = 0;
+  // cp_test_en_consumer samples from te_pin_pass, the pass label of
+  // sep_test_en_pin_reach_test. Bit {test_en_i, class} (class 0 clock gater,
+  // 1 AXI cell) set means that every graded pin of the class equaled test_en_i
+  // PIN_BOUND clk_i cycles after that edge. The leaf writes the label through
+  // the u_sep_fcov handle only after its pin check passes on both edges, and
+  // 0 when it opens and before it closes its window. A rise of a bit inside
+  // the window samples its cell: the bit that rises names the cell, the one
+  // pass label that is also a bin value. It is never a DUT value and drives
+  // nothing.
+  int unsigned te_pin_pass = 0;
+  logic [3:0] mr_te_pass_q = '0;
   always @(posedge clk_i) begin
     logic tv;
     tv = (cpu_trace_valid_i === 1'b1);
@@ -16092,15 +16140,14 @@ module sep_fcov (
       u_sep_boot_milestone_cg.sample(e);
       mr_dbg_s(2'd2, 5'd1);
     end
-    // cp_test_en_consumer: every pin of a class equals test_en_i after the
-    // settle.
-    mr_te_st <= (mr_te != mr_te_q) ? 0 : ((mr_te_st < MrTeSettle + 1) ? mr_te_st + 1 : mr_te_st);
-    if (mr_own_tepin && (mr_te_st == MrTeSettle)) begin
-      for (int c = 0; c < 2; c++) begin
-        if (mr_te ? te_pins_one_i[c] : te_pins_zero_i[c]) begin
+    // cp_test_en_consumer: one sample per rise of a te_pin_pass bit.
+    mr_te_pass_q <= 4'(te_pin_pass);
+    if (mr_own_tepin) begin
+      for (int k = 0; k < 4; k++) begin
+        if (te_pin_pass[k] && !mr_te_pass_q[k]) begin
           mr_tie_t e;
           e      = '0;
-          e.tc   = {mr_te, 1'(c)};
+          e.tc   = 2'(k);
           e.tc_v = 1'b1;
           u_sep_static_tieoff_cg.sample(e);
         end
@@ -17926,6 +17973,12 @@ module sep_fcov (
   logic mr_sh_on = 1'b0, mr_shx_bad = 1'b0;
   logic [255:0] mr_sh_dig = '0;
   logic mr_rs_arm = 1'b0;
+  // Pass label of sep_boot_release_terms_test: bit 0 after CHK-REL-GATE. The
+  // leaf writes it through the u_sep_fcov handle and 0 at the start of each
+  // epoch. It gates a sample; it is never a DUT value and drives nothing.
+  int unsigned rel_terms_pass = 0;
+  logic mr_rel_pass_q = 1'b0;
+  logic mr_rs_pend = 1'b0;  // release_after_sense_rise seen, waits for bit 0
   logic [1:0] mr_cg_pend = '0;  // {pending, written pka_cg_enable}
   logic mr_sd_pend = 1'b0;
   logic [31:0] mr_sd_w = '0;
@@ -18057,20 +18110,27 @@ module sep_fcov (
 
     // cp_sense_surface: bit 0 of SEP_FUSE_SENSE_STATUS against the port.
     mr_ss_set <= !mr_fuse ? 0 : ((mr_ss_set < MrSenseSettle) ? mr_ss_set + 1 : mr_ss_set);
+    if (in_reset || !mr_own_efimg) begin
+      mr_ss1_pend <= 1'b0;
+    end else if (efimg_pass_rise && mr_ss1_pend) begin
+      mr_boot_t e;
+      e      = '0;
+      e.ss   = 2'b11;
+      e.ss_v = 1'b1;
+      u_sep_boot_milestone_cg.sample(e);
+      mr_ss1_pend <= 1'b0;
+    end
     if (rd_okay && (ar_addr_q == MrSepSense)) begin
-      if (!mr_fuse && mr_own_rel) begin
-        mr_boot_t e;
-        e      = '0;
-        e.ss   = {1'b0, rd_data[0]};
-        e.ss_v = 1'b1;
-        u_sep_boot_milestone_cg.sample(e);
-      end
       if (mr_fuse && (mr_ss_set == MrSenseSettle) && mr_own_efimg) begin
-        mr_boot_t e;
-        e      = '0;
-        e.ss   = {1'b1, rd_data[0]};
-        e.ss_v = 1'b1;
-        u_sep_boot_milestone_cg.sample(e);
+        if (rd_data[0] === 1'b1) begin
+          mr_ss1_pend <= 1'b1;
+        end else begin
+          mr_boot_t e;
+          e      = '0;
+          e.ss   = {1'b1, rd_data[0]};
+          e.ss_v = 1'b1;
+          u_sep_boot_milestone_cg.sample(e);
+        end
       end
     end
 
@@ -18104,12 +18164,22 @@ module sep_fcov (
     end else if (!mr_fuse_q && mr_fuse && mr_ext && !mr_srn && !mr_sovr && !mr_secdis) begin
       mr_rs_arm <= 1'b1;
     end else if (mr_rs_arm && !mr_srn_q && mr_srn) begin
+      mr_rs_pend <= 1'b1;
+      mr_rs_arm  <= 1'b0;
+    end
+
+    // The pending release_after_sense_rise event samples only when its pass
+    // bit rises inside the window of the owner.
+    mr_rel_pass_q <= rel_terms_pass[0];
+    if (!mr_own_rel || !mr_rst) begin
+      mr_rs_pend <= 1'b0;
+    end else if (rel_terms_pass[0] && !mr_rel_pass_q && mr_rs_pend) begin
       mr_src_t e;
       e      = '0;
       e.ro   = 2'd3;
       e.ro_v = 1'b1;
       u_sep_reset_source_cg.sample(e);
-      mr_rs_arm <= 1'b0;
+      mr_rs_pend <= 1'b0;
     end
 
     // cp_clock_gate_ctrl and cp_sw_debug: a write and the next read of the
@@ -18117,7 +18187,7 @@ module sep_fcov (
     if (wr_okay && (aw_addr_q == MrClkGate) && wr_strb[0]) begin
       mr_cg_pend <= {1'b1, wr_data[0]};
     end else if (rd_okay && (ar_addr_q == MrClkGate)) begin
-      if (mr_cg_pend[1] && mr_own_cgate && (rd_data == {31'd0, mr_cg_pend[0]})) begin
+      if (mr_cg_pend[1] && mr_own_cgate && (rd_data[0] == mr_cg_pend[0])) begin
         mr_cc_t e;
         e      = '0;
         e.cg   = mr_cg_pend[0];
@@ -18162,6 +18232,17 @@ module sep_fcov (
   int unsigned mr_ls_cnt = 0;
   logic mr_sd_strap = 1'b0;
   wire mr_own_stitch = (graded_owner == FcovOwnSepEfuseLccLcStateStitchTest);
+  // Pass label of the LC_STATE stitch leaf: the leaf writes it through the
+  // u_sep_fcov handle, 0 at the start of a state check and 1 after every check
+  // of that state passed. The sense-done cells of cp_stm_event_x_strap and the
+  // test_dev_to_prod_prog cell of cp_transition are held as pending and sample
+  // only when it rises. It gates a sample; it is never a DUT value and drives
+  // nothing.
+  int unsigned stitch_state_pass = 0;
+  logic stitch_pass_q = 1'b0;
+  wire stitch_pass_rise = (stitch_state_pass != 0) && !stitch_pass_q;
+  always @(posedge clk_i) stitch_pass_q <= (stitch_state_pass != 0);
+  logic [3:0] mr_sdx_pend = '0;  // pending sense-done event code, 0 for none
   always @(posedge clk_i) begin
     logic chg;
     logic in_win_ev;
@@ -18266,16 +18347,21 @@ module sep_fcov (
         u_sep_documented_absence_cg.sample(e);
       end else mr_ls_cnt <= mr_ls_cnt + 1;
     end
-    // Sense-done sample: MrStmSenseWin cycles after the sense-done rise,
-    // secure_tm_o equals the strap at the rise and SEC_DIS is 0.
+    // Sense-done event: MrStmSenseWin cycles after the sense-done rise,
+    // secure_tm_o equals the strap at the rise and SEC_DIS is 0. It is held
+    // pending and samples when the stitch pass label rises; a reset or a
+    // closed window drops it.
     if (!mr_fuse_q && mr_fuse) mr_sd_strap <= mr_strap;
-    if ((mr_st_sense == MrStmSenseWin + 1) && mr_rst && mr_own_stitch && !mr_secdis &&
-        (mr_stm == mr_sd_strap)) begin
+    if (!mr_rst || !mr_own_stitch) mr_sdx_pend <= '0;
+    else if ((mr_st_sense == MrStmSenseWin + 1) && !mr_secdis && (mr_stm == mr_sd_strap))
+      mr_sdx_pend <= mr_sd_strap ? 4'd8 : 4'd7;
+    else if (stitch_pass_rise && (mr_sdx_pend != '0)) begin
       mr_abs_t e;
       e      = '0;
-      e.ev   = mr_sd_strap ? 4'd8 : 4'd7;
+      e.ev   = mr_sdx_pend;
       e.ev_v = 1'b1;
       u_sep_documented_absence_cg.sample(e);
+      mr_sdx_pend <= '0;
     end
     // cp_stm_strap_stability: after a capture, a strap change and a hold.
     if (!mr_rst || !mr_own_stm) mr_ss_on <= 1'b0;
@@ -18509,15 +18595,78 @@ module sep_fcov (
 
   // Stimulus label of cp_rom_noecc: the number of flipped bits (1 or 2) of the
   // stored ROM word that the boot ROM leaf reads next, written through the
-  // u_sep_fcov handle before the load and 0 after it. It gates a sample, it
-  // is never a bin value, and it drives nothing.
+  // u_sep_fcov handle before the load and 0 after it. Pass label
+  // rom_noecc_pass: the leaf writes 1 after CHK-ROM-NOECC of the graded
+  // instance passes and 0 after it. Each load outcome is held as pending (a
+  // count per flip class) and samples only on the rise of rom_noecc_pass; a
+  // reset or the window close drops the pending outcomes. Both labels gate a
+  // sample, are never a bin value, and drive nothing.
   int unsigned rom_flip_bits = 0;
+  int unsigned rom_noecc_pass = 0;
+  // Pass label rom_ap_pass of the other points of the boot ROM leaf:
+  // cp_mem_x_class (ROM cells), cp_access_size, cp_macro_if (ROM cells),
+  // cp_otf_reset_x_path[rom_read], cp_rom_write_master[cpu_store_readback_only]
+  // and cp_rom_write_response. Inside the window of that leaf each legal
+  // outcome of these points is counted as pending and does not sample. The
+  // leaf writes 1 after the checks of a graded leg pass and 0 after it; the
+  // rise samples every pending count, also after the window closed. The first
+  // clk_i edge of the next window drops the pending counts, so the outcomes of
+  // a leg whose check fails never sample (the leaf opens no window after a
+  // FAIL), and a leg opens its window at least one clk_i edge before its first
+  // outcome (the rst_ni fall of the reset in flight). An illegal
+  // outcome samples at once. The label gates a sample, is never a bin value
+  // and drives nothing.
+  int unsigned rom_ap_pass = 0;
+  logic mm_ra_pass_q = 1'b0;
+  logic mm_ra_own_q = 1'b0;
+  int unsigned mm_ra_ap[512] = '{default: 0};  // pending count per {point, value} of mm_ap
+  int unsigned mm_ra_abs[16] = '{default: 0};  // pending count per {point, value} of mm_abs
+  task automatic mm_ap_rom(input logic [3:0] pt, input logic [4:0] v);
+    mm_ra_ap[{pt, v}] = mm_ra_ap[{pt, v}] + 1;
+  endtask
+  task automatic mm_abs_rom(input logic [1:0] pt, input logic [1:0] v);
+    mm_ra_abs[{pt, v}] = mm_ra_abs[{pt, v}] + 1;
+  endtask
+  always @(posedge clk_i) begin
+    mm_ra_pass_q <= (rom_ap_pass != 0);
+    mm_ra_own_q  <= mm_own_rom;
+    if (mm_own_rom && !mm_ra_own_q) begin
+      foreach (mm_ra_ap[i]) mm_ra_ap[i] = 0;
+      foreach (mm_ra_abs[i]) mm_ra_abs[i] = 0;
+    end else if ((rom_ap_pass != 0) && !mm_ra_pass_q) begin
+      for (int unsigned i = 0; i < 512; i++) begin
+        for (int unsigned k = 0; k < mm_ra_ap[i]; k++) mm_ap(4'(i >> 5), 5'(i));
+        mm_ra_ap[i] = 0;
+      end
+      for (int unsigned i = 0; i < 16; i++) begin
+        for (int unsigned k = 0; k < mm_ra_abs[i]; k++) mm_abs(2'(i >> 2), 2'(i));
+        mm_ra_abs[i] = 0;
+      end
+    end
+  end
+  logic mm_rn_pass_q = 1'b0;
+  int unsigned mm_rn_pend1 = 0;
+  int unsigned mm_rn_pend2 = 0;
   logic mm_rn_arm = 1'b0;
   logic mm_rn_two = 1'b0;
   int unsigned mm_rn_cnt = 0;
   logic [63:0] mm_rn_mdata = '0;
   always @(posedge clk_i) begin
     if (rom_rvalid_i === 1'b1) mm_rn_mdata <= rom_rdata_i;
+    mm_rn_pass_q <= (rom_noecc_pass != 0);
+    if (in_reset || !mm_own_rom) begin
+      mm_rn_pend1 <= 0;
+      mm_rn_pend2 <= 0;
+    end else if ((rom_noecc_pass != 0) && !mm_rn_pass_q) begin
+      mm_ap_t e;
+      e      = '0;
+      e.rn_v = 1'b1;
+      for (int unsigned i = 0; i < mm_rn_pend1; i++) u_sep_mem_aperture_cg.sample(e);
+      e.rn = 1'b1;
+      for (int unsigned i = 0; i < mm_rn_pend2; i++) u_sep_mem_aperture_cg.sample(e);
+      mm_rn_pend1 <= 0;
+      mm_rn_pend2 <= 0;
+    end
     if (in_reset || !mm_own_rom) begin
       mm_rn_arm <= 1'b0;
     end else if ((lsu_rom_resp_i.r_valid === 1'b1) && (lsu_rom_req_i.r_ready === 1'b1) &&
@@ -18530,11 +18679,8 @@ module sep_fcov (
       if (cpu_trace_exc_i === 1'b1) begin
         mm_rn_arm <= 1'b0;
       end else if (mm_rn_cnt == MmTrapWait) begin
-        mm_ap_t e;
-        e      = '0;
-        e.rn   = mm_rn_two;
-        e.rn_v = 1'b1;
-        u_sep_mem_aperture_cg.sample(e);
+        if (mm_rn_two) mm_rn_pend2 <= mm_rn_pend2 + 1;
+        else mm_rn_pend1 <= mm_rn_pend1 + 1;
         mm_rn_arm <= 1'b0;
       end else begin
         mm_rn_cnt <= mm_rn_cnt + 1;
@@ -18994,22 +19140,41 @@ module sep_fcov (
   // base), after a reset event that is not a TAP reset (hw/sys/sep/doc/cpu.adoc,
   // reset vector persists until rewritten or a TAP reset). Class: 2 an
   // rst_ni fall, else 1 a dbg_rstb_i pulse, else 0 a wdt_rst_ni fall since
-  // the previous first fetch. Owner sep_cpu_reset_entry_test.
+  // the previous first fetch. Owner sep_cpu_reset_entry_test. The class of
+  // the latest release is held as pending and samples only when
+  // rstvec_persist_pass rises: the leaf writes it through the u_sep_fcov
+  // handle after a persistence check of that release passes, and 0 before the
+  // next leg. It gates a sample; it is never a DUT value and drives nothing.
+  int unsigned rstvec_persist_pass = 0;
+  logic fd_rp_pass_q = 1'b0;
+  logic fd_rp_pend_v = 1'b0;
+  logic [3:0] fd_rp_pend = '0;
   logic fd_rp_cpurn_q = 1'b0;
   logic fd_rp_arm_q = 1'b0;
   logic fd_rp_wdt_q = 1'b0;
   logic fd_rp_dbg_q = 1'b0;
   logic fd_rp_rst_q = 1'b0;
   always @(posedge clk_i) begin
+    fd_rp_pass_q <= (rstvec_persist_pass != 0);
+    if ((rstvec_persist_pass != 0) && !fd_rp_pass_q && fd_rp_pend_v &&
+        (graded_owner == FcovOwnSepCpuResetEntryTest)) begin
+      fd_dbg(4'd7, fd_rp_pend);
+      fd_rp_pend_v <= 1'b0;
+    end
     fd_rp_cpurn_q <= (cpu_reset_n_i === 1'b1);
     if (wdt_rst_n_i === 1'b0) fd_rp_wdt_q <= 1'b1;
     if (dbg_rstb_i === 1'b0) fd_rp_dbg_q <= 1'b1;
     if (rst_ni === 1'b0) fd_rp_rst_q <= 1'b1;
-    if (!fd_rp_cpurn_q && (cpu_reset_n_i === 1'b1)) fd_rp_arm_q <= 1'b1;
-    else if ((cpu_trace_valid_i === 1'b1) && (cpu_reset_n_i === 1'b1) && fd_rp_arm_q) begin
+    if (!fd_rp_cpurn_q && (cpu_reset_n_i === 1'b1)) begin
+      fd_rp_arm_q <= 1'b1;
+      fd_rp_pend_v <= 1'b0;
+    end else if ((cpu_trace_valid_i === 1'b1) && (cpu_reset_n_i === 1'b1) && fd_rp_arm_q) begin
       if ((graded_owner == FcovOwnSepCpuResetEntryTest) && ({dmi_rst_vec_i, 1'b0} != BootRomBase) &&
-          (cpu_trace_addr_i == {dmi_rst_vec_i, 1'b0}) && (fd_rp_wdt_q || fd_rp_dbg_q || fd_rp_rst_q))
-        fd_dbg(4'd7, fd_rp_rst_q ? 4'd2 : (fd_rp_dbg_q ? 4'd1 : 4'd0));
+          (cpu_trace_addr_i == {dmi_rst_vec_i, 1'b0}) &&
+          (fd_rp_wdt_q || fd_rp_dbg_q || fd_rp_rst_q)) begin
+        fd_rp_pend   <= fd_rp_rst_q ? 4'd2 : (fd_rp_dbg_q ? 4'd1 : 4'd0);
+        fd_rp_pend_v <= 1'b1;
+      end
       fd_rp_arm_q <= 1'b0;
       fd_rp_wdt_q <= 1'b0;
       fd_rp_dbg_q <= 1'b0;
@@ -19062,13 +19227,13 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   always @(posedge clk_i) begin
     if (!in_reset && mm_own_rom && ar_hs && mm_rom(lsu_ar_addr_i) && (lsu_ar_size_i <= 3'd1)) begin
-      mm_ap(4'd1, {4'd0, lsu_ar_size_i[0]});
-      if ({lsu_ar_addr_i[31:3], 3'b000} == BootRomBase) mm_ap(4'd0, {3'd0, lsu_ar_size_i[0]});
-      if ({lsu_ar_addr_i[31:3], 3'b000} == MmRomLast) mm_ap(4'd0, {3'd1, lsu_ar_size_i[0]});
+      mm_ap_rom(4'd1, {4'd0, lsu_ar_size_i[0]});
+      if ({lsu_ar_addr_i[31:3], 3'b000} == BootRomBase) mm_ap_rom(4'd0, {3'd0, lsu_ar_size_i[0]});
+      if ({lsu_ar_addr_i[31:3], 3'b000} == MmRomLast) mm_ap_rom(4'd0, {3'd1, lsu_ar_size_i[0]});
     end
     if (mm_own_rom && b_any && mm_rom(aw_addr_q) && (wr_lanes inside {4'd1, 4'd2})) begin
-      mm_ap(4'd1, {4'd0, (wr_lanes == 4'd2)});
-      if (lsu_b_resp_i != 2'b01) mm_abs(2'd1, 2'd0);
+      mm_ap_rom(4'd1, {4'd0, (wr_lanes == 4'd2)});
+      if (lsu_b_resp_i != 2'b01) mm_abs_rom(2'd1, 2'd0);
     end
   end
 
@@ -19076,8 +19241,8 @@ module sep_fcov (
   // cp_macro_if: request and response phases of the memory macro ports.
   // ---------------------------------------------------------------------
   always @(posedge clk_i) begin
-    if (mm_own_rom && (rom_req_i === 1'b1)) mm_ap(4'd2, 5'd0);
-    if (mm_own_rom && (rom_rvalid_i === 1'b1)) mm_ap(4'd2, 5'd1);
+    if (mm_own_rom && (rom_req_i === 1'b1)) mm_ap_rom(4'd2, 5'd0);
+    if (mm_own_rom && (rom_rvalid_i === 1'b1)) mm_ap_rom(4'd2, 5'd1);
     if (mm_own_sram && (sram_req_i === 1'b1)) mm_ap(4'd2, 5'd2);
     if (mm_own_sram && (sram_rvalid_i === 1'b1)) mm_ap(4'd2, 5'd3);
     if (mm_own_tdma && ((|tcm_i_clken_i === 1'b1) || (|tcm_d_clken_i === 1'b1))) mm_ap(4'd2, 5'd4);
@@ -19264,7 +19429,7 @@ module sep_fcov (
       mm_st_sram <= mm_or_pend || (mm_ow_aw && mm_ow_w);
     end
     if (mm_own_rom && mm_rom_pend) begin
-      mm_ap(4'd5, 5'b0_10_00);
+      mm_ap_rom(4'd5, 5'b0_10_00);
       mm_st_rom <= 1'b1;
     end
   end
@@ -19752,7 +19917,7 @@ module sep_fcov (
       if (b_hs) mm_sw_b <= 1'b1;
       if (mm_sw_b) begin
         if (mm_sw_cnt == MmStoreQuiet) begin
-          if (!mm_sw_bad) mm_abs(2'd0, 2'd0);
+          if (!mm_sw_bad) mm_abs_rom(2'd0, 2'd0);
           mm_sw_on <= 1'b0;
         end
         mm_sw_cnt <= mm_sw_cnt + 1;
@@ -30568,6 +30733,8 @@ module sep_fcov (
     logic sp_v;  // x_secret_probe: {field, nonzero}
     logic [1:0] sk;
     logic sk_v;  // x_secret_read_kept: field
+    logic [4:0] sw;
+    logic sw_v;  // x_shadow_wr_block: {bad, target, source, strap}
   } ef_stm_t;
 
   covergroup sep_efuse_secure_tm_cg with function sample (ef_stm_t s);
@@ -30591,6 +30758,14 @@ module sep_fcov (
       bins sip_uid = {2'd1};
       bins sys_uid = {2'd2};
       bins class_key = {2'd3};
+    }
+    // Target 0 LOCKS, 1 LOCKS_SPARE, 2 SIP_DIS, 3 SYS_DIS; source 0 frontdoor,
+    // 1 JTAG; strap 0: the word reads back as before | written bits, strap 1:
+    // the word reads back unchanged.
+    x_shadow_wr_block: coverpoint s.sw iff (s.sw_v) {
+      bins cells[] = {[5'd0 : 5'd15]};
+      illegal_bins strap0_not_landed = {5'd16, 5'd18, 5'd20, 5'd22, 5'd24, 5'd26, 5'd28, 5'd30};
+      illegal_bins strap1_changed = {5'd17, 5'd19, 5'd21, 5'd23, 5'd25, 5'd27, 5'd29, 5'd31};
     }
   endgroup
 
@@ -30897,6 +31072,372 @@ module sep_fcov (
     end
   end
 
+  // Held samples of the interface status, lock slot, token channel, secure test
+  // mode and shim response leaves. While the window of one of those leaves is
+  // open, a sample of sep_efuse_if_status_cg, sep_efuse_lock_policy_cg,
+  // sep_token_channel_cg, sep_efuse_secure_tm_cg, sep_efuse_jtag_policy_cg,
+  // sep_efuse_field_value_cg, sep_efuse_map_geometry_cg or
+  // sep_sec_dis_robustness_cg is not taken at the event. It is held with the
+  // step tag that the leaf wrote to ef_hold_tag before the graded step, and it
+  // samples only when ef_hold_pass changes to that tag while the window of one
+  // of those leaves is open: the leaf writes the tag after every check of that
+  // step passed, then 0. A window close does not drop a held event; the step
+  // tags of a leaf are distinct, so an event releases only on a pass of its
+  // own step. An event with tag 0 (no graded step) is dropped. A held event whose
+  // tag never passes never samples. The points that have their own pass label
+  // (cp_token_hmac_overlap, cp_go_while_busy, x_exempt_write, x_shadow_wr_block)
+  // sample at that label and are not held. A value in an illegal_bins entry is
+  // never held: the point that carries it samples at the event, so a wrong DUT
+  // stays visible; only the legal points of the event wait for the release.
+  // Both variables gate a sample; they are never a DUT value and drive nothing.
+  int unsigned ef_hold_tag = 0;
+  int unsigned ef_hold_pass = 0;
+  int unsigned ef_hold_pass_q = 0;
+  wire ef_hold_own = ef_own_ifs || ef_own_lock || ef_own_tch || ef_own_stm || ef_own_shim;
+  ef_ifs_t ef_hq_ifs[$];
+  int unsigned ef_ht_ifs[$];
+  ef_lock_t ef_hq_lk[$];
+  int unsigned ef_ht_lk[$];
+  ef_tch_t ef_hq_tc[$];
+  int unsigned ef_ht_tc[$];
+  ef_stm_t ef_hq_stm[$];
+  int unsigned ef_ht_stm[$];
+  ef_jtg_t ef_hq_jtg[$];
+  int unsigned ef_ht_jtg[$];
+  ef_fld_t ef_hq_fld[$];
+  int unsigned ef_ht_fld[$];
+  ef_geo_t ef_hq_geo[$];
+  int unsigned ef_ht_geo[$];
+  ef_rob_t ef_hq_rob[$];
+  int unsigned ef_ht_rob[$];
+
+  task automatic ef_put_ifs(input ef_ifs_t e);
+    ef_ifs_t ill;
+    if (!ef_hold_own) begin
+      u_sep_efuse_if_status_cg.sample(e);
+      return;
+    end
+    ill = '0;
+    // cp_flags, x_case_flags, x_case_cmd and x_prog_lifecycle illegal_bins.
+    if (e.fl_v && ((e.fl == 4'b0011) || (e.fl inside {[4'b0100 : 4'b0111], [4'b1001 : 4'b1011],
+                                                       [4'b1101 : 4'b1111]}))) begin
+      ill.fl = e.fl;
+      ill.fl_v = 1'b1;
+      e.fl_v = 1'b0;
+      e.fl = '0;
+    end
+    if (e.cf_v && ((e.cf inside {[7'b001_0000 : 7'b001_0111], [7'b001_1001 : 7'b001_1111],
+                                 [7'b010_0000 : 7'b010_1011], [7'b010_1101 : 7'b010_1111],
+                                 [7'b011_0000 : 7'b011_0001], [7'b011_0011 : 7'b011_1111],
+                                 7'b100_0000, [7'b100_0010 : 7'b100_1111]}) ||
+                   ((e.cf[6:4] == 3'b101) && !e.cf[0]))) begin
+      ill.cf = e.cf;
+      ill.cf_v = 1'b1;
+      e.cf_v = 1'b0;
+      e.cf = '0;
+    end
+    if (e.cc_v && e.cc[0] && (e.cc[2:1] != 2'b11)) begin
+      ill.cc = e.cc;
+      ill.cc_v = 1'b1;
+      e.cc_v = 1'b0;
+      e.cc = '0;
+    end
+    if (e.pl_v && e.pl[0]) begin
+      ill.pl = e.pl;
+      ill.pl_v = 1'b1;
+      e.pl_v = 1'b0;
+      e.pl = '0;
+    end
+    if (ill != '0) u_sep_efuse_if_status_cg.sample(ill);
+    if (e == '0) return;
+    if (ef_hold_tag != 0) begin
+      ef_hq_ifs.push_back(e);
+      ef_ht_ifs.push_back(ef_hold_tag);
+    end
+  endtask
+  task automatic ef_put_lk(input ef_lock_t e);
+    ef_lock_t ill;
+    if (!ef_hold_own) begin
+      u_sep_efuse_lock_policy_cg.sample(e);
+      return;
+    end
+    ill = '0;
+    // x_slot_prog, x_slot_read, x_kind_op, x_shadow_write_lock, x_lc_prog_gate,
+    // x_exempt_write and cp_locked_field_irq illegal_bins.
+    if (e.sp_v && (e.sp inside {[8'd128 : 8'd207]})) begin
+      ill.sp = e.sp;
+      ill.sp_v = 1'b1;
+      e.sp_v = 1'b0;
+      e.sp = '0;
+    end
+    if (e.sr_v && (e.sr inside {[8'd128 : 8'd207]})) begin
+      ill.sr = e.sr;
+      ill.sr_v = 1'b1;
+      e.sr_v = 1'b0;
+      e.sr = '0;
+    end
+    if (e.ko_v && e.ko[3]) begin
+      ill.ko = e.ko;
+      ill.ko_v = 1'b1;
+      e.ko_v = 1'b0;
+      e.ko = '0;
+    end
+    if (e.sw_v && e.sw[3]) begin
+      ill.sw = e.sw;
+      ill.sw_v = 1'b1;
+      e.sw_v = 1'b0;
+      e.sw = '0;
+    end
+    if (e.lp_v && (e.lp inside {3'b0_0_0, 3'b0_1_1, 3'b1_0_0})) begin
+      ill.lp = e.lp;
+      ill.lp_v = 1'b1;
+      e.lp_v = 1'b0;
+      e.lp = '0;
+    end
+    if (e.xw_v && e.xw[1]) begin
+      ill.xw = e.xw;
+      ill.xw_v = 1'b1;
+      e.xw_v = 1'b0;
+      e.xw = '0;
+    end
+    if (e.lf_v && (e.lf inside {3'b1_0_1, 3'b0_0_1, 3'b1_1_0, 3'b0_1_0})) begin
+      ill.lf = e.lf;
+      ill.lf_v = 1'b1;
+      e.lf_v = 1'b0;
+      e.lf = '0;
+    end
+    if (ill != '0) u_sep_efuse_lock_policy_cg.sample(ill);
+    if (e == '0) return;
+    if (ef_hold_tag != 0) begin
+      ef_hq_lk.push_back(e);
+      ef_ht_lk.push_back(ef_hold_tag);
+    end
+  endtask
+  task automatic ef_put_tc(input ef_tch_t e);
+    ef_tch_t ill;
+    if (!ef_hold_own) begin
+      u_sep_token_channel_cg.sample(e);
+      return;
+    end
+    ill = '0;
+    // cp_code and x_ch_shape illegal_bins.
+    if (e.cd_v && (e.cd inside {[6'h01 : 6'h14], [6'h16 : 6'h29], [6'h2B : 6'h3E]})) begin
+      ill.cd = e.cd;
+      ill.cd_v = 1'b1;
+      e.cd_v = 1'b0;
+      e.cd = '0;
+    end
+    if (e.cs_v && (e.cs inside {[5'd16 : 5'd24]})) begin
+      ill.cs = e.cs;
+      ill.cs_v = 1'b1;
+      e.cs_v = 1'b0;
+      e.cs = '0;
+    end
+    if (ill != '0) u_sep_token_channel_cg.sample(ill);
+    if (e == '0) return;
+    if (ef_hold_tag != 0) begin
+      ef_hq_tc.push_back(e);
+      ef_ht_tc.push_back(ef_hold_tag);
+    end
+  endtask
+  task automatic ef_put_stm(input ef_stm_t e);
+    ef_stm_t ill;
+    if (!ef_hold_own) begin
+      u_sep_efuse_secure_tm_cg.sample(e);
+      return;
+    end
+    ill = '0;
+    // x_prog_block, x_secret_probe and x_shadow_wr_block illegal_bins.
+    if (e.pb_v && (e.pb inside {[5'd16 : 5'd25]})) begin
+      ill.pb = e.pb;
+      ill.pb_v = 1'b1;
+      e.pb_v = 1'b0;
+      e.pb = '0;
+    end
+    if (e.sp_v && e.sp[0]) begin
+      ill.sp = e.sp;
+      ill.sp_v = 1'b1;
+      e.sp_v = 1'b0;
+      e.sp = '0;
+    end
+    if (e.sw_v && e.sw[4]) begin
+      ill.sw = e.sw;
+      ill.sw_v = 1'b1;
+      e.sw_v = 1'b0;
+      e.sw = '0;
+    end
+    if (ill != '0) u_sep_efuse_secure_tm_cg.sample(ill);
+    if (e == '0) return;
+    if (ef_hold_tag != 0) begin
+      ef_hq_stm.push_back(e);
+      ef_ht_stm.push_back(ef_hold_tag);
+    end
+  endtask
+  task automatic ef_put_jtg(input ef_jtg_t e);
+    ef_jtg_t ill;
+    if (!ef_hold_own) begin
+      u_sep_efuse_jtag_policy_cg.sample(e);
+      return;
+    end
+    ill = '0;
+    // x_state_class_op, x_jtag_rlock and x_jtag_presense illegal_bins.
+    if (e.so_v && (e.so inside {[6'd34 : 6'd55]})) begin
+      ill.so = e.so;
+      ill.so_v = 1'b1;
+      e.so_v = 1'b0;
+      e.so = '0;
+    end
+    if (e.jr_v && (e.jr == 2'd2)) begin
+      ill.jr = e.jr;
+      ill.jr_v = 1'b1;
+      e.jr_v = 1'b0;
+      e.jr = '0;
+    end
+    if (e.jp_v && e.jp[1]) begin
+      ill.jp = e.jp;
+      ill.jp_v = 1'b1;
+      e.jp_v = 1'b0;
+      e.jp = '0;
+    end
+    if (ill != '0) u_sep_efuse_jtag_policy_cg.sample(ill);
+    if (e == '0) return;
+    if (ef_hold_tag != 0) begin
+      ef_hq_jtg.push_back(e);
+      ef_ht_jtg.push_back(ef_hold_tag);
+    end
+  endtask
+  task automatic ef_put_fld(input ef_fld_t e);
+    if (!ef_hold_own) u_sep_efuse_field_value_cg.sample(e);
+    else if (ef_hold_tag != 0) begin
+      ef_hq_fld.push_back(e);
+      ef_ht_fld.push_back(ef_hold_tag);
+    end
+  endtask
+  task automatic ef_put_geo(input ef_geo_t e);
+    ef_geo_t ill;
+    if (!ef_hold_own) begin
+      u_sep_efuse_map_geometry_cg.sample(e);
+      return;
+    end
+    ill = '0;
+    // x_win_op_resp illegal_bins.
+    if (e.wr_v && (e.wr inside {6'b0_000_0_0, 6'b0_001_0_0, 6'b0_001_1_0, 6'b0_011_0_0,
+                                6'b0_011_1_0})) begin
+      ill.wr = e.wr;
+      ill.wr_v = 1'b1;
+      e.wr_v = 1'b0;
+      e.wr = '0;
+    end
+    if (ill != '0) u_sep_efuse_map_geometry_cg.sample(ill);
+    if (e == '0) return;
+    if (ef_hold_tag != 0) begin
+      ef_hq_geo.push_back(e);
+      ef_ht_geo.push_back(ef_hold_tag);
+    end
+  endtask
+  task automatic ef_put_rob(input ef_rob_t e);
+    ef_rob_t ill;
+    if (!ef_hold_own) begin
+      u_sep_sec_dis_robustness_cg.sample(e);
+      return;
+    end
+    ill = '0;
+    // x_digest_replay illegal_bins.
+    if (e.dr_v && (e.dr inside {3'b00_1, 3'b01_1, 3'b10_1})) begin
+      ill.dr = e.dr;
+      ill.dr_v = 1'b1;
+      e.dr_v = 1'b0;
+      e.dr = '0;
+    end
+    if (ill != '0) u_sep_sec_dis_robustness_cg.sample(ill);
+    if (e == '0) return;
+    if (ef_hold_tag != 0) begin
+      ef_hq_rob.push_back(e);
+      ef_ht_rob.push_back(ef_hold_tag);
+    end
+  endtask
+
+  // Release of the held samples of one step tag, in event order.
+  always @(posedge clk_i) begin
+    int unsigned t;
+    ef_hold_pass_q <= ef_hold_pass;
+    t = ef_hold_pass;
+    if ((t != ef_hold_pass_q) && (t != 0) && ef_hold_own) begin
+      for (int i = 0; i < ef_hq_ifs.size(); i++) begin
+        if (ef_ht_ifs[i] == t) u_sep_efuse_if_status_cg.sample(ef_hq_ifs[i]);
+      end
+      for (int i = ef_hq_ifs.size() - 1; i >= 0; i--) begin
+        if (ef_ht_ifs[i] == t) begin
+          ef_hq_ifs.delete(i);
+          ef_ht_ifs.delete(i);
+        end
+      end
+      for (int i = 0; i < ef_hq_lk.size(); i++) begin
+        if (ef_ht_lk[i] == t) u_sep_efuse_lock_policy_cg.sample(ef_hq_lk[i]);
+      end
+      for (int i = ef_hq_lk.size() - 1; i >= 0; i--) begin
+        if (ef_ht_lk[i] == t) begin
+          ef_hq_lk.delete(i);
+          ef_ht_lk.delete(i);
+        end
+      end
+      for (int i = 0; i < ef_hq_tc.size(); i++) begin
+        if (ef_ht_tc[i] == t) u_sep_token_channel_cg.sample(ef_hq_tc[i]);
+      end
+      for (int i = ef_hq_tc.size() - 1; i >= 0; i--) begin
+        if (ef_ht_tc[i] == t) begin
+          ef_hq_tc.delete(i);
+          ef_ht_tc.delete(i);
+        end
+      end
+      for (int i = 0; i < ef_hq_stm.size(); i++) begin
+        if (ef_ht_stm[i] == t) u_sep_efuse_secure_tm_cg.sample(ef_hq_stm[i]);
+      end
+      for (int i = ef_hq_stm.size() - 1; i >= 0; i--) begin
+        if (ef_ht_stm[i] == t) begin
+          ef_hq_stm.delete(i);
+          ef_ht_stm.delete(i);
+        end
+      end
+      for (int i = 0; i < ef_hq_jtg.size(); i++) begin
+        if (ef_ht_jtg[i] == t) u_sep_efuse_jtag_policy_cg.sample(ef_hq_jtg[i]);
+      end
+      for (int i = ef_hq_jtg.size() - 1; i >= 0; i--) begin
+        if (ef_ht_jtg[i] == t) begin
+          ef_hq_jtg.delete(i);
+          ef_ht_jtg.delete(i);
+        end
+      end
+      for (int i = 0; i < ef_hq_fld.size(); i++) begin
+        if (ef_ht_fld[i] == t) u_sep_efuse_field_value_cg.sample(ef_hq_fld[i]);
+      end
+      for (int i = ef_hq_fld.size() - 1; i >= 0; i--) begin
+        if (ef_ht_fld[i] == t) begin
+          ef_hq_fld.delete(i);
+          ef_ht_fld.delete(i);
+        end
+      end
+      for (int i = 0; i < ef_hq_geo.size(); i++) begin
+        if (ef_ht_geo[i] == t) u_sep_efuse_map_geometry_cg.sample(ef_hq_geo[i]);
+      end
+      for (int i = ef_hq_geo.size() - 1; i >= 0; i--) begin
+        if (ef_ht_geo[i] == t) begin
+          ef_hq_geo.delete(i);
+          ef_ht_geo.delete(i);
+        end
+      end
+      for (int i = 0; i < ef_hq_rob.size(); i++) begin
+        if (ef_ht_rob[i] == t) u_sep_sec_dis_robustness_cg.sample(ef_hq_rob[i]);
+      end
+      for (int i = ef_hq_rob.size() - 1; i >= 0; i--) begin
+        if (ef_ht_rob[i] == t) begin
+          ef_hq_rob.delete(i);
+          ef_ht_rob.delete(i);
+        end
+      end
+    end
+  end
+
   // One-point sample helpers.
   task automatic ef_geo(input int unsigned which, input logic [5:0] v);
     ef_geo_t e;
@@ -30935,7 +31476,7 @@ module sep_fcov (
         e.ji_v = 1'b1;
       end
     endcase
-    u_sep_efuse_map_geometry_cg.sample(e);
+    ef_put_geo(e);
   endtask
 
   task automatic ef_lk(input int unsigned which, input logic [7:0] v);
@@ -30995,7 +31536,8 @@ module sep_fcov (
         e.lp_v = 1'b1;
       end
     endcase
-    u_sep_efuse_lock_policy_cg.sample(e);
+    if (which == 11) u_sep_efuse_lock_policy_cg.sample(e);
+    else ef_put_lk(e);
   endtask
 
   task automatic ef_tc(input int unsigned which, input logic [5:0] v);
@@ -31043,7 +31585,8 @@ module sep_fcov (
         e.rt_v = 1'b1;
       end
     endcase
-    u_sep_token_channel_cg.sample(e);
+    if (which inside {8, 9}) u_sep_token_channel_cg.sample(e);
+    else ef_put_tc(e);
   endtask
 
   task automatic ef_tfs(input int unsigned which, input logic [4:0] v);
@@ -31127,7 +31670,7 @@ module sep_fcov (
         e.at_v = 1'b1;
       end
     endcase
-    u_sep_efuse_if_status_cg.sample(e);
+    ef_put_ifs(e);
   endtask
 
   task automatic ef_act(input int unsigned which, input logic [4:0] v);
@@ -31175,7 +31718,7 @@ module sep_fcov (
         e.rv_v = 1'b1;
       end
     endcase
-    u_sep_sec_dis_robustness_cg.sample(e);
+    ef_put_rob(e);
   endtask
 
   // ---------------------------------------------------------------------
@@ -31292,7 +31835,7 @@ module sep_fcov (
         w = efuse_shadow_i[32*EfWRomCtl+:32];
         e.rc = {1'b0, 2'b00, w[0]};
         e.rc_v = 1'b1;
-        u_sep_efuse_field_value_cg.sample(e);
+        ef_put_fld(e);
         sw = w[5:1];
         e = '0;
         e.rc = (sw == 5'd0) ? 4'b1_000 : (sw == 5'h1F) ? 4'b1_110 : 4'b1_111;
@@ -31300,13 +31843,13 @@ module sep_fcov (
           if (sw == (5'd1 << i)) e.rc = {1'b1, 3'(i + 1)};
         end
         e.rc_v = 1'b1;
-        u_sep_efuse_field_value_cg.sample(e);
+        ef_put_fld(e);
         w = efuse_shadow_i[32*EfWAlgs+:32];
         for (int o = 0; o < 3; o++) begin
           e = '0;
           e.al = 4'(o * 4) + 4'(w[4*o+:2]);
           e.al_v = 1'b1;
-          u_sep_efuse_field_value_cg.sample(e);
+          ef_put_fld(e);
         end
       end
       cur = {efuse_shadow_i[32*EfWBl2+:256], efuse_shadow_i[32*EfWBl1+:256]};
@@ -31316,13 +31859,13 @@ module sep_fcov (
           e = '0;
           e.vb = 3'(ef_bitcls(gain[255:0]));
           e.vb_v = 1'b1;
-          u_sep_efuse_field_value_cg.sample(e);
+          ef_put_fld(e);
         end
         if ($countones(gain[511:256]) == 1) begin
           e = '0;
           e.vb = 3'd3 + 3'(ef_bitcls(gain[511:256]));
           e.vb_v = 1'b1;
-          u_sep_efuse_field_value_cg.sample(e);
+          ef_put_fld(e);
         end
       end
       ef_vb_prev <= cur;
@@ -31541,6 +32084,22 @@ module sep_fcov (
   // the match rise, and the LC_STATE word outcome within EfTransWin clocks
   // (a sampler parameter at most the window W of the owning test).
   // ---------------------------------------------------------------------
+  // Pass label of the transient RMA leaf: bit 0 x_transient, bit 1
+  // cp_simultaneous_match, bit 2 cp_reset_restore, bit 3 x_lc_prog_gate. The
+  // leaf writes a bit after the check that grades that point passes
+  // (CHK-TRANSIENT, CHK-TRANSIENT-SIMUL, CHK-TRANSIENT-RESET, CHK-PROG-LC) and
+  // 0 after. A legal outcome inside the window of the leaf is held as pending
+  // and samples only on the rise of its bit; an illegal outcome samples at
+  // once. A closed window drops every pending outcome, and the rise of a bit
+  // drops an outcome of that point that is still open. It gates a sample; it
+  // is never a DUT value and drives nothing.
+  int unsigned tr_pass = 0;
+  logic [3:0] tr_pass_q = '0;
+  wire [3:0] tr_pass_rise = 4'(tr_pass) & ~tr_pass_q;
+  always @(posedge clk_i) tr_pass_q <= 4'(tr_pass);
+  logic ef_tr_pend = 1'b0;
+  logic [5:0] ef_tr_pend_cell = '0;
+
   logic ef_tr_arm = 1'b0;
   logic ef_tr_en = 1'b0, ef_tr_ch = 1'b0;
   logic [2:0] ef_tr_cls = '0;
@@ -31550,12 +32109,22 @@ module sep_fcov (
   always @(posedge clk_i) begin
     ef_trn_t e;
     logic [2:0] ci;
-    logic upd, exp_upd, rise_s, rise_c;
+    logic upd, exp_upd, rise_s, rise_c, bad;
+    logic [5:0] tr_cell;
     ef_sip_q <= tok_sip_i;
     ef_chp_q <= tok_chp_i;
     rise_s = (tok_sip_i == EfCodeMatch) && (ef_sip_q != EfCodeMatch);
     rise_c = (tok_chp_i == EfCodeMatch) && (ef_chp_q != EfCodeMatch);
-    if (!ef_sensed || !ef_own_tr) begin
+    if (!ef_own_tr || in_reset) begin
+      ef_tr_pend <= 1'b0;
+    end else if (tr_pass_rise[0] && ef_tr_pend) begin
+      e = '0;
+      e.tr = ef_tr_pend_cell;
+      e.tr_v = 1'b1;
+      u_sep_lc_illegal_transition_cg.sample(e);
+      ef_tr_pend <= 1'b0;
+    end
+    if (!ef_sensed || !ef_own_tr || tr_pass_rise[0]) begin
       ef_tr_arm <= 1'b0;
       // A SIP rise while a CHIPLET match is held is a cell of
       // cp_simultaneous_match, not of x_transient.
@@ -31576,13 +32145,17 @@ module sep_fcov (
       upd = (ef_lc_word !== ef_tr_lcw);
       if (upd || (ef_tr_cnt == EfTransWin)) begin
         exp_upd = ef_tr_en && ((!ef_tr_ch && (ef_tr_cls <= 3'd1)) || (ef_tr_ch && (ef_tr_cls == 3'd2)));
-        e = '0;
-        e.tr = {
-          (upd != exp_upd) || $isunknown(ef_lc_word),
-          5'((32'(ef_tr_en) * 2 + 32'(ef_tr_ch)) * 5 + 32'(ef_tr_cls))
-        };
-        e.tr_v = 1'b1;
-        u_sep_lc_illegal_transition_cg.sample(e);
+        bad = (upd != exp_upd) || $isunknown(ef_lc_word);
+        tr_cell = {bad, 5'((32'(ef_tr_en) * 2 + 32'(ef_tr_ch)) * 5 + 32'(ef_tr_cls))};
+        if (bad) begin
+          e = '0;
+          e.tr = tr_cell;
+          e.tr_v = 1'b1;
+          u_sep_lc_illegal_transition_cg.sample(e);
+        end else begin
+          ef_tr_pend <= 1'b1;
+          ef_tr_pend_cell <= tr_cell;
+        end
         ef_tr_arm <= 1'b0;
       end else begin
         ef_tr_cnt <= ef_tr_cnt + 1;
@@ -31661,6 +32234,8 @@ module sep_fcov (
   // tracker below takes each one.
   int unsigned ef_xw_req = 0;
   logic ef_xw_req_bit3 = 1'b0;
+  // Pending legal cells of x_lc_prog_gate (see ef_prog_lock_end).
+  logic [2:0] ef_lp_pend = '0;
   // Lock policy, if-status and secure test mode sampling of a program end.
   task automatic ef_prog_lock_end();
     logic [5:0] s, sn;
@@ -31692,13 +32267,24 @@ module sep_fcov (
     // the RMA_CHIPLET match (otp_fuse_controller.adoc, Fuse Programming and
     // RMA Authorization).
     // The same qualification: only the token gate can refuse the program.
+    // A legal cell is held as pending (bit 0 bit 1 own landed, bit 1 bit 1
+    // other refused, bit 2 bit 2 own landed) and samples on the rise of tr_pass
+    // bit 3; a wrong outcome samples at once.
     if (ef_own_tr && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed && ef_pg_stmk &&
         !ef_pg_stm) begin
       if (ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 1)) begin
-        if (ef_pg_tok[0]) ef_lk(10, {5'd0, 1'b0, 1'b0, landed});
-        else if (ef_pg_tok[1]) ef_lk(10, {5'd0, 1'b0, 1'b1, landed});
+        if (ef_pg_tok[0]) begin
+          if (landed) ef_lp_pend[0] <= 1'b1;
+          else ef_lk(10, {5'd0, 1'b0, 1'b0, landed});
+        end else if (ef_pg_tok[1]) begin
+          if (!landed) ef_lp_pend[1] <= 1'b1;
+          else ef_lk(10, {5'd0, 1'b0, 1'b1, landed});
+        end
       end else if (ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 2)) begin
-        if (ef_pg_tok[1]) ef_lk(10, {5'd0, 1'b1, 1'b0, landed});
+        if (ef_pg_tok[1]) begin
+          if (landed) ef_lp_pend[2] <= 1'b1;
+          else ef_lk(10, {5'd0, 1'b1, 1'b0, landed});
+        end
       end
     end
     // x_exempt_write: LC_STATE ignores its lock bits, so with every lock bit
@@ -31728,6 +32314,16 @@ module sep_fcov (
     logic [5:0] s;
     logic [9:0] off;
     logic [2:0] cls;
+    // x_lc_prog_gate: the held cells sample on the rise of tr_pass bit 3. They
+    // survive a cold reset: the leaf grades a landed program after the resense.
+    if (!ef_own_tr) begin
+      ef_lp_pend <= '0;
+    end else if (tr_pass_rise[3] && (ef_lp_pend != '0)) begin
+      if (ef_lp_pend[0]) ef_lk(10, 8'b0000_0001);
+      if (ef_lp_pend[1]) ef_lk(10, 8'b0000_0010);
+      if (ef_lp_pend[2]) ef_lk(10, 8'b0000_0101);
+      ef_lp_pend <= '0;
+    end
     if (in_reset) begin
       ef_pg_v <= 1'b0;
       ef_pg_lock_open <= 1'b0;
@@ -31815,7 +32411,7 @@ module sep_fcov (
             te = '0;
             te.pb = {ef_pg_seen == ef_pg_stm, 4'(cls * 2) + 4'(ef_pg_stm)};
             te.pb_v = 1'b1;
-            u_sep_efuse_secure_tm_cg.sample(te);
+            ef_put_stm(te);
           end
         end
         if (!ef_pg_lock_open && !ef_pg_idle_open) ef_pg_v <= 1'b0;
@@ -31974,7 +32570,96 @@ module sep_fcov (
           te.sk = f[1:0];
           te.sk_v = 1'b1;
         end
+        ef_put_stm(te);
+      end
+    end
+  end
+
+  // x_shadow_wr_block: a frontdoor or JTAG write B of a protection shadow word
+  // (LOCKS, LOCKS_SPARE, SIP_DIS, SYS_DIS) that sets at least one bit absent
+  // from the sensed shadow at its AW, with sense done and a known secure_tm_i.
+  // The next frontdoor read of that address gives the outcome (whole word:
+  // strap 1 == before, strap 0 == before | written bits; a response that is not
+  // OKAY or an X or Z bit is a wrong outcome). A wrong outcome samples at the
+  // read. A right outcome is held per cell {target, source, strap} and samples
+  // only when stm_shadow_wr_pass changes to cell + 1: the leaf writes it through
+  // the u_sep_fcov handle after its check of that cell passes, and 0 after.
+  // Held outcomes survive the cold reset
+  // between the two strap epochs. It gates a sample; it is never a DUT value
+  // and drives nothing.
+  int unsigned stm_shadow_wr_pass = 0;
+  int unsigned ef_sw_pass_q = 0;
+  logic [15:0] ef_sw_held = '0;
+  logic ef_sw_v = 1'b0;
+  logic [3:0] ef_sw_cell = '0;
+  logic [31:0] ef_sw_addr = '0, ef_sw_pre = '0, ef_sw_new = '0;
+  logic [31:0] ef_sw_jaw = '0, ef_sw_jw = '0, ef_sw_jpre = '0;
+  function automatic logic [2:0] ef_sw_target(input logic [31:0] a);
+    if (a[1:0] != 2'd0) return 3'd4;
+    if ((a >= SEP_EFUSE_MAP_LOCKS_REG_ADDR) && (a < SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR))
+      return 3'd0;
+    if ((a >= SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR) && (a < SEP_EFUSE_MAP_LC_STATE_REG_ADDR))
+      return 3'd1;
+    if ((a >= SEP_EFUSE_MAP_SIP_DIS_REG_ADDR) && (a < SEP_EFUSE_MAP_SYS_DIS_REG_ADDR)) return 3'd2;
+    if ((a >= SEP_EFUSE_MAP_SYS_DIS_REG_ADDR) && (a < SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR))
+      return 3'd3;
+    return 3'd4;
+  endfunction
+  always @(posedge clk_i) begin
+    ef_stm_t te;
+    logic fd_b, j_b, src;
+    logic [2:0] tg;
+    logic [31:0] a, d, pre;
+    logic [9:0] off;
+    logic [3:0] k;
+    ef_sw_pass_q <= stm_shadow_wr_pass;
+    if ((jtag_req_i.aw_valid === 1'b1) && (jtag_resp_i.aw_ready === 1'b1)) begin
+      ef_sw_jaw <= 32'(jtag_req_i.aw.addr);
+      ef_sw_jpre <= ef_word(10'(32'(jtag_req_i.aw.addr) - EfMapBase));
+    end
+    if ((jtag_req_i.w_valid === 1'b1) && (jtag_resp_i.w_ready === 1'b1))
+      ef_sw_jw <= 32'(jtag_req_i.w.data);
+    fd_b = ef_wr_cmpl;
+    j_b = (jtag_resp_i.b_valid === 1'b1) && (jtag_req_i.b_ready === 1'b1);
+    if (in_reset) begin
+      ef_sw_v <= 1'b0;
+    end else if (fd_b || j_b) begin
+      src = !fd_b;
+      a = fd_b ? aw_addr_q : ef_sw_jaw;
+      d = fd_b ? wr_data : ef_sw_jw;
+      off = 10'(a - EfMapBase);
+      pre = fd_b ? ef_aw_shadow[32*off[9:2]+:32] : ef_sw_jpre;
+      tg = ef_sw_target(a);
+      ef_sw_v <= ef_own_stm && (fuse_sense_done_i === 1'b1) && !$isunknown(secure_tm_i) &&
+          (tg != 3'd4) && !$isunknown({d, pre}) && ((d & ~pre) != 32'h0);
+      ef_sw_cell <= {tg[1:0], src, secure_tm_i === 1'b1};
+      ef_sw_addr <= a;
+      ef_sw_pre <= pre;
+      ef_sw_new <= d & ~pre;
+    end else if (ef_sw_v && ef_rd_cmpl && (ar_addr_q == ef_sw_addr)) begin
+      ef_sw_v <= 1'b0;
+      if (ef_own_stm) begin
+        if (!rd_okay ||
+            (ef_sw_cell[0] ? (rd_data !== ef_sw_pre) : (rd_data !== (ef_sw_pre | ef_sw_new))))
+        begin
+          te = '0;
+          te.sw = {1'b1, ef_sw_cell};
+          te.sw_v = 1'b1;
+          u_sep_efuse_secure_tm_cg.sample(te);
+        end else begin
+          ef_sw_held[ef_sw_cell] <= 1'b1;
+        end
+      end
+    end
+    if (ef_own_stm && (stm_shadow_wr_pass != ef_sw_pass_q) && (stm_shadow_wr_pass >= 1) &&
+        (stm_shadow_wr_pass <= 16)) begin
+      k = 4'(stm_shadow_wr_pass - 1);
+      if (ef_sw_held[k]) begin
+        te = '0;
+        te.sw = {1'b0, k};
+        te.sw_v = 1'b1;
         u_sep_efuse_secure_tm_cg.sample(te);
+        ef_sw_held[k] <= 1'b0;
       end
     end
   end
@@ -32875,7 +33560,7 @@ module sep_fcov (
         je = '0;
         je.st = st;
         je.st_v = 1'b1;
-        u_sep_efuse_jtag_policy_cg.sample(je);
+        ef_put_jtg(je);
       end
       if ((cl != 3'd7) && (st <= 3'd2) && ((st == 3'd2) ? ef_own_cw : ef_own_jtag)) begin
         je = '0;
@@ -32891,7 +33576,7 @@ module sep_fcov (
         end
         je.gi = st[0];
         je.gi_v = allowed && ok && (st != 3'd2) && (feat_ctrl_i[47:0] == 48'h0);
-        u_sep_efuse_jtag_policy_cg.sample(je);
+        ef_put_jtg(je);
       end
     end
   end
@@ -32917,6 +33602,21 @@ module sep_fcov (
   // Case of each dbg_disable path (DTP path table): 1, 2 or 3; 0 ungated.
   localparam int unsigned EfPathCase[11] = '{1, 2, 3, 2, 1, 3, 2, 1, 2, 0, 0};
 
+  // Pass label of the demote leaf (x_path_case, x_prod_demote_case3): the
+  // leaf writes it 1 after every check of a cell on the FEAT_CTRL value it
+  // read passed, and 0 after. The legal cells of each FEAT_CTRL read inside
+  // the window of the leaf are held as pending and sample only on its rise; a
+  // port that differs from its case samples at once. A closed window drops the
+  // pending cells. It gates a sample; it is never a DUT value and drives
+  // nothing.
+  int unsigned dem_pass = 0;
+  logic dem_pass_q = 1'b0;
+  wire dem_pass_rise = (dem_pass != 0) && !dem_pass_q;
+  always @(posedge clk_i) dem_pass_q <= (dem_pass != 0);
+  logic [10:0] ef_pc_pend = '0, ef_pc_open = '0;
+  logic ef_pd_pend = 1'b0;
+  logic [2:0] ef_pd_cell = '0;
+
   // FEAT_CTRL reads: cp_presense_feat, cp_gate_bound, x_path_case and
   // x_prod_demote_case3.
   wire ef_feat_rd = rd_okay && ((ar_addr_q == EfFeatCtrl) || (ar_addr_q == EfFeatCtrl + 32'd4));
@@ -32929,12 +33629,21 @@ module sep_fcov (
     full_v = ef_feat_rd && (ar_addr_q == EfFeatCtrl) && (ar_size_q == 3'd3);
     lo_v = ef_feat_rd && (ar_addr_q == EfFeatCtrl) && ((ar_size_q == 3'd3) || (ar_size_q == 3'd2));
     lo = (ar_size_q == 3'd3) ? lsu_r_data_i[31:0] : rd_data;
+    if (in_reset || !ef_own_img) begin
+      ef_pz_pend <= 1'b0;
+    end else if (efimg_pass_rise && ef_pz_pend) begin
+      pe = '0;
+      pe.pz_v = 1'b1;
+      u_sep_lc_feat_ctrl_profile_cg.sample(pe);
+      ef_pz_pend <= 1'b0;
+    end
     if (ef_feat_rd && ef_own_img && !in_reset && !skip_fuse_sense_q &&
         (fuse_sense_done_i === 1'b0)) begin
       pe = '0;
       pe.pz = (ar_size_q == 3'd3) ? (lsu_r_data_i !== 64'h0) : (rd_data !== 32'h0);
       pe.pz_v = 1'b1;
-      u_sep_lc_feat_ctrl_profile_cg.sample(pe);
+      if (pe.pz) u_sep_lc_feat_ctrl_profile_cg.sample(pe);
+      else ef_pz_pend <= 1'b1;
     end
     if (full_v && ef_own_fc && ef_sensed && ef_fin_k && !ef_sd && !ef_sig && (ef_lc != EfInv) &&
         !$isunknown(
@@ -32948,6 +33657,27 @@ module sep_fcov (
         u_sep_lc_feat_ctrl_profile_cg.sample(pe);
       end
     end
+    if (!ef_own_dem || in_reset) begin
+      ef_pc_pend <= '0;
+      ef_pd_pend <= 1'b0;
+    end else if (dem_pass_rise) begin
+      for (int p = 0; p < 11; p++) begin
+        if (ef_pc_pend[p]) begin
+          de = '0;
+          de.pc = {1'b0, 4'(p), ef_pc_open[p]};
+          de.pc_v = 1'b1;
+          u_sep_dtp_gating_ladder_cg.sample(de);
+        end
+      end
+      if (ef_pd_pend) begin
+        de = '0;
+        de.pd = ef_pd_cell;
+        de.pd_v = 1'b1;
+        u_sep_dtp_gating_ladder_cg.sample(de);
+      end
+      ef_pc_pend <= '0;
+      ef_pd_pend <= 1'b0;
+    end
     if (lo_v && ef_own_dem && ef_sensed && ef_fin_k && !$isunknown(lo)) begin
       c1 = lo[EfBitSipDbg];
       c2 = c1 && lo[EfBitChipDbg];
@@ -32955,37 +33685,60 @@ module sep_fcov (
       for (int p = 0; p < 11; p++) begin
         open = (EfPathCase[p] == 0) ? 1'b1 : (EfPathCase[p] == 1) ? c1 :
             (EfPathCase[p] == 2) ? c2 : c3;
-        de = '0;
-        de.pc = {dbg_dis_i[p] !== !open, 4'(p), open};
-        de.pc_v = 1'b1;
-        u_sep_dtp_gating_ladder_cg.sample(de);
+        if (dbg_dis_i[p] !== !open) begin
+          de = '0;
+          de.pc = {1'b1, 4'(p), open};
+          de.pc_v = 1'b1;
+          u_sep_dtp_gating_ladder_cg.sample(de);
+          ef_pc_pend[p] <= 1'b0;
+        end else begin
+          ef_pc_pend[p] <= 1'b1;
+          ef_pc_open[p] <= open;
+        end
       end
       if ((ef_lc == EfProd) && !ef_sd && !ef_sig && (ef_dm != 2'b00)) begin
-        de = '0;
-        de.pd = {ef_dm, c3};
-        de.pd_v = 1'b1;
-        u_sep_dtp_gating_ladder_cg.sample(de);
+        if ((ef_dm != 2'b11) && c3) begin
+          de = '0;
+          de.pd = {ef_dm, c3};
+          de.pd_v = 1'b1;
+          u_sep_dtp_gating_ladder_cg.sample(de);
+          ef_pd_pend <= 1'b0;
+        end else begin
+          ef_pd_pend <= 1'b1;
+          ef_pd_cell <= {ef_dm, c3};
+        end
+      end else begin
+        ef_pd_pend <= 1'b0;
       end
     end
   end
 
   // x_secdis_stm_feat: on entry to (SEC_DIS 1, FEAT_CTRL probe all ones) and
   // on a change of secure_tm_o inside it.
-  logic ef_xs_q = 1'b0, ef_xs_stm_q = 1'b0;
+  // The secure_tm_0 event of the override leaf is held as pending and samples
+  // on the rise of ovr_pass bit 1; a closed window drops it.
+  logic ef_xs_q = 1'b0, ef_xs_stm_q = 1'b0, ef_xs_pend = 1'b0;
   always @(posedge clk_i) begin
     logic cond;
     cond = !in_reset && (sec_dis_i === 1'b1) && (feat_ctrl_i === '1) && !$isunknown(secure_tm_i);
     ef_xs_q <= cond;
     ef_xs_stm_q <= (secure_tm_i === 1'b1);
+    if (!ef_own_ovr || in_reset) begin
+      ef_xs_pend <= 1'b0;
+    end else if (ovr_pass_rise[1] && ef_xs_pend) begin
+      ef_rob(4, 3'b000);
+      ef_xs_pend <= 1'b0;
+    end
     if (cond && (!ef_xs_q || ((secure_tm_i === 1'b1) != ef_xs_stm_q))) begin
-      if ((secure_tm_i === 1'b1) ? ef_own_stmss : ef_own_ovr)
-        ef_rob(4, {2'b00, secure_tm_i === 1'b1});
+      if ((secure_tm_i === 1'b1) && ef_own_stmss) ef_rob(4, 3'b001);
+      else if ((secure_tm_i === 1'b0) && ef_own_ovr) ef_xs_pend <= 1'b1;
     end
   end
 
   // cp_simultaneous_match: a SIP Match rise while the CHIPLET code holds
   // Match, and the LC_STATE word over EfTransWin clocks.
   logic ef_sm_arm = 1'b0, ef_sm_prod = 1'b0;
+  logic ef_sm_pend = 1'b0, ef_sm_pend_prod = 1'b0;
   logic [31:0] ef_sm_lcw = '0;
   int unsigned ef_sm_cnt = 0;
   logic [5:0] ef_sm_sip_q = '0;
@@ -32993,7 +33746,16 @@ module sep_fcov (
     ef_trn_t e;
     logic upd;
     ef_sm_sip_q <= tok_sip_i;
-    if (!ef_sensed || !ef_own_tr) begin
+    if (!ef_own_tr || in_reset) begin
+      ef_sm_pend <= 1'b0;
+    end else if (tr_pass_rise[1] && ef_sm_pend) begin
+      e = '0;
+      e.sm = {1'b0, ef_sm_pend_prod};
+      e.sm_v = 1'b1;
+      u_sep_lc_illegal_transition_cg.sample(e);
+      ef_sm_pend <= 1'b0;
+    end
+    if (!ef_sensed || !ef_own_tr || tr_pass_rise[1]) begin
       ef_sm_arm <= 1'b0;
     end else if (!ef_sm_arm && (tok_sip_i == EfCodeMatch) && (ef_sm_sip_q != EfCodeMatch) &&
                  (tok_chp_i == EfCodeMatch) && ef_trans_en && (ef_lc inside {EfTd, EfProd}) &&
@@ -33007,10 +33769,15 @@ module sep_fcov (
     end else if (ef_sm_arm) begin
       upd = (ef_lc_word !== ef_sm_lcw);
       if (upd || (ef_sm_cnt == EfTransWin)) begin
-        e = '0;
-        e.sm = {upd, ef_sm_prod};
-        e.sm_v = 1'b1;
-        u_sep_lc_illegal_transition_cg.sample(e);
+        if (upd) begin
+          e = '0;
+          e.sm = {1'b1, ef_sm_prod};
+          e.sm_v = 1'b1;
+          u_sep_lc_illegal_transition_cg.sample(e);
+        end else begin
+          ef_sm_pend <= 1'b1;
+          ef_sm_pend_prod <= ef_sm_prod;
+        end
         ef_sm_arm <= 1'b0;
       end else begin
         ef_sm_cnt <= ef_sm_cnt + 1;
@@ -33021,16 +33788,29 @@ module sep_fcov (
   // cp_reset_restore: armed at a rst_ni fall when the LC_STATE byte of the
   // last clock before the fall differs from the byte of the last sense.
   logic [7:0] ef_rr_sensed = '0, ef_rr_last = '0;
-  logic ef_rr_sv = 1'b0, ef_rr_arm = 1'b0;
+  logic ef_rr_sv = 1'b0, ef_rr_arm = 1'b0, ef_rr_pend = 1'b0;
   always @(posedge clk_i) begin
     ef_trn_t e;
     if (!in_reset) ef_rr_last <= ef_lc_word[7:0];
+    if (!ef_own_tr || in_reset) begin
+      ef_rr_pend <= 1'b0;
+    end else if (tr_pass_rise[2] && ef_rr_pend) begin
+      e = '0;
+      e.rr = 1'b0;
+      e.rr_v = 1'b1;
+      u_sep_lc_illegal_transition_cg.sample(e);
+      ef_rr_pend <= 1'b0;
+    end
     if (ef_sense_rise) begin
       if (ef_rr_arm && ef_own_tr) begin
-        e = '0;
-        e.rr = (ef_lc_word[7:0] !== ef_rr_sensed);
-        e.rr_v = 1'b1;
-        u_sep_lc_illegal_transition_cg.sample(e);
+        if (ef_lc_word[7:0] !== ef_rr_sensed) begin
+          e = '0;
+          e.rr = 1'b1;
+          e.rr_v = 1'b1;
+          u_sep_lc_illegal_transition_cg.sample(e);
+        end else begin
+          ef_rr_pend <= 1'b1;
+        end
       end
       ef_rr_arm <= 1'b0;
       ef_rr_sensed <= ef_lc_word[7:0];
@@ -33040,11 +33820,25 @@ module sep_fcov (
     end
   end
 
-  // x_exempt_write: the resensed LC_STATE read after a landed program.
+  // x_exempt_write: the resensed LC_STATE read after a landed program. A read
+  // other than {24'h0, ~r, r} samples other_result at the read. A PROD or
+  // PROD_END read is held and samples only when lock_exempt_pass rises: the
+  // lock-slot leaf writes it through the u_sep_fcov handle after its check of
+  // that program and resense passes, and 0 before the program. It gates a
+  // sample; it is never a DUT value and drives nothing.
   int unsigned ef_xw_seen = 0;
+  int unsigned lock_exempt_pass = 0;
   logic ef_xw_pend = 1'b0, ef_xw_sensed = 1'b0, ef_xw_bit3 = 1'b0;
+  logic ef_xw_pass_q = 1'b0, ef_xw_hold = 1'b0, ef_xw_hold_bit3 = 1'b0;
   always @(posedge clk_i) begin
     logic [3:0] r;
+    ef_xw_pass_q <= (lock_exempt_pass != 0);
+    if (!ef_own_lock) begin
+      ef_xw_hold <= 1'b0;
+    end else if (ef_xw_hold && (lock_exempt_pass != 0) && !ef_xw_pass_q) begin
+      ef_lk(11, {7'd0, ef_xw_hold_bit3});
+      ef_xw_hold <= 1'b0;
+    end
     if (ef_xw_req != ef_xw_seen) begin
       ef_xw_seen <= ef_xw_req;
       ef_xw_pend <= 1'b1;
@@ -33054,7 +33848,14 @@ module sep_fcov (
       if (ef_sense_rise) ef_xw_sensed <= 1'b1;
       if (ef_xw_sensed && rd_okay && (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR)) begin
         r = ef_xw_bit3 ? 4'b1000 : 4'b0001;
-        if (ef_own_lock) ef_lk(11, (rd_data[7:0] == {~r, r}) ? {7'd0, ef_xw_bit3} : 8'd3);
+        if (ef_own_lock) begin
+          if (rd_data == {24'h0, ~r, r}) begin
+            ef_xw_hold <= 1'b1;
+            ef_xw_hold_bit3 <= ef_xw_bit3;
+          end else begin
+            ef_lk(11, 8'd3);
+          end
+        end
         ef_xw_pend <= 1'b0;
       end
     end
@@ -33106,7 +33907,7 @@ module sep_fcov (
           je = '0;
           je.jp = (jtag_resp_i.r.resp === AxiOkay) ? 2'd2 : 2'd0;
           je.jp_v = 1'b1;
-          u_sep_efuse_jtag_policy_cg.sample(je);
+          ef_put_jtg(je);
         end
         if (ef_sensed && ef_own_lock && (ef_lc == EfTd)) begin
           off = 11'(a - EfMapBase);
@@ -33121,7 +33922,7 @@ module sep_fcov (
               je.jr = 2'd1;
               je.jr_v = 1'b1;
             end
-            if (je.jr_v) u_sep_efuse_jtag_policy_cg.sample(je);
+            if (je.jr_v) ef_put_jtg(je);
           end
         end
       end
@@ -33136,7 +33937,7 @@ module sep_fcov (
           je = '0;
           je.jp = (ef_jp_cmd || ef_cmd_pg) ? 2'd3 : 2'd1;
           je.jp_v = 1'b1;
-          u_sep_efuse_jtag_policy_cg.sample(je);
+          ef_put_jtg(je);
         end
         ef_jp_arm <= 1'b0;
       end else if (in_reset) begin
@@ -33148,7 +33949,16 @@ module sep_fcov (
   end
 
   // cp_token_hmac_overlap and cp_go_while_busy. The verdict of a go is the
-  // first non-idle code after the code has read idle since the go.
+  // first non-idle code after the code has read idle since the go. Each event
+  // inside the window of the owner is held as pending and samples only when
+  // tch_overlap_pass rises: the owner writes it through the u_sep_fcov handle
+  // after the check of that leg passes, and 0 at the start of the leg. A
+  // closed window or a reset drops the pending events. It gates a sample; it
+  // is never a DUT value and drives nothing.
+  int unsigned tch_overlap_pass = 0;
+  logic ef_tp_q = 1'b0;
+  logic [1:0] ef_ho_pend = '0;  // bit 0 Match verdict, bit 1 Mismatch verdict
+  logic [2:0] ef_gw_pend = '0;  // one bit per channel
   logic [2:0] ef_ho_arm = '0, ef_ho_idle = '0, ef_ho_busy = '0;
   logic ef_ho_wait = 1'b0, ef_ho_mm = 1'b0;
   int unsigned ef_ho_cnt = 0;
@@ -33161,6 +33971,16 @@ module sep_fcov (
   always @(posedge clk_i) begin
     logic [5:0] code;
     longint unsigned dt;
+    ef_tp_q <= (tch_overlap_pass != 0);
+    if (!ef_live || !ef_own_tch) begin
+      ef_ho_pend <= '0;
+      ef_gw_pend <= '0;
+    end else if ((tch_overlap_pass != 0) && !ef_tp_q) begin
+      for (int b = 0; b < 2; b++) if (ef_ho_pend[b]) ef_tc(8, 6'(b));
+      for (int c = 0; c < 3; c++) if (ef_gw_pend[c]) ef_tc(9, 6'(c));
+      ef_ho_pend <= '0;
+      ef_gw_pend <= '0;
+    end
     if (!ef_live) begin
       ef_ho_arm <= '0;
       ef_ho_wait <= 1'b0;
@@ -33222,14 +34042,14 @@ module sep_fcov (
           if (code !== EfCodeMatch) begin
             ef_gw_st[c] <= 2'd0;
           end else if (mr_cyc >= ef_gw_end[c]) begin
-            if (ef_own_tch) ef_tc(9, 6'(c));
+            if (ef_own_tch) ef_gw_pend[c] <= 1'b1;
             ef_gw_st[c] <= 2'd0;
           end
         end
       end
       if (ef_ho_wait) begin
         if (cy_h_done_ev) begin
-          if (ef_own_tch) ef_tc(8, {5'd0, ef_ho_mm});
+          if (ef_own_tch) ef_ho_pend[ef_ho_mm] <= 1'b1;
           ef_ho_wait <= 1'b0;
         end else if ((ef_ho_cnt == EfHmacWin) || !cy_ip[3]) begin
           ef_ho_wait <= 1'b0;
@@ -33242,26 +34062,44 @@ module sep_fcov (
 
   // cp_sense_shape: READ commands (first clock of a valid run, or a clock
   // where the command changes while valid stays 1) and response strobes from
-  // the reset release to the sense-done rise.
-  int unsigned ef_sh_rd = 0, ef_sh_rsp = 0;
-  longint unsigned ef_sh_tlast = 0;
+  // the reset release to the sense-done rise. The done timing is taken at the
+  // sensing FSM ports (sense_fsm_resp_v_i, sense_fsm_done_i): the last of the
+  // 256 strobes in cycle n+1 and fuse_sense_done_o first high in cycle n+3
+  // (doc/otp_fuse_controller.adoc, sensing timing diagram), so the rise is
+  // EfSenseDoneLat clk_i edges after the last strobe.
+  localparam int unsigned EfSenseDoneLat = 2;
+  int unsigned ef_sh_rd = 0, ef_sh_rsp = 0, ef_sh_frsp = 0;
+  longint unsigned ef_sh_tlast = 0, ef_sh_trise = 0;
   sep_efuse_pkg::fuse_command_req_t ef_sh_cmd_q = '0;
   logic ef_sh_on = 1'b0;
+  logic ef_sh_fdone_q = 1'b0, ef_sh_frise_v = 1'b0;
   always @(posedge clk_i) begin
     ef_ifs_t e;
+    logic frise;
+    longint unsigned trise;
     ef_sh_cmd_q <= shim_cmd_i;
+    ef_sh_fdone_q <= (sense_fsm_done_i === 1'b1);
+    frise = (sense_fsm_done_i === 1'b1) && !ef_sh_fdone_q && !ef_sh_frise_v;
+    trise = frise ? mr_cyc : ef_sh_trise;
     if (in_reset) begin
       ef_sh_on <= 1'b0;
     end else if (ef_rel) begin
       ef_sh_on <= !skip_fuse_sense_q;
       ef_sh_rd <= 0;
       ef_sh_rsp <= 0;
+      ef_sh_frsp <= 0;
+      ef_sh_frise_v <= 1'b0;
     end else if (ef_sh_on) begin
       if (ef_cmd_rd && ((ef_sh_cmd_q.valid !== 1'b1) || (shim_cmd_i !== ef_sh_cmd_q)))
         ef_sh_rd <= ef_sh_rd + 1;
-      if (ef_resp_v) begin
-        ef_sh_rsp <= ef_sh_rsp + 1;
-        if (ef_sh_rsp + 1 == EfSenseWords) ef_sh_tlast <= mr_cyc;
+      if (ef_resp_v) ef_sh_rsp <= ef_sh_rsp + 1;
+      if (sense_fsm_resp_v_i === 1'b1) begin
+        ef_sh_frsp <= ef_sh_frsp + 1;
+        if (ef_sh_frsp + 1 == EfSenseWords) ef_sh_tlast <= mr_cyc;
+      end
+      if (frise) begin
+        ef_sh_frise_v <= 1'b1;
+        ef_sh_trise   <= mr_cyc;
       end
       if (ef_sense_rise) begin
         ef_sh_on <= 1'b0;
@@ -33270,13 +34108,14 @@ module sep_fcov (
             e = '0;
             e.sh = 1'b0;
             e.sh_v = 1'b1;
-            u_sep_efuse_if_status_cg.sample(e);
+            ef_put_ifs(e);
           end
-          if ((ef_sh_rsp >= EfSenseWords) && (mr_cyc > ef_sh_tlast)) begin
+          if ((ef_sh_rsp >= EfSenseWords) && (ef_sh_frsp == EfSenseWords) &&
+              (ef_sh_frise_v || frise) && (trise == ef_sh_tlast + EfSenseDoneLat)) begin
             e = '0;
             e.sh = 1'b1;
             e.sh_v = 1'b1;
-            u_sep_efuse_if_status_cg.sample(e);
+            ef_put_ifs(e);
           end
         end
       end
@@ -33285,12 +34124,18 @@ module sep_fcov (
 
   // test_dev_to_prod_prog of sep_lc_transition_cg: a TEST_DEV LC_STATE read,
   // a PROGRAM command to LC_STATE bit 0, a sense, then an LC_STATE read of
-  // PROD, in the window of the LC_STATE stitch leaf.
-  logic ef_st_td = 1'b0, ef_st_prog = 1'b0, ef_st_sensed = 1'b0;
+  // PROD, in the window of the LC_STATE stitch leaf. The PROD read is held
+  // pending and samples when the stitch pass label rises.
+  logic ef_st_td = 1'b0, ef_st_prog = 1'b0, ef_st_sensed = 1'b0, ef_st_pend = 1'b0;
   always @(posedge clk_i) begin
+    if (in_reset || !ef_own_stitch) ef_st_pend <= 1'b0;
+    else if (stitch_pass_rise && ef_st_pend) begin
+      u_sep_lc_transition_cg.sample(LcTestDev, LcProd);
+      ef_st_pend <= 1'b0;
+    end
     if (lc_diff_ok && ef_own_stitch) begin
       if (ef_st_prog && ef_st_sensed) begin
-        if (lc_raw == LcProd) u_sep_lc_transition_cg.sample(LcTestDev, LcProd);
+        if (lc_raw == LcProd) ef_st_pend <= 1'b1;
         ef_st_prog <= 1'b0;
         ef_st_sensed <= 1'b0;
       end

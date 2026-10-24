@@ -32,9 +32,22 @@ Checks:
   CHK-ROM-STORE-WE : in the store leg, PR-ROM-MACRO shows requests at a store
                      word only for its four readback loads.
   CHK-ROM-NOECC    : a 1-bit or 2-bit flip in a stored word reads back as the
-                     flipped data with no trap and no NMI; the neighbour words
-                     read exact. Control: one ``ecall`` raises the trap count by
-                     one (rom.adoc Hardware Configuration and Integrity).
+                     whole flipped 64-bit word with no trap and no NMI; the
+                     neighbour words read exact (rom.adoc:59-60, no ECC or
+                     integrity-error sideband). Positive probes in the same
+                     line: every flipped word holds image ^ mask in the macro
+                     before the loads (CTRL-FLIP-STORED), and PR-ROM carries a
+                     request at exactly the planned flip-leg words. Control:
+                     one ``ecall`` raises the trap count by one. After that
+                     instance passes, a repeat instance reads each flipped
+                     word once more and is graded the same way (whole flipped
+                     word, no trap and no NMI, PR-ROM requests at exactly the
+                     flipped words, each flipped word labelled).
+  CTRL-FLIP-STORED : after the flip pulses and again before the repeat
+                     instance, each flipped macro word reads back through the
+                     backdoor as image ^ mask and each neighbour as the image
+                     word. A FAIL stops the leaf before the repeat instance
+                     opens its window, so no flip label is written.
   CHK-ROM-OTF      : ``rst_ni`` falls after the PR-ROM handshake of the stub
                      fetch at word address 1 and before its response beat,
                      and PR-ROM-MACRO shows that fetch at the macro before the
@@ -46,6 +59,26 @@ Checks:
                      SEP Reset Controller). The response window W comes from the
                      same fetch of the calibration boot, whose beat carries
                      image word 1.
+
+FCOV gate: the leaf opens its graded window for the sweep and store steps
+and closes it before the flips. Inside a window the sampler counts each legal
+outcome of the sweep, store and reset-in-flight points as pending; the leaf
+pulses the pass label ``rom_ap_pass`` only after the checks of that leg pass
+(CHK-ROM-SWEEP, CHK-ROM-PORT and CHK-ROM-STORE for the sweep and store window,
+CHK-ROM-NOECC for the repeat instance, CHK-ROM-OTF for the reset in flight),
+and the pending counts sample on that rise. The sampler drops the pending counts
+at the first ``clk_i`` edge of a window, so the reset-in-flight window opens
+after the setup reset releases, at least one ``clk_i`` edge before the ``rst_ni``
+fall that counts the ROM read cell. The first flip instance runs and is graded
+with the window closed. The window opens again only for the repeat instance,
+after the first instance and CTRL-FLIP-STORED pass. In the repeat instance a
+leaf coroutine watches every PR-ROM handshake and writes ``rom_flip_bits`` (the
+label of ``cp_rom_noecc``) as the popcount of the flip mask when the handshake
+word is a flipped word and 0 for any other word. The sampler holds each
+labelled load outcome as pending; the leaf pulses the pass label
+``rom_noecc_pass`` only after CHK-ROM-NOECC of the repeat instance passes, and
+the pending outcomes sample on that rise. Any FAIL closes the window, which
+drops the pending outcomes, and a window does not open again after a FAIL.
 
 The routine first sets ``mrac`` as the SEP firmware start-up does
 (``fw/startup/crt0.s``), so each register store leaves the core at its own size.
@@ -84,7 +117,13 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 from env.sep_fabric_tap import SepFabricTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_rom_ap_pass,
+    set_rom_flip_bits,
+    set_rom_noecc_pass,
+)
 from env.sep_field_compare import field_compare
 from env.sep_mbx_words import SepMbxWords
 from env.sep_rom_image import ROM_WORDS, SepRomImage, rom_flip
@@ -189,12 +228,17 @@ OFF_TRAP = 0xA8
 OFF_NMI = 0xB0
 OFF_NMI_ADDR = 0xB8
 OFF_MRAC = 0xC0
+OFF_RA = 0xC8  # repeat instance: word index
+OFF_RV = 0xD0  # repeat instance: +0 low word, +4 high word
+OFF_TCNT2 = 0xD8
+OFF_DONE2 = 0xE0
 FAIL_ROMCTL, FAIL_FLAG = 1, 2
 
 # SRAM layout of the generated image.
 FW_BASE = SRAM_BASE
 TABLE = SRAM_BASE + 0x8000
 FLAG = SRAM_BASE + 0xC000
+FLAG2 = FLAG + 8  # release flag of the repeat instance
 CTL_LO = SRAM_BASE + 0xD000
 
 N_SEEDED = 512
@@ -419,6 +463,17 @@ def build_code(p: _Plan) -> Asm:
             a.li(T3, x).op(sw(T3, GP, OFF_FA), sw(A0, GP, OFF_FV), sw(A1, GP, OFF_FV + 4), FENCE)
     a.op(FENCE, sw(S11, GP, OFF_TCNT))
     _mark(a, OFF_DONE)
+    # Repeat instance: wait for the second flag, then read each flipped word.
+    a.li(T0, FLAG2).li(T1, FLIP_POLL)
+    a.label("poll2").op(lw(T2, T0, 0)).br("bne", T2, ZERO, "go2")
+    a.op(addi(T1, T1, -1)).br("bne", T1, ZERO, "poll2")
+    _fail(a, FAIL_FLAG)
+    a.label("go2")
+    for w, _m in p.flips:
+        a.li(S0, ROM_BASE + 8 * w).op(lw(A0, S0, 0), lw(A1, S0, 4))
+        a.li(T3, w).op(sw(T3, GP, OFF_RA), sw(A0, GP, OFF_RV), sw(A1, GP, OFF_RV + 4), FENCE)
+    a.op(FENCE, sw(S11, GP, OFF_TCNT2))
+    _mark(a, OFF_DONE2)
     a.label("halt").j("halt")
     # Trap handler: log mcause, count, resume after the trapping instruction.
     a.align(64).label("trap")
@@ -453,8 +508,19 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             self.logger.info("%s PASS: %s", chk, text)
             self.n_checks += 1
         else:
+            close_graded_window(self.logger)
             self.logger.error("%s FAIL: %s", chk, text)
             self.failures.append(f"{chk}: {text}")
+
+    def _open_window(self) -> None:
+        """Open the graded window unless a check of this leaf already failed."""
+        if self.failures:
+            self.logger.info("FCOV window stays closed: %d earlier FAIL", len(self.failures))
+            return
+        open_graded_window(TEST, self.logger)
+
+    def _rom_mem(self):
+        return cocotb.top.u_dut.u_sep_ip_integration.u_sep_boot_rom.mem
 
     def _sram_mem(self):
         sram = cocotb.top.u_dut.u_sep_ip_integration.u_sep_sram
@@ -478,7 +544,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         self.logger.info("STAGE sram words=%d", len(img))
 
     def _stage_rom(self) -> None:
-        mem = cocotb.top.u_dut.u_sep_ip_integration.u_sep_boot_rom.mem
+        mem = self._rom_mem()
         for i, w in enumerate(self.plan.img.words):
             mem[i].value = w
         self.logger.info("STAGE rom words=%d", ROM_WORDS)
@@ -618,7 +684,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 {
                     FW_BASE: code.to_bytes(),
                     TABLE: table,
-                    FLAG: bytes(8),
+                    FLAG: bytes(16),
                     p.sram_ctl: p.sram_ctl_val.to_bytes(4, "little"),
                 }
             )
@@ -654,7 +720,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         await self._check_fail()
         # Steps 6 to 11.
         await mbx.wait(OFF_SWEEP_B, SWEEP_BOUND, what="sweep begin")
-        open_graded_window(TEST, self.logger)
+        self._open_window()
         await mbx.wait(OFF_SWEEP_E, SWEEP_BOUND, what="sweep end")
         self._grade_sweep(ctl.val)
         self._grade_port()
@@ -669,18 +735,138 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 raise
         await mbx.wait(OFF_ST_E, LEG_BOUND, what="store end")
         self._grade_store()
-        # Step 13.
+        await self._ap_passed()
+        close_graded_window(self.logger)
+        # Step 13: the flips are set-up outside the window.
         await mbx.wait(OFF_FLIP_READY, LEG_BOUND, what="FLIP_READY")
         for w, m in p.flips:
             await rom_flip(cocotb.top, w, m)
+        self._flip_stored()
+        # First instance, graded with the window closed.
         self._sram_mem()[(FLAG - SRAM_BASE) // 8].value = 1
         self.logger.info("CTL-FLIP: %d flips applied, release flag set", len(p.flips))
         await mbx.wait(OFF_DONE, LEG_BOUND, what="done record")
         await self._check_fail()
-        close_graded_window(self.logger)
         self._grade_noecc()
+        if self.failures:
+            self.logger.info(
+                "CHK-ROM-NOECC repeat instance not run: %d earlier FAIL", len(self.failures)
+            )
+        else:
+            self._flip_stored()
+            await self._noecc_repeat()
         # Step 14.
         await self._otf()
+
+    def _flip_stored(self) -> None:
+        """CTRL-FLIP-STORED: each flipped macro word holds image ^ mask, each neighbour the image."""
+        p = self.plan
+        mem = self._rom_mem()
+        bad = []
+        n_flip = n_neigh = 0
+        neigh = sorted({x for w, _m in p.flips for x in (w - 1, w + 1)})
+        for w, m in p.flips:
+            got = self.rd(mem[w])
+            exp = p.img.flipped(w, m)
+            if got == exp:
+                n_flip += 1
+            else:
+                bad.append(f"word={w} got=0x{got:016x} exp=0x{exp:016x}")
+        for x in neigh:
+            got = self.rd(mem[x])
+            if got == p.img.word(x):
+                n_neigh += 1
+            else:
+                bad.append(f"neighbour={x} got=0x{got:016x} exp=0x{p.img.word(x):016x}")
+        self.flip_stored = n_flip
+        text = f"flipped_words={n_flip}/{len(p.flips)} neighbours_image={n_neigh}/{len(neigh)}" + (
+            "" if not bad else " " + "; ".join(bad[:4])
+        )
+        if bad:
+            self.logger.error("CTRL-FLIP-STORED FAIL: %s", text)
+            self.failures.append(f"CTRL-FLIP-STORED: {text}")
+            raise AssertionError(f"CTRL-FLIP-STORED FAIL: {text}")
+        self.logger.info("CTRL-FLIP-STORED PASS: %s", text)
+
+    async def _noecc_repeat(self) -> None:
+        """Release the repeat instance inside the window, with the PR-ROM flip label running."""
+        self.label_hits: Counter = Counter()
+        self._label_run = True
+        label = cocotb.start_soon(self._flip_label())
+        try:
+            self._open_window()
+            self._sram_mem()[(FLAG2 - SRAM_BASE) // 8].value = 1
+            self.logger.info("CTL-FLIP: repeat instance, release flag set")
+            await self.mbx.wait(OFF_DONE2, LEG_BOUND, what="repeat done record")
+            await self._check_fail()
+            self._grade_noecc_repeat()
+            await self._noecc_passed()
+            close_graded_window(self.logger)
+        finally:
+            self._label_run = False
+            await label
+        self.logger.info(
+            "FCOV-ROM-FLIP-LABEL flip_words_labelled=%d/%d handshakes_labelled=%d",
+            len(self.label_hits),
+            len(self.plan.flips),
+            sum(self.label_hits.values()),
+        )
+
+    async def _noecc_passed(self) -> None:
+        """Pulse the pass labels of the repeat instance when its check passed.
+
+        The sampler holds every labelled load outcome of the repeat instance
+        (``rom_noecc_pass``) and every other ROM point outcome of the window
+        (``rom_ap_pass``) as pending and samples them only on these rises,
+        inside the open window. A failed check has already closed the window,
+        so it pulses nothing.
+        """
+        if self.failures:
+            return
+        set_rom_noecc_pass(True, self.logger)
+        set_rom_ap_pass(True, self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_rom_noecc_pass(False, self.logger)
+        set_rom_ap_pass(False, self.logger)
+
+    async def _ap_passed(self) -> None:
+        """Pulse ``rom_ap_pass`` when every check of the leaf so far passed.
+
+        The pending outcomes of the last window sample on the rise. After a
+        FAIL the leaf pulses nothing and opens no window, so they never sample.
+        """
+        if self.failures:
+            return
+        set_rom_ap_pass(True, self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_rom_ap_pass(False, self.logger)
+
+    async def _flip_label(self) -> None:
+        """Write ``rom_flip_bits`` on each PR-ROM handshake of the repeat instance.
+
+        The label is the popcount of the flip mask when the handshake word is a
+        flipped word and 0 for any other word. The routine reads one word per
+        fenced group, so no other PR-ROM request lies between a handshake and
+        the R beat the sampler checks. The label is 0 when the coroutine ends.
+        """
+        dut = cocotb.top
+        bits = {w: bin(m).count("1") for w, m in self.plan.flips}
+        cur = 0
+        while self._label_run:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if not (self.rd(dut.pr_rom_req_o) and self.rd(dut.pr_rom_gnt_o)):
+                continue
+            word = self.rd(dut.pr_rom_addr_o) >> 3
+            n = bits.get(word, 0)
+            if n:
+                self.label_hits[word] += 1
+            if n != cur:
+                await Timer(1, units="ps")
+                set_rom_flip_bits(n)
+                cur = n
+        await Timer(1, units="ps")
+        set_rom_flip_bits(0, self.logger)
 
     async def _check_fail(self) -> None:
         f = self.mbx.find(OFF_FAIL)
@@ -905,6 +1091,12 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         exp_reads = [x for w, _m in p.flips for x in (w - 1, w, w + 1)]
         if [x for x, _v in reads] != exp_reads:
             bad.append(f"read order {len(reads)} records vs {len(exp_reads)} planned")
+        # Positive probe: the flip-leg loads reach PR-ROM at exactly the planned words.
+        t0, t1 = self._marker_t(OFF_FLIP_READY), self._marker_t(OFF_DONE)
+        rq_words = {
+            None if b.addr is None else b.addr >> 3 for b in self._in(self.rom.beats, t0, t1, "req")
+        }
+        req_ok = rq_words == set(exp_reads)
         for x, v in reads:
             exp = p.img.flipped(x, flipped[x]) if x in flipped else p.img.word(x)
             if v != exp:
@@ -916,13 +1108,93 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                     n2 += 1
             else:
                 neigh += 1
-        ok = not bad and c1 - c0 == 1 and c2 - c1 == 0 and nmi == 0
+        ok = (
+            not bad
+            and n1 == N_FLIP1
+            and n2 == N_FLIP2
+            and c1 - c0 == 1
+            and c2 - c1 == 0
+            and nmi == 0
+            and self.flip_stored == len(p.flips)
+            and req_ok
+        )
         self._grade(
             "CHK-ROM-NOECC",
             ok,
-            f"flips1={n1} flips2={n2} data={'stored' if not bad else 'mismatch'} "
+            f"instance=first flips1={n1}/{N_FLIP1} flips2={n2}/{N_FLIP2} "
+            f"data={'stored' if not bad else 'mismatch'} "
             f"resp={'OKAY' if c2 == c1 and nmi == 0 else 'ERR'} traps={c2 - c1 + nmi} "
-            f"neighbours_exact={neigh} control_ecall_traps={c1 - c0}"
+            f"neighbours_exact={neigh} control_ecall_traps={c1 - c0} "
+            f"probe_macro_flipped={self.flip_stored}/{len(p.flips)} "
+            f"probe_rom_req_words={len(rq_words)}/{len(set(exp_reads))} "
+            f"probe_rom_req_exact={int(req_ok)}" + ("" if not bad else " " + "; ".join(bad[:4])),
+        )
+
+    def _grade_noecc_repeat(self) -> None:
+        """CHK-ROM-NOECC, repeat instance: each flipped word once more, inside the window."""
+        p = self.plan
+        recs = self.mbx.records()
+        tcnt = [r for r in recs if r.off == OFF_TCNT]
+        t2 = self.mbx.find(OFF_TCNT2)
+        if len(tcnt) != 3 or t2 is None:
+            self._grade(
+                "CHK-ROM-NOECC",
+                False,
+                f"instance=repeat trap-count records={len(tcnt)}/3 repeat={int(t2 is not None)}/1",
+            )
+            return
+        c2, c3 = tcnt[2].val, t2.val
+        seg = recs[tcnt[2].seq + 1 : t2.seq]
+        nmi = sum(1 for r in seg if r.off in (OFF_NMI, OFF_TRAP))
+        reads = []
+        k = 0
+        while k + 2 < len(seg):
+            if seg[k].off == OFF_RA and seg[k + 1].off == OFF_RV and seg[k + 2].off == OFF_RV + 4:
+                reads.append((seg[k].val, seg[k + 1].val | (seg[k + 2].val << 32)))
+                k += 3
+            else:
+                k += 1
+        flipped = dict(p.flips)
+        exp_reads = [w for w, _m in p.flips]
+        bad = []
+        n1 = n2 = 0
+        if [x for x, _v in reads] != exp_reads:
+            bad.append(f"read order {len(reads)} records vs {len(exp_reads)} planned")
+        for x, v in reads:
+            exp = p.img.flipped(x, flipped[x]) if x in flipped else p.img.word(x)
+            if v != exp:
+                bad.append(f"word={x} got=0x{v:016x} exp=0x{exp:016x}")
+            elif bin(flipped[x]).count("1") == 1:
+                n1 += 1
+            else:
+                n2 += 1
+        # Positive probes: the loads reach PR-ROM at exactly the flipped words,
+        # and the label coroutine saw a handshake at each of them.
+        t0, t1 = self._marker_t(OFF_DONE), self._marker_t(OFF_DONE2)
+        rq_words = {
+            None if b.addr is None else b.addr >> 3 for b in self._in(self.rom.beats, t0, t1, "req")
+        }
+        req_ok = rq_words == set(exp_reads)
+        labelled = len(self.label_hits)
+        ok = (
+            not bad
+            and n1 == N_FLIP1
+            and n2 == N_FLIP2
+            and c3 - c2 == 0
+            and nmi == 0
+            and self.flip_stored == len(p.flips)
+            and req_ok
+            and labelled == len(p.flips)
+        )
+        self._grade(
+            "CHK-ROM-NOECC",
+            ok,
+            f"instance=repeat flips1={n1}/{N_FLIP1} flips2={n2}/{N_FLIP2} "
+            f"data={'stored' if not bad else 'mismatch'} "
+            f"resp={'OKAY' if c3 == c2 and nmi == 0 else 'ERR'} traps={c3 - c2 + nmi} "
+            f"probe_macro_flipped={self.flip_stored}/{len(p.flips)} "
+            f"probe_rom_req_words={len(rq_words)}/{len(exp_reads)} "
+            f"probe_rom_req_exact={int(req_ok)} probe_label_words={labelled}/{len(p.flips)}"
             + ("" if not bad else " " + "; ".join(bad[:4])),
         )
 
@@ -945,6 +1217,11 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         await self._wait_level(dut.sep_cpu_reset_n_o, 0, CPU_LOW_BOUND, "setup reset")
         await ClockCycles(dut.clk_i, RST_HOLD)
         dut.rst_ni.value = 1
+        # The window opens at least one clk_i edge before the rst_ni fall: the
+        # sampler drops the pending rom_ap_pass counts at the first clk_i edge
+        # of a window, so a window that opens with the fall drops the ROM read
+        # cell that the fall counts.
+        self._open_window()
         # Anchor: the PR-ROM handshake of the stub fetch at word address 1.
         for _ in range(ANCHOR_BOUND):
             await RisingEdge(dut.clk_i)
@@ -952,12 +1229,13 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             if self.rd(dut.pr_rom_req_o) and self.rd(dut.pr_rom_addr_o) >> 3 == 1:
                 break
         else:
+            await Timer(1, units="ps")
+            close_graded_window(self.logger)
             raise AssertionError(f"CHK-ROM-OTF: no anchor fetch within {ANCHOR_BOUND} cycles")
         t_hs = get_sim_time("ps")
         for _ in range(self.o):
             await RisingEdge(dut.clk_i)
         await Timer(1, units="ps")
-        open_graded_window(TEST, self.logger)
         dut.rst_ni.value = 0
         t_fall = get_sim_time("ps")
         # The macro latches its request on the next clk_i edge. Sample what it will
@@ -1056,3 +1334,4 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             f"0x{(self.cal_word1 or 0):016x}/0x{img.word(1):016x} "
             f"t_hs={t_hs} t_fall={t_fall} t_release={t_rel}",
         )
+        await self._ap_passed()

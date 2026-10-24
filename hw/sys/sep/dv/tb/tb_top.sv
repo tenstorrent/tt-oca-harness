@@ -2748,6 +2748,11 @@ module sep_uvm_top
     assign efuse_shim_resp_valid_o = `SEP_CORE.efuse_shim_command_resp_i.valid;
     assign efuse_shim_resp_status_o = `SEP_CORE.efuse_shim_command_resp_i.status;
     assign efuse_shim_resp_data_o = `SEP_CORE.efuse_shim_command_resp_i.data;
+    // The response valid at the sensing FSM input and fuse_sense_done_o at its
+    // output, the two ports of efuse_shadow_regs that the sensing timing of
+    // doc/otp_fuse_controller.adoc names.
+    assign efuse_shadow_resp_valid_o = `EFUSE_CTRL.u_efuse_shadow_regs.fuse_command_resp_i.valid;
+    assign efuse_shadow_sense_done_o = `EFUSE_CTRL.u_efuse_shadow_regs.fuse_sense_done_o;
     // The APB select of the shim request to the bank model (efuse_model_otp_req in
     // sep_ip_integration): a request that the guard blocks starts no bank access.
     assign efuse_bank_psel_o = `SEP_IPI.efuse_model_otp_req.psel;
@@ -4054,11 +4059,15 @@ module sep_uvm_top
     assign km_sram_wmap_jump_wr_o   = km_wmap_jump_wr_q;
 
     // KM-AXIV: the request valids of the KM CPU AXI4-Lite master (the port the
-    // KM AXI SVA binds to), {ar_valid, aw_valid, w_valid}, and the warm reset
-    // of the KM CPU core (rst_warm_sync_n, the SVA aresetn), on every clock.
+    // KM AXI SVA binds to), {ar_valid, aw_valid, w_valid}, the readies of the
+    // same channels, and the warm reset of the KM CPU core (rst_warm_sync_n,
+    // the SVA aresetn), on every clock.
     assign km_cpu_axi_valid_o = {`KM_TAP.cpu_axil_req.ar_valid,
                                  `KM_TAP.cpu_axil_req.aw_valid,
                                  `KM_TAP.cpu_axil_req.w_valid};
+    assign km_cpu_axi_ready_o = {`KM_TAP.cpu_axil_resp.ar_ready,
+                                 `KM_TAP.cpu_axil_resp.aw_ready,
+                                 `KM_TAP.cpu_axil_resp.w_ready};
     assign km_cpu_rst_n_o     = `KM_TAP.rst_warm_sync_n;
 
     // ------------------------------------------------------------------
@@ -4851,7 +4860,17 @@ module sep_uvm_top
     // This checks PROTOCOL, not data. A register that accepts a write, answers
     // OKAY and stores nothing breaks no rule here, so a green run is not
     // evidence that a KM register write landed.
+    //
+    // MASTER_SYNC_RESET=1: the AXI reset rule (IHI 0022, A3.1.2) requires
+    // ARVALID, AWVALID and WVALID low during reset and gives no timing for
+    // reset entry. The KM CPU master is graded with a one-edge entry window:
+    // the valids may be high on the first edge that samples the KM CPU reset
+    // low and must be low from the next edge on. The cold reset asserts
+    // asynchronously and the warm reset on a clock edge
+    // (hw/ip/key_manager/doc/architecture.adoc, Reset Conditioning).
+    // Issue: #3170
     bind key_manager ocah_axi_sva #(
+        .MASTER_SYNC_RESET (1'b1),
         .IS_LITE    (1'b1),
         .ADDR_WIDTH (32),
         .DATA_WIDTH (32),
@@ -5945,59 +5964,13 @@ module sep_uvm_top
 
     // Memory, boot, reset, WDT and clock sampler taps (docs/SEP_FCOV.adoc,
     // memory, boot, reset groups, Sampled signal paths): read-only, no force.
-    // The reset-vector TDR and the IFU-side AXI cells exist only with the full
-    // core; the stub build ties the TDR to 0 and lists no IFU cell.
+    // The reset-vector TDR exists only with the full core; the stub build ties
+    // it to 0.
 `ifndef SEP_CPU_STUB
     wire [30:0] fcov_dmi_rst_vec = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_rst_vec;
-    wire [2:0]  fcov_te_cpu = {
-        `SEP_CORE.u_sep_cpu.u_ifu_axi_demux.test_i,
-        `SEP_CORE.u_sep_cpu.u_ifu_axi_err_slv.test_i,
-        `SEP_CORE.u_sep_cpu.u_lsu_axi_demux.test_i
-    };
 `else
     wire [30:0] fcov_dmi_rst_vec = '0;
-    wire [2:0]  fcov_te_cpu = {3{`SEP_CORE.u_sep_cpu.u_lsu_axi_demux.test_i}};
 `endif
-    // Consumers of test_en_i: the Secure DMA clock gater, and the AXI cell
-    // test inputs that test_en_i drives.
-`define SEP_FCOV_IC `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect
-    wire        fcov_te_gater = `SEP_CORE.u_sep_dma_wrap.u_secure_dma.dma_clk_gate.test_en_i;
-    wire [33:0] fcov_te_axi = {
-        fcov_te_cpu,
-        `SEP_CORE.u_efuse_shim_demux.test_i,
-        `SEP_CORE.u_sram_burst_demux.test_i,
-        `SEP_CORE.u_sram_burst_err_slv.test_i,
-        `SEP_CORE.u_boot_rom_axi_mux.test_i,
-        `SEP_CORE.u_sep_crypto.u_efuse_shim_axi_mux.test_i,
-        `SEP_FCOV_IC.u_axi_demux.test_i,
-        `SEP_FCOV_IC.u_axi_err_slv.test_i,
-        `SEP_FCOV_IC.u_otbn_axi_to_axi_lite.test_i,
-        `SEP_FCOV_IC.u_otbn_host_isolate.test_i,
-        `SEP_FCOV_IC.u_hmac_axi_to_axi_lite.test_i,
-        `SEP_FCOV_IC.u_hmac_host_isolate.test_i,
-        `SEP_FCOV_IC.u_aes_axi_to_axi_lite.test_i,
-        `SEP_FCOV_IC.u_aes_host_isolate.test_i,
-        `SEP_FCOV_IC.u_kmac_axi_to_axi_lite.test_i,
-        `SEP_FCOV_IC.u_kmac_host_isolate.test_i,
-        `SEP_FCOV_IC.u_otbn_key_isolate.test_i,
-        `SEP_FCOV_IC.u_aes_key_isolate.test_i,
-        `SEP_FCOV_IC.u_hmac_key_isolate.test_i,
-        `SEP_FCOV_IC.u_kmac_key_isolate.test_i,
-        `SEP_FCOV_IC.u_abr_key_isolate.test_i,
-        `SEP_FCOV_IC.u_km_efuse_isolate.test_i,
-        `SEP_FCOV_IC.u_km_axi_to_axi_lite.test_i,
-        `SEP_FCOV_IC.u_esrc_axi_to_axi_lite.test_i,
-        `SEP_FCOV_IC.u_esrc_host_isolate.test_i,
-        `SEP_FCOV_IC.u_csrng_axi_to_axi_lite.test_i,
-        `SEP_FCOV_IC.u_csrng_host_isolate.test_i,
-        `SEP_FCOV_IC.u_edn_axi_to_axi_lite.test_i,
-        `SEP_FCOV_IC.u_edn_host_isolate.test_i,
-        `SEP_FCOV_IC.u_trng_axi_to_axi_lite.test_i,
-        `SEP_CORE.u_sep_wdt_wrap.u_wdt_axi_to_axi_lite.test_i,
-        `SEP_CORE.u_sep_reset_ctrl.u_axi_to_axi_lite.test_i
-    };
-`undef SEP_FCOV_IC
-
     // Memory, boot, reset sampler taps of the CPU path (docs/SEP_FCOV.adoc,
     // memory, boot, reset groups, Sampled signal paths): the trap unit
     // (veer.dec.tlu: trap cause, ECC counters, their requests and write
@@ -6382,8 +6355,6 @@ module sep_uvm_top
         .wdt_axil_resp_i   (`SEP_CORE.u_sep_wdt_wrap.axi_lite_resp),
         .wdt_tl_h2d_i      (`SEP_CORE.u_sep_wdt_wrap.tl_d_i),
         .wdt_tl_d2h_i      (`SEP_CORE.u_sep_wdt_wrap.tl_d_o),
-        .te_pins_one_i     ({&fcov_te_axi, fcov_te_gater === 1'b1}),
-        .te_pins_zero_i    ({~|fcov_te_axi, fcov_te_gater === 1'b0}),
 
         // Memory, boot, reset taps of the CPU path, the memory macros and
         // the debug interface.
@@ -6556,6 +6527,8 @@ module sep_uvm_top
         // eFuse, lifecycle and SEC_DIS taps.
         .shim_cmd_i            (`SEP_CORE.efuse_shim_command_req_o),
         .shim_resp_i           (`SEP_CORE.efuse_shim_command_resp_i),
+        .sense_fsm_resp_v_i    (efuse_shadow_resp_valid_o),
+        .sense_fsm_done_i      (efuse_shadow_sense_done_o),
         .efuse_shadow_i        (efuse_shadow_probe_o),
         .stored_shadow_i       (`FC_EFCTRL.u_efuse_shadow_regs.shadow_efuse),
         .feat_ctrl_i           (lcc_feat_ctrl_probe_o),

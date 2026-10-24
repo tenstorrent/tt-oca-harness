@@ -264,6 +264,10 @@ Observation probe groups:
   of the read and program interfaces sit before the guard and cannot show a
   refusal. `efuse_shim_resp_{valid,status,data}_o`, the shim response at the
   `sep` input `efuse_shim_command_resp_i`, after the sense-status inject.
+  `efuse_shadow_resp_valid_o` and `efuse_shadow_sense_done_o`, the response
+  valid at the input and `fuse_sense_done_o` at the output of the sensing FSM
+  (`efuse_shadow_regs`), the ports where `doc/otp_fuse_controller.adoc` states
+  the sense-done latency; the FCOV sampler reads the same two taps.
   `efuse_bank_psel_o`, the APB `psel` of the shim request to the bank model
   (`efuse_model_otp_req` in `sep_ip_integration`), sampled every clock to show
   that a request the guard blocks starts no bank access.
@@ -293,7 +297,9 @@ Observation probe groups:
   `pg_addr_err_i` and `req_err_i` (the `EFUSE_INTERFACE_CTRL_STATUS` error
   flags), `stored_shadow_i` (the unmasked stored shadow), `shim_resp_i` (valid,
   status and data of the shim response at the `sep` input
-  `efuse_shim_command_resp_i`) and `shim_cmd_i` (the post-guard fuse command).
+  `efuse_shim_command_resp_i`), `shim_cmd_i` (the post-guard fuse command),
+  and `sense_fsm_resp_v_i` and `sense_fsm_done_i` (the sensing FSM taps
+  `efuse_shadow_resp_valid_o` and `efuse_shadow_sense_done_o`).
   The sampler also reads `cmp_match_p_i` and `cmp_match_n_i`, `tok_words_i`,
   the digest latch inputs and `jtag_filt_sigint_i` from the taps above. No
   check reads them. Users: the owners of the eFuse and lifecycle groups of
@@ -371,9 +377,10 @@ Observation probe groups:
    took place; stores after that fetch are not in the capture. User:
    `sep_km_handover_rand_test` (CHK-HO-SRAM).
 * Key Manager CPU AXI valid tap (KM-AXIV, `km_cpu_axi_valid_o[2:0]`,
-  `km_cpu_rst_n_o`): the request valids of the KM CPU AXI4-Lite master
-  `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1 `aw_valid`, bit 0
-  `w_valid`, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
+  `km_cpu_axi_ready_o[2:0]`, `km_cpu_rst_n_o`): the request valids of the KM
+  CPU AXI4-Lite master `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1
+  `aw_valid`, bit 0 `w_valid`, the readies of the same channels from
+  `cpu_axil_resp` in the same bit order, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
   the PicoRV32 core and the `aresetn` of the KM AXI SVA. Read only, on every
   clock. User: `sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
@@ -1101,8 +1108,11 @@ Exceptions (a closed set):
   has no frontdoor. Observation only; it drives nothing. Owners:
   `sep_km_sideload_share_walk_test`, `sep_km_abr_mlkem_sideload_test`.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
-  `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
-  reach that port. Protocol, not data.
+  `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`, with
+  `MASTER_SYNC_RESET` = 1: the AR, AW and W valids may be high on the first
+  edge that samples the reset low and must be low from the next edge on (AXI
+  A3.1.2 gives no reset-entry timing). No TB master can reach that port.
+  Protocol, not data.
 
 [[sep-run-modes]]
 === Run Modes and RTL Targets
