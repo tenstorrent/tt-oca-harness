@@ -159,3 +159,12 @@ seed = 1
 timeout_sec = 1800
 tags = ["basic_jtag", "jtag"]
 run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_bsr_disabled_test"
+module = { cocotb = "dtp_jtag_bsr_disabled_test", uvm = "dtp_jtag_bsr_disabled_test" }
+target = "bsr_disabled"
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]

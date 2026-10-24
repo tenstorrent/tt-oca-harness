@@ -130,6 +130,23 @@ flags = [
   "--no-assert-case",
 ]
 
+# DTP_BSR_DISABLED elaborates the DUT with the boundary-scan instructions
+# disabled (tb/dtp_dv_cfg_pkg.sv).
+[targets.bsr_disabled]
+description = "DTP cocotb target with the boundary-scan instructions disabled"
+build_dir = "hw/sys/dtp/dv/build/bsr_disabled/cocotb"
+defines = ["DTP_BSR_DISABLED"]
+pinned_only = true
+
+[targets.bsr_disabled.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+  "+define+ASSERTS_OFF",
+  "--assert",
+  "--no-assert-case",
+]
+
 [coverage.verilator]
 # Instrument line/branch (--coverage-line), expression, and SVL user coverage
 # (the cov/sv cover-property points); toggle instrumentation stays off to
@@ -246,3 +263,8 @@ description = "DTP SV-UVM default target"
 build_dir = "hw/sys/dtp/dv/build/uvm"
 # The bare `UVM` define (adds the SV-UVM harness block of the shared tb_top.sv) comes from
 # the native profile's [frameworks.uvm] overlay — no per-DUT copy.
+
+[frameworks.uvm.targets.bsr_disabled]
+description = "DTP SV-UVM target with the boundary-scan instructions disabled"
+build_dir = "hw/sys/dtp/dv/build/bsr_disabled/uvm"
+work_dir = "hw/sys/dtp/dv/build/bsr_disabled/uvm"
