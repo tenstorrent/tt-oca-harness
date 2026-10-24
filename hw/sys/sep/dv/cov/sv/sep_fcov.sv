@@ -19164,10 +19164,11 @@ module sep_fcov (
   // rst_ni falls: the offset is the clk_i edges after the request handshake
   // edge (AR, or the later of AW and W) and before the fall, against W, the
   // edges strictly between the handshake and the response of the last access
-  // of that path that completed alone. A ROM read in flight is the handshake
-  // on sep_boot_rom_req with no rvalid yet. After the release, the first R
-  // or B beat (rvalid for ROM) must follow a request issued after it. The
-  // tracking is ungated; the gate applies at the fall.
+  // of that path that completed alone. A ROM read in flight is a request on
+  // the boot ROM memory_interface stream (rom_req_i) with no rom_rvalid_i yet.
+  // After the release, the first R or B beat (rom_rvalid_i for ROM) must
+  // follow a request issued after it. The tracking is ungated; the gate
+  // applies at the fall.
   // ---------------------------------------------------------------------
   logic mm_or_pend = 1'b0;
   logic mm_ow_aw = 1'b0;
@@ -19717,9 +19718,10 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // cp_rom_write_master: a CPU store to the ROM aperture. A ROM macro
   // request (out of the memory_interface) at the store word is a readback when
-  // a read request for that word reached sep_boot_rom_req within
-  // MmRomRdAge edges; the cell hits MmStoreQuiet edges after the store
-  // response when every such request was a readback.
+  // a read request for that word is on the boot ROM memory_interface stream
+  // (rom_req_i with rom_we_i low) within MmRomRdAge edges; the cell hits
+  // MmStoreQuiet edges after the store response when every such request was
+  // a readback.
   // ---------------------------------------------------------------------
   longint unsigned mm_rrd[int unsigned];
   logic mm_sw_on = 1'b0;

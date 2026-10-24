@@ -163,7 +163,7 @@ Observation probe groups:
   `km_rom_req_count_o`. User of `km_cpu_fetch_count_o`:
   `sep_km_cpu_protect_rand_test`.
 * KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`).
-* KM SRAM read-latency probes (`km_sram_rd_*`) and scrambled-write probes
+* KM SRAM read-count probes (`km_sram_rd_*`) and scrambled-write probes
   (`km_sram_scr_wr_*`).
 * Entropy CHK probes and the IRQ aggregate.
 * AXI-Lite split handshakes.
@@ -522,7 +522,10 @@ Observation probe groups:
    data. PR-ROM also carries the macro side of the boot ROM memory interface
    (`pr_rom_macro_*`: `req` and `addr`, the 64-bit word index, of the wrapper
    net `u_dut.sep_boot_rom_req`, and `rdata` of `u_dut.sep_boot_rom_rsp`;
-   monitor PR-ROM-MACRO).
+   monitor PR-ROM-MACRO). PR-SRAM also carries the SRAM macro request
+   (`pr_sram_macro_*`: `req`, `we`, `addr`, the 64-bit word index, and
+   `wmask`, the bit write mask, of the wrapper net `u_dut.sep_sram_req`;
+   monitor PR-SRAM-MACRO).
    The PR-SRAM address (`pr_sram_addr_o`) is the byte offset of the request
    from the SRAM base `SEP_SRAM_MEM_BASE_ADDR`, not the bus address; a check
    compares it at 8-byte word granularity, the width of one SRAM word.
@@ -531,6 +534,7 @@ Observation probe groups:
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_sram_axi_shape_matrix_test` and
    `sep_cpu_demux_unmapped_fetch_test` (PR-SRAM);
+   `sep_sram_datapath_breadth_test` (PR-SRAM-MACRO);
    `sep_fabric_dma_endpoint_matrix_test`, `sep_cpu_reset_entry_test`,
    `sep_boot_rom_aperture_sweep_test` and
    `sep_cpu_demux_unmapped_fetch_test` (PR-ROM).

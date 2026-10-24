@@ -181,22 +181,24 @@ entry requires exactly two.
 
 *Source Module*: `sep_sram_datapath_breadth_test`
 
-*BFM / Model*: ocah_axi_vip
+*BFM / Model*: ocah_axi_vip, SRAM macro request tap (PR-SRAM-MACRO)
 
-*Objective*: SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port.
+*Objective*: SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port, and the word address and bit write mask of each SRAM macro request.
 
-*Test Coverage*: Every contiguous WSTRB mask, the 64-bit pattern set, sequential distinct words, the base plus last-valid SRAM word, and one word per SRAM address bit.
+*Test Coverage*: Every contiguous WSTRB mask, the 64-bit pattern set, sequential distinct words, the base plus last-valid SRAM word, one word per SRAM address bit, and the SRAM macro request of every access.
 
 *Test Procedure*:
 
 [arabic]
 . Build the seeded configuration and bring up in `no_cpu`.
+. Start the PR-SRAM-MACRO tap. Each access of the steps below must make exactly one SRAM macro request with the golden `we`, `addr` and `wmask`. The leaf grades the request when its access completes, before the read-back compare of that access (CHK-SRAM-MACRO-MAP).
 . For each contiguous WSTRB mask, in the seeded order: write the initial word, write the masked bytes, and read the word back. Compare the readback against the Python strobe model (CHK-WSTRB).
 . Write and read back each 64-bit pattern: the two alternating patterns, the walking one, the walking zero and the seeded extras (CHK-PATTERN).
 . Write the base word and the last valid word, then read both back (CHK-BOUNDARY).
 . Write a run of consecutive single-beat words with distinct values, then read each word back (CHK-SEQ).
 . Write two addresses with complementary patterns, then read both back (CHK-NONVAC).
 . Write the base word, one word at each power-of-two offset and the top word, each with a distinct value. Then read all of them back, and require at least one offset in the upper 192 KiB (CHK-ADDR-LINES).
+. Stop the tap. The counts of graded macro writes, graded macro reads and distinct partial write masks must each be non-zero (CHK-SRAM-MACRO-MAP).
 
 *Checkers*:
 
@@ -213,6 +215,8 @@ entry requires exactly two.
 |The base address and the last valid SRAM word both read and write exactly. The extent is the generated map, not a doc literal: `SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and `SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`, matching SramNEntries = 256 * 1024 / 8 in `hw/top/sep_ip_integration.sv`, so the top valid 64-bit word is `0x1003fff8`. One-past-top decode-error is `sep_axi_map_refuse_test`, not this row: that address is the ROM base.
 |CHK-NONVAC
 |Two addresses are written with complementary patterns and both are read back and value-checked, so a read path returning the same value for both fails. Requiring an *unwritten* neighbour to differ from a non-zero pattern is not claimed — that difference is already guaranteed by the pattern constructor; see <<audit>>.
+|CHK-SRAM-MACRO-MAP
+|Every single-beat SRAM access of the steps above makes exactly one request on the SRAM macro port `sep_sram_req_o` (`hw/sys/sep/doc/port_table.adoc`, line 69; struct fields in `hw/ip/memory_interface/README.adoc`, lines 163-170). `we` is 1 for a write and 0 for a read. `addr` is the word address: the byte offset from the SRAM base shifted right by `$clog2(MEM_DATA_WIDTH/8)` = 3, truncated to the width of the `addr` field. For a write, `wmask` is the AXI byte strobe with each strobe bit expanded to eight bits (`hw/ip/memory_interface/README.adoc`, lines 186-188). The word size and the word count come from the generated map (`SEP_SRAM_MEM_WORD_REG_WIDTH` and the SRAM size), not from a literal. A DUT that takes the word address one bit off, or maps a strobe bit to the wrong byte lane, shows a different `addr` or `wmask` and fails. A DUT that makes no request, or more than one, for one access fails. Anchor: the PR-SRAM-MACRO tap on the wrapper net `u_dut.sep_sram_req`, sampled after `ReadOnly()`. Control: every seed grades at least one macro write, one macro read and one partial write mask; a zero count fails the check. Evidence: `CHK-SRAM-MACRO-MAP PASS: macro_reqs=<n> writes=<w> reads=<r> distinct_words=<d> distinct_wmasks=<m> partial_wmasks=<p>`.
 |CHK-ADDR-LINES
 |The base word, one word at every power-of-two offset from 8 bytes up to half of `SEP_SRAM_MEM_SIZE`, and the top word are all written with distinct values and then all read back exactly. A memory that decoded fewer address bits than the generated 256 KiB would alias two of them and fail. The offsets `+0x10000` and `+0x20000` sit in the upper 192 KiB.
 |===
@@ -1688,7 +1692,7 @@ A drawn overlap run of the band between can place the pulse while the `SW_RESET_
 |CHK-SRAM-OTF
 |For each path at its drawn offset, the reset lands before the response beat of a real access (`midflight=1`: the monitor shows the request handshake, the reset fall o cycles later, and no response beat before the fall). After the release, the write of the drawn value reads back that value with OKAY, and no R or B beat with the abandoned ID appears on the bench-port monitor, which `rst_ni` does not reset (`hw/sys/sep/doc/reset_controller.adoc`, SEP Reset Controller). A DUT that keeps the abandoned access answers it after the release or hangs the next access and fails. Anchor: the real read-back and the monitor beats (approved), with `rst_ni` and `dbg_sep_reset_n_o`. Control: the same path completes with the drawn data in the no-reset measurement of step 8, so a response is visible on the monitor. Evidence: `CHK-SRAM-OTF PASS: path=<RD or WR> offset=<o>/<W> midflight=1 readback=0x<v> resp=OKAY stale_beats=0`.
 |CHK-SRAM-OTF-REPLAY
-|The `sram_req` tap shows no replay of the abandoned request after the reset: no request with the abandoned address appears between the release and the post-reset write. The `sram_req` address is the byte offset from the SRAM base, compared at 8-byte word granularity (`SEP_TB_ARCH.adoc`, PR-SRAM). A DUT that replays the access shows the request. Anchor: the `sram_req` tap. Control: the post-reset write appears on `sram_req`, and the read of the post-reset readback shows its `rvalid` beat on `sram_rsp`, so neither tap is silent. A missing control event fails the check. Evidence: `CHK-SRAM-OTF-REPLAY PASS: path=<RD or WR> offset=<o>/<W> replay=0 control_write_seen=1 control_rsp_seen=1`.
+|The `sram_req` tap shows no replay of the abandoned request after the reset: no request with the abandoned address appears between the release and the post-reset write. The `sram_req` address is the byte offset from the SRAM base, compared at 8-byte word granularity (`SEP_TB_ARCH.adoc`, PR-SRAM). A DUT that replays the access shows the request. Anchor: the `sram_req` tap. Control: the post-reset write appears on `sram_req`, and a `sram_rsp` beat after the readback request carries the post-reset value as read data (the macro returns read data on the rising edge after a read request, `hw/ip/memory_interface/README.adoc`, line 183), so neither tap is silent and the graded beat is the readback. A response beat with other data does not count. A missing control event fails the check. Evidence: `CHK-SRAM-OTF-REPLAY PASS: path=<RD or WR> offset=<o>/<W> replay=0 control_write_seen=1 control_rsp_seen=1 control_rsp_rdata=[0x<v>] want_rdata=0x<v>`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

@@ -421,7 +421,7 @@ they leave out; the checker table of each linked entry is the full set.
 |DMA address modes × width |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |The checker table of each entry named. |YES
 |DMA host-path command integrity |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 41; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source. |YES
 |DMA zero fill |<<sep_dma_zero_fill_rand_test,`sep_dma_zero_fill_rand_test`>>, <<sep_dma_zero_fill_continuation_test,`sep_dma_zero_fill_continuation_test`>>, <<sep_dma_zero_test,`sep_dma_zero_test`>> |all, cpu_stub, cpu |`sep_dma_zero_cg` |The checker table of each entry named. |YES
-|SRAM datapath |<<sep_sram_smoke_test,`sep_sram_smoke_test`>>, <<sep_sram_datapath_breadth_test,`sep_sram_datapath_breadth_test`>>, <<sep_sram_burst_type_test,`sep_sram_burst_type_test`>>, <<sep_sram_inbound_burst_attr_test,`sep_sram_inbound_burst_attr_test`>> |all, cpu_stub |`sep_sram_access_cg` |`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test` (`CHK-ADDR-LINES` reaches the upper 192 KiB), `sep_sram_burst_type_test` (FIXED / WRAP), `sep_sram_inbound_burst_attr_test` (inbound INCR bursts, seeded request attributes) |YES
+|SRAM datapath |<<sep_sram_smoke_test,`sep_sram_smoke_test`>>, <<sep_sram_datapath_breadth_test,`sep_sram_datapath_breadth_test`>>, <<sep_sram_burst_type_test,`sep_sram_burst_type_test`>>, <<sep_sram_inbound_burst_attr_test,`sep_sram_inbound_burst_attr_test`>> |all, cpu_stub |`sep_sram_access_cg` |`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test` (`CHK-ADDR-LINES` reaches the upper 192 KiB; `CHK-SRAM-MACRO-MAP` grades the macro word address and write mask), `sep_sram_burst_type_test` (FIXED / WRAP), `sep_sram_inbound_burst_attr_test` (inbound INCR bursts, seeded request attributes) |YES
 |AES mode × key-size |<<sep_aes_mode_keysize_rand_test,`sep_aes_mode_keysize_rand_test`>> |all, cpu_stub |`sep_aes_mode_cg` |`sep_aes_mode_keysize_rand_test` (9-cell). CTR x DECRYPT is not claimed: CTR is a stream mode and the engine runs the forward cipher whichever way `OPERATION` is programmed, so the cell has no DUT-observable cipher contract and a test there would pass with the field disconnected. `OPERATION`'s shadowed-register behaviour is mode-independent and belongs on a CSR vehicle. |YES for the claimed part; the evidence cell names the rest
 |AES CFB / OFB / GCM |<<sep_aes_cfb_ofb_gcm_rand_test,`sep_aes_cfb_ofb_gcm_rand_test`>> |all, cpu_stub |`sep_aes_cfb_ofb_gcm_cg` |`sep_aes_cfb_ofb_gcm_rand_test` grades CFB-128, OFB and GCM at 128, 192 and 256 bits, encrypt and decrypt, against NIST SP 800-38A and SP 800-38D; `sep_aes_mode_keysize_rand_test` keeps ECB, CBC and CTR. One cell per seed; the 18 cells close over merged regressions. |YES
 |HMAC SHA variants |<<sep_hmac_sha_variant_rand_test,`sep_hmac_sha_variant_rand_test`>> |all, cpu_stub |`sep_hmac_mode_cg` |The checker table of each entry named. |YES
@@ -531,7 +531,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
-|Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, that consecutive SRAM reads of different words through the enabled SRAM scrambler return their plaintexts, and that a store through the enabled scrambler does not leave its plaintext in the probed SRAM words. The SRAM read latency is measured and logged, not graded.
+|Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, that consecutive SRAM reads of different words through the enabled SRAM scrambler return their plaintexts, and that a store through the enabled scrambler does not leave its plaintext in the probed SRAM words. The SRAM read count and the back-to-back read count of different words are measured and logged, not graded.
 |<<sep_otbn_mem_smoke_test,`sep_otbn_mem_smoke_test`>>
 |1
 |no_cpu, +skip_fuse_sense
@@ -1331,8 +1331,8 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_sram_datapath_breadth_test,`sep_sram_datapath_breadth_test`>>
 |2
 |no_cpu, +skip_fuse_sense
-|ocah_axi_vip
-|SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port, and an address-line walk that reaches the upper 192 KiB of the 256 KiB SRAM.
+|ocah_axi_vip, SRAM macro request tap
+|SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port, an address-line walk that reaches the upper 192 KiB of the 256 KiB SRAM, and the word address and bit write mask of the SRAM macro request of every access (`CHK-SRAM-MACRO-MAP`).
 |<<sep_sram_burst_type_test,`sep_sram_burst_type_test`>>
 |2
 |no_cpu, +skip_fuse_sense
@@ -2003,7 +2003,7 @@ another test.
 |eFuse windows and fields, lifecycle code words, feature control, demotion and DFT gate ports, transient RMA, token channels, faults and latch freeze, interface status, lock slots, secure test mode, JTAG access, SEC_DIS timing, sense response and program interface faults.
 |<<sep-vplan-phase3-key-manager,Key Manager vault>>
 |7.22 to 7.37
-|Command framing, recovery and arguments; key slots, handles and allocator capacity; engine delivery and transfer policy; ABR shared key; boot and cold domain; SRAM load and handover; fault reports and SRAM latency; KMCSR, SRAM lock and reset domains; KPV; CPU trap and execute protection; crossbar and eFuse window; KM-side mailbox; DRBG sampler; OTP interface; engine key registers; SRAM scrambler.
+|Command framing, recovery and arguments; key slots, handles and allocator capacity; engine delivery and transfer policy; ABR shared key; boot and cold domain; SRAM load and handover; fault reports; KMCSR, SRAM lock and reset domains; KPV; CPU trap and execute protection; crossbar and eFuse window; KM-side mailbox; DRBG sampler; OTP interface; engine key registers; SRAM scrambler.
 |===
 
 [[sep-vplan-phase3-parked]]
@@ -3750,7 +3750,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |SRAM macro request at `sep_sram_req_o`
 |The SRAM memory-interface request stream inside `sep` (address and write data) ahead of the SRAM macro request `sep_sram_req_o`, and the read data `sep_sram_rsp_i`
 |ACCEPT-PROBE
-|PR-SRAM is an observation tap. The nets are the request stream inside `u_dut.u_sep.u_sram_memory_interface` and the wrapper net `u_dut.sep_sram_rsp`. Checks that use it: the address compare of CHK-TWIN in `sep_cpu_lsu_alias_window_twin_test`; the supplements of `sep_fabric_inbound_rebase_test` and `sep_fabric_filter_match_priority_rand_test`; CHK-SRAM-OTF-REPLAY of `sep_sram_axi_shape_matrix_test`; the SRAM-port checks of `sep_cpu_demux_unmapped_fetch_test`.
+|PR-SRAM is an observation tap. The nets are the request stream inside `u_dut.u_sep.u_sram_memory_interface` and the wrapper net `u_dut.sep_sram_rsp`. Checks that use it: the address compare of CHK-TWIN in `sep_cpu_lsu_alias_window_twin_test`; the supplements of `sep_fabric_inbound_rebase_test` and `sep_fabric_filter_match_priority_rand_test`; CHK-SRAM-OTF-REPLAY of `sep_sram_axi_shape_matrix_test`; the SRAM-port checks of `sep_cpu_demux_unmapped_fetch_test`. PR-SRAM-MACRO is an observation tap on the wrapper net `u_dut.sep_sram_req` (`req`, `we`, `addr`, `wmask`); CHK-SRAM-MACRO-MAP of `sep_sram_datapath_breadth_test` uses it.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Boot ROM macro request at `sep_boot_rom_req_o`
 |The boot ROM memory-interface request stream and response inside `sep`, and the request to the boot ROM macro (`sep_boot_rom_req_o`) and its read data (`sep_boot_rom_rsp_i`)
@@ -4357,9 +4357,14 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-SRAM
 |Read-only probe
-|The request to the SRAM macro (`sep_sram_req_o`) and its response (`sep_sram_rsp_i`), and the replay of an abandoned request.
+|The SRAM memory-interface request stream inside `sep` ahead of the SRAM macro request `sep_sram_req_o`, the read data `sep_sram_rsp_i`, and the replay of an abandoned request.
 |`sep_cpu_lsu_alias_window_twin_test` (address compare), `sep_fabric_inbound_rebase_test` and `sep_fabric_filter_match_priority_rand_test` (supplements), `sep_sram_axi_shape_matrix_test` (CHK-SRAM-OTF-REPLAY), `sep_cpu_demux_unmapped_fetch_test`
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
+|PR-SRAM-MACRO
+|Read-only probe
+|`req`, `we`, `addr` (the 64-bit word index) and `wmask` (the bit write mask) of the SRAM macro request `sep_sram_req_o`.
+|`sep_sram_datapath_breadth_test` (CHK-SRAM-MACRO-MAP)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |PR-ROM
 |Read-only probe
 |The boot ROM memory-interface request stream and response inside `sep`: read intent, write enable and response. The ROM macro request out of the memory interface (`sep_boot_rom_req_o`: `req`, `addr`).
@@ -5226,8 +5231,11 @@ test that owns the feature, or states why no pass or fail value exists.
 |32-bit half writes and low-word carry of `REFERENCE_COUNTER`
 |The RDL states no reload rule.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
-|Clock stability under load, ROM burst, ROM latency, SRAM latency, SRAM retention, scratch SRAM ECC, bite threshold below bark, life-cycle escalation, performance
+|Clock stability under load, ROM burst, SRAM retention, scratch SRAM ECC, bite threshold below bark, life-cycle escalation, performance
 |The specification states no contract for these rows.
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|ROM latency, SRAM latency
+|The macro returns read data on the rising edge after a read request, with no valid strobe (`hw/ip/memory_interface/README.adoc`, Macro port, line 183; `hw/sys/sep/doc/port_table.adoc`, lines 70 and 72). The latency is a property of the bench macro model, and no DUT output gives a latency value to grade.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`clk_wdt_i` is a 200 kHz clock, asynchronous to `clk_i`, that times the watchdog counter.
 |The rate is a property of the bench clock, and no DUT output states a pass or fail value for it. The hole "Clock of every flop" covers the observable part, and CHK-WDT-RATE grades the count per `clk_wdt_i` period.

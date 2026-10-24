@@ -240,7 +240,7 @@
 . Release the Key Manager from software reset.
 . The image writes the KMCSR SRAM scrambler key, sets `SCRAMBLER_CTRL.ENABLE` (LOCK clear), stores four different plaintexts to four different SRAM words (two adjacent, one mid-window, the last word of the window), and loads them back with four consecutive loads. It clears ENABLE, stores the four loaded values to SRAM words 1..4, and stores the marker to word 0 last.
 . Poll SRAM word 0 for the marker, bounded, or fail.
-. Read the traffic counters, SRAM words 0..97 (`km_sram_probe_o`), and the tb read-latency monitor at the wrapper SRAM port.
+. Read the traffic counters, SRAM words 0..97 (`km_sram_probe_o`), and the tb KM SRAM read counters at the wrapper SRAM port.
 
 *Checkers*:
 

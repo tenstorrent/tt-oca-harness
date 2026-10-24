@@ -3698,7 +3698,7 @@ module sep_uvm_top
         8'(`SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.status_q);
 
     // KM/OTBN memory activity counters from the wrapper-internal req nets.
-    // KM SRAM gnt=1 and OTBN req=enable, so a count of the request strobe is
+    // Every KM request is accepted and OTBN req=enable, so a count of the request strobe is
     // a count of accepted accesses (km uses .req/.we; otbn uses .enable/.write).
     logic [31:0] km_rom_req_cnt_q, km_sram_req_cnt_q, km_sram_wr_cnt_q, km_cpu_fetch_cnt_q;
     logic [31:0] otbn_imem_req_cnt_q, otbn_imem_wr_cnt_q;
