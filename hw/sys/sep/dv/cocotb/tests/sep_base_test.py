@@ -560,13 +560,17 @@ class sep_base_test(uvm_test):
             )
         from seq_lib.sep_efuse_backdoor_check import check_efuse_shadow_backdoor
 
-        # The strap the DUT latched, not what the test intended: reading secure_tm_o
-        # keeps the golden's secret-blanking tied to the DUT rather than to a flag the
-        # test could set wrongly.
-        secure_tm = 0
+        # secure_tm is the TEST_EN strap latched when fuse sensing completes
+        # (hw/sys/sep/doc/lifecycle_controller.adoc, "secure_tm and the Secure Scan
+        # Chain"). The golden takes the strap the bench drives, and secure_tm_o must
+        # equal it, so a DUT that raises secure_tm cannot blank its own secret fields.
+        strap = getattr(cocotb.top, "test_en_strap_i", None)
+        secure_tm = 0 if strap is None else int(strap.value) & 0x1
         probe = getattr(cocotb.top, "secure_tm_o", None)
-        if probe is not None:
-            secure_tm = int(probe.value) & 0x1
+        if probe is not None and (not probe.value.is_resolvable or int(probe.value) != secure_tm):
+            raise AssertionError(
+                f"secure_tm_o={probe.value} at fuse-sense done, want the TEST_EN strap {secure_tm}"
+            )
         check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
     async def _wait_fuse_sense(self, max_cycles: int) -> None:

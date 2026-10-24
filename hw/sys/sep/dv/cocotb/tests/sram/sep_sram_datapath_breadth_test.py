@@ -2,11 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Every SRAM byte lane, data pattern, boundary word and address bit reads back exactly.
 
-OCAH provenance: ``sep_sram_uvm_byte_strobe``, ``sep_sram_uvm_byte_pattern``,
-``sep_sram_uvm_data_pattern``, ``sep_sram_uvm_addr_boundary``,
-``sep_sram_uvm_write_read`` and ``sep_sram_uvm_sequential_access`` check SRAM
-lane, pattern, boundary and sequential access.
-
 Exercises the external scratch SRAM (0x1000_0000, 256 KiB) over the CPU-LSU AXI splice
 (no_cpu) beyond the smoke (a single 64-bit R/W + one 32-bit partial).
 
@@ -78,6 +73,12 @@ from seq_lib.sep_sram_breadth_seq import (
 # memory word, and one macro address per word of the aperture.
 SRAM_WORD_BYTES = sym("SEP_SRAM_MEM_WORD_REG_WIDTH") // 8
 SRAM_WORDS = SEP_SRAM_SIZE // SRAM_WORD_BYTES
+
+
+# The macro request fields: ``we`` qualifies ``req`` as a write, ``addr`` is the
+# word address (the byte address shifted right by the word size, truncated to
+# the field) and ``wmask`` widens each AXI byte strobe to eight bits
+# (hw/ip/memory_interface/README.adoc, "Macro port").
 
 
 def macro_word(addr: int) -> int:

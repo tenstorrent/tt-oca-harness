@@ -45,15 +45,17 @@ Checks (HOST-UNREC unless marked):
   CHK-FLUSH-FIRST    (both) the r unread responses are flushed: one frame after
                      the rise, no stale RESP_CMD.
   CHK-SRAM-SHRED     the SRAM write count rises by 8192 or more by the rise.
-  CHK-SHRED-WITNESS  the HMAC witness shows no key after the report.
+  CHK-SHRED-WITNESS  (control) the HMAC witness shows no key after the report.
   CHK-NOSHRED-HOST   (HOST) with the ROM wipe off, the hardware wipe still clears
                      the HMAC witness key.
   CHK-TRAP-HELD      (both) bit 30 stays high and a CMD_STAT gets no answer.
   CHK-RESTORE        (both, control) a warm reset restores CMD_STAT and bit 30 = 0.
   CHK-PARITY-CLEAN   (both, control) a clean run and each no-flip twin raise no fault.
   CHK-FATAL-SET      HK-IRQSET sets report the code of the first source.
-  CHK-SHRED-FIRST    no bank key_valid and no shared key at the first fault word.
-  CHK-STATUS-HELD    (both) the IRQ_STATUS bits of the set stay set after the trap.
+  CHK-SHRED-FIRST    no bank key_valid and no shared key at the first fault word
+                     (real-wipe point: control).
+  CHK-STATUS-HELD    the IRQ_STATUS bits of the set, WIPE_STATE excluded, stay
+                     set after the trap.
   CHK-KPV-TRAP       (control) the KPV words and CTRL read 0 after the trap.
   CHK-PARITY         a parity flip sets the memory's parity bit and reports -2 or -3.
   CHK-PARITY-VAC     a flip that the CPU did not check is redrawn, at most 8 times.
@@ -168,7 +170,6 @@ EVIDENCE_HOST = (
     "CHK-FLUSH-FIRST",
     "CHK-NOSHRED-HOST",
     "CHK-TRAP-HELD",
-    "CHK-STATUS-HELD",
     "CHK-RESTORE",
     "CHK-PARITY-CLEAN",
     "CHK-DRBG-STALL",
@@ -228,7 +229,6 @@ POINT_EVIDENCE_UNREC = {
         "CHK-SRAM-SHRED",
         "CHK-SHRED-WITNESS",
         "CHK-TRAP-HELD",
-        "CHK-STATUS-HELD",
         "CHK-SHRED-FIRST",
         "CHK-RESTORE",
     ),
@@ -1284,6 +1284,10 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 and not f["sk_unknown"]
                 and sk_at == 0
             )
+            # The real-wipe point is a control: its wipe pulse clears the keys
+            # in hardware before the report (architecture.adoc, "Wipe State").
+            if point == "real_wipe":
+                fields["control"] = 1
             self.chk.ok("SHRED-FIRST", ok, **fields)
         else:
             self.chk.obs("SHRED-FIRST-HOST", km_unrec_wipe=0, **fields)
@@ -1418,14 +1422,6 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             stat_answered=answered,
             window_frames=_ids(wframes),
         )
-        wipe_bit = 1 << pl.IRQ_BIT["wipe_state"]
-        self.chk.ok(
-            "STATUS-HELD",
-            rose and (status & wipe_bit) == wipe_bit,
-            point="real_wipe",
-            set=f"0x{wipe_bit:03x}",
-            status=f"0x{status:03x}",
-        )
         if self.unrec:
             # Control: the quiet window measures the writes of the running ROM
             # with no fault (stack and variables). The shred must add one SRAM
@@ -1447,6 +1443,10 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 rise_clk="none" if rise_clk is None else rise_clk,
                 idle_bound="none" if rise_clk is None else -(-quiet * rise_clk // pre.w_clk),
             )
+            # Control: the wipe pulse of the KM_WIPE_CTRL edge clears the
+            # sideload keys in hardware (architecture.adoc, "Wipe State"), so
+            # this point cannot tell the ROM shred apart. CHK-SHRED-FIRST at
+            # the HK-IRQSET points grades the ROM shred.
             self.chk.ok(
                 "SHRED-WITNESS",
                 pre.hmac == "key"
@@ -1457,6 +1457,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 hmac_after=hmac_after,
                 aes_before="golden" if pre.aes == "key" else pre.aes,
                 aes_key_after=int(aes_after == "key"),
+                control=1,
             )
         else:
             assert HMAC_MSG2 != HMAC_MSG
@@ -1529,11 +1530,14 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 and control_err == 1
             )
             self.chk.ok("FATAL-SET", ok, expected=_hx(pl.fault_word(exp)), **fields)
+        # The CPU trap sets WIPE_STATE itself (architecture.adoc, "Wipe
+        # State"), so that bit cannot show a ROM that clears it.
+        held = mask & ~(1 << pl.IRQ_BIT["wipe_state"])
         self.chk.ok(
             "STATUS-HELD",
-            fired == 1 and rose and (status & mask) == mask,
+            fired == 1 and rose and held != 0 and (status & held) == held,
             point="irqset",
-            set=f"0x{mask:03x}",
+            set=f"0x{held:03x}",
             status=f"0x{status:03x}",
         )
         self._shred_first(pre, watch, "irqset_" + "+".join(names))

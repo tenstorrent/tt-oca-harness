@@ -680,7 +680,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             r["ec"],
         )
         self.logger.info(
-            "CHK-DMA-ALIAS PASS: form=alias alias=0x%08x direct=0x%08x data_ok=1 seen=PR-EXT recovery_ok=1",
+            "CHK-DMA-ALIAS PASS: form=alias alias=0x%08x direct=0x%08x data_ok=na seen=PR-EXT recovery_ok=1",
             EXT_TOP_ALIAS,
             EXT_TOP_WORD,
         )
