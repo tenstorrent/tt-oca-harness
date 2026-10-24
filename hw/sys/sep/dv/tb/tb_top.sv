@@ -2422,8 +2422,13 @@ module sep_uvm_top
 `ifdef SEP_ABR_EN
     assign abr_mlkem_seed_z_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_top.abr_ctrl_inst.abr_scratch_reg.mlkem_enc.seed_z;
+    assign abr_zeroize_ready_probe_o = {
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_top.abr_ctrl_inst.abr_ready,
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_top.abr_ctrl_inst.zeroize
+    };
 `else
     assign abr_mlkem_seed_z_probe_o = '0;
+    assign abr_zeroize_ready_probe_o = '0;
 `endif
 
     // ------------------------------------------------------------------
