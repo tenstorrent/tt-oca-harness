@@ -14,10 +14,12 @@ Two contracts apply, one per kind of path:
 
 * CSRNG and EDN. `hw/ip/drbg/doc/architecture.adoc` ("Bus Protocol
   Adaptation") defines their 64-bit AXI4-Lite port: the lane adapter narrows a
-  64-bit access to one 32-bit lane, selected by address bit [2]. A 64-bit read
-  at an 8-byte aligned address therefore returns the 32-bit register at that
-  address in bits [31:0]. The spec does not define the other lane, so it is not
-  graded (CHK-WIDE-LANE).
+  64-bit access to one 32-bit lane, selected by address bit [2], and a read
+  with address bit [2] = 0 returns bits [63:32] as zero. A 64-bit read at an
+  8-byte aligned address therefore returns the whole beat
+  ``{32'h0, register}`` (CHK-WIDE-LANE). The register in the other lane of the
+  granule reads non-zero (CTRL-WIDE-LANE-NEIGHBOUR), so a lane adapter that
+  leaks it into bits [63:32] fails the compare.
 * OTBN, HMAC, AES, KMAC and ESRC. Nothing narrows these paths, so the
   data-width conversion must return both words: a 64-bit read equals the two
   32-bit reads of the same words (CHK-WIDE-SPLIT).
@@ -40,6 +42,19 @@ aligned register pair of each block is touched: an address past a block's
 populated extent is refused by design, and a refusal on this master is a
 monitor failure, so the test does not go looking for one.
 
+Every graded 64-bit read also grades the address handshake the testbench
+master presented (AxADDR, AxLEN 0, AxSIZE 3), so the compare is made on the
+transfer the contract names and not on a narrower one.
+
+Coverage window. The owner window opens right before the 64-bit read of one
+aperture and closes after the CHK line of that aperture passes, or on its FAIL.
+The sampled condition of ``cp_wide_split`` and ``cp_wide_lane`` is the same
+compare as the check: a single outstanding OKAY AxSIZE 3 read at an 8-byte
+aligned address whose beat equals the last two OKAY 32-bit reads of its words
+(``{high, low}``, or ``{32'h0, low}`` with a non-zero low word at CSRNG and EDN).
+The 32-bit golden reads, the outstanding phase and the slot spread run with the
+window closed.
+
 Frontdoor only: ordinary AXI through the SEP fabric, no force, no backdoor.
 
 Outstanding reads. A read issued after the previous one retired is answered
@@ -61,15 +76,18 @@ here scores how many reads a host path can hold in flight.
 Checkers:
   CHK-WIDE-SPLIT   the 64-bit read equals the two 32-bit reads, at OTBN, HMAC,
                    AES, KMAC and ESRC
-  CHK-WIDE-LANE    the 64-bit read carries the 32-bit register at its address
-                   in bits [31:0], at CSRNG and EDN
+  CHK-WIDE-LANE    the 64-bit read returns the whole beat {32'h0, register at
+                   its address}, at CSRNG and EDN
+  CTRL-WIDE-LANE-NEIGHBOUR  the register in the other lane of the granule reads
+                   non-zero, so a leak into bits [63:32] is visible
   CHK-WIDE-NONVAC  every aperture in the table was presented and compared
   CHK-WIDE-OUTSTANDING  eight concurrent 64-bit reads at the entropy source,
                    distinct ids and distinct addresses, each returning its own
                    data -- the shape that catches one slot answering with
                    another's
   CHK-WIDE-SLOTS   concurrent 64-bit reads at every aperture, distinct ids,
-                   each returning the golden of that aperture's contract --
+                   each returning the whole-beat golden of that aperture's
+                   contract --
                    the same integrity claim as CHK-WIDE-OUTSTANDING, carried
                    to every host path in the table rather than only the
                    entropy source
@@ -77,14 +95,16 @@ Checkers:
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
-from cocotb.triggers import with_timeout
+from cocotb.triggers import RisingEdge, with_timeout
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_spec_tables import CRYPTO_CONCURRENT_READS
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
 
 SIZE_4B = 2
 SIZE_8B = 3
@@ -116,10 +136,11 @@ APERTURES = (
 
 # The paths whose 64-bit port selects one 32-bit lane by address bit [2]
 # (hw/ip/drbg/doc/architecture.adoc, "Bus Protocol Adaptation"). An 8-byte
-# aligned 64-bit read carries the register at that address in bits [31:0];
-# the other lane is undefined.
+# aligned 64-bit read carries the register at that address in bits [31:0] and
+# zero in bits [63:32].
 LANE_SELECT = frozenset({"csrng", "edn"})
-LANE_MASK = 0xFFFF_FFFF
+WORD_MASK = 0xFFFF_FFFF
+BEAT_MASK = 0xFFFF_FFFF_FFFF_FFFF
 
 # At least this many apertures must compare a non-zero golden, or the run is
 # vacuous however green it looks. A separate floor requires both halves to be
@@ -233,8 +254,8 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         read's data.
         """
         addrs = [sym(n) for n in OUTSTANDING_REGS]
-        golden = [await self._rd(a, SIZE_4B) & 0xFFFF_FFFF for a in addrs]
-        golden_hi = [await self._rd(a + 4, SIZE_4B) & 0xFFFF_FFFF for a in addrs]
+        golden = [await self._rd(a, SIZE_4B) & WORD_MASK for a in addrs]
+        golden_hi = [await self._rd(a + 4, SIZE_4B) & WORD_MASK for a in addrs]
         want = [(h << 32) | lo for lo, h in zip(golden, golden_hi)]
 
         distinct = len(set(want))
@@ -267,7 +288,7 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
                 int.from_bytes(bytes(raw), "little")
                 if isinstance(raw, (bytes, bytearray))
                 else int(raw)
-            ) & 0xFFFF_FFFF_FFFF_FFFF
+            ) & BEAT_MASK
             assert got == exp, (
                 f"CHK-WIDE-OUTSTANDING FAIL: outstanding read id={i} "
                 f"@0x{addr:08x} returned 0x{got:016x}, but the same words read "
@@ -285,17 +306,16 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         """Hold several 64-bit reads of one address in flight, distinct ids.
 
         Integrity under concurrency, carried to every host path in the table:
-        each read must return the golden of that path's contract (both words,
-        or the low lane at CSRNG and EDN), so an aperture answering a
+        each read must return the whole-beat golden of that path's contract
+        (both words, or ``{32'h0, low}`` at CSRNG and EDN), so an aperture answering a
         concurrent read with zeros or stale data fails. A cross-wire between
         concurrent reads is not visible here, because every id reads the same
         word -- the entropy-source phase owns that case with distinct addresses. Nothing
         here scores how many reads the path can hold in flight.
         """
-        lo = await self._rd(addr, SIZE_4B) & 0xFFFF_FFFF
-        hi = await self._rd(addr + 4, SIZE_4B) & 0xFFFF_FFFF
+        lo = await self._rd(addr, SIZE_4B) & WORD_MASK
+        hi = await self._rd(addr + 4, SIZE_4B) & WORD_MASK
         lane = name in LANE_SELECT
-        mask = LANE_MASK if lane else 0xFFFF_FFFF_FFFF_FFFF
         want = lo if lane else (hi << 32) | lo
 
         axi = self.env.axi_agent.driver.axi
@@ -318,18 +338,21 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
                 int.from_bytes(bytes(raw), "little")
                 if isinstance(raw, (bytes, bytearray))
                 else int(raw)
-            ) & mask
+            ) & BEAT_MASK
             assert got == want, (
                 f"CHK-WIDE-SLOTS FAIL [{name}]: outstanding read id={i} "
                 f"@0x{addr:08x} returned 0x{got:016x}, expected 0x{want:016x} "
-                "from the single-beat golden"
+                f"from the single-beat golden (low=0x{lo:08x} high=0x{hi:08x})"
             )
         self.slots_spread.append(name)
         self.logger.info(
             "CHK-WIDE-SLOTS PASS [%s]: %d concurrent 64-bit reads, distinct ids, "
-            "each returned its own golden",
+            "each returned the whole beat 0x%016x (low=0x%08x high=0x%08x)",
             name,
             OUTSTANDING_DEPTH,
+            want,
+            lo,
+            hi,
         )
 
     async def _rd(self, addr: int, size: int) -> int:
@@ -340,11 +363,43 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         )
         return seq.rdata
 
+    async def _rd_wide(
+        self, addr: int, length: int = 8, size: int = SIZE_8B
+    ) -> tuple[int, int, dict[str, int] | None]:
+        """One read the caller grades: (RRESP, whole beat, presented AR or None)."""
+        ar = cocotb.start_soon(capture_addr_handshake("ar"))
+        seq = SepAxiAccessSeq(
+            "wide_rd",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=length,
+            size=size,
+            allow_ungraded_read_resp=True,
+        )
+        await self.start_seq(seq)
+        return seq.resp_code, seq.rdata & BEAT_MASK, take_handshake(ar)
+
+    def _grade(self, ok: bool, msg: str) -> None:
+        """Close the owner window first, then fail the leaf."""
+        if not ok:
+            close_graded_window(self.logger)
+            raise AssertionError(msg)
+
+    @staticmethod
+    def _ar_ok(ar: dict[str, int] | None, base: int) -> bool:
+        return ar is not None and ar["addr"] == base and ar["len"] == 0 and ar["size"] == SIZE_8B
+
+    @staticmethod
+    def _ar_txt(ar: dict[str, int] | None) -> str:
+        if ar is None:
+            return "AR not seen"
+        return f"AR addr=0x{ar['addr']:08x} len={ar['len']} size={ar['size']}"
+
     async def _check_aperture(self, name: str, base: int) -> None:
-        lo_a = await self._rd(base, SIZE_4B) & 0xFFFF_FFFF
-        hi_a = await self._rd(base + 4, SIZE_4B) & 0xFFFF_FFFF
-        lo_b = await self._rd(base, SIZE_4B) & 0xFFFF_FFFF
-        hi_b = await self._rd(base + 4, SIZE_4B) & 0xFFFF_FFFF
+        lo_a = await self._rd(base, SIZE_4B) & WORD_MASK
+        hi_a = await self._rd(base + 4, SIZE_4B) & WORD_MASK
+        lo_b = await self._rd(base, SIZE_4B) & WORD_MASK
+        hi_b = await self._rd(base + 4, SIZE_4B) & WORD_MASK
 
         if lo_a != lo_b or hi_a != hi_b:
             self.unstable.append(
@@ -353,16 +408,41 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
             )
             return
 
-        wide = await self._rd(base, SIZE_8B) & 0xFFFF_FFFF_FFFF_FFFF
-        if name in LANE_SELECT:
-            self._check_lane(name, base, wide, lo_b)
-            return
+        lane = name in LANE_SELECT
+        if lane:
+            self._check_neighbour(name, base, lo_b, hi_b)
+
+        open_graded_window(type(self).__name__, self.logger)
+        try:
+            code, wide, ar = await self._rd_wide(base)
+            if lane:
+                self._check_lane(name, base, code, wide, ar, lo_b, hi_b)
+            else:
+                self._check_split(name, base, code, wide, ar, lo_b, hi_b)
+            # The window spans the clock edge of the sampled R handshake.
+            await RisingEdge(cocotb.top.clk_i)
+        finally:
+            close_graded_window(self.logger)
+
+    def _check_split(
+        self,
+        name: str,
+        base: int,
+        code: int,
+        wide: int,
+        ar: dict[str, int] | None,
+        lo_b: int,
+        hi_b: int,
+    ) -> None:
+        """CHK-WIDE-SPLIT: the 64-bit read equals the two 32-bit reads of its words."""
         golden = (hi_b << 32) | lo_b
-        assert wide == golden, (
+        self._grade(
+            code == RESP_OKAY and self._ar_ok(ar, base) and wide == golden,
             f"CHK-WIDE-SPLIT FAIL [{name}] @0x{base:08x}: the 64-bit read returned "
-            f"0x{wide:016x}, but the same two words read 32 bits at a time are "
-            f"0x{golden:016x} (low=0x{lo_b:08x} high=0x{hi_b:08x}). The host "
-            "path changed the data of a 64-bit read."
+            f"resp={code} 0x{wide:016x} ({self._ar_txt(ar)}), but the same two words "
+            f"read 32 bits at a time are 0x{golden:016x} (low=0x{lo_b:08x} "
+            f"high=0x{hi_b:08x}); expected OKAY and AR len=0 size={SIZE_8B}. The host "
+            "path changed the data of a 64-bit read.",
         )
         self.compared[name] = 2
         if golden:
@@ -370,34 +450,65 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         if lo_b and hi_b and lo_b != hi_b:
             self.full_sensitive.append(name)
         self.logger.info(
-            "CHK-WIDE-SPLIT PASS [%s]: 64-bit read 0x%016x matches its two "
+            "CHK-WIDE-SPLIT PASS [%s]: 64-bit read resp=%d 0x%016x (%s) matches its two "
             "32-bit reads (low=0x%08x high=0x%08x full-sensitive=%d)",
             name,
+            code,
             wide,
+            self._ar_txt(ar),
             lo_b,
             hi_b,
             int(bool(lo_b and hi_b and lo_b != hi_b)),
         )
 
-    def _check_lane(self, name: str, base: int, wide: int, lo: int) -> None:
-        """CHK-WIDE-LANE: the lane adapter returns the addressed register in [31:0]."""
-        assert lo, (
-            f"CHK-WIDE-LANE FAIL [{name}] @0x{base:08x}: the 32-bit golden is 0, "
-            "so a path that returned nothing would compare equal"
+    def _check_neighbour(self, name: str, base: int, lo: int, hi: int) -> None:
+        """CTRL-WIDE-LANE-NEIGHBOUR: both lanes of the granule read non-zero."""
+        assert lo and hi, (
+            f"CTRL-WIDE-LANE-NEIGHBOUR FAIL [{name}] @0x{base:08x}: the 32-bit reads "
+            f"are low=0x{lo:08x} high=0x{hi:08x}; with a zero word, a lane adapter "
+            "that returned nothing or leaked the other lane would compare equal"
         )
-        got = wide & LANE_MASK
-        assert got == lo, (
+        self.logger.info(
+            "CTRL-WIDE-LANE-NEIGHBOUR PASS [%s] @0x%08x: low=0x%08x, other lane "
+            "high=0x%08x non-zero",
+            name,
+            base,
+            lo,
+            hi,
+        )
+
+    def _check_lane(
+        self,
+        name: str,
+        base: int,
+        code: int,
+        wide: int,
+        ar: dict[str, int] | None,
+        lo: int,
+        hi: int,
+    ) -> None:
+        """CHK-WIDE-LANE: the lane adapter returns the whole beat {32'h0, register}."""
+        want = lo
+        self._grade(
+            code == RESP_OKAY and self._ar_ok(ar, base) and wide == want,
             f"CHK-WIDE-LANE FAIL [{name}] @0x{base:08x}: the 64-bit read returned "
-            f"0x{wide:016x}; bits [31:0]=0x{got:08x}, but the 32-bit read of the "
-            f"same address is 0x{lo:08x}. The lane adapter must return the "
-            "register selected by address bit [2] in that lane."
+            f"resp={code} 0x{wide:016x} ({self._ar_txt(ar)}); bits [63:32]="
+            f"0x{wide >> 32:08x} bits [31:0]=0x{wide & WORD_MASK:08x}. Expected OKAY, "
+            f"AR len=0 size={SIZE_8B} and the whole beat 0x{want:016x}: the 32-bit "
+            f"register 0x{lo:08x} in bits [31:0] and zero in bits [63:32], where the "
+            f"other lane holds 0x{hi:08x}.",
         )
         self.compared[name] = 1
         self.nonzero.append(name)
         self.logger.info(
-            "CHK-WIDE-LANE PASS [%s]: 64-bit read 0x%016x carries the 32-bit "
-            "register 0x%08x in bits [31:0]; the other lane is not graded",
+            "CHK-WIDE-LANE PASS [%s]: 64-bit read resp=%d 0x%016x (%s) is the whole "
+            "beat {32'h0, 0x%08x}; bits [63:32]=0x%08x while the other lane holds "
+            "0x%08x",
             name,
+            code,
             wide,
+            self._ar_txt(ar),
             lo,
+            wide >> 32,
+            hi,
         )

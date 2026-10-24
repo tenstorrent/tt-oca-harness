@@ -445,8 +445,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Unsupported writes at drbg_axil64_lane_adapter answer SLVERR and forward nothing.
-# Misaligned reads and wrong-lane strobes are driven and logged, not graded.
+# Unsupported accesses at drbg_axil64_lane_adapter answer SLVERR and forward nothing,
+# a refused read returns zero, and a forwarded read reads zero in the other lane.
 name = "sep_drbg_axil_adapter_refusal_test"
 module = "system.sep_drbg_axil_adapter_refusal_test"
 seed = 1

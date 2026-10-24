@@ -976,7 +976,8 @@ Exceptions (a closed set):
   `sep_rom_hmac_fifo_stall_terminal_test` (HMAC),
   `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY),
   `sep_hmac_fifo_stream_rand_test` (HMAC, CHK-HMAC-BACKPRESSURE-HOLD and the
-  FIFO-full cells).
+  FIFO-full cells), `sep_kmac_stream_cfg_rand_test` (KMAC, the control of
+  CHK-KMAC-FIFO-DONE: a `STATUS` read with message words held in the FIFO).
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *TCM bit-flip* — stored-bit error inject on the ICCM and DCCM macro arrays,
