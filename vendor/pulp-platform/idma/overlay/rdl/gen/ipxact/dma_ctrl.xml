@@ -400,7 +400,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -418,7 +418,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -436,7 +436,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -454,7 +454,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -472,7 +472,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -490,7 +490,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -508,7 +508,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -526,7 +526,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -544,7 +544,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -562,7 +562,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -580,7 +580,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -598,7 +598,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -616,7 +616,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -634,7 +634,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -652,7 +652,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -670,7 +670,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
