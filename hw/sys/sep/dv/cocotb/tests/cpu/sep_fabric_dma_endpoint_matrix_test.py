@@ -271,7 +271,7 @@ class DmaEpCfg:
 
     @property
     def ap_out(self) -> int:
-        """{offset[55:19], issued[18:0]} (fabric.adoc, Address Remapping)."""
+        """{offset[55:19], issued[18:0]} (hw/ip/output_remap/regs/output_remap.rdl, offset)."""
         mask = (1 << AP_IDX_START) - 1
         return (self.ap_offset & ~mask & ((1 << 56) - 1)) | (self.p["ap_intra"] & mask)
 
