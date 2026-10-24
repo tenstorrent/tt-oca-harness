@@ -429,8 +429,12 @@ class ResponderDelay:
         self._task = None
 
     def reprime(self) -> None:
-        """With ``prime``, hold each drawn READY low again until its next VALID."""
+        """With ``prime``, hold each drawn READY low again until its next VALID.
+
+        The last mask is cleared too, so only a stall after this call primes a channel.
+        """
         self.primed = [not (self.prime and p) for p in self.p_stall]
+        self._mask = 0
 
     def hold_for(self, clocks: int) -> None:
         self.forced_left = max(self.forced_left, clocks)

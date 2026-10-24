@@ -946,12 +946,17 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         )
         snap = await self._window(s, chk)
         m = snap["mst"]["lsu"]
-        xbar = int(m["aw_stall"] > 0 or m["ar_stall"] > 0)
+        # A channel is at the stop only while it stalls with requests still unaccepted.
+        xbar = int(
+            (m["aw_stall"] > 0 and m["aw"] < LSU_ISSUE)
+            or (m["ar_stall"] > 0 and m["ar"] < LSU_ISSUE)
+        )
         other = m["aw_stall_other"] + m["ar_stall_other"]
         self._ctrl(
             "CHAIN-STOP",
             bool(xbar),
-            f"session=both lsu_stall_cycles={m['aw_stall'] + m['ar_stall']} "
+            f"session=both lsu_accepted_write={m['aw']} lsu_accepted_read={m['ar']} "
+            f"issued={LSU_ISSUE} lsu_stall_cycles={m['aw_stall'] + m['ar_stall']} "
             f"stall_other_cycles={other}",
         )
         done, total, to_last = await self._drain(s, chk)
