@@ -40,7 +40,11 @@ threshold registers stay busy until ``prim_reg_cdc`` finishes on
 readback retires inside the AXI timeout.
 
 CSRNG, EDN and ENTROPY_SOURCE reach the write side through this gate; those
-rows are the write coverage of the entropy complex CSRs.
+rows are the write coverage of the entropy complex CSRs. A write to
+``RING_OSC_CTRL`` or ``GENERATOR_<n>_SAMPLE_CLK_CONFIG`` runs with every
+generator disabled (``RING_OSC_ENABLE`` = 0, restored after): software changes
+a lane's sample-clock source or divide only while that generator is disabled.
+CHK-RANDCFG counts those windows.
 HMAC, KMAC and OTBN contribute INTR_ENABLE only -- the generated interrupt
 shim, so those rows are block decode/storage evidence, not evidence about
 the engine.
@@ -50,7 +54,12 @@ from __future__ import annotations
 
 import pyuvm
 from sep_base_test import sep_base_test
-from seq_lib.sep_reg_bit_bash_seq import SepRegBitBash, SepRegBitBashCfg, write_mask
+from seq_lib.sep_reg_bit_bash_seq import (
+    SepRegBitBash,
+    SepRegBitBashCfg,
+    needs_gen_off,
+    write_mask,
+)
 
 
 @pyuvm.test()
@@ -71,7 +80,7 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             self.cfg.wdt_clk_period_ns,
         )
         await self.bring_up_no_cpu()
-        bash = SepRegBitBash(self)
+        bash = SepRegBitBash(self, cfg.gen_enable)
 
         reset_fails: list[str] = []
         for info in cfg.reset_regs:
@@ -95,7 +104,8 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
         write_fails: list[str] = []
         for info in cfg.write_regs:
             try:
-                await bash.bash_write(info, ones_first=cfg.ones_first)
+                async with bash.gen_off(info):
+                    await bash.bash_write(info, ones_first=cfg.ones_first)
             except AssertionError as exc:
                 write_fails.append(str(exc))
         if write_fails:
@@ -141,7 +151,8 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
         touch_fails: list[str] = []
         for info, x in cfg.touch_regs:
             try:
-                await bash.touch_write(info, x)
+                async with bash.gen_off(info):
+                    await bash.touch_write(info, x)
                 self.logger.info(
                     "CHK-BLOCK-TOUCH PASS: %s.%s @0x%08x "
                     "readback matched wrote 0x%08x under mask 0x%08x",
@@ -173,6 +184,12 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             ("reset", bash.reset_ok, len(cfg.reset_regs)),
             ("write", bash.write_ok, len(cfg.write_regs)),
             ("touch", bash.touch_ok, len(cfg.touch_regs)),
+            (
+                "gen_off",
+                bash.gen_off_windows,
+                sum(map(needs_gen_off, cfg.write_regs))
+                + sum(needs_gen_off(info) for info, _x in cfg.touch_regs),
+            ),
         )
         short = [f"{what} {done}/{want}" for what, done, want in walked if done != want]
         if short:
@@ -181,13 +198,14 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             )
         self.logger.info(
             "CHK-RANDCFG PASS: export=%d inventory=%d nometa=%d "
-            "reset=%d write=%d touch=%d ones_first=%d seed=%d",
+            "reset=%d write=%d touch=%d gen_off=%d ones_first=%d seed=%d",
             cfg.export,
             cfg.inventory,
             cfg.nometa,
             len(cfg.reset_regs),
             len(cfg.write_regs),
             len(cfg.touch_regs),
+            bash.gen_off_windows,
             int(cfg.ones_first),
             cfg.seed,
         )
