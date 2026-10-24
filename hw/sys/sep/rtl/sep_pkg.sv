@@ -465,6 +465,47 @@ SEP_ROM_MUX_NUM_PORTS
     PERIPH_BUS_ERR_WDT   = 6
   } periph_bus_err_e;
 
+  /////////
+  // RAS //
+  /////////
+
+  // SEP error, watchdog and hang indications for chip-level RAS aggregation, all on clk_i.
+  // Pulse fields last one clk_i cycle, so an aggregator on another clock must stretch or
+  // pulse-synchronize them; every other field is a level.
+  typedef struct packed {
+    logic lc_sigint_err;       // Level while the shadowed LC state fails its differential check.
+    logic lockstep_err;        // Level while the lockstep shadow core's outputs differ; not held.
+    logic wdt_bark;            // Bark interrupt state, also the CPU NMI; held until INTR_STATE is
+                               // cleared.
+    logic wdt_bite;            // Bite request synchronized from clk_wdt_i; held until wdt_rst_ni.
+    logic iccm_ecc_ce;         // Pulse per ICCM single-bit ECC error.
+    logic iccm_ecc_ue;         // Pulse per ICCM double-bit ECC error.
+    logic dccm_ecc_ce;         // Pulse per DCCM single-bit ECC error.
+    logic dccm_ecc_ue;         // Pulse per DCCM double-bit ECC error.
+    logic km_uncorrectable;    // Level while the Key Manager CPU is in its trap state; held until
+                               // the Key Manager is reset.
+    logic km_correctable;      // Level of the firmware-written Key Manager RECOVERABLE_ERR bit.
+    logic dma_alert;           // Pulse per DMA fatal alert; a level while an alert pair fails its
+                               // integrity check.
+    logic dma_reg_bus_err;     // DMA register-bridge fault; sticky until DMA_BUS_ERR_CLEAR.
+    logic dma_host_intg_err;   // DMA host integrity fault; sticky until DMA_BUS_ERR_CLEAR.
+    logic [NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err;  // Register-bridge faults indexed by
+                                                     // periph_bus_err_e; each sticky until its
+                                                     // PERIPH_BUS_ERR_CLEAR bit.
+    logic csrng_fatal;         // Pulse per CSRNG fatal alert handshake; a fatal error repeats it
+                               // until reset, and ALERT_TEST sends one.
+    logic edn_fatal;           // Pulse per EDN fatal alert handshake; a fatal error repeats it
+                               // until reset, and ALERT_TEST sends one.
+    logic crypto_alert;        // Pulse per crypto alert; a level while an alert pair fails its
+                               // integrity check, and until reset once a crypto EDN adapter faults.
+    logic entropy_fill_stall;  // Hang: level from STALL_THRESH cycles without an EDN acknowledge
+                               // until the next acknowledge.
+    logic entropy_pool_err;    // Entropy pool integrity error; always 0, the pool has no hardened
+                               // pointers.
+    logic token_match_fault;   // Token comparator redundancy fault on any token; sticky until
+                               // reset.
+  } sep_ras_t;
+
   /////////////////////////////////////////////
   // Alias + Output Remap parameters + types //
   /////////////////////////////////////////////

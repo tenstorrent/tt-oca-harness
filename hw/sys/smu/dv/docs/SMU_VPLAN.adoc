@@ -5637,8 +5637,8 @@ with the completion the bus returned.
 
 *Test Coverage*:
 
-* <<sec-074-smu_smc_wdt_timeout_irq_test>> stops at the watchdog's pending bit because it never sets WDOGRSTEN, which "enables a sticky reset signal to outputted to top level" (`wdt.rdl`); this leaf sets it and follows the timeout out to `smc_wdt_first_timeout_o`, with WDOGIP0 set at the same time and both clear beforehand.
-* The held first timeout runs the CPU_CTRL.WDT_TIMEOUT count (`cpu_ctrl.rdl`: "Cycle count value that 2nd stage watchdog timer timeout should occur at") out to `smc_wdt_second_timeout_o`. A watchdog timeout is a warm reset source (`hw/sys/smc/doc/clk_rst.adoc`, "Watchdog Timeout"; `hw/sys/smc/doc/cpu.adoc`: "a Warm Reset from a watchdog timeout"), so the SMC warm reset must drop; the cycles of the second timeout and of the drop are recorded.
+* <<sec-074-smu_smc_wdt_timeout_irq_test>> stops at the watchdog's pending bit because it never sets WDOGRSTEN, which "enables a sticky reset signal to outputted to top level" (`wdt.rdl`); this leaf sets it and follows the timeout out to `smc_ras_o.wdt_first_timeout`, with WDOGIP0 set at the same time and both clear beforehand.
+* The held first timeout runs the CPU_CTRL.WDT_TIMEOUT count (`cpu_ctrl.rdl`: "Cycle count value that 2nd stage watchdog timer timeout should occur at") out to `smc_ras_o.wdt_second_timeout`. A watchdog timeout is a warm reset source (`hw/sys/smc/doc/clk_rst.adoc`, "Watchdog Timeout"; `hw/sys/smc/doc/cpu.adoc`: "a Warm Reset from a watchdog timeout"), so the SMC warm reset must drop; the cycles of the second timeout and of the drop are recorded.
 * The warm reset covers the per-core watchdog timers (`clk_rst.adoc`, "Warm Reset"), so the first timeout must fall. The levels the second timeout, the SMC warm reset and the SMC watchdog reset settle at, and whether the watchdog reset asserted, are recorded.
 * Spec gap: the SMC chapters do not state which watchdog stage asserts the warm reset, what the second timeout does after the warm reset, or whether the warm reset releases without the cold reset that `cpu.adoc` says follows a watchdog timeout; those are observations.
 
@@ -5646,8 +5646,8 @@ with the completion the bus returned.
 
 [arabic]
 . Read both timeout pins and WDOGIP0 clear; arm CORE0 with WDOGRSTEN, WDOGENALWAYS and WDOGZEROCMP.
-. Wait for `smc_wdt_first_timeout_o` and read WDOGIP0 set at the same time.
-. Hold the first timeout, wait for `smc_wdt_second_timeout_o` and for the SMC warm reset to drop, recording both cycles.
+. Wait for `smc_ras_o.wdt_first_timeout` and read WDOGIP0 set at the same time.
+. Hold the first timeout, wait for `smc_ras_o.wdt_second_timeout` and for the SMC warm reset to drop, recording both cycles.
 . Wait for the first timeout to fall, and record the second timeout and both SMC resets.
 
 *Checkers*:
@@ -5655,9 +5655,9 @@ with the completion the bus returned.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMU-WDT-FIRST` |CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP raises smc_wdt_first_timeout_o, with WDOGIP0 set at the same time and both clear beforehand
-|`CHK-SMU-WDT-SECOND` |the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out to smc_wdt_second_timeout_o, and the SMC warm reset, released before, drops within the same window
-|`CHK-SMU-WDT-RELEASE` |after the warm reset, smc_wdt_first_timeout_o falls
+|`CHK-SMU-WDT-FIRST` |CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP raises smc_ras_o.wdt_first_timeout, with WDOGIP0 set at the same time and both clear beforehand
+|`CHK-SMU-WDT-SECOND` |the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out to smc_ras_o.wdt_second_timeout, and the SMC warm reset, released before, drops within the same window
+|`CHK-SMU-WDT-RELEASE` |after the warm reset, smc_ras_o.wdt_first_timeout falls
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.

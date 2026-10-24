@@ -99,7 +99,6 @@ module sep_wrapper
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
   output logic sep_fuse_dft_disable_o,
   output logic smc_fuse_dft_disable_o,
-  output logic lc_sigint_err_o,
   output logic security_disable_o,
 
   output logic [sep_pkg::NumMailboxes-1:0] smc_mailbox_interrupt_o,
@@ -115,8 +114,7 @@ module sep_wrapper
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_global_base_addr_o,
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,
 
-  output logic km_unrecoverable_err_o,
-  output logic km_recoverable_err_o,
+  output sep_pkg::sep_ras_t sep_ras_o,
 
   output logic [383:0] ext_debug_bus_o,
 
@@ -237,7 +235,6 @@ module sep_wrapper
     .dbg_disable_o,
     .sep_fuse_dft_disable_o,
     .smc_fuse_dft_disable_o,
-    .lc_sigint_err_o,
     .security_disable_o,
     .secure_tm_o,
     .smc_mailbox_interrupt_o,
@@ -248,8 +245,7 @@ module sep_wrapper
     .smc_region_size_i,
     .sep_global_base_addr_o,
     .sep_region_size_o,
-    .km_unrecoverable_err_o,
-    .km_recoverable_err_o,
+    .sep_ras_o,
     .ext_debug_bus_o,
     .extintsrc_req_i     (sep_ext_interrupts_i),
 

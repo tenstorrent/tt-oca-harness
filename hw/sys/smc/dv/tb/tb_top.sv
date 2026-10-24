@@ -604,6 +604,7 @@ module smc_uvm_top
     logic [31:0]                           ss_config;
     logic [63:0]                           timer_count;
     logic                                  lc_sigint_err;
+    smc_pkg::smc_ras_t                     smc_ras;
     logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom;
     logic                                  ext_boot_seq_done;
 
@@ -1301,6 +1302,11 @@ module smc_uvm_top
     assign tb_wdt_second_timeout      = cpu_wdt_second_timeout;
     assign tb_wdt_second_timeout_seen = cpu_wdt_second_timeout_seen_q;
 
+    assign cpu_cluster_ded        = smc_ras.cluster_ded;
+    assign cpu_wdt_first_timeout  = smc_ras.wdt_first_timeout;
+    assign cpu_wdt_second_timeout = smc_ras.wdt_second_timeout;
+    assign lc_sigint_err          = smc_ras.lc_sigint_err;
+
     // ------------------------------------------------------------------
     // DTP CSR boundary (smc_wrapper only): NO TB err_slv (policy: no
     // placeholder); resp is idle. smu.sv connects SMC axil_dtp_csr to DTP.
@@ -1377,9 +1383,7 @@ module smc_uvm_top
         .telemetry_atvalid_i        (tb_telemetry_atvalid),
         .telemetry_afvalid_o        (tb_telemetry_afvalid),
         .telemetry_afready_i        (tb_telemetry_afready),
-        .smc_cluster_ded_o          (cpu_cluster_ded),
-        .smc_wdt_first_timeout_o    (cpu_wdt_first_timeout),
-        .smc_wdt_second_timeout_o   (cpu_wdt_second_timeout),
+        .smc_ras_o                  (smc_ras),
         .smc_global_base_o          (),
         .smc_region_size_o          (smc_region_size),
         .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NumExtInterrupts-17){1'b0}},
@@ -1396,7 +1400,6 @@ module smc_uvm_top
         // here; docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_drv),
-        .lc_sigint_err_o            (lc_sigint_err),
         .smc_ndmreset_request_i     (tb_ndmreset_request),
         .smc_ndmreset_process_o     (tb_ndmreset_process),
         .smc_ext_mailbox_interrupts_o (),
@@ -3683,10 +3686,14 @@ module smc_dual_inst
 
     // Fault outputs of this instance, latched sticky until cold reset. Read by
     // the dual leaves as dut_/bfm_*_seen_o on smc_uvm_top.
+    smc_pkg::smc_ras_t smc_ras;
     logic cluster_ded;
     logic wdt_first_timeout;
     logic wdt_second_timeout;
     logic cluster_ded_seen_q;
+    assign cluster_ded        = smc_ras.cluster_ded;
+    assign wdt_first_timeout  = smc_ras.wdt_first_timeout;
+    assign wdt_second_timeout = smc_ras.wdt_second_timeout;
     logic wdt_first_timeout_seen_q;
     logic wdt_second_timeout_seen_q;
     always_ff @(posedge clk_smc or negedge rst_cold_ni) begin
@@ -3760,9 +3767,7 @@ module smc_dual_inst
         .telemetry_atvalid_i        ('0),
         .telemetry_afvalid_o        (),
         .telemetry_afready_i        ('1),
-        .smc_cluster_ded_o          (cluster_ded),
-        .smc_wdt_first_timeout_o    (wdt_first_timeout),
-        .smc_wdt_second_timeout_o   (wdt_second_timeout),
+        .smc_ras_o                  (smc_ras),
         .smc_global_base_o          (),
         .smc_region_size_o          (),
         .smc_ext_interrupts_i       ('0),
@@ -3776,7 +3781,6 @@ module smc_dual_inst
         // docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_i),
-        .lc_sigint_err_o            (),
         .smc_ndmreset_request_i     ('0),
         .smc_ndmreset_process_o     (),
         .smc_ext_mailbox_interrupts_o (),
