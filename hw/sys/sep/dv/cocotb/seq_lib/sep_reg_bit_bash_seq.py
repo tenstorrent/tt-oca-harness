@@ -30,6 +30,7 @@ still contribute at least one touch.
 
 from __future__ import annotations
 
+import contextlib
 from collections import defaultdict
 
 from env.sep_axi_agent import SepAxiOp
@@ -427,6 +428,23 @@ def reset_compare_mask(info: RegInfo) -> int:
     return ~info.unreset & 0xFFFF_FFFF
 
 
+# Entropy-source sample-clock registers. Software changes a lane's clock source
+# or divide only while that generator is disabled (hw/ip/entropy_source/doc/
+# architecture.adoc, Noise Generation), so every write to one runs inside a
+# RING_OSC_ENABLE = 0 window that SepRegBitBash.gen_off opens and restores.
+GEN_OFF_BLOCK = "ENTROPY_SOURCE"
+GEN_ENABLE_NAME = "RING_OSC_ENABLE"
+
+
+def needs_gen_off(info: RegInfo) -> bool:
+    """True for a register whose write the generators must be disabled for."""
+    if info.block != GEN_OFF_BLOCK:
+        return False
+    return info.name == "RING_OSC_CTRL" or (
+        info.name.startswith("GENERATOR_") and info.name.endswith("_SAMPLE_CLK_CONFIG")
+    )
+
+
 def side_effect_reason(info: RegInfo) -> str | None:
     """Why no write path may touch this register, or None if a write is safe.
 
@@ -487,6 +505,12 @@ class SepRegBitBashCfg:
         self.export = walk.export
         self.inventory = walk.inventory
         self.nometa = walk.nometa
+        gen_enable = [
+            i for i in inventory if i.block == GEN_OFF_BLOCK and i.name == GEN_ENABLE_NAME
+        ]
+        if len(gen_enable) != 1:
+            raise RuntimeError(f"{GEN_OFF_BLOCK}.{GEN_ENABLE_NAME}: {len(gen_enable)} in export")
+        self.gen_enable = gen_enable[0]
 
         reset_by_block: dict[str, list[RegInfo]] = defaultdict(list)
         write_by_block: dict[str, list[RegInfo]] = defaultdict(list)
@@ -594,8 +618,10 @@ class SepRegBitBashCfg:
 class SepRegBitBash:
     """Frontdoor AXI sweep driven by SepRegBitBashCfg."""
 
-    def __init__(self, test) -> None:
+    def __init__(self, test, gen_enable: RegInfo) -> None:
         self.test = test
+        self.gen_enable = gen_enable
+        self.gen_off_windows = 0
         self.log = test.logger
         self.reset_ok = 0
         # Reset rows compared with unreset-field bits masked out; a subset of
@@ -638,6 +664,26 @@ class SepRegBitBash:
         )
         await self.test.start_seq(seq)
         return seq.resp_code
+
+    @contextlib.asynccontextmanager
+    async def gen_off(self, info: RegInfo):
+        """Hold every generator disabled around a write to ``info`` if it needs it.
+
+        Writes ``RING_OSC_ENABLE`` = 0 before and its reset value after
+        (``needs_gen_off``); any other register passes straight through.
+        """
+        if not needs_gen_off(info):
+            yield
+            return
+        en = self.gen_enable
+        wr = await self._wr(en.addr, 0, name=f"gen_off_{info.name}")
+        assert wr == 0, f"{en.block}.{en.name} disable write resp={wr}"
+        try:
+            yield
+        finally:
+            wr = await self._wr(en.addr, en.reset, name=f"gen_on_{info.name}")
+            assert wr == 0, f"{en.block}.{en.name} enable restore resp={wr}"
+        self.gen_off_windows += 1
 
     async def check_reset(self, info: RegInfo) -> str | None:
         resp, got = await self._rd(info.addr, name=f"{info.block}_{info.name}")

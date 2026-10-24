@@ -2710,7 +2710,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Initiator arbitration and outstanding limits
 |What is the arbitration policy between the five initiators, the outstanding limit per initiator and per target, and the starvation rule?
-|-
+|`sep_outbound_stall_saturation_test` compares no outstanding count. Reaching a stop at the LSU master (it stalls with fewer than its 20 issued requests accepted) is a control of the leaf (CTRL-OUT-STOP, CTRL-XBAR-HELD-STOP, CTRL-CHAIN-STOP), because its hold and drain checks need a request held at a stop; the accepted counts are logged (OBS-LIMIT, OBS-CHAIN-LIMIT)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Aperture register legal values
 |What are the legal values of `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` (alignment, power of two, size 0, upper bound)? The legal values of the SMU aperture registers are also unstated. `sep_fabric_inbound_rebase_test` uses fixed values only for the stated rule, and no leaf writes the SMU aperture registers.

@@ -1082,8 +1082,8 @@ Exceptions (a closed set):
   the hold set the delays and the hold and limit sessions, and
   `smn_outbound_rd_addr_data_i` is 1 for the whole leaf, so the read data of
   every phase depends on it: CHK-DELAYS,
-  CHK-HOLD-DRAIN, CHK-OUT-STOP, CHK-XBAR-HELD, CHK-XBAR-POSTDRAIN,
-  CHK-CHAIN-LIMIT, CHK-SAT-B-COUNT, CHK-SAT-R-COUNT,
+  CHK-HOLD-DRAIN, CHK-OUT-DRAIN, CHK-XBAR-HELD, CHK-XBAR-POSTDRAIN,
+  CHK-CHAIN-DRAIN, CHK-SAT-B-COUNT, CHK-SAT-R-COUNT,
   CHK-SYSIF-NO-OUTBOUND-PATH, CHK-ATTR-USER, CHK-NONVAC, CHK-TIMEOUT-PATHS);
   both leaves run with the plusarg.
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
