@@ -400,7 +400,8 @@ class ResponderDelay:
     also holds its READY low from the start until the first clock its VALID
     is high against that low READY, so every drawn channel stalls at least one
     beat by construction; the per-clock draws are the same with or without
-    it. The hold starts with ``p_hold`` percent chance per clock
+    it. ``reprime`` starts that hold again, so a later phase also stalls each
+    drawn channel it uses. The hold starts with ``p_hold`` percent chance per clock
     and lasts 1 to ``hold_max`` clocks; the responder raises no new B or R
     VALID while it is up. ``hold_for`` keeps the hold up for a bounded run of
     clocks regardless of the draw, so requests issued in that run are
@@ -421,10 +422,15 @@ class ResponderDelay:
         self.hold_max = hold_max
         self.hold_clocks = 0
         self.stall_clocks = [0, 0, 0]
+        self.prime = prime
         self.primed = [not (prime and p) for p in p_stall]
         self._mask = 0
         self.forced_left = 0
         self._task = None
+
+    def reprime(self) -> None:
+        """With ``prime``, hold each drawn READY low again until its next VALID."""
+        self.primed = [not (self.prime and p) for p in self.p_stall]
 
     def hold_for(self, clocks: int) -> None:
         self.forced_left = max(self.forced_left, clocks)
