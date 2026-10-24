@@ -13,7 +13,9 @@ to one outbound window while the responder (``tb/sep_outbound_mbx.sv``) delays
 AW, W and AR READY, delays or holds B and R VALID, and is then released; the
 outbound path stops accepting at a finite count and every request completes
 after the release. No specification states the outstanding limit of the local
-crossbar or of the outbound chain, so the count is logged and not compared. The SMN inbound master (``m_axi``) issues toward
+crossbar or of the outbound chain, so no count is compared: the stop is a
+control of the leaf (the hold and drain checks need a request held at a stop),
+and the counts are logged. The SMN inbound master (``m_axi``) issues toward
 the same window alongside them; it has no route to the outbound port, so its
 accesses are the stimulus of one no-path check and never contend at the port.
 
@@ -26,8 +28,8 @@ requests it issues in one hold, so every finite stop it grades at the port is
 the DUT's, not the responder's. The LSU master stops at the same count whether
 or not the port accepts, so at the pins the stop of the outbound chain is not
 separable from a stop upstream of it: the three-initiator hold at that stop is reported
-as OBS-CHAIN-HELD and the finite stop and the drain of the chain are graded by
-CHK-CHAIN-LIMIT.
+as OBS-CHAIN-HELD, the stop is the control CTRL-CHAIN-STOP and the drain of the
+chain is graded by CHK-CHAIN-DRAIN.
 
 The SMN inbound master has no route to the outbound port:
 ``hw/sys/sep/doc/fabric.adoc`` (Fabric Topology) states that the peripheral crossbar
@@ -39,8 +41,8 @@ AxUSER source ID and NS), and the PR-INFLT tap (the request out of the inbound
 filter) shows each of them, so the DECERR comes from the routing decode past
 the filter and not from the filter.
 
-The LSU stall clocks that CHK-OUT-STOP, CHK-XBAR-HELD and CHK-CHAIN-LIMIT grade
-count only clocks on which the ``s_axi`` request on offer is an LSU outbound
+The LSU stall clocks that CTRL-OUT-STOP, CTRL-XBAR-HELD-STOP and CTRL-CHAIN-STOP
+read count only clocks on which the ``s_axi`` request on offer is an LSU outbound
 request (AXI ID 1 or above, address in the LSU slot); any other stall clock on
 that bus, such as one of the DMA CSR accesses on ID 0, is logged apart as
 ``stall_other_cycles``.
@@ -49,30 +51,42 @@ Printed as measured and never compared: the limit counts, the completion
 latency, the response during a hold, the delay range, and the acceptance
 point of a request the filters answer themselves.
 
+Controls (printed as ``CTRL-<NAME> seen: <fields>``; an absent control prints
+``CTRL-MISSING <NAME>`` and fails the leaf, because the checks after it would
+grade nothing). Each is a stimulus-reach condition, not a contract: no
+specification states the outstanding limit, so a DUT that accepts all 20
+requests is not wrong, but this leaf cannot hold a request at its stop.
+  CTRL-OUT-STOP     for writes and for reads, the LSU master stalls (AW or AR
+                    stall cycles > 0) with fewer than its 20 issued requests
+                    accepted. The accepted count is logged (OBS-LIMIT).
+  CTRL-XBAR-HELD-STOP
+                    the one extra LSU write of a held session at that count
+                    stalls and is not accepted before a release.
+  CTRL-CHAIN-STOP   the same stop with the DMA and the SMN inbound master
+                    issuing alongside, for writes, for reads, and for the
+                    writes-and-reads hold. The port totals are logged
+                    (OBS-CHAIN-LIMIT).
+
 Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
 ``CHK-<NAME> PASS`` once every comparison of that checker is done):
-  CHK-DELAYS        zero-delay baseline, one-channel and all-channel delays.
+  CHK-DELAYS        zero-delay baseline, one-channel and all-channel delays;
+                    in the all-channel leg every AW, W and AR READY stall the
+                    leaf draws meets a request at the port (PR-OUT VALID
+                    without READY on at least one clock per channel).
   CHK-HOLD-DRAIN    requests accepted in a hold, no response in it, drain.
-  CHK-OUT-STOP      the LSU master meets a finite stop on the outbound path:
-                    for writes and for reads, the master stalls (AW or AR
-                    stall cycles > 0) with fewer than the 20 issued requests
-                    accepted, and every limit session drains. The accepted
-                    count is logged (OBS-LIMIT), not compared: it is measured
-                    at the LSU master, downstream stages included, and no
-                    specification states a limit at that point.
-  CHK-XBAR-HELD     a request at the stop of CHK-OUT-STOP is held, then
-                    completes; the LSU's held request and the DMA's next write
-                    are each admitted within the bounded one-beat releases.
+  CHK-OUT-DRAIN     every limit session at the stop of CTRL-OUT-STOP drains:
+                    each issued request completes after the release and
+                    nothing deadlocks.
+  CHK-XBAR-HELD     the request held at CTRL-XBAR-HELD-STOP completes; the
+                    LSU's held request and the DMA's next write are each
+                    admitted within the bounded one-beat releases.
   CHK-XBAR-POSTDRAIN fresh transactions after the saturation drains.
-  CHK-CHAIN-LIMIT   finite acceptance of writes and of reads with the DMA and
-                    the SMN inbound master issuing alongside: the LSU master
-                    stalls (AW or AR stall cycles > 0) with fewer than its 20
-                    requests accepted, and the session drains; the
-                    writes-and-reads hold under both limits drains; in the
+  CHK-CHAIN-DRAIN   with the DMA and the SMN inbound master issuing
+                    alongside, every session at CTRL-CHAIN-STOP drains,
+                    including the writes-and-reads hold; in the
                     three-initiator hold at the stop (OBS-CHAIN-HELD), the
                     LSU's held request and the DMA's next write are each
-                    admitted within the bounded one-beat releases. The port
-                    totals are logged (OBS-CHAIN-LIMIT), not compared.
+                    admitted within the bounded one-beat releases.
   CHK-SAT-B-COUNT, CHK-SAT-R-COUNT
                     exactly one B per accepted write, the beats of each
                     accepted read, and none after the idle window.
@@ -131,6 +145,7 @@ from seq_lib.sep_outbound_contention_seq import (
     DmaJob,
     OutboundLeaf,
     PinWatch,
+    PortStall,
     ResponderDelay,
     Txn,
     out_prot,
@@ -169,10 +184,10 @@ FENCE = (
 CHECKS = (
     "CHK-DELAYS",
     "CHK-HOLD-DRAIN",
-    "CHK-OUT-STOP",
+    "CHK-OUT-DRAIN",
     "CHK-XBAR-HELD",
     "CHK-XBAR-POSTDRAIN",
-    "CHK-CHAIN-LIMIT",
+    "CHK-CHAIN-DRAIN",
     "CHK-SAT-B-COUNT",
     "CHK-SAT-R-COUNT",
     "CHK-SYSIF-NO-OUTBOUND-PATH",
@@ -419,7 +434,9 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         c = self.c
         chk = "CHK-DELAYS"
         self._wait_bound("txn", f"axi_timeout_ns={self.tr.timeout_ns}")
-        delay = ResponderDelay(SepSeededRng(c.seed ^ 0x5EED5), c.p_stall, c.p_hold, c.hold_max)
+        delay = ResponderDelay(
+            SepSeededRng(c.seed ^ 0x5EED5), c.p_stall, c.p_hold, c.hold_max, prime=True
+        )
         lsu = [self._txn("lsu", op, 1 + k) for k, op in enumerate(("wr", "wr", "rd", "rd"))]
         sysif = [self._txn("sysif", op, 1 + k) for k, op in enumerate(("wr", "wr", "rd", "rd"))]
         jobs = [self._job(True, 2), self._job(False, 2)]
@@ -430,6 +447,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 await self._dma_finish(j, chk)
 
         meter = Meter(self)
+        pstall = PortStall().start()
         delay.start()
         try:
             await run_all(
@@ -441,6 +459,18 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             )
         finally:
             delay.stop()
+            pstall.stop()
+        for entry in pstall.xz:
+            self._fail(chk, entry)
+        measured = pstall.snap()
+        for ch, p in zip(("aw", "w", "ar"), c.p_stall):
+            if p and measured[ch] == 0:
+                self._fail(
+                    chk,
+                    f"chan=all drawn READY stall not exercised ch={ch} port_stall_{ch}=0 "
+                    f"ready_stall_percent={c.p_stall}",
+                )
+        port_stall = sum(measured.values())
         snap = meter.read()
         reach = {i: snap["port"][i]["aw"] + snap["port"][i]["ar"] > 0 for i in INITS}
         for t in lsu + sysif:
@@ -450,7 +480,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 self._fail(chk, f"chan=all init={init} transaction without response")
             self._delays_line(
                 "all",
-                sum(delay.stall_clocks) + delay.hold_clocks,
+                port_stall,
                 init,
                 "mix",
                 max(t.latency_ns for t in items),
@@ -461,7 +491,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             )
         self._delays_line(
             "all",
-            sum(delay.stall_clocks) + delay.hold_clocks,
+            port_stall,
             "dma",
             "mix",
             max(j.latency_ns for j in jobs),
@@ -470,7 +500,15 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             len(jobs),
             reach["dma"],
         )
-        self.logger.info("DELAYS %s", delay.describe())
+        self.logger.info(
+            "DELAYS %s port_stall_aw=%d port_stall_w=%d port_stall_ar=%d "
+            "(PR-OUT VALID without READY) hold_drive_clocks=%d",
+            delay.describe(),
+            measured["aw"],
+            measured["w"],
+            measured["ar"],
+            delay.hold_clocks,
+        )
         self._pass(chk)
         self._fence("ALL_DELAYED")
 
@@ -635,8 +673,16 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self._fence("HOLD_RELEASED")
 
     # ---- S6, S7 --------------------------------------------------------------------------------
+    def _ctrl(self, name: str, cond: bool, line: str) -> None:
+        """Log one control; an absent control fails the leaf (the checks after it need it)."""
+        self.logger.info("CTRL-%s %s: %s", name, "seen" if cond else "absent", line)
+        if not cond:
+            msg = f"CTRL-MISSING {name}: seed={self.c.seed} {line}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+
     async def _s6_mst(self) -> None:
-        chk = "CHK-OUT-STOP"
+        chk = "CHK-OUT-DRAIN"
         res = {}
         for op, kw in (("wr", {"lsu_w": LSU_ISSUE}), ("rd", {"lsu_r": LSU_ISSUE})):
             s = await self._open(f"mst_{op}", **kw)
@@ -644,12 +690,12 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             m = snap["mst"]["lsu"]
             ch = "aw" if op == "wr" else "ar"
             acc, stall, other = m[ch], m[f"{ch}_stall"], m[f"{ch}_stall_other"]
-            if stall == 0 or acc >= LSU_ISSUE:
-                self._fail(
-                    chk,
-                    f"session={s.name} no finite stop: accepted={acc} issued={LSU_ISSUE} "
-                    f"stall_cycles={stall} stall_other_cycles={other}",
-                )
+            self._ctrl(
+                "OUT-STOP",
+                stall > 0 and acc < LSU_ISSUE,
+                f"session={s.name} accepted={acc} issued={LSU_ISSUE} "
+                f"stall_cycles={stall} stall_other_cycles={other}",
+            )
             self.logger.info(
                 "OBS-LIMIT: mst_%s_accepted_before_stall=%d stall_cycles=%d "
                 "stall_other_cycles=%d port_accepted=%d (value logged: the stop of the "
@@ -667,7 +713,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self._fence("MST_LIMIT")
 
     async def _s7_slv(self) -> None:
-        chk = "CHK-OUT-STOP"
+        chk = "CHK-OUT-DRAIN"
         slv_lsu = max(1, self.mst_n // 2)
         for name, kw in (
             ("slv_from_2", {"lsu_w": slv_lsu, "dma": ("wr", DMA_WORDS)}),
@@ -733,13 +779,13 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         raise AssertionError("unreachable")
 
     async def _held(self, name: str, *, lsu_w=0, dma_words=0, sys_w=0, graded: bool) -> None:
-        """One hold at the stop of CHK-OUT-STOP with one extra request per initiator.
+        """One hold at the stop of CTRL-OUT-STOP with one extra request per initiator.
 
         Graded for CHK-XBAR-HELD; the three-initiator session is reported as
         OBS-CHAIN-HELD, since its stop is the same stop.
         """
         chk = "CHK-XBAR-HELD"
-        rel_chk = chk if graded else "CHK-CHAIN-LIMIT"
+        rel_chk = chk if graded else "CHK-CHAIN-DRAIN"
         kw = {"lsu_w": lsu_w, "sys_w": sys_w}
         if dma_words:
             kw["dma"] = ("wr", dma_words)
@@ -763,13 +809,13 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             self._check_pin_xz(chk, chk)
             stall = now["mst"]["lsu"]["aw_stall"] - before["mst"]["lsu"]["aw_stall"]
             other = now["mst"]["lsu"]["aw_stall_other"] - before["mst"]["lsu"]["aw_stall_other"]
-            if stall == 0 or now["mst"]["lsu"]["aw"] != before["mst"]["lsu"]["aw"]:
-                self._fail(
-                    chk,
-                    f"session={name} init=lsu stall_cycles={stall} stall_other_cycles={other} "
-                    f"accepted_before={before['mst']['lsu']['aw']} "
-                    f"accepted_now={now['mst']['lsu']['aw']}: the extra request met no limit",
-                )
+            self._ctrl(
+                "XBAR-HELD-STOP" if graded else "CHAIN-STOP",
+                stall > 0 and now["mst"]["lsu"]["aw"] == before["mst"]["lsu"]["aw"],
+                f"session={name} init=lsu stall_cycles={stall} stall_other_cycles={other} "
+                f"accepted_before={before['mst']['lsu']['aw']} "
+                f"accepted_now={now['mst']['lsu']['aw']}",
+            )
             self.logger.info(
                 "OBS-HELD-STALL: session=%s init=lsu stall_cycles=%d stall_other_cycles=%d",
                 name,
@@ -839,7 +885,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
 
     # ---- S9, S10 -------------------------------------------------------------------------------
     async def _s9_chain(self) -> None:
-        chk = "CHK-CHAIN-LIMIT"
+        chk = "CHK-CHAIN-DRAIN"
         acc = {}
         done = total = 0
         demand = LSU_ISSUE + DMA_WORDS
@@ -851,20 +897,18 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             s = await self._open(f"chain_{op}", **kw)
             snap = await self._window(s, chk)
             n = snap["port_aw"] if op == "write" else snap["port_ar"]
-            # The finite stop is graded at the LSU master: it stalls with fewer
-            # than its LSU_ISSUE requests accepted. The port total is logged; no
-            # specification or bench setting bounds it more tightly than the
-            # demand, which the DMA's one-at-a-time issue keeps out of reach.
+            # The stop is a control read at the LSU master: it stalls with fewer
+            # than its LSU_ISSUE requests accepted. No specification states the
+            # limit, so neither that count nor the port total is compared.
             m = snap["mst"]["lsu"]
             ch = "aw" if op == "write" else "ar"
             m_acc, m_stall, m_other = m[ch], m[f"{ch}_stall"], m[f"{ch}_stall_other"]
-            if m_stall == 0 or m_acc >= LSU_ISSUE:
-                self._fail(
-                    chk,
-                    f"session={s.name} no finite stop at the LSU master: "
-                    f"lsu_accepted_{op}={m_acc} issued={LSU_ISSUE} stall_cycles={m_stall} "
-                    f"stall_other_cycles={m_other}",
-                )
+            self._ctrl(
+                "CHAIN-STOP",
+                m_stall > 0 and m_acc < LSU_ISSUE,
+                f"session={s.name} lsu_accepted_{op}={m_acc} issued={LSU_ISSUE} "
+                f"stall_cycles={m_stall} stall_other_cycles={m_other}",
+            )
             acc[op] = n
             lsu_acc[op] = (m_acc, m_stall)
             self.logger.info(
@@ -891,7 +935,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self._fence("CHAIN_LIMIT")
 
     async def _s10_both(self) -> None:
-        chk = "CHK-CHAIN-LIMIT"
+        chk = "CHK-CHAIN-DRAIN"
         s = await self._open(
             "both",
             lsu_w=LSU_ISSUE,
@@ -902,13 +946,19 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         )
         snap = await self._window(s, chk)
         m = snap["mst"]["lsu"]
-        xbar = int(m["aw_stall"] > 0 or m["ar_stall"] > 0)
+        # A channel is at the stop only while it stalls with requests still unaccepted.
+        xbar = int(
+            (m["aw_stall"] > 0 and m["aw"] < LSU_ISSUE)
+            or (m["ar_stall"] > 0 and m["ar"] < LSU_ISSUE)
+        )
         other = m["aw_stall_other"] + m["ar_stall_other"]
-        if not xbar:
-            self._fail(
-                chk,
-                f"session=both LSU master stop not reached in the hold stall_other_cycles={other}",
-            )
+        self._ctrl(
+            "CHAIN-STOP",
+            bool(xbar),
+            f"session=both lsu_accepted_write={m['aw']} lsu_accepted_read={m['ar']} "
+            f"issued={LSU_ISSUE} lsu_stall_cycles={m['aw_stall'] + m['ar_stall']} "
+            f"stall_other_cycles={other}",
+        )
         done, total, to_last = await self._drain(s, chk)
         self._obs_row(
             "BOTH-LIMITS",
@@ -917,8 +967,9 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             f"port_aw={snap['port_aw']} "
             f"port_ar={snap['port_ar']} responder_wr_limit={self.c.depth} "
             f"responder_rd_limit={self.c.depth} drained={done}/{total} "
-            f"release_to_last_ns={to_last:.1f} deadlock=0 (the LSU master stall and the drain "
-            "are graded by CHK-CHAIN-LIMIT; the chain limit is not separable at the pins)",
+            f"release_to_last_ns={to_last:.1f} deadlock=0 (the LSU master stall is "
+            "CTRL-CHAIN-STOP and the drain is graded by CHK-CHAIN-DRAIN; the chain limit is "
+            "not separable at the pins)",
         )
         self._pass(chk)
         self._fence("BOTH_LIMITS")
