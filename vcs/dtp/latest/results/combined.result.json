@@ -8,16 +8,16 @@
     "run_dir": "vcs/dtp/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-fc3f9196ad8698e5",
+    "comparison_key": "COVCMP-201da3e6140ecd70",
     "details_available": true,
     "effective_metrics": {
       "assertion": 100.0,
       "branch": 99.15,
-      "condition": 98.09,
+      "condition": 98.15,
       "fsm_state": 99.65,
       "functional": 100.0,
       "line": 99.79,
-      "toggle": 98.99,
+      "toggle": 99.01,
       "user": 100.0
     },
     "holes_summary": {
@@ -39,11 +39,11 @@
     "raw_metrics": {
       "assertion": 98.59,
       "branch": 93.47,
-      "condition": 92.46,
+      "condition": 92.52,
       "fsm_state": 60.21,
       "functional": 100.0,
       "line": 96.66,
-      "toggle": 77.98,
+      "toggle": 78.0,
       "user": 99.6988
     },
     "report": "artifacts/dtp/coverage/report",
@@ -56,16 +56,16 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 99.38
+    "total_percent": 99.39
   },
   "failure_buckets": [],
   "flow": "dtp",
   "framework": "",
-  "generated_at": "2026-10-24T02:39:21+00:00",
+  "generated_at": "2026-10-24T19:25:25+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "973317e387ef79f2555858739d0176ea68d3512b",
-    "short_sha": "973317e"
+    "sha": "b2b225a6d4e6e21b61532f6ad3daa9fea7e4b88a",
+    "short_sha": "b2b225a"
   },
   "junit_xml": {
     "missing": 0,
@@ -74,10 +74,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-24T02:39:17.936515+00:00",
+    "generated_at": "2026-10-24T19:25:23.149232+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "973317e387ef79f2555858739d0176ea68d3512b",
+      "commit": "b2b225a6d4e6e21b61532f6ad3daa9fea7e4b88a",
       "dirty": "false"
     },
     "label": "combine",
@@ -102,9 +102,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 17.186,
-    "end_time": "2026-10-24T02:39:17.615994+00:00",
-    "start_time": "2026-10-24T02:39:00.412994+00:00"
+    "duration_sec": 14.873,
+    "end_time": "2026-10-24T19:25:22.910775+00:00",
+    "start_time": "2026-10-24T19:25:08.031746+00:00"
   },
   "tool": "vcs"
 }
