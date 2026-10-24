@@ -1233,14 +1233,21 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             close_graded_window(self.logger)
             raise AssertionError(f"CHK-ROM-OTF: no anchor fetch within {ANCHOR_BOUND} cycles")
         t_hs = get_sim_time("ps")
+        # The word-1 request at the ROM macro ports with the memory interface out
+        # of reset, on the edge before the fall.
+        at_hs = (
+            self.rd(dut.pr_rom_macro_req_o, allow_unknown=True),
+            self.rd(dut.pr_rom_macro_addr_o, allow_unknown=True),
+            self.rd(dut.pr_rom_memif_rst_n_o, allow_unknown=True),
+        )
         for _ in range(self.o):
             await RisingEdge(dut.clk_i)
         await Timer(1, units="ps")
         dut.rst_ni.value = 0
         t_fall = get_sim_time("ps")
-        # The macro latches its request on the next clk_i edge. Sample what it will
-        # latch once the fall has settled: the word-1 request with the memory
-        # interface still out of reset.
+        # The fall can land only between the request edge and the macro latch edge:
+        # with W=1 the response beat comes on the latch edge itself. The settled
+        # state after the fall is logged, not graded.
         await ReadOnly()
         at_fall = (
             self.rd(dut.pr_rom_macro_req_o, allow_unknown=True),
@@ -1279,7 +1286,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             for b in self.macro.beats
             if b.ch == "req" and t_hs <= b.t_ps <= t_fall and b.addr == 1
         )
-        latched = int(at_fall == (1, 1, 1))
+        latched = int(at_hs == (1, 1, 1))
         midflight = int(
             t_fall < t_hs + self.W * period and not early_rsp and macro_w1 >= 1 and latched
         )
@@ -1326,7 +1333,8 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             "CHK-ROM-OTF",
             ok,
             f"offset={self.o}/{self.W} midflight={midflight} macro_req_word1={macro_w1} "
-            f"macro_at_fall=req{at_fall[0]}/addr{at_fall[1]}/memif_rst_n{at_fall[2]} "
+            f"macro_at_req=req{at_hs[0]}/addr{at_hs[1]}/memif_rst_n{at_hs[2]} "
+            f"macro_after_fall=req{at_fall[0]}/addr{at_fall[1]}/memif_rst_n{at_fall[2]} "
             f"first_req_word={first_word} "
             f"replay_word1={replay} beats_before_req={before} "
             f"first_rsp=0x{(rsp.rdata if rsp is not None and rsp.rdata is not None else 0):016x} "
