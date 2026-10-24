@@ -960,6 +960,15 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         dut.rst_ni.value = 0
         t_fall = get_sim_time("ps")
+        # The macro latches its request on the next clk_i edge. Sample what it will
+        # latch once the fall has settled: the word-1 request with the memory
+        # interface still out of reset.
+        await ReadOnly()
+        at_fall = (
+            self.rd(dut.pr_rom_macro_req_o, allow_unknown=True),
+            self.rd(dut.pr_rom_macro_addr_o, allow_unknown=True),
+            self.rd(dut.pr_rom_memif_rst_n_o, allow_unknown=True),
+        )
         cpu_low = await self._wait_level(dut.sep_cpu_reset_n_o, 0, CPU_LOW_BOUND, "OTF reset")
         await ClockCycles(dut.clk_i, RST_HOLD)
         dut.rst_ni.value = 1
@@ -992,7 +1001,10 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             for b in self.macro.beats
             if b.ch == "req" and t_hs <= b.t_ps <= t_fall and b.addr == 1
         )
-        midflight = int(t_fall < t_hs + self.W * period and not early_rsp and macro_w1 >= 1)
+        latched = int(at_fall == (1, 1, 1))
+        midflight = int(
+            t_fall < t_hs + self.W * period and not early_rsp and macro_w1 >= 1 and latched
+        )
         t_first = first.t_ps if first is not None else None
         # A word-1 request from the clock the CPU reset is seen low up to the first
         # request after the release is a replay of the abandoned fetch: the core
@@ -1036,6 +1048,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             "CHK-ROM-OTF",
             ok,
             f"offset={self.o}/{self.W} midflight={midflight} macro_req_word1={macro_w1} "
+            f"macro_at_fall=req{at_fall[0]}/addr{at_fall[1]}/memif_rst_n{at_fall[2]} "
             f"first_req_word={first_word} "
             f"replay_word1={replay} beats_before_req={before} "
             f"first_rsp=0x{(rsp.rdata if rsp is not None and rsp.rdata is not None else 0):016x} "

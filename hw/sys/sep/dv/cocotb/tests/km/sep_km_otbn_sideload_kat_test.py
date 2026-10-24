@@ -17,8 +17,8 @@ Checkers:
   CHK0       boot KM on real DRBG -> RESP_KM_READY
   CHK-A      CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN
-  CHK-ISO    key-bus isolation by SW_RESET_N read-back: only OTBN of the four
-             non-ABR sideload engines released; AES/KMAC/HMAC parked
+  CHK-ISO    SW_RESET_N read-back before the transfer: of the four non-ABR
+             sideload engines only the OTBN bit is released (register state only)
   CHK-C      OTBN EXECUTE -> IDLE, ERR_BITS == 0
   CHK-D/E    DMEM == exact known key; result_hi pad == 0
   CHK-F      mask non-degeneracy: OTBN dumps its own KEY_S0/S1 WSRs (raw shares) to
@@ -134,8 +134,8 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         await self.swrst.release("otbn")
         await self.otbn.wait_idle("post-reset")
 
-        # CHK-ISO: AES/KMAC/HMAC are held in reset and OTBN is released; with the
-        # OTBN-only dest mask and CHK-D this pins the key to the intended target.
+        # CHK-ISO: SW_RESET_N holds AES/KMAC/HMAC parked and OTBN released. This
+        # grades the register the transfer runs under; CHK-D grades the key in OTBN.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["aes"])
@@ -149,7 +149,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
             f"OTBN not released before transfer (SW_RESET_N=0x{rst:08x})"
         )
         self.logger.info(
-            "CHK-ISO PASS: key-bus isolation, only KM+OTBN released, "
+            "CHK-ISO PASS: SW_RESET_N holds OTBN released and "
             "AES/KMAC/HMAC parked (SW_RESET_N=0x%02x)",
             rst,
         )

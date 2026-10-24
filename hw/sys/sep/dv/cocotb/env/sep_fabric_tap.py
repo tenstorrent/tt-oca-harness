@@ -74,8 +74,10 @@ that counts no handshake cannot pass on an unknown handshake. Verilator is
 2-state; the X checks of the leaves therefore run on VCS.
 
 ``since``, ``count`` and ``addrs`` raise ``TapIdleError`` when the monitor took
-no sample after the mark (not started, or stopped before the stimulus), so a
-zero-count check cannot pass on a monitor that never ran. They raise
+no sample after the mark (not started, or stopped at the mark), so a zero-count
+check cannot pass on a monitor that never ran. The guard does not show that the
+record covers the whole stimulus: a stopped tap holds beats up to its ``stop``
+clock (``stop_clk``), so a caller stops a tap only after the stimulus it grades. They raise
 ``MonitorLifeError`` (env/sep_monitor_life.py) when the monitor task ended
 without ``stop``, or when the mark is from an earlier run of the tap, so a
 count or absence check cannot pass on a record that a dead task left partial.
@@ -222,6 +224,8 @@ class TapBeat:
 
     ch: str
     t_ps: int
+    """Time of the clk_i rising edge whose read-only phase shows the beat; the
+    handshake, or the macro latch of a request, happens on the next edge."""
     seq: int
     """Position of the beat in the record of the tap, all channels together."""
     fields: dict[str, int | None] = field(default_factory=dict)
@@ -274,6 +278,8 @@ class SepFabricTap:
         self.beats: list[TapBeat] = []
         # Sampled clock edges since construction.
         self.clk = 0
+        # Clock count at the last ``stop``; None while running or never stopped.
+        self.stop_clk: int | None = None
         self._task = None
         self.life = MonitorLife(f"TAP {name}", lambda: self.clk)
         self._sigs: dict[str, tuple[object, object, dict[str, object]]] = {}
@@ -379,12 +385,14 @@ class SepFabricTap:
 
     def start(self) -> "SepFabricTap":
         if self._task is None:
+            self.stop_clk = None
             self._task = self.life.start(self._run())
         return self
 
     async def stop(self) -> None:
         """Close the run; raises ``MonitorLifeError`` if the task ended before."""
         self._task = None
+        self.stop_clk = self.clk
         await self.life.stop()
 
     def mark(self) -> "TapMark":
@@ -401,7 +409,8 @@ class SepFabricTap:
         if self.clk <= mark_clk:
             raise TapIdleError(
                 f"TAP FAIL: {self.name} took no sample after the mark "
-                f"(running={self._task is not None} clk={self.clk} mark_clk={mark_clk})"
+                f"(running={self._task is not None} clk={self.clk} mark_clk={mark_clk} "
+                f"stop_clk={self.stop_clk})"
             )
 
     def since(self, mark: int, ch: str | None = None) -> list[TapBeat]:

@@ -23,9 +23,8 @@ Checkers:
   CHK-A    CMD_KEY_LOAD known key
   CHK-NEG  ct_dummy == AES(dummy, PT): negative reference is a real encryption
   CHK-B    CMD_KEY_TRANSFER rc=0 to AES
-  CHK-ISO  key-bus isolation: only AES released; OTBN/KMAC/HMAC parked in SW reset
-           so they cannot receive the key (same mechanism as
-           km/sep_km_otbn_sideload_kat_test)
+  CHK-ISO  SW_RESET_N read-back: only the AES bit released; OTBN/KMAC/HMAC
+           parked (register state only, as in km/sep_km_otbn_sideload_kat_test)
   PUB-OBSERVATION  AES public KEY_SHARE0/1 read zero after sideload while STATUS
            reads non-zero on the same path; swaccess=wo makes the zero read alone
            unfalsifiable
@@ -158,9 +157,8 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B PASS: CMD_KEY_TRANSFER rc=0 (key sideloaded to AES)")
 
-        # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the five KM
-        # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset
-        # and cannot receive the key. The test reads SW_RESET_N back.
+        # CHK-ISO: SW_RESET_N holds AES released and OTBN/KMAC/HMAC parked. This
+        # grades the register; CHK-F grades the key in AES.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["otbn"])
@@ -174,7 +172,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"AES not released for the transfer (SW_RESET_N=0x{rst:08x})"
         )
         self.logger.info(
-            "CHK-ISO PASS: key-bus isolation, only KM+AES released, "
+            "CHK-ISO PASS: SW_RESET_N holds AES released and "
             "OTBN/KMAC/HMAC parked (SW_RESET_N=0x%02x)",
             rst,
         )

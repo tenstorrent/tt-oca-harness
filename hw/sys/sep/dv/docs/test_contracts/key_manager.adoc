@@ -43,7 +43,7 @@
 |CHK-B
 |`CMD_KEY_TRANSFER` succeeds with OTBN as destination.
 |CHK-ISO
-|Only the Key Manager and OTBN are out of reset during the transfer. AES, HMAC and KMAC are parked. The check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released: the Key Manager firmware does not reach ready with that domain held, and the Adams Bridge sideload leaf is the isolation claim for that engine.
+|Before the transfer, `SW_RESET_N` reads back with the OTBN bit released and the AES, HMAC and KMAC bits 0, the register state the transfer runs under. It grades that register, not the reset state of the engines; that the key reached OTBN is graded by CHK-D. The check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released: the Key Manager firmware does not reach ready with that domain held, and the Adams Bridge sideload leaf is the isolation claim for that engine.
 |CHK-C
 |The OTBN program loads, executes to idle, and reports no error bits.
 |CHK-F
@@ -103,7 +103,7 @@
 |CHK-B
 |The transfer to AES succeeds.
 |CHK-ISO
-|Only the Key Manager and AES are released during the transfer. OTBN, HMAC and KMAC are parked. The check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released: the Key Manager firmware does not reach ready with that domain held, and the Adams Bridge sideload leaf is the isolation claim for that engine.
+|`SW_RESET_N` reads back with the AES bit released and the OTBN, HMAC and KMAC bits 0, the register state the transfer runs under. It grades that register, not the reset state of the engines; that the key reached AES is graded by CHK-F. The check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released: the Key Manager firmware does not reach ready with that domain held, and the Adams Bridge sideload leaf is the isolation claim for that engine.
 |CHK-NEG
 |The decoy-key ciphertext matches its own golden, so the comparison baseline is sound.
 |CHK-F
