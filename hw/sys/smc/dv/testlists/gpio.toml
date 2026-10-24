@@ -27,6 +27,15 @@ tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 [[tests]]
+# DATA_CTRL / DATA_CTRL_ENABLE per-pad control walked on 56 pads and observed at each pad.
+name = "smc_gpio_pad_enable_walk_test"
+module = "smc_gpio_pad_enable_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_gpio_irq_type_matrix_test"
 module = "smc_gpio_irq_type_matrix_test"
 seed = 1

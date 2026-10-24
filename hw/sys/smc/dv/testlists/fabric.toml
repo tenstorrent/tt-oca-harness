@@ -69,6 +69,15 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+# Field walks of every alias, M-mode and Xvisor remap register; one translated read per table.
+name = "smc_remap_region_offset_walk_test"
+module = "smc_remap_region_offset_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_input_output_fabric_wr_rd_test"
 module = "smc_input_output_fabric_wr_rd_test"
 seed = 1

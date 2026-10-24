@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A zeroer job of zero bytes, and one crossing a page boundary from an unaligned start.
+"""Zeroer jobs at the corners of SIZE and DEST_ADDR.
 
 The zero-byte job has to leave its destination poisoned and book no write
 transaction; the page-crossing job has to zero exactly its sixteen bytes in at
-least two write transactions.
+least two write transactions. DEST_ADDR is then walked as storage and as a
+start address: one job per single-bit address over the 56-bit data address,
+unaligned starts, a start with SIZE 0 and a start above the data address range.
 """
 
 from __future__ import annotations
@@ -16,13 +18,21 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_zeroer_size_corners_test(smc_base_test):
-    """A zero-byte job and a job crossing a page boundary from an unaligned start."""
+    """Zero-byte, page-crossing, single-bit, unaligned and above-range zeroer starts."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
+        "CHK-ZEROER-ABOVE-RANGE",
+        "CHK-ZEROER-ADDR-WALK",
+        "CHK-ZEROER-BUSY",
+        "CHK-ZEROER-DEST-PATTERN",
         "CHK-ZEROER-EMPTY-JOB",
         "CHK-ZEROER-PAGE-CROSS",
+        "CHK-ZEROER-SIZE0",
+        "CHK-ZEROER-UNALIGNED",
     )
-    min_evidence = 2
+    min_evidence = 10
 
     auto_protocol_vip = False
 
