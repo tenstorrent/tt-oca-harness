@@ -855,7 +855,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         while self._label_run:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            if not (self.rd(dut.pr_rom_req_o) and self.rd(dut.pr_rom_gnt_o)):
+            if not self.rd(dut.pr_rom_req_o):
                 continue
             word = self.rd(dut.pr_rom_addr_o) >> 3
             n = bits.get(word, 0)
