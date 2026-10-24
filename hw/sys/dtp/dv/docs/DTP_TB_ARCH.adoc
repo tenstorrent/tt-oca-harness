@@ -195,7 +195,11 @@ realizations consume the same interface instances: SV-UVM through
 the clock generator on `dtp_tb_if.clk`, the test classes, the `uvm_config_db`
 publication of every instance, and `run_test()`. The `ocah_axi_if` instances carry the interface's
 default geometry so the SV-UVM layer sees one virtual type; cocotb binds them
-through `OcahAxiConfig.bus()` at each bus's real geometry.
+through `OcahAxiConfig.bus()` at each bus's real geometry. The `bsr_disabled` build
+target compiles the bench with `DTP_BSR_DISABLED`, which clears the four boundary-scan
+enables in the configuration package; only the tests that name that target run on it.
+The cocotb copy holds the default build's enables, and the bring-up check leaves them
+out.
 
 [cols=",",options="header",]
 |===

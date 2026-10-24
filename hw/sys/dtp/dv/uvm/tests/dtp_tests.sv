@@ -36,6 +36,7 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_jtag_highz_test.svh"
 `include "dtp_jtag_ac_extest_train_test.svh"
 `include "dtp_jtag_ac_extest_pulse_test.svh"
+`include "dtp_jtag_bsr_disabled_test.svh"
 `include "dtp_jtag_trst_test.svh"
 `include "dtp_jtag_trst_por_independence_test.svh"
 `include "dtp_jtag_tlr_reset_test.svh"
