@@ -47,11 +47,11 @@ Legs:
 * leg 4, granule: seven (granule, shape, instance) cells probed at the widened
   edges.
 
-Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTL-FILTER-RAND (stimulus
+Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTRL-FILTER-RAND (stimulus
 completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-ARMED,
-CHK-RESET-DENY-CONTROL, CHK-GRANULE. CTL-FILTER-ACTIVE is the bring-up
+CHK-RESET-DENY-CONTROL, CHK-GRANULE. CTRL-FILTER-ACTIVE is the bring-up
 precondition. The inbound cells that open tests grade run as controls and log
-CTL-FILTER-CELL / CTL-RESET-DENY lines. Every admitted outbound probe must
+CTRL-FILTER-CELL / CTRL-RESET-DENY lines. Every admitted outbound probe must
 show PR-OUT handshakes only at its predicted outbound address.
 
 Not graded here: ``group_id`` (random value, logged), the ``locked`` bit, the
@@ -463,13 +463,13 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         sep_dbg = feat & 1
         if feat != golden or sep_dbg != 0:
             self.logger.error(
-                "CTL-FILTER-ACTIVE FAIL: feat_ctrl=0x%016x golden=0x%016x", feat, golden
+                "CTRL-FILTER-ACTIVE FAIL: feat_ctrl=0x%016x golden=0x%016x", feat, golden
             )
             raise AssertionError(
-                f"CTL-FILTER-ACTIVE FAIL: feat_ctrl=0x{feat:016x} golden=0x{golden:016x}"
+                f"CTRL-FILTER-ACTIVE FAIL: feat_ctrl=0x{feat:016x} golden=0x{golden:016x}"
             )
         self.logger.info(
-            "CTL-FILTER-ACTIVE LOG: feat_ctrl=0x%016x golden=0x%016x sep_dbg=%d",
+            "CTRL-FILTER-ACTIVE LOG: feat_ctrl=0x%016x golden=0x%016x sep_dbg=%d",
             feat,
             golden,
             sep_dbg,
@@ -487,7 +487,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             f"want=0x{word:016x} field_mask=0x{REMAP_FIELDS:016x} rsvd=0x{rsvd:x}"
         )
         assert (got & REMAP_FIELDS) == word, f"REMAP-READBACK FAIL: {line}"
-        self.logger.info("REMAP-READBACK LOG: %s", line)
+        self.logger.info("INFO-REMAP-READBACK LOG: %s", line)
 
     # ------------------------------------------------------------------
     # Probe builders
@@ -671,7 +671,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             "ext_seen": 0,
         }
         self._gate(graded_in)
-        self._chk = "CHK-RESET-DENY-ARMED" if graded_in else "CTL-RESET-DENY"
+        self._chk = "CHK-RESET-DENY-ARMED" if graded_in else "CTRL-RESET-DENY"
         for p in self._deny_probes_in():
             r = await self._run(p)
             assert not r.verdict.allowed, f"{label}: model admits {p}"
@@ -726,10 +726,10 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         # Steps 4 to 7, reset state.
         st0 = await self._deny_round("RESET", graded_in=False)
         assert st0["in_seen"] == 0 and st0["in_decerr"] == st0["in_probes"], (
-            f"CTL-RESET-DENY FAIL: {st0}"
+            f"CTRL-RESET-DENY FAIL: {st0}"
         )
         self.logger.info(
-            "CTL-RESET-DENY LOG inst=in probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=%d "
+            "CTRL-RESET-DENY LOG inst=in probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=%d "
             "readback_same=%d",
             st0["in_probes"],
             st0["in_p0"],
@@ -785,7 +785,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     for cls in ("sram", "scratch"):
                         r = await self._run(self._p_in(cls, False, prot1))
                         assert r.resp == RESP_OKAY and r.target_seen >= 1, (
-                            f"CTL-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1}"
+                            f"CTRL-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1}"
                         )
                         wide_ok += 1
                         wide_seen += r.target_seen
@@ -798,7 +798,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                         seq = await self._si(p)
                         inflt = self.taps["PR-INFLT"].count(m, "ar")
                         assert seq.resp_code == RESP_OKAY and inflt >= 1, (
-                            f"CTL-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1} "
+                            f"CTRL-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1} "
                             f"addr=0x{p.addr:08x} resp={_RESP.get(seq.resp_code)} pr_inflt_ar={inflt}; "
                             "expected OKAY after the filter admits the read"
                         )
@@ -812,7 +812,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                         seq = await self._si(p, self.rng.getrandbits(32))
                         inflt = self.taps["PR-INFLT"].count(m, "aw")
                         assert seq.resp_code == RESP_OKAY and inflt >= 1, (
-                            f"CTL-RESET-DENY-ARMED FAIL: wide control in {cls} write p{prot1} "
+                            f"CTRL-RESET-DENY-ARMED FAIL: wide control in {cls} write p{prot1} "
                             f"addr=0x{p.addr:08x} resp={_RESP.get(seq.resp_code)} pr_inflt_aw={inflt}; "
                             "expected OKAY after the filter admits the write"
                         )
@@ -823,7 +823,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     seq = await self._si(p, allow_timeout=True)
                     addrs = self.taps["PR-EXT"].addrs(m, "ar")
                     self.logger.info(
-                        "WIDE-CTRL LOG: ext read addr=0x%08x prot1=%d resp=%s pr_ext=%s",
+                        "INFO-WIDE-CTRL LOG: ext read addr=0x%08x prot1=%d resp=%s pr_ext=%s",
                         p.addr,
                         prot1,
                         _RESP.get(seq.resp_code),
@@ -831,14 +831,14 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     )
                     hits = sum(1 for a in addrs if a == (p.addr & M32))
                     assert hits == 1, (
-                        f"CTL-RESET-DENY FAIL: PR-EXT control shows {hits} request(s) at 0x{p.addr:08x}"
+                        f"CTRL-RESET-DENY FAIL: PR-EXT control shows {hits} request(s) at 0x{p.addr:08x}"
                     )
                     ext_ctrl_seen += hits
                 else:
                     for cls in ("smu", "ap"):
                         r = await self._run(self._p_out(cls, False, prot1))
                         assert r.resp == RESP_OKAY and r.out_seen >= 1, (
-                            f"CTL-RESET-DENY-ARMED FAIL: wide control out {cls} p{prot1}"
+                            f"CTRL-RESET-DENY-ARMED FAIL: wide control out {cls} p{prot1}"
                         )
                         wide_ok += 1
                 await bank.set_enabled(k, False)
@@ -1002,7 +1002,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             for state, attr in cells:
                 cls = cls_of[(state, attr)]
                 graded = inst == "out" or (state == "en" and attr == "prot1")
-                self._chk = "CHK-FILTER-CELL" if graded else "CTL-FILTER-CELL"
+                self._chk = "CHK-FILTER-CELL" if graded else "CTRL-FILTER-CELL"
                 for write in (False, True):
                     p, allow, deny, c = self._attr_cell(inst, state, attr, cls, write)
                     self._gate(graded)
@@ -1019,7 +1019,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                         if graded:
                             self.logger.info("CHK-FILTER-CELL PASS: %s", line)
                         else:
-                            self.logger.info("CTL-FILTER-CELL LOG: %s", line)
+                            self.logger.info("CTRL-FILTER-CELL LOG: %s", line)
             await self._corners(inst)
 
     async def _pair(self, inst: str, p: Probe, first: dict, second: dict, label: str) -> None:
@@ -1421,7 +1421,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             "src_wildcard",
         )
         self.stats = {i: {k: 0 for k in keys} for i in ("in", "out")}
-        self._chk = "CTL-FILTER-ACTIVE"
+        self._chk = "CTRL-FILTER-ACTIVE"
         self.sep_id: int | None = None
         close_graded_window(self.logger)
 
@@ -1442,7 +1442,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self._stage(self.c0, 4)
         self.staged = dict(self.mem)
         self.logger.info(
-            "FMP-CFG LOG: seed=%d s0=0x%08x c0=0x%08x ext=0x%08x smu=0x%08x ap_intra=0x%x",
+            "INFO-FMP-CFG LOG: seed=%d s0=0x%08x c0=0x%08x ext=0x%08x smu=0x%08x ap_intra=0x%x",
             self.random_seed(),
             self.s0,
             self.c0,
@@ -1466,10 +1466,10 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             # Corner cell e runs inbound only.
             zero = [k for k in s if s[k] == 0 and (inst, k) != ("out", "ar_aw_diverge")]
             assert not zero, (
-                f"CTL-FILTER-RAND FAIL: seed={self.random_seed()} inst={inst} zero={zero} {line}"
+                f"CTRL-FILTER-RAND FAIL: seed={self.random_seed()} inst={inst} zero={zero} {line}"
             )
             self.logger.info(
-                "CTL-FILTER-RAND LOG: seed=%d inst=%s %s", self.random_seed(), inst, line
+                "CTRL-FILTER-RAND LOG: seed=%d inst=%s %s", self.random_seed(), inst, line
             )
 
         close_graded_window(self.logger)

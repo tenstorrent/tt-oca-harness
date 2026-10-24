@@ -506,7 +506,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         ecode = await ops.rd(ERROR_CODE)
         close_graded_window(self.logger)
         self.logger.info(
-            "L1-TRIAL LOG seed=%d event=%s intr_en=0x%x total=%d chunk=%d go_writes=%d "
+            "INFO-L1-TRIAL LOG seed=%d event=%s intr_en=0x%x total=%d chunk=%d go_writes=%d "
             "src9=%d src10=%d src11=%d intr_state=0x%x error_code=0x%x %s",
             c.seed,
             event,
@@ -654,7 +654,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         ecode = await ops.rd(ERROR_CODE)
         ok = int(res.status.done and not res.status.error and (ecode & ERROR_CODE_MASK) == 0)
         self.logger.info(
-            "CTL-DMA-SIZE-ERR LOG seed=%d kind=%s hash_width_enc=2 size=%d control_width_ok=%d "
+            "CTRL-DMA-SIZE-ERR LOG seed=%d kind=%s hash_width_enc=2 size=%d control_width_ok=%d "
             "error_code=0x%x %s",
             c.seed,
             kind,
@@ -810,7 +810,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         mism, guard_bad = self._hi_image_ok(foot)
         ok = int(ended and st.done and not st.error and mism == 0 and guard_bad == 0)
         self.logger.info(
-            "CTL-DMA-HI-ADDR LOG seed=%d size=%d src=0x%08x dst=0x%08x control_ok=%d "
+            "CTRL-DMA-HI-ADDR LOG seed=%d size=%d src=0x%08x dst=0x%08x control_ok=%d "
             "mismatch=%d guard_bad=%d error_code=0x%x %s",
             c.seed,
             c.hi_size,
@@ -1075,7 +1075,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"ctx={ctx} base=0x{base:08x}/0x{pre[0]:08x} limit=0x{limit:08x}/0x{pre[1]:08x} "
             f"regwen=0x{regwen:x}/0x{REGWEN_TRUE:x} valid={valid}/1 error_seen={err_seen}"
         )
-        self.logger.info("CTL-DMA-LOCK seed=%d %s", c.seed, ctl)
+        self.logger.info("CTRL-DMA-LOCK seed=%d %s", c.seed, ctl)
         if (base, limit, regwen, valid, err_seen) != (pre[0], pre[1], REGWEN_TRUE, 1, 1):
             self._ctrl_missing(f"CHK-DMA-LOCK control before the lock: {ctl}")
         if ctx == "after_error":
@@ -1095,7 +1095,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 f"limit=0x{pe_limit:08x}/0x{pre[1]:08x} valid={pe_valid}/1 "
                 f"regwen=0x{pe_regwen:x}/0x{REGWEN_TRUE:x} error={pe_st.error}/1 {pe_st.fmt()}"
             )
-            self.logger.info("CTL-DMA-LOCK seed=%d %s", c.seed, pe)
+            self.logger.info("CTRL-DMA-LOCK seed=%d %s", c.seed, pe)
             if (pe_base, pe_limit, pe_valid, pe_regwen, pe_st.error) != (
                 pre[0],
                 pre[1],
@@ -1148,7 +1148,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         ctl_mism = await self._l5_image()
         ok = int(ctl_done_at is not None and not st.error and ctl_mism == 0)
         self.logger.info(
-            "CTL-DMA-ASID-TIEOFF LOG seed=%d size=%d control_ok=%d done_read=%s window=%d "
+            "CTRL-DMA-ASID-TIEOFF LOG seed=%d size=%d control_ok=%d done_read=%s window=%d "
             "mismatch=%d %s",
             self.cfg_t.seed,
             self.cfg_t.hi_size,
@@ -1189,7 +1189,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         mid = int(pre.busy == 1 and pre.done == 0 and pre.aborted == 0)
         ok = int(mid and ab_at is not None and done_reads == 0)
         self.logger.info(
-            "CTL-DMA-TIEOFF-ABORT seed=%d size=%d control_ok=%d mid_transfer=%d "
+            "CTRL-DMA-TIEOFF-ABORT seed=%d size=%d control_ok=%d mid_transfer=%d "
             "aborted_read=%s bound=%d done_reads=%d before_abort[%s] last[%s]",
             c.seed,
             MAX_BYTES,

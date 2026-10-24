@@ -450,7 +450,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         self._grade_idle(f"{s.mode}.b{i}", samples)
         if i == 0:
             t_blk = max(1, samples[-1][0] - t_resp)
-            self.chk.obs("AES-TBLK", mode=s.mode, t_blk=t_blk)
+            self.chk.info("AES-TBLK", mode=s.mode, t_blk=t_blk)
             if self.t_blk is None:
                 self.t_blk = t_blk
         if not read:

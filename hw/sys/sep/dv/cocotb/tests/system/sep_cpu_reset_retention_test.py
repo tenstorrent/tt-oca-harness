@@ -82,9 +82,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           and rises, and the next ``SW_RESET_N`` write shows its
                           AW and an OKAY B on the bus within the bound.
 
-Controls (not counted): ``CTL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
+Controls (not counted): ``CTRL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
 ``sep_cpu_reset_n`` with ``sep_reset_n`` high, and the ``rst_ni`` pulse drops
-``sep_reset_n``), ``CTL-BANK`` (the scratch banks after each event),
+``sep_reset_n``), ``INFO-BANK`` (the scratch banks after each event),
 ``OBS-CPU-RST-DBG``.
 
 Environment choices (logged): the placement of each pulse in clocks from the
@@ -474,14 +474,14 @@ class sep_cpu_reset_retention_test(sep_base_test):
         # The full-CPU testlist entry passes +sep_require_full_cpu: there the DBG legs and
         # CHK-DBG-SYNC are required, so a stub build fails the leaf.
         if "sep_require_full_cpu" in cocotb.plusargs and not self.full_cpu:
-            msg = "CTL-FULL-CPU FAIL: +sep_require_full_cpu and the build has the CPU stub"
+            msg = "CTRL-FULL-CPU FAIL: +sep_require_full_cpu and the build has the CPU stub"
             self.logger.error(msg)
             raise AssertionError(msg)
         self.classes = ("WDT", "DBG") if self.full_cpu else ("WDT",)
         if self.full_cpu:
             self.required_evidence = (*type(self).required_evidence, "CHK-DBG-SYNC")
         self.logger.info(
-            "OBS-BUILD: full_cpu=%d pulse_classes=%s required_evidence=%s",
+            "INFO-BUILD: full_cpu=%d pulse_classes=%s required_evidence=%s",
             int(self.full_cpu),
             ",".join(self.classes),
             ",".join(self.required_evidence),
@@ -522,7 +522,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             self.off = self.chan.clk - self.taps.iso_req.clk
-            self.logger.info("OBS-CLOCKS: chan_mon_clk_offset=%d", self.off)
+            self.logger.info("INFO-CLOCKS: chan_mon_clk_offset=%d", self.off)
             await FallingEdge(dut.clk_i)
             for name in ("sep_reset_n", "sep_cpu_reset_n"):
                 await self.taps.resets[name].wait_level(1, TAP_BOUND)
@@ -585,7 +585,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.lat_b = (b_beats[0] - h) if b_beats else None
         # The B latency places the in-flight leg and proves the s_axi B tap live.
         self._ctl(
-            "CTL-CAL-B",
+            "CTRL-CAL-B",
             self.lat_b is not None and self.lat_b > 0,
             f"calibration write id=0 b_after_aw={self.lat_b}",
         )
@@ -593,7 +593,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         await self._wait_ev(ev, "calibration release")
         await self._wait_ip(d, 1, "calibration release")
         self.logger.info(
-            "CAL-TISO: dom=%s issue_to_aw=%d tiso=%d host_iso_ack_after_aw=%s b_after_aw=%s",
+            "INFO-CAL-TISO: dom=%s issue_to_aw=%d tiso=%d host_iso_ack_after_aw=%s b_after_aw=%s",
             d,
             self.lat_aw,
             self.tiso,
@@ -625,7 +625,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             + [self.plan.dma_width]
         )
         self.logger.info(
-            "CAL-COPY: C=%d clocks widest_pulse=%d bytes=%d", self.c, widest, COPY_BYTES
+            "INFO-CAL-COPY: C=%d clocks widest_pulse=%d bytes=%d", self.c, widest, COPY_BYTES
         )
         if self.c <= 8 * widest:
             raise AssertionError(
@@ -633,7 +633,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             )
         self.copy_delay = self.c // 4 + int(self.plan.f_c * (self.c // 2))
         self.logger.info(
-            "DRAW-SCALED copy_delay=%d (f_c=%.6f C=%d)", self.copy_delay, self.plan.f_c, self.c
+            "INFO-DRAW-SCALED copy_delay=%d (f_c=%.6f C=%d)", self.copy_delay, self.plan.f_c, self.c
         )
 
     async def _program_copy(self) -> dict[str, int]:
@@ -673,7 +673,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         await self._wr(RANGE_REGWEN, 0)
         self.lk = await self._rd(RANGE_REGWEN)
         self._ctl(
-            "CTL-LK",
+            "CTRL-LK",
             self.lk == 0,
             f"RANGE_REGWEN=0x{self.lk:x} after the write of 0 (RW0C, reset 0x6)",
         )
@@ -708,7 +708,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 out[name] = "cleared"
             else:
                 out[name] = "mixed:" + ",".join(f"0x{v:x}" for v in vals)
-        self.logger.info("CTL-BANK: event=%s warm=%s cold=%s", event, out["warm"], out["cold"])
+        self.logger.info("INFO-BANK: event=%s warm=%s cold=%s", event, out["warm"], out["cold"])
         await self._write_banks(warm_only=True)
         await self._open()
 
@@ -729,7 +729,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         await FallingEdge(cocotb.top.clk_i)
         ok = (dst & DMA_REG_PATH_BIT) and (pst & PERIPH_BIT[lat]) and b40 and b42
         self._ctl(
-            "CTL-LATCH",
+            "CTRL-LATCH",
             bool(ok),
             f"{what}: DMA_BUS_ERR_STATUS=0x{dst:x} PERIPH_BUS_ERR_STATUS=0x{pst:x} "
             f"latch={lat} src41={b40} src43={b42}",
@@ -889,7 +889,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                     f">= offset {-target})"
                 )
             self.logger.info(
-                "DRAW-SCALED overlap run=%d pulse=%s band=%s f_o=%.6f tiso=%d offset=%d "
+                "INFO-DRAW-SCALED overlap run=%d pulse=%s band=%s f_o=%.6f tiso=%d offset=%d "
                 "(clocks from the write handshake%s) width=%d",
                 n,
                 run.cls,
@@ -954,7 +954,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 "after": p_first is not None and p_first >= fall,
             }[run.band]
             self.logger.info(
-                "OVL-PLACE run=%d pulse=%s band=%s issue=%d aw=%d fall=%d pulse_first_low=%s "
+                "INFO-OVL-PLACE run=%d pulse=%s band=%s issue=%d aw=%d fall=%d pulse_first_low=%s "
                 "offset_measured=%s offset_target=%d band_ok=%d%s",
                 n,
                 run.cls,
@@ -1009,7 +1009,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 raise AssertionError(f"CHK-OVL FAIL: {line}")
             if late:
                 # The run already failed on its B; the rest of its grading met.
-                self.logger.info("OVL-AFTER-LATE: %s", line)
+                self.logger.info("INFO-OVL-AFTER-LATE: %s", line)
             elif run.cls == "WDT":
                 self._chk("CHK-OVL", True, line)
             else:
@@ -1069,7 +1069,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         b_open = not b_before
         b_due = None if self.lat_b is None else aw + self.lat_b
         self.logger.info(
-            "WDT-INFLIGHT-PLACE: aw_clk=%d pulse_first_low=%s pulse_release=%s width=%d "
+            "INFO-WDT-INFLIGHT-PLACE: aw_clk=%d pulse_first_low=%s pulse_release=%s width=%d "
             "b_outstanding_at_pulse=%d calibrated_b_after_aw=%s calibrated_b_clk=%s",
             aw,
             p_first,
@@ -1127,7 +1127,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             self._reset_cpu_master("in-flight leg")
         nxt, _ = await self._bus_write(sw_now & SW_FIELDS)
         if late:
-            self.logger.info("OBS-WDT-INFLIGHT-NEXT: next_write=%s", nxt)
+            self.logger.info("INFO-WDT-INFLIGHT-NEXT: next_write=%s", nxt)
             raise AssertionError(self._inflight_fail.replace("not_reached", nxt))
         reset_seen = c_fall is not None and c_rise is not None and c_rise > c_fall
         drained_ok = b_clk is None or b_resp == RESP_OKAY
@@ -1152,7 +1152,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         wr = self.env.axi_agent.driver.axi.driver.backend.write_if
         wr.assert_reset()
         self.logger.info(
-            "OBS-MASTER-RESET: %s the CPU reset dropped the B of an open write; "
+            "INFO-MASTER-RESET: %s the CPU reset dropped the B of an open write; "
             "the stand-in master write state is cleared",
             where,
         )
@@ -1240,7 +1240,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"{label} write id=0 aw_clk={aw} cpu_reset_fall={c_fall} b_clk={b_clk} "
             f"b_resp={RESP_NAME.get(b_resp, b_resp)} b_outcome={outcome}"
         )
-        self.logger.info("OVL-CUT-B: %s", text)
+        self.logger.info("INFO-OVL-CUT-B: %s", text)
         return {"ok": ok, "outcome": outcome, "aw": aw, "text": text}
 
     def _chk_late_inflight(self, values: str) -> None:
@@ -1413,7 +1413,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         # Every register the cold reset grades must read a value other than its RDL
         # reset first, or a missing reset could not show.
         self._ctl(
-            "CTL-COLD-ARMED",
+            "CTRL-COLD-ARMED",
             not at_default,
             f"registers={len(armed_pre) + 4} at_rdl_default={at_default or 'none'} "
             f"CONTROL_pre=0x{ctl_pre & CONTROL_RD_MASK:08x} "
@@ -1433,7 +1433,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         n = sep.clk - m["sep_reset_n"].clk
         cold_low = n - sep.high_clocks_since(m["sep_reset_n"])
         self._ctl(
-            "CTL-CPU-RST",
+            "CTRL-CPU-RST",
             self.cpu_rst["low"] >= 1 and self.cpu_rst["sep_high"] and cold_low > 0,
             f"wdt_events={self.cpu_rst['wdt_events']} sep_cpu_reset_n_low_on_wdt="
             f"{self.cpu_rst['low']} sep_reset_n_high_on_wdt={int(self.cpu_rst['sep_high'])} "
@@ -1474,9 +1474,9 @@ class sep_cpu_reset_retention_test(sep_base_test):
                     mism.append(f"{r.name}:{fc.fields()}")
             else:
                 unmoved.append(f"{r.name}={got:#x}{'' if fc.ok else '(!=reset)'}")
-        self.logger.info("OBS-DMA-COLD-UNMOVED: %s", " ".join(unmoved))
+        self.logger.info("INFO-DMA-COLD-UNMOVED: %s", " ".join(unmoved))
         # CONTROL (readable fields) and INTR_STATE are graded on every seed:
-        # CTL-COLD-ARMED read both at a value other than their RDL reset.
+        # CTRL-COLD-ARMED read both at a value other than their RDL reset.
         ctl = await self.dma.rd(CONTROL_ADDR)
         intr = await self.dma.rd(INTR_STATE_ADDR)
         for name, got, exp, msk in (
@@ -1490,7 +1490,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         dst_st = await self._rd(DMA_STATUS_ADDR)
         pst = await self._rd(PERIPH_STATUS_ADDR)
         swv = await self._rd(SW)
-        self.logger.info("OBS-SWRST-COLD-UNMOVED: fields=km,otbn,aes,kmac,trng,abr")
+        self.logger.info("INFO-SWRST-COLD-UNMOVED: fields=km,otbn,aes,kmac,trng,abr")
         # Control of CHK-RETAIN: every armed register reads its RDL default.
         defaults = 0
         regs = (*self._armed_probes(), *RANGE_PROBES)
@@ -1550,7 +1550,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         for p in RANGE_PROBES:
             got = await self.pd.read(p)
             rng_ok &= field_compare(got, p.reset, p.mask).ok
-        self._ctl("CTL-RANGE-RESET", rng_ok, f"RANGE_REGWEN=0x{lk:x} range registers at reset")
+        self._ctl("CTRL-RANGE-RESET", rng_ok, f"RANGE_REGWEN=0x{lk:x} range registers at reset")
         await self._open()
         src = self.plan.words(COPY_WORDS)
         pat_a = self.plan.words(COPY_WORDS, avoid=src)
@@ -1602,7 +1602,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             dut.mpc_reset_run_req.value = v
             ctl.append(await self._follow(v, f"control toggle to {v}"))
         control_follow = all(c <= lim for c in ctl)
-        self._ctl("CTL-DBG-SYNC", control_follow, f"follow_cycles={ctl} limit={lim}")
+        self._ctl("CTRL-DBG-SYNC", control_follow, f"follow_cycles={ctl} limit={lim}")
         # Error injection: toggle the input while dbg_rstb_i is low.
         await self._open()
         w = self.plan.dbg_sync_width

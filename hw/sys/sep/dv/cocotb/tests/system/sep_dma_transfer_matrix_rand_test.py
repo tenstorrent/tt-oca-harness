@@ -112,7 +112,7 @@ GO value during a transfer is not graded.
 The Leg D cells that ``sep_dma_hash_test`` grades (SHA-256 at 56 bytes as one
 chunk at either swap value, SHA-256 at 56 bytes as two 28-byte chunks with
 DIGEST_SWAP=1, SHA-384 at 56 bytes as one chunk with DIGEST_SWAP=1) are
-controls: they log ``OBS-DMA-HASH-CTRL`` and print no CHK-DMA-HASH or
+controls: they log ``INFO-DMA-HASH-CTRL`` and print no CHK-DMA-HASH or
 CHK-DMA-HASH-CHAIN line.
 
 Run mode: no_cpu, target ``lsu_stub_all_live``, ``+skip_fuse_sense``, never
@@ -1296,7 +1296,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             len(words) - len(scrub_gold)
         )
         self.logger.info(
-            "CTL-DMA-HASH-SCRUB LOG seed=%d alg=%d len=%d swap=%d mismatch=%d done=%d error=%d",
+            "CTRL-DMA-HASH-SCRUB LOG seed=%d alg=%d len=%d swap=%d mismatch=%d done=%d error=%d",
             self.seed,
             m.alg,
             length,
@@ -1341,7 +1341,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                     digests[(split, swap)] = (words, control)
                     if control:
                         self.logger.info(
-                            "OBS-DMA-HASH-CTRL LOG seed=%d alg=%d len=%d split=%d swap=%d "
+                            "INFO-DMA-HASH-CTRL LOG seed=%d alg=%d len=%d split=%d swap=%d "
                             "words=%d mismatch=%d copy_mismatch=%d error=%d",
                             self.seed,
                             m.alg,

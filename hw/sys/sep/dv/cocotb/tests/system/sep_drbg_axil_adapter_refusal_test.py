@@ -254,7 +254,7 @@ class sep_drbg_axil_adapter_refusal_test(sep_base_test):
         )
         status = await drv.periph_status()
         self.logger.info(
-            "REFUSE-DUT-READ observation (%s): [%s] 1-byte read at 0x%08x "
+            "INFO-REFUSE-DUT-READ observation (%s): [%s] 1-byte read at 0x%08x "
             "(ARADDR[1:0]=%d) -> resp=%d; drbg_%s_axil_chan_o %s; drbg_%s_fwd_o %s; "
             "PERIPH_BUS_ERR_STATUS=0x%x (%s bit 0x%x)",
             NOT_GRADED_NOTE,
@@ -286,7 +286,7 @@ class sep_drbg_axil_adapter_refusal_test(sep_base_test):
                 veh_fwd_x += obs["fwd_x"]
             if not graded:
                 self.logger.info(
-                    "REFUSE-VEH observation (%s): %s", NOT_GRADED_NOTE, veh.describe(obs)
+                    "INFO-REFUSE-VEH observation (%s): %s", NOT_GRADED_NOTE, veh.describe(obs)
                 )
             elif not (
                 obs["retired"]
@@ -336,7 +336,7 @@ class sep_drbg_axil_adapter_refusal_test(sep_base_test):
             TBADP_RESPONDER_RDATA,
         )
         self.logger.info(
-            "REFUSE-VEH-CONTROL observation (%s): other-lane read words seen %s",
+            "INFO-REFUSE-VEH-CONTROL observation (%s): other-lane read words seen %s",
             NOT_GRADED_NOTE,
             sorted(f"0x{v:x}" for v in ctl_rd_others),
         )

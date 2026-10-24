@@ -85,7 +85,7 @@ The routine first sets ``mrac`` as the SEP firmware start-up does
 The CSR number and the value are parsed from the first ``li t0`` and
 ``csrw <csr>, t0`` pair of ``_start`` in that file, and the routine reads the
 CSR back into a mailbox record once the outbound filter entry for the mailbox
-is open; a read-back that differs fails the leaf (``CTL-ROM-MRAC``).
+is open; a read-back that differs fails the leaf (``CTRL-ROM-MRAC``).
 The core can serve two pending loads of one doubleword with one bus read, and
 it can merge two pending stores to one address. The 16 loads of a block are
 therefore in 16 different words, the two loads of each store-leg readback have
@@ -712,9 +712,9 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         mrac = await mbx.wait(OFF_MRAC, ROMCTL_BOUND, what="mrac record")
         line = f"csr=0x{CSR_MRAC:03x} readback=0x{mrac.val:08x} crt0=0x{MRAC_SEP:08x}"
         if mrac.val != MRAC_SEP:
-            self.logger.error("CTL-ROM-MRAC FAIL: %s", line)
-            raise AssertionError(f"CTL-ROM-MRAC FAIL: {line}")
-        self.logger.info("CTL-ROM-MRAC: %s", line)
+            self.logger.error("CTRL-ROM-MRAC FAIL: %s", line)
+            raise AssertionError(f"CTRL-ROM-MRAC FAIL: {line}")
+        self.logger.info("CTRL-ROM-MRAC: %s", line)
         # Step 4.
         ctl = await mbx.wait(OFF_ROMCTL, ROMCTL_BOUND, what="ROM_CTL record")
         await self._check_fail()
@@ -744,7 +744,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         self._flip_stored()
         # First instance, graded with the window closed.
         self._sram_mem()[(FLAG - SRAM_BASE) // 8].value = 1
-        self.logger.info("CTL-FLIP: %d flips applied, release flag set", len(p.flips))
+        self.logger.info("INFO-FLIP: %d flips applied, release flag set", len(p.flips))
         await mbx.wait(OFF_DONE, LEG_BOUND, what="done record")
         await self._check_fail()
         self._grade_noecc()
@@ -796,7 +796,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         try:
             self._open_window()
             self._sram_mem()[(FLAG2 - SRAM_BASE) // 8].value = 1
-            self.logger.info("CTL-FLIP: repeat instance, release flag set")
+            self.logger.info("INFO-FLIP: repeat instance, release flag set")
             await self.mbx.wait(OFF_DONE2, LEG_BOUND, what="repeat done record")
             await self._check_fail()
             self._grade_noecc_repeat()
@@ -900,7 +900,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             raise AssertionError(f"calibration: W={self.W} cycles")
         self.o = (self.plan.u * self.W) >> 16
         self.logger.info(
-            "CTL-ROM-OTF-CAL: word=1 W=%d cycles rsp=0x%016x image_word1=0x%016x u_o=%d/65536 o=%d",
+            "CTRL-ROM-OTF-CAL: word=1 W=%d cycles rsp=0x%016x image_word1=0x%016x u_o=%d/65536 o=%d",
             self.W,
             rsp.rdata if rsp.rdata is not None else 0,
             self.plan.img.word(1),
@@ -1056,7 +1056,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             None if b.addr is None else b.addr >> 3 for b in self._in(self.rom.beats, t0, t1, "req")
         )
         self.logger.info(
-            "OBS-ROM-STORE-WE LOG per_word(macro/rom_req/exp)=%s",
+            "INFO-ROM-STORE-WE LOG per_word(macro/rom_req/exp)=%s",
             " ".join(f"{w}:{got_n[w]}/{rq_n[w]}/{n}" for w, n in sorted(exp_n.items())),
         )
         self._grade(

@@ -277,7 +277,7 @@ static uint32_t copy_addr(uint32_t k) {
     }
 }
 
-// One bark through the locked trampoline; prints the CTL-NMI-ENTRY record.
+// One bark through the locked trampoline; prints the CTRL-NMI-ENTRY record.
 static int bark_nmi(uint32_t n, uint32_t thold, uint32_t mie_at_bark) {
     uint32_t r0 = g_nmi_runs;
     uint32_t f0 = g_flag;

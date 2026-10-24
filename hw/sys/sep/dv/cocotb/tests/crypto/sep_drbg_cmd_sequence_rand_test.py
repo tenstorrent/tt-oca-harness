@@ -670,7 +670,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             )
             return
         t0 = max(t0, 1)
-        self.chk.obs("EDN-TSEED", tseed_clk=t0, auto_mode=int(bool(sts & ED_AUTO_MODE)))
+        self.chk.info("EDN-TSEED", tseed_clk=t0, auto_mode=int(bool(sts & ED_AUTO_MODE)))
         bound = BOUND_FACTOR * t0
         for auto in (True, False):
             await self._clean_start(f"boot_auto{int(auto)}")

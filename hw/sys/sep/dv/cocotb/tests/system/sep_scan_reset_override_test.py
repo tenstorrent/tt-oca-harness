@@ -152,16 +152,16 @@ class sep_scan_reset_override_test(sep_base_test):
         for p in walk.pins:
             found[p.cls].append((f"{p.path} ({p.cell})", p))
         self.logger.info(
-            "TEST-EN-WALK LOG: scopes=%d %s unwalkable=%d",
+            "INFO-TEST-EN-WALK LOG: scopes=%d %s unwalkable=%d",
             walk.scopes,
             " ".join(f"{c}={len(v)}" for c, v in found.items()),
             len(walk.unwalkable),
         )
         for u in walk.unwalkable:
-            self.logger.info("OBS-TEST-EN-UNWALKABLE: %s", u.label())
+            self.logger.info("INFO-TEST-EN-UNWALKABLE: %s", u.label())
         for cls, pins in found.items():
             for path, _pin in pins:
-                self.logger.info("TEST-EN-PIN LOG: class=%s pin=%s", cls, path)
+                self.logger.info("INFO-TEST-EN-PIN LOG: class=%s pin=%s", cls, path)
         return found
 
     def _pins(self) -> list[tuple[str, int | None]]:
@@ -219,7 +219,9 @@ class sep_scan_reset_override_test(sep_base_test):
             f"(strap={strap}): {moved[:4]}"
         )
         self.logger.info(
-            "STRAP-INDEP LOG: strap=%d secure_tm_o=%d unchanged across test_en_i 0,1,0", strap, tm0
+            "INFO-STRAP-INDEP LOG: strap=%d secure_tm_o=%d unchanged across test_en_i 0,1,0",
+            strap,
+            tm0,
         )
 
     # -- scan pulse -------------------------------------------------------------------
@@ -325,12 +327,12 @@ class sep_scan_reset_override_test(sep_base_test):
             await self._wait_tap(port, TAP_BOUND)
         await self._wait_tap("secure_tm_o", TAP_BOUND)
         self.tm_expect = 1
-        self.logger.info("CTL-STRAP-INDEP: strap=1 secure_tm_o=1 after sensing")
+        self.logger.info("CTRL-STRAP-INDEP: strap=1 secure_tm_o=1 after sensing")
 
         # Step 3: hierarchy walk.
         self.walk = self._walk()
         for cls, pins in self.walk.items():
-            self.logger.info("OBS-TEST-EN-WALK: class=%s pins=%d", cls, len(pins))
+            self.logger.info("INFO-TEST-EN-WALK: class=%s pins=%d", cls, len(pins))
 
         # Step 4: test_en_i toggles with the strap at 1.
         open_graded_window(TEST, self.logger)
@@ -375,7 +377,7 @@ class sep_scan_reset_override_test(sep_base_test):
         assert tm == 0, f"CHK-STRAP-INDEP FAIL: secure_tm_o={tm} after sensing with the strap at 0"
         await RisingEdge(dut.clk_i)
         self.tm_expect = 0
-        self.logger.info("CTL-STRAP-INDEP: strap=0 secure_tm_o=0 after sensing")
+        self.logger.info("CTRL-STRAP-INDEP: strap=0 secure_tm_o=0 after sensing")
         open_graded_window(TEST, self.logger)
         await self._toggle_test_en(strap=0)
         npins = len(self._pins())
@@ -423,7 +425,7 @@ class sep_scan_reset_override_test(sep_base_test):
             f"precondition FAIL: nets before the scan pulses {dict(zip([n[0] for n in NETS], base))}"
         )
         await RisingEdge(dut.clk_i)
-        self.logger.info("SCAN-BASELINE LOG: nets_high=%d/%d", sum(base), N_NETS)
+        self.logger.info("INFO-SCAN-BASELINE LOG: nets_high=%d/%d", sum(base), N_NETS)
 
         # Step 8: control A, test_en_i = 0.
         open_graded_window(TEST, self.logger)

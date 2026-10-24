@@ -208,7 +208,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
                     f" ext initiator {'reached' if r.ext_reached else 'not reached'}"
                 )
             self.logger.info(
-                "UNMAPPED-PROBE: %s %s resp=%s rdata=0x%08x%s",
+                "INFO-UNMAPPED-PROBE: %s %s resp=%s rdata=0x%08x%s",
                 p.group,
                 where,
                 _code(r.resp),
@@ -238,7 +238,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 hit, n = lite[(g, op)]
                 extra = f"; {hit} of {n} reached the system-CSR AXI-Lite port"
             self.logger.info(
-                "UNMAPPED-CODE: %s %s at the initiator: %s%s",
+                "INFO-UNMAPPED-CODE: %s %s at the initiator: %s%s",
                 g,
                 "write BRESP" if op == "w" else "read RRESP",
                 line,
@@ -261,7 +261,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 tail_codes[(t.in_extent, op, _code(resp))] += 1
                 if not to and t.addr in cfg.map_disagree:
                     self.logger.info(
-                        "UNMAPPED-MAP-DISAGREE: %s answered %s, 0x%08x; graded by "
+                        "INFO-UNMAPPED-MAP-DISAGREE: %s answered %s, 0x%08x; graded by "
                         "CHK-ARRAY-TAIL only; the map states %s",
                         where,
                         _code(resp),
@@ -315,7 +315,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
             tail_fails.append("no in-extent tail was re-read after its write")
         for (in_ext, op, code), n in sorted(tail_codes.items()):
             self.logger.info(
-                "UNMAPPED-CODE: array tail %s %s: %s=%d",
+                "INFO-UNMAPPED-CODE: array tail %s %s: %s=%d",
                 "in-extent" if in_ext else "past-extent",
                 "write" if op == "w" else "read",
                 code,

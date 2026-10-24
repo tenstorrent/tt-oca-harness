@@ -26,7 +26,7 @@ it is never an expected value.
 Abort-run repeats (no grade from a repeated run, each from a cold reset):
 
 * ``busy_at_abort`` = 0 (``dma_busy_probe_o`` on the clock in which the W beat
-  of the ABORT write completes on ``s_axi``): ``OBS-DMA-ABORT-REDRAW`` case
+  of the ABORT write completes on ``s_axi``): ``INFO-DMA-ABORT-REDRAW`` case
   ``not_started`` (larger delay) or ``ended`` (smaller delay); at most
   ``MAX_REDRAW`` repeats, then ``CTRL-MISSING``. Each change is
   t_clean / (10 n), never below 0.
@@ -34,7 +34,7 @@ Abort-run repeats (no grade from a repeated run, each from a cold reset):
   CHUNK_DONE, BUSY=0 and ABORTED=0: case ``finished`` (smaller delay), same
   bound.
 * the AR beat count k at that W beat is outside the window of the class
-  (``OBS-DMA-ABORT-LANDING``): repeat with the delay moved by (target - k)
+  (``INFO-DMA-ABORT-LANDING``): repeat with the delay moved by (target - k)
   times t_clean / N, never below 0; at most ``MAX_LANDING`` repeats, then
   ``CTRL-MISSING``. Windows, with M = C / 4 transactions per chunk, N = T / 4
   and W = max(4, M / 20): first transaction 1 <= k <= W; mid chunk
@@ -281,7 +281,7 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             f"t_clean={self.t_clean} go_writes={res.go_writes} polls={res.polls} "
             f"read_cost={self.read_cost} {res.status.fmt()} mismatch_words={bad}"
         )
-        self.logger.info("REF-COPY LOG seed=%d %s", c.seed, line)
+        self.logger.info("INFO-REF-COPY LOG seed=%d %s", c.seed, line)
         if not (res.status.done and not res.status.error and bad == 0):
             self._ctrl_missing(f"reference copy did not complete clean: {line}")
         self.step = max(1, self.t_clean // (10 * c.n))
@@ -362,7 +362,7 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         k = len(self.tap.between(m_tap_go, w_hs["mark"]).ar)
         lo, hi = c.window(plan.cls, plan.j)
         self.logger.info(
-            "ABORT-WRITE LOG seed=%d run=%d phase=%s d=%d go_writes=%d write_clks=%d..%d "
+            "INFO-ABORT-WRITE LOG seed=%d run=%d phase=%s d=%d go_writes=%d write_clks=%d..%d "
             "w_handshake_clk=%d busy_at_abort=%d busy_at_return=%s ar_beats=%d window=%d..%d",
             c.seed,
             plan.idx,
@@ -423,7 +423,7 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             if att.outcome.startswith("landing"):
                 landing += 1
                 self.logger.info(
-                    "OBS-DMA-ABORT-LANDING seed=%d phase=%s ar_beats=%d window=%d..%d d=%d "
+                    "INFO-DMA-ABORT-LANDING seed=%d phase=%s ar_beats=%d window=%d..%d d=%d "
                     "repeat=%d",
                     c.seed,
                     plan.cls,
@@ -444,7 +444,7 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
                 continue
             redraws += 1
             self.logger.info(
-                "OBS-DMA-ABORT-REDRAW seed=%d phase=%s busy_at_abort=%d case=%s d=%d",
+                "INFO-DMA-ABORT-REDRAW seed=%d phase=%s busy_at_abort=%d case=%s d=%d",
                 c.seed,
                 plan.cls,
                 att.busy_at_abort,

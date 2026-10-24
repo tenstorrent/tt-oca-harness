@@ -249,7 +249,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         close_graded_window(self.logger)
         await self._clear_status(clear_autotune=True)
 
-        self.chk.obs(
+        self.chk.info(
             "TUNE-TOGGLES",
             lane=plan.lane,
             toggles=",".join("na" if t is None else str(t) for t in toggles),

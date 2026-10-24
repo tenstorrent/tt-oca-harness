@@ -919,7 +919,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         flips = cfg.flips(slots)
         write_flip_list(os.path.join(os.getcwd(), _FLIP_LIST), [(a, m) for a, m, _ in flips])
         for a, m, what in flips:
-            self.logger.info("CTL-TCM-FLIP LOG addr=0x%08x mask=0x%010x what=%s", a, m, what)
+            self.logger.info("INFO-TCM-FLIP LOG addr=0x%08x mask=0x%010x what=%s", a, m, what)
         return dtcm
 
     async def run_scenario(self) -> None:

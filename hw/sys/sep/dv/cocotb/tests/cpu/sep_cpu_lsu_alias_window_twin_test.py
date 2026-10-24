@@ -336,7 +336,7 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         # before its write, so only the reads after the last write are graded.
         reqs = sram.since(0, "req")
         for b in reqs:
-            self.logger.info("PR-SRAM req %s", b.fmt())
+            self.logger.info("INFO-PR-SRAM req %s", b.fmt())
         # The write data and strobe of a read request carry no contract, so only
         # the address and the direction must be known.
         unknown = [b for b in reqs if b.addr is None or b.we is None]

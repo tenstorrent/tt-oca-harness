@@ -29,7 +29,7 @@ Checks:
   code is the seeded code, and each of the eight R beats carries its seeded
   RRESP and RDATA. A fabric that forwards the request and answers with a
   response of its own fails.
-* CTL-EXT-RSP-DRIVE (bench control): each port reply beat carries the code and
+* CTRL-EXT-RSP-DRIVE (bench control): each port reply beat carries the code and
   word the leaf set on the responder. The bench drives that net, so the DUT
   cannot fail it; it runs before CHK-EXT-REPLY.
 * CHK-EXT-REACH: each SI single beat shows one PR-XEXT handshake with the issued
@@ -288,7 +288,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         )
         # Exactly one reply beat on the port, before the initiator's response.
         # The beat's code and word are the bench responder's own output, so
-        # that comparison is a bench control (CTL-EXT-RSP-DRIVE), not a DUT check.
+        # that comparison is a bench control (CTRL-EXT-RSP-DRIVE), not a DUT check.
         rep = c["reply"]
         assert len(rep) == 1, (
             f"CHK-EXT-PORT FAIL: {tag} PR-EXT reply beats={len(rep)}, expected 1: "
@@ -301,7 +301,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"t_init={c['t_init']}ps; expected one known reply beat before the initiator response"
         )
         assert r.resp == c["code"] and (want_word is None or r.data == want_word), (
-            f"CTL-EXT-RSP-DRIVE FAIL: {tag} port reply {r.fmt()}; the responder was set to "
+            f"CTRL-EXT-RSP-DRIVE FAIL: {tag} port reply {r.fmt()}; the responder was set to "
             f"resp={RESP_NAME[c['code']]}" + ("" if want_word is None else f" data=0x{want_word:x}")
         )
         strb = _strb(c["addr"], c["size"])
@@ -365,22 +365,22 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         golden = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
         feat = await self.csr._rd(LCC_FEAT_CTRL) | (await self.csr._rd(LCC_FEAT_CTRL + 4) << 32)
         self.logger.info(
-            "CTL-EXT-FILTER-ACTIVE LOG: feat_ctrl=0x%016x golden=0x%016x sep_dbg=%d fcov=%d",
+            "CTRL-EXT-FILTER-ACTIVE LOG: feat_ctrl=0x%016x golden=0x%016x sep_dbg=%d fcov=%d",
             feat,
             golden,
             feat & 1,
             int(fcov_present()),
         )
         assert feat == golden and (golden & 1) == 0, (
-            f"CTL-EXT-FILTER-ACTIVE FAIL: feat_ctrl=0x{feat:016x} golden=0x{golden:016x}; "
+            f"CTRL-EXT-FILTER-ACTIVE FAIL: feat_ctrl=0x{feat:016x} golden=0x{golden:016x}; "
             "the bring-up does not leave the inbound filter active"
         )
 
     def _check_responder(self) -> None:
         on = self.rd_known(cocotb.top.ext_port_rsp_on_o)
-        self.logger.info("CTL-EXT-RESPONDER LOG: on=%d", on)
+        self.logger.info("CTRL-EXT-RESPONDER LOG: on=%d", on)
         assert on == 1, (
-            "CTL-EXT-RESPONDER FAIL: the bench responder of the extension port is off; the "
+            "CTRL-EXT-RESPONDER FAIL: the bench responder of the extension port is off; the "
             "leaf runs with +sep_ext_port_responder"
         )
 
@@ -588,14 +588,14 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             + ",".join(f"0x{v:016x}" for v in want_beats)
         )
         # One B on the port before the initiator's response. Its code is the
-        # responder's own output (bench control CTL-EXT-RSP-DRIVE).
+        # responder's own output (bench control CTRL-EXT-RSP-DRIVE).
         assert len(wb_rep) == 1 and wb_rep[0].t_ps < wb_t, (
             "CHK-EXT-BURST FAIL: dir=W admitted port reply "
             + "; ".join(r.fmt() for r in wb_rep)
             + f" t_init={wb_t}ps; expected one B on PR-EXT before the initiator response"
         )
         assert wb_rep[0].resp == wb_code, (
-            f"CTL-EXT-RSP-DRIVE FAIL: dir=W burst port reply {wb_rep[0].fmt()}; the responder "
+            f"CTRL-EXT-RSP-DRIVE FAIL: dir=W burst port reply {wb_rep[0].fmt()}; the responder "
             f"was set to {RESP_NAME[wb_code]}"
         )
         assert wd.resp_code == RESP_DECERR and not wd_x, (
@@ -623,7 +623,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
 
         # CHK-EXT-BURST, read. Eight R beats on the port, RLAST on the eighth
         # only, before the initiator's response. The codes and words are the
-        # responder's own output (bench control CTL-EXT-RSP-DRIVE).
+        # responder's own output (bench control CTRL-EXT-RSP-DRIVE).
         assert (
             len(rb_rep) == 8
             and all(not r.has_unknown() for r in rb_rep)
@@ -638,7 +638,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         assert [r.resp for r in rb_rep] == list(rb_codes) and [r.data for r in rb_rep] == list(
             rb_words
         ), (
-            "CTL-EXT-RSP-DRIVE FAIL: dir=R burst port reply "
+            "CTRL-EXT-RSP-DRIVE FAIL: dir=R burst port reply "
             + "; ".join(r.fmt() for r in rb_rep)
             + "; the responder was set to the seeded codes and words"
         )
@@ -680,7 +680,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             len(rb_rep),
         )
 
-        # CHK-EXT-REPLY runs last, after CTL-EXT-RSP-DRIVE (in CHK-EXT-PORT and
+        # CHK-EXT-REPLY runs last, after CTRL-EXT-RSP-DRIVE (in CHK-EXT-PORT and
         # CHK-EXT-BURST) has shown that the port gave the seeded reply, so a
         # responder fault reports as the control and not as a DUT failure.
         # CHK-EXT-REPLY, single beats.

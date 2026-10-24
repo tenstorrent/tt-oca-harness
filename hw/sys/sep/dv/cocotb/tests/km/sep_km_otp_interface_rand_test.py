@@ -309,7 +309,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
     def _check_staged_identity(self, fp: KmFusePlan) -> None:
         path = Path(os.getcwd()) / "out" / "sep_efuse.hex"
         digest = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else "missing"
-        self.logger.info("KM-FUSE-PLAN staged=%s staged_sha256=%s", path, digest)
+        self.logger.info("INFO-KM-FUSE-PLAN staged=%s staged_sha256=%s", path, digest)
         if digest != fp.identity():
             raise AssertionError(
                 f"staged fuse image {path} sha256={digest} is not the plan image "
