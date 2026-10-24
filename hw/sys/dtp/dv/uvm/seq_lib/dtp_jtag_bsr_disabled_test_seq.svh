@@ -9,8 +9,10 @@
 // the instruction decodes as itself, its DR scan leaves the boundary-scan
 // select low while the TAP's strobes pulse, and the scan returns TDI one TCK
 // late behind a leading 0. tb_top ties the boundary-scan return to its output,
-// so that return presents the same TDO as the bypass register and only the
-// select tells the two paths apart. Mirrors the cocotb
+// which returns TDI through no register, so a scan that holds TDI at 0 into
+// Shift-DR sees the same TDO on both paths. A scan that holds TDI at 1 into
+// Shift-DR tells them apart: the bypass register's captured 0 leads its TDO,
+// where the return would lead with 1. Mirrors the cocotb
 // dtp_jtag_bsr_disabled_test_seq.
 
 class dtp_jtag_bsr_disabled_test_seq extends dtp_debug_tdr_base_test_seq;
@@ -46,6 +48,8 @@ class dtp_jtag_bsr_disabled_test_seq extends dtp_debug_tdr_base_test_seq;
     bit [63:0] expected = expected_jtag_caps() & ~(bit_mask(BsrCapsWidth) << BsrCapsLsb);
     bit [63:0] value;
     bit [63:0] patterns[$];
+    bit [63:0] pattern;
+    bit [63:0] observed;
     seed_scenario_rng();
     attach_family_checker(required);
     reset_to_tlr();
@@ -66,6 +70,17 @@ class dtp_jtag_bsr_disabled_test_seq extends dtp_debug_tdr_base_test_seq;
         check_bsr_scan_ctrl(6'(bsr_instrs[i]), patterns[p], DtpBsrModelLen,
                             DTP_SCAN_CTRL_UNSELECTED);
       end
+    end
+
+    log_step("3", "A DR scan with TDI high into Shift-DR leads with the bypass register's 0");
+    foreach (bsr_instrs[i]) begin
+      log_iteration(i + 1, bsr_instrs.size(), bsr_instrs[i].name());
+      pattern = random_pattern(DtpBsrModelLen);
+      load_ir(6'(bsr_instrs[i]));
+      expect_decoded_instruction(bsr_instrs[i]);
+      raw_shift_dr(pattern, DtpBsrModelLen, 1'b1, observed);
+      check_bypass_tdo(6'(bsr_instrs[i]), observed, pattern, DtpBsrModelLen, 1'b0,
+                       "TDI high into Shift-DR");
     end
     finalize_family_checker();
   endtask

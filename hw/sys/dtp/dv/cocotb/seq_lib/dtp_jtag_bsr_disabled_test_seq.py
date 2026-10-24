@@ -9,8 +9,10 @@ each behave as BYPASS at the boundary-scan host port and on TDO ("Boundary
 Scan Support", PTAP document): the instruction decodes as itself, its DR scan
 leaves the boundary-scan select low while the TAP's strobes pulse, and the
 scan returns TDI one TCK late behind a leading 0. ``tb_top`` ties the
-boundary-scan return to its output, so that return presents the same TDO as
-the bypass register and only the select tells the two paths apart.
+boundary-scan return to its output, which returns TDI through no register,
+so a scan that holds TDI at 0 into Shift-DR sees the same TDO on both paths.
+A scan that holds TDI at 1 into Shift-DR tells them apart: the bypass
+register's captured 0 leads its TDO, where the return would lead with 1.
 """
 
 from __future__ import annotations
@@ -71,4 +73,17 @@ class dtp_jtag_bsr_disabled_test_seq(dtp_debug_tdr_base_test_seq):
                 DTP_BSR_MODEL_LEN, rng=self.rng(f"bsr_disabled_{instr.name.lower()}")
             ):
                 await self.check_bsr_scan_ctrl(instr, pattern, mode=DtpScanCtrlExpect.UNSELECTED)
+
+        self.log_step(3, "A DR scan with TDI high into Shift-DR leads with the bypass register's 0")
+        for idx, instr in enumerate(BSR_INSTRUCTIONS, start=1):
+            self.log_iteration(idx, len(BSR_INSTRUCTIONS), "%s", instr.name)
+            pattern = self.random_pattern(
+                DTP_BSR_MODEL_LEN, self.rng(f"bsr_disabled_capture_{instr.name.lower()}")
+            )
+            await self.load_ir(instr)
+            await self.expect_decoded_instruction(instr)
+            observed = await self.raw_shift_dr(pattern, DTP_BSR_MODEL_LEN, capture_tdi=1)
+            self.check_bypass_tdo(
+                instr, observed, pattern, DTP_BSR_MODEL_LEN, context="TDI high into Shift-DR"
+            )
         await self.finalize_family_checker()

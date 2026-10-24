@@ -6,12 +6,15 @@ from __future__ import annotations
 
 import pyuvm
 from dtp_base_test import dtp_base_test
+from env.dtp_types import DTP_FEATURE_BYPASS, DTP_FEATURE_IR_DECODE
 from seq_lib.dtp_jtag_bsr_disabled_test_seq import dtp_jtag_bsr_disabled_test_seq
 
 
 @pyuvm.test()
 class dtp_jtag_bsr_disabled_test(dtp_base_test):
     """JTAG_CAPS reports boundary scan disabled; boundary-scan instructions behave as BYPASS."""
+
+    required_features = (DTP_FEATURE_IR_DECODE, DTP_FEATURE_BYPASS)
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

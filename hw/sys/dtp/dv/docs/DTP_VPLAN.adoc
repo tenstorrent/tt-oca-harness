@@ -1240,7 +1240,8 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 * Runs on the `bsr_disabled` build target, which elaborates the DUT with `JTAG_BSR_ENABLE`, `JTAG_EXTEST_TRAIN_ENABLE`, `JTAG_EXTEST_PULSE_ENABLE`, and `JTAG_INTEST_ENABLE` clear
 * JTAG_CAPS reports the four boundary-scan enables (bits 8 to 11) clear and every other field at the bench configuration's value
 * SAMPLE/PRELOAD (IR=0x03), EXTEST (IR=0x04), EXTEST_TRAIN (IR=0x05), EXTEST_PULSE (IR=0x06), and INTEST (IR=0x09) each decode as themselves and behave as BYPASS at the boundary-scan host port and on TDO ("Boundary Scan Support", PTAP document): the boundary-scan select stays low across a DR scan while the TAP's capture, shift, and update strobes pulse, and TDO is TDI one TCK late behind a leading 0
-* The bench ties the boundary-scan return to its output, as the `dtp` port contract requires while `JTAG_BSR_ENABLE` is clear, so that return presents the same TDO as the bypass register; the select is the observable that tells the two paths apart
+* The bench ties the boundary-scan return to its output, as the `dtp` port contract requires while `JTAG_BSR_ENABLE` is clear, and that return passes TDI through no register: a DR scan that holds TDI at 0 into Shift-DR returns the same TDO on both paths, and one that holds TDI at 1 tells them apart, since the bypass register's captured 0 leads its TDO where the return leads with 1
+* The scoreboard's `bypass` feature, required by this test, predicts every DR scan under the five instructions as the one-bit bypass register: `dtp_bypass_ref_model` reads the build's boundary-scan enables from `dtp_tb_if`
 
 *Test Procedure*:
 
@@ -1249,6 +1250,7 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 . For each of SAMPLE/PRELOAD, EXTEST, EXTEST_TRAIN, EXTEST_PULSE, and INTEST:
 a. Load the instruction through `OcahJtagMasterDriver` and confirm the decoded-instruction one-hot names it.
 b. Scan the edge, alternating, walking-one, walking-zero, and seeded patterns under a scan-control window over the boundary-scan controls: select low, capture once, shift N times, update once, and TDO equal to TDI one TCK late behind a leading 0.
+. For each of the five instructions, load it, confirm the decode, and shift a seeded pattern as raw TMS steps with TDI held at 1 from Select-DR-Scan into Shift-DR: TDO is the pattern one TCK late behind a leading 0.
 
 *Checkers*:
 
@@ -1257,7 +1259,8 @@ b. Scan the edge, alternating, walking-one, walking-zero, and seeded patterns un
 |Checker |Description
 |`bsr_disabled_caps_chk` |JTAG_CAPS equals the bench configuration's value with the boundary-scan enables clear, and each of the four enable fields reads 0 (`CHK-CAPS`)
 |`bsr_disabled_select_chk` |Each boundary-scan opcode decodes as itself, and across its DR scan the select stays low while the capture, shift, and update strobes pulse once, N times, and once (`CHK-IR-DECODE`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
-|`bsr_disabled_bypass_chk` |Each DR scan returns TDI one TCK late behind a leading 0, the TDO of BYPASS (`CHK-BYPASS-DELAY`)
+|`bsr_disabled_bypass_chk` |Each DR scan returns TDI one TCK late behind a leading 0, the TDO of BYPASS, including the scans that hold TDI at 1 into Shift-DR (`CHK-BYPASS-DELAY`)
+|`bsr_disabled_sb_bypass_chk` |The scoreboard compares the TDO of every DR scan under the five instructions with the one-bit bypass prediction of `dtp_bypass_ref_model` (`CHK-SB-BYPASS`)
 |`bsr_disabled_scan_len_chk` |The pass starts from Test-Logic-Reset, and the DUT's exported TAP state makes one Shift-IR or Shift-DR visit per scan the pass issues, each as long as the width driven (`CHK-TAP-RESET-TLR`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`)
 |===
 

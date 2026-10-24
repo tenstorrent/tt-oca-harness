@@ -11,6 +11,11 @@ class dtp_jtag_bsr_disabled_test extends dtp_base_test;
     super.new(name, parent);
   endfunction
 
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+    super.configure_test_cfg(cfg);
+    cfg.require_feature(DtpFeatureBypass);
+  endfunction
+
   virtual function ocah_sequence create_scenario_seq();
     return dtp_jtag_bsr_disabled_test_seq::type_id::create("seq");
   endfunction
