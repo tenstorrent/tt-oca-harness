@@ -36,6 +36,7 @@ class smc_env_cfg extends ocah_env_cfg;
   bit fabric_reg_scoreboard_negative;  // +SMC_FABRIC_REG_SCOREBOARD_NEGATIVE
   bit wdt_csr_scoreboard_negative;
   bit mailbox_reset_sequence_negative;
+  bit ingress_reset_sequence_negative;
   bit mailbox_fifo_scoreboard_negative;
   // Backing memory of the SYS_OUT responder, in bytes (addresses wrap).
   int unsigned sys_out_mem_bytes = 32'h8000_0000;
@@ -65,6 +66,7 @@ class smc_env_cfg extends ocah_env_cfg;
     c.fabric_reg_scoreboard_negative = t.fabric_reg_scoreboard_negative;
     c.wdt_csr_scoreboard_negative = t.wdt_csr_scoreboard_negative;
     c.mailbox_reset_sequence_negative = t.mailbox_reset_sequence_negative;
+    c.ingress_reset_sequence_negative = t.ingress_reset_sequence_negative;
     c.mailbox_fifo_scoreboard_negative = t.mailbox_fifo_scoreboard_negative;
     c.required_features       = t.required_features;
     return c;
