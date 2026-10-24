@@ -21,10 +21,11 @@ expected." (line 726) and "The KMAC HWIP assumes the combinations of two to be
 value, so they are masked. Mode and command codes come from
 ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson``.
 
-The 20 cells are mode {SHAKE, cSHAKE} x strength {128, 224, 256, 384, 512} x
+The cells are the 20 of mode {SHAKE, cSHAKE} x strength {128, 224, 256, 384, 512} x
 ``en_unsupported_modestrength`` {0, 1}, with ``kmac_en`` = 0 in EDN entropy
 mode, plus SHA3 strength 128 with ``en_unsupported_modestrength`` = 0 (not in
-the list of lines 784-785). For that cell
+the list of lines 784-785), plus mode 2'b01 with a drawn strength and
+``en_unsupported_modestrength`` = 0. For the SHA3-128 cell
 ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/theory_of_operation.md``:787
 says "However, the KMAC HWIP proceeds the hashing operation as other combinations
 does not cause any malfunctions inside the IP.", and the TT RDL text of
@@ -32,7 +33,10 @@ does not cause any malfunctions inside the IP.", and the TT RDL text of
 (``vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl``:212-218, kmac.adoc
 lines 112-118) says "If not set, KMAC won't propagate the SW command (CmdStart)
 to the rest of the blocks (AppIntf, KMAC Core, SHA3)." The TT RDL text rules for the SEP build, so the cell is graded
-as blocked. The 8 supported cells and SHA3-256 are controls and
+as blocked. Mode 2'b01 is no listed mode: ``kmac.hjson`` lines 442-452
+give the mode codes 0 (SHA3), 2 (SHAKE) and 3 (cSHAKE) only, so no pair with
+mode 2'b01 is in the list of lines 784-785 and the same blocked outcome with
+code 0x06 applies. The 8 supported cells and SHA3-256 are controls and
 are not graded here. Each blocked start is followed by ``CMD.err_processed``, a
 write-one clear of ``kmac_err`` and a legal SHA3-256 hash of a drawn message.
 
@@ -40,12 +44,21 @@ Checkers:
   CHK-KMAC-UNSUP     en bit 0, unsupported strength: after CMD.start kmac_err=1,
                      sha3_idle=1, sha3_absorb=0 and kmac_done=0;
                      STATUS still idle and not absorbing after a hold of t_clean.
-                     kmac_err and ERR_CODE read 0 before the start. The SHA3-128
-                     cell is graded the same way.
+                     kmac_err and ERR_CODE read 0 before the start, and the
+                     CFG_SHADOWED readback holds the written mode, kstrength
+                     and en bit. INTR_ENABLE.kmac_err reads its reset value 0
+                     (kmac.adoc line 67) before the start, and vector bit 22 (KMAC
+                     error, source 23, ``hw/sys/sep/doc/interrupts.adoc`` lines
+                     138-139) is high on no clock from the ``CMD.start`` write to
+                     the end of the hold: the enable is 0, so the raised kmac_err
+                     raises no interrupt (kmac.adoc line 67: "Enable interrupt
+                     when INTR_STATE.kmac_err is set"). The kmac_err read of 1 in
+                     the same line is the positive probe. The SHA3-128
+                     and mode 2'b01 cells are graded the same way.
   CHK-KMAC-ERRCODE   en bit 0, every unsupported cell (SHAKE/cSHAKE 224, 384,
-                     512 and SHA3-128): ERR_CODE[31:24] = 0x06 on the read after
-                     kmac_err sets and again after the hold, with kmac_err still
-                     set. The control is the 0 read before the start
+                     512, SHA3-128 and mode 2'b01): ERR_CODE[31:24] = 0x06 on the
+                     read after kmac_err sets and again after the hold, with
+                     kmac_err still set. The control is the 0 read before the start
                      (CHK-KMAC-UNSUP ``pre_code``, reset value at line 343).
   CHK-KMAC-UNSUP-EN  en bit 1, unsupported strength: STATUS.sha3_absorb=1 after
                      CMD.start. kmac_err is logged only.
@@ -65,10 +78,22 @@ kmac_err wait and the enabled-group absorb wait are ``_ERR_BOUND_MULT`` x
 t_clean. The hash waits of the recovery use the outer limit ``_OUTER_CLK`` and
 log the measured clocks.
 
+Coverage window: steps 5-7 run inside the owner window, which each cell opens
+after its KMAC reset and closes at the next cell. The owned bins see their DUT
+event (the kmac_err rise, the interrupt line, absorb, done) before the leaf
+reads and grades the outcome, so the sampler holds each legal outcome as
+pending and samples it only when the pass label ``kmac_unsup_pass`` rises to
+the check that grades it: 1 after CHK-KMAC-UNSUP and CHK-KMAC-ERRCODE of the
+blocked cell pass, 2 after CHK-KMAC-ERRPROC of its recovery passes, 3 after
+CHK-KMAC-UNSUP-EN of the enabled cell passes. The window close drops an
+outcome no label released; illegal outcomes sample at once. The window closes
+on the first FAIL and stays closed for the rest of the run.
+
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense
-+esrc_noise_force``. RAND-REP: the seed draws the three cell orders and the
-recovery messages; the 21 cells are the same on every seed. The SHA3 control and
-the SHA3-128 cell run after the blocked group.
++esrc_noise_force``. RAND-REP: the seed draws the three cell orders, the
+recovery messages and the mode 2'b01 strength and message; the other 21 cells
+are the same on every seed. The mode 2'b01 cell runs first in the blocked group. The SHA3 control and the SHA3-128 cell run after
+the blocked group.
 """
 
 from __future__ import annotations
@@ -79,8 +104,9 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_kmac_unsup_pass
 from env.sep_kmac_golden import encode_string, sha3
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -108,10 +134,20 @@ _SQUEEZE = KMAC.field_mask("STATUS", "sha3_squeeze")
 _STAGE_MASK = _IDLE | _ABSORB | _SQUEEZE
 _DONE = KMAC.field_mask("INTR_STATE", "kmac_done")
 _ERR = KMAC.field_mask("INTR_STATE", "kmac_err")
+_KMAC_INTR_ENABLE = KMAC.addr("INTR_ENABLE")
+_ERR_EN = KMAC.field_mask("INTR_ENABLE", "kmac_err")
+# hw/sys/sep/doc/interrupts.adoc lines 138-139: KMAC error is source 23, vector bit 22.
+_VEC_KMAC_ERR = 22
 _INTR_MASK = KMAC.mask32("INTR_STATE")
 _ERR_CODE_MASK = KMAC.field_mask("ERR_CODE", "err_code")
 _CMD_ERR_PROCESSED = KMAC.field_mask("CMD", "err_processed")
 _EN_UNSUP_LSB = KMAC.field_lsb("CFG_SHADOWED", "en_unsupported_modestrength")
+# The cell fields of CFG_SHADOWED: mode, kstrength, en_unsupported_modestrength.
+_CFG_CELL_MASK = (
+    KMAC.field_mask("CFG_SHADOWED", "mode")
+    | KMAC.field_mask("CFG_SHADOWED", "kstrength")
+    | KMAC.field_mask("CFG_SHADOWED", "en_unsupported_modestrength")
+)
 
 
 # cSHAKE PREFIX of the open helper: empty function name and empty
@@ -134,6 +170,19 @@ _SHA3_CTRL = ("sha3", 256)
 EXP_ERR_UNEXPECTED_MODE_STRENGTH = 0x06
 _ERR_CODE_LSB = 24
 _RECOVER_DIGEST_WORDS = _RECOVER_STRENGTH // 32
+# kmac.hjson:442-452: the mode enum has the codes 0, 2 and 3 only; code 1 is
+# no listed mode, so no mode/strength pair with it is supported
+# (theory_of_operation.md:784-785). No generated name exists for it.
+KMAC_MODE_RSVD = 1
+_MODE_RSVD = "rsvd1"
+_MODE_CODE = {**KMAC_MODE, _MODE_RSVD: KMAC_MODE_RSVD}
+_DRAW_STRENGTHS = tuple(KMAC_STRENGTH)
+
+# Pass label values of the owned bins (``set_kmac_unsup_pass``).
+PASS_BLOCKED, PASS_RECOVER, PASS_ENABLED = 1, 2, 3
+# clk_i edges the label stays high, so the sampler sees its rise while the
+# owner window is open.
+_PASS_HOLD_CLK = 2
 
 # Bound multiples and the outer limit of the clean-time measurements.
 _ERR_BOUND_MULT = 8
@@ -148,6 +197,8 @@ class Plan:
     enabled: tuple[tuple[str, int], ...]
     messages: tuple[bytes, ...]
     sha3_msg: bytes
+    rsvd_strength: int
+    rsvd_msg: bytes
 
 
 def _draw_message(rng: SepSeededRng, nbytes: int) -> bytes:
@@ -171,13 +222,23 @@ def draw_plan(seed: int) -> Plan:
     rng.shuffle(enabled)
     messages = tuple(_draw_message(rng, rng.randrange(0, _MSG_MAX_BYTES + 1)) for _ in blocked)
     sha3_msg = _draw_message(rng, rng.randrange(0, _MSG_MAX_BYTES + 1))
-    return Plan(tuple(supported), tuple(blocked), tuple(enabled), messages, sha3_msg)
+    rsvd_strength = rng.choice(_DRAW_STRENGTHS)
+    rsvd_msg = _draw_message(rng, rng.randrange(0, _MSG_MAX_BYTES + 1))
+    return Plan(
+        tuple(supported),
+        tuple(blocked),
+        tuple(enabled),
+        messages,
+        sha3_msg,
+        rsvd_strength,
+        rsvd_msg,
+    )
 
 
 def _cfg_word(mode: str, strength: int, en_unsup: int) -> int:
     """CFG_SHADOWED: kmac_en 0, sideload 0, EDN entropy mode, entropy_ready 1."""
     return build_kmac_cfg(
-        mode=KMAC_MODE[mode], kstrength=KMAC_STRENGTH[strength], kmac_en=False, sideload=False
+        mode=_MODE_CODE[mode], kstrength=KMAC_STRENGTH[strength], kmac_en=False, sideload=False
     ) | (int(en_unsup) << _EN_UNSUP_LSB)
 
 
@@ -200,6 +261,36 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         "CHK-KMAC-ERRPROC",
         "CHK-KMAC-ERRCODE",
     )
+
+    # --- grading and the coverage window -------------------------------------
+    def _open_window(self) -> None:
+        """Open the owner window while the run is graded and no check has failed."""
+        if self._graded and not self._shut:
+            open_graded_window(TEST)
+
+    def _grade(self, name: str, ok: bool, **fields) -> bool:
+        """``chk.ok``; on FAIL the window closes first and stays closed."""
+        if not ok:
+            self._shut = True
+            close_graded_window()
+        return self.chk.ok(name, ok, **fields)
+
+    def _ctrl(self, name: str, ok: bool, **fields) -> bool:
+        """``chk.ctrl``; an absent control closes the window like a FAIL."""
+        if not ok:
+            self._shut = True
+            close_graded_window()
+        return self.chk.ctrl(name, ok, **fields)
+
+    async def _passed(self, check: int) -> None:
+        """Write the pass label of ``check`` while the window is open, then 0."""
+        if not self._graded or self._shut:
+            return
+        await RisingEdge(cocotb.top.clk_i)
+        set_kmac_unsup_pass(check, self.logger)
+        await ClockCycles(cocotb.top.clk_i, _PASS_HOLD_CLK)
+        set_kmac_unsup_pass(0, self.logger)
+        await RisingEdge(cocotb.top.clk_i)
 
     # --- clocks and register access -----------------------------------------
     def _now_clk(self) -> int:
@@ -250,23 +341,27 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         if not ok:
             raise AssertionError(f"KMAC not idle after reset (STATUS=0x{status:08x})")
 
-    async def _arm_cell(self, mode: str, strength: int, en_unsup: int) -> tuple[int, int]:
-        """Reset, read the reset values, write PREFIX (cSHAKE) and CFG_SHADOWED twice."""
+    async def _arm_cell(self, mode: str, strength: int, en_unsup: int) -> tuple[int, int, int]:
+        """Reset, read the reset values, write PREFIX (cSHAKE) and CFG_SHADOWED twice.
+
+        Returns INTR_STATE and ERR_CODE before the writes and the CFG_SHADOWED
+        readback after them.
+        """
         close_graded_window()
         await self._reset_kmac()
-        if self._graded:
-            open_graded_window(TEST)
+        self._open_window()
         pre_intr = await self._rd(KMAC_INTR_STATE)
         pre_code = await self._rd(KMAC_ERR_CODE)
         if mode == "cshake":
             await self.kmac._write_prefix(_CSHAKE_EMPTY_PREFIX)
         await self._write_cfg(_cfg_word(mode, strength, en_unsup))
-        return pre_intr, pre_code
+        return pre_intr, pre_code, await self._rd(KMAC_CFG_SHADOWED)
 
     # --- scenario -------------------------------------------------------------
     async def run_scenario(self) -> None:
         self._clk_ps = int(round(self.cfg.sys_clk_period_ns * 1000))
         self._graded = False
+        self._shut = False
         # Step 1: OTBN, AES, HMAC and ABR held in reset; KMAC and TRNG released.
         await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "abr"))
         await self.bring_up_entropy(strict=True, score_km=False)
@@ -278,23 +373,32 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         seed = self.random_seed()
         self.kmac = SepKmac(self)
         self.chk = SepChkLog(self, TEST, seed)
+        self.vec = SepBitWatch(
+            cocotb.top.sep_internal_interrupts_probe_o, {"kmac_err": _VEC_KMAC_ERR}
+        ).start()
         plan = draw_plan(seed)
         self.logger.info(
-            "PLAN seed=%d supported=%s blocked=%s enabled=%s msg_len=%s",
+            "PLAN seed=%d supported=%s blocked=%s enabled=%s msg_len=%s rsvd_kstrength=%d "
+            "rsvd_len=%d",
             seed,
             ",".join(f"{m}{s}/e{e}" for m, s, e in plan.supported),
             ",".join(f"{m}{s}" for m, s in plan.blocked),
             ",".join(f"{m}{s}" for m, s in plan.enabled),
             ",".join(str(len(b)) for b in plan.messages),
+            plan.rsvd_strength,
+            len(plan.rsvd_msg),
         )
 
         t_clean = await self._supported_group(seed, plan)
+        # Steps 5-7 inside the owner window.
+        self._graded = True
         blocked_absorb = await self._blocked_group(seed, plan, t_clean)
         await self._sha3_cell(seed, plan, t_clean)
         await self._enabled_group(seed, plan, t_clean, blocked_absorb)
 
         self._graded = False
         close_graded_window()
+        await self.vec.stop()
         await self.stop_fifo_drain()
         assert self.drbg_sb.report()
         self.chk.finish()
@@ -310,7 +414,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             intr = await self._rd(KMAC_INTR_STATE)
             err = _bits(intr, _ERR)
             ok = seen and err == 0
-            self.chk.ctrl(
+            self._ctrl(
                 "KMAC-UNSUP",
                 ok,
                 seed=seed,
@@ -333,11 +437,15 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         return t_clean
 
     async def _blocked_group(self, seed: int, plan: Plan, t_clean: int) -> dict:
-        """Steps 5-6: each unsupported cell with en bit 0, then its recovery."""
-        self._graded = True
-        open_graded_window(TEST)
+        """Steps 5-6: the mode 2'b01 cell, then each unsupported cell with en bit 0.
+
+        Every cell is followed by its recovery.
+        """
         bound = _ERR_BOUND_MULT * t_clean
         absorb_of: dict[tuple[str, int], int] = {}
+        await self._blocked_cell(
+            seed, _MODE_RSVD, plan.rsvd_strength, plan.rsvd_msg, bound, t_clean
+        )
         for (mode, strength), msg in zip(plan.blocked, plan.messages):
             absorb_of[(mode, strength)] = await self._blocked_cell(
                 seed, mode, strength, msg, bound, t_clean
@@ -352,7 +460,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         await self._wr(KMAC_CMD, KMAC_CMD_START)
         seen, status, clk = await self._poll(KMAC_STATUS, _ABSORB, t0, _OUTER_CLK)
         err = _bits(await self._rd(KMAC_INTR_STATE), _ERR)
-        self.chk.ctrl(
+        self._ctrl(
             "KMAC-UNSUP-SHA3",
             seen and err == 0,
             seed=seed,
@@ -372,19 +480,26 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         self, seed: int, mode: str, strength: int, msg: bytes, bound: int, hold: int
     ) -> int:
         """One unsupported cell with en bit 0, then its recovery. Returns the absorb seen."""
-        cell = dict(seed=seed, mode=mode, kstrength=strength, en_unsup=0)
-        pre_intr, pre_code = await self._arm_cell(mode, strength, 0)
+        cell = dict(
+            seed=seed, mode=mode, mode_code=_MODE_CODE[mode], kstrength=strength, en_unsup=0
+        )
+        pre_intr, pre_code, cfg_rb = await self._arm_cell(mode, strength, 0)
+        cfg_exp = _cfg_word(mode, strength, 0) & _CFG_CELL_MASK
+        err_en = _bits(await self._rd(_KMAC_INTR_ENABLE), _ERR_EN)
+        mark = self.vec.mark()
         t0 = self._now_clk()
         await self._wr(KMAC_CMD, KMAC_CMD_START)
         seen, intr, err_clk = await self._poll(KMAC_INTR_STATE, _ERR, t0, bound)
         if not seen:
             status = await self._rd(KMAC_STATUS)
-            self.chk.ok(
+            self._grade(
                 "KMAC-UNSUP",
                 False,
                 **cell,
                 reason="timeout",
                 bound=bound,
+                cfg=f"0x{cfg_rb & _CFG_CELL_MASK:08x}",
+                cfg_exp=f"0x{cfg_exp:08x}",
                 err=0,
                 absorb=_bits(status, _ABSORB),
                 idle=_bits(status, _IDLE),
@@ -399,20 +514,26 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         code2 = await self._rd(KMAC_ERR_CODE) & _ERR_CODE_MASK
         intr2 = await self._rd(KMAC_INTR_STATE)
         hold_clk = self._now_clk() - h0
+        line_high = self.vec.high_clocks_since(mark, "kmac_err")
         absorb = _bits(status1, _ABSORB) | _bits(status2, _ABSORB)
         ok = (
-            (pre_intr & _ERR) == 0
+            (cfg_rb & _CFG_CELL_MASK) == cfg_exp
+            and (pre_intr & _ERR) == 0
             and (pre_code & _ERR_CODE_MASK) == 0
             and _bits(intr1, _ERR) == 1
             and _bits(status1, _IDLE) == 1
             and _bits(status2, _IDLE) == 1
             and absorb == 0
             and _bits(intr1, _DONE) == 0
+            and err_en == 0
+            and line_high == 0
         )
-        self.chk.ok(
+        unsup_ok = self._grade(
             "KMAC-UNSUP",
             ok,
             **cell,
+            cfg=f"0x{cfg_rb & _CFG_CELL_MASK:08x}",
+            cfg_exp=f"0x{cfg_exp:08x}",
             pre_err=_bits(pre_intr, _ERR),
             pre_code=f"0x{pre_code & _ERR_CODE_MASK:x}",
             err=_bits(intr1, _ERR),
@@ -421,11 +542,14 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             done=_bits(intr1, _DONE),
             err_clk=err_clk,
             hold_clk=hold_clk,
+            err_en=err_en,
+            vec22_high_clk=line_high,
+            expected_vec22_high_clk=0,
             status=f"0x{status1 & _STAGE_MASK:x}/0x{status2 & _STAGE_MASK:x}",
             intr_rsvd=f"0x{intr1 & ~_INTR_MASK & 0xFFFF_FFFF:x}",
         )
         exp = EXP_ERR_UNEXPECTED_MODE_STRENGTH
-        self.chk.ok(
+        code_ok = self._grade(
             "KMAC-ERRCODE",
             (pre_code & _ERR_CODE_MASK) == 0
             and _code(code1) == exp
@@ -438,6 +562,8 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             err_after_hold=_bits(intr2, _ERR),
             debug=f"0x{code1 & 0xFF_FFFF:06x}/0x{code2 & 0xFF_FFFF:06x}",
         )
+        if unsup_ok and code_ok:
+            await self._passed(PASS_BLOCKED)
         await self._recover(seed, mode, strength, msg)
         return absorb
 
@@ -475,7 +601,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         golden = [int.from_bytes(gold[i : i + 4], "little") for i in range(0, len(gold), 4)]
         match = digest == golden
         ok = err_cleared == 1 and idle == 1 and match and err_after == 0
-        self.chk.ok(
+        if self._grade(
             "KMAC-ERRPROC",
             ok,
             **fields,
@@ -486,10 +612,11 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             squeeze_clk=sq_clk,
             digest="" if match else ":".join(f"{w:08x}" for w in digest),
             golden="" if match else ":".join(f"{w:08x}" for w in golden),
-        )
+        ):
+            await self._passed(PASS_RECOVER)
 
     async def _fail_recover(self, fields: dict, err_cleared: int, idle: int, why: str, clk: int):
-        self.chk.ok(
+        self._grade(
             "KMAC-ERRPROC",
             False,
             **fields,
@@ -499,20 +626,18 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             clk=clk,
             bound=_OUTER_CLK,
         )
-        close_graded_window()
         await self._reset_kmac()
-        open_graded_window(TEST)
 
     async def _enabled_group(self, seed: int, plan: Plan, t_clean: int, blocked_absorb: dict):
         """Step 7: each unsupported cell with en bit 1 reaches absorb."""
         bound = _ERR_BOUND_MULT * t_clean
         for mode, strength in plan.enabled:
-            pre_intr, pre_code = await self._arm_cell(mode, strength, 1)
+            pre_intr, pre_code, _ = await self._arm_cell(mode, strength, 1)
             t0 = self._now_clk()
             await self._wr(KMAC_CMD, KMAC_CMD_START)
             seen, status, clk = await self._poll(KMAC_STATUS, _ABSORB, t0, bound)
             intr = await self._rd(KMAC_INTR_STATE)
-            self.chk.ok(
+            en_ok = self._grade(
                 "KMAC-UNSUP-EN",
                 seen,
                 seed=seed,
@@ -530,6 +655,8 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             self.chk.obs(
                 "KMAC-UNSUP-EN-ERR", seed=seed, mode=mode, kstrength=strength, err=_bits(intr, _ERR)
             )
+            if en_ok:
+                await self._passed(PASS_ENABLED)
         self._graded = False
         close_graded_window()
         await self._reset_kmac()

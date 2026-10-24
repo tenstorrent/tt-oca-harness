@@ -134,6 +134,272 @@ def set_abr_reject_class(reason_class: int, log=None) -> bool:
     return True
 
 
+# First bit of each point of ``sep_crypto_bus_access_cg`` in
+# ``u_sep_fcov.crypto_bus_pass``: bin value v of the point passes on bit
+# offset + v. Bits 15 and 26 to 30 are unused.
+CRYPTO_BUS_PASS_ABR_ACCESS = 0  # x_abr_access, v 0 to 14
+CRYPTO_BUS_PASS_DRBG_LANE = 16  # x_drbg_lane, v 0 to 7
+CRYPTO_BUS_PASS_LANE_REFUSE = 24  # cp_lane_refuse, v 0 to 1
+CRYPTO_BUS_PASS_LANE_ARB = 31  # x_drbg_lane_arb legal cell, v = lane 0 to 1
+CRYPTO_BUS_PASS_ABR_CONCURRENT = 33  # x_abr_concurrent, v 0 to 5
+CRYPTO_BUS_PASS_BITS = 39
+
+
+def set_crypto_bus_pass(cells: int, log=None) -> bool:
+    """Write ``u_sep_fcov.crypto_bus_pass`` (the passed cells, or 0).
+
+    The pass label of ``x_drbg_lane``, ``cp_lane_refuse``, ``x_abr_access``,
+    ``x_abr_concurrent`` and the legal cells of ``x_drbg_lane_arb``
+    (``sep_crypto_bus_access_cg``); the ``CRYPTO_BUS_PASS_*`` offsets give the
+    bit of each cell. The sampler holds a cell as seen at its DUT event inside
+    the window of its owner, and samples it only when the bit of that cell
+    rises inside that window; the window close drops the cells not sampled.
+    An owner writes the cells a check graded after that check passes, holds
+    them for at least one clk_i edge, and writes 0 before the next check
+    writes its cells. Same rules as ``graded_owner``: a no-op that returns
+    False on Verilator. On VCS a sampler without the variable is a testbench
+    error.
+    """
+    if cells < 0 or cells >> CRYPTO_BUS_PASS_BITS:
+        raise ValueError(f"crypto_bus_pass cells {cells:#x} are out of range")
+    if _gate_handle() is None:
+        return False
+    fcov = cocotb.top.u_sep_fcov
+    if not hasattr(fcov, "crypto_bus_pass"):
+        raise AttributeError("u_sep_fcov has no crypto_bus_pass variable (cov/sv/sep_fcov.sv)")
+    fcov.crypto_bus_pass.value = cells
+    if log is not None:
+        log.info("FCOV-CRYPTO-BUS-PASS 0x%010x", cells)
+    return True
+
+
+def set_otbn_sw_err_pass(kind: int, log=None) -> bool:
+    """Write ``u_sep_fcov.otbn_sw_err_pass`` (1 to 4, or 0 for none).
+
+    The pass label of ``sep_otbn_err_lock_cg.cp_sw_err_kind``: the software error
+    whose check passed in the OTBN command-status leaf (1 ``bad_data_addr``, 2
+    ``bad_insn_addr``, 3 ``call_stack``, 4 ``loop``). The sampler holds the kind
+    bits of the first ``ERR_BITS`` read after an EXECUTE that ended at IDLE, and
+    samples the kind of this label only when the label rises and that kind bit is
+    held. The leaf writes it after its check of that error passes, and 0 after.
+    Same rules as ``graded_owner``: a no-op that returns False on Verilator. On
+    VCS a sampler without the variable is a testbench error.
+    """
+    if not 0 <= kind <= 4:
+        raise ValueError(f"otbn_sw_err_pass {kind} is not 0 to 4")
+    if _gate_handle() is None:
+        return False
+    fcov = cocotb.top.u_sep_fcov
+    if not hasattr(fcov, "otbn_sw_err_pass"):
+        raise AttributeError("u_sep_fcov has no otbn_sw_err_pass variable (cov/sv/sep_fcov.sv)")
+    fcov.otbn_sw_err_pass.value = kind
+    if log is not None:
+        log.info("FCOV-OTBN-SW-ERR-PASS %d", kind)
+    return True
+
+
+def set_aes_busy_write_pass(kind: int, log=None) -> bool:
+    """Write ``u_sep_fcov.aes_busy_write_pass`` (1 to 3, or 0 for none).
+
+    The pass label of ``sep_aes_op_status_cg.cp_busy_write``: 1 key_ignored, 2
+    iv_ignored, 3 partial_iv_no_start. The sampler holds the bin of a busy KEY_SHARE0
+    or IV write, or of a partial IV, as pending at the next OUTPUT_VALID rise, and
+    samples it only when this value rises to that bin. The AES stream-status leaf
+    writes 0 at the start of each case and the bin value after the check of that case
+    passes. Same rules as ``graded_owner``: a no-op that returns False on Verilator. On
+    VCS a sampler without the variable is a testbench error.
+    """
+    if not 0 <= kind <= 3:
+        raise ValueError(f"aes_busy_write_pass {kind} is not 0 to 3")
+    return _set_bound("aes_busy_write_pass", kind, "FCOV-AES-BUSY-WRITE-PASS", log)
+
+
+def set_kmac_stream_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.kmac_stream_pass`` (1 after a passed cell, or 0).
+
+    The pass label of the owner cells of the KMAC stream-config leaf in
+    ``sep_kmac_cfg_cmd_cg`` (``x_cmd_stage`` legal cells, ``x_endian``,
+    ``x_len_corner``, ``cp_run_block``) and of its ``kmac_done`` cells of
+    ``sep_crypto_intr_cg``. The sampler holds those cells for the command cycle
+    of one cell and samples them only when this value rises; the next
+    ``CMD.start`` and the window close drop them. The leaf writes 1 after every
+    check and control of a cell passed, holds it for at least one clk_i edge,
+    and writes 0 before the next cell starts. Same rules as ``graded_owner``: a
+    no-op that returns False on Verilator. On VCS a sampler without the variable
+    is a testbench error.
+    """
+    return _set_bound("kmac_stream_pass", int(bool(passed)), "FCOV-KMAC-STREAM-PASS", log)
+
+
+# Bits of ``u_sep_fcov.hmac_fifo_pass``: one per held cell of the HMAC FIFO leaf.
+HMAC_FIFO_PASS_LEN_CLASS = 1 << 0  # x_len_class
+HMAC_FIFO_PASS_FIFO_STATE = 1 << 1  # x_fifo_state_mode
+HMAC_FIFO_PASS_BACKPRESSURE = 1 << 2  # cp_backpressure
+HMAC_FIFO_PASS_EMPTY_AFTER_FULL = 1 << 3  # cp_hmac_fifo_empty_qual empty_after_full
+HMAC_FIFO_PASS_EMPTY_NOT_FULL = 1 << 4  # cp_hmac_fifo_empty_qual empty_not_full
+HMAC_FIFO_PASS_HW_RAISE = 1 << 5  # cp_hw_raise hmac_fifo_empty
+HMAC_FIFO_PASS_WIPE_DIGEST = 1 << 6  # cp_wipe_secret digest_reads_w
+HMAC_FIFO_PASS_WIPE_KEY = 1 << 7  # cp_wipe_secret next_hmac_all_w_key
+HMAC_FIFO_PASS_BITS = 8
+
+
+def set_hmac_fifo_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.hmac_fifo_pass`` (a mask of ``HMAC_FIFO_PASS_*``, or 0).
+
+    The pass label of the points of ``sep_hmac_fifo_stream_rand_test``: the sampler
+    holds a legal cell as pending at its DUT event inside the owner window and samples
+    it only when its bit rises inside that window; the window close drops the pending
+    cells. The leaf writes the bits of the cells a check graded after that check passes,
+    holds them for at least one clk_i edge, and writes 0. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler without
+    the variable is a testbench error.
+    """
+    if bits < 0 or bits >> HMAC_FIFO_PASS_BITS:
+        raise ValueError(f"hmac_fifo_pass bits {bits:#x} are out of range")
+    return _set_bound("hmac_fifo_pass", bits, "FCOV-HMAC-FIFO-PASS", log)
+
+
+def set_kmac_unsup_pass(check: int, log=None) -> bool:
+    """Write ``u_sep_fcov.kmac_unsup_pass`` (1 to 3, or 0 for none).
+
+    The pass label of the bins of the KMAC unsupported-configuration leaf: 1 the
+    blocked cell passed its blocked-start and error-code checks, 2 its recovery
+    passed, 3 the enabled cell passed its absorb check. The sampler holds a legal
+    outcome as pending at its DUT event and samples it only when this value rises
+    from 0 to the check that grades it; illegal outcomes sample at once. The leaf
+    writes the value after that check passes, holds it, then writes 0. Same rules
+    as ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    if not 0 <= check <= 3:
+        raise ValueError(f"kmac_unsup_pass {check} is not 0 to 3")
+    return _set_bound("kmac_unsup_pass", check, "FCOV-KMAC-UNSUP-PASS", log)
+
+
+def set_abr_cmd_pass(kind: int, log=None) -> bool:
+    """Write ``u_sep_fcov.abr_cmd_pass`` (1 to 6, or 0 for none).
+
+    The pass label of the ABR command matrix leaf for ``sep_abr_completion_cg``:
+    1 / 2 CHK-ABR-COMBO passed on ML-DSA / ML-KEM (``cp_combined_cmd``), 3 / 4
+    CHK-ABR-PARK passed on the single-step cell of ML-DSA / ML-KEM with its result
+    windows equal to the vector (``x_op_protocol`` single-step cells), 5 / 6
+    CHK-ABR-REARM passed on ML-DSA / ML-KEM (``x_op_protocol`` ready-after-zeroize
+    and ready-after-reset cells). The sampler holds each of these outcomes as
+    pending at its DUT event and samples it only when this value rises to its
+    value. The leaf writes the value after the check passes, holds it, then writes
+    0. Same rules as ``graded_owner``: a no-op that returns False on Verilator. On VCS
+    a sampler without the variable is a testbench error.
+    """
+    if not 0 <= kind <= 6:
+        raise ValueError(f"abr_cmd_pass {kind} is not 0 to 6")
+    return _set_bound("abr_cmd_pass", kind, "FCOV-ABR-CMD-PASS", log)
+
+
+# Bits of ``u_sep_fcov.aes_shadow_pass`` (owner sep_crypto_shadow_update_err_rand_test).
+AES_SHADOW_PASS_SP_MISMATCHED = 0  # x_shadow_pair_aes.mismatched, CHK-SHADOW-ERR
+AES_SHADOW_PASS_SP_MATCHED = 1  # x_shadow_pair_aes.matched, CHK-SHADOW-CTRL
+AES_SHADOW_PASS_RECOVERY = 2  # cp_update_err_recovery, CHK-SHADOW-RESTART
+AES_SHADOW_PASS_AUX_MISMATCHED = 3  # x_shadow_pair_aux.mismatched, CHK-AUX-SHADOW-ERR
+AES_SHADOW_PASS_AUX_MATCHED = 4  # x_shadow_pair_aux.matched, CHK-AUX-SHADOW-WRITE
+AES_SHADOW_PASS_GCM_MISMATCHED = 5  # x_shadow_pair_gcm.mismatched, CHK-GCM-SHADOW-ERR
+AES_SHADOW_PASS_GCM_MATCHED = 6  # x_shadow_pair_gcm.matched, CHK-GCM-SHADOW-WRITE
+AES_SHADOW_PASS_AUX_REGWEN = 7  # cp_aux_regwen (both cells), CHK-AUX-REGWEN
+AES_SHADOW_PASS_RESET_RESTORE = 8  # cp_reset_restore (both cells), CHK-AUX-RESET
+AES_SHADOW_PASS_ALERT = 9  # x_alert_source cell of block b on bit 9 + b, CHK-ALERT-MALFORMED
+AES_SHADOW_PASS_BITS = 15
+
+
+def set_aes_shadow_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.aes_shadow_pass`` (the passed cells, or 0).
+
+    The pass label of the owner-134 bins (``sep_aes_fault_cg``, ``cp_aux_regwen``
+    of ``sep_crypto_reg_lock_cg`` and ``x_alert_source`` of
+    ``sep_crypto_alert_cg``); the ``AES_SHADOW_PASS_*`` constants give the bit of
+    each cell. The sampler holds a legal cell as seen at its DUT event inside the
+    owner window and samples it only on the rise of its bit; the window close
+    drops it. The shadow update-error leaf writes the bits of the cells a check
+    graded after that check passes, holds them for at least one clk_i edge, and
+    writes 0. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    if bits < 0 or bits >> AES_SHADOW_PASS_BITS:
+        raise ValueError(f"aes_shadow_pass bits {bits:#x} are out of range")
+    return _set_bound("aes_shadow_pass", bits, "FCOV-AES-SHADOW-PASS", log)
+
+
+# Bits of ``u_sep_fcov.otbn_cmd_pass`` (owner sep_otbn_cmd_status_rand_test): one per
+# check; the bins each bit releases are in cov/sv/sep_fcov.sv (CyOcp*).
+OTBN_CMD_PASS_CMD_BUSY = 1 << 0  # cp_cmd, x_cmd_first_busy: CHK-OTBN-CMD-BUSY
+OTBN_CMD_PASS_CMD_END = 1 << 1  # cp_done_event: CHK-OTBN-CMD-END
+OTBN_CMD_PASS_IGNORE = 1 << 2  # cp_cmd_ignored: CHK-OTBN-CMD-IGNORE
+OTBN_CMD_PASS_IGN_ERR = 1 << 3  # cp_cmd_ignored_err: CHK-OTBN-CMDIGN-ERR
+OTBN_CMD_PASS_INSN = 1 << 4  # cp_insn_cnt, cp_post_reset_arc: CHK-OTBN-INSN
+OTBN_CMD_PASS_BUSYWR = 1 << 5  # cp_ctrl_write_legality: CHK-OTBN-BUSYWR
+OTBN_CMD_PASS_SWERR_FATAL = 1 << 6  # cp_sw_error_end fatal: CHK-OTBN-SWERR-FATAL
+OTBN_CMD_PASS_LOCKED_HOLD = 1 << 7  # cp_locked_hold_exit: CHK-OTBN-LOCKED-HOLD
+OTBN_CMD_PASS_SWERR_RECOV = 1 << 8  # cp_sw_error_end recoverable: CHK-OTBN-SWERR-RECOV
+OTBN_CMD_PASS_ERRCLR = 1 << 9  # cp_err_bits_clear: CHK-OTBN-ERRCLR
+OTBN_CMD_PASS_IMEM_INTG = 1 << 10  # cp_intg_violation_end imem: CHK-OTBN-IMEM-INTG
+OTBN_CMD_PASS_DMEM_INTG = 1 << 11  # cp_intg_violation_end dmem: CHK-OTBN-DMEM-INTG
+OTBN_CMD_PASS_ILLEGAL_BUS = 1 << 12  # cp_fatal_cause: CHK-OTBN-ILLEGAL-BUS
+# sep_crypto_intr_cg otbn_done x_line_gate, cp_w1c_clear, cp_enable_flip: CHK-OTBN-DONE-LINE
+OTBN_CMD_PASS_DONE_LINE = 1 << 13
+OTBN_CMD_PASS_BITS = 14
+
+
+def set_otbn_cmd_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.otbn_cmd_pass`` (a mask of ``OTBN_CMD_PASS_*``, or 0).
+
+    The pass label of the owner bins of the OTBN command-status leaf in
+    ``sep_otbn_op_cg`` and ``sep_otbn_err_lock_cg`` (all but ``cp_sw_err_kind``,
+    ``cp_rnd_clean`` and the ignored ``cp_post_reset_done``), and of its legal
+    ``otbn_done`` cells of ``sep_crypto_intr_cg`` (``cp_hw_raise``,
+    ``x_line_gate``, ``cp_w1c_clear``, ``cp_enable_flip``). The sampler holds a
+    legal outcome as pending at its DUT event inside the owner window, also across
+    a window close, and samples it only when the bit of the check that grades it
+    rises inside the owner window. The pending ``x_line_gate``, ``cp_w1c_clear``
+    and ``cp_enable_flip`` cells are dropped at an OTBN reset and outside the owner
+    window, so each graded done-line run releases only its own cells.
+    The leaf writes the bit after that check passes, only while no check or
+    control of the run failed, holds it for at least one clk_i edge, and writes 0.
+    Same rules as ``graded_owner``: a no-op that returns False on Verilator. On VCS
+    a sampler without the variable is a testbench error.
+    """
+    if bits < 0 or bits >> OTBN_CMD_PASS_BITS:
+        raise ValueError(f"otbn_cmd_pass bits {bits:#x} are out of range")
+    return _set_bound("otbn_cmd_pass", bits, "FCOV-OTBN-CMD-PASS", log)
+
+
+# Bits of ``u_sep_fcov.aes_stream_pass`` (owner sep_aes_stream_status_rand_test): one
+# per check; the bins each bit releases are in cov/sv/sep_fcov.sv (CyAsp*).
+AES_STREAM_PASS_STALL = 1 << 0  # x_mode_status automatic cells, cp_nonidle_cause stall
+AES_STREAM_PASS_LOST = 1 << 1  # x_mode_status manual_output_lost, cp_lost_clear
+AES_STREAM_PASS_START_AUTO = 1 << 2  # cp_start_suppress automatic_no_start
+AES_STREAM_PASS_START_MANUAL = 1 << 3  # cp_start_suppress manual_legal_idle_falls
+AES_STREAM_PASS_INPUT_READY = 1 << 4  # cp_input_ready_hold legal cells
+AES_STREAM_PASS_IDLE = 1 << 5  # cp_nonidle_cause core_running
+AES_STREAM_PASS_BITS = 6
+
+
+def set_aes_stream_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.aes_stream_pass`` (a mask of ``AES_STREAM_PASS_*``, or 0).
+
+    The pass label of the owner bins of the AES stream-status leaf in
+    ``sep_aes_op_status_cg`` other than ``cp_busy_write`` (``x_mode_status``,
+    ``cp_lost_clear``, ``cp_nonidle_cause``, ``cp_start_suppress`` kinds 0 and 2,
+    ``cp_input_ready_hold``). The sampler holds a legal outcome as pending at its
+    DUT event inside the owner window, also across a window close and an AES
+    reset, and samples it only when the bit of the check that grades it rises
+    inside the owner window. The leaf writes the bit after that check passes,
+    only while no check or control of the run failed, holds it for at least one
+    clk_i edge, and writes 0. Same rules as ``graded_owner``: a no-op that returns
+    False on Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    if bits < 0 or bits >> AES_STREAM_PASS_BITS:
+        raise ValueError(f"aes_stream_pass bits {bits:#x} are out of range")
+    return _set_bound("aes_stream_pass", bits, "FCOV-AES-STREAM-PASS", log)
+
+
 def _set_bound(var: str, value: int, tag: str, log=None) -> bool:
     if value < 0:
         raise ValueError(f"{var} {value} is negative")
@@ -208,9 +474,9 @@ def set_otbn_cap_kind(kind: int, log=None) -> bool:
 
     The stimulus label of ``sep_otbn_op_cg.cp_capability``: the program class
     that the OTBN compute leaf runs (1 loop, 2 branch, 3 call and return, 4
-    ``bn.addc`` carry, 5 ``bn.addm`` reduction). The leaf sets it before the
-    command write of the program and writes 0 after the DMEM compare of that
-    program. Same rules as ``graded_owner``: a no-op that returns False on
+    ``bn.addc`` carry, 5 ``bn.addm`` reduction). The leaf sets it only after
+    the check of that program passed (after its ``ERR_BITS`` read and DMEM
+    compare) and writes 0 at least one clock later. Same rules as ``graded_owner``: a no-op that returns False on
     Verilator. On VCS a sampler without the variable is a testbench error.
     """
     if not 0 <= kind <= 5:
