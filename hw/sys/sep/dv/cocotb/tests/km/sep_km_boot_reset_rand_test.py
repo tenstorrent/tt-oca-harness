@@ -23,7 +23,8 @@ Probes: ``HOST-MBX`` (``SEP_STATUS``, ``SEP_READ_DATA``, ``SEP_IRQ_STATUS``),
 ``dbg_sep_reset_n_o`` (in ``pulse_rst_ni``) and the read-only tap ``KM-CSR``
 (``km_csr_cold_boot_done_o``, ``km_csr_scrambler_key_wr_count_o``,
 ``km_csr_scrambler_ctrl_o``), and ``KM-AXIV`` (``km_cpu_axi_valid_o``, the KM
-CPU AXI master valids, and ``km_cpu_rst_n_o``, the KM CPU reset). Injects: none.
+CPU AXI master valids, ``km_cpu_axi_ready_o``, the readies of the same
+channels, and ``km_cpu_rst_n_o``, the KM CPU reset). Injects: none.
 Every reset is a legal host stimulus: ``SW_RESET_N`` bit 0 for a warm reset,
 ``rst_ni`` for the cold resets.
 
@@ -47,8 +48,15 @@ Checks:
   CHK-RST-AXI-VALID
                   at each AXI reset point (rst_ni driven low in the half clock
                   of a pending KM CPU read, then of a pending write) the three
-                  KM CPU AXI valids read 0 in the first sample with the KM CPU
-                  reset at 0
+                  KM CPU AXI valids read 0 in the sample after the first rising
+                  edge with the KM CPU reset at 0, and in every later sample up
+                  to the end of the rst_ni pulse and the SEP release, with that
+                  reset 0 in all of them (AXI A3.1.2 gives no reset-entry
+                  timing; a valid may stay high up to that first edge and no
+                  later). The check grades the valid level only: a request
+                  that completes a handshake on that first edge also meets
+                  it. OBS-RST-AXI-READY logs the readies of the first sample
+                  with the reset at 0
 
 Controls: CTRL-RST-AXI-PENDING (the point's valid reads 1 in the sample before
 the KM CPU reset reads 0); CHK-SEQ0 (``control=1``: RESP_KM_READY at response sequence 0 and the
@@ -786,9 +794,13 @@ class sep_km_boot_reset_rand_test(sep_base_test):
 
         Runs before the entropy source comes up. The KM boots from the release;
         at the first falling edge with a valid of ``mask`` at 1 the leaf drives
-        rst_ni low. CHK-RST-AXI-VALID grades the three valids in the first sample
-        with the KM CPU reset at 0; the sample before it must show the request
-        pending. The cold reset then completes with the KM held.
+        rst_ni low. CHK-RST-AXI-VALID grades the three valids in the sample
+        after the first rising edge with the KM CPU reset at 0, which is the
+        last edge a synchronous-reset master may keep a valid high on, and in
+        every later sample until the cold reset completes with the KM held. The
+        sample before the reset must show the request pending. The readies of
+        the first sample with the reset at 0 are logged: the check grades the
+        valid level, which a handshake on that edge also clears.
         """
         tag = f"axi-{point}"
         await self.swrst.release("km")
@@ -820,19 +832,51 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             pending = valid
             clks += 1
             await FallingEdge(self.clk)
+        valid_rst = valid
+        ready_rst = self.rd_known(self.dut.km_cpu_axi_ready_o)
+        await FallingEdge(self.clk)
+        await ReadOnly()
+        valid = self.rd_known(self.dut.km_cpu_axi_valid_o)
+        rst_n = self.rd_known(self.dut.km_cpu_rst_n_o)
+        # The rest of the reset: every later sample up to the end of the rst_ni
+        # pulse and the SEP release, with the KM CPU still held.
+        held = {"n": 0, "valid": 0, "rst_n": 0, "run": True}
+
+        async def _hold_watch() -> None:
+            while held["run"]:
+                await FallingEdge(self.clk)
+                await ReadOnly()
+                held["n"] += 1
+                held["valid"] |= self.rd_known(self.dut.km_cpu_axi_valid_o)
+                held["rst_n"] |= self.rd_known(self.dut.km_cpu_rst_n_o)
+
+        watch = cocotb.start_soon(_hold_watch())
+        rec = await self.pulse_rst_ni(release_bound=SEP_RESET_BOUND)
+        held["run"] = False
+        await watch
+        await Timer(1, "step")  # leave the read-only phase before the next drive
         self.chk.ctrl(
             "RST-AXI-PENDING", bool(pending & mask), point=point, pending=f"0b{pending:03b}"
         )
+        self.chk.obs(
+            "RST-AXI-READY",
+            point=point,
+            valid_rst=f"0b{valid_rst:03b}",
+            ready_rst=f"0b{ready_rst:03b}",
+        )
         self.chk.ok(
             "RST-AXI-VALID",
-            valid == 0,
+            valid == 0 and rst_n == 0 and held["valid"] == 0 and held["rst_n"] == 0,
             point=point,
             valid=f"0b{valid:03b}",
+            valid_rst=f"0b{valid_rst:03b}",
             rst_n=rst_n,
             pending=f"0b{pending:03b}",
             clks=clks,
+            held_clks=held["n"],
+            held_valid=f"0b{held['valid']:03b}",
+            held_rst_n=held["rst_n"],
         )
-        rec = await self.pulse_rst_ni(release_bound=SEP_RESET_BOUND)
         self.swrst.value = SW_RESET_N_RESET_DEFAULT
         self.logger.info("LOG %s release_clks=%d", tag, rec["release_clks"])
 

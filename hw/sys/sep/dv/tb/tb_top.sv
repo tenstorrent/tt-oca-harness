@@ -4104,11 +4104,15 @@ module sep_uvm_top
     assign km_sram_wmap_jump_wr_o   = km_wmap_jump_wr_q;
 
     // KM-AXIV: the request valids of the KM CPU AXI4-Lite master (the port the
-    // KM AXI SVA binds to), {ar_valid, aw_valid, w_valid}, and the warm reset
-    // of the KM CPU core (rst_warm_sync_n, the SVA aresetn), on every clock.
+    // KM AXI SVA binds to), {ar_valid, aw_valid, w_valid}, the readies of the
+    // same channels, and the warm reset of the KM CPU core (rst_warm_sync_n,
+    // the SVA aresetn), on every clock.
     assign km_cpu_axi_valid_o = {`KM_TAP.cpu_axil_req.ar_valid,
                                  `KM_TAP.cpu_axil_req.aw_valid,
                                  `KM_TAP.cpu_axil_req.w_valid};
+    assign km_cpu_axi_ready_o = {`KM_TAP.cpu_axil_resp.ar_ready,
+                                 `KM_TAP.cpu_axil_resp.aw_ready,
+                                 `KM_TAP.cpu_axil_resp.w_ready};
     assign km_cpu_rst_n_o     = `KM_TAP.rst_warm_sync_n;
 
     // ------------------------------------------------------------------
@@ -4944,7 +4948,17 @@ module sep_uvm_top
     // This checks PROTOCOL, not data. A register that accepts a write, answers
     // OKAY and stores nothing breaks no rule here, so a green run is not
     // evidence that a KM register write landed.
+    //
+    // MASTER_SYNC_RESET=1: the AXI reset rule (IHI 0022, A3.1.2) requires
+    // ARVALID, AWVALID and WVALID low during reset and gives no timing for
+    // reset entry. The KM CPU master is graded with a one-edge entry window:
+    // the valids may be high on the first edge that samples the KM CPU reset
+    // low and must be low from the next edge on. The cold reset asserts
+    // asynchronously and the warm reset on a clock edge
+    // (hw/ip/key_manager/doc/architecture.adoc, Reset Conditioning).
+    // Issue: #3170
     bind key_manager ocah_axi_sva #(
+        .MASTER_SYNC_RESET (1'b1),
         .IS_LITE    (1'b1),
         .ADDR_WIDTH (32),
         .DATA_WIDTH (32),
