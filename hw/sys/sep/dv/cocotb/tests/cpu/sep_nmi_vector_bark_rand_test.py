@@ -291,14 +291,14 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             raise AssertionError(
                 f"CHK-NMI-TAKEN FAIL: copies not in four consecutive 256-byte slots: {slots}"
             )
-        vs = self._one("CTL-VEC-SET", boot=1)
+        vs = self._one("CTRL-VEC-SET", boot=1)
         if (vs.kv["vec"] & VEC_MASK) != vec or (vs.kv["lock"] & LOCK_MASK) != 1:
             raise AssertionError(
                 f"CHK-NMI-TAKEN FAIL: vector or lock not set before the barks: {vs.text}"
             )
         legs = ("case_a", f"case_{CASES[cfg.case]}")
         for bark, (leg, mie) in enumerate(zip(legs, (0, 1), strict=True), start=1):
-            rec = self._one("CTL-NMI-ENTRY", bark=bark)
+            rec = self._one("CTRL-NMI-ENTRY", bark=bark)
             t = self._first_trans(leg)
             pc = t[1] if t else None
             bite = t[2] if t else "na"
@@ -329,8 +329,8 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             raise AssertionError(
                 f"CHK-BARK-VEC FAIL: image stub at 0x{stub:08x}, reset vector 0x{VEC_RESET:08x}"
             )
-        r1 = self._one("CTL-VEC-RESET", boot=1)
-        st = self.con.records("CTL-STUB")
+        r1 = self._one("CTRL-VEC-RESET", boot=1)
+        st = self.con.records("CTRL-STUB")
         t = self._first_trans("reset_vector")
         pc0 = t[1] if t else None
         lo, hi = self._leg("reset_vector")
@@ -350,8 +350,8 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         if not ok:
             raise AssertionError(f"CHK-BARK-VEC FAIL {body} stub={st[0].text if st else None}")
         self.logger.info("CHK-BARK-VEC PASS %s", body)
-        r2 = self._one("CTL-VEC-RESET", boot=2)
-        vs = self._one("CTL-VEC-SET", boot=2)
+        r2 = self._one("CTRL-VEC-RESET", boot=2)
+        vs = self._one("CTRL-VEC-SET", boot=2)
         t = self._first_trans("programmed")
         pc = t[1] if t else None
         mk = [c for c, txt in self.con.lines if txt == "Mk" and c >= boot2_clk]

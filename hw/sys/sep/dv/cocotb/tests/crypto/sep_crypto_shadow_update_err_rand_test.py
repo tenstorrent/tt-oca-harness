@@ -80,7 +80,7 @@ no text states that it covers CTRL_AUX_SHADOWED. Every KMAC result
 (``CFG_SHADOWED`` and ``ENTROPY_REFRESH_THRESHOLD_SHADOWED``) is logged as
 ``OBS-SHADOW-KMAC`` and not graded: no KMAC text defines the update-error write
 sequence of those registers; the ALERT_TEST write of each block is the
-timing reference ``OBS-ALERT-REF``.
+timing reference ``INFO-ALERT-REF``.
 """
 
 from __future__ import annotations
@@ -769,7 +769,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 )
                 self.chk.ok("ALERT-MALFORMED", False, block=blk, index=idx, reason="no_reference")
                 continue
-            self.chk.obs("ALERT-REF", block=blk, clk=c, alert_test_bit=bit)
+            self.chk.info("ALERT-REF", block=blk, clk=c, alert_test_bit=bit)
             # Quiet window before the inject: bit 32 stays 0 for WINDOW_FACTOR x c clocks
             # with no stimulus, so a rise in the inject window comes from the inject.
             mq = self.vec.mark()

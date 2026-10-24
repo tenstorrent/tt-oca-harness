@@ -71,7 +71,7 @@ to the end of the leaf. ``doc/integrator/src/smu-sep.adoc`` (TRNG path) states
 the reply contract and ``hw/sys/sep/doc/crypto.adoc`` ("Single-Beat Access
 Only") the burst contract. The PR-TRNG and PR-TRNG-RSP taps show the port.
 
-CTL-TRNG-RSP-DRIVE (bench control): the responder is on with both handshake
+CTRL-TRNG-RSP-DRIVE (bench control): the responder is on with both handshake
 counts at 0, and each reply beat on the port carries the code (and, for R, the
 data) that the leaf set for that handshake. Every reply check below compares
 the initiator code with the code seen at the port.
@@ -236,7 +236,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             if win.adopter:
                 adopter_probes.append((item.op, item.addr, dead.last_resp, not hit))
                 self.logger.info(
-                    "TRNG-UNOWNED-RESP: %s %s 0x%08x resp=%s (%s)",
+                    "INFO-TRNG-UNOWNED-RESP: %s %s 0x%08x resp=%s (%s)",
                     item.window,
                     item.op,
                     item.addr,
@@ -578,14 +578,14 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         return "; ".join(b.fmt() for b in c["req"] + c["rsp"]) or "none"
 
     def _trng_ctl(self, c: dict, fails: list[str]) -> None:
-        """CTL-TRNG-RSP-DRIVE: each port reply beat carries the code set for it."""
+        """CTRL-TRNG-RSP-DRIVE: each port reply beat carries the code set for it."""
         for k, b in enumerate(c["rep"]):
             slot = (c["first"] + k) % _TRNG_SLOTS
             want_c = c["drive_c"][k % _TRNG_SLOTS]
             want_d = c["drive_d"][k % _TRNG_SLOTS] if c["d"] == "r" else None
             got_d = b.fields.get("data") if c["d"] == "r" else None
             self.logger.info(
-                "CTL-TRNG-RSP-DRIVE LOG: %s ch=%s k=%d slot=%d set=%s port=%s set_data=%s "
+                "CTRL-TRNG-RSP-DRIVE LOG: %s ch=%s k=%d slot=%d set=%s port=%s set_data=%s "
                 "port_data=%s",
                 self._trng_tag(c),
                 b.ch,
@@ -624,9 +624,9 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         on = self.rd_known(top.ext_trng_axil_rsp_on_o)
         bcnt = self.rd_known(top.ext_trng_axil_rsp_bcnt_o)
         rcnt = self.rd_known(top.ext_trng_axil_rsp_rcnt_o)
-        self.logger.info("CTL-TRNG-RSP-DRIVE LOG: responder on=%d bcnt=%d rcnt=%d", on, bcnt, rcnt)
+        self.logger.info("CTRL-TRNG-RSP-DRIVE LOG: responder on=%d bcnt=%d rcnt=%d", on, bcnt, rcnt)
         assert on == 1 and bcnt == 0 and rcnt == 0, (
-            f"CTL-TRNG-RSP-DRIVE FAIL: responder on={on} bcnt={bcnt} rcnt={rcnt}; expected on=1 "
+            f"CTRL-TRNG-RSP-DRIVE FAIL: responder on={on} bcnt={bcnt} rcnt={rcnt}; expected on=1 "
             "with both counts at 0 (the leaf runs with +sep_ext_trng_axil_responder)"
         )
         open_graded_window(TEST, self.logger)
@@ -692,9 +692,9 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         ctl_fails: list[str] = []
         for c in graded:
             self._trng_ctl(c, ctl_fails)
-        self._trng_raise("CTL-TRNG-RSP-DRIVE", ctl_fails, "port reply beat(s) off the set code")
+        self._trng_raise("CTRL-TRNG-RSP-DRIVE", ctl_fails, "port reply beat(s) off the set code")
         self.logger.info(
-            "CTL-TRNG-RSP-DRIVE PASS: %d port reply beat(s) over %d access(es) carried the set "
+            "CTRL-TRNG-RSP-DRIVE PASS: %d port reply beat(s) over %d access(es) carried the set "
             "code",
             sum(len(c["rep"]) for c in graded),
             len(graded),
@@ -852,5 +852,5 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         obs_ctl: list[str] = []
         for c in obs:
             self._trng_ctl(c, obs_ctl)
-        self._trng_raise("CTL-TRNG-RSP-DRIVE", obs_ctl, "port reply beat(s) off the set code")
+        self._trng_raise("CTRL-TRNG-RSP-DRIVE", obs_ctl, "port reply beat(s) off the set code")
         await stop_taps(self.trng_taps)

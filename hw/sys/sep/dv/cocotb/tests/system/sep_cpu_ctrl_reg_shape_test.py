@@ -37,8 +37,8 @@ Checkers:
                   readback, and ``scratch_cold_probe_o`` for the cold bank);
                   in the high-half-first order also after the high-half
                   write, against the value before it.
-Controls (not counted): CTL-NMI-DEFAULT, CTL-NMI-STORE, CTL-SCR-SEQ,
-CTL-SCR-NEIGHBOUR. Observations: OBS-CC-RSVD, OBS-TIMEOUT.
+Controls (not counted): CTRL-NMI-DEFAULT, CTRL-NMI-STORE, INFO-SCR-SEQ,
+CTRL-SCR-NEIGHBOUR. Observations: OBS-CC-RSVD, OBS-TIMEOUT.
 
 The graded window (owner code of this test) is open around the graded
 writes and their readbacks only. The first reads, the writes before the lock,
@@ -318,7 +318,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         first = await self._read64(VERSION_ID)
         fc = field_compare(first, VERSION_RESET, VERSION_FIELD)
         assert fc.ok, f"CHK-CC-RO FAIL: first read before any write {fc.fields()}"
-        self.logger.info("CTL-CC-RO-FIRST: SEP_VERSION_ID %s", fc.fields())
+        self.logger.info("CTRL-CC-RO-FIRST: SEP_VERSION_ID %s", fc.fields())
         open_graded_window(TEST, self.logger)
         for i, (v, lane) in enumerate(cfg.ver):
             resp = await self._write(VERSION_ID, v, lane, tolerant=True)
@@ -326,7 +326,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, VERSION_RESET, VERSION_FIELD)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-CC-RO FAIL: {line}"
-            self.logger.info("CC-RO LOG: %s", line)
+            self.logger.info("INFO-CC-RO LOG: %s", line)
             self._rsvd("SEP_VERSION_ID", got, VERSION_FIELD)
         close_graded_window(self.logger)
         n_low = sum(1 for _v, lane in cfg.ver if lane in LOW_LANES)
@@ -347,11 +347,11 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         # Step 3: first read (control; the reset value stays with the open owners).
         first = await self._read64(NMI_VEC)
         fc = field_compare(first, NMI_RESET, NMI_FIELD | NMI_RSVD0)
-        assert fc.ok, f"CTL-NMI-DEFAULT FAIL: {fc.fields()}"
-        self.logger.info("CTL-NMI-DEFAULT: first_read=0x%016x %s", first, fc.fields())
+        assert fc.ok, f"CTRL-NMI-DEFAULT FAIL: {fc.fields()}"
+        self.logger.info("CTRL-NMI-DEFAULT: first_read=0x%016x %s", first, fc.fields())
         model = NMI_RESET & NMI_FIELD
 
-        # Step 4: writes before the lock (control CTL-NMI-STORE).
+        # Step 4: writes before the lock (control CTRL-NMI-STORE).
         for i, (v, lane) in enumerate(cfg.nmi_pre):
             await self._write(NMI_VEC, v, lane, tolerant=False)
             if lane != "hi":
@@ -359,11 +359,11 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             got = await self._read64(NMI_VEC)
             fc = field_compare(got, model, NMI_FIELD | NMI_RSVD0)
             line = f"write={i} lane={lane} wdata=0x{v:016x} {fc.fields()}"
-            assert fc.ok, f"CTL-NMI-STORE FAIL: {line}"
-            self.logger.info("NMI-STORE LOG: %s", line)
+            assert fc.ok, f"CTRL-NMI-STORE FAIL: {line}"
+            self.logger.info("INFO-NMI-STORE LOG: %s", line)
             self._rsvd("SEP_NMI_VEC", got, NMI_FIELD | NMI_RSVD0)
         self.logger.info(
-            "CTL-NMI-STORE: writes=%d bit0=0 bits31:1_exact model=0x%08x",
+            "CTRL-NMI-STORE: writes=%d bit0=0 bits31:1_exact model=0x%08x",
             len(cfg.nmi_pre),
             model,
         )
@@ -376,7 +376,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         lk1 = await self._read64(NMI_LOCK)
         fc1 = field_compare(lk1, LOCK_FIELD, LOCK_FIELD)
         assert fc1.ok, f"CHK-NMI-LOCK FAIL: lock after the write of 1 {fc1.fields()}"
-        self.logger.info("CTL-NMI-LOCK-SET: before=%d after=%d", lk0 & 1, lk1 & 1)
+        self.logger.info("CTRL-NMI-LOCK-SET: before=%d after=%d", lk0 & 1, lk1 & 1)
 
         # Step 6: writes after the lock.
         open_graded_window(TEST, self.logger)
@@ -393,7 +393,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, vec, NMI_FIELD)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-NMI-LOCK FAIL: locked vector write changed nmi_vec: {line}"
-            self.logger.info("NMI-LOCK LOG: %s", line)
+            self.logger.info("INFO-NMI-LOCK LOG: %s", line)
             self._rsvd("SEP_NMI_VEC", got, NMI_FIELD)
 
         # Step 7: lock write cases.
@@ -404,7 +404,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, LOCK_FIELD, LOCK_FIELD)
             line = f"wdata=0x{k:x} lane={lane} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-NMI-LOCK FAIL: lock cleared by a write: {line}"
-            self.logger.info("NMI-LOCK LOG: %s", line)
+            self.logger.info("INFO-NMI-LOCK LOG: %s", line)
             self._rsvd("SEP_NMI_VEC_LOCK", got, LOCK_FIELD)
             n0 += int(k == 0)
             n1 += int(k == M64)
@@ -426,7 +426,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             for v, lane in cfg.timeout[name]:
                 resp = await self._write(addr, v, lane, tolerant=True)
                 self.logger.info(
-                    "CC-INERT LOG: reg=%s wdata=0x%016x lane=%s resp=%d", name, v, lane, resp
+                    "INFO-CC-INERT LOG: reg=%s wdata=0x%016x lane=%s resp=%d", name, v, lane, resp
                 )
         close_graded_window(self.logger)
         n_timeout = self.responses - n_before
@@ -449,7 +449,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
                 f"reads (0x{r1:x} -> 0x{r2:x}); a changing input cannot show an inert write"
             )
             base[name] = r2 & field
-            self.logger.info("CTL-CC-INERT-BASE: reg=%s reads=0x%x,0x%x", name, r1, r2)
+            self.logger.info("CTRL-CC-INERT-BASE: reg=%s reads=0x%x,0x%x", name, r1, r2)
         n_status = 0
         after: dict[str, int] = {}
         open_graded_window(TEST, self.logger)
@@ -463,7 +463,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, base[name], field)
             line = f"reg={name} wdata=0x{v:016x} lane={lane} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-CC-INERT FAIL: read-only bit changed by a write: {line}"
-            self.logger.info("CC-INERT LOG: %s", line)
+            self.logger.info("INFO-CC-INERT LOG: %s", line)
             self._rsvd(name, got, field)
             after[name] = got & field
         close_graded_window(self.logger)
@@ -572,12 +572,12 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
                 r = await self._read64(a2)
                 exp = self.snapshot[(b2, i2)]
                 assert (r & SCR_FIELD) == exp, (
-                    f"CTL-SCR-NEIGHBOUR FAIL: write bank={bank} index={i} changed "
+                    f"CTRL-SCR-NEIGHBOUR FAIL: write bank={bank} index={i} changed "
                     f"bank={b2} index={i2}: 0x{r & SCR_FIELD:08x} != 0x{exp:08x}"
                 )
                 same += 1
             self.logger.info(
-                "CTL-SCR-NEIGHBOUR: bank=%s index=%d neighbours_unchanged=%d/%d",
+                "CTRL-SCR-NEIGHBOUR: bank=%s index=%d neighbours_unchanged=%d/%d",
                 bank,
                 i,
                 same,
@@ -617,7 +617,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             retained = all((rb[(b, i)] & SCR_FIELD) == before[(b, i)] for i in range(SCRATCH_N))
             cls[b] = "cleared" if cleared else ("retained" if retained else "mixed")
         self.logger.info(
-            "CTL-SCR-SEQ: step=%d event=%s warm=%s cold=%s", step, ev, cls["warm"], cls["cold"]
+            "INFO-SCR-SEQ: step=%d event=%s warm=%s cold=%s", step, ev, cls["warm"], cls["cold"]
         )
         self.snapshot = {k: v & SCR_FIELD for k, v in rb.items()}
 
@@ -626,7 +626,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         rb = await self._read_all()
         self.snapshot = {k: v & SCR_FIELD for k, v in rb.items()}
         self.logger.info(
-            "SCR-SNAPSHOT LOG: %s",
+            "INFO-SCR-SNAPSHOT LOG: %s",
             " ".join(f"{b}[{i}]=0x{v:08x}" for (b, i), v in self.snapshot.items()),
         )
         for step, ev in enumerate(cfg.events):
@@ -674,7 +674,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
                     " ".join(f"0x{h:08x}_{lo:08x}" for lo, h in cfg.values[step]),
                 )
         self.logger.info(
-            "CC-SHAPE env: reset_bound=%d clk_i pulse=%d status_gap=%d",
+            "INFO-CC-SHAPE env: reset_bound=%d clk_i pulse=%d status_gap=%d",
             RESET_BOUND,
             PULSE_CYCLES,
             STATUS_GAP,

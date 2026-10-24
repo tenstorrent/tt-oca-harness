@@ -480,7 +480,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         dig_a, val_a, _te = self._latch(ch)
         await RisingEdge(dut.clk_i)
         window = max(_FREEZE_MULT * max(hash_a, hash_b), _FREEZE_MIN)
-        self.chk.obs(
+        self.chk.info(
             "FREEZE-REF",
             ch=_CH_NAME[ch],
             code_b=code_b,

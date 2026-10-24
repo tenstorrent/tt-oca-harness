@@ -24,7 +24,7 @@ OR-merged with the writes of the leaf).
                     low. The RMA_CHIPLET SEC_DIS cell is logged ``ctl=1``.
   CHK-GATE-BOUND    every read with SEC_DIS 0: no bit outside the OR of the SEC_DIS 0
                     rows of the state (model shadows). A read whose mask is all ones
-                    logs ``OBS-GATE-BOUND LOG ... graded=0``.
+                    logs ``INFO-GATE-BOUND LOG ... graded=0``.
   CHK-DEMOTE-STEP   leg B: after each operation both demotion registers (bits [63:2]
                     at 0) equal the RW1S golden (``demote`` sets only while ``lock``
                     is 0) and ``FEAT_CTRL`` equals the row of the cumulative demotion.
@@ -213,7 +213,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         if mask == ALL_ONES:
             log_line(
                 self.logger,
-                "OBS-GATE-BOUND",
+                "INFO-GATE-BOUND",
                 self.seed,
                 state=self.state,
                 mask="all_ones",
@@ -432,7 +432,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
                 demote_2=f"0x{d2:016x}",
             )
         self.logger.info(
-            "LEG-B ref pairs=0b%s/0b%s lc_shadow=0x%x feat=0x%016x",
+            "INFO-LEG-B ref pairs=0b%s/0b%s lc_shadow=0x%x feat=0x%016x",
             format(self.ref_pairs[1], "02b"),
             format(self.ref_pairs[2], "02b"),
             self.ref_lcw,
@@ -445,11 +445,11 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         await self._cycle("cell10", 1, "demote")
         await self._write_demote(2, "demote")
         await self._cycle("cell11", 2, "demote")
-        self.logger.info("LEG-B vector before reset=0x%x (cells)", self._vec())
+        self.logger.info("INFO-LEG-B vector before reset=0x%x (cells)", self._vec())
         await self._reset_check("cell")
         await self._write_demote(2, "demote")
         await self._cycle("cell01", 2, "demote")
-        self.logger.info("LEG-B vector before reset=0x%x (cell 01)", self._vec())
+        self.logger.info("INFO-LEG-B vector before reset=0x%x (cell 01)", self._vec())
         await self._reset_check("cell")
 
         # Reset vector v: (demote 1, lock 1, demote 2, lock 2) as bits 3..0.
@@ -461,14 +461,14 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             if (v >> lbit) & 1:
                 await self._write_demote(reg, "lock")
                 await self._cycle(f"vec_l{reg}", reg, "lock")
-        self.logger.info("LEG-B vector before reset=0x%x (v=0x%x)", self._vec(), v)
+        self.logger.info("INFO-LEG-B vector before reset=0x%x (v=0x%x)", self._vec(), v)
         await self._reset_check("vec")
 
         # Random sequence.
         for k, (op, reg) in enumerate(leg["ops"]):
             await self._write_demote(reg, op)
             await self._cycle(f"rand{k}", reg, op)
-        self.logger.info("LEG-B vector before reset=0x%x (random)", self._vec())
+        self.logger.info("INFO-LEG-B vector before reset=0x%x (random)", self._vec())
         await self._reset_check("rand")
 
         # Forced block: lock then demote on A, demote then lock on B.
@@ -489,7 +489,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         ):
             await self._write_demote(reg, op)
             await self._cycle(f"forced{k}", reg, op)
-        self.logger.info("LEG-B vector before reset=0x%x (forced)", self._vec())
+        self.logger.info("INFO-LEG-B vector before reset=0x%x (forced)", self._vec())
         await self._reset_check("forced")
 
         # Control program: one 0 bit of the first SPARE8 word.
@@ -650,7 +650,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             await self._write_demote(1, "demote")
             await self._write_demote(2, "demote")
         reg0, _ = await self._feat()
-        self.logger.info("LEG-D earlier owner start FEAT_CTRL=0x%016x", reg0)
+        self.logger.info("INFO-LEG-D earlier owner start FEAT_CTRL=0x%016x", reg0)
         not_s = ~s & M64
         resp_sys = await self.fd.wr_graded_by_readback(DIS_ADDR["SYS_DIS"], not_s, length=8)
         self.sys_m |= not_s
@@ -823,7 +823,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         gate = ("CHK-GATE-BOUND",) if gate_bound_graded(p) else ()
         self.required_evidence = (*self.required_evidence, *gate, *extra)
         self.logger.info(
-            "EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
+            "INFO-EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
         )
         self.fd = SepEfuseFd(self)
         self.sip_m, self.sys_m = p.sip_dis, p.sys_dis

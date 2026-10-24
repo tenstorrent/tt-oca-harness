@@ -26,7 +26,7 @@ Extent, Hole in Extent, live word), with X or Z in an error payload failing on
 VCS. A hole write leaves its neighbour register unchanged; the in-extent write
 of the same data to the neighbour changes it (control).
 
-CTL-ROW-RAND: stimulus completeness. Every inventory cell was walked.
+CTRL-ROW-RAND: stimulus completeness. Every inventory cell was walked.
 
 CHK-ROW-NOALIAS: a reset-control gap or tail write and an HMAC or KMAC hole
 write leave the live reference register (``SW_RESET_N``, HMAC ``CFG``, a KMAC
@@ -242,7 +242,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
 
     def _log_size3(self, row: str, kind: str, resp: int, rdata: int, d: str) -> None:
         self.logger.info(
-            "ROW-SIZE3 LOG: row=%s kind=%s dir=%s size=3 resp=%s rdata=0x%016x graded=0",
+            "INFO-ROW-SIZE3 LOG: row=%s kind=%s dir=%s size=3 resp=%s rdata=0x%016x graded=0",
             row,
             kind,
             d,
@@ -279,7 +279,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
         self.logger.info(
-            "ROW-BRINGUP LOG: feat_ctrl=0x%016x golden=0x%016x sep_debug=%d",
+            "INFO-ROW-BRINGUP LOG: feat_ctrl=0x%016x golden=0x%016x sep_debug=%d",
             ctl.feat_ctrl,
             feat,
             ctl.sep_debug,
@@ -339,7 +339,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         rr.reserved_row(nxt)
         drawn = (first + 8) + 8 * self.rng.randrange(0, ((last - 8) - (first + 8)) // 8 + 1)
         pairs = (first, drawn, last, nxt)
-        self.logger.info("ROW-RAND LOG: reset_ctrl drawn pair 0x%08x", drawn)
+        self.logger.info("INFO-ROW-RAND LOG: reset_ctrl drawn pair 0x%08x", drawn)
         for op in (SepAxiOp.READ, SepAxiOp.WRITE):
             d = "R" if op is SepAxiOp.READ else "W"
             for word in pairs:
@@ -369,7 +369,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     self._grade_cell("reset_ctrl", "past", "LSU", SepAxiOp.WRITE, a, resp, 0, wd)
                 else:
                     self.logger.info(
-                        "ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d resp=%s graded=0",
+                        "INFO-ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d resp=%s graded=0",
                         a,
                         size,
                         _RN.get(resp),
@@ -393,7 +393,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     f"0x{back & rr.SW_RESET_N_FIELDS:02x}; the reference cannot show an alias"
                 )
             self.logger.info(
-                "CTL-ROW-NOALIAS LOG: unit=reset_ctrl wrote=0x%02x read=0x%02x",
+                "CTRL-ROW-NOALIAS LOG: unit=reset_ctrl wrote=0x%02x read=0x%02x",
                 value,
                 back & rr.SW_RESET_N_FIELDS,
             )
@@ -415,7 +415,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         for i in range(_HMAC_POLL):
             resp, _d = await self._lsu(SepAxiOp.READ, rr.HMAC_CFG, expect="any")
             if resp == OKAY:
-                self.logger.info("ROW-HMAC-READY LOG: CFG OKAY after %d read(s)", i + 1)
+                self.logger.info("INFO-ROW-HMAC-READY LOG: CFG OKAY after %d read(s)", i + 1)
                 return
             await ClockCycles(cocotb.top.clk_i, 20)
         raise AssertionError(f"HMAC CFG did not answer OKAY in {_HMAC_POLL} reads")
@@ -431,7 +431,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         kval = self.rng.randrange(1, 1 << 32)
         await self._lsu_write_reg(self.kmac_ref, kval, "KMAC PREFIX reference")
         self.logger.info(
-            "ROW-REF LOG: hmac_cfg=0x%08x kmac_prefix[%d]@0x%08x=0x%08x",
+            "INFO-ROW-REF LOG: hmac_cfg=0x%08x kmac_prefix[%d]@0x%08x=0x%08x",
             self.regval[rr.HMAC_CFG],
             k,
             self.kmac_ref,
@@ -467,7 +467,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             row = rr.map_row(base)
             mid = base + 8 + 8 * self.rng.randrange(0, (row.end - 15 - base - 8) // 8 + 1)
             words = (base, row.end - 7, mid)
-            self.logger.info("ROW-RAND LOG: rsvd_%08x words %s", base, [hex(w) for w in words])
+            self.logger.info("INFO-ROW-RAND LOG: rsvd_%08x words %s", base, [hex(w) for w in words])
             for op in (SepAxiOp.READ, SepAxiOp.WRITE):
                 d = "R" if op is SepAxiOp.READ else "W"
                 for word in words:
@@ -502,7 +502,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     f"the hole access, model 0x{exp_nb & mask:x}"
                 )
             comp = (~before) & 0xFFFF_FFFF
-            self.logger.info("ROW-RAND LOG: %s hole word 0x%08x neighbour 0x%08x", unit, word, nb)
+            self.logger.info(
+                "INFO-ROW-RAND LOG: %s hole word 0x%08x neighbour 0x%08x", unit, word, nb
+            )
             for op in (SepAxiOp.READ, SepAxiOp.WRITE):
                 d = "R" if op is SepAxiOp.READ else "W"
                 for a in (word, word + 4):
@@ -539,7 +541,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     f"change its read (0x{got & mask:x}); a landed hole write would not show"
                 )
             self.logger.info(
-                "CTL-ROW-HOLE LOG: unit=%s neighbour=0x%08x wrote=0x%08x read=0x%x before=0x%x",
+                "CTRL-ROW-HOLE LOG: unit=%s neighbour=0x%08x wrote=0x%08x read=0x%x before=0x%x",
                 unit,
                 nb,
                 comp,
@@ -566,7 +568,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             e = row.base + row.extent
             lo = (e + 8 + 7) & ~7
             drawn = lo + 8 * self.rng.randrange(0, (row.end - 7 - lo) // 8 + 1)
-            self.logger.info("ROW-RAND LOG: %s past E=0x%08x drawn 0x%08x", key, e, drawn)
+            self.logger.info("INFO-ROW-RAND LOG: %s past E=0x%08x drawn 0x%08x", key, e, drawn)
             for op in (SepAxiOp.READ, SepAxiOp.WRITE):
                 d = "R" if op is SepAxiOp.READ else "W"
                 for a in (e, e + 4, drawn, drawn + 4):
@@ -616,7 +618,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         s = await self._si(SepAxiOp.READ, rr.KM_SEPARATOR)
         assert s.resp_code == OKAY, f"KM separator answered {_RN.get(s.resp_code)}"
         self.logger.info(
-            "ROW-KM LOG: baseline %s separator=0x%08x",
+            "INFO-ROW-KM LOG: baseline %s separator=0x%08x",
             " ".join(f"{n}=0x{baseline[a]:x}" for n, a in zip(names, rr.KM_BASELINE)),
             s.rdata & 0xFFFF_FFFF,
         )
@@ -626,7 +628,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         d1 = lo1 + 8 * self.rng.randrange(0, ((last - 8 - base) - lo1) // 8 + 1)
         d2 = nxt + 8 * self.rng.randrange(0, (rsvd_last - nxt) // 8 + 1)
         pairs = (first, last, base + d1, d2)
-        self.logger.info("ROW-RAND LOG: km pairs %s", [hex(p) for p in pairs])
+        self.logger.info("INFO-ROW-RAND LOG: km pairs %s", [hex(p) for p in pairs])
         lines = []
         for op in (SepAxiOp.READ, SepAxiOp.WRITE):
             d = "R" if op is SepAxiOp.READ else "W"
@@ -806,7 +808,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         self.noalias_ctl: set[str] = set()
         inventory = self._inventory()
         self.logger.info(
-            "ROW-INVENTORY LOG: seed=%d cells=%d live=%s",
+            "INFO-ROW-INVENTORY LOG: seed=%d cells=%d live=%s",
             self.random_seed(),
             len(inventory),
             " ".join(
@@ -854,9 +856,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         missing = sorted(inventory - self.walked)
         extra = sorted(self.walked - inventory)
         if missing or extra:
-            self._fail("CTL-ROW-RAND", f"{line} missing={missing} extra={extra}")
+            self._fail("CTRL-ROW-RAND", f"{line} missing={missing} extra={extra}")
         else:
-            self.logger.info("CTL-ROW-RAND LOG: %s", line)
+            self.logger.info("CTRL-ROW-RAND LOG: %s", line)
 
         if self.fails:
             raise AssertionError(f"{len(self.fails)} check failure(s); first: {self.fails[0]}")

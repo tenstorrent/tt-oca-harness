@@ -316,7 +316,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         if missing:
             raise AssertionError(f"instruction image lacks the encodings of {missing}")
         self.logger.info(
-            "CTL-ISA-ENC LOG encodings_in_image=%d/%d (independent encoder)",
+            "CTRL-ISA-ENC LOG encodings_in_image=%d/%d (independent encoder)",
             len(OPS) + 1,
             len(OPS) + 1,
         )

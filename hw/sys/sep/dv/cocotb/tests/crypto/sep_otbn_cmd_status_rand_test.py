@@ -461,7 +461,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         rises = self.rst_t.rises(t0, bit=0) if released else []
         ok, vals, clks = await self._wait_idle(self.idle_bound, gap=4)
         self.logger.info(
-            "OTBN-RESET %s released=%d idle=%d clk=%d status=%s",
+            "INFO-OTBN-RESET %s released=%d idle=%d clk=%d status=%s",
             tag,
             int(released),
             int(ok),

@@ -770,7 +770,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         pl.check_plan(self.plan)
         for line in pl.draw_lines(self.plan):
             self.logger.info(line)
-        self.logger.info("ROM-BUILD km_boot_wipe=0 km_unrec_wipe=%d", int(self.unrec))
+        self.logger.info("INFO-ROM-BUILD km_boot_wipe=0 km_unrec_wipe=%d", int(self.unrec))
         self.logger.info(
             "LOG entry=%s legs selected by +km_rom_hex (%s)",
             "HOST-UNREC" if self.unrec else "HOST",
@@ -2188,7 +2188,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self._boot("the DRBG stall source switch", parked=switch)
         self.fresh = False
         offered = await feed.stop()
-        self.chk.obs(
+        self.chk.info(
             "DRBG-STALL-STOP",
             control="EXT_TRNG_SRC_SEL.sel_bit0",
             sel_before=_hx(sel),

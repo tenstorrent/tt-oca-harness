@@ -59,9 +59,9 @@ CHK-LINE-IN, CHK-LINE-OUT, CHK-LINE-ISO, CHK-GATE, CHK-W1C, CHK-WIDTH,
 CHK-GLITCH, CHK-NONVAC. The outbound mailbox 0 cells that open tests grade
 (the outbound write threshold and ``wtirq`` gate of FIFO A, the acknowledge
 of ``wtirq`` above the threshold, the outbound ``wflush`` and the outbound
-read threshold of FIFO B) run as controls and print ``CTL-<NAME> LOG``;
-``STATUS`` bits [1:0] print ``CTL-STATUS LOG`` outside the flush check; the
-alias-leg pops print ``CTL-ENTRY LOG``.
+read threshold of FIFO B) run as controls and print ``CTRL-<NAME> LOG``;
+``STATUS`` bits [1:0] print ``CTRL-STATUS LOG`` outside the flush check; the
+alias-leg pops print ``CTRL-ENTRY LOG``.
 Log only: ``OBS-KM-LINE`` (probe bit 14), ``OBS-SMC-MAP`` (the port bit that
 rose when one outbound line rose).
 
@@ -234,7 +234,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
     def _grade(self, chk: str, ok: bool, line: str, *, ctl: bool = False) -> None:
         """A CHK line, or a CTL line for an open-test cell (a CTL mismatch still fails)."""
         if ctl:
-            name = "CTL-" + chk[4:]
+            name = "CTRL-" + chk[4:]
             if not ok:
                 self._fail(name, line)
             self.logger.info("%s LOG seed=%d %s", name, self.seed, line)
@@ -415,8 +415,8 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                         f"exp_full={int(bool(exp_st & ST_FULL))}"
                     )
                     if not ok:
-                        self._fail("CTL-STATUS", line)
-                    self.logger.info("CTL-STATUS LOG seed=%d %s", self.seed, line)
+                        self._fail("CTRL-STATUS", line)
+                    self.logger.info("CTRL-STATUS LOG seed=%d %s", self.seed, line)
                 irqs = vals["IRQS"] & FIELD["IRQS"]
                 irqen = vals["IRQEN"] & FIELD["IRQEN"]
                 irqp = vals["IRQP"] & FIELD["IRQP"]
@@ -678,8 +678,8 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                 f"mbox={m} fifo=A half=- got=0x{got & M64:016x} exp=0x{exp:016x} occ_before={occ}"
             )
             if not ok:
-                self._fail("CTL-ENTRY", line)
-            self.logger.info("CTL-ENTRY LOG seed=%d %s", self.seed, line)
+                self._fail("CTRL-ENTRY", line)
+            self.logger.info("CTRL-ENTRY LOG seed=%d %s", self.seed, line)
             alias_line(await self._check([m], f"alias_pop occ={mb.occ('A')}"), "pop")
         await self._wr(m, "out", "IRQS", IRQ_ALL)
         await self._wr(m, "in", "IRQS", IRQ_ALL)
@@ -896,8 +896,8 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                 exp = self.mbx[m].status(p)
                 line = f"mbox={m} port={p} end_state empty={st & 1} exp_empty={exp & 1}"
                 if (st & ST_EMPTY) != (exp & ST_EMPTY) or not exp & ST_EMPTY:
-                    self._fail("CTL-STATUS", line)
-                self.logger.info("CTL-STATUS LOG seed=%d %s", self.seed, line)
+                    self._fail("CTRL-STATUS", line)
+                self.logger.info("CTRL-STATUS LOG seed=%d %s", self.seed, line)
         for m in range(8):
             for p in ("out", "in"):
                 await self._wr(m, p, "IRQS", IRQ_ALL)

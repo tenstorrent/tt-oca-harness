@@ -277,7 +277,9 @@ class sep_abr_concurrent_rw_test(sep_base_test):
             f"{len(stuck)} of {len(every)} accesses did not complete; first: {stuck[0].describe()}"
         )
         for a in every:
-            self.logger.info("ABR-CRW %s %s t=[%d,%d]ps", a.tag, a.describe(), a.t_issue, a.t_done)
+            self.logger.info(
+                "INFO-ABR-CRW %s %s t=[%d,%d]ps", a.tag, a.describe(), a.t_issue, a.t_done
+            )
 
         history = self._history(cfg)
         self._grade_writes(every)
@@ -428,7 +430,7 @@ class sep_abr_concurrent_rw_test(sep_base_test):
         for bus in OWNED:
             rec = watch.rec[bus]
             self.logger.info(
-                "ABR-CRW %s: %d AR, %d R, %d AW, %d B; max %d reads, %d writes, %d "
+                "INFO-ABR-CRW %s: %d AR, %d R, %d AW, %d B; max %d reads, %d writes, %d "
                 "accesses outstanding; RREADY held low %d cycles, BREADY %d cycles",
                 bus,
                 len(rec.ar),
@@ -456,7 +458,7 @@ class sep_abr_concurrent_rw_test(sep_base_test):
             if not (rec.r_stall_cycles and rec.b_stall_cycles):
                 problems.append(f"{bus}: a response channel was never held off")
         self.logger.info(
-            "ABR-CRW cycles with both masters outstanding: %d of %d",
+            "INFO-ABR-CRW cycles with both masters outstanding: %d of %d",
             watch.all_busy_cycles,
             watch.cycles,
         )

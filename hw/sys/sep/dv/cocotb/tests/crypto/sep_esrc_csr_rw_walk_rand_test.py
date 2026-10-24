@@ -347,7 +347,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         self.t_drain: int | None = None
         self.p: int | None = None
 
-        self.chk.obs("LOCK-COUNT", locked_fields=plan.locked_count)
+        self.chk.info("LOCK-COUNT", locked_fields=plan.locked_count)
         self.chk.obs("LOCK-LIST", field="HEALTH_TEST_CTRL.ENABLE", walked="unlocked")
         self.logger.info(
             "WALK ro=%s restore=%s",
@@ -484,7 +484,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             r1 = await self._rd(reg)
             r2 = await self._rd(reg)
             if (r1 ^ r2) & mask:
-                self.chk.obs("RO-DYNAMIC", reg=reg, read1=f"0x{r1:08x}", read2=f"0x{r2:08x}")
+                self.chk.info("RO-DYNAMIC", reg=reg, read1=f"0x{r1:08x}", read2=f"0x{r2:08x}")
                 continue
             wrote = ~r1 & 0xFFFF_FFFF
             resp = await self._write_resp(reg, wrote)
@@ -755,7 +755,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             if self.stream.high_clocks_since(m) >= T_REF_WORDS:
                 break
         t_ref = max(1, self._now() - t0)
-        self.logger.info("T-REF clk=%d words=%d bound=%d", t_ref, T_REF_WORDS, t_cap)
+        self.logger.info("INFO-T-REF clk=%d words=%d bound=%d", t_ref, T_REF_WORDS, t_cap)
         return t_ref
 
     async def _enable_trials(self) -> None:

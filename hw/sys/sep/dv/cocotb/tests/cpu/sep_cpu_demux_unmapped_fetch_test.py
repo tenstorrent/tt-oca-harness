@@ -45,7 +45,7 @@ Checks:
   CHK-LSU-ICCM-WE    : no ICCM write enable on PR-TCM during the LSU store.
                        Control: the DMA copy of an SRAM word to another ICCM
                        word shows the ICCM write enable.
-  CTL-CORE-PATH      : (control) the marker code logs the drawn marker value and
+  CTRL-CORE-PATH      : (control) the marker code logs the drawn marker value and
                        the DCCM patterns read back exact; a difference fails the
                        leaf as a failed precondition.
 
@@ -54,7 +54,7 @@ The routine first sets ``mrac`` as the SEP firmware start-up does
 (ICCM, DCCM, PIC). The CSR number and the value are parsed from the first
 ``li t0`` and ``csrw <csr>, t0`` pair of ``_start`` in that file; the routine
 reads the CSR back into a mailbox record, and a read-back that differs fails
-the leaf (``CTL-DEMUX-MRAC``). The core then issues each store at its own size, so a 32-bit
+the leaf (``CTRL-DEMUX-MRAC``). The core then issues each store at its own size, so a 32-bit
 register write reaches a register block with its own strobe and no zero-strobe
 neighbour beat. ``OBS-DMA-CSR-WRITE`` logs the shape and BRESP of every LSU
 write to the secure DMA registers; ``OBS-EXT-READ`` logs every NMI.
@@ -610,7 +610,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         try:
             done = await self._wait_done()
             await ClockCycles(dut.clk_i, 8)
-            self.logger.info("CTL-DONE: done record seq=%d", done.seq)
+            self.logger.info("CTRL-DONE: done record seq=%d", done.seq)
         finally:
             gate.cancel()
             close_graded_window(self.logger)
@@ -631,9 +631,9 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
                 mrac_seen = True
                 line = f"csr=0x{CSR_MRAC:03x} readback=0x{mrac.val:08x} crt0=0x{MRAC_SEP:08x}"
                 if mrac.val != MRAC_SEP:
-                    self.logger.error("CTL-DEMUX-MRAC FAIL: %s", line)
-                    raise AssertionError(f"CTL-DEMUX-MRAC FAIL: {line}")
-                self.logger.info("CTL-DEMUX-MRAC: %s", line)
+                    self.logger.error("CTRL-DEMUX-MRAC FAIL: %s", line)
+                    raise AssertionError(f"CTRL-DEMUX-MRAC FAIL: {line}")
+                self.logger.info("CTRL-DEMUX-MRAC: %s", line)
             fail = self.mbx.find(OFF["FAIL"])
             if fail is not None:
                 raw = self.mbx.find(OFF["FAIL"] + 4)
@@ -646,7 +646,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             if done is not None:
                 if not mrac_seen:
                     raise AssertionError(
-                        "CTL-DEMUX-MRAC FAIL: no mrac record before the done record"
+                        "CTRL-DEMUX-MRAC FAIL: no mrac record before the done record"
                     )
                 return done
             if cyc % PROGRESS == 0:
@@ -905,21 +905,21 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         ctl = len(marks) == 1 and marks[0].val == p.mark_val
         ctl = ctl and [r.val for r in pats] == p.pattern
         self.logger.info(
-            "CTL-CORE-PATH: mem=iccm_fetch addr=0x%08x value=%s exp=0x%08x",
+            "CTRL-CORE-PATH: mem=iccm_fetch addr=0x%08x value=%s exp=0x%08x",
             ICCM_BASE + p.mark_off,
             ",".join(f"0x{r.val:08x}" for r in marks) or "-",
             p.mark_val,
         )
         for off, pat, r in zip(p.dccm_offs, p.pattern, pats + [None] * len(p.pattern)):
             self.logger.info(
-                "CTL-CORE-PATH: mem=dccm addr=0x%08x value=%s exp=0x%08x",
+                "CTRL-CORE-PATH: mem=dccm addr=0x%08x value=%s exp=0x%08x",
                 DCCM_BASE + off,
                 "X" if r is None else f"0x{r.val:08x}",
                 pat,
             )
         if not ctl:
-            self.failures.append("CTL-CORE-PATH: marker or DCCM pattern differs (precondition)")
-            self.logger.error("CTL-CORE-PATH FAIL: precondition failed")
+            self.failures.append("CTRL-CORE-PATH: marker or DCCM pattern differs (precondition)")
+            self.logger.error("CTRL-CORE-PATH FAIL: precondition failed")
         windows = [
             self._win("CORE_B", "CORE_M"),
             self._win("CORE_M", "CORE_E"),

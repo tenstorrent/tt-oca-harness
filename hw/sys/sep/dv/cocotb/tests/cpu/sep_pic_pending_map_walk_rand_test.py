@@ -54,14 +54,14 @@ Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
 masked in every compare), ``OBS-GW-EL`` (the EL idle and asserted reads,
 whose values depend on the unstated edge direction), ``OBS-MASKED-VISIBLE``,
 ``OBS-SRC34``, the source 12 latency and shape, the boundary source index, and
-the controls ``CTL-VECTOR`` and ``CTL-FIFO-EMPTY``.
+the controls ``INFO-VECTOR`` and ``INFO-FIFO-EMPTY``.
 
 The firmware brings the entropy stack up before the engine runs (AES masking
 and the OTBN URND draw from EDN); this test drives the raw noise of the ring
 oscillators (``start_esrc_noise_driver``), which needs ``+esrc_noise_force``.
 The idle-engine window runs before the FIFO-empty set-up: the HMAC drain stall
 holds only the FIFO read side, so the HMAC message cannot complete after it
-(logged as ``CTL-HMAC-AFTER-STALL``).
+(logged as ``INFO-HMAC-AFTER-STALL``).
 
 Every expected value comes from the stimulus model (the drawn sources,
 enables, gateway cells and clear values; ``env/sep_pic_map``) and the PIC
@@ -377,7 +377,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             self._on_mark(kv)
 
     async def _drive_stall(self, ip: str, kv: dict) -> None:
-        self.logger.info("STALL-DRIVE LOG ip=%s on=%d", ip, int(kv["on"]))
+        self.logger.info("INFO-STALL-DRIVE LOG ip=%s on=%d", ip, int(kv["on"]))
         await RisingEdge(self.dut.clk_i)
         getattr(self.dut, f"{ip}_fifo_drain_stall_i").value = 1 if kv["on"] else 0
 
@@ -393,7 +393,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         mask = {0: 1 << b1, 2: (1 << b2) | (1 << b3)}.get(step, 0)
         await RisingEdge(self.dut.clk_i)
         self.dut.sep_ext_interrupts_i.value = mask
-        self.logger.info("EXT-DRIVE LOG step=%d mask=0x%x", step, mask)
+        self.logger.info("INFO-EXT-DRIVE LOG step=%d mask=0x%x", step, mask)
 
     async def _req_win(self, kv: dict) -> None:
         op = next(k for k in kv if k in ("aes", "otp", "lcc"))
@@ -535,7 +535,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             lvl_mask = VEC_GRADED & ~vec_mask(PULSE)
             exp_vec = vec_mask(srcs - set(PULSE)) & lvl_mask
             self.logger.info(
-                "CTL-VECTOR LOG pass=%d probe_equal=%d vec=0x%011x exp=0x%011x mask=0x%011x xz=0x%x",
+                "INFO-VECTOR LOG pass=%d probe_equal=%d vec=0x%011x exp=0x%011x mask=0x%011x xz=0x%x",
                 pas,
                 int((vec & lvl_mask) == exp_vec),
                 vec,
@@ -702,7 +702,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             )
         alerts = [kv for _, kv in self._lines("ALERT")]
         self.logger.info(
-            "ALERT-MEIP LOG meip1_bit1=%s",
+            "INFO-ALERT-MEIP LOG meip1_bit1=%s",
             ",".join(str((kv["meip1"] >> 1) & 1) for kv in alerts),
         )
         # Pair trial.
@@ -794,8 +794,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
 
     def _chk_slotless(self) -> None:
-        q = [kv for _, kv in self._lines("CTL-QUIET")]
-        assert q, "no CTL-QUIET record"
+        q = [kv for _, kv in self._lines("CTRL-QUIET")]
+        assert q, "no CTRL-QUIET record"
         en = q[0]
         cleared = int(
             all(en[f"en_{ip}"] == 0 for ip in ("hmac", "kmac", "edn", "otbn", "spi"))
@@ -823,8 +823,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             )  # fmt: skip
             if op == "aes":
                 # The encryption must also complete, so the window is not idle.
-                st = [kv for _, kv in self._lines("CTL-AES-STATUS")]
-                assert len(st) == 1, f"expected one CTL-AES-STATUS record, got {len(st)}"
+                st = [kv for _, kv in self._lines("CTRL-AES-STATUS")]
+                assert len(st) == 1, f"expected one CTRL-AES-STATUS record, got {len(st)}"
                 status, cfg_ok = st[0]["status"], int(st[0]["cfg_ok"])
                 ok = ok and cfg_ok == 1 and status & AES_DONE_MASK == AES_DONE_WANT
                 text += (
@@ -1066,7 +1066,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self._chk_ext()
         _, mc = self._meip("masked_clr")
         self.logger.info(
-            "CTL-MASKED-CLEAR LOG baseline_equal=%d meip=%s",
+            "INFO-MASKED-CLEAR LOG baseline_equal=%d meip=%s",
             int(meip_masked(mc) == meip_masked(self._meip("reset")[1])),
             _hexw(mc),
         )

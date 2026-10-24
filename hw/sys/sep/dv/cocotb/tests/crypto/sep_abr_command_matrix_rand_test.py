@@ -51,7 +51,7 @@ Controls: ``CTRL-ABR-PARK`` (READY reads 1 after the re-arm of the
 single-step cell), ``CTRL-ABR-VALID-PRE`` (VALID reads 0 at the READY read
 before each command write, so the VALID wait sees the VALID of that command), ``CTRL-ABR-TAMPER`` (the ACVP accept case gives c~),
 ``CTRL-ABR-KEM-FLIP`` (the valid decapsulation case gives its K).
-``CTRL-ABR-SECRET-PRE`` logs which secret windows held a non-zero word before a
+``INFO-ABR-SECRET-PRE`` logs which secret windows held a non-zero word before a
 ZEROIZE; a window that held none logs ``OBS-ABR-SECRET-EMPTY`` and is not
 graded. A zero window proves that the window is not readable, not that the
 memory is wiped.
@@ -342,7 +342,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
         """Clean-up after a timed-out wait: ABR reset, bounded READY wait on both blocks."""
         was_open = self._win_open
         self._win(False)
-        self.logger.info("ABR-RECOVER seed=%d where=%s", self.seed, where)
+        self.logger.info("INFO-ABR-RECOVER seed=%d where=%s", self.seed, where)
         await self._abr_reset()
         for blk in (DSA, KEM):
             if await self._wait_ready(blk) is None:
@@ -495,7 +495,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             pre = await self._windows()
             for name, words in pre.items():
                 self.logger.info(
-                    "CTRL-ABR-SECRET-PRE seed=%d cell=%s window=%s nonzero=%d",
+                    "INFO-ABR-SECRET-PRE seed=%d cell=%s window=%s nonzero=%d",
                     self.seed,
                     cell,
                     name,

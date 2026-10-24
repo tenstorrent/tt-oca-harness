@@ -648,7 +648,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         assert ok, f"CHK-DMA-ALIAS FAIL: alias copy {text} expect sum=0x{exp:08x}"
         self.logger.info(
-            "CTL-DMA-ALIAS LOG: direct source 0x%08x read by the LSU sum=0x%08x expect=0x%08x",
+            "CTRL-DMA-ALIAS LOG: direct source 0x%08x read by the LSU sum=0x%08x expect=0x%08x",
             SRAM + p["pa_os"],
             r["ctl_sum"],
             exp,
@@ -675,7 +675,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         self._recovery_after("alias_ext_top")
         self.logger.info(
-            "CTL-DMA-ALIAS LOG: alias_ext_top later_beats=%s port_resp=DECERR replies=%d "
+            "CTRL-DMA-ALIAS LOG: alias_ext_top later_beats=%s port_resp=DECERR replies=%d "
             "dma_status=0x%08x error_code=0x%08x",
             [hex(b.addr) if b.addr is not None else "X" for b in aws[1:]],
             len(rep),
@@ -831,7 +831,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             n = p[f"reg_len{rid}"] // 4
             nw, xz = self._xz_free(self._sram_in(leg_r))
             self.logger.info(
-                "CTL-DMA-EP-REG LOG: reg=%s lsu_before=0x%08x lsu_after=0x%08x expect=0x%08x",
+                "CTRL-DMA-EP-REG LOG: reg=%s lsu_before=0x%08x lsu_after=0x%08x expect=0x%08x",
                 REG_NAME[rid],
                 r["ctl_a"],
                 r["ctl_b"],
@@ -1023,7 +1023,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         _, c2, _ = self._one("NCCTL2")
         self.logger.info(
-            "CTL-DMA-NOTCONN LOG: rom=0x%08x csr=0x%08x rom_after=0x%08x csr_after=0x%08x rom_ctrl_seen=%d",
+            "CTRL-DMA-NOTCONN LOG: rom=0x%08x csr=0x%08x rom_after=0x%08x csr_after=0x%08x rom_ctrl_seen=%d",
             c0["rom"],
             c0["csr"],
             c2["rom"],
@@ -1053,7 +1053,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 f"error_code=0x{r['ec']:08x}; expected STATUS.ERROR and ERROR_CODE.BUS_ERROR only"
             )
             self.logger.info(
-                "CTL-DMA-NOTCONN LOG: %s end=error dma_status=0x%08x error_code=0x%08x",
+                "CTRL-DMA-NOTCONN LOG: %s end=error dma_status=0x%08x error_code=0x%08x",
                 tgt,
                 r["st"],
                 r["ec"],

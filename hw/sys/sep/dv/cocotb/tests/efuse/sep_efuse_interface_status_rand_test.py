@@ -719,7 +719,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         if await self._jtag_presense_leg("graded", self.jtag_bits["graded"], twin_ok):
             await self._jtag_presense_leg("window", self.jtag_bits["window"], twin_ok)
         else:
-            self.chk.obs("IF-PRESENSE-JTAG-WINDOW-SKIP", reason="graded_leg_failed")
+            self.chk.info("IF-PRESENSE-JTAG-WINDOW-SKIP", reason="graded_leg_failed")
         await self._cold_reset()
 
     async def _case_read_go_no_enable(self) -> None:
@@ -949,7 +949,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         self.sense_bound = max(_FIRST_SENSE_BOUND, _SENSE_BOUND_MULT * t_sense)
         self.suppress_host_axi_transaction_info()
         self.logger.info(
-            "IF-STATUS PARAM seed=%d t_sense=%d w=%d w_mult=%d sense_bound=%d both_wait=%d",
+            "INFO-IF-STATUS PARAM seed=%d t_sense=%d w=%d w_mult=%d sense_bound=%d both_wait=%d",
             seed,
             t_sense,
             self.w,
@@ -972,10 +972,10 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             "data0": self._case_data0,
         }
         for name in p.leg["case_order"]:
-            self.logger.info("IF-STATUS CASE seed=%d case=%s", seed, name)
+            self.logger.info("INFO-IF-STATUS CASE seed=%d case=%s", seed, name)
             await cases[name]()
             if name == "pre_sense":
-                self.logger.info("IF-STATUS CASE seed=%d case=pre_sense_jtag", seed)
+                self.logger.info("INFO-IF-STATUS CASE seed=%d case=pre_sense_jtag", seed)
                 await self._case_presense_jtag()
         close_graded_window(self.logger)
         await self.cmds.stop()

@@ -28,7 +28,7 @@
 //   GWCLR v=.. held=.. after=..   one value of the clear-value corner
 //   HOLD src=.. ...           the level hold
 //   CLRIDLE src=.. ...        the idle clear
-//   CTL-AES-STATUS status=.. cfg_ok=..  the AES STATUS after the slotless encryption
+//   CTRL-AES-STATUS status=.. cfg_ok=..  the AES STATUS after the slotless encryption
 // A REQ is followed by a spin, so the host acts before the next bus access.
 
 #include <stdint.h>
@@ -509,7 +509,7 @@ static void write_enables(int pass) {
 }
 
 static void ctl_fifo_empty(const char *tag) {
-    rec_ctl("FIFO-EMPTY");
+    rec_info("FIFO-EMPTY");
     rec_str("t", tag);
     rec_str("intr_state_hmac", "na");
     rec_hex("intr_enable_hmac", rd(HM(ENABLE)));
@@ -892,7 +892,7 @@ static void idle_window(void) {
     while (rd(SEP_TOP_OTBN_STATUS_BASE_ADDR) != OTBN_STATUS_IDLE && --t > 0u) {
     }
     wr(OT(STATE), OTBN__INTR_STATE__DONE_bm);
-    rec_ctl("ENGINES-DONE");
+    rec_info("ENGINES-DONE");
     rec_hex("otbn", rd(SEP_TOP_OTBN_STATUS_BASE_ADDR));
     rec_hex("hmac_st", rd(HM(STATE)));
     rec_hex("kmac_st", rd(KM(STATE)));
@@ -965,7 +965,7 @@ int main(void) {
     // the FIFO head while the stall is on and the message cannot complete. The
     // completion is logged, not graded.
     uint32_t hdone = (uint32_t)hmac_finish(WAIT_ITERS / 16u);
-    rec_ctl("HMAC-AFTER-STALL");
+    rec_info("HMAC-AFTER-STALL");
     rec_num("done", hdone);
     rec_end();
     if (!kmac_finish()) {
@@ -1107,7 +1107,7 @@ int main(void) {
     uint32_t lcc = rd(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
     wait_clk(g_p[P_SETTLE]);
     req_kv("win", "lcc", 0u);
-    rec_ctl("SLOTLESS-READS");
+    rec_info("SLOTLESS-READS");
     rec_hex("otp", otp);
     rec_hex("lcc", lcc);
     rec_end();

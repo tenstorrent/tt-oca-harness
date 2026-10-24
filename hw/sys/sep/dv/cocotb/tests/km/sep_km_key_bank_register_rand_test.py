@@ -172,7 +172,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         self.plan = pl.draw_plan(seed)
         for line in pl.draw_lines(self.plan):
             self.logger.info(line)
-        self.chk.obs(
+        self.chk.info(
             "RSVD-MASKS",
             key_valid=[_h(b.valid_mask) for b in pl.BANKS],
             sk_valid=_h(pl.SK_VALID),
@@ -688,7 +688,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         await self.poke.wait_boot()
         after = _decode_state(await self._run(_state_ops(words=False)))
         self.logger.info(
-            "PARK-OBS seed=%d before=%s after=%s sk_valid=%d sk_irq=%d resp_ok=%d",
+            "OBS-KM-PARK seed=%d before=%s after=%s sk_valid=%d sk_irq=%d resp_ok=%d",
             self.plan.seed,
             _v(before),
             _v(after["vec"]),
