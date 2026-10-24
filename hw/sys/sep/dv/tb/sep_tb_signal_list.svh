@@ -566,8 +566,8 @@
 // sep_km_abr_mlkem_sideload_test.
 `SEP_TB_OUT(logic [255:0], abr_mlkem_seed_z_probe_o)
 // Adams Bridge zeroize timing. Bit 0 is the engine's zeroize request (either
-// ZEROIZE field, or a debug-unlock or scan-mode switch); bit 1 is its ready state,
-// the sequencer at RESET, which STATUS.READY reports. Zero in a build without
+// ZEROIZE field, or a debug-unlock or scan-mode switch); bit 1 is abr_ready, the
+// value STATUS.READY reports. Zero in a build without
 // Adams Bridge. Owner: sep_abr_zeroize_latency_test.
 `SEP_TB_OUT(logic [1:0], abr_zeroize_ready_probe_o)
 // Count of SEP->SMC accesses that landed outside every register window the

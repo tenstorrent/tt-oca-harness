@@ -1,14 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ABR ML-DSA ZEROIZE returns STATUS to READY from every state, and how long it takes.
+"""ABR ML-DSA ZEROIZE returns STATUS to READY alone from every state, and how long it takes.
 
+The sequencer parks at an operation's end with ``STATUS.VALID`` set, and
 ``STATUS.READY`` re-asserts only after a zeroize or a reset
-(hw/sys/sep/doc/adams_bridge.adoc), and ZEROIZE clears every internal register
-and memory (abr_reg.rdl, MLDSA_CTRL.ZEROIZE). This leaf zeroizes from three
-states an ML-DSA command can leave the engine in: idle at READY, waiting for a
-streamed message (``MSG_STREAM_READY``), and parked at ``VALID`` after a
-completed VERIFY. From each it grades that STATUS returns to READY with VALID
-clear.
+(hw/sys/sep/doc/adams_bridge.adoc); ZEROIZE clears every internal register and
+memory (integration/rdl/sep/abr_reg.rdl, MLDSA_CTRL.ZEROIZE); and a zeroize
+leaves STATUS reading READY alone (hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc,
+the driver's zeroize step). This leaf zeroizes from three states an ML-DSA
+command can leave the engine in: idle at READY, waiting for a streamed message
+(``MSG_STREAM_READY``), and parked at ``VALID`` after a completed VERIFY. At the
+VALID park it grades VALID set and READY clear (CHK-ABR-PARKED), so the zeroize
+from there moves both bits. After each zeroize it grades READY set and VALID
+clear (CHK-ABR-ZEROIZE-READY).
 
 No document states how long the zeroize takes, so the leaf measures it and logs
 the result without grading it (``OBS-ABR-ZEROIZE-CYCLES``). The engine-side count
@@ -19,8 +23,7 @@ polled back to back, that returns READY after one that did not. The first read
 after the write is logged as well (``first=ready`` or ``first=busy``): it can
 still see the READY from before the request reached the engine. The graded
 STATUS read follows the engine's return to RESET, so it does not depend on that
-window. The virtual platform's Adams Bridge model takes its ``zeroize_cycles``
-default from the engine-side measurement.
+window.
 
 The VERIFY vectors are the NIST ones the other ABR tests use: the external-mu
 accept case for the VALID state and the pure-with-context accept case of the
@@ -31,7 +34,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_abr_nist import NIST_HINT_CASES, NIST_SV_ACCEPT
 from env.sep_spec_tables import abr_field_mask, abr_off
 from sep_base_test import sep_base_test
@@ -64,13 +67,15 @@ _PROBE_READY = 1 << 1
 # sweep is a few thousand cycles; a VERIFY a few hundred thousand.
 _SWEEP_CYCLES_MAX = 100_000
 _STATUS_POLLS_MAX = 100_000
+# STATUS polls after the engine is back at RESET before the bus count gives up.
+_POLLS_AFTER_SWEEP = 16
 
 
 @pyuvm.test()
 class sep_abr_zeroize_latency_test(sep_base_test):
-    """ZEROIZE from idle, mid-stream and VALID returns STATUS to READY; its latency is logged."""
+    """ZEROIZE from idle, mid-stream and VALID returns STATUS to READY alone; its latency is logged."""
 
-    required_evidence = ("CHK-ABR-ZEROIZE-READY",)
+    required_evidence = ("CHK-ABR-PARKED", "CHK-ABR-ZEROIZE-READY")
 
     async def _wait_status(self, abr: SepAbr, mask: int, expect: int, *, what: str) -> int:
         for _ in range(_STATUS_POLLS_MAX):
@@ -91,6 +96,7 @@ class sep_abr_zeroize_latency_test(sep_base_test):
         start = fell = None
         for cycle in range(_SWEEP_CYCLES_MAX):
             await RisingEdge(clk)
+            await ReadOnly()
             v = int(probe.value)
             if start is None:
                 if v & _PROBE_ZEROIZE:
@@ -115,6 +121,7 @@ class sep_abr_zeroize_latency_test(sep_base_test):
         first = await abr.rd32(ABR_STATUS)
         busy_seen = not first & ST_READY
         bus = None
+        after_sweep = 0
         for _ in range(_STATUS_POLLS_MAX):
             polled = await abr.rd32(ABR_STATUS)
             if not polled & ST_READY:
@@ -122,11 +129,15 @@ class sep_abr_zeroize_latency_test(sep_base_test):
             elif busy_seen:
                 bus = self._cycle - start
                 break
+            if sweep.done():
+                after_sweep += 1
+                if after_sweep > _POLLS_AFTER_SWEEP:
+                    break
         engine = await sweep
         st = await abr.rd32(ABR_STATUS)
         assert st & ST_READY and not st & ST_VALID, (
             f"CHK-ABR-ZEROIZE-READY FAIL: state={state}: STATUS 0x{st:08x} after ZEROIZE, "
-            "not READY with VALID clear"
+            "not READY with VALID clear (adams_bridge.adoc, abr-mldsa-driver.adoc)"
         )
         self.logger.info(
             "CHK-ABR-ZEROIZE-READY PASS: state=%s STATUS=0x%08x after ZEROIZE", state, st
@@ -171,5 +182,10 @@ class sep_abr_zeroize_latency_test(sep_base_test):
         await abr.write_words(ABR_SIGNATURE, NIST_SV_ACCEPT.sig)
         await abr.write_words(ABR_EXTERNAL_MU, NIST_SV_ACCEPT.mu)
         await abr.wr32(ABR_CTRL, CMD_VERIFY | CTRL_EXTERNAL_MU)
-        await self._wait_status(abr, ST_VALID, ST_VALID, what="VERIFY VALID")
+        st = await self._wait_status(abr, ST_VALID, ST_VALID, what="VERIFY VALID")
+        assert not st & ST_READY, (
+            f"CHK-ABR-PARKED FAIL: STATUS 0x{st:08x} at the VALID park, READY set "
+            "(adams_bridge.adoc: READY re-asserts only after a zeroize or a reset)"
+        )
+        self.logger.info("CHK-ABR-PARKED PASS: STATUS=0x%08x, VALID set and READY clear", st)
         await self._zeroize_and_measure(abr, "valid")

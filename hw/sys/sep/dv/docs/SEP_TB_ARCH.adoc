@@ -1100,8 +1100,8 @@ Exceptions (a closed set):
   has no frontdoor. Observation only; it drives nothing. Owners:
   `sep_km_sideload_share_walk_test`, `sep_km_abr_mlkem_sideload_test`.
 * *Adams Bridge zeroize probe* — `abr_zeroize_ready_probe_o` is a read-only XMR
-  of the engine's zeroize request (bit 0) and its ready state, the sequencer at
-  RESET (bit 1). A STATUS read is a bus round trip, so it can only bound when the
+  of the engine's zeroize request (bit 0) and its ready state, `abr_ready`, the
+  value `STATUS.READY` reports (bit 1). A STATUS read is a bus round trip, so it can only bound when the
   sweep starts and ends; the probe times it to the cycle. Observation only; it
   drives nothing. Owner: `sep_abr_zeroize_latency_test`.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
