@@ -133,7 +133,10 @@ addrmap reset_unit {
         field {
             sw = rw;
             hw = r;
-            desc = "Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw";
+            onwrite = woclr;
+            desc = "Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+                    to clear. A write of 0, or a write whose byte strobes do not select this field,
+                    leaves it unchanged; a rising edge in the same cycle as a clearing write wins.";
         } isolate_req_smc_reg [0:0] = 0x0;
     };
 

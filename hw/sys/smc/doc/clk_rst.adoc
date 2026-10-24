@@ -366,9 +366,10 @@ OR (ISOLATE_REQ_PINEN_REG[i] AND synchronized isolate_req_pin_i)
 OR (ISOLATE_REQ_SMCEN_REG[i] AND ISOLATE_REQ_SMC_REG)
 ----
 
-The FLR edge sets `ISOLATE_REQ_SMC_REG`. After recovery, a write to that register
-with any write strobe asserted clears the latch; write data is ignored. An FLR
-edge in the same cycle takes priority. Ending the timed cool reset does not clear
+The FLR edge sets `ISOLATE_REQ_SMC_REG`. After recovery, software clears the
+latch by writing 1 to bit 0 with that byte's strobe set. A write of 0, or a
+write that does not strobe byte 0, leaves it set. An FLR edge in the same cycle
+takes priority. Ending the timed cool reset does not clear
 the latch or release isolation automatically. Clearing one source does not cancel
 an isolation request held by either of the others.
 
