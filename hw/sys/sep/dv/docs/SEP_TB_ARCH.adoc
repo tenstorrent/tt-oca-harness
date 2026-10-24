@@ -265,6 +265,10 @@ Observation probe groups:
   of the read and program interfaces sit before the guard and cannot show a
   refusal. `efuse_shim_resp_{valid,status,data}_o`, the shim response at the
   `sep` input `efuse_shim_command_resp_i`, after the sense-status inject.
+  `efuse_shadow_resp_valid_o` and `efuse_shadow_sense_done_o`, the response
+  valid at the input and `fuse_sense_done_o` at the output of the sensing FSM
+  (`efuse_shadow_regs`), the ports where `doc/otp_fuse_controller.adoc` states
+  the sense-done latency; the FCOV sampler reads the same two taps.
   `efuse_bank_psel_o`, the APB `psel` of the shim request to the bank model
   (`efuse_model_otp_req` in `sep_ip_integration`), sampled every clock to show
   that a request the guard blocks starts no bank access.
@@ -294,7 +298,9 @@ Observation probe groups:
   `pg_addr_err_i` and `req_err_i` (the `EFUSE_INTERFACE_CTRL_STATUS` error
   flags), `stored_shadow_i` (the unmasked stored shadow), `shim_resp_i` (valid,
   status and data of the shim response at the `sep` input
-  `efuse_shim_command_resp_i`) and `shim_cmd_i` (the post-guard fuse command).
+  `efuse_shim_command_resp_i`), `shim_cmd_i` (the post-guard fuse command),
+  and `sense_fsm_resp_v_i` and `sense_fsm_done_i` (the sensing FSM taps
+  `efuse_shadow_resp_valid_o` and `efuse_shadow_sense_done_o`).
   The sampler also reads `cmp_match_p_i` and `cmp_match_n_i`, `tok_words_i`,
   the digest latch inputs and `jtag_filt_sigint_i` from the taps above. No
   check reads them. Users: the owners of the eFuse and lifecycle groups of

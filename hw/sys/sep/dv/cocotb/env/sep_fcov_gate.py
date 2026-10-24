@@ -162,6 +162,20 @@ def set_esrc_af_clear_bound(strobes: int, log=None) -> bool:
     return _set_bound("esrc_af_clear_bound", strobes, "FCOV-ESRC-AF-CLEAR-BOUND", log)
 
 
+def set_rel_terms_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.rel_terms_pass`` (pass bits of the boot release leaf).
+
+    The pass label of ``sep_reset_source_cg.cp_release_order``
+    ``release_after_sense_rise`` (bit 0) under ``sep_boot_release_terms_test``.
+    The sampler holds the event as pending and samples it only when bit 0
+    rises. The leaf writes 0 at the start of each epoch and sets bit 0 after
+    ``CHK-REL-GATE`` of the epoch passes. Same rules as ``graded_owner``: a no-op that
+    returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    return _set_bound("rel_terms_pass", bits, "FCOV-REL-TERMS-PASS", log)
+
+
 def set_alert_rise_bound(clocks: int, log=None) -> bool:
     """Write ``u_sep_fcov.alert_rise_bound`` (clk_i clocks, or 0 for none).
 
@@ -218,6 +232,52 @@ def set_rom_flip_bits(bits: int, log=None) -> bool:
     return _set_bound("rom_flip_bits", bits, "FCOV-ROM-FLIP-BITS", log)
 
 
+def set_rom_noecc_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.rom_noecc_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_mem_aperture_cg.cp_rom_noecc``. The sampler holds
+    each labelled ROM load outcome inside the window of the boot ROM leaf as
+    pending and samples the pending outcomes only when this value rises. The
+    leaf writes 1 after CHK-ROM-NOECC of the graded instance passes and 0 after
+    it. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("rom_noecc_pass", int(bool(passed)), "FCOV-ROM-NOECC-PASS", log)
+
+
+def set_rom_ap_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.rom_ap_pass`` (1 after the checks of a leg pass, else 0).
+
+    The pass label of the other points of the boot ROM leaf (``cp_mem_x_class``
+    and ``cp_macro_if`` ROM cells, ``cp_access_size``,
+    ``cp_otf_reset_x_path[rom_read]``, ``cp_rom_write_master`` and
+    ``cp_rom_write_response``). The sampler counts each legal outcome inside the
+    window of that leaf as pending and samples the counts only when this value
+    rises; the next window open drops them. The leaf writes 1 after the checks
+    of a graded leg pass and 0 after it. Same rules as ``graded_owner``: a
+    no-op that returns False on Verilator. On VCS a sampler without the
+    variable is a testbench error.
+    """
+    return _set_bound("rom_ap_pass", int(bool(passed)), "FCOV-ROM-AP-PASS", log)
+
+
+def set_test_en_pin_pass(cells: int, log=None) -> bool:
+    """Write ``u_sep_fcov.te_pin_pass`` (a 4-bit cell mask, or 0 for none).
+
+    The pass label of ``sep_static_tieoff_cg.cp_test_en_consumer``. Bit
+    ``2 * test_en_i + class`` (class 0 clock gater, 1 AXI cell) set means that
+    every graded pin of the class equaled ``test_en_i`` after that edge. The
+    sampler samples a cell on the rise of its bit inside the window of
+    ``sep_test_en_pin_reach_test``. The leaf writes 0 when it opens and before
+    it closes its window, and the passed cells only after ``CHK-TEST-EN-PINS``
+    passes. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    if not 0 <= cells <= 0xF:
+        raise ValueError(f"te_pin_pass {cells:#x} is not a 4-bit mask")
+    return _set_bound("te_pin_pass", cells, "FCOV-TEST-EN-PIN-PASS", log)
+
+
 def set_dbg_axprot_pass(passed: bool, log=None) -> bool:
     """Write ``u_sep_fcov.dbg_axprot_pass`` (1 after the check passes, else 0).
 
@@ -229,6 +289,111 @@ def set_dbg_axprot_pass(passed: bool, log=None) -> bool:
     on Verilator. On VCS a sampler without the variable is a testbench error.
     """
     return _set_bound("dbg_axprot_pass", int(bool(passed)), "FCOV-DBG-AXPROT-PASS", log)
+
+
+def set_rstvec_persist_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.rstvec_persist_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_debug_trace_cg.cp_rstvec_persist``. The sampler
+    holds the reset class of the latest CPU reset release whose first retired
+    PC is the programmed vector as pending, and samples it only when this value
+    rises. The reset entry leaf writes 0 at the start of a persistence leg and
+    1 after that leg's persistence check passes. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    return _set_bound("rstvec_persist_pass", int(bool(passed)), "FCOV-RSTVEC-PERSIST-PASS", log)
+
+
+def set_efimg_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.efimg_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_lc_feat_ctrl_profile_cg.cp_presense_feat`` and
+    ``sep_boot_milestone_cg.cp_sense_surface[status1_port1]``. The sampler holds
+    each legal outcome inside the window of the eFuse image leaf and samples it
+    only when this value rises. The leaf writes 0 before a graded step and 1
+    after its check passes. Same rules as ``graded_owner``: a no-op that returns
+    False on Verilator. On VCS a sampler without the variable is a testbench
+    error.
+    """
+    return _set_bound("efimg_pass", int(bool(passed)), "FCOV-EFIMG-PASS", log)
+
+
+def set_tch_overlap_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.tch_overlap_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_token_channel_cg`` ``cp_token_hmac_overlap`` and
+    ``cp_go_while_busy``. The sampler holds each event of those points inside
+    the window of the token-channel leaf as pending, and samples it only when
+    this value rises. The leaf writes 0 at the start of a leg and 1 after the
+    check of that leg passes. Same rules as ``graded_owner``: a no-op that
+    returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    return _set_bound("tch_overlap_pass", int(bool(passed)), "FCOV-TCH-OVERLAP-PASS", log)
+
+
+def set_stm_shadow_wr_pass(cell: int | None, log=None) -> bool:
+    """Write ``u_sep_fcov.stm_shadow_wr_pass`` (``cell`` + 1 after the check passes, else 0).
+
+    The pass label of ``sep_efuse_secure_tm_cg.x_shadow_wr_block``. ``cell`` is
+    ``target * 4 + source * 2 + strap`` (target 0 ``LOCKS``, 1 ``LOCKS_SPARE``, 2
+    ``SIP_DIS``, 3 ``SYS_DIS``; source 0 frontdoor, 1 JTAG). The sampler holds the
+    readback outcome of each protection-shadow write per cell inside the window
+    of the secure test mode leaf, and samples a held cell only when this value
+    changes to its code. The leaf writes the code after the check of that cell
+    passes and 0 after. Same rules as ``graded_owner``: a no-op that returns
+    False on Verilator. On VCS a sampler without the variable is a testbench
+    error.
+    """
+    if cell is not None and not 0 <= cell < 16:
+        raise ValueError(f"x_shadow_wr_block cell {cell} is outside 0..15")
+    value = 0 if cell is None else cell + 1
+    return _set_bound("stm_shadow_wr_pass", value, "FCOV-STM-SHADOW-WR-PASS", log)
+
+
+def set_ef_hold_tag(tag: int, log=None) -> bool:
+    """Write ``u_sep_fcov.ef_hold_tag`` (the tag of the graded step, or 0 for none).
+
+    The held samples of the interface status, lock slot, token channel, secure
+    test mode and shim response leaves (``sep_efuse_if_status_cg``,
+    ``sep_efuse_lock_policy_cg``, ``sep_token_channel_cg``,
+    ``sep_efuse_secure_tm_cg``, ``sep_efuse_jtag_policy_cg``,
+    ``sep_efuse_field_value_cg``, ``sep_efuse_map_geometry_cg``,
+    ``sep_sec_dis_robustness_cg``). Inside the window of one of those leaves the
+    sampler holds each event with the tag written here, and drops an event
+    while the tag is 0. The leaf writes a new tag before each graded step and
+    0 after it. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("ef_hold_tag", tag, "FCOV-EF-HOLD-TAG", log)
+
+
+def set_ef_hold_pass(tag: int, log=None) -> bool:
+    """Write ``u_sep_fcov.ef_hold_pass`` (a passed step tag, or 0).
+
+    The pass label of the held samples of ``set_ef_hold_tag``. When this value
+    changes to a tag inside the window of the leaf, the sampler samples every
+    event held with that tag and drops it from the hold. The leaf writes the tag
+    after every check of that step passed, and 0 at least one ``clk_i`` cycle
+    later. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("ef_hold_pass", tag, "FCOV-EF-HOLD-PASS", log)
+
+
+def set_lock_exempt_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.lock_exempt_pass`` (1 after the check passes, else 0).
+
+    The pass label of ``sep_efuse_lock_policy_cg.x_exempt_write`` bins
+    ``bit0_prog_prod`` and ``bit3_prog_prod_end``. The sampler holds a PROD or
+    PROD_END ``LC_STATE`` read after the resense that follows a landed
+    ``LC_STATE`` program, and samples it only when this value rises. The lock
+    slot leaf writes 0 before the program and 1 after ``CHK-LOCK-EXEMPT-PROG``
+    passes. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("lock_exempt_pass", int(bool(passed)), "FCOV-LOCK-EXEMPT-PASS", log)
 
 
 def set_dma_smc_cpu_pass(passed: bool, log=None) -> bool:
@@ -370,6 +535,83 @@ def set_km_xbar_pass(cells: int, windows: int, log=None, outcomes: int = 0) -> b
             outcomes,
         )
     return True
+
+
+def set_stitch_state_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.stitch_state_pass`` (1 after a state check passes, else 0).
+
+    The pass label of the LC_STATE stitch leaf bins ``cp_stm_event_x_strap``
+    ``sense_done_strap0`` / ``sense_done_strap1`` and ``cp_transition``
+    ``test_dev_to_prod_prog``. The sampler holds each of those events inside
+    the window of that leaf as pending, and samples it only when this value
+    rises. The leaf writes 0 at the start of each state check and 1 after every
+    check of that state passed. Same rules as ``graded_owner``: a no-op that
+    returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    return _set_bound("stitch_state_pass", int(bool(passed)), "FCOV-STITCH-STATE-PASS", log)
+
+
+# Bits of ``tr_pass``: the points of the transient RMA leaf.
+TR_PASS_TRANSIENT = 1 << 0
+TR_PASS_SIMUL = 1 << 1
+TR_PASS_RESET = 1 << 2
+TR_PASS_PROG_LC = 1 << 3
+
+
+def set_transient_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.tr_pass`` (the passed checks of the transient RMA leaf, or 0).
+
+    The pass label of ``sep_lc_illegal_transition_cg`` ``x_transient`` (bit 0,
+    ``TR_PASS_TRANSIENT``), ``cp_simultaneous_match`` (bit 1, ``TR_PASS_SIMUL``)
+    and ``cp_reset_restore`` (bit 2, ``TR_PASS_RESET``), and of
+    ``sep_efuse_lock_policy_cg.x_lc_prog_gate`` (bit 3, ``TR_PASS_PROG_LC``).
+    The sampler holds each legal outcome of those points inside the window of
+    the transient RMA leaf as pending, and samples it only when its bit rises.
+    The leaf writes a bit after the check that grades that point passes
+    (CHK-TRANSIENT, CHK-TRANSIENT-SIMUL, CHK-TRANSIENT-RESET, CHK-PROG-LC) and
+    0 after. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    if bits >> 4 or bits < 0:
+        raise ValueError(f"tr_pass bits {bits:#x} are not 0 to 15")
+    return _set_bound("tr_pass", bits, "FCOV-TR-PASS", log)
+
+
+def set_demote_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.dem_pass`` (1 after the checks of a cell pass, else 0).
+
+    The pass label of ``sep_dtp_gating_ladder_cg`` ``x_path_case`` and
+    ``x_prod_demote_case3``. The sampler holds the legal cells of each
+    ``FEAT_CTRL`` read inside the window of the demote leaf as pending, and
+    samples them only when this value rises. The leaf writes 1 after every
+    check of a cell on the ``FEAT_CTRL`` value it read passed, and 0 after.
+    Same rules as ``graded_owner``: a no-op that returns False on Verilator.
+    On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("dem_pass", int(bool(passed)), "FCOV-DEM-PASS", log)
+
+
+# Bits of ``ovr_pass``: the points of the SEC_DIS override leaf.
+OVR_PASS_ALONE_OPEN = 1 << 0
+OVR_PASS_STM0 = 1 << 1
+
+
+def set_override_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.ovr_pass`` (the passed checks of the SEC_DIS override leaf, or 0).
+
+    The pass label of ``sep_sec_dis_boot_cg.cp_alone[override_open]`` (bit 0,
+    ``OVR_PASS_ALONE_OPEN``) and ``sep_sec_dis_robustness_cg``
+    ``x_secdis_stm_feat[secure_tm_0]`` (bit 1, ``OVR_PASS_STM0``). The sampler
+    holds each event of those cells inside the window of the override leaf as
+    pending, and samples it only when its bit rises. The leaf writes bit 0
+    after CHK-OVR-AFTER passes and bit 1 after CHK-OVERRIDE-TM0 passes, and 0
+    after. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    if bits >> 2 or bits < 0:
+        raise ValueError(f"ovr_pass bits {bits:#x} are not 0 to 3")
+    return _set_bound("ovr_pass", bits, "FCOV-OVR-PASS", log)
 
 
 def close_graded_window(log=None) -> bool:
