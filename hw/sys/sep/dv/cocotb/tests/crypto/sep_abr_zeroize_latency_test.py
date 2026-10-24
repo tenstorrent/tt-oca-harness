@@ -11,8 +11,8 @@ the driver's zeroize step). This leaf zeroizes from three states an ML-DSA
 command can leave the engine in: idle at READY, waiting for a streamed message
 (``MSG_STREAM_READY``), and parked at ``VALID`` after a completed VERIFY. At the
 VALID park it grades VALID set and READY clear (CHK-ABR-PARKED), so the zeroize
-from there moves both bits. After each zeroize it grades READY set and VALID
-clear (CHK-ABR-ZEROIZE-READY).
+from there moves both bits. After each zeroize it grades READY alone: READY set,
+and VALID, ERROR and MSG_STREAM_READY clear (CHK-ABR-ZEROIZE-READY).
 
 No document states how long the zeroize takes, so the leaf measures it and logs
 the result without grading it (``OBS-ABR-ZEROIZE-CYCLES``). The engine-side count
@@ -58,6 +58,9 @@ ABR_CTX_CONFIG = ABR_BASE + abr_off("MLDSA_CTX_CONFIG")
 ABR_CTX = ABR_BASE + abr_off("MLDSA_CTX")
 CTRL_STREAM_MSG = abr_field_mask("MLDSA_CTRL", "STREAM_MSG")
 ST_MSG_STREAM_READY = abr_field_mask("MLDSA_STATUS", "MSG_STREAM_READY")
+
+# The STATUS bits a zeroize leaves READY alone among.
+_ST_FLAGS = ST_READY | ST_VALID | ST_ERROR | ST_MSG_STREAM_READY
 
 # abr_zeroize_ready_probe_o bits.
 _PROBE_ZEROIZE = 1 << 0
@@ -135,9 +138,9 @@ class sep_abr_zeroize_latency_test(sep_base_test):
                     break
         engine = await sweep
         st = await abr.rd32(ABR_STATUS)
-        assert st & ST_READY and not st & ST_VALID, (
+        assert (st & _ST_FLAGS) == ST_READY, (
             f"CHK-ABR-ZEROIZE-READY FAIL: state={state}: STATUS 0x{st:08x} after ZEROIZE, "
-            "not READY with VALID clear (adams_bridge.adoc, abr-mldsa-driver.adoc)"
+            "not READY alone (adams_bridge.adoc, abr-mldsa-driver.adoc)"
         )
         self.logger.info(
             "CHK-ABR-ZEROIZE-READY PASS: state=%s STATUS=0x%08x after ZEROIZE", state, st

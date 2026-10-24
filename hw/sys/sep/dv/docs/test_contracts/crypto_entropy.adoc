@@ -4533,8 +4533,8 @@ states it, so `OBS-HINT-PRELOAD` logs it and nothing grades it (open spec questi
 
 *BFM / Model*: ocah_axi_vip, `abr_zeroize_ready_probe_o`
 
-*Objective*: Proves that an ML-DSA `ZEROIZE` returns `MLDSA_STATUS` to READY with
-VALID clear from each state an ML-DSA command leaves the engine in: idle, waiting
+*Objective*: Proves that an ML-DSA `ZEROIZE` returns `MLDSA_STATUS` to READY alone
+from each state an ML-DSA command leaves the engine in: idle, waiting
 for a streamed message, and parked at VALID after a completed VERIFY. The
 sequencer parks at an operation's end with `STATUS.VALID` set, and `STATUS.READY`
 re-asserts only after a zeroize or a reset (`hw/sys/sep/doc/adams_bridge.adoc`);
@@ -4573,8 +4573,8 @@ READY clear (`adams_bridge.adoc`: READY re-asserts only after a zeroize or a
 reset).
 |CHK-ABR-ZEROIZE-READY
 |After each zeroize, once the engine is back at RESET, `MLDSA_STATUS` reads READY
-set and VALID clear (`adams_bridge.adoc`; `abr-mldsa-driver.adoc`, READY alone
-after a zeroize).
+alone: READY set, and VALID, ERROR and MSG_STREAM_READY clear (`adams_bridge.adoc`;
+`abr-mldsa-driver.adoc`, READY alone after a zeroize).
 |===
 
 The leaf also logs one line per zeroize that no checker grades.
@@ -4596,8 +4596,8 @@ that never reached the engine, or a READY read before the sweep began, fails the
 wait rather than passing the check. The streaming and VALID states are each
 confirmed through STATUS before their zeroize. CHK-ABR-PARKED makes the VALID
 zeroize move both bits: READY from clear to set and VALID from set to clear, so a
-READY stuck at 1 or a VALID that never clears fails there. From idle and
-streaming, VALID is already clear before the zeroize; those legs grade READY.
+READY stuck at 1 or a VALID that never clears fails there. The streaming zeroize
+moves MSG_STREAM_READY from set to clear. From idle, only READY is graded live.
 
 *Not claimed*: the zeroize latency; no document states it, so
 `OBS-ABR-ZEROIZE-CYCLES` logs it and nothing grades it. Whether the sweep clears
