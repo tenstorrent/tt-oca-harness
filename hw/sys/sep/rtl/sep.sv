@@ -38,11 +38,12 @@ module sep #(
                                               // it, the SEP reset derived from it is released only
                                               // after fuse sensing and ext_boot_seq_done_i.
   input  logic dbg_rstb_i,                    // EL2 debug-module reset, active-low.
-  input  logic wdt_rst_ni,                    // Aggregated WDT resets from SMC and SEP, active-low;
-                                              // resets only the CPU.
+  input  logic wdt_rst_ni,                    // Watchdog reset, active-low: the SEP and SMC
+                                              // watchdog requests combined. Resets the CPU and
+                                              // the watchdog timer.
 
-  output logic wdt_timer_rst_req_o,           // SEP WDT bite reset request, active-high, to the SMC
-                                              // reset unit.
+  output logic wdt_timer_rst_req_o,           // SEP watchdog request (bite), active-high, to the
+                                              // SMC reset unit; held until wdt_rst_ni asserts.
 
   input  logic jtag_tck_i,                    // JTAG clock.
   input  logic jtag_tms_i,                    // JTAG test mode select, sampled on jtag_tck_i.
@@ -397,7 +398,8 @@ module sep #(
   logic sep_intermediate_reset_n; // Intermediate reset signal (before JTAG override) for efuse sensing being done
   logic sep_reset_n; // Efuse sensing done signal (after JTAG override)
   logic sep_cpu_reset_n; // This is the reset signal for the CPU
-  logic wdt_timer_rst_req; // This is the reset signal for the WDT timer (actitve high)
+  logic sep_wdt_reset_n; // Watchdog timer reset: rst_ni, or wdt_rst_ni captured on clk_i
+  logic wdt_timer_rst_req; // SEP watchdog request (bite), active high
   logic [2:0] ext_trng_src_sel; // External TRNG source selection from sep_cpu_ctrl
   logic km_wipe_state; // Key Manager emergency wipe control from sep_cpu_ctrl
   // Isolation handshake and sequenced resets between sep_reset_ctrl and sep_crypto
@@ -1154,6 +1156,7 @@ NumSramDemuxPorts
     .clk_i                   (clk_i),
     .clk_wdt_i               (clk_wdt_i),
     .rst_ni                  (rst_ni),
+    .rst_wdt_ni              (sep_wdt_reset_n),
     .test_en_i               (test_en_i),
     .scan_rst_ni             (scan_rst_ni),
     .sep_wdt_axi_req_i       (sep_wdt_axi_req),
@@ -1182,6 +1185,7 @@ NumSramDemuxPorts
     .test_en_i                  (test_en_i),
     .scan_rst_ni                (scan_rst_ni),
     .sep_cpu_reset_no           (sep_cpu_reset_n),
+    .sep_wdt_reset_no           (sep_wdt_reset_n),
     .sep_crypto_isolate_req_o   (sep_crypto_isolate_req),
     .sep_crypto_isolated_i      (sep_crypto_isolated),
     .sep_crypto_gated_rst_no    (sep_crypto_gated_rst_n)
