@@ -37,6 +37,8 @@ interface smc_tb_if;
 
   // CPU-cluster boundary state; cluster accesses wait for isolation to clear.
   logic cpu_cluster_isolate;
+  // Per-core reset levels at the CPU-wrapper output.
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0] cpu_core_resets_n;
   logic wdt_first_timeout;
   logic wdt_second_timeout;
   logic [smc_4core_cpu_pkg::NumCpuCores-1:0] wdt_timeout_core;
