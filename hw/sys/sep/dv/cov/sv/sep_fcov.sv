@@ -6661,17 +6661,19 @@ module sep_fcov (
     // DRBG lane adapter rule (hw/ip/drbg/doc/architecture.adoc:81-87), per
     // lane: an OKAY read at bit 2 = 0 with RDATA[63:32] 0, an OKAY read at
     // bit 2 = 1 with RDATA[31:0] 0, a misaligned read answered SLVERR with
-    // RDATA 0, a write whose strobe names the lane bit 2 does not select
-    // answered SLVERR.
+    // RDATA 0. A write whose strobe names the lane bit 2 does not select
+    // cannot reach a DUT port: the AXI master derives WSTRB from the address
+    // (hw/common/dv/vip/ocah_axi_vip/MANUAL.md:146-148), so those cells are
+    // ignored here and the rule is graded on the TB-owned vehicle adapter.
     x_drbg_lane: coverpoint x.dl iff (x.dl_v) {
       bins csrng_rd_lane0_hi_zero = {3'b0_00};
       bins csrng_rd_lane1_lo_zero = {3'b0_01};
       bins csrng_misaligned_rd_slverr_zero = {3'b0_10};
-      bins csrng_wrong_lane_strobe_slverr = {3'b0_11};
+      ignore_bins csrng_wrong_lane_strobe_slverr = {3'b0_11};
       bins edn_rd_lane0_hi_zero = {3'b1_00};
       bins edn_rd_lane1_lo_zero = {3'b1_01};
       bins edn_misaligned_rd_slverr_zero = {3'b1_10};
-      bins edn_wrong_lane_strobe_slverr = {3'b1_11};
+      ignore_bins edn_wrong_lane_strobe_slverr = {3'b1_11};
     }
     // A narrow write answered SLVERR with no request on the AXI-Lite-32 side
     // of the lane adapter over the beat (architecture.adoc:87).
@@ -6706,7 +6708,8 @@ module sep_fcov (
       bins esrc = {3'd4};
     }
     // An AxSIZE 3 OKAY read that carries the addressed register in bits
-    // [31:0], equal to its 32-bit read.
+    // [31:0], equal to its 32-bit read, and zero in bits [63:32]
+    // (hw/ip/drbg/doc/architecture.adoc:83).
     cp_wide_lane: coverpoint x.wl iff (x.wl_v) {
       bins csrng = {1'b0}; bins edn = {1'b1};
     }
@@ -20417,7 +20420,9 @@ module sep_fcov (
   function automatic logic cy_hr_ok(input int unsigned s);
     case (s)
       0: return graded_owner == FcovOwnSepHmacSwapContextRandTest;
-      1: return graded_owner == FcovOwnSepHmacFifoStreamRandTest;
+      // Source 1 under its owner: the HMAC FIFO tracker holds the raise until
+      // hmac_fifo_pass.
+      1: return 1'b0;
       2: return graded_owner == FcovOwnSepHmacIllegalCfgStartTest;
       3: return graded_owner == FcovOwnSepKmacStreamCfgRandTest;
       5:
@@ -20548,8 +20553,70 @@ module sep_fcov (
 
   sep_crypto_intr_cg u_sep_crypto_intr_cg = new();
 
+  // Pass label of sep_kmac_stream_cfg_rand_test (owner 136): its legal cells of
+  // sep_kmac_cfg_cmd_cg and its kmac_done cells of sep_crypto_intr_cg. The leaf
+  // writes 1 through the u_sep_fcov handle after every check and control of a
+  // cell passed, and 0 before the next cell starts. A legal cell of that
+  // cell's command cycle is held and samples only on the rise of the label
+  // inside the window; the next CMD.start, the window close and reset drop the
+  // held cells. It gates a sample; it is never a DUT value and drives nothing.
+  int unsigned kmac_stream_pass = 0;
+  // kmac_done cells of the owner-136 window: the count of hardware raises and
+  // of settled line cells (written only by cy_intr), the last line cell, and
+  // the counts already sampled or dropped (written only by the owner-136
+  // sampler of sep_kmac_cfg_cmd_cg).
+  int unsigned cy_ks_hr_n = 0;
+  int unsigned cy_ks_lg_n = 0;
+  logic [5:0] cy_ks_lg_v = '0;
+  int unsigned cy_ks_hr_done = 0;
+  int unsigned cy_ks_lg_done = 0;
+  // otbn_done raise of the owner-138 window: the count of hardware raises
+  // (written only by cy_intr) and the count already sampled (written only by
+  // the OTBN tracker, on the rise of the CHK-OTBN-CMD-END bit of
+  // otbn_cmd_pass).
+  int unsigned cy_oh_n = 0;
+  int unsigned cy_oh_done = 0;
+  // otbn_done line cells of the owner-138 window, one counter per cell:
+  //  0-3 x_line_gate {state, enable}; 4-5 cp_w1c_clear legal cells (enable);
+  //  6-7 cp_enable_flip (0 rise, 1 fall). cy_odl_n counts the settled
+  // outcomes (written only by cy_intr); cy_odl_done the outcomes already
+  // sampled or dropped (written only by the OTBN tracker, on the rise of the
+  // CHK-OTBN-DONE-LINE bit of otbn_cmd_pass, at an OTBN reset and outside
+  // the owner window).
+  int unsigned cy_odl_n[8] = '{default: 0};
+  int unsigned cy_odl_done[8] = '{default: 0};
+
   task automatic cy_intr(input int unsigned pt, input logic [5:0] v);
     cy_intr_t e;
+    // The kmac_done cells of the owner-136 window wait for kmac_stream_pass.
+    if (cy_own_kstr && (((pt == 3) && (v[3:0] == 4'd3)) || ((pt == 0) && (v[5:2] == 4'd3)))) begin
+      if (pt == 3) begin
+        cy_ks_hr_n <= cy_ks_hr_n + 1;
+      end else begin
+        cy_ks_lg_n <= cy_ks_lg_n + 1;
+        cy_ks_lg_v <= v;
+      end
+      return;
+    end
+    // The otbn_done raise of the owner-138 window waits for otbn_cmd_pass.
+    if (cy_own_otbn && (pt == 3) && (v[3:0] == 4'd12)) begin
+      cy_oh_n <= cy_oh_n + 1;
+      return;
+    end
+    // The legal otbn_done line cells of the owner-138 window wait for the
+    // CHK-OTBN-DONE-LINE bit of otbn_cmd_pass; fall_without_write samples at once.
+    if (cy_own_otbn && (pt == 0) && (v[5:2] == 4'd12)) begin
+      cy_odl_n[v[1:0]] <= cy_odl_n[v[1:0]] + 1;
+      return;
+    end
+    if (cy_own_otbn && (pt == 1) && (v[5:1] == 5'b0_1100)) begin
+      cy_odl_n[4+v[0]] <= cy_odl_n[4+v[0]] + 1;
+      return;
+    end
+    if (cy_own_otbn && (pt == 2) && (v[4:1] == 4'd12)) begin
+      cy_odl_n[6+v[0]] <= cy_odl_n[6+v[0]] + 1;
+      return;
+    end
     e = '0;
     case (pt)
       0: begin
@@ -20598,6 +20665,24 @@ module sep_fcov (
   // its block, where the vector bit equals state AND enable: the
   // specification states no latency, so the sample waits for the line.
   logic [12:0] cy_hw = '0;  // state bit set by hardware, not by INTR_TEST
+  // Pass label of the owner-135 bins (sep_kmac_unsupported_cfg_inject_test):
+  // 1 the blocked cell passed CHK-KMAC-UNSUP and CHK-KMAC-ERRCODE, 2 its
+  // recovery passed CHK-KMAC-ERRPROC, 3 the enabled cell passed
+  // CHK-KMAC-UNSUP-EN, 0 none. The leaf writes it through the u_sep_fcov
+  // handle after that check passes, holds it, then writes 0. Inside the window
+  // of that owner a legal outcome is held as pending at its DUT event and
+  // samples only when the label rises from 0 to the value that names its
+  // check; any rise drops the other pending outcomes, and the window close or
+  // a KMAC reset drops them all. Illegal outcomes sample at once. The label
+  // gates a sample; it is never a DUT value and drives nothing.
+  int unsigned kmac_unsup_pass = 0;
+  logic cy_ku_pass_q = 1'b0;
+  wire cy_ku_rise = cy_own_kunsup && (kmac_unsup_pass != 0) && !cy_ku_pass_q;
+  always @(posedge clk_i) cy_ku_pass_q <= (kmac_unsup_pass != 0);
+  // Owner 135: kmac_err cells of cp_hw_raise and x_line_gate held pending.
+  logic cy_ku_hr_pend = 1'b0;
+  logic cy_ku_lg_pend = 1'b0;
+  logic [1:0] cy_ku_lg_val = '0;  // {state, enable}
   logic [12:0] cy_lg_pend = '0;
   logic [12:0] cy_wc_pend = '0;
   logic [12:0] cy_wc_en = '0;
@@ -20632,7 +20717,10 @@ module sep_fcov (
       cy_hw[i] <= dom_ok && hw;
 
       // cp_hw_raise
-      if (dom_ok && rise && !cy_tst_rec[i] && cy_hr_ok(i)) cy_intr(3, 6'(i));
+      if (dom_ok && rise && !cy_tst_rec[i] && cy_hr_ok(i)) begin
+        if (cy_own_kunsup && (i == 5)) cy_ku_hr_pend <= 1'b1;
+        else cy_intr(3, 6'(i));
+      end
 
       // x_line_gate
       if (!dom_ok || (graded_owner == FcovOwnNone)) begin
@@ -20641,7 +20729,14 @@ module sep_fcov (
         cy_lg_pend[i] <= 1'b1;
       end else if (cy_lg_pend[i] && (cy_line[i] == (cy_st[i] && cy_en[i]))) begin
         cy_lg_pend[i] <= 1'b0;
-        if (cy_lg_ok(i, cy_st[i], cy_en[i], hw)) cy_intr(0, {4'(i), cy_st[i], cy_en[i]});
+        if (cy_lg_ok(i, cy_st[i], cy_en[i], hw)) begin
+          if (cy_own_kunsup && (i == 5)) begin
+            cy_ku_lg_pend <= 1'b1;
+            cy_ku_lg_val  <= {cy_st[i], cy_en[i]};
+          end else begin
+            cy_intr(0, {4'(i), cy_st[i], cy_en[i]});
+          end
+        end
       end
 
       // cp_w1c_clear: a fall while an LSU write is in flight waits for the
@@ -20691,6 +20786,18 @@ module sep_fcov (
           end
         end
       end
+    end
+    // Owner 135: the kmac_err cells sample when kmac_unsup_pass rises to 1.
+    if (!cy_own_kunsup || !cy_ip[4]) begin
+      cy_ku_hr_pend <= 1'b0;
+      cy_ku_lg_pend <= 1'b0;
+    end else if (cy_ku_rise) begin
+      if (kmac_unsup_pass == 1) begin
+        if (cy_ku_hr_pend) cy_intr(3, 6'd5);
+        if (cy_ku_lg_pend) cy_intr(0, {4'd5, cy_ku_lg_val});
+      end
+      cy_ku_hr_pend <= 1'b0;
+      cy_ku_lg_pend <= 1'b0;
     end
   end
 
@@ -21739,14 +21846,45 @@ module sep_fcov (
     u_sep_aes_fault_cg.sample(e);
   endtask
 
+  // Pass label of the owner-134 bins (sep_crypto_shadow_update_err_rand_test,
+  // written by set_aes_shadow_pass of env/sep_fcov_gate.py). Each legal cell
+  // that the leaf grades is held as seen at its DUT event inside the owner
+  // window and samples only on the rise of its bit, which the leaf writes after
+  // the check of that instance passed: bit 0 x_shadow_pair_aes.mismatched
+  // (CHK-SHADOW-ERR), 1 x_shadow_pair_aes.matched (CHK-SHADOW-CTRL),
+  // 2 cp_update_err_recovery (CHK-SHADOW-RESTART), 3 x_shadow_pair_aux.mismatched
+  // (CHK-AUX-SHADOW-ERR), 4 x_shadow_pair_aux.matched (CHK-AUX-SHADOW-WRITE),
+  // 5 x_shadow_pair_gcm.mismatched (CHK-GCM-SHADOW-ERR), 6
+  // x_shadow_pair_gcm.matched (CHK-GCM-SHADOW-WRITE), 7 both cp_aux_regwen cells
+  // (CHK-AUX-REGWEN), 8 both cp_reset_restore cells (CHK-AUX-RESET), 9 + b the
+  // x_alert_source cell of block b (CHK-ALERT-MALFORMED). The window close drops
+  // a held cell. The illegal x_shadow_pair_aes cell samples at once. The label
+  // gates a sample; it is never a bin value and drives nothing.
+  localparam int CyShSpMis = 0;
+  localparam int CyShSpEq = 1;
+  localparam int CyShUr = 2;
+  localparam int CyShXaMis = 3;
+  localparam int CyShXaEq = 4;
+  localparam int CyShXgMis = 5;
+  localparam int CyShXgEq = 6;
+  localparam int CyShAr = 7;
+  localparam int CyShRr = 8;
+  localparam int CyShAs = 9;
+  logic [14:0] aes_shadow_pass = '0;
+  logic [14:0] cy_shp_q = '0;
+  wire [14:0] cy_shp_rise = aes_shadow_pass & ~cy_shp_q;
+  always @(posedge clk_i) cy_shp_q <= aes_shadow_pass;
+
   // x_shadow_pair_aux (owner of x_shadow_pair_aes). The phase of the
   // CTRL_AUX_SHADOWED pair is known after an AES reset or an AUX read, and
   // only writes while CTRL_AUX_REGWEN is 1 count. A second write with a
-  // different value samples "mismatched" at a vector bit 32 rise from its AW
-  // handshake to CyAlertBound clocks after its OKAY response; an equal second
-  // write arms "matched" until the next AUX read, which samples the bin when
-  // it returns the written value and no bit 32 rise came between.
+  // different value holds "mismatched" as seen at a vector bit 32 rise from its
+  // AW handshake to CyAlertBound clocks after its OKAY response; an equal
+  // second write arms "matched" until the next AUX read, which holds the bin
+  // as seen when it returns the written value and no bit 32 rise came between.
+  // A seen cell samples on the rise of its aes_shadow_pass bit.
   logic cy_xa_phase = 1'b0;
+  logic [1:0] cy_xa_seen = '0;  // {mismatched, matched}
   logic [31:0] cy_xa_prev = '0;
   logic [1:0] cy_xa_pend = '0;  // 0 none, 1 matched, 2 mismatched
   logic cy_xa_pulse = 1'b0;     // bit 32 rose since the last AUX AW handshake
@@ -21758,6 +21896,7 @@ module sep_fcov (
       cy_xa_phase <= 1'b0;
       cy_xa_pend  <= 2'd0;
       cy_xa_pulse <= 1'b0;
+      cy_xa_seen  <= '0;
     end else begin
       if (aw_hs && (lsu_aw_addr_i == AES_CTRL_AUX_SHADOWED_REG_ADDR)) begin
         cy_xa_pulse <= cy_vec_rise[32];
@@ -21770,8 +21909,8 @@ module sep_fcov (
           cy_xa_phase <= 1'b1;
         end else if ((wr_data & AesAuxFields) != cy_xa_prev) begin
           if (cy_xa_pulse || cy_vec_rise[32]) begin
-            cy_afl(3, 2'd1);
-            cy_xa_pend <= 2'd0;
+            cy_xa_seen[1] <= 1'b1;
+            cy_xa_pend    <= 2'd0;
           end else begin
             cy_xa_pend <= 2'd2;
           end
@@ -21786,8 +21925,8 @@ module sep_fcov (
       if (cy_xa_rd) cy_xa_phase <= 1'b0;
       if (cy_xa_pend == 2'd2) begin
         if (cy_vec_rise[32]) begin
-          cy_afl(3, 2'd1);
-          cy_xa_pend <= 2'd0;
+          cy_xa_seen[1] <= 1'b1;
+          cy_xa_pend    <= 2'd0;
         end else if (cy_xa_cnt > CyAlertBound) begin
           cy_xa_pend <= 2'd0;
         end else begin
@@ -21797,9 +21936,17 @@ module sep_fcov (
         if (cy_vec_rise[32]) begin
           cy_xa_pend <= 2'd0;
         end else if (cy_xa_rd) begin
-          if ((rd_data & AesAuxFields) == cy_xa_prev) cy_afl(3, 2'd0);
+          if ((rd_data & AesAuxFields) == cy_xa_prev) cy_xa_seen[0] <= 1'b1;
           cy_xa_pend <= 2'd0;
         end
+      end
+      if (cy_shp_rise[CyShXaMis] && cy_xa_seen[1]) begin
+        cy_afl(3, 2'd1);
+        cy_xa_seen[1] <= 1'b0;
+      end
+      if (cy_shp_rise[CyShXaEq] && cy_xa_seen[0]) begin
+        cy_afl(3, 2'd0);
+        cy_xa_seen[0] <= 1'b0;
       end
     end
   end
@@ -22021,6 +22168,26 @@ module sep_fcov (
   logic       cy_fe_on = 1'b0;
   logic       cy_fe_full = 1'b0;
   int unsigned cy_fe_cnt = 0;
+  // Pass label of the points of owner sep_hmac_fifo_stream_rand_test, written by
+  // set_hmac_fifo_pass of env/sep_fcov_gate.py. Bit 0 x_len_class, bit 1
+  // x_fifo_state_mode, bit 2 cp_backpressure, bit 3 cp_hmac_fifo_empty_qual
+  // empty_after_full, bit 4 cp_hmac_fifo_empty_qual empty_not_full, bit 5
+  // cp_hw_raise hmac_fifo_empty, bit 6 cp_wipe_secret digest_reads_w, bit 7
+  // cp_wipe_secret next_hmac_all_w_key. A legal cell is held pending at its DUT
+  // event inside the owner window and samples only when its bit rises inside that
+  // window; an illegal cell samples at once; the window close drops the pending
+  // cells. The leaf writes the bits of the cells a check graded after that check
+  // passes, then 0. The label gates a sample; it is never a bin value and drives
+  // nothing.
+  logic [7:0] hmac_fifo_pass = '0;
+  logic [7:0] cy_hfp_q = '0;
+  wire  [7:0] cy_hfp_rise = hmac_fifo_pass & ~cy_hfp_q;
+  always @(posedge clk_i) cy_hfp_q <= hmac_fifo_pass;
+  logic [63:0] cy_lc_pend = '0;  // x_len_class values held
+  logic [15:0] cy_fs_pend = '0;  // x_fifo_state_mode values held
+  logic       cy_bp_pend = 1'b0;
+  logic [1:0] cy_fq_pend = '0;  // cp_hmac_fifo_empty_qual values 0 and 1 held
+  logic       cy_hr_pend = 1'b0;  // cp_hw_raise hmac_fifo_empty held
   logic       cy_dk_on = 1'b0;
   logic [4:0] cy_dk_cell = '0;
   logic       cy_tk_on = 1'b0;
@@ -22150,13 +22317,19 @@ module sep_fcov (
       end
     end
 
-    // Entry 1.28: x_len_class, x_fifo_state_mode, cp_backpressure and the
-    // cp_hmac_fifo_empty_qual point of sep_crypto_intr_cg.
+    // Entry 1.28: x_len_class, x_fifo_state_mode, cp_backpressure, the
+    // cp_hmac_fifo_empty_qual point and the hmac_fifo_empty cell of cp_hw_raise
+    // of sep_crypto_intr_cg. Legal cells are held until hmac_fifo_pass.
     if (!cy_own_hfifo || !cy_ip[3]) begin
-      cy_lc_on <= 1'b0;
-      cy_bp_on <= 1'b0;
-      cy_fe_on <= 1'b0;
+      cy_lc_on   <= 1'b0;
+      cy_bp_on   <= 1'b0;
+      cy_fe_on   <= 1'b0;
       cy_fe_full <= 1'b0;
+      cy_lc_pend <= '0;
+      cy_fs_pend <= '0;
+      cy_bp_pend <= 1'b0;
+      cy_fq_pend <= '0;
+      cy_hr_pend <= 1'b0;
     end else begin
       logic full;
       // Bytes written between hash_start and hash_process, from the paired
@@ -22172,7 +22345,7 @@ module sep_fcov (
           int x;
           d = cy_dig_idx(cy_h_dig);
           x = (d >= 0) ? cy_len_idx(d, cy_lc_n) : -1;
-          if (x >= 0) cy_hcfg(5, {2'(d), 4'(x)});
+          if (x >= 0) cy_lc_pend[{2'(d), 4'(x)}] <= 1'b1;
         end
         cy_lc_on <= 1'b0;
       end else begin
@@ -22194,7 +22367,8 @@ module sep_fcov (
         end else begin
           md = 2'd1;
         end
-        cy_hcfg(6, {2'd0, st, md});
+        if (st == 2'd3) cy_hcfg(6, {2'd0, st, md});
+        else cy_fs_pend[{st, md}] <= 1'b1;
       end
       // A write request issued while fifo_full is 1 whose OKAY response
       // comes after fifo_full falls.
@@ -22206,7 +22380,7 @@ module sep_fcov (
       end else begin
         if (!cy_h_full) cy_bp_fell <= 1'b1;
         if (b_hs) begin
-          if (cy_bp_fell && (lsu_b_resp_i == AxiOkay) && (aw_out_q == 4'd1)) cy_hcfg(7, 6'd0);
+          if (cy_bp_fell && (lsu_b_resp_i == AxiOkay) && (aw_out_q == 4'd1)) cy_bp_pend <= 1'b1;
           cy_bp_on <= 1'b0;
         end
       end
@@ -22216,13 +22390,14 @@ module sep_fcov (
       full = (cy_fe_full || cy_h_full) && !cy_h_start;
       if (cy_fe_on) begin
         if (cy_st_rise[1]) begin
-          cy_intr(5, full ? 6'd0 : 6'd2);
+          if (full) cy_fq_pend[0] <= 1'b1;
+          else cy_intr(5, 6'd2);
           cy_fe_on <= 1'b0;
           full = 1'b0;
         end else if (!cy_h_fe) begin
           cy_fe_on <= 1'b0;
         end else if (cy_fe_cnt >= CySettle) begin
-          if (!full) cy_intr(5, 6'd1);
+          if (!full) cy_fq_pend[1] <= 1'b1;
           cy_fe_on <= 1'b0;
         end
         cy_fe_cnt <= cy_fe_cnt + 1;
@@ -22231,6 +22406,36 @@ module sep_fcov (
         cy_fe_cnt <= 0;
       end
       cy_fe_full <= full;
+      // cp_hw_raise hmac_fifo_empty: a hardware raise of the INTR_STATE bit
+      // (source 1) with its domains up.
+      if (cy_st_rise[1] && !cy_tst_rec[1] && cy_ip_q[3] && cy_ip[5] && cy_ip_q[5]) begin
+        cy_hr_pend <= 1'b1;
+      end
+      // Held cells sample on the rise of their bit of hmac_fifo_pass.
+      if (cy_hfp_rise[0]) begin
+        for (int v = 0; v < 64; v++) if (cy_lc_pend[v]) cy_hcfg(5, 6'(v));
+        cy_lc_pend <= '0;
+      end
+      if (cy_hfp_rise[1]) begin
+        for (int v = 0; v < 16; v++) if (cy_fs_pend[v]) cy_hcfg(6, {2'd0, 4'(v)});
+        cy_fs_pend <= '0;
+      end
+      if (cy_hfp_rise[2]) begin
+        if (cy_bp_pend) cy_hcfg(7, 6'd0);
+        cy_bp_pend <= 1'b0;
+      end
+      if (cy_hfp_rise[3]) begin
+        if (cy_fq_pend[0]) cy_intr(5, 6'd0);
+        cy_fq_pend[0] <= 1'b0;
+      end
+      if (cy_hfp_rise[4]) begin
+        if (cy_fq_pend[1]) cy_intr(5, 6'd1);
+        cy_fq_pend[1] <= 1'b0;
+      end
+      if (cy_hfp_rise[5]) begin
+        if (cy_hr_pend) cy_intr(3, 6'd1);
+        cy_hr_pend <= 1'b0;
+      end
     end
 
     // Entry 1.30: x_delivered_keylen, cp_two_engine_keys.
@@ -22313,8 +22518,12 @@ module sep_fcov (
   logic cy_sp_phase = 1'b0;
   logic cy_sp_known = 1'b0;
   logic cy_sp_pulse = 1'b0;
-  logic [1:0] cy_sp_pend = '0;  // 1 matched pair waits for its window end, 2 mismatched waits
+  logic [1:0] cy_sp_pend = '0;  // 1 matched pair waits for its pass label, 2 mismatched waits
+  logic cy_sp_seen = 1'b0;  // x_shadow_pair_aes mismatched seen, waits for its pass label
   logic [1:0] cy_ur = '0;
+  logic cy_ur_seen = 1'b0;  // cp_update_err_recovery seen, waits for its pass label
+  logic [1:0] cy_rr_seen = '0;  // cp_reset_restore {aux_pair_lands, update_error_cleared} seen
+  logic [1:0] cy_ar_seen = '0;  // cp_aux_regwen {regwen_stays_locked, aux_write_refused} seen
   logic cy_rs0 = 1'b0;
   logic cy_rs1 = 1'b0;
   logic [1:0] cy_rs1_n = '0;
@@ -22328,16 +22537,66 @@ module sep_fcov (
   wire cy_a_din_wr = wr_ev && cy_in(aw_addr_q, AES_DATA_IN_0__REG_ADDR, AES_DATA_IN_3__REG_ADDR);
   wire [1:0] cy_a_din_ix = 2'((aw_addr_q - AES_DATA_IN_0__REG_ADDR) >> 2);
 
+  // Pass label of the owner-132 bins of sep_aes_op_status_cg
+  // (sep_aes_stream_status_rand_test) other than cp_busy_write: one bit per
+  // check, CyAsp* below. Inside the owner window a legal outcome is held as
+  // pending at its DUT event and samples only when the bit of the check that
+  // grades it rises inside that window. A pending outcome stays held while the
+  // window is closed and across an AES reset: the leaf writes a bit only after
+  // its check passed and only while no check or control of the run failed, so
+  // a pending outcome of a failed check never samples. Illegal outcomes sample
+  // at once. The label gates a sample; it is never a DUT value and drives
+  // nothing.
+  int unsigned aes_stream_pass = 0;
+  localparam int unsigned CyAspStall = 0;  // CHK-AES-STALL
+  localparam int unsigned CyAspLost = 1;  // CHK-AES-LOST
+  localparam int unsigned CyAspStartAuto = 2;  // CHK-AES-START-AUTO
+  localparam int unsigned CyAspStartManual = 3;  // CHK-AES-START-MANUAL and CHK-AES-LOST
+  localparam int unsigned CyAspInputReady = 4;  // CHK-AES-INPUT-READY
+  localparam int unsigned CyAspIdle = 5;  // CHK-AES-IDLE
+  localparam int unsigned CyAspBits = 6;
+  logic [CyAspBits-1:0] cy_asp_q = '0;
+  always @(posedge clk_i) cy_asp_q <= CyAspBits'(aes_stream_pass);
+  wire [CyAspBits-1:0] cy_asp_rise = cy_own_astr ? (CyAspBits'(aes_stream_pass) & ~cy_asp_q) : '0;
+  // Pending outcomes of x_mode_status, cp_lost_clear, cp_nonidle_cause and
+  // cp_start_suppress, one bit each:
+  //  0-2 x_mode_status {automatic_stall, automatic_stall_cleared_by_read,
+  //      manual_output_lost}; 3 cp_lost_clear cleared_by_ctrl_write
+  //  4-5 cp_nonidle_cause {core_running, stall}
+  //  6 cp_start_suppress manual_legal_idle_falls; 7 automatic_no_start
+  localparam int unsigned CyAsdN = 8;
+  localparam int unsigned CyAsdCls[CyAsdN] = '{
+      CyAspStall,
+      CyAspStall,
+      CyAspLost,
+      CyAspLost,
+      CyAspIdle,
+      CyAspStall,
+      CyAspStartManual,
+      CyAspStartAuto
+  };
+  logic [CyAsdN-1:0] cy_asd = '0;
+  logic [1:0] cy_ir_pd = '0;  // cp_input_ready_hold {held_while_stalled, loaded_after_release}
+
   // cp_input_ready_hold (1.32): all four DATA_IN words written while STALL
   // is 1 and INPUT_READY is 0 arm the hold; INPUT_READY 1 on a clock before
-  // the STALL fall is illegal; the STALL fall samples the held bin, and the
-  // first INPUT_READY rise from that fall samples the load. An INPUT_READY
-  // rise (a load) clears the written-word set.
+  // the STALL fall is illegal; the STALL fall holds the held bin, and the
+  // first INPUT_READY rise from that fall holds the load, each as pending for
+  // the CyAspInputReady bit of aes_stream_pass. An INPUT_READY rise (a load)
+  // clears the written-word set.
   logic [3:0] cy_ir_din = '0;
   logic cy_ir_hold = 1'b0;
   logic cy_ir_bad = 1'b0;
   logic cy_ir_rel = 1'b0;
   always @(posedge clk_i) begin
+    logic [1:0] irp;
+    irp = cy_ir_pd;
+    if (cy_asp_rise[CyAspInputReady]) begin
+      for (int b = 0; b < 2; b++) begin
+        if (irp[b]) cy_aop(4, 2'(b));
+      end
+      irp = '0;
+    end
     if (!cy_own_astr || !cy_ip[2]) begin
       cy_ir_din  <= '0;
       cy_ir_hold <= 1'b0;
@@ -22353,16 +22612,17 @@ module sep_fcov (
       cy_ir_din <= d;
       if (cy_ir_hold) begin
         if (cy_a_stall_fall) begin
-          cy_aop(4, cy_ir_bad ? 2'd2 : 2'd0);
+          if (cy_ir_bad) cy_aop(4, 2'd2);
+          else irp[0] = 1'b1;
           cy_ir_hold <= 1'b0;
-          if (!cy_ir_bad && ir_rise) cy_aop(4, 2'd1);
+          if (!cy_ir_bad && ir_rise) irp[1] = 1'b1;
           cy_ir_rel <= !cy_ir_bad && !ir_rise;
         end else if (cy_a_ir_n) begin
           cy_ir_bad <= 1'b1;
         end
       end else if (cy_ir_rel) begin
         if (ir_rise) begin
-          cy_aop(4, 2'd1);
+          irp[1] = 1'b1;
           cy_ir_rel <= 1'b0;
         end
       end else if (cy_a_stall && (cy_ir_din == 4'hf) && !cy_a_ir_n) begin
@@ -22370,6 +22630,7 @@ module sep_fcov (
         cy_ir_bad  <= 1'b0;
       end
     end
+    cy_ir_pd <= irp;
   end
 
   // cp_sideload_no_key (1.30): stored SIDELOAD 1 and delivered KEY_VALID 0
@@ -22514,33 +22775,67 @@ module sep_fcov (
       end else cy_ir_low <= 1'b0;
     end
 
-    // Entry 1.32: x_mode_status, cp_lost_clear, cp_nonidle_cause.
+    // Entry 1.32: x_mode_status, cp_lost_clear, cp_nonidle_cause, and the
+    // cp_start_suppress cells of owner 132. Each legal outcome is held in
+    // cy_asd; a rise of the bit of its check samples it.
+    begin : cy_asd_hold
+      logic [CyAsdN-1:0] asd;
+      asd = cy_asd;
+      for (int i = 0; i < CyAsdN; i++) begin
+        if (asd[i] && cy_asp_rise[CyAsdCls[i]]) begin
+          case (i)
+            0, 1, 2: cy_aop(0, 2'(i));
+            3: cy_aop(1, 2'd0);
+            4: cy_aop(2, 2'd0);
+            5: cy_aop(2, 2'd1);
+            6: cy_aop(3, 2'd0);
+            default: cy_aop(3, 2'd2);
+          endcase
+          asd[i] = 1'b0;
+        end
+      end
+      if (cy_own_astr && cy_ip[2]) begin
+        if (cy_a_stall_rise && !cy_a_manual) asd[0] = 1'b1;
+        if (cy_ms_stall && !(cy_a_stall_rise && !cy_a_manual) && cy_a_stall_fall &&
+            cy_ms_read && !cy_a_manual) begin
+          asd[1] = 1'b1;
+        end
+        if (cy_a_lost && !cy_a_lost_q && cy_a_manual) asd[2] = 1'b1;
+        if (!cy_a_lost && cy_a_lost_q && cy_ip_q[2]) begin
+          if ((cy_a_we_rec != 4'd0) || cy_a_we) asd[3] = 1'b1;
+          else cy_aop(1, 2'd1);
+        end
+        if (cy_a_stall_rise && !cy_a_idle) asd[5] = 1'b1;
+        if (cy_a_ov_rise && !cy_a_idle_q && !cy_a_stall) asd[4] = 1'b1;
+      end
+      // cp_start_suppress of owner 132: kind 0 at the IDLE fall, kind 2 at the
+      // end of its window with no start (see below).
+      if (cy_ss_on && cy_ip[2]) begin
+        if ((cy_ss_k == 2'd0) && !cy_a_idle && cy_own_astr) asd[6] = 1'b1;
+        if ((cy_ss_k == 2'd2) && (!cy_own_astr || cy_a_aw) && !cy_ss_bad && cy_a_idle) begin
+          asd[7] = 1'b1;
+        end
+      end
+      cy_asd <= asd;
+    end
     if (!cy_own_astr || !cy_ip[2]) begin
       cy_ms_stall <= 1'b0;
     end else begin
       if (cy_a_stall_rise && !cy_a_manual) begin
-        cy_aop(0, 2'd0);
         cy_ms_stall <= 1'b1;
         cy_ms_read  <= 1'b0;
       end else if (cy_ms_stall) begin
         if (cy_a_dout_rd) cy_ms_read <= 1'b1;
-        if (cy_a_stall_fall) begin
-          if (cy_ms_read && !cy_a_manual) cy_aop(0, 2'd1);
-          cy_ms_stall <= 1'b0;
-        end
+        if (cy_a_stall_fall) cy_ms_stall <= 1'b0;
       end
-      if (cy_a_lost && !cy_a_lost_q && cy_a_manual) cy_aop(0, 2'd2);
-      if (!cy_a_lost && cy_a_lost_q && cy_ip_q[2]) begin
-        cy_aop(1, ((cy_a_we_rec != 4'd0) || cy_a_we) ? 2'd0 : 2'd1);
-      end
-      if (cy_a_stall_rise && !cy_a_idle) cy_aop(2, 2'd1);
-      if (cy_a_ov_rise && !cy_a_idle_q && !cy_a_stall) cy_aop(2, 2'd0);
     end
 
     // cp_start_suppress: a START rise on an idle AES. Kind 0 manual with a
     // legal mode (IDLE falls), 1 manual with AES_NONE (OUTPUT_VALID stays
     // 0), 2 automatic (IDLE does not fall), each until the close of the
-    // graded window or the next LSU write to AES.
+    // graded window or the next LSU write to AES. Kinds 0 and 2 belong to
+    // owner 132 and are held in cy_asd above; kind 1 (owner
+    // sep_aes_encoding_inject_rand_test) samples here.
     if (cy_ss_on) begin
       logic own;
       own = (cy_ss_k == 2'd1) ? cy_own_aenc : cy_own_astr;
@@ -22548,7 +22843,6 @@ module sep_fcov (
         cy_ss_on <= 1'b0;
       end else if (cy_ss_k == 2'd0) begin
         if (!cy_a_idle && own) begin
-          cy_aop(3, 2'd0);
           cy_ss_on <= 1'b0;
         end else if (!own || cy_a_aw) begin
           cy_ss_on <= 1'b0;
@@ -22557,7 +22851,7 @@ module sep_fcov (
         logic bad;
         bad = cy_ss_bad || ((cy_ss_k == 2'd1) && cy_a_ov_n) || ((cy_ss_k == 2'd2) && !cy_a_idle);
         if (!own || cy_a_aw) begin
-          if (!bad) cy_aop(3, cy_ss_k);
+          if (!bad && (cy_ss_k == 2'd1)) cy_aop(3, 2'd1);
           cy_ss_on <= 1'b0;
         end
         cy_ss_bad <= bad;
@@ -22575,7 +22869,10 @@ module sep_fcov (
     // Entry 1.34: x_shadow_pair_aes. The phase of the CTRL_SHADOWED pair
     // follows the register text: a write toggles it, a read clears it, an
     // update error clears it. It is known after an AES reset or a read and
-    // unknown after LSU traffic the sampler cannot pair.
+    // unknown after LSU traffic the sampler cannot pair. A mismatched pair is
+    // held as seen at its update error and alert; a matched pair waits with no
+    // bit 32 rise. Each samples on the rise of its aes_shadow_pass bit; the
+    // next AES write or the window close drops a matched pair that waits.
     begin : cy_shadow_pair
       logic phase;
       logic known;
@@ -22624,7 +22921,7 @@ module sep_fcov (
         end
         if (pend == 2'd2) begin
           if (cy_a_err && pulse) begin
-            cy_afl(0, 2'd1);
+            cy_sp_seen <= 1'b1;
             pend = 2'd0;
           end else if (!cy_own_shadow || cy_a_aw) begin
             pend = 2'd0;
@@ -22633,10 +22930,18 @@ module sep_fcov (
           if (pulse) begin
             pend = 2'd0;
           end else if (!cy_own_shadow || cy_a_aw) begin
+            pend = 2'd0;
+          end else if (cy_shp_rise[CyShSpEq]) begin
             cy_afl(0, 2'd0);
             pend = 2'd0;
           end
         end
+      end
+      if (!cy_own_shadow) begin
+        cy_sp_seen <= 1'b0;
+      end else if (cy_shp_rise[CyShSpMis] && cy_sp_seen) begin
+        cy_afl(0, 2'd1);
+        cy_sp_seen <= 1'b0;
       end
       cy_sp_phase <= phase;
       cy_sp_known <= known;
@@ -22645,12 +22950,35 @@ module sep_fcov (
     end
 
     // cp_update_err_recovery, cp_reset_restore, cp_aux_regwen (1.34).
+    // Each cell is held as seen at its DUT event and samples on the rise of its
+    // aes_shadow_pass bit; the window close drops it.
     if (!cy_own_shadow) begin
-      cy_ur  <= 2'd0;
-      cy_rs0 <= 1'b0;
-      cy_rs1 <= 1'b0;
+      cy_ur      <= 2'd0;
+      cy_rs0     <= 1'b0;
+      cy_rs1     <= 1'b0;
       cy_ar_pend <= 1'b0;
+      cy_ur_seen <= 1'b0;
+      cy_rr_seen <= '0;
+      cy_ar_seen <= '0;
     end else begin
+      if (cy_shp_rise[CyShUr] && cy_ur_seen) begin
+        cy_afl(1, 2'd0);
+        cy_ur_seen <= 1'b0;
+      end
+      for (int i = 0; i < 2; i++) begin
+        if (cy_shp_rise[CyShRr] && cy_rr_seen[i]) begin
+          cy_afl(2, 2'(i));
+          cy_rr_seen[i] <= 1'b0;
+        end
+        if (cy_shp_rise[CyShAr] && cy_ar_seen[i]) begin
+          cy_lock_t e;
+          e      = '0;
+          e.ar   = 1'(i);
+          e.ar_v = 1'b1;
+          u_sep_crypto_reg_lock_cg.sample(e);
+          cy_ar_seen[i] <= 1'b0;
+        end
+      end
       if (!cy_ip[2]) begin
         cy_ur <= 2'd0;
       end else if (cy_a_err_n && !cy_a_err) begin
@@ -22658,8 +22986,8 @@ module sep_fcov (
       end else if ((cy_ur == 2'd1) && !cy_a_err_n && cy_a_err && cy_a_we) begin
         cy_ur <= 2'd2;
       end else if ((cy_ur == 2'd2) && cy_a_ov_rise) begin
-        cy_afl(1, 2'd0);
-        cy_ur <= 2'd0;
+        cy_ur_seen <= 1'b1;
+        cy_ur      <= 2'd0;
       end
       if (cy_ip_fall[2]) begin
         cy_rs0   <= cy_a_err;
@@ -22667,7 +22995,9 @@ module sep_fcov (
         cy_rs1_n <= 2'd0;
       end else if (cy_ip[2]) begin
         if (cy_rs0 && rd_ev && (ar_addr_q == AES_STATUS_REG_ADDR)) begin
-          if ((rd_data & AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_MASK) == 32'h0) cy_afl(2, 2'd0);
+          if ((rd_data & AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_MASK) == 32'h0) begin
+            cy_rr_seen[0] <= 1'b1;
+          end
           cy_rs0 <= 1'b0;
         end
         if (cy_rs1) begin
@@ -22679,8 +23009,8 @@ module sep_fcov (
           if (rd_ev && (ar_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR) && (cy_rs1_n == 2'd2) &&
               ((rd_data & AesAuxFields) == cy_rs1_d) &&
               (cy_rs1_d != (32'(AES_CTRL_AUX_SHADOWED_REG_DEFAULT) & AesAuxFields))) begin
-            cy_afl(2, 2'd1);
-            cy_rs1 <= 1'b0;
+            cy_rr_seen[1] <= 1'b1;
+            cy_rs1        <= 1'b0;
           end
         end
       end
@@ -22692,13 +23022,7 @@ module sep_fcov (
         cy_ar_pend <= 1'b0;
       end else begin
         if (rd_ev && (ar_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR)) begin
-          if (cy_ar_pend && ((rd_data & AesAuxFields) == cy_ar_exp)) begin
-            cy_lock_t e;
-            e      = '0;
-            e.ar   = 1'b0;
-            e.ar_v = 1'b1;
-            u_sep_crypto_reg_lock_cg.sample(e);
-          end
+          if (cy_ar_pend && ((rd_data & AesAuxFields) == cy_ar_exp)) cy_ar_seen[0] <= 1'b1;
           cy_ar_pend <= 1'b0;
           cy_aux_val <= rd_data & AesAuxFields;
           cy_aux_ok  <= !$isunknown(rd_data & AesAuxFields);
@@ -22711,11 +23035,7 @@ module sep_fcov (
         if (wr_ev && (aw_addr_q == AES_CTRL_AUX_REGWEN_REG_ADDR) &&
             ((wr_data & AES_CTRL_AUX_REGWEN_CTRL_AUX_REGWEN_MASK) != 32'h0) && !cy_aux_rw_aw &&
             (aes_aux_regwen_i === 1'b0)) begin
-          cy_lock_t e;
-          e      = '0;
-          e.ar   = 1'b1;
-          e.ar_v = 1'b1;
-          u_sep_crypto_reg_lock_cg.sample(e);
+          cy_ar_seen[1] <= 1'b1;
         end
       end
     end
@@ -22751,6 +23071,9 @@ module sep_fcov (
   endfunction
   localparam int unsigned CyAlRiseClkMin = 2;
   logic [5:0] cy_al_arm = '0;
+  // A block sampled in the window is held as seen and samples on the rise of
+  // its aes_shadow_pass bit (CyShAs + block), after CHK-ALERT-MALFORMED passed.
+  logic [5:0] cy_al_seen = '0;
   int unsigned cy_al_k = 0;
   always @(posedge clk_i) begin
     logic [5:0] mal;
@@ -22780,14 +23103,20 @@ module sep_fcov (
       if (!cy_own_shadow || !cy_ip[d] || !cy_ip_q[d] || (alert_rise_bound == 0)) begin
         cy_al_arm[b] <= 1'b0;
       end else if ((cy_al_arm[b] || mal[b]) && cy_vec_rise[32] && in_win) begin
+        cy_al_seen[b] <= 1'b1;
+        cy_al_arm[b]  <= 1'b0;
+      end else if (mal[b] && (cy_al_arm[b] || !cy_vec_q[32])) begin
+        cy_al_arm[b] <= 1'b1;
+      end
+      if (!cy_own_shadow) begin
+        cy_al_seen[b] <= 1'b0;
+      end else if (cy_shp_rise[CyShAs+b] && cy_al_seen[b]) begin
         cy_alert_t e;
         e      = '0;
         e.as   = 3'(b);
         e.as_v = 1'b1;
         u_sep_crypto_alert_cg.sample(e);
-        cy_al_arm[b] <= 1'b0;
-      end else if (mal[b] && (cy_al_arm[b] || !cy_vec_q[32])) begin
-        cy_al_arm[b] <= 1'b1;
+        cy_al_seen[b] <= 1'b0;
       end
     end
   end
@@ -22866,6 +23195,16 @@ module sep_fcov (
   logic cy_kl_on = 1'b0;
   logic cy_kl_taint = 1'b0;
   int unsigned cy_kl_n = 0;
+  // Legal cells of sep_kmac_cfg_cmd_cg held for kmac_stream_pass, one command
+  // cycle: x_cmd_stage {start_absorb, run_squeeze}, x_endian {at_start 0 to 3,
+  // one_byte_write_msg_endian}, x_len_corner (one cell per CMD.process) and
+  // cp_run_block {shake128, shake256}.
+  logic [1:0] cy_ks_cs = '0;
+  logic [4:0] cy_ks_en = '0;
+  logic cy_ks_lc_v = 1'b0;
+  logic [4:0] cy_ks_lc = '0;
+  logic [1:0] cy_ks_rb = '0;
+  logic cy_ks_pass_q = 1'b0;
   logic cy_k_tmo = 1'b0;  // the entropy wait timer expired since the KMAC reset
   logic [1:0] cy_k_lock = '0;  // locked entropy mode, 0 none
   logic [1:0] cy_ml_pa = '0;  // mode written with entropy_ready 1, waiting for mode_q
@@ -22892,6 +23231,13 @@ module sep_fcov (
   logic cy_ar_started = 1'b0;
   logic cy_ar_rdok = 1'b0;
   logic cy_ar_done = 1'b0;
+  // Owner 135 legal outcomes held until kmac_unsup_pass names their check.
+  logic cy_ku_ms_pend = 1'b0;
+  logic [4:0] cy_ku_ms_val = '0;
+  logic cy_ku_kc_pend = 1'b0;
+  logic [4:0] cy_ku_kc_val = '0;
+  logic cy_ku_s3_pend = 1'b0;
+  logic cy_ku_kr_pend = 1'b0;
 
   always @(posedge clk_i) begin
     cy_k_cfgv_q <= cy_k_cfgv;
@@ -22899,20 +23245,37 @@ module sep_fcov (
     cy_hc_q     <= kmac_hash_cnt_i;
 
     // x_kmac_mode_strength, cp_kmac_err_recover (1.35).
+    // A legal outcome is held pending and samples when kmac_unsup_pass rises
+    // to the value of its check (blocked cell 1, recovery 2, enabled cell 3).
     if (!cy_own_kunsup || !cy_ip[4]) begin
-      cy_km_on <= 1'b0;
-      cy_kr    <= 2'd0;
-      cy_s3_on <= 1'b0;
+      cy_km_on      <= 1'b0;
+      cy_kr         <= 2'd0;
+      cy_s3_on      <= 1'b0;
+      cy_ku_ms_pend <= 1'b0;
+      cy_ku_kc_pend <= 1'b0;
+      cy_ku_s3_pend <= 1'b0;
+      cy_ku_kr_pend <= 1'b0;
     end else begin
       // A cell with the enable bit set ends only at absorb: kmac_err may also
       // set on that start, and the register text makes it no outcome.
       if (cy_km_on) begin
         if (cy_k_abs) begin
-          cy_inv(3, {cy_km_cell, 1'b1});
+          if (cy_km_cell[0]) begin
+            cy_ku_ms_pend <= 1'b1;
+            cy_ku_ms_val  <= {cy_km_cell, 1'b1};
+          end else begin
+            cy_inv(3, {cy_km_cell, 1'b1});
+          end
           cy_km_on <= 1'b0;
         end else if (cy_st_rise[5] && cy_k_idle && !cy_km_cell[0]) begin
-          cy_inv(3, {cy_km_cell, 1'b0});
-          cy_inv(7, {3'b000, cy_km_cell[3], (cy_k_ec == 8'h06)});
+          cy_ku_ms_pend <= 1'b1;
+          cy_ku_ms_val  <= {cy_km_cell, 1'b0};
+          if (cy_k_ec == 8'h06) begin
+            cy_ku_kc_pend <= 1'b1;
+            cy_ku_kc_val  <= {2'b00, cy_km_cell[3], 1'b1};
+          end else begin
+            cy_inv(7, {3'b000, cy_km_cell[3], 1'b0});
+          end
           if (!cy_km_cell[0]) cy_kr <= 2'd1;
           cy_km_on <= 1'b0;
         end else if (cy_k_cmd_qe) begin
@@ -22935,8 +23298,13 @@ module sep_fcov (
           cy_inv(6, 5'd1);
           cy_s3_on <= 1'b0;
         end else if (cy_st_rise[5] && cy_k_idle) begin
-          cy_inv(6, 5'd0);
-          cy_inv(7, {2'b00, 2'b10, (cy_k_ec == 8'h06)});
+          cy_ku_s3_pend <= 1'b1;
+          if (cy_k_ec == 8'h06) begin
+            cy_ku_kc_pend <= 1'b1;
+            cy_ku_kc_val  <= {2'b00, 2'b10, 1'b1};
+          end else begin
+            cy_inv(7, {2'b00, 2'b10, 1'b0});
+          end
           cy_s3_on <= 1'b0;
         end else if (cy_k_cmd_qe) begin
           cy_s3_on <= 1'b0;
@@ -22957,22 +23325,53 @@ module sep_fcov (
         end
         2'd3: begin
           if (cy_k_done_ev) begin
-            cy_inv(4, 5'd0);
-            cy_kr <= 2'd0;
+            cy_ku_kr_pend <= 1'b1;
+            cy_kr         <= 2'd0;
           end
         end
         default: ;
       endcase
+      if (cy_ku_rise) begin
+        if ((kmac_unsup_pass == 1) && cy_ku_ms_pend && !cy_ku_ms_val[0]) cy_inv(3, cy_ku_ms_val);
+        if ((kmac_unsup_pass == 3) && cy_ku_ms_pend && cy_ku_ms_val[0]) cy_inv(3, cy_ku_ms_val);
+        if ((kmac_unsup_pass == 1) && cy_ku_kc_pend) cy_inv(7, cy_ku_kc_val);
+        if ((kmac_unsup_pass == 1) && cy_ku_s3_pend) cy_inv(6, 5'd0);
+        if ((kmac_unsup_pass == 2) && cy_ku_kr_pend) cy_inv(4, 5'd0);
+        cy_ku_ms_pend <= 1'b0;
+        cy_ku_kc_pend <= 1'b0;
+        cy_ku_s3_pend <= 1'b0;
+        cy_ku_kr_pend <= 1'b0;
+      end
     end
 
-    // sep_kmac_cfg_cmd_cg (1.36).
+    // sep_kmac_cfg_cmd_cg (1.36). A legal cell is held for its command cycle
+    // and samples only on the rise of kmac_stream_pass inside the window; the
+    // illegal stage cell samples at once. CMD.start opens a new cycle and drops
+    // the cells the label did not release.
+    cy_ks_pass_q <= (kmac_stream_pass != 0);
     if (!cy_own_kstr || !cy_ip[4]) begin
       cy_cs_on      <= 1'b0;
       cy_cs_multi_q <= 1'b0;
       cy_kl_on      <= 1'b0;
+      cy_ks_cs      <= '0;
+      cy_ks_en      <= '0;
+      cy_ks_lc_v    <= 1'b0;
+      cy_ks_rb      <= '0;
+      cy_ks_hr_done <= cy_ks_hr_n;
+      cy_ks_lg_done <= cy_ks_lg_n;
     end else begin
       int unsigned n;
-      n = 32'(cy_k_idle) + 32'(cy_k_abs) + 32'(cy_k_sqz);
+      logic [1:0] cs;
+      logic [4:0] en;
+      logic lc_v;
+      logic [4:0] lc;
+      logic [1:0] rb;
+      cs   = cy_k_start ? '0 : cy_ks_cs;
+      en   = cy_k_start ? '0 : cy_ks_en;
+      lc_v = cy_k_start ? 1'b0 : cy_ks_lc_v;
+      lc   = cy_ks_lc;
+      rb   = cy_k_start ? '0 : cy_ks_rb;
+      n    = 32'(cy_k_idle) + 32'(cy_k_abs) + 32'(cy_k_sqz);
       if ((n > 1) && !cy_cs_multi_q) cy_kcc(0, 5'b00_011);
       cy_cs_multi_q <= (n > 1);
       if (cy_k_start || cy_k_run) begin
@@ -22981,24 +23380,22 @@ module sep_fcov (
         cy_cs_drop <= 1'b0;
       end else if (cy_cs_on) begin
         if (!cy_cs_run && cy_k_abs && (n == 1)) begin
-          cy_kcc(0, 5'b00_001);
+          cs[0] = 1'b1;
           cy_cs_on <= 1'b0;
         end else if (cy_cs_run) begin
           if (!cy_k_sqz) cy_cs_drop <= 1'b1;
           else if (cy_cs_drop && (n == 1)) begin
-            cy_kcc(0, 5'b00_110);
+            cs[1] = 1'b1;
             cy_cs_on <= 1'b0;
           end
         end
         if (cy_k_cmd_qe) cy_cs_on <= 1'b0;
       end
-      if (cy_k_start) cy_kcc(1, {3'd0, cy_k_men, cy_k_sen});
-      if (cy_kwin_wb && (cy_wb_bytes == 4'd1) && cy_k_men) begin
-        cy_kcc(1, 5'b00_110);
-      end
+      if (cy_k_start) en[{cy_k_men, cy_k_sen}] = 1'b1;
+      if (cy_kwin_wb && (cy_wb_bytes == 4'd1) && cy_k_men) en[4] = 1'b1;
       if (cy_k_run && cy_k_sqz && (cy_k_mode == KmacShake)) begin
-        if (cy_k_str == KmacL128) cy_kcc(3, 5'd0);
-        else if (cy_k_str == KmacL256) cy_kcc(3, 5'd1);
+        if (cy_k_str == KmacL128) rb[0] = 1'b1;
+        else if (cy_k_str == KmacL256) rb[1] = 1'b1;
       end
       // Message bytes between CMD.start and CMD.process.
       if (cy_k_start) begin
@@ -23012,7 +23409,8 @@ module sep_fcov (
           c = cy_k_combo(cy_k_mode, cy_k_str);
           r = cy_k_rate(c);
           if ((c >= 0) && (cy_kl_n + 1 >= r) && (cy_kl_n <= r + 1)) begin
-            cy_kcc(2, {3'(c), 2'(cy_kl_n + 1 - r)});
+            lc_v = 1'b1;
+            lc   = {3'(c), 2'(cy_kl_n + 1 - r)};
           end
         end
         cy_kl_on <= 1'b0;
@@ -23020,6 +23418,43 @@ module sep_fcov (
         if (cy_kwin_wb) cy_kl_n <= cy_kl_n + cy_wb_bytes;
         if (cy_wb_drop || cy_b_err) cy_kl_taint <= 1'b1;
       end
+      // The rise of kmac_stream_pass releases the held cells of the cycle.
+      if ((kmac_stream_pass != 0) && !cy_ks_pass_q) begin
+        cy_intr_t ie;
+        if (cs[0]) cy_kcc(0, 5'b00_001);
+        if (cs[1]) cy_kcc(0, 5'b00_110);
+        for (int i = 0; i < 4; i++) if (en[i]) cy_kcc(1, {3'd0, 2'(i)});
+        if (en[4]) cy_kcc(1, 5'b00_110);
+        if (lc_v) cy_kcc(2, lc);
+        if (rb[0]) cy_kcc(3, 5'd0);
+        if (rb[1]) cy_kcc(3, 5'd1);
+        if (cy_ks_hr_n != cy_ks_hr_done) begin
+          ie      = '0;
+          ie.hr   = 4'd3;
+          ie.hr_v = 1'b1;
+          u_sep_crypto_intr_cg.sample(ie);
+        end
+        if (cy_ks_lg_n != cy_ks_lg_done) begin
+          ie      = '0;
+          ie.lg   = cy_ks_lg_v;
+          ie.lg_v = 1'b1;
+          u_sep_crypto_intr_cg.sample(ie);
+        end
+        cs   = '0;
+        en   = '0;
+        lc_v = 1'b0;
+        rb   = '0;
+        cy_ks_hr_done <= cy_ks_hr_n;
+        cy_ks_lg_done <= cy_ks_lg_n;
+      end else if (cy_k_start) begin
+        cy_ks_hr_done <= cy_ks_hr_n;
+        cy_ks_lg_done <= cy_ks_lg_n;
+      end
+      cy_ks_cs   <= cs;
+      cy_ks_en   <= en;
+      cy_ks_lc_v <= lc_v;
+      cy_ks_lc   <= lc;
+      cy_ks_rb   <= rb;
     end
 
     // sep_kmac_entropy_cg (1.37). The lock state follows the DUT whatever
@@ -23232,6 +23667,100 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // OTBN trackers (entry 1.38).
   // ---------------------------------------------------------------------
+  // Pass label of the owner-138 bins of sep_otbn_op_cg, sep_otbn_err_lock_cg and
+  // the otbn_done cells of sep_crypto_intr_cg (sep_otbn_cmd_status_rand_test):
+  // one bit per check, CyOcp* below. Inside
+  // the owner window a legal outcome is held as pending at its DUT event and
+  // samples only when the bit of the check that grades it rises inside that
+  // window. A pending outcome stays held while the window is closed: the leaf
+  // writes a bit only after its check passed and only while no check or
+  // control of the run failed, so a pending outcome of a failed check never
+  // samples. Illegal outcomes sample at once. The label gates a sample; it is
+  // never a DUT value and drives nothing.
+  int unsigned otbn_cmd_pass = 0;
+  localparam int unsigned CyOcpCmdBusy = 0;  // cp_cmd, x_cmd_first_busy: CHK-OTBN-CMD-BUSY
+  localparam int unsigned CyOcpCmdEnd = 1;  // cp_done_event: CHK-OTBN-CMD-END
+  localparam int unsigned CyOcpIgnore = 2;  // cp_cmd_ignored: CHK-OTBN-CMD-IGNORE
+  localparam int unsigned CyOcpIgnErr = 3;  // cp_cmd_ignored_err: CHK-OTBN-CMDIGN-ERR
+  localparam int unsigned CyOcpInsn = 4;  // cp_insn_cnt, cp_post_reset_arc: CHK-OTBN-INSN
+  localparam int unsigned CyOcpBusyWr = 5;  // cp_ctrl_write_legality: CHK-OTBN-BUSYWR
+  localparam int unsigned CyOcpSwFatal = 6;  // cp_sw_error_end fatal: CHK-OTBN-SWERR-FATAL
+  localparam int unsigned CyOcpLocked = 7;  // cp_locked_hold_exit: CHK-OTBN-LOCKED-HOLD
+  localparam int unsigned CyOcpSwRecov = 8;  // cp_sw_error_end recoverable: CHK-OTBN-SWERR-RECOV
+  localparam int unsigned CyOcpErrClr = 9;  // cp_err_bits_clear: CHK-OTBN-ERRCLR
+  localparam int unsigned CyOcpImemIntg = 10;  // cp_intg_violation_end imem: CHK-OTBN-IMEM-INTG
+  localparam int unsigned CyOcpDmemIntg = 11;  // cp_intg_violation_end dmem: CHK-OTBN-DMEM-INTG
+  localparam int unsigned CyOcpIllegalBus = 12;  // cp_fatal_cause: CHK-OTBN-ILLEGAL-BUS
+  // sep_crypto_intr_cg otbn_done x_line_gate, cp_w1c_clear, cp_enable_flip: CHK-OTBN-DONE-LINE
+  localparam int unsigned CyOcpDoneLine = 13;
+  localparam int unsigned CyOcpBits = 14;
+  logic [CyOcpBits-1:0] cy_ocp_q = '0;
+  always @(posedge clk_i) cy_ocp_q <= CyOcpBits'(otbn_cmd_pass);
+  wire [CyOcpBits-1:0] cy_ocp_rise = cy_own_otbn ? (CyOcpBits'(otbn_cmd_pass) & ~cy_ocp_q) : '0;
+  // Pending outcomes of the tracker below, one bit each:
+  //  0-2 cp_cmd {execute, sec_wipe_dmem, sec_wipe_imem}
+  //  3-5 x_cmd_first_busy legal cells of the same three commands
+  //  6-8 cp_done_event of the same three commands
+  //  9-10 cp_cmd_ignored {unrecognised_at_idle, recognised_while_busy}
+  //  11 cp_cmd_ignored_err; 12-13 cp_insn_cnt {zero, nonzero}; 14 cp_post_reset_arc
+  //  15 cp_ctrl_write_legality; 16-17 cp_sw_error_end {recoverable, fatal}
+  //  18-19 cp_locked_hold_exit {cmd_at_locked, reset_exit}; 20 cp_err_bits_clear
+  //  21-22 cp_intg_violation_end {imem, dmem}
+  localparam int unsigned CyOpdN = 23;
+  localparam int unsigned CyOpdCls[CyOpdN] = '{
+      CyOcpCmdBusy,
+      CyOcpCmdBusy,
+      CyOcpCmdBusy,
+      CyOcpCmdBusy,
+      CyOcpCmdBusy,
+      CyOcpCmdBusy,
+      CyOcpCmdEnd,
+      CyOcpCmdEnd,
+      CyOcpCmdEnd,
+      CyOcpIgnore,
+      CyOcpIgnore,
+      CyOcpIgnErr,
+      CyOcpInsn,
+      CyOcpInsn,
+      CyOcpInsn,
+      CyOcpBusyWr,
+      CyOcpSwRecov,
+      CyOcpSwFatal,
+      CyOcpLocked,
+      CyOcpLocked,
+      CyOcpErrClr,
+      CyOcpImemIntg,
+      CyOcpDmemIntg
+  };
+  logic [CyOpdN-1:0] cy_opd = '0;
+  task automatic cy_opd_sample(input int unsigned i);
+    cy_otbn_el_t e;
+    e = '0;
+    if (i < 3) cy_otbn(0, 3'(i));
+    else if (i < 6) cy_otbn(1, {2'(i - 3), 1'b1});
+    else if (i < 9) cy_otbn(5, {1'b0, 2'(i - 6)});
+    else if (i < 11) cy_otbn(2, {2'b00, 1'(i - 9)});
+    else if (i == 11) cy_otbn(7, 3'd0);
+    else if (i < 14) cy_otbn(4, {2'b00, 1'(i - 12)});
+    else if (i == 14) cy_otbn(3, 3'd0);
+    else begin
+      if (i == 15) e.cw_v = 1'b1;
+      if ((i == 16) || (i == 17)) begin
+        e.se   = 1'(i - 16);
+        e.se_v = 1'b1;
+      end
+      if ((i == 18) || (i == 19)) begin
+        e.lh   = 1'(i - 18);
+        e.lh_v = 1'b1;
+      end
+      if (i == 20) e.ec_v = 1'b1;
+      if ((i == 21) || (i == 22)) begin
+        e.iv   = (i == 21) ? 2'b01 : 2'b10;
+        e.iv_v = 1'b1;
+      end
+      u_sep_otbn_err_lock_cg.sample(e);
+    end
+  endtask
   wire [7:0] cy_o_st = 8'(otbn_status_i);
   wire cy_o_busy = cy_o_st inside {OtbnStExec, OtbnStWipeDmem, OtbnStWipeImem, OtbnStWipeInt};
   wire cy_o_cmd = cy_t(otbn_reg2hw_i.cmd.qe) && cy_ip[1];
@@ -23287,7 +23816,10 @@ module sep_fcov (
     logic done_rise;
     int wk;
     cy_otbn_el_t el;
+    cy_intr_t ie;
+    logic [CyOpdN-1:0] pd;
     el = '0;
+    pd = cy_opd;
     done_rise = cy_t(otbn_done_i) && !cy_o_done_q;
     wk = cy_o_kind(wr_data[7:0]);
     cy_o_done_q <= cy_t(otbn_done_i);
@@ -23313,6 +23845,7 @@ module sep_fcov (
     end
     if (cy_ip_rise[1]) cy_ic_rst <= 1'b1;
     if (!cy_own_otbn) begin
+      cy_odl_done <= cy_odl_n;
       cy_fb_on  <= 1'b0;
       cy_ci_cnt <= 0;
       cy_pr     <= 2'd0;
@@ -23324,6 +23857,46 @@ module sep_fcov (
       cy_ec_wr  <= 1'b0;
       cy_ie_cnt <= 0;
     end else begin
+      // A rise of the bit of a check samples the outcomes pending for it.
+      for (int i = 0; i < CyOpdN; i++) begin
+        if (pd[i] && cy_ocp_rise[CyOpdCls[i]]) begin
+          cy_opd_sample(i);
+          pd[i] = 1'b0;
+        end
+      end
+      // cp_hw_raise otbn_done of this owner (held by cy_intr).
+      if (cy_ocp_rise[CyOcpCmdEnd]) begin
+        if (cy_oh_n != cy_oh_done) begin
+          ie      = '0;
+          ie.hr   = 4'd12;
+          ie.hr_v = 1'b1;
+          u_sep_crypto_intr_cg.sample(ie);
+        end
+        cy_oh_done <= cy_oh_n;
+      end
+      // otbn_done line cells of this owner (held by cy_intr): one sample per
+      // cell seen since the last release or drop.
+      if (!cy_ip[1]) begin
+        cy_odl_done <= cy_odl_n;
+      end else if (cy_ocp_rise[CyOcpDoneLine]) begin
+        for (int k = 0; k < 8; k++) begin
+          if (cy_odl_n[k] != cy_odl_done[k]) begin
+            ie = '0;
+            if (k < 4) begin
+              ie.lg   = {4'd12, 2'(k)};
+              ie.lg_v = 1'b1;
+            end else if (k < 6) begin
+              ie.wc   = {1'b0, 4'd12, 1'(k - 4)};
+              ie.wc_v = 1'b1;
+            end else begin
+              ie.ef   = {4'd12, 1'(k - 6)};
+              ie.ef_v = 1'b1;
+            end
+            u_sep_crypto_intr_cg.sample(ie);
+          end
+        end
+        cy_odl_done <= cy_odl_n;
+      end
       // cp_sw_error_end: the end of an EXECUTE, the clock STATUS reaches IDLE
       // (with software_errs_fatal 0) or LOCKED (with software_errs_fatal 1).
       if (cy_o_cmd && (cy_o_st == OtbnIdle) && (cy_o_kind(cy_o_cmdv) == 0)) begin
@@ -23406,13 +23979,13 @@ module sep_fcov (
         if (cy_o_err != cy_ie_err) begin
           cy_ie_cnt <= 0;
         end else begin
-          if (cy_ie_cnt == 1) cy_otbn(7, 3'd0);
+          if (cy_ie_cnt == 1) pd[11] = 1'b1;
           cy_ie_cnt <= cy_ie_cnt - 1;
         end
       end
       // cp_cmd: a recognised CMD write accepted at IDLE.
       if (wr_ev && (aw_addr_q == OTBN_CMD_REG_ADDR) && (cy_ci_st == OtbnIdle) && (wk >= 0)) begin
-        cy_otbn(0, 3'(wk));
+        pd[wk] = 1'b1;
       end
       // x_cmd_first_busy and cp_done_event follow the command strobe.
       if (cy_o_cmd && (cy_o_st == OtbnIdle) && (cy_o_kind(cy_o_cmdv) >= 0)) begin
@@ -23423,11 +23996,12 @@ module sep_fcov (
         if (cy_o_kind(cy_o_cmdv) == 0) cy_ic_rst <= 1'b0;
       end else begin
         if (cy_fb_on && (cy_o_st != OtbnIdle)) begin
-          cy_otbn(1, {cy_fb_k, (cy_o_st == cy_o_first(cy_fb_k))});
+          if (cy_o_st == cy_o_first(cy_fb_k)) pd[3+cy_fb_k] = 1'b1;
+          else cy_otbn(1, {cy_fb_k, 1'b0});
           cy_fb_on <= 1'b0;
         end
         if (cy_dn_on && done_rise) begin
-          cy_otbn(5, {1'b0, cy_dn_k});
+          pd[6+cy_dn_k] = 1'b1;
           if (cy_dn_k == 2'd0) cy_ic_exec <= 1'b1;
           cy_dn_on <= 1'b0;
         end
@@ -23453,7 +24027,7 @@ module sep_fcov (
         if (cy_o_st != cy_ci_st) begin
           cy_ci_cnt <= 0;
         end else begin
-          if (cy_ci_cnt == 1) cy_otbn(2, {2'd0, cy_ci_cls});
+          if (cy_ci_cnt == 1) pd[9+cy_ci_cls] = 1'b1;
           cy_ci_cnt <= cy_ci_cnt - 1;
         end
       end
@@ -23466,7 +24040,7 @@ module sep_fcov (
           cy_pr <= (cy_o_st == OtbnStWipeInt) ? 2'd2 : 2'd0;
         end else if (cy_pr == 2'd2) begin
           if (cy_o_st == OtbnIdle) begin
-            cy_otbn(3, 3'd0);
+            pd[14] = 1'b1;
             cy_pr <= 2'd0;
           end else if (cy_o_st != OtbnStWipeInt) begin
             cy_pr <= 2'd0;
@@ -23476,8 +24050,8 @@ module sep_fcov (
       // cp_insn_cnt: an OKAY INSN_CNT read that matches the counter.
       if (rd_ev && cy_rd_known && (ar_addr_q == OTBN_INSN_CNT_REG_ADDR) &&
           (rd_data == otbn_insn_cnt_i)) begin
-        if (cy_ic_rst && (rd_data == 32'h0)) cy_otbn(4, 3'd0);
-        if (cy_ic_exec && (rd_data != 32'h0)) cy_otbn(4, 3'd1);
+        if (cy_ic_rst && (rd_data == 32'h0)) pd[12] = 1'b1;
+        if (cy_ic_exec && (rd_data != 32'h0)) pd[13] = 1'b1;
       end
       // cp_ctrl_write_legality: a CTRL write while busy leaves the stored
       // software_errs_fatal value.
@@ -23486,7 +24060,12 @@ module sep_fcov (
           (cy_o_ef == cy_cw_ef)) begin
         el.cw_v = 1'b1;
       end
-      if (el.cw_v || el.se_v || el.lh_v || el.ec_v || el.iv_v) u_sep_otbn_err_lock_cg.sample(el);
+      if (el.cw_v) pd[15] = 1'b1;
+      if (el.se_v) pd[16+el.se] = 1'b1;
+      if (el.lh_v) pd[18+el.lh] = 1'b1;
+      if (el.ec_v) pd[20] = 1'b1;
+      if (el.iv_v) pd[(el.iv==2'b01)?21 : 22] = 1'b1;
+      cy_opd <= pd;
     end
     if (cy_ip_fall[1]) begin
       cy_ic_exec <= 1'b0;
@@ -23495,7 +24074,32 @@ module sep_fcov (
 
   // ---------------------------------------------------------------------
   // Adams Bridge trackers (entry 1.39). Block 0 ML-DSA, 1 ML-KEM.
-  // ---------------------------------------------------------------------
+  //
+  // A block is held from a STATUS read with VALID 1 and READY 0 after a
+  // command until a READY read, a zeroize write or the ABR reset. A command
+  // written while it is held is not taken (swwe = abr_ready,
+  // integration/rdl/sep/abr_reg.rdl:77, :328), so the tracker keeps the
+  // command of the held operation.
+  //
+  // abr_cmd_pass: pass label of the ABR command matrix leaf. 1 / 2: the check
+  // of the combined command of ML-DSA / ML-KEM passed (cp_combined_cmd);
+  // 3 / 4: the park check and the result compare of the single-step cell of
+  // ML-DSA / ML-KEM passed (x_op_protocol single-step cells); 5 / 6: the
+  // re-arm check of ML-DSA / ML-KEM passed (x_op_protocol ready-after-zeroize
+  // and ready-after-reset cells). Each of these outcomes is held as pending
+  // at its DUT event and samples only when abr_cmd_pass rises to its value.
+  // The leaf writes it through the u_sep_fcov handle after the check passes,
+  // then 0. The close of the window drops a pending outcome. It gates a
+  // sample; it is never a DUT value and drives nothing. The held cells of
+  // x_op_protocol sample at the STATUS read whose VALID 1 and READY 0 the
+  // leaf grades, so they need no label.
+  int unsigned abr_cmd_pass = 0;
+  logic cy_ab_pass_q = 1'b0;
+  logic [1:0] cy_ab_cc_pend = '0;  // cp_combined_cmd of the block
+  logic [1:0] cy_ab_ss_pend = '0;  // x_op_protocol single-step cell of the block
+  logic [2:0] cy_ab_ss_cmd[2] = '{default: '0};
+  logic [1:0] cy_ab_ra_pend = '0;  // x_op_protocol ready-after-zeroize or -reset
+  logic [1:0] cy_ab_ra_kind[2] = '{default: '0};
   logic [2:0] cy_ab_cmd[2] = '{default: '0};
   logic [1:0] cy_ab_held = '0;
   logic [1:0] cy_ab_zp = '0;
@@ -23507,11 +24111,15 @@ module sep_fcov (
   logic [15:0] cy_ab_rd_m = '0;
   logic cy_ab_diff = 1'b0;
   always @(posedge clk_i) begin
+    cy_ab_pass_q <= (abr_cmd_pass != 0);
     if (!cy_own_abr) begin
-      cy_ab_cmd   <= '{default: '0};
-      cy_ab_held  <= '0;
-      cy_ab_zp    <= '0;
-      cy_ab_rp    <= '0;
+      cy_ab_cmd     <= '{default: '0};
+      cy_ab_held    <= '0;
+      cy_ab_zp      <= '0;
+      cy_ab_rp      <= '0;
+      cy_ab_cc_pend <= '0;
+      cy_ab_ss_pend <= '0;
+      cy_ab_ra_pend <= '0;
     end else begin
       for (int b = 0; b < 2; b++) begin
         logic [31:0] ca;
@@ -23520,17 +24128,21 @@ module sep_fcov (
         ca = (b == 0) ? AbrCtrl : KemCtrl;
         sa = (b == 0) ? AbrStatus : KemStatus;
         vm = (b == 0) ? AbrStValid : KemStValid;
-        if (cy_ip_fall[6] && (cy_ab_cmd[b] == 3'd4) && cy_ab_held[b]) cy_ab_rp[b] <= 1'b1;
+        if (cy_ip_fall[6]) begin
+          if ((cy_ab_cmd[b] == 3'd4) && cy_ab_held[b]) cy_ab_rp[b] <= 1'b1;
+          cy_ab_held[b] <= 1'b0;
+        end
         if (wr_ev && (aw_addr_q == ca)) begin
           logic [2:0] c;
           c = 3'(wr_data & AbrCtrlCmdMask);
-          if (c != 3'd0) begin
-            cy_ab_cmd[b]  <= c;
+          if ((wr_data & AbrCtrlZeroize) != 32'h0) begin
+            if ((cy_ab_cmd[b] == 3'd4) && cy_ab_held[b]) cy_ab_zp[b] <= 1'b1;
             cy_ab_held[b] <= 1'b0;
-            if (c == 3'd4) cy_abr(1, 6'(b));
-          end
-          if (((wr_data & AbrCtrlZeroize) != 32'h0) && (cy_ab_cmd[b] == 3'd4) && cy_ab_held[b]) begin
-            cy_ab_zp[b] <= 1'b1;
+          end else if ((c != 3'd0) && !cy_ab_held[b]) begin
+            cy_ab_cmd[b]     <= c;
+            cy_ab_cc_pend[b] <= (c == 3'd4);
+            cy_ab_ss_pend[b] <= 1'b0;
+            cy_ab_ra_pend[b] <= 1'b0;
           end
         end
         if (rd_ev && (ar_addr_q == sa) && !$isunknown(rd_data)) begin
@@ -23538,18 +24150,40 @@ module sep_fcov (
           logic ready;
           valid = (rd_data & vm) != 32'h0;
           ready = (rd_data & AbrStReady) != 32'h0;
+          if (ready) cy_ab_held[b] <= 1'b0;
           if (cy_ab_zp[b] && ready) begin
-            cy_abr(0, {1'(b), 3'd4, 2'd1});
-            cy_ab_zp[b]  <= 1'b0;
-            cy_ab_cmd[b] <= 3'd0;
+            cy_ab_ra_pend[b] <= 1'b1;
+            cy_ab_ra_kind[b] <= 2'd1;
+            cy_ab_zp[b]      <= 1'b0;
+            cy_ab_cmd[b]     <= 3'd0;
           end else if (cy_ab_rp[b] && ready && cy_ip[6]) begin
-            cy_abr(0, {1'(b), 3'd4, 2'd2});
-            cy_ab_rp[b]  <= 1'b0;
-            cy_ab_cmd[b] <= 3'd0;
+            cy_ab_ra_pend[b] <= 1'b1;
+            cy_ab_ra_kind[b] <= 2'd2;
+            cy_ab_rp[b]      <= 1'b0;
+            cy_ab_cmd[b]     <= 3'd0;
           end else if ((cy_ab_cmd[b] != 3'd0) && valid && !ready && !cy_ab_zp[b] &&
                        !cy_ab_rp[b]) begin
-            cy_abr(0, {1'(b), cy_ab_cmd[b], 2'd0});
+            if (cy_ab_cmd[b] == 3'd4) begin
+              cy_abr(0, {1'(b), 3'd4, 2'd0});
+            end else if (!cy_ab_held[b]) begin
+              cy_ab_ss_pend[b] <= 1'b1;
+              cy_ab_ss_cmd[b]  <= cy_ab_cmd[b];
+            end
             cy_ab_held[b] <= 1'b1;
+          end
+        end
+        if ((abr_cmd_pass != 0) && !cy_ab_pass_q) begin
+          if ((abr_cmd_pass == 32'(1 + b)) && cy_ab_cc_pend[b]) begin
+            cy_abr(1, 6'(b));
+            cy_ab_cc_pend[b] <= 1'b0;
+          end
+          if ((abr_cmd_pass == 32'(3 + b)) && cy_ab_ss_pend[b]) begin
+            cy_abr(0, {1'(b), cy_ab_ss_cmd[b], 2'd0});
+            cy_ab_ss_pend[b] <= 1'b0;
+          end
+          if ((abr_cmd_pass == 32'(5 + b)) && cy_ab_ra_pend[b]) begin
+            cy_abr(0, {1'(b), 3'd4, cy_ab_ra_kind[b]});
+            cy_ab_ra_pend[b] <= 1'b0;
           end
         end
       end
@@ -23613,13 +24247,37 @@ module sep_fcov (
   wire cy_own_arbedn = (graded_owner == FcovOwnSepDrbgAxilConcurrentEdnAwThenArTest);
   wire cy_own_abrkat = (graded_owner == FcovOwnSepAbrMldsaKeygenKatTest);
 
+  // Pass label of sep_crypto_bus_access_cg (written by set_crypto_bus_pass
+  // of env/sep_fcov_gate.py): bin value v of x_abr_access on bit v, of
+  // x_drbg_lane on bit 16 + v, of cp_lane_refuse on bit 24 + v, the legal
+  // x_drbg_lane_arb cell of lane l on bit 31 + l, and value v of
+  // x_abr_concurrent on bit 33 + v; bits 15 and 26 to 30 are unused. A cell
+  // is held as seen at its DUT event inside the window of its owner and
+  // samples only when its bit rises inside that window; the window close
+  // drops it. The owner writes the bits of the cells a check graded after
+  // that check passes, and 0 before the next check. The label gates a
+  // sample; it is never a bin value and drives nothing.
+  logic [38:0] crypto_bus_pass = '0;
+  // x_abr_access cells seen inside the window of sep_abr_access_size_test,
+  // and the previous value of their pass bits.
+  localparam int CxbPassAa = 0;
+  logic [14:0] cxb_aa_seen = '0;
+  logic [14:0] cxb_aa_pass_q = '0;
+
   // Stimulus label of sep_otbn_op_cg.cp_capability: the program class that
   // sep_otbn_compute_rand_test runs (1 loop, 2 branch, 3 call_return,
   // 4 bn_addc_carry, 5 bn_addm_reduce, 0 none). The leaf writes it through the
-  // u_sep_fcov handle before the CMD write of the program and 0 after its
-  // DMEM compare. It gates a sample; it is never a DUT value and drives
-  // nothing.
+  // u_sep_fcov handle after the check of the program passed (after its
+  // ERR_BITS read and DMEM compare), then 0. It gates a sample; it is never a
+  // DUT value and drives nothing.
   int unsigned otbn_cap_kind = 0;
+
+  // Pass label of sep_otbn_err_lock_cg.cp_sw_err_kind: the software error whose
+  // check passed in sep_otbn_cmd_status_rand_test (1 bad_data_addr,
+  // 2 bad_insn_addr, 3 call_stack, 4 loop, 0 none). The leaf writes it through
+  // the u_sep_fcov handle after that check passes, and 0 after. It gates a
+  // sample; it is never a DUT value and drives nothing.
+  int unsigned otbn_sw_err_pass = 0;
 
   // One single-beat LSU transaction in flight, whatever its response.
   wire cxb_wr1 = !in_reset && b_hs && (aw_out_q == 4'd1) && (w_beats_q == 2'd1);
@@ -23650,6 +24308,8 @@ module sep_fcov (
   logic cxo_iba_rd0 = 1'b0;   // a host IMEM or DMEM read issued while executing returned 0
   logic cxo_iba_err = 1'b0;   // then ERR_BITS read at LOCKED with illegal_bus_access 1
   logic cxo_iba_fac = 1'b0;   // then FATAL_ALERT_CAUSE read at LOCKED with illegal_bus_access 1
+  logic [3:0] cxo_sk_held = '0; // kind bits of the first ERR_BITS read after an IDLE end
+  logic cxo_swp_q = 1'b0;       // otbn_sw_err_pass was non-zero at the last clock
   wire cxo_mem_rd = rd_ev && (in_blk(ar_addr_q, OTBN_IMEM_MEM_BASE_ADDR, OTBN_IMEM_MEM_SIZE) ||
                              in_blk(ar_addr_q, OTBN_DMEM_MEM_BASE_ADDR, OTBN_DMEM_MEM_SIZE));
   wire cxo_dmem_rd = rd_ev && in_blk(ar_addr_q, OTBN_DMEM_MEM_BASE_ADDR, OTBN_DMEM_MEM_SIZE);
@@ -23661,8 +24321,10 @@ module sep_fcov (
     el = '0;
     op = '0;
     if (ar_hs) cxo_ar_st <= cy_o_st;
+    cxo_swp_q <= (otbn_sw_err_pass != 0);
     if (!cy_ip[1] || !(cy_own_otbn || cy_own_cap)) begin
       cxo_exec     <= 1'b0;
+      cxo_sk_held  <= '0;
       cxo_end_idle <= 1'b0;
       cxo_end_rnd  <= 1'b0;
       cxo_cap_err0 <= 1'b0;
@@ -23679,6 +24341,7 @@ module sep_fcov (
         cxo_end_rnd  <= 1'b0;
         cxo_cap_err0 <= 1'b0;
         cxo_cap_dmem <= 1'b0;
+        cxo_sk_held  <= '0;
       end else if (cxo_exec) begin
         if (cy_ack_rise[2]) cxo_rnd <= 1'b1;
         if ((cy_o_st_q != cy_o_st) && ((cy_o_st == OtbnIdle) || (cy_o_st == OtbnStLocked))) begin
@@ -23687,17 +24350,13 @@ module sep_fcov (
           cxo_end_rnd  <= (cy_o_st == OtbnIdle) && (cxo_rnd || cy_ack_rise[2]);
         end
       end
-      // The first ERR_BITS read at IDLE after an EXECUTE that ended at IDLE.
+      // The first ERR_BITS read at IDLE after an EXECUTE that ended at IDLE. The
+      // kind bits of that read are held; cp_sw_err_kind samples one of them only
+      // when otbn_sw_err_pass rises to that kind, after the check of the leaf
+      // passed.
       if (cxo_err_rd && (cy_o_st == OtbnIdle) && (cxo_end_idle || cxo_end_rnd)) begin
         if (cy_own_otbn && cxo_end_idle) begin
-          for (int k = 0; k < 4; k++) begin
-            if ((rd_data & CxOtbnSwKind[k]) != 32'h0) begin
-              el      = '0;
-              el.sk   = 2'(k);
-              el.sk_v = 1'b1;
-              u_sep_otbn_err_lock_cg.sample(el);
-            end
-          end
+          for (int k = 0; k < 4; k++) cxo_sk_held[k] <= ((rd_data & CxOtbnSwKind[k]) != 32'h0);
         end
         if (cy_own_otbn && cxo_end_rnd &&
             ((rd_data & ~OTBN_ERR_BITS_RND_REP_CHK_FAIL_MASK) == 32'h0)) begin
@@ -23707,6 +24366,15 @@ module sep_fcov (
         end
         if (rd_data == 32'h0) cxo_cap_err0 <= 1'b1;
         cxo_end_rnd <= 1'b0;
+      end
+      if (cy_own_otbn && (otbn_sw_err_pass >= 1) && (otbn_sw_err_pass <= 4) && !cxo_swp_q) begin
+        if (cxo_sk_held[otbn_sw_err_pass-1]) begin
+          el      = '0;
+          el.sk   = 2'(otbn_sw_err_pass - 1);
+          el.sk_v = 1'b1;
+          u_sep_otbn_err_lock_cg.sample(el);
+        end
+        cxo_sk_held <= '0;
       end
       if (cxo_dmem_rd && cxo_end_idle) cxo_cap_dmem <= 1'b1;
       // cp_capability: the labelled EXECUTE ended at IDLE, ERR_BITS read 0 and
@@ -23725,7 +24393,9 @@ module sep_fcov (
       end
       // cp_fatal_cause: a host IMEM or DMEM read accepted while STATUS is
       // BUSY_EXECUTE returns 0; then ERR_BITS and FATAL_ALERT_CAUSE read at
-      // LOCKED both show illegal_bus_access.
+      // LOCKED both show illegal_bus_access. The outcome is held and samples
+      // when the CyOcpIllegalBus bit of otbn_cmd_pass rises, after
+      // CHK-OTBN-ILLEGAL-BUS passed.
       if (cxo_mem_rd && (cxo_ar_st == OtbnStExec) && (rd_data == 32'h0)) cxo_iba_rd0 <= 1'b1;
       if (cxo_iba_rd0 && cxo_err_rd && (cy_o_st == OtbnStLocked) &&
           ((rd_data & OTBN_ERR_BITS_ILLEGAL_BUS_ACCESS_MASK) != 32'h0)) begin
@@ -23735,10 +24405,12 @@ module sep_fcov (
           ((rd_data & OTBN_FATAL_ALERT_CAUSE_ILLEGAL_BUS_ACCESS_MASK) != 32'h0)) begin
         cxo_iba_fac <= 1'b1;
       end
-      if (cy_own_otbn && cxo_iba_rd0 && cxo_iba_err && cxo_iba_fac) begin
-        el      = '0;
-        el.fc_v = 1'b1;
-        u_sep_otbn_err_lock_cg.sample(el);
+      if (cy_ocp_rise[CyOcpIllegalBus]) begin
+        if (cxo_iba_rd0 && cxo_iba_err && cxo_iba_fac) begin
+          el      = '0;
+          el.fc_v = 1'b1;
+          u_sep_otbn_err_lock_cg.sample(el);
+        end
         cxo_iba_rd0 <= 1'b0;
         cxo_iba_err <= 1'b0;
         cxo_iba_fac <= 1'b0;
@@ -23752,11 +24424,15 @@ module sep_fcov (
   // (sep_aes_fault_cg, owner sep_crypto_shadow_update_err_rand_test).
   // ---------------------------------------------------------------------
   // A KEY_SHARE0 or IV write whose AW handshake comes while STALL is 1 and
-  // IDLE is 0 arms its bin; the next OUTPUT_VALID rise samples it. In the
-  // partial-IV leg, three IV words and four DATA_IN words land with no output;
-  // the fourth IV word then lands with no output, and the next OUTPUT_VALID
-  // rise samples partial_iv_no_start. An output before the fourth IV word
-  // ends the leg unsampled.
+  // IDLE is 0 arms its bin; the next OUTPUT_VALID rise holds it as pending.
+  // In the partial-IV leg, three IV words and four DATA_IN words land with no
+  // output; the fourth IV word then lands with no output, and the next
+  // OUTPUT_VALID rise holds partial_iv_no_start as pending. An output before
+  // the fourth IV word ends the leg unsampled. The pending bin samples only
+  // when aes_busy_write_pass rises to the bin index + 1: the leaf writes it
+  // through the u_sep_fcov handle after the check of that case passes, and 0
+  // at the start of each case. It gates a sample; it is never a DUT value and
+  // drives nothing. The close of the window drops a pending bin.
   localparam logic [31:0] CxAesGcmFields = AES_CTRL_GCM_SHADOWED_PHASE_MASK |
       AES_CTRL_GCM_SHADOWED_NUM_VALID_BYTES_MASK;
   function automatic int cxa_iv_idx(input logic [31:0] a);
@@ -23776,6 +24452,10 @@ module sep_fcov (
   logic [3:0] cxa_dim = '0;
   logic cxa_piv = 1'b0;
   logic cxa_piv2 = 1'b0;
+  int unsigned aes_busy_write_pass = 0;
+  logic cxa_pass_q = 1'b0;
+  logic [1:0] cxa_pend = '0;
+  logic cxa_pend_v = 1'b0;
   // GCM pair, as x_shadow_pair_aux: the phase is known after an AES reset or
   // a CTRL_GCM_SHADOWED read; only pairs written while IDLE is 1 count.
   logic cxg_phase = 1'b0;
@@ -23783,6 +24463,7 @@ module sep_fcov (
   logic [1:0] cxg_pend = '0;  // 0 none, 1 matched, 2 mismatched
   logic cxg_pulse = 1'b0;     // bit 32 rose since the last GCM AW handshake
   int unsigned cxg_cnt = 0;
+  logic [1:0] cxg_seen = '0;  // {mismatched, matched} seen, waits for its pass label
   wire cxg_wr = wr_ev && (aw_addr_q == AES_CTRL_GCM_SHADOWED_REG_ADDR);
   wire cxg_rd = rd_ev && (ar_addr_q == AES_CTRL_GCM_SHADOWED_REG_ADDR);
   always @(posedge clk_i) begin
@@ -23790,24 +24471,22 @@ module sep_fcov (
     cy_afl_t fl;
     // cp_busy_write
     if (aw_hs) cxa_aw_busy <= cy_a_stall && !cy_a_idle;
+    cxa_pass_q <= (aes_busy_write_pass != 0);
     if (!cy_ip[2] || !cy_own_astr) begin
-      cxa_arm  <= 2'd0;
-      cxa_ivm  <= '0;
-      cxa_dim  <= '0;
-      cxa_piv  <= 1'b0;
-      cxa_piv2 <= 1'b0;
+      cxa_arm    <= 2'd0;
+      cxa_ivm    <= '0;
+      cxa_dim    <= '0;
+      cxa_piv    <= 1'b0;
+      cxa_piv2   <= 1'b0;
+      cxa_pend_v <= 1'b0;
     end else if (cy_a_ov_rise) begin
-      op = '0;
       if (cxa_arm != 2'd0) begin
-        op.bw   = (cxa_arm == 2'd1) ? 2'd0 : 2'd1;
-        op.bw_v = 1'b1;
-        u_sep_aes_op_status_cg.sample(op);
+        cxa_pend   <= (cxa_arm == 2'd1) ? 2'd0 : 2'd1;
+        cxa_pend_v <= 1'b1;
       end
       if (cxa_piv2) begin
-        op      = '0;
-        op.bw   = 2'd2;
-        op.bw_v = 1'b1;
-        u_sep_aes_op_status_cg.sample(op);
+        cxa_pend   <= 2'd2;
+        cxa_pend_v <= 1'b1;
       end
       cxa_arm  <= 2'd0;
       cxa_ivm  <= '0;
@@ -23840,6 +24519,15 @@ module sep_fcov (
       cxa_ivm <= ivm;
       cxa_dim <= dim;
     end
+    if (cy_ip[2] && cy_own_astr && (aes_busy_write_pass != 0) && !cxa_pass_q) begin
+      if (cxa_pend_v && (aes_busy_write_pass == 32'(cxa_pend) + 1)) begin
+        op      = '0;
+        op.bw   = cxa_pend;
+        op.bw_v = 1'b1;
+        u_sep_aes_op_status_cg.sample(op);
+      end
+      cxa_pend_v <= 1'b0;
+    end
     // x_shadow_pair_gcm
     if (!cy_ip[2] || !cy_own_shadow || !cy_a_idle) begin
       cxg_phase <= 1'b0;
@@ -23857,11 +24545,8 @@ module sep_fcov (
           cxg_phase <= 1'b1;
         end else if ((wr_data & CxAesGcmFields) != cxg_prev) begin
           if (cxg_pulse || cy_vec_rise[32]) begin
-            fl      = '0;
-            fl.xg   = 1'b1;
-            fl.xg_v = 1'b1;
-            u_sep_aes_fault_cg.sample(fl);
-            cxg_pend <= 2'd0;
+            cxg_seen[1] <= 1'b1;
+            cxg_pend    <= 2'd0;
           end else begin
             cxg_pend <= 2'd2;
           end
@@ -23876,11 +24561,8 @@ module sep_fcov (
       if (cxg_rd) cxg_phase <= 1'b0;
       if (cxg_pend == 2'd2) begin
         if (cy_vec_rise[32]) begin
-          fl      = '0;
-          fl.xg   = 1'b1;
-          fl.xg_v = 1'b1;
-          u_sep_aes_fault_cg.sample(fl);
-          cxg_pend <= 2'd0;
+          cxg_seen[1] <= 1'b1;
+          cxg_pend    <= 2'd0;
         end else if (cxg_cnt > CyAlertBound) begin
           cxg_pend <= 2'd0;
         end else begin
@@ -23890,14 +24572,29 @@ module sep_fcov (
         if (cy_vec_rise[32]) begin
           cxg_pend <= 2'd0;
         end else if (cxg_rd) begin
-          if ((rd_data & CxAesGcmFields) == cxg_prev) begin
-            fl      = '0;
-            fl.xg   = 1'b0;
-            fl.xg_v = 1'b1;
-            u_sep_aes_fault_cg.sample(fl);
-          end
+          if ((rd_data & CxAesGcmFields) == cxg_prev) cxg_seen[0] <= 1'b1;
           cxg_pend <= 2'd0;
         end
+      end
+    end
+    // A seen GCM pair samples on the rise of its aes_shadow_pass bit, after the
+    // check of that pair passed; the window close or an AES reset drops it.
+    if (!cy_ip[2] || !cy_own_shadow) begin
+      cxg_seen <= '0;
+    end else begin
+      if (cy_shp_rise[CyShXgMis] && cxg_seen[1]) begin
+        fl      = '0;
+        fl.xg   = 1'b1;
+        fl.xg_v = 1'b1;
+        u_sep_aes_fault_cg.sample(fl);
+        cxg_seen[1] <= 1'b0;
+      end
+      if (cy_shp_rise[CyShXgEq] && cxg_seen[0]) begin
+        fl      = '0;
+        fl.xg   = 1'b0;
+        fl.xg_v = 1'b1;
+        u_sep_aes_fault_cg.sample(fl);
+        cxg_seen[0] <= 1'b0;
       end
     end
     // cp_fatal_quiet: a STATUS read with the update error 1 and
@@ -23918,6 +24615,7 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   localparam logic [1:0] CxKmacModeRsvd = 2'b01;
   logic cxku_on = 1'b0;
+  logic cxku_pend = 1'b0;
   logic cxkf_on = 1'b0;
   logic cxkf_done = 1'b0;
   int unsigned cxkf_n = 0;
@@ -23938,8 +24636,20 @@ module sep_fcov (
     if (aw_hs) cxkg_aw_lock <= (kmac_hw2reg_i.cfg_regwen.d === 1'b0);
     // cp_unsup_mode
     if (!cy_own_kunsup || !cy_ip[4]) begin
-      cxku_on <= 1'b0;
+      cxku_on   <= 1'b0;
+      cxku_pend <= 1'b0;
     end else begin
+      // mode1_en0_err is held pending and samples when kmac_unsup_pass rises
+      // to 1; mode1_absorbed samples at once.
+      if (cy_ku_rise) begin
+        if ((kmac_unsup_pass == 1) && cxku_pend) begin
+          e      = '0;
+          e.um   = 1'b0;
+          e.um_v = 1'b1;
+          u_sep_kmac_cfg_cmd_cg.sample(e);
+        end
+        cxku_pend <= 1'b0;
+      end
       if (cxku_on) begin
         if (cy_k_abs) begin
           e      = '0;
@@ -23948,12 +24658,7 @@ module sep_fcov (
           u_sep_kmac_cfg_cmd_cg.sample(e);
           cxku_on <= 1'b0;
         end else if (cy_st_rise[5] && cy_k_idle) begin
-          if (cy_k_ec == 8'h06) begin
-            e      = '0;
-            e.um   = 1'b0;
-            e.um_v = 1'b1;
-            u_sep_kmac_cfg_cmd_cg.sample(e);
-          end
+          if (cy_k_ec == 8'h06) cxku_pend <= 1'b1;
           cxku_on <= 1'b0;
         end else if (cy_k_cmd_qe) begin
           cxku_on <= 1'b0;
@@ -24117,13 +24822,15 @@ module sep_fcov (
   // sep_hmac_fifo_stream_rand_test). After a WIPE_SECRET write of w, every
   // DIGEST word of the digest size reads w (in either byte order: the
   // digest_swap setting orders the bytes); and with no KEY write since, the
-  // next hash_start reaches its done event.
+  // next hash_start reaches its done event. Each cell is held until its bit of
+  // hmac_fifo_pass rises, after the check of the wipe passed.
   // ---------------------------------------------------------------------
   logic cxh_rd_on = 1'b0;
   logic cxh_key_on = 1'b0;
   logic cxh_started = 1'b0;
   logic [31:0] cxh_w = '0;
   logic [15:0] cxh_m = '0;
+  logic [1:0] cxh_ws_pend = '0;  // cp_wipe_secret values held for hmac_fifo_pass
   function automatic logic [31:0] cxh_bswap(input logic [31:0] v);
     return {v[7:0], v[15:8], v[23:16], v[31:24]};
   endfunction
@@ -24139,6 +24846,7 @@ module sep_fcov (
       cxh_rd_on   <= 1'b0;
       cxh_key_on  <= 1'b0;
       cxh_started <= 1'b0;
+      cxh_ws_pend <= '0;
     end else begin
       if (wr_ev && (aw_addr_q == HMAC_WIPE_SECRET_REG_ADDR)) begin
         cxh_rd_on   <= 1'b1;
@@ -24165,11 +24873,8 @@ module sep_fcov (
                 )) == cxh_need(
                     cy_h_dig
                 ))) begin
-              e      = '0;
-              e.ws   = 1'b0;
-              e.ws_v = 1'b1;
-              u_sep_hmac_cfg_op_cg.sample(e);
-              cxh_rd_on <= 1'b0;
+              cxh_ws_pend[0] <= 1'b1;
+              cxh_rd_on      <= 1'b0;
             end
           end else begin
             cxh_rd_on <= 1'b0;
@@ -24178,12 +24883,21 @@ module sep_fcov (
         end
         if (cxh_key_on && cy_h_start) cxh_started <= 1'b1;
         if (cxh_key_on && cxh_started && cy_h_done_ev) begin
-          e      = '0;
-          e.ws   = 1'b1;
-          e.ws_v = 1'b1;
-          u_sep_hmac_cfg_op_cg.sample(e);
-          cxh_key_on  <= 1'b0;
-          cxh_started <= 1'b0;
+          cxh_ws_pend[1] <= 1'b1;
+          cxh_key_on     <= 1'b0;
+          cxh_started    <= 1'b0;
+        end
+      end
+      // A held cell samples on the rise of its bit of hmac_fifo_pass (6, 7).
+      for (int v = 0; v < 2; v++) begin
+        if (cy_hfp_rise[6+v]) begin
+          if (cxh_ws_pend[v]) begin
+            e      = '0;
+            e.ws   = 1'(v);
+            e.ws_v = 1'b1;
+            u_sep_hmac_cfg_op_cg.sample(e);
+          end
+          cxh_ws_pend[v] <= 1'b0;
         end
       end
     end
@@ -24235,6 +24949,16 @@ module sep_fcov (
   // Refused narrow write: the forward probe of the lane stays low from the AW
   // handshake to the B response.
   logic [1:0] cxb_fwd_seen = '0;
+  // x_drbg_lane value v (0 to 7) passes on bit CxbPassDl + v of
+  // crypto_bus_pass, cp_lane_refuse value e (0 csrng, 1 edn) on bit
+  // CxbPassLr + e. A cell an access completes inside the owner window of the
+  // refusal leaf is held seen; it samples only when its pass bit rises inside
+  // that window, and the window close drops the cells not sampled.
+  localparam int CxbPassDl = 16;
+  localparam int CxbPassLr = 24;
+  logic [7:0] cxb_dl_seen = '0;
+  logic [1:0] cxb_lr_seen = '0;
+  logic [9:0] cxb_lane_pass_q = '0;
   // ABR outstanding transactions of each master, read and write. A response
   // belongs to ABR when every transaction of that master and direction in
   // flight is an ABR transaction; otherwise the counts are unknown until the
@@ -24246,16 +24970,27 @@ module sep_fcov (
   logic [4:0] cxb_m_r = '0;
   logic [4:0] cxb_m_w = '0;
   logic [3:0] cxb_bad = '0;  // {m_w, m_r, l_w, l_r} unknown
+  // x_abr_concurrent cell value v (0 to 5) passes on bit CxbPassAc + v of
+  // crypto_bus_pass. A cell a response completes inside the owner window is
+  // held seen; it samples only when its pass bit rises inside that window, and
+  // the window close drops the cells not sampled.
+  localparam int CxbPassAc = 33;
+  logic [5:0] cxb_ac_seen = '0;
+  logic [5:0] cxb_ac_pass_q = '0;
   wire cxb_m_ar_hs = (m_axi_arvalid_i === 1'b1) && (m_axi_arready_i === 1'b1);
   wire cxb_m_aw_hs = (m_axi_awvalid_i === 1'b1) && (m_axi_awready_i === 1'b1);
   wire cxb_m_r_end = (m_axi_rvalid_i === 1'b1) && (m_axi_rready_i === 1'b1) && (m_axi_rlast_i === 1'b1);
   wire cxb_m_b_hs = (m_axi_bvalid_i === 1'b1) && (m_axi_bready_i === 1'b1);
   // Lane-adapter arbitration: {ar_ready, w_ready, aw_ready, ar_valid,
   // w_valid, aw_valid}. A write half is pending from its handshake to the
-  // handshake of the other half.
+  // handshake of the other half. A legal cell is held as seen at the AR
+  // handshake and samples only when its bit of crypto_bus_pass (31 + lane)
+  // rises inside the owner window; the window close drops it.
   logic [1:0] cxl_aw = '0;
   logic [1:0] cxl_w = '0;
   logic [1:0] cxl_ovl = '0;
+  logic [1:0] cxl_seen = '0;
+  logic [1:0] cxl_pq = '0;
 
   always @(posedge clk_i) begin
     cba_t x;
@@ -24281,7 +25016,7 @@ module sep_fcov (
         x.dl   = {(rd_blk == BLK_EDN), 2'd2};
         x.dl_v = 1'b1;
       end
-      if (x.dl_v) cxb_sample(x);
+      if (x.dl_v) cxb_dl_seen[x.dl] <= 1'b1;
     end
     if (cy_own_lane && cxb_wr1 && (lsu_b_resp_i == FRespSlverr) && ((blk_of(
             aw_addr_q
@@ -24304,10 +25039,34 @@ module sep_fcov (
       if ((aw_addr_q[1:0] == 2'b00) && (cxb_wcls(
               own_st
           ) == 2'd2) && (oth_st == 4'h0) && !cxb_fwd_seen[edn]) begin
-        x.lr   = edn;
-        x.lr_v = 1'b1;
-        cxb_sample(x);
+        cxb_lr_seen[edn] <= 1'b1;
       end
+    end
+    if (in_reset || !cy_own_lane) begin
+      cxb_dl_seen     <= '0;
+      cxb_lr_seen     <= '0;
+      cxb_lane_pass_q <= '0;
+    end else begin
+      for (int v = 0; v < 8; v++) begin
+        if (cxb_dl_seen[v] && (crypto_bus_pass[CxbPassDl+v] === 1'b1) && !cxb_lane_pass_q[v]) begin
+          x      = '0;
+          x.dl   = 3'(v);
+          x.dl_v = 1'b1;
+          cxb_sample(x);
+          cxb_dl_seen[v] <= 1'b0;
+        end
+      end
+      for (int e = 0; e < 2; e++) begin
+        if (cxb_lr_seen[e] && (crypto_bus_pass[CxbPassLr+e] === 1'b1) &&
+            !cxb_lane_pass_q[8+e]) begin
+          x      = '0;
+          x.lr   = 1'(e);
+          x.lr_v = 1'b1;
+          cxb_sample(x);
+          cxb_lr_seen[e] <= 1'b0;
+        end
+      end
+      cxb_lane_pass_q <= {crypto_bus_pass[CxbPassLr+:2], crypto_bus_pass[CxbPassDl+:8]};
     end
 
     // --- x_abr_access ------------------------------------------------------
@@ -24342,7 +25101,7 @@ module sep_fcov (
           default: ;
         endcase
       end
-      if (x.aa_v) cxb_sample(x);
+      if (x.aa_v) cxb_aa_seen[x.aa] <= 1'b1;
     end
     if (cy_own_abrsz && cxb_wr1 && cxb_in_abr(aw_addr_q)) begin
       logic [1:0] lo;
@@ -24383,7 +25142,24 @@ module sep_fcov (
           x.aa_v = 1'b1;
         end
       end
-      if (x.aa_v) cxb_sample(x);
+      if (x.aa_v) cxb_aa_seen[x.aa] <= 1'b1;
+    end
+    // A seen x_abr_access cell samples when its pass bit rises inside the
+    // window; the window close drops the cells not sampled.
+    if (in_reset || !cy_own_abrsz) begin
+      cxb_aa_seen   <= '0;
+      cxb_aa_pass_q <= '0;
+    end else begin
+      for (int c = 0; c < 15; c++) begin
+        if (cxb_aa_seen[c] && (crypto_bus_pass[CxbPassAa+c] === 1'b1) && !cxb_aa_pass_q[c]) begin
+          x      = '0;
+          x.aa   = 4'(c);
+          x.aa_v = 1'b1;
+          cxb_sample(x);
+          cxb_aa_seen[c] <= 1'b0;
+        end
+      end
+      cxb_aa_pass_q <= crypto_bus_pass[CxbPassAa+:15];
     end
 
     // --- cp_wide_split and cp_wide_lane -------------------------------------
@@ -24421,7 +25197,7 @@ module sep_fcov (
         x.ws_v = 1'b1;
         cxb_sample(x);
       end else if (((rd_blk == BLK_CSRNG) || (rd_blk == BLK_EDN)) && lo_v && (lo != 32'h0) &&
-                   (lsu_r_data_i[31:0] == lo)) begin
+                   (lsu_r_data_i[31:0] == lo) && (lsu_r_data_i[63:32] === 32'h0)) begin
         x.wl   = (rd_blk == BLK_EDN);
         x.wl_v = 1'b1;
         cxb_sample(x);
@@ -24497,8 +25273,7 @@ module sep_fcov (
             if (is_rd && oth_r) x.ac = {2'd0, (depth >= 3)};
             else if (!is_rd && oth_w) x.ac = {2'd1, (depth >= 3)};
             else x.ac = {2'd2, (depth >= 3)};
-            x.ac_v = 1'b1;
-            cxb_sample(x);
+            cxb_ac_seen[x.ac] <= 1'b1;
           end
         end
       end
@@ -24556,6 +25331,21 @@ module sep_fcov (
       cxb_m_w  <= mw;
       cxb_bad  <= bad;
     end
+    if (!cy_own_abrcrw) begin
+      cxb_ac_seen   <= '0;
+      cxb_ac_pass_q <= '0;
+    end else begin
+      for (int c = 0; c < 6; c++) begin
+        if (cxb_ac_seen[c] && crypto_bus_pass[CxbPassAc+c] && !cxb_ac_pass_q[c]) begin
+          x      = '0;
+          x.ac   = 3'(c);
+          x.ac_v = 1'b1;
+          cxb_sample(x);
+          cxb_ac_seen[c] <= 1'b0;
+        end
+      end
+      cxb_ac_pass_q <= crypto_bus_pass[CxbPassAc+:6];
+    end
 
     // --- x_drbg_lane_arb ---------------------------------------------------
     for (int l = 0; l < 2; l++) begin
@@ -24565,22 +25355,37 @@ module sep_fcov (
       logic ar_h;
       logic pend;
       logic own;
+      logic passb;
       ch   = (l == 0) ? drbg_csrng_chan_i : drbg_edn_chan_i;
       aw_h = (ch[0] === 1'b1) && (ch[3] === 1'b1);
       w_h  = (ch[1] === 1'b1) && (ch[4] === 1'b1);
       ar_h = (ch[2] === 1'b1) && (ch[5] === 1'b1);
       own  = (l == 0) ? cy_own_arbcs : cy_own_arbedn;
       pend = cxl_aw[l] ^ cxl_w[l];
+      passb = (crypto_bus_pass[31+l] === 1'b1);
+      cxl_pq[l] <= passb;
       if (in_reset || !own) begin
-        cxl_aw[l]  <= 1'b0;
-        cxl_w[l]   <= 1'b0;
-        cxl_ovl[l] <= 1'b0;
+        cxl_aw[l]   <= 1'b0;
+        cxl_w[l]    <= 1'b0;
+        cxl_ovl[l]  <= 1'b0;
+        cxl_seen[l] <= 1'b0;
       end else begin
-        if (ar_h && (cxl_ovl[l] || pend)) begin
+        if (passb && !cxl_pq[l] && cxl_seen[l]) begin
           x      = '0;
-          x.la   = {1'(l), !pend};
+          x.la   = {1'(l), 1'b1};
           x.la_v = 1'b1;
           cxb_sample(x);
+          cxl_seen[l] <= 1'b0;
+        end
+        if (ar_h && (cxl_ovl[l] || pend)) begin
+          if (pend) begin
+            x      = '0;
+            x.la   = {1'(l), 1'b0};
+            x.la_v = 1'b1;
+            cxb_sample(x);
+          end else begin
+            cxl_seen[l] <= 1'b1;
+          end
           cxl_ovl[l] <= 1'b0;
         end else if ((ch[2] === 1'b1) && pend) begin
           cxl_ovl[l] <= 1'b1;
