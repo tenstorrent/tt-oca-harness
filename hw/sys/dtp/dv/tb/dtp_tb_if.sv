@@ -299,4 +299,11 @@ interface dtp_tb_if;
   logic [7:0]  cfg_smc_rd_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcRdPlDepth);
   logic [7:0]  cfg_smc_wr_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcWrPlDepth);
 
+  // The build target's boundary-scan enables, which the bypass reference
+  // models read.
+  logic cfg_bsr_enable          = dtp_dv_cfg_pkg::BsrEnable;
+  logic cfg_extest_train_enable = dtp_dv_cfg_pkg::ExtestTrainEnable;
+  logic cfg_extest_pulse_enable = dtp_dv_cfg_pkg::ExtestPulseEnable;
+  logic cfg_intest_enable       = dtp_dv_cfg_pkg::IntestEnable;
+
 endinterface : dtp_tb_if

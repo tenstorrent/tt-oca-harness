@@ -15,7 +15,9 @@
 // where the acknowledge signals are unused. The STAP count, the IC_RESET
 // slice widths, the instruction enables, the IDCODE fields, and the version
 // are the bench's choice; the DUT publishes them through JTAG_CAPS ("JTAG
-// Capabilities" table, PTAP document) and IDCODE. tb_top wires one extra STAP
+// Capabilities" table, PTAP document) and IDCODE. DTP_BSR_DISABLED clears the
+// mandatory boundary-scan enable and the three optional enables that require
+// it, so those instructions select BYPASS. tb_top wires one extra STAP
 // and one-bit IC_RESET slices and stops elaboration on any other count. The
 // IDCODE fields and the version differ from the dtp parameter defaults, so a
 // DUT that drops a parameter publishes a value the bench does not expect.
@@ -56,10 +58,14 @@ package dtp_dv_cfg_pkg;
 
   // JTAG interface unit and PTAP configuration.
   localparam int unsigned NumExtraStaps = 1;
+`ifdef DTP_BSR_DISABLED
+  localparam bit BsrEnable = 1'b0;
+`else
   localparam bit BsrEnable = 1'b1;
-  localparam bit ExtestTrainEnable = 1'b1;
-  localparam bit ExtestPulseEnable = 1'b1;
-  localparam bit IntestEnable = 1'b1;
+`endif
+  localparam bit ExtestTrainEnable = BsrEnable;
+  localparam bit ExtestPulseEnable = BsrEnable;
+  localparam bit IntestEnable = BsrEnable;
   localparam bit ClampEnable = 1'b1;
   localparam bit HighzEnable = 1'b1;
   localparam bit RunbistEnable = 1'b1;
