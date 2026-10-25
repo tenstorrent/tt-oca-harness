@@ -32,7 +32,13 @@ VIP result, so a byte lane outside the access that is not zero fails.
 
 Reads are graded on the identity words. Their values are not given by the RDL
 or any SEP document, so ``CHK-ABR-ID-REF`` first reads each word alone at
-AxSIZE=2 and every later read is compared against that capture. Writes use the
+AxSIZE=2 and every later read is compared against that capture.
+``CHK-ABR-SIZE-RD32`` also grades a 32-bit read against a golden the read does
+not supply: the two event counters ``error_internal_intr_count_r`` and
+``notif_cmd_done_intr_count_r`` (``sw = rw``, ``integration/rdl/sep/abr_reg.rdl``
+lines 624-654) are written at AxSIZE=2 with two distinct seeded values, and each
+32-bit read must return the value of its own register, so a read of the wrong
+register or a dead read path fails. Only that check releases the ``rd32`` cell. Writes use the
 ``global_intr_en_r`` / ``error_intr_en_r`` pair, the one 8-byte granule with a
 read-write register in each half, and the 32-bit ``error_internal_intr_count_r``
 counter, whose upper neighbour owns no register. Every register written here is
@@ -52,8 +58,22 @@ the end, and seeded dead words. Every live register is primed with a nonzero
 value first, so a read that aliases returns data and a write that aliases moves
 a readback.
 
-RANDCFG: the data values and two dead word offsets come from the run seed;
-every size, offset and strobe pattern is walked on every seed.
+Inside the extent, ``[[abr-aperture-decode]]`` states that a malformed register
+address returns no bus error. ``CHK-ABR-INMAP-HOLE`` reads and writes, at
+AxSIZE=2, the counter's upper neighbour and one seeded word that no generated
+ABR register address or memory window owns. The response codes and the read
+data are the SEP memory map's "Hole in Extent" cell of the ABR row. A write
+there must leave every graded register unchanged.
+
+FCOV: the graded window of this test opens right before the first graded read
+and closes after ``CHK-ABR-INMAP-HOLE``, or at the first failing check. Each
+check that passes writes the ``x_abr_access`` cells it graded to the
+``crypto_bus_pass`` label (``env/sep_fcov_gate.py``); the sampler samples a
+cell only when its label bit rises inside the window.
+
+RANDCFG: the data values, two dead word offsets and one in-extent hole come
+from the run seed; every size, offset and strobe pattern is walked on every
+seed.
 """
 
 from __future__ import annotations
@@ -62,8 +82,15 @@ from typing import Any
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_decode_resp import Expected, expected_unbacked, sep_map_row
+from env.sep_fcov_gate import (
+    CRYPTO_BUS_PASS_ABR_ACCESS,
+    close_graded_window,
+    open_graded_window,
+    set_crypto_bus_pass,
+)
+from env.sep_reg_meta import sep_reg, sym
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import abr_offsets, window
 from sep_base_test import sep_base_test
@@ -88,6 +115,32 @@ from seq_lib.sep_abr_bus_seq import (
 )
 
 BUS = "s_axi"
+TEST = "sep_abr_access_size_test"
+
+# Value of each x_abr_access bin (sep_crypto_bus_access_cg in
+# cov/sv/sep_fcov.sv). Cell v passes on bit CRYPTO_BUS_PASS_ABR_ACCESS + v of
+# the crypto_bus_pass label.
+X_ABR_ACCESS: dict[str, int] = {
+    "rd32": 0,
+    "wr32": 1,
+    "rd64_aligned": 2,
+    "rd64_bit2": 3,
+    "rd_narrow_b": 4,
+    "rd_narrow_h": 5,
+    "wr64_full": 6,
+    "wr64_one_word": 7,
+    "wr_partial_slverr": 8,
+    "wr64_mixed": 9,
+    "past_extent_rd": 10,
+    "past_extent_wr": 11,
+    "past_extent_partial_wr": 12,
+    "inmap_hole_rd": 13,
+    "inmap_hole_wr": 14,
+}
+
+# Clock edges the pass label is held, so the sampler sees each bit rise while
+# the graded window is open.
+LABEL_HOLD_CYCLES = 2
 
 # Bound, in system clocks, on the watch recording the R beat of a read that
 # has already returned.
@@ -135,6 +188,27 @@ DEAD_WORDS = _dead_words()
 DEAD_PARTIAL: tuple[tuple[int, int, int], ...] = ((0, 1, 0), (2, 2, 1), (1, 3, 2))
 
 
+def _owned_words() -> frozenset[int]:
+    """Every word that a generated ABR register address or memory window names."""
+    names = vars(sep_reg)
+    owned = {sym(n) for n in names if n.startswith("ABR_") and n.endswith("_REG_ADDR")}
+    for n in names:
+        if n.startswith("ABR_") and n.endswith("_MEM_BASE_ADDR"):
+            base = sym(n)
+            owned.update(range(base, base + sym(n.removesuffix("BASE_ADDR") + "SIZE"), 4))
+    return frozenset(owned)
+
+
+# Words inside the register map extent that no register or memory owns.
+INMAP_HOLES: tuple[int, ...] = tuple(
+    a for a in range(ABR_BASE, ABR_BASE + ABR_MAP_END, 4) if a not in _owned_words()
+)
+# The upper neighbour of the 32-bit counter (graded every seed) and the words
+# the seed draws one hole from.
+INMAP_COUNTER_HOLE = ERROR_COUNT.addr + 4
+INMAP_DRAW: tuple[int, ...] = tuple(a for a in INMAP_HOLES if a != INMAP_COUNTER_HOLE)
+
+
 def _strobe(addr: int, nbytes: int) -> int:
     """WSTRB on the 64-bit bus for ``nbytes`` at ``addr``."""
     return ((1 << nbytes) - 1) << (addr & 7)
@@ -179,6 +253,9 @@ def _selftest() -> None:
     assert all(ABR_BASE + ABR_MAP_END <= a < ABR_BASE + ABR_WINDOW_SIZE for a in DEAD_WORDS)
     assert len(DEAD_WORDS) == len(set(DEAD_WORDS)) and len(DEAD_WORDS) > 3
     assert all(_unbacked(a, "r").column == "Past Extent" for a in DEAD_WORDS)
+    assert INMAP_COUNTER_HOLE in INMAP_HOLES and INMAP_DRAW
+    assert all(_unbacked(a, "r").column == "Hole in Extent" for a in INMAP_HOLES)
+    assert not {w.addr for w in (*RW_WORDS, *IDENTITY_WORDS)} & set(INMAP_HOLES)
 
 
 _selftest()
@@ -203,12 +280,22 @@ class SepAbrAccessSizeCfg:
             addr = ABR_BASE + (rng.randrange(ABR_MAP_END, ABR_WINDOW_SIZE) & ~0x3)
             if addr not in DEAD_WORDS and addr not in self.dead_rand:
                 self.dead_rand.append(addr)
+        # One seeded in-extent word that no register or memory owns.
+        self.inmap_hole: int = rng.choice(INMAP_DRAW)
+        # CHK-ABR-SIZE-RD32: two distinct non-zero values for the two counters.
+        self.rd32_words: list[int] = []
+        while len(self.rd32_words) < 2:
+            w = rng.getrandbits(32)
+            if w and w not in self.rd32_words:
+                self.rd32_words.append(w)
 
     def summary(self) -> str:
         return (
             f"seed={self.seed} count_prime=0x{self.count_prime:08x} "
             f"count_words={[hex(w) for w in self.count_words]} "
-            f"dead_rand={[hex(a) for a in self.dead_rand]}"
+            f"dead_rand={[hex(a) for a in self.dead_rand]} "
+            f"inmap_hole=0x{self.inmap_hole:08x} "
+            f"rd32_words={[hex(w) for w in self.rd32_words]}"
         )
 
 
@@ -233,8 +320,27 @@ class sep_abr_access_size_test(sep_base_test):
         "CHK-ABR-UNPOP-RD",
         "CHK-ABR-UNPOP-WR",
         "CHK-ABR-UNPOP-PARTIAL",
+        "CHK-ABR-INMAP-HOLE",
         "CHK-ABR-SIZE-RESTORE",
     )
+
+    async def _passed(self, *cells: str) -> None:
+        """Write the x_abr_access cells a passed check graded to crypto_bus_pass.
+
+        Called only after the PASS line of that check. One clk_i edge first,
+        so the sampler has marked the cell of the last graded access as seen.
+        The bits are then held for LABEL_HOLD_CYCLES clk_i edges, so each one
+        rises while the graded window is open, and go back to 0 for the next
+        check.
+        """
+        mask = 0
+        for name in cells:
+            mask |= 1 << (CRYPTO_BUS_PASS_ABR_ACCESS + X_ABR_ACCESS[name])
+        await RisingEdge(self.clk)
+        set_crypto_bus_pass(mask, self.logger)
+        await ClockCycles(self.clk, LABEL_HOLD_CYCLES)
+        set_crypto_bus_pass(0, self.logger)
+        await RisingEdge(self.clk)
 
     async def _one(self, acc: AbrAccess, expect: int) -> AbrAccess:
         """Issue ``acc``, tolerating exactly one monitor DECERR when ``expect`` is DECERR."""
@@ -309,13 +415,19 @@ class sep_abr_access_size_test(sep_base_test):
                 " ".join(f"{r.name}=0x{entry[r.addr]:08x}" for r in RW_WORDS),
             )
 
-            await self._reads()
+            # Graded window: from the first graded read to the end of
+            # CHK-ABR-INMAP-HOLE. A failing check raises, and the finally
+            # below closes the window before any later clock edge.
+            open_graded_window(TEST, self.logger)
+            await self._reads(cfg)
             await self._full_word_writes(cfg)
             await self._wide_writes(cfg)
             await self._partial_writes(cfg)
             await self._narrow_rw_reads(cfg)
-            await self._unpopulated(cfg)
+            primes = await self._unpopulated(cfg)
+            await self._inmap_holes(cfg, primes)
         finally:
+            close_graded_window(self.logger)
             self.watch.stop()
 
         # --- CHK-ABR-SIZE-RESTORE ---------------------------------------------
@@ -326,7 +438,7 @@ class sep_abr_access_size_test(sep_base_test):
             len(RW_WORDS),
         )
 
-    async def _reads(self) -> None:
+    async def _reads(self, cfg: SepAbrAccessSizeCfg) -> None:
         # --- CHK-ABR-SIZE-RD32 ------------------------------------------------
         for w in IDENTITY_WORDS:
             acc = await self._rd(w.addr)
@@ -334,10 +446,34 @@ class sep_abr_access_size_test(sep_base_test):
                 f"CHK-ABR-SIZE-RD32 FAIL: {w.name} returned {acc.resp_name} "
                 f"0x{acc.data:08x}, expected 0x{w.value:08x}"
             )
+        # The golden of the counter reads is the value written, not a read: each
+        # counter holds its own seeded value, and the two values differ.
+        counters = (ERROR_COUNT, NOTIF_COUNT)
+        for reg, value in zip(counters, cfg.rd32_words, strict=True):
+            acc = await self._wr(reg.addr, value)
+            assert acc.resp == RESP_OKAY, (
+                f"CHK-ABR-SIZE-RD32 FAIL: 32-bit write of 0x{value:08x} to {reg.name} "
+                f"answered {acc.resp_name}"
+            )
+        got: list[int] = []
+        for reg, value in zip(counters, cfg.rd32_words, strict=True):
+            acc = await self._rd(reg.addr)
+            got.append(acc.data)
+            assert acc.resp == RESP_OKAY and acc.data == value & reg.mask, (
+                f"CHK-ABR-SIZE-RD32 FAIL: 32-bit read of {reg.name} returned "
+                f"{acc.resp_name} 0x{acc.data:08x}, expected the written 0x{value & reg.mask:08x}"
+            )
         self.logger.info(
-            "CHK-ABR-SIZE-RD32 PASS: %d identity words each read their captured value at AxSIZE=2",
+            "CHK-ABR-SIZE-RD32 PASS: %d identity words each read their captured value at "
+            "AxSIZE=2; %s read 0x%08x and %s read 0x%08x at AxSIZE=2, the values written to "
+            "them",
             len(IDENTITY_WORDS),
+            ERROR_COUNT.name,
+            got[0],
+            NOTIF_COUNT.name,
+            got[1],
         )
+        await self._passed("rd32")
 
         # --- CHK-ABR-SIZE-RD64 ------------------------------------------------
         pairs = list(IDENTITY_PAIRS)
@@ -354,6 +490,7 @@ class sep_abr_access_size_test(sep_base_test):
             "of the two registers they cover",
             len(pairs),
         )
+        await self._passed("rd64_aligned")
 
         # --- CHK-ABR-SIZE-RD64-UNALIGNED --------------------------------------
         # AxSIZE=3 at an address with addr[2]=1: the transfer covers one
@@ -371,6 +508,7 @@ class sep_abr_access_size_test(sep_base_test):
             "word returned that word, with the lower four byte lanes of the R beat zero",
             len(pairs),
         )
+        await self._passed("rd64_bit2")
 
         # --- CHK-ABR-SIZE-RD-NARROW -------------------------------------------
         cells = 0
@@ -394,6 +532,7 @@ class sep_abr_access_size_test(sep_base_test):
             "byte lane of the R beat zero",
             cells,
         )
+        await self._passed("rd_narrow_b", "rd_narrow_h")
 
     async def _full_word_writes(self, cfg: SepAbrAccessSizeCfg) -> None:
         # --- CHK-ABR-SIZE-WR32 ------------------------------------------------
@@ -410,6 +549,7 @@ class sep_abr_access_size_test(sep_base_test):
             ERROR_INTR_EN.name,
             ERROR_COUNT.name,
         )
+        await self._passed("wr32")
 
     async def _pair(self) -> tuple[int, int]:
         acc = await self._rd(GLOBAL_INTR_EN.addr, nbytes=8, size=3)
@@ -450,6 +590,7 @@ class sep_abr_access_size_test(sep_base_test):
             hi_reg.name,
             ERROR_COUNT.name,
         )
+        await self._passed("wr64_full", "rd64_aligned")
 
         # --- CHK-ABR-SIZE-WR64-LO ---------------------------------------------
         # AxSIZE=3, WSTRB=0x0F: the upper word's half of the split beat has no
@@ -466,6 +607,7 @@ class sep_abr_access_size_test(sep_base_test):
             lo_reg.name,
             hi_reg.name,
         )
+        await self._passed("wr64_one_word", "rd64_aligned")
 
         # --- CHK-ABR-SIZE-WR64-HI ---------------------------------------------
         await self._set(lo_reg, lo_reg.mask)
@@ -481,6 +623,7 @@ class sep_abr_access_size_test(sep_base_test):
             hi_reg.name,
             lo_reg.name,
         )
+        await self._passed("rd64_aligned")
 
         # --- CHK-ABR-SIZE-WR32-HI ---------------------------------------------
         acc = await self._wr(hi_reg.addr, hi_reg.mask, nbytes=4, size=2)
@@ -500,6 +643,7 @@ class sep_abr_access_size_test(sep_base_test):
             hi_reg.name,
             lo_reg.name,
         )
+        await self._passed("wr32", "rd64_aligned")
 
     async def _partial_writes(self, cfg: SepAbrAccessSizeCfg) -> None:
         # --- CHK-ABR-SIZE-WR-PARTIAL ------------------------------------------
@@ -531,6 +675,7 @@ class sep_abr_access_size_test(sep_base_test):
             cells,
             len(targets),
         )
+        await self._passed("wr_partial_slverr")
 
         # --- CHK-ABR-SIZE-WR64-MIXED ------------------------------------------
         # A 64-bit beat whose strobe covers one word whole and the other in
@@ -558,6 +703,7 @@ class sep_abr_access_size_test(sep_base_test):
             "CHK-ABR-SIZE-WR64-MIXED PASS: WSTRB=0x7F and 0xFC each wrote the whole word "
             "they cover, left the partial word unchanged, and answered SLVERR"
         )
+        await self._passed("wr64_mixed", "rd64_aligned")
 
     async def _narrow_rw_reads(self, cfg: SepAbrAccessSizeCfg) -> None:
         # --- CHK-ABR-SIZE-RD-NARROW-RW ----------------------------------------
@@ -582,6 +728,7 @@ class sep_abr_access_size_test(sep_base_test):
             ERROR_COUNT.name,
             cfg.count_prime,
         )
+        await self._passed("rd_narrow_b", "rd_narrow_h")
 
     async def _live_image(self, primes: dict[int, int]) -> list[str]:
         """Every graded register against its primed or captured value."""
@@ -596,7 +743,7 @@ class sep_abr_access_size_test(sep_base_test):
                 moved.append(f"{w.name} 0x{w.value:08x}->0x{got:08x}")
         return moved
 
-    async def _unpopulated(self, cfg: SepAbrAccessSizeCfg) -> None:
+    async def _unpopulated(self, cfg: SepAbrAccessSizeCfg) -> dict[int, int]:
         """Unpopulated offsets past the register map, per [[abr-aperture-decode]]."""
         dead = (*DEAD_WORDS, *cfg.dead_rand)
         # Prime every read-write register with a value that has a set bit in
@@ -641,6 +788,7 @@ class sep_abr_access_size_test(sep_base_test):
             len(dead),
             "; ".join(sorted(stated)),
         )
+        await self._passed("past_extent_rd")
 
         # --- CHK-ABR-UNPOP-WR -------------------------------------------------
         for addr in dead:
@@ -667,6 +815,7 @@ class sep_abr_access_size_test(sep_base_test):
             len(RW_WORDS),
             len(IDENTITY_WORDS),
         )
+        await self._passed("past_extent_wr", "past_extent_rd")
 
         # --- CHK-ABR-UNPOP-PARTIAL --------------------------------------------
         fails: list[str] = []
@@ -707,3 +856,63 @@ class sep_abr_access_size_test(sep_base_test):
             cells,
             "/".join(sorted(RESP_NAME.get(c, str(c)) for c in codes)),
         )
+        await self._passed("past_extent_partial_wr")
+        return primes
+
+    async def _inmap_holes(self, cfg: SepAbrAccessSizeCfg, primes: dict[int, int]) -> None:
+        """In-extent words that no register or memory owns, per [[abr-aperture-decode]]."""
+        # --- CHK-ABR-INMAP-HOLE -----------------------------------------------
+        # hw/sys/sep/doc/adams_bridge.adoc:107-108: a malformed ABR register
+        # address inside the extent returns no bus error. The response codes
+        # and the read data (0x0) are the default hole response of the SEP
+        # register description, hw/sys/sep/regs/sep.rdl:189 (ocah_hole_resp),
+        # generated into the "Hole in Extent" cell of the ABR row of
+        # hw/sys/sep/regs/gen/adoc/memory_map.adoc:66 and read through
+        # env/sep_decode_resp.py. Each word is read, written with all ones (the readback
+        # shows no storage at the word), written with zero (an aliased write
+        # clears bits of a primed register), read back, and every graded
+        # register is read against its primed or captured value. Positive
+        # probe: one AW handshake at the word on the s_axi pins per write.
+        rec = self.watch.rec[BUS]
+        lines: list[str] = []
+        for addr in (INMAP_COUNTER_HOLE, cfg.inmap_hole):
+            exp_rd, exp_wr = _unbacked(addr, "r"), _unbacked(addr, "w")
+            want_beat = _in_lanes(addr, exp_rd.rdata)
+            rd, beat = await self._rd_beat(addr, 4, 2, expect=exp_rd.resp)
+            aw_mark = len(rec.aw)
+            wr_ones = await self._wr(addr, 0xFFFF_FFFF, expect=exp_wr.resp)
+            back = await self._rd(addr, expect=exp_rd.resp)
+            wr_zero = await self._wr(addr, 0, expect=exp_wr.resp)
+            aw_hits = sum(1 for _cyc, _id, a in rec.aw[aw_mark:] if a == addr)
+            moved = await self._live_image(primes)
+            line = (
+                f"0x{addr:08x}: rd {rd.resp_name} 0x{rd.data:08x} {_beat_txt(beat)}; "
+                f"wr 0xffffffff {wr_ones.resp_name}; readback {back.resp_name} "
+                f"0x{back.data:08x}; wr 0x0 {wr_zero.resp_name}; aw_seen={aw_hits}; "
+                f"moved={moved or 'none'}"
+            )
+            assert (
+                rd.resp == exp_rd.resp
+                and rd.data == exp_rd.rdata
+                and beat == want_beat
+                and wr_ones.resp == exp_wr.resp
+                and back.resp == exp_rd.resp
+                and back.data == exp_rd.rdata
+                and wr_zero.resp == exp_wr.resp
+                and aw_hits == 2
+                and not moved
+            ), (
+                f"CHK-ABR-INMAP-HOLE FAIL: {line}; the SEP memory map states {exp_rd.cell} "
+                f"(memory_map.adoc:66, {exp_rd.row}, {exp_rd.column}), R beat "
+                f"0x{want_beat:016x}, two AW handshakes, no graded register moved"
+            )
+            lines.append(line)
+        self.logger.info(
+            "CHK-ABR-INMAP-HOLE PASS: AxSIZE=2 accesses at %d in-extent words no register "
+            "or memory owns answered as the SEP memory map states (%s, memory_map.adoc:66) "
+            "and moved no graded register: %s",
+            len(lines),
+            _unbacked(INMAP_COUNTER_HOLE, "r").cell,
+            " | ".join(lines),
+        )
+        await self._passed("inmap_hole_rd", "inmap_hole_wr")
