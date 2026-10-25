@@ -941,7 +941,7 @@ def selection_record(args: Any | None) -> dict[str, Any]:
     wrong_tool = list(getattr(args, "_skipped_wrong_tool", []) or []) if args is not None else []
     if wrong_tool:
         selection["skipped_wrong_tool"] = wrong_tool
-    # Tests no `--target` entry runs, each with the target it would run on otherwise.
+    # Tests no `--target` entry runs, each with the targets it would run on otherwise.
     wrong_target = list(getattr(args, "_skipped_target", []) or []) if args is not None else []
     if wrong_target:
         selection["skipped_target"] = wrong_target

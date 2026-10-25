@@ -60,7 +60,9 @@ class TestEntry:
     # empty when the scenario has no binding for the selected framework. `excluded` tells a
     # declared-out-of-scope framework apart from a missing entry.
     module: str
-    target: str | None = None
+    # The targets the testlist `target` names, in its order; empty runs the test on the
+    # DUT's default target.
+    targets: tuple[str, ...] = ()
     seed: int | None = None
     reseed: int | None = None
     timeout_sec: int | None = None
