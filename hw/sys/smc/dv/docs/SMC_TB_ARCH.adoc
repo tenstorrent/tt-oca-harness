@@ -702,6 +702,10 @@ on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
   bound for assertion and release, and checks every SMC-cycle sample in its
   hold window. It also requires the cluster-boundary isolation tap low at
   baseline.
+  The watchdog second-stage scenario requires every core reset released at
+  baseline and after each warm reset before recovery CSR access, and observes
+  them asserted together at a sample during each warm reset. The core-reset
+  vector also participates in the watcher's unknown-value check.
 . `uvm/env/smc_env_pkg.sv` — `smc_types` (SEP_IN geometry, the scratch CSR
   windows from the generated `smc_top_addrmap_pkg`, 32-bit-CSR lane helpers
   for the 64-bit bus), `smc_test_cfg`, `smc_env_cfg`,
