@@ -46465,10 +46465,12 @@ RESET_TIMEOUT. The live per-core reset tap qualifies the measurement window.
 reset reaches its watchdog on `wdt_n_corerst` as a status input, not as a
 reset. Resetting a core does not clear watchdog COUNT or configuration.
 
-*Test Procedure*: Require an open cluster boundary at baseline and a disabled
-selected watchdog at its reset configuration. Save COUNT, CMP and reset
-control. Program CMP, coreawake and COUNT,
-then calibrate a positive count rate. Apply reset and wait with a bound for
+*Test Procedure*: Read reset control and RESET_TIMEOUT, and require the
+selected core released and uncore reset-applied clear. Wait with a bound for
+the selected core's reset tap to be high, then require an open cluster
+boundary and a disabled selected watchdog at its reset configuration. Save
+COUNT and CMP. Program CMP, coreawake and COUNT, then calibrate a positive
+count rate. Apply reset and wait with a bound for
 the selected core's reset tap to go low. Require it low at every SMC-cycle
 sample in the hold window and before release; uncore reset-applied must
 remain clear at the held-status read. Release reset and wait with a bound
