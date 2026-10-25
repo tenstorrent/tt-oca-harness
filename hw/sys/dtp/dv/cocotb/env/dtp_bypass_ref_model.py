@@ -4,16 +4,17 @@
 
 Every DR scan of at most 64 bits while a bypass-class instruction is active
 and the PTAP 3DCR select is clear returns TDI delayed by one TCK (the
-one-bit bypass register: both IEEE encodings and every opcode with no
-register of its own, 0x0F, 0x10-0x17 and 0x2D-0x3C), INV_BYPASS the
-inverted delayed image behind a captured 1, and ZERO_LENGTH_BYPASS TDI
-itself. Consumes the reconstructed scan stream (``write``) and the per-TCK
-event stream (``event_export``)
-through a ``DtpJtagIrModel``, re-baselines on power-on reset through the TB
-interface, and publishes one ``DtpExpectedItem`` per scan item so the
-scoreboard pairs the two streams in lockstep; scans outside the contract
-carry none. No comparison, no reporting. The SV-UVM twin is
-``dtp_bypass_ref_model``.
+one-bit bypass register: both IEEE encodings, every opcode with no register
+of its own, 0x0F, 0x10-0x17 and 0x2D-0x3C, and each boundary-scan
+instruction the build disables, which behaves as BYPASS ("Boundary Scan
+Support", PTAP document)), INV_BYPASS the inverted delayed image behind a
+captured 1, and ZERO_LENGTH_BYPASS TDI itself. Consumes the reconstructed
+scan stream (``write``) and the per-TCK event stream (``event_export``)
+through a ``DtpJtagIrModel``, reads the build's boundary-scan enables and
+re-baselines on power-on reset through the TB interface, and publishes one
+``DtpExpectedItem`` per scan item so the scoreboard pairs the two streams in
+lockstep; scans outside the contract carry none. No comparison, no
+reporting. The SV-UVM twin is ``dtp_bypass_ref_model``.
 """
 
 from __future__ import annotations
@@ -41,6 +42,15 @@ _ONE_BIT_BYPASS = frozenset(
         *range(int(DtpJtagInstr.UNDEFINED_BYPASS_2D), int(DtpJtagInstr.UNDEFINED_BYPASS_3C) + 1),
     ]
 )
+# Each boundary-scan instruction with the TB-interface enables that must all
+# be set for it to select the boundary-scan register.
+_BOUNDARY_SCAN_ENABLES: dict[int, tuple[str, ...]] = {
+    int(DtpJtagInstr.SAMPLE_PRELOAD): ("cfg_bsr_enable",),
+    int(DtpJtagInstr.EXTEST): ("cfg_bsr_enable",),
+    int(DtpJtagInstr.EXTEST_TRAIN): ("cfg_bsr_enable", "cfg_extest_train_enable"),
+    int(DtpJtagInstr.EXTEST_PULSE): ("cfg_bsr_enable", "cfg_extest_pulse_enable"),
+    int(DtpJtagInstr.INTEST): ("cfg_bsr_enable", "cfg_intest_enable"),
+}
 
 
 class DtpBypassRefModel(OcahRefModel):
@@ -51,6 +61,7 @@ class DtpBypassRefModel(OcahRefModel):
         self.tb_if = ConfigDB().get(self, "", "tb_if")
         self.event_export = DtpAnalysisImp("event_export", self, self.write_event)
         self._model = DtpJtagIrModel()
+        self._one_bit_bypass: frozenset[int] | None = None
 
     def write(self, item: OcahJtagScanItem) -> None:
         """Track IR scans; predict the TDO of a DR scan under a known bypass-family instruction."""
@@ -78,7 +89,7 @@ class DtpBypassRefModel(OcahRefModel):
         ):
             return None
         ir = model.ir()
-        if ir in _ONE_BIT_BYPASS:
+        if ir in self._one_bit_bypass_opcodes():
             value = OcahJtagTapRefModel.predict_bypass_tdo(item.tdi_value, width)
         elif ir == int(DtpJtagInstr.INV_BYPASS):
             inverted = ~item.tdi_value & ((1 << (width - 1)) - 1)
@@ -94,3 +105,14 @@ class DtpBypassRefModel(OcahRefModel):
             context=f"ir=0x{ir:02x} bits={width}",
             time_ns=item.end_time_ns,
         )
+
+    def _one_bit_bypass_opcodes(self) -> frozenset[int]:
+        """The one-bit bypass opcodes of the build, read once the first DR scan has run."""
+        if self._one_bit_bypass is None:
+            disabled = {
+                ir
+                for ir, enables in _BOUNDARY_SCAN_ENABLES.items()
+                if not all(self.tb_if.sample(name) for name in enables)
+            }
+            self._one_bit_bypass = _ONE_BIT_BYPASS | disabled
+        return self._one_bit_bypass
