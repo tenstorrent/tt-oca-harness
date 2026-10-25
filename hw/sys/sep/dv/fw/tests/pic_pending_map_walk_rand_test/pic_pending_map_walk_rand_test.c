@@ -509,7 +509,7 @@ static void write_enables(int pass) {
 }
 
 static void ctl_fifo_empty(const char *tag) {
-    rec_info("FIFO-EMPTY");
+    rec_obs("FIFO-EMPTY");
     rec_str("t", tag);
     rec_str("intr_state_hmac", "na");
     rec_hex("intr_enable_hmac", rd(HM(ENABLE)));

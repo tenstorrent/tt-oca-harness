@@ -173,7 +173,7 @@ write), ``CTRL-OTBN-BUSYWR-ERR`` (the recoverable error run sets ``ERR_BITS``),
 BUSY_EXECUTE and ``otbn_intg_flip_count_o`` is non-zero at LOCKED, so a corrupted
 read response reached the integrity check).
 Log-only: ``OBS-OTBN-STATUS-SEQ``; ``OBS-OTBN-INITDONE-DONE`` (``INTR_STATE.done``
-after the post-reset wipe: no sentence states its value); ``OBS-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
+after the post-reset wipe: no sentence states its value); ``INFO-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
 program, a chance outcome); ``OBS-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of the recoverable run: no sentence states the bits other
 than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error);
@@ -1019,7 +1019,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         idle, ivals, _ = await self._wait_idle(_OUTER_CLK, gap=4)
         err = await self._rd(A_ERR_BITS, M_ERR_BITS)
         # Bit 6 (two equal EDN words) is a chance outcome: logged, not graded.
-        self.chk.obs(
+        self.chk.info(
             "OTBN-BUSYWR-RNDREP", seed=seed, rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP))
         )
         err_graded = err & ~M_ERR_RND_REP

@@ -35,8 +35,8 @@ follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
 Expected values are the RDL reset and field layout
 (``hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc``) and the drawn stimulus,
 never a DUT read-back. cpu run mode, ``+skip_fuse_sense``; VCS grades
-CHK-RESET-X, Verilator runs the value checks and logs the probe compare as
-``INFO-RESET-X``.
+CHK-RESET-X, Verilator runs the value checks and the probe compare control
+``CTRL-RESET-X``.
 """
 
 from __future__ import annotations
@@ -311,7 +311,7 @@ class sep_pic_reg_rand_test(sep_base_test):
                 f"ctrl_nonzero={ctrl_nonzero}"
             )
             if not four_state:
-                self.logger.info("INFO-RESET-X LOG tool=verilator %s", body)
+                self.logger.info("CTRL-RESET-X LOG tool=verilator %s", body)
                 continue
             if not ok:
                 raise AssertionError(
@@ -321,7 +321,7 @@ class sep_pic_reg_rand_test(sep_base_test):
             n += 1
         if not four_state and not ctrl_ok:
             raise AssertionError(
-                f"INFO-RESET-X: probe read-backs do not match the firmware ({ctrl_match}/"
+                f"CTRL-RESET-X FAIL: probe read-backs do not match the firmware ({ctrl_match}/"
                 f"{ctrl_reads}, sampled {len(arr)}) mism={mism}"
             )
         return n

@@ -267,8 +267,8 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         fs = field_compare(size, self.ap_size, REGION_SIZE_MASK)
         line = f"base {fb.fields()} size {fs.fields()}"
         if not (fb.ok and fs.ok):
-            raise AssertionError(f"APERTURE-READBACK FAIL: {line}")
-        self.logger.info("INFO-APERTURE-READBACK LOG: %s", line)
+            raise AssertionError(f"CTRL-APERTURE-READBACK FAIL: {line}")
+        self.logger.info("CTRL-APERTURE-READBACK LOG: %s", line)
 
     # --------------------------------------------------------------- bring-up
     async def _bring_up(self) -> None:

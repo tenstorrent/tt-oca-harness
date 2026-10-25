@@ -74,7 +74,7 @@ event outside a graded step is dropped.
 
 Log-only: the flags of the pre-sense, data-0 and both-enables cases
 (``OBS-IF-STATUS-FLAGS``), the other flags and data of the lock-blocked read, the bank
-diff after the out-of-range and lock-blocked program cases (``CHK-IF-CMD INFO``).
+diff after the out-of-range and lock-blocked program cases (``OBS-IF-CMD``).
 Two points the contract leaves open are logged, not graded: the out-of-range program
 has no accepted twin in the procedure (``OBS-IF-CTRL-NO-TWIN``), and the order of the
 two enable-clear writes after the both-enables case is not stated (the leaf clears
@@ -746,7 +746,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             f = await self._run_read(a)
             diff = self.bank.diff_since(snap)
             self.logger.info(
-                "CHK-IF-CMD INFO seed=%d case=read_oob addr=%d otp_diff=%s",
+                "OBS-IF-CMD LOG seed=%d case=read_oob addr=%d otp_diff=%s",
                 self.seed,
                 a,
                 "none" if not diff else diff_log(diff),
@@ -764,7 +764,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             f = await self._run_program(a)
             diff = self.bank.diff_since(snap)
             self.logger.info(
-                "CHK-IF-CMD INFO seed=%d case=prog_oob addr=%d otp_diff=%s",
+                "OBS-IF-CMD LOG seed=%d case=prog_oob addr=%d otp_diff=%s",
                 self.seed,
                 a,
                 "none" if not diff else diff_log(diff),
@@ -785,7 +785,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         f = await self._run_program(bit)
         diff = self.bank.diff_since(snap)
         self.logger.info(
-            "CHK-IF-CMD INFO seed=%d case=prog_wlocked addr=%d otp_diff=%s",
+            "OBS-IF-CMD LOG seed=%d case=prog_wlocked addr=%d otp_diff=%s",
             self.seed,
             bit,
             "none" if not diff else diff_log(diff),

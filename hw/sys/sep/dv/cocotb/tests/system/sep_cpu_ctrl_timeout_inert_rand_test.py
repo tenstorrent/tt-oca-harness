@@ -181,8 +181,8 @@ class _AliasReg(SepAxiRegDriver):
         got = await self._rd(base + ALIAS_ATTRS) | (await self._rd(base + ALIAS_ATTRS + 4) << 32)
         fc = field_compare(got, attrs, ALIAS_OFFSET_FIELD | ALIAS_VALID_FIELD)
         if not fc.ok:
-            raise AssertionError(f"ALIAS-READBACK FAIL: region={ALIAS_REGION} {fc.fields()}")
-        self.log.info("INFO-ALIAS-READBACK LOG: region=%d %s", ALIAS_REGION, fc.fields())
+            raise AssertionError(f"CTRL-ALIAS-READBACK FAIL: region={ALIAS_REGION} {fc.fields()}")
+        self.log.info("CTRL-ALIAS-READBACK LOG: region=%d %s", ALIAS_REGION, fc.fields())
 
 
 class _VecWatch:

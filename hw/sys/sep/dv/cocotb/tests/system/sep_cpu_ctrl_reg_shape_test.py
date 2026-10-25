@@ -37,8 +37,8 @@ Checkers:
                   readback, and ``scratch_cold_probe_o`` for the cold bank);
                   in the high-half-first order also after the high-half
                   write, against the value before it.
-Controls (not counted): CTRL-NMI-DEFAULT, CTRL-NMI-STORE, INFO-SCR-SEQ,
-CTRL-SCR-NEIGHBOUR. Observations: OBS-CC-RSVD, OBS-TIMEOUT.
+Controls (not counted): CTRL-NMI-DEFAULT, CTRL-NMI-STORE, CTRL-SCR-NEIGHBOUR.
+Records: INFO-SCR-SEQ. Observations: OBS-CC-RSVD, OBS-TIMEOUT.
 
 The graded window (owner code of this test) is open around the graded
 writes and their readbacks only. The first reads, the writes before the lock,
@@ -326,7 +326,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, VERSION_RESET, VERSION_FIELD)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-CC-RO FAIL: {line}"
-            self.logger.info("INFO-CC-RO LOG: %s", line)
+            self.logger.info("CTRL-CC-RO LOG: %s", line)
             self._rsvd("SEP_VERSION_ID", got, VERSION_FIELD)
         close_graded_window(self.logger)
         n_low = sum(1 for _v, lane in cfg.ver if lane in LOW_LANES)
@@ -360,7 +360,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, model, NMI_FIELD | NMI_RSVD0)
             line = f"write={i} lane={lane} wdata=0x{v:016x} {fc.fields()}"
             assert fc.ok, f"CTRL-NMI-STORE FAIL: {line}"
-            self.logger.info("INFO-NMI-STORE LOG: %s", line)
+            self.logger.info("CTRL-NMI-STORE LOG: %s", line)
             self._rsvd("SEP_NMI_VEC", got, NMI_FIELD | NMI_RSVD0)
         self.logger.info(
             "CTRL-NMI-STORE: writes=%d bit0=0 bits31:1_exact model=0x%08x",
@@ -393,7 +393,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, vec, NMI_FIELD)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-NMI-LOCK FAIL: locked vector write changed nmi_vec: {line}"
-            self.logger.info("INFO-NMI-LOCK LOG: %s", line)
+            self.logger.info("CTRL-NMI-LOCK LOG: %s", line)
             self._rsvd("SEP_NMI_VEC", got, NMI_FIELD)
 
         # Step 7: lock write cases.
@@ -404,7 +404,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, LOCK_FIELD, LOCK_FIELD)
             line = f"wdata=0x{k:x} lane={lane} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-NMI-LOCK FAIL: lock cleared by a write: {line}"
-            self.logger.info("INFO-NMI-LOCK LOG: %s", line)
+            self.logger.info("CTRL-NMI-LOCK LOG: %s", line)
             self._rsvd("SEP_NMI_VEC_LOCK", got, LOCK_FIELD)
             n0 += int(k == 0)
             n1 += int(k == M64)
@@ -463,7 +463,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, base[name], field)
             line = f"reg={name} wdata=0x{v:016x} lane={lane} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-CC-INERT FAIL: read-only bit changed by a write: {line}"
-            self.logger.info("INFO-CC-INERT LOG: %s", line)
+            self.logger.info("CTRL-CC-INERT LOG: %s", line)
             self._rsvd(name, got, field)
             after[name] = got & field
         close_graded_window(self.logger)

@@ -197,8 +197,8 @@ class _AliasRegion(SepAxiRegDriver):
         ):
             fc = field_compare(await self._rd64(base + off), want, mask)
             line = f"region={k} {tag} {name} {fc.fields()}"
-            assert fc.ok, f"ALIAS-READBACK FAIL: {line}"
-            self.log.info("INFO-ALIAS-READBACK LOG: %s", line)
+            assert fc.ok, f"CTRL-ALIAS-READBACK FAIL: {line}"
+            self.log.info("CTRL-ALIAS-READBACK LOG: %s", line)
 
 
 def attrs_word(offset: int, cacheable: int, valid: bool) -> int:

@@ -242,7 +242,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
 
     def _log_size3(self, row: str, kind: str, resp: int, rdata: int, d: str) -> None:
         self.logger.info(
-            "INFO-ROW-SIZE3 LOG: row=%s kind=%s dir=%s size=3 resp=%s rdata=0x%016x graded=0",
+            "OBS-ROW-SIZE3 LOG: row=%s kind=%s dir=%s size=3 resp=%s rdata=0x%016x graded=0",
             row,
             kind,
             d,
@@ -369,7 +369,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     self._grade_cell("reset_ctrl", "past", "LSU", SepAxiOp.WRITE, a, resp, 0, wd)
                 else:
                     self.logger.info(
-                        "INFO-ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d resp=%s graded=0",
+                        "OBS-ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d resp=%s graded=0",
                         a,
                         size,
                         _RN.get(resp),

@@ -46,9 +46,9 @@ Checkers:
 
 ``sep_test_en_pin_reach_test`` grades the clock-gater and AXI cell test
 inputs that ``test_en_i`` reaches. This leaf runs the same read-only walk
-(``env/sep_test_en_walk.py``, root ``u_dut``) and grades no pin. It logs
-``OBS-TEST-EN-PINS`` (the walk totals, the count of pins that follow
-``test_en_i`` and the path of every pin that does not) and ``OBS-STRAP-PINS``
+(``env/sep_test_en_walk.py``, root ``u_dut``) and grades no pin. It records
+``INFO-TEST-EN-PINS`` (the walk totals, the count of pins that follow
+``test_en_i`` and the path of every pin that does not) and ``INFO-STRAP-PINS``
 (the walked pins that move across the strap toggles).
 
 The graded window (owner code of this test) is open from the first test_en_i
@@ -169,7 +169,7 @@ class sep_scan_reset_override_test(sep_base_test):
 
     async def _set_test_en(self, v: int) -> None:
         """Drive test_en_i, wait up to PIN_BOUND cycles for every walked pin to
-        equal it, and record the pins that do not (OBS-TEST-EN-PINS)."""
+        equal it, and record the pins that do not (INFO-TEST-EN-PINS)."""
         dut = cocotb.top
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = v
@@ -339,7 +339,7 @@ class sep_scan_reset_override_test(sep_base_test):
         await self._toggle_test_en(strap=1)
 
         # Step 5: strap toggles with test_en_i = 0. Every walked pin is compared with
-        # its own value before the toggles (OBS-STRAP-PINS).
+        # its own value before the toggles (INFO-STRAP-PINS).
         following = [p for p, _x in self._pins() if p not in self.pin_stuck]
         await ReadOnly()
         before = dict(self._pins())
@@ -355,9 +355,9 @@ class sep_scan_reset_override_test(sep_base_test):
                 moved += [(p, x) for p, x in self._pins() if x != before[p]]
         await RisingEdge(dut.clk_i)
         for p in sorted({p for p, _x in moved}):
-            self.logger.info("OBS-STRAP-PINS: moved=%s", p)
+            self.logger.info("INFO-STRAP-PINS: moved=%s", p)
         self.logger.info(
-            "OBS-STRAP-PINS: strap toggles 1,0,1 with test_en_i=0: pins=%d follow_test_en_i=%d "
+            "INFO-STRAP-PINS: strap toggles 1,0,1 with test_en_i=0: pins=%d follow_test_en_i=%d "
             "moved=%d",
             len(before),
             len(following),
@@ -382,9 +382,9 @@ class sep_scan_reset_override_test(sep_base_test):
         await self._toggle_test_en(strap=0)
         npins = len(self._pins())
         for path in sorted(self.pin_stuck):
-            self.logger.info("OBS-TEST-EN-PINS: not_following=%s", path)
+            self.logger.info("INFO-TEST-EN-PINS: not_following=%s", path)
         self.logger.info(
-            "OBS-TEST-EN-PINS: pins=%d clock_gater=%d axi_cell=%d follow_test_en_i=%d "
+            "INFO-TEST-EN-PINS: pins=%d clock_gater=%d axi_cell=%d follow_test_en_i=%d "
             "not_following=%d (test_en_i toggled at strap 1 and 0; graded by "
             "sep_test_en_pin_reach_test)",
             npins,

@@ -119,7 +119,7 @@ Log only: ``OBS-SMP-PRE-WITHDRAW-READ`` (the response of the DATA read whose
 start gives the withdrawal its TREADY-low clock: the text does not state
 whether that read ends through the stream error, so it is not graded; the
 line also carries the exact COUNT_BAD delta of CHK-SMP-PRE-WITHDRAW),
-``INFO-SMP-STRM`` (TIMEOUT_ERR and the exact COUNT_BAD delta of a withdrawal in
+``OBS-SMP-STRM`` (TIMEOUT_ERR and the exact COUNT_BAD delta of a withdrawal in
 the first active cycle), ``OBS-SMP-NEXT-HELD``
 (whether the refilled word differs), ``INFO-SMP-LOOP`` (the read-loop data
 summary).
@@ -1538,7 +1538,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 set_km_strm_pass(True, self.logger)
                 await ClockCycles(cocotb.top.clk_i, 2)
             if not idle:
-                self.chk.info(
+                self.chk.obs(
                     "SMP-STRM",
                     case=case,
                     timeout=t,

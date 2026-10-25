@@ -486,8 +486,8 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             f"remap 0x{csr_base:08x} region 0 attrs=0x{got & REMAP_FIELDS:016x} "
             f"want=0x{word:016x} field_mask=0x{REMAP_FIELDS:016x} rsvd=0x{rsvd:x}"
         )
-        assert (got & REMAP_FIELDS) == word, f"REMAP-READBACK FAIL: {line}"
-        self.logger.info("INFO-REMAP-READBACK LOG: %s", line)
+        assert (got & REMAP_FIELDS) == word, f"CTRL-REMAP-READBACK FAIL: {line}"
+        self.logger.info("CTRL-REMAP-READBACK LOG: %s", line)
 
     # ------------------------------------------------------------------
     # Probe builders

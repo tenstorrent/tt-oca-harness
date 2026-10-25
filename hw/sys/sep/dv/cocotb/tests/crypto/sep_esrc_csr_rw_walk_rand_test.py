@@ -29,7 +29,7 @@ FIFO data ports; the restore leg takes every stored read-write field (no RDL wri
 read side effect such as ``woclr``, and not written by hardware alone) whose RDL text
 lacks "FIPS_LOCK.LOCK prevents software changes", outside ``CTRL``.
 ``HEALTH_TEST_CTRL.ENABLE`` lacks the phrase and is walked as unlocked
-(``OBS-LOCK-LIST``). The read-write status and alert latches that hardware sets
+(``INFO-LOCK-LIST``). The read-write status and alert latches that hardware sets
 (``INTR_STATUS``, ``*_HEALTH_STATUS``, ``MAIN_SM_STATUS.ALERT``/``ERR``) are not
 stored configuration; the restore leg logs their non-zero fields before and after
 the reset as ``OBS-ESRC-VOLATILE`` and grades none of them.
@@ -348,7 +348,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         self.p: int | None = None
 
         self.chk.info("LOCK-COUNT", locked_fields=plan.locked_count)
-        self.chk.obs("LOCK-LIST", field="HEALTH_TEST_CTRL.ENABLE", walked="unlocked")
+        self.chk.info("LOCK-LIST", field="HEALTH_TEST_CTRL.ENABLE", walked="unlocked")
         self.logger.info(
             "WALK ro=%s restore=%s",
             ",".join(sorted(plan.ro_order)),

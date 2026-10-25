@@ -45,7 +45,7 @@ Logged only: the share-read responses and reserved KEY_CTRL bits; the 8
 shared-key words (``OBS-SK-WORDS``; the leaf has no graded golden for them);
 the bank state after each engine ``SW_RESET_N`` reset (``OBS-BANK-RST``; no
 sentence states that the engine reset clears the KM-side key registers); the
-bank state after a KM PARK (``PARK-OBS``; not stated).
+bank state after a KM PARK (``OBS-KM-PARK``; not stated).
 """
 
 from __future__ import annotations

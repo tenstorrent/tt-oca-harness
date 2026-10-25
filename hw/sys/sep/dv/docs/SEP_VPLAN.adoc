@@ -3065,7 +3065,7 @@ the test does.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`test_en_i` consumers
 |No specification question for the graded reading. `hw/sys/sep/doc/port_table.adoc` states that `test_en_i` drives clock-gater test ports and AXI cell test inputs and names none of them. This plan reads the sentence as every clock-gater test port and AXI cell test input that OCAH RTL instantiates. The specification states no latency. The ticket that this reading opens may end as a specification fix.
-|`sep_test_en_pin_reach_test` grades the reading (CHK-TEST-EN-PINS). `sep_scan_reset_override_test` logs the same walk as `OBS-TEST-EN-PINS` and `OBS-STRAP-PINS`
+|`sep_test_en_pin_reach_test` grades the reading (CHK-TEST-EN-PINS). `sep_scan_reset_override_test` records the same walk as `INFO-TEST-EN-PINS` and `INFO-STRAP-PINS`
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`pmpaddr` implementation
 |What is the implemented `pmpaddr` width and granularity? (`hw/sys/sep/doc/cpu.adoc`, Processor Core, states only 16 entries with Smepmp.)
@@ -3249,7 +3249,7 @@ the test does.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Program-request outcome at the program timeout
 |What do `program_status`, `program_done` and `program_busy` report when the program timeout fires, and does the interface accept a new request? The register text gives the read-side status only. Source: `hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc` (`EFUSE_PROGRAM_REQ_TIMEOUT`, `EFUSE_PROGRAM_CTRL`).
-|`sep_efuse_shim_response_fault_test` logs the timeout-enabled cell (`CHK-PROG-TIMEOUT INFO`) and does not grade it
+|`sep_efuse_shim_response_fault_test` logs the timeout-enabled cell (`OBS-PROG-TIMEOUT`) and does not grade it
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Sense response status on lock, lifecycle, disable and last words
 |What does a sense response status on words 0 to 9 (`LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SBOOT_DIS`, `TRANSIENT_RMA_EN`, `SIP_DIS`, `SYS_DIS`) do to the lock, lifecycle and disable state, and does a status on word 255 finish sensing? Source: `hw/sys/sep/doc/otp_fuse_controller.adoc` (Fuse Sensing and Boot Sequencing).
@@ -4183,7 +4183,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Program interface under a withheld shim response
 |A hold of the shim response of a program request while the input is high (`efuse_shim_resp_hold_i`)
 |ADD-PORT
-|The hold is an error inject, an added hook. CHK-PROG-LIFE and CHK-PROG-TIMEOUT of `sep_efuse_shim_response_fault_test` use it.
+|The hold is an error inject, an added hook. CHK-PROG-LIFE and OBS-PROG-TIMEOUT of `sep_efuse_shim_response_fault_test` use it.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Cold-path reset synchronizer
 |The reset synchronizer structure of the cold path (asynchronous assert, synchronous release, no hold counter)
@@ -4521,7 +4521,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Clock-gater test pins and AXI cell test inputs
 |Read-only tap
 |The test pins found by a hierarchy walk.
-|`sep_test_en_pin_reach_test` (CHK-TEST-EN-PINS, CTRL-PIN-WALK), `sep_scan_reset_override_test` (logged as `OBS-TEST-EN-PINS` and `OBS-STRAP-PINS`, not graded)
+|`sep_test_en_pin_reach_test` (CHK-TEST-EN-PINS, CTRL-PIN-WALK), `sep_scan_reset_override_test` (recorded as `INFO-TEST-EN-PINS` and `INFO-STRAP-PINS`, not graded)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Memory, boot and reset FCOV sampler nets
 |Sampler taps
@@ -4832,7 +4832,7 @@ use it" names the entries whose checks need the hook.
 |Error inject
 |Withholds the shim response of a program request while the input is high.
 |`efuse_shim_command_resp_i`
-|`sep_efuse_shim_response_fault_test` (CHK-PROG-LIFE, CHK-PROG-TIMEOUT)
+|`sep_efuse_shim_response_fault_test` (CHK-PROG-LIFE, OBS-PROG-TIMEOUT)
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`lc_sigint_inject_i`
 |Existing bench hook, listed (error inject)

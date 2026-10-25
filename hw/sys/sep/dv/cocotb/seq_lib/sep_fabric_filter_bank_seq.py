@@ -130,8 +130,8 @@ class SepFilterBank(SepAxiRegDriver):
             f"rsvd=0x{rsvd:08x} rb_start=0x{s:014x} rb_end=0x{e:014x}"
         )
         if (cfg & FILTER_CFG_LO_FIELDS) != (want & FILTER_CFG_LO_FIELDS):
-            raise AssertionError(f"FILTER-READBACK FAIL: {line}")
-        self.log.info("INFO-FILTER-READBACK LOG: %s", line)
+            raise AssertionError(f"CTRL-FILTER-READBACK FAIL: {line}")
+        self.log.info("CTRL-FILTER-READBACK LOG: %s", line)
         self.readbacks += 1
         return cfg, s, e
 

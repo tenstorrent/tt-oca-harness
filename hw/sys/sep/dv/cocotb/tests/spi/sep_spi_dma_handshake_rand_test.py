@@ -1126,7 +1126,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             and all(w == self.sentinel for w in img_re[re_words:])
         )
         self.logger.info(
-            "INFO-STOP-RETRIG LOG seed=%d n_moved_retrigger=%d filled=%s trigger_low_before=%d "
+            "OBS-STOP-RETRIG LOG seed=%d n_moved_retrigger=%d filled=%s trigger_low_before=%d "
             "trigger_rises=%d",
             cfg.seed,
             n_re,

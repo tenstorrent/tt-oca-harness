@@ -53,8 +53,8 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
 masked in every compare), ``OBS-GW-EL`` (the EL idle and asserted reads,
 whose values depend on the unstated edge direction), ``OBS-MASKED-VISIBLE``,
-``OBS-SRC34``, the source 12 latency and shape, the boundary source index, and
-the controls ``INFO-VECTOR`` and ``INFO-FIFO-EMPTY``.
+``OBS-SRC34``, the source 12 latency and shape, the boundary source index,
+``OBS-VECTOR``, ``OBS-FIFO-EMPTY``, ``OBS-ALERT-MEIP`` and ``OBS-MASKED-CLEAR``.
 
 The firmware brings the entropy stack up before the engine runs (AES masking
 and the OTBN URND draw from EDN); this test drives the raw noise of the ring
@@ -530,12 +530,12 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"meip1=0x{got[1]:08x} exp0=0x{exp[0]:08x} exp1=0x{exp[1]:08x} "
                 f"meip2_7={_hexw(got[2:])} src12_high_clk={h11} src33_high_clk={h32}",
             )
-            # Control: the vector equals the expected vector for the level sources.
+            # Logged, not graded: the vector against the expected vector for the level sources.
             vec, xm, _, _ = self._vec(tag)
             lvl_mask = VEC_GRADED & ~vec_mask(PULSE)
             exp_vec = vec_mask(srcs - set(PULSE)) & lvl_mask
             self.logger.info(
-                "INFO-VECTOR LOG pass=%d probe_equal=%d vec=0x%011x exp=0x%011x mask=0x%011x xz=0x%x",
+                "OBS-VECTOR LOG pass=%d probe_equal=%d vec=0x%011x exp=0x%011x mask=0x%011x xz=0x%x",
                 pas,
                 int((vec & lvl_mask) == exp_vec),
                 vec,
@@ -702,7 +702,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             )
         alerts = [kv for _, kv in self._lines("ALERT")]
         self.logger.info(
-            "INFO-ALERT-MEIP LOG meip1_bit1=%s",
+            "OBS-ALERT-MEIP LOG meip1_bit1=%s",
             ",".join(str((kv["meip1"] >> 1) & 1) for kv in alerts),
         )
         # Pair trial.
@@ -1066,7 +1066,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self._chk_ext()
         _, mc = self._meip("masked_clr")
         self.logger.info(
-            "INFO-MASKED-CLEAR LOG baseline_equal=%d meip=%s",
+            "OBS-MASKED-CLEAR LOG baseline_equal=%d meip=%s",
             int(meip_masked(mc) == meip_masked(self._meip("reset")[1])),
             _hexw(mc),
         )

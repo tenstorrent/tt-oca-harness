@@ -52,7 +52,7 @@ single-step cell), ``CTRL-ABR-VALID-PRE`` (VALID reads 0 at the READY read
 before each command write, so the VALID wait sees the VALID of that command), ``CTRL-ABR-TAMPER`` (the ACVP accept case gives c~),
 ``CTRL-ABR-KEM-FLIP`` (the valid decapsulation case gives its K).
 ``INFO-ABR-SECRET-PRE`` logs which secret windows held a non-zero word before a
-ZEROIZE; a window that held none logs ``OBS-ABR-SECRET-EMPTY`` and is not
+ZEROIZE; a window that held none records ``INFO-ABR-SECRET-EMPTY`` and is not
 graded. A zero window proves that the window is not readable, not that the
 memory is wiped.
 
@@ -540,7 +540,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
         graded = 0
         for name, words in post.items():
             if not any(pre[name]):
-                self.chk.obs("ABR-SECRET-EMPTY", cell=cell, window=name)
+                self.chk.info("ABR-SECRET-EMPTY", cell=cell, window=name)
                 states.append(f"{name}:empty")
                 continue
             graded += 1

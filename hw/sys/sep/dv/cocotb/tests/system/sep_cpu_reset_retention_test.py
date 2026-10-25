@@ -84,8 +84,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
 
 Controls (not counted): ``CTRL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
 ``sep_cpu_reset_n`` with ``sep_reset_n`` high, and the ``rst_ni`` pulse drops
-``sep_reset_n``), ``INFO-BANK`` (the scratch banks after each event),
-``OBS-CPU-RST-DBG``.
+``sep_reset_n``). Observations: ``OBS-BANK`` (the scratch banks after each
+event), ``OBS-CPU-RST-DBG``.
 
 Environment choices (logged): the placement of each pulse in clocks from the
 calibrated latencies, the allowance of CHK-DBG-SYNC (2 clocks), and the bound
@@ -708,7 +708,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 out[name] = "cleared"
             else:
                 out[name] = "mixed:" + ",".join(f"0x{v:x}" for v in vals)
-        self.logger.info("INFO-BANK: event=%s warm=%s cold=%s", event, out["warm"], out["cold"])
+        self.logger.info("OBS-BANK: event=%s warm=%s cold=%s", event, out["warm"], out["cold"])
         await self._write_banks(warm_only=True)
         await self._open()
 

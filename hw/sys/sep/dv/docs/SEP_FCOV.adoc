@@ -5048,7 +5048,7 @@ owner reaches them.
 |Group |Bins not graded |Reason
 |`sep_scratch_reg_access_cg`
 |`cp_neighbour` (a neighbour register keeps its value across a write) and `cp_reset_value` (the first read of a bank after a reset that clears it)
-|`sep_warm_cold_reset_scratch_test` (open) grades the distinct value of every register and the clear and retain across the resets. `sep_cpu_ctrl_reg_shape_test` reads both as controls (`CTRL-SCR-NEIGHBOUR`, `INFO-SCR-SEQ`).
+|`sep_warm_cold_reset_scratch_test` (open) grades the distinct value of every register and the clear and retain across the resets. `sep_cpu_ctrl_reg_shape_test` reads both: the neighbour compare is a control (`CTRL-SCR-NEIGHBOUR`) and the clear and retain readbacks are records (`INFO-SCR-SEQ`).
 |`sep_reset_source_cg`
 |`rst_ni` assertion width (shorter than one period, exactly one period), assertion with a stopped clock, `wdt_rst_ni` phase classes other than idle, `cp_rst_assert_async` (the `sep_reset_n` fall against the `clk_i` edges after the `rst_ni` fall)
 |No owning test. The specification states no width rule. The `rst_ni` fall reaches `u_sep_reset_sync` through the eFuse wrapper synchronizer that makes `sep_intermediate_reset_n`, and the specification gives no assertion timing for that synchronizer, so `sep_cold_reset_phase_test` logs the assertion delay as `OBS-RST-ASSERT` and no bin grades it.
@@ -5066,7 +5066,7 @@ owner reaches them.
 |No owning test. `sep_cpu_reset_retention_test` arms `SW_RESET_N` = 0x76 before its graded cold reset, so only the `hmac` field moves; the other six fields hold their reset value through the reset (`INFO-SWRST-COLD-UNMOVED`), and the power-on value of every field is graded by `sep_reset_wdt_sanity_test` and `sep_reg_bit_bash_rand_test` (open).
 |`sep_reset_scope_retention_cg`
 |The power-on cleared cells (both banks) and the `dbg_rstb_i` retained cells (both banks) of `cp_bank_class_outcome`
-|`sep_warm_cold_reset_scratch_test` (open) grades the clear of both banks at a cold reset. `sep_cpu_reset_retention_test` reads the banks after each event as the liveness control `INFO-BANK` and grades no bank outcome, so no checker grades the banks after a `dbg_rstb_i` pulse.
+|`sep_warm_cold_reset_scratch_test` (open) grades the clear of both banks at a cold reset. `sep_cpu_reset_retention_test` reads the banks after each event, logs them as `OBS-BANK` and grades no bank outcome, so no checker grades the banks after a `dbg_rstb_i` pulse.
 |`sep_reset_scope_retention_cg`
 |The assert cell of `cp_trng_iso_order`
 |`sep_trng_reset_recovery_test` grades the TRNG reset order and owns `cp_iso_order_per_domain` (`trng_fall`). `sep_sw_reset_isolation_matrix_test` logs the same measurement as the control `CTRL-ISO-ORDER` and grades only the release (CHK-ISO-REL).
