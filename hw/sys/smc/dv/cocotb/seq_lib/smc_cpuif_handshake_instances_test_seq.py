@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B1_008 ANCHOR: smc_cpuif_handshake_instances_test
-# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: ff7b2eed1f3f83f9e03ab0bd76004bf32a98e0e018ec463100cf3c2b5123b17e
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 5 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 4d68d1879a666d752f86205bbe7816fd6beb72a0287f15da626741cf702c43c4
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 8 ENV: cocotb
 """The AXI-Lite front end of every generated register-block instance, pipelined and held.
 
 `smc_cpuif_handshake_test` drives instance 0 of each register block. This
@@ -57,6 +57,10 @@ BREADY and RREADY are held through the VIP's response sinks, released a fixed
 number of cycles after the response's VALID is first seen; for a W-ahead write
 the AW source is held and released so that AW VALID rises exactly the driven
 number of cycles after W VALID, which the monitor measures.
+
+One instance of each family in ``LONG_HOLD_FAMILIES`` then repeats the held
+groups with the ready released 512 cycles after the first response VALID
+instead of 16, and must hold the head response unchanged for all of them.
 """
 
 from __future__ import annotations
@@ -92,6 +96,27 @@ W_LEADS = (1, 2, 4)
 WRITEBACK_LEAD = 2
 HOLD_CYCLES = 16
 HELD_DEPTH = 16
+LONG_HOLD_CYCLES = 512
+# One instance of each of these families takes the held groups again behind
+# LONG_HOLD_CYCLES; a family missing from the instance set fails the run.
+LONG_HOLD_FAMILIES = (
+    "inbound_filter",
+    "outbound_filter",
+    "mmode_remap",
+    "xvisor_remap",
+    "alias_remap",
+    "uart_log_engine_ctrl",
+    "uart_16550_main",
+    "uart_16550_dl",
+    "log_engine",
+    "telemetry_receiver",
+    "gpio_intf",
+    "chip_config",
+    "ndm_reset",
+    "scratch",
+    "straps",
+    "i2c_ctrl",
+)
 # Read-arrival offsets swept behind write-backs of the reference, as in the
 # instance-0 leaf: which offset lines a read accept up with a write's
 # acknowledge depends on the path in front of each instance.
@@ -113,6 +138,7 @@ TERMS = (
     "RREADY-HOLD",
     "BREADY-HOLD",
     "HELD-GROUP",
+    "LONG-HOLD",
 )
 PINNED_ONLY_TERMS = frozenset({"PIPELINED-RW", "B2B-DIFF", "W-AHEAD", "BREADY-HOLD"})
 
@@ -556,6 +582,13 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_cpuif_handshake_instances_test_seq") -> None:
         super().__init__(name)
         self.instances = build_instances()
+        self.long_hold: dict[str, str] = {}
+        for fam in LONG_HOLD_FAMILIES:
+            names = [x.name for x in self.instances if x.family == fam]
+            assert names, f"long-hold family {fam} has no instance in the set"
+            self.long_hold[names[0]] = fam
+        self.long_families: list[str] = []
+        self.long_waits = 0
         self.waits = 0
         self.mon: SepInMonitor | None = None
         self.tally = {name: Tally() for name in TERMS}
@@ -606,7 +639,9 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         driver = self.env.sys_axi_agent.driver.axi.driver
         return driver.channels[{"r": "r_ready_delay", "b": "b_ready_delay"}[chan]]
 
-    async def _release_after_valid(self, chan: str, label: str, state: dict) -> None:
+    async def _release_after_valid(
+        self, chan: str, label: str, state: dict, cycles: int = HOLD_CYCLES
+    ) -> None:
         sink = self._sink(chan)
         valid = getattr(cocotb.top, f"s_axi_{chan}valid")
         clk = cocotb.top.clk_smc_i
@@ -624,7 +659,7 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
                 f"{valid.value})"
             )
             return
-        for _ in range(HOLD_CYCLES):
+        for _ in range(cycles):
             await RisingEdge(clk)
         sink.pause = False
 
@@ -661,6 +696,7 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         *,
         timing: AxiTimingProfile | None = None,
         hold: tuple[str, ...] = (),
+        hold_cycles: int = HOLD_CYCLES,
         w_lead: int | None = None,
     ) -> list[Ev]:
         """Drive ``items`` outstanding together; return the monitor records of the group."""
@@ -670,7 +706,9 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         tasks = []
         for chan in hold:
             self._sink(chan).pause = True
-            tasks.append(cocotb.start_soon(self._release_after_valid(chan, label, state)))
+            tasks.append(
+                cocotb.start_soon(self._release_after_valid(chan, label, state, hold_cycles))
+            )
         aw_chan = None
         if w_lead is not None:
             aw_chan = self.env.sys_axi_agent.driver.axi.driver.channels["aw_delay"]
@@ -994,13 +1032,27 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
                 equal,
             )
 
-    def _held(self, label: str, evs: list[Ev], chan: str) -> int:
+    def _held(self, label: str, evs: list[Ev], chan: str, cycles: int = HOLD_CYCLES) -> int:
         held = [e for e in evs if e.kind == f"{chan}held"]
-        assert len(held) >= HOLD_CYCLES, (
+        assert len(held) >= cycles, (
             f"{label}: {chan.upper()}VALID sat on a low ready for {len(held)} cycles, "
-            f"the hold is {HOLD_CYCLES}"
+            f"the hold is {cycles}"
         )
         return len(held)
+
+    def _long_head(self, label: str, evs: list[Ev], hold: tuple[str, ...]) -> None:
+        """The head response stays VALID and unchanged for the whole long hold."""
+        t = self.tally["LONG-HOLD"]
+        for chan in hold:
+            n = self._held(label, evs, chan, LONG_HOLD_CYCLES)
+            head = next(e for e in evs if e.kind == chan)
+            before = [e for e in evs if e.kind == f"{chan}held" and e.cycle < head.cycle]
+            assert len(before) >= LONG_HOLD_CYCLES and all(e[2:] == head[2:] for e in before), (
+                f"{label}: head {chan.upper()} response {head} held {len(before)} cycles "
+                f"before its handshake, payloads {sorted({e[2:] for e in before})}"
+            )
+            t.extra.setdefault(f"held_{chan}", []).append(n)
+        self.long_waits += 1 + len(hold)
 
     async def _rready_hold(self, x: Inst, ref: int) -> None:
         label = f"{x.name}_rready_hold"
@@ -1034,26 +1086,34 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         t.instances += 1
         t.extra.setdefault("held", []).append(n)
 
-    async def _held_group(self, x: Inst, ref: int, values) -> None:
-        t = self.tally["HELD-GROUP"]
-        label = f"{x.name}_held_reads"
+    async def _held_group(
+        self, x: Inst, ref: int, values, *, cycles: int = HOLD_CYCLES, term: str = "HELD-GROUP"
+    ) -> None:
+        t = self.tally[term]
+        long = term == "LONG-HOLD"
+        pfx = "lh" if long else "hg"
+        label = f"{x.name}_{pfx}_held_reads"
         # One ID per channel, so AXI requires the responses in issue order.
-        reads = [self._rd(x, f"hg_rd{k}", 1, expected=ref) for k in range(1, HELD_DEPTH + 1)]
-        evs = await self._run(label, reads, hold=("r",))
+        reads = [self._rd(x, f"{pfx}_rd{k}", 1, expected=ref) for k in range(1, HELD_DEPTH + 1)]
+        evs = await self._run(label, reads, hold=("r",), hold_cycles=cycles)
         self._in_order(label, evs)
+        if long:
+            self._long_head(label, evs, ("r",))
         for item in reads:
             assert item.rdata == ref, f"{label}: read 0x{item.rdata:x} != 0x{ref:x}"
         t.reads += HELD_DEPTH
         t.strict += HELD_DEPTH
 
-        label = f"{x.name}_held_mixed"
+        label = f"{x.name}_{pfx}_held_mixed"
         mixed = []
         for k in range(1, HELD_DEPTH // 2 + 1):
             v = next(values) if x.pinned else ref
-            mixed.append(self._wr(x, f"hg_mwr{k}", v, 1))
-            mixed.append(self._rd(x, f"hg_mrd{k}", 1, expected=None if x.pinned else ref))
-        evs = await self._run(label, mixed, hold=("b", "r"))
+            mixed.append(self._wr(x, f"{pfx}_mwr{k}", v, 1))
+            mixed.append(self._rd(x, f"{pfx}_mrd{k}", 1, expected=None if x.pinned else ref))
+        evs = await self._run(label, mixed, hold=("b", "r"), hold_cycles=cycles)
         self._in_order(label, evs)
+        if long:
+            self._long_head(label, evs, ("b", "r"))
         if x.pinned:
             strict, inflight = self._reads_vs_writes(label, mixed, evs, ref)
             t.strict += strict
@@ -1065,22 +1125,26 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
             t.strict += HELD_DEPTH // 2
         t.reads += HELD_DEPTH // 2
         if x.pinned:
-            await self._restore(x, ref, "hg_mixed")
+            await self._restore(x, ref, f"{pfx}_mixed")
 
-        label = f"{x.name}_held_writes"
+        label = f"{x.name}_{pfx}_held_writes"
         wvals = [next(values) if x.pinned else ref for _ in range(HELD_DEPTH)]
-        writes = [self._wr(x, f"hg_wr{k + 1}", v, 1) for k, v in enumerate(wvals)]
-        evs = await self._run(label, writes, hold=("b",))
+        writes = [self._wr(x, f"{pfx}_wr{k + 1}", v, 1) for k, v in enumerate(wvals)]
+        evs = await self._run(label, writes, hold=("b",), hold_cycles=cycles)
         self._in_order(label, evs)
+        if long:
+            self._long_head(label, evs, ("b",))
         last = wvals[-1]
-        got = await self._read(x, "hg_wr_rb", expected=last)
+        got = await self._read(x, f"{pfx}_wr_rb", expected=last)
         assert got == last, f"{label}: readback 0x{got:x}, last write 0x{last:x}"
         if x.pinned:
-            await self._restore(x, ref, "hg")
-        await self._held_spread(x, ref)
+            await self._restore(x, ref, pfx)
+        await self._held_spread(x, ref, cycles=cycles, pfx=pfx)
         t.instances += 1
 
-    async def _held_spread(self, x: Inst, ref: int) -> None:
+    async def _held_spread(
+        self, x: Inst, ref: int, *, cycles: int = HOLD_CYCLES, pfx: str = "hg"
+    ) -> None:
         """16 reads and 16 write-backs of the reference, one ID each, behind a held ready.
 
         Requests with distinct IDs reach the block together where a same-ID group is
@@ -1088,17 +1152,28 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         block itself. AXI leaves their response order free, so only each value, the
         count and the readback are held.
         """
-        label = f"{x.name}_spread_reads"
-        reads = [self._rd(x, f"sp_rd{k}", k, expected=ref) for k in range(1, HELD_DEPTH + 1)]
-        await self._run(label, reads, hold=("r",))
+        long = pfx == "lh"
+        tag = f"{pfx}_sp" if long else "sp"
+        label = f"{x.name}_{tag}_reads"
+        reads = [self._rd(x, f"{tag}_rd{k}", k, expected=ref) for k in range(1, HELD_DEPTH + 1)]
+        evs = await self._run(label, reads, hold=("r",), hold_cycles=cycles)
+        if long:
+            self._long_head(label, evs, ("r",))
         for item in reads:
             assert item.rdata == ref, f"{label}: read 0x{item.rdata:x} != 0x{ref:x}"
-        label = f"{x.name}_spread_writes"
-        writes = [self._wr(x, f"sp_wr{k}", ref, k) for k in range(1, HELD_DEPTH + 1)]
-        await self._run(label, writes, hold=("b",))
-        got = await self._read(x, "sp_wr_rb", expected=ref)
+        label = f"{x.name}_{tag}_writes"
+        writes = [self._wr(x, f"{tag}_wr{k}", ref, k) for k in range(1, HELD_DEPTH + 1)]
+        evs = await self._run(label, writes, hold=("b",), hold_cycles=cycles)
+        if long:
+            self._long_head(label, evs, ("b",))
+        got = await self._read(x, f"{tag}_wr_rb", expected=ref)
         assert got == ref, f"{label}: readback 0x{got:x}, reference 0x{ref:x}"
-        self.spread += 2 * HELD_DEPTH
+        if long:
+            self.tally["LONG-HOLD"].extra["spread"] = (
+                self.tally["LONG-HOLD"].extra.get("spread", 0) + 2 * HELD_DEPTH
+            )
+        else:
+            self.spread += 2 * HELD_DEPTH
 
     # -- body ------------------------------------------------------------
 
@@ -1148,6 +1223,17 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         cocotb.log.info("STEP S10: %s held groups of %d", x.name, HELD_DEPTH)
         await self._held_group(x, ref, values)
         self._stamp(x, "HELD-GROUP", times)
+        if x.name in self.long_hold:
+            cocotb.log.info(
+                "STEP S12: %s (family %s) held groups of %d behind a %d-cycle hold",
+                x.name,
+                self.long_hold[x.name],
+                HELD_DEPTH,
+                LONG_HOLD_CYCLES,
+            )
+            await self._held_group(x, ref, values, cycles=LONG_HOLD_CYCLES, term="LONG-HOLD")
+            self._stamp(x, "LONG-HOLD", times)
+            self.long_families.append(self.long_hold[x.name])
 
         if saved_lcr is not None:
             lcr = uart_reg(x.dlab_wrap, "LCR")
@@ -1157,7 +1243,12 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         return times
 
     def _fence(self, x: Inst, times: dict[str, int]) -> None:
-        order = [t for t in TERMS if x.pinned or t not in PINNED_ONLY_TERMS]
+        order = [
+            t
+            for t in TERMS
+            if (x.pinned or t not in PINNED_ONLY_TERMS)
+            and (t != "LONG-HOLD" or x.name in self.long_hold)
+        ]
         assert list(times) == order, f"{x.name}: terms ran as {list(times)}, fence {order}"
         stamps = [times[t] for t in order]
         assert all(a < b for a, b in zip(stamps, stamps[1:])), (
@@ -1197,8 +1288,14 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         n_pin = sum(1 for x in self.instances if x.pinned)
         t = self.tally
         assert t["REFERENCE"].instances == n_all
+        assert sorted(self.long_families) == sorted(LONG_HOLD_FAMILIES), (
+            f"long-hold legs ran on families {self.long_families}, the contract lists "
+            f"{LONG_HOLD_FAMILIES}"
+        )
         for term in TERMS:
             want = n_pin if term in PINNED_ONLY_TERMS else n_all
+            if term == "LONG-HOLD":
+                want = len(LONG_HOLD_FAMILIES)
             if term == "W-AHEAD-WB":
                 assert t[term].instances + len(self.logged_writeback) == n_all
                 continue
@@ -1207,8 +1304,10 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         prw = t["PIPELINED-RW"]
         prd = t["PIPELINED-READ"]
         hg = t["HELD-GROUP"]
+        lh = t["LONG-HOLD"]
         assert prw.strict + prw.inflight == prw.reads == 4 * prw.instances
         assert hg.strict + hg.inflight == hg.reads
+        assert lh.strict + lh.inflight == lh.reads
         rw_depth, rd_depth = prw.extra["depth"], prd.extra["depth"]
         rh, bh = t["RREADY-HOLD"].extra["held"], t["BREADY-HOLD"].extra["held"]
         for lead in (*W_LEADS, WRITEBACK_LEAD):
@@ -1299,6 +1398,27 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
             hg.strict,
             hg.inflight,
         )
+        cocotb.log.info(
+            "CHK-CPUIF-LONG-HOLD: %d families x %d behind a %d-cycle hold, %d/%d in order, "
+            "0 lost, 0 duplicated; reads==reference-or-last-acked-write %d, "
+            "reads==overlapping-write %d (SF-010, logged; per match AR/R/AW/B cycles), "
+            "reads==no-write-of-group 0; head held cycles RREADY min/max=%d/%d BREADY "
+            "min/max=%d/%d, head unchanged while held; distinct-ID groups %d accesses; "
+            "instances %s",
+            lh.instances,
+            HELD_DEPTH,
+            LONG_HOLD_CYCLES,
+            HELD_DEPTH,
+            HELD_DEPTH,
+            lh.strict,
+            lh.inflight,
+            min(lh.extra["held_r"]),
+            max(lh.extra["held_r"]),
+            min(lh.extra["held_b"]),
+            max(lh.extra["held_b"]),
+            lh.extra["spread"],
+            ",".join(f"{fam}={name}" for name, fam in self.long_hold.items()),
+        )
         counts = ", ".join(
             f"{term}: n={len(self.stamps[term])} first={self.stamps[term][0]}ps "
             f"last={self.stamps[term][-1]}ps"
@@ -1322,6 +1442,11 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
             FUSE_SENSE_MAX_SMC_CYCLES,
         )
         cocotb.log.info(
-            "CHK-TIMEOUT-PATHS: %d bounded waits, bound/last-state per wait, 0 expired",
+            "CHK-TIMEOUT-PATHS: %d bounded waits, bound/last-state per wait, 0 expired; "
+            "S12 long-hold waits %d (group %d ns and held-ready VALID %d clk_smc_i cycles, "
+            "expiry reports the outstanding count)",
             self.waits,
+            self.long_waits,
+            GROUP_BOUND_NS,
+            VALID_BOUND_CYCLES,
         )

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.utils import get_sim_time
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import CLOCK_GATE_CONTROL, UART_CG_EN, uart_16550_main_u32
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -18,6 +19,7 @@ from .smc_log_engine_utils import (
     DLM_OFFSET,
     IIR_PENDING,
     LCR_DLAB,
+    LSR_LINE_ERRORS,
     LSR_TEMT,
     LSR_THRE,
     MSR_CTS,
@@ -69,7 +71,57 @@ RESET_EXPECT = {"IIR": IIR_RESET, "LSR": LSR_RESET}
 ISO_REGS = ("IER", "LCR", "MCR", "SCR", "ECR")
 ISO_ALL = ISO_REGS + ("DLL", "DLM")
 
-STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
+# ETBEI stays clear in every image: a 16550 retires its THR-empty interrupt on
+# an IIR read, which the register description neither states nor excludes, so
+# without it the IIR reference does not depend on the read order.
+RO_IMAGES = {
+    0: {"IER": IER_BITS[0] | IER_BITS[2], "LCR": 0x01, "SCR": 0x5A, "ECR": 0x1},
+    1: {"IER": IER_BITS[0] | IER_BITS[3], "LCR": 0x02 | LCR_FLAGS[0], "SCR": 0xA5, "ECR": 0x2},
+    2: {"IER": IER_BITS[2] | IER_BITS[4], "LCR": 0x03 | LCR_FLAGS[1], "SCR": 0x3C, "ECR": 0x3},
+    3: {
+        "IER": IER_BITS[0] | IER_BITS[2] | IER_BITS[3] | IER_BITS[4],
+        "LCR": LCR_FLAGS[0] | LCR_FLAGS[1],
+        "SCR": 0xC3,
+        "ECR": 0x2,
+    },
+}
+RO_MCR = (
+    MCR_BITS[0],
+    MCR_BITS[1] | MCR_BITS[2],
+    MCR_BITS[3] | MCR_BITS[0],
+    MCR_BITS[0] | MCR_BITS[1] | MCR_BITS[2] | MCR_BITS[3],
+)
+for _wrap, _mcr in enumerate(RO_MCR):
+    RO_IMAGES[_wrap]["MCR"] = _mcr
+RO_IMAGE_REGS = ("IER", "LCR", "MCR", "SCR", "ECR")
+RO_RW_REGS = RO_IMAGE_REGS + ("ITR",)
+RO_MASK = {
+    "IER": IER_DEFINED,
+    "LCR": LCR_DEFINED | LCR_SET_BREAK,
+    "MCR": MCR_DEFINED,
+    "SCR": 0xFF,
+    "ECR": ECR_DEFINED,
+    "ITR": ITR_DEFINED,
+}
+RO_WRITE_DATA = 0xFF
+LSR_RO_EXPECT = LSR_THRE | LSR_TEMT
+RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
+
+STEPS = (
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8",
+    "S9",
+    "PRE-IMAGE",
+    "MSR-WRITE",
+    "LSR-WRITE",
+    "POST-IMAGE",
+)
 CHECKERS = (
     ("CHK-UART-RESET-VALUES", "S2"),
     ("CHK-UART-RESET-MSR", "S2"),
@@ -81,11 +133,15 @@ CHECKERS = (
     ("CHK-UART-RW-ECR-ITR", "S7"),
     ("CHK-UART-RW-DL", "S8"),
     ("CHK-UART-RW-ISOLATION", "S9"),
+    ("CHK-UART-RO-MSR-WRITE", "MSR-WRITE"),
+    ("CHK-UART-RO-LSR-WRITE", "LSR-WRITE"),
+    ("CHK-UART-RO-BLOCK-UNCHANGED", "POST-IMAGE"),
 )
 NONVAC_TERMS = (
     "CLOCK_UNGATED < RESET_VECTORS_READ < DL_RESET_READ < IER_RW < LCR_RW < MCR_RW "
     "< ECR_ITR_RW < DL_RW < ISOLATION"
 )
+RO_FENCE = (("EXISTING-LEGS", "S9"),) + tuple((s, s) for s in STEPS[9:])
 
 
 def _pattern(k: int) -> dict[str, int]:
@@ -108,9 +164,14 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
         self.stamps: list[tuple[str, int]] = []
         self.chk_marks: list[tuple[str, int]] = []
         self.vectors: dict[int, dict[str, int]] = {}
+        self.step_accesses: dict[str, int] = {}
+        self.ro_ref: dict[int, dict[str, int]] = {}
+        self.ro_items: list[SmcSysAxiItem] = []
+        self.last_access = "none"
 
     def _step(self, step_id: str) -> None:
         self.stamps.append((step_id, int(get_sim_time("ps"))))
+        self.step_accesses[step_id] = self.accesses
 
     def _chk(self, chk_id: str, step_id: str, text: str, *args) -> None:
         assert self.stamps and self.stamps[-1][0] == step_id, (
@@ -127,10 +188,30 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
         return uart_reg(wrap, reg)
 
     async def _rd(self, label: str, wrap: int, reg: str) -> int:
+        self.last_access = f"rd {label}_U{wrap}_{reg}"
         return await self.csr_read(f"{label}_U{wrap}_{reg}", self._addr(wrap, reg))
 
     async def _wr(self, label: str, wrap: int, reg: str, value: int) -> None:
+        self.last_access = f"wr {label}_U{wrap}_{reg}"
         await self.csr_write(f"{label}_U{wrap}_{reg}", self._addr(wrap, reg), value)
+
+    async def _wr_any_resp(self, label: str, wrap: int, reg: str, value: int) -> int:
+        """Write `value` and return BRESP; any response code completes the access."""
+        item = SmcSysAxiItem(f"wr_{label}_U{wrap}_{reg}")
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = self._addr(wrap, reg)
+        item.length = 4
+        item.wdata = value
+        item.allow_error = True
+        self.last_access = f"wr {label}_U{wrap}_{reg}"
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        self.ro_items.append(item)
+        assert not item.timed_out and item.resp_code is not None, (
+            f"{label}: instance {wrap} {reg} write of 0x{value:x} completed without a response"
+        )
+        return item.resp_code
 
     async def _readback(self, label: str, wrap: int, reg: str, value: int, mask: int) -> int:
         await self._wr(label, wrap, reg, value)
@@ -386,6 +467,134 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
             " ".join(seen),
         )
 
+    async def _ro_pre_image(self) -> None:
+        for wrap in INSTANCES:
+            for reg in RO_IMAGE_REGS:
+                await self._wr("RO_PRE", wrap, reg, RO_IMAGES[wrap][reg])
+        for wrap in INSTANCES:
+            ref = {}
+            for reg in RO_RW_REGS:
+                got = await self._rd("RO_PRE_RB", wrap, reg)
+                want = RO_IMAGES[wrap].get(reg, 0)
+                assert got & RO_MASK[reg] == want, (
+                    f"pre-image: instance {wrap} {reg} wrote 0x{want:x} read 0x{got:x} "
+                    f"under mask 0x{RO_MASK[reg]:x}"
+                )
+                ref[reg] = got
+            for reg in ("MSR", "LSR"):
+                await self._rd("RO_PRE_1", wrap, reg)
+                ref[reg] = await self._rd("RO_PRE_2", wrap, reg)
+            ref["IIR"] = await self._rd("RO_PRE", wrap, "IIR")
+            self.ro_ref[wrap] = ref
+        self._step("PRE-IMAGE")
+
+    async def _ro_write(self, reg: str) -> tuple[dict[int, int], dict[int, int]]:
+        resp = {}
+        after = {}
+        for wrap in INSTANCES:
+            resp[wrap] = await self._wr_any_resp(f"RO_{reg}_FF", wrap, reg, RO_WRITE_DATA)
+            after[wrap] = await self._rd(f"RO_{reg}_AFTER", wrap, reg)
+        return resp, after
+
+    @staticmethod
+    def _resp_text(resp: dict[int, int]) -> str:
+        return " ".join(f"u{w}={RESP_NAME.get(c, str(c))}" for w, c in resp.items())
+
+    async def _ro_msr(self) -> None:
+        resp, after = await self._ro_write("MSR")
+        self._step("MSR-WRITE")
+        for wrap in INSTANCES:
+            before = self.ro_ref[wrap]["MSR"]
+            assert after[wrap] == before, (
+                f"instance {wrap} MSR 0x{after[wrap]:02x} after the 0x{RO_WRITE_DATA:02x} write, "
+                f"0x{before:02x} before"
+            )
+        self._chk(
+            "CHK-UART-RO-MSR-WRITE",
+            "MSR-WRITE",
+            "%d/%d instances MSR after==before (%s), BRESP=[%s] (measured, not compared; "
+            "LINKED-ISSUE SF-012)",
+            len(after),
+            len(INSTANCES),
+            " ".join(f"u{w}=0x{v:02x}" for w, v in after.items()),
+            self._resp_text(resp),
+        )
+
+    async def _ro_lsr(self) -> None:
+        resp, after = await self._ro_write("LSR")
+        self._step("LSR-WRITE")
+        for wrap in INSTANCES:
+            before = self.ro_ref[wrap]["LSR"]
+            assert after[wrap] == LSR_RO_EXPECT, (
+                f"instance {wrap} LSR 0x{after[wrap]:02x} after the 0x{RO_WRITE_DATA:02x} write, "
+                f"documented 0x{LSR_RO_EXPECT:02x}"
+            )
+            assert after[wrap] == before, (
+                f"instance {wrap} LSR 0x{after[wrap]:02x} after the write, 0x{before:02x} before"
+            )
+        self._chk(
+            "CHK-UART-RO-LSR-WRITE",
+            "LSR-WRITE",
+            "%d/%d instances LSR after=0x%02x==before (%s), BRESP=[%s] (measured, not compared; "
+            "LINKED-ISSUE SF-012)",
+            len(after),
+            len(INSTANCES),
+            LSR_RO_EXPECT,
+            " ".join(f"u{w}=0x{v:02x}" for w, v in after.items()),
+            self._resp_text(resp),
+        )
+
+    async def _ro_post_image(self) -> None:
+        rw_ok = iir_ok = status_ok = restored = 0
+        for wrap in INSTANCES:
+            ref = self.ro_ref[wrap]
+            for reg in RO_RW_REGS + ("IIR", "LSR", "MSR"):
+                got = await self._rd("RO_POST", wrap, reg)
+                assert got == ref[reg], (
+                    f"post-image: instance {wrap} {reg} reads 0x{got:x}, S2 reference 0x{ref[reg]:x}"
+                )
+                if reg in RO_RW_REGS:
+                    rw_ok += 1
+                elif reg == "IIR":
+                    iir_ok += 1
+                elif reg == "LSR":
+                    assert got & LSR_LINE_ERRORS == 0, (
+                        f"post-image: instance {wrap} LSR 0x{got:02x} has BI/FE/PE/OE set"
+                    )
+                else:
+                    assert got & MSR_DELTAS == 0, (
+                        f"post-image: instance {wrap} MSR 0x{got:02x} has a delta bit set"
+                    )
+                    status_ok += 1
+        for wrap in INSTANCES:
+            for reg in RO_IMAGE_REGS:
+                await self._wr("RO_RESTORE", wrap, reg, 0)
+        for wrap in INSTANCES:
+            for reg in RO_IMAGE_REGS:
+                got = await self._rd("RO_RESTORE_RB", wrap, reg)
+                assert got == 0, f"restore: instance {wrap} {reg} reads 0x{got:x}, wrote 0x00"
+                restored += 1
+        self._step("POST-IMAGE")
+        self._chk(
+            "CHK-UART-RO-BLOCK-UNCHANGED",
+            "POST-IMAGE",
+            "%d/%d RW regs unchanged, IIR unchanged x%d, LSR[4:1]=0 MSR[3:0]=0 x%d, "
+            "restore %d/%d = 0x00; images %s",
+            rw_ok,
+            len(RO_RW_REGS) * len(INSTANCES),
+            iir_ok,
+            status_ok,
+            restored,
+            len(RO_IMAGE_REGS) * len(INSTANCES),
+            " ".join(
+                f"u{w}=["
+                + ",".join(f"{r}=0x{self.ro_ref[w][r]:02x}" for r in RO_RW_REGS)
+                + f",IIR=0x{self.ro_ref[w]['IIR']:02x},LSR=0x{self.ro_ref[w]['LSR']:02x}"
+                + f",MSR=0x{self.ro_ref[w]['MSR']:02x}]"
+                for w in INSTANCES
+            ),
+        )
+
     async def body(self) -> None:
         await self._s1()
         await self._s2()
@@ -396,6 +605,11 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
         await self._s7()
         await self._s8()
         await self._s9()
+        await self._ro_pre_image()
+        await self._ro_msr()
+        await self._ro_lsr()
+        await self._ro_post_image()
+        self.last_access = "wr UART_REGATE"
         await self.csr_write("UART_REGATE", CLOCK_GATE_CONTROL, self.cg_original)
 
         ids = [s for s, _ in self.stamps]
@@ -406,9 +620,32 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
         assert marks == [c for c, _ in CHECKERS], f"checker order {marks}"
         for (chk, step), (_, n) in zip(CHECKERS, self.chk_marks):
             assert self.stamps[n - 1][0] == step, f"{chk} printed after {self.stamps[n - 1][0]}"
+        stamp_of = dict(self.stamps)
+        prev = 0
+        fence = []
+        for term, step in RO_FENCE:
+            count = self.step_accesses[step] - prev
+            assert count > 0, f"fence term {term} issued no access"
+            prev = self.step_accesses[step]
+            fence.append(f"{term}@{stamp_of[step]}ps/{count}acc")
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
+            "CHK-NONVAC: ordered fence %s; read-only write fence %s; checker lines %s; stamps %s",
             NONVAC_TERMS,
+            " < ".join(fence),
             " ".join(c for c, _ in CHECKERS),
             " ".join(f"{s}={t}" for s, t in self.stamps),
+        )
+        expired = sum(1 for item in self.ro_items if item.timed_out)
+        assert expired == 0, f"{expired} read-only writes expired"
+        cocotb.log.info(
+            "CHK-TIMEOUT-PATHS: no own wait loops; every SEP_IN access (csr_read / csr_write, "
+            "and the %d MSR / LSR writes that accept any response code) x%d bound=%d ns "
+            "allow_timeout False, expiry raises AssertionError in the SEP_IN driver naming the "
+            "access and its address; last[%d accesses completed, %s, %d expired]",
+            len(self.ro_items),
+            self.accesses,
+            self.cfg.axi_timeout_ns,
+            self.accesses,
+            self.last_access,
+            expired,
         )
