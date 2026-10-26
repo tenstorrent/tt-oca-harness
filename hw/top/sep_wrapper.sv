@@ -137,8 +137,8 @@ module sep_wrapper
   sep_pkg::sep_sram_req_t sep_sram_req;
   sep_pkg::sep_sram_rsp_t sep_sram_rsp;
 
-  sep_pkg::sep_sram_req_t sep_boot_rom_req;
-  sep_pkg::sep_sram_rsp_t sep_boot_rom_rsp;
+  sep_pkg::sep_boot_rom_req_t sep_boot_rom_req;
+  sep_pkg::sep_boot_rom_rsp_t sep_boot_rom_rsp;
 
   sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req;
   sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp;

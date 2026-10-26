@@ -18,7 +18,7 @@ endif::backend-html5[]
 == ROM Architecture
 
 The CPU instruction-fetch and load/store interfaces reach the Boot ROM over a
-dedicated path outside the SEP local AXI crossbar. The SEP ROM interface shim
+dedicated path outside the SEP local AXI crossbar. The boot ROM memory interface
 converts the CPU memory request into the request, 64-bit word address, and
 read-data signals used by the ROM macro. Stores receive a response but are not
 forwarded to the macro and do not modify the ROM.
