@@ -70,6 +70,7 @@ module dxt
 
   // Connect signals to DAT memory
   assign dat_rdata_hw_o = dat_mem_src_i.rdata;
+  assign dat_mem_sink_o.clk = clk_i;
   assign dat_mem_sink_o.req = dat_read_valid;
   assign dat_mem_sink_o.write = dat_write_valid;
   assign dat_mem_sink_o.addr = dat_addr;
@@ -173,6 +174,7 @@ module dxt
 
   // Connect signals to DCT memory
   assign dct_rdata_hw_o = dct_mem_src_i.rdata;
+  assign dct_mem_sink_o.clk = clk_i;
   assign dct_mem_sink_o.req = dct_read_valid | dct_write_valid; // the generic SRAM first checks if req is 1 and then if write is 1
   assign dct_mem_sink_o.write = dct_write_valid;
   assign dct_mem_sink_o.addr = dct_addr;

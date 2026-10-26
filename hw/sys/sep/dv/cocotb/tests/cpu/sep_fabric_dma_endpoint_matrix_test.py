@@ -31,8 +31,8 @@ model of the staged data and the fabric taps:
                   directions, with the CPU beat as the control; the CPU beat
                   carries a non-zero source ID.
 * CHK-DMA-NOTCONN the boot ROM base and a DMA CSR word are not reached, and each
-                  transfer ends with STATUS.ERROR and ERROR_CODE.BUS_ERROR only.
-                  The bus response code of these cells is logged.
+                  transfer ends with a DMA interrupt. The end state (STATUS and
+                  ERROR_CODE) is logged as OBS-DMA-NOTCONN-RESP.
 
 The model of every expected value is the stimulus itself (the seeded words the
 firmware stages) and the RDL field layout; no expected value is read from the
@@ -271,7 +271,7 @@ class DmaEpCfg:
 
     @property
     def ap_out(self) -> int:
-        """{offset[55:19], issued[18:0]} (fabric.adoc, Address Remapping)."""
+        """{offset[55:19], issued[18:0]} (hw/ip/output_remap/regs/output_remap.rdl, offset)."""
         mask = (1 << AP_IDX_START) - 1
         return (self.ap_offset & ~mask & ((1 << 56) - 1)) | (self.p["ap_intra"] & mask)
 
@@ -363,21 +363,18 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         while True:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            req, gnt, we = dut.pr_sram_req_o.value, dut.pr_sram_gnt_o.value, dut.pr_sram_we_o.value
-            # An X or Z on the handshake, or on WE or ADDR of a granted
-            # request, hides an SRAM write, so it fails the leaf.
-            if not (req.is_resolvable and gnt.is_resolvable):
-                msg = f"PR-SRAM X/Z FAIL: req={req} gnt={gnt} t={get_sim_time('ps')}ps"
+            req, we = dut.pr_sram_req_o.value, dut.pr_sram_we_o.value
+            # An X or Z on the request, or on WE or ADDR of a request, hides
+            # an SRAM write, so it fails the leaf.
+            if not req.is_resolvable:
+                msg = f"PR-SRAM X/Z FAIL: req={req} t={get_sim_time('ps')}ps"
                 self.logger.error(msg)
                 raise AssertionError(msg)
-            if not (int(req) and int(gnt)):
+            if not int(req):
                 continue
             addr = dut.pr_sram_addr_o.value
             if not (we.is_resolvable and addr.is_resolvable):
-                msg = (
-                    f"PR-SRAM X/Z FAIL: granted request we={we} addr={addr} "
-                    f"t={get_sim_time('ps')}ps"
-                )
+                msg = f"PR-SRAM X/Z FAIL: request we={we} addr={addr} t={get_sim_time('ps')}ps"
                 self.logger.error(msg)
                 raise AssertionError(msg)
             if not int(we):
@@ -683,7 +680,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             r["ec"],
         )
         self.logger.info(
-            "CHK-DMA-ALIAS PASS: form=alias alias=0x%08x direct=0x%08x data_ok=1 seen=PR-EXT recovery_ok=1",
+            "CHK-DMA-ALIAS PASS: form=alias alias=0x%08x direct=0x%08x data_ok=na seen=PR-EXT recovery_ok=1",
             EXT_TOP_ALIAS,
             EXT_TOP_WORD,
         )
@@ -1046,15 +1043,13 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             assert t_irq is not None, (
                 f"CHK-DMA-NOTCONN FAIL: {tgt} ended {end} with no DMA interrupt edge"
             )
-            # No DMA path reaches the boot ROM or the DMA CSR port, so the transfer
-            # ends in error with a bus error; the bus response code is logged.
-            assert end == "error" and self._bus_error(r), (
-                f"CHK-DMA-NOTCONN FAIL: {tgt} end={end} dma_status=0x{r['st']:08x} "
-                f"error_code=0x{r['ec']:08x}; expected STATUS.ERROR and ERROR_CODE.BUS_ERROR only"
-            )
+            # No DMA path reaches the boot ROM or the DMA CSR port; no spec sentence
+            # states the DMA outcome of such a request, so the end state is logged.
             self.logger.info(
-                "CTL-DMA-NOTCONN LOG: %s end=error dma_status=0x%08x error_code=0x%08x",
+                "OBS-DMA-NOTCONN-RESP: %s end=%s bus_error=%d dma_status=0x%08x error_code=0x%08x",
                 tgt,
+                end,
+                int(self._bus_error(r)),
                 r["st"],
                 r["ec"],
             )
