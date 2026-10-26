@@ -7,13 +7,14 @@
 // instantiates it once, outside the UVM harness block, so the same coverage
 // source serves Verilator and the commercial simulators.
 //
-// Two collection layers per DTP_FCOV.adoc:
-//   * Labeled `OCAH_FCOV_COVER cover-property points — live in every flow;
-//     under Verilator they form the functional-coverage database
-//     (coverage.dat user points via --coverage-user).
-//   * SV covergroups under `ifndef VERILATOR — commercial-simulator closure
-//     (dtp_sim_cfg.toml defines VERILATOR for the Verilator build, so only
-//     the commercial simulators compile them).
+// Two collection layers per DTP_FCOV.adoc, both compiled on every simulator:
+//   * Labeled `OCAH_FCOV_COVER cover-property points; under Verilator they
+//     are the coverage.dat user points (--coverage-user).
+//   * SV covergroups, the functional coverage model. Verilator drops cross
+//     select expressions (binsof, explicit cross bins) and coverage weights,
+//     so no covergroup in these modules uses them: every cross is the full
+//     product of its coverpoints, and a combination that must not occur is
+//     an illegal bin of a coverpoint.
 //
 // JTAG-core coverage lives here; JTAG2AXI/OTP, debug TDR, scan/STAP, and
 // cross-trigger coverage live in the sibling dtp_*_fcov.sv modules. The
@@ -454,9 +455,8 @@ module dtp_fcov (
   `DTP_FCOV_GATE(c_gate_runbist_dft_nonsecure_set, Runbist, dft_nonsecure, 1'b1)
   `undef DTP_FCOV_GATE
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups mirroring the cover-property bins.
+  // Covergroups mirroring the cover-property bins.
   // ------------------------------------------------------------------
   import jtag_tap_pkg::*;
 
@@ -673,12 +673,9 @@ module dtp_fcov (
   localparam logic [2:0] GateIjtagDfd = 3'd5;
   localparam logic [2:0] GateRunbistDftNonsecure = 3'd6;
 
-  // The cross carries the score; its two operands only name the axes.
   covergroup cg_instruction_gate with function sample (logic [2:0] gate, logic disabled);
     option.per_instance = 1;
     cp_gate: coverpoint gate {
-      option.weight = 0;
-      type_option.weight = 0;
       bins smc_axi_tdr = {GateSmcAxi};
       bins smc_otp_tdr = {GateSmcOtp};
       bins sep_otp_tdr = {GateSepOtp};
@@ -687,9 +684,7 @@ module dtp_fcov (
       bins ijtag_dfd = {GateIjtagDfd};
       bins runbist_dft_nonsecure = {GateRunbistDftNonsecure};
     }
-    cp_disabled: coverpoint disabled {
-      option.weight = 0; type_option.weight = 0; bins clear = {1'b0}; bins set = {1'b1};
-    }
+    cp_disabled: coverpoint disabled {bins clear = {1'b0}; bins set = {1'b1};}
     cx_gate_disabled: cross cp_gate, cp_disabled;
   endgroup
 
@@ -750,6 +745,5 @@ module dtp_fcov (
       end
     end
   end
-`endif
 
 endmodule : dtp_fcov
