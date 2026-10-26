@@ -77,7 +77,8 @@ of the tuning legs passed. In shard 2 the manual and ignored legs are set-up
 only, so the window opens at the first burst. ``cp_div_ratio`` holds the lane
 periods of the window that follows a passed CHK-SCLK-DIV of the same value, and
 samples them only when bit 1 of ``esrc_tune_pass`` rises, which the leaf writes
-after the in-window CHK-SCLK-DIV of that value passes.
+after the in-window CHK-SCLK-DIV of that value passes. The window does not open
+again after the first FAIL or missing control of the run.
 """
 
 from __future__ import annotations
@@ -777,6 +778,9 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         }
         ok = probes_ok and len(periods) == SCLK_GRADE and all(p == want for p in periods)
         if not self._ok("SCLK-DIV", ok, phase="closed", **fields):
+            return
+        # The window stays closed after the first FAIL or missing control of the run.
+        if self.chk.failures:
             return
         # One more graded instance of the same value inside the window: the
         # sampler holds the bin at a lane edge after two matching periods and
