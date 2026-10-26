@@ -1,0 +1,74 @@
+i3c_pkg, dxt, flow_active: carry the table memory clock in the request
+
+The DAT, DCT and RLT memories sit outside the core, and nothing tells the
+integrator which clock their requests are timed to. Add clk to each request,
+driven from the core clock, and drop rvalid and rerror from the DAT and DCT
+responses: the core reads rdata a fixed cycle after the request and never
+looks at either.
+
+--- a/src/i3c_pkg.sv
++++ b/src/i3c_pkg.sv
+@@ -208,6 +208,7 @@
+ 
+   // Memory port to DAT table
+   typedef struct packed {
++    logic             clk;
+     logic             req;
+     logic             write;
+     logic [DatAw-1:0] addr;
+@@ -217,12 +218,11 @@
+ 
+   typedef struct packed {
+     logic [63:0] rdata;
+-    logic        rvalid;
+-    logic [1:0]  rerror;
+   } dat_mem_src_t;
+ 
+   // Memory port to DCT table
+   typedef struct packed {
++    logic             clk;
+     logic             req;
+     logic             write;
+     logic [DctAw-1:0] addr;
+@@ -232,12 +232,11 @@
+ 
+   typedef struct packed {
+     logic [127:0] rdata;
+-    logic         rvalid;
+-    logic [1:0]   rerror;
+   } dct_mem_src_t;
+ 
+   // Memory port to reverse-lookup table (dynamic addr -> DAT index), dual-port
+   typedef struct packed {
++    logic             clk;
+     logic             a_req;
+     logic             a_write;
+     logic [6:0]       a_addr;
+--- a/src/hci/dxt.sv
++++ b/src/hci/dxt.sv
+@@ -70,6 +70,7 @@
+ 
+   // Connect signals to DAT memory
+   assign dat_rdata_hw_o = dat_mem_src_i.rdata;
++  assign dat_mem_sink_o.clk = clk_i;
+   assign dat_mem_sink_o.req = dat_read_valid;
+   assign dat_mem_sink_o.write = dat_write_valid;
+   assign dat_mem_sink_o.addr = dat_addr;
+@@ -173,6 +174,7 @@
+ 
+   // Connect signals to DCT memory
+   assign dct_rdata_hw_o = dct_mem_src_i.rdata;
++  assign dct_mem_sink_o.clk = clk_i;
+   assign dct_mem_sink_o.req = dct_read_valid | dct_write_valid; // the generic SRAM first checks if req is 1 and then if write is 1
+   assign dct_mem_sink_o.write = dct_write_valid;
+   assign dct_mem_sink_o.addr = dct_addr;
+--- a/src/ctrl/flow_active.sv
++++ b/src/ctrl/flow_active.sv
+@@ -435,6 +435,7 @@
+ 
+   // RLT storage is exported to the top-level memory interface. Depth is fixed at 128
+   // (one entry per 7-bit I3C address); the connected RAM must match.
++  assign rlt_mem_sink_o.clk     = clk_i;
+   // Write Port: dynamic address -> DAT index
+   assign rlt_mem_sink_o.a_req   = rlt_wreq;
+   assign rlt_mem_sink_o.a_write = 1'b1;
