@@ -1938,10 +1938,6 @@ Every test runs in run mode `no_cpu`, target `lsu_stub_all_live`, and joins the 
 
 *Pass Criteria*: Every implemented checker PASSes. UVM_ERROR == 0.
 
-*Known limitation*: CHK-OFLOW-PEND can fail on this DUT. The ROM recovers from `rx_buff_oflow` in main context with the mailbox interrupt unmasked, so the mailbox interrupt handler can write the rest of a pending response into the flushed outbound FIFO ahead of the fault frame. The overflow step runs last, so the other checks of the leaf grade before it.
-
-*Issue*: #3101
-
 *Scope limit*: The reserved bits of CMD_KEY_REVOKE, CMD_KEY_TRANSFER and CMD_ENGINE_SHRED, and the argument of CMD_KEY_GENERATE with both words invalid, are not stated and are not graded (<<sep-vplan-phase3-blocked,Blocked features>>). Only the `rx_buff_oflow` and `flushed_by_sep` legs of the mailbox ISR are host reachable. The `mbox_overflow` (-3) and `mbox_underflow` (-4) faults and the ISR order of the three mailbox errors need an injected KM mailbox error and are in <<sep-vplan-phase3-noobs,Features with no observation point>>. A SEP flush while the KM is blocked in the middle of a response, and `SEP_IRQ_STATUS.flushed_by_km` after the boot flush, are not stated. The test grades only the cells listed under Test Coverage as new. The open tests named there keep the cells that they grade. CHK-NOCHG-VAULT grades the unchanged vault through `KM-KPV` and `KM-VALID`, and CHK-NOCHG-HANDLE grades it through the handle.
 
 '''''
