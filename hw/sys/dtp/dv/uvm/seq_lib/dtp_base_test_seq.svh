@@ -108,10 +108,17 @@ class dtp_base_test_seq extends ocah_sequence;
   endtask
 
   task raw_walk(bit tms_bits[], bit tdi_bits[]);
+    bit tdo_bits[];
+    raw_walk_tdo(tms_bits, tdi_bits, tdo_bits);
+  endtask
+
+  // Raw walk returning the TDO sampled in each cycle.
+  task raw_walk_tdo(input bit tms_bits[], input bit tdi_bits[], output bit tdo_bits[]);
     dtp_jtag_tms_walk_seq op = dtp_jtag_tms_walk_seq::type_id::create("tms_walk");
     op.tms_bits = tms_bits;
     op.tdi_bits = tdi_bits;
     run_jtag_op(op);
+    tdo_bits = op.tdo_bits;
   endtask
 
   task goto_state(ocah_jtag_tap_state_e target);
@@ -329,6 +336,36 @@ class dtp_base_test_seq extends ocah_sequence;
     dr_scan(pattern, width, observed);
     check_state(RUN_TEST_IDLE, "sanity_scan_path_chk", "after DR scan");
     check_last_scan_length(1'b0, width, $sformatf("pattern=0x%0h", pattern));
+    note_scan(1'b0, width);
+  endtask
+
+  // DR scan from Run-Test/Idle as one raw walk (LSB-first), returning
+  // observed TDO. TDI holds capture_tdi from the step into Select-DR-Scan
+  // through the step into Shift-DR, so a register selected for the scan
+  // presents its captured value as the first TDO bit, while a path that
+  // returns TDI through no register presents capture_tdi.
+  virtual task raw_shift_dr(input bit [63:0] pattern, input int unsigned width,
+                            input bit capture_tdi, output bit [63:0] observed);
+    // Run-Test/Idle -> Select-DR-Scan -> Capture-DR -> Shift-DR, the shift
+    // (its last bit to Exit1-DR), then Update-DR -> Run-Test/Idle.
+    int unsigned shift_start = 3;
+    bit tms_bits[];
+    bit tdi_bits[];
+    bit tdo_bits[];
+    tms_bits = new[shift_start + width + 2];
+    tdi_bits = new[shift_start + width + 2];
+    tms_bits[0] = 1'b1;
+    for (int unsigned i = 0; i < shift_start; i++) tdi_bits[i] = capture_tdi;
+    for (int unsigned i = 0; i < width; i++) begin
+      tms_bits[shift_start+i] = (i == width - 1);
+      tdi_bits[shift_start+i] = pattern[i];
+    end
+    tms_bits[shift_start+width] = 1'b1;
+    raw_walk_tdo(tms_bits, tdi_bits, tdo_bits);
+    observed = '0;
+    for (int unsigned i = 0; i < width; i++) observed[i] = tdo_bits[shift_start+i];
+    check_state(RUN_TEST_IDLE, "sanity_scan_path_chk", "after raw DR scan");
+    check_last_scan_length(1'b0, width, $sformatf("raw pattern=0x%0h", pattern));
     note_scan(1'b0, width);
   endtask
 

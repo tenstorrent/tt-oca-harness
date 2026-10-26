@@ -51,12 +51,14 @@ failing alignment exactly.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+
 import cocotb
 from cocotb.triggers import RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import AxiTimingProfile
-from sep_reg_meta import sym
+from sep_reg_meta import CSRNG, EDN, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -99,12 +101,13 @@ CONCURRENT_ORDERS: tuple[tuple[str, int], ...] = (
 ORDER_NAMES = tuple(name for name, _gap in CONCURRENT_ORDERS)
 ORDER_GAP = dict(CONCURRENT_ORDERS)
 
-# The writable width of INTR_ENABLE is NOT assumed. The two blocks implement
-# different numbers of interrupts, so a hardcoded mask is wrong for one of them
-# and a bit that does not exist reads back 0 -- which looks exactly like a
-# dropped write and would be reported as a DUT defect. `probe_mask()` measures
-# it per lane instead. This upper bound only bounds the probe.
+# The writable width of INTR_ENABLE is measured per lane by `probe_mask()` and
+# graded against the union of the INTR_ENABLE fields of that block in the
+# generated register header. The two blocks implement different numbers of
+# interrupts, so each lane takes its own block's mask. This upper bound only
+# bounds the probe.
 INTR_ENABLE_PROBE = 0xFFFF_FFFF
+LANE_REGS = {"csrng": CSRNG, "edn": EDN}
 
 
 class SepAxiConcurrentRwCfg:
@@ -127,6 +130,7 @@ class SepAxiConcurrentRwCfg:
         self.gap = ORDER_GAP[order]
         rng = SepSeededRng(seed)
         self.wr_addr, self.rd_addr = LANE_ADDRS[lane]
+        self.rdl_mask = LANE_REGS[lane].mask("INTR_ENABLE")
         # A candidate pattern only. run_cell narrows it to the bits the
         # register is measured to actually implement, so the seed cannot pick
         # a value whose set bits do not exist on this lane.
@@ -495,11 +499,17 @@ class SepAxiConcurrentRw:
         )
         return AxiTimingProfile(aw_delay=holds["aw"], w_delay=holds["w"], ar_delay=holds["ar"])
 
-    async def run_cell(self, cfg: SepAxiConcurrentRwCfg) -> str | None:
+    async def run_cell(
+        self,
+        cfg: SepAxiConcurrentRwCfg,
+        on_shot: Callable[[], Awaitable[None]] | None = None,
+    ) -> str | None:
         """Drive the one calibrated cell. None when it passed.
 
         Single shot: one overlap per leaf so a wedge cannot contaminate a
-        later cell.
+        later cell. ``on_shot`` is awaited after the mask probe, the
+        calibration and the prime, right before the overlapping pair: the
+        graded part of the cell starts there.
         """
         drv = self._driver()
         tag = f"[{cfg.order} {cfg.lane}]"
@@ -510,6 +520,19 @@ class SepAxiConcurrentRw:
                 f"{tag} no writable bit found at 0x{cfg.wr_addr:08x}; the data "
                 f"compare would be vacuous, so the cell cannot distinguish a "
                 f"dropped concurrent write from a register that stores nothing"
+            )
+        if mask != cfg.rdl_mask:
+            self.test.logger.error(
+                "CHK-CONCURRENT-CAL FAIL: %s INTR_ENABLE writable mask at 0x%08x "
+                "measured 0x%08x, expected 0x%08x",
+                cfg.lane,
+                cfg.wr_addr,
+                mask,
+                cfg.rdl_mask,
+            )
+            return (
+                f"{tag} INTR_ENABLE writable mask at 0x{cfg.wr_addr:08x} measured "
+                f"0x{mask:08x}, expected 0x{cfg.rdl_mask:08x}"
             )
         self.mask = mask
         # Narrow the seed's pattern to bits that exist here, and keep it
@@ -524,10 +547,12 @@ class SepAxiConcurrentRw:
                 f"from its complement; the data compare would be vacuous"
             )
         self.test.logger.info(
-            "CHK-CONCURRENT-CAL: %s writable mask at 0x%08x measured as 0x%x",
+            "CHK-CONCURRENT-CAL PASS: %s INTR_ENABLE writable mask at 0x%08x "
+            "measured 0x%08x, expected 0x%08x",
             cfg.lane,
             cfg.wr_addr,
             mask,
+            cfg.rdl_mask,
         )
 
         cal = await self.calibrate(cfg)
@@ -556,6 +581,8 @@ class SepAxiConcurrentRw:
                 f"concurrent write from a register that never took the prime"
             )
 
+        if on_shot is not None:
+            await on_shot()
         obs = AdapterPortObserver(cfg.lane)
         obs.start()
         drv.set_timing(profile)

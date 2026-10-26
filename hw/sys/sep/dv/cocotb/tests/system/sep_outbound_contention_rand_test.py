@@ -66,8 +66,10 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     one AR per read, each at an address of the SMN slot), so
                     the filter admitted it and the DECERR is the decode's.
   CHK-CONC-ALL      every transaction of every initiator completes in the
-                    write, read, mixed and pair phases, and the drawn delays
-                    met a request at the port.
+                    write, read, mixed and pair phases, and in each of those
+                    phases each READY channel with a drawn stall percent that
+                    carries a request at the port stalled at least one beat
+                    there (each phase holds its first beat by construction).
   CHK-ID-ORDER      same-ID reads, two or more outstanding at the port at
                     once, come back in the PR-OUT-RSP order.
   CHK-B-COUNT, CHK-R-COUNT
@@ -690,9 +692,24 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         )
         self.max_lat = max(self.max_lat, st["max_latency_ns"])
 
+    def _check_phase_stall(self, phase: str, marks) -> None:
+        """Each drawn READY stall met a request of this phase at the port."""
+        s0 = self._stall0[0]
+        s1 = self.pstall.snap()
+        for ch, p in zip(("aw", "w", "ar"), self.c.p_stall):
+            if p and self.out.count(marks[0], ch) and s1[ch] == s0[ch]:
+                self._fail(
+                    "CHK-CONC-ALL",
+                    f"phase={phase} drawn READY stall not exercised ch={ch} "
+                    f"port_requests_{ch}={self.out.count(marks[0], ch)} port_stall_{ch}=0 "
+                    f"ready_stall_percent={self.c.p_stall}",
+                )
+
     async def _conc(self, phase: str, kind: str, inits=INITS, extra: str = ""):
         plan = self._plan(kind, inits)
+        self.delay.reprime()
         view, marks = await self._run_phase(f"conc_{phase}", plan, hold_lead=self.c.hold_lead)
+        self._check_phase_stall(phase, marks)
         st = self._account("CHK-CONC-ALL", f"conc_{phase}", plan, view, marks)
         self._tally(st)
         pairs, _, _ = id_overlap(view, "CHK-CONC-ALL")
@@ -721,17 +738,18 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self._line("CHK-RESP-ROUTE", " ".join(parts) + " wrong_target=0")
 
     def _check_delays_exercised(self) -> None:
-        """The drawn READY stalls met a request at the port, else the delay claim is vacuous."""
+        """Each drawn READY stall met a request at the port, else the delay claim is vacuous."""
         c = self.c
         for entry in self.pstall.xz:
             self._fail("CHK-CONC-ALL", entry)
-        total_stall = sum(self.pstall.snap().values())
-        if any(c.p_stall) and total_stall == 0:
-            self._fail(
-                "CHK-CONC-ALL",
-                f"drawn READY stalls not exercised port_stall_total={total_stall} "
-                f"ready_stall_percent={c.p_stall}",
-            )
+        snap = self.pstall.snap()
+        for ch, p in zip(("aw", "w", "ar"), c.p_stall):
+            if p and snap[ch] == 0:
+                self._fail(
+                    "CHK-CONC-ALL",
+                    f"drawn READY stall not exercised ch={ch} port_stall_{ch}=0 "
+                    f"ready_stall_percent={c.p_stall}",
+                )
 
     async def _s6_to_s9(self) -> None:
         _, st_w = await self._conc("w", "w")
@@ -1014,7 +1032,9 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         # master passes the inbound filter, so every beat here is one of its
         # accesses that the filter admitted.
         self.inflt = SepFabricTap("PR-INFLT").start()
-        self.delay = ResponderDelay(SepSeededRng(seed ^ 0x5EED5), c.p_stall, c.p_hold, c.hold_max)
+        self.delay = ResponderDelay(
+            SepSeededRng(seed ^ 0x5EED5), c.p_stall, c.p_hold, c.hold_max, prime=True
+        )
         self.pstall = PortStall().start()
         self._stall0 = (self.pstall.snap(), 0)
         self.delay.start()

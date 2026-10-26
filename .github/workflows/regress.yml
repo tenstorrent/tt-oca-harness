@@ -89,7 +89,10 @@ jobs:
         # build.
         include:
           - dut: dtp
+            # `--target default` builds only the default model and skips the
+            # tests that name only the `bsr_disabled` target.
             items: all
+            extra-args: --target default
             reseed: 1
             coverage: false
             runner: ubuntu-latest
@@ -219,6 +222,7 @@ jobs:
           tool: verilator
           tier: nightly
           items: ${{ matrix.items }}
+          extra-args: ${{ matrix.extra-args || '' }}
           reseed: ${{ matrix.reseed }}
           coverage: ${{ matrix.coverage }}
           sim-jobs: 4
@@ -243,7 +247,10 @@ jobs:
         # Every row uses ubuntu-latest.
         include:
           - dut: dtp
+            # `--target default` builds only the default model and skips the
+            # tests that name only the `bsr_disabled` target.
             items: all
+            extra-args: --target default
             reseed: 1
             coverage: false
             runner: ubuntu-latest
@@ -374,6 +381,7 @@ jobs:
           tier: weekly
           label: ${{ matrix.label || '' }}
           items: ${{ matrix.items }}
+          extra-args: ${{ matrix.extra-args || '' }}
           reseed: ${{ matrix.reseed }}
           coverage: ${{ matrix.coverage }}
           sim-jobs: nproc

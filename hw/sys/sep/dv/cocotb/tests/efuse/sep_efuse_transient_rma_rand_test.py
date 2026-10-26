@@ -22,6 +22,23 @@ Per-LC-state Feature Control Profile). The OTP ``LC_STATE`` word stays the stage
 word, and no program command reaches the post-guard port during the script. A
 cold reset restores the sensed state.
 
+Leg S (enable 1, start TEST_DEV or PROD): an RMA_CHIPLET match is held while
+``TOKEN_T1`` matches on RMA_SIP. The chiplet path has priority and needs
+RMA_SIP already set, so the SIP match does not fall through: after W the
+``LC_STATE`` shadow, its probe and ``FEAT_CTRL`` keep the start state, with both
+channels at Match before and after W (``otp_fuse_controller.adoc``, row
+``TRANSIENT_RMA_EN``). The script ends both matches. A lone SIP match right
+after it is logged and not graded (``OBS-TRANSIENT-AFTER-BLOCK``): no
+specification line states whether the block of a simultaneous match outlives
+the matches without a reset. A cold reset follows; the twin then presents the
+SIP match alone from the sensed start state and lands RMA_SIP, and a second
+cold reset restores the sensed state. The lone SIP match and the cold reset
+after it run with the graded coverage window closed.
+
+Every ``LC_STATE`` shadow read is graded as the whole 32-bit word: ``{~r, r}``
+in bits [7:0] and 0 in the reserved bits [31:8]
+(``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``, register ``LC_STATE``).
+
 Leg B (TEST_DEV image with the enable at 0): a program of ``LC_STATE`` bit 1 with
 only RMA_CHIPLET matched changes no bank bit and issues no program command; the
 same program with RMA_SIP matched lands. A program of bit 2 with only RMA_SIP
@@ -37,11 +54,26 @@ Time: the window W is a multiple of the sense time the leaf measures, at least
 256 clocks. Every program wait lasts the full W with no early exit. The window
 control programs a free spare bit and must land inside W, so a "never" wait of
 W is as long as a landing wait. Every match ends with a mismatch go on its
-channel before the next cold reset and before a later SIP step.
+channel before the next cold reset. In leg A a CHIPLET match also ends before
+a later SIP step; leg S holds it on purpose.
 
 Checkers: CHK-TRANSIENT, CHK-TRANSIENT-NOBURN, CHK-TRANSIENT-RESET (every
-leaf); CHK-PROG-LC (leg B). A failing hook control logs ``CHK-HOOK FAIL`` and
-ends the leaf.
+leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). A failing hook control
+logs ``CHK-HOOK FAIL`` and ends the leaf. A match that does not end with its
+Mismatch go before a cold reset ends the leaf at that control or check: the
+next sense would load the transient state, and the graded failure is the
+leaf verdict.
+
+FCOV (owner ``sep_efuse_transient_rma_rand_test``): the graded window opens
+after the window control and stays open to the end of the leaf, except for the
+lone SIP match of leg S and its cold reset and the bit-2 control program of
+leg B. The sampler holds each legal outcome of ``x_transient``,
+``cp_simultaneous_match``, ``cp_reset_restore`` and ``x_lc_prog_gate`` as
+pending, and samples it only on the rise of its bit of the pass label
+``tr_pass``, which the leaf writes after the check that grades that outcome
+passes (CHK-TRANSIENT, CHK-TRANSIENT-SIMUL, CHK-TRANSIENT-RESET, CHK-PROG-LC).
+The first failed check or control closes the window for the rest of the leaf,
+which drops every pending outcome.
 """
 
 from __future__ import annotations
@@ -51,7 +83,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
-from env.sep_efuse_image import LC_FIELD_MASK, lc_encode
+from env.sep_efuse_image import LC_FIELD_MASK, LC_RAW_WIDTH, lc_encode
 from env.sep_efuse_plan import (
     CH_CHIPLET,
     CH_SIP,
@@ -86,7 +118,15 @@ from env.sep_efuse_test_lib import (
     set_shadow_golden,
     sig_bits,
 )
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    TR_PASS_PROG_LC,
+    TR_PASS_RESET,
+    TR_PASS_SIMUL,
+    TR_PASS_TRANSIENT,
+    close_graded_window,
+    open_graded_window,
+    set_transient_pass,
+)
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL
 
@@ -98,8 +138,14 @@ _W_MIN = 256
 _SENSE_BOUND = 100_000
 _POLL_READS = 400
 _LC_WORD = field_word("LC_STATE")
-_LC_BIT1 = bit_address("LC_STATE", 0, 1)
-_LC_BIT2 = bit_address("LC_STATE", 0, 2)
+# Raw LC_STATE bits a token match sets (otp_fuse_controller.adoc:216-224;
+# lifecycle_controller.adoc:88-90): bit 1 with an RMA_SIP match, bit 2 with an
+# RMA_CHIPLET match from a state with bit 1 set.
+_LC_SIP_BIT = 1
+_LC_CHP_BIT = 2
+_LC_RAW_MASK = (1 << LC_RAW_WIDTH) - 1
+_LC_BIT1 = bit_address("LC_STATE", 0, _LC_SIP_BIT)
+_LC_BIT2 = bit_address("LC_STATE", 0, _LC_CHP_BIT)
 _PG = "EFUSE_PROGRAM_CTRL"
 _PG_BUSY = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_busy")
 _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_done")
@@ -109,6 +155,18 @@ _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error")
 _REQ_ERR_CLR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error_clear")
 _CH_NAME = {CH_SIP: "sip", CH_CHIPLET: "chp"}
 _SCRIPT_CH = {"SIP": CH_SIP, "CHIPLET": CH_CHIPLET}
+# Leg S runs from the two start states a SIP match updates with the enable at 1.
+_LEG_S_STARTS = ("TEST_DEV", "PROD")
+
+
+def _hex2(code: int | None) -> str:
+    return "none" if code is None else f"0x{code:02x}"
+
+
+def _lc_word(raw: int) -> int:
+    """Whole LC_STATE shadow word for raw state ``raw``: ``{~raw, raw}`` in [7:0], 0 in
+    the reserved bits [31:8] (``regs/gen/adoc/blocks/sep_efuse_map.adoc:164-165``)."""
+    return lc_encode(raw)
 
 
 def _transient_next(raw: int, ch: str, enable: int) -> int:
@@ -123,9 +181,9 @@ def _transient_next(raw: int, ch: str, enable: int) -> int:
         return raw
     cls = lc_state_class(raw)
     if ch == CH_SIP and cls in (ST_TEST_DEV, ST_PROD):
-        return raw | 0b0010
+        return raw | (1 << _LC_SIP_BIT)
     if ch == CH_CHIPLET and cls == ST_RMA_SIP:
-        return raw | 0b0100
+        return raw | (1 << _LC_CHP_BIT)
     return raw
 
 
@@ -134,6 +192,138 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     """Transient RMA shadow update, no burn, reset restore and the LC_STATE program gate."""
 
     required_evidence = ("CHK-TRANSIENT", "CHK-TRANSIENT-NOBURN", "CHK-TRANSIENT-RESET")
+
+    # ------------------------------------------------------------------ grading
+
+    def _close_window(self) -> None:
+        """Close the graded coverage window for the rest of the leaf."""
+        if not self.window_dead:
+            close_graded_window(self.logger)
+            self.window_dead = True
+
+    def _reopen_window(self) -> None:
+        """Reopen the window after an ungraded step, unless a check already failed."""
+        if not self.window_dead:
+            open_graded_window(_NAME, self.logger)
+
+    async def _label(self, bit: int) -> None:
+        """Raise pass label ``bit`` for two clocks, unless a check already failed.
+
+        Call it only after the check that grades the outcome of ``bit`` passed.
+        """
+        if self.window_dead:
+            return
+        set_transient_pass(bit, self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_transient_pass(0, self.logger)
+
+    def _stop_if_held(self, check: str, codes: dict[str, int | None], **fields: object) -> None:
+        """End the leaf when a match did not end with its Mismatch go before a cold reset.
+
+        With a match held the next sense loads the transient state, so the
+        reset would fail the base post-sense shadow compare before the leaf
+        verdict. The FAIL of ``check`` is the verdict instead.
+        """
+        if all(c == CODE_MISMATCH for c in codes.values()):
+            return
+        self._grade(
+            check,
+            False,
+            reason="match_held_at_reset",
+            end_codes=",".join(f"{k}:{_hex2(v)}" for k, v in codes.items()),
+            **fields,
+        )
+        self.chk.finish()
+
+    def _grade(self, name: str, cond: bool, **fields: object) -> bool:
+        """``SepChkLog.ok``; a FAIL closes the window before it is recorded."""
+        if not cond:
+            self._close_window()
+        return self.chk.ok(name, cond, **fields)
+
+    def _ctrl(self, name: str, cond: bool, **fields: object) -> bool:
+        """``SepChkLog.ctrl``; a missing control closes the window before it is recorded."""
+        if not cond:
+            self._close_window()
+        return self.chk.ctrl(name, cond, **fields)
+
+    def _grade_transient(
+        self, step: int | str, ch: str, code: int | None, raw: int, got: dict[str, int | None]
+    ) -> bool:
+        """CHK-TRANSIENT: Match code, whole LC_STATE word, its probe and FEAT_CTRL for ``raw``."""
+        p = self.plan
+        exp_word = _lc_word(raw)
+        exp_feat = feat_ctrl_profile(raw, p.sip_dis, p.sys_dis)
+        probe_byte = None if got["probe_lc"] is None else got["probe_lc"] & LC_FIELD_MASK
+        ok = (
+            code == CODE_MATCH
+            and got["word"] == exp_word
+            and probe_byte == lc_encode(raw)
+            and got["feat"] == exp_feat.value
+            and got["probe_feat"] == exp_feat.value
+        )
+        return self._grade(
+            "TRANSIENT",
+            ok,
+            en=self.en,
+            start=self.start,
+            step=step,
+            tok=_CH_NAME[ch],
+            code=_hex2(code),
+            exp_word=f"0x{exp_word:08x}",
+            got_word=f"0x{got['word']:08x}",
+            probe_byte="x" if probe_byte is None else f"0x{probe_byte:02x}",
+            exp_feat=f"0x{exp_feat.value:016x}",
+            got_feat=f"0x{got['feat']:016x}",
+            probe_feat="x" if got["probe_feat"] is None else f"0x{got['probe_feat']:016x}",
+            exp_state=lc_state_class(raw),
+            profile=exp_feat.log(),
+        )
+
+    def _grade_reset(
+        self,
+        leg: str,
+        codes: dict[str, int | None],
+        after: dict[str, int | None],
+        updated: bool,
+        pre_reset_word: int,
+    ) -> bool:
+        """CHK-TRANSIENT-RESET: after a cold reset the sense restores the staged state.
+
+        Every match of the leg ended with a Mismatch go before the reset; the whole
+        LC_STATE word, its probe, FEAT_CTRL and its probe equal the staged state; and
+        when the leg updated the shadow, the byte before the reset differs from the
+        staged byte (otp_fuse_controller.adoc:9-11, :232-234).
+        """
+        p = self.plan
+        raw0 = p.lc_raw & _LC_RAW_MASK
+        exp_word = _lc_word(raw0)
+        staged_byte = lc_encode(raw0)
+        staged_feat = feat_ctrl_profile(raw0, p.sip_dis, p.sys_dis)
+        probe_byte = None if after["probe_lc"] is None else after["probe_lc"] & LC_FIELD_MASK
+        pre_byte = pre_reset_word & LC_FIELD_MASK
+        ok = (
+            all(c == CODE_MISMATCH for c in codes.values())
+            and after["word"] == exp_word
+            and probe_byte == staged_byte
+            and after["feat"] == staged_feat.value
+            and after["probe_feat"] == staged_feat.value
+            and (not updated or pre_byte != staged_byte)
+        )
+        return self._grade(
+            "TRANSIENT-RESET",
+            ok,
+            leg=leg,
+            pre_reset_codes=",".join(f"{k}:{_hex2(v)}" for k, v in codes.items()) or "none",
+            exp_word=f"0x{exp_word:08x}",
+            got_word=f"0x{after['word']:08x}",
+            probe_byte="x" if probe_byte is None else f"0x{probe_byte:02x}",
+            exp_feat=f"0x{staged_feat.value:016x}",
+            got_feat=f"0x{after['feat']:016x}",
+            probe_feat="x" if after["probe_feat"] is None else f"0x{after['probe_feat']:016x}",
+            updated=int(updated),
+            shadow_pre_reset=f"0x{pre_byte:02x}",
+        )
 
     # ------------------------------------------------------------------ steps
 
@@ -167,6 +357,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         if ch not in self.staging_seen:
             # The first Match read of each channel is the control of the digest staging.
             if code != CODE_MATCH:
+                self._close_window()
                 hook_fail(
                     self.chk,
                     reason="digest_staging",
@@ -232,11 +423,16 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         start = leg["start"]
         script = [_SCRIPT_CH[s] for s in leg["script"]]
         leg_b = bool(leg["leg_b"])
+        leg_s = en == 1 and start in _LEG_S_STARTS
+        self.en = en
+        self.start = start
+        self.window_dead = False
         seed_fields = {
             "en": en,
             "start": start,
             "script": "_then_".join(leg["script"]),
             "leg_b": int(leg_b),
+            "leg_s": int(leg_s),
         }
         for line in p.log_lines(**seed_fields):
             self.logger.info("%s", line)
@@ -246,12 +442,13 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         if leg_b:
             self.required_evidence = (*type(self).required_evidence, "CHK-PROG-LC")
+        if leg_s:
+            self.required_evidence = (*type(self).required_evidence, "CHK-TRANSIENT-SIMUL")
         self.logger.info("EVIDENCE-REQUIRED seed=%d ids=%s", seed, ",".join(self.required_evidence))
 
-        raw0 = p.lc_raw & 0xF
+        raw0 = p.lc_raw & _LC_RAW_MASK
         staged_word = p.image.words[_LC_WORD] & 0xFFFF_FFFF
         staged_byte = lc_encode(raw0)
-        staged_feat = feat_ctrl_profile(raw0, p.sip_dis, p.sys_dis)
         self.staging_seen: set[str] = set()
         self.golden = type(p.image)()
         self.golden.words = list(p.image.words)
@@ -328,51 +525,26 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         burn_mark = self.shim.mark()
         for k, ch in enumerate(script, start=1):
             if ch == CH_SIP and held[CH_CHIPLET]:
-                # A CHIPLET match ends before a later SIP step.
-                pre_reset_codes[CH_CHIPLET] = await self._mismatch(CH_CHIPLET, f"a{k}.chp_end")
+                # Leg A: a CHIPLET match ends before a later SIP step.
+                pre_reset_codes[_CH_NAME[CH_CHIPLET]] = await self._mismatch(
+                    CH_CHIPLET, f"a{k}.chp_end"
+                )
                 held[CH_CHIPLET] = False
             code = await self._match(ch, f"a{k}.{_CH_NAME[ch]}")
             held[ch] = code == CODE_MATCH
             await ClockCycles(dut.clk_i, self.w)
             got = await self._lc_and_feat()
             raw = _transient_next(raw, ch, en)
-            exp_byte = lc_encode(raw)
-            exp_feat = feat_ctrl_profile(raw, p.sip_dis, p.sys_dis)
-            ok = (
-                code == CODE_MATCH
-                and got["word"] & LC_FIELD_MASK == exp_byte
-                and got["probe_lc"] is not None
-                and got["probe_lc"] & LC_FIELD_MASK == exp_byte
-                and got["feat"] == exp_feat.value
-                and got["probe_feat"] == exp_feat.value
-            )
-            self.chk.ok(
-                "TRANSIENT",
-                ok,
-                en=en,
-                start=start,
-                step=k,
-                tok=_CH_NAME[ch],
-                code="none" if code is None else f"0x{code:02x}",
-                exp_byte=f"0x{exp_byte:02x}",
-                got_byte=f"0x{got['word'] & LC_FIELD_MASK:02x}",
-                probe_byte="x"
-                if got["probe_lc"] is None
-                else f"0x{got['probe_lc'] & LC_FIELD_MASK:02x}",
-                exp_feat=f"0x{exp_feat.value:016x}",
-                got_feat=f"0x{got['feat']:016x}",
-                probe_feat="x" if got["probe_feat"] is None else f"0x{got['probe_feat']:016x}",
-                exp_state=lc_state_class(raw),
-                profile=exp_feat.log(),
-            )
-        shadow_pre_reset = got["word"] & LC_FIELD_MASK
+            if self._grade_transient(k, ch, code, raw, got):
+                await self._label(TR_PASS_TRANSIENT)
+        shadow_pre_reset = got["word"]
         for ch in (CH_SIP, CH_CHIPLET):
             if await self.fd.match(ch) == CODE_MATCH:
-                pre_reset_codes[ch] = await self._mismatch(ch, f"a.end.{_CH_NAME[ch]}")
+                pre_reset_codes[_CH_NAME[ch]] = await self._mismatch(ch, f"a.end.{_CH_NAME[ch]}")
                 held[ch] = False
         lc_otp = await direct_word(self, _LC_WORD)
         burn_cmds = self.shim.programs_since(burn_mark)
-        self.chk.ok(
+        self._grade(
             "TRANSIENT-NOBURN",
             lc_otp == staged_word and not burn_cmds and ctl["bit"] == 1 and ctl["cmd"] == 1,
             lc_otp_word=f"0x{lc_otp:08x}",
@@ -382,35 +554,151 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             prog_cmds_in_window=len(burn_cmds),
         )
 
+        # The leg-A reset runs in the window: cp_reset_restore holds the restore
+        # at the sense rise, and CHK-TRANSIENT-RESET releases it.
+        self._stop_if_held("TRANSIENT-RESET", pre_reset_codes, leg="a")
         await self.pulse_rst_ni()
         after = await self._lc_and_feat()
-        codes_ok = all(c == CODE_MISMATCH for c in pre_reset_codes.values())
-        updated = raw != raw0
-        self.chk.ok(
-            "TRANSIENT-RESET",
-            codes_ok
-            and after["word"] & LC_FIELD_MASK == staged_byte
-            and after["feat"] == staged_feat.value
-            and after["probe_feat"] == staged_feat.value
-            and (not updated or shadow_pre_reset != staged_byte),
-            pre_reset_codes=",".join(
-                f"{_CH_NAME[c]}:{'none' if v is None else f'0x{v:02x}'}"
-                for c, v in pre_reset_codes.items()
-            )
-            or "none",
-            staged_byte=f"0x{staged_byte:02x}",
-            got_byte=f"0x{after['word'] & LC_FIELD_MASK:02x}",
-            exp_feat=f"0x{staged_feat.value:016x}",
-            got_feat=f"0x{after['feat']:016x}",
-            updated=int(updated),
-            shadow_pre_reset=f"0x{shadow_pre_reset:02x}",
-        )
+        if self._grade_reset("a", pre_reset_codes, after, raw != raw0, shadow_pre_reset):
+            await self._label(TR_PASS_RESET)
 
+        if leg_s:
+            await self._simul(raw0)
+            await self._twin_reset(raw0)
+        else:
+            self.chk.obs("TRANSIENT-SIMUL-SKIP", en=en, start=start)
         if leg_b:
             await self._leg_b(seed, staged_word)
         close_graded_window(self.logger)
         await self.shim.stop()
         self.chk.finish()
+
+    async def _simul(self, raw0: int) -> None:
+        """Leg S: an RMA_SIP match while an RMA_CHIPLET match is held.
+
+        From TEST_DEV or PROD with the enable at 1, a CHIPLET match changes nothing
+        (CHK-TRANSIENT ``step=simul_chp``). The SIP match that follows while the
+        CHIPLET match is held does not fall through to RMA_SIP: after W the whole
+        LC_STATE word, its probe and FEAT_CTRL keep the start state
+        (otp_fuse_controller.adoc:232-238). Both channels read Match after the SIP
+        match and the CHIPLET channel still reads Match after W, in the same line, so
+        a script that never held both cannot pass. SIP ends first, then CHIPLET;
+        an end go that does not reach Mismatch ends the leaf before the cold
+        reset of the twin script.
+        """
+        dut = cocotb.top
+        p = self.plan
+        tag = "s1"
+        chp = await self._match(CH_CHIPLET, f"{tag}.chp")
+        await ClockCycles(dut.clk_i, self.w)
+        got = await self._lc_and_feat()
+        if self._grade_transient(
+            "simul_chp", CH_CHIPLET, chp, _transient_next(raw0, CH_CHIPLET, 1), got
+        ):
+            await self._label(TR_PASS_TRANSIENT)
+
+        sip = await self._match(CH_SIP, f"{tag}.sip")
+        chp_held = await self.fd.match(CH_CHIPLET)
+        sip_held = await self.fd.match(CH_SIP)
+        await ClockCycles(dut.clk_i, self.w)
+        got = await self._lc_and_feat()
+        chp_after_w = await self.fd.match(CH_CHIPLET)
+        held = {
+            "chp_go": chp,
+            "sip_go": sip,
+            "chp_held": chp_held,
+            "sip_held": sip_held,
+            "chp_after_w": chp_after_w,
+        }
+        held_ok = all(c == CODE_MATCH for c in held.values())
+        held_fields = {k: _hex2(v) for k, v in held.items()}
+        self._ctrl("TRANSIENT-SIMUL-HELD", held_ok, **held_fields)
+        exp_raw = raw0
+        exp_word = _lc_word(exp_raw)
+        exp_feat = feat_ctrl_profile(exp_raw, p.sip_dis, p.sys_dis)
+        probe_byte = None if got["probe_lc"] is None else got["probe_lc"] & LC_FIELD_MASK
+        ok = self._grade(
+            "TRANSIENT-SIMUL",
+            held_ok
+            and got["word"] == exp_word
+            and probe_byte == lc_encode(exp_raw)
+            and got["feat"] == exp_feat.value
+            and got["probe_feat"] == exp_feat.value,
+            start=self.start,
+            **held_fields,
+            w_cycles=self.w,
+            exp_word=f"0x{exp_word:08x}",
+            got_word=f"0x{got['word']:08x}",
+            probe_byte="x" if probe_byte is None else f"0x{probe_byte:02x}",
+            exp_feat=f"0x{exp_feat.value:016x}",
+            got_feat=f"0x{got['feat']:016x}",
+            probe_feat="x" if got["probe_feat"] is None else f"0x{got['probe_feat']:016x}",
+            exp_state=lc_state_class(exp_raw),
+        )
+        if ok:
+            await self._label(TR_PASS_SIMUL)
+        sip_end = await self._mismatch(CH_SIP, f"{tag}.sip_end")
+        chp_end = await self._mismatch(CH_CHIPLET, f"{tag}.chp_end")
+        ends_ok = sip_end == CODE_MISMATCH and chp_end == CODE_MISMATCH
+        self._ctrl(
+            "TRANSIENT-SIMUL-END",
+            ends_ok,
+            sip_end=_hex2(sip_end),
+            chp_end=_hex2(chp_end),
+        )
+        if not ends_ok:
+            self.chk.finish()
+
+    async def _twin_reset(self, raw0: int) -> None:
+        """SIP match alone, then a cold reset, graded by CHK-TRANSIENT-RESET.
+
+        First, right after the simultaneous script, a lone SIP match is logged
+        (``OBS-TRANSIENT-AFTER-BLOCK``) and not graded: no specification line
+        states whether the block outlives the matches without a reset. Its
+        Mismatch go must reach its code (CTRL-TRANSIENT-AFTER-BLOCK-END; a
+        missing end ends the leaf there), and a cold reset follows, both with
+        the window closed. The window opens again after that reset. Then the
+        twin SIP match lands RMA_SIP from the sensed start state (CHK-TRANSIENT
+        ``step=simul_twin``); after its Mismatch go a cold reset restores the
+        staged state (CHK-TRANSIENT-RESET ``leg=simul``), so that reset always
+        follows a transient update.
+        """
+        dut = cocotb.top
+        tag = "t1"
+        close_graded_window(self.logger)
+        obs_sip = await self._match(CH_SIP, f"{tag}.obs_sip")
+        await ClockCycles(dut.clk_i, self.w)
+        obs = await self._lc_and_feat()
+        self.chk.obs(
+            "TRANSIENT-AFTER-BLOCK",
+            start=self.start,
+            code=_hex2(obs_sip),
+            w_cycles=self.w,
+            got_word=f"0x{obs['word']:08x}",
+            probe_lc="x" if obs["probe_lc"] is None else f"0x{obs['probe_lc']:02x}",
+            got_feat=f"0x{obs['feat']:016x}",
+        )
+        obs_end = await self._mismatch(CH_SIP, f"{tag}.obs_sip_end")
+        if not self._ctrl(
+            "TRANSIENT-AFTER-BLOCK-END",
+            obs_end == CODE_MISMATCH,
+            sip_end=_hex2(obs_end),
+        ):
+            self.chk.finish()
+        await self.pulse_rst_ni()
+        self._reopen_window()
+        twin = await self._match(CH_SIP, f"{tag}.sip")
+        await ClockCycles(dut.clk_i, self.w)
+        got = await self._lc_and_feat()
+        if self._grade_transient("simul_twin", CH_SIP, twin, _transient_next(raw0, CH_SIP, 1), got):
+            await self._label(TR_PASS_TRANSIENT)
+        pre_reset_word = got["word"]
+        codes = {"twin_sip": await self._mismatch(CH_SIP, f"{tag}.sip_end")}
+        self._stop_if_held("TRANSIENT-RESET", codes, leg="simul")
+        await self.pulse_rst_ni()
+        after = await self._lc_and_feat()
+        if self._grade_reset("simul", codes, after, True, pre_reset_word):
+            await self._label(TR_PASS_RESET)
 
     def _leg_b_code(self, step: str, code: int | None, want: int) -> None:
         """Grade the code a leg B match or mismatch go reaches.
@@ -422,7 +710,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         """
         self.leg_b_codes.append(f"{step}:{'none' if code is None else f'0x{code:02x}'}")
         if code != want:
-            self.chk.ok(
+            self._grade(
                 "PROG-LC",
                 False,
                 step=step,
@@ -451,24 +739,24 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         shadow_own1 = await self.fd.rd(shadow_addr("LC_STATE"))
         sip_end = await self._mismatch(CH_SIP, "b1.sip_end")
         chp_code = await self.fd.match(CH_CHIPLET)
-        otp1 = staged_word | (1 << 1)
+        otp1 = staged_word | (1 << _LC_SIP_BIT)
         if own1["bit"] == 1:
             self._golden_with(own1["word"])
         await self.pulse_rst_ni()
         sense1 = await self.fd.rd(shadow_addr("LC_STATE"))
-        r1 = (staged_word & 0xF) | 0b0010
-        exp1 = lc_encode(r1)
+        r1 = (staged_word & _LC_RAW_MASK) | (1 << _LC_SIP_BIT)
+        exp1 = _lc_word(r1)
         own1_ok = (
             own1["cmd"] >= 1
             and own1["busy"] == 0
             and own1["done"] == 1
             and own1["word"] == otp1
             and shadow_own1 == shadow0
-            and sense1 & LC_FIELD_MASK == exp1
+            and sense1 == exp1
             and sip_end == CODE_MISMATCH
             and chp_code == CODE_MISMATCH
         )
-        self.chk.ok(
+        ref1_graded = self._grade(
             "PROG-LC",
             ref1["cmd"] == 0
             and ref1["cmd_all"] == 0
@@ -493,7 +781,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             ctl_own_landed=int(own1_ok),
             go_codes=",".join(self.leg_b_codes),
         )
-        self.chk.ok(
+        own1_graded = self._grade(
             "PROG-LC",
             own1_ok,
             bit=1,
@@ -504,13 +792,17 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             lc_otp_word=f"0x{own1['word']:08x}",
             landed=own1["bit"],
             shadow_pre=f"0x{shadow_own1 & LC_FIELD_MASK:02x}",
-            shadow_after_sense=f"0x{sense1 & LC_FIELD_MASK:02x}",
-            exp_after_sense=f"0x{exp1:02x}",
+            shadow_after_sense=f"0x{sense1:08x}",
+            exp_after_sense=f"0x{exp1:08x}",
             state_after_sense=lc_state_class(r1),
             sip_end=f"0x{sip_end:02x}" if sip_end is not None else "none",
             chp_code=f"0x{chp_code:02x}",
             go_codes=",".join(self.leg_b_codes),
         )
+        # Both bit-1 programs (other channel refused, own channel landed) are
+        # graded above; the label releases their x_lc_prog_gate cells.
+        if ref1_graded and own1_graded:
+            await self._label(TR_PASS_PROG_LC)
 
         # Bit 2 with only RMA_SIP matched: refused (control of the open refusal).
         self._leg_b_code("b2.sip", await self._match(CH_SIP, "b2.sip"), CODE_MATCH)
@@ -518,7 +810,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         self.chk.obs("PROG-LC-CHP", chp_code=f"0x{chp_held:02x}")
         close_graded_window(self.logger)
         ref2 = await self._program(_LC_BIT2)
-        open_graded_window(_NAME, self.logger)
+        self._reopen_window()
         shadow_ref2 = await self.fd.rd(shadow_addr("LC_STATE"))
 
         # Bit 2 with RMA_CHIPLET matched: lands.
@@ -527,24 +819,24 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         shadow_own2 = await self.fd.rd(shadow_addr("LC_STATE"))
         sip_end2 = await self._mismatch(CH_SIP, "b2.sip_end")
         chp_end2 = await self._mismatch(CH_CHIPLET, "b2.chp_end")
-        otp2 = otp1 | (1 << 2)
+        otp2 = otp1 | (1 << _LC_CHP_BIT)
         if own2["bit"] == 1:
             self._golden_with(own2["word"])
         await self.pulse_rst_ni()
         sense2 = await self.fd.rd(shadow_addr("LC_STATE"))
-        r2 = 0b0110
-        exp2 = lc_encode(r2)
+        r2 = r1 | (1 << _LC_CHP_BIT)
+        exp2 = _lc_word(r2)
         own2_ok = (
             own2["cmd"] >= 1
             and own2["busy"] == 0
             and own2["done"] == 1
             and own2["word"] == otp2
             and shadow_own2 == sense1
-            and sense2 & LC_FIELD_MASK == exp2
+            and sense2 == exp2
             and sip_end2 == CODE_MISMATCH
             and chp_end2 == CODE_MISMATCH
         )
-        self.chk.ok(
+        ref2_graded = self._grade(
             "PROG-LC",
             chp_held != CODE_MATCH
             and ref2["cmd"] == 0
@@ -571,7 +863,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             ctl_own_landed=int(own2_ok),
             go_codes=",".join(self.leg_b_codes),
         )
-        self.chk.ok(
+        own2_graded = self._grade(
             "PROG-LC",
             own2_ok,
             bit=2,
@@ -582,10 +874,14 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             lc_otp_word=f"0x{own2['word']:08x}",
             landed=own2["bit"],
             shadow_pre=f"0x{shadow_own2 & LC_FIELD_MASK:02x}",
-            shadow_after_sense=f"0x{sense2 & LC_FIELD_MASK:02x}",
-            exp_after_sense=f"0x{exp2:02x}",
+            shadow_after_sense=f"0x{sense2:08x}",
+            exp_after_sense=f"0x{exp2:08x}",
             state_after_sense=lc_state_class(r2),
             sip_end=f"0x{sip_end2:02x}" if sip_end2 is not None else "none",
             chp_end=f"0x{chp_end2:02x}" if chp_end2 is not None else "none",
             go_codes=",".join(self.leg_b_codes),
         )
+        # The bit-2 control and the own-channel program are graded above; the
+        # label releases the bit-2 own-landed x_lc_prog_gate cell.
+        if ref2_graded and own2_graded:
+            await self._label(TR_PASS_PROG_LC)

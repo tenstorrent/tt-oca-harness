@@ -201,7 +201,10 @@ Observation probe groups:
   as in `crypto_isolated_probe_o`. They show when a stage accepts a transaction and
   when it returns the response, the point where the specification drains a
   domain before its reset. No frontdoor shows the stage side of the fabric.
-  Owner `sep_sw_reset_isolation_matrix_test`.
+  Owners `sep_sw_reset_isolation_matrix_test` and
+  `sep_crypto_per_ip_reset_isolation_test`, which reads the `ar` handshake of
+  stages 2 (`host_hmac`) and 4 (`host_abr`) and logs it, with the isolate
+  request at it, for each drain read (an observation; no check grades it).
 * Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
   (`u_sep_wdt_wrap.rst_wdt_n`, `rst_aon_ni` of the AON timer); owners
   `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,
@@ -265,6 +268,10 @@ Observation probe groups:
   of the read and program interfaces sit before the guard and cannot show a
   refusal. `efuse_shim_resp_{valid,status,data}_o`, the shim response at the
   `sep` input `efuse_shim_command_resp_i`, after the sense-status inject.
+  `efuse_shadow_resp_valid_o` and `efuse_shadow_sense_done_o`, the response
+  valid at the input and `fuse_sense_done_o` at the output of the sensing FSM
+  (`efuse_shadow_regs`), the ports where `doc/otp_fuse_controller.adoc` states
+  the sense-done latency; the FCOV sampler reads the same two taps.
   `efuse_bank_psel_o`, the APB `psel` of the shim request to the bank model
   (`efuse_model_otp_req` in `sep_ip_integration`), sampled every clock to show
   that a request the guard blocks starts no bank access.
@@ -294,7 +301,9 @@ Observation probe groups:
   `pg_addr_err_i` and `req_err_i` (the `EFUSE_INTERFACE_CTRL_STATUS` error
   flags), `stored_shadow_i` (the unmasked stored shadow), `shim_resp_i` (valid,
   status and data of the shim response at the `sep` input
-  `efuse_shim_command_resp_i`) and `shim_cmd_i` (the post-guard fuse command).
+  `efuse_shim_command_resp_i`), `shim_cmd_i` (the post-guard fuse command),
+  and `sense_fsm_resp_v_i` and `sense_fsm_done_i` (the sensing FSM taps
+  `efuse_shadow_resp_valid_o` and `efuse_shadow_sense_done_o`).
   The sampler also reads `cmp_match_p_i` and `cmp_match_n_i`, `tok_words_i`,
   the digest latch inputs and `jtag_filt_sigint_i` from the taps above. No
   check reads them. Users: the owners of the eFuse and lifecycle groups of
@@ -378,9 +387,10 @@ Observation probe groups:
    took place; stores after that fetch are not in the capture. User:
    `sep_km_handover_rand_test` (CHK-HO-SRAM).
 * Key Manager CPU AXI valid tap (KM-AXIV, `km_cpu_axi_valid_o[2:0]`,
-  `km_cpu_rst_n_o`): the request valids of the KM CPU AXI4-Lite master
-  `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1 `aw_valid`, bit 0
-  `w_valid`, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
+  `km_cpu_axi_ready_o[2:0]`, `km_cpu_rst_n_o`): the request valids of the KM
+  CPU AXI4-Lite master `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1
+  `aw_valid`, bit 0 `w_valid`, the readies of the same channels from
+  `cpu_axil_resp` in the same bit order, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
   the PicoRV32 core and the `aresetn` of the KM AXI SVA. Read only, on every
   clock. User: `sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
@@ -490,6 +500,7 @@ Observation probe groups:
   and of the two DMA latches (`reg_path_err`, `host_path_err`). Owner:
   `sep_cpu_bridge_fault_matrix_rand_test` (CHK-RACE).
 * Adams Bridge ML-KEM seed Z words (`abr_mlkem_seed_z_probe_o`).
+* Adams Bridge zeroize request and ready state (`abr_zeroize_ready_probe_o`).
 * Fabric-slot register-block W-channel counters (`fabric_slot_w_*`).
 * Fabric port taps, each a read-only copy of a DUT net with the AW and AR
   VALID, READY and request fields and, where named, the W beat
@@ -969,7 +980,8 @@ Exceptions (a closed set):
   `sep_rom_hmac_fifo_stall_terminal_test` (HMAC),
   `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY),
   `sep_hmac_fifo_stream_rand_test` (HMAC, CHK-HMAC-BACKPRESSURE-HOLD and the
-  FIFO-full cells).
+  FIFO-full cells), `sep_kmac_stream_cfg_rand_test` (KMAC, the control of
+  CHK-KMAC-FIFO-DONE: a `STATUS` read with message words held in the FIFO).
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *TCM bit-flip* — stored-bit error inject on the ICCM and DCCM macro arrays,
@@ -1073,8 +1085,8 @@ Exceptions (a closed set):
   the hold set the delays and the hold and limit sessions, and
   `smn_outbound_rd_addr_data_i` is 1 for the whole leaf, so the read data of
   every phase depends on it: CHK-DELAYS,
-  CHK-HOLD-DRAIN, CHK-OUT-STOP, CHK-XBAR-HELD, CHK-XBAR-POSTDRAIN,
-  CHK-CHAIN-LIMIT, CHK-SAT-B-COUNT, CHK-SAT-R-COUNT,
+  CHK-HOLD-DRAIN, CHK-OUT-DRAIN, CHK-XBAR-HELD, CHK-XBAR-POSTDRAIN,
+  CHK-CHAIN-DRAIN, CHK-SAT-B-COUNT, CHK-SAT-R-COUNT,
   CHK-SYSIF-NO-OUTBOUND-PATH, CHK-ATTR-USER, CHK-NONVAC, CHK-TIMEOUT-PATHS);
   both leaves run with the plusarg.
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
@@ -1098,9 +1110,17 @@ Exceptions (a closed set):
   KV seed read the decapsulation key reads as zero, so the Z a KV read delivered
   has no frontdoor. Observation only; it drives nothing. Owners:
   `sep_km_sideload_share_walk_test`, `sep_km_abr_mlkem_sideload_test`.
+* *Adams Bridge zeroize probe* — `abr_zeroize_ready_probe_o` is a read-only XMR
+  of the engine's zeroize request (bit 0) and its ready state, `abr_ready`, the
+  value `STATUS.READY` reports (bit 1). A STATUS read is a bus round trip, so it can only bound when the
+  sweep starts and ends; the probe times it to the cycle. Observation only; it
+  drives nothing. Owner: `sep_abr_zeroize_latency_test`.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
-  `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
-  reach that port. Protocol, not data.
+  `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`, with
+  `MASTER_SYNC_RESET` = 1: the AR, AW and W valids may be high on the first
+  edge that samples the reset low and must be low from the next edge on (AXI
+  A3.1.2 gives no reset-entry timing). No TB master can reach that port.
+  Protocol, not data.
 
 [[sep-run-modes]]
 === Run Modes and RTL Targets

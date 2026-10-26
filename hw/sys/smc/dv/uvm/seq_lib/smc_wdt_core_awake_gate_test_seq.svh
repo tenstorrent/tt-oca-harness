@@ -16,11 +16,11 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
   localparam string ChkNonvac = "CHK-NONVAC";
   localparam int unsigned RateWindowCycles = 1024;
   localparam int unsigned HoldCycles = 8192;
-  localparam int unsigned BoundaryPollCycles = 64;
+  localparam int unsigned ScoreboardPollCycles = 64;
   // Nine keyed writes, six CTRL reads, eight COUNT reads and three CMP reads.
   localparam int unsigned WdtAccessesPerPass = 35;
   localparam string ChkScoreboard = "CHK-WDT-AWAKE-SCOREBOARD";
-  localparam int unsigned ResetApplyPolls = 64;
+  localparam int unsigned CoreResetPollCycles = 64;
   localparam int unsigned ResetIntervalsPerPass = 2;
   localparam bit [31:0] CountStart = 32'h0100_0000;
   // Maximum scale and compare keep the seeded count below the interrupt threshold.
@@ -64,20 +64,18 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
     end
   endtask
 
-  protected task await_applied(bit want);
-    bit [63:0] observed;
-    for (int unsigned poll = 0; poll < ResetApplyPolls; poll++) begin
-      mem_read(ResetTimeoutAddr, observed, "RESET_TIMEOUT poll");
-      if (bit'((observed & AppliedMask) != 0) == want) begin
-        check_evidence(ChkReset, "reset applied level", 64'((observed & AppliedMask) != 0),
-                       64'(want));
-        return;
-      end
+  protected task await_core_reset(bit released);
+    logic observed;
+    for (int unsigned poll = 0; poll < CoreResetPollCycles; poll++) begin
+      observed = tb_vif.cpu_core_resets_n[core];
+      if (observed === released) break;
       wait_smc_cycles(1);
     end
-    check_evidence(ChkReset, "reset applied timeout", 64'((observed & AppliedMask) != 0),
-                   64'(want));
-    `uvm_fatal(get_type_name(), "Software core reset did not reach the requested level")
+    check_evidence(ChkReset, "core reset level", 64'(observed === released), 64'h1, $sformatf(
+                   "core=%0d reset_n=%b requested=%b", core, observed, released));
+    if (observed !== released) begin
+      `uvm_fatal(get_type_name(), "Software core reset did not reach the requested level")
+    end
   endtask
 
   protected task check_reset_ctrl(bit [63:0] expected);
@@ -90,43 +88,43 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
     end
   endtask
 
-  protected task await_boundary(bit isolated);
-    for (int unsigned cycle = 0; cycle < BoundaryPollCycles; cycle++) begin
-      if (tb_vif.cpu_cluster_isolate === isolated) begin
-        check_evidence(ChkReset, "cluster isolation level", 64'(tb_vif.cpu_cluster_isolate),
-                       64'(isolated));
-        return;
-      end
-      wait_smc_cycles(1);
-    end
-    check_evidence(ChkReset, "cluster isolation timeout", 64'(tb_vif.cpu_cluster_isolate),
-                   64'(isolated));
-    `uvm_fatal(get_type_name(), "Cluster isolation did not reach the requested level")
-  endtask
-
   protected task measure_interval(output bit [31:0] before_count, output bit [31:0] after_count,
                                   output real total, output real held);
     bit [63:0] timeout_word;
+    logic held_reset_n;
+    int unsigned held_samples;
     real t0, t1, applied_at, release_at;
     read_count(before_count, t0);
     mem_write(ResetCtrlAddr, reset_baseline & ~core_reset_mask, "hold core reset");
     check_reset_ctrl(reset_baseline & ~core_reset_mask);
-    await_applied(1'b1);
-    await_boundary(1'b1);
+    await_core_reset(1'b0);
     applied_at = smc_cycle_time();
-    // L2 frontend traffic stalls while any core is held in reset.
-    wait_smc_cycles(HoldCycles);
-    mem_read(ResetTimeoutAddr, timeout_word, "RESET_TIMEOUT held");
-    check_evidence(ChkReset, "reset held before release", 64'((timeout_word & AppliedMask) != 0),
-                   64'h1);
-    if ((timeout_word & AppliedMask) == 0) begin
-      `uvm_fatal(get_type_name(), "Core reset was not held throughout the measurement interval")
+    for (held_samples = 0; held_samples < HoldCycles; held_samples++) begin
+      wait_smc_cycles(1);
+      held_reset_n = tb_vif.cpu_core_resets_n[core];
+      if (held_reset_n !== 1'b0) break;
     end
+    check_evidence(
+        ChkReset, "core reset held throughout sampled window",
+        64'(held_samples == HoldCycles && held_reset_n === 1'b0), 64'h1, $sformatf(
+        "core=%0d samples=%0d required=%0d reset_n=%b", core, held_samples, HoldCycles, held_reset_n
+        ));
+    if (held_samples != HoldCycles || held_reset_n !== 1'b0) begin
+      `uvm_fatal(get_type_name(), "Core reset released during the measurement interval")
+    end
+    // The measured hold excludes the status read and release write latency.
     release_at = smc_cycle_time();
+    mem_read(ResetTimeoutAddr, timeout_word, "RESET_TIMEOUT held");
+    check_evidence(ChkReset, "core reset held before release",
+                   64'(tb_vif.cpu_core_resets_n[core] === 1'b0), 64'h1);
+    if (tb_vif.cpu_core_resets_n[core] !== 1'b0 || (timeout_word & AppliedMask) != 0) begin
+      `uvm_fatal(get_type_name(), $sformatf({"Core reset not held or uncore reset applied: ",
+                                             "core=%0d reset_n=%b RESET_TIMEOUT=%016h"}, core,
+                                              tb_vif.cpu_core_resets_n[core], timeout_word))
+    end
     mem_write(ResetCtrlAddr, reset_baseline, "release core reset");
     check_reset_ctrl(reset_baseline);
-    await_applied(1'b0);
-    await_boundary(1'b0);
+    await_core_reset(1'b1);
     read_count(after_count, t1);
     total = t1 - t0;
     held = release_at - applied_at;
@@ -161,7 +159,13 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
       `uvm_fatal(get_type_name(), "Core reset measurement requires a released core")
     end
 
-    await_boundary(1'b0);
+    await_core_reset(1'b1);
+    check_evidence(ChkReset, "cluster boundary open at baseline",
+                   64'(tb_vif.cpu_cluster_isolate === 1'b0), 64'h1, $sformatf(
+                   "isolate=%b", tb_vif.cpu_cluster_isolate));
+    if (tb_vif.cpu_cluster_isolate !== 1'b0) begin
+      `uvm_fatal(get_type_name(), "Watchdog baseline requires an open cluster boundary")
+    end
     csr_read(smc_wdt_addr(core, WDT_CTRL), saved_ctrl, "CTRL baseline");
     check_evidence(ChkConfig, "disabled watchdog baseline", saved_ctrl, WDT_CTRL_REG_DEFAULT);
     if (saved_ctrl != WDT_CTRL_REG_DEFAULT) begin
@@ -251,11 +255,11 @@ class smc_wdt_core_awake_gate_test_seq extends smc_wdt_base_test_seq;
     csr_read(smc_wdt_addr(core, WDT_COUNT), restored_count, "COUNT restored");
     check_evidence(ChkConfig, "restored stopped count", restored_count, saved_count);
     check_reset_ctrl(reset_baseline);
-    await_applied(1'b0);
+    await_core_reset(1'b1);
     wdt_write(WDT_CMP, saved_compare);
     csr_read(smc_wdt_addr(core, WDT_CMP), observed_compare, "CMP restored");
     check_evidence(ChkConfig, "restored compare", observed_compare, saved_compare);
-    for (int unsigned cycle = 0; cycle < BoundaryPollCycles; cycle++) begin
+    for (int unsigned cycle = 0; cycle < ScoreboardPollCycles; cycle++) begin
       if (scoreboard.compare_count(SmcFeatureWdtCsr) >= compare_before + WdtAccessesPerPass) break;
       wait_smc_cycles(1);
     end
