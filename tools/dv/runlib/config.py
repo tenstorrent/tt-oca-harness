@@ -2007,10 +2007,6 @@ def target_names(sim_cfg: dict[str, Any]) -> set[str]:
     }
 
 
-def resolved_target_name(sim_cfg: dict[str, Any], test: TestEntry | None) -> str:
-    return test.target if test and test.target else default_target_name(sim_cfg)
-
-
 def _run_on(sim_cfg: dict[str, Any], target: str, tool: str) -> Any:
     targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
     target_cfg = targets.get(target) if isinstance(targets, dict) else None
@@ -2070,7 +2066,7 @@ def with_target_instances(catalog: TestCatalog, instances: dict[str, str]) -> Te
         test = catalog.tests.get(instance_test_name(name))
         if test is None:
             raise ConfigError(f"`{name}` names no test in the catalog")
-        tests[name] = dataclasses.replace(test, target=target)
+        tests[name] = dataclasses.replace(test, targets=(target,))
     return dataclasses.replace(catalog, tests=tests)
 
 
@@ -2309,6 +2305,22 @@ def selected_run_mode(sim_cfg: dict[str, Any], test: TestEntry | None, args: Any
     return run_modes_cfg(sim_cfg)[str(requested)]
 
 
+def _test_targets(value: Any, where: str) -> tuple[str, ...]:
+    """The targets a test entry's `target` names: one name, or a list of distinct names."""
+    if value is None:
+        return ()
+    names = [value] if isinstance(value, str) else value
+    if not isinstance(names, list) or not all(isinstance(name, str) and name for name in names):
+        raise ConfigError(f"{where} must be a target name or a list of target names")
+    if not names:
+        raise ConfigError(f"{where} is empty; drop the key to run the test on the default target")
+    repeated = sorted({name for name in names if names.count(name) > 1})
+    if repeated:
+        listed = ", ".join(f"`{name}`" for name in repeated)
+        raise ConfigError(f"{where} names {listed} more than once")
+    return tuple(names)
+
+
 def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
     name = entry.get("name")
     if not isinstance(name, str) or not name:
@@ -2324,11 +2336,8 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
     if firmware is not None and not isinstance(firmware, (str, dict)):
         where = f"{source}: " if source else ""
         raise ConfigError(f"{where}{name}.firmware must be a string or table")
-    target = entry.get("target")
-    if target is not None and (not isinstance(target, str) or not target):
-        where = f"{source}: " if source else ""
-        raise ConfigError(f"{where}{name}.target must be a non-empty string")
     where = f"{source}: " if source else ""
+    targets = _test_targets(entry.get("target"), f"{where}{name}.target")
     expect_fail = entry.get("expect_fail")
     if expect_fail is not None and (not isinstance(expect_fail, str) or not expect_fail.strip()):
         raise ConfigError(
@@ -2407,7 +2416,7 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         bindings=bindings,
         excluded=frozenset(excluded),
         overrides=overrides,
-        target=target,
+        targets=targets,
         seed=as_int(entry.get("seed"), f"{name}.seed"),
         reseed=as_int(entry.get("reseed"), f"{name}.reseed"),
         timeout_sec=as_int(entry.get("timeout_sec"), f"{name}.timeout_sec"),

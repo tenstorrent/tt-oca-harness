@@ -8,7 +8,11 @@ exactly as programmed, then a region inside one granule and require the
 rounded pair filter_ctrl.rdl says hardware writes back. On entry 1, enable the
 spanning region with write_allowed clear and copy through it with the DMA: the
 copy inside must leave its destination at the sentinel it was seeded with, the
-copy a granule above must land.
+copy a granule above must land. Then relocate the global SMC window so address
+bits [55:32] read 0x0000AB and drive SYS_IN through an inbound entry spanning
+it: CPU_CTRL SCRATCH[1] reads and writes through the window, the address past
+the window answers DECERR, and with the entry denying both directions the same
+register answers DECERR and keeps its value.
 """
 
 from __future__ import annotations
@@ -29,7 +33,12 @@ from smc_base_test import smc_base_test
 #   the traffic leg: the region writes and readbacks, the config write and
 #     its readback, and two DMA descriptors of 14 CSR accesses each        37
 #   the three restore writes of the traffic entry and their readbacks       6
-FILTER_REGION_SPAN_MIN_CSR_ACCESSES = 1 + 15 * 12 + 37 + 6
+#   the inbound leg: 48 entry reads, GLOBAL_BASE and REGION_SIZE saved,
+#     the GLOBAL_BASE relocation and its readback, entry n's three writes
+#     and readbacks, four SCRATCH[1] accesses (two reads, the restore write
+#     and its readback), the deny write and readback, the SCRATCH[1] read
+#     after the deny, and the four restore writes and their readbacks       73
+FILTER_REGION_SPAN_MIN_CSR_ACCESSES = 1 + 15 * 12 + 37 + 6 + 73
 
 
 @pyuvm.test()
@@ -39,8 +48,15 @@ class smc_filter_region_span_test(smc_base_test):
     required_evidence = (
         "CHK-FILTER-REGION-ENFORCED",
         "CHK-FILTER-REGION-SPAN",
+        "CHK-INFILT-HIGH-DENY",
+        "CHK-INFILT-HIGH-READ",
+        "CHK-INFILT-HIGH-UNMAPPED-RD",
+        "CHK-INFILT-HIGH-UNMAPPED-WR",
+        "CHK-INFILT-HIGH-WRITE",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 2
+    min_evidence = 9
 
     auto_protocol_vip = False
 

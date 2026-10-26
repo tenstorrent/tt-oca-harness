@@ -3,15 +3,18 @@
 //
 // bypass reference model: every DR scan of at most 64 bits while a
 // bypass-class instruction is active and the PTAP 3DCR select is clear
-// returns TDI delayed by one TCK (the one-bit bypass register, both IEEE
-// encodings and every opcode with no register of its own), INV_BYPASS the
-// inverted delayed image behind a captured 1, and
-// ZERO_LENGTH_BYPASS TDI itself. Consumes the reconstructed scan stream
-// (write) and the per-TCK event stream (event_export) through a
-// dtp_jtag_ir_model, re-baselines on power-on reset through dtp_tb_if, and
-// publishes one dtp_expected_item per scan item so the scoreboard pairs
-// the two streams in lockstep; scans outside the contract carry none. No
-// comparison, no reporting. The cocotb twin is env/dtp_bypass_ref_model.py.
+// returns TDI delayed by one TCK (the one-bit bypass register: both IEEE
+// encodings, every opcode with no register of its own, and each
+// boundary-scan instruction the build disables, which behaves as BYPASS
+// ("Boundary Scan Support", PTAP document)), INV_BYPASS the inverted delayed
+// image behind a captured 1, and ZERO_LENGTH_BYPASS TDI itself. Consumes the
+// reconstructed scan stream (write) and the per-TCK event stream
+// (event_export) through a dtp_jtag_ir_model, reads the build's
+// boundary-scan enables and re-baselines on power-on reset through
+// dtp_tb_if, and publishes one dtp_expected_item per scan item so the
+// scoreboard pairs the two streams in lockstep; scans outside the contract
+// carry none. No comparison, no reporting. The cocotb twin is
+// env/dtp_bypass_ref_model.py.
 
 `uvm_analysis_imp_decl(_dtp_bypass_event)
 
@@ -58,7 +61,7 @@ class dtp_bypass_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
     bit [63:0]           expected;
     if (!m_model.ir_known() || !m_model.ptap_select_clear() || t.bit_count == 0 || t.bit_count > 64)
       return;
-    if (is_bypass_instruction(ir))
+    if (is_bypass_instruction(ir) || is_disabled_boundary_scan(ir))
       expected = ocah_jtag_checker::predict_bypass_tdo(t.tdi_value(), t.bit_count);
     else if (ir == INV_BYPASS_INSTR) expected = inverted_bypass_tdo(t.tdi_value(), t.bit_count);
     else if (ir == ZERO_LENGTH_BYPASS_INSTR) expected = t.tdi_value();
@@ -80,6 +83,21 @@ class dtp_bypass_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
                 ir <= RISCV_RESERVED_7_INSTR) ||
                (ir >= UNDEFINED_BYPASS_2D_INSTR &&
                 ir <= UNDEFINED_BYPASS_3C_INSTR);
+  endfunction
+
+  // A boundary-scan instruction selects the boundary-scan register only
+  // while the build sets its enables: SAMPLE/PRELOAD and EXTEST need the
+  // boundary-scan enable, and EXTEST_TRAIN, EXTEST_PULSE and INTEST also
+  // their own.
+  protected function bit is_disabled_boundary_scan(bit [DtpIrWidth-1:0] ir);
+    bit bsr_enable = tb_vif.cfg_bsr_enable;
+    case (ir)
+      SAMPLE_PRELOAD_INSTR, EXTEST_INSTR: return !bsr_enable;
+      EXTEST_TRAIN_INSTR: return !(bsr_enable && tb_vif.cfg_extest_train_enable);
+      EXTEST_PULSE_INSTR: return !(bsr_enable && tb_vif.cfg_extest_pulse_enable);
+      INTEST_INSTR: return !(bsr_enable && tb_vif.cfg_intest_enable);
+      default: return 1'b0;
+    endcase
   endfunction
 
   // Inverted one-bit bypass: capture bit 1, then the inverted pattern

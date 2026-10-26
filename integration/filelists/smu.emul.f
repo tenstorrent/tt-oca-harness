@@ -1084,9 +1084,7 @@ hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_wrapper.sv
 hw/sys/sep/rtl/sep_ot_spi_wrap.sv
 hw/sys/sep/rtl/sep_isolate_rst_seq.sv
 hw/sys/sep/rtl/sep_reset_ctrl.sv
-hw/sys/sep/rtl/sep_rom_interface_shim.sv
 hw/sys/sep/rtl/sep_sram.sv
-hw/sys/sep/rtl/sep_sram_interface_shim.sv
 hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv
 hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv
 hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_wrapper.sv

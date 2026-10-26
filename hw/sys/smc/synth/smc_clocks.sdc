@@ -67,6 +67,24 @@ create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*1*clk]  -name SM
 create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*2*clk]  -name SMCCLK_DCACHE_DATA2  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
 create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*3*clk]  -name SMCCLK_DCACHE_DATA3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
 
+# Trace sink RAM clocks (the gated DFD funnel clock)
+set trace_mem_clk_ports [lsort -dictionary [get_object_name [get_ports {trace_mem_req_o*mem_clk}]]]
+set trace_mem_clk_idx 0
+foreach trace_mem_clk_port $trace_mem_clk_ports {
+    create_generated_clock [get_ports $trace_mem_clk_port] -name SMCCLK_TRACE_MEM${trace_mem_clk_idx} -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+    incr trace_mem_clk_idx
+}
+
+# I3C DAT/DCT/RLT table memory clocks (the gated I3C peripheral clock)
+foreach mem {dat dct rlt} {
+    set i3c_mem_clk_ports [lsort -dictionary [get_object_name [get_ports -quiet "i3c_${mem}_mem_sink_o*clk"]]]
+    set i3c_mem_clk_idx 0
+    foreach i3c_mem_clk_port $i3c_mem_clk_ports {
+        create_generated_clock [get_ports $i3c_mem_clk_port] -name PERIPHERALCLK_I3C_[string toupper $mem]${i3c_mem_clk_idx} -master_clock PERIPHERALCLK -divide_by 1 -source [get_ports "clk_periph_i"] -combinational
+        incr i3c_mem_clk_idx
+    }
+}
+
 
 # ----------------------
 }

@@ -45,7 +45,13 @@ Checkers:
                     0 edge, so it fails the 0 to 1 edge only; the FAIL line
                     counts it in fail_pins and in stuck_0.
 
-The test owns no functional coverage and opens no graded window.
+Coverage: the test owns ``sep_static_tieoff_cg.cp_test_en_consumer``. Its
+graded window opens after CTL-PIN-WALK passes and the base read, right before
+the 0 to 1 edge, and closes after CHK-TEST-EN-PINS. The cells sample only from
+the pass label ``te_pin_pass`` (``env/sep_fcov_gate.py``), which the test
+writes only after CHK-TEST-EN-PINS passes: one bit per edge and class that has
+at least one graded pin and no failing pin at that edge. A FAIL closes the
+window first and writes no label, so no cell fills.
 """
 
 from __future__ import annotations
@@ -55,6 +61,7 @@ from typing import Any
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_test_en_pin_pass
 from env.sep_test_en_walk import (
     CLASS_NAMES,
     PIN_BOUND,
@@ -187,6 +194,8 @@ class sep_test_en_pin_reach_test(sep_base_test):
             "TEST-EN-BASE LOG: test_en_i=0 graded pins not 0 before the first edge=%d", len(base)
         )
 
+        open_graded_window(TEST, self.logger)
+        set_test_en_pin_pass(0, self.logger)
         rise_bad, rise_first, rise_val = await self._edge(graded, 1)
         fall_bad, fall_first, fall_val = await self._edge(graded, 0)
 
@@ -215,10 +224,34 @@ class sep_test_en_pin_reach_test(sep_base_test):
             f" follow_first_edge_0to1={rise_first} follow_first_edge_1to0={fall_first}"
             f" pin_bound={PIN_BOUND}"
         )
-        assert not failing, (
-            f"CHK-TEST-EN-PINS FAIL: {counts}: "
-            + "; ".join(f"{e}:{p.path} ({p.cls}, {p.parent})" for p, e in failing[:FAIL_LINES])
-            + (" ..." if len(failing) > FAIL_LINES else "")
-        )
+        if failing:
+            close_graded_window(self.logger)
+            raise AssertionError(
+                f"CHK-TEST-EN-PINS FAIL: {counts}: "
+                + "; ".join(f"{e}:{p.path} ({p.cls}, {p.parent})" for p, e in failing[:FAIL_LINES])
+                + (" ..." if len(failing) > FAIL_LINES else "")
+            )
         self.logger.info("CHK-TEST-EN-PINS PASS: %s", counts)
+
+        # Pass label: bit 2 * test_en_i + class index, for each class with at
+        # least one graded pin and no failing pin at that edge.
+        cells = 0
+        for te, bad in ((0, fall_bad), (1, rise_bad)):
+            for ci, c in enumerate(CLASS_NAMES):
+                if per_class[c] > 0 and not any(p.cls == c for p in bad):
+                    cells |= 1 << (2 * te + ci)
+        self.logger.info(
+            "TEST-EN-PIN-PASS LOG: cells=%#x %s",
+            cells,
+            " ".join(
+                f"te{te}_{c}={(cells >> (2 * te + ci)) & 1}"
+                for te in (0, 1)
+                for ci, c in enumerate(CLASS_NAMES)
+            ),
+        )
+        set_test_en_pin_pass(cells, self.logger)
+        await ClockCycles(dut.clk_i, 2)
+        set_test_en_pin_pass(0, self.logger)
+        await RisingEdge(dut.clk_i)
+        close_graded_window(self.logger)
         self.result_pass(TEST, seed, 1)

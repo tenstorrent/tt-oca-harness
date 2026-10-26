@@ -18,14 +18,25 @@ path. This test covers the LC x DEMOTE x DIS product.
 Real fuse sense. DEMOTE is write-once-set; resense returns the CSRs to 0.
 After the product walk, one seed-selected group is locked: a later demote
 write is ignored until rst_ni.
+
+FCOV: each cell runs once, inside the graded window. The sampler holds the
+legal ``sep_dtp_gating_ladder_cg`` ``x_path_case`` and ``x_prod_demote_case3``
+cells of the cell's FEAT_CTRL read as pending, and samples them only on the
+rise of the pass label ``dem_pass``, which the leaf writes after every check
+of that cell passed. The window closes after the cell, or on its first FAIL,
+which drops the pending cells. Resense, OTP programming and demote writes stay
+outside it.
 """
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles
 from env.sep_efuse_image import LC_WORD_IDX, SepEfuseImage
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_demote_pass
 from env.sep_lcc_golden import (
+    DBG_DISABLE_FIELDS,
     DBG_DISABLE_UNCLAIMED,
     LC_PROD,
     LC_TEST_DEV,
@@ -51,9 +62,24 @@ from seq_lib.sep_lcc_inbound_filter_gating_seq import (
 )
 from seq_lib.sep_lcc_stitch_check_seq import LC_STATE_SHADOW
 
+TEST = "sep_lcc_demote_feat_ctrl_matrix_test"
 _MAX_SENSE_CYCLES = 20_000
 _LC_STATE_BIT_BASE = LC_WORD_IDX * 32
+# PROD (4'b0001) is TEST_DEV (4'b0000) plus bit 0 of the LC_STATE field
+# (hw/sys/sep/doc/lifecycle_controller.adoc:366, :374).
+_LC_PROD_BIT = _LC_STATE_BIT_BASE + LC_PROD.bit_length() - 1
+# AMBA AXI RRESP OKAY (IHI 0022); no generated enum carries it.
 RESP_OKAY = 0
+
+
+def _dbg_disable_word(bits: dict[str, int]) -> int:
+    """Pack named dbg_disable bits into one word, DBG_DISABLE_FIELDS order MSB first."""
+    n = len(DBG_DISABLE_FIELDS)
+    word = 0
+    for i, name in enumerate(DBG_DISABLE_FIELDS):
+        if name in bits:
+            word |= (bits[name] & 1) << (n - 1 - i)
+    return word
 
 
 @pyuvm.test()
@@ -71,28 +97,36 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         the same FEAT_CTRL the cell above just checked, so the two are one
         consistent claim rather than two independent guesses.
         """
-        got = dbg_disable_sample(cocotb.top)
+        sampled = dbg_disable_sample(cocotb.top)
         want = dbg_disable_expected(feat_ctrl)
-        for name, exp in want.items():
-            assert got[name] == exp, (
-                f"{tag}: dbg_disable.{name}={got[name]} expected {exp} for "
-                f"FEAT_CTRL=0x{feat_ctrl:016x} "
-                f"(sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
-                f"sip_dbg={(feat_ctrl >> SIP_DBG_BIT) & 1})"
-            )
+        got = {name: sampled[name] for name in want}
+        got_w = _dbg_disable_word(got)
+        want_w = _dbg_disable_word(want)
+        width = len(DBG_DISABLE_FIELDS)
+        wrong = [name for name in want if got[name] != want[name]]
+        assert got_w == want_w, (
+            f"CHK-DBG-DISABLE FAIL: {tag} dbg_disable=0b{got_w:0{width}b} "
+            f"!= golden 0b{want_w:0{width}b} (wrong: {', '.join(wrong)}) for "
+            f"FEAT_CTRL=0x{feat_ctrl:016x} "
+            f"(sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
+            f"sip_dbg={(feat_ctrl >> SIP_DBG_BIT) & 1})"
+        )
         if DBG_DISABLE_UNCLAIMED:
             self.logger.info(
-                "CHK-DBG-DISABLE PASS: %s %d of %d bits match the gating ladder (unclaimed: %s)",
+                "CHK-DBG-DISABLE PASS: %s dbg_disable=0b%s == golden, %d of %d bits "
+                "(unclaimed: %s)",
                 tag,
+                format(got_w, f"0{width}b"),
                 len(want),
-                len(want) + len(DBG_DISABLE_UNCLAIMED),
+                width,
                 ", ".join(DBG_DISABLE_UNCLAIMED),
             )
         else:
             self.logger.info(
-                "CHK-DBG-DISABLE PASS: %s all %d bits match the gating ladder",
+                "CHK-DBG-DISABLE PASS: %s dbg_disable=0b%s == golden, all %d bits",
                 tag,
-                len(want),
+                format(got_w, f"0{width}b"),
+                width,
             )
 
     def _check_fuse_dft_disable(self, feat_ctrl: int, tag: str) -> None:
@@ -110,7 +144,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         }
         for name, exp in want.items():
             assert got[name] == exp, (
-                f"{tag}: {name}={got[name]} expected {exp} for "
+                f"CHK-FUSE-DFT-DIS FAIL: {tag} {name}={got[name]} expected {exp} for "
                 f"FEAT_CTRL=0x{feat_ctrl:016x} "
                 f"(sep_fuse_dbg={(feat_ctrl >> SEP_FUSE_DBG_BIT) & 1} "
                 f"smc_fuse_dbg={(feat_ctrl >> SMC_FUSE_DBG_BIT) & 1} "
@@ -153,24 +187,19 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
             demote_2=demote_2,
             sec_dis=0,
         )
-        ctl = SepLccFeatCtrlCheckSeq(feat)
-        mark = self.sb_mark()
-        await self.start_seq(ctl)
-        self.assert_sb_judged(mark, f"CHK-FEAT-CTRL {tag}")
-        assert ctl.feat_ctrl == feat, (
-            f"CHK-FEAT-CTRL FAIL: {tag} FEAT_CTRL=0x{ctl.feat_ctrl:016x} != golden 0x{feat:016x}"
-        )
-        assert ctl.sep_debug == (feat & 1), (
-            f"{tag}: sep_debug={ctl.sep_debug} != FEAT_CTRL[0] of 0x{feat:016x}"
-        )
-        probe = SepExtAxiProbeSeq(LC_STATE_SHADOW)
-        await self.start_ext_seq(probe)
-        want = RESP_OKAY if ctl.sep_debug else RESP_DECERR
-        assert probe.resp_code == want, (
-            f"{tag}: ext probe resp={probe.resp_code}, expected {want} (sep_debug={ctl.sep_debug})"
-        )
-        self._check_dbg_disable(ctl.feat_ctrl, tag)
-        self._check_fuse_dft_disable(ctl.feat_ctrl, tag)
+        # The owned bins hold the cells of the FEAT_CTRL read as pending; the
+        # pass label releases them only after every check of this cell passed.
+        # A FAIL raises before the label, and the finally clause closes the
+        # window, which drops the pending cells.
+        set_demote_pass(False, self.logger)
+        open_graded_window(TEST, self.logger)
+        try:
+            ctl = await self._graded_cell(feat, tag)
+            set_demote_pass(True, self.logger)
+            await ClockCycles(cocotb.top.clk_i, 2)
+            set_demote_pass(False, self.logger)
+        finally:
+            close_graded_window(self.logger)
         self.logger.info(
             "CHK-FEAT-CTRL PASS: %s FEAT_CTRL=0x%016x sep_debug=%d",
             tag,
@@ -180,9 +209,32 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         self.logger.info(
             "CHK-LIVE-GATE PASS: %s ext %s (sep_debug=%d)",
             tag,
-            "OKAY" if want == RESP_OKAY else "DECERR",
+            "OKAY" if ctl.sep_debug else "DECERR",
             ctl.sep_debug,
         )
+
+    async def _graded_cell(self, feat: int, tag: str) -> SepLccFeatCtrlCheckSeq:
+        """FEAT_CTRL read, live filter probe, dbg_disable and fuse-path disables."""
+        ctl = SepLccFeatCtrlCheckSeq(feat)
+        mark = self.sb_mark()
+        await self.start_seq(ctl)
+        assert ctl.feat_ctrl == feat, (
+            f"CHK-FEAT-CTRL FAIL: {tag} FEAT_CTRL=0x{ctl.feat_ctrl:016x} != golden 0x{feat:016x}"
+        )
+        self.assert_sb_judged(mark, f"CHK-FEAT-CTRL {tag}")
+        assert ctl.sep_debug == (feat & 1), (
+            f"CHK-FEAT-CTRL FAIL: {tag} sep_debug={ctl.sep_debug} != FEAT_CTRL[0] of 0x{feat:016x}"
+        )
+        probe = SepExtAxiProbeSeq(LC_STATE_SHADOW)
+        await self.start_ext_seq(probe)
+        want = RESP_OKAY if ctl.sep_debug else RESP_DECERR
+        assert probe.resp_code == want, (
+            f"CHK-LIVE-GATE FAIL: {tag} ext probe resp={probe.resp_code}, expected {want} "
+            f"(sep_debug={ctl.sep_debug})"
+        )
+        self._check_dbg_disable(ctl.feat_ctrl, tag)
+        self._check_fuse_dft_disable(ctl.feat_ctrl, tag)
+        return ctl
 
     async def _walk_demotes(self, image: SepEfuseImage, *, dis_tag: str) -> int:
         n = 0
@@ -282,7 +334,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         cells = 0
         cells += await self._walk_demotes(image, dis_tag="dis0")
 
-        await self.start_seq(sep_efuse_otp_program_seq(_LC_STATE_BIT_BASE + 0))
+        await self.start_seq(sep_efuse_otp_program_seq(_LC_PROD_BIT))
         image.set_lc_state(LC_PROD)
         self.write_efuse_image(image)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)

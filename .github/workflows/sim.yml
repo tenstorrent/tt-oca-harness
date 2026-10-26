@@ -102,9 +102,12 @@ jobs:
         # follows it unless the DUT config sets build_jobs. Every row uses
         # ubuntu-latest except smu uvm.
         include:
+          # The DTP rows pass `--target default`: they build only the default
+          # model and skip the tests that name only the `bsr_disabled` target.
           - dut: dtp
             framework: cocotb
             runner: ubuntu-latest
+            extra-args: --target default
           - dut: sep
             framework: cocotb
             runner: ubuntu-latest
@@ -123,6 +126,7 @@ jobs:
             framework: uvm
             label: uvm
             runner: ubuntu-latest
+            extra-args: --target default
           - dut: sep
             framework: uvm
             label: uvm
@@ -186,5 +190,6 @@ jobs:
           tier: smoke
           label: ${{ matrix.label || '' }}
           items: ${{ matrix.items || 'smoke' }}
+          extra-args: ${{ matrix.extra-args || '' }}
           sim-jobs: 2
           run-dir: build/ci/runs/${{ matrix.dut }}/verilator/smoke/${{ github.run_id }}

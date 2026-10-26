@@ -36,6 +36,7 @@ package smc_seq_lib_pkg;
   `include "smc_axi_csr_read_seq.svh"
   `include "smc_axi_mem_write_seq.svh"
   `include "smc_axi_mem_read_seq.svh"
+  `include "smc_extreg_csr_strobe_write_seq.svh"
   `include "smc_lock_pipeline_write_seq.svh"
 
   // Scenario layer: the base virtual sequence, then the scenarios.
@@ -54,5 +55,6 @@ package smc_seq_lib_pkg;
   `include "smc_regblock_sparse_strobe_test_seq.svh"
   `include "smc_fabric_reg_clock_gate_test_seq.svh"
   `include "smc_mailbox_cool_reset_recovery_test_seq.svh"
+  `include "smc_external_reg_lane_test_seq.svh"
 
 endpackage : smc_seq_lib_pkg
