@@ -19,8 +19,12 @@ compared; absolute values are printed as measured.
 * Set A2: set A with T_R and T_F raised. Set A3: set A with TSU_STA, THD_STA and TSU_STO
   raised. Set A4: set A with only T_BUF raised.
 
-Standard-mode full-rate SCL is not run. The minimum set (THIGH = TLOW = 2, every other field 1)
-is a liveness run of transfer Y.
+Standard-mode full-rate SCL is not run. The minimum set (THIGH = TLOW = 4, every other field 1)
+is a liveness run of transfer Y at the controller's floor: the stretch predictor needs THIGH of at
+least four to see a target holding SCL low, and SCL low must outlast the round trip of the output
+flop plus the two-flop input synchronizer (three clk_i cycles with no external delay) by a cycle,
+or the controller releases SCL before it has seen its own falling edge and reads that late edge as
+another controller pulling SCL low (i2c_core.sv RoundTripCycles, i2c_controller_fsm.sv).
 """
 
 from __future__ import annotations
@@ -90,6 +94,12 @@ FM_PLUS_NS = {
     "t_buf": 500,
 }
 THD_DAT_MIN = 1
+#: The controller's floor: the stretch predictor needs THIGH of at least four, and SCL low must
+#: outlast the round trip of the output flop plus the two-flop input synchronizer (three clk_i
+#: cycles with no external delay) so the controller sees its own falling edge before it releases
+#: SCL (i2c_core.sv RoundTripCycles, i2c_controller_fsm.sv CLOCK_PULSE).
+MIN_THIGH = 4
+MIN_TLOW = 4
 FAST_RATIO = 4
 SCALE_C = 10
 RISE_FALL_RAISE = 6
@@ -385,7 +395,7 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
                 for k, v in a.items()
             },
             "A4": {k: v + START_STOP_RAISE if k == "t_buf" else v for k, v in a.items()},
-            "MIN": {**dict.fromkeys(FIELDS, 1), "thigh": 2, "tlow": 2},
+            "MIN": {**dict.fromkeys(FIELDS, 1), "thigh": MIN_THIGH, "tlow": MIN_TLOW},
         }
         for name, prog in self.sets.items():
             cocotb.log.info(
@@ -565,7 +575,8 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         assert status & I2C_STATUS_HOSTIDLE, f"MIN: HOSTIDLE not set (STATUS=0x{status:08x})"
         parse_edges("MIN", rec.events, False)
         return (
-            f"THIGH=2 TLOW=2 and every other field 1: START, address write acknowledged "
+            f"THIGH={MIN_THIGH} TLOW={MIN_TLOW} and every other field 1: START, address write "
+            f"acknowledged "
             f"(target acks={seen[2]}), exactly {rec.stops} STOP on the pads, STATUS=0x{status:08x} "
             f"HOSTIDLE set, INTR_STATE=0x{intr:08x} CMD_COMPLETE set again after being "
             f"0x{before:08x}"

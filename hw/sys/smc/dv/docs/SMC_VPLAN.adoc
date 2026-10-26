@@ -35815,8 +35815,10 @@ that were changed.
   states as the time between a STOP and START condition; a value below it is printed, not compared.
 * Raising `T_R` and `T_F`, and the hold of the first START, are measured and printed with no
   expectation. Full-rate Standard-mode SCL is not run.
-* With `THIGH` and `TLOW` at 2 and every other field at 1 a transfer of START, address write and
-  STOP completes with one acknowledge and one STOP.
+* With `THIGH` and `TLOW` at 4 and every other field at 1 a transfer of START, address write and
+  STOP completes with one acknowledge and one STOP; four is the controller's floor, since its
+  stretch predictor needs `THIGH` of at least four and SCL low must outlast the output flop plus
+  the two-flop input synchronizer by a cycle before the controller releases SCL.
 
 *Test Procedure*:
 
@@ -35874,7 +35876,7 @@ equals the change in `TSU_STO`; any other delta fails it.
 fall of the START of Y, A4 minus A, equals the change in `T_BUF`; any other delta fails it. The
 measured bus-free time of each set is printed next to its programmed `T_BUF` (the time between a
 STOP and START condition per `i2c.rdl`); a value below it is printed, not compared.
-|`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 2 and the other fields at 1 transfer Y
+|`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 4 and the other fields at 1 transfer Y
 shows a START, an acknowledged address, one STOP, `HOSTIDLE` and `CMD_COMPLETE`; a missing START
 or acknowledge, another STOP count or either flag clear fails it.
 |`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
@@ -41620,7 +41622,7 @@ draws nothing from the seed.
 * `ZEROER_CTRL_STATUS_START` is packed with `int_en = 1`, so the start write leaves `CTRL_STATUS.INT_EN` holding a one. The field is bit 0 of a 64-bit register. A four-byte write of 0 at the upper half leaves INT_EN's byte lane deasserted, so a field that honours the strobe keeps its one, while one that took the zero-filled lower lanes would clear; the whole word outside the STATUS bit then has to read back as the armed word.
 * INT_EN is then cleared by a four-byte write of 0 at the low half, which selects its lane, and held clear across a four-byte write of all ones at the upper half. The only upper-half field is `STATUS` (`sw = r`), so that write can change nothing, while a DUT that steered the upper word onto the low lanes or decoded +4 onto the low word would set INT_EN. So INT_EN is held against an unselected write both set and clear, each time against data that would change it.
 * Every one of those writes is also the zeroer's trigger -- `INT_EN.wr_swacc` fires on any write of the register, whichever half is written -- and a trigger starts a job even at a size of zero, writing one burst to `DEST_ADDR` before the size is ever tested. That is why these writes happen here, where each one re-runs this leaf's own job over the region it has already zeroed, and not at reset, where `DEST_ADDR` is 0. After each write `CTRL_STATUS.STATUS` must leave its idle level and return to it, so the re-run is checked, not assumed. INT_EN ends at its RDL reset of 0, and `SIZE` and `DEST_ADDR` are cleared afterwards as before.
-* The job then runs again while the output side pushes back. `zeroer.adoc` (Outstanding Transaction Management) has `AWREADY` and `WREADY` provide the zeroer's downstream back-pressure, but the output fabric absorbs a single master's addresses, so a 64-repetition DMA job is started on the same accelerator master port and the SYS_OUT responder stalls AW and W in repeating eight-cycle windows. The zeroer must be seen holding `AWVALID` high against `AWREADY` low for at least one cycle, the re-poisoned probe words must read zero with the witness intact, and every DMA repetition must land at its destination.
+* The job then runs again while the output side pushes back. `zeroer.adoc` (Outstanding Transaction Management) has `AWREADY` and `WREADY` provide the zeroer's downstream back-pressure; the accelerator mux carries an AW spill register per master port and none on W, so a stall reaches the zeroer's W channel directly while its address phase is taken by the spill register. A 64-repetition DMA job is started on the same accelerator master port and the SYS_OUT responder stalls AW and W in repeating eight-cycle windows. The zeroer must be seen holding `WVALID` high against `WREADY` low for at least one cycle (the `AWVALID` against `AWREADY` low count is printed, not required), the re-poisoned probe words must read zero with the witness intact, and every DMA repetition must land at its destination.
 
 *Test Procedure*:
 
@@ -41634,7 +41636,7 @@ Drive `smc_zeroer_multi_burst_test_seq`. Each checker below is a named compare t
 |`CHK-ZEROER-MULTI-BURST-PRELOAD` |The four probe words spanning both halves of the job and the witness word past its end were poisoned with distinct values and read back exactly, so the zero readbacks that follow can fail
 |`CHK-ZEROER-MULTI-BURST-STATUS` |`CTRL_STATUS.STATUS` left the level it rests at while the zeroer is idle and returned to it, and the output responder booked at least the two write transactions a 0x1000-byte job needs under AxLEN's 256-transfer cap, so the zeroer took a second address phase after its first data phase
 |`CHK-ZEROER-MULTI-BURST-ZEROED` |All four probe words read 0 after the job, including the first and last word of each half, and the witness word immediately past the end still holds its poison
-|`CHK-ZEROER-BACKPRESSURE` |With the DMA job contending and the responder stalling AW and W, the zeroer held AWVALID high against AWREADY low for a counted, non-zero number of cycles; the re-poisoned probe words, read back as poisoned before the job, read 0 after it, the witness kept its poison, and every DMA repetition read back its seed
+|`CHK-ZEROER-BACKPRESSURE` |With the DMA job contending and the responder stalling AW and W, the zeroer held WVALID high against WREADY low for a counted, non-zero number of cycles (the AWVALID against AWREADY low count is printed, not required: the accelerator mux's AW spill register takes the address); the re-poisoned probe words, read back as poisoned before the job, read 0 after it, the witness kept its poison, and every DMA repetition read back its seed
 |`CHK-ZEROER-INT-EN-HALF-WRITE` |CTRL_STATUS.INT_EN held a one across a four-byte write of 0 at the half of the 64-bit register it does not occupy, with the armed word read back after it; was cleared by a four-byte write of 0 at the half it does occupy; and held a zero across a four-byte write of all ones at the other half. After each write STATUS left its idle level and returned
 |===
 
