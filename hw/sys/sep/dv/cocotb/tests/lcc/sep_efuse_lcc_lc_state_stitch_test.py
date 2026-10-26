@@ -36,6 +36,15 @@ The test injects a broken pair at the LCC decoder input through the tb_top
 ``lc_sigint_inject_i`` port after the walk. Observation is the DUT
 ``sep_ras_o.lc_sigint_err`` probe plus an AXI ``FEAT_CTRL`` readback of 0 (fail-closed),
 then release and both restore.
+
+FCOV owner window (``env/sep_fcov_gate.py``): it opens after the eFuse image is
+staged and before the first sense, and closes after the last state check of the
+walk, before the broken-pair inject. Inside it every fuse-sense completion
+(test_mode.adoc:29) is graded by the next state check (``secure_tm_o`` equals the
+strap, ``SEC_DIS`` 0), and the TEST_DEV to PROD step (lifecycle_controller.adoc:119,
+PROD 4'b0001) is graded by CHK-GOLDEN and CHK-LC-INPUT on the resensed
+``LC_STATE`` read. The first FAIL closes the window before it propagates. The
+forced decoder input and the resense after it are outside the window.
 """
 
 from __future__ import annotations
@@ -48,6 +57,11 @@ from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_field_map import spec_secret_regs
 from env.sep_efuse_image import LC_WORD_IDX, SepEfuseImage
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_stitch_state_pass,
+)
 from env.sep_lcc_golden import (
     LC_PROD,
     LC_RMA_CHIP_1,
@@ -68,6 +82,8 @@ from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_MATCH,
 )
 from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
+
+TEST = "sep_efuse_lcc_lc_state_stitch_test"
 
 _MAX_SENSE_CYCLES = 20_000
 
@@ -259,6 +275,9 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
     async def _sense_initial_state(self, image: SepEfuseImage, raw: int) -> None:
         image.set_lc_state(raw)
         self.write_efuse_image(image)
+        # The first fuse-sense completion is a graded strap sample: the window
+        # opens before the release that starts it.
+        open_graded_window(TEST, self.logger)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
     async def _program_state_and_resense(self, image: SepEfuseImage, raw: int) -> None:
@@ -294,7 +313,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         want = dbg_disable_expected(feat_ctrl)
         for name, exp in want.items():
             assert got[name] == exp, (
-                f"{tag}: dbg_disable.{name}={got[name]} expected {exp} for "
+                f"CHK-DFT-SECURE FAIL: {tag}: dbg_disable.{name}={got[name]} expected {exp} for "
                 f"FEAT_CTRL=0x{feat_ctrl:016x} secure_tm={secure_tm} "
                 f"(sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
                 f"sip_dbg={(feat_ctrl >> SIP_DBG_BIT) & 1})"
@@ -311,8 +330,12 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         )
 
     def _sensed_secret(self, image: SepEfuseImage, name: str) -> int:
-        """Read one KM-secret field out of the sensed shadow array by backdoor."""
-        sensed = int(cocotb.top.efuse_shadow_probe_o.value)
+        """Read one KM-secret field out of the sensed shadow array by backdoor.
+
+        ``rd`` raises on an X or Z bit of the probe, so an unknown output cannot
+        pass the zero compare of the strap-high half.
+        """
+        sensed = self.rd(cocotb.top.efuse_shadow_probe_o)
         fld = image.field(name)
         val = 0
         for i in range(fld.n_words):
@@ -327,19 +350,34 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         *,
         secure_tm: int,
         sigint_err: int = 0,
+        sigint_chk: str = "CHK-LC-INPUT",
         prev_raw: int | None,
     ) -> int:
-        """Value-check LC shadow + FEAT_CTRL; return the DUT-observed LC code."""
+        """Value-check LC shadow + FEAT_CTRL; return the DUT-observed LC code.
+
+        A call without the inject writes the stitch pass label 0 first and 1
+        only after every check of the call passed, so the FCOV samples held
+        since the last label (the fuse-sense completion strap sample and the
+        TEST_DEV to PROD step) count only for a passing state check.
+        """
+        if not sigint_err:
+            set_stitch_state_pass(False, self.logger)
+        tm_chk = "CHK-SECURE-TM-ON" if secure_tm else "CHK-SECURE-TM-OFF"
         observed_sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         observed_tm = int(cocotb.top.secure_tm_o.value) & 0x1
         observed_sigint = int(cocotb.top.lcc_sigint_err_probe_o.value) & 0x1
+        strap = int(cocotb.top.test_en_strap_i.value) & 0x1
+        state_chk = "CHK-SIGINT" if sigint_err else tm_chk
         assert observed_sec_dis == 0, (
-            f"sec_dis={observed_sec_dis} but this walk presents no SEC_DISABLE token (LC=0x{raw:x})"
+            f"{state_chk} FAIL: sec_dis={observed_sec_dis} but this walk presents no "
+            f"SEC_DISABLE token (LC=0x{raw:x})"
         )
         assert observed_tm == secure_tm, (
-            f"secure_tm_o={observed_tm} after TEST_EN strap={secure_tm} (LC=0x{raw:x})"
+            f"{tm_chk} FAIL: secure_tm_o={observed_tm} after TEST_EN strap={secure_tm} "
+            f"(test_en_strap_i={strap}, LC=0x{raw:x})"
         )
         assert observed_sigint == sigint_err, (
+            f"{'CHK-SIGINT' if sigint_err else sigint_chk} FAIL: "
             f"lc_sigint_err={observed_sigint} expected {sigint_err} at LC=0x{raw:x}"
         )
         seq = sep_lcc_stitch_check_seq(
@@ -360,17 +398,19 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
 
         if raw == LC_TEST_DEV and not sigint_err:
             self._test_dev_feat_by_tm[secure_tm] = feat
-            if secure_tm:
-                self.logger.info(
-                    "CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL=0x%016x "
-                    "(same TEST_DEV golden; SECURE_TM does not qualify feat_ctrl)",
-                    feat,
-                )
-            else:
-                self.logger.info(
-                    "CHK-SECURE-TM-OFF PASS: secure_tm_o=0, FEAT_CTRL=0x%016x",
-                    feat,
-                )
+        if not sigint_err:
+            # test_mode.adoc:29: the fuse-sense completion samples the strap.
+            self.logger.info(
+                "%s PASS: %s secure_tm_o=%d test_en_strap_i=%d sec_dis=%d, "
+                "FEAT_CTRL=0x%016x (golden of %s; SECURE_TM does not qualify feat_ctrl)",
+                tm_chk,
+                lc_state_name(raw),
+                observed_tm,
+                strap,
+                observed_sec_dis,
+                feat,
+                lc_state_name(raw),
+            )
         self._check_dbg_disable(
             feat,
             secure_tm=secure_tm,
@@ -378,7 +418,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         )
         if sigint_err:
             assert feat == 0, (
-                f"sigint fail-closed expects AXI FEAT_CTRL=0, got 0x{feat:016x} "
+                f"CHK-SIGINT FAIL: sigint fail-closed expects AXI FEAT_CTRL=0, got 0x{feat:016x} "
                 f"(lcc_sigint_err_probe_o={observed_sigint} sec_dis={observed_sec_dis})"
             )
             self.logger.info(
@@ -394,11 +434,12 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         observed = seq.observed_lc_raw
         assert observed is not None, "sequence did not publish an observed LC code"
         assert is_legal_lc(observed), (
-            f"DUT returned an illegal LC code 0x{observed:x} (programmed {lc_state_name(raw)})"
+            f"CHK-LC-INPUT FAIL: DUT returned an illegal LC code 0x{observed:x} "
+            f"(programmed {lc_state_name(raw)})"
         )
         if prev_raw is not None:
             assert is_valid_lc_transition(prev_raw, observed), (
-                f"illegal LC transition {lc_state_name(prev_raw)} -> "
+                f"CHK-LC-INPUT FAIL: illegal LC transition {lc_state_name(prev_raw)} -> "
                 f"{lc_state_name(observed)} (as observed on the DUT)"
             )
         self.logger.info(
@@ -412,25 +453,15 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             lc_state_name(raw),
             feat,
         )
+        # Every check of this state passed: raise the pass label and hold it
+        # for two clk_i edges so the sampler sees the rise inside the window.
+        set_stitch_state_pass(True, self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
         return observed
 
-    async def run_scenario(self) -> None:
-        # Pinned disable vectors + seeded-random data; LC_STATE set per step.
-        image = SepEfuseImage().randomize(
-            self.random_seed(),
-            lc_raw=LC_TEST_DEV,
-            fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS},
-        )
-        # Count of injected OTP-program failures the program sequences had to
-        # retry past. The testlist arms deterministic failure injection
-        # (+sep_efuse_prog_fail_count), so a zero count means the retry path was
-        # never exercised -- asserted at the end so the retry check is non-vacuous.
-        self._total_program_retries = 0
-        self._secure_tm_prog_blocked = False
-        self._feat_by_state: dict[int, int] = {}
-        self._test_dev_feat_by_tm: dict[int, int] = {}
+    async def _walk_chain(self, image: SepEfuseImage) -> int | None:
+        """Walk _LC_CHAIN inside the FCOV window; return the last observed LC code."""
         prev_raw: int | None = None
-
         for i, raw in enumerate(_LC_CHAIN):
             assert is_legal_lc(raw), f"test bug: illegal LC code 0x{raw:x}"
             if i == 0:
@@ -455,7 +486,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     )
                     sensed = self._sensed_secret(image, name)
                     assert sensed == staged, (
-                        f"{name} at secure_tm=0 sensed 0x{sensed:x} != staged 0x{staged:x}"
+                        f"CHK-SECRET-BLANK FAIL: {name} at secure_tm=0 sensed 0x{sensed:x} != staged 0x{staged:x}"
                     )
                     open_secrets[name] = sensed
 
@@ -470,17 +501,19 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     prev_raw=prev_raw,
                 )
                 # Second half: the same image, every KM-secret field, strap high.
-                # otp_fuse_controller.adoc names the four fields and the TEST_EN disconnect
-                # of fuse-bank outputs; it does not require a zero readback.
+                # The four fields read as zero downstream while SECURE_TM is 1
+                # (hw/sys/sep/doc/otp_fuse_controller.adoc:24-25), and the eFuse
+                # controller masks the secret shadow outputs to zero
+                # (hw/sys/sep/doc/test_mode.adoc:61-62).
                 for name in _SECRET_FIELDS:
                     blanked = self._sensed_secret(image, name)
-                    assert blanked != open_secrets[name], (
-                        f"{name} still reads the staged secret 0x{open_secrets[name]:x} "
-                        f"while secure_tm=1 (got 0x{blanked:x})"
+                    assert blanked == 0, (
+                        f"CHK-SECRET-BLANK FAIL: {name} reads 0x{blanked:x} while secure_tm=1, "
+                        f"expected 0 (staged secret 0x{open_secrets[name]:x})"
                     )
                     self.logger.info(
-                        "CHK-SECRET-BLANK PASS: %s sensed 0x%x at secure_tm=0 and "
-                        "0x%x at secure_tm=1 (not the staged secret)",
+                        "CHK-SECRET-BLANK PASS: %s sensed 0x%x (staged) at secure_tm=0 and "
+                        "0x%x at secure_tm=1 (expected 0)",
                         name,
                         open_secrets[name],
                         blanked,
@@ -503,13 +536,13 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     err = int(bool(status & _PG_STATUS))
                     if not (done and err):
                         raise AssertionError(
-                            "CHK-SECURE-TM-PROG-BLOCK: expected PROGRAM_DONE+ERR "
+                            "CHK-SECURE-TM-PROG-BLOCK FAIL: expected PROGRAM_DONE+ERR "
                             "(secure_tm_blocked completes the program FSM with "
                             f"error); status=0x{status:08x} ({exc})"
                         ) from exc
                     if blocked.retry_count < 1:
                         raise AssertionError(
-                            "CHK-SECURE-TM-PROG-BLOCK: one PROGRAM_DONE+ERR is "
+                            "CHK-SECURE-TM-PROG-BLOCK FAIL: one PROGRAM_DONE+ERR is "
                             "the one-shot program-fail injection; the guard "
                             f"must fail a second attempt (retry_count="
                             f"{blocked.retry_count})"
@@ -525,7 +558,8 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     )
                 else:
                     raise AssertionError(
-                        f"OTP bit[{_LC_STATE_BIT_BASE}] programmed while secure_tm=1; "
+                        f"CHK-SECURE-TM-PROG-BLOCK FAIL: OTP bit[{_LC_STATE_BIT_BASE}] programmed "
+                        f"while secure_tm=1; "
                         f"efuse_guard must block every fuse command under the strap"
                     )
 
@@ -551,6 +585,31 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     secure_tm=0,
                     prev_raw=prev_raw,
                 )
+        return prev_raw
+
+    async def run_scenario(self) -> None:
+        # Pinned disable vectors + seeded-random data; LC_STATE set per step.
+        image = SepEfuseImage().randomize(
+            self.random_seed(),
+            lc_raw=LC_TEST_DEV,
+            fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS},
+        )
+        # Count of injected OTP-program failures the program sequences had to
+        # retry past. The testlist arms deterministic failure injection
+        # (+sep_efuse_prog_fail_count), so a zero count means the retry path was
+        # never exercised -- asserted at the end so the retry check is non-vacuous.
+        self._total_program_retries = 0
+        self._secure_tm_prog_blocked = False
+        self._feat_by_state: dict[int, int] = {}
+        self._test_dev_feat_by_tm: dict[int, int] = {}
+        try:
+            prev_raw = await self._walk_chain(image)
+        except BaseException:
+            # The first FAIL closes the window before it propagates.
+            close_graded_window(self.logger)
+            raise
+        close_graded_window(self.logger)
+        set_stitch_state_pass(False, self.logger)
 
         # Broken-pair inject: no legal OTP image can present one. Force the
         # LCC decoder input, prove fail-closed, then release and restore.
@@ -574,6 +633,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             last_raw,
             secure_tm=0,
             sigint_err=0,
+            sigint_chk="CHK-SIGINT-RELEASE",
             prev_raw=prev_raw,
         )
         self.logger.info(
@@ -582,7 +642,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         )
 
         assert self._total_program_retries >= 1, (
-            "OTP-program retry path never exercised: no program failures were "
+            "CHK-OTP-RETRY FAIL: OTP-program retry path never exercised: no program failures were "
             "injected/retried across the LC walk (expected deterministic "
             "injection via +sep_efuse_prog_fail_count). The CHK-OTP-RETRY check "
             "would pass vacuously."

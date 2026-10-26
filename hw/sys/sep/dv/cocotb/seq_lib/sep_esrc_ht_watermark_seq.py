@@ -4,8 +4,9 @@
 
 One shared register, not a per-mode bank. Arming is health_test_clr
 (MODULE_ENABLE 0->1). High modes arm 0x0000; APT_LO / MARKOV_LO arm 0xFFFF.
-Changing the selector alone does not re-arm. An unsupported selector maps to
-REPCNT_HI. HEALTH_TEST_CTRL.ENABLE stays 0 on every arming leg so a window wrap
+Changing the selector alone does not re-arm. An unsupported selector selects
+REPCNT_HI as the watermark source; no text states what HT_WATERMARK_NUM reads
+back after such a write, so the driver does not wait on that readback. HEALTH_TEST_CTRL.ENABLE stays 0 on every arming leg so a window wrap
 cannot move the register between the event and the read. The shared TRNG reset
 clears the selector and the watermark together; that path is not claimed here.
 
@@ -133,17 +134,25 @@ class SepHtWatermark(SepAxiRegDriver):
         await ClockCycles(self._clk, cycles)
 
     async def write_num(self, sel: int) -> None:
+        """Write a supported selector and wait until it reads back as written (sw = rw)."""
         want = sel & SEL_MASK
-        resolved = want if want in SUPPORTED else REPCNT_HI
+        if want not in SUPPORTED:
+            raise ValueError(f"0x{want:x} is not a WATERMARK_TEST encoding; use write_unsupported")
         await self._wr(ESRC_HT_WATERMARK_NUM, want)
         for _ in range(16):
-            if await self.read_num() == resolved:
+            if await self.read_num() == want:
                 return
             await ClockCycles(self._clk, 1)
         got = await self.read_num()
-        raise AssertionError(
-            f"HT_WATERMARK_NUM wrote 0x{want:x} (resolves 0x{resolved:x}), read back 0x{got:x}"
-        )
+        raise AssertionError(f"HT_WATERMARK_NUM wrote 0x{want:x}, read back 0x{got:x}")
+
+    async def write_unsupported(self, sel: int) -> None:
+        """Write a value outside WATERMARK_TEST. The readback is unstated, so none is awaited."""
+        want = sel & SEL_MASK
+        if want in SUPPORTED:
+            raise ValueError(f"0x{want:x} is a WATERMARK_TEST encoding; use write_num")
+        await self._wr(ESRC_HT_WATERMARK_NUM, want)
+        await self._settle()
 
     async def read_num(self) -> int:
         return (await self._rd(ESRC_HT_WATERMARK_NUM)) & SEL_MASK

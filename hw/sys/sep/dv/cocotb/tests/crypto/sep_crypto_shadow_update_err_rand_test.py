@@ -14,7 +14,22 @@ Contract:
     operations try to set a different value, a recoverable alert is triggered
     (See Status Register)." (``vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson:825-826``).
     The AES recoverable alert channel is ORed into the Crypto alert source
-    (``hw/sys/sep/doc/crypto.adoc:122-127``, routing table row AES, ``:150-151``).
+    (``hw/sys/sep/doc/crypto.adoc:123-128``, routing table row AES ``:142``,
+    ``:152-153``).
+  * AES CTRL_GCM_SHADOWED: "If the two write operations try to set a different
+    value, a recoverable alert is triggered (See Status Register)."
+    (``vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson:1024``,
+    ``recov_ctrl_update_err`` ``:1032``). An equal pair commits and raises no
+    alert. The register takes a value only while the unit is idle (``:1021-1022``);
+    a read clears its phase tracking (``:1025``). The pairs follow a GCM_INIT run
+    with a key and an IV, after which GCM_RESTORE, GCM_AAD, GCM_TEXT and GCM_TAG
+    are the legal next phases (``:1049-1053``;
+    ``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/programmers_guide.md:151-159``).
+  * Every AES STATUS read that shows ALERT_RECOV_CTRL_UPDATE_ERR shows
+    ALERT_FATAL_FAULT 0: the update error is the recoverable alert
+    (``aes.hjson:233-235``), it is not one of the fatal fault causes
+    (``aes.hjson:1001-1011``), and life-cycle escalation is tied to its inactive
+    state (``hw/sys/sep/doc/aes.adoc:37-38``).
   * CTRL_AUX_REGWEN is RW0C: once cleared it blocks CTRL_AUX_SHADOWED writes,
     and a write of 1 does not set it again
     (``vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc``).
@@ -40,7 +55,9 @@ AUX pair order (the values differ in KEY_TOUCH_FORCES_RESEED only), the KMAC
 values (different in one drawn endianness bit), the KMAC threshold pair, the
 gap of each pair (0 to 64 clocks), the KMAC message, the AES data, the order
 of the six blocks of the malformed alert leg, the receiver of each block, the
-wire value of each malformed pair and the ALERT_TEST bit of each block.
+wire value of each malformed pair and the ALERT_TEST bit of each block; then the
+GCM values A_GCM and B_GCM (a GCM_INIT next phase and a NUM_VALID_BYTES of 1 to
+16, different in one drawn field), the gap of each GCM pair and the 96-bit GCM IV.
 
 Checkers:
   CHK-SHADOW-ERR       AES mismatched pair: status bit set, bit 32 pulses,
@@ -48,6 +65,18 @@ Checkers:
   CHK-SHADOW-CTRL      AES equal pair: no pulse over 4 x c_err clocks and the
                        register reads A. Control: the mismatched pair pulsed.
   CHK-SHADOW-RESTART   after R written twice the next AES block equals its golden.
+  CHK-GCM-SHADOW-ERR   AES GCM mismatched pair after GCM_INIT: no bit 32 rise up
+                       to the second write, the first rise within 4 x c_err
+                       clocks of it, ALERT_FATAL_FAULT 0.
+  CHK-GCM-SHADOW-WRITE AES GCM equal pair of A_GCM: no bit 32 rise over 4 x c_err
+                       clocks and PHASE and NUM_VALID_BYTES read A_GCM. Control:
+                       CTRL-GCM-SHADOW-PRE, the read before the pair gives the
+                       RDL reset value (GCM_INIT, 16), which differs from A_GCM.
+  CHK-SHADOW-FATAL-QUIET every AES STATUS read inside an FCOV window that shows
+                       the update error shows ALERT_FATAL_FAULT 0 (graded at the
+                       bus, at the read). Control: CTRL-SHADOW-FATAL-QUIET, the
+                       mismatched CTRL_SHADOWED pair of the AES pass and of the
+                       AES reset leg each give at least one such read.
   CHK-AUX-SHADOW-ERR   AES AUX mismatched pair: bit 32 pulses (alert_cycles > 0)
                        within 4 x c_err clocks of the second write. Control:
                        CTRL-AUX-SHADOW-EQ, the equal pair gives no pulse.
@@ -74,9 +103,19 @@ Checkers:
                        counts the same clocks from the same mark and fills
                        ``x_alert_source`` only inside the same window
                        (``alert_rise_bound`` = 4 x c).
+FCOV (owner window of this leaf): each graded cell of ``sep_aes_fault_cg``,
+``cp_aux_regwen`` and ``x_alert_source`` is held at its DUT event and samples
+only when the leaf writes its ``aes_shadow_pass`` bit, after the check of that
+instance passed and before the window closes (``env/sep_fcov_gate.py``,
+``set_aes_shadow_pass``). A FAIL closes the window first, which drops the held
+cells. ``cp_fatal_quiet`` samples at the graded STATUS read itself: its sample
+condition is the per-read compare of CHK-SHADOW-FATAL-QUIET.
+
 ``OBS-SHADOW-AUX`` logs ``STATUS.ALERT_RECOV_CTRL_UPDATE_ERR`` after each AES AUX
 pair: the status text names "the shadowed Control Register" (aes.hjson:995) and
-no text states that it covers CTRL_AUX_SHADOWED. Every KMAC result
+no text states that it covers CTRL_AUX_SHADOWED; ``OBS-SHADOW-GCM`` logs the same
+bit and the reserved bits of CTRL_GCM_SHADOWED after each GCM pair, for the same
+reason. Every KMAC result
 (``CFG_SHADOWED`` and ``ENTROPY_REFRESH_THRESHOLD_SHADOWED``) is logged as
 ``OBS-SHADOW-KMAC`` and not graded: no KMAC text defines the update-error write
 sequence of those registers; the ALERT_TEST write of each block is the
@@ -94,7 +133,22 @@ from env.sep_aes_golden import aes_encrypt_words
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import AES_KEY_ROWS, SP800_38A_PT_BLOCK1
-from env.sep_fcov_gate import close_graded_window, open_graded_window, set_alert_rise_bound
+from env.sep_fcov_gate import (
+    AES_SHADOW_PASS_ALERT,
+    AES_SHADOW_PASS_AUX_MATCHED,
+    AES_SHADOW_PASS_AUX_MISMATCHED,
+    AES_SHADOW_PASS_AUX_REGWEN,
+    AES_SHADOW_PASS_GCM_MATCHED,
+    AES_SHADOW_PASS_GCM_MISMATCHED,
+    AES_SHADOW_PASS_RECOVERY,
+    AES_SHADOW_PASS_RESET_RESTORE,
+    AES_SHADOW_PASS_SP_MATCHED,
+    AES_SHADOW_PASS_SP_MISMATCHED,
+    close_graded_window,
+    open_graded_window,
+    set_aes_shadow_pass,
+    set_alert_rise_bound,
+)
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_trial_wait import TrialTimeout, wait_until
@@ -115,6 +169,7 @@ from seq_lib.sep_aes_seq import (
     AES_TRIGGER,
     AES_TRIGGER_DATA_OUT_CLEAR,
     SepAes,
+    aes_hjson_enum,
     build_aes_ctrl,
 )
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -137,6 +192,9 @@ KEY_ROWS = AES_KEY_ROWS[256]
 AES_PT = SP800_38A_PT_BLOCK1
 
 VEC_ALERT_BIT = 32  # source 33, Crypto alert (hw/sys/sep/doc/interrupts.adoc)
+# clk_i edges the aes_shadow_pass bits stay high: the edge that registers the
+# write plus one on which the sampler sees the rise.
+PASS_HOLD_CYCLES = 2
 
 
 def _alert_test_bits(block: str) -> int:
@@ -170,6 +228,36 @@ AES_REGWEN_MASK = AES.field_mask("CTRL_AUX_REGWEN", "ctrl_aux_regwen")
 AES_ST_FIELDS = AES.mask32("STATUS")
 A_AUX = 0  # KEY_TOUCH_FORCES_RESEED = 0, FORCE_MASKS = 0 (differs from the reset value 0x1)
 B_AUX = AES_AUX_KTFR  # KEY_TOUCH_FORCES_RESEED = 1, FORCE_MASKS = 0
+
+# CTRL_SHADOWED.MODE AES_GCM and the CTRL_GCM_SHADOWED.PHASE codes: the enum lists
+# of vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson. Each code must be
+# one-hot in its RDL field width, so a parse of the wrong field fails at import.
+AES_MODE_GCM = aes_hjson_enum("CTRL_SHADOWED", "MODE")["AES_GCM"]
+_GCM_PHASE = aes_hjson_enum("CTRL_GCM_SHADOWED", "PHASE")
+GCM_INIT = _GCM_PHASE["GCM_INIT"]
+# The legal next phases after GCM_INIT (aes.hjson:1053).
+GCM_NEXT = tuple(_GCM_PHASE[n] for n in ("GCM_RESTORE", "GCM_AAD", "GCM_TEXT", "GCM_TAG"))
+for _reg, _fld, _code in [("CTRL_SHADOWED", "mode", AES_MODE_GCM)] + [
+    ("CTRL_GCM_SHADOWED", "phase", c) for c in (GCM_INIT, *GCM_NEXT)
+]:
+    if _code >= 1 << AES.field_width(_reg, _fld) or bin(_code).count("1") != 1:
+        raise ValueError(f"AES {_reg}.{_fld} code 0b{_code:b} is not one-hot")
+AES_GCM = AES.addr("CTRL_GCM_SHADOWED")
+GCM_PHASE_LSB = AES.field_lsb("CTRL_GCM_SHADOWED", "phase")
+GCM_NVB_LSB = AES.field_lsb("CTRL_GCM_SHADOWED", "num_valid_bytes")
+GCM_FIELDS = AES.field_mask("CTRL_GCM_SHADOWED", "phase") | AES.field_mask(
+    "CTRL_GCM_SHADOWED", "num_valid_bytes"
+)
+GCM_RESET = AES.reset32("CTRL_GCM_SHADOWED") & GCM_FIELDS
+# NUM_VALID_BYTES of one block: 1 to 16, 0 is invalid (aes.hjson:1108-1111).
+GCM_BLOCK_BYTES = 16
+
+
+def _gcm_word(phase: int, num_valid_bytes: int) -> int:
+    return (phase << GCM_PHASE_LSB) | (num_valid_bytes << GCM_NVB_LSB)
+
+
+GCM_INIT_WORD = _gcm_word(GCM_INIT, GCM_BLOCK_BYTES)
 
 KMAC_ST_ERR = KMAC.field_mask("STATUS", "alert_recov_ctrl_update_err")
 KMAC_ST_FATAL = KMAC.field_mask("STATUS", "alert_fatal_fault")
@@ -219,6 +307,11 @@ class Plan:
     receiver: dict[str, int]
     wire: dict[str, int]
     test_bit: dict[str, int]
+    gcm_a: int
+    gcm_b: int
+    gcm_desc: str
+    gcm_gaps: tuple[int, int]
+    gcm_iv: tuple[int, ...]
 
     @property
     def aux_pair(self) -> tuple[int, int]:
@@ -235,7 +328,9 @@ class Plan:
             f"thr=0x{self.thr[0]:03x},0x{self.thr[1]:03x} "
             f"gaps={','.join(f'{k}:{v}' for k, v in self.gaps.items())} "
             f"key_row={KEY_ROWS[self.key_row][0]} "
-            f"blocks={','.join(f'{b}/rx{self.receiver[b]}/v{self.wire[b]}/t{self.test_bit[b]}' for b in self.block_order)}"
+            f"blocks={','.join(f'{b}/rx{self.receiver[b]}/v{self.wire[b]}/t{self.test_bit[b]}' for b in self.block_order)} "
+            f"gcm_a=0x{self.gcm_a:03x} gcm_b=0x{self.gcm_b:03x} ({self.gcm_desc}) "
+            f"gcm_gaps={self.gcm_gaps[0]},{self.gcm_gaps[1]}"
         )
 
 
@@ -268,9 +363,22 @@ def draw_plan(seed: int) -> Plan:
     receiver = {b: rng.choice(BLOCKS[b][0]) for b in BLOCKS}
     wire = {b: rng.choice((0, 1)) for b in BLOCKS}
     test_bit = {b: rng.randrange(BLOCKS[b][2]) for b in BLOCKS}
+    # GCM draws, after every earlier draw.
+    g_phase = rng.choice(GCM_NEXT)
+    g_nvb = rng.randrange(1, GCM_BLOCK_BYTES + 1)
+    g_field = rng.choice(("phase", "num_valid_bytes"))
+    if g_field == "phase":
+        b_phase, b_nvb = rng.choice([p for p in GCM_NEXT if p != g_phase]), g_nvb
+    else:
+        b_phase = g_phase
+        b_nvb = rng.choice([n for n in range(1, GCM_BLOCK_BYTES + 1) if n != g_nvb])
+    gcm_gaps = (rng.randrange(0, 65), rng.randrange(0, 65))
+    gcm_iv = tuple(rng.getrandbits(32) for _ in range(3))
+    gcm_desc = f"field={g_field} phase={g_phase},{b_phase} nvb={g_nvb},{b_nvb}"
     return Plan(
         seed, a, b, a_desc, aux_first, kmac_bit, (t1, t2), gaps, kmac_msg, key_row,
         tuple(order), receiver, wire, test_bit,
+        _gcm_word(g_phase, g_nvb), _gcm_word(b_phase, b_nvb), gcm_desc, gcm_gaps, gcm_iv,
     )  # fmt: skip
 
 
@@ -287,25 +395,29 @@ def _known_int(sig) -> int | None:
 
 
 class _ReadXTap:
-    """Grades the read data of 32-bit reads at the graded addresses on ``s_axi`` for X/Z.
+    """Watches the read data of 32-bit reads at the graded addresses on ``s_axi``.
 
     The AXI master converts each R beat to an integer and raises on an X/Z bit,
     which ends the leaf before any check line. The tap samples the bus at the
     falling clock edge, half a clock before the master takes the beat, and calls
     ``on_x(reg, addr, lanes)`` for an accepted beat of a graded read whose
-    accessed byte lanes carry X/Z. ARs pair with R beats by ID, in order.
+    accessed byte lanes carry X/Z, and ``on_read(reg, addr, lanes)`` for every
+    accepted beat of a graded read. ARs pair with R beats by ID, in order.
     """
 
-    def __init__(self, dut, graded: dict[int, str], on_x) -> None:
+    def __init__(
+        self, dut, graded: dict[int, str], on_x=None, on_read=None, name: str = "READ-X-TAP"
+    ) -> None:
         names = ("arvalid", "arready", "araddr", "arid", "rvalid", "rready", "rdata", "rid")
         self.sig = {n: getattr(dut, f"s_axi_{n}") for n in names}
         self.graded = graded
         self.on_x = on_x
+        self.on_read = on_read
         self.clk = 0
         self.beats = 0
         self.unknown = 0
         self._pending: dict[int, list[int | None]] = {}
-        self.life = MonitorLife("READ-X-TAP s_axi", lambda: self.clk)
+        self.life = MonitorLife(f"{name} s_axi", lambda: self.clk)
 
     def start(self) -> "_ReadXTap":
         self.life.start(self._run())
@@ -336,7 +448,10 @@ class _ReadXTap:
                 lanes = bits[len(bits) - lo - 32 : len(bits) - lo]
                 if any(c not in "01" for c in lanes):
                     self.unknown += 1
-                    self.on_x(self.graded[addr], addr, lanes)
+                    if self.on_x is not None:
+                        self.on_x(self.graded[addr], addr, lanes)
+                if self.on_read is not None:
+                    self.on_read(self.graded[addr], addr, lanes)
 
 
 @pyuvm.test()
@@ -347,6 +462,9 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         "CHK-SHADOW-ERR",
         "CHK-SHADOW-CTRL",
         "CHK-SHADOW-RESTART",
+        "CHK-GCM-SHADOW-ERR",
+        "CHK-GCM-SHADOW-WRITE",
+        "CHK-SHADOW-FATAL-QUIET",
         "CHK-AUX-SHADOW-ERR",
         "CHK-AUX-SHADOW-WRITE",
         "CHK-AUX-REGWEN",
@@ -374,19 +492,108 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         self.vec = SepBitWatch(
             dut.sep_internal_interrupts_probe_o, {"alert": VEC_ALERT_BIT}, name="vec32"
         ).start()
+        # Owner window state and the STATUS reads graded by CHK-SHADOW-FATAL-QUIET.
+        self._win = False
+        self._fq_leg = "none"
+        self._fq_reads: dict[str, int] = {}
+        self._fq_bad = 0
+        self._fq_first_bad = "none"
+        fq_tap = _ReadXTap(
+            dut, {AES_STATUS: "STATUS"}, on_read=self._on_status_read, name="FATAL-QUIET-TAP"
+        ).start()
 
         c_err = await self._aes_pass()
         await self._kmac_pass(c_err)
         await self._aux_lock_leg()
         await self._aes_reset_leg()
         await self._malformed_leg()
-        close_graded_window(self.logger)
+        self._close()
+        await fq_tap.stop()
+        self._fatal_quiet_verdict()
 
         await self.stop_fifo_drain()
         assert self.drbg_sb.report()
         self.chk.finish()
 
     # --- helpers --------------------------------------------------------------------
+    def _open(self) -> bool:
+        """Open the owner window, unless a check or control of this run already failed."""
+        if self.chk.failures or self._fq_bad:
+            self.logger.info("FCOV-GATE stays closed: the run has a graded failure")
+            return False
+        self._win = True
+        return open_graded_window(TEST, self.logger)
+
+    def _close(self) -> None:
+        self._win = False
+        close_graded_window(self.logger)
+
+    def _grade(self, name: str, cond: bool, **fields) -> bool:
+        """One graded check. A FAIL closes the owner window before it is recorded."""
+        if not cond:
+            self._close()
+        return self.chk.ok(name, cond, **fields)
+
+    def _control(self, name: str, cond: bool, **fields) -> bool:
+        """One control. A missing control closes the owner window before it is recorded."""
+        if not cond:
+            self._close()
+        return self.chk.ctrl(name, cond, **fields)
+
+    async def _passed(self, *bits: int) -> None:
+        """Write the ``aes_shadow_pass`` bits of the cells a check just graded.
+
+        Called only after that check (and its controls) passed, while the owner
+        window is open: the held cells sample on the rise, then the label returns
+        to 0 before the window closes (never in the cycle of the rise).
+        """
+        if not self._win:
+            return
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
+        set_aes_shadow_pass(sum(1 << b for b in bits), self.logger)
+        await ClockCycles(clk, PASS_HOLD_CYCLES)
+        set_aes_shadow_pass(0, self.logger)
+        await RisingEdge(clk)
+
+    def _on_status_read(self, reg: str, addr: int, lanes: str) -> None:
+        """CHK-SHADOW-FATAL-QUIET at the bus: one accepted AES STATUS beat.
+
+        Inside the owner window, a known read with the update error must show
+        ALERT_FATAL_FAULT 0. The first read that does not closes the window at
+        once, before any later read can be sampled.
+        """
+        if not self._win or any(c not in "01" for c in lanes):
+            return
+        value = int(lanes, 2)
+        if not value & AES_ST_ERR:
+            return
+        self._fq_reads[self._fq_leg] = self._fq_reads.get(self._fq_leg, 0) + 1
+        if value & AES_ST_FATAL:
+            self._fq_bad += 1
+            if self._fq_bad == 1:
+                self._fq_first_bad = f"{self._fq_leg}:0x{value:08x}"
+            self._close()
+
+    def _fatal_quiet_verdict(self) -> None:
+        reads = self._fq_reads
+        legs = {
+            "ctrl_leg_err_reads": reads.get("ctrl", 0),
+            "reset_leg_err_reads": reads.get("reset", 0),
+        }
+        probe = all(n >= 1 for n in legs.values())
+        total = sum(reads.values())
+        self._control("SHADOW-FATAL-QUIET", probe, err_reads=total, **legs)
+        self._grade(
+            "SHADOW-FATAL-QUIET",
+            self._fq_bad == 0 and probe,
+            err_reads=total,
+            fatal_reads=self._fq_bad,
+            first_fatal=self._fq_first_bad,
+            per_leg=",".join(f"{k}:{v}" for k, v in sorted(reads.items())) or "none",
+            **legs,
+        )
+
     async def _pulse(self, eng: str) -> None:
         """Reset bit 0 then 1 and the gated-reset probe; a timeout raises."""
         dut = cocotb.top
@@ -441,7 +648,8 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
     async def _aes_pass(self) -> int:
         plan = self.plan
         await self._aes_reset()
-        open_graded_window(TEST, self.logger)
+        self._fq_leg = "ctrl"
+        self._open()
         status_err = 0
         fatal = -1
         c_err: int | None = None
@@ -473,9 +681,10 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         }
         if reason:
             fields["reason"] = reason
-        self.chk.ok(
+        if self._grade(
             "SHADOW-ERR", not reason and status_err == 1 and cycles > 0 and fatal == 0, **fields
-        )
+        ):
+            await self._passed(AES_SHADOW_PASS_SP_MISMATCHED)
 
         # Recovery: R written twice, then one block.
         key = plan.key
@@ -501,12 +710,13 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         fields = {"reg": "aes_ctrl", "op==golden": int(ct == golden)}
         if reason:
             fields["reason"] = reason
-        self.chk.ok("SHADOW-RESTART", ct == golden, **fields)
-        close_graded_window(self.logger)
+        if self._grade("SHADOW-RESTART", ct == golden, **fields):
+            await self._passed(AES_SHADOW_PASS_RECOVERY)
+        self._close()
 
         # Equal pair (A, A).
         await self._aes_reset()
-        open_graded_window(TEST, self.logger)
+        self._open()
         base = c_err or 1
         window = WINDOW_FACTOR * base
         cycles = -1
@@ -522,10 +732,9 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             rb = await self.aes._rd(AES_CTRL_SHADOWED)
         except TrialTimeout:
             cycles = -1
-        close_graded_window(self.logger)
-        self.chk.ctrl("SHADOW-CTRL", c_err is not None and c_err > 0, ctrl_c_err=c_err)
+        ctrl_ok = self._control("SHADOW-CTRL", c_err is not None and c_err > 0, ctrl_c_err=c_err)
         rb_ok = rb >= 0 and (rb & AES_CTRL_MASK) == (plan.a & AES_CTRL_MASK)
-        self.chk.ok(
+        eq_ok = self._grade(
             "SHADOW-CTRL",
             cycles == 0 and rb_ok,
             reg="aes_ctrl",
@@ -536,60 +745,207 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             window_clk=window,
             ctrl_c_err=c_err,
         )
+        if ctrl_ok and eq_ok:
+            await self._passed(AES_SHADOW_PASS_SP_MATCHED)
+        self._close()
 
-        # AUX pairs: the alert of the mismatched pair and the write of the equal pair.
+        # AUX pairs: the equal pair first (its no-alert result is the control of the
+        # mismatched pair), then the mismatched pair. Each pair is graded inside its
+        # own window. The equal pair writes A_AUX, which differs from the reset
+        # value, so a pair that does not land reads the reset value; that read runs
+        # with the window closed.
         aux1, aux2 = plan.aux_pair
         await self._aes_reset()
-        open_graded_window(TEST, self.logger)
-        m1, m2 = await self._pair(self.aes, AES_AUX, aux1, aux2, plan.gaps["aux_mis"])
-        await self._until(m2, window)
-        mis_cycles = self.vec.high_clocks_since(m1, "alert")
-        st = await self.aes._rd(AES_STATUS)
-        close_graded_window(self.logger)
-        self.chk.obs(
-            "SHADOW-AUX", reg="aes_aux", pair="mismatched", status_err=int(bool(st & AES_ST_ERR))
-        )
-        # The equal pair writes A_AUX, which differs from the reset value, so a pair
-        # that does not land reads the reset value.
-        await self._aes_reset()
-        open_graded_window(TEST, self.logger)
+        self._fq_leg = "aux"
         aux_pre = await self.aes._rd(AES_AUX) & AES_AUX_MASK
-        m1, m2 = await self._pair(self.aes, AES_AUX, A_AUX, A_AUX, 0)
-        await self._until(m2, window)
-        eq_cycles = self.vec.high_clocks_since(m1, "alert")
-        st = await self.aes._rd(AES_STATUS)
-        aux_rb = await self.aes._rd(AES_AUX) & AES_AUX_MASK
-        close_graded_window(self.logger)
-        self.chk.obs(
-            "SHADOW-AUX", reg="aes_aux", pair="equal", status_err=int(bool(st & AES_ST_ERR))
-        )
-        self.chk.ctrl("AUX-SHADOW-EQ", eq_cycles == 0, ctrl_eq_alert_cycles=eq_cycles)
-        self.chk.ok(
-            "AUX-SHADOW-ERR",
-            mis_cycles > 0,
-            reg="aes_aux",
-            first=f"0x{aux1:x}",
-            second=f"0x{aux2:x}",
-            alert_cycles=mis_cycles,
-            window_clk=window,
-            ctrl_eq_alert_cycles=eq_cycles,
-        )
         reset_aux = AES_AUX_RESET & AES_AUX_MASK
-        self.chk.ctrl(
+        pre_ok = self._control(
             "AUX-SHADOW-PRE",
             aux_pre == reset_aux and reset_aux != A_AUX,
             ctrl_aux_pre=f"0x{aux_pre:x}",
             reset=f"0x{reset_aux:x}",
         )
-        self.chk.ok(
+        self._open()
+        m1, m2 = await self._pair(self.aes, AES_AUX, A_AUX, A_AUX, 0)
+        await self._until(m2, window)
+        eq_cycles = self.vec.high_clocks_since(m1, "alert")
+        st = await self.aes._rd(AES_STATUS)
+        aux_rb = await self.aes._rd(AES_AUX) & AES_AUX_MASK
+        self.chk.obs(
+            "SHADOW-AUX", reg="aes_aux", pair="equal", status_err=int(bool(st & AES_ST_ERR))
+        )
+        eq_ok = self._control("AUX-SHADOW-EQ", eq_cycles == 0, ctrl_eq_alert_cycles=eq_cycles)
+        if self._grade(
             "AUX-SHADOW-WRITE",
             aux_rb == A_AUX,
             reg="aes_aux",
             value=f"0x{A_AUX:x}",
             readback=f"0x{aux_rb:x}",
             ctrl_aux_pre=f"0x{aux_pre:x}",
+            ctrl_eq_alert_cycles=eq_cycles,
+        ) and (pre_ok and eq_ok):
+            await self._passed(AES_SHADOW_PASS_AUX_MATCHED)
+        self._close()
+        await self._aes_reset()
+        self._open()
+        m1, m2 = await self._pair(self.aes, AES_AUX, aux1, aux2, plan.gaps["aux_mis"])
+        await self._until(m2, window)
+        mis_cycles = self.vec.high_clocks_since(m1, "alert")
+        st = await self.aes._rd(AES_STATUS)
+        self.chk.obs(
+            "SHADOW-AUX", reg="aes_aux", pair="mismatched", status_err=int(bool(st & AES_ST_ERR))
         )
+        if (
+            self._grade(
+                "AUX-SHADOW-ERR",
+                mis_cycles > 0,
+                reg="aes_aux",
+                first=f"0x{aux1:x}",
+                second=f"0x{aux2:x}",
+                alert_cycles=mis_cycles,
+                window_clk=window,
+                ctrl_eq_alert_cycles=eq_cycles,
+            )
+            and eq_ok
+        ):
+            await self._passed(AES_SHADOW_PASS_AUX_MISMATCHED)
+        self._close()
+        await self._gcm_legs(base)
         return base
+
+    # --- AES GCM pairs -------------------------------------------------------------------
+    async def _gcm_legs(self, base: int) -> None:
+        """The mismatched GCM pair, then the equal pair, each in its own window.
+
+        ``x_shadow_pair_gcm`` holds each pair at its DUT event (the bit 32 rise,
+        or the readback) and samples it only when the leaf writes its
+        ``aes_shadow_pass`` bit after the check of that pair passed.
+        """
+        self._fq_leg = "gcm"
+        await self._gcm_mismatched(base)
+        await self._gcm_matched(base)
+
+    async def _gcm_init(self) -> int:
+        """AES reset, then GCM_INIT with a key and an IV; returns a CTRL_GCM_SHADOWED read.
+
+        GCM mode, GCM_INIT, the key and the IV (IV_3 = 0) start the two
+        encryptions of GCM_INIT; once the unit is idle again, GCM_RESTORE,
+        GCM_AAD, GCM_TEXT and GCM_TAG are legal next phases (aes.hjson:1049-1053,
+        programmers_guide.md:151-159). The read clears the phase tracking of the
+        register (aes.hjson:1025), so the next write is the first of a pair. Runs
+        with the owner window closed.
+        """
+        await self._aes_reset()
+        ctrl = build_aes_ctrl(
+            sideload=False, operation=AES_OP_ENC, mode=AES_MODE_GCM, key_len=AES_KEY_LEN_256
+        )
+        for addr, value in ((AES_CTRL_SHADOWED, ctrl), (AES_GCM, GCM_INIT_WORD)):
+            await self.aes._wr(addr, value)
+            await self.aes._wr(addr, value)
+        await self.aes.write_key(self.plan.key)
+        await self._aes_idle("gcm_idle_after_key")
+        await self.aes.write_iv([*self.plan.gcm_iv, 0])
+        await self._aes_idle("gcm_idle_after_iv")
+        return await self.aes._rd(AES_GCM)
+
+    async def _gcm_mismatched(self, base: int) -> None:
+        plan = self.plan
+        window = WINDOW_FACTOR * base
+        reason = ""
+        early = cycles = fatal = status_err = -1
+        rise_clk = None
+        try:
+            await self._gcm_init()
+            self._open()
+            m1, m2 = await self._pair(self.aes, AES_GCM, plan.gcm_a, plan.gcm_b, plan.gcm_gaps[0])
+            await self._until(m2, window)
+            rises = self.vec.rise_clks_since(m1, "alert")
+            early = sum(1 for r in rises if r <= m2.clk)
+            rise_clk = next((r - m2.clk for r in rises if r > m2.clk), None)
+            cycles = self.vec.high_clocks_since(m1, "alert")
+            st = await self.aes._rd(AES_STATUS)
+            fatal = int(bool(st & AES_ST_FATAL))
+            status_err = int(bool(st & AES_ST_ERR))
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+        self.chk.obs("SHADOW-GCM", pair="mismatched", status_err=status_err)
+        fields = {
+            "reg": "aes_gcm",
+            "a": f"0x{plan.gcm_a:x}",
+            "b": f"0x{plan.gcm_b:x}",
+            "draw": plan.gcm_desc,
+            "early_rises": early,
+            "rise_clk": rise_clk,
+            "alert_cycles": cycles,
+            "window_clk": window,
+            "fatal": fatal,
+            "c_err": base,
+        }
+        if reason:
+            fields["reason"] = reason
+        ok = not reason and early == 0 and rise_clk is not None and rise_clk <= window
+        if self._grade("GCM-SHADOW-ERR", ok and fatal == 0, **fields):
+            await self._passed(AES_SHADOW_PASS_GCM_MISMATCHED)
+        self._close()
+
+    async def _gcm_matched(self, base: int) -> None:
+        plan = self.plan
+        window = WINDOW_FACTOR * base
+        a = plan.gcm_a & GCM_FIELDS
+        reason = ""
+        pre = rb = cycles = -1
+        try:
+            pre = await self._gcm_init()
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+        pre_f = pre & GCM_FIELDS if pre >= 0 else -1
+        ctrl_pre = f"0x{pre_f:x}" if pre >= 0 else "none"
+        # The pair writes A_GCM, which differs from the value before it, so a pair
+        # that does not land reads that value.
+        if not self._control(
+            "GCM-SHADOW-PRE",
+            not reason and pre_f == GCM_RESET and GCM_RESET != a,
+            ctrl_pre=ctrl_pre,
+            reset=f"0x{GCM_RESET:x}",
+            a=f"0x{a:x}",
+        ):
+            self._grade(
+                "GCM-SHADOW-WRITE", False, reg="aes_gcm", ctrl_pre=ctrl_pre, reason=reason or "pre"
+            )
+            return
+        self._open()
+        try:
+            m1, m2 = await self._pair(self.aes, AES_GCM, plan.gcm_a, plan.gcm_a, plan.gcm_gaps[1])
+            await self._until(m2, window)
+            cycles = self.vec.high_clocks_since(m1, "alert")
+            rb = await self.aes._rd(AES_GCM)
+            st = await self.aes._rd(AES_STATUS)
+            self.chk.obs(
+                "SHADOW-GCM",
+                pair="equal",
+                status_err=int(bool(st & AES_ST_ERR)),
+                rsvd=f"0x{rb & ~GCM_FIELDS & 0xFFFF_FFFF:x}",
+            )
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+        fields = {
+            "reg": "aes_gcm",
+            "a": f"0x{a:x}",
+            "alert_cycles": cycles,
+            "readback": f"0x{rb & GCM_FIELDS:x}" if rb >= 0 else "none",
+            "window_clk": window,
+            "ctrl_pre": ctrl_pre,
+            "ctrl_c_err": base,
+        }
+        if reason:
+            fields["reason"] = reason
+        if self._grade(
+            "GCM-SHADOW-WRITE",
+            not reason and cycles == 0 and rb >= 0 and (rb & GCM_FIELDS) == a,
+            **fields,
+        ):
+            await self._passed(AES_SHADOW_PASS_GCM_MATCHED)
+        self._close()
 
     # --- KMAC pass (logged only) ------------------------------------------------------
     async def _kmac_idle(self) -> None:
@@ -658,27 +1014,33 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
 
     async def _aux_lock_leg(self) -> None:
         await self._aes_reset()
-        open_graded_window(TEST, self.logger)
+        self._fq_leg = "lock"
+        self._open()
         pre = await self._aux_write(A_AUX)
         await self.aes._wr(AES_REGWEN, 0)
         r0 = await self.aes._rd(AES_REGWEN) & AES_REGWEN_MASK
         after = await self._aux_write(B_AUX)
         await self.aes._wr(AES_REGWEN, AES_REGWEN_MASK)
         r1 = await self.aes._rd(AES_REGWEN) & AES_REGWEN_MASK
-        self.chk.ctrl("AUX-REGWEN", pre == A_AUX, ctrl_pre_lock_lands=int(pre == A_AUX))
-        self.chk.ok(
-            "AUX-REGWEN",
-            r0 == 0 and after == pre and r1 == 0,
-            regwen_after0=r0,
-            aux_before=f"0x{pre:x}",
-            aux_after=f"0x{after:x}",
-            regwen_after1=r1,
-            ctrl_pre_lock_lands=int(pre == A_AUX),
-        )
+        ctrl_ok = self._control("AUX-REGWEN", pre == A_AUX, ctrl_pre_lock_lands=int(pre == A_AUX))
+        if (
+            self._grade(
+                "AUX-REGWEN",
+                r0 == 0 and after == pre and r1 == 0,
+                regwen_after0=r0,
+                aux_before=f"0x{pre:x}",
+                aux_after=f"0x{after:x}",
+                regwen_after1=r1,
+                ctrl_pre_lock_lands=int(pre == A_AUX),
+            )
+            and ctrl_ok
+        ):
+            await self._passed(AES_SHADOW_PASS_AUX_REGWEN)
 
     async def _aes_reset_leg(self) -> None:
         plan = self.plan
         err_pre = 0
+        self._fq_leg = "reset"
         try:
             await self._pair(self.aes, AES_CTRL_SHADOWED, plan.a, plan.b, plan.gaps["reset_leg"])
             await self._poll(self.aes, AES_STATUS, AES_ST_ERR, AES_ST_ERR, WAIT_LIMIT, "update_err")
@@ -691,7 +1053,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         # is graded for X/Z. An X/Z read is a CHK-AUX-RESET FAIL at the bus, before
         # the AXI master raises on the same beat.
         def _on_x(reg: str, addr: int, lanes: str) -> None:
-            self.chk.ok(
+            self._grade(
                 "AUX-RESET", False, x_free=0, reg=reg, addr=f"0x{addr:08x}", rdata_bits=lanes
             )
 
@@ -713,13 +1075,13 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         # Positive evidence that the tap saw the graded reads: at least one idle poll
         # read, the two reads above and the two AUX readbacks.
         x_free = int(tap.unknown == 0)
-        self.chk.ctrl("AUX-RESET-TAP", tap.beats >= 5, graded_read_beats=tap.beats)
+        tap_ok = self._control("AUX-RESET-TAP", tap.beats >= 5, graded_read_beats=tap.beats)
         ctrl_ok = aux_pre != (AES_AUX_RESET & AES_AUX_MASK) and err_pre == 1
-        self.chk.ctrl(
+        ctrl_ok = self._control(
             "AUX-RESET", ctrl_ok, ctrl_aux_pre_reset=f"0x{aux_pre:x}", ctrl_err_pre_reset=err_pre
         )
         lands = after_b == B_AUX and after_a == A_AUX
-        self.chk.ok(
+        if self._grade(
             "AUX-RESET",
             status_err == 0 and x_free == 1 and lands,
             ctrl_aux_pre_reset=f"0x{aux_pre:x}",
@@ -730,8 +1092,10 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             aux_after_b=f"0x{after_b:x}",
             aux_after_a=f"0x{after_a:x}",
             write_pairs_land=int(lands),
-        )
-        close_graded_window(self.logger)
+        ) and (tap_ok and ctrl_ok):
+            await self._passed(AES_SHADOW_PASS_RESET_RESTORE)
+        self._close()
+        self._fq_leg = "none"
 
     # --- malformed alert leg -----------------------------------------------------------
     def _bit32(self) -> int:
@@ -757,17 +1121,17 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             rx, test_reg, _ = BLOCKS[blk]
             idx, val, bit = plan.receiver[blk], plan.wire[blk], plan.test_bit[blk]
             # Timing reference: one ALERT_TEST event of the block (not graded here).
-            close_graded_window(self.logger)
+            self._close()
             m = self.vec.mark()
             await self.bus._wr(sep_addr_define(test_reg), 1 << bit)
             try:
                 c = max(1, await self.vec.wait_rise(m, ALERT_REF_BOUND, "alert") - m.clk)
                 await self.vec.wait_level(0, ALERT_REF_BOUND, "alert")
             except BitWatchTimeout:
-                self.chk.ctrl(
+                self._control(
                     "ALERT-REF", False, block=blk, alert_test_bit=bit, bound=ALERT_REF_BOUND
                 )
-                self.chk.ok("ALERT-MALFORMED", False, block=blk, index=idx, reason="no_reference")
+                self._grade("ALERT-MALFORMED", False, block=blk, index=idx, reason="no_reference")
                 continue
             self.chk.obs("ALERT-REF", block=blk, clk=c, alert_test_bit=bit)
             # Quiet window before the inject: bit 32 stays 0 for WINDOW_FACTOR x c clocks
@@ -777,7 +1141,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             quiet_pre = self.vec.high_clocks_since(mq, "alert")
             pre = self._bit32()
 
-            open_graded_window(TEST, self.logger)
+            self._open()
             rise_bound = WINDOW_FACTOR * c
             rise_max = rise_bound - 1
             # The mark is the last clock the watcher sampled; this clock is clock 1 after it.
@@ -801,10 +1165,9 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             mp = self.vec.mark()
             await ClockCycles(dut.clk_i, WINDOW_FACTOR * c)
             quiet_post = self.vec.high_clocks_since(mp, "alert")
-            close_graded_window(self.logger)
             # The rise counts only on a clock ALERT_RISE_CLK_MIN to rise_max after the mark.
             raised = int(raise_clk is not None and ALERT_RISE_CLK_MIN <= raise_clk <= rise_max)
-            self.chk.ok(
+            if self._grade(
                 "ALERT-MALFORMED",
                 pre == 0 and quiet_pre == 0 and raised == 1 and post == 0 and quiet_post == 0,
                 block=blk,
@@ -820,6 +1183,8 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 expect_raise_clk_min=ALERT_RISE_CLK_MIN,
                 expect_raise_clk_max=rise_max,
                 ref_clk=c,
-            )
+            ):
+                await self._passed(AES_SHADOW_PASS_ALERT + list(BLOCKS).index(blk))
+            self._close()
         dut.crypto_alert_inject_idx_i.value = 0
         dut.crypto_alert_inject_val_i.value = 0

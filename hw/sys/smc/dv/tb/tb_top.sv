@@ -3211,6 +3211,7 @@ module smc_uvm_top
     assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
     assign u_tb_if.rst_wdt_smc_clk_n         = rst_wdt_smc_clk_no;
     assign u_tb_if.cpu_cluster_isolate       = tb_cpu_cluster_isolate;
+    assign u_tb_if.cpu_core_resets_n         = tb_cpu_core_resets_n;
     assign u_tb_if.cg_clk_active = {
         u_dut.u_smc.u_smc_base.fabric_clk_active,
         u_dut.u_smc.u_smc_base.alias_remap_clk_active,
@@ -3576,14 +3577,15 @@ module smc_uvm_top
     assign tb_mbist_abort            = 1'b0;
 
     // Sideband: AVSBus sdata pull-up high, primary chiplet, OCTS secondary
-    // inject idle-low; SEP mailbox interrupts idle; no GPIO external drive.
+    // inject idle-low; SEP mailbox interrupts idle; GPIO drive owned by the sequence.
     assign tb_avs_sdata_ext          = 1'b1;
     assign tb_chiplet_is_primary     = 1'b1;
     assign tb_octs_sync_load_ext     = 1'b0;
     assign tb_octs_cnt_credit_ext    = 1'b0;
     assign tb_sep_mailbox_interrupts = '0;
-    assign tb_gpio_ext_drive_en      = '0;
-    assign tb_gpio_ext_drive_value   = '0;
+    assign tb_gpio_ext_drive_en      = u_tb_if.gpio_ext_drive_en;
+    assign tb_gpio_ext_drive_value   = u_tb_if.gpio_ext_drive_value;
+    assign u_tb_if.isolate_req       = tb_isolate_req_o;
 
     // CPU memory ECC injection and the DFD fault inject off.
     assign tb_cpu_ecc_inject_sbe   = 1'b0;

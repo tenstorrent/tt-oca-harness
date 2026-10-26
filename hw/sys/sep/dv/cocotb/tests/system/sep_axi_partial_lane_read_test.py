@@ -29,12 +29,24 @@ cells run on every seed; the seed varies order, addresses, and data only.
                    and identical on re-read around a checked disturb.
   CHK-RANDCFG    : walked cell counts held against the 8-byte-beat floors
                    (36 slices, 14 ARSIZE cells); seed and resolved knobs logged.
+
+FCOV: ``sep_cpu_ctrl_reg_cg.cp_sw_debug`` samples only in the owner window of
+this leaf. The window opens after the whole CHK-CSR-LANE walk has passed, holds
+one all-ones write of SEP_SW_DEBUG and one 4-byte read graded on the spot, and
+closes after that grade (or on its FAIL). Before the window the leaf writes 0
+and reads it back exact, so a dropped window write fails. Every other access
+runs outside it.
+The window write and read are single beats of AxSIZE 2 (4 bytes, all four
+strobes on the write), the access the bin describes.
 """
 
 from __future__ import annotations
 
 import pyuvm
+from env.sep_axi_agent import SepAxiOp
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_partial_lane_read_seq import (
     ARSIZE_CELL_FLOOR,
     LOCAL_BASE_ADDR_ADDR,
@@ -44,6 +56,16 @@ from seq_lib.sep_axi_partial_lane_read_seq import (
     SepAxiPartialLaneRead,
     SepAxiPartialLaneReadCfg,
 )
+
+TEST = "sep_axi_partial_lane_read_test"
+# AxSIZE of the window write and read: 4 bytes per beat.
+_WINDOW_AXSIZE = 2
+
+# Pattern of the windowed write, and the value the register holds before it.
+# The leaf writes and reads back _WINDOW_PRE outside the window, so a dropped
+# window write reads _WINDOW_PRE and fails the window grade on every seed.
+_WINDOW_PATTERN = 0xFFFF_FFFF
+_WINDOW_PRE = 0x0000_0000
 
 
 @pyuvm.test()
@@ -76,6 +98,7 @@ class sep_axi_partial_lane_read_test(sep_base_test):
         await self.bring_up_no_cpu()
         self.lane = SepAxiPartialLaneRead(self)
         await self._chk_csr_lane()
+        await self._chk_csr_lane_window()
         await self._chk_sram_slice()
         await self._chk_arsize()
         self.logger.info(
@@ -103,7 +126,7 @@ class sep_axi_partial_lane_read_test(sep_base_test):
     async def _chk_csr_lane(self) -> None:
         """4-byte reads of SEP_SW_DEBUG, a 64-bit register whose only field is [31:0]."""
         for pattern in self.cfg_lane.csr_patterns:
-            await self.lane.write(SW_DEBUG_ADDR, pattern, 4)
+            await self._sw_debug_write(pattern)
             first = await self.lane.read(SW_DEBUG_ADDR, 4)
             await self._disturb_csr()
             second = await self.lane.read(SW_DEBUG_ADDR, 4)
@@ -113,10 +136,69 @@ class sep_axi_partial_lane_read_test(sep_base_test):
                 f"first 0x{first:08x} (read depends on leftover bus state)"
             )
         self.logger.info(
-            "CHK-CSR-LANE PASS: %d patterns read back exact and repeatable "
+            "CHK-CSR-LANE PASS: %d patterns [%s] read back exact and repeatable "
             "through the half-driven CSR beat @0x%08x",
             len(self.cfg_lane.csr_patterns),
+            ", ".join(f"0x{p:08x}" for p in self.cfg_lane.csr_patterns),
             SW_DEBUG_ADDR,
+        )
+
+    async def _sw_debug_write(self, pattern: int) -> None:
+        """4-byte write of ``pattern`` to SEP_SW_DEBUG (all four strobes)."""
+        await self.lane.write(SW_DEBUG_ADDR, pattern, 4)
+
+    async def _window_write(self, pattern: int) -> None:
+        """One AxSIZE-2 write of ``pattern`` to SEP_SW_DEBUG (all four strobes)."""
+        seq = SepAxiAccessSeq(
+            "lane_wr_window",
+            op=SepAxiOp.WRITE,
+            addr=SW_DEBUG_ADDR,
+            wdata=pattern,
+            length=4,
+            size=_WINDOW_AXSIZE,
+        )
+        await self.start_seq(seq)
+        if not seq.resp_ok:
+            raise AssertionError(f"CHK-CSR-LANE FAIL: window write @0x{SW_DEBUG_ADDR:08x} not OKAY")
+
+    async def _chk_csr_lane_window(self) -> None:
+        """One write + exact 4-byte read inside the owner window, after CHK-CSR-LANE passed.
+
+        Before the window the register is written with ``_WINDOW_PRE`` and read
+        back exact, so the window read can equal ``_WINDOW_PATTERN`` only if the
+        window write landed.
+        """
+        await self._sw_debug_write(_WINDOW_PRE)
+        pre = await self.lane.read(SW_DEBUG_ADDR, 4)
+        if pre != _WINDOW_PRE:
+            raise AssertionError(
+                f"CHK-CSR-LANE FAIL: pre-window read 0x{pre:08x} != written 0x{_WINDOW_PRE:08x}"
+            )
+        self.logger.info(
+            "CHK-CSR-LANE PASS: pre-window read 0x%08x == written 0x%08x @0x%08x",
+            pre,
+            _WINDOW_PRE,
+            SW_DEBUG_ADDR,
+        )
+        open_graded_window(TEST, self.logger)
+        try:
+            await self._window_write(_WINDOW_PATTERN)
+            got = await self.lane.read(SW_DEBUG_ADDR, 4, size=_WINDOW_AXSIZE)
+        except BaseException:
+            close_graded_window(self.logger)
+            raise
+        if got != _WINDOW_PATTERN:
+            close_graded_window(self.logger)
+            raise AssertionError(
+                f"CHK-CSR-LANE FAIL: window read 0x{got:08x} != written 0x{_WINDOW_PATTERN:08x}"
+            )
+        close_graded_window(self.logger)
+        self.logger.info(
+            "CHK-CSR-LANE PASS: window read 0x%08x == written 0x%08x @0x%08x axsize=%d",
+            got,
+            _WINDOW_PATTERN,
+            SW_DEBUG_ADDR,
+            _WINDOW_AXSIZE,
         )
 
     async def _chk_sram_slice(self) -> None:

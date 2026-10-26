@@ -62,6 +62,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_efuse_jtag_otp_data_walk_test"
+module = "smc_efuse_jtag_otp_data_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_efuse_permission_boundary_test"
 module = "smc_efuse_permission_boundary_test"
 seed = 1

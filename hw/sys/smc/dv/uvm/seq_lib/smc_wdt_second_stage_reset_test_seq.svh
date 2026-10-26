@@ -16,6 +16,7 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
   localparam string ChkScope = "CHK-WDT-STAGE2-SCOPE";
   localparam string ChkNonvac = "CHK-NONVAC";
   localparam string ChkWdtReset = "CHK-WDT-STAGE2-WDT-RESET";
+  localparam string ChkTimeoutRetained = "CHK-WDT-STAGE2-TIMEOUT-RETAINED";
   localparam string ChkScoreboard = "CHK-WDT-STAGE2-SCOREBOARD";
   localparam int unsigned Stage1Compare = 2048;
   localparam int unsigned Stage2Cycles = 6144;
@@ -224,13 +225,10 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
 
   protected task rebaseline_after_warm(string leg);
     bit [31:0] timeout_value, ctrl, count_value, compare_value;
-    csr_read(TimeoutAddr, timeout_value, "WDT_TIMEOUT after warm reset observation");
-    `uvm_info(get_type_name(), {
-              "OBS-BLOCKED CHK-WDT-STAGE2-TIMEOUT-RETAINED reason=CPU_CTRL timeout ",
-              "retention across warm reset is not explicitly defined"}, UVM_LOW)
-    `uvm_info(get_type_name(),
-              $sformatf("OBS-WDT-STAGE2-RETAINED seed=%0d core=%0d leg=%s timeout=0x%08h",
-                        scenario_seed, core, leg, timeout_value), UVM_LOW)
+    csr_read(TimeoutAddr, timeout_value, "WDT_TIMEOUT after warm reset");
+    check_evidence(ChkTimeoutRetained, "WDT_TIMEOUT kept across watchdog warm reset", timeout_value,
+                   negative ? 32'(Stage2Cycles) ^ 32'h1 : 32'(Stage2Cycles), $sformatf(
+                   "seed=%0d core=%0d leg=%s", scenario_seed, core, leg));
     for (int unsigned selected = 0; selected < SmcWdtCores; selected++) begin
       csr_read(smc_wdt_addr(selected, WDT_CTRL), ctrl, "WDT post-warm CTRL");
       csr_read(smc_wdt_addr(selected, WDT_COUNT), count_value, "WDT post-warm COUNT");
@@ -364,7 +362,7 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkConfig, ChkFirst, ChkService, ChkHeld,
                     ChkExpires, ChkWrong, ChkRecovery, ChkScope, ChkNonvac, ChkWdtReset,
-                    ChkScoreboard, ChkSbMinAct});
+                    ChkTimeoutRetained, ChkScoreboard, ChkSbMinAct});
     wait_fuse_sense_done();
     core = loop_index % SmcWdtCores;
     other_core = (core + 1) % SmcWdtCores;

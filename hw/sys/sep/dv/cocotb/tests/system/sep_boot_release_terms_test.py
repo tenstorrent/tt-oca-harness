@@ -5,12 +5,19 @@
 Contract (``hw/sys/sep/doc/reset_controller.adoc``, SEP Reset Controller;
 ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
 ``hw/sys/sep/doc/otp_fuse_controller.adoc``, Fuse Sensing and Boot Sequencing;
-``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc``, ``SMC_FUSE_SENSE_STATUS``):
+``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc``, ``SMC_FUSE_SENSE_STATUS`` and
+``SEP_FUSE_SENSE_STATUS``):
 
 * ``sep_reset_n`` and ``sep_cpu_reset_n`` stay low until ``rst_ni`` is high,
   fuse sensing is done and ``ext_boot_seq_done_i`` is high, in any arrival
   order, and rise after the last of the three terms.
 * ``SMC_FUSE_SENSE_STATUS`` follows the level of ``smc_fuse_sense_done_i``.
+* ``SEP_FUSE_SENSE_STATUS`` (``sep_fuse_sense_done``, R, reset 0x0) indicates the
+  fuse sense status of SEP: after sensing the field reads 1. The register
+  block is reset by ``sep_reset_n`` (``reset_controller.adoc``, ``sep_reset_no``
+  resets the system peripherals), and no specification line states that it
+  answers a read while sensing runs, so the leaf issues no read of it before
+  the release and logs ``OBS-SENSE-STATUS-PRE`` instead.
 * From the ``rst_ni`` release until ``sep_fuse_sense_done_o`` rises, a read of
   the shadow map answers SLVERR. After sensing the same word reads OKAY with the
   staged word.
@@ -54,10 +61,17 @@ Checkers:
                     compares at least one word with a nonzero staged value, so
                     a dead read that returns 0 fails; the zero-valued words are
                     logged in ``CTL-PRESENSE-WORDS``.
+  CHK-SENSE-STATUS  after ``sep_fuse_sense_done_o`` has held 1 for
+                    ``_REL_BOUND`` ``clk_i`` cycles, one 64-bit read of
+                    ``SEP_FUSE_SENSE_STATUS`` per epoch and the final polls
+                    answer OKAY with ``sep_fuse_sense_done`` at 1, and the port
+                    reads 1 around each read. The reserved bits 63:1 have no
+                    stated reset value: they are logged (``obs_rsvd``), not
+                    graded.
 
-Controls and observations: in BOOT_FIRST, BOOT_WITH_RST and BOOT_MID the
-sensing is the last term, so those cells are controls of CHK-REL-GATE. The
-``SEP_FUSE_SENSE_STATUS`` polls are logged as ``OBS-SENSE-POLL``.
+Controls: in BOOT_FIRST, BOOT_WITH_RST and BOOT_MID the sensing is the last
+term, so those cells are controls of CHK-REL-GATE. The post-sense reads of
+CHK-SENSE-STATUS are the control that the read path and the register answer.
 
 Image I: ``LC_STATE`` from {TEST_DEV, RMA_SIP, RMA_CHIPLET} and ``SIP_DIS`` /
 ``SYS_DIS`` from the DV set ``_DIS_VECTORS`` (the disable-vector pairs of the
@@ -88,7 +102,7 @@ from cocotb.triggers import Event, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import SHADOW_BASE
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_rel_terms_pass
 from env.sep_field_compare import field_compare
 from env.sep_lcc_golden import (
     LC_RMA_CHIP_0,
@@ -112,6 +126,10 @@ SMC_STATUS = SEP_CPU_CTRL.addr("SMC_FUSE_SENSE_STATUS")
 SMC_FIELD = SEP_CPU_CTRL.field_mask("SMC_FUSE_SENSE_STATUS", "smc_fuse_sense_done")
 SEP_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 SEP_FIELD = SEP_CPU_CTRL.field_mask("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
+SEP_LSB = SEP_CPU_CTRL.field_lsb("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
+# Golden of sep_fuse_sense_done in place after sensing. The reserved bits have
+# no stated reset and are logged.
+SEP_FIELD_POST = 1 << SEP_LSB
 
 BOOT_FIRST = "BOOT_FIRST"
 BOOT_WITH_RST = "BOOT_WITH_RST"
@@ -180,6 +198,7 @@ class sep_boot_release_terms_test(sep_base_test):
         "CHK-SMC-FOLLOW",
         "CHK-PRESENSE",
         "CHK-PRESENSE-CTL",
+        "CHK-SENSE-STATUS",
     )
 
     # -- draws -------------------------------------------------------------
@@ -599,6 +618,7 @@ class sep_boot_release_terms_test(sep_base_test):
             c["issued"],
             ctl_cyc,
         )
+        self._obs_sense_pre(ep, ctl_cyc)
         hits = 0
         for i, (p, cyc) in enumerate(zip(ep.probes, hs)):
             assert not p["timed_out"], f"CHK-PRESENSE FAIL: epoch={ep.kind} probe{i} timed out"
@@ -651,6 +671,82 @@ class sep_boot_release_terms_test(sep_base_test):
             )
         assert hits >= 1, (
             f"CHK-PRESENSE FAIL: epoch={ep.kind} no probe answered inside the pre-sense window"
+        )
+
+    @staticmethod
+    def _status_data(seq) -> int:
+        """The 64-bit word a SEP_FUSE_SENSE_STATUS read returned."""
+        return seq.rdata & _M64
+
+    def _obs_sense_pre(self, ep: _Epoch, cyc: int) -> None:
+        """OBS-SENSE-STATUS-PRE: the pre-sense value of SEP_FUSE_SENSE_STATUS is not read.
+
+        The register block is reset by ``sep_reset_n``, and no specification
+        line states that it answers a read while sensing runs, so the leaf
+        issues no read of it before the release. The line logs the port and
+        reset levels at the path control read; it grades nothing.
+        """
+        self.logger.info(
+            "OBS-SENSE-STATUS-PRE: epoch=%s no SEP_FUSE_SENSE_STATUS read while sensing runs; "
+            "at the path control read (sample %d) sense_done=%s sep_reset_n=%s (not scored)",
+            ep.kind,
+            cyc,
+            ep.rec[cyc]["done"],
+            ep.rec[cyc]["sep"],
+        )
+
+    async def _sense_status_post(self, tag: str, n: int) -> None:
+        """CHK-SENSE-STATUS, post-sense part: ``n`` reads after the port settled at 1.
+
+        The reads start after ``sep_fuse_sense_done_o`` held 1 on ``_REL_BOUND``
+        consecutive ``clk_i`` edges; the port must read 1 before and after
+        every read.
+        """
+        dut = cocotb.top
+        for c in range(_REL_BOUND):
+            await RisingEdge(dut.clk_i)
+            level = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+            assert level == 1, (
+                f"CHK-SENSE-STATUS FAIL: {tag} phase=post_sense sep_fuse_sense_done_o={level} "
+                f"at settle cycle {c}, expected 1 for {_REL_BOUND} cycles"
+            )
+        exp = SEP_FIELD_POST
+        rsvd_all = []
+        for i in range(n):
+            before = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+            seq = SepAxiAccessSeq(
+                f"sep_status_{tag}{i}", op=SepAxiOp.READ, addr=SEP_STATUS, length=8, size=3
+            )
+            await self.start_seq(seq)
+            after = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+            word = self._status_data(seq)
+            got = word & SEP_FIELD
+            rsvd = word & ~SEP_FIELD & _M64
+            ok = (
+                before == 1
+                and after == 1
+                and not seq.timed_out
+                and seq.resp_code == RESP_OKAY
+                and got == exp
+            )
+            assert ok, (
+                f"CHK-SENSE-STATUS FAIL: {tag} phase=post_sense poll {i} "
+                f"resp={_RESP_NAME.get(seq.resp_code, seq.resp_code)} "
+                f"timed_out={int(seq.timed_out)} field=0x{got:x} exp=0x{exp:x} "
+                f"mask=0x{SEP_FIELD:x} obs_rsvd=0x{rsvd:016x} port_before={before} "
+                f"port_after={after}"
+            )
+            rsvd_all.append(rsvd)
+        self.logger.info(
+            "CHK-SENSE-STATUS PASS: %s phase=post_sense polls=%d resp=OKAY field=0x%x exp=0x%x "
+            "mask=0x%x obs_rsvd=%s port=1 settle=%d",
+            tag,
+            n,
+            exp,
+            exp,
+            SEP_FIELD,
+            ",".join(f"0x{v:016x}" for v in sorted(set(rsvd_all))),
+            _REL_BOUND,
         )
 
     def _ensure_nonzero_word(self, rng: SepSeededRng, image) -> None:
@@ -756,20 +852,7 @@ class sep_boot_release_terms_test(sep_base_test):
             1 - expect,
             SMC_FIELD,
         )
-        sep_vals = []
-        for i in range(self.n_polls):
-            seq = SepAxiAccessSeq(
-                f"sep_status{i}", op=SepAxiOp.READ, addr=SEP_STATUS, length=8, size=3
-            )
-            await self.start_seq(seq)
-            assert seq.resp_ok, f"OBS-SENSE-POLL: poll {i} resp={seq.resp_code}"
-            sep_vals.append((seq.rdata & SEP_FIELD) >> ((SEP_FIELD & -SEP_FIELD).bit_length() - 1))
-        self.logger.info(
-            "OBS-SENSE-POLL: polls=%d first_poll=%d ones=%d",
-            len(sep_vals),
-            sep_vals[0],
-            sum(sep_vals),
-        )
+        await self._sense_status_post("final", self.n_polls)
 
     # -- scenario --------------------------------------------------------------
 
@@ -796,14 +879,23 @@ class sep_boot_release_terms_test(sep_base_test):
         t_cal = await self._calibrate()
 
         open_graded_window(TEST, self.logger)
-        for ep in self.epochs:
-            self.logger.info("EPOCH %s W=%d", ep.kind, ep.w)
-            await self._run_epoch(ep, t_cal)
-            self._grade_gate(ep, t_cal, four_state)
-            self._grade_presense(ep)
-            self._check_efuse_shadow_after_sense()
-            await self._presense_ctl(ep, image)
+        try:
+            for ep in self.epochs:
+                self.logger.info("EPOCH %s W=%d", ep.kind, ep.w)
+                set_rel_terms_pass(0, self.logger)
+                await self._run_epoch(ep, t_cal)
+                self._grade_gate(ep, t_cal, four_state)
+                set_rel_terms_pass(0b01, self.logger)
+                self._grade_presense(ep)
+                self._check_efuse_shadow_after_sense()
+                await self._presense_ctl(ep, image)
+                await self._sense_status_post(f"epoch={ep.kind}", 1)
 
-        await self._sense_status(hold)
+            await self._sense_status(hold)
+            set_rel_terms_pass(0, self.logger)
+        except AssertionError:
+            # The first FAIL closes the graded window before it fails the leaf.
+            close_graded_window(self.logger)
+            raise
         close_graded_window(self.logger)
         self.result_pass(TEST, seed, len(self.required_evidence))

@@ -21,7 +21,7 @@ tests = [
 
 [[groups]]
 name = "basic_jtag"
-expected_count = 19
+expected_count = 20
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -42,6 +42,7 @@ tests = [
     "dtp_jtag_clamp_release_test",
     "dtp_jtag_ac_extest_train_test",
     "dtp_jtag_ac_extest_pulse_test",
+    "dtp_jtag_bsr_disabled_test",
 ]
 
 [[groups]]
@@ -246,7 +247,7 @@ tests = [
 name = "all"
 # Exact nightly inventory; must match the VPLAN's scenario-expanded test-case
 # count. The loader errors when the list and this count diverge.
-expected_count = 155
+expected_count = 156
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -267,6 +268,7 @@ tests = [
     "dtp_jtag_clamp_release_test",
     "dtp_jtag_ac_extest_train_test",
     "dtp_jtag_ac_extest_pulse_test",
+    "dtp_jtag_bsr_disabled_test",
     "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test",
     "dtp_jtag2axi_smc_axi_read_security_gating_test",
     "dtp_jtag2axi_smc_axi_read_random_ops_test",
