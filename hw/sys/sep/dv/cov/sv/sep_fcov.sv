@@ -191,10 +191,14 @@ module sep_fcov (
   input sep_pkg::sep_32_64_6_12_axi_req_t  dma_csr_req_i,
   input sep_pkg::sep_32_64_6_12_axi_resp_t dma_csr_resp_i,
   input wire        irq_dma_error_i,
-  // rom_req: the boot ROM macro port (PR-ROM). tcm_*: the CPU TCM macro
-  // port enables of the ICCM and the DCCM, apart (the DMA TCM cells only).
-  input sep_pkg::sep_sram_req_t rom_req_i,
-  input sep_pkg::sep_sram_rsp_t rom_rsp_i,
+  // rom_*: the boot ROM memory-interface stream (PR-ROM), byte addressed.
+  // tcm_*: the CPU TCM macro port enables of the ICCM and the DCCM, apart (the
+  // DMA TCM cells only).
+  input wire        rom_req_i,
+  input wire        rom_we_i,
+  input wire [31:0] rom_addr_i,
+  input wire        rom_rvalid_i,
+  input wire [63:0] rom_rdata_i,
   input wire        iccm_clken_i,
   input wire        iccm_wren_i,
   input wire        dccm_clken_i,
@@ -357,7 +361,8 @@ module sep_fcov (
   input wire [6:0]           ip_rst_n_i,        // sep_crypto_gated_rst_n, SW_RESET_N order
   input wire [13:0]          iso_req_i,         // sep_crypto_isolate_req, bench index
   input wire [13:0]          iso_ack_i,         // sep_crypto_isolated, bench index
-  input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_n
+  input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_aon_clk_n
+  input wire                 sep_wdt_reset_n_i, // sep_wdt_reset_n (watchdog timer reset)
   input wire [1:0]           km_cond_rst_n_i,   // {rst_cold_aasd_n, rst_warm_sync_n}
   input wire [1:0]           refcnt_rst_n_i,    // reference counter {clk_ref_i, clk_i} reset
   input sep_pkg::jtag_sep_reset_ctrl_t jtag_rst_ctrl_i,  // after the pin-or-TDR mux
@@ -379,8 +384,8 @@ module sep_fcov (
   input wire [4:0]           cpu_trace_ecause_i,
   input wire [31:0]          cpu_trace_tval_i,
   input wire [3:0]           ecc_dbg_i,         // ext_debug_bus_o[367:364]
-  input sep_pkg::sep_sram_req_t sram_req_i,     // u_dut.sep_sram_req
-  input sep_pkg::sep_sram_rsp_t sram_rsp_i,     // u_dut.sep_sram_rsp
+  input wire                 sram_req_i,        // PR-SRAM request
+  input wire                 sram_rvalid_i,     // PR-SRAM response valid
   // cpu_tcm_axi_req / resp: the crossbar backdoor into the core DMA port.
   input sep_pkg::sep_32_64_6_12_axi_req_t  tcm_axi_req_i,
   input sep_pkg::sep_32_64_6_12_axi_resp_t tcm_axi_resp_i,
@@ -418,7 +423,7 @@ module sep_fcov (
   input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_rom_resp_i,
   input sep_pkg::sep_32_64_3_12_axi_req_t  lsu_xbar_req_i,
   input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_xbar_resp_i,
-  // The ROM macro request after the ROM interface shim (word index).
+  // The ROM macro request out of the memory_interface (word index).
   input wire                 rom_macro_req_i,
   input wire [12:0]          rom_macro_addr_i,
   // veer.dec.tlu: trap cause, ECC counters and their requests, the counter
@@ -694,7 +699,7 @@ module sep_fcov (
   input wire [1:0]                          km_wipe_i,        // {wipe_pulse, wipe_state_i}
   input km_intf_pkg::km_otp_data_t          km_otp_data_i,    // KM otp_data_i
   input wire                                km_rom_req_i,     // km_rom_mem_req.req
-  input wire [3:0]                          km_sram_if_i,     // km_sram_mem_req/rsp {rvalid, gnt, we, req}
+  input wire [1:0]                          km_sram_if_i,     // km_sram_mem_req {we, req}
   input wire [12:0]                         km_sram_addr_i,   // km_sram_mem_req.addr
   input km_intf_pkg::km_axil_req_t          km_efuse_req_i,   // KM efuse_req_o (after the remap)
   input km_intf_pkg::km_axil_resp_t         km_efuse_resp_i,  // KM efuse_resp_i
@@ -716,8 +721,6 @@ module sep_fcov (
   input wire                                km_recov_err_i,   // km_csr_recov_err_o (KM-CSR)
   input wire                                km_rec_pic_i,     // PIC vector bit 31
   input wire [8:0]                          km_outfifo_depth_i, // km_outfifo_depth_o (KM-OUTFIFO)
-  input wire [7:0]                          km_sram_lat_i,    // km_sram_rd_lat_o (KM-LAT)
-  input wire [31:0]                         km_sram_lat_done_i, // km_sram_rd_done_count_o (KM-LAT)
   // KM-BUS key path, AW channel: port 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
   input wire [4:0]                          km_key_aw_valid_i,
   input wire [4:0]                          km_key_aw_ready_i,
@@ -4975,7 +4978,7 @@ module sep_fcov (
                                  (dma_csr_resp_i.aw_ready === 1'b1)) ||
                                 ((dma_csr_req_i.ar_valid === 1'b1) &&
                                  (dma_csr_resp_i.ar_ready === 1'b1)));
-  wire rom_hs   = !in_reset && (rom_req_i.req === 1'b1) && (rom_rsp_i.gnt === 1'b1);
+  wire rom_hs   = !in_reset && (rom_req_i === 1'b1);
   wire out_hs   = out_aw_hs || out_ar_hs;
   wire smc_hs   = smc_aw_hs || smc_ar_hs;
   wire ext_hs   = ext_aw_hs || ext_ar_hs;
@@ -14424,12 +14427,13 @@ module sep_fcov (
     }
     // Net: 0 sep_reset_n, 1 sep_cpu_reset_n, 2..7 ip_rst_n[1..6],
     // 8 aon_rst_n, 9 Key Manager cold, 10 Key Manager warm, 11 ip_rst_n[0],
-    // 12 reference counter clk_ref_i reset, 13 reference counter clk_i reset.
+    // 12 reference counter clk_ref_i reset, 13 reference counter clk_i reset,
+    // 14 sep_wdt_reset_n.
     // Case 0 keeps its value (test_en_i 0), 1 low before the rise
     // (test_en_i 1), 2 the release of net 0 or 8 off the clock edge.
     cp_scan_net_effect: coverpoint s.sn iff (s.sn_v) {
-      bins te0_keeps[] = {[6'd0 : 6'd13]};
-      bins te1_low[] = {[6'd16 : 6'd29]};
+      bins te0_keeps[] = {[6'd0 : 6'd14]};
+      bins te1_low[] = {[6'd16 : 6'd30]};
       bins sep_reset_n_release_bypassed = {6'd32};
       bins aon_rst_n_release_bypassed = {6'd40};
     }
@@ -14611,8 +14615,9 @@ module sep_fcov (
     logic eo_v;  // {enable, outcome 0 no count 1 advances 2 crossed}
     logic [2:0] bs;
     logic bs_v;  // bark status cell, 4 bite in a forced window
-    logic [1:0] lk;
-    logic lk_v;  // 0 sticky, 1 cold landed, 2 locked landed, 3 unlocked ignored
+    logic [2:0] lk;
+    logic lk_v;  // 0 sticky, 1 cold landed, 2 locked landed, 3 unlocked ignored,
+                 // 4 landed after a wdt_rst_ni pulse that followed a lock
     logic [2:0] ad;
     logic ad_v;  // {stage, high half}
     logic ax;
@@ -14643,10 +14648,11 @@ module sep_fcov (
       illegal_bins bite_in_forced_window = {3'd4};
     }
     cp_lock_x_reg: coverpoint s.lk iff (s.lk_v) {
-      bins regwen_sticky_after_clear = {2'd0};
-      bins cold_reset_regwen1_write_lands = {2'd1};
-      illegal_bins regwen0_landed = {2'd2};
-      illegal_bins regwen1_ignored = {2'd3};
+      bins regwen_sticky_after_clear = {3'd0};
+      bins cold_reset_regwen1_write_lands = {3'd1};
+      illegal_bins regwen0_landed = {3'd2};
+      illegal_bins regwen1_ignored = {3'd3};
+      bins wdt_reset_regwen1_write_lands = {3'd4};
     }
     // Stage: 0 sep_wdt_tlul_axi_req, 1 sep_wdt_tlul_axi_req_offset,
     // 2 axi_lite_req, 3 tl_d_i.
@@ -15468,6 +15474,23 @@ module sep_fcov (
   logic mr_rr_arm = 1'b0;
   logic mr_ar_arm = 1'b0;
   logic mr_sn_arm = 1'b0;
+  // Scan net samples on clk_i, in the bit order of mr_sn_now: the value and an
+  // X flag per net. A net with X in the window fills no cp_scan_net_effect cell.
+  logic [14:0] mr_sn_now_q = '0;
+  logic [14:0] mr_sn_xv;
+  logic [14:0] mr_sn_xv_q = '0;
+  always_comb begin
+    mr_sn_xv[14] = $isunknown(sep_wdt_reset_n_i);
+    mr_sn_xv[13] = $isunknown(refcnt_rst_n_i[0]);
+    mr_sn_xv[12] = $isunknown(refcnt_rst_n_i[1]);
+    mr_sn_xv[11] = $isunknown(ip_rst_n_i[0]);
+    mr_sn_xv[10] = $isunknown(km_cond_rst_n_i[0]);
+    mr_sn_xv[9]  = $isunknown(km_cond_rst_n_i[1]);
+    mr_sn_xv[8]  = $isunknown(aon_rst_n_i);
+    for (int i = 1; i < 7; i++) mr_sn_xv[i+1] = $isunknown(ip_rst_n_i[i]);
+    mr_sn_xv[1] = $isunknown(cpu_reset_n_i);
+    mr_sn_xv[0] = $isunknown(sep_reset_n_i);
+  end
   always @(posedge rst_ni) begin
     mr_rr_arm   = mr_own_cold;
     mr_ar_arm   = mr_own_cold;
@@ -15490,7 +15513,9 @@ module sep_fcov (
         u_sep_reset_source_cg.sample(e);
       end
       mr_rr_arm = 1'b0;
-      if (mr_sn_arm && mr_own_scan && (off > MrEdgeTol) && (off < per - MrEdgeTol)) begin
+      // The rise counts only from a known 0 at the last clk_i edge.
+      if (mr_sn_arm && mr_own_scan && !mr_sn_now_q[0] && !mr_sn_xv_q[0] && (off > MrEdgeTol) &&
+          (off < per - MrEdgeTol)) begin
         mr_src_t e;
         e      = '0;
         e.sn   = 6'd32;
@@ -15513,7 +15538,8 @@ module sep_fcov (
         u_sep_reset_source_cg.sample(e);
       end
       mr_ar_arm = 1'b0;
-      if (mr_sn_arm && mr_own_scan && (off > MrEdgeTol) && (off < per - MrEdgeTol)) begin
+      if (mr_sn_arm && mr_own_scan && !mr_sn_now_q[8] && !mr_sn_xv_q[8] && (off > MrEdgeTol) &&
+          (off < per - MrEdgeTol)) begin
         mr_src_t e;
         e      = '0;
         e.sn   = 6'd40;
@@ -15804,9 +15830,9 @@ module sep_fcov (
   logic mr_ro_arm = 1'b0;
   logic mr_ro_low = 1'b0;
   logic mr_ro_bad_q = 1'b0;
-  logic [13:0] mr_sn_snap = '0;
-  logic [13:0] mr_sn_keep = '0;
-  logic [13:0] mr_sn_now_q = '0;
+  logic [14:0] mr_sn_snap = '0;
+  logic [14:0] mr_sn_keep = '0;
+  logic [14:0] mr_sn_kn = '0;  // the net had no X from the edge before the fall
   logic mr_sn_on = 1'b0;
   logic mr_sn_te = 1'b0;
   logic mr_sn_te_ok = 1'b0;
@@ -15817,7 +15843,8 @@ module sep_fcov (
   int unsigned mr_mp_tog = 0;
   logic mr_mp_rel = 1'b0;
   int unsigned mr_mp_cnt = 0;
-  wire [13:0] mr_sn_now = {
+  wire [14:0] mr_sn_now = {
+    sep_wdt_reset_n_i === 1'b1,
     refcnt_rst_n_i[0] === 1'b1,
     refcnt_rst_n_i[1] === 1'b1,
     ip_rst_n_i[0] === 1'b1,
@@ -15832,6 +15859,7 @@ module sep_fcov (
     logic held;
     logic bad;
     mr_sn_now_q <= mr_sn_now;
+    mr_sn_xv_q  <= mr_sn_xv;
     // cp_source_edge
     if (mr_own_cold && mr_rst_fall) mr_se(3'd0, 1'b0);
     if (mr_own_cold && mr_rst_rise) mr_se(3'd0, 1'b1);
@@ -15905,23 +15933,26 @@ module sep_fcov (
       u_sep_reset_source_cg.sample(e);
     end
 
-    // cp_scan_net_effect, the 28 net cells
+    // cp_scan_net_effect, the 30 net cells. A cell needs the net high on the
+    // last clk_i edge before the scan_rst_ni fall.
     if (mr_scan_q && !mr_scan) begin
       mr_sn_on    <= mr_own_scan;
       mr_sn_snap  <= mr_sn_now_q;
-      mr_sn_keep  <= ~(mr_sn_now ^ mr_sn_now_q);
+      mr_sn_keep  <= mr_sn_now_q & ~(mr_sn_now ^ mr_sn_now_q);
+      mr_sn_kn    <= ~(mr_sn_xv | mr_sn_xv_q);
       mr_sn_te    <= mr_te;
       mr_sn_te_ok <= 1'b1;
       mr_sn_w     <= 1;
     end else if (mr_sn_on && !mr_scan) begin
       mr_sn_keep <= mr_sn_keep & ~(mr_sn_now ^ mr_sn_snap);
+      mr_sn_kn   <= mr_sn_kn & ~mr_sn_xv;
       if (mr_te != mr_sn_te) mr_sn_te_ok <= 1'b0;
       mr_sn_w <= mr_sn_w + 1;
     end else if (mr_sn_on && !mr_scan_q && mr_scan) begin
       mr_sn_on <= 1'b0;
       if (mr_own_scan && mr_sn_te_ok && (mr_sn_w >= MrScanMinW)) begin
-        for (int n = 0; n < 14; n++) begin
-          if (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n]) begin
+        for (int n = 0; n < 15; n++) begin
+          if (mr_sn_kn[n] && mr_sn_snap[n] && (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n])) begin
             mr_src_t e;
             e      = '0;
             e.sn   = {1'b0, mr_sn_te, 4'(n)};
@@ -16737,15 +16768,23 @@ module sep_fcov (
   logic mr_rw = 1'b1;
   logic mr_rw_ok = 1'b0;
   logic mr_lk_sticky = 1'b0;
-  // 1 from a gate-open rst_ni rise to the first landed WDOG_BARK_THOLD write,
-  // unless a WDOG_REGWEN write of 0 or a WDOG_REGWEN read of 0 comes first.
+  // 1 from a gate-open rst_ni rise after a reset that found regwen read as 0 to
+  // the first landed WDOG_BARK_THOLD write, unless a WDOG_REGWEN write of 0 or a
+  // WDOG_REGWEN read of 0 comes first.
   logic mr_lk_cold = 1'b0;
+  logic mr_cold_rd0 = 1'b0;  // the rst_ni reset in progress found regwen read as 0
+  // 1 from a gate-open wdt_rst_ni pulse that found regwen read as 0 to the first
+  // landed WDOG_BARK_THOLD write, unless a WDOG_REGWEN write of 0 or a
+  // WDOG_REGWEN read of 0 comes first.
+  logic mr_lk_wdt = 1'b0;
+  logic mr_rw_rd0 = 1'b0;  // the last WDOG_REGWEN read returned 0
   logic mr_bt_pend = 1'b0;
   logic [31:0] mr_bt_w = '0;
   logic [31:0] mr_bt_prev = '0;
   logic mr_bt_prev_ok = 1'b0;
   logic [1:0] mr_bt_rw = '0;  // {known, regwen}
   logic mr_bt_cold = 1'b0;
+  logic mr_bt_wdt = 1'b0;
   logic mr_bt_own = 1'b0;  // graded window open at the pending bark write
   logic mr_own_tmr_q = 1'b0;  // mr_own_tmr at the previous clk_i edge
   logic [31:0] mr_to_prev = '0;
@@ -16788,7 +16827,12 @@ module sep_fcov (
   wire [31:0] mr_wd_wa = aw_addr_q;
   wire [31:0] mr_wd_ra = ar_addr_q;
   always @(posedge clk_i) begin
-    if (!mr_rst) begin
+    // rst_ni and wdt_rst_ni both reset the aon_timer and its registers
+    // (clk_rst.adoc:62; watchdog.adoc:23), so the model forgets its register
+    // state under either reset.
+    if (!mr_rst || !mr_wdt) begin
+      mr_lk_wdt     <= mr_rst && (mr_lk_wdt || (mr_own_tmr && mr_rw_ok && !mr_rw && mr_rw_rd0));
+      mr_cold_rd0   <= !mr_rst && (mr_cold_rd0 || (mr_rw_ok && !mr_rw && mr_rw_rd0));
       mr_wd_en_ok   <= 1'b0;
       mr_wd_bark_ok <= 1'b0;
       mr_wd_cnt_ok  <= 1'b0;
@@ -16797,6 +16841,7 @@ module sep_fcov (
       mr_bs_f0      <= 1'b0;
       mr_bs_f1      <= 1'b0;
       mr_rw_ok      <= 1'b0;
+      mr_rw_rd0     <= 1'b0;
       mr_lk_sticky  <= 1'b0;
       mr_bt_pend    <= 1'b0;
       mr_to_near    <= 1'b0;
@@ -16817,7 +16862,10 @@ module sep_fcov (
       mr_wk_split   <= '0;
       mr_wk_th      <= '0;
     end else begin
-      if (mr_rst_rise) mr_lk_cold <= mr_own_tmr;
+      if (mr_rst_rise) begin
+        mr_lk_cold  <= mr_own_tmr && mr_cold_rd0;
+        mr_cold_rd0 <= 1'b0;
+      end
       // Writes.
       if (mr_wd_wr && in_blk(mr_wd_wa, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)) begin
         case (mr_wd_wa)
@@ -16860,11 +16908,13 @@ module sep_fcov (
             mr_bt_prev_ok <= mr_wd_bark_ok;
             mr_bt_rw      <= {mr_rw_ok, mr_rw};
             mr_bt_cold    <= mr_lk_cold;
+            mr_bt_wdt     <= mr_lk_wdt;
             mr_bt_own     <= mr_own_tmr;
             mr_lk_cold    <= 1'b0;
+            mr_lk_wdt     <= 1'b0;
             mr_wd_pair    <= 1'b0;
             // A write lands unless regwen is known 0. regwen resets to 1 with
-            // rst_ni, so an unknown regwen after a reset is 1.
+            // rst_ni and with wdt_rst_ni, so an unknown regwen after a reset is 1.
             if (!mr_rw_ok || mr_rw) begin
               mr_wd_bark    <= wr_data;
               mr_wd_bark_ok <= 1'b1;
@@ -16889,6 +16939,7 @@ module sep_fcov (
               mr_rw      <= 1'b0;
               mr_rw_ok   <= 1'b1;
               mr_lk_cold <= 1'b0;
+              mr_lk_wdt  <= 1'b0;
             end else if (mr_rw_ok && !mr_rw) mr_lk_sticky <= 1'b1;
           end
           MrWdIntrTest: begin
@@ -16987,17 +17038,20 @@ module sep_fcov (
                 (mr_own_tmr || mr_own_tmr_q)) begin
               mr_wdt_t e;
               e    = '0;
-              e.lk = 2'd0;
+              e.lk = 3'd0;
               if (rd_data == mr_bt_w) begin
                 if (mr_bt_cold) begin
-                  e.lk   = 2'd1;
+                  e.lk   = 3'd1;
+                  e.lk_v = 1'b1;
+                end else if (mr_bt_wdt) begin
+                  e.lk   = 3'd4;
                   e.lk_v = 1'b1;
                 end else if (mr_bt_rw == 2'b10) begin
-                  e.lk   = 2'd2;
+                  e.lk   = 3'd2;
                   e.lk_v = 1'b1;
                 end
               end else if ((rd_data == mr_bt_prev) && (mr_bt_rw == 2'b11)) begin
-                e.lk   = 2'd3;
+                e.lk   = 3'd3;
                 e.lk_v = 1'b1;
               end
               if (e.lk_v) u_sep_wdt_config_bark_cg.sample(e);
@@ -17021,14 +17075,18 @@ module sep_fcov (
             if (mr_lk_sticky && !rd_data[0] && mr_own_tmr) begin
               mr_wdt_t e;
               e      = '0;
-              e.lk   = 2'd0;
+              e.lk   = 3'd0;
               e.lk_v = 1'b1;
               u_sep_wdt_config_bark_cg.sample(e);
             end
             mr_lk_sticky <= 1'b0;
             mr_rw        <= rd_data[0];
             mr_rw_ok     <= 1'b1;
-            if (!rd_data[0]) mr_lk_cold <= 1'b0;
+            mr_rw_rd0    <= !rd_data[0];
+            if (!rd_data[0]) begin
+              mr_lk_cold <= 1'b0;
+              mr_lk_wdt  <= 1'b0;
+            end
           end
           MrWdCount: begin
             logic chg;
@@ -18708,7 +18766,7 @@ module sep_fcov (
   int unsigned mm_rn_cnt = 0;
   logic [63:0] mm_rn_mdata = '0;
   always @(posedge clk_i) begin
-    if (rom_rsp_i.rvalid === 1'b1) mm_rn_mdata <= rom_rsp_i.rdata;
+    if (rom_rvalid_i === 1'b1) mm_rn_mdata <= rom_rdata_i;
     mm_rn_pass_q <= (rom_noecc_pass != 0);
     if (in_reset || !mm_own_rom) begin
       mm_rn_pend1 <= 0;
@@ -19297,10 +19355,10 @@ module sep_fcov (
   // cp_macro_if: request and response phases of the memory macro ports.
   // ---------------------------------------------------------------------
   always @(posedge clk_i) begin
-    if (mm_own_rom && (rom_req_i.req === 1'b1)) mm_ap_rom(4'd2, 5'd0);
-    if (mm_own_rom && (rom_rsp_i.rvalid === 1'b1)) mm_ap_rom(4'd2, 5'd1);
-    if (mm_own_sram && (sram_req_i.req === 1'b1)) mm_ap(4'd2, 5'd2);
-    if (mm_own_sram && (sram_rsp_i.rvalid === 1'b1)) mm_ap(4'd2, 5'd3);
+    if (mm_own_rom && (rom_req_i === 1'b1)) mm_ap_rom(4'd2, 5'd0);
+    if (mm_own_rom && (rom_rvalid_i === 1'b1)) mm_ap_rom(4'd2, 5'd1);
+    if (mm_own_sram && (sram_req_i === 1'b1)) mm_ap(4'd2, 5'd2);
+    if (mm_own_sram && (sram_rvalid_i === 1'b1)) mm_ap(4'd2, 5'd3);
     if (mm_own_tdma && ((|tcm_i_clken_i === 1'b1) || (|tcm_d_clken_i === 1'b1))) mm_ap(4'd2, 5'd4);
   end
 
@@ -19385,10 +19443,11 @@ module sep_fcov (
   // rst_ni falls: the offset is the clk_i edges after the request handshake
   // edge (AR, or the later of AW and W) and before the fall, against W, the
   // edges strictly between the handshake and the response of the last access
-  // of that path that completed alone. A ROM read in flight is the handshake
-  // on sep_boot_rom_req with no rvalid yet. After the release, the first R
-  // or B beat (rvalid for ROM) must follow a request issued after it. The
-  // tracking is ungated; the gate applies at the fall.
+  // of that path that completed alone. A ROM read in flight is a request on
+  // the boot ROM memory_interface stream (rom_req_i) with no rom_rvalid_i yet.
+  // After the release, the first R or B beat (rom_rvalid_i for ROM) must
+  // follow a request issued after it. The tracking is ungated; the gate
+  // applies at the fall.
   // ---------------------------------------------------------------------
   logic mm_or_pend = 1'b0;
   logic mm_ow_aw = 1'b0;
@@ -19404,8 +19463,8 @@ module sep_fcov (
   logic mm_st_post = 1'b0;
   logic mm_st_post_r = 1'b0;
   wire [63:0] mm_ow_anchor = (mm_ow_awc > mm_ow_wc) ? mm_ow_awc : mm_ow_wc;
-  wire mm_rom_hs = (rom_req_i.req === 1'b1) && (rom_rsp_i.gnt === 1'b1);
-  wire mm_rom_rv = (rom_rsp_i.rvalid === 1'b1);
+  wire mm_rom_hs = (rom_req_i === 1'b1);
+  wire mm_rom_rv = (rom_rvalid_i === 1'b1);
   always @(posedge clk_i) begin
     if (in_reset) begin
       mm_or_pend <= 1'b0;
@@ -19937,10 +19996,11 @@ module sep_fcov (
 
   // ---------------------------------------------------------------------
   // cp_rom_write_master: a CPU store to the ROM aperture. A ROM macro
-  // request (after the interface shim) at the store word is a readback when
-  // a read request for that word reached sep_boot_rom_req within
-  // MmRomRdAge edges; the cell hits MmStoreQuiet edges after the store
-  // response when every such request was a readback.
+  // request (out of the memory_interface) at the store word is a readback when
+  // a read request for that word is on the boot ROM memory_interface stream
+  // (rom_req_i with rom_we_i low) within MmRomRdAge edges; the cell hits
+  // MmStoreQuiet edges after the store response when every such request was
+  // a readback.
   // ---------------------------------------------------------------------
   longint unsigned mm_rrd[int unsigned];
   logic mm_sw_on = 1'b0;
@@ -19951,8 +20011,7 @@ module sep_fcov (
   always @(posedge clk_i) begin
     int unsigned w;
     logic rb;
-    if ((rom_req_i.req === 1'b1) && (rom_req_i.wenable !== 1'b1))
-      mm_rrd[int'(rom_req_i.addr[15:3])] = mm_cyc;
+    if ((rom_req_i === 1'b1) && (rom_we_i !== 1'b1)) mm_rrd[int'(rom_addr_i[15:3])] = mm_cyc;
     if (mm_sw_on && (rom_macro_req_i === 1'b1) && (rom_macro_addr_i == mm_sw_word)) begin
       w  = int'(mm_sw_word);
       rb = mm_rrd.exists(w) && ((mm_cyc - mm_rrd[w]) <= MmRomRdAge);
@@ -36145,13 +36204,6 @@ module sep_fcov (
     cp_mem_boot_type: coverpoint v[0] iff (pt == 5'd7) {
       bins cold_boot_writes_key = {1'b0}; bins warm_boot_writes_no_key = {1'b1};
     }
-    // Grant-to-rvalid latency 1 to 4; 9: two different delayed latencies in
-    // one run.
-    cp_km_sram_latency: coverpoint v[3:0] iff (pt == 5'd8) {
-      bins latency[] = {[4'd1 : 4'd4]};
-      bins two_values_in_one_run = {4'd9};
-      illegal_bins latency0 = {4'd0};
-    }
   endgroup
 
   covergroup sep_km_kpv_slot_cg with function sample (logic [4:0] pt, logic [15:0] v);
@@ -37105,8 +37157,7 @@ module sep_fcov (
         km_sk_cons_pend <= 1'b0;
       end
     end
-    if ((km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) && (km_sram_if_i[2] === 1'b1) &&
-        (km_scr_en_i === 1'b1)) begin
+    if ((km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) && (km_scr_en_i === 1'b1)) begin
       km_scr_resident <= 1'b1;
       if (km_lock_en0_pend && (km_own_scr || km_own_br))
         u_sep_km_memory_boot_cg.sample(5'd2, 16'd6);
@@ -37911,10 +37962,8 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // Memory interface, SRAM stores, ROM and fetch protection.
   // ---------------------------------------------------------------------
-  wire km_sram_rd = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b0) &&
-      (km_sram_if_i[2] === 1'b1);
-  wire km_sram_wr = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) &&
-      (km_sram_if_i[2] === 1'b1);
+  wire km_sram_rd = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b0);
+  wire km_sram_wr = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1);
   logic [3:0] km_st_cnt = '0;
   logic [4:0] km_st_region = '0;
   logic [12:0] km_st_word = '0;
@@ -39956,13 +40005,6 @@ module sep_fcov (
   logic [1:0] kq_par_lane = '0;
   logic [3:0] kq_par_rstrb = '0;
   logic [1:0] kq_par_st_q = '0;
-  logic [31:0] kq_lat_done_q = '0;
-  logic [7:0] kq_lat_prev = '0;
-  // Sub-window of cp_km_sram_latency: sep_km_fault_inject_rand_test writes 1
-  // through the u_sep_fcov handle while its latency watcher grades the fixed
-  // and the random runs, and 0 before the watcher stops. It gates a sample;
-  // it is never a bin value and drives nothing.
-  int unsigned km_lat_graded = 0;
   logic [10:0] kq_sil = '0;  // clocks of silence after a frame sent while bit 30 is high
   logic kq_unrec_q = 1'b0;
   logic [11:0] kq_st_q = '0;
@@ -39996,7 +40038,7 @@ module sep_fcov (
   always @(posedge clk_i) begin
     logic [7:0] rc, id, msk, pol, sz, wid;
     logic [31:0] arg;
-    logic has_arg, valid, rcmd, jump, lat_new, gw, ofd;
+    logic has_arg, valid, rcmd, jump, gw, ofd;
     logic [2:0] ff, cls;
     logic [3:0] pr, r, rb;
     logic [11:0] st, hi_m, lo_m, ranked;
@@ -40341,22 +40383,6 @@ module sep_fcov (
     end
     if (km_rel_ev && !km_rel_cold && kq_rec_pre && !kq_recov && (km_own_cp || km_own_fi))
       u_sep_km_kmcsr_status_cg.sample(5'd8, 16'd2);
-
-    // ---- SRAM read latency (cp_km_sram_latency) ----
-    lat_new = (km_sram_lat_done_i !== kq_lat_done_q) && !$isunknown(km_sram_lat_done_i);
-    kq_lat_done_q <= km_sram_lat_done_i;
-    // The previous latency holds only a read of the current graded run: it
-    // reads 0, outside 2 to 4, while km_lat_graded is 0, so the pair of
-    // two_values_in_one_run cannot span two runs.
-    if (km_lat_graded == 0) kq_lat_prev <= '0;
-    else if (lat_new && !$isunknown(km_sram_lat_i)) kq_lat_prev <= km_sram_lat_i;
-    if (lat_new && !$isunknown(km_sram_lat_i)) begin
-      if (km_own_fi && (km_lat_graded != 0) && (km_sram_lat_i <= 8'd4))
-        u_sep_km_memory_boot_cg.sample(5'd8, 16'(km_sram_lat_i));
-      if (km_own_fi && (km_lat_graded != 0) && (km_sram_lat_i >= 8'd2) && (km_sram_lat_i <= 8'd4) &&
-          (kq_lat_prev >= 8'd2) && (kq_lat_prev <= 8'd4) && (km_sram_lat_i != kq_lat_prev))
-        u_sep_km_memory_boot_cg.sample(5'd8, 16'd9);
-    end
 
     // ---- HK-PAR parity flips (cp_if_parity): the lane that the hook
     // flipped and the KM checked, then the parity bit of that memory ----

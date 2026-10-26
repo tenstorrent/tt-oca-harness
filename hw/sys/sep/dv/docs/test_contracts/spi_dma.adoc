@@ -392,7 +392,7 @@ this leaf are graded in firmware (CHK-READ, CHK-FAST-READ) only. The flash model
 
 *Not claimed*: lockstep punch-through. The register path (`reg_path_err`) is not
 exercised by this leaf at all; the unmapped-window term is proven by
-<<sep_irq_ip_to_aggregator_test>>. Persistence across a CPU-only reset, and
+<<sep_irq_ip_to_aggregator_test>>. Persistence across a watchdog reset, and
 the rule that a fault arriving in the clear cycle still latches — both stated in
 the register description — are unproven here.
 

@@ -41,8 +41,9 @@ Checkers:
                         abandoned ID appears on ``s_axi``.
   CHK-SRAM-OTF-REPLAY   the PR-SRAM request tap shows no request at the
                         abandoned address between the reset and the post-reset
-                        write; the post-reset write and the readback response
-                        show on the tap.
+                        write; the post-reset write shows on the tap, and a
+                        response after the readback request carries the
+                        post-reset value as read data.
 Controls (not counted): CTL-SRAM-FILTER (inbound filter entry readback),
 CTL-SRAM-REACH (both masters write and read back the first and last word, each
 of the 15 word-address bits and 128 drawn words).
@@ -986,10 +987,16 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             for b in reqs
             if b.we == 0 and off(b) == post_off and (first_w is not None and b.seq > first_w)
         ]
-        rsp_seen = int(bool(ctl_r) and any(r.seq > ctl_r[0].seq for r in rsps))
+        # The response beat after the readback request must carry the post-reset
+        # value as macro read data; a beat with other data does not count.
+        post_w = int.from_bytes(post, "little")
+        ctl_rsp = [r for r in rsps if ctl_r and r.seq > ctl_r[0].seq]
+        rsp_seen = int(any(r.rdata == post_w for r in ctl_rsp))
+        rsp_rdata = ",".join("X" if r.rdata is None else f"0x{r.rdata:x}" for r in ctl_rsp[:2])
         line = (
             f"path={path} offset={o}/{w} replay={len(replay)} control_write_seen={int(bool(ctl_w))} "
-            f"control_rsp_seen={rsp_seen} abandoned_off=0x{ab_off:05x} post_off=0x{post_off:05x} "
+            f"control_rsp_seen={rsp_seen} control_rsp_rdata=[{rsp_rdata}] want_rdata=0x{post_w:x} "
+            f"abandoned_off=0x{ab_off:05x} post_off=0x{post_off:05x} "
             f"tap_reqs_after_fall={len(reqs)} pre_fall_reqs={len(self.sram_tap.since(tap_mark, 'req')) - len(reqs)}"
         )
         if replay or not ctl_w or not rsp_seen or unknown:

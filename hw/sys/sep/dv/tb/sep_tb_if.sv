@@ -67,8 +67,6 @@ interface sep_tb_if;
   logic [98*32-1:0]   km_sram_probe;
   logic [31:0]        km_sram_rd_accept_count;
   logic [31:0]        km_sram_rd_b2b_diff_count;
-  logic [31:0]        km_sram_rd_lat1_count;
-  logic [31:0]        km_sram_rd_lat_err_count;
   logic [31:0]        km_sram_req_count;
   logic [31:0]        km_sram_scr_rd_count;
   logic [4*13-1:0]    km_sram_scr_wr_addr;

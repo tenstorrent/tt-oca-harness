@@ -96,45 +96,24 @@ module km_rom_interface
   logic is_read;
   assign is_read = mem_valid_i && !(|mem_wstrb_i);
 
-  // Track outstanding requests to ensure we complete them
-  // This is critical for pipelined memory when the CPU may de-assert mem_valid
-  // before all responses arrive (e.g., second word of unaligned instruction)
-  // Support pipelined sequential reads: can accept new request in same cycle as response
-  logic request_pending_q;
-  logic [3:0] pending_rstrb_q;
+  // The ROM answers every request on the next clock, so the response of a request is
+  // valid, and checked against that request's read strobe, exactly one clock later.
+  logic       rdata_valid_q;
+  logic [3:0] rdata_rstrb_q;
   logic [3:0] req_rstrb;
-  logic [3:0] current_rsp_rstrb;
-  logic       read_complete;
   logic [1:0] req_squelch_q;
-  logic       req_enable;
 
-  // Determine if we should issue a new request
-  // 1. On look-ahead read (prefetch for next cycle) - highest priority
-  // 2. On regular read (when mem_valid is asserted)
-  // Don't issue new request if one is already pending and not yet completed
-  // EXCEPT: allow new request in same cycle as response (pipelined operation)
-  logic issue_new_request;
-  assign issue_new_request = (mem_la_read_i || is_read) &&
-                               (!request_pending_q || rom_mem_rsp_i.rvalid);
   assign req_rstrb = mem_la_read_i ? mem_la_rstrb_i : mem_rstrb_i;
-  assign read_complete = rom_mem_rsp_i.rvalid;
-  assign current_rsp_rstrb = (rom_mem_req_o.req && !request_pending_q) ? req_rstrb : pending_rstrb_q;
-  assign req_enable = req_squelch_q[1];
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      request_pending_q <= 1'b0;
-      pending_rstrb_q <= '0;
+      rdata_valid_q <= 1'b0;
+      rdata_rstrb_q <= '0;
       req_squelch_q <= '0;
     end else begin
-      // Track when we've issued a request but haven't received response
-      // If new request is issued in same cycle as response, keep pending set
+      rdata_valid_q <= rom_mem_req_o.req;
       if (rom_mem_req_o.req) begin
-        request_pending_q <= 1'b1;
-        pending_rstrb_q <= req_rstrb;
-      end else if (rom_mem_rsp_i.rvalid) begin
-        // Clear pending only if no new request is being issued
-        request_pending_q <= 1'b0;
+        rdata_rstrb_q <= req_rstrb;
       end
 
       // Hold req low for two cycles after reset release to avoid propagating
@@ -143,8 +122,9 @@ module km_rom_interface
     end
   end
 
-  assign rom_mem_req_o.req  = req_enable && issue_new_request;
-  // Use look-ahead address for prefetch, regular address otherwise
+  assign rom_mem_req_o.clk  = clk_i;
+  // Look-ahead reads prefetch the word the CPU will request on the next clock.
+  assign rom_mem_req_o.req  = req_squelch_q[1] && (mem_la_read_i || is_read);
   assign rom_mem_req_o.addr = mem_la_read_i ? la_word_addr : word_addr;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -157,7 +137,7 @@ module km_rom_interface
   // For pipelined memory with look-ahead: when mem_la_read triggers a prefetch,
   // the response arrives one cycle later when mem_valid is asserted. The CPU
   // samples data when both mem_valid and mem_ready are high.
-  assign mem_ready_o = (mem_valid_i && rom_mem_rsp_i.rvalid) ||
+  assign mem_ready_o = (mem_valid_i && rdata_valid_q) ||
                          (mem_valid_i && |mem_wstrb_i);  // Write: respond immediately
 
   ////////////////////////////////////////////////////////////////////////////
@@ -172,9 +152,9 @@ module km_rom_interface
   ////////////////////////////////////////////////////////////////////////////
 
   // Check parity on the byte lanes actually consumed by the CPU on this read response.
-  assign parity_error_o = read_complete ?
+  assign parity_error_o = rdata_valid_q ?
                             check_parity(rom_mem_rsp_i.rdata, rom_mem_rsp_i.parity,
-                                         current_rsp_rstrb) : 1'b0;
+                                         rdata_rstrb_q) : 1'b0;
 
   ////////////////////////////////////////////////////////////////////////////
   // ROM Write Error Output

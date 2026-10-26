@@ -255,14 +255,6 @@
 `SEP_TB_IN(logic, km_par_mem_i)
 `SEP_TB_IN(logic [1:0], km_par_lane_i)
 `SEP_TB_IN(logic [7:0], km_par_n_i)
-// Key Manager SRAM response latency (HK-LAT). Default 0. While
-// km_sram_lat_en_i is 1, a SRAM read response reaches the KM km_sram_lat_i
-// clocks after the accepted request, for a value of 2 or more sampled when the
-// macro answers; 0 and 1 keep the macro latency of 1. Top-port drive of the sep
-// input km_sram_mem_rsp_i, docs/SEP_TB_ARCH.adoc. See the force block in
-// tb_top.sv.
-`SEP_TB_IN(logic, km_sram_lat_en_i)
-`SEP_TB_IN(logic [3:0], km_sram_lat_i)
 // External TRNG stream driver (top-port drive of the sep input
 // ext_trng_axis_req_i[2:0], docs/SEP_TB_ARCH.adoc). Default 0. While bit i of
 // ext_trng_drive_en_i is 1, stream i carries tvalid ext_trng_tvalid_i[i], tdata
@@ -534,6 +526,10 @@
 `SEP_TB_OUT(logic, dbg_sep_reset_n_o)  // SEP internal reset released
 // CPU warm reset (sep_cpu_reset_n = sep_reset_n & wdt_rst_ni).
 `SEP_TB_OUT(logic, sep_cpu_reset_n_o)
+// Reset inputs (rst_ni) of the SEP SRAM and boot ROM memory interfaces
+// (u_sram_memory_interface, u_boot_rom_memory_interface). Monitor only.
+`SEP_TB_OUT(logic, pr_sram_memif_rst_n_o)
+`SEP_TB_OUT(logic, pr_rom_memif_rst_n_o)
 `SEP_TB_OUT(logic, dbg_cpu_trace_exc_o)  // retired-instruction exception flag
 `SEP_TB_OUT(logic, sep_fuse_sense_done_o)  // SEP fuse sense completed
 // Sensed eFuse shadow-register array, flattened to a top-level OUTPUT PORT
@@ -586,11 +582,9 @@
 // KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
 // for km_rom_otp_id.S, which writes its results to those words.
 `SEP_TB_OUT(logic [98*32-1:0], km_sram_probe_o)
-// KM SRAM read-response timing counters at the wrapper port; see the monitor
-// in tb_top. Observation-only.
+// KM SRAM read counters at the wrapper port; see the monitor in tb_top.
+// Observation-only.
 `SEP_TB_OUT(logic [31:0], km_sram_rd_accept_count_o)
-`SEP_TB_OUT(logic [31:0], km_sram_rd_lat1_count_o)
-`SEP_TB_OUT(logic [31:0], km_sram_rd_lat_err_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_rd_b2b_diff_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_scr_rd_count_o)
 // KM SRAM writes accepted while the KM scrambler is enabled, at the wrapper
@@ -669,11 +663,6 @@
 `SEP_TB_OUT(logic [8:0], km_outfifo_depth_o)
 // KM-INFIFO: head word of the inbound FIFO of the KM mailbox, {separator, data}.
 `SEP_TB_OUT(logic [32:0], km_infifo_head_o)
-// KM-LAT: the latency of the last completed KM SRAM read at the sep input
-// km_sram_mem_rsp_i, in clocks from the accepted request to rvalid, and the
-// count of completed reads since the bench reset.
-`SEP_TB_OUT(logic [7:0], km_sram_rd_lat_o)
-`SEP_TB_OUT(logic [31:0], km_sram_rd_done_count_o)
 // KM-WMAP: per SRAM write-lock region r (256 words) at [9*r +: 9], the count
 // of distinct logical words written with we at 1 on the sep output
 // km_sram_mem_req_o since the bench reset or the last clock with
@@ -706,13 +695,12 @@
 // withdrawal has been driven since the arm.
 `SEP_TB_OUT(logic, km_strm_pat_beat_o)
 `SEP_TB_OUT(logic, km_strm_pat_fired_o)
-// HK-IRQSET, HK-CPUIRQ, HK-KPV, HK-PAR and HK-LAT state: the IRQ_SET pulse has
-// been driven since the arm; the CPU IRQ line pulse has been driven since the
-// arm, and the PicoRV32 pending bits 2:1; the count of corrupted KPV reads
-// since the enable rose; the parity flip has been driven since the arm, the
-// read responses counted since the arm, and the byte lanes that the KM
-// interface parity-checks on the flipped response; the count of SRAM responses
-// that HK-LAT delayed since the bench reset.
+// HK-IRQSET, HK-CPUIRQ, HK-KPV and HK-PAR state: the IRQ_SET pulse has been
+// driven since the arm; the CPU IRQ line pulse has been driven since the arm,
+// and the PicoRV32 pending bits 2:1; the count of corrupted KPV reads since the
+// enable rose; the parity flip has been driven since the arm, the read
+// responses counted since the arm, and the byte lanes that the KM interface
+// parity-checks on the flipped response.
 `SEP_TB_OUT(logic, km_irqset_fired_o)
 `SEP_TB_OUT(logic, km_cpuirq_fired_o)
 `SEP_TB_OUT(logic [1:0], km_cpuirq_pending_o)
@@ -720,7 +708,6 @@
 `SEP_TB_OUT(logic, km_par_fired_o)
 `SEP_TB_OUT(logic [7:0], km_par_resp_count_o)
 `SEP_TB_OUT(logic [3:0], km_par_rstrb_o)
-`SEP_TB_OUT(logic [31:0], km_sram_lat_delayed_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)
@@ -941,9 +928,17 @@
 `SEP_TB_OUT(logic [13:0], iso_slv_r_hs_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_bresp_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_rresp_probe_o)
-// Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_n, rst_aon_ni of the AON
+// Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_aon_clk_n, rst_aon_ni of the AON
 // timer).
 `SEP_TB_OUT(logic, aon_rst_n_probe_o)
+// Watchdog reset at the output of the reset controller scan bypass
+// (sep_wdt_reset_n, u_sep_reset_ctrl.sep_wdt_reset_no): scan_rst_ni when test_en_i is
+// high, else the two-flop capture of wdt_rst_ni. Read-only.
+`SEP_TB_OUT(logic, sep_wdt_reset_n_probe_o)
+// Watchdog alert (wdt_alert, u_sep_wdt_wrap.wdt_alert_o) and bark interrupt
+// (intr_wdog_timer_bark, u_sep_wdt_wrap.intr_wdog_timer_bark_o). Read-only.
+`SEP_TB_OUT(logic, wdt_alert_probe_o)
+`SEP_TB_OUT(logic, wdt_bark_probe_o)
 // Watchdog count register WDOG_COUNT of the AON timer
 // (u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q, clocked by clk_wdt_i).
 // Read-only.
@@ -1234,30 +1229,35 @@
 `SEP_TB_OUT(logic [55:0], pr_alias_out_araddr_o)
 `SEP_TB_OUT(logic [3:0], pr_alias_out_arcache_o)
 `SEP_TB_OUT(logic [2:0], pr_alias_out_arprot_o)
-// PR-SRAM: the SRAM macro request (wrapper net u_dut.sep_sram_req) and response.
+// PR-SRAM and PR-ROM: the byte-addressed request stream inside each
+// memory_interface, ahead of the macro port, and its response.
 `SEP_TB_OUT(logic, pr_sram_req_o)
-`SEP_TB_OUT(logic, pr_sram_gnt_o)
 `SEP_TB_OUT(logic [31:0], pr_sram_addr_o)
 `SEP_TB_OUT(logic, pr_sram_we_o)
 `SEP_TB_OUT(logic [63:0], pr_sram_wdata_o)
 `SEP_TB_OUT(logic [7:0], pr_sram_strb_o)
 `SEP_TB_OUT(logic, pr_sram_rvalid_o)
 `SEP_TB_OUT(logic [63:0], pr_sram_rdata_o)
-// PR-ROM: the boot ROM macro request (wrapper net u_dut.sep_boot_rom_req) and response.
 `SEP_TB_OUT(logic, pr_rom_req_o)
-`SEP_TB_OUT(logic, pr_rom_gnt_o)
 `SEP_TB_OUT(logic [31:0], pr_rom_addr_o)
 `SEP_TB_OUT(logic, pr_rom_we_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_wdata_o)
 `SEP_TB_OUT(logic [7:0], pr_rom_strb_o)
 `SEP_TB_OUT(logic, pr_rom_rvalid_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_rdata_o)
-// PR-ROM macro side: the request after the ROM interface shim
-// (sep_ip_integration rom_macro_req, rom_macro_addr: the 64-bit word index)
-// and the macro read data.
+// PR-ROM macro side: the boot ROM macro request out of the memory_interface
+// (wrapper net u_dut.sep_boot_rom_req; addr is the 64-bit word index) and the
+// macro read data.
 `SEP_TB_OUT(logic, pr_rom_macro_req_o)
 `SEP_TB_OUT(logic [12:0], pr_rom_macro_addr_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_macro_rdata_o)
+// PR-SRAM macro side: the SRAM macro request out of the memory_interface
+// (wrapper net u_dut.sep_sram_req; addr is the 64-bit word index, wmask the bit
+// write mask with each byte strobe widened to eight bits).
+`SEP_TB_OUT(logic, pr_sram_macro_req_o)
+`SEP_TB_OUT(logic, pr_sram_macro_we_o)
+`SEP_TB_OUT(logic [sep_pkg::SEP_SRAM_ADDR_WIDTH-1:0], pr_sram_macro_addr_o)
+`SEP_TB_OUT(logic [sep_pkg::SEP_MEM_DATA_WIDTH-1:0], pr_sram_macro_wmask_o)
 // PR-TCM: the ICCM and DCCM macro request (wrapper net u_dut.sep_cpu_tcm_req)
 // and response (u_dut.sep_cpu_tcm_rsp). Per-bank fields are packed with bank 0
 // in the low bits: ICCM 4 banks of row address [17:4], DCCM 2 banks of row
