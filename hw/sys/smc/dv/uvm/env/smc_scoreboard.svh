@@ -22,6 +22,8 @@
 //                smc_mutex_sema_ref_model published for it, compared under the
 //                RDL field mask: acquire-on-read for a mutex, the signed
 //                accumulator for a semaphore.
+//                OKAY 32-bit MUTEX upper-word reads also acquire; their
+//                entire returned word is compared against zero.
 //
 //   lock_csr     every OKAY single-beat read of a reset-unit write-once lock
 //                register or of the register it guards is paired in order with
@@ -208,7 +210,12 @@ class smc_scoreboard extends ocah_scoreboard;
   function void write_smc_mutex_observed(ocah_axi_item t);
     int unsigned idx;
     bit          is_sema;
-    if (t.direction != OCAH_AXI_DIR_READ || !smc_is_mutex_sema_access(t, idx, is_sema)) return;
+    if (t.direction != OCAH_AXI_DIR_READ || (!smc_is_mutex_sema_access(
+            t, idx, is_sema
+        ) && !smc_is_mutex_upper_read(
+            t, idx
+        )))
+      return;
     push_observed(SmcFeatureMutexSema, t);
   endfunction
 
@@ -391,6 +398,14 @@ class smc_scoreboard extends ocah_scoreboard;
       return;
     end
     word_addr = smc_csr_word_addr(obs.address);
+    if (feature == SmcFeatureMutexSema) begin
+      int unsigned idx;
+      if (smc_is_mutex_upper_read(obs, idx)) begin
+        compare_csr_pair(feature, obs, exp, word_addr, $sformatf(
+                         "CPU_CTRL_MUTEX_%0d upper addr=0x%0h", idx, word_addr));
+        return;
+      end
+    end
     compare_csr_pair(feature, obs, exp, word_addr, csr_context(feature, word_addr), field_mask(
                      feature, word_addr));
   endfunction

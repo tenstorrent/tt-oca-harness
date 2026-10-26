@@ -247,14 +247,25 @@ tools = ["vcs"]
 tags = ["uvm", "csr", "reset"]
 run_modes = ["smoke"]
 
+[[tests]]
+# Narrow FIFO/acquire reads and null-write side effects; licensed on-demand leaf.
+name = "smc_narrow_access_side_effect_test"
+module = { uvm = "smc_narrow_access_side_effect_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "csr", "mailbox"]
+run_modes = ["smoke"]
+
 [[groups]]
-# Register-block CSR, pipelined lock and external-register lane scenarios.
+# Register-block CSR, lock ordering, lanes and narrow-access side effects.
 name = "csr_uvm_extended"
-expected_count = 3
+expected_count = 4
 tests = [
     "smc_regblock_sparse_strobe_test",
     "smc_lock_pipelined_write_test",
     "smc_external_reg_lane_test",
+    "smc_narrow_access_side_effect_test",
 ]
 
 [[groups]]

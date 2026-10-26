@@ -56,5 +56,6 @@ package smc_seq_lib_pkg;
   `include "smc_fabric_reg_clock_gate_test_seq.svh"
   `include "smc_mailbox_cool_reset_recovery_test_seq.svh"
   `include "smc_external_reg_lane_test_seq.svh"
+  `include "smc_narrow_access_side_effect_test_seq.svh"
 
 endpackage : smc_seq_lib_pkg

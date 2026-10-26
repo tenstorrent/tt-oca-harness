@@ -717,6 +717,21 @@ function automatic bit smc_is_mutex_sema_access(ocah_axi_item t, output int unsi
   return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
 endfunction
 
+// OKAY single-beat 32-bit reads of the upper MUTEX word still acquire.
+// cpu_ctrl.rdl requires the returned upper word to be zero in full.
+function automatic bit smc_is_mutex_upper_read(ocah_axi_item t, output int unsigned idx);
+  if (t.direction != OCAH_AXI_DIR_READ || !t.is_ok() || t.size != SmcCsrSize ||
+      t.data_words.size() != 1 || t.beat_count() != 1)
+    return 0;
+  for (int unsigned i = 0; i < SmcMutexCount; i++) begin
+    if (t.address == smc_mutex_addr(i) + SmcCsrBytes) begin
+      idx = i;
+      return 1;
+    end
+  end
+  return 0;
+endfunction
+
 // ---------------------------------------------------------------------------
 // spm_mem: the SPM scratchpad window reached over SEP_IN as 64-bit words.
 // ---------------------------------------------------------------------------
