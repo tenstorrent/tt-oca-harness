@@ -1158,7 +1158,7 @@ Exceptions (a closed set):
   SEP reset from software or JTAG is outside `aresetn`, so no reset rule
   grades it and a transaction open at that reset stays in the outstanding
   tracking until the next `rst_ni`. Compiled in every build and run mode
-  and on once `rst_ni` is known; the rules grade on VCS only (the SEP
+  and enabled once `rst_ni` is known; the rules grade on VCS only (the SEP
   Verilator targets pass no `--assert`). On VCS, a test with `+axi_sva_need_<dma|smn|smc|ext>`
   fails when that checker graded no AW or AR handshake. Protocol, not data.
 
