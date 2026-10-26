@@ -193,7 +193,7 @@ def series_for(history, flow, framework="cocotb"):
 
 
 class MainTests(unittest.TestCase):
-    """Aggregates published archives into the test-history grid."""
+    """Aggregates published archives into the test-history grid and series files."""
 
     ARCHIVES = {
         "data/runs/2026-08-02-run2.result.json.gz": record(
@@ -204,9 +204,20 @@ class MainTests(unittest.TestCase):
         ),
     }
 
+    def setUp(self):
+        self.out = Path(self.enterContext(tempfile.TemporaryDirectory())) / "test-history.json"
+        self.stderr = io.StringIO()
+
     def replace(self, name, **kwargs):
         """Replace an attribute of the tool under test for this test."""
         self.enterContext(mock.patch.object(aggregate_test_history, name, **kwargs))
+
+    def series_files(self):
+        """Every series file written beside the history, by file name."""
+        return {
+            path.name: json.loads(path.read_text())
+            for path in self.out.with_suffix("").glob("*.json")
+        }
 
     def aggregate(self, archives=None, limit=0, publishers=None):
         """
@@ -219,8 +230,7 @@ class MainTests(unittest.TestCase):
         # read_archive is given a path alone, whichever publisher it came from.
         every = {path: rec for group in by_dir.values() for path, rec in group.items()}
 
-        out = Path(self.enterContext(tempfile.TemporaryDirectory())) / "test-history.json"
-        argv = [__name__, str(out), "--limit", str(limit)]
+        argv = [__name__, str(self.out), "--limit", str(limit)]
         # Naming no publisher leaves the default runs directory in use.
         for runs_dir in publishers or {}:
             argv += ["--runs-dir", runs_dir]
@@ -230,10 +240,10 @@ class MainTests(unittest.TestCase):
         self.replace("archive_paths", side_effect=lambda ref, runs_dir: sorted(by_dir[runs_dir]))
         self.replace("read_archive", side_effect=lambda ref, path: every[path])
         self.enterContext(contextlib.redirect_stdout(io.StringIO()))
-        self.enterContext(contextlib.redirect_stderr(io.StringIO()))
+        self.enterContext(contextlib.redirect_stderr(self.stderr))
 
         self.assertEqual(aggregate_test_history.main(), 0)
-        return json.loads(out.read_text())
+        return json.loads(self.out.read_text())
 
     def test_orders_runs_oldest_first_with_a_cell_each(self):
         series = series_for(self.aggregate(), "dtp")
@@ -312,6 +322,61 @@ class MainTests(unittest.TestCase):
         # The busy publisher is trimmed; the quiet one is not crowded out of it.
         self.assertEqual(len(series_for(history, "dtp")["runs"]), 2)
         self.assertEqual(len(series_for(history, "sep")["runs"]), 1)
+
+    def test_the_grid_carries_only_the_counts(self):
+        archives = dict(self.ARCHIVES)
+        archives["data/runs/2026-08-03-run3.result.json.gz"] = record(
+            "dtp", "b", "2026-08-03T00:00:00+00:00", ["PASS"]
+        )
+        tests = series_for(self.aggregate(archives), "dtp")["tests"]
+        self.assertEqual(tests["a"], [{"pass": 1, "total": 1}, {"pass": 1, "total": 2}, None])
+
+    def test_each_series_file_carries_that_series_with_its_seeds(self):
+        archives = dict(self.ARCHIVES)
+        archives["data/runs/2026-08-04-run4.result.json.gz"] = record(
+            "dtp", "a", "2026-08-04T00:00:00+00:00", ["PASS"], framework="uvm"
+        )
+        history = self.aggregate(archives)
+        files = self.series_files()
+        self.assertEqual(sorted(files), ["dtp-cocotb-vcs.json", "dtp-uvm-vcs.json"])
+
+        cocotb = files["dtp-cocotb-vcs.json"]
+        grid = series_for(history, "dtp")
+        self.assertEqual(
+            {key: cocotb[key] for key in ("flow", "framework", "tool", "runs")},
+            {key: grid[key] for key in ("flow", "framework", "tool", "runs")},
+        )
+        self.assertEqual(
+            cocotb["tests"]["a"],
+            [
+                {"pass": 1, "total": 1, "seeds": [{"seed": 0}]},
+                {"pass": 1, "total": 2, "seeds": [{"seed": 0}, {"seed": 1, "reason": "FAIL"}]},
+            ],
+        )
+
+    def test_an_empty_framework_leaves_its_part_of_the_name_empty(self):
+        merged = record("dtp", "a", "2026-08-01T00:00:00+00:00", ["PASS"], framework="")
+        self.aggregate({"data/runs/2026-08-01-run1.result.json.gz": merged})
+        self.assertEqual(list(self.series_files()), ["dtp--vcs.json"])
+
+    def test_a_series_the_page_cannot_name_gets_no_file(self):
+        odd = record("dtp", "a", "2026-08-01T00:00:00+00:00", ["PASS"], tool="../vcs")
+        history = self.aggregate({"data/runs/2026-08-01-run1.result.json.gz": odd})
+        self.assertEqual(len(history["series"]), 1)
+        self.assertEqual(self.series_files(), {})
+        self.assertIn("no series file", self.stderr.getvalue())
+
+    def test_a_file_for_a_series_no_longer_published_is_removed(self):
+        stale = self.out.with_suffix("") / "sep-cocotb-vcs.json"
+        stale.parent.mkdir()
+        stale.write_text("{}")
+        self.aggregate()
+        self.assertEqual(list(self.series_files()), ["dtp-cocotb-vcs.json"])
+
+    def test_the_output_must_be_a_json_file(self):
+        self.out = self.out.with_suffix("")
+        with self.assertRaises(SystemExit):
+            self.aggregate()
 
     def test_a_record_without_a_flow_names_no_series(self):
         nameless = record("", "a", "2026-08-06T00:00:00+00:00", ["PASS"])

@@ -12,10 +12,14 @@ page::
     {
       "series": [{"flow": str, "framework": str, "tool": str,
                   "runs":  [{"date": str, "id": str}],
-                  "tests": {"<name>": [{"pass": int, "total": int,
-                                        "seeds": [{"seed": int,
-                                                   "reason": str}]} | None]}}]
+                  "tests": {"<name>": [{"pass": int, "total": int} | None]}}]
     }
+
+and, for the test-detail page, one file per series beside it, such as
+``test-history/<flow>-<framework>-<tool>.json`` for ``test-history.json``. Each
+holds one series as above, with every cell also carrying its seeds::
+
+    {"pass": int, "total": int, "seeds": [{"seed": int, "reason": str}]}
 
 A block verified by more than one framework or simulator reports once per
 combination, so all three name a series. Each carries its own ``runs``, oldest
@@ -29,8 +33,8 @@ out of the seeds that ran:
     null                      the test did not run; the regression ended
                               before reaching it
 
-Every cell carries ``seeds``, one entry per seed in the order it ran, and a seed
-that did not pass also carries the explanation it gave.
+``seeds`` lists one entry per seed in the order it ran, and a seed that did not
+pass also carries the explanation it gave.
 """
 
 from __future__ import annotations
@@ -49,6 +53,10 @@ PASS = "PASS"
 
 # The fields that together name one series, matching trim_dashboard_data.py.
 IDENTITY_KEYS = ("flow", "framework", "tool")
+
+# The characters a series file's name may carry. The test-detail page builds
+# that name from its query string, escaping anything else.
+NAME_PART = re.compile(r"^[A-Za-z0-9_]*$")
 
 
 def archive_paths(ref: str, prefix: str) -> list[str]:
@@ -186,6 +194,42 @@ def cell(seeds: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def counts_only(series: dict[str, Any]) -> dict[str, Any]:
+    """
+    One series as the grid draws it.
+
+    Args:
+        series: A series whose cells carry their seeds
+
+    Returns:
+        The same series with each cell reduced to its counts
+    """
+    return {
+        **series,
+        "tests": {
+            name: [
+                None if counts is None else {"pass": counts["pass"], "total": counts["total"]}
+                for counts in cells
+            ]
+            for name, cells in series["tests"].items()
+        },
+    }
+
+
+def write_json(path: Path, document: dict[str, Any]) -> None:
+    """
+    Write a file only the pages read, compact rather than indented.
+
+    Args:
+        path: File to write
+        document: Its content
+    """
+    path.write_text(
+        json.dumps(document, separators=(",", ":"), sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
 def run_stamp(record: dict[str, Any], path: str) -> datetime:
     """
     When a run happened.
@@ -226,7 +270,7 @@ def main() -> int:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("output", type=Path, help="aggregate file to write")
+    parser.add_argument("output", type=Path, help="aggregate .json file to write")
     parser.add_argument("--ref", default="origin/dv-dashboard-data", help="git ref to read")
     parser.add_argument(
         "--runs-dir",
@@ -243,6 +287,8 @@ def main() -> int:
         help="keep only the newest N archives from each runs directory",
     )
     args = parser.parse_args()
+    if args.output.suffix != ".json":
+        parser.error("output must name a .json file; its series files go beside it")
 
     entries: list[tuple[datetime, str, dict[str, Any]]] = []
     for runs_dir in args.runs_dirs or ["data/runs/"]:
@@ -288,12 +334,25 @@ def main() -> int:
         }
         series.append(entry)
 
-    # Written compact rather than indented: it is machine-read only.
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps({"series": series}, separators=(",", ":"), sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    write_json(args.output, {"series": [counts_only(entry) for entry in series]})
+
+    series_dir = args.output.with_suffix("")
+    series_dir.mkdir(exist_ok=True)
+    written: set[Path] = set()
+    for entry in series:
+        parts = [entry[field] for field in IDENTITY_KEYS]
+        if not all(NAME_PART.match(part) for part in parts):
+            print(f"warning: no series file for {tuple(parts)!r}", file=sys.stderr)
+            continue
+        path = series_dir / f"{'-'.join(parts)}.json"
+        write_json(path, entry)
+        written.add(path)
+
+    # A site restaged in place keeps files for series these archives do not carry.
+    for path in series_dir.glob("*.json"):
+        if path not in written:
+            path.unlink()
     return 0
 
 

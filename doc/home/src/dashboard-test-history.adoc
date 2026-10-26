@@ -18,7 +18,7 @@ ifdef::backend-html5[]
   <div id="dashboard-status" class="dashboard-status">Loading test history&hellip;</div>
 
   <div id="dashboard-test-history" hidden>
-    <div id="dashboard-history-chart" class="dashboard-chart"></div>
+    <div id="dashboard-history-grid"></div>
   </div>
 
   <noscript>
@@ -30,7 +30,6 @@ ifdef::backend-html5[]
     </p>
   </noscript>
 </div>
-<script src="../../_/js/vendor/echarts/echarts.min.js"></script>
 <script src="../../_/js/dashboard.js"></script>
 ++++
 endif::[]

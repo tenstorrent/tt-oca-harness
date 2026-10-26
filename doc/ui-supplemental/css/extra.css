@@ -809,6 +809,49 @@
     font-weight: 500;
 }
 
+/* Per-test history: a row per test and a narrow column per run. The test
+   names stay in view while a long history scrolls sideways. */
+.dashboard-history-grid {
+    border-collapse: collapse;
+    margin: 0.5em 0 1.5em 0;
+    font-family: var(--oca-font-body);
+    font-size: 0.65rem;
+    line-height: 1.2;
+}
+
+.dashboard-history-grid th {
+    font-weight: normal;
+    color: var(--oca-text);
+    white-space: nowrap;
+    text-align: left;
+    vertical-align: bottom;
+}
+
+.dashboard-history-grid thead th + th {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    padding: 4px 0;
+    font-size: 0.6rem;
+    line-height: 1;
+}
+
+/* Pinned while the runs scroll under it, and stacked above the rotated run
+   headings, whose transform otherwise paints them over it. */
+.dashboard-history-grid th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    padding: 0 8px 0 0;
+    background-color: #ffffff;
+}
+
+.dashboard-history-grid td {
+    width: 10px;
+    height: 13px;
+    padding: 0;
+    border: 1px solid #ffffff;
+}
+
 /* ========================================
    MOBILE NAVBAR
    ======================================== */
