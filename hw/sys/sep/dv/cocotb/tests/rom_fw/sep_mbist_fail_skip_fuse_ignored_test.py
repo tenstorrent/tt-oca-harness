@@ -79,6 +79,15 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
 
     # The PC check rejects the scrub loop; the length only needs a few spin iterations.
     quiesce_cycles = _QUIESCE_CYCLES
+    required_evidence = (
+        "CHK-SKIP-FUSE-BLOWN",
+        "CHK-DFT-PUBLISH",
+        "CHK-DFT-DETECT",
+        "CHK-DFT-TERMINAL",
+        "CHK-DFT-STATUS-STABLE",
+        "CHK-DFT-HALT-SPIN",
+        "CHK-DFT-NO-PROGRESS",
+    )
 
     def build_efuse_image(self) -> SepEfuseImage:
         image = SepEfuseImage()
@@ -108,7 +117,7 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
             f"(STATUS_RPT=0x{status_rpt:08x}); blow it in build_efuse_image()"
         )
         self.logger.info(
-            "CHK-SKIP-FUSE-BLOWN: OTP STATUS_RPT = 0x%08x, bit %d = 1",
+            "CHK-SKIP-FUSE-BLOWN PASS: OTP STATUS_RPT = 0x%08x, bit %d = 1",
             status_rpt,
             _STATUS_RPT_BIT2,
         )
@@ -204,7 +213,7 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
             f"SMC scratch[10] never held the injected DFT status "
             f"0x{self.dft_status_injected:08x}; observed {s10_hex}"
         )
-        self.logger.info("CHK-DFT-PUBLISH: SMC scratch[10] = 0x%08x", self.dft_status_injected)
+        self.logger.info("CHK-DFT-PUBLISH PASS: SMC scratch[10] = 0x%08x", self.dft_status_injected)
 
         # CHK-DFT-DETECT: the gate took the failure path and warned.
         assert _STATUS_MBIST_WARN in status_seq, (
@@ -212,7 +221,7 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
             f"(SEP_MSG_MBIST_FAIL): the gate did not take the failure path. "
             f"Observed {status_hex}"
         )
-        self.logger.info("CHK-DFT-DETECT: cold_scratch[1] = 0x%08x (WARN)", _STATUS_MBIST_WARN)
+        self.logger.info("CHK-DFT-DETECT PASS: cold_scratch[1] = 0x%08x (WARN)", _STATUS_MBIST_WARN)
 
         # CHK-DFT-TERMINAL: the ROM wrote ROM_ERR_DFT_GATE_BLOCKED after the WARN word.
         assert halted, (
@@ -225,7 +234,7 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
             f"ROM_ERR_DFT_GATE_BLOCKED preceded the WARN word; observed {status_hex}"
         )
         self.logger.info(
-            "CHK-DFT-TERMINAL: cold_scratch[1] = 0x%08x after WARN", _STATUS_DFT_GATE_BLOCKED
+            "CHK-DFT-TERMINAL PASS: cold_scratch[1] = 0x%08x after WARN", _STATUS_DFT_GATE_BLOCKED
         )
 
         # CHK-DFT-STATUS-STABLE: nothing overwrites the terminal word.
@@ -234,7 +243,7 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
             f"ROM_ERR_DFT_GATE_BLOCKED, so the ROM kept running past the halt"
         )
         self.logger.info(
-            "CHK-DFT-STATUS-STABLE: cold_scratch[1] held 0x%08x for %d cycles",
+            "CHK-DFT-STATUS-STABLE PASS: cold_scratch[1] held 0x%08x for %d cycles",
             _STATUS_DFT_GATE_BLOCKED,
             self.quiesce_cycles,
         )
@@ -250,7 +259,7 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
             f"{[hex(p) for p in sorted(spin_pcs)]}, so the ROM continued past the gate"
         )
         self.logger.info(
-            "CHK-DFT-HALT-SPIN: %d cycles inside %s",
+            "CHK-DFT-HALT-SPIN PASS: %d cycles inside %s",
             self.quiesce_cycles,
             [hex(p) for p in sorted(post_pcs)],
         )
@@ -261,4 +270,6 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
                 f"ROM printed {marker}, which only the C runtime emits: the boot "
                 f"continued past a failed memory check. Console: {console}"
             )
-        self.logger.info("CHK-DFT-NO-PROGRESS: none of %s printed", ", ".join(_C_RUNTIME_MARKERS))
+        self.logger.info(
+            "CHK-DFT-NO-PROGRESS PASS: none of %s printed", ", ".join(_C_RUNTIME_MARKERS)
+        )
