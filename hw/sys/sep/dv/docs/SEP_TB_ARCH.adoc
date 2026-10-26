@@ -200,7 +200,10 @@ Observation probe groups:
   as in `crypto_isolated_probe_o`. They show when a stage accepts a transaction and
   when it returns the response, the point where the specification drains a
   domain before its reset. No frontdoor shows the stage side of the fabric.
-  Owner `sep_sw_reset_isolation_matrix_test`.
+  Owners `sep_sw_reset_isolation_matrix_test` and
+  `sep_crypto_per_ip_reset_isolation_test`, which reads the `ar` handshake of
+  stages 2 (`host_hmac`) and 4 (`host_abr`) and logs it, with the isolate
+  request at it, for each drain read (an observation; no check grades it).
 * Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
   (`u_sep_wdt_wrap.rst_wdt_n`, `rst_aon_ni` of the AON timer); owners
   `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,
@@ -494,6 +497,7 @@ Observation probe groups:
   and of the two DMA latches (`reg_path_err`, `host_path_err`). Owner:
   `sep_cpu_bridge_fault_matrix_rand_test` (CHK-RACE).
 * Adams Bridge ML-KEM seed Z words (`abr_mlkem_seed_z_probe_o`).
+* Adams Bridge zeroize request and ready state (`abr_zeroize_ready_probe_o`).
 * Fabric-slot register-block W-channel counters (`fabric_slot_w_*`).
 * Fabric port taps, each a read-only copy of a DUT net with the AW and AR
   VALID, READY and request fields and, where named, the W beat
@@ -978,7 +982,8 @@ Exceptions (a closed set):
   `sep_rom_hmac_fifo_stall_terminal_test` (HMAC),
   `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY),
   `sep_hmac_fifo_stream_rand_test` (HMAC, CHK-HMAC-BACKPRESSURE-HOLD and the
-  FIFO-full cells).
+  FIFO-full cells), `sep_kmac_stream_cfg_rand_test` (KMAC, the control of
+  CHK-KMAC-FIFO-DONE: a `STATUS` read with message words held in the FIFO).
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *TCM bit-flip* — stored-bit error inject on the ICCM and DCCM macro arrays,
@@ -1107,6 +1112,11 @@ Exceptions (a closed set):
   KV seed read the decapsulation key reads as zero, so the Z a KV read delivered
   has no frontdoor. Observation only; it drives nothing. Owners:
   `sep_km_sideload_share_walk_test`, `sep_km_abr_mlkem_sideload_test`.
+* *Adams Bridge zeroize probe* — `abr_zeroize_ready_probe_o` is a read-only XMR
+  of the engine's zeroize request (bit 0) and its ready state, `abr_ready`, the
+  value `STATUS.READY` reports (bit 1). A STATUS read is a bus round trip, so it can only bound when the
+  sweep starts and ends; the probe times it to the cycle. Observation only; it
+  drives nothing. Owner: `sep_abr_zeroize_latency_test`.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
   `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`, with
   `MASTER_SYNC_RESET` = 1: the AR, AW and W valids may be high on the first

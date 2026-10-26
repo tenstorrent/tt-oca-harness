@@ -325,7 +325,6 @@ def _test_metadata(
         "tags": tags,
         "groups": groups,
         "category": category,
-        "target": test.target if test else None,
     }
 
 

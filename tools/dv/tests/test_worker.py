@@ -402,7 +402,7 @@ class WorkerMainTest(ManifestCase):
             self.assertEqual(run_worker(path), 0)
         self.assertEqual(run.call_args.args[4:6], ("sim", name))
         entry = run.call_args.args[3].tests[name]
-        self.assertEqual((entry.name, entry.target), (self.item, "default"))
+        self.assertEqual((entry.name, entry.targets), (self.item, ("default",)))
 
     def test_a_leaf_takes_its_build_identity_from_the_manifest(self) -> None:
         for tool in ("verilator", "vcs"):

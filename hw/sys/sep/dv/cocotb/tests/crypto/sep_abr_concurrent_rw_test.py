@@ -28,6 +28,15 @@ moving their register.
 After both streams drain, every read-write register must hold the last value
 its owner wrote. Registers are restored to their entry values at the end.
 
+FCOV: the owner window of this leaf opens right before the two streams start
+and closes after CHK-ABR-CRW-STRESS, or on the first raise. The sampler holds
+each ``x_abr_concurrent`` cell that a response completes inside the window, and
+samples it only when its bit of the ``crypto_bus_pass`` label rises. The leaf
+writes those bits after CHK-ABR-CRW-WRITE-RESP, CHK-ABR-CRW-READ and
+CHK-ABR-CRW-STRESS pass, which grade every response of both streams. Entry
+reads, priming, CHK-ABR-CRW-FINAL and CHK-ABR-CRW-RESTORE run with the window
+closed.
+
 RANDCFG: the op mix, addresses, data, outstanding depths and throttle patterns
 all come from the run seed. The identity addresses a stream picks from are the
 pool built from the capture, so the configuration is built after it.
@@ -39,6 +48,13 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_fcov_gate import (
+    CRYPTO_BUS_PASS_ABR_CONCURRENT,
+    close_graded_window,
+    open_graded_window,
+    set_crypto_bus_pass,
+)
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_bus_seq import (
@@ -62,7 +78,14 @@ from seq_lib.sep_abr_bus_seq import (
     lane_value,
 )
 
+TEST = "sep_abr_concurrent_rw_test"
+
 OPS_PER_MASTER = 96
+
+# The x_abr_concurrent cell value v (0 to 5: {rd, wr, mixed} x
+# {depth 2, depth 3 to 6}) passes on bit CRYPTO_BUS_PASS_ABR_CONCURRENT + v of
+# the crypto_bus_pass cell mask (CxbPassAc of cov/sv/sep_fcov.sv).
+X_ABR_CONCURRENT_CELLS = 0x3F << CRYPTO_BUS_PASS_ABR_CONCURRENT
 
 # Each read-write register is written by one master.
 OWNED: dict[str, tuple[AbrWord, ...]] = {
@@ -259,30 +282,41 @@ class sep_abr_concurrent_rw_test(sep_base_test):
                 _throttle(SepSeededRng(cfg.throttle_seed[bus] ^ 0x5A5A_5A5A))
             )
         watch.start()
+        set_crypto_bus_pass(0, self.logger)
+        open_graded_window(TEST, self.logger)
         try:
-            tasks = [cocotb.start_soon(abr.stream(cfg.ops[bus], cfg.depth[bus])) for bus in OWNED]
-            for t in tasks:
-                await t
+            try:
+                tasks = [
+                    cocotb.start_soon(abr.stream(cfg.ops[bus], cfg.depth[bus])) for bus in OWNED
+                ]
+                for t in tasks:
+                    await t
+            finally:
+                watch.stop()
+                for bus in OWNED:
+                    chans = abr.driver(bus).channels
+                    for name in ("r_ready_delay", "b_ready_delay"):
+                        chans[name].clear_pause_generator()
+                        chans[name].pause = False
+
+            every = [a for ops in cfg.ops.values() for a in ops]
+            stuck = [a for a in every if a.timed_out]
+            assert not stuck, (
+                f"{len(stuck)} of {len(every)} accesses did not complete; "
+                f"first: {stuck[0].describe()}"
+            )
+            for a in every:
+                self.logger.info(
+                    "ABR-CRW %s %s t=[%d,%d]ps", a.tag, a.describe(), a.t_issue, a.t_done
+                )
+
+            history = self._history(cfg)
+            self._grade_writes(every)
+            self._grade_reads(cfg, every, history)
+            self._grade_stress(cfg, watch)
+            await self._pass_label()
         finally:
-            watch.stop()
-            for bus in OWNED:
-                chans = abr.driver(bus).channels
-                for name in ("r_ready_delay", "b_ready_delay"):
-                    chans[name].clear_pause_generator()
-                    chans[name].pause = False
-
-        every = [a for ops in cfg.ops.values() for a in ops]
-        stuck = [a for a in every if a.timed_out]
-        assert not stuck, (
-            f"{len(stuck)} of {len(every)} accesses did not complete; first: {stuck[0].describe()}"
-        )
-        for a in every:
-            self.logger.info("ABR-CRW %s %s t=[%d,%d]ps", a.tag, a.describe(), a.t_issue, a.t_done)
-
-        history = self._history(cfg)
-        self._grade_writes(every)
-        self._grade_reads(cfg, every, history)
-        self._grade_stress(cfg, watch)
+            close_graded_window(self.logger)
 
         # --- CHK-ABR-CRW-FINAL ------------------------------------------------
         for reg in RW_WORDS:
@@ -307,6 +341,21 @@ class sep_abr_concurrent_rw_test(sep_base_test):
             "CHK-ABR-CRW-RESTORE PASS: %d registers read back their entry values",
             len(RW_WORDS),
         )
+
+    async def _pass_label(self) -> None:
+        """Write the x_abr_concurrent bits of crypto_bus_pass inside the owner window.
+
+        Called only after CHK-ABR-CRW-WRITE-RESP, CHK-ABR-CRW-READ and
+        CHK-ABR-CRW-STRESS passed. The bits stay set for two clk_i edges, so the
+        sampler sees them rise while the window is open, then go back to 0
+        before the window closes.
+        """
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
+        set_crypto_bus_pass(X_ABR_CONCURRENT_CELLS, self.logger)
+        await ClockCycles(clk, 2)
+        set_crypto_bus_pass(0, self.logger)
+        await RisingEdge(clk)
 
     async def _set(self, abr: SepAbrBus, reg: AbrWord, value: int) -> None:
         wr = await abr.write("s_axi", reg.addr, value)
