@@ -38,7 +38,7 @@ ANNOTATION: "SMC-C12-POP-ONLY-NONEMPTY: the AVSBus readback FIFO is popped only 
 MODULE: avsbus_async_fifo
 Condition 4 "1384930558" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 
-CHECKSUM: "1642113637 1735571216"
+CHECKSUM: "294228992 1735571216"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
@@ -412,17 +412,17 @@ ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload wi
 MODULE: i2c_controller_fsm
 Branch 0 "1166353581" "load_tcount" (10) "load_tcount 1,default,-"
 
-CHECKSUM: "2125226454 2977940430"
+CHECKSUM: "1471594334 4119665143"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 MODULE: i2c_core
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (3 "0010")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (4 "0100")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (5 "1000")
-Condition 97 "715861344" "(controller_tx_fifo_error || controller_tx_fifo_error_intr_test) 1 -1" (3 "10")
-Condition 98 "1371919471" "(controller_rx_fifo_error || controller_rx_fifo_error_intr_test) 1 -1" (3 "10")
-Condition 99 "4062216539" "(target_tx_fifo_error || target_tx_fifo_error_intr_test) 1 -1" (3 "10")
-Condition 100 "2062372808" "(target_rx_fifo_error || target_rx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 96 "715861344" "(controller_tx_fifo_error || controller_tx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 97 "1371919471" "(controller_rx_fifo_error || controller_rx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 98 "4062216539" "(target_tx_fifo_error || target_tx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 99 "2062372808" "(target_rx_fifo_error || target_rx_fifo_error_intr_test) 1 -1" (3 "10")
 
 CHECKSUM: "3929405118 2927016927"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
@@ -542,15 +542,15 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "3585561165 1633000443"
+CHECKSUM: "1691853127 3381456450"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 MODULE: smc_cpu_ctrl_wrap
-Condition 4 "4033334027" "(wdt_timeout_cluster_i[0] && (cycle_count[0] != 32'b0)) 1 -1" (1 "01")
-Condition 6 "2554685946" "(wdt_timeout_cluster_i[1] && (cycle_count[1] != 32'b0)) 1 -1" (1 "01")
-Condition 8 "1916832996" "(wdt_timeout_cluster_i[2] && (cycle_count[2] != 32'b0)) 1 -1" (1 "01")
-Condition 10 "442641941" "(wdt_timeout_cluster_i[3] && (cycle_count[3] != 32'b0)) 1 -1" (1 "01")
+Condition 3 "4033334027" "(wdt_timeout_cluster_i[0] && (cycle_count[0] != 32'b0)) 1 -1" (1 "01")
+Condition 5 "2554685946" "(wdt_timeout_cluster_i[1] && (cycle_count[1] != 32'b0)) 1 -1" (1 "01")
+Condition 7 "1916832996" "(wdt_timeout_cluster_i[2] && (cycle_count[2] != 32'b0)) 1 -1" (1 "01")
+Condition 9 "442641941" "(wdt_timeout_cluster_i[3] && (cycle_count[3] != 32'b0)) 1 -1" (1 "01")
 
-CHECKSUM: "3995419794 2394443816"
+CHECKSUM: "1697517669 2394443816"
 ANNOTATION: "SMC-C15-UNSIGNED-WRAP-DECODE: the padring decodes its GPIO window with a 32-bit subtraction from a base of 0xC0003000, so an address below the base wraps to at least 0x3FFFD000 and its index is far above the 65 GPIO wraps; the in-window test never passes below the base."
 MODULE: smc_padring
 Condition 1 "4002909003" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps)) 1 -1" (1 "01")
@@ -1395,19 +1395,19 @@ Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 20 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
 
-CHECKSUM: "3897359831 656965095"
+CHECKSUM: "2042902213 3931477819"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well. The main register block's LSR.BI and LSR.FE latch those two bits on the same cycle and the same LSR read clears both, so LSR.BI is never set without LSR.FE either; the rows that need break_err or LSR.BI alone have no stimulus."
 ANNOTATION: "SMC-B14-STROBE-FOLLOWS-ADDRESS: a property of this bench, not of the design alone. The UART's write-only map is selected only on an exact match of the write address with THR, so a THR write starts at the register's own address, and every master of this bench strobes the lane at its start address: the cocotb AXI masters write contiguous bytes from it, a CPU store is sized and aligned, and the iDMA and the zeroer build their first strobe from the address offset. A THR write with its data lane unstrobed never arrives, and no write arrives with no strobe at all, which the I2C FDATA and TXDATA pushes would need since their enables OR the whole strobe. A master that issues sparse or empty strobes retires the class."
 MODULE: uart_core
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
-Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
-Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
-Condition 49 "3934623659" "(fifo_thr_rbr_err || fifo_error_intr_test) 1 -1" (3 "10")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
+Condition 21 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
+Condition 28 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
+Condition 50 "3934623659" "(fifo_thr_rbr_err || fifo_error_intr_test) 1 -1" (3 "10")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
 
 CHECKSUM: "2439670790 1423410759"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."

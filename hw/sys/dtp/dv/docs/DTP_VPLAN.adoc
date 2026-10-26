@@ -113,14 +113,18 @@ bench configuration table, `tb/dtp_dv_cfg_pkg.sv` mirrored by
 `cocotb/env/dtp_dv_cfg.py`: sixteen CTPs, ten internal cross triggers in pulse mode
 with their acknowledge unused, nine clock-stop requests, one extra STAP, one IC_RESET
 slice per port, every instruction enabled. The JTAG_CAPS and IDCODE scenarios compare
-what the DUT publishes with that table. The behaviours below exist only where DTP is
-integrated and are the integration level's plan, not this one; a green DTP regression
-says nothing about them.
+what the DUT publishes with that table. The `bsr_disabled` build target compiles the
+same table with `DTP_BSR_DISABLED`, which clears the boundary-scan enable and the
+three optional enables that require it. `dtp_jtag_bsr_disabled_test` (0.19) runs only
+on it; the JTAG and debug-TDR scenarios whose checks do not depend on the boundary-scan
+chain run on both builds, and their testlist entries name both targets. The behaviours
+below exist only where DTP is integrated and are the integration level's plan, not this
+one; a green DTP regression says nothing about them.
 
 [cols="1,2",options="header",]
 |===
 |Behaviour |Why it is out of scope here
-|DTP parameterizations other than the bench configuration (`XTRIG_INT_CT_MODE` lanes in handshake mode, the `JTAG_*_ENABLE` flags, the bridge types and pipeline depths, the IDCODE fields) |The bench elaborates one configuration; every entry here is closed for the bench configuration (`tb/dtp_dv_cfg_pkg.sv`) only
+|DTP parameterizations other than the bench configuration and its `bsr_disabled` variant (`XTRIG_INT_CT_MODE` lanes in handshake mode, the other `JTAG_*_ENABLE` flags, the bridge types and pipeline depths, the IDCODE fields) |The bench elaborates the bench configuration (`tb/dtp_dv_cfg_pkg.sv`) and, for 0.19 and the scenarios whose testlist entries name both targets, that configuration with the boundary-scan enables clear; every other entry here is closed for the bench configuration only
 |The `dbg_disable_i` producer (deriving the eleven disables from lifecycle policy) |SEP-level verification; the bench drives the pre-resolved vector directly
 |The CLA clock-stop loop, the acknowledge handshake of a handshake-mode internal lane, and the CTM lane partition of an integration |Tie-offs and wiring outside DTP
 |Address decode on the three JTAG2AXI bridge paths |The bench responders map every address; the fabric's decoder and default subordinate are SMC-level, so the decode scenarios prove responder-injected error handling (section 4)
@@ -191,7 +195,7 @@ Executable membership is resolved from the testlists; each group's
 |`scan` |F3 credit set: Test Procedures section 5
 |`xtrig` |F5 credit set: Test Procedures section 6
 |`dbg_disable` |Cross-cutting lifecycle-gating closure: the two matrix tests plus every directed gating scenario; every member also belongs to `jtag2axi` or `scan`, so the group adds closure, not names
-|`all` |Every canonical scenario, the union of the five credit sets; the `regress.yml` denominator
+|`all` |Every canonical scenario, the union of the five credit sets; on the `default` target, the `regress.yml` denominator
 |===
 
 [[dtp-credit-rules]]
@@ -246,7 +250,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |F1.2 TAP reset: TRST, power-on reset, five TMS-high clocks; power-on reset and TRST each force Test-Logic-Reset alone |`dtp_jtag_trst_test`, `dtp_jtag_trst_por_independence_test`, `dtp_jtag_tlr_reset_test` |basic_jtag |`cg_tap_smoke` `cp_reset_source`, `cp_trst_from_state` and the `cp_idcode_read` read after each reset |`CHK-TAP-TRST-ASYNC`, `CHK-TAP-TRST-TLR`, `CHK-TAP-POR-TLR`, `CHK-RESET-COUNT`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-TLR-TDR-DEFAULT`, `CHK-TLR-RESUME`, `CHK-IDCODE-RAW`, `CHK-IDCODE-RECOVERY`; `idcode` scoreboard feature |YES
 |F1.3 IDCODE: default after reset, explicit load, field values, marker bit |`dtp_jtag_idcode_test` |smoke, functional, basic_jtag |`cg_tap_smoke` `cp_idcode_read` and `cp_idcode_marker`; `cg_dr_scan` `cp_dr_instruction` `idcode` |`CHK-IDCODE-MARKER`, `CHK-IDCODE-MANUFACTURER`, `CHK-IDCODE-PART-NUMBER`, `CHK-IDCODE-VERSION`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`, `CHK-IDCODE-RECOVERY`, `CHK-RESET-COUNT`; `idcode` scoreboard feature |YES
 |F1.4 Instruction decode; BYPASS, INV_BYPASS, ZERO_LENGTH_BYPASS; undefined opcodes select BYPASS |`dtp_jtag_bypass_test`, `dtp_jtag_inv_bypass_test`, `dtp_jtag_zero_length_bypass_test`, `dtp_jtag_undef_instr_test` |basic_jtag |`cg_jtag_instruction` `cp_opcode`, `cp_category`, and `cp_ir_update`; `cg_dr_scan` `cp_dr_instruction` BYPASS, INV_BYPASS, ZERO_LENGTH_BYPASS, reserved, and undefined bins and `cp_zero_length_path`; `cg_instruction_gate` `cx_gate_disabled` |`CHK-IR-DECODE`, `+CHK-BYPASS-<opcode>+`, `CHK-BYPASS-DELAY`, `CHK-BYPASS-LATENCY`, `CHK-INV-BYPASS`, `CHK-ZLB-PASSTHROUGH`, `CHK-ZLB-CHAIN-ALIGN`, `CHK-SCAN-CHAIN`, `CHK-UNDEF-NO-SELECT`; `ir_decode` and `bypass` scoreboard features |YES
-|F1.5 Boundary-scan instructions: SAMPLE/PRELOAD, EXTEST, INTEST, CLAMP, HIGHZ, EXTEST_TRAIN, EXTEST_PULSE |`dtp_jtag_sample_preload_test`, `dtp_jtag_extest_test`, `dtp_jtag_intest_test`, `dtp_jtag_clamp_test`, `dtp_jtag_highz_test`, `dtp_jtag_ac_extest_train_test`, `dtp_jtag_ac_extest_pulse_test` |basic_jtag |`cg_jtag_instruction` `cp_opcode` boundary-scan opcodes; `cg_dr_scan` `cp_dr_instruction` boundary-scan bins |`CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BSR-RTI`, `CHK-BYPASS-DELAY`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-SCAN-COUNT` cross-check against the DUT's exported TAP state, `CHK-IR-DECODE` |YES, against the compact identity BSR loopback in `tb_top`; not a boundary-cell model
+|F1.5 Boundary-scan instructions: SAMPLE/PRELOAD, EXTEST, INTEST, CLAMP, HIGHZ, EXTEST_TRAIN, EXTEST_PULSE; with boundary scan disabled, JTAG_CAPS reports the enables clear and the boundary-scan instructions leave the boundary-scan select low and return the TDO of BYPASS |`dtp_jtag_sample_preload_test`, `dtp_jtag_extest_test`, `dtp_jtag_intest_test`, `dtp_jtag_clamp_test`, `dtp_jtag_highz_test`, `dtp_jtag_ac_extest_train_test`, `dtp_jtag_ac_extest_pulse_test`, `dtp_jtag_bsr_disabled_test` |basic_jtag |`cg_jtag_instruction` `cp_opcode` boundary-scan opcodes; `cg_dr_scan` `cp_dr_instruction` boundary-scan bins |`CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BSR-RTI`, `CHK-BYPASS-DELAY`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-SCAN-COUNT` cross-check against the DUT's exported TAP state, `CHK-IR-DECODE`, `CHK-CAPS` on the `bsr_disabled` build |YES, against the compact identity BSR loopback in `tb_top`; not a boundary-cell model
 |F1.6 RUNBIST; TMP CLAMP_HOLD and CLAMP_RELEASE |`dtp_jtag_runbist_test`, `dtp_jtag_clamp_hold_test`, `dtp_jtag_clamp_release_test` |basic_jtag |`cg_jtag_instruction` `cp_opcode`; `cg_dr_scan` `cp_dr_instruction` `runbist`, `clamp_hold`, and `clamp_release`; `cg_instruction_gate` `cx_gate_disabled` RUNBIST bins; `cg_tmp` `cp_change` and `cp_bypass` |`CHK-RUNBIST-RESPONSE`, `CHK-RUNBIST-DR-LEN`, `CHK-DFT-RUNBIST`, `CHK-DFT-SIB-SELECT`, `CHK-DFT-SCAN-CTRL`, `CHK-TMP-PERSIST`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BSR-LOOPBACK`, `CHK-BYPASS-DELAY`, `CHK-IR-DECODE` |YES
 |F2.1 TMP_STATUS: reset value, persistence across the system reset and Test-Logic-Reset, the TMP conditional reset `chrst_n`, BYPASS escape and recovery |`dtp_jtag_tmp_status_register_smoke_test`, `dtp_jtag_tmp_status_chrst_n_in_persistence_test`, `dtp_jtag_tmp_status_bypass_escape_test` |debug_tdr; smoke also carries `dtp_jtag_tmp_status_register_smoke_test` |`cg_tmp` `cp_read_value`, `cp_read_match`, `cp_change`, `cp_bypass`, `cp_tlr`, and `cp_sys_reset` |`CHK-TMP-PERSIST`, `CHK-TMP-ESCAPE`, `CHK-TMP-CHRST`, `CHK-DBG-TDR`, `CHK-BYPASS-DELAY`, `CHK-RESET-COUNT`, `CHK-TAP-RESET-TLR` in both realizations |YES
 |F2.2 IC_RESET: per-port `reset_control` and `reset_enable`, `reset_hold` across Test-Logic-Reset, TRST clears the hold; outputs on `jtag_ic_reset_{smc,sep,ext}_o` |`dtp_jtag_ic_reset_test` |debug_tdr |`cg_ic_reset` `cp_smc`, `cp_sep`, `cp_ext`, `cp_hold`, and `cp_reset` |`CHK-DBG-TDR`, `CHK-DBG-PIN`, `CHK-TAP-RESET-TLR` in both realizations |YES for this instantiation, which enables all three slices
@@ -299,6 +303,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |`dtp_jtag_clamp_release_test` |`ocah_jtag_vip`, OCAH-local BSR model |CLAMP_RELEASE TMP
 |`dtp_jtag_ac_extest_train_test` |`ocah_jtag_vip`, OCAH-local BSR model |EXTEST_TRAIN
 |`dtp_jtag_ac_extest_pulse_test` |`ocah_jtag_vip`, OCAH-local BSR model |EXTEST_PULSE
+|`dtp_jtag_bsr_disabled_test` |`ocah_jtag_vip` |JTAG_CAPS and the boundary-scan instructions on the `bsr_disabled` build
 |===
 
 ==== TMP, Debug Control, and Capabilities
@@ -1222,6 +1227,46 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 |===
 
 *Pass Criteria*: EXTEST_PULSE selects the chain with the TAP strobes on each scan, raises run_test_idle on the Run-Test/Idle return and while parked, and returns each looped-back pattern, with zero scoreboard/reference-model errors.
+
+'''''
+
+[[sec-019-dtp_jtag_bsr_disabled_test]]
+===== 0.19 `dtp_jtag_bsr_disabled_test`
+
+*BFM / Model*: `ocah_jtag_vip`
+
+*Objective*: Boundary-scan instructions on a DUT elaborated without boundary scan
+
+*Test Coverage*:
+
+* Runs on the `bsr_disabled` build target, which elaborates the DUT with `JTAG_BSR_ENABLE`, `JTAG_EXTEST_TRAIN_ENABLE`, `JTAG_EXTEST_PULSE_ENABLE`, and `JTAG_INTEST_ENABLE` clear
+* JTAG_CAPS reports the four boundary-scan enables (bits 8 to 11) clear and every other field at the bench configuration's value
+* SAMPLE/PRELOAD (IR=0x03), EXTEST (IR=0x04), EXTEST_TRAIN (IR=0x05), EXTEST_PULSE (IR=0x06), and INTEST (IR=0x09) each decode as themselves and behave as BYPASS at the boundary-scan host port and on TDO ("Boundary Scan Support", PTAP document): the boundary-scan select stays low across a DR scan while the TAP's capture, shift, and update strobes pulse, and TDO is TDI one TCK late behind a leading 0
+* The bench ties the boundary-scan return to its output, as the `dtp` port contract requires while `JTAG_BSR_ENABLE` is clear, and that return passes TDI through no register: a DR scan that holds TDI at 0 into Shift-DR returns the same TDO on both paths, and one that holds TDI at 1 tells them apart, since the bypass register's captured 0 leads its TDO where the return leads with 1
+* The scoreboard's `bypass` feature, required by this test, predicts every DR scan under the five instructions as the one-bit bypass register: `dtp_bypass_ref_model` reads the build's boundary-scan enables from `dtp_tb_if`
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP to Test-Logic-Reset and read JTAG_CAPS: the packed value is the bench configuration's with bits 8 to 11 clear, and each of the four enables reads 0.
+. For each of SAMPLE/PRELOAD, EXTEST, EXTEST_TRAIN, EXTEST_PULSE, and INTEST:
+a. Load the instruction through `OcahJtagMasterDriver` and confirm the decoded-instruction one-hot names it.
+b. Scan the edge, alternating, walking-one, walking-zero, and seeded patterns under a scan-control window over the boundary-scan controls: select low, capture once, shift N times, update once, and TDO equal to TDI one TCK late behind a leading 0.
+. For each of the five instructions, load it, confirm the decode, and shift a seeded pattern as raw TMS steps with TDI held at 1 from Select-DR-Scan into Shift-DR: TDO is the pattern one TCK late behind a leading 0.
+
+*Checkers*:
+
+[cols=",",options="header",]
+|===
+|Checker |Description
+|`bsr_disabled_caps_chk` |JTAG_CAPS equals the bench configuration's value with the boundary-scan enables clear, and each of the four enable fields reads 0 (`CHK-CAPS`)
+|`bsr_disabled_select_chk` |Each boundary-scan opcode decodes as itself, and across its DR scan the select stays low while the capture, shift, and update strobes pulse once, N times, and once (`CHK-IR-DECODE`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
+|`bsr_disabled_bypass_chk` |Each DR scan returns TDI one TCK late behind a leading 0, the TDO of BYPASS, including the scans that hold TDI at 1 into Shift-DR (`CHK-BYPASS-DELAY`)
+|`bsr_disabled_sb_bypass_chk` |The scoreboard compares the TDO of every DR scan under the five instructions with the one-bit bypass prediction of `dtp_bypass_ref_model` (`CHK-SB-BYPASS`)
+|`bsr_disabled_scan_len_chk` |The pass starts from Test-Logic-Reset, and the DUT's exported TAP state makes one Shift-IR or Shift-DR visit per scan the pass issues, each as long as the width driven (`CHK-TAP-RESET-TLR`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`)
+|===
+
+*Pass Criteria*: JTAG_CAPS reports boundary scan disabled, and every boundary-scan instruction decodes as itself, leaves the boundary-scan select low while the TAP's strobes pulse, and returns the TDO of BYPASS, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -7442,7 +7487,7 @@ The simulation groups below come from `testlists/all.toml` and the per-area list
 |Group |Tests |Purpose
 |`smoke` |`dtp_sanity_test`, `dtp_jtag_idcode_test`, `dtp_jtag_tmp_status_register_smoke_test`, `dtp_ijtag_sib_all_on_test`, `dtp_jtag2axi_smc_axi_single_write_read_test`, `dtp_xtrig_wire_or_test` |Fast gate: one basic scenario per feature area
 |`functional` |`dtp_sanity_test`, `dtp_jtag_idcode_test`, and the SMC fabric JTAG2AXI `single_write` and `single_write_read` scenarios |Fast functional regression
-|`basic_jtag` |The Smoke and Basic JTAG scenarios |TAP, instruction, reset, BSR-loopback, and TMP smoke coverage
+|`basic_jtag` |The Smoke and Basic JTAG scenarios |TAP, instruction, reset, BSR-loopback, boundary-scan-disabled, and TMP smoke coverage
 |`debug_tdr` |The TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS tests |Debug TDR coverage
 |`all` |Every scenario-expanded test (`expected_count`-pinned in `testlists/all.toml`) |Full OCAH DTP regression
 |`jtag2axi` |All JTAG2AXI write/read/error/robustness scenarios |AXI/AXI-Lite bridge coverage
@@ -7464,7 +7509,7 @@ Each row names the level that owns the behaviour the bench cannot reach
 |The downstream STAP TAPs are behavioral `ocah_jtag_vip` devices (5-bit IR, IDCODE, one writable TDR) attached only by the STAP-selection scenarios and the zero-length-bypass scenario |Other scan scenarios see the STAP host ports as wire loopbacks; the real SMC and SEP debug TAPs are integration level
 |The extended STAP host scan interface ends in the bench's 7-bit host segment in `tb_top`, placed only by the extended-STAP scenario |Other scenarios see the host scan as a wire loopback; the external STAP chain is integration level
 |The JTAG2AXI bridge ports end in bench responders that map every address |Fabric address decode and the default subordinate are SMC-level; the decode scenarios prove responder-injected DECERR handling on every bridge
-|The DUT is elaborated from the bench configuration table, and the DFT ports are driven inactive |Entries are closed for that configuration; other DTP parameterizations are integration level, and DFT-mode behaviour is scan-insertion level
+|The DUT is elaborated from the bench configuration table, or for 0.19 from that table with the boundary-scan enables clear, and the DFT ports are driven inactive |Entries are closed for the bench configuration, and 0.19 also for its boundary-scan-disabled variant; other DTP parameterizations are integration level, and DFT-mode behaviour is scan-insertion level
 |The bring-up startup vector clears all debug disables |Gating behavior is only observable under explicit disable stimulus; the `dbg_disable` group drives directed and seeded disable vectors and closes the 22-cell coverage contract
 |The `cov/sv/` covergroups compile only under `ifndef VERILATOR` |Under Verilator the modules record their cover-property points; the covergroups, the functional coverage model, are collected on VCS (see `DTP_FCOV.adoc`)
 |===

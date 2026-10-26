@@ -396,7 +396,12 @@ class ResponderDelay:
     """Drives the responder READY stall mask and the B/R hold, one draw per clock.
 
     ``p_stall`` is the percent chance per clock that AW, W and AR READY of the
-    responder are low. The hold starts with ``p_hold`` percent chance per clock
+    responder are low. With ``prime``, each channel whose percent is not 0
+    also holds its READY low from the start until the first clock its VALID
+    is high against that low READY, so every drawn channel stalls at least one
+    beat by construction; the per-clock draws are the same with or without
+    it. ``reprime`` starts that hold again, so a later phase also stalls each
+    drawn channel it uses. The hold starts with ``p_hold`` percent chance per clock
     and lasts 1 to ``hold_max`` clocks; the responder raises no new B or R
     VALID while it is up. ``hold_for`` keeps the hold up for a bounded run of
     clocks regardless of the draw, so requests issued in that run are
@@ -404,7 +409,12 @@ class ResponderDelay:
     """
 
     def __init__(
-        self, rng: SepSeededRng, p_stall: tuple[int, int, int], p_hold: int, hold_max: int
+        self,
+        rng: SepSeededRng,
+        p_stall: tuple[int, int, int],
+        p_hold: int,
+        hold_max: int,
+        prime: bool = False,
     ):
         self.rng = rng
         self.p_stall = p_stall
@@ -412,8 +422,19 @@ class ResponderDelay:
         self.hold_max = hold_max
         self.hold_clocks = 0
         self.stall_clocks = [0, 0, 0]
+        self.prime = prime
+        self.primed = [not (prime and p) for p in p_stall]
+        self._mask = 0
         self.forced_left = 0
         self._task = None
+
+    def reprime(self) -> None:
+        """With ``prime``, hold each drawn READY low again until its next VALID.
+
+        The last mask is cleared too, so only a stall after this call primes a channel.
+        """
+        self.primed = [not (self.prime and p) for p in self.p_stall]
+        self._mask = 0
 
     def hold_for(self, clocks: int) -> None:
         self.forced_left = max(self.forced_left, clocks)
@@ -437,12 +458,17 @@ class ResponderDelay:
 
     async def _run(self) -> None:
         dut = cocotb.top
+        valid = (dut.pr_out_awvalid_o, dut.pr_out_wvalid_o, dut.pr_out_arvalid_o)
         left = 0
         while True:
             await RisingEdge(dut.clk_i)
+            for bit in range(3):
+                if not self.primed[bit] and (self._mask >> bit) & 1 and _ctl(valid[bit]) == 1:
+                    self.primed[bit] = True
             mask = 0
             for bit, p in enumerate(self.p_stall):
-                if p and self.rng.randrange(100) < p:
+                hit = bool(p) and self.rng.randrange(100) < p
+                if hit or not self.primed[bit]:
                     mask |= 1 << bit
                     self.stall_clocks[bit] += 1
             if self.forced_left:
@@ -457,6 +483,7 @@ class ResponderDelay:
             else:
                 hold = 0
             self.hold_clocks += hold
+            self._mask = mask
             dut.smn_outbound_ready_stall_i.value = mask
             dut.smn_outbound_resp_hold_i.value = hold
 

@@ -111,7 +111,10 @@ DTP_WIRE_OR_ASSERT = {0: 0, 1: 1}
 # registered ct_dst output.
 DTP_CT_DST_LATENCY = 3
 
-# JTAG interface unit and PTAP configuration.
+# JTAG interface unit and PTAP configuration. The four boundary-scan enables
+# are the default build's: they do not follow DTP_BSR_DISABLED, DV_CFG_PARITY
+# leaves them out, and the bypass reference model reads the build's own from
+# dtp_tb_if.
 DTP_NUM_EXTRA_STAPS = 1
 DTP_BSR_ENABLE = 1
 DTP_EXTEST_TRAIN_ENABLE = 1

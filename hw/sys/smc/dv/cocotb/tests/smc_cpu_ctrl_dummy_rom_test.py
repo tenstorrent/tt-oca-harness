@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smc_cpu_ctrl_dummy_rom_test: DUMMY_ROM line and storage."""
+"""smc_cpu_ctrl_dummy_rom_test: DUMMY_ROM line, DUMMY_ROM_NULL and RESET_VECTOR storage."""
 
 from __future__ import annotations
 
@@ -11,15 +11,21 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_cpu_ctrl_dummy_rom_test(smc_base_test):
-    """Read the dummy boot-ROM line, overwrite each word with a pattern and restore it."""
+    """Check the dummy boot-ROM line, then walk RESET_VECTOR and DUMMY_ROM_NULL with the cores held."""
 
     required_evidence = (
+        "CHK-CPU-CORES-HELD",
+        "CHK-CPU-NULL-PATTERN",
+        "CHK-CPU-NULL-RESET",
+        "CHK-CPU-RESTORE",
+        "CHK-CPU-RV-PATTERN",
+        "CHK-CPU-RV-RESET",
         "CHK-DROM-LINE",
         "CHK-DROM-RW",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 4
+    min_evidence = 10
 
     auto_protocol_vip = False
 

@@ -77,6 +77,33 @@ written in toggle mode under identifier 0, the identifier its description
 gives the mode, read back, and the node 0 pair 0 snapshot is read 16 times.
 The toggle-mode bus content is not described, so those snapshots are logged
 and not compared.
+
+With every CLA register back at its reset, the toggle-mode bus is then traced
+uncompressed into the trace sink over the whole 16 KiB the eight trace RAMs
+hold (``hw/sys/smc/doc/dfd.adoc``):
+
+* ``CDbgMuxSelLo`` is written ``Dbmmode`` 3 under ``Dbmid`` 0 and read back,
+  and ``Trdstcontrol.Trdstformat`` is written 0 with the register's other
+  read-write fields as read, and read back;
+* the sink window starts at 0 with its limit on the last word, both pointers
+  at the start, and the sink enabled and active in mode 0 without stop on
+  wrap; ``Trdstramempty`` is read after the enable and logged, since when it
+  clears and sets is not documented;
+* the DST is enabled and active, the ``Action0`` field of the current node's
+  pair 0 is driven over its range, whose start encoding is not documented,
+  and ``Trdstramwplow`` is polled until ``Trdstramwrap`` reads 1, every pointer
+  sample before it no lower than the one before; the DST enable is then
+  cleared and ``Trdstempty`` polled until it reads 1, and ``Trdstramempty``
+  is read again and logged;
+* the read pointer is placed on the final write pointer and ``Trdstramdata``
+  is read 4096 times, the read pointer sampled every 64 reads and after the
+  read from the limit; each sample is the start plus one word per read,
+  modulo the window, so it wraps to the start once and ends where it began;
+* the 4096 words are summarised (distinct values, per-bit toggle counts over
+  bits 31:0, the first 16 words) and logged, not compared, since the
+  toggle-mode bus content is not described;
+* ``CDbgMuxSelLo``, ``Trdstcontrol``, ``Trdstramcontrol`` and the sink
+  pointers are put back at their reset and read back.
 """
 
 from __future__ import annotations
@@ -84,6 +111,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -93,9 +121,14 @@ from .smc_dfd_trace_accumulator_fill_test_seq import (
     checked_mask,
     cla_mux_normal,
     dfd_register,
+    dst_register,
+    field_word,
     find_sampled_mux,
+    funnel_register,
     pack_fields,
+    reg_field,
     set_dbm,
+    sink_register,
     traced_bus,
 )
 
@@ -131,7 +164,44 @@ _MUXSEL_FIELDS = {
     "Dbmmode": DBM_MODE_NORMAL,
 }
 _TOGGLE_SNAPSHOTS = 16
-_FENCE = ("EXISTING_LEGS", "FIELD_WRITE", "TOGGLE", "RESTORE")
+# dfd_dst.rdl Trdstformat: 0 is no compression.
+_DST_FORMAT_NONE = 0
+# smc_cla.adoc Trdstcontrol: the read-write image at reset, Trdstformat 3.
+_DST_CONTROL_RESET_RW = 0x0300_0000
+# dfd.adoc: eight trace RAMs of 256 x 64 bits, 16 KiB in total.
+_TRACE_WINDOW_BYTES = 8 * 256 * 8
+_TRACE_WORDS = _TRACE_WINDOW_BYTES // 4
+_TRACE_LIMIT = _TRACE_WINDOW_BYTES - 4
+_RP_SAMPLE_STRIDE = 64
+_HEAD_WORDS = 16
+# Bounds of the polls on the trace path.
+_ACTIVATION_POLLS = 4
+_WRAP_POLLS = 8192
+_EMPTY_POLLS = 64
+_WP_STABLE_POLLS = 16
+_AXI_OKAY = 0
+_SINK_POINTERS = (
+    "Trdstramstartlow",
+    "Trdstramstarthigh",
+    "Trdstramlimitlow",
+    "Trdstramlimithigh",
+    "Trdstramwplow",
+    "Trdstramwphigh",
+    "Trdstramrplow",
+    "Trdstramrphigh",
+)
+_FENCE = (
+    "EXISTING_LEGS",
+    "FIELD_WRITE",
+    "TOGGLE",
+    "RESTORE",
+    "TOGGLE-CFG",
+    "SINK-SETUP",
+    "TRACE-FILLED",
+    "READBACK",
+    "CONTENT",
+    "RESTORED",
+)
 
 
 class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
@@ -152,6 +222,21 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         self.value_checks = 0
         self.fence: list[tuple[str, int, int]] = []
         self._fence_accesses = 0
+        self.okay_reads = 0
+        self.dst_rw = 0
+        self.trace_node = -1
+        self.trace_op = -1
+        self.activation_polls = 0
+        self.wp_samples: list[int] = []
+        self.trace_reissues = 0
+        self.empty_polls = 0
+        self.empty_last = 0
+        self.wp_stable_polls = 0
+        self.final_wp = -1
+        self.ram_empty_before = -1
+        self.ram_empty_after = -1
+        self.trace_words: list[int] = []
+        self.rp_samples: list[tuple[int, int]] = []
 
     def _mark(self, term: str) -> None:
         """Close a fence term with its sim time and the accesses it issued."""
@@ -579,6 +664,425 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
             " ".join(f"{v & 0xFFFFFFFF:08x}:{v >> 32:08x}" for v in self.toggle_snapshots),
         )
 
+    # -- toggle-mode trace ------------------------------------------------
+
+    async def _read_okay(self, reg, label: str) -> int:
+        """Read a register and require an OKAY response."""
+        item = SmcSysAxiItem(f"rd_{self._short(reg)}:{label}")
+        item.op = SmcSysAxiOp.READ
+        item.addr = reg.addr
+        item.length = reg.width_bytes
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        assert item.resp_code == _AXI_OKAY, (
+            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: read answered resp={item.resp_code}, "
+            f"not OKAY"
+        )
+        self.okay_reads += 1
+        return item.rdata
+
+    async def _toggle_uncompressed_cfg(self) -> None:
+        """S2: the CLA mux in toggle mode and the DST set to no compression."""
+        mux = cla_register("CDbgMuxSelLo")
+        word = pack_fields(mux, {"Dbmmode": _DBM_MODE_TOGGLE, "Dbmid": 0})
+        await self._write(mux, word, "trace_toggle")
+        mux_rb = await self._read_okay(mux, "trace_toggle_rb")
+        assert mux_rb == word, (
+            f"{mux.path} @ 0x{mux.addr:08x}: wrote Dbmmode=3 Dbmid=0 and every other field 0 "
+            f"(0x{word:016x}), reads 0x{mux_rb:016x}"
+        )
+        dst = dst_register("Trdstcontrol")
+        fmt = reg_field(dst, "Trdstformat")
+        mask = checked_mask(dst, {"Trdstformat": _DST_FORMAT_NONE})
+        current = await self._read_okay(dst, "trace_fmt_cur")
+        self.dst_rw = (current & mask & ~fmt.mask) | (_DST_FORMAT_NONE << fmt.offset)
+        await self._write(dst, self.dst_rw, "trace_fmt")
+        dst_rb = await self._read_okay(dst, "trace_fmt_rb")
+        got_fmt = (dst_rb & fmt.mask) >> fmt.offset
+        assert dst_rb & mask == self.dst_rw and got_fmt == _DST_FORMAT_NONE, (
+            f"{dst.path} @ 0x{dst.addr:08x}: read 0x{current:08x}, wrote 0x{self.dst_rw:08x} "
+            f"with Trdstformat 0 and the other read-write fields as read, reads 0x{dst_rb:08x} "
+            f"(Trdstformat {got_fmt})"
+        )
+        self.value_checks += 2
+        cocotb.log.info(
+            "CHK-CLA-TOGGLE-UNCOMP-CFG: CDbgMuxSelLo=0x%x (wrote 0x%x), Trdstformat=%d "
+            "(Trdstcontrol before 0x%08x, wrote 0x%08x, rb 0x%08x), resp OKAY on all 3 reads",
+            mux_rb,
+            word,
+            got_fmt,
+            current,
+            self.dst_rw,
+            dst_rb,
+        )
+
+    async def _arm_trace_pair(self) -> None:
+        """Enable the CLA and find a relation value that activates the current node's pair 0."""
+        ctrl = cla_register("CDbgClaCtrlStatus")
+        current = cla_field(ctrl, "CurrentNode")
+        await self._ctrl(1, 1, "trace_arm")
+        self.trace_node = (await self._read(ctrl, "trace_node") & current.mask) >> current.offset
+        node = self.trace_node
+        reg = cla_register(f"CDbgNode{node}Eap0")
+        status = cla_register("CDbgEapStatus")
+        activated = cla_field(status, f"Node{node}Eap0")
+        logical_op = cla_field(reg, "LogicalOp")
+        for value in range(1 << logical_op.width):
+            await self._write(
+                reg, pack_fields(reg, {"LogicalOp": value, "DestNode": node}), f"trace_op{value}"
+            )
+            for poll in range(_ACTIVATION_POLLS):
+                self.activation_polls = max(self.activation_polls, poll + 1)
+                if await self._read(status, f"trace_op{value}_{poll}") & activated.mask:
+                    self.trace_op = value
+                    break
+            if self.trace_op >= 0:
+                break
+        assert self.trace_op >= 0, (
+            f"no value of the LogicalOp field activated node {node} pair 0 within "
+            f"{_ACTIVATION_POLLS} CDbgEapStatus reads each, so no action can start the trace"
+        )
+        after = (await self._read(ctrl, "trace_node_after") & current.mask) >> current.offset
+        assert after == node, (
+            f"CDbgClaCtrlStatus.CurrentNode moved from {node} to {after} with node {node} "
+            f"pair 0 naming its own node"
+        )
+        self.value_checks += 2
+
+    async def _sink_setup(self) -> None:
+        """S3: the sink window over the 16 KiB, pointers at the start, sink in RAM mode 0."""
+        clk = dfd_register("dfx_ctrl/DEBUG_CTRL")
+        await self._write_check(clk, {"force_clk_en": 1}, "trace_force")
+        await self._write_check(
+            funnel_register("Trfunnelcontrol"),
+            {"Trfunnelactive": 1, "Trfunnelenable": 1},
+            "trace_funnel",
+        )
+        control = sink_register("Trdstramcontrol")
+        await self._write(control, control.reset_word, "trace_sink_off")
+        for name, value in (
+            ("Trdstramstartlow", 0),
+            ("Trdstramstarthigh", 0),
+            ("Trdstramlimitlow", _TRACE_LIMIT),
+            ("Trdstramlimithigh", 0),
+            ("Trdstramwplow", 0),
+            ("Trdstramrplow", 0),
+        ):
+            reg = sink_register(name)
+            await self._write(reg, field_word(reg, name, value), "trace_sink")
+        await self._write_check(
+            control,
+            {
+                "Trdstramactive": 1,
+                "Trdstramenable": 1,
+                "Trdstrammode": 0,
+                "Trdstramstoponwrap": 0,
+            },
+            "trace_sink_on",
+        )
+        empty = reg_field(control, "Trdstramempty")
+        word = await self._read_okay(control, "trace_sink_empty")
+        self.ram_empty_before = (word & empty.mask) >> empty.offset
+        await self._arm_trace_pair()
+
+    async def _trace_actions(self, label: str) -> None:
+        reg = cla_register(f"CDbgNode{self.trace_node}Eap0")
+        action = cla_field(reg, "Action0")
+        for value in range(1 << action.width):
+            await self._write(
+                reg,
+                pack_fields(
+                    reg,
+                    {"LogicalOp": self.trace_op, "DestNode": self.trace_node, "Action0": value},
+                ),
+                f"{label}{value}",
+            )
+
+    async def _trace_fill(self) -> tuple[int, int]:
+        """S4: run the trace until the sink wraps, then stop it and wait for the DST to empty."""
+        dst = dst_register("Trdstcontrol")
+        mask = checked_mask(dst, {"Trdstenable": 1, "Trdstactive": 1})
+        on = self.dst_rw | pack_fields(dst, {"Trdstenable": 1, "Trdstactive": 1})
+        await self._write(dst, on, "trace_dst_on")
+        rb = await self._read_okay(dst, "trace_dst_on_rb")
+        assert rb & mask == on & mask, (
+            f"{dst.path} @ 0x{dst.addr:08x}: wrote 0x{on:08x}, reads 0x{rb:08x}"
+        )
+        self.value_checks += 1
+        await self._trace_actions("trace_start")
+
+        wp = sink_register("Trdstramwplow")
+        wp_field = reg_field(wp, "Trdstramwplow")
+        wrap = reg_field(wp, "Trdstramwrap")
+        last = -1
+        peak = 0
+        wrapped = False
+        for poll in range(_WRAP_POLLS):
+            word = await self._read_okay(wp, f"trace_wp{poll}")
+            self.wp_samples.append(word)
+            pointer = word & wp_field.mask
+            assert pointer <= _TRACE_LIMIT, (
+                f"Trdstramwplow sample {poll} reads 0x{word:08x}, pointer 0x{pointer:x} past "
+                f"the limit 0x{_TRACE_LIMIT:x}"
+            )
+            if word & wrap.mask:
+                wrapped = True
+                break
+            assert pointer >= peak, (
+                f"Trdstramwplow sample {poll} reads pointer 0x{pointer:x} with Trdstramwrap 0, "
+                f"below the earlier sample 0x{peak:x}"
+            )
+            peak = pointer
+            if word == last:
+                self.trace_reissues += 1
+                await self._trace_actions(f"trace_re{self.trace_reissues}_")
+            last = word
+        assert wrapped, (
+            f"Trdstramwrap stayed 0 through {_WRAP_POLLS} Trdstramwplow polls "
+            f"({self.trace_reissues} action re-issues); last sample 0x{self.wp_samples[-1]:08x}, "
+            f"highest pointer 0x{peak:x}"
+        )
+        self.value_checks += 1
+
+        off = self.dst_rw | pack_fields(dst, {"Trdstenable": 0, "Trdstactive": 1})
+        await self._write(dst, off, "trace_dst_stop")
+        dst_empty = reg_field(dst, "Trdstempty")
+        for poll in range(_EMPTY_POLLS):
+            self.empty_last = await self._read_okay(dst, f"trace_dst_empty{poll}")
+            self.empty_polls = poll + 1
+            if self.empty_last & dst_empty.mask:
+                break
+        assert self.empty_last & dst_empty.mask, (
+            f"Trdstempty stayed 0 through {_EMPTY_POLLS} Trdstcontrol polls after the DST "
+            f"enable was cleared; last 0x{self.empty_last:08x}"
+        )
+        self.value_checks += 1
+
+        previous = -1
+        stable = False
+        for poll in range(_WP_STABLE_POLLS):
+            word = await self._read_okay(wp, f"trace_wp_final{poll}")
+            self.wp_stable_polls = poll + 1
+            if word == previous:
+                stable = True
+                break
+            previous = word
+        assert stable, (
+            f"Trdstramwplow kept moving through {_WP_STABLE_POLLS} reads after Trdstempty read "
+            f"1; last 0x{word:08x}"
+        )
+        self.final_wp = word & wp_field.mask
+
+        control = sink_register("Trdstramcontrol")
+        ram_empty = reg_field(control, "Trdstramempty")
+        after = await self._read_okay(control, "trace_sink_after")
+        self.ram_empty_after = (after & ram_empty.mask) >> ram_empty.offset
+        self.value_checks += 1
+        return peak, word
+
+    def _rp_expected(self, start_index: int, reads: int) -> int:
+        return ((start_index + reads) % _TRACE_WORDS) * 4
+
+    async def _trace_read(self) -> int:
+        """S5: 4096 Trdstramdata reads from the final write pointer, read pointer sampled."""
+        rp = sink_register("Trdstramrplow")
+        rp_field = reg_field(rp, "Trdstramrplow")
+        data = sink_register("Trdstramdata")
+        await self._write(rp, field_word(rp, "Trdstramrplow", self.final_wp), "trace_rp")
+        initial = await self._read_okay(rp, "trace_rp_rb") & rp_field.mask
+        assert initial == self.final_wp, (
+            f"Trdstramrplow reads 0x{initial:x} after being written the final write pointer "
+            f"0x{self.final_wp:x}"
+        )
+        start_index = initial // 4
+        crossing = _TRACE_WORDS - start_index
+        previous = initial
+        wraps = 0
+        for read in range(1, _TRACE_WORDS + 1):
+            self.trace_words.append(await self._read_okay(data, f"trace_data{read}"))
+            if read % _RP_SAMPLE_STRIDE and read != crossing:
+                continue
+            got = (await self._read_okay(rp, f"trace_rp{read}")) & rp_field.mask
+            want = self._rp_expected(start_index, read)
+            assert got == want, (
+                f"Trdstramrplow reads 0x{got:x} after {read} Trdstramdata reads from 0x{initial:x}; "
+                f"one word per read from the limit 0x{_TRACE_LIMIT:x} back to the start 0 gives "
+                f"0x{want:x}"
+            )
+            if got < previous:
+                wraps += 1
+            previous = got
+            self.rp_samples.append((read, got))
+        assert len(self.trace_words) == _TRACE_WORDS
+        assert wraps == 1 and previous == initial, (
+            f"the read pointer wrapped {wraps} times over {_TRACE_WORDS} reads and ended at "
+            f"0x{previous:x}, started at 0x{initial:x}"
+        )
+        self.value_checks += len(self.rp_samples) + 1
+        return wraps
+
+    def _content_summary(self) -> tuple[int, list[int]]:
+        toggles = [0] * 32
+        for a, b in zip(self.trace_words, self.trace_words[1:]):
+            diff = a ^ b
+            for bit in range(32):
+                toggles[bit] += (diff >> bit) & 1
+        return len(set(self.trace_words)), toggles
+
+    async def _trace_restore(self) -> None:
+        """S7: the CLA mux, the DST control, the sink control and pointers back at reset."""
+        mux = cla_register("CDbgMuxSelLo")
+        await self._write(mux, 0, "trace_restore")
+        mux_rb = await self._read_okay(mux, "trace_restore_rb")
+        assert mux_rb == 0, f"CDbgMuxSelLo reads 0x{mux_rb:016x} after being written 0"
+        dst = dst_register("Trdstcontrol")
+        mask = checked_mask(dst, {"Trdstformat": 3})
+        await self._write(dst, _DST_CONTROL_RESET_RW, "trace_restore")
+        dst_rb = await self._read_okay(dst, "trace_restore_rb")
+        assert dst_rb & mask == _DST_CONTROL_RESET_RW, (
+            f"Trdstcontrol reads 0x{dst_rb:08x} after being written its reset read-write image "
+            f"0x{_DST_CONTROL_RESET_RW:08x}; read-write bits 0x{dst_rb & mask:08x}"
+        )
+        control = sink_register("Trdstramcontrol")
+        control_mask = checked_mask(
+            control,
+            {"Trdstramactive": 0, "Trdstramenable": 0, "Trdstrammode": 0, "Trdstramstoponwrap": 0},
+        )
+        await self._write(control, 0, "trace_restore")
+        control_rb = await self._read_okay(control, "trace_restore_rb")
+        assert control_rb & control_mask == 0, (
+            f"Trdstramcontrol reads 0x{control_rb:08x} after being written 0"
+        )
+        self.value_checks += 3
+        for name in _SINK_POINTERS:
+            reg = sink_register(name)
+            field = reg_field(reg, name)
+            await self._write(reg, 0, "trace_restore")
+            got = await self._read_okay(reg, "trace_restore_rb")
+            assert got & field.mask == 0, f"{name} reads 0x{got:08x} after being written 0"
+            self.value_checks += 1
+        for reg in (
+            cla_register(f"CDbgNode{self.trace_node}Eap0"),
+            cla_register("CDbgClaCtrlStatus"),
+            funnel_register("Trfunnelcontrol"),
+            dfd_register("dfx_ctrl/DEBUG_CTRL"),
+        ):
+            await self._write(reg, reg.reset_word, "trace_restore")
+
+    async def _toggle_trace(self) -> None:
+        await self._toggle_uncompressed_cfg()
+        self._mark("TOGGLE-CFG")
+
+        await self._sink_setup()
+        self._mark("SINK-SETUP")
+
+        peak, last_wp = await self._trace_fill()
+        wp = sink_register("Trdstramwplow")
+        wp_field = reg_field(wp, "Trdstramwplow")
+        wrap = reg_field(wp, "Trdstramwrap")
+        cocotb.log.info(
+            "CHK-CLA-TRACE-FILL: pre-trace empty=%d (SF-032), WP samples %d monotonic from "
+            "start over 0x0..0x%x (highest before the wrap 0x%x), wrap=%d at sample %d of the "
+            "%d-poll bound, %d action re-issues; node %d pair 0 LogicalOp %d driven over "
+            "Action0; Trdstempty=1 after stop within %d polls; post-trace Trdstramempty=%d "
+            "(logged, SF-032); final WP 0x%x (raw 0x%08x)",
+            self.ram_empty_before,
+            len(self.wp_samples),
+            _TRACE_LIMIT,
+            peak,
+            (self.wp_samples[-1] & wrap.mask) >> wrap.offset,
+            len(self.wp_samples),
+            _WRAP_POLLS,
+            self.trace_reissues,
+            self.trace_node,
+            self.trace_op,
+            self.empty_polls,
+            self.ram_empty_after,
+            self.final_wp,
+            last_wp,
+        )
+        runs: list[list[int]] = []
+        for w in self.wp_samples:
+            if runs and runs[-1][0] == w:
+                runs[-1][1] += 1
+            else:
+                runs.append([w, 1])
+        cocotb.log.info(
+            "CLA trace WP samples (pointer/wrap, xN repeats): %s",
+            " ".join(
+                f"{w & wp_field.mask:x}/{w & wrap.mask}" + (f"x{n}" if n > 1 else "")
+                for w, n in runs
+            ),
+        )
+        self._mark("TRACE-FILLED")
+
+        okay_before = self.okay_reads
+        wraps = await self._trace_read()
+        cocotb.log.info(
+            "CHK-CLA-TRACE-READ: %d/%d reads OKAY, RP samples %d/%d on schedule (every %d reads "
+            "and after read %d from the limit), %d wrap, final RP==start RP 0x%x",
+            len(self.trace_words),
+            _TRACE_WORDS,
+            len(self.rp_samples),
+            len(self.rp_samples),
+            _RP_SAMPLE_STRIDE,
+            _TRACE_WORDS - self.final_wp // 4,
+            wraps,
+            self.rp_samples[-1][1],
+        )
+        assert self.okay_reads - okay_before == _TRACE_WORDS + len(self.rp_samples) + 1
+        self._mark("READBACK")
+
+        distinct, toggles = self._content_summary()
+        mux = cla_register("CDbgMuxSelLo")
+        mux_after = await self._read_okay(mux, "trace_content_mux")
+        dst = dst_register("Trdstcontrol")
+        fmt = reg_field(dst, "Trdstformat")
+        fmt_after = (await self._read_okay(dst, "trace_content_fmt") & fmt.mask) >> fmt.offset
+        assert mux_after == pack_fields(mux, {"Dbmmode": _DBM_MODE_TOGGLE, "Dbmid": 0}), (
+            f"CDbgMuxSelLo reads 0x{mux_after:016x} after the read-out, not the toggle-mode word"
+        )
+        assert fmt_after == _DST_FORMAT_NONE, f"Trdstformat reads {fmt_after} after the read-out"
+        self.value_checks += 2
+        cocotb.log.info(
+            "CHK-CLA-TOGGLE-TRACE-DATA: %d words, distinct=%d, toggles[31:0]=%s, head=%s; "
+            "captured with CDbgMuxSelLo=0x%x and Trdstformat=%d (observed, not compared: "
+            "LINKED-ISSUE SF-024)",
+            len(self.trace_words),
+            distinct,
+            ",".join(str(toggles[bit]) for bit in range(31, -1, -1)),
+            " ".join(f"{w:08x}" for w in self.trace_words[:_HEAD_WORDS]),
+            mux_after,
+            fmt_after,
+        )
+        self._mark("CONTENT")
+
+        await self._trace_restore()
+        self._mark("RESTORED")
+        cocotb.log.info(
+            "CHK-TIMEOUT-PATHS: 5 bounded waits, 0 expired: activation bound=%d CDbgEapStatus "
+            "reads per LogicalOp value used=%d last=op %d active; wrap bound=%d Trdstramwplow "
+            "polls used=%d last=0x%08x; Trdstempty bound=%d Trdstcontrol polls used=%d "
+            "last=0x%08x; WP settle bound=%d reads used=%d last=0x%08x; sep_in_access=%dns per "
+            "access (%d accesses, enforced by smc_sys_axi_agent); each expiry raises "
+            "AssertionError with the last sample",
+            _ACTIVATION_POLLS,
+            self.activation_polls,
+            self.trace_op,
+            _WRAP_POLLS,
+            len(self.wp_samples),
+            self.wp_samples[-1],
+            _EMPTY_POLLS,
+            self.empty_polls,
+            self.empty_last,
+            _WP_STABLE_POLLS,
+            self.wp_stable_polls,
+            last_wp,
+            self.cfg.axi_timeout_ns,
+            self.accesses,
+        )
+
     # -- body -------------------------------------------------------------
 
     async def body(self) -> None:
@@ -691,6 +1195,7 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         for reg in restore:
             await self._write(reg, reg.reset_word, "restore")
         self._mark("RESTORE")
+        await self._toggle_trace()
         terms = tuple(term for term, _, _ in self.fence)
         times = [t for _, t, _ in self.fence]
         assert terms == _FENCE, f"fence terms {terms}, expected {_FENCE}"

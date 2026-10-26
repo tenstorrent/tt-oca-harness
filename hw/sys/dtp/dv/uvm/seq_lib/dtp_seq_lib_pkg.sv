@@ -57,8 +57,9 @@ package dtp_seq_lib_pkg;
   // Scenario layer: base virtual sequence, the basic-JTAG family, the
   // debug-TDR family, and the scan-network family; the reset-family and
   // undefined-instruction scenarios read the debug-TDR pins through the
-  // debug-TDR family, and the zero-length-bypass scenario builds its STAP
-  // chain on the scan-network family.
+  // debug-TDR family, the boundary-scan-disabled scenario reads JTAG_CAPS
+  // through it, and the zero-length-bypass scenario builds its STAP chain on
+  // the scan-network family.
   `include "dtp_base_test_seq.svh"
   `include "dtp_jtag_base_test_seq.svh"
   `include "dtp_debug_tdr_base_test_seq.svh"
@@ -80,6 +81,7 @@ package dtp_seq_lib_pkg;
   `include "dtp_jtag_highz_test_seq.svh"
   `include "dtp_jtag_ac_extest_train_test_seq.svh"
   `include "dtp_jtag_ac_extest_pulse_test_seq.svh"
+  `include "dtp_jtag_bsr_disabled_test_seq.svh"
   `include "dtp_jtag_trst_test_seq.svh"
   `include "dtp_jtag_trst_por_independence_test_seq.svh"
   `include "dtp_jtag_tlr_reset_test_seq.svh"

@@ -46,9 +46,9 @@ python3 tools/dv/run_dv.py --dut dtp --mode formal                   # the forma
 the same name selects the same scenario in either realization. The runner's
 options, the loop and seed knobs, and the site layer are described in
 [`tools/dv/doc/run-dv.adoc`](../../../../tools/dv/doc/run-dv.adoc); the
-`smoke` and `all` commands above are the pull-request gate and the nightly
-regression, and "Continuous integration" in the same guide describes the
-workflows that run them.
+`smoke` and `all` commands above, on the `default` target, are the
+pull-request gate and the nightly regression, and "Continuous integration" in
+the same guide describes the workflows that run them.
 
 | Document | What it covers |
 | --- | --- |
