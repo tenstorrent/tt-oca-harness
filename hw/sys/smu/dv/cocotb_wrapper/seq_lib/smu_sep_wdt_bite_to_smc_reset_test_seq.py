@@ -294,9 +294,7 @@ class smu_sep_wdt_bite_to_smc_reset_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         )
         await self._mark("S4", "request raised, rst_wdt and rst_warm asserted")
 
-        i_both = self._first(
-            lambda s: s.wdt == NET_ASSERTED and s.warm == NET_ASSERTED, i_req
-        )
+        i_both = self._first(lambda s: s.wdt == NET_ASSERTED and s.warm == NET_ASSERTED, i_req)
         settled = self.trace[i_both]
         self._log(
             f"OBSERVATION settled tb_smc_wdt_second_timeout={settled.second} (SMC watchdog not "
@@ -458,8 +456,7 @@ class smu_sep_wdt_bite_to_smc_reset_test_seq(smu_sep_sba_fabric_sweep_test_seq):
     def _check_release(self, sb, at_fall, probe, released, wdt_edges, warm_edges, slack) -> None:
         hi = WDT_HOLD_REF_CYCLES + slack
         edges_ok = (
-            WDT_HOLD_MIN_REF_EDGES <= wdt_edges <= hi
-            and WDT_HOLD_MIN_REF_EDGES <= warm_edges <= hi
+            WDT_HOLD_MIN_REF_EDGES <= wdt_edges <= hi and WDT_HOLD_MIN_REF_EDGES <= warm_edges <= hi
         )
         probe_held = (
             probe.req == REQUEST_IDLE
