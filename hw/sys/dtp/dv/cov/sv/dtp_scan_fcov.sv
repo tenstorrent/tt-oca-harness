@@ -20,11 +20,8 @@
 // The TAP reset is TRST AND power-on reset, as the PTAP combines them and
 // forwards the result to the STAPs.
 //
-// CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
-// argument is a single continuous-assign wire; no declaration initializers
-// on always_ff-driven variables; declare wires before use.
-
-`include "ocah_fcov_macros.svh"
+// CONVENTION: no declaration initializers on always_ff-driven variables;
+// declare wires before use.
 
 module dtp_scan_fcov (
   input wire        tck_i,
@@ -116,41 +113,6 @@ module dtp_scan_fcov (
   always_ff @(posedge tck_i) sib_shifted_q <= capturing ? 3'b000 : (sib_shifted_q | sib_access);
   wire [2:0] sib_shifted = sib_shifted_q;
 
-  `define DTP_SIB_PATTERN(__label, __dfd, __dfts, __dftn)                          \
-    wire __label``_e = ijtag_update && (sib_open == {(__dfts), (__dftn), (__dfd)}); \
-    `OCAH_FCOV_COVER(__label, __label``_e, tck_i, in_reset)
-
-  `DTP_SIB_PATTERN(c_sib_pattern_dfd0_dfts0_dftn0, 1'b0, 1'b0, 1'b0)
-  `DTP_SIB_PATTERN(c_sib_pattern_dfd0_dfts0_dftn1, 1'b0, 1'b0, 1'b1)
-  `DTP_SIB_PATTERN(c_sib_pattern_dfd0_dfts1_dftn0, 1'b0, 1'b1, 1'b0)
-  `DTP_SIB_PATTERN(c_sib_pattern_dfd0_dfts1_dftn1, 1'b0, 1'b1, 1'b1)
-  `DTP_SIB_PATTERN(c_sib_pattern_dfd1_dfts0_dftn0, 1'b1, 1'b0, 1'b0)
-  `DTP_SIB_PATTERN(c_sib_pattern_dfd1_dfts0_dftn1, 1'b1, 1'b0, 1'b1)
-  `DTP_SIB_PATTERN(c_sib_pattern_dfd1_dfts1_dftn0, 1'b1, 1'b1, 1'b0)
-  `DTP_SIB_PATTERN(c_sib_pattern_dfd1_dfts1_dftn1, 1'b1, 1'b1, 1'b1)
-  `undef DTP_SIB_PATTERN
-
-  wire sib_instr_select_ijtag_e = ijtag_update && !ijtag_runbist;
-  wire sib_instr_runbist_e = ijtag_update && ijtag_runbist;
-  `OCAH_FCOV_COVER(c_sib_instr_select_ijtag, sib_instr_select_ijtag_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_sib_instr_runbist, sib_instr_runbist_e, tck_i, in_reset)
-
-  // Per-SIB state after the update, and the instrument shifted in the scan.
-  `define DTP_SIB_STATE(__sib, __idx)                                                    \
-    wire sib_``__sib``_closed_e = ijtag_update && !sib_gated[__idx] && !sib_open[__idx];   \
-    wire sib_``__sib``_open_e = ijtag_update && !sib_gated[__idx] && sib_open[__idx];      \
-    wire sib_``__sib``_gated_e = ijtag_update && sib_gated[__idx];                         \
-    wire sib_``__sib``_access_e = ijtag_update && sib_shifted[__idx];                      \
-    `OCAH_FCOV_COVER(c_sib_state_``__sib``_closed, sib_``__sib``_closed_e, tck_i, in_reset) \
-    `OCAH_FCOV_COVER(c_sib_state_``__sib``_open, sib_``__sib``_open_e, tck_i, in_reset)     \
-    `OCAH_FCOV_COVER(c_sib_state_``__sib``_gated, sib_``__sib``_gated_e, tck_i, in_reset)   \
-    `OCAH_FCOV_COVER(c_instrument_access_``__sib, sib_``__sib``_access_e, tck_i, in_reset)
-
-  `DTP_SIB_STATE(dft_secure, 2)
-  `DTP_SIB_STATE(dft_nonsecure, 1)
-  `DTP_SIB_STATE(dfd, 0)
-  `undef DTP_SIB_STATE
-
   // ------------------------------------------------------------------
   // cg_stap_3dcr: one sample per STAP at each update the STAP chain takes,
   // which needs the PTAP 3DCR select before the update; the chain shifts on
@@ -190,47 +152,6 @@ module dtp_scan_fcov (
   wire [3:0] stap_sib_before = stap_sib_q;
   wire [3:0] stap_forwarded = stap_fwd_q;
   wire stap_chain_update = (update_dr || update_ir) && ptap_select_before;
-  wire [3:0] stap_in_chain = {4{stap_chain_update}} & stap_sib_before;
-
-  wire stap_type_io_e = stap_chain_update && stap_forwarded[0];
-  wire stap_type_smc_e = stap_chain_update && stap_forwarded[1];
-  wire stap_type_sep_e = stap_chain_update && stap_forwarded[2];
-  wire stap_type_extra_e = stap_chain_update && stap_forwarded[3];
-  `OCAH_FCOV_COVER(c_stap_type_io, stap_type_io_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_stap_type_smc, stap_type_smc_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_stap_type_sep, stap_type_sep_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_stap_type_extra, stap_type_extra_e, tck_i, in_reset)
-
-  wire chain_sib_open_e = |stap_in_chain;
-  wire chain_sib_closed_e = stap_chain_update && !(&stap_sib_before);
-  `OCAH_FCOV_COVER(c_3dcr_chain_sib_open, chain_sib_open_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_3dcr_chain_sib_closed, chain_sib_closed_e, tck_i, in_reset)
-
-  `define DTP_3DCR_FIELD(__field, __vec)                                                 \
-    wire field_``__field``_clear_e = |(stap_in_chain & ~(__vec));                          \
-    wire field_``__field``_set_e = |(stap_in_chain & (__vec));                             \
-    `OCAH_FCOV_COVER(c_3dcr_field_``__field``_clear, field_``__field``_clear_e, tck_i,       \
-                     in_reset)                                                            \
-    `OCAH_FCOV_COVER(c_3dcr_field_``__field``_set, field_``__field``_set_e, tck_i, in_reset)
-
-  `DTP_3DCR_FIELD(select, stap_sel_int)
-  `DTP_3DCR_FIELD(tms_hold, stap_tms_hold)
-  `DTP_3DCR_FIELD(config_hold, stap_config_hold)
-  `undef DTP_3DCR_FIELD
-
-  wire stap_security_enabled_e = |(stap_in_chain & ~stap_gated);
-  wire stap_security_gated_e = |(stap_in_chain & stap_gated);
-  `OCAH_FCOV_COVER(c_stap_security_enabled, stap_security_enabled_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_stap_security_gated_by_field, stap_security_gated_e, tck_i, in_reset)
-
-  // ------------------------------------------------------------------
-  // cg_stap_chain: every Update-IR and Update-DR, with the PTAP 3DCR select
-  // the scan ran under. With it clear the STAP chain held its state.
-  // ------------------------------------------------------------------
-  wire chain_held_unselected_e = (update_dr || update_ir) && !ptap_select_before;
-  wire chain_scanned_selected_e = (update_dr || update_ir) && ptap_select_before;
-  `OCAH_FCOV_COVER(c_3dcr_chain_held_unselected, chain_held_unselected_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_3dcr_chain_scanned_selected, chain_scanned_selected_e, tck_i, in_reset)
 
   // ------------------------------------------------------------------
   // cg_3dcr_hold: CONFIG_HOLD across the TAP resets. Each 3DCR image is
@@ -277,15 +198,6 @@ module dtp_scan_fcov (
                                                  : (tdcr_image[3*k+:3] == tdcr_before[3*k+:3]);
     end
   end
-  wire [HoldRegs-1:0] hold_sampled = hold_loaded & hold_ok;
-  wire hold_tlr_unheld_cleared_e = tlr_reset && |(hold_sampled & ~hold_held);
-  wire hold_tlr_held_retained_e = tlr_reset && |(hold_sampled & hold_held);
-  wire hold_trst_unheld_cleared_e = trst_reset && |(hold_sampled & ~hold_held);
-  wire hold_trst_held_cleared_e = trst_reset && |(hold_sampled & hold_held);
-  `OCAH_FCOV_COVER(c_3dcr_hold_tlr_unheld_cleared, hold_tlr_unheld_cleared_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_3dcr_hold_tlr_held_retained, hold_tlr_held_retained_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_3dcr_hold_trst_unheld_cleared, hold_trst_unheld_cleared_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_3dcr_hold_trst_held_cleared, hold_trst_held_cleared_e, tck_i, in_reset)
 
   // ------------------------------------------------------------------
   // cg_dbg_disable_scan: the scan-side debug-disable cells at signal level.
@@ -332,50 +244,9 @@ module dtp_scan_fcov (
     dbg_released_q     <= (dbg_released_q & ~dbg_recover) | dbg_release;
   end
 
-  `define DTP_DBG_SCAN_CELL(__field, __idx)                                               \
-    wire dbg_``__field``_allowed_e = dbg_attempt[__idx] && !scan_disable[__idx]              \
-        && !dbg_blocked[__idx];                                                             \
-    wire dbg_``__field``_blocked_e = dbg_attempt[__idx] && scan_disable[__idx]               \
-        && dbg_blocked[__idx];                                                              \
-    wire dbg_``__field``_isolated_e = dbg_``__field``_allowed_e                              \
-        && |(scan_disable & ~(ScanFields'(1) << __idx));                                    \
-    wire dbg_``__field``_released_e = dbg_release[__idx];                                   \
-    wire dbg_``__field``_recovered_e = dbg_recover[__idx];                                  \
-    `OCAH_FCOV_COVER(c_dbg_disable_``__field``_allowed, dbg_``__field``_allowed_e, tck_i,      \
-                     in_reset)                                                              \
-    `OCAH_FCOV_COVER(c_dbg_disable_``__field``_blocked, dbg_``__field``_blocked_e, tck_i,      \
-                     in_reset)                                                              \
-    `OCAH_FCOV_COVER(c_dbg_disable_``__field``_isolated, dbg_``__field``_isolated_e, tck_i,    \
-                     in_reset)                                                              \
-    `OCAH_FCOV_COVER(c_dbg_disable_``__field``_released, dbg_``__field``_released_e, tck_i,    \
-                     in_reset)                                                              \
-    `OCAH_FCOV_COVER(c_dbg_disable_``__field``_recovered, dbg_``__field``_recovered_e, tck_i,  \
-                     in_reset)
-
-  `DTP_DBG_SCAN_CELL(stap_io, 0)
-  `DTP_DBG_SCAN_CELL(stap_smc, 1)
-  `DTP_DBG_SCAN_CELL(stap_sep, 2)
-  `DTP_DBG_SCAN_CELL(stap_extra, 3)
-  `DTP_DBG_SCAN_CELL(stap_host, 4)
-  `DTP_DBG_SCAN_CELL(dft_secure, 5)
-  `DTP_DBG_SCAN_CELL(dft_nonsecure, 6)
-  `DTP_DBG_SCAN_CELL(dfd, 7)
-  `undef DTP_DBG_SCAN_CELL
-
-  wire dbg_attempt_any = |dbg_attempt;
-  wire dbg_mask_all_clear_e = dbg_attempt_any && (scan_disable_count == 4'd0);
-  wire dbg_mask_one_hot_e = dbg_attempt_any && (scan_disable_count == 4'd1);
-  wire dbg_mask_multi_hot_e = dbg_attempt_any && (scan_disable_count > 4'd1)
-      && (scan_disable_count < 4'(ScanFields));
-  wire dbg_mask_all_disabled_e = dbg_attempt_any && (scan_disable_count == 4'(ScanFields));
-  `OCAH_FCOV_COVER(c_dbg_disable_scan_mask_all_clear, dbg_mask_all_clear_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_dbg_disable_scan_mask_one_hot, dbg_mask_one_hot_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_dbg_disable_scan_mask_multi_hot, dbg_mask_multi_hot_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_dbg_disable_scan_mask_all_disabled, dbg_mask_all_disabled_e, tck_i, in_reset)
-
   // ------------------------------------------------------------------
-  // Covergroups, under the cross rules dtp_fcov.sv states, on the events the
-  // cover properties above record.
+  // Covergroups, under the cross rules dtp_fcov.sv states, sampled on the
+  // events decoded above.
   // ------------------------------------------------------------------
   // Each SIB state is {disable, open}: a SIB whose disable is set is held
   // closed, so an open SIB under its disable is a design failure.
@@ -444,6 +315,8 @@ module dtp_scan_fcov (
     x_config: cross cp_type, cp_select, cp_tms_hold, cp_config_hold, cp_security iff (sib_open);
   endgroup
 
+  // One sample per Update-IR and Update-DR, with the PTAP 3DCR select the
+  // scan ran under. With it clear the STAP chain held its state.
   covergroup cg_stap_chain with function sample (logic ptap_select, logic dr_scan);
     option.per_instance = 1;
     cp_ptap_select: coverpoint ptap_select {

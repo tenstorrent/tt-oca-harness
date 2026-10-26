@@ -31,9 +31,9 @@
 -module dtp_j2a_state_flags
 
 // Assertion coverage carries the DUT's own assertions, the `cover property`
-// points of the functional-coverage modules, and the protocol checkers and
-// rules under the bench top; the assertions of the UVM and AXI packages, which
-// URG lists as top-level scopes of their own, stay out. uvm_pkg exists in the
+// points of dtp_jtag2axi_fcov, and the protocol checkers and rules under the
+// bench top; the assertions of the UVM and AXI packages, which URG lists as
+// top-level scopes of their own, stay out. uvm_pkg exists in the
 // SV-UVM elaboration only, so the cocotb compile reports that line as
 // unmatched. A metric section replaces the general rules for that metric, so
 // the tree is stated again.
@@ -42,11 +42,7 @@ begin assert
 -tree uvm_pkg
 -tree axi_pkg
 +tree tb_top.u_dut
-+tree tb_top.u_dtp_fcov
 +tree tb_top.u_dtp_jtag2axi_fcov
-+tree tb_top.u_dtp_debug_tdr_fcov
-+tree tb_top.u_dtp_scan_fcov
-+tree tb_top.u_dtp_xtrig_fcov
 +tree tb_top.u_jtag_ptap_sva
 +tree tb_top.u_stap_io_host_sva
 +tree tb_top.u_stap_smc_host_sva

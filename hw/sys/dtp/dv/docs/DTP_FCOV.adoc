@@ -11,20 +11,22 @@ its cocotb and SV-UVM realizations.
 
 Functional coverage is collected by the SystemVerilog coverage modules under
 `hw/sys/dtp/dv/cov/sv/`, instantiated once in the shared `tb_top` so the same
-source serves the cocotb and SV-UVM flows. Each module carries two layers, and
-every simulator compiles both. Its SV covergroups are the functional model:
-the runner maps URG's `group` metric and Verilator's `covergroup` points to the
-functional family, and leaves out Verilator's ignore and illegal bins, which
-are not coverage goals. Verilator drops cross select expressions (`binsof`,
-explicit cross bins) and coverage weights, so the covergroups use neither:
-every cross is the full product of its coverpoints, and a combination that
-must not occur is an illegal bin of a coverpoint, so both simulators build the
-same bins. Its labeled `cover property` points land in the Verilator coverage
-database as the `user` family, and on VCS they are graded with the assertion
-family as cover directives. Crosses and illegal bins exist only in the
-covergroups, so the two layers do not carry the same bins. The debug-disable
-22-cell contract additionally keeps its checker-gated Python ledger
-(`env/dtp_fcov.py`).
+source serves the cocotb and SV-UVM flows. Their SV covergroups are the
+functional model, and every simulator compiles them: the runner maps URG's
+`group` metric and Verilator's `covergroup` points to the functional family,
+and leaves out Verilator's ignore and illegal bins, which are not coverage
+goals. Verilator drops cross select expressions (`binsof`, explicit cross
+bins) and coverage weights, so the covergroups use neither: every cross is the
+full product of its coverpoints, and a combination that must not occur is an
+illegal bin of a coverpoint, so both simulators build the same bins. A labeled
+`cover property` point records only a condition no covergroup bin records:
+`dtp_jtag2axi_fcov` keeps one per bridge for a disable release outside TAP
+reset (`+c_<target>_gating_release_no_replay+`), because the
+`cg_jtag2axi_gating` release bin also counts a release during TAP reset. These
+points land in the Verilator coverage database as the `user` family, and on
+VCS they are graded with the assertion family as cover directives. The
+debug-disable 22-cell contract additionally keeps its checker-gated Python
+ledger (`env/dtp_fcov.py`).
 
 [cols=",",options="header",]
 |===
@@ -104,28 +106,28 @@ modules. Toggle and FSM coverage are not collected.
 [cols=",,",options="header",]
 |===
 |Category |Covergroup / Coverage Model |Collection Point
-|TAP states and transitions |`cg_tap_state`, `cg_tap_arc` |`dtp_fcov` (`c_state_*`, `c_arc_*`)
-|TAP reset and IDCODE |`cg_tap_smoke` |`dtp_fcov` (`c_reset_*`, `c_smoke_*`)
-|Scan boundaries |`cg_scan_boundary` |`dtp_fcov` (`c_completed_ir_scan`, `c_completed_dr_scan`)
-|JTAG instruction decode |`cg_jtag_instruction` |`dtp_fcov` (`c_ir_*`)
-|Instruction data registers |`cg_dr_scan` |`dtp_fcov` (`c_dr_scan_*`)
-|Debug-disable gating of instructions |`cg_instruction_gate` |`dtp_fcov` (`c_gate_*`)
-|JTAG2AXI single operations |`cg_jtag2axi_single_op` |`dtp_jtag2axi_fcov` (`+c_<target>_op_*+`, `+c_<target>_wstrb_*+`, `+c_<target>_addr_*+`, `+c_<target>_size_*+`)
-|JTAG2AXI responses, recovery, and status polls |`cg_jtag2axi_response`, `cg_jtag2axi_recovery`, `cg_jtag2axi_poll` |`dtp_jtag2axi_fcov` (`+c_<target>_status_*+`, `+c_<target>_recovery_*+`, `+c_<target>_poll_*+`, `+c_<target>_op_nop+`)
-|JTAG2AXI series operations |`cg_jtag2axi_series` |`dtp_jtag2axi_fcov` (`+c_<target>_series_*+`, `c_series_shape_*`)
-|JTAG2AXI backpressure and reset recovery |`cg_jtag2axi_backpressure`, `cg_jtag2axi_reset`, `cg_jtag2axi_cdc` |`dtp_jtag2axi_fcov` (`+c_<target>_skew_*+`, `+c_<target>_reset_timing_*+`, `+c_<target>_cdc_clear_*+`, `c_reset_*`)
-|JTAG2AXI security gating |`cg_jtag2axi_gating` |`dtp_jtag2axi_fcov` (`+c_<target>_gating_*+`)
-|TMP controller and TMP_STATUS |`cg_tmp` |`dtp_debug_tdr_fcov` (`c_tmp_*`)
-|IC_RESET TDR |`cg_ic_reset` |`dtp_debug_tdr_fcov` (`c_ic_reset_*`)
-|Debug control |`cg_debug_control` |`dtp_debug_tdr_fcov` (`c_boot_stall_*`, `c_jtag_clock_stop_*`, `c_cla_*`, `c_debug_control_*`)
-|Clock-stop aggregation |`cg_clock_stop` |`dtp_debug_tdr_fcov` (`c_clk_stop_req_*`, `c_clock_stop_output_*`)
-|Capability TDRs |`cg_caps_tdr` |`dtp_debug_tdr_fcov` (`c_caps_*`)
-|STAP / 3DCR |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold` |`dtp_scan_fcov` (`c_stap_*`, `c_3dcr_*`)
-|iJTAG SIBs |`cg_ijtag_sib` |`dtp_scan_fcov` (`c_sib_*`, `c_instrument_*`)
-|Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov` (`c_ctp_*`)
-|Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov` (`c_ctm_*`)
-|XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov` (`c_xtrig_*`)
-|Debug-disable gating |`DtpDbgDisableFcov`, `cg_dbg_disable_scan`, `cg_dbg_disable_jtag2axi` |Checker-gated 22-cell Python ledger in the two `dbg_disable` matrix tests; `dtp_scan_fcov` (`+c_dbg_disable_<field>_*+`, `c_dbg_disable_scan_mask_*`) and `dtp_jtag2axi_fcov` (`+c_<target>_dbg_disable_*+`, `c_dbg_disable_jtag2axi_*`) for the signal-level cells
+|TAP states and transitions |`cg_tap_state`, `cg_tap_arc` |`dtp_fcov`
+|TAP reset and IDCODE |`cg_tap_smoke` |`dtp_fcov`
+|Scan boundaries |`cg_scan_boundary` |`dtp_fcov`
+|JTAG instruction decode |`cg_jtag_instruction` |`dtp_fcov`
+|Instruction data registers |`cg_dr_scan` |`dtp_fcov`
+|Debug-disable gating of instructions |`cg_instruction_gate` |`dtp_fcov`
+|JTAG2AXI single operations |`cg_jtag2axi_single_op` |`dtp_jtag2axi_fcov`
+|JTAG2AXI responses, recovery, and status polls |`cg_jtag2axi_response`, `cg_jtag2axi_recovery`, `cg_jtag2axi_poll` |`dtp_jtag2axi_fcov`
+|JTAG2AXI series operations |`cg_jtag2axi_series` |`dtp_jtag2axi_fcov`
+|JTAG2AXI backpressure and reset recovery |`cg_jtag2axi_backpressure`, `cg_jtag2axi_reset`, `cg_jtag2axi_cdc` |`dtp_jtag2axi_fcov`
+|JTAG2AXI security gating |`cg_jtag2axi_gating` |`dtp_jtag2axi_fcov` (`+c_<target>_gating_release_no_replay+`)
+|TMP controller and TMP_STATUS |`cg_tmp` |`dtp_debug_tdr_fcov`
+|IC_RESET TDR |`cg_ic_reset` |`dtp_debug_tdr_fcov`
+|Debug control |`cg_debug_control` |`dtp_debug_tdr_fcov`
+|Clock-stop aggregation |`cg_clock_stop` |`dtp_debug_tdr_fcov`
+|Capability TDRs |`cg_caps_tdr` |`dtp_debug_tdr_fcov`
+|STAP / 3DCR |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold` |`dtp_scan_fcov`
+|iJTAG SIBs |`cg_ijtag_sib` |`dtp_scan_fcov`
+|Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov`
+|Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov`
+|XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov`
+|Debug-disable gating |`DtpDbgDisableFcov`, `cg_dbg_disable_scan`, `cg_dbg_disable_jtag2axi` |Checker-gated 22-cell Python ledger in the two `dbg_disable` matrix tests; `dtp_scan_fcov` and `dtp_jtag2axi_fcov` for the signal-level cells
 |===
 
 === Coverage Definitions
