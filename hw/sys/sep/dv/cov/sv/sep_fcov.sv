@@ -361,7 +361,8 @@ module sep_fcov (
   input wire [6:0]           ip_rst_n_i,        // sep_crypto_gated_rst_n, SW_RESET_N order
   input wire [13:0]          iso_req_i,         // sep_crypto_isolate_req, bench index
   input wire [13:0]          iso_ack_i,         // sep_crypto_isolated, bench index
-  input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_n
+  input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_aon_clk_n
+  input wire                 sep_wdt_reset_n_i, // sep_wdt_reset_n (watchdog timer reset)
   input wire [1:0]           km_cond_rst_n_i,   // {rst_cold_aasd_n, rst_warm_sync_n}
   input wire [1:0]           refcnt_rst_n_i,    // reference counter {clk_ref_i, clk_i} reset
   input sep_pkg::jtag_sep_reset_ctrl_t jtag_rst_ctrl_i,  // after the pin-or-TDR mux
@@ -14426,12 +14427,13 @@ module sep_fcov (
     }
     // Net: 0 sep_reset_n, 1 sep_cpu_reset_n, 2..7 ip_rst_n[1..6],
     // 8 aon_rst_n, 9 Key Manager cold, 10 Key Manager warm, 11 ip_rst_n[0],
-    // 12 reference counter clk_ref_i reset, 13 reference counter clk_i reset.
+    // 12 reference counter clk_ref_i reset, 13 reference counter clk_i reset,
+    // 14 sep_wdt_reset_n.
     // Case 0 keeps its value (test_en_i 0), 1 low before the rise
     // (test_en_i 1), 2 the release of net 0 or 8 off the clock edge.
     cp_scan_net_effect: coverpoint s.sn iff (s.sn_v) {
-      bins te0_keeps[] = {[6'd0 : 6'd13]};
-      bins te1_low[] = {[6'd16 : 6'd29]};
+      bins te0_keeps[] = {[6'd0 : 6'd14]};
+      bins te1_low[] = {[6'd16 : 6'd30]};
       bins sep_reset_n_release_bypassed = {6'd32};
       bins aon_rst_n_release_bypassed = {6'd40};
     }
@@ -14613,8 +14615,9 @@ module sep_fcov (
     logic eo_v;  // {enable, outcome 0 no count 1 advances 2 crossed}
     logic [2:0] bs;
     logic bs_v;  // bark status cell, 4 bite in a forced window
-    logic [1:0] lk;
-    logic lk_v;  // 0 sticky, 1 cold landed, 2 locked landed, 3 unlocked ignored
+    logic [2:0] lk;
+    logic lk_v;  // 0 sticky, 1 cold landed, 2 locked landed, 3 unlocked ignored,
+                 // 4 landed after a wdt_rst_ni pulse that followed a lock
     logic [2:0] ad;
     logic ad_v;  // {stage, high half}
     logic ax;
@@ -14645,10 +14648,11 @@ module sep_fcov (
       illegal_bins bite_in_forced_window = {3'd4};
     }
     cp_lock_x_reg: coverpoint s.lk iff (s.lk_v) {
-      bins regwen_sticky_after_clear = {2'd0};
-      bins cold_reset_regwen1_write_lands = {2'd1};
-      illegal_bins regwen0_landed = {2'd2};
-      illegal_bins regwen1_ignored = {2'd3};
+      bins regwen_sticky_after_clear = {3'd0};
+      bins cold_reset_regwen1_write_lands = {3'd1};
+      illegal_bins regwen0_landed = {3'd2};
+      illegal_bins regwen1_ignored = {3'd3};
+      bins wdt_reset_regwen1_write_lands = {3'd4};
     }
     // Stage: 0 sep_wdt_tlul_axi_req, 1 sep_wdt_tlul_axi_req_offset,
     // 2 axi_lite_req, 3 tl_d_i.
@@ -15470,6 +15474,23 @@ module sep_fcov (
   logic mr_rr_arm = 1'b0;
   logic mr_ar_arm = 1'b0;
   logic mr_sn_arm = 1'b0;
+  // Scan net samples on clk_i, in the bit order of mr_sn_now: the value and an
+  // X flag per net. A net with X in the window fills no cp_scan_net_effect cell.
+  logic [14:0] mr_sn_now_q = '0;
+  logic [14:0] mr_sn_xv;
+  logic [14:0] mr_sn_xv_q = '0;
+  always_comb begin
+    mr_sn_xv[14] = $isunknown(sep_wdt_reset_n_i);
+    mr_sn_xv[13] = $isunknown(refcnt_rst_n_i[0]);
+    mr_sn_xv[12] = $isunknown(refcnt_rst_n_i[1]);
+    mr_sn_xv[11] = $isunknown(ip_rst_n_i[0]);
+    mr_sn_xv[10] = $isunknown(km_cond_rst_n_i[0]);
+    mr_sn_xv[9]  = $isunknown(km_cond_rst_n_i[1]);
+    mr_sn_xv[8]  = $isunknown(aon_rst_n_i);
+    for (int i = 1; i < 7; i++) mr_sn_xv[i+1] = $isunknown(ip_rst_n_i[i]);
+    mr_sn_xv[1] = $isunknown(cpu_reset_n_i);
+    mr_sn_xv[0] = $isunknown(sep_reset_n_i);
+  end
   always @(posedge rst_ni) begin
     mr_rr_arm   = mr_own_cold;
     mr_ar_arm   = mr_own_cold;
@@ -15492,7 +15513,9 @@ module sep_fcov (
         u_sep_reset_source_cg.sample(e);
       end
       mr_rr_arm = 1'b0;
-      if (mr_sn_arm && mr_own_scan && (off > MrEdgeTol) && (off < per - MrEdgeTol)) begin
+      // The rise counts only from a known 0 at the last clk_i edge.
+      if (mr_sn_arm && mr_own_scan && !mr_sn_now_q[0] && !mr_sn_xv_q[0] && (off > MrEdgeTol) &&
+          (off < per - MrEdgeTol)) begin
         mr_src_t e;
         e      = '0;
         e.sn   = 6'd32;
@@ -15515,7 +15538,8 @@ module sep_fcov (
         u_sep_reset_source_cg.sample(e);
       end
       mr_ar_arm = 1'b0;
-      if (mr_sn_arm && mr_own_scan && (off > MrEdgeTol) && (off < per - MrEdgeTol)) begin
+      if (mr_sn_arm && mr_own_scan && !mr_sn_now_q[8] && !mr_sn_xv_q[8] && (off > MrEdgeTol) &&
+          (off < per - MrEdgeTol)) begin
         mr_src_t e;
         e      = '0;
         e.sn   = 6'd40;
@@ -15806,9 +15830,9 @@ module sep_fcov (
   logic mr_ro_arm = 1'b0;
   logic mr_ro_low = 1'b0;
   logic mr_ro_bad_q = 1'b0;
-  logic [13:0] mr_sn_snap = '0;
-  logic [13:0] mr_sn_keep = '0;
-  logic [13:0] mr_sn_now_q = '0;
+  logic [14:0] mr_sn_snap = '0;
+  logic [14:0] mr_sn_keep = '0;
+  logic [14:0] mr_sn_kn = '0;  // the net had no X from the edge before the fall
   logic mr_sn_on = 1'b0;
   logic mr_sn_te = 1'b0;
   logic mr_sn_te_ok = 1'b0;
@@ -15819,7 +15843,8 @@ module sep_fcov (
   int unsigned mr_mp_tog = 0;
   logic mr_mp_rel = 1'b0;
   int unsigned mr_mp_cnt = 0;
-  wire [13:0] mr_sn_now = {
+  wire [14:0] mr_sn_now = {
+    sep_wdt_reset_n_i === 1'b1,
     refcnt_rst_n_i[0] === 1'b1,
     refcnt_rst_n_i[1] === 1'b1,
     ip_rst_n_i[0] === 1'b1,
@@ -15834,6 +15859,7 @@ module sep_fcov (
     logic held;
     logic bad;
     mr_sn_now_q <= mr_sn_now;
+    mr_sn_xv_q  <= mr_sn_xv;
     // cp_source_edge
     if (mr_own_cold && mr_rst_fall) mr_se(3'd0, 1'b0);
     if (mr_own_cold && mr_rst_rise) mr_se(3'd0, 1'b1);
@@ -15907,23 +15933,26 @@ module sep_fcov (
       u_sep_reset_source_cg.sample(e);
     end
 
-    // cp_scan_net_effect, the 28 net cells
+    // cp_scan_net_effect, the 30 net cells. A cell needs the net high on the
+    // last clk_i edge before the scan_rst_ni fall.
     if (mr_scan_q && !mr_scan) begin
       mr_sn_on    <= mr_own_scan;
       mr_sn_snap  <= mr_sn_now_q;
-      mr_sn_keep  <= ~(mr_sn_now ^ mr_sn_now_q);
+      mr_sn_keep  <= mr_sn_now_q & ~(mr_sn_now ^ mr_sn_now_q);
+      mr_sn_kn    <= ~(mr_sn_xv | mr_sn_xv_q);
       mr_sn_te    <= mr_te;
       mr_sn_te_ok <= 1'b1;
       mr_sn_w     <= 1;
     end else if (mr_sn_on && !mr_scan) begin
       mr_sn_keep <= mr_sn_keep & ~(mr_sn_now ^ mr_sn_snap);
+      mr_sn_kn   <= mr_sn_kn & ~mr_sn_xv;
       if (mr_te != mr_sn_te) mr_sn_te_ok <= 1'b0;
       mr_sn_w <= mr_sn_w + 1;
     end else if (mr_sn_on && !mr_scan_q && mr_scan) begin
       mr_sn_on <= 1'b0;
       if (mr_own_scan && mr_sn_te_ok && (mr_sn_w >= MrScanMinW)) begin
-        for (int n = 0; n < 14; n++) begin
-          if (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n]) begin
+        for (int n = 0; n < 15; n++) begin
+          if (mr_sn_kn[n] && mr_sn_snap[n] && (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n])) begin
             mr_src_t e;
             e      = '0;
             e.sn   = {1'b0, mr_sn_te, 4'(n)};
@@ -16739,15 +16768,23 @@ module sep_fcov (
   logic mr_rw = 1'b1;
   logic mr_rw_ok = 1'b0;
   logic mr_lk_sticky = 1'b0;
-  // 1 from a gate-open rst_ni rise to the first landed WDOG_BARK_THOLD write,
-  // unless a WDOG_REGWEN write of 0 or a WDOG_REGWEN read of 0 comes first.
+  // 1 from a gate-open rst_ni rise after a reset that found regwen read as 0 to
+  // the first landed WDOG_BARK_THOLD write, unless a WDOG_REGWEN write of 0 or a
+  // WDOG_REGWEN read of 0 comes first.
   logic mr_lk_cold = 1'b0;
+  logic mr_cold_rd0 = 1'b0;  // the rst_ni reset in progress found regwen read as 0
+  // 1 from a gate-open wdt_rst_ni pulse that found regwen read as 0 to the first
+  // landed WDOG_BARK_THOLD write, unless a WDOG_REGWEN write of 0 or a
+  // WDOG_REGWEN read of 0 comes first.
+  logic mr_lk_wdt = 1'b0;
+  logic mr_rw_rd0 = 1'b0;  // the last WDOG_REGWEN read returned 0
   logic mr_bt_pend = 1'b0;
   logic [31:0] mr_bt_w = '0;
   logic [31:0] mr_bt_prev = '0;
   logic mr_bt_prev_ok = 1'b0;
   logic [1:0] mr_bt_rw = '0;  // {known, regwen}
   logic mr_bt_cold = 1'b0;
+  logic mr_bt_wdt = 1'b0;
   logic mr_bt_own = 1'b0;  // graded window open at the pending bark write
   logic mr_own_tmr_q = 1'b0;  // mr_own_tmr at the previous clk_i edge
   logic [31:0] mr_to_prev = '0;
@@ -16790,7 +16827,12 @@ module sep_fcov (
   wire [31:0] mr_wd_wa = aw_addr_q;
   wire [31:0] mr_wd_ra = ar_addr_q;
   always @(posedge clk_i) begin
-    if (!mr_rst) begin
+    // rst_ni and wdt_rst_ni both reset the aon_timer and its registers
+    // (clk_rst.adoc:62; watchdog.adoc:23), so the model forgets its register
+    // state under either reset.
+    if (!mr_rst || !mr_wdt) begin
+      mr_lk_wdt     <= mr_rst && (mr_lk_wdt || (mr_own_tmr && mr_rw_ok && !mr_rw && mr_rw_rd0));
+      mr_cold_rd0   <= !mr_rst && (mr_cold_rd0 || (mr_rw_ok && !mr_rw && mr_rw_rd0));
       mr_wd_en_ok   <= 1'b0;
       mr_wd_bark_ok <= 1'b0;
       mr_wd_cnt_ok  <= 1'b0;
@@ -16799,6 +16841,7 @@ module sep_fcov (
       mr_bs_f0      <= 1'b0;
       mr_bs_f1      <= 1'b0;
       mr_rw_ok      <= 1'b0;
+      mr_rw_rd0     <= 1'b0;
       mr_lk_sticky  <= 1'b0;
       mr_bt_pend    <= 1'b0;
       mr_to_near    <= 1'b0;
@@ -16819,7 +16862,10 @@ module sep_fcov (
       mr_wk_split   <= '0;
       mr_wk_th      <= '0;
     end else begin
-      if (mr_rst_rise) mr_lk_cold <= mr_own_tmr;
+      if (mr_rst_rise) begin
+        mr_lk_cold  <= mr_own_tmr && mr_cold_rd0;
+        mr_cold_rd0 <= 1'b0;
+      end
       // Writes.
       if (mr_wd_wr && in_blk(mr_wd_wa, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)) begin
         case (mr_wd_wa)
@@ -16862,11 +16908,13 @@ module sep_fcov (
             mr_bt_prev_ok <= mr_wd_bark_ok;
             mr_bt_rw      <= {mr_rw_ok, mr_rw};
             mr_bt_cold    <= mr_lk_cold;
+            mr_bt_wdt     <= mr_lk_wdt;
             mr_bt_own     <= mr_own_tmr;
             mr_lk_cold    <= 1'b0;
+            mr_lk_wdt     <= 1'b0;
             mr_wd_pair    <= 1'b0;
             // A write lands unless regwen is known 0. regwen resets to 1 with
-            // rst_ni, so an unknown regwen after a reset is 1.
+            // rst_ni and with wdt_rst_ni, so an unknown regwen after a reset is 1.
             if (!mr_rw_ok || mr_rw) begin
               mr_wd_bark    <= wr_data;
               mr_wd_bark_ok <= 1'b1;
@@ -16891,6 +16939,7 @@ module sep_fcov (
               mr_rw      <= 1'b0;
               mr_rw_ok   <= 1'b1;
               mr_lk_cold <= 1'b0;
+              mr_lk_wdt  <= 1'b0;
             end else if (mr_rw_ok && !mr_rw) mr_lk_sticky <= 1'b1;
           end
           MrWdIntrTest: begin
@@ -16989,17 +17038,20 @@ module sep_fcov (
                 (mr_own_tmr || mr_own_tmr_q)) begin
               mr_wdt_t e;
               e    = '0;
-              e.lk = 2'd0;
+              e.lk = 3'd0;
               if (rd_data == mr_bt_w) begin
                 if (mr_bt_cold) begin
-                  e.lk   = 2'd1;
+                  e.lk   = 3'd1;
+                  e.lk_v = 1'b1;
+                end else if (mr_bt_wdt) begin
+                  e.lk   = 3'd4;
                   e.lk_v = 1'b1;
                 end else if (mr_bt_rw == 2'b10) begin
-                  e.lk   = 2'd2;
+                  e.lk   = 3'd2;
                   e.lk_v = 1'b1;
                 end
               end else if ((rd_data == mr_bt_prev) && (mr_bt_rw == 2'b11)) begin
-                e.lk   = 2'd3;
+                e.lk   = 3'd3;
                 e.lk_v = 1'b1;
               end
               if (e.lk_v) u_sep_wdt_config_bark_cg.sample(e);
@@ -17023,14 +17075,18 @@ module sep_fcov (
             if (mr_lk_sticky && !rd_data[0] && mr_own_tmr) begin
               mr_wdt_t e;
               e      = '0;
-              e.lk   = 2'd0;
+              e.lk   = 3'd0;
               e.lk_v = 1'b1;
               u_sep_wdt_config_bark_cg.sample(e);
             end
             mr_lk_sticky <= 1'b0;
             mr_rw        <= rd_data[0];
             mr_rw_ok     <= 1'b1;
-            if (!rd_data[0]) mr_lk_cold <= 1'b0;
+            mr_rw_rd0    <= !rd_data[0];
+            if (!rd_data[0]) begin
+              mr_lk_cold <= 1'b0;
+              mr_lk_wdt  <= 1'b0;
+            end
           end
           MrWdCount: begin
             logic chg;

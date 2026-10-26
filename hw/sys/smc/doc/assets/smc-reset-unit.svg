@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="944" viewBox="0 0 1040 944" role="img" aria-labelledby="title desc">
 <title id="title">SMC reset unit</title>
-<desc id="desc">Internals of smc_reset_unit. Reset inputs enter on the left and the synchronised resets, isolation requests and subsystem controls leave on the right. In u_smc_reset_ctrl, powergood_i is stretched 32 reference clock cycles into powergood_stable, which leaves as powergood_stable_o and holds the cold-reset extender. rst_cold_ni passes a JTAG override mux, a 32-cycle de-glitcher and a 255-cycle extender to form the stable cold reset; the cool-reset pin rst_cool_ni passes a 32-cycle de-glitcher. An AND gate forms the primary reset from the stable cold reset, the de-glitched cool-reset pin and the FLR cool reset. An AND gate forms the watchdog reset from rst_ext_wdt_ni and the inverted SMC watchdog second timeout. An AND gate forms the warm reset from the watchdog reset, fuse_reset_ni after its JTAG override mux and the primary reset, and it passes a further JTAG override mux. u_smc_reset_sync synchronises the watchdog and warm resets to clk_smc_i, the primary reset to clk_ref_i, clk_smc_i and clk_periph_i, and the stable cold reset to clk_ref_i and clk_smc_i. In u_smc_cool_reset_wrap, the synchronised rising edge of cfg_flr_pf_active_i starts the FLR counters, whose FLR cool reset passes a JTAG override mux into the primary reset AND gate and leaves as rst_cool_no for other chiplets; the same edge sets ISOLATE_REQ_SMC. An OR gate forms isolate_req_o[31:0] from ISOLATE_REQ_REG, the AND of ISOLATE_REQ_SMC and ISOLATE_REQ_SMCEN_REG, and the AND of the synchronised isolate_req_pin_i and ISOLATE_REQ_PINEN_REG; a second OR gate of ISOLATE_REQ_SMC and the synchronised pin forms skip_mem_repair_o. u_reset_unit_reg, reached over AXI-Lite, holds the registers, drives sync_irq_o and feeds u_smc_subsystem_resets, whose 32 per-subsystem cold and warm resets pass JTAG override muxes into ss_reset_ctrl_o[31:0]; it also drives ss_config_o and samples ss_reset_complete_i. jtag_reset_ctrl_i drives input 1 and the select of every JTAG override mux, and in test mode scan_rst_ni replaces the stretched powergood, the de-glitched cold reset and every synchroniser output.</desc>
+<desc id="desc">Internals of smc_reset_unit. Reset inputs enter on the left and the synchronised resets, isolation requests and subsystem controls leave on the right. In u_smc_reset_ctrl, powergood_i is stretched 32 reference clock cycles into powergood_stable, which leaves as powergood_stable_o and holds the cold-reset extender. rst_cold_ni passes a JTAG override mux, a 32-cycle de-glitcher and a 255-cycle extender to form the stable cold reset; the cool-reset pin rst_cool_ni passes a 32-cycle de-glitcher. An AND gate forms the primary reset from the stable cold reset, the de-glitched cool-reset pin and the FLR cool reset. An AND gate combines the two watchdog requests, rst_ext_wdt_ni and the inverted SMC watchdog second timeout, into the watchdog reset, and a stretcher holds it 32 reference clock cycles after both release. An AND gate forms the warm reset from the watchdog reset, fuse_reset_ni after its JTAG override mux and the primary reset, and it passes a further JTAG override mux. u_smc_reset_sync synchronises the watchdog and warm resets to clk_smc_i, the primary reset to clk_ref_i, clk_smc_i and clk_periph_i, and the stable cold reset to clk_ref_i and clk_smc_i. In u_smc_cool_reset_wrap, the synchronised rising edge of cfg_flr_pf_active_i starts the FLR counters, whose FLR cool reset passes a JTAG override mux into the primary reset AND gate and leaves as rst_cool_no for other chiplets; the same edge sets ISOLATE_REQ_SMC. An OR gate forms isolate_req_o[31:0] from ISOLATE_REQ_REG, the AND of ISOLATE_REQ_SMC and ISOLATE_REQ_SMCEN_REG, and the AND of the synchronised isolate_req_pin_i and ISOLATE_REQ_PINEN_REG; a second OR gate of ISOLATE_REQ_SMC and the synchronised pin forms skip_mem_repair_o. u_reset_unit_reg, reached over AXI-Lite, holds the registers, drives sync_irq_o and feeds u_smc_subsystem_resets, whose 32 per-subsystem cold and warm resets pass JTAG override muxes into ss_reset_ctrl_o[31:0]; it also drives ss_config_o and samples ss_reset_complete_i. jtag_reset_ctrl_i drives input 1 and the select of every JTAG override mux, and in test mode scan_rst_ni replaces the stretched powergood, the de-glitched cold reset, the stretched watchdog reset and every synchroniser output.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -109,7 +109,11 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="14" y="154" text-anchor="start">fuse_reset_ni</text>
 <path class="a-slate" d="M17,160 L222,160"/>
 <path class="fabric" d="M562,114 L585.8,114 A34,34 0 0 1 585.8,182 L562,182 Z"/>
-<path class="n-tel" d="M326,124.0 L397,124.0 M407,124.0 L558,124.0"/>
+<path class="n-tel" d="M326,124.0 L397,124.0"/>
+<path class="a-tel" d="M407,124.0 L430,124.0"/>
+<rect class="fabric" x="434" y="113" width="80" height="22" rx="4"/>
+<text class="s" x="474" y="129" text-anchor="middle">Stretch 32</text>
+<path class="n-tel" d="M514,124.0 L558,124.0"/>
 <path class="a-tel" d="M554,124.0 L558,124.0"/>
 <path class="n-slate" d="M250,152 L397,152 M407,152 L558,152"/>
 <path class="a-slate" d="M554,152.0 L558,152.0"/>
@@ -167,8 +171,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="769" y="327" text-anchor="middle">sync clk_smc_i</text>
 <path class="a-ref" d="M826,322 L1026,322"/>
 <text class="s" x="848" y="316" text-anchor="start">rst_cold_stable_smc_clk_no</text>
-<circle cx="420" cy="124" r="4" fill="#664488"/>
-<path class="a-tel" d="M420,124.0 L420,104 L708,104"/>
+<circle cx="530" cy="124" r="4" fill="#664488"/>
+<path class="a-tel" d="M530,124.0 L530,104 L708,104"/>
 <path class="jovr" d="M640,123 L664,131 L664,149 L640,157 Z"/>
 <text class="mx" x="647" y="136" text-anchor="middle">1</text>
 <text class="mx" x="647" y="152" text-anchor="middle">0</text>
@@ -275,7 +279,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="a-slate" d="M17,816 L300,816"/>
 <text class="s" x="14" y="834" text-anchor="start">test_en_i</text>
 <path class="a-dash" d="M17,840 L300,840"/>
-<text class="s" x="310" y="821" text-anchor="start">Test mode: scan_rst_ni replaces powergood_stable, the de-glitched</text>
+<text class="s" x="310" y="821" text-anchor="start">Test mode: scan_rst_ni replaces both stretchers, the de-glitched</text>
 <text class="s" x="310" y="845" text-anchor="start">cold reset and every synchroniser output</text>
 <text class="b" x="828" y="856" text-anchor="end">smc_reset_unit</text>
 <path class="n-pg" d="M14,894 L48,894"/>
