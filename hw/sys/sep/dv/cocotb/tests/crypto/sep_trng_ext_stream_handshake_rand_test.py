@@ -40,7 +40,13 @@ L (0 to 32 pairs) and the random pool operations (20 to 60).
 
 Checkers: CHK-SEL-RW, CHK-EXT-XFER, CHK-EXT-STRB, CHK-EXT-DROP, CHK-EXT-BP,
 CHK-EXT-IRQ, CHK-SEL-READY, CHK-SEL-HOLD, CHK-SEL-LOCK, CHK-SEL-LOCKFIRST,
-CHK-SEL-GLOBAL, CHK-POOL-DATA (contracts in the docstring of each leg).
+CHK-SEL-GLOBAL, CHK-POOL-DATA, CHK-EDN-FIFO-DEPTH (contracts in the docstring of
+each leg).
+
+Coverage gate: a FAIL closes the graded window and keeps it closed for the rest of
+the leaf. The sampler holds the cells of the external beats, the external stalls,
+the pool pops and the endpoint FIFO depth, and samples a held cell only when the
+leaf raises its ``xhs_pass`` bit after the check that grades it passes.
 """
 
 from __future__ import annotations
@@ -49,10 +55,19 @@ from dataclasses import dataclass, field
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_chk_log import SepChkLog
 from env.sep_ext_trng_stream import SepExtTrngStream
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    XHS_PASS_FIFO_DEPTH,
+    XHS_PASS_FULL,
+    XHS_PASS_PARTIAL,
+    XHS_PASS_POOL_POP,
+    XHS_PASS_STALL,
+    close_graded_window,
+    open_graded_window,
+    set_xhs_pass,
+)
 from env.sep_pic_map import SRC_TIED, vec_bit
 from env.sep_reg_meta import SEP_CPU_CTRL
 from env.sep_seeded_rng import SepSeededRng
@@ -104,6 +119,16 @@ STATUS_AGREE_READS = 64
 # the window is 16 x that. A word that lands later shows as a level mismatch.
 POOL_QUIET = 64
 STREAMS = (0, 1, 2)
+# Words of the AXI-Stream FIFO that EDN fills per endpoint
+# (hw/sys/sep/doc/trng.adoc:30-31, "one 8-entry AXI-Stream FIFO per endpoint").
+ENDPOINT_FIFO_DEPTH = 8
+# Clocks with the endpoint output held (tvalid 1, tready 0) and no push before the
+# FIFO count is graded (test parameter; the cp_adapter_fifo_depth sampler uses the
+# same bound).
+ADAPTER_QUIET = 64
+# AES PRNG reseeds during the drain of a crypto endpoint, one per DRAIN_WINDOW /
+# DRAIN_RESEEDS clocks, so the crypto clients take the held words.
+DRAIN_RESEEDS = 8
 
 
 # ----------------------------------------------------------------------------- plan
@@ -263,6 +288,7 @@ class Row:
     creq: int | None  # crypto_edn_req_o[3:0]
     pack: int | None  # pool_edn_ack_o
     pfips: int | None  # pool_edn_fips_o
+    push: int | None  # drbg_adapter_push_o[2:0]
 
 
 def _bit(v: int | None, i: int) -> int | None:
@@ -277,8 +303,16 @@ class _Trace:
     """Per-clock record of the stream taps and probes of this leaf.
 
     Samples after each falling edge of ``clk_i`` in the read-only phase, the phase of
-    the external stream monitor. Running counters (``ext_xfers``, ``stall``) update
-    on every clock; ``rows`` fills only between ``begin`` and ``end``.
+    the external stream monitor. Running counters (``ext_xfers``, ``stall`` and the
+    endpoint FIFO counters) update on every clock; ``rows`` fills only between
+    ``begin`` and ``end``.
+
+    Endpoint FIFO of internal stream i (``drbg_adapter_push_o`` bit i writes one
+    word, a ``drbg_int`` handshake reads one): ``occ`` is the pushes minus the pops
+    since the output last read empty (tvalid 0), ``run_push`` the pushes in that
+    time, ``pops`` every pop, ``quiet`` the clocks in a row with the output held
+    (tvalid 1, tready 0) and no push, ``max_gap`` the largest number of clocks
+    between two pushes since ``gap_reset``.
     """
 
     def __init__(self, dut) -> None:
@@ -290,6 +324,12 @@ class _Trace:
         self.stall = [0, 0, 0]
         # Clocks since the last stream-2 transfer or pool EDN acknowledge.
         self.pool_quiet = 0
+        self.occ = [0, 0, 0]
+        self.run_push = [0, 0, 0]
+        self.pops = [0, 0, 0]
+        self.quiet = [0, 0, 0]
+        self.since_push = [0, 0, 0]
+        self.max_gap = [0, 0, 0]
         self.life = MonitorLife("EXT-STREAM-TRACE", lambda: self.clk)
         d = dut
         self._post = (
@@ -315,6 +355,32 @@ class _Trace:
         rows, self.rows = self.rows, []
         return rows
 
+    def gap_reset(self, i: int) -> None:
+        self.since_push[i] = 0
+        self.max_gap[i] = 0
+
+    def _endpoint(self, iv: int | None, ir: int | None, pu: int | None) -> None:
+        for i in STREAMS:
+            push = _bit(pu, i) == 1
+            vld = _bit(iv, i) == 1
+            pop = vld and _bit(ir, i) == 1
+            if not vld:
+                self.occ[i] = int(push)
+                self.run_push[i] = int(push)
+            elif self.occ[i] == 0 and pop and not push:
+                self.occ[i] = 0
+            else:
+                self.occ[i] += int(push) - int(pop)
+                self.run_push[i] += int(push)
+            self.pops[i] += int(pop)
+            held = vld and _bit(ir, i) == 0
+            self.quiet[i] = self.quiet[i] + 1 if held and not push else 0
+            if push:
+                self.max_gap[i] = max(self.max_gap[i], self.since_push[i])
+                self.since_push[i] = 0
+            else:
+                self.since_push[i] += 1
+
     async def _run(self) -> None:
         d = self.dut
         while True:
@@ -338,6 +404,10 @@ class _Trace:
                 or _known(d.pool_edn_ack_o) != 0
             )
             self.pool_quiet = 0 if pool_event else self.pool_quiet + 1
+            iv = _known(d.drbg_int_tvalid_o)
+            ir = _known(d.drbg_int_tready_o)
+            pu = _known(d.drbg_adapter_push_o)
+            self._endpoint(iv, ir, pu)
             if not self.recording:
                 continue
             self.rows.append(
@@ -349,14 +419,15 @@ class _Trace:
                     tuple(_known(p[0]) for p in self._post),
                     tuple(_known(p[1]) for p in self._post),
                     tuple(_known(p[2]) for p in self._post),
-                    _known(d.drbg_int_tvalid_o),
-                    _known(d.drbg_int_tready_o),
+                    iv,
+                    ir,
                     _known(d.drbg_int_tdata_o),
                     _known(d.crypto_edn_ack_o),
                     _known(d.crypto_edn_fips_o),
                     _known(d.crypto_edn_req_o),
                     _known(d.pool_edn_ack_o),
                     _known(d.pool_edn_fips_o),
+                    pu,
                 )
             )
 
@@ -402,6 +473,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         "CHK-SEL-LOCKFIRST",
         "CHK-SEL-GLOBAL",
         "CHK-POOL-DATA",
+        "CHK-EDN-FIFO-DEPTH",
     )
 
     async def run_scenario(self) -> None:
@@ -430,6 +502,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         self.ext = SepExtTrngStream(dut, logger=self.logger).start(streams=STREAMS)
         self.sb = None
         self.xfer_seen: dict[int, int] = {}
+        failed = True
         try:
             for i in plan.order:
                 await self._stream_pass(plan.streams[i])
@@ -437,13 +510,48 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             await self._lock_leg()
             await self._global_leg()
             await self._lockfirst_leg()
+            failed = False
         finally:
+            if failed:
+                # A failure may resume from ReadOnly, where no value can be written.
+                await NextTimeStep()
+            set_xhs_pass(0, self.logger)
             close_graded_window(self.logger)
             if self.sb is not None:
                 self.sb.stop()
         await self.ext.stop()
         await self.trace.stop()
         self.chk.finish()
+
+    # --- coverage gate -----------------------------------------------------------------
+    def _open(self) -> None:
+        """Open the graded window, unless a check or control already failed."""
+        if self.chk.failures == 0:
+            open_graded_window(TEST, self.logger)
+
+    def _grade(self, name: str, cond: bool, **fields) -> bool:
+        """``chk.ok`` that records a FAIL, then closes the graded window."""
+        res = self.chk.ok(name, cond, **fields)
+        if not cond:
+            close_graded_window(self.logger)
+        return res
+
+    def _ctrl(self, name: str, cond: bool, **fields) -> bool:
+        """``chk.ctrl`` that records a missing control, then closes the graded window."""
+        res = self.chk.ctrl(name, cond, **fields)
+        if not cond:
+            close_graded_window(self.logger)
+        return res
+
+    async def _release(self, bits: int) -> None:
+        """Raise the ``xhs_pass`` bits after a passing check: each rise samples its held
+        cell. The bits stay 2 clocks, then 0 for 1 clock before the next access."""
+        if self.chk.failures or not bits:
+            return
+        set_xhs_pass(bits, self.logger)
+        await self._clocks(2)
+        set_xhs_pass(0, self.logger)
+        await self._clocks(1)
 
     # --- bus and waits ---------------------------------------------------------------
     async def _sel(self, value: int) -> int:
@@ -566,10 +674,10 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _select_leg(self, sp: StreamPlan) -> None:
         """CHK-SEL-RW: a drawn select value reads back as written (RW)."""
-        open_graded_window(TEST, self.logger)
+        self._open()
         for v in (sp.d, sp.s):
             got = await self._sel(v)
-            self.chk.ok("SEL-RW", got == v, stream=sp.stream, wrote=f"0x{v:x}", read=f"0x{got:x}")
+            self._grade("SEL-RW", got == v, stream=sp.stream, wrote=f"0x{v:x}", read=f"0x{got:x}")
         close_graded_window(self.logger)
 
     async def _feed(self, stream: int, words, gaps, pattern: str, bound: int) -> bool:
@@ -591,10 +699,11 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
     async def _transfer_leg(self, sp: StreamPlan) -> None:
         """CHK-EXT-XFER: every beat that completes at the external port appears at the
         post-mux probe in order and value; each accepted word has edn_fips = 1. On stream
-        2 the empty pool takes every beat with no stall."""
+        2 the empty pool takes every beat with no stall. A pass releases the held
+        full-beat cell of the stream."""
         i = sp.stream
         dut = cocotb.top
-        open_graded_window(TEST, self.logger)
+        self._open()
         self.trace.begin()
         if i == 1:
             await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
@@ -603,8 +712,6 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         done = await self._feed(i, sp.xfer_words, sp.xfer_gaps, sp.gap_pattern, bound)
         await self._clocks(8)
         rows = self.trace.end()
-        await self._drop_source(i)
-        close_graded_window(self.logger)
         ext = ext_xfers(rows, i)
         post = post_xfers(rows, i)
         if i == 1:
@@ -615,7 +722,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         # Stream 2: the even count of 8 to 64 beats fits the empty 32-entry pool, so the
         # pool takes every beat and the feed never stalls.
         all_taken = i != 2 or (done and len(ext) == len(sp.xfer_words))
-        self.chk.ok(
+        passed = self._grade(
             "EXT-XFER",
             len(ext) >= 1
             and ext == post
@@ -632,6 +739,10 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             gap=sp.gap_pattern,
             ended_by_stall=int(not done),
         )
+        if passed:
+            await self._release(XHS_PASS_FULL[i - 1])
+        close_graded_window(self.logger)
+        await self._drop_source(i)
 
     async def _wait_pending(self, stream: int, transferred: int, bound: int) -> bool:
         """Wait until ``transferred`` beats completed and one beat is held on the port."""
@@ -647,7 +758,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
     async def _strobe_leg(self, sp: StreamPlan) -> None:
         """CHK-EXT-STRB: a partial-strobe beat stays pending at the mux output for H
         clocks (and a pair with a partial second beat leaves fifo_level unchanged);
-        after the TRNG reset and the source reset a 0xF beat completes."""
+        after the TRNG reset and the source reset a 0xF beat completes. The window stays
+        open until the verdict; a pass releases the held partial-beat cell."""
         i = sp.stream
         h = self.plan.hold
         await self._trng_reset()
@@ -659,7 +771,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             ok = await self._settle_pairs(2, 2, SETTLE_CAP) is not None
             lvl1, r1 = await self._status_settled()
             ctrl_delta = lvl1 - lvl0
-            self.chk.ctrl(
+            self._ctrl(
                 "EXT-STRB",
                 ok and ctrl_delta == 1 and min(r0, r1) > 0,
                 stream=2,
@@ -670,12 +782,12 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             self.ext.send(1, [sp.ctrl_word])
             ok = await self._settle_pairs(1, 1, SETTLE_CAP) is not None
             ctrl_delta = int(ok)
-            self.chk.ctrl("EXT-STRB", ok, stream=1, ctrl_f_beat=int(ok))
+            self._ctrl("EXT-STRB", ok, stream=1, ctrl_f_beat=int(ok))
             await self._trng_reset()
             lvl1 = 0
             r1 = 0
         # Error injection: a legal source beat with a partial strobe.
-        open_graded_window(TEST, self.logger)
+        self._open()
         if i == 2:
             self.ext.send(2, [sp.part_words[0]])
             self.ext.send(2, [sp.part_words[1]], strb=sp.strobe)
@@ -693,8 +805,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             lvl2, r2 = await self._status_settled()
             pool_delta = lvl2 - lvl1
             settle = [r1, r2]
-        close_graded_window(self.logger)
-        # Recovery: the sink reset and the source reset together, then a 0xF beat.
+        # Recovery (graded by the same check): the sink reset and the source reset
+        # together, then a 0xF beat.
         await self._trng_reset(source_reset=i)
         words = [sp.recov_word, sp.recov_word] if i == 2 else [sp.recov_word]
         self.ext.send(i, words)
@@ -717,9 +829,12 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         }
         if reason:
             fields["reason"] = reason
-        self.chk.ok(
+        passed = self._grade(
             "EXT-STRB", pending and settled and pool_delta in (0, "na") and post_ok, **fields
         )
+        if passed:
+            await self._release(XHS_PASS_PARTIAL[i - 1])
+        close_graded_window(self.logger)
 
     async def _drop_leg(self, sp: StreamPlan) -> None:
         """CHK-EXT-DROP: with the select bit cleared every beat sees tready 1, no word
@@ -727,7 +842,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         i = sp.stream
         sel = sp.s & ~sp.bit
         lvl0, r0 = await self._status_settled() if i == 2 else (0, 0)
-        open_graded_window(TEST, self.logger)
+        self._open()
         got = await self._sel(sel)
         self.trace.begin()
         self.ext.send(i, sp.drop_words)
@@ -741,9 +856,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         tready_low = sum(1 for r in rows if _bit(r.er, i) != 1)
         post = post_xfers(rows, i)
         ctrl = self.xfer_seen.get(i, 0)
-        self.chk.ctrl("EXT-DROP", ctrl >= 1, stream=i, ctrl_xfers=ctrl)
+        self._ctrl("EXT-DROP", ctrl >= 1, stream=i, ctrl_xfers=ctrl)
         reason = {} if settled else {"reason": "timeout:settle"}
-        self.chk.ok(
+        self._grade(
             "EXT-DROP",
             settled
             and got == sel
@@ -765,11 +880,12 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _bp_leg(self, sp: StreamPlan) -> None:
         """CHK-EXT-BP (stream 2): with the pool full tready falls with a beat pending;
-        after the pops every pair appears once and in order."""
+        after the pops every pair appears once and in order. A pass releases the held
+        pool stall and pool pop cells."""
         h = self.plan.hold
         await self._sel(sp.s)
         await self._trng_reset()
-        open_graded_window(TEST, self.logger)
+        self._open()
         self.trace.begin()
         sent: list[int] = []
         stalled = False
@@ -799,8 +915,6 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             resp, data = await self._pop()
             bad_resp += int(resp != RESP_OKAY)
             pops.append(data)
-        close_graded_window(self.logger)
-        await self._drop_source(2)
         expect = [(a << 32) | a for a in sent]
         lost = sum(1 for e in expect if e not in pops)
         dup = len(pops) - len(set(pops))
@@ -822,23 +936,28 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             fields["reason"] = "timeout:settle"
         if timeout:
             fields["reason"] = timeout
-        self.chk.ok(
+        passed = self._grade(
             "EXT-BP",
             stalled and not timeout and settle_reads > 0 and level_at_stall == POOL_DEPTH
             and pops == expect
             and bad_resp == 0,
             **fields,
         )  # fmt: skip
+        if passed:
+            await self._release(XHS_PASS_STALL[1] | XHS_PASS_POOL_POP)
+        close_graded_window(self.logger)
+        await self._drop_source(2)
 
     async def _ready_leg(self, sp: StreamPlan) -> None:
         """CHK-SEL-READY: for a selected stream 1 or 2 with no sink draining, tready
         falls with a beat pending; stream 2 accepts at least 64 beats first; for
-        stream 1 an AES PRNG reseed after the fall completes the pending beat."""
+        stream 1 an AES PRNG reseed after the fall completes the pending beat. A pass of
+        stream 1 releases the held crypto stall cell."""
         h = self.plan.hold
         await self._sel(sp.s)
         await self._trng_reset()
         graded = [j for j in (1, 2) if sp.s >> j & 1]
-        open_graded_window(TEST, self.logger)
+        self._open()
         self.trace.begin()
         for j in STREAMS:
             self.ext.send(j, sp.ready_words[j])
@@ -851,7 +970,6 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
             r = await self._until(lambda: self.trace.ext_xfers[1] > base, TRNG_RESET_CAP)
             rise[1] = int(r is not None)
-        close_graded_window(self.logger)
         s0 = [_bit(r.er, 0) for r in rows if _bit(r.ev, 0) == 1]
         self.chk.obs(
             "SEL-READY0",
@@ -859,7 +977,6 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             tvalid_clk=len(s0),
             tready_low_clk=sum(1 for v in s0 if v == 0),
         )
-        await self._drop_source(*STREAMS)
         for j in graded:
             # The fall is the start of the stall that ends the leg: the last run of
             # clocks with tvalid 1 and tready 0 that reaches the end of the record and
@@ -869,7 +986,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             accepted = len(ext_xfers(rows[:fall] if fall is not None else rows, j))
             low = sum(1 for r in rows if _bit(r.ev, j) == 1 and _bit(r.er, j) == 0)
             first_ok = accepted >= 1
-            self.chk.ctrl("SEL-READY", first_ok, stream=j, first_beat_accepted=int(first_ok))
+            self._ctrl("SEL-READY", first_ok, stream=j, first_beat_accepted=int(first_ok))
             ok = n is not None and fall is not None and accepted < READY_BEAT_BOUND
             if j == 2:
                 ok = ok and accepted >= 2 * POOL_DEPTH
@@ -886,13 +1003,23 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             }
             if n is None:
                 fields["reason"] = f"no_fall_within_bound={READY_BEAT_BOUND}"
-            self.chk.ok("SEL-READY", ok, **fields)
+            if self._grade("SEL-READY", ok, **fields) and j == 1:
+                await self._release(XHS_PASS_STALL[0])
+        close_graded_window(self.logger)
+        await self._drop_source(*STREAMS)
 
     async def _hold_leg(self, sp: StreamPlan) -> None:
         """CHK-SEL-HOLD: with the external source selected the filled internal endpoint
         holds tvalid 1, tready 0 and its word; after the reselect it delivers that word
         first. Control: with the internal source selected and a consumer active the
-        endpoint drains."""
+        endpoint drains.
+
+        CTRL-EDN-FIFO-DRAIN: after the reselect at least ENDPOINT_FIFO_DEPTH words pass
+        the post-mux probe of the stream and the first is the held word.
+
+        CHK-EDN-FIFO-DEPTH (``_depth_check``): EDN fills one 8-entry FIFO per endpoint.
+        After the drain the leg selects the external source again, so the endpoint
+        output is held while EDN refills it."""
         i = sp.stream
         dut = cocotb.top
         # Bring-up of the internal chain; the bring-up writes the select itself.
@@ -906,7 +1033,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         reason = ""
         level0 = pool_level(await self.pool.status()) if i == 2 else 0
         n = await self._until(lambda: _bit(_known(dut.drbg_int_tvalid_o), i) == 1, SETTLE_CAP)
-        open_graded_window(TEST, self.logger)
+        self._open()
         changes = 0
         w = None
         held_ok = False
@@ -933,17 +1060,14 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         resel = SEL_MASK & ~sp.bit
         self.trace.begin()
         got = await self._sel(resel)
-        if i == 1:
-            await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
-        await self._clocks(DRAIN_WINDOW)
+        reseeds = await self._drain(i)
         rows = self.trace.end()
-        close_graded_window(self.logger)
         post = post_xfers(rows, i)
         first_ok = bool(post) and w is not None and post[0] is not None and post[0] == w
         if not reason and post and post[0] is None:
             reason = "unknown:post_mux_tdata"
         need = 1 if i == 1 else 2
-        self.chk.ctrl("SEL-HOLD", len(post) >= need, stream=i, ctrl_drain_beats=len(post))
+        self._ctrl("SEL-HOLD", len(post) >= need, stream=i, ctrl_drain_beats=len(post))
         fields = {
             "stream": i,
             "tvalid": int(held_ok),
@@ -959,25 +1083,90 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         }
         if reason:
             fields["reason"] = reason
-        self.chk.ok(
+        self._grade(
             "SEL-HOLD",
             not reason and held_ok and changes == 0 and first_ok and sel_all == SEL_MASK
             and got == resel and level0 == 0,
             **fields,
         )  # fmt: skip
+        self._ctrl(
+            "EDN-FIFO-DRAIN",
+            len(post) >= ENDPOINT_FIFO_DEPTH and first_ok,
+            stream=i,
+            drain_beats=len(post),
+            need=ENDPOINT_FIFO_DEPTH,
+            first_after_reselect_held=int(first_ok),
+            aes_reseeds=reseeds,
+        )
+        await self._depth_check(i)
+        close_graded_window(self.logger)
+        # The plan holds the select with the bit of the stream cleared after this leg.
+        await self._sel(resel)
         self.sb.stop()
         self.sb = None
+
+    async def _drain(self, i: int) -> int:
+        """DRAIN_WINDOW clocks after the reselect. For stream 1 an AES PRNG reseed at
+        the start of each of DRAIN_RESEEDS equal parts, so the crypto clients take
+        words; the pool takes stream 2 words while it has room. Returns the reseeds."""
+        parts = DRAIN_RESEEDS if i == 1 else 1
+        for _ in range(parts):
+            if i == 1:
+                await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
+            await self._clocks(DRAIN_WINDOW // parts)
+        return parts if i == 1 else 0
+
+    async def _depth_check(self, i: int) -> None:
+        """CHK-EDN-FIFO-DEPTH: with the external source selected for stream i, the
+        endpoint output held (tvalid 1, tready 0) for ADAPTER_QUIET clocks with no push
+        holds ENDPOINT_FIFO_DEPTH words, counted as the pushes minus the pops since the
+        output last read empty (hw/sys/sep/doc/trng.adoc:30-31). Positive probes in the
+        same line: at least ENDPOINT_FIFO_DEPTH pushes seen on the push tap, no pop since
+        the select write, the select reads 0x7. The wait is bounded by SETTLE_CAP; a
+        timeout or a pop fails. A pass releases the held depth cell of the stream."""
+        t = self.trace
+        got = await self._sel(SEL_MASK)
+        pops0 = t.pops[i]
+        t.gap_reset(i)
+        n = await self._until(lambda: t.quiet[i] >= ADAPTER_QUIET, SETTLE_CAP)
+        await self._clocks(2)
+        expect = ENDPOINT_FIFO_DEPTH
+        pops = t.pops[i] - pops0
+        self.chk.obs("EDN-PUSH-GAP", stream=i, max_push_gap=t.max_gap[i], quiet=ADAPTER_QUIET)
+        fields = {
+            "stream": i,
+            "occ": t.occ[i],
+            "expected": expect,
+            "pushes": t.run_push[i],
+            "pops_since_select": pops,
+            "quiet_clk": t.quiet[i],
+            "sel": f"0x{got:x}",
+        }
+        if pops:
+            fields["reason"] = "hold_broken"
+        elif n is None:
+            fields["reason"] = f"timeout:quiet bound={SETTLE_CAP}"
+        ok = (
+            "reason" not in fields
+            and got == SEL_MASK
+            and t.occ[i] == expect
+            and t.run_push[i] >= expect
+            and t.quiet[i] >= ADAPTER_QUIET
+        )
+        if self._grade("EDN-FIFO-DEPTH", ok, **fields):
+            await self._release(XHS_PASS_FIFO_DEPTH[i])
 
     async def _pop_leg(self, sp: StreamPlan) -> None:
         """CHK-POOL-DATA: each pop answers OKAY with the next pair in order, and the
         settled fifo_level equals the model level min(32, completed pairs - pops). A pair
         left pending at level 32 completes after the next pop; a beat still pending H
-        clocks after that pop response fails (``reason=timeout:pending_feed``)."""
+        clocks after that pop response fails (``reason=timeout:pending_feed``). Each
+        passing line releases the held pool stall and pool pop cells."""
         h = self.plan.hold
         await self._trng_reset()
         got = await self._sel(sp.pop_sel)
-        self.chk.ctrl("POOL-DATA", got == sp.pop_sel, sel=f"0x{got:x}")
-        open_graded_window(TEST, self.logger)
+        self._ctrl("POOL-DATA", got == sp.pop_sel, sel=f"0x{got:x}")
+        self._open()
         sent: list[int] = []
         completed = 0
         pops = 0
@@ -991,10 +1180,11 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         lvl, reads = await self._status_settled()
         expect = min(POOL_DEPTH, completed - pops)
         fill_reason = {} if reads > 0 else {"reason": "timeout:settle"}
-        self.chk.ok(
+        if self._grade(
             "POOL-DATA", reads > 0 and lvl == expect, **fill_reason, op="fill", level_after=lvl,
             expect_level=expect, settle_reads=reads, pairs=len(sent),
-        )  # fmt: skip
+        ):  # fmt: skip
+            await self._release(XHS_PASS_STALL[1] | XHS_PASS_POOL_POP)
         feeds = list(sp.feed_pairs)
         # Corner run: feeds to model level 32, one feed offered at level 32, then a pop.
         corner = ["feed"] * (POOL_DEPTH - expect) + ["feed_full", "pop"]
@@ -1044,7 +1234,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
                 settle_reads=reads,
                 pending=int(pend_base is not None),
             )
-            self.chk.ok("POOL-DATA", ok and lvl == expect, **fields)
+            if self._grade("POOL-DATA", ok and lvl == expect, **fields):
+                await self._release(XHS_PASS_STALL[1] | XHS_PASS_POOL_POP)
             if "reason" in fields:
                 break
         close_graded_window(self.logger)
@@ -1062,15 +1253,15 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             return (self.rd(vec, mask) >> VEC_EXT_IRQ) & 1
 
         before = bit16()
-        self.chk.ctrl("EXT-IRQ", before == 0, vec16_before=before)
-        open_graded_window(TEST, self.logger)
+        self._ctrl("EXT-IRQ", before == 0, vec16_before=before)
+        self._open()
         for level in (1, 0):
             self.ext.set_irq(level)
             n = await self._until(lambda lv=level: bit16() == lv, IRQ_BOUND)
             fields = {"irq_i": level, "vec16": bit16(), "clk": n if n is not None else "na"}
             if n is None:
                 fields["reason"] = f"timeout:vec16 bound={IRQ_BOUND}"
-            self.chk.ok("EXT-IRQ", n is not None, **fields)
+            self._grade("EXT-IRQ", n is not None, **fields)
             # The input keeps the level for IRQ_HOLD clocks after bit 16 follows it, so the
             # sampled clock after the change sees the input and bit 16 at the same level.
             # Whether bit 16 is a level is not stated, so the hold is logged only.
@@ -1093,9 +1284,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         before it (the plan draws a away from that value)."""
         plan = self.plan
         held = await self.reg._rd(SEL_ADDR) & SEL_MASK
-        open_graded_window(TEST, self.logger)
+        self._open()
         pre = await self._sel(plan.a)
-        self.chk.ctrl(
+        self._ctrl(
             "SEL-LOCK",
             pre == plan.a and held != plan.a,
             held_sel=f"0x{held:x}",
@@ -1109,7 +1300,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         lock_r = await self.reg._rd(LOCK_ADDR) & LOCK_MASK
         sel_r = await self.reg._rd(SEL_ADDR) & SEL_MASK
         self.pre_global = (lock_r, sel_r)
-        self.chk.ok(
+        self._grade(
             "SEL-LOCK",
             lock1 == LOCK_MASK and lock0 == LOCK_MASK and kept == plan.a
             and lock_r == LOCK_MASK and sel_r == plan.a,
@@ -1124,7 +1315,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
     async def _global_leg(self) -> None:
         """CHK-SEL-GLOBAL: after a rst_ni pulse the lock is 0 and the select is 0x7."""
         pre_lock, pre_sel = self.pre_global
-        self.chk.ctrl(
+        self._ctrl(
             "SEL-GLOBAL",
             pre_lock == LOCK_MASK and pre_sel != SEL_RESET,
             pre_lock=pre_lock,
@@ -1135,7 +1326,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         lock = await self.reg._rd(LOCK_ADDR) & LOCK_MASK
         sel = await self.reg._rd(SEL_ADDR) & SEL_MASK
         close_graded_window(self.logger)
-        self.chk.ok(
+        self._grade(
             "SEL-GLOBAL",
             lock == 0 and sel == SEL_RESET,
             lock=lock,
@@ -1147,7 +1338,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
     async def _lockfirst_leg(self) -> None:
         """CHK-SEL-LOCKFIRST: with the lock set before any select write, a select write
         leaves the select at 0x7. Control: after a rst_ni pulse a select write lands."""
-        open_graded_window(TEST, self.logger)
+        self._open()
         lock = await self._lock(LOCK_MASK)
         sel = await self._sel(0)
         close_graded_window(self.logger)
@@ -1155,8 +1346,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         lock_after = await self.reg._rd(LOCK_ADDR) & LOCK_MASK
         lands = await self._sel(0)
         ctrl = lock_after == 0 and lands == 0
-        self.chk.ctrl("SEL-LOCKFIRST", ctrl, ctrl_after_reset_write_lands=int(ctrl))
-        self.chk.ok(
+        self._ctrl("SEL-LOCKFIRST", ctrl, ctrl_after_reset_write_lands=int(ctrl))
+        self._grade(
             "SEL-LOCKFIRST",
             lock == LOCK_MASK and sel == SEL_RESET,
             lock=lock,

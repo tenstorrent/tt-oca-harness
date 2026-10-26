@@ -240,6 +240,17 @@ class SepEntropyGolden:
 
         self._run_drbg(seed)
 
+    def unconsumed_seed_words(self):
+        """Conditioner words in the seed packer golden that no graded seed took yet.
+
+        The words of each queued seed (oldest first, word0 first), then the words of
+        the partial seed."""
+        words = []
+        for seed in self.expected_seed:
+            words.extend((seed >> (32 * k)) & 0xFFFFFFFF for k in range(SEED_WORDS))
+        words.extend(self._seed_words)
+        return words
+
     def _run_drbg(self, seed):
         """Apply a seed to the CTR_DRBG state. Produces no blocks.
 

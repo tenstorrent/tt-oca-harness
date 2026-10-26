@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """KM-bus view of the key registers of the five engine wrappers.
 
-no_cpu / lsu_stub_all_live / +skip_fuse_sense / +km_rom_hex=km_rom_poke.parhex,
-Adams Bridge present. Seeded (``SepSeededRng``): every draw is logged as ``DRAW``.
+no_cpu / lsu_stub_all_live / +skip_fuse_sense / +esrc_noise_force /
++km_rom_hex=km_rom_poke.parhex, Adams Bridge present. Seeded (``SepSeededRng``):
+every draw is logged as ``DRAW``.
 
 The KM CPU runs the POKE image (``tests/km_fw/km_rom_poke.S``), a legal master
 of the KM bus that executes the op lists the host posts and stores what the DUT
@@ -23,23 +24,48 @@ write lane. The encapsulation key and the message are the published ML-KEM-1024
 encapsulation vector (``env/sep_abr_kem_nist.py``), so the delivery is the same
 on every seed and the shared key that reaches the KM is not all zero.
 
+The last leg is the single-share delivery to AES
+(``hw/sys/sep/doc/crypto.adoc:192-196``: both shares are always consumed, a
+single written share delivers V because the unwritten share reads as zero, and
+a Key Manager wipe clears KEY_VALID and both shares;
+``hw/ip/key_manager/doc/architecture.adoc:503-509``: the wipe pulse clears both
+shares and KEY_VALID of every sideload block). It brings up the
+entropy stack so AES can run, then for share 0 and share 1 (order drawn): the
+image writes both AES shares non-zero and sets KEY_VALID, the host pulses
+``SEP_CPU_CTRL.KM_WIPE_CTRL.wipe_state``, the image writes only the drawn share
+with K and sets KEY_VALID, and the host encrypts one block with AES-256 ECB
+from the sideload key.
+
 Checks (each anchored on a POKE readback or the POKE handler count):
   CHK-BANK-SHARES  all 136 share words read 0 after a non-zero write, key_valid 0
   CHK-BANK-VALID   KEY_CTRL.key_valid resets to 0, a write of 1 sets it (twice),
                    a write of 0 clears it, and no other bank moves
   CHK-BANK-SK      the encapsulation delivers the shared key: KEY_CTRL.key_valid 1,
                    IRQ_STATUS.key_valid sticky, kept by a write of 0, W1C
-  CHK-BANK-SK-SW   a write of 0 consumes the key (valid 0, words 0); a software
-                   write of 1 leaves valid 0 and the words 0
+  CHK-BANK-SK-CONSUME  a write of 0 clears key_valid; a software write of 1
+                   afterwards leaves it 0; both writes are accepted
+  CHK-BANK-SK-SW   the 8 KEY words read 0 after the consume and after the
+                   refused set
   CHK-BANK-SK-IRQ  with the enable 0 the handler count does not rise and the
                    status stays 1; with the enable 1 it rises; after the W1C it
-                   stops
+                   stops and the status reads 0
+  CHK-SINGLE-SHARE after the wipe and a write of one share with K, the sideload
+                   ciphertext equals the AES-256 golden of K (whole 128 bits);
+                   in the same line KEY_VALID reads 1 before the wipe, 0 after
+                   it and 1 after the share write, and every write is accepted
 
 Controls: the non-zero, accepted write of each share word before its read; the
 vector 0 after the share reads; the status and key_valid 0 before each delivery;
 key_valid 1 and live words before the consume; the normal-bank set next to the
 refused shared-key set; the enabled window of the same length as the masked
-and cleared windows.
+and cleared windows; the two-share delivery with share0 XOR share1 = K gives
+the AES-256 golden of K (``CTRL-SS-BOTH-SHARES``, the engine consumes both
+shares).
+
+Shards (``env/sep_shard.py``): without ``+sep_shard`` the leaf runs every leg.
+``+sep_shard=1`` runs steps 2 to 7. ``+sep_shard=2`` runs steps 2 to 7 and
+the single-share leg; its step 6 grades CHK-BANK-SK-CONSUME and logs the KEY
+words (``OBS-SK-WORDS``) without CHK-BANK-SK-SW.
 
 Logged only: the share-read responses and reserved KEY_CTRL bits; the 8
 shared-key words (``OBS-SK-WORDS``; the leaf has no graded golden for them);
@@ -55,8 +81,20 @@ import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
 from env import sep_km_poke as kp
 from env.sep_abr_kem_nist import NIST_KEM_ENC_C, NIST_KEM_ENC_EK, NIST_KEM_ENC_K
+from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    KM_SK_PASS_CONSUME,
+    KM_SK_PASS_IRQ,
+    KM_SK_PASS_WORDS,
+    close_graded_window,
+    open_graded_window,
+    set_km_sk_pass,
+    set_km_ss_pass,
+)
+from env.sep_reg_meta import SEP_CPU_CTRL
+from env.sep_shard import sep_shard
 from km import sep_km_key_bank_register_rand_plan as pl
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_mlkem_seq import (
@@ -76,6 +114,8 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_STATUS,
     SepAbrMlkem,
 )
+from seq_lib.sep_aes_seq import SepAes
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_km_poke_seq import SepKmPoke
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
@@ -92,6 +132,31 @@ _PARK_HOLD_CLKS = 200  # hold of the KM PARK
 _KEM_POLL_ITERS = 20_000
 _KEM_POLL_GAP = 200
 _CT_PREFIX = 4  # ciphertext words logged against the vector
+_WIPE_HOLD_CLKS = 16  # clocks KM_WIPE_CTRL.wipe_state is held at 1
+_LABEL_CLKS = 2  # clocks after a pass-label write, so the sampler sees its rise
+
+_KM_WIPE_CTRL = SEP_CPU_CTRL.addr("KM_WIPE_CTRL")
+_KM_WIPE_BIT = SEP_CPU_CTRL.field_mask("KM_WIPE_CTRL", "wipe_state")
+
+_STEPS_EVIDENCE = (
+    "CHK-BANK-SHARES",
+    "CHK-BANK-VALID",
+    "CHK-BANK-SK",
+    "CHK-BANK-SK-CONSUME",
+    "CHK-BANK-SK-SW",
+    "CHK-BANK-SK-IRQ",
+)
+_SHARD_EVIDENCE = {
+    1: _STEPS_EVIDENCE,
+    2: (
+        "CHK-BANK-SHARES",
+        "CHK-BANK-VALID",
+        "CHK-BANK-SK",
+        "CHK-BANK-SK-CONSUME",
+        "CHK-BANK-SK-IRQ",
+        "CHK-SINGLE-SHARE",
+    ),
+}
 
 _ALL_SW = sum(1 << b for b in SW_RESET_N_BIT.values())
 
@@ -155,20 +220,16 @@ def _stage_msg_ops(plan: pl.Plan) -> list[kp.PokeOp]:
 class sep_km_key_bank_register_rand_test(sep_base_test):
     """KM-bus view of the wrapper key registers and the ML-KEM shared-key block."""
 
-    required_evidence = (
-        "CHK-BANK-SHARES",
-        "CHK-BANK-VALID",
-        "CHK-BANK-SK",
-        "CHK-BANK-SK-SW",
-        "CHK-BANK-SK-IRQ",
-    )
+    required_evidence = (*_STEPS_EVIDENCE, "CHK-SINGLE-SHARE")
 
     # ------------------------------------------------------------------ main
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
+        shard = sep_shard(self, _SHARD_EVIDENCE)
         self.chk = SepChkLog(self, TEST, seed)
+        self.failed = False
         self.plan = pl.draw_plan(seed)
         for line in pl.draw_lines(self.plan):
             self.logger.info(line)
@@ -198,24 +259,48 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         self.swrst.value = sw
         self.logger.info("LOG sw_reset_n=%s after the KM release", _h(sw))
 
-        open_graded_window(TEST, self.logger)
+        self._open()
         await self._reset_vector()
         await self._shares()
         await self._valid_walk()
         await self._encaps1()
-        await self._consume()
+        await self._consume(grade_words=shard != 2)
         await self._irq_gate()
         close_graded_window(self.logger)
 
-        await self._all_set()
-        await self._engine_resets()
-        await self._park()
+        if shard is None:
+            await self._all_set()
+            await self._engine_resets()
+            await self._park()
+        if shard != 1:
+            await self._single_share()
 
         if not (self.swrst.value >> SW_RESET_N_BIT["km"]) & 1:
             await self.swrst.release("km")
         self.chk.finish()
 
     # ------------------------------------------------------------ plumbing
+
+    def _open(self) -> None:
+        """Open the coverage window, unless a check or control already failed."""
+        if not self.failed:
+            open_graded_window(TEST, self.logger)
+
+    def _grade(self, name: str, cond: bool, **fields) -> bool:
+        """``chk.ok`` that closes the coverage window on the first FAIL."""
+        res = self.chk.ok(name, cond, **fields)
+        if not cond:
+            self.failed = True
+            close_graded_window(self.logger)
+        return res
+
+    def _control(self, name: str, cond: bool, **fields) -> bool:
+        """``chk.ctrl`` that closes the coverage window on the first miss."""
+        res = self.chk.ctrl(name, cond, **fields)
+        if not cond:
+            self.failed = True
+            close_graded_window(self.logger)
+        return res
 
     async def _wait_sep_reset_n(self) -> None:
         for _ in range(_SEP_RESET_BOUND):
@@ -368,14 +453,14 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             slv=resp_slv,
             dec=resp_dec,
         )
-        self.chk.ctrl(
+        self._control(
             "SHARE-WRITES",
             written == pl.N_SHARE_WORDS and all(wr_ok.values()),
             nonzero_written=written,
             write_ops=len(wr_ok),
         )
-        self.chk.ctrl("SHARES-VALID-0", post["vec"] == 0 and post["ok"], vector=_v(post["vec"]))
-        self.chk.ok(
+        self._control("SHARES-VALID-0", post["vec"] == 0 and post["ok"], vector=_v(post["vec"]))
+        self._grade(
             "BANK-SHARES",
             zero == pl.N_SHARE_WORDS and zero + nonzero == pl.N_SHARE_WORDS,
             words=zero + nonzero,
@@ -414,7 +499,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             trail.append(f"{b.name}:{_v(vecs[0])}/{_v(vecs[1])}/{_v(vecs[2])}")
         self.walk_set_ok = set_ok
         self.logger.info("LOG valid_walk %s", " ".join(trail))
-        self.chk.ok(
+        self._grade(
             "BANK-VALID",
             self.reset_vec == 0
             and self.reset_ok
@@ -461,7 +546,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         pre_irq = r[1].value & pl.SK_IRQ
         pre_valid = r[3].value & pl.SK_VALID
         stage_ok = all(_ok(x) for x in r[0:7])
-        self.chk.ctrl(
+        self._control(
             "SK-PRE1",
             pre_irq == 0 and pre_valid == 0 and stage_ok,
             irq_status=_h(r[1].value),
@@ -480,7 +565,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         kept = r[14].value & pl.SK_IRQ
         w1c = r[16].value & pl.SK_IRQ
         resp = all(_ok(x) for x in r[9:17])
-        self.chk.ok(
+        self._grade(
             "BANK-SK",
             bool(valid) and bool(irq1) and bool(irq2) and bool(kept) and not w1c and resp,
             valid=int(bool(valid)),
@@ -492,8 +577,14 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
 
     # ------------------------------------------------- step 6: consume
 
-    async def _consume(self) -> None:
+    async def _consume(self, *, grade_words: bool) -> None:
+        """Consume the shared key and try a software set of key_valid.
+
+        CHK-BANK-SK-CONSUME grades key_valid and the responses; its pass releases
+        ``cp_sk_write_dir``. CHK-BANK-SK-SW grades the KEY words; shard 2 logs them.
+        """
         n = len(pl.SK_KEY)
+        set_km_sk_pass(0, self.logger)
         ops = [
             kp.rd(pl.SK_CTRL),  # 0 control: 1
             kp.rdblk(pl.SK_KEY[0], n),  # 1 control: live words
@@ -507,36 +598,58 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         r = await self._run(ops)
         pre = tuple(r[1].data)
         self.chk.obs("SK-WORDS", phase="before_consume", words=[_h(w) for w in pre])
-        self.chk.ctrl(
+        self._control(
             "SK-PRE-CONSUME",
             bool(r[0].value & pl.SK_VALID) and any(pre) and _ok(r[0]) and _ok(r[1]),
             key_ctrl=_h(r[0].value),
             words_nonzero=sum(1 for w in pre if w),
         )
-        self.chk.ctrl("SK-SW-TWIN", self.walk_set_ok, normal_bank_set=self.walk_set_ok)
+        self._control("SK-SW-TWIN", self.walk_set_ok, normal_bank_set=self.walk_set_ok)
         consume_zero = not r[3].value & pl.SK_VALID
-        # Zeroize: the words read 0 after the consume and stay 0 after the
-        # refused set. The set refusal is graded on key_valid alone.
-        words_zero = not any(r[4].data) and not any(r[7].data)
         sw_ignored = not r[6].value & pl.SK_VALID
         resp = all(_ok(x) for x in r[2:8])
-        self.chk.ok(
-            "BANK-SK-SW",
-            consume_zero and words_zero and sw_ignored and resp,
+        passed = self._grade(
+            "BANK-SK-CONSUME",
+            consume_zero and sw_ignored and resp,
             consume_zero=consume_zero,
-            words_zero=words_zero,
             sw_set_ignored=sw_ignored,
+            key_ctrl_after_consume=_h(r[3].value),
             key_ctrl_after_set=_h(r[6].value),
-            words_after_consume=[_h(w) for w in r[4].data],
-            words_after_set=[_h(w) for w in r[7].data],
             resp_ok=resp,
         )
+        label = 0
+        if passed:
+            # Pass label: the sampler holds both cp_sk_write_dir cells from the
+            # KEY_CTRL writes above and samples them on this rise.
+            label = KM_SK_PASS_CONSUME
+            set_km_sk_pass(label, self.logger)
+            await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
+        if not grade_words:
+            self.chk.obs("SK-WORDS", phase="after_consume", words=[_h(w) for w in r[4].data])
+            self.chk.obs("SK-WORDS", phase="after_set", words=[_h(w) for w in r[7].data])
+            return
+        # Zeroize: the words read 0 after the consume and stay 0 after the
+        # refused set.
+        words_zero = not any(r[4].data) and not any(r[7].data)
+        if self._grade(
+            "BANK-SK-SW",
+            words_zero,
+            words_zero=words_zero,
+            words_after_consume=[_h(w) for w in r[4].data],
+            words_after_set=[_h(w) for w in r[7].data],
+        ):
+            # Pass label: releases cp_sk_delivery_state[firmware_consumes].
+            set_km_sk_pass(label | KM_SK_PASS_WORDS, self.logger)
+            await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
 
     # ------------------------------------------------- step 7: interrupt gate
 
     async def _irq_gate(self) -> None:
         line = kp.IRQ_LINE_ABR_SK
         idle = self.plan.idle_ops
+        # A change of the label drops the held cp_sk_interrupt line cells, so
+        # only line events of this step can release on CHK-BANK-SK-IRQ.
+        set_km_sk_pass(0, self.logger)
         ops = [
             kp.wr(pl.SK_IRQ_ENABLE, 0),  # 0
             kp.rd(pl.SK_IRQ_STATUS),  # 1 control: 0 (cleared in step 5)
@@ -560,18 +673,24 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             kp.delay(_QUIET_OPS),
             kp.cnt(line),
             kp.rd(pl.SK_IRQ_STATUS),
+            # Cleanup, not graded by a key_valid read: the window closes at this
+            # sync, so the KEY_CTRL write of 0 below samples no shared-key point.
+            kp.sync(),
             kp.wr(pl.SK_CTRL, 0),
             kp.wr(pl.SK_IRQ_ENABLE, 0),
             kp.disarm(),
         ]
 
-        async def on_sync(_k: int) -> None:
-            await self._encaps(2)
+        async def on_sync(k: int) -> None:
+            if k == 0:
+                await self._encaps(2)
+            else:
+                close_graded_window(self.logger)
 
         r = await self._run(ops, on_sync=on_sync)
         self._need_delivery(r[8], "encapsulation 2")
         e = 14 + idle  # index of the enable write
-        self.chk.ctrl(
+        self._control(
             "SK-PRE2",
             not r[1].value & pl.SK_IRQ
             and not r[2].value & pl.SK_VALID
@@ -584,8 +703,8 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         en1 = r[e + 3].value - r[e + 1].value
         after = r[e + 7].value - r[e + 5].value
         cleared = not r[e + 8].value & pl.SK_IRQ
-        resp = all(_ok(x) for x in (r[9], r[13], r[e], r[e + 4], r[e + 8], r[e + 9], r[e + 10]))
-        self.chk.ctrl("IRQ-WINDOW-LIVE", en1 >= 1, en1_entries_rise=en1, window_ops=_QUIET_OPS)
+        resp = all(_ok(x) for x in (r[9], r[13], r[e], r[e + 4], r[e + 8], r[e + 10], r[e + 11]))
+        self._control("IRQ-WINDOW-LIVE", en1 >= 1, en1_entries_rise=en1, window_ops=_QUIET_OPS)
         self.logger.info(
             "LOG irq_gate counts en0=%d->%d en1=%d->%d w1c=%d->%d status_after_w1c=%s",
             r[10].value,
@@ -596,17 +715,126 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             r[e + 7].value,
             _h(r[e + 8].value),
         )
-        self.chk.ok(
-            "BANK-SK-IRQ",
-            en0 == 0 and en1 >= 1 and after == 0 and set_masked and resp,
-            en0_entries_rise=en0,
-            en1_entries_rise=en1,
-            status_set_masked=set_masked,
-            w1c_stops=after == 0,
-            status_cleared=cleared,
-            idle_ops=idle,
+        if (
+            self._grade(
+                "BANK-SK-IRQ",
+                en0 == 0 and en1 >= 1 and after == 0 and set_masked and cleared and resp,
+                en0_entries_rise=en0,
+                en1_entries_rise=en1,
+                status_set_masked=set_masked,
+                w1c_stops=after == 0,
+                status_cleared=cleared,
+                idle_ops=idle,
+                resp_ok=resp,
+            )
+            and not self.failed
+        ):
+            # Pass label: releases the cp_sk_interrupt line cells of this step.
+            set_km_sk_pass(KM_SK_PASS_IRQ, self.logger)
+            await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
+
+    # ------------------------------------------- step 11: single-share leg
+
+    async def _wipe_ctrl(self, value: int) -> None:
+        seq = SepAxiAccessSeq(
+            "km_wipe_ctrl", op=SepAxiOp.WRITE, addr=_KM_WIPE_CTRL, wdata=value, size=2
+        )
+        await self.start_seq(seq)
+        if not seq.resp_ok:
+            raise AssertionError(f"KM_WIPE_CTRL write {_h(value)} not OKAY")
+
+    async def _km_wipe(self) -> None:
+        """One rising edge of KM_WIPE_CTRL.wipe_state: one wipe pulse."""
+        await self._wipe_ctrl(_KM_WIPE_BIT)
+        await ClockCycles(self.dut.clk_i, _WIPE_HOLD_CLKS)
+        await self._wipe_ctrl(0)
+
+    async def _aes_block(self, pt: tuple[int, ...]) -> list[int]:
+        """One AES-256 ECB encryption from the sideload key."""
+        await self.aes.configure_ecb_enc_256(sideload=True)
+        await self.aes.trigger_prng_reseed()
+        return await self.aes.run_ecb_block(list(pt))
+
+    async def _single_share(self) -> None:
+        """Single-share AES delivery after a Key Manager wipe, share 0 and share 1."""
+        a = pl.AES_BANK
+        # Entropy for the AES masking PRNG (no graded step here).
+        await self.bring_up_entropy(strict=True, score_km=False)
+        if not await self.wait_genbits():
+            raise AssertionError("CSRNG CTR_DRBG never produced genbits")
+        self.start_fifo_drain()
+        self.aes = SepAes(self)
+        await self.aes.wait_idle("post-entropy")
+
+        # Control: both shares written, share0 XOR share1 = K, give the golden of K.
+        b = self.plan.both_shares
+        r = await self._run(
+            [kp.wrblk(a.share0[0], b.s0), kp.wrblk(a.share1[0], b.s1)]
+            + [kp.wr(a.ctrl, a.valid_mask), kp.rd(a.ctrl)]
+        )
+        ct = await self._aes_block(b.pt)
+        golden = aes256_ecb_encrypt_words(list(b.key), list(b.pt))
+        self._control(
+            "SS-BOTH-SHARES",
+            ct == golden and bool(r[3].value & a.valid_mask) and all(_ok(x) for x in r),
+            key_ctrl=_h(r[3].value),
+            ct=[_h(w) for w in ct],
+            golden=[_h(w) for w in golden],
+        )
+
+        self._open()
+        for leg in self.plan.single_share:
+            await self._single_share_leg(leg)
+        close_graded_window(self.logger)
+        await self.stop_fifo_drain()
+        if not self.drbg_sb.report():
+            raise AssertionError("entropy scoreboard report failed")
+
+    async def _single_share_leg(self, leg: pl.SingleShare) -> None:
+        a = pl.AES_BANK
+        mask = a.valid_mask
+        own = (a.share0, a.share1)[leg.share]
+        set_km_ss_pass(False, self.logger)
+        pre = await self._run(
+            [kp.wrblk(a.share0[0], leg.pre[0]), kp.wrblk(a.share1[0], leg.pre[1])]
+            + [kp.wr(a.ctrl, mask), kp.rd(a.ctrl)]
+        )
+        await self._km_wipe()
+        post = await self._run(
+            [kp.rd(a.ctrl), kp.wrblk(own[0], leg.key), kp.wr(a.ctrl, mask), kp.rd(a.ctrl)]
+        )
+        ct = await self._aes_block(leg.pt)
+        golden = aes256_ecb_encrypt_words(list(leg.key), list(leg.pt))
+        v_pre = int(bool(pre[3].value & mask))
+        v_wipe = int(bool(post[0].value & mask))
+        v_post = int(bool(post[3].value & mask))
+        resp = all(_ok(x) for x in pre + post)
+        # KEY_CTRL is graded on key_valid only; the whole words are logged.
+        self.chk.obs(
+            "SS-KEY-CTRL",
+            share=leg.share,
+            before_wipe=_h(pre[3].value),
+            after_wipe=_h(post[0].value),
+            after_write=_h(post[3].value),
+        )
+        passed = self._grade(
+            "SINGLE-SHARE",
+            ct == golden and v_pre == 1 and v_wipe == 0 and v_post == 1 and resp,
+            share=leg.share,
+            key=[_h(w) for w in leg.key],
+            pt=[_h(w) for w in leg.pt],
+            ct=[_h(w) for w in ct],
+            golden=[_h(w) for w in golden],
+            valid_before_wipe=v_pre,
+            valid_after_wipe=v_wipe,
+            valid_after_write=v_post,
             resp_ok=resp,
         )
+        if passed:
+            # Pass label: the sampler holds the single-share point of this
+            # instance from the KEY_VALID rise and samples it on this rise.
+            set_km_ss_pass(True, self.logger)
+            await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
 
     # ------------------------------------------------- step 8: all set
 
