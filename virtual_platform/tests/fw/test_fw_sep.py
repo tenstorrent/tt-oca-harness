@@ -28,6 +28,13 @@ TIMEOUT = 60
 # they are confirmed to build and run on the VP.
 VP_SAFE_TESTS = [
     ("hello_world", "Hello from SEP OSS firmware!"),
+    # Every ML-DSA-87 verify case passes, the genuine ones and the rejected ones.
+    pytest.param(
+        "abr_mldsa87_verify_test",
+        "abr_mldsa87_verify_test: PASS",
+        marks=pytest.mark.smoke,
+        id="abr_mldsa87_verify_test",
+    ),
 ]
 
 

@@ -1,0 +1,172 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-prod-rom-abr-mldsa]]
+== Adams Bridge ML-DSA-87 verify driver
+
+`src/abr_driver.c` verifies a pure ML-DSA-87 signature (FIPS 204 ML-DSA.Verify,
+empty context, no pre-hash) on the Adams Bridge accelerator, with the message
+streamed to it. It is the sequence the ROM will use for post-quantum manifest
+signatures. *No ROM path calls it yet*: the ROM build compiles it with warnings
+fatal and does not link it, and the SEP firmware test `abr_mldsa87_verify_test`
+runs it on the virtual platform and in RTL simulation.
+
+[[sep-prod-rom-abr-mldsa-api]]
+=== Interface
+
+`include/abr_driver.h`:
+
+[cols="2,5",options="header"]
+|===
+|Function |Contract
+|`abr_mldsa87_verify()`
+|Verifies a 4627-byte signature over up to 65536 message bytes under a 2592-byte
+public key. The signature is valid only when the verdict word equals the caller's
+pass token; every other outcome writes the inverted token. `ABR_DRV_OK` alone is
+not evidence of a valid signature, since one fault can produce it. An optional
+diagnostics block reports the bytes streamed, whether VALID rose before
+`MSG_STREAM_READY`, whether `MLDSA_VERIFY_RES` was `~c~` or zero, the
+command-done count, the STATUS value that ended a wait or failed a check, and the
+stage where the call ended (`abr_drv_stage_e`, whose values are fixed).
+|`abr_drv_check_identity()`
+|Compares the ML-DSA name and version registers with the RTL's "MLDSA-87" and
+"2.0.1". The verify runs it before touching the accelerator.
+|`abr_drv_zeroize()`
+|Zeroizes the accelerator and waits for STATUS to read READY alone.
+|===
+
+`include/abr_driver_internal.h` declares the steps the verify composes, for tests
+that must stop part-way. They are functions only in a build that defines
+`ABR_DRV_EXPOSE_STEPS`; elsewhere they are static, and production code calls
+`abr_mldsa87_verify()` only.
+
+[[sep-prod-rom-abr-mldsa-preconditions]]
+=== Caller preconditions
+
+* The public key, signature and message are in SEP-private memory that no DMA
+  engine, SMC or host master can write during the call.
+* The public key is already authenticated against a trust anchor, and is the same
+  copy that was hashed for that check.
+* The bytes streamed are the only bytes verified; the caller uses that buffer
+  afterwards.
+* The message length does not come from unauthenticated data (see
+  <<sep-prod-rom-abr-mldsa-limits>>).
+* The pass token is not 0, 0xFFFFFFFF or the driver's verdict key,
+  `ABR_DRV_VERDICT_KEY`.
+* Nothing else uses the accelerator during the call.
+
+[[sep-prod-rom-abr-mldsa-sequence]]
+=== Verify sequence
+
+. Reject bad arguments. Copy c~ (the first 64 signature bytes) once; every later
+  use of c~ reads the copy. Reject an all-zero or all-ones c~ without starting the
+  accelerator.
+. Check the accelerator's name and version.
+. Zeroize and require STATUS to read READY alone.
+. Load the public key and the signature, c~ from the copy, and an empty context,
+  with 32-bit stores only.
+. Clear the command-done and internal-error events and both event counters, and
+  read them back.
+. Issue VERIFY with STREAM_MSG, and require `MLDSA_VERIFY_RES` to read `~c~`: the
+  accelerator preloads it when it accepts VERIFY, so this proves the command landed
+  with this c~.
+. Wait for `MSG_STREAM_READY` or VALID, checking ERROR on every read. VALID first
+  means the accelerator rejected the signature before asking for the message.
+. Stream the message: `MLDSA_MSG_STROBE` then `MLDSA_MSG[0]` per word, `0xF` for
+  whole words and `0x1`, `0x3` or `0x7` for the last bytes; a whole-word message
+  ends with strobe `0x0` and a dummy word. Count the bytes twice. Before the last
+  strobe, require STATUS to read `MSG_STREAM_READY` alone, twice: the stream is
+  still open, so no earlier strobe ended it.
+. Wait for VALID, checking ERROR on every read. Require exactly one command-done
+  event and no internal-error event since the events were cleared.
+. Read back the public key and c~ from the accelerator and compare them with what
+  was loaded.
+. Decide the verdict from two independent reads of `MLDSA_VERIFY_RES`, the second
+  compared with laundered operands in reverse word order, each failing if its loop
+  did not cover every word. Disagreement between the two reads is a fault. A match
+  also requires both byte counts to equal the message length and the open-stream
+  check to have passed; a match without them means the accelerator verified some
+  other message, which is a fault. The return value is `ABR_DRV_OK` only if the
+  hardened verdict equals the pass token.
+. Zeroize on every exit. A pass stands only if the closing zeroize succeeds.
+
+Every wait is bounded by a named poll budget.
+
+[[sep-prod-rom-abr-mldsa-interlocks]]
+=== Why a verify that never ran cannot pass
+
+`MLDSA_VERIFY_RES` is written only by the command-accept preload (`~c~`), by the
+verify datapath (c~') and by zeroize (0). With an all-zero c~ rejected up front, a
+verify that never ran leaves 0 or `~c~`, never c~. An all-ones c~ is rejected as
+well: its `~c~` is 0, so the preload check could not tell it from a zeroize. A
+result left over from an earlier verify of the same signature is the remaining way
+to read c~ without computing it, and each of the following rules it out on its own:
+the zeroize closing the earlier call, the zeroize and READY check opening this one,
+the preload check, and the single command-done event.
+
+[[sep-prod-rom-abr-mldsa-limits]]
+=== Limits
+
+`MLDSA_MSG` is write-only and the accelerator keeps no byte count, so nothing the
+driver can read confirms that every message store landed. The byte counts above
+are kept in software and catch a stream loop cut short, not one store skipped
+inside it.
+
+The stream ends at the first strobe other than `0xF`, and zeroize leaves
+`MLDSA_MSG_STROBE` at 0. A strobe store skipped or corrupted before the last one
+would therefore end the stream on a prefix of the message, and the accelerator
+would drop every later word while both byte counts still matched; a signature over
+that shorter message, such as an earlier format's signed region, would then pass.
+The open-stream check before the last strobe rules this out: STATUS reads
+`MSG_STREAM_READY` alone only while the stream is still open.
+
+Two single faults remain that the driver cannot see, and both leave the accelerator
+a message whose length differs from the caller's:
+
+* A skipped `MLDSA_MSG` store drops one word: the message is four bytes short.
+* A corrupted last strobe takes a different number of bytes from the last word: the
+  message is up to three bytes shorter or, for a whole-word message, up to three
+  zero bytes longer.
+
+That is safe only while the message length does not come from the bytes being
+verified, and no other message signed under the same key is within four bytes of
+it. With a fixed length, either fault leaves the accelerator a message no signature
+covers, and the verify fails. If the length came from unauthenticated data, a
+caller could be handed the signed message with one word inserted, and skipping the
+store of that word would verify the signed message while the caller went on to use
+the longer one. The OCA boot manifest signs a fixed region per variant
+(`signed_region_end`), so its verify is not exposed as long as no two variants'
+regions differ by fewer than four bytes.
+
+[[sep-prod-rom-abr-mldsa-failures]]
+=== Failure codes
+
+[cols="2,5",options="header"]
+|===
+|Code |Meaning
+|`ABR_DRV_ERR_PARAM` |A NULL pointer, a message longer than 65536 bytes, or a forbidden pass token
+|`ABR_DRV_ERR_TIMEOUT` |A poll budget ran out; the diagnostics stage says which wait
+|`ABR_DRV_ERR_HW` |STATUS.ERROR, or an internal-error event during the call
+|`ABR_DRV_ERR_SIG_INVALID` |The result does not match c~, c~ is all zero or all ones, or VALID rose before the message was requested
+|`ABR_DRV_ERR_IDENTITY` |The name or version registers differ
+|`ABR_DRV_ERR_FAULT` |A redundant check disagrees, the key or c~ read back differently, the stream had ended before its last strobe, or the result matched c~ with a byte count or the open-stream check missing
+|`ABR_DRV_ERR_STATE` |STATUS is not READY alone after zeroize, the events did not clear, the preload never appeared, the done count is not one, or the closing zeroize failed
+|===
+
+[[sep-prod-rom-abr-mldsa-tests]]
+=== Tests
+
+* `tests/host/` (`make host-test`): the driver against a scripted register file,
+  covering each failure code, each stage, every final strobe and the stale-result
+  cases, and two sweeps that lose each register write in turn and store each
+  strobe as every other value against a signature that also verifies over every
+  prefix of the message. It needs only a host C compiler, and runs under the
+  address and undefined-behaviour sanitizers.
+* `hw/sys/sep/dv/fw/tests/abr_mldsa87_verify_test/`: a 5903-byte blob signed at build
+  time with the test-only key in `tests/signing_keys/`, verified with the genuine
+  signature and rejected in nine altered forms, run on the virtual platform and in
+  RTL simulation.
+* `sep_abr_cmd_drop_test`: with every ML-DSA command dropped in RTL simulation, the
+  driver refuses at its preload check.
+* A release ROM build checks that its image carries no part of the test key
+  (`tools/check_release_image.py`).

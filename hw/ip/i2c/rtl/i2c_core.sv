@@ -129,6 +129,7 @@ module i2c_core
   logic scl_sync;
   logic sda_sync;
   logic smbsus_n;
+  logic smbalert_sync_n;
   logic smbalert_n;
   logic scl_out_controller_fsm, sda_out_controller_fsm;
   logic scl_out_target_fsm, sda_out_target_fsm;
@@ -1130,7 +1131,7 @@ module i2c_core
   );
 
   assign reg_in_o.SMBUS_STATUS.SMBSUS.next = ~smbsus_n;
-  assign smbsus_no = host_enable && !line_loopback ? ~reg_out_i.SMBUS_CTRL.SMBSUS.value : 1'b1;
+  assign smbsus_no = (host_enable && !line_loopback) ? ~reg_out_i.SMBUS_CTRL.SMBSUS.value : 1'b1;
 
   // SMBALERT# Signal
   prim_flop_2sync #(
@@ -1140,9 +1141,11 @@ module i2c_core
   ) u_flop_2sync_smbalert (
     .clk_i,
     .rst_ni,
-    .d_i               (smbalert_ni | ~smbus_en_i),
-    .q_o               (smbalert_n)
+    .d_i               (smbalert_ni),
+    .q_o               (smbalert_sync_n)
   );
+
+  assign smbalert_n = smbalert_sync_n | ~smbus_en_i | (host_enable & line_loopback);
 
   assign reg_in_o.SMBUS_STATUS.SMBALERT.next = ~smbalert_n;
   assign smbalert_no = target_enable && !target_loopback ? ~reg_out_i.SMBUS_CTRL.SMBALERT.value :

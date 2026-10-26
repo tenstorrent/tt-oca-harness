@@ -33,7 +33,7 @@
 ///
 /// If the `TerminateTransaction` parameter is set to `1'b1`, the module will return `SLVERR`
 /// responses for incoming transactions while the module isolates.  The data returned on the bus is
-/// `1501A7ED` (hexspeak for isolated).
+/// `1501A7ED` (hexspeak for isolated), repeated in every 32-bit lane.
 ///
 /// If `TerminateTransaction` is set to `1'b0`, the transaction will block indefinitely until the
 /// module is de-isolated again.
@@ -187,12 +187,15 @@ module axi_isolate #(
       .mst_resps_i     ( demux_rsp     )
     );
 
+    localparam data_t IsolateErrorData = data_t'({(AxiDataWidth + 31) / 32 {32'h1501A7ED}});
+
     axi_err_slv #(
       .AxiIdWidth  ( AxiIdWidth           ),
       .axi_req_t   ( axi_req_t            ),
       .axi_resp_t  ( axi_resp_t           ),
       .Resp        ( axi_pkg::RESP_SLVERR ),
-      .RespData    ( 'h1501A7ED           ),
+      .RespWidth   ( AxiDataWidth         ),
+      .RespData    ( IsolateErrorData     ),
       .ATOPs       ( AtopSupport          ),
       .MaxTrans    ( 1                    )
     ) i_axi_err_slv (

@@ -73,4 +73,6 @@ include::smc-coordination.adoc[]
 
 include::status-errors.adoc[]
 
+include::abr-mldsa-driver.adoc[]
+
 include::bl1-handoff.adoc[]

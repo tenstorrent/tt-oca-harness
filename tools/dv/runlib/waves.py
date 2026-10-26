@@ -13,7 +13,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from .config import as_str_list
+from .config import as_str_list, rerun_selection
 from .models import ConfigError
 from .paths import repo_rel
 
@@ -317,6 +317,7 @@ def same_seed_replay_command(
     *,
     flow_name: str,
     item: str,
+    target: str | None,
     seed: int,
     tool: str,
     wave_format: str,
@@ -327,8 +328,7 @@ def same_seed_replay_command(
         "tools/dv/run_dv.py",
         "--dut",
         flow_name,
-        "--items",
-        item,
+        *rerun_selection(item, target, args),
         "--stage",
         "sim",
         "--tool",
@@ -340,8 +340,6 @@ def same_seed_replay_command(
     ]
     if getattr(args, "run_mode", None):
         command.extend(["--run-mode", str(args.run_mode)])
-    if getattr(args, "target", None):
-        command.extend(["--target", str(args.target)])
     for attr, flag in (
         ("wave_start", "--wave-start"),
         ("wave_end", "--wave-end"),
@@ -392,6 +390,7 @@ def build_wave_metadata(
     root: Path,
     flow_name: str,
     item: str,
+    target: str | None,
     seed: int,
     tool: str,
     wave_format: str,
@@ -418,6 +417,7 @@ def build_wave_metadata(
     replay_cmd = same_seed_replay_command(
         flow_name=flow_name,
         item=item,
+        target=target,
         seed=seed,
         tool=tool,
         wave_format=wave_format,

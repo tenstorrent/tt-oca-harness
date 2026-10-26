@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Telemetry receiver 0 past its limits: a full message buffer, and a message with no end.
+"""Telemetry receivers past their limits: a full message buffer, and a message with no end.
 
 The capture leaf sends one message and pops it. The receiver has two bounded
 stores behind the ATB port, and this leaf drives each past its bound:
@@ -34,14 +34,41 @@ that arrives next.
 
 The packet framing and the beat driver are the capture leaf's, shared from
 `smc_telemetry_receiver_csr_test_seq`.
+
+Receivers 1 and 2 then run the queue, flush and `MISSING_LAST` legs of the
+approved contract `SMC_TELEMETRY_BUFFER_OVERFLOW`, with every expected value
+taken from the IP documents (`architecture.adoc`, `interface.adoc`,
+`telemetry_receiver.adoc`):
+
+* **Queue full and overflow.** Eight messages fill the `BUFFER_DEPTH` = 8 queue
+  (`STATUS` = 0x10 with the first message visible); a ninth drops the oldest,
+  and the eight pops present the surviving IDs in order, then the empty queue
+  reads `STATUS` = 0x01 and `PROBE_ID` = 0, which one more pop leaves alone.
+* **Push against pop.** With the queue full, `BUFFER_POP` is written at each
+  offset from -4 to +4 `clk_periph_i` cycles around the last beat of one more
+  message. The drain is either every message after the oldest, or one fewer;
+  both are consistent with the documents (SF-027), and which one each offset
+  produced is logged.
+* **Transmitter flush.** The bench holds `afready_i` of receivers 1 and 2 high
+  and does not publish their `afvalid_o`, so the flush runs at that level: the
+  request self-clears and the three queued messages drain in order. The
+  handshake with `afready_i` low is not reachable on this bench (SF-044).
+* **MISSING_LAST.** Beats without the last-packet marker are sent one at a
+  time until `INTR_STATUS.MISSING_LAST` sets, with `INTR_ENABLE` off and then
+  on; `peripheral_interrupts_o[8+r]` must follow the enable, and a written one
+  clears the status and the line. The beat count is logged only (SF-024).
+* **INTR_TEST.** `INTR_TEST.MISSING_LAST` raises the line with the enable on
+  and leaves it low with the enable off; `INTR_STATUS` after the test write is
+  logged only (SF-025).
 """
 
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.utils import get_sim_time
 
-from .smc_addr_map import TELEMETRY_CG_EN, smc_addr
+from .smc_addr_map import TELEMETRY_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_telemetry_atb_capture_test_seq import (
     BUFFER_EMPTY_BM,
@@ -52,6 +79,7 @@ from .smc_telemetry_atb_capture_test_seq import (
     RX,
     RX_FLUSH_BM,
     STATUS,
+    TX_FLUSH_BM,
     _frame_all_ones_message,
     _rx_addr,
     _tel,
@@ -90,6 +118,91 @@ POLL_BOUND = 200
 PARTIAL_BEAT = 0x2A
 
 
+#: Receivers that run the contract legs after receiver 0's.
+EXT_RECEIVERS = (1, 2)
+EXT_ATID = {1: 0x11, 2: 0x22}
+#: Messages the queue holds: `BUFFER_DEPTH` default 8 (interface.adoc).
+QUEUE_DEPTH = 8
+STATUS_EMPTY = BUFFER_EMPTY_BM
+STATUS_FULL = BUFFER_FULL_BM
+STATUS_NEITHER = 0x0
+FILL_IDS = tuple(range(0x11, 0x11 + QUEUE_DEPTH))
+NINTH_ID = 0x19
+WINDOW_FILL_IDS = tuple(range(0x01, 0x01 + QUEUE_DEPTH))
+WINDOW_ID = 0x09
+WINDOW_OFFSETS = tuple(range(-4, 5))
+#: The two drains the documents allow for a push meeting a pop (SF-027).
+WINDOW_NO_DROP = [*WINDOW_FILL_IDS[1:], WINDOW_ID]
+WINDOW_ONE_DROP = [*WINDOW_FILL_IDS[2:], WINDOW_ID]
+TX_FLUSH_IDS = (0x1A, 0x1B, 0x1C)
+AFTER_MISSING_ID = 0x11
+INTR_TEST = "INTR_TEST"
+INTR_TEST_MISSING_LAST = _tel("TELEMETRY_RECEIVER__INTR_TEST__MISSING_LAST_bm")
+ENABLE_MISSING_LAST = _tel("TELEMETRY_RECEIVER__INTR_ENABLE__MISSING_LAST_bm")
+#: First peripheral interrupt line of the telemetry receivers.
+TELEMETRY_IRQ_BASE = 8
+#: Bound on the receiver interrupt line reaching a level, in clk_smc_i cycles.
+LINE_BOUND = 64
+#: Bound on the beats sent without the last marker before MISSING_LAST sets.
+MISSING_BEAT_BOUND = MAX_PACKETS * _NUM_BEATS_PER_PACKET
+STEP_ORDER = (
+    "BRINGUP",
+    "TELEM12_FULL",
+    "TELEM12_OVERFLOW",
+    "TELEM12_PUSH_POP",
+    "TELEM12_TX_FLUSH",
+    "TELEM12_MISSING_LAST",
+    "TELEM12_INTR_TEST",
+    "TIMEOUT",
+)
+CHK_STEP = {
+    "CHK-TELEM12-FULL": "TELEM12_FULL",
+    "CHK-TELEM12-OVERFLOW-ORDER": "TELEM12_OVERFLOW",
+    "CHK-TELEM12-PUSH-POP-WINDOW": "TELEM12_PUSH_POP",
+    "CHK-TELEM12-TX-FLUSH": "TELEM12_TX_FLUSH",
+    "CHK-TELEM12-MISSING-LAST": "TELEM12_MISSING_LAST",
+    "CHK-TELEM12-INTR-TEST": "TELEM12_INTR_TEST",
+    "CHK-TIMEOUT-PATHS": "TIMEOUT",
+}
+
+
+def _ext_addr(register: str, rx: int) -> int:
+    """Address of `register` in telemetry receiver `rx`, from the SMC map."""
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{register}_BASE_ADDR", rx
+    )
+
+
+def _line(rx: int) -> int:
+    """Level of `peripheral_interrupts_o[8 + rx]`; X/Z fails."""
+    bit = cocotb.top.tb_peripheral_interrupts.value[TELEMETRY_IRQ_BASE + rx]
+    text = str(bit)
+    assert text in ("0", "1"), f"peripheral_interrupts_o[{TELEMETRY_IRQ_BASE + rx}] is {text}"
+    return int(text)
+
+
+class _LineWatch:
+    """Records the first clk_smc_i cycle at which the line of `rx` is high."""
+
+    def __init__(self, rx: int) -> None:
+        self.rx = rx
+        self.seen: int | None = None
+        self._task = cocotb.start_soon(self._run())
+
+    async def _run(self) -> None:
+        cycle = 0
+        while True:
+            await RisingEdge(cocotb.top.clk_smc_i)
+            cycle += 1
+            if _line(self.rx):
+                self.seen = cycle
+                return
+
+    def stop(self) -> None:
+        if not self._task.done():
+            self._task.cancel()
+
+
 def _probe(index: int) -> int:
     """A distinct probe ID for the `index`-th message, never zero."""
     return (index % PROBE_ID_MASK) + 1
@@ -108,6 +221,19 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         self.depth = 0
         self.popped: list[int] = []
         self.max_packets = 0
+        self.waits: dict[str, tuple[int, str, str]] = {}
+        self.stamps: list[tuple[str, int]] = []
+        self.chk_lines: list[tuple[str, int, int]] = []
+
+    def _wait(self, name: str, bound: int, unit: str, last: str) -> None:
+        self.waits[name] = (bound, unit, last)
+
+    def _stamp(self, step: str) -> None:
+        self.stamps.append((step, int(get_sim_time("ps"))))
+
+    def _chk(self, chk_id: str, text: str) -> None:
+        cocotb.log.info("%s: %s", chk_id, text)
+        self.chk_lines.append((chk_id, int(get_sim_time("ps")), len(self.stamps)))
 
     async def _status(self, label: str) -> int:
         return await self.csr_read(f"TELEMETRY_STATUS_{label}", STATUS)
@@ -117,6 +243,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         for _ in range(POLL_BOUND):
             status = await self._status(label)
             if bool(status & mask) == want:
+                self._wait("rx0_status_poll", POLL_BOUND, "polls", f"STATUS=0x{status:02x}")
                 return status
             await ClockCycles(cocotb.top.clk_smc_i, 4)
         raise AssertionError(
@@ -341,6 +468,474 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             beats,
         )
 
+    # Receivers 1 and 2: the contract legs.
+
+    async def _ext_poll(self, label: str, addr: int, done, wait: str) -> int:
+        """Read `addr` until `done(value)`; raise with the last value on expiry."""
+        value = 0
+        for _ in range(POLL_BOUND):
+            value = await self.csr_read(label, addr)
+            if done(value):
+                self._wait(wait, POLL_BOUND, "register polls", f"0x{value:08x}")
+                return value
+            await ClockCycles(cocotb.top.clk_smc_i, 4)
+        raise AssertionError(
+            f"{label}: {wait} expired after {POLL_BOUND} polls (last read 0x{value:08x})"
+        )
+
+    async def _ext_status(self, label: str, rx: int) -> int:
+        return await self.csr_read(f"R{rx}_{label}_STATUS", _ext_addr("STATUS", rx))
+
+    async def _ext_probe(self, label: str, rx: int) -> int:
+        probe = await self.csr_read(f"R{rx}_{label}_PROBE", _ext_addr("TELEMETRY_PROBE_ID", rx))
+        return probe & PROBE_ID_BM
+
+    async def _ext_pop(self, label: str, rx: int) -> None:
+        await self.csr_write(f"R{rx}_{label}_POP", _ext_addr("CTRL", rx), BUFFER_POP_BM)
+
+    async def _ext_send(self, rx: int, probe_id: int) -> None:
+        await _send_telemetry_packet(
+            cocotb.top, _frame_all_ones_message(probe_id), rx=rx, atid=EXT_ATID[rx]
+        )
+
+    async def _await_line(self, rx: int, want: int, label: str) -> int:
+        last = _line(rx)
+        for cycle in range(LINE_BOUND + 1):
+            if last == want:
+                self._wait("irq_line_level", LINE_BOUND, "clk_smc_i", f"line={last}")
+                return cycle
+            await RisingEdge(cocotb.top.clk_smc_i)
+            last = _line(rx)
+        raise AssertionError(
+            f"{label}: peripheral_interrupts_o[{TELEMETRY_IRQ_BASE + rx}] stayed {last} for "
+            f"{LINE_BOUND} clk_smc_i cycles, want {want}"
+        )
+
+    async def _line_stays_low(self, rx: int, label: str) -> None:
+        for cycle in range(LINE_BOUND):
+            assert _line(rx) == 0, (
+                f"{label}: peripheral_interrupts_o[{TELEMETRY_IRQ_BASE + rx}] rose {cycle} "
+                f"clk_smc_i cycles into a window where it must stay 0"
+            )
+            await RisingEdge(cocotb.top.clk_smc_i)
+        self._wait("irq_line_hold_low", LINE_BOUND, "clk_smc_i", "line=0")
+
+    async def _ext_fill(self, rx: int, ids: tuple[int, ...], label: str) -> None:
+        """Send `ids` into an empty queue; BUFFER_FULL must set on the last, not before."""
+        status_addr = _ext_addr("STATUS", rx)
+        for index, probe_id in enumerate(ids, 1):
+            await self._ext_send(rx, probe_id)
+            name = f"R{rx}_{label}_{index}_STATUS"
+            if index == 1:
+                status = await self._ext_poll(
+                    name, status_addr, lambda v: not v & BUFFER_EMPTY_BM, "message_arrival"
+                )
+            elif index == len(ids):
+                status = await self._ext_poll(
+                    name, status_addr, lambda v: v & BUFFER_FULL_BM, "queue_full"
+                )
+            else:
+                status = await self.csr_read(name, status_addr)
+            want = STATUS_FULL if index == len(ids) else STATUS_NEITHER
+            assert status == want, (
+                f"receiver {rx}: STATUS reads 0x{status:08x} after message {index} of "
+                f"{len(ids)}, expected 0x{want:02x}"
+            )
+        head = await self._ext_probe(f"{label}_HEAD", rx)
+        assert head == ids[0], (
+            f"receiver {rx}: a full queue shows PROBE_ID=0x{head:02x}, not the first message "
+            f"0x{ids[0]:02x}"
+        )
+
+    async def _ext_bringup(self) -> None:
+        for rx in EXT_RECEIVERS:
+            await self.csr_write(f"R{rx}_BRINGUP_FLUSH", _ext_addr("CTRL", rx), RX_FLUSH_BM)
+            status = await self._ext_status("BRINGUP", rx)
+            intr = await self.csr_read(f"R{rx}_BRINGUP_INTR", _ext_addr("INTR_STATUS", rx))
+            line = _line(rx)
+            assert (status, intr, line) == (STATUS_EMPTY, 0, 0), (
+                f"receiver {rx} after CTRL.TELEMETRY_RX_FLUSH: STATUS=0x{status:08x} "
+                f"INTR_STATUS=0x{intr:08x} line={line}, expected 0x01, 0x00, 0"
+            )
+        self._stamp("BRINGUP")
+
+    async def _ext_full_and_overflow(self) -> None:
+        for rx in EXT_RECEIVERS:
+            await self._ext_fill(rx, FILL_IDS, "FULL")
+        first_pop: dict[int, int] = {}
+        for rx in EXT_RECEIVERS:
+            await self._ext_send(rx, NINTH_ID)
+            head = await self._ext_poll(
+                f"R{rx}_NINTH_PROBE",
+                _ext_addr("TELEMETRY_PROBE_ID", rx),
+                lambda v: v & PROBE_ID_BM != FILL_IDS[0],
+                "ninth_message_arrival",
+            )
+            head &= PROBE_ID_BM
+            status = await self._ext_status("NINTH", rx)
+            assert (status, head) == (STATUS_FULL, FILL_IDS[1]), (
+                f"receiver {rx} after the ninth message: STATUS=0x{status:08x} "
+                f"PROBE_ID=0x{head:02x}, expected 0x10 and 0x{FILL_IDS[1]:02x}"
+            )
+            survivors = [*FILL_IDS[1:], NINTH_ID]
+            for index, want_id in enumerate(survivors):
+                got = await self._ext_probe(f"DRAIN_{index}", rx)
+                assert got == want_id, (
+                    f"receiver {rx}: pop {index} presents PROBE_ID=0x{got:02x}, expected "
+                    f"0x{want_id:02x} of {[hex(i) for i in survivors]}"
+                )
+                await self._ext_pop(f"DRAIN_{index}", rx)
+                status = await self._ext_status(f"DRAIN_{index}", rx)
+                last = index == len(survivors) - 1
+                want_status = STATUS_EMPTY if last else STATUS_NEITHER
+                assert status == want_status, (
+                    f"receiver {rx}: STATUS=0x{status:08x} after pop {index + 1}, expected "
+                    f"0x{want_status:02x}"
+                )
+                if index == 0:
+                    first_pop[rx] = status
+            probe = await self._ext_probe("DRAINED", rx)
+            assert probe == 0, f"receiver {rx}: the empty queue reads PROBE_ID=0x{probe:02x}"
+            await self._ext_pop("EXTRA", rx)
+            status = await self._ext_status("EXTRA", rx)
+            probe = await self._ext_probe("EXTRA", rx)
+            assert (status, probe) == (STATUS_EMPTY, 0), (
+                f"receiver {rx}: a pop on the empty queue left STATUS=0x{status:08x} "
+                f"PROBE_ID=0x{probe:02x}, expected 0x01 and 0x00"
+            )
+        self._chk(
+            "CHK-TELEM12-FULL",
+            f"on receivers {list(EXT_RECEIVERS)}, STATUS read 0x00 after each of messages 1-7 "
+            f"and 0x10 after the eighth with PROBE_ID=0x{FILL_IDS[0]:02x}; the first pop after "
+            f"the overflow read STATUS "
+            + ", ".join(f"r{rx}=0x{first_pop[rx]:02x}" for rx in EXT_RECEIVERS),
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, 1)
+        self._stamp("TELEM12_FULL")
+        self._chk(
+            "CHK-TELEM12-OVERFLOW-ORDER",
+            f"on receivers {list(EXT_RECEIVERS)}, the ninth message 0x{NINTH_ID:02x} left "
+            f"STATUS=0x10 and PROBE_ID=0x{FILL_IDS[1]:02x}; the eight pops presented "
+            f"0x{FILL_IDS[1]:02x}..0x{NINTH_ID:02x} in order, then STATUS=0x01 and PROBE_ID=0x00, "
+            f"and the extra pop left both unchanged",
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, 1)
+        self._stamp("TELEM12_OVERFLOW")
+
+    async def _ext_window_trial(self, rx: int, offset: int) -> str:
+        """Pop at `offset` clk_periph_i cycles from the last beat of one more message."""
+        dut = cocotb.top
+        label = f"WINDOW_D{offset:+d}"
+        await self._ext_fill(rx, WINDOW_FILL_IDS, label)
+        packet = _frame_all_ones_message(WINDOW_ID)
+        beats = [(packet >> (8 * i)) & 0xFF for i in range(_NUM_BEATS_PER_PACKET)]
+        for index, beat in enumerate(beats[:-1]):
+            await _atb_write_beat(dut, beat, beat=index, rx=rx, atid=EXT_ATID[rx])
+        last = len(beats) - 1
+        if offset < 0:
+            pop = cocotb.start_soon(self._ext_pop(label, rx))
+            await ClockCycles(dut.clk_periph_i, -offset)
+            await _atb_write_beat(dut, beats[last], beat=last, rx=rx, atid=EXT_ATID[rx])
+            await pop
+        else:
+            await _atb_write_beat(dut, beats[last], beat=last, rx=rx, atid=EXT_ATID[rx])
+            if offset:
+                await ClockCycles(dut.clk_periph_i, offset)
+            await self._ext_pop(label, rx)
+
+        # The pop has landed; the push has landed once the queue is full again or
+        # the head has moved past the second message.
+        second = WINDOW_FILL_IDS[1]
+        status = head = 0
+        for _ in range(POLL_BOUND):
+            status = await self._ext_status(f"{label}_SETTLED", rx)
+            head = await self._ext_probe(f"{label}_SETTLED", rx)
+            if status & BUFFER_FULL_BM or head != second:
+                self._wait(
+                    "window_push_arrival",
+                    POLL_BOUND,
+                    "register polls",
+                    f"STATUS=0x{status:02x} PROBE_ID=0x{head:02x}",
+                )
+                break
+            await ClockCycles(dut.clk_smc_i, 4)
+        else:
+            raise AssertionError(
+                f"receiver {rx} {label}: message 0x{WINDOW_ID:02x} never reached the queue "
+                f"(STATUS=0x{status:08x} PROBE_ID=0x{head:02x})"
+            )
+
+        drained: list[int] = []
+        for index in range(QUEUE_DEPTH + 1):
+            status = await self._ext_status(f"{label}_DRAIN_{index}", rx)
+            if status & BUFFER_EMPTY_BM:
+                break
+            drained.append(await self._ext_probe(f"{label}_DRAIN_{index}", rx))
+            await self._ext_pop(f"{label}_DRAIN_{index}", rx)
+        else:
+            raise AssertionError(
+                f"receiver {rx} {label}: queue not empty after {QUEUE_DEPTH + 1} pops "
+                f"({[hex(i) for i in drained]})"
+            )
+        if drained == WINDOW_NO_DROP:
+            return "no-drop"
+        if drained == WINDOW_ONE_DROP:
+            return "one-drop"
+        raise AssertionError(
+            f"receiver {rx} {label}: drained {[hex(i) for i in drained]}, neither "
+            f"{[hex(i) for i in WINDOW_NO_DROP]} nor {[hex(i) for i in WINDOW_ONE_DROP]}"
+        )
+
+    async def _ext_push_pop_window(self) -> None:
+        outcomes: dict[int, list[str]] = {}
+        for rx in EXT_RECEIVERS:
+            outcomes[rx] = [await self._ext_window_trial(rx, d) for d in WINDOW_OFFSETS]
+        for rx in EXT_RECEIVERS:
+            cocotb.log.info(
+                "TELEM12 push/pop window receiver %d (SF-027): %s",
+                rx,
+                " ".join(f"d={d:+d}:{o}" for d, o in zip(WINDOW_OFFSETS, outcomes[rx])),
+            )
+        self._chk(
+            "CHK-TELEM12-PUSH-POP-WINDOW",
+            f"for every offset d in {WINDOW_OFFSETS[0]}..{WINDOW_OFFSETS[-1]} clk_periph_i "
+            f"cycles on receivers {list(EXT_RECEIVERS)}, the drain was exactly "
+            f"{[hex(i) for i in WINDOW_NO_DROP]} (no-drop) or "
+            f"{[hex(i) for i in WINDOW_ONE_DROP]} (one-drop), in order; per offset (SF-027): "
+            + "; ".join(
+                f"r{rx} " + ",".join(f"{d:+d}={o}" for d, o in zip(WINDOW_OFFSETS, outcomes[rx]))
+                for rx in EXT_RECEIVERS
+            ),
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, 1)
+        self._stamp("TELEM12_PUSH_POP")
+
+    async def _ext_queue_counted(self, rx: int, ids: tuple[int, ...], label: str) -> None:
+        """Queue `ids` one at a time, each confirmed by the occupancy it reaches.
+
+        Occupancy above `CTRL.BUFFER_THRESHOLD` raises `INTR_STATUS.BUFFER_THRESHOLD`,
+        so a threshold of k - 1 confirms the k-th message is queued before the next
+        is sent.
+        """
+        ctrl = _ext_addr("CTRL", rx)
+        intr_addr = _ext_addr("INTR_STATUS", rx)
+        for count, probe_id in enumerate(ids, 1):
+            threshold = ((count - 1) << THRESHOLD_BP) & THRESHOLD_BM
+            await self.csr_write(f"R{rx}_{label}_THRESHOLD_{count}", ctrl, threshold)
+            await self._ext_send(rx, probe_id)
+            await self._ext_poll(
+                f"R{rx}_{label}_QUEUED_{count}",
+                intr_addr,
+                lambda v: v & INTR_THRESHOLD,
+                "queue_occupancy",
+            )
+
+    async def _ext_tx_flush_ready_high(self) -> None:
+        """TELEMETRY_TX_FLUSH with afready_i at its bench level, which is high."""
+        for rx in EXT_RECEIVERS:
+            ctrl = _ext_addr("CTRL", rx)
+            await self.csr_write(f"R{rx}_TXF_RX_FLUSH", ctrl, RX_FLUSH_BM)
+            await self._ext_poll(
+                f"R{rx}_TXF_EMPTY",
+                _ext_addr("STATUS", rx),
+                lambda v: v & BUFFER_EMPTY_BM,
+                "rx_flush_empty",
+            )
+            await self._ext_queue_counted(rx, TX_FLUSH_IDS, "TXF")
+            threshold = ((len(TX_FLUSH_IDS) - 1) << THRESHOLD_BP) & THRESHOLD_BM
+            await self.csr_write(f"R{rx}_TXF_FLUSH", ctrl, threshold | TX_FLUSH_BM)
+            await self._ext_poll(
+                f"R{rx}_TXF_CTRL", ctrl, lambda v: not v & TX_FLUSH_BM, "tx_flush_self_clear"
+            )
+            status = await self._ext_status("TXF", rx)
+            head = await self._ext_probe("TXF", rx)
+            assert (status, head) == (STATUS_NEITHER, TX_FLUSH_IDS[0]), (
+                f"receiver {rx} after CTRL.TELEMETRY_TX_FLUSH: STATUS=0x{status:08x} "
+                f"PROBE_ID=0x{head:02x}, expected 0x00 and 0x{TX_FLUSH_IDS[0]:02x}"
+            )
+            for index, want_id in enumerate(TX_FLUSH_IDS):
+                got = await self._ext_probe(f"TXF_DRAIN_{index}", rx)
+                assert got == want_id, (
+                    f"receiver {rx}: after the TX flush pop {index} presents 0x{got:02x}, "
+                    f"expected 0x{want_id:02x}"
+                )
+                await self._ext_pop(f"TXF_DRAIN_{index}", rx)
+            status = await self._ext_status("TXF_DRAINED", rx)
+            assert status == STATUS_EMPTY, (
+                f"receiver {rx}: STATUS=0x{status:08x} after draining the three messages"
+            )
+        self._chk(
+            "CHK-TELEM12-TX-FLUSH",
+            f"on receivers {list(EXT_RECEIVERS)} with afready_i at its bench level (high), the "
+            f"written CTRL.TELEMETRY_TX_FLUSH self-cleared within {POLL_BOUND} polls, STATUS read "
+            f"0x00 with PROBE_ID=0x{TX_FLUSH_IDS[0]:02x}, and the queued messages drained in "
+            f"order {[hex(i) for i in TX_FLUSH_IDS]}; the afready_i-low handshake is "
+            f"NOT-REACHABLE-AT-THIS-LEVEL on this bench (SF-044)",
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, 1)
+        self._stamp("TELEM12_TX_FLUSH")
+
+    async def _beats_until_missing(self, rx: int, label: str) -> int:
+        intr_addr = _ext_addr("INTR_STATUS", rx)
+        packet = _mid_packet()
+        intr = 0
+        for beats in range(1, MISSING_BEAT_BOUND + 1):
+            index = (beats - 1) % _NUM_BEATS_PER_PACKET
+            await _atb_write_beat(
+                cocotb.top, (packet >> (8 * index)) & 0xFF, beat=index, rx=rx, atid=EXT_ATID[rx]
+            )
+            intr = await self.csr_read(f"R{rx}_{label}_{beats}_INTR", intr_addr)
+            if intr & INTR_MISSING_LAST:
+                assert intr == INTR_MISSING_LAST, (
+                    f"receiver {rx}: INTR_STATUS=0x{intr:08x} when MISSING_LAST set, expected 0x01"
+                )
+                self._wait("missing_last_beats", MISSING_BEAT_BOUND, "beats", f"0x{intr:02x}")
+                return beats
+        raise AssertionError(
+            f"receiver {rx} {label}: MISSING_LAST never set over {MISSING_BEAT_BOUND} beats "
+            f"without the last marker (INTR_STATUS=0x{intr:08x})"
+        )
+
+    async def _ext_missing_last(self) -> None:
+        counts: dict[int, tuple[int, int]] = {}
+        for rx in EXT_RECEIVERS:
+            intr_addr = _ext_addr("INTR_STATUS", rx)
+            enable = _ext_addr("INTR_ENABLE", rx)
+            await self.csr_write(f"R{rx}_ML_FLUSH", _ext_addr("CTRL", rx), RX_FLUSH_BM)
+            await self.csr_write(f"R{rx}_ML_ENABLE_OFF", enable, 0)
+            await self.csr_read(f"R{rx}_ML_ENTRY", intr_addr, expected=0)
+            off = await self._beats_until_missing(rx, "ML_OFF")
+            assert _line(rx) == 0, f"receiver {rx}: line high with INTR_ENABLE=0x00"
+            await self._line_stays_low(rx, f"receiver {rx} MISSING_LAST disabled")
+            await self.csr_write(f"R{rx}_ML_OFF_W1C", intr_addr, INTR_MISSING_LAST)
+            intr = await self.csr_read(f"R{rx}_ML_OFF_CLEARED", intr_addr)
+            assert intr == 0, f"receiver {rx}: INTR_STATUS=0x{intr:08x} after the written 0x01"
+
+            await self.csr_write(f"R{rx}_ML_ENABLE_ON", enable, ENABLE_MISSING_LAST)
+            on = await self._beats_until_missing(rx, "ML_ON")
+            await self._await_line(rx, 1, f"receiver {rx} MISSING_LAST enabled")
+            await self.csr_write(f"R{rx}_ML_ON_W1C", intr_addr, INTR_MISSING_LAST)
+            intr = await self.csr_read(f"R{rx}_ML_ON_CLEARED", intr_addr)
+            assert intr == 0, f"receiver {rx}: INTR_STATUS=0x{intr:08x} after the written 0x01"
+            await self._await_line(rx, 0, f"receiver {rx} MISSING_LAST cleared")
+
+            await self._ext_send(rx, AFTER_MISSING_ID)
+            await self._ext_poll(
+                f"R{rx}_ML_NEXT",
+                _ext_addr("STATUS", rx),
+                lambda v: not v & BUFFER_EMPTY_BM,
+                "message_arrival",
+            )
+            head = await self._ext_probe("ML_NEXT", rx)
+            assert head == AFTER_MISSING_ID, (
+                f"receiver {rx}: the message after MISSING_LAST reads PROBE_ID=0x{head:02x}, "
+                f"expected 0x{AFTER_MISSING_ID:02x}"
+            )
+            await self._ext_pop("ML_NEXT", rx)
+            await self.csr_write(f"R{rx}_ML_ENABLE_RESTORE", enable, 0)
+            counts[rx] = (off, on)
+        self._chk(
+            "CHK-TELEM12-MISSING-LAST",
+            f"on receivers {list(EXT_RECEIVERS)}, INTR_STATUS read 0x01 with the line at 0 "
+            f"while INTR_ENABLE=0x00 and with the line at 1 while INTR_ENABLE=0x01; each "
+            f"written 0x01 returned INTR_STATUS to 0x00 and the line to 0; the next complete "
+            f"message read PROBE_ID=0x{AFTER_MISSING_ID:02x}; "
+            + " ".join(
+                f"beats_to_missing_last_r{rx}={counts[rx][0]},{counts[rx][1]}"
+                for rx in EXT_RECEIVERS
+            )
+            + " (measured, LINKED-ISSUE SF-024)",
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, 1)
+        self._stamp("TELEM12_MISSING_LAST")
+
+    async def _ext_intr_test(self) -> None:
+        logged: dict[int, tuple[int, int]] = {}
+        rise: dict[int, int] = {}
+        for rx in EXT_RECEIVERS:
+            intr_addr = _ext_addr("INTR_STATUS", rx)
+            enable = _ext_addr("INTR_ENABLE", rx)
+            test = _ext_addr(INTR_TEST, rx)
+            await self.csr_write(f"R{rx}_IT_ENABLE_ON", enable, ENABLE_MISSING_LAST)
+            await self.csr_read(f"R{rx}_IT_ENTRY", intr_addr, expected=0)
+            assert _line(rx) == 0, f"receiver {rx}: line high before INTR_TEST"
+            watch = _LineWatch(rx)
+            await self.csr_write(f"R{rx}_IT_ON", test, INTR_TEST_MISSING_LAST)
+            for _ in range(LINE_BOUND):
+                if watch.seen is not None:
+                    break
+                await RisingEdge(cocotb.top.clk_smc_i)
+            watch.stop()
+            assert watch.seen is not None, (
+                f"receiver {rx}: INTR_TEST.MISSING_LAST with INTR_ENABLE=0x01 did not raise "
+                f"peripheral_interrupts_o[{TELEMETRY_IRQ_BASE + rx}] within the write and "
+                f"{LINE_BOUND} clk_smc_i cycles (line={_line(rx)})"
+            )
+            self._wait("intr_test_rise", LINE_BOUND, "clk_smc_i", "line=1")
+            rise[rx] = watch.seen
+            after_on = await self.csr_read(f"R{rx}_IT_ON_INTR", intr_addr)
+            await self.csr_write(f"R{rx}_IT_ON_W1C", intr_addr, INTR_MISSING_LAST)
+            await self._await_line(rx, 0, f"receiver {rx} INTR_TEST cleared")
+
+            await self.csr_write(f"R{rx}_IT_ENABLE_OFF", enable, 0)
+            watch = _LineWatch(rx)
+            await self.csr_write(f"R{rx}_IT_OFF", test, INTR_TEST_MISSING_LAST)
+            await ClockCycles(cocotb.top.clk_smc_i, LINE_BOUND)
+            watch.stop()
+            assert watch.seen is None, (
+                f"receiver {rx}: INTR_TEST.MISSING_LAST with INTR_ENABLE=0x00 raised the line "
+                f"{watch.seen} clk_smc_i cycles in"
+            )
+            self._wait("intr_test_hold_low", LINE_BOUND, "clk_smc_i", "line=0")
+            after_off = await self.csr_read(f"R{rx}_IT_OFF_INTR", intr_addr)
+            await self.csr_write(f"R{rx}_IT_OFF_W1C", intr_addr, INTR_MISSING_LAST)
+            logged[rx] = (after_on, after_off)
+        self._chk(
+            "CHK-TELEM12-INTR-TEST",
+            f"on receivers {list(EXT_RECEIVERS)}, INTR_TEST.MISSING_LAST with INTR_ENABLE=0x01 "
+            f"raised the line ("
+            + ", ".join(f"r{rx} {rise[rx]} cycles" for rx in EXT_RECEIVERS)
+            + ") and with INTR_ENABLE=0x00 left it 0; INTR_STATUS after the test write "
+            "(logged, SF-025): "
+            + " ".join(
+                f"r{rx}_enabled=0x{logged[rx][0]:02x} r{rx}_disabled=0x{logged[rx][1]:02x}"
+                for rx in EXT_RECEIVERS
+            ),
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, 1)
+        self._stamp("TELEM12_INTR_TEST")
+
+    async def _ext_fence(self) -> None:
+        names = " ".join(
+            f"{name}(bound={bound} {unit}, last {last})"
+            for name, (bound, unit, last) in sorted(self.waits.items())
+        )
+        self._chk(
+            "CHK-TIMEOUT-PATHS",
+            f"{len(self.waits)} bounded waits, each raising AssertionError with its last "
+            f"observed register or line state on expiry: {names}",
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, 1)
+        self._stamp("TIMEOUT")
+
+        steps = [s for s, _ in self.stamps]
+        assert tuple(steps) == STEP_ORDER, f"fence steps {steps} out of order"
+        times = [t for _, t in self.stamps]
+        assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing {times}"
+        stamp_of = dict(self.stamps)
+        for chk_id, t, stamps_before in self.chk_lines:
+            step = CHK_STEP[chk_id]
+            assert stamps_before == STEP_ORDER.index(step) and t <= stamp_of[step], (
+                f"{chk_id} at {t} ps followed {stamps_before} step stamps; it belongs inside "
+                f"step {step}"
+            )
+        cocotb.log.info(
+            "CHK-NONVAC: ordered fence %s after the receiver-0 legs; checker lines %s; stamps %s",
+            " < ".join(STEP_ORDER),
+            ",".join(c for c, _, _ in self.chk_lines),
+            ",".join(f"{s}={t}" for s, t in self.stamps),
+        )
+
     async def body(self) -> None:
         original_cg = await self.csr_read("CLOCK_GATE_CONTROL_SAVE", CLOCK_GATE_CONTROL)
         ungated = original_cg & ~TELEMETRY_CG_EN
@@ -351,5 +946,13 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         await self._overflow()
         await self._missing_last()
         await self._partial_and_flush_leg()
+
+        await self._ext_bringup()
+        await self._ext_full_and_overflow()
+        await self._ext_push_pop_window()
+        await self._ext_tx_flush_ready_high()
+        await self._ext_missing_last()
+        await self._ext_intr_test()
+        await self._ext_fence()
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, original_cg)

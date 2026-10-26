@@ -12,9 +12,15 @@ Register interface for a single AXI-Lite mailbox: data FIFOs, level and status f
 |===
 | Address | Name | Access | Description
 | 0x0 | <<reg-{regmap-instance}-axil_mailbox-WRITE_DATA,WRITE_DATA>> | W a| -
-| 0x8 | <<reg-{regmap-instance}-axil_mailbox-READ_DATA,READ_DATA>> | R a| -
+| 0x8 | <<reg-{regmap-instance}-axil_mailbox-READ_DATA,READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.
 | 0x10 | <<reg-{regmap-instance}-axil_mailbox-STATUS,STATUS>> | R a| -
-| 0x18 | <<reg-{regmap-instance}-axil_mailbox-ERROR_FLAGS,ERROR_FLAGS>> | R a| -
+| 0x18 | <<reg-{regmap-instance}-axil_mailbox-ERROR_FLAGS,ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.
 | 0x20 | <<reg-{regmap-instance}-axil_mailbox-WIRQT,WIRQT>> | RW a| -
 | 0x28 | <<reg-{regmap-instance}-axil_mailbox-RIRQT,RIRQT>> | RW a| -
 | 0x30 | <<reg-{regmap-instance}-axil_mailbox-IRQS,IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
@@ -29,7 +35,9 @@ Register interface for a single AXI-Lite mailbox: data FIFOs, level and status f
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox-READ_DATA]

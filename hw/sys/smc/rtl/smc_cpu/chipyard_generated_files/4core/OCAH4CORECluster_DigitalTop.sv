@@ -688,134 +688,142 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
   wire        _clint_domain_auto_int_in_clock_xing_out_0_sync_1;	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
   wire        _clint_domain_clock;	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
   wire        _clint_domain_reset;	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
-  wire [1:0]  _tileHartIdNexusNode_auto_out_3;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:75:39]
-  wire [1:0]  _tileHartIdNexusNode_auto_out_2;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:75:39]
-  wire [1:0]  _tileHartIdNexusNode_auto_out_1;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:75:39]
-  wire [1:0]  _tileHartIdNexusNode_auto_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:75:39]
-  wire        _tile_prci_domain_3_auto_int_out_clock_xing_out_sync_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_a_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [1:0]  _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [8:0]  _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [3:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [5:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [55:0] _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [7:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_mask;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_b_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [3:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [5:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [55:0] _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_d_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_e_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [1:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_e_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_int_out_clock_xing_out_sync_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_a_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [1:0]  _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [8:0]  _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [3:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [5:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [55:0] _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [7:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_mask;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_b_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [3:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [5:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [55:0] _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_d_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_e_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [1:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_e_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_int_out_clock_xing_out_sync_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_a_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [1:0]  _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [8:0]  _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [3:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [5:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [55:0] _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [7:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_mask;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_b_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [3:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [5:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [55:0] _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_d_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_e_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [1:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_e_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_int_out_clock_xing_out_sync_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_a_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_d_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [1:0]  _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [8:0]  _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_a_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [3:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [5:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [55:0] _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [7:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_mask;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_b_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_c_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [2:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [3:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [5:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [55:0] _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [63:0] _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_d_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_e_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-  wire [1:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_e_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+  wire [1:0]  _tileHartIdNexusNode_auto_out_3;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:81:39]
+  wire [1:0]  _tileHartIdNexusNode_auto_out_2;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:81:39]
+  wire [1:0]  _tileHartIdNexusNode_auto_out_1;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:81:39]
+  wire [1:0]  _tileHartIdNexusNode_auto_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:81:39]
+  wire        _tile_prci_domain_3_auto_int_out_clock_xing_out_sync_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_a_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [1:0]  _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [8:0]  _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tile_reset_out_1;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [3:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [5:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [55:0] _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [7:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_mask;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_b_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [3:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [5:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [55:0] _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_d_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tl_master_clock_xing_out_e_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [1:0]  _tile_prci_domain_3_auto_tl_master_clock_xing_out_e_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_3_auto_tile_reset_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_int_out_clock_xing_out_sync_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_a_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [1:0]  _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [8:0]  _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tile_reset_out_1;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [3:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [5:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [55:0] _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [7:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_mask;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_b_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [3:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [5:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [55:0] _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_d_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tl_master_clock_xing_out_e_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [1:0]  _tile_prci_domain_2_auto_tl_master_clock_xing_out_e_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_2_auto_tile_reset_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_int_out_clock_xing_out_sync_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_a_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [1:0]  _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [8:0]  _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tile_reset_out_1;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [3:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [5:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [55:0] _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [7:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_mask;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_b_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [3:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [5:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [55:0] _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_d_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tl_master_clock_xing_out_e_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [1:0]  _tile_prci_domain_1_auto_tl_master_clock_xing_out_e_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_1_auto_tile_reset_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_int_out_clock_xing_out_sync_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_a_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_d_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [1:0]  _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [8:0]  _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_denied;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tile_reset_out_1;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_a_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [3:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [5:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [55:0] _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [7:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_mask;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_corrupt;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_b_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_c_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [2:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [3:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_size;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [5:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_source;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [55:0] _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_address;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [63:0] _tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_data;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_d_ready;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tl_master_clock_xing_out_e_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire [1:0]  _tile_prci_domain_auto_tl_master_clock_xing_out_e_bits_sink;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+  wire        _tile_prci_domain_auto_tile_reset_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
   wire        _coh_wrapper_auto_coupler_to_bus_named_mbus_bus_xing_out_a_valid;	// @[generators/rocket-chip/src/main/scala/subsystem/BankedCoherenceParams.scala:56:31]
   wire [2:0]  _coh_wrapper_auto_coupler_to_bus_named_mbus_bus_xing_out_a_bits_opcode;	// @[generators/rocket-chip/src/main/scala/subsystem/BankedCoherenceParams.scala:56:31]
   wire [2:0]  _coh_wrapper_auto_coupler_to_bus_named_mbus_bus_xing_out_a_bits_param;	// @[generators/rocket-chip/src/main/scala/subsystem/BankedCoherenceParams.scala:56:31]
@@ -2583,30 +2591,31 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coupler_to_port_named_mmio_port_axi4_axi4buf_out_r_bits_data             (mmio_axi4_0_r_bits_data),
     .auto_coupler_to_port_named_mmio_port_axi4_axi4buf_out_r_bits_resp             (mmio_axi4_0_r_bits_resp),
     .auto_coupler_to_port_named_mmio_port_axi4_axi4buf_out_r_bits_last             (mmio_axi4_0_r_bits_last),
+    .auto_coupler_from_rockettile_probeAcker_tile_reset_in_3                       (_tile_prci_domain_3_auto_tile_reset_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_valid                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_opcode          (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_param           (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_size            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_source          (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_address         (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_mask            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_mask),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_data            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_corrupt         (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_ready                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_b_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_valid                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_opcode          (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_param           (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_size            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_source          (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_address         (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_mask            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_mask),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_data            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_bits_corrupt         (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_ready                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_b_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_valid                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_valid),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_param           (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_param),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_source          (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_source),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_address         (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_b_bits_address),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_valid                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_opcode          (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_param           (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_size            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_source          (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_address         (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_data            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_ready                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_d_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_valid                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_opcode          (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_param           (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_size            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_source          (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_address         (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_c_bits_data            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_c_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_ready                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_d_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_valid                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_valid),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_opcode          (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_opcode),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_param           (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_param),
@@ -2617,32 +2626,33 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_data            (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_data),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_corrupt         (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_d_bits_corrupt),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_valid                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_e_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_bits_sink            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_e_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_valid                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_e_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_bits_sink            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_e_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_probeAcker_tile_reset_in_2                       (_tile_prci_domain_2_auto_tile_reset_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_valid                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_opcode          (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_param           (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_size            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_source          (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_address         (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_mask            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_mask),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_data            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_corrupt         (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_ready                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_b_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_valid                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_opcode          (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_param           (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_size            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_source          (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_address         (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_mask            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_mask),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_data            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_bits_corrupt         (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_ready                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_b_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_valid                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_valid),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_param           (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_param),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_source          (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_source),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_address         (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_b_bits_address),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_valid                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_opcode          (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_param           (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_size            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_source          (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_address         (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_data            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_ready                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_d_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_valid                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_opcode          (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_param           (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_size            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_source          (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_address         (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_c_bits_data            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_c_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_ready                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_d_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_valid                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_valid),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_opcode          (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_opcode),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_param           (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_param),
@@ -2653,32 +2663,33 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_data            (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_data),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_corrupt         (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_d_bits_corrupt),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_valid                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_e_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_bits_sink            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_e_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_valid                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_e_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_bits_sink            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_e_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_probeAcker_tile_reset_in_1                       (_tile_prci_domain_1_auto_tile_reset_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_valid                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_opcode          (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_param           (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_size            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_source          (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_address         (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_mask            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_mask),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_data            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_corrupt         (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_ready                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_b_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_valid                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_opcode          (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_param           (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_size            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_source          (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_address         (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_mask            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_mask),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_data            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_bits_corrupt         (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_ready                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_b_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_valid                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_valid),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_param           (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_param),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_source          (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_source),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_address         (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_b_bits_address),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_valid                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_opcode          (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_param           (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_size            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_source          (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_address         (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_data            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_ready                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_d_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_valid                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_opcode          (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_param           (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_size            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_source          (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_address         (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_c_bits_data            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_c_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_ready                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_d_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_valid                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_valid),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_opcode          (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_opcode),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_param           (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_param),
@@ -2689,32 +2700,33 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_data            (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_data),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_corrupt         (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_d_bits_corrupt),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_valid                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_e_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_bits_sink            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_e_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_valid                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_e_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_bits_sink            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_e_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_probeAcker_tile_reset_in_0                       (_tile_prci_domain_auto_tile_reset_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_valid                (_tile_prci_domain_auto_tl_master_clock_xing_out_a_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_opcode          (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_param           (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_size            (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_source          (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_address         (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_mask            (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_mask),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_data            (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_corrupt         (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_ready                (_tile_prci_domain_auto_tl_master_clock_xing_out_b_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_valid                (_tile_prci_domain_auto_tl_master_clock_xing_out_a_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_opcode          (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_param           (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_size            (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_source          (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_address         (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_mask            (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_mask),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_data            (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_bits_corrupt         (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_ready                (_tile_prci_domain_auto_tl_master_clock_xing_out_b_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_valid                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_valid),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_param           (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_param),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_source          (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_source),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_address         (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_b_bits_address),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_valid                (_tile_prci_domain_auto_tl_master_clock_xing_out_c_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_opcode          (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_param           (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_size            (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_source          (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_address         (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_data            (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_ready                (_tile_prci_domain_auto_tl_master_clock_xing_out_d_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_valid                (_tile_prci_domain_auto_tl_master_clock_xing_out_c_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_opcode          (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_param           (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_size            (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_source          (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_address         (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_address),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_c_bits_data            (_tile_prci_domain_auto_tl_master_clock_xing_out_c_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_ready                (_tile_prci_domain_auto_tl_master_clock_xing_out_d_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_valid                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_valid),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_opcode          (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_opcode),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_param           (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_param),
@@ -2725,8 +2737,8 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_data            (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_data),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_corrupt         (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_d_bits_corrupt),
     .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_ready),
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_valid                (_tile_prci_domain_auto_tl_master_clock_xing_out_e_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_bits_sink            (_tile_prci_domain_auto_tl_master_clock_xing_out_e_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_valid                (_tile_prci_domain_auto_tl_master_clock_xing_out_e_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_bits_sink            (_tile_prci_domain_auto_tl_master_clock_xing_out_e_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_to_bus_named_coh_widget_anon_out_a_ready                         (_coh_wrapper_auto_coherent_jbar_anon_in_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/BankedCoherenceParams.scala:56:31]
     .auto_coupler_to_bus_named_coh_widget_anon_out_a_valid                         (_sbus_auto_coupler_to_bus_named_coh_widget_anon_out_a_valid),
     .auto_coupler_to_bus_named_coh_widget_anon_out_a_bits_opcode                   (_sbus_auto_coupler_to_bus_named_coh_widget_anon_out_a_bits_opcode),
@@ -3005,7 +3017,8 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_bus_xing_out_d_bits_corrupt                                        (_sbus_auto_coupler_from_bus_named_fbus_bus_xing_in_d_bits_corrupt)	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
   );
   OCAH4CORECluster_PeripheryBus_cbus cbus (	// @[generators/rocket-chip/src/main/scala/subsystem/PeripheryBus.scala:37:26]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_ready        (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_to_rockettile_denier_tile_reset_in_3                   (_tile_prci_domain_3_auto_tile_reset_out_1),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_ready        (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_valid        (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_valid),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_bits_opcode  (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_bits_opcode),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_bits_param   (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_bits_param),
@@ -3016,16 +3029,17 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_bits_data    (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_bits_data),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_bits_corrupt (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_a_bits_corrupt),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_ready        (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_ready),
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_valid        (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_opcode  (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_param   (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_size    (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_source  (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_sink    (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_denied  (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_data    (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_corrupt (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_ready        (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_valid        (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_opcode  (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_param   (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_size    (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_source  (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_sink    (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_denied  (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_data    (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_3_d_bits_corrupt (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_denier_tile_reset_in_2                   (_tile_prci_domain_2_auto_tile_reset_out_1),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_ready        (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_valid        (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_valid),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_bits_opcode  (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_bits_opcode),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_bits_param   (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_bits_param),
@@ -3036,16 +3050,17 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_bits_data    (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_bits_data),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_bits_corrupt (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_a_bits_corrupt),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_ready        (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_ready),
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_valid        (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_opcode  (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_param   (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_size    (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_source  (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_sink    (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_denied  (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_data    (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_corrupt (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_ready        (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_valid        (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_opcode  (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_param   (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_size    (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_source  (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_sink    (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_denied  (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_data    (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_2_d_bits_corrupt (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_denier_tile_reset_in_1                   (_tile_prci_domain_1_auto_tile_reset_out_1),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_ready        (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_valid        (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_valid),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_bits_opcode  (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_bits_opcode),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_bits_param   (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_bits_param),
@@ -3056,16 +3071,17 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_bits_data    (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_bits_data),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_bits_corrupt (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_a_bits_corrupt),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_ready        (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_ready),
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_valid        (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_opcode  (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_param   (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_size    (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_source  (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_sink    (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_denied  (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_data    (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_corrupt (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_ready        (_tile_prci_domain_auto_tl_slave_clock_xing_in_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_valid        (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_opcode  (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_param   (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_size    (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_source  (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_sink    (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_denied  (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_data    (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_1_d_bits_corrupt (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_denier_tile_reset_in_0                   (_tile_prci_domain_auto_tile_reset_out_1),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_ready        (_tile_prci_domain_auto_tl_slave_clock_xing_in_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_valid        (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_valid),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_bits_opcode  (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_bits_opcode),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_bits_param   (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_bits_param),
@@ -3076,15 +3092,15 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_bits_data    (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_bits_data),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_bits_corrupt (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_a_bits_corrupt),
     .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_ready        (_cbus_auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_ready),
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_valid        (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_opcode  (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_param   (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_size    (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_source  (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_sink    (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_denied  (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_data    (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
-    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_corrupt (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_valid        (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_valid),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_opcode  (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_opcode),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_param   (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_param),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_size    (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_size),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_source  (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_source),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_sink    (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_sink),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_denied  (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_denied),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_data    (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_data),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
+    .auto_coupler_to_rockettile_tl_slave_clock_xing_out_0_d_bits_corrupt (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_corrupt),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_coupler_to_debug_fragmenter_anon_out_a_ready                   (_tlDM_auto_dmInner_dmInner_tl_in_a_ready),	// @[generators/chipyard/src/main/scala/tt_configs/TTPeriphery.scala:35:26]
     .auto_coupler_to_debug_fragmenter_anon_out_a_valid                   (_cbus_auto_coupler_to_debug_fragmenter_anon_out_a_valid),
     .auto_coupler_to_debug_fragmenter_anon_out_a_bits_opcode             (_cbus_auto_coupler_to_debug_fragmenter_anon_out_a_bits_opcode),
@@ -3972,7 +3988,7 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_coh_clock_groups_in_member_coh_0_clock                (_sbus_auto_sbus_clock_groups_out_member_coh_0_clock),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_coh_clock_groups_in_member_coh_0_reset                (_sbus_auto_sbus_clock_groups_out_member_coh_0_reset)	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
   );
-  OCAH4CORECluster_TilePRCIDomain tile_prci_domain (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+  OCAH4CORECluster_TilePRCIDomain tile_prci_domain (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .l1_icache_tag_array_req(l1_icache_tag_intf_req[0]),
     .l1_icache_tag_array_rsp(l1_icache_tag_intf_rsp[0]),
     .l1_icache_data_arrays_1_req(l1_icache_data_intf_req[4]),
@@ -3988,7 +4004,7 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .o_wb_reg_pc(o_wb_reg_pc[0]),
     .auto_intsink_in_sync_0                               (_tlDM_auto_dmOuter_int_out_0_sync_0),	// @[generators/chipyard/src/main/scala/tt_configs/TTPeriphery.scala:35:26]
     .auto_element_reset_domain_rockettile_reset_vector_in (reset_vector_0),
-    .auto_element_reset_domain_rockettile_hartid_in       (_tileHartIdNexusNode_auto_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:75:39]
+    .auto_element_reset_domain_rockettile_hartid_in       (_tileHartIdNexusNode_auto_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:81:39]
     .auto_int_out_clock_xing_out_sync_0                   (_tile_prci_domain_auto_int_out_clock_xing_out_sync_0),
     .auto_int_in_clock_xing_in_2_sync_0                   (_plic_domain_auto_int_in_clock_xing_out_1_sync_0),	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
     .auto_int_in_clock_xing_in_1_sync_0                   (_plic_domain_auto_int_in_clock_xing_out_0_sync_0),	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
@@ -4014,6 +4030,7 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_tl_slave_clock_xing_in_d_bits_denied            (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_denied),
     .auto_tl_slave_clock_xing_in_d_bits_data              (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_data),
     .auto_tl_slave_clock_xing_in_d_bits_corrupt           (_tile_prci_domain_auto_tl_slave_clock_xing_in_d_bits_corrupt),
+    .auto_tile_reset_out_1                                (_tile_prci_domain_auto_tile_reset_out_1),
     .auto_tl_master_clock_xing_out_a_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tl_master_clock_xing_out_a_valid                (_tile_prci_domain_auto_tl_master_clock_xing_out_a_valid),
     .auto_tl_master_clock_xing_out_a_bits_opcode          (_tile_prci_domain_auto_tl_master_clock_xing_out_a_bits_opcode),
@@ -4050,10 +4067,11 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_tl_master_clock_xing_out_e_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_0_e_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tl_master_clock_xing_out_e_valid                (_tile_prci_domain_auto_tl_master_clock_xing_out_e_valid),
     .auto_tl_master_clock_xing_out_e_bits_sink            (_tile_prci_domain_auto_tl_master_clock_xing_out_e_bits_sink),
+    .auto_tile_reset_out_0                                (_tile_prci_domain_auto_tile_reset_out_0),
     .auto_tap_clock_in_clock                              (_sbus_auto_clockGroup_out_0_clock),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tap_clock_in_reset                              (_sbus_auto_clockGroup_out_0_reset)	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
   );
-  OCAH4CORECluster_TilePRCIDomain tile_prci_domain_1 (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+  OCAH4CORECluster_TilePRCIDomain tile_prci_domain_1 (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .l1_icache_tag_array_req(l1_icache_tag_intf_req[1]),
     .l1_icache_tag_array_rsp(l1_icache_tag_intf_rsp[1]),
     .l1_icache_data_arrays_1_req(l1_icache_data_intf_req[5]),
@@ -4069,7 +4087,7 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .o_wb_reg_pc(o_wb_reg_pc[1]),
     .auto_intsink_in_sync_0                               (_tlDM_auto_dmOuter_int_out_1_sync_0),	// @[generators/chipyard/src/main/scala/tt_configs/TTPeriphery.scala:35:26]
     .auto_element_reset_domain_rockettile_reset_vector_in (reset_vector_1),
-    .auto_element_reset_domain_rockettile_hartid_in       (_tileHartIdNexusNode_auto_out_1),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:75:39]
+    .auto_element_reset_domain_rockettile_hartid_in       (_tileHartIdNexusNode_auto_out_1),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:81:39]
     .auto_int_out_clock_xing_out_sync_0                   (_tile_prci_domain_1_auto_int_out_clock_xing_out_sync_0),
     .auto_int_in_clock_xing_in_2_sync_0                   (_plic_domain_auto_int_in_clock_xing_out_3_sync_0),	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
     .auto_int_in_clock_xing_in_1_sync_0                   (_plic_domain_auto_int_in_clock_xing_out_2_sync_0),	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
@@ -4095,6 +4113,7 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_tl_slave_clock_xing_in_d_bits_denied            (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_denied),
     .auto_tl_slave_clock_xing_in_d_bits_data              (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_data),
     .auto_tl_slave_clock_xing_in_d_bits_corrupt           (_tile_prci_domain_1_auto_tl_slave_clock_xing_in_d_bits_corrupt),
+    .auto_tile_reset_out_1                                (_tile_prci_domain_1_auto_tile_reset_out_1),
     .auto_tl_master_clock_xing_out_a_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tl_master_clock_xing_out_a_valid                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_valid),
     .auto_tl_master_clock_xing_out_a_bits_opcode          (_tile_prci_domain_1_auto_tl_master_clock_xing_out_a_bits_opcode),
@@ -4131,10 +4150,11 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_tl_master_clock_xing_out_e_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_1_e_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tl_master_clock_xing_out_e_valid                (_tile_prci_domain_1_auto_tl_master_clock_xing_out_e_valid),
     .auto_tl_master_clock_xing_out_e_bits_sink            (_tile_prci_domain_1_auto_tl_master_clock_xing_out_e_bits_sink),
+    .auto_tile_reset_out_0                                (_tile_prci_domain_1_auto_tile_reset_out_0),
     .auto_tap_clock_in_clock                              (_sbus_auto_clockGroup_out_1_clock),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tap_clock_in_reset                              (_sbus_auto_clockGroup_out_1_reset)	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
   );
-  OCAH4CORECluster_TilePRCIDomain tile_prci_domain_2 (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+  OCAH4CORECluster_TilePRCIDomain tile_prci_domain_2 (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .l1_icache_tag_array_req(l1_icache_tag_intf_req[2]),
     .l1_icache_tag_array_rsp(l1_icache_tag_intf_rsp[2]),
     .l1_icache_data_arrays_1_req(l1_icache_data_intf_req[6]),
@@ -4150,7 +4170,7 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .o_wb_reg_pc(o_wb_reg_pc[2]),
     .auto_intsink_in_sync_0                               (_tlDM_auto_dmOuter_int_out_2_sync_0),	// @[generators/chipyard/src/main/scala/tt_configs/TTPeriphery.scala:35:26]
     .auto_element_reset_domain_rockettile_reset_vector_in (reset_vector_2),
-    .auto_element_reset_domain_rockettile_hartid_in       (_tileHartIdNexusNode_auto_out_2),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:75:39]
+    .auto_element_reset_domain_rockettile_hartid_in       (_tileHartIdNexusNode_auto_out_2),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:81:39]
     .auto_int_out_clock_xing_out_sync_0                   (_tile_prci_domain_2_auto_int_out_clock_xing_out_sync_0),
     .auto_int_in_clock_xing_in_2_sync_0                   (_plic_domain_auto_int_in_clock_xing_out_5_sync_0),	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
     .auto_int_in_clock_xing_in_1_sync_0                   (_plic_domain_auto_int_in_clock_xing_out_4_sync_0),	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
@@ -4176,6 +4196,7 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_tl_slave_clock_xing_in_d_bits_denied            (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_denied),
     .auto_tl_slave_clock_xing_in_d_bits_data              (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_data),
     .auto_tl_slave_clock_xing_in_d_bits_corrupt           (_tile_prci_domain_2_auto_tl_slave_clock_xing_in_d_bits_corrupt),
+    .auto_tile_reset_out_1                                (_tile_prci_domain_2_auto_tile_reset_out_1),
     .auto_tl_master_clock_xing_out_a_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tl_master_clock_xing_out_a_valid                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_valid),
     .auto_tl_master_clock_xing_out_a_bits_opcode          (_tile_prci_domain_2_auto_tl_master_clock_xing_out_a_bits_opcode),
@@ -4212,10 +4233,11 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_tl_master_clock_xing_out_e_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_2_e_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tl_master_clock_xing_out_e_valid                (_tile_prci_domain_2_auto_tl_master_clock_xing_out_e_valid),
     .auto_tl_master_clock_xing_out_e_bits_sink            (_tile_prci_domain_2_auto_tl_master_clock_xing_out_e_bits_sink),
+    .auto_tile_reset_out_0                                (_tile_prci_domain_2_auto_tile_reset_out_0),
     .auto_tap_clock_in_clock                              (_sbus_auto_clockGroup_out_2_clock),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tap_clock_in_reset                              (_sbus_auto_clockGroup_out_2_reset)	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
   );
-  OCAH4CORECluster_TilePRCIDomain tile_prci_domain_3 (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+  OCAH4CORECluster_TilePRCIDomain tile_prci_domain_3 (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .l1_icache_tag_array_req(l1_icache_tag_intf_req[3]),
     .l1_icache_tag_array_rsp(l1_icache_tag_intf_rsp[3]),
     .l1_icache_data_arrays_1_req(l1_icache_data_intf_req[7]),
@@ -4231,7 +4253,7 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .o_wb_reg_pc(o_wb_reg_pc[3]),
     .auto_intsink_in_sync_0                               (_tlDM_auto_dmOuter_int_out_3_sync_0),	// @[generators/chipyard/src/main/scala/tt_configs/TTPeriphery.scala:35:26]
     .auto_element_reset_domain_rockettile_reset_vector_in (reset_vector_3),
-    .auto_element_reset_domain_rockettile_hartid_in       (_tileHartIdNexusNode_auto_out_3),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:75:39]
+    .auto_element_reset_domain_rockettile_hartid_in       (_tileHartIdNexusNode_auto_out_3),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:81:39]
     .auto_int_out_clock_xing_out_sync_0                   (_tile_prci_domain_3_auto_int_out_clock_xing_out_sync_0),
     .auto_int_in_clock_xing_in_2_sync_0                   (_plic_domain_auto_int_in_clock_xing_out_7_sync_0),	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
     .auto_int_in_clock_xing_in_1_sync_0                   (_plic_domain_auto_int_in_clock_xing_out_6_sync_0),	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
@@ -4257,6 +4279,7 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_tl_slave_clock_xing_in_d_bits_denied            (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_denied),
     .auto_tl_slave_clock_xing_in_d_bits_data              (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_data),
     .auto_tl_slave_clock_xing_in_d_bits_corrupt           (_tile_prci_domain_3_auto_tl_slave_clock_xing_in_d_bits_corrupt),
+    .auto_tile_reset_out_1                                (_tile_prci_domain_3_auto_tile_reset_out_1),
     .auto_tl_master_clock_xing_out_a_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_a_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tl_master_clock_xing_out_a_valid                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_valid),
     .auto_tl_master_clock_xing_out_a_bits_opcode          (_tile_prci_domain_3_auto_tl_master_clock_xing_out_a_bits_opcode),
@@ -4293,10 +4316,11 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_tl_master_clock_xing_out_e_ready                (_sbus_auto_coupler_from_rockettile_tl_master_clock_xing_in_3_e_ready),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tl_master_clock_xing_out_e_valid                (_tile_prci_domain_3_auto_tl_master_clock_xing_out_e_valid),
     .auto_tl_master_clock_xing_out_e_bits_sink            (_tile_prci_domain_3_auto_tl_master_clock_xing_out_e_bits_sink),
+    .auto_tile_reset_out_0                                (_tile_prci_domain_3_auto_tile_reset_out_0),
     .auto_tap_clock_in_clock                              (_sbus_auto_clockGroup_out_3_clock),	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
     .auto_tap_clock_in_reset                              (_sbus_auto_clockGroup_out_3_reset)	// @[generators/rocket-chip/src/main/scala/subsystem/SystemBus.scala:31:26]
   );
-  OCAH4CORECluster_BundleBridgeNexus_UInt2_4 tileHartIdNexusNode (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:75:39]
+  OCAH4CORECluster_BundleBridgeNexus_UInt2_4 tileHartIdNexusNode (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:81:39]
     .auto_out_3 (_tileHartIdNexusNode_auto_out_3),
     .auto_out_2 (_tileHartIdNexusNode_auto_out_2),
     .auto_out_1 (_tileHartIdNexusNode_auto_out_1),
@@ -4678,16 +4702,16 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_plic_in_d_bits_size            (_plic_domain_auto_plic_in_d_bits_size),
     .auto_plic_in_d_bits_source          (_plic_domain_auto_plic_in_d_bits_source),
     .auto_plic_in_d_bits_data            (_plic_domain_auto_plic_in_d_bits_data),
-    .auto_int_out_clock_xing_in_3_sync_0 (_tile_prci_domain_3_auto_int_out_clock_xing_out_sync_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_int_out_clock_xing_in_3_sync_0 (_tile_prci_domain_3_auto_int_out_clock_xing_out_sync_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_int_in_clock_xing_out_7_sync_0 (_plic_domain_auto_int_in_clock_xing_out_7_sync_0),
     .auto_int_in_clock_xing_out_6_sync_0 (_plic_domain_auto_int_in_clock_xing_out_6_sync_0),
-    .auto_int_out_clock_xing_in_2_sync_0 (_tile_prci_domain_2_auto_int_out_clock_xing_out_sync_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_int_out_clock_xing_in_2_sync_0 (_tile_prci_domain_2_auto_int_out_clock_xing_out_sync_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_int_in_clock_xing_out_5_sync_0 (_plic_domain_auto_int_in_clock_xing_out_5_sync_0),
     .auto_int_in_clock_xing_out_4_sync_0 (_plic_domain_auto_int_in_clock_xing_out_4_sync_0),
-    .auto_int_out_clock_xing_in_1_sync_0 (_tile_prci_domain_1_auto_int_out_clock_xing_out_sync_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_int_out_clock_xing_in_1_sync_0 (_tile_prci_domain_1_auto_int_out_clock_xing_out_sync_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_int_in_clock_xing_out_3_sync_0 (_plic_domain_auto_int_in_clock_xing_out_3_sync_0),
     .auto_int_in_clock_xing_out_2_sync_0 (_plic_domain_auto_int_in_clock_xing_out_2_sync_0),
-    .auto_int_out_clock_xing_in_0_sync_0 (_tile_prci_domain_auto_int_out_clock_xing_out_sync_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:163:38]
+    .auto_int_out_clock_xing_in_0_sync_0 (_tile_prci_domain_auto_int_out_clock_xing_out_sync_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:169:38]
     .auto_int_in_clock_xing_out_1_sync_0 (_plic_domain_auto_int_in_clock_xing_out_1_sync_0),
     .auto_int_in_clock_xing_out_0_sync_0 (_plic_domain_auto_int_in_clock_xing_out_0_sync_0),
     .auto_clock_in_clock                 (_cbus_auto_fixedClockNode_anon_out_1_clock),	// @[generators/rocket-chip/src/main/scala/subsystem/PeripheryBus.scala:37:26]

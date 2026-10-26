@@ -5,8 +5,9 @@
 
 One SHA-256 over every file the EL2 TCM images can draw from: the SEP DV
 firmware tree, the shared DV firmware engine, the SEP boot ROM headers the tests
-include, and every generated register header directory on the include path
-(SEP, IP and vendor overlay). Build output
+include, the boot ROM sources and test key a test builds from, and every
+generated register header directory on the include path (SEP, IP and vendor
+overlay). Build output
 (any ``build/`` directory) is not an input.
 
 ``fw.mk`` compiles the digest into each image as the string
@@ -29,14 +30,18 @@ import os
 import sys
 from pathlib import Path
 
-# Inputs, relative to the repository root. A glob entry expands to every match.
-# The generated-header entries mirror ocah_fw_reg_includes in
-# hw/common/dv/fw/reg_includes.mk: every directory it puts on the include path
-# for FW_REG_SYS=sep is an input here. A change there must be made here too.
-SOURCE_DIRS = (
+# Inputs, relative to the repository root: directories, walked whole, and single
+# files. A glob entry expands to every match. The generated-header entries mirror
+# ocah_fw_reg_includes in hw/common/dv/fw/reg_includes.mk: every directory it puts
+# on the include path for FW_REG_SYS=sep is an input here. A change there must be
+# made here too. The boot ROM's src/ is named file by file, so an edit to a ROM
+# source no test builds from leaves the digest unchanged.
+SOURCE_PATHS = (
     "hw/sys/sep/dv/fw",
     "hw/common/dv/fw",
     "hw/sys/sep/bootrom/prod/include",
+    "hw/sys/sep/bootrom/prod/src/abr_driver.c",
+    "hw/sys/sep/bootrom/prod/tests/signing_keys/mldsa87_test_private_key.pem",
     "hw/sys/sep/regs/gen/c",
     "hw/sys/sep/dv/models/regs/gen/c",
     "hw/ip/*/dv/models/regs/gen/c",
@@ -53,8 +58,11 @@ MARKER = b"FW-BUILD-ID:"
 def source_files(root: Path) -> list[Path]:
     """Every input file, as a path relative to ``root``, in a stable order."""
     files: set[Path] = set()
-    for pattern in SOURCE_DIRS:
+    for pattern in SOURCE_PATHS:
         for top in sorted(root.glob(pattern)):
+            if top.is_file():
+                files.add(top.relative_to(root))
+                continue
             if not top.is_dir():
                 continue
             for dirpath, dirnames, filenames in os.walk(top):

@@ -23,7 +23,9 @@
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>write_data</ipxact:name>
-            <ipxact:description>Write data to mailbox fifo</ipxact:description>
+            <ipxact:description>Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+pushed as 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -37,6 +39,10 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>READ_DATA</ipxact:name>
+          <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
+from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+read of either half therefore discards the other half of the entry; read this
+register with 64-bit accesses.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -108,6 +114,10 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>ERROR_FLAGS</ipxact:name>
+          <ipxact:description>A read of any size or alignment within this register clears every flag in it. The
+flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+returns 0 and still clears them; read this register with 64-bit accesses or at its
+lower half.</ipxact:description>
           <ipxact:addressOffset>'h18</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>

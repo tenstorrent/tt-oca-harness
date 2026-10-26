@@ -8,6 +8,12 @@ AVS_GPIO_ENABLE resets to 1 and drives the output enable of avs_clock and avs_md
 and the input enable of avs_sdata. The avs_clock pad (GPIO 49) enable is asserted
 exactly; the avs_mdata (50) and avs_sdata (51) enables are measured and printed
 because their pad numbers and polarity are not specified.
+
+With AVS_GPIO_ENABLE cleared, DATA_CTRL.lsio_select is written alone on pads 49..51
+(hw/ip/gpio/doc/architecture.adoc, priority 3 software-forced LSIO). The DATA_CTRL
+readback is compared on its RW fields; lsio_enable, pad2core and the pad enable and
+data levels are measured and printed, because whether the cleared field removes the
+hardware LSIO request on those pads is not specified (SF-015).
 """
 
 from __future__ import annotations
@@ -17,8 +23,9 @@ from collections import deque
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotb.utils import get_sim_time
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr
+from .smc_addr_map import gpio_intf_u32, smc_addr, smc_indexed_addr
 from .smc_avsbus_protocol_utils import (
     AVS_CFG_0,
     AVS_CMD,
@@ -48,6 +55,19 @@ READBACK_FIELDS = (
 # are not stated in the documents and are taken from the pad wiring.
 PADS = (("avs_clock", 49), ("avs_mdata", 50), ("avs_sdata", 51))
 CLOCK_PAD = 49
+
+LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")
+LSIO_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
+PAD2CORE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")
+DATA_CTRL_RW = (
+    gpio_intf_u32("GPIO_INTF__DATA_CTRL__CORE2PAD_bm")
+    | gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bm")
+    | gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
+    | LSIO_SELECT
+    | gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_ENABLE_bm")
+    | gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bm")
+    | gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bm")
+)
 
 ENABLE_WAIT_CYCLES = 200
 FRAME_WAIT_CYCLES = 20000
@@ -130,9 +150,16 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         self.stamps: list[tuple[str, int]] = []
         self.chk_lines: list[tuple[str, str, int]] = []
         self.last_pads = "not sampled"
+        self.samples = 0
+        self.enables_seen = 0
+        self.lsio_compares = 0
+        self.terms: list[tuple[str, int, int]] = []
 
     def _stamp(self, step: str) -> None:
         self.stamps.append((step, int(get_sim_time("ps"))))
+
+    def _term(self, term: str, count: int) -> None:
+        self.terms.append((term, int(get_sim_time("ps")), count))
 
     def _chk(self, step: str, chk_id: str, text: str) -> None:
         cocotb.log.info("%s: %s", chk_id, text)
@@ -153,13 +180,86 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
             for name, pad in PADS
         }
         self.last_pads = " ".join(f"{n}(c2p,p2c)={v}" for n, v in got.items())
+        self.samples += 1
         return got
+
+    def _pad_levels(self, pad: int) -> tuple[int, int, int]:
+        return (
+            self._bit("tb_core2pad_en_o", pad),
+            self._bit("tb_pad2core_en_o", pad),
+            self._bit("tb_core2pad_o", pad),
+        )
+
+    async def _read_okay(self, name: str, addr: int) -> int:
+        item = SmcSysAxiItem(f"rd_{name}")
+        item.op = SmcSysAxiOp.READ
+        item.addr = addr
+        item.length = 4
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        assert item.resp_code == 0 and not item.timed_out, (
+            f"{name} @ 0x{addr:08x}: resp={item.resp_code} timed_out={item.timed_out}"
+        )
+        return int(item.rdata)
+
+    async def _lsio_sw_select(self) -> str:
+        cfg = await self.csr_read("LSIO_CFG_RMW", AVS_CONFIG)
+        await self.csr_write("LSIO_CFG_CLEAR", AVS_CONFIG, cfg & ~GPIO_ENABLE_BM)
+        cleared = await self._read_okay("LSIO_CFG_CLEAR_RB", AVS_CONFIG)
+        assert cleared == 0x0, (
+            f"AVS_CONFIG reads 0x{cleared:08x} after clearing AVS_GPIO_ENABLE, expected 0x0"
+        )
+        before = {pad: self._pad_levels(pad) for _, pad in PADS}
+        lsio_enable: dict[int, int] = {}
+        pad2core: dict[int, int] = {}
+        after: dict[int, tuple[int, int, int]] = {}
+        for _, pad in PADS:
+            ctrl = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
+            ctrl_en = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad)
+            en = await self._read_okay(f"LSIO_DCE_{pad}", ctrl_en)
+            assert en == 0x0, f"GPIO_INTF[{pad}] DATA_CTRL_ENABLE reads 0x{en:08x}, not its reset 0"
+            await self.csr_write(f"LSIO_SEL_{pad}", ctrl, LSIO_SELECT)
+            got = await self._read_okay(f"LSIO_SEL_{pad}_RB", ctrl)
+            assert got & DATA_CTRL_RW == LSIO_SELECT, (
+                f"GPIO_INTF[{pad}] DATA_CTRL reads 0x{got:08x}: RW fields "
+                f"0x{got & DATA_CTRL_RW:08x}, written 0x{LSIO_SELECT:08x}"
+            )
+            self.lsio_compares += 1
+            lsio_enable[pad] = int(bool(got & LSIO_ENABLE))
+            pad2core[pad] = int(bool(got & PAD2CORE))
+            after[pad] = self._pad_levels(pad)
+            await self.csr_write(f"LSIO_CLR_{pad}", ctrl, 0x0)
+            cleared_ctrl = await self._read_okay(f"LSIO_CLR_{pad}_RB", ctrl)
+            assert cleared_ctrl & DATA_CTRL_RW == 0x0, (
+                f"GPIO_INTF[{pad}] DATA_CTRL reads 0x{cleared_ctrl:08x} after the 0 write: RW "
+                f"fields 0x{cleared_ctrl & DATA_CTRL_RW:08x}"
+            )
+            self.lsio_compares += 1
+        restore = await self.csr_read("LSIO_CFG_RESTORE_RMW", AVS_CONFIG)
+        await self.csr_write("LSIO_CFG_RESTORE", AVS_CONFIG, restore | GPIO_ENABLE_BM)
+        restored = await self._read_okay("LSIO_CFG_RESTORE_RB", AVS_CONFIG)
+        assert restored == 0x1, (
+            f"AVS_CONFIG reads 0x{restored:08x} after restoring AVS_GPIO_ENABLE, expected 0x1"
+        )
+        pads = "/".join(str(p) for _, p in PADS)
+        return (
+            f"AVS_GPIO_ENABLE 1->0->1 (AVS_CONFIG 0x{cleared:08x} then 0x{restored:08x}); "
+            f"pads {pads} DATA_CTRL rw==lsio_select (0x{LSIO_SELECT:08x}) then rw==0, OKAY, "
+            f"{self.lsio_compares} readbacks compared; "
+            f"lsio_enable={'/'.join(str(lsio_enable[p]) for _, p in PADS)} "
+            f"pad2core={'/'.join(str(pad2core[p]) for _, p in PADS)} (measured, LINKED-ISSUE "
+            f"SF-015); pad (c2p_en,p2c_en,c2p) lsio_select 0 -> 1 "
+            + " ".join(f"{p}:{before[p]}->{after[p]}" for _, p in PADS)
+            + " (measured, LINKED-ISSUE SF-013/SF-015)"
+        )
 
     async def _await_clock_enable(self, label: str, want: int) -> dict[str, tuple[int, int]]:
         got = self._sample()
         for _ in range(ENABLE_WAIT_CYCLES):
             got = self._sample()
             if got["avs_clock"][0] == want:
+                self.enables_seen += 1
                 self.waits.append(
                     (f"{label}_ENABLE_WAIT", ENABLE_WAIT_CYCLES, f"last={self.last_pads}")
                 )
@@ -210,6 +310,7 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
 
         # S1: SETUP
         self._sample()
+        self._term("PADS_SAMPLED", self.samples)
         cfg0 = await self.csr_read("AVS_CONFIG_RESET", AVS_CONFIG)
         assert cfg0 & GPIO_ENABLE_BM == GPIO_ENABLE_RESET, (
             f"AVS_CONFIG=0x{cfg0:08x}: AVS_GPIO_ENABLE does not read its reset value "
@@ -227,6 +328,7 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         on_pads = await self._await_clock_enable("ENABLE", 1)
         await ClockCycles(dut.clk_smc_i, 1)
         self._stamp("S2")
+        self._term("ENABLE_SEQUENCE", self.enables_seen)
         self._chk(
             "S2",
             "CHK-AVS-PAD-ENABLE-FOLLOWS",
@@ -260,6 +362,7 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         driver.stop()
         await ClockCycles(dut.clk_smc_i, 1)
         self._stamp("S3")
+        self._term("PROTOCOL_ON_PADS", len(driver.masters))
         self._chk(
             "S3",
             "CHK-AVS-PAD-PROTOCOL",
@@ -268,6 +371,13 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
             f"0x{GOOD_REPLY:08x} reached AVS_READBACK as 0x{got:08x} (compared on bits 31:30, "
             f"29, 28:24, 23:8, 2:0) with an OKAY response",
         )
+
+        # LSIO: software LSIO select with AVS_GPIO_ENABLE cleared
+        lsio_text = await self._lsio_sw_select()
+        await ClockCycles(dut.clk_smc_i, 1)
+        self._stamp("LSIO")
+        self._term("LSIO_SW_SELECT", self.lsio_compares)
+        self._chk("LSIO", "CHK-AVS-LSIO-SW-SELECT", lsio_text)
 
         # S4: timeouts
         names = " ".join(f"{n}={b} last={s}" for n, b, s in self.waits)
@@ -281,7 +391,7 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         )
 
         steps = [s for s, _ in self.stamps]
-        assert steps == ["S1", "S2", "S3", "S4"], f"fence steps {steps} out of order"
+        assert steps == ["S1", "S2", "S3", "LSIO", "S4"], f"fence steps {steps} out of order"
         times = [t for _, t in self.stamps]
         assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing {times}"
         stamp_of = dict(self.stamps)
@@ -289,12 +399,26 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         assert ids == [
             "CHK-AVS-PAD-ENABLE-FOLLOWS",
             "CHK-AVS-PAD-PROTOCOL",
+            "CHK-AVS-LSIO-SW-SELECT",
             "CHK-TIMEOUT-PATHS",
         ], f"checker lines {ids} out of order"
         assert all(t >= stamp_of[s] for _, s, t in self.chk_lines), "checker line before its step"
+        term_names = [n for n, _, _ in self.terms]
+        assert term_names == [
+            "PADS_SAMPLED",
+            "ENABLE_SEQUENCE",
+            "PROTOCOL_ON_PADS",
+            "LSIO_SW_SELECT",
+        ], f"fence terms {term_names} out of order"
+        term_times = [t for _, t, _ in self.terms]
+        assert all(b > a for a, b in zip(term_times, term_times[1:])), (
+            f"fence term times not increasing {term_times}"
+        )
+        assert all(c > 0 for _, _, c in self.terms), f"zero-count fence term {self.terms}"
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence PADS_SAMPLED < ENABLE_SEQUENCE < PROTOCOL_ON_PADS; "
-            "checker lines %s; stamps %s",
+            "CHK-NONVAC: ordered fence PADS_SAMPLED < ENABLE_SEQUENCE < PROTOCOL_ON_PADS < "
+            "LSIO_SW_SELECT; terms %s; checker lines %s; stamps %s",
+            ",".join(f"{n}(count={c},t={t})" for n, t, c in self.terms),
             ",".join(ids),
             ",".join(f"{s}={t}" for s, t in self.stamps),
         )

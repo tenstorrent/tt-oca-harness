@@ -12,9 +12,9 @@
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#WRITE_DATA">WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#READ_DATA">READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#READ_DATA">READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
 <tr><td>0x10</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x18</td><td><a href="#ERROR_FLAGS">ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#ERROR_FLAGS">ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x20</td><td><a href="#WIRQT">WIRQT</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x28</td><td><a href="#RIRQT">RIRQT</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x30</td><td><a href="#IRQS">IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
@@ -26,7 +26,7 @@
 <h3 id="WRITE_DATA">WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,<br>including a write with no byte lanes enabled; byte lanes whose strobe is 0 are<br>pushed as 0.</td></tr>
 </table>
 <h3 id="READ_DATA">READ_DATA</h3>
 <table>

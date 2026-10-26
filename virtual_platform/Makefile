@@ -1041,7 +1041,7 @@ fw-run: $(SEP_VP_BIN)
 	$(call fw_make,-C $(OCAH_ROOT) ocah-dv-fw-tests TARGET=sep TEST=$(FW_TEST))
 	echo "[VP] Running $(FW_TEST) on sep-vp ($(FW_ARGS))..."
 	export SEP_VP_BIN="$(SEP_VP_BIN)"
-	cd $(VP_DIR) && $(VP_PYTHON) -m sepvp.cli --bin $(OCAH_ROOT)/hw/sys/sep/dv/fw/build/tests/$(FW_TEST)/$(FW_TEST).tcm.elf $(FW_ARGS)
+	cd $(VP_DIR) && $(VP_PYTHON) -m sepvp.cli --expect-pass --bin $(OCAH_ROOT)/hw/sys/sep/dv/fw/build/tests/$(FW_TEST)/$(FW_TEST).tcm.elf $(FW_ARGS)
 
 # One invocation: every suite lives under virtual_platform/tests, whose rootdir
 # is virtual_platform.

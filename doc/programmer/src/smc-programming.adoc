@@ -238,28 +238,37 @@ handshake and the associated risks.
 
 [WARNING]
 ====
-Do not reset a hart while any hart is performing coherent memory accesses.
+Do not reset a hart while it is performing memory accesses.
 ====
 
-A software reset through `CPU_CTRL.RESET_CTRL` is withheld until the CPU AXI
-isolation boundary drains. Holding any core in reset terminates the other
-cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until every
-core is released. An SMC hart that requests a reset therefore cannot read the
-status registers below until the boundary reconnects. Request and monitor these
-resets from a manager outside the cluster, normally the SEP, which reaches
-`CPU_CTRL` at `0x4003_9000` in its view of the SMC.
+A core reset through `CPU_CTRL.RESET_CTRL` applies without a drain and leaves
+the CPU AXI isolation boundary connected. While a core is held, the other cores
+keep running, and other managers can still reach the scratchpad. An access to
+the held core's tile, such as its bus error unit, completes with SLVERR.
 
-To hold a core or the uncore in reset:
+An uncore reset is withheld until the CPU AXI isolation boundary drains, and it
+holds every core in reset with it. While the uncore is held, the cores' MMIO
+accesses terminate with SLVERR and L2 frontend traffic stalls. An SMC hart
+cannot read the status registers below during an uncore reset, so request and
+monitor these resets from a manager outside the cluster, normally the SEP,
+which reaches `CPU_CTRL` at `0x4003_9000` in its view of the SMC.
+
+To hold a core in reset, clear its reset bit in `RESET_CTRL`, and set the bit
+again to release it. `RESET_TIMEOUT` does not apply to core resets, and
+`reset_applied` does not report them.
+
+To hold the uncore in reset:
 
 . Program `CPU_CTRL.RESET_TIMEOUT`. `timeout_value` bounds, in SMC clock cycles,
 how long the request may wait for the drain; zero waits indefinitely.
 `timeout_mode` chooses the expiry behavior: `0` reports the timeout and keeps
 withholding the reset, `1` forces the reset and flushes the isolation blocks.
-. Clear the core or uncore reset bit in `RESET_CTRL`.
+. Clear the uncore reset bit in `RESET_CTRL`.
 . Poll `RESET_TIMEOUT.reset_applied`, which rises once the reset is applied by a
 completed drain or a forced timeout. `RESET_TIMEOUT.reset_timeout` reports an
 expired wait in either mode and stays high until the request is removed.
-. Set the reset bit again so the boundary reconnects.
+. Set the uncore reset bit again so the boundary reconnects and the cores leave
+reset.
 
 Use force mode only for recovery from an unresponsive cluster. The flush clears
 only the CPU isolation blocks: a block elsewhere in the fabric that holds a
@@ -276,12 +285,12 @@ Reference Manual.
 [[smc-core-reset-pulse]]
 ===== Core Reset Pulse
 
-A reset pulse restarts one core without software having to release it. The
-pulse passes through the same drain handshake as a held reset, and
-`RESET_TIMEOUT` applies to it in the same way. To restart core `n`:
+A reset pulse restarts one core without software having to release it. Like a
+held core reset, the pulse requests no drain and starts when it is written. To
+restart core `n`:
 
 . Program `RESET_VECTOR[n]` if the core must start at a different address.
-. Program `CORE_RESET_PULSE_COUNT`. Once the drain completes, the core stays
+. Program `CORE_RESET_PULSE_COUNT`. Once the pulse starts, the core stays
 out of reset for `pre_reset_count + 1` SMC clock cycles and is then held in
 reset for `post_reset_count + 1` cycles. The reset values give 9 and 17
 cycles.
@@ -292,10 +301,9 @@ the whole pulse and after it.
 The pulse start bits read as 0, so a read-modify-write of `RESET_CTRL` does not
 start another pulse. Writing a start bit while that core's pulse runs restarts
 the count of the current phase. `CORE_RESET_PULSE_COUNT.core_resets_done` bit
-`n` reads 0 while the pulse of core `n` runs. It also reads 1 before a withheld
-pulse starts, so confirm the restart through a handshake with the restarted
-core, such as a scratch register it writes, rather than by polling
-`core_resets_done`.
+`n` reads 0 while the pulse of core `n` runs. To confirm that the core restarted
+at its new address, use a handshake with the restarted core, such as a scratch
+register it writes.
 
 .Core reset pulse example C definitions.
 [source,sourceCode,c]
@@ -1819,7 +1827,7 @@ ports through <<dtp-ic-reset-overrides>>.
 |Reset |Control |Requested by |Sequence
 
 |CPU core or uncore, held
-|`CPU_CTRL.RESET_CTRL` reset bits, `RESET_TIMEOUT`
+|`CPU_CTRL.RESET_CTRL` reset bits; `RESET_TIMEOUT` for the uncore
 |SEP, or another manager outside the SMC cluster
 |<<smc-core-reset-sequence>>
 
@@ -1850,9 +1858,10 @@ ports through <<dtp-ic-reset-overrides>>.
 |<<smc-ndm-reset>>
 |===
 
-The CPU cluster resets drain and isolate the cluster's AXI paths in hardware
-before the reset takes effect. The reset unit's subsystem resets do not, so
-software quiesces traffic to and from the target before requesting them.
+The CPU cluster uncore reset drains and isolates the cluster's AXI paths in
+hardware before the reset takes effect. Core resets and the reset unit's
+subsystem resets do not, so software quiesces traffic to and from the target
+before requesting them.
 
 [[smc-subsystem-resets]]
 ==== Subsystem Resets

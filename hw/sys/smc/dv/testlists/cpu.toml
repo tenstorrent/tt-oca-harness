@@ -178,6 +178,14 @@ tags = ["ci", "mem"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_spm_bank_walk_test"
+module = "smc_spm_bank_walk_test"
+seed = 1
+timeout_sec = 900
+tags = ["ci", "mem"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_reference_counter_test"
 module = "smc_reference_counter_test"
 seed = 1

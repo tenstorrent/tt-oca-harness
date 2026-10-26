@@ -4,11 +4,30 @@
 
 Each block owns a memory-map window and populates only ``REG_MAP_SIZE``
 of it. An access past that allocated size owns no register and must be
-refused -- DECERR or SLVERR. This walk grades refusal only; the past-extent
-code ``sep.rdl`` states per block (``ocah_resp``) is graded by
-``sep_unmapped_access_policy_test`` at the points that test probes.
-Truncating the address, wrapping it onto a live register and answering
-OKAY is what this sequence exists to catch.
+refused -- DECERR or SLVERR. Truncating the address, wrapping it onto a live
+register and answering OKAY is what this sequence exists to catch.
+
+Every block window except TRNG has a past-extent response in
+``hw/sys/sep/regs/sep.rdl``: ``<unit>->ocah_past_extent_resp``, with no path
+qualifier. Each probe there is graded exactly against it: a read answers the
+RDL ``rresp`` with the RDL ``rdata`` word, and a write answers the RDL
+``bresp``. For every one of these windows that is DECERR, ``0xBADCAB1E`` /
+DECERR. The values come from ``hw/sys/sep/regs/gen/py/sep_memory_map.py``,
+generated from ``sep.rdl`` and read through ``env/sep_decode_resp.py``
+(``expected_unbacked``), so no code or word is typed here. Every probe goes
+through the CPU-LSU splice (``s_axi``, ``SepBaseTest.start_seq``).
+
+Two windows also have the code in prose, and the window build checks that the
+RDL agrees:
+
+* ABR: ``hw/sys/sep/doc/adams_bridge.adoc`` ("abr-aperture-decode") -- the
+  crypto demux answers every access past the register map with DECERR.
+* SPI controller: ``hw/sys/sep/doc/peripheral_subsystem.adoc`` -- the local
+  crossbar answers the rest of the SPI aperture with DECERR on reads and
+  writes.
+
+The TRNG window has no past-extent response in ``sep.rdl`` (see below); for it
+the OBS-DEADSPACE-CODE line logs the code and read data of every probe.
 
 Allocated size comes from the generated export (or the OT/IP header for
 CSRNG / EDN / entropy_source). Window end comes from
@@ -39,7 +58,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
-from env.sep_decode_resp import sep_map_row
+from env.sep_decode_resp import expected_unbacked, sep_map_row
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import (
     block_size,
@@ -57,6 +76,10 @@ from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE
 
 RESP_OKAY = 0
 RESP_DECERR = 3
+
+# Specification of record for the past-extent response of every non-adopter
+# window.
+RDL_REF = "hw/sys/sep/regs/sep.rdl (ocah_past_extent_resp)"
 
 # Watch-list names that pop a FIFO or fire a trigger. Snapshotting them
 # is a side effect, so they are not part of the no-alias compare.
@@ -105,10 +128,15 @@ class DeadWindow:
     write_destructive: frozenset[int] = frozenset()
     # The window is forwarded whole to an adopter endpoint and allocates no SEP
     # register. ``watch`` then holds the neighbouring registers an aliasing
-    # access reaches, named by ``watch_from``, and the caller reports the
-    # refusal flavour of every probe.
+    # access reaches, named by ``watch_from``, and the caller grades the code
+    # of every probe.
     adopter: bool = False
     watch_from: str = ""
+    # Past-extent response code that a prose specification also states for this
+    # window (both channels), or None. ``stated_ref`` names that file. The
+    # graded value is the sep.rdl one; dead_windows() checks that they agree.
+    stated_resp: int | None = None
+    stated_ref: str = ""
 
     @property
     def store_visible(self) -> frozenset[int]:
@@ -186,7 +214,32 @@ def in_crypto_region(addr: int) -> bool:
 
 
 def dead_windows() -> tuple[DeadWindow, ...]:
-    """Source-derived windows. Allocated size is never the RTL truncate width."""
+    """Source-derived windows. Allocated size is never the RTL truncate width.
+
+    Raises if a non-adopter window's dead span is not the Past Extent of its
+    sep.rdl row, or if a prose-stated code disagrees with the RDL one.
+    """
+    windows = _dead_windows()
+    for win in windows:
+        if win.adopter or win.dead_lo >= win.dead_hi:
+            continue
+        for addr in (win.dead_lo, win.dead_hi - 4):
+            for op in ("r", "w"):
+                exp = expected_unbacked(addr, op)
+                if exp.column != "Past Extent":
+                    raise RuntimeError(
+                        f"{win.name}: 0x{addr:08x} is in the {exp.column} column of "
+                        f"{exp.row}, not Past Extent ({RDL_REF})"
+                    )
+                if win.stated_resp is not None and exp.resp != win.stated_resp:
+                    raise RuntimeError(
+                        f"{win.name}: {RDL_REF} gives code {exp.resp} for {op} "
+                        f"0x{addr:08x}, {win.stated_ref} states {win.stated_resp}"
+                    )
+    return windows
+
+
+def _dead_windows() -> tuple[DeadWindow, ...]:
     esrc_base = sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR")
     return (
         DeadWindow(
@@ -223,6 +276,8 @@ def dead_windows() -> tuple[DeadWindow, ...]:
             sym("ENTROPY_POOL_REG_MAP_BASE_ADDR"),
             block_size("ABR"),
             _sep_watch(_ABR, block_size("ABR")),
+            stated_resp=RESP_DECERR,
+            stated_ref="hw/sys/sep/doc/adams_bridge.adoc (abr-aperture-decode)",
         ),
         DeadWindow(
             "csrng",
@@ -291,6 +346,8 @@ def dead_windows() -> tuple[DeadWindow, ...]:
                 sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
                 block_size("SPI_CONTROLLER"),
             ),
+            stated_resp=RESP_DECERR,
+            stated_ref="hw/sys/sep/doc/peripheral_subsystem.adoc (SEP peripheral extension port)",
         ),
         DeadWindow(
             "trng",
@@ -416,11 +473,13 @@ class SepDeadspace:
     def __init__(self, test) -> None:
         self.test = test
         self.log = test.logger
-        # Refusals whose flavour is not DECERR. Reported, not failed: this walk
-        # grades refusal only.
-        self.flavour_findings: list[str] = []
         # Response of the last probe(); -1 when it timed out.
         self.last_resp: int = -1
+        # Read word of the last probe(), or None for a write or a timeout.
+        self.last_rdata: int | None = None
+        # sep.rdl response the last probe() was graded against, as
+        # "<code>[, 0x<rdata>]", or "adopter" for the TRNG window.
+        self.last_expected: str = ""
         # Watched addresses of the last snapshot() that a read refused or timed
         # out on, one "+0x<offset> resp=<r1>/<r2> timed_out=<t1>/<t2>" entry each.
         self.snapshot_unread: list[str] = []
@@ -457,8 +516,9 @@ class SepDeadspace:
         boundary, which is what normally makes a refused address unreachable. An
         extent that does not end on a 4 KB boundary breaks that: a burst begun in
         the last live words is routed wholly to this block, and its later beats
-        land past ``REG_MAP_SIZE`` -- the span ``hw/sys/sep/doc/memory_map.adoc``
-        says is refused at the fabric and never reaches a unit.
+        land past ``REG_MAP_SIZE`` -- the Past Extent span, which no register
+        backs and for which ``hw/sys/sep/regs/sep.rdl`` (``ocah_past_extent_resp``)
+        gives the error answer.
 
         ``start`` overrides the first address, for a window with no burst that
         crosses its extent; the caller then grades the burst rule alone.
@@ -679,8 +739,25 @@ class SepDeadspace:
         return fails
 
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
-        """Return failure strings. Empty means this probe matched the spec."""
+        """Return failure strings. Empty means this probe matched the spec.
+
+        A non-adopter window is graded exactly against the Past Extent response
+        of its ``hw/sys/sep/regs/sep.rdl`` row (``ocah_past_extent_resp``): a
+        read must answer the RDL ``rresp`` with the RDL ``rdata`` word, and a
+        write the RDL ``bresp``. The adopter (TRNG) window has no such
+        response; the caller grades its code, and this method fails it on OKAY
+        and on a read word equal to a live register value.
+        """
         fails: list[str] = []
+        rdata: int | None = None
+        exp = None
+        if not win.adopter:
+            exp = expected_unbacked(item.addr, item.op)
+            if exp.column != "Past Extent":
+                raise RuntimeError(
+                    f"{win.name} {item.op} 0x{item.addr:08x} is in the {exp.column} "
+                    f"column of {exp.row}, not Past Extent ({RDL_REF})"
+                )
         mon = self.test.env.axi_monitor
         # Arm one credit for a DECERR refuse. Hand it back unless this beat
         # was DECERR, so the monitor can consume it. Key off resp, not the
@@ -700,40 +777,55 @@ class SepDeadspace:
                 item.addr,
                 expect_error=True,
             )
-            # `hw/sys/sep/doc/memory_map.adoc` says an address past the extent a unit
-            # allocates is refused at the fabric and never reaches a unit. The
-            # second half holds whatever the response flavour was, so the
-            # alias compare is not gated on OKAY -- a refused read that still
-            # hands back a live register's value has reached the unit. A real
-            # refusal carries the error slave's poison, which matches no
-            # allocated value.
-            if not timed_out:
+            # The adopter window has no stated read word, so its read is held
+            # to the no-alias rule: the error slave's word matches no live
+            # register, and a read that hands back a live value has reached a
+            # register. Elsewhere the exact RDL word below is the stronger check.
+            if win.adopter and not timed_out:
                 for live_addr, live_val in snap.items():
                     if rdata == live_val:
                         fails.append(
-                            f"{win.name} read 0x{item.addr:08x} resp={resp} "
+                            f"{win.name} read 0x{item.addr:08x} code {resp} "
                             f"rdata=0x{rdata:08x} aliases 0x{live_addr:08x}"
                         )
                         break
         if timed_out or resp != RESP_DECERR:
             mon.release_expected_decerr(1)
         self.last_resp = -1 if timed_out else resp
+        self.last_rdata = None if timed_out else rdata
+        if exp is None:
+            self.last_expected = "adopter"
+        elif exp.rdata is None:
+            self.last_expected = f"{exp.resp}"
+        else:
+            self.last_expected = f"{exp.resp}, 0x{exp.rdata:08x}"
+        if win.adopter:
+            self.log.info(
+                "OBS-DEADSPACE-CODE: %s %s 0x%08x resp=%s rdata=%s",
+                win.name,
+                item.op,
+                item.addr,
+                "TIMEOUT" if timed_out else resp,
+                "n/a" if rdata is None or timed_out else f"0x{rdata:08x}",
+            )
         if timed_out:
             fails.append(f"{win.name} {item.op} 0x{item.addr:08x} timed out")
             return fails
-        if resp == RESP_OKAY:
+        got = f"code {resp}" + ("" if rdata is None else f" rdata 0x{rdata:08x}")
+        if exp is None:
+            if resp == RESP_OKAY:
+                fails.append(
+                    f"{win.name} {item.op} 0x{item.addr:08x} resp=OKAY, "
+                    f"expected refuse (no register in the window)"
+                )
+        elif resp != exp.resp or (exp.rdata is not None and rdata != exp.rdata):
+            want = f"code {exp.resp}" + ("" if exp.rdata is None else f" rdata 0x{exp.rdata:08x}")
+            # "resp=OKAY" marks an accepted probe in the caller's tally.
+            accepted = " resp=OKAY" if resp == RESP_OKAY else ""
             fails.append(
-                f"{win.name} {item.op} 0x{item.addr:08x} resp=OKAY, "
-                f"expected refuse (allocated ends at +0x{win.alloc:x})"
-            )
-        elif resp != RESP_DECERR and not win.adopter:
-            # The contract asserted here is that the access is REFUSED, and any
-            # error response satisfies it. A refusal in another flavour is
-            # reported rather than failed: the defect this walk exists to catch
-            # is OKAY plus aliasing.
-            self.flavour_findings.append(
-                f"{win.name} {item.op} 0x{item.addr:08x} refused with "
-                f"resp={resp}, not DECERR (allocated ends at +0x{win.alloc:x})"
+                f"{win.name} {item.op} 0x{item.addr:08x} answered {got}, expected "
+                f"{want} ({RDL_REF}, {exp.row} Past Extent, allocated ends at "
+                f"+0x{win.alloc:x}){accepted}"
             )
         # A read of a dead offset must not return a live register's value, and
         # no probe -- read or write -- may change the allocated image: a refused

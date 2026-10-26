@@ -46,6 +46,7 @@ class DtpJtagItem(uvm_sequence_item):
         self.cycles: int = 1
         # Results (filled in by the driver)
         self.result: int = 0  # raw TDR read value
+        self.tdo: int = 0  # TDO sampled in a TMS_STEP cycle, before its rising TCK edge
         # TAP state sampled with the reset pin asserted and no TCK edge since.
         self.reset_state: int = 0
         self.decoded: int = 0  # raw decoded instruction one-hot value

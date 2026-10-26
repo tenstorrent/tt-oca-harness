@@ -32,6 +32,7 @@ on:
       - 'nix/**'
       - 'scripts/docker-run.sh'
       - 'hw/sys/sep/bootrom/**'
+      - 'hw/sys/sep/dv/fw/**'
       - '.gitmodules'
       - '.github/workflows/vp.yml'
   schedule:

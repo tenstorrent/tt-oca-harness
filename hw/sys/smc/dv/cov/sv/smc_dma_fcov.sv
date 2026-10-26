@@ -58,19 +58,11 @@ module smc_dma_fcov (
 
   // ------------------------------------------------------------------
   // Stream-0 launch. Reading NEXT_ID_0 is the launch: the read strobe is
-  // the event, the returned identifier says whether the setup was valid.
+  // the event, and the returned transfer id is never 0.
   // ------------------------------------------------------------------
   wire next_id_read_e = (next_id_re_i === 1'b1);
   wire next_id_nonzero_e = next_id_read_e && (next_id_i !== 32'd0) && (^next_id_i !== 1'bx);
-  wire next_id_zero_e = next_id_read_e && (next_id_i === 32'd0);
   `OCAH_FCOV_COVER(c_next_id_0_nonzero_on_valid_setup, next_id_nonzero_e, clk_smc_i, in_reset)
-`ifdef SMC_FCOV_PHASE2
-  // Phase 2 (SMC_FCOV.adoc): dma_ctrl.rdl and dma.adoc have NEXT_ID return 0
-  // for a command that was not set up correctly, while the stream-0 frontend
-  // returns the transfer-id generator whatever the setup, so no stimulus
-  // reaches the point as written.
-  `OCAH_FCOV_COVER(c_next_id_0_zero_on_invalid_setup, next_id_zero_e, clk_smc_i, in_reset)
-`endif
 
   // The read reaches the frontend as an accepted request. The read strobe
   // alone would be covered by a read of an unconfigured DMA.
@@ -241,7 +233,7 @@ module smc_dma_fcov (
       bins single = {0}; bins short_burst = {[1 : 7]}; bins long_burst = {[8 : 255]};
     }
     // Every write beat of a transfer carries at least one of its bytes: the
-    // length is non-zero (dma.adoc, zero-length transfers are rejected) and
+    // length is non-zero (dma.adoc, a length-0 command moves no data) and
     // the backend writes only the bytes of the programmed range.
     cp_strb: coverpoint strb_count {
       bins partial = {[1 : 7]}; bins full = {8}; ignore_bins no_byte = {0};

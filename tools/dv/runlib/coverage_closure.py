@@ -139,14 +139,16 @@ def parse_coverage_run(
 
     ``raw_report_dir`` is the report the tool wrote without its exclusion inputs; when
     present, each metric family's raw percentage comes from it and the effective one from
-    ``report_dir``.
+    ``report_dir``. The manifest's `graded_summary` names the report table the grade reads.
     """
 
+    summary = str(manifest.get("graded_summary") or "hierarchy")
     scalar_metrics, total_percent = parse_coverage_report(
         parser=parser,
         report_dir=report_dir,
         merged=merged,
         log_path=log_path,
+        summary=summary,
     )
     details = parse_coverage_details(
         parser=parser,
@@ -158,6 +160,7 @@ def parse_coverage_run(
         merged=merged,
         log_path=log_path,
         raw_report_dir=raw_report_dir,
+        summary=summary,
     )
     return ParsedCoverage(
         scalar_metrics=scalar_metrics,

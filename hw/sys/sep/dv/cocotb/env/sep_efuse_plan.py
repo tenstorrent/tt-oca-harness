@@ -1774,9 +1774,39 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
     return _make_plan(T_LOCK_SLOT, seed, d, LC_TEST_DEV, sip, sys_, img, leg)
 
 
-_STM_STATES = ((LC_TEST_DEV, 2), (LC_PROD, 1), (LC_RMA_SIP_0, 1))
+_STM_STATES = (
+    (LC_TEST_DEV, 1),
+    (LC_PROD, 1),
+    (LC_PROD_END, 1),
+    (LC_RMA_SIP_0, 1),
+    (LC_RMA_CHIP_0, 1),
+)
+# States where JTAG reaches the shadow registers: the JTAG restriction to the token
+# block holds in PROD and RMA_SIP only (otp_fuse_controller.adoc, Shadow Register
+# and JTAG Access Control).
+_STM_JTAG_STATES = (LC_TEST_DEV, LC_PROD_END, LC_RMA_CHIP_0)
 STM_TARGETS = ("LOCKS", "LOCKS_SPARE", "SIP_DIS", "SYS_DIS")
 STM_PROGRAM_CLASSES = ("wide", "narrow32", "dis", "locks", "spare")
+
+
+def _twin_word_bits(
+    d: SepEfuseDraws, name: str, cands: Sequence[tuple[int, int]]
+) -> list[tuple[int, int]]:
+    """Four distinct (word, bit) of ``cands``: frontdoor strap 1, JTAG strap 1,
+    frontdoor strap 0, JTAG strap 0. Each strap-1 bit and its strap-0 twin of the
+    same source are in one word."""
+    pairs = []
+    left = list(cands)
+    for src in ("fd", "jtag"):
+        words = sorted({w for w, _b in left if sum(1 for x, _ in left if x == w) >= 2})
+        if not words:
+            raise ValueError(f"{name}: no word with two free bits for the {src} pair")
+        w = d.choice(f"{name}.{src}_word", words)
+        pair = d.sample(f"{name}.{src}", [c for c in left if c[0] == w], 2)
+        left = [c for c in left if c not in pair]
+        pairs.append(pair)
+    (fd1, fd0), (j1, j0) = pairs
+    return [fd1, j1, fd0, j0]
 
 
 def plan_secure_tm_matrix(seed: int) -> SepEfusePlan:
@@ -1787,7 +1817,9 @@ def plan_secure_tm_matrix(seed: int) -> SepEfusePlan:
     secret fields and the spares; a 32-bit narrow field; a disable bit; a ``LOCKS``
     bit; a spare word. A lock bit (target or program) never locks a slot of a target,
     a program field or a secret field. Each target takes four distinct absent bits:
-    frontdoor and JTAG at strap 1, frontdoor and JTAG at strap 0.
+    frontdoor and JTAG at strap 1, frontdoor and JTAG at strap 0. The strap-1 bit
+    of a source and its strap-0 twin are in one word, so the landed twin shows that
+    the word the strap-1 write addressed takes a write.
     """
     d = SepEfuseDraws(seed)
     raw = d.weighted("state", _STM_STATES)
@@ -1839,7 +1871,7 @@ def plan_secure_tm_matrix(seed: int) -> SepEfusePlan:
                     t == progs["dis"]["field"] and c == (progs["dis"]["word"], progs["dis"]["bit"])
                 )
             ]
-        picks = d.sample(f"target_bits.{t}", cands, 4)
+        picks = _twin_word_bits(d, f"target_bits.{t}", cands)
         targets[t] = [
             {"field": t, "word": w, "bit": b, "source": src}
             for (w, b), src in zip(picks, ("fd_strap1", "jtag_strap1", "fd_strap0", "jtag_strap0"))
@@ -1848,7 +1880,7 @@ def plan_secure_tm_matrix(seed: int) -> SepEfusePlan:
         "target_order": target_order,
         "programs": progs,
         "targets": targets,
-        "jtag_leg": raw == LC_TEST_DEV,
+        "jtag_leg": raw in _STM_JTAG_STATES,
     }
     return _make_plan(T_SECURE_TM, seed, d, raw, sip, sys_, img, leg)
 

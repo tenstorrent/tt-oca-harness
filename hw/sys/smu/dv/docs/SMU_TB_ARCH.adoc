@@ -274,10 +274,10 @@ responder interface `u_axi_out_if` lives above the harness block, in both
 shapes. Under UVM the simulator reports an assertion failure through the UVM
 report server, where it counts as an error of the run, so the harness holds
 off, by name, the SEP checks the sim config's `[pass_fail]` patterns ignore
-for the cocotb flow: the entropy source and the EDN endpoints, the key
-manager, the secure DMA and its alert receivers, the SPI host for its first
-microsecond, the `ValidDigestModeFlag_A` of the SHA-256-only eFuse token
-hashes, and otbn_rnd's `UrndNoReseedOnReset_A`. Every other SEP assertion
+for the cocotb flow: the key manager, the secure DMA and its alert receivers,
+the SPI host for its first microsecond, the `ValidDigestModeFlag_A` of the
+SHA-256-only entropy-source whitener and eFuse token hashes, and otbn_rnd's
+`UrndNoReseedOnReset_A`. Every other SEP assertion
 fails the UVM run, as it fails the cocotb run.
 
 The class library mirrors the cocotb conventions under `uvm/` with identical

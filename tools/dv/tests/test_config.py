@@ -7,21 +7,34 @@ Run from the repository root:
     python3 -m unittest discover tools/dv/tests
 """
 
+import dataclasses
+import io
 import os
+import re
 import sys
 import tempfile
 import unittest
 from argparse import Namespace
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from runlib import cli  # noqa: E402
 from runlib.cli import (  # noqa: E402
     expand_items,
+    parse_args,
+    plan_targets,
     regression_reseed_count,
+    requested_targets,
+    scheduler_requested,
+    select_tests,
+    selection_preview,
+    several_targets_hint,
     target_plan,
     validate_item_tools,
+    validate_regression_seed_options,
     validate_target_plan,
 )
 from runlib.config import (  # noqa: E402
@@ -31,9 +44,13 @@ from runlib.config import (  # noqa: E402
     apply_adopter_overlay,
     load_dut,
     load_test_catalog,
+    rerun_selection,
     selected_run_mode,
     target_flags,
+    validate_native_config_shape,
     validate_run_mode_request,
+    validate_target_redirects,
+    with_target_instances,
 )
 from runlib.duts import load_dut_registry  # noqa: E402
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
@@ -290,6 +307,7 @@ class AdopterOverlayLayer(unittest.TestCase):
             ('default_tool = "vcs"\n', "default_tool"),  # replacement keys are not appendable
             ('[build]\nfilelist = "x.f"\n', "filelist"),
             ('[target_defaults.default]\nbuild_dir = "x"\n', "build_dir"),
+            ('[targets.default.tools.vcs]\nrun_on = "stub"\n', "run_on"),
         ):
             with self.assertRaises(ConfigError) as ctx:
                 self.apply({"framework": "uvm"}, toml)
@@ -633,14 +651,14 @@ class RuntimeSelectionDefenses(unittest.TestCase):
     def test_target_plan_rejects_unknown_item(self):
         catalog = TestCatalog(None, {}, {})
         with self.assertRaises(ConfigError) as ctx:
-            target_plan(catalog, {}, ["missing_test"])
+            target_plan(catalog, {}, ["missing_test"], tool="vcs")
         self.assertIn("missing_test", str(ctx.exception))
 
-    def test_target_override_wins_over_test_target(self):
+    def test_force_target_wins_over_test_target(self):
         catalog = TestCatalog(
             None,
             {
-                "t_stub": TestEntry(name="t_stub", module="m", target="lsu_stub_all_live"),
+                "t_stub": TestEntry(name="t_stub", module="m", targets=("lsu_stub_all_live",)),
                 "t_cpu": TestEntry(name="t_cpu", module="m"),
             },
             {},
@@ -652,21 +670,593 @@ class RuntimeSelectionDefenses(unittest.TestCase):
                 "lsu_stub_all_live": {"build_dir": "build/stub"},
             },
         }
-        by_item, ordered = target_plan(catalog, sim_cfg, ["t_stub", "t_cpu"], override="default")
-        self.assertEqual(by_item, {"t_stub": "default", "t_cpu": "default"})
-        self.assertEqual(ordered, ["default"])
+        plan = target_plan(catalog, sim_cfg, ["t_stub", "t_cpu"], force="default", tool="vcs")
+        self.assertEqual(
+            plan.target_by_item, {"t_stub@default": "default", "t_cpu@default": "default"}
+        )
+        self.assertEqual(plan.targets, ["default"])
 
-    def test_unknown_target_override_is_rejected(self):
+    def test_unknown_force_target_is_rejected(self):
         catalog = TestCatalog(
             None,
-            {"t1": TestEntry(name="t1", module="m", target="default")},
+            {"t1": TestEntry(name="t1", module="m", targets=("default",))},
             {},
         )
         sim_cfg = {"targets": {"default": {"build_dir": "build/default"}}}
-        _by_item, ordered = target_plan(catalog, sim_cfg, ["t1"], override="nope")
+        plan = target_plan(catalog, sim_cfg, ["t1"], force="nope", tool="vcs")
         with self.assertRaises(ConfigError) as ctx:
-            validate_target_plan(sim_cfg, ordered)
+            validate_target_plan(sim_cfg, plan.targets)
         self.assertIn("nope", str(ctx.exception))
+
+
+class TargetRunOn(unittest.TestCase):
+    """`[targets.<name>.tools.<tool>].run_on` runs a target's tests on another target."""
+
+    CATALOG = TestCatalog(
+        None,
+        {
+            "t_stub": TestEntry(name="t_stub", module="m", targets=("stub",)),
+            "t_cpu": TestEntry(name="t_cpu", module="m"),
+        },
+        {},
+    )
+
+    def sim_cfg(self, **tools: dict) -> dict:
+        """`default`, `stub` and `other` targets, with ``tools`` tables keyed by target name."""
+        targets = {name: {"build_dir": f"build/{name}"} for name in ("default", "stub", "other")}
+        for name, table in tools.items():
+            targets[name]["tools"] = table
+        return {"defaults": {"target": "default"}, "targets": targets}
+
+    def plan(self, sim_cfg: dict, tool: str, *targets: str, **kwargs) -> tuple[dict, list]:
+        plan = target_plan(
+            self.CATALOG, sim_cfg, ["t_stub", "t_cpu"], list(targets), tool=tool, **kwargs
+        )
+        return plan.target_by_item, plan.targets
+
+    def test_a_target_runs_its_tests_on_the_target_run_on_names_for_that_tool(self):
+        sim_cfg = self.sim_cfg(stub={"vcs": {"run_on": "default"}})
+        self.assertEqual(
+            self.plan(sim_cfg, "vcs"),
+            ({"t_stub@default": "default", "t_cpu@default": "default"}, ["default"]),
+        )
+        self.assertEqual(
+            self.plan(sim_cfg, "verilator"),
+            ({"t_stub@stub": "stub", "t_cpu@default": "default"}, ["stub", "default"]),
+        )
+
+    def test_a_listed_target_overrides_the_redirect_and_force_target_overrides_both(self):
+        sim_cfg = self.sim_cfg(stub={"vcs": {"run_on": "default"}})
+        self.assertEqual(
+            self.plan(sim_cfg, "vcs", "stub"),
+            ({"t_stub@stub": "stub", "t_cpu@stub": "stub"}, ["stub"]),
+        )
+        self.assertEqual(
+            self.plan(sim_cfg, "vcs", force="other"),
+            ({"t_stub@other": "other", "t_cpu@other": "other"}, ["other"]),
+        )
+
+    def test_the_default_target_redirects_unpinned_tests_and_an_itemless_plan(self):
+        sim_cfg = self.sim_cfg(default={"verilator": {"run_on": "stub"}})
+        self.assertEqual(
+            self.plan(sim_cfg, "verilator"),
+            ({"t_stub@stub": "stub", "t_cpu@stub": "stub"}, ["stub"]),
+        )
+        self.assertEqual(target_plan(self.CATALOG, sim_cfg, [], tool="verilator").targets, ["stub"])
+
+    def test_a_redirect_must_name_another_defined_target_that_does_not_redirect(self):
+        for tools, error in (
+            (
+                {"stub": {"vcs": {"run_on": " "}}},
+                r"targets\.stub\.tools\.vcs\.run_on must be a target name",
+            ),
+            (
+                {"stub": {"vcs": {"run_on": "stub"}}},
+                r"targets\.stub\.tools\.vcs\.run_on names its own",
+            ),
+            (
+                {"stub": {"vcs": {"run_on": "nope"}}},
+                r"names `nope`, which is not defined in \[targets\]",
+            ),
+            (
+                {"stub": {"vcs": {"run_on": "other"}}, "other": {"vcs": {"run_on": "default"}}},
+                r"names `other`, which redirects its own tests on vcs",
+            ),
+            (
+                {"stub": {"vcs": {"run_on": "other"}}, "other": {"vcs": {"run_on": "stub"}}},
+                r"names `other`, which redirects its own tests on vcs",
+            ),
+        ):
+            with self.subTest(tools=tools), self.assertRaisesRegex(ConfigError, error):
+                self.plan(self.sim_cfg(**tools), "vcs")
+
+    def test_validation_resolves_every_redirect_on_each_of_the_tools(self):
+        sim_cfg = self.sim_cfg(other={"vcs": {"run_on": "nope"}})
+        validate_target_redirects(sim_cfg, ["verilator"])
+        with self.assertRaisesRegex(
+            ConfigError, r"targets\.other\.tools\.vcs\.run_on names `nope`"
+        ):
+            validate_target_redirects(sim_cfg, ["verilator", "vcs"])
+        validate_target_redirects(self.sim_cfg(stub={"vcs": {"run_on": "default"}}), ["vcs"])
+
+    def test_target_defaults_refuse_run_on(self):
+        target = {"build_dir": "build/stub", "tools": {"vcs": {"run_on": "default"}}}
+        validate_native_config_shape(make_dut({"targets": {"stub": target}}), Path("."))
+        with self.assertRaisesRegex(ConfigError, r"unsupported key\(s\): run_on"):
+            validate_native_config_shape(make_dut({"target_defaults": {"stub": target}}), Path("."))
+
+
+class TargetLists(unittest.TestCase):
+    """`--target A,B` runs each selected test on every listed target it can run on."""
+
+    CATALOG = TestCatalog(
+        None,
+        {
+            "t_stub": TestEntry(name="t_stub", module="m", targets=("stub",)),
+            "t_other": TestEntry(name="t_other", module="m", targets=("other",)),
+            "t_cpu": TestEntry(name="t_cpu", module="m"),
+        },
+        {},
+    )
+    SIM_CFG = {
+        "defaults": {"target": "default"},
+        "targets": {
+            "default": {"build_dir": "build/default"},
+            "stub": {"build_dir": "build/stub", "tools": {"vcs": {"run_on": "default"}}},
+            "other": {"build_dir": "build/other"},
+        },
+    }
+
+    def plan(self, items: list[str], targets: list[str], tool: str = "verilator", **kwargs):
+        return target_plan(self.CATALOG, self.SIM_CFG, items, targets, tool=tool, **kwargs)
+
+    def test_an_unpinned_test_runs_on_every_listed_target_under_a_name_for_each(self):
+        plan = self.plan(["t_stub", "t_cpu"], ["default", "stub"])
+        self.assertEqual(plan.groups, [["t_stub@stub"], ["t_cpu@default", "t_cpu@stub"]])
+        self.assertEqual(plan.items, ["t_stub@stub", "t_cpu@default", "t_cpu@stub"])
+        self.assertEqual(plan.targets, ["stub", "default"])
+        self.assertEqual(
+            plan.instances,
+            {"t_stub@stub": "stub", "t_cpu@default": "default", "t_cpu@stub": "stub"},
+        )
+        self.assertEqual(plan.skipped, [])
+
+    def test_every_leaf_is_named_after_its_target_unless_the_flow_has_none(self):
+        for targets, force, named in (
+            ([], None, {"t_cpu@default": "default", "t_stub@default": "default"}),
+            (["stub"], None, {"t_cpu@stub": "stub", "t_stub@stub": "stub"}),
+            ([], "other", {"t_cpu@other": "other", "t_stub@other": "other"}),
+        ):
+            with self.subTest(targets=targets, force=force):
+                plan = self.plan(["t_cpu", "t_stub"], targets, tool="vcs", force=force)
+                self.assertEqual(plan.target_by_item, named)
+                self.assertEqual(plan.instances, named)
+        plain = self.plan(["t_cpu", "t_stub"], [], tool="vcs", by_target=False)
+        self.assertEqual(plain.target_by_item, {"t_cpu": "default", "t_stub": "default"})
+        self.assertEqual(plain.instances, {})
+
+    def test_a_pinned_only_target_runs_only_the_tests_that_reach_it(self):
+        sim_cfg = {
+            **self.SIM_CFG,
+            "targets": {
+                **self.SIM_CFG["targets"],
+                "stub": {"build_dir": "build/stub", "pinned_only": True},
+            },
+        }
+
+        def plan(items, targets, **kwargs):
+            return target_plan(self.CATALOG, sim_cfg, items, targets, tool="verilator", **kwargs)
+
+        both = plan(["t_stub", "t_cpu"], ["default", "stub"])
+        self.assertEqual(both.target_by_item, {"t_stub@stub": "stub", "t_cpu@default": "default"})
+        stub_only = plan(["t_stub", "t_cpu"], ["stub"])
+        self.assertEqual(stub_only.target_by_item, {"t_stub@stub": "stub"})
+        self.assertEqual(stub_only.skipped, [{"name": "t_cpu", "target": "default"}])
+        self.assertEqual(plan(["t_cpu"], [], force="stub").target_by_item, {"t_cpu@stub": "stub"})
+
+    def test_pinned_only_is_a_flag_of_one_target_and_not_of_the_default(self):
+        validate_native_config_shape(
+            make_dut({"targets": {"stub": {"build_dir": "b", "pinned_only": True}}}), Path(".")
+        )
+        for raw, error in (
+            ({"targets": {"stub": {"build_dir": "b", "pinned_only": "yes"}}}, "true or false"),
+            (
+                {"target_defaults": {"default": {"pinned_only": True}}},
+                r"unsupported key\(s\): pinned_only",
+            ),
+        ):
+            with self.subTest(raw=raw), self.assertRaisesRegex(ConfigError, error):
+                validate_native_config_shape(make_dut(raw), Path("."))
+        sim_cfg = {"targets": {"default": {"build_dir": "b", "pinned_only": True}}}
+        with self.assertRaisesRegex(
+            ConfigError, r"`default` runs the tests that name no target on vcs"
+        ):
+            validate_target_redirects(sim_cfg, ["vcs"])
+
+    def test_a_pinned_test_runs_only_where_its_target_or_its_redirect_is_listed(self):
+        plan = self.plan(["t_stub", "t_other", "t_cpu"], ["default"], tool="vcs")
+        self.assertEqual(
+            plan.target_by_item, {"t_stub@default": "default", "t_cpu@default": "default"}
+        )
+        self.assertEqual(plan.skipped, [{"name": "t_other", "target": "other"}])
+        plan = self.plan(["t_stub", "t_cpu"], ["default"])
+        self.assertEqual(plan.target_by_item, {"t_cpu@default": "default"})
+        self.assertEqual(plan.skipped, [{"name": "t_stub", "target": "stub"}])
+
+    def test_a_list_that_runs_none_of_the_selected_tests_is_refused(self):
+        with self.assertRaisesRegex(
+            ConfigError,
+            r"no selected test runs on --target default: each names another target"
+            r" \(other, stub\)",
+        ):
+            self.plan(["t_stub", "t_other"], ["default"])
+        empty = self.plan(["t_stub", "t_other"], ["default"], allow_empty=True)
+        self.assertEqual((empty.groups, empty.targets), ([], []))
+        self.assertEqual(
+            empty.skipped,
+            [{"name": "t_stub", "target": "stub"}, {"name": "t_other", "target": "other"}],
+        )
+
+    def test_a_list_preview_reports_the_plan_or_that_it_runs_nothing(self):
+        def preview(items, target):
+            args = Namespace(
+                items=items, tag=None, allow_duplicates=False, target=target, force_target=None
+            )
+            return selection_preview(make_dut({}), self.CATALOG, self.SIM_CFG, args, "verilator")
+
+        both = preview(["t_stub", "t_cpu"], "default,stub")
+        self.assertEqual(both["tests"], ["t_stub", "t_cpu"])
+        self.assertEqual(both["targets"], ["stub", "default"])
+        self.assertEqual(
+            both["instances"],
+            {"t_stub@stub": "stub", "t_cpu@default": "default", "t_cpu@stub": "stub"},
+        )
+        self.assertNotIn("skipped_target", both)
+        none = preview(["t_stub", "t_other"], "default")
+        self.assertEqual((none["tests"], none["targets"], none["instances"]), ([], [], {}))
+        self.assertEqual(
+            none["skipped_target"],
+            [{"name": "t_stub", "target": "stub"}, {"name": "t_other", "target": "other"}],
+        )
+
+    def test_a_plan_without_tests_plans_the_listed_or_the_forced_targets(self):
+        self.assertEqual(self.plan([], ["stub", "other"]).targets, ["stub", "other"])
+        self.assertEqual(self.plan([], [], force="other").targets, ["other"])
+        self.assertEqual(self.plan([], []).targets, ["default"])
+
+    def test_the_option_names_each_listed_target_once(self):
+        self.assertEqual(requested_targets(" a, b,,a "), ["a", "b"])
+        self.assertEqual(requested_targets(None), [])
+
+    def test_a_name_for_one_of_several_targets_is_its_test_pinned_to_that_target(self):
+        catalog = with_target_instances(self.CATALOG, {"t_cpu@stub": "stub"})
+        entry = catalog.tests["t_cpu@stub"]
+        self.assertEqual((entry.name, entry.module, entry.targets), ("t_cpu", "m", ("stub",)))
+        self.assertEqual(catalog.tests["t_cpu"].targets, ())
+        with self.assertRaisesRegex(ConfigError, "`nope@stub` names no test"):
+            with_target_instances(self.CATALOG, {"nope@stub": "stub"})
+
+    def test_a_rerun_selects_the_test_and_the_target_its_leaf_ran_on(self):
+        def args(target=None, force_target=None):
+            return Namespace(target=target, force_target=force_target)
+
+        self.assertEqual(
+            rerun_selection("t_cpu@stub", "stub", args("default,stub")),
+            ["--items", "t_cpu", "--target", "stub"],
+        )
+        self.assertEqual(rerun_selection("t_cpu", "default", args()), ["--items", "t_cpu"])
+        self.assertEqual(
+            rerun_selection("t_stub", "stub", args("stub")),
+            ["--items", "t_stub", "--target", "stub"],
+        )
+        self.assertEqual(
+            rerun_selection("t_stub", "other", args(force_target="other")),
+            ["--items", "t_stub", "--force-target", "other"],
+        )
+
+    def test_test_and_target_names_cannot_contain_the_separator(self):
+        with self.assertRaisesRegex(ConfigError, r"test name `t@a` contains `@`"):
+            load_test_catalog(make_dut(inline_raw(SMOKE, [{"name": "t@a"}])), Path("."))
+        with self.assertRaisesRegex(ConfigError, r"target name `a@b` contains `@`"):
+            validate_native_config_shape(
+                make_dut({"targets": {"a@b": {"build_dir": "build"}}}), Path(".")
+            )
+
+
+class TestlistTargetLists(unittest.TestCase):
+    """A testlist `target` list runs its test on each target it names."""
+
+    CATALOG = TestCatalog(
+        None,
+        {
+            "t_multi": TestEntry(name="t_multi", module="m", targets=("other", "default")),
+            "t_stub": TestEntry(name="t_stub", module="m", targets=("stub", "other")),
+            "t_redirect": TestEntry(name="t_redirect", module="m", targets=("stub", "default")),
+            "t_pinned": TestEntry(name="t_pinned", module="m", targets=("default", "pinned")),
+            "t_cpu": TestEntry(name="t_cpu", module="m"),
+        },
+        {},
+    )
+    SIM_CFG = {
+        "defaults": {"target": "default"},
+        "targets": {
+            "default": {"build_dir": "build/default"},
+            "stub": {"build_dir": "build/stub", "tools": {"vcs": {"run_on": "default"}}},
+            "other": {"build_dir": "build/other"},
+            "pinned": {"build_dir": "build/pinned", "pinned_only": True},
+        },
+    }
+
+    def plan(self, items: list[str], targets: tuple[str, ...] = (), tool="verilator", **kwargs):
+        return target_plan(self.CATALOG, self.SIM_CFG, items, list(targets), tool=tool, **kwargs)
+
+    def test_a_target_is_one_name_or_a_list_of_names(self):
+        raw = inline_raw(
+            SMOKE,
+            [
+                {"name": "t_one", "target": "stub"},
+                {"name": "t_two", "target": ["default", "stub"]},
+                {"name": "t_none"},
+            ],
+        )
+        tests = load_test_catalog(make_dut(raw), Path(".")).tests
+        self.assertEqual(
+            [tests[name].targets for name in ("t_one", "t_two", "t_none")],
+            [("stub",), ("default", "stub"), ()],
+        )
+
+    def test_a_target_that_is_not_a_name_or_a_list_of_distinct_names_is_refused(self):
+        shape = r"t_bad\.target must be a target name or a list of target names"
+        for value, error in (
+            ("", shape),
+            (3, shape),
+            (["default", ""], shape),
+            (["default", 1], shape),
+            ([], r"t_bad\.target is empty; drop the key"),
+            (["stub", "default", "stub"], r"t_bad\.target names `stub` more than once"),
+        ):
+            raw = inline_raw(SMOKE, [{"name": "t_bad", "target": value}])
+            with self.subTest(value=value), self.assertRaisesRegex(ConfigError, error):
+                load_test_catalog(make_dut(raw), Path("."))
+
+    def test_a_group_expected_count_counts_a_test_on_several_targets_once(self):
+        raw = inline_raw(SMOKE, [{"name": "t_two", "target": ["default", "stub"]}])
+        raw["groups"] = [{"name": "g_two", "tests": ["t_two"], "expected_count": 1}]
+        self.assertEqual(load_test_catalog(make_dut(raw), Path(".")).groups["g_two"], ["t_two"])
+        raw["groups"][0]["expected_count"] = 2
+        with self.assertRaisesRegex(ConfigError, r"lists 1 tests but expected_count is 2"):
+            load_test_catalog(make_dut(raw), Path("."))
+
+    def test_a_test_runs_on_each_of_its_targets_in_testlist_order(self):
+        plan = self.plan(["t_multi", "t_cpu"])
+        self.assertEqual(plan.groups, [["t_multi@other", "t_multi@default"], ["t_cpu@default"]])
+        self.assertEqual(plan.targets, ["other", "default"])
+        self.assertEqual(plan.skipped, [])
+
+    def test_targets_that_redirect_to_one_target_run_the_test_there_once(self):
+        self.assertEqual(
+            self.plan(["t_redirect"]).groups, [["t_redirect@stub", "t_redirect@default"]]
+        )
+        self.assertEqual(self.plan(["t_redirect"], tool="vcs").groups, [["t_redirect@default"]])
+
+    def test_a_list_runs_a_test_on_each_of_its_targets_that_it_names(self):
+        self.assertEqual(
+            self.plan(["t_multi"], ("default",)).target_by_item, {"t_multi@default": "default"}
+        )
+        self.assertEqual(
+            self.plan(["t_multi"], ("default", "other")).groups,
+            [["t_multi@other", "t_multi@default"]],
+        )
+
+    def test_a_list_runs_each_target_a_test_names_or_else_the_one_it_redirects_to(self):
+        self.assertEqual(
+            self.plan(["t_stub"], ("default",), tool="vcs").target_by_item,
+            {"t_stub@default": "default"},
+        )
+        self.assertEqual(
+            self.plan(["t_stub"], ("stub", "other"), tool="vcs").target_by_item,
+            {"t_stub@stub": "stub", "t_stub@other": "other"},
+        )
+        self.assertEqual(
+            self.plan(["t_stub"], ("default", "other"), tool="vcs").target_by_item,
+            {"t_stub@default": "default", "t_stub@other": "other"},
+        )
+        self.assertEqual(
+            self.plan(["t_redirect"], ("default",), tool="vcs").groups, [["t_redirect@default"]]
+        )
+
+    def test_a_test_none_of_whose_targets_runs_is_skipped_with_each_of_them(self):
+        plan = self.plan(["t_multi", "t_stub", "t_cpu"], ("default",))
+        self.assertEqual(
+            plan.target_by_item, {"t_multi@default": "default", "t_cpu@default": "default"}
+        )
+        self.assertEqual(plan.skipped, [{"name": "t_stub", "target": "stub,other"}])
+        empty = self.plan(
+            ["t_stub", "t_multi", "t_redirect"], ("pinned",), tool="vcs", allow_empty=True
+        )
+        self.assertEqual(
+            empty.skipped,
+            [
+                {"name": "t_stub", "target": "default,other"},
+                {"name": "t_multi", "target": "other,default"},
+                {"name": "t_redirect", "target": "default"},
+            ],
+        )
+        with self.assertRaisesRegex(
+            ConfigError,
+            r"no selected test runs on --target pinned: each names another target"
+            r" \(default, other\)$",
+        ):
+            self.plan(["t_stub", "t_multi"], ("pinned",), tool="vcs")
+
+    def test_a_test_that_lists_a_pinned_only_target_runs_on_it(self):
+        self.assertEqual(
+            self.plan(["t_pinned", "t_cpu"]).groups,
+            [["t_pinned@default", "t_pinned@pinned"], ["t_cpu@default"]],
+        )
+        pinned = self.plan(["t_pinned", "t_cpu"], ("pinned",))
+        self.assertEqual(pinned.target_by_item, {"t_pinned@pinned": "pinned"})
+        self.assertEqual(pinned.skipped, [{"name": "t_cpu", "target": "default"}])
+
+    def test_force_target_runs_a_test_that_lists_targets_on_the_one_it_names(self):
+        plan = self.plan(["t_multi", "t_pinned"], force="stub")
+        self.assertEqual(plan.target_by_item, {"t_multi@stub": "stub", "t_pinned@stub": "stub"})
+        self.assertEqual(plan.targets, ["stub"])
+
+    def test_a_formal_flow_refuses_a_test_that_lists_targets(self):
+        flow = dataclasses.replace(make_dut({}), kind="fv")
+        args = Namespace(target=None, force_target=None)
+        with self.assertRaisesRegex(ConfigError, r"formal item\(s\) set target: t_multi$"):
+            plan_targets(flow, self.CATALOG, self.SIM_CFG, ["t_multi", "t_cpu"], args, "sby")
+
+    def selection(self, *argv: str):
+        """The options ``argv`` parse to, whether they make a scheduler run, and the
+        `selection` hint they print."""
+        catalog = TestCatalog(
+            None,
+            {
+                **self.CATALOG.tests,
+                "t_one": TestEntry(name="t_one", module="m", targets=("other",)),
+            },
+            {"g_multi": ["t_multi"], "t_redirect": ["t_redirect"]},
+        )
+        args = parse_args(list(argv))
+        requested, items = select_tests(make_dut({}), catalog, args, "verilator")
+        listed, plan = plan_targets(make_dut({}), catalog, self.SIM_CFG, items, args, "verilator")
+        scheduler = scheduler_requested(args, requested, plan.items, catalog)
+        return args, scheduler, several_targets_hint(catalog, plan, args.items, listed)
+
+    def test_a_test_named_without_a_target_choice_is_listed_when_it_runs_on_several(self):
+        expected = (
+            "several_targets=2 tests=t_multi(other,default),t_pinned(default,pinned); "
+            "--target NAME runs one of them"
+        )
+        self.assertEqual(
+            self.selection("--items", "t_multi", "t_cpu", "g_multi", "t_pinned")[2], expected
+        )
+        self.assertEqual(
+            self.selection("--items", "t_multi", "t_pinned", "--target", ",")[2], expected
+        )
+        for argv in (
+            (),
+            ("--items", "g_multi"),
+            ("--items", "t_cpu", "t_one"),
+            ("--items", "t_multi", "--target", "default,other"),
+            ("--items", "t_multi", "--force-target", "stub"),
+        ):
+            with self.subTest(argv=argv):
+                self.assertIsNone(self.selection(*argv)[2])
+
+    def test_a_group_that_shares_its_name_with_a_test_is_not_listed(self):
+        self.assertIsNone(self.selection("--items", "t_redirect")[2])
+
+    def test_a_seed_refusal_says_target_runs_one_target_of_a_test_named_on_several(self):
+        plain = (
+            "--seed cannot be used with regression mode; rerun an individual test with "
+            "--stage sim --seed N"
+        )
+
+        def refusal(*argv: str) -> str:
+            args, scheduler, hint = self.selection(*argv, "--seed", "5")
+            with self.assertRaises(ConfigError) as ctx:
+                validate_regression_seed_options(args, scheduler, several_targets=bool(hint))
+            return str(ctx.exception)
+
+        self.assertEqual(
+            refusal("--items", "t_multi"),
+            plain + "; --target NAME runs one target of a test that runs on several",
+        )
+        for argv in (
+            ("--items", "g_multi"),
+            ("--items", "t_cpu", "t_one"),
+            ("--items", "t_multi", "--target", "default,other"),
+        ):
+            with self.subTest(argv=argv):
+                self.assertEqual(refusal(*argv), plain)
+        args, scheduler, hint = self.selection("--items", "t_multi", "--target", "other")
+        self.assertFalse(scheduler)
+        validate_regression_seed_options(args, scheduler, several_targets=bool(hint))
+
+    def test_a_rerun_of_one_leaf_plans_that_leaf_alone(self):
+        plan = self.plan(["t_multi"])
+        self.assertEqual(plan.items, ["t_multi@other", "t_multi@default"])
+        for leaf, target in plan.target_by_item.items():
+            options = rerun_selection(leaf, target, parse_args(["--items", "t_multi"]))
+            with self.subTest(leaf=leaf):
+                self.assertEqual(options, ["--items", "t_multi", "--target", target])
+                rerun = selection_preview(
+                    make_dut({}), self.CATALOG, self.SIM_CFG, parse_args(options), "verilator"
+                )
+                self.assertEqual(rerun["instances"], {leaf: target})
+
+
+class SeveralTargetsDryRun(unittest.TestCase):
+    """A DTP dry run of a test with two targets and a `reseed` patched into its catalog
+    entry."""
+
+    TEST = "dtp_jtag_idcode_test"
+    TARGETS = ("default", "bsr_disabled")
+    RESEED = 3
+
+    def run_dtp(self, *argv: str) -> tuple[int, str]:
+        """The exit code and console output of a dry run of ``TEST`` with ``argv``."""
+        load = cli.load_test_catalog
+
+        def with_targets(*args, **kwargs):
+            catalog = load(*args, **kwargs)
+            if self.TEST not in catalog.tests:
+                return catalog
+            test = dataclasses.replace(
+                catalog.tests[self.TEST], targets=self.TARGETS, reseed=self.RESEED
+            )
+            return dataclasses.replace(catalog, tests={**catalog.tests, self.TEST: test})
+
+        out = io.StringIO()
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.object(cli, "load_test_catalog", side_effect=with_targets),
+            mock.patch.object(cli, "validate_selected_tool_available"),
+            redirect_stdout(out),
+            redirect_stderr(out),
+        ):
+            code = cli.main(
+                ["--dut", "dtp", "--dry-run", "--ui", "plain", "--run-dir", f"{tmp}/run"]
+                + ["--items", self.TEST, *argv]
+            )
+        return code, out.getvalue()
+
+    def test_each_seed_runs_on_both_targets_and_the_hint_names_them_once(self):
+        code, out = self.run_dtp()
+        self.assertEqual(code, 0, out)
+        hints = [line for line in out.splitlines() if "several_targets=" in line]
+        self.assertEqual(len(hints), 1, out)
+        self.assertIn(f"several_targets=1 tests={self.TEST}(default,bsr_disabled);", hints[0])
+        self.assertRegex(out, rf"regression start total={2 * self.RESEED} .*seeds={self.RESEED} ")
+        seeds: dict[str, set[str]] = {target: set() for target in self.TARGETS}
+        for target, seed in re.findall(
+            rf"regression done .* item={self.TEST}@(\w+) seed=(\d+) ", out
+        ):
+            seeds[target].add(seed)
+        self.assertEqual(len(seeds["default"]), self.RESEED, out)
+        self.assertEqual(seeds["bsr_disabled"], seeds["default"])
+
+    def test_a_target_list_that_names_no_target_keeps_the_hint(self):
+        code, out = self.run_dtp("--target", ",")
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"several_targets=1 tests={self.TEST}(default,bsr_disabled);", out)
+
+    def test_seed_is_refused_until_target_names_one_of_the_targets(self):
+        code, out = self.run_dtp("--seed", "5")
+        self.assertEqual(code, 2, out)
+        self.assertIn(
+            "--seed cannot be used with regression mode; rerun an individual test with "
+            "--stage sim --seed N; --target NAME runs one target of a test that runs on several",
+            out,
+        )
+        code, out = self.run_dtp("--seed", "5", "--target", "bsr_disabled")
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"item={self.TEST}@bsr_disabled seed=5 ", out)
+        self.assertNotIn("several_targets=", out)
 
 
 class RegressionReseedCount(unittest.TestCase):

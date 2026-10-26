@@ -143,13 +143,16 @@ which are not.
 |KMAC |`[6:5]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
 |CSRNG |`[8:7]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
 |EDN |`[10:9]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
+|EDN adapters |none; ack FSM fault `err_o` |OR into Crypto alert |none |none
 |===
 
 Adams Bridge and the entropy source do not go through this conversion.
 
 [[sep-crypto-bridge-faults]]
-The Crypto alert source is the OR of every receiver pulse and integrity-fail, so
-that interrupt does not name the block. Native error IRQs are not OR'd. HMAC,
+The Crypto alert source is the OR of every receiver pulse and integrity-fail and
+of the two `drbg_axis_edn_adapter` instances' `err_o`, so that interrupt does not
+name the block. An adapter's `err_o` reports an illegal state in an endpoint's
+`edn_ack_sm` and holds until reset, keeping the source high. Native error IRQs are not OR'd. HMAC,
 AES, KMAC, OTBN, CSRNG, and EDN convert isolated AXI4-Lite to TL-UL through
 `axi_lite_to_tlul`; each bridge's sticky `err_o` is that wrapper's `bus_err_o`,
 visible as one bit in `PERIPH_BUS_ERR_STATUS` and cleared with the matching

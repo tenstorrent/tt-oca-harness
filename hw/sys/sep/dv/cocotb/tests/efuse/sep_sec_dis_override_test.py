@@ -72,15 +72,40 @@ Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR is a log
   CHK-OVERRIDE-TM0       at CHK-OVERRIDE with the strap at 0 (control: CHK-HOOK):
                          FEAT_CTRL == lcc_feat_ctrl_probe_o == all ones, secure_tm_o == 0
   CHK-DEACTIVATE, CHK-RESTORE    mismatch code and the PROD FEAT_CTRL again
+
+FCOV owner windows (``env/sep_fcov_gate.py``). The sampler holds each owned
+event as pending and samples it only on the rise of its bit of the pass label
+``ovr_pass``, which the leaf writes after the check of that event passes. A
+FAIL closes the window before the label, which drops the pending event.
+
+* CHK-OVR-AFTER in the first stopped-sense window: the override release with
+  SEC_DIS on (``sep_sec_dis_boot_cg.cp_alone`` ``override_open``), released by
+  bit 0 after CHK-OVR-AFTER passes.
+* After the full sense with the strap at 0, from the match to CHK-OVERRIDE-TM0:
+  the entry into SEC_DIS with the feature-control probe all ones
+  (``x_secdis_stm_feat`` ``secure_tm_0``), released by bit 1 after
+  CHK-OVERRIDE-TM0 passes.
+
+The stuck-sense match and CHK-RETAIN-OVR run with no window open: there
+``secure_tm_o`` holds its reset value, not a strap sample.
 """
 
 from __future__ import annotations
+
+from collections.abc import Awaitable
 
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import LC_FIELD_MASK, SepEfuseImage, lc_encode
+from env.sep_fcov_gate import (
+    OVR_PASS_ALONE_OPEN,
+    OVR_PASS_STM0,
+    close_graded_window,
+    open_graded_window,
+    set_override_pass,
+)
 from env.sep_lcc_golden import (
     LC_PROD,
     M64,
@@ -100,6 +125,7 @@ from seq_lib.sep_efuse_rma_token_seq import (
 )
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
+_TEST = "sep_sec_dis_override_test"
 _MAX_SENSE_CYCLES = 20_000
 # Cycles a stopped sense is watched. CHK-SENSE-CONTROL requires a healthy
 # sense after rst_ni release to finish in fewer cycles than this.
@@ -678,7 +704,7 @@ class sep_sec_dis_override_test(sep_base_test):
             f"CHK-FEAT-PRESENSE FAIL: feature control opened but the reset moved "
             f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 0/0"
         )
-        await self._check_override_after_match("CHK-OVR-AFTER")
+        await self._graded(self._check_override_after_match("CHK-OVR-AFTER"), OVR_PASS_ALONE_OPEN)
         await self._read_shadow_map("CHK-MAP-OPEN")
         await self._check_sense_stuck("CHK-SENSE-STUCK")
 
@@ -733,6 +759,27 @@ class sep_sec_dis_override_test(sep_base_test):
         )
         await self._check_feat(0, "CHK-NO-OVERRIDE")
 
+        await self._graded(self._match_override_tm0(), OVR_PASS_STM0)
+        await self._deactivate_restore()
+
+    async def _graded(self, step: Awaitable[None], bit: int) -> None:
+        """Run ``step`` inside the owner window; raise pass label ``bit`` only after it passes.
+
+        A FAIL raises before the label, and the finally clause closes the
+        window, which drops the pending event.
+        """
+        set_override_pass(0, self.logger)
+        open_graded_window(_TEST, self.logger)
+        try:
+            await step
+            set_override_pass(bit, self.logger)
+            await ClockCycles(cocotb.top.clk_i, 2)
+            set_override_pass(0, self.logger)
+        finally:
+            close_graded_window(self.logger)
+
+    async def _match_override_tm0(self) -> None:
+        """CHK-MATCH, CHK-OVERRIDE and CHK-OVERRIDE-TM0 on the sensed PROD image."""
         hit = await self._present(_MATCH_TOKEN)
         assert hit.match_code == TOKEN_MATCH, (
             f"CHK-MATCH FAIL: zero token code=0x{(hit.match_code or 0):02x} "
@@ -744,6 +791,8 @@ class sep_sec_dis_override_test(sep_base_test):
         feat_open = await self._check_feat(1, "CHK-OVERRIDE")
         self._check_override_tm0(feat_open)
 
+    async def _deactivate_restore(self) -> None:
+        """CHK-DEACTIVATE and CHK-RESTORE: a mismatch closes FEAT_CTRL again."""
         deact = await self._present(_MISMATCH_TOKEN)
         assert deact.match_code == TOKEN_MISMATCH, (
             f"CHK-DEACTIVATE FAIL: token=1 code=0x{(deact.match_code or 0):02x} "

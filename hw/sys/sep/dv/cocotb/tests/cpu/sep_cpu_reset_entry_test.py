@@ -35,6 +35,28 @@ Checks:
                        OBS-RSTVEC-SHIFT (cpu.adoc states no TDR length).
   CHK-RSTVEC-PERSIST : after a ``wdt_rst_ni`` CPU reset the first retired PC is
                        ``A1`` again.
+  CHK-RSTVEC-PERSIST-DBG : after a ``dbg_rstb_i`` pulse of the drawn width and
+                       then a ``wdt_rst_ni`` CPU reset, the first fetch covers
+                       ``A1``, the first retired PC is ``A1`` and the marker is
+                       ``M1`` (cpu.adoc Reset Vector: the value persists until
+                       it is rewritten or the TAP is reset; reset_controller.adoc:
+                       ``dbg_rstb_i`` resets the debug module, ``jtag_trst_ni``
+                       the TAP). Positive probes in the same line: the
+                       ``dbg_rstb_i`` pin reads 0 for the drawn width, the
+                       ``sep_cpu_reset_n`` tap falls, ``jtag_trst_ni`` reads
+                       1 on every sample of the leg, and the pulse reaches the
+                       debug module: ``dmcontrol.dmactive``, written 1 over the
+                       DMI before the pulse, reads 1 before the pulse and 0
+                       after it (RISC-V External Debug Support 0.13.2,
+                       ``dmcontrol`` 0x10: ``dmactive`` resets to 0). The other
+                       ``dmcontrol`` bits are logged, not graded.
+  CHK-RSTVEC-PERSIST-COLD: after an ``rst_ni`` cold reset (SRAM images written
+                       again while it is low) the same three values hold.
+                       Positive probes: the reset is a cold epoch, the
+                       ``sep_cpu_reset_n`` tap falls, ``jtag_trst_ni`` reads 1
+                       on every sample of the leg and, with real fuse sense,
+                       ``sep_fuse_sense_done_o`` falls and reads 1 again. The
+                       two legs run in a drawn order after CHK-RSTVEC-PERSIST.
   CHK-RSTVEC-TAPRST  : after a TAP reset (``jtag_trst_ni`` or Test-Logic-Reset)
                        and a CPU reset the first retired PC is 0x1004_0000 and
                        the marker is ``M_ROM``, with the TDR at its default or
@@ -136,22 +158,21 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from env.sep_fabric_tap import SepFabricTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_rstvec_persist_pass
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import RegBlock, sym
 
 TEST = "sep_cpu_reset_entry_test"
 
-# hw/sys/sep/doc/rom.adoc (Boot ROM) and hw/sys/sep/doc/cpu.adoc (Reset Vector):
-# the first CPU fetch after reset with the default TDR is at the boot ROM base.
-DEFAULT_RESET_PC = 0x1004_0000
 ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
+# hw/sys/sep/doc/rom.adoc:7-10 (RESET_VEC is the Boot ROM base) and
+# hw/sys/sep/doc/cpu.adoc:205-206 (the TDR resets to the Boot ROM base): the first
+# CPU fetch after reset with the default TDR is at the boot ROM base.
+DEFAULT_RESET_PC = ROM_BASE
 ROM_WORDS = sym("SEP_BOOT_ROM_MEM_SIZE") // 8
 SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRAM_WORDS = sym("SEP_SRAM_MEM_SIZE") // 8
-if ROM_BASE != DEFAULT_RESET_PC:
-    raise RuntimeError(f"the ROM image base 0x{ROM_BASE:08x} is not the stated reset PC")
 
 # Vector range of the contract (halfword aligned), and the routine address,
 # below the vector range so no drawn image overlaps it.
@@ -248,6 +269,7 @@ B_BOUND = 2_000  # clk_i cycles for the write responses of the outbound stores
 QUIET = 8  # clk_i cycles after the last write response before a CPU reset
 SPIN = 400  # spin-loop iterations after each routine pass
 ST_SETTLE = 2_000  # clk_i cycles after the store-routine end record (late NMI records)
+DBG_W_MIN, DBG_W_MAX = 2, 32  # clk_i cycles of the dbg_rstb_i pulse (drawn)
 
 
 # ---- RV32I encoder for the staged images ----
@@ -515,6 +537,19 @@ class _Scope:
 
 
 @dataclass
+class _LegWatch:
+    """Pin levels sampled during one persistence leg."""
+
+    samples: int = 0
+    # Samples with jtag_trst_ni not 1 (0, X or Z).
+    trst_low: int = 0
+    # Samples with dbg_rstb_i at 0, and the longest run of such samples.
+    dbg_low: int = 0
+    dbg_run: int = 0
+    cur_run: int = 0
+
+
+@dataclass
 class _Rec:
     seq: int
     clk: int
@@ -545,6 +580,10 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.tck_clks = 4 + rng.randrange(13)
         self.trst_tck = 2 + rng.randrange(49)
         self.d = rng.randrange(201)
+        # Persistence legs: drawn after every earlier draw, so A1, A2, the TCK
+        # period, the TRST width and d keep their values for a seed.
+        self.dbg_w = DBG_W_MIN + rng.randrange(DBG_W_MAX - DBG_W_MIN + 1)
+        self.persist_order = ("dbg", "cold") if rng.randrange(2) == 0 else ("cold", "dbg")
         self.logger.info("DRAW A1=0x%08x", self.a1)
         self.logger.info("DRAW A2=0x%08x image_bytes=%d", self.a2, ENTRY_BYTES)
         self.logger.info(
@@ -554,6 +593,11 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
         self.logger.info("DRAW trst_width=%d TCK cycles", self.trst_tck)
         self.logger.info("DRAW d=%d clk_i cycles", self.d)
+        self.logger.info(
+            "DRAW persist dbg_width=%d clk_i cycles order=%s",
+            self.dbg_w,
+            ",".join(self.persist_order),
+        )
         self.logger.info(
             "ENV W_obs=%d rst_hold=%d pass_bound=%d rise_bound=%d quiet=%d spin=%d routine=0x%08x "
             "store_routine=0x%08x st_settle=%d",
@@ -645,6 +689,16 @@ class sep_cpu_reset_entry_test(sep_base_test):
             pc = self.rd(dut.cpu_trace_addr_o) if tv else None
             rom_req = self.rd(dut.pr_rom_req_o)
             ifu_req = self.rd(dut.pr_ifu_arvalid_o)
+            if self.leg is not None:
+                lw = self.leg
+                lw.samples += 1
+                lw.trst_low += self._rd_or_none(dut.jtag_trst_n_i) != 1
+                if self._rd_or_none(dut.dbg_rstb_i) == 0:
+                    lw.dbg_low += 1
+                    lw.cur_run += 1
+                    lw.dbg_run = max(lw.dbg_run, lw.cur_run)
+                else:
+                    lw.cur_run = 0
             if self.scope is not None:
                 self.scope.samples += 1
                 self.scope.sep_low += sep_tap == 0
@@ -763,8 +817,11 @@ class sep_cpu_reset_entry_test(sep_base_test):
             await RisingEdge(cocotb.top.clk_i)
         raise AssertionError("the sampler saw no reset assertion")
 
-    async def _cold_pulse(self) -> tuple[_Epoch, int]:
-        """Pulse rst_ni with clocks running; write the SRAM images while it is low."""
+    async def _cold_pulse(self, during=None) -> tuple[_Epoch, int]:
+        """Pulse rst_ni with clocks running; write the SRAM images while it is low.
+
+        ``during`` runs while it is held.
+        """
         dut = cocotb.top
         await RisingEdge(dut.clk_i)
         mark = len(self._mbx())
@@ -773,6 +830,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ep = await self._new_epoch(n)
         self._stage_sram()
         await ClockCycles(dut.clk_i, RST_HOLD)
+        if during is not None:
+            await during()
         dut.rst_ni.value = 1
         return ep, mark
 
@@ -850,13 +909,18 @@ class sep_cpu_reset_entry_test(sep_base_test):
         return first_pc, name, entry
 
     # ---------------------------------------------------------------- grading
+    def _fail(self, text: str) -> None:
+        """Record a failure; the graded window closes first, so no bin samples after it."""
+        close_graded_window(self.logger)
+        self.failures.append(text)
+
     def _grade(self, chk: str, ok: bool, text: str) -> None:
         if ok:
             self.logger.info("%s PASS: %s", chk, text)
             self.n_checks += 1
         else:
             self.logger.error("%s FAIL: %s", chk, text)
-            self.failures.append(f"{chk}: {text}")
+            self._fail(f"{chk}: {text}")
 
     @staticmethod
     def _fetch_text(ep: _Epoch) -> str:
@@ -882,14 +946,40 @@ class sep_cpu_reset_entry_test(sep_base_test):
         return addr <= vector < addr + (alen + 1) * (1 << asize)
 
     def _grade_vector(
-        self, chk: str, prefix: str, ep: _Epoch, pc, marker, exp_pc: int, exp_marker: str
+        self,
+        chk: str,
+        prefix: str,
+        ep: _Epoch,
+        pc,
+        marker,
+        exp_pc: int,
+        exp_marker: str,
+        probe_ok: bool = True,
     ):
-        """The first fetch request reads the vector; the first retirement and marker confirm it."""
-        ok = self._fetch_covers(ep, exp_pc) and pc == exp_pc and marker == exp_marker
+        """The first fetch request reads the vector; the first retirement and marker confirm it.
+
+        ``probe_ok`` carries the positive probes of the leg; their values are in
+        ``prefix``.
+        """
+        ok = probe_ok and self._fetch_covers(ep, exp_pc) and pc == exp_pc and marker == exp_marker
         text = f"{prefix}{self._fetch_text(ep)} first_pc=0x{pc:08x} marker={marker}"
         if not ok:
             text += f" expected first_fetch covering 0x{exp_pc:08x} first_pc=0x{exp_pc:08x} marker={exp_marker}"
         self._grade(chk, ok, text)
+        return ok
+
+    async def _persist_passed(self, ok: bool) -> None:
+        """Pulse the persistence pass label after a passing persistence check.
+
+        ``cp_rstvec_persist`` holds the class of the latest CPU reset release
+        and samples it only on this rise, so a failing leg and the redirect
+        legs feed no cell.
+        """
+        if not ok:
+            return
+        set_rstvec_persist_pass(True, self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_rstvec_persist_pass(False, self.logger)
 
     # ---------------------------------------------------------------- legs
     async def _power_on(self) -> tuple[_Epoch, int]:
@@ -1028,6 +1118,102 @@ class sep_cpu_reset_entry_test(sep_base_test):
             vector,
         )
 
+    async def _dbg_pulse(self, width: int) -> None:
+        """Drive dbg_rstb_i low for ``width`` clk_i cycles, then high."""
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        self._set_pin(dut, "dbg_rstb_i", 0)
+        await ClockCycles(dut.clk_i, width)
+        self._set_pin(dut, "dbg_rstb_i", 1)
+
+    async def _dmactive(self) -> tuple[int, int]:
+        """Read ``dmcontrol`` over the DMI; return (``dmactive``, the whole word)."""
+        from env.sep_jtag_dmi import DM_DMCONTROL, DMCONTROL_DMACTIVE
+
+        word = await self.dmi.dmi_read(DM_DMCONTROL)
+        return int(bool(word & DMCONTROL_DMACTIVE)), word
+
+    async def _persist_dbg_leg(self) -> None:
+        """A dbg_rstb_i pulse at a quiet point, then a wdt_rst_ni CPU reset; the TDR keeps A1.
+
+        Reach probe: ``dmcontrol.dmactive`` is written 1 over the DMI before the
+        pulse and read before and after it. A pulse that reaches the debug
+        module returns ``dmactive`` to its reset value 0 (RISC-V External Debug
+        Support 0.13.2, ``dmcontrol``). The DMI accesses run with
+        ``dmi_core_enable_i`` at 1 and finish before the CPU reset.
+        """
+        from env.sep_jtag_dmi import DM_DMCONTROL, DMCONTROL_DMACTIVE
+
+        dut = cocotb.top
+        dut.dmi_core_enable_i.value = 1
+        await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
+        dm_before, word_before = await self._dmactive()
+        await self._quiet_point()
+        set_rstvec_persist_pass(False, self.logger)
+        self.leg = _LegWatch()
+        await self._dbg_pulse(self.dbg_w)
+        dm_after, word_after = await self._dmactive()
+        dut.dmi_core_enable_i.value = 0
+        ep, mark = await self._cpu_reset()
+        pc, marker, _ = await self._entry(ep, mark, "persist dbg")
+        lw, self.leg = self.leg, None
+        # The sampler reads the pin on the clk_i edge of each write, so the run
+        # is the drawn width, or one more when the release lands after the read.
+        probe_ok = (
+            self.dbg_w <= lw.dbg_run <= self.dbg_w + 1
+            and lw.dbg_low == lw.dbg_run
+            and lw.trst_low == 0
+            and ep.kind == "cpu"
+            and ep.tap_low > 0
+            and dm_before == 1
+            and dm_after == 0
+        )
+        ok = self._grade_vector(
+            "CHK-RSTVEC-PERSIST-DBG",
+            f"dbg_width={self.dbg_w} dbg_rstb_low_run={lw.dbg_run} dbg_rstb_low={lw.dbg_low} "
+            f"trst_low={lw.trst_low} samples={lw.samples} kind={ep.kind} "
+            f"cpu_tap_low={ep.tap_low} dmactive_before={dm_before} dmactive_after={dm_after} "
+            f"(exp 1/0; dmcontrol 0x{word_before:08x}/0x{word_after:08x} logged) ",
+            ep,
+            pc,
+            marker,
+            self.a1,
+            "M1",
+            probe_ok,
+        )
+        await self._persist_passed(ok)
+
+    async def _persist_cold_leg(self) -> None:
+        """An rst_ni cold reset at a quiet point; the TDR keeps A1."""
+        dut = cocotb.top
+        await self._quiet_point()
+        set_rstvec_persist_pass(False, self.logger)
+        self.leg = _LegWatch()
+        ep, mark = await self._cold_pulse()
+        pc, marker, _ = await self._entry(ep, mark, "persist cold")
+        lw, self.leg = self.leg, None
+        await ReadOnly()
+        sense_after = self._rd_or_none(dut.sep_fuse_sense_done_o)
+        await RisingEdge(dut.clk_i)
+        probe_ok = ep.kind == "cold" and ep.tap_low > 0 and lw.trst_low == 0 and lw.dbg_low == 0
+        if self.real_sense:
+            probe_ok = probe_ok and ep.sense_low > 0 and sense_after == 1
+            sense_text = f"sense=real sense_done_low={ep.sense_low} sense_done_after={sense_after} "
+        else:
+            sense_text = "sense=skipped "
+        ok = self._grade_vector(
+            "CHK-RSTVEC-PERSIST-COLD",
+            f"kind={ep.kind} cpu_tap_low={ep.tap_low} trst_low={lw.trst_low} "
+            f"dbg_rstb_low={lw.dbg_low} samples={lw.samples} {sense_text}",
+            ep,
+            pc,
+            marker,
+            self.a1,
+            "M1",
+            probe_ok,
+        )
+        await self._persist_passed(ok)
+
     async def _scope_leg(self, via: str, tdr: str, cur_mark: int) -> int:
         """Step 11 sub-leg: retention across a TAP reset, then the CPU reset."""
         dut = cocotb.top
@@ -1101,11 +1287,11 @@ class sep_cpu_reset_entry_test(sep_base_test):
 
     # ---------------------------------------------------------------- scenario
     async def run_scenario(self) -> None:
-        dut = cocotb.top
         self.clk = 0
         self._stop = False
         self.epochs: list[_Epoch] = []
         self.scope: _Scope | None = None
+        self.leg: _LegWatch | None = None
         self.recs: list[_Rec] = []
         self.failures: list[str] = []
         self.n_checks = 0
@@ -1121,6 +1307,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-NO-EARLY-FETCH",
             "CHK-RSTVEC",
             "CHK-RSTVEC-PERSIST",
+            "CHK-RSTVEC-PERSIST-DBG",
+            "CHK-RSTVEC-PERSIST-COLD",
             "CHK-RSTVEC-TAPRST",
             "CHK-TRST-SCOPE",
             "CHK-WDT-STORE-RESP",
@@ -1128,6 +1316,37 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.st_rows: list[dict] = []
         self.st_errors: list[str] = []
 
+        try:
+            await self._graded_steps()
+        except BaseException:
+            # A raised failure closes the window too, so no bin samples after it.
+            close_graded_window(self.logger)
+            raise
+        late_fails = self._fails_since(0)
+        if late_fails:
+            self.failures.append(
+                "routine compare fail records: "
+                + " ".join(f"0x{r.val:08x}@{r.seq}" for r in late_fails)
+            )
+        causes = [r for r in self._mbx() if r.off == OFF_NMI_CAUSE]
+        addrs = [r for r in self._mbx() if r.off == OFF_NMI_ADDR]
+        self.logger.info(
+            "OBS-STORE-BUS-ERR LOG nmi_records=%d %s",
+            len(causes),
+            " ".join(
+                f"mcause=0x{c.val:08x}/mdseac=0x{a.val:08x}@{c.seq}" for c, a in zip(causes, addrs)
+            ),
+        )
+        self._grade_no_early()
+        # Graded last: every other check above has already run.
+        self._grade_store_resp()
+        if self.failures:
+            raise AssertionError("; ".join(self.failures))
+        self.result_pass(TEST, self.random_seed(), self.n_checks)
+
+    async def _graded_steps(self) -> None:
+        """Steps 4-12 inside the graded window; the window closes after the last leg."""
+        dut = cocotb.top
         # Steps 4-6: three cold resets with the default TDR. The first runs under
         # the power-on TAP reset; TRST then rises with TCK idle, so the second and
         # third run with no TAP reset.
@@ -1168,34 +1387,14 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 await leg()
             except AssertionError as exc:
                 # Graded at the end with the other store results, so the other
-                # checks of the leaf still run.
+                # checks of the leaf still run; the window closes here.
+                close_graded_window(self.logger)
                 self.st_errors.append(f"{leg.__name__}: {exc}")
         self._tap_live(self.out_tap)
         self._tap_live(self.rsp_tap)
         self._stop = True
         await ClockCycles(dut.clk_i, 2)
         close_graded_window(self.logger)
-        late_fails = self._fails_since(0)
-        if late_fails:
-            self.failures.append(
-                "routine compare fail records: "
-                + " ".join(f"0x{r.val:08x}@{r.seq}" for r in late_fails)
-            )
-        causes = [r for r in self._mbx() if r.off == OFF_NMI_CAUSE]
-        addrs = [r for r in self._mbx() if r.off == OFF_NMI_ADDR]
-        self.logger.info(
-            "OBS-STORE-BUS-ERR LOG nmi_records=%d %s",
-            len(causes),
-            " ".join(
-                f"mcause=0x{c.val:08x}/mdseac=0x{a.val:08x}@{c.seq}" for c, a in zip(causes, addrs)
-            ),
-        )
-        self._grade_no_early()
-        # Graded last: every other check above has already run.
-        self._grade_store_resp()
-        if self.failures:
-            raise AssertionError("; ".join(self.failures))
-        self.result_pass(TEST, self.random_seed(), self.n_checks)
 
     def _fuse_mode(self) -> None:
         """Read the fuse-sense mode of the run; stage the preload image for real sense."""
@@ -1266,9 +1465,18 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
 
         # Step 9: persistence across a CPU reset.
+        set_rstvec_persist_pass(False, self.logger)
         ep, mark = await self._cpu_reset()
         pc, marker, _ = await self._entry(ep, mark, "persist")
-        self._grade_vector("CHK-RSTVEC-PERSIST", "after wdt reset ", ep, pc, marker, self.a1, "M1")
+        ok = self._grade_vector(
+            "CHK-RSTVEC-PERSIST", "after wdt reset ", ep, pc, marker, self.a1, "M1"
+        )
+        await self._persist_passed(ok)
+
+        # Step 9, continued: persistence across a debug-module reset and across a
+        # cold reset, in the drawn order.
+        for leg in self.persist_order:
+            await (self._persist_dbg_leg() if leg == "dbg" else self._persist_cold_leg())
 
         # Step 10: rewrite to A2.
         async def _arm_a2_wide() -> None:
@@ -1291,7 +1499,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         pc, marker, _ = await self._entry(ep, mark, "re-arm A2")
         # Precondition of the last sub-leg: the TDR holds A2 before its TAP reset.
         if (pc, marker) != (self.a2, "M2") or not self._fetch_covers(ep, self.a2):
-            self.failures.append(
+            self._fail(
                 f"re-arm precondition: {self._fetch_text(ep)} first_pc=0x{pc:08x} marker={marker}, "
                 f"expected 0x{self.a2:08x} M2"
             )

@@ -79,6 +79,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--timeout", type=int, default=120, help="seconds to run (default 120)")
     p.add_argument(
+        "--expect-pass",
+        action="store_true",
+        help="exit non-zero unless the test PASS marker appears (EOF and timeout fail)",
+    )
+    p.add_argument(
         "--ini-only", action="store_true", help="print the generated overlay ini and exit"
     )
     # platform overrides
@@ -157,6 +162,8 @@ def main(argv=None) -> int:
                 print("\n[sepvp] sep-vp exited (EOF)", file=sys.stderr)
             else:
                 print(f"\n[sepvp] timeout after {cfg.boot_timeout}s — stopping VP", file=sys.stderr)
+            if idx >= 3 and args.expect_pass:
+                rc = 2
     except HarnessError as e:
         print(f"\n[sepvp] {e}", file=sys.stderr)
         rc = 2

@@ -74,10 +74,9 @@ Checks (HOST-UNREC unless marked):
 Logged only: OBS-AES-NOKEY, OBS-KEYPATH-CODE, the shared-key transfer after each
 boot, the frames of the ML-KEM notify, the SRAM write count of the HOST fatal
 path, the KPV and KM-VALID samples at the first fault word, the IRQ_STATUS bits
-outside the graded set, and VACUOUS parity draws. CHK-MAINCTX-FATAL can fail on
-this DUT (contract, "Known limitation"); in the whole leaf the point runs after
-every other fatal point. The regression runs the HOST-UNREC entry as fourteen
-shards (SHARD_POINTS_UNREC).
+outside the graded set, and VACUOUS parity draws. In the whole leaf the
+CHK-MAINCTX-FATAL point runs after every other fatal point. The regression runs
+the HOST-UNREC entry as fourteen shards (SHARD_POINTS_UNREC).
 """
 
 from __future__ import annotations
@@ -96,7 +95,7 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import LC_PROD
 from env.sep_ext_trng_stream import SepExtTrngStream
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_km_lat_graded
 from env.sep_hmac_golden import hmac_sha256_words
 from env.sep_reg_meta import SEP_CPU_CTRL
 from env.sep_shard import sep_shard
@@ -288,8 +287,7 @@ INBOUND_POLLS = 20_000  # polls for inbound FIFO space while posting
 RISE_BOUND = 4_000_000  # clocks from an injection to the PIC bit 30 rise
 # Clocks from the main-context trailer to the PIC bit 30 rise. One fatal path
 # with the SRAM wipe raises bit 30 after about 2.2M clocks (the engine-key shred
-# and one SRAM shred); a second pass of the path (contract, "Known limitation")
-# is still shredding at the bound.
+# and one SRAM shred).
 MAIN_RISE_BOUND = 3_000_000
 MAIN_TAIL = 100_000  # last clocks of the wait over which the SRAM write count is logged
 KEM_POLLS = 20_000
@@ -622,7 +620,18 @@ class _LatWatch:
     after the completion of a read, so it is in place before the next request
     can be sampled; the expected latency of each read is the value in place
     since the previous completion (1 for a value of 1).
+
+    The caller holds the KM in warm reset while :meth:`drain` runs, so no new
+    SRAM read is accepted. A read accepted before the park keeps the latency
+    that HK-LAT latched under the previous setting and completes within
+    ``pl.LAT_MAX`` clocks. The starting count is taken only after the KM warm
+    reset reads asserted and the done count then holds for ``DRAIN_STILL``
+    clocks, so no such read is graded against the setting of this run. Every
+    read that completes after the starting count is graded; none is skipped.
     """
+
+    DRAIN_STILL = pl.LAT_MAX + 2  # accept-to-rvalid of at most LAT_MAX, +1 to the done count
+    DRAIN_BOUND = 1_000  # clocks for the done count to hold DRAIN_STILL clocks
 
     def __init__(self, test: sep_base_test, mode: str, first: int, stream=None) -> None:
         self.test = test
@@ -637,8 +646,45 @@ class _LatWatch:
         self.expected: set[int] = set()
         self._on = False
         self.quarter_ps = test.period_ps // 4
+        self.base: int | None = None
+        self.drained = 0
+
+    async def drain(self) -> None:
+        """Take the starting count with the KM held and no SRAM read in flight."""
+        top = cocotb.top
+        t = self.test
+        await t._km_held(f"latency {self.mode} watcher start")
+        first = t.rd_known(top.km_sram_rd_done_count_o)
+        last = first
+        still = 0
+        for _ in range(self.DRAIN_BOUND):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            done = t.rd_known(top.km_sram_rd_done_count_o)
+            if done != last:
+                last = done
+                still = 0
+                continue
+            still += 1
+            if still >= self.DRAIN_STILL:
+                self.base = done
+                self.drained = (done - first) & 0xFFFF_FFFF
+                t.logger.info(
+                    "LOG latency %s watcher start: done_count=%d drained=%d still_clk=%d",
+                    self.mode,
+                    done,
+                    self.drained,
+                    still,
+                )
+                return
+        raise AssertionError(
+            f"latency {self.mode}: km_sram_rd_done_count_o did not hold for "
+            f"{self.DRAIN_STILL} clocks within {self.DRAIN_BOUND} clocks with the KM held"
+        )
 
     def start(self) -> None:
+        if self.base is None:
+            raise AssertionError(f"latency {self.mode}: watcher start before drain")
         self._on = True
         cocotb.start_soon(self._run())
 
@@ -648,16 +694,13 @@ class _LatWatch:
     async def _run(self) -> None:
         top = cocotb.top
         t = self.test
-        prev: int | None = None
+        prev = self.base
         while True:
             await RisingEdge(top.clk_i)
             await ReadOnly()
             if not self._on:
                 return
             done = t.rd_known(top.km_sram_rd_done_count_o)
-            if prev is None:
-                prev = done
-                continue
             if done == prev:
                 continue
             step = (done - prev) & 0xFFFF_FFFF
@@ -2279,11 +2322,16 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         base_delayed = self.rd_known(top.km_sram_lat_delayed_count_o)
 
         async def parked() -> None:
+            await lat.drain()
             await RisingEdge(top.clk_i)
             top.km_sram_lat_i.value = first
             top.km_sram_lat_en_i.value = 1
             self.lat_on = True
             lat.start()
+            # cp_km_sram_latency samples only the reads that this watcher grades:
+            # the fixed and the random runs, not the L = 1 control run.
+            if mode != "base":
+                set_km_lat_graded(True, self.logger)
 
         watch = _FatalWatch(self)
         watch.start()
@@ -2308,6 +2356,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 frames.append(fr.words)
         except AssertionError as exc:
             err = str(exc)[:200]
+        # The sub-window closes one clock before the watcher stops, so every
+        # read that it lets the sampler count is graded.
+        await RisingEdge(top.clk_i)
+        set_km_lat_graded(False, self.logger)
+        await RisingEdge(top.clk_i)
         lat.stop()
         watch.stop()
         self.fresh = False

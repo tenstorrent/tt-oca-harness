@@ -171,9 +171,15 @@ def _make(config, *make_args, cwd, container_ok=True):
     if container_ok and not _native_fw_toolchain(env):
         argv = [str(paths.OCAH_ROOT / "scripts" / "docker-run.sh"), "run-here", "make", *make_args]
     else:
-        # PYTHON and OTBN_PYTHON default to a `uv run` on the repo-root project, which
-        # re-resolves .venv to its default groups and drops the vp group this process needs.
-        argv = ["make", *make_args, f"PYTHON={sys.executable}", f"OTBN_PYTHON={sys.executable}"]
+        # PYTHON, OTBN_PYTHON and FW_SIGN_PYTHON default to a `uv run` on the repo-root
+        # project, which re-resolves .venv; this process already has the vp group they need.
+        argv = [
+            "make",
+            *make_args,
+            f"PYTHON={sys.executable}",
+            f"OTBN_PYTHON={sys.executable}",
+            f"FW_SIGN_PYTHON={sys.executable}",
+        ]
     return subprocess.run(argv, cwd=str(cwd), env=env, capture_output=True, text=True)
 
 

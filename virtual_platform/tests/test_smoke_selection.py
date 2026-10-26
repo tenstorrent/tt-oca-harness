@@ -18,6 +18,7 @@ pytestmark = pytest.mark.hostonly
 SMOKE = {
     "tests/bootcode/test_bootcode_oca.py::test_unsigned_boots_to_bl1",
     "tests/bootcode/test_sep_rom_testlist.py::test_sep_rom_testlist[rom_ot_encrypted_boot_golden]",
+    "tests/fw/test_fw_sep.py::test_fw_sep_test_passes[abr_mldsa87_verify_test]",
 }
 
 

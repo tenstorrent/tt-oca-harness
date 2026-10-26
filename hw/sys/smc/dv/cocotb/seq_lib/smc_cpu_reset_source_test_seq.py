@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SW RESET_CTRL.core0. No Force. Does not claim drain withhold or isolate_req_o."""
+"""SW RESET_CTRL.core0 reaches the cluster's core 0 reset without a drain.
+
+A core reset requests no drain, so `RESET_TIMEOUT.reset_applied` stays 0 while
+core 0 is held. Does not claim isolate_req_o.
+"""
 
 from __future__ import annotations
 
@@ -15,10 +19,11 @@ RESET_TIMEOUT = smc_addr("SMC_TOP_SMC_CPU_CTRL_RESET_TIMEOUT_BASE_ADDR")
 CORE0_N = cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__CORE0_RESET_N_N0_SCAN_bm")
 APPLIED = cpu_ctrl_u32("CPU_CTRL__RESET_TIMEOUT__RESET_APPLIED_bm")
 _CSR_BOUND = 64
+_PIN_BOUND = 256
 
 
 class smc_cpu_reset_source_test_seq(SmcCsrSeq):
-    """SW core0 level reset sets/clears RESET_TIMEOUT.reset_applied."""
+    """SW core0 level reset asserts and releases core 0's cluster reset; reset_applied stays 0."""
 
     def __init__(self, name: str = "smc_cpu_reset_source_test_seq") -> None:
         super().__init__(name)
@@ -32,6 +37,25 @@ class smc_cpu_reset_source_test_seq(SmcCsrSeq):
         self.tmo_asserted = None
         self.tmo_hold = None
         self.tmo_released = None
+        self.pin_idle = None
+        self.pin_asserted = None
+        self.pin_hold = None
+        self.pin_released = None
+
+    @staticmethod
+    def _core0_reset_n() -> int:
+        value = cocotb.top.tb_cpu_core_resets_n.value
+        assert value.is_resolvable, f"tb_cpu_core_resets_n is not resolvable: {value}"
+        return int(value) & 1
+
+    async def _await_core0_reset_n(self, want: int, label: str) -> int:
+        for _ in range(_PIN_BOUND):
+            if self._core0_reset_n() == want:
+                return want
+            await RisingEdge(cocotb.top.clk_smc_i)
+        raise AssertionError(
+            f"{label}: core 0's cluster reset did not read {want} within {_PIN_BOUND} cycles"
+        )
 
     async def _await_applied(self, want: int, label: str) -> int:
         last = None
@@ -53,44 +77,46 @@ class smc_cpu_reset_source_test_seq(SmcCsrSeq):
         tmo0 = await self._await_applied(0, "IDLE")
         self.ctrl_idle = ctrl0
         self.tmo_idle = tmo0
+        self.pin_idle = await self._await_core0_reset_n(1, "IDLE")
         cocotb.log.info(
-            "CHK-CPU-RST-IDLE: RESET_CTRL=0x%x RESET_TIMEOUT=0x%x applied=0",
+            "CHK-CPU-RST-IDLE: RESET_CTRL=0x%x RESET_TIMEOUT=0x%x applied=0 core0 reset_n=1",
             ctrl0,
             tmo0,
         )
 
         await self.csr_write("RESET_CTRL_CORE0_LO", RESET_CTRL, ctrl0 & ~CORE0_N)
-        tmo1 = await self._await_applied(1, "ASSERT")
+        self.pin_asserted = await self._await_core0_reset_n(0, "ASSERT")
+        tmo1 = await self.csr_read("RESET_TIMEOUT_ASSERTED", RESET_TIMEOUT, length=8)
         ctrl1 = await self.csr_read("RESET_CTRL_ASSERTED", RESET_CTRL)
         assert (ctrl1 & CORE0_N) == 0, f"core0_reset_n did not stick: RESET_CTRL=0x{ctrl1:x}"
         self.ctrl_asserted = ctrl1
         self.tmo_asserted = tmo1
         cocotb.log.info(
-            "CHK-CPU-RST-SW: core0_reset_n=0 RESET_TIMEOUT=0x%x applied=1",
+            "CHK-CPU-RST-SW: core0_reset_n=0 asserted core 0's cluster reset with "
+            "RESET_TIMEOUT=0x%x applied=%d",
             tmo1,
+            1 if tmo1 & APPLIED else 0,
         )
 
-        # Hold check ([EXACT-EXPECTATION]): re-sample RESET_TIMEOUT immediately
-        # before the release write, so the subsequent applied->0 is attributable
-        # to the release and not to a self-clearing pulse that had already
-        # dropped during the RESET_CTRL read above.
+        # Re-sample both immediately before the release write, so the later
+        # reset_n=1 is attributable to the release and not to a reset that had
+        # already dropped on its own.
         hold = await self.csr_read("RESET_TIMEOUT_HOLD", RESET_TIMEOUT, length=8)
-        assert (hold & APPLIED) != 0, (
-            f"RESET_TIMEOUT.reset_applied dropped to 0 before the release write "
-            f"was issued (RESET_TIMEOUT=0x{hold:x}): the later applied=0 sample "
-            f"cannot be attributed to releasing core0_reset_n"
-        )
+        self.pin_hold = self._core0_reset_n()
         self.tmo_hold = hold
 
         await self.csr_write("RESET_CTRL_CORE0_HI", RESET_CTRL, ctrl1 | CORE0_N)
-        tmo2 = await self._await_applied(0, "RELEASE")
+        self.pin_released = await self._await_core0_reset_n(1, "RELEASE")
+        tmo2 = await self.csr_read("RESET_TIMEOUT_RELEASED", RESET_TIMEOUT, length=8)
         ctrl2 = await self.csr_read("RESET_CTRL_RELEASED", RESET_CTRL)
         assert (ctrl2 & CORE0_N) != 0, f"core0_reset_n did not release: RESET_CTRL=0x{ctrl2:x}"
         self.ctrl_released = ctrl2
         self.tmo_released = tmo2
         cocotb.log.info(
-            "CHK-CPU-RST-REL: core0_reset_n=1 RESET_TIMEOUT_HOLD=0x%x "
-            "(applied still 1 at the release write) RESET_TIMEOUT=0x%x applied=0",
+            "CHK-CPU-RST-REL: core0_reset_n=1 deasserted core 0's cluster reset "
+            "(core0 reset_n=%d, RESET_TIMEOUT_HOLD=0x%x at the release write) "
+            "RESET_TIMEOUT=0x%x",
+            self.pin_hold,
             hold,
             tmo2,
         )
@@ -109,6 +135,7 @@ class smc_cpu_reset_source_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-CPU-RST-BASIC: RESET_CTRL idle=0x%x asserted=0x%x released=0x%x "
             "| RESET_TIMEOUT idle=0x%x asserted=0x%x hold=0x%x released=0x%x "
+            "| core0 cluster reset_n idle=%d asserted=%d hold=%d released=%d "
             "| core0_reset_n mask=0x%x applied mask=0x%x "
             "| %d access(es), scoreboard checked %d",
             self.ctrl_idle,
@@ -118,6 +145,10 @@ class smc_cpu_reset_source_test_seq(SmcCsrSeq):
             self.tmo_asserted,
             self.tmo_hold,
             self.tmo_released,
+            self.pin_idle,
+            self.pin_asserted,
+            self.pin_hold,
+            self.pin_released,
             CORE0_N,
             APPLIED,
             self.accesses,

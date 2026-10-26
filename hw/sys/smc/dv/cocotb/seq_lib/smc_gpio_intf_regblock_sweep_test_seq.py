@@ -20,7 +20,9 @@ of its cycle is what keeps the sequence able to reach the register again:
 * the enables are then set in one lower-half write that also drops
   `awprot_requirement` to 0, so writes with AxPROT=0 -- every write this
   sequence issues -- stay admissible while the read half is armed at
-  AxPROT=7. The armed state carries its own allow and deny legs;
+  AxPROT=7. The armed state carries its own allow and deny read legs, then
+  a write with AWPROT=7 that clears `write_filter_enable` and must be
+  refused with DECERR, leaving the armed word in place;
 * `arprot_requirement` is cleared next, which re-admits AxPROT=0 reads, and
   only then does `awprot_requirement` take the all-ones value, in the same
   write that clears both enables;
@@ -34,6 +36,7 @@ not written here; `DATA_CTRL` itself is the subject of
 from __future__ import annotations
 
 import cocotb
+from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import gpio_intf_u32
@@ -67,12 +70,15 @@ _PROT_ZERO = 0
 _AXI_RESP_DECERR = 3
 
 _ACCESSES_PER_DATA_CTRL_ENABLE = 12
-_ACCESSES_PER_ACCESS_FILTER = 12
+_ACCESSES_PER_ACCESS_FILTER = 14
 # Contract compares per instance: the six reads of the DATA_CTRL_ENABLE cycle
-# and the six admitted reads of the ACCESS_FILTER cycle. Every one of them
+# and the seven admitted reads of the ACCESS_FILTER cycle. Every one of them
 # carries a fully predicted word, so the scoreboard books one exact compare
 # each, independently of this sequence's own counters.
-_PREDICTED_READS_PER_INSTANCE = 12
+_PREDICTED_READS_PER_INSTANCE = 13
+
+# Per-instance terms of the CHK-NONVAC fence, after DATA-CTRL-ENABLE-CYCLE.
+_INSTANCE_FENCE_TERMS = ("ARMED", "READ-LEGS", "WRITE-DENY", "RESTORE")
 
 
 class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
@@ -81,6 +87,15 @@ class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
     def __init__(self, name: str = "smc_gpio_intf_regblock_sweep_test_seq") -> None:
         super().__init__(name)
         self.denials = 0
+        self.write_denials = 0
+        self.write_deny_readbacks = 0
+        self.write_deny_gaps: list[int] = []
+        self.fence: list[tuple[str, int, int, int]] = []
+
+    def _mark(self, term: str, instance: int, count: int) -> None:
+        """Record one fence term with its measured access tally and sim time."""
+        assert count > 0, f"fence term {term}({instance}) recorded with a zero count"
+        self.fence.append((term, instance, count, int(get_sim_time("ps"))))
 
     async def _read_denied(self, inst: RegInstance) -> int:
         """An AxPROT=0 read of an armed read filter DECERRs with the error word."""
@@ -107,6 +122,29 @@ class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         self.denials += 1
         return item.rdata
 
+    async def _write_denied(self, inst: RegInstance, model: int) -> None:
+        """An AWPROT=7 write against the armed AWPROT=0 requirement is refused."""
+        attempted = model & ~_WRITE_FILTER_ENABLE
+        resp = await self.csr_write_expect_error(
+            f"{inst.label}:write_deny",
+            inst.addr,
+            attempted,
+            length=inst.width_bytes,
+            prot=_PROT_ALL_ONES,
+            resp=_AXI_RESP_DECERR,
+        )
+        assert resp == _AXI_RESP_DECERR, (
+            f"{inst.label} @ 0x{inst.addr:08x}: the AWPROT={_PROT_ALL_ONES} write of "
+            f"0x{attempted:08x} must be refused with DECERR, got resp={resp}"
+        )
+        self.write_denials += 1
+        value = await self.read_check(inst, "write_deny", model, prot=_PROT_ALL_ONES)
+        assert value & _WRITE_FILTER_ENABLE, (
+            f"{inst.label} @ 0x{inst.addr:08x}: write_filter_enable reads 0 after the refused "
+            f"AWPROT={_PROT_ALL_ONES} write that tried to clear it (0x{value:08x})"
+        )
+        self.write_deny_readbacks += 1
+
     async def _access_filter_cycle(self, inst: RegInstance) -> None:
         reg = inst.reg
         half = inst.width_bytes // 2
@@ -120,10 +158,20 @@ class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         await self.read_check(inst, "arprot_ones", model)
 
         armed = _WRITE_FILTER_ENABLE | _READ_FILTER_ENABLE
+        start = self.accesses
         await self.csr_write(f"{inst.label}:armed", inst.addr, armed, 2)
         model = (model & ~0xFFFF) | armed
+        self._mark("ARMED", inst.index, self.accesses - start)
+
+        start = self.accesses
         await self.read_check(inst, "armed", model, prot=_PROT_ALL_ONES)
         await self._read_denied(inst)
+        self._mark("READ-LEGS", inst.index, self.accesses - start)
+
+        self.write_deny_gaps.append(self.accesses - start)
+        start = self.accesses
+        await self._write_denied(inst, model)
+        self._mark("WRITE-DENY", inst.index, self.accesses - start)
 
         await self.csr_write(f"{inst.label}:arprot_zeros", inst.addr + half, 0, 2)
         model &= ~_ARPROT_REQUIREMENT
@@ -133,9 +181,30 @@ class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         model = (model & ~0xFFFF) | _AWPROT_REQUIREMENT
         await self.read_check(inst, "awprot_ones", model)
 
+        start = self.accesses
         await self.csr_write(f"{inst.label}:restore", inst.addr, reg.reset_word, inst.width_bytes)
         await self.read_check(inst, "restore", reg.reset_word)
+        self._mark("RESTORE", inst.index, self.accesses - start)
         self.registers_swept += 1
+
+    def _nonvac(self, instances: tuple[RegInstance, ...]) -> str:
+        """Hold the fence to its order for every instance and render it."""
+        head = self.fence[0]
+        assert head[0] == "DATA-CTRL-ENABLE-CYCLE", f"fence opens with {head}"
+        per_instance = self.fence[1:]
+        expected = [(term, inst.index) for inst in instances for term in _INSTANCE_FENCE_TERMS]
+        got = [(term, index) for term, index, _, _ in per_instance]
+        assert got == expected, f"fence terms {got}, expected {expected}"
+        stamps = [ps for _, _, _, ps in self.fence]
+        assert all(b > a for a, b in zip(stamps, stamps[1:])), f"fence stamps not rising {stamps}"
+        assert all(n > 0 for _, _, n, _ in self.fence), f"zero-count fence term {self.fence}"
+        rows = []
+        for inst in instances:
+            terms = [f for f in per_instance if f[1] == inst.index]
+            rows.append(
+                f"[{inst.index}] " + " < ".join(f"{t}(n={n}@{ps}ps)" for t, _, n, ps in terms)
+            )
+        return f"{head[0]}(n={head[2]}@{head[3]}ps); " + "; ".join(rows)
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -154,8 +223,10 @@ class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
 
         sb_before = self.env.scoreboard.sys_axi_value_checks_seen
 
+        start = self.accesses
         for inst in enables:
             await self.granule_cycle(inst)
+        self._mark("DATA-CTRL-ENABLE-CYCLE", -1, self.accesses - start)
         cocotb.log.info(
             "CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP: %d GPIO_INTF DATA_CTRL_ENABLE instances "
             "each read their RDL reset, took the all-ones and all-zeros pattern of their "
@@ -192,6 +263,24 @@ class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
             self.ERR_SLAVE_SIGNATURE,
         )
 
+        assert self.write_denials == instances and self.write_deny_readbacks == instances, (
+            f"the armed write-deny leg of {instances} ACCESS_FILTER instances produced "
+            f"{self.write_denials} DECERR writes and {self.write_deny_readbacks} readbacks"
+        )
+        cocotb.log.info(
+            "CHK-GPIO-INTF-ACCESS-FILTER-WRITE-DENY: %d/%d AWPROT=%d writes DECERR, %d/%d "
+            "readbacks == armed word (write_filter_enable still 1, read with ARPROT=%d); "
+            "SF-016 observed: %s accesses between the armed write and the AWPROT=%d write",
+            self.write_denials,
+            instances,
+            _PROT_ALL_ONES,
+            self.write_deny_readbacks,
+            instances,
+            _PROT_ALL_ONES,
+            sorted(set(self.write_deny_gaps)),
+            _PROT_ALL_ONES,
+        )
+
         expected = instances * (_ACCESSES_PER_DATA_CTRL_ENABLE + _ACCESSES_PER_ACCESS_FILTER)
         self.assert_all_reachable(expected, "GPIO_INTF_REGBLOCK_SWEEP")
         assert self.registers_swept == 2 * instances, (
@@ -202,4 +291,10 @@ class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
             sb_before,
             instances * _PREDICTED_READS_PER_INSTANCE,
             "GPIO_INTF_REGBLOCK_SWEEP",
+        )
+        cocotb.log.info(
+            "CHK-NONVAC: DATA-CTRL-ENABLE-CYCLE < %s, for every one of %d instances; %s",
+            "(i) < ".join(_INSTANCE_FENCE_TERMS) + "(i)",
+            instances,
+            self._nonvac(filters),
         )

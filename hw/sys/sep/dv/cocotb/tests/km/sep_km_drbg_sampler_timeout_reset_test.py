@@ -28,7 +28,9 @@ in its own window, since an unknown read as 0 is the passing value.
                          load set AXI_SLVERR and DRBG_ERR; STATUS has
                          TIMEOUT_ERR=1, STREAM_ERR=0, COUNT_BAD=1, COUNT_GOOD=0.
   CHK-SMP-NO-TIMEOUT     with CFG = 0 the read holds TREADY with no handshake
-                         for four reset timeout budgets and does not complete.
+                         for the full CFG.TIMEOUT span (2^16 cycles) plus four
+                         reset timeout budgets and does not complete, so a
+                         counter that loads 0 - 1 and wraps fails.
   CHK-SMP-WARM-CANCEL    the sequenced KM reset drops TREADY while the read is
                          pending, and TREADY stays low while the reset is held.
   CHK-SMP-WARM-RESET     after the reset the image runs its warm path
@@ -48,6 +50,11 @@ The control leg makes the timeout leg discriminating: same image, same budget,
 same DATA load, differing only in whether the chain delivers. Expected values
 come from the RDL resets in the generated headers and from the AXI-Stream word
 the DUT handed the KM.
+
+FCOV owner window (``env/sep_fcov_gate.py``): open from the KM release of the
+timeout leg to CHK-SMP-WARM-RESET, so ``cp_df_exact_budget`` samples the
+timed-out read and ``cp_df_warm_cancel`` the reset release of the pending read.
+A FAIL closes it; the control leg runs with it closed.
 """
 
 from __future__ import annotations
@@ -55,6 +62,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_drbg_sampler_seq import (
     CFG_RESET,
@@ -98,12 +106,16 @@ from seq_lib.sep_km_drbg_sampler_seq import (
 )
 from seq_lib.sep_sw_reset_seq import SepSwReset
 
-# Four reset timeout budgets: a read the disabled timeout did not hold would
-# have ended long before this.
-_HOLD_CYCLES = 4 * field("CFG_REG", "TIMEOUT", CFG_RESET)
+# CFG.TIMEOUT = 0 disables the timeout. A counter that loads 0 - 1 instead
+# wraps to the field maximum and ends the read after the full span of the field
+# (2^16 cycles), so the hold covers that span plus four reset timeout budgets.
+_TIMEOUT_SPAN = field("CFG_REG", "TIMEOUT", 0xFFFF_FFFF) + 1
+_HOLD_CYCLES = _TIMEOUT_SPAN + 4 * field("CFG_REG", "TIMEOUT", CFG_RESET)
 _RESET_DROP_CYCLES = 500
 _RESET_HOLD_CYCLES = 50
 _MARKER_CYCLES = 40_000
+
+TEST = "sep_km_drbg_sampler_timeout_reset_test"
 
 
 @pyuvm.test()
@@ -118,6 +130,12 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         "CHK-SMP-CONTROL",
         "CHK-ALERTS-ZERO",
     )
+
+    def _gate(self, on: bool) -> None:
+        if on:
+            open_graded_window(TEST, self.logger)
+        else:
+            close_graded_window(self.logger)
 
     async def _await_marker(self, marker: int, what: str) -> None:
         dut = cocotb.top
@@ -141,12 +159,36 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         return {i: (value >> (WORD_BITS * i)) & WORD_MASK for i in range(first, last + 1)}
 
     async def run_scenario(self) -> None:
-        dut = cocotb.top
         await self.bring_up_no_cpu()
         if getattr(self, "swrst", None) is None:
             self.swrst = SepSwReset(self)
         mon = SepKmTreadyMonitor(self)
         mon.start()
+        self._gate(True)
+        try:
+            w = await self._graded_legs(mon)
+        finally:
+            self._gate(False)
+
+        # --- control leg: the chain delivers -------------------------------
+        await self.bring_up_entropy(strict=True, score_km=True)
+        self.start_fifo_drain()
+        assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
+        await self._await_marker(MK_DONE, "control-leg dump")
+        w.update(self._dump(W_P_CFG, W_P_STATUS))
+        mon.stop()
+        self._check_control(w, mon)
+
+        await self.stop_fifo_drain()
+        await self.check_entropy_alerts_zero()
+        assert self.drbg_sb.report()
+
+    async def _graded_legs(self, mon: SepKmTreadyMonitor) -> dict[int, int]:
+        """Timeout leg, disabled-timeout hold, KM reset of the pending read, warm path.
+
+        Returns the KM SRAM words dumped so far.
+        """
+        dut = cocotb.top
         await self.swrst.release("km")
 
         # --- timeout leg + the pending read --------------------------------
@@ -154,12 +196,13 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         w = self._dump(W_T_BOOT, W_R_STATUS)
         self._check_timeout(w, mon)
 
-        # The read stays pending: wait until TREADY has been high for the hold
-        # window in the second run.
-        for _ in range(_HOLD_CYCLES + _MARKER_CYCLES):
-            await RisingEdge(dut.clk_i)
-            if len(mon.runs) >= 2 and mon.high and mon.runs[1][1] >= _HOLD_CYCLES:
+        # The read stays pending: wait for the TREADY run of the reset-leg read
+        # to start, then hold for the window.
+        for _ in range(_MARKER_CYCLES):
+            if len(mon.runs) >= 2 and mon.high:
                 break
+            await RisingEdge(dut.clk_i)
+        await ClockCycles(dut.clk_i, _HOLD_CYCLES)
         self._check_no_timeout(w, mon)
 
         # --- sequenced KM reset while the read is pending ------------------
@@ -200,19 +243,7 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         await self._await_marker(MK_WARM, "warm-path dump")
         w.update(self._dump(W_W_BOOT, W_W_IRQ))
         self._check_warm_reset(w)
-
-        # --- control leg: the chain delivers -------------------------------
-        await self.bring_up_entropy(strict=True, score_km=True)
-        self.start_fifo_drain()
-        assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
-        await self._await_marker(MK_DONE, "control-leg dump")
-        w.update(self._dump(W_P_CFG, W_P_STATUS))
-        mon.stop()
-        self._check_control(w, mon)
-
-        await self.stop_fifo_drain()
-        await self.check_entropy_alerts_zero()
-        assert self.drbg_sb.report()
+        return w
 
     def _check_timeout(self, w: dict[int, int], mon: SepKmTreadyMonitor) -> None:
         want_cfg = cfg_value(TIMEOUT=TIMEOUT_CYCLES, PREFETCH=0)
@@ -307,11 +338,13 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
             "must stay in ST_REQUEST: " + "; ".join(faults)
         )
         self.logger.info(
-            "CHK-SMP-NO-TIMEOUT PASS: CFG=0x%08x; TREADY held %d cycles (>= %d) with "
-            "0 handshakes, X/Z cycles=%d; KM SRAM word0=0x%08x (read pending)",
+            "CHK-SMP-NO-TIMEOUT PASS: CFG=0x%08x; TREADY held %d cycles (>= %d, the "
+            "CFG.TIMEOUT span %d plus four reset budgets) with 0 handshakes, X/Z cycles=%d; "
+            "KM SRAM word0=0x%08x (read pending)",
             w[W_R_CFG],
             mon.runs[1][1],
             _HOLD_CYCLES,
+            _TIMEOUT_SPAN,
             xz,
             marker,
         )

@@ -107,12 +107,11 @@ field that stays uncovered is a stimulus gap for a leaf on this bench.
 ## Block exclusions
 
 `smu_toggle_exclusions.el` (`-elfile`, named by the policy's `[[native_files]]`)
-leaves out toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar`, the
-condition rows of the lifecycle integrity error, and the line block,
-condition row and branch arm of the crossbar's zero-size aperture rule, each
-for a stated fact. The file is written from urg's `-dump full_exclusions`
-templates of the merged database and the run's raw report, so every checksum
-and signature comes from urg:
+leaves out toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar` and the
+condition rows of the lifecycle integrity error, each for a stated fact. The
+file is written from urg's `-dump full_exclusions` templates of the merged
+database and the run's raw report, so every checksum and signature comes from
+urg:
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+cond+branch -report <dir>
 

@@ -14,15 +14,17 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_avsbus_pad_enable_test(smc_base_test):
-    """Toggle AVS_GPIO_ENABLE and watch the pad enables, then run one frame on the pads."""
+    """Toggle AVS_GPIO_ENABLE and watch the pad enables, run one frame on the pads, then
+    select LSIO from software on the AVS pads with AVS_GPIO_ENABLE cleared."""
 
     required_evidence = (
+        "CHK-AVS-LSIO-SW-SELECT",
         "CHK-AVS-PAD-ENABLE-FOLLOWS",
         "CHK-AVS-PAD-PROTOCOL",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 4
+    min_evidence = 5
 
     auto_protocol_vip = False
 

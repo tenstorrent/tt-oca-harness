@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# DV-TESTCASE-CONTRACT: SMC_COV_B4_014 ANCHOR: smc_mailbox_irq_test
+# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: a6493973ba532cb271a89c12f02a49734e1ec711636622983e9c559f6292b8f0
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 146 `smc_mailbox_irq_test` ENV: cocotb
 """SMC OSS PyUVM mailbox IRQ-control test over real SYS AXI."""
 
 from __future__ import annotations
 
 import pyuvm
+from cocotb.utils import get_sim_time
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from seq_lib.smc_mailbox_irq_test_seq import smc_mailbox_irq_test_seq
+from seq_lib.smc_mailbox_irq_test_seq import smc_mailbox_ext_irq_seq, smc_mailbox_irq_test_seq
 from seq_lib.smc_mailbox_vip_utils import check_mailbox_irq_source
 from smc_base_test import smc_base_test
 
@@ -32,14 +36,18 @@ class smc_mailbox_irq_test(smc_base_test):
     """Run mailbox status and IRQ-control CSR checks."""
 
     required_evidence = (
+        "CHK-MAILBOX-EXT-RIRQ",
+        "CHK-MAILBOX-EXT-WIRQ",
         "CHK-MAILBOX-IRQ-ASSERT",
         "CHK-MAILBOX-IRQ-CLEAR",
         "CHK-MAILBOX-IRQ-IDLE",
         "CHK-MAILBOX-IRQ-SOURCE",
         "CHK-MAILBOX-IRQT-CLAMP",
         "CHK-MAILBOX-IRQT-IN-RANGE",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 6
+    min_evidence = 10
 
     auto_protocol_vip = False
 
@@ -63,3 +71,6 @@ class smc_mailbox_irq_test(smc_base_test):
                 "(peripheral_interrupts[7:0]); tb_sync_irq not sampled here"
             ),
         )
+        ext = smc_mailbox_ext_irq_seq("mailbox_ext_irq_seq")
+        ext.existing = ("EXISTING-LEGS", seq.accesses, int(get_sim_time("ns")))
+        await self.start_seq(ext, self.env.sys_axi_agent.sequencer)

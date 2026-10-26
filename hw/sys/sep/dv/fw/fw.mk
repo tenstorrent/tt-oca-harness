@@ -74,7 +74,20 @@ ocah_otbn_app_c   = $(OTBN_BUILD_ROOT)/$(1)/$(1)_otbn.c
 ocah_otbn_app_h   = $(OTBN_BUILD_ROOT)/$(1)/$(1)_otbn.h
 ocah_otbn_app_src = $(addprefix $(FW_DIR)/tests/$(OTBN_APP_DIR_$(1))/otbn_src/,$(OTBN_APP_SRCS_$(1)))
 
+# Adams Bridge ML-DSA-87 verify test. It drives the boot ROM's ABR driver, and its
+# vectors are the committed mldsa87_vectors.h, signed with the test-only key in the
+# ROM tree. The build checks only the header's SHA-256 against the pin below, with
+# the standard library of the sandbox's bare python3, so a header that differs from
+# the one gen_mldsa87_vectors.py --check accepted fails the build. After a
+# regeneration, run --check and copy the SHA-256 it prints into the pin.
+ABR_MLDSA87_TEST    := abr_mldsa87_verify_test
+ABR_MLDSA87_VECTORS := $(FW_DIR)/tests/$(ABR_MLDSA87_TEST)/mldsa87_vectors.h
+ABR_MLDSA87_CHECKED := $(FW_BUILD_DIR)/tests/$(ABR_MLDSA87_TEST)/mldsa87_vectors.checked
+ABR_MLDSA87_VECTORS_SHA256 := feed5c8645e5700e79a5ccc4959390b1c316a4ab2262dadc1763ba44fb6ad2a3
+
 # Must be set before compile.mk, which folds the extras into each test's sources.
+FW_TEST_EXTRA_SRCS_$(ABR_MLDSA87_TEST) := $(SEP_BOOTROM_DIR)/src/abr_driver.c
+FW_TEST_IMAGE_CFLAGS_$(ABR_MLDSA87_TEST) += -DABR_DRV_EXPOSE_STEPS
 $(foreach t,$(OTBN_TESTS), \
   $(eval FW_TEST_EXTRA_SRCS_$(t) := $(foreach a,$(OTBN_TEST_APPS_$(t)),$(call ocah_otbn_app_c,$(a)))))
 FW_TEST_INCLUDES += $(foreach a,$(OTBN_APPS),-I$(OTBN_BUILD_ROOT)/$(a))
@@ -186,6 +199,14 @@ $(FW_TEST_BUILD_DIR)/$(1)/$(1).o: \
     $(foreach a,$(OTBN_TEST_APPS_$(1)),$(call ocah_otbn_app_h,$(a)))
 endef
 $(foreach t,$(OTBN_TESTS),$(eval $(call ocah_otbn_test_header_dep,$(t))))
+
+$(ABR_MLDSA87_CHECKED): $(ABR_MLDSA87_VECTORS)
+	@mkdir -p "$(@D)"
+	python3 -c 'import hashlib, sys; h = hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest(); sys.exit(0 if h == sys.argv[2] else sys.argv[1] + ": sha256 " + h + " is not the pinned " + sys.argv[2])' "$<" "$(ABR_MLDSA87_VECTORS_SHA256)"
+	@touch "$@"
+
+# The object compiles only after the committed header passes the hash check.
+$(FW_TEST_BUILD_DIR)/$(ABR_MLDSA87_TEST)/$(ABR_MLDSA87_TEST).o: $(ABR_MLDSA87_CHECKED)
 
 # The boot ROM links the RSA-3072 app too (secure-boot signature verification),
 # and it builds from its own Makefile rather than through this engine, so give

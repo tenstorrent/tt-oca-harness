@@ -42,7 +42,8 @@ typedef union {
 } zeroer_ctrl__SIZE_t;
 
 // reg - zeroer_ctrl::CTRL_STATUS
-// Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.
+// Any write to this register triggers the start of the zeroer, irrespective of WSTRB,
+// including a write with no byte lanes enabled. The start is ignored while SIZE is 0.
 // If enabled, an interrupt will be outputted once zeroer completes.
 #define ZEROER_CTRL__CTRL_STATUS__INT_EN_bm 0x1
 #define ZEROER_CTRL__CTRL_STATUS__INT_EN_bp 0

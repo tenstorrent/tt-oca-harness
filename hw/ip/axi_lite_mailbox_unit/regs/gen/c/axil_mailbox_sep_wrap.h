@@ -14,20 +14,28 @@ extern "C" {
 #include <assert.h>
 
 // reg - axil_mailbox::WRITE_DATA
-// Write data to mailbox fifo
+// Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+// including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+// pushed as 0.
 #define AXIL_MAILBOX__WRITE_DATA__WRITE_DATA_bm 0xffffffffffffffff
 #define AXIL_MAILBOX__WRITE_DATA__WRITE_DATA_bp 0
 #define AXIL_MAILBOX__WRITE_DATA__WRITE_DATA_bw 64
 #define AXIL_MAILBOX__WRITE_DATA__WRITE_DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Write data to mailbox fifo
+        // Write data to mailbox fifo. Any write pushes one entry, irrespective of WSTRB,
+        // including a write with no byte lanes enabled; byte lanes whose strobe is 0 are
+        // pushed as 0.
         uint64_t write_data :64;
     } f;
     uint64_t w;
 } axil_mailbox__WRITE_DATA_t;
 
 // reg - axil_mailbox::READ_DATA
+// A read of any size or alignment within this register pops one whole 64-bit entry
+// from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
+// read of either half therefore discards the other half of the entry; read this
+// register with 64-bit accesses.
 // Read data from mailbox fifo
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bm 0xffffffffffffffff
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bp 0
@@ -77,6 +85,10 @@ typedef union {
 } axil_mailbox__STATUS_t;
 
 // reg - axil_mailbox::ERROR
+// A read of any size or alignment within this register clears every flag in it. The
+// flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
+// returns 0 and still clears them; read this register with 64-bit accesses or at its
+// lower half.
 // Attempted read from an empty mailbox
 #define AXIL_MAILBOX__ERROR__READ_ERROR_bm 0x1
 #define AXIL_MAILBOX__ERROR__READ_ERROR_bp 0

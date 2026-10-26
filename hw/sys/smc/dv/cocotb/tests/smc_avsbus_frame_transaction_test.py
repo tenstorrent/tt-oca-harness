@@ -14,17 +14,25 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_avsbus_frame_transaction_test(smc_base_test):
-    """Queue three AVSBus commands and collect the responses over the protocol pins."""
+    """Queue AVSBus commands, check their subframes and answer them with shaped replies."""
 
     required_evidence = (
         "CHK-AVS-CMD-FIFO-DRAIN",
         "CHK-AVS-FRAME-FSM-MAIN-PATH",
+        "CHK-AVS-GRP0-SUBFRAME",
+        "CHK-AVS-GRP1-SUBFRAME",
         "CHK-AVS-MASTER-SUBFRAME",
         "CHK-AVS-READBACK-FIFO-FILL",
         "CHK-AVS-READBACK-POP",
+        "CHK-AVS-SLAVE-BAD-CRC",
+        "CHK-AVS-SLAVE-INT-OBS",
+        "CHK-AVS-SLAVE-STATUS-BIT1",
+        "CHK-AVS-SUBFRAME-CRC-OBS",
         "CHK-AVS-VALID-ACK-NO-RETRY",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 6
+    min_evidence = 14
 
     auto_protocol_vip = False
 

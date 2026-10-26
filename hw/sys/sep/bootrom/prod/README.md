@@ -65,6 +65,7 @@ two is a build error.
 ```bash
 make                      # debug
 make release              # or: make BUILD_TYPE=release
+make host-test            # driver unit tests on the host, no RISC-V toolchain
 ```
 
 The ROM's anchors are always SHA-256 over the RSA-3072 **public** modulus. The

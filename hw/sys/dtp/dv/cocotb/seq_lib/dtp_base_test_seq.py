@@ -129,7 +129,7 @@ class dtp_base_test_seq(OcahSequence):
         return await self._send(op=DtpJtagOp.RESET_FSM)
 
     async def tms_step(self, tms: int, *, tdi: int = 0) -> DtpJtagItem:
-        """Drive one raw TMS cycle and return the observed DUT TAP state."""
+        """Drive one raw TMS cycle; the item returns the DUT TAP state and the cycle's TDO."""
         return await self._send(op=DtpJtagOp.TMS_STEP, tms=tms, tdi=tdi)
 
     async def load_ir(
@@ -192,6 +192,25 @@ class dtp_base_test_seq(OcahSequence):
         if back_to_rti:
             self.current_tap_state = OcahJtagState.RUN_TEST_IDLE
         return item
+
+    async def raw_shift_dr(self, value: int, width: int, *, capture_tdi: int) -> int:
+        """Shift raw DR data from Run-Test/Idle one TMS step at a time and return the TDO bits.
+
+        TDI holds ``capture_tdi`` from the step into Select-DR-Scan through
+        the step into Shift-DR, so a register selected for the scan presents
+        its captured value as the first TDO bit, while a path that returns
+        TDI through no register presents ``capture_tdi``.
+        """
+        for tms in (1, 0, 0):
+            await self.tms_step(tms, tdi=capture_tdi)
+        tdo = 0
+        for bit_idx in range(width):
+            item = await self.tms_step(int(bit_idx == width - 1), tdi=(value >> bit_idx) & 1)
+            tdo |= item.tdo << bit_idx
+        for tms in (1, 0):
+            await self.tms_step(tms)
+        self.current_tap_state = OcahJtagState.RUN_TEST_IDLE
+        return tdo
 
     async def sample_observables(self) -> DtpJtagItem:
         """Sample exposed DUT observables through the JTAG driver."""

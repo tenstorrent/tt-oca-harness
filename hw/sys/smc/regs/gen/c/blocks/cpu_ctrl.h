@@ -71,7 +71,8 @@ typedef union {
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bp 7
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_reset 0x0
-// Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.
+// Cluster Uncore Reset, active low. Resets the uncore portion of the chipyard cluster and holds every core in reset
+// with it. The reset waits for the cluster boundary to drain, bounded by RESET_TIMEOUT.
 // WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.
 #define CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_bm 0x100
 #define CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_bp 8
@@ -104,7 +105,8 @@ typedef union {
         // Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
         // A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
         uint64_t core3_reset_pulse_start_n0_scan :1;
-        // Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.
+        // Cluster Uncore Reset, active low. Resets the uncore portion of the chipyard cluster and holds every core in reset
+        // with it. The reset waits for the cluster boundary to drain, bounded by RESET_TIMEOUT.
         // WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.
         uint64_t uncore_reset_n_n0_scan :1;
         uint64_t :15;
@@ -145,25 +147,25 @@ typedef union {
 } cpu_ctrl__CORE_RESET_PULSE_COUNT_t;
 
 // reg - cpu_ctrl::RESET_TIMEOUT
-// Cycles (clk_smc) a software reset may stay pending (withheld, waiting
-// for drain) before timeout. 0 = disabled, wait indefinitely.
+// Cycles (clk_smc) a software uncore reset may stay pending (withheld, waiting
+// for drain) before timeout. 0 = disabled, wait indefinitely. Core resets do not wait.
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bm 0xffff
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bp 0
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bw 16
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_reset 0x0
-// Timeout mode: 0 = report the timeout and keep withholding the reset until
-// the drain completes, then apply it; 1 = force the reset on timeout.
+// Timeout mode: 0 = report the timeout and keep withholding the uncore reset until
+// the drain completes, then apply it; 1 = force the uncore reset on timeout.
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bm 0x10000
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bp 16
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bw 1
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_reset 0x0
-// Live status: high while a requested software reset is applied at the cluster,
-// either after drain completes or after a force-mode timeout.
+// Live status: high while a requested software uncore reset is applied at the cluster,
+// either after drain completes or after a force-mode timeout. Core resets are not reported.
 #define CPU_CTRL__RESET_TIMEOUT__RESET_APPLIED_bm 0x100000000
 #define CPU_CTRL__RESET_TIMEOUT__RESET_APPLIED_bp 32
 #define CPU_CTRL__RESET_TIMEOUT__RESET_APPLIED_bw 1
 #define CPU_CTRL__RESET_TIMEOUT__RESET_APPLIED_reset 0x0
-// Status for the active software reset request: high after the request exceeds
+// Status for the active software uncore reset request: high after the request exceeds
 // timeout_value and remains high until the request is deasserted. Set in both modes.
 #define CPU_CTRL__RESET_TIMEOUT__RESET_TIMEOUT_bm 0x1000000000
 #define CPU_CTRL__RESET_TIMEOUT__RESET_TIMEOUT_bp 36
@@ -171,18 +173,18 @@ typedef union {
 #define CPU_CTRL__RESET_TIMEOUT__RESET_TIMEOUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Cycles (clk_smc) a software reset may stay pending (withheld, waiting
-        // for drain) before timeout. 0 = disabled, wait indefinitely.
+        // Cycles (clk_smc) a software uncore reset may stay pending (withheld, waiting
+        // for drain) before timeout. 0 = disabled, wait indefinitely. Core resets do not wait.
         uint64_t timeout_value :16;
-        // Timeout mode: 0 = report the timeout and keep withholding the reset until
-        // the drain completes, then apply it; 1 = force the reset on timeout.
+        // Timeout mode: 0 = report the timeout and keep withholding the uncore reset until
+        // the drain completes, then apply it; 1 = force the uncore reset on timeout.
         uint64_t timeout_mode :1;
         uint64_t :15;
-        // Live status: high while a requested software reset is applied at the cluster,
-        // either after drain completes or after a force-mode timeout.
+        // Live status: high while a requested software uncore reset is applied at the cluster,
+        // either after drain completes or after a force-mode timeout. Core resets are not reported.
         uint64_t reset_applied :1;
         uint64_t :3;
-        // Status for the active software reset request: high after the request exceeds
+        // Status for the active software uncore reset request: high after the request exceeds
         // timeout_value and remains high until the request is deasserted. Set in both modes.
         uint64_t reset_timeout :1;
         uint64_t :27;
@@ -351,6 +353,11 @@ typedef union {
 } cpu_ctrl__SMC_ATTRIBUTES_t;
 
 // reg - cpu_ctrl::MUTEX
+// A read of any size or alignment within this register attempts to acquire the mutex,
+// but the result is only returned in bit 0. A read that does not include byte 0, such as
+// a 32-bit read of the upper half or a byte read at a non-zero offset, returns 0 even when
+// it acquires the mutex, leaving it held with no owner until it is released. Read this
+// register with an access that includes byte 0.
 // HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.
 #define CPU_CTRL__MUTEX__MUTEX_bm 0x1
 #define CPU_CTRL__MUTEX__MUTEX_bp 0
