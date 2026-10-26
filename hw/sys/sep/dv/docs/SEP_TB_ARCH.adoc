@@ -1121,6 +1121,46 @@ Exceptions (a closed set):
   edge that samples the reset low and must be low from the next edge on (AXI
   A3.1.2 gives no reset-entry timing). No TB master can reach that port.
   Protocol, not data.
+* *VeeR CPU AXI SVA* — four observation-only `ocah_axi_sva` instances in
+  `tb_top.sv` (`u_cpu_lsu_axi_sva`, `u_cpu_ifu_axi_sva`, `u_cpu_sb_axi_sva`,
+  `u_cpu_tcm_axi_sva`) on the LSU, IFU and debug system-bus masters at the
+  core side of `sep_cpu` (`*_axi_req_raw` / `*_axi_resp_raw`, before the alias
+  remap and the demuxes) and on the DMA slave port (`cpu_tcm_axi_req_i` /
+  `cpu_tcm_axi_resp_o`). `aresetn` is the SEP system reset `rst_ni` on every
+  port, in the normal (asynchronous-reset) shape. The core side of the LSU,
+  IFU and DMA ports, and the `sep_cpu` demuxes and IFU error slave that
+  answer B and R on the LSU and IFU ports, reset on `sep_cpu_reset_n`, and
+  the VeeR IFU and LSU bus logic also resets on a debug-module core reset. A
+  CPU-only reset and a debug-module core reset are outside `aresetn`, so no
+  reset rule grades them and a transaction open at one of them stays in the
+  outstanding tracking until the next `rst_ni`. The debug system-bus master resets on `dbg_rstb_i`; its
+  checker arms on the edge after the first edge that samples `dbg_rstb_i`
+  low. Enabled by `+cpu_boot` on the full-CPU target only (`SEP_CPU_STUB`
+  compiles them out). Runs without `+cpu_boot` on that target are not
+  graded, including those that drive the debug system-bus or DMA slave port
+  from the testbench. On VCS, a `+cpu_boot` run that never arms the
+  system-bus checker fails, and a test with
+  `+axi_sva_need_<lsu|ifu|sb|tcm>` fails when that checker graded no AW
+  or AR handshake. Protocol, not data.
+* *SEP AXI master SVA* — four observation-only `ocah_axi_sva` instances in
+  `tb_top.sv` on the SEP AXI masters outside the CPU: `u_dma_axi_sva` on the
+  secure DMA master into the local crossbar (`dma_axi_req` /
+  `dma_axi_resp`), `u_smn_out_axi_sva` on the SMN outbound port
+  (`smn_outbound_req_w` / `smn_outbound_resp_w`), `u_smc_out_axi_sva` on the
+  SMC aperture port (`ext_to_smc_req_w` / `ext_to_smc_resp_w`) and
+  `u_ext_out_axi_sva` on the external aperture into the IP integration
+  (`u_dut.axi_extension_axi_req` / `u_dut.axi_extension_axi_resp`). On the
+  SMN and SMC ports the testbench models answer B and R, so those checkers
+  also grade the models; on the external port the testbench responder
+  answers under `+sep_ext_port_responder`, and the DECERR error slave of the
+  IP integration answers without it. `aresetn` is the SEP system reset `rst_ni`.
+  The DMA engine and the SMN and SMC request logic reset on `sep_reset_n`; a
+  SEP reset from software or JTAG is outside `aresetn`, so no reset rule
+  grades it and a transaction open at that reset stays in the outstanding
+  tracking until the next `rst_ni`. Compiled in every build and run mode
+  and on once `rst_ni` is known; the rules grade on VCS only (the SEP
+  Verilator targets pass no `--assert`). On VCS, a test with `+axi_sva_need_<dma|smn|smc|ext>`
+  fails when that checker graded no AW or AR handshake. Protocol, not data.
 
 [[sep-run-modes]]
 === Run Modes and RTL Targets
