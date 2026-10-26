@@ -15248,10 +15248,11 @@ draws nothing from the seed.
   `rst_primary_smc_clk_no` and `rst_primary_periph_clk_n` are timed from the `powergood_i`
   release; `rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` from a `tb_sep_wdt_reset_n` release.
   Each rise is bounded, so an output that never releases fails with its last observed state.
-* Re-assertion: `tb_sep_wdt_reset_n` is released, then driven low again two `clk_smc_i` cycles
-  later for 16 cycles; `rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` must read 0 at every one
-  of those 16 samples, then release on their own edge after the final release. The two cycles
-  before the re-assertion are measured and printed without a compare.
+* Stretch: `tb_sep_wdt_reset_n` is driven low until both watchdog outputs read 0, then released.
+  `rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` read 0 at each of the next 16 `clk_ref_i`
+  cycles, then rise on a `clk_smc_i` edge after 31 to 40 reference edges
+  (`clk_rst.adoc`, the watchdog reset held 32 reference clocks after both requests release,
+  then the 4-stage synchronizer).
 * The two bounded handshakes (outputs released after the `powergood_i` release, and after the
   final watchdog release) are scoreboard `WAIT_STATE` checks with exact levels; the leaf requires
   at least two to have been booked and every timestamp it claims to have been taken.
@@ -15272,10 +15273,10 @@ draws nothing from the seed.
   outputs read 0, at least 16 `clk_smc_i` cycles), release it one third into a `clk_smc_i` period and
   require `rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` to rise on their own edge; stamp step S4
   and print the release-edge line.
-. Drive `tb_sep_wdt_reset_n` low for 16 cycles and release it, count the two following
-  `clk_smc_i` cycles, drive it low again, and require both outputs 0 at each of 16 samples.
-  Release it, require both outputs to rise on their own edge inside the bound, and match the
-  bounded released handshake; stamp step S5 and print the re-assertion line.
+. Drive `tb_sep_wdt_reset_n` low until both outputs read 0, release it, and require both
+  outputs to stay 0 for 16 `clk_ref_i` cycles. Require both to rise on a `clk_smc_i` edge after
+  31 to 40 reference edges, and match the bounded released handshake; stamp step S5 and print
+  the stretch line.
 . Check the ordered fence: step stamps S1 < S2 < S3 < S4 < S5 strictly increasing and each checker
   line printed after its step, then print the non-vacuity line.
 
@@ -15292,22 +15293,22 @@ draws nothing from the seed.
 |`CHK-EACH-OUTPUT-RELEASES-ON-OWN-EDGE` |Each of the six outputs rises exactly on a rising edge
   of its own clock, reads 1 in that instant and rises no earlier than the fourth own-clock edge
   after its source released; the measured edge counts are reported
-|`CHK-SOURCE-REASSERTS-IN-LATENCY` |`rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` read 0 at all
-  16 `clk_smc_i` samples while the re-asserted `tb_sep_wdt_reset_n` is low and then rise on their
-  own edge inside the bound; the two cycles before the re-assertion are recorded without
-  comparing
+|`CHK-WDT-STRETCH-HOLDS` |`rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` read 0 at each of 16
+  `clk_ref_i` cycles after `tb_sep_wdt_reset_n` releases, then rise on a `clk_smc_i` edge after
+  31 to 40 reference edges
 |`CHK-NONVAC` |The ordered fence holds: steps S1 to S5 in order with strictly increasing
   simulation-time stamps, and the four checker lines printed in order, each after its own step
 |===
 
 *Pass Criteria*: all five checkers hold; the two assertion instants coincide with the
 `powergood_i` fall, every release lands on its own clock edge at or after the fourth edge, the
-re-asserted watchdog source holds both outputs at 0 for all 16 samples, and the scoreboard books
-at least two reset `WAIT_STATE` checks. Enrolled in: `all`.
+watchdog and warm outputs stay low for 16 reference cycles after `tb_sep_wdt_reset_n` releases
+and then rise after 31 to 40 reference edges, and the scoreboard books at least two reset
+`WAIT_STATE` checks. Enrolled in: `all`.
 
-*Scope limit*: The two `clk_smc_i` cycles between the watchdog release and its re-assertion are
-measured and printed without a compare. The edge counts from each source release to each output's
-rise are reported; only the at-least-fourth-edge floor is compared.
+*Scope limit*: The reference-edge count from the watchdog-pin release to each output rise is
+graded inside 31 to 40. The edge counts from each source release to each output's rise are
+reported; for the powergood releases only the at-least-fourth-edge floor is compared.
 
 '''''
 
