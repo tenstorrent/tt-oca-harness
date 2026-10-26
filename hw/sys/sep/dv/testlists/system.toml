@@ -790,8 +790,9 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # REFERENCE_COUNTER, the watchdog and the wakeup timer count as the register description
-# states, the watchdog registers answer on either lane, and only a cold reset sets
-# WDOG_REGWEN again.
+# states, the watchdog registers answer on either lane, a wdt_rst_ni pulse returns them
+# to their reset values and clears a held bite, and the other warm resets keep WDOG_REGWEN
+# locked.
 name = "sep_timer_clock_contract_test"
 module = "system.sep_timer_clock_contract_test"
 seed = 1

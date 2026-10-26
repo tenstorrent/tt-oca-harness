@@ -1064,7 +1064,7 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 
 *Pass Criteria*: Every named checker PASSes and the control prints `CTL-OP-INFLIGHT PASS`. UVM_ERROR == 0.
 
-*Scope limit*: The test drives a full SEP reset only. The effect of a CPU-only reset on the mailbox is not stated, and the test does not drive it. The state of the operation that the reset interrupts is not graded. The X-free half of CHK-RESET-STATE is graded on VCS only; Verilator grades the values. `sep_reg_bit_bash_rand_test` keeps the reset values at idle.
+*Scope limit*: The test drives a full SEP reset only. The effect of a watchdog reset on the mailbox is not stated, and the test does not drive it. The state of the operation that the reset interrupts is not graded. The X-free half of CHK-RESET-STATE is graded on VCS only; Verilator grades the values. `sep_reg_bit_bash_rand_test` keeps the reset values at idle.
 
 '''''
 [[sep_pic_reg_rand_test]]
