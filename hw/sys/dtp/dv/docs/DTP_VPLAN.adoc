@@ -115,14 +115,16 @@ with their acknowledge unused, nine clock-stop requests, one extra STAP, one IC_
 slice per port, every instruction enabled. The JTAG_CAPS and IDCODE scenarios compare
 what the DUT publishes with that table. The `bsr_disabled` build target compiles the
 same table with `DTP_BSR_DISABLED`, which clears the boundary-scan enable and the
-three optional enables that require it; only `dtp_jtag_bsr_disabled_test` (0.19) runs
-on it. The behaviours below exist only where DTP is integrated and are the integration
-level's plan, not this one; a green DTP regression says nothing about them.
+three optional enables that require it. `dtp_jtag_bsr_disabled_test` (0.19) runs only
+on it; the JTAG and debug-TDR scenarios whose checks do not depend on the boundary-scan
+chain run on both builds, and their testlist entries name both targets. The behaviours
+below exist only where DTP is integrated and are the integration level's plan, not this
+one; a green DTP regression says nothing about them.
 
 [cols="1,2",options="header",]
 |===
 |Behaviour |Why it is out of scope here
-|DTP parameterizations other than the bench configuration and its `bsr_disabled` variant (`XTRIG_INT_CT_MODE` lanes in handshake mode, the other `JTAG_*_ENABLE` flags, the bridge types and pipeline depths, the IDCODE fields) |The bench elaborates the bench configuration (`tb/dtp_dv_cfg_pkg.sv`) and, for 0.19 alone, that configuration with the boundary-scan enables clear; every other entry here is closed for the bench configuration only
+|DTP parameterizations other than the bench configuration and its `bsr_disabled` variant (`XTRIG_INT_CT_MODE` lanes in handshake mode, the other `JTAG_*_ENABLE` flags, the bridge types and pipeline depths, the IDCODE fields) |The bench elaborates the bench configuration (`tb/dtp_dv_cfg_pkg.sv`) and, for 0.19 and the scenarios whose testlist entries name both targets, that configuration with the boundary-scan enables clear; every other entry here is closed for the bench configuration only
 |The `dbg_disable_i` producer (deriving the eleven disables from lifecycle policy) |SEP-level verification; the bench drives the pre-resolved vector directly
 |The CLA clock-stop loop, the acknowledge handshake of a handshake-mode internal lane, and the CTM lane partition of an integration |Tie-offs and wiring outside DTP
 |Address decode on the three JTAG2AXI bridge paths |The bench responders map every address; the fabric's decoder and default subordinate are SMC-level, so the decode scenarios prove responder-injected error handling (section 4)
@@ -193,7 +195,7 @@ Executable membership is resolved from the testlists; each group's
 |`scan` |F3 credit set: Test Procedures section 5
 |`xtrig` |F5 credit set: Test Procedures section 6
 |`dbg_disable` |Cross-cutting lifecycle-gating closure: the two matrix tests plus every directed gating scenario; every member also belongs to `jtag2axi` or `scan`, so the group adds closure, not names
-|`all` |Every canonical scenario, the union of the five credit sets; the `regress.yml` denominator
+|`all` |Every canonical scenario, the union of the five credit sets; on the `default` target, the `regress.yml` denominator
 |===
 
 [[dtp-credit-rules]]

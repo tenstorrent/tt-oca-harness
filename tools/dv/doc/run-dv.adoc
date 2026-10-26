@@ -3562,7 +3562,8 @@ change can never alter the pull-request gate:
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
 |`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, once
 under cocotb and once under `--framework uvm`, and for the UVM-only `aou`
-under `--framework uvm`; 60-minute budget per job.
+under `--framework uvm`; 60-minute budget per job. The DTP rows add
+`--target default`, so they build only DTP's default model.
 The job names `verilator-smoke (<dut>)` and `verilator-smoke (<dut> uvm)`
 are the stable check contexts. Every job runs for every change, so the
 contexts report; on a pull request a job prints one line and skips the
@@ -3583,7 +3584,7 @@ so it is not a tier and no pull request runs it.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, AoU `smoke`, and the
+DTP `all` under `--target default`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, AoU `smoke`, and the
 IP-level benches' `all` groups (the three `cross_trigger` benches, the four
 UART-family benches, `system_timer_octs`, `scrambler` and `axi_lite_to_ahb`).
 No coverage. Nightly is not a merge gate; a red nightly run is a triage signal.
@@ -3592,7 +3593,7 @@ No coverage. Nightly is not a merge gate; a red nightly run is a triage signal.
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
 |The regression the dashboard publishes, one random seed per test on every
-row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
+row and no coverage: DTP `all` under `--target default`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
 AoU `smoke`, and the IP-level benches' `all` groups. A second SMC row
 (`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
 `expect_fail` (<<runner-expected-failures>>), so the row is green while the
