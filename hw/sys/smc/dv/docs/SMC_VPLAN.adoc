@@ -46456,26 +46456,32 @@ with always-count enabled. Scale and CMP keep the compare interrupt inactive.
 *Expectation Sources*: `hw/sys/smc/regs/blocks/wdt/wdt.rdl` defines coreawake
 as counting only outside core reset and always-count as having priority.
 `hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl` defines software reset control
-and reset-applied status. Register masks come from generated collateral.
-`hw/sys/smc/doc/cpu.adoc`, Cluster Boundary Isolation, states that the
-boundary isolates while any core or the uncore is in reset and stalls
-L2 frontend traffic. The live isolation tap controls safe CSR access.
+and uncore-only reset-applied status. Register masks come from the
+generated collateral.
+`hw/sys/smc/doc/cpu.adoc`, Drain Handshake and Timeout Recovery,
+states that core resets apply without a boundary drain and do not affect
+RESET_TIMEOUT. The live per-core reset tap qualifies the measurement window.
 `hw/sys/smc/doc/clk_rst.adoc`, Reset Architecture, states that each core's
 reset reaches its watchdog on `wdt_n_corerst` as a status input, not as a
 reset. Resetting a core does not clear watchdog COUNT or configuration.
 
-*Test Procedure*: Require the selected watchdog's disabled reset configuration
-and save COUNT, CMP and reset control. Program CMP, coreawake and COUNT,
-then calibrate a positive count rate. Apply reset and require reset-applied
-and cluster isolation before the measurement interval. Release reset and wait
-with a bound for isolation to clear before reading COUNT. Require calibrated
+*Test Procedure*: Read reset control and RESET_TIMEOUT, and require the
+selected core released and uncore reset-applied clear. Wait with a bound for
+the selected core's reset tap to be high, then require an open cluster
+boundary and a disabled selected watchdog at its reset configuration. Save
+COUNT and CMP. Program CMP, coreawake and COUNT, then calibrate a positive
+count rate. Apply reset and wait with a bound for
+the selected core's reset tap to go low. Require it low at every SMC-cycle
+sample in the hold window and before release; uncore reset-applied must
+remain clear at the held-status read. Release reset and wait with a bound
+for the core-reset tap to go high before reading COUNT. Require calibrated
 headroom below the COUNT limit, then require the final COUNT sample not to
 be below the initial sample in the coreawake-only interval. Require the two
 count bounds to differ by at least two integer count units before grading
 HELD or ALWAYS. Repeat the interval with always-count enabled.
 Read CMP after both intervals and require the programmed value. Restore the
 disabled configuration and COUNT with readback, check reset control against
-its baseline and require reset-applied to be clear, then restore CMP with
+its baseline and require the core-reset tap released, then restore CMP with
 readback. Wait with a bound for passive comparisons.
 
 *Checkers*:
@@ -46484,7 +46490,7 @@ readback. Wait with a bound for passive comparisons.
 |===
 |Checker |Claim
 |`CHK-WDT-AWAKE-CONFIG` |CTRL readbacks equal the programmed configuration and restored COUNT and CMP equal their saved values
-|`CHK-WDT-AWAKE-CORE-RESET` |Reset status and cluster isolation reach their requested levels
+|`CHK-WDT-AWAKE-CORE-RESET` |The selected core reset reaches the requested level and stays asserted at each hold-window sample; reset-control readback matches, while baseline boundary and uncore status are checked as prerequisites
 |`CHK-WDT-AWAKE-RATE` |Released-core count and timestamps produce a positive rate
 |`CHK-WDT-AWAKE-HELD` |Count growth excludes the held interval within the stated margin
 |`CHK-WDT-AWAKE-ALWAYS` |Always-count includes the held interval within the stated margin
@@ -46504,6 +46510,15 @@ absolute clock frequency are not graded. Four passes are required for all cores.
 CPU execution, watchdog reset outputs and interrupt delivery are outside scope.
 The scenario changes CPU_CTRL reset state and requires exclusive control.
 The count measurement interval is stimulus, not a settling delay.
+The measured hold is a confirmed subinterval of the actual core reset,
+excluding assertion detection, the held-status read and release-write latency.
+The remaining time is conservatively included in the released-time bound.
+Sub-cycle reset pulses between hold-window samples are not checked.
+Reset-level waits, the baseline boundary level and held uncore status are
+prerequisites outside the negative control. The negative reverses the baseline
+reset-applied expectation, but neither reset-applied nor the isolation tap
+changes in this scenario; neither has a same-run positive control. That
+negative record does not prove the reset-applied observation can go high.
 The shared wdt_csr assumptions and exclusions apply.
 The ALWAYS lower bound uses the same endpoint samples, not a separate
 retention check. CMP is read once after both reset intervals.

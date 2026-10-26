@@ -3208,6 +3208,7 @@ module smc_uvm_top
     assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
     assign u_tb_if.rst_wdt_smc_clk_n         = rst_wdt_smc_clk_no;
     assign u_tb_if.cpu_cluster_isolate       = tb_cpu_cluster_isolate;
+    assign u_tb_if.cpu_core_resets_n         = tb_cpu_core_resets_n;
     assign u_tb_if.cg_clk_active = {
         u_dut.u_smc.u_smc_base.fabric_clk_active,
         u_dut.u_smc.u_smc_base.alias_remap_clk_active,
