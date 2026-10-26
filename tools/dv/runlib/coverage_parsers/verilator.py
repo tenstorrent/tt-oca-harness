@@ -9,6 +9,7 @@ import hashlib
 import re
 from pathlib import Path
 
+from ..coverage import VERILATOR_NON_GOAL_BIN_TYPES
 from ..coverage_model import (
     CoverageDetails,
     CoverageObservation,
@@ -64,6 +65,8 @@ def parse_verilator_details(
         if match is None:
             continue
         fields = _metadata(match.group(1))
+        if fields.get("bin_type") in VERILATOR_NON_GOAL_BIN_TYPES:
+            continue
         native_metric = fields.get("t", "unknown").lower()
         metric_family = VERILATOR_METRIC_MAP.get(native_metric)
         if metric_family is None:
