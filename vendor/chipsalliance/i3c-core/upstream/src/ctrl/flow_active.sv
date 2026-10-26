@@ -435,6 +435,7 @@ module flow_active
 
   // RLT storage is exported to the top-level memory interface. Depth is fixed at 128
   // (one entry per 7-bit I3C address); the connected RAM must match.
+  assign rlt_mem_sink_o.clk     = clk_i;
   // Write Port: dynamic address -> DAT index
   assign rlt_mem_sink_o.a_req   = rlt_wreq;
   assign rlt_mem_sink_o.a_write = 1'b1;

@@ -33,8 +33,9 @@ def check_efuse_shadow_backdoor(
     the front-door scoreboard's fail-on-error semantics.
 
     ``secure_tm`` must match the strap the DUT actually latched. With it
-    asserted the four KM-secret fields must not read back their staged
-    values; other words still match the golden.
+    asserted the four KM-secret fields read zero (hw/sys/sep/doc/otp_fuse_controller.adoc:
+    "read as zero downstream while SECURE_TM is 1"), from a non-zero staged value;
+    other words still match the golden.
     """
     if dut is None:
         dut = cocotb.top
@@ -74,10 +75,10 @@ def check_efuse_shadow_backdoor(
                     errors.append(
                         f"{name}[{k}] word{widx}: staged 0, so a disconnect check cannot fail"
                     )
-                elif got == staged:
+                elif got != 0:
                     errors.append(
-                        f"{name}[{k}] word{widx}: still presents staged "
-                        f"0x{staged:08x} under secure_tm"
+                        f"{name}[{k}] word{widx}: reads 0x{got:08x} under secure_tm, "
+                        f"expected 0 (staged 0x{staged:08x})"
                     )
                 continue
             exp = image.shadow_word(widx)
