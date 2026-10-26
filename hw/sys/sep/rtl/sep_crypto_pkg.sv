@@ -168,8 +168,7 @@ package sep_crypto_pkg;
   } sep_crypto_pka_imem_sram_req_t;
 
   typedef struct packed {
-    logic[SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0] rdata;
-    logic q_valid;
+    logic [SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0] rdata;
   } sep_crypto_pka_imem_sram_rsp_t;
 
   // OTBN DMEM: 32 KB data memory with 312-bit words (32-bit data + 7-bit ECC) * 8

@@ -421,7 +421,7 @@ they leave out; the checker table of each linked entry is the full set.
 |DMA address modes × width |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |The checker table of each entry named. |YES
 |DMA host-path command integrity |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 41; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source. |YES
 |DMA zero fill |<<sep_dma_zero_fill_rand_test,`sep_dma_zero_fill_rand_test`>>, <<sep_dma_zero_fill_continuation_test,`sep_dma_zero_fill_continuation_test`>>, <<sep_dma_zero_test,`sep_dma_zero_test`>> |all, cpu_stub, cpu |`sep_dma_zero_cg` |The checker table of each entry named. |YES
-|SRAM datapath |<<sep_sram_smoke_test,`sep_sram_smoke_test`>>, <<sep_sram_datapath_breadth_test,`sep_sram_datapath_breadth_test`>>, <<sep_sram_burst_type_test,`sep_sram_burst_type_test`>>, <<sep_sram_inbound_burst_attr_test,`sep_sram_inbound_burst_attr_test`>> |all, cpu_stub |`sep_sram_access_cg` |`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test` (`CHK-ADDR-LINES` reaches the upper 192 KiB), `sep_sram_burst_type_test` (FIXED / WRAP), `sep_sram_inbound_burst_attr_test` (inbound INCR bursts, seeded request attributes) |YES
+|SRAM datapath |<<sep_sram_smoke_test,`sep_sram_smoke_test`>>, <<sep_sram_datapath_breadth_test,`sep_sram_datapath_breadth_test`>>, <<sep_sram_burst_type_test,`sep_sram_burst_type_test`>>, <<sep_sram_inbound_burst_attr_test,`sep_sram_inbound_burst_attr_test`>> |all, cpu_stub |`sep_sram_access_cg` |`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test` (`CHK-ADDR-LINES` reaches the upper 192 KiB; `CHK-SRAM-MACRO-MAP` grades the macro word address and write mask), `sep_sram_burst_type_test` (FIXED / WRAP), `sep_sram_inbound_burst_attr_test` (inbound INCR bursts, seeded request attributes) |YES
 |AES mode × key-size |<<sep_aes_mode_keysize_rand_test,`sep_aes_mode_keysize_rand_test`>> |all, cpu_stub |`sep_aes_mode_cg` |`sep_aes_mode_keysize_rand_test` (9-cell). CTR x DECRYPT is not claimed: CTR is a stream mode and the engine runs the forward cipher whichever way `OPERATION` is programmed, so the cell has no DUT-observable cipher contract and a test there would pass with the field disconnected. `OPERATION`'s shadowed-register behaviour is mode-independent and belongs on a CSR vehicle. |YES for the claimed part; the evidence cell names the rest
 |AES CFB / OFB / GCM |<<sep_aes_cfb_ofb_gcm_rand_test,`sep_aes_cfb_ofb_gcm_rand_test`>> |all, cpu_stub |`sep_aes_cfb_ofb_gcm_cg` |`sep_aes_cfb_ofb_gcm_rand_test` grades CFB-128, OFB and GCM at 128, 192 and 256 bits, encrypt and decrypt, against NIST SP 800-38A and SP 800-38D; `sep_aes_mode_keysize_rand_test` keeps ECB, CBC and CTR. One cell per seed; the 18 cells close over merged regressions. |YES
 |HMAC SHA variants |<<sep_hmac_sha_variant_rand_test,`sep_hmac_sha_variant_rand_test`>> |all, cpu_stub |`sep_hmac_mode_cg` |The checker table of each entry named. |YES
@@ -532,7 +532,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
-|Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, that consecutive SRAM reads of different words through the enabled SRAM scrambler return their plaintexts, and that a store through the enabled scrambler does not leave its plaintext in the probed SRAM words. The SRAM read latency is measured and logged, not graded.
+|Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, that consecutive SRAM reads of different words through the enabled SRAM scrambler return their plaintexts, and that a store through the enabled scrambler does not leave its plaintext in the probed SRAM words. The SRAM read count and the back-to-back read count of different words are measured and logged, not graded.
 |<<sep_otbn_mem_smoke_test,`sep_otbn_mem_smoke_test`>>
 |1
 |no_cpu, +skip_fuse_sense
@@ -1072,7 +1072,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, `+skip_fuse_sense`, SMC aperture plusargs
 |DMA firmware master, outbound filter source-ID model, request probes (observation taps), SMC aperture plusargs and SMC memory model (BH-SMC, added hook)
-|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM (each such run ends in a DMA bus error), gets a DMA bus error from the DECERR extension port, carries OTHERS (AxUSER zero in all 12 bits) on the AP path and a source ID that is not OTHERS with NS 1 on the SMU path, as the outbound source-ID stack shows, drives the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`) on every read and write, and that CPU beats carry a source ID that is not OTHERS, the same as the DMA beats on the SMU path (the number of SEP's ID is logged, because no specification states it). The SMC leg runs on every seed through BH-SMC, a top-port drive. Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
+|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM (each such run ends with a DMA interrupt; the end state is logged), gets a DMA bus error from the DECERR extension port, carries OTHERS (AxUSER zero in all 12 bits) on the AP path and a source ID that is not OTHERS with NS 1 on the SMU path, as the outbound source-ID stack shows, drives the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`) on every read and write, and that CPU beats carry a source ID that is not OTHERS, the same as the DMA beats on the SMU path (the number of SEP's ID is logged, because no specification states it). The SMC leg runs on every seed through BH-SMC, a top-port drive. Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
 |===
 
 [[phase2-mailbox-irq-pic]]
@@ -1337,8 +1337,8 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_sram_datapath_breadth_test,`sep_sram_datapath_breadth_test`>>
 |2
 |no_cpu, +skip_fuse_sense
-|ocah_axi_vip
-|SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port, and an address-line walk that reaches the upper 192 KiB of the 256 KiB SRAM.
+|ocah_axi_vip, SRAM macro request tap
+|SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port, an address-line walk that reaches the upper 192 KiB of the 256 KiB SRAM, and the word address and bit write mask of the SRAM macro request of every access (`CHK-SRAM-MACRO-MAP`).
 |<<sep_sram_burst_type_test,`sep_sram_burst_type_test`>>
 |2
 |no_cpu, +skip_fuse_sense
@@ -1431,7 +1431,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |cpu, skip-sense plusarg; the second testlist entry `sep_cpu_reset_entry_test_real_sense` runs real fuse sense of the PROD preload
 |CPU trace port, JTAG TAP pins and DTM shifter (added hook)
-|Proves that the first CPU fetch is at the boot ROM base by default, that no instruction retires before both resets are high, and that a reset-vector TDR value redirects the first fetch, persists through CPU resets and is restored only by the TAP reset, which resets neither the SEP nor the CPU and, with real fuse sense, does not drop `sep_fuse_sense_done_o`. `CHK-RSTVEC-PERSIST-DBG` requires that a `dbg_rstb_i` pulse of the drawn width resets the debug module and not the TDR: the first fetch and the first retired PC equal the programmed vector, with `jtag_trst_n_i` high on every sample, and the pulse reaches the debug module: `dmcontrol.dmactive`, written 1 over the DMI before the pulse, reads 1 before it and 0 after it (RISC-V External Debug Support 0.13.2, `dmcontrol`: `dmactive` resets to 0). `CHK-RSTVEC-PERSIST-COLD` requires the same after an `rst_ni` cold reset (the TAP reset is TRST or Test-Logic-Reset only); with real fuse sense `sep_fuse_sense_done_o` is low during the epoch and high after the entry. Both checks run in a drawn order after `CHK-RSTVEC-PERSIST`, and each grades the positive probes of its stimulus in the same line. The bin `sep_debug_trace_cg.cp_rstvec_persist` (owner window 519) samples a cell on the rise of the pass label `rstvec_persist_pass`, which the leaf writes after the persistence check of that leg passes; a redirect leg never writes it. The length of the TDR is not stated, so the TDO samples of a 64-bit TDR scan are logged (OBS-RSTVEC-SHIFT) and only the vector that the scan leaves is graded. Extends the open boot ROM tests with those cells only.
+|Proves that the first CPU fetch is at the boot ROM base by default, that no instruction retires before both resets are high, and that a reset-vector TDR value redirects the first fetch, persists through CPU resets and is restored only by the TAP reset, which resets neither the SEP nor the CPU and, with real fuse sense, does not drop `sep_fuse_sense_done_o`. `CHK-RSTVEC-PERSIST-DBG` requires that a `dbg_rstb_i` pulse of the drawn width resets the debug module and not the TDR: the first fetch and the first retired PC equal the programmed vector, with `jtag_trst_n_i` high on every sample, and the pulse reaches the debug module: `dmcontrol.dmactive`, written 1 over the DMI before the pulse, reads 1 before it and 0 after it (RISC-V External Debug Support 0.13.2, `dmcontrol`: `dmactive` resets to 0). `CHK-RSTVEC-PERSIST-COLD` requires the same after an `rst_ni` cold reset (the TAP reset is TRST or Test-Logic-Reset only); with real fuse sense `sep_fuse_sense_done_o` is low during the epoch and high after the entry. Both checks run in a drawn order after `CHK-RSTVEC-PERSIST`, and each grades the positive probes of its stimulus in the same line. The bin `sep_debug_trace_cg.cp_rstvec_persist` (owner window 519) samples a cell on the rise of the pass label `rstvec_persist_pass`, which the leaf writes after the persistence check of that leg passes; a redirect leg never writes it. The length of the TDR is not stated, so the TDO samples of a 64-bit TDR scan are logged (OBS-RSTVEC-SHIFT) and only the vector that the scan leaves is graded. The port table and the RTL disagree on whether the watchdog request resets the SRAM and boot ROM memory interfaces, so their reset inputs in each `wdt_rst_ni` CPU reset are logged (OBS-MEMIF-WDT-RST) and not graded. Extends the open boot ROM tests with those cells only.
 
 |<<sep_secure_tm_strap_sampling_test,`sep_secure_tm_strap_sampling_test`>>
 |3
@@ -1851,8 +1851,8 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 
 |<<sep_km_fault_inject_rand_test,`sep_km_fault_inject_rand_test`>>
 |3
-|no_cpu, HOST and HOST-UNREC (two entries), HK-IRQSET, HK-CPUIRQ, HK-PAR, HK-KPV, HK-LAT
-|Host mailbox master, PIC interrupt probe (bits 30 and 31), KM SRAM write counter, KM entropy sink probe, KM isolation probes, AES and HMAC output witnesses, `HK-IRQSET`, `HK-CPUIRQ`, `HK-PAR` and `HK-KPV` injects, the `HK-LAT` latency drive, the `HOST-UNREC` `rom_main` build (preload), `KM-LAT`, `KM-VALID`, `KM-KPV`, `KM-CSR`, `KM-BUS` and `KM-OUTFIFO` observation taps
+|no_cpu, HOST and HOST-UNREC (two entries), HK-IRQSET, HK-CPUIRQ, HK-PAR, HK-KPV
+|Host mailbox master, PIC interrupt probe (bits 30 and 31), KM SRAM write counter, KM entropy sink probe, KM isolation probes, AES and HMAC output witnesses, `HK-IRQSET`, `HK-CPUIRQ`, `HK-PAR` and `HK-KPV` injects, the `HOST-UNREC` `rom_main` build (preload), `KM-VALID`, `KM-KPV`, `KM-CSR`, `KM-BUS` and `KM-OUTFIFO` observation taps
 |Proves that a fatal source makes the ROM shred, flush, report the first source in ISR order, shred SRAM and trap, that the CPU lines report -9 and -10 above every KMCSR source, that an organic DRBG stall reports -8, that a key-path error is fatal and stops the transfer, that a main-context fatal fault sends one report, that a corrupt key read from the KPV gives the key_slot_crc fault, and that a command result does not depend on the SRAM latency.
 
 |<<sep_km_kmcsr_reset_rand_test,`sep_km_kmcsr_reset_rand_test`>>
@@ -2009,7 +2009,7 @@ another test.
 |eFuse windows and fields, lifecycle code words, feature control, demotion and DFT gate ports, transient RMA, token channels, faults and latch freeze, interface status, lock slots, secure test mode, JTAG access, SEC_DIS timing, sense response and program interface faults.
 |<<sep-vplan-phase3-key-manager,Key Manager vault>>
 |7.22 to 7.37
-|Command framing, recovery and arguments; key slots, handles and allocator capacity; engine delivery and transfer policy; ABR shared key; boot and cold domain; SRAM load and handover; fault reports and SRAM latency; KMCSR, SRAM lock and reset domains; KPV; CPU trap and execute protection; crossbar and eFuse window; KM-side mailbox; DRBG sampler; OTP interface; engine key registers; SRAM scrambler.
+|Command framing, recovery and arguments; key slots, handles and allocator capacity; engine delivery and transfer policy; ABR shared key; boot and cold domain; SRAM load and handover; fault reports; KMCSR, SRAM lock and reset domains; KPV; CPU trap and execute protection; crossbar and eFuse window; KM-side mailbox; DRBG sampler; OTP interface; engine key registers; SRAM scrambler.
 |===
 
 [[sep-vplan-phase3-parked]]
@@ -2711,8 +2711,8 @@ the test does.
 |No entry grades these bits. The open KMAC tests grade the keyed digest.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |DMA and CPU debug not-connected response
-|What bus response code does the DMA receive on its not-connected cells (DMA CSR, entropy pool, boot ROM), and what does the CPU debug master receive on its not-connected cells (boot ROM, CPU TCM)? The DMA outcome is stated: no DMA path reaches these targets (`hw/sys/sep/doc/assets/sep_axi_connectivity.svg`), so the transfer ends in a bus error (`secure_dma.adoc`, `STATUS.ERROR`, `ERROR_CODE.BUS_ERROR`).
-|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN) grades that the request does not reach the target and that each run ends with `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` and no other defined `ERROR_CODE` bit; the bus response code is logged. The rom_dst leg grades the PR-ROM silence and the dma_csr_src leg grades the PR-DMACSR silence, and PR-ROM and PR-DMACSR are observation taps the test adds to the SEP_TB_ARCH observation-probe list
+|What bus response code does the DMA receive on its not-connected cells (DMA CSR, entropy pool, boot ROM), and what does the CPU debug master receive on its not-connected cells (boot ROM, CPU TCM)? No DMA path reaches these targets (`hw/sys/sep/doc/assets/sep_axi_connectivity.svg`), and a bus error response ends the transfer with `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` (`secure_dma.adoc`; OpenTitan DMA `programmers_guide.md`, "Error Condition"), but no spec sentence states that the fabric answers such a request with an error.
+|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN) grades that the request does not reach the target and that each run ends with a DMA interrupt; the end state (`STATUS`, `ERROR_CODE`) is logged as `OBS-DMA-NOTCONN-RESP`. The rom_dst leg grades the PR-ROM silence and the dma_csr_src leg grades the PR-DMACSR silence, and PR-ROM and PR-DMACSR are observation taps the test adds to the SEP_TB_ARCH observation-probe list
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Initiator arbitration and outstanding limits
 |What is the arbitration policy between the five initiators, the outstanding limit per initiator and per target, and the starvation rule?
@@ -3009,6 +3009,10 @@ the test does.
 |Reset-vector TDR length
 |How many bits long is the reset-vector TDR between `jtag_tdi_i` and `jtag_tdo_o`? (`hw/sys/sep/doc/cpu.adoc`, Reset Vector, states that the TDR stores address bits [31:1] and that bit 0 is zero, which fits a 31-bit or a 32-bit register.)
 |`sep_cpu_reset_entry_test` logs the TDO samples of a 64-bit scan as `OBS-RSTVEC-SHIFT` and grades the vector that the scan leaves (CHK-RSTVEC)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|Watchdog reset of the memory interfaces
+|Does the watchdog request reset the SRAM and boot ROM memory interfaces? (`hw/sys/sep/doc/port_table.adoc`, `wdt_timer_rst_req_o`, says it triggers a memory interface reset; the RTL resets both interfaces on `sep_reset_n`, which `wdt_rst_ni` does not drop.)
+|`sep_cpu_reset_entry_test` logs the two memory-interface reset inputs in each `wdt_rst_ni` CPU reset as `OBS-MEMIF-WDT-RST` and grades nothing
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Watchdog alert aggregate
 |What does PIC source 13 ("WDT alert") aggregate, and does an `ALERT_TEST` write change any status or output? (`hw/sys/sep/doc/watchdog.adoc` leaves the alert outputs unconnected; `aon_timer.adoc` says the write triggers one alert event.)
@@ -3763,14 +3767,14 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |PR-TRNG and PR-TRNG-RSP are observation taps on the SEP_TB_ARCH observation-probe list. The wrapper nets are `u_dut.ext_trng_axil_req` and `u_dut.ext_trng_axil_resp`. The TRNG port responder is an added hook (top-port drive, `+sep_ext_trng_axil_responder`); without it the integration wrapper answers DECERR. Checks that use them: CHK-TRNG-REPLY, CHK-TRNG-SPLIT-WR and CHK-TRNG-BURST of `sep_fabric_deadspace_decode_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |SRAM macro request at `sep_sram_req_o`
-|The request to the SRAM macro (address and write data) and its response `sep_sram_rsp_i`
+|The SRAM memory-interface request stream inside `sep` (address and write data) ahead of the SRAM macro request `sep_sram_req_o`, and the read data `sep_sram_rsp_i`
 |ACCEPT-PROBE
-|PR-SRAM is an observation tap. The wrapper net is `u_dut.sep_sram_req`. Checks that use it: the address compare of CHK-TWIN in `sep_cpu_lsu_alias_window_twin_test`; the supplements of `sep_fabric_inbound_rebase_test` and `sep_fabric_filter_match_priority_rand_test`; CHK-SRAM-OTF-REPLAY of `sep_sram_axi_shape_matrix_test`; the SRAM-port checks of `sep_cpu_demux_unmapped_fetch_test`.
+|PR-SRAM is an observation tap. The nets are the request stream inside `u_dut.u_sep.u_sram_memory_interface` and the wrapper net `u_dut.sep_sram_rsp`. Checks that use it: the address compare of CHK-TWIN in `sep_cpu_lsu_alias_window_twin_test`; the supplements of `sep_fabric_inbound_rebase_test` and `sep_fabric_filter_match_priority_rand_test`; CHK-SRAM-OTF-REPLAY of `sep_sram_axi_shape_matrix_test`; the SRAM-port checks of `sep_cpu_demux_unmapped_fetch_test`. PR-SRAM-MACRO is an observation tap on the wrapper net `u_dut.sep_sram_req` (`req`, `we`, `addr`, `wmask`); CHK-SRAM-MACRO-MAP of `sep_sram_datapath_breadth_test` uses it.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Boot ROM macro request at `sep_boot_rom_req_o`
-|The request to the boot ROM macro (`sep_boot_rom_req_o`) and its response (`sep_boot_rom_rsp_i`)
+|The boot ROM memory-interface request stream and response inside `sep`, and the request to the boot ROM macro (`sep_boot_rom_req_o`) and its read data (`sep_boot_rom_rsp_i`)
 |ACCEPT-PROBE
-|PR-ROM is an observation tap. The wrapper nets are `u_dut.sep_boot_rom_req` and `u_dut.sep_boot_rom_rsp`, and after the ROM interface shim `u_dut.u_sep_ip_integration.rom_macro_req` and `u_dut.u_sep_ip_integration.rom_macro_addr`. Checks that use it: the rom_dst leg of CHK-DMA-NOTCONN in `sep_fabric_dma_endpoint_matrix_test`, CHK-NO-EARLY-FETCH of `sep_cpu_reset_entry_test`, CHK-ROM-PORT, CHK-ROM-STORE-WE and CHK-ROM-OTF of `sep_boot_rom_aperture_sweep_test`, and CHK-IFU-DECERR of `sep_cpu_demux_unmapped_fetch_test`. The data anchor covers only the rom_src and dma_csr_src legs of CHK-DMA-NOTCONN. The rom_dst leg uses PR-ROM, and the LSU read of the boot ROM base word is its PR-ROM control.
+|PR-ROM is an observation tap. The nets are the request stream inside `u_dut.u_sep.u_boot_rom_memory_interface`, and out of it the wrapper nets `u_dut.sep_boot_rom_req` (`req`, `addr`) and `u_dut.sep_boot_rom_rsp`. Checks that use it: the rom_dst leg of CHK-DMA-NOTCONN in `sep_fabric_dma_endpoint_matrix_test`, CHK-NO-EARLY-FETCH of `sep_cpu_reset_entry_test`, CHK-ROM-PORT, CHK-ROM-STORE-WE and CHK-ROM-OTF of `sep_boot_rom_aperture_sweep_test`, and CHK-IFU-DECERR of `sep_cpu_demux_unmapped_fetch_test`. The data anchor covers only the rom_src and dma_csr_src legs of CHK-DMA-NOTCONN. The rom_dst leg uses PR-ROM, and the LSU read of the boot ROM base word is its PR-ROM control.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |CPU TCM request at `sep_cpu_tcm_req_o`
 |`clken`, `wren`, the address, the write data and the ECC fields of the CPU TCM request, and its response `sep_cpu_tcm_rsp_i`
@@ -4372,12 +4376,17 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-SRAM
 |Read-only probe
-|The request to the SRAM macro (`sep_sram_req_o`) and its response (`sep_sram_rsp_i`), and the replay of an abandoned request.
+|The SRAM memory-interface request stream inside `sep` ahead of the SRAM macro request `sep_sram_req_o`, the read data `sep_sram_rsp_i`, and the replay of an abandoned request.
 |`sep_cpu_lsu_alias_window_twin_test` (address compare), `sep_fabric_inbound_rebase_test` and `sep_fabric_filter_match_priority_rand_test` (supplements), `sep_sram_axi_shape_matrix_test` (CHK-SRAM-OTF-REPLAY), `sep_cpu_demux_unmapped_fetch_test`
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
+|PR-SRAM-MACRO
+|Read-only probe
+|`req`, `we`, `addr` (the 64-bit word index) and `wmask` (the bit write mask) of the SRAM macro request `sep_sram_req_o`.
+|`sep_sram_datapath_breadth_test` (CHK-SRAM-MACRO-MAP)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |PR-ROM
 |Read-only probe
-|The request to the boot ROM macro (`sep_boot_rom_req_o`) and its response (`sep_boot_rom_rsp_i`): read intent, write enable and response. The ROM macro request after the ROM interface shim (`rom_macro_req`, `rom_macro_addr`).
+|The boot ROM memory-interface request stream and response inside `sep`: read intent, write enable and response. The ROM macro request out of the memory interface (`sep_boot_rom_req_o`: `req`, `addr`).
 |`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN, rom_dst leg), `sep_cpu_reset_entry_test` (CHK-NO-EARLY-FETCH), `sep_boot_rom_aperture_sweep_test` (CHK-ROM-PORT, CHK-ROM-STORE-WE, CHK-ROM-OTF), `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-DECERR)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-TCM
@@ -4609,11 +4618,6 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Read-only tap
 |The count of KM CPU instruction fetches that complete on the CPU memory bus (`mem_valid`, `mem_ready` and `mem_instr` high in one clock), whatever the target, since the bench reset. A ROM fetch that the lockout blocks moves this counter and not `km_rom_req_count_o`.
 |`sep_km_cpu_protect_rand_test` (CHK-LOCKOUT-FETCH)
-|<<sep-vplan-phase3-key-manager,Key Manager>>
-|`KM-LAT`
-|Read-only tap
-|The SRAM read latency at the `sep` input `km_sram_mem_rsp_i`, from the accepted request to `rvalid`: `km_sram_rd_lat_o[7:0]` (the last completed read) and `km_sram_rd_done_count_o` (the completed reads since the bench reset).
-|`sep_km_fault_inject_rand_test` (CHK-LAT, CHK-LAT-VAR)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-WMAP` and `KM-WMAP-JUMP`
 |Read-only tap (bench clear `km_sram_wmap_clr_i`)
@@ -4878,12 +4882,6 @@ use it" names the entries whose checks need the hook.
 |Error inject
 |While `km_par_arm_i` is 1, inverts parity bit `km_par_lane_i[1:0]` of the N-th read response (N = `km_par_n_i[7:0]` from 1; 0 leaves the hook idle) of the ROM (`km_par_mem_i` 0) or the SRAM (1) for one clock, once per arm. The data bits do not change. Readbacks `km_par_fired_o`, `km_par_resp_count_o` and `km_par_rstrb_o`.
 |`km_rom_mem_rsp_i`, `km_sram_mem_rsp_i`
-|`sep_km_fault_inject_rand_test`
-|<<sep-vplan-phase3-key-manager,Key Manager>>
-|`HK-LAT`
-|Top-port drive
-|While `km_sram_lat_en_i` is 1, a SRAM read response reaches the KM L = `km_sram_lat_i[3:0]` clocks after the accepted request, for L in [2, 15]; L of 0 or 1 keeps the macro latency of 1. Readback `km_sram_lat_delayed_count_o`.
-|`km_sram_mem_rsp_i`
 |`sep_km_fault_inject_rand_test`
 |===
 
@@ -5252,8 +5250,11 @@ test that owns the feature, or states why no pass or fail value exists.
 |32-bit half writes and low-word carry of `REFERENCE_COUNTER`
 |The RDL states no reload rule.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
-|Clock stability under load, ROM burst, ROM latency, SRAM latency, SRAM retention, scratch SRAM ECC, bite threshold below bark, life-cycle escalation, performance
+|Clock stability under load, ROM burst, SRAM retention, scratch SRAM ECC, bite threshold below bark, life-cycle escalation, performance
 |The specification states no contract for these rows.
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|ROM latency, SRAM latency
+|The macro returns read data on the rising edge after a read request, with no valid strobe (`hw/ip/memory_interface/README.adoc`, Macro port, line 183; `hw/sys/sep/doc/port_table.adoc`, lines 70 and 72). The latency is a property of the bench macro model, and no DUT output gives a latency value to grade.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`clk_wdt_i` is a 200 kHz clock, asynchronous to `clk_i`, that times the watchdog counter.
 |The rate is a property of the bench clock, and no DUT output states a pass or fail value for it. The hole "Clock of every flop" covers the observable part, and CHK-WDT-RATE grades the count per `clk_wdt_i` period.

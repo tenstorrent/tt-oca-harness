@@ -175,10 +175,10 @@
 |`mbist_pass_i` |`logic` |Input |1 |MBIST pass indicator. |DFT controller |1'b0
 |`mbist_abort_i` |`logic` |Input |1 |MBIST abort indicator. |DFT controller |1'b0
 
-|`sep_sram_req_o` |`sep_pkg::sep_sram_req_t` |Output |- |SEP scratch SRAM request passthrough. |SEP SRAM macros |N/A
-|`sep_sram_rsp_i` |`sep_pkg::sep_sram_rsp_t` |Input |- |SEP scratch SRAM response passthrough. |SEP SRAM macros |N/A
-|`sep_boot_rom_req_o` |`sep_pkg::sep_sram_req_t` |Output |- |SEP boot ROM request passthrough. |SEP ROM macro |N/A
-|`sep_boot_rom_rsp_i` |`sep_pkg::sep_sram_rsp_t` |Input |- |SEP boot ROM response passthrough. |SEP ROM macro |N/A
+|`sep_sram_req_o` |`sep_pkg::sep_sram_req_t` |Output |- |SEP scratch SRAM read or write request with the macro clock, passthrough. |SEP SRAM macros |N/A
+|`sep_sram_rsp_i` |`sep_pkg::sep_sram_rsp_t` |Input |- |SEP scratch SRAM read data, passthrough. |SEP SRAM macros |N/A
+|`sep_boot_rom_req_o` |`sep_pkg::sep_boot_rom_req_t` |Output |- |SEP boot ROM read request with the macro clock, passthrough. |SEP ROM macro |N/A
+|`sep_boot_rom_rsp_i` |`sep_pkg::sep_boot_rom_rsp_t` |Input |- |SEP boot ROM read data, passthrough. |SEP ROM macro |N/A
 |`sep_cpu_tcm_req_o` |`sep_pkg::sep_cpu_tcm_req_t` |Output |- |SEP CPU TCM request passthrough (ICCM + DCCM). |SEP SRAM macros |N/A
 |`sep_cpu_tcm_rsp_i` |`sep_pkg::sep_cpu_tcm_rsp_t` |Input |- |SEP CPU TCM response passthrough. |SEP SRAM macros |N/A
 
@@ -191,6 +191,8 @@
 |`sep_crypto_pka_imem_sram_rsp_i` |`sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t` |Input |- |SEP OTBN PKA instruction memory SRAM response passthrough. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_req_o` |`sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t` |Output |- |SEP OTBN PKA data memory SRAM request passthrough. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_rsp_i` |`sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t` |Input |- |SEP OTBN PKA data memory SRAM response passthrough. |SRAM macro |N/A
+|`abr_mem_req_o` |`sep_crypto_pkg::abr_mem_req_t` |Output |- |SEP Adams Bridge working SRAM requests for every channel, with the macro clock, passthrough. |SRAM macros |N/A
+|`abr_mem_rsp_i` |`sep_crypto_pkg::abr_mem_rsp_t` |Input |- |SEP Adams Bridge working SRAM read data, passthrough. Each channel's data must arrive exactly `CFG.SEP_ABR_SRAM_LATENCY` clocks after its `re`. |SRAM macros |N/A
 
 |`sep_km_rom_mem_req_o` |`km_intf_pkg::km_rom_mem_req_t` |Output |- |SEP Key Manager ROM memory request passthrough. |ROM macro |N/A
 |`sep_km_rom_mem_rsp_i` |`km_intf_pkg::km_rom_mem_rsp_t` |Input |- |SEP Key Manager ROM memory response passthrough. |ROM macro |N/A

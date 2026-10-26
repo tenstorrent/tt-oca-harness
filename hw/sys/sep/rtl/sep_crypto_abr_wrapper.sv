@@ -61,7 +61,7 @@ module sep_crypto_abr_wrapper
                                               // live in sep_ip_integration, packed into one struct
                                               // together with the macro clock.
   input       abr_mem_rsp_t abr_mem_rsp_i,    // Read data from the external Adams Bridge SRAM
-                                              // macros.
+                                              // macros, SRAM_LATENCY clocks after each re.
 
   input  wire logic scan_mode_i,              // DFT scan mode; drives only the test input of the
                                               // AXI-to-AXI-Lite converter.
