@@ -20,8 +20,8 @@
 // The TAP reset is TRST AND power-on reset, as the PTAP combines them and
 // forwards the result to the STAPs.
 //
-// CONVENTION: no declaration initializers on always_ff-driven variables;
-// declare wires before use.
+// CONVENTION: no declaration initializers on always_ff-driven variables,
+// which VCS rejects (initializer_driver_checks); declare wires before use.
 
 module dtp_scan_fcov (
   input wire        tck_i,

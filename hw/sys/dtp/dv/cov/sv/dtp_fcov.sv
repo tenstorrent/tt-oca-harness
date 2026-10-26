@@ -15,10 +15,11 @@
 //
 // These modules add a labeled `OCAH_FCOV_COVER cover-property point only for
 // a condition that no covergroup bin records; under Verilator such a point is
-// a coverage.dat user point (--coverage-user). Its body is a single
-// continuous-assign wire: Verilator 5.050's localization pass (V3Localize)
-// hits an internal error on compound expressions or flop references inside a
-// cover-property body.
+// a coverage.dat user point (--coverage-user).
+//
+// CONVENTION: a cover-property body is a single continuous-assign wire.
+// Verilator 5.050's localization pass (V3Localize) hits an internal error on
+// compound expressions or flop references inside a cover-property body.
 //
 // JTAG-core coverage lives here; JTAG2AXI/OTP, debug TDR, scan/STAP, and
 // cross-trigger coverage live in the sibling dtp_*_fcov.sv modules. The
@@ -211,7 +212,7 @@ module dtp_fcov (
   wire idcode_marker_read = first_dr_bit && idcode_active && !stap_select_i;
 
   // ------------------------------------------------------------------
-  // Covergroups.
+  // Covergroups, under the cross rules the header states.
   // ------------------------------------------------------------------
   import jtag_tap_pkg::*;
 

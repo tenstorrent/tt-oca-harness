@@ -33,10 +33,10 @@
 // Assertion coverage carries the DUT's own assertions, the `cover property`
 // points of dtp_jtag2axi_fcov, and the protocol checkers and rules under the
 // bench top; the assertions of the UVM and AXI packages, which URG lists as
-// top-level scopes of their own, stay out. uvm_pkg exists in the
-// SV-UVM elaboration only, so the cocotb compile reports that line as
-// unmatched. A metric section replaces the general rules for that metric, so
-// the tree is stated again.
+// top-level scopes of their own, stay out. uvm_pkg exists in the SV-UVM
+// elaboration only, so the cocotb compile reports that line as unmatched. A
+// metric section replaces the general rules for that metric, so the tree is
+// stated again.
 begin assert
 -tree tb_top
 -tree uvm_pkg

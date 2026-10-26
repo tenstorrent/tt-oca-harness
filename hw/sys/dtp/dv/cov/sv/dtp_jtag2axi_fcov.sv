@@ -20,9 +20,10 @@
 // of a module (hierarchies collapse to `*`), so a per-target submodule would
 // lose the target dimension.
 //
-// CONVENTION (see dtp_fcov.sv): every cover-property body is a single
-// continuous-assign wire, and always_ff-driven variables carry no
-// declaration initializers.
+// CONVENTION (see dtp_fcov.sv): a cover-property body is a single
+// continuous-assign wire. No declaration initializers on always_ff-driven
+// variables, which VCS rejects (initializer_driver_checks); declare wires
+// before use.
 
 `include "ocah_fcov_macros.svh"
 
@@ -243,9 +244,9 @@ module dtp_jtag2axi_fcov (
 
   // ------------------------------------------------------------------
   // Common system-clock reset bookkeeping: the reset-assertion event and the
-  // back-to-back spacing counter. The reset sample on the rst_fell_e edge
-  // reads the per-target phase flops below before that edge updates them, so
-  // they show the pre-reset state.
+  // back-to-back spacing counter. The reset sample on the clk_i edge where
+  // rst_fell_e is set reads the per-target phase flops below before that edge
+  // updates them, so they show the pre-reset state.
   // ------------------------------------------------------------------
   wire clk_in_reset = (rst_ni !== 1'b1);
   logic rst_nq;

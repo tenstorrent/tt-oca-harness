@@ -19,8 +19,8 @@
 // state a reset clears is judged against a copy taken at the last TCK edge
 // before it, so a reset applied while TCK is idle is judged too.
 //
-// Declarations carry no initializers: VCS rejects them on always_ff-driven
-// variables (initializer_driver_checks).
+// CONVENTION: no declaration initializers on always_ff-driven variables,
+// which VCS rejects (initializer_driver_checks); declare wires before use.
 
 module dtp_debug_tdr_fcov (
   input wire        tck_i,

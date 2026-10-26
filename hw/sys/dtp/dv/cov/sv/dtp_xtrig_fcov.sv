@@ -12,8 +12,8 @@
 // configuration the port runs with when it acts; the CTM route bins follow
 // a shadow of the CT_SRC selects that the CSR writes program.
 //
-// CONVENTION: no declaration initializers on always_ff-driven variables;
-// declare wires before use.
+// CONVENTION: no declaration initializers on always_ff-driven variables,
+// which VCS rejects (initializer_driver_checks); declare wires before use.
 
 module dtp_xtrig_fcov (
   input wire        clk_i,
