@@ -115,7 +115,7 @@ Checkers:
                   Contract: "configure `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`,
                   `INTR_SRC_ADDR` and `INTR_SRC_WR_VAL` for the connected host
                   port (`CLEAR_INTR_BUS` bit 0 = 1)"
-                  (``doc/programmer/src/sep-programming.adoc:774-776``); "DMA
+                  (``doc/programmer/src/sep-programming.adoc:775-778``); "DMA
                   issues writes with address from INTR_SRC_ADDR and write value
                   from INTR_SRC_WR_VAL corresponding to each bit set in this
                   register" (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/

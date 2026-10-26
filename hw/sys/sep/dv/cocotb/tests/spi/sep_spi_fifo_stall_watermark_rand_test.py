@@ -16,7 +16,7 @@ and size the stimulus.
 
 Depth sources: the SEP SPI host is the unmodified OpenTitan IP
 (``doc/trm/src/revision.adoc:191``; "The SEP SPI host is the unmodified
-OpenTitan SPI Host.", ``doc/programmer/src/sep-programming.adoc:784``). The
+OpenTitan SPI Host.", ``doc/programmer/src/sep-programming.adoc:786``). The
 OpenTitan SPI_HOST features give the FIFO sizes: "288 bytes for TX data, 256
 bytes for RX data"
 (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/README.md:26``), that is

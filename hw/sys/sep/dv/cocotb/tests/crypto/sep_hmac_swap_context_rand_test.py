@@ -21,7 +21,7 @@ Contracts (spec text, not RTL):
   hashes on from them (hmac.adoc:141, :161;
   vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:365-366, :372, :386).
   The context switch follows the OpenTitan HMAC programmer's guide that
-  doc/programmer/src/sep-programming.adoc:848-849 names: write whole blocks, then
+  doc/programmer/src/sep-programming.adoc:850-851 names: write whole blocks, then
   ``hash_stop``; wait for ``hmac_done``; save DIGEST and MSG_LENGTH; clear
   ``sha_en``; before the restore ``sha_en`` reads 0; write ``CFG``, DIGEST and
   MSG_LENGTH; set ``sha_en``; write ``hash_continue``.

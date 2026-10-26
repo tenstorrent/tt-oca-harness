@@ -3910,7 +3910,7 @@ they add or reuse.
 |`cp_hash_opcode` |`sha512` (`CONTROL.OPCODE` 3, `dma.hjson`). The bins `sha256` and `sha384` exist |`dma_go`, `dma_opcode_w`. Existing sample: `CONTROL.GO` with a non-COPY opcode |`sep_dma_transfer_matrix_rand_test` |executable (bin `sha512`) |`dma.adoc`, introduction
 |`cp_chunk` |`chunk_done` (existing bin) |`rd_ev`, `rd_data`. Existing sample: `STATUS.CHUNK_DONE` seen while a GO is outstanding |`sep_dma_transfer_matrix_rand_test` |executable; existing bin |`secure_dma.adoc`, `STATUS.CHUNK_DONE`
 |`cp_cfg_regwen` |`busy_false` (`dma_busy_probe_o` = 1, REGWEN 0x9), `idle_true` (`dma_busy_probe_o` = 0, REGWEN 0x6) |`rd_ev`, `ar_addr_q`, `rd_data[3:0]`, `dma_busy_i`. Sample: the read response of CFG_REGWEN in the owner's window |`sep_dma_transfer_matrix_rand_test` |executable |`dma.hjson:352-353`, CFG_REGWEN; `secure_dma.rdl:158-159`
-|`cp_intr_clear` |`clear_wr_host`: a DMA master AW to INTR_SRC_ADDR_0 with CLEAR_INTR_SRC bit 0 = 1 and CLEAR_INTR_BUS bit 0 = 1 |`dma_req_i` AW handshake after the alias remap, `dma_reg2hw_i.clear_intr_src`, `clear_intr_bus`, `intr_src_addr[0]`. Sample: that AW handshake in the owner's window |`sep_spi_dma_handshake_rand_test` |executable |`sep-programming.adoc:774-776`; `dma.hjson`, CLEAR_INTR_SRC, CLEAR_INTR_BUS
+|`cp_intr_clear` |`clear_wr_host`: a DMA master AW to INTR_SRC_ADDR_0 with CLEAR_INTR_SRC bit 0 = 1 and CLEAR_INTR_BUS bit 0 = 1 |`dma_req_i` AW handshake after the alias remap, `dma_reg2hw_i.clear_intr_src`, `clear_intr_bus`, `intr_src_addr[0]`. Sample: that AW handshake in the owner's window |`sep_spi_dma_handshake_rand_test` |executable |`sep-programming.adoc:775-778`; `dma.hjson`, CLEAR_INTR_SRC, CLEAR_INTR_BUS
 |===
 
 ====== `sep_dma_completion_route_cg`
