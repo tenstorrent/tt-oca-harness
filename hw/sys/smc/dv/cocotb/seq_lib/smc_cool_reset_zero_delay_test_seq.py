@@ -146,7 +146,7 @@ class smc_cool_reset_zero_delay_test_seq(SmcCsrSeq):
         )
 
         dut.tb_cfg_flr_pf_active.value = 0
-        await self.csr_write("SMC_REG_CLR", SMC_REG, 0)
+        await self.csr_write("SMC_REG_CLR", SMC_REG, SMC_BIT)
         await self._await_smc_bit(0, _PIN_BOUND, "SMC_REG_CLR_RB")
 
         # Allow leg: the same pre-delay of 0, now with a hold that lets the
@@ -196,7 +196,7 @@ class smc_cool_reset_zero_delay_test_seq(SmcCsrSeq):
 
         post = await self.csr_read("SMC_REG_POST", SMC_REG)
         assert post & SMC_BIT, f"ISOLATE_REQ_SMC_REG dropped across the cool: 0x{post:x}"
-        await self.csr_write("SMC_REG_SW_CLR", SMC_REG, 0)
+        await self.csr_write("SMC_REG_SW_CLR", SMC_REG, SMC_BIT)
         await self._await_smc_bit(0, _PIN_BOUND, "SMC_REG_SW_CLR_RB")
         await self.csr_write("FLR_HOLD_CLR", FLR_HOLD, 0)
         await self.csr_read("FLR_HOLD_CLR_RB", FLR_HOLD, expected=0)

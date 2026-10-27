@@ -5638,7 +5638,7 @@ module sep_fcov (
   logic [1:0] fx_filter_order = '0;  // 1 global_decerr_no_xbar_req, 2 local_okay_one_req
   logic [1:0] fx_route_overlap = '0; // 1 smu_over_ap_r, 2 smu_over_ap_w
   logic [1:0] fx_filter_csr_write = '0;  // 1 unlocked_lo, 2 unlocked_hi, 3 locked
-  logic [1:0] fx_cpu_single = '0;    // 1 ifu_ar, 2 lsu_ar, 3 lsu_aw
+  logic [3:0] fx_cpu_single = '0;    // {AxLEN class, channel}: see cp_cpu_single_beat
   logic [1:0] fx_shim_byte = '0;     // 1 lsu_w, 2 si_w
   logic [1:0] fx_shim_burst = '0;    // 1 read, 2 write
   logic [2:0] fx_array_tail = '0;    // 1 alias, 2 infilt, 3 outfilt, 4 ap, 5 stee
@@ -6211,10 +6211,26 @@ module sep_fcov (
       illegal_bins backdoor_request = {[4'b1_000 : 4'b1_111]};
     }
     cp_ext_refused_ifu: coverpoint eri_v iff (eri_v) {bins no_request_at_fetch_address = {1'b1};}
-    // AxLEN 0 on a CPU AR or AW handshake (owner
-    // sep_cpu_lsu_alias_window_twin_test).
-    cp_cpu_single_beat: coverpoint fx_cpu_single iff (fx_cpu_single != 2'd0) {
-      bins ifu_ar = {2'd1}; bins lsu_ar = {2'd2}; bins lsu_aw = {2'd3};
+    // AxLEN 0 on a CPU AR or AW handshake: ifu_ar on PR-IFU (owner
+    // sep_cpu_ifu_lsu_alias_remap_matrix_test, the leaf whose firmware fetches
+    // over the IFU AXI port), lsu_ar and lsu_aw on PR-LSU-XBAR or PR-LSU-ROM
+    // (owner sep_cpu_lsu_alias_window_twin_test). The sample is the compare of
+    // CHK-IFU-SINGLE-BEAT or CHK-CPU-SINGLE-BEAT for that handshake. Code
+    // {class[1:0], channel[1:0]}: channel 1 IFU AR, 2 LSU AR, 3 LSU AW; class 0
+    // AxLEN 0, 1 AxLEN not 0 (a burst), 2 AxLEN with an X or Z bit. A legal
+    // (class 0) handshake is held and samples on the pass label of its owner;
+    // a burst or an X AxLEN on a handshake inside the window of the owner of
+    // its channel samples at once (illegal bins).
+    cp_cpu_single_beat: coverpoint fx_cpu_single iff (fx_cpu_single != 4'd0) {
+      bins ifu_ar = {4'b00_01};
+      bins lsu_ar = {4'b00_10};
+      bins lsu_aw = {4'b00_11};
+      illegal_bins ifu_ar_burst = {4'b01_01};
+      illegal_bins lsu_ar_burst = {4'b01_10};
+      illegal_bins lsu_aw_burst = {4'b01_11};
+      illegal_bins ifu_ar_len_x = {4'b10_01};
+      illegal_bins lsu_ar_len_x = {4'b10_10};
+      illegal_bins lsu_aw_len_x = {4'b10_11};
     }
     // A one-byte write to the eFuse SHIM word, then an LSU read of that word
     // in which only the written byte differs from the read before the write,
@@ -7190,6 +7206,9 @@ module sep_fcov (
   // A PR-OUT capture of a DMA request through an output remap in this run:
   // address {offset[55:19], address[18:0]} and AxUSER 0.
   logic       dma_rm_q;
+  // A write handshake on the extension port while the first write of the
+  // run addresses the extension window.
+  logic       dma_ext_q;
   // DMA TCM cell: a DMA request into ICCM or DCCM, confirmed by tcm activity.
   logic       tcm_pend_q;
   logic [1:0] tcm_cell_q;
@@ -7212,6 +7231,7 @@ module sep_fcov (
       nc_pool_q <= 1'b0;
       nc_pool_lvl_q <= '0;
       dma_rm_q <= 1'b0;
+      dma_ext_q <= 1'b0;
       tcm_pend_q <= 1'b0;
       tcm_cell_q <= '0;
     end else begin
@@ -7224,6 +7244,7 @@ module sep_fcov (
         nc_csr_q <= 1'b0;
         nc_pool_q <= 1'b0;
         dma_rm_q <= 1'b0;
+        dma_ext_q <= 1'b0;
       end else begin
         if (dq_ar_hs && in_rng(
                 dma_req_i.ar.addr, FapBaseEntropyPool, FapLastEntropyPool
@@ -7244,6 +7265,9 @@ module sep_fcov (
           dma_dst_v_q <= 1'b1;
           dma_dst_cls_q <= dma_cls(dma_req_i.aw.addr);
         end
+        if (ext_aw_hs && dma_dst_v_q && (dma_dst_cls_q == 4'd7)) dma_ext_q <= 1'b1;
+        if (ext_aw_hs && dq_aw_hs && !dma_dst_v_q && in_rng(dma_req_i.aw.addr, FExtBase, FExtEnd))
+          dma_ext_q <= 1'b1;
         if ((dq_ar_hs && (dma_req_i.ar.addr == FRomBase)) || (dq_aw_hs && (dma_req_i.aw.addr == FRomBase))) begin
           nc_rom_q <= 1'b1;
           nc_rom_seen_q <= 1'b0;
@@ -7349,13 +7373,18 @@ module sep_fcov (
                         !si_c.csr && si_f.win && si_f.perm && (si_local >= FXbarLimit);
   wire sil_dma_rom    = dma_run_end && own_dma && alive_rom_q && nc_rom_q && !nc_rom_seen_q;
   wire sil_dma_csr    = dma_run_end && own_dma && alive_dcsr_q && nc_csr_q && !nc_csr_seen_q;
-  // DMA read of the entropy pool: the run ends in error with
-  // ERROR_CODE.BUS_ERROR (bit 4) and the pool level did not fall, so no
-  // entry was popped (hw/sys/sep/doc/assets/sep_axi_connectivity.svg: no DMA
-  // path to the entropy pool).
+  // DMA read of the entropy pool: the run ends with a DMA interrupt, the
+  // pool level at the DMA read is 1 or more and below the pool depth, and the
+  // level at the run end equals it, so no entry was popped (the owner keeps
+  // the pool fill on the external stream 2, which it stops before the GO;
+  // hw/sys/sep/doc/assets/sep_axi_connectivity.svg: no DMA path to the
+  // entropy pool). At the depth a pop that the fill replaces leaves the level
+  // unchanged, so a full pool is no sample. No spec sentence states the end
+  // state, so it is no term.
+  // The pool is a 32-entry FIFO of 64-bit words (hw/sys/sep/doc/trng.adoc:36-37).
+  localparam logic [5:0] FPoolDepth = 6'd32;
   wire sil_dma_pool   = dma_run_end && own_dma && nc_pool_q && (nc_pool_lvl_q != 6'd0) &&
-                        (irq_dma_error_i === 1'b1) && !irq_dma_err_q2 &&
-                        (dma_err_code_i[4] === 1'b1) && (pool_level_i >= nc_pool_lvl_q);
+                        (nc_pool_lvl_q < FPoolDepth) && (pool_level_i == nc_pool_lvl_q);
   // An LSU access at an address of the moved SMU window while the SMU pair
   // holds its reset value answers DECERR and leaves PR-OUT silent.
   logic        smu_mv_v_q;
@@ -7406,7 +7435,9 @@ module sep_fcov (
 
   sep_fabric_port_silence_cp u_sep_fabric_port_silence_cp = new();
 
-  wire [14:0] sil_vec = {sil_out_moved, sil_dma_pool, sil_dma_csr, sil_dma_rom, sil_in_rebase, sil_in_filter, sil_ext_deny,
+  // sil_dma_rom, sil_dma_csr and sil_dma_pool are held by the dma_ep_pass
+  // block and sample on its rise, so their bits are 0 here.
+  wire [14:0] sil_vec = {sil_out_moved, 3'b000, sil_in_rebase, sil_in_filter, sil_ext_deny,
                          sil_shim_last, sil_shim_first, sil_on_smc_ovl, sil_on_smc_only,
                          sil_smc_smu, sil_smc_above, sil_out_deny, sil_out_local};
 
@@ -7420,28 +7451,88 @@ module sep_fcov (
   // whose AxUSER[3:0] is not 0 and equals the source ID the LSU drove, with
   // AxPROT 0b001, is counted per direction by the SMC capture below
   // (fx_smc_cpu_n), and a count above the last sampled count is a pending
-  // cell. The pending cells sample only
-  // when dma_smc_cpu_pass rises: sep_fabric_dma_endpoint_matrix_test writes it
-  // through the u_sep_fcov handle after CHK-DMA-SMC grades that AxUSER and
-  // that AxPROT, and 0 at the start of the leg. It gates a sample; it is never
-  // a DUT value and drives nothing.
+  // cell. Only a beat inside the window of the owner counts. The pending
+  // cells sample only when dma_smc_cpu_pass rises:
+  // sep_fabric_dma_endpoint_matrix_test writes it through the u_sep_fcov
+  // handle after every check of the run passed, CHK-DMA-SMC-CPU among them,
+  // which grades that AxUSER and that AxPROT. The owner grades its checks
+  // after the firmware ends, so a window close does not drop a pending cell
+  // and the release does not depend on the window; reset drops it. It gates
+  // a sample; it is never a DUT value and drives nothing.
   int unsigned dma_smc_cpu_pass = 0;
   logic fx_smc_pass_q = 1'b0;
   int unsigned fx_smc_cpu_n[2] = '{0, 0};     // written by the SMC capture only
   int unsigned fx_smc_cpu_base[2] = '{0, 0};  // written by this block only
   always @(posedge clk_i) begin
     fx_smc_pass_q <= (dma_smc_cpu_pass != 0);
-    if (in_reset || !own_dma) begin
+    if (in_reset) begin
       fx_smc_cpu_base <= fx_smc_cpu_n;
     end else if ((dma_smc_cpu_pass != 0) && !fx_smc_pass_q) begin
       for (int k = 0; k < 2; k++) begin
         if (fx_smc_cpu_n[k] != fx_smc_cpu_base[k])
-          u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, (k == 1) ? 3'd4 : 3'd3, own_dma, 3'd0, 1'b0,
-                                       2'd0, 1'b0);
+          u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, (k == 1) ? 3'd4 : 3'd3, 1'b1, 3'd0, 1'b0, 2'd0,
+                                       1'b0);
       end
       fx_smc_cpu_base <= fx_smc_cpu_n;
     end
   end
+  // Pass label of the sep_cpu_lsu_alias_window_twin_test cells of
+  // sep_remap_alias_cg (cp_local_alias_twin, cp_local_alias_moved). Each code
+  // of an LSU request inside the window of that leaf is held (bit = code) and
+  // samples only when twin_pass rises inside the window: the leaf writes 0
+  // when it opens the window, and 1 after every check of the run has passed
+  // (CHK-CPU-AXPROT, CHK-CPU-SINGLE-BEAT, CHK-TWIN, CHK-TWIN-WR,
+  // CHK-TWIN-MOVED, firmware PASS), holds it two clocks and writes 0. A FAIL
+  // closes the window; a window close or a reset drops the held codes. It
+  // gates a sample; it is never a DUT value and drives nothing. The same rise
+  // (fx_tw_rel) releases the held LSU cells of cp_cpu_single_beat and
+  // cp_master_ch and the cp_component_id reset_value_read cell of that leaf.
+  int unsigned twin_pass = 0;
+  logic        fx_tw_pass_q = 1'b0;
+  logic [31:0] fx_tw_pend = '0;     // cp_local_alias_twin code {class, form}
+  logic [31:0] fx_tw_mv_pend = '0;  // cp_local_alias_moved code {class, dir}
+  always @(posedge clk_i) begin
+    fx_tw_pass_q <= (twin_pass != 0);
+    if (in_reset || !own_twin) begin
+      fx_tw_pend = '0;
+      fx_tw_mv_pend = '0;
+    end else if ((twin_pass != 0) && !fx_tw_pass_q) begin
+      for (int v = 0; v < 32; v++) begin
+        if (fx_tw_pend[v])
+          u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd0, 3'd0, 1'b0, 5'(v), 1'b1, 5'd0, 1'b0);
+        if (fx_tw_mv_pend[v])
+          u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd0, 3'd0, 1'b0, 5'd0, 1'b0, 5'(v), 1'b1);
+      end
+      fx_tw_pend = '0;
+      fx_tw_mv_pend = '0;
+    end
+  end
+  wire fx_tw_rel = (twin_pass != 0) && !fx_tw_pass_q;
+  // Pass label of the other cells that sep_fabric_dma_endpoint_matrix_test
+  // (owner own_dma) fills: every bin of cp_dma_pair and cp_dma_addr_form,
+  // cp_dma_smc_beat user0_len0_r and user0_len0_w, cp_ext_init_dir_dma,
+  // cp_out_attr[dma_smu_user_sep], the DMA samples of cp_instance_dir,
+  // cp_local_alias_twin[dma_ext_top_alias], sil_dma_not_connected,
+  // cp_filter_csr_write and the legal DMA values of cp_master_ch (held in the
+  // sep_master_axprot_cg block). Inside the window of the owner the fabric sampling
+  // block counts each event of such a cell in fx_dep_n (index Dep*), and the
+  // release block below holds the silence and filter-write events. The held
+  // cells sample once each when dma_ep_pass rises. The owner grades its
+  // checks after the firmware ends and writes dma_ep_pass after every check
+  // of the run passed, so a window close does not drop a held cell and the
+  // release does not depend on the window; reset drops it. It gates a
+  // sample; it is never a DUT value and drives nothing.
+  localparam int unsigned DepPair = 0;  // cp_dma_pair: index = bin code - 1 (13 cells)
+  localparam int unsigned DepForm = 13;  // cp_dma_addr_form: 3 * form + side - 1 (6 cells)
+  localparam int unsigned DepSmc = 19;  // cp_dma_smc_beat user0_len0: + write (2 cells)
+  localparam int unsigned DepExt = 21;  // cp_ext_init_dir_dma: + write (2 cells)
+  localparam int unsigned DepAttr = 23;  // cp_out_attr[dma_smu_user_sep]
+  localparam int unsigned DepInst = 24;  // cp_instance_dir: + 2 * stee + write (4 cells)
+  localparam int unsigned DepTwin = 28;  // cp_local_alias_twin[dma_ext_top_alias]
+  localparam int unsigned DepCount = 29;
+  int unsigned dma_ep_pass = 0;
+  int unsigned fx_dep_n[DepCount] = '{default: 0};     // written by the fabric sampling block only
+  int unsigned fx_dep_base[DepCount] = '{default: 0};  // written by the release block only
   always @(posedge clk_i) begin
     if (!in_reset) begin
       // Inbound completions.
@@ -7576,16 +7667,16 @@ module sep_fcov (
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd9,
                                                   own_route, 5'd0, 1'b0);
           end
-          if ((c == 3'd1) && (t.init == INIT_DMA) && (ou[3:0] != 4'd0)) begin
-            u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd10,
-                                                  own_dma, 5'd0, 1'b0);
-          end
+          if (own_dma && (c == 3'd1) && (t.init == INIT_DMA) && (ou[3:0] != 4'd0))
+            fx_dep_n[DepAttr] <= fx_dep_n[DepAttr] + 1;
           if (c inside {3'd3, 3'd4}) begin
             logic [3:0] rg;
             logic       vld;
             rg  = 4'(t.addr[31:0] >> 19);
             vld = (c == 3'd3) ? ap_valid_i[rg] : stee_valid_i[rg];
-            if (vld) u_sep_remap_output_offset_cg.sample({(c == 3'd4), w}, own_route || own_dma);
+            if (vld) u_sep_remap_output_offset_cg.sample({(c == 3'd4), w}, own_route);
+            if (vld && own_dma)
+              fx_dep_n[DepInst+2*(c==3'd4)+w] <= fx_dep_n[DepInst+2*(c==3'd4)+w] + 1;
           end
         end
       end
@@ -7617,9 +7708,8 @@ module sep_fcov (
           logic [7:0]  sl;
           su = w ? smc_req_i.aw.user : smc_req_i.ar.user;
           sl = w ? smc_req_i.aw.len : smc_req_i.ar.len;
-          if ((su == 12'd0) && (sl == 8'd0))
-            u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, w ? 3'd2 : 3'd1, own_dma, 3'd0, 1'b0, 2'd0,
-                                         1'b0);
+          if (own_dma && (su == 12'd0) && (sl == 8'd0))
+            fx_dep_n[DepSmc+w] <= fx_dep_n[DepSmc+w] + 1;
         end
         if (t.init == INIT_LSU) begin
           logic [11:0] su;
@@ -7655,7 +7745,8 @@ module sep_fcov (
         if ((ei == INIT_SI) && (eb == axi_pkg::BURST_INCR) && !w && (el == 8'd7)) ebu = 2'd2;
         u_sep_fabric_dedicated_port_cg.sample(
             (ei == INIT_LSU) ? {2'd1, w} : (ei == INIT_SI) ? {2'd2, w} : (ei == INIT_DMA) ? {2'd3, w} : 3'd0,
-            own_ext, own_dma, ecls, ebu, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 3'd0, 1'b0);
+            own_ext, 1'b0, ecls, ebu, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 3'd0, 1'b0);
+        if (own_dma && (ei == INIT_DMA)) fx_dep_n[DepExt+w] <= fx_dep_n[DepExt+w] + 1;
       end
       // Extension port replies, one sample per B or R beat.
       if (ext_b_hs)
@@ -7697,11 +7788,12 @@ module sep_fcov (
           xa = w ? lsu_req_i.aw.addr : lsu_req_i.ar.addr;
           tc = twin_class(xa);
           fm = alias_form(ra, xa);
-          if ((tc != 4'd0) && (fm != 2'd2)) begin
-            u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd0, 3'd0, 1'b0, {tc, fm[0]}, own_twin, {tc, w
-                                        },
-                                        own_twin && (fm == 2'd1) && (local_base_i[31:0] !=
-                                        32'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_DEFAULT)));
+          // Held until twin_pass rises (pass label above).
+          if (own_twin && (tc != 4'd0) && (fm != 2'd2)) begin
+            fx_tw_pend[{tc, fm[0]}] = 1'b1;
+            if ((fm == 2'd1) &&
+                (local_base_i[31:0] != 32'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_DEFAULT)))
+              fx_tw_mv_pend[{tc, w}] = 1'b1;
           end
         end
       end
@@ -7720,21 +7812,30 @@ module sep_fcov (
         if (!w && in_rng(xa, FSramBase, FSramEnd)) side = 2'd1;
         if (w && in_rng(xa, FSramBase, FSramEnd)) side = 2'd2;
         if (w && in_rng(xa, FExtBase, FExtEnd)) side = 2'd3;
-        if ((side != 2'd0) && (fm != 2'd2))
-          u_sep_dma_endpoint_cg.sample(4'd0, {fm[0], side}, 2'd0, own_dma, 3'd0, 1'b0, 2'd0, 1'b0);
-        if (w && (fm == 2'd1) && ({xa[31:3], 3'b000} == FExtTopWord)) begin
-          u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd0, 3'd0, 1'b0, {4'd8, 1'b1}, own_dma, 5'd0,
-                                      1'b0);
-        end
+        if (own_dma && (side != 2'd0) && (fm != 2'd2))
+          fx_dep_n[DepForm+3*fm[0]+side-1] <= fx_dep_n[DepForm+3*fm[0]+side-1] + 1;
+        if (own_dma && w && (fm == 2'd1) && ({xa[31:3], 3'b000} == FExtTopWord))
+          fx_dep_n[DepTwin] <= fx_dep_n[DepTwin] + 1;
       end
       if (dma_run_end && dma_src_v_q && dma_dst_v_q) begin
         logic [3:0] pc;
+        logic       done_clean;
         pc = dma_pair(dma_src_cls_q, dma_dst_cls_q);
-        // A pair through an output remap counts only for a run that ends DONE
-        // after a remapped PR-OUT capture.
-        if ((pc >= 4'd11) && !(dma_rm_q && (irq_dma_done_i === 1'b1) && !irq_dma_done_q2))
-          pc = 4'd0;
-        u_sep_dma_endpoint_cg.sample(pc, 3'd0, 3'd0, own_dma, 3'd0, 1'b0, 2'd0, 1'b0);
+        // A pair counts only for a run whose graded outcome is a completed
+        // reach: the run ends DONE with no error interrupt in the same clock.
+        // A pair through an output remap also needs a remapped PR-OUT capture.
+        // The extension port answers the DMA write with the adopter response
+        // (DECERR on the bench), so sram_to_ext counts for a run that ends
+        // with an error after a DMA write handshake on the extension port. A
+        // run that reads or writes a not-connected target (boot ROM base, DMA
+        // CSR word, entropy pool) is never a pair.
+        done_clean = (irq_dma_done_i === 1'b1) && !irq_dma_done_q2 && (irq_dma_error_i !== 1'b1);
+        if (nc_rom_q || nc_csr_q || nc_pool_q) pc = 4'd0;
+        else if (pc == 4'd8) begin
+          if (!(dma_ext_q && (irq_dma_error_i === 1'b1) && !irq_dma_err_q2)) pc = 4'd0;
+        end else if (!done_clean) pc = 4'd0;
+        else if ((pc >= 4'd11) && !dma_rm_q) pc = 4'd0;
+        if (own_dma && (pc != 4'd0)) fx_dep_n[DepPair+pc-1] <= fx_dep_n[DepPair+pc-1] + 1;
       end
     end
   end
@@ -7879,6 +7980,29 @@ module sep_fcov (
                                     (lsu_rom_req_i.aw.len == 8'd0)));
   wire fx_ifu_hs   = !in_reset && (ifu_arvalid_i === 1'b1) && (ifu_arready_i === 1'b1) &&
                      (ifu_arlen_i == 8'd0);
+  // AxLEN class of a CPU AR or AW handshake for cp_cpu_single_beat: 0 none or
+  // AxLEN 0, 1 AxLEN not 0, 2 AxLEN with an X or Z bit (2 wins over 1 when
+  // the LSU fabric port and the LSU ROM port both hand over in one clock).
+  function automatic logic [1:0] fx_len_cls(input logic hs, input logic [7:0] len);
+    if (!hs) return 2'd0;
+    if ($isunknown(len)) return 2'd2;
+    return (len != 8'd0) ? 2'd1 : 2'd0;
+  endfunction
+  function automatic logic [1:0] fx_len_max(input logic [1:0] a, input logic [1:0] b);
+    return (a > b) ? a : b;
+  endfunction
+  wire [1:0] fx_ifu_len_bad = in_reset ? 2'd0 :
+      fx_len_cls((ifu_arvalid_i === 1'b1) && (ifu_arready_i === 1'b1), ifu_arlen_i);
+  wire [1:0] fx_lx_ar_len_bad = in_reset ? 2'd0 : fx_len_max(
+      fx_len_cls((lsu_xbar_req_i.ar_valid === 1'b1) && (lsu_xbar_resp_i.ar_ready === 1'b1),
+                 lsu_xbar_req_i.ar.len),
+      fx_len_cls((lsu_rom_req_i.ar_valid === 1'b1) && (lsu_rom_resp_i.ar_ready === 1'b1),
+                 lsu_rom_req_i.ar.len));
+  wire [1:0] fx_lx_aw_len_bad = in_reset ? 2'd0 : fx_len_max(
+      fx_len_cls((lsu_xbar_req_i.aw_valid === 1'b1) && (lsu_xbar_resp_i.aw_ready === 1'b1),
+                 lsu_xbar_req_i.aw.len),
+      fx_len_cls((lsu_rom_req_i.aw_valid === 1'b1) && (lsu_rom_resp_i.aw_ready === 1'b1),
+                 lsu_rom_req_i.aw.len));
   wire [31:0] fx_lane32 = lq_a[2] ? lq_rdata[63:32] : lq_rdata[31:0];
   wire [7:0]  fx_rl     = fx_lanes(lq_c.size, lq_a);
   freg_t fx_f;
@@ -8272,26 +8396,119 @@ module sep_fcov (
     end
   end
 
-  // CPU single-beat code of this clock: 1 IFU AR, 2 LSU AR, 3 LSU AW.
+  // Release block of dma_ep_pass. It holds the sil_dma_not_connected bits
+  // {pool, csr, rom} and the cp_filter_csr_write codes of the window of the
+  // owner, and on the rise samples every held cell once.
+  logic       fx_dep_pass_q = 1'b0;
+  logic [2:0] fx_dep_sil_q = '0;
+  logic [2:0] fx_dep_fw_q = '0;  // bit c - 1: cp_filter_csr_write code c
   always @(posedge clk_i) begin
-    if (!in_reset) begin
-      if (own_twin && fx_ifu_hs) begin
-        fx_cpu_single = 2'd1;
-        u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0, 1'b0,
-                                              1'b0, 3'd0, 1'b0);
-        fx_cpu_single = 2'd0;
+    fx_dep_pass_q <= (dma_ep_pass != 0);
+    if (in_reset) begin
+      fx_dep_base  <= fx_dep_n;
+      fx_dep_sil_q <= '0;
+      fx_dep_fw_q  <= '0;
+    end else if ((dma_ep_pass != 0) && !fx_dep_pass_q) begin
+      for (int k = 0; k < DepCount; k++) begin
+        if (fx_dep_n[k] != fx_dep_base[k]) begin
+          if (k < DepForm) begin
+            u_sep_dma_endpoint_cg.sample(4'(k - DepPair + 1), 3'd0, 3'd0, 1'b1, 3'd0, 1'b0, 2'd0,
+                                         1'b0);
+          end else if (k < DepSmc) begin
+            u_sep_dma_endpoint_cg.sample(4'd0, {k >= DepForm + 3, 2'((k - DepForm) % 3 + 1)}, 3'd0,
+                                         1'b1, 3'd0, 1'b0, 2'd0, 1'b0);
+          end else if (k < DepExt) begin
+            u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, (k == DepSmc) ? 3'd1 : 3'd2, 1'b1, 3'd0, 1'b0,
+                                         2'd0, 1'b0);
+          end else if (k < DepAttr) begin
+            u_sep_fabric_dedicated_port_cg.sample({2'd3, k != DepExt}, 1'b0, 1'b1, 2'd0, 2'd0, 2'd0,
+                                                  1'b0, 4'd0, 1'b0, 1'b0, 3'd0, 1'b0);
+          end else if (k == DepAttr) begin
+            u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 3'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd10,
+                                                  1'b1, 5'd0, 1'b0);
+          end else if (k < DepTwin) begin
+            u_sep_remap_output_offset_cg.sample(2'(k - DepInst), 1'b1);
+          end else begin
+            u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd0, 3'd0, 1'b0, {4'd8, 1'b1}, 1'b1, 5'd0,
+                                        1'b0);
+          end
+        end
       end
-      if (own_twin && fx_lx_ar_hs) begin
-        fx_cpu_single = 2'd2;
-        u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0, 1'b0,
-                                              1'b0, 3'd0, 1'b0);
-        fx_cpu_single = 2'd0;
+      if (fx_dep_sil_q != 3'd0) u_sep_fabric_port_silence_cp.sample({1'b0, fx_dep_sil_q, 11'd0});
+      for (int c = 1; c <= 3; c++) begin
+        if (fx_dep_fw_q[c-1]) begin
+          fx_filter_csr_write = 2'(c);
+          u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, 3'd0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0);
+          fx_filter_csr_write = '0;
+        end
       end
-      if (own_twin && fx_lx_aw_hs) begin
-        fx_cpu_single = 2'd3;
+      fx_dep_base  <= fx_dep_n;
+      fx_dep_sil_q <= '0;
+      fx_dep_fw_q  <= '0;
+    end else begin
+      fx_dep_sil_q <= fx_dep_sil_q | {sil_dma_pool, sil_dma_csr, sil_dma_rom};
+      if (own_dma && (c_filter_csr_write != 2'd0)) fx_dep_fw_q[c_filter_csr_write-1] <= 1'b1;
+    end
+  end
+
+  // Pass label ifu_remap_pass of sep_cpu_ifu_lsu_alias_remap_matrix_test
+  // (owner own_ifu_remap): cp_cpu_single_beat[ifu_ar] and
+  // cp_master_ch[ifu_ar_101]. Each IFU read handshake of such a cell inside
+  // the window of the owner is held as pending and samples once when
+  // ifu_remap_pass rises. The owner writes 0 when it opens its window, and 1
+  // after CHK-IFU-AXPROT and CHK-IFU-SINGLE-BEAT passed (after the firmware
+  // ended and the window closed), holds it two clocks and writes 0, so a
+  // window close does not drop a held cell; a reset drops it. An IFU AxPROT
+  // other than 0b101 samples cp_master_ch at once (illegal bins). It gates a
+  // sample; it is never a DUT value and drives nothing.
+  int unsigned ifu_remap_pass = 0;
+  logic fx_ifu_pass_q = 1'b0;
+  always @(posedge clk_i) fx_ifu_pass_q <= (ifu_remap_pass != 0);
+  wire  fx_ifu_rel = (ifu_remap_pass != 0) && !fx_ifu_pass_q;
+
+  // CPU single-beat code of this clock: 1 IFU AR, 2 LSU AR, 3 LSU AW. Each
+  // code is held (bit code - 1) and samples on the pass label of its owner:
+  // ifu_remap_pass for the IFU code, twin_pass for the LSU codes.
+  logic [2:0] fx_cs_pend = '0;
+  always @(posedge clk_i) begin
+    if (in_reset) begin
+      fx_cs_pend = '0;
+    end else begin
+      if (fx_ifu_rel && fx_cs_pend[0]) begin
+        fx_cpu_single = 4'b00_01;
         u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0, 1'b0,
                                               1'b0, 3'd0, 1'b0);
-        fx_cpu_single = 2'd0;
+        fx_cpu_single = 4'd0;
+        fx_cs_pend[0] = 1'b0;
+      end
+      if (!own_twin) begin
+        fx_cs_pend[2:1] = '0;
+      end else if (fx_tw_rel) begin
+        for (int k = 1; k < 3; k++) begin
+          if (fx_cs_pend[k]) begin
+            fx_cpu_single = {2'b00, 2'(k + 1)};
+            u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0,
+                                                  1'b0, 1'b0, 3'd0, 1'b0);
+            fx_cpu_single = 4'd0;
+          end
+        end
+        fx_cs_pend[2:1] = '0;
+      end
+      if (own_ifu_remap && fx_ifu_hs) fx_cs_pend[0] = 1'b1;
+      if (own_twin && fx_lx_ar_hs) fx_cs_pend[1] = 1'b1;
+      if (own_twin && fx_lx_aw_hs) fx_cs_pend[2] = 1'b1;
+      // A burst or an X AxLEN samples at once (illegal bins).
+      for (int k = 0; k < 3; k++) begin
+        logic [1:0] bad;
+        bad = (k == 0) ? (own_ifu_remap ? fx_ifu_len_bad : 2'd0) :
+              (k == 1) ? (own_twin ? fx_lx_ar_len_bad : 2'd0) :
+                         (own_twin ? fx_lx_aw_len_bad : 2'd0);
+        if (bad != 2'd0) begin
+          fx_cpu_single = {bad, 2'(k + 1)};
+          u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0,
+                                                1'b0, 1'b0, 3'd0, 1'b0);
+          fx_cpu_single = 4'd0;
+        end
       end
       if (c_si_pool != 2'd0) fr_row_hold(2'd3, 8'(c_si_pool), 2'd0, 3'd0, 2'd0);
       if (fx_lite_rel != 3'd0) begin
@@ -8313,11 +8530,6 @@ module sep_fcov (
         u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 3'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd0, 1'b0,
                                               5'd0, 1'b0);
         fx_route_overlap = '0;
-      end
-      if (c_filter_csr_write != 2'd0) begin
-        fx_filter_csr_write = c_filter_csr_write;
-        u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, 3'd0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0);
-        fx_filter_csr_write = '0;
       end
       if ((c_shim_byte != 2'd0) || (c_shim_burst != 2'd0)) begin
         fx_shim_byte  = c_shim_byte;
@@ -8412,12 +8624,13 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // sep_master_axprot_cg: the AxPROT each SEP master drives on its own
   // request port (hw/sys/sep/doc/cpu.adoc, table sep-cpu-axprot-table;
-  // hw/sys/sep/doc/dma.adoc; doc/programmer/src/sep-smc-common.adoc). Code
+  // hw/sys/sep/doc/dma.adoc, master path). Code
   // {channel[2:0], AxPROT[2:0]}: channel 0 IFU AR (PR-CPU-IFU), 1 LSU AR and
   // 2 LSU AW (PR-CPU-LSU), 3 DMA AR and 4 DMA AW (PR-DMA-RAW), 5 debug AR and
   // 6 debug AW (PR-DBG-SB). Each channel samples only inside the window of
-  // its owner, and channels 5 and 6 only after the AxPROT check of the owner
-  // passes; any other AxPROT value on that channel is illegal.
+  // its owner; a legal value samples only after the checks of the owner pass
+  // (its pass label); any other AxPROT value on that channel is illegal and
+  // samples at once.
   // ---------------------------------------------------------------------
   covergroup sep_master_axprot_cg with function sample (logic [5:0] ch);
     option.per_instance = 1;
@@ -8441,50 +8654,92 @@ module sep_fcov (
   endgroup
   sep_master_axprot_cg u_sep_master_axprot_cg = new();
 
+  // Channels 0 to 4 (IFU AR, LSU AR, LSU AW, DMA AR, DMA AW): the legal value
+  // of a handshake inside the window of the owner is held (bit = channel) and
+  // samples on the pass label of the owner (ifu_remap_pass for channel 0,
+  // twin_pass for 1 and 2, dma_ep_pass for 3 and 4); an illegal value samples
+  // at once. The DMA owner writes dma_ep_pass after every check of the run
+  // passed, CHK-DMA-AXPROT included, with its window closed, so a window close
+  // does not drop a held DMA value; a reset drops it.
+  logic [4:0] fx_mc_pend = '0;
+  wire fx_dep_rel = (dma_ep_pass != 0) && !fx_dep_pass_q;
   always @(posedge clk_i) begin
-    if (!in_reset) begin
-      if (own_ifu_remap && (cpu_ifu_arvalid_i === 1'b1) && (cpu_ifu_arready_i === 1'b1))
-        u_sep_master_axprot_cg.sample({3'd0, cpu_ifu_arprot_i});
-      if (own_twin && (cpu_lsu_arvalid_i === 1'b1) && (cpu_lsu_arready_i === 1'b1))
-        u_sep_master_axprot_cg.sample({3'd1, cpu_lsu_arprot_i});
-      if (own_twin && (cpu_lsu_awvalid_i === 1'b1) && (cpu_lsu_awready_i === 1'b1))
-        u_sep_master_axprot_cg.sample({3'd2, cpu_lsu_awprot_i});
-      if (own_dma && (dma_raw_req_i.ar_valid === 1'b1) && (dma_raw_arready_i === 1'b1))
-        u_sep_master_axprot_cg.sample({3'd3, dma_raw_req_i.ar.prot});
-      if (own_dma && (dma_raw_req_i.aw_valid === 1'b1) && (dma_raw_awready_i === 1'b1))
-        u_sep_master_axprot_cg.sample({3'd4, dma_raw_req_i.aw.prot});
+    if (in_reset) begin
+      fx_mc_pend = '0;
+    end else begin
+      if (fx_ifu_rel && fx_mc_pend[0]) begin
+        u_sep_master_axprot_cg.sample({3'd0, 3'b101});
+        fx_mc_pend[0] = 1'b0;
+      end
+      if (fx_dep_rel) begin
+        if (fx_mc_pend[3]) u_sep_master_axprot_cg.sample({3'd3, 3'b001});
+        if (fx_mc_pend[4]) u_sep_master_axprot_cg.sample({3'd4, 3'b001});
+        fx_mc_pend[4:3] = '0;
+      end
+      if (!own_twin) begin
+        fx_mc_pend[2:1] = '0;
+      end else if (fx_tw_rel) begin
+        if (fx_mc_pend[1]) u_sep_master_axprot_cg.sample({3'd1, 3'b001});
+        if (fx_mc_pend[2]) u_sep_master_axprot_cg.sample({3'd2, 3'b001});
+        fx_mc_pend[2:1] = '0;
+      end
+      if (own_ifu_remap && (cpu_ifu_arvalid_i === 1'b1) && (cpu_ifu_arready_i === 1'b1)) begin
+        if (cpu_ifu_arprot_i === 3'b101) fx_mc_pend[0] = 1'b1;
+        else u_sep_master_axprot_cg.sample({3'd0, cpu_ifu_arprot_i});
+      end
+      if (own_twin && (cpu_lsu_arvalid_i === 1'b1) && (cpu_lsu_arready_i === 1'b1)) begin
+        if (cpu_lsu_arprot_i === 3'b001) fx_mc_pend[1] = 1'b1;
+        else u_sep_master_axprot_cg.sample({3'd1, cpu_lsu_arprot_i});
+      end
+      if (own_twin && (cpu_lsu_awvalid_i === 1'b1) && (cpu_lsu_awready_i === 1'b1)) begin
+        if (cpu_lsu_awprot_i === 3'b001) fx_mc_pend[2] = 1'b1;
+        else u_sep_master_axprot_cg.sample({3'd2, cpu_lsu_awprot_i});
+      end
+      if (own_dma && (dma_raw_req_i.ar_valid === 1'b1) && (dma_raw_arready_i === 1'b1)) begin
+        if (dma_raw_req_i.ar.prot === 3'b001) fx_mc_pend[3] = 1'b1;
+        else u_sep_master_axprot_cg.sample({3'd3, dma_raw_req_i.ar.prot});
+      end
+      if (own_dma && (dma_raw_req_i.aw_valid === 1'b1) && (dma_raw_awready_i === 1'b1)) begin
+        if (dma_raw_req_i.aw.prot === 3'b001) fx_mc_pend[4] = 1'b1;
+        else u_sep_master_axprot_cg.sample({3'd4, dma_raw_req_i.aw.prot});
+      end
     end
   end
 
-  // Channels 5 and 6 (debug AR and AW): each AxPROT value of a PR-DBG-SB
-  // handshake inside the window of sep_debug_master_target_matrix_test is
-  // held as pending. The pending values sample only when dbg_axprot_pass
-  // rises: the leaf writes it through the u_sep_fcov handle after its AxPROT
-  // check of the debug system bus passes, and 0 at the start of the leg. It
-  // gates a sample; it is never a DUT value and drives nothing.
+  // Channels 5 and 6 (debug AR and AW): the legal value (AxPROT 0b001) of a
+  // PR-DBG-SB handshake inside the window of
+  // sep_debug_master_target_matrix_test is held as pending and samples only
+  // when dbg_axprot_pass rises: the leaf writes it through the u_sep_fcov
+  // handle after every check of an instance passed, its AxPROT check of the
+  // debug system bus included, and 0 at the start of each instance. Any
+  // other AxPROT value, X or Z included, samples at the handshake, as on
+  // channels 0 to 4. The label gates a sample; it is never a DUT value and
+  // drives nothing.
   int unsigned dbg_axprot_pass = 0;
   logic fx_dbg_pass_q = 1'b0;
-  logic [7:0] fx_dbg_ar_prot_seen = '0;
-  logic [7:0] fx_dbg_aw_prot_seen = '0;
+  logic fx_dbg_ar_pend = 1'b0;
+  logic fx_dbg_aw_pend = 1'b0;
   wire fx_dbg_ar_hs = (dbg_req_i.ar_valid === 1'b1) && (dbg_resp_i.ar_ready === 1'b1);
   wire fx_dbg_aw_hs = (dbg_req_i.aw_valid === 1'b1) && (dbg_resp_i.aw_ready === 1'b1);
   always @(posedge clk_i) begin
     fx_dbg_pass_q <= (dbg_axprot_pass != 0);
     if (in_reset || !own_dbgm) begin
-      fx_dbg_ar_prot_seen <= '0;
-      fx_dbg_aw_prot_seen <= '0;
-    end else if ((dbg_axprot_pass != 0) && !fx_dbg_pass_q) begin
-      for (int v = 0; v < 8; v++) begin
-        if (fx_dbg_ar_prot_seen[v]) u_sep_master_axprot_cg.sample({3'd5, 3'(v)});
-        if (fx_dbg_aw_prot_seen[v]) u_sep_master_axprot_cg.sample({3'd6, 3'(v)});
-      end
-      fx_dbg_ar_prot_seen <= '0;
-      fx_dbg_aw_prot_seen <= '0;
+      fx_dbg_ar_pend <= 1'b0;
+      fx_dbg_aw_pend <= 1'b0;
     end else begin
-      if (fx_dbg_ar_hs && !$isunknown(dbg_req_i.ar.prot))
-        fx_dbg_ar_prot_seen[dbg_req_i.ar.prot] <= 1'b1;
-      if (fx_dbg_aw_hs && !$isunknown(dbg_req_i.aw.prot))
-        fx_dbg_aw_prot_seen[dbg_req_i.aw.prot] <= 1'b1;
+      if ((dbg_axprot_pass != 0) && !fx_dbg_pass_q) begin
+        if (fx_dbg_ar_pend) u_sep_master_axprot_cg.sample({3'd5, 3'b001});
+        if (fx_dbg_aw_pend) u_sep_master_axprot_cg.sample({3'd6, 3'b001});
+        fx_dbg_ar_pend <= 1'b0;
+        fx_dbg_aw_pend <= 1'b0;
+      end else begin
+        if (fx_dbg_ar_hs && (dbg_req_i.ar.prot === 3'b001)) fx_dbg_ar_pend <= 1'b1;
+        if (fx_dbg_aw_hs && (dbg_req_i.aw.prot === 3'b001)) fx_dbg_aw_pend <= 1'b1;
+      end
+      if (fx_dbg_ar_hs && (dbg_req_i.ar.prot !== 3'b001))
+        u_sep_master_axprot_cg.sample({3'd5, dbg_req_i.ar.prot});
+      if (fx_dbg_aw_hs && (dbg_req_i.aw.prot !== 3'b001))
+        u_sep_master_axprot_cg.sample({3'd6, dbg_req_i.aw.prot});
     end
   end
 
@@ -10635,6 +10890,32 @@ module sep_fcov (
   wire own_tmo = (graded_owner == FcovOwnSepCpuCtrlTimeoutInertRandTest);
   wire own_nmi = (graded_owner == FcovOwnSepNmiVectorBarkRandTest);
 
+  // Pass label of the PIC firmware leaves (pic_fw_pass): one bit per graded
+  // leg kind. Owner 320 (sep_pic_priority_gate_rand_test) writes bits 0 to 7,
+  // owner 324 (sep_nmi_vector_bark_rand_test) bits 16, 18, 19 and 21, owner
+  // 318 (sep_pic_reg_rand_test) bits 17 and 20. Each owner writes a bit
+  // through the u_sep_fcov handle after every check of that leg passed (bit
+  // 19: after every check of the run passed), holds it two clocks and writes
+  // 0; the hold blocks of each owner (below) release their held cells on the
+  // rise of their own bits. The drop bits (7, 20, 21) are written at the start
+  // of each graded leg of the owner and on a FAIL line; their rise drops the
+  // held cells of that owner. It gates a sample; it is never a DUT value and
+  // drives nothing.
+  int unsigned pic_fw_pass = 0;
+  localparam int unsigned PfpRound = 0;  // CHK-GATED, CHK-STAY-PENDING, CHK-NEVER, CHK-WINNER, CHK-FLIP
+  localparam int unsigned PfpReset = 1;  // CHK-NONE-BEFORE-PROGRAM
+  localparam int unsigned PfpThreshold = 2;  // CHK-THRESHOLD
+  localparam int unsigned PfpNest = 3;  // CHK-NEST
+  localparam int unsigned PfpTimer = 4;  // CHK-INT-TIMER-HOLD, CHK-INT-TIMER-TRAP
+  localparam int unsigned PfpIdle = 5;  // CHK-MIP-IDLE, CHK-CONTROL, CHK-NO-TIMER-TRAP
+  localparam int unsigned PfpDrop320 = 7;  // drop the held owner-320 cells
+  localparam int unsigned PfpNmiInExt = 16;  // CHK-NMI-IN-EXT
+  localparam int unsigned PfpPicReg = 17;  // every CHK line of a sep_pic_reg_rand_test leg
+  localparam int unsigned PfpNmiBark = 18;  // CHK-NMI-STUB, CHK-NMI-ENTRY, CHK-NMI-NOPIC, CHK-NMI-IN-EXT
+  localparam int unsigned PfpNmiTarget = 19;  // every check of the run, CHK-NMI-TAKEN and CHK-BARK-VEC included
+  localparam int unsigned PfpDrop318 = 20;  // drop the held owner-318 cells
+  localparam int unsigned PfpDrop324 = 21;  // drop the held owner-324 bark and in-handler cells
+
   localparam int unsigned HoldClk = 32;
   localparam int unsigned StallClk = 16;
   localparam int unsigned SettleClk = 16;
@@ -10827,8 +11108,10 @@ module sep_fcov (
       bins meipl_rd = {4'd0};
       bins meipl_wr = {4'd1};
       bins meip_rd = {4'd2};
-      // A write to meip, sampled at the next read of the same word when that
-      // read equals the read before the write and holds a pending bit.
+      // A write to meip, seen at the next read of the same word when that
+      // read equals the read before the write and holds a pending bit; held
+      // and released with the other owner-318 cells (pic_fw_pass bit
+      // PfpPicReg).
       bins meip_wr = {4'd3};
       bins meie_rd = {4'd4};
       bins meie_wr = {4'd5};
@@ -12269,15 +12552,21 @@ module sep_fcov (
     }
     cp_pic_live_after: coverpoint s.pl_v iff (s.pl_v) {bins delivered_once = {1'b1};}
     // VeeR EL2 PRM section 3.16: the NMI is taken whatever the interrupt
-    // enables, also while an M-mode external-interrupt handler runs.
+    // enables, also while an M-mode external-interrupt handler runs. The
+    // sample is held until CHK-NMI-IN-EXT passes (pic_fw_pass bit
+    // PfpNmiInExt).
     cp_nmi_in_ext_handler: coverpoint s.ih_v iff (s.ih_v) {
       bins nmi_taken_once_inside_ext = {1'b1};
     }
   endgroup
 
   // External handler window: from an external interrupt taken to the next
-  // retired mret. The first NMI taken in the window samples; a second NMI
-  // in the same window does not.
+  // retired mret. The first NMI taken in the window, with the bark high and
+  // inside the window of the owner, is held; a second NMI in the same
+  // window is not. The held NMI samples when bit PfpNmiInExt of pic_fw_pass
+  // rises (the owner writes it after CHK-NMI-IN-EXT passes); the release
+  // does not depend on the window. A reset, a rise of bit PfpDrop324, the
+  // next window open of the owner and a new held NMI drop it.
   wire  nc_mret = !in_reset && (cpu_trace_valid_i === 1'b1) && (cpu_trace_exc_i !== 1'b1) &&
       (cpu_trace_insn_i == 32'h3020_0073);
   logic nc_in_ext_q, nc_nmi_in_q;
@@ -12295,6 +12584,9 @@ module sep_fcov (
     end
   end
   logic nc_on_q, nc_seen_q;
+  logic nc_ih_hold_q, nc_ih_pass_q, nc_ih_drop_q, nc_own_q;
+  wire  nc_ih_rel = pic_fw_pass[PfpNmiInExt] && !nc_ih_pass_q;
+  wire  nc_ih_drop = pic_fw_pass[PfpDrop324] && !nc_ih_drop_q;
   logic [1:0]   nc_case_q;
   logic [255:0] nc_snap_q;
   logic [12:0]  nc_cnt_q;
@@ -12302,9 +12594,13 @@ module sep_fcov (
   wire [255:0] pend_live = gw_live & ~256'd1;
   always @(posedge clk_i) begin
     ncc_q <= '0;
+    nc_ih_pass_q <= pic_fw_pass[PfpNmiInExt];
+    nc_ih_drop_q <= pic_fw_pass[PfpDrop324];
+    nc_own_q <= own_nmi;
     if (in_reset) begin
       nc_on_q   <= 1'b0;
       nc_seen_q <= 1'b0;
+      nc_ih_hold_q <= 1'b0;
     end else begin
       if (!own_nmi) nc_seen_q <= 1'b0;
       if (nmi_r) begin
@@ -12343,7 +12639,14 @@ module sep_fcov (
           ncc_q.vu_v <= own_nmi;
         end
       end
-      if (nmi_r && nc_in_ext_q && !nc_nmi_in_q && bark_q) ncc_q.ih_v <= own_nmi;
+      if (nmi_r && nc_in_ext_q && !nc_nmi_in_q && bark_q && own_nmi) begin
+        nc_ih_hold_q <= 1'b1;
+      end else if (nc_ih_hold_q && nc_ih_rel) begin
+        nc_ih_hold_q <= 1'b0;
+        ncc_q.ih_v   <= 1'b1;
+      end else if ((own_nmi && !nc_own_q) || nc_ih_drop) begin
+        nc_ih_hold_q <= 1'b0;
+      end
       // After an NMI, the pending source of the snapshot delivers.
       if (take_r && nc_seen_q && nc_snap_q[pic_claim_i]) begin
         nc_seen_q   <= 1'b0;
@@ -14360,6 +14663,117 @@ module sep_fcov (
   sep_pic_alert_cg              u_sep_pic_alert_cg              = new();
   sep_dma_host_fault_cg         u_sep_dma_host_fault_cg         = new();
 
+  // Hold and release of the owner-318 cells of sep_pic_reg_map_cg:
+  // cp_group_x_dir (meip_wr included), cp_entry_pos_x_array,
+  // cp_aperture_x_dir, the legal cp_reset_read cells, cp_entry0_discard,
+  // cp_gwclr_read0, cp_hole_live_neighbour, cp_gwctrl_val, cp_priord_val and
+  // cp_arm_state. Each cell seen in the window of the owner is held and
+  // samples when bit PfpPicReg of pic_fw_pass rises (the owner writes it after
+  // every CHK line of the graded firmware leg passed, and for the meip_wr leg
+  // after CHK-MEIP-WR-STORE held for both instances); the release does not
+  // depend on the window. A rise of bit PfpDrop318 (the owner writes it at
+  // each graded leg start and on a FAIL line), a reset and the next window
+  // open of the owner drop the held cells. The illegal x_read cells of cp_reset_read (an X read)
+  // sample at once. cp_meip_word_x_bit_class belongs to another owner and
+  // samples at once.
+  function automatic prm_t prm_free(input prm_t q);
+    prm_t r;
+    r           = '0;
+    r.meip_bc   = q.meip_bc;
+    r.meip_bc_v = q.meip_bc_v;
+    if (q.rst_rd_v && q.rst_rd[3]) begin
+      r.rst_rd   = q.rst_rd;
+      r.rst_rd_v = 1'b1;
+    end
+    return r;
+  endfunction
+  logic [15:0] ph_gd_q, ph_ap_q;
+  logic [63:0] ph_ea_q;
+  logic [3:0] ph_gw_q, ph_arm_q, ph_e0_q;
+  logic [7:0] ph_rr_q;
+  logic [1:0] ph_po_q, ph_hn_q;
+  logic ph_gc_q;
+  logic ph_pass_q, ph_own_q, ph_drop_q;
+  wire ph_rel = !in_reset && pic_fw_pass[PfpPicReg] && !ph_pass_q;
+  wire ph_drop = pic_fw_pass[PfpDrop318] && !ph_drop_q;
+  always @(posedge clk_i) begin
+    if (ph_rel) begin
+      for (int v = 0; v < 64; v++) begin
+        prm_t r;
+        r = '0;
+        if ((v < 16) && ph_gd_q[v]) begin
+          r.grp_dir   = 4'(v);
+          r.grp_dir_v = 1'b1;
+        end
+        if (ph_ea_q[v]) begin
+          r.ent_arr   = 6'(v);
+          r.ent_arr_v = 1'b1;
+        end
+        if ((v < 16) && ph_ap_q[v]) begin
+          r.ap_dir   = 4'(v);
+          r.ap_dir_v = 1'b1;
+        end
+        if ((v < 4) && ph_gw_q[v]) begin
+          r.gwctrl   = 2'(v);
+          r.gwctrl_v = 1'b1;
+        end
+        if ((v < 2) && ph_po_q[v]) begin
+          r.priord   = 1'(v);
+          r.priord_v = 1'b1;
+        end
+        if ((v < 4) && ph_arm_q[v]) begin
+          r.arm   = 2'(v);
+          r.arm_v = 1'b1;
+        end
+        if ((v < 8) && ph_rr_q[v]) begin
+          r.rst_rd   = 4'(v);
+          r.rst_rd_v = 1'b1;
+        end
+        if ((v < 4) && ph_e0_q[v]) begin
+          r.e0   = 2'(v);
+          r.e0_v = 1'b1;
+        end
+        if ((v < 2) && ph_hn_q[v]) begin
+          r.hole_nb   = 1'(v);
+          r.hole_nb_v = 1'b1;
+        end
+        if ((v == 0) && ph_gc_q) r.gwclr0_v = 1'b1;
+        if (r != '0) u_sep_pic_reg_map_cg.sample(r);
+      end
+    end
+    ph_pass_q <= pic_fw_pass[PfpPicReg];
+    ph_drop_q <= pic_fw_pass[PfpDrop318];
+    ph_own_q  <= own_preg;
+    if (in_reset || (cpu_reset_n_i === 1'b0) || ph_rel || ph_drop || (own_preg && !ph_own_q)) begin
+      ph_gd_q  <= '0;
+      ph_ea_q  <= '0;
+      ph_ap_q  <= '0;
+      ph_gw_q  <= '0;
+      ph_po_q  <= '0;
+      ph_arm_q <= '0;
+      ph_rr_q  <= '0;
+      ph_e0_q  <= '0;
+      ph_hn_q  <= '0;
+      ph_gc_q  <= 1'b0;
+    end
+    if (!in_reset && (cpu_reset_n_i !== 1'b0)) begin
+      for (int k = 0; k < 2; k++) begin
+        prm_t q;
+        q = (k == 0) ? prm_r_q : prm_w_q;
+        if (q.grp_dir_v) ph_gd_q[q.grp_dir] <= 1'b1;
+        if (q.rst_rd_v && !q.rst_rd[3]) ph_rr_q[q.rst_rd[2:0]] <= 1'b1;
+        if (q.e0_v) ph_e0_q[q.e0] <= 1'b1;
+        if (q.hole_nb_v) ph_hn_q[q.hole_nb] <= 1'b1;
+        if (q.gwclr0_v) ph_gc_q <= 1'b1;
+        if (q.ent_arr_v) ph_ea_q[q.ent_arr] <= 1'b1;
+        if (q.ap_dir_v) ph_ap_q[q.ap_dir] <= 1'b1;
+        if (q.gwctrl_v) ph_gw_q[q.gwctrl] <= 1'b1;
+        if (q.priord_v) ph_po_q[q.priord] <= 1'b1;
+        if (q.arm_v) ph_arm_q[q.arm] <= 1'b1;
+      end
+    end
+  end
+
   // Hold and release of the owner-322 outcomes (bfault_pass, declared with
   // the fault-latch trackers). The release samples the held outcomes and the
   // outcomes of the release clock.
@@ -14528,22 +14942,321 @@ module sep_fcov (
     else if (fsr_q.pn_v) pbh_pn_q[fsr_q.pn] <= 1'b1;
   end
 
+  // ---------------------------------------------------------------------
+  // Pass label of sep_pic_priority_gate_rand_test (pic_fw_pass, owner 320,
+  // bits Pfp* 0 to 7). Every legal sample of sep_pic_enable_priority_cg,
+  // sep_pic_delivery_cg and sep_cpu_nonpic_irq_cg (all owner 320) is held as
+  // pending at its DUT event and samples only when a bit of a leg whose
+  // checks grade it rises (pfp_mask). The illegal bins (cp_winner
+  // not_highest and tie_not_lowest_id, cp_no_nonpic_trap
+  // timer_or_soft_trap) sample at once. The leaf writes the bit through the
+  // u_sep_fcov handle after every check of the leg passed, holds it two
+  // clocks and writes 0. A rise of PfpDrop320 (the leaf writes it at the
+  // start of each graded leg and when a check fails), a reset and the window
+  // of another owner drop the held cells; a release does not need the window
+  // open, so the checks that the firmware prints after a control marker
+  // still release the leg that they grade. A release samples the cells held
+  // before the release clock. It gates a sample; it is never a DUT value and
+  // drives nothing.
+  // ---------------------------------------------------------------------
+  // Held points: the field of pep_t, pdl_t or pnp_t.
+  localparam int unsigned PpPriord = 0;  // cp_priord
+  localparam int unsigned PpLco = 1;  // x_level_class_order
+  localparam int unsigned PpLvl = 2;  // cp_level_val
+  localparam int unsigned PpGp = 3;  // x_gate_phase
+  localparam int unsigned PpWin = 4;  // cp_winner (legal values)
+  localparam int unsigned PpStay = 5;  // cp_stay_pending
+  localparam int unsigned PpNt = 6;  // cp_never_twin
+  localparam int unsigned PpFlip = 7;  // cp_order_flip
+  localparam int unsigned PpMp = 8;  // cp_mie_x_pending
+  localparam int unsigned PpDr = 9;  // cp_deferred_release
+  localparam int unsigned PpTh = 10;  // cp_threshold
+  localparam int unsigned PpNs = 11;  // cp_nest
+  localparam int unsigned PpMi = 12;  // cp_mip_idle
+  localparam int unsigned PpNnt = 13;  // cp_no_nonpic_trap (hold_window_clean)
+  localparam int unsigned PpTl = 14;  // cp_trap_path_live
+  localparam int unsigned PpIt = 15;  // cp_int_timer
+  localparam int unsigned PpPoints = 16;
+  logic [15:0] pp_pend[PpPoints] = '{default: '0};
+  logic [7:0] pfp_q = '0;
+  wire [7:0] pfp_rise = 8'(pic_fw_pass) & ~pfp_q;
+  wire pfp_drop = in_reset || ((graded_owner != FcovOwnNone) && !own_pprio) ||
+      pfp_rise[PfpDrop320];
+  // The leg bits that release a held cell of point p.
+  function automatic logic [7:0] pfp_mask(input int unsigned p);
+    case (p)
+      // x_gate_phase: the rounds (CHK-GATED) and the reset window
+      // (enable0_held, CHK-NONE-BEFORE-PROGRAM).
+      PpGp: return 8'((1 << PfpRound) | (1 << PfpReset));
+      PpTh: return 8'(1 << PfpThreshold);
+      PpNs: return 8'(1 << PfpNest);
+      PpIt: return 8'(1 << PfpTimer);
+      PpMi, PpNnt: return 8'(1 << PfpIdle);
+      default: return 8'(1 << PfpRound);
+    endcase
+  endfunction
+  task automatic pp_hold(input int unsigned p, input logic [3:0] v);
+    pp_pend[p][v] = 1'b1;
+  endtask
+  task automatic pp_sample(input int unsigned p, input logic [3:0] v);
+    pep_t e;
+    pdl_t d;
+    pnp_t n;
+    e = '0;
+    d = '0;
+    n = '0;
+    case (p)
+      PpPriord: begin
+        e.priord = v[0];
+        e.priord_v = 1'b1;
+      end
+      PpLco: begin
+        e.lco = v[2:0];
+        e.lco_v = 1'b1;
+      end
+      PpLvl: begin
+        e.lvl = v;
+        e.lvl_v = 1'b1;
+      end
+      PpGp: begin
+        e.gp = v[2:0];
+        e.gp_v = 1'b1;
+      end
+      PpWin: begin
+        e.win = v;
+        e.win_v = 1'b1;
+      end
+      PpStay: e.stay_v = 1'b1;
+      PpNt: begin
+        e.nt = v[1:0];
+        e.nt_v = 1'b1;
+      end
+      PpFlip: begin
+        e.flip = v[0];
+        e.flip_v = 1'b1;
+      end
+      PpMp: begin
+        d.mp = v[1:0];
+        d.mp_v = 1'b1;
+      end
+      PpDr: d.dr_v = 1'b1;
+      PpTh: begin
+        d.th = v[0];
+        d.th_v = 1'b1;
+      end
+      PpNs: begin
+        d.ns = v[0];
+        d.ns_v = 1'b1;
+      end
+      PpMi: begin
+        n.mi = v[1:0];
+        n.mi_v = 1'b1;
+      end
+      PpNnt: begin
+        n.nt = v[0];
+        n.nt_v = 1'b1;
+      end
+      PpTl: n.tl_v = 1'b1;
+      PpIt: begin
+        n.it = v[1:0];
+        n.it_v = 1'b1;
+      end
+      default: ;
+    endcase
+    if (e != '0) u_sep_pic_enable_priority_cg.sample(e);
+    if (d != '0) u_sep_pic_delivery_cg.sample(d);
+    if (n != '0) u_sep_cpu_nonpic_irq_cg.sample(n);
+  endtask
+  always @(posedge clk_i) begin
+    pfp_q <= 8'(pic_fw_pass);
+    if (!in_reset) begin
+      // The illegal bins sample at once.
+      if (pep_q.win_v && !pep_q.win[2]) pp_sample(PpWin, pep_q.win);
+      if (pnp_q.nt_v && pnp_q.nt) pp_sample(PpNnt, 4'd1);
+    end
+    if (pfp_drop) begin
+      for (int p = 0; p < PpPoints; p++) pp_pend[p] = '0;
+    end else begin
+      // Release: the cells held before this clock.
+      if (pfp_rise != '0) begin
+        for (int p = 0; p < PpPoints; p++) begin
+          if ((pfp_mask(p) & pfp_rise) != '0) begin
+            for (int v = 0; v < 16; v++) begin
+              if (pp_pend[p][v]) begin
+                pp_sample(p, 4'(v));
+                pp_pend[p][v] = 1'b0;
+              end
+            end
+          end
+        end
+      end
+      // Hold the legal samples of this clock.
+      if (pep_q.priord_v) pp_hold(PpPriord, 4'(pep_q.priord));
+      if (pep_q.lco_v) pp_hold(PpLco, 4'(pep_q.lco));
+      if (pep_q.lvl_v) pp_hold(PpLvl, pep_q.lvl);
+      if (pep_q.gp_v) pp_hold(PpGp, 4'(pep_q.gp));
+      if (pep_q.win_v && pep_q.win[2]) pp_hold(PpWin, pep_q.win);
+      if (pep_q.stay_v) pp_hold(PpStay, 4'd1);
+      if (pep_q.nt_v) pp_hold(PpNt, 4'(pep_q.nt));
+      if (pep_q.flip_v) pp_hold(PpFlip, 4'(pep_q.flip));
+      if (pdl_q.mp_v) pp_hold(PpMp, 4'(pdl_q.mp));
+      if (pdl_q.dr_v) pp_hold(PpDr, 4'd1);
+      if (pdl_q.th_v) pp_hold(PpTh, 4'(pdl_q.th));
+      if (pdl_q.ns_v) pp_hold(PpNs, 4'(pdl_q.ns));
+      if (pnp_q.mi_v) pp_hold(PpMi, 4'(pnp_q.mi));
+      if (pnp_q.nt_v && !pnp_q.nt) pp_hold(PpNnt, 4'd0);
+      if (pnp_q.tl_v) pp_hold(PpTl, 4'd1);
+      if (pnp_it_q.it_v) pp_hold(PpIt, 4'(pnp_it_q.it));
+    end
+  end
+
+  // Hold and release of the owner-324 bark cells: x_case_taken, the legal
+  // cp_vec_unchanged cells and cp_pic_live_after (sep_nmi_concurrency_cg),
+  // cp_bark_vec_same (sep_pic_no_delivery_cg), cp_order_at_enable and
+  // cp_vec_class (sep_nmi_vector_cfg_cg). Each cell seen in the window of the
+  // owner is held and samples when bit PfpNmiBark of pic_fw_pass rises (the
+  // owner writes it after every firmware check of the bark leg passed); the
+  // release does not depend on the window. A rise of bit PfpDrop324 (the owner
+  // writes it at each graded leg start and on a FAIL line), a reset (also the
+  // cold reset between the two boots) and the next window open of the owner
+  // drop the held cells. live_bit_dropped is illegal and samples at once. cp_nmi_target is
+  // held in its own block below.
+  function automatic ncc_t ncc_free(input ncc_t q);
+    ncc_t r;
+    r      = q;
+    r.ct   = '0;
+    r.ct_v = 1'b0;
+    r.pl_v = 1'b0;
+    if (!q.vu[2]) begin
+      r.vu   = '0;
+      r.vu_v = 1'b0;
+    end
+    return r;
+  endfunction
+  function automatic pnd_t pnd_free(input pnd_t q);
+    pnd_t r;
+    r        = q;
+    r.bark_v = 1'b0;
+    return r;
+  endfunction
+  function automatic nvc_t nvc_free(input nvc_t q);
+    nvc_t r;
+    r      = q;
+    r.oe   = '0;
+    r.oe_v = 1'b0;
+    r.vc   = '0;
+    r.vc_v = 1'b0;
+    r.tg   = '0;
+    r.tg_v = 1'b0;
+    return r;
+  endfunction
+  logic [3:0] nh_ct_q;
+  logic [2:0] nh_vu_q, nh_oe_q;
+  logic [4:0] nh_vc_q;
+  logic nh_pl_q, nh_bk_q, nh_pass_q, nh_own_q, nh_drop_q;
+  wire nh_rel = !in_reset && pic_fw_pass[PfpNmiBark] && !nh_pass_q;
+  wire nh_drop = pic_fw_pass[PfpDrop324] && !nh_drop_q;
+  always @(posedge clk_i) begin
+    if (nh_rel) begin
+      for (int v = 0; v < 5; v++) begin
+        ncc_t c;
+        nvc_t n;
+        c = '0;
+        n = '0;
+        if ((v < 4) && nh_ct_q[v]) begin
+          c.ct   = 2'(v);
+          c.ct_v = 1'b1;
+        end
+        if ((v < 3) && nh_vu_q[v]) begin
+          c.vu   = 3'(v);
+          c.vu_v = 1'b1;
+        end
+        if ((v == 0) && nh_pl_q) c.pl_v = 1'b1;
+        if (c != '0) u_sep_nmi_concurrency_cg.sample(c);
+        if ((v < 3) && nh_oe_q[v]) begin
+          n.oe   = 2'(v);
+          n.oe_v = 1'b1;
+        end
+        if (nh_vc_q[v]) begin
+          n.vc   = 3'(v);
+          n.vc_v = 1'b1;
+        end
+        if (n != '0) u_sep_nmi_vector_cfg_cg.sample(n);
+      end
+      if (nh_bk_q) begin
+        pnd_t b;
+        b        = '0;
+        b.bark_v = 1'b1;
+        u_sep_pic_no_delivery_cg.sample(b);
+      end
+    end
+    nh_pass_q <= pic_fw_pass[PfpNmiBark];
+    nh_drop_q <= pic_fw_pass[PfpDrop324];
+    nh_own_q  <= own_nmi;
+    if (in_reset || nh_rel || nh_drop || (own_nmi && !nh_own_q)) begin
+      nh_ct_q <= '0;
+      nh_vu_q <= '0;
+      nh_pl_q <= 1'b0;
+      nh_bk_q <= 1'b0;
+      nh_oe_q <= '0;
+      nh_vc_q <= '0;
+    end
+    if (!in_reset) begin
+      if (ncc_q.ct_v) nh_ct_q[ncc_q.ct] <= 1'b1;
+      if (ncc_q.vu_v && !ncc_q.vu[2]) nh_vu_q[ncc_q.vu[1:0]] <= 1'b1;
+      if (ncc_q.pl_v) nh_pl_q <= 1'b1;
+      if (pnd_q.bark_v) nh_bk_q <= 1'b1;
+      if (nvc_q.oe_v) nh_oe_q[nvc_q.oe] <= 1'b1;
+      if (nvc_q.vc_v) nh_vc_q[nvc_q.vc] <= 1'b1;
+    end
+  end
+
+  // Hold and release of cp_nmi_target (owner 324). The checks that grade the
+  // target, CHK-NMI-TAKEN (trampoline copies) and CHK-BARK-VEC (reset vector
+  // and free address), run on the host after the second boot. Each target
+  // seen in the window of the owner is held and samples when bit PfpNmiTarget
+  // of pic_fw_pass rises: the owner writes it once, after every check of the
+  // run passed. The held targets survive the cold reset between the two boots
+  // and the window opens of the owner; the window of another owner drops
+  // them. Every value of the point is legal (codes 6 and 7 are not reachable),
+  // so no value samples at once.
+  logic [5:0] nt_tg_q = '0;
+  logic nt_pass_q = 1'b0;
+  wire nt_rel = pic_fw_pass[PfpNmiTarget] && !nt_pass_q;
+  always @(posedge clk_i) begin
+    nt_pass_q <= pic_fw_pass[PfpNmiTarget];
+    if (nt_rel) begin
+      for (int v = 0; v < 6; v++) begin
+        if (nt_tg_q[v]) begin
+          nvc_t n;
+          n      = '0;
+          n.tg   = 3'(v);
+          n.tg_v = 1'b1;
+          u_sep_nmi_vector_cfg_cg.sample(n);
+        end
+      end
+    end
+    if (nt_rel || ((graded_owner != FcovOwnNone) && !own_nmi)) nt_tg_q <= '0;
+    else if (nvc_q.tg_v && (nvc_q.tg < 3'd6)) nt_tg_q[nvc_q.tg] <= 1'b1;
+  end
+
+
   always @(posedge clk_i) begin
     // The reset points of sep_mbox_reset_cg sample while rst_ni is low.
     if (mrs_q != '0) u_sep_mbox_reset_cg.sample(mrs_q);
     if (!in_reset) begin
-      if (prm_r_q != '0) u_sep_pic_reg_map_cg.sample(prm_r_q);
-      if (prm_w_q != '0) u_sep_pic_reg_map_cg.sample(prm_w_q);
+      // Owner-318 legal cells sample on pic_fw_pass (above).
+      if (prm_r_q != '0) u_sep_pic_reg_map_cg.sample(prm_free(prm_r_q));
+      if (prm_w_q != '0) u_sep_pic_reg_map_cg.sample(prm_free(prm_w_q));
       if (psm_q != '0) u_sep_pic_source_map_cg.sample(psm_q);
-      if (pep_q != '0) u_sep_pic_enable_priority_cg.sample(pep_q);
+      // sep_pic_enable_priority_cg, sep_pic_delivery_cg and
+      // sep_cpu_nonpic_irq_cg sample in the pic_fw_pass block.
       if (pgw_q != '0) u_sep_pic_gateway_cg.sample(pgw_q);
-      if (pdl_q != '0) u_sep_pic_delivery_cg.sample(pdl_q);
-      if (pnd_q != '0) u_sep_pic_no_delivery_cg.sample(pnd_q);
+      // Owner-324 bark cells sample on pic_fw_pass (above).
+      if (pnd_q != '0) u_sep_pic_no_delivery_cg.sample(pnd_free(pnd_q));
       if (pfi_q != '0) u_sep_pic_fabric_isolation_cg.sample(pfi_q);
-      if (pnp_q != '0) u_sep_cpu_nonpic_irq_cg.sample(pnp_q);
-      if (pnp_it_q != '0) u_sep_cpu_nonpic_irq_cg.sample(pnp_it_q);
-      if (nvc_q != '0) u_sep_nmi_vector_cfg_cg.sample(nvc_q);
-      if (ncc_q != '0) u_sep_nmi_concurrency_cg.sample(ncc_q);
+      if (nvc_q != '0) u_sep_nmi_vector_cfg_cg.sample(nvc_free(nvc_q));
+      if (ncc_q != '0) u_sep_nmi_concurrency_cg.sample(ncc_free(ncc_q));
       // Owner-322 outcomes: the illegal ones here, the legal ones on bfault_pass.
       // The cp_partial_narrow outcomes sample on pbem_pass.
       if (fsr_q != '0) begin
@@ -15029,8 +15742,8 @@ module sep_fcov (
   typedef struct packed {
     logic [1:0] tc;
     logic tc_v;  // {test_en_i, class 0 clock gater 1 AXI cell}
-    logic li;
-    logic li_v;  // lockstep_status_o 0 with 0 err_injection_en, 1 disable_corruption_detection held
+    logic [1:0] li;
+    logic li_v;  // {lockstep_status_o not 0, lockstep_ctrl_i bit}: see cp_lockstep_inert
   } mr_tie_t;
 
   covergroup sep_static_tieoff_cg with function sample (mr_tie_t s);
@@ -15044,9 +15757,13 @@ module sep_fcov (
     }
     // lockstep_status_o reads 0 on every clock of the owner window while a
     // lockstep_ctrl_i bit is 1 during retired instructions
-    // (hw/sys/sep/doc/port_table.adoc). Owner sep_cpu_isa_pmp_csr_test.
+    // (hw/sys/sep/doc/port_table.adoc). Owner sep_cpu_isa_pmp_csr_test. Code
+    // {status not 0, control bit}: a status that is not 0 (or X) on a clock of
+    // the owner window with a control bit at 1 samples at once (illegal bin).
     cp_lockstep_inert: coverpoint s.li iff (s.li_v) {
-      bins err_inj1_status0 = {1'b0}; bins disable1_status0 = {1'b1};
+      bins ctrl_bit0_status0 = {2'b00};
+      bins ctrl_bit1_status0 = {2'b01};
+      illegal_bins status_not0 = {2'b10, 2'b11};
     }
   endgroup
 
@@ -19402,6 +20119,40 @@ module sep_fcov (
     u_sep_cpu_ecc_irq_cg.sample(e);
   endtask
 
+  // Pass label tcm_trap_pass of sep_tcm_ecc_cpu_trap_test (owner mm_own_trap,
+  // code 526): every legal outcome of that owner on sep_cpu_ecc_irq_cg
+  // (cp_ce_counter, cp_ce_clamp, cp_mceip_delivery, cp_tcm_trap_cause,
+  // cp_nmi_fast_path, cp_ecc_dbg_pulse, cp_ecc_no_pic, cp_micect_zero) and on
+  // cp_traced_event is counted as pending and does not sample. The owner
+  // grades every check after the firmware ends and writes 1 after all of them
+  // passed (CHK-TCM-CLAMP, CHK-TCM-CE, CHK-TCM-SILENT, CHK-TCM-UE, CHK-TCM-NMI,
+  // CHK-TCM-DBG, CHK-TCM-NO-PIC), holds it two clocks and writes 0; the rise
+  // samples every pending count, also after the window closed. A reset drops
+  // the pending counts, and a run whose check fails never writes 1. An illegal
+  // outcome samples at once. The label gates a sample, is never a bin value
+  // and drives nothing.
+  int unsigned tcm_trap_pass = 0;
+  logic mm_tt_pass_q = 1'b0;
+  int unsigned mm_tt_ecc[128] = '{default: 0};  // pending count per {point, value} of mm_ecc
+  int unsigned mm_tt_tv[3] = '{default: 0};  // pending count per cp_traced_event value
+  int unsigned mm_tt_mz[2] = '{default: 0};  // pending count per cp_micect_zero value
+  function automatic logic mm_ecc_illegal(input logic [2:0] pt, input logic [3:0] v);
+    case (pt)
+      3'd0: return v[3];
+      3'd4: return v[1];
+      3'd6: return v[2:0] inside {3'd4, 3'd5, 3'd6};
+      3'd7: return v[0];
+      default: return 1'b0;
+    endcase
+  endfunction
+  task automatic mm_trap_ecc(input logic [2:0] pt, input logic [3:0] v);
+    if (mm_ecc_illegal(pt, v)) mm_ecc(pt, v);
+    else mm_tt_ecc[{pt, v}] = mm_tt_ecc[{pt, v}] + 1;
+  endtask
+  task automatic mm_trap_tv(input logic [1:0] v);
+    mm_tt_tv[v] = mm_tt_tv[v] + 1;
+  endtask
+
   // cp_micect_zero tracker.
   logic [26:0] mz_dc_q = '0;
   logic [26:0] mz_ic_q = '0;
@@ -19411,7 +20162,6 @@ module sep_fcov (
       (cpu_trace_insn_i[31:20] == 12'h7F0) && (cpu_trace_insn_i[19:15] == 5'd0) &&
       (cpu_trace_insn_i[14:12] == 3'b010) && (cpu_trace_insn_i[6:0] == 7'h73);
   always @(posedge clk_i) begin
-    mm_ecc_t e;
     mz_dc_q <= tlu_mdccmect_i[26:0];
     mz_ic_q <= tlu_miccmect_i[26:0];
     if (in_reset || !mm_own_trap) begin
@@ -19426,10 +20176,8 @@ module sep_fcov (
           ))
         mz_ue_q <= 1'b1;
       if (mz_csrr && (tlu_micect_i === 32'h0) && (mz_ue_q || mz_ce_q)) begin
-        e      = '0;
-        e.mz   = mz_ue_q;
-        e.mz_v = 1'b1;
-        u_sep_cpu_ecc_irq_cg.sample(e);
+        // Held until tcm_trap_pass rises (pass label above).
+        mm_tt_mz[mz_ue_q] = mm_tt_mz[mz_ue_q] + 1;
         mz_ce_q <= 1'b0;
         mz_ue_q <= 1'b0;
       end
@@ -19481,7 +20229,37 @@ module sep_fcov (
   // Debug and CPU feature points of sep_debug_trace_cg and
   // sep_static_tieoff_cg (docs/SEP_FCOV.adoc, memory, boot, reset groups).
   // ---------------------------------------------------------------------
+  // Pass label of sep_debug_master_target_matrix_test (owner 528). Each cell
+  // of cp_sba_target, cp_dbg_sb_id, cp_dbg_nc, cp_dbg_remap, cp_dbg_rstb_dm,
+  // cp_dmi_aperture and the legal bins of cp_dmi_uncore that an event hits
+  // inside the window of the leaf is held in fd_dbg_pend, and samples only
+  // when its bit of dbg_sba_pass rises: bits 0 to 12 cp_sba_target, 13 and 14
+  // cp_dbg_sb_id, 15 to 18 cp_dbg_nc, 19 to 22 cp_dbg_remap, 23
+  // cp_dbg_rstb_dm, 24 to 27 cp_dmi_aperture, 28 and 29 cp_dmi_uncore
+  // (DBG_SBA_CELLS in cocotb/env/sep_fcov_gate.py). The leaf writes the bits
+  // of the cells its checks grade after every check of the instance passed,
+  // holds them two clocks and writes 0 before it closes the window. A window
+  // close and a reset drop every held cell; the illegal bins of cp_dmi_uncore
+  // sample at once. dbg_sba_pass gates a sample; it is never a DUT value and
+  // drives nothing.
+  localparam int unsigned FdCells = 30;
+  logic [FdCells-1:0] dbg_sba_pass = '0;
+  logic [FdCells-1:0] fd_dbg_pend = '0;
+  logic [FdCells-1:0] fd_dbg_pass_q = '0;
+
+  // Owner-528 points (0 to 4) are held; the other points sample at once.
   task automatic fd_dbg(input logic [3:0] pt, input logic [3:0] v);
+    case (pt)
+      4'd0: if (v <= 4'd12) fd_dbg_pend[int'(v)] = 1'b1;
+      4'd1: fd_dbg_pend[13+int'(v[0])] = 1'b1;
+      4'd2: fd_dbg_pend[15+int'(v[1:0])] = 1'b1;
+      4'd3: fd_dbg_pend[19+int'(v[1:0])] = 1'b1;
+      4'd4: fd_dbg_pend[23] = 1'b1;
+      default: fd_dbg_now(pt, v);
+    endcase
+  endtask
+
+  task automatic fd_dbg_now(input logic [3:0] pt, input logic [3:0] v);
     mr_dbg_t e;
     e = '0;
     case (pt)
@@ -19720,24 +20498,63 @@ module sep_fcov (
   // with mcause 5 (load access fault). Owner sep_cpu_isa_pmp_csr_test.
   // cp_lockstep_inert (sep_static_tieoff_cg): over the owner window,
   // lockstep_status_o stays 0 on every clock while lockstep_ctrl_i holds a
-  // bit at 1 during retired instructions; sampled when the window closes.
+  // bit at 1 during retired instructions; evaluated when the window closes. A
+  // status that is not 0 on a window clock with a control bit at 1 samples the
+  // illegal bin status_not0 at that clock.
+  // Pass label isa_pmp_pass (bits IsaPass*): each of these cells, and the
+  // cp_instr_class and cp_traced_event taken_trap cells of the same owner, is
+  // held as pending at its event and samples only when its bit of
+  // isa_pmp_pass rises. The owner grades the firmware console after the run,
+  // with the window closed, so the hold outlives the window: the owner writes
+  // the bits through the u_sep_fcov handle after every check of the run
+  // passes, holds them two clocks and writes 0. The next window open and a
+  // reset drop the pending cells. It gates a sample; it is never a DUT value
+  // and drives nothing.
+  int unsigned isa_pmp_pass = 0;
+  // Bits 0 to 15: cp_pmp_entry entry[i], CHK-PMP of entry i.
+  localparam int unsigned IsaPassMrac = 16;  // cp_mrac_no_perm, CHK-MRAC
+  localparam int unsigned IsaPassLsBit0 = 17;  // cp_lockstep_inert ctrl_bit0_status0
+  localparam int unsigned IsaPassLsBit1 = 18;  // cp_lockstep_inert ctrl_bit1_status0
+  localparam int unsigned IsaPassIcls = 19;  // cp_instr_class, CHK-ISA
+  localparam int unsigned IsaPassTrap = 20;  // cp_traced_event taken_trap, CHK-ISA and CHK-MRAC
   wire fd_own_isa = (graded_owner == FcovOwnSepCpuIsaPmpCsrTest);
   logic [15:0] fd_pmp_wr_q = '0;
   logic fd_isa_q = 1'b0;
   logic fd_ls_bad_q = 1'b0;
-  logic fd_ls_inj_q = 1'b0;
-  logic fd_ls_dis_q = 1'b0;
+  logic fd_ls_b0_q = 1'b0;
+  logic fd_ls_b1_q = 1'b0;
+  logic [15:0] fd_pe_pend = '0;
+  logic fd_mp_pend = 1'b0;
+  logic [1:0] fd_ls_pend = '0;  // {ctrl_bit1_status0, ctrl_bit0_status0}
+  logic [20:0] fd_isa_pass_q = '0;
+  wire [20:0] fd_isa_rel = 21'(isa_pmp_pass) & ~fd_isa_pass_q;
   always @(posedge clk_i) begin
     fd_isa_q <= fd_own_isa;
-    if (fd_own_isa && !fd_isa_q) begin
+    fd_isa_pass_q <= 21'(isa_pmp_pass);
+    if (in_reset) begin
+      fd_pe_pend <= '0;
+      fd_mp_pend <= 1'b0;
+      fd_ls_pend <= '0;
+    end else if (fd_own_isa && !fd_isa_q) begin
       fd_pmp_wr_q <= '0;
       fd_ls_bad_q <= 1'b0;
-      fd_ls_inj_q <= 1'b0;
-      fd_ls_dis_q <= 1'b0;
+      fd_ls_b0_q <= 1'b0;
+      fd_ls_b1_q <= 1'b0;
+      fd_pe_pend  <= '0;
+      fd_mp_pend  <= 1'b0;
+      fd_ls_pend  <= '0;
     end else if (fd_own_isa) begin
       if (lockstep_status_i !== 1'b0) fd_ls_bad_q <= 1'b1;
-      if ((cpu_trace_valid_i === 1'b1) && (lockstep_ctrl_i[0] === 1'b1)) fd_ls_inj_q <= 1'b1;
-      if ((cpu_trace_valid_i === 1'b1) && (lockstep_ctrl_i[1] === 1'b1)) fd_ls_dis_q <= 1'b1;
+      if ((lockstep_status_i !== 1'b0) &&
+          ((lockstep_ctrl_i[0] === 1'b1) || (lockstep_ctrl_i[1] === 1'b1))) begin
+        mr_tie_t e;
+        e      = '0;
+        e.li   = {1'b1, lockstep_ctrl_i[0] !== 1'b1};
+        e.li_v = 1'b1;
+        u_sep_static_tieoff_cg.sample(e);
+      end
+      if ((cpu_trace_valid_i === 1'b1) && (lockstep_ctrl_i[0] === 1'b1)) fd_ls_b0_q <= 1'b1;
+      if ((cpu_trace_valid_i === 1'b1) && (lockstep_ctrl_i[1] === 1'b1)) fd_ls_b1_q <= 1'b1;
       if ((cpu_trace_valid_i === 1'b1) && (cpu_trace_exc_i !== 1'b1)) begin
         logic [31:0] ins;
         ins = cpu_trace_insn_i;
@@ -19745,24 +20562,41 @@ module sep_fcov (
           if (ins[14:12] == 3'b001) fd_pmp_wr_q[ins[23:20]] <= 1'b1;
           if ((ins[14:12] == 3'b010) && (ins[19:15] == 5'd0) && (ins[11:7] != 5'd0) &&
               fd_pmp_wr_q[ins[23:20]])
-            fd_dbg(4'd5, ins[23:20]);
+            fd_pe_pend[ins[23:20]] <= 1'b1;
         end
       end
       if ((cpu_trace_valid_i === 1'b1) && (cpu_trace_exc_i === 1'b1) && (cpu_trace_ecause_i == 5'd5))
-        fd_dbg(4'd6, 4'd0);
-    end else if (fd_isa_q && !fd_ls_bad_q) begin
-      mr_tie_t e;
-      if (fd_ls_inj_q) begin
-        e      = '0;
-        e.li   = 1'b0;
-        e.li_v = 1'b1;
-        u_sep_static_tieoff_cg.sample(e);
+        fd_mp_pend <= 1'b1;
+    end else begin
+      if (fd_isa_q) begin
+        fd_ls_pend[0] <= fd_ls_b0_q && !fd_ls_bad_q;
+        fd_ls_pend[1] <= fd_ls_b1_q && !fd_ls_bad_q;
       end
-      if (fd_ls_dis_q) begin
+      for (int i = 0; i < 16; i++) begin
+        if (fd_isa_rel[i] && fd_pe_pend[i]) begin
+          fd_dbg(4'd5, 4'(i));
+          fd_pe_pend[i] <= 1'b0;
+        end
+      end
+      if (fd_isa_rel[IsaPassMrac] && fd_mp_pend) begin
+        fd_dbg(4'd6, 4'd0);
+        fd_mp_pend <= 1'b0;
+      end
+      if (fd_isa_rel[IsaPassLsBit0] && fd_ls_pend[0]) begin
+        mr_tie_t e;
         e      = '0;
-        e.li   = 1'b1;
+        e.li   = 2'b00;
         e.li_v = 1'b1;
         u_sep_static_tieoff_cg.sample(e);
+        fd_ls_pend[0] <= 1'b0;
+      end
+      if (fd_isa_rel[IsaPassLsBit1] && fd_ls_pend[1]) begin
+        mr_tie_t e;
+        e      = '0;
+        e.li   = 2'b01;
+        e.li_v = 1'b1;
+        u_sep_static_tieoff_cg.sample(e);
+        fd_ls_pend[1] <= 1'b0;
       end
     end
   end
@@ -20264,6 +21098,35 @@ module sep_fcov (
     end
   end
 
+  // Release of the tcm_trap_pass pending counts (pass label above).
+  always @(posedge clk_i) begin
+    mm_ecc_t e;
+    mm_tt_pass_q <= (tcm_trap_pass != 0);
+    if (in_reset) begin
+      foreach (mm_tt_ecc[i]) mm_tt_ecc[i] = 0;
+      foreach (mm_tt_tv[i]) mm_tt_tv[i] = 0;
+      foreach (mm_tt_mz[i]) mm_tt_mz[i] = 0;
+    end else if ((tcm_trap_pass != 0) && !mm_tt_pass_q) begin
+      for (int unsigned i = 0; i < 128; i++) begin
+        for (int unsigned k = 0; k < mm_tt_ecc[i]; k++) mm_ecc(3'(i >> 4), 4'(i));
+        mm_tt_ecc[i] = 0;
+      end
+      for (int unsigned i = 0; i < 3; i++) begin
+        for (int unsigned k = 0; k < mm_tt_tv[i]; k++) mm_dbg(2'd1, 3'(i));
+        mm_tt_tv[i] = 0;
+      end
+      for (int unsigned i = 0; i < 2; i++) begin
+        for (int unsigned k = 0; k < mm_tt_mz[i]; k++) begin
+          e      = '0;
+          e.mz   = 1'(i);
+          e.mz_v = 1'b1;
+          u_sep_cpu_ecc_irq_cg.sample(e);
+        end
+        mm_tt_mz[i] = 0;
+      end
+    end
+  end
+
   // ---------------------------------------------------------------------
   // cp_ecc_dbg_pulse and cp_ecc_no_pic: ext_debug_bus_o bits 367 (ICCM
   // single), 365 (DCCM single) and 364 (DCCM double) on a CPU access (no
@@ -20294,14 +21157,14 @@ module sep_fcov (
         end
       end else if (p[i]) mm_pw[i] <= mm_pw[i] + 1;
       else if (mm_pq[i]) begin
-        if (mm_pon[i] && mm_own_trap) mm_ecc(3'd6, (mm_pw[i] == 1) ? 4'(i) : 4'd4);
+        if (mm_pon[i] && mm_own_trap) mm_trap_ecc(3'd6, (mm_pw[i] == 1) ? 4'(i) : 4'd4);
         mm_pon[i] <= 1'b0;
       end
     end
     // A correctable pulse: the vector over MmVecWin clocks on each side.
     if (mm_np_on) begin
       if (mm_np_cnt == MmVecWin) begin
-        if (mm_own_trap) mm_ecc(3'd7, {3'd0, mm_np_chg});
+        if (mm_own_trap) mm_trap_ecc(3'd7, {3'd0, mm_np_chg});
         mm_np_on <= 1'b0;
       end else begin
         mm_np_chg <= mm_np_chg || vchg;
@@ -20336,17 +21199,17 @@ module sep_fcov (
     if (!in_reset && mm_own_trap && !$isunknown({tlu_mdccmect_i, tlu_miccmect_i})) begin
       if ((tlu_mdccmect_i != mm_dc_q) || (mie5 != mm_mie5_q)) begin
         at = mm_at(tlu_mdccmect_i);
-        mm_ecc(3'd0, {(tlu_dccm_ce_req_i === 1'b1) != at, 1'b1, at, mie5});
+        mm_trap_ecc(3'd0, {(tlu_dccm_ce_req_i === 1'b1) != at, 1'b1, at, mie5});
       end
       if ((tlu_miccmect_i != mm_ic_q) || (mie5 != mm_mie5_q)) begin
         at = mm_at(tlu_miccmect_i);
-        mm_ecc(3'd0, {(tlu_iccm_ce_req_i === 1'b1) != at, 1'b0, at, mie5});
+        mm_trap_ecc(3'd0, {(tlu_iccm_ce_req_i === 1'b1) != at, 1'b0, at, mie5});
       end
     end
     if (mm_clw_on) begin
       f = mm_clw_d ? tlu_mdccmect_i[31:27] : tlu_miccmect_i[31:27];
-      if (mm_own_trap && (mm_clw_t <= 5'd5) && (f == mm_clw_t)) mm_ecc(3'd1, 4'd0);
-      if (mm_own_trap && (mm_clw_t > 5'd26) && (f == 5'd26)) mm_ecc(3'd1, 4'd1);
+      if (mm_own_trap && (mm_clw_t <= 5'd5) && (f == mm_clw_t)) mm_trap_ecc(3'd1, 4'd0);
+      if (mm_own_trap && (mm_clw_t > 5'd26) && (f == 5'd26)) mm_trap_ecc(3'd1, 4'd1);
     end
     mm_clw_on <= (tlu_wr_dccmect_i === 1'b1) || (tlu_wr_iccmect_i === 1'b1);
     mm_clw_d  <= (tlu_wr_dccmect_i === 1'b1);
@@ -20419,6 +21282,8 @@ module sep_fcov (
   logic [4:0] mm_tw_exp = '0;
   int unsigned mm_tw_cnt = 0;
   logic mm_nf_on = 1'b0;
+  logic [5:0] mm_isa_ic_pend = '0;  // cp_instr_class cells of the ISA owner
+  logic mm_isa_tv_pend = 1'b0;  // cp_traced_event taken_trap of the ISA owner
   always @(posedge clk_i) begin
     logic tr;
     logic exc;
@@ -20431,17 +21296,37 @@ module sep_fcov (
     intr    = (cpu_trace_interrupt_i === 1'b1);
     ce_ev   = tr && intr && (cpu_trace_ecause_i == MmCauseCe);
     nmi_new = !in_reset && (tlu_mcause_i == MmMcauseNmi) && (mm_mc_q != MmMcauseNmi);
-    // cp_traced_event.
-    if (mm_own_trap || mm_own_isa) begin
-      if (tr && exc && !intr) mm_dbg(2'd1, 3'd0);
-      if (ce_ev) mm_dbg(2'd1, 3'd1);
-      if (nmi_new) mm_dbg(2'd1, 3'd2);
+    // cp_traced_event of owner 526: held until tcm_trap_pass rises.
+    if (mm_own_trap) begin
+      if (tr && exc && !intr) mm_trap_tv(2'd0);
+      if (ce_ev) mm_trap_tv(2'd1);
+      if (nmi_new) mm_trap_tv(2'd2);
     end
-    // cp_instr_class.
+    // cp_instr_class, and the taken_trap cell of cp_traced_event of the ISA
+    // owner: held as pending (pass label isa_pmp_pass).
     if (mm_own_isa && tr) begin
       c = mm_icls(cpu_trace_insn_i);
-      if (!exc && !intr && (c <= 3'd4)) mm_dbg(2'd2, c);
-      if (exc && !intr && (c == 3'd5)) mm_dbg(2'd2, 3'd5);
+      if (exc && !intr) mm_isa_tv_pend <= 1'b1;
+      if (!exc && !intr && (c <= 3'd4)) mm_isa_ic_pend[c] <= 1'b1;
+      if (exc && !intr && (c == 3'd5)) mm_isa_ic_pend[5] <= 1'b1;
+    end
+    // A reset and the next window open of the ISA owner drop the held cells;
+    // with that window closed, the rise of bit IsaPassIcls releases the held
+    // cp_instr_class cells and the rise of bit IsaPassTrap the taken trap.
+    if (in_reset || (mm_own_isa && !fd_isa_q)) begin
+      mm_isa_ic_pend <= '0;
+      mm_isa_tv_pend <= 1'b0;
+    end else if (!mm_own_isa) begin
+      if (fd_isa_rel[IsaPassIcls]) begin
+        for (int k = 0; k < 6; k++) begin
+          if (mm_isa_ic_pend[k]) mm_dbg(2'd2, 3'(k));
+        end
+        mm_isa_ic_pend <= '0;
+      end
+      if (fd_isa_rel[IsaPassTrap] && mm_isa_tv_pend) begin
+        mm_dbg(2'd1, 3'd0);
+        mm_isa_tv_pend <= 1'b0;
+      end
     end
     // cp_zbe_instr.
     if (mm_own_zbe && tr && !exc && !intr) begin
@@ -20454,14 +21339,14 @@ module sep_fcov (
       mm_md_mst <= (tlu_mstatus_mie_i === 1'b1);
     end else if (mm_md_arm && (tlu_mstatus_mie_i === 1'b1)) mm_md_mst <= 1'b1;
     if (ce_ev) begin
-      if (mm_own_trap && mm_md_arm && mm_md_mst) mm_ecc(3'd2, 4'd0);
+      if (mm_own_trap && mm_md_arm && mm_md_mst) mm_trap_ecc(3'd2, 4'd0);
       mm_md_arm <= 1'b0;
     end
     if ((tlu_ce_int_i === 1'b1) && (tlu_mie_i[5] === 1'b0) && !in_reset) begin
       if (ce_ev) mm_sil_done <= 1'b1;
       else if (!mm_sil_done) begin
         if (mm_sil_cnt + 1 == MmCeSilent) begin
-          if (mm_own_trap) mm_ecc(3'd2, 4'd1);
+          if (mm_own_trap) mm_trap_ecc(3'd2, 4'd1);
           mm_sil_done <= 1'b1;
         end
         mm_sil_cnt <= mm_sil_cnt + 1;
@@ -20473,7 +21358,7 @@ module sep_fcov (
     // cp_tcm_trap_cause: a DCCM load or store exception, its mcause and mscause.
     if (mm_tw_on) begin
       if (tlu_mcause_i == 32'(mm_tw_exp)) begin
-        if (mm_own_trap) mm_ecc(3'd4, {2'd0, (tlu_mscause_i != 4'd1), (mm_tw_exp == 5'd7)});
+        if (mm_own_trap) mm_trap_ecc(3'd4, {2'd0, (tlu_mscause_i != 4'd1), (mm_tw_exp == 5'd7)});
         mm_tw_on <= 1'b0;
       end else if (mm_tw_cnt == MmTrapWait) mm_tw_on <= 1'b0;
       mm_tw_cnt <= mm_tw_cnt + 1;
@@ -20488,7 +21373,7 @@ module sep_fcov (
     // cp_nmi_fast_path: the first instruction after the NMI is at SEP_NMI_VEC.
     if (nmi_new) mm_nf_on <= 1'b1;
     else if (mm_nf_on && tr && !exc && !intr) begin
-      if (mm_own_trap && (cpu_trace_addr_i == {nmi_vec_i, 1'b0})) mm_ecc(3'd5, 4'd0);
+      if (mm_own_trap && (cpu_trace_addr_i == {nmi_vec_i, 1'b0})) mm_trap_ecc(3'd5, 4'd0);
       mm_nf_on <= 1'b0;
     end
     if (in_reset) mm_nf_on <= 1'b0;
@@ -20506,9 +21391,35 @@ module sep_fcov (
     uo = (dmi_uncore_en_i === 1'b1) || (dmi_uncore_wr_en_i === 1'b1);
     if (mm_own_dmi && !in_reset) begin
       if (dmi_en_i === 1'b1) begin
-        mm_dbg(2'd0, {1'b0, (dmi_core_en_i === 1'b1), up});
-        if (dmi_uncore_cfg_i !== 1'b1) mm_abs(2'd2, {uo, up});
+        fd_dbg_pend[24+int'({(dmi_core_en_i===1'b1), up})] = 1'b1;
+        if (dmi_uncore_cfg_i !== 1'b1) begin
+          if (uo) mm_abs(2'd2, {uo, up});
+          else fd_dbg_pend[28+int'(up)] = 1'b1;
+        end
       end else if ((dmi_uncore_cfg_i !== 1'b1) && uo) mm_abs(2'd2, {1'b1, up});
+    end
+  end
+
+  // Release of the cells held for dbg_sba_pass (see fd_dbg).
+  always @(posedge clk_i) begin
+    logic [FdCells-1:0] up;
+    up = dbg_sba_pass & ~fd_dbg_pass_q;
+    fd_dbg_pass_q <= dbg_sba_pass;
+    if (in_reset || !own_dbgm) begin
+      fd_dbg_pend = '0;
+    end else begin
+      for (int c = 0; c < FdCells; c++) begin
+        if (fd_dbg_pend[c] && up[c]) begin
+          fd_dbg_pend[c] = 1'b0;
+          if (c <= 12) fd_dbg_now(4'd0, 4'(c));
+          else if (c <= 14) fd_dbg_now(4'd1, 4'(c - 13));
+          else if (c <= 18) fd_dbg_now(4'd2, 4'(c - 15));
+          else if (c <= 22) fd_dbg_now(4'd3, 4'(c - 19));
+          else if (c == 23) fd_dbg_now(4'd4, 4'd0);
+          else if (c <= 27) mm_dbg(2'd0, 3'(c - 24));
+          else mm_abs(2'd2, 2'(c - 28));
+        end
+      end
     end
   end
 
@@ -31538,12 +32449,19 @@ module sep_fcov (
   // sep_esrc_startup_health_cg cp_component_id reset_value_read: an OKAY
   // read of COMPONENT_ID whose field bits equal the RDL reset value, owned by
   // the LSU alias-window twin test (CHK-TWIN grades the direct read against
-  // the RDL reset).
+  // the RDL reset). The cell is held and samples on the rise of twin_pass
+  // (fx_tw_rel); a window close or a reset drops it.
   // ---------------------------------------------------------------------
+  logic cz_cid_pend = 1'b0;
   always @(posedge clk_i) begin
-    if (own_twin && rd_ev && cy_rd_known && (ar_addr_q == ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR) &&
+    if (in_reset || !own_twin) begin
+      cz_cid_pend <= 1'b0;
+    end else if (fx_tw_rel) begin
+      if (cz_cid_pend) cz_sth(0, 4'd1);
+      cz_cid_pend <= 1'b0;
+    end else if (rd_ev && cy_rd_known && (ar_addr_q == ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR) &&
         ((rd_data & CzCidMask) == (32'(ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT) & CzCidMask))) begin
-      cz_sth(0, 4'd1);
+      cz_cid_pend <= 1'b1;
     end
   end
 

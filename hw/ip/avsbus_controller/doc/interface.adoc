@@ -58,7 +58,7 @@ manufacturer-specific
 
 |Command Data |[18:3] |16 |`AVS_CMD.CMD_DATA`; 0xFFFF for read commands
 
-|CRC-3 |[2:0] |3 |Calculated by hardware over bits [31:3]
+|CRC-3 |[2:0] |3 |Calculated by hardware over bits [31:3] with polynomial _x_^3^ + _x_ + 1
 |=====================================================================================
 
 <<avsbus-controller-cmd-codes>> lists the command-group-zero data types, resolutions,

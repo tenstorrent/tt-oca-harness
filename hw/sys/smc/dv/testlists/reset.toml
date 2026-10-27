@@ -290,6 +290,16 @@ timeout_sec = 1800
 tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
 
+# ISOLATE_REQ_SMC_REG is write-1-to-clear on its own byte lane: a write of 0,
+# or one that does not strobe byte 0, leaves the FLR-latched request set.
+[[tests]]
+name = "smc_isolate_req_smc_lane_test"
+module = "smc_isolate_req_smc_lane_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
 [[tests]]
 name = "smc_cool_reset_recovery_test"
 module = "smc_cool_reset_recovery_test"

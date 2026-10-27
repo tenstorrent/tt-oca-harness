@@ -198,10 +198,8 @@ module smu_boot_fcov #(
     `OCAH_FCOV_COVER(c_lcc_demote_both, lcc_demote_both_e, clk_smu_i, not_powered)
   end
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the crosses a flat point list
-  // cannot express.
+  // Covergroups: the crosses a flat point list cannot express.
   // ------------------------------------------------------------------
   covergroup cg_boot_stall with function sample (logic jtag_ovrd, logic jtag_val, logic gpio_drive);
     option.per_instance = 1;
@@ -252,6 +250,5 @@ module smu_boot_fcov #(
       u_cg_lifecycle.sample(lc_state_i, lcc_demote_state_1_i, lcc_demote_state_2_i);
     end
   end
-`endif
 
 endmodule : smu_boot_fcov

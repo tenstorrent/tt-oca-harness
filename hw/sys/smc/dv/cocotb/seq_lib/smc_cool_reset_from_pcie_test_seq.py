@@ -129,7 +129,7 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
         cocotb.log.info("CHK-FLR-ZERO-CNT: SMC_REG=0x%x iso=0 cool stayed 1", smc1)
 
         dut.tb_cfg_flr_pf_active.value = 0
-        await self.csr_write("SMC_REG_CLR", SMC_REG, 0)
+        await self.csr_write("SMC_REG_CLR", SMC_REG, SMC_BIT)
         await self._await_smc_bit(0, _PIN_BOUND, "SMC_REG_CLR_RB")
 
         await self.csr_write("FLR_DELAY", FLR_DELAY, _DELAY)
@@ -193,7 +193,7 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
         # FLR-triggered isolation is asserted: the latched request is driving
         # every isolate_req_o bit, so the memory-test bypass must be active.
         skip_asserted_cycles = await await_skip_mem_repair(dut, 1, "FLR isolation asserted")
-        await self.csr_write("SMC_REG_SW_CLR", SMC_REG, 0)
+        await self.csr_write("SMC_REG_SW_CLR", SMC_REG, SMC_BIT)
         await self._await_smc_clk(
             lambda: self._int(dut.tb_isolate_req_o),
             0,

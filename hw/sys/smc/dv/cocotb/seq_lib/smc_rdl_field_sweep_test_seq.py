@@ -57,7 +57,7 @@ WSTRB enables no lane:
   write and by 0xFF in each single lane; BRESP logged (SF-022).
 * ISOLATE_REQ_SMC_REG: the zero-strobe write must answer B within the driver's
   bound; BRESP and the value before and after are logged and not compared
-  (SF-021, and an open RTL issue on this register's byte lanes).
+  (SF-021).
 """
 
 from __future__ import annotations

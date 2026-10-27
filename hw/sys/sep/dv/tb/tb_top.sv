@@ -564,6 +564,11 @@ module sep_uvm_top
     logic [31:1] jtag_id_drive;
     assign jtag_id_drive = $isunknown(jtag_id_i) ? 31'h0 : jtag_id_i;
 
+    sep_pkg::sep_ras_t sep_ras_w;
+    assign lcc_sigint_err_probe_o = sep_ras_w.lc_sigint_err;
+    assign km_unrecoverable_err_o = sep_ras_w.km_uncorrectable;
+    assign km_recoverable_err_o   = sep_ras_w.km_correctable;
+
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
         .SEP_SEC_DISABLE_TOKEN (SecDisTbDigest)
@@ -659,11 +664,9 @@ module sep_uvm_top
         .dbg_disable_o                (dbg_disable_w),
         .sep_fuse_dft_disable_o       (sep_fuse_dft_disable_o),
         .smc_fuse_dft_disable_o       (smc_fuse_dft_disable_o),
-        .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),
-        .km_unrecoverable_err_o       (km_unrecoverable_err_o),
-        .km_recoverable_err_o         (km_recoverable_err_o),
+        .sep_ras_o                    (sep_ras_w),
         .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
@@ -1390,9 +1393,11 @@ module sep_uvm_top
         `SEP_PIC_CTRL.picm_raddr_ff[14:0],
         `SEP_PIC_CTRL.picm_rd_data
     };
+    assign pic_wr_probe_o = {`SEP_PIC_CTRL.picm_wren_ff, `SEP_PIC_CTRL.picm_waddr_ff[14:0]};
 `undef SEP_PIC_CTRL
 `else
     assign pic_rd_data_probe_o = '0;
+    assign pic_wr_probe_o = '0;
 `endif
     // Set term and clear pulse of each bridge-fault latch. The register bridges
     // (axi_lite_to_tlul) set on a TL-UL error response; the DMA master bridge
@@ -1717,6 +1722,17 @@ module sep_uvm_top
     assign dbg_rst_l_probe_o = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l;
 `else
     assign dbg_rst_l_probe_o = 1'b1;
+`endif
+    // DMI request of the core debug transport module, before the core and
+    // uncore mux: {dmi_en, dmi_wr_en, dmi_addr}; the CPU stub has none.
+`ifndef SEP_CPU_STUB
+    assign dmi_req_probe_o = {
+        `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_en,
+        `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_wr_en,
+        `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_addr
+    };
+`else
+    assign dmi_req_probe_o = '0;
 `endif
     // Read source of TIMEOUT_INTERRUPT.reserved, the value a register read returns.
 `define SEP_SYS_CSR `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
