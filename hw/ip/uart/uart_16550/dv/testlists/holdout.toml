@@ -14,6 +14,11 @@ schema_version = 1
 [[tests]]
 # uart_rx.sv flags LSR.PE from the parity of the data bits under stick
 # parity instead of comparing the sampled parity bit with the stuck level.
+# The match pins the four cases that deviate today, so a partial fix grades
+# expected_fail_mismatch. uart_16550_interrupt_test (in `all`) asserts the
+# same defective receive through the loopback; when the fix lands that
+# assertion moves to the external-line form and this leaf moves into
+# all.toml.
 name = "uart_16550_stick_parity_rx_test"
 module = { cocotb = "uart_16550_stick_parity_rx_test" }
 seed = 1
@@ -21,20 +26,21 @@ timeout_sec = 900
 tags = ["rtl_issue", "uart", "parity"]
 run_modes = ["functional"]
 expect_fail = "LSR.PE under stick parity follows the data parity, not the sampled parity bit"
-expect_fail_match = "stick parity receive check deviates from the 16550 contract"
+expect_fail_match = "CHK-STICK FAIL: cases eps0_odd_ok,eps0_even_wrong,eps1_odd_ok,eps1_even_wrong deviate from the 16550 contract"
 
 [[tests]]
 # uart_core.sv clears the reception-timeout latch only on a FIFO-mode
-# RBR read, so it survives FCR.FIFO_ENABLE=0, and the request has no
-# IER.ERBFI term.
+# RBR read, so it survives FCR.FIFO_ENABLE=0. Only that release is graded;
+# the IER=0 leg is observed only because the architecture document states
+# the timeout request is not gated by IER.
 name = "uart_16550_timeout_latch_release_test"
 module = { cocotb = "uart_16550_timeout_latch_release_test" }
 seed = 1
 timeout_sec = 900
 tags = ["rtl_issue", "uart", "interrupt"]
 run_modes = ["functional"]
-expect_fail = "a latched reception timeout survives FIFO_ENABLE=0 and is not masked by IER.ERBFI"
-expect_fail_match = "latched reception timeout deviates from the 16550 contract"
+expect_fail = "a latched reception timeout survives FIFO_ENABLE=0"
+expect_fail_match = "CHK-TO-FIFODIS FAIL"
 
 [[groups]]
 # Filed-defect reproducers; run on demand.

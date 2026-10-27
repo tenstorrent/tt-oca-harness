@@ -60,10 +60,12 @@ Tests
   break).
 * `uart_16550_stick_parity_rx_test` — stick parity on receive from the
   external line: LSR.PE against the sampled parity bit for both EPS levels.
-  Held out in `testlists/holdout.toml`.
+  Held out in `testlists/holdout.toml`. When the receive fix lands, the
+  loopback stick-parity assertion in `uart_16550_interrupt_test` moves to
+  the external-line form and this leaf moves into `testlists/all.toml`.
 * `uart_16550_timeout_latch_release_test` — release of a latched reception
-  timeout by FIFO_ENABLE=0 and its masking by IER with the FIFOs on. Held
-  out in `testlists/holdout.toml`.
+  timeout by FIFO_ENABLE=0; the receiver FIFO reset and IER=0 legs are
+  observed only. Held out in `testlists/holdout.toml`.
 
 Expected behavior is taken from `../doc/architecture.adoc` and the three
 register maps under `../regs/`. The UART is also exercised inside the SMC

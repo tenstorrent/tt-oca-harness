@@ -14,7 +14,8 @@ number of ones, each once with the parity bit at the stuck level and once at
 the wrong level. LSR.PE is expected 0 for the stuck level and 1 for the wrong
 level. Each case logs one ``CHK-STICK`` line with the observed PE and the
 expected value; mismatches are collected and reported together so every case
-runs.
+runs, and the first line of the assertion message lists the deviating case IDs
+(``eps<n>_<ones>_<pbit>``) so the held-out entry pins the exact set.
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ async def uart_16550_stick_parity_rx_test(dut) -> None:
     tb = Uart16550Tb(dut, name="uart_16550_stick_parity_rx_test")
     await tb.start()
 
-    mismatches: list[str] = []
+    mismatches: list[tuple[str, str]] = []
     for eps in (0, 1):
         await tb.reset()
         await tb.configure(
@@ -80,9 +81,10 @@ async def uart_16550_stick_parity_rx_test(dut) -> None:
             )
             tb.log.info(line)
             if pe != expected:
-                mismatches.append(line)
+                mismatches.append((f"eps{eps}_{ones}_{pbit}", line))
 
     assert not mismatches, (
-        "stick parity receive check deviates from the 16550 contract:\n" + "\n".join(mismatches)
+        f"CHK-STICK FAIL: cases {','.join(case for case, _ in mismatches)}"
+        " deviate from the 16550 contract\n" + "\n".join(line for _, line in mismatches)
     )
     tb.log.info("uart_16550_stick_parity_rx_test PASSED")

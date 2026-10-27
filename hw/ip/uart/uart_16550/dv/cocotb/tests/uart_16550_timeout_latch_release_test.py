@@ -4,23 +4,30 @@
 
 Reproduces #3388: a reception timeout latched in FIFO mode survives
 FCR.FIFO_ENABLE=0 (irq stays high and IIR reads 0x0C, a state the 16550 has no
-encoding for) and is not masked by IER.ERBFI while the FIFOs stay on.
+encoding for).
 
 Each leg starts from a fresh FIFO-mode reception timeout (FIFOs enabled,
 IER.ERBFI=1, one character received, four idle character times, IIR id 6 and
 irq high) and then applies one software action:
 
-(a) FCR.FIFO_ENABLE=0                        -> CHK-TO-FIFODIS
-(b) FCR.RCVR_FIFO_RESET=1 with FIFOs enabled -> CHK-TO-RXRST
-(c) IER=0 with FIFOs enabled                 -> CHK-TO-IERMASK
+(a) FCR.FIFO_ENABLE=0                        -> CHK-TO-FIFODIS (graded)
+(b) FCR.RCVR_FIFO_RESET=1 with FIFOs enabled -> CHK-TO-RXRST   (observed only)
+(c) IER=0 with FIFOs enabled                 -> CHK-TO-IERMASK (observed only)
 
-The 16550 contract graded here: after (a) the timeout is released, so irq is 0
-and IIR does not report id 6 with the FIFOs disabled; after (c) IER masks the
-timeout, so irq is 0. Leg (b) is observed and logged only: the 16550 does not
-say whether a receiver FIFO reset releases the latch. Every leg's precondition
-is asserted outright, and so is the control (FIFOs enabled, an RBR read drops
-irq); the graded mismatches are collected and reported together so every leg
-runs.
+Only leg (a) is graded: after FIFO_ENABLE=0 the timeout is released, so irq is
+0 and IIR does not report id 6 with the FIFOs disabled. The basis is
+``../doc/architecture.adoc``: changing ``FCR.FIFO_ENABLE`` clears both FIFOs
+and the holding state (lines 24-26), and the timeout is a FIFO-mode request
+cleared by an RBR read (lines 111-112), so nothing it reports can outlive FIFO
+mode. Neither sentence states the release outright; #3388 asks the owner to
+state it, and until then the golden is the 16550 standard. Leg (b) is observed
+only because the 16550 does not say whether a receiver FIFO reset releases the
+latch. Leg (c) is observed only because the same document states that the
+timeout request is not gated by IER (lines 111-113 and 133), so the 16550
+masking rule is a spec question for the owner, not a graded contract. Every
+leg's precondition is asserted outright, and so is the control (FIFOs enabled,
+an RBR read drops irq). The graded mismatch is reported on the first line of
+the assertion message under its ``CHK-TO-FIFODIS FAIL`` tag.
 """
 
 from __future__ import annotations
@@ -81,17 +88,17 @@ async def fcr_write(tb: Uart16550Tb, *, fifo_enable: int, rcvr_fifo_reset: int =
 async def uart_16550_timeout_latch_release_test(dut) -> None:
     tb = Uart16550Tb(dut, name="uart_16550_timeout_latch_release_test")
     await tb.start()
-    mismatches: list[str] = []
 
     # ---- leg (a): FIFO_ENABLE=0 after a latched timeout ------------------
     await arm_timeout(tb, "leg-a")
     await fcr_write(tb, fifo_enable=0)
     await tb.wait_frames(1)
     iir_dis, irq_dis = await observe(tb, "leg-a after FIFO_ENABLE=0")
-    line = f"CHK-TO-FIFODIS iir=0x{iir_dis:02x} irq={irq_dis} expected irq=0 and IIR not 0x0c"
-    tb.log.info(line)
-    if irq_dis != 0 or iir_dis == 0x0C:
-        mismatches.append(line)
+    fifodis_line = (
+        f"CHK-TO-FIFODIS iir=0x{iir_dis:02x} irq={irq_dis} expected irq=0 and IIR not 0x0c"
+    )
+    tb.log.info(fifodis_line)
+    fifodis_released = irq_dis == 0 and iir_dis != 0x0C
     # The only release path the RTL offers: FIFOs back on, then an RBR read.
     await fcr_write(tb, fifo_enable=1)
     await tb.read(MAIN.RBR_REG_ADDR)
@@ -106,15 +113,12 @@ async def uart_16550_timeout_latch_release_test(dut) -> None:
     await tb.read(MAIN.RBR_REG_ADDR)
     await observe(tb, "leg-b after RBR read on the empty FIFO")
 
-    # ---- leg (c): IER=0 with FIFOs enabled -------------------------------
+    # ---- leg (c): IER=0 with FIFOs enabled (observed only) ---------------
     await arm_timeout(tb, "leg-c")
     await tb.write(MAIN.IER_REG_ADDR, 0)
     await tb.wait_frames(1)
     iir_c, irq_c = await observe(tb, "leg-c after IER=0")
-    line = f"CHK-TO-IERMASK iir=0x{iir_c:02x} irq={irq_c} expected irq=0"
-    tb.log.info(line)
-    if irq_c != 0:
-        mismatches.append(line)
+    tb.log.info("CHK-TO-IERMASK iir=0x%02x irq=%d (observed only)", iir_c, irq_c)
 
     # ---- control: FIFOs enabled, RBR read --------------------------------
     await tb.write(MAIN.IER_REG_ADDR, 1)
@@ -123,7 +127,7 @@ async def uart_16550_timeout_latch_release_test(dut) -> None:
     tb.log.info("CHK-TO-CTRL iir=0x%02x irq=%d", iir_ctrl, irq_ctrl)
     assert irq_ctrl == 0, "control: irq still high after RBR read in FIFO mode"
 
-    assert not mismatches, (
-        "latched reception timeout deviates from the 16550 contract:\n" + "\n".join(mismatches)
+    assert fifodis_released, (
+        "CHK-TO-FIFODIS FAIL: a latched reception timeout survives FIFO_ENABLE=0\n" + fifodis_line
     )
     tb.log.info("uart_16550_timeout_latch_release_test PASSED")
