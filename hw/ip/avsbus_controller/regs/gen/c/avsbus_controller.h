@@ -762,7 +762,7 @@ typedef union {
 } avsbus_controller__AVS_CONFIG_t;
 
 // addrmap - avsbus_controller
-// Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.
+// Command, readback, status, and interrupt registers for the AVSBus (PMBus V1.3 Part III) controller.
 typedef struct __attribute__ ((__packed__)) {
     avsbus_controller__AVS_CMD_t AVS_CMD;
     avsbus_controller__AVS_READBACK_t AVS_READBACK;

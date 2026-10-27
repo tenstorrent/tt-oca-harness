@@ -142,7 +142,6 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
 |Reset vector |Existing bench hook. `rst_vec_i` drives the wrapper input `rst_vec`, which `sep_wrapper` does not connect further. At a non-zero value under `+cpu_boot`, `tb_top` also shifts the value into the reset-vector TDR (IR 0x18) while `rst_ni` is low. User: `sep_cpu_reset_entry_test`.
 |JTAG ID |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `jtag_id` (`jtag_id_i[31:1]` of `sep`) from the TB input `jtag_id_i`; an undriven or unknown value drives 0. Readback: `jtag_id_probe_o`. Owner: `sep_efuse_field_layout_rand_test` (CHK-JTAGID).
-|Key Manager SRAM response latency (HK-LAT) |Added hook (top-port drive) on the `sep` input `km_sram_mem_rsp_i`. While `km_sram_lat_en_i` is 1, a KM SRAM read response with a latency L = `km_sram_lat_i[3:0]` of 2 or more, sampled when the macro answers, reaches the KM L clocks after the accepted request: `tb_top` holds `rvalid` low and presents the captured word with `rvalid` high in the L-th clock. L of 0 or 1, or an unknown value, leaves the macro latency of 1. The KM issues no new SRAM read while one is outstanding, so the responses keep their order; a KM cold reset or the bench reset drops a delayed response. The macro latency is fixed, so no frontdoor varies it. Default 0: no drive. Readback: `km_sram_lat_delayed_count_o`; KM-LAT shows the latency that the KM sees. User: `sep_km_fault_inject_rand_test` (CHK-LAT, CHK-LAT-VAR).
 |Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_sec_dis_override_test`, `sep_sec_dis_reset_reach_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`. `+sep_trng_errslv_assert_waive` turns off every assertion of the wrapper TRNG error slave `u_ext_trng_axil_err_slv`, among them the AXI-Lite valid-stable assertions `AwValidStable_A`, `WValidStable_A` and `ArValidStable_A`, from the clock where the TRNG AXI-Lite passthrough responder turns on (first clock with `ext_trng_axil_rsp_en_i` at 1 under `+sep_ext_trng_axil_responder`) to the end of the run; before that clock they stay on. The responder replaces the error slave on the port, so the error slave sees requests whose handshake it does not complete, and its assertions grade a handshake that does not occur. VCS only: Verilator compiles these assertions out. User: `sep_fabric_deadspace_decode_test`.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
@@ -163,8 +162,12 @@ Observation probe groups:
   target. A ROM fetch that the ROM lockout blocks moves this counter and not
   `km_rom_req_count_o`. User of `km_cpu_fetch_count_o`:
   `sep_km_cpu_protect_rand_test`.
+* KM CPU KMCSR interrupt entries (`km_kmcsr_irq_entry_count_o`), reset with
+  the bench reset. It counts the 0-to-1 edges of the KMCSR bit of the KM CPU
+  `eoi` vector, which the core sets to the interrupts it serves at handler
+  entry. User: `sep_km_otp_change_irq_test` (CHK-OTP-ENTRY).
 * KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`).
-* KM SRAM read-latency probes (`km_sram_rd_*`) and scrambled-write probes
+* KM SRAM read-count probes (`km_sram_rd_*`) and scrambled-write probes
   (`km_sram_scr_wr_*`).
 * Entropy CHK probes and the IRQ aggregate.
 * AXI-Lite split handshakes.
@@ -206,9 +209,16 @@ Observation probe groups:
   stages 2 (`host_hmac`) and 4 (`host_abr`) and logs it, with the isolate
   request at it, for each drain read (an observation; no check grades it).
 * Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
-  (`u_sep_wdt_wrap.rst_wdt_n`, `rst_aon_ni` of the AON timer); owners
+  (`u_sep_wdt_wrap.rst_wdt_aon_clk_n`, `rst_aon_ni` of the AON timer); owners
   `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,
-  `sep_scan_reset_override_test`. `jtag_sep_reset_n_ovrd_probe_o`, the
+  `sep_scan_reset_override_test`. `sep_wdt_reset_n_probe_o`, the watchdog
+  reset at the output of the reset controller scan bypass (`sep_wdt_reset_n`,
+  `u_sep_reset_ctrl.sep_wdt_reset_no`): `scan_rst_ni` when `test_en_i` is high,
+  else the two-flop capture of `wdt_rst_ni`; owner
+  `sep_scan_reset_override_test`. `wdt_alert_probe_o` and `wdt_bark_probe_o`,
+  the watchdog alert (`wdt_alert`) and bark interrupt (`intr_wdog_timer_bark`)
+  at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`.
+  `jtag_sep_reset_n_ovrd_probe_o`, the
   `sep_reset_n` override select on the SEP input port
   (`u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd`), the value SEP receives
   after the pin-or-TDR mux; owner `sep_ip_reset_override_matrix_test`.
@@ -320,8 +330,8 @@ Observation probe groups:
   unrecoverable output against vector bit 30, CHK-TRAP) and the sampler point
   `sep_km_fault_report_cg.cp_fr_err_out`. No check reads the recoverable
   output.
-* Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS, KM-OUTFIFO,
-  KM-LAT of the Key Manager area of `docs/SEP_VPLAN.adoc`), read-only continuous reads of
+* Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS, KM-OUTFIFO of
+  the Key Manager area of `docs/SEP_VPLAN.adoc`), read-only continuous reads of
   `u_key_manager_s3c_scan` and of the engine wrappers of `u_sep_crypto`:
 ** KM-VALID (`km_engine_key_valid_o`, `km_abr_sk_*_o`): `KEY_CTRL.key_valid`
    of the eight engine key banks in DEST_VALID bit order (0 HMAC, 1 KMAC, 2
@@ -368,12 +378,6 @@ Observation probe groups:
    the Key Manager mailbox, `{separator, data}`, on every clock; 0 while the
    FIFO is empty. Read-only. User: `sep_km_cpu_protect_rand_test`
    (CHK-TRAP-SCOPE).
-** KM-LAT (`km_sram_rd_lat_o[7:0]`, `km_sram_rd_done_count_o`): the KM SRAM
-   read latency at the `sep` input `km_sram_mem_rsp_i`, after HK-LAT, in
-   clocks from the accepted read request to `rvalid` (1 while HK-LAT is
-   idle): the latency of the last completed read and the count of completed
-   reads since the bench reset. User: `sep_km_fault_inject_rand_test`
-   (CHK-LAT, CHK-LAT-VAR).
 ** KM-WMAP (`km_sram_wmap_region_o[32*9-1:0]`, clear `km_sram_wmap_clr_i`):
    for each SRAM write-lock region of 256 words, the count of distinct
    logical word addresses (the KM CPU store address before the scrambler)
@@ -421,6 +425,10 @@ Observation probe groups:
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
   of the KM SRAM macro array that carry the KM ROM images' result words.
 * SEP reset probes (`dbg_sep_reset_n_o` / `sep_cpu_reset_n_o`).
+* Memory-interface reset taps (`pr_sram_memif_rst_n_o` /
+  `pr_rom_memif_rst_n_o`): the `rst_ni` inputs of the SEP SRAM and boot ROM
+  memory interfaces (`u_sram_memory_interface`, `u_boot_rom_memory_interface`).
+  Monitor only. Owner: `sep_cpu_reset_entry_test` (OBS-MEMIF-WDT-RST).
 * The DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`).
 * SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`,
   `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`). Owner:
@@ -533,12 +541,17 @@ Observation probe groups:
    `data`) from `u_dut.ext_trng_axil_resp`, read after the force of the TRNG
    AXI-Lite passthrough responder, with READY from the request net. Users: the
    dead-space decode entry of the fabric and remap area.
-** PR-SRAM (`pr_sram_*`) and PR-ROM (`pr_rom_*`): the SRAM and boot ROM macro
-   requests (wrapper nets `u_dut.sep_sram_req`, `u_dut.sep_boot_rom_req`):
-   request, grant, address, write enable, write data, strobe, read valid and
-   read data. PR-ROM also carries the macro side of the ROM interface shim
-   (`pr_rom_macro_*`: `rom_macro_req`, `rom_macro_addr`, the 64-bit word
-   index, and `rom_macro_rdata` of `sep_ip_integration`; monitor PR-ROM-MACRO).
+** PR-SRAM (`pr_sram_*`) and PR-ROM (`pr_rom_*`): the byte-addressed request
+   stream inside `u_dut.u_sep.u_sram_memory_interface` and
+   `u_dut.u_sep.u_boot_rom_memory_interface`, ahead of the macro port:
+   request, address, write enable, write data, strobe, read valid and read
+   data. PR-ROM also carries the macro side of the boot ROM memory interface
+   (`pr_rom_macro_*`: `req` and `addr`, the 64-bit word index, of the wrapper
+   net `u_dut.sep_boot_rom_req`, and `rdata` of `u_dut.sep_boot_rom_rsp`;
+   monitor PR-ROM-MACRO). PR-SRAM also carries the SRAM macro request
+   (`pr_sram_macro_*`: `req`, `we`, `addr`, the 64-bit word index, and
+   `wmask`, the bit write mask, of the wrapper net `u_dut.sep_sram_req`;
+   monitor PR-SRAM-MACRO).
    The PR-SRAM address (`pr_sram_addr_o`) is the byte offset of the request
    from the SRAM base `SEP_SRAM_MEM_BASE_ADDR`, not the bus address; a check
    compares it at 8-byte word granularity, the width of one SRAM word.
@@ -547,6 +560,7 @@ Observation probe groups:
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_sram_axi_shape_matrix_test` and
    `sep_cpu_demux_unmapped_fetch_test` (PR-SRAM);
+   `sep_sram_datapath_breadth_test` (PR-SRAM-MACRO);
    `sep_fabric_dma_endpoint_matrix_test`, `sep_cpu_reset_entry_test`,
    `sep_boot_rom_aperture_sweep_test` and
    `sep_cpu_demux_unmapped_fetch_test` (PR-ROM).
@@ -669,8 +683,7 @@ Observation probe groups:
   output of `u_el2_veer_wrapper` (`dmi_en`, `dmi_addr`, `dmi_wr_en`), the
   `sep.sv` nets `cpu_tcm_axi_req` and `cpu_tcm_axi_resp`, `ifu_rom_axi_req`,
   `ifu_sram_axi_req`, `lsu_rom_axi_req` and `lsu_xbar_axi_req` with their
-  responses, and `nmi_vec`, and the wrapper nets `u_dut.sep_sram_req` and
-  `u_dut.sep_sram_rsp`; the core taps are tied to 0 on the CPU stub build. The
+  responses, and `nmi_vec`, and the probe PR-SRAM; the core taps are tied to 0 on the CPU stub build. The
   sampler also reads the probes PR-TCM, PR-IFU and PR-ROM-MACRO, the CPU trace
   ports, `ext_debug_bus_o[367:364]`, the DMI enables and the uncore DMI
   outputs. Owners: `sep_boot_rom_aperture_sweep_test`,
@@ -1121,6 +1134,46 @@ Exceptions (a closed set):
   edge that samples the reset low and must be low from the next edge on (AXI
   A3.1.2 gives no reset-entry timing). No TB master can reach that port.
   Protocol, not data.
+* *VeeR CPU AXI SVA* — four observation-only `ocah_axi_sva` instances in
+  `tb_top.sv` (`u_cpu_lsu_axi_sva`, `u_cpu_ifu_axi_sva`, `u_cpu_sb_axi_sva`,
+  `u_cpu_tcm_axi_sva`) on the LSU, IFU and debug system-bus masters at the
+  core side of `sep_cpu` (`*_axi_req_raw` / `*_axi_resp_raw`, before the alias
+  remap and the demuxes) and on the DMA slave port (`cpu_tcm_axi_req_i` /
+  `cpu_tcm_axi_resp_o`). `aresetn` is the SEP system reset `rst_ni` on every
+  port, in the normal (asynchronous-reset) shape. The core side of the LSU,
+  IFU and DMA ports, and the `sep_cpu` demuxes and IFU error slave that
+  answer B and R on the LSU and IFU ports, reset on `sep_cpu_reset_n`, and
+  the VeeR IFU and LSU bus logic also resets on a debug-module core reset. A
+  CPU-only reset and a debug-module core reset are outside `aresetn`, so no
+  reset rule grades them and a transaction open at one of them stays in the
+  outstanding tracking until the next `rst_ni`. The debug system-bus master resets on `dbg_rstb_i`; its
+  checker arms on the edge after the first edge that samples `dbg_rstb_i`
+  low. Enabled by `+cpu_boot` on the full-CPU target only (`SEP_CPU_STUB`
+  compiles them out). Runs without `+cpu_boot` on that target are not
+  graded, including those that drive the debug system-bus or DMA slave port
+  from the testbench. On VCS, a `+cpu_boot` run that never arms the
+  system-bus checker fails, and a test with
+  `+axi_sva_need_<lsu|ifu|sb|tcm>` fails when that checker graded no AW
+  or AR handshake. Protocol, not data.
+* *SEP AXI master SVA* — four observation-only `ocah_axi_sva` instances in
+  `tb_top.sv` on the SEP AXI masters outside the CPU: `u_dma_axi_sva` on the
+  secure DMA master into the local crossbar (`dma_axi_req` /
+  `dma_axi_resp`), `u_smn_out_axi_sva` on the SMN outbound port
+  (`smn_outbound_req_w` / `smn_outbound_resp_w`), `u_smc_out_axi_sva` on the
+  SMC aperture port (`ext_to_smc_req_w` / `ext_to_smc_resp_w`) and
+  `u_ext_out_axi_sva` on the external aperture into the IP integration
+  (`u_dut.axi_extension_axi_req` / `u_dut.axi_extension_axi_resp`). On the
+  SMN and SMC ports the testbench models answer B and R, so those checkers
+  also grade the models; on the external port the testbench responder
+  answers under `+sep_ext_port_responder`, and the DECERR error slave of the
+  IP integration answers without it. `aresetn` is the SEP system reset `rst_ni`.
+  The DMA engine and the SMN and SMC request logic reset on `sep_reset_n`; a
+  SEP reset from software or JTAG is outside `aresetn`, so no reset rule
+  grades it and a transaction open at that reset stays in the outstanding
+  tracking until the next `rst_ni`. Compiled in every build and run mode
+  and enabled once `rst_ni` is known; the rules grade on VCS only (the SEP
+  Verilator targets pass no `--assert`). On VCS, a test with `+axi_sva_need_<dma|smn|smc|ext>`
+  fails when that checker graded no AW or AR handshake. Protocol, not data.
 
 [[sep-run-modes]]
 === Run Modes and RTL Targets
@@ -1750,9 +1803,9 @@ SLVERR and the ROM sends an unrecoverable-fault frame in place of
 rather than hanging the KM. A named `+km_rom_hex` that does not resolve is
 a t=0 `$fatal` in `tb_top`.
 
-Two more profiles build the same application ROM with the wipe knobs named in
+Three more profiles build the same application ROM with the knobs named in
 the profile, each with its own image name and a cache key whose recipe names
-both knobs. `c_compile` builds each image in a directory private to the run
+those knobs. `c_compile` builds each image in a directory private to the run
 and the test, and the prestage hook stages it into the sim directory when the
 leaf carries the matching `+km_rom_hex`.
 
@@ -1762,11 +1815,12 @@ leaf carries the matching `+km_rom_hex`.
 |`km_rom_main` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (bench build) |`rom_main.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main" }`, `+km_rom_hex=rom_main.rom.parhex`
 |`km_rom_main_default` |`KM_BOOT_WIPE=1 KM_UNREC_WIPE=1` (shipped default) |`rom_main_default.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_default" }`, `+km_rom_hex=rom_main_default.rom.parhex`. User: `sep_km_boot_reset_rand_test` (HOST-DEFAULT).
 |`km_rom_main_unrec` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=1` |`rom_main_unrec.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_unrec" }`, `+km_rom_hex=rom_main_unrec.rom.parhex`. User: the HOST-UNREC entry of `sep_km_fault_inject_rand_test`.
+|`km_rom_main_otp_change` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=0 KM_OTP_CHANGE_EN=1` |`rom_main_otp_change.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_otp_change" }`, `+km_rom_hex=rom_main_otp_change.rom.parhex`. User: `sep_km_otp_change_irq_test`.
 |===
 
-The profiles drive the `rom_main`, `rom_main_default` and `rom_main_unrec`
-targets of `hw/sys/sep/dv/cocotb/tests/km_fw/Makefile`. A leaf of
-`sep_km_boot_reset_rand_test` or `sep_km_fault_inject_rand_test` logs
+The profiles drive the `rom_main`, `rom_main_default`, `rom_main_unrec` and
+`rom_main_otp_change` targets of `hw/sys/sep/dv/cocotb/tests/km_fw/Makefile`.
+A leaf of `sep_km_boot_reset_rand_test` or `sep_km_fault_inject_rand_test` logs
 `ROM-BUILD km_boot_wipe=<0/1> km_unrec_wipe=<0/1>`.
 
 The small committed `km_rom*.parhex` assembly images are a different class

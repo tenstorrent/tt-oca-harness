@@ -14,7 +14,7 @@ seed = 1
 timeout_sec = 3600
 tags = ["smoke", "boot", "cpu"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+axi_sva_need_lsu"]
 
 [[tests]]
 # Cross-checks the trace monitor's trap record, shadow call stack and nm
@@ -112,7 +112,7 @@ reseed = 3
 timeout_sec = 3600
 tags = ["boot", "cpu", "dma", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+axi_sva_need_tcm", "+axi_sva_need_dma"]
 
 [[tests]]
 # Secure-DMA zero fill into SEP SRAM, DCCM and ICCM through the core's DMA port, and the sub-word ICCM fill the core rejects.
@@ -270,7 +270,7 @@ reseed = 4
 timeout_sec = 3600
 tags = ["boot", "reset", "cpu", "jtag", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+axi_sva_need_sb"]
 
 [[tests]]
 # Same module with real fuse sense of a PROD image (the skip plusarg is set at time 0, so

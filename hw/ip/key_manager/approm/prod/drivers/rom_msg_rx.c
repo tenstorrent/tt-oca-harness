@@ -96,14 +96,19 @@ static void send_resp_cmd(uint8_t cmd_seq, uint8_t cmd_id, int8_t rc, uint8_t ha
 void rom_msg_rx_process(void) {
     /*
      * Step 1: Check degenerate overflow — buffer full with only a partial
-     * frame means one unterminated message consumed all space.
+     * frame means one unterminated message consumed all space. The mailbox
+     * IRQ stays masked until the buffers and counters are reset, so the ISR
+     * cannot send a pending TX frame into the flushed FIFO.
      */
     if (rom_msgbuf_has_only_partial(&rom_rx_msgbuf)) {
+        uint32_t saved = rom_picorv32_maskirq(0xFFFFFFFF);
+        rom_picorv32_maskirq(saved | ROM_KM_IRQ_MBOX_BIT);
         rom_mailbox_flush();
         rom_msgbuf_flush(&rom_rx_msgbuf);
         rom_msgbuf_flush(&rom_tx_msgbuf);
         rom_cmd_seq_num = 0;
         rom_resp_seq_num = 0;
+        rom_picorv32_maskirq(saved);
         rom_trigger_recoverable(ROM_KM_RFAULT_RX_BUFF_OFLOW);
         rom_mailbox_enable_inbound_irq();
         return;

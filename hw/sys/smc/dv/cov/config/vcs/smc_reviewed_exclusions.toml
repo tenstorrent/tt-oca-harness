@@ -25,8 +25,11 @@ schema_version = 1
 origin = "design-engineering review of the predecessor SMC bench's exclusion lists"
 reviewer = "DE + DV peer"
 # `lists` counts the reviewed source lists; an entry's `list` numbers the one
-# it comes from, which orders the blocks of one class and scope.
-lists = 11
+# it comes from, which orders the blocks of one class and scope. List 12 is
+# the ruling that AxBURST WRAP is outside the SMC inbound contract: the CPU
+# MMIO port issues INCR only and no SMC initiator drives WRAP, so AxBURST[1]
+# on every fabric request path is a reviewed bit.
+lists = 12
 
 # Inside a [[unit]], a PeakRDL register block's points and every FSM point take
 # these classes, so they land in the register-block and FSM files.
@@ -2305,3 +2308,51 @@ instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_e
 class = "T9-IP-INTEGRATION-PORTS-ONLY"
 list = 1
 instance = "smc_uvm_top.u_dut.u_smc_ip_integration"
+
+[[object]]
+class = "R2-FABRIC-WINDOWS"
+list = 12
+module = "axi_filter_wrap"
+toggle_selects = [["err_slv_req.ar.burst", "[1]", "both"], ["err_slv_req.aw.burst", "[1]", "both"]]
+
+[[object]]
+class = "R2-FABRIC-WINDOWS"
+list = 12
+module = "smc_input_fabric"
+toggle_selects = [["axi_mmio_port_req_prepend_id.ar.burst", "[1]", "both"], ["axi_mmio_port_req_prepend_id.aw.burst", "[1]", "both"], ["axi_to_input_mux_req.mmio.ar.burst", "[1]", "both"], ["axi_to_input_mux_req.mmio.aw.burst", "[1]", "both"]]
+
+[[object]]
+class = "R2-FABRIC-WINDOWS"
+list = 12
+module = "smc_local_xbar"
+toggle_selects = [["periph_reg_stage1_req.ar.burst", "[1]", "both"], ["smc_dfd_reg_stage1_req.ar.burst", "[1]", "both"], ["smc_dfd_reg_stage1_req.aw.burst", "[1]", "both"], ["xbar_mst_req[*].ar.burst", "[1]", "both"], ["xbar_mst_req[*].aw.burst", "[1]", "both"], ["xbar_out_local_reg_req.ar.burst", "[1]", "both"], ["xbar_out_local_reg_req.aw.burst", "[1]", "both"], ["xbar_out_periph_reg_req.ar.burst", "[1]", "both"], ["xbar_out_smc_dfd_reg_req.ar.burst", "[1]", "both"], ["xbar_out_smc_dfd_reg_req.aw.burst", "[1]", "both"]]
+
+[[object]]
+class = "R2-FABRIC-WINDOWS"
+list = 12
+module = "smc_output_fabric"
+toggle_selects = [["axi_filtered_req.ar.burst", "[1]", "both"], ["axi_filtered_req.aw.burst", "[1]", "both"]]
+
+[[object]]
+class = "R5-DMA"
+list = 12
+instance = "smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap"
+toggle_selects = [["axi_ctrl_demux_req[*].ar.burst", "[1]", "both"], ["axi_ctrl_demux_req[*].aw.burst", "[1]", "both"], ["dma_ctrl_axi_req.ar.burst", "[1]", "both"], ["dma_ctrl_axi_req.aw.burst", "[1]", "both"], ["zeroer_ctrl_axi_req.ar.burst", "[1]", "both"], ["zeroer_ctrl_axi_req.aw.burst", "[1]", "both"]]
+
+[[object]]
+class = "R3-SHELL-PASSTHROUGH"
+list = 12
+instance = "smc_uvm_top.u_dut"
+toggle_selects = [["output_axi_req_o.ar.burst", "[1]", "both"], ["output_axi_req_o.aw.burst", "[1]", "both"]]
+
+[[object]]
+class = "R3-SHELL-PASSTHROUGH"
+list = 12
+instance = "smc_uvm_top.u_dut.u_smc"
+toggle_selects = [["cpu_axi_mmio_port_req.ar.burst", "[1]", "both"], ["cpu_axi_mmio_port_req.aw.burst", "[1]", "both"], ["output_axi_req_o.ar.burst", "[1]", "both"], ["output_axi_req_o.aw.burst", "[1]", "both"]]
+
+[[object]]
+class = "R3-SHELL-PASSTHROUGH"
+list = 12
+instance = "smc_uvm_top.u_dut.u_smc.u_smc_base"
+toggle_selects = [["axi_data_accel_ctrl_req.ar.burst", "[1]", "both"], ["axi_data_accel_ctrl_req.aw.burst", "[1]", "both"], ["cpu_axi_mmio_port_req_i.ar.burst", "[1]", "both"], ["cpu_axi_mmio_port_req_i.aw.burst", "[1]", "both"], ["output_axi_req_o.ar.burst", "[1]", "both"], ["output_axi_req_o.aw.burst", "[1]", "both"]]

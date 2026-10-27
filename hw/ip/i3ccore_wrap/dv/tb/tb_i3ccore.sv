@@ -268,18 +268,13 @@ module tb_i3ccore;
       if (!rst_n) begin
         for (int k = 0; k < (1 << i3c_pkg::DatAw); k++) dat_arr[k] <= '0;
         dat_mem_src[gi].rdata <= '0;
-        dat_mem_src[gi].rvalid <= 1'b0;
-        dat_mem_src[gi].rerror <= '0;
       end else begin
-        dat_mem_src[gi].rvalid <= 1'b0;
-        dat_mem_src[gi].rerror <= '0;
         if (dat_mem_sink[gi].req) begin
           logic [63:0] nv;
           nv = (dat_mem_sink[gi].wdata & dat_mem_sink[gi].wmask) |
                          (dat_arr[dat_mem_sink[gi].addr] & ~dat_mem_sink[gi].wmask);
           if (dat_mem_sink[gi].write) dat_arr[dat_mem_sink[gi].addr] <= nv;
-          dat_mem_src[gi].rdata  <= dat_mem_sink[gi].write ? nv : dat_arr[dat_mem_sink[gi].addr];
-          dat_mem_src[gi].rvalid <= 1'b1;
+          dat_mem_src[gi].rdata <= dat_mem_sink[gi].write ? nv : dat_arr[dat_mem_sink[gi].addr];
         end
       end
     end
@@ -287,18 +282,13 @@ module tb_i3ccore;
       if (!rst_n) begin
         for (int k = 0; k < (1 << i3c_pkg::DctAw); k++) dct_arr[k] <= '0;
         dct_mem_src[gi].rdata <= '0;
-        dct_mem_src[gi].rvalid <= 1'b0;
-        dct_mem_src[gi].rerror <= '0;
       end else begin
-        dct_mem_src[gi].rvalid <= 1'b0;
-        dct_mem_src[gi].rerror <= '0;
         if (dct_mem_sink[gi].req) begin
           logic [127:0] nv;
           nv = (dct_mem_sink[gi].wdata & dct_mem_sink[gi].wmask) |
                          (dct_arr[dct_mem_sink[gi].addr] & ~dct_mem_sink[gi].wmask);
           if (dct_mem_sink[gi].write) dct_arr[dct_mem_sink[gi].addr] <= nv;
-          dct_mem_src[gi].rdata  <= dct_mem_sink[gi].write ? nv : dct_arr[dct_mem_sink[gi].addr];
-          dct_mem_src[gi].rvalid <= 1'b1;
+          dct_mem_src[gi].rdata <= dct_mem_sink[gi].write ? nv : dct_arr[dct_mem_sink[gi].addr];
         end
       end
     end
@@ -337,7 +327,7 @@ module tb_i3ccore;
       .DataBitsPerMask    (32),
       .EnableOutputPipeline(0)
     ) u_i3c_dat_memory (
-      .clk_i   (clk),
+      .clk_i   (dat_mem_sink[gi].clk),
       .rst_ni  (rst_n),
       .req_i   (dat_mem_sink[gi].req),
       .write_i (dat_mem_sink[gi].write),
@@ -345,8 +335,8 @@ module tb_i3ccore;
       .wdata_i (dat_mem_sink[gi].wdata),
       .wmask_i (dat_mem_sink[gi].wmask),
       .rdata_o (dat_mem_src[gi].rdata),
-      .rvalid_o(dat_mem_src[gi].rvalid),
-      .rerror_o(dat_mem_src[gi].rerror),
+      .rvalid_o(),
+      .rerror_o(),
       .cfg_i   ('0)
     );
 
@@ -357,7 +347,7 @@ module tb_i3ccore;
       .DataBitsPerMask    (32),
       .EnableOutputPipeline(0)
     ) u_i3c_dct_memory (
-      .clk_i   (clk),
+      .clk_i   (dct_mem_sink[gi].clk),
       .rst_ni  (rst_n),
       .req_i   (dct_mem_sink[gi].req),
       .write_i (dct_mem_sink[gi].write),
@@ -365,8 +355,8 @@ module tb_i3ccore;
       .wdata_i (dct_mem_sink[gi].wdata),
       .wmask_i (dct_mem_sink[gi].wmask),
       .rdata_o (dct_mem_src[gi].rdata),
-      .rvalid_o(dct_mem_src[gi].rvalid),
-      .rerror_o(dct_mem_src[gi].rerror),
+      .rvalid_o(),
+      .rerror_o(),
       .cfg_i   ('0)
     );
 
@@ -376,8 +366,8 @@ module tb_i3ccore;
       .Width          (i3c_pkg::DatAw),
       .DataBitsPerMask(1)
     ) u_i3c_rlt_memory (
-      .clk_a_i (clk),
-      .clk_b_i (clk),
+      .clk_a_i (rlt_mem_sink[gi].clk),
+      .clk_b_i (rlt_mem_sink[gi].clk),
       .a_req_i  (rlt_mem_sink[gi].a_req),
       .a_write_i(rlt_mem_sink[gi].a_write),
       .a_addr_i (rlt_mem_sink[gi].a_addr),

@@ -332,6 +332,30 @@ module sep_uvm_top
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan
             .u_otbn.u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
     end
+    // The watchdog reset resets the CPU but not the interconnect, and does not
+    // drain its transactions; the cold reset that follows every watchdog timeout
+    // clears that state (doc/trm/src/reset.adoc, Watchdog timeout). A B
+    // outstanding at a wdt_rst_ni_i pulse can reach the CPU LSU demux after the
+    // CPU reset has cleared its per-ID counters, and the counter assertions then
+    // fire on a state the contract leaves open until the cold reset. With
+    // +sep_lsu_demux_underflow_waive the LSU demux assertions are off from each
+    // wdt_rst_ni_i fall to the next rst_ni fall.
+    bit lsu_demux_waive_plusarg;
+    initial lsu_demux_waive_plusarg = $test$plusargs("sep_lsu_demux_underflow_waive");
+    always @(negedge wdt_rst_ni_i) begin
+        if (lsu_demux_waive_plusarg) begin
+            $display("%0t: [tb] LSU demux assertions off to rst_ni (+sep_lsu_demux_underflow_waive)",
+                     $time);
+            $assertoff(0, `SEP_CORE.u_sep_cpu.u_lsu_axi_demux);
+        end
+    end
+    always @(negedge rst_ni) begin
+        if (lsu_demux_waive_plusarg) begin
+            $display("%0t: [tb] LSU demux assertions on at rst_ni (+sep_lsu_demux_underflow_waive)",
+                     $time);
+            $asserton(0, `SEP_CORE.u_sep_cpu.u_lsu_axi_demux);
+        end
+    end
 `endif
 
     // TB-owned CPU lockstep stimulus/observation. Initialised: an undriven
@@ -1260,6 +1284,8 @@ module sep_uvm_top
     // tests read them. Same XMR-probe style as above.
     assign dbg_sep_reset_n_o = `SEP_CORE.sep_reset_n;
     assign sep_cpu_reset_n_o = `SEP_CORE.sep_cpu_reset_n;
+    assign pr_sram_memif_rst_n_o = `SEP_CORE.u_sram_memory_interface.rst_ni;
+    assign pr_rom_memif_rst_n_o  = `SEP_CORE.u_boot_rom_memory_interface.rst_ni;
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
@@ -1656,7 +1682,13 @@ module sep_uvm_top
 `undef SEP_ISO_IC
     // Watchdog timer-domain reset and the two Key Manager reset conditioner
     // outputs. Read-only XMRs.
-    assign aon_rst_n_probe_o = `SEP_CORE.u_sep_wdt_wrap.rst_wdt_n;
+    assign aon_rst_n_probe_o = `SEP_CORE.u_sep_wdt_wrap.rst_wdt_aon_clk_n;
+    // Watchdog reset sep_wdt_reset_n at the output of the reset controller scan
+    // bypass. Read-only XMR.
+    assign sep_wdt_reset_n_probe_o = `SEP_CORE.sep_wdt_reset_n;
+    // Watchdog alert and bark interrupt at the watchdog wrapper outputs. Read-only XMRs.
+    assign wdt_alert_probe_o = `SEP_CORE.wdt_alert;
+    assign wdt_bark_probe_o = `SEP_CORE.intr_wdog_timer_bark;
     // Watchdog count register WDOG_COUNT of the AON timer (clk_wdt_i domain).
     // Read-only XMR.
     assign wdt_wdog_count_o =
@@ -2176,28 +2208,34 @@ module sep_uvm_top
     assign pr_alias_out_araddr_o  = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar.addr[55:0];
     assign pr_alias_out_arcache_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar.cache;
     assign pr_alias_out_arprot_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar.prot;
-    // PR-SRAM: the SRAM macro request (wrapper net u_dut.sep_sram_req) and response.
-    assign pr_sram_req_o = u_dut.sep_sram_req.req;
-    assign pr_sram_gnt_o = u_dut.sep_sram_rsp.gnt;
-    assign pr_sram_addr_o = u_dut.sep_sram_req.addr;
-    assign pr_sram_we_o = u_dut.sep_sram_req.wenable;
-    assign pr_sram_wdata_o = u_dut.sep_sram_req.wdata;
-    assign pr_sram_strb_o = u_dut.sep_sram_req.strb;
-    assign pr_sram_rvalid_o = u_dut.sep_sram_rsp.rvalid;
+    // PR-SRAM and PR-ROM: the byte-addressed request stream inside each
+    // memory_interface, ahead of the macro port, and its response.
+    assign pr_sram_req_o = `SEP_CORE.u_sram_memory_interface.mem_req;
+    assign pr_sram_addr_o = `SEP_CORE.u_sram_memory_interface.mem_addr;
+    assign pr_sram_we_o = `SEP_CORE.u_sram_memory_interface.mem_we;
+    assign pr_sram_wdata_o = `SEP_CORE.u_sram_memory_interface.mem_wdata;
+    assign pr_sram_strb_o = `SEP_CORE.u_sram_memory_interface.mem_strb;
+    assign pr_sram_rvalid_o = `SEP_CORE.u_sram_memory_interface.mem_rvalid_q;
     assign pr_sram_rdata_o = u_dut.sep_sram_rsp.rdata;
-    // PR-ROM: the boot ROM macro request (wrapper net u_dut.sep_boot_rom_req) and response.
-    assign pr_rom_req_o = u_dut.sep_boot_rom_req.req;
-    assign pr_rom_gnt_o = u_dut.sep_boot_rom_rsp.gnt;
-    assign pr_rom_addr_o = u_dut.sep_boot_rom_req.addr;
-    assign pr_rom_we_o = u_dut.sep_boot_rom_req.wenable;
-    assign pr_rom_wdata_o = u_dut.sep_boot_rom_req.wdata;
-    assign pr_rom_strb_o = u_dut.sep_boot_rom_req.strb;
-    assign pr_rom_rvalid_o = u_dut.sep_boot_rom_rsp.rvalid;
+    assign pr_rom_req_o = `SEP_CORE.u_boot_rom_memory_interface.mem_req;
+    assign pr_rom_addr_o = `SEP_CORE.u_boot_rom_memory_interface.mem_addr;
+    assign pr_rom_we_o = `SEP_CORE.u_boot_rom_memory_interface.mem_we;
+    assign pr_rom_wdata_o = `SEP_CORE.u_boot_rom_memory_interface.mem_wdata;
+    assign pr_rom_strb_o = `SEP_CORE.u_boot_rom_memory_interface.mem_strb;
+    assign pr_rom_rvalid_o = `SEP_CORE.u_boot_rom_memory_interface.mem_rvalid_q;
     assign pr_rom_rdata_o = u_dut.sep_boot_rom_rsp.rdata;
-    // PR-ROM macro side: the request after the ROM interface shim and the read data.
-    assign pr_rom_macro_req_o   = `SEP_IPI.rom_macro_req;
-    assign pr_rom_macro_addr_o  = `SEP_IPI.rom_macro_addr;
-    assign pr_rom_macro_rdata_o = `SEP_IPI.rom_macro_rdata;
+    // PR-ROM macro side: the boot ROM macro request (wrapper net
+    // u_dut.sep_boot_rom_req, out of the memory_interface) and the read data.
+    assign pr_rom_macro_req_o   = u_dut.sep_boot_rom_req.req;
+    assign pr_rom_macro_addr_o  = u_dut.sep_boot_rom_req.addr;
+    assign pr_rom_macro_rdata_o = u_dut.sep_boot_rom_rsp.rdata;
+    // PR-SRAM macro side: the SRAM macro request (wrapper net u_dut.sep_sram_req,
+    // out of the memory_interface); addr is the 64-bit word index and wmask the
+    // bit write mask.
+    assign pr_sram_macro_req_o   = u_dut.sep_sram_req.req;
+    assign pr_sram_macro_we_o    = u_dut.sep_sram_req.we;
+    assign pr_sram_macro_addr_o  = u_dut.sep_sram_req.addr;
+    assign pr_sram_macro_wmask_o = u_dut.sep_sram_req.wmask;
     // PR-TCM: the ICCM and DCCM macro request and response (wrapper nets
     // u_dut.sep_cpu_tcm_req and u_dut.sep_cpu_tcm_rsp), bank 0 in the low bits.
     assign pr_tcm_iccm_clken_o = u_dut.sep_cpu_tcm_req.iccm_clken;
@@ -3702,9 +3740,11 @@ module sep_uvm_top
         8'(`SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.status_q);
 
     // KM/OTBN memory activity counters from the wrapper-internal req nets.
-    // KM SRAM gnt=1 and OTBN req=enable, so a count of the request strobe is
+    // Every KM request is accepted and OTBN req=enable, so a count of the request strobe is
     // a count of accepted accesses (km uses .req/.we; otbn uses .enable/.write).
     logic [31:0] km_rom_req_cnt_q, km_sram_req_cnt_q, km_sram_wr_cnt_q, km_cpu_fetch_cnt_q;
+    logic [31:0] km_kmcsr_irq_entry_cnt_q;
+    logic        km_kmcsr_eoi_q;
     logic [31:0] otbn_imem_req_cnt_q, otbn_imem_wr_cnt_q;
     logic [31:0] otbn_dmem_req_cnt_q, otbn_dmem_wr_cnt_q;
     always_ff @(posedge clk_i or negedge rst_n_int) begin
@@ -3713,6 +3753,8 @@ module sep_uvm_top
             km_sram_req_cnt_q   <= '0;
             km_sram_wr_cnt_q    <= '0;
             km_cpu_fetch_cnt_q  <= '0;
+            km_kmcsr_irq_entry_cnt_q <= '0;
+            km_kmcsr_eoi_q      <= 1'b0;
             otbn_imem_req_cnt_q <= '0;
             otbn_imem_wr_cnt_q  <= '0;
             otbn_dmem_req_cnt_q <= '0;
@@ -3725,6 +3767,13 @@ module sep_uvm_top
                 `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.mem_ready &&
                 `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.mem_instr)
                 km_cpu_fetch_cnt_q <= km_cpu_fetch_cnt_q + 32'd1;
+            // A KM CPU entry into the KMCSR interrupt: the core sets eoi to the
+            // interrupts it serves at handler entry, and the KMCSR line is core
+            // interrupt 3 (picorv32_wrapper.sv, Picorv32KmcsrIrqBit).
+            km_kmcsr_eoi_q <= `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.u_picorv32.eoi[3];
+            if (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.u_picorv32.eoi[3] &&
+                !km_kmcsr_eoi_q)
+                km_kmcsr_irq_entry_cnt_q <= km_kmcsr_irq_entry_cnt_q + 32'd1;
             if (u_dut.km_sram_mem_req.req) begin
                 km_sram_req_cnt_q <= km_sram_req_cnt_q + 32'd1;
                 if (u_dut.km_sram_mem_req.we) km_sram_wr_cnt_q <= km_sram_wr_cnt_q + 32'd1;
@@ -3745,6 +3794,7 @@ module sep_uvm_top
     assign km_sram_req_count_o     = km_sram_req_cnt_q;
     assign km_sram_write_count_o   = km_sram_wr_cnt_q;
     assign km_cpu_fetch_count_o    = km_cpu_fetch_cnt_q;
+    assign km_kmcsr_irq_entry_count_o = km_kmcsr_irq_entry_cnt_q;
     assign otbn_imem_req_count_o   = otbn_imem_req_cnt_q;
     assign otbn_imem_write_count_o = otbn_imem_wr_cnt_q;
     assign otbn_dmem_req_count_o   = otbn_dmem_req_cnt_q;
@@ -3765,36 +3815,27 @@ module sep_uvm_top
             u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[i][31:0];
     end
 
-    // KM SRAM read-response timing at the wrapper port (km_sram_mem_req/rsp,
-    // after the KM scrambler). km_sram_interface descrambles a response with
-    // the address it loaded on the accepting edge, so a response must arrive
-    // exactly one cycle after its accepted read. Counts:
-    //   rd_accept   accepted reads (req && !we && gnt)
-    //   rd_lat1     rvalid one cycle after an accepted read
-    //   rd_lat_err  rvalid with no accept one cycle earlier, or an accept one
-    //               cycle earlier with no rvalid (same-cycle, late or lost)
-    //   rd_b2b_diff rvalid in the same cycle as a new accepted read of a
-    //               different physical address (pipelined back-to-back reads)
+    // KM SRAM reads at the wrapper port (km_sram_mem_req, after the KM
+    // scrambler). The macro answers a read on the next clock. Counts:
+    //   rd_accept   reads (req && !we)
+    //   rd_b2b_diff a read in the clock after a read of a different physical
+    //               address (pipelined back-to-back reads)
     //   scr_rd      accepted reads while the KMCSR SRAM scrambler is enabled
     // Observation-only: continuous reads of the wrapper nets and of the KM
     // scrambler enable; drives nothing; outside the tb s_axi / m_axi
     // ready/valid cones. Reset to 0 by rst_n_int, so every leaf sees 0 or a
     // count, never X.
-    logic km_sram_rd_acc, km_sram_rd_acc_q, km_sram_rvalid;
+    logic km_sram_rd_acc, km_sram_rd_acc_q;
     logic [km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH-1:0] km_sram_rd_addr_q;
-    logic [31:0] km_sram_rd_acc_cnt_q, km_sram_rd_lat1_cnt_q, km_sram_rd_lat_err_cnt_q;
+    logic [31:0] km_sram_rd_acc_cnt_q;
     logic [31:0] km_sram_rd_b2b_diff_cnt_q, km_sram_scr_rd_cnt_q;
     assign km_sram_rd_acc = (u_dut.km_sram_mem_req.req === 1'b1) &&
-                            (u_dut.km_sram_mem_req.we === 1'b0) &&
-                            (u_dut.km_sram_mem_rsp.gnt === 1'b1);
-    assign km_sram_rvalid = (u_dut.km_sram_mem_rsp.rvalid === 1'b1);
+                            (u_dut.km_sram_mem_req.we === 1'b0);
     always_ff @(posedge clk_i or negedge rst_n_int) begin
         if (!rst_n_int) begin
             km_sram_rd_acc_q          <= 1'b0;
             km_sram_rd_addr_q         <= '0;
             km_sram_rd_acc_cnt_q      <= '0;
-            km_sram_rd_lat1_cnt_q     <= '0;
-            km_sram_rd_lat_err_cnt_q  <= '0;
             km_sram_rd_b2b_diff_cnt_q <= '0;
             km_sram_scr_rd_cnt_q      <= '0;
         end else begin
@@ -3805,18 +3846,12 @@ module sep_uvm_top
                 if (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.scrambler_enable === 1'b1)
                     km_sram_scr_rd_cnt_q <= km_sram_scr_rd_cnt_q + 32'd1;
             end
-            if (km_sram_rvalid && km_sram_rd_acc_q)
-                km_sram_rd_lat1_cnt_q <= km_sram_rd_lat1_cnt_q + 32'd1;
-            if (km_sram_rvalid != km_sram_rd_acc_q)
-                km_sram_rd_lat_err_cnt_q <= km_sram_rd_lat_err_cnt_q + 32'd1;
-            if (km_sram_rvalid && km_sram_rd_acc &&
+            if (km_sram_rd_acc_q && km_sram_rd_acc &&
                 (u_dut.km_sram_mem_req.addr != km_sram_rd_addr_q))
                 km_sram_rd_b2b_diff_cnt_q <= km_sram_rd_b2b_diff_cnt_q + 32'd1;
         end
     end
     assign km_sram_rd_accept_count_o   = km_sram_rd_acc_cnt_q;
-    assign km_sram_rd_lat1_count_o     = km_sram_rd_lat1_cnt_q;
-    assign km_sram_rd_lat_err_count_o  = km_sram_rd_lat_err_cnt_q;
     assign km_sram_rd_b2b_diff_count_o = km_sram_rd_b2b_diff_cnt_q;
     assign km_sram_scr_rd_count_o      = km_sram_scr_rd_cnt_q;
 
@@ -3836,7 +3871,6 @@ module sep_uvm_top
     logic [31:0] km_sram_scr_wr_data_q [KmSramScrWrSlots];
     assign km_sram_scr_wr = (u_dut.km_sram_mem_req.req === 1'b1) &&
                             (u_dut.km_sram_mem_req.we === 1'b1) &&
-                            (u_dut.km_sram_mem_rsp.gnt === 1'b1) &&
                             (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.scrambler_enable === 1'b1);
     always_ff @(posedge clk_i or negedge rst_n_int) begin
         if (!rst_n_int) begin
@@ -4009,43 +4043,6 @@ module sep_uvm_top
     // KM-INFIFO: the head word of the inbound FIFO of the KM mailbox
     // ({separator, data}; 0 while the FIFO is empty), every clock.
     assign km_infifo_head_o = 33'(`KM_TAP.u_mailbox.inbound_rdata);
-    // KM-LAT: KM SRAM read latency at the sep input km_sram_mem_rsp_i, after
-    // HK-LAT: the clocks from the accepted read request to the rvalid of its
-    // response (1 while HK-LAT is idle). km_sram_rd_lat_o holds the latency of
-    // the last completed read; km_sram_rd_done_count_o counts the completed
-    // reads since the bench reset.
-    logic km_lat_acc, km_lat_rvalid, km_lat_pend_q;
-    logic [7:0] km_lat_cnt_q, km_lat_last_q;
-    logic [31:0] km_lat_done_q;
-    assign km_lat_acc = (u_dut.km_sram_mem_req.req === 1'b1) &&
-                        (u_dut.km_sram_mem_req.we === 1'b0) &&
-                        (`SEP_CORE.km_sram_mem_rsp_i.gnt === 1'b1);
-    assign km_lat_rvalid = (`SEP_CORE.km_sram_mem_rsp_i.rvalid === 1'b1);
-    always_ff @(posedge clk_i or negedge rst_n_int) begin
-        if (!rst_n_int) begin
-            km_lat_pend_q <= 1'b0;
-            km_lat_cnt_q  <= '0;
-            km_lat_last_q <= '0;
-            km_lat_done_q <= '0;
-        end else begin
-            if (km_lat_pend_q) begin
-                if (km_lat_rvalid) begin
-                    km_lat_pend_q <= 1'b0;
-                    km_lat_last_q <= km_lat_cnt_q;
-                    km_lat_done_q <= km_lat_done_q + 32'd1;
-                end else if (km_lat_cnt_q != 8'hFF) begin
-                    km_lat_cnt_q <= km_lat_cnt_q + 8'd1;
-                end
-            end
-            if (km_lat_acc) begin
-                km_lat_pend_q <= 1'b1;
-                km_lat_cnt_q  <= 8'd1;
-            end
-        end
-    end
-    assign km_sram_rd_lat_o        = km_lat_last_q;
-    assign km_sram_rd_done_count_o = km_lat_done_q;
-
     // KM-WMAP: per SRAM write-lock region (256 words each, region r holds
     // the logical word addresses 256*r to 256*r+255), the count of distinct
     // words written since the bench reset or the last clock with
@@ -4605,38 +4602,26 @@ module sep_uvm_top
 `undef KM_KPV
 
     // ------------------------------------------------------------------
-    // HK-PAR (error inject) and HK-LAT (top-port drive) on the KM ROM and
-    // SRAM macro responses at the sep inputs km_rom_mem_rsp_i and
-    // km_sram_mem_rsp_i (docs/SEP_TB_ARCH.adoc, inject exceptions and HDL Top
-    // ports). The live response comes from inside the integration wrapper,
-    // ahead of the forced inputs: the ROM read data and rvalid and the SRAM
-    // read data of sep_ip_integration, and the SRAM rvalid as a bench flop of
-    // the accepted SRAM read (the macro answers one clock after the request).
+    // HK-PAR (error inject) on the KM ROM and SRAM macro responses at the sep
+    // inputs km_rom_mem_rsp_i and km_sram_mem_rsp_i (docs/SEP_TB_ARCH.adoc,
+    // inject exceptions and HDL Top ports). The live response comes from
+    // inside the integration wrapper, ahead of the forced inputs: the ROM and
+    // SRAM read data of sep_ip_integration. Each macro answers a read on the
+    // next clock, so a response is valid in the clock after a ROM request or
+    // an SRAM read.
     // A force is set on every falling edge (Verilator snapshots a force RHS).
     // A released input keeps its forced value until its driver next
     // evaluates, after the next rising edge has sampled it, so an input is
     // released only in a clock in which the live response equals the value
     // forced last; until then the bench forces the live response.
     //
-    // HK-LAT. While km_sram_lat_en_i is 1, a SRAM read response with a
-    // latency value L = km_sram_lat_i of 2 or more, sampled in the clock in
-    // which the macro answers, reaches the KM L clocks after the accepted
-    // request in place of 1: the bench holds rvalid low and presents the
-    // captured word with rvalid high in the L-th clock. L of 0 or 1, or an
-    // unknown value, leaves the response as the macro gives it; the macro
-    // cannot answer in the clock of the request. The KM issues no new SRAM
-    // read while one is outstanding, so the delayed responses keep their
-    // order. A KM cold reset or the bench reset drops a delayed response.
-    // km_sram_lat_delayed_count_o counts the delayed responses since the
-    // bench reset; KM-LAT shows the latency that the KM sees.
-    //
     // HK-PAR. While km_par_arm_i is 1, the bench counts the read responses
-    // (rvalid at the sep input) of the memory km_par_mem_i (0 ROM, 1 SRAM)
-    // from the rise of the arm, and on the N-th response, N = km_par_n_i
-    // from 1, inverts parity bit km_par_lane_i of that response for one
-    // clock. The data bits are not touched. One flip per arm: a drop of the
-    // arm re-arms. km_par_fired_o shows the flip since the arm,
-    // km_par_resp_count_o the responses counted since the arm, and
+    // (the clock after a ROM request or an SRAM read) of the memory
+    // km_par_mem_i (0 ROM, 1 SRAM) from the rise of the arm, and on the N-th
+    // response, N = km_par_n_i from 1, inverts parity bit km_par_lane_i of
+    // that response for one clock. The data bits are not touched. One flip
+    // per arm: a drop of the arm re-arms. km_par_fired_o shows the flip since
+    // the arm, km_par_resp_count_o the responses counted since the arm, and
     // km_par_rstrb_o the byte lanes that the KM interface parity-checks on
     // the flipped response (the CPU read strobe), so a test can show that the
     // flipped lane was checked. N of 0 or an unknown control leaves the hook
@@ -4644,11 +4629,8 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     km_intf_pkg::km_sram_mem_rsp_t km_sram_rsp_drv, km_sram_rsp_forced;
     km_intf_pkg::km_rom_mem_rsp_t km_rom_rsp_drv, km_rom_rsp_forced;
-    logic km_sram_raw_rvalid_q, km_sram_drive, km_rom_drive, km_mem_rst_ok, km_par_ok;
+    logic km_sram_rsp_valid_q, km_rom_rsp_valid_q, km_sram_drive, km_rom_drive, km_mem_rst_ok, km_par_ok;
     logic km_sram_forced, km_rom_forced;
-    logic [3:0] km_lat_k, km_lat_l;
-    logic [35:0] km_lat_word;
-    logic [31:0] km_lat_delayed_cnt;
     logic [7:0] km_par_cnt;
     logic km_par_fired;
     logic [3:0] km_par_rstrb;
@@ -4661,55 +4643,28 @@ module sep_uvm_top
         km_rom_rsp_forced  = '0;
         km_sram_forced     = 1'b0;
         km_rom_forced      = 1'b0;
-        km_lat_k           = '0;
-        km_lat_l           = '0;
-        km_lat_word        = '0;
-        km_lat_delayed_cnt = '0;
         km_par_cnt         = '0;
         km_par_fired       = 1'b0;
         km_par_rstrb       = '0;
     end
     always_ff @(posedge clk_i or negedge rst_n_int) begin
         if (!rst_n_int) begin
-            km_sram_raw_rvalid_q <= 1'b0;
+            km_sram_rsp_valid_q  <= 1'b0;
+            km_rom_rsp_valid_q   <= 1'b0;
         end else begin
-            km_sram_raw_rvalid_q <= (u_dut.km_sram_mem_req.req === 1'b1) &&
+            km_sram_rsp_valid_q  <= (u_dut.km_sram_mem_req.req === 1'b1) &&
                                     (u_dut.km_sram_mem_req.we === 1'b0);
+            km_rom_rsp_valid_q   <= (u_dut.km_rom_mem_req.req === 1'b1);
         end
     end
     always @(negedge clk_i) begin
         km_mem_rst_ok = (rst_n_int === 1'b1) && (`KM_TAP.rst_cold_aasd_n === 1'b1);
         km_sram_drive = 1'b0;
         km_rom_drive = 1'b0;
-        km_sram_rsp_drv.gnt = 1'b1;
-        km_sram_rsp_drv.rvalid = km_sram_raw_rvalid_q;
         km_sram_rsp_drv.rdata = `SEP_IPI.km_sram_rdata[31:0];
         km_sram_rsp_drv.rparity = `SEP_IPI.km_sram_rdata[35:32];
-        km_rom_rsp_drv.gnt = 1'b1;
-        km_rom_rsp_drv.rvalid = `SEP_IPI.km_rom_rvalid;
         km_rom_rsp_drv.rdata = `SEP_IPI.km_rom_rdata[31:0];
         km_rom_rsp_drv.parity = `SEP_IPI.km_rom_rdata[35:32];
-        // HK-LAT.
-        if (rst_n_int !== 1'b1) km_lat_delayed_cnt = '0;
-        if (!km_mem_rst_ok) begin
-            km_lat_k = '0;
-        end else if (km_sram_raw_rvalid_q && (km_lat_k == '0) &&
-                     (km_sram_lat_en_i === 1'b1) && !$isunknown(km_sram_lat_i) &&
-                     (km_sram_lat_i > 4'd1)) begin
-            km_lat_k = 4'd1;
-            km_lat_l = km_sram_lat_i;
-            km_lat_word = `SEP_IPI.km_sram_rdata;
-            km_lat_delayed_cnt = km_lat_delayed_cnt + 32'd1;
-        end else if (km_lat_k != '0) begin
-            km_lat_k = km_lat_k + 4'd1;
-        end
-        if (km_lat_k != '0) begin
-            km_sram_drive = 1'b1;
-            km_sram_rsp_drv.rvalid = (km_lat_k == km_lat_l);
-            km_sram_rsp_drv.rdata = km_lat_word[31:0];
-            km_sram_rsp_drv.rparity = km_lat_word[35:32];
-            if (km_lat_k == km_lat_l) km_lat_k = '0;
-        end
         // HK-PAR.
         km_par_ok = km_mem_rst_ok && !$isunknown(km_par_mem_i) && !$isunknown(km_par_lane_i) &&
                     !$isunknown(km_par_n_i) && (km_par_n_i != '0);
@@ -4717,21 +4672,21 @@ module sep_uvm_top
             km_par_cnt   = '0;
             km_par_fired = 1'b0;
         end else if (km_par_ok && !km_par_fired) begin
-            if ((km_par_mem_i === 1'b1) && km_sram_rsp_drv.rvalid) begin
+            if ((km_par_mem_i === 1'b1) && km_sram_rsp_valid_q) begin
                 km_par_cnt = km_par_cnt + 8'd1;
                 if (km_par_cnt == km_par_n_i) begin
                     km_sram_rsp_drv.rparity = km_sram_rsp_drv.rparity ^ (4'd1 << km_par_lane_i);
                     km_sram_drive = 1'b1;
                     km_par_fired = 1'b1;
-                    km_par_rstrb = `KM_CPU.u_sram_if.read_pending_rstrb_q;
+                    km_par_rstrb = `KM_CPU.u_sram_if.rdata_rstrb_q;
                 end
-            end else if ((km_par_mem_i === 1'b0) && km_rom_rsp_drv.rvalid) begin
+            end else if ((km_par_mem_i === 1'b0) && km_rom_rsp_valid_q) begin
                 km_par_cnt = km_par_cnt + 8'd1;
                 if (km_par_cnt == km_par_n_i) begin
                     km_rom_rsp_drv.parity = km_rom_rsp_drv.parity ^ (4'd1 << km_par_lane_i);
                     km_rom_drive = 1'b1;
                     km_par_fired = 1'b1;
-                    km_par_rstrb = `KM_CPU.u_rom_if.current_rsp_rstrb;
+                    km_par_rstrb = `KM_CPU.u_rom_if.rdata_rstrb_q;
                 end
             end
             if (km_par_fired) begin
@@ -4758,7 +4713,6 @@ module sep_uvm_top
         end
         km_rom_forced = km_rom_drive;
     end
-    assign km_sram_lat_delayed_count_o = km_lat_delayed_cnt;
     assign km_par_fired_o              = km_par_fired;
     assign km_par_resp_count_o         = km_par_cnt;
     assign km_par_rstrb_o              = km_par_rstrb;
@@ -5013,6 +4967,274 @@ module sep_uvm_top
         .rready  (cpu_axil_req.r_ready)
     );
 
+    // Pin map of an ocah_axi_sva instance onto one AXI request/response struct
+    // pair, and one AW or AR handshake on that pair. Shared by the AXI
+    // checkers below.
+`define SEP_AXI_SVA_PORTS(REQ, RSP)                                         \
+        .aclk    (clk_i),                                                   \
+        .aresetn (rst_ni),                                                  \
+        .awid    (REQ.aw.id),                                               \
+        .awaddr  (REQ.aw.addr),                                             \
+        .awlen   (REQ.aw.len),                                              \
+        .awsize  (REQ.aw.size),                                             \
+        .awburst (REQ.aw.burst),                                            \
+        .awlock  (REQ.aw.lock),                                             \
+        .awprot  (REQ.aw.prot),                                             \
+        .awvalid (REQ.aw_valid),                                            \
+        .awready (RSP.aw_ready),                                            \
+        .wdata   (REQ.w.data),                                              \
+        .wstrb   (REQ.w.strb),                                              \
+        .wlast   (REQ.w.last),                                              \
+        .wvalid  (REQ.w_valid),                                             \
+        .wready  (RSP.w_ready),                                             \
+        .bid     (RSP.b.id),                                                \
+        .bresp   (RSP.b.resp),                                              \
+        .bvalid  (RSP.b_valid),                                             \
+        .bready  (REQ.b_ready),                                             \
+        .arid    (REQ.ar.id),                                               \
+        .araddr  (REQ.ar.addr),                                             \
+        .arlen   (REQ.ar.len),                                              \
+        .arsize  (REQ.ar.size),                                             \
+        .arburst (REQ.ar.burst),                                            \
+        .arlock  (REQ.ar.lock),                                             \
+        .arprot  (REQ.ar.prot),                                             \
+        .arvalid (REQ.ar_valid),                                            \
+        .arready (RSP.ar_ready),                                            \
+        .rid     (RSP.r.id),                                                \
+        .rdata   (RSP.r.data),                                              \
+        .rresp   (RSP.r.resp),                                              \
+        .rlast   (RSP.r.last),                                              \
+        .rvalid  (RSP.r_valid),                                             \
+        .rready  (REQ.r_ready)
+
+`define SEP_AXI_HS(REQ, RSP) \
+        (((REQ.aw_valid && RSP.aw_ready) || (REQ.ar_valid && RSP.ar_ready)) === 1'b1)
+
+`ifndef SEP_CPU_STUB
+    // ------------------------------------------------------------------
+    // VeeR EL2 AXI ports, at the core side of sep_cpu (before the local alias
+    // remap and the demuxes). hw/sys/sep/doc/cpu.adoc names the IFU, LSU and
+    // debug system-bus masters AXI4 and the DMA slave port the crossbar's
+    // cpu_tcm target into the ICCM and DCCM. Each instance grades both sides
+    // of its port: on the three masters the core drives AW, W, AR and the B
+    // and R readies; on the DMA port the core answers B and R and the SEP
+    // fabric is the master.
+    //
+    // aresetn is the SEP system reset rst_ni on every port. The checker is the
+    // normal (asynchronous-reset) version: VALID is low on every edge that
+    // samples rst_ni low (IHI 0022 A3.1.2). The core side of the LSU, IFU and
+    // DMA ports, and the sep_cpu demuxes and IFU error slave that answer B and
+    // R on the LSU and IFU ports, reset on sep_cpu_reset_n, which a CPU-only
+    // reset (watchdog) drives low with rst_ni high. The VeeR IFU and LSU bus
+    // logic also resets on a debug-module core reset (ndmreset) with rst_ni
+    // high. Those resets are outside aresetn: no reset rule grades them, and
+    // a transaction open at one of them stays in the checker's outstanding
+    // tracking until the next rst_ni.
+    //
+    // On only under +cpu_boot, where the core runs firmware. Runs without it
+    // on this target are not graded here, including those that drive the
+    // debug system-bus or DMA slave port from the testbench. Held off while
+    // rst_ni is X, before the first reset drive.
+    //
+    // This checks PROTOCOL, not data: a read that returns wrong data breaks no
+    // rule here.
+    bit cpu_axi_sva_en = $test$plusargs("cpu_boot");
+
+`ifdef UVM
+`define SEP_CPU_AXI_SVA_EN (cpu_axi_sva_en && !$isunknown(rst_ni) && u_tb_if.axi_sva_en)
+`else
+`define SEP_CPU_AXI_SVA_EN (cpu_axi_sva_en && !$isunknown(rst_ni))
+`endif
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_cpu_lsu_axi_sva (                 // VeeR LSU master
+        .en_i (`SEP_CPU_AXI_SVA_EN),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.u_sep_cpu.lsu_axi_req_raw,
+                               `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_cpu_ifu_axi_sva (                 // VeeR IFU master
+        .en_i (`SEP_CPU_AXI_SVA_EN),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.u_sep_cpu.ifu_axi_req_raw,
+                               `SEP_CORE.u_sep_cpu.ifu_axi_resp_raw)
+    );
+
+    // The system-bus master logic resets on the debug reset (dbg_rstb_i), not
+    // rst_ni, so a request open across a SEP system reset fires the reset rule
+    // here. Before its own reset first acts, its request valids are X. The
+    // checker arms on the edge after the first edge that samples dbg_rstb_i
+    // low, and then stays armed.
+    bit cpu_sb_axi_sva_armed;
+    always_ff @(posedge clk_i)
+        if (dbg_rstb_i === 1'b0)
+            cpu_sb_axi_sva_armed <= 1'b1;
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_cpu_sb_axi_sva (                  // VeeR debug system-bus master
+        .en_i (`SEP_CPU_AXI_SVA_EN && cpu_sb_axi_sva_armed),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.u_sep_cpu.dbg_axi_req_raw,
+                               `SEP_CORE.u_sep_cpu.dbg_axi_resp_raw)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (6)
+    ) u_cpu_tcm_axi_sva (                 // VeeR DMA slave port (ICCM, DCCM)
+        .en_i (`SEP_CPU_AXI_SVA_EN),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.u_sep_cpu.cpu_tcm_axi_req_i,
+                               `SEP_CORE.u_sep_cpu.cpu_tcm_axi_resp_o)
+    );
+
+    // AW and AR handshakes each checker graded. A test that names a port with
+    // +axi_sva_need_<lsu|ifu|sb|tcm> fails when that count is zero. With
+    // +cpu_boot, a run that never arms the system-bus checker fails. Both run
+    // on VCS only, as the checkers do (the SEP Verilator targets pass no
+    // --assert).
+    int unsigned cpu_axi_hs_lsu, cpu_axi_hs_ifu, cpu_axi_hs_sb, cpu_axi_hs_tcm;
+    always_ff @(posedge clk_i) begin
+        if (`SEP_CPU_AXI_SVA_EN && `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.lsu_axi_req_raw,
+                                                   `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw))
+            cpu_axi_hs_lsu <= cpu_axi_hs_lsu + 1;
+        if (`SEP_CPU_AXI_SVA_EN && `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.ifu_axi_req_raw,
+                                                   `SEP_CORE.u_sep_cpu.ifu_axi_resp_raw))
+            cpu_axi_hs_ifu <= cpu_axi_hs_ifu + 1;
+        if (`SEP_CPU_AXI_SVA_EN && cpu_sb_axi_sva_armed &&
+            `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.dbg_axi_req_raw,
+                            `SEP_CORE.u_sep_cpu.dbg_axi_resp_raw))
+            cpu_axi_hs_sb <= cpu_axi_hs_sb + 1;
+        if (`SEP_CPU_AXI_SVA_EN && `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.cpu_tcm_axi_req_i,
+                                                   `SEP_CORE.u_sep_cpu.cpu_tcm_axi_resp_o))
+            cpu_axi_hs_tcm <= cpu_axi_hs_tcm + 1;
+    end
+`ifndef VERILATOR
+    final begin
+        if (cpu_axi_sva_en && !cpu_sb_axi_sva_armed)
+            $error("u_cpu_sb_axi_sva: never armed (no edge sampled dbg_rstb_i low)");
+        if ($test$plusargs("axi_sva_need_lsu") && cpu_axi_hs_lsu == 0)
+            $error("u_cpu_lsu_axi_sva: +axi_sva_need_lsu, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_ifu") && cpu_axi_hs_ifu == 0)
+            $error("u_cpu_ifu_axi_sva: +axi_sva_need_ifu, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_sb") && cpu_axi_hs_sb == 0)
+            $error("u_cpu_sb_axi_sva: +axi_sva_need_sb, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_tcm") && cpu_axi_hs_tcm == 0)
+            $error("u_cpu_tcm_axi_sva: +axi_sva_need_tcm, but no AW or AR handshake was graded");
+    end
+`endif
+
+`undef SEP_CPU_AXI_SVA_EN
+`endif  // SEP_CPU_STUB
+
+    // ------------------------------------------------------------------
+    // SEP AXI masters outside the CPU: the secure DMA engine into the local
+    // crossbar, and the three outbound ports (SMN outbound after the outbound
+    // filter, the SMC aperture after the alias remap, and the external
+    // aperture after its axi_cut into u_sep_ip_integration). They exist in
+    // every build and run mode, so these checkers are on in every run once
+    // rst_ni is known. On the SMN and SMC ports the TB models answer B and R,
+    // so those checkers also grade the models. On the external port the TB
+    // responder answers under +sep_ext_port_responder; without it the DECERR
+    // error slave in u_sep_ip_integration answers.
+    //
+    // aresetn is rst_ni. The DMA engine and the SMN and SMC request logic
+    // reset on sep_reset_n, which a SEP reset from software or JTAG drives low
+    // with rst_ni high. That reset is outside aresetn: no reset rule grades
+    // it, and a transaction open at that reset stays in the checker's
+    // outstanding tracking until the next rst_ni.
+    //
+    // This checks PROTOCOL, not data.
+`ifdef UVM
+`define SEP_AXI_SVA_ON (!$isunknown(rst_ni) && u_tb_if.axi_sva_en)
+`else
+`define SEP_AXI_SVA_ON (!$isunknown(rst_ni))
+`endif
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_dma_axi_sva (                     // secure DMA master into the crossbar
+        .en_i (`SEP_AXI_SVA_ON),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.dma_axi_req, `SEP_CORE.dma_axi_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (8)
+    ) u_smn_out_axi_sva (                 // SMN outbound port
+        .en_i (`SEP_AXI_SVA_ON),
+        `SEP_AXI_SVA_PORTS(smn_outbound_req_w, smn_outbound_resp_w)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (6)
+    ) u_smc_out_axi_sva (                 // SMC aperture port
+        .en_i (`SEP_AXI_SVA_ON),
+        `SEP_AXI_SVA_PORTS(ext_to_smc_req_w, ext_to_smc_resp_w)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (6)
+    ) u_ext_out_axi_sva (                 // external aperture into u_sep_ip_integration
+        .en_i (`SEP_AXI_SVA_ON),
+        `SEP_AXI_SVA_PORTS(u_dut.axi_extension_axi_req, u_dut.axi_extension_axi_resp)
+    );
+
+    // AW and AR handshakes each checker graded. A test that names a port with
+    // +axi_sva_need_<dma|smn|smc|ext> fails when that count is zero (VCS only,
+    // as the checkers).
+    int unsigned axi_hs_dma, axi_hs_smn, axi_hs_smc, axi_hs_ext;
+    always_ff @(posedge clk_i) begin
+        if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(`SEP_CORE.dma_axi_req, `SEP_CORE.dma_axi_resp))
+            axi_hs_dma <= axi_hs_dma + 1;
+        if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(smn_outbound_req_w, smn_outbound_resp_w))
+            axi_hs_smn <= axi_hs_smn + 1;
+        if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(ext_to_smc_req_w, ext_to_smc_resp_w))
+            axi_hs_smc <= axi_hs_smc + 1;
+        if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(u_dut.axi_extension_axi_req,
+                                           u_dut.axi_extension_axi_resp))
+            axi_hs_ext <= axi_hs_ext + 1;
+    end
+`ifndef VERILATOR
+    final begin
+        if ($test$plusargs("axi_sva_need_dma") && axi_hs_dma == 0)
+            $error("u_dma_axi_sva: +axi_sva_need_dma, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_smn") && axi_hs_smn == 0)
+            $error("u_smn_out_axi_sva: +axi_sva_need_smn, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_smc") && axi_hs_smc == 0)
+            $error("u_smc_out_axi_sva: +axi_sva_need_smc, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_ext") && axi_hs_ext == 0)
+            $error("u_ext_out_axi_sva: +axi_sva_need_ext, but no AW or AR handshake was graded");
+    end
+`endif
+
+`undef SEP_AXI_SVA_ON
+`undef SEP_AXI_HS
+`undef SEP_AXI_SVA_PORTS
+
 
 `ifdef UVM
     // ------------------------------------------------------------------
@@ -5074,8 +5296,6 @@ module sep_uvm_top
     assign u_tb_if.km_sram_probe             = km_sram_probe_o;
     assign u_tb_if.km_sram_rd_accept_count   = km_sram_rd_accept_count_o;
     assign u_tb_if.km_sram_rd_b2b_diff_count = km_sram_rd_b2b_diff_count_o;
-    assign u_tb_if.km_sram_rd_lat1_count     = km_sram_rd_lat1_count_o;
-    assign u_tb_if.km_sram_rd_lat_err_count  = km_sram_rd_lat_err_count_o;
     assign u_tb_if.km_sram_req_count         = km_sram_req_count_o;
     assign u_tb_if.km_sram_scr_rd_count      = km_sram_scr_rd_count_o;
     assign u_tb_if.km_sram_scr_wr_addr       = km_sram_scr_wr_addr_o;
@@ -5306,8 +5526,6 @@ module sep_uvm_top
     assign km_par_mem_i             = 1'b0;
     assign km_par_lane_i            = '0;
     assign km_par_n_i               = '0;
-    assign km_sram_lat_en_i         = 1'b0;
-    assign km_sram_lat_i            = '0;
     assign km_sram_wmap_clr_i       = 1'b0;
     assign ext_trng_drive_en_i      = '0;
     assign ext_trng_tvalid_i        = '0;
@@ -6295,8 +6513,11 @@ module sep_uvm_top
         .dma_csr_req_i     (`SEP_CORE.dma_csr_req),
         .dma_csr_resp_i    (`SEP_CORE.dma_csr_rsp),
         .irq_dma_error_i   (sep_internal_interrupts_probe_o[10]),
-        .rom_req_i         (u_dut.sep_boot_rom_req),
-        .rom_rsp_i         (u_dut.sep_boot_rom_rsp),
+        .rom_req_i         (pr_rom_req_o),
+        .rom_we_i          (pr_rom_we_o),
+        .rom_addr_i        (pr_rom_addr_o),
+        .rom_rvalid_i      (pr_rom_rvalid_o),
+        .rom_rdata_i       (pr_rom_rdata_o),
         .iccm_clken_i      (|u_dut.sep_cpu_tcm_req.iccm_clken),
         .iccm_wren_i       (|u_dut.sep_cpu_tcm_req.iccm_wren_bank),
         .dccm_clken_i      (|u_dut.sep_cpu_tcm_req.dccm_clken),
@@ -6438,6 +6659,7 @@ module sep_uvm_top
         .iso_req_i         (crypto_isolate_req_probe_o),
         .iso_ack_i         (crypto_isolated_probe_o),
         .aon_rst_n_i       (aon_rst_n_probe_o),
+        .sep_wdt_reset_n_i (sep_wdt_reset_n_probe_o),
         .km_cond_rst_n_i   (km_cond_rst_probe_o),
         .refcnt_rst_n_i    (refcnt_rst_n_probe_o),
         .jtag_rst_ctrl_i   (jtag_sep_reset_ctrl_drive),
@@ -6456,8 +6678,8 @@ module sep_uvm_top
         .cpu_trace_ecause_i (cpu_trace_ecause_o),
         .cpu_trace_tval_i   (cpu_trace_tval_o),
         .ecc_dbg_i          (ext_debug_bus_o[367:364]),
-        .sram_req_i         (u_dut.sep_sram_req),
-        .sram_rsp_i         (u_dut.sep_sram_rsp),
+        .sram_req_i         (pr_sram_req_o),
+        .sram_rvalid_i      (pr_sram_rvalid_o),
         .tcm_axi_req_i      (`SEP_CORE.cpu_tcm_axi_req),
         .tcm_axi_resp_i     (`SEP_CORE.cpu_tcm_axi_resp),
         .tcm_i_clken_i      (pr_tcm_iccm_clken_o),
@@ -6749,8 +6971,7 @@ module sep_uvm_top
         .km_wipe_i             ({`FC_KM.wipe_pulse, `FC_KM.wipe_state_i}),
         .km_otp_data_i         (`FC_KM.otp_data_i),
         .km_rom_req_i          (u_dut.km_rom_mem_req.req),
-        .km_sram_if_i          ({u_dut.km_sram_mem_rsp.rvalid, u_dut.km_sram_mem_rsp.gnt,
-                                 u_dut.km_sram_mem_req.we, u_dut.km_sram_mem_req.req}),
+        .km_sram_if_i          ({u_dut.km_sram_mem_req.we, u_dut.km_sram_mem_req.req}),
         .km_sram_addr_i        (u_dut.km_sram_mem_req.addr),
         .km_efuse_req_i        (`FC_KM.efuse_req_o),
         .km_efuse_resp_i       (`FC_KM.efuse_resp_i),
@@ -6769,13 +6990,11 @@ module sep_uvm_top
         .km_sk_irq_enable_i    (km_abr_sk_irq_enable_o),
         .km_sram_probe_i       (km_sram_probe_o),
         // Key Manager taps of the 7.22 to 7.28 points: KM-CSR, PIC bit 31,
-        // KM-OUTFIFO, KM-LAT, the KM-BUS key-path AW channel and the HK-KPV
+        // KM-OUTFIFO, the KM-BUS key-path AW channel and the HK-KPV
         // and HK-PAR stimulus readbacks.
         .km_recov_err_i        (km_csr_recov_err_o),
         .km_rec_pic_i          (sep_internal_interrupts_probe_o[31]),
         .km_outfifo_depth_i    (km_outfifo_depth_o),
-        .km_sram_lat_i         (km_sram_rd_lat_o),
-        .km_sram_lat_done_i    (km_sram_rd_done_count_o),
         .km_key_aw_valid_i     (km_key_aw_valid_o),
         .km_key_aw_ready_i     (km_key_aw_ready_o),
         .km_key_aw_addr_i      (km_key_aw_addr_o),
