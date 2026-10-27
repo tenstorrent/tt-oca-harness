@@ -603,7 +603,7 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
 
 [[tests]]
-# Armed OTP-change IRQ: the sticky bit clears and a following CMD_STAT completes.
+# Armed OTP-change IRQ: the KM CPU enters the handler, PIC bit 30 stays 0 and a following CMD_STAT completes.
 name = "sep_km_otp_change_irq_test"
 module = "km.sep_km_otp_change_irq_test"
 firmware = { name = "rom_main", mode = "km_rom_main_otp_change" }
