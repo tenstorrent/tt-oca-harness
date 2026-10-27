@@ -777,9 +777,14 @@ class LegKmac(_LegAccess, SepKmac, _LegMember):
             digest.append((s0 ^ s1) & 0xFFFF_FFFF)
         # kmac.hjson CMD.done: the engine goes back to idle.
         await self._wr(KMAC_CMD, KMAC_CMD_DONE)
-        await self._leg_poll(
-            _TaskResult(start_clk=self.clk()), bound, lambda v: v & KMAC_STATUS_IDLE
-        )
+        if (
+            await self._leg_poll(
+                _TaskResult(start_clk=self.clk()), bound, lambda v: v & KMAC_STATUS_IDLE
+            )
+            is None
+        ):
+            res.timeout = True
+            return res
         res.result = digest
         return res
 

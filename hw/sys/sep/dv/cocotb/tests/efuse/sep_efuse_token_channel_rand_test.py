@@ -661,7 +661,9 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         err = await self.hmac._rd(HMAC_ERR_CODE)
         # KEY_0 first, each KEY word big-endian (CFG.key_swap 0); each MSG_FIFO
         # word added little-endian (CFG.endian_swap 0)
-        # (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc:111-120).
+        # (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc:111-120);
+        # key[1023:0] = {KEY0, KEY1, ...} puts KEY_0 first
+        # (vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/registers.md:352).
         key_bytes = b"".join(w.to_bytes(4, "big") for w in key)
         msg_bytes = b"".join(w.to_bytes(4, "little") for w in msg)
         mac = hmac_sha2_bytes(key_bytes, msg_bytes, 256)

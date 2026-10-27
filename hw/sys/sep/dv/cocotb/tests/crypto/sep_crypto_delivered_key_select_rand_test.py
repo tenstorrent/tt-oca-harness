@@ -131,6 +131,7 @@ from seq_lib.sep_hmac_seq import (
     HMAC_CMD_HASH_START,
     HMAC_DIGEST,
     HMAC_DIGEST_WORDS,
+    HMAC_ERR_CODE,
     HMAC_INTR_DONE,
     HMAC_INTR_ERR,
     HMAC_INTR_STATE,
@@ -146,6 +147,9 @@ from seq_lib.sep_hmac_seq import (
 from seq_lib.sep_km_mailbox_seq import KM_DEST_AES, KM_DEST_HMAC, SepKmMailbox
 
 TEST = "sep_crypto_delivered_key_select_rand_test"
+# SwInvalidConfig: "HMAC has been configured incorrectly by SW, i.e. ... invalid key length
+# for HMAC mode" (vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md:128).
+EXP_ERR_INVALID_CFG = 0x6
 
 # Published 256-bit test constants (env/sep_crypto_kat_rows.py). The seed picks a row,
 # never the bytes.
@@ -536,6 +540,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         assert cfg & HMAC.field_mask("CFG", "key_length") == 0, "Key_None field not 0"
         err = -1
         pre_err = -1
+        err_code = -1
         unchanged = 0
         reason = ""
         try:
@@ -554,6 +559,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
                 HMAC_INTR_STATE, HMAC_INTR_ERR, HMAC_INTR_ERR, WAIT_LIMIT, "hmac_err"
             )
             err = 1
+            err_code = await self.hmac._rd(HMAC_ERR_CODE)
             unchanged = int(await self._read_digest(sha) == d_prev)
             await self.hmac._wr(HMAC_INTR_STATE, HMAC_INTR_ERR)
         except TrialTimeout as exc:
@@ -563,11 +569,16 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             "sha": sha,
             "err_before_start": pre_err,
             "err": err,
+            "err_code": f"0x{max(err_code, 0):x}",
             "digest_unchanged": unchanged,
         }
         if reason:
             fields["reason"] = reason
-        self.chk.ok("KEYSEL-HMAC-NONE", pre_err == 0 and err == 1 and unchanged == 1, **fields)
+        self.chk.ok(
+            "KEYSEL-HMAC-NONE",
+            pre_err == 0 and err == 1 and err_code == EXP_ERR_INVALID_CFG and unchanged == 1,
+            **fields,
+        )
         return err
 
     # --- AES -----------------------------------------------------------------------
